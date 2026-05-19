@@ -17,6 +17,7 @@ from app.models.channel_message import ChannelMessage
 from app.models.channel_conversation import ChannelConversation
 from app.core.field_encryption import decrypt_field
 from app.core.auth import create_token
+from app.services import channel_service
 
 
 @pytest.fixture(autouse=True)
@@ -180,6 +181,38 @@ async def test_channel_messages_and_conversations_filter_by_active_project(auth_
     assert wrong_scope.status_code == 404
     assert conversations.status_code == 200
     assert [item["id"] for item in conversations.json()] == [visible_conversation_id]
+
+
+@pytest.mark.asyncio
+async def test_channel_service_helpers_require_matching_project_scope():
+    await init_db()
+    project_id = f"channel-service-project-{uuid.uuid4()}"
+    other_project_id = f"channel-service-other-{uuid.uuid4()}"
+
+    async with async_session() as db:
+        instance = await channel_service.create_channel_instance(
+            db,
+            platform="slack",
+            name="Service Scoped Slack",
+            config={"Bot Token": "xoxb-test", "Signing Secret": "secret"},
+            project_id=project_id,
+        )
+        instance_id = instance.id
+
+        assert await channel_service.list_channel_instances(db, project_id=other_project_id) == []
+        assert await channel_service.delete_channel_instance(
+            db, instance_id, project_id=other_project_id
+        ) is False
+        with pytest.raises(KeyError):
+            await channel_service.start_channel_instance(
+                db, instance_id, project_id=other_project_id
+            )
+
+        scoped = await channel_service.list_channel_instances(db, project_id=project_id)
+        assert [item.id for item in scoped] == [instance_id]
+        assert await channel_service.delete_channel_instance(
+            db, instance_id, project_id=project_id
+        ) is True
 
 
 @pytest.mark.asyncio

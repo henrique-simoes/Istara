@@ -858,12 +858,11 @@ const channelProjectPath = (id: string, projectId: string, suffix = "") =>
   `/api/channels/${id}${suffix}?${channelProjectQuery(projectId)}`;
 
 export const channels = {
-  list: (platform?: string, projectId?: string) => {
+  list: (platform: string | undefined, projectId: string) => {
     const query = new URLSearchParams();
     if (platform) query.set("platform", platform);
-    if (projectId) query.set("project_id", projectId);
-    const params = query.toString() ? `?${query.toString()}` : "";
-    return get<ChannelInstance[]>(`/api/channels${params}`);
+    query.set("project_id", projectId);
+    return get<ChannelInstance[]>(`/api/channels?${query.toString()}`);
   },
   get: (id: string, projectId: string) => get<ChannelInstance>(channelProjectPath(id, projectId)),
   create: (data: { platform: string; name: string; config: Record<string, any>; project_id?: string }) =>
@@ -915,9 +914,8 @@ export const deployments = {
 
 export const surveys = {
   integrations: {
-    list: async (projectId?: string): Promise<SurveyIntegration[]> => {
-      const suffix = projectId ? `?project_id=${encodeURIComponent(projectId)}` : "";
-      const res = await get<any>(`/api/surveys/integrations${suffix}`);
+    list: async (projectId: string): Promise<SurveyIntegration[]> => {
+      const res = await get<any>(`/api/surveys/integrations?project_id=${encodeURIComponent(projectId)}`);
       return Array.isArray(res) ? res : (res?.integrations ?? []);
     },
     create: (data: { platform: string; name: string; config: Record<string, any>; project_id?: string }) =>
@@ -930,8 +928,8 @@ export const surveys = {
       post<any>(`/api/surveys/integrations/${id}/create?project_id=${encodeURIComponent(projectId)}`, data),
   },
   links: {
-    list: (projectId?: string) =>
-      get<SurveyLink[]>(`/api/surveys/links${projectId ? `?project_id=${encodeURIComponent(projectId)}` : ""}`),
+    list: (projectId: string) =>
+      get<SurveyLink[]>(`/api/surveys/links?project_id=${encodeURIComponent(projectId)}`),
     create: (data: any) => post<SurveyLink>("/api/surveys/links", data),
     sync: (id: string, projectId: string) =>
       post<any>(`/api/surveys/links/${id}/sync?project_id=${encodeURIComponent(projectId)}`, {}),
@@ -977,9 +975,8 @@ export const mcp = {
     exposure: () => get<any>("/api/mcp/server/exposure"),
   },
   clients: {
-    list: async (projectId?: string | null): Promise<MCPServerConfig[]> => {
-      const suffix = projectId ? `?project_id=${encodeURIComponent(projectId)}` : "";
-      const res = await get<any>(`/api/mcp/clients${suffix}`);
+    list: async (projectId: string): Promise<MCPServerConfig[]> => {
+      const res = await get<any>(`/api/mcp/clients?project_id=${encodeURIComponent(projectId)}`);
       return Array.isArray(res) ? res : (res?.servers ?? []);
     },
     create: (data: { name: string; url: string; transport?: string; headers?: any; project_id?: string }) =>
@@ -997,25 +994,20 @@ export const mcp = {
       }),
     health: (id: string, projectId: string) =>
       get<any>(`/api/mcp/clients/${id}/health?project_id=${encodeURIComponent(projectId)}`),
-    allTools: async (projectId?: string | null): Promise<any[]> => {
-      const suffix = projectId ? `?project_id=${encodeURIComponent(projectId)}` : "";
-      const res = await get<any>(`/api/mcp/clients/tools${suffix}`);
+    allTools: async (projectId: string): Promise<any[]> => {
+      const res = await get<any>(`/api/mcp/clients/tools?project_id=${encodeURIComponent(projectId)}`);
       return Array.isArray(res) ? res : (res?.tools ?? []);
     },
   },
   featured: {
-    list: (projectId?: string | null) => {
-      const suffix = projectId ? `?project_id=${encodeURIComponent(projectId)}` : "";
-      return get<FeaturedMCPServer[]>(`/api/mcp/featured${suffix}`);
-    },
-    get: (id: string, projectId?: string | null) => {
-      const suffix = projectId ? `?project_id=${encodeURIComponent(projectId)}` : "";
-      return get<FeaturedMCPServer>(`/api/mcp/featured/${id}${suffix}`);
-    },
-    connect: (id: string, envVars?: Record<string, string>, projectId?: string | null) =>
+    list: (projectId: string) =>
+      get<FeaturedMCPServer[]>(`/api/mcp/featured?project_id=${encodeURIComponent(projectId)}`),
+    get: (id: string, projectId: string) =>
+      get<FeaturedMCPServer>(`/api/mcp/featured/${id}?project_id=${encodeURIComponent(projectId)}`),
+    connect: (id: string, envVars: Record<string, string> | undefined, projectId: string) =>
       post<any>(`/api/mcp/featured/${id}/connect`, {
         env_vars: envVars || {},
-        project_id: projectId || undefined,
+        project_id: projectId,
       }),
   },
 };

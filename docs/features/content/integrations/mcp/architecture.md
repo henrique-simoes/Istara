@@ -6,11 +6,11 @@ audience: architecture
 status: documented
 related_features: ["skills.catalog", "agents.registry"]
 related_glossary: ["mcp"]
-code_references: ["frontend/src/components/integrations/MCPTab.tsx", "frontend/src/components/integrations/MCPServerSetup.tsx", "frontend/src/components/integrations/MCPAccessPolicyEditor.tsx", "frontend/src/components/integrations/MCPAuditLog.tsx", "backend/app/api/routes/mcp.py", "backend/app/services/mcp_client_manager.py"]
-api_references: ["backend/app/api/routes/mcp.py"]
+code_references: ["frontend/src/components/integrations/MCPTab.tsx", "frontend/src/components/integrations/MCPServerSetup.tsx", "frontend/src/components/integrations/MCPAccessPolicyEditor.tsx", "frontend/src/components/integrations/MCPAuditLog.tsx", "frontend/src/stores/integrationsStore.ts", "frontend/src/lib/api.ts", "backend/app/api/routes/mcp.py", "backend/app/services/mcp_client_manager.py"]
+api_references: ["backend/app/api/routes/mcp.py", "backend/app/services/mcp_client_manager.py"]
 test_references: ["tests/test_mcp.py", "tests/test_project_scope_contracts.py"]
 last_verified: 2026-05-19
-compass: CF-SPEC-55 / CF-684; CF-SPEC-60 / CF-762; CF-SPEC-60 / CF-776
+compass: CF-SPEC-55 / CF-684; CF-SPEC-60 / CF-762; CF-SPEC-60 / CF-776; CF-SPEC-65 / CF-842
 ---
 
 # MCP Integrations Architecture
@@ -25,6 +25,8 @@ The MCP tab configures project-owned Model Context Protocol client connections p
 - `frontend/src/components/integrations/MCPServerSetup.tsx`
 - `frontend/src/components/integrations/MCPAccessPolicyEditor.tsx`
 - `frontend/src/components/integrations/MCPAuditLog.tsx`
+- `frontend/src/stores/integrationsStore.ts`
+- `frontend/src/lib/api.ts`
 - `backend/app/api/routes/mcp.py`
 
 ## State, API, And Backend Contracts
@@ -36,14 +38,17 @@ The MCP tab configures project-owned Model Context Protocol client connections p
 ### API And Backend
 
 - `backend/app/api/routes/mcp.py`
+- `backend/app/services/mcp_client_manager.py`
 
 ## Architecture Notes
 
 - The feature is mounted through `frontend/src/components/integrations/MCPTab.tsx` and the UI navigation path recorded in the inventory.
 - Featured server labels must identify the server itself; non-Brazilian servers such as Playwright use a neutral server icon instead of Brazil-specific labeling.
 - `MCPTab` passes the active project id into MCP client listing, discovery, deletion, and featured-server connect flows, clears stale client state during project changes, and renders only clients whose `project_id` matches the active project.
+- The shared integrations store applies a second project filter and per-project URL/transport dedupe to MCP client rows before rendering, which prevents repeated server registrations such as multiple copies of the same featured MCP endpoint from appearing in one project view.
 - `MCPServerSetup` refuses test/save flows without an active project, stamps new external MCP server registrations with that project id, and uses the same active project for discovery and cleanup if the connection test fails.
 - `backend/app/api/routes/mcp.py` requires `project_id` for project-facing MCP client lists, tool aggregation, featured server browsing, client registration, featured connects, and every server-id action route. It verifies the project exists and authorizes reads as project viewer while client discovery, deletion, health checks, cached tools, and tool calls remain project-admin operations. A server id from another project resolves as not found even for a global admin using the project-facing Integrations API.
+- `backend/app/services/mcp_client_manager.py` requires a project id for registration, list, tool aggregation, discovery, tool calls, health checks, and deletion, and loads server records by both id and project id before returning cached tools or making outbound MCP calls.
 - Legacy/global MCP client rows are not returned by project-facing Integrations APIs; any cross-project MCP reporting must use a dedicated global-admin surface.
 - The frontmatter and manifest entries are the durable contract for agents updating this page after code changes.
 - When the referenced component, store, route, agent, skill, or test behavior changes, regenerate and validate the feature documentation.
@@ -68,7 +73,7 @@ The MCP tab configures project-owned Model Context Protocol client connections p
 
 ## Compass Evidence
 
-- Spec/task: CF-SPEC-55 / CF-684; CF-SPEC-60 / CF-762; CF-SPEC-60 / CF-776
+- Spec/task: CF-SPEC-55 / CF-684; CF-SPEC-60 / CF-762; CF-SPEC-60 / CF-776; CF-SPEC-65 / CF-842
 - Inventory source: `docs/features/inventory.json`
 
 ## When To Update

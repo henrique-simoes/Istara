@@ -68,6 +68,13 @@ CONFIG_ALIASES: dict[str, dict[str, str]] = {
 }
 
 
+def _require_project_scope(project_id: str | None) -> str:
+    scoped_project_id = (project_id or "").strip()
+    if not scoped_project_id:
+        raise ValueError("project_id is required")
+    return scoped_project_id
+
+
 def normalize_channel_config(platform: str, config: dict | None) -> dict:
     """Normalize UI credential labels into adapter config keys."""
     aliases = CONFIG_ALIASES.get(platform, {})
@@ -126,10 +133,16 @@ async def update_channel_instance(
     name: str | None = None,
     config: dict | None = None,
     project_id: str | None = None,
+    *,
+    scope_project_id: str,
 ) -> ChannelInstance:
     """Update an existing channel instance."""
+    scoped_project_id = _require_project_scope(scope_project_id)
     result = await db.execute(
-        select(ChannelInstance).where(ChannelInstance.id == instance_id)
+        select(ChannelInstance).where(
+            ChannelInstance.id == instance_id,
+            ChannelInstance.project_id == scoped_project_id,
+        )
     )
     instance = result.scalar_one_or_none()
     if instance is None:
@@ -149,10 +162,19 @@ async def update_channel_instance(
     return instance
 
 
-async def delete_channel_instance(db: AsyncSession, instance_id: str) -> bool:
-    """Stop, unregister, and delete a channel instance."""
+async def delete_channel_instance(
+    db: AsyncSession,
+    instance_id: str,
+    *,
+    project_id: str,
+) -> bool:
+    """Stop, unregister, and delete a channel instance inside one project scope."""
+    scoped_project_id = _require_project_scope(project_id)
     result = await db.execute(
-        select(ChannelInstance).where(ChannelInstance.id == instance_id)
+        select(ChannelInstance).where(
+            ChannelInstance.id == instance_id,
+            ChannelInstance.project_id == scoped_project_id,
+        )
     )
     instance = result.scalar_one_or_none()
     if instance is None:
@@ -183,10 +205,18 @@ async def get_channel_instance(db: AsyncSession, instance_id: str) -> ChannelIns
 
 
 async def list_channel_instances(
-    db: AsyncSession, platform: str | None = None
+    db: AsyncSession,
+    platform: str | None = None,
+    *,
+    project_id: str,
 ) -> list[ChannelInstance]:
-    """List all channel instances, optionally filtered by platform."""
-    stmt = select(ChannelInstance).order_by(ChannelInstance.created_at.desc())
+    """List channel instances for exactly one active project."""
+    scoped_project_id = _require_project_scope(project_id)
+    stmt = (
+        select(ChannelInstance)
+        .where(ChannelInstance.project_id == scoped_project_id)
+        .order_by(ChannelInstance.created_at.desc())
+    )
     if platform:
         stmt = stmt.where(ChannelInstance.platform == platform)
     result = await db.execute(stmt)
@@ -207,10 +237,19 @@ def _instantiate_adapter(instance: ChannelInstance) -> ChannelAdapter:
     return adapter_cls(instance_id=instance.id, config=config)
 
 
-async def start_channel_instance(db: AsyncSession, instance_id: str) -> dict:
-    """Instantiate adapter, register with router, and start polling/listening."""
+async def start_channel_instance(
+    db: AsyncSession,
+    instance_id: str,
+    *,
+    project_id: str,
+) -> dict:
+    """Start a channel instance only inside one project scope."""
+    scoped_project_id = _require_project_scope(project_id)
     result = await db.execute(
-        select(ChannelInstance).where(ChannelInstance.id == instance_id)
+        select(ChannelInstance).where(
+            ChannelInstance.id == instance_id,
+            ChannelInstance.project_id == scoped_project_id,
+        )
     )
     instance = result.scalar_one_or_none()
     if instance is None:
@@ -257,10 +296,19 @@ async def start_channel_instance(db: AsyncSession, instance_id: str) -> dict:
     return {"status": "started", "instance_id": instance_id}
 
 
-async def stop_channel_instance(db: AsyncSession, instance_id: str) -> dict:
-    """Stop a running channel adapter."""
+async def stop_channel_instance(
+    db: AsyncSession,
+    instance_id: str,
+    *,
+    project_id: str,
+) -> dict:
+    """Stop a running channel adapter only inside one project scope."""
+    scoped_project_id = _require_project_scope(project_id)
     result = await db.execute(
-        select(ChannelInstance).where(ChannelInstance.id == instance_id)
+        select(ChannelInstance).where(
+            ChannelInstance.id == instance_id,
+            ChannelInstance.project_id == scoped_project_id,
+        )
     )
     instance = result.scalar_one_or_none()
     if instance is None:
@@ -282,10 +330,19 @@ async def stop_channel_instance(db: AsyncSession, instance_id: str) -> dict:
     return {"status": "stopped", "instance_id": instance_id}
 
 
-async def health_check_instance(db: AsyncSession, instance_id: str) -> dict:
-    """Run a health check on a channel adapter and persist the result."""
+async def health_check_instance(
+    db: AsyncSession,
+    instance_id: str,
+    *,
+    project_id: str,
+) -> dict:
+    """Run a health check on a channel adapter inside one project scope."""
+    scoped_project_id = _require_project_scope(project_id)
     result = await db.execute(
-        select(ChannelInstance).where(ChannelInstance.id == instance_id)
+        select(ChannelInstance).where(
+            ChannelInstance.id == instance_id,
+            ChannelInstance.project_id == scoped_project_id,
+        )
     )
     instance = result.scalar_one_or_none()
     if instance is None:
@@ -320,20 +377,23 @@ async def health_check_instance(db: AsyncSession, instance_id: str) -> dict:
 async def get_message_history(
     db: AsyncSession,
     instance_id: str,
+    *,
+    project_id: str,
     limit: int = 50,
     offset: int = 0,
-    project_id: str | None = None,
 ) -> list[dict]:
     """Retrieve message history for a channel instance."""
+    scoped_project_id = _require_project_scope(project_id)
     stmt = (
         select(ChannelMessage)
-        .where(ChannelMessage.channel_instance_id == instance_id)
+        .where(
+            ChannelMessage.channel_instance_id == instance_id,
+            ChannelMessage.project_id == scoped_project_id,
+        )
         .order_by(ChannelMessage.created_at.desc())
         .offset(offset)
         .limit(limit)
     )
-    if project_id is not None:
-        stmt = stmt.where(ChannelMessage.project_id == project_id)
     result = await db.execute(stmt)
     messages = result.scalars().all()
     return [m.to_dict() for m in messages]
@@ -342,16 +402,19 @@ async def get_message_history(
 async def get_conversations(
     db: AsyncSession,
     instance_id: str,
-    project_id: str | None = None,
+    *,
+    project_id: str,
 ) -> list[dict]:
     """Retrieve all conversations for a channel instance."""
+    scoped_project_id = _require_project_scope(project_id)
     stmt = (
         select(ChannelConversation)
-        .where(ChannelConversation.channel_instance_id == instance_id)
+        .where(
+            ChannelConversation.channel_instance_id == instance_id,
+            ChannelConversation.project_id == scoped_project_id,
+        )
         .order_by(ChannelConversation.last_message_at.desc().nullslast())
     )
-    if project_id is not None:
-        stmt = stmt.where(ChannelConversation.project_id == project_id)
     result = await db.execute(stmt)
     conversations = result.scalars().all()
     return [c.to_dict() for c in conversations]
@@ -362,10 +425,12 @@ async def send_message(
     instance_id: str,
     channel_id: str,
     text: str,
+    *,
+    project_id: str,
     metadata: dict | None = None,
-    project_id: str | None = None,
 ) -> dict:
     """Send a message via the channel adapter and persist it."""
+    scoped_project_id = _require_project_scope(project_id)
     adapter = channel_router.get(instance_id)
     if adapter is None:
         raise KeyError(f"No adapter registered for instance '{instance_id}'")
@@ -390,7 +455,7 @@ async def send_message(
         sender_name="Istara",
         content=text,
         channel_id=channel_id,
-        project_id=project_id,
+        project_id=scoped_project_id,
     )
     return record.to_dict()
 

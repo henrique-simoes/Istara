@@ -11,7 +11,13 @@ from app.models.database import async_session, init_db
 from app.core.auth import create_token
 from app.models.project import Project
 from app.models.project_member import ProjectMember
-from app.services.mcp_client_manager import _safe_tool_descriptor
+from app.services.mcp_client_manager import (
+    _safe_tool_descriptor,
+    list_all_tools,
+    list_servers,
+    register_server,
+    unregister_server,
+)
 
 
 @pytest.fixture(autouse=True)
@@ -379,6 +385,76 @@ async def test_mcp_client_detail_actions_require_active_project_scope(auth_heade
     assert missing_delete.json()["detail"] == "project_id is required"
     assert wrong_delete.status_code == 404
     assert correct_delete.status_code == 204
+
+
+@pytest.mark.asyncio
+async def test_mcp_client_tool_aggregate_requires_active_project_scope(auth_headers):
+    await init_db()
+    project_a = await _seed_project("MCP Tools A")
+    project_b = await _seed_project("MCP Tools B")
+    url = f"http://localhost:3001/mcp-tools-{uuid.uuid4()}"
+
+    async with async_session() as db:
+        server = await register_server(
+            db,
+            name="Tool Server",
+            url=url,
+            transport="http",
+            project_id=project_a.id,
+        )
+        server_id = server.id
+        server.tools_json = '[{"name": "project.visible", "description": "visible", "input_schema": {}}]'
+        await db.commit()
+        assert server_id
+
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        missing_scope = await ac.get("/api/mcp/clients/tools", headers=auth_headers)
+        other_project_tools = await ac.get(
+            f"/api/mcp/clients/tools?project_id={project_b.id}",
+            headers=auth_headers,
+        )
+        project_tools = await ac.get(
+            f"/api/mcp/clients/tools?project_id={project_a.id}",
+            headers=auth_headers,
+        )
+
+    assert missing_scope.status_code == 400
+    assert missing_scope.json()["detail"] == "project_id is required"
+    assert other_project_tools.status_code == 200
+    assert other_project_tools.json()["tools"] == []
+    assert project_tools.status_code == 200
+    assert project_tools.json()["tools"][0]["name"] == "project.visible"
+
+
+@pytest.mark.asyncio
+async def test_mcp_client_service_helpers_require_matching_project_scope():
+    await init_db()
+    project_a = f"mcp-service-project-{uuid.uuid4()}"
+    project_b = f"mcp-service-other-{uuid.uuid4()}"
+    url = f"http://localhost:3001/mcp-service-{uuid.uuid4()}"
+
+    async with async_session() as db:
+        server = await register_server(
+            db,
+            name="Service Scoped MCP",
+            url=url,
+            transport="http",
+            project_id=project_a,
+        )
+        server_id = server.id
+        server.tools_json = '[{"name": "service.visible", "description": "visible", "input_schema": {}}]'
+        await db.commit()
+
+        assert await list_servers(db, project_id=project_b) == []
+        assert await list_all_tools(db, project_id=project_b) == []
+        assert await unregister_server(db, server_id, project_id=project_b) is False
+
+        assert [item["id"] for item in await list_servers(db, project_id=project_a)] == [server_id]
+        assert [item["name"] for item in await list_all_tools(db, project_id=project_a)] == [
+            "service.visible"
+        ]
+        assert await unregister_server(db, server_id, project_id=project_a) is True
 
 
 @pytest.mark.asyncio

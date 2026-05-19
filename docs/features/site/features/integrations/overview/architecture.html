@@ -248,6 +248,7 @@
 <li><code>frontend/src/components/integrations/IntegrationsView.tsx</code></li>
 <li><code>frontend/src/components/integrations/IntegrationsOverview.tsx</code></li>
 <li><code>frontend/src/stores/integrationsStore.ts</code></li>
+<li><code>frontend/src/lib/api.ts</code></li>
 </ul>
 <h2 id="state-api-and-backend-contracts">State, API, And Backend Contracts</h2>
 <h3 id="stores">Stores</h3>
@@ -258,17 +259,23 @@
 <ul>
 <li><code>backend/app/api/routes/channels.py</code></li>
 <li><code>backend/app/api/routes/deployments.py</code></li>
+<li><code>backend/app/api/routes/surveys.py</code></li>
+<li><code>backend/app/api/routes/mcp.py</code></li>
 <li><code>backend/app/services/deployment_service.py</code></li>
+<li><code>backend/app/services/channel_service.py</code></li>
+<li><code>backend/app/services/mcp_client_manager.py</code></li>
 </ul>
 <h2 id="architecture-notes">Architecture Notes</h2>
 <ul>
 <li>The feature is mounted through <code>frontend/src/components/integrations/IntegrationsView.tsx</code> and the UI navigation path recorded in the inventory.</li>
 <li><code>frontend/src/components/integrations/IntegrationsOverview.tsx</code> passes the active project into channel, deployment, survey, and MCP-client fetches, then defensively filters recent activity and summary counts by <code>project_id</code>.</li>
+<li>The overview resets its loaded state on active-project changes and ignores stale fetch completions from the previous project, so old Recent Activity rows cannot linger while a new project is loading.</li>
 <li>If there is no active project, the integrations store clears project-owned channel, deployment, survey, and MCP client lists rather than calling list endpoints without a project scope.</li>
+<li>The integrations store filters every fetched channel, deployment, survey integration, and MCP client by the active <code>project_id</code> before storing; MCP clients are also deduplicated within that project by normalized transport and URL.</li>
 <li>Project-owned integration list APIs require <code>project_id</code> even for global admins; admin dashboard/reporting routes are the only intended cross-project aggregation surfaces.</li>
 <li>Deployment overview metrics count only conversations attached to deployments in the active project, preventing another project&#x27;s deployment activity from appearing as Recent Activity or summary volume.</li>
 <li>MCP client/tool totals are project-owned inventory in the Integrations view; global MCP server exposure controls remain admin-only management state.</li>
-<li><code>tests/test_deployments.py</code> exercises the API-level conversation count boundary, while <code>tests/test_project_scope_contracts.py</code> locks the source contract so project-owned recent activity is built from scoped collections and not from global integration lists.</li>
+<li><code>tests/test_channels.py</code> and <code>tests/test_mcp.py</code> exercise service/API scope boundaries for channel and MCP helper paths; <code>tests/test_deployments.py</code> exercises the API-level conversation count boundary; <code>tests/test_project_scope_contracts.py</code> locks the source contract so project-owned recent activity is built from scoped collections and not from global integration lists.</li>
 <li>The frontmatter and manifest entries are the durable contract for agents updating this page after code changes.</li>
 <li>When the referenced component, store, route, agent, skill, or test behavior changes, regenerate and validate the feature documentation.</li>
 </ul>
@@ -279,6 +286,8 @@
 <h2 id="tests-and-verification">Tests And Verification</h2>
 <ul>
 <li><code>tests/test_deployments.py</code></li>
+<li><code>tests/test_channels.py</code></li>
+<li><code>tests/test_mcp.py</code></li>
 <li><code>tests/test_project_scope_contracts.py</code></li>
 </ul>
 <h2 id="related-features">Related Features</h2>
@@ -293,7 +302,7 @@
 </ul>
 <h2 id="compass-evidence">Compass Evidence</h2>
 <ul>
-<li>Spec/task: CF-SPEC-56 / CF-698; CF-SPEC-59 / CF-740; CF-SPEC-60 / CF-767</li>
+<li>Spec/task: CF-SPEC-56 / CF-698; CF-SPEC-59 / CF-740; CF-SPEC-60 / CF-767; CF-SPEC-65 / CF-842</li>
 <li>Inventory source: <code>docs/features/inventory.json</code></li>
 </ul>
 <h2 id="when-to-update">When To Update</h2>

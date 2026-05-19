@@ -27,6 +27,7 @@ export default function SurveysTab() {
   const canManageSurveyIntegrations = user?.role === "admin" || canAdminActiveProject();
 
   const fetchLinks = useCallback(async () => {
+    setLinkedSurveys([]);
     setLinksLoading(true);
     if (!activeProjectId) {
       setLinkedSurveys([]);
@@ -35,7 +36,7 @@ export default function SurveysTab() {
     }
     try {
       const links = await surveysApi.links.list(activeProjectId);
-      setLinkedSurveys(links);
+      setLinkedSurveys(links.filter((link) => link.project_id === activeProjectId));
     } catch {
       // silent
     } finally {

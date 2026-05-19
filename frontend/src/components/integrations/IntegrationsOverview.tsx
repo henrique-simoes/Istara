@@ -31,12 +31,19 @@ export default function IntegrationsOverview() {
   const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
+    let cancelled = false;
+    setLoaded(false);
     Promise.all([
       fetchChannels(undefined, activeProjectId),
       fetchDeployments(activeProjectId),
       fetchSurveyIntegrations(activeProjectId),
       fetchMCPClients(activeProjectId),
-    ]).finally(() => setLoaded(true));
+    ]).finally(() => {
+      if (!cancelled) setLoaded(true);
+    });
+    return () => {
+      cancelled = true;
+    };
   }, [activeProjectId, fetchChannels, fetchDeployments, fetchSurveyIntegrations, fetchMCPClients]);
 
   const scopedChannels = activeProjectId

@@ -156,6 +156,9 @@ sync, and response reads, must carry the active project and reject stale ids
 from any other project. Channel detail, lifecycle, health, message-history,
 conversation, and manual-send endpoints must also carry the active project and
 verify that the channel instance and returned rows belong to that project.
+Channel and MCP client service helpers also require explicit project ids and
+load by both record id and project id, so future internal callers cannot
+accidentally use globally unique ids to bypass the project-facing route guards.
 Deployment creation must only attach channel instances owned by the same
 project, and deployment detail, lifecycle, response, conversation, transcript,
 analytics, and overview counters must require the caller's active project,
