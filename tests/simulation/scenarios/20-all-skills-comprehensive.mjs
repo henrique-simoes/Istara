@@ -802,7 +802,7 @@ export async function run(ctx) {
 
   // ── Step 5: Skill health check ──
   await safeCheck("Skills health — all skills have health data", async () => {
-    const health = await api.get("/api/skills/health/all");
+    const health = await api.get(`/api/skills/health/all?project_id=${encodeURIComponent(projectId)}`);
     const healthEntries = Array.isArray(health)
       ? health
       : Array.isArray(health?.skills)
@@ -818,7 +818,7 @@ export async function run(ctx) {
 
   // ── Step 6: Self-improvement proposals ──
   await safeCheck("Self-improvement — proposals endpoint works", async () => {
-    const proposals = await api.get("/api/skills/proposals/all");
+    const proposals = await api.get(`/api/skills/proposals/all?project_id=${encodeURIComponent(projectId)}`);
     const list = Array.isArray(proposals) ? proposals : proposals.proposals || [];
 
     return {

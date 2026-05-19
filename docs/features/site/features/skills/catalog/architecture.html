@@ -262,6 +262,7 @@
 <li>The feature is mounted through <code>frontend/src/components/skills/SkillsView.tsx</code> and the UI navigation path recorded in the inventory.</li>
 <li>Skill definitions remain the shared catalog, while health, usage, and proposal badges are fetched with the active project and reset on project changes.</li>
 <li>Skill execution and planning require an active, unpaused project before the agent is invoked, so paused projects cannot trigger LLM/skill work through the catalog surface.</li>
+<li>Simulation skill catalog checks keep the global <code>/api/skills</code> definition list unchanged, but every skill health or proposal request in the harness includes the active simulation project id.</li>
 <li>The frontmatter and manifest entries are the durable contract for agents updating this page after code changes.</li>
 <li>When the referenced component, store, route, agent, skill, or test behavior changes, regenerate and validate the feature documentation.</li>
 </ul>
@@ -275,6 +276,12 @@
 <ul>
 <li><code>tests/test_skills.py</code></li>
 <li><code>tests/test_project_scope_contracts.py</code></li>
+<li><code>tests/test_simulation_project_scope_contracts.py</code></li>
+<li><code>tests/simulation/lib/api-client.mjs</code></li>
+<li><code>tests/simulation/scenarios/06-skill-execution.mjs</code></li>
+<li><code>tests/simulation/scenarios/20-all-skills-comprehensive.mjs</code></li>
+<li><code>tests/simulation/scenarios/22-architecture-evaluation.mjs</code></li>
+<li><code>tests/simulation/scenarios/41-skill-creation.mjs</code></li>
 </ul>
 <h2 id="related-features">Related Features</h2>
 <ul>
@@ -287,7 +294,7 @@
 </ul>
 <h2 id="compass-evidence">Compass Evidence</h2>
 <ul>
-<li>Spec/task: CF-SPEC-53 / CF-657; CF-SPEC-68 / CF-870</li>
+<li>Spec/task: CF-SPEC-53 / CF-657; CF-SPEC-68 / CF-870; CF-SPEC-104 / CF-1309</li>
 <li>Inventory source: <code>docs/features/inventory.json</code></li>
 </ul>
 <h2 id="when-to-update">When To Update</h2>

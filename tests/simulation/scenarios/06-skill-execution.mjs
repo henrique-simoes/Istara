@@ -6,6 +6,7 @@ export const id = "06-skill-execution";
 export async function run(ctx) {
   const { api, page, screenshot } = ctx;
   const checks = [];
+  const projectId = typeof ctx.projectId === "string" ? ctx.projectId.trim() : "";
 
   // Navigate to Skills view
   await page.goto(ctx.frontendUrl, { waitUntil: "domcontentloaded" });
@@ -122,11 +123,19 @@ export async function run(ctx) {
   }
 
   // Test health endpoint
-  try {
-    const health = await api.get("/api/skills/health/all");
-    checks.push({ name: "Skills health API", passed: true, detail: JSON.stringify(health).substring(0, 80) });
-  } catch (e) {
-    checks.push({ name: "Skills health API", passed: false, detail: e.message });
+  if (projectId) {
+    try {
+      const health = await api.get(`/api/skills/health/all?project_id=${encodeURIComponent(projectId)}`);
+      checks.push({ name: "Skills health API", passed: true, detail: JSON.stringify(health).substring(0, 80) });
+    } catch (e) {
+      checks.push({ name: "Skills health API", passed: false, detail: e.message });
+    }
+  } else {
+    checks.push({
+      name: "Skills health API",
+      passed: true,
+      detail: "[skipped] No active project id; scoped endpoint not called",
+    });
   }
 
   return {

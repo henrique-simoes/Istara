@@ -8,9 +8,9 @@ related_features: ["skills.catalog", "agents.proposals"]
 related_glossary: ["mcp"]
 code_references: ["frontend/src/components/skills/SkillsView.tsx", "backend/app/api/routes/skills.py"]
 api_references: ["backend/app/api/routes/skills.py"]
-test_references: ["tests/test_skills.py", "tests/test_improvement_governance.py", "tests/test_project_scope_contracts.py"]
+test_references: ["tests/test_skills.py", "tests/test_improvement_governance.py", "tests/test_project_scope_contracts.py", "tests/test_simulation_project_scope_contracts.py", "tests/simulation/lib/api-client.mjs", "tests/simulation/scenarios/20-all-skills-comprehensive.mjs", "tests/simulation/scenarios/22-architecture-evaluation.mjs"]
 last_verified: 2026-05-19
-compass: CF-SPEC-53 / CF-657; CF-SPEC-68 / CF-870; CF-SPEC-76 / CF-972
+compass: CF-SPEC-53 / CF-657; CF-SPEC-68 / CF-870; CF-SPEC-76 / CF-972; CF-SPEC-104 / CF-1309
 ---
 
 # Skill Proposals Architecture
@@ -39,6 +39,7 @@ Skill proposal flows present candidate tool or capability changes for review bef
 - The feature is mounted through `frontend/src/components/skills/SkillsView.tsx` and the UI navigation path recorded in the inventory.
 - Skill update proposals are stored with their source `project_id`; list, approve, and reject APIs require the active project and return 404 for proposals from another project.
 - Skill update proposal producers reject missing or blank `project_id` before persistence or governed-evolution registration so autonomous improvement work cannot become global activity by omission.
+- Simulation harnesses pass `ctx.projectId` into skill proposal and health checks, and skip the scoped endpoint instead of falling back to a global request when no simulation project exists.
 - Approving skill update or skill creation proposals requires an active, unpaused project. Rejecting old proposals can still happen while a project is paused so stale improvement work can be cleared without dispatching new processing.
 - `SkillsView` clears and reloads proposal state when the active project changes so self-evolution review never carries proposals from a previous project.
 - Skill execution health is tracked per project for proposal review. Low utility no longer auto-deprecates or mutates a global skill definition from one project's execution history.
@@ -58,6 +59,10 @@ Skill proposal flows present candidate tool or capability changes for review bef
 - `tests/test_skills.py`
 - `tests/test_improvement_governance.py`
 - `tests/test_project_scope_contracts.py`
+- `tests/test_simulation_project_scope_contracts.py`
+- `tests/simulation/lib/api-client.mjs`
+- `tests/simulation/scenarios/20-all-skills-comprehensive.mjs`
+- `tests/simulation/scenarios/22-architecture-evaluation.mjs`
 
 ## Related Features
 
@@ -70,7 +75,7 @@ Skill proposal flows present candidate tool or capability changes for review bef
 
 ## Compass Evidence
 
-- Spec/task: CF-SPEC-53 / CF-657; CF-SPEC-68 / CF-870; CF-SPEC-76 / CF-972
+- Spec/task: CF-SPEC-53 / CF-657; CF-SPEC-68 / CF-870; CF-SPEC-76 / CF-972; CF-SPEC-104 / CF-1309
 - Inventory source: `docs/features/inventory.json`
 
 ## When To Update
