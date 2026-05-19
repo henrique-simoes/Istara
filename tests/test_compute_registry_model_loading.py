@@ -192,6 +192,7 @@ async def test_configured_unknown_lmstudio_model_does_not_load_first_downloaded_
         provider_type="lmstudio",
         is_healthy=True,
         loaded_models=[],
+        allowed_project_ids=["project-a"],
         model_capabilities={
             "gemma-4-26b-a4b-it-assistant": {
                 "is_loaded": False,
@@ -417,7 +418,7 @@ async def test_registry_recovers_lmstudio_no_models_loaded_with_discovered_fallb
     monkeypatch.setattr(node, "_get_client", get_client)
     registry.register_node(node)
 
-    result = await registry.chat([{"role": "user", "content": "hello"}])
+    result = await registry.chat([{"role": "user", "content": "hello"}], project_id="project-a")
 
     assert result["message"]["content"] == "fallback model answered"
     assert client.chat_models == ["bad-model", "good-model"]
@@ -443,6 +444,7 @@ async def test_strict_routing_uses_configured_lmstudio_model_when_request_omits_
         provider_type="lmstudio",
         is_healthy=True,
         loaded_models=[],
+        allowed_project_ids=["project-a"],
         model_capabilities={
             "gemma-4-26b-a4b-it-assistant": {
                 "is_loaded": False,
@@ -463,7 +465,7 @@ async def test_strict_routing_uses_configured_lmstudio_model_when_request_omits_
     monkeypatch.setattr(node, "_get_client", get_client)
     registry.register_node(node)
 
-    result = await registry.chat([{"role": "user", "content": "hello"}])
+    result = await registry.chat([{"role": "user", "content": "hello"}], project_id="project-a")
 
     assert result["message"]["content"] == "loaded answer"
     assert client.posts[0][0] == "api/v1/models/load"

@@ -400,7 +400,7 @@ async def _build_operational_metrics(db: AsyncSession, project_id: str) -> dict:
 
     from app.core.compute_registry import compute_registry
 
-    compute_stats = compute_registry.get_stats()
+    compute_stats = compute_registry.get_stats(project_id=project_id)
     nodes = compute_stats.get("nodes", [])
     healthy_nodes = [
         node

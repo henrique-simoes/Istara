@@ -563,11 +563,17 @@ async def test_mcp_policy_is_admin_only_and_client_registry_is_project_scoped():
 @pytest.mark.asyncio
 async def test_compute_is_researcher_visible_but_steering_and_meta_hyperagent_are_admin_only():
     await init_db()
+    project = await _seed_project(f"System Compute {uuid.uuid4()}")
+    researcher_id = f"researcher-system-{uuid.uuid4()}"
+    await _seed_member(project.id, researcher_id, "researcher")
 
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
-        researcher_headers = _headers(f"researcher-system-{uuid.uuid4()}", "researcher", "researcher")
-        compute_response = await ac.get("/api/compute/stats", headers=researcher_headers)
+        researcher_headers = _headers(researcher_id, "researcher", "researcher")
+        compute_response = await ac.get(
+            f"/api/compute/stats?project_id={project.id}",
+            headers=researcher_headers,
+        )
         steering_response = await ac.get("/api/steering", headers=researcher_headers)
         meta_response = await ac.get("/api/meta-hyperagent/status", headers=researcher_headers)
 

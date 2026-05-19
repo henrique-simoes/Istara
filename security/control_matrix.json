@@ -27,6 +27,7 @@
         "backend/app/api/routes/notifications.py",
         "backend/app/api/routes/webauthn.py",
         "backend/app/api/routes/connections.py",
+        "backend/app/api/routes/compute.py",
         "backend/app/api/routes/files.py",
         "backend/app/api/routes/mcp.py",
         "backend/app/api/routes/llm_servers.py",
@@ -75,11 +76,13 @@
         "frontend/src/app/login/page.tsx",
         "frontend/src/components/auth/**",
         "frontend/src/components/common/UserManagement.tsx",
+        "frontend/src/components/common/ComputePoolView.tsx",
         "frontend/src/components/layout/Sidebar.tsx",
         "frontend/src/components/notifications/**",
         "frontend/src/components/agents/**",
         "frontend/src/components/loops/**",
         "frontend/src/stores/agentStore.ts",
+        "frontend/src/stores/computeStore.ts",
         "frontend/src/stores/loopsStore.ts",
         "frontend/src/components/admin/AdminDashboard.tsx",
         "frontend/src/components/settings/ConnectionStringPanel.tsx",
@@ -597,7 +600,7 @@
         "tests/test_project_rbac.py"
       ],
       "future_change_trigger": true,
-      "notes": "Connection string lifecycle is part of auth, not a separate trust path; compute donation strings carry explicit allowed_project_ids and are revalidated before relay nodes receive project content."
+      "notes": "Connection string lifecycle is part of auth, not a separate trust path; compute donation strings carry explicit allowed_project_ids, reject wildcard scope in team mode, and are revalidated before relay nodes or project-scoped pool status can receive project content."
     },
     {
       "id": "MCP-001",

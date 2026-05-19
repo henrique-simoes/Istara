@@ -23,6 +23,7 @@ import { cn } from "@/lib/utils";
 import ViewOnboarding from "@/components/common/ViewOnboarding";
 import { compute as computeApi, settings as settingsApi } from "@/lib/api";
 import { useAuthStore } from "@/stores/authStore";
+import { useProjectStore } from "@/stores/projectStore";
 
 const SWARM_TIERS: Record<string, { label: string; color: string; description: string }> = {
   full_swarm: {
@@ -91,14 +92,15 @@ interface ModelWarning {
 export default function ComputePoolView() {
   const { stats, error, fetchStats } = useComputeStore();
   const { user } = useAuthStore();
+  const { activeProjectId } = useProjectStore();
   const [warnings, setWarnings] = useState<ModelWarning[]>([]);
   const [showWarnings, setShowWarnings] = useState(false);
   const [strictRouting, setStrictRouting] = useState(false);
   const [routingError, setRoutingError] = useState<string | null>(null);
 
   useEffect(() => {
-    fetchStats();
-    const interval = setInterval(fetchStats, 15000);
+    fetchStats(activeProjectId);
+    const interval = setInterval(() => fetchStats(activeProjectId), 15000);
 
     settingsApi.status()
       .then((d) => {
@@ -110,7 +112,7 @@ export default function ComputePoolView() {
       .catch((err) => setRoutingError(err instanceof Error ? err.message : "Could not load routing settings"));
 
     return () => clearInterval(interval);
-  }, [fetchStats]);
+  }, [fetchStats, activeProjectId]);
 
   const toggleStrictRouting = async () => {
     const newVal = !strictRouting;
@@ -126,10 +128,14 @@ export default function ComputePoolView() {
   };
 
   useEffect(() => {
-    computeApi.modelWarnings()
+    if (!activeProjectId) {
+      setWarnings([]);
+      return;
+    }
+    computeApi.modelWarnings(activeProjectId)
       .then((d) => setWarnings(d.warnings || []))
       .catch(() => {});
-  }, []);
+  }, [activeProjectId]);
 
   const tier = stats?.swarm_tier
     ? SWARM_TIERS[stats.swarm_tier] || SWARM_TIERS.local_only
@@ -138,12 +144,12 @@ export default function ComputePoolView() {
 
   return (
     <div className="flex-1 overflow-y-auto">
-    <ViewOnboarding viewId="compute" title="LLM Compute" description="All LLM servers powering your agents — local, network-discovered, and relay nodes. Donate compute or manage connections." chatPrompt="How does the compute pool work?" />
+    <ViewOnboarding viewId="compute" title="LLM Compute" description="LLM servers and relay nodes available to the active project. Donate compute or manage connections." chatPrompt="How does the compute pool work?" />
     <div className="p-6 max-w-5xl mx-auto space-y-6">
       <div>
         <h2 className="text-xl font-bold text-slate-900 dark:text-white">Compute Pool</h2>
         <p className="text-sm text-slate-500 mt-1">
-          LLM servers and relay nodes powering your agent compute
+          LLM servers and relay nodes available to the active project
         </p>
       </div>
 

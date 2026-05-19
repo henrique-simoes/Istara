@@ -67,8 +67,8 @@ interface ComputeState {
   stats: ComputeStats | null;
   loading: boolean;
   error: string | null;
-  fetchStats: () => Promise<void>;
-  fetchNodes: () => Promise<void>;
+  fetchStats: (projectId?: string | null) => Promise<void>;
+  fetchNodes: (projectId?: string | null) => Promise<void>;
 }
 
 export const useComputeStore = create<ComputeState>((set) => ({
@@ -76,10 +76,14 @@ export const useComputeStore = create<ComputeState>((set) => ({
   loading: false,
   error: null,
 
-  fetchStats: async () => {
+  fetchStats: async (projectId) => {
+    if (!projectId) {
+      set({ stats: null, loading: false, error: null });
+      return;
+    }
     set({ loading: true, error: null });
     try {
-      const data = await compute.stats();
+      const data = await compute.stats(projectId);
       set({ stats: data, loading: false, error: null });
     } catch (err) {
       set({
@@ -89,10 +93,14 @@ export const useComputeStore = create<ComputeState>((set) => ({
     }
   },
 
-  fetchNodes: async () => {
+  fetchNodes: async (projectId) => {
+    if (!projectId) {
+      set({ stats: null, loading: false, error: null });
+      return;
+    }
     set({ loading: true, error: null });
     try {
-      const data = await compute.nodes();
+      const data = await compute.nodes(projectId);
       set({ stats: data, loading: false, error: null });
     } catch (err) {
       set({

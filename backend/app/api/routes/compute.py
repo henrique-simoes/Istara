@@ -6,14 +6,16 @@ import uuid
 from datetime import UTC, datetime
 from urllib.parse import urlparse, urlunparse
 
-from fastapi import APIRouter, Request, WebSocket, WebSocketDisconnect
+from fastapi import APIRouter, Depends, HTTPException, Request, WebSocket, WebSocketDisconnect
 from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
 from app.core.compute_registry import ComputeNode, compute_registry, infer_provider_type
 from app.core.connection_string import decode_connection_string, hash_connection_string
-from app.core.permissions import require_global_role
+from app.core.permissions import is_global_admin, require_global_role, require_project_access
 from app.models.connection_string import ConnectionString
+from app.models.database import get_db
 from app.models.project_member import ProjectMember
 
 router = APIRouter()
@@ -34,6 +36,11 @@ def _normalize_project_scope(values: object) -> list[str]:
         if project_id and project_id not in normalized:
             normalized.append(project_id)
     return normalized
+
+
+def _clean_project_id(project_id: str | None) -> str | None:
+    cleaned = (project_id or "").strip()
+    return cleaned or None
 
 
 def _parse_connection_scope(conn: ConnectionString | None, payload: dict) -> list[str]:
@@ -81,7 +88,10 @@ async def _scope_from_connection_string(
 
     conn.last_validated_at = datetime.now(UTC)
     await db.commit()
-    return _parse_connection_scope(conn, payload), "ok"
+    scope = _parse_connection_scope(conn, payload)
+    if settings.team_mode and "*" in scope:
+        return [], "wildcard_scope"
+    return scope, "ok"
 
 
 async def _scope_from_user(db, user_id: str, role: str) -> list[str]:
@@ -114,11 +124,31 @@ def _combine_project_scopes(
     return [project_id for project_id in left if project_id in right_set]
 
 
+async def _require_compute_pool_scope(
+    db: AsyncSession,
+    request: Request,
+    project_id: str | None,
+) -> str | None:
+    """Authorize Compute Pool visibility for either admin global or active project scope."""
+    subject = require_global_role(request, "researcher")
+    scoped_project_id = _clean_project_id(project_id)
+    if scoped_project_id:
+        await require_project_access(db, request, scoped_project_id, min_role="viewer")
+        return scoped_project_id
+    if settings.team_mode and not is_global_admin(subject):
+        raise HTTPException(status_code=400, detail="project_id is required")
+    return None
+
+
 @router.get("/compute/nodes")
-async def list_compute_nodes(request: Request):
-    """List all compute nodes from the unified registry."""
-    require_global_role(request, "researcher")
-    stats = compute_registry.get_stats()
+async def list_compute_nodes(
+    request: Request,
+    project_id: str | None = None,
+    db: AsyncSession = Depends(get_db),
+):
+    """List compute nodes visible to the active project or a global admin."""
+    scoped_project_id = await _require_compute_pool_scope(db, request, project_id)
+    stats = compute_registry.get_stats(project_id=scoped_project_id)
     return {
         "total_nodes": stats["total_nodes"],
         "alive_nodes": stats["alive_nodes"],
@@ -127,17 +157,25 @@ async def list_compute_nodes(request: Request):
 
 
 @router.get("/compute/stats")
-async def compute_stats(request: Request):
-    """Unified compute stats — all nodes from the single registry."""
-    require_global_role(request, "researcher")
-    return compute_registry.get_stats()
+async def compute_stats(
+    request: Request,
+    project_id: str | None = None,
+    db: AsyncSession = Depends(get_db),
+):
+    """Unified compute stats for the active project, or all nodes for global admins."""
+    scoped_project_id = await _require_compute_pool_scope(db, request, project_id)
+    return compute_registry.get_stats(project_id=scoped_project_id)
 
 
 @router.get("/compute/model-warnings")
-async def model_warnings(request: Request):
-    """Check loaded models for capability limitations relevant to Istara."""
-    require_global_role(request, "researcher")
-    return {"warnings": compute_registry.get_warnings()}
+async def model_warnings(
+    request: Request,
+    project_id: str | None = None,
+    db: AsyncSession = Depends(get_db),
+):
+    """Check visible models for capability limitations relevant to Istara."""
+    scoped_project_id = await _require_compute_pool_scope(db, request, project_id)
+    return {"warnings": compute_registry.get_warnings(project_id=scoped_project_id)}
 
 
 @router.websocket("/ws/relay")
