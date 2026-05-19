@@ -368,6 +368,7 @@ def test_agents_a2a_project_view_passes_active_project_id() -> None:
     store = read_repo("frontend/src/stores/agentStore.ts")
     api = read_repo("frontend/src/lib/api.ts")
     route = read_repo("backend/app/api/routes/agents.py")
+    a2a_route = read_repo("backend/app/api/routes/a2a.py")
 
     assert "const { activeProjectId } = useProjectStore();" in view
     assert "fetchA2ALog(activeProjectId)" in view
@@ -382,6 +383,9 @@ def test_agents_a2a_project_view_passes_active_project_id() -> None:
     assert "await require_project_access(db, request, project_id, min_role=\"viewer\")" in route
     assert "await require_project_access(db, request, project_id, min_role=\"viewer\")" in route
     assert "messages = await a2a.get_full_log(db, limit, project_id=project_id)" in route
+    assert '"project_id is required for A2A agent/discover."' in a2a_route
+    assert "agents = filter_agent_dicts_for_project(agents, project_id, request)" in a2a_route
+    assert "min_role=\"viewer\"" in a2a_route
 
 
 def test_agent_creation_proposals_require_active_project_scope() -> None:
@@ -709,8 +713,15 @@ def test_websocket_project_events_are_active_project_filtered() -> None:
 
     assert 'import { useProjectStore } from "@/stores/projectStore";' in hook
     assert "if (activeProjectId) params.set(\"project_id\", activeProjectId);" in hook
-    assert "active_project_id=active_project_id.strip() if active_project_id else None" in websocket
+    assert "event.code === 4001 || event.code === 4003" in hook
+    assert "active_project_id=active_project_id" in websocket
+    assert "async def _can_subscribe_to_project" in websocket
+    assert "await current_user_context_for_payload(db, payload)" in websocket
+    assert "Project access denied" in websocket
     assert "async def _resolve_project_id" in websocket
+    assert '"agent_id"' in websocket and '"from_agent_id"' in websocket and '"to_agent_id"' in websocket
+    assert "PROJECT_BOUND_EVENT_TYPES" in websocket
+    assert "Dropping project-bound websocket event without resolvable project_id" in websocket
     assert "record.get(\"active_project_id\") == project_id" in websocket
     assert "if not self._connection_can_receive(record, project_id):" in websocket
 

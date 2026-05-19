@@ -538,10 +538,30 @@ async def a2a_jsonrpc(request: Request):
         return {"jsonrpc": "2.0", "result": {"status": "canceled"}, "id": req_id}
 
     if method == "agent/discover":
+        project_id = _a2a_project_id(params)
+        if not project_id:
+            return _a2a_jsonrpc_error(
+                400,
+                -32602,
+                "project_id is required for A2A agent/discover.",
+                req_id,
+            )
+
         from app.services import agent_service
+        from app.api.agent_project_scope import filter_agent_dicts_for_project
 
         async with async_session() as db:
+            denied = await _authorize_project_scope(
+                db,
+                request,
+                project_id,
+                req_id,
+                min_role="viewer",
+            )
+            if denied:
+                return denied
             agents = await agent_service.list_agents(db)
+            agents = filter_agent_dicts_for_project(agents, project_id, request)
             return {"jsonrpc": "2.0", "result": {"agents": agents}, "id": req_id}
 
     return _a2a_jsonrpc_error(400, -32601, f"Method not found: {method}", req_id)

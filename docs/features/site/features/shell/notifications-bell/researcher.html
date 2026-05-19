@@ -256,6 +256,7 @@
 <li>Use the visible controls in this surface to work with notification bell in the active project context.</li>
 <li>The unread badge reflects only the currently selected project and resets when no project is selected.</li>
 <li>Realtime project notifications follow the active project selection, so events from other projects are not delivered into the current project shell.</li>
+<li>If the realtime connection names a project the user cannot access, the socket is rejected instead of receiving that project&#x27;s events.</li>
 <li>Review the output in the same view and follow the related feature links when the workflow moves into another Istara surface.</li>
 </ul>
 <h2 id="supported-workflows">Supported Workflows</h2>
@@ -269,6 +270,7 @@
 <li>Project-scoped state or artifact updates associated with notification bell.</li>
 <li>Project scope is mandatory for non-admin notification lists, unread counts, and mark-all-read actions.</li>
 <li>Project-tagged websocket events must carry or resolve to a project before they can be delivered to project-connected clients.</li>
+<li>Project-bound realtime events that cannot be resolved to a project are not shown as global notifications.</li>
 <li>Visible status, lists, forms, generated artifacts, or review results shown by the referenced component and routes.</li>
 </ul>
 <h2 id="caveats">Caveats</h2>
@@ -289,7 +291,7 @@
 <ul>
 <li>Source files: <code>frontend/src/components/layout/Sidebar.tsx</code>, <code>frontend/src/hooks/useWebSocket.ts</code>, <code>frontend/src/stores/notificationStore.ts</code>, <code>backend/app/api/routes/notifications.py</code>, <code>backend/app/api/websocket.py</code></li>
 <li>API references: <code>backend/app/api/routes/notifications.py</code>, <code>backend/app/api/websocket.py</code></li>
-<li>Tests: <code>tests/test_notifications.py</code>, <code>tests/test_project_scope_contracts.py</code></li>
+<li>Tests: <code>tests/test_notifications.py</code>, <code>tests/test_project_scope_contracts.py</code>, <code>tests/test_websocket.py</code></li>
 </ul>
         </article>
         <aside class="toc-panel" aria-label="Page sections">
