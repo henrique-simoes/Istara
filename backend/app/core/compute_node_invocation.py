@@ -16,6 +16,23 @@ from app.core.llm_schema_adapter import provider_response_format_fields
 from app.core.llm_thinking import apply_thinking_control
 
 class ComputeNodeInvocationMixin:
+    def _authorized_project_for_content_dispatch(self, project_id: str | None) -> str | None:
+        if self.source not in ("relay", "browser"):
+            return project_id
+
+        requested_project = str(project_id or "").strip()
+        if not requested_project:
+            raise RuntimeError("project_id is required for donated compute dispatch")
+
+        allowed = {
+            str(pid).strip()
+            for pid in getattr(self, "allowed_project_ids", []) or []
+            if str(pid).strip()
+        }
+        if "*" not in allowed and requested_project not in allowed:
+            raise RuntimeError("Donated compute node is not authorized for this project")
+        return requested_project
+
     async def chat(
         self,
         messages: list[dict],
@@ -30,6 +47,7 @@ class ComputeNodeInvocationMixin:
         project_id: str | None = None,
     ) -> dict:
         """Direct chat on this specific node (backward compat with LLMServerEntry.chat)."""
+        project_id = self._authorized_project_for_content_dispatch(project_id)
         msgs = list(messages)
         if system:
             msgs = [{"role": "system", "content": system}, *msgs]
@@ -275,6 +293,7 @@ class ComputeNodeInvocationMixin:
         project_id: str | None = None,
     ) -> list[float]:
         """Direct embedding on this specific node (backward compat)."""
+        project_id = self._authorized_project_for_content_dispatch(project_id)
         if self.source in ("relay", "browser") and self.websocket:
             response = await self._request_over_websocket(
                 "embed_request",
@@ -313,6 +332,7 @@ class ComputeNodeInvocationMixin:
         project_id: str | None = None,
     ) -> list[list[float]]:
         """Direct batch embedding on this specific node (backward compat)."""
+        project_id = self._authorized_project_for_content_dispatch(project_id)
         if self.source in ("relay", "browser") and self.websocket:
             response = await self._request_over_websocket(
                 "embed_request",

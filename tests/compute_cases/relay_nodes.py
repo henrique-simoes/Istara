@@ -23,9 +23,16 @@ async def test_relay_node_chat_uses_websocket_response_path():
         is_healthy=True,
         websocket=fake_ws,
         loaded_models=["llama3"],
+        allowed_project_ids=["project-a"],
     )
 
-    task = asyncio.create_task(node.chat([{"role": "user", "content": "hi"}], model="llama3"))
+    task = asyncio.create_task(
+        node.chat(
+            [{"role": "user", "content": "hi"}],
+            model="llama3",
+            project_id="project-a",
+        )
+    )
     await asyncio.wait_for(fake_ws.sent_event.wait(), timeout=1)
     request = fake_ws.sent[0]
     assert request["type"] == "llm_request"
@@ -54,11 +61,16 @@ async def test_relay_node_chat_timeout_cleans_pending_request():
         is_healthy=True,
         websocket=fake_ws,
         loaded_models=["llama3"],
+        allowed_project_ids=["project-a"],
         relay_request_timeout_s=0.01,
     )
 
     with pytest.raises(RuntimeError, match="timed out"):
-        await node.chat([{"role": "user", "content": "hi"}], model="llama3")
+        await node.chat(
+            [{"role": "user", "content": "hi"}],
+            model="llama3",
+            project_id="project-a",
+        )
     assert node.pending_requests == {}
     assert "timed out" in node.health_error
 
@@ -75,9 +87,12 @@ async def test_relay_node_embed_uses_websocket_response_path():
         is_healthy=True,
         websocket=fake_ws,
         loaded_models=["nomic-embed-text"],
+        allowed_project_ids=["project-a"],
     )
 
-    task = asyncio.create_task(node.embed("hello", model="nomic-embed-text"))
+    task = asyncio.create_task(
+        node.embed("hello", model="nomic-embed-text", project_id="project-a")
+    )
     await asyncio.wait_for(fake_ws.sent_event.wait(), timeout=1)
     request = fake_ws.sent[0]
     assert request["type"] == "embed_request"
@@ -85,6 +100,66 @@ async def test_relay_node_embed_uses_websocket_response_path():
         {"request_id": request["request_id"], "result": [0.1, 0.2, 0.3]}
     )
     assert await asyncio.wait_for(task, timeout=1) == [0.1, 0.2, 0.3]
+    assert node.pending_requests == {}
+
+
+@pytest.mark.asyncio
+async def test_relay_node_chat_requires_project_scope_before_websocket_dispatch():
+    fake_ws = FakeWebSocket()
+    node = ComputeNode(
+        node_id="relay-unauthorized",
+        name="Relay Unauthorized",
+        host="http://10.0.0.5:11434",
+        source="relay",
+        provider_type="ollama",
+        is_healthy=True,
+        websocket=fake_ws,
+        loaded_models=["llama3"],
+        allowed_project_ids=["project-a"],
+    )
+
+    with pytest.raises(RuntimeError, match="project_id is required"):
+        await node.chat([{"role": "user", "content": "hi"}], model="llama3")
+    with pytest.raises(RuntimeError, match="not authorized"):
+        await node.chat(
+            [{"role": "user", "content": "hi"}],
+            model="llama3",
+            project_id="project-b",
+        )
+    assert fake_ws.sent == []
+    assert node.pending_requests == {}
+
+
+@pytest.mark.asyncio
+async def test_relay_node_embeddings_require_authorized_project_scope():
+    fake_ws = FakeWebSocket()
+    node = ComputeNode(
+        node_id="relay-embed-unauthorized",
+        name="Relay Embed Unauthorized",
+        host="http://10.0.0.5:11434",
+        source="relay",
+        provider_type="ollama",
+        is_healthy=True,
+        websocket=fake_ws,
+        loaded_models=["nomic-embed-text"],
+        allowed_project_ids=["project-a"],
+    )
+
+    with pytest.raises(RuntimeError, match="project_id is required"):
+        await node.embed("secret project text", model="nomic-embed-text")
+    with pytest.raises(RuntimeError, match="not authorized"):
+        await node.embed(
+            "secret project text",
+            model="nomic-embed-text",
+            project_id="project-b",
+        )
+    with pytest.raises(RuntimeError, match="not authorized"):
+        await node.embed_batch(
+            ["secret project text"],
+            model="nomic-embed-text",
+            project_id="project-b",
+        )
+    assert fake_ws.sent == []
     assert node.pending_requests == {}
 
 

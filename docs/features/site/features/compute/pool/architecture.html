@@ -242,7 +242,7 @@
 </header>
 <h2 id="implementation-summary">Implementation Summary</h2>
 <p>Compute Pool provides active-project operational visibility into available compute nodes, routing, and local or pooled execution capacity. Hardware totals are deduplicated by physical provider machine so local/network/relay views of the same server do not inflate RAM or CPU totals. Local interface aliases are canonicalized before endpoint display and capacity aggregation, so one Mac exposed through multiple LAN IP addresses appears as one logical endpoint for the same provider and port. Provider reachability is reported separately from chat readiness: a reachable LM Studio server with loadable models but no model in memory is online, not offline, while routing still treats it as not ready until a model is loaded.</p>
-<p>Donated relay/browser nodes are treated as a project-content security boundary. Regular Compute Pool endpoints require an authorized <code>project_id</code> for every role, including global admins, and node stats, hardware totals, available models, and model warnings are filtered to local/server-owned capacity plus donors authorized for that project. Cross-project compute aggregation belongs only on explicit admin reporting surfaces. Prompt, chat, embedding, and model-load recovery paths may only select donated nodes when the request carries a concrete <code>project_id</code> and the node&#x27;s authenticated donation scope includes that project. Server-owned local/network nodes remain available for unscoped internal work.</p>
+<p>Donated relay/browser nodes are treated as a project-content security boundary. Regular Compute Pool endpoints require an authorized <code>project_id</code> for every role, including global admins, and node stats, hardware totals, available models, and model warnings are filtered to local/server-owned capacity plus donors authorized for that project. Cross-project compute aggregation belongs only on explicit admin reporting surfaces. Prompt, chat, embedding, and model-load recovery paths may only select donated nodes when the request carries a concrete <code>project_id</code> and the node&#x27;s authenticated donation scope includes that project. The direct relay/browser <code>ComputeNode</code> dispatch methods enforce the same rule before sending any websocket payload, so lower-level callers cannot bypass the registry selector. Server-owned local/network nodes remain available for unscoped internal work.</p>
 <h2 id="frontend-surface">Frontend Surface</h2>
 <ul>
 <li><code>frontend/src/components/common/ComputePoolView.tsx</code></li>
@@ -268,6 +268,7 @@
 <li>Relay/browser donors carry <code>allowed_project_ids</code> resolved from either the authenticated user&#x27;s project memberships or a validated compute-donation connection string. A bare network token can connect for status only, not receive project content.</li>
 <li>Team-mode compute donation strings with wildcard project scope are rejected at relay validation so legacy all-project tokens cannot become global project processors.</li>
 <li><code>ComputeRegistry._select_candidates(..., project_id=...)</code> is the central guard: relay/browser nodes are excluded unless the project scope matches, preventing unpatched callers without project context from leaking content to donated machines.</li>
+<li><code>ComputeNode.chat</code>, <code>ComputeNode.embed</code>, and <code>ComputeNode.embed_batch</code> also require the request project to match <code>allowed_project_ids</code> before direct relay/browser websocket dispatch, preventing tests, maintenance scripts, or future services from bypassing registry project filtering.</li>
 <li><code>ComputeRegistry.get_stats(project_id=...)</code> and <code>get_warnings(project_id=...)</code> reuse the same project visibility rule so the regular Compute Pool UI cannot disclose other projects&#x27; donors, models, hosts, or RAM totals. The <code>/api/compute/nodes</code>, <code>/api/compute/stats</code>, and <code>/api/compute/model-warnings</code> routes reject missing <code>project_id</code> instead of falling back to global admin capacity.</li>
 <li>The frontmatter and manifest entries are the durable contract for agents updating this page after code changes.</li>
 <li>When the referenced component, store, route, agent, skill, or test behavior changes, regenerate and validate the feature documentation.</li>
@@ -295,7 +296,7 @@
 </ul>
 <h2 id="compass-evidence">Compass Evidence</h2>
 <ul>
-<li>Spec/task: CF-SPEC-60 / CF-774</li>
+<li>Spec/task: CF-SPEC-60 / CF-774; CF-SPEC-63 / CF-814</li>
 <li>Inventory source: <code>docs/features/inventory.json</code></li>
 </ul>
 <h2 id="when-to-update">When To Update</h2>
