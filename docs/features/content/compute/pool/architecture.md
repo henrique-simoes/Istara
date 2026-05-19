@@ -8,9 +8,9 @@ related_features: ["settings.compute-donation", "settings.general"]
 related_glossary: ["rag"]
 code_references: ["frontend/src/components/common/ComputePoolView.tsx", "frontend/src/stores/computeStore.ts", "backend/app/api/routes/compute.py", "backend/app/core/compute_node_invocation.py", "backend/app/core/compute_registry_helpers.py", "backend/app/core/compute_registry_invocation.py", "backend/app/core/compute_registry_lifecycle.py", "backend/app/core/compute_registry_routing.py", "backend/app/core/network_discovery.py", "backend/app/core/compute_pool.py"]
 api_references: ["backend/app/api/routes/compute.py"]
-test_references: ["tests/test_compute.py", "tests/compute_cases/status_contracts.py", "tests/compute_cases/stats_websocket.py", "tests/test_compute_registry_model_loading.py", "tests/test_compute_registry_hardening.py", "tests/test_network_discovery.py", "tests/test_project_rbac.py", "tests/test_project_scope_contracts.py"]
+test_references: ["tests/test_compute.py", "tests/compute_cases/status_contracts.py", "tests/compute_cases/stats_websocket.py", "tests/compute_cases/routing.py", "tests/test_compute_registry_model_loading.py", "tests/test_compute_registry_hardening.py", "tests/test_network_discovery.py", "tests/test_project_rbac.py", "tests/test_project_scope_contracts.py", "tests/test_validation_project_scope.py"]
 last_verified: 2026-05-19
-compass: CF-SPEC-60 / CF-774; CF-SPEC-63 / CF-814; CF-SPEC-63 / CF-815; CF-SPEC-66 / CF-856; CF-SPEC-70 / CF-899; CF-SPEC-90 / CF-1142
+compass: CF-SPEC-60 / CF-774; CF-SPEC-63 / CF-814; CF-SPEC-63 / CF-815; CF-SPEC-66 / CF-856; CF-SPEC-70 / CF-899; CF-SPEC-90 / CF-1142; CF-SPEC-92 / CF-1170
 ---
 
 # Compute Pool Architecture
@@ -49,6 +49,7 @@ Donated relay/browser nodes are treated as a project-content security boundary. 
 - Bound browser/JWT relay sessions use `current_user_context_for_payload` before deriving donation scope, and `_scope_from_user` re-reads the database user role before granting all-project admin scope.
 - Team-mode compute donation strings with wildcard project scope are rejected at relay validation so legacy all-project tokens cannot become global project processors.
 - `ComputeRegistry._select_candidates(..., project_id=...)` is the central guard: relay/browser nodes are excluded unless the project scope matches, preventing unpatched callers without project context from leaking content to donated machines.
+- `ComputeRegistry._sorted_servers(project_id=...)` applies the same project visibility rule for legacy validation and LLM router compatibility paths, so ensemble validation can use authorized project donors without making unscoped validation global.
 - `ComputeNode.chat`, `ComputeNode.chat_stream`, `ComputeNode.embed`, and `ComputeNode.embed_batch` also require the request project to match `allowed_project_ids` before direct relay/browser websocket or streaming dispatch, preventing tests, maintenance scripts, or future services from bypassing registry project filtering.
 - `ComputeRegistry.get_stats(project_id=...)` and `get_warnings(project_id=...)` reuse the same project visibility rule so the regular Compute Pool UI cannot disclose other projects' donors, models, hosts, or RAM totals. The `/api/compute/nodes`, `/api/compute/stats`, and `/api/compute/model-warnings` routes reject missing `project_id` instead of falling back to global admin capacity; global fleet stats are exposed only by `/api/admin/compute/stats` after `require_global_admin`.
 - The frontmatter and manifest entries are the durable contract for agents updating this page after code changes.
@@ -63,11 +64,13 @@ Donated relay/browser nodes are treated as a project-content security boundary. 
 - `tests/test_compute.py`
 - `tests/compute_cases/status_contracts.py`
 - `tests/compute_cases/stats_websocket.py`
+- `tests/compute_cases/routing.py`
 - `tests/test_project_scope_contracts.py`
 - `tests/test_project_rbac.py`
 - `tests/test_compute_registry_hardening.py`
 - `tests/test_compute_registry_model_loading.py`
 - `tests/test_network_discovery.py`
+- `tests/test_validation_project_scope.py`
 
 ## Related Features
 
@@ -80,7 +83,7 @@ Donated relay/browser nodes are treated as a project-content security boundary. 
 
 ## Compass Evidence
 
-- Spec/task: CF-SPEC-60 / CF-774; CF-SPEC-63 / CF-814; CF-SPEC-63 / CF-815; CF-SPEC-66 / CF-856; CF-SPEC-70 / CF-899; CF-SPEC-90 / CF-1142
+- Spec/task: CF-SPEC-60 / CF-774; CF-SPEC-63 / CF-814; CF-SPEC-63 / CF-815; CF-SPEC-66 / CF-856; CF-SPEC-70 / CF-899; CF-SPEC-90 / CF-1142; CF-SPEC-92 / CF-1170
 - Inventory source: `docs/features/inventory.json`
 
 ## When To Update

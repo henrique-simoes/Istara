@@ -39,7 +39,8 @@ class EvaluationSkill(BaseSkill):
         adv_result = await validation.adversarial_review(
             prompt="Critique this research output for methodological rigor, evidence traceability, and actionable clarity.",
             initial_response=content,
-            system="You are a senior UX research auditor."
+            system="You are a senior UX research auditor.",
+            project_id=skill_input.project_id,
         )
         
         # 2. Run Full Ensemble (3 models provide independent scores)
@@ -50,7 +51,8 @@ class EvaluationSkill(BaseSkill):
         )
         ens_result = await validation.full_ensemble(
             prompt=ensemble_prompt,
-            system="You are a research quality rater."
+            system="You are a research quality rater.",
+            project_id=skill_input.project_id,
         )
         
         # 3. Combine results

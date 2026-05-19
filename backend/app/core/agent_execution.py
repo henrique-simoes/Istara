@@ -238,6 +238,7 @@ class AgentExecutionMixin:
                         validation_kwargs = {
                             "prompt": validation_prompt,
                             "system": validation_system,
+                            "project_id": project.id,
                         }
                         if method == "adversarial_review":
                             validation_kwargs["initial_response"] = output.summary
