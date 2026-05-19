@@ -248,6 +248,8 @@
 <li><code>frontend/src/components/integrations/MCPServerSetup.tsx</code></li>
 <li><code>frontend/src/components/integrations/MCPAccessPolicyEditor.tsx</code></li>
 <li><code>frontend/src/components/integrations/MCPAuditLog.tsx</code></li>
+<li><code>frontend/src/stores/integrationsStore.ts</code></li>
+<li><code>frontend/src/lib/api.ts</code></li>
 <li><code>backend/app/api/routes/mcp.py</code></li>
 </ul>
 <h2 id="state-api-and-backend-contracts">State, API, And Backend Contracts</h2>
@@ -258,14 +260,17 @@
 <h3 id="api-and-backend">API And Backend</h3>
 <ul>
 <li><code>backend/app/api/routes/mcp.py</code></li>
+<li><code>backend/app/services/mcp_client_manager.py</code></li>
 </ul>
 <h2 id="architecture-notes">Architecture Notes</h2>
 <ul>
 <li>The feature is mounted through <code>frontend/src/components/integrations/MCPTab.tsx</code> and the UI navigation path recorded in the inventory.</li>
 <li>Featured server labels must identify the server itself; non-Brazilian servers such as Playwright use a neutral server icon instead of Brazil-specific labeling.</li>
 <li><code>MCPTab</code> passes the active project id into MCP client listing, discovery, deletion, and featured-server connect flows, clears stale client state during project changes, and renders only clients whose <code>project_id</code> matches the active project.</li>
+<li>The shared integrations store applies a second project filter and per-project URL/transport dedupe to MCP client rows before rendering, which prevents repeated server registrations such as multiple copies of the same featured MCP endpoint from appearing in one project view.</li>
 <li><code>MCPServerSetup</code> refuses test/save flows without an active project, stamps new external MCP server registrations with that project id, and uses the same active project for discovery and cleanup if the connection test fails.</li>
 <li><code>backend/app/api/routes/mcp.py</code> requires <code>project_id</code> for project-facing MCP client lists, tool aggregation, featured server browsing, client registration, featured connects, and every server-id action route. It verifies the project exists and authorizes reads as project viewer while client discovery, deletion, health checks, cached tools, and tool calls remain project-admin operations. A server id from another project resolves as not found even for a global admin using the project-facing Integrations API.</li>
+<li><code>backend/app/services/mcp_client_manager.py</code> requires a project id for registration, list, tool aggregation, discovery, tool calls, health checks, and deletion, and loads server records by both id and project id before returning cached tools or making outbound MCP calls.</li>
 <li>Legacy/global MCP client rows are not returned by project-facing Integrations APIs; any cross-project MCP reporting must use a dedicated global-admin surface.</li>
 <li>The frontmatter and manifest entries are the durable contract for agents updating this page after code changes.</li>
 <li>When the referenced component, store, route, agent, skill, or test behavior changes, regenerate and validate the feature documentation.</li>
@@ -290,7 +295,7 @@
 </ul>
 <h2 id="compass-evidence">Compass Evidence</h2>
 <ul>
-<li>Spec/task: CF-SPEC-55 / CF-684; CF-SPEC-60 / CF-762; CF-SPEC-60 / CF-776</li>
+<li>Spec/task: CF-SPEC-55 / CF-684; CF-SPEC-60 / CF-762; CF-SPEC-60 / CF-776; CF-SPEC-65 / CF-842</li>
 <li>Inventory source: <code>docs/features/inventory.json</code></li>
 </ul>
 <h2 id="when-to-update">When To Update</h2>

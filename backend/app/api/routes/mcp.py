@@ -460,12 +460,12 @@ async def unregister_client(
     db: AsyncSession = Depends(get_db),
 ):
     """Remove an external MCP server from the registry. Admin only."""
-    await _get_project_client_or_404(
+    scoped_project_id, _ = await _get_project_client_or_404(
         db, request, server_id, project_id, min_role="project_admin"
     )
     from app.services.mcp_client_manager import unregister_server
 
-    removed = await unregister_server(db, server_id)
+    removed = await unregister_server(db, server_id, project_id=scoped_project_id)
     if not removed:
         raise HTTPException(status_code=404, detail="MCP server not found")
 
@@ -490,7 +490,7 @@ async def discover_client_tools(
             detail="MCP client library not installed. Run: pip install mcp",
         )
 
-    tools = await discover_tools(db, server_id)
+    tools = await discover_tools(db, server_id, project_id=scoped_project_id)
     await db.refresh(server)
     if server.health_status == "unhealthy":
         raise HTTPException(
@@ -566,7 +566,13 @@ async def call_client_tool(
             detail="MCP client library not installed. Run: pip install mcp",
         )
 
-    result = await call_tool(db, server_id, data.tool_name, data.arguments)
+    result = await call_tool(
+        db,
+        server_id,
+        data.tool_name,
+        data.arguments,
+        project_id=scoped_project_id,
+    )
 
     if "error" in result:
         raise HTTPException(status_code=502, detail=result["error"])
@@ -606,12 +612,12 @@ async def check_client_health(
     db: AsyncSession = Depends(get_db),
 ):
     """Check connectivity to an external MCP server."""
-    await _get_project_client_or_404(
+    scoped_project_id, _ = await _get_project_client_or_404(
         db, request, server_id, project_id, min_role="project_admin"
     )
     from app.services.mcp_client_manager import health_check
 
-    result = await health_check(db, server_id)
+    result = await health_check(db, server_id, project_id=scoped_project_id)
     return result
 
 

@@ -103,6 +103,9 @@ def test_integrations_overview_recent_activity_is_project_scoped() -> None:
     assert "fetchDeployments(activeProjectId)" in source
     assert "fetchSurveyIntegrations(activeProjectId)" in source
     assert "fetchMCPClients(activeProjectId)" in source
+    assert "setLoaded(false);" in source
+    assert "let cancelled = false;" in source
+    assert "if (!cancelled) setLoaded(true);" in source
     assert "const scopedChannels = activeProjectId" in source
     assert "const scopedDeployments = activeProjectId" in source
     assert "const scopedSurveyIntegrations = activeProjectId" in source
@@ -204,6 +207,10 @@ def test_integrations_subtabs_defensively_filter_by_active_project() -> None:
     assert "scopedMCPClients.map((client)" in mcp_tab
     assert "mcpClients.map((client)" not in mcp_tab
 
+    assert "const filterByProject = <T extends ProjectOwned>" in store
+    assert "const dedupeProjectMCPClients = (items: MCPServerConfig[], projectId: string): MCPServerConfig[]" in store
+    assert "const scoped = filterByProject(list, projectId);" in store
+    assert "const scoped = dedupeProjectMCPClients(list, projectId);" in store
     assert "set({ channelInstances: [], selectedInstanceId: null, channelLoading: true, error: null });" in store
     assert "set({ deploymentsList: [], selectedDeploymentId: null, deploymentLoading: true, error: null });" in store
     assert "set({ surveyIntegrations: [], surveyLoading: true, error: null });" in store
@@ -228,6 +235,8 @@ def test_integrations_survey_detail_actions_require_active_project_scope() -> No
     assert "/api/surveys/links/${id}/responses?project_id=${encodeURIComponent(projectId)}" in api
 
     assert "if (!activeProjectId) return;" in surveys
+    assert "setLinkedSurveys([]);" in surveys
+    assert "links.filter((link) => link.project_id === activeProjectId)" in surveys
     assert "surveysApi.links.sync(linkId, activeProjectId)" in surveys
     assert "surveysApi.integrations.delete(id, activeProjectId)" in surveys
     assert "fetchSurveyIntegrations(activeProjectId)" in surveys
@@ -248,12 +257,19 @@ def test_integrations_mcp_detail_actions_require_active_project_scope() -> None:
     mcp_tab = read_repo("frontend/src/components/integrations/MCPTab.tsx")
     setup = read_repo("frontend/src/components/integrations/MCPServerSetup.tsx")
     route = read_repo("backend/app/api/routes/mcp.py")
+    service = read_repo("backend/app/services/mcp_client_manager.py")
 
+    assert "list: async (projectId: string): Promise<MCPServerConfig[]>" in api
     assert "delete: (id: string, projectId: string)" in api
     assert "discover: (id: string, projectId: string)" in api
     assert "tools: (id: string, projectId: string)" in api
     assert "call: (id: string, toolName: string, args: any, projectId: string)" in api
     assert "health: (id: string, projectId: string)" in api
+    assert "allTools: async (projectId: string): Promise<any[]>" in api
+    assert "list: (projectId: string)" in api
+    assert "get: (id: string, projectId: string)" in api
+    assert "connect: (id: string, envVars: Record<string, string> | undefined, projectId: string)" in api
+    assert "/api/mcp/clients?project_id=${encodeURIComponent(projectId)}" in api
     assert "/api/mcp/clients/${id}?project_id=${encodeURIComponent(projectId)}" in api
     assert "/api/mcp/clients/${id}/discover?project_id=${encodeURIComponent(projectId)}" in api
     assert "/api/mcp/clients/${id}/tools?project_id=${encodeURIComponent(projectId)}" in api
@@ -277,6 +293,16 @@ def test_integrations_mcp_detail_actions_require_active_project_scope() -> None:
     assert "server.project_id != scoped_project_id" in route
     assert route.count('project_id: str | None = Query(None, description="Active project")') >= 5
     assert "await _get_project_client_or_404(\n        db, request, server_id, project_id" in route
+    assert "removed = await unregister_server(db, server_id, project_id=scoped_project_id)" in route
+
+    assert "async def register_server(" in service and "project_id: str," in service
+    assert "async def discover_tools(" in service and "project_id: str," in service
+    assert "async def call_tool(" in service and "project_id: str," in service
+    assert "async def health_check(" in service and "project_id: str," in service
+    assert "async def unregister_server(" in service and "project_id: str," in service
+    assert "async def list_servers(" in service and "project_id: str," in service
+    assert "async def list_all_tools(db: AsyncSession, *, project_id: str)" in service
+    assert "MCPServerConfig.project_id == scoped_project_id" in service
 
 
 def test_integrations_messaging_detail_panels_require_active_project_scope() -> None:
@@ -298,6 +324,7 @@ def test_integrations_messaging_detail_panels_require_active_project_scope() -> 
     assert "messages: (id: string, projectId: string" in api
     assert "conversations: (id: string, projectId: string)" in api
     assert "send: (id: string, data: { channel_id: string; text: string; metadata?: any }, projectId: string)" in api
+    assert "list: (platform: string | undefined, projectId: string)" in api
     assert "channelProjectQuery(projectId)" in api
 
     assert "selectedInstance && activeProjectId" in messaging
@@ -317,8 +344,16 @@ def test_integrations_messaging_detail_panels_require_active_project_scope() -> 
     assert "project_id: Optional[str] = Query(None, description=\"Active project\")" in route
     assert "project_id=scoped_project_id" in route
 
-    assert "ChannelMessage.project_id == project_id" in service
-    assert "ChannelConversation.project_id == project_id" in service
+    assert "async def list_channel_instances(" in service and "project_id: str," in service
+    assert "async def start_channel_instance(" in service and "project_id: str," in service
+    assert "async def stop_channel_instance(" in service and "project_id: str," in service
+    assert "async def health_check_instance(" in service and "project_id: str," in service
+    assert "async def get_message_history(" in service and "project_id: str," in service
+    assert "async def get_conversations(" in service and "project_id: str," in service
+    assert "async def send_message(" in service and "project_id: str," in service
+    assert "ChannelInstance.project_id == scoped_project_id" in service
+    assert "ChannelMessage.project_id == scoped_project_id" in service
+    assert "ChannelConversation.project_id == scoped_project_id" in service
     assert "resolved_project_id = project_id" in service
     assert "resolved_project_id = instance.project_id" in service
     assert "project_id=resolved_project_id" in service
@@ -337,11 +372,15 @@ def test_integrations_store_and_api_accept_project_filters() -> None:
     assert "const list = await deployments.list(projectId);" in store
     assert "const list = await surveys.integrations.list(projectId);" in store
     assert "const list = await mcp.clients.list(projectId);" in store
+    assert "const scoped = filterByProject(list, projectId);" in store
+    assert "const scoped = dedupeProjectMCPClients(list, projectId);" in store
 
-    assert 'if (projectId) query.set("project_id", projectId);' in api
+    assert 'query.set("project_id", projectId);' in api
     assert "return get<ResearchDeployment[]>(`/api/deployments${params}`)" in api
-    assert "const suffix = projectId ? `?project_id=${encodeURIComponent(projectId)}` : \"\";" in api
-    assert 'get<any>(`/api/mcp/clients${suffix}`)' in api
+    assert "list: async (projectId: string): Promise<SurveyIntegration[]>" in api
+    assert "list: (projectId: string) =>\n      get<SurveyLink[]>(`/api/surveys/links?project_id=${encodeURIComponent(projectId)}`)" in api
+    assert "list: async (projectId: string): Promise<MCPServerConfig[]>" in api
+    assert 'get<any>(`/api/mcp/clients?project_id=${encodeURIComponent(projectId)}`)' in api
 
 
 def test_backend_project_owned_integration_lists_require_scope_for_non_admins() -> None:

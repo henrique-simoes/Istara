@@ -6,6 +6,29 @@ import type { ChannelInstance, ResearchDeployment, SurveyIntegration, MCPServerC
 
 type IntegrationsTab = "overview" | "messaging" | "surveys" | "mcp" | "deployments";
 
+type ProjectOwned = { project_id?: string | null };
+
+const filterByProject = <T extends ProjectOwned>(items: T[], projectId: string): T[] =>
+  items.filter((item) => item.project_id === projectId);
+
+const normalizedEndpointKey = (value: string | null | undefined): string =>
+  (value || "").trim().replace(/\/+$/, "").toLowerCase();
+
+const dedupeProjectMCPClients = (items: MCPServerConfig[], projectId: string): MCPServerConfig[] => {
+  const scoped = filterByProject(items, projectId);
+  const seen = new Set<string>();
+  return scoped.filter((client) => {
+    const key = [
+      client.project_id,
+      normalizedEndpointKey(client.transport),
+      normalizedEndpointKey(client.url || client.id),
+    ].join(":");
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+};
+
 interface IntegrationsStore {
   activeTab: IntegrationsTab;
   // Channels
@@ -61,7 +84,8 @@ export const useIntegrationsStore = create<IntegrationsStore>((set) => ({
     }
     try {
       const list = await channels.list(platform, projectId);
-      set({ channelInstances: list, channelLoading: false });
+      const scoped = filterByProject(list, projectId);
+      set({ channelInstances: scoped, channelLoading: false });
     } catch (e: any) {
       set({ channelInstances: [], selectedInstanceId: null, channelLoading: false, error: e.message });
     }
@@ -75,7 +99,8 @@ export const useIntegrationsStore = create<IntegrationsStore>((set) => ({
     }
     try {
       const list = await deployments.list(projectId);
-      set({ deploymentsList: list, deploymentLoading: false });
+      const scoped = filterByProject(list, projectId);
+      set({ deploymentsList: scoped, deploymentLoading: false });
     } catch (e: any) {
       set({ deploymentsList: [], selectedDeploymentId: null, deploymentLoading: false, error: e.message });
     }
@@ -89,7 +114,8 @@ export const useIntegrationsStore = create<IntegrationsStore>((set) => ({
     }
     try {
       const list = await surveys.integrations.list(projectId);
-      set({ surveyIntegrations: list, surveyLoading: false });
+      const scoped = filterByProject(list, projectId);
+      set({ surveyIntegrations: scoped, surveyLoading: false });
     } catch (e: any) {
       set({ surveyIntegrations: [], surveyLoading: false, error: e.message });
     }
@@ -113,7 +139,8 @@ export const useIntegrationsStore = create<IntegrationsStore>((set) => ({
     }
     try {
       const list = await mcp.clients.list(projectId);
-      set({ mcpClients: list, mcpLoading: false });
+      const scoped = dedupeProjectMCPClients(list, projectId);
+      set({ mcpClients: scoped, mcpLoading: false });
     } catch (e: any) {
       set({ mcpClients: [], mcpLoading: false, error: e.message });
     }

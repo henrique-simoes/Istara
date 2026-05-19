@@ -82,8 +82,9 @@ async def list_channels(
     """List all channel instances, optionally filtered by platform."""
     scoped_project_id = _require_project_id(project_id)
     await require_project_access(db, request, scoped_project_id, min_role="viewer")
-    instances = await channel_service.list_channel_instances(db, platform=platform)
-    instances = [inst for inst in instances if inst.project_id == scoped_project_id]
+    instances = await channel_service.list_channel_instances(
+        db, platform=platform, project_id=scoped_project_id
+    )
     return [inst.to_dict() for inst in instances]
 
 
@@ -151,6 +152,7 @@ async def update_channel(
             name=body.name,
             config=body.config,
             project_id=body.project_id,
+            scope_project_id=scoped_project_id,
         )
         return instance.to_dict()
     except KeyError:
@@ -168,10 +170,12 @@ async def delete_channel(
     db: AsyncSession = Depends(get_db),
 ) -> dict:
     """Delete a channel instance (stops it first if running)."""
-    await _get_project_channel_or_404(
+    scoped_project_id, _ = await _get_project_channel_or_404(
         db, request, instance_id, project_id, min_role="project_admin"
     )
-    deleted = await channel_service.delete_channel_instance(db, instance_id)
+    deleted = await channel_service.delete_channel_instance(
+        db, instance_id, project_id=scoped_project_id
+    )
     if not deleted:
         raise HTTPException(
             status_code=404,
@@ -188,11 +192,13 @@ async def start_channel(
     db: AsyncSession = Depends(get_db),
 ) -> dict:
     """Start a channel instance (instantiate adapter and begin polling/listening)."""
-    await _get_project_channel_or_404(
+    scoped_project_id, _ = await _get_project_channel_or_404(
         db, request, instance_id, project_id, min_role="project_admin"
     )
     try:
-        result = await channel_service.start_channel_instance(db, instance_id)
+        result = await channel_service.start_channel_instance(
+            db, instance_id, project_id=scoped_project_id
+        )
         return result
     except KeyError:
         raise HTTPException(
@@ -211,11 +217,13 @@ async def stop_channel(
     db: AsyncSession = Depends(get_db),
 ) -> dict:
     """Stop a running channel instance."""
-    await _get_project_channel_or_404(
+    scoped_project_id, _ = await _get_project_channel_or_404(
         db, request, instance_id, project_id, min_role="project_admin"
     )
     try:
-        result = await channel_service.stop_channel_instance(db, instance_id)
+        result = await channel_service.stop_channel_instance(
+            db, instance_id, project_id=scoped_project_id
+        )
         return result
     except KeyError:
         raise HTTPException(
@@ -232,11 +240,13 @@ async def health_check_channel(
     db: AsyncSession = Depends(get_db),
 ) -> dict:
     """Run a health check on a channel instance."""
-    await _get_project_channel_or_404(
+    scoped_project_id, _ = await _get_project_channel_or_404(
         db, request, instance_id, project_id, min_role="project_admin"
     )
     try:
-        return await channel_service.health_check_instance(db, instance_id)
+        return await channel_service.health_check_instance(
+            db, instance_id, project_id=scoped_project_id
+        )
     except KeyError:
         raise HTTPException(
             status_code=404,
@@ -258,7 +268,11 @@ async def get_channel_messages(
         db, request, instance_id, project_id, min_role="viewer"
     )
     return await channel_service.get_message_history(
-        db, instance_id, limit=limit, offset=offset, project_id=scoped_project_id
+        db,
+        instance_id,
+        project_id=scoped_project_id,
+        limit=limit,
+        offset=offset,
     )
 
 
