@@ -16,6 +16,7 @@ from app.models.channel_conversation import ChannelConversation
 from app.models.channel_instance import ChannelInstance
 from app.models.channel_message import ChannelMessage
 from app.models.database import async_session, init_db
+from app.models.project import Project
 from app.models.research_deployment import ResearchDeployment
 from app.services import deployment_service
 
@@ -384,6 +385,8 @@ async def test_deployment_response_rejects_cross_project_conversation(admin_auth
         deployment_id=deployment_b.id,
     )
     async with async_session() as db:
+        db.add(Project(id=project_a, name="Deployment Project A"))
+        db.add(Project(id=project_b, name="Deployment Project B"))
         db.add_all([channel_a, channel_b, deployment_a, deployment_b, conversation_b])
         await db.commit()
 
@@ -424,8 +427,62 @@ async def test_deployment_response_rejects_cross_project_conversation(admin_auth
     async with async_session() as db:
         updated = await db.get(ChannelConversation, conversation_b.id)
         assert updated is not None
-        assert updated.current_question_index == 0
-        assert updated.state == "active"
+    assert updated.current_question_index == 0
+    assert updated.state == "active"
+
+
+@pytest.mark.asyncio
+async def test_deployment_dispatch_rejects_paused_project(admin_auth_headers):
+    await init_db()
+    project_id = _id("paused-deployment-project")
+    channel = ChannelInstance(
+        id=_id("channel"),
+        platform="slack",
+        name="Paused Slack",
+        project_id=project_id,
+    )
+    deployment = _deployment(
+        project_id=project_id,
+        channel_instance_id=channel.id,
+        state="draft",
+    )
+    conversation = _conversation(
+        project_id=project_id,
+        channel_instance_id=channel.id,
+        deployment_id=deployment.id,
+    )
+
+    async with async_session() as db:
+        db.add(Project(id=project_id, name="Paused Deployment Project", is_paused=True))
+        db.add_all([channel, deployment, conversation])
+        await db.commit()
+
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        activate = await ac.post(
+            f"/api/deployments/{deployment.id}/activate?project_id={project_id}",
+            headers=admin_auth_headers,
+        )
+        response = await ac.post(
+            f"/api/deployments/{deployment.id}/respond?project_id={project_id}",
+            headers=admin_auth_headers,
+            json={
+                "conversation_id": conversation.id,
+                "message_text": "Paused projects should not dispatch.",
+            },
+        )
+
+    assert activate.status_code == 409
+    assert activate.json()["detail"] == "Project is paused"
+    assert response.status_code == 409
+    assert response.json()["detail"] == "Project is paused"
+
+    async with async_session() as db:
+        unchanged = await db.get(ResearchDeployment, deployment.id)
+        untouched_conversation = await db.get(ChannelConversation, conversation.id)
+
+    assert unchanged.state == "draft"
+    assert untouched_conversation.current_question_index == 0
 
 
 @pytest.mark.asyncio

@@ -9,7 +9,13 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.permissions import ProjectRole, get_subject, is_global_admin, require_project_access
+from app.core.permissions import (
+    ProjectRole,
+    get_active_project_or_404,
+    get_subject,
+    is_global_admin,
+    require_project_access,
+)
 from app.models.channel_instance import ChannelInstance
 from app.models.database import get_db
 from app.services import channel_service
@@ -194,6 +200,9 @@ async def start_channel(
     """Start a channel instance (instantiate adapter and begin polling/listening)."""
     scoped_project_id, _ = await _get_project_channel_or_404(
         db, request, instance_id, project_id, min_role="project_admin"
+    )
+    await get_active_project_or_404(
+        db, request, scoped_project_id, min_role="project_admin"
     )
     try:
         result = await channel_service.start_channel_instance(

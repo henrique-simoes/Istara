@@ -15,6 +15,7 @@ from app.models.database import async_session
 from app.models.channel_instance import ChannelInstance
 from app.models.channel_message import ChannelMessage
 from app.models.channel_conversation import ChannelConversation
+from app.models.project import Project
 from app.core.field_encryption import decrypt_field
 from app.core.auth import create_token
 from app.services import channel_service
@@ -263,6 +264,11 @@ async def test_channel_start_missing_config_reports_not_enabled(auth_headers, mo
     monkeypatch.delenv("TELEGRAM_BOT_TOKEN", raising=False)
     monkeypatch.setattr("app.channels.telegram._TELEGRAM_AVAILABLE", True)
     transport = ASGITransport(app=app)
+    project_id = f"channel-missing-config-project-{uuid.uuid4()}"
+
+    async with async_session() as db:
+        db.add(Project(id=project_id, name="Channel Missing Config Project"))
+        await db.commit()
 
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
         created = await ac.post(
@@ -271,7 +277,7 @@ async def test_channel_start_missing_config_reports_not_enabled(auth_headers, mo
             json={
                 "platform": "telegram",
                 "name": "Missing Token",
-                "project_id": "channel-missing-config-project",
+                "project_id": project_id,
                 "config": {},
             },
         )
@@ -279,11 +285,11 @@ async def test_channel_start_missing_config_reports_not_enabled(auth_headers, mo
         instance_id = created.json()["id"]
 
         started = await ac.post(
-            f"/api/channels/{instance_id}/start?project_id=channel-missing-config-project",
+            f"/api/channels/{instance_id}/start?project_id={project_id}",
             headers=auth_headers,
         )
         health = await ac.get(
-            f"/api/channels/{instance_id}/health?project_id=channel-missing-config-project",
+            f"/api/channels/{instance_id}/health?project_id={project_id}",
             headers=auth_headers,
         )
 
@@ -292,3 +298,93 @@ async def test_channel_start_missing_config_reports_not_enabled(auth_headers, mo
     assert health.status_code == 200
     assert health.json()["status"] == "not_enabled"
     assert channel_router.get(instance_id) is None
+
+
+@pytest.mark.asyncio
+async def test_channel_start_rejects_paused_project(auth_headers):
+    await init_db()
+    project_id = f"paused-channel-project-{uuid.uuid4()}"
+    transport = ASGITransport(app=app)
+
+    async with async_session() as db:
+        db.add(Project(id=project_id, name="Paused Channel Project", is_paused=True))
+        await db.commit()
+
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        created = await ac.post(
+            "/api/channels",
+            headers=auth_headers,
+            json={
+                "platform": "slack",
+                "name": "Paused Slack",
+                "project_id": project_id,
+                "config": {"Bot Token": "xoxb-test", "Signing Secret": "secret"},
+            },
+        )
+        assert created.status_code == 200
+        instance_id = created.json()["id"]
+
+        started = await ac.post(
+            f"/api/channels/{instance_id}/start?project_id={project_id}",
+            headers=auth_headers,
+        )
+
+    assert started.status_code == 409
+    assert started.json()["detail"] == "Project is paused"
+    assert channel_router.get(instance_id) is None
+
+
+@pytest.mark.asyncio
+async def test_channel_startup_loader_skips_paused_projects():
+    await init_db()
+    project_id = f"paused-loader-project-{uuid.uuid4()}"
+    instance_id = str(uuid.uuid4())
+
+    async with async_session() as db:
+        db.add(Project(id=project_id, name="Paused Loader Project", is_paused=True))
+        db.add(
+            ChannelInstance(
+                id=instance_id,
+                platform="telegram",
+                name="Paused Telegram",
+                config_json="{}",
+                project_id=project_id,
+                is_active=True,
+            )
+        )
+        await db.commit()
+        loaded = await channel_service.load_active_instances(db)
+
+    assert loaded == 0
+    assert channel_router.get(instance_id) is None
+
+
+@pytest.mark.asyncio
+async def test_record_message_rejects_cross_project_claim():
+    await init_db()
+    project_id = f"record-message-project-{uuid.uuid4()}"
+    other_project_id = f"record-message-other-{uuid.uuid4()}"
+    instance_id = str(uuid.uuid4())
+
+    async with async_session() as db:
+        db.add(
+            ChannelInstance(
+                id=instance_id,
+                platform="slack",
+                name="Scoped Slack",
+                config_json="{}",
+                project_id=project_id,
+            )
+        )
+        await db.commit()
+
+        with pytest.raises(ValueError, match="project_id does not match"):
+            await channel_service.record_message(
+                db,
+                instance_id=instance_id,
+                direction="inbound",
+                sender_id="participant",
+                sender_name="Participant",
+                content="wrong project",
+                project_id=other_project_id,
+            )

@@ -10,7 +10,7 @@ from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.permissions import ProjectRole, require_project_access
+from app.core.permissions import ProjectRole, get_active_project_or_404, require_project_access
 from app.models.channel_conversation import ChannelConversation
 from app.models.database import get_db
 from app.models.research_deployment import ResearchDeployment
@@ -243,6 +243,9 @@ async def activate_deployment(
     deployment = await _get_active_project_deployment_or_404(
         db, request, deployment_id, project_id, min_role="researcher"
     )
+    await get_active_project_or_404(
+        db, request, deployment.project_id, min_role="researcher"
+    )
 
     try:
         result = await deployment_service.activate_deployment(
@@ -350,6 +353,9 @@ async def handle_response(
     """
     deployment = await _get_active_project_deployment_or_404(
         db, request, deployment_id, project_id, min_role="researcher"
+    )
+    await get_active_project_or_404(
+        db, request, deployment.project_id, min_role="researcher"
     )
     await _get_project_deployment_conversation_or_404(
         db, deployment, data.conversation_id

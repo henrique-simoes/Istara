@@ -108,6 +108,12 @@ projects, call app/API state, or use LLMs; normal project task workers,
 orchestrator routing, schedules, skill execution/planning, autoresearch,
 Meta-Hyperagent starts/applies, and self-evolution scans/promotions must skip
 paused projects before model work or proposal side effects.
+Messaging integrations and deployments are included in that paused-project
+dispatch boundary: channel adapters must not start or auto-start for paused or
+missing projects, inbound channel messages for paused projects must be dropped
+before persistence or adaptive routing, and deployment activation/response
+handling must reject paused projects before participant-facing work reaches LLM
+or improvement-governance paths.
 Agent registry, heartbeat, detail, identity, memory, recent-log, prompt
 diagnostic, A2A message views, A2A JSON-RPC discovery, and realtime agent
 events are also project-content surfaces: non-admin users must supply an
@@ -179,6 +185,10 @@ verify that the channel instance and returned rows belong to that project.
 Channel and MCP client service helpers also require explicit project ids and
 load by both record id and project id, so future internal callers cannot
 accidentally use globally unique ids to bypass the project-facing route guards.
+MCP client producer evidence from project-owned registration, discovery, and
+tool-call activity must carry the active project id at the governance proposal
+level, not only inside telemetry payloads, so improvement surfaces cannot mix
+project evidence into global recommendations.
 External Istara MCP server tools follow the same rule: project-content tools
 must receive `project_id`, pass a non-empty MCP allowlist check, avoid empty or
 global memory retrieval, and filter deployment status by the requested project.
@@ -196,7 +206,9 @@ aggregation belongs only on dedicated admin reporting surfaces.
 Inbound channel processors must resolve deployments only inside the channel
 instance's project and only when the active deployment explicitly lists that
 channel instance; unbound or other-project deployments must not receive
-participant content.
+participant content. Inbound processors must also reject unscoped, missing, or
+paused projects before persisting messages, updating conversations, recording
+producer evidence, or returning adaptive outbound messages.
 Interfaces screens, design briefs, developer handoff specs, Figma imports, and
 Stitch/Figma credentials are also project-content surfaces: status/list/helper
 APIs require an authorized active project, frontend stores clear stale project

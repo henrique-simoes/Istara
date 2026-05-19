@@ -10,7 +10,7 @@ code_references: ["frontend/src/components/integrations/MCPTab.tsx", "frontend/s
 api_references: ["backend/app/api/routes/mcp.py", "backend/app/mcp/server.py", "backend/app/services/mcp_client_manager.py", "backend/app/services/mcp_security.py"]
 test_references: ["tests/test_mcp.py", "tests/test_project_scope_contracts.py"]
 last_verified: 2026-05-19
-compass: CF-SPEC-55 / CF-684; CF-SPEC-60 / CF-762; CF-SPEC-60 / CF-776; CF-SPEC-65 / CF-842; CF-SPEC-68 / CF-870
+compass: CF-SPEC-55 / CF-684; CF-SPEC-60 / CF-762; CF-SPEC-60 / CF-776; CF-SPEC-65 / CF-842; CF-SPEC-68 / CF-870; CF-SPEC-75 / CF-964
 ---
 
 # MCP Integrations Architecture
@@ -51,6 +51,7 @@ The MCP tab configures project-owned Model Context Protocol client connections p
 - `MCPServerSetup` refuses test/save flows without an active project, stamps new external MCP server registrations with that project id, and uses the same active project for discovery and cleanup if the connection test fails.
 - `backend/app/api/routes/mcp.py` requires `project_id` for project-facing MCP client lists, tool aggregation, featured server browsing, client registration, featured connects, and every server-id action route. It verifies the project exists and authorizes reads as project viewer while client discovery, deletion, health checks, cached tools, and tool calls remain project-admin operations. A server id from another project resolves as not found even for a global admin using the project-facing Integrations API.
 - `backend/app/services/mcp_client_manager.py` requires a project id for registration, list, tool aggregation, discovery, tool calls, health checks, and deletion, and loads server records by both id and project id before returning cached tools or making outbound MCP calls.
+- MCP client registration, discovery, and tool-call producer evidence records the active project id at the governance proposal level as well as inside the evidence payload, so improvement-governance surfaces do not treat project-owned MCP client activity as global.
 - The external Istara MCP server treats project-content tools as project-scoped. `get_findings`, `search_memory`, `execute_skill`, `deploy_research`, and `get_deployment_status` require `project_id`; empty MCP project allowlists mean no project is exposed, not unrestricted access.
 - MCP `search_memory` calls project-scoped retrieval with the requested project id rather than an empty/global memory id. MCP deployment status is filtered by project, and skill/report execution is rejected for paused projects before content processing.
 - MCP `list_projects` is filtered by the access policy allowlist and returns an empty list when no project ids are allowed, preventing external agents from enumerating project names by default.
@@ -79,7 +80,7 @@ The MCP tab configures project-owned Model Context Protocol client connections p
 
 ## Compass Evidence
 
-- Spec/task: CF-SPEC-55 / CF-684; CF-SPEC-60 / CF-762; CF-SPEC-60 / CF-776; CF-SPEC-65 / CF-842; CF-SPEC-68 / CF-870
+- Spec/task: CF-SPEC-55 / CF-684; CF-SPEC-60 / CF-762; CF-SPEC-60 / CF-776; CF-SPEC-65 / CF-842; CF-SPEC-68 / CF-870; CF-SPEC-75 / CF-964
 - Inventory source: `docs/features/inventory.json`
 
 ## When To Update

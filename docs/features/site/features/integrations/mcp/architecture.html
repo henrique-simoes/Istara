@@ -273,6 +273,7 @@
 <li><code>MCPServerSetup</code> refuses test/save flows without an active project, stamps new external MCP server registrations with that project id, and uses the same active project for discovery and cleanup if the connection test fails.</li>
 <li><code>backend/app/api/routes/mcp.py</code> requires <code>project_id</code> for project-facing MCP client lists, tool aggregation, featured server browsing, client registration, featured connects, and every server-id action route. It verifies the project exists and authorizes reads as project viewer while client discovery, deletion, health checks, cached tools, and tool calls remain project-admin operations. A server id from another project resolves as not found even for a global admin using the project-facing Integrations API.</li>
 <li><code>backend/app/services/mcp_client_manager.py</code> requires a project id for registration, list, tool aggregation, discovery, tool calls, health checks, and deletion, and loads server records by both id and project id before returning cached tools or making outbound MCP calls.</li>
+<li>MCP client registration, discovery, and tool-call producer evidence records the active project id at the governance proposal level as well as inside the evidence payload, so improvement-governance surfaces do not treat project-owned MCP client activity as global.</li>
 <li>The external Istara MCP server treats project-content tools as project-scoped. <code>get_findings</code>, <code>search_memory</code>, <code>execute_skill</code>, <code>deploy_research</code>, and <code>get_deployment_status</code> require <code>project_id</code>; empty MCP project allowlists mean no project is exposed, not unrestricted access.</li>
 <li>MCP <code>search_memory</code> calls project-scoped retrieval with the requested project id rather than an empty/global memory id. MCP deployment status is filtered by project, and skill/report execution is rejected for paused projects before content processing.</li>
 <li>MCP <code>list_projects</code> is filtered by the access policy allowlist and returns an empty list when no project ids are allowed, preventing external agents from enumerating project names by default.</li>
@@ -301,7 +302,7 @@
 </ul>
 <h2 id="compass-evidence">Compass Evidence</h2>
 <ul>
-<li>Spec/task: CF-SPEC-55 / CF-684; CF-SPEC-60 / CF-762; CF-SPEC-60 / CF-776; CF-SPEC-65 / CF-842; CF-SPEC-68 / CF-870</li>
+<li>Spec/task: CF-SPEC-55 / CF-684; CF-SPEC-60 / CF-762; CF-SPEC-60 / CF-776; CF-SPEC-65 / CF-842; CF-SPEC-68 / CF-870; CF-SPEC-75 / CF-964</li>
 <li>Inventory source: <code>docs/features/inventory.json</code></li>
 </ul>
 <h2 id="when-to-update">When To Update</h2>

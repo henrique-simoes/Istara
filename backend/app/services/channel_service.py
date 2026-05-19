@@ -23,6 +23,7 @@ from app.core.field_encryption import decrypt_field, encrypt_field
 from app.models.channel_conversation import ChannelConversation
 from app.models.channel_instance import ChannelInstance
 from app.models.channel_message import ChannelMessage
+from app.models.project import Project
 
 logger = logging.getLogger(__name__)
 
@@ -254,6 +255,9 @@ async def start_channel_instance(
     instance = result.scalar_one_or_none()
     if instance is None:
         raise KeyError(f"Channel instance '{instance_id}' not found")
+    project = await db.get(Project, scoped_project_id)
+    if project is None or project.is_paused:
+        raise RuntimeError("Project is paused or not found")
 
     # Check if already registered and running
     existing = channel_router.get(instance_id)
@@ -478,9 +482,14 @@ async def record_message(
         select(ChannelInstance).where(ChannelInstance.id == instance_id)
     )
     instance = result.scalar_one_or_none()
-    resolved_project_id = project_id
-    if resolved_project_id is None and instance is not None:
-        resolved_project_id = instance.project_id
+    if instance is None:
+        raise KeyError(f"Channel instance '{instance_id}' not found")
+
+    resolved_project_id = (project_id or instance.project_id or "").strip()
+    if not resolved_project_id:
+        raise ValueError("project_id is required")
+    if instance.project_id != resolved_project_id:
+        raise ValueError("project_id does not match channel instance")
 
     msg = ChannelMessage(
         id=str(uuid.uuid4()),
@@ -514,7 +523,14 @@ async def load_active_instances(db: AsyncSession) -> int:
 
     Called once during application startup.
     """
-    stmt = select(ChannelInstance).where(ChannelInstance.is_active == True)  # noqa: E712
+    stmt = (
+        select(ChannelInstance)
+        .join(Project, ChannelInstance.project_id == Project.id)
+        .where(
+            ChannelInstance.is_active.is_(True),
+            Project.is_paused.is_(False),
+        )
+    )
     result = await db.execute(stmt)
     instances = result.scalars().all()
 
