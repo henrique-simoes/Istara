@@ -10,6 +10,8 @@ export const id = "22-architecture-evaluation";
 export async function run(ctx) {
   const { api } = ctx;
   const checks = [];
+  const evalProjectId = typeof ctx.projectId === "string" ? ctx.projectId.trim() : "";
+  const projectQuery = evalProjectId ? `project_id=${encodeURIComponent(evalProjectId)}` : "";
 
   async function safeCheck(checkName, fn) {
     try {
@@ -24,12 +26,10 @@ export async function run(ctx) {
   // SECTION 1: OpenClaw / NemoClaw Architectural Pattern Compliance
   // ═══════════════════════════════════════════════════════════════════
 
-  // Use the persistent simulation project for architecture testing
-  let evalProjectId = ctx.projectId;
-
   // Pattern 1: Atomic Research Hierarchy (Nuggets → Facts → Insights → Recommendations)
   await safeCheck("[OpenClaw] Atomic Research — findings chain API exists", async () => {
     let projectId = evalProjectId;
+    if (!projectId) return { name: "[OpenClaw] Atomic Research — findings chain API exists", passed: false, detail: "No project" };
 
     // Create a full evidence chain
     const nugget = await api.post("/api/findings/nuggets", {
@@ -134,10 +134,12 @@ export async function run(ctx) {
 
     // Check proposals endpoint exists
     let proposalsWork = false;
-    try {
-      await api.get("/api/skills/proposals/all");
-      proposalsWork = true;
-    } catch {}
+    if (evalProjectId) {
+      try {
+        await api.get(`/api/skills/proposals/all?project_id=${encodeURIComponent(evalProjectId)}`);
+        proposalsWork = true;
+      } catch {}
+    }
 
     return {
       name: "[OpenClaw] Self-Evolution — skill versioning + proposals",
@@ -300,7 +302,7 @@ export async function run(ctx) {
     { path: "/api/settings/models", method: "GET", expect: "models" },
     { path: "/api/resources", method: "GET", expect: "resources" },
     { path: "/api/agents/status", method: "GET", expect: "orchestrator" },
-    { path: "/api/skills/health/all", method: "GET", expect: "health" },
+    ...(projectQuery ? [{ path: `/api/skills/health/all?${projectQuery}`, method: "GET", expect: "health" }] : []),
     { path: "/api/agents/heartbeat/status", method: "GET", expect: "heartbeat" },
     { path: "/api/agents/capacity", method: "GET", expect: "capacity" },
     { path: "/api/skill-registry", method: "GET", expect: "registry" },

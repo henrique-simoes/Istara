@@ -8,9 +8,9 @@ related_features: ["skills.proposals", "agents.registry"]
 related_glossary: ["mcp"]
 code_references: ["frontend/src/components/skills/SkillsView.tsx", "backend/app/api/routes/skills.py", "backend/app/core/agent_skill_tools.py"]
 api_references: ["backend/app/api/routes/skills.py"]
-test_references: ["tests/test_skills.py", "tests/test_project_scope_contracts.py"]
+test_references: ["tests/test_skills.py", "tests/test_project_scope_contracts.py", "tests/test_simulation_project_scope_contracts.py", "tests/simulation/lib/api-client.mjs", "tests/simulation/scenarios/06-skill-execution.mjs", "tests/simulation/scenarios/20-all-skills-comprehensive.mjs", "tests/simulation/scenarios/22-architecture-evaluation.mjs", "tests/simulation/scenarios/41-skill-creation.mjs"]
 last_verified: 2026-05-19
-compass: CF-SPEC-53 / CF-657; CF-SPEC-68 / CF-870
+compass: CF-SPEC-53 / CF-657; CF-SPEC-68 / CF-870; CF-SPEC-104 / CF-1309
 ---
 
 # Skills Catalog Architecture
@@ -40,6 +40,7 @@ The Skills catalog lists available capabilities agents can use or propose for re
 - The feature is mounted through `frontend/src/components/skills/SkillsView.tsx` and the UI navigation path recorded in the inventory.
 - Skill definitions remain the shared catalog, while health, usage, and proposal badges are fetched with the active project and reset on project changes.
 - Skill execution and planning require an active, unpaused project before the agent is invoked, so paused projects cannot trigger LLM/skill work through the catalog surface.
+- Simulation skill catalog checks keep the global `/api/skills` definition list unchanged, but every skill health or proposal request in the harness includes the active simulation project id.
 - The frontmatter and manifest entries are the durable contract for agents updating this page after code changes.
 - When the referenced component, store, route, agent, skill, or test behavior changes, regenerate and validate the feature documentation.
 
@@ -53,6 +54,12 @@ The Skills catalog lists available capabilities agents can use or propose for re
 
 - `tests/test_skills.py`
 - `tests/test_project_scope_contracts.py`
+- `tests/test_simulation_project_scope_contracts.py`
+- `tests/simulation/lib/api-client.mjs`
+- `tests/simulation/scenarios/06-skill-execution.mjs`
+- `tests/simulation/scenarios/20-all-skills-comprehensive.mjs`
+- `tests/simulation/scenarios/22-architecture-evaluation.mjs`
+- `tests/simulation/scenarios/41-skill-creation.mjs`
 
 ## Related Features
 
@@ -65,7 +72,7 @@ The Skills catalog lists available capabilities agents can use or propose for re
 
 ## Compass Evidence
 
-- Spec/task: CF-SPEC-53 / CF-657; CF-SPEC-68 / CF-870
+- Spec/task: CF-SPEC-53 / CF-657; CF-SPEC-68 / CF-870; CF-SPEC-104 / CF-1309
 - Inventory source: `docs/features/inventory.json`
 
 ## When To Update

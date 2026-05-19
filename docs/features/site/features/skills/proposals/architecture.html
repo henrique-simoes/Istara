@@ -261,6 +261,7 @@
 <li>The feature is mounted through <code>frontend/src/components/skills/SkillsView.tsx</code> and the UI navigation path recorded in the inventory.</li>
 <li>Skill update proposals are stored with their source <code>project_id</code>; list, approve, and reject APIs require the active project and return 404 for proposals from another project.</li>
 <li>Skill update proposal producers reject missing or blank <code>project_id</code> before persistence or governed-evolution registration so autonomous improvement work cannot become global activity by omission.</li>
+<li>Simulation harnesses pass <code>ctx.projectId</code> into skill proposal and health checks, and skip the scoped endpoint instead of falling back to a global request when no simulation project exists.</li>
 <li>Approving skill update or skill creation proposals requires an active, unpaused project. Rejecting old proposals can still happen while a project is paused so stale improvement work can be cleared without dispatching new processing.</li>
 <li><code>SkillsView</code> clears and reloads proposal state when the active project changes so self-evolution review never carries proposals from a previous project.</li>
 <li>Skill execution health is tracked per project for proposal review. Low utility no longer auto-deprecates or mutates a global skill definition from one project&#x27;s execution history.</li>
@@ -280,6 +281,10 @@
 <li><code>tests/test_skills.py</code></li>
 <li><code>tests/test_improvement_governance.py</code></li>
 <li><code>tests/test_project_scope_contracts.py</code></li>
+<li><code>tests/test_simulation_project_scope_contracts.py</code></li>
+<li><code>tests/simulation/lib/api-client.mjs</code></li>
+<li><code>tests/simulation/scenarios/20-all-skills-comprehensive.mjs</code></li>
+<li><code>tests/simulation/scenarios/22-architecture-evaluation.mjs</code></li>
 </ul>
 <h2 id="related-features">Related Features</h2>
 <ul>
@@ -292,7 +297,7 @@
 </ul>
 <h2 id="compass-evidence">Compass Evidence</h2>
 <ul>
-<li>Spec/task: CF-SPEC-53 / CF-657; CF-SPEC-68 / CF-870; CF-SPEC-76 / CF-972</li>
+<li>Spec/task: CF-SPEC-53 / CF-657; CF-SPEC-68 / CF-870; CF-SPEC-76 / CF-972; CF-SPEC-104 / CF-1309</li>
 <li>Inventory source: <code>docs/features/inventory.json</code></li>
 </ul>
 <h2 id="when-to-update">When To Update</h2>

@@ -419,6 +419,24 @@ def test_security_benchmark_detects_governed_evolution_project_scope_paths() -> 
     assert result.scorecard["triggered_paths"] == sorted(changed_paths)
 
 
+def test_security_benchmark_detects_skill_simulation_project_scope_paths() -> None:
+    matrix = load_matrix(ROOT / "security" / "control_matrix.json")
+
+    changed_paths = [
+        "tests/simulation/lib/api-client.mjs",
+        "tests/simulation/scenarios/06-skill-execution.mjs",
+        "tests/simulation/scenarios/20-all-skills-comprehensive.mjs",
+        "tests/simulation/scenarios/22-architecture-evaluation.mjs",
+        "tests/simulation/scenarios/41-skill-creation.mjs",
+        "tests/test_simulation_project_scope_contracts.py",
+    ]
+    result = evaluate_matrix(matrix, changed_paths=changed_paths)
+
+    assert result.passed is True
+    assert result.scorecard["auth_security_change_detected"] is True
+    assert result.scorecard["triggered_paths"] == sorted(changed_paths)
+
+
 def test_security_benchmark_detects_meta_hyperagent_project_scope_paths() -> None:
     matrix = load_matrix(ROOT / "security" / "control_matrix.json")
 

@@ -26,6 +26,21 @@ export function authHeaders(extra = {}) {
   return headers;
 }
 
+function requireProjectId(projectId, surface) {
+  const value = typeof projectId === "string" ? projectId.trim() : "";
+  if (!value) throw new Error(`project_id is required for ${surface}`);
+  return value;
+}
+
+function projectScopedQuery(projectId, surface, extra = {}) {
+  const params = new URLSearchParams();
+  params.set("project_id", requireProjectId(projectId, surface));
+  for (const [key, value] of Object.entries(extra)) {
+    if (value !== undefined && value !== null) params.set(key, String(value));
+  }
+  return params.toString();
+}
+
 // ---------------------------------------------------------------------------
 // Internal request helper
 // ---------------------------------------------------------------------------
@@ -359,11 +374,18 @@ export const skills = {
       body: JSON.stringify(data),
     }),
 
-  /** Get health for all skills */
-  health: () => request("/api/skills/health/all"),
+  /** Get project-scoped health for all skills */
+  health: (projectId) =>
+    request(`/api/skills/health/all?${projectScopedQuery(projectId, "skills.health")}`),
 
-  /** @param {string} name */
-  skillHealth: (name) => request(`/api/skills/${encodeURIComponent(name)}/health`),
+  /**
+   * @param {string} name
+   * @param {string} projectId
+   */
+  skillHealth: (name, projectId) =>
+    request(
+      `/api/skills/${encodeURIComponent(name)}/health?${projectScopedQuery(projectId, "skills.skillHealth")}`,
+    ),
 
   /**
    * @param {string} name
@@ -376,22 +398,77 @@ export const skills = {
     ),
 
   proposals: {
-    pending: () => request("/api/skills/proposals/pending"),
+    /** @param {string} projectId */
+    pending: (projectId) =>
+      request(
+        `/api/skills/proposals/pending?${projectScopedQuery(projectId, "skills.proposals.pending")}`,
+      ),
 
-    /** @param {number} [limit=50] */
-    all: (limit = 50) => request(`/api/skills/proposals/all?limit=${limit}`),
-
-    /** @param {string} id */
-    approve: (id) =>
-      request(`/api/skills/proposals/${id}/approve`, { method: "POST" }),
+    /**
+     * @param {string} projectId
+     * @param {number} [limit=50]
+     */
+    all: (projectId, limit = 50) =>
+      request(
+        `/api/skills/proposals/all?${projectScopedQuery(projectId, "skills.proposals.all", { limit })}`,
+      ),
 
     /**
      * @param {string} id
+     * @param {string} projectId
+     */
+    approve: (id, projectId) =>
+      request(
+        `/api/skills/proposals/${id}/approve?${projectScopedQuery(projectId, "skills.proposals.approve")}`,
+        { method: "POST" },
+      ),
+
+    /**
+     * @param {string} id
+     * @param {string} projectId
      * @param {string} [reason=""]
      */
-    reject: (id, reason = "") =>
+    reject: (id, projectId, reason = "") =>
       request(
-        `/api/skills/proposals/${id}/reject?reason=${encodeURIComponent(reason)}`,
+        `/api/skills/proposals/${id}/reject?${projectScopedQuery(projectId, "skills.proposals.reject", { reason })}`,
+        { method: "POST" },
+      ),
+  },
+
+  creationProposals: {
+    /** @param {string} projectId */
+    pending: (projectId) =>
+      request(
+        `/api/skills/creation-proposals/pending?${projectScopedQuery(projectId, "skills.creationProposals.pending")}`,
+      ),
+
+    /**
+     * @param {string} projectId
+     * @param {number} [limit=20]
+     */
+    all: (projectId, limit = 20) =>
+      request(
+        `/api/skills/creation-proposals/all?${projectScopedQuery(projectId, "skills.creationProposals.all", { limit })}`,
+      ),
+
+    /**
+     * @param {string} id
+     * @param {string} projectId
+     */
+    approve: (id, projectId) =>
+      request(
+        `/api/skills/creation-proposals/${id}/approve?${projectScopedQuery(projectId, "skills.creationProposals.approve")}`,
+        { method: "POST" },
+      ),
+
+    /**
+     * @param {string} id
+     * @param {string} projectId
+     * @param {string} [reason=""]
+     */
+    reject: (id, projectId, reason = "") =>
+      request(
+        `/api/skills/creation-proposals/${id}/reject?${projectScopedQuery(projectId, "skills.creationProposals.reject", { reason })}`,
         { method: "POST" },
       ),
   },

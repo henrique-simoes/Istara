@@ -261,6 +261,7 @@
 <li>The feature is mounted through <code>frontend/src/components/skills/SkillsView.tsx</code> and the UI navigation path recorded in the inventory.</li>
 <li>Autonomous skill creation proposals carry their source <code>project_id</code>; list, verify, approve, and reject APIs require the active project and hide proposals from other projects.</li>
 <li>Autonomous skill creation producers reject missing or blank <code>project_id</code> before persistence or governed-evolution registration so one project cannot create unscoped review activity.</li>
+<li>Skill creation simulation checks pass <code>ctx.projectId</code> to creation proposal routes and record a scoped skip when the runner has not supplied an active project.</li>
 <li>Approved creation proposals still mutate the runtime skill catalog, but the review surface and governed-evolution evidence remain bound to the project that produced the proposal.</li>
 <li>The frontmatter and manifest entries are the durable contract for agents updating this page after code changes.</li>
 <li>When the referenced component, store, route, agent, skill, or test behavior changes, regenerate and validate the feature documentation.</li>
@@ -275,6 +276,9 @@
 <ul>
 <li><code>tests/test_skills.py</code></li>
 <li><code>tests/test_project_scope_contracts.py</code></li>
+<li><code>tests/test_simulation_project_scope_contracts.py</code></li>
+<li><code>tests/simulation/lib/api-client.mjs</code></li>
+<li><code>tests/simulation/scenarios/41-skill-creation.mjs</code></li>
 </ul>
 <h2 id="related-features">Related Features</h2>
 <ul>
@@ -287,7 +291,7 @@
 </ul>
 <h2 id="compass-evidence">Compass Evidence</h2>
 <ul>
-<li>Spec/task: CF-SPEC-53 / CF-657; CF-SPEC-76 / CF-972</li>
+<li>Spec/task: CF-SPEC-53 / CF-657; CF-SPEC-76 / CF-972; CF-SPEC-104 / CF-1309</li>
 <li>Inventory source: <code>docs/features/inventory.json</code></li>
 </ul>
 <h2 id="when-to-update">When To Update</h2>

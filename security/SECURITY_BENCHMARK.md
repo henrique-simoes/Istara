@@ -142,6 +142,9 @@ Autonomous skill improvement and skill creation producers must also reject
 missing or blank project scope before persisting local proposal records or
 registering governed-evolution proposals; project-owned skill proposal evidence
 must not be created as global activity by omission.
+Simulation harnesses that exercise skill health, improvement proposals, or
+skill creation proposals must pass the active simulation project id and skip
+rather than call those endpoints when no project id is available.
 Agent registry, heartbeat, detail, identity, memory, recent-log, prompt
 diagnostic, A2A message views, A2A JSON-RPC discovery, and realtime agent
 events are also project-content surfaces: non-admin users must supply an
