@@ -113,7 +113,7 @@ export default function MCPTab() {
             &larr; Back to MCP
           </button>
         </div>
-        <MCPAuditLog />
+        <MCPAuditLog projectId={activeProjectId} />
       </div>
     );
   }
@@ -209,7 +209,8 @@ export default function MCPTab() {
             </button>
             <button
               onClick={() => setShowAuditLog(true)}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-xs bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
+              disabled={!activeProjectId}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-lg hover:bg-slate-200 disabled:opacity-50 dark:hover:bg-slate-700 transition-colors"
             >
               <Activity size={12} /> Audit Log
             </button>

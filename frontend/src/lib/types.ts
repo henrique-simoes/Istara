@@ -756,6 +756,7 @@ export interface MCPAuditEntry {
   id: string;
   timestamp: string;
   tool_name: string;
+  project_id: string;
   caller_info: string;
   access_granted: boolean;
   result_summary: string;

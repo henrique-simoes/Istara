@@ -191,6 +191,10 @@ async def init_db() -> None:
             "NOT NULL DEFAULT '[]'",
             "ALTER TABLE mcp_server_configs ADD COLUMN project_id VARCHAR(36) "
             "NOT NULL DEFAULT ''",
+            "ALTER TABLE mcp_audit_log ADD COLUMN project_id VARCHAR(36) "
+            "NOT NULL DEFAULT ''",
+            "CREATE INDEX IF NOT EXISTS ix_mcp_audit_log_project_id "
+            "ON mcp_audit_log(project_id)",
             # Scheduler/loops hardening columns for existing installations.
             "ALTER TABLE scheduled_tasks ADD COLUMN is_running BOOLEAN NOT NULL DEFAULT 0",
             "ALTER TABLE scheduled_tasks ADD COLUMN agent_id VARCHAR(36)",

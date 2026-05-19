@@ -11,14 +11,69 @@ import json
 import logging
 import uuid
 from datetime import datetime, timezone, timedelta
+from typing import Any
 
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.mcp_access_policy import MCPAccessPolicy
 from app.models.mcp_audit_log import MCPAuditEntry
 
 logger = logging.getLogger(__name__)
+
+PROJECT_ID_ARGUMENT_KEYS = ("project_id", "projectId")
+
+
+def _clean_project_id(value: Any) -> str:
+    return str(value or "").strip()
+
+
+def extract_project_id_from_arguments(arguments: Any) -> str:
+    """Best-effort project id extraction for MCP audit evidence."""
+    if not isinstance(arguments, dict):
+        return ""
+
+    for key in PROJECT_ID_ARGUMENT_KEYS:
+        if key in arguments:
+            project_id = _clean_project_id(arguments.get(key))
+            if project_id:
+                return project_id
+
+    for value in arguments.values():
+        if isinstance(value, dict):
+            project_id = extract_project_id_from_arguments(value)
+            if project_id:
+                return project_id
+        elif isinstance(value, list):
+            for item in value:
+                project_id = extract_project_id_from_arguments(item)
+                if project_id:
+                    return project_id
+
+    return ""
+
+
+def _project_id_from_arguments_json(arguments_json: str | None) -> str:
+    if not arguments_json:
+        return ""
+    try:
+        arguments = json.loads(arguments_json)
+    except (json.JSONDecodeError, TypeError):
+        return ""
+    return extract_project_id_from_arguments(arguments)
+
+
+def _audit_entry_project_id(entry: MCPAuditEntry) -> str:
+    return _clean_project_id(getattr(entry, "project_id", "")) or _project_id_from_arguments_json(
+        entry.arguments_json
+    )
+
+
+def _audit_entry_to_dict(entry: MCPAuditEntry) -> dict:
+    payload = entry.to_dict()
+    payload["project_id"] = _audit_entry_project_id(entry)
+    return payload
+
 
 # ---------------------------------------------------------------------------
 # Tool -> policy field mapping
@@ -198,6 +253,7 @@ async def audit_request(
     entry = MCPAuditEntry(
         id=str(uuid.uuid4()),
         tool_name=tool_name,
+        project_id=extract_project_id_from_arguments(args),
         arguments_json=json.dumps(args) if args else "{}",
         caller_info=caller,
         policy_id=policy.id if policy else None,
@@ -269,8 +325,31 @@ async def get_audit_log(
     db: AsyncSession,
     limit: int = 50,
     offset: int = 0,
+    project_id: str | None = None,
 ) -> list[dict]:
     """Retrieve recent audit log entries."""
+    scoped_project_id = _clean_project_id(project_id)
+    limit = max(1, min(int(limit), 200))
+    offset = max(0, int(offset))
+
+    if scoped_project_id:
+        result = await db.execute(
+            select(MCPAuditEntry)
+            .where(
+                or_(
+                    MCPAuditEntry.project_id == scoped_project_id,
+                    MCPAuditEntry.project_id == "",
+                )
+            )
+            .order_by(MCPAuditEntry.timestamp.desc())
+        )
+        entries = [
+            entry
+            for entry in result.scalars().all()
+            if _audit_entry_project_id(entry) == scoped_project_id
+        ]
+        return [_audit_entry_to_dict(entry) for entry in entries[offset : offset + limit]]
+
     result = await db.execute(
         select(MCPAuditEntry)
         .order_by(MCPAuditEntry.timestamp.desc())
@@ -278,4 +357,4 @@ async def get_audit_log(
         .limit(limit)
     )
     entries = result.scalars().all()
-    return [e.to_dict() for e in entries]
+    return [_audit_entry_to_dict(e) for e in entries]

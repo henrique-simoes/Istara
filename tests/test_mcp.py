@@ -1,5 +1,6 @@
 """Tests for MCP API routes — server status/toggle/policy, clients CRUD, tools, call."""
 
+import json
 import uuid
 from types import SimpleNamespace
 
@@ -11,6 +12,7 @@ from app.models.database import async_session, init_db
 from app.core.auth import create_token
 from app.models.project import Project
 from app.models.project_member import ProjectMember
+from app.models.mcp_audit_log import MCPAuditEntry
 from app.services.mcp_client_manager import (
     _safe_tool_descriptor,
     list_all_tools,
@@ -18,7 +20,12 @@ from app.services.mcp_client_manager import (
     register_server,
     unregister_server,
 )
-from app.services.mcp_security import check_access, ensure_default_policy
+from app.services.mcp_security import (
+    audit_request,
+    check_access,
+    ensure_default_policy,
+    get_audit_log,
+)
 
 
 @pytest.fixture(autouse=True)
@@ -65,6 +72,28 @@ async def _seed_member(project_id: str, user_id: str, role: str) -> None:
                 user_id=user_id,
                 role=role,
                 added_by="test",
+            )
+        )
+        await db.commit()
+
+
+async def _seed_mcp_audit(
+    project_id: str,
+    caller: str,
+    *,
+    legacy_args_only: bool = False,
+) -> None:
+    async with async_session() as db:
+        db.add(
+            MCPAuditEntry(
+                id=str(uuid.uuid4()),
+                tool_name="search_memory",
+                project_id="" if legacy_args_only else project_id,
+                arguments_json=json.dumps({"project_id": project_id, "query": caller}),
+                caller_info=caller,
+                access_granted=True,
+                result_summary="ok",
+                duration_ms=3,
             )
         )
         await db.commit()
@@ -531,3 +560,75 @@ async def test_mcp_audit_endpoint_returns_entries_envelope(auth_headers):
     body = response.json()
     assert body["entries"] == []
     assert body["count"] == 0
+    assert body["scope"] == "global_admin"
+    assert body["project_id"] is None
+
+
+@pytest.mark.asyncio
+async def test_mcp_audit_endpoint_rejects_unscoped_non_admin_global_view():
+    await init_db()
+    settings.team_mode = True
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        response = await ac.get(
+            "/api/mcp/server/audit",
+            headers=_headers("mcp-audit-user", "mcp-audit-user", "researcher"),
+        )
+
+    assert response.status_code == 403
+
+
+@pytest.mark.asyncio
+async def test_mcp_audit_endpoint_filters_by_project_for_project_admin():
+    await init_db()
+    settings.team_mode = True
+    project_a = await _seed_project("MCP Audit A")
+    project_b = await _seed_project("MCP Audit B")
+    project_admin_id = f"mcp-audit-admin-{uuid.uuid4()}"
+    await _seed_member(project_a.id, project_admin_id, "project_admin")
+    project_admin_headers = _headers(project_admin_id, "mcp-audit-admin", "researcher")
+    await _seed_mcp_audit(project_a.id, "caller-a")
+    await _seed_mcp_audit(project_a.id, "legacy-caller-a", legacy_args_only=True)
+    await _seed_mcp_audit(project_b.id, "caller-b")
+
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        scoped = await ac.get(
+            f"/api/mcp/server/audit?project_id={project_a.id}",
+            headers=project_admin_headers,
+        )
+        unrelated = await ac.get(
+            f"/api/mcp/server/audit?project_id={project_b.id}",
+            headers=project_admin_headers,
+        )
+
+    assert scoped.status_code == 200
+    body = scoped.json()
+    assert body["scope"] == "project"
+    assert body["project_id"] == project_a.id
+    assert {entry["caller_info"] for entry in body["entries"]} == {
+        "caller-a",
+        "legacy-caller-a",
+    }
+    assert {entry["project_id"] for entry in body["entries"]} == {project_a.id}
+    assert unrelated.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_mcp_audit_request_records_project_id_from_arguments():
+    await init_db()
+    project_id = f"mcp-audit-project-{uuid.uuid4()}"
+
+    async with async_session() as db:
+        await audit_request(
+            db,
+            "search_memory",
+            {"project_id": project_id, "query": "scope"},
+            "mcp-external",
+            True,
+            "ok",
+        )
+        entries = await get_audit_log(db, project_id=project_id)
+
+    assert len(entries) == 1
+    assert entries[0]["project_id"] == project_id

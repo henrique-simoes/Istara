@@ -350,16 +350,47 @@ async def update_policy(
 @router.get("/mcp/server/audit")
 async def get_audit(
     request: Request,
-    limit: int = 50,
-    offset: int = 0,
+    project_id: str | None = Query(
+        None,
+        description="Active project for project-scoped MCP audit entries.",
+    ),
+    limit: int = Query(50, ge=1, le=200),
+    offset: int = Query(0, ge=0),
     db: AsyncSession = Depends(get_db),
 ):
     """Get MCP audit log entries."""
-    require_admin_from_request(request)
     from app.services.mcp_security import get_audit_log
 
-    entries = await get_audit_log(db, limit=limit, offset=offset)
-    return {"entries": entries, "count": len(entries), "limit": limit, "offset": offset}
+    scoped_project_id: str | None = None
+    if project_id is None:
+        require_admin_from_request(request)
+        scope = "global_admin"
+    else:
+        scoped_project_id = project_id.strip()
+        if not scoped_project_id:
+            raise HTTPException(status_code=400, detail="project_id is required")
+        await _require_project_scope(
+            db,
+            request,
+            scoped_project_id,
+            min_role="project_admin",
+        )
+        scope = "project"
+
+    entries = await get_audit_log(
+        db,
+        limit=limit,
+        offset=offset,
+        project_id=scoped_project_id,
+    )
+    return {
+        "entries": entries,
+        "count": len(entries),
+        "limit": limit,
+        "offset": offset,
+        "scope": scope,
+        "project_id": scoped_project_id,
+    }
 
 
 @router.get("/mcp/server/exposure")

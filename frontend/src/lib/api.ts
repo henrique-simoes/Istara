@@ -996,8 +996,13 @@ export const mcp = {
     toggle: (enabled: boolean) => post<any>("/api/mcp/server/toggle", { enabled }),
     policy: () => get<MCPAccessPolicy>("/api/mcp/server/policy"),
     updatePolicy: (data: Record<string, any>) => patch<MCPAccessPolicy>("/api/mcp/server/policy", data),
-    audit: async (limit = 50, offset = 0): Promise<MCPAuditEntry[]> => {
-      const res = await get<any>(`/api/mcp/server/audit?limit=${limit}&offset=${offset}`);
+    audit: async (projectId: string, limit = 50, offset = 0): Promise<MCPAuditEntry[]> => {
+      const params = new URLSearchParams({
+        project_id: projectId,
+        limit: String(limit),
+        offset: String(offset),
+      });
+      const res = await get<any>(`/api/mcp/server/audit?${params.toString()}`);
       return Array.isArray(res) ? res : (res?.entries ?? []);
     },
     exposure: () => get<any>("/api/mcp/server/exposure"),
