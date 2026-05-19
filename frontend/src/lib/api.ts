@@ -445,10 +445,17 @@ export const agents = {
   exportConfig: (id: string) => request<any>(`/api/agents/${id}/export`),
   importConfig: (data: Record<string, unknown>) => request<any>("/api/agents/import", { method: "POST", body: JSON.stringify(data) }),
   evolution: {
-    scan: () => request<any>("/api/agents/evolution/scan"),
-    candidates: (id: string) => request<any>(`/api/agents/${id}/evolution/candidates`),
-    promote: (id: string, learningId: number, targetFile?: string) => request<any>(`/api/agents/${id}/evolution/promote/${learningId}${targetFile ? `?target_file=${encodeURIComponent(targetFile)}` : ""}`, { method: "POST" }),
-    auto: (id: string) => request<any>(`/api/agents/${id}/evolution/auto`, { method: "POST" }),
+    scan: (projectId: string) =>
+      request<any>(`/api/agents/evolution/scan?project_id=${encodeURIComponent(projectId)}`),
+    candidates: (id: string, projectId: string) =>
+      request<any>(`/api/agents/${id}/evolution/candidates?project_id=${encodeURIComponent(projectId)}`),
+    promote: (id: string, learningId: number, projectId: string, targetFile?: string) => {
+      const params = new URLSearchParams({ project_id: projectId });
+      if (targetFile) params.set("target_file", targetFile);
+      return request<any>(`/api/agents/${id}/evolution/promote/${learningId}?${params}`, { method: "POST" });
+    },
+    auto: (id: string, projectId: string) =>
+      request<any>(`/api/agents/${id}/evolution/auto?project_id=${encodeURIComponent(projectId)}`, { method: "POST" }),
   },
 };
 

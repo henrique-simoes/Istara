@@ -344,6 +344,24 @@ def test_security_benchmark_detects_meta_hyperagent_project_scope_paths() -> Non
     assert result.scorecard["triggered_paths"] == sorted(changed_paths)
 
 
+def test_security_benchmark_detects_self_evolution_project_scope_paths() -> None:
+    matrix = load_matrix(ROOT / "security" / "control_matrix.json")
+
+    changed_paths = [
+        "backend/app/api/routes/agents.py",
+        "backend/app/agents/devops_agent.py",
+        "backend/app/core/self_evolution.py",
+        "frontend/src/lib/api.ts",
+        "tests/test_agent_learning_scope.py",
+        "tests/test_project_scope_contracts.py",
+    ]
+    result = evaluate_matrix(matrix, changed_paths=changed_paths)
+
+    assert result.passed is True
+    assert result.scorecard["auth_security_change_detected"] is True
+    assert result.scorecard["triggered_paths"] == sorted(changed_paths)
+
+
 def test_security_benchmark_detects_background_process_project_scope_paths() -> None:
     matrix = load_matrix(ROOT / "security" / "control_matrix.json")
 
