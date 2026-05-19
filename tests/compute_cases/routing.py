@@ -214,6 +214,48 @@ def test_relay_candidates_require_matching_project_scope_for_project_content():
     assert "relay-unscoped" not in {node.node_id for node in project_candidates}
 
 
+def test_sorted_servers_filters_donated_nodes_by_project_scope():
+    registry = ComputeRegistry()
+    local_node = ComputeNode(
+        node_id="local",
+        name="Server Local",
+        host="http://localhost:1234",
+        source="local",
+        provider_type="lmstudio",
+        is_healthy=True,
+        loaded_models=["llama3"],
+    )
+    scoped_relay = ComputeNode(
+        node_id="relay-a",
+        name="Project A Relay",
+        host="",
+        source="relay",
+        provider_type="ollama",
+        is_healthy=True,
+        loaded_models=["llama3"],
+        allowed_project_ids=["project-a"],
+    )
+    other_relay = ComputeNode(
+        node_id="relay-b",
+        name="Project B Relay",
+        host="",
+        source="relay",
+        provider_type="ollama",
+        is_healthy=True,
+        loaded_models=["llama3"],
+        allowed_project_ids=["project-b"],
+    )
+    registry.register_node(local_node)
+    registry.register_node(scoped_relay)
+    registry.register_node(other_relay)
+
+    unscoped_ids = {node.node_id for node in registry._sorted_servers()}
+    project_ids = {node.node_id for node in registry._sorted_servers(project_id="project-a")}
+
+    assert unscoped_ids == {"local"}
+    assert project_ids == {"local", "relay-a"}
+
+
 def test_no_model_loaded_nodes_are_recovery_candidates_not_normal_candidates():
     registry = ComputeRegistry()
     reachable_without_model = ComputeNode(

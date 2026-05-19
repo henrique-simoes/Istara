@@ -246,6 +246,8 @@
 <ul>
 <li><code>frontend/src/components/common/EnsembleHealthView.tsx</code></li>
 <li><code>backend/app/core/consensus.py</code></li>
+<li><code>backend/app/core/validation.py</code></li>
+<li><code>backend/app/core/agent_execution.py</code></li>
 </ul>
 <h2 id="state-api-and-backend-contracts">State, API, And Backend Contracts</h2>
 <h3 id="stores">Stores</h3>
@@ -259,16 +261,19 @@
 <h2 id="architecture-notes">Architecture Notes</h2>
 <ul>
 <li>The feature is mounted through <code>frontend/src/components/common/EnsembleHealthView.tsx</code> and the UI navigation path recorded in the inventory.</li>
+<li>Project-bound ensemble validation must carry the active <code>project_id</code> into adversarial review, self-MoA, full ensemble, debate rounds, model-server selection, and validation embeddings, so donated relay/browser compute is only selected when authorized for that project.</li>
+<li>Validation calls without project context remain server-owned/local only; cross-project compute aggregation is reserved for explicit admin-only surfaces.</li>
 <li>The frontmatter and manifest entries are the durable contract for agents updating this page after code changes.</li>
 <li>When the referenced component, store, route, agent, skill, or test behavior changes, regenerate and validate the feature documentation.</li>
 </ul>
 <h2 id="agents-skills-llm-mcp-and-permissions">Agents, Skills, LLM, MCP, And Permissions</h2>
 <ul>
-<li>No direct agent, skill, LLM, or MCP behavior is asserted beyond the cited source files.</li>
+<li>Ensemble LLM calls must preserve project scope when validating task output or skill artifacts.</li>
 </ul>
 <h2 id="tests-and-verification">Tests And Verification</h2>
 <ul>
-<li>No focused test reference recorded yet.</li>
+<li><code>tests/test_validation_project_scope.py</code></li>
+<li><code>tests/test_evaluation_skill.py</code></li>
 </ul>
 <h2 id="related-features">Related Features</h2>
 <ul>
@@ -281,7 +286,7 @@
 </ul>
 <h2 id="compass-evidence">Compass Evidence</h2>
 <ul>
-<li>Spec/task: CF-SPEC-53 / CF-657</li>
+<li>Spec/task: CF-SPEC-53 / CF-657; CF-SPEC-92 / CF-1170</li>
 <li>Inventory source: <code>docs/features/inventory.json</code></li>
 </ul>
 <h2 id="when-to-update">When To Update</h2>

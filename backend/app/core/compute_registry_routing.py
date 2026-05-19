@@ -38,12 +38,17 @@ class ComputeRegistryRoutingMixin:
         require_tools: bool = False,
         require_vision: bool = False,
         min_context: int = 0,
+        project_id: str | None = None,
     ) -> list[ComputeNode]:
         """Get nodes sorted by priority (lower = better), healthy first.
 
         Backward compat with LLMRouter._sorted_servers().
         """
-        servers = list(self._nodes.values())
+        servers = [
+            node
+            for node in self._nodes.values()
+            if self._node_authorized_for_project_content(node, project_id)
+        ]
         if require_tools:
             # Nodes with detected tool support
             tool_nodes = [

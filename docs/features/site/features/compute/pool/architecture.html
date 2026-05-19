@@ -270,6 +270,7 @@
 <li>Bound browser/JWT relay sessions use <code>current_user_context_for_payload</code> before deriving donation scope, and <code>_scope_from_user</code> re-reads the database user role before granting all-project admin scope.</li>
 <li>Team-mode compute donation strings with wildcard project scope are rejected at relay validation so legacy all-project tokens cannot become global project processors.</li>
 <li><code>ComputeRegistry._select_candidates(..., project_id=...)</code> is the central guard: relay/browser nodes are excluded unless the project scope matches, preventing unpatched callers without project context from leaking content to donated machines.</li>
+<li><code>ComputeRegistry._sorted_servers(project_id=...)</code> applies the same project visibility rule for legacy validation and LLM router compatibility paths, so ensemble validation can use authorized project donors without making unscoped validation global.</li>
 <li><code>ComputeNode.chat</code>, <code>ComputeNode.chat_stream</code>, <code>ComputeNode.embed</code>, and <code>ComputeNode.embed_batch</code> also require the request project to match <code>allowed_project_ids</code> before direct relay/browser websocket or streaming dispatch, preventing tests, maintenance scripts, or future services from bypassing registry project filtering.</li>
 <li><code>ComputeRegistry.get_stats(project_id=...)</code> and <code>get_warnings(project_id=...)</code> reuse the same project visibility rule so the regular Compute Pool UI cannot disclose other projects&#x27; donors, models, hosts, or RAM totals. The <code>/api/compute/nodes</code>, <code>/api/compute/stats</code>, and <code>/api/compute/model-warnings</code> routes reject missing <code>project_id</code> instead of falling back to global admin capacity; global fleet stats are exposed only by <code>/api/admin/compute/stats</code> after <code>require_global_admin</code>.</li>
 <li>The frontmatter and manifest entries are the durable contract for agents updating this page after code changes.</li>
@@ -284,11 +285,13 @@
 <li><code>tests/test_compute.py</code></li>
 <li><code>tests/compute_cases/status_contracts.py</code></li>
 <li><code>tests/compute_cases/stats_websocket.py</code></li>
+<li><code>tests/compute_cases/routing.py</code></li>
 <li><code>tests/test_project_scope_contracts.py</code></li>
 <li><code>tests/test_project_rbac.py</code></li>
 <li><code>tests/test_compute_registry_hardening.py</code></li>
 <li><code>tests/test_compute_registry_model_loading.py</code></li>
 <li><code>tests/test_network_discovery.py</code></li>
+<li><code>tests/test_validation_project_scope.py</code></li>
 </ul>
 <h2 id="related-features">Related Features</h2>
 <ul>
@@ -301,7 +304,7 @@
 </ul>
 <h2 id="compass-evidence">Compass Evidence</h2>
 <ul>
-<li>Spec/task: CF-SPEC-60 / CF-774; CF-SPEC-63 / CF-814; CF-SPEC-63 / CF-815; CF-SPEC-66 / CF-856; CF-SPEC-70 / CF-899; CF-SPEC-90 / CF-1142</li>
+<li>Spec/task: CF-SPEC-60 / CF-774; CF-SPEC-63 / CF-814; CF-SPEC-63 / CF-815; CF-SPEC-66 / CF-856; CF-SPEC-70 / CF-899; CF-SPEC-90 / CF-1142; CF-SPEC-92 / CF-1170</li>
 <li>Inventory source: <code>docs/features/inventory.json</code></li>
 </ul>
 <h2 id="when-to-update">When To Update</h2>
