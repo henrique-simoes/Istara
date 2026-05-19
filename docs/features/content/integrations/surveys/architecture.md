@@ -10,7 +10,7 @@ code_references: ["frontend/src/components/integrations/SurveysTab.tsx", "fronte
 api_references: ["backend/app/api/routes/surveys.py"]
 test_references: ["tests/test_surveys.py", "tests/test_project_scope_contracts.py"]
 last_verified: 2026-05-19
-compass: CF-SPEC-53 / CF-657; CF-SPEC-60 / CF-762
+compass: CF-SPEC-53 / CF-657; CF-SPEC-60 / CF-762; CF-SPEC-60 / CF-776
 ---
 
 # Survey Integrations Architecture
@@ -39,7 +39,8 @@ Surveys configures participant question and survey collection flows connected to
 
 - The feature is mounted through `frontend/src/components/integrations/SurveysTab.tsx` and the UI navigation path recorded in the inventory.
 - `SurveysTab` requests survey integrations and links with the active project id, clears stale integration state on project changes, and renders only survey integrations whose `project_id` matches the active project.
-- `backend/app/api/routes/surveys.py` requires `project_id` on project-facing integration and survey-link lists, and survey links must use an integration bound to the same project before syncing or returning responses.
+- `SurveysTab` passes the active project id into survey link sync and integration deletion actions, while `SurveySetupWizard` refuses connection tests without an active project and stamps new integrations with that project id.
+- `backend/app/api/routes/surveys.py` requires `project_id` on project-facing integration and survey-link lists, integration deletion, platform survey listing/creation, link sync, and response reads. Survey links must use an integration bound to the same active project before syncing or returning responses, and stale ids from another project resolve as not found.
 - The frontmatter and manifest entries are the durable contract for agents updating this page after code changes.
 - When the referenced component, store, route, agent, skill, or test behavior changes, regenerate and validate the feature documentation.
 
@@ -63,7 +64,7 @@ Surveys configures participant question and survey collection flows connected to
 
 ## Compass Evidence
 
-- Spec/task: CF-SPEC-53 / CF-657; CF-SPEC-60 / CF-762
+- Spec/task: CF-SPEC-53 / CF-657; CF-SPEC-60 / CF-762; CF-SPEC-60 / CF-776
 - Inventory source: `docs/features/inventory.json`
 
 ## When To Update

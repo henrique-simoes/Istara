@@ -202,6 +202,39 @@ def test_integrations_subtabs_defensively_filter_by_active_project() -> None:
     assert "set({ mcpClients: [], mcpLoading: true, error: null });" in store
 
 
+def test_integrations_survey_detail_actions_require_active_project_scope() -> None:
+    api = read_repo("frontend/src/lib/api.ts")
+    surveys = read_repo("frontend/src/components/integrations/SurveysTab.tsx")
+    setup = read_repo("frontend/src/components/integrations/SurveySetupWizard.tsx")
+    route = read_repo("backend/app/api/routes/surveys.py")
+
+    assert "delete: (id: string, projectId: string)" in api
+    assert "surveys: (id: string, projectId: string)" in api
+    assert "createSurvey: (id: string, data: any, projectId: string)" in api
+    assert "sync: (id: string, projectId: string)" in api
+    assert "responses: (id: string, projectId: string)" in api
+    assert "/api/surveys/integrations/${id}?project_id=${encodeURIComponent(projectId)}" in api
+    assert "/api/surveys/integrations/${id}/surveys?project_id=${encodeURIComponent(projectId)}" in api
+    assert "/api/surveys/integrations/${id}/create?project_id=${encodeURIComponent(projectId)}" in api
+    assert "/api/surveys/links/${id}/sync?project_id=${encodeURIComponent(projectId)}" in api
+    assert "/api/surveys/links/${id}/responses?project_id=${encodeURIComponent(projectId)}" in api
+
+    assert "if (!activeProjectId) return;" in surveys
+    assert "surveysApi.links.sync(linkId, activeProjectId)" in surveys
+    assert "surveysApi.integrations.delete(id, activeProjectId)" in surveys
+    assert "fetchSurveyIntegrations(activeProjectId)" in surveys
+
+    assert "if (!selectedPlatform || !activeProjectId) return;" in setup
+    assert "project_id: activeProjectId" in setup
+    assert "disabled={testing || !activeProjectId}" in setup
+
+    assert "async def _get_project_integration_or_404" in route
+    assert "async def _get_project_link_or_404" in route
+    assert "integration.project_id != scoped_project_id" in route
+    assert "link.project_id != scoped_project_id" in route
+    assert route.count('project_id: str | None = Query(None, description="Active project")') >= 5
+
+
 def test_integrations_mcp_detail_actions_require_active_project_scope() -> None:
     api = read_repo("frontend/src/lib/api.ts")
     mcp_tab = read_repo("frontend/src/components/integrations/MCPTab.tsx")

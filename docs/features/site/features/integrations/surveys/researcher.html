@@ -266,9 +266,12 @@
 <ul>
 <li>Project-scoped state or artifact updates associated with survey integrations.</li>
 <li>Visible status, lists, forms, generated artifacts, or review results shown by the referenced component and routes.</li>
+<li>Survey platform connection, integration removal, linked survey sync, and response review operate only on survey records owned by the active project.</li>
 </ul>
 <h2 id="caveats">Caveats</h2>
 <ul>
+<li>No active project means survey platform connection and sync actions are disabled or rejected.</li>
+<li>A survey integration or link from another project should not appear or be actionable in the current project&#x27;s Survey tab, even if the same user can administer both projects.</li>
 <li>Needs interactive verification for exact empty, loading, error, and permission-denied states.</li>
 <li>Do not expand this documentation beyond the cited source files without adding new code or walkthrough evidence.</li>
 </ul>
@@ -285,7 +288,7 @@
 <ul>
 <li>Source files: <code>frontend/src/components/integrations/SurveysTab.tsx</code>, <code>frontend/src/components/integrations/SurveySetupWizard.tsx</code>, <code>backend/app/api/routes/surveys.py</code></li>
 <li>API references: <code>backend/app/api/routes/surveys.py</code></li>
-<li>Tests: none recorded</li>
+<li>Tests: <code>tests/test_surveys.py</code>, <code>tests/test_project_scope_contracts.py</code></li>
 </ul>
         </article>
         <aside class="toc-panel" aria-label="Page sections">

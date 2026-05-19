@@ -8,9 +8,9 @@ related_features: ["integrations.deployments", "findings.evidence"]
 related_glossary: ["triangulation"]
 code_references: ["frontend/src/components/integrations/SurveysTab.tsx", "frontend/src/components/integrations/SurveySetupWizard.tsx", "backend/app/api/routes/surveys.py"]
 api_references: ["backend/app/api/routes/surveys.py"]
-test_references: []
-last_verified: 2026-05-15
-compass: CF-SPEC-53 / CF-657
+test_references: ["tests/test_surveys.py", "tests/test_project_scope_contracts.py"]
+last_verified: 2026-05-19
+compass: CF-SPEC-53 / CF-657; CF-SPEC-60 / CF-776
 ---
 
 # Survey Integrations
@@ -45,9 +45,12 @@ Survey Integrations exists so the work represented by Integrations > Surveys has
 
 - Project-scoped state or artifact updates associated with survey integrations.
 - Visible status, lists, forms, generated artifacts, or review results shown by the referenced component and routes.
+- Survey platform connection, integration removal, linked survey sync, and response review operate only on survey records owned by the active project.
 
 ## Caveats
 
+- No active project means survey platform connection and sync actions are disabled or rejected.
+- A survey integration or link from another project should not appear or be actionable in the current project's Survey tab, even if the same user can administer both projects.
 - Needs interactive verification for exact empty, loading, error, and permission-denied states.
 - Do not expand this documentation beyond the cited source files without adding new code or walkthrough evidence.
 
@@ -64,4 +67,4 @@ Survey Integrations exists so the work represented by Integrations > Surveys has
 
 - Source files: `frontend/src/components/integrations/SurveysTab.tsx`, `frontend/src/components/integrations/SurveySetupWizard.tsx`, `backend/app/api/routes/surveys.py`
 - API references: `backend/app/api/routes/surveys.py`
-- Tests: none recorded
+- Tests: `tests/test_surveys.py`, `tests/test_project_scope_contracts.py`

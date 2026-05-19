@@ -53,9 +53,10 @@ export default function SurveysTab() {
     : [];
 
   const handleSync = async (linkId: string) => {
+    if (!activeProjectId) return;
     setSyncing(linkId);
     try {
-      await surveysApi.links.sync(linkId);
+      await surveysApi.links.sync(linkId, activeProjectId);
       await fetchLinks();
     } catch {
       // silent
@@ -65,10 +66,11 @@ export default function SurveysTab() {
   };
 
   const handleDeleteIntegration = async (id: string) => {
+    if (!activeProjectId) return;
     try {
       if (canManageSurveyIntegrations) {
-        await surveysApi.integrations.delete(id);
-      } else if (activeProjectId) {
+        await surveysApi.integrations.delete(id, activeProjectId);
+      } else {
         await permissionRequests.create({
           project_id: activeProjectId,
           action: "surveys.integration.delete",
