@@ -8,9 +8,9 @@ related_features: ["chat.model-controls", "settings.connection-strings"]
 related_glossary: ["rag"]
 code_references: ["frontend/src/components/common/SettingsView.tsx", "frontend/src/lib/modelProviders.ts", "backend/app/api/routes/llm_servers.py"]
 api_references: ["backend/app/api/routes/llm_servers.py"]
-test_references: ["frontend/src/lib/modelProviders.test.ts"]
-last_verified: 2026-05-15
-compass: CF-SPEC-53 / CF-657
+test_references: ["frontend/src/lib/modelProviders.test.ts", "tests/test_llm_servers.py"]
+last_verified: 2026-05-19
+compass: CF-SPEC-94 / CF-1193
 ---
 
 # LLM Server Settings
@@ -32,7 +32,7 @@ LLM Server Settings exists so the work represented by Settings > LLM Servers has
 ## How UX Researchers Use It
 
 - Open Settings > LLM Servers from the Istara navigation or the parent tab.
-- Use the visible controls in this surface to work with llm server settings in the active project context.
+- Global admins can use the visible controls to manage shared LLM provider endpoints. Non-admin team-mode users see the locked state instead of shared endpoint details.
 - Review the output in the same view and follow the related feature links when the workflow moves into another Istara surface.
 
 ## Supported Workflows
@@ -43,8 +43,8 @@ LLM Server Settings exists so the work represented by Settings > LLM Servers has
 
 ## Inputs, Outputs, And Expected Outcomes
 
-- Project-scoped state or artifact updates associated with llm server settings.
-- Visible status, lists, forms, generated artifacts, or review results shown by the referenced component and routes.
+- Admin-only shared provider endpoint inventory, status, forms, and health-check results shown by the referenced component and routes.
+- Non-admin users receive a permission-gated state with no endpoint inventory or probe controls.
 
 ## Caveats
 

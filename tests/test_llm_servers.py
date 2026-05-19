@@ -58,6 +58,17 @@ async def test_llm_servers_list_requires_auth():
 
 
 @pytest.mark.asyncio
+async def test_llm_servers_list_requires_global_admin(researcher_headers):
+    """Shared LLM server inventory is admin-only in team mode."""
+    await init_db()
+    settings.team_mode = True
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        response = await ac.get("/api/llm-servers", headers=researcher_headers)
+        assert response.status_code == 403
+
+
+@pytest.mark.asyncio
 async def test_llm_server_health_check_requires_auth():
     """Manual LLM server health checks require authentication in team mode."""
     await init_db()
@@ -66,6 +77,21 @@ async def test_llm_server_health_check_requires_auth():
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
         response = await ac.post("/api/llm-servers/server-1/health-check", json={})
         assert response.status_code == 401
+
+
+@pytest.mark.asyncio
+async def test_llm_server_health_check_requires_global_admin(researcher_headers):
+    """Non-admin users cannot trigger explicit provider probes."""
+    await init_db()
+    settings.team_mode = True
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        response = await ac.post(
+            "/api/llm-servers/server-1/health-check",
+            headers=researcher_headers,
+            json={},
+        )
+        assert response.status_code == 403
 
 
 def test_local_server_detection_rejects_remote_hosts_marked_local():
@@ -182,11 +208,14 @@ async def test_health_check_reregisters_persisted_server_if_runtime_node_is_miss
 
 
 @pytest.mark.asyncio
-async def test_researcher_can_discover_shared_llm_servers(researcher_headers, monkeypatch):
+async def test_researcher_cannot_discover_shared_llm_servers(researcher_headers, monkeypatch):
     await init_db()
     settings.team_mode = True
+    called = False
 
     async def fake_discover_and_register():
+        nonlocal called
+        called = True
         return [{"name": "LAN Studio", "host": "http://10.0.0.10:1234"}]
 
     monkeypatch.setattr(
@@ -197,16 +226,19 @@ async def test_researcher_can_discover_shared_llm_servers(researcher_headers, mo
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
         response = await ac.post("/api/llm-servers/discover", headers=researcher_headers)
-        assert response.status_code == 200
-        assert response.json()["discovered"] == 1
+        assert response.status_code == 403
+        assert called is False
 
 
 @pytest.mark.asyncio
-async def test_researcher_can_add_remote_shared_llm_server(researcher_headers, monkeypatch):
+async def test_researcher_cannot_add_remote_shared_llm_server(researcher_headers, monkeypatch):
     await init_db()
     settings.team_mode = True
+    called = False
 
     async def fake_health(self):
+        nonlocal called
+        called = True
         self.is_healthy = True
         self.latency_ms = 3.0
         self.loaded_models = ["donated-model"]
@@ -226,14 +258,12 @@ async def test_researcher_can_add_remote_shared_llm_server(researcher_headers, m
                 "is_local": True,
             },
         )
-        assert response.status_code == 200
-        body = response.json()
-        assert body["host"] == "http://192.168.1.25:11434"
-        assert body["is_healthy"] is True
+        assert response.status_code == 403
+        assert called is False
 
 
 @pytest.mark.asyncio
-async def test_llm_server_registration_rejects_public_plaintext_url(researcher_headers):
+async def test_llm_server_registration_rejects_public_plaintext_url(auth_headers):
     await init_db()
     settings.team_mode = True
 
@@ -241,7 +271,7 @@ async def test_llm_server_registration_rejects_public_plaintext_url(researcher_h
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
         response = await ac.post(
             "/api/llm-servers",
-            headers=researcher_headers,
+            headers=auth_headers,
             json={
                 "name": "Public Plaintext",
                 "provider_type": "openai_compat",
@@ -254,7 +284,7 @@ async def test_llm_server_registration_rejects_public_plaintext_url(researcher_h
 
 
 @pytest.mark.asyncio
-async def test_llm_server_registration_rejects_embedded_credentials(researcher_headers):
+async def test_llm_server_registration_rejects_embedded_credentials(auth_headers):
     await init_db()
     settings.team_mode = True
 
@@ -262,7 +292,7 @@ async def test_llm_server_registration_rejects_embedded_credentials(researcher_h
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
         response = await ac.post(
             "/api/llm-servers",
-            headers=researcher_headers,
+            headers=auth_headers,
             json={
                 "name": "Credential URL",
                 "provider_type": "openai_compat",
@@ -275,7 +305,7 @@ async def test_llm_server_registration_rejects_embedded_credentials(researcher_h
 
 
 @pytest.mark.asyncio
-async def test_llm_server_registration_rejects_sensitive_query_tokens(researcher_headers):
+async def test_llm_server_registration_rejects_sensitive_query_tokens(auth_headers):
     await init_db()
     settings.team_mode = True
 
@@ -283,7 +313,7 @@ async def test_llm_server_registration_rejects_sensitive_query_tokens(researcher
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
         response = await ac.post(
             "/api/llm-servers",
-            headers=researcher_headers,
+            headers=auth_headers,
             json={
                 "name": "Query Token",
                 "provider_type": "openai_compat",
