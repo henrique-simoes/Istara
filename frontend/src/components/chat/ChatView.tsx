@@ -346,21 +346,24 @@ function ChatToolbar({
   );
 }
 
-function SteeringQueueIndicator({ agentId }: { agentId: string | null }) {
+function SteeringQueueIndicator({ agentId, projectId }: { agentId: string | null; projectId: string | null }) {
   const [status, setStatus] = useState<any>(null);
 
   useEffect(() => {
-    if (!agentId) return;
+    if (!agentId || !projectId) {
+      setStatus(null);
+      return;
+    }
     const fetchStatus = async () => {
       try {
-        const res = await steeringApi.getAllStatus();
+        const res = await steeringApi.getAllStatus(projectId);
         setStatus(res[agentId]);
       } catch {}
     };
     fetchStatus();
     const interval = setInterval(fetchStatus, 5000);
     return () => clearInterval(interval);
-  }, [agentId]);
+  }, [agentId, projectId]);
 
   if (!status || (!status.steering_queue_count && !status.follow_up_queue_count)) return null;
 
@@ -776,7 +779,10 @@ export default function ChatView() {
         <div className="border-t border-slate-200 dark:border-slate-800 p-4">
           <div className="max-w-3xl mx-auto">
             {/* Queue status */}
-            <SteeringQueueIndicator agentId={activeSession?.agent_id || "istara-main"} />
+            <SteeringQueueIndicator
+              agentId={activeSession?.agent_id || "istara-main"}
+              projectId={activeProjectId}
+            />
             
             {/* Pending file chips */}
             {(pendingFiles.length > 0 || pendingDocRefs.length > 0) && (

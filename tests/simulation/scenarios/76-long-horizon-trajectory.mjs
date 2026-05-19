@@ -69,6 +69,7 @@ export async function run(ctx) {
     const sessionList = await api.get(`/api/sessions/${projectId}`);
     const session = (sessionList.sessions || [])[0] || {};
     const sessionId = session.id || "istara-main";
+    const steeringAgentId = session.agent_id || "istara-main";
     checkPass("Initial Request", `Session created: ${sessionId}`);
 
     // 3. Simulate Long Horizon (Looping through steps)
@@ -78,8 +79,9 @@ export async function run(ctx) {
     console.log("    --- Phase 3: A2A & Multi-Step Coordination ---");
     
     // Simulate mid-execution steering (User changing mind or clarifying)
-    await api.post(`/api/steering/${sessionId}`, {
-      message: "Wait, focus specifically on elderly users for the font size part."
+    await api.post(`/api/steering/${steeringAgentId}`, {
+      message: "Wait, focus specifically on elderly users for the font size part.",
+      project_id: projectId,
     });
     checkPass("Steering Injection", "Mid-execution clarification queued.");
 

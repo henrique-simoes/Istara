@@ -234,7 +234,11 @@ function AgentDetail({ agent }: { agent: Agent }) {
 
           {/* Mid-execution steering — inject messages while agent is working */}
           {agent.name === "Istara" && (
-            <SteeringInput agentId={agent.id} isWorking={agent.state === "working"} />
+            <SteeringInput
+              agentId={agent.id}
+              projectId={activeProjectId}
+              isWorking={agent.state === "working"}
+            />
           )}
 
           {/* Recent Errors section */}

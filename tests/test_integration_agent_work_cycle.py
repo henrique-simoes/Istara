@@ -75,20 +75,27 @@ async def test_agent_work_cycle_integration(auth_headers):
 async def test_steering_integration_with_agents(auth_headers):
     """Verify steering can interact with agent work cycle."""
     await init_db()
+    project = await _seed_project("Steering Agent Integration")
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
         # Queue a steering message
         response = await ac.post(
             "/api/steering/istara-main",
             headers=auth_headers,
-            json={"message": "Integration test steering message"},
+            json={"message": "Integration test steering message", "project_id": project.id},
         )
         assert response.status_code in (200, 404)
 
         # Check status
-        response = await ac.get("/api/steering/istara-main/status", headers=auth_headers)
+        response = await ac.get(
+            f"/api/steering/istara-main/status?project_id={project.id}",
+            headers=auth_headers,
+        )
         assert response.status_code in (200, 404)
 
         # Clear queues
-        response = await ac.delete("/api/steering/istara-main/queues", headers=auth_headers)
+        response = await ac.delete(
+            f"/api/steering/istara-main/queues?project_id={project.id}",
+            headers=auth_headers,
+        )
         assert response.status_code in (200, 404)

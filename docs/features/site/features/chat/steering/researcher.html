@@ -241,9 +241,9 @@
   <p class="concept-line"><strong>Concepts:</strong> rag</p>
 </header>
 <h2 id="what-it-does">What It Does</h2>
-<p>Steering controls collect lightweight user guidance that can shape downstream assistant behavior and project context.</p>
+<p>Steering controls collect lightweight user guidance that can shape downstream assistant behavior for the active project.</p>
 <h2 id="why-it-exists">Why It Exists</h2>
-<p>Chat Steering exists so the work represented by Chat &gt; Steering has a stable, discoverable place in Istara&#x27;s project workflow. It keeps user actions, generated artifacts, and related follow-up surfaces connected to the active project rather than scattering them across unrelated tools.</p>
+<p>Chat Steering exists so the work represented by Chat &gt; Steering has a stable, discoverable place in Istara&#x27;s project workflow. It keeps user actions, generated artifacts, and related follow-up surfaces connected to the active project rather than scattering them across unrelated tools or other projects.</p>
 <h2 id="where-it-lives">Where It Lives</h2>
 <ul>
 <li>UI path: Chat &gt; Steering</li>
@@ -254,6 +254,7 @@
 <ul>
 <li>Open Chat &gt; Steering from the Istara navigation or the parent tab.</li>
 <li>Use the visible controls in this surface to work with chat steering in the active project context.</li>
+<li>Queue status, queued message recovery, abort, and follow-up controls show only messages for the current project.</li>
 <li>Review the output in the same view and follow the related feature links when the workflow moves into another Istara surface.</li>
 </ul>
 <h2 id="supported-workflows">Supported Workflows</h2>
@@ -264,11 +265,12 @@
 </ul>
 <h2 id="inputs-outputs-and-expected-outcomes">Inputs, Outputs, And Expected Outcomes</h2>
 <ul>
-<li>Project-scoped state or artifact updates associated with chat steering.</li>
+<li>Project-scoped steering and follow-up messages associated with the current project.</li>
 <li>Visible status, lists, forms, generated artifacts, or review results shown by the referenced component and routes.</li>
 </ul>
 <h2 id="caveats">Caveats</h2>
 <ul>
+<li>Steering controls are hidden when there is no active project because unscoped steering is not allowed.</li>
 <li>Needs interactive verification for exact empty, loading, error, and permission-denied states.</li>
 <li>Do not expand this documentation beyond the cited source files without adding new code or walkthrough evidence.</li>
 </ul>
@@ -285,7 +287,7 @@
 <ul>
 <li>Source files: <code>frontend/src/components/common/SteeringInput.tsx</code>, <code>backend/app/api/routes/steering.py</code></li>
 <li>API references: <code>backend/app/api/routes/steering.py</code></li>
-<li>Tests: <code>tests/test_steering_api.py</code></li>
+<li>Tests: <code>tests/test_steering_api.py</code>, <code>tests/test_steering_manager.py</code>, <code>tests/test_steering_project_scope_contracts.py</code></li>
 </ul>
         </article>
         <aside class="toc-panel" aria-label="Page sections">

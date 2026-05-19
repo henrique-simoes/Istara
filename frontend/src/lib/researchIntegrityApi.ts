@@ -49,55 +49,70 @@ export const codeApplications = {
     ),
 };
 
+const steeringProjectParam = (projectId: string) => `project_id=${encodeURIComponent(projectId)}`;
+
 export const steering = {
-  send: (agentId: string, message: string, mode: "one-at-a-time" | "all" = "one-at-a-time") =>
+  send: (
+    agentId: string,
+    message: string,
+    projectId: string,
+    mode: "one-at-a-time" | "all" = "one-at-a-time"
+  ) =>
     post<{ status: string; agent_id: string; queue_count: number; message: string }>(
       `/api/steering/${agentId}`,
-      { message, mode }
+      { message, mode, project_id: projectId }
     ),
 
-  followUp: (agentId: string, message: string, mode: "one-at-a-time" | "all" = "one-at-a-time") =>
+  followUp: (
+    agentId: string,
+    message: string,
+    projectId: string,
+    mode: "one-at-a-time" | "all" = "one-at-a-time"
+  ) =>
     post<{ status: string; agent_id: string; queue_count: number; message: string }>(
       `/api/steering/${agentId}/follow-up`,
-      { message, mode }
+      { message, mode, project_id: projectId }
     ),
 
-  abort: (agentId: string) =>
+  abort: (agentId: string, projectId: string) =>
     post<{ agent_id: string; cleared_steering_count: number; cleared_follow_up_count: number }>(
-      `/api/steering/${agentId}/abort`,
+      `/api/steering/${agentId}/abort?${steeringProjectParam(projectId)}`,
       {}
     ),
 
-  getStatus: (agentId: string) =>
+  getStatus: (agentId: string, projectId: string) =>
     get<{
       agent_id: string;
+      project_id: string;
       is_working: boolean;
       steering_queue_count: number;
       follow_up_queue_count: number;
       steering_mode: string;
       follow_up_mode: string;
       has_queued_messages: boolean;
-    }>(`/api/steering/${agentId}/status`),
+    }>(`/api/steering/${agentId}/status?${steeringProjectParam(projectId)}`),
 
-  getQueues: (agentId: string) =>
+  getQueues: (agentId: string, projectId: string) =>
     get<{
       agent_id: string;
-      steering_queue: { message: string; source: string; timestamp: number }[];
-      follow_up_queue: { message: string; source: string; timestamp: number }[];
-    }>(`/api/steering/${agentId}/queues`),
+      project_id: string;
+      steering_queue: { message: string; source: string; timestamp: number; metadata?: Record<string, unknown> }[];
+      follow_up_queue: { message: string; source: string; timestamp: number; metadata?: Record<string, unknown> }[];
+    }>(`/api/steering/${agentId}/queues?${steeringProjectParam(projectId)}`),
 
-  clear: (agentId: string) =>
-    del(`/api/steering/${agentId}/queues`),
+  clear: (agentId: string, projectId: string) =>
+    del(`/api/steering/${agentId}/queues?${steeringProjectParam(projectId)}`),
 
-  waitForIdle: (agentId: string, signal?: AbortSignal) =>
-    fetch(apiUrl(`/api/steering/${agentId}/idle`), { signal }),
+  waitForIdle: (agentId: string, projectId: string, signal?: AbortSignal) =>
+    fetch(apiUrl(`/api/steering/${agentId}/idle?${steeringProjectParam(projectId)}`), { signal }),
 
-  getAllStatus: () =>
+  getAllStatus: (projectId: string) =>
     get<Record<string, {
       agent_id: string;
+      project_id: string;
       is_working: boolean;
       steering_queue_count: number;
       follow_up_queue_count: number;
       has_queued_messages: boolean;
-    }>>("/api/steering"),
+    }>>(`/api/steering?${steeringProjectParam(projectId)}`),
 };
