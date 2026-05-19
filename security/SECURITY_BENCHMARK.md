@@ -114,6 +114,10 @@ missing projects, inbound channel messages for paused projects must be dropped
 before persistence or adaptive routing, and deployment activation/response
 handling must reject paused projects before participant-facing work reaches LLM
 or improvement-governance paths.
+Autonomous skill improvement and skill creation producers must also reject
+missing or blank project scope before persisting local proposal records or
+registering governed-evolution proposals; project-owned skill proposal evidence
+must not be created as global activity by omission.
 Agent registry, heartbeat, detail, identity, memory, recent-log, prompt
 diagnostic, A2A message views, A2A JSON-RPC discovery, and realtime agent
 events are also project-content surfaces: non-admin users must supply an

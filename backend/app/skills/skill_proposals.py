@@ -13,6 +13,13 @@ logger = logging.getLogger(__name__)
 
 
 class SkillProposalMixin:
+    @staticmethod
+    def _require_proposal_project_id(project_id: str | None) -> str:
+        scoped_project_id = str(project_id or "").strip()
+        if not scoped_project_id:
+            raise ValueError("project_id is required for skill improvement proposals")
+        return scoped_project_id
+
     def propose_improvement(
         self,
         skill_name: str,
@@ -24,6 +31,7 @@ class SkillProposalMixin:
         project_id: str = "",
     ) -> SkillUpdateProposal:
         """Create a proposed improvement for user review."""
+        scoped_project_id = self._require_proposal_project_id(project_id)
         proposal = SkillUpdateProposal(
             skill_name,
             field,
@@ -31,7 +39,7 @@ class SkillProposalMixin:
             proposed_value,
             reason,
             confidence,
-            project_id=project_id,
+            project_id=scoped_project_id,
         )
         self._proposals.append(proposal)
         self._save_proposals()

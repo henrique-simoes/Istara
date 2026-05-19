@@ -157,6 +157,36 @@ async def test_skill_improvement_proposals_are_filtered_by_project(monkeypatch, 
         skills_route.skill_manager._proposals = original
 
 
+def test_skill_improvement_proposal_requires_project_id(monkeypatch):
+    """Autonomous skill updates must not create unscoped/global proposals."""
+    original = skills_route.skill_manager._proposals
+    skills_route.skill_manager._proposals = []
+    monkeypatch.setattr(skills_route.skill_manager, "_save_proposals", lambda: None)
+    try:
+        with pytest.raises(ValueError, match="project_id is required"):
+            skills_route.skill_manager.propose_improvement(
+                "card-sorting",
+                "execute_prompt",
+                "old",
+                "new",
+                "missing project",
+            )
+
+        with pytest.raises(ValueError, match="project_id is required"):
+            skills_route.skill_manager.propose_improvement(
+                "card-sorting",
+                "execute_prompt",
+                "old",
+                "new",
+                "blank project",
+                project_id="   ",
+            )
+
+        assert skills_route.skill_manager._proposals == []
+    finally:
+        skills_route.skill_manager._proposals = original
+
+
 def test_skill_usage_does_not_auto_mutate_global_skill_lifecycle(monkeypatch):
     """Low utility in one project should surface for review, not mutate global skills."""
     manager = skills_route.skill_manager
@@ -249,6 +279,47 @@ async def test_skill_creation_proposals_are_filtered_by_project(monkeypatch, aut
         assert project_b.id not in ids
         assert wrong_project_reject.status_code == 404
         assert right_project_reject.status_code == 200
+    finally:
+        skills_route.skill_manager._creation_proposals = original
+
+
+def test_skill_creation_proposal_requires_project_id(monkeypatch):
+    """Autonomous skill creation must not create unscoped/global proposals."""
+    original = skills_route.skill_manager._creation_proposals
+    skills_route.skill_manager._creation_proposals = []
+    monkeypatch.setattr(skills_route.skill_manager, "_save_creation_proposals", lambda: None)
+
+    definition = {
+        "name": "auto-missing-project-skill",
+        "display_name": "Auto Missing Project Skill",
+        "description": "Should not be proposed without project scope",
+        "phase": "discover",
+        "skill_type": "analysis",
+        "plan_prompt": "Plan research for {context}.",
+        "execute_prompt": "Analyze content for patterns.",
+        "output_schema": '{"summary": "string"}',
+    }
+    try:
+        with pytest.raises(ValueError, match="project_id is required"):
+            skills_route.skill_manager.propose_skill_creation(
+                definition,
+                source_task_id="task-missing-project",
+                agent_id="agent-missing-project",
+                reason="missing project",
+                confidence=70,
+            )
+
+        with pytest.raises(ValueError, match="project_id is required"):
+            skills_route.skill_manager.propose_skill_creation(
+                definition,
+                source_task_id="task-blank-project",
+                agent_id="agent-blank-project",
+                reason="blank project",
+                confidence=70,
+                project_id=" ",
+            )
+
+        assert skills_route.skill_manager._creation_proposals == []
     finally:
         skills_route.skill_manager._creation_proposals = original
 
