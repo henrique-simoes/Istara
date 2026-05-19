@@ -8,9 +8,9 @@ related_features: ["settings.governed-evolution", "agents.registry"]
 related_glossary: ["a2a", "compass-forge"]
 code_references: ["frontend/src/components/meta/MetaHyperagentView.tsx", "backend/app/api/routes/meta_hyperagent.py", "backend/app/core/meta_hyperagent.py", "backend/app/skills/skill_usage.py"]
 api_references: ["backend/app/api/routes/meta_hyperagent.py"]
-test_references: ["tests/test_meta_hyperagent.py", "tests/test_project_scope_contracts.py", "tests/test_security_benchmark.py"]
+test_references: ["tests/test_meta_hyperagent.py", "tests/test_project_scope_contracts.py", "tests/test_security_benchmark.py", "tests/test_simulation_project_scope_contracts.py"]
 last_verified: 2026-05-19
-compass: CF-SPEC-60 / CF-757; CF-SPEC-68 / CF-870
+compass: CF-SPEC-60 / CF-757; CF-SPEC-68 / CF-870; CF-SPEC-106 / CF-1337
 ---
 
 # Meta-Agent Architecture
@@ -47,6 +47,7 @@ The Meta-Agent surface exposes the meta-hyperagent system for inspecting or gove
 - Skill usage stats now maintain per-project counters so Meta-Hyperagent skill-selection analysis does not infer proposals from another project's execution history.
 - Self-evolution tuning proposals require project-local learning evidence. An empty project, or a project with only global/other-project learning history, must not generate threshold-lowering proposals.
 - Confirmed Meta-Hyperagent overrides are persisted under project-specific override buckets instead of process-wide override keys.
+- Simulation scenarios that exercise Meta-Hyperagent status, proposals, variants, observations, toggles, or mutation checks pass the active simulation project id and skip scoped endpoint calls when no project id exists.
 - The frontmatter and manifest entries are the durable contract for agents updating this page after code changes.
 - When the referenced component, store, route, agent, skill, or test behavior changes, regenerate and validate the feature documentation.
 
@@ -60,6 +61,7 @@ The Meta-Agent surface exposes the meta-hyperagent system for inspecting or gove
 - `tests/test_meta_hyperagent.py`
 - `tests/test_project_scope_contracts.py`
 - `tests/test_security_benchmark.py`
+- `tests/test_simulation_project_scope_contracts.py`
 
 ## Related Features
 
@@ -73,7 +75,7 @@ The Meta-Agent surface exposes the meta-hyperagent system for inspecting or gove
 
 ## Compass Evidence
 
-- Spec/task: CF-SPEC-60 / CF-757; CF-SPEC-68 / CF-870
+- Spec/task: CF-SPEC-60 / CF-757; CF-SPEC-68 / CF-870; CF-SPEC-106 / CF-1337
 - Inventory source: `docs/features/inventory.json`
 
 ## When To Update

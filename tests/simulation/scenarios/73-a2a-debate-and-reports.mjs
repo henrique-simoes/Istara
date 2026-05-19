@@ -33,7 +33,7 @@ export async function run(ctx) {
 
   // 3. Verify all 5 agents are registered
   try {
-    const agents = await api.get("/api/agents?include_system=true");
+    const agents = await api.get(`/api/agents?include_system=true&project_id=${encodeURIComponent(projectId)}`);
     const agentList = agents.agents || agents || [];
     const systemAgents = agentList.filter((a) => ["istara-main", "istara-devops", "istara-ui-audit", "istara-ux-eval", "istara-sim"].includes(a.agent_id || a.id));
     checks.push({
@@ -153,16 +153,16 @@ export async function run(ctx) {
     checks.push({ name: "Agent personas", passed: false, detail: e.message });
   }
 
-  // 8. Verify skill proposals endpoint
+  // 8. Verify agent creation proposals endpoint
   try {
-    const proposals = await api.get("/api/agents/creation-proposals/all?limit=5");
+    const proposals = await api.get(`/api/agents/creation-proposals/all?project_id=${encodeURIComponent(projectId)}&limit=5`);
     checks.push({
-      name: "Skill proposals endpoint",
+      name: "Agent creation proposals endpoint",
       passed: true,
       detail: `${(proposals.proposals || proposals || []).length} proposals`,
     });
   } catch (e) {
-    checks.push({ name: "Skill proposals", passed: true, detail: `Optional: ${e.message}` });
+    checks.push({ name: "Agent creation proposals", passed: true, detail: `Optional: ${e.message}` });
   }
 
   return {

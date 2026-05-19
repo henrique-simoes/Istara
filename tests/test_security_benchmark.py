@@ -437,6 +437,22 @@ def test_security_benchmark_detects_skill_simulation_project_scope_paths() -> No
     assert result.scorecard["triggered_paths"] == sorted(changed_paths)
 
 
+def test_security_benchmark_detects_agent_meta_simulation_project_scope_paths() -> None:
+    matrix = load_matrix(ROOT / "security" / "control_matrix.json")
+
+    changed_paths = [
+        "tests/simulation/scenarios/44-agent-factory.mjs",
+        "tests/simulation/scenarios/52-meta-hyperagent.mjs",
+        "tests/simulation/scenarios/73-a2a-debate-and-reports.mjs",
+        "tests/test_simulation_project_scope_contracts.py",
+    ]
+    result = evaluate_matrix(matrix, changed_paths=changed_paths)
+
+    assert result.passed is True
+    assert result.scorecard["auth_security_change_detected"] is True
+    assert result.scorecard["triggered_paths"] == sorted(changed_paths)
+
+
 def test_security_benchmark_detects_meta_hyperagent_project_scope_paths() -> None:
     matrix = load_matrix(ROOT / "security" / "control_matrix.json")
 

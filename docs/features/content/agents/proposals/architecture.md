@@ -8,9 +8,9 @@ related_features: ["agents.registry", "skills.proposals", "tasks.review"]
 related_glossary: ["a2a"]
 code_references: ["frontend/src/components/agents/AgentsView.tsx", "frontend/src/lib/api.ts", "backend/app/api/routes/agents.py", "backend/app/core/agent_factory.py", "backend/app/core/improvement_governance_evidence.py", "backend/app/core/meta_hyperagent.py", "backend/app/agents/orchestrator.py", "backend/app/api/routes/permission_requests.py"]
 api_references: ["backend/app/api/routes/agents.py", "backend/app/api/routes/permission_requests.py"]
-test_references: ["tests/test_agents.py", "tests/test_project_scope_contracts.py"]
+test_references: ["tests/test_agents.py", "tests/test_project_scope_contracts.py", "tests/test_simulation_project_scope_contracts.py"]
 last_verified: 2026-05-19
-compass: CF-SPEC-60 / CF-757
+compass: CF-SPEC-60 / CF-757; CF-SPEC-106 / CF-1337
 ---
 
 # Agent Proposals Architecture
@@ -49,6 +49,7 @@ Agent proposal workflows surface project-specific suggested agent changes or act
 - The meta-orchestrator considers only unassigned tasks from non-paused projects before it routes work, reads A2A collaboration responses, sends A2A collaboration requests, or opens agent-creation proposals.
 - Agent-factory governance registration refuses project-owned proposals without a concrete project id, preventing global proposal records from autonomous routing work.
 - The Proposals tab calls `/api/agents/creation-proposals/*` with the active project id and clears proposal state when no active project is selected.
+- Simulation scenarios that exercise agent creation proposals or project-filtered agent lists pass the active simulation project id and skip scoped endpoint calls when no project id exists.
 - The route layer requires `project_id`, verifies project-admin access, and filters list/approve/reject operations through `AgentFactory` project matching.
 - Governance evidence and Meta Hyperagent observations also pass project ids so autonomous improvement review does not read proposal history from unrelated projects.
 - Approved proposal agents are created directly as project-scoped custom agents; proposal approval cannot create a universal custom agent.
@@ -63,6 +64,7 @@ Agent proposal workflows surface project-specific suggested agent changes or act
 
 - `tests/test_agents.py` covers missing project ids, cross-project proposal filtering, and reject immutability across projects.
 - `tests/test_project_scope_contracts.py` pins frontend, factory, governance, orchestrator, and Meta Hyperagent project-scope contracts.
+- `tests/test_simulation_project_scope_contracts.py` pins simulation harness project scope for agent proposal checks.
 
 ## Related Features
 
@@ -76,7 +78,7 @@ Agent proposal workflows surface project-specific suggested agent changes or act
 
 ## Compass Evidence
 
-- Spec/task: CF-SPEC-60 / CF-757
+- Spec/task: CF-SPEC-60 / CF-757; CF-SPEC-106 / CF-1337
 - Inventory source: `docs/features/inventory.json`
 
 ## When To Update

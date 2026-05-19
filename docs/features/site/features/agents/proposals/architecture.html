@@ -272,6 +272,7 @@
 <li>The meta-orchestrator considers only unassigned tasks from non-paused projects before it routes work, reads A2A collaboration responses, sends A2A collaboration requests, or opens agent-creation proposals.</li>
 <li>Agent-factory governance registration refuses project-owned proposals without a concrete project id, preventing global proposal records from autonomous routing work.</li>
 <li>The Proposals tab calls <code>/api/agents/creation-proposals/*</code> with the active project id and clears proposal state when no active project is selected.</li>
+<li>Simulation scenarios that exercise agent creation proposals or project-filtered agent lists pass the active simulation project id and skip scoped endpoint calls when no project id exists.</li>
 <li>The route layer requires <code>project_id</code>, verifies project-admin access, and filters list/approve/reject operations through <code>AgentFactory</code> project matching.</li>
 <li>Governance evidence and Meta Hyperagent observations also pass project ids so autonomous improvement review does not read proposal history from unrelated projects.</li>
 <li>Approved proposal agents are created directly as project-scoped custom agents; proposal approval cannot create a universal custom agent.</li>
@@ -286,6 +287,7 @@
 <ul>
 <li><code>tests/test_agents.py</code> covers missing project ids, cross-project proposal filtering, and reject immutability across projects.</li>
 <li><code>tests/test_project_scope_contracts.py</code> pins frontend, factory, governance, orchestrator, and Meta Hyperagent project-scope contracts.</li>
+<li><code>tests/test_simulation_project_scope_contracts.py</code> pins simulation harness project scope for agent proposal checks.</li>
 </ul>
 <h2 id="related-features">Related Features</h2>
 <ul>
@@ -299,7 +301,7 @@
 </ul>
 <h2 id="compass-evidence">Compass Evidence</h2>
 <ul>
-<li>Spec/task: CF-SPEC-60 / CF-757</li>
+<li>Spec/task: CF-SPEC-60 / CF-757; CF-SPEC-106 / CF-1337</li>
 <li>Inventory source: <code>docs/features/inventory.json</code></li>
 </ul>
 <h2 id="when-to-update">When To Update</h2>
