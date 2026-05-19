@@ -42,6 +42,8 @@ The Meta-Agent surface exposes the meta-hyperagent system for inspecting or gove
 - All project-facing Meta-Hyperagent status, proposals, observations, variants, toggle, and mutation routes require an explicit `project_id`, verify the project is visible to the admin subject, and filter persisted records by exact project id.
 - Enabling the observation loop, approving proposals, and confirming variants require the requested project to be active and unpaused. Disabling or rejecting remains available so a paused project can stop or discard queued improvement work.
 - The observation loop is no longer started globally during application startup. It starts only from a project-scoped UI/API request and records its active project id.
+- The observation loop re-checks that active project immediately before observation and again before proposal analysis, so a project paused mid-cycle cannot continue into proposal generation.
+- Each observation cycle re-checks the owning project before collecting observations and again before proposal analysis. If the project is paused or deleted while the loop is running, the loop stops instead of producing new improvement proposals.
 - Skill usage stats now maintain per-project counters so Meta-Hyperagent skill-selection analysis does not infer proposals from another project's execution history.
 - Self-evolution tuning proposals require project-local learning evidence. An empty project, or a project with only global/other-project learning history, must not generate threshold-lowering proposals.
 - Confirmed Meta-Hyperagent overrides are persisted under project-specific override buckets instead of process-wide override keys.

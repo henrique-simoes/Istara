@@ -28,6 +28,7 @@ from pathlib import Path
 from typing import Any
 
 from app.config import settings
+from app.core.project_activity import is_project_active
 
 logger = logging.getLogger(__name__)
 
@@ -914,7 +915,19 @@ class MetaHyperagent:
         try:
             while self._running:
                 try:
+                    if not await is_project_active(scoped_project_id):
+                        logger.info(
+                            "Meta-hyperagent stopped because project %s is paused or missing",
+                            scoped_project_id,
+                        )
+                        break
                     await self.observe_cycle(project_id=scoped_project_id)
+                    if not await is_project_active(scoped_project_id):
+                        logger.info(
+                            "Meta-hyperagent skipped proposal analysis because project %s is paused or missing",
+                            scoped_project_id,
+                        )
+                        break
                     await self.analyze_and_propose(project_id=scoped_project_id)
                 except Exception as exc:
                     logger.error(f"Meta-hyperagent observation cycle error: {exc}")

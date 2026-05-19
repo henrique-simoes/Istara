@@ -39,13 +39,14 @@ Project Settings configure project-specific metadata and operational preferences
 - The feature is mounted through `frontend/src/components/settings/ProjectSettingsView.tsx` and the UI navigation path recorded in the inventory.
 - Paused projects may still keep backlog tasks, scheduled tasks, and watched-folder configuration, but those surfaces must not dispatch work until the project is unpaused.
 - Paused projects also block project-content skill execution/planning, autoresearch runs, self-evolution scans/promotions, Meta-Hyperagent starts/applies, loop resume, and schedule creation or re-enable paths.
+- The pause route performs a project-owned background shutdown pass: it stops a running Meta-Hyperagent loop for that project, requests stop on an AutoResearch loop owned by that project, and stops active messaging channel adapters for that project.
 - Project Settings lists pending permission requests with `project_id=activeProjectId` and sends the same active project id when approving or rejecting, while the backend resolves request ids by both request id and project id before authorization or mutation.
 - The frontmatter and manifest entries are the durable contract for agents updating this page after code changes.
 - When the referenced component, store, route, agent, skill, or test behavior changes, regenerate and validate the feature documentation.
 
 ## Agents, Skills, LLM, MCP, And Permissions
 
-- Agent, scheduler, file watcher, skill proposal, autoresearch, self-evolution, Meta-Hyperagent, MCP, and skill execution side effects must treat `Project.is_paused` as a hard dispatch guard.
+- Agent, scheduler, file watcher, skill proposal, autoresearch, self-evolution, Meta-Hyperagent, messaging integration, MCP, and skill execution side effects must treat `Project.is_paused` as a hard dispatch guard.
 
 ## Tests And Verification
 

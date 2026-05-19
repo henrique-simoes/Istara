@@ -337,7 +337,12 @@ class MetaOrchestrator:
                     # Merge any existing A2A collaboration responses into task context
                     try:
                         from app.services.a2a import get_messages
-                        collab_responses = await get_messages(db, routing["primary_agent_id"], limit=10)
+                        collab_responses = await get_messages(
+                            db,
+                            routing["primary_agent_id"],
+                            limit=10,
+                            project_id=task.project_id,
+                        )
                         for resp in collab_responses:
                             resp_type = resp.get("message_type") if isinstance(resp, dict) else getattr(resp, "message_type", "")
                             if resp_type != "collaboration_response":

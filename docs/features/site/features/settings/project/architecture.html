@@ -261,13 +261,14 @@
 <li>The feature is mounted through <code>frontend/src/components/settings/ProjectSettingsView.tsx</code> and the UI navigation path recorded in the inventory.</li>
 <li>Paused projects may still keep backlog tasks, scheduled tasks, and watched-folder configuration, but those surfaces must not dispatch work until the project is unpaused.</li>
 <li>Paused projects also block project-content skill execution/planning, autoresearch runs, self-evolution scans/promotions, Meta-Hyperagent starts/applies, loop resume, and schedule creation or re-enable paths.</li>
+<li>The pause route performs a project-owned background shutdown pass: it stops a running Meta-Hyperagent loop for that project, requests stop on an AutoResearch loop owned by that project, and stops active messaging channel adapters for that project.</li>
 <li>Project Settings lists pending permission requests with <code>project_id=activeProjectId</code> and sends the same active project id when approving or rejecting, while the backend resolves request ids by both request id and project id before authorization or mutation.</li>
 <li>The frontmatter and manifest entries are the durable contract for agents updating this page after code changes.</li>
 <li>When the referenced component, store, route, agent, skill, or test behavior changes, regenerate and validate the feature documentation.</li>
 </ul>
 <h2 id="agents-skills-llm-mcp-and-permissions">Agents, Skills, LLM, MCP, And Permissions</h2>
 <ul>
-<li>Agent, scheduler, file watcher, skill proposal, autoresearch, self-evolution, Meta-Hyperagent, MCP, and skill execution side effects must treat <code>Project.is_paused</code> as a hard dispatch guard.</li>
+<li>Agent, scheduler, file watcher, skill proposal, autoresearch, self-evolution, Meta-Hyperagent, messaging integration, MCP, and skill execution side effects must treat <code>Project.is_paused</code> as a hard dispatch guard.</li>
 </ul>
 <h2 id="tests-and-verification">Tests And Verification</h2>
 <ul>

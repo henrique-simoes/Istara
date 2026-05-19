@@ -1,6 +1,7 @@
 """Tests for Meta-Agent API routes — status, proposals, variants, observations, toggle."""
 
 import asyncio
+import contextlib
 import uuid
 
 import pytest
@@ -143,6 +144,10 @@ async def test_meta_hyperagent_start_retains_task_and_stop_cancels(monkeypatch):
         settings.meta_hyperagent_observation_interval_hours = 1
         monkeypatch.setattr(mh, "observe_cycle", observe_once)
         monkeypatch.setattr(mh, "analyze_and_propose", analyze_none)
+        monkeypatch.setattr(
+            "app.core.meta_hyperagent.is_project_active",
+            lambda _project_id: asyncio.sleep(0, result=True),
+        )
 
         task = mh.start(project_id="project-meta-loop")
         await asyncio.sleep(0)
@@ -152,12 +157,52 @@ async def test_meta_hyperagent_start_retains_task_and_stop_cancels(monkeypatch):
         assert mh.active_project_id == "project-meta-loop"
 
         mh.stop(project_id="project-meta-loop")
-        await asyncio.sleep(0)
+        with contextlib.suppress(asyncio.CancelledError):
+            await asyncio.wait_for(task, timeout=1)
 
         assert mh.is_running is False
         assert mh._task is None
         assert task.cancelled() or task.done()
     finally:
+        settings.meta_hyperagent_observation_interval_hours = original_interval
+
+
+@pytest.mark.asyncio
+async def test_meta_hyperagent_stops_before_proposing_when_project_is_paused(monkeypatch):
+    from app.core.meta_hyperagent import MetaHyperagent
+
+    await init_db()
+    project_id = f"meta-pause-loop-{uuid.uuid4().hex[:8]}"
+    await create_project(project_id)
+    mh = MetaHyperagent()
+    original_interval = settings.meta_hyperagent_observation_interval_hours
+    analyzed = False
+
+    async def observe_and_pause(project_id: str | None = None):
+        async with async_session() as db:
+            project = await db.get(Project, project_id)
+            project.is_paused = True
+            await db.commit()
+        return {"timestamp": "test", "project_id": project_id}
+
+    async def analyze_none(project_id: str | None = None):
+        nonlocal analyzed
+        analyzed = True
+        return []
+
+    try:
+        settings.meta_hyperagent_observation_interval_hours = 1
+        monkeypatch.setattr(mh, "observe_cycle", observe_and_pause)
+        monkeypatch.setattr(mh, "analyze_and_propose", analyze_none)
+
+        task = mh.start(project_id=project_id)
+        await asyncio.wait_for(task, timeout=1)
+
+        assert analyzed is False
+        assert mh.is_running is False
+        assert mh.active_project_id is None
+    finally:
+        mh.stop(project_id=project_id)
         settings.meta_hyperagent_observation_interval_hours = original_interval
 
 
