@@ -7,6 +7,7 @@ from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.permissions import ProjectRole, require_project_access
@@ -16,13 +17,6 @@ from app.models.research_deployment import ResearchDeployment
 from app.services import deployment_service
 
 router = APIRouter()
-
-
-async def _get_deployment_or_404(db: AsyncSession, deployment_id: str) -> ResearchDeployment:
-    deployment = await deployment_service.get_deployment(db, deployment_id)
-    if not deployment:
-        raise HTTPException(status_code=404, detail="Deployment not found")
-    return deployment
 
 
 def _require_project_id(project_id: str | None) -> str:
@@ -41,10 +35,16 @@ async def _get_active_project_deployment_or_404(
     min_role: ProjectRole,
 ) -> ResearchDeployment:
     scoped_project_id = _require_project_id(project_id)
-    deployment = await _get_deployment_or_404(db, deployment_id)
-    if deployment.project_id != scoped_project_id:
-        raise HTTPException(status_code=404, detail="Deployment not found")
     await require_project_access(db, request, scoped_project_id, min_role=min_role)
+    result = await db.execute(
+        select(ResearchDeployment).where(
+            ResearchDeployment.id == deployment_id,
+            ResearchDeployment.project_id == scoped_project_id,
+        )
+    )
+    deployment = result.scalar_one_or_none()
+    if deployment is None:
+        raise HTTPException(status_code=404, detail="Deployment not found")
     return deployment
 
 

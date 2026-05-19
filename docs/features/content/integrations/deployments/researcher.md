@@ -10,7 +10,7 @@ code_references: ["frontend/src/components/integrations/DeploymentsTab.tsx", "fr
 api_references: ["backend/app/api/routes/deployments.py", "backend/app/services/deployment_service.py"]
 test_references: ["tests/test_deployments.py", "tests/test_project_scope_contracts.py"]
 last_verified: 2026-05-19
-compass: CF-SPEC-60 / CF-767; CF-SPEC-60 / CF-773
+compass: CF-SPEC-60 / CF-767; CF-SPEC-60 / CF-773; CF-SPEC-62 / CF-793
 ---
 
 # Research Deployments
@@ -46,6 +46,7 @@ Research Deployments exists so the work represented by Integrations > Deployment
 - Project-scoped state or artifact updates associated with research deployments that belong to the active project and the current user's authorized access.
 - Visible status, lists, forms, generated artifacts, or review results shown by the referenced component and routes, filtered to the active project before list rows, counts, or detail views are rendered.
 - Deployment detail, lifecycle actions, channels, participant conversations, response handling, transcripts, analytics, and overview counts are accepted only when their deployment and channel records belong to the same active project.
+- Stale deployment links or selected deployment ids from another project are treated as not found after the current active project is authorized, so switching projects cannot expose participant activity or mutate another project's deployment.
 
 ## Caveats
 
