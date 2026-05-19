@@ -681,7 +681,13 @@ def test_agents_a2a_project_view_passes_active_project_id() -> None:
     assert "agents = filter_agent_dicts_for_project(agents, project_id, request)" in a2a_route
     assert "min_role=\"viewer\"" in a2a_route
     assert "async def get_project_inbox(" in a2a_service
+    assert "project_id: Mapped[str] = mapped_column(String(36), default=\"\", index=True)" in read_repo("backend/app/models/agent.py")
+    assert "project_id=scoped_project_id" in a2a_service
+    assert "metadata_project_ids and metadata_project_ids != {scoped_project_id}" in a2a_service
+    assert "async def mark_read(" in a2a_service and "project_id: str," in a2a_service
+    assert "_require_project_id(project_id, \"A2A message mutations\")" in a2a_service
     assert "resolved_project_ids = await _resolve_message_project_ids(db, messages)" in a2a_service
+    assert "claims[\"row\"] = row_project_id" in a2a_service
     assert "async def get_conversation_thread(" in a2a_service
     assert "project_id: str," in a2a_service
     assert "project_id=task.project_id" in lifecycle
@@ -1122,7 +1128,7 @@ def test_governed_evolution_requires_active_project_scope() -> None:
         assert "await get_visible_project_or_404(db, request, scoped_project_id" in route
 
     assert "include_global=False" in reasoning_route
-    assert "include_global: bool = True" in reasoning_core
+    assert "include_global: bool = False" in reasoning_core
     assert "DGMHArchiveVariant.project_id == safe_project_id" in archive_core
     assert "DGMHArchiveVariant.project_id == project_id" in archive_core
 
@@ -1184,16 +1190,7 @@ def test_notifications_are_active_project_scoped() -> None:
     assert "markRead: (id: string, projectId: string)" in api and "unreadCount: (projectId: string)" in api and "markAllRead: (projectId: string)" in api and "delete: (id: string, projectId: string)" in api and "JSON.stringify({ project_id: projectId })" in api
 
     assert '"backup",\n  "notifications",' in navigation
-    assert "async def _require_notification_project_scope" in route
-    assert "async def _get_project_notification_or_404" in route and "await require_project_access(db, request, scoped_project_id, min_role=min_role)" in route
-    assert "from app.config import settings" not in route
-    assert "get_subject" not in route
-    assert "is_global_admin" not in route
-    assert "explicit admin-global scope" not in route
-    assert 'scoped_project_id = project_id.strip() if project_id else ""' in route
-    assert 'raise HTTPException(status_code=400, detail="project_id is required")' in route
-    assert "query = query.where(Notification.project_id == scoped_project_id)" in route
-    assert ".where(Notification.project_id == scoped_project_id)" in route
-    assert "Notification.id == notification_id" in route and "Notification.project_id == scoped_project_id" in route
+    assert all(marker in route for marker in ("async def _require_notification_project_scope", "async def _get_project_notification_or_404", "await require_project_access(db, request, scoped_project_id, min_role=min_role)", 'scoped_project_id = project_id.strip() if project_id else ""', 'raise HTTPException(status_code=400, detail="project_id is required")', "query = query.where(Notification.project_id == scoped_project_id)", ".where(Notification.project_id == scoped_project_id)", "Notification.id == notification_id", "Notification.project_id == scoped_project_id"))
+    assert all(marker not in route for marker in ("from app.config import settings", "get_subject", "is_global_admin", "explicit admin-global scope"))
     assert '"agent_promotion"' in route and '"agent_promotion"' in types and "agent_promotion:" in list_tab
     assert '{ id: "agent_promotion", label: "Agent Promotion" }' in category_filter and '{ id: "agent_promotion", label: "Agent Promotion" }' in prefs_tab

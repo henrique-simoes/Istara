@@ -1061,6 +1061,7 @@ async def _exec_send_agent_message(params: dict, project_id: str, agent_id: str)
             to_agent_id=params["to_agent_id"],
             message_type=params.get("message_type", "request"),
             content=params["content"],
+            project_id=project_id,
             metadata={"project_id": project_id},
         )
         return f"Message sent to agent '{params['to_agent_id']}': {params['content'][:100]}"

@@ -268,10 +268,11 @@
 <h2 id="architecture-notes">Architecture Notes</h2>
 <ul>
 <li>The feature is mounted through <code>frontend/src/components/agents/AgentsView.tsx</code> and the UI navigation path recorded in the inventory.</li>
-<li>Project views pass the active <code>project_id</code> into <code>/api/agents/a2a/log</code>; the backend requires that scope and only returns messages tagged with that project or messages that can be traced to a task in that project.</li>
-<li>Direct <code>/api/agents/{agent_id}/messages</code> reads and writes also validate that the source and destination agents are visible in the supplied project before returning or persisting A2A records.</li>
+<li>Project views pass the active <code>project_id</code> into <code>/api/agents/a2a/log</code>; the backend requires that scope and only returns messages persisted with that project or messages that can be traced to a task in that project.</li>
+<li>Direct <code>/api/agents/{agent_id}/messages</code> reads and writes also validate that the source and destination agents are visible in the supplied project before returning or persisting A2A records; service writes fail closed without an explicit project id and store it on the message row.</li>
 <li>Public A2A JSON-RPC <code>tasks/send</code>, <code>tasks/get</code>, <code>tasks/list</code>, and <code>agent/discover</code> also require <code>project_id</code> and enforce project authorization before project-content messages or agent catalogs are persisted, listed, or disclosed.</li>
-<li><code>backend/app/services/a2a.py</code> resolves each message&#x27;s project only when explicit metadata or <code>task_id</code> ownership agrees with any project-scoped sender/recipient agent claims; conflicting claims are treated as unresolved and excluded from project logs, inboxes, and thread context.</li>
+<li>New A2A messages persist a first-class <code>project_id</code> in <code>backend/app/models/agent.py</code>; service writes reject missing active project scope and conflicting <code>project_id</code>/<code>projectId</code> metadata aliases before persistence or realtime broadcast.</li>
+<li><code>backend/app/services/a2a.py</code> resolves each message&#x27;s project from the row project id first, then explicit metadata or <code>task_id</code> ownership only when those claims agree with any project-scoped sender/recipient agent claims; conflicting claims are treated as unresolved and excluded from project logs, inboxes, and thread context.</li>
 <li>Conversation and debate thread reconstruction requires the task&#x27;s project id, so two projects that accidentally share a <code>context_id</code> cannot contribute messages to the same LLM prompt.</li>
 <li>Project-scoped sub-agents only receive inbox messages for their own project; universal system agents may process multiple projects only as separate project-resolved messages with <code>project_id</code> attached.</li>
 <li>LLM-callable system actions that assign agents, move/update tasks, attach/read documents, or send A2A messages look up tasks, documents, and target agents inside the active project before mutating or persisting coordination records.</li>
@@ -287,7 +288,7 @@
 </ul>
 <h2 id="tests-and-verification">Tests And Verification</h2>
 <ul>
-<li><code>tests/test_agents.py</code>, <code>tests/test_a2a_project_claims.py</code>, <code>tests/test_a2a_security.py</code>, <code>tests/test_websocket.py</code>, and <code>tests/test_project_scope_contracts.py</code> verify that project-scoped A2A logs exclude unrelated project/global messages, conflicting metadata/task/agent project claims are dropped, JSON-RPC task writes and discovery cannot proceed without project scope, background inbox/thread helpers do not mix projects, and realtime delivery resolves only consistent project claims.</li>
+<li><code>tests/test_agents.py</code>, <code>tests/test_a2a_project_claims.py</code>, <code>tests/test_a2a_service_scope.py</code>, <code>tests/test_a2a_security.py</code>, <code>tests/test_websocket.py</code>, and <code>tests/test_project_scope_contracts.py</code> verify that project-scoped A2A logs exclude unrelated project/global messages, service writes and mark-read mutations require project scope, conflicting metadata/task/row/agent project claims are dropped, JSON-RPC task writes and discovery cannot proceed without project scope, background inbox/thread helpers do not mix projects, and realtime delivery resolves only consistent project claims.</li>
 </ul>
 <h2 id="related-features">Related Features</h2>
 <ul>
@@ -300,7 +301,7 @@
 </ul>
 <h2 id="compass-evidence">Compass Evidence</h2>
 <ul>
-<li>Spec/task: CF-SPEC-56 / CF-698; CF-SPEC-60 / CF-776; CF-SPEC-64 / CF-828; CF-SPEC-74 / CF-949</li>
+<li>Spec/task: CF-SPEC-56 / CF-698; CF-SPEC-60 / CF-776; CF-SPEC-64 / CF-828; CF-SPEC-74 / CF-949; CF-SPEC-99 / CF-1244</li>
 <li>Inventory source: <code>docs/features/inventory.json</code></li>
 </ul>
 <h2 id="when-to-update">When To Update</h2>

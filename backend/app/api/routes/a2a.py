@@ -444,14 +444,18 @@ async def a2a_jsonrpc(request: Request):
             )
             if denied:
                 return denied
-            msg = await a2a_svc.send_message(
-                db,
-                from_agent_id=from_agent_id or "external",
-                to_agent_id=to_agent_id or "istara-main",
-                message_type="a2a_task",
-                content=content,
-                metadata=metadata,
-            )
+            try:
+                msg = await a2a_svc.send_message(
+                    db,
+                    from_agent_id=from_agent_id or "external",
+                    to_agent_id=to_agent_id or "istara-main",
+                    message_type="a2a_task",
+                    content=content,
+                    project_id=project_id,
+                    metadata=metadata,
+                )
+            except ValueError as exc:
+                return _a2a_jsonrpc_error(400, -32602, str(exc), req_id)
             await _record_a2a_event(
                 request,
                 "a2a.tasks_send.accepted",

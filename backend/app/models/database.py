@@ -200,6 +200,10 @@ async def init_db() -> None:
             "NOT NULL DEFAULT ''",
             "CREATE INDEX IF NOT EXISTS ix_loop_executions_project_id "
             "ON loop_executions(project_id)",
+            "ALTER TABLE a2a_messages ADD COLUMN project_id VARCHAR(36) "
+            "NOT NULL DEFAULT ''",
+            "CREATE INDEX IF NOT EXISTS ix_a2a_messages_project_id "
+            "ON a2a_messages(project_id)",
             "ALTER TABLE scheduled_tasks ADD COLUMN is_running BOOLEAN NOT NULL DEFAULT 0",
             "ALTER TABLE scheduled_tasks ADD COLUMN agent_id VARCHAR(36)",
             "ALTER TABLE scheduled_tasks ADD COLUMN loop_type VARCHAR(50) NOT NULL DEFAULT 'cron'",

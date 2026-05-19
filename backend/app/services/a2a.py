@@ -35,8 +35,25 @@ def _metadata_text(metadata: dict, *keys: str) -> str | None:
     return None
 
 
-def _message_project_id(message: A2AMessage) -> str | None:
+def _message_row_project_id(message: A2AMessage) -> str | None:
+    value = getattr(message, "project_id", None)
+    if isinstance(value, str) and value.strip():
+        return value.strip()
+    return None
+
+
+def _message_metadata_project_id(message: A2AMessage) -> str | None:
     return _metadata_text(_message_metadata(message), "project_id", "projectId")
+
+
+def _message_project_id(message: A2AMessage) -> str | None:
+    return _message_row_project_id(message) or _message_metadata_project_id(message)
+
+
+def _require_project_id(project_id: str, context: str = "A2A messages") -> str:
+    if not isinstance(project_id, str) or not project_id.strip():
+        raise ValueError(f"project_id is required for {context}")
+    return project_id.strip()
 
 
 def _message_task_id(message: A2AMessage) -> str | None:
@@ -124,9 +141,12 @@ async def _resolve_message_project_ids(
     resolved: dict[str, str] = {}
     for message in messages:
         claims: dict[str, str] = {}
-        message_project_id = _message_project_id(message)
-        if message_project_id:
-            claims["metadata"] = message_project_id
+        row_project_id = _message_row_project_id(message)
+        if row_project_id:
+            claims["row"] = row_project_id
+        metadata_project_id = _message_metadata_project_id(message)
+        if metadata_project_id:
+            claims["metadata"] = metadata_project_id
         task_id = _message_task_id(message)
         if task_id and task_project_ids.get(task_id):
             claims["task"] = task_project_ids[task_id]
@@ -136,10 +156,10 @@ async def _resolve_message_project_ids(
                 claims[f"agent:{agent_id}"] = agent_project_id
 
         unique_project_ids = set(claims.values())
-        has_metadata_or_task_claim = bool(message_project_id) or bool(
+        has_message_or_task_claim = bool(row_project_id) or bool(metadata_project_id) or bool(
             task_id and task_project_ids.get(task_id)
         )
-        if len(unique_project_ids) == 1 and has_metadata_or_task_claim:
+        if len(unique_project_ids) == 1 and has_message_or_task_claim:
             resolved[str(message.id)] = next(iter(unique_project_ids))
         elif len(unique_project_ids) > 1:
             logger.warning(
@@ -171,6 +191,8 @@ async def send_message(
     to_agent_id: str | None,
     message_type: str,
     content: str,
+    *,
+    project_id: str,
     metadata: dict | None = None,
 ) -> dict:
     """Send an A2A message between agents.
@@ -212,19 +234,31 @@ async def send_message(
             f"Must be one of: {', '.join(sorted(ALLOWED_MESSAGE_TYPES))}"
         )
 
+    scoped_project_id = _require_project_id(project_id)
+    metadata_payload = dict(metadata or {})
+    metadata_project_ids = {
+        str(metadata_payload[key]).strip()
+        for key in ("project_id", "projectId")
+        if isinstance(metadata_payload.get(key), str) and str(metadata_payload[key]).strip()
+    }
+    if metadata_project_ids and metadata_project_ids != {scoped_project_id}:
+        raise ValueError("A2A metadata project_id does not match active project")
+    metadata_payload["project_id"] = scoped_project_id
+
     msg = A2AMessage(
         id=str(uuid.uuid4()),
+        project_id=scoped_project_id,
         from_agent_id=from_agent_id,
         to_agent_id=to_agent_id,
         message_type=normalized_type,  # Store normalized type
         content=content,
-        extra_data=json.dumps(metadata or {}),
+        extra_data=json.dumps(metadata_payload),
     )
     db.add(msg)
     await db.commit()
     await db.refresh(msg)
 
-    result = _message_to_dict(msg)
+    result = _message_to_dict(msg, project_id=scoped_project_id)
 
     # Broadcast via WebSocket (if available)
     try:
@@ -358,6 +392,7 @@ async def send_task_request(
         to_agent_id=to_agent_id,
         message_type="task_request",
         content=f"New task assigned: {task_title}",
+        project_id=project_id,
         metadata={
             "task_id": task.id,
             "project_id": project_id,
@@ -375,9 +410,11 @@ async def get_messages(
     agent_id: str,
     limit: int = 50,
     unread_only: bool = False,
-    project_id: str | None = None,
+    *,
+    project_id: str,
 ) -> list[dict]:
     """Get messages for an agent (sent to it or broadcast)."""
+    scoped_project_id = _require_project_id(project_id, "A2A message reads")
     query = select(A2AMessage).where(
         or_(
             A2AMessage.to_agent_id == agent_id,
@@ -388,14 +425,12 @@ async def get_messages(
     if unread_only:
         query = query.where(A2AMessage.read == False)
 
-    fetch_limit = _project_scoped_fetch_limit(limit) if project_id else limit
+    fetch_limit = _project_scoped_fetch_limit(limit)
     query = query.order_by(A2AMessage.created_at.desc()).limit(fetch_limit)
     result = await db.execute(query)
     messages = list(result.scalars().all())
-    if project_id:
-        messages = await _filter_messages_by_project(db, messages, project_id)
-        return [_message_to_dict(m, project_id=project_id) for m in messages[:limit]]
-    return [_message_to_dict(m) for m in messages[:limit]]
+    messages = await _filter_messages_by_project(db, messages, scoped_project_id)
+    return [_message_to_dict(m, project_id=scoped_project_id) for m in messages[:limit]]
 
 
 async def get_project_inbox(
@@ -496,35 +531,36 @@ async def get_conversation_thread(
 async def get_full_log(
     db: AsyncSession,
     limit: int = 100,
-    project_id: str | None = None,
+    *,
+    project_id: str,
 ) -> list[dict]:
     """Get the full A2A message log."""
-    fetch_limit = _project_scoped_fetch_limit(limit) if project_id else limit
+    scoped_project_id = _require_project_id(project_id, "A2A message reads")
+    fetch_limit = _project_scoped_fetch_limit(limit)
     query = select(A2AMessage).order_by(A2AMessage.created_at.desc()).limit(fetch_limit)
     result = await db.execute(query)
     messages = list(result.scalars().all())
-    if project_id:
-        messages = await _filter_messages_by_project(db, messages, project_id)
-        return [_message_to_dict(m, project_id=project_id) for m in messages[:limit]]
-    return [_message_to_dict(m) for m in messages[:limit]]
+    messages = await _filter_messages_by_project(db, messages, scoped_project_id)
+    return [_message_to_dict(m, project_id=scoped_project_id) for m in messages[:limit]]
 
 
 async def mark_read(
     db: AsyncSession,
     message_id: str,
-    project_id: str | None = None,
+    *,
+    project_id: str,
 ) -> bool:
     """Mark a message as read."""
+    scoped_project_id = _require_project_id(project_id, "A2A message mutations")
     result = await db.execute(
         select(A2AMessage).where(A2AMessage.id == message_id)
     )
     msg = result.scalar_one_or_none()
     if not msg:
         return False
-    if project_id:
-        scoped = await _filter_messages_by_project(db, [msg], project_id)
-        if not scoped:
-            return False
+    scoped = await _filter_messages_by_project(db, [msg], scoped_project_id)
+    if not scoped:
+        return False
     msg.read = True
     await db.commit()
     return True

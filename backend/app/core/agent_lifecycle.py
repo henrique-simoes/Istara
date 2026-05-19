@@ -653,6 +653,7 @@ class AgentLifecycleMixin:
                         "Consulting-grade MECE reporting completed for project "
                         f"{project_id}. Updated {updated_count} reports."
                     ),
+                    project_id=project_id,
                     metadata={"project_id": project_id, "task_id": task_id},
                 )
         except Exception as e:
@@ -755,6 +756,7 @@ class AgentLifecycleMixin:
                 to_agent_id=msg_from,
                 message_type="collaboration_response",
                 content=analysis[:2000],
+                project_id=task.project_id,
                 metadata={
                     "task_id": task_id,
                     "project_id": task.project_id,
@@ -798,6 +800,7 @@ class AgentLifecycleMixin:
                     "I need a critical review of this analysis.\n\n"
                     f"Task: {task.title}\n\nOutput:\n{output.summary[:1500]}"
                 ),
+                project_id=task.project_id,
                 metadata={
                     "task_id": task.id,
                     "project_id": task.project_id,
@@ -905,6 +908,7 @@ class AgentLifecycleMixin:
                 to_agent_id=msg_from,
                 message_type="debate_response",
                 content=critique[:2000],
+                project_id=project_id,
                 metadata={
                     "context_id": metadata.get("context_id", ""),
                     "task_id": task_id,
@@ -951,6 +955,7 @@ class AgentLifecycleMixin:
                     to_agent_id="istara-main",
                     message_type="delegate",
                     content=json.dumps(report_msg),
+                    project_id=project_id,
                     metadata={"project_id": project_id},
                 )
 

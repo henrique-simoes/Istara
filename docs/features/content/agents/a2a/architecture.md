@@ -6,11 +6,11 @@ audience: architecture
 status: documented
 related_features: ["agents.registry", "loops.agent-loops"]
 related_glossary: ["a2a"]
-code_references: ["frontend/src/components/agents/AgentsView.tsx", "frontend/src/stores/agentStore.ts", "frontend/src/lib/api.ts", "backend/app/api/routes/agents.py", "backend/app/api/agent_project_scope.py", "backend/app/api/routes/a2a.py", "backend/app/api/websocket.py", "backend/app/services/a2a.py", "backend/app/core/agent_lifecycle.py", "backend/app/core/sub_agent_worker.py", "backend/app/skills/system_actions.py"]
+code_references: ["frontend/src/components/agents/AgentsView.tsx", "frontend/src/stores/agentStore.ts", "frontend/src/lib/api.ts", "backend/app/api/routes/agents.py", "backend/app/api/agent_project_scope.py", "backend/app/api/routes/a2a.py", "backend/app/api/websocket.py", "backend/app/services/a2a.py", "backend/app/models/agent.py", "backend/alembic/versions/019_a2a_message_project_scope.py", "backend/app/core/agent_lifecycle.py", "backend/app/core/sub_agent_worker.py", "backend/app/skills/system_actions.py"]
 api_references: ["backend/app/api/routes/agents.py", "backend/app/api/agent_project_scope.py", "backend/app/api/routes/a2a.py", "backend/app/api/websocket.py"]
-test_references: ["tests/test_agents.py", "tests/test_a2a_project_claims.py", "tests/test_a2a_security.py", "tests/test_websocket.py", "tests/test_project_scope_contracts.py"]
+test_references: ["tests/test_agents.py", "tests/test_a2a_project_claims.py", "tests/test_a2a_service_scope.py", "tests/test_a2a_security.py", "tests/test_websocket.py", "tests/test_project_scope_contracts.py"]
 last_verified: 2026-05-19
-compass: CF-SPEC-56 / CF-698; CF-SPEC-60 / CF-776; CF-SPEC-64 / CF-828; CF-SPEC-74 / CF-949
+compass: CF-SPEC-56 / CF-698; CF-SPEC-60 / CF-776; CF-SPEC-64 / CF-828; CF-SPEC-74 / CF-949; CF-SPEC-99 / CF-1244
 ---
 
 # Agent-To-Agent Log Architecture
@@ -46,10 +46,11 @@ The A2A tab displays agent-to-agent communication or coordination events for ope
 ## Architecture Notes
 
 - The feature is mounted through `frontend/src/components/agents/AgentsView.tsx` and the UI navigation path recorded in the inventory.
-- Project views pass the active `project_id` into `/api/agents/a2a/log`; the backend requires that scope and only returns messages tagged with that project or messages that can be traced to a task in that project.
-- Direct `/api/agents/{agent_id}/messages` reads and writes also validate that the source and destination agents are visible in the supplied project before returning or persisting A2A records.
+- Project views pass the active `project_id` into `/api/agents/a2a/log`; the backend requires that scope and only returns messages persisted with that project or messages that can be traced to a task in that project.
+- Direct `/api/agents/{agent_id}/messages` reads and writes also validate that the source and destination agents are visible in the supplied project before returning or persisting A2A records; service writes fail closed without an explicit project id and store it on the message row.
 - Public A2A JSON-RPC `tasks/send`, `tasks/get`, `tasks/list`, and `agent/discover` also require `project_id` and enforce project authorization before project-content messages or agent catalogs are persisted, listed, or disclosed.
-- `backend/app/services/a2a.py` resolves each message's project only when explicit metadata or `task_id` ownership agrees with any project-scoped sender/recipient agent claims; conflicting claims are treated as unresolved and excluded from project logs, inboxes, and thread context.
+- New A2A messages persist a first-class `project_id` in `backend/app/models/agent.py`; service writes reject missing active project scope and conflicting `project_id`/`projectId` metadata aliases before persistence or realtime broadcast.
+- `backend/app/services/a2a.py` resolves each message's project from the row project id first, then explicit metadata or `task_id` ownership only when those claims agree with any project-scoped sender/recipient agent claims; conflicting claims are treated as unresolved and excluded from project logs, inboxes, and thread context.
 - Conversation and debate thread reconstruction requires the task's project id, so two projects that accidentally share a `context_id` cannot contribute messages to the same LLM prompt.
 - Project-scoped sub-agents only receive inbox messages for their own project; universal system agents may process multiple projects only as separate project-resolved messages with `project_id` attached.
 - LLM-callable system actions that assign agents, move/update tasks, attach/read documents, or send A2A messages look up tasks, documents, and target agents inside the active project before mutating or persisting coordination records.
@@ -65,7 +66,7 @@ The A2A tab displays agent-to-agent communication or coordination events for ope
 
 ## Tests And Verification
 
-- `tests/test_agents.py`, `tests/test_a2a_project_claims.py`, `tests/test_a2a_security.py`, `tests/test_websocket.py`, and `tests/test_project_scope_contracts.py` verify that project-scoped A2A logs exclude unrelated project/global messages, conflicting metadata/task/agent project claims are dropped, JSON-RPC task writes and discovery cannot proceed without project scope, background inbox/thread helpers do not mix projects, and realtime delivery resolves only consistent project claims.
+- `tests/test_agents.py`, `tests/test_a2a_project_claims.py`, `tests/test_a2a_service_scope.py`, `tests/test_a2a_security.py`, `tests/test_websocket.py`, and `tests/test_project_scope_contracts.py` verify that project-scoped A2A logs exclude unrelated project/global messages, service writes and mark-read mutations require project scope, conflicting metadata/task/row/agent project claims are dropped, JSON-RPC task writes and discovery cannot proceed without project scope, background inbox/thread helpers do not mix projects, and realtime delivery resolves only consistent project claims.
 
 ## Related Features
 
@@ -78,7 +79,7 @@ The A2A tab displays agent-to-agent communication or coordination events for ope
 
 ## Compass Evidence
 
-- Spec/task: CF-SPEC-56 / CF-698; CF-SPEC-60 / CF-776; CF-SPEC-64 / CF-828; CF-SPEC-74 / CF-949
+- Spec/task: CF-SPEC-56 / CF-698; CF-SPEC-60 / CF-776; CF-SPEC-64 / CF-828; CF-SPEC-74 / CF-949; CF-SPEC-99 / CF-1244
 - Inventory source: `docs/features/inventory.json`
 
 ## When To Update

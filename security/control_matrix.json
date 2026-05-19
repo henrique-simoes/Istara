@@ -112,6 +112,7 @@
         "backend/alembic/versions/*auth*.py",
         "backend/alembic/versions/*webauthn*.py",
         "backend/alembic/versions/*recovery*.py",
+        "backend/alembic/versions/*a2a*.py",
         "backend/alembic/versions/*interface*.py",
         "backend/alembic/versions/*loop*.py",
         "frontend/src/stores/authStore.ts",
@@ -184,6 +185,8 @@
         ".github/workflows/*.yml",
         "security/**",
         "tests/test_auth_security.py",
+        "tests/test_a2a_project_claims.py",
+        "tests/test_a2a_service_scope.py",
         "tests/test_a2a_security.py",
         "tests/test_websocket.py",
         "tests/test_webauthn.py",
@@ -646,7 +649,7 @@
         "tests/test_auth_security.py"
       ],
       "future_change_trigger": true,
-      "notes": "Global admin, project admin, researcher, viewer, legacy role mappings, active-project notification list/count/read-all/mark-read/delete scope, permission request list/review scope, websocket subscription, chat session/history scope, Context hierarchy prompt/list/by-id active-project scope, Context DAG session scope, memory/index scope, findings/evidence/search/report/codebook/code-review scope, task list/detail/mutation/Kanban scope, governed-evolution proposal/archive/reasoning scope, Meta-Hyperagent proposal/observation/variant scope, agent status/log/detail/learning/self-evolution/realtime/A2A-discovery, loop/background-process scope, project-owned Interfaces screens/briefs/status/configuration, integration/deployment/MCP-client list/detail/lifecycle routes, MCP client discovery/tool/call/health/delete routes, survey integration/link action routes, channel message/conversation detail scope, document library/preview routes, LLM server inventory/registration/health-check/discovery admin access, and donated-compute project scopes are governed. Project-facing APIs require an explicit active project, including notification list/count/read-all and by-id mark-read/delete actions for global admins, permission request queues/reviews for non-admin project surfaces, context document by-id routes, finding evidence-chain/link/delete by-id routes, codebook/code by-id routes, code-application review routes, and task by-id reads/mutations/review/lock/report routes; admin-only global aggregation belongs to dedicated admin surfaces. Notification persistence helpers fail closed for project-bound records without project scope, and system-wide notification-style websocket events are limited to global admins. Shared LLM provider inventory, registration, deletion, discovery, and manual health-check endpoints are not project-content lists, but they require global admin access before endpoint status, capabilities, or explicit probes are exposed. Realtime project event delivery rechecks project membership during fan-out, and browser websocket consumers reject project-bound events without the active project id. Deployment, channel, MCP client, task, context hierarchy, findings evidence, skill proposal, loop execution history/statistics, and external MCP server helpers also require explicit project scope so internal and external callers cannot fall back to global record ids. Loop execution rows persist first-class project ids for new background writes and allow only active-project legacy fallback for older rows. Startup QA/simulation loops are opt-in; project task workers, schedule execution, orchestrator routing, skill execution/planning, skill proposal producers/governance registration, channel adapter startup/inbound processing, deployment activation/response dispatch, autoresearch, Meta-Hyperagent starts/applies, and persona self-evolution skip paused or missing project context before model, proposal, or mutation work."
+      "notes": "Global admin, project admin, researcher, viewer, legacy role mappings, active-project notification list/count/read-all/mark-read/delete scope, permission request list/review scope, websocket subscription, chat session/history scope, Context hierarchy prompt/list/by-id active-project scope, Context DAG session scope, memory/index scope, findings/evidence/search/report/codebook/code-review scope, task list/detail/mutation/Kanban scope, governed-evolution proposal/archive/reasoning scope, Meta-Hyperagent proposal/observation/variant scope, agent status/log/detail/learning/self-evolution/realtime/A2A-discovery, loop/background-process scope, project-owned Interfaces screens/briefs/status/configuration, integration/deployment/MCP-client list/detail/lifecycle routes, MCP client discovery/tool/call/health/delete routes, survey integration/link action routes, channel message/conversation detail scope, document library/preview routes, LLM server inventory/registration/health-check/discovery admin access, and donated-compute project scopes are governed. Project-facing APIs require an explicit active project, including notification list/count/read-all and by-id mark-read/delete actions for global admins, permission request queues/reviews for non-admin project surfaces, context document by-id routes, finding evidence-chain/link/delete by-id routes, codebook/code by-id routes, code-application review routes, and task by-id reads/mutations/review/lock/report routes; admin-only global aggregation belongs to dedicated admin surfaces. Notification persistence helpers fail closed for project-bound records without project scope, and system-wide notification-style websocket events are limited to global admins. Shared LLM provider inventory, registration, deletion, discovery, and manual health-check endpoints are not project-content lists, but they require global admin access before endpoint status, capabilities, or explicit probes are exposed. Realtime project event delivery rechecks project membership during fan-out, and browser websocket consumers reject project-bound events without the active project id. Deployment, channel, MCP client, A2A message service writes/mutations, task, context hierarchy, findings evidence, skill proposal, loop execution history/statistics, and external MCP server helpers also require explicit project scope so internal and external callers cannot fall back to global record ids. A2A and loop execution rows persist first-class project ids for new background writes and allow only active-project legacy fallback for older rows. Startup QA/simulation loops are opt-in; project task workers, schedule execution, orchestrator routing, skill execution/planning, skill proposal producers/governance registration, channel adapter startup/inbound processing, deployment activation/response dispatch, autoresearch, Meta-Hyperagent starts/applies, and persona self-evolution skip paused or missing project context before model, proposal, or mutation work."
     },
     {
       "id": "AUTHZ-002",
@@ -968,7 +971,7 @@
         "tests/test_research_integrity.py"
       ],
       "future_change_trigger": true,
-      "notes": "Reasoning memories may influence orchestration and therefore need provenance, project visibility, prompt-injection marking, untrusted retrieval wrapping, and rollback-aware use."
+      "notes": "Reasoning memories may influence orchestration and therefore need provenance, project visibility, prompt-injection marking, project-only default retrieval, explicit global-memory opt-in, untrusted retrieval wrapping, and rollback-aware use."
     },
     {
       "id": "AI-004",
@@ -991,13 +994,17 @@
         "backend/app/skills/system_actions.py",
         "backend/app/core/replay_cache.py",
         "backend/app/services/a2a.py",
+        "backend/app/models/agent.py",
+        "backend/alembic/versions/019_a2a_message_project_scope.py",
         "backend/app/core/network_security.py",
         "tests/test_a2a_security.py",
+        "tests/test_a2a_project_claims.py",
+        "tests/test_a2a_service_scope.py",
         "tests/test_agents.py",
         "tests/test_project_scope_contracts.py"
       ],
       "future_change_trigger": true,
-      "notes": "The non-/api A2A protocol now uses route-level auth, optional team-mode agent-card auth, local-mode network-token semantics, request size caps, metadata limits, per-client rate limits, replay rejection, audit events, actor traceability, project-authorized discovery, project-resolved realtime delivery, project-resolved background agent inboxes, project-bound conversation/debate thread reconstruction, and active-project guarded LLM-callable task/A2A actions. Metadata, task, and project-scoped sender/recipient agent project claims must agree before A2A records or realtime events are considered project-resolved; conflicting claims are excluded rather than trusted."
+      "notes": "The non-/api A2A protocol now uses route-level auth, optional team-mode agent-card auth, local-mode network-token semantics, request size caps, metadata limits, per-client rate limits, replay rejection, audit events, actor traceability, project-authorized discovery, project-resolved realtime delivery, project-resolved background agent inboxes, project-bound conversation/debate thread reconstruction, and active-project guarded LLM-callable task/A2A actions. A2A service writes persist first-class project ids, reject missing active project scope, and reject conflicting metadata aliases before records or websocket broadcasts can be created. Metadata, row, task, and project-scoped sender/recipient agent project claims must agree before A2A records or realtime events are considered project-resolved; conflicting claims are excluded rather than trusted."
     },
     {
       "id": "AUDIT-001",

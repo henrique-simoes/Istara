@@ -1099,6 +1099,7 @@ async def send_message(
             to_agent_id=data.to_agent_id,
             message_type=data.message_type,
             content=data.content,
+            project_id=project_id,
             metadata=metadata,
         )
     except ValueError as exc:
