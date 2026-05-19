@@ -226,22 +226,14 @@ export const validation = {
 // --- Findings ---
 
 export const findings = {
-  nuggets: (projectId?: string) => {
-    const params = projectId ? `?project_id=${projectId}` : "";
-    return request<any[]>(`/api/findings/nuggets${params}`);
-  },
-  facts: (projectId?: string) => {
-    const params = projectId ? `?project_id=${projectId}` : "";
-    return request<any[]>(`/api/findings/facts${params}`);
-  },
-  insights: (projectId?: string) => {
-    const params = projectId ? `?project_id=${projectId}` : "";
-    return request<any[]>(`/api/findings/insights${params}`);
-  },
-  recommendations: (projectId?: string) => {
-    const params = projectId ? `?project_id=${projectId}` : "";
-    return request<any[]>(`/api/findings/recommendations${params}`);
-  },
+  nuggets: (projectId: string) =>
+    request<any[]>(`/api/findings/nuggets?project_id=${encodeURIComponent(projectId)}`),
+  facts: (projectId: string) =>
+    request<any[]>(`/api/findings/facts?project_id=${encodeURIComponent(projectId)}`),
+  insights: (projectId: string) =>
+    request<any[]>(`/api/findings/insights?project_id=${encodeURIComponent(projectId)}`),
+  recommendations: (projectId: string) =>
+    request<any[]>(`/api/findings/recommendations?project_id=${encodeURIComponent(projectId)}`),
   summary: (projectId: string) =>
     request<any>(`/api/findings/summary/${projectId}`),
   evidenceChain: (findingType: string, findingId: string) =>

@@ -35,6 +35,7 @@
         "backend/app/api/routes/chat.py",
         "backend/app/api/routes/deployments.py",
         "backend/app/api/routes/documents.py",
+        "backend/app/api/routes/findings.py",
         "backend/app/api/routes/files.py",
         "backend/app/api/routes/mcp.py",
         "backend/app/api/routes/sessions.py",
@@ -104,6 +105,8 @@
         "frontend/src/components/agents/**",
         "frontend/src/components/chat/**",
         "frontend/src/components/documents/**",
+        "frontend/src/components/findings/**",
+        "frontend/src/components/common/SearchModal.tsx",
         "frontend/src/components/interfaces/**",
         "frontend/src/components/loops/**",
         "frontend/src/components/memory/**",
@@ -151,6 +154,7 @@
         "tests/test_channels.py",
         "tests/test_deployments.py",
         "tests/test_documents.py",
+        "tests/test_findings.py",
         "tests/test_files.py",
         "tests/test_context_dag.py",
         "tests/test_backup.py",
@@ -489,6 +493,7 @@
         "backend/app/api/routes/compute.py",
         "backend/app/api/routes/channels.py",
         "backend/app/api/routes/deployments.py",
+        "backend/app/api/routes/findings.py",
         "backend/app/api/routes/dgmh_archive.py",
         "backend/app/api/routes/improvement_governance.py",
         "backend/app/api/routes/interfaces_common.py",
@@ -506,6 +511,8 @@
         "frontend/src/components/chat/ChatSessionsSidebar.tsx",
         "frontend/src/components/chat/ChatView.tsx",
         "frontend/src/components/documents/DocumentsView.tsx",
+        "frontend/src/components/findings/FindingsView.tsx",
+        "frontend/src/components/common/SearchModal.tsx",
         "frontend/src/components/memory/ContextDAGView.tsx",
         "frontend/src/components/memory/MemoryView.tsx",
         "frontend/src/components/integrations/MessagingTab.tsx",
@@ -534,6 +541,7 @@
         "tests/test_loops.py",
         "tests/test_notifications.py",
         "tests/test_documents.py",
+        "tests/test_findings.py",
         "tests/test_dgmh_archive.py",
         "tests/test_improvement_governance.py",
         "tests/test_reasoning_bank.py",
@@ -541,7 +549,7 @@
         "tests/test_auth_security.py"
       ],
       "future_change_trigger": true,
-      "notes": "Global admin, project admin, researcher, viewer, legacy role mappings, active-project notification, chat session/history scope, context DAG session scope, memory/index scope, governed-evolution proposal/archive/reasoning scope, Meta-Hyperagent proposal/observation/variant scope, agent status/log/detail, loop/background-process scope, project-owned Interfaces screens/briefs/status/configuration, integration/deployment/MCP-client lists, document library/preview routes, and donated-compute project scopes are governed. Project-facing APIs require an explicit active project; admin-only global aggregation belongs to dedicated admin surfaces."
+      "notes": "Global admin, project admin, researcher, viewer, legacy role mappings, active-project notification, chat session/history scope, context DAG session scope, memory/index scope, findings/evidence/search scope, governed-evolution proposal/archive/reasoning scope, Meta-Hyperagent proposal/observation/variant scope, agent status/log/detail, loop/background-process scope, project-owned Interfaces screens/briefs/status/configuration, integration/deployment/MCP-client lists, document library/preview routes, and donated-compute project scopes are governed. Project-facing APIs require an explicit active project; admin-only global aggregation belongs to dedicated admin surfaces."
     },
     {
       "id": "AUTHZ-002",

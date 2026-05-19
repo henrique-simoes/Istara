@@ -270,6 +270,7 @@
 </ul>
 <h2 id="caveats">Caveats</h2>
 <ul>
+<li>Findings lists and evidence chains are limited to the active project. Cross-project findings search is reserved for explicit admin reporting surfaces.</li>
 <li>Needs interactive verification for exact empty, loading, error, and permission-denied states.</li>
 <li>Do not expand this documentation beyond the cited source files without adding new code or walkthrough evidence.</li>
 </ul>
@@ -288,7 +289,7 @@
 <ul>
 <li>Source files: <code>frontend/src/components/findings/FindingsView.tsx</code>, <code>backend/app/api/routes/findings.py</code></li>
 <li>API references: <code>backend/app/api/routes/findings.py</code></li>
-<li>Tests: none recorded</li>
+<li>Tests: <code>tests/test_findings.py</code>, <code>tests/test_project_scope_contracts.py</code></li>
 </ul>
         </article>
         <aside class="toc-panel" aria-label="Page sections">

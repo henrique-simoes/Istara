@@ -1,27 +1,27 @@
 ---
 stable_id: shell.search
-title: Global Search
+title: Project Search
 ui_path: Shell > Search
 audience: researcher
-status: needs-verification
+status: documented
 related_features: ["shell.navigation", "shell.keyboard-shortcuts"]
 related_glossary: ["wcag"]
-code_references: ["frontend/src/components/layout/HomeClient.tsx", "frontend/src/components/common/SearchModal.tsx"]
-api_references: []
-test_references: []
-last_verified: 2026-05-15
-compass: CF-SPEC-53 / CF-657
+code_references: ["frontend/src/components/layout/HomeClient.tsx", "frontend/src/components/common/SearchModal.tsx", "frontend/src/lib/api.ts"]
+api_references: ["backend/app/api/routes/findings.py"]
+test_references: ["tests/test_project_scope_contracts.py", "tests/test_findings.py"]
+last_verified: 2026-05-19
+compass: CF-SPEC-60 / CF-772
 ---
 
-# Global Search
+# Project Search
 
 ## What It Does
 
-The shell exposes a command/search modal from the sidebar and keyboard shortcut so users can find navigable work surfaces and project objects.
+The shell exposes a command/search modal from the sidebar and keyboard shortcut so users can find findings inside the active project.
 
 ## Why It Exists
 
-Global Search exists so the work represented by Shell > Search has a stable, discoverable place in Istara's project workflow. It keeps user actions, generated artifacts, and related follow-up surfaces connected to the active project rather than scattering them across unrelated tools.
+Project Search exists so the work represented by Shell > Search has a stable, discoverable place in Istara's project workflow. It keeps user actions, generated artifacts, and related follow-up surfaces connected to the active project rather than scattering them across unrelated tools.
 
 ## Where It Lives
 
@@ -32,22 +32,23 @@ Global Search exists so the work represented by Shell > Search has a stable, dis
 ## How UX Researchers Use It
 
 - Open Shell > Search from the Istara navigation or the parent tab.
-- Use the visible controls in this surface to work with global search in the active project context.
+- Use the visible controls in this surface to work with project search in the active project context.
 - Review the output in the same view and follow the related feature links when the workflow moves into another Istara surface.
 
 ## Supported Workflows
 
-- Start from Shell > Search when the current research task needs global search.
+- Start from Shell > Search when the current research task needs project search.
 - Use the visible controls to create, inspect, refine, or route project work without leaving the active Istara context.
 - Move to related surfaces when needed: shell.navigation, shell.keyboard-shortcuts.
 
 ## Inputs, Outputs, And Expected Outcomes
 
-- Project-scoped state or artifact updates associated with global search.
+- Project-scoped state or artifact updates associated with project search.
 - Visible status, lists, forms, generated artifacts, or review results shown by the referenced component and routes.
 
 ## Caveats
 
+- Search results are limited to the active project. Cross-project findings search is reserved for explicit admin reporting surfaces.
 - Needs interactive verification for exact empty, loading, error, and permission-denied states.
 - Do not expand this documentation beyond the cited source files without adding new code or walkthrough evidence.
 
@@ -62,6 +63,6 @@ Global Search exists so the work represented by Shell > Search has a stable, dis
 
 ## Evidence
 
-- Source files: `frontend/src/components/layout/HomeClient.tsx`, `frontend/src/components/common/SearchModal.tsx`
-- API references: none recorded
-- Tests: none recorded
+- Source files: `frontend/src/components/layout/HomeClient.tsx`, `frontend/src/components/common/SearchModal.tsx`, `frontend/src/lib/api.ts`
+- API references: `backend/app/api/routes/findings.py`
+- Tests: `tests/test_project_scope_contracts.py`, `tests/test_findings.py`
