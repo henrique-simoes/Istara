@@ -3,14 +3,14 @@ stable_id: loops.custom
 title: Custom Loops
 ui_path: Loops > Custom
 audience: architecture
-status: needs-verification
+status: documented
 related_features: ["loops.schedules", "skills.catalog"]
 related_glossary: ["mcp"]
 code_references: ["frontend/src/components/loops/CustomLoopsTab.tsx", "backend/app/api/routes/loops.py"]
 api_references: ["backend/app/api/routes/loops.py"]
-test_references: []
-last_verified: 2026-05-15
-compass: CF-SPEC-53 / CF-657
+test_references: ["tests/test_loops.py", "tests/test_project_scope_contracts.py", "tests/test_simulation_project_scope_contracts.py", "tests/simulation/scenarios/49-loops-schedule.mjs"]
+last_verified: 2026-05-19
+compass: CF-SPEC-53 / CF-657; CF-SPEC-107 / CF-1351
 ---
 
 # Custom Loops Architecture
@@ -34,6 +34,7 @@ Custom loops provide a surface for user-defined recurring or automated research 
 
 - `backend/app/api/routes/loops.py`
 - Custom loops are created for the active project only; list/health data must not include custom schedules from other projects.
+- Simulation scenario 49 creates custom loops with the active simulation `project_id` and skips the endpoint when no scoped project id is available.
 
 ## Architecture Notes
 
@@ -49,6 +50,8 @@ Custom loops provide a surface for user-defined recurring or automated research 
 
 - `tests/test_loops.py`
 - `tests/test_project_scope_contracts.py`
+- `tests/test_simulation_project_scope_contracts.py`
+- `tests/simulation/scenarios/49-loops-schedule.mjs`
 
 ## Related Features
 
@@ -61,7 +64,7 @@ Custom loops provide a surface for user-defined recurring or automated research 
 
 ## Compass Evidence
 
-- Spec/task: CF-SPEC-53 / CF-657
+- Spec/task: CF-SPEC-53 / CF-657; CF-SPEC-107 / CF-1351
 - Inventory source: `docs/features/inventory.json`
 
 ## When To Update

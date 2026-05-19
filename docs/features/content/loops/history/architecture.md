@@ -8,9 +8,9 @@ related_features: ["loops.overview", "history.version"]
 related_glossary: ["a2a"]
 code_references: ["frontend/src/components/loops/ExecutionHistoryTab.tsx", "backend/app/api/routes/loops.py", "backend/app/services/loop_execution_service.py", "backend/app/models/loop_execution.py"]
 api_references: ["backend/app/api/routes/loops.py"]
-test_references: ["tests/test_loops.py", "tests/test_project_scope_contracts.py"]
+test_references: ["tests/test_loops.py", "tests/test_project_scope_contracts.py", "tests/test_simulation_project_scope_contracts.py", "tests/simulation/scenarios/49-loops-schedule.mjs"]
 last_verified: 2026-05-19
-compass: CF-SPEC-53 / CF-657; CF-SPEC-97 / CF-1237
+compass: CF-SPEC-53 / CF-657; CF-SPEC-97 / CF-1237; CF-SPEC-107 / CF-1351
 ---
 
 # Loop Execution History Architecture
@@ -38,6 +38,7 @@ Execution History records loop runs, outcomes, and recent automation activity.
 - `backend/app/services/loop_execution_service.py`
 - Execution history is project content: requests must include an authorized active `project_id`, and execution rows are filtered by persisted row `project_id` plus scoped legacy fallback for older metadata/source-id-only rows.
 - New loop execution records must persist `project_id`; background schedule writes pass the schedule's project id and fail closed if no project scope is available.
+- Simulation scenario 49 exercises history and statistics with the active simulation `project_id`, so the harness cannot accidentally validate a projectless aggregate.
 
 ## Architecture Notes
 
@@ -54,6 +55,8 @@ Execution History records loop runs, outcomes, and recent automation activity.
 
 - `tests/test_loops.py`
 - `tests/test_project_scope_contracts.py`
+- `tests/test_simulation_project_scope_contracts.py`
+- `tests/simulation/scenarios/49-loops-schedule.mjs`
 
 ## Related Features
 
@@ -66,7 +69,7 @@ Execution History records loop runs, outcomes, and recent automation activity.
 
 ## Compass Evidence
 
-- Spec/task: CF-SPEC-53 / CF-657; CF-SPEC-97 / CF-1237
+- Spec/task: CF-SPEC-53 / CF-657; CF-SPEC-97 / CF-1237; CF-SPEC-107 / CF-1351
 - Inventory source: `docs/features/inventory.json`
 
 ## When To Update

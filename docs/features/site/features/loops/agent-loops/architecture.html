@@ -261,6 +261,7 @@
 <li>Agent-loop configs are visible or mutable only when the agent belongs to the active project or has an explicit loop project filter for that project.</li>
 <li>Resuming a paused agent loop requires the requested project to be active and unpaused; pausing remains allowed so work can be stopped without reactivating a project.</li>
 <li>Startup keeps project-scoped task workers available for assigned active-project work, but DevOps/UI/UX/User Simulation quality loops are disabled by default and run only when <code>autonomous_quality_agents_enabled</code> is explicitly enabled.</li>
+<li>Simulation scenario 49 passes the active simulation <code>project_id</code> to agent-loop listing, config, pause, resume, and restore calls rather than exercising agent-loop routes globally by omission.</li>
 </ul>
 <h2 id="architecture-notes">Architecture Notes</h2>
 <ul>
@@ -278,6 +279,8 @@
 <ul>
 <li><code>tests/test_loops.py</code></li>
 <li><code>tests/test_project_scope_contracts.py</code></li>
+<li><code>tests/test_simulation_project_scope_contracts.py</code></li>
+<li><code>tests/simulation/scenarios/49-loops-schedule.mjs</code></li>
 </ul>
 <h2 id="related-features">Related Features</h2>
 <ul>
@@ -290,7 +293,7 @@
 </ul>
 <h2 id="compass-evidence">Compass Evidence</h2>
 <ul>
-<li>Spec/task: CF-SPEC-60 / CF-776; CF-SPEC-68 / CF-870</li>
+<li>Spec/task: CF-SPEC-60 / CF-776; CF-SPEC-68 / CF-870; CF-SPEC-107 / CF-1351</li>
 <li>Inventory source: <code>docs/features/inventory.json</code></li>
 </ul>
 <h2 id="when-to-update">When To Update</h2>

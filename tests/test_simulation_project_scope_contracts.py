@@ -80,3 +80,44 @@ def test_simulation_agent_and_meta_harnesses_pass_active_project_scope() -> None
 
     assert "/api/agents?include_system=true&project_id=${encodeURIComponent(projectId)}" in scenario_73
     assert "/api/agents/creation-proposals/all?project_id=${encodeURIComponent(projectId)}&limit=5" in scenario_73
+
+
+def test_simulation_loop_harness_passes_active_project_scope() -> None:
+    scenario_49 = read_repo("tests/simulation/scenarios/49-loops-schedule.mjs")
+
+    assert "No active project id; scoped endpoint not called" in scenario_49
+    assert "project_id=${encodeURIComponent(projectId)}" in scenario_49
+
+    for path in (
+        "/api/loops/overview",
+        "/api/loops/agents",
+        "/api/loops/health",
+        "/api/loops/executions",
+        "/api/loops/executions/stats",
+        "/api/schedules",
+    ):
+        assert f'apiGetProjectScoped("{path}"' in scenario_49
+
+    for path in (
+        "/api/schedules",
+        "/api/loops/custom",
+    ):
+        assert f'apiPostProjectScoped("{path}"' in scenario_49
+
+    assert "apiGetProjectScoped(`/api/loops/agents/${testAgentId}/config`" in scenario_49
+    assert "apiPostProjectScoped(`/api/loops/agents/${testAgentId}/pause`" in scenario_49
+    assert "apiPostProjectScoped(`/api/loops/agents/${testAgentId}/resume`" in scenario_49
+    assert "fetchProjectScoped(url, \"PATCH /api/loops/agents/{id}/config updates interval\"" in scenario_49
+    assert "fetchProjectScoped(`/api/schedules/${testScheduleId}`" in scenario_49
+
+    for path in (
+        "api.get(\"/api/loops",
+        "api.post(\"/api/loops",
+        "api.get(\"/api/schedules",
+        "api.post(\"/api/schedules",
+        "fetch(`http://localhost:8000/api/loops",
+        "fetch(\"http://localhost:8000/api/loops",
+        "fetch(`http://localhost:8000/api/schedules",
+        "fetch(\"http://localhost:8000/api/schedules",
+    ):
+        assert path not in scenario_49
