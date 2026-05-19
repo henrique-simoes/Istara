@@ -170,6 +170,24 @@ def test_security_benchmark_detects_notification_project_scope_paths() -> None:
     assert result.scorecard["triggered_paths"] == sorted(changed_paths)
 
 
+def test_security_benchmark_detects_permission_request_project_scope_paths() -> None:
+    matrix = load_matrix(ROOT / "security" / "control_matrix.json")
+
+    changed_paths = [
+        "backend/app/api/routes/permission_requests.py",
+        "frontend/src/components/admin/AdminDashboard.tsx",
+        "frontend/src/components/settings/ProjectSettingsView.tsx",
+        "frontend/src/lib/api.ts",
+        "tests/test_project_rbac.py",
+        "tests/test_project_scope_contracts.py",
+    ]
+    result = evaluate_matrix(matrix, changed_paths=changed_paths)
+
+    assert result.passed is True
+    assert result.scorecard["auth_security_change_detected"] is True
+    assert result.scorecard["triggered_paths"] == sorted(changed_paths)
+
+
 def test_security_benchmark_detects_realtime_project_scope_paths() -> None:
     matrix = load_matrix(ROOT / "security" / "control_matrix.json")
 

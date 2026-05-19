@@ -241,7 +241,7 @@
   <p class="concept-line"><strong>Concepts:</strong> wcag</p>
 </header>
 <h2 id="what-it-does">What It Does</h2>
-<p>The Admin dashboard provides administrator-only operational controls and visibility. It may aggregate metrics across projects for admins, but any compute donation string created here is still bound to a selected project.</p>
+<p>The Admin dashboard provides administrator-only operational controls and visibility. It may aggregate metrics and pending permission requests across projects for admins, but any compute donation string created here is still bound to a selected project.</p>
 <h2 id="why-it-exists">Why It Exists</h2>
 <p>Admin Dashboard exists so the work represented by Admin has a stable, discoverable place in Istara&#x27;s project workflow. It keeps user actions, generated artifacts, and related follow-up surfaces connected to the active project rather than scattering them across unrelated tools.</p>
 <h2 id="where-it-lives">Where It Lives</h2>
@@ -256,6 +256,7 @@
 <li>Use the visible controls in this surface to work with admin dashboard in the active project context.</li>
 <li>Review the output in the same view and follow the related feature links when the workflow moves into another Istara surface.</li>
 <li>Select a project when creating a compute donation string so the donated machine can only process content for that project.</li>
+<li>Treat the global pending-permission queue as admin-only; project-facing settings views still review requests inside the active project.</li>
 </ul>
 <h2 id="supported-workflows">Supported Workflows</h2>
 <ul>
@@ -287,7 +288,7 @@
 <ul>
 <li>Source files: <code>frontend/src/components/admin/AdminDashboard.tsx</code>, <code>backend/app/api/routes/admin.py</code></li>
 <li>API references: <code>backend/app/api/routes/admin.py</code></li>
-<li>Tests: <code>tests/test_project_rbac.py</code></li>
+<li>Tests: <code>tests/test_project_rbac.py</code>, <code>tests/test_project_scope_contracts.py</code></li>
 </ul>
         </article>
         <aside class="toc-panel" aria-label="Page sections">

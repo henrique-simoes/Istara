@@ -210,13 +210,166 @@ async def test_researcher_permission_request_is_reviewed_by_project_admin():
         assert any(item["id"] == request_id for item in listed.json()["requests"])
 
         reviewed = await ac.patch(
-            f"/api/permission-requests/{request_id}",
+            f"/api/permission-requests/{request_id}?project_id={project.id}",
             headers=_headers(project_admin_id, "project-admin", "researcher"),
             json={"status": "approved", "review_note": "Approved for this study."},
         )
         assert reviewed.status_code == 200
         assert reviewed.json()["status"] == "approved"
         assert reviewed.json()["reviewer_user_id"] == project_admin_id
+
+
+@pytest.mark.asyncio
+async def test_permission_request_review_requires_active_project_binding():
+    await init_db()
+    active_project = await _seed_project(f"Active Permission Scope {uuid.uuid4()}")
+    other_project = await _seed_project(f"Other Permission Scope {uuid.uuid4()}")
+    researcher_id = f"researcher-request-scope-{uuid.uuid4()}"
+    project_admin_id = f"project-admin-request-scope-{uuid.uuid4()}"
+    await _seed_member(other_project.id, researcher_id, "researcher")
+    await _seed_member(active_project.id, project_admin_id, "project_admin")
+    await _seed_member(other_project.id, project_admin_id, "project_admin")
+
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        created = await ac.post(
+            "/api/permission-requests",
+            headers=_headers(researcher_id, "researcher", "researcher"),
+            json={
+                "project_id": other_project.id,
+                "action": "project.folder",
+                "title": "Request folder change",
+            },
+        )
+        assert created.status_code == 201
+        request_id = created.json()["id"]
+
+        no_project = await ac.patch(
+            f"/api/permission-requests/{request_id}",
+            headers=_headers(project_admin_id, "project-admin", "researcher"),
+            json={"status": "approved"},
+        )
+        assert no_project.status_code == 400
+        assert no_project.json()["detail"] == "project_id is required"
+
+        wrong_active_project = await ac.patch(
+            f"/api/permission-requests/{request_id}?project_id={active_project.id}",
+            headers=_headers(project_admin_id, "project-admin", "researcher"),
+            json={"status": "approved"},
+        )
+        assert wrong_active_project.status_code == 404
+
+        reviewed = await ac.patch(
+            f"/api/permission-requests/{request_id}?project_id={other_project.id}",
+            headers=_headers(project_admin_id, "project-admin", "researcher"),
+            json={"status": "approved"},
+        )
+        assert reviewed.status_code == 200
+        assert reviewed.json()["status"] == "approved"
+        assert reviewed.json()["project_id"] == other_project.id
+
+
+@pytest.mark.asyncio
+async def test_non_admin_permission_request_mine_requires_active_project_scope():
+    await init_db()
+    project_a = await _seed_project(f"Mine Permission A {uuid.uuid4()}")
+    project_b = await _seed_project(f"Mine Permission B {uuid.uuid4()}")
+    researcher_id = f"researcher-mine-request-{uuid.uuid4()}"
+    await _seed_member(project_a.id, researcher_id, "researcher")
+    await _seed_member(project_b.id, researcher_id, "researcher")
+    headers = _headers(researcher_id, "researcher", "researcher")
+
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        created_a = await ac.post(
+            "/api/permission-requests",
+            headers=headers,
+            json={
+                "project_id": project_a.id,
+                "action": "project.folder",
+                "title": "Request A",
+            },
+        )
+        created_b = await ac.post(
+            "/api/permission-requests",
+            headers=headers,
+            json={
+                "project_id": project_b.id,
+                "action": "project.folder",
+                "title": "Request B",
+            },
+        )
+        assert created_a.status_code == 201
+        assert created_b.status_code == 201
+        request_a_id = created_a.json()["id"]
+        request_b_id = created_b.json()["id"]
+
+        unscoped = await ac.get("/api/permission-requests?mine=true", headers=headers)
+        assert unscoped.status_code == 400
+        assert unscoped.json()["detail"] == "project_id is required"
+
+        scoped = await ac.get(
+            f"/api/permission-requests?project_id={project_a.id}&mine=true",
+            headers=headers,
+        )
+        assert scoped.status_code == 200
+        request_ids = {item["id"] for item in scoped.json()["requests"]}
+        assert request_a_id in request_ids
+        assert request_b_id not in request_ids
+
+
+@pytest.mark.asyncio
+async def test_global_admin_permission_request_queue_remains_global():
+    await init_db()
+    project_a = await _seed_project(f"Admin Permission A {uuid.uuid4()}")
+    project_b = await _seed_project(f"Admin Permission B {uuid.uuid4()}")
+    researcher_a_id = f"researcher-admin-request-a-{uuid.uuid4()}"
+    researcher_b_id = f"researcher-admin-request-b-{uuid.uuid4()}"
+    await _seed_member(project_a.id, researcher_a_id, "researcher")
+    await _seed_member(project_b.id, researcher_b_id, "researcher")
+
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        created_a = await ac.post(
+            "/api/permission-requests",
+            headers=_headers(researcher_a_id, "researcher-a", "researcher"),
+            json={
+                "project_id": project_a.id,
+                "action": "project.folder",
+                "title": "Admin queue A",
+            },
+        )
+        created_b = await ac.post(
+            "/api/permission-requests",
+            headers=_headers(researcher_b_id, "researcher-b", "researcher"),
+            json={
+                "project_id": project_b.id,
+                "action": "project.folder",
+                "title": "Admin queue B",
+            },
+        )
+        assert created_a.status_code == 201
+        assert created_b.status_code == 201
+        request_a_id = created_a.json()["id"]
+        request_b_id = created_b.json()["id"]
+
+        listed = await ac.get(
+            "/api/permission-requests?status=pending",
+            headers=_headers("admin-user", "admin", "admin"),
+        )
+        assert listed.status_code == 200
+        listed_ids = {item["id"] for item in listed.json()["requests"]}
+        assert request_a_id in listed_ids
+        assert request_b_id in listed_ids
+
+        reviewed = await ac.patch(
+            f"/api/permission-requests/{request_a_id}",
+            headers=_headers("admin-user", "admin", "admin"),
+            json={"status": "approved"},
+        )
+        assert reviewed.status_code == 200
+        assert reviewed.json()["status"] == "approved"
+        assert reviewed.json()["project_id"] == project_a.id
 
 
 @pytest.mark.asyncio

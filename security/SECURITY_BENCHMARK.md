@@ -97,6 +97,12 @@ authorized active `project_id`, and missing project scope must return an error
 instead of falling back to a global inbox. Cross-project notification
 aggregation belongs only on explicit admin reporting surfaces; single
 global/system notification item operations remain admin-only.
+Permission request queues and reviews are project-content surfaces too:
+project-facing request lists require an authorized active `project_id`, requester
+`mine=true` lists cannot fall back to a cross-project inbox, and project-admin
+reviews bind the request id back to the active project before mutation. The only
+permission-request route that may omit `project_id` is the Admin dashboard's
+global queue and review path, and that path remains global-admin-only.
 Startup quality/audit/simulation loops are opt-in because they may create test
 projects, call app/API state, or use LLMs; normal project task workers,
 orchestrator routing, schedules, skill execution/planning, autoresearch,

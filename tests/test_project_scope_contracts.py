@@ -24,6 +24,30 @@ def test_interfaces_tab_label_uses_configuration_copy() -> None:
     assert 'label: "Figma"' not in source
 
 
+def test_permission_requests_bind_project_settings_to_active_project_scope() -> None:
+    route = read_repo("backend/app/api/routes/permission_requests.py")
+    api = read_repo("frontend/src/lib/api.ts")
+    project_settings = read_repo("frontend/src/components/settings/ProjectSettingsView.tsx")
+    admin_dashboard = read_repo("frontend/src/components/admin/AdminDashboard.tsx")
+
+    assert "async def _get_project_permission_request" in route
+    assert "PermissionRequest.id == request_id" in route
+    assert "PermissionRequest.project_id == project_id" in route
+    assert "project_id: str | None = None" in route
+    assert 'raise HTTPException(status_code=400, detail="project_id is required")' in route
+    assert "project_id or mine=true is required" not in route
+    assert "elif is_global_admin(subject):\n        item = await _get_permission_request" in route
+
+    assert "review: (id: string, data: { status: \"approved\" | \"rejected\"; review_note?: string }, projectId?: string)" in api
+    assert "project_id=${encodeURIComponent(projectId)}" in api
+    assert "/api/permission-requests/${id}${suffix}" in api
+
+    assert "permissionRequests.list({ project_id: activeProjectId, status: \"pending\" })" in project_settings
+    assert "permissionRequests.review(id, { status }, activeProjectId)" in project_settings
+    assert "permissionRequests.list({ status: \"pending\" })" in admin_dashboard
+    assert "permissionRequests.review(id, { status });" in admin_dashboard
+
+
 def test_interfaces_status_screens_and_handoff_require_active_project_scope() -> None:
     api = read_repo("frontend/src/lib/api.ts")
     store = read_repo("frontend/src/stores/interfacesStore.ts")

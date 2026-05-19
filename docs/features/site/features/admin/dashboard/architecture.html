@@ -241,7 +241,7 @@
   <p class="concept-line"><strong>Concepts:</strong> wcag</p>
 </header>
 <h2 id="implementation-summary">Implementation Summary</h2>
-<p>The Admin dashboard provides administrator-only operational controls and visibility. Core sections load independently so a secondary endpoint failure, such as permission requests, does not blank Users, Projects, Access, or Connection Strings. Admin is the explicit global aggregation exception, but global compute capacity comes from <code>/api/admin/compute/stats</code> after <code>require_global_admin</code>; project-facing Compute Pool routes still require an active <code>project_id</code>. Compute donation strings generated here still require a selected project scope.</p>
+<p>The Admin dashboard provides administrator-only operational controls and visibility. Core sections load independently so a secondary endpoint failure, such as permission requests, does not blank Users, Projects, Access, or Connection Strings. Admin is the explicit global aggregation exception, but global compute capacity comes from <code>/api/admin/compute/stats</code> after <code>require_global_admin</code>; project-facing Compute Pool routes still require an active <code>project_id</code>. Compute donation strings generated here still require a selected project scope. The dashboard&#x27;s pending permission request queue is also an explicit global-admin exception; project-facing request queues and reviews remain active-project-bound.</p>
 <h2 id="frontend-surface">Frontend Surface</h2>
 <ul>
 <li><code>frontend/src/components/admin/AdminDashboard.tsx</code></li>
@@ -262,6 +262,7 @@
 <li>The dashboard should prefer partial data with an explicit section error over all-or-nothing loading.</li>
 <li>The dashboard loads compute capacity through the admin-only aggregate endpoint instead of reusing project-facing <code>/api/compute/*</code> routes.</li>
 <li>The dashboard&#x27;s donation-string action sends <code>allowed_project_ids</code> for the chosen project so donated compute does not become a global content processor.</li>
+<li>The dashboard may list and review pending permission requests without <code>project_id</code> only because the route checks global admin status; Project Settings must pass the active project id for the same permission-request APIs.</li>
 <li>The frontmatter and manifest entries are the durable contract for agents updating this page after code changes.</li>
 <li>When the referenced component, store, route, agent, skill, or test behavior changes, regenerate and validate the feature documentation.</li>
 </ul>
@@ -287,7 +288,7 @@
 </ul>
 <h2 id="compass-evidence">Compass Evidence</h2>
 <ul>
-<li>Spec/task: CF-SPEC-60 / CF-754; CF-SPEC-63 / CF-815</li>
+<li>Spec/task: CF-SPEC-60 / CF-754; CF-SPEC-63 / CF-815; CF-SPEC-72 / CF-927</li>
 <li>Inventory source: <code>docs/features/inventory.json</code></li>
 </ul>
 <h2 id="when-to-update">When To Update</h2>

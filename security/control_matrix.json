@@ -30,6 +30,7 @@
         "backend/app/api/routes/interfaces*.py",
         "backend/app/api/routes/memory.py",
         "backend/app/api/routes/notifications.py",
+        "backend/app/api/routes/permission_requests.py",
         "backend/app/api/routes/webauthn.py",
         "backend/app/api/routes/connections.py",
         "backend/app/api/routes/compute.py",
@@ -140,6 +141,7 @@
         "frontend/src/stores/sessionStore.ts",
         "frontend/src/stores/taskStore.ts",
         "frontend/src/components/admin/AdminDashboard.tsx",
+        "frontend/src/components/settings/ProjectSettingsView.tsx",
         "frontend/src/components/settings/ConnectionStringPanel.tsx",
         "frontend/src/components/settings/GovernedEvolutionView.tsx",
         "frontend/src/components/integrations/Channel*.tsx",
@@ -193,6 +195,7 @@
         "tests/test_surveys.py",
         "tests/test_tasks.py",
         "tests/test_notifications.py",
+        "tests/test_project_rbac.py",
         "tests/test_agents.py",
         "tests/test_agent_learning_scope.py",
         "tests/test_interfaces.py",
@@ -538,6 +541,7 @@
         "backend/app/api/routes/interfaces_screens.py",
         "backend/app/api/routes/loops.py",
         "backend/app/api/routes/mcp.py",
+        "backend/app/api/routes/permission_requests.py",
         "backend/app/api/routes/reasoning_bank.py",
         "backend/app/api/routes/surveys.py",
         "backend/app/main.py",
@@ -577,6 +581,7 @@
         "frontend/src/components/integrations/MCPServerSetup.tsx",
         "frontend/src/components/integrations/SurveySetupWizard.tsx",
         "frontend/src/components/integrations/SurveysTab.tsx",
+        "frontend/src/components/settings/ProjectSettingsView.tsx",
         "frontend/src/lib/api.ts",
         "frontend/src/lib/contextDagApi.ts",
         "frontend/src/lib/dgmhArchiveApi.ts",
@@ -616,7 +621,7 @@
         "tests/test_auth_security.py"
       ],
       "future_change_trigger": true,
-      "notes": "Global admin, project admin, researcher, viewer, legacy role mappings, active-project notification list/count/read-all scope, websocket subscription, chat session/history scope, Context hierarchy prompt/list scope, Context DAG session scope, memory/index scope, findings/evidence/search/report scope, task/Kanban scope, governed-evolution proposal/archive/reasoning scope, Meta-Hyperagent proposal/observation/variant scope, agent status/log/detail/learning/self-evolution/realtime/A2A-discovery, loop/background-process scope, project-owned Interfaces screens/briefs/status/configuration, integration/deployment/MCP-client list/detail/lifecycle routes, MCP client discovery/tool/call/health/delete routes, survey integration/link action routes, channel message/conversation detail scope, document library/preview routes, and donated-compute project scopes are governed. Project-facing APIs require an explicit active project, including notification list/count/read-all for global admins; admin-only global aggregation belongs to dedicated admin surfaces. Realtime project event delivery rechecks project membership during fan-out, and browser websocket consumers reject project-bound events without the active project id. Deployment, channel, MCP client service helpers, and external MCP server tools also require explicit project scope so internal and external callers cannot fall back to global record ids. Startup QA/simulation loops are opt-in; project task workers, schedule execution, orchestrator routing, skill execution/planning, autoresearch, Meta-Hyperagent starts/applies, and persona self-evolution skip paused or missing project context before model, proposal, or mutation work."
+      "notes": "Global admin, project admin, researcher, viewer, legacy role mappings, active-project notification list/count/read-all scope, permission request list/review scope, websocket subscription, chat session/history scope, Context hierarchy prompt/list scope, Context DAG session scope, memory/index scope, findings/evidence/search/report scope, task/Kanban scope, governed-evolution proposal/archive/reasoning scope, Meta-Hyperagent proposal/observation/variant scope, agent status/log/detail/learning/self-evolution/realtime/A2A-discovery, loop/background-process scope, project-owned Interfaces screens/briefs/status/configuration, integration/deployment/MCP-client list/detail/lifecycle routes, MCP client discovery/tool/call/health/delete routes, survey integration/link action routes, channel message/conversation detail scope, document library/preview routes, and donated-compute project scopes are governed. Project-facing APIs require an explicit active project, including notification list/count/read-all for global admins and permission request queues/reviews for non-admin project surfaces; admin-only global aggregation belongs to dedicated admin surfaces. Realtime project event delivery rechecks project membership during fan-out, and browser websocket consumers reject project-bound events without the active project id. Deployment, channel, MCP client service helpers, and external MCP server tools also require explicit project scope so internal and external callers cannot fall back to global record ids. Startup QA/simulation loops are opt-in; project task workers, schedule execution, orchestrator routing, skill execution/planning, autoresearch, Meta-Hyperagent starts/applies, and persona self-evolution skip paused or missing project context before model, proposal, or mutation work."
     },
     {
       "id": "AUTHZ-002",

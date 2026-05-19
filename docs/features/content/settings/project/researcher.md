@@ -6,18 +6,18 @@ audience: researcher
 status: documented
 related_features: ["shell.projects", "settings.general"]
 related_glossary: ["compass-forge"]
-code_references: ["frontend/src/components/settings/ProjectSettingsView.tsx", "backend/app/api/routes/projects.py"]
-api_references: ["backend/app/api/routes/projects.py"]
-test_references: []
-last_verified: 2026-05-15
-compass: CF-SPEC-53 / CF-657
+code_references: ["frontend/src/components/settings/ProjectSettingsView.tsx", "backend/app/api/routes/projects.py", "backend/app/api/routes/permission_requests.py"]
+api_references: ["backend/app/api/routes/projects.py", "backend/app/api/routes/permission_requests.py"]
+test_references: ["tests/test_project_rbac.py", "tests/test_project_scope_contracts.py"]
+last_verified: 2026-05-19
+compass: CF-SPEC-53 / CF-657; CF-SPEC-72 / CF-927
 ---
 
 # Project Settings
 
 ## What It Does
 
-Project Settings configure project-specific metadata and operational preferences separate from global system settings.
+Project Settings configure project-specific metadata and operational preferences separate from global system settings. Permission requests shown here belong to the active project only.
 
 ## Why It Exists
 
@@ -38,6 +38,7 @@ Project Settings exists so the work represented by Project Settings has a stable
 ## Supported Workflows
 
 - Start from Project Settings when the current research task needs project settings.
+- Project admins can review only the permission requests for the active project shown in this settings view.
 - Use the visible controls to create, inspect, refine, or route project work without leaving the active Istara context.
 - Move to related surfaces when needed: shell.projects, settings.general.
 
@@ -64,4 +65,4 @@ Project Settings exists so the work represented by Project Settings has a stable
 
 - Source files: `frontend/src/components/settings/ProjectSettingsView.tsx`, `backend/app/api/routes/projects.py`
 - API references: `backend/app/api/routes/projects.py`
-- Tests: none recorded
+- Tests: `tests/test_project_rbac.py`, `tests/test_project_scope_contracts.py`

@@ -6,18 +6,18 @@ audience: researcher
 status: needs-verification
 related_features: ["settings.users", "settings.connection-strings"]
 related_glossary: ["wcag"]
-code_references: ["frontend/src/components/admin/AdminDashboard.tsx", "backend/app/api/routes/admin.py"]
-api_references: ["backend/app/api/routes/admin.py"]
-test_references: ["tests/test_project_rbac.py"]
-last_verified: 2026-05-18
-compass: CF-SPEC-60 / CF-754
+code_references: ["frontend/src/components/admin/AdminDashboard.tsx", "backend/app/api/routes/admin.py", "backend/app/api/routes/permission_requests.py"]
+api_references: ["backend/app/api/routes/admin.py", "backend/app/api/routes/permission_requests.py"]
+test_references: ["tests/test_project_rbac.py", "tests/test_project_scope_contracts.py"]
+last_verified: 2026-05-19
+compass: CF-SPEC-60 / CF-754; CF-SPEC-72 / CF-927
 ---
 
 # Admin Dashboard
 
 ## What It Does
 
-The Admin dashboard provides administrator-only operational controls and visibility. It may aggregate metrics across projects for admins, but any compute donation string created here is still bound to a selected project.
+The Admin dashboard provides administrator-only operational controls and visibility. It may aggregate metrics and pending permission requests across projects for admins, but any compute donation string created here is still bound to a selected project.
 
 ## Why It Exists
 
@@ -35,6 +35,7 @@ Admin Dashboard exists so the work represented by Admin has a stable, discoverab
 - Use the visible controls in this surface to work with admin dashboard in the active project context.
 - Review the output in the same view and follow the related feature links when the workflow moves into another Istara surface.
 - Select a project when creating a compute donation string so the donated machine can only process content for that project.
+- Treat the global pending-permission queue as admin-only; project-facing settings views still review requests inside the active project.
 
 ## Supported Workflows
 
@@ -66,4 +67,4 @@ Admin Dashboard exists so the work represented by Admin has a stable, discoverab
 
 - Source files: `frontend/src/components/admin/AdminDashboard.tsx`, `backend/app/api/routes/admin.py`
 - API references: `backend/app/api/routes/admin.py`
-- Tests: `tests/test_project_rbac.py`
+- Tests: `tests/test_project_rbac.py`, `tests/test_project_scope_contracts.py`
