@@ -9,8 +9,8 @@ related_glossary: ["minto-pyramid"]
 code_references: ["frontend/src/components/kanban/KanbanBoard.tsx", "frontend/src/components/kanban/TaskEditor.tsx", "backend/app/api/routes/tasks.py"]
 api_references: ["backend/app/api/routes/tasks.py", "backend/app/api/routes/reports.py"]
 test_references: ["tests/test_tasks.py"]
-last_verified: 2026-05-15
-compass: CF-SPEC-53 / CF-657
+last_verified: 2026-05-19
+compass: CF-SPEC-53 / CF-657; CF-SPEC-73 / CF-941
 ---
 
 # Send Task To Report Architecture
@@ -39,6 +39,8 @@ Task surfaces can move validated task outputs toward report generation or report
 ## Architecture Notes
 
 - The feature is mounted through `frontend/src/components/kanban/KanbanBoard.tsx` and the UI navigation path recorded in the inventory.
+- Sending a task to Reports is active-project-bound: the UI passes `activeProjectId`, and `/api/tasks/{task_id}/reports` loads the task by both task id and project id before creating a project report.
+- Report creation remains limited to human-approved Done tasks in the same project; stale task ids from another project resolve as not found instead of creating cross-project report drafts.
 - The frontmatter and manifest entries are the durable contract for agents updating this page after code changes.
 - When the referenced component, store, route, agent, skill, or test behavior changes, regenerate and validate the feature documentation.
 
@@ -61,7 +63,7 @@ Task surfaces can move validated task outputs toward report generation or report
 
 ## Compass Evidence
 
-- Spec/task: CF-SPEC-53 / CF-657
+- Spec/task: CF-SPEC-53 / CF-657; CF-SPEC-73 / CF-941
 - Inventory source: `docs/features/inventory.json`
 
 ## When To Update

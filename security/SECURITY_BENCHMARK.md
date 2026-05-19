@@ -206,8 +206,12 @@ project switches so stale documents from another authorized project cannot
 render in the current project view.
 Task and Kanban views are project-content surfaces too: task list APIs require
 an authorized active project even for global admins, task stores clear stale
-cards on project switches, and cross-project task aggregation belongs only on
-dedicated admin reporting surfaces.
+cards on project switches, and every project-facing task by-id route must carry
+the active `project_id` and load by both task id and project id before reading,
+mutating, reviewing, locking, attaching documents, deleting, or creating task
+reports. A stale task id from another authorized project must resolve as not
+found in the current project view. Cross-project task aggregation belongs only
+on dedicated admin reporting surfaces.
 Donated relay/browser compute is also a project-content boundary: a relay can
 be connected for status, but prompt and embedding payloads may only route to it
 when the request includes a concrete project and the donor scope was resolved

@@ -261,6 +261,8 @@
 <h2 id="architecture-notes">Architecture Notes</h2>
 <ul>
 <li>The feature is mounted through <code>frontend/src/components/kanban/TaskEditor.tsx</code> and the UI navigation path recorded in the inventory.</li>
+<li>Attachment and detachment routes require the active <code>project_id</code>, load the task by both id and project, and then verify the document belongs to the same project before updating task input or output document ids.</li>
+<li>The Task Editor opens the document picker only for the active project and sends task updates with the same active project scope.</li>
 <li>The frontmatter and manifest entries are the durable contract for agents updating this page after code changes.</li>
 <li>When the referenced component, store, route, agent, skill, or test behavior changes, regenerate and validate the feature documentation.</li>
 </ul>
@@ -283,7 +285,7 @@
 </ul>
 <h2 id="compass-evidence">Compass Evidence</h2>
 <ul>
-<li>Spec/task: CF-SPEC-53 / CF-657</li>
+<li>Spec/task: CF-SPEC-53 / CF-657; CF-SPEC-73 / CF-941</li>
 <li>Inventory source: <code>docs/features/inventory.json</code></li>
 </ul>
 <h2 id="when-to-update">When To Update</h2>

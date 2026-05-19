@@ -11,9 +11,9 @@ interface TaskStore {
 
   fetchTasks: (projectId: string) => Promise<void>;
   createTask: (projectId: string, title: string, description?: string) => Promise<Task>;
-  moveTask: (taskId: string, status: TaskStatus) => Promise<void>;
-  updateTask: (taskId: string, data: Record<string, unknown>) => Promise<void>;
-  approveTask: (taskId: string, note?: string) => Promise<void>;
+  moveTask: (taskId: string, status: TaskStatus, projectId: string) => Promise<void>;
+  updateTask: (taskId: string, data: Record<string, unknown>, projectId: string) => Promise<void>;
+  approveTask: (taskId: string, projectId: string, note?: string) => Promise<void>;
   requestRevision: (
     taskId: string,
     data: {
@@ -25,9 +25,10 @@ interface TaskStore {
       skill_name?: string | null;
       input_document_ids?: string[];
       urls?: string[];
-    }
+    },
+    projectId: string
   ) => Promise<void>;
-  deleteTask: (taskId: string) => Promise<void>;
+  deleteTask: (taskId: string, projectId: string) => Promise<void>;
 
   byStatus: (status: TaskStatus) => Task[];
 }
@@ -58,36 +59,36 @@ export const useTaskStore = create<TaskStore>((set, get) => ({
     return task;
   },
 
-  moveTask: async (taskId, status) => {
-    const updated = await tasksApi.move(taskId, status);
+  moveTask: async (taskId, status, projectId) => {
+    const updated = await tasksApi.move(taskId, status, projectId);
     set((s) => ({
       tasks: s.tasks.map((t) => (t.id === taskId ? updated : t)),
     }));
   },
 
-  updateTask: async (taskId, data) => {
-    const updated = await tasksApi.update(taskId, data);
+  updateTask: async (taskId, data, projectId) => {
+    const updated = await tasksApi.update(taskId, data, projectId);
     set((s) => ({
       tasks: s.tasks.map((t) => (t.id === taskId ? updated : t)),
     }));
   },
 
-  approveTask: async (taskId, note) => {
-    const { task } = await tasksApi.approve(taskId, { note });
+  approveTask: async (taskId, projectId, note) => {
+    const { task } = await tasksApi.approve(taskId, projectId, { note });
     set((s) => ({
       tasks: s.tasks.map((t) => (t.id === taskId ? task : t)),
     }));
   },
 
-  requestRevision: async (taskId, data) => {
-    const { task } = await tasksApi.requestRevision(taskId, data);
+  requestRevision: async (taskId, data, projectId) => {
+    const { task } = await tasksApi.requestRevision(taskId, data, projectId);
     set((s) => ({
       tasks: s.tasks.map((t) => (t.id === taskId ? task : t)),
     }));
   },
 
-  deleteTask: async (taskId) => {
-    await tasksApi.delete(taskId);
+  deleteTask: async (taskId, projectId) => {
+    await tasksApi.delete(taskId, projectId);
     set((s) => ({ tasks: s.tasks.filter((t) => t.id !== taskId) }));
   },
 

@@ -114,6 +114,52 @@ async def test_tasks_list_requires_project_scope_for_admin(auth_headers):
 
 
 @pytest.mark.asyncio
+async def test_task_by_id_routes_require_active_project_binding(auth_headers):
+    """Task detail and mutation routes bind ids to the selected active project."""
+    await init_db()
+    active_project = await _seed_project("Active Task Scope")
+    other_project = await _seed_project("Other Task Scope")
+    active_task = await _seed_task(active_project.id, "Active detail")
+    other_task = await _seed_task(other_project.id, "Other detail")
+
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        missing_scope = await ac.get(f"/api/tasks/{other_task.id}", headers=auth_headers)
+        stale_read = await ac.get(
+            f"/api/tasks/{other_task.id}?project_id={active_project.id}",
+            headers=auth_headers,
+        )
+        scoped_read = await ac.get(
+            f"/api/tasks/{active_task.id}?project_id={active_project.id}",
+            headers=auth_headers,
+        )
+        stale_patch = await ac.patch(
+            f"/api/tasks/{other_task.id}?project_id={active_project.id}",
+            headers=auth_headers,
+            json={"title": "Wrong active project"},
+        )
+        stale_move = await ac.post(
+            f"/api/tasks/{other_task.id}/move?status=in_progress&project_id={active_project.id}",
+            headers=auth_headers,
+        )
+        scoped_patch = await ac.patch(
+            f"/api/tasks/{active_task.id}?project_id={active_project.id}",
+            headers=auth_headers,
+            json={"title": "Scoped update"},
+        )
+
+    assert missing_scope.status_code == 422
+    assert missing_scope.json()["detail"] == "project_id is required"
+    assert stale_read.status_code == 404
+    assert scoped_read.status_code == 200
+    assert scoped_read.json()["id"] == active_task.id
+    assert stale_patch.status_code == 404
+    assert stale_move.status_code == 404
+    assert scoped_patch.status_code == 200
+    assert scoped_patch.json()["title"] == "Scoped update"
+
+
+@pytest.mark.asyncio
 async def test_tasks_list_requires_auth():
     """Tasks listing requires authentication in team mode."""
     await init_db()
@@ -170,30 +216,42 @@ async def test_agent_execute_task_defers_when_project_paused():
 async def test_task_move_nonexistent_returns_404(auth_headers):
     """POST /api/tasks/{id}/move returns 404 for non-existent task."""
     await init_db()
+    project = await _seed_project("Missing Move Scope")
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
-        response = await ac.post("/api/tasks/non-existent-id/move", headers=auth_headers, json={"position": 0})
-        assert response.status_code in (404, 422)
+        response = await ac.post(
+            f"/api/tasks/non-existent-id/move?status=in_progress&project_id={project.id}",
+            headers=auth_headers,
+        )
+        assert response.status_code == 404
 
 
 @pytest.mark.asyncio
 async def test_task_lock_nonexistent_returns_404(auth_headers):
     """POST /api/tasks/{id}/lock returns 404 for non-existent task."""
     await init_db()
+    project = await _seed_project("Missing Lock Scope")
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
-        response = await ac.post("/api/tasks/non-existent-id/lock", headers=auth_headers)
-        assert response.status_code in (404, 422)
+        response = await ac.post(
+            f"/api/tasks/non-existent-id/lock?project_id={project.id}",
+            headers=auth_headers,
+        )
+        assert response.status_code == 404
 
 
 @pytest.mark.asyncio
 async def test_task_unlock_nonexistent_returns_404(auth_headers):
     """POST /api/tasks/{id}/unlock returns 404 for non-existent task."""
     await init_db()
+    project = await _seed_project("Missing Unlock Scope")
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
-        response = await ac.post("/api/tasks/non-existent-id/unlock", headers=auth_headers)
-        assert response.status_code in (404, 422)
+        response = await ac.post(
+            f"/api/tasks/non-existent-id/unlock?project_id={project.id}",
+            headers=auth_headers,
+        )
+        assert response.status_code == 404
 
 
 @pytest.mark.asyncio
@@ -212,7 +270,7 @@ async def test_human_approval_moves_review_task_to_done(auth_headers):
         task_id = created.json()["id"]
 
         moved = await ac.post(
-            f"/api/tasks/{task_id}/move?status=in_review",
+            f"/api/tasks/{task_id}/move?status=in_review&project_id={project.id}",
             headers=auth_headers,
         )
         assert moved.status_code == 200
@@ -220,7 +278,7 @@ async def test_human_approval_moves_review_task_to_done(auth_headers):
         assert moved.json()["review_state"] == "awaiting_review"
 
         approved = await ac.post(
-            f"/api/tasks/{task_id}/review/approve",
+            f"/api/tasks/{task_id}/review/approve?project_id={project.id}",
             headers=auth_headers,
             json={"reviewed_by": "tester", "note": "Looks correct."},
         )
@@ -253,10 +311,10 @@ async def test_task_review_side_effects_observe_committed_task(auth_headers, mon
             json={"project_id": project.id, "title": "Approve with side effects"},
         )
         task_id = created.json()["id"]
-        await ac.post(f"/api/tasks/{task_id}/move?status=in_review", headers=auth_headers)
+        await ac.post(f"/api/tasks/{task_id}/move?status=in_review&project_id={project.id}", headers=auth_headers)
 
         approved = await ac.post(
-            f"/api/tasks/{task_id}/review/approve",
+            f"/api/tasks/{task_id}/review/approve?project_id={project.id}",
             headers=auth_headers,
             json={"reviewed_by": "tester", "note": "Committed before telemetry."},
         )
@@ -278,11 +336,11 @@ async def test_done_task_revision_returns_to_backlog_with_feedback(auth_headers)
             json={"project_id": project.id, "title": "Reopen wrong work"},
         )
         task_id = created.json()["id"]
-        await ac.post(f"/api/tasks/{task_id}/move?status=in_review", headers=auth_headers)
-        await ac.post(f"/api/tasks/{task_id}/review/approve", headers=auth_headers, json={})
+        await ac.post(f"/api/tasks/{task_id}/move?status=in_review&project_id={project.id}", headers=auth_headers)
+        await ac.post(f"/api/tasks/{task_id}/review/approve?project_id={project.id}", headers=auth_headers, json={})
 
         revised = await ac.post(
-            f"/api/tasks/{task_id}/review/request-revision",
+            f"/api/tasks/{task_id}/review/request-revision?project_id={project.id}",
             headers=auth_headers,
             json={
                 "what_to_review": "The synthesis missed the pricing evidence; rerun with the pricing document.",
@@ -313,9 +371,9 @@ async def test_revision_cannot_send_task_back_to_review(auth_headers):
             json={"project_id": project.id, "title": "Invalid revision target"},
         )
         task_id = created.json()["id"]
-        await ac.post(f"/api/tasks/{task_id}/move?status=in_review", headers=auth_headers)
+        await ac.post(f"/api/tasks/{task_id}/move?status=in_review&project_id={project.id}", headers=auth_headers)
         response = await ac.post(
-            f"/api/tasks/{task_id}/review/request-revision",
+            f"/api/tasks/{task_id}/review/request-revision?project_id={project.id}",
             headers=auth_headers,
             json={"what_to_review": "Needs more evidence.", "next_status": "in_review"},
         )
@@ -336,7 +394,7 @@ async def test_patch_cannot_mark_task_done(auth_headers):
         )
         task_id = created.json()["id"]
         response = await ac.patch(
-            f"/api/tasks/{task_id}",
+            f"/api/tasks/{task_id}?project_id={project.id}",
             headers=auth_headers,
             json={"status": "done"},
         )
@@ -378,7 +436,7 @@ async def test_task_attach_rejects_foreign_document(auth_headers):
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
         response = await ac.post(
-            f"/api/tasks/{task.id}/attach?document_id={foreign_doc.id}&direction=input",
+            f"/api/tasks/{task.id}/attach?document_id={foreign_doc.id}&direction=input&project_id={project.id}",
             headers=auth_headers,
         )
 

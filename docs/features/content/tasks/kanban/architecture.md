@@ -40,6 +40,8 @@ Tasks presents project work as a Kanban board for tracking research operations, 
 - The feature is mounted through `frontend/src/components/kanban/KanbanBoard.tsx` and the UI navigation path recorded in the inventory.
 - Task list reads are active-project scoped: `/api/tasks` requires `project_id` for every role, including global admins, and verifies project visibility before returning cards.
 - `frontend/src/stores/taskStore.ts` clears stale cards when there is no active project or when a scoped fetch fails, then filters returned rows back to the active project id as a frontend defense-in-depth check.
+- Task detail and mutation actions also carry the active project id. By-id reads, updates, moves, locking, review transitions, attachment changes, report creation, and deletion load tasks by both `Task.id` and `Task.project_id`, so a stale task id from another authorized project resolves as not found in the current board.
+- Kanban cards, assignment menus, priority menus, and drag/drop moves pass `activeProjectId` through the task store instead of relying on globally unique task ids.
 - Cross-project task aggregation belongs on explicit admin reporting surfaces, not on the project-facing Kanban route or store.
 - The frontmatter and manifest entries are the durable contract for agents updating this page after code changes.
 - When the referenced component, store, route, agent, skill, or test behavior changes, regenerate and validate the feature documentation.
@@ -65,7 +67,7 @@ Tasks presents project work as a Kanban board for tracking research operations, 
 
 ## Compass Evidence
 
-- Spec/task: CF-SPEC-60 / CF-770
+- Spec/task: CF-SPEC-60 / CF-770; CF-SPEC-73 / CF-941
 - Inventory source: `docs/features/inventory.json`
 
 ## When To Update

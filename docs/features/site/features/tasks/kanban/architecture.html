@@ -263,6 +263,8 @@
 <li>The feature is mounted through <code>frontend/src/components/kanban/KanbanBoard.tsx</code> and the UI navigation path recorded in the inventory.</li>
 <li>Task list reads are active-project scoped: <code>/api/tasks</code> requires <code>project_id</code> for every role, including global admins, and verifies project visibility before returning cards.</li>
 <li><code>frontend/src/stores/taskStore.ts</code> clears stale cards when there is no active project or when a scoped fetch fails, then filters returned rows back to the active project id as a frontend defense-in-depth check.</li>
+<li>Task detail and mutation actions also carry the active project id. By-id reads, updates, moves, locking, review transitions, attachment changes, report creation, and deletion load tasks by both <code>Task.id</code> and <code>Task.project_id</code>, so a stale task id from another authorized project resolves as not found in the current board.</li>
+<li>Kanban cards, assignment menus, priority menus, and drag/drop moves pass <code>activeProjectId</code> through the task store instead of relying on globally unique task ids.</li>
 <li>Cross-project task aggregation belongs on explicit admin reporting surfaces, not on the project-facing Kanban route or store.</li>
 <li>The frontmatter and manifest entries are the durable contract for agents updating this page after code changes.</li>
 <li>When the referenced component, store, route, agent, skill, or test behavior changes, regenerate and validate the feature documentation.</li>
@@ -288,7 +290,7 @@
 </ul>
 <h2 id="compass-evidence">Compass Evidence</h2>
 <ul>
-<li>Spec/task: CF-SPEC-60 / CF-770</li>
+<li>Spec/task: CF-SPEC-60 / CF-770; CF-SPEC-73 / CF-941</li>
 <li>Inventory source: <code>docs/features/inventory.json</code></li>
 </ul>
 <h2 id="when-to-update">When To Update</h2>
