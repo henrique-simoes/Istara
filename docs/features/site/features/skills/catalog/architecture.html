@@ -261,12 +261,14 @@
 <ul>
 <li>The feature is mounted through <code>frontend/src/components/skills/SkillsView.tsx</code> and the UI navigation path recorded in the inventory.</li>
 <li>Skill definitions remain the shared catalog, while health, usage, and proposal badges are fetched with the active project and reset on project changes.</li>
+<li>Skill execution and planning require an active, unpaused project before the agent is invoked, so paused projects cannot trigger LLM/skill work through the catalog surface.</li>
 <li>The frontmatter and manifest entries are the durable contract for agents updating this page after code changes.</li>
 <li>When the referenced component, store, route, agent, skill, or test behavior changes, regenerate and validate the feature documentation.</li>
 </ul>
 <h2 id="agents-skills-llm-mcp-and-permissions">Agents, Skills, LLM, MCP, And Permissions</h2>
 <ul>
 <li>Skill health APIs require explicit <code>project_id</code> so one project&#x27;s execution quality, failures, and pending updates are not exposed in another project.</li>
+<li>Skill execution is project content processing and must never fall back to a global project id or run against a paused project.</li>
 <li>MCP-related behavior must keep access policy, audit evidence, and tool/resource exposure synchronized with the cited route or integration component.</li>
 </ul>
 <h2 id="tests-and-verification">Tests And Verification</h2>
@@ -285,7 +287,7 @@
 </ul>
 <h2 id="compass-evidence">Compass Evidence</h2>
 <ul>
-<li>Spec/task: CF-SPEC-53 / CF-657</li>
+<li>Spec/task: CF-SPEC-53 / CF-657; CF-SPEC-68 / CF-870</li>
 <li>Inventory source: <code>docs/features/inventory.json</code></li>
 </ul>
 <h2 id="when-to-update">When To Update</h2>

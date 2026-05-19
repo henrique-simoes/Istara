@@ -15,7 +15,12 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
-from app.core.permissions import require_global_admin, require_global_role, require_project_access
+from app.core.permissions import (
+    get_active_project_or_404,
+    require_global_admin,
+    require_global_role,
+    require_project_access,
+)
 from app.models.database import get_db
 from app.models.agent import Agent, AgentState, HeartbeatStatus
 from app.models.code_application import CodeApplication
@@ -119,6 +124,19 @@ async def _require_project_scope(
     if not project_id:
         raise HTTPException(status_code=400, detail="project_id is required")
     await require_project_access(db, request, project_id, min_role=min_role)
+
+
+async def _require_active_project_scope(
+    db: AsyncSession,
+    request: Request,
+    project_id: str,
+    *,
+    min_role: str = "researcher",
+) -> str:
+    if not project_id:
+        raise HTTPException(status_code=400, detail="project_id is required")
+    project = await get_active_project_or_404(db, request, project_id, min_role=min_role)
+    return project.id
 
 
 async def _build_operational_metrics(db: AsyncSession, project_id: str) -> dict:
@@ -569,7 +587,12 @@ async def start_experiment(
     db: AsyncSession = Depends(get_db),
 ):
     """Start an autoresearch experiment loop in the background."""
-    await _require_project_scope(db, request, body.project_id, min_role="researcher")
+    scoped_project_id = await _require_active_project_scope(
+        db,
+        request,
+        body.project_id,
+        min_role="researcher",
+    )
     engine = _get_engine()
 
     if engine.is_running:
@@ -593,7 +616,7 @@ async def start_experiment(
                 runner=runner,
                 target=body.target,
                 max_iterations=max_iterations,
-                project_id=body.project_id,
+                project_id=scoped_project_id,
             )
         except Exception as exc:
             logger.error(f"Autoresearch loop failed: {exc}", exc_info=True)
@@ -604,6 +627,7 @@ async def start_experiment(
         "status": "started",
         "loop_type": body.loop_type,
         "target": body.target,
+        "project_id": scoped_project_id,
         "max_iterations": max_iterations,
     }
 

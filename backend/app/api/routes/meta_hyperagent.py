@@ -12,7 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.config import settings
 from app.core.improvement_governance import improvement_governance
 from app.core.meta_hyperagent import meta_hyperagent
-from app.core.permissions import get_visible_project_or_404
+from app.core.permissions import get_active_project_or_404, get_visible_project_or_404
 from app.core.security_middleware import get_user_from_request, require_admin_from_request
 from app.models.database import get_db
 
@@ -78,6 +78,18 @@ async def _require_admin_project_scope(
     require_admin_from_request(request)
     scoped_project_id = _require_project_id(project_id)
     await get_visible_project_or_404(db, request, scoped_project_id, min_role="viewer")
+    return scoped_project_id
+
+
+async def _require_admin_active_project_scope(
+    db: AsyncSession,
+    request: Request,
+    project_id: str | None,
+) -> str:
+    """Require global admin plus an explicit, unpaused visible project."""
+    require_admin_from_request(request)
+    scoped_project_id = _require_project_id(project_id)
+    await get_active_project_or_404(db, request, scoped_project_id, min_role="viewer")
     return scoped_project_id
 
 
@@ -240,7 +252,7 @@ async def approve_proposal(
     db: AsyncSession = Depends(get_db),
 ):
     """Approve a pending proposal and apply it as an active variant."""
-    scoped_project_id = await _require_admin_project_scope(db, request, project_id)
+    scoped_project_id = await _require_admin_active_project_scope(db, request, project_id)
     result = await meta_hyperagent.apply_proposal(
         proposal_id,
         project_id=scoped_project_id,
@@ -321,7 +333,7 @@ async def confirm_variant(
     db: AsyncSession = Depends(get_db),
 ):
     """Confirm an active variant — persist the override permanently."""
-    scoped_project_id = await _require_admin_project_scope(db, request, project_id)
+    scoped_project_id = await _require_admin_active_project_scope(db, request, project_id)
     result = await meta_hyperagent.confirm_variant(
         variant_id,
         project_id=scoped_project_id,
@@ -360,7 +372,10 @@ async def toggle_meta_hyperagent(
     db: AsyncSession = Depends(get_db),
 ):
     """Enable or disable the meta-hyperagent (persists to .env)."""
-    scoped_project_id = await _require_admin_project_scope(db, request, project_id)
+    if body.enabled:
+        scoped_project_id = await _require_admin_active_project_scope(db, request, project_id)
+    else:
+        scoped_project_id = await _require_admin_project_scope(db, request, project_id)
     settings.meta_hyperagent_enabled = body.enabled
     _persist_env("META_HYPERAGENT_ENABLED", str(body.enabled).lower())
 

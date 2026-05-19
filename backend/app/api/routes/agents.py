@@ -26,7 +26,7 @@ from app.agents.ux_eval_agent import ux_eval_agent
 from app.agents.user_sim_agent import user_sim_agent
 from app.config import settings
 from app.core.improvement_governance import improvement_governance
-from app.core.permissions import require_project_access
+from app.core.permissions import get_active_project_or_404, require_project_access
 from app.core.security_middleware import require_admin_from_request
 from app.api.agent_project_scope import (
     agent_project_id,
@@ -621,8 +621,13 @@ async def _require_self_evolution_project_scope(
     scoped_project_id = clean_project_id(project_id)
     if not scoped_project_id:
         raise HTTPException(status_code=400, detail="project_id is required")
-    await require_project_access(db, request, scoped_project_id, min_role=min_role)
-    return scoped_project_id
+    project = await get_active_project_or_404(
+        db,
+        request,
+        scoped_project_id,
+        min_role=min_role,
+    )
+    return project.id
 
 
 @router.get("/agents/{agent_id}/evolution/candidates")

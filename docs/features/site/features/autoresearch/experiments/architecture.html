@@ -257,6 +257,7 @@
 <ul>
 <li><code>backend/app/api/routes/autoresearch.py</code></li>
 <li>Experiment list, start, and stop routes require <code>project_id</code> and enforce project access. Autoresearch engine records and broadcasts the experiment project id, and experiment history filters by <code>AutoresearchExperiment.project_id</code>.</li>
+<li>Starting an experiment requires the requested project to be active and unpaused before the runner is constructed or scheduled. The engine repeats the active-project check before runner baseline/iteration work so a paused or missing project cannot keep processing in the background.</li>
 </ul>
 <h2 id="architecture-notes">Architecture Notes</h2>
 <ul>
@@ -267,6 +268,7 @@
 <h2 id="agents-skills-llm-mcp-and-permissions">Agents, Skills, LLM, MCP, And Permissions</h2>
 <ul>
 <li>Autoresearch experiments can mutate strategies that later affect agents, skills, LLM choice, RAG behavior, question banks, or UI simulations. Each experiment must remain attached to the project that authorized it.</li>
+<li>Paused projects are execution-stop boundaries for autoresearch: no baseline measurement, mutation, model-choice exploration, reasoning memory, or improvement proposal should be produced after the project is paused.</li>
 </ul>
 <h2 id="tests-and-verification">Tests And Verification</h2>
 <ul>
@@ -284,7 +286,7 @@
 </ul>
 <h2 id="compass-evidence">Compass Evidence</h2>
 <ul>
-<li>Spec/task: CF-SPEC-60 / CF-754</li>
+<li>Spec/task: CF-SPEC-60 / CF-754; CF-SPEC-68 / CF-870</li>
 <li>Inventory source: <code>docs/features/inventory.json</code></li>
 </ul>
 <h2 id="when-to-update">When To Update</h2>

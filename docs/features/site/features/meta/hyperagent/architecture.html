@@ -262,6 +262,7 @@
 <ul>
 <li>The feature is mounted through <code>frontend/src/components/meta/MetaHyperagentView.tsx</code> and the UI navigation path recorded in the inventory.</li>
 <li>All project-facing Meta-Hyperagent status, proposals, observations, variants, toggle, and mutation routes require an explicit <code>project_id</code>, verify the project is visible to the admin subject, and filter persisted records by exact project id.</li>
+<li>Enabling the observation loop, approving proposals, and confirming variants require the requested project to be active and unpaused. Disabling or rejecting remains available so a paused project can stop or discard queued improvement work.</li>
 <li>The observation loop is no longer started globally during application startup. It starts only from a project-scoped UI/API request and records its active project id.</li>
 <li>Skill usage stats now maintain per-project counters so Meta-Hyperagent skill-selection analysis does not infer proposals from another project&#x27;s execution history.</li>
 <li>Self-evolution tuning proposals require project-local learning evidence. An empty project, or a project with only global/other-project learning history, must not generate threshold-lowering proposals.</li>
@@ -292,7 +293,7 @@
 </ul>
 <h2 id="compass-evidence">Compass Evidence</h2>
 <ul>
-<li>Spec/task: CF-SPEC-60 / CF-757</li>
+<li>Spec/task: CF-SPEC-60 / CF-757; CF-SPEC-68 / CF-870</li>
 <li>Inventory source: <code>docs/features/inventory.json</code></li>
 </ul>
 <h2 id="when-to-update">When To Update</h2>

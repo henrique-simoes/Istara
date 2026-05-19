@@ -194,3 +194,22 @@ async def get_visible_project_or_404(
 
     await require_project_access(db, request, project_id, min_role=min_role)
     return project
+
+
+async def get_active_project_or_404(
+    db: AsyncSession,
+    request: Request,
+    project_id: str,
+    *,
+    min_role: ProjectRole = "viewer",
+) -> Project:
+    """Load a visible project and reject paused projects for active work."""
+    project = await get_visible_project_or_404(
+        db,
+        request,
+        project_id,
+        min_role=min_role,
+    )
+    if project.is_paused:
+        raise HTTPException(status_code=409, detail="Project is paused")
+    return project

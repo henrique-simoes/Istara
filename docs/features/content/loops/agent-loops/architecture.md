@@ -10,7 +10,7 @@ code_references: ["frontend/src/components/loops/AgentLoopsTab.tsx", "backend/ap
 api_references: ["backend/app/api/routes/loops.py"]
 test_references: ["tests/test_loops.py", "tests/test_project_scope_contracts.py"]
 last_verified: 2026-05-19
-compass: CF-SPEC-60 / CF-776
+compass: CF-SPEC-60 / CF-776; CF-SPEC-68 / CF-870
 ---
 
 # Agent Loops Architecture
@@ -37,6 +37,7 @@ Agent Loops connects recurring work with configured agents and their automated r
 
 - `backend/app/api/routes/loops.py`
 - Agent-loop configs are visible or mutable only when the agent belongs to the active project or has an explicit loop project filter for that project.
+- Resuming a paused agent loop requires the requested project to be active and unpaused; pausing remains allowed so work can be stopped without reactivating a project.
 - Startup keeps project-scoped task workers available for assigned active-project work, but DevOps/UI/UX/User Simulation quality loops are disabled by default and run only when `autonomous_quality_agents_enabled` is explicitly enabled.
 
 ## Architecture Notes
@@ -67,7 +68,7 @@ Agent Loops connects recurring work with configured agents and their automated r
 
 ## Compass Evidence
 
-- Spec/task: CF-SPEC-60 / CF-776
+- Spec/task: CF-SPEC-60 / CF-776; CF-SPEC-68 / CF-870
 - Inventory source: `docs/features/inventory.json`
 
 ## When To Update

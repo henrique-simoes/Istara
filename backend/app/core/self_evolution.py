@@ -86,6 +86,17 @@ class SelfEvolutionEngine:
     def _normalize_project_id(project_id: str | None) -> str:
         return str(project_id or "").strip()
 
+    async def _is_project_active(self, project_id: str) -> bool:
+        try:
+            from app.models.project import Project
+
+            async with async_session() as db:
+                project = await db.get(Project, project_id)
+                return bool(project and not project.is_paused)
+        except Exception as exc:
+            logger.error("Self-evolution project activity check failed for %s: %s", project_id, exc)
+            return False
+
     async def scan_for_promotions(
         self,
         agent_id: str,
@@ -103,6 +114,13 @@ class SelfEvolutionEngine:
             logger.warning(
                 "Skipping self-evolution scan for %s because project_id is required",
                 agent_id,
+            )
+            return []
+        if not await self._is_project_active(scoped_project_id):
+            logger.warning(
+                "Skipping self-evolution scan for %s because project %s is paused or missing",
+                agent_id,
+                scoped_project_id,
             )
             return []
         th = thresholds or PROMOTION_THRESHOLDS
@@ -202,6 +220,8 @@ class SelfEvolutionEngine:
         scoped_project_id = self._normalize_project_id(project_id)
         if not scoped_project_id:
             return {"success": False, "error": "project_id is required"}
+        if not await self._is_project_active(scoped_project_id):
+            return {"success": False, "error": "Project is paused or not found"}
 
         from app.core.agent_identity import is_persona_locked
         if is_persona_locked(agent_id):
@@ -278,6 +298,13 @@ class SelfEvolutionEngine:
                 agent_id,
             )
             return []
+        if not await self._is_project_active(scoped_project_id):
+            logger.warning(
+                "Skipping auto-evolution for %s because project %s is paused or missing",
+                agent_id,
+                scoped_project_id,
+            )
+            return []
 
         candidates = await self.scan_for_promotions(agent_id, project_id=scoped_project_id)
         promotions = []
@@ -304,6 +331,12 @@ class SelfEvolutionEngine:
         scoped_project_id = self._normalize_project_id(project_id)
         if not scoped_project_id:
             logger.warning("Skipping all-agent evolution scan because project_id is required")
+            return {}
+        if not await self._is_project_active(scoped_project_id):
+            logger.warning(
+                "Skipping all-agent evolution scan because project %s is paused or missing",
+                scoped_project_id,
+            )
             return {}
 
         from app.core.agent_identity import list_agent_personas

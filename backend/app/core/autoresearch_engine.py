@@ -16,6 +16,7 @@ from app.core.autoresearch_isolation import autoresearch_context
 from app.core.autoresearch_rate_limiter import check_experiment_limit
 from app.models.autoresearch_experiment import AutoresearchExperiment
 from app.models.database import async_session
+from app.models.project import Project
 
 logger = logging.getLogger(__name__)
 
@@ -59,6 +60,7 @@ class AutoresearchEngine:
 
         Returns list of experiment results.
         """
+        project_id = await self._require_active_project_id(project_id)
         if self._running:
             raise RuntimeError("Engine already running")
 
@@ -88,6 +90,13 @@ class AutoresearchEngine:
                 for i in range(max_iterations):
                     if self._stop_requested:
                         logger.info("Autoresearch stop requested")
+                        break
+                    if not await self._is_project_active(project_id):
+                        logger.info(
+                            "Autoresearch stopped before iteration %s because project %s is paused or missing",
+                            i + 1,
+                            project_id,
+                        )
                         break
 
                     # Check rate limits
@@ -242,6 +251,20 @@ class AutoresearchEngine:
                 pass
 
         return results
+
+    async def _require_active_project_id(self, project_id: str) -> str:
+        """Validate project ownership before any runner can touch models."""
+        scoped_project_id = str(project_id or "").strip()
+        if not scoped_project_id:
+            raise RuntimeError("project_id is required for autoresearch")
+        if not await self._is_project_active(scoped_project_id):
+            raise RuntimeError("Project is paused or not found")
+        return scoped_project_id
+
+    async def _is_project_active(self, project_id: str) -> bool:
+        async with async_session() as db:
+            project = await db.get(Project, project_id)
+            return bool(project and not project.is_paused)
 
     async def _measure_candidate(self, runner, target: str, repeats: int) -> dict:
         """Measure a candidate once or repeatedly and summarize uncertainty."""

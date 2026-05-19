@@ -93,8 +93,9 @@ so stale schedule ids from another project resolve as not found instead of
 letting project-facing clients operate by global id.
 Startup quality/audit/simulation loops are opt-in because they may create test
 projects, call app/API state, or use LLMs; normal project task workers,
-orchestrator routing, and schedules must skip paused projects before model work
-or proposal side effects.
+orchestrator routing, schedules, skill execution/planning, autoresearch,
+Meta-Hyperagent starts/applies, and self-evolution scans/promotions must skip
+paused projects before model work or proposal side effects.
 Agent registry, heartbeat, detail, identity, memory, recent-log, prompt
 diagnostic, A2A message views, A2A JSON-RPC discovery, and realtime agent
 events are also project-content surfaces: non-admin users must supply an
@@ -113,8 +114,9 @@ task/review learnings must carry the source project and must not append private
 project observations into universal persona MEMORY overlays.
 Self-evolution candidate scans, all-agent scans, auto-evolution, and promotion
 mutations are also project-content surfaces: they must receive an explicit
-authorized project id, qualify learnings only from that project, and must not
-use cross-project learning evidence to mutate persona files.
+authorized active project id, qualify learnings only from that project, and must
+not use cross-project or paused-project learning evidence to mutate persona
+files.
 Governed Evolution, DGM-H archive, and ReasoningBank review surfaces are also
 project-content surfaces: proposal/archive/reasoning lists and mutation actions
 must carry an explicit `project_id`, bind record ids back to that project, and
@@ -159,6 +161,11 @@ verify that the channel instance and returned rows belong to that project.
 Channel and MCP client service helpers also require explicit project ids and
 load by both record id and project id, so future internal callers cannot
 accidentally use globally unique ids to bypass the project-facing route guards.
+External Istara MCP server tools follow the same rule: project-content tools
+must receive `project_id`, pass a non-empty MCP allowlist check, avoid empty or
+global memory retrieval, and filter deployment status by the requested project.
+MCP project listing must be constrained to the allowlist and return no projects
+when no ids are explicitly allowed.
 Deployment creation must only attach channel instances owned by the same
 project, and deployment detail, lifecycle, response, conversation, transcript,
 analytics, and overview counters must require the caller's active project,

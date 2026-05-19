@@ -13,9 +13,8 @@ from pydantic import BaseModel, Field
 from sqlalchemy import false, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.config import settings
 from app.core.datetime_utils import ensure_utc
-from app.core.permissions import get_subject, is_global_admin, require_project_access
+from app.core.permissions import get_active_project_or_404, require_project_access
 from app.core.scheduler import CronParser, ScheduledTask
 from app.models.agent import Agent, AgentState
 from app.models.database import get_db
@@ -202,16 +201,31 @@ async def _require_loop_project_scope(
     project_id: str | None,
     *,
     min_role: Literal["viewer", "researcher", "project_admin"] = "viewer",
-) -> str | None:
+) -> str:
     scoped_project_id = project_id.strip() if project_id else None
-    if scoped_project_id:
-        await require_project_access(db, request, scoped_project_id, min_role=min_role)
-        return scoped_project_id
+    if not scoped_project_id:
+        raise HTTPException(status_code=400, detail="project_id is required")
+    await require_project_access(db, request, scoped_project_id, min_role=min_role)
+    return scoped_project_id
 
-    subject = get_subject(request)
-    if not settings.team_mode or is_global_admin(subject):
-        return None
-    raise HTTPException(status_code=400, detail="project_id is required")
+
+async def _require_active_loop_project_scope(
+    db: AsyncSession,
+    request: Request,
+    project_id: str | None,
+    *,
+    min_role: Literal["viewer", "researcher", "project_admin"] = "researcher",
+) -> str:
+    scoped_project_id = project_id.strip() if project_id else None
+    if not scoped_project_id:
+        raise HTTPException(status_code=400, detail="project_id is required")
+    project = await get_active_project_or_404(
+        db,
+        request,
+        scoped_project_id,
+        min_role=min_role,
+    )
+    return project.id
 
 
 def _agent_matches_project(agent: Agent, project_id: str | None) -> bool:
@@ -383,6 +397,13 @@ async def update_loop_config(
             )
 
     if data.paused is not None:
+        if data.paused is False:
+            await _require_active_loop_project_scope(
+                db,
+                request,
+                scoped_project_id,
+                min_role="researcher",
+            )
         if data.paused and agent.state != AgentState.PAUSED:
             agent.state = AgentState.PAUSED
         elif not data.paused and agent.state == AgentState.PAUSED:
@@ -441,6 +462,12 @@ async def resume_agent_loop(
     db: AsyncSession = Depends(get_db),
 ):
     """Resume an agent's loop."""
+    await _require_active_loop_project_scope(
+        db,
+        request,
+        project_id,
+        min_role="researcher",
+    )
     await _load_loop_agent_for_project(db, request, agent_id, project_id, min_role="researcher")
     if not await agent_service.set_agent_state(db, agent_id, AgentState.IDLE):
         raise HTTPException(status_code=404, detail="Agent not found")
@@ -593,7 +620,12 @@ async def create_custom_loop(
     description = data.description.strip()
     if not name or not skill_name or not project_id:
         raise HTTPException(status_code=422, detail="name, skill_name, and project_id are required")
-    await require_project_access(db, request, project_id, min_role="researcher")
+    project_id = await _require_active_loop_project_scope(
+        db,
+        request,
+        project_id,
+        min_role="researcher",
+    )
 
     # Determine cron expression: explicit or derived from interval
     cron_expr = data.cron_expression.strip() if data.cron_expression else None

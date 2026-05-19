@@ -18,6 +18,7 @@ from app.services.mcp_client_manager import (
     register_server,
     unregister_server,
 )
+from app.services.mcp_security import check_access, ensure_default_policy
 
 
 @pytest.fixture(autouse=True)
@@ -488,6 +489,35 @@ def test_mcp_tool_descriptor_sanitizes_prompt_injection_and_caps_schema():
     assert "description_prompt_injection_indicators" in descriptor["risk_warnings"]
     assert "input_schema_truncated" in descriptor["risk_warnings"]
     assert descriptor["input_schema"]["x-istara-warning"]
+
+
+@pytest.mark.asyncio
+async def test_mcp_project_scoped_tools_require_project_and_allowlist():
+    await init_db()
+    async with async_session() as db:
+        policy = await ensure_default_policy(db)
+        policy.allow_search_memory = True
+        policy.allowed_project_ids_json = "[]"
+        await db.commit()
+
+        allowed, reason = await check_access(db, "search_memory", {"project_id": "project-a"})
+        assert allowed is False
+        assert reason == "No projects are allowed for 'search_memory'"
+
+        allowed, reason = await check_access(db, "search_memory", {"query": "private"})
+        assert allowed is False
+        assert reason == "project_id is required for 'search_memory'"
+
+        policy.allowed_project_ids_json = '["project-a"]'
+        await db.commit()
+
+        allowed, reason = await check_access(db, "search_memory", {"project_id": "project-b"})
+        assert allowed is False
+        assert reason == "Project 'project-b' is not in the allowed project list"
+
+        allowed, reason = await check_access(db, "search_memory", {"project_id": "project-a"})
+        assert allowed is True
+        assert reason == "access_granted"
 
 
 @pytest.mark.asyncio

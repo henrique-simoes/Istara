@@ -1,6 +1,7 @@
 """Tests for Skills API routes — CRUD, execute, health, proposals."""
 
 import asyncio
+from types import SimpleNamespace
 
 import pytest
 from fastapi import HTTPException
@@ -268,11 +269,11 @@ def _request() -> Request:
 async def test_execute_skill_enforces_route_timeout(monkeypatch):
     """Skill execution cancels at the route budget instead of orphaning LLM work."""
 
-    async def allow_project_access(*args, **kwargs):
-        return None
+    async def allow_active_project(*args, **kwargs):
+        return SimpleNamespace(id="project-1", is_paused=False)
 
     monkeypatch.setattr(skills_route.registry, "get", lambda name: object())
-    monkeypatch.setattr(skills_route, "require_project_access", allow_project_access)
+    monkeypatch.setattr(skills_route, "get_active_project_or_404", allow_active_project)
     monkeypatch.setattr(skills_route, "agent", _SlowSkillAgent())
 
     with pytest.raises(HTTPException) as exc:
@@ -291,11 +292,11 @@ async def test_execute_skill_enforces_route_timeout(monkeypatch):
 async def test_plan_skill_enforces_route_timeout(monkeypatch):
     """Skill planning uses the same bounded server-side timeout path."""
 
-    async def allow_project_access(*args, **kwargs):
-        return None
+    async def allow_active_project(*args, **kwargs):
+        return SimpleNamespace(id="project-1", is_paused=False)
 
     monkeypatch.setattr(skills_route.registry, "get", lambda name: object())
-    monkeypatch.setattr(skills_route, "require_project_access", allow_project_access)
+    monkeypatch.setattr(skills_route, "get_active_project_or_404", allow_active_project)
     monkeypatch.setattr(skills_route, "agent", _SlowSkillAgent())
 
     with pytest.raises(HTTPException) as exc:
@@ -308,3 +309,41 @@ async def test_plan_skill_enforces_route_timeout(monkeypatch):
 
     assert exc.value.status_code == 504
     assert "timed out" in exc.value.detail
+
+
+@pytest.mark.asyncio
+async def test_execute_and_plan_reject_paused_project_before_agent_call(monkeypatch):
+    """Active project guards run before any skill agent can process content."""
+
+    async def paused_project(*args, **kwargs):
+        raise HTTPException(status_code=409, detail="Project is paused")
+
+    class FailingAgent:
+        async def execute_skill(self, **kwargs):
+            raise AssertionError("execute_skill must not run for paused projects")
+
+        async def plan_skill(self, **kwargs):
+            raise AssertionError("plan_skill must not run for paused projects")
+
+    monkeypatch.setattr(skills_route.registry, "get", lambda name: object())
+    monkeypatch.setattr(skills_route, "get_active_project_or_404", paused_project)
+    monkeypatch.setattr(skills_route, "agent", FailingAgent())
+
+    with pytest.raises(HTTPException) as execute_exc:
+        await skills_route.execute_skill(
+            "paused-skill",
+            skills_route.SkillExecuteRequest(project_id="paused-project", timeout_seconds=0.1),
+            _request(),
+            db=None,
+        )
+
+    with pytest.raises(HTTPException) as plan_exc:
+        await skills_route.plan_skill(
+            "paused-skill",
+            skills_route.SkillPlanRequest(project_id="paused-project", timeout_seconds=0.1),
+            _request(),
+            db=None,
+        )
+
+    assert execute_exc.value.status_code == 409
+    assert plan_exc.value.status_code == 409

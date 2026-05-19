@@ -87,6 +87,7 @@
         "backend/app/main.py",
         "backend/app/mcp/**",
         "backend/app/services/mcp_client_manager.py",
+        "backend/app/services/mcp_security.py",
         "backend/app/services/loop_execution_service.py",
         "backend/app/services/agent_service.py",
         "backend/app/services/a2a.py",
@@ -615,7 +616,7 @@
         "tests/test_auth_security.py"
       ],
       "future_change_trigger": true,
-      "notes": "Global admin, project admin, researcher, viewer, legacy role mappings, active-project notification, websocket subscription, chat session/history scope, Context hierarchy prompt/list scope, Context DAG session scope, memory/index scope, findings/evidence/search/report scope, task/Kanban scope, governed-evolution proposal/archive/reasoning scope, Meta-Hyperagent proposal/observation/variant scope, agent status/log/detail/learning/self-evolution/realtime/A2A-discovery, loop/background-process scope, project-owned Interfaces screens/briefs/status/configuration, integration/deployment/MCP-client list/detail/lifecycle routes, MCP client discovery/tool/call/health/delete routes, survey integration/link action routes, channel message/conversation detail scope, document library/preview routes, and donated-compute project scopes are governed. Project-facing APIs require an explicit active project; admin-only global aggregation belongs to dedicated admin surfaces. Deployment, channel, and MCP client service helpers also require explicit project scope so internal callers cannot fall back to global record ids. Startup QA/simulation loops are opt-in; project task workers, schedule execution, orchestrator routing, and persona self-evolution skip paused or missing project context before model, proposal, or mutation work."
+      "notes": "Global admin, project admin, researcher, viewer, legacy role mappings, active-project notification, websocket subscription, chat session/history scope, Context hierarchy prompt/list scope, Context DAG session scope, memory/index scope, findings/evidence/search/report scope, task/Kanban scope, governed-evolution proposal/archive/reasoning scope, Meta-Hyperagent proposal/observation/variant scope, agent status/log/detail/learning/self-evolution/realtime/A2A-discovery, loop/background-process scope, project-owned Interfaces screens/briefs/status/configuration, integration/deployment/MCP-client list/detail/lifecycle routes, MCP client discovery/tool/call/health/delete routes, survey integration/link action routes, channel message/conversation detail scope, document library/preview routes, and donated-compute project scopes are governed. Project-facing APIs require an explicit active project; admin-only global aggregation belongs to dedicated admin surfaces. Deployment, channel, MCP client service helpers, and external MCP server tools also require explicit project scope so internal and external callers cannot fall back to global record ids. Startup QA/simulation loops are opt-in; project task workers, schedule execution, orchestrator routing, skill execution/planning, autoresearch, Meta-Hyperagent starts/applies, and persona self-evolution skip paused or missing project context before model, proposal, or mutation work."
     },
     {
       "id": "AUTHZ-002",
@@ -793,6 +794,7 @@
       "evidence": [
         "backend/app/api/routes/mcp.py",
         "backend/app/services/mcp_client_manager.py",
+        "backend/app/services/mcp_security.py",
         "backend/app/services/stitch_service.py",
         "backend/app/models/mcp_server_config.py",
         "frontend/src/components/integrations/MCPTab.tsx",
@@ -805,7 +807,7 @@
         "tests/simulation/scenarios/56-mcp-server-security.mjs"
       ],
       "future_change_trigger": true,
-      "notes": "Tool execution must remain policy-mediated and visible to audit processes; external MCP URLs and cached tool descriptors are validated, bounded, prompt-sanitized, and project-owned when shown in project-facing Integrations views. MCP client lists, detail/action routes, discovery, health checks, tool calls, Stitch-backed Interfaces calls, and tool aggregation require an explicit active project instead of falling back to global admin lists or global credentials. The MCP client manager also requires project scope before listing, deduping, deleting, discovering, health-checking, aggregating, or invoking external tools."
+      "notes": "Tool execution must remain policy-mediated and visible to audit processes; external MCP URLs and cached tool descriptors are validated, bounded, prompt-sanitized, and project-owned when shown in project-facing Integrations views. MCP client lists, detail/action routes, discovery, health checks, tool calls, Stitch-backed Interfaces calls, and tool aggregation require an explicit active project instead of falling back to global admin lists or global credentials. The MCP client manager also requires project scope before listing, deduping, deleting, discovering, health-checking, aggregating, or invoking external tools. The external Istara MCP server requires project ids and non-empty project allowlists for project-content tools, filters project listing by the allowlist, and prevents global memory or deployment-status lookups."
     },
     {
       "id": "WEBHOOK-001",

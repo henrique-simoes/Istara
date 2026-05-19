@@ -60,9 +60,11 @@ def test_security_benchmark_detects_mcp_project_scope_paths() -> None:
 
     changed_paths = [
         "backend/app/api/routes/mcp.py",
+        "backend/app/mcp/server.py",
         "backend/app/models/mcp_server_config.py",
         "frontend/src/components/integrations/MCPServerSetup.tsx",
         "frontend/src/components/integrations/MCPTab.tsx",
+        "backend/app/services/mcp_security.py",
         "frontend/src/lib/api.ts",
         "frontend/src/stores/integrationsStore.ts",
         "tests/test_mcp.py",

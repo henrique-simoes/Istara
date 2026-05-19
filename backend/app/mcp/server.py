@@ -146,16 +146,29 @@ if MCP_AVAILABLE:
 
     @mcp.tool()
     async def list_projects() -> dict:
-        """List research projects (names and IDs only)."""
+        """List allowed research projects (names and IDs only)."""
 
         async def _handler(db, args):
+            import json
+
             from sqlalchemy import select as sa_select
 
             from app.models.project import Project
+            from app.services.mcp_security import get_default_policy
 
-            result = await db.execute(
-                sa_select(Project.id, Project.name).order_by(Project.created_at.desc())
-            )
+            policy = await get_default_policy(db)
+            try:
+                allowed_ids = json.loads(policy.allowed_project_ids_json or "[]") if policy else []
+            except (json.JSONDecodeError, TypeError):
+                allowed_ids = []
+            allowed_ids = [str(project_id).strip() for project_id in allowed_ids if str(project_id).strip()]
+            if not allowed_ids:
+                return {"projects": [], "count": 0}
+
+            query = sa_select(Project.id, Project.name).order_by(Project.created_at.desc())
+            if "*" not in allowed_ids:
+                query = query.where(Project.id.in_(allowed_ids))
+            result = await db.execute(query)
             rows = result.all()
             return {
                 "projects": [{"id": r[0], "name": r[1]} for r in rows],
@@ -165,26 +178,29 @@ if MCP_AVAILABLE:
         return await _gated_call("list_projects", {}, _handler)
 
     @mcp.tool()
-    async def get_deployment_status() -> dict:
-        """Get status of active research deployments."""
+    async def get_deployment_status(project_id: str) -> dict:
+        """Get status of active research deployments for one project."""
 
         async def _handler(db, args):
             from sqlalchemy import select as sa_select
 
             from app.models.research_deployment import ResearchDeployment
 
+            pid = args["project_id"]
             result = await db.execute(
                 sa_select(ResearchDeployment)
+                .where(ResearchDeployment.project_id == pid)
                 .order_by(ResearchDeployment.created_at.desc())
                 .limit(10)
             )
             deployments = result.scalars().all()
             return {
+                "project_id": pid,
                 "deployments": [d.to_dict() for d in deployments],
                 "count": len(deployments),
             }
 
-        return await _gated_call("get_deployment_status", {}, _handler)
+        return await _gated_call("get_deployment_status", {"project_id": project_id}, _handler)
 
     # ---- Sensitive tools --------------------------------------------------
 
@@ -252,12 +268,13 @@ if MCP_AVAILABLE:
         )
 
     @mcp.tool()
-    async def search_memory(query: str, top_k: int = 5) -> dict:
+    async def search_memory(project_id: str, query: str, top_k: int = 5) -> dict:
         """Search the agent's long-term memory.
 
         SENSITIVE: exposes internal knowledge base.
 
         Args:
+            project_id: Project whose memory should be searched.
             query: Natural language search query.
             top_k: Number of results to return.
         """
@@ -266,9 +283,13 @@ if MCP_AVAILABLE:
             try:
                 from app.core.rag import retrieve_context
 
-                # Use the first available project or a global search
-                ctx = await retrieve_context("", args["query"], top_k=args.get("top_k", 5))
+                ctx = await retrieve_context(
+                    args["project_id"],
+                    args["query"],
+                    top_k=args.get("top_k", 5),
+                )
                 return {
+                    "project_id": args["project_id"],
                     "query": args["query"],
                     "results": [
                         {"text": r.text, "source": r.source, "score": round(r.score, 3)}
@@ -280,9 +301,18 @@ if MCP_AVAILABLE:
                     ),
                 }
             except Exception as exc:
-                return {"query": args["query"], "results": [], "error": str(exc)}
+                return {
+                    "project_id": args["project_id"],
+                    "query": args["query"],
+                    "results": [],
+                    "error": str(exc),
+                }
 
-        return await _gated_call("search_memory", {"query": query, "top_k": top_k}, _handler)
+        return await _gated_call(
+            "search_memory",
+            {"project_id": project_id, "query": query, "top_k": top_k},
+            _handler,
+        )
 
     # ---- High-risk tools --------------------------------------------------
 
@@ -303,6 +333,13 @@ if MCP_AVAILABLE:
 
         async def _handler(db, args):
             from app.core.agent import agent
+            from app.models.project import Project
+
+            project = await db.get(Project, args["project_id"])
+            if not project:
+                return {"error": "Project not found", "project_id": args["project_id"]}
+            if project.is_paused:
+                return {"error": "Project is paused", "project_id": args["project_id"]}
 
             output = await agent.execute_skill(
                 skill_name=args["skill_name"],
@@ -391,6 +428,8 @@ if MCP_AVAILABLE:
             project = await db.get(Project, pid)
             if not project:
                 return {"error": "Project not found", "project_id": pid}
+            if project.is_paused:
+                return {"error": "Project is paused", "project_id": pid}
 
             await report_manager._check_synthesis_trigger(pid, db)
             reports_result = await db.execute(

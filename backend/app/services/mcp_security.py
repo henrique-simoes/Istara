@@ -46,6 +46,14 @@ TOOL_RISK_LEVELS: dict[str, str] = {
     "deploy_research": "high",
 }
 
+PROJECT_SCOPED_TOOLS: set[str] = {
+    "get_deployment_status",
+    "get_findings",
+    "search_memory",
+    "execute_skill",
+    "deploy_research",
+}
+
 
 # ---------------------------------------------------------------------------
 # Policy helpers
@@ -114,18 +122,25 @@ async def check_access(
         risk = TOOL_RISK_LEVELS.get(tool_name, "unknown")
         return False, f"Tool '{tool_name}' is disabled (risk: {risk})"
 
-    # For project-scoped tools, check project allowlist
-    if arguments and "project_id" in arguments:
-        project_id = arguments["project_id"]
+    project_id = str((arguments or {}).get("project_id") or "").strip()
+    if tool_name in PROJECT_SCOPED_TOOLS and not project_id:
+        return False, f"project_id is required for '{tool_name}'"
+
+    # For project-scoped tools, check project allowlist.
+    # Empty allowlists mean no project is exposed, never unrestricted access.
+    if tool_name in PROJECT_SCOPED_TOOLS or project_id:
         allowed_ids_raw = policy.allowed_project_ids_json or "[]"
         try:
-            allowed_ids = json.loads(allowed_ids_raw)
+            loaded_ids = json.loads(allowed_ids_raw)
         except (json.JSONDecodeError, TypeError):
-            allowed_ids = []
+            loaded_ids = []
+        allowed_ids = [str(item).strip() for item in loaded_ids if str(item).strip()]
 
-        if allowed_ids and "*" not in allowed_ids:
-            if project_id not in allowed_ids:
-                return False, f"Project '{project_id}' is not in the allowed project list"
+        if tool_name in PROJECT_SCOPED_TOOLS and not allowed_ids:
+            return False, f"No projects are allowed for '{tool_name}'"
+
+        if project_id and "*" not in allowed_ids and project_id not in allowed_ids:
+            return False, f"Project '{project_id}' is not in the allowed project list"
 
     # Rate-limit check for high-risk tools
     if TOOL_RISK_LEVELS.get(tool_name) == "high":

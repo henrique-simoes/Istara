@@ -10,7 +10,7 @@ code_references: ["frontend/src/components/autoresearch/AutoresearchView.tsx", "
 api_references: ["backend/app/api/routes/autoresearch.py"]
 test_references: ["tests/test_autoresearch.py", "tests/test_project_scope_contracts.py"]
 last_verified: 2026-05-18
-compass: CF-SPEC-60 / CF-754
+compass: CF-SPEC-60 / CF-754; CF-SPEC-68 / CF-870
 ---
 
 # Autoresearch Experiments Architecture
@@ -35,6 +35,7 @@ Experiments configure and inspect automated research runs across strategies or p
 
 - `backend/app/api/routes/autoresearch.py`
 - Experiment list, start, and stop routes require `project_id` and enforce project access. Autoresearch engine records and broadcasts the experiment project id, and experiment history filters by `AutoresearchExperiment.project_id`.
+- Starting an experiment requires the requested project to be active and unpaused before the runner is constructed or scheduled. The engine repeats the active-project check before runner baseline/iteration work so a paused or missing project cannot keep processing in the background.
 
 ## Architecture Notes
 
@@ -45,6 +46,7 @@ Experiments configure and inspect automated research runs across strategies or p
 ## Agents, Skills, LLM, MCP, And Permissions
 
 - Autoresearch experiments can mutate strategies that later affect agents, skills, LLM choice, RAG behavior, question banks, or UI simulations. Each experiment must remain attached to the project that authorized it.
+- Paused projects are execution-stop boundaries for autoresearch: no baseline measurement, mutation, model-choice exploration, reasoning memory, or improvement proposal should be produced after the project is paused.
 
 ## Tests And Verification
 
@@ -62,7 +64,7 @@ Experiments configure and inspect automated research runs across strategies or p
 
 ## Compass Evidence
 
-- Spec/task: CF-SPEC-60 / CF-754
+- Spec/task: CF-SPEC-60 / CF-754; CF-SPEC-68 / CF-870
 - Inventory source: `docs/features/inventory.json`
 
 ## When To Update
