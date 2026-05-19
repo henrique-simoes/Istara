@@ -179,6 +179,9 @@ Donated relay/browser compute is also a project-content boundary: a relay can
 be connected for status, but prompt and embedding payloads may only route to it
 when the request includes a concrete project and the donor scope was resolved
 from project membership or a validated compute-donation connection string.
+The lower-level relay/browser node dispatch methods also reject missing or
+mismatched project ids before websocket dispatch so direct callers cannot bypass
+registry candidate filtering.
 Regular Compute Pool stats, node lists, and model warnings require an
 authorized active project for every role; cross-project compute aggregation
 belongs only on dedicated admin reporting surfaces. Team-mode wildcard donation

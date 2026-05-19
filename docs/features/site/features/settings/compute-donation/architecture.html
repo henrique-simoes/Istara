@@ -241,7 +241,7 @@
   <p class="concept-line"><strong>Concepts:</strong> wcag</p>
 </header>
 <h2 id="implementation-summary">Implementation Summary</h2>
-<p>Compute donation lets a browser session or relay process contribute local compute capacity under controlled limits. Donated nodes are never treated as global project processors: project prompt and embedding payloads are routed to a donor only when the relay is authenticated and its resolved project scope includes the active project.</p>
+<p>Compute donation lets a browser session or relay process contribute local compute capacity under controlled limits. Donated nodes are never treated as global project processors: project prompt and embedding payloads are routed to a donor only when the relay is authenticated and its resolved project scope includes the active project. The relay node methods themselves reject missing or mismatched project ids before sending websocket payloads, so direct callers inherit the same project-content boundary as registry-routed requests.</p>
 <h2 id="frontend-surface">Frontend Surface</h2>
 <ul>
 <li><code>frontend/src/components/common/DonateComputeToggle.tsx</code></li>
@@ -263,6 +263,7 @@
 <li>Relay/desktop donation strings must include at least one selected project in team mode. The relay sends the issued connection string back to <code>/ws/relay</code>, where the server verifies issuance, active status, token type, expiry, and <code>allowed_project_ids</code> before the node can process project content.</li>
 <li>Team-mode relay validation rejects wildcard donation scope, including legacy all-project donation strings, so donated machines cannot silently become global project processors.</li>
 <li>A relay authenticated only by the shared network token can register for status but is excluded from prompt and embedding routing because it has no project scope.</li>
+<li>Direct relay/browser dispatch through <code>ComputeNode.chat</code>, <code>ComputeNode.embed</code>, or <code>ComputeNode.embed_batch</code> requires the active project to match the node&#x27;s resolved donation scope before any content is sent over the websocket.</li>
 <li>The frontmatter and manifest entries are the durable contract for agents updating this page after code changes.</li>
 <li>When the referenced component, store, route, agent, skill, or test behavior changes, regenerate and validate the feature documentation.</li>
 </ul>
@@ -286,7 +287,7 @@
 </ul>
 <h2 id="compass-evidence">Compass Evidence</h2>
 <ul>
-<li>Spec/task: CF-SPEC-60 / CF-754</li>
+<li>Spec/task: CF-SPEC-60 / CF-754; CF-SPEC-63 / CF-814</li>
 <li>Inventory source: <code>docs/features/inventory.json</code></li>
 </ul>
 <h2 id="when-to-update">When To Update</h2>
