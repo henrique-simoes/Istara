@@ -41,7 +41,7 @@ Compute donation lets a browser session or relay process contribute local comput
 - Relay/desktop donation strings must include at least one selected project in team mode. The relay sends the issued connection string back to `/ws/relay`, where the server verifies issuance, active status, token type, expiry, and `allowed_project_ids` before the node can process project content.
 - Team-mode relay validation rejects wildcard donation scope, including legacy all-project donation strings, so donated machines cannot silently become global project processors.
 - A relay authenticated only by the shared network token can register for status but is excluded from prompt and embedding routing because it has no project scope.
-- Direct relay/browser dispatch through `ComputeNode.chat`, `ComputeNode.embed`, or `ComputeNode.embed_batch` requires the active project to match the node's resolved donation scope before any content is sent over the websocket.
+- Direct relay/browser dispatch through `ComputeNode.chat`, `ComputeNode.chat_stream`, `ComputeNode.embed`, or `ComputeNode.embed_batch` requires the active project to match the node's resolved donation scope before any content is sent over websocket or direct streaming transport.
 - The frontmatter and manifest entries are the durable contract for agents updating this page after code changes.
 - When the referenced component, store, route, agent, skill, or test behavior changes, regenerate and validate the feature documentation.
 

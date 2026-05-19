@@ -144,6 +144,7 @@ class ComputeNodeInvocationMixin:
         project_id: str | None = None,
     ) -> AsyncGenerator[str | dict, None]:
         """Direct streaming chat on this specific node (backward compat)."""
+        project_id = self._authorized_project_for_content_dispatch(project_id)
         msgs = list(messages)
         if system:
             msgs = [{"role": "system", "content": system}, *msgs]
