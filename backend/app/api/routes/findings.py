@@ -6,7 +6,7 @@ import json
 import uuid
 from datetime import datetime
 
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -42,6 +42,61 @@ async def _require_project_scope(
         raise HTTPException(status_code=422, detail="project_id is required")
     await require_project_access(db, request, scoped_project_id, min_role=min_role)
     return scoped_project_id
+
+
+async def _get_project_record_or_404(
+    db: AsyncSession,
+    request: Request,
+    model,
+    record_id: str,
+    not_found_detail: str,
+    project_id: str | None,
+    *,
+    min_role: str,
+):
+    scoped_project_id = await _require_project_scope(db, request, project_id, min_role=min_role)
+    result = await db.execute(
+        select(model).where(
+            model.id == record_id,
+            model.project_id == scoped_project_id,
+        )
+    )
+    record = result.scalar_one_or_none()
+    if not record:
+        raise HTTPException(status_code=404, detail=not_found_detail)
+    return scoped_project_id, record
+
+
+async def _get_project_finding_or_404(
+    db: AsyncSession,
+    request: Request,
+    finding_type: str,
+    finding_id: str,
+    project_id: str | None,
+    *,
+    min_role: str,
+    include_design_decision: bool = False,
+):
+    type_map = {
+        "nugget": Nugget,
+        "fact": Fact,
+        "insight": Insight,
+        "recommendation": Recommendation,
+    }
+    if include_design_decision:
+        type_map["design_decision"] = DesignDecision
+    model = type_map.get(finding_type)
+    if not model:
+        raise HTTPException(status_code=400, detail=f"Invalid finding type: {finding_type}")
+    return await _get_project_record_or_404(
+        db,
+        request,
+        model,
+        finding_id,
+        "Finding not found",
+        project_id,
+        min_role=min_role,
+    )
 
 
 # --- Schemas ---
@@ -211,12 +266,21 @@ async def create_nugget(data: NuggetCreate, request: Request, db: AsyncSession =
 
 
 @router.delete("/findings/nuggets/{nugget_id}", status_code=204)
-async def delete_nugget(nugget_id: str, request: Request, db: AsyncSession = Depends(get_db)):
-    result = await db.execute(select(Nugget).where(Nugget.id == nugget_id))
-    nugget = result.scalar_one_or_none()
-    if not nugget:
-        raise HTTPException(status_code=404, detail="Nugget not found")
-    await require_project_access(db, request, nugget.project_id, min_role="researcher")
+async def delete_nugget(
+    nugget_id: str,
+    request: Request,
+    project_id: str | None = Query(None, description="Active project"),
+    db: AsyncSession = Depends(get_db),
+):
+    _, nugget = await _get_project_record_or_404(
+        db,
+        request,
+        Nugget,
+        nugget_id,
+        "Nugget not found",
+        project_id,
+        min_role="researcher",
+    )
     await db.delete(nugget)
     await db.commit()
 
@@ -255,12 +319,21 @@ async def create_fact(data: FactCreate, request: Request, db: AsyncSession = Dep
 
 
 @router.delete("/findings/facts/{fact_id}", status_code=204)
-async def delete_fact(fact_id: str, request: Request, db: AsyncSession = Depends(get_db)):
-    result = await db.execute(select(Fact).where(Fact.id == fact_id))
-    fact = result.scalar_one_or_none()
-    if not fact:
-        raise HTTPException(status_code=404, detail="Fact not found")
-    await require_project_access(db, request, fact.project_id, min_role="researcher")
+async def delete_fact(
+    fact_id: str,
+    request: Request,
+    project_id: str | None = Query(None, description="Active project"),
+    db: AsyncSession = Depends(get_db),
+):
+    _, fact = await _get_project_record_or_404(
+        db,
+        request,
+        Fact,
+        fact_id,
+        "Fact not found",
+        project_id,
+        min_role="researcher",
+    )
     await db.delete(fact)
     await db.commit()
 
@@ -300,12 +373,21 @@ async def create_insight(data: InsightCreate, request: Request, db: AsyncSession
 
 
 @router.delete("/findings/insights/{insight_id}", status_code=204)
-async def delete_insight(insight_id: str, request: Request, db: AsyncSession = Depends(get_db)):
-    result = await db.execute(select(Insight).where(Insight.id == insight_id))
-    insight = result.scalar_one_or_none()
-    if not insight:
-        raise HTTPException(status_code=404, detail="Insight not found")
-    await require_project_access(db, request, insight.project_id, min_role="researcher")
+async def delete_insight(
+    insight_id: str,
+    request: Request,
+    project_id: str | None = Query(None, description="Active project"),
+    db: AsyncSession = Depends(get_db),
+):
+    _, insight = await _get_project_record_or_404(
+        db,
+        request,
+        Insight,
+        insight_id,
+        "Insight not found",
+        project_id,
+        min_role="researcher",
+    )
     await db.delete(insight)
     await db.commit()
 
@@ -346,12 +428,21 @@ async def create_recommendation(data: RecommendationCreate, request: Request, db
 
 
 @router.delete("/findings/recommendations/{rec_id}", status_code=204)
-async def delete_recommendation(rec_id: str, request: Request, db: AsyncSession = Depends(get_db)):
-    result = await db.execute(select(Recommendation).where(Recommendation.id == rec_id))
-    rec = result.scalar_one_or_none()
-    if not rec:
-        raise HTTPException(status_code=404, detail="Recommendation not found")
-    await require_project_access(db, request, rec.project_id, min_role="researcher")
+async def delete_recommendation(
+    rec_id: str,
+    request: Request,
+    project_id: str | None = Query(None, description="Active project"),
+    db: AsyncSession = Depends(get_db),
+):
+    _, rec = await _get_project_record_or_404(
+        db,
+        request,
+        Recommendation,
+        rec_id,
+        "Recommendation not found",
+        project_id,
+        min_role="researcher",
+    )
     await db.delete(rec)
     await db.commit()
 
@@ -427,28 +518,25 @@ async def get_evidence_chain(
     finding_type: str,
     finding_id: str,
     request: Request,
+    project_id: str | None = Query(None, description="Active project"),
     db: AsyncSession = Depends(get_db),
 ):
     """Get the full evidence chain for a finding — traversing links up and down."""
-    type_map = {
-        "nugget": Nugget, "fact": Fact, "insight": Insight, "recommendation": Recommendation,
-    }
-    model = type_map.get(finding_type)
-    if not model:
-        raise HTTPException(status_code=400, detail=f"Invalid finding type: {finding_type}")
-
-    result = await db.execute(select(model).where(model.id == finding_id))
-    finding = result.scalar_one_or_none()
-    if not finding:
-        raise HTTPException(status_code=404, detail="Finding not found")
-    await require_project_access(db, request, finding.project_id, min_role="viewer")
+    scoped_project_id, finding = await _get_project_finding_or_404(
+        db,
+        request,
+        finding_type,
+        finding_id,
+        project_id,
+        min_role="viewer",
+    )
 
     chain = {"recommendation": [], "insight": [], "fact": [], "nugget": []}
 
     def parse_ids(raw):
         return _parse_json_list(raw)
 
-    project_id = finding.project_id
+    project_id = scoped_project_id
 
     if finding_type == "recommendation":
         # Drill down: rec → insights → facts → nuggets
@@ -601,13 +689,20 @@ async def get_evidence_chain_query(
     finding_type: str,
     finding_id: str,
     request: Request,
+    project_id: str | None = Query(None, description="Active project"),
     extended: bool = True,
     db: AsyncSession = Depends(get_db),
 ):
     """Compatibility endpoint for query-style evidence-chain callers."""
     if extended:
-        return await get_evidence_chain_extended(finding_type, finding_id, request, db)
-    return await get_evidence_chain(finding_type, finding_id, request, db)
+        return await get_evidence_chain_extended(
+            finding_type,
+            finding_id,
+            request,
+            project_id,
+            db,
+        )
+    return await get_evidence_chain(finding_type, finding_id, request, project_id, db)
 
 
 class LinkEvidenceRequest(BaseModel):
@@ -621,6 +716,7 @@ async def link_evidence(
     finding_id: str,
     data: LinkEvidenceRequest,
     request: Request,
+    project_id: str | None = Query(None, description="Active project"),
     db: AsyncSession = Depends(get_db),
 ):
     """Add an evidence link to a finding's _ids array.
@@ -635,22 +731,26 @@ async def link_evidence(
     }
 
     # Validate the finding being modified
-    model = type_map.get(finding_type)
-    if not model:
-        raise HTTPException(status_code=400, detail=f"Invalid finding type: {finding_type}")
-
-    result = await db.execute(select(model).where(model.id == finding_id))
-    finding = result.scalar_one_or_none()
-    if not finding:
-        raise HTTPException(status_code=404, detail="Finding not found")
-    await require_project_access(db, request, finding.project_id, min_role="researcher")
+    scoped_project_id, finding = await _get_project_finding_or_404(
+        db,
+        request,
+        finding_type,
+        finding_id,
+        project_id,
+        min_role="researcher",
+    )
 
     # Validate the target being linked exists
     link_model = type_map.get(data.link_type)
     if not link_model:
         raise HTTPException(status_code=400, detail=f"Invalid link type: {data.link_type}")
 
-    link_result = await db.execute(select(link_model).where(link_model.id == data.link_id))
+    link_result = await db.execute(
+        select(link_model).where(
+            link_model.id == data.link_id,
+            link_model.project_id == scoped_project_id,
+        )
+    )
     link_target = link_result.scalar_one_or_none()
     if not link_target:
         raise HTTPException(status_code=404, detail=f"Target {data.link_type} not found")
@@ -821,13 +921,22 @@ async def create_design_decision(
 
 
 @router.delete("/findings/design-decisions/{dd_id}", status_code=204)
-async def delete_design_decision(dd_id: str, request: Request, db: AsyncSession = Depends(get_db)):
+async def delete_design_decision(
+    dd_id: str,
+    request: Request,
+    project_id: str | None = Query(None, description="Active project"),
+    db: AsyncSession = Depends(get_db),
+):
     """Delete a design decision."""
-    result = await db.execute(select(DesignDecision).where(DesignDecision.id == dd_id))
-    dd = result.scalar_one_or_none()
-    if not dd:
-        raise HTTPException(status_code=404, detail="Design decision not found")
-    await require_project_access(db, request, dd.project_id, min_role="researcher")
+    _, dd = await _get_project_record_or_404(
+        db,
+        request,
+        DesignDecision,
+        dd_id,
+        "Design decision not found",
+        project_id,
+        min_role="researcher",
+    )
     await db.delete(dd)
     await db.commit()
 
@@ -840,6 +949,7 @@ async def get_evidence_chain_extended(
     finding_type: str,
     finding_id: str,
     request: Request,
+    project_id: str | None = Query(None, description="Active project"),
     db: AsyncSession = Depends(get_db),
 ):
     """Get the full evidence chain including DesignDecision and DesignScreen nodes.
@@ -847,19 +957,15 @@ async def get_evidence_chain_extended(
     Extends the standard evidence-chain to traverse:
     Nugget -> Fact -> Insight -> Recommendation -> DesignDecision -> DesignScreen
     """
-    type_map = {
-        "nugget": Nugget, "fact": Fact, "insight": Insight,
-        "recommendation": Recommendation, "design_decision": DesignDecision,
-    }
-    model = type_map.get(finding_type)
-    if not model:
-        raise HTTPException(status_code=400, detail=f"Invalid finding type: {finding_type}")
-
-    result = await db.execute(select(model).where(model.id == finding_id))
-    finding = result.scalar_one_or_none()
-    if not finding:
-        raise HTTPException(status_code=404, detail="Finding not found")
-    await require_project_access(db, request, finding.project_id, min_role="viewer")
+    scoped_project_id, finding = await _get_project_finding_or_404(
+        db,
+        request,
+        finding_type,
+        finding_id,
+        project_id,
+        min_role="viewer",
+        include_design_decision=True,
+    )
 
     chain: dict[str, list] = {
         "recommendation": [], "insight": [], "fact": [], "nugget": [],
@@ -869,7 +975,7 @@ async def get_evidence_chain_extended(
     def parse_ids(raw: str | None) -> list[str]:
         return _parse_json_list(raw)
 
-    project_id = finding.project_id
+    project_id = scoped_project_id
 
     async def append_design_nodes_for_recommendations(recommendation_ids: set[str]) -> None:
         if not recommendation_ids:
@@ -905,7 +1011,13 @@ async def get_evidence_chain_extended(
         return getattr(item, "id", None)
 
     if finding_type in {"nugget", "fact", "insight", "recommendation"}:
-        base = await get_evidence_chain(finding_type, finding_id, request, db)
+        base = await get_evidence_chain(
+            finding_type,
+            finding_id,
+            request,
+            project_id,
+            db,
+        )
         for key in ("recommendation", "insight", "fact", "nugget"):
             chain[key] = list(base["chain"].get(key, []))
 
@@ -942,7 +1054,13 @@ async def get_evidence_chain_extended(
             rid for rid in (response_id(rec) for rec in chain["recommendation"]) if rid
         }
         if recommendation_ids:
-            base = await get_evidence_chain("recommendation", next(iter(recommendation_ids)), request, db)
+            base = await get_evidence_chain(
+                "recommendation",
+                next(iter(recommendation_ids)),
+                request,
+                project_id,
+                db,
+            )
             for key in ("insight", "fact", "nugget"):
                 chain[key] = list(base["chain"].get(key, []))
 

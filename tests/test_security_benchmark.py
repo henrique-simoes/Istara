@@ -306,7 +306,9 @@ def test_security_benchmark_detects_findings_project_scope_paths() -> None:
     changed_paths = [
         "backend/app/api/routes/findings.py",
         "frontend/src/components/common/SearchModal.tsx",
+        "frontend/src/components/findings/AtomicDrilldown.tsx",
         "frontend/src/components/findings/FindingsView.tsx",
+        "frontend/src/components/agents/AgentTimeline.tsx",
         "frontend/src/lib/api.ts",
         "tests/test_findings.py",
         "tests/test_project_scope_contracts.py",

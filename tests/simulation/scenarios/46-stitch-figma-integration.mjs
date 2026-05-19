@@ -200,9 +200,9 @@ export async function run(ctx) {
 
       // Clean up recommendation and decision
       if (screen.design_decision_id) {
-        try { await api.delete(`/api/findings/design-decisions/${screen.design_decision_id}`); } catch {}
+        try { await api.delete(`/api/findings/design-decisions/${screen.design_decision_id}?project_id=${projectId}`); } catch {}
       }
-      try { await api.delete(`/api/findings/recommendations/${recId}`); } catch {}
+      try { await api.delete(`/api/findings/recommendations/${recId}?project_id=${projectId}`); } catch {}
     } catch (e) {
       checks.push({ name: "Mock generate with seed_finding_ids", passed: false, detail: e.message });
     }

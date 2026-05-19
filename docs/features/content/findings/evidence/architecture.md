@@ -35,6 +35,7 @@ The Findings evidence tab lists research insights and recommendations for the ac
 - `backend/app/api/routes/findings.py`
 - Project-facing findings list routes require `project_id` and verify project access before returning nuggets, facts, insights, recommendations, or design decisions.
 - Evidence-chain traversal filters linked records by the originating finding's project before returning nested nuggets, facts, insights, recommendations, design decisions, or screens.
+- Evidence-chain, link, delete, and design-decision by-id routes also require the active `project_id` and load records by both id and project id. A stale finding id from another project resolves as not found even when the user can access both projects.
 
 ## Architecture Notes
 
@@ -45,7 +46,7 @@ The Findings evidence tab lists research insights and recommendations for the ac
 
 ## Agents, Skills, LLM, MCP, And Permissions
 
-- Findings evidence is project content. Every non-admin read must be bound to the caller's authorized active project, and global aggregation belongs only to dedicated admin surfaces.
+- Findings evidence is project content. Every project-facing read or mutation must be bound to the caller's authorized active project, and global aggregation belongs only to dedicated admin surfaces.
 
 ## Tests And Verification
 

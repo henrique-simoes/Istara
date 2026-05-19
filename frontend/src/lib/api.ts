@@ -245,20 +245,20 @@ export const findings = {
     request<any[]>(`/api/findings/recommendations?project_id=${encodeURIComponent(projectId)}`),
   summary: (projectId: string) =>
     request<any>(`/api/findings/summary/${projectId}`),
-  evidenceChain: (findingType: string, findingId: string) =>
-    request<any>(`/api/findings/${findingType}/${findingId}/evidence-chain`),
+  evidenceChain: (findingType: string, findingId: string, projectId: string) =>
+    request<any>(`/api/findings/${findingType}/${findingId}/evidence-chain?project_id=${encodeURIComponent(projectId)}`),
   createNugget: (projectId: string, data: { text: string; source: string; source_location?: string; tags?: string[] }) =>
     post<any>("/api/findings/nuggets", { project_id: projectId, ...data }),
-  linkEvidence: (findingType: string, findingId: string, linkId: string, linkType: string) =>
-    patch<any>(`/api/findings/${findingType}/${findingId}/link`, { link_id: linkId, link_type: linkType }),
-  delete: (type: "nugget" | "fact" | "insight" | "recommendation", id: string) => {
+  linkEvidence: (findingType: string, findingId: string, linkId: string, linkType: string, projectId: string) =>
+    patch<any>(`/api/findings/${findingType}/${findingId}/link?project_id=${encodeURIComponent(projectId)}`, { link_id: linkId, link_type: linkType }),
+  delete: (type: "nugget" | "fact" | "insight" | "recommendation", id: string, projectId: string) => {
     const plural: Record<string, string> = {
       nugget: "nuggets",
       fact: "facts",
       insight: "insights",
       recommendation: "recommendations",
     };
-    return fetch(`${API_BASE}/api/findings/${plural[type]}/${id}`, { method: "DELETE", headers: { ..._getAuthHeaders() } });
+    return fetch(`${API_BASE}/api/findings/${plural[type]}/${id}?project_id=${encodeURIComponent(projectId)}`, { method: "DELETE", headers: { ..._getAuthHeaders() } });
   },
 };
 
