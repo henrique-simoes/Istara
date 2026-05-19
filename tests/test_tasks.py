@@ -86,13 +86,31 @@ async def _seed_agent_task(project_id: str, agent_id: str, title: str) -> Task:
 
 @pytest.mark.asyncio
 async def test_tasks_list_returns_list(auth_headers):
-    """GET /api/tasks returns a list."""
+    """GET /api/tasks returns only tasks for the requested project."""
+    await init_db()
+    project = await _seed_project("List Tasks")
+    other_project = await _seed_project("Other List Tasks")
+    project_task = await _seed_task(project.id, "Visible Task")
+    await _seed_task(other_project.id, "Hidden Task")
+
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        response = await ac.get(f"/api/tasks?project_id={project.id}", headers=auth_headers)
+        assert response.status_code == 200
+        task_ids = {task["id"] for task in response.json()}
+        assert task_ids == {project_task.id}
+
+
+@pytest.mark.asyncio
+async def test_tasks_list_requires_project_scope_for_admin(auth_headers):
+    """Project-facing task lists never fall back to a global admin feed."""
     await init_db()
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
         response = await ac.get("/api/tasks", headers=auth_headers)
-        assert response.status_code == 200
-        assert isinstance(response.json(), list)
+
+    assert response.status_code == 422
+    assert response.json()["detail"] == "project_id is required"
 
 
 @pytest.mark.asyncio

@@ -38,12 +38,17 @@ export const useTaskStore = create<TaskStore>((set, get) => ({
   error: null,
 
   fetchTasks: async (projectId) => {
-    set({ loading: true, error: null });
+    if (!projectId) {
+      set({ tasks: [], loading: false, error: null });
+      return;
+    }
+
+    set({ tasks: [], loading: true, error: null });
     try {
       const data = await tasksApi.list(projectId);
-      set({ tasks: data, loading: false });
+      set({ tasks: data.filter((task) => task.project_id === projectId), loading: false });
     } catch (e: any) {
-      set({ error: e.message, loading: false });
+      set({ tasks: [], error: e.message, loading: false });
     }
   },
 

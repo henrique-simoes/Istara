@@ -8,9 +8,9 @@ related_features: ["tasks.editor", "tasks.review", "tasks.send-report"]
 related_glossary: ["scr"]
 code_references: ["frontend/src/components/kanban/KanbanBoard.tsx", "frontend/src/stores/taskStore.ts", "backend/app/api/routes/tasks.py"]
 api_references: ["backend/app/api/routes/tasks.py"]
-test_references: ["tests/test_tasks.py"]
-last_verified: 2026-05-15
-compass: CF-SPEC-53 / CF-657
+test_references: ["tests/test_tasks.py", "tests/test_project_scope_contracts.py"]
+last_verified: 2026-05-19
+compass: CF-SPEC-60 / CF-770
 ---
 
 # Task Kanban Board Architecture
@@ -38,6 +38,9 @@ Tasks presents project work as a Kanban board for tracking research operations, 
 ## Architecture Notes
 
 - The feature is mounted through `frontend/src/components/kanban/KanbanBoard.tsx` and the UI navigation path recorded in the inventory.
+- Task list reads are active-project scoped: `/api/tasks` requires `project_id` for every role, including global admins, and verifies project visibility before returning cards.
+- `frontend/src/stores/taskStore.ts` clears stale cards when there is no active project or when a scoped fetch fails, then filters returned rows back to the active project id as a frontend defense-in-depth check.
+- Cross-project task aggregation belongs on explicit admin reporting surfaces, not on the project-facing Kanban route or store.
 - The frontmatter and manifest entries are the durable contract for agents updating this page after code changes.
 - When the referenced component, store, route, agent, skill, or test behavior changes, regenerate and validate the feature documentation.
 
@@ -48,6 +51,7 @@ Tasks presents project work as a Kanban board for tracking research operations, 
 ## Tests And Verification
 
 - `tests/test_tasks.py`
+- `tests/test_project_scope_contracts.py`
 
 ## Related Features
 
@@ -61,7 +65,7 @@ Tasks presents project work as a Kanban board for tracking research operations, 
 
 ## Compass Evidence
 
-- Spec/task: CF-SPEC-53 / CF-657
+- Spec/task: CF-SPEC-60 / CF-770
 - Inventory source: `docs/features/inventory.json`
 
 ## When To Update

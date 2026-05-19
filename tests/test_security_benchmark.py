@@ -220,6 +220,24 @@ def test_security_benchmark_detects_findings_project_scope_paths() -> None:
     assert result.scorecard["triggered_paths"] == sorted(changed_paths)
 
 
+def test_security_benchmark_detects_task_project_scope_paths() -> None:
+    matrix = load_matrix(ROOT / "security" / "control_matrix.json")
+
+    changed_paths = [
+        "backend/app/api/routes/tasks.py",
+        "frontend/src/components/kanban/KanbanBoard.tsx",
+        "frontend/src/lib/api.ts",
+        "frontend/src/stores/taskStore.ts",
+        "tests/test_project_scope_contracts.py",
+        "tests/test_tasks.py",
+    ]
+    result = evaluate_matrix(matrix, changed_paths=changed_paths)
+
+    assert result.passed is True
+    assert result.scorecard["auth_security_change_detected"] is True
+    assert result.scorecard["triggered_paths"] == sorted(changed_paths)
+
+
 def test_security_benchmark_detects_memory_context_project_scope_paths() -> None:
     matrix = load_matrix(ROOT / "security" / "control_matrix.json")
 

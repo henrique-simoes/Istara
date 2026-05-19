@@ -8,9 +8,9 @@ related_features: ["tasks.editor", "tasks.review", "tasks.send-report"]
 related_glossary: ["scr"]
 code_references: ["frontend/src/components/kanban/KanbanBoard.tsx", "frontend/src/stores/taskStore.ts", "backend/app/api/routes/tasks.py"]
 api_references: ["backend/app/api/routes/tasks.py"]
-test_references: ["tests/test_tasks.py"]
-last_verified: 2026-05-15
-compass: CF-SPEC-53 / CF-657
+test_references: ["tests/test_tasks.py", "tests/test_project_scope_contracts.py"]
+last_verified: 2026-05-19
+compass: CF-SPEC-60 / CF-770
 ---
 
 # Task Kanban Board
@@ -40,10 +40,12 @@ Task Kanban Board exists so the work represented by Tasks > Kanban has a stable,
 - Start from Tasks > Kanban when the current research task needs task kanban board.
 - Use the visible controls to create, inspect, refine, or route project work without leaving the active Istara context.
 - Move to related surfaces when needed: tasks.editor, tasks.review, tasks.send-report.
+- Task cards are loaded only for the active project. Switching projects clears the previous board state before the new project's cards are shown.
 
 ## Inputs, Outputs, And Expected Outcomes
 
 - Project-scoped state or artifact updates associated with task kanban board.
+- The task list API requires the active project id; project-facing Kanban does not show cross-project task activity.
 - Visible status, lists, forms, generated artifacts, or review results shown by the referenced component and routes.
 
 ## Caveats
@@ -65,4 +67,4 @@ Task Kanban Board exists so the work represented by Tasks > Kanban has a stable,
 
 - Source files: `frontend/src/components/kanban/KanbanBoard.tsx`, `frontend/src/stores/taskStore.ts`, `backend/app/api/routes/tasks.py`
 - API references: `backend/app/api/routes/tasks.py`
-- Tests: `tests/test_tasks.py`
+- Tests: `tests/test_tasks.py`, `tests/test_project_scope_contracts.py`

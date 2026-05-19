@@ -262,10 +262,12 @@
 <li>Start from Tasks &gt; Kanban when the current research task needs task kanban board.</li>
 <li>Use the visible controls to create, inspect, refine, or route project work without leaving the active Istara context.</li>
 <li>Move to related surfaces when needed: tasks.editor, tasks.review, tasks.send-report.</li>
+<li>Task cards are loaded only for the active project. Switching projects clears the previous board state before the new project&#x27;s cards are shown.</li>
 </ul>
 <h2 id="inputs-outputs-and-expected-outcomes">Inputs, Outputs, And Expected Outcomes</h2>
 <ul>
 <li>Project-scoped state or artifact updates associated with task kanban board.</li>
+<li>The task list API requires the active project id; project-facing Kanban does not show cross-project task activity.</li>
 <li>Visible status, lists, forms, generated artifacts, or review results shown by the referenced component and routes.</li>
 </ul>
 <h2 id="caveats">Caveats</h2>
@@ -287,7 +289,7 @@
 <ul>
 <li>Source files: <code>frontend/src/components/kanban/KanbanBoard.tsx</code>, <code>frontend/src/stores/taskStore.ts</code>, <code>backend/app/api/routes/tasks.py</code></li>
 <li>API references: <code>backend/app/api/routes/tasks.py</code></li>
-<li>Tests: <code>tests/test_tasks.py</code></li>
+<li>Tests: <code>tests/test_tasks.py</code>, <code>tests/test_project_scope_contracts.py</code></li>
 </ul>
         </article>
         <aside class="toc-panel" aria-label="Page sections">
