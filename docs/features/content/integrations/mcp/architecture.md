@@ -53,6 +53,7 @@ The MCP tab configures project-owned Model Context Protocol client connections p
 - `backend/app/services/mcp_client_manager.py` requires a project id for registration, list, tool aggregation, discovery, tool calls, health checks, and deletion, and loads server records by both id and project id before returning cached tools or making outbound MCP calls.
 - MCP client registration, discovery, and tool-call producer evidence records the active project id at the governance proposal level as well as inside the evidence payload, so improvement-governance surfaces do not treat project-owned MCP client activity as global.
 - The external Istara MCP server treats project-content tools as project-scoped. `get_findings`, `search_memory`, `execute_skill`, `deploy_research`, and `get_deployment_status` require `project_id`; empty MCP project allowlists mean no project is exposed, not unrestricted access.
+- MCP server audit entries persist best-effort `project_id` evidence from tool arguments. `MCPAuditLog` requests audit entries for the active project only, and `/api/mcp/server/audit` treats missing `project_id` as a global aggregation that remains global-admin-only.
 - MCP `search_memory` calls project-scoped retrieval with the requested project id rather than an empty/global memory id. MCP deployment status is filtered by project, and skill/report execution is rejected for paused projects before content processing.
 - MCP `list_projects` is filtered by the access policy allowlist and returns an empty list when no project ids are allowed, preventing external agents from enumerating project names by default.
 - Legacy/global MCP client rows are not returned by project-facing Integrations APIs; any cross-project MCP reporting must use a dedicated global-admin surface.
@@ -64,6 +65,7 @@ The MCP tab configures project-owned Model Context Protocol client connections p
 
 - MCP-related behavior must keep access policy, audit evidence, tool/resource exposure, and project ownership synchronized with the cited route or integration component.
 - The MCP access policy allowlist is an external-agent authorization boundary. A tool policy may be enabled, but it still cannot access project content unless the requested project id is explicitly allowed or the policy uses the admin-only wildcard.
+- Project-scoped MCP audit review requires an authorized active project; unscoped cross-project audit review belongs only to explicit global-admin reporting.
 
 ## Tests And Verification
 

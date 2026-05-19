@@ -268,12 +268,14 @@
 <li>Project-scoped MCP server registrations associated with the selected project.</li>
 <li>Visible status, lists, forms, generated artifacts, or review results shown by the referenced component and routes.</li>
 <li>Discovery, deletion, health checks, cached tool views, and tool calls only operate on MCP servers owned by the active project.</li>
+<li>Admin MCP audit review in the Integrations MCP tab is filtered to the active project. Cross-project MCP audit aggregation is reserved for explicit global-admin reporting surfaces.</li>
 </ul>
 <h2 id="caveats">Caveats</h2>
 <ul>
 <li>No active project means the connected MCP server list is empty and new connections are disabled.</li>
 <li>Legacy global MCP clients are admin API inventory and are not shown as project MCP connections.</li>
 <li>A connected server from another project should not appear or be actionable in the current project&#x27;s MCP tab, even if the same user can administer both projects.</li>
+<li>MCP audit entries from another project should not appear in the current project&#x27;s MCP tab, even for users who can administer both projects.</li>
 <li>Needs interactive verification for exact empty, loading, error, and permission-denied states.</li>
 <li>Do not expand this documentation beyond the cited source files without adding new code or walkthrough evidence.</li>
 </ul>
