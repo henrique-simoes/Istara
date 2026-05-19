@@ -8,6 +8,7 @@ import type { NotificationCategory, NotificationPreference } from "@/lib/types";
 
 const ALL_CATEGORIES: { id: NotificationCategory; label: string }[] = [
   { id: "agent_status", label: "Agent Status" },
+  { id: "agent_promotion", label: "Agent Promotion" },
   { id: "task_progress", label: "Task Progress" },
   { id: "finding_created", label: "Finding Created" },
   { id: "file_processed", label: "File Processed" },

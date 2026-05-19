@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+import json
 import logging
 import re
 from pathlib import Path
@@ -402,6 +403,10 @@ async def request_promotion(
     if agent.scope == "universal":
         return {"status": "already_universal"}
 
+    scoped_project_id = agent_project_id(agent)
+    if not scoped_project_id:
+        raise HTTPException(status_code=400, detail="project_id is required")
+
     # Create a notification for admins
     from app.models.notification import Notification
     import uuid
@@ -413,12 +418,21 @@ async def request_promotion(
         category="agent_promotion",
         severity="info",
         agent_id=agent_id,
+        project_id=scoped_project_id,
         action_type="review_agent_promotion",
         action_target=agent_id,
+        metadata_json=json.dumps(
+            {
+                "agent_id": agent_id,
+                "agent_name": agent.name,
+                "project_id": scoped_project_id,
+                "requested_scope": "universal",
+            }
+        ),
     )
     db.add(notif)
     await db.commit()
-    return {"status": "requested", "agent_id": agent_id}
+    return {"status": "requested", "agent_id": agent_id, "project_id": scoped_project_id}
 
 
 # ───── Avatar ─────

@@ -8,9 +8,9 @@ related_features: ["agents.registry", "memory.agent"]
 related_glossary: ["a2a"]
 code_references: ["frontend/src/components/agents/AgentsView.tsx", "frontend/src/lib/api.ts", "frontend/src/stores/agentStore.ts", "backend/app/api/routes/agents.py", "backend/app/core/agent_identity.py", "backend/app/core/agent_memory.py", "backend/app/core/permissions.py"]
 api_references: ["backend/app/api/routes/agents.py"]
-test_references: ["tests/test_agents.py", "tests/test_agent_mutation_scope.py", "tests/test_agent_scope_contracts.py"]
+test_references: ["tests/test_agents.py", "tests/test_agent_mutation_scope.py", "tests/test_agent_scope_contracts.py", "tests/test_project_scope_contracts.py"]
 last_verified: 2026-05-19
-compass: CF-SPEC-53 / CF-657; CF-SPEC-83 / CF-1075
+compass: CF-SPEC-53 / CF-657; CF-SPEC-83 / CF-1075; CF-SPEC-89 / CF-1125
 ---
 
 # Agent Detail Panels
@@ -46,6 +46,7 @@ Agent Detail Panels exists so the work represented by Agents > Agents > Detail h
 
 - Project-scoped state or artifact updates associated with agent detail panels.
 - Identity, memory, permission, lifecycle, and export updates require the active project to match the selected agent.
+- Promotion review requests remain attached to the selected agent's project so they do not appear as global review activity in unrelated projects.
 - Visible status, lists, forms, generated artifacts, or review results shown by the referenced component and routes.
 
 ## Caveats
@@ -66,4 +67,4 @@ Agent Detail Panels exists so the work represented by Agents > Agents > Detail h
 
 - Source files: `frontend/src/components/agents/AgentsView.tsx`, `frontend/src/lib/api.ts`, `frontend/src/stores/agentStore.ts`, `backend/app/api/routes/agents.py`, `backend/app/core/agent_identity.py`, `backend/app/core/agent_memory.py`, `backend/app/core/permissions.py`
 - API references: `backend/app/api/routes/agents.py`
-- Tests: `tests/test_agents.py`, `tests/test_agent_mutation_scope.py`, `tests/test_agent_scope_contracts.py`
+- Tests: `tests/test_agents.py`, `tests/test_agent_mutation_scope.py`, `tests/test_agent_scope_contracts.py`, `tests/test_project_scope_contracts.py`

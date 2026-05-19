@@ -8,9 +8,9 @@ related_features: ["agents.registry", "memory.agent"]
 related_glossary: ["a2a"]
 code_references: ["frontend/src/components/agents/AgentsView.tsx", "frontend/src/lib/api.ts", "backend/app/api/routes/agents.py", "backend/app/api/agent_project_scope.py", "backend/app/core/agent_identity.py", "backend/app/core/agent_learning.py", "backend/app/core/self_evolution.py", "backend/app/core/agent_memory.py", "backend/app/core/permissions.py"]
 api_references: ["backend/app/api/routes/agents.py", "backend/app/api/agent_project_scope.py"]
-test_references: ["tests/test_agents.py", "tests/test_agent_mutation_scope.py", "tests/test_agent_scope_contracts.py", "tests/test_agent_learning_scope.py"]
+test_references: ["tests/test_agents.py", "tests/test_agent_mutation_scope.py", "tests/test_agent_scope_contracts.py", "tests/test_agent_learning_scope.py", "tests/test_project_scope_contracts.py"]
 last_verified: 2026-05-19
-compass: CF-SPEC-60 / CF-776; CF-SPEC-68 / CF-870; CF-SPEC-83 / CF-1075
+compass: CF-SPEC-60 / CF-776; CF-SPEC-68 / CF-870; CF-SPEC-83 / CF-1075; CF-SPEC-89 / CF-1125
 ---
 
 # Agent Detail Panels Architecture
@@ -46,6 +46,7 @@ Selected agent details expose overview, identity, memory, and permission informa
 - The backend rejects project-facing detail mutations when `project_id` is missing, when the id belongs to another project, or when the target is a universal/system agent whose mutable state is shared outside the current project.
 - Structured agent learnings are stored and retrieved only with an explicit project id. Project task failures or review feedback must not append private project content into universal persona MEMORY overlays.
 - Self-evolution candidate scans, auto-evolution, and promotion mutations require an explicit active project id. The route and engine reject paused or missing projects before returning candidates or writing persona-file promotions, so one project's evidence cannot mature or mutate another project's agent behavior.
+- Agent promotion review notifications are persisted with the selected agent's owning project id and project metadata. Review queues must not create global notification records from project-owned agent improvement activity.
 - Universal agent runtime memory is not exposed in project detail panels for non-admin users; project-specific notes should be read through the project-scoped memory APIs.
 - The frontmatter and manifest entries are the durable contract for agents updating this page after code changes.
 - When the referenced component, store, route, agent, skill, or test behavior changes, regenerate and validate the feature documentation.
@@ -60,6 +61,7 @@ Selected agent details expose overview, identity, memory, and permission informa
 - `tests/test_agent_mutation_scope.py` verifies detail-panel mutation routes reject missing, stale cross-project, and universal/system agent ids.
 - `tests/test_agent_scope_contracts.py` verifies that detail-panel mutation calls keep active-project scope in the frontend API, store, view, and backend route layer.
 - `tests/test_agent_learning_scope.py` verifies that structured learnings, resolution lookup, self-evolution promotion candidates, and paused-project self-evolution guards do not cross project boundaries.
+- `tests/test_project_scope_contracts.py` verifies the notification write contract for promotion requests and the shared category surfaces.
 
 ## Related Features
 
@@ -72,7 +74,7 @@ Selected agent details expose overview, identity, memory, and permission informa
 
 ## Compass Evidence
 
-- Spec/task: CF-SPEC-60 / CF-776; CF-SPEC-68 / CF-870; CF-SPEC-83 / CF-1075
+- Spec/task: CF-SPEC-60 / CF-776; CF-SPEC-68 / CF-870; CF-SPEC-83 / CF-1075; CF-SPEC-89 / CF-1125
 - Inventory source: `docs/features/inventory.json`
 
 ## When To Update

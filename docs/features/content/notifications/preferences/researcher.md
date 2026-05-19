@@ -3,14 +3,14 @@ stable_id: notifications.preferences
 title: Notification Preferences
 ui_path: Notifications > Preferences
 audience: researcher
-status: needs-verification
+status: documented
 related_features: ["notifications.list", "shell.notifications-bell"]
 related_glossary: ["wcag"]
-code_references: ["frontend/src/components/notifications/NotificationsView.tsx", "frontend/src/stores/notificationStore.ts", "backend/app/api/routes/notifications.py"]
+code_references: ["frontend/src/components/notifications/NotificationsView.tsx", "frontend/src/components/notifications/NotificationPrefsTab.tsx", "frontend/src/stores/notificationStore.ts", "frontend/src/lib/types.ts", "backend/app/api/routes/notifications.py"]
 api_references: ["backend/app/api/routes/notifications.py"]
-test_references: []
-last_verified: 2026-05-15
-compass: CF-SPEC-53 / CF-657
+test_references: ["tests/test_project_scope_contracts.py"]
+last_verified: 2026-05-19
+compass: CF-SPEC-53 / CF-657; CF-SPEC-89 / CF-1125
 ---
 
 # Notification Preferences
@@ -33,6 +33,7 @@ Notification Preferences exists so the work represented by Notifications > Prefe
 
 - Open Notifications > Preferences from the Istara navigation or the parent tab.
 - Use the visible controls in this surface to work with notification preferences in the active project context.
+- Configure the Agent Promotion category when project-scoped agent review requests should appear or notify differently.
 - Review the output in the same view and follow the related feature links when the workflow moves into another Istara surface.
 
 ## Supported Workflows
@@ -62,6 +63,6 @@ Notification Preferences exists so the work represented by Notifications > Prefe
 
 ## Evidence
 
-- Source files: `frontend/src/components/notifications/NotificationsView.tsx`, `frontend/src/stores/notificationStore.ts`, `backend/app/api/routes/notifications.py`
+- Source files: `frontend/src/components/notifications/NotificationsView.tsx`, `frontend/src/components/notifications/NotificationPrefsTab.tsx`, `frontend/src/stores/notificationStore.ts`, `frontend/src/lib/types.ts`, `backend/app/api/routes/notifications.py`
 - API references: `backend/app/api/routes/notifications.py`
-- Tests: none recorded
+- Tests: `tests/test_project_scope_contracts.py`

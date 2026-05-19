@@ -254,6 +254,7 @@
 <ul>
 <li>Open Notifications &gt; Preferences from the Istara navigation or the parent tab.</li>
 <li>Use the visible controls in this surface to work with notification preferences in the active project context.</li>
+<li>Configure the Agent Promotion category when project-scoped agent review requests should appear or notify differently.</li>
 <li>Review the output in the same view and follow the related feature links when the workflow moves into another Istara surface.</li>
 </ul>
 <h2 id="supported-workflows">Supported Workflows</h2>
@@ -283,9 +284,9 @@
 </ul>
 <h2 id="evidence">Evidence</h2>
 <ul>
-<li>Source files: <code>frontend/src/components/notifications/NotificationsView.tsx</code>, <code>frontend/src/stores/notificationStore.ts</code>, <code>backend/app/api/routes/notifications.py</code></li>
+<li>Source files: <code>frontend/src/components/notifications/NotificationsView.tsx</code>, <code>frontend/src/components/notifications/NotificationPrefsTab.tsx</code>, <code>frontend/src/stores/notificationStore.ts</code>, <code>frontend/src/lib/types.ts</code>, <code>backend/app/api/routes/notifications.py</code></li>
 <li>API references: <code>backend/app/api/routes/notifications.py</code></li>
-<li>Tests: none recorded</li>
+<li>Tests: <code>tests/test_project_scope_contracts.py</code></li>
 </ul>
         </article>
         <aside class="toc-panel" aria-label="Page sections">

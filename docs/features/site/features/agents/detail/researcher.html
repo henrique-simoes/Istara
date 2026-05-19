@@ -267,6 +267,7 @@
 <ul>
 <li>Project-scoped state or artifact updates associated with agent detail panels.</li>
 <li>Identity, memory, permission, lifecycle, and export updates require the active project to match the selected agent.</li>
+<li>Promotion review requests remain attached to the selected agent&#x27;s project so they do not appear as global review activity in unrelated projects.</li>
 <li>Visible status, lists, forms, generated artifacts, or review results shown by the referenced component and routes.</li>
 </ul>
 <h2 id="caveats">Caveats</h2>
@@ -287,7 +288,7 @@
 <ul>
 <li>Source files: <code>frontend/src/components/agents/AgentsView.tsx</code>, <code>frontend/src/lib/api.ts</code>, <code>frontend/src/stores/agentStore.ts</code>, <code>backend/app/api/routes/agents.py</code>, <code>backend/app/core/agent_identity.py</code>, <code>backend/app/core/agent_memory.py</code>, <code>backend/app/core/permissions.py</code></li>
 <li>API references: <code>backend/app/api/routes/agents.py</code></li>
-<li>Tests: <code>tests/test_agents.py</code>, <code>tests/test_agent_mutation_scope.py</code>, <code>tests/test_agent_scope_contracts.py</code></li>
+<li>Tests: <code>tests/test_agents.py</code>, <code>tests/test_agent_mutation_scope.py</code>, <code>tests/test_agent_scope_contracts.py</code>, <code>tests/test_project_scope_contracts.py</code></li>
 </ul>
         </article>
         <aside class="toc-panel" aria-label="Page sections">

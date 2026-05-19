@@ -11,6 +11,7 @@ from app.core.auth import create_token
 from app.main import app
 from app.models.agent import A2AMessage, Agent, AgentRole, AgentState, HeartbeatStatus
 from app.models.database import async_session, init_db
+from app.models.notification import Notification
 from app.models.project import Project
 from app.models.project_member import ProjectMember
 from app.models.task import Task
@@ -385,6 +386,22 @@ async def test_agent_project_routes_filter_to_authorized_project():
         )
         assert promotion.status_code == 200
         assert promotion.json()["status"] == "requested"
+        assert promotion.json()["project_id"] == visible_project_id
+
+        async with async_session() as db:
+            result = await db.execute(
+                select(Notification).where(
+                    Notification.agent_id == visible_agent_id,
+                    Notification.type == "agent_promotion_request",
+                )
+            )
+            promotion_notification = result.scalar_one()
+
+        promotion_metadata = json.loads(promotion_notification.metadata_json)
+        assert promotion_notification.project_id == visible_project_id
+        assert promotion_notification.category == "agent_promotion"
+        assert promotion_metadata["project_id"] == visible_project_id
+        assert promotion_metadata["agent_id"] == visible_agent_id
 
         hidden_promotion = await ac.post(
             f"/api/agents/{hidden_agent_id}/request-promotion?project_id={visible_project_id}",
@@ -538,6 +555,7 @@ async def test_agent_restart_scope_and_promotion_routes_use_persistent_agent(aut
         promotion = await ac.post(f"/api/agents/{agent_id}/request-promotion", headers=auth_headers)
         assert promotion.status_code == 200
         assert promotion.json()["status"] == "requested"
+        assert promotion.json()["project_id"] == "project-test"
 
         await ac.delete(f"/api/agents/{agent_id}?project_id=project-test", headers=auth_headers)
 
