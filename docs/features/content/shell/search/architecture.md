@@ -1,34 +1,35 @@
 ---
 stable_id: shell.search
-title: Global Search
+title: Project Search
 ui_path: Shell > Search
 audience: architecture
-status: needs-verification
+status: documented
 related_features: ["shell.navigation", "shell.keyboard-shortcuts"]
 related_glossary: ["wcag"]
-code_references: ["frontend/src/components/layout/HomeClient.tsx", "frontend/src/components/common/SearchModal.tsx"]
-api_references: []
-test_references: []
-last_verified: 2026-05-15
-compass: CF-SPEC-53 / CF-657
+code_references: ["frontend/src/components/layout/HomeClient.tsx", "frontend/src/components/common/SearchModal.tsx", "frontend/src/lib/api.ts"]
+api_references: ["backend/app/api/routes/findings.py"]
+test_references: ["tests/test_project_scope_contracts.py", "tests/test_findings.py"]
+last_verified: 2026-05-19
+compass: CF-SPEC-60 / CF-772
 ---
 
-# Global Search Architecture
+# Project Search Architecture
 
 ## Implementation Summary
 
-The shell exposes a command/search modal from the sidebar and keyboard shortcut so users can find navigable work surfaces and project objects.
+The shell exposes a command/search modal from the sidebar and keyboard shortcut so users can find findings inside the active project.
 
 ## Frontend Surface
 
 - `frontend/src/components/layout/HomeClient.tsx`
 - `frontend/src/components/common/SearchModal.tsx`
+- `frontend/src/lib/api.ts`
 
 ## State, API, And Backend Contracts
 
 ### Stores
 
-- None recorded.
+- `backend/app/api/routes/findings.py`
 
 ### API And Backend
 
@@ -37,16 +38,19 @@ The shell exposes a command/search modal from the sidebar and keyboard shortcut 
 ## Architecture Notes
 
 - The feature is mounted through `frontend/src/components/layout/HomeClient.tsx` and the UI navigation path recorded in the inventory.
+- Findings search does not fall back to global lists when no active project is selected. The modal waits for `activeProjectId`, then calls project-scoped findings list clients.
+- Cross-project findings search remains available only through the explicit admin-only global findings search route used by admin/reporting surfaces.
 - The frontmatter and manifest entries are the durable contract for agents updating this page after code changes.
 - When the referenced component, store, route, agent, skill, or test behavior changes, regenerate and validate the feature documentation.
 
 ## Agents, Skills, LLM, MCP, And Permissions
 
-- No direct agent, skill, LLM, or MCP behavior is asserted beyond the cited source files.
+- Findings results are project content. The search modal and findings list API clients require an authorized active project before reading nuggets, facts, insights, or recommendations.
 
 ## Tests And Verification
 
-- No focused test reference recorded yet.
+- `tests/test_project_scope_contracts.py`
+- `tests/test_findings.py`
 
 ## Related Features
 
@@ -59,7 +63,7 @@ The shell exposes a command/search modal from the sidebar and keyboard shortcut 
 
 ## Compass Evidence
 
-- Spec/task: CF-SPEC-53 / CF-657
+- Spec/task: CF-SPEC-60 / CF-772
 - Inventory source: `docs/features/inventory.json`
 
 ## When To Update

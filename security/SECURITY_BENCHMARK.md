@@ -110,6 +110,11 @@ Memory and Context DAG inspection are project-content surfaces too: memory
 indexes may only open after the requested project exists and is visible to the
 caller, and every Context DAG structure, health, expansion, search, node, and
 compaction request must bind the session id to the caller's active project id.
+Findings evidence, evidence-chain traversal, and shell findings search are
+project-content surfaces: project-facing list/search clients and APIs require
+an explicit authorized active project, linked evidence rows are filtered by the
+same project before being returned, and cross-project findings search belongs
+only on explicit admin dashboard/reporting routes.
 Project-facing integrations, deployments, survey links, channel records, and
 MCP client registries are project-content surfaces for every user role: list
 APIs require an explicit authorized active project and must not silently fall

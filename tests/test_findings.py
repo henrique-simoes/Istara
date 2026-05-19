@@ -1,5 +1,6 @@
 """Tests for Findings API routes — nuggets, facts, insights, recommendations."""
 
+import json
 import pytest
 import uuid
 from httpx import AsyncClient, ASGITransport
@@ -7,6 +8,7 @@ from app.main import app
 from app.config import settings
 from app.models.database import async_session, init_db
 from app.core.auth import create_token
+from app.models.finding import Fact, Nugget
 from app.models.project import Project
 
 
@@ -37,7 +39,7 @@ async def test_nuggets_list_returns_list(auth_headers):
     await init_db()
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
-        response = await ac.get("/api/findings/nuggets", headers=auth_headers)
+        response = await ac.get("/api/findings/nuggets?project_id=test-project", headers=auth_headers)
         assert response.status_code == 200
         assert isinstance(response.json(), list)
 
@@ -90,7 +92,7 @@ async def test_facts_list_returns_list(auth_headers):
     await init_db()
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
-        response = await ac.get("/api/findings/facts", headers=auth_headers)
+        response = await ac.get("/api/findings/facts?project_id=test-project", headers=auth_headers)
         assert response.status_code == 200
         assert isinstance(response.json(), list)
 
@@ -116,7 +118,7 @@ async def test_insights_list_returns_list(auth_headers):
     await init_db()
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
-        response = await ac.get("/api/findings/insights", headers=auth_headers)
+        response = await ac.get("/api/findings/insights?project_id=test-project", headers=auth_headers)
         assert response.status_code == 200
         assert isinstance(response.json(), list)
 
@@ -131,9 +133,28 @@ async def test_recommendations_list_returns_list(auth_headers):
     await init_db()
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
-        response = await ac.get("/api/findings/recommendations", headers=auth_headers)
+        response = await ac.get("/api/findings/recommendations?project_id=test-project", headers=auth_headers)
         assert response.status_code == 200
         assert isinstance(response.json(), list)
+
+
+@pytest.mark.asyncio
+async def test_findings_list_routes_require_project_id_even_for_admin(auth_headers):
+    """Project-facing findings lists must not fall back to global admin reads."""
+    await init_db()
+    paths = [
+        "/api/findings/nuggets",
+        "/api/findings/facts",
+        "/api/findings/insights",
+        "/api/findings/recommendations",
+        "/api/findings/design-decisions",
+    ]
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        for path in paths:
+            response = await ac.get(path, headers=auth_headers)
+            assert response.status_code == 422
+            assert response.json()["detail"] == "project_id is required"
 
 
 # ---------------------------------------------------------------------------
@@ -166,3 +187,47 @@ async def test_evidence_chain_returns_list(auth_headers):
         assert response.status_code in (200, 400, 404)
         if response.status_code == 200:
             assert isinstance(response.json(), list)
+
+
+@pytest.mark.asyncio
+async def test_evidence_chain_filters_linked_findings_to_project(auth_headers):
+    """Evidence-chain traversal must ignore stale links to another project."""
+    await init_db()
+    project_id = f"evidence-project-{uuid.uuid4()}"
+    other_project_id = f"other-evidence-project-{uuid.uuid4()}"
+    in_scope_nugget_id = str(uuid.uuid4())
+    out_of_scope_nugget_id = str(uuid.uuid4())
+    fact_id = str(uuid.uuid4())
+
+    async with async_session() as db:
+        db.add_all([
+            Project(id=project_id, name="Evidence Project"),
+            Project(id=other_project_id, name="Other Evidence Project"),
+            Nugget(
+                id=in_scope_nugget_id,
+                project_id=project_id,
+                text="In-scope evidence",
+                source="interview-a",
+            ),
+            Nugget(
+                id=out_of_scope_nugget_id,
+                project_id=other_project_id,
+                text="Out-of-scope evidence",
+                source="interview-b",
+            ),
+            Fact(
+                id=fact_id,
+                project_id=project_id,
+                text="Only the in-scope nugget should be returned.",
+                nugget_ids=json.dumps([in_scope_nugget_id, out_of_scope_nugget_id]),
+            ),
+        ])
+        await db.commit()
+
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        response = await ac.get(f"/api/findings/fact/{fact_id}/evidence-chain", headers=auth_headers)
+
+    assert response.status_code == 200
+    nuggets = response.json()["chain"]["nugget"]
+    assert [nugget["id"] for nugget in nuggets] == [in_scope_nugget_id]

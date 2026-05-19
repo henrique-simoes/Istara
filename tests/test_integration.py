@@ -90,5 +90,8 @@ async def test_channels_integration(auth_headers):
         assert response.status_code == 200
 
         # Findings accessible
-        response = await ac.get("/api/findings/nuggets", headers=auth_headers)
+        response = await ac.get(
+            "/api/findings/nuggets?project_id=integration-channel-project",
+            headers=auth_headers,
+        )
         assert response.status_code == 200

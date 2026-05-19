@@ -50,7 +50,7 @@ async def test_agent_work_cycle_integration(auth_headers):
         assert response.status_code == 200
 
         # 4. Verify findings endpoints are accessible
-        response = await ac.get("/api/findings/nuggets", headers=auth_headers)
+        response = await ac.get("/api/findings/nuggets?project_id=test-project", headers=auth_headers)
         assert response.status_code == 200
 
         # 5. Verify memory endpoint is accessible

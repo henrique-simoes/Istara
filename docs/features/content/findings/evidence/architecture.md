@@ -8,9 +8,9 @@ related_features: ["findings.phase-tabs", "findings.codebook", "findings.reports
 related_glossary: ["atomic-research", "triangulation"]
 code_references: ["frontend/src/components/findings/FindingsView.tsx", "backend/app/api/routes/findings.py"]
 api_references: ["backend/app/api/routes/findings.py"]
-test_references: []
-last_verified: 2026-05-15
-compass: CF-SPEC-53 / CF-657
+test_references: ["tests/test_findings.py", "tests/test_project_scope_contracts.py"]
+last_verified: 2026-05-19
+compass: CF-SPEC-60 / CF-772
 ---
 
 # Findings Evidence Architecture
@@ -33,20 +33,24 @@ The Findings evidence tab lists research insights and recommendations for the ac
 ### API And Backend
 
 - `backend/app/api/routes/findings.py`
+- Project-facing findings list routes require `project_id` and verify project access before returning nuggets, facts, insights, recommendations, or design decisions.
+- Evidence-chain traversal filters linked records by the originating finding's project before returning nested nuggets, facts, insights, recommendations, design decisions, or screens.
 
 ## Architecture Notes
 
 - The feature is mounted through `frontend/src/components/findings/FindingsView.tsx` and the UI navigation path recorded in the inventory.
+- The backend retains an explicit admin-only global findings search route for admin/reporting aggregation; project-facing evidence views do not use unscoped list routes.
 - The frontmatter and manifest entries are the durable contract for agents updating this page after code changes.
 - When the referenced component, store, route, agent, skill, or test behavior changes, regenerate and validate the feature documentation.
 
 ## Agents, Skills, LLM, MCP, And Permissions
 
-- No direct agent, skill, LLM, or MCP behavior is asserted beyond the cited source files.
+- Findings evidence is project content. Every non-admin read must be bound to the caller's authorized active project, and global aggregation belongs only to dedicated admin surfaces.
 
 ## Tests And Verification
 
-- No focused test reference recorded yet.
+- `tests/test_findings.py`
+- `tests/test_project_scope_contracts.py`
 
 ## Related Features
 
@@ -61,7 +65,7 @@ The Findings evidence tab lists research insights and recommendations for the ac
 
 ## Compass Evidence
 
-- Spec/task: CF-SPEC-53 / CF-657
+- Spec/task: CF-SPEC-60 / CF-772
 - Inventory source: `docs/features/inventory.json`
 
 ## When To Update

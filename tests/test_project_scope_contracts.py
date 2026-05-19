@@ -207,6 +207,40 @@ def test_backend_project_owned_integration_lists_require_scope_for_non_admins() 
         assert required_error in source
 
 
+def test_findings_search_and_lists_require_active_project_scope() -> None:
+    api = read_repo("frontend/src/lib/api.ts")
+    modal = read_repo("frontend/src/components/common/SearchModal.tsx")
+    route = read_repo("backend/app/api/routes/findings.py")
+
+    assert "nuggets: (projectId: string)" in api
+    assert "facts: (projectId: string)" in api
+    assert "insights: (projectId: string)" in api
+    assert "recommendations: (projectId: string)" in api
+    assert "/api/findings/nuggets?project_id=${encodeURIComponent(projectId)}" in api
+
+    assert "if (!query.trim() || !activeProjectId) return;" in modal
+    assert "findingsApi.nuggets(activeProjectId)" in modal
+    assert "findingsApi.facts(activeProjectId)" in modal
+    assert "findingsApi.insights(activeProjectId)" in modal
+    assert "findingsApi.recommendations(activeProjectId)" in modal
+    assert "findingsApi.nuggets()" not in modal
+    assert "Search across all projects" not in modal
+
+    assert "async def _require_project_scope" in route
+    assert 'raise HTTPException(status_code=422, detail="project_id is required")' in route
+    assert "Nugget.project_id == scoped_project_id" in route
+    assert "Fact.project_id == scoped_project_id" in route
+    assert "Insight.project_id == scoped_project_id" in route
+    assert "Recommendation.project_id == scoped_project_id" in route
+    assert "DesignDecision.project_id == scoped_project_id" in route
+    assert "Nugget.project_id == project_id" in route
+    assert "Fact.project_id == project_id" in route
+    assert "Insight.project_id == project_id" in route
+    assert "Recommendation.project_id == project_id" in route
+    assert "DesignScreen.project_id == project_id" in route
+    assert "Global findings search requires admin access" in route
+
+
 def test_autoresearch_project_surfaces_require_active_project_scope() -> None:
     api = read_repo("frontend/src/lib/api.ts")
     store = read_repo("frontend/src/stores/autoresearchStore.ts")

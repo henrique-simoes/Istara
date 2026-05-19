@@ -31,17 +31,17 @@ def _parse_json_list(raw) -> list:
     return parsed if isinstance(parsed, list) else []
 
 
-async def _guard_optional_project(
+async def _require_project_scope(
     db: AsyncSession,
     request: Request,
     project_id: str | None,
     min_role: str = "viewer",
-) -> None:
-    if project_id:
-        await require_project_access(db, request, project_id, min_role=min_role)
-        return
-    if not is_global_admin(get_subject(request)):
+) -> str:
+    scoped_project_id = (project_id or "").strip()
+    if not scoped_project_id:
         raise HTTPException(status_code=422, detail="project_id is required")
+    await require_project_access(db, request, scoped_project_id, min_role=min_role)
+    return scoped_project_id
 
 
 # --- Schemas ---
@@ -184,10 +184,8 @@ async def list_nuggets(
     phase: str | None = None,
     db: AsyncSession = Depends(get_db),
 ):
-    await _guard_optional_project(db, request, project_id, min_role="viewer")
-    query = select(Nugget).order_by(Nugget.created_at.desc())
-    if project_id:
-        query = query.where(Nugget.project_id == project_id)
+    scoped_project_id = await _require_project_scope(db, request, project_id, min_role="viewer")
+    query = select(Nugget).where(Nugget.project_id == scoped_project_id).order_by(Nugget.created_at.desc())
     if phase:
         query = query.where(Nugget.phase == phase)
     result = await db.execute(query)
@@ -232,10 +230,8 @@ async def list_facts(
     phase: str | None = None,
     db: AsyncSession = Depends(get_db),
 ):
-    await _guard_optional_project(db, request, project_id, min_role="viewer")
-    query = select(Fact).order_by(Fact.created_at.desc())
-    if project_id:
-        query = query.where(Fact.project_id == project_id)
+    scoped_project_id = await _require_project_scope(db, request, project_id, min_role="viewer")
+    query = select(Fact).where(Fact.project_id == scoped_project_id).order_by(Fact.created_at.desc())
     if phase:
         query = query.where(Fact.phase == phase)
     result = await db.execute(query)
@@ -278,10 +274,8 @@ async def list_insights(
     phase: str | None = None,
     db: AsyncSession = Depends(get_db),
 ):
-    await _guard_optional_project(db, request, project_id, min_role="viewer")
-    query = select(Insight).order_by(Insight.created_at.desc())
-    if project_id:
-        query = query.where(Insight.project_id == project_id)
+    scoped_project_id = await _require_project_scope(db, request, project_id, min_role="viewer")
+    query = select(Insight).where(Insight.project_id == scoped_project_id).order_by(Insight.created_at.desc())
     if phase:
         query = query.where(Insight.phase == phase)
     result = await db.execute(query)
@@ -325,10 +319,8 @@ async def list_recommendations(
     phase: str | None = None,
     db: AsyncSession = Depends(get_db),
 ):
-    await _guard_optional_project(db, request, project_id, min_role="viewer")
-    query = select(Recommendation).order_by(Recommendation.created_at.desc())
-    if project_id:
-        query = query.where(Recommendation.project_id == project_id)
+    scoped_project_id = await _require_project_scope(db, request, project_id, min_role="viewer")
+    query = select(Recommendation).where(Recommendation.project_id == scoped_project_id).order_by(Recommendation.created_at.desc())
     if phase:
         query = query.where(Recommendation.phase == phase)
     result = await db.execute(query)
@@ -463,21 +455,36 @@ async def get_evidence_chain(
         chain["recommendation"] = [RecommendationResponse.from_orm_with_ids(finding)]
         insight_ids = parse_ids(finding.insight_ids)
         if insight_ids:
-            rows = await db.execute(select(Insight).where(Insight.id.in_(insight_ids)))
+            rows = await db.execute(
+                select(Insight).where(
+                    Insight.id.in_(insight_ids),
+                    Insight.project_id == project_id,
+                )
+            )
             linked_insights = rows.scalars().all()
             chain["insight"] = [InsightResponse.from_orm_with_ids(i) for i in linked_insights]
             fact_ids = []
             for i in linked_insights:
                 fact_ids.extend(parse_ids(i.fact_ids))
             if fact_ids:
-                rows = await db.execute(select(Fact).where(Fact.id.in_(list(set(fact_ids)))))
+                rows = await db.execute(
+                    select(Fact).where(
+                        Fact.id.in_(list(set(fact_ids))),
+                        Fact.project_id == project_id,
+                    )
+                )
                 linked_facts = rows.scalars().all()
                 chain["fact"] = [FactResponse.from_orm_with_ids(f) for f in linked_facts]
                 nugget_ids = []
                 for f in linked_facts:
                     nugget_ids.extend(parse_ids(f.nugget_ids))
                 if nugget_ids:
-                    rows = await db.execute(select(Nugget).where(Nugget.id.in_(list(set(nugget_ids)))))
+                    rows = await db.execute(
+                        select(Nugget).where(
+                            Nugget.id.in_(list(set(nugget_ids))),
+                            Nugget.project_id == project_id,
+                        )
+                    )
                     chain["nugget"] = [NuggetResponse.from_orm_with_tags(n) for n in rows.scalars().all()]
 
     elif finding_type == "insight":
@@ -485,14 +492,24 @@ async def get_evidence_chain(
         # Down: facts → nuggets
         fact_ids = parse_ids(finding.fact_ids)
         if fact_ids:
-            rows = await db.execute(select(Fact).where(Fact.id.in_(fact_ids)))
+            rows = await db.execute(
+                select(Fact).where(
+                    Fact.id.in_(fact_ids),
+                    Fact.project_id == project_id,
+                )
+            )
             linked_facts = rows.scalars().all()
             chain["fact"] = [FactResponse.from_orm_with_ids(f) for f in linked_facts]
             nugget_ids = []
             for f in linked_facts:
                 nugget_ids.extend(parse_ids(f.nugget_ids))
             if nugget_ids:
-                rows = await db.execute(select(Nugget).where(Nugget.id.in_(list(set(nugget_ids)))))
+                rows = await db.execute(
+                    select(Nugget).where(
+                        Nugget.id.in_(list(set(nugget_ids))),
+                        Nugget.project_id == project_id,
+                    )
+                )
                 chain["nugget"] = [NuggetResponse.from_orm_with_tags(n) for n in rows.scalars().all()]
         # Up: recommendations that link to this insight
         rows = await db.execute(select(Recommendation).where(Recommendation.project_id == project_id))
@@ -505,7 +522,12 @@ async def get_evidence_chain(
         # Down: nuggets
         nugget_ids = parse_ids(finding.nugget_ids)
         if nugget_ids:
-            rows = await db.execute(select(Nugget).where(Nugget.id.in_(nugget_ids)))
+            rows = await db.execute(
+                select(Nugget).where(
+                    Nugget.id.in_(nugget_ids),
+                    Nugget.project_id == project_id,
+                )
+            )
             chain["nugget"] = [NuggetResponse.from_orm_with_tags(n) for n in rows.scalars().all()]
         # Up: insights → recommendations
         rows = await db.execute(select(Insight).where(Insight.project_id == project_id))
@@ -767,11 +789,9 @@ async def list_design_decisions(
     project_id: str | None = None,
     db: AsyncSession = Depends(get_db),
 ):
-    """List design decisions, optionally filtered by project."""
-    await _guard_optional_project(db, request, project_id, min_role="viewer")
-    query = select(DesignDecision).order_by(DesignDecision.created_at.desc())
-    if project_id:
-        query = query.where(DesignDecision.project_id == project_id)
+    """List design decisions for an authorized project."""
+    scoped_project_id = await _require_project_scope(db, request, project_id, min_role="viewer")
+    query = select(DesignDecision).where(DesignDecision.project_id == scoped_project_id).order_by(DesignDecision.created_at.desc())
     result = await db.execute(query)
     return [DesignDecisionResponse.from_orm_with_ids(dd) for dd in result.scalars().all()]
 
@@ -898,13 +918,23 @@ async def get_evidence_chain_extended(
         chain["design_decision"] = [finding.to_dict()]
         # Down: screens
         for sid in parse_ids(finding.screen_ids):
-            sr = await db.execute(select(DesignScreen).where(DesignScreen.id == sid))
+            sr = await db.execute(
+                select(DesignScreen).where(
+                    DesignScreen.id == sid,
+                    DesignScreen.project_id == project_id,
+                )
+            )
             scr = sr.scalar_one_or_none()
             if scr:
                 chain["design_screen"].append(scr.to_dict())
         # Up: recommendations
         for rid in parse_ids(finding.recommendation_ids):
-            rr = await db.execute(select(Recommendation).where(Recommendation.id == rid))
+            rr = await db.execute(
+                select(Recommendation).where(
+                    Recommendation.id == rid,
+                    Recommendation.project_id == project_id,
+                )
+            )
             rec = rr.scalar_one_or_none()
             if rec:
                 chain["recommendation"].append(RecommendationResponse.from_orm_with_ids(rec))

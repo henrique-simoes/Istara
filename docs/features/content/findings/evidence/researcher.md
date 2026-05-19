@@ -8,9 +8,9 @@ related_features: ["findings.phase-tabs", "findings.codebook", "findings.reports
 related_glossary: ["atomic-research", "triangulation"]
 code_references: ["frontend/src/components/findings/FindingsView.tsx", "backend/app/api/routes/findings.py"]
 api_references: ["backend/app/api/routes/findings.py"]
-test_references: []
-last_verified: 2026-05-15
-compass: CF-SPEC-53 / CF-657
+test_references: ["tests/test_findings.py", "tests/test_project_scope_contracts.py"]
+last_verified: 2026-05-19
+compass: CF-SPEC-60 / CF-772
 ---
 
 # Findings Evidence
@@ -48,6 +48,7 @@ Findings Evidence exists so the work represented by Findings > Evidence has a st
 
 ## Caveats
 
+- Findings lists and evidence chains are limited to the active project. Cross-project findings search is reserved for explicit admin reporting surfaces.
 - Needs interactive verification for exact empty, loading, error, and permission-denied states.
 - Do not expand this documentation beyond the cited source files without adding new code or walkthrough evidence.
 
@@ -66,4 +67,4 @@ Findings Evidence exists so the work represented by Findings > Evidence has a st
 
 - Source files: `frontend/src/components/findings/FindingsView.tsx`, `backend/app/api/routes/findings.py`
 - API references: `backend/app/api/routes/findings.py`
-- Tests: none recorded
+- Tests: `tests/test_findings.py`, `tests/test_project_scope_contracts.py`

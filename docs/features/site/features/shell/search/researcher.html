@@ -241,9 +241,9 @@
   <p class="concept-line"><strong>Concepts:</strong> wcag</p>
 </header>
 <h2 id="what-it-does">What It Does</h2>
-<p>The shell exposes a command/search modal from the sidebar and keyboard shortcut so users can find navigable work surfaces and project objects.</p>
+<p>The shell exposes a command/search modal from the sidebar and keyboard shortcut so users can find findings inside the active project.</p>
 <h2 id="why-it-exists">Why It Exists</h2>
-<p>Global Search exists so the work represented by Shell &gt; Search has a stable, discoverable place in Istara&#x27;s project workflow. It keeps user actions, generated artifacts, and related follow-up surfaces connected to the active project rather than scattering them across unrelated tools.</p>
+<p>Project Search exists so the work represented by Shell &gt; Search has a stable, discoverable place in Istara&#x27;s project workflow. It keeps user actions, generated artifacts, and related follow-up surfaces connected to the active project rather than scattering them across unrelated tools.</p>
 <h2 id="where-it-lives">Where It Lives</h2>
 <ul>
 <li>UI path: Shell &gt; Search</li>
@@ -253,22 +253,23 @@
 <h2 id="how-ux-researchers-use-it">How UX Researchers Use It</h2>
 <ul>
 <li>Open Shell &gt; Search from the Istara navigation or the parent tab.</li>
-<li>Use the visible controls in this surface to work with global search in the active project context.</li>
+<li>Use the visible controls in this surface to work with project search in the active project context.</li>
 <li>Review the output in the same view and follow the related feature links when the workflow moves into another Istara surface.</li>
 </ul>
 <h2 id="supported-workflows">Supported Workflows</h2>
 <ul>
-<li>Start from Shell &gt; Search when the current research task needs global search.</li>
+<li>Start from Shell &gt; Search when the current research task needs project search.</li>
 <li>Use the visible controls to create, inspect, refine, or route project work without leaving the active Istara context.</li>
 <li>Move to related surfaces when needed: shell.navigation, shell.keyboard-shortcuts.</li>
 </ul>
 <h2 id="inputs-outputs-and-expected-outcomes">Inputs, Outputs, And Expected Outcomes</h2>
 <ul>
-<li>Project-scoped state or artifact updates associated with global search.</li>
+<li>Project-scoped state or artifact updates associated with project search.</li>
 <li>Visible status, lists, forms, generated artifacts, or review results shown by the referenced component and routes.</li>
 </ul>
 <h2 id="caveats">Caveats</h2>
 <ul>
+<li>Search results are limited to the active project. Cross-project findings search is reserved for explicit admin reporting surfaces.</li>
 <li>Needs interactive verification for exact empty, loading, error, and permission-denied states.</li>
 <li>Do not expand this documentation beyond the cited source files without adding new code or walkthrough evidence.</li>
 </ul>
@@ -283,9 +284,9 @@
 </ul>
 <h2 id="evidence">Evidence</h2>
 <ul>
-<li>Source files: <code>frontend/src/components/layout/HomeClient.tsx</code>, <code>frontend/src/components/common/SearchModal.tsx</code></li>
-<li>API references: none recorded</li>
-<li>Tests: none recorded</li>
+<li>Source files: <code>frontend/src/components/layout/HomeClient.tsx</code>, <code>frontend/src/components/common/SearchModal.tsx</code>, <code>frontend/src/lib/api.ts</code></li>
+<li>API references: <code>backend/app/api/routes/findings.py</code></li>
+<li>Tests: <code>tests/test_project_scope_contracts.py</code>, <code>tests/test_findings.py</code></li>
 </ul>
         </article>
         <aside class="toc-panel" aria-label="Page sections">
