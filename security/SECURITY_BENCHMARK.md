@@ -184,9 +184,11 @@ mismatched project ids before websocket dispatch so direct callers cannot bypass
 registry candidate filtering.
 Regular Compute Pool stats, node lists, and model warnings require an
 authorized active project for every role; cross-project compute aggregation
-belongs only on dedicated admin reporting surfaces. Team-mode wildcard donation
-scopes are rejected during relay validation so legacy all-project strings
-cannot process arbitrary project content.
+belongs only on dedicated admin reporting surfaces such as
+`/api/admin/compute/stats`, which requires global-admin authorization and is
+separate from the project-facing `/api/compute/*` routes. Team-mode wildcard
+donation scopes are rejected during relay validation so legacy all-project
+strings cannot process arbitrary project content.
 
 ## Compass Forge Contract
 

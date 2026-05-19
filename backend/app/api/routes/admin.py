@@ -30,6 +30,15 @@ async def _count(db: AsyncSession, model, *conditions) -> int:
     return int((await db.execute(query)).scalar() or 0)
 
 
+def _admin_compute_stats_payload() -> dict:
+    stats = compute_registry.get_stats(project_id=None)
+    return {
+        "scope": "global_admin",
+        "project_id": None,
+        **stats,
+    }
+
+
 @router.get("/overview")
 async def admin_overview(request: Request, db: AsyncSession = Depends(get_db)):
     """Return global operational metrics for admin-only dashboard cards."""
@@ -46,7 +55,12 @@ async def admin_overview(request: Request, db: AsyncSession = Depends(get_db)):
         "redeemed": await _count(db, ConnectionString, ConnectionString.is_redeemed.is_(True)),
     }
 
-    relay_nodes = [node.to_dict() for node in compute_registry._nodes.values()]
+    compute_stats = _admin_compute_stats_payload()
+    relay_nodes = [
+        node
+        for node in compute_stats.get("nodes", [])
+        if node.get("source") in {"relay", "browser"}
+    ]
     telemetry_spans = await _count(db, TelemetrySpan)
     llm_requests = await _count(db, TelemetrySpan, TelemetrySpan.operation == "llm_request")
 
@@ -78,8 +92,16 @@ async def admin_overview(request: Request, db: AsyncSession = Depends(get_db)):
         "compute": {
             "llm_servers": await _count(db, LLMServer),
             "healthy_llm_servers": await _count(db, LLMServer, LLMServer.is_healthy.is_(True)),
+            "total_nodes": compute_stats.get("total_nodes", 0),
+            "alive_nodes": compute_stats.get("alive_nodes", 0),
+            "reachable_nodes": compute_stats.get("reachable_nodes", 0),
+            "hardware_node_count": compute_stats.get("hardware_node_count", 0),
+            "total_ram_gb": compute_stats.get("total_ram_gb", 0),
+            "available_ram_gb": compute_stats.get("available_ram_gb", 0),
             "relay_nodes": len(relay_nodes),
-            "online_relay_nodes": len([node for node in relay_nodes if node.get("is_healthy")]),
+            "online_relay_nodes": len(
+                [node for node in relay_nodes if node.get("online") or node.get("is_reachable")]
+            ),
         },
         "usage": {
             "telemetry_spans": telemetry_spans,
@@ -89,6 +111,13 @@ async def admin_overview(request: Request, db: AsyncSession = Depends(get_db)):
         },
         "connection_strings": connection_strings,
     }
+
+
+@router.get("/compute/stats")
+async def admin_compute_stats(request: Request):
+    """Return global compute capacity only for global admins."""
+    require_global_admin(request)
+    return _admin_compute_stats_payload()
 
 
 @router.get("/projects")

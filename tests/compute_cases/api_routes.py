@@ -107,6 +107,99 @@ async def test_compute_pool_requires_active_project_for_admin(auth_headers):
 
 
 @pytest.mark.asyncio
+async def test_admin_compute_stats_is_explicit_global_admin_route(
+    auth_headers,
+    researcher_headers,
+):
+    await init_db()
+    settings.team_mode = True
+    project_a = f"project-{uuid.uuid4()}"
+    project_b = f"project-{uuid.uuid4()}"
+    original_nodes = dict(compute_registry._nodes)
+    try:
+        compute_registry._nodes.clear()
+        async with async_session() as db:
+            db.add_all(
+                [
+                    Project(id=project_a, name="Project A"),
+                    Project(id=project_b, name="Project B"),
+                    ProjectMember(
+                        id=f"member-{uuid.uuid4()}",
+                        project_id=project_a,
+                        user_id="researcher1",
+                        role="researcher",
+                    ),
+                ]
+            )
+            await db.commit()
+
+        compute_registry.register_node(
+            ComputeNode(
+                node_id="relay-a",
+                name="Project A Relay",
+                host="",
+                source="relay",
+                provider_type="ollama",
+                is_healthy=True,
+                ram_total_gb=16,
+                ram_available_gb=8,
+                cpu_cores=8,
+                loaded_models=["project-a-model"],
+                allowed_project_ids=[project_a],
+            )
+        )
+        compute_registry.register_node(
+            ComputeNode(
+                node_id="relay-b",
+                name="Project B Relay",
+                host="",
+                source="relay",
+                provider_type="ollama",
+                is_healthy=True,
+                ram_total_gb=24,
+                ram_available_gb=20,
+                cpu_cores=10,
+                loaded_models=["project-b-model"],
+                allowed_project_ids=[project_b],
+            )
+        )
+
+        transport = ASGITransport(app=app)
+        async with AsyncClient(transport=transport, base_url="http://test") as ac:
+            admin_global = await ac.get("/api/admin/compute/stats", headers=auth_headers)
+            researcher_global = await ac.get(
+                "/api/admin/compute/stats",
+                headers=researcher_headers,
+            )
+            researcher_project = await ac.get(
+                f"/api/compute/stats?project_id={project_a}",
+                headers=researcher_headers,
+            )
+            admin_projectless = await ac.get("/api/compute/stats", headers=auth_headers)
+
+        assert admin_global.status_code == 200
+        global_body = admin_global.json()
+        assert global_body["scope"] == "global_admin"
+        assert global_body["project_id"] is None
+        assert {node["node_id"] for node in global_body["nodes"]} == {"relay-a", "relay-b"}
+        assert global_body["total_ram_gb"] == 40
+        assert set(global_body["available_models"]) == {"project-a-model", "project-b-model"}
+
+        assert researcher_global.status_code == 403
+        assert admin_projectless.status_code == 400
+        assert admin_projectless.json()["detail"] == "project_id is required"
+
+        assert researcher_project.status_code == 200
+        project_body = researcher_project.json()
+        assert {node["node_id"] for node in project_body["nodes"]} == {"relay-a"}
+        assert project_body["total_ram_gb"] == 16
+        assert project_body["available_models"] == ["project-a-model"]
+    finally:
+        compute_registry._nodes.clear()
+        compute_registry._nodes.update(original_nodes)
+
+
+@pytest.mark.asyncio
 async def test_team_researcher_compute_stats_requires_active_project(researcher_headers):
     await init_db()
     settings.team_mode = True
