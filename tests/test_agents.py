@@ -4,7 +4,7 @@ import json
 import uuid
 
 import pytest
-from sqlalchemy import delete
+from sqlalchemy import delete, select
 
 from app.config import settings
 from app.core.auth import create_token
@@ -13,6 +13,7 @@ from app.models.agent import A2AMessage, Agent, AgentRole, AgentState, Heartbeat
 from app.models.database import async_session, init_db
 from app.models.project import Project
 from app.models.project_member import ProjectMember
+from app.models.task import Task
 from httpx import ASGITransport, AsyncClient
 from types import SimpleNamespace
 
@@ -663,6 +664,210 @@ async def test_a2a_log_filters_by_project_id(auth_headers):
         async with async_session() as db:
             await db.execute(delete(A2AMessage).where(A2AMessage.id.in_(message_ids)))
             await db.commit()
+
+
+@pytest.mark.asyncio
+async def test_a2a_thread_context_resolves_task_project_scope():
+    """Conversation threads must not mix messages with the same context_id across projects."""
+    await init_db()
+    from app.services import a2a
+
+    project_a = f"a2a-thread-project-a-{uuid.uuid4()}"
+    project_b = f"a2a-thread-project-b-{uuid.uuid4()}"
+    task_a = f"a2a-thread-task-a-{uuid.uuid4()}"
+    task_b = f"a2a-thread-task-b-{uuid.uuid4()}"
+    context_id = f"a2a-shared-context-{uuid.uuid4()}"
+    message_ids = [str(uuid.uuid4()) for _ in range(2)]
+    async with async_session() as db:
+        db.add_all(
+            [
+                Project(id=project_a, name="A2A Thread Project A"),
+                Project(id=project_b, name="A2A Thread Project B"),
+                Task(id=task_a, project_id=project_a, title="Visible thread task"),
+                Task(id=task_b, project_id=project_b, title="Hidden thread task"),
+                A2AMessage(
+                    id=message_ids[0],
+                    from_agent_id="agent-a",
+                    to_agent_id="agent-b",
+                    message_type="collaboration_request",
+                    content="visible project thread content",
+                    extra_data=json.dumps({"task_id": task_a, "context_id": context_id}),
+                ),
+                A2AMessage(
+                    id=message_ids[1],
+                    from_agent_id="agent-b",
+                    to_agent_id="agent-a",
+                    message_type="collaboration_request",
+                    content="hidden project thread content",
+                    extra_data=json.dumps({"task_id": task_b, "context_id": context_id}),
+                ),
+            ]
+        )
+        await db.commit()
+
+        thread = await a2a.get_conversation_thread(
+            db,
+            context_id,
+            project_id=project_a,
+            limit=10,
+        )
+        contents = [message["content"] for message in thread]
+        assert contents == ["visible project thread content"]
+        assert thread[0]["project_id"] == project_a
+        assert thread[0]["metadata"]["project_id"] == project_a
+
+    async with async_session() as db:
+        await db.execute(delete(A2AMessage).where(A2AMessage.id.in_(message_ids)))
+        await db.execute(delete(Task).where(Task.id.in_([task_a, task_b])))
+        await db.execute(delete(Project).where(Project.id.in_([project_a, project_b])))
+        await db.commit()
+
+
+@pytest.mark.asyncio
+async def test_a2a_project_inbox_and_mark_read_are_project_scoped():
+    """Background A2A inbox processing should skip global content and respect agent scope."""
+    await init_db()
+    from app.services import a2a
+
+    project_a = f"a2a-inbox-project-a-{uuid.uuid4()}"
+    project_b = f"a2a-inbox-project-b-{uuid.uuid4()}"
+    scoped_agent_id = f"a2a-scoped-agent-{uuid.uuid4()}"
+    message_ids = [str(uuid.uuid4()) for _ in range(3)]
+    async with async_session() as db:
+        db.add_all(
+            [
+                Project(id=project_a, name="A2A Inbox Project A"),
+                Project(id=project_b, name="A2A Inbox Project B"),
+                Agent(
+                    id=scoped_agent_id,
+                    name="Scoped inbox agent",
+                    role=AgentRole.CUSTOM,
+                    system_prompt="Scoped inbox test agent.",
+                    capabilities=json.dumps(["a2a_messaging"]),
+                    scope="project",
+                    project_id=project_a,
+                    is_active=True,
+                ),
+                A2AMessage(
+                    id=message_ids[0],
+                    from_agent_id="agent-a",
+                    to_agent_id=scoped_agent_id,
+                    message_type="collaboration_request",
+                    content="project A inbox content",
+                    extra_data=json.dumps({"project_id": project_a}),
+                ),
+                A2AMessage(
+                    id=message_ids[1],
+                    from_agent_id="agent-b",
+                    to_agent_id=scoped_agent_id,
+                    message_type="collaboration_request",
+                    content="project B inbox content",
+                    extra_data=json.dumps({"project_id": project_b}),
+                ),
+                A2AMessage(
+                    id=message_ids[2],
+                    from_agent_id="agent-c",
+                    to_agent_id=scoped_agent_id,
+                    message_type="collaboration_request",
+                    content="global inbox content",
+                    extra_data=json.dumps({}),
+                ),
+            ]
+        )
+        await db.commit()
+
+        inbox = await a2a.get_project_inbox(db, scoped_agent_id, limit=10)
+        contents = [message["content"] for message in inbox]
+        assert contents == ["project A inbox content"]
+        assert inbox[0]["project_id"] == project_a
+
+        wrong_project = await a2a.mark_read(db, message_ids[0], project_id=project_b)
+        right_project = await a2a.mark_read(db, message_ids[0], project_id=project_a)
+        message = await db.get(A2AMessage, message_ids[0])
+        assert wrong_project is False
+        assert right_project is True
+        assert message and message.read is True
+
+    async with async_session() as db:
+        await db.execute(delete(A2AMessage).where(A2AMessage.id.in_(message_ids)))
+        await db.execute(delete(Agent).where(Agent.id == scoped_agent_id))
+        await db.execute(delete(Project).where(Project.id.in_([project_a, project_b])))
+        await db.commit()
+
+
+@pytest.mark.asyncio
+async def test_system_action_agent_tools_reject_cross_project_targets():
+    """LLM-callable task and A2A tools must not operate across project boundaries."""
+    await init_db()
+    from app.skills.system_actions import execute_tool
+
+    visible_project_id = f"tool-visible-project-{uuid.uuid4()}"
+    hidden_project_id = f"tool-hidden-project-{uuid.uuid4()}"
+    visible_task_id = f"tool-visible-task-{uuid.uuid4()}"
+    hidden_task_id = f"tool-hidden-task-{uuid.uuid4()}"
+    hidden_agent_id = f"tool-hidden-agent-{uuid.uuid4()}"
+    message_content = "cross-project tool message should not persist"
+
+    async with async_session() as db:
+        db.add_all(
+            [
+                Project(id=visible_project_id, name="Tool Visible Project"),
+                Project(id=hidden_project_id, name="Tool Hidden Project"),
+                Task(id=visible_task_id, project_id=visible_project_id, title="Visible tool task"),
+                Task(id=hidden_task_id, project_id=hidden_project_id, title="Hidden tool task"),
+                Agent(
+                    id=hidden_agent_id,
+                    name="Hidden project agent",
+                    role=AgentRole.CUSTOM,
+                    system_prompt="Hidden project agent.",
+                    capabilities=json.dumps(["a2a_messaging"]),
+                    scope="project",
+                    project_id=hidden_project_id,
+                    is_active=True,
+                ),
+            ]
+        )
+        await db.commit()
+
+    assign_result = await execute_tool(
+        "assign_agent",
+        {"task_id": visible_task_id, "agent_id": hidden_agent_id},
+        visible_project_id,
+    )
+    move_result = await execute_tool(
+        "move_task",
+        {"task_id": hidden_task_id, "status": "in_review"},
+        visible_project_id,
+    )
+    message_result = await execute_tool(
+        "send_agent_message",
+        {
+            "to_agent_id": hidden_agent_id,
+            "message_type": "request",
+            "content": message_content,
+        },
+        visible_project_id,
+    )
+
+    async with async_session() as db:
+        hidden_task = await db.get(Task, hidden_task_id)
+        stored_messages = (
+            await db.execute(select(A2AMessage).where(A2AMessage.content == message_content))
+        ).scalars().all()
+        assert "not available in this project" in assign_result["result"]
+        assert "Task not found" in move_result["result"]
+        assert "not available in this project" in message_result["result"]
+        assert hidden_task and hidden_task.status.value == "backlog"
+        assert stored_messages == []
+
+    async with async_session() as db:
+        await db.execute(delete(A2AMessage).where(A2AMessage.content == message_content))
+        await db.execute(delete(Agent).where(Agent.id == hidden_agent_id))
+        await db.execute(delete(Task).where(Task.id.in_([visible_task_id, hidden_task_id])))
+        await db.execute(
+            delete(Project).where(Project.id.in_([visible_project_id, hidden_project_id]))
+        )
+        await db.commit()
 
 
 @pytest.mark.asyncio

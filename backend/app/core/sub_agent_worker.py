@@ -63,10 +63,13 @@ class SubAgentWorker:
         async with async_session() as db:
             # Process A2A inbox before looking for tasks
             try:
-                from app.services.a2a import get_messages, mark_read
+                from app.services.a2a import get_project_inbox, mark_read
 
-                messages = await get_messages(db, self._agent_id, unread_only=True, limit=3)
+                messages = await get_project_inbox(db, self._agent_id, unread_only=True, limit=3)
                 for msg in messages:
+                    msg_project_id = msg.get("project_id", "") if isinstance(msg, dict) else ""
+                    if not msg_project_id:
+                        continue
                     msg_type = (
                         msg.get("message_type")
                         if isinstance(msg, dict)
@@ -83,13 +86,13 @@ class SubAgentWorker:
                         task_id = metadata.get("task_id")
                         if task_id:
                             task_obj = await db.get(Task, task_id)
-                            if task_obj:
+                            if task_obj and task_obj.project_id == msg_project_id:
                                 logger.info(
                                     f"SubAgent {self._agent_id} processing A2A for task {task_id}"
                                 )
                     msg_id = msg.get("id") if isinstance(msg, dict) else getattr(msg, "id", "")
                     if msg_id:
-                        await mark_read(db, msg_id)
+                        await mark_read(db, msg_id, project_id=msg_project_id)
             except Exception as e:
                 logger.debug(f"SubAgent A2A check skipped: {e}")
 
@@ -186,12 +189,18 @@ class SubAgentWorker:
 
                 await record_review_side_effects(event)
 
-    async def check_collaboration_requests(self) -> list[dict]:
+    async def check_collaboration_requests(self, project_id: str) -> list[dict]:
         """Check A2A inbox for collaboration requests."""
         from app.services.a2a import get_messages
 
         async with async_session() as db:
-            messages = await get_messages(db, self._agent_id, limit=10, unread_only=True)
+            messages = await get_messages(
+                db,
+                self._agent_id,
+                limit=10,
+                unread_only=True,
+                project_id=project_id,
+            )
             collab_requests = [
                 m for m in messages if m.get("message_type") == "collaboration_request"
             ]

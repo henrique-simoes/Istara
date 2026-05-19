@@ -498,6 +498,9 @@ def test_agents_a2a_project_view_passes_active_project_id() -> None:
     api = read_repo("frontend/src/lib/api.ts")
     route = read_repo("backend/app/api/routes/agents.py")
     a2a_route = read_repo("backend/app/api/routes/a2a.py")
+    a2a_service = read_repo("backend/app/services/a2a.py")
+    lifecycle = read_repo("backend/app/core/agent_lifecycle.py")
+    sub_worker = read_repo("backend/app/core/sub_agent_worker.py")
 
     assert "const { activeProjectId } = useProjectStore();" in view
     assert "fetchA2ALog(activeProjectId)" in view
@@ -505,6 +508,8 @@ def test_agents_a2a_project_view_passes_active_project_id() -> None:
     assert "if (!projectId)" in store
     assert "fetchA2ALog: async (projectId) =>" in store
     assert "if (!projectId)" in store
+    assert "set({ a2aMessages: [], error: null });" in store
+    assert "(message.project_id || metadataProjectId) === projectId" in store
     assert "const data = await agentsApi.a2aLog(projectId, 100);" in store
     assert "a2aLog: (projectId: string, limit = 100)" in api
     assert 'params.set("project_id", projectId);' in api
@@ -515,6 +520,15 @@ def test_agents_a2a_project_view_passes_active_project_id() -> None:
     assert '"project_id is required for A2A agent/discover."' in a2a_route
     assert "agents = filter_agent_dicts_for_project(agents, project_id, request)" in a2a_route
     assert "min_role=\"viewer\"" in a2a_route
+    assert "async def get_project_inbox(" in a2a_service
+    assert "resolved_project_ids = await _resolve_message_project_ids(db, messages)" in a2a_service
+    assert "async def get_conversation_thread(" in a2a_service
+    assert "project_id: str," in a2a_service
+    assert "project_id=task.project_id" in lifecycle
+    assert "await get_project_inbox(db, self._agent_id, unread_only=True, limit=3)" in lifecycle
+    assert "await mark_read(db, msg_id, project_id=msg_project_id)" in lifecycle
+    assert "await get_project_inbox(db, self._agent_id, unread_only=True, limit=3)" in sub_worker
+    assert "project_id=project_id" in sub_worker
 
 
 def test_agent_creation_proposals_require_active_project_scope() -> None:

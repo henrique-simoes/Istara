@@ -206,10 +206,16 @@ def test_security_benchmark_detects_agent_project_scope_paths() -> None:
     changed_paths = [
         "backend/app/api/agent_project_scope.py",
         "backend/app/api/routes/agents.py",
+        "backend/app/api/routes/a2a.py",
+        "backend/app/core/agent_lifecycle.py",
+        "backend/app/core/sub_agent_worker.py",
+        "backend/app/services/a2a.py",
+        "backend/app/skills/system_actions.py",
         "frontend/src/lib/api.ts",
         "frontend/src/components/agents/AgentsView.tsx",
         "frontend/src/stores/agentStore.ts",
         "tests/test_agents.py",
+        "tests/test_project_scope_contracts.py",
     ]
     result = evaluate_matrix(matrix, changed_paths=changed_paths)
 
