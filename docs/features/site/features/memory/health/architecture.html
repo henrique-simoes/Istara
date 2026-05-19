@@ -241,7 +241,7 @@
   <p class="concept-line"><strong>Concepts:</strong> rag</p>
 </header>
 <h2 id="implementation-summary">Implementation Summary</h2>
-<p>Memory health surfaces status and quality signals for memory or retrieval infrastructure.</p>
+<p>Memory health surfaces status and quality signals for memory or retrieval infrastructure in the active project.</p>
 <h2 id="frontend-surface">Frontend Surface</h2>
 <ul>
 <li><code>frontend/src/components/memory/MemoryView.tsx</code></li>
@@ -259,6 +259,8 @@
 <h2 id="architecture-notes">Architecture Notes</h2>
 <ul>
 <li>The feature is mounted through <code>frontend/src/components/memory/MemoryView.tsx</code> and the UI navigation path recorded in the inventory.</li>
+<li>Health statistics are read through the project-scoped memory route after project visibility is verified.</li>
+<li><code>MemoryView</code> remounts the Health tab on active-project changes so one project&#x27;s memory statistics do not linger in another project view.</li>
 <li>The frontmatter and manifest entries are the durable contract for agents updating this page after code changes.</li>
 <li>When the referenced component, store, route, agent, skill, or test behavior changes, regenerate and validate the feature documentation.</li>
 </ul>
@@ -268,7 +270,7 @@
 </ul>
 <h2 id="tests-and-verification">Tests And Verification</h2>
 <ul>
-<li>No focused test reference recorded yet.</li>
+<li><code>tests/test_memory.py</code></li>
 </ul>
 <h2 id="related-features">Related Features</h2>
 <ul>
@@ -281,7 +283,7 @@
 </ul>
 <h2 id="compass-evidence">Compass Evidence</h2>
 <ul>
-<li>Spec/task: CF-SPEC-53 / CF-657</li>
+<li>Spec/task: CF-SPEC-60 / CF-757</li>
 <li>Inventory source: <code>docs/features/inventory.json</code></li>
 </ul>
 <h2 id="when-to-update">When To Update</h2>

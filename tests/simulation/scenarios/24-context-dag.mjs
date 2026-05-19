@@ -10,6 +10,7 @@ export async function run(ctx) {
   if (!ctx.projectId) {
     return { checks: [{ name: "Skip — no project", passed: false, detail: "No project ID" }], passed: 0, failed: 1 };
   }
+  const dagProjectParam = new URLSearchParams({ project_id: ctx.projectId }).toString();
 
   // ── 1. Create a test chat session ──
   let sessionId = null;
@@ -31,7 +32,7 @@ export async function run(ctx) {
 
   // ── 2. DAG Health API (empty session) ──
   try {
-    const health = await api.get(`/api/context-dag/${sessionId}/health`);
+    const health = await api.get(`/api/context-dag/${sessionId}/health?${dagProjectParam}`);
     const hasFields = typeof health.total_messages === "number"
       && typeof health.fresh_tail_size === "number"
       && typeof health.dag_enabled === "boolean";
@@ -46,7 +47,7 @@ export async function run(ctx) {
 
   // ── 3. DAG Structure API (empty session) ──
   try {
-    const structure = await api.get(`/api/context-dag/${sessionId}`);
+    const structure = await api.get(`/api/context-dag/${sessionId}?${dagProjectParam}`);
     const hasShape = "session_id" in structure && "nodes" in structure && "stats" in structure;
     checks.push({
       name: "DAG structure API (empty session)",
@@ -61,7 +62,7 @@ export async function run(ctx) {
   // Send messages directly via chat history (POST /chat would require LLM)
   // Instead, we test the compact endpoint which can be forced
   try {
-    const compact = await api.post(`/api/context-dag/${sessionId}/compact`, {});
+    const compact = await api.post(`/api/context-dag/${sessionId}/compact?${dagProjectParam}`, {});
     const hasShape = "compacted" in compact;
     checks.push({
       name: "DAG compact API (force)",
@@ -74,7 +75,7 @@ export async function run(ctx) {
 
   // ── 5. Grep API ──
   try {
-    const grep = await api.post(`/api/context-dag/${sessionId}/grep`, { query: "test" });
+    const grep = await api.post(`/api/context-dag/${sessionId}/grep?${dagProjectParam}`, { query: "test" });
     const hasShape = "query" in grep && "results" in grep;
     checks.push({
       name: "DAG grep API",

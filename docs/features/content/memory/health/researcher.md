@@ -8,16 +8,16 @@ related_features: ["memory.knowledge", "quality.dashboard"]
 related_glossary: ["rag"]
 code_references: ["frontend/src/components/memory/MemoryView.tsx", "backend/app/core/vector_health.py"]
 api_references: ["backend/app/api/routes/memory.py"]
-test_references: []
-last_verified: 2026-05-15
-compass: CF-SPEC-53 / CF-657
+test_references: ["tests/test_memory.py"]
+last_verified: 2026-05-19
+compass: CF-SPEC-60 / CF-757
 ---
 
 # Memory Health
 
 ## What It Does
 
-Memory health surfaces status and quality signals for memory or retrieval infrastructure.
+Memory health surfaces status and quality signals for memory or retrieval infrastructure in the active project.
 
 ## Why It Exists
 
@@ -33,6 +33,7 @@ Memory Health exists so the work represented by Memory > Health has a stable, di
 
 - Open Memory > Health from the Istara navigation or the parent tab.
 - Use the visible controls in this surface to work with memory health in the active project context.
+- Project switches clear loaded health statistics before the next project's memory stats are fetched.
 - Review the output in the same view and follow the related feature links when the workflow moves into another Istara surface.
 
 ## Supported Workflows
@@ -64,4 +65,4 @@ Memory Health exists so the work represented by Memory > Health has a stable, di
 
 - Source files: `frontend/src/components/memory/MemoryView.tsx`, `backend/app/core/vector_health.py`
 - API references: `backend/app/api/routes/memory.py`
-- Tests: none recorded
+- Tests: `tests/test_memory.py`

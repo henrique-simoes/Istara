@@ -9,7 +9,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.keyword_index import KeywordIndex
-from app.core.permissions import require_project_access
+from app.core.permissions import get_visible_project_or_404
 from app.core.rag import VectorStore, retrieve_context
 from app.models.database import get_db
 
@@ -26,7 +26,7 @@ async def list_memory(
     db: AsyncSession = Depends(get_db),
 ):
     """List all chunks in a project's knowledge base, paginated."""
-    await require_project_access(db, request, project_id, min_role="viewer")
+    await get_visible_project_or_404(db, request, project_id, min_role="viewer")
 
     store = VectorStore(project_id)
     try:
@@ -83,7 +83,7 @@ async def search_memory(
     db: AsyncSession = Depends(get_db),
 ):
     """Hybrid search across project memory."""
-    await require_project_access(db, request, project_id, min_role="viewer")
+    await get_visible_project_or_404(db, request, project_id, min_role="viewer")
 
     search_text = (query or q or "").strip()
     if not search_text:
@@ -122,7 +122,7 @@ async def search_memory(
 @router.get("/memory/{project_id}/stats")
 async def memory_stats(project_id: str, request: Request, db: AsyncSession = Depends(get_db)):
     """Get memory statistics for a project."""
-    await require_project_access(db, request, project_id, min_role="viewer")
+    await get_visible_project_or_404(db, request, project_id, min_role="viewer")
 
     store = VectorStore(project_id)
     keyword_idx = KeywordIndex(project_id)
@@ -175,7 +175,7 @@ async def agent_notes(
     db: AsyncSession = Depends(get_db),
 ):
     """Get an agent's private notes for a project."""
-    await require_project_access(db, request, project_id, min_role="viewer")
+    await get_visible_project_or_404(db, request, project_id, min_role="viewer")
 
     from app.core.agent_memory import agent_memory
     notes = await agent_memory.get_all_notes(project_id, agent_id)
@@ -190,7 +190,7 @@ async def delete_source(
     db: AsyncSession = Depends(get_db),
 ):
     """Delete all chunks from a specific source."""
-    await require_project_access(db, request, project_id, min_role="researcher")
+    await get_visible_project_or_404(db, request, project_id, min_role="researcher")
     source_name = source_name.strip()
     if not source_name:
         raise HTTPException(status_code=400, detail="Source name must not be empty")

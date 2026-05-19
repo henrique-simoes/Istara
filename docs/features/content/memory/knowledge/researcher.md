@@ -8,16 +8,16 @@ related_features: ["memory.agent", "memory.context-dag", "documents.library"]
 related_glossary: ["rag"]
 code_references: ["frontend/src/components/memory/MemoryView.tsx", "frontend/src/lib/memoryApi.ts", "backend/app/api/routes/memory.py"]
 api_references: ["backend/app/api/routes/memory.py"]
-test_references: []
-last_verified: 2026-05-15
-compass: CF-SPEC-53 / CF-657
+test_references: ["tests/test_memory.py"]
+last_verified: 2026-05-19
+compass: CF-SPEC-60 / CF-757
 ---
 
 # Knowledge Memory
 
 ## What It Does
 
-The Memory knowledge tab manages project knowledge artifacts and retrieval material.
+The Memory knowledge tab manages project knowledge artifacts and retrieval material for the active project.
 
 ## Why It Exists
 
@@ -33,6 +33,7 @@ Knowledge Memory exists so the work represented by Memory > Knowledge has a stab
 
 - Open Memory > Knowledge from the Istara navigation or the parent tab.
 - Use the visible controls in this surface to work with knowledge memory in the active project context.
+- Project switches clear the visible memory tab state before loading the next project's chunks, sources, and search results.
 - Review the output in the same view and follow the related feature links when the workflow moves into another Istara surface.
 
 ## Supported Workflows
@@ -65,4 +66,4 @@ Knowledge Memory exists so the work represented by Memory > Knowledge has a stab
 
 - Source files: `frontend/src/components/memory/MemoryView.tsx`, `frontend/src/lib/memoryApi.ts`, `backend/app/api/routes/memory.py`
 - API references: `backend/app/api/routes/memory.py`
-- Tests: none recorded
+- Tests: `tests/test_memory.py`

@@ -8,16 +8,16 @@ related_features: ["memory.agent", "memory.context-dag", "documents.library"]
 related_glossary: ["rag"]
 code_references: ["frontend/src/components/memory/MemoryView.tsx", "frontend/src/lib/memoryApi.ts", "backend/app/api/routes/memory.py"]
 api_references: ["backend/app/api/routes/memory.py"]
-test_references: []
-last_verified: 2026-05-15
-compass: CF-SPEC-53 / CF-657
+test_references: ["tests/test_memory.py"]
+last_verified: 2026-05-19
+compass: CF-SPEC-60 / CF-757
 ---
 
 # Knowledge Memory Architecture
 
 ## Implementation Summary
 
-The Memory knowledge tab manages project knowledge artifacts and retrieval material.
+The Memory knowledge tab manages project knowledge artifacts and retrieval material for the active project.
 
 ## Frontend Surface
 
@@ -38,6 +38,8 @@ The Memory knowledge tab manages project knowledge artifacts and retrieval mater
 ## Architecture Notes
 
 - The feature is mounted through `frontend/src/components/memory/MemoryView.tsx` and the UI navigation path recorded in the inventory.
+- `backend/app/api/routes/memory.py` validates project visibility before opening vector or keyword memory storage, so unknown or unauthorized project ids cannot create or inspect memory indexes.
+- `frontend/src/components/memory/MemoryView.tsx` remounts project-backed memory tabs when the active project changes so local chunks, search results, notes, and health state do not linger across projects.
 - The frontmatter and manifest entries are the durable contract for agents updating this page after code changes.
 - When the referenced component, store, route, agent, skill, or test behavior changes, regenerate and validate the feature documentation.
 
@@ -47,7 +49,7 @@ The Memory knowledge tab manages project knowledge artifacts and retrieval mater
 
 ## Tests And Verification
 
-- No focused test reference recorded yet.
+- `tests/test_memory.py`
 
 ## Related Features
 
@@ -61,7 +63,7 @@ The Memory knowledge tab manages project knowledge artifacts and retrieval mater
 
 ## Compass Evidence
 
-- Spec/task: CF-SPEC-53 / CF-657
+- Spec/task: CF-SPEC-60 / CF-757
 - Inventory source: `docs/features/inventory.json`
 
 ## When To Update

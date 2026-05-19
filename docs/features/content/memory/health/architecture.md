@@ -8,16 +8,16 @@ related_features: ["memory.knowledge", "quality.dashboard"]
 related_glossary: ["rag"]
 code_references: ["frontend/src/components/memory/MemoryView.tsx", "backend/app/core/vector_health.py"]
 api_references: ["backend/app/api/routes/memory.py"]
-test_references: []
-last_verified: 2026-05-15
-compass: CF-SPEC-53 / CF-657
+test_references: ["tests/test_memory.py"]
+last_verified: 2026-05-19
+compass: CF-SPEC-60 / CF-757
 ---
 
 # Memory Health Architecture
 
 ## Implementation Summary
 
-Memory health surfaces status and quality signals for memory or retrieval infrastructure.
+Memory health surfaces status and quality signals for memory or retrieval infrastructure in the active project.
 
 ## Frontend Surface
 
@@ -37,6 +37,8 @@ Memory health surfaces status and quality signals for memory or retrieval infras
 ## Architecture Notes
 
 - The feature is mounted through `frontend/src/components/memory/MemoryView.tsx` and the UI navigation path recorded in the inventory.
+- Health statistics are read through the project-scoped memory route after project visibility is verified.
+- `MemoryView` remounts the Health tab on active-project changes so one project's memory statistics do not linger in another project view.
 - The frontmatter and manifest entries are the durable contract for agents updating this page after code changes.
 - When the referenced component, store, route, agent, skill, or test behavior changes, regenerate and validate the feature documentation.
 
@@ -46,7 +48,7 @@ Memory health surfaces status and quality signals for memory or retrieval infras
 
 ## Tests And Verification
 
-- No focused test reference recorded yet.
+- `tests/test_memory.py`
 
 ## Related Features
 
@@ -59,7 +61,7 @@ Memory health surfaces status and quality signals for memory or retrieval infras
 
 ## Compass Evidence
 
-- Spec/task: CF-SPEC-53 / CF-657
+- Spec/task: CF-SPEC-60 / CF-757
 - Inventory source: `docs/features/inventory.json`
 
 ## When To Update

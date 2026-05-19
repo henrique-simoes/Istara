@@ -73,13 +73,22 @@ async def _seed_session_with_dag() -> tuple[Project, ChatSession, Message, Conte
 
 
 @pytest.mark.asyncio
-async def test_context_dag_structure_returns_response(auth_headers):
-    """GET /api/context-dag/{session_id} returns DAG structure."""
+async def test_context_dag_structure_requires_active_project_id(auth_headers):
+    """GET /api/context-dag/{session_id} requires the caller's active project id."""
     await init_db()
+    project, session, _, _ = await _seed_session_with_dag()
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
-        response = await ac.get("/api/context-dag/test-session", headers=auth_headers)
-        assert response.status_code in (200, 404, 500)
+        missing_project = await ac.get(f"/api/context-dag/{session.id}", headers=auth_headers)
+        unknown_session = await ac.get(
+            "/api/context-dag/test-session",
+            headers=auth_headers,
+            params={"project_id": project.id},
+        )
+
+    assert missing_project.status_code == 400
+    assert missing_project.json()["detail"] == "project_id is required"
+    assert unknown_session.status_code == 404
 
 
 @pytest.mark.asyncio
@@ -89,7 +98,10 @@ async def test_context_dag_requires_auth():
     settings.team_mode = True
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
-        response = await ac.get("/api/context-dag/test-session")
+        response = await ac.get(
+            "/api/context-dag/test-session",
+            params={"project_id": "test-project"},
+        )
         assert response.status_code == 401
 
 
@@ -97,19 +109,33 @@ async def test_context_dag_requires_auth():
 async def test_context_dag_health_returns_response(auth_headers):
     """GET /api/context-dag/{session_id}/health returns health info."""
     await init_db()
+    project = Project(id=str(uuid.uuid4()), name=f"DAG {uuid.uuid4()}")
+    async with async_session() as db:
+        db.add(project)
+        await db.commit()
+        await db.refresh(project)
+
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
-        response = await ac.get("/api/context-dag/test-session/health", headers=auth_headers)
-        assert response.status_code in (200, 404, 500)
+        response = await ac.get(
+            "/api/context-dag/test-session/health",
+            headers=auth_headers,
+            params={"project_id": project.id},
+        )
+        assert response.status_code == 404
 
 
 @pytest.mark.asyncio
 async def test_context_dag_structure_matches_frontend_contract(auth_headers):
     await init_db()
-    _, session, _, node = await _seed_session_with_dag()
+    project, session, _, node = await _seed_session_with_dag()
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
-        response = await ac.get(f"/api/context-dag/{session.id}", headers=auth_headers)
+        response = await ac.get(
+            f"/api/context-dag/{session.id}",
+            headers=auth_headers,
+            params={"project_id": project.id},
+        )
 
     assert response.status_code == 200
     payload = response.json()
@@ -123,12 +149,13 @@ async def test_context_dag_structure_matches_frontend_contract(auth_headers):
 @pytest.mark.asyncio
 async def test_context_dag_expand_returns_normalized_items(auth_headers):
     await init_db()
-    _, session, message, node = await _seed_session_with_dag()
+    project, session, message, node = await _seed_session_with_dag()
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
         response = await ac.post(
             f"/api/context-dag/{session.id}/expand",
             headers=auth_headers,
+            params={"project_id": project.id},
             json={"node_id": node.id},
         )
 
@@ -143,7 +170,7 @@ async def test_context_dag_expand_returns_normalized_items(auth_headers):
 @pytest.mark.asyncio
 async def test_context_dag_node_access_is_scoped_to_requested_session(auth_headers):
     await init_db()
-    _, visible_session, _, _ = await _seed_session_with_dag()
+    visible_project, visible_session, _, _ = await _seed_session_with_dag()
     _, hidden_session, _, hidden_node = await _seed_session_with_dag()
     assert visible_session.id != hidden_session.id
 
@@ -152,12 +179,38 @@ async def test_context_dag_node_access_is_scoped_to_requested_session(auth_heade
         expand_response = await ac.post(
             f"/api/context-dag/{visible_session.id}/expand",
             headers=auth_headers,
+            params={"project_id": visible_project.id},
             json={"node_id": hidden_node.id},
         )
         details_response = await ac.get(
             f"/api/context-dag/{visible_session.id}/node/{hidden_node.id}",
             headers=auth_headers,
+            params={"project_id": visible_project.id},
         )
 
     assert expand_response.status_code == 404
     assert details_response.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_context_dag_rejects_stale_cross_project_session_id(auth_headers):
+    """The active project id must match the requested session's project."""
+    await init_db()
+    active_project, _, _, _ = await _seed_session_with_dag()
+    _, hidden_session, _, hidden_node = await _seed_session_with_dag()
+
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        structure_response = await ac.get(
+            f"/api/context-dag/{hidden_session.id}",
+            headers=auth_headers,
+            params={"project_id": active_project.id},
+        )
+        node_response = await ac.get(
+            f"/api/context-dag/{hidden_session.id}/node/{hidden_node.id}",
+            headers=auth_headers,
+            params={"project_id": active_project.id},
+        )
+
+    assert structure_response.status_code == 404
+    assert node_response.status_code == 404

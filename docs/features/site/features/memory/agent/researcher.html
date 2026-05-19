@@ -241,7 +241,7 @@
   <p class="concept-line"><strong>Concepts:</strong> rag, a2a</p>
 </header>
 <h2 id="what-it-does">What It Does</h2>
-<p>The Agent memory tab exposes memory tied to agent behavior and project collaboration.</p>
+<p>The Agent memory tab exposes memory tied to agent behavior and project collaboration in the active project.</p>
 <h2 id="why-it-exists">Why It Exists</h2>
 <p>Agent Memory exists so the work represented by Memory &gt; Agent has a stable, discoverable place in Istara&#x27;s project workflow. It keeps user actions, generated artifacts, and related follow-up surfaces connected to the active project rather than scattering them across unrelated tools.</p>
 <h2 id="where-it-lives">Where It Lives</h2>
@@ -254,6 +254,7 @@
 <ul>
 <li>Open Memory &gt; Agent from the Istara navigation or the parent tab.</li>
 <li>Use the visible controls in this surface to work with agent memory in the active project context.</li>
+<li>Project switches clear loaded agent notes before the next project&#x27;s agents are fetched.</li>
 <li>Review the output in the same view and follow the related feature links when the workflow moves into another Istara surface.</li>
 </ul>
 <h2 id="supported-workflows">Supported Workflows</h2>
@@ -286,7 +287,7 @@
 <ul>
 <li>Source files: <code>frontend/src/components/memory/MemoryView.tsx</code>, <code>backend/app/core/agent_memory.py</code></li>
 <li>API references: <code>backend/app/api/routes/memory.py</code></li>
-<li>Tests: none recorded</li>
+<li>Tests: <code>tests/test_memory.py</code></li>
 </ul>
         </article>
         <aside class="toc-panel" aria-label="Page sections">

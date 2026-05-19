@@ -242,7 +242,7 @@
   <p class="concept-line"><strong>Concepts:</strong> rag</p>
 </header>
 <h2 id="what-it-does">What It Does</h2>
-<p>The Memory knowledge tab manages project knowledge artifacts and retrieval material.</p>
+<p>The Memory knowledge tab manages project knowledge artifacts and retrieval material for the active project.</p>
 <h2 id="why-it-exists">Why It Exists</h2>
 <p>Knowledge Memory exists so the work represented by Memory &gt; Knowledge has a stable, discoverable place in Istara&#x27;s project workflow. It keeps user actions, generated artifacts, and related follow-up surfaces connected to the active project rather than scattering them across unrelated tools.</p>
 <h2 id="where-it-lives">Where It Lives</h2>
@@ -255,6 +255,7 @@
 <ul>
 <li>Open Memory &gt; Knowledge from the Istara navigation or the parent tab.</li>
 <li>Use the visible controls in this surface to work with knowledge memory in the active project context.</li>
+<li>Project switches clear the visible memory tab state before loading the next project&#x27;s chunks, sources, and search results.</li>
 <li>Review the output in the same view and follow the related feature links when the workflow moves into another Istara surface.</li>
 </ul>
 <h2 id="supported-workflows">Supported Workflows</h2>
@@ -287,7 +288,7 @@
 <ul>
 <li>Source files: <code>frontend/src/components/memory/MemoryView.tsx</code>, <code>frontend/src/lib/memoryApi.ts</code>, <code>backend/app/api/routes/memory.py</code></li>
 <li>API references: <code>backend/app/api/routes/memory.py</code></li>
-<li>Tests: none recorded</li>
+<li>Tests: <code>tests/test_memory.py</code></li>
 </ul>
         </article>
         <aside class="toc-panel" aria-label="Page sections">

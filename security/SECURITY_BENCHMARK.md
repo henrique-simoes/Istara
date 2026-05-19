@@ -98,6 +98,10 @@ pickers are project-content surfaces: session-by-id APIs require the caller's
 authorized active project, frontend session state is stored per project, and a
 stale session id from another authorized project must not render or mutate chat
 messages in the current project view.
+Memory and Context DAG inspection are project-content surfaces too: memory
+indexes may only open after the requested project exists and is visible to the
+caller, and every Context DAG structure, health, expansion, search, node, and
+compaction request must bind the session id to the caller's active project id.
 Project-facing integrations, deployments, survey links, channel records, and
 MCP client registries are project-content surfaces for every user role: list
 APIs require an explicit authorized active project and must not silently fall

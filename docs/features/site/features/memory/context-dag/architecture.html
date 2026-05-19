@@ -241,7 +241,7 @@
   <p class="concept-line"><strong>Concepts:</strong> rag</p>
 </header>
 <h2 id="implementation-summary">Implementation Summary</h2>
-<p>The Context DAG tab visualizes or inspects relationships across project context nodes. Its chat-session picker only renders sessions from the active project, so context DAG reads cannot be driven by a stale session selection from another project.</p>
+<p>The Context DAG tab visualizes or inspects relationships across project context nodes. Its chat-session picker only renders sessions from the active project, and every Context DAG API call carries the active project id so stale session ids cannot read a previous project&#x27;s graph.</p>
 <h2 id="frontend-surface">Frontend Surface</h2>
 <ul>
 <li><code>frontend/src/components/memory/MemoryView.tsx</code></li>
@@ -264,6 +264,7 @@
 <ul>
 <li>The feature is mounted through <code>frontend/src/components/memory/MemoryView.tsx</code> and the UI navigation path recorded in the inventory.</li>
 <li><code>ContextDAGView</code> derives <code>scopedSessions</code> from the active project before rendering the session selector and derives <code>scopedActiveSessionId</code> before calling context DAG structure, health, expand, grep, or compact APIs.</li>
+<li><code>backend/app/api/routes/context_dag.py</code> requires <code>project_id</code> on session-by-id routes and loads the session by both <code>session_id</code> and <code>project_id</code> before returning structure, health, expansion, search, node metadata, or compaction output.</li>
 <li>When no active project session is selected, the DAG stays in the empty selection state instead of rendering or querying a session from another project.</li>
 <li>The frontmatter and manifest entries are the durable contract for agents updating this page after code changes.</li>
 <li>When the referenced component, store, route, agent, skill, or test behavior changes, regenerate and validate the feature documentation.</li>
@@ -274,6 +275,7 @@
 </ul>
 <h2 id="tests-and-verification">Tests And Verification</h2>
 <ul>
+<li><code>tests/test_context_dag.py</code></li>
 <li><code>tests/test_project_scope_contracts.py</code></li>
 </ul>
 <h2 id="related-features">Related Features</h2>
