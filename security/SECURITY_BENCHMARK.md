@@ -200,6 +200,10 @@ Donated relay/browser compute is also a project-content boundary: a relay can
 be connected for status, but prompt and embedding payloads may only route to it
 when the request includes a concrete project and the donor scope was resolved
 from project membership or a validated compute-donation connection string.
+Browser/JWT relay scope for bound auth sessions is resolved from the current
+database user role and project memberships, not from stale token role claims, so
+admin demotion, deletion, or membership removal changes donation scope before
+project content is routed.
 The lower-level relay/browser node dispatch methods also reject missing or
 mismatched project ids before websocket dispatch so direct callers cannot bypass
 registry candidate filtering.

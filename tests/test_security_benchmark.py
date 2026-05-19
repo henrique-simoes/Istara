@@ -46,6 +46,7 @@ def test_security_benchmark_detects_compute_project_scope_paths() -> None:
         "relay/lib/connection.mjs",
         "tests/compute_cases/api_routes.py",
         "tests/compute_cases/routing.py",
+        "tests/compute_cases/stats_websocket.py",
         "tests/test_project_scope_contracts.py",
     ]
     result = evaluate_matrix(matrix, changed_paths=changed_paths)

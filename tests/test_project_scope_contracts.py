@@ -498,6 +498,11 @@ def test_compute_pool_requires_active_project_scope() -> None:
     assert "await get_visible_project_or_404(db, request, scoped_project_id, min_role=\"viewer\")" in route
     assert "compute_registry.get_stats(project_id=scoped_project_id)" in route
     assert "compute_registry.get_warnings(project_id=scoped_project_id)" in route
+    assert "current_user_context_for_payload" in route
+    assert "jwt_user_context = await current_user_context_for_payload(db, jwt_payload)" in route
+    assert 'authenticated_role = str(jwt_payload.get("role", ""))' not in route
+    assert "user = await db.get(User, user_id)" in route
+    assert "authorized_project_count" in route
     assert "is_global_admin" not in route
     assert "all nodes for global admins" not in route
 
