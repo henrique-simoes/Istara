@@ -267,6 +267,7 @@
 <ul>
 <li>Project-scoped state or artifact updates associated with project reports.</li>
 <li>Visible status, lists, forms, generated artifacts, or review results shown by the referenced component and routes.</li>
+<li>Generated executive summaries keep the report&#x27;s project context attached during LLM routing.</li>
 </ul>
 <h2 id="caveats">Caveats</h2>
 <ul>
@@ -289,7 +290,7 @@
 <ul>
 <li>Source files: <code>frontend/src/components/findings/FindingsView.tsx</code>, <code>frontend/src/components/findings/ProjectReportsView.tsx</code>, <code>backend/app/api/routes/reports.py</code>, <code>backend/app/core/report_manager.py</code>, <code>backend/app/core/reporting_worker.py</code></li>
 <li>API references: <code>backend/app/api/routes/reports.py</code></li>
-<li>Tests: none recorded</li>
+<li>Tests: <code>tests/test_research_integrity_reports.py</code></li>
 </ul>
         </article>
         <aside class="toc-panel" aria-label="Page sections">

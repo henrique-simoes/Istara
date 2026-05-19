@@ -12,6 +12,8 @@ export async function run(ctx) {
   const cleanup = { deploymentIds: [], channelIds: [] };
   const projectId = ctx.projectId || "sim-project-001";
   const projectQuery = encodeURIComponent(projectId);
+  const deploymentPath = (deploymentId, suffix = "") =>
+    `/api/deployments/${deploymentId}${suffix}?project_id=${projectQuery}`;
 
   // ── 1. Create a channel instance for deployment ──
   let channel = null;
@@ -80,7 +82,7 @@ export async function run(ctx) {
   // ── 4. GET /api/deployments/{id} — detail ──
   if (deployment) {
     try {
-      const detail = await api.get(`/api/deployments/${deployment.id}`);
+      const detail = await api.get(deploymentPath(deployment.id));
       const hasQuestions = detail.questions && detail.questions.length === 3;
       checks.push({
         name: "GET /api/deployments/{id} returns full detail",
@@ -95,7 +97,7 @@ export async function run(ctx) {
   // ── 5. POST /api/deployments/{id}/activate — activate ──
   if (deployment) {
     try {
-      const result = await api.post(`/api/deployments/${deployment.id}/activate`, {});
+      const result = await api.post(deploymentPath(deployment.id, "/activate"), {});
       checks.push({
         name: "POST /api/deployments/{id}/activate starts deployment",
         passed: result.status === "activated" || result.status === "active",
@@ -109,7 +111,7 @@ export async function run(ctx) {
   // ── 6. Verify state changed to active ──
   if (deployment) {
     try {
-      const detail = await api.get(`/api/deployments/${deployment.id}`);
+      const detail = await api.get(deploymentPath(deployment.id));
       checks.push({
         name: "Deployment state is active after activation",
         passed: detail.state === "active",
@@ -123,7 +125,7 @@ export async function run(ctx) {
   // ── 7. POST /api/deployments/{id}/pause — pause ──
   if (deployment) {
     try {
-      const result = await api.post(`/api/deployments/${deployment.id}/pause`, {});
+      const result = await api.post(deploymentPath(deployment.id, "/pause"), {});
       checks.push({
         name: "POST /api/deployments/{id}/pause pauses deployment",
         passed: result.status === "paused",
@@ -137,7 +139,7 @@ export async function run(ctx) {
   // ── 8. POST /api/deployments/{id}/complete — complete ──
   if (deployment) {
     try {
-      const result = await api.post(`/api/deployments/${deployment.id}/complete`, {});
+      const result = await api.post(deploymentPath(deployment.id, "/complete"), {});
       checks.push({
         name: "POST /api/deployments/{id}/complete ends deployment",
         passed: result.status === "completed",
@@ -151,7 +153,7 @@ export async function run(ctx) {
   // ── 9. GET /api/deployments/{id}/analytics — analytics data ──
   if (deployment) {
     try {
-      const analytics = await api.get(`/api/deployments/${deployment.id}/analytics`);
+      const analytics = await api.get(deploymentPath(deployment.id, "/analytics"));
       checks.push({
         name: "GET /api/deployments/{id}/analytics returns analytics",
         passed: analytics.deployment_id === deployment.id && analytics.per_question_stats !== undefined,
@@ -165,7 +167,7 @@ export async function run(ctx) {
   // ── 10. GET /api/deployments/{id}/conversations — empty initially ──
   if (deployment) {
     try {
-      const convos = await api.get(`/api/deployments/${deployment.id}/conversations`);
+      const convos = await api.get(deploymentPath(deployment.id, "/conversations"));
       const list = Array.isArray(convos) ? convos : convos?.conversations || [];
       checks.push({
         name: "GET /api/deployments/{id}/conversations returns array",
@@ -254,7 +256,7 @@ export async function run(ctx) {
   // ── 15. Adaptive config persisted ──
   if (deployment) {
     try {
-      const detail = await api.get(`/api/deployments/${deployment.id}`);
+      const detail = await api.get(deploymentPath(deployment.id));
       const config = detail.config || {};
       checks.push({
         name: "Adaptive config persisted correctly",
@@ -268,7 +270,7 @@ export async function run(ctx) {
 
   // ── Cleanup ──
   for (const id of cleanup.deploymentIds) {
-    try { await api.delete(`/api/deployments/${id}`); } catch (_) {}
+    try { await api.delete(deploymentPath(id)); } catch (_) {}
   }
   for (const id of cleanup.channelIds) {
     try { await api.delete(`/api/channels/${id}`); } catch (_) {}

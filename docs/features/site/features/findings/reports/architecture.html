@@ -259,20 +259,22 @@
 <h3 id="api-and-backend">API And Backend</h3>
 <ul>
 <li><code>backend/app/api/routes/reports.py</code></li>
+<li><code>backend/app/core/report_manager.py</code></li>
 </ul>
 <h2 id="architecture-notes">Architecture Notes</h2>
 <ul>
 <li>The feature is mounted through <code>frontend/src/components/findings/FindingsView.tsx</code> and the UI navigation path recorded in the inventory.</li>
+<li>Report generation and executive-summary calls preserve the report&#x27;s <code>project_id</code> through async database boundaries and pass that project id into LLM routing so summaries cannot lose their project context.</li>
 <li>The frontmatter and manifest entries are the durable contract for agents updating this page after code changes.</li>
 <li>When the referenced component, store, route, agent, skill, or test behavior changes, regenerate and validate the feature documentation.</li>
 </ul>
 <h2 id="agents-skills-llm-mcp-and-permissions">Agents, Skills, LLM, MCP, And Permissions</h2>
 <ul>
-<li>No direct agent, skill, LLM, or MCP behavior is asserted beyond the cited source files.</li>
+<li>Executive-summary and report-composition LLM calls are project-contextual and must keep the report project id attached to generated content.</li>
 </ul>
 <h2 id="tests-and-verification">Tests And Verification</h2>
 <ul>
-<li>No focused test reference recorded yet.</li>
+<li><code>tests/test_research_integrity_reports.py</code></li>
 </ul>
 <h2 id="related-features">Related Features</h2>
 <ul>
@@ -288,7 +290,7 @@
 </ul>
 <h2 id="compass-evidence">Compass Evidence</h2>
 <ul>
-<li>Spec/task: CF-SPEC-53 / CF-657</li>
+<li>Spec/task: CF-SPEC-53 / CF-657; CF-SPEC-60 / CF-773</li>
 <li>Inventory source: <code>docs/features/inventory.json</code></li>
 </ul>
 <h2 id="when-to-update">When To Update</h2>

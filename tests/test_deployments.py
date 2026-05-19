@@ -188,6 +188,45 @@ async def test_deployment_overview_counts_only_active_project_conversations(admi
 
 
 @pytest.mark.asyncio
+async def test_deployment_detail_requires_matching_active_project_for_admin(admin_auth_headers):
+    await init_db()
+    project_a = _id("project-a")
+    project_b = _id("project-b")
+    channel_a = ChannelInstance(
+        id=_id("channel-a"),
+        platform="slack",
+        name="Project A Slack",
+        project_id=project_a,
+    )
+    deployment_a = _deployment(project_id=project_a, channel_instance_id=channel_a.id)
+    async with async_session() as db:
+        db.add_all([channel_a, deployment_a])
+        await db.commit()
+
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        unscoped = await ac.get(
+            f"/api/deployments/{deployment_a.id}",
+            headers=admin_auth_headers,
+        )
+        wrong_project = await ac.get(
+            f"/api/deployments/{deployment_a.id}?project_id={project_b}",
+            headers=admin_auth_headers,
+        )
+        scoped = await ac.get(
+            f"/api/deployments/{deployment_a.id}?project_id={project_a}",
+            headers=admin_auth_headers,
+        )
+
+    assert unscoped.status_code == 400
+    assert unscoped.json()["detail"] == "project_id is required"
+    assert wrong_project.status_code == 404
+    assert wrong_project.json()["detail"] == "Deployment not found"
+    assert scoped.status_code == 200
+    assert scoped.json()["project_id"] == project_a
+
+
+@pytest.mark.asyncio
 async def test_deployment_response_rejects_cross_project_conversation(admin_auth_headers):
     await init_db()
     project_a = _id("project-a")
@@ -218,7 +257,7 @@ async def test_deployment_response_rejects_cross_project_conversation(admin_auth
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
         response = await ac.post(
-            f"/api/deployments/{deployment_a.id}/respond",
+            f"/api/deployments/{deployment_a.id}/respond?project_id={project_a}",
             headers=admin_auth_headers,
             json={
                 "conversation_id": conversation_b.id,

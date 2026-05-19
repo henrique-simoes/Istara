@@ -108,14 +108,14 @@ export async function run(ctx) {
       channel_instance_ids: [],
       target_responses: 1,
     });
-    const analytics = await api.get(`/api/deployments/${tempDeploy.id}/analytics`);
+    const analytics = await api.get(`/api/deployments/${tempDeploy.id}/analytics?project_id=${encodeURIComponent("sim-agent-knowledge-test")}`);
     checks.push({
       name: "Deployment analytics endpoint returns data structure",
       passed: analytics.per_question_stats !== undefined,
       detail: `Keys: ${Object.keys(analytics).join(", ")}`,
     });
     // Cleanup
-    try { await api.delete(`/api/deployments/${tempDeploy.id}`); } catch (_) {}
+    try { await api.delete(`/api/deployments/${tempDeploy.id}?project_id=${encodeURIComponent("sim-agent-knowledge-test")}`); } catch (_) {}
   } catch (e) {
     checks.push({ name: "Deployment analytics endpoint returns data structure", passed: false, detail: e.message });
   }

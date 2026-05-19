@@ -247,6 +247,9 @@
 <ul>
 <li><code>frontend/src/components/integrations/DeploymentsTab.tsx</code></li>
 <li><code>frontend/src/components/integrations/DeploymentWizard.tsx</code></li>
+<li><code>frontend/src/components/integrations/DeploymentDashboard.tsx</code></li>
+<li><code>frontend/src/components/integrations/ConversationTranscript.tsx</code></li>
+<li><code>frontend/src/lib/api.ts</code></li>
 <li><code>backend/app/api/routes/deployments.py</code></li>
 <li><code>backend/app/services/deployment_service.py</code></li>
 </ul>
@@ -256,13 +259,16 @@
 <li><code>frontend/src/stores/integrationsStore.ts</code></li>
 <li><code>DeploymentsTab</code> reads <code>activeProjectId</code> from <code>frontend/src/stores/projectStore.ts</code> and passes it into <code>fetchDeployments(activeProjectId)</code> before rendering deployment rows or summary counts.</li>
 <li>The tab derives a <code>scopedDeployments</code> list from the store by matching <code>deployment.project_id</code> to the active project, so stale deployment state from a previous project cannot populate the list, counts, or selected detail view.</li>
+<li><code>DeploymentWizard</code> fetches channels with the active project id, filters available channels by the same project id, and refuses deployment creation unless both an active project and deployment type are present.</li>
 </ul>
 <h3 id="api-and-backend">API And Backend</h3>
 <ul>
 <li><code>backend/app/api/routes/deployments.py</code></li>
 <li><code>backend/app/services/deployment_service.py</code></li>
 <li>Deployment list requests must include <code>project_id</code>; the route enforces project access before returning deployment records, including for global admins using the project-facing Integrations route. The admin dashboard remains the only intended global aggregation surface.</li>
+<li>Deployment detail, analytics, lifecycle, conversation list, conversation detail, and transcript routes also require the active <code>project_id</code>; an omitted project id returns 400, and a deployment id from another project resolves as 404 instead of silently using the record&#x27;s owning project.</li>
 <li>Deployment creation validates every <code>channel_instance_id</code> against the deployment <code>project_id</code> before storing the deployment, so a deployment in one project cannot route participant content through another project&#x27;s messaging channel.</li>
+<li>Inbound channel processors attach participant messages only to same-project deployments that explicitly list the receiving channel instance; deployments with no channels are not a global fallback.</li>
 <li>Deployment response handling, conversations, transcripts, analytics, and overview counters all require the conversation/deployment/channel records to match the same project boundary before participant content or findings are read, updated, or summarized.</li>
 </ul>
 <h2 id="architecture-notes">Architecture Notes</h2>
@@ -277,8 +283,8 @@
 </ul>
 <h2 id="tests-and-verification">Tests And Verification</h2>
 <ul>
-<li><code>tests/test_deployments.py</code> exercises API-level project isolation for deployment channel ownership, deployment overview conversation counts, and cross-project response rejection.</li>
-<li><code>tests/test_project_scope_contracts.py</code> asserts that <code>DeploymentsTab</code> imports the project store, fetches deployments with the active project id, renders only <code>scopedDeployments</code>, and does not fall back to a global <code>fetchDeployments()</code> call.</li>
+<li><code>tests/test_deployments.py</code> exercises API-level project isolation for deployment channel ownership, deployment overview conversation counts, by-id active-project matching, and cross-project response rejection.</li>
+<li><code>tests/test_project_scope_contracts.py</code> asserts that <code>DeploymentsTab</code>, <code>DeploymentDashboard</code>, <code>ConversationTranscript</code>, and the deployment API client pass the active project id into list, detail, lifecycle, analytics, conversation, and transcript calls rather than falling back to global deployment ids.</li>
 </ul>
 <h2 id="related-features">Related Features</h2>
 <ul>
@@ -292,7 +298,7 @@
 </ul>
 <h2 id="compass-evidence">Compass Evidence</h2>
 <ul>
-<li>Spec/task: CF-SPEC-60 / CF-767</li>
+<li>Spec/task: CF-SPEC-60 / CF-767; CF-SPEC-60 / CF-773</li>
 <li>Inventory source: <code>docs/features/inventory.json</code></li>
 </ul>
 <h2 id="when-to-update">When To Update</h2>

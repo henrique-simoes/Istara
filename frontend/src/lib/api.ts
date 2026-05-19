@@ -869,20 +869,28 @@ export const channels = {
 // --- Deployments ---
 
 export const deployments = {
-  list: (projectId?: string) => {
-    const params = projectId ? `?project_id=${projectId}` : "";
+  list: (projectId: string) => {
+    const params = `?project_id=${encodeURIComponent(projectId)}`;
     return get<ResearchDeployment[]>(`/api/deployments${params}`);
   },
-  get: (id: string) => get<ResearchDeployment>(`/api/deployments/${id}`),
-  create: (data: any) => post<ResearchDeployment>("/api/deployments", data),
-  activate: (id: string) => post<any>(`/api/deployments/${id}/activate`, {}),
-  pause: (id: string) => post<any>(`/api/deployments/${id}/pause`, {}),
-  complete: (id: string) => post<any>(`/api/deployments/${id}/complete`, {}),
-  analytics: (id: string) => get<DeploymentAnalytics>(`/api/deployments/${id}/analytics`),
-  overview: (projectId: string) => get<any>(`/api/deployments/overview?project_id=${projectId}`),
-  conversations: (id: string) => get<ChannelConversation[]>(`/api/deployments/${id}/conversations`),
-  transcript: (deploymentId: string, conversationId: string) =>
-    get<any>(`/api/deployments/${deploymentId}/conversations/${conversationId}/transcript`),
+  get: (id: string, projectId: string) =>
+    get<ResearchDeployment>(`/api/deployments/${id}?project_id=${encodeURIComponent(projectId)}`),
+  create: (data: { project_id: string; [key: string]: any }) => post<ResearchDeployment>("/api/deployments", data),
+  activate: (id: string, projectId: string) =>
+    post<any>(`/api/deployments/${id}/activate?project_id=${encodeURIComponent(projectId)}`, {}),
+  pause: (id: string, projectId: string) =>
+    post<any>(`/api/deployments/${id}/pause?project_id=${encodeURIComponent(projectId)}`, {}),
+  complete: (id: string, projectId: string) =>
+    post<any>(`/api/deployments/${id}/complete?project_id=${encodeURIComponent(projectId)}`, {}),
+  analytics: (id: string, projectId: string) =>
+    get<DeploymentAnalytics>(`/api/deployments/${id}/analytics?project_id=${encodeURIComponent(projectId)}`),
+  overview: (projectId: string) => get<any>(`/api/deployments/overview?project_id=${encodeURIComponent(projectId)}`),
+  conversations: (id: string, projectId: string) =>
+    get<ChannelConversation[]>(`/api/deployments/${id}/conversations?project_id=${encodeURIComponent(projectId)}`),
+  transcript: (deploymentId: string, conversationId: string, projectId: string) =>
+    get<any>(
+      `/api/deployments/${deploymentId}/conversations/${conversationId}/transcript?project_id=${encodeURIComponent(projectId)}`
+    ),
 };
 
 // --- Surveys ---

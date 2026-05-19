@@ -37,22 +37,22 @@ def _state_value(value: object, default: str = "active") -> str:
 
 async def _active_deployment_for_instance(
     db,
-    instance_id: str,
+    instance: ChannelInstance,
 ) -> ResearchDeployment | None:
     """Return the active deployment bound to a channel instance, if any."""
     result = await db.execute(
-        select(ResearchDeployment).where(ResearchDeployment.state == "active")
+        select(ResearchDeployment).where(
+            ResearchDeployment.state == "active",
+            ResearchDeployment.project_id == instance.project_id,
+        )
     )
     deployments = result.scalars().all()
 
-    fallback: ResearchDeployment | None = None
     for deployment in deployments:
         channel_ids = _safe_json_list(deployment.channel_instance_ids_json)
-        if instance_id in channel_ids:
+        if instance.id in channel_ids:
             return deployment
-        if not channel_ids and fallback is None:
-            fallback = deployment
-    return fallback
+    return None
 
 
 async def _get_or_create_conversation(
@@ -120,7 +120,7 @@ async def process_inbound_channel_message(
             )
             return None
 
-        deployment = await _active_deployment_for_instance(db, message.instance_id)
+        deployment = await _active_deployment_for_instance(db, instance)
         project_id = deployment.project_id if deployment else instance.project_id
         now = datetime.now(timezone.utc)
 

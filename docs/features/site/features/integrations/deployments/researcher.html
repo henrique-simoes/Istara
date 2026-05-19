@@ -267,7 +267,7 @@
 <ul>
 <li>Project-scoped state or artifact updates associated with research deployments that belong to the active project and the current user&#x27;s authorized access.</li>
 <li>Visible status, lists, forms, generated artifacts, or review results shown by the referenced component and routes, filtered to the active project before list rows, counts, or detail views are rendered.</li>
-<li>Deployment channels, participant conversations, response handling, transcripts, analytics, and overview counts are accepted only when their deployment and channel records belong to the same active project.</li>
+<li>Deployment detail, lifecycle actions, channels, participant conversations, response handling, transcripts, analytics, and overview counts are accepted only when their deployment and channel records belong to the same active project.</li>
 </ul>
 <h2 id="caveats">Caveats</h2>
 <ul>
@@ -286,7 +286,7 @@
 </ul>
 <h2 id="evidence">Evidence</h2>
 <ul>
-<li>Source files: <code>frontend/src/components/integrations/DeploymentsTab.tsx</code>, <code>frontend/src/components/integrations/DeploymentWizard.tsx</code>, <code>backend/app/api/routes/deployments.py</code>, <code>backend/app/services/deployment_service.py</code></li>
+<li>Source files: <code>frontend/src/components/integrations/DeploymentsTab.tsx</code>, <code>frontend/src/components/integrations/DeploymentWizard.tsx</code>, <code>frontend/src/components/integrations/DeploymentDashboard.tsx</code>, <code>frontend/src/components/integrations/ConversationTranscript.tsx</code>, <code>frontend/src/lib/api.ts</code>, <code>backend/app/api/routes/deployments.py</code>, <code>backend/app/services/deployment_service.py</code></li>
 <li>API references: <code>backend/app/api/routes/deployments.py</code>, <code>backend/app/services/deployment_service.py</code></li>
 <li>Tests: <code>tests/test_deployments.py</code>, <code>tests/test_project_scope_contracts.py</code></li>
 </ul>

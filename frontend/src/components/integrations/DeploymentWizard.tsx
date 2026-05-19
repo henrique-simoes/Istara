@@ -57,6 +57,7 @@ export default function DeploymentWizard({ onClose }: DeploymentWizardProps) {
   };
 
   const handleDeploy = async () => {
+    if (!activeProjectId || !deploymentType) return;
     setDeploying(true);
     try {
       await deploymentsApi.create({
@@ -87,7 +88,9 @@ export default function DeploymentWizard({ onClose }: DeploymentWizardProps) {
     }
   };
 
-  const activeChannels = channelInstances.filter((c) => c.is_active);
+  const activeChannels = activeProjectId
+    ? channelInstances.filter((c) => c.is_active && c.project_id === activeProjectId)
+    : [];
 
   return (
     <div className="flex-1 flex items-center justify-center p-6 overflow-y-auto">

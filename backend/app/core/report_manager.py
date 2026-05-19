@@ -242,6 +242,7 @@ class ReportManager:
     async def _generate_executive_summary(self, report, db: AsyncSession) -> None:
         """Generate an executive summary when a report has 3+ findings."""
         report_id = report.id
+        report_project_id = report.project_id
         report_title = report.title
         report_scope = report.scope
         finding_ids = _safe_json_list(report.finding_ids_json)[:20]
@@ -273,7 +274,7 @@ class ReportManager:
             response = await llm_router.chat(
                 [{"role": "user", "content": summary_prompt}],
                 temperature=0.3,
-                project_id=report.project_id,
+                project_id=report_project_id,
             )
             summary = response.get("message", {}).get("content", "")
             if summary and len(summary) > 20:
@@ -291,6 +292,7 @@ class ReportManager:
     async def _generate_mece_categories(self, report, db: AsyncSession) -> None:
         """Generate MECE categories when a report has 5+ findings."""
         report_id = report.id
+        report_project_id = report.project_id
         report_title = report.title
         finding_ids = _safe_json_list(report.finding_ids_json)[:20]
         existing_categories = _safe_json_list(report.mece_categories_json)
@@ -329,7 +331,7 @@ class ReportManager:
             response = await llm_router.chat(
                 [{"role": "user", "content": mece_prompt}],
                 temperature=0.3,
-                project_id=report.project_id,
+                project_id=report_project_id,
             )
             content = response.get("message", {}).get("content", "")
             import re

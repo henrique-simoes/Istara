@@ -110,20 +110,25 @@ Memory and Context DAG inspection are project-content surfaces too: memory
 indexes may only open after the requested project exists and is visible to the
 caller, and every Context DAG structure, health, expansion, search, node, and
 compaction request must bind the session id to the caller's active project id.
-Findings evidence, evidence-chain traversal, and shell findings search are
-project-content surfaces: project-facing list/search clients and APIs require
-an explicit authorized active project, linked evidence rows are filtered by the
-same project before being returned, and cross-project findings search belongs
-only on explicit admin dashboard/reporting routes.
+Findings evidence, evidence-chain traversal, shell findings search, and project
+reports are project-content surfaces: project-facing list/search/report clients
+and APIs require an explicit authorized active project, linked evidence rows are
+filtered by the same project before being returned, report-summary LLM calls
+carry the report's project id, and cross-project findings search belongs only
+on explicit admin dashboard/reporting routes.
 Project-facing integrations, deployments, survey links, channel records, and
 MCP client registries are project-content surfaces for every user role: list
 APIs require an explicit authorized active project and must not silently fall
 back to global admin lists. Deployment creation must only attach channel
-instances owned by the same project, and deployment response, conversation,
-transcript, analytics, and overview counters must verify matching deployment
-and project ownership before reading, mutating, or summarizing participant
-content. Global cross-project aggregation belongs only on dedicated admin
-reporting surfaces.
+instances owned by the same project, and deployment detail, lifecycle,
+response, conversation, transcript, analytics, and overview counters must
+require the caller's active project and verify matching deployment/project
+ownership before reading, mutating, or summarizing participant content. Global
+cross-project aggregation belongs only on dedicated admin reporting surfaces.
+Inbound channel processors must resolve deployments only inside the channel
+instance's project and only when the active deployment explicitly lists that
+channel instance; unbound or other-project deployments must not receive
+participant content.
 Interfaces screens, design briefs, developer handoff specs, Figma imports, and
 Stitch/Figma credentials are also project-content surfaces: status/list/helper
 APIs require an authorized active project, frontend stores clear stale project

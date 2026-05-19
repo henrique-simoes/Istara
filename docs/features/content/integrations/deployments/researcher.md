@@ -6,11 +6,11 @@ audience: researcher
 status: documented
 related_features: ["integrations.deployment-dashboard", "integrations.surveys", "integrations.messaging"]
 related_glossary: ["triangulation"]
-code_references: ["frontend/src/components/integrations/DeploymentsTab.tsx", "frontend/src/components/integrations/DeploymentWizard.tsx", "backend/app/api/routes/deployments.py", "backend/app/services/deployment_service.py"]
+code_references: ["frontend/src/components/integrations/DeploymentsTab.tsx", "frontend/src/components/integrations/DeploymentWizard.tsx", "frontend/src/components/integrations/DeploymentDashboard.tsx", "frontend/src/components/integrations/ConversationTranscript.tsx", "frontend/src/lib/api.ts", "backend/app/api/routes/deployments.py", "backend/app/services/deployment_service.py"]
 api_references: ["backend/app/api/routes/deployments.py", "backend/app/services/deployment_service.py"]
 test_references: ["tests/test_deployments.py", "tests/test_project_scope_contracts.py"]
 last_verified: 2026-05-19
-compass: CF-SPEC-60 / CF-767
+compass: CF-SPEC-60 / CF-767; CF-SPEC-60 / CF-773
 ---
 
 # Research Deployments
@@ -45,7 +45,7 @@ Research Deployments exists so the work represented by Integrations > Deployment
 
 - Project-scoped state or artifact updates associated with research deployments that belong to the active project and the current user's authorized access.
 - Visible status, lists, forms, generated artifacts, or review results shown by the referenced component and routes, filtered to the active project before list rows, counts, or detail views are rendered.
-- Deployment channels, participant conversations, response handling, transcripts, analytics, and overview counts are accepted only when their deployment and channel records belong to the same active project.
+- Deployment detail, lifecycle actions, channels, participant conversations, response handling, transcripts, analytics, and overview counts are accepted only when their deployment and channel records belong to the same active project.
 
 ## Caveats
 
@@ -64,6 +64,6 @@ Research Deployments exists so the work represented by Integrations > Deployment
 
 ## Evidence
 
-- Source files: `frontend/src/components/integrations/DeploymentsTab.tsx`, `frontend/src/components/integrations/DeploymentWizard.tsx`, `backend/app/api/routes/deployments.py`, `backend/app/services/deployment_service.py`
+- Source files: `frontend/src/components/integrations/DeploymentsTab.tsx`, `frontend/src/components/integrations/DeploymentWizard.tsx`, `frontend/src/components/integrations/DeploymentDashboard.tsx`, `frontend/src/components/integrations/ConversationTranscript.tsx`, `frontend/src/lib/api.ts`, `backend/app/api/routes/deployments.py`, `backend/app/services/deployment_service.py`
 - API references: `backend/app/api/routes/deployments.py`, `backend/app/services/deployment_service.py`
 - Tests: `tests/test_deployments.py`, `tests/test_project_scope_contracts.py`
