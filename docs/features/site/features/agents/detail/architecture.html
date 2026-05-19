@@ -268,6 +268,7 @@
 <li>The backend rejects project-facing detail mutations when <code>project_id</code> is missing, when the id belongs to another project, or when the target is a universal/system agent whose mutable state is shared outside the current project.</li>
 <li>Structured agent learnings are stored and retrieved only with an explicit project id. Project task failures or review feedback must not append private project content into universal persona MEMORY overlays.</li>
 <li>Self-evolution candidate scans, auto-evolution, and promotion mutations require an explicit active project id. The route and engine reject paused or missing projects before returning candidates or writing persona-file promotions, so one project&#x27;s evidence cannot mature or mutate another project&#x27;s agent behavior.</li>
+<li>Agent promotion review notifications are persisted with the selected agent&#x27;s owning project id and project metadata. Review queues must not create global notification records from project-owned agent improvement activity.</li>
 <li>Universal agent runtime memory is not exposed in project detail panels for non-admin users; project-specific notes should be read through the project-scoped memory APIs.</li>
 <li>The frontmatter and manifest entries are the durable contract for agents updating this page after code changes.</li>
 <li>When the referenced component, store, route, agent, skill, or test behavior changes, regenerate and validate the feature documentation.</li>
@@ -282,6 +283,7 @@
 <li><code>tests/test_agent_mutation_scope.py</code> verifies detail-panel mutation routes reject missing, stale cross-project, and universal/system agent ids.</li>
 <li><code>tests/test_agent_scope_contracts.py</code> verifies that detail-panel mutation calls keep active-project scope in the frontend API, store, view, and backend route layer.</li>
 <li><code>tests/test_agent_learning_scope.py</code> verifies that structured learnings, resolution lookup, self-evolution promotion candidates, and paused-project self-evolution guards do not cross project boundaries.</li>
+<li><code>tests/test_project_scope_contracts.py</code> verifies the notification write contract for promotion requests and the shared category surfaces.</li>
 </ul>
 <h2 id="related-features">Related Features</h2>
 <ul>
@@ -294,7 +296,7 @@
 </ul>
 <h2 id="compass-evidence">Compass Evidence</h2>
 <ul>
-<li>Spec/task: CF-SPEC-60 / CF-776; CF-SPEC-68 / CF-870; CF-SPEC-83 / CF-1075</li>
+<li>Spec/task: CF-SPEC-60 / CF-776; CF-SPEC-68 / CF-870; CF-SPEC-83 / CF-1075; CF-SPEC-89 / CF-1125</li>
 <li>Inventory source: <code>docs/features/inventory.json</code></li>
 </ul>
 <h2 id="when-to-update">When To Update</h2>

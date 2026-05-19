@@ -521,7 +521,7 @@ export interface LoopHealthItem {
 }
 
 // --- Notifications ---
-export type NotificationCategory = "agent_status" | "task_progress" | "finding_created" | "file_processed" | "suggestion" | "resource_throttle" | "scheduled_reminder" | "document" | "loop_execution" | "system";
+export type NotificationCategory = "agent_status" | "agent_promotion" | "task_progress" | "finding_created" | "file_processed" | "suggestion" | "resource_throttle" | "scheduled_reminder" | "document" | "loop_execution" | "system";
 export type NotificationSeverity = "info" | "warning" | "error" | "success";
 
 export interface AppNotification {

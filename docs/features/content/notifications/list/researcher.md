@@ -6,11 +6,11 @@ audience: researcher
 status: documented
 related_features: ["shell.notifications-bell", "notifications.preferences"]
 related_glossary: ["wcag"]
-code_references: ["frontend/src/components/notifications/NotificationsView.tsx", "frontend/src/components/notifications/NotificationListTab.tsx", "frontend/src/stores/notificationStore.ts", "frontend/src/lib/notificationApi.ts", "backend/app/api/routes/notifications.py"]
+code_references: ["frontend/src/components/notifications/NotificationsView.tsx", "frontend/src/components/notifications/NotificationListTab.tsx", "frontend/src/components/notifications/CategoryFilter.tsx", "frontend/src/stores/notificationStore.ts", "frontend/src/lib/notificationApi.ts", "frontend/src/lib/types.ts", "backend/app/api/routes/notifications.py"]
 api_references: ["backend/app/api/routes/notifications.py"]
 test_references: ["tests/test_notifications.py", "tests/test_project_scope_contracts.py"]
 last_verified: 2026-05-19
-compass: CF-SPEC-53 / CF-657; CF-SPEC-60 / CF-759; CF-SPEC-71 / CF-913; CF-SPEC-79 / CF-1019
+compass: CF-SPEC-53 / CF-657; CF-SPEC-60 / CF-759; CF-SPEC-71 / CF-913; CF-SPEC-79 / CF-1019; CF-SPEC-89 / CF-1125
 ---
 
 # Notifications List
@@ -35,6 +35,7 @@ Notifications List exists so the work represented by Notifications > All has a s
 - Use the visible controls in this surface to work with notifications list in the active project context.
 - The list, unread count, pagination, mark-all-read, mark-read, and delete actions stay on the selected project; there is no cross-project "All projects" view for project researchers.
 - Project-facing notification list, count, mark-all-read, mark-read, and delete routes require a selected project for every role, including admins using this surface.
+- Agent promotion review requests appear under the Agent Promotion category for the selected project instead of as unscoped/global review activity.
 - Review the output in the same view and follow the related feature links when the workflow moves into another Istara surface.
 
 ## Supported Workflows
@@ -64,6 +65,6 @@ Notifications List exists so the work represented by Notifications > All has a s
 
 ## Evidence
 
-- Source files: `frontend/src/components/notifications/NotificationsView.tsx`, `frontend/src/components/notifications/NotificationListTab.tsx`, `frontend/src/stores/notificationStore.ts`, `frontend/src/lib/notificationApi.ts`, `backend/app/api/routes/notifications.py`
+- Source files: `frontend/src/components/notifications/NotificationsView.tsx`, `frontend/src/components/notifications/NotificationListTab.tsx`, `frontend/src/components/notifications/CategoryFilter.tsx`, `frontend/src/stores/notificationStore.ts`, `frontend/src/lib/notificationApi.ts`, `frontend/src/lib/types.ts`, `backend/app/api/routes/notifications.py`
 - API references: `backend/app/api/routes/notifications.py`
 - Tests: `tests/test_notifications.py`, `tests/test_project_scope_contracts.py`

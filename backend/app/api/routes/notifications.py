@@ -23,6 +23,7 @@ router = APIRouter()
 
 ALLOWED_CATEGORIES = {
     "agent_status",
+    "agent_promotion",
     "task_progress",
     "finding_created",
     "file_processed",

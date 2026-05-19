@@ -986,6 +986,10 @@ def test_agent_detail_status_and_log_routes_require_active_project_scope() -> No
     assert 'redacted["memory"] = {}' in scope
     assert 'redacted["current_task"] = ""' in scope
     assert "await require_agent_by_id(db, request, agent_id, project_id=project_id)" in route
+    assert "scoped_project_id = agent_project_id(agent)" in route
+    assert "project_id=scoped_project_id" in route
+    assert '"requested_scope": "universal"' in route
+    assert 'return {"status": "requested", "agent_id": agent_id, "project_id": scoped_project_id}' in route
     assert "async def get_orchestrator_status(request: Request)" in route
     assert "require_admin_from_request(request)" in route
 
@@ -1146,8 +1150,11 @@ def test_notifications_are_active_project_scoped() -> None:
     sidebar = read_repo("frontend/src/components/layout/Sidebar.tsx")
     view = read_repo("frontend/src/components/notifications/NotificationsView.tsx")
     list_tab = read_repo("frontend/src/components/notifications/NotificationListTab.tsx")
+    category_filter = read_repo("frontend/src/components/notifications/CategoryFilter.tsx")
+    prefs_tab = read_repo("frontend/src/components/notifications/NotificationPrefsTab.tsx")
     store = read_repo("frontend/src/stores/notificationStore.ts")
     api = read_repo("frontend/src/lib/notificationApi.ts")
+    types = read_repo("frontend/src/lib/types.ts")
     navigation = read_repo("frontend/src/lib/navigation.ts")
     route = read_repo("backend/app/api/routes/notifications.py")
 
@@ -1189,3 +1196,5 @@ def test_notifications_are_active_project_scoped() -> None:
     assert "query = query.where(Notification.project_id == scoped_project_id)" in route
     assert ".where(Notification.project_id == scoped_project_id)" in route
     assert "Notification.id == notification_id" in route and "Notification.project_id == scoped_project_id" in route
+    assert '"agent_promotion"' in route and '"agent_promotion"' in types and "agent_promotion:" in list_tab
+    assert '{ id: "agent_promotion", label: "Agent Promotion" }' in category_filter and '{ id: "agent_promotion", label: "Agent Promotion" }' in prefs_tab

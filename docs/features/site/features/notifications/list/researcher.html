@@ -256,6 +256,7 @@
 <li>Use the visible controls in this surface to work with notifications list in the active project context.</li>
 <li>The list, unread count, pagination, mark-all-read, mark-read, and delete actions stay on the selected project; there is no cross-project &quot;All projects&quot; view for project researchers.</li>
 <li>Project-facing notification list, count, mark-all-read, mark-read, and delete routes require a selected project for every role, including admins using this surface.</li>
+<li>Agent promotion review requests appear under the Agent Promotion category for the selected project instead of as unscoped/global review activity.</li>
 <li>Review the output in the same view and follow the related feature links when the workflow moves into another Istara surface.</li>
 </ul>
 <h2 id="supported-workflows">Supported Workflows</h2>
@@ -285,7 +286,7 @@
 </ul>
 <h2 id="evidence">Evidence</h2>
 <ul>
-<li>Source files: <code>frontend/src/components/notifications/NotificationsView.tsx</code>, <code>frontend/src/components/notifications/NotificationListTab.tsx</code>, <code>frontend/src/stores/notificationStore.ts</code>, <code>frontend/src/lib/notificationApi.ts</code>, <code>backend/app/api/routes/notifications.py</code></li>
+<li>Source files: <code>frontend/src/components/notifications/NotificationsView.tsx</code>, <code>frontend/src/components/notifications/NotificationListTab.tsx</code>, <code>frontend/src/components/notifications/CategoryFilter.tsx</code>, <code>frontend/src/stores/notificationStore.ts</code>, <code>frontend/src/lib/notificationApi.ts</code>, <code>frontend/src/lib/types.ts</code>, <code>backend/app/api/routes/notifications.py</code></li>
 <li>API references: <code>backend/app/api/routes/notifications.py</code></li>
 <li>Tests: <code>tests/test_notifications.py</code>, <code>tests/test_project_scope_contracts.py</code></li>
 </ul>
