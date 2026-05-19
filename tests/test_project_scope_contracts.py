@@ -258,6 +258,8 @@ def test_integrations_mcp_detail_actions_require_active_project_scope() -> None:
     setup = read_repo("frontend/src/components/integrations/MCPServerSetup.tsx")
     route = read_repo("backend/app/api/routes/mcp.py")
     service = read_repo("backend/app/services/mcp_client_manager.py")
+    server = read_repo("backend/app/mcp/server.py")
+    security = read_repo("backend/app/services/mcp_security.py")
 
     assert "list: async (projectId: string): Promise<MCPServerConfig[]>" in api
     assert "delete: (id: string, projectId: string)" in api
@@ -303,6 +305,18 @@ def test_integrations_mcp_detail_actions_require_active_project_scope() -> None:
     assert "async def list_servers(" in service and "project_id: str," in service
     assert "async def list_all_tools(db: AsyncSession, *, project_id: str)" in service
     assert "MCPServerConfig.project_id == scoped_project_id" in service
+
+    assert "PROJECT_SCOPED_TOOLS" in security
+    assert "project_id is required for" in security
+    assert "No projects are allowed for" in security
+    assert "allowed_ids = json.loads(policy.allowed_project_ids_json or \"[]\")" in server
+    assert 'return {"projects": [], "count": 0}' in server
+    assert "query = query.where(Project.id.in_(allowed_ids))" in server
+    assert 'async def get_deployment_status(project_id: str)' in server
+    assert ".where(ResearchDeployment.project_id == pid)" in server
+    assert "async def search_memory(project_id: str, query: str" in server
+    assert 'retrieve_context(\n                    args["project_id"]' in server
+    assert 'return {"error": "Project is paused", "project_id": args["project_id"]}' in server
 
 
 def test_integrations_messaging_detail_panels_require_active_project_scope() -> None:
@@ -641,8 +655,10 @@ def test_meta_hyperagent_surfaces_require_active_project_scope() -> None:
     assert "metaApi.toggle(!status.enabled, activeProjectId)" in view
 
     assert "async def _require_admin_project_scope" in route
+    assert "async def _require_admin_active_project_scope" in route
     assert 'raise HTTPException(status_code=400, detail="project_id is required")' in route
     assert "await get_visible_project_or_404(db, request, scoped_project_id, min_role=\"viewer\")" in route
+    assert "await get_active_project_or_404(db, request, scoped_project_id, min_role=\"viewer\")" in route
     assert "meta_hyperagent.get_pending_proposals(project_id=scoped_project_id)" in route
     assert "meta_hyperagent.start(project_id=scoped_project_id)" in route
     assert "project_id=project_id" in route
@@ -691,8 +707,10 @@ def test_skills_surfaces_require_active_project_scope() -> None:
     assert "}, [activeProjectId, fetchCreationProposals, fetchProposals, fetchSkills]);" in view
 
     assert "async def _require_skill_project_scope" in route
+    assert "async def _require_active_skill_project_scope" in route
     assert 'raise HTTPException(status_code=400, detail="project_id is required")' in route
     assert "await require_project_access(db, request, scoped_project_id, min_role=min_role)" in route
+    assert "await get_active_project_or_404(" in route
     assert "skill_manager.get_pending_proposals(project_id=scoped_project_id)" in route
     assert "skill_manager.get_all_proposals(limit, project_id=scoped_project_id)" in route
     assert "skill_manager.get_pending_creation_proposals(project_id=scoped_project_id)" in route
@@ -749,13 +767,15 @@ def test_self_evolution_routes_and_engine_require_active_project_scope() -> None
 
     assert "async def _require_self_evolution_project_scope" in route
     assert 'raise HTTPException(status_code=400, detail="project_id is required")' in route
-    assert "await require_project_access(db, request, scoped_project_id, min_role=min_role)" in route
+    assert "await get_active_project_or_404(" in route
     assert "await require_agent_by_id(db, request, agent_id, project_id=scoped_project_id)" in route
     assert "self_evolution.scan_for_promotions(" in route
     assert "project_id=scoped_project_id" in route
     assert "self_evolution.scan_all_agents(project_id=scoped_project_id)" in route
 
     assert "def _normalize_project_id(project_id: str | None) -> str:" in engine
+    assert "async def _is_project_active(self, project_id: str) -> bool:" in engine
+    assert "Project is paused or not found" in engine
     assert '"Skipping self-evolution scan for %s because project_id is required"' in engine
     assert "AgentLearning.project_id == scoped_project_id" in engine
     assert '"project_id": scoped_project_id' in engine

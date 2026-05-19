@@ -14,6 +14,7 @@ from app.core.agent import agent
 from app.core.improvement_governance import improvement_governance
 from app.core.permissions import (
     ProjectRole,
+    get_active_project_or_404,
     require_global_admin,
     require_global_role,
     require_project_access,
@@ -43,6 +44,23 @@ async def _require_skill_project_scope(
     scoped_project_id = _require_project_id(project_id)
     await require_project_access(db, request, scoped_project_id, min_role=min_role)
     return scoped_project_id
+
+
+async def _require_active_skill_project_scope(
+    db: AsyncSession,
+    request: Request,
+    project_id: str | None,
+    *,
+    min_role: ProjectRole = "researcher",
+) -> str:
+    scoped_project_id = _require_project_id(project_id)
+    project = await get_active_project_or_404(
+        db,
+        request,
+        scoped_project_id,
+        min_role=min_role,
+    )
+    return project.id
 
 
 def _bounded_timeout(
@@ -206,7 +224,7 @@ async def approve_creation_proposal(
 ):
     """Approve a skill creation proposal — writes definition file and registers skill."""
     require_global_role(request, "researcher")
-    scoped_project_id = await _require_skill_project_scope(
+    scoped_project_id = await _require_active_skill_project_scope(
         db,
         request,
         project_id,
@@ -288,7 +306,7 @@ async def verify_creation_proposal(
 ):
     """Run the verification gate for a pending skill creation proposal."""
     require_global_role(request, "researcher")
-    scoped_project_id = await _require_skill_project_scope(
+    scoped_project_id = await _require_active_skill_project_scope(
         db,
         request,
         project_id,
@@ -443,7 +461,7 @@ async def approve_proposal(
 ):
     """Approve a skill improvement proposal (applies the change)."""
     require_global_role(request, "researcher")
-    scoped_project_id = await _require_skill_project_scope(
+    scoped_project_id = await _require_active_skill_project_scope(
         db,
         request,
         project_id,
@@ -535,7 +553,12 @@ async def execute_skill(
     """
     if not registry.get(name):
         raise HTTPException(status_code=404, detail=f"Skill not found: {name}")
-    await require_project_access(db, request, data.project_id, min_role="researcher")
+    project_id = await _require_active_skill_project_scope(
+        db,
+        request,
+        data.project_id,
+        min_role="researcher",
+    )
 
     timeout_seconds = _bounded_timeout(
         data.timeout_seconds,
@@ -546,7 +569,7 @@ async def execute_skill(
         output = await asyncio.wait_for(
             agent.execute_skill(
                 skill_name=name,
-                project_id=data.project_id,
+                project_id=project_id,
                 files=data.files,
                 parameters=data.parameters,
                 user_context=data.user_context,
@@ -597,7 +620,12 @@ async def plan_skill(
     """
     if not registry.get(name):
         raise HTTPException(status_code=404, detail=f"Skill not found: {name}")
-    await require_project_access(db, request, data.project_id, min_role="researcher")
+    project_id = await _require_active_skill_project_scope(
+        db,
+        request,
+        data.project_id,
+        min_role="researcher",
+    )
 
     timeout_seconds = _bounded_timeout(
         data.timeout_seconds,
@@ -608,7 +636,7 @@ async def plan_skill(
         plan = await asyncio.wait_for(
             agent.plan_skill(
                 skill_name=name,
-                project_id=data.project_id,
+                project_id=project_id,
                 user_context=data.user_context,
             ),
             timeout=timeout_seconds,

@@ -257,12 +257,13 @@
 <h3 id="api-and-backend">API And Backend</h3>
 <ul>
 <li><code>backend/app/api/routes/loops.py</code></li>
-<li>Non-admin requests to overview, health, agent-loop, schedule, and execution endpoints must include the active <code>project_id</code> and pass <code>require_project_access</code>.</li>
+<li>Project-facing requests to overview, health, agent-loop, schedule, and execution endpoints must include the active <code>project_id</code> and pass <code>require_project_access</code>; global admins do not get a projectless fallback on these feature surfaces.</li>
 <li><code>frontend/src/stores/loopsStore.ts</code> clears loop state when there is no active project instead of falling back to global automation data.</li>
 </ul>
 <h2 id="architecture-notes">Architecture Notes</h2>
 <ul>
 <li>The feature is mounted through <code>frontend/src/components/loops/LoopsView.tsx</code> and the UI navigation path recorded in the inventory.</li>
+<li>Loop summaries and execution counts are derived from sources attached to the requested project, so A2A or schedule activity from another project cannot appear as &quot;recent activity&quot; in the active project view.</li>
 <li>The frontmatter and manifest entries are the durable contract for agents updating this page after code changes.</li>
 <li>When the referenced component, store, route, agent, skill, or test behavior changes, regenerate and validate the feature documentation.</li>
 </ul>
@@ -274,7 +275,6 @@
 <ul>
 <li><code>tests/test_loops.py</code></li>
 <li><code>tests/test_project_scope_contracts.py</code></li>
-<li>No focused test reference recorded yet.</li>
 </ul>
 <h2 id="related-features">Related Features</h2>
 <ul>
@@ -287,7 +287,7 @@
 </ul>
 <h2 id="compass-evidence">Compass Evidence</h2>
 <ul>
-<li>Spec/task: CF-SPEC-53 / CF-657</li>
+<li>Spec/task: CF-SPEC-53 / CF-657; CF-SPEC-68 / CF-870</li>
 <li>Inventory source: <code>docs/features/inventory.json</code></li>
 </ul>
 <h2 id="when-to-update">When To Update</h2>

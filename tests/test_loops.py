@@ -153,9 +153,13 @@ async def _seed_loop_scope_fixture(user_id: str) -> dict[str, str]:
 async def test_loops_overview_returns_response(auth_headers):
     """GET /api/loops/overview returns loop overview."""
     await init_db()
+    project_id = f"loops-overview-{uuid.uuid4()}"
+    async with async_session() as db:
+        db.add(Project(id=project_id, name="Loops Overview"))
+        await db.commit()
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
-        response = await ac.get("/api/loops/overview", headers=auth_headers)
+        response = await ac.get(f"/api/loops/overview?project_id={project_id}", headers=auth_headers)
         assert response.status_code == 200
         body = response.json()
         assert "active_loops" in body
@@ -255,9 +259,13 @@ async def test_project_member_loop_surfaces_require_active_project_scope(researc
 async def test_loops_health_returns_response(auth_headers):
     """GET /api/loops/health returns scheduler health."""
     await init_db()
+    project_id = f"loops-health-{uuid.uuid4()}"
+    async with async_session() as db:
+        db.add(Project(id=project_id, name="Loops Health"))
+        await db.commit()
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
-        response = await ac.get("/api/loops/health", headers=auth_headers)
+        response = await ac.get(f"/api/loops/health?project_id={project_id}", headers=auth_headers)
         assert response.status_code == 200
 
 
@@ -265,9 +273,13 @@ async def test_loops_health_returns_response(auth_headers):
 async def test_loops_executions_returns_list(auth_headers):
     """GET /api/loops/executions returns execution history."""
     await init_db()
+    project_id = f"loops-executions-{uuid.uuid4()}"
+    async with async_session() as db:
+        db.add(Project(id=project_id, name="Loops Executions"))
+        await db.commit()
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
-        response = await ac.get("/api/loops/executions", headers=auth_headers)
+        response = await ac.get(f"/api/loops/executions?project_id={project_id}", headers=auth_headers)
         assert response.status_code == 200
         assert isinstance(response.json(), dict)
         assert "executions" in response.json()
@@ -277,6 +289,10 @@ async def test_loops_executions_returns_list(auth_headers):
 async def test_agent_loop_config_persists_skills_and_project_filter(auth_headers):
     """Agent loop config should round-trip the fields exposed in the UI."""
     await init_db()
+    project_id = f"project-test-{uuid.uuid4()}"
+    async with async_session() as db:
+        db.add(Project(id=project_id, name="Project Test"))
+        await db.commit()
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
         created = await ac.post(
@@ -287,19 +303,19 @@ async def test_agent_loop_config_persists_skills_and_project_filter(auth_headers
                 "role": "custom",
                 "system_prompt": "Temporary loop config test agent.",
                 "capabilities": ["skill_execution"],
-                "project_id": "project-test",
+                "project_id": project_id,
             },
         )
         assert created.status_code == 201
         agent_id = created.json()["id"]
 
         update = await ac.patch(
-            f"/api/loops/agents/{agent_id}/config",
+            f"/api/loops/agents/{agent_id}/config?project_id={project_id}",
             headers=auth_headers,
             json={
                 "loop_interval_seconds": 120,
                 "skills_to_run": ["thematic-analysis", " thematic-analysis ", "card-sorting"],
-                "project_filter": "project-test",
+                "project_filter": project_id,
             },
         )
         assert update.status_code == 200
@@ -307,23 +323,26 @@ async def test_agent_loop_config_persists_skills_and_project_filter(auth_headers
         assert updated["agent_id"] == agent_id
         assert updated["loop_interval_seconds"] == 120
         assert updated["skills_to_run"] == ["thematic-analysis", "card-sorting"]
-        assert updated["project_filter"] == "project-test"
+        assert updated["project_filter"] == project_id
 
-        fetched = await ac.get(f"/api/loops/agents/{agent_id}/config", headers=auth_headers)
+        fetched = await ac.get(
+            f"/api/loops/agents/{agent_id}/config?project_id={project_id}",
+            headers=auth_headers,
+        )
         assert fetched.status_code == 200
         config = fetched.json()
         assert config["agent_id"] == agent_id
         assert config["skills_to_run"] == ["thematic-analysis", "card-sorting"]
-        assert config["project_filter"] == "project-test"
+        assert config["project_filter"] == project_id
 
-        listed = await ac.get("/api/loops/agents", headers=auth_headers)
+        listed = await ac.get(f"/api/loops/agents?project_id={project_id}", headers=auth_headers)
         assert listed.status_code == 200
         matching = [item for item in listed.json()["agents"] if item["agent_id"] == agent_id]
         assert matching
         assert matching[0]["id"] == agent_id
 
         invalid = await ac.patch(
-            f"/api/loops/agents/{agent_id}/config",
+            f"/api/loops/agents/{agent_id}/config?project_id={project_id}",
             headers=auth_headers,
             json={"loop_interval_seconds": 5},
         )
@@ -338,6 +357,9 @@ async def test_custom_loop_persists_as_custom_health_item(auth_headers):
     await init_db()
     transport = ASGITransport(app=app)
     project_id = f"project-{uuid.uuid4()}"
+    async with async_session() as db:
+        db.add(Project(id=project_id, name="Custom Loop Project"))
+        await db.commit()
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
         created = await ac.post(
             "/api/loops/custom",
@@ -355,7 +377,7 @@ async def test_custom_loop_persists_as_custom_health_item(auth_headers):
         assert custom["loop_type"] == "custom"
         assert custom["interval_seconds"] == 300
 
-        health = await ac.get("/api/loops/health", headers=auth_headers)
+        health = await ac.get(f"/api/loops/health?project_id={project_id}", headers=auth_headers)
         assert health.status_code == 200
         matching = [
             item for item in health.json()["health"]
@@ -372,6 +394,9 @@ async def test_schedule_crud_and_cron_validation(auth_headers):
     await init_db()
     transport = ASGITransport(app=app)
     project_id = f"project-{uuid.uuid4()}"
+    async with async_session() as db:
+        db.add(Project(id=project_id, name="Schedule CRUD Project"))
+        await db.commit()
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
         invalid = await ac.post(
             "/api/schedules",
@@ -432,6 +457,12 @@ async def test_schedule_detail_actions_require_active_project_scope(auth_headers
     await init_db()
     project_a = f"schedule-active-{uuid.uuid4()}"
     project_b = f"schedule-other-{uuid.uuid4()}"
+    async with async_session() as db:
+        db.add_all([
+            Project(id=project_a, name="Schedule Active"),
+            Project(id=project_b, name="Schedule Other"),
+        ])
+        await db.commit()
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
         created = await ac.post(
@@ -518,9 +549,22 @@ async def test_researcher_can_manage_project_schedule(researcher_headers):
 async def test_execution_history_uses_persisted_records_and_aliases(auth_headers):
     """Execution history should return persisted rows with table-ready fields."""
     await init_db()
+    project_id = f"history-project-{uuid.uuid4()}"
     schedule_id = str(uuid.uuid4())
     started = datetime.now(timezone.utc) - timedelta(seconds=5)
     finished = datetime.now(timezone.utc)
+    async with async_session() as db:
+        db.add(Project(id=project_id, name="History Project"))
+        db.add(ScheduledTask(
+            id=schedule_id,
+            name="History Contract Check",
+            description="",
+            cron_expression="0 * * * *",
+            skill_name="history_skill",
+            project_id=project_id,
+            next_run=finished + timedelta(hours=1),
+        ))
+        await db.commit()
     await record_execution(
         source_type="schedule",
         source_id=schedule_id,
@@ -530,13 +574,13 @@ async def test_execution_history_uses_persisted_records_and_aliases(auth_headers
         finished_at=finished,
         error_message="boom",
         findings_count=2,
-        metadata={"schedule_id": schedule_id},
+        metadata={"schedule_id": schedule_id, "project_id": project_id},
     )
 
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
         response = await ac.get(
-            "/api/loops/executions?source_type=scheduled&status=failure",
+            f"/api/loops/executions?project_id={project_id}&source_type=scheduled&status=failure",
             headers=auth_headers,
         )
         assert response.status_code == 200
@@ -552,7 +596,7 @@ async def test_execution_history_uses_persisted_records_and_aliases(auth_headers
         assert execution["findings_count"] == 2
 
         stats = await ac.get(
-            f"/api/loops/executions/stats?source_id={schedule_id}",
+            f"/api/loops/executions/stats?project_id={project_id}&source_id={schedule_id}",
             headers=auth_headers,
         )
         assert stats.status_code == 200
@@ -564,15 +608,17 @@ async def test_scheduler_records_missing_skill_as_failure(auth_headers):
     """A due schedule with an unknown skill should fail once and then disable itself."""
     await init_db()
     schedule_id = str(uuid.uuid4())
+    project_id = f"project-{uuid.uuid4()}"
     now = datetime.now(timezone.utc)
     async with async_session() as db:
+        db.add(Project(id=project_id, name="Missing Skill Schedule Project"))
         db.add(ScheduledTask(
             id=schedule_id,
             name="Missing Skill Schedule",
             description="",
             cron_expression="* * * * *",
             skill_name="missing-skill-for-loop-test",
-            project_id=f"project-{uuid.uuid4()}",
+            project_id=project_id,
             next_run=now - timedelta(minutes=1),
         ))
         await db.commit()

@@ -10,7 +10,7 @@ code_references: ["frontend/src/components/loops/SchedulesTab.tsx", "frontend/sr
 api_references: ["backend/app/api/routes/scheduler.py", "backend/app/api/routes/loops.py"]
 test_references: ["tests/test_loops.py", "tests/test_project_scope_contracts.py"]
 last_verified: 2026-05-19
-compass: CF-SPEC-61 / CF-779
+compass: CF-SPEC-61 / CF-779; CF-SPEC-68 / CF-870
 ---
 
 # Loop Schedules Architecture
@@ -38,6 +38,7 @@ Schedules configure recurring loop timing, including cron-style recurrence contr
 - `backend/app/api/routes/loops.py`
 - Schedule listing and creation operate only in the active project context; the project-facing UI does not expose a cross-project selector.
 - Schedule detail, enable/disable, cron edits, and deletion require the active `project_id`; missing project scope returns 400, and a schedule id from another project returns 404 rather than falling back to the schedule's owning project.
+- Creating a schedule, re-enabling a schedule, or editing a schedule that remains enabled requires an unpaused project. Disabling a schedule in a paused project remains allowed so teams can stop queued work.
 - The scheduler selects due work only for non-paused projects and treats missing project ownership as a permanent schedule error instead of executing against a dangling project id.
 
 ## Architecture Notes
@@ -68,7 +69,7 @@ Schedules configure recurring loop timing, including cron-style recurrence contr
 
 ## Compass Evidence
 
-- Spec/task: CF-SPEC-61 / CF-779
+- Spec/task: CF-SPEC-61 / CF-779; CF-SPEC-68 / CF-870
 - Inventory source: `docs/features/inventory.json`
 
 ## When To Update

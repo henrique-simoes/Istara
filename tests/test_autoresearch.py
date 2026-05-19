@@ -195,6 +195,10 @@ async def test_start_autoresearch_calls_engine_with_runner_and_clamped_iteration
     settings.team_mode = False
     settings.autoresearch_enabled = True
     settings.autoresearch_max_experiments_per_run = 3
+    project_id = f"project-start-{uuid.uuid4().hex[:8]}"
+    async with async_session() as db:
+        db.add(Project(id=project_id, name="Autoresearch Start Project"))
+        await db.commit()
 
     class FakeEngine:
         is_running = False
@@ -225,7 +229,7 @@ async def test_start_autoresearch_calls_engine_with_runner_and_clamped_iteration
                 "loop_type": "model_temp",
                 "target": "analysis",
                 "max_iterations": 10,
-                "project_id": "project-1",
+                "project_id": project_id,
             },
         )
 
@@ -236,9 +240,47 @@ async def test_start_autoresearch_calls_engine_with_runner_and_clamped_iteration
             "runner": fake_runner,
             "target": "analysis",
             "max_iterations": 3,
-            "project_id": "project-1",
+            "project_id": project_id,
         }
     ]
+
+
+@pytest.mark.asyncio
+async def test_start_autoresearch_rejects_paused_project(monkeypatch):
+    await init_db()
+    settings.team_mode = False
+    settings.autoresearch_enabled = True
+    project_id = f"paused-autoresearch-{uuid.uuid4().hex[:8]}"
+    async with async_session() as db:
+        db.add(Project(id=project_id, name="Paused Autoresearch", is_paused=True))
+        await db.commit()
+
+    class FakeEngine:
+        is_running = False
+
+        async def run_loop(self, **_kwargs):
+            raise AssertionError("paused projects must not start autoresearch")
+
+    monkeypatch.setattr("app.api.routes.autoresearch._get_engine", lambda: FakeEngine())
+    monkeypatch.setattr(
+        "app.api.routes.autoresearch._get_runner",
+        lambda _loop_type: SimpleNamespace(loop_type="model_temp"),
+    )
+
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        response = await ac.post(
+            "/api/autoresearch/start",
+            json={
+                "loop_type": "model_temp",
+                "target": "analysis",
+                "max_iterations": 1,
+                "project_id": project_id,
+            },
+        )
+
+    assert response.status_code == 409
+    assert response.json()["detail"] == "Project is paused"
 
 
 @pytest.mark.asyncio
@@ -303,6 +345,10 @@ async def test_autoresearch_records_reasoning_memory_ids(monkeypatch):
 
     settings.autoresearch_min_improvement_delta = 0.01
     settings.autoresearch_measurement_repeats = 1
+    project_id = f"project-autoresearch-memory-{uuid.uuid4().hex[:8]}"
+    async with async_session() as db:
+        db.add(Project(id=project_id, name="Autoresearch Memory"))
+        await db.commit()
 
     class FakeRunner:
         loop_type = "model_temp"
@@ -347,10 +393,37 @@ async def test_autoresearch_records_reasoning_memory_ids(monkeypatch):
         FakeRunner(),
         target="kappa-thematic-analysis",
         max_iterations=1,
-        project_id="project-autoresearch-memory",
+        project_id=project_id,
     )
 
     assert persisted
     assert results[0]["kept"] is True
     assert results[0]["reasoning_memory_ids"] == ["memory-1"]
     assert results[0]["improvement_proposal_ids"] == ["proposal-1"]
+
+
+@pytest.mark.asyncio
+async def test_autoresearch_engine_rejects_paused_project_before_runner_work():
+    await init_db()
+    from app.core.autoresearch_engine import AutoresearchEngine
+
+    project_id = f"paused-engine-project-{uuid.uuid4().hex[:8]}"
+    async with async_session() as db:
+        db.add(Project(id=project_id, name="Paused Engine", is_paused=True))
+        await db.commit()
+
+    class FakeRunner:
+        loop_type = "model_temp"
+        needs_persona_lock = False
+
+        async def measure_baseline(self, target):
+            raise AssertionError("baseline should not run for paused projects")
+
+    engine = AutoresearchEngine()
+    with pytest.raises(RuntimeError, match="Project is paused or not found"):
+        await engine.run_loop(
+            FakeRunner(),
+            target="analysis",
+            max_iterations=1,
+            project_id=project_id,
+        )

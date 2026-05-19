@@ -10,7 +10,7 @@ code_references: ["frontend/src/components/meta/MetaHyperagentView.tsx", "backen
 api_references: ["backend/app/api/routes/meta_hyperagent.py"]
 test_references: ["tests/test_meta_hyperagent.py", "tests/test_project_scope_contracts.py", "tests/test_security_benchmark.py"]
 last_verified: 2026-05-19
-compass: CF-SPEC-60 / CF-757
+compass: CF-SPEC-60 / CF-757; CF-SPEC-68 / CF-870
 ---
 
 # Meta-Agent Architecture
@@ -40,6 +40,7 @@ The Meta-Agent surface exposes the meta-hyperagent system for inspecting or gove
 
 - The feature is mounted through `frontend/src/components/meta/MetaHyperagentView.tsx` and the UI navigation path recorded in the inventory.
 - All project-facing Meta-Hyperagent status, proposals, observations, variants, toggle, and mutation routes require an explicit `project_id`, verify the project is visible to the admin subject, and filter persisted records by exact project id.
+- Enabling the observation loop, approving proposals, and confirming variants require the requested project to be active and unpaused. Disabling or rejecting remains available so a paused project can stop or discard queued improvement work.
 - The observation loop is no longer started globally during application startup. It starts only from a project-scoped UI/API request and records its active project id.
 - Skill usage stats now maintain per-project counters so Meta-Hyperagent skill-selection analysis does not infer proposals from another project's execution history.
 - Self-evolution tuning proposals require project-local learning evidence. An empty project, or a project with only global/other-project learning history, must not generate threshold-lowering proposals.
@@ -70,7 +71,7 @@ The Meta-Agent surface exposes the meta-hyperagent system for inspecting or gove
 
 ## Compass Evidence
 
-- Spec/task: CF-SPEC-60 / CF-757
+- Spec/task: CF-SPEC-60 / CF-757; CF-SPEC-68 / CF-870
 - Inventory source: `docs/features/inventory.json`
 
 ## When To Update

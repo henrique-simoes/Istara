@@ -8,7 +8,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.permissions import get_subject, is_global_admin, require_project_access
+from app.core.permissions import get_active_project_or_404, require_project_access
 from app.core.scheduler import CronParser, ScheduledTask
 from app.models.database import get_db
 
@@ -104,7 +104,8 @@ async def create_schedule(data: ScheduleCreate, request: Request, db: AsyncSessi
     cron_expression = data.cron_expression.strip()
     if not name or not project_id:
         raise HTTPException(status_code=422, detail="name and project_id are required")
-    await require_project_access(db, request, project_id, min_role="researcher")
+    project = await get_active_project_or_404(db, request, project_id, min_role="researcher")
+    project_id = project.id
 
     # Validate cron expression
     try:
@@ -141,15 +142,11 @@ async def list_schedules(
     project_id: str | None = None,
     db: AsyncSession = Depends(get_db),
 ):
-    """List all scheduled tasks, optionally filtered by project."""
-    subject = get_subject(request)
-    if project_id:
-        await require_project_access(db, request, project_id, min_role="viewer")
-    elif not is_global_admin(subject):
-        raise HTTPException(status_code=400, detail="project_id is required")
+    """List scheduled tasks for the active project."""
+    project_id = _require_project_id(project_id)
+    await require_project_access(db, request, project_id, min_role="viewer")
     query = select(ScheduledTask).order_by(ScheduledTask.created_at)
-    if project_id:
-        query = query.where(ScheduledTask.project_id == project_id)
+    query = query.where(ScheduledTask.project_id == project_id)
     result = await db.execute(query)
     return result.scalars().all()
 
@@ -179,6 +176,7 @@ async def update_schedule(
     task = await _get_project_schedule_or_404(
         db, request, schedule_id, project_id, min_role="researcher"
     )
+    scoped_project_id = _require_project_id(project_id)
 
     update_data = data.model_dump(exclude_unset=True)
     for key in ("name", "cron_expression", "skill_name", "description"):
@@ -187,7 +185,17 @@ async def update_schedule(
             if key in {"name", "cron_expression"} and not update_data[key]:
                 raise HTTPException(status_code=422, detail=f"{key} cannot be empty")
 
-    # If cron expression is changing, validate and recalculate next_run
+    # Any update that leaves a schedule runnable must target an active project.
+    # Disabling a paused project's schedule remains allowed so teams can stop work.
+    will_be_enabled = update_data.get("enabled", task.enabled)
+    if will_be_enabled:
+        await get_active_project_or_404(
+            db,
+            request,
+            scoped_project_id,
+            min_role="researcher",
+        )
+
     if "cron_expression" in update_data:
         try:
             CronParser.parse(update_data["cron_expression"])

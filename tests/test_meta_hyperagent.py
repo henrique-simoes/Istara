@@ -35,6 +35,12 @@ async def create_project(project_id: str, name: str = "Meta Project") -> None:
         await db.commit()
 
 
+async def create_paused_project(project_id: str, name: str = "Paused Meta Project") -> None:
+    async with async_session() as db:
+        db.add(Project(id=project_id, name=name, is_paused=True))
+        await db.commit()
+
+
 @pytest.mark.asyncio
 async def test_meta_agent_status_returns_response(auth_headers):
     """GET /api/meta-hyperagent/status returns meta-agent status."""
@@ -80,6 +86,23 @@ async def test_meta_agent_status_requires_project_scope(auth_headers):
             headers=auth_headers,
         )
         assert unknown.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_meta_hyperagent_toggle_rejects_paused_project(auth_headers):
+    await init_db()
+    project_id = f"meta-paused-{uuid.uuid4().hex[:8]}"
+    await create_paused_project(project_id)
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        response = await ac.post(
+            f"/api/meta-hyperagent/toggle?project_id={project_id}",
+            headers=auth_headers,
+            json={"enabled": True},
+        )
+
+    assert response.status_code == 409
+    assert response.json()["detail"] == "Project is paused"
 
 
 @pytest.mark.asyncio
