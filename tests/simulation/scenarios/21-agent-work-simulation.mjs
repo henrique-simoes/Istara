@@ -585,8 +585,8 @@ export async function run(ctx) {
 
     return {
       name: "System status — LLM auto-detection",
-      passed: typeof status.provider === "string" && typeof status.status === "string",
-      detail: `provider=${status.provider}, status=${status.status}, llm=${status.services?.llm}`,
+      passed: typeof status.status === "string" && status.llm_readiness !== undefined,
+      detail: `status=${status.status}, llm=${status.services?.llm}, chat_ready=${status.llm_readiness?.chat_ready === true}`,
     };
   });
 

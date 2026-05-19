@@ -600,6 +600,7 @@ def test_compute_pool_requires_active_project_scope() -> None:
 
 def test_llm_server_inventory_and_health_checks_require_global_admin_access() -> None:
     route = read_repo("backend/app/api/routes/llm_servers.py")
+    settings_route = read_repo("backend/app/api/routes/settings.py")
     settings_view = read_repo("frontend/src/components/common/SettingsView.tsx")
     assert (
         'async def list_llm_servers(request: Request, db: AsyncSession = Depends(get_db)):\n'
@@ -614,8 +615,10 @@ def test_llm_server_inventory_and_health_checks_require_global_admin_access() ->
         '    require_global_role(request, "admin")'
     ) in route
     assert route.count('require_global_role(request, "admin")') >= 6
-    assert "const canManageLLMServers = !teamMode || user?.role === \"admin\";" in settings_view
-    assert "Global admin access is required to manage shared provider endpoints." in settings_view
+    status_body = settings_route.split('@router.get("/settings/status")', 1)[1]; assert 'def _cached_llm_readiness() -> tuple[bool, bool]:' in settings_route
+    assert all(marker not in status_body for marker in ("await ollama.health()", '"provider": settings.llm_provider', '"config": {'))
+    assert all(marker in settings_route for marker in ("async def get_hardware_info(request: Request):", "async def get_models(request: Request):", "async def maintenance_status(request: Request):", "async def integrations_status(request: Request):", "async def vector_health(request: Request):", "async def check_data_integrity(request: Request, db: AsyncSession = Depends(get_db)):", "async def switch_model(model_name: str, request: Request):", "async def switch_provider(provider: str, request: Request):"))
+    assert all(marker in settings_view for marker in ("const canManageLLMServers = !teamMode || user?.role === \"admin\";", "const canManageInfrastructure = !teamMode || user?.role === \"admin\";", "Global admin access is required to manage shared provider endpoints."))
 
 def test_autoresearch_project_surfaces_require_active_project_scope() -> None:
     api = read_repo("frontend/src/lib/api.ts"); store = read_repo("frontend/src/stores/autoresearchStore.ts")

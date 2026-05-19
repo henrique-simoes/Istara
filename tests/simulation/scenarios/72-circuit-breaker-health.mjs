@@ -89,7 +89,7 @@ export async function run(ctx) {
     checks.push({
       name: "System status has LLM info",
       passed: status.services !== undefined,
-      detail: `LLM: ${status.services?.llm || "unknown"}, provider: ${status.provider || "unknown"}`,
+      detail: `LLM: ${status.services?.llm || "unknown"}, chat_ready: ${status.llm_readiness?.chat_ready === true}`,
     });
   } catch (e) {
     checks.push({ name: "System status", passed: false, detail: e.message });

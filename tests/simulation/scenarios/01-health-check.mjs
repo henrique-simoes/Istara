@@ -23,7 +23,7 @@ export async function run(ctx) {
     checks.push({
       name: "LLM provider connected",
       passed: llmConnected,
-      detail: `Provider: ${status.provider || "unknown"}, Model: ${status.config?.model || "unknown"}`,
+      detail: `LLM: ${status.services?.llm || "unknown"}, chat_ready: ${status.llm_readiness?.chat_ready === true}`,
     });
   } catch (e) {
     checks.push({ name: "LLM provider connected", passed: false, detail: e.message });

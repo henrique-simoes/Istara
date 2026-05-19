@@ -61,8 +61,10 @@ def test_security_benchmark_detects_llm_server_security_paths() -> None:
 
     changed_paths = [
         "backend/app/api/routes/llm_servers.py",
+        "backend/app/api/routes/settings.py",
         "frontend/src/components/common/SettingsView.tsx",
         "tests/test_llm_servers.py",
+        "tests/test_settings.py",
         "tests/test_project_scope_contracts.py",
     ]
     result = evaluate_matrix(matrix, changed_paths=changed_paths)
