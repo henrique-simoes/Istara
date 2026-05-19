@@ -27,6 +27,7 @@ class AutoresearchEngine:
     def __init__(self):
         self._running = False
         self._current_experiment: dict | None = None
+        self._active_project_id: str | None = None
         self._stop_requested = False
 
     @property
@@ -36,6 +37,11 @@ class AutoresearchEngine:
     @property
     def current_experiment(self) -> dict | None:
         return self._current_experiment
+
+    @property
+    def active_project_id(self) -> str | None:
+        """Project that owns the currently running loop, including baseline measurement."""
+        return self._active_project_id if self._running else None
 
     def get_current_experiment(self) -> dict | None:
         """Return the currently running experiment, or None."""
@@ -65,9 +71,11 @@ class AutoresearchEngine:
             raise RuntimeError("Engine already running")
 
         self._running = True
+        self._active_project_id = project_id
         self._stop_requested = False
         results: list[dict] = []
         baseline = 0.0
+        best_score = baseline
         min_delta = max(0.0, float(getattr(settings, "autoresearch_min_improvement_delta", 0.01)))
         measurement_repeats = max(1, min(10, int(getattr(settings, "autoresearch_measurement_repeats", 1))))
 
@@ -79,14 +87,22 @@ class AutoresearchEngine:
                 if not acquire_persona_lock(target, f"autoresearch-{runner.loop_type}"):
                     raise RuntimeError(f"Cannot acquire persona lock for {target}")
 
-            # Measure baseline
-            baseline = await runner.measure_baseline(target)
-            best_score = baseline
-            logger.info(
-                f"Autoresearch [{runner.loop_type}] baseline for '{target}': {baseline:.4f}"
-            )
-
             async with autoresearch_context():
+                if not await self._is_project_active(project_id):
+                    logger.info(
+                        "Autoresearch stopped before baseline because project %s is paused or missing",
+                        project_id,
+                    )
+                    return []
+
+                # Measure baseline under isolation so experiment probes cannot
+                # pollute learning or self-improvement stores.
+                baseline = await runner.measure_baseline(target)
+                best_score = baseline
+                logger.info(
+                    f"Autoresearch [{runner.loop_type}] baseline for '{target}': {baseline:.4f}"
+                )
+
                 for i in range(max_iterations):
                     if self._stop_requested:
                         logger.info("Autoresearch stop requested")
@@ -226,6 +242,7 @@ class AutoresearchEngine:
         finally:
             self._running = False
             self._current_experiment = None
+            self._active_project_id = None
             # Release persona lock
             if runner.needs_persona_lock:
                 from app.core.agent_identity import release_persona_lock

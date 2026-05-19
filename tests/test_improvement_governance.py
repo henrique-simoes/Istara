@@ -315,6 +315,9 @@ async def test_skill_proposal_governance_registration_requires_project_id():
     await init_db()
     update_source_id = f"skill-update-{uuid.uuid4().hex[:8]}"
     creation_source_id = f"skill-create-{uuid.uuid4().hex[:8]}"
+    autoresearch_source_id = f"autoresearch-{uuid.uuid4().hex[:8]}"
+    meta_source_id = f"meta-{uuid.uuid4().hex[:8]}"
+    agent_source_id = f"agent-create-{uuid.uuid4().hex[:8]}"
 
     with pytest.raises(ValueError, match="project_id is required"):
         await improvement_governance.register_skill_update_proposal(
@@ -341,6 +344,45 @@ async def test_skill_proposal_governance_registration_requires_project_id():
             }
         )
 
+    with pytest.raises(ValueError, match="project_id is required"):
+        await improvement_governance.register_autoresearch_experiment(
+            {
+                "id": autoresearch_source_id,
+                "loop_type": "model_temp",
+                "target_name": "analysis",
+                "hypothesis": "missing project",
+                "kept": True,
+            }
+        )
+
+    with pytest.raises(ValueError, match="project_id is required"):
+        await improvement_governance.register_meta_proposal(
+            {
+                "id": meta_source_id,
+                "parameter_path": "agent.skill_similarity_threshold",
+                "reason": "missing project",
+            }
+        )
+
+    with pytest.raises(ValueError, match="project_id is required"):
+        await improvement_governance.register_agent_creation_proposal(
+            {
+                "id": agent_source_id,
+                "proposed_name": "Missing Project Agent",
+                "reason": "missing project",
+            }
+        )
+
+    with pytest.raises(ValueError, match="project_id is required"):
+        await improvement_governance.register_self_evolution_promotion(
+            {
+                "agent_id": "istara-main",
+                "learning_id": 123,
+                "learning": "missing project",
+            },
+            applied=True,
+        )
+
     assert await improvement_governance.get_proposal_by_source(
         source_system="skill_evolution",
         source_id=update_source_id,
@@ -349,6 +391,26 @@ async def test_skill_proposal_governance_registration_requires_project_id():
     assert await improvement_governance.get_proposal_by_source(
         source_system="memento_skill_factory",
         source_id=creation_source_id,
+        project_id="",
+    ) is None
+    assert await improvement_governance.get_proposal_by_source(
+        source_system="autoresearch",
+        source_id=autoresearch_source_id,
+        project_id="",
+    ) is None
+    assert await improvement_governance.get_proposal_by_source(
+        source_system="hyperagent",
+        source_id=meta_source_id,
+        project_id="",
+    ) is None
+    assert await improvement_governance.get_proposal_by_source(
+        source_system="memento_agent_factory",
+        source_id=agent_source_id,
+        project_id="",
+    ) is None
+    assert await improvement_governance.get_proposal_by_source(
+        source_system="self_evolution",
+        source_id="istara-main:123",
         project_id="",
     ) is None
 

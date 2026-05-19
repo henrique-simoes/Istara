@@ -342,6 +342,7 @@ async def test_autoresearch_records_reasoning_memory_ids(monkeypatch):
     """Kept/reverted experiments should be distilled into ReasoningBank memories."""
     await init_db()
     from app.core.autoresearch_engine import AutoresearchEngine
+    from app.core.autoresearch_isolation import is_autoresearch_active
 
     settings.autoresearch_min_improvement_delta = 0.01
     settings.autoresearch_measurement_repeats = 1
@@ -355,6 +356,7 @@ async def test_autoresearch_records_reasoning_memory_ids(monkeypatch):
         needs_persona_lock = False
 
         async def measure_baseline(self, target):
+            assert is_autoresearch_active() is True
             return 0.5
 
         async def hypothesize(self, target, best_score, results):
@@ -367,6 +369,7 @@ async def test_autoresearch_records_reasoning_memory_ids(monkeypatch):
             return revert
 
         async def measure(self, target):
+            assert is_autoresearch_active() is True
             return 0.6
 
     async def allow_experiment(db, target):

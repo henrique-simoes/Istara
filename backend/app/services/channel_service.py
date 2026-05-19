@@ -334,6 +334,36 @@ async def stop_channel_instance(
     return {"status": "stopped", "instance_id": instance_id}
 
 
+async def stop_project_channel_instances(db: AsyncSession, project_id: str) -> int:
+    """Stop all active channel adapters owned by one project."""
+    scoped_project_id = _require_project_scope(project_id)
+    result = await db.execute(
+        select(ChannelInstance).where(
+            ChannelInstance.project_id == scoped_project_id,
+        )
+    )
+    instances = list(result.scalars().all())
+    stopped = 0
+    now = datetime.now(timezone.utc)
+
+    for instance in instances:
+        adapter = channel_router.get(instance.id)
+        if adapter is None and not instance.is_active:
+            continue
+        if adapter is not None:
+            if adapter.is_running:
+                await channel_router.stop_adapter(instance.id)
+            channel_router.unregister(instance.id)
+        instance.is_active = False
+        instance.health_status = "stopped"
+        instance.last_health_at = now
+        stopped += 1
+
+    if stopped:
+        await db.commit()
+    return stopped
+
+
 async def health_check_instance(
     db: AsyncSession,
     instance_id: str,

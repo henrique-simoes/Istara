@@ -269,7 +269,8 @@
 <ul>
 <li>The feature is mounted through <code>frontend/src/components/agents/AgentsView.tsx</code> and the UI navigation path recorded in the inventory.</li>
 <li>Agent creation proposals created by the Memento-style factory carry the originating <code>project_id</code> from the task that exposed the capability gap.</li>
-<li>The meta-orchestrator considers only unassigned tasks from non-paused projects before it routes work, sends A2A collaboration requests, or opens agent-creation proposals.</li>
+<li>The meta-orchestrator considers only unassigned tasks from non-paused projects before it routes work, reads A2A collaboration responses, sends A2A collaboration requests, or opens agent-creation proposals.</li>
+<li>Agent-factory governance registration refuses project-owned proposals without a concrete project id, preventing global proposal records from autonomous routing work.</li>
 <li>The Proposals tab calls <code>/api/agents/creation-proposals/*</code> with the active project id and clears proposal state when no active project is selected.</li>
 <li>The route layer requires <code>project_id</code>, verifies project-admin access, and filters list/approve/reject operations through <code>AgentFactory</code> project matching.</li>
 <li>Governance evidence and Meta Hyperagent observations also pass project ids so autonomous improvement review does not read proposal history from unrelated projects.</li>

@@ -278,7 +278,7 @@ async def test_channels_list_requires_auth():
 async def test_channel_create_normalizes_ui_credential_labels(auth_headers):
     await init_db()
     transport = ASGITransport(app=app)
-    project_id = "channel-credentials-project"
+    project_id = f"channel-credentials-project-{uuid.uuid4().hex[:8]}"
 
     async with async_session() as db:
         db.add(Project(id=project_id, name="Channel Credentials Project"))
@@ -356,13 +356,14 @@ async def test_channel_start_missing_config_reports_not_enabled(auth_headers, mo
 async def test_channel_start_rejects_paused_project(auth_headers):
     await init_db()
     project_id = f"paused-channel-project-{uuid.uuid4()}"
+    instance_id = f"paused-slack-channel-{uuid.uuid4().hex[:8]}"
     transport = ASGITransport(app=app)
 
     async with async_session() as db:
         db.add(Project(id=project_id, name="Paused Channel Project", is_paused=True))
         db.add(
             ChannelInstance(
-                id="paused-slack-channel",
+                id=instance_id,
                 platform="slack",
                 name="Paused Slack",
                 config_json="{}",
@@ -373,13 +374,13 @@ async def test_channel_start_rejects_paused_project(auth_headers):
 
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
         started = await ac.post(
-            f"/api/channels/paused-slack-channel/start?project_id={project_id}",
+            f"/api/channels/{instance_id}/start?project_id={project_id}",
             headers=auth_headers,
         )
 
     assert started.status_code == 409
     assert started.json()["detail"] == "Project is paused"
-    assert channel_router.get("paused-slack-channel") is None
+    assert channel_router.get(instance_id) is None
 
 
 @pytest.mark.asyncio

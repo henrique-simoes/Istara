@@ -183,12 +183,16 @@ class ImprovementGovernanceEvidenceMixin:
     ) -> list[str]:
         if not experiment.get("kept"):
             return []
+        scoped_project_id = _require_project_owned_producer_id(
+            project_id,
+            "autoresearch",
+        )
         loop_type = str(experiment.get("loop_type", ""))
         surfaces = self.infer_autoresearch_surfaces(loop_type)
         proposal = await self.create_proposal(
             source_system="autoresearch",
             source_id=str(experiment.get("id", "")),
-            project_id=project_id,
+            project_id=scoped_project_id,
             agent_id="autoresearch",
             title=f"Promote autoresearch improvement for {loop_type or 'unknown loop'}",
             summary=str(experiment.get("hypothesis", "")),
@@ -245,7 +249,10 @@ class ImprovementGovernanceEvidenceMixin:
         project_id: str = "",
     ) -> str | None:
         parameter_path = str(proposal.get("parameter_path", ""))
-        scoped_project_id = str(proposal.get("project_id") or project_id or "")
+        scoped_project_id = _require_project_owned_producer_id(
+            proposal.get("project_id") or project_id or "",
+            "hyperagent",
+        )
         created = await self.create_proposal(
             source_system="hyperagent",
             source_id=str(proposal.get("id", "")),
@@ -281,7 +288,10 @@ class ImprovementGovernanceEvidenceMixin:
         *,
         project_id: str = "",
     ) -> str | None:
-        scoped_project_id = str(proposal.get("project_id") or project_id or "")
+        scoped_project_id = _require_project_owned_producer_id(
+            proposal.get("project_id") or project_id or "",
+            "memento_agent_factory",
+        )
         created = await self.create_proposal(
             source_system="memento_agent_factory",
             source_id=str(proposal.get("id", "")),
@@ -399,10 +409,21 @@ class ImprovementGovernanceEvidenceMixin:
         )
         return created.id
 
-    async def register_self_evolution_promotion(self, promotion: dict, *, applied: bool = False) -> str | None:
+    async def register_self_evolution_promotion(
+        self,
+        promotion: dict,
+        *,
+        project_id: str = "",
+        applied: bool = False,
+    ) -> str | None:
+        scoped_project_id = _require_project_owned_producer_id(
+            promotion.get("project_id") or project_id or "",
+            "self_evolution",
+        )
         created = await self.create_proposal(
             source_system="self_evolution",
             source_id=f"{promotion.get('agent_id', '')}:{promotion.get('learning_id', '')}",
+            project_id=scoped_project_id,
             agent_id=str(promotion.get("agent_id", "")),
             title=f"Track self-evolution promotion for {promotion.get('agent_id', 'agent')}",
             summary=str(promotion.get("learning", "")) or str(promotion.get("promotion_text", "")),

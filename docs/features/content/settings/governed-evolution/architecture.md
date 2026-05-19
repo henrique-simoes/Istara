@@ -50,6 +50,7 @@ Governed Evolution displays project-scoped proposals, archive variants, reasonin
 - The view does not fetch governed evolution data without an active project. Proposal, archive, and ReasoningBank requests pass the active `project_id`; backend routes reject missing project scope and verify that the project exists before returning project content.
 - Proposal and archive action routes bind the record id to the same `project_id` supplied by the UI, so approvals, sandbox evaluations, applies, reverts, and quarantines cannot act on records from another project.
 - Agent self-evolution scan, auto-evolution, and promotion routes also require a `project_id`. Candidate qualification uses only project-local learning records; DevOps global audits no longer run persona self-evolution scans without project context.
+- Project-owned autonomous producers, including AutoResearch, Meta-Hyperagent, Memento agent factory, skill proposal producers, and self-evolution promotions, must provide a concrete project id before governance can create a proposal record.
 - ReasoningBank retrieval through this API excludes global memories when a project scope is supplied, preventing project-facing prompt context from mixing with unscoped traces.
 - The frontmatter and manifest entries are the durable contract for agents updating this page after code changes.
 - When the referenced component, store, route, agent, skill, or test behavior changes, regenerate and validate the feature documentation.

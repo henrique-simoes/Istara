@@ -35,7 +35,7 @@ Experiments configure and inspect automated research runs across strategies or p
 
 - `backend/app/api/routes/autoresearch.py`
 - Experiment list, start, and stop routes require `project_id` and enforce project access. Autoresearch engine records and broadcasts the experiment project id, and experiment history filters by `AutoresearchExperiment.project_id`.
-- Starting an experiment requires the requested project to be active and unpaused before the runner is constructed or scheduled. The engine repeats the active-project check before runner baseline/iteration work so a paused or missing project cannot keep processing in the background.
+- Starting an experiment requires the requested project to be active and unpaused before the runner is constructed or scheduled. The engine records the active project owner for the whole run, including baseline measurement, and repeats the active-project check before baseline and iteration work so a paused or missing project cannot keep processing in the background.
 
 ## Architecture Notes
 
@@ -47,6 +47,7 @@ Experiments configure and inspect automated research runs across strategies or p
 
 - Autoresearch experiments can mutate strategies that later affect agents, skills, LLM choice, RAG behavior, question banks, or UI simulations. Each experiment must remain attached to the project that authorized it.
 - Paused projects are execution-stop boundaries for autoresearch: no baseline measurement, mutation, model-choice exploration, reasoning memory, or improvement proposal should be produced after the project is paused.
+- Baseline and candidate measurements run inside the autoresearch isolation context, so experiment probes do not write normal learning, skill-stat, or self-improvement evidence until they are explicitly promoted through project-bound governance.
 
 ## Tests And Verification
 
