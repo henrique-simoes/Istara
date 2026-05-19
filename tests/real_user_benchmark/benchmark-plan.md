@@ -37,7 +37,7 @@ The benchmark is not a happy-path script. When an action fails, the harness firs
 
 For UI actions, Playwright waits until Istara has rendered a usable state before navigation or chat input. For task review, the benchmark reads the task output, records a human-quality judgment, sends weak work back with specific revision instructions, then approves only after the simulated researcher decides the output is good enough.
 
-For compute, the benchmark treats the donated relay as part of the product under test. Non-plan runs require the configured live model profile by default, verify the relay node through `/api/compute/stats`, and require non-empty chat output before later research tasks can count as successful.
+For compute, the benchmark treats the donated relay as part of the product under test. Non-plan runs require the configured live model profile by default, verify the relay node through project-scoped `/api/compute/stats?project_id=...`, and require non-empty chat output before later research tasks can count as successful.
 
 ## Corpus
 

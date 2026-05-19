@@ -142,10 +142,11 @@ Donated relay/browser compute is also a project-content boundary: a relay can
 be connected for status, but prompt and embedding payloads may only route to it
 when the request includes a concrete project and the donor scope was resolved
 from project membership or a validated compute-donation connection string.
-Regular Compute Pool stats, node lists, and model warnings are project-scoped
-for non-admin users, and team-mode wildcard donation scopes are rejected during
-relay validation so legacy all-project strings cannot process arbitrary project
-content.
+Regular Compute Pool stats, node lists, and model warnings require an
+authorized active project for every role; cross-project compute aggregation
+belongs only on dedicated admin reporting surfaces. Team-mode wildcard donation
+scopes are rejected during relay validation so legacy all-project strings
+cannot process arbitrary project content.
 
 ## Compass Forge Contract
 

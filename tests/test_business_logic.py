@@ -191,10 +191,14 @@ async def test_meta_agent_variants_returns_list(auth_headers):
 async def test_compute_stats_returns_structured_data(auth_headers):
     """Compute stats returns structured data."""
     await init_db()
+    project = await _seed_project("Business Compute")
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
-        response = await ac.get("/api/compute/stats", headers=auth_headers)
-        assert response.status_code in (200, 404, 500)
+        response = await ac.get(f"/api/compute/stats?project_id={project.id}", headers=auth_headers)
+        assert response.status_code == 200
+        body = response.json()
+        assert "nodes" in body
+        assert "total_nodes" in body
 
 
 # ---------------------------------------------------------------------------

@@ -6,10 +6,12 @@ export const id = "37-ensemble-health-view";
 export async function run(ctx) {
   const { page, screenshot, api } = ctx;
   const checks = [];
+  const projectId = ctx.projectId;
 
   // 1. Verify compute stats API works (backend for ComputePoolView)
   try {
-    const stats = await api.get("/api/compute/stats");
+    if (!projectId) throw new Error("Missing ctx.projectId for project-scoped compute stats");
+    const stats = await api.get(`/api/compute/stats?project_id=${encodeURIComponent(projectId)}`);
     checks.push({
       name: "Compute pool API works",
       passed: stats.swarm_tier !== undefined && stats.total_nodes !== undefined,

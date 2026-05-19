@@ -75,9 +75,9 @@ The simulation must:
 - Load the target host/token/model from Istara's existing testing configuration, gitignored env, or Keychain. Never log private endpoint values, tokens, or endpoint fingerprints.
 - If the configured host is localhost from inside a container, reason through container networking and use the correct host bridge path such as `host.docker.internal`.
 - Generate an admin/server sandbox and a separate client/researcher sandbox. Verify both users can authenticate and act through the UI.
-- Verify compute donation with evidence: relay/client registration, `/api/compute/stats`, forced topology or backend route logs, and an actual chat response.
+- Verify compute donation with evidence: relay/client registration, project-scoped `/api/compute/stats?project_id=...`, forced topology or backend route logs, and an actual chat response.
 - Treat server sandboxing and client/donor sandboxing as separate concerns. The benchmark may target an Istara orchestrator already running outside Docker while still starting disposable researcher and donor containers.
-- For multi-donor runs, ask or read how many compute donor containers are required, assign one connection string per donor, preflight each donor's own LM Studio/OpenAI-compatible endpoint, and wait for the requested relay-node count in `/api/compute/stats`.
+- For multi-donor runs, ask or read how many compute donor containers are required, assign one connection string per donor, preflight each donor's own LM Studio/OpenAI-compatible endpoint, and wait for the requested relay-node count in project-scoped `/api/compute/stats?project_id=...`.
 - The default first donor is Gemma (`google/gemma-4-e4b`). A second Qwen donor (`Qwen3.5-4B`) must be explicitly provisioned through a separate endpoint/profile; missing Qwen provisioning is a benchmark blocker, not something to fake or auto-download.
 - Do not claim ensemble/MoA health unless multiple required donor nodes are registered and chat/compute evidence shows the orchestrator can use donated compute.
 - If donation fails, iterate until the technical reason is known: wrong model id, model not loaded, token/auth issue, container networking, server direct-provider fallback, route scoring, circuit breaker, or missing product support.

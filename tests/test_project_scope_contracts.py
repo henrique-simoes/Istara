@@ -264,6 +264,37 @@ def test_task_kanban_requires_active_project_scope() -> None:
     assert "is_global_admin" not in route
 
 
+def test_compute_pool_requires_active_project_scope() -> None:
+    api = read_repo("frontend/src/lib/api.ts")
+    store = read_repo("frontend/src/stores/computeStore.ts")
+    view = read_repo("frontend/src/components/common/ComputePoolView.tsx")
+    route = read_repo("backend/app/api/routes/compute.py")
+
+    assert "nodes: (projectId: string)" in api
+    assert "stats: (projectId: string)" in api
+    assert "modelWarnings: (projectId: string)" in api
+    assert "/api/compute/stats?project_id=${encodeURIComponent(projectId)}" in api
+    assert "/api/compute/nodes?project_id=${encodeURIComponent(projectId)}" in api
+    assert "/api/compute/model-warnings?project_id=${encodeURIComponent(projectId)}" in api
+
+    assert "fetchStats: (projectId?: string | null) => Promise<void>;" in store
+    assert "if (!projectId)" in store
+    assert "set({ stats: null, loading: false, error: null });" in store
+    assert "const data = await compute.stats(projectId);" in store
+    assert "const data = await compute.nodes(projectId);" in store
+
+    assert "fetchStats(activeProjectId)" in view
+    assert "computeApi.modelWarnings(activeProjectId)" in view
+
+    assert "def _require_project_id(project_id: str | None) -> str:" in route
+    assert 'raise HTTPException(status_code=400, detail="project_id is required")' in route
+    assert "await get_visible_project_or_404(db, request, scoped_project_id, min_role=\"viewer\")" in route
+    assert "compute_registry.get_stats(project_id=scoped_project_id)" in route
+    assert "compute_registry.get_warnings(project_id=scoped_project_id)" in route
+    assert "is_global_admin" not in route
+    assert "all nodes for global admins" not in route
+
+
 def test_autoresearch_project_surfaces_require_active_project_scope() -> None:
     api = read_repo("frontend/src/lib/api.ts")
     store = read_repo("frontend/src/stores/autoresearchStore.ts")

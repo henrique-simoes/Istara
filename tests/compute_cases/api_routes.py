@@ -14,12 +14,22 @@ from app.models.database import async_session
 from app.models.project import Project
 from app.models.project_member import ProjectMember
 
+
+async def _seed_project(name: str = "Compute Project") -> str:
+    project_id = f"project-{uuid.uuid4()}"
+    async with async_session() as db:
+        db.add(Project(id=project_id, name=name))
+        await db.commit()
+    return project_id
+
+
 async def test_compute_nodes_returns_list(auth_headers):
     """GET /api/compute/nodes returns compute nodes."""
     await init_db()
+    project_id = await _seed_project("Compute Nodes Project")
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
-        response = await ac.get("/api/compute/nodes", headers=auth_headers)
+        response = await ac.get(f"/api/compute/nodes?project_id={project_id}", headers=auth_headers)
         assert response.status_code == 200
         body = response.json()
         assert isinstance(body, dict)
@@ -68,13 +78,32 @@ async def test_researcher_can_view_compute_pool(researcher_headers):
 async def test_compute_stats_returns_response(auth_headers):
     """GET /api/compute/stats returns compute stats."""
     await init_db()
+    project_id = await _seed_project("Compute Stats Project")
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
-        response = await ac.get("/api/compute/stats", headers=auth_headers)
+        response = await ac.get(f"/api/compute/stats?project_id={project_id}", headers=auth_headers)
         assert response.status_code == 200
         body = response.json()
         assert "nodes" in body
         assert "total_nodes" in body
+
+
+@pytest.mark.asyncio
+async def test_compute_pool_requires_active_project_for_admin(auth_headers):
+    """Regular Compute Pool endpoints do not expose global capacity by omission."""
+    await init_db()
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        nodes = await ac.get("/api/compute/nodes", headers=auth_headers)
+        stats = await ac.get("/api/compute/stats", headers=auth_headers)
+        warnings = await ac.get("/api/compute/model-warnings", headers=auth_headers)
+
+    assert nodes.status_code == 400
+    assert stats.status_code == 400
+    assert warnings.status_code == 400
+    assert nodes.json()["detail"] == "project_id is required"
+    assert stats.json()["detail"] == "project_id is required"
+    assert warnings.json()["detail"] == "project_id is required"
 
 
 @pytest.mark.asyncio
