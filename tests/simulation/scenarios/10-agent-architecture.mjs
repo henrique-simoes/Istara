@@ -191,6 +191,7 @@ export async function run(ctx) {
       system_prompt: "Architecture test agent created by simulation.",
       capabilities: ["findings_read", "task_management", "a2a_messaging"],
       heartbeat_interval: 30,
+      project_id: projectId,
     });
     testAgentId = agent.id;
 
@@ -289,6 +290,7 @@ export async function run(ctx) {
       system_prompt: "Recipient agent for A2A test.",
       capabilities: ["a2a_messaging"],
       heartbeat_interval: 30,
+      project_id: projectId,
     });
     secondAgentId = agent.id;
 

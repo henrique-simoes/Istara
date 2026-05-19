@@ -30,6 +30,7 @@ from app.core.permissions import require_project_access
 from app.core.security_middleware import require_admin_from_request
 from app.api.agent_project_scope import (
     agent_project_id,
+    clean_project_id,
     filter_agent_dicts_for_project,
     filter_work_log,
     is_team_non_admin,
@@ -105,6 +106,7 @@ class CreateAgentRequest(BaseModel):
     system_prompt: str = ""
     capabilities: list[str] | None = None
     heartbeat_interval: int = 60
+    project_id: str | None = None
 
 
 class UpdateAgentRequest(BaseModel):
@@ -210,7 +212,10 @@ async def create_agent(
     db: AsyncSession = Depends(get_db),
 ):
     """Create a new user agent with full persona file support."""
-    require_admin_from_request(request)
+    scoped_project_id = clean_project_id(data.project_id)
+    if not scoped_project_id:
+        raise HTTPException(status_code=400, detail="project_id is required")
+    await require_project_access(db, request, scoped_project_id, min_role="project_admin")
     agent = await agent_service.create_agent(
         db,
         name=data.name,
@@ -218,6 +223,8 @@ async def create_agent(
         system_prompt=data.system_prompt,
         capabilities=data.capabilities,
         heartbeat_interval=data.heartbeat_interval,
+        scope="project",
+        project_id=scoped_project_id,
     )
 
     # Auto-create persona MD files for the custom agent so it can
@@ -245,7 +252,7 @@ async def create_agent(
 
     try:
         from app.api.websocket import manager as ws_manager
-        await ws_manager.broadcast("agent_created", agent)
+        await ws_manager.broadcast("agent_created", {**agent, "project_id": scoped_project_id})
     except Exception:
         pass
     # Start the custom agent's work loop
@@ -668,25 +675,48 @@ class RejectProposalRequest(BaseModel):
     reason: str = ""
 
 
+async def _require_agent_proposal_project_scope(
+    db: AsyncSession,
+    request: Request,
+    project_id: str | None,
+    *,
+    min_role: str = "project_admin",
+) -> str:
+    scoped_project_id = clean_project_id(project_id)
+    if not scoped_project_id:
+        raise HTTPException(status_code=400, detail="project_id is required")
+    await require_project_access(db, request, scoped_project_id, min_role=min_role)
+    return scoped_project_id
+
+
 @router.get("/agents/creation-proposals/pending")
-async def get_pending_proposals(request: Request):
+async def get_pending_proposals(
+    request: Request,
+    project_id: str | None = None,
+    db: AsyncSession = Depends(get_db),
+):
     """Get all pending agent creation proposals."""
-    require_admin_from_request(request)
+    scoped_project_id = await _require_agent_proposal_project_scope(db, request, project_id)
     from app.core.agent_factory import AgentFactory
 
     factory = AgentFactory()
-    proposals = factory.get_pending_proposals()
+    proposals = factory.get_pending_proposals(project_id=scoped_project_id)
     return {"proposals": proposals, "count": len(proposals)}
 
 
 @router.get("/agents/creation-proposals/all")
-async def get_all_proposals(request: Request, limit: int = 20):
+async def get_all_proposals(
+    request: Request,
+    limit: int = 20,
+    project_id: str | None = None,
+    db: AsyncSession = Depends(get_db),
+):
     """Get all agent creation proposals (any status)."""
-    require_admin_from_request(request)
+    scoped_project_id = await _require_agent_proposal_project_scope(db, request, project_id)
     from app.core.agent_factory import AgentFactory
 
     factory = AgentFactory()
-    proposals = factory.get_all_proposals(limit)
+    proposals = factory.get_all_proposals(limit, project_id=scoped_project_id)
     return {"proposals": proposals, "count": len(proposals)}
 
 
@@ -694,14 +724,19 @@ async def get_all_proposals(request: Request, limit: int = 20):
 async def approve_proposal(
     proposal_id: str,
     request: Request,
+    project_id: str | None = None,
     db: AsyncSession = Depends(get_db),
 ):
     """Approve a proposal — creates the agent in DB, scaffolds persona, starts worker."""
-    require_admin_from_request(request)
+    scoped_project_id = await _require_agent_proposal_project_scope(
+        db,
+        request,
+        project_id,
+    )
     from app.core.agent_factory import AgentFactory
 
     factory = AgentFactory()
-    proposal = factory.approve_proposal(proposal_id)
+    proposal = factory.approve_proposal(proposal_id, project_id=scoped_project_id)
     if not proposal:
         raise HTTPException(status_code=404, detail="Proposal not found or not pending")
 
@@ -713,19 +748,10 @@ async def approve_proposal(
         system_prompt=proposal["proposed_system_prompt"],
         capabilities=None,
         heartbeat_interval=60,
+        scope="project",
+        project_id=scoped_project_id,
+        specialties=proposal["proposed_specialties"],
     )
-
-    # Set specialties on the newly created agent
-    try:
-        import json as _json
-
-        await agent_service.update_agent(
-            db,
-            agent["id"],
-            {"specialties": _json.dumps(proposal["proposed_specialties"])},
-        )
-    except Exception:
-        pass
 
     # Scaffold persona MD files from the proposal's CORE.md
     try:
@@ -766,7 +792,7 @@ async def approve_proposal(
 
         await ws_manager.broadcast(
             "agent_created_from_proposal",
-            {"proposal_id": proposal_id, "agent": agent},
+            {"proposal_id": proposal_id, "project_id": scoped_project_id, "agent": agent},
         )
     except Exception:
         pass
@@ -775,6 +801,7 @@ async def approve_proposal(
         governance = await improvement_governance.get_proposal_by_source(
             source_system="memento_agent_factory",
             source_id=proposal_id,
+            project_id=scoped_project_id,
         )
         if governance and governance.status in {"draft", "proposed"}:
             await improvement_governance.approve_proposal(
@@ -785,12 +812,17 @@ async def approve_proposal(
         governance = await improvement_governance.get_proposal_by_source(
             source_system="memento_agent_factory",
             source_id=proposal_id,
+            project_id=scoped_project_id,
         )
         if governance and governance.status == "approved":
             await improvement_governance.apply_proposal(
                 governance.id,
                 actor_id="agents-ui",
-                evidence={"agent_id": agent.get("id"), "agent_name": agent.get("name")},
+                evidence={
+                    "agent_id": agent.get("id"),
+                    "agent_name": agent.get("name"),
+                    "project_id": scoped_project_id,
+                },
             )
     except Exception:
         pass
@@ -807,14 +839,24 @@ async def reject_proposal(
     proposal_id: str,
     request: Request,
     data: RejectProposalRequest | None = None,
+    project_id: str | None = None,
+    db: AsyncSession = Depends(get_db),
 ):
     """Reject a pending agent creation proposal."""
-    require_admin_from_request(request)
+    scoped_project_id = await _require_agent_proposal_project_scope(
+        db,
+        request,
+        project_id,
+    )
     from app.core.agent_factory import AgentFactory
 
     factory = AgentFactory()
     reason = data.reason if data else ""
-    proposal = factory.reject_proposal(proposal_id, reason)
+    proposal = factory.reject_proposal(
+        proposal_id,
+        reason,
+        project_id=scoped_project_id,
+    )
     if not proposal:
         raise HTTPException(status_code=404, detail="Proposal not found or not pending")
 
@@ -822,6 +864,7 @@ async def reject_proposal(
         governance = await improvement_governance.get_proposal_by_source(
             source_system="memento_agent_factory",
             source_id=proposal_id,
+            project_id=scoped_project_id,
         )
         if governance and governance.status in {"draft", "proposed", "approved"}:
             await improvement_governance.reject_proposal(

@@ -267,10 +267,17 @@ class ImprovementGovernanceEvidenceMixin:
         )
         return created.id
 
-    async def register_agent_creation_proposal(self, proposal: dict) -> str | None:
+    async def register_agent_creation_proposal(
+        self,
+        proposal: dict,
+        *,
+        project_id: str = "",
+    ) -> str | None:
+        scoped_project_id = str(proposal.get("project_id") or project_id or "")
         created = await self.create_proposal(
             source_system="memento_agent_factory",
             source_id=str(proposal.get("id", "")),
+            project_id=scoped_project_id,
             agent_id="agent-factory",
             title=f"Review agent creation for {proposal.get('proposed_name', 'new agent')}",
             summary=str(proposal.get("reason", "")),
@@ -292,6 +299,7 @@ class ImprovementGovernanceEvidenceMixin:
             },
             evidence=[{
                 "kind": "memento_agent_creation",
+                "project_id": scoped_project_id,
                 "confidence": proposal.get("confidence"),
                 "created_at": proposal.get("created_at"),
             }],

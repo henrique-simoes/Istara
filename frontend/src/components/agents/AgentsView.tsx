@@ -546,12 +546,16 @@ export default function AgentsView() {
   const [agentProposals, setAgentProposals] = useState<any[]>([]);
   const { activeProjectId } = useProjectStore();
 
-  const fetchAgentProposals = async () => {
+  const fetchAgentProposals = useCallback(async () => {
+    if (!activeProjectId) {
+      setAgentProposals([]);
+      return;
+    }
     try {
-      const res = await agentsApi.creationProposals.all();
+      const res = await agentsApi.creationProposals.all(activeProjectId);
       setAgentProposals(res.proposals || []);
     } catch { /* endpoint may not exist yet */ }
-  };
+  }, [activeProjectId]);
 
   // Initial fetch + start polling every 10s to keep agent statuses current
   useEffect(() => {
@@ -581,7 +585,7 @@ export default function AgentsView() {
   useEffect(() => {
     if (activeTab === "a2a") fetchA2ALog(activeProjectId);
     if (activeTab === "proposals") fetchAgentProposals();
-  }, [activeProjectId, activeTab, fetchA2ALog]);
+  }, [activeProjectId, activeTab, fetchA2ALog, fetchAgentProposals]);
 
   const systemAgents = agents.filter((a) => a.is_system);
   const userAgents = agents.filter((a) => !a.is_system);
@@ -868,7 +872,8 @@ export default function AgentsView() {
                   <button
                     onClick={async () => {
                       try {
-                        await agentsApi.creationProposals.approve(p.id);
+                        if (!activeProjectId) return;
+                        await agentsApi.creationProposals.approve(p.id, activeProjectId);
                         await Promise.all([
                           fetchAgents(activeProjectId || undefined),
                           fetchAgentProposals(),
@@ -882,7 +887,8 @@ export default function AgentsView() {
                   <button
                     onClick={async () => {
                       try {
-                        await agentsApi.creationProposals.reject(p.id);
+                        if (!activeProjectId) return;
+                        await agentsApi.creationProposals.reject(p.id, activeProjectId);
                         await fetchAgentProposals();
                       } catch (e) { console.error("Reject failed:", e); }
                     }}

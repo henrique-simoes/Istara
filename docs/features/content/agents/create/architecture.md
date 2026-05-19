@@ -6,23 +6,27 @@ audience: architecture
 status: needs-verification
 related_features: ["agents.registry", "skills.catalog"]
 related_glossary: ["a2a", "mcp"]
-code_references: ["frontend/src/components/agents/AgentsView.tsx", "backend/app/api/routes/agents.py", "backend/app/core/agent_factory.py"]
+code_references: ["frontend/src/components/agents/AgentsView.tsx", "frontend/src/components/agents/CreateAgentWizard.tsx", "frontend/src/stores/agentStore.ts", "frontend/src/lib/api.ts", "backend/app/api/routes/agents.py", "backend/app/services/agent_service.py", "backend/app/core/agent_factory.py"]
 api_references: ["backend/app/api/routes/agents.py"]
-test_references: []
-last_verified: 2026-05-15
-compass: CF-SPEC-53 / CF-657
+test_references: ["tests/test_agents.py", "tests/test_project_scope_contracts.py"]
+last_verified: 2026-05-19
+compass: CF-SPEC-60 / CF-757
 ---
 
 # Create Agent Architecture
 
 ## Implementation Summary
 
-Create Agent supports configuring new agents and their role-facing metadata.
+Create Agent supports configuring new agents and their role-facing metadata inside the active project.
 
 ## Frontend Surface
 
 - `frontend/src/components/agents/AgentsView.tsx`
+- `frontend/src/components/agents/CreateAgentWizard.tsx`
+- `frontend/src/stores/agentStore.ts`
+- `frontend/src/lib/api.ts`
 - `backend/app/api/routes/agents.py`
+- `backend/app/services/agent_service.py`
 - `backend/app/core/agent_factory.py`
 
 ## State, API, And Backend Contracts
@@ -34,10 +38,14 @@ Create Agent supports configuring new agents and their role-facing metadata.
 ### API And Backend
 
 - `backend/app/api/routes/agents.py`
+- `backend/app/services/agent_service.py`
 
 ## Architecture Notes
 
 - The feature is mounted through `frontend/src/components/agents/AgentsView.tsx` and the UI navigation path recorded in the inventory.
+- Manual custom-agent creation requires the active project id in the frontend store/API call. The route rejects missing `project_id` before creating any agent record.
+- The backend requires project-admin access for the supplied project id and creates custom agents with `scope="project"` and the matching `project_id` in the first database write.
+- Proposal-approved agents use the same scoped creation path so generated agents do not transiently exist as universal agents before metadata is patched.
 - The frontmatter and manifest entries are the durable contract for agents updating this page after code changes.
 - When the referenced component, store, route, agent, skill, or test behavior changes, regenerate and validate the feature documentation.
 
@@ -48,7 +56,8 @@ Create Agent supports configuring new agents and their role-facing metadata.
 
 ## Tests And Verification
 
-- No focused test reference recorded yet.
+- `tests/test_agents.py` covers missing project ids and verifies created custom agents are project-scoped.
+- `tests/test_project_scope_contracts.py` pins the frontend/store/API/backend project-scope contract.
 
 ## Related Features
 
@@ -62,7 +71,7 @@ Create Agent supports configuring new agents and their role-facing metadata.
 
 ## Compass Evidence
 
-- Spec/task: CF-SPEC-53 / CF-657
+- Spec/task: CF-SPEC-60 / CF-757
 - Inventory source: `docs/features/inventory.json`
 
 ## When To Update

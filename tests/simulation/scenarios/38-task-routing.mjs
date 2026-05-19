@@ -131,6 +131,7 @@ export async function run(ctx) {
       role: "custom",
       system_prompt: "A specialized UX researcher agent.",
       capabilities: ["skill_execution", "findings_write"],
+      project_id: ctx.projectId,
     });
     customAgentId = agent.id;
 

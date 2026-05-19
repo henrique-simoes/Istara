@@ -383,13 +383,15 @@ class MetaOrchestrator:
                                     task.description or "",
                                     task.id,
                                     routing.get("specialties_needed", []),
+                                    project_id=task.project_id,
                                 )
                                 try:
                                     from dataclasses import asdict
                                     from app.core.improvement_governance import improvement_governance
 
                                     await improvement_governance.register_agent_creation_proposal(
-                                        asdict(proposal)
+                                        asdict(proposal),
+                                        project_id=task.project_id,
                                     )
                                 except Exception:
                                     pass
@@ -408,6 +410,7 @@ class MetaOrchestrator:
                                         "agent_creation_proposed",
                                         {
                                             "proposal_id": proposal.id,
+                                            "project_id": task.project_id,
                                             "proposed_name": proposal.proposed_name,
                                             "reason": gap,
                                         },

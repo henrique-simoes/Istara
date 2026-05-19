@@ -134,6 +134,94 @@ async def test_agents_capacity_returns_response(auth_headers):
 
 
 @pytest.mark.asyncio
+async def test_agent_create_requires_project_id(auth_headers):
+    """Manual custom agent creation is project-bound."""
+    await init_db()
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        response = await ac.post(
+            "/api/agents",
+            headers=auth_headers,
+            json={
+                "name": "Unscoped Agent",
+                "role": "custom",
+                "system_prompt": "Missing project scope.",
+                "capabilities": ["chat"],
+            },
+        )
+
+    assert response.status_code == 400
+    assert response.json()["detail"] == "project_id is required"
+
+
+@pytest.mark.asyncio
+async def test_agent_creation_proposals_require_project_id(auth_headers):
+    """Agent proposal review surfaces require an explicit active project."""
+    await init_db()
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        response = await ac.get("/api/agents/creation-proposals/all", headers=auth_headers)
+
+    assert response.status_code == 400
+    assert response.json()["detail"] == "project_id is required"
+
+
+@pytest.mark.asyncio
+async def test_agent_creation_proposals_are_filtered_by_project(
+    monkeypatch,
+    tmp_path,
+    auth_headers,
+):
+    """Agent factory proposals from one project are hidden and immutable from another."""
+    await init_db()
+
+    import app.core.agent_factory as agent_factory_module
+
+    monkeypatch.setattr(agent_factory_module, "DATA_DIR", tmp_path)
+    monkeypatch.setattr(agent_factory_module, "PROPOSALS_FILE", tmp_path / "_agent_proposals.json")
+
+    factory = agent_factory_module.AgentFactory()
+    project_a = factory.propose_agent_creation(
+        "Missing analysis specialist",
+        "Analyze onboarding interviews",
+        "Project A task",
+        "task-agent-proposal-a",
+        ["analysis"],
+        project_id="project-a",
+    )
+    project_b = factory.propose_agent_creation(
+        "Missing synthesis specialist",
+        "Synthesize diary study",
+        "Project B task",
+        "task-agent-proposal-b",
+        ["synthesis"],
+        project_id="project-b",
+    )
+
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        listed = await ac.get(
+            "/api/agents/creation-proposals/all?project_id=project-a",
+            headers=auth_headers,
+        )
+        wrong_project_reject = await ac.post(
+            f"/api/agents/creation-proposals/{project_b.id}/reject?project_id=project-a",
+            headers=auth_headers,
+        )
+        right_project_reject = await ac.post(
+            f"/api/agents/creation-proposals/{project_a.id}/reject?project_id=project-a",
+            headers=auth_headers,
+        )
+
+    assert listed.status_code == 200
+    ids = {item["id"] for item in listed.json()["proposals"]}
+    assert project_a.id in ids
+    assert project_b.id not in ids
+    assert wrong_project_reject.status_code == 404
+    assert right_project_reject.status_code == 200
+
+
+@pytest.mark.asyncio
 async def test_agents_capacity_reports_real_pressure_and_ram(monkeypatch):
     from app.services import agent_service
 
@@ -415,9 +503,12 @@ async def test_agent_restart_scope_and_promotion_routes_use_persistent_agent(aut
                 "role": "custom",
                 "system_prompt": "Temporary lifecycle test agent.",
                 "capabilities": ["chat"],
+                "project_id": "project-test",
             },
         )
         assert created.status_code == 201
+        assert created.json()["scope"] == "project"
+        assert created.json()["project_id"] == "project-test"
         agent_id = created.json()["id"]
 
         restart = await ac.post(f"/api/agents/{agent_id}/restart", headers=auth_headers)
@@ -461,6 +552,7 @@ async def test_a2a_accepts_system_message_type_contract(auth_headers):
                 "role": "custom",
                 "system_prompt": "Temporary A2A contract test agent.",
                 "capabilities": ["a2a_messaging"],
+                "project_id": "a2a-contract-project",
             },
         )
         created_b = await ac.post(
@@ -471,6 +563,7 @@ async def test_a2a_accepts_system_message_type_contract(auth_headers):
                 "role": "custom",
                 "system_prompt": "Temporary A2A contract test recipient.",
                 "capabilities": ["a2a_messaging"],
+                "project_id": "a2a-contract-project",
             },
         )
         assert created_a.status_code == 201

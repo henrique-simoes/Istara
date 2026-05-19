@@ -287,6 +287,7 @@ async def test_agent_loop_config_persists_skills_and_project_filter(auth_headers
                 "role": "custom",
                 "system_prompt": "Temporary loop config test agent.",
                 "capabilities": ["skill_execution"],
+                "project_id": "project-test",
             },
         )
         assert created.status_code == 201

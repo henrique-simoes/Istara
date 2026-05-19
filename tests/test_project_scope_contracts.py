@@ -252,6 +252,53 @@ def test_agents_a2a_project_view_passes_active_project_id() -> None:
     assert "messages = await a2a.get_full_log(db, limit, project_id=project_id)" in route
 
 
+def test_agent_creation_proposals_require_active_project_scope() -> None:
+    api = read_repo("frontend/src/lib/api.ts")
+    view = read_repo("frontend/src/components/agents/AgentsView.tsx")
+    route = read_repo("backend/app/api/routes/agents.py")
+    factory = read_repo("backend/app/core/agent_factory.py")
+    orchestrator = read_repo("backend/app/agents/orchestrator.py")
+    governance = read_repo("backend/app/core/improvement_governance_evidence.py")
+    meta = read_repo("backend/app/core/meta_hyperagent.py")
+
+    assert "creationProposals: {" in api
+    assert "all: (projectId: string, limit = 20)" in api
+    assert "/api/agents/creation-proposals/all?project_id=${encodeURIComponent(projectId)}" in api
+    assert "approve: (id: string, projectId: string)" in api
+    assert "reject: (id: string, projectId: string" in api
+
+    assert "agentsApi.creationProposals.all(activeProjectId)" in view
+    assert "agentsApi.creationProposals.approve(p.id, activeProjectId)" in view
+    assert "agentsApi.creationProposals.reject(p.id, activeProjectId)" in view
+    assert "if (!activeProjectId)" in view
+
+    assert "create: (data: {" in api
+    assert "}, projectId: string)" in api
+    assert "project_id: projectId" in api
+    assert "createAgent: async (data, projectId)" in read_repo("frontend/src/stores/agentStore.ts")
+    assert "useProjectStore" in read_repo("frontend/src/components/agents/CreateAgentWizard.tsx")
+
+    assert "async def _require_agent_proposal_project_scope" in route
+    assert 'raise HTTPException(status_code=400, detail="project_id is required")' in route
+    assert "await require_project_access(db, request, scoped_project_id, min_role=min_role)" in route
+    assert "await require_project_access(db, request, scoped_project_id, min_role=\"project_admin\")" in route
+    assert "scope=\"project\"" in route
+    assert "factory.get_pending_proposals(project_id=scoped_project_id)" in route
+    assert "factory.get_all_proposals(limit, project_id=scoped_project_id)" in route
+    assert "factory.approve_proposal(proposal_id, project_id=scoped_project_id)" in route
+    assert "factory.reject_proposal(" in route and "project_id=scoped_project_id" in route
+    assert "project_id=scoped_project_id" in route
+
+    assert "project_id: str" in factory
+    assert "project_id: str = \"\"" in factory
+    assert "str(proposal.get(\"project_id\") or \"\") == scoped_project_id" in factory
+    assert "project_id=task.project_id" in orchestrator
+    assert '"project_id": task.project_id' in orchestrator
+    assert "register_agent_creation_proposal(" in governance
+    assert "project_id=scoped_project_id" in governance
+    assert "factory.get_pending_proposals(project_id=scoped_project_id)" in meta
+
+
 def test_meta_hyperagent_surfaces_require_active_project_scope() -> None:
     api = read_repo("frontend/src/lib/api.ts")
     view = read_repo("frontend/src/components/meta/MetaHyperagentView.tsx")

@@ -361,7 +361,11 @@ export const agents = {
     system_prompt?: string;
     capabilities?: string[];
     heartbeat_interval?: number;
-  }) => request<any>("/api/agents", { method: "POST", body: JSON.stringify(data) }),
+  }, projectId: string) =>
+    request<any>("/api/agents", {
+      method: "POST",
+      body: JSON.stringify({ ...data, project_id: projectId }),
+    }),
   update: (id: string, data: Record<string, unknown>) =>
     request<any>(`/api/agents/${id}`, { method: "PATCH", body: JSON.stringify(data) }),
   delete: (id: string) => del(`/api/agents/${id}`),
@@ -438,11 +442,14 @@ export const agents = {
       "/api/agents/personas/list"
     ),
   creationProposals: {
-    pending: () => request<any>("/api/agents/creation-proposals/pending"),
-    all: (limit = 20) => request<any>(`/api/agents/creation-proposals/all?limit=${limit}`),
-    approve: (id: string) =>
-      request<any>(`/api/agents/creation-proposals/${id}/approve`, { method: "POST" }),
-    reject: (id: string, reason = "") => request<any>(`/api/agents/creation-proposals/${id}/reject`, { method: "POST", body: JSON.stringify({ reason }) }),
+    pending: (projectId: string) =>
+      request<any>(`/api/agents/creation-proposals/pending?project_id=${encodeURIComponent(projectId)}`),
+    all: (projectId: string, limit = 20) =>
+      request<any>(`/api/agents/creation-proposals/all?project_id=${encodeURIComponent(projectId)}&limit=${limit}`),
+    approve: (id: string, projectId: string) =>
+      request<any>(`/api/agents/creation-proposals/${id}/approve?project_id=${encodeURIComponent(projectId)}`, { method: "POST" }),
+    reject: (id: string, projectId: string, reason = "") =>
+      request<any>(`/api/agents/creation-proposals/${id}/reject?project_id=${encodeURIComponent(projectId)}`, { method: "POST", body: JSON.stringify({ reason }) }),
   },
   exportConfig: (id: string) => request<any>(`/api/agents/${id}/export`),
   importConfig: (data: Record<string, unknown>) => request<any>("/api/agents/import", { method: "POST", body: JSON.stringify(data) }),
