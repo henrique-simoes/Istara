@@ -10,7 +10,7 @@ code_references: ["frontend/src/components/common/ComputePoolView.tsx", "fronten
 api_references: ["backend/app/api/routes/compute.py"]
 test_references: ["tests/test_compute.py", "tests/compute_cases/status_contracts.py", "tests/compute_cases/stats_websocket.py", "tests/test_compute_registry_model_loading.py", "tests/test_compute_registry_hardening.py", "tests/test_network_discovery.py", "tests/test_project_rbac.py", "tests/test_project_scope_contracts.py"]
 last_verified: 2026-05-19
-compass: CF-SPEC-60 / CF-774; CF-SPEC-63 / CF-814; CF-SPEC-63 / CF-815; CF-SPEC-66 / CF-856; CF-SPEC-70 / CF-899
+compass: CF-SPEC-60 / CF-774; CF-SPEC-63 / CF-814; CF-SPEC-63 / CF-815; CF-SPEC-66 / CF-856; CF-SPEC-70 / CF-899; CF-SPEC-90 / CF-1142
 ---
 
 # Compute Pool Architecture
@@ -42,7 +42,7 @@ Donated relay/browser nodes are treated as a project-content security boundary. 
 - The feature is mounted through `frontend/src/components/common/ComputePoolView.tsx` and the UI navigation path recorded in the inventory.
 - Model chips are rendered from both advertised loaded models and cached model capability records, so capability-only models remain visible in the pool UI.
 - Node payloads expose `is_reachable`, `is_ready`, `readiness_state`, and `reachable_nodes` so UI labels can distinguish online/no-model-loaded from offline/unreachable without changing the conservative routing meaning of `alive_nodes`.
-- Compute registry identity uses passive local OS interface aliases and the configured local provider source to collapse duplicate local endpoints without silently merging unrelated remote machines that happen to expose the same model catalog.
+- Compute registry identity uses passive local OS interface aliases and the configured local provider source to collapse duplicate local endpoints without silently merging unrelated remote machines that happen to expose the same model catalog. When a configured local LAN endpoint and a network-discovered endpoint have different IPs but the same provider, port, path, and matching hardware or model evidence, the registry treats the network entry as a stale alias of the configured local service.
 - Node readiness derives from explicit readiness state before legacy health booleans, so a stale `is_healthy` flag cannot make `no_model_loaded` look routable.
 - Network discovery excludes all known local interface aliases before probing the subnet, preventing the server from discovering itself through a second LAN address.
 - Relay/browser donors carry `allowed_project_ids` resolved from either the authenticated user's current database-backed role and project memberships or a validated compute-donation connection string. A bare network token can connect for status only, not receive project content.
@@ -80,7 +80,7 @@ Donated relay/browser nodes are treated as a project-content security boundary. 
 
 ## Compass Evidence
 
-- Spec/task: CF-SPEC-60 / CF-774; CF-SPEC-63 / CF-814; CF-SPEC-63 / CF-815; CF-SPEC-66 / CF-856; CF-SPEC-70 / CF-899
+- Spec/task: CF-SPEC-60 / CF-774; CF-SPEC-63 / CF-814; CF-SPEC-63 / CF-815; CF-SPEC-66 / CF-856; CF-SPEC-70 / CF-899; CF-SPEC-90 / CF-1142
 - Inventory source: `docs/features/inventory.json`
 
 ## When To Update

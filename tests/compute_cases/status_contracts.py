@@ -85,3 +85,55 @@ def test_configured_local_endpoint_collapses_with_current_lan_alias(monkeypatch)
     assert stats["nodes"][0]["node_id"] == "local-configured"
     assert stats["nodes"][0]["readiness_state"] == "no_model_loaded"
     assert "qwen3" in stats["available_models"]
+
+
+def test_configured_local_lan_endpoint_collapses_stale_network_alias(monkeypatch):
+    import app.core.compute_registry_helpers as compute_registry_helpers
+
+    monkeypatch.setattr(
+        compute_registry_helpers,
+        "_local_machine_aliases",
+        lambda: {"localhost", "127.0.0.1"},
+    )
+    registry = ComputeRegistry()
+    registry.register_node(
+        ComputeNode(
+            node_id="local-configured",
+            name="Local LM Studio",
+            host="http://192.0.2.142:1234",
+            source="local",
+            provider_type="lmstudio",
+            is_healthy=False,
+            health_state="no_model_loaded",
+            ram_total_gb=36.0,
+            ram_available_gb=23.2,
+            cpu_cores=16,
+            model_capabilities={"qwen3": {"supports_tools": True, "is_loaded": False}},
+        )
+    )
+    registry.register_node(
+        ComputeNode(
+            node_id="network-stale",
+            name="Network LM Studio",
+            host="http://192.0.2.215:1234",
+            source="network",
+            provider_type="lmstudio",
+            is_healthy=False,
+            health_state="no_model_loaded",
+            ram_total_gb=36.0,
+            ram_available_gb=22.8,
+            cpu_cores=16,
+            model_capabilities={"qwen3": {"supports_vision": True, "is_loaded": False}},
+        )
+    )
+
+    stats = registry.get_stats()
+
+    assert list(registry._nodes) == ["local-configured"]
+    assert stats["total_nodes"] == 1
+    assert stats["hardware_node_count"] == 1
+    assert stats["total_ram_gb"] == 36.0
+    assert stats["available_ram_gb"] == 23.2
+    assert stats["nodes"][0]["node_id"] == "local-configured"
+    assert stats["nodes"][0]["model_capabilities"]["qwen3"]["supports_tools"] is True
+    assert stats["nodes"][0]["model_capabilities"]["qwen3"]["supports_vision"] is True

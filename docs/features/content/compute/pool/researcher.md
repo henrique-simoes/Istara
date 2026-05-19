@@ -10,14 +10,14 @@ code_references: ["frontend/src/components/common/ComputePoolView.tsx", "backend
 api_references: ["backend/app/api/routes/compute.py"]
 test_references: ["tests/test_compute.py", "tests/compute_cases/status_contracts.py", "tests/compute_cases/stats_websocket.py", "tests/test_compute_registry_model_loading.py", "tests/test_compute_registry_hardening.py", "tests/test_network_discovery.py", "tests/test_project_rbac.py", "tests/test_project_scope_contracts.py"]
 last_verified: 2026-05-19
-compass: CF-SPEC-60 / CF-774; CF-SPEC-66 / CF-856; CF-SPEC-70 / CF-899
+compass: CF-SPEC-60 / CF-774; CF-SPEC-66 / CF-856; CF-SPEC-70 / CF-899; CF-SPEC-90 / CF-1142
 ---
 
 # Compute Pool
 
 ## What It Does
 
-Compute Pool provides active-project visibility into available compute nodes, routing, and local or pooled execution capacity. If one physical Mac is reachable through more than one local network address, Istara treats those aliases as one machine for the Total RAM, CPU, and connected-node display. A reachable LM Studio server can show as online even when no model is currently loaded; in that state it is visible for capacity and model availability, but not counted as ready for chat routing. Donated compute can only receive project prompts or embeddings for projects included in its authorized donation scope, and browser/JWT donation scope follows the donor's current database role and project memberships rather than old token claims. Donated nodes outside the active project do not appear in project pool status for any role.
+Compute Pool provides active-project visibility into available compute nodes, routing, and local or pooled execution capacity. If one physical Mac is reachable through more than one local network address, Istara treats those aliases as one machine for the Total RAM, CPU, and connected-node display, including stale LAN aliases for the same configured local LLM service when hardware or model evidence matches. A reachable LM Studio server can show as online even when no model is currently loaded; in that state it is visible for capacity and model availability, but not counted as ready for chat routing. Donated compute can only receive project prompts or embeddings for projects included in its authorized donation scope, and browser/JWT donation scope follows the donor's current database role and project memberships rather than old token claims. Donated nodes outside the active project do not appear in project pool status for any role.
 
 ## Why It Exists
 

@@ -263,7 +263,7 @@
 <li>The feature is mounted through <code>frontend/src/components/common/ComputePoolView.tsx</code> and the UI navigation path recorded in the inventory.</li>
 <li>Model chips are rendered from both advertised loaded models and cached model capability records, so capability-only models remain visible in the pool UI.</li>
 <li>Node payloads expose <code>is_reachable</code>, <code>is_ready</code>, <code>readiness_state</code>, and <code>reachable_nodes</code> so UI labels can distinguish online/no-model-loaded from offline/unreachable without changing the conservative routing meaning of <code>alive_nodes</code>.</li>
-<li>Compute registry identity uses passive local OS interface aliases and the configured local provider source to collapse duplicate local endpoints without silently merging unrelated remote machines that happen to expose the same model catalog.</li>
+<li>Compute registry identity uses passive local OS interface aliases and the configured local provider source to collapse duplicate local endpoints without silently merging unrelated remote machines that happen to expose the same model catalog. When a configured local LAN endpoint and a network-discovered endpoint have different IPs but the same provider, port, path, and matching hardware or model evidence, the registry treats the network entry as a stale alias of the configured local service.</li>
 <li>Node readiness derives from explicit readiness state before legacy health booleans, so a stale <code>is_healthy</code> flag cannot make <code>no_model_loaded</code> look routable.</li>
 <li>Network discovery excludes all known local interface aliases before probing the subnet, preventing the server from discovering itself through a second LAN address.</li>
 <li>Relay/browser donors carry <code>allowed_project_ids</code> resolved from either the authenticated user&#x27;s current database-backed role and project memberships or a validated compute-donation connection string. A bare network token can connect for status only, not receive project content.</li>
@@ -301,7 +301,7 @@
 </ul>
 <h2 id="compass-evidence">Compass Evidence</h2>
 <ul>
-<li>Spec/task: CF-SPEC-60 / CF-774; CF-SPEC-63 / CF-814; CF-SPEC-63 / CF-815; CF-SPEC-66 / CF-856; CF-SPEC-70 / CF-899</li>
+<li>Spec/task: CF-SPEC-60 / CF-774; CF-SPEC-63 / CF-814; CF-SPEC-63 / CF-815; CF-SPEC-66 / CF-856; CF-SPEC-70 / CF-899; CF-SPEC-90 / CF-1142</li>
 <li>Inventory source: <code>docs/features/inventory.json</code></li>
 </ul>
 <h2 id="when-to-update">When To Update</h2>

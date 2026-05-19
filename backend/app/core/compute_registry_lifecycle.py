@@ -8,6 +8,7 @@ import logging
 import time
 from collections.abc import AsyncGenerator
 from typing import Any
+from urllib.parse import urlparse
 
 import httpx
 
@@ -73,7 +74,12 @@ class ComputeRegistryLifecycleMixin:
             for existing_id, existing in list(self._nodes.items()):
                 if existing_id == node.node_id or not existing.host:
                     continue
-                if _server_endpoint_identity(existing.host, source=existing.source) != new_identity:
+                same_endpoint = (
+                    _server_endpoint_identity(existing.host, source=existing.source)
+                    == new_identity
+                    or self._looks_like_configured_local_alias(existing, node)
+                )
+                if not same_endpoint:
                     continue
                 if self._should_keep_duplicate_node(existing, node):
                     self._merge_duplicate_node(existing, node)
@@ -134,16 +140,112 @@ class ComputeRegistryLifecycleMixin:
         return existing.priority <= incoming.priority
 
     @staticmethod
+    def _endpoint_parts(node: ComputeNode) -> tuple[str, int | None, str] | None:
+        host = getattr(node, "host", "") or ""
+        if not host:
+            return None
+        parsed = urlparse(host if "://" in host else f"http://{host}")
+        path = parsed.path.rstrip("/")
+        if path == "/v1":
+            path = ""
+        return ((parsed.scheme or "http").lower(), parsed.port, path)
+
+    @staticmethod
+    def _endpoint_hostname(node: ComputeNode) -> str:
+        host = getattr(node, "host", "") or ""
+        parsed = urlparse(host if "://" in host else f"http://{host}")
+        return (parsed.hostname or "").strip().lower()
+
+    @staticmethod
+    def _is_loopback_hostname(hostname: str) -> bool:
+        return hostname in {"", "localhost", "127.0.0.1", "::1", "0.0.0.0"}
+
+    @staticmethod
+    def _duplicate_model_names(node: ComputeNode) -> set[str]:
+        names = set()
+        for name in getattr(node, "loaded_models", []) or []:
+            text = str(name).strip()
+            if text:
+                names.add(text)
+        for name in getattr(node, "model_capabilities", {}) or {}:
+            text = str(name).strip()
+            if text:
+                names.add(text)
+        return names
+
+    @classmethod
+    def _duplicate_evidence_matches(
+        cls,
+        existing: ComputeNode,
+        incoming: ComputeNode,
+    ) -> bool:
+        ram_left = float(getattr(existing, "ram_total_gb", 0) or 0)
+        ram_right = float(getattr(incoming, "ram_total_gb", 0) or 0)
+        ram_evidence = bool(ram_left and ram_right)
+        if ram_evidence and abs(ram_left - ram_right) > 0.5:
+            return False
+
+        cpu_left = float(getattr(existing, "cpu_cores", 0) or 0)
+        cpu_right = float(getattr(incoming, "cpu_cores", 0) or 0)
+        if cpu_left and cpu_right and cpu_left != cpu_right:
+            return False
+
+        existing_models = cls._duplicate_model_names(existing)
+        incoming_models = cls._duplicate_model_names(incoming)
+        if existing_models and incoming_models:
+            if existing_models.isdisjoint(incoming_models):
+                return False
+            return True
+        return ram_evidence
+
+    @classmethod
+    def _looks_like_configured_local_alias(
+        cls,
+        existing: ComputeNode,
+        incoming: ComputeNode,
+    ) -> bool:
+        """Detect a network-discovered alias of a configured local LAN endpoint.
+
+        OS interface aliases are the primary dedupe signal. This narrower
+        fallback covers the common DHCP/stale-address case where the configured
+        local LLM server is saved as one LAN IP while discovery finds the same
+        service through another LAN IP.
+        """
+        sources = {getattr(existing, "source", ""), getattr(incoming, "source", "")}
+        if sources != {"local", "network"}:
+            return False
+        local_node = existing if existing.source == "local" else incoming
+        network_node = incoming if local_node is existing else existing
+
+        local_host = cls._endpoint_hostname(local_node)
+        network_host = cls._endpoint_hostname(network_node)
+        if (
+            cls._is_loopback_hostname(local_host)
+            or cls._is_loopback_hostname(network_host)
+            or local_host == network_host
+        ):
+            return False
+        if cls._endpoint_parts(local_node) != cls._endpoint_parts(network_node):
+            return False
+        if getattr(local_node, "provider_type", "") != getattr(network_node, "provider_type", ""):
+            return False
+        return cls._duplicate_evidence_matches(local_node, network_node)
+
+    @staticmethod
     def _merge_duplicate_node(target: ComputeNode, incoming: ComputeNode) -> None:
         """Preserve useful runtime metadata when duplicate endpoints collapse."""
         target.loaded_models = _unique_model_names(
             tuple(list(target.loaded_models or []) + list(incoming.loaded_models or []))
         )
         if incoming.model_capabilities:
-            target.model_capabilities = {
-                **incoming.model_capabilities,
-                **target.model_capabilities,
-            }
+            merged_capabilities = dict(target.model_capabilities)
+            for model_name, incoming_caps in incoming.model_capabilities.items():
+                target_caps = merged_capabilities.get(model_name)
+                if isinstance(target_caps, dict) and isinstance(incoming_caps, dict):
+                    merged_capabilities[model_name] = {**incoming_caps, **target_caps}
+                else:
+                    merged_capabilities.setdefault(model_name, incoming_caps)
+            target.model_capabilities = merged_capabilities
         if incoming.is_healthy and not target.is_healthy:
             target.is_healthy = True
             target.health_state = incoming.health_state
