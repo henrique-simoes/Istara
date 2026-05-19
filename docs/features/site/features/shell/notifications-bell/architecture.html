@@ -263,9 +263,10 @@
 <h2 id="architecture-notes">Architecture Notes</h2>
 <ul>
 <li>The feature is mounted through <code>frontend/src/components/layout/Sidebar.tsx</code> and the UI navigation path recorded in the inventory.</li>
-<li>Realtime websocket connections include the active <code>project_id</code>; project-tagged events are delivered only to clients connected to that same active project.</li>
+<li>Realtime websocket connections include the active <code>project_id</code>; the backend validates that subscription against project membership before accepting the connection.</li>
 <li>The bell passes the active project into unread-count polling and clears to zero when no project is selected instead of polling a global inbox.</li>
-<li>The websocket manager infers project scope from event data, A2A metadata, task ids, deployment ids, or channel instance ids before sending and before notification persistence.</li>
+<li>The websocket manager infers project scope from event data, A2A metadata, task ids, deployment ids, channel instance ids, or agent ids before sending and before notification persistence.</li>
+<li>Project-bound realtime event types without a resolvable project are dropped rather than delivered as global events.</li>
 <li>The frontmatter and manifest entries are the durable contract for agents updating this page after code changes.</li>
 <li>When the referenced component, store, route, agent, skill, or test behavior changes, regenerate and validate the feature documentation.</li>
 </ul>
@@ -277,6 +278,7 @@
 <ul>
 <li><code>tests/test_project_scope_contracts.py</code></li>
 <li><code>tests/test_notifications.py</code></li>
+<li><code>tests/test_websocket.py</code></li>
 </ul>
 <h2 id="related-features">Related Features</h2>
 <ul>
@@ -289,7 +291,7 @@
 </ul>
 <h2 id="compass-evidence">Compass Evidence</h2>
 <ul>
-<li>Spec/task: CF-SPEC-53 / CF-657; CF-SPEC-60 / CF-754; CF-SPEC-60 / CF-759</li>
+<li>Spec/task: CF-SPEC-53 / CF-657; CF-SPEC-60 / CF-754; CF-SPEC-60 / CF-759; CF-SPEC-60 / CF-776</li>
 <li>Inventory source: <code>docs/features/inventory.json</code></li>
 </ul>
 <h2 id="when-to-update">When To Update</h2>

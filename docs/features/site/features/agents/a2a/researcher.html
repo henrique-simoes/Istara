@@ -255,6 +255,7 @@
 <li>Open Agents &gt; A2A from the Istara navigation or the parent tab.</li>
 <li>Review only the agent messages connected to the active project context.</li>
 <li>If no active project is selected, the A2A log stays empty instead of falling back to a global message feed.</li>
+<li>A2A discovery also uses the active project, so agents from another project are not disclosed as a global catalog.</li>
 <li>Review the output in the same view and follow the related feature links when the workflow moves into another Istara surface.</li>
 </ul>
 <h2 id="supported-workflows">Supported Workflows</h2>
@@ -267,6 +268,7 @@
 <ul>
 <li>Project-scoped A2A messages associated with the active project.</li>
 <li>External A2A JSON-RPC task submissions must carry <code>project_id</code>, so submitted work is attached to a project before it can appear in Istara.</li>
+<li>Realtime A2A and agent-thinking updates must resolve to the same active project before they can appear in the shell.</li>
 <li>Visible status, lists, forms, generated artifacts, or review results shown by the referenced component and routes.</li>
 </ul>
 <h2 id="caveats">Caveats</h2>
@@ -285,9 +287,9 @@
 </ul>
 <h2 id="evidence">Evidence</h2>
 <ul>
-<li>Source files: <code>frontend/src/components/agents/AgentsView.tsx</code>, <code>frontend/src/stores/agentStore.ts</code>, <code>frontend/src/lib/api.ts</code>, <code>backend/app/api/routes/agents.py</code>, <code>backend/app/api/routes/a2a.py</code>, <code>backend/app/services/a2a.py</code></li>
-<li>API references: <code>backend/app/api/routes/agents.py</code>, <code>backend/app/api/routes/a2a.py</code></li>
-<li>Tests: <code>tests/test_agents.py</code></li>
+<li>Source files: <code>frontend/src/components/agents/AgentsView.tsx</code>, <code>frontend/src/stores/agentStore.ts</code>, <code>frontend/src/lib/api.ts</code>, <code>backend/app/api/routes/agents.py</code>, <code>backend/app/api/routes/a2a.py</code>, <code>backend/app/api/websocket.py</code>, <code>backend/app/services/a2a.py</code></li>
+<li>API references: <code>backend/app/api/routes/agents.py</code>, <code>backend/app/api/routes/a2a.py</code>, <code>backend/app/api/websocket.py</code></li>
+<li>Tests: <code>tests/test_agents.py</code>, <code>tests/test_a2a_security.py</code>, <code>tests/test_websocket.py</code></li>
 </ul>
         </article>
         <aside class="toc-panel" aria-label="Page sections">

@@ -89,10 +89,12 @@ Loop health, schedule, agent-loop, and execution-history views are treated as
 project-content surfaces: non-admin users must supply an authorized active
 project before seeing background process state or mutating recurring work.
 Agent registry, heartbeat, detail, identity, memory, recent-log, prompt
-diagnostic, and A2A message views are also project-content surfaces: non-admin
-users must supply an authorized active project, project-scoped agents cannot be
-read from another project, and universal agent runtime memory/current-task state
-is redacted in project views unless a global admin is using an admin surface.
+diagnostic, A2A message views, A2A JSON-RPC discovery, and realtime agent
+events are also project-content surfaces: non-admin users must supply an
+authorized active project, project-scoped agents cannot be read from another
+project, universal agent runtime memory/current-task state is redacted in
+project views unless a global admin is using an admin surface, and malformed
+project-bound websocket events must not fall back to global delivery.
 Governed Evolution, DGM-H archive, and ReasoningBank review surfaces are also
 project-content surfaces: proposal/archive/reasoning lists and mutation actions
 must carry an explicit `project_id`, bind record ids back to that project, and

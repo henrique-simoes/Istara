@@ -12,7 +12,7 @@ from app.core.auth import create_token
 from app.api.routes.a2a import _a2a_rate_limiter, _a2a_replay_cache, _a2a_tasks_send_rate_limiter
 from app.main import app
 from app.core.audit_middleware import AuditLog
-from app.models.agent import A2AMessage
+from app.models.agent import A2AMessage, Agent
 from app.models.database import async_session, init_db
 from app.models.project import Project
 from app.models.project_member import ProjectMember
@@ -315,3 +315,90 @@ async def test_a2a_tasks_send_has_dedicated_rate_limit():
     assert first.status_code == 200
     assert second.status_code == 429
     assert second.json()["error"]["message"] == "A2A tasks/send rate limit exceeded."
+
+
+@pytest.mark.asyncio
+async def test_a2a_agent_discover_requires_authorized_project_scope():
+    """A2A discovery must not expose project agents as a global catalog."""
+    await init_db()
+    settings.team_mode = True
+    if not settings.jwt_secret:
+        settings.jwt_secret = "test-secret"
+    token = create_token("researcher-a2a", "researcher", "researcher")
+    project_id = await _seed_a2a_project()
+    hidden_project_id = await _seed_a2a_project(user_id=f"other-{uuid.uuid4()}")
+    visible_agent_id = f"visible-agent-{uuid.uuid4()}"
+    hidden_agent_id = f"hidden-agent-{uuid.uuid4()}"
+    universal_agent_id = f"universal-agent-{uuid.uuid4()}"
+
+    async with async_session() as db:
+        db.add_all(
+            [
+                Agent(
+                    id=visible_agent_id,
+                    name="Visible project agent",
+                    scope="project",
+                    project_id=project_id,
+                    current_task="visible work",
+                    memory='{"note":"visible"}',
+                ),
+                Agent(
+                    id=hidden_agent_id,
+                    name="Hidden project agent",
+                    scope="project",
+                    project_id=hidden_project_id,
+                    current_task="hidden work",
+                    memory='{"note":"hidden"}',
+                ),
+                Agent(
+                    id=universal_agent_id,
+                    name="Universal support agent",
+                    scope="universal",
+                    project_id="",
+                    current_task="system diagnostics",
+                    memory='{"note":"system"}',
+                ),
+            ]
+        )
+        await db.commit()
+
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        missing_scope = await ac.post(
+            "/a2a",
+            headers={"Authorization": f"Bearer {token}"},
+            json={"jsonrpc": "2.0", "method": "agent/discover", "params": {}, "id": "discover-missing"},
+        )
+        hidden_scope = await ac.post(
+            "/a2a",
+            headers={"Authorization": f"Bearer {token}"},
+            json={
+                "jsonrpc": "2.0",
+                "method": "agent/discover",
+                "params": {"project_id": hidden_project_id},
+                "id": "discover-hidden",
+            },
+        )
+        visible_scope = await ac.post(
+            "/a2a",
+            headers={"Authorization": f"Bearer {token}"},
+            json={
+                "jsonrpc": "2.0",
+                "method": "agent/discover",
+                "params": {"project_id": project_id},
+                "id": "discover-visible",
+            },
+        )
+
+    assert missing_scope.status_code == 400
+    assert missing_scope.json()["error"]["message"] == "project_id is required for A2A agent/discover."
+    assert hidden_scope.status_code == 404
+
+    assert visible_scope.status_code == 200
+    agents = visible_scope.json()["result"]["agents"]
+    by_id = {agent["id"]: agent for agent in agents}
+    assert visible_agent_id in by_id
+    assert universal_agent_id in by_id
+    assert hidden_agent_id not in by_id
+    assert by_id[universal_agent_id]["current_task"] == ""
+    assert by_id[universal_agent_id]["memory"] == {}

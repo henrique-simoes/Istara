@@ -1,8 +1,15 @@
 """WebSocket flow tests — verify auth, connection, and event structure."""
 
+import json
+import uuid
+
 import pytest
 from app.config import settings
 from app.core.auth import create_token
+from app.models.agent import Agent
+from app.models.database import async_session, init_db
+from app.models.project import Project
+from app.models.project_member import ProjectMember
 
 
 @pytest.fixture(autouse=True)
@@ -80,3 +87,84 @@ def test_websocket_auth_url_pattern():
     ws_url = f"ws://localhost:8000/ws/agent?token={token}"
     assert "?token=" in ws_url
     assert token in ws_url
+
+
+@pytest.mark.asyncio
+async def test_websocket_project_subscription_requires_membership():
+    """Project websocket subscriptions must be authorized before connection accept."""
+    await init_db()
+    settings.team_mode = True
+    visible_project_id = f"ws-visible-{uuid.uuid4()}"
+    hidden_project_id = f"ws-hidden-{uuid.uuid4()}"
+    user_id = f"ws-user-{uuid.uuid4()}"
+
+    async with async_session() as db:
+        db.add_all(
+            [
+                Project(id=visible_project_id, name="Visible websocket project"),
+                Project(id=hidden_project_id, name="Hidden websocket project"),
+                ProjectMember(
+                    id=str(uuid.uuid4()),
+                    project_id=visible_project_id,
+                    user_id=user_id,
+                    role="viewer",
+                    added_by="test",
+                ),
+            ]
+        )
+        await db.commit()
+
+        from app.api.websocket import _can_subscribe_to_project
+
+        user_context = {"id": user_id, "username": "researcher", "role": "researcher"}
+        admin_context = {"id": "admin", "username": "admin", "role": "admin"}
+
+        assert await _can_subscribe_to_project(db, user_context, visible_project_id) is True
+        assert await _can_subscribe_to_project(db, user_context, hidden_project_id) is False
+        assert await _can_subscribe_to_project(db, admin_context, hidden_project_id) is True
+
+
+@pytest.mark.asyncio
+async def test_websocket_resolves_project_from_agent_id():
+    """Agent realtime events inherit the owning project before fan-out."""
+    await init_db()
+    project_id = f"ws-agent-project-{uuid.uuid4()}"
+    agent_id = f"ws-agent-{uuid.uuid4()}"
+
+    async with async_session() as db:
+        db.add(Project(id=project_id, name="Websocket agent project"))
+        db.add(Agent(id=agent_id, name="Realtime Agent", scope="project", project_id=project_id))
+        await db.commit()
+
+    from app.api.websocket import ConnectionManager
+
+    manager = ConnectionManager()
+    resolved = await manager._resolve_project_id({"agent_id": agent_id, "thought": "project work"})
+
+    assert resolved == project_id
+
+
+@pytest.mark.asyncio
+async def test_project_bound_websocket_events_without_scope_are_not_broadcast():
+    """Malformed project-content events must not fall back to global broadcast."""
+    from app.api.websocket import ConnectionManager
+
+    class FakeWebSocket:
+        def __init__(self) -> None:
+            self.sent: list[dict] = []
+
+        async def send_text(self, message: str) -> None:
+            self.sent.append(json.loads(message))
+
+    project_ws = FakeWebSocket()
+    global_ws = FakeWebSocket()
+    manager = ConnectionManager()
+    manager._connections = [
+        {"websocket": project_ws, "user_context": {"id": "u1"}, "active_project_id": "project-a"},
+        {"websocket": global_ws, "user_context": {"id": "admin"}, "active_project_id": None},
+    ]
+
+    await manager.broadcast("agent_thinking", {"agent_id": "missing-agent", "thought": "hidden"})
+
+    assert project_ws.sent == []
+    assert global_ws.sent == []

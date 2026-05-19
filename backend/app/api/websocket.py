@@ -13,6 +13,57 @@ from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 logger = logging.getLogger(__name__)
 router = APIRouter()
 
+PROJECT_BOUND_EVENT_TYPES = frozenset(
+    {
+        "a2a_message",
+        "agent_thinking",
+        "agent_idle",
+        "channel_message",
+        "channel_status",
+        "deployment_finding",
+        "deployment_progress",
+        "deployment_response",
+        "document_created",
+        "document_deleted",
+        "document_updated",
+        "file_processed",
+        "finding_created",
+        "meta_proposal",
+        "plan_progress",
+        "steering_message",
+        "suggestion",
+        "task_progress",
+        "task_queue_update",
+        "autoresearch_complete",
+        "autoresearch_progress",
+    }
+)
+
+
+def _clean_project_id(value: str | None) -> str | None:
+    cleaned = (value or "").strip()
+    return cleaned or None
+
+
+async def _can_subscribe_to_project(db: Any, user_context: dict, project_id: str | None) -> bool:
+    """Return whether a websocket client may subscribe to a project stream."""
+    if not project_id:
+        return True
+
+    from app.config import settings
+
+    if not settings.team_mode:
+        return True
+    if str(user_context.get("role") or "") == "admin":
+        return True
+
+    from app.core.permissions import get_project_role, project_role_rank
+
+    role = await get_project_role(db, project_id, str(user_context.get("id") or ""))
+    if role is None:
+        return False
+    return project_role_rank(role) >= project_role_rank("viewer")
+
 
 class ConnectionManager:
     """Manage active WebSocket connections."""
@@ -63,32 +114,48 @@ class ConnectionManager:
         try:
             from app.models.database import async_session
 
-            task_id = data.get("task_id") or data.get("taskId")
-            if isinstance(task_id, str) and task_id:
-                from app.models.task import Task
+            async with async_session() as db:
+                task_id = data.get("task_id") or data.get("taskId")
+                if isinstance(task_id, str) and task_id:
+                    from app.models.task import Task
 
-                async with async_session() as db:
                     task = await db.get(Task, task_id)
                     if task and task.project_id:
                         return str(task.project_id)
 
-            deployment_id = data.get("deployment_id") or data.get("deploymentId")
-            if isinstance(deployment_id, str) and deployment_id:
-                from app.models.research_deployment import ResearchDeployment
+                deployment_id = data.get("deployment_id") or data.get("deploymentId")
+                if isinstance(deployment_id, str) and deployment_id:
+                    from app.models.research_deployment import ResearchDeployment
 
-                async with async_session() as db:
                     deployment = await db.get(ResearchDeployment, deployment_id)
                     if deployment and deployment.project_id:
                         return str(deployment.project_id)
 
-            instance_id = data.get("instance_id") or data.get("instanceId")
-            if isinstance(instance_id, str) and instance_id:
-                from app.models.channel_instance import ChannelInstance
+                instance_id = data.get("instance_id") or data.get("instanceId")
+                if isinstance(instance_id, str) and instance_id:
+                    from app.models.channel_instance import ChannelInstance
 
-                async with async_session() as db:
                     instance = await db.get(ChannelInstance, instance_id)
                     if instance and instance.project_id:
                         return str(instance.project_id)
+
+                from app.models.agent import Agent
+
+                for agent_key in (
+                    "agent_id",
+                    "agentId",
+                    "from_agent_id",
+                    "fromAgentId",
+                    "to_agent_id",
+                    "toAgentId",
+                ):
+                    agent_id = data.get(agent_key)
+                    if not isinstance(agent_id, str) or not agent_id:
+                        continue
+                    agent = await db.get(Agent, agent_id)
+                    agent_project_id = _clean_project_id(agent.project_id if agent else None)
+                    if agent_project_id:
+                        return agent_project_id
         except Exception:
             return None
         return None
@@ -104,6 +171,12 @@ class ConnectionManager:
         project_id = await self._resolve_project_id(data)
         if project_id and not self._project_id_from_data(data):
             data = {**data, "project_id": project_id}
+        elif not project_id and event_type in PROJECT_BOUND_EVENT_TYPES:
+            logger.warning(
+                "Dropping project-bound websocket event without resolvable project_id: %s",
+                event_type,
+            )
+            return
         message = json.dumps({
             "type": event_type,
             "data": data,
@@ -179,7 +252,7 @@ async def websocket_endpoint(websocket: WebSocket):
             token = auth_header[7:]
     if token:
         from app.core.auth import verify_token
-        from app.core.auth_sessions import validate_auth_session
+        from app.core.auth_sessions import current_user_context_for_payload, validate_auth_session
         from app.models.database import async_session
 
         payload = verify_token(token)
@@ -193,16 +266,23 @@ async def websocket_endpoint(websocket: WebSocket):
                     reason="Invalid or revoked authentication session",
                 )
                 return
+            user_context = await current_user_context_for_payload(db, payload)
+            if not user_context:
+                await websocket.close(code=4001, reason="Authenticated user no longer exists")
+                return
+            active_project_id = _clean_project_id(websocket.query_params.get("project_id"))
+            if not await _can_subscribe_to_project(db, user_context, active_project_id):
+                await websocket.close(code=4003, reason="Project access denied")
+                return
     else:
         await websocket.close(code=4001, reason="Authentication required. Pass ?token=<jwt>")
         return
 
     # Token is valid — now accept and register the connection
-    active_project_id = websocket.query_params.get("project_id")
     await manager.connect(
         websocket,
-        user_context=payload,
-        active_project_id=active_project_id.strip() if active_project_id else None,
+        user_context=user_context,
+        active_project_id=active_project_id,
     )
 
     try:

@@ -61,7 +61,7 @@ export function useWebSocket(onEvent?: (event: WSEvent) => void) {
       setConnected(false);
       const reason = event.reason || (event.code ? `Closed with code ${event.code}` : "");
       setLastCloseReason(reason);
-      if (event.code === 4001) {
+      if (event.code === 4001 || event.code === 4003) {
         setStatus("auth_failed");
         console.log(`[Istara WS] Authentication failed. Retrying in 3s. ${reason}`);
         reconnectTimer.current = setTimeout(connect, 3000);

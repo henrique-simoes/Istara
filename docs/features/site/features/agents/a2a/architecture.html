@@ -249,6 +249,7 @@
 <li><code>frontend/src/lib/api.ts</code></li>
 <li><code>backend/app/api/routes/agents.py</code></li>
 <li><code>backend/app/api/routes/a2a.py</code></li>
+<li><code>backend/app/api/websocket.py</code></li>
 <li><code>backend/app/services/a2a.py</code></li>
 </ul>
 <h2 id="state-api-and-backend-contracts">State, API, And Backend Contracts</h2>
@@ -261,6 +262,7 @@
 <li><code>frontend/src/lib/api.ts</code></li>
 <li><code>backend/app/api/routes/agents.py</code></li>
 <li><code>backend/app/api/routes/a2a.py</code></li>
+<li><code>backend/app/api/websocket.py</code></li>
 <li><code>backend/app/services/a2a.py</code></li>
 </ul>
 <h2 id="architecture-notes">Architecture Notes</h2>
@@ -268,8 +270,9 @@
 <li>The feature is mounted through <code>frontend/src/components/agents/AgentsView.tsx</code> and the UI navigation path recorded in the inventory.</li>
 <li>Project views pass the active <code>project_id</code> into <code>/api/agents/a2a/log</code>; the backend requires that scope and only returns messages tagged with that project or messages that can be traced to a task in that project.</li>
 <li>Direct <code>/api/agents/{agent_id}/messages</code> reads and writes also validate that the source and destination agents are visible in the supplied project before returning or persisting A2A records.</li>
-<li>Public A2A JSON-RPC <code>tasks/send</code>, <code>tasks/get</code>, and <code>tasks/list</code> also require <code>project_id</code> and enforce project authorization before project-content messages are persisted or listed.</li>
+<li>Public A2A JSON-RPC <code>tasks/send</code>, <code>tasks/get</code>, <code>tasks/list</code>, and <code>agent/discover</code> also require <code>project_id</code> and enforce project authorization before project-content messages or agent catalogs are persisted, listed, or disclosed.</li>
 <li>Project A2A messages are broadcast with project metadata so realtime clients connected to another active project do not receive them.</li>
+<li>Agent realtime events resolve project scope from agent ids before delivery, and malformed project-bound events are dropped instead of falling back to global delivery.</li>
 <li>The frontmatter and manifest entries are the durable contract for agents updating this page after code changes.</li>
 <li>When the referenced component, store, route, agent, skill, or test behavior changes, regenerate and validate the feature documentation.</li>
 </ul>
@@ -279,7 +282,7 @@
 </ul>
 <h2 id="tests-and-verification">Tests And Verification</h2>
 <ul>
-<li><code>tests/test_agents.py</code> and <code>tests/test_a2a_security.py</code> verify that project-scoped A2A logs exclude unrelated project/global messages and that JSON-RPC task writes cannot be created without a project scope.</li>
+<li><code>tests/test_agents.py</code>, <code>tests/test_a2a_security.py</code>, and <code>tests/test_websocket.py</code> verify that project-scoped A2A logs exclude unrelated project/global messages, JSON-RPC task writes and discovery cannot proceed without project scope, and realtime delivery resolves agent-owned project ids.</li>
 </ul>
 <h2 id="related-features">Related Features</h2>
 <ul>
@@ -292,7 +295,7 @@
 </ul>
 <h2 id="compass-evidence">Compass Evidence</h2>
 <ul>
-<li>Spec/task: CF-SPEC-56 / CF-698</li>
+<li>Spec/task: CF-SPEC-56 / CF-698; CF-SPEC-60 / CF-776</li>
 <li>Inventory source: <code>docs/features/inventory.json</code></li>
 </ul>
 <h2 id="when-to-update">When To Update</h2>
