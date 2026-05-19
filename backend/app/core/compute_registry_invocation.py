@@ -42,7 +42,7 @@ logger = logging.getLogger("app.core.compute_registry")
 def _hardware_resource_key(node: ComputeNode) -> tuple[str, str]:
     host = getattr(node, "host", "") or getattr(node, "provider_host", "") or ""
     if host:
-        _, hostname, _, _ = _server_endpoint_identity(host)
+        _, hostname, _, _ = _server_endpoint_identity(host, source=getattr(node, "source", ""))
         if hostname == "local":
             return ("machine", "local")
         return ("machine", hostname)
@@ -79,9 +79,27 @@ def _endpoint_resource_key(node: ComputeNode) -> tuple:
         return (
             "endpoint",
             getattr(node, "provider_type", ""),
-            *_server_endpoint_identity(host),
+            *_server_endpoint_identity(host, source=getattr(node, "source", "")),
         )
     return ("node", getattr(node, "node_id", ""))
+
+
+def _node_readiness_rank(node: ComputeNode) -> int:
+    state = (getattr(node, "health_state", "") or "unknown").strip()
+    if getattr(node, "is_healthy", False) and state not in {
+        "auth_required",
+        "cooldown",
+        "no_model_loaded",
+        "no_model_server",
+        "timeout",
+        "unreachable",
+    }:
+        return 3
+    if state in {"ready", "degraded", "slow"}:
+        return 2
+    if state in {"no_model_loaded", "auth_required"}:
+        return 1
+    return 0
 
 
 def _source_snapshot_rank(node: ComputeNode) -> int:
@@ -96,6 +114,10 @@ def _source_snapshot_rank(node: ComputeNode) -> int:
 
 
 def _prefer_node_snapshot(current: ComputeNode, candidate: ComputeNode) -> ComputeNode:
+    candidate_readiness = _node_readiness_rank(candidate)
+    current_readiness = _node_readiness_rank(current)
+    if candidate_readiness != current_readiness:
+        return candidate if candidate_readiness > current_readiness else current
     candidate_source_rank = _source_snapshot_rank(candidate)
     current_source_rank = _source_snapshot_rank(current)
     if candidate_source_rank != current_source_rank:
@@ -1005,7 +1027,7 @@ class ComputeRegistryInvocationMixin:
             _hydrate_local_resources(node)
         logical_nodes = _unique_endpoint_nodes(registry_nodes)
         nodes = [n.to_dict() for n in logical_nodes]
-        alive = sum(1 for n in logical_nodes if n.is_healthy)
+        alive = sum(1 for n in nodes if n.get("is_ready"))
         reachable = sum(1 for n in nodes if n.get("is_reachable"))
         all_models: set[str] = set()
         for n in logical_nodes:

@@ -36,6 +36,7 @@ interface ComputeNode {
   source?: "local" | "network" | "relay" | "browser";
   host?: string;
   health_error?: string;
+  health_state?: string;
   serving_state?: string;
   readiness_state?: string;
   capability_probe_status?: "available" | "unavailable" | "not_applicable";

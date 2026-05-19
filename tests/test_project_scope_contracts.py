@@ -475,6 +475,9 @@ def test_compute_pool_requires_active_project_scope() -> None:
 
     assert "fetchStats(activeProjectId)" in view
     assert "computeApi.modelWarnings(activeProjectId)" in view
+    assert "node.health_state || node.state" in view
+    assert "NOT_READY_NODE_STATES.has(readinessState)" in view
+    assert "node.is_healthy && (!readinessState || READY_NODE_STATES.has(readinessState))" in view
 
     assert "def _require_project_id(project_id: str | None) -> str:" in route
     assert 'raise HTTPException(status_code=400, detail="project_id is required")' in route

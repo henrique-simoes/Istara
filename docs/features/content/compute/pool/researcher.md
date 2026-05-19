@@ -8,9 +8,9 @@ related_features: ["settings.compute-donation", "settings.general"]
 related_glossary: ["rag"]
 code_references: ["frontend/src/components/common/ComputePoolView.tsx", "backend/app/api/routes/compute.py", "backend/app/core/compute_pool.py", "backend/app/core/compute_registry_routing.py"]
 api_references: ["backend/app/api/routes/compute.py"]
-test_references: ["tests/test_compute.py", "tests/test_compute_registry_model_loading.py", "tests/test_compute_registry_hardening.py", "tests/test_network_discovery.py", "tests/test_project_rbac.py"]
+test_references: ["tests/test_compute.py", "tests/compute_cases/status_contracts.py", "tests/test_compute_registry_model_loading.py", "tests/test_compute_registry_hardening.py", "tests/test_network_discovery.py", "tests/test_project_rbac.py"]
 last_verified: 2026-05-19
-compass: CF-SPEC-60 / CF-774
+compass: CF-SPEC-60 / CF-774; CF-SPEC-66 / CF-856
 ---
 
 # Compute Pool
@@ -50,7 +50,7 @@ Compute Pool exists so the work represented by Compute Pool has a stable, discov
 - Project-scoped state or artifact updates associated with compute pool.
 - Visible status, lists, forms, generated artifacts, or review results shown by the referenced component and routes.
 - RAM and CPU totals reflect unique physical hardware, not every IP address or provider process registered in the pool.
-- Servers with no loaded model remain online when reachable and show their loadable model capabilities, but continue to score as not ready until a model is loaded.
+- Servers with no loaded model remain online when reachable and show their loadable model capabilities, but continue to score as not ready until a model is loaded, even if an older health flag has not caught up yet.
 - Relay/browser donors without a validated project scope are status-only and cannot receive project chat, task, report, integration, or embedding payloads.
 
 ## Caveats
@@ -71,4 +71,4 @@ Compute Pool exists so the work represented by Compute Pool has a stable, discov
 
 - Source files: `frontend/src/components/common/ComputePoolView.tsx`, `backend/app/api/routes/compute.py`, `backend/app/core/compute_pool.py`
 - API references: `backend/app/api/routes/compute.py`
-- Tests: `tests/test_compute.py`, `tests/test_compute_registry_model_loading.py`, `tests/test_compute_registry_hardening.py`, `tests/test_network_discovery.py`, `tests/test_project_rbac.py`
+- Tests: `tests/test_compute.py`, `tests/compute_cases/status_contracts.py`, `tests/test_compute_registry_model_loading.py`, `tests/test_compute_registry_hardening.py`, `tests/test_network_discovery.py`, `tests/test_project_rbac.py`

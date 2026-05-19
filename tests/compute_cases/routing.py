@@ -214,6 +214,38 @@ def test_relay_candidates_require_matching_project_scope_for_project_content():
     assert "relay-unscoped" not in {node.node_id for node in project_candidates}
 
 
+def test_no_model_loaded_nodes_are_recovery_candidates_not_normal_candidates():
+    registry = ComputeRegistry()
+    reachable_without_model = ComputeNode(
+        node_id="lmstudio-no-model",
+        name="LM Studio No Model",
+        host="http://localhost:1234",
+        source="local",
+        provider_type="lmstudio",
+        is_healthy=True,
+        health_state="no_model_loaded",
+        model_capabilities={"qwen3": {"supports_tools": True, "is_loaded": False}},
+    )
+    ready = ComputeNode(
+        node_id="ready",
+        name="Ready",
+        host="http://localhost:1235",
+        source="local",
+        provider_type="lmstudio",
+        is_healthy=True,
+        health_state="ready",
+        loaded_models=["llama3"],
+    )
+    registry.register_node(reachable_without_model)
+    registry.register_node(ready)
+
+    normal_candidates = registry._select_candidates()
+    recovery_candidates = registry._select_candidates(include_unhealthy=True)
+
+    assert [node.node_id for node in normal_candidates] == ["ready"]
+    assert "lmstudio-no-model" in {node.node_id for node in recovery_candidates}
+
+
 def test_resolve_model_prefers_explicit_capability_over_advertised_fallback():
     node = ComputeNode(
         node_id="gemini",
