@@ -6,7 +6,7 @@ export interface VoiceRecorderHook {
   isTranscribing: boolean;
   error: string | null;
   startRecording: () => Promise<void>;
-  stopRecording: () => Promise<string | null>;
+  stopRecording: (projectId: string) => Promise<string | null>;
   cancelRecording: () => void;
 }
 
@@ -45,8 +45,20 @@ export function useVoiceRecorder(): VoiceRecorderHook {
     }
   }, []);
 
-  const stopRecording = useCallback(async (): Promise<string | null> => {
+  const stopRecording = useCallback(async (projectId: string): Promise<string | null> => {
     if (!mediaRecorderRef.current || !isRecording) return null;
+
+    const scopedProjectId = projectId.trim();
+    if (!scopedProjectId) {
+      setError("Select a project before transcribing audio.");
+      mediaRecorderRef.current.stream.getTracks().forEach(track => track.stop());
+      if (mediaRecorderRef.current.state !== "inactive") {
+        mediaRecorderRef.current.stop();
+      }
+      setIsRecording(false);
+      chunksRef.current = [];
+      return null;
+    }
 
     return new Promise((resolve) => {
       const recorder = mediaRecorderRef.current!;
@@ -60,7 +72,7 @@ export function useVoiceRecorder(): VoiceRecorderHook {
         const audioFile = new File([audioBlob], "voice_input.ogg", { type: recorder.mimeType });
 
         try {
-          const result = await chat.transcribeVoice(audioFile);
+          const result = await chat.transcribeVoice(audioFile, scopedProjectId);
           resolve(result.text);
         } catch (err: any) {
           console.error("Transcription failed:", err);

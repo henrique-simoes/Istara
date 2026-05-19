@@ -20,7 +20,7 @@ import uuid
 from datetime import datetime, timezone
 from pathlib import Path
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request, UploadFile, File
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, Request, UploadFile
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import select
@@ -35,7 +35,7 @@ from app.core.prompt_rag import compose_dynamic_prompt, compose_keyword_prompt
 from app.core.context_summarizer import context_summarizer
 from app.core.llm_thinking import ThinkingMode, apply_thinking_control, normalize_thinking_mode
 from app.core.ollama import ollama
-from app.core.permissions import get_subject, get_visible_project_or_404, require_project_access
+from app.core.permissions import get_visible_project_or_404, require_project_access
 from app.core.rag import build_augmented_prompt, retrieve_context
 from app.core.token_counter import context_guard
 from app.models.database import get_db, async_session
@@ -862,15 +862,20 @@ async def get_chat_history(
 async def transcribe_voice(
     request: Request,
     audio: UploadFile = File(...),
-    language: str | None = None,
+    project_id: str = Form(...),
+    language: str | None = Form(None),
+    db: AsyncSession = Depends(get_db),
 ):
     """Transcribe voice input from chat mic button.
 
     Accepts audio files (wav, mp3, ogg, m4a, flac) and returns
     transcribed text with ICR confidence scores.
     """
-    if settings.team_mode and get_subject(request).role == "viewer":
-        raise HTTPException(status_code=403, detail="Viewers cannot use chat voice transcription")
+    scoped_project_id = project_id.strip()
+    if not scoped_project_id:
+        raise HTTPException(status_code=400, detail="project_id is required")
+
+    await get_visible_project_or_404(db, request, scoped_project_id, min_role="researcher")
 
     try:
         # Save uploaded audio to temp file
@@ -913,11 +918,19 @@ class VoiceTranscribeRequest(BaseModel):
     project_id: str
     dummy: bool = False
 
+    @field_validator("project_id")
+    @classmethod
+    def normalize_project_id(cls, value: str) -> str:
+        project_id = value.strip()
+        if not project_id:
+            raise ValueError("project_id is required")
+        return project_id
+
 
 @router.post("/chat/voice-transcribe")
 async def voice_transcribe(request: VoiceTranscribeRequest, http_request: Request, db: AsyncSession = Depends(get_db)):
     """Voice transcription endpoint (Phase Alpha)."""
-    await require_project_access(db, http_request, request.project_id, min_role="researcher")
+    await get_visible_project_or_404(db, http_request, request.project_id, min_role="researcher")
     if request.dummy:
         return {"status": "success", "text": "Mock transcription"}
 

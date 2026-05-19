@@ -8,9 +8,9 @@ related_features: ["chat.sessions", "chat.model-controls", "chat.files", "chat.a
 related_glossary: ["rag", "mcp"]
 code_references: ["frontend/src/components/chat/ChatView.tsx", "frontend/src/stores/chatStore.ts", "frontend/src/stores/sessionStore.ts", "backend/app/api/routes/chat.py", "backend/app/api/routes/sessions.py"]
 api_references: ["backend/app/api/routes/chat.py", "backend/app/api/routes/sessions.py", "frontend/src/lib/chatApi.ts", "frontend/src/lib/sessionsApi.ts"]
-test_references: ["tests/test_chat.py", "tests/test_sessions.py", "tests/test_project_scope_contracts.py"]
+test_references: ["tests/test_chat.py", "tests/test_sessions.py", "tests/test_project_rbac.py", "tests/test_project_scope_contracts.py"]
 last_verified: 2026-05-19
-compass: CF-SPEC-84 / CF-1089
+compass: CF-SPEC-102 / CF-1295
 ---
 
 # Chat Workspace
@@ -35,6 +35,7 @@ Chat Workspace exists so the work represented by Chat has a stable, discoverable
 - Use the visible controls in this surface to work with chat workspace in the active project context.
 - Project switches clear the prior project's session history before the active project's chat loads.
 - Agent selection is project-bound: project-owned agents can only be attached to sessions in their own project, while universal Istara system agents remain available.
+- Voice input is submitted only for the active project and requires researcher-level project access before audio transcription starts.
 - Review the output in the same view and follow the related feature links when the workflow moves into another Istara surface.
 
 ## Supported Workflows
@@ -71,4 +72,4 @@ Chat Workspace exists so the work represented by Chat has a stable, discoverable
 
 - Source files: `frontend/src/components/chat/ChatView.tsx`, `frontend/src/stores/chatStore.ts`, `frontend/src/stores/sessionStore.ts`, `backend/app/api/routes/chat.py`, `backend/app/api/routes/sessions.py`
 - API references: `backend/app/api/routes/chat.py`, `backend/app/api/routes/sessions.py`, `frontend/src/lib/chatApi.ts`, `frontend/src/lib/sessionsApi.ts`
-- Tests: `tests/test_chat.py`, `tests/test_sessions.py`, `tests/test_project_scope_contracts.py`
+- Tests: `tests/test_chat.py`, `tests/test_sessions.py`, `tests/test_project_rbac.py`, `tests/test_project_scope_contracts.py`
