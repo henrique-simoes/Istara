@@ -919,6 +919,9 @@
       "evidence": [
         "backend/app/core/improvement_governance.py",
         "backend/app/api/routes/improvement_governance.py",
+        "backend/app/core/autoresearch_engine.py",
+        "backend/app/core/autoresearch_runners/__init__.py",
+        "backend/app/core/autoresearch_runners/question_bank.py",
         "backend/app/core/meta_hyperagent.py",
         "backend/app/api/routes/meta_hyperagent.py",
         "backend/app/core/agent_learning.py",
@@ -934,6 +937,7 @@
         "frontend/src/lib/dgmhArchiveApi.ts",
         "frontend/src/lib/api.ts",
         "tests/test_meta_hyperagent.py",
+        "tests/test_autoresearch.py",
         "tests/test_agent_learning_scope.py",
         "tests/test_project_scope_contracts.py",
         "tests/test_improvement_governance.py",
@@ -941,7 +945,7 @@
         "scripts/production_rehearsal.py"
       ],
       "future_change_trigger": true,
-      "notes": "Production self-evolution is allowed only as governed proposals with UI approval, evidence, metrics, rollback lineage, and explicit project scope for project-facing review surfaces, including Meta-Hyperagent observations, proposals, variants, governance sync, and self-evolution scan/promotion routes. Meta-Hyperagent tuning suggestions require active-project learning evidence, self-evolution candidate qualification never uses cross-project learning evidence, and project task learnings remain in project-scoped records instead of universal persona memory overlays."
+      "notes": "Production self-evolution is allowed only as governed proposals with UI approval, evidence, metrics, rollback lineage, and explicit project scope for project-facing review surfaces, including Meta-Hyperagent observations, proposals, variants, governance sync, and self-evolution scan/promotion routes. Autoresearch runner work inherits the active project before baseline measurement, and question-bank deployment targets must resolve by both deployment id and project id before LLM evaluation, mutation, or revert work. Meta-Hyperagent tuning suggestions require active-project learning evidence, self-evolution candidate qualification never uses cross-project learning evidence, and project task learnings remain in project-scoped records instead of universal persona memory overlays."
     },
     {
       "id": "AI-003",

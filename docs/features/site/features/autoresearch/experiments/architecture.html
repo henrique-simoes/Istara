@@ -246,6 +246,8 @@
 <ul>
 <li><code>frontend/src/components/autoresearch/AutoresearchView.tsx</code></li>
 <li><code>backend/app/core/autoresearch_engine.py</code></li>
+<li><code>backend/app/core/autoresearch_runners/__init__.py</code></li>
+<li><code>backend/app/core/autoresearch_runners/question_bank.py</code></li>
 </ul>
 <h2 id="state-api-and-backend-contracts">State, API, And Backend Contracts</h2>
 <h3 id="stores">Stores</h3>
@@ -258,6 +260,7 @@
 <li><code>backend/app/api/routes/autoresearch.py</code></li>
 <li>Experiment list, start, and stop routes require <code>project_id</code> and enforce project access. Autoresearch engine records and broadcasts the experiment project id, and experiment history filters by <code>AutoresearchExperiment.project_id</code>.</li>
 <li>Starting an experiment requires the requested project to be active and unpaused before the runner is constructed or scheduled. The engine records the active project owner for the whole run, including baseline measurement, and repeats the active-project check before baseline and iteration work so a paused or missing project cannot keep processing in the background.</li>
+<li>The engine binds the authorized project id into each loop runner before baseline measurement. Question-bank runners then load and update <code>ResearchDeployment</code> rows by both deployment id and that bound project id, so a stale deployment id from another project cannot be measured, mutated, reverted, or sent into LLM evaluation.</li>
 </ul>
 <h2 id="architecture-notes">Architecture Notes</h2>
 <ul>
@@ -273,7 +276,7 @@
 </ul>
 <h2 id="tests-and-verification">Tests And Verification</h2>
 <ul>
-<li><code>tests/test_autoresearch.py</code> verifies start/stop routing and project-scoped experiment behavior.</li>
+<li><code>tests/test_autoresearch.py</code> verifies start/stop routing, runner project binding, and project-scoped question-bank deployment behavior.</li>
 <li><code>tests/test_project_scope_contracts.py</code> verifies the frontend and backend keep experiment requests project-bound.</li>
 </ul>
 <h2 id="related-features">Related Features</h2>
@@ -287,7 +290,7 @@
 </ul>
 <h2 id="compass-evidence">Compass Evidence</h2>
 <ul>
-<li>Spec/task: CF-SPEC-60 / CF-754; CF-SPEC-68 / CF-870</li>
+<li>Spec/task: CF-SPEC-60 / CF-754; CF-SPEC-68 / CF-870; CF-SPEC-96 / CF-1226</li>
 <li>Inventory source: <code>docs/features/inventory.json</code></li>
 </ul>
 <h2 id="when-to-update">When To Update</h2>

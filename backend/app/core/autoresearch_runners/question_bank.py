@@ -91,7 +91,10 @@ class QuestionBankRunner(BaseLoopRunner):
 
         try:
             response = await llm_router.chat(
-                messages, temperature=0.7, max_tokens=1500
+                messages,
+                temperature=0.7,
+                max_tokens=1500,
+                project_id=self.require_project_id(),
             )
             content = response.get("message", {}).get("content", "").strip()
         except Exception as e:
@@ -149,15 +152,19 @@ class QuestionBankRunner(BaseLoopRunner):
     # ------------------------------------------------------------------
 
     async def _load_deployment(self, deployment_id: str):
-        """Load a ResearchDeployment by ID."""
+        """Load a ResearchDeployment by ID inside the bound project."""
         from sqlalchemy import select
 
         from app.models.database import async_session
         from app.models.research_deployment import ResearchDeployment
 
+        project_id = self.require_project_id()
         async with async_session() as db:
             result = await db.execute(
-                select(ResearchDeployment).where(ResearchDeployment.id == deployment_id)
+                select(ResearchDeployment).where(
+                    ResearchDeployment.id == deployment_id,
+                    ResearchDeployment.project_id == project_id,
+                )
             )
             deployment = result.scalar_one_or_none()
             if not deployment:
@@ -167,21 +174,26 @@ class QuestionBankRunner(BaseLoopRunner):
     async def _update_deployment(
         self, deployment_id: str, questions_json: str, config_json: str
     ) -> None:
-        """Update deployment questions and config in the database."""
+        """Update deployment questions and config only inside the bound project."""
         from sqlalchemy import select
 
         from app.models.database import async_session
         from app.models.research_deployment import ResearchDeployment
 
+        project_id = self.require_project_id()
         async with async_session() as db:
             result = await db.execute(
-                select(ResearchDeployment).where(ResearchDeployment.id == deployment_id)
+                select(ResearchDeployment).where(
+                    ResearchDeployment.id == deployment_id,
+                    ResearchDeployment.project_id == project_id,
+                )
             )
             deployment = result.scalar_one_or_none()
-            if deployment:
-                deployment.questions_json = questions_json
-                deployment.config_json = config_json
-                await db.commit()
+            if not deployment:
+                raise ValueError(f"Deployment not found: {deployment_id}")
+            deployment.questions_json = questions_json
+            deployment.config_json = config_json
+            await db.commit()
 
     async def _evaluate_questions(self, deployment_id: str) -> float:
         """Simulate a participant going through the question bank and score quality."""
@@ -218,7 +230,10 @@ class QuestionBankRunner(BaseLoopRunner):
 
         try:
             response = await llm_router.chat(
-                sim_messages, temperature=0.8, max_tokens=1500
+                sim_messages,
+                temperature=0.8,
+                max_tokens=1500,
+                project_id=self.require_project_id(),
             )
             participant_response = response.get("message", {}).get("content", "")
         except Exception as e:
@@ -262,7 +277,12 @@ class QuestionBankRunner(BaseLoopRunner):
         ]
 
         try:
-            response = await llm_router.chat(messages, temperature=0.1, max_tokens=10)
+            response = await llm_router.chat(
+                messages,
+                temperature=0.1,
+                max_tokens=10,
+                project_id=self.require_project_id(),
+            )
             score_text = response.get("message", {}).get("content", "").strip()
             for token in score_text.replace(",", ".").split():
                 try:

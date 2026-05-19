@@ -70,6 +70,10 @@ class AutoresearchEngine:
         if self._running:
             raise RuntimeError("Engine already running")
 
+        bind_project = getattr(runner, "bind_project", None)
+        if callable(bind_project):
+            bind_project(project_id)
+
         self._running = True
         self._active_project_id = project_id
         self._stop_requested = False
@@ -243,6 +247,8 @@ class AutoresearchEngine:
             self._running = False
             self._current_experiment = None
             self._active_project_id = None
+            if callable(bind_project):
+                bind_project("")
             # Release persona lock
             if runner.needs_persona_lock:
                 from app.core.agent_identity import release_persona_lock

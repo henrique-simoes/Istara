@@ -10,6 +10,17 @@ class BaseLoopRunner(ABC):
 
     loop_type: str = ""  # Override in subclass
     needs_persona_lock: bool = False  # True for loops that modify persona files
+    _active_project_id: str = ""
+
+    def bind_project(self, project_id: str) -> None:
+        """Bind runner work to the project that authorized the experiment."""
+        self._active_project_id = str(project_id or "").strip()
+
+    def require_project_id(self) -> str:
+        """Return the bound project id, failing closed if the engine skipped binding."""
+        if not self._active_project_id:
+            raise RuntimeError("project_id is required for autoresearch runner")
+        return self._active_project_id
 
     @abstractmethod
     async def measure_baseline(self, target: str) -> float:
