@@ -622,10 +622,8 @@ export const documents = {
 // --- Interfaces ---
 
 export const interfaces = {
-  status: (projectId?: string) => {
-    const suffix = projectId ? `?project_id=${encodeURIComponent(projectId)}` : "";
-    return get<InterfacesStatus>(`/api/interfaces/status${suffix}`);
-  },
+  status: (projectId: string) =>
+    get<InterfacesStatus>(`/api/interfaces/status?project_id=${encodeURIComponent(projectId)}`),
 
   screens: {
     list: (projectId: string) => get<any[]>(`/api/interfaces/screens?project_id=${encodeURIComponent(projectId)}`),
@@ -645,8 +643,10 @@ export const interfaces = {
       post<any>("/api/interfaces/figma/import", data),
     export: (data: { screen_id: string; figma_file_key: string }) =>
       post<any>("/api/interfaces/figma/export", data),
-    designSystem: (fileKey: string) => get<any>(`/api/interfaces/figma/design-system/${fileKey}`),
-    components: (fileKey: string) => get<any>(`/api/interfaces/figma/components/${fileKey}`),
+    designSystem: (fileKey: string, projectId: string) =>
+      get<any>(`/api/interfaces/figma/design-system/${encodeURIComponent(fileKey)}?project_id=${encodeURIComponent(projectId)}`),
+    components: (fileKey: string, projectId: string) =>
+      get<any>(`/api/interfaces/figma/components/${encodeURIComponent(fileKey)}?project_id=${encodeURIComponent(projectId)}`),
   },
 
   handoff: {
@@ -654,12 +654,12 @@ export const interfaces = {
       post<any>("/api/interfaces/handoff/brief", data),
     generateDevSpec: (data: { screen_id: string }) =>
       post<any>("/api/interfaces/handoff/dev-spec", data),
-    listBriefs: (projectId: string) => get<{ briefs: any[] }>(`/api/interfaces/handoff/briefs?project_id=${projectId}`),
+    listBriefs: (projectId: string) => get<{ briefs: any[] }>(`/api/interfaces/handoff/briefs?project_id=${encodeURIComponent(projectId)}`),
   },
 
   configure: {
-    stitch: (data: { api_key: string; project_id?: string }) => post<any>("/api/interfaces/configure/stitch", data),
-    figma: (data: { api_token: string; project_id?: string }) => post<any>("/api/interfaces/configure/figma", data),
+    stitch: (data: { api_key: string; project_id: string }) => post<any>("/api/interfaces/configure/stitch", data),
+    figma: (data: { api_token: string; project_id: string }) => post<any>("/api/interfaces/configure/figma", data),
   },
 
   designChat: {

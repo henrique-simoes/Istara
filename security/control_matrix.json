@@ -24,6 +24,7 @@
         "backend/app/api/routes/agents.py",
         "backend/app/api/agent_project_scope.py",
         "backend/app/api/routes/context_hierarchy.py",
+        "backend/app/api/routes/interfaces*.py",
         "backend/app/api/routes/notifications.py",
         "backend/app/api/routes/webauthn.py",
         "backend/app/api/routes/connections.py",
@@ -64,6 +65,9 @@
         "backend/app/services/mcp_client_manager.py",
         "backend/app/services/loop_execution_service.py",
         "backend/app/services/a2a.py",
+        "backend/app/services/figma_service.py",
+        "backend/app/services/stitch_service.py",
+        "backend/app/models/interface_config.py",
         "backend/app/models/mcp*.py",
         "backend/app/models/agent.py",
         "backend/app/models/user.py",
@@ -73,6 +77,7 @@
         "backend/alembic/versions/*auth*.py",
         "backend/alembic/versions/*webauthn*.py",
         "backend/alembic/versions/*recovery*.py",
+        "backend/alembic/versions/*interface*.py",
         "frontend/src/stores/authStore.ts",
         "frontend/src/lib/api.ts",
         "frontend/src/stores/notificationStore.ts",
@@ -83,9 +88,11 @@
         "frontend/src/components/layout/Sidebar.tsx",
         "frontend/src/components/notifications/**",
         "frontend/src/components/agents/**",
+        "frontend/src/components/interfaces/**",
         "frontend/src/components/loops/**",
         "frontend/src/stores/agentStore.ts",
         "frontend/src/stores/computeStore.ts",
+        "frontend/src/stores/interfacesStore.ts",
         "frontend/src/stores/loopsStore.ts",
         "frontend/src/components/admin/AdminDashboard.tsx",
         "frontend/src/components/settings/ConnectionStringPanel.tsx",
@@ -119,6 +126,7 @@
         "tests/test_surveys.py",
         "tests/test_notifications.py",
         "tests/test_agents.py",
+        "tests/test_interfaces.py",
         "tests/test_loops.py",
         "tests/test_project_scope_contracts.py",
         "tests/test_rag_resilience.py",
@@ -440,16 +448,24 @@
         "backend/app/api/routes/compute.py",
         "backend/app/api/routes/channels.py",
         "backend/app/api/routes/deployments.py",
+        "backend/app/api/routes/interfaces_common.py",
+        "backend/app/api/routes/interfaces_integrations.py",
+        "backend/app/api/routes/interfaces_screens.py",
         "backend/app/api/routes/loops.py",
         "backend/app/api/routes/mcp.py",
         "backend/app/api/routes/surveys.py",
+        "frontend/src/components/interfaces/FigmaTab.tsx",
+        "frontend/src/components/interfaces/HandoffTab.tsx",
+        "frontend/src/components/interfaces/ScreensGalleryTab.tsx",
         "frontend/src/components/agents/AgentsView.tsx",
         "frontend/src/components/integrations/MessagingTab.tsx",
         "frontend/src/components/integrations/MCPTab.tsx",
         "frontend/src/components/integrations/SurveysTab.tsx",
         "frontend/src/lib/api.ts",
+        "frontend/src/stores/interfacesStore.ts",
         "tests/test_project_rbac.py",
         "tests/test_agents.py",
+        "tests/test_interfaces.py",
         "tests/test_project_scope_contracts.py",
         "tests/test_channels.py",
         "tests/test_mcp.py",
@@ -459,7 +475,7 @@
         "tests/test_auth_security.py"
       ],
       "future_change_trigger": true,
-      "notes": "Global admin, project admin, researcher, viewer, legacy role mappings, active-project notification, agent status/log/detail, loop/background-process scope, project-owned integration/deployment/MCP-client lists, and donated-compute project scopes are governed. Project-facing integration APIs require an explicit active project; admin-only global aggregation belongs to dedicated admin surfaces."
+      "notes": "Global admin, project admin, researcher, viewer, legacy role mappings, active-project notification, agent status/log/detail, loop/background-process scope, project-owned Interfaces screens/briefs/status/configuration, integration/deployment/MCP-client lists, and donated-compute project scopes are governed. Project-facing APIs require an explicit active project; admin-only global aggregation belongs to dedicated admin surfaces."
     },
     {
       "id": "AUTHZ-002",
@@ -584,13 +600,16 @@
       "evidence": [
         "backend/app/core/field_encryption.py",
         "backend/app/api/routes/llm_servers.py",
+        "backend/app/api/routes/interfaces_integrations.py",
         "backend/app/core/endpoint_security.py",
         "backend/app/models/database.py",
+        "backend/app/models/interface_config.py",
         "tests/test_field_encryption.py",
+        "tests/test_interfaces.py",
         "tests/test_llm_servers.py"
       ],
       "future_change_trigger": true,
-      "notes": "LLM server API keys and integration secrets are encrypted at rest, and user-configured provider URLs reject embedded credentials, sensitive query tokens, metadata endpoints, and public plaintext transport."
+      "notes": "LLM server API keys, project-owned Figma/Stitch credentials, and integration secrets are encrypted at rest, and user-configured provider URLs reject embedded credentials, sensitive query tokens, metadata endpoints, and public plaintext transport."
     },
     {
       "id": "CONN-001",
@@ -634,6 +653,7 @@
       "evidence": [
         "backend/app/api/routes/mcp.py",
         "backend/app/services/mcp_client_manager.py",
+        "backend/app/services/stitch_service.py",
         "backend/app/models/mcp_server_config.py",
         "frontend/src/components/integrations/MCPTab.tsx",
         "frontend/src/stores/integrationsStore.ts",
@@ -643,7 +663,7 @@
         "tests/simulation/scenarios/56-mcp-server-security.mjs"
       ],
       "future_change_trigger": true,
-      "notes": "Tool execution must remain policy-mediated and visible to audit processes; external MCP URLs and cached tool descriptors are validated, bounded, prompt-sanitized, and project-owned when shown in project-facing Integrations views. MCP client lists and tool aggregation require an explicit active project instead of falling back to global admin lists."
+      "notes": "Tool execution must remain policy-mediated and visible to audit processes; external MCP URLs and cached tool descriptors are validated, bounded, prompt-sanitized, and project-owned when shown in project-facing Integrations views. MCP client lists, Stitch-backed Interfaces calls, and tool aggregation require an explicit active project instead of falling back to global admin lists or global credentials."
     },
     {
       "id": "WEBHOOK-001",

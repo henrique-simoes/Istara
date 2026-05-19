@@ -28,20 +28,31 @@ class StitchService:
     # Connection helpers
     # ------------------------------------------------------------------
 
-    def _ensure_configured(self) -> None:
-        if not settings.stitch_api_key:
-            raise ValueError(
-                "Stitch API key not configured. Set STITCH_API_KEY in settings."
-            )
+    def _resolve_api_key(self, api_key: str | None = None) -> str:
+        return (api_key if api_key is not None else settings.stitch_api_key).strip()
 
-    async def _call_tool(self, tool_name: str, arguments: dict[str, Any]) -> Any:
+    def _ensure_configured(self, api_key: str | None = None) -> str:
+        resolved_key = self._resolve_api_key(api_key)
+        if not resolved_key:
+            raise ValueError(
+                "Stitch API key not configured for this project."
+            )
+        return resolved_key
+
+    async def _call_tool(
+        self,
+        tool_name: str,
+        arguments: dict[str, Any],
+        *,
+        api_key: str | None = None,
+    ) -> Any:
         """Open a short-lived MCP session and call a single tool."""
-        self._ensure_configured()
+        resolved_key = self._ensure_configured(api_key)
 
         from mcp.client.streamable_http import streamablehttp_client
         from mcp import ClientSession
 
-        headers = {"X-Goog-Api-Key": settings.stitch_api_key}
+        headers = {"X-Goog-Api-Key": resolved_key}
         async with streamablehttp_client(MCP_URL, headers=headers) as (read, write, _):
             async with ClientSession(read, write) as session:
                 await session.initialize()
@@ -62,11 +73,10 @@ class StitchService:
     # Health
     # ------------------------------------------------------------------
 
-    async def health_check(self) -> bool:
+    async def health_check(self, api_key: str | None = None) -> bool:
         """Check whether the Stitch MCP server is reachable."""
         try:
-            self._ensure_configured()
-            result = await self._call_tool("list_projects", {})
+            result = await self._call_tool("list_projects", {}, api_key=api_key)
             return isinstance(result, dict)
         except Exception as exc:
             logger.debug("Stitch health check failed: %s", exc)
@@ -76,14 +86,14 @@ class StitchService:
     # Projects
     # ------------------------------------------------------------------
 
-    async def create_project(self, title: str) -> dict:
+    async def create_project(self, title: str, api_key: str | None = None) -> dict:
         """Create a new Stitch project. Returns {name, title, ...}."""
-        data = await self._call_tool("create_project", {"title": title})
+        data = await self._call_tool("create_project", {"title": title}, api_key=api_key)
         return data
 
-    async def list_projects(self) -> list[dict]:
+    async def list_projects(self, api_key: str | None = None) -> list[dict]:
         """List all accessible Stitch projects."""
-        data = await self._call_tool("list_projects", {})
+        data = await self._call_tool("list_projects", {}, api_key=api_key)
         return data.get("projects", []) if isinstance(data, dict) else []
 
     @staticmethod
@@ -101,6 +111,7 @@ class StitchService:
         prompt: str,
         device_type: str = "DESKTOP",
         model: str = "GEMINI_3_FLASH",
+        api_key: str | None = None,
     ) -> dict:
         """Generate a UI screen from a text prompt.
 
@@ -114,31 +125,41 @@ class StitchService:
         if model and model != "MODEL_ID_UNSPECIFIED":
             args["modelId"] = model
 
-        data = await self._call_tool("generate_screen_from_text", args)
+        data = await self._call_tool("generate_screen_from_text", args, api_key=api_key)
         return data
 
-    async def list_screens(self, project_id: str) -> list[dict]:
+    async def list_screens(self, project_id: str, api_key: str | None = None) -> list[dict]:
         """List all screens in a project."""
-        data = await self._call_tool("list_screens", {"projectId": project_id})
+        data = await self._call_tool("list_screens", {"projectId": project_id}, api_key=api_key)
         return data.get("screens", []) if isinstance(data, dict) else []
 
-    async def get_screen(self, project_id: str, screen_id: str) -> dict:
+    async def get_screen(
+        self,
+        project_id: str,
+        screen_id: str,
+        api_key: str | None = None,
+    ) -> dict:
         """Get screen details. Use full resource name format."""
         name = f"projects/{project_id}/screens/{screen_id}"
         data = await self._call_tool("get_screen", {
             "name": name,
             "projectId": project_id,
             "screenId": screen_id,
-        })
+        }, api_key=api_key)
         return data
 
-    async def get_screen_html(self, project_id: str, screen_id: str) -> str:
+    async def get_screen_html(
+        self,
+        project_id: str,
+        screen_id: str,
+        api_key: str | None = None,
+    ) -> str:
         """Get the HTML content of a screen.
 
         Fetches screen details, finds the HTML download URL, downloads it,
         scans with ContentGuard, and returns the HTML string.
         """
-        screen_data = await self.get_screen(project_id, screen_id)
+        screen_data = await self.get_screen(project_id, screen_id, api_key=api_key)
         html_url = screen_data.get("htmlUrl") or screen_data.get("html_url", "")
 
         if html_url:
@@ -160,7 +181,12 @@ class StitchService:
 
         return html
 
-    async def get_screen_image(self, project_id: str, screen_id: str) -> bytes | None:
+    async def get_screen_image(
+        self,
+        project_id: str,
+        screen_id: str,
+        api_key: str | None = None,
+    ) -> bytes | None:
         """Get screenshot image as bytes. Returns None if unavailable."""
         name = f"projects/{project_id}/screens/{screen_id}"
         try:
@@ -168,7 +194,7 @@ class StitchService:
                 "name": name,
                 "projectId": project_id,
                 "screenId": screen_id,
-            })
+            }, api_key=api_key)
             image_url = data.get("imageUrl") or data.get("image_url", "")
             if image_url:
                 import httpx
@@ -185,10 +211,14 @@ class StitchService:
         return None
 
     async def save_screen_image(
-        self, project_id: str, screen_id: str, dest_dir: str | None = None
+        self,
+        project_id: str,
+        screen_id: str,
+        dest_dir: str | None = None,
+        api_key: str | None = None,
     ) -> str | None:
         """Download and save screenshot to design_screens_dir. Returns path."""
-        image_bytes = await self.get_screen_image(project_id, screen_id)
+        image_bytes = await self.get_screen_image(project_id, screen_id, api_key=api_key)
         if not image_bytes:
             return None
 
@@ -209,6 +239,7 @@ class StitchService:
         instructions: str,
         device_type: str | None = None,
         model: str | None = None,
+        api_key: str | None = None,
     ) -> dict:
         """Edit existing screens with natural-language instructions.
 
@@ -225,7 +256,7 @@ class StitchService:
         if model:
             args["modelId"] = model
 
-        data = await self._call_tool("edit_screens", args)
+        data = await self._call_tool("edit_screens", args, api_key=api_key)
         return data
 
     async def generate_variants(
@@ -236,6 +267,7 @@ class StitchService:
         variant_count: int = 3,
         creative_range: str = "EXPLORE",
         aspects: list[str] | None = None,
+        api_key: str | None = None,
     ) -> dict:
         """Generate design variants of existing screens.
 
@@ -254,34 +286,52 @@ class StitchService:
         if aspects:
             args["options"]["aspects"] = aspects
 
-        data = await self._call_tool("generate_variants", args)
+        data = await self._call_tool("generate_variants", args, api_key=api_key)
         return data
 
     # ------------------------------------------------------------------
     # Design Systems
     # ------------------------------------------------------------------
 
-    async def create_design_system(self, project_id: str, name: str, theme: dict | None = None) -> dict:
+    async def create_design_system(
+        self,
+        project_id: str,
+        name: str,
+        theme: dict | None = None,
+        api_key: str | None = None,
+    ) -> dict:
         """Create a design system for a project."""
         args: dict[str, Any] = {"projectId": project_id, "displayName": name}
         if theme:
             args["theme"] = theme
-        return await self._call_tool("create_design_system", args)
+        return await self._call_tool("create_design_system", args, api_key=api_key)
 
-    async def list_design_systems(self, project_id: str) -> list[dict]:
+    async def list_design_systems(
+        self,
+        project_id: str,
+        api_key: str | None = None,
+    ) -> list[dict]:
         """List design systems for a project."""
-        data = await self._call_tool("list_design_systems", {"projectId": project_id})
+        data = await self._call_tool(
+            "list_design_systems",
+            {"projectId": project_id},
+            api_key=api_key,
+        )
         return data.get("designSystems", []) if isinstance(data, dict) else []
 
     async def apply_design_system(
-        self, project_id: str, design_system_name: str, screen_ids: list[str]
+        self,
+        project_id: str,
+        design_system_name: str,
+        screen_ids: list[str],
+        api_key: str | None = None,
     ) -> dict:
         """Apply a design system to screens."""
         return await self._call_tool("apply_design_system", {
             "projectId": project_id,
             "designSystemName": design_system_name,
             "screenIds": screen_ids,
-        })
+        }, api_key=api_key)
 
 
 stitch_service = StitchService()

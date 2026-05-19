@@ -6,23 +6,24 @@ audience: architecture
 status: needs-verification
 related_features: ["interfaces.screens", "findings.reports"]
 related_glossary: ["minto-pyramid"]
-code_references: ["frontend/src/components/interfaces/HandoffTab.tsx", "backend/app/api/routes/interfaces.py"]
-api_references: ["backend/app/api/routes/interfaces.py"]
-test_references: []
-last_verified: 2026-05-15
-compass: CF-SPEC-53 / CF-657
+code_references: ["frontend/src/components/interfaces/HandoffTab.tsx", "frontend/src/stores/interfacesStore.ts", "backend/app/api/routes/interfaces_integrations.py"]
+api_references: ["backend/app/api/routes/interfaces_integrations.py"]
+test_references: ["tests/test_interfaces.py", "tests/test_project_scope_contracts.py"]
+last_verified: 2026-05-19
+compass: CF-SPEC-53 / CF-657; CF-SPEC-60 / CF-763
 ---
 
 # Interface Handoff Architecture
 
 ## Implementation Summary
 
-Handoff packages interface outputs into developer-facing specifications or exportable artifacts.
+Handoff packages interface outputs into developer-facing specifications or exportable artifacts for the active project.
 
 ## Frontend Surface
 
 - `frontend/src/components/interfaces/HandoffTab.tsx`
-- `backend/app/api/routes/interfaces.py`
+- `frontend/src/stores/interfacesStore.ts`
+- `backend/app/api/routes/interfaces_integrations.py`
 
 ## State, API, And Backend Contracts
 
@@ -32,11 +33,14 @@ Handoff packages interface outputs into developer-facing specifications or expor
 
 ### API And Backend
 
-- `backend/app/api/routes/interfaces.py`
+- `backend/app/api/routes/interfaces_integrations.py`
 
 ## Architecture Notes
 
 - The feature is mounted through `frontend/src/components/interfaces/HandoffTab.tsx` and the UI navigation path recorded in the inventory.
+- `GET /api/interfaces/handoff/briefs` requires an explicit `project_id`, checks project viewer access, and filters `DesignBrief.project_id` in the query.
+- Handoff brief generation uses the request project's id; developer specs are authorized through the selected screen's project before returning screen content.
+- `HandoffTab` clears selected/expanded state when the active project changes and renders only briefs and screens that match the active project.
 - The frontmatter and manifest entries are the durable contract for agents updating this page after code changes.
 - When the referenced component, store, route, agent, skill, or test behavior changes, regenerate and validate the feature documentation.
 
@@ -46,7 +50,8 @@ Handoff packages interface outputs into developer-facing specifications or expor
 
 ## Tests And Verification
 
-- No focused test reference recorded yet.
+- `tests/test_interfaces.py`
+- `tests/test_project_scope_contracts.py`
 
 ## Related Features
 
@@ -59,7 +64,7 @@ Handoff packages interface outputs into developer-facing specifications or expor
 
 ## Compass Evidence
 
-- Spec/task: CF-SPEC-53 / CF-657
+- Spec/task: CF-SPEC-53 / CF-657; CF-SPEC-60 / CF-763
 - Inventory source: `docs/features/inventory.json`
 
 ## When To Update

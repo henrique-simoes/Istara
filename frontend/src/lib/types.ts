@@ -480,7 +480,7 @@ export interface InterfacesStatus {
   onboarding_needed: boolean;
   screens_count: number;
   briefs_count: number;
-  scope?: "project" | "global" | "integration-only";
+  scope: "project";
 }
 
 // --- Loops & Schedule ---

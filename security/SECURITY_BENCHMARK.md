@@ -1,6 +1,6 @@
 # Istara Security Benchmark
 
-Last reviewed: 2026-05-18
+Last reviewed: 2026-05-19
 
 This benchmark is the release gate for Istara changes that touch authentication, authorization, sessions, passkeys, secrets, connection strings, pooled compute, MCP/tool execution, webhooks, LLM provider access, autoresearch, self-evolution, or agentic orchestration.
 
@@ -74,7 +74,7 @@ The following areas are always treated as ASVS Level 3 style surfaces even when 
 - Team mode, local mode remote-login rejection, role and project permission checks, user management, and admin APIs.
 - File upload, document ingestion, folder linking, media preview/serve paths, and any user-controlled artifact that enters RAG/vector/BM25 storage.
 - Connection strings, relay/node joining, pooled compute credentials and project scopes, LLM server API keys, and encrypted provider secrets.
-- MCP client/server tools, webhook ingress, channel integrations, WhatsApp/Telegram connectors, and any public callback endpoint.
+- MCP client/server tools, webhook ingress, channel integrations, WhatsApp/Telegram connectors, Interfaces Figma/Stitch configuration, and any public callback endpoint.
 - A2A JSON-RPC, loop/background process dashboards, autoresearch, skill evolution, Hyperagent/DGM-H proposals, Memento-style agent creation, ReasoningBank memories, rollback, and proposal approval.
 - Prompt-RAG, vector/RAG, BM25, LLMLingua-style compression, model routing, ensemble/consensus, telemetry, and audit logs where prompt or memory content may affect tool use.
 
@@ -98,6 +98,11 @@ MCP client registries are project-content surfaces for every user role: list
 APIs require an explicit authorized active project and must not silently fall
 back to global admin lists. Global cross-project aggregation belongs only on
 dedicated admin reporting surfaces.
+Interfaces screens, design briefs, developer handoff specs, Figma imports, and
+Stitch/Figma credentials are also project-content surfaces: status/list/helper
+APIs require an authorized active project, frontend stores clear stale project
+data on project switches, and Figma/Stitch secrets are stored in project-owned
+encrypted records instead of process-wide configuration.
 Donated relay/browser compute is also a project-content boundary: a relay can
 be connected for status, but prompt and embedding payloads may only route to it
 when the request includes a concrete project and the donor scope was resolved

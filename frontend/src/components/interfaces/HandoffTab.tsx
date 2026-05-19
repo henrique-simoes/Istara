@@ -23,11 +23,21 @@ export default function HandoffTab() {
   const [specError, setSpecError] = useState<string | null>(null);
 
   useEffect(() => {
+    setExpandedBriefId(null);
+    setSelectedScreenId("");
+    setDevSpec(null);
     if (activeProjectId) {
       fetchBriefs(activeProjectId);
       fetchScreens(activeProjectId);
     }
   }, [activeProjectId, fetchBriefs, fetchScreens]);
+
+  const scopedScreens = activeProjectId
+    ? screens.filter((screen: any) => screen.project_id === activeProjectId)
+    : [];
+  const scopedBriefs = activeProjectId
+    ? briefs.filter((brief: any) => brief.project_id === activeProjectId)
+    : [];
 
   const handleGenerateBrief = async () => {
     if (!activeProjectId || generatingBrief) return;
@@ -73,7 +83,7 @@ export default function HandoffTab() {
             </div>
             <button
               onClick={handleGenerateBrief}
-              disabled={generatingBrief}
+              disabled={!activeProjectId || generatingBrief}
               className="flex items-center gap-1.5 px-4 py-2 text-sm bg-istara-600 text-white rounded-lg hover:bg-istara-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
               {generatingBrief ? <Loader2 size={14} className="animate-spin" /> : <FileOutput size={14} />}
@@ -87,14 +97,14 @@ export default function HandoffTab() {
             </div>
           )}
 
-          {briefs.length === 0 ? (
+          {scopedBriefs.length === 0 ? (
             <div className="text-center py-8 bg-slate-50 dark:bg-slate-800/50 rounded-lg">
               <FileText size={32} className="mx-auto mb-2 text-slate-300 dark:text-slate-600" />
               <p className="text-sm text-slate-400">No design briefs yet. Generate one to summarize your design decisions.</p>
             </div>
           ) : (
             <div className="space-y-2">
-              {briefs.map((brief: any) => (
+              {scopedBriefs.map((brief: any) => (
                 <div
                   key={brief.id}
                   className="border border-slate-200 dark:border-slate-700 rounded-lg overflow-hidden"
@@ -192,7 +202,7 @@ export default function HandoffTab() {
             Generate developer specifications from a screen design.
           </p>
 
-          {screens.length === 0 ? (
+          {scopedScreens.length === 0 ? (
             <div className="text-center py-8 bg-slate-50 dark:bg-slate-800/50 rounded-lg">
               <FileText size={32} className="mx-auto mb-2 text-slate-300 dark:text-slate-600" />
               <p className="text-sm text-slate-400">No screens available. Generate screens first in the Generate tab.</p>
@@ -206,7 +216,7 @@ export default function HandoffTab() {
                   className="flex-1 px-3 py-2 text-sm rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-istara-500"
                 >
                   <option value="">Select a screen...</option>
-                  {screens.map((screen: any) => (
+                  {scopedScreens.map((screen: any) => (
                     <option key={screen.id} value={screen.id}>
                       {screen.title || screen.id.slice(0, 8)} ({screen.device_type})
                     </option>
