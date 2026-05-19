@@ -9,8 +9,10 @@ from sqlalchemy import delete
 from app.config import settings
 from app.core.auth import create_token
 from app.main import app
-from app.models.agent import A2AMessage
+from app.models.agent import A2AMessage, Agent, AgentRole, AgentState, HeartbeatStatus
 from app.models.database import async_session, init_db
+from app.models.project import Project
+from app.models.project_member import ProjectMember
 from httpx import ASGITransport, AsyncClient
 from types import SimpleNamespace
 
@@ -30,6 +32,72 @@ def auth_headers():
         settings.jwt_secret = "test-secret"
     token = create_token("user1", "testuser", "admin")
     return {"Authorization": f"Bearer {token}"}
+
+
+def _researcher_headers(user_id: str = "agent-scope-user") -> dict[str, str]:
+    if not settings.jwt_secret:
+        settings.jwt_secret = "test-secret"
+    token = create_token(user_id, user_id, "researcher")
+    return {"Authorization": f"Bearer {token}"}
+
+
+async def _seed_project_member(project_id: str, user_id: str, role: str = "researcher") -> None:
+    async with async_session() as db:
+        if await db.get(Project, project_id) is None:
+            db.add(
+                Project(
+                    id=project_id,
+                    name=f"Agent scope {project_id}",
+                    project_context="Project isolation test project.",
+                )
+            )
+        db.add(
+            ProjectMember(
+                id=str(uuid.uuid4()),
+                project_id=project_id,
+                user_id=user_id,
+                role=role,
+                added_by="test",
+            )
+        )
+        await db.commit()
+
+
+async def _seed_agent(
+    agent_id: str,
+    *,
+    project_id: str = "",
+    memory: dict | None = None,
+    current_task: str = "",
+) -> None:
+    async with async_session() as db:
+        existing = await db.get(Agent, agent_id)
+        if existing is not None:
+            existing.scope = "project" if project_id else "universal"
+            existing.project_id = project_id
+            existing.memory = json.dumps(memory or {})
+            existing.current_task = current_task
+            await db.commit()
+            return
+        db.add(
+            Agent(
+                id=agent_id,
+                name=f"Agent {agent_id}",
+                role=AgentRole.CUSTOM,
+                system_prompt="Project isolation test agent.",
+                capabilities=json.dumps(["a2a_messaging", "rag_retrieval"]),
+                memory=json.dumps(memory or {}),
+                heartbeat_interval_seconds=60,
+                heartbeat_status=HeartbeatStatus.HEALTHY,
+                state=AgentState.IDLE,
+                current_task=current_task,
+                is_system=False,
+                is_active=True,
+                scope="project" if project_id else "universal",
+                project_id=project_id,
+            )
+        )
+        await db.commit()
 
 
 @pytest.mark.asyncio
@@ -100,6 +168,227 @@ async def test_agents_heartbeat_returns_response(auth_headers):
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
         response = await ac.get("/api/agents/heartbeat/status", headers=auth_headers)
         assert response.status_code in (200, 404, 500)
+
+
+@pytest.mark.asyncio
+async def test_agent_project_routes_require_active_project_for_non_admins():
+    """Project-facing agent routes should not fall back to a global view."""
+    await init_db()
+    settings.team_mode = True
+    user_id = f"agent-user-{uuid.uuid4()}"
+    project_id = f"agent-project-{uuid.uuid4()}"
+    agent_id = f"agent-{uuid.uuid4()}"
+    await _seed_project_member(project_id, user_id, "researcher")
+    await _seed_agent(agent_id, project_id=project_id, memory={"note": "project only"})
+    headers = _researcher_headers(user_id)
+
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        unscoped_detail = await ac.get(f"/api/agents/{agent_id}", headers=headers)
+        assert unscoped_detail.status_code == 400
+        assert unscoped_detail.json()["detail"] == "project_id is required"
+
+        unscoped_memory = await ac.get(f"/api/agents/{agent_id}/memory", headers=headers)
+        assert unscoped_memory.status_code == 400
+
+        unscoped_identity = await ac.get(f"/api/agents/{agent_id}/identity", headers=headers)
+        assert unscoped_identity.status_code == 400
+
+        unscoped_heartbeat = await ac.get("/api/agents/heartbeat/status", headers=headers)
+        assert unscoped_heartbeat.status_code == 400
+
+        unscoped_log = await ac.get(
+            f"/api/agents/log/recent?agent_id={agent_id}",
+            headers=headers,
+        )
+        assert unscoped_log.status_code == 400
+
+        unscoped_promotion = await ac.post(
+            f"/api/agents/{agent_id}/request-promotion",
+            headers=headers,
+        )
+        assert unscoped_promotion.status_code == 400
+
+
+@pytest.mark.asyncio
+async def test_agent_project_routes_filter_to_authorized_project():
+    """Non-admin users should only see project agents attached to their active project."""
+    await init_db()
+    settings.team_mode = True
+    user_id = f"agent-user-{uuid.uuid4()}"
+    visible_project_id = f"visible-agent-project-{uuid.uuid4()}"
+    hidden_project_id = f"hidden-agent-project-{uuid.uuid4()}"
+    visible_agent_id = f"visible-agent-{uuid.uuid4()}"
+    hidden_agent_id = f"hidden-agent-{uuid.uuid4()}"
+    universal_agent_id = f"universal-agent-{uuid.uuid4()}"
+    await _seed_project_member(visible_project_id, user_id, "researcher")
+    await _seed_project_member(hidden_project_id, f"other-{uuid.uuid4()}", "researcher")
+    await _seed_agent(
+        visible_agent_id,
+        project_id=visible_project_id,
+        memory={"visible": "project memory"},
+    )
+    await _seed_agent(
+        hidden_agent_id,
+        project_id=hidden_project_id,
+        memory={"hidden": "other project memory"},
+    )
+    await _seed_agent(
+        universal_agent_id,
+        memory={"global": "should be redacted"},
+        current_task="Sensitive task from another project",
+    )
+    headers = _researcher_headers(user_id)
+
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        list_response = await ac.get(
+            f"/api/agents?project_id={visible_project_id}",
+            headers=headers,
+        )
+        assert list_response.status_code == 200
+        agents = {agent["id"]: agent for agent in list_response.json()["agents"]}
+        assert visible_agent_id in agents
+        assert universal_agent_id in agents
+        assert hidden_agent_id not in agents
+        assert agents[universal_agent_id]["memory"] == {}
+        assert agents[universal_agent_id]["current_task"] == ""
+
+        heartbeat = await ac.get(
+            f"/api/agents/heartbeat/status?project_id={visible_project_id}",
+            headers=headers,
+        )
+        assert heartbeat.status_code == 200
+        heartbeat_ids = {agent["id"] for agent in heartbeat.json()["agents"]}
+        assert visible_agent_id in heartbeat_ids
+        assert universal_agent_id in heartbeat_ids
+        assert hidden_agent_id not in heartbeat_ids
+
+        visible_detail = await ac.get(
+            f"/api/agents/{visible_agent_id}?project_id={visible_project_id}",
+            headers=headers,
+        )
+        assert visible_detail.status_code == 200
+        assert visible_detail.json()["memory"] == {"visible": "project memory"}
+
+        hidden_detail = await ac.get(
+            f"/api/agents/{hidden_agent_id}?project_id={visible_project_id}",
+            headers=headers,
+        )
+        assert hidden_detail.status_code == 404
+
+        hidden_memory = await ac.get(
+            f"/api/agents/{hidden_agent_id}/memory?project_id={visible_project_id}",
+            headers=headers,
+        )
+        assert hidden_memory.status_code == 404
+
+        universal_memory = await ac.get(
+            f"/api/agents/{universal_agent_id}/memory?project_id={visible_project_id}",
+            headers=headers,
+        )
+        assert universal_memory.status_code == 200
+        assert universal_memory.json()["memory"] == {}
+
+        promotion = await ac.post(
+            f"/api/agents/{visible_agent_id}/request-promotion?project_id={visible_project_id}",
+            headers=headers,
+        )
+        assert promotion.status_code == 200
+        assert promotion.json()["status"] == "requested"
+
+        hidden_promotion = await ac.post(
+            f"/api/agents/{hidden_agent_id}/request-promotion?project_id={visible_project_id}",
+            headers=headers,
+        )
+        assert hidden_promotion.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_agent_recent_log_filters_project_entries_for_non_admins():
+    """Recent agent logs should be filtered by active project before being shown."""
+    await init_db()
+    settings.team_mode = True
+    from app.agents.orchestrator import meta_orchestrator
+
+    user_id = f"log-user-{uuid.uuid4()}"
+    visible_project_id = f"log-visible-project-{uuid.uuid4()}"
+    hidden_project_id = f"log-hidden-project-{uuid.uuid4()}"
+    agent_id = f"log-agent-{uuid.uuid4()}"
+    await _seed_project_member(visible_project_id, user_id, "viewer")
+    await _seed_agent(agent_id, project_id=visible_project_id)
+    headers = _researcher_headers(user_id)
+    original_log = list(meta_orchestrator._work_log)
+    meta_orchestrator._work_log = [
+        {
+            "agent_id": agent_id,
+            "action": "failed",
+            "details": "visible project failure",
+            "project_id": visible_project_id,
+        },
+        {
+            "agent_id": agent_id,
+            "action": "failed",
+            "details": "hidden project failure",
+            "project_id": hidden_project_id,
+        },
+        {
+            "agent_id": agent_id,
+            "action": "failed",
+            "details": "global failure without scope",
+        },
+    ]
+
+    try:
+        transport = ASGITransport(app=app)
+        async with AsyncClient(transport=transport, base_url="http://test") as ac:
+            response = await ac.get(
+                f"/api/agents/log/recent?agent_id={agent_id}&project_id={visible_project_id}",
+                headers=headers,
+            )
+            assert response.status_code == 200
+            details = [entry["details"] for entry in response.json()["log"]]
+            assert details == ["visible project failure"]
+    finally:
+        meta_orchestrator._work_log = original_log
+
+
+@pytest.mark.asyncio
+async def test_agent_messages_verify_agents_belong_to_project(auth_headers):
+    """A2A routes should reject agents scoped to another project."""
+    await init_db()
+    visible_project_id = f"message-visible-project-{uuid.uuid4()}"
+    hidden_project_id = f"message-hidden-project-{uuid.uuid4()}"
+    visible_agent_id = f"message-visible-agent-{uuid.uuid4()}"
+    hidden_agent_id = f"message-hidden-agent-{uuid.uuid4()}"
+    await _seed_agent(visible_agent_id, project_id=visible_project_id)
+    await _seed_agent(hidden_agent_id, project_id=hidden_project_id)
+
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        visible_messages = await ac.get(
+            f"/api/agents/{visible_agent_id}/messages?project_id={visible_project_id}",
+            headers=auth_headers,
+        )
+        assert visible_messages.status_code == 200
+
+        hidden_messages = await ac.get(
+            f"/api/agents/{hidden_agent_id}/messages?project_id={visible_project_id}",
+            headers=auth_headers,
+        )
+        assert hidden_messages.status_code == 404
+
+        cross_project_send = await ac.post(
+            f"/api/agents/{visible_agent_id}/messages",
+            headers=auth_headers,
+            json={
+                "to_agent_id": hidden_agent_id,
+                "message_type": "request",
+                "content": "This should not cross project boundaries.",
+                "project_id": visible_project_id,
+            },
+        )
+        assert cross_project_send.status_code == 404
 
 
 @pytest.mark.asyncio

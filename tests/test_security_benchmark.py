@@ -98,6 +98,38 @@ def test_security_benchmark_detects_loop_project_scope_paths() -> None:
     assert result.scorecard["triggered_paths"] == sorted(changed_paths)
 
 
+def test_security_benchmark_detects_agent_project_scope_paths() -> None:
+    matrix = load_matrix(ROOT / "security" / "control_matrix.json")
+
+    changed_paths = [
+        "backend/app/api/agent_project_scope.py",
+        "backend/app/api/routes/agents.py",
+        "frontend/src/lib/api.ts",
+        "frontend/src/components/agents/AgentsView.tsx",
+        "frontend/src/stores/agentStore.ts",
+        "tests/test_agents.py",
+    ]
+    result = evaluate_matrix(matrix, changed_paths=changed_paths)
+
+    assert result.passed is True
+    assert result.scorecard["auth_security_change_detected"] is True
+    assert result.scorecard["triggered_paths"] == sorted(changed_paths)
+
+
+def test_security_benchmark_detects_context_hierarchy_project_scope_paths() -> None:
+    matrix = load_matrix(ROOT / "security" / "control_matrix.json")
+
+    changed_paths = [
+        "backend/app/api/routes/context_hierarchy.py",
+        "backend/app/main.py",
+    ]
+    result = evaluate_matrix(matrix, changed_paths=changed_paths)
+
+    assert result.passed is True
+    assert result.scorecard["auth_security_change_detected"] is True
+    assert result.scorecard["triggered_paths"] == sorted(changed_paths)
+
+
 def test_security_benchmark_blocks_failed_control() -> None:
     matrix = load_matrix(ROOT / "security" / "control_matrix.json")
     modified = copy.deepcopy(matrix)

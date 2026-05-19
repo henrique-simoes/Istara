@@ -342,7 +342,10 @@ export const agents = {
     if (projectId) params.set("project_id", projectId);
     return request<any>(`/api/agents?${params}`);
   },
-  get: (id: string) => request<any>(`/api/agents/${id}`),
+  get: (id: string, projectId?: string | null) => {
+    const suffix = projectId ? `?project_id=${encodeURIComponent(projectId)}` : "";
+    return request<any>(`/api/agents/${id}${suffix}`);
+  },
   create: (data: {
     name: string;
     role?: string;
@@ -357,8 +360,16 @@ export const agents = {
   resume: (id: string) => request<any>(`/api/agents/${id}/resume`, { method: "POST" }),
   restart: (id: string) => request<any>(`/api/agents/${id}/restart`, { method: "POST" }),
   setScope: (id: string, scope: string, projectId?: string) => request<any>(`/api/agents/${id}/set-scope`, { method: "POST", body: JSON.stringify({ scope, project_id: projectId || "" }) }),
-  requestPromotion: (id: string) => request<any>(`/api/agents/${id}/request-promotion`, { method: "POST" }),
-  recentLog: (agentId?: string, limit = 50) => request<any>(`/api/agents/log/recent?limit=${limit}${agentId ? `&agent_id=${encodeURIComponent(agentId)}` : ""}`),
+  requestPromotion: (id: string, projectId?: string | null) => {
+    const suffix = projectId ? `?project_id=${encodeURIComponent(projectId)}` : "";
+    return request<any>(`/api/agents/${id}/request-promotion${suffix}`, { method: "POST" });
+  },
+  recentLog: (agentId?: string, limit = 50, projectId?: string | null) => {
+    const params = new URLSearchParams({ limit: String(limit) });
+    if (agentId) params.set("agent_id", agentId);
+    if (projectId) params.set("project_id", projectId);
+    return request<any>(`/api/agents/log/recent?${params}`);
+  },
   uploadAvatar: async (id: string, file: File) => {
     const formData = new FormData();
     formData.append("file", file);
@@ -370,13 +381,17 @@ export const agents = {
     if (!res.ok) throw new Error(`Upload error: ${res.status}`);
     return res.json();
   },
-  avatarUrl: (id: string) => `${API_BASE}/api/agents/${id}/avatar`,
-  memory: (id: string) => request<any>(`/api/agents/${id}/memory`),
+  avatarUrl: (id: string, projectId?: string | null) =>
+    `${API_BASE}/api/agents/${id}/avatar${projectId ? `?project_id=${encodeURIComponent(projectId)}` : ""}`,
+  memory: (id: string, projectId?: string | null) => {
+    const suffix = projectId ? `?project_id=${encodeURIComponent(projectId)}` : "";
+    return request<any>(`/api/agents/${id}/memory${suffix}`);
+  },
   updateMemory: (id: string, data: Record<string, unknown>) =>
     request<any>(`/api/agents/${id}/memory`, { method: "PATCH", body: JSON.stringify(data) }),
-  messages: (id: string, limit = 50, projectId?: string) => {
+  messages: (id: string, projectId: string, limit = 50) => {
     const params = new URLSearchParams({ limit: String(limit) });
-    if (projectId) params.set("project_id", projectId);
+    params.set("project_id", projectId);
     return request<any>(`/api/agents/${id}/messages?${params}`);
   },
   sendMessage: (
@@ -389,16 +404,21 @@ export const agents = {
     params.set("project_id", projectId);
     return request<any>(`/api/agents/a2a/log?${params}`);
   },
-  heartbeat: () => request<any>("/api/agents/heartbeat/status"),
+  heartbeat: (projectId?: string | null) => {
+    const suffix = projectId ? `?project_id=${encodeURIComponent(projectId)}` : "";
+    return request<any>(`/api/agents/heartbeat/status${suffix}`);
+  },
   capacity: () => request<any>("/api/agents/capacity"),
-  getIdentity: (id: string) =>
-    request<{
+  getIdentity: (id: string, projectId?: string | null) => {
+    const suffix = projectId ? `?project_id=${encodeURIComponent(projectId)}` : "";
+    return request<{
       agent_id: string;
       display_name: string;
       has_persona: boolean;
       identity_length: number;
       files: Record<string, string>;
-    }>(`/api/agents/${id}/identity`),
+    }>(`/api/agents/${id}/identity${suffix}`);
+  },
   updateIdentity: (id: string, files: Record<string, string>) =>
     request<any>(`/api/agents/${id}/identity`, {
       method: "PUT",

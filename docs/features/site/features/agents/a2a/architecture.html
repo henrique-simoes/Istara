@@ -267,6 +267,7 @@
 <ul>
 <li>The feature is mounted through <code>frontend/src/components/agents/AgentsView.tsx</code> and the UI navigation path recorded in the inventory.</li>
 <li>Project views pass the active <code>project_id</code> into <code>/api/agents/a2a/log</code>; the backend requires that scope and only returns messages tagged with that project or messages that can be traced to a task in that project.</li>
+<li>Direct <code>/api/agents/{agent_id}/messages</code> reads and writes also validate that the source and destination agents are visible in the supplied project before returning or persisting A2A records.</li>
 <li>Public A2A JSON-RPC <code>tasks/send</code>, <code>tasks/get</code>, and <code>tasks/list</code> also require <code>project_id</code> and enforce project authorization before project-content messages are persisted or listed.</li>
 <li>Project A2A messages are broadcast with project metadata so realtime clients connected to another active project do not receive them.</li>
 <li>The frontmatter and manifest entries are the durable contract for agents updating this page after code changes.</li>

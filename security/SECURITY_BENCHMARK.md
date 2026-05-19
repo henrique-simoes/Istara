@@ -88,6 +88,11 @@ exclusion of secret-like files plus protected local `LLMs/` and
 Loop health, schedule, agent-loop, and execution-history views are treated as
 project-content surfaces: non-admin users must supply an authorized active
 project before seeing background process state or mutating recurring work.
+Agent registry, heartbeat, detail, identity, memory, recent-log, prompt
+diagnostic, and A2A message views are also project-content surfaces: non-admin
+users must supply an authorized active project, project-scoped agents cannot be
+read from another project, and universal agent runtime memory/current-task state
+is redacted in project views unless a global admin is using an admin surface.
 Donated relay/browser compute is also a project-content boundary: a relay can
 be connected for status, but prompt and embedding payloads may only route to it
 when the request includes a concrete project and the donor scope was resolved

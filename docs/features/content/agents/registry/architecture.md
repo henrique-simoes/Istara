@@ -6,8 +6,8 @@ audience: architecture
 status: documented
 related_features: ["agents.detail", "agents.a2a", "agents.create"]
 related_glossary: ["a2a", "mcp"]
-code_references: ["frontend/src/components/agents/AgentsView.tsx", "frontend/src/stores/agentStore.ts", "backend/app/api/routes/agents.py"]
-api_references: ["backend/app/api/routes/agents.py"]
+code_references: ["frontend/src/components/agents/AgentsView.tsx", "frontend/src/stores/agentStore.ts", "backend/app/api/routes/agents.py", "backend/app/api/agent_project_scope.py"]
+api_references: ["backend/app/api/routes/agents.py", "backend/app/api/agent_project_scope.py"]
 test_references: ["tests/test_agents.py"]
 last_verified: 2026-05-18
 compass: CF-SPEC-56 / CF-698
@@ -38,7 +38,10 @@ The Agents view lists and manages available agents, including their status and p
 ## Architecture Notes
 
 - The feature is mounted through `frontend/src/components/agents/AgentsView.tsx` and the UI navigation path recorded in the inventory.
+- Shared agent project-scope policy lives in `backend/app/api/agent_project_scope.py` and is reused by registry, detail, heartbeat, recent-log, and direct A2A endpoints.
 - `frontend/src/components/agents/AgentsView.tsx` passes the active project to `frontend/src/stores/agentStore.ts` so project-scoped agents are filtered by `/api/agents?project_id=...` while universal system agents remain visible.
+- Agent heartbeat, recent-log, avatar, and identity requests also carry the active project id; non-admin requests without that scope are rejected instead of falling back to a global agent view.
+- Universal agents remain visible in project views, but runtime memory and current-task state are redacted for non-admin users because those fields are not project-partitioned.
 - The frontmatter and manifest entries are the durable contract for agents updating this page after code changes.
 - When the referenced component, store, route, agent, skill, or test behavior changes, regenerate and validate the feature documentation.
 
@@ -49,7 +52,7 @@ The Agents view lists and manages available agents, including their status and p
 
 ## Tests And Verification
 
-- `tests/test_agents.py` covers the related A2A project-scoping contract for the Agents surface.
+- `tests/test_agents.py` covers the related registry, heartbeat, recent-log, detail, memory, promotion, and A2A project-scoping contracts for the Agents surface.
 
 ## Related Features
 
