@@ -15,7 +15,7 @@ from app.models.document import Document
 from app.models.task import Task, TaskStatus
 from app.models.task_review import TaskReviewEvent
 from app.core.agent import agent as agent_orchestrator
-from app.core.permissions import get_subject, get_visible_project_or_404, is_global_admin, require_project_access
+from app.core.permissions import get_visible_project_or_404, require_project_access
 
 LOCK_EXPIRY_MINUTES = 30
 TASK_PRIORITIES = {"urgent", "high", "medium", "low"}
@@ -254,6 +254,13 @@ async def _get_task_or_404(db: AsyncSession, task_id: str) -> Task:
     return task
 
 
+def _require_project_id(project_id: str | None) -> str:
+    scoped_project_id = str(project_id or "").strip()
+    if not scoped_project_id:
+        raise HTTPException(status_code=422, detail="project_id is required")
+    return scoped_project_id
+
+
 async def _approve_task(
     db: AsyncSession,
     task: Task,
@@ -283,16 +290,15 @@ async def list_tasks(
     status: TaskStatus | None = None,
     db: AsyncSession = Depends(get_db),
 ):
-    """List tasks, optionally filtered by project and/or status."""
-    query = select(Task).order_by(Task.position, Task.created_at)
+    """List tasks for one authorized project, optionally filtered by status."""
+    scoped_project_id = _require_project_id(project_id)
+    await get_visible_project_or_404(db, request, scoped_project_id, min_role="viewer")
 
-    if project_id:
-        await get_visible_project_or_404(db, request, project_id, min_role="viewer")
-        query = query.where(Task.project_id == project_id)
-    else:
-        subject = get_subject(request)
-        if not is_global_admin(subject):
-            raise HTTPException(status_code=422, detail="project_id is required")
+    query = (
+        select(Task)
+        .where(Task.project_id == scoped_project_id)
+        .order_by(Task.position, Task.created_at)
+    )
     if status:
         query = query.where(Task.status == status)
 

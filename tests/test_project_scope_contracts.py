@@ -241,6 +241,29 @@ def test_findings_search_and_lists_require_active_project_scope() -> None:
     assert "Global findings search requires admin access" in route
 
 
+def test_task_kanban_requires_active_project_scope() -> None:
+    api = read_repo("frontend/src/lib/api.ts")
+    store = read_repo("frontend/src/stores/taskStore.ts")
+    kanban = read_repo("frontend/src/components/kanban/KanbanBoard.tsx")
+    timeline = read_repo("frontend/src/components/agents/AgentTimeline.tsx")
+    route = read_repo("backend/app/api/routes/tasks.py")
+
+    assert "list: (projectId: string, status?: string)" in api
+    assert "new URLSearchParams({ project_id: projectId })" in api
+    assert "fetchTasks: (projectId: string) => Promise<void>;" in store
+    assert "if (!projectId)" in store
+    assert "set({ tasks: [], loading: false, error: null });" in store
+    assert "data.filter((task) => task.project_id === projectId)" in store
+    assert "if (activeProjectId) fetchTasks(activeProjectId);" in kanban
+    assert "tasksApi.list(activeProjectId)" in timeline
+
+    assert "def _require_project_id(project_id: str | None) -> str:" in route
+    assert 'raise HTTPException(status_code=422, detail="project_id is required")' in route
+    assert "await get_visible_project_or_404(db, request, scoped_project_id, min_role=\"viewer\")" in route
+    assert "Task.project_id == scoped_project_id" in route
+    assert "is_global_admin" not in route
+
+
 def test_autoresearch_project_surfaces_require_active_project_scope() -> None:
     api = read_repo("frontend/src/lib/api.ts")
     store = read_repo("frontend/src/stores/autoresearchStore.ts")

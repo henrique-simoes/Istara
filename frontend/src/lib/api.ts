@@ -38,9 +38,8 @@ export const projects = {
 // --- Tasks ---
 
 export const tasks = {
-  list: (projectId?: string, status?: string) => {
-    const params = new URLSearchParams();
-    if (projectId) params.set("project_id", projectId);
+  list: (projectId: string, status?: string) => {
+    const params = new URLSearchParams({ project_id: projectId });
     if (status) params.set("status", status);
     return request<any[]>(`/api/tasks?${params}`);
   },

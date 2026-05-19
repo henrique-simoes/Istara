@@ -1,11 +1,14 @@
 """Route-level business logic tests — verify actual functionality, not just endpoint reachability."""
 
+import uuid
+
 import pytest
 from httpx import AsyncClient, ASGITransport
 from app.main import app
 from app.config import settings
-from app.models.database import init_db
+from app.models.database import async_session, init_db
 from app.core.auth import create_token
+from app.models.project import Project
 
 
 @pytest.fixture(autouse=True)
@@ -23,6 +26,15 @@ def auth_headers():
         settings.jwt_secret = "test-secret"
     token = create_token("user1", "testuser", "admin")
     return {"Authorization": f"Bearer {token}"}
+
+
+async def _seed_project(name: str = "Business Logic Project") -> Project:
+    project = Project(id=str(uuid.uuid4()), name=f"{name} {uuid.uuid4()}")
+    async with async_session() as db:
+        db.add(project)
+        await db.commit()
+        await db.refresh(project)
+    return project
 
 
 # ---------------------------------------------------------------------------
@@ -87,10 +99,11 @@ async def test_project_pause_and_resume(auth_headers):
 async def test_task_create_and_list(auth_headers):
     """Creating a task and listing tasks includes the new task."""
     await init_db()
+    project = await _seed_project()
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
         # Get initial count
-        response = await ac.get("/api/tasks", headers=auth_headers)
+        response = await ac.get(f"/api/tasks?project_id={project.id}", headers=auth_headers)
         assert response.status_code == 200
 
         # Create a task
@@ -100,11 +113,14 @@ async def test_task_create_and_list(auth_headers):
             json={
                 "title": "Test Task",
                 "description": "Test",
-                "project_id": "test-project",
+                "project_id": project.id,
             },
         )
-        # Task creation may fail if project doesn't exist — that's expected
-        assert response.status_code in (200, 201, 404, 422)
+        assert response.status_code == 201
+
+        listed = await ac.get(f"/api/tasks?project_id={project.id}", headers=auth_headers)
+        assert listed.status_code == 200
+        assert any(task["id"] == response.json()["id"] for task in listed.json())
 
 
 # ---------------------------------------------------------------------------
@@ -115,9 +131,10 @@ async def test_task_create_and_list(auth_headers):
 async def test_skills_have_health_data(auth_headers):
     """Skills health endpoint returns structured data."""
     await init_db()
+    project = await _seed_project("Skills Health")
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
-        response = await ac.get("/api/skills/health/all", headers=auth_headers)
+        response = await ac.get(f"/api/skills/health/all?project_id={project.id}", headers=auth_headers)
         assert response.status_code == 200
         data = response.json()
         assert isinstance(data, dict)
@@ -159,9 +176,10 @@ async def test_backup_estimate_returns_data(auth_headers):
 async def test_meta_agent_variants_returns_list(auth_headers):
     """Meta-agent variants endpoint returns a list."""
     await init_db()
+    project = await _seed_project("Meta Variants")
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
-        response = await ac.get("/api/meta-hyperagent/variants", headers=auth_headers)
+        response = await ac.get(f"/api/meta-hyperagent/variants?project_id={project.id}", headers=auth_headers)
         assert response.status_code in (200, 404, 500)
 
 
