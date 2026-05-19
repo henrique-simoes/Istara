@@ -3,14 +3,14 @@ stable_id: agents.create
 title: Create Agent
 ui_path: Agents > Create
 audience: researcher
-status: needs-verification
+status: documented
 related_features: ["agents.registry", "skills.catalog"]
 related_glossary: ["a2a", "mcp"]
 code_references: ["frontend/src/components/agents/AgentsView.tsx", "frontend/src/components/agents/CreateAgentWizard.tsx", "frontend/src/stores/agentStore.ts", "frontend/src/lib/api.ts", "backend/app/api/routes/agents.py", "backend/app/services/agent_service.py", "backend/app/core/agent_factory.py"]
 api_references: ["backend/app/api/routes/agents.py"]
-test_references: ["tests/test_agents.py", "tests/test_project_scope_contracts.py"]
+test_references: ["tests/test_agents.py", "tests/test_agent_mutation_scope.py", "tests/test_agent_scope_contracts.py", "tests/test_project_scope_contracts.py"]
 last_verified: 2026-05-19
-compass: CF-SPEC-60 / CF-757
+compass: CF-SPEC-60 / CF-757; CF-SPEC-83 / CF-1075
 ---
 
 # Create Agent
@@ -44,8 +44,9 @@ Create Agent exists so the work represented by Agents > Create has a stable, dis
 ## Inputs, Outputs, And Expected Outcomes
 
 - A custom agent with `scope=project` and the active project id.
+- Imported agent configs are recreated as project-scoped agents for the active project.
 - Visible status, lists, forms, generated artifacts, or review results shown by the referenced component and routes.
-- Missing active project context prevents creation rather than creating a global agent.
+- Missing active project context prevents creation or import rather than creating a global agent.
 
 ## Caveats
 
@@ -66,4 +67,4 @@ Create Agent exists so the work represented by Agents > Create has a stable, dis
 
 - Source files: `frontend/src/components/agents/AgentsView.tsx`, `frontend/src/components/agents/CreateAgentWizard.tsx`, `frontend/src/stores/agentStore.ts`, `frontend/src/lib/api.ts`, `backend/app/api/routes/agents.py`, `backend/app/services/agent_service.py`, `backend/app/core/agent_factory.py`
 - API references: `backend/app/api/routes/agents.py`
-- Tests: `tests/test_agents.py`, `tests/test_project_scope_contracts.py`
+- Tests: `tests/test_agents.py`, `tests/test_agent_mutation_scope.py`, `tests/test_agent_scope_contracts.py`, `tests/test_project_scope_contracts.py`

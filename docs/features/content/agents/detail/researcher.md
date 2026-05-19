@@ -6,11 +6,11 @@ audience: researcher
 status: documented
 related_features: ["agents.registry", "memory.agent"]
 related_glossary: ["a2a"]
-code_references: ["frontend/src/components/agents/AgentsView.tsx", "backend/app/core/agent_identity.py", "backend/app/core/agent_memory.py", "backend/app/core/permissions.py"]
+code_references: ["frontend/src/components/agents/AgentsView.tsx", "frontend/src/lib/api.ts", "frontend/src/stores/agentStore.ts", "backend/app/api/routes/agents.py", "backend/app/core/agent_identity.py", "backend/app/core/agent_memory.py", "backend/app/core/permissions.py"]
 api_references: ["backend/app/api/routes/agents.py"]
-test_references: []
-last_verified: 2026-05-15
-compass: CF-SPEC-53 / CF-657
+test_references: ["tests/test_agents.py", "tests/test_agent_mutation_scope.py", "tests/test_agent_scope_contracts.py"]
+last_verified: 2026-05-19
+compass: CF-SPEC-53 / CF-657; CF-SPEC-83 / CF-1075
 ---
 
 # Agent Detail Panels
@@ -33,6 +33,7 @@ Agent Detail Panels exists so the work represented by Agents > Agents > Detail h
 
 - Open Agents > Agents > Detail from the Istara navigation or the parent tab.
 - Use the visible controls in this surface to work with agent detail panels in the active project context.
+- Mutating controls are limited to agents owned by the active project; universal/system agent details remain inspectable without becoming a global mutation path.
 - Review the output in the same view and follow the related feature links when the workflow moves into another Istara surface.
 
 ## Supported Workflows
@@ -44,6 +45,7 @@ Agent Detail Panels exists so the work represented by Agents > Agents > Detail h
 ## Inputs, Outputs, And Expected Outcomes
 
 - Project-scoped state or artifact updates associated with agent detail panels.
+- Identity, memory, permission, lifecycle, and export updates require the active project to match the selected agent.
 - Visible status, lists, forms, generated artifacts, or review results shown by the referenced component and routes.
 
 ## Caveats
@@ -62,6 +64,6 @@ Agent Detail Panels exists so the work represented by Agents > Agents > Detail h
 
 ## Evidence
 
-- Source files: `frontend/src/components/agents/AgentsView.tsx`, `backend/app/core/agent_identity.py`, `backend/app/core/agent_memory.py`, `backend/app/core/permissions.py`
+- Source files: `frontend/src/components/agents/AgentsView.tsx`, `frontend/src/lib/api.ts`, `frontend/src/stores/agentStore.ts`, `backend/app/api/routes/agents.py`, `backend/app/core/agent_identity.py`, `backend/app/core/agent_memory.py`, `backend/app/core/permissions.py`
 - API references: `backend/app/api/routes/agents.py`
-- Tests: none recorded
+- Tests: `tests/test_agents.py`, `tests/test_agent_mutation_scope.py`, `tests/test_agent_scope_contracts.py`

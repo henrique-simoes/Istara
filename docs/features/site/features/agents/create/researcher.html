@@ -265,8 +265,9 @@
 <h2 id="inputs-outputs-and-expected-outcomes">Inputs, Outputs, And Expected Outcomes</h2>
 <ul>
 <li>A custom agent with <code>scope=project</code> and the active project id.</li>
+<li>Imported agent configs are recreated as project-scoped agents for the active project.</li>
 <li>Visible status, lists, forms, generated artifacts, or review results shown by the referenced component and routes.</li>
-<li>Missing active project context prevents creation rather than creating a global agent.</li>
+<li>Missing active project context prevents creation or import rather than creating a global agent.</li>
 </ul>
 <h2 id="caveats">Caveats</h2>
 <ul>
@@ -287,7 +288,7 @@
 <ul>
 <li>Source files: <code>frontend/src/components/agents/AgentsView.tsx</code>, <code>frontend/src/components/agents/CreateAgentWizard.tsx</code>, <code>frontend/src/stores/agentStore.ts</code>, <code>frontend/src/lib/api.ts</code>, <code>backend/app/api/routes/agents.py</code>, <code>backend/app/services/agent_service.py</code>, <code>backend/app/core/agent_factory.py</code></li>
 <li>API references: <code>backend/app/api/routes/agents.py</code></li>
-<li>Tests: <code>tests/test_agents.py</code>, <code>tests/test_project_scope_contracts.py</code></li>
+<li>Tests: <code>tests/test_agents.py</code>, <code>tests/test_agent_mutation_scope.py</code>, <code>tests/test_agent_scope_contracts.py</code>, <code>tests/test_project_scope_contracts.py</code></li>
 </ul>
         </article>
         <aside class="toc-panel" aria-label="Page sections">

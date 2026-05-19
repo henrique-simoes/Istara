@@ -255,6 +255,7 @@
 <ul>
 <li>Open Agents &gt; Agents from the Istara navigation or the parent tab.</li>
 <li>Use the visible controls in this surface to work with universal agents and agents scoped to the active project.</li>
+<li>Project-owned controls such as pause, resume, delete, export, and permission edits are available only for agents attached to the active project.</li>
 <li>Review the output in the same view and follow the related feature links when the workflow moves into another Istara surface.</li>
 </ul>
 <h2 id="supported-workflows">Supported Workflows</h2>
@@ -266,6 +267,7 @@
 <h2 id="inputs-outputs-and-expected-outcomes">Inputs, Outputs, And Expected Outcomes</h2>
 <ul>
 <li>Universal system agents and project-scoped custom agents associated with the active project.</li>
+<li>Project-owned custom-agent changes stay bound to the active project instead of applying to a global agent record.</li>
 <li>Visible status, lists, forms, generated artifacts, or review results shown by the referenced component and routes.</li>
 </ul>
 <h2 id="caveats">Caveats</h2>
@@ -288,7 +290,7 @@
 <ul>
 <li>Source files: <code>frontend/src/components/agents/AgentsView.tsx</code>, <code>frontend/src/stores/agentStore.ts</code>, <code>backend/app/api/routes/agents.py</code></li>
 <li>API references: <code>backend/app/api/routes/agents.py</code></li>
-<li>Tests: <code>tests/test_agents.py</code></li>
+<li>Tests: <code>tests/test_agents.py</code>, <code>tests/test_agent_mutation_scope.py</code>, <code>tests/test_agent_scope_contracts.py</code>, <code>tests/test_project_scope_contracts.py</code></li>
 </ul>
         </article>
         <aside class="toc-panel" aria-label="Page sections">

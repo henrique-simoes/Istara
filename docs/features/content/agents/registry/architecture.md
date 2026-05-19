@@ -8,9 +8,9 @@ related_features: ["agents.detail", "agents.a2a", "agents.create"]
 related_glossary: ["a2a", "mcp"]
 code_references: ["frontend/src/components/agents/AgentsView.tsx", "frontend/src/stores/agentStore.ts", "backend/app/api/routes/agents.py", "backend/app/api/agent_project_scope.py"]
 api_references: ["backend/app/api/routes/agents.py", "backend/app/api/agent_project_scope.py"]
-test_references: ["tests/test_agents.py"]
-last_verified: 2026-05-18
-compass: CF-SPEC-56 / CF-698
+test_references: ["tests/test_agents.py", "tests/test_agent_mutation_scope.py", "tests/test_agent_scope_contracts.py", "tests/test_project_scope_contracts.py"]
+last_verified: 2026-05-19
+compass: CF-SPEC-56 / CF-698; CF-SPEC-83 / CF-1075
 ---
 
 # Agent Registry Architecture
@@ -41,6 +41,7 @@ The Agents view lists and manages available agents, including their status and p
 - Shared agent project-scope policy lives in `backend/app/api/agent_project_scope.py` and is reused by registry, detail, heartbeat, recent-log, and direct A2A endpoints.
 - `frontend/src/components/agents/AgentsView.tsx` passes the active project to `frontend/src/stores/agentStore.ts` so project-scoped agents are filtered by `/api/agents?project_id=...` while universal system agents remain visible.
 - Agent heartbeat, recent-log, avatar, and identity requests also carry the active project id; non-admin requests without that scope are rejected instead of falling back to a global agent view.
+- Project-facing by-id actions for update, delete, pause, resume, restart, avatar upload, memory update, identity update, export, and import require the active project id. The backend resolves the agent by id plus owned project and returns not found for stale ids from another project or for universal/system agents on these project-owned mutation paths.
 - Universal agents remain visible in project views, but runtime memory and current-task state are redacted for non-admin users because those fields are not project-partitioned.
 - The frontmatter and manifest entries are the durable contract for agents updating this page after code changes.
 - When the referenced component, store, route, agent, skill, or test behavior changes, regenerate and validate the feature documentation.
@@ -52,7 +53,9 @@ The Agents view lists and manages available agents, including their status and p
 
 ## Tests And Verification
 
-- `tests/test_agents.py` covers the related registry, heartbeat, recent-log, detail, memory, promotion, and A2A project-scoping contracts for the Agents surface.
+- `tests/test_agents.py` covers the related registry, heartbeat, recent-log, detail, memory, mutation, promotion, and A2A project-scoping contracts for the Agents surface.
+- `tests/test_agent_mutation_scope.py` verifies that project-facing by-id mutations reject missing, stale cross-project, and universal/system agent ids.
+- `tests/test_agent_scope_contracts.py` pins the frontend API/store/view contract so by-id mutations cannot regress to projectless agent routes.
 
 ## Related Features
 
@@ -67,7 +70,7 @@ The Agents view lists and manages available agents, including their status and p
 
 ## Compass Evidence
 
-- Spec/task: CF-SPEC-56 / CF-698
+- Spec/task: CF-SPEC-56 / CF-698; CF-SPEC-83 / CF-1075
 - Inventory source: `docs/features/inventory.json`
 
 ## When To Update

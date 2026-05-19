@@ -254,6 +254,7 @@
 <ul>
 <li>Open Agents &gt; Agents &gt; Detail from the Istara navigation or the parent tab.</li>
 <li>Use the visible controls in this surface to work with agent detail panels in the active project context.</li>
+<li>Mutating controls are limited to agents owned by the active project; universal/system agent details remain inspectable without becoming a global mutation path.</li>
 <li>Review the output in the same view and follow the related feature links when the workflow moves into another Istara surface.</li>
 </ul>
 <h2 id="supported-workflows">Supported Workflows</h2>
@@ -265,6 +266,7 @@
 <h2 id="inputs-outputs-and-expected-outcomes">Inputs, Outputs, And Expected Outcomes</h2>
 <ul>
 <li>Project-scoped state or artifact updates associated with agent detail panels.</li>
+<li>Identity, memory, permission, lifecycle, and export updates require the active project to match the selected agent.</li>
 <li>Visible status, lists, forms, generated artifacts, or review results shown by the referenced component and routes.</li>
 </ul>
 <h2 id="caveats">Caveats</h2>
@@ -283,9 +285,9 @@
 </ul>
 <h2 id="evidence">Evidence</h2>
 <ul>
-<li>Source files: <code>frontend/src/components/agents/AgentsView.tsx</code>, <code>backend/app/core/agent_identity.py</code>, <code>backend/app/core/agent_memory.py</code>, <code>backend/app/core/permissions.py</code></li>
+<li>Source files: <code>frontend/src/components/agents/AgentsView.tsx</code>, <code>frontend/src/lib/api.ts</code>, <code>frontend/src/stores/agentStore.ts</code>, <code>backend/app/api/routes/agents.py</code>, <code>backend/app/core/agent_identity.py</code>, <code>backend/app/core/agent_memory.py</code>, <code>backend/app/core/permissions.py</code></li>
 <li>API references: <code>backend/app/api/routes/agents.py</code></li>
-<li>Tests: none recorded</li>
+<li>Tests: <code>tests/test_agents.py</code>, <code>tests/test_agent_mutation_scope.py</code>, <code>tests/test_agent_scope_contracts.py</code></li>
 </ul>
         </article>
         <aside class="toc-panel" aria-label="Page sections">

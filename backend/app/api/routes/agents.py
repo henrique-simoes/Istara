@@ -37,6 +37,7 @@ from app.api.agent_project_scope import (
     redact_global_agent_state_for_project_view,
     require_agent_by_id,
     require_agent_collection_scope,
+    require_project_owned_agent,
 )
 from app.models.database import get_db
 from app.services import agent_service, a2a
@@ -281,10 +282,11 @@ async def update_agent(
     agent_id: str,
     data: UpdateAgentRequest,
     request: Request,
+    project_id: str | None = None,
     db: AsyncSession = Depends(get_db),
 ):
     """Update an agent's configuration."""
-    require_admin_from_request(request)
+    await require_project_owned_agent(db, request, agent_id, project_id)
     updates = data.model_dump(exclude_unset=True)
     if "heartbeat_interval" in updates:
         updates["heartbeat_interval_seconds"] = updates.pop("heartbeat_interval")
@@ -295,9 +297,9 @@ async def update_agent(
 
 
 @router.delete("/agents/{agent_id}", status_code=204)
-async def delete_agent(agent_id: str, request: Request, db: AsyncSession = Depends(get_db)):
-    """Soft-delete an agent. Admin only."""
-    require_admin_from_request(request)
+async def delete_agent(agent_id: str, request: Request, project_id: str | None = None, db: AsyncSession = Depends(get_db)):
+    """Soft-delete a project-owned agent from the active project."""
+    await require_project_owned_agent(db, request, agent_id, project_id)
     # Stop custom agent worker if running
     try:
         from app.agents.custom_worker import stop_custom_agent
@@ -309,8 +311,8 @@ async def delete_agent(agent_id: str, request: Request, db: AsyncSession = Depen
 
 
 @router.post("/agents/{agent_id}/pause")
-async def pause_agent(agent_id: str, request: Request, db: AsyncSession = Depends(get_db)):
-    require_admin_from_request(request)
+async def pause_agent(agent_id: str, request: Request, project_id: str | None = None, db: AsyncSession = Depends(get_db)):
+    await require_project_owned_agent(db, request, agent_id, project_id)
     from app.models.agent import AgentState
     if not await agent_service.set_agent_state(db, agent_id, AgentState.PAUSED):
         raise HTTPException(status_code=404, detail="Agent not found")
@@ -318,8 +320,8 @@ async def pause_agent(agent_id: str, request: Request, db: AsyncSession = Depend
 
 
 @router.post("/agents/{agent_id}/resume")
-async def resume_agent(agent_id: str, request: Request, db: AsyncSession = Depends(get_db)):
-    require_admin_from_request(request)
+async def resume_agent(agent_id: str, request: Request, project_id: str | None = None, db: AsyncSession = Depends(get_db)):
+    await require_project_owned_agent(db, request, agent_id, project_id)
     from app.models.agent import AgentState
     if not await agent_service.set_agent_state(db, agent_id, AgentState.IDLE):
         raise HTTPException(status_code=404, detail="Agent not found")
@@ -327,9 +329,9 @@ async def resume_agent(agent_id: str, request: Request, db: AsyncSession = Depen
 
 
 @router.post("/agents/{agent_id}/restart")
-async def restart_agent(agent_id: str, request: Request, db: AsyncSession = Depends(get_db)):
+async def restart_agent(agent_id: str, request: Request, project_id: str | None = None, db: AsyncSession = Depends(get_db)):
     """Reset an agent from ERROR state back to IDLE, clearing error counters."""
-    require_admin_from_request(request)
+    await require_project_owned_agent(db, request, agent_id, project_id)
     from app.models.agent import AgentState, HeartbeatStatus
     from app.models.agent import Agent
 
@@ -426,14 +428,12 @@ async def request_promotion(
 async def upload_avatar(
     agent_id: str,
     request: Request,
+    project_id: str | None = None,
     file: UploadFile = File(...),
     db: AsyncSession = Depends(get_db),
 ):
     """Upload an avatar image for an agent."""
-    require_admin_from_request(request)
-    agent = await agent_service.get_agent(db, agent_id)
-    if not agent:
-        raise HTTPException(status_code=404, detail="Agent not found")
+    await require_project_owned_agent(db, request, agent_id, project_id)
 
     ext = AVATAR_CONTENT_TYPES.get(file.content_type or "")
     if not ext:
@@ -508,9 +508,9 @@ async def get_identity(
 
 
 @router.put("/agents/{agent_id}/identity")
-async def update_identity(agent_id: str, data: dict, request: Request):
+async def update_identity(agent_id: str, data: dict, request: Request, project_id: str | None = None, db: AsyncSession = Depends(get_db)):
     """Update an agent's local persona overlay files."""
-    require_admin_from_request(request)
+    await require_project_owned_agent(db, request, agent_id, project_id)
     from app.core.agent_identity import (
         IDENTITY_FILES,
         load_agent_identity,
@@ -1028,13 +1028,8 @@ async def get_memory(
 
 
 @router.patch("/agents/{agent_id}/memory")
-async def update_memory(
-    agent_id: str,
-    updates: dict,
-    request: Request,
-    db: AsyncSession = Depends(get_db),
-):
-    require_admin_from_request(request)
+async def update_memory(agent_id: str, updates: dict, request: Request, project_id: str | None = None, db: AsyncSession = Depends(get_db)):
+    await require_project_owned_agent(db, request, agent_id, project_id)
     memory = await agent_service.update_agent_memory(db, agent_id, updates)
     return {"agent_id": agent_id, "memory": memory}
 
@@ -1140,25 +1135,24 @@ class AgentExportData(BaseModel):
     capabilities: list[str]
     heartbeat_interval: int
     memory: dict
+    project_id: str | None = None
 
 
 @router.get("/agents/{agent_id}/export")
-async def export_agent(agent_id: str, request: Request, db: AsyncSession = Depends(get_db)):
+async def export_agent(agent_id: str, request: Request, project_id: str | None = None, db: AsyncSession = Depends(get_db)):
     """Export an agent's configuration as a portable JSON config."""
-    require_admin_from_request(request)
-    agent = await agent_service.get_agent(db, agent_id)
-    if not agent:
-        raise HTTPException(status_code=404, detail="Agent not found")
+    agent = await require_project_owned_agent(db, request, agent_id, project_id)
+    serialized = agent.to_dict()
     return {
         "istara_version": _get_version(),
         "type": "agent_config",
         "agent": {
-            "name": agent["name"],
-            "role": agent["role"],
-            "system_prompt": agent["system_prompt"],
-            "capabilities": agent["capabilities"],
-            "heartbeat_interval": agent["heartbeat_interval_seconds"],
-            "memory": agent["memory"],
+            "name": serialized["name"],
+            "role": serialized["role"],
+            "system_prompt": serialized["system_prompt"],
+            "capabilities": serialized["capabilities"],
+            "heartbeat_interval": serialized["heartbeat_interval_seconds"],
+            "memory": serialized["memory"],
         },
     }
 
@@ -1166,7 +1160,10 @@ async def export_agent(agent_id: str, request: Request, db: AsyncSession = Depen
 @router.post("/agents/import")
 async def import_agent(data: AgentExportData, request: Request, db: AsyncSession = Depends(get_db)):
     """Import an agent from an exported config."""
-    require_admin_from_request(request)
+    scoped_project_id = clean_project_id(data.project_id)
+    if not scoped_project_id:
+        raise HTTPException(status_code=400, detail="project_id is required")
+    await require_project_access(db, request, scoped_project_id, min_role="project_admin")
     agent = await agent_service.create_agent(
         db,
         name=data.name,
@@ -1174,6 +1171,8 @@ async def import_agent(data: AgentExportData, request: Request, db: AsyncSession
         system_prompt=data.system_prompt,
         capabilities=data.capabilities,
         heartbeat_interval=data.heartbeat_interval,
+        scope="project",
+        project_id=scoped_project_id,
     )
     # Apply memory if provided
     if data.memory:

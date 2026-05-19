@@ -264,6 +264,7 @@
 <li>Shared agent project-scope policy lives in <code>backend/app/api/agent_project_scope.py</code> and is reused by registry, detail, heartbeat, recent-log, and direct A2A endpoints.</li>
 <li><code>frontend/src/components/agents/AgentsView.tsx</code> passes the active project to <code>frontend/src/stores/agentStore.ts</code> so project-scoped agents are filtered by <code>/api/agents?project_id=...</code> while universal system agents remain visible.</li>
 <li>Agent heartbeat, recent-log, avatar, and identity requests also carry the active project id; non-admin requests without that scope are rejected instead of falling back to a global agent view.</li>
+<li>Project-facing by-id actions for update, delete, pause, resume, restart, avatar upload, memory update, identity update, export, and import require the active project id. The backend resolves the agent by id plus owned project and returns not found for stale ids from another project or for universal/system agents on these project-owned mutation paths.</li>
 <li>Universal agents remain visible in project views, but runtime memory and current-task state are redacted for non-admin users because those fields are not project-partitioned.</li>
 <li>The frontmatter and manifest entries are the durable contract for agents updating this page after code changes.</li>
 <li>When the referenced component, store, route, agent, skill, or test behavior changes, regenerate and validate the feature documentation.</li>
@@ -275,7 +276,9 @@
 </ul>
 <h2 id="tests-and-verification">Tests And Verification</h2>
 <ul>
-<li><code>tests/test_agents.py</code> covers the related registry, heartbeat, recent-log, detail, memory, promotion, and A2A project-scoping contracts for the Agents surface.</li>
+<li><code>tests/test_agents.py</code> covers the related registry, heartbeat, recent-log, detail, memory, mutation, promotion, and A2A project-scoping contracts for the Agents surface.</li>
+<li><code>tests/test_agent_mutation_scope.py</code> verifies that project-facing by-id mutations reject missing, stale cross-project, and universal/system agent ids.</li>
+<li><code>tests/test_agent_scope_contracts.py</code> pins the frontend API/store/view contract so by-id mutations cannot regress to projectless agent routes.</li>
 </ul>
 <h2 id="related-features">Related Features</h2>
 <ul>
@@ -290,7 +293,7 @@
 </ul>
 <h2 id="compass-evidence">Compass Evidence</h2>
 <ul>
-<li>Spec/task: CF-SPEC-56 / CF-698</li>
+<li>Spec/task: CF-SPEC-56 / CF-698; CF-SPEC-83 / CF-1075</li>
 <li>Inventory source: <code>docs/features/inventory.json</code></li>
 </ul>
 <h2 id="when-to-update">When To Update</h2>
