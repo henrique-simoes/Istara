@@ -568,6 +568,7 @@
         "frontend/src/components/integrations/DeploymentDashboard.tsx",
         "frontend/src/components/integrations/ConversationTranscript.tsx",
         "frontend/src/components/integrations/MCPTab.tsx",
+        "frontend/src/components/integrations/MCPServerSetup.tsx",
         "frontend/src/components/integrations/SurveysTab.tsx",
         "frontend/src/lib/api.ts",
         "frontend/src/lib/contextDagApi.ts",
@@ -607,7 +608,7 @@
         "tests/test_auth_security.py"
       ],
       "future_change_trigger": true,
-      "notes": "Global admin, project admin, researcher, viewer, legacy role mappings, active-project notification, websocket subscription, chat session/history scope, Context hierarchy prompt/list scope, Context DAG session scope, memory/index scope, findings/evidence/search/report scope, task/Kanban scope, governed-evolution proposal/archive/reasoning scope, Meta-Hyperagent proposal/observation/variant scope, agent status/log/detail/learning/self-evolution/realtime/A2A-discovery, loop/background-process scope, project-owned Interfaces screens/briefs/status/configuration, integration/deployment/MCP-client list/detail/lifecycle routes, channel message/conversation detail scope, document library/preview routes, and donated-compute project scopes are governed. Project-facing APIs require an explicit active project; admin-only global aggregation belongs to dedicated admin surfaces. Startup QA/simulation loops are opt-in; project task workers, schedule execution, orchestrator routing, and persona self-evolution skip paused or missing project context before model, proposal, or mutation work."
+      "notes": "Global admin, project admin, researcher, viewer, legacy role mappings, active-project notification, websocket subscription, chat session/history scope, Context hierarchy prompt/list scope, Context DAG session scope, memory/index scope, findings/evidence/search/report scope, task/Kanban scope, governed-evolution proposal/archive/reasoning scope, Meta-Hyperagent proposal/observation/variant scope, agent status/log/detail/learning/self-evolution/realtime/A2A-discovery, loop/background-process scope, project-owned Interfaces screens/briefs/status/configuration, integration/deployment/MCP-client list/detail/lifecycle routes, MCP client discovery/tool/call/health/delete routes, channel message/conversation detail scope, document library/preview routes, and donated-compute project scopes are governed. Project-facing APIs require an explicit active project; admin-only global aggregation belongs to dedicated admin surfaces. Startup QA/simulation loops are opt-in; project task workers, schedule execution, orchestrator routing, and persona self-evolution skip paused or missing project context before model, proposal, or mutation work."
     },
     {
       "id": "AUTHZ-002",
@@ -788,6 +789,8 @@
         "backend/app/services/stitch_service.py",
         "backend/app/models/mcp_server_config.py",
         "frontend/src/components/integrations/MCPTab.tsx",
+        "frontend/src/components/integrations/MCPServerSetup.tsx",
+        "frontend/src/lib/api.ts",
         "frontend/src/stores/integrationsStore.ts",
         "backend/app/mcp/server.py",
         "tests/test_mcp.py",
@@ -795,7 +798,7 @@
         "tests/simulation/scenarios/56-mcp-server-security.mjs"
       ],
       "future_change_trigger": true,
-      "notes": "Tool execution must remain policy-mediated and visible to audit processes; external MCP URLs and cached tool descriptors are validated, bounded, prompt-sanitized, and project-owned when shown in project-facing Integrations views. MCP client lists, Stitch-backed Interfaces calls, and tool aggregation require an explicit active project instead of falling back to global admin lists or global credentials."
+      "notes": "Tool execution must remain policy-mediated and visible to audit processes; external MCP URLs and cached tool descriptors are validated, bounded, prompt-sanitized, and project-owned when shown in project-facing Integrations views. MCP client lists, detail/action routes, discovery, health checks, tool calls, Stitch-backed Interfaces calls, and tool aggregation require an explicit active project instead of falling back to global admin lists or global credentials."
     },
     {
       "id": "WEBHOOK-001",

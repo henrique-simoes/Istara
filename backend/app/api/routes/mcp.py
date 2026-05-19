@@ -87,21 +87,21 @@ async def _require_project_scope(
     return scoped_project_id
 
 
-async def _get_client_for_project(
+async def _get_project_client_or_404(
     db: AsyncSession,
     request: Request,
     server_id: str,
+    project_id: str | None,
     *,
     min_role: ProjectRole = "project_admin",
-) -> MCPServerConfig:
+) -> tuple[str, MCPServerConfig]:
+    scoped_project_id = await _require_project_scope(
+        db, request, project_id, min_role=min_role
+    )
     server = await db.get(MCPServerConfig, server_id)
-    if not server:
+    if not server or server.project_id != scoped_project_id:
         raise HTTPException(status_code=404, detail="MCP server not found")
-    if server.project_id:
-        await require_project_access(db, request, server.project_id, min_role=min_role)
-    else:
-        require_admin_from_request(request)
-    return server
+    return scoped_project_id, server
 
 
 # ===========================================================================
@@ -453,9 +453,16 @@ async def list_all_client_tools(
 
 
 @router.delete("/mcp/clients/{server_id}", status_code=204)
-async def unregister_client(server_id: str, request: Request, db: AsyncSession = Depends(get_db)):
+async def unregister_client(
+    server_id: str,
+    request: Request,
+    project_id: str | None = Query(None, description="Active project"),
+    db: AsyncSession = Depends(get_db),
+):
     """Remove an external MCP server from the registry. Admin only."""
-    await _get_client_for_project(db, request, server_id, min_role="project_admin")
+    await _get_project_client_or_404(
+        db, request, server_id, project_id, min_role="project_admin"
+    )
     from app.services.mcp_client_manager import unregister_server
 
     removed = await unregister_server(db, server_id)
@@ -465,12 +472,17 @@ async def unregister_client(server_id: str, request: Request, db: AsyncSession =
 
 @router.post("/mcp/clients/{server_id}/discover")
 async def discover_client_tools(
-    server_id: str, request: Request, db: AsyncSession = Depends(get_db)
+    server_id: str,
+    request: Request,
+    project_id: str | None = Query(None, description="Active project"),
+    db: AsyncSession = Depends(get_db),
 ):
     """Connect to an external MCP server and discover its available tools."""
     from app.services.mcp_client_manager import MCP_CLIENT_AVAILABLE, discover_tools
 
-    server = await _get_client_for_project(db, request, server_id, min_role="project_admin")
+    scoped_project_id, server = await _get_project_client_or_404(
+        db, request, server_id, project_id, min_role="project_admin"
+    )
 
     if not MCP_CLIENT_AVAILABLE:
         raise HTTPException(
@@ -497,6 +509,7 @@ async def discover_client_tools(
             evidence={
                 "passed": True,
                 "server_id": server_id,
+                "project_id": scoped_project_id,
                 "tool_count": len(tools),
                 "health_status": server.health_status,
             },
@@ -508,14 +521,22 @@ async def discover_client_tools(
 
 
 @router.get("/mcp/clients/{server_id}/tools")
-async def get_client_tools(server_id: str, request: Request, db: AsyncSession = Depends(get_db)):
+async def get_client_tools(
+    server_id: str,
+    request: Request,
+    project_id: str | None = Query(None, description="Active project"),
+    db: AsyncSession = Depends(get_db),
+):
     """Get cached tools for an external MCP server (from last discovery)."""
-    server = await _get_client_for_project(db, request, server_id, min_role="project_admin")
+    server_project_id, server = await _get_project_client_or_404(
+        db, request, server_id, project_id, min_role="project_admin"
+    )
     import json
 
     tools = json.loads(server.tools_json) if server.tools_json else []
     return {
         "server_id": server_id,
+        "project_id": server_project_id,
         "server_name": server.name,
         "tools": tools,
         "count": len(tools),
@@ -530,10 +551,13 @@ async def call_client_tool(
     server_id: str,
     data: ToolCallRequest,
     request: Request,
+    project_id: str | None = Query(None, description="Active project"),
     db: AsyncSession = Depends(get_db),
 ):
     """Call a tool on an external MCP server."""
-    await _get_client_for_project(db, request, server_id, min_role="project_admin")
+    scoped_project_id, _ = await _get_project_client_or_404(
+        db, request, server_id, project_id, min_role="project_admin"
+    )
     from app.services.mcp_client_manager import MCP_CLIENT_AVAILABLE, call_tool
 
     if not MCP_CLIENT_AVAILABLE:
@@ -559,6 +583,7 @@ async def call_client_tool(
             evidence={
                 "passed": True,
                 "server_id": server_id,
+                "project_id": scoped_project_id,
                 "tool_name": data.tool_name,
                 "argument_keys": sorted((data.arguments or {}).keys()),
             },
@@ -567,15 +592,23 @@ async def call_client_tool(
         pass
     return {
         "server_id": server_id,
+        "project_id": scoped_project_id,
         "tool_name": data.tool_name,
         "result": result,
     }
 
 
 @router.get("/mcp/clients/{server_id}/health")
-async def check_client_health(server_id: str, request: Request, db: AsyncSession = Depends(get_db)):
+async def check_client_health(
+    server_id: str,
+    request: Request,
+    project_id: str | None = Query(None, description="Active project"),
+    db: AsyncSession = Depends(get_db),
+):
     """Check connectivity to an external MCP server."""
-    await _get_client_for_project(db, request, server_id, min_role="project_admin")
+    await _get_project_client_or_404(
+        db, request, server_id, project_id, min_role="project_admin"
+    )
     from app.services.mcp_client_manager import health_check
 
     result = await health_check(db, server_id)

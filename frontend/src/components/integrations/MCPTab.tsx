@@ -51,9 +51,10 @@ export default function MCPTab() {
   };
 
   const handleDiscover = async (clientId: string) => {
+    if (!activeProjectId) return;
     setDiscovering(clientId);
     try {
-      await mcpApi.clients.discover(clientId);
+      await mcpApi.clients.discover(clientId, activeProjectId);
       await fetchMCPClients(activeProjectId);
     } catch {
       // silent
@@ -63,8 +64,9 @@ export default function MCPTab() {
   };
 
   const handleDeleteClient = async (clientId: string) => {
+    if (!activeProjectId) return;
     try {
-      await mcpApi.clients.delete(clientId);
+      await mcpApi.clients.delete(clientId, activeProjectId);
       await fetchMCPClients(activeProjectId);
     } catch {
       // silent

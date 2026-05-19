@@ -6,11 +6,11 @@ audience: researcher
 status: documented
 related_features: ["skills.catalog", "agents.registry"]
 related_glossary: ["mcp"]
-code_references: ["frontend/src/components/integrations/MCPTab.tsx", "frontend/src/components/integrations/MCPAccessPolicyEditor.tsx", "frontend/src/components/integrations/MCPAuditLog.tsx", "backend/app/api/routes/mcp.py"]
+code_references: ["frontend/src/components/integrations/MCPTab.tsx", "frontend/src/components/integrations/MCPServerSetup.tsx", "frontend/src/components/integrations/MCPAccessPolicyEditor.tsx", "frontend/src/components/integrations/MCPAuditLog.tsx", "backend/app/api/routes/mcp.py"]
 api_references: ["backend/app/api/routes/mcp.py"]
 test_references: ["tests/test_mcp.py", "tests/test_project_scope_contracts.py"]
-last_verified: 2026-05-18
-compass: CF-SPEC-53 / CF-657; CF-SPEC-60 / CF-759
+last_verified: 2026-05-19
+compass: CF-SPEC-53 / CF-657; CF-SPEC-60 / CF-759; CF-SPEC-60 / CF-776
 ---
 
 # MCP Integrations
@@ -46,11 +46,13 @@ MCP Integrations exists so the work represented by Integrations > MCP has a stab
 
 - Project-scoped MCP server registrations associated with the selected project.
 - Visible status, lists, forms, generated artifacts, or review results shown by the referenced component and routes.
+- Discovery, deletion, health checks, cached tool views, and tool calls only operate on MCP servers owned by the active project.
 
 ## Caveats
 
 - No active project means the connected MCP server list is empty and new connections are disabled.
 - Legacy global MCP clients are admin API inventory and are not shown as project MCP connections.
+- A connected server from another project should not appear or be actionable in the current project's MCP tab, even if the same user can administer both projects.
 - Needs interactive verification for exact empty, loading, error, and permission-denied states.
 - Do not expand this documentation beyond the cited source files without adding new code or walkthrough evidence.
 
@@ -65,6 +67,6 @@ MCP Integrations exists so the work represented by Integrations > MCP has a stab
 
 ## Evidence
 
-- Source files: `frontend/src/components/integrations/MCPTab.tsx`, `frontend/src/components/integrations/MCPAccessPolicyEditor.tsx`, `frontend/src/components/integrations/MCPAuditLog.tsx`, `backend/app/api/routes/mcp.py`
+- Source files: `frontend/src/components/integrations/MCPTab.tsx`, `frontend/src/components/integrations/MCPServerSetup.tsx`, `frontend/src/components/integrations/MCPAccessPolicyEditor.tsx`, `frontend/src/components/integrations/MCPAuditLog.tsx`, `backend/app/api/routes/mcp.py`
 - API references: `backend/app/api/routes/mcp.py`
 - Tests: `tests/test_mcp.py`, `tests/test_project_scope_contracts.py`

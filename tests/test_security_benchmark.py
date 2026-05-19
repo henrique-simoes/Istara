@@ -59,10 +59,14 @@ def test_security_benchmark_detects_mcp_project_scope_paths() -> None:
     matrix = load_matrix(ROOT / "security" / "control_matrix.json")
 
     changed_paths = [
+        "backend/app/api/routes/mcp.py",
         "backend/app/models/mcp_server_config.py",
+        "frontend/src/components/integrations/MCPServerSetup.tsx",
         "frontend/src/components/integrations/MCPTab.tsx",
+        "frontend/src/lib/api.ts",
         "frontend/src/stores/integrationsStore.ts",
         "tests/test_mcp.py",
+        "tests/test_project_scope_contracts.py",
     ]
     result = evaluate_matrix(matrix, changed_paths=changed_paths)
 

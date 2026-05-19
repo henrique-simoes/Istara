@@ -267,11 +267,13 @@
 <ul>
 <li>Project-scoped MCP server registrations associated with the selected project.</li>
 <li>Visible status, lists, forms, generated artifacts, or review results shown by the referenced component and routes.</li>
+<li>Discovery, deletion, health checks, cached tool views, and tool calls only operate on MCP servers owned by the active project.</li>
 </ul>
 <h2 id="caveats">Caveats</h2>
 <ul>
 <li>No active project means the connected MCP server list is empty and new connections are disabled.</li>
 <li>Legacy global MCP clients are admin API inventory and are not shown as project MCP connections.</li>
+<li>A connected server from another project should not appear or be actionable in the current project&#x27;s MCP tab, even if the same user can administer both projects.</li>
 <li>Needs interactive verification for exact empty, loading, error, and permission-denied states.</li>
 <li>Do not expand this documentation beyond the cited source files without adding new code or walkthrough evidence.</li>
 </ul>
@@ -286,7 +288,7 @@
 </ul>
 <h2 id="evidence">Evidence</h2>
 <ul>
-<li>Source files: <code>frontend/src/components/integrations/MCPTab.tsx</code>, <code>frontend/src/components/integrations/MCPAccessPolicyEditor.tsx</code>, <code>frontend/src/components/integrations/MCPAuditLog.tsx</code>, <code>backend/app/api/routes/mcp.py</code></li>
+<li>Source files: <code>frontend/src/components/integrations/MCPTab.tsx</code>, <code>frontend/src/components/integrations/MCPServerSetup.tsx</code>, <code>frontend/src/components/integrations/MCPAccessPolicyEditor.tsx</code>, <code>frontend/src/components/integrations/MCPAuditLog.tsx</code>, <code>backend/app/api/routes/mcp.py</code></li>
 <li>API references: <code>backend/app/api/routes/mcp.py</code></li>
 <li>Tests: <code>tests/test_mcp.py</code>, <code>tests/test_project_scope_contracts.py</code></li>
 </ul>
