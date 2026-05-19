@@ -23,6 +23,7 @@ class LoopExecution(Base):
     source_type: Mapped[str] = mapped_column(String(50))  # "scheduled_task" | "agent_loop"
     source_id: Mapped[str] = mapped_column(String(100))
     source_name: Mapped[str] = mapped_column(String(255), default="")
+    project_id: Mapped[str] = mapped_column(String(36), default="", index=True)
     status: Mapped[str] = mapped_column(
         String(20), default="success"
     )  # success | failure | running | skipped
@@ -48,6 +49,7 @@ class LoopExecution(Base):
             "source_type": self.source_type,
             "source_id": self.source_id,
             "source_name": self.source_name,
+            "project_id": self.project_id,
             "status": self.status,
             "started_at": self.started_at.isoformat() if self.started_at else None,
             "finished_at": self.finished_at.isoformat() if self.finished_at else None,
@@ -62,6 +64,7 @@ class LoopExecution(Base):
     @staticmethod
     def _parse_json_dict(raw: str) -> dict:
         try:
-            return json.loads(raw)
+            parsed = json.loads(raw)
         except (json.JSONDecodeError, TypeError):
             return {}
+        return parsed if isinstance(parsed, dict) else {}

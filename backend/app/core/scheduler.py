@@ -270,6 +270,7 @@ class Scheduler:
                         await record_execution(
                             source_type="custom" if task.loop_type == "custom" else "schedule",
                             source_id=task.id,
+                            project_id=task.project_id,
                             source_name=task.name,
                             status=exec_status,
                             started_at=exec_started,

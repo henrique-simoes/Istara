@@ -196,6 +196,10 @@ async def init_db() -> None:
             "CREATE INDEX IF NOT EXISTS ix_mcp_audit_log_project_id "
             "ON mcp_audit_log(project_id)",
             # Scheduler/loops hardening columns for existing installations.
+            "ALTER TABLE loop_executions ADD COLUMN project_id VARCHAR(36) "
+            "NOT NULL DEFAULT ''",
+            "CREATE INDEX IF NOT EXISTS ix_loop_executions_project_id "
+            "ON loop_executions(project_id)",
             "ALTER TABLE scheduled_tasks ADD COLUMN is_running BOOLEAN NOT NULL DEFAULT 0",
             "ALTER TABLE scheduled_tasks ADD COLUMN agent_id VARCHAR(36)",
             "ALTER TABLE scheduled_tasks ADD COLUMN loop_type VARCHAR(50) NOT NULL DEFAULT 'cron'",

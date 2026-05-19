@@ -230,6 +230,8 @@ def test_security_benchmark_detects_loop_project_scope_paths() -> None:
         "backend/app/api/routes/loops.py",
         "backend/app/api/routes/scheduler.py",
         "backend/app/services/loop_execution_service.py",
+        "backend/app/models/loop_execution.py",
+        "backend/alembic/versions/018_loop_execution_project_scope.py",
         "frontend/src/components/loops/LoopOverviewTab.tsx",
         "frontend/src/stores/loopsStore.ts",
         "tests/test_loops.py",

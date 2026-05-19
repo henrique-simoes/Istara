@@ -6,11 +6,11 @@ audience: architecture
 status: documented
 related_features: ["loops.overview", "loops.history"]
 related_glossary: ["a2a"]
-code_references: ["frontend/src/components/loops/SchedulesTab.tsx", "frontend/src/components/loops/CronBuilder.tsx", "backend/app/api/routes/scheduler.py", "backend/app/core/scheduler.py"]
+code_references: ["frontend/src/components/loops/SchedulesTab.tsx", "frontend/src/components/loops/CronBuilder.tsx", "backend/app/api/routes/scheduler.py", "backend/app/core/scheduler.py", "backend/app/services/loop_execution_service.py", "backend/app/models/loop_execution.py"]
 api_references: ["backend/app/api/routes/scheduler.py", "backend/app/api/routes/loops.py"]
 test_references: ["tests/test_loops.py", "tests/test_project_scope_contracts.py"]
 last_verified: 2026-05-19
-compass: CF-SPEC-61 / CF-779; CF-SPEC-68 / CF-870
+compass: CF-SPEC-61 / CF-779; CF-SPEC-68 / CF-870; CF-SPEC-97 / CF-1237
 ---
 
 # Loop Schedules Architecture
@@ -25,6 +25,8 @@ Schedules configure recurring loop timing, including cron-style recurrence contr
 - `frontend/src/components/loops/CronBuilder.tsx`
 - `backend/app/api/routes/scheduler.py`
 - `backend/app/core/scheduler.py`
+- `backend/app/services/loop_execution_service.py`
+- `backend/app/models/loop_execution.py`
 
 ## State, API, And Backend Contracts
 
@@ -40,6 +42,7 @@ Schedules configure recurring loop timing, including cron-style recurrence contr
 - Schedule detail, enable/disable, cron edits, and deletion require the active `project_id`; missing project scope returns 400, and a schedule id from another project returns 404 rather than falling back to the schedule's owning project.
 - Creating a schedule, re-enabling a schedule, or editing a schedule that remains enabled requires an unpaused project. Disabling a schedule in a paused project remains allowed so teams can stop queued work.
 - The scheduler selects due work only for non-paused projects and treats missing project ownership as a permanent schedule error instead of executing against a dangling project id.
+- Scheduler execution records persist the schedule's project id before they appear in loop history or loop statistics.
 
 ## Architecture Notes
 
@@ -69,7 +72,7 @@ Schedules configure recurring loop timing, including cron-style recurrence contr
 
 ## Compass Evidence
 
-- Spec/task: CF-SPEC-61 / CF-779; CF-SPEC-68 / CF-870
+- Spec/task: CF-SPEC-61 / CF-779; CF-SPEC-68 / CF-870; CF-SPEC-97 / CF-1237
 - Inventory source: `docs/features/inventory.json`
 
 ## When To Update

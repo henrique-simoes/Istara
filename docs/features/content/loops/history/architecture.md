@@ -6,11 +6,11 @@ audience: architecture
 status: documented
 related_features: ["loops.overview", "history.version"]
 related_glossary: ["a2a"]
-code_references: ["frontend/src/components/loops/ExecutionHistoryTab.tsx", "backend/app/api/routes/loops.py"]
+code_references: ["frontend/src/components/loops/ExecutionHistoryTab.tsx", "backend/app/api/routes/loops.py", "backend/app/services/loop_execution_service.py", "backend/app/models/loop_execution.py"]
 api_references: ["backend/app/api/routes/loops.py"]
-test_references: []
-last_verified: 2026-05-15
-compass: CF-SPEC-53 / CF-657
+test_references: ["tests/test_loops.py", "tests/test_project_scope_contracts.py"]
+last_verified: 2026-05-19
+compass: CF-SPEC-53 / CF-657; CF-SPEC-97 / CF-1237
 ---
 
 # Loop Execution History Architecture
@@ -23,6 +23,8 @@ Execution History records loop runs, outcomes, and recent automation activity.
 
 - `frontend/src/components/loops/ExecutionHistoryTab.tsx`
 - `backend/app/api/routes/loops.py`
+- `backend/app/services/loop_execution_service.py`
+- `backend/app/models/loop_execution.py`
 
 ## State, API, And Backend Contracts
 
@@ -33,11 +35,14 @@ Execution History records loop runs, outcomes, and recent automation activity.
 ### API And Backend
 
 - `backend/app/api/routes/loops.py`
-- Execution history is project content: non-admin requests must include an authorized active `project_id`, and execution rows are filtered to source IDs owned by that project.
+- `backend/app/services/loop_execution_service.py`
+- Execution history is project content: requests must include an authorized active `project_id`, and execution rows are filtered by persisted row `project_id` plus scoped legacy fallback for older metadata/source-id-only rows.
+- New loop execution records must persist `project_id`; background schedule writes pass the schedule's project id and fail closed if no project scope is available.
 
 ## Architecture Notes
 
 - The feature is mounted through `frontend/src/components/loops/ExecutionHistoryTab.tsx` and the UI navigation path recorded in the inventory.
+- Loop execution statistics use the same active-project scoping rules as paginated history, so aggregate counts cannot include another project's background activity.
 - The frontmatter and manifest entries are the durable contract for agents updating this page after code changes.
 - When the referenced component, store, route, agent, skill, or test behavior changes, regenerate and validate the feature documentation.
 
@@ -61,7 +66,7 @@ Execution History records loop runs, outcomes, and recent automation activity.
 
 ## Compass Evidence
 
-- Spec/task: CF-SPEC-53 / CF-657
+- Spec/task: CF-SPEC-53 / CF-657; CF-SPEC-97 / CF-1237
 - Inventory source: `docs/features/inventory.json`
 
 ## When To Update

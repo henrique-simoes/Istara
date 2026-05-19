@@ -118,6 +118,10 @@ projects, call app/API state, or use LLMs; normal project task workers,
 orchestrator routing, schedules, skill execution/planning, autoresearch,
 Meta-Hyperagent starts/applies, and self-evolution scans/promotions must skip
 paused projects before model work or proposal side effects.
+Loop execution history and statistics are project-content surfaces: new
+background execution records must persist the owning project id, and
+history/stat aggregate reads may use metadata or source-id fallback only for
+legacy rows inside the authorized active project.
 Messaging integrations and deployments are included in that paused-project
 dispatch boundary: channel adapters must not start or auto-start for paused or
 missing projects, inbound channel messages for paused projects must be dropped

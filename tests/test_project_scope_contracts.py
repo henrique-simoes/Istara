@@ -1017,6 +1017,7 @@ def test_loops_views_and_api_require_active_project_scope() -> None:
     api = read_repo("frontend/src/lib/api.ts")
     route = read_repo("backend/app/api/routes/loops.py")
     scheduler_route = read_repo("backend/app/api/routes/scheduler.py")
+    scheduler = read_repo("backend/app/core/scheduler.py")
     service = read_repo("backend/app/services/loop_execution_service.py")
 
     assert "const { activeProjectId } = useProjectStore();" in loops_view
@@ -1083,7 +1084,11 @@ def test_loops_views_and_api_require_active_project_scope() -> None:
     assert "ScheduledTask.project_id == scoped_project_id" in scheduler_route
     assert 'project_id: str | None = Query(None, description="Active project")' in scheduler_route
     assert "source_ids: Optional[list[str]] = None" in service
+    assert "project_id: Optional[str] = None" in service
+    assert "LoopExecution.project_id == scoped_project_id" in service
+    assert "def _execution_matches_project" in service
     assert "LoopExecution.source_id.in_(source_ids) if source_ids else false()" in service
+    assert "project_id=task.project_id" in scheduler
 
 
 def test_governed_evolution_requires_active_project_scope() -> None:
