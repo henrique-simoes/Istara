@@ -149,10 +149,11 @@ Simulation harnesses that exercise agent creation proposals, project-filtered
 agent lists, or Meta-Hyperagent project-content routes follow the same rule:
 pass the active simulation project id and skip instead of issuing an unscoped
 request when the runner has not supplied one.
-Simulation harnesses that exercise loop overview, agent loop config, schedule,
-custom loop, execution history, or execution statistics routes must also bind
-requests to the active simulation project id and skip rather than call those
-project-content endpoints without project scope.
+Simulation harnesses that exercise scheduler smoke/audit probes, loop overview,
+agent loop config, schedule, custom loop, execution history, or execution
+statistics routes must also bind requests to the active simulation project id
+and skip rather than call those project-content endpoints without project
+scope.
 Agent registry, heartbeat, detail, identity, memory, recent-log, prompt
 diagnostic, A2A message views, A2A JSON-RPC discovery, and realtime agent
 events are also project-content surfaces: non-admin users must supply an

@@ -121,3 +121,25 @@ def test_simulation_loop_harness_passes_active_project_scope() -> None:
         "fetch(\"http://localhost:8000/api/schedules",
     ):
         assert path not in scenario_49
+
+
+def test_simulation_scheduler_smoke_harnesses_pass_active_project_scope() -> None:
+    scenario_01 = read_repo("tests/simulation/scenarios/01-health-check.mjs")
+    scenario_22 = read_repo("tests/simulation/scenarios/22-architecture-evaluation.mjs")
+    scenario_30 = read_repo("tests/simulation/scenarios/30-event-wiring-audit.mjs")
+
+    for scenario in (scenario_01, scenario_22, scenario_30):
+        assert "No active project id; scoped endpoint not called" in scenario
+
+    assert "project_id=${encodeURIComponent(activeProjectId)}" in scenario_01
+    assert 'api.get(projectScopedPath("/api/schedules"))' in scenario_01
+    assert 'api.get("/api/schedules")' not in scenario_01
+
+    assert "project_id=${encodeURIComponent(evalProjectId)}" in scenario_22
+    assert "fetch(`http://localhost:8000/api/schedules?${projectQuery}`" in scenario_22
+    assert 'fetch("http://localhost:8000/api/schedules"' not in scenario_22
+    assert "fetch(`http://localhost:8000/api/schedules`" not in scenario_22
+
+    assert "project_id=${encodeURIComponent(activeProjectId)}" in scenario_30
+    assert 'api.get(projectScopedPath("/api/schedules"))' in scenario_30
+    assert 'api.get("/api/schedules")' not in scenario_30
