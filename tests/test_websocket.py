@@ -10,6 +10,7 @@ from app.models.agent import Agent
 from app.models.database import async_session, init_db
 from app.models.project import Project
 from app.models.project_member import ProjectMember
+from app.models.research_deployment import ResearchDeployment
 from app.models.task import Task
 
 
@@ -145,6 +146,80 @@ async def test_websocket_resolves_project_from_agent_id():
     resolved = await manager._resolve_project_id({"agent_id": agent_id, "thought": "project work"})
 
     assert resolved == project_id
+
+
+@pytest.mark.asyncio
+async def test_deployment_websocket_events_resolve_project_before_fanout():
+    """Deployment realtime events inherit project scope from the deployment id."""
+    await init_db()
+    project_a = f"ws-deployment-project-a-{uuid.uuid4()}"
+    project_b = f"ws-deployment-project-b-{uuid.uuid4()}"
+    deployment_a = f"ws-deployment-a-{uuid.uuid4()}"
+
+    async with async_session() as db:
+        db.add_all(
+            [
+                Project(id=project_a, name="Websocket Deployment Project A"),
+                Project(id=project_b, name="Websocket Deployment Project B"),
+                ResearchDeployment(
+                    id=deployment_a,
+                    project_id=project_a,
+                    name="Project A Deployment",
+                    deployment_type="survey",
+                ),
+            ]
+        )
+        await db.commit()
+
+    from app.api.websocket import ConnectionManager
+
+    class FakeWebSocket:
+        def __init__(self) -> None:
+            self.sent: list[dict] = []
+
+        async def send_text(self, message: str) -> None:
+            self.sent.append(json.loads(message))
+
+    async def skip_persist(_event_type: str, _data: dict) -> None:
+        return None
+
+    project_a_ws = FakeWebSocket()
+    project_b_ws = FakeWebSocket()
+    manager = ConnectionManager()
+    manager._persist_notification = skip_persist  # type: ignore[method-assign]
+    manager._connections = [
+        {
+            "websocket": project_a_ws,
+            "user_context": {"id": "admin", "role": "admin"},
+            "active_project_id": project_a,
+        },
+        {
+            "websocket": project_b_ws,
+            "user_context": {"id": "admin", "role": "admin"},
+            "active_project_id": project_b,
+        },
+    ]
+
+    resolved = await manager._resolve_project_id({"deployment_id": deployment_a})
+    await manager.broadcast(
+        "deployment_progress",
+        {"deployment_id": deployment_a, "current_responses": 1},
+    )
+    await manager.broadcast(
+        "deployment_progress",
+        {
+            "deployment_id": deployment_a,
+            "project_id": project_b,
+            "current_responses": 2,
+        },
+    )
+
+    assert resolved == project_a
+    assert len(project_a_ws.sent) == 1
+    assert project_a_ws.sent[0]["type"] == "deployment_progress"
+    assert project_a_ws.sent[0]["data"]["project_id"] == project_a
+    assert project_a_ws.sent[0]["data"]["current_responses"] == 1
+    assert project_b_ws.sent == []
 
 
 @pytest.mark.asyncio
