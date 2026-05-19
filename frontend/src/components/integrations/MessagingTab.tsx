@@ -38,10 +38,14 @@ export default function MessagingTab() {
   const canManageChannels = user?.role === "admin" || canAdminActiveProject();
 
   useEffect(() => {
+    selectInstance(null);
     fetchChannels(platformFilter || undefined, activeProjectId);
-  }, [activeProjectId, fetchChannels, platformFilter]);
+  }, [activeProjectId, fetchChannels, platformFilter, selectInstance]);
 
-  const selectedInstance = channelInstances.find((c) => c.id === selectedInstanceId);
+  const scopedChannelInstances = activeProjectId
+    ? channelInstances.filter((c) => c.project_id === activeProjectId)
+    : [];
+  const selectedInstance = scopedChannelInstances.find((c) => c.id === selectedInstanceId);
 
   if (showWizard) {
     return (
@@ -106,7 +110,7 @@ export default function MessagingTab() {
             Array.from({ length: 3 }).map((_, i) => (
               <div key={i} className="h-28 rounded-xl bg-slate-100 dark:bg-slate-800 animate-pulse" />
             ))
-          ) : channelInstances.length === 0 ? (
+          ) : scopedChannelInstances.length === 0 ? (
             <div className="text-center py-12">
               <MessageSquare size={32} className="mx-auto mb-3 text-slate-300 dark:text-slate-600" />
               <p className="text-sm text-slate-500 dark:text-slate-400 mb-1">No channels configured</p>
@@ -115,13 +119,14 @@ export default function MessagingTab() {
               </p>
               <button
                 onClick={() => setShowWizard(true)}
-                className="px-4 py-2 text-sm bg-istara-600 text-white rounded-lg hover:bg-istara-700 transition-colors"
+                disabled={!activeProjectId}
+                className="px-4 py-2 text-sm bg-istara-600 text-white rounded-lg hover:bg-istara-700 disabled:cursor-not-allowed disabled:bg-slate-300 disabled:text-slate-500 dark:disabled:bg-slate-800 dark:disabled:text-slate-500 transition-colors"
               >
                 Add First Channel
               </button>
             </div>
           ) : (
-            channelInstances.map((instance) => (
+            scopedChannelInstances.map((instance) => (
               <ChannelInstanceCard
                 key={instance.id}
                 instance={instance}

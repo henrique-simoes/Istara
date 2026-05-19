@@ -262,9 +262,9 @@
 <ul>
 <li>The feature is mounted through <code>frontend/src/components/integrations/MCPTab.tsx</code> and the UI navigation path recorded in the inventory.</li>
 <li>Featured server labels must identify the server itself; non-Brazilian servers such as Playwright use a neutral server icon instead of Brazil-specific labeling.</li>
-<li><code>MCPTab</code> passes the active project id into MCP client listing and featured-server connect flows. Without an active project, project-owned connected-server lists are empty and creation is disabled.</li>
-<li><code>backend/app/api/routes/mcp.py</code> requires <code>project_id</code> for team-mode MCP client registration and featured connects, verifies the project exists, and authorizes the caller as project admin before client discovery, deletion, health checks, tool listing, or tool calls.</li>
-<li>Legacy/global MCP client rows remain accessible only through explicit global-admin API access without a project filter; project-facing Integrations views do not request or display them.</li>
+<li><code>MCPTab</code> passes the active project id into MCP client listing and featured-server connect flows, clears stale client state during project changes, and renders only clients whose <code>project_id</code> matches the active project.</li>
+<li><code>backend/app/api/routes/mcp.py</code> requires <code>project_id</code> for project-facing MCP client lists, tool aggregation, featured server browsing, client registration, and featured connects. It verifies the project exists and authorizes reads as project viewer while client discovery, deletion, health checks, and tool calls remain project-admin operations.</li>
+<li>Legacy/global MCP client rows are not returned by project-facing Integrations APIs; any cross-project MCP reporting must use a dedicated global-admin surface.</li>
 <li>The frontmatter and manifest entries are the durable contract for agents updating this page after code changes.</li>
 <li>When the referenced component, store, route, agent, skill, or test behavior changes, regenerate and validate the feature documentation.</li>
 </ul>
@@ -287,7 +287,7 @@
 </ul>
 <h2 id="compass-evidence">Compass Evidence</h2>
 <ul>
-<li>Spec/task: CF-SPEC-55 / CF-684; CF-SPEC-60 / CF-759</li>
+<li>Spec/task: CF-SPEC-55 / CF-684; CF-SPEC-60 / CF-762</li>
 <li>Inventory source: <code>docs/features/inventory.json</code></li>
 </ul>
 <h2 id="when-to-update">When To Update</h2>

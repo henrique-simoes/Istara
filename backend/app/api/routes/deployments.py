@@ -11,7 +11,7 @@ from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.permissions import get_subject, is_global_admin, require_project_access
+from app.core.permissions import require_project_access
 from app.models.database import get_db
 from app.models.research_deployment import ResearchDeployment
 from app.services import deployment_service
@@ -126,11 +126,9 @@ async def list_deployments(
     db: AsyncSession = Depends(get_db),
 ):
     """List deployments, optionally filtered by project_id."""
-    subject = get_subject(request)
-    if project_id:
-        await require_project_access(db, request, project_id, min_role="viewer")
-    elif not is_global_admin(subject):
+    if not project_id:
         raise HTTPException(status_code=400, detail="project_id is required")
+    await require_project_access(db, request, project_id, min_role="viewer")
 
     deployments = await deployment_service.list_deployments(db, project_id=project_id)
     return [DeploymentResponse.from_model(d) for d in deployments]

@@ -102,10 +102,12 @@ export async function run(ctx) {
   // ── 6. Channel credentials stored encrypted ──
   let channelId = null;
   try {
+    const projectId = ctx.projectId || "sim-project-001";
     const channel = await api.post("/api/channels", {
       platform: "telegram",
       name: "SIM: Encryption Test Bot",
       config: { bot_token: "test-secret-token-12345" },
+      project_id: projectId,
     });
     channelId = channel.id;
     // The config should be stored encrypted — we can't verify from API

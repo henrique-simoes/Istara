@@ -39,9 +39,20 @@ async def test_channels_list_returns_list(auth_headers):
     await init_db()
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
-        response = await ac.get("/api/channels", headers=auth_headers)
+        response = await ac.get("/api/channels?project_id=channel-list-project", headers=auth_headers)
         assert response.status_code == 200
         assert isinstance(response.json(), list)
+
+
+@pytest.mark.asyncio
+async def test_channels_list_requires_project_id_for_project_facing_api(auth_headers):
+    await init_db()
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        response = await ac.get("/api/channels", headers=auth_headers)
+
+    assert response.status_code == 400
+    assert response.json()["detail"] == "project_id is required"
 
 
 @pytest.mark.asyncio
@@ -67,6 +78,7 @@ async def test_channel_create_normalizes_ui_credential_labels(auth_headers):
             json={
                 "platform": "slack",
                 "name": "Research Slack",
+                "project_id": "channel-credentials-project",
                 "config": {
                     "Bot Token": " xoxb-test ",
                     "Signing Secret": " secret ",
@@ -96,7 +108,12 @@ async def test_channel_start_missing_config_reports_not_enabled(auth_headers, mo
         created = await ac.post(
             "/api/channels",
             headers=auth_headers,
-            json={"platform": "telegram", "name": "Missing Token", "config": {}},
+            json={
+                "platform": "telegram",
+                "name": "Missing Token",
+                "project_id": "channel-missing-config-project",
+                "config": {},
+            },
         )
         assert created.status_code == 200
         instance_id = created.json()["id"]

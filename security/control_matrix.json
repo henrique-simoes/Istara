@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
-  "benchmark_version": "2026.05.18",
-  "last_reviewed": "2026-05-18",
+  "benchmark_version": "2026.05.19",
+  "last_reviewed": "2026-05-19",
   "owner": "Istara release governance",
   "thresholds": {
     "production_release": {
@@ -28,8 +28,11 @@
         "backend/app/api/routes/webauthn.py",
         "backend/app/api/routes/connections.py",
         "backend/app/api/routes/compute.py",
+        "backend/app/api/routes/channels.py",
+        "backend/app/api/routes/deployments.py",
         "backend/app/api/routes/files.py",
         "backend/app/api/routes/mcp.py",
+        "backend/app/api/routes/surveys.py",
         "backend/app/api/routes/llm_servers.py",
         "backend/app/api/routes/webhooks.py",
         "backend/app/api/routes/autoresearch.py",
@@ -86,7 +89,9 @@
         "frontend/src/stores/loopsStore.ts",
         "frontend/src/components/admin/AdminDashboard.tsx",
         "frontend/src/components/settings/ConnectionStringPanel.tsx",
+        "frontend/src/components/integrations/MessagingTab.tsx",
         "frontend/src/components/integrations/MCP*.tsx",
+        "frontend/src/components/integrations/SurveysTab.tsx",
         "frontend/src/stores/integrationsStore.ts",
         "frontend/src/components/settings/PasskeyManager.tsx",
         "frontend/src/components/settings/TOTPManager.tsx",
@@ -106,10 +111,12 @@
         "tests/test_connections.py",
         "tests/test_compute.py",
         "tests/compute_cases/*.py",
+        "tests/test_channels.py",
         "tests/test_files.py",
         "tests/test_backup.py",
         "tests/test_llm_servers.py",
         "tests/test_mcp*.py",
+        "tests/test_surveys.py",
         "tests/test_notifications.py",
         "tests/test_agents.py",
         "tests/test_loops.py",
@@ -431,18 +438,28 @@
         "backend/app/api/routes/projects.py",
         "backend/app/api/routes/agents.py",
         "backend/app/api/routes/compute.py",
+        "backend/app/api/routes/channels.py",
+        "backend/app/api/routes/deployments.py",
         "backend/app/api/routes/loops.py",
+        "backend/app/api/routes/mcp.py",
+        "backend/app/api/routes/surveys.py",
         "frontend/src/components/agents/AgentsView.tsx",
+        "frontend/src/components/integrations/MessagingTab.tsx",
+        "frontend/src/components/integrations/MCPTab.tsx",
+        "frontend/src/components/integrations/SurveysTab.tsx",
         "frontend/src/lib/api.ts",
         "tests/test_project_rbac.py",
         "tests/test_agents.py",
         "tests/test_project_scope_contracts.py",
+        "tests/test_channels.py",
+        "tests/test_mcp.py",
+        "tests/test_surveys.py",
         "tests/test_loops.py",
         "tests/test_notifications.py",
         "tests/test_auth_security.py"
       ],
       "future_change_trigger": true,
-      "notes": "Global admin, project admin, researcher, viewer, legacy role mappings, active-project notification, agent status/log/detail, loop/background-process scope, and donated-compute project scopes are governed."
+      "notes": "Global admin, project admin, researcher, viewer, legacy role mappings, active-project notification, agent status/log/detail, loop/background-process scope, project-owned integration/deployment/MCP-client lists, and donated-compute project scopes are governed. Project-facing integration APIs require an explicit active project; admin-only global aggregation belongs to dedicated admin surfaces."
     },
     {
       "id": "AUTHZ-002",
@@ -619,12 +636,14 @@
         "backend/app/services/mcp_client_manager.py",
         "backend/app/models/mcp_server_config.py",
         "frontend/src/components/integrations/MCPTab.tsx",
+        "frontend/src/stores/integrationsStore.ts",
         "backend/app/mcp/server.py",
         "tests/test_mcp.py",
+        "tests/test_project_scope_contracts.py",
         "tests/simulation/scenarios/56-mcp-server-security.mjs"
       ],
       "future_change_trigger": true,
-      "notes": "Tool execution must remain policy-mediated and visible to audit processes; external MCP URLs and cached tool descriptors are validated, bounded, prompt-sanitized, and project-owned when shown in project-facing Integrations views."
+      "notes": "Tool execution must remain policy-mediated and visible to audit processes; external MCP URLs and cached tool descriptors are validated, bounded, prompt-sanitized, and project-owned when shown in project-facing Integrations views. MCP client lists and tool aggregation require an explicit active project instead of falling back to global admin lists."
     },
     {
       "id": "WEBHOOK-001",
@@ -641,12 +660,15 @@
       "evidence": [
         "backend/app/api/routes/webhooks.py",
         "backend/app/api/routes/channels.py",
+        "backend/app/api/routes/deployments.py",
         "backend/app/api/routes/surveys.py",
         "tests/test_webhooks_security.py",
-        "tests/test_channel_file_security.py"
+        "tests/test_channel_file_security.py",
+        "tests/test_channels.py",
+        "tests/test_surveys.py"
       ],
       "future_change_trigger": true,
-      "notes": "WhatsApp, Telegram, survey, and future inbound integrations must not bypass ingress validation, signature/token checks, or bounded replay protection."
+      "notes": "WhatsApp, Telegram, survey, deployment, and future inbound integrations must not bypass ingress validation, signature/token checks, bounded replay protection, or active-project authorization before reading or processing project content."
     },
     {
       "id": "AI-001",

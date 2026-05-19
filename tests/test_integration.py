@@ -86,7 +86,7 @@ async def test_channels_integration(auth_headers):
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
         # Channels accessible
-        response = await ac.get("/api/channels", headers=auth_headers)
+        response = await ac.get("/api/channels?project_id=integration-channel-project", headers=auth_headers)
         assert response.status_code == 200
 
         # Findings accessible

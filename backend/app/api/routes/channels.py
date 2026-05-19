@@ -9,7 +9,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.permissions import get_subject, is_global_admin, require_project_access
+from app.core.permissions import ProjectRole, get_subject, is_global_admin, require_project_access
 from app.models.channel_instance import ChannelInstance
 from app.models.database import get_db
 from app.services import channel_service
@@ -46,28 +46,39 @@ class SendMessageRequest(BaseModel):
 # ---------------------------------------------------------------------------
 
 
-async def _require_channel_admin(
+def _require_project_id(project_id: str | None) -> str:
+    scoped_project_id = (project_id or "").strip()
+    if not scoped_project_id:
+        raise HTTPException(status_code=400, detail="project_id is required")
+    return scoped_project_id
+
+
+async def _require_channel_access(
     db: AsyncSession,
     request: Request,
     instance: ChannelInstance,
+    *,
+    min_role: ProjectRole,
 ) -> None:
     subject = get_subject(request)
     if is_global_admin(subject):
         return
     if not instance.project_id:
         raise HTTPException(status_code=403, detail="Global admin access required.")
-    await require_project_access(db, request, instance.project_id, min_role="project_admin")
+    await require_project_access(db, request, instance.project_id, min_role=min_role)
 
 
 async def _get_channel_for_admin(
     db: AsyncSession,
     request: Request,
     instance_id: str,
+    *,
+    min_role: ProjectRole = "project_admin",
 ) -> ChannelInstance:
     instance = await channel_service.get_channel_instance(db, instance_id)
     if instance is None:
         raise HTTPException(status_code=404, detail=f"Channel instance '{instance_id}' not found")
-    await _require_channel_admin(db, request, instance)
+    await _require_channel_access(db, request, instance, min_role=min_role)
     return instance
 
 
@@ -79,14 +90,10 @@ async def list_channels(
     db: AsyncSession = Depends(get_db),
 ) -> list[dict]:
     """List all channel instances, optionally filtered by platform."""
-    subject = get_subject(request)
-    if project_id:
-        await require_project_access(db, request, project_id, min_role="project_admin")
-    elif not is_global_admin(subject):
-        raise HTTPException(status_code=400, detail="project_id is required")
+    scoped_project_id = _require_project_id(project_id)
+    await require_project_access(db, request, scoped_project_id, min_role="viewer")
     instances = await channel_service.list_channel_instances(db, platform=platform)
-    if project_id:
-        instances = [inst for inst in instances if inst.project_id == project_id]
+    instances = [inst for inst in instances if inst.project_id == scoped_project_id]
     return [inst.to_dict() for inst in instances]
 
 
@@ -98,19 +105,16 @@ async def create_channel(
 ) -> dict:
     """Create a new channel instance."""
     subject = get_subject(request)
-    if is_global_admin(subject):
-        pass
-    elif body.project_id:
-        await require_project_access(db, request, body.project_id, min_role="project_admin")
-    else:
-        raise HTTPException(status_code=400, detail="project_id is required")
+    scoped_project_id = _require_project_id(body.project_id)
+    if not is_global_admin(subject):
+        await require_project_access(db, request, scoped_project_id, min_role="project_admin")
     try:
         instance = await channel_service.create_channel_instance(
             db,
             platform=body.platform,
             name=body.name,
             config=body.config,
-            project_id=body.project_id,
+            project_id=scoped_project_id,
         )
         return instance.to_dict()
     except ValueError as exc:
@@ -124,7 +128,7 @@ async def get_channel(
     db: AsyncSession = Depends(get_db),
 ) -> dict:
     """Get details of a single channel instance."""
-    instance = await _get_channel_for_admin(db, request, instance_id)
+    instance = await _get_channel_for_admin(db, request, instance_id, min_role="viewer")
     return instance.to_dict()
 
 
@@ -221,7 +225,7 @@ async def get_channel_messages(
     db: AsyncSession = Depends(get_db),
 ) -> list[dict]:
     """Get message history for a channel instance."""
-    await _get_channel_for_admin(db, request, instance_id)
+    await _get_channel_for_admin(db, request, instance_id, min_role="viewer")
     return await channel_service.get_message_history(db, instance_id, limit=limit, offset=offset)
 
 
@@ -232,7 +236,7 @@ async def get_channel_conversations(
     db: AsyncSession = Depends(get_db),
 ) -> list[dict]:
     """Get conversations for a channel instance."""
-    await _get_channel_for_admin(db, request, instance_id)
+    await _get_channel_for_admin(db, request, instance_id, min_role="viewer")
     return await channel_service.get_conversations(db, instance_id)
 
 

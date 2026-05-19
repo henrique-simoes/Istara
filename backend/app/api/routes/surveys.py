@@ -11,7 +11,7 @@ from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.permissions import get_subject, is_global_admin, require_project_access
+from app.core.permissions import ProjectRole, get_subject, is_global_admin, require_project_access
 from app.core.field_encryption import decrypt_field, encrypt_field
 from app.models.database import get_db
 from app.models.survey_integration import SurveyIntegration, SurveyLink
@@ -106,17 +106,31 @@ async def _get_link(db: AsyncSession, link_id: str) -> SurveyLink:
     return link
 
 
-async def _require_integration_admin(
+def _require_project_id(project_id: str | None) -> str:
+    scoped_project_id = (project_id or "").strip()
+    if not scoped_project_id:
+        raise HTTPException(status_code=400, detail="project_id is required")
+    return scoped_project_id
+
+
+def _require_matching_project(integration: SurveyIntegration, project_id: str) -> None:
+    if not integration.project_id or integration.project_id != project_id:
+        raise HTTPException(status_code=403, detail="Survey integration is not bound to this project.")
+
+
+async def _require_integration_access(
     db: AsyncSession,
     request: Request,
     integration: SurveyIntegration,
+    *,
+    min_role: ProjectRole,
 ) -> None:
     subject = get_subject(request)
     if is_global_admin(subject):
         return
     if not integration.project_id:
         raise HTTPException(status_code=403, detail="Global admin access required.")
-    await require_project_access(db, request, integration.project_id, min_role="project_admin")
+    await require_project_access(db, request, integration.project_id, min_role=min_role)
 
 
 # ---------------------------------------------------------------------------
@@ -132,16 +146,12 @@ async def list_integrations(
     db: AsyncSession = Depends(get_db),
 ):
     """List all configured survey platform integrations."""
-    subject = get_subject(request)
-    if project_id:
-        await require_project_access(db, request, project_id, min_role="project_admin")
-    elif not is_global_admin(subject):
-        raise HTTPException(status_code=400, detail="project_id is required")
+    scoped_project_id = _require_project_id(project_id)
+    await require_project_access(db, request, scoped_project_id, min_role="viewer")
     query = select(SurveyIntegration).order_by(SurveyIntegration.created_at.desc())
     if platform:
         query = query.where(SurveyIntegration.platform == platform)
-    if project_id:
-        query = query.where(SurveyIntegration.project_id == project_id)
+    query = query.where(SurveyIntegration.project_id == scoped_project_id)
     result = await db.execute(query)
     integrations = result.scalars().all()
     return {
@@ -158,12 +168,9 @@ async def create_integration(
 ):
     """Create a new survey platform integration."""
     subject = get_subject(request)
-    if is_global_admin(subject):
-        pass
-    elif data.project_id:
-        await require_project_access(db, request, data.project_id, min_role="project_admin")
-    else:
-        raise HTTPException(status_code=400, detail="project_id is required")
+    scoped_project_id = _require_project_id(data.project_id)
+    if not is_global_admin(subject):
+        await require_project_access(db, request, scoped_project_id, min_role="project_admin")
     if data.platform not in SUPPORTED_PLATFORMS:
         raise HTTPException(
             status_code=400,
@@ -176,7 +183,7 @@ async def create_integration(
         platform=data.platform,
         name=data.name,
         config_json=encrypt_field(json.dumps(data.config)),
-        project_id=data.project_id,
+        project_id=scoped_project_id,
     )
     db.add(integration)
     await db.commit()
@@ -192,7 +199,7 @@ async def delete_integration(
 ):
     """Remove a survey platform integration and its linked surveys."""
     integration = await _get_integration(db, integration_id)
-    await _require_integration_admin(db, request, integration)
+    await _require_integration_access(db, request, integration, min_role="project_admin")
     await db.delete(integration)
     await db.commit()
 
@@ -210,7 +217,7 @@ async def list_platform_surveys(
 ):
     """List surveys available on the connected platform."""
     integration = await _get_integration(db, integration_id)
-    await _require_integration_admin(db, request, integration)
+    await _require_integration_access(db, request, integration, min_role="project_admin")
     adapter = _get_adapter(integration)
 
     try:
@@ -237,7 +244,7 @@ async def create_platform_survey(
 ):
     """Create a new survey on the connected platform from Istara data."""
     integration = await _get_integration(db, integration_id)
-    await _require_integration_admin(db, request, integration)
+    await _require_integration_access(db, request, integration, min_role="project_admin")
     adapter = _get_adapter(integration)
 
     try:
@@ -269,7 +276,8 @@ async def create_link(
     await require_project_access(db, request, data.project_id, min_role="project_admin")
     # Verify integration exists
     integration = await _get_integration(db, data.integration_id)
-    await _require_integration_admin(db, request, integration)
+    _require_matching_project(integration, data.project_id)
+    await _require_integration_access(db, request, integration, min_role="project_admin")
 
     link = SurveyLink(
         id=str(uuid.uuid4()),
@@ -292,15 +300,11 @@ async def list_links(
     db: AsyncSession = Depends(get_db),
 ):
     """List survey links, optionally filtered by project or integration."""
-    subject = get_subject(request)
-    if project_id:
-        await require_project_access(db, request, project_id, min_role="viewer")
-    elif not is_global_admin(subject):
-        raise HTTPException(status_code=400, detail="project_id is required")
+    scoped_project_id = _require_project_id(project_id)
+    await require_project_access(db, request, scoped_project_id, min_role="viewer")
 
     query = select(SurveyLink).order_by(SurveyLink.created_at.desc())
-    if project_id:
-        query = query.where(SurveyLink.project_id == project_id)
+    query = query.where(SurveyLink.project_id == scoped_project_id)
     if integration_id:
         query = query.where(SurveyLink.integration_id == integration_id)
     result = await db.execute(query)
@@ -325,6 +329,7 @@ async def sync_responses(
 
     # Resolve integration for adapter
     integration = await _get_integration(db, link.integration_id)
+    _require_matching_project(integration, link.project_id)
     if _is_demo_integration(integration):
         integration.last_sync_at = datetime.now(timezone.utc)
         await db.commit()
@@ -378,6 +383,7 @@ async def get_link_responses(
     link = await _get_link(db, link_id)
     await require_project_access(db, request, link.project_id, min_role="viewer")
     integration = await _get_integration(db, link.integration_id)
+    _require_matching_project(integration, link.project_id)
     if _is_demo_integration(integration):
         return {
             "link_id": link_id,

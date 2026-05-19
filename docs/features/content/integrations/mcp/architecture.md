@@ -9,8 +9,8 @@ related_glossary: ["mcp"]
 code_references: ["frontend/src/components/integrations/MCPTab.tsx", "frontend/src/components/integrations/MCPAccessPolicyEditor.tsx", "frontend/src/components/integrations/MCPAuditLog.tsx", "backend/app/api/routes/mcp.py", "backend/app/services/mcp_client_manager.py"]
 api_references: ["backend/app/api/routes/mcp.py"]
 test_references: ["tests/test_mcp.py"]
-last_verified: 2026-05-18
-compass: CF-SPEC-55 / CF-684; CF-SPEC-60 / CF-759
+last_verified: 2026-05-19
+compass: CF-SPEC-55 / CF-684; CF-SPEC-60 / CF-762
 ---
 
 # MCP Integrations Architecture
@@ -40,9 +40,9 @@ The MCP tab configures project-owned Model Context Protocol client connections p
 
 - The feature is mounted through `frontend/src/components/integrations/MCPTab.tsx` and the UI navigation path recorded in the inventory.
 - Featured server labels must identify the server itself; non-Brazilian servers such as Playwright use a neutral server icon instead of Brazil-specific labeling.
-- `MCPTab` passes the active project id into MCP client listing and featured-server connect flows. Without an active project, project-owned connected-server lists are empty and creation is disabled.
-- `backend/app/api/routes/mcp.py` requires `project_id` for team-mode MCP client registration and featured connects, verifies the project exists, and authorizes the caller as project admin before client discovery, deletion, health checks, tool listing, or tool calls.
-- Legacy/global MCP client rows remain accessible only through explicit global-admin API access without a project filter; project-facing Integrations views do not request or display them.
+- `MCPTab` passes the active project id into MCP client listing and featured-server connect flows, clears stale client state during project changes, and renders only clients whose `project_id` matches the active project.
+- `backend/app/api/routes/mcp.py` requires `project_id` for project-facing MCP client lists, tool aggregation, featured server browsing, client registration, and featured connects. It verifies the project exists and authorizes reads as project viewer while client discovery, deletion, health checks, and tool calls remain project-admin operations.
+- Legacy/global MCP client rows are not returned by project-facing Integrations APIs; any cross-project MCP reporting must use a dedicated global-admin surface.
 - The frontmatter and manifest entries are the durable contract for agents updating this page after code changes.
 - When the referenced component, store, route, agent, skill, or test behavior changes, regenerate and validate the feature documentation.
 
@@ -65,7 +65,7 @@ The MCP tab configures project-owned Model Context Protocol client connections p
 
 ## Compass Evidence
 
-- Spec/task: CF-SPEC-55 / CF-684; CF-SPEC-60 / CF-759
+- Spec/task: CF-SPEC-55 / CF-684; CF-SPEC-60 / CF-762
 - Inventory source: `docs/features/inventory.json`
 
 ## When To Update

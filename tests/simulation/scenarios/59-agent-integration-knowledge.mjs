@@ -73,8 +73,8 @@ export async function run(ctx) {
   // ── 5. Integration API endpoints accessible ──
   const projectId = ctx.projectId || "test";
   const integrationEndpoints = [
-    { path: "/api/channels", name: "Channels" },
-    { path: "/api/surveys/integrations", name: "Survey Integrations" },
+    { path: `/api/channels?project_id=${encodeURIComponent(projectId)}`, name: "Channels" },
+    { path: `/api/surveys/integrations?project_id=${encodeURIComponent(projectId)}`, name: "Survey Integrations" },
     { path: `/api/deployments?project_id=${encodeURIComponent(projectId)}`, name: "Deployments" },
     { path: "/api/mcp/server/status", name: "MCP Server Status" },
     { path: `/api/mcp/clients?project_id=${encodeURIComponent(projectId)}`, name: "MCP Clients" },

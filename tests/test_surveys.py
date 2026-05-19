@@ -33,9 +33,23 @@ async def test_surveys_integrations_returns_list(auth_headers):
     await init_db()
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
-        response = await ac.get("/api/surveys/integrations", headers=auth_headers)
+        response = await ac.get(
+            "/api/surveys/integrations?project_id=survey-list-project",
+            headers=auth_headers,
+        )
         assert response.status_code == 200
         assert isinstance(response.json(), dict)
+
+
+@pytest.mark.asyncio
+async def test_surveys_integrations_require_project_id_for_project_facing_api(auth_headers):
+    await init_db()
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        response = await ac.get("/api/surveys/integrations", headers=auth_headers)
+
+    assert response.status_code == 400
+    assert response.json()["detail"] == "project_id is required"
 
 
 @pytest.mark.asyncio
@@ -55,9 +69,20 @@ async def test_surveys_links_returns_list(auth_headers):
     await init_db()
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
-        response = await ac.get("/api/surveys/links", headers=auth_headers)
+        response = await ac.get("/api/surveys/links?project_id=survey-links-project", headers=auth_headers)
         assert response.status_code == 200
         assert isinstance(response.json(), dict)
+
+
+@pytest.mark.asyncio
+async def test_surveys_links_require_project_id_for_project_facing_api(auth_headers):
+    await init_db()
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        response = await ac.get("/api/surveys/links", headers=auth_headers)
+
+    assert response.status_code == 400
+    assert response.json()["detail"] == "project_id is required"
 
 
 @pytest.mark.asyncio

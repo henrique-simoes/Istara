@@ -8,9 +8,9 @@ related_features: ["integrations.deployments", "findings.evidence"]
 related_glossary: ["triangulation"]
 code_references: ["frontend/src/components/integrations/SurveysTab.tsx", "frontend/src/components/integrations/SurveySetupWizard.tsx", "backend/app/api/routes/surveys.py"]
 api_references: ["backend/app/api/routes/surveys.py"]
-test_references: []
-last_verified: 2026-05-15
-compass: CF-SPEC-53 / CF-657
+test_references: ["tests/test_surveys.py", "tests/test_project_scope_contracts.py"]
+last_verified: 2026-05-19
+compass: CF-SPEC-53 / CF-657; CF-SPEC-60 / CF-762
 ---
 
 # Survey Integrations Architecture
@@ -38,6 +38,8 @@ Surveys configures participant question and survey collection flows connected to
 ## Architecture Notes
 
 - The feature is mounted through `frontend/src/components/integrations/SurveysTab.tsx` and the UI navigation path recorded in the inventory.
+- `SurveysTab` requests survey integrations and links with the active project id, clears stale integration state on project changes, and renders only survey integrations whose `project_id` matches the active project.
+- `backend/app/api/routes/surveys.py` requires `project_id` on project-facing integration and survey-link lists, and survey links must use an integration bound to the same project before syncing or returning responses.
 - The frontmatter and manifest entries are the durable contract for agents updating this page after code changes.
 - When the referenced component, store, route, agent, skill, or test behavior changes, regenerate and validate the feature documentation.
 
@@ -47,7 +49,8 @@ Surveys configures participant question and survey collection flows connected to
 
 ## Tests And Verification
 
-- No focused test reference recorded yet.
+- `tests/test_surveys.py`
+- `tests/test_project_scope_contracts.py`
 
 ## Related Features
 
@@ -60,7 +63,7 @@ Surveys configures participant question and survey collection flows connected to
 
 ## Compass Evidence
 
-- Spec/task: CF-SPEC-53 / CF-657
+- Spec/task: CF-SPEC-53 / CF-657; CF-SPEC-60 / CF-762
 - Inventory source: `docs/features/inventory.json`
 
 ## When To Update

@@ -646,7 +646,8 @@ export async function run(ctx) {
 
   await safeCheck("[Channels] Endpoint responds", async () => {
     try {
-      const res = await fetch("http://localhost:8000/api/channels", { headers: api._headers() });
+      const projectQuery = encodeURIComponent(evalProjectId || "sim-project-001");
+      const res = await fetch(`http://localhost:8000/api/channels?project_id=${projectQuery}`, { headers: api._headers() });
       return {
         name: "[Channels] Endpoint responds",
         passed: res.status === 200,
