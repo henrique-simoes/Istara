@@ -15,7 +15,10 @@ router = APIRouter()
 
 PROJECT_BOUND_EVENT_TYPES = frozenset(
     {
+        "agent_created",
+        "agent_created_from_proposal",
         "a2a_message",
+        "agent_status",
         "agent_thinking",
         "agent_idle",
         "channel_message",
@@ -47,22 +50,34 @@ def _clean_project_id(value: str | None) -> str | None:
 
 async def _can_subscribe_to_project(db: Any, user_context: dict, project_id: str | None) -> bool:
     """Return whether a websocket client may subscribe to a project stream."""
-    if not project_id:
-        return True
-
     from app.config import settings
 
     if not settings.team_mode:
         return True
-    if str(user_context.get("role") or "") == "admin":
+
+    user_id = str(user_context.get("id") or "")
+    role = str(user_context.get("role") or "")
+    if user_id:
+        try:
+            from app.models.user import User
+
+            user = await db.get(User, user_id)
+            if user:
+                role = str(getattr(user.role, "value", user.role))
+        except Exception:
+            pass
+
+    if not project_id:
+        return role == "admin"
+    if role == "admin":
         return True
 
     from app.core.permissions import get_project_role, project_role_rank
 
-    role = await get_project_role(db, project_id, str(user_context.get("id") or ""))
-    if role is None:
+    project_role = await get_project_role(db, project_id, user_id)
+    if project_role is None:
         return False
-    return project_role_rank(role) >= project_role_rank("viewer")
+    return project_role_rank(project_role) >= project_role_rank("viewer")
 
 
 class ConnectionManager:
@@ -161,10 +176,16 @@ class ConnectionManager:
         return None
 
     @staticmethod
-    def _connection_can_receive(record: dict[str, Any], project_id: str | None) -> bool:
+    async def _connection_can_receive(
+        db: Any,
+        record: dict[str, Any],
+        project_id: str | None,
+    ) -> bool:
         if not project_id:
             return True
-        return record.get("active_project_id") == project_id
+        if record.get("active_project_id") != project_id:
+            return False
+        return await _can_subscribe_to_project(db, record.get("user_context") or {}, project_id)
 
     async def broadcast(self, event_type: str, data: dict) -> None:
         """Broadcast an event to connected clients authorized for its project."""
@@ -184,14 +205,25 @@ class ConnectionManager:
         })
 
         disconnected = []
-        for record in list(self._connections):
-            if not self._connection_can_receive(record, project_id):
-                continue
-            connection = record["websocket"]
-            try:
-                await connection.send_text(message)
-            except Exception:
-                disconnected.append(connection)
+        if project_id:
+            from app.models.database import async_session
+
+            async with async_session() as db:
+                for record in list(self._connections):
+                    if not await self._connection_can_receive(db, record, project_id):
+                        continue
+                    connection = record["websocket"]
+                    try:
+                        await connection.send_text(message)
+                    except Exception:
+                        disconnected.append(connection)
+        else:
+            for record in list(self._connections):
+                connection = record["websocket"]
+                try:
+                    await connection.send_text(message)
+                except Exception:
+                    disconnected.append(connection)
 
         for conn in disconnected:
             self.disconnect(conn)

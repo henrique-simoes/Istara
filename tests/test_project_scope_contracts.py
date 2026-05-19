@@ -1026,8 +1026,10 @@ def test_websocket_project_events_are_active_project_filtered() -> None:
     assert '"agent_id"' in websocket and '"from_agent_id"' in websocket and '"to_agent_id"' in websocket
     assert "PROJECT_BOUND_EVENT_TYPES" in websocket
     assert "Dropping project-bound websocket event without resolvable project_id" in websocket
-    assert "record.get(\"active_project_id\") == project_id" in websocket
-    assert "if not self._connection_can_receive(record, project_id):" in websocket
+    assert "record.get(\"active_project_id\") != project_id" in websocket
+    assert "await self._connection_can_receive(db, record, project_id)" in websocket
+    assert "function shouldDeliverEvent" in hook
+    assert "PROJECT_BOUND_EVENT_TYPES.has(event.type)" in hook
 
 
 def test_notifications_are_active_project_scoped() -> None:
