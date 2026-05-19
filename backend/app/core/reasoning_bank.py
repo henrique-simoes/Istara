@@ -310,7 +310,7 @@ class ReasoningMemoryService:
         agent_id: str | None = None,
         source_kinds: list[str] | None = None,
         limit: int = 5,
-        include_global: bool = True,
+        include_global: bool = False,
         db: AsyncSession | None = None,
     ) -> list[dict]:
         query_tokens = _tokens(query)
@@ -394,7 +394,7 @@ class ReasoningMemoryService:
         source_kinds: list[str] | None = None,
         limit: int = 5,
         max_chars: int = 1500,
-        include_global: bool = True,
+        include_global: bool = False,
     ) -> str:
         memories = await self.retrieve(
             project_id=project_id,

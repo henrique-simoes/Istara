@@ -77,6 +77,66 @@ async def test_reasoning_bank_redacts_and_retrieves_project_scoped_memory():
 
 
 @pytest.mark.asyncio
+async def test_reasoning_bank_defaults_to_project_only_and_requires_global_opt_in():
+    await init_db()
+
+    suffix = uuid.uuid4().hex[:8]
+    project_id = f"reasoning-project-default-{suffix}"
+    project_memory = await reasoning_bank.record_memory(
+        project_id=project_id,
+        source_kind="manual",
+        outcome="success",
+        title=f"Project quasar {suffix} routing guard",
+        content=f"Project-only quasar {suffix} routing memory must stay scoped.",
+        tags=["routing", f"quasar-{suffix}"],
+        domain="agent-routing",
+    )
+    global_memory = await reasoning_bank.record_memory(
+        project_id="",
+        source_kind="manual",
+        outcome="success",
+        title=f"Global quasar {suffix} routing guard",
+        content=f"Global quasar {suffix} routing memory requires explicit opt-in.",
+        tags=["routing", f"quasar-{suffix}"],
+        domain="agent-routing",
+    )
+
+    default_matches = await reasoning_bank.retrieve(
+        project_id=project_id,
+        query=f"quasar {suffix} routing guard",
+        limit=5,
+    )
+    assert {item["id"] for item in default_matches} == {project_memory.id}
+
+    default_context = await reasoning_bank.context_for_query(
+        project_id=project_id,
+        query=f"quasar {suffix} routing guard",
+        limit=5,
+    )
+    assert "Project-only" in default_context
+    assert "Global" not in default_context
+
+    explicit_matches = await reasoning_bank.retrieve(
+        project_id=project_id,
+        query=f"quasar {suffix} routing guard",
+        limit=5,
+        include_global=True,
+    )
+    explicit_ids = {item["id"] for item in explicit_matches}
+    assert project_memory.id in explicit_ids
+    assert global_memory.id in explicit_ids
+
+    explicit_context = await reasoning_bank.context_for_query(
+        project_id=project_id,
+        query=f"quasar {suffix} routing guard",
+        limit=5,
+        include_global=True,
+    )
+    assert "Project-only" in explicit_context
+    assert "Global" in explicit_context
+
+
+@pytest.mark.asyncio
 async def test_reasoning_bank_marks_prompt_injection_memory_as_untrusted():
     await init_db()
 

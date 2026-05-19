@@ -437,6 +437,7 @@ class MetaOrchestrator:
                                 to_agent_id=collab_id,
                                 message_type="collaboration_request",
                                 content=f"Task '{task.title}' needs your expertise. Specialties: {', '.join(routing['specialties_needed'])}. Please review when complete and provide feedback.",
+                                project_id=task.project_id,
                                 metadata={
                                     "task_id": task.id,
                                     "project_id": task.project_id,

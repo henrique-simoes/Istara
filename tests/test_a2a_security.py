@@ -138,6 +138,7 @@ async def test_a2a_tasks_send_allows_authenticated_researcher_and_records_actor(
     metadata = json.loads(message.extra_data)
     assert metadata["source"] == "security-test"
     assert metadata["project_id"] == project_id
+    assert message.project_id == project_id
     assert metadata["submitted_by_user_id"] == "researcher-a2a"
     assert metadata["submitted_by_username"] == "researcher"
 
@@ -178,6 +179,59 @@ async def test_a2a_tasks_send_requires_project_scope():
 
     assert response.status_code == 400
     assert response.json()["error"]["message"] == "project_id is required for A2A tasks/send."
+    assert stored == []
+
+
+@pytest.mark.asyncio
+async def test_a2a_tasks_send_rejects_conflicting_project_metadata_alias():
+    """A2A writes must not accept metadata aliases that point at another project."""
+    await init_db()
+    await _clear_a2a_messages()
+    settings.team_mode = True
+    if not settings.jwt_secret:
+        settings.jwt_secret = "test-secret"
+    token = create_token("researcher-a2a", "researcher", "researcher")
+    project_id = await _seed_a2a_project()
+    hidden_project_id = await _seed_a2a_project(user_id=f"other-{uuid.uuid4()}")
+
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        response = await ac.post(
+            "/a2a",
+            headers={"Authorization": f"Bearer {token}"},
+            json={
+                "jsonrpc": "2.0",
+                "method": "tasks/send",
+                "params": {
+                    "message": {
+                        "text": "conflicting alias should not persist",
+                        "metadata": {
+                            "project_id": project_id,
+                            "projectId": hidden_project_id,
+                        },
+                    }
+                },
+                "id": "conflicting-project-alias",
+            },
+        )
+
+    async with async_session() as db:
+        stored = (
+            (
+                await db.execute(
+                    select(A2AMessage).where(
+                        A2AMessage.content == "conflicting alias should not persist"
+                    )
+                )
+            )
+            .scalars()
+            .all()
+        )
+
+    assert response.status_code == 400
+    assert response.json()["error"]["message"] == (
+        "A2A metadata project_id does not match active project"
+    )
     assert stored == []
 
 

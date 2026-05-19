@@ -82,7 +82,8 @@ Release hardening for these surfaces now includes exact replay rejection for
 webhook and A2A mutation ingress, optional upload scanner hooks, deterministic
 file-signature checks, quarantine before RAG ingestion, production CSP/HSTS and
 auth-origin validation, MCP/LLM endpoint URL validation, prompt-sanitized and
-project-owned MCP client descriptors, untrusted ReasoningBank retrieval wrapping, and backup
+project-owned MCP client descriptors, project-only ReasoningBank retrieval defaults,
+untrusted ReasoningBank retrieval wrapping, and backup
 exclusion of secret-like files plus protected local `LLMs/` and
 `Model_Finetuning/` artifact folders.
 Global LLM server inventory, registration, network discovery, deletion, and
@@ -147,10 +148,13 @@ polling excludes messages without a resolved project, project-scoped agents only
 consume inbox messages for their own project, conversation/debate thread context
 is rebuilt with the task project's id, and LLM-callable task/A2A system actions
 must resolve tasks, documents, and target agents inside the active project before
-mutating or sending content. Metadata, task, and project-scoped sender/recipient
-agent claims must agree before an A2A message or realtime event is considered
-project-resolved; conflicting claims are excluded instead of being delivered to
-the claimed project.
+mutating or sending content. New A2A service writes must receive the active
+project id explicitly, persist it on the message row, and reject conflicting
+metadata aliases before persistence or realtime broadcast; read mutations such
+as mark-read also require the active project. Metadata, row, task, and
+project-scoped sender/recipient agent claims must agree before an A2A message
+or realtime event is considered project-resolved; conflicting claims are
+excluded instead of being delivered to the claimed project.
 Structured agent learnings and error-resolution lookup are project-content too:
 task/review learnings must carry the source project and must not append private
 project observations into universal persona MEMORY overlays.
@@ -167,7 +171,8 @@ or mutation.
 Governed Evolution, DGM-H archive, and ReasoningBank review surfaces are also
 project-content surfaces: proposal/archive/reasoning lists and mutation actions
 must carry an explicit `project_id`, bind record ids back to that project, and
-avoid mixing project-facing retrieval with unscoped reasoning memories.
+ReasoningBank retrieval must default to project-only memory unless trusted code
+explicitly opts into global memories.
 Meta-Hyperagent proposal, observation, variant, WebSocket, and governance-sync
 surfaces are also project-content surfaces: they may run only after an
 authorized active project is supplied, and legacy/global observations or
