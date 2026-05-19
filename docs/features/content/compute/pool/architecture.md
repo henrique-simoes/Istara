@@ -17,9 +17,9 @@ compass: CF-SPEC-60 / CF-754
 
 ## Implementation Summary
 
-Compute Pool provides operational visibility into available compute nodes, routing, and local or pooled execution capacity. Hardware totals are deduplicated by physical provider machine so local/network/relay views of the same server do not inflate RAM or CPU totals. Local interface aliases are canonicalized before endpoint display and capacity aggregation, so one Mac exposed through multiple LAN IP addresses appears as one logical endpoint for the same provider and port. Provider reachability is reported separately from chat readiness: a reachable LM Studio server with loadable models but no model in memory is online, not offline, while routing still treats it as not ready until a model is loaded.
+Compute Pool provides active-project operational visibility into available compute nodes, routing, and local or pooled execution capacity. Hardware totals are deduplicated by physical provider machine so local/network/relay views of the same server do not inflate RAM or CPU totals. Local interface aliases are canonicalized before endpoint display and capacity aggregation, so one Mac exposed through multiple LAN IP addresses appears as one logical endpoint for the same provider and port. Provider reachability is reported separately from chat readiness: a reachable LM Studio server with loadable models but no model in memory is online, not offline, while routing still treats it as not ready until a model is loaded.
 
-Donated relay/browser nodes are treated as a project-content security boundary. They are visible in pool status, but prompt, chat, embedding, and model-load recovery paths may only select them when the request carries a concrete `project_id` and the node's authenticated donation scope includes that project. Server-owned local/network nodes remain available for unscoped internal work.
+Donated relay/browser nodes are treated as a project-content security boundary. Non-admin Compute Pool endpoints require an authorized `project_id`, and node stats, hardware totals, available models, and model warnings are filtered to local/server-owned capacity plus donors authorized for that project. Prompt, chat, embedding, and model-load recovery paths may only select donated nodes when the request carries a concrete `project_id` and the node's authenticated donation scope includes that project. Server-owned local/network nodes remain available for unscoped internal work.
 
 ## Frontend Surface
 
@@ -45,7 +45,9 @@ Donated relay/browser nodes are treated as a project-content security boundary. 
 - Compute registry identity uses passive local OS interface aliases to collapse duplicate local endpoints without silently merging unrelated remote machines that happen to expose the same model catalog.
 - Network discovery excludes all known local interface aliases before probing the subnet, preventing the server from discovering itself through a second LAN address.
 - Relay/browser donors carry `allowed_project_ids` resolved from either the authenticated user's project memberships or a validated compute-donation connection string. A bare network token can connect for status only, not receive project content.
+- Team-mode compute donation strings with wildcard project scope are rejected at relay validation so legacy all-project tokens cannot become global project processors.
 - `ComputeRegistry._select_candidates(..., project_id=...)` is the central guard: relay/browser nodes are excluded unless the project scope matches, preventing unpatched callers without project context from leaking content to donated machines.
+- `ComputeRegistry.get_stats(project_id=...)` and `get_warnings(project_id=...)` reuse the same project visibility rule so the regular Compute Pool UI cannot disclose other projects' donors, models, hosts, or RAM totals.
 - The frontmatter and manifest entries are the durable contract for agents updating this page after code changes.
 - When the referenced component, store, route, agent, skill, or test behavior changes, regenerate and validate the feature documentation.
 

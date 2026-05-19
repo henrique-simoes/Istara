@@ -38,7 +38,10 @@ def test_security_benchmark_detects_compute_project_scope_paths() -> None:
     matrix = load_matrix(ROOT / "security" / "control_matrix.json")
 
     changed_paths = [
+        "backend/app/api/routes/compute.py",
         "backend/app/core/compute_registry_routing.py",
+        "frontend/src/components/common/ComputePoolView.tsx",
+        "frontend/src/stores/computeStore.ts",
         "relay/lib/connection.mjs",
         "tests/compute_cases/routing.py",
     ]

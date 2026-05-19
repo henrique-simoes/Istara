@@ -834,10 +834,10 @@ class ComputeRegistryInvocationMixin:
 
         raise RuntimeError("No compute nodes available for batch embedding")
 
-    async def list_models(self) -> list[dict]:
-        """Aggregate models from all healthy nodes."""
+    async def list_models(self, project_id: str | None = None) -> list[dict]:
+        """Aggregate models from nodes visible to the optional project scope."""
         all_models: list[dict] = []
-        for node in self._select_candidates():
+        for node in self._select_candidates(project_id=project_id):
             try:
                 if node.source in ("relay", "browser"):
                     for name in _unique_model_names(
@@ -923,9 +923,9 @@ class ComputeRegistryInvocationMixin:
             )
         return record
 
-    async def list_models_async(self) -> list[dict]:
+    async def list_models_async(self, project_id: str | None = None) -> list[dict]:
         """Async alias for list_models (backward compat)."""
-        return await self.list_models()
+        return await self.list_models(project_id=project_id)
 
     async def pull_model(self, model_name: str) -> AsyncGenerator[dict, None]:
         """Pull model on the first healthy Ollama node."""
@@ -990,8 +990,17 @@ class ComputeRegistryInvocationMixin:
     # Unified Stats
     # ================================================================
 
-    def get_stats(self) -> dict:
-        registry_nodes = list(self._nodes.values())
+    def _nodes_visible_for_project(self, project_id: str | None = None) -> list[ComputeNode]:
+        if not project_id:
+            return list(self._nodes.values())
+        return [
+            node
+            for node in self._nodes.values()
+            if self._node_authorized_for_project_content(node, project_id)
+        ]
+
+    def get_stats(self, project_id: str | None = None) -> dict:
+        registry_nodes = self._nodes_visible_for_project(project_id)
         for node in registry_nodes:
             _hydrate_local_resources(node)
         logical_nodes = _unique_endpoint_nodes(registry_nodes)
@@ -1034,9 +1043,9 @@ class ComputeRegistryInvocationMixin:
             "nodes": nodes,
         }
 
-    def get_warnings(self) -> list[dict]:
+    def get_warnings(self, project_id: str | None = None) -> list[dict]:
         warnings = []
-        for node in self._nodes.values():
+        for node in self._nodes_visible_for_project(project_id):
             for model_name, caps in node.model_capabilities.items():
                 if "embed" in model_name.lower():
                     continue

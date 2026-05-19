@@ -548,9 +548,12 @@ export const llmServers = {
 // --- Compute Pool ---
 
 export const compute = {
-  nodes: () => request<any>("/api/compute/nodes"),
-  stats: () => request<any>("/api/compute/stats"),
-  modelWarnings: () => request<any>("/api/compute/model-warnings"),
+  nodes: (projectId?: string | null) =>
+    request<any>(`/api/compute/nodes${projectId ? `?project_id=${encodeURIComponent(projectId)}` : ""}`),
+  stats: (projectId?: string | null) =>
+    request<any>(`/api/compute/stats${projectId ? `?project_id=${encodeURIComponent(projectId)}` : ""}`),
+  modelWarnings: (projectId?: string | null) =>
+    request<any>(`/api/compute/model-warnings${projectId ? `?project_id=${encodeURIComponent(projectId)}` : ""}`),
 };
 
 // --- Documents ---

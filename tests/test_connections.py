@@ -1,5 +1,7 @@
 """Tests for Connections API routes — generate, validate, redeem, rotate-network-token."""
 
+import uuid
+
 import pytest
 from httpx import AsyncClient, ASGITransport
 from sqlalchemy import select
@@ -15,6 +17,7 @@ from app.core.connection_string import (
 )
 from app.api.routes import connections as connection_routes
 from app.models.connection_string import ConnectionString
+from app.models.project import Project
 
 
 @pytest.fixture(autouse=True)
@@ -110,6 +113,11 @@ def test_connection_string_keeps_http_and_websocket_urls_separate():
 @pytest.mark.asyncio
 async def test_compute_donation_string_validates_but_cannot_redeem_user_account(auth_headers):
     await init_db()
+    project_id = f"project-{uuid.uuid4()}"
+    async with async_session() as db:
+        db.add(Project(id=project_id, name="Donation Scope Project"))
+        await db.commit()
+
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
         generated = await ac.post(
@@ -119,6 +127,7 @@ async def test_compute_donation_string_validates_but_cannot_redeem_user_account(
                 "server_url": "http://server.test:3000",
                 "ws_url": "ws://server.test:8000/ws/relay",
                 "label": "Donor Laptop",
+                "allowed_project_ids": [project_id],
             },
         )
         assert generated.status_code == 200

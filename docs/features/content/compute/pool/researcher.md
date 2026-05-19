@@ -17,7 +17,7 @@ compass: CF-SPEC-60 / CF-754
 
 ## What It Does
 
-Compute Pool provides operational visibility into available compute nodes, routing, and local or pooled execution capacity. If one physical Mac is reachable through more than one local network address, Istara treats those aliases as one machine for the Total RAM, CPU, and connected-node display. A reachable LM Studio server can show as online even when no model is currently loaded; in that state it is visible for capacity and model availability, but not counted as ready for chat routing. Donated compute can only receive project prompts or embeddings for projects included in its authorized donation scope.
+Compute Pool provides active-project visibility into available compute nodes, routing, and local or pooled execution capacity. If one physical Mac is reachable through more than one local network address, Istara treats those aliases as one machine for the Total RAM, CPU, and connected-node display. A reachable LM Studio server can show as online even when no model is currently loaded; in that state it is visible for capacity and model availability, but not counted as ready for chat routing. Donated compute can only receive project prompts or embeddings for projects included in its authorized donation scope, and donated nodes outside the active project do not appear in non-admin project pool status.
 
 ## Why It Exists
 
@@ -36,7 +36,7 @@ Compute Pool exists so the work represented by Compute Pool has a stable, discov
 - Review the output in the same view and follow the related feature links when the workflow moves into another Istara surface.
 - Use the machine count under Total Nodes as the trusted capacity count when multiple LLM services share the same hardware.
 - Read the node status as two separate ideas: online means the provider API is reachable, while ready means a model is loaded and available for routing.
-- Treat donated compute as project-bound capacity. If a machine is not authorized for the active project, it may appear in status but is not eligible to process that project's content.
+- Treat donated compute as project-bound capacity. If a machine is not authorized for the active project, it is hidden from that project pool and is not eligible to process that project's content.
 
 ## Supported Workflows
 
