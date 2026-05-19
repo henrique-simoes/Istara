@@ -809,6 +809,7 @@ def test_loops_views_and_api_require_active_project_scope() -> None:
     store = read_repo("frontend/src/stores/loopsStore.ts")
     api = read_repo("frontend/src/lib/api.ts")
     route = read_repo("backend/app/api/routes/loops.py")
+    scheduler_route = read_repo("backend/app/api/routes/scheduler.py")
     service = read_repo("backend/app/services/loop_execution_service.py")
 
     assert "const { activeProjectId } = useProjectStore();" in loops_view
@@ -845,6 +846,8 @@ def test_loops_views_and_api_require_active_project_scope() -> None:
     assert "const data = await loopsApi.overview(projectId)" in store
     assert "const data = await loopsApi.health(projectId)" in store
     assert "project_id: projectId" in store
+    assert "loopsApi.updateSchedule(scheduleId, data, scopedProjectId)" in store
+    assert "loopsApi.deleteSchedule(scheduleId, scopedProjectId)" in store
     assert "await get().fetchSchedules(data.project_id)" in store
     assert "await get().fetchHealth(data.project_id)" in store
 
@@ -854,6 +857,10 @@ def test_loops_views_and_api_require_active_project_scope() -> None:
     assert "/api/loops/agents?project_id=" in api
     assert "schedules: (projectId: string)" in api
     assert "/api/schedules?project_id=" in api
+    assert "getSchedule: (scheduleId: string, projectId: string)" in api
+    assert "/api/schedules/${scheduleId}?project_id=${encodeURIComponent(projectId)}" in api
+    assert "updateSchedule: (scheduleId: string, data:" in api
+    assert "deleteSchedule: (scheduleId: string, projectId: string)" in api
     assert "executionStats: (projectId: string" in api
     assert "health: (projectId: string)" in api
 
@@ -863,6 +870,11 @@ def test_loops_views_and_api_require_active_project_scope() -> None:
     assert "ScheduledTask.project_id == project_id" in route
     assert "source_ids=source_ids" in route
     assert '"project_id": s.project_id' in route
+    assert "def _require_project_id(project_id: str | None) -> str:" in scheduler_route
+    assert 'raise HTTPException(status_code=400, detail="project_id is required")' in scheduler_route
+    assert "async def _get_project_schedule_or_404" in scheduler_route
+    assert "ScheduledTask.project_id == scoped_project_id" in scheduler_route
+    assert 'project_id: str | None = Query(None, description="Active project")' in scheduler_route
     assert "source_ids: Optional[list[str]] = None" in service
     assert "LoopExecution.source_id.in_(source_ids) if source_ids else false()" in service
 

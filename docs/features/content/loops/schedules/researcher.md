@@ -8,9 +8,9 @@ related_features: ["loops.overview", "loops.history"]
 related_glossary: ["a2a"]
 code_references: ["frontend/src/components/loops/SchedulesTab.tsx", "frontend/src/components/loops/CronBuilder.tsx", "backend/app/api/routes/scheduler.py"]
 api_references: ["backend/app/api/routes/scheduler.py", "backend/app/api/routes/loops.py"]
-test_references: []
-last_verified: 2026-05-15
-compass: CF-SPEC-53 / CF-657
+test_references: ["tests/test_loops.py", "tests/test_project_scope_contracts.py"]
+last_verified: 2026-05-19
+compass: CF-SPEC-61 / CF-779
 ---
 
 # Loop Schedules
@@ -45,6 +45,7 @@ Loop Schedules exists so the work represented by Loops > Schedules has a stable,
 
 - Project-scoped state or artifact updates associated with loop schedules.
 - Visible status, lists, forms, generated artifacts, or review results shown by the referenced component and routes.
+- Existing schedules can be viewed, paused/resumed, edited, or deleted only when the active project matches the schedule's project.
 
 ## Caveats
 
@@ -64,4 +65,4 @@ Loop Schedules exists so the work represented by Loops > Schedules has a stable,
 
 - Source files: `frontend/src/components/loops/SchedulesTab.tsx`, `frontend/src/components/loops/CronBuilder.tsx`, `backend/app/api/routes/scheduler.py`
 - API references: `backend/app/api/routes/scheduler.py`, `backend/app/api/routes/loops.py`
-- Tests: none recorded
+- Tests: `tests/test_loops.py`, `tests/test_project_scope_contracts.py`

@@ -187,6 +187,7 @@ def test_security_benchmark_detects_loop_project_scope_paths() -> None:
 
     changed_paths = [
         "backend/app/api/routes/loops.py",
+        "backend/app/api/routes/scheduler.py",
         "backend/app/services/loop_execution_service.py",
         "frontend/src/components/loops/LoopOverviewTab.tsx",
         "frontend/src/stores/loopsStore.ts",
@@ -378,6 +379,7 @@ def test_security_benchmark_detects_background_process_project_scope_paths() -> 
     changed_paths = [
         "backend/app/main.py",
         "backend/app/agents/orchestrator.py",
+        "backend/app/api/routes/scheduler.py",
         "backend/app/core/scheduler.py",
         "backend/app/core/agent_learning.py",
         "tests/test_project_scope_contracts.py",

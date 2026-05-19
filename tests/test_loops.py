@@ -407,18 +407,81 @@ async def test_schedule_crud_and_cron_validation(auth_headers):
         assert any(item["id"] == schedule["id"] for item in listed.json())
 
         paused = await ac.patch(
-            f"/api/schedules/{schedule['id']}",
+            f"/api/schedules/{schedule['id']}?project_id={project_id}",
             headers=auth_headers,
             json={"enabled": False},
         )
         assert paused.status_code == 200
         assert paused.json()["enabled"] is False
 
-        deleted = await ac.delete(f"/api/schedules/{schedule['id']}", headers=auth_headers)
+        deleted = await ac.delete(
+            f"/api/schedules/{schedule['id']}?project_id={project_id}",
+            headers=auth_headers,
+        )
         assert deleted.status_code == 204
 
-        missing = await ac.get(f"/api/schedules/{schedule['id']}", headers=auth_headers)
+        missing = await ac.get(
+            f"/api/schedules/{schedule['id']}?project_id={project_id}",
+            headers=auth_headers,
+        )
         assert missing.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_schedule_detail_actions_require_active_project_scope(auth_headers):
+    await init_db()
+    project_a = f"schedule-active-{uuid.uuid4()}"
+    project_b = f"schedule-other-{uuid.uuid4()}"
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        created = await ac.post(
+            "/api/schedules",
+            headers=auth_headers,
+            json={
+                "name": "Scoped Schedule",
+                "cron_expression": "0 * * * *",
+                "project_id": project_a,
+                "skill_name": "ux_evaluation",
+            },
+        )
+        assert created.status_code == 201
+        schedule = created.json()
+
+        unscoped = await ac.get(f"/api/schedules/{schedule['id']}", headers=auth_headers)
+        assert unscoped.status_code == 400
+        assert unscoped.json()["detail"] == "project_id is required"
+
+        wrong_project = await ac.get(
+            f"/api/schedules/{schedule['id']}?project_id={project_b}",
+            headers=auth_headers,
+        )
+        assert wrong_project.status_code == 404
+
+        wrong_update = await ac.patch(
+            f"/api/schedules/{schedule['id']}?project_id={project_b}",
+            headers=auth_headers,
+            json={"enabled": False},
+        )
+        assert wrong_update.status_code == 404
+
+        scoped = await ac.get(
+            f"/api/schedules/{schedule['id']}?project_id={project_a}",
+            headers=auth_headers,
+        )
+        assert scoped.status_code == 200
+        assert scoped.json()["project_id"] == project_a
+
+        wrong_delete = await ac.delete(
+            f"/api/schedules/{schedule['id']}?project_id={project_b}",
+            headers=auth_headers,
+        )
+        assert wrong_delete.status_code == 404
+
+        still_exists = await ac.get(
+            f"/api/schedules/{schedule['id']}?project_id={project_a}",
+            headers=auth_headers,
+        )
+        assert still_exists.status_code == 200
 
 
 @pytest.mark.asyncio
@@ -443,7 +506,7 @@ async def test_researcher_can_manage_project_schedule(researcher_headers):
         schedule = created.json()
 
         updated = await ac.patch(
-            f"/api/schedules/{schedule['id']}",
+            f"/api/schedules/{schedule['id']}?project_id={project_id}",
             headers=researcher_headers,
             json={"enabled": False},
         )
