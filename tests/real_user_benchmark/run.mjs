@@ -1961,12 +1961,22 @@ main().catch((error) => {
   return preflight;
 }
 
-async function waitForRelayRegistrations(api, expectedCount = 1, timeoutMs = 90000) {
+async function waitForRelayRegistrations(api, projectId, expectedCount = 1, timeoutMs = 90000) {
+  if (!projectId) {
+    return {
+      ok: false,
+      expected_count: expectedCount,
+      nodes: [],
+      stats: null,
+      error: "project_id is required for compute relay registration checks",
+    };
+  }
   const deadline = Date.now() + timeoutMs;
   let lastStats = null;
+  const statsPath = `/api/compute/stats?project_id=${encodeURIComponent(projectId)}`;
   while (Date.now() < deadline) {
     try {
-      lastStats = await api.get("/api/compute/stats", { timeoutMs: 15000 });
+      lastStats = await api.get(statsPath, { timeoutMs: 15000 });
       const nodes = Array.isArray(lastStats.nodes) ? lastStats.nodes : [];
       const relayNodes = nodes.filter((node) => ["relay", "browser"].includes(node.source));
       if (relayNodes.length >= expectedCount) {
@@ -1993,8 +2003,8 @@ async function waitForRelayRegistrations(api, expectedCount = 1, timeoutMs = 900
   return { ok: false, expected_count: expectedCount, nodes, stats: summarizeComputeStats(lastStats) };
 }
 
-async function waitForRelayRegistration(api, timeoutMs = 90000) {
-  return waitForRelayRegistrations(api, 1, timeoutMs);
+async function waitForRelayRegistration(api, projectId, timeoutMs = 90000) {
+  return waitForRelayRegistrations(api, projectId, 1, timeoutMs);
 }
 
 function summarizeRelayNode(node) {
@@ -2045,14 +2055,14 @@ async function verifyComputeDonation(api, projectId, { activeDonorProfiles = don
     return { skipped: true };
   }
   const expectedRelayCount = Math.max(1, activeDonorProfiles.filter((profile) => profile.enabled).length);
-  const registration = await waitForRelayRegistrations(api, expectedRelayCount);
+  const registration = await waitForRelayRegistrations(api, projectId, expectedRelayCount);
   if (!registration.ok) {
     blockers.push(`Compute donation relay registration incomplete: ${registration.nodes?.length || 0}/${expectedRelayCount} relay nodes observed.`);
     logger.issue({
       area: "compute-donation",
       severity: "critical",
       title: "Compute donation relay did not register",
-      detail: "The benchmark generated or consumed compute donation strings and started relay clients, but /api/compute/stats did not show the expected relay/browser node count.",
+      detail: "The benchmark generated or consumed compute donation strings and started relay clients, but project-scoped /api/compute/stats did not show the expected relay/browser node count.",
     });
     logger.writeJson("compute-donation-results.json", {
       expected_relay_count: expectedRelayCount,
@@ -2102,7 +2112,7 @@ async function verifyComputeDonation(api, projectId, { activeDonorProfiles = don
     route_evidence_detail: routeUsedRelay
       ? "Backend logs explicitly reported Relay routing."
       : forcedRelayTopology
-        ? "The benchmark forced direct server providers unreachable and /api/compute/stats showed the relay as the only alive compute node."
+        ? "The benchmark forced direct server providers unreachable and project-scoped /api/compute/stats showed the relay as the only alive compute node."
         : "Relay routing could not be proved from backend logs or forced topology.",
     forced_relay_topology: forcedRelayTopology,
     alive_relay_node_count: aliveRelayNodes.length,

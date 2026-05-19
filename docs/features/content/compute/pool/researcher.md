@@ -9,15 +9,15 @@ related_glossary: ["rag"]
 code_references: ["frontend/src/components/common/ComputePoolView.tsx", "backend/app/api/routes/compute.py", "backend/app/core/compute_pool.py", "backend/app/core/compute_registry_routing.py"]
 api_references: ["backend/app/api/routes/compute.py"]
 test_references: ["tests/test_compute.py", "tests/test_compute_registry_model_loading.py", "tests/test_compute_registry_hardening.py", "tests/test_network_discovery.py", "tests/test_project_rbac.py"]
-last_verified: 2026-05-18
-compass: CF-SPEC-60 / CF-754
+last_verified: 2026-05-19
+compass: CF-SPEC-60 / CF-774
 ---
 
 # Compute Pool
 
 ## What It Does
 
-Compute Pool provides active-project visibility into available compute nodes, routing, and local or pooled execution capacity. If one physical Mac is reachable through more than one local network address, Istara treats those aliases as one machine for the Total RAM, CPU, and connected-node display. A reachable LM Studio server can show as online even when no model is currently loaded; in that state it is visible for capacity and model availability, but not counted as ready for chat routing. Donated compute can only receive project prompts or embeddings for projects included in its authorized donation scope, and donated nodes outside the active project do not appear in non-admin project pool status.
+Compute Pool provides active-project visibility into available compute nodes, routing, and local or pooled execution capacity. If one physical Mac is reachable through more than one local network address, Istara treats those aliases as one machine for the Total RAM, CPU, and connected-node display. A reachable LM Studio server can show as online even when no model is currently loaded; in that state it is visible for capacity and model availability, but not counted as ready for chat routing. Donated compute can only receive project prompts or embeddings for projects included in its authorized donation scope, and donated nodes outside the active project do not appear in project pool status for any role.
 
 ## Why It Exists
 
@@ -37,6 +37,7 @@ Compute Pool exists so the work represented by Compute Pool has a stable, discov
 - Use the machine count under Total Nodes as the trusted capacity count when multiple LLM services share the same hardware.
 - Read the node status as two separate ideas: online means the provider API is reachable, while ready means a model is loaded and available for routing.
 - Treat donated compute as project-bound capacity. If a machine is not authorized for the active project, it is hidden from that project pool and is not eligible to process that project's content.
+- Regular Compute Pool views require an active project. Cross-project capacity belongs in admin reporting, not this project surface.
 
 ## Supported Workflows
 

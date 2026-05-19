@@ -9,8 +9,8 @@ related_glossary: ["rag"]
 code_references: ["frontend/src/components/common/ComputePoolView.tsx", "frontend/src/stores/computeStore.ts", "backend/app/api/routes/compute.py", "backend/app/core/compute_registry_helpers.py", "backend/app/core/compute_registry_invocation.py", "backend/app/core/compute_registry_lifecycle.py", "backend/app/core/compute_registry_routing.py", "backend/app/core/network_discovery.py", "backend/app/core/compute_pool.py"]
 api_references: ["backend/app/api/routes/compute.py"]
 test_references: ["tests/test_compute.py", "tests/test_compute_registry_model_loading.py", "tests/test_compute_registry_hardening.py", "tests/test_network_discovery.py", "tests/test_project_rbac.py"]
-last_verified: 2026-05-18
-compass: CF-SPEC-60 / CF-754
+last_verified: 2026-05-19
+compass: CF-SPEC-60 / CF-774
 ---
 
 # Compute Pool Architecture
@@ -19,7 +19,7 @@ compass: CF-SPEC-60 / CF-754
 
 Compute Pool provides active-project operational visibility into available compute nodes, routing, and local or pooled execution capacity. Hardware totals are deduplicated by physical provider machine so local/network/relay views of the same server do not inflate RAM or CPU totals. Local interface aliases are canonicalized before endpoint display and capacity aggregation, so one Mac exposed through multiple LAN IP addresses appears as one logical endpoint for the same provider and port. Provider reachability is reported separately from chat readiness: a reachable LM Studio server with loadable models but no model in memory is online, not offline, while routing still treats it as not ready until a model is loaded.
 
-Donated relay/browser nodes are treated as a project-content security boundary. Non-admin Compute Pool endpoints require an authorized `project_id`, and node stats, hardware totals, available models, and model warnings are filtered to local/server-owned capacity plus donors authorized for that project. Prompt, chat, embedding, and model-load recovery paths may only select donated nodes when the request carries a concrete `project_id` and the node's authenticated donation scope includes that project. Server-owned local/network nodes remain available for unscoped internal work.
+Donated relay/browser nodes are treated as a project-content security boundary. Regular Compute Pool endpoints require an authorized `project_id` for every role, including global admins, and node stats, hardware totals, available models, and model warnings are filtered to local/server-owned capacity plus donors authorized for that project. Cross-project compute aggregation belongs only on explicit admin reporting surfaces. Prompt, chat, embedding, and model-load recovery paths may only select donated nodes when the request carries a concrete `project_id` and the node's authenticated donation scope includes that project. Server-owned local/network nodes remain available for unscoped internal work.
 
 ## Frontend Surface
 
@@ -47,7 +47,7 @@ Donated relay/browser nodes are treated as a project-content security boundary. 
 - Relay/browser donors carry `allowed_project_ids` resolved from either the authenticated user's project memberships or a validated compute-donation connection string. A bare network token can connect for status only, not receive project content.
 - Team-mode compute donation strings with wildcard project scope are rejected at relay validation so legacy all-project tokens cannot become global project processors.
 - `ComputeRegistry._select_candidates(..., project_id=...)` is the central guard: relay/browser nodes are excluded unless the project scope matches, preventing unpatched callers without project context from leaking content to donated machines.
-- `ComputeRegistry.get_stats(project_id=...)` and `get_warnings(project_id=...)` reuse the same project visibility rule so the regular Compute Pool UI cannot disclose other projects' donors, models, hosts, or RAM totals.
+- `ComputeRegistry.get_stats(project_id=...)` and `get_warnings(project_id=...)` reuse the same project visibility rule so the regular Compute Pool UI cannot disclose other projects' donors, models, hosts, or RAM totals. The `/api/compute/nodes`, `/api/compute/stats`, and `/api/compute/model-warnings` routes reject missing `project_id` instead of falling back to global admin capacity.
 - The frontmatter and manifest entries are the durable contract for agents updating this page after code changes.
 - When the referenced component, store, route, agent, skill, or test behavior changes, regenerate and validate the feature documentation.
 
@@ -74,7 +74,7 @@ Donated relay/browser nodes are treated as a project-content security boundary. 
 
 ## Compass Evidence
 
-- Spec/task: CF-SPEC-60 / CF-754
+- Spec/task: CF-SPEC-60 / CF-774
 - Inventory source: `docs/features/inventory.json`
 
 ## When To Update

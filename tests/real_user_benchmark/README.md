@@ -35,7 +35,7 @@ ISTARA_BENCHMARK_ADMIN_PASSWORD='IstaraBenchmarkAdmin123!' \
 npm --prefix tests/real_user_benchmark run full
 ```
 
-The full run starts a fresh Team Mode server sandbox with an admin bootstrap user, drives the browser UI with those credentials, generates a user invite connection string, redeems that invite inside a separate disposable client container, grants the researcher access to the project, and runs a second Playwright journey as that researcher. When compute donation is required, the harness generates a per-run network token if one was not supplied, starts a separate relay client container using the same live LLM profile contract as `tests/llm_test_config.py`, waits for `/api/compute/stats` to show a relay node, and requires a relay-routed chat response before treating chat as useful evidence.
+The full run starts a fresh Team Mode server sandbox with an admin bootstrap user, drives the browser UI with those credentials, generates a user invite connection string, redeems that invite inside a separate disposable client container, grants the researcher access to the project, and runs a second Playwright journey as that researcher. When compute donation is required, the harness generates a per-run network token if one was not supplied, starts a separate relay client container using the same live LLM profile contract as `tests/llm_test_config.py`, waits for project-scoped `/api/compute/stats?project_id=...` to show a relay node, and requires a relay-routed chat response before treating chat as useful evidence.
 
 Server and client sandboxes are separate. `--start-sandbox` starts Istara itself; donor/researcher containers are controlled by `ISTARA_BENCHMARK_START_CLIENT_SANDBOXES` and default on whenever donated compute or external connection strings are required. This means you can run the orchestrator outside Docker, generate connection strings in the real admin UI, pass those strings to the benchmark, and still have the benchmark spin up fresh disposable donor/researcher containers.
 
@@ -114,7 +114,7 @@ ISTARA_BENCHMARK_DONOR_COUNT=2 \
 npm --prefix tests/real_user_benchmark run probe
 ```
 
-When two required donors are configured, the benchmark waits for `/api/compute/stats` to expose two relay/browser nodes. The run records `compute-donation-results.json`, per-donor `relay-llm-preflight-<donor>.json`, connection-string materialization evidence, route evidence, and whether multi-donor compute was actually verified. If only one donor is reachable, the run is not silently accepted as a multi-donor success.
+When two required donors are configured, the benchmark waits for project-scoped `/api/compute/stats?project_id=...` to expose two relay/browser nodes. The run records `compute-donation-results.json`, per-donor `relay-llm-preflight-<donor>.json`, connection-string materialization evidence, route evidence, and whether multi-donor compute was actually verified. If only one donor is reachable, the run is not silently accepted as a multi-donor success.
 
 If Docker or the app blocks completion, the run is still useful: the blocker, logs, screenshots, and partial results are preserved. The harness treats first failures as prompts for architecture-aware diagnosis: it checks whether the benchmark misunderstood Istara state, auth, onboarding, or render timing before logging a product finding.
 

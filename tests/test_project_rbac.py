@@ -577,7 +577,11 @@ async def test_compute_is_researcher_visible_but_steering_and_meta_hyperagent_ar
         steering_response = await ac.get("/api/steering", headers=researcher_headers)
         meta_response = await ac.get("/api/meta-hyperagent/status", headers=researcher_headers)
 
-        admin_response = await ac.get(
+        admin_project_response = await ac.get(
+            f"/api/compute/stats?project_id={project.id}",
+            headers=_headers("admin-system", "admin", "admin"),
+        )
+        admin_unscoped_response = await ac.get(
             "/api/compute/stats",
             headers=_headers("admin-system", "admin", "admin"),
         )
@@ -585,7 +589,9 @@ async def test_compute_is_researcher_visible_but_steering_and_meta_hyperagent_ar
     assert compute_response.status_code == 200
     assert steering_response.status_code == 403
     assert meta_response.status_code == 403
-    assert admin_response.status_code == 200
+    assert admin_project_response.status_code == 200
+    assert admin_unscoped_response.status_code == 400
+    assert admin_unscoped_response.json()["detail"] == "project_id is required"
 
 
 @pytest.mark.asyncio

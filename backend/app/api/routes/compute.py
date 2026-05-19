@@ -13,7 +13,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.config import settings
 from app.core.compute_registry import ComputeNode, compute_registry, infer_provider_type
 from app.core.connection_string import decode_connection_string, hash_connection_string
-from app.core.permissions import is_global_admin, require_global_role, require_project_access
+from app.core.permissions import get_visible_project_or_404, require_global_role
 from app.models.connection_string import ConnectionString
 from app.models.database import get_db
 from app.models.project_member import ProjectMember
@@ -41,6 +41,13 @@ def _normalize_project_scope(values: object) -> list[str]:
 def _clean_project_id(project_id: str | None) -> str | None:
     cleaned = (project_id or "").strip()
     return cleaned or None
+
+
+def _require_project_id(project_id: str | None) -> str:
+    scoped_project_id = _clean_project_id(project_id)
+    if not scoped_project_id:
+        raise HTTPException(status_code=400, detail="project_id is required")
+    return scoped_project_id
 
 
 def _parse_connection_scope(conn: ConnectionString | None, payload: dict) -> list[str]:
@@ -128,16 +135,12 @@ async def _require_compute_pool_scope(
     db: AsyncSession,
     request: Request,
     project_id: str | None,
-) -> str | None:
-    """Authorize Compute Pool visibility for either admin global or active project scope."""
-    subject = require_global_role(request, "researcher")
-    scoped_project_id = _clean_project_id(project_id)
-    if scoped_project_id:
-        await require_project_access(db, request, scoped_project_id, min_role="viewer")
-        return scoped_project_id
-    if settings.team_mode and not is_global_admin(subject):
-        raise HTTPException(status_code=400, detail="project_id is required")
-    return None
+) -> str:
+    """Authorize regular Compute Pool visibility for one active project."""
+    require_global_role(request, "researcher")
+    scoped_project_id = _require_project_id(project_id)
+    await get_visible_project_or_404(db, request, scoped_project_id, min_role="viewer")
+    return scoped_project_id
 
 
 @router.get("/compute/nodes")
@@ -146,7 +149,7 @@ async def list_compute_nodes(
     project_id: str | None = None,
     db: AsyncSession = Depends(get_db),
 ):
-    """List compute nodes visible to the active project or a global admin."""
+    """List compute nodes visible to one authorized active project."""
     scoped_project_id = await _require_compute_pool_scope(db, request, project_id)
     stats = compute_registry.get_stats(project_id=scoped_project_id)
     return {
@@ -162,7 +165,7 @@ async def compute_stats(
     project_id: str | None = None,
     db: AsyncSession = Depends(get_db),
 ):
-    """Unified compute stats for the active project, or all nodes for global admins."""
+    """Unified compute stats for one authorized active project."""
     scoped_project_id = await _require_compute_pool_scope(db, request, project_id)
     return compute_registry.get_stats(project_id=scoped_project_id)
 
