@@ -13,6 +13,7 @@ Use `compass-forge intelligence impact --request "<user request>"` or `--path <p
 If tasks exist, use `compass-forge work-order --role implementer --task CF-N`.
 Run `compass-forge gate before` and `compass-forge gate after` for meaningful changes.
 Attach command, gate, and review evidence before marking tasks done.
+UI/menu/route/store/agent/skill/model/test behavior changes must update Istara's living feature documentation under `docs/features/`, regenerate the site/manifests with `python scripts/feature_docs.py --seed-missing --generate-site --check`, and attach that output as Compass Forge evidence.
 Do not silently mutate external repos, global agent config, or generated integration files.
 <!-- compass-forge:end -->
 

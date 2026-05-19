@@ -59,6 +59,20 @@ class AgentExecutionMixin:
         """Execute a task using the appropriate skill."""
         logger.info(f"Executing task: {task.title} (skill: {task.skill_name or 'auto'})")
 
+        if project.is_paused:
+            logger.info(
+                "Project %s is paused; task %s will stay in backlog",
+                project.id,
+                task.id,
+            )
+            task.status = TaskStatus.BACKLOG
+            task.progress = 0.0
+            task.agent_notes = "Project is paused; agent execution deferred."
+            await db.commit()
+            await broadcast_agent_status("paused", f"Project paused: {project.name}", project_id=project.id)
+            await broadcast_task_progress(task.id, 0.0, "Project paused; task deferred.")
+            return
+
         # Checkpoint: started
         await create_checkpoint(db, task.id, self._agent_id, "started")
 
@@ -67,7 +81,7 @@ class AgentExecutionMixin:
         task.progress = 0.1
         await db.commit()
         await self._persist_agent_state(AgentState.WORKING, task.title)
-        await broadcast_agent_status("working", f"Working on: {task.title}")
+        await broadcast_agent_status("working", f"Working on: {task.title}", project_id=task.project_id)
         await broadcast_task_progress(task.id, 0.1, "Starting task...")
 
         # Retrieve RAG context before skill selection (gives skills document awareness)
@@ -103,7 +117,11 @@ class AgentExecutionMixin:
             task.status = TaskStatus.BACKLOG
             await db.commit()
             await complete_checkpoint(db, task.id)
-            await broadcast_agent_status("warning", f"Skill blocked: {skill.name} not in agent ACL")
+            await broadcast_agent_status(
+                "warning",
+                f"Skill blocked: {skill.name} not in agent ACL",
+                project_id=task.project_id,
+            )
             return
 
         # Build skill input — include task instructions, context, and RAG documents
@@ -220,6 +238,7 @@ class AgentExecutionMixin:
                         validation_kwargs = {
                             "prompt": validation_prompt,
                             "system": validation_system,
+                            "project_id": project.id,
                         }
                         if method == "adversarial_review":
                             validation_kwargs["initial_response"] = output.summary
@@ -377,7 +396,7 @@ class AgentExecutionMixin:
 
                 await broadcast_task_progress(task.id, 1.0, "Complete — ready for review.")
                 await self._persist_agent_state(AgentState.IDLE)
-                await broadcast_agent_status("idle", f"Completed: {task.title}")
+                await broadcast_agent_status("idle", f"Completed: {task.title}", project_id=task.project_id)
             else:
                 # Verification failed — surface it for human review and feedback.
                 task.agent_notes = f"[Verification failed] {verify_reason}\n\n{output.summary}"
@@ -392,13 +411,20 @@ class AgentExecutionMixin:
                 await broadcast_task_progress(task.id, 1.0, f"Verification failed: {verify_reason}")
                 await self._persist_agent_state(AgentState.IDLE)
                 await broadcast_agent_status(
-                    "warning", f"Needs attention: {task.title} — {verify_reason}"
+                    "warning",
+                    f"Needs attention: {task.title} — {verify_reason}",
+                    project_id=task.project_id,
                 )
 
             # Record skill usage and check health for self-evolution
-            skill_manager.record_execution(skill.name, output.success, quality_score)
+            skill_manager.record_execution(
+                skill.name,
+                output.success,
+                quality_score,
+                project_id=task.project_id,
+            )
             try:
-                health = skill_manager.get_skill_health(skill.name)
+                health = skill_manager.get_skill_health(skill.name, project_id=task.project_id)
                 # LLM-based skill improvement when quality is consistently low
                 if health.get("executions", 0) >= 3 and health.get("avg_quality", 1.0) < 0.5:
                     # Ask LLM to reflect on why the skill is underperforming
@@ -445,12 +471,14 @@ class AgentExecutionMixin:
                             f"{execution_count} runs"
                         ),
                         confidence=0.6,
+                        project_id=task.project_id,
                     )
                     try:
                         from app.core.improvement_governance import improvement_governance
 
                         await improvement_governance.register_skill_update_proposal(
-                            proposal.to_dict()
+                            proposal.to_dict(),
+                            project_id=task.project_id,
                         )
                     except Exception:
                         pass
@@ -510,7 +538,11 @@ class AgentExecutionMixin:
             try:
                 from app.core.agent_learning import agent_learning
 
-                resolution = await agent_learning.get_error_resolution(self._agent_id, error_msg)
+                resolution = await agent_learning.get_error_resolution(
+                    self._agent_id,
+                    error_msg,
+                    project_id=task.project_id,
+                )
                 if resolution:
                     resolution_hint = f"\n\nKnown resolution: {resolution}"
                     logger.info(f"Found known resolution for error: {resolution}")
@@ -564,6 +596,7 @@ class AgentExecutionMixin:
                         f"Task retry {task.retry_count}/{task.max_retries or 3}: "
                         f"{task.title} — {error_msg[:80]}"
                     ),
+                    project_id=task.project_id,
                 )
             else:
                 task.progress = 1.0
@@ -580,6 +613,7 @@ class AgentExecutionMixin:
                         f"Task failed after {task.retry_count} retries: "
                         f"{task.title} — {error_msg[:80]}"
                     ),
+                    project_id=task.project_id,
                 )
 
             # Leave checkpoint in place for crash recovery awareness
@@ -625,7 +659,7 @@ class AgentExecutionMixin:
     ) -> None:
         """Check if the agent should propose creating a new skill based on this task."""
         # Maturity gate: agent must have executed 5+ tasks
-        usage = skill_manager.get_usage_stats()
+        usage = skill_manager.get_usage_stats(project_id=task.project_id)
         total_executions = sum(s.get("executions", 0) for s in usage.values())
         if total_executions < 5:
             return
@@ -661,11 +695,15 @@ class AgentExecutionMixin:
                 agent_id=self._agent_id,
                 reason=f"High-quality output ({total_findings} findings) from task: {task.title}",
                 confidence=min(70, 50 + total_findings * 5),
+                project_id=task.project_id,
             )
             try:
                 from app.core.improvement_governance import improvement_governance
 
-                await improvement_governance.register_skill_creation_proposal(proposal.to_dict())
+                await improvement_governance.register_skill_creation_proposal(
+                    proposal.to_dict(),
+                    project_id=task.project_id,
+                )
             except Exception:
                 pass
             await broadcast_suggestion(

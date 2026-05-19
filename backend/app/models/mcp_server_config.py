@@ -18,6 +18,7 @@ class MCPServerConfig(Base):
     __tablename__ = "mcp_server_configs"
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    project_id: Mapped[str] = mapped_column(String(36), default="")
     name: Mapped[str] = mapped_column(String(200), nullable=False)
     url: Mapped[str] = mapped_column(String(500), nullable=False)
     transport: Mapped[str] = mapped_column(String(20), default="http")  # http|stdio|websocket
@@ -38,6 +39,7 @@ class MCPServerConfig(Base):
         import json
         return {
             "id": self.id,
+            "project_id": self.project_id or "",
             "name": self.name,
             "url": self.url,
             "transport": self.transport,

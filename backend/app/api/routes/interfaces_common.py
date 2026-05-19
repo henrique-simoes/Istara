@@ -12,8 +12,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
 from app.core.llm_thinking import ThinkingMode
-from app.core.permissions import get_subject, is_global_admin, require_project_access
+from app.core.permissions import require_project_access
 from app.models.design_screen import DesignScreen
+from app.models.interface_config import ProjectInterfaceConfig
 
 
 def resolve_project_folder(project, project_id: str) -> Path:
@@ -39,17 +40,40 @@ async def get_screen_or_404(db: AsyncSession, screen_id: str) -> DesignScreen:
     return screen
 
 
+def require_project_id(project_id: str | None) -> str:
+    scoped_project_id = (project_id or "").strip()
+    if not scoped_project_id:
+        raise HTTPException(status_code=400, detail="project_id is required")
+    return scoped_project_id
+
+
 async def require_integration_admin(
     db: AsyncSession,
     request: Request,
     project_id: str | None,
-) -> None:
-    subject = get_subject(request)
-    if is_global_admin(subject):
-        return
-    if not project_id:
-        raise HTTPException(status_code=400, detail="project_id is required")
-    await require_project_access(db, request, project_id, min_role="project_admin")
+) -> str:
+    scoped_project_id = require_project_id(project_id)
+    await require_project_access(db, request, scoped_project_id, min_role="project_admin")
+    return scoped_project_id
+
+
+async def get_project_interface_config(
+    db: AsyncSession,
+    project_id: str,
+) -> ProjectInterfaceConfig | None:
+    return await db.get(ProjectInterfaceConfig, project_id)
+
+
+async def get_or_create_project_interface_config(
+    db: AsyncSession,
+    project_id: str,
+) -> ProjectInterfaceConfig:
+    config = await get_project_interface_config(db, project_id)
+    if config is None:
+        config = ProjectInterfaceConfig(project_id=project_id)
+        db.add(config)
+        await db.flush()
+    return config
 
 
 class DesignChatRequest(BaseModel):

@@ -134,6 +134,7 @@ export default function DocumentsView() {
     fetchTags,
     fetchStats,
     syncDocuments,
+    resetProject,
     setSearchQuery,
     setFilterPhase,
     setFilterTag,
@@ -159,6 +160,12 @@ export default function DocumentsView() {
     return "compact";
   });
   const canWrite = canWriteActiveProject();
+  const scopedDocuments = activeProjectId
+    ? documents.filter((doc) => doc.project_id === activeProjectId)
+    : [];
+  const scopedSelectedDocId = scopedDocuments.some((doc) => doc.id === selectedDocId)
+    ? selectedDocId
+    : null;
 
   const handleViewMode = useCallback((mode: "compact" | "list" | "grid") => {
     setViewMode(mode);
@@ -169,18 +176,22 @@ export default function DocumentsView() {
     window.dispatchEvent(new CustomEvent("istara:toast", { detail: { type, title, message } }));
   };
 
-  // Fetch documents on project change
   useEffect(() => {
     if (activeProjectId) {
+      resetProject(activeProjectId);
+      setPreviewDoc(null);
+      setPreviewContent(null);
       fetchDocuments(activeProjectId);
       fetchTags(activeProjectId);
       fetchStats(activeProjectId);
-      // Auto-sync on load to pick up new project files
       syncDocuments(activeProjectId);
+    } else {
+      resetProject(null);
+      setPreviewDoc(null);
+      setPreviewContent(null);
     }
-  }, [activeProjectId, fetchDocuments, fetchTags, fetchStats, syncDocuments]);
+  }, [activeProjectId, fetchDocuments, fetchTags, fetchStats, syncDocuments, resetProject]);
 
-  // Refetch when filters change
   useEffect(() => {
     if (activeProjectId) {
       fetchDocuments(activeProjectId);
@@ -195,7 +206,6 @@ export default function DocumentsView() {
       await fetchDocuments(activeProjectId);
       await fetchTags(activeProjectId);
       await fetchStats(activeProjectId);
-      // Show feedback toast
       window.dispatchEvent(
         new CustomEvent("istara:toast", {
           detail: count > 0
@@ -240,14 +250,17 @@ export default function DocumentsView() {
     }
   };
 
-  // handleOrganize replaced by InteractiveSuggestionBox — toggle showOrganize state
-
   const handleOpenPreview = async (doc: ReclawDocument) => {
+    if (!activeProjectId || doc.project_id !== activeProjectId) {
+      dispatchToast("warning", "Preview Blocked", "This document is not part of the active project.");
+      return;
+    }
     setPreviewDoc(doc);
     selectDocument(doc.id);
     setLoadingPreview(true);
     try {
-      const content = await documentsApi.content(doc.id);
+      const content = await documentsApi.content(doc.id, activeProjectId);
+      if (useProjectStore.getState().activeProjectId !== activeProjectId) return;
       setPreviewContent(content);
     } catch (e: any) {
       setPreviewContent(null);
@@ -265,9 +278,10 @@ export default function DocumentsView() {
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const handleDelete = async (id: string) => {
+    if (!activeProjectId) return;
     setDeletingId(id);
     try {
-      await deleteDocument(id);
+      await deleteDocument(id, activeProjectId);
       setConfirmDelete(null);
       if (previewDoc?.id === id) handleClosePreview();
       dispatchToast("success", "Document Deleted", "Document removed successfully");
@@ -287,7 +301,6 @@ export default function DocumentsView() {
     [setSearchQuery]
   );
 
-  // Preview mode
   if (previewDoc) {
     return (
       <DocumentPreview
@@ -302,7 +315,6 @@ export default function DocumentsView() {
   return (
     <div className="flex flex-col h-full bg-white dark:bg-slate-950">
       <ViewOnboarding viewId="documents" title="Your Research Files" description="All documents in your project — uploaded files, agent outputs, and task results. Drag files here, link an external folder, or use Organize for AI categorization." chatPrompt="How do I organize my documents?" />
-      {/* Header */}
       <div className="border-b border-slate-200 dark:border-slate-800 p-4">
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2">
@@ -335,7 +347,6 @@ export default function DocumentsView() {
               {uploading ? <Loader2 size={14} className="animate-spin" /> : <Upload size={14} />}
               {uploading ? "Uploading" : "Upload"}
             </button>
-            {/* View mode toggle */}
             <div className="flex items-center border border-slate-200 dark:border-slate-700 rounded-lg overflow-hidden" role="group" aria-label="View mode">
               <button
                 onClick={() => handleViewMode("compact")}
@@ -424,7 +435,6 @@ export default function DocumentsView() {
           </div>
         </div>
 
-        {/* Interactive Organization Suggestions */}
         {showOrganize && activeProjectId && (
           <InteractiveSuggestionBox
             projectId={activeProjectId}
@@ -434,7 +444,6 @@ export default function DocumentsView() {
           />
         )}
 
-        {/* Search bar */}
         <div className="relative">
           <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
           <input
@@ -457,10 +466,8 @@ export default function DocumentsView() {
           )}
         </div>
 
-        {/* Filters panel */}
         {showFilters && (
           <div className="mt-3 flex flex-wrap gap-2" role="group" aria-label="Document filters">
-            {/* Phase filter */}
             <select
               value={filterPhase}
               onChange={(e) => setFilterPhase(e.target.value)}
@@ -472,7 +479,6 @@ export default function DocumentsView() {
               ))}
             </select>
 
-            {/* Source filter */}
             <select
               value={filterSource}
               onChange={(e) => setFilterSource(e.target.value)}
@@ -484,7 +490,6 @@ export default function DocumentsView() {
               ))}
             </select>
 
-            {/* Tag filter */}
             {tags.length > 0 && (
               <select
                 value={filterTag}
@@ -501,7 +506,6 @@ export default function DocumentsView() {
               </select>
             )}
 
-            {/* Clear filters */}
             {(filterPhase || filterSource || filterTag) && (
               <button
                 onClick={() => {
@@ -519,19 +523,18 @@ export default function DocumentsView() {
         )}
       </div>
 
-      {/* Document List */}
       <div className="flex-1 overflow-y-auto p-4" role="list" aria-label="Documents list">
         {error && (
           <div className="mb-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-900/60 dark:bg-red-950/30 dark:text-red-300" role="alert">
             {error}
           </div>
         )}
-        {loading && documents.length === 0 ? (
+        {loading && scopedDocuments.length === 0 ? (
           <div className="flex items-center justify-center py-12">
             <Loader2 size={20} className="animate-spin text-istara-600" />
             <span className="ml-2 text-sm text-slate-500">Loading documents...</span>
           </div>
-        ) : documents.length === 0 ? (
+        ) : scopedDocuments.length === 0 ? (
           <div className="text-center py-12">
             <FileText size={40} className="mx-auto text-slate-300 dark:text-slate-600 mb-3" />
             <p className="text-sm text-slate-500 dark:text-slate-400 mb-1">
@@ -553,7 +556,7 @@ export default function DocumentsView() {
                   : "space-y-1.5"
             )}
           >
-            {documents.map((doc) =>
+            {scopedDocuments.map((doc) =>
               viewMode === "compact" ? (
                 <DocumentCompactRow
                   key={doc.id}
@@ -561,7 +564,7 @@ export default function DocumentsView() {
                   onOpen={() => handleOpenPreview(doc)}
                   onDelete={() => setConfirmDelete(doc.id)}
                   canWrite={canWrite}
-                  isSelected={selectedDocId === doc.id}
+                  isSelected={scopedSelectedDocId === doc.id}
                 />
               ) : viewMode === "grid" ? (
                 <DocumentGridCard
@@ -570,7 +573,7 @@ export default function DocumentsView() {
                   onOpen={() => handleOpenPreview(doc)}
                   onDelete={() => setConfirmDelete(doc.id)}
                   canWrite={canWrite}
-                  isSelected={selectedDocId === doc.id}
+                  isSelected={scopedSelectedDocId === doc.id}
                 />
               ) : (
                 <DocumentCard
@@ -579,14 +582,13 @@ export default function DocumentsView() {
                   onOpen={() => handleOpenPreview(doc)}
                   onDelete={() => setConfirmDelete(doc.id)}
                   canWrite={canWrite}
-                  isSelected={selectedDocId === doc.id}
+                  isSelected={scopedSelectedDocId === doc.id}
                 />
               )
             )}
           </div>
         )}
 
-        {/* Pagination */}
         {totalPages > 1 && (
           <div className="flex items-center justify-center gap-2 mt-4 pt-4 border-t border-slate-200 dark:border-slate-800">
             <button
@@ -612,7 +614,6 @@ export default function DocumentsView() {
         )}
       </div>
 
-      {/* Delete confirmation */}
       {confirmDelete && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" role="dialog" aria-modal="true">
           <div className="bg-white dark:bg-slate-900 rounded-xl shadow-xl max-w-sm w-full p-5">
@@ -743,7 +744,6 @@ function DocumentGridCard({
       tabIndex={0}
       aria-label={`Document: ${doc.title}`}
     >
-      {/* Top: icon + title + actions */}
       <div className="flex items-start gap-2 mb-1.5">
         <div className="p-1.5 rounded bg-slate-100 dark:bg-slate-700 shrink-0">
           <Icon size={14} className="text-slate-500 dark:text-slate-400" />
@@ -773,7 +773,6 @@ function DocumentGridCard({
         </div>
       </div>
 
-      {/* Description */}
       {doc.description && (
         <p className="text-xs text-slate-500 dark:text-slate-400 line-clamp-2 mb-auto">
           {doc.description}
@@ -781,7 +780,6 @@ function DocumentGridCard({
       )}
       {!doc.description && <div className="mb-auto" />}
 
-      {/* Bottom metadata row */}
       <div className="flex items-center gap-1.5 mt-1.5 pt-1.5 border-t border-slate-100 dark:border-slate-700">
         <span className={cn("text-[10px] px-1.5 py-0.5 rounded font-medium", STATUS_COLORS[doc.status] || STATUS_COLORS.ready)}>
           {doc.status}
@@ -830,12 +828,10 @@ function DocumentCard({
       aria-label={`Document: ${doc.title}`}
     >
       <div className="flex items-start gap-3">
-        {/* File icon */}
         <div className="mt-0.5 p-2 rounded-lg bg-slate-100 dark:bg-slate-700 shrink-0">
           <Icon size={18} className="text-slate-500 dark:text-slate-400" />
         </div>
 
-        {/* Content */}
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-1">
             <h4 className="text-sm font-medium text-slate-900 dark:text-white truncate">
@@ -846,39 +842,32 @@ function DocumentCard({
             </span>
           </div>
 
-          {/* Description */}
           {doc.description && (
             <p className="text-xs text-slate-500 dark:text-slate-400 line-clamp-1 mb-1">
               {doc.description}
             </p>
           )}
 
-          {/* Meta row */}
           <div className="flex flex-wrap items-center gap-2 text-[10px] text-slate-400">
-            {/* Source */}
             <span className="flex items-center gap-0.5">
               <FolderInput size={10} />
               {SOURCE_LABELS[doc.source] || doc.source}
             </span>
 
-            {/* Phase */}
             <span className="flex items-center gap-0.5">
               <Diamond size={10} />
               {doc.phase}
             </span>
 
-            {/* File size */}
             {doc.file_size > 0 && (
               <span>{formatSize(doc.file_size)}</span>
             )}
 
-            {/* Time */}
             <span className="flex items-center gap-0.5">
               <Clock size={10} />
               {timeAgo(doc.updated_at || doc.created_at)}
             </span>
 
-            {/* Agents */}
             {doc.agent_ids.length > 0 && (
               <span className="flex items-center gap-0.5">
                 <Bot size={10} />
@@ -886,7 +875,6 @@ function DocumentCard({
               </span>
             )}
 
-            {/* Skills */}
             {doc.skill_names.length > 0 && (
               <span className="flex items-center gap-0.5">
                 <Wand2 size={10} />
@@ -894,7 +882,6 @@ function DocumentCard({
               </span>
             )}
 
-            {/* Task */}
             {doc.task_id && (
               <span className="flex items-center gap-0.5">
                 <LayoutDashboard size={10} />
@@ -903,7 +890,6 @@ function DocumentCard({
             )}
           </div>
 
-          {/* Tags */}
           {tags.length > 0 && (
             <div className="flex flex-wrap gap-1 mt-1.5">
               {tags.slice(0, 5).map((tag) => (
@@ -922,7 +908,6 @@ function DocumentCard({
           )}
         </div>
 
-        {/* Actions */}
         <div className="flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100 shrink-0">
           <button
             onClick={(e) => { e.stopPropagation(); onOpen(); }}
@@ -967,7 +952,6 @@ function DocumentPreview({
 
   return (
     <div className="flex flex-col h-full bg-white dark:bg-slate-950">
-      {/* Header */}
       <div className="border-b border-slate-200 dark:border-slate-800 p-4">
         <div className="flex items-center gap-3">
           <button
@@ -992,7 +976,6 @@ function DocumentPreview({
       </div>
 
       <div className="flex-1 flex overflow-hidden">
-        {/* Main content area */}
         <div className="flex-1 overflow-y-auto p-4">
           {loading ? (
             <div className="flex items-center justify-center py-12">
@@ -1001,7 +984,6 @@ function DocumentPreview({
             </div>
           ) : (
             <div className="space-y-6">
-              {/* Media Player (if available) */}
               {content?.media_url && (
                 <div className="flex flex-col items-center justify-center py-4 bg-slate-50 dark:bg-slate-900/50 rounded-xl border border-slate-100 dark:border-slate-800">
                   {content.type && [".jpg", ".jpeg", ".png", ".gif"].includes(content.type) ? (
@@ -1022,7 +1004,6 @@ function DocumentPreview({
                 </div>
               )}
 
-              {/* Text Content / Transcript */}
               {content?.content ? (
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
@@ -1054,7 +1035,6 @@ function DocumentPreview({
           )}
         </div>
 
-        {/* Right panel collapse toggle */}
         <div className="flex flex-col items-center justify-start py-2 border-l border-slate-200 dark:border-slate-800">
           <button
             onClick={() => setMetaPanelCollapsed(!metaPanelCollapsed)}
@@ -1066,17 +1046,14 @@ function DocumentPreview({
           </button>
         </div>
 
-        {/* Right panel — metadata */}
         {!metaPanelCollapsed && (
         <div className="w-64 border-l border-slate-200 dark:border-slate-800 overflow-y-auto p-4" role="region" aria-label="Document details">
-          {/* Description / Origin */}
           <MetaSection title="Origin">
             <p className="text-xs text-slate-600 dark:text-slate-400">
               {doc.description || "No description available."}
             </p>
           </MetaSection>
 
-          {/* Source & Phase */}
           <MetaSection title="Details">
             <div className="space-y-1.5 text-xs">
               <MetaRow label="Source" value={SOURCE_LABELS[doc.source] || doc.source} />
@@ -1089,7 +1066,6 @@ function DocumentPreview({
             </div>
           </MetaSection>
 
-          {/* Agents involved */}
           {doc.agent_ids.length > 0 && (
             <MetaSection title="Agents Involved">
               <div className="space-y-1">
@@ -1103,7 +1079,6 @@ function DocumentPreview({
             </MetaSection>
           )}
 
-          {/* Skills involved */}
           {doc.skill_names.length > 0 && (
             <MetaSection title="Skills Used">
               <div className="flex flex-wrap gap-1">
@@ -1117,7 +1092,6 @@ function DocumentPreview({
             </MetaSection>
           )}
 
-          {/* Task link */}
           {doc.task_id && (
             <MetaSection title="Related Task">
               <div className="flex items-center gap-1.5 text-xs text-slate-600 dark:text-slate-400">
@@ -1127,7 +1101,6 @@ function DocumentPreview({
             </MetaSection>
           )}
 
-          {/* Tags */}
           {doc.tags.length > 0 && (
             <MetaSection title="Tags">
               <div className="flex flex-wrap gap-1">
@@ -1144,7 +1117,6 @@ function DocumentPreview({
             </MetaSection>
           )}
 
-          {/* Atomic Research Path */}
           {hasAtomicPath && (
             <MetaSection title="Atomic Research Path">
               <div className="space-y-2 text-xs">

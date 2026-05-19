@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Cpu, HardDrive, Monitor, Wifi, WifiOff, RefreshCw, Plus, Server, Trash2, Users, Lock, Gauge, Download } from "lucide-react";
 import { settings as settingsApi, llmServers, telemetry as telemetryApi } from "@/lib/api";
 import type { HardwareInfo, ModelRecommendation } from "@/lib/types";
@@ -28,33 +28,50 @@ function formatGb(value?: number | null): string {
 }
 
 export default function SettingsView() {
+  const { user, teamMode } = useAuthStore();
   const [hardware, setHardware] = useState<HardwareInfo | null>(null);
   const [recommendation, setRecommendation] = useState<ModelRecommendation | null>(null);
   const [systemStatus, setSystemStatus] = useState<any>(null);
   const [models, setModels] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const canManageInfrastructure = !teamMode || user?.role === "admin";
 
-  const fetchAll = async () => {
+  const fetchAll = useCallback(async () => {
     setLoading(true);
-    try {
-      const [hw, status, mdl] = await Promise.all([
-        settingsApi.hardware(),
-        settingsApi.status(),
-        settingsApi.models(),
-      ]);
-      setHardware(hw.hardware);
-      setRecommendation(hw.recommendation);
-      setSystemStatus(status);
-      setModels(mdl);
-    } catch (e) {
-      console.error("Failed to load settings:", e);
+    const [statusResult, hardwareResult, modelsResult] = await Promise.allSettled([
+      settingsApi.status(),
+      canManageInfrastructure ? settingsApi.hardware() : Promise.resolve(null),
+      canManageInfrastructure ? settingsApi.models() : Promise.resolve(null),
+    ]);
+
+    if (statusResult.status === "fulfilled") {
+      setSystemStatus(statusResult.value);
+    } else {
+      console.error("Failed to load settings status:", statusResult.reason);
+      setSystemStatus(null);
+    }
+
+    if (hardwareResult.status === "fulfilled" && hardwareResult.value) {
+      setHardware(hardwareResult.value.hardware);
+      setRecommendation(hardwareResult.value.recommendation);
+    } else {
+      if (hardwareResult.status === "rejected") console.error("Failed to load hardware:", hardwareResult.reason);
+      setHardware(null);
+      setRecommendation(null);
+    }
+
+    if (modelsResult.status === "fulfilled" && modelsResult.value) {
+      setModels(modelsResult.value);
+    } else {
+      if (modelsResult.status === "rejected") console.error("Failed to load models:", modelsResult.reason);
+      setModels(null);
     }
     setLoading(false);
-  };
+  }, [canManageInfrastructure]);
 
   useEffect(() => {
     fetchAll();
-  }, []);
+  }, [fetchAll]);
 
   if (loading) {
     return (
@@ -111,7 +128,7 @@ export default function SettingsView() {
           </div>
           <div className="flex items-center gap-2">
             <span className="text-sm text-slate-500">
-              LLM ({systemStatus?.provider || "unknown"}):
+              LLM{models?.provider ? ` (${providerLabel(models.provider)})` : ""}:
             </span>
             {systemStatus?.services?.llm === "connected" ? (
               <span className="flex items-center gap-1 text-sm text-green-600 font-medium">
@@ -123,19 +140,23 @@ export default function SettingsView() {
               </span>
             )}
           </div>
-          <div className="flex items-center gap-2">
-            <span className="text-sm text-slate-500">Server Model:</span>
-            <span className="text-sm font-mono">{systemStatus?.config?.model || "—"}</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="text-sm text-slate-500">Embed Model:</span>
-            <span className="text-sm font-mono">{systemStatus?.config?.embed_model || "—"}</span>
-          </div>
+          {canManageInfrastructure && (
+            <>
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-slate-500">Server Model:</span>
+                <span className="text-sm font-mono">{models?.active_model || "—"}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-slate-500">Embed Model:</span>
+                <span className="text-sm font-mono">{models?.embed_model || "—"}</span>
+              </div>
+            </>
+          )}
         </div>
       </div>
 
       {/* Hardware */}
-      {hardware && (
+      {canManageInfrastructure && hardware && (
         <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-5">
           <h3 className="font-medium text-slate-900 dark:text-white mb-3 flex items-center gap-2">
             <Cpu size={18} />
@@ -179,7 +200,7 @@ export default function SettingsView() {
       )}
 
       {/* Model Recommendation */}
-      {recommendation && (
+      {canManageInfrastructure && recommendation && (
         <div className="bg-istara-50 dark:bg-istara-900/20 rounded-xl border border-istara-200 dark:border-istara-800 p-5">
           <h3 className="font-medium text-istara-800 dark:text-istara-300 mb-3 flex items-center gap-2">
             <HardDrive size={18} />
@@ -214,7 +235,7 @@ export default function SettingsView() {
       )}
 
       {/* Available Models */}
-      {models?.models && models.models.length > 0 && (
+      {canManageInfrastructure && models?.models && models.models.length > 0 && (
         <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-5">
           <h3 className="font-medium text-slate-900 dark:text-white mb-3">Available Models</h3>
           <div className="space-y-2">
@@ -273,38 +294,40 @@ export default function SettingsView() {
       )}
 
       {/* Pull new model */}
-      <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-5">
-        <h3 className="font-medium text-slate-900 dark:text-white mb-2">Pull New Model</h3>
-        <p className="text-xs text-slate-500 mb-3">
-          {systemStatus?.provider === "lmstudio"
-            ? "Load models through LM Studio's UI, or enter a model name to switch."
-            : systemStatus?.provider === "ollama"
-            ? "Download a new model from the Ollama registry."
-            : "Use the provider's model manager, or enter an advertised model name to switch."}
-        </p>
-        <div className="flex gap-2">
-          <input
-            type="text"
-            placeholder="e.g., qwen3:7b, llama3:8b, mistral:latest"
-            className="flex-1 px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-istara-500"
-            onKeyDown={async (e) => {
-              if (e.key === "Enter") {
-                const input = e.target as HTMLInputElement;
-                const model = input.value.trim();
-                if (model) {
-                  try {
-                    await settingsApi.switchModel(model);
-                    input.value = "";
-                    await fetchAll();
-                  } catch (err) {
-                    console.error("Failed to pull model:", err);
+      {canManageInfrastructure && (
+        <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-5">
+          <h3 className="font-medium text-slate-900 dark:text-white mb-2">Pull New Model</h3>
+          <p className="text-xs text-slate-500 mb-3">
+            {models?.provider === "lmstudio"
+              ? "Load models through LM Studio's UI, or enter a model name to switch."
+              : models?.provider === "ollama"
+              ? "Download a new model from the Ollama registry."
+              : "Use the provider's model manager, or enter an advertised model name to switch."}
+          </p>
+          <div className="flex gap-2">
+            <input
+              type="text"
+              placeholder="e.g., qwen3:7b, llama3:8b, mistral:latest"
+              className="flex-1 px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-istara-500"
+              onKeyDown={async (e) => {
+                if (e.key === "Enter") {
+                  const input = e.target as HTMLInputElement;
+                  const model = input.value.trim();
+                  if (model) {
+                    try {
+                      await settingsApi.switchModel(model);
+                      input.value = "";
+                      await fetchAll();
+                    } catch (err) {
+                      console.error("Failed to pull model:", err);
+                    }
                   }
                 }
-              }
-            }}
-          />
+              }}
+            />
+          </div>
         </div>
-      </div>
+      )}
 
       {/* LLM Servers */}
       <LLMServersSection />
@@ -500,6 +523,7 @@ function TelemetrySection() {
 }
 
 function LLMServersSection() {
+  const { user, teamMode } = useAuthStore();
   const [servers, setServers] = useState<any[]>([]);
   const [showAdd, setShowAdd] = useState(false);
   const [newName, setNewName] = useState("");
@@ -508,20 +532,29 @@ function LLMServersSection() {
   const [newApiKey, setNewApiKey] = useState("");
   const [addError, setAddError] = useState<string | null>(null);
   const selectedProvider = MODEL_PROVIDER_OPTIONS.find((option) => option.value === newType);
+  const canManageLLMServers = !teamMode || user?.role === "admin";
 
-  const fetchServers = async () => {
+  const fetchServers = useCallback(async () => {
+    if (!canManageLLMServers) {
+      setServers([]);
+      return;
+    }
     try {
       const data = await llmServers.list();
       setServers(data.servers || []);
     } catch {}
-  };
+  }, [canManageLLMServers]);
 
   useEffect(() => {
-    fetchServers();
-  }, []);
+    if (!canManageLLMServers) {
+      setServers([]);
+      return;
+    }
+    void fetchServers();
+  }, [canManageLLMServers, fetchServers]);
 
   const handleAdd = async () => {
-    if (!newName.trim() || !newHost.trim()) return;
+    if (!canManageLLMServers || !newName.trim() || !newHost.trim()) return;
     setAddError(null);
     try {
       const result = await llmServers.add({
@@ -553,6 +586,7 @@ function LLMServersSection() {
   };
 
   const handleDelete = async (id: string) => {
+    if (!canManageLLMServers) return;
     try {
       await llmServers.delete(id);
       await fetchServers();
@@ -570,6 +604,7 @@ function LLMServersSection() {
   };
 
   const handleHealthCheck = async (id: string) => {
+    if (!canManageLLMServers) return;
     try {
       await llmServers.healthCheck(id);
       await fetchServers();
@@ -585,6 +620,23 @@ function LLMServersSection() {
       );
     }
   };
+
+  if (!canManageLLMServers) {
+    return (
+      <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-5">
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="font-medium text-slate-900 dark:text-white flex items-center gap-2">
+            <Server size={18} />
+            LLM Servers
+          </h3>
+          <Lock size={16} className="text-slate-400" aria-hidden="true" />
+        </div>
+        <p className="text-sm text-slate-500">
+          Global admin access is required to manage shared provider endpoints.
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-5">

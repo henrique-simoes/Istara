@@ -160,6 +160,134 @@ def test_select_candidates_strict_model_filters_missing_models():
     assert [node.node_id for node in candidates] == ["requested"]
 
 
+def test_relay_candidates_require_matching_project_scope_for_project_content():
+    registry = ComputeRegistry()
+    unscoped_relay = ComputeNode(
+        node_id="relay-unscoped",
+        name="Unscoped Relay",
+        host="",
+        source="relay",
+        provider_type="ollama",
+        is_healthy=True,
+        loaded_models=["llama3"],
+    )
+    wrong_project_relay = ComputeNode(
+        node_id="relay-other",
+        name="Other Project Relay",
+        host="",
+        source="relay",
+        provider_type="ollama",
+        is_healthy=True,
+        loaded_models=["llama3"],
+        allowed_project_ids=["project-b"],
+    )
+    scoped_relay = ComputeNode(
+        node_id="relay-a",
+        name="Project A Relay",
+        host="",
+        source="relay",
+        provider_type="ollama",
+        is_healthy=True,
+        loaded_models=["llama3"],
+        allowed_project_ids=["project-a"],
+    )
+    local_node = ComputeNode(
+        node_id="local",
+        name="Server Local",
+        host="http://localhost:1234",
+        source="local",
+        provider_type="lmstudio",
+        is_healthy=True,
+        loaded_models=["llama3"],
+    )
+    registry.register_node(unscoped_relay)
+    registry.register_node(wrong_project_relay)
+    registry.register_node(scoped_relay)
+    registry.register_node(local_node)
+
+    unscoped_candidates = registry._select_candidates()
+    project_candidates = registry._select_candidates(project_id="project-a")
+
+    assert all(node.source != "relay" for node in unscoped_candidates)
+    assert "relay-a" in {node.node_id for node in project_candidates}
+    assert "relay-other" not in {node.node_id for node in project_candidates}
+    assert "relay-unscoped" not in {node.node_id for node in project_candidates}
+
+
+def test_sorted_servers_filters_donated_nodes_by_project_scope():
+    registry = ComputeRegistry()
+    local_node = ComputeNode(
+        node_id="local",
+        name="Server Local",
+        host="http://localhost:1234",
+        source="local",
+        provider_type="lmstudio",
+        is_healthy=True,
+        loaded_models=["llama3"],
+    )
+    scoped_relay = ComputeNode(
+        node_id="relay-a",
+        name="Project A Relay",
+        host="",
+        source="relay",
+        provider_type="ollama",
+        is_healthy=True,
+        loaded_models=["llama3"],
+        allowed_project_ids=["project-a"],
+    )
+    other_relay = ComputeNode(
+        node_id="relay-b",
+        name="Project B Relay",
+        host="",
+        source="relay",
+        provider_type="ollama",
+        is_healthy=True,
+        loaded_models=["llama3"],
+        allowed_project_ids=["project-b"],
+    )
+    registry.register_node(local_node)
+    registry.register_node(scoped_relay)
+    registry.register_node(other_relay)
+
+    unscoped_ids = {node.node_id for node in registry._sorted_servers()}
+    project_ids = {node.node_id for node in registry._sorted_servers(project_id="project-a")}
+
+    assert unscoped_ids == {"local"}
+    assert project_ids == {"local", "relay-a"}
+
+
+def test_no_model_loaded_nodes_are_recovery_candidates_not_normal_candidates():
+    registry = ComputeRegistry()
+    reachable_without_model = ComputeNode(
+        node_id="lmstudio-no-model",
+        name="LM Studio No Model",
+        host="http://localhost:1234",
+        source="local",
+        provider_type="lmstudio",
+        is_healthy=True,
+        health_state="no_model_loaded",
+        model_capabilities={"qwen3": {"supports_tools": True, "is_loaded": False}},
+    )
+    ready = ComputeNode(
+        node_id="ready",
+        name="Ready",
+        host="http://localhost:1235",
+        source="local",
+        provider_type="lmstudio",
+        is_healthy=True,
+        health_state="ready",
+        loaded_models=["llama3"],
+    )
+    registry.register_node(reachable_without_model)
+    registry.register_node(ready)
+
+    normal_candidates = registry._select_candidates()
+    recovery_candidates = registry._select_candidates(include_unhealthy=True)
+
+    assert [node.node_id for node in normal_candidates] == ["ready"]
+    assert "lmstudio-no-model" in {node.node_id for node in recovery_candidates}
+
+
 def test_resolve_model_prefers_explicit_capability_over_advertised_fallback():
     node = ComputeNode(
         node_id="gemini",

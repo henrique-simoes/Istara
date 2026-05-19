@@ -71,12 +71,13 @@ export async function run(ctx) {
   }
 
   // ── 5. Integration API endpoints accessible ──
+  const projectId = ctx.projectId || "test";
   const integrationEndpoints = [
-    { path: "/api/channels", name: "Channels" },
-    { path: "/api/surveys/integrations", name: "Survey Integrations" },
-    { path: "/api/deployments?project_id=test", name: "Deployments" },
+    { path: `/api/channels?project_id=${encodeURIComponent(projectId)}`, name: "Channels" },
+    { path: `/api/surveys/integrations?project_id=${encodeURIComponent(projectId)}`, name: "Survey Integrations" },
+    { path: `/api/deployments?project_id=${encodeURIComponent(projectId)}`, name: "Deployments" },
     { path: "/api/mcp/server/status", name: "MCP Server Status" },
-    { path: "/api/mcp/clients", name: "MCP Clients" },
+    { path: `/api/mcp/clients?project_id=${encodeURIComponent(projectId)}`, name: "MCP Clients" },
   ];
 
   for (const endpoint of integrationEndpoints) {
@@ -107,14 +108,14 @@ export async function run(ctx) {
       channel_instance_ids: [],
       target_responses: 1,
     });
-    const analytics = await api.get(`/api/deployments/${tempDeploy.id}/analytics`);
+    const analytics = await api.get(`/api/deployments/${tempDeploy.id}/analytics?project_id=${encodeURIComponent("sim-agent-knowledge-test")}`);
     checks.push({
       name: "Deployment analytics endpoint returns data structure",
       passed: analytics.per_question_stats !== undefined,
       detail: `Keys: ${Object.keys(analytics).join(", ")}`,
     });
     // Cleanup
-    try { await api.delete(`/api/deployments/${tempDeploy.id}`); } catch (_) {}
+    try { await api.delete(`/api/deployments/${tempDeploy.id}?project_id=${encodeURIComponent("sim-agent-knowledge-test")}`); } catch (_) {}
   } catch (e) {
     checks.push({ name: "Deployment analytics endpoint returns data structure", passed: false, detail: e.message });
   }

@@ -13,6 +13,7 @@ export const id = "28-self-evolution-prompt-compression";
 export async function run(ctx) {
   const { api } = ctx;
   const checks = [];
+  const projectId = ctx.projectId || "sim-project-001";
 
   // ── 1. Self-Evolution API endpoints exist ──
   try {
@@ -406,6 +407,7 @@ export async function run(ctx) {
       role: "custom",
       system_prompt: "You are a test agent for verifying self-evolution features.",
       capabilities: ["skill_execution", "findings_write"],
+      project_id: projectId,
     });
     customAgentId = created.id;
 

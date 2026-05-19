@@ -42,8 +42,8 @@ interface LoopsStore {
   };
 
   setActiveTab: (tab: LoopsTab) => void;
-  fetchOverview: () => Promise<void>;
-  fetchSchedules: (projectId?: string) => Promise<void>;
+  fetchOverview: (projectId?: string | null) => Promise<void>;
+  fetchSchedules: (projectId?: string | null) => Promise<void>;
   createSchedule: (data: {
     name: string;
     skill_name?: string;
@@ -51,16 +51,16 @@ interface LoopsStore {
     cron_expression: string;
     description?: string;
   }) => Promise<void>;
-  updateSchedule: (scheduleId: string, data: Record<string, unknown>) => Promise<void>;
-  deleteSchedule: (scheduleId: string) => Promise<void>;
-  fetchAgentLoops: () => Promise<void>;
-  fetchAgentConfig: (agentId: string) => Promise<AgentLoopConfig | null>;
-  updateAgentConfig: (agentId: string, data: Record<string, unknown>) => Promise<void>;
-  pauseAgent: (agentId: string) => Promise<void>;
-  resumeAgent: (agentId: string) => Promise<void>;
-  fetchExecutions: (page?: number) => Promise<void>;
-  fetchExecutionStats: (sourceId?: string) => Promise<void>;
-  fetchHealth: () => Promise<void>;
+  updateSchedule: (scheduleId: string, data: Record<string, unknown>, projectId?: string | null) => Promise<void>;
+  deleteSchedule: (scheduleId: string, projectId?: string | null) => Promise<void>;
+  fetchAgentLoops: (projectId?: string | null) => Promise<void>;
+  fetchAgentConfig: (agentId: string, projectId?: string | null) => Promise<AgentLoopConfig | null>;
+  updateAgentConfig: (agentId: string, data: Record<string, unknown>, projectId?: string | null) => Promise<void>;
+  pauseAgent: (agentId: string, projectId?: string | null) => Promise<void>;
+  resumeAgent: (agentId: string, projectId?: string | null) => Promise<void>;
+  fetchExecutions: (page?: number, projectId?: string | null) => Promise<void>;
+  fetchExecutionStats: (projectId?: string | null, sourceId?: string) => Promise<void>;
+  fetchHealth: (projectId?: string | null) => Promise<void>;
   createCustomLoop: (data: {
     name: string;
     skill_name: string;
@@ -93,10 +93,14 @@ export const useLoopsStore = create<LoopsStore>((set, get) => ({
 
   setActiveTab: (tab) => set({ activeTab: tab }),
 
-  fetchOverview: async () => {
+  fetchOverview: async (projectId) => {
+    if (!projectId) {
+      set({ overview: null, loading: false, error: null });
+      return;
+    }
     set({ loading: true, error: null });
     try {
-      const data = await loopsApi.overview();
+      const data = await loopsApi.overview(projectId);
       set({ overview: data, loading: false });
     } catch (e: any) {
       set({ error: e.message, loading: false });
@@ -104,9 +108,13 @@ export const useLoopsStore = create<LoopsStore>((set, get) => ({
   },
 
   fetchSchedules: async (projectId) => {
+    if (!projectId) {
+      set({ schedules: [], loading: false, error: null });
+      return;
+    }
     set({ loading: true, error: null });
     try {
-      const data = await loopsApi.schedules(projectId ? { project_id: projectId } : undefined);
+      const data = await loopsApi.schedules(projectId);
       const schedules = Array.isArray(data) ? data : data?.schedules || [];
       set({ schedules, loading: false });
     } catch (e: any) {
@@ -119,39 +127,47 @@ export const useLoopsStore = create<LoopsStore>((set, get) => ({
     try {
       await loopsApi.createSchedule(data);
       set({ loading: false });
-      await get().fetchSchedules();
-      await get().fetchHealth();
+      await get().fetchSchedules(data.project_id);
+      await get().fetchHealth(data.project_id);
     } catch (e: any) {
       set({ error: e.message, loading: false });
     }
   },
 
-  updateSchedule: async (scheduleId, data) => {
+  updateSchedule: async (scheduleId, data, projectId) => {
     set({ error: null });
     try {
-      await loopsApi.updateSchedule(scheduleId, data);
-      await get().fetchSchedules();
-      await get().fetchHealth();
+      const scopedProjectId = projectId || get().schedules.find((s) => s.id === scheduleId)?.project_id;
+      if (!scopedProjectId) return;
+      await loopsApi.updateSchedule(scheduleId, data, scopedProjectId);
+      await get().fetchSchedules(scopedProjectId);
+      await get().fetchHealth(scopedProjectId);
     } catch (e: any) {
       set({ error: e.message });
     }
   },
 
-  deleteSchedule: async (scheduleId) => {
+  deleteSchedule: async (scheduleId, projectId) => {
     set({ error: null });
     try {
-      await loopsApi.deleteSchedule(scheduleId);
-      await get().fetchSchedules();
-      await get().fetchHealth();
+      const scopedProjectId = projectId || get().schedules.find((s) => s.id === scheduleId)?.project_id;
+      if (!scopedProjectId) return;
+      await loopsApi.deleteSchedule(scheduleId, scopedProjectId);
+      await get().fetchSchedules(scopedProjectId);
+      await get().fetchHealth(scopedProjectId);
     } catch (e: any) {
       set({ error: e.message });
     }
   },
 
-  fetchAgentLoops: async () => {
+  fetchAgentLoops: async (projectId) => {
+    if (!projectId) {
+      set({ agentLoops: [], loading: false, error: null });
+      return;
+    }
     set({ loading: true, error: null });
     try {
-      const data = await loopsApi.agents();
+      const data = await loopsApi.agents(projectId);
       const configs = Array.isArray(data) ? data : data?.configs || data?.agents || [];
       set({ agentLoops: configs, loading: false });
     } catch (e: any) {
@@ -159,50 +175,58 @@ export const useLoopsStore = create<LoopsStore>((set, get) => ({
     }
   },
 
-  fetchAgentConfig: async (agentId) => {
+  fetchAgentConfig: async (agentId, projectId) => {
+    if (!projectId) return null;
     try {
-      const data = await loopsApi.agentConfig(agentId);
+      const data = await loopsApi.agentConfig(agentId, projectId);
       return data as AgentLoopConfig;
     } catch {
       return null;
     }
   },
 
-  updateAgentConfig: async (agentId, data) => {
+  updateAgentConfig: async (agentId, data, projectId) => {
+    if (!projectId) return;
     try {
-      await loopsApi.updateAgentConfig(agentId, data);
+      await loopsApi.updateAgentConfig(agentId, data, projectId);
       // Refresh agent loops
-      get().fetchAgentLoops();
+      get().fetchAgentLoops(projectId);
     } catch (e: any) {
       set({ error: e.message });
     }
   },
 
-  pauseAgent: async (agentId) => {
+  pauseAgent: async (agentId, projectId) => {
+    if (!projectId) return;
     try {
-      await loopsApi.pauseAgent(agentId);
-      get().fetchAgentLoops();
-      get().fetchHealth();
+      await loopsApi.pauseAgent(agentId, projectId);
+      get().fetchAgentLoops(projectId);
+      get().fetchHealth(projectId);
     } catch (e: any) {
       set({ error: e.message });
     }
   },
 
-  resumeAgent: async (agentId) => {
+  resumeAgent: async (agentId, projectId) => {
+    if (!projectId) return;
     try {
-      await loopsApi.resumeAgent(agentId);
-      get().fetchAgentLoops();
-      get().fetchHealth();
+      await loopsApi.resumeAgent(agentId, projectId);
+      get().fetchAgentLoops(projectId);
+      get().fetchHealth(projectId);
     } catch (e: any) {
       set({ error: e.message });
     }
   },
 
-  fetchExecutions: async (page = 1) => {
+  fetchExecutions: async (page = 1, projectId) => {
+    if (!projectId) {
+      set({ executions: [], executionPage: 1, executionTotalPages: 1, loading: false, error: null });
+      return;
+    }
     set({ loading: true, error: null });
     try {
       const filters = get().executionFilters;
-      const params: Record<string, string | number> = { page, page_size: 20 };
+      const params: Record<string, string | number> = { page, page_size: 20, project_id: projectId };
       if (filters.source_type) params.source_type = filters.source_type;
       if (filters.status) params.status = filters.status;
       if (filters.from_date) params.from_date = filters.from_date;
@@ -216,19 +240,27 @@ export const useLoopsStore = create<LoopsStore>((set, get) => ({
     }
   },
 
-  fetchExecutionStats: async (sourceId) => {
+  fetchExecutionStats: async (projectId, sourceId) => {
+    if (!projectId) {
+      set({ stats: null });
+      return;
+    }
     try {
-      const data = await loopsApi.executionStats(sourceId);
+      const data = await loopsApi.executionStats(projectId, sourceId);
       set({ stats: data });
     } catch (e: any) {
       set({ error: e.message });
     }
   },
 
-  fetchHealth: async () => {
+  fetchHealth: async (projectId) => {
+    if (!projectId) {
+      set({ health: [], loading: false, error: null });
+      return;
+    }
     set({ loading: true, error: null });
     try {
-      const data = await loopsApi.health();
+      const data = await loopsApi.health(projectId);
       const items = Array.isArray(data) ? data : data?.items || data?.health || [];
       set({ health: items, loading: false });
     } catch (e: any) {
@@ -241,8 +273,8 @@ export const useLoopsStore = create<LoopsStore>((set, get) => ({
     try {
       await loopsApi.createCustom(data);
       set({ loading: false });
-      await get().fetchHealth();
-      await get().fetchSchedules();
+      await get().fetchHealth(data.project_id);
+      await get().fetchSchedules(data.project_id);
     } catch (e: any) {
       set({ error: e.message, loading: false });
     }

@@ -336,7 +336,7 @@ function AgentMemoryTab({ projectId }: { projectId: string }) {
     const fetchAgents = async () => {
       setLoading(true);
       try {
-        const data = await agentsApi.list(true);
+        const data = await agentsApi.list(true, projectId);
         const agents: AgentInfo[] = (data.agents || data || []).map((a: any) => ({
           id: a.id,
           name: a.name,
@@ -348,7 +348,7 @@ function AgentMemoryTab({ projectId }: { projectId: string }) {
       setLoading(false);
     };
     fetchAgents();
-  }, []);
+  }, [projectId]);
 
   const fetchNotes = useCallback(async (agentId: string) => {
     if (notesByAgent[agentId]) return; // Already fetched
@@ -670,10 +670,16 @@ export default function MemoryView() {
 
       {/* Content */}
       <div className="flex-1 overflow-y-auto p-4" role="region" aria-label="Memory content" tabIndex={0}>
-        {activeTab === "knowledge" && <KnowledgeBaseTab projectId={activeProjectId} />}
-        {activeTab === "agent" && <AgentMemoryTab projectId={activeProjectId} />}
-        {activeTab === "health" && <HealthTab projectId={activeProjectId} />}
-        {activeTab === "context-dag" && <ContextDAGView />}
+        {activeTab === "knowledge" && (
+          <KnowledgeBaseTab key={`knowledge-${activeProjectId}`} projectId={activeProjectId} />
+        )}
+        {activeTab === "agent" && (
+          <AgentMemoryTab key={`agent-${activeProjectId}`} projectId={activeProjectId} />
+        )}
+        {activeTab === "health" && (
+          <HealthTab key={`health-${activeProjectId}`} projectId={activeProjectId} />
+        )}
+        {activeTab === "context-dag" && <ContextDAGView key={`context-dag-${activeProjectId}`} />}
       </div>
     </div>
   );

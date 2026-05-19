@@ -16,6 +16,23 @@ from app.core.llm_schema_adapter import provider_response_format_fields
 from app.core.llm_thinking import apply_thinking_control
 
 class ComputeNodeInvocationMixin:
+    def _authorized_project_for_content_dispatch(self, project_id: str | None) -> str | None:
+        if self.source not in ("relay", "browser"):
+            return project_id
+
+        requested_project = str(project_id or "").strip()
+        if not requested_project:
+            raise RuntimeError("project_id is required for donated compute dispatch")
+
+        allowed = {
+            str(pid).strip()
+            for pid in getattr(self, "allowed_project_ids", []) or []
+            if str(pid).strip()
+        }
+        if "*" not in allowed and requested_project not in allowed:
+            raise RuntimeError("Donated compute node is not authorized for this project")
+        return requested_project
+
     async def chat(
         self,
         messages: list[dict],
@@ -27,8 +44,10 @@ class ComputeNodeInvocationMixin:
         response_format: dict | None = None,
         min_context: int = 0,
         thinking_mode: str | None = None,
+        project_id: str | None = None,
     ) -> dict:
         """Direct chat on this specific node (backward compat with LLMServerEntry.chat)."""
+        project_id = self._authorized_project_for_content_dispatch(project_id)
         msgs = list(messages)
         if system:
             msgs = [{"role": "system", "content": system}, *msgs]
@@ -45,6 +64,7 @@ class ComputeNodeInvocationMixin:
                     "tools": tools,
                     "response_format": response_format,
                     "thinking_mode": thinking_mode,
+                    "project_id": project_id,
                 },
             )
             return response.get("result", {})
@@ -121,8 +141,10 @@ class ComputeNodeInvocationMixin:
         tools: list[dict] | None = None,
         min_context: int = 0,
         thinking_mode: str | None = None,
+        project_id: str | None = None,
     ) -> AsyncGenerator[str | dict, None]:
         """Direct streaming chat on this specific node (backward compat)."""
+        project_id = self._authorized_project_for_content_dispatch(project_id)
         msgs = list(messages)
         if system:
             msgs = [{"role": "system", "content": system}, *msgs]
@@ -136,6 +158,7 @@ class ComputeNodeInvocationMixin:
                 max_tokens=max_tokens,
                 tools=tools,
                 thinking_mode=None,
+                project_id=project_id,
             )
             content = result.get("message", {}).get("content", "")
             if content:
@@ -152,6 +175,7 @@ class ComputeNodeInvocationMixin:
                 max_tokens=max_tokens,
                 tools=tools,
                 thinking_mode=None,
+                project_id=project_id,
             )
             content = result.get("message", {}).get("content", "")
             if content:
@@ -263,14 +287,21 @@ class ComputeNodeInvocationMixin:
                     "finish_reason": "tool_calls",
                 }
 
-    async def embed(self, text: str, model: str | None = None) -> list[float]:
+    async def embed(
+        self,
+        text: str,
+        model: str | None = None,
+        project_id: str | None = None,
+    ) -> list[float]:
         """Direct embedding on this specific node (backward compat)."""
+        project_id = self._authorized_project_for_content_dispatch(project_id)
         if self.source in ("relay", "browser") and self.websocket:
             response = await self._request_over_websocket(
                 "embed_request",
                 {
                     "input": text,
                     "model": self._resolve_embed_model(model),
+                    "project_id": project_id,
                 },
             )
             result = response.get("result", [])
@@ -295,14 +326,21 @@ class ComputeNodeInvocationMixin:
             items = resp.json().get("data", [])
             return items[0].get("embedding", []) if items else []
 
-    async def embed_batch(self, texts: list[str], model: str | None = None) -> list[list[float]]:
+    async def embed_batch(
+        self,
+        texts: list[str],
+        model: str | None = None,
+        project_id: str | None = None,
+    ) -> list[list[float]]:
         """Direct batch embedding on this specific node (backward compat)."""
+        project_id = self._authorized_project_for_content_dispatch(project_id)
         if self.source in ("relay", "browser") and self.websocket:
             response = await self._request_over_websocket(
                 "embed_request",
                 {
                     "input": texts,
                     "model": self._resolve_embed_model(model),
+                    "project_id": project_id,
                 },
             )
             result = response.get("result", [])
@@ -331,6 +369,28 @@ class ComputeNodeInvocationMixin:
             capability_probe_status = "available" if self.model_capabilities else "unavailable"
         elif self.model_capabilities:
             capability_probe_status = "available"
+        not_ready_states = {
+            "auth_required",
+            "cooldown",
+            "no_model_loaded",
+            "no_model_server",
+            "timeout",
+            "unreachable",
+        }
+        is_ready = bool(self.is_healthy and self.health_state not in not_ready_states)
+        reachable_states = {
+            "ready",
+            "no_model_loaded",
+            "auth_required",
+            "degraded",
+            "slow",
+        }
+        is_reachable = bool(is_ready or self.health_state in reachable_states)
+        if self.health_state in {"unreachable", "timeout"}:
+            is_reachable = False
+        readiness_state = self.health_state or "unknown"
+        if is_ready and readiness_state in {"unknown", "unhealthy"}:
+            readiness_state = "ready"
         model_list_stale = bool(
             self.source in ("relay", "browser")
             and self.last_heartbeat
@@ -344,18 +404,22 @@ class ComputeNodeInvocationMixin:
             "source": self.source,
             "provider_type": self.provider_type,
             "state": self.health_state,
-            "serving_state": "serving" if self.is_healthy and self.websocket else self.health_state,
+            "serving_state": "serving" if is_ready and self.websocket else self.health_state,
+            "readiness_state": readiness_state,
             "health_error": self.health_error,
             "capability_probe_status": capability_probe_status,
             "model_list_stale": model_list_stale,
             "last_heartbeat": self.last_heartbeat,
             "is_healthy": self.is_healthy,
+            "is_ready": is_ready,
+            "is_reachable": is_reachable,
+            "online": is_reachable,
             "is_local": self.is_local,
             "priority": self.priority,
             "latency_ms": self.latency_ms,
             "active_requests": self.active_requests,
             "score": round(self.score(), 1) if self.score() >= 0 else 0,
-            "alive": self.is_healthy,
+            "alive": is_ready,
             "ram_total_gb": self.ram_total_gb,
             "ram_available_gb": self.ram_available_gb,
             "cpu_cores": self.cpu_cores,

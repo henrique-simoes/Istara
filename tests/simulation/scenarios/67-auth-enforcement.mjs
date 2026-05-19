@@ -162,7 +162,7 @@ export async function run(ctx) {
 
   // 10. Autoresearch returns 401 without JWT
   try {
-    const res = await fetch("http://localhost:8000/api/autoresearch/status");
+    const res = await fetch("http://localhost:8000/api/autoresearch/status?project_id=test");
     checks.push({
       name: "Autoresearch returns 401 without JWT",
       passed: res.status === 401,

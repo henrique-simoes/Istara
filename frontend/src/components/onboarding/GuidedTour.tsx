@@ -414,9 +414,7 @@ export default function GuidedTour({ setActiveView, currentView }: GuidedTourPro
       try {
         const status = await settingsApi.status();
         const connected = status?.services?.llm === "connected";
-        const provider = status?.provider || "";
-        const model = status?.config?.model || "";
-        setLlmStatus(connected, provider, model);
+        setLlmStatus(connected, "", "");
       } catch {}
     };
 

@@ -15,21 +15,22 @@ interface TranscriptMessage {
 interface ConversationTranscriptProps {
   deploymentId: string;
   conversationId: string;
+  projectId: string;
   onClose: () => void;
 }
 
-export default function ConversationTranscript({ deploymentId, conversationId, onClose }: ConversationTranscriptProps) {
+export default function ConversationTranscript({ deploymentId, conversationId, projectId, onClose }: ConversationTranscriptProps) {
   const [messages, setMessages] = useState<TranscriptMessage[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    deploymentsApi.transcript(deploymentId, conversationId)
+    deploymentsApi.transcript(deploymentId, conversationId, projectId)
       .then((data) => {
         setMessages(data.messages || data || []);
       })
       .catch(() => {})
       .finally(() => setLoading(false));
-  }, [deploymentId, conversationId]);
+  }, [deploymentId, conversationId, projectId]);
 
   return (
     <div className="fixed inset-0 z-50 flex justify-end">

@@ -190,7 +190,8 @@ export default function ProjectSettingsView() {
   };
 
   const reviewProjectRequest = async (id: string, status: "approved" | "rejected") => {
-    await permissionRequests.review(id, { status });
+    if (!activeProjectId) return;
+    await permissionRequests.review(id, { status }, activeProjectId);
     await fetchProjectRequests();
   };
 

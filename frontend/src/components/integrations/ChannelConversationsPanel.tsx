@@ -15,9 +15,10 @@ const STATE_BADGE: Record<string, { label: string; classes: string }> = {
 
 interface ChannelConversationsPanelProps {
   channelId: string;
+  projectId: string;
 }
 
-export default function ChannelConversationsPanel({ channelId }: ChannelConversationsPanelProps) {
+export default function ChannelConversationsPanel({ channelId, projectId }: ChannelConversationsPanelProps) {
   const [conversations, setConversations] = useState<ChannelConversation[]>([]);
   const [loading, setLoading] = useState(true);
   const [stateFilter, setStateFilter] = useState<string | null>(null);
@@ -25,14 +26,14 @@ export default function ChannelConversationsPanel({ channelId }: ChannelConversa
   const fetchConversations = useCallback(async () => {
     setLoading(true);
     try {
-      const data = await channelsApi.conversations(channelId);
+      const data = await channelsApi.conversations(channelId, projectId);
       setConversations(data);
     } catch {
       // silent
     } finally {
       setLoading(false);
     }
-  }, [channelId]);
+  }, [channelId, projectId]);
 
   useEffect(() => {
     fetchConversations();

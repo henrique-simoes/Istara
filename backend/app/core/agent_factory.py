@@ -27,6 +27,7 @@ _META_COVERAGE_THRESHOLD = 0.6
 @dataclass
 class AgentCreationProposal:
     id: str
+    project_id: str
     proposed_name: str
     proposed_role: str
     proposed_system_prompt: str
@@ -133,6 +134,7 @@ class AgentFactory:
         task_description: str,
         task_id: str,
         specialties_needed: list[str],
+        project_id: str = "",
     ) -> AgentCreationProposal:
         """Create a proposal for a new agent based on capability gap."""
         # Generate agent name from specialties
@@ -177,6 +179,7 @@ class AgentFactory:
 
         proposal = AgentCreationProposal(
             id=f"agent_{uuid.uuid4().hex[:12]}",
+            project_id=str(project_id or "").strip(),
             proposed_name=agent_name,
             proposed_role=role,
             proposed_system_prompt=system_prompt,
@@ -192,18 +195,36 @@ class AgentFactory:
         self._save()
         return proposal
 
-    def get_pending_proposals(self) -> list[dict]:
+    @staticmethod
+    def _matches_project(proposal: dict, project_id: str | None) -> bool:
+        if project_id is None:
+            return True
+        scoped_project_id = str(project_id or "").strip()
+        return (
+            bool(scoped_project_id)
+            and str(proposal.get("project_id") or "") == scoped_project_id
+        )
+
+    def get_pending_proposals(self, project_id: str | None = None) -> list[dict]:
         """Return proposals awaiting review."""
-        return [p for p in self._proposals if p.get("status") == "pending"]
+        return [
+            p
+            for p in self._proposals
+            if p.get("status") == "pending" and self._matches_project(p, project_id)
+        ]
 
-    def get_all_proposals(self, limit: int = 20) -> list[dict]:
+    def get_all_proposals(self, limit: int = 20, project_id: str | None = None) -> list[dict]:
         """Return the most recent proposals (all statuses)."""
-        return self._proposals[-limit:]
+        return [p for p in self._proposals if self._matches_project(p, project_id)][-limit:]
 
-    def approve_proposal(self, proposal_id: str) -> dict | None:
+    def approve_proposal(self, proposal_id: str, project_id: str | None = None) -> dict | None:
         """Approve a proposal -- returns the proposal data for agent creation."""
         for p in self._proposals:
-            if p["id"] == proposal_id and p["status"] == "pending":
+            if (
+                p["id"] == proposal_id
+                and p["status"] == "pending"
+                and self._matches_project(p, project_id)
+            ):
                 p["status"] = "approved"
                 p["reviewed_at"] = time.strftime(
                     "%Y-%m-%dT%H:%M:%SZ", time.gmtime()
@@ -212,10 +233,19 @@ class AgentFactory:
                 return p
         return None
 
-    def reject_proposal(self, proposal_id: str, reason: str = "") -> dict | None:
+    def reject_proposal(
+        self,
+        proposal_id: str,
+        reason: str = "",
+        project_id: str | None = None,
+    ) -> dict | None:
         """Reject a proposal with optional reason."""
         for p in self._proposals:
-            if p["id"] == proposal_id and p["status"] == "pending":
+            if (
+                p["id"] == proposal_id
+                and p["status"] == "pending"
+                and self._matches_project(p, project_id)
+            ):
                 p["status"] = "rejected"
                 p["reviewed_at"] = time.strftime(
                     "%Y-%m-%dT%H:%M:%SZ", time.gmtime()

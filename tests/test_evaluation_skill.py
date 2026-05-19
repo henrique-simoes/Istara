@@ -33,6 +33,8 @@ async def test_evaluation_skill_triggers_multi_model_validation():
             assert output.success is True
             mock_adv.assert_called_once()
             mock_ens.assert_called_once()
+            assert mock_adv.call_args.kwargs["project_id"] == "test"
+            assert mock_ens.call_args.kwargs["project_id"] == "test"
             
             # Artifact should contain the combined report
             report = output.artifacts["evaluation_report.md"]

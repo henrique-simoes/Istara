@@ -8,6 +8,7 @@ export const id = "64-docker-security";
 
 export async function run(ctx) {
   const { api } = ctx;
+  const projectId = ctx.projectId || "test";
   const checks = [];
 
   // ── 1. Health endpoint responds ──
@@ -85,7 +86,7 @@ export async function run(ctx) {
 
   // ── 6. Autoresearch disabled by default ──
   try {
-    const status = await api.get("/api/autoresearch/status");
+    const status = await api.get(`/api/autoresearch/status?project_id=${projectId}`);
     checks.push({
       name: "Autoresearch disabled by default",
       passed: status.running === false,
@@ -126,11 +127,11 @@ export async function run(ctx) {
     "/api/projects",
     "/api/skills",
     "/api/agents",
-    "/api/channels",
-    "/api/surveys/integrations",
+    `/api/channels?project_id=${encodeURIComponent(projectId)}`,
+    `/api/surveys/integrations?project_id=${encodeURIComponent(projectId)}`,
     "/api/deployments?project_id=test",
-    "/api/mcp/clients",
-    "/api/autoresearch/status",
+    `/api/mcp/clients?project_id=${encodeURIComponent(projectId)}`,
+    `/api/autoresearch/status?project_id=${projectId}`,
   ];
 
   for (const path of routerChecks) {

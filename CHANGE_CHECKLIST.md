@@ -19,6 +19,7 @@ Before making ANY change:
 - [ ] Decide which parts of Compass must change so the next agent understands the new reality
 - [ ] Decide whether this work creates, updates, ships, or supersedes a future-feature ledger entry
 - [ ] Decide whether `Tech.md` must change because the architecture/process/release story changed
+- [ ] Decide whether `docs/features/inventory.json`, feature source pages, glossary, generated site, or `llms.txt` must change because UI/menu/route/store/agent/skill/model/test behavior changed
 - [ ] Decide whether Istara's own agents need persona updates to understand this feature
 - [ ] Decide whether an existing simulation scenario is enough or whether a new scenario must be added
 - [ ] Read relevant sections in `Tech.md` and Compass Forge context packs
@@ -35,6 +36,7 @@ Before making ANY change:
 - [ ] Protected Compass files preserved
 - [ ] Deleted/resurrected files reviewed for stale branch damage
 - [ ] Generated-doc drift considered
+- [ ] Living feature docs considered, regenerated, and checked when product behavior or user-facing architecture changed
 - [ ] Relevant architectural decisions checked
 - [ ] Tests and docs affected by the change identified
 - [ ] Correction/re-review loop used if review finds a real defect
@@ -179,6 +181,7 @@ const scenarioFiles = [
 | New system-wide feature | ✅ Infrastructure tests | ✅ New phase | ✅ New scenario |
 | Navigation / menu change | — | ✅ Frontend phase | ✅ Update navigation scenario |
 | Agent behavior change | ✅ Agent tests | ✅ Agent phase | ✅ Agent architecture scenario |
+| Feature documentation inventory/generator change | ✅ `tests/test_feature_docs.py` | — | — |
 
 ### Non-Negotiable Test Rules
 - [ ] No change ships without tests at the appropriate layers
@@ -195,6 +198,7 @@ const scenarioFiles = [
 - [ ] **E2E tests support `ISTARA_ADMIN_USER` and `ISTARA_ADMIN_PASSWORD` env vars** — use these instead of relying on `.env` file which may have stale auto-generated passwords
 - [ ] **Simulation runner supports `ADMIN_USERNAME` and `ADMIN_PASSWORD` env vars** — set these for `node tests/simulation/run.mjs` to authenticate
 - [ ] **Components that render conditionally should be tested with awareness of their state** — if a component only shows when agent is working, and tests pause agents, document the skip reason
+- [ ] **Feature docs must stay synchronized** — after feature docs inventory, source, glossary, or generator changes, run `python scripts/feature_docs.py --seed-missing --generate-site --check` and `pytest tests/test_feature_docs.py -q`
 
 ---
 
@@ -232,6 +236,18 @@ const scenarioFiles = [
 - [ ] Test with and without required role (if admin-only)
 - [ ] Write unit + integration tests
 - [ ] Document in API comments
+- [ ] Update any affected `docs/features/content/*/architecture.md` page and regenerate `docs/features/site/`
+
+### Adding or Changing a UI Menu, Tab, Or Feature Surface
+
+- [ ] Update `frontend/src/lib/navigation.ts`, mounted view switches, mobile nav, search, shortcuts, and route/view guards as needed
+- [ ] Update the owning component, store, API client, and backend route references
+- [ ] Add or update user-facing and architecture-facing feature docs under `docs/features/content/`
+- [ ] Update `docs/features/inventory.json` with stable feature ID, UI path, related features, glossary terms, code/API/test references, status, and Compass Forge spec/task IDs
+- [ ] Add glossary pages when new research, design, AI, security, or architecture concepts are introduced
+- [ ] Regenerate hostable HTML and machine indexes with `python scripts/feature_docs.py --seed-missing --generate-site --check`
+- [ ] Run `pytest tests/test_feature_docs.py -q`
+- [ ] Attach generator/check output as Compass Forge evidence before marking the task complete
 
 ### Adding a New Skill Definition
 

@@ -64,29 +64,36 @@ export const useInterfacesStore = create<InterfacesStore>((set, get) => ({
   setActiveTab: (tab) => set({ activeTab: tab }),
 
   fetchStatus: async (projectId) => {
+    if (!projectId) {
+      set({ status: null, error: null });
+      return;
+    }
     try {
       const status = await interfacesApi.status(projectId);
       set({ status, error: null });
     } catch (e: any) {
-      set({ error: e.message });
+      set({ status: null, error: e.message });
     }
   },
 
   fetchScreens: async (projectId) => {
-    set({ loading: true });
+    set({ screens: [], selectedScreenId: null, loading: true, error: null });
     try {
       const data = await interfacesApi.screens.list(projectId);
       set({ screens: Array.isArray(data) ? data : (data as any).screens || [], loading: false });
     } catch (e: any) {
-      set({ loading: false, error: e.message });
+      set({ screens: [], selectedScreenId: null, loading: false, error: e.message });
     }
   },
 
   fetchBriefs: async (projectId) => {
+    set({ briefs: [] });
     try {
       const data = await interfacesApi.handoff.listBriefs(projectId);
       set({ briefs: data.briefs || [] });
-    } catch { /* silent */ }
+    } catch (e: any) {
+      set({ briefs: [], error: e.message });
+    }
   },
 
   selectScreen: (id) => set({ selectedScreenId: id }),

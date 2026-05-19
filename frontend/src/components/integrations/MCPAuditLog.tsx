@@ -6,22 +6,31 @@ import { mcp as mcpApi } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import type { MCPAuditEntry } from "@/lib/types";
 
-export default function MCPAuditLog() {
+type MCPAuditLogProps = {
+  projectId: string | null;
+};
+
+export default function MCPAuditLog({ projectId }: MCPAuditLogProps) {
   const [entries, setEntries] = useState<MCPAuditEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [limit, setLimit] = useState(50);
 
   const fetchAudit = useCallback(async () => {
+    if (!projectId) {
+      setEntries([]);
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     try {
-      const data = await mcpApi.server.audit(limit);
-      setEntries(data);
+      const data = await mcpApi.server.audit(projectId, limit);
+      setEntries(data.filter((entry) => entry.project_id === projectId));
     } catch {
       // silent
     } finally {
       setLoading(false);
     }
-  }, [limit]);
+  }, [limit, projectId]);
 
   useEffect(() => {
     fetchAudit();
@@ -36,14 +45,20 @@ export default function MCPAuditLog() {
         </div>
         <button
           onClick={fetchAudit}
+          disabled={!projectId}
           aria-label="Refresh audit log"
-          className="p-2 rounded-lg text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+          className="p-2 rounded-lg text-slate-400 hover:bg-slate-100 disabled:opacity-50 dark:hover:bg-slate-800 transition-colors"
         >
           <RefreshCw size={14} />
         </button>
       </div>
 
-      {loading ? (
+      {!projectId ? (
+        <div className="text-center py-12">
+          <Activity size={32} className="mx-auto mb-3 text-slate-300 dark:text-slate-600" />
+          <p className="text-sm text-slate-500 dark:text-slate-400">No active project selected.</p>
+        </div>
+      ) : loading ? (
         <div className="space-y-2">
           {Array.from({ length: 5 }).map((_, i) => (
             <div key={i} className="h-14 rounded-lg bg-slate-100 dark:bg-slate-800 animate-pulse" />

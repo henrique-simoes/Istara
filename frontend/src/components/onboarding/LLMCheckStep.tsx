@@ -17,7 +17,9 @@ export default function LLMCheckStep() {
     async function detect() {
       // Proxy through backend to avoid CORS issues (Enhancement Plan Step 3)
       try {
-        const res = await fetch("/api/settings/models", { signal: AbortSignal.timeout(5000) });
+        const token = localStorage.getItem("istara_token");
+        const headers = token ? { Authorization: `Bearer ${token}` } : undefined;
+        const res = await fetch("/api/settings/models", { headers, signal: AbortSignal.timeout(5000) });
         if (res.ok) {
           const data = await res.json();
           if (data.status === "online" && data.models.length > 0) {

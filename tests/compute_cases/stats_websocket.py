@@ -1,3 +1,12 @@
+import uuid
+
+from app.core.auth import hash_password
+from app.core.auth_sessions import issue_auth_session_token
+from app.core.field_encryption import hash_field
+from app.models.database import async_session
+from app.models.project import Project
+from app.models.project_member import ProjectMember
+from app.models.user import User, UserRole
 from tests.compute_cases.common import *
 
 def test_compute_stats_include_capacity_envelope():
@@ -40,6 +49,13 @@ def test_compute_stats_include_capacity_envelope():
     assert stats["request_slots_available"] == 2
     assert stats["saturated_nodes"] == 1
     assert stats["hardware_load_pct"] == 65.0
+
+
+def test_relay_websocket_is_registered_at_connection_string_path():
+    websocket_paths = {getattr(route, "path", "") for route in app.routes}
+
+    assert "/ws/relay" in websocket_paths
+    assert "/api/ws/relay" in websocket_paths
 
 
 class FakeRelayWebSocket:
@@ -126,6 +142,68 @@ async def test_relay_websocket_accepts_browser_jwt():
 
         assert ws.accepted
         assert ws.sent[0]["type"] == "registered"
+        assert compute_registry._nodes == {}
+    finally:
+        compute_registry._nodes.clear()
+        compute_registry._nodes.update(original_nodes)
+
+
+@pytest.mark.asyncio
+async def test_relay_websocket_bound_jwt_uses_current_db_role_for_scope():
+    original_nodes = dict(compute_registry._nodes)
+    try:
+        compute_registry._nodes.clear()
+        await init_db()
+        suffix = uuid.uuid4().hex
+        user_id = f"relay-donor-{suffix}"
+        project_id = f"relay-project-{suffix}"
+        email = f"relay-donor-{suffix}@example.test"
+
+        async with async_session() as db:
+            user = User(
+                id=user_id,
+                username=f"relay-donor-{suffix}",
+                email=email,
+                email_hash=hash_field(email),
+                password_hash=hash_password("relay-test-password"),
+                role=UserRole.ADMIN,
+                display_name="Relay Donor",
+            )
+            db.add_all(
+                [
+                    user,
+                    Project(
+                        id=project_id,
+                        name="Relay Donor Project",
+                        owner_id=user_id,
+                    ),
+                    ProjectMember(
+                        id=f"relay-member-{suffix}",
+                        project_id=project_id,
+                        user_id=user_id,
+                        role="researcher",
+                        added_by=user_id,
+                    ),
+                ]
+            )
+            await db.commit()
+            token = await issue_auth_session_token(db, user, None, mfa_verified=True)
+            user.role = UserRole.RESEARCHER
+            await db.commit()
+
+        ws = FakeRelayWebSocket(
+            query_params={"token": token},
+            messages=[
+                '{"type":"register","hostname":"browser","user_id":"browser",'
+                '"provider_type":"lmstudio","loaded_models":["local-model"]}'
+            ],
+        )
+
+        await relay_websocket(ws)
+
+        assert ws.accepted
+        assert ws.sent[0]["type"] == "registered"
+        assert ws.sent[0]["authorized_project_count"] == 1
         assert compute_registry._nodes == {}
     finally:
         compute_registry._nodes.clear()

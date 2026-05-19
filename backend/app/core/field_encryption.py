@@ -8,6 +8,7 @@ Fields encrypted:
 - ChannelInstance.config_json (Telegram tokens, Slack secrets, WhatsApp tokens)
 - SurveyIntegration.config_json (OAuth tokens, API keys)
 - MCPServerConfig.headers_json (auth headers)
+- ProjectInterfaceConfig.* (Stitch and Figma credentials)
 - User.email (PII) — encrypted value; equality checks use email_hash
 
 Usage:

@@ -1,5 +1,6 @@
 """Connection string API routes — generate, validate, and redeem connection strings."""
 
+import json
 import logging
 import secrets
 import uuid
@@ -84,6 +85,7 @@ class ComputeDonationGenerateRequest(BaseModel):
     ws_url: str = Field(default="", max_length=2048)
     label: str = Field(default="", max_length=120)
     expires_hours: int = Field(default=168, ge=1, le=8760)
+    allowed_project_ids: list[str] = Field(default_factory=list, max_length=200)
 
     @field_validator("server_url", mode="before")
     @classmethod
@@ -102,6 +104,20 @@ class ComputeDonationGenerateRequest(BaseModel):
     @classmethod
     def normalize_label(cls, value: object) -> str:
         return _strip_text(value)
+
+    @field_validator("allowed_project_ids", mode="before")
+    @classmethod
+    def normalize_allowed_project_ids(cls, value: object) -> list[str]:
+        if value is None:
+            return []
+        if not isinstance(value, list):
+            raise ValueError("allowed_project_ids must be a list")
+        normalized: list[str] = []
+        for item in value:
+            project_id = _strip_text(item)
+            if project_id and project_id not in normalized:
+                normalized.append(project_id)
+        return normalized
 
 
 class ValidateRequest(BaseModel):
@@ -213,12 +229,29 @@ async def generate_compute_donation_string(
 
     if not data.server_url:
         raise HTTPException(status_code=400, detail="server_url is required")
+    allowed_project_ids = list(data.allowed_project_ids)
+    if settings.team_mode:
+        if not allowed_project_ids:
+            raise HTTPException(
+                status_code=422,
+                detail="Select at least one project for compute donation access",
+            )
+        from app.models.project import Project
+
+        result = await db.execute(select(Project.id).where(Project.id.in_(allowed_project_ids)))
+        existing_ids = {str(project_id) for project_id in result.scalars().all()}
+        unknown_ids = [project_id for project_id in allowed_project_ids if project_id not in existing_ids]
+        if unknown_ids:
+            raise HTTPException(status_code=404, detail="One or more projects were not found")
+    elif not allowed_project_ids:
+        allowed_project_ids = ["*"]
 
     conn_str = create_compute_donation_string(
         server_url=data.server_url,
         ws_url=data.ws_url or None,
         label=data.label,
         expires_hours=data.expires_hours,
+        allowed_project_ids=allowed_project_ids,
     )
     payload = decode_connection_string(conn_str) or {}
 
@@ -231,6 +264,7 @@ async def generate_compute_donation_string(
         server_url=data.server_url,
         ws_url=payload.get("ws_url", data.ws_url or ""),
         intended_role="compute_node",
+        allowed_project_ids_json=json.dumps(allowed_project_ids),
         expires_at=datetime.now(UTC) + timedelta(hours=data.expires_hours),
     )
     db.add(new_conn)
@@ -250,6 +284,7 @@ async def generate_compute_donation_string(
                 "token_type": "compute_donation",
                 "has_hash": bool(new_conn.connection_string_hash),
                 "has_ws_url": bool(new_conn.ws_url),
+                "allowed_project_count": len(allowed_project_ids),
             },
         )
     except Exception:
@@ -261,6 +296,7 @@ async def generate_compute_donation_string(
         "token_type": "compute_donation",
         "server_url": data.server_url,
         "ws_url": new_conn.ws_url,
+        "allowed_project_ids": allowed_project_ids,
         "label": data.label,
         "expires_at": new_conn.expires_at.isoformat(),
     }

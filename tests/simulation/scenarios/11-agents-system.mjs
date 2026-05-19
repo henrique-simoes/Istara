@@ -6,6 +6,7 @@ export const id = "11-agents-system";
 export async function run(ctx) {
   const { api, page, screenshot } = ctx;
   const checks = [];
+  const projectId = ctx.projectId || "sim-project-001";
 
   // ── API Tests ──
 
@@ -41,6 +42,7 @@ export async function run(ctx) {
       system_prompt: "You are a test agent created by the simulation.",
       capabilities: ["findings_read", "task_management"],
       heartbeat_interval: 30,
+      project_id: projectId,
     });
     testAgentId = agent.id;
     checks.push({
@@ -127,6 +129,7 @@ export async function run(ctx) {
         to_agent_id: null,
         message_type: "status",
         content: "Simulation test broadcast",
+        project_id: projectId,
       });
       checks.push({
         name: "A2A send message",
@@ -135,7 +138,7 @@ export async function run(ctx) {
       });
 
       // Check A2A log
-      const log = await api.get("/api/agents/a2a/log");
+      const log = await api.get(`/api/agents/a2a/log?project_id=${encodeURIComponent(projectId)}`);
       const found = (log.messages || []).some((m) => m.content === "Simulation test broadcast");
       checks.push({
         name: "A2A message appears in log",

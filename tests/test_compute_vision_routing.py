@@ -144,6 +144,7 @@ async def test_list_models_includes_capability_metadata_for_relay_nodes():
         is_healthy=True,
         last_heartbeat=9999999999,
         loaded_models=["qwen3.6-35b-a3b"],
+        allowed_project_ids=["project-a"],
         model_capabilities={
             "qwen3.6-35b-a3b": {
                 "supports_tools": True,
@@ -157,7 +158,7 @@ async def test_list_models_includes_capability_metadata_for_relay_nodes():
     )
     registry.register_node(node)
 
-    models = await registry.list_models()
+    models = await registry.list_models(project_id="project-a")
 
     assert models == [
         {

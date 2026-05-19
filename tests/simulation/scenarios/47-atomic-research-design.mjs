@@ -33,7 +33,7 @@ export async function run(ctx) {
 
   // ── 1. DesignDecision model — list endpoint returns 200 ──
   try {
-    const decisions = await api.get("/api/findings/design-decisions");
+    const decisions = await api.get(`/api/findings/design-decisions?project_id=${projectId}`);
     const list = Array.isArray(decisions) ? decisions : decisions.decisions || [];
     checks.push({
       name: "GET /api/findings/design-decisions returns 200",
@@ -334,7 +334,7 @@ export async function run(ctx) {
   // ── 9. Evidence chain traversal endpoint ──
   if (chainRecId) {
     try {
-      const chain = await api.get(`/api/findings/evidence-chain?finding_type=recommendation&finding_id=${chainRecId}`);
+      const chain = await api.get(`/api/findings/evidence-chain?finding_type=recommendation&finding_id=${chainRecId}&project_id=${projectId}`);
       checks.push({
         name: "Evidence chain traversal from recommendation returns chain",
         passed: !!chain && !!chain.chain,
@@ -396,7 +396,7 @@ export async function run(ctx) {
   // ── 11. Delete DesignDecision ──
   if (manualDecisionId) {
     try {
-      const res = await fetch(`http://localhost:8000/api/findings/design-decisions/${manualDecisionId}`, {
+      const res = await fetch(`http://localhost:8000/api/findings/design-decisions/${manualDecisionId}?project_id=${projectId}`, {
         method: "DELETE",
         headers: api._headers(),
       });
@@ -548,19 +548,19 @@ export async function run(ctx) {
     try { await fetch(`http://localhost:8000/api/interfaces/screens/${id}`, { method: "DELETE", headers: api._headers() }); } catch {}
   }
   for (const id of cleanup.decisionIds) {
-    try { await fetch(`http://localhost:8000/api/findings/design-decisions/${id}`, { method: "DELETE", headers: api._headers() }); } catch {}
+    try { await fetch(`http://localhost:8000/api/findings/design-decisions/${id}?project_id=${projectId}`, { method: "DELETE", headers: api._headers() }); } catch {}
   }
   for (const id of cleanup.recIds) {
-    try { await api.delete(`/api/findings/recommendations/${id}`); } catch {}
+    try { await api.delete(`/api/findings/recommendations/${id}?project_id=${projectId}`); } catch {}
   }
   for (const id of cleanup.insightIds) {
-    try { await api.delete(`/api/findings/insights/${id}`); } catch {}
+    try { await api.delete(`/api/findings/insights/${id}?project_id=${projectId}`); } catch {}
   }
   for (const id of cleanup.factIds) {
-    try { await api.delete(`/api/findings/facts/${id}`); } catch {}
+    try { await api.delete(`/api/findings/facts/${id}?project_id=${projectId}`); } catch {}
   }
   for (const id of cleanup.nuggetIds) {
-    try { await api.delete(`/api/findings/nuggets/${id}`); } catch {}
+    try { await api.delete(`/api/findings/nuggets/${id}?project_id=${projectId}`); } catch {}
   }
   // Briefs don't have a delete endpoint typically, but try
   for (const id of cleanup.briefIds) {

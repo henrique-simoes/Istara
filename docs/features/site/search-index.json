@@ -1,0 +1,1107 @@
+[
+  {
+    "architecture_url": "features/shell/navigation/architecture.html",
+    "id": "shell.navigation",
+    "kind": "feature",
+    "researcher_url": "features/shell/navigation/researcher.html",
+    "summary": "The main shell organizes Istara into primary, secondary, utility, and mobile navigation surfaces and routes each selected view into the mounted work area.",
+    "title": "Application Navigation",
+    "ui_path": [
+      "Shell",
+      "Navigation"
+    ]
+  },
+  {
+    "architecture_url": "features/shell/projects/architecture.html",
+    "id": "shell.projects",
+    "kind": "feature",
+    "researcher_url": "features/shell/projects/researcher.html",
+    "summary": "The sidebar project control lists available projects and lets users create, select, pause, resume, or delete the active project context used by most Istara views.",
+    "title": "Project Switcher",
+    "ui_path": [
+      "Shell",
+      "Projects"
+    ]
+  },
+  {
+    "architecture_url": "features/shell/search/architecture.html",
+    "id": "shell.search",
+    "kind": "feature",
+    "researcher_url": "features/shell/search/researcher.html",
+    "summary": "The shell exposes a command/search modal from the sidebar and keyboard shortcut so users can find navigable work surfaces and project objects.",
+    "title": "Global Search",
+    "ui_path": [
+      "Shell",
+      "Search"
+    ]
+  },
+  {
+    "architecture_url": "features/shell/notifications-bell/architecture.html",
+    "id": "shell.notifications-bell",
+    "kind": "feature",
+    "researcher_url": "features/shell/notifications-bell/researcher.html",
+    "summary": "The sidebar notification bell polls unread notification counts and links users into the notifications surface.",
+    "title": "Notification Bell",
+    "ui_path": [
+      "Shell",
+      "Notifications Bell"
+    ]
+  },
+  {
+    "architecture_url": "features/shell/keyboard-shortcuts/architecture.html",
+    "id": "shell.keyboard-shortcuts",
+    "kind": "feature",
+    "researcher_url": "features/shell/keyboard-shortcuts/researcher.html",
+    "summary": "HomeClient wires global shortcuts for search, view switching, shortcut help, and right-panel toggling.",
+    "title": "Keyboard Shortcuts",
+    "ui_path": [
+      "Shell",
+      "Keyboard Shortcuts"
+    ]
+  },
+  {
+    "architecture_url": "features/shell/onboarding/architecture.html",
+    "id": "shell.onboarding",
+    "kind": "feature",
+    "researcher_url": "features/shell/onboarding/researcher.html",
+    "summary": "Reusable onboarding overlays and tour state introduce major Istara views and offer context-specific chat prompts.",
+    "title": "View Onboarding",
+    "ui_path": [
+      "Shell",
+      "Onboarding"
+    ]
+  },
+  {
+    "architecture_url": "features/auth/login/architecture.html",
+    "id": "auth.login",
+    "kind": "feature",
+    "researcher_url": "features/auth/login/researcher.html",
+    "summary": "The application shell checks authentication state, shows the login surface when needed, and loads session state before mounting protected views.",
+    "title": "Login And Session Bootstrap",
+    "ui_path": [
+      "Shell",
+      "Authentication"
+    ]
+  },
+  {
+    "architecture_url": "features/chat/overview/architecture.html",
+    "id": "chat.overview",
+    "kind": "feature",
+    "researcher_url": "features/chat/overview/researcher.html",
+    "summary": "Chat is the project-scoped conversational workspace for working with Istara agents, context, files, and model settings.",
+    "title": "Chat Workspace",
+    "ui_path": [
+      "Chat"
+    ]
+  },
+  {
+    "architecture_url": "features/chat/sessions/architecture.html",
+    "id": "chat.sessions",
+    "kind": "feature",
+    "researcher_url": "features/chat/sessions/researcher.html",
+    "summary": "The chat session sidebar manages project-scoped conversation history and new session creation.",
+    "title": "Chat Sessions",
+    "ui_path": [
+      "Chat",
+      "Sessions"
+    ]
+  },
+  {
+    "architecture_url": "features/chat/model-controls/architecture.html",
+    "id": "chat.model-controls",
+    "kind": "feature",
+    "researcher_url": "features/chat/model-controls/researcher.html",
+    "summary": "Chat exposes model, thinking, and reasoning controls so users can tune how the assistant responds within the configured local or server-backed model environment.",
+    "title": "Chat Model Controls",
+    "ui_path": [
+      "Chat",
+      "Model Controls"
+    ]
+  },
+  {
+    "architecture_url": "features/chat/files/architecture.html",
+    "id": "chat.files",
+    "kind": "feature",
+    "researcher_url": "features/chat/files/researcher.html",
+    "summary": "Chat can attach uploaded project files and documents so the conversation can use project evidence and user-provided material.",
+    "title": "Chat File Attachments",
+    "ui_path": [
+      "Chat",
+      "File Attachments"
+    ]
+  },
+  {
+    "architecture_url": "features/chat/audio/architecture.html",
+    "id": "chat.audio",
+    "kind": "feature",
+    "researcher_url": "features/chat/audio/researcher.html",
+    "summary": "The chat audio flow records user speech through the browser, sends it to the voice route, and returns transcription or voice-assisted chat input.",
+    "title": "Chat Audio Conversation",
+    "ui_path": [
+      "Chat",
+      "Audio"
+    ]
+  },
+  {
+    "architecture_url": "features/chat/steering/architecture.html",
+    "id": "chat.steering",
+    "kind": "feature",
+    "researcher_url": "features/chat/steering/researcher.html",
+    "summary": "Steering controls collect lightweight user guidance that can shape downstream assistant behavior and project context.",
+    "title": "Chat Steering",
+    "ui_path": [
+      "Chat",
+      "Steering"
+    ]
+  },
+  {
+    "architecture_url": "features/findings/evidence/architecture.html",
+    "id": "findings.evidence",
+    "kind": "feature",
+    "researcher_url": "features/findings/evidence/researcher.html",
+    "summary": "The Findings evidence tab lists research insights and recommendations for the active project and supports phase-oriented review.",
+    "title": "Findings Evidence",
+    "ui_path": [
+      "Findings",
+      "Evidence"
+    ]
+  },
+  {
+    "architecture_url": "features/findings/phase-tabs/architecture.html",
+    "id": "findings.phase-tabs",
+    "kind": "feature",
+    "researcher_url": "features/findings/phase-tabs/researcher.html",
+    "summary": "The Evidence view segments findings by Discover, Define, Develop, and Deliver project phases.",
+    "title": "Findings Phase Tabs",
+    "ui_path": [
+      "Findings",
+      "Evidence",
+      "Phase Tabs"
+    ]
+  },
+  {
+    "architecture_url": "features/findings/codebook/architecture.html",
+    "id": "findings.codebook",
+    "kind": "feature",
+    "researcher_url": "features/findings/codebook/researcher.html",
+    "summary": "The Codebook tab surfaces qualitative coding structures and codebook versions associated with project findings.",
+    "title": "Findings Codebook",
+    "ui_path": [
+      "Findings",
+      "Codebook"
+    ]
+  },
+  {
+    "architecture_url": "features/findings/review/architecture.html",
+    "id": "findings.review",
+    "kind": "feature",
+    "researcher_url": "features/findings/review/researcher.html",
+    "summary": "The Review tab presents code review queues for validating and adjudicating qualitative coding work.",
+    "title": "Findings Code Review",
+    "ui_path": [
+      "Findings",
+      "Review"
+    ]
+  },
+  {
+    "architecture_url": "features/findings/reports/architecture.html",
+    "id": "findings.reports",
+    "kind": "feature",
+    "researcher_url": "features/findings/reports/researcher.html",
+    "summary": "The Reports tab lets users generate, inspect, and manage project reports produced from findings and research evidence.",
+    "title": "Project Reports",
+    "ui_path": [
+      "Findings",
+      "Reports"
+    ]
+  },
+  {
+    "architecture_url": "features/findings/slide-instructions/architecture.html",
+    "id": "findings.slide-instructions",
+    "kind": "feature",
+    "researcher_url": "features/findings/slide-instructions/researcher.html",
+    "summary": "Report-related surfaces support presentation or slide guidance that can carry research findings into communicable report artifacts.",
+    "title": "Report Slide Instructions",
+    "ui_path": [
+      "Findings",
+      "Reports",
+      "Slide Instructions"
+    ]
+  },
+  {
+    "architecture_url": "features/laws/catalog/architecture.html",
+    "id": "laws.catalog",
+    "kind": "feature",
+    "researcher_url": "features/laws/catalog/researcher.html",
+    "summary": "The UX Laws catalog gives researchers a structured reference for applying UX laws to research and design interpretation.",
+    "title": "UX Laws Catalog",
+    "ui_path": [
+      "UX Laws",
+      "Catalog"
+    ]
+  },
+  {
+    "architecture_url": "features/laws/compliance/architecture.html",
+    "id": "laws.compliance",
+    "kind": "feature",
+    "researcher_url": "features/laws/compliance/researcher.html",
+    "summary": "The compliance tab checks or summarizes how project work aligns with selected UX laws.",
+    "title": "UX Laws Compliance",
+    "ui_path": [
+      "UX Laws",
+      "Compliance"
+    ]
+  },
+  {
+    "architecture_url": "features/tasks/kanban/architecture.html",
+    "id": "tasks.kanban",
+    "kind": "feature",
+    "researcher_url": "features/tasks/kanban/researcher.html",
+    "summary": "Tasks presents project work as a Kanban board for tracking research operations, agent work, and review handoffs.",
+    "title": "Task Kanban Board",
+    "ui_path": [
+      "Tasks",
+      "Kanban"
+    ]
+  },
+  {
+    "architecture_url": "features/tasks/editor/architecture.html",
+    "id": "tasks.editor",
+    "kind": "feature",
+    "researcher_url": "features/tasks/editor/researcher.html",
+    "summary": "The task editor creates and updates task details, assignments, status, and task-linked research context.",
+    "title": "Task Editor",
+    "ui_path": [
+      "Tasks",
+      "Task Editor"
+    ]
+  },
+  {
+    "architecture_url": "features/tasks/review/architecture.html",
+    "id": "tasks.review",
+    "kind": "feature",
+    "researcher_url": "features/tasks/review/researcher.html",
+    "summary": "Review actions support approving, requesting revision, or otherwise resolving human-in-the-loop task work.",
+    "title": "Human Task Review",
+    "ui_path": [
+      "Tasks",
+      "Review"
+    ]
+  },
+  {
+    "architecture_url": "features/tasks/attachments/architecture.html",
+    "id": "tasks.attachments",
+    "kind": "feature",
+    "researcher_url": "features/tasks/attachments/researcher.html",
+    "summary": "Tasks can reference project files or documents so research work stays connected to the evidence it depends on.",
+    "title": "Task Attachments",
+    "ui_path": [
+      "Tasks",
+      "Attachments"
+    ]
+  },
+  {
+    "architecture_url": "features/tasks/send-report/architecture.html",
+    "id": "tasks.send-report",
+    "kind": "feature",
+    "researcher_url": "features/tasks/send-report/researcher.html",
+    "summary": "Task surfaces can move validated task outputs toward report generation or reporting workflows.",
+    "title": "Send Task To Report",
+    "ui_path": [
+      "Tasks",
+      "Send To Report"
+    ]
+  },
+  {
+    "architecture_url": "features/interviews/files/architecture.html",
+    "id": "interviews.files",
+    "kind": "feature",
+    "researcher_url": "features/interviews/files/researcher.html",
+    "summary": "The Interviews view manages interview recordings and source files for participant research analysis.",
+    "title": "Interview Files",
+    "ui_path": [
+      "Interviews",
+      "Files"
+    ]
+  },
+  {
+    "architecture_url": "features/interviews/transcription/architecture.html",
+    "id": "interviews.transcription",
+    "kind": "feature",
+    "researcher_url": "features/interviews/transcription/researcher.html",
+    "summary": "Interview audio processing uses backend transcription capabilities to turn recordings into usable research text.",
+    "title": "Interview Transcription",
+    "ui_path": [
+      "Interviews",
+      "Transcription"
+    ]
+  },
+  {
+    "architecture_url": "features/interviews/preview-tags/architecture.html",
+    "id": "interviews.preview-tags",
+    "kind": "feature",
+    "researcher_url": "features/interviews/preview-tags/researcher.html",
+    "summary": "Interview preview parts display file previews, send-to-agent actions, and tag creation controls.",
+    "title": "Interview Preview And Tags",
+    "ui_path": [
+      "Interviews",
+      "Preview And Tags"
+    ]
+  },
+  {
+    "architecture_url": "features/documents/library/architecture.html",
+    "id": "documents.library",
+    "kind": "feature",
+    "researcher_url": "features/documents/library/researcher.html",
+    "summary": "Documents centralizes project documents and makes source material available for preview, chat, and analysis workflows.",
+    "title": "Document Library",
+    "ui_path": [
+      "Documents",
+      "Library"
+    ]
+  },
+  {
+    "architecture_url": "features/documents/upload/architecture.html",
+    "id": "documents.upload",
+    "kind": "feature",
+    "researcher_url": "features/documents/upload/researcher.html",
+    "summary": "Upload controls import project files and documents into Istara for downstream reading, chat, and evidence workflows.",
+    "title": "Document Upload",
+    "ui_path": [
+      "Documents",
+      "Upload"
+    ]
+  },
+  {
+    "architecture_url": "features/documents/preview/architecture.html",
+    "id": "documents.preview",
+    "kind": "feature",
+    "researcher_url": "features/documents/preview/researcher.html",
+    "summary": "Document preview lets users inspect uploaded project material before using it in chat, interviews, or findings workflows.",
+    "title": "Document Preview",
+    "ui_path": [
+      "Documents",
+      "Preview"
+    ]
+  },
+  {
+    "architecture_url": "features/documents/suggestions/architecture.html",
+    "id": "documents.suggestions",
+    "kind": "feature",
+    "researcher_url": "features/documents/suggestions/researcher.html",
+    "summary": "Interactive suggestions surface possible next actions or edits for document-centered workflows.",
+    "title": "Document Suggestions",
+    "ui_path": [
+      "Documents",
+      "Suggestions"
+    ]
+  },
+  {
+    "architecture_url": "features/context/editor/architecture.html",
+    "id": "context.editor",
+    "kind": "feature",
+    "researcher_url": "features/context/editor/researcher.html",
+    "summary": "The Context view edits project background, goals, assumptions, and other structured context used by Istara workflows.",
+    "title": "Project Context Editor",
+    "ui_path": [
+      "Context",
+      "Editor"
+    ]
+  },
+  {
+    "architecture_url": "features/skills/catalog/architecture.html",
+    "id": "skills.catalog",
+    "kind": "feature",
+    "researcher_url": "features/skills/catalog/researcher.html",
+    "summary": "The Skills catalog lists available capabilities agents can use or propose for research workflows.",
+    "title": "Skills Catalog",
+    "ui_path": [
+      "Skills",
+      "Catalog"
+    ]
+  },
+  {
+    "architecture_url": "features/skills/proposals/architecture.html",
+    "id": "skills.proposals",
+    "kind": "feature",
+    "researcher_url": "features/skills/proposals/researcher.html",
+    "summary": "Skill proposal flows present candidate tool or capability changes for review before they are adopted.",
+    "title": "Skill Proposals",
+    "ui_path": [
+      "Skills",
+      "Proposals"
+    ]
+  },
+  {
+    "architecture_url": "features/skills/create/architecture.html",
+    "id": "skills.create",
+    "kind": "feature",
+    "researcher_url": "features/skills/create/researcher.html",
+    "summary": "Create Skill supports adding or configuring a new skill surface from inside Istara.",
+    "title": "Create Skill",
+    "ui_path": [
+      "Skills",
+      "Create"
+    ]
+  },
+  {
+    "architecture_url": "features/agents/registry/architecture.html",
+    "id": "agents.registry",
+    "kind": "feature",
+    "researcher_url": "features/agents/registry/researcher.html",
+    "summary": "The Agents view lists and manages available agents, including their status and project-facing roles.",
+    "title": "Agent Registry",
+    "ui_path": [
+      "Agents",
+      "Agents"
+    ]
+  },
+  {
+    "architecture_url": "features/agents/detail/architecture.html",
+    "id": "agents.detail",
+    "kind": "feature",
+    "researcher_url": "features/agents/detail/researcher.html",
+    "summary": "Selected agent details expose overview, identity, memory, and permission information for that agent.",
+    "title": "Agent Detail Panels",
+    "ui_path": [
+      "Agents",
+      "Agents",
+      "Detail"
+    ]
+  },
+  {
+    "architecture_url": "features/agents/a2a/architecture.html",
+    "id": "agents.a2a",
+    "kind": "feature",
+    "researcher_url": "features/agents/a2a/researcher.html",
+    "summary": "The A2A tab displays agent-to-agent communication or coordination events for operational visibility.",
+    "title": "Agent-To-Agent Log",
+    "ui_path": [
+      "Agents",
+      "A2A"
+    ]
+  },
+  {
+    "architecture_url": "features/agents/proposals/architecture.html",
+    "id": "agents.proposals",
+    "kind": "feature",
+    "researcher_url": "features/agents/proposals/researcher.html",
+    "summary": "Agent proposal workflows surface suggested agent changes or actions for review.",
+    "title": "Agent Proposals",
+    "ui_path": [
+      "Agents",
+      "Proposals"
+    ]
+  },
+  {
+    "architecture_url": "features/agents/create/architecture.html",
+    "id": "agents.create",
+    "kind": "feature",
+    "researcher_url": "features/agents/create/researcher.html",
+    "summary": "Create Agent supports configuring new agents and their role-facing metadata.",
+    "title": "Create Agent",
+    "ui_path": [
+      "Agents",
+      "Create"
+    ]
+  },
+  {
+    "architecture_url": "features/memory/knowledge/architecture.html",
+    "id": "memory.knowledge",
+    "kind": "feature",
+    "researcher_url": "features/memory/knowledge/researcher.html",
+    "summary": "The Memory knowledge tab manages project knowledge artifacts and retrieval material.",
+    "title": "Knowledge Memory",
+    "ui_path": [
+      "Memory",
+      "Knowledge"
+    ]
+  },
+  {
+    "architecture_url": "features/memory/agent/architecture.html",
+    "id": "memory.agent",
+    "kind": "feature",
+    "researcher_url": "features/memory/agent/researcher.html",
+    "summary": "The Agent memory tab exposes memory tied to agent behavior and project collaboration.",
+    "title": "Agent Memory",
+    "ui_path": [
+      "Memory",
+      "Agent"
+    ]
+  },
+  {
+    "architecture_url": "features/memory/health/architecture.html",
+    "id": "memory.health",
+    "kind": "feature",
+    "researcher_url": "features/memory/health/researcher.html",
+    "summary": "Memory health surfaces status and quality signals for memory or retrieval infrastructure.",
+    "title": "Memory Health",
+    "ui_path": [
+      "Memory",
+      "Health"
+    ]
+  },
+  {
+    "architecture_url": "features/memory/context-dag/architecture.html",
+    "id": "memory.context-dag",
+    "kind": "feature",
+    "researcher_url": "features/memory/context-dag/researcher.html",
+    "summary": "The Context DAG tab visualizes or inspects relationships across project context nodes.",
+    "title": "Context DAG",
+    "ui_path": [
+      "Memory",
+      "Context DAG"
+    ]
+  },
+  {
+    "architecture_url": "features/interfaces/design-chat/architecture.html",
+    "id": "interfaces.design-chat",
+    "kind": "feature",
+    "researcher_url": "features/interfaces/design-chat/researcher.html",
+    "summary": "Design Chat is the conversational starting point for generating, refining, and reasoning about interface concepts.",
+    "title": "Interface Design Chat",
+    "ui_path": [
+      "Interfaces",
+      "Design Chat"
+    ]
+  },
+  {
+    "architecture_url": "features/interfaces/generate/architecture.html",
+    "id": "interfaces.generate",
+    "kind": "feature",
+    "researcher_url": "features/interfaces/generate/researcher.html",
+    "summary": "The Generate tab creates interface assets or screen proposals from project context and design prompts.",
+    "title": "Generate Interfaces",
+    "ui_path": [
+      "Interfaces",
+      "Generate"
+    ]
+  },
+  {
+    "architecture_url": "features/interfaces/screens/architecture.html",
+    "id": "interfaces.screens",
+    "kind": "feature",
+    "researcher_url": "features/interfaces/screens/researcher.html",
+    "summary": "Screens displays generated interface screens and previews for review.",
+    "title": "Screens Gallery",
+    "ui_path": [
+      "Interfaces",
+      "Screens"
+    ]
+  },
+  {
+    "architecture_url": "features/interfaces/figma/architecture.html",
+    "id": "interfaces.figma",
+    "kind": "feature",
+    "researcher_url": "features/interfaces/figma/researcher.html",
+    "summary": "The Configuration tab connects interface work with design-tool setup, including Figma-oriented import or export flows.",
+    "title": "Configuration",
+    "ui_path": [
+      "Interfaces",
+      "Configuration"
+    ]
+  },
+  {
+    "architecture_url": "features/interfaces/handoff/architecture.html",
+    "id": "interfaces.handoff",
+    "kind": "feature",
+    "researcher_url": "features/interfaces/handoff/researcher.html",
+    "summary": "Handoff packages interface outputs into developer-facing specifications or exportable artifacts.",
+    "title": "Interface Handoff",
+    "ui_path": [
+      "Interfaces",
+      "Handoff"
+    ]
+  },
+  {
+    "architecture_url": "features/interfaces/findings-picker/architecture.html",
+    "id": "interfaces.findings-picker",
+    "kind": "feature",
+    "researcher_url": "features/interfaces/findings-picker/researcher.html",
+    "summary": "The Findings Picker lets interface workflows reference insights and recommendations from the Findings area.",
+    "title": "Findings Picker",
+    "ui_path": [
+      "Interfaces",
+      "Findings Picker"
+    ]
+  },
+  {
+    "architecture_url": "features/integrations/overview/architecture.html",
+    "id": "integrations.overview",
+    "kind": "feature",
+    "researcher_url": "features/integrations/overview/researcher.html",
+    "summary": "The Integrations overview summarizes connected channels, deployment surfaces, and integration health.",
+    "title": "Integrations Overview",
+    "ui_path": [
+      "Integrations",
+      "Overview"
+    ]
+  },
+  {
+    "architecture_url": "features/integrations/messaging/architecture.html",
+    "id": "integrations.messaging",
+    "kind": "feature",
+    "researcher_url": "features/integrations/messaging/researcher.html",
+    "summary": "Messaging connects external conversation channels such as team or participant messaging tools into Istara.",
+    "title": "Messaging Integrations",
+    "ui_path": [
+      "Integrations",
+      "Messaging"
+    ]
+  },
+  {
+    "architecture_url": "features/integrations/surveys/architecture.html",
+    "id": "integrations.surveys",
+    "kind": "feature",
+    "researcher_url": "features/integrations/surveys/researcher.html",
+    "summary": "Surveys configures participant question and survey collection flows connected to project research.",
+    "title": "Survey Integrations",
+    "ui_path": [
+      "Integrations",
+      "Surveys"
+    ]
+  },
+  {
+    "architecture_url": "features/integrations/mcp/architecture.html",
+    "id": "integrations.mcp",
+    "kind": "feature",
+    "researcher_url": "features/integrations/mcp/researcher.html",
+    "summary": "The MCP tab configures Model Context Protocol server access, policies, and audit visibility.",
+    "title": "MCP Integrations",
+    "ui_path": [
+      "Integrations",
+      "MCP"
+    ]
+  },
+  {
+    "architecture_url": "features/integrations/deployments/architecture.html",
+    "id": "integrations.deployments",
+    "kind": "feature",
+    "researcher_url": "features/integrations/deployments/researcher.html",
+    "summary": "Deployments configure participant-facing research deployments and link them to channels, questions, findings, and timeline views.",
+    "title": "Research Deployments",
+    "ui_path": [
+      "Integrations",
+      "Deployments"
+    ]
+  },
+  {
+    "architecture_url": "features/integrations/deployment-dashboard/architecture.html",
+    "id": "integrations.deployment-dashboard",
+    "kind": "feature",
+    "researcher_url": "features/integrations/deployment-dashboard/researcher.html",
+    "summary": "The deployment dashboard has sub-tabs for live status, questions, participants, findings, channels, and timeline activity.",
+    "title": "Deployment Dashboard",
+    "ui_path": [
+      "Integrations",
+      "Deployments",
+      "Dashboard"
+    ]
+  },
+  {
+    "architecture_url": "features/loops/overview/architecture.html",
+    "id": "loops.overview",
+    "kind": "feature",
+    "researcher_url": "features/loops/overview/researcher.html",
+    "summary": "Loops overview summarizes automated and scheduled research loop health.",
+    "title": "Loops Overview",
+    "ui_path": [
+      "Loops",
+      "Overview"
+    ]
+  },
+  {
+    "architecture_url": "features/loops/schedules/architecture.html",
+    "id": "loops.schedules",
+    "kind": "feature",
+    "researcher_url": "features/loops/schedules/researcher.html",
+    "summary": "Schedules configure recurring loop timing, including cron-style recurrence controls.",
+    "title": "Loop Schedules",
+    "ui_path": [
+      "Loops",
+      "Schedules"
+    ]
+  },
+  {
+    "architecture_url": "features/loops/agent-loops/architecture.html",
+    "id": "loops.agent-loops",
+    "kind": "feature",
+    "researcher_url": "features/loops/agent-loops/researcher.html",
+    "summary": "Agent Loops connects recurring work with configured agents and their automated research responsibilities.",
+    "title": "Agent Loops",
+    "ui_path": [
+      "Loops",
+      "Agent Loops"
+    ]
+  },
+  {
+    "architecture_url": "features/loops/custom/architecture.html",
+    "id": "loops.custom",
+    "kind": "feature",
+    "researcher_url": "features/loops/custom/researcher.html",
+    "summary": "Custom loops provide a surface for user-defined recurring or automated research actions.",
+    "title": "Custom Loops",
+    "ui_path": [
+      "Loops",
+      "Custom"
+    ]
+  },
+  {
+    "architecture_url": "features/loops/history/architecture.html",
+    "id": "loops.history",
+    "kind": "feature",
+    "researcher_url": "features/loops/history/researcher.html",
+    "summary": "Execution History records loop runs, outcomes, and recent automation activity.",
+    "title": "Loop Execution History",
+    "ui_path": [
+      "Loops",
+      "History"
+    ]
+  },
+  {
+    "architecture_url": "features/settings/general/architecture.html",
+    "id": "settings.general",
+    "kind": "feature",
+    "researcher_url": "features/settings/general/researcher.html",
+    "summary": "Settings shows backend, LLM, hardware, model recommendation, and available model status for the local installation.",
+    "title": "System Status And Models",
+    "ui_path": [
+      "Settings",
+      "System Status And Models"
+    ]
+  },
+  {
+    "architecture_url": "features/settings/llm-servers/architecture.html",
+    "id": "settings.llm-servers",
+    "kind": "feature",
+    "researcher_url": "features/settings/llm-servers/researcher.html",
+    "summary": "Settings manages configured LLM providers, server endpoints, provider labels, and active model switching.",
+    "title": "LLM Server Settings",
+    "ui_path": [
+      "Settings",
+      "LLM Servers"
+    ]
+  },
+  {
+    "architecture_url": "features/settings/users/architecture.html",
+    "id": "settings.users",
+    "kind": "feature",
+    "researcher_url": "features/settings/users/researcher.html",
+    "summary": "User management supports team member visibility and administrative user operations.",
+    "title": "User Management",
+    "ui_path": [
+      "Settings",
+      "Users"
+    ]
+  },
+  {
+    "architecture_url": "features/settings/connection-strings/architecture.html",
+    "id": "settings.connection-strings",
+    "kind": "feature",
+    "researcher_url": "features/settings/connection-strings/researcher.html",
+    "summary": "Connection string settings provide governed admin-only configuration for sensitive external or local service connection data.",
+    "title": "Connection Strings",
+    "ui_path": [
+      "Settings",
+      "Connection Strings"
+    ]
+  },
+  {
+    "architecture_url": "features/settings/security-factors/architecture.html",
+    "id": "settings.security-factors",
+    "kind": "feature",
+    "researcher_url": "features/settings/security-factors/researcher.html",
+    "summary": "Settings includes passkey and TOTP management for strengthening account authentication.",
+    "title": "Passkeys And Two-Factor Authentication",
+    "ui_path": [
+      "Settings",
+      "Security Factors"
+    ]
+  },
+  {
+    "architecture_url": "features/settings/sessions/architecture.html",
+    "id": "settings.sessions",
+    "kind": "feature",
+    "researcher_url": "features/settings/sessions/researcher.html",
+    "summary": "Session management lists active authentication sessions and supports session-level control.",
+    "title": "Active Sessions",
+    "ui_path": [
+      "Settings",
+      "Sessions"
+    ]
+  },
+  {
+    "architecture_url": "features/settings/updates/architecture.html",
+    "id": "settings.updates",
+    "kind": "feature",
+    "researcher_url": "features/settings/updates/researcher.html",
+    "summary": "The update checker surfaces available Istara software updates from the settings view.",
+    "title": "Software Updates",
+    "ui_path": [
+      "Settings",
+      "Software Updates"
+    ]
+  },
+  {
+    "architecture_url": "features/settings/governed-evolution/architecture.html",
+    "id": "settings.governed-evolution",
+    "kind": "feature",
+    "researcher_url": "features/settings/governed-evolution/researcher.html",
+    "summary": "Governed Evolution displays proposals, archive, reasoning, and contract information for controlled system self-improvement.",
+    "title": "Governed Evolution",
+    "ui_path": [
+      "Settings",
+      "Governed Evolution"
+    ]
+  },
+  {
+    "architecture_url": "features/settings/compute-donation/architecture.html",
+    "id": "settings.compute-donation",
+    "kind": "feature",
+    "researcher_url": "features/settings/compute-donation/researcher.html",
+    "summary": "Compute donation lets a browser session contribute local compute capacity under controlled limits.",
+    "title": "Compute Donation",
+    "ui_path": [
+      "Settings",
+      "Compute Donation"
+    ]
+  },
+  {
+    "architecture_url": "features/settings/project/architecture.html",
+    "id": "settings.project",
+    "kind": "feature",
+    "researcher_url": "features/settings/project/researcher.html",
+    "summary": "Project Settings configure project-specific metadata and operational preferences separate from global system settings.",
+    "title": "Project Settings",
+    "ui_path": [
+      "Project Settings"
+    ]
+  },
+  {
+    "architecture_url": "features/autoresearch/dashboard/architecture.html",
+    "id": "autoresearch.dashboard",
+    "kind": "feature",
+    "researcher_url": "features/autoresearch/dashboard/researcher.html",
+    "summary": "The Autoresearch dashboard summarizes automated research experiment status and recent results.",
+    "title": "Autoresearch Dashboard",
+    "ui_path": [
+      "Autoresearch",
+      "Dashboard"
+    ]
+  },
+  {
+    "architecture_url": "features/autoresearch/experiments/architecture.html",
+    "id": "autoresearch.experiments",
+    "kind": "feature",
+    "researcher_url": "features/autoresearch/experiments/researcher.html",
+    "summary": "Experiments configure and inspect automated research runs across strategies or parameters.",
+    "title": "Autoresearch Experiments",
+    "ui_path": [
+      "Autoresearch",
+      "Experiments"
+    ]
+  },
+  {
+    "architecture_url": "features/autoresearch/leaderboard/architecture.html",
+    "id": "autoresearch.leaderboard",
+    "kind": "feature",
+    "researcher_url": "features/autoresearch/leaderboard/researcher.html",
+    "summary": "The leaderboard ranks automated research experiment outcomes for comparison.",
+    "title": "Autoresearch Leaderboard",
+    "ui_path": [
+      "Autoresearch",
+      "Leaderboard"
+    ]
+  },
+  {
+    "architecture_url": "features/autoresearch/config/architecture.html",
+    "id": "autoresearch.config",
+    "kind": "feature",
+    "researcher_url": "features/autoresearch/config/researcher.html",
+    "summary": "Autoresearch configuration sets parameters for automated research strategies and runs.",
+    "title": "Autoresearch Configuration",
+    "ui_path": [
+      "Autoresearch",
+      "Config"
+    ]
+  },
+  {
+    "architecture_url": "features/compute/pool/architecture.html",
+    "id": "compute.pool",
+    "kind": "feature",
+    "researcher_url": "features/compute/pool/researcher.html",
+    "summary": "Compute Pool provides operational visibility into available compute nodes, routing, and local or pooled execution capacity.",
+    "title": "Compute Pool",
+    "ui_path": [
+      "Compute Pool"
+    ]
+  },
+  {
+    "architecture_url": "features/ensemble/health/architecture.html",
+    "id": "ensemble.health",
+    "kind": "feature",
+    "researcher_url": "features/ensemble/health/researcher.html",
+    "summary": "Ensemble Health surfaces health and consensus signals for Istara's multi-model or multi-agent ensemble behavior.",
+    "title": "Ensemble Health",
+    "ui_path": [
+      "Ensemble Health"
+    ]
+  },
+  {
+    "architecture_url": "features/quality/dashboard/architecture.html",
+    "id": "quality.dashboard",
+    "kind": "feature",
+    "researcher_url": "features/quality/dashboard/researcher.html",
+    "summary": "Quality Dashboard summarizes system quality, validation, and operational signals for the running Istara installation.",
+    "title": "Quality Dashboard",
+    "ui_path": [
+      "Quality Dashboard"
+    ]
+  },
+  {
+    "architecture_url": "features/backup/view/architecture.html",
+    "id": "backup.view",
+    "kind": "feature",
+    "researcher_url": "features/backup/view/researcher.html",
+    "summary": "Backup provides project or system backup controls and status for preserving Istara data.",
+    "title": "Backup",
+    "ui_path": [
+      "Backup"
+    ]
+  },
+  {
+    "architecture_url": "features/meta/hyperagent/architecture.html",
+    "id": "meta.hyperagent",
+    "kind": "feature",
+    "researcher_url": "features/meta/hyperagent/researcher.html",
+    "summary": "The Meta-Agent surface exposes the meta-hyperagent system for inspecting or governing higher-level agentic improvement behavior.",
+    "title": "Meta-Agent",
+    "ui_path": [
+      "Meta-Agent"
+    ]
+  },
+  {
+    "architecture_url": "features/admin/dashboard/architecture.html",
+    "id": "admin.dashboard",
+    "kind": "feature",
+    "researcher_url": "features/admin/dashboard/researcher.html",
+    "summary": "The Admin dashboard provides administrator-only operational controls and visibility.",
+    "title": "Admin Dashboard",
+    "ui_path": [
+      "Admin"
+    ]
+  },
+  {
+    "architecture_url": "features/history/version/architecture.html",
+    "id": "history.version",
+    "kind": "feature",
+    "researcher_url": "features/history/version/researcher.html",
+    "summary": "History lists project or artifact version events for traceability and recovery.",
+    "title": "Version History",
+    "ui_path": [
+      "History"
+    ]
+  },
+  {
+    "architecture_url": "features/notifications/list/architecture.html",
+    "id": "notifications.list",
+    "kind": "feature",
+    "researcher_url": "features/notifications/list/researcher.html",
+    "summary": "Notifications lists system and project notifications with read/unread state.",
+    "title": "Notifications List",
+    "ui_path": [
+      "Notifications",
+      "All"
+    ]
+  },
+  {
+    "architecture_url": "features/notifications/preferences/architecture.html",
+    "id": "notifications.preferences",
+    "kind": "feature",
+    "researcher_url": "features/notifications/preferences/researcher.html",
+    "summary": "Notification preferences let users configure which notifications they receive and how notification categories are handled.",
+    "title": "Notification Preferences",
+    "ui_path": [
+      "Notifications",
+      "Preferences"
+    ]
+  },
+  {
+    "id": "a2a",
+    "kind": "glossary",
+    "title": "Agent-To-Agent (A2A)",
+    "url": "glossary/a2a.html"
+  },
+  {
+    "id": "atomic-research",
+    "kind": "glossary",
+    "title": "Atomic Research",
+    "url": "glossary/atomic-research.html"
+  },
+  {
+    "id": "compass-forge",
+    "kind": "glossary",
+    "title": "Compass Forge",
+    "url": "glossary/compass-forge.html"
+  },
+  {
+    "id": "fleiss-kappa",
+    "kind": "glossary",
+    "title": "Fleiss Kappa",
+    "url": "glossary/fleiss-kappa.html"
+  },
+  {
+    "id": "mcp",
+    "kind": "glossary",
+    "title": "Model Context Protocol (MCP)",
+    "url": "glossary/mcp.html"
+  },
+  {
+    "id": "mece",
+    "kind": "glossary",
+    "title": "MECE",
+    "url": "glossary/mece.html"
+  },
+  {
+    "id": "minto-pyramid",
+    "kind": "glossary",
+    "title": "Minto Pyramid",
+    "url": "glossary/minto-pyramid.html"
+  },
+  {
+    "id": "rag",
+    "kind": "glossary",
+    "title": "Retrieval-Augmented Generation (RAG)",
+    "url": "glossary/rag.html"
+  },
+  {
+    "id": "scr",
+    "kind": "glossary",
+    "title": "Situation Complication Resolution (SCR)",
+    "url": "glossary/scr.html"
+  },
+  {
+    "id": "totp",
+    "kind": "glossary",
+    "title": "Time-Based One-Time Password (TOTP)",
+    "url": "glossary/totp.html"
+  },
+  {
+    "id": "triangulation",
+    "kind": "glossary",
+    "title": "Triangulation",
+    "url": "glossary/triangulation.html"
+  },
+  {
+    "id": "wcag",
+    "kind": "glossary",
+    "title": "Web Content Accessibility Guidelines (WCAG)",
+    "url": "glossary/wcag.html"
+  },
+  {
+    "id": "webauthn",
+    "kind": "glossary",
+    "title": "WebAuthn",
+    "url": "glossary/webauthn.html"
+  }
+]

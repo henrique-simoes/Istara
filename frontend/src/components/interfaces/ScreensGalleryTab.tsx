@@ -28,10 +28,15 @@ export default function ScreensGalleryTab() {
   const [deleting, setDeleting] = useState<string | null>(null);
 
   useEffect(() => {
+    setSelectedScreen(null);
     if (activeProjectId) {
       fetchScreens(activeProjectId);
     }
   }, [activeProjectId, fetchScreens]);
+
+  const scopedScreens = activeProjectId
+    ? screens.filter((screen: any) => screen.project_id === activeProjectId)
+    : [];
 
   const handleDelete = async (screenId: string) => {
     setDeleting(screenId);
@@ -61,7 +66,7 @@ export default function ScreensGalleryTab() {
   }
 
   // Detail view
-  if (selectedScreen) {
+  if (selectedScreen && selectedScreen.project_id === activeProjectId) {
     return (
       <div className="flex-1 overflow-y-auto p-6">
         <div className="max-w-3xl mx-auto">
@@ -143,7 +148,7 @@ export default function ScreensGalleryTab() {
   // Gallery view
   return (
     <div className="flex-1 overflow-y-auto p-6">
-      {screens.length === 0 ? (
+      {scopedScreens.length === 0 ? (
         <div className="flex items-center justify-center h-full text-slate-400">
           <div className="text-center max-w-md">
             <LayoutGrid size={40} className="mx-auto mb-4 text-slate-300 dark:text-slate-600" />
@@ -155,7 +160,7 @@ export default function ScreensGalleryTab() {
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-          {screens.map((screen: any) => {
+          {scopedScreens.map((screen: any) => {
             const DeviceIcon = DEVICE_ICONS[screen.device_type] || Globe;
             return (
               <button

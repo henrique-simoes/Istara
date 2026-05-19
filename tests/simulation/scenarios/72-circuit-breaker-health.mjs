@@ -89,7 +89,7 @@ export async function run(ctx) {
     checks.push({
       name: "System status has LLM info",
       passed: status.services !== undefined,
-      detail: `LLM: ${status.services?.llm || "unknown"}, provider: ${status.provider || "unknown"}`,
+      detail: `LLM: ${status.services?.llm || "unknown"}, chat_ready: ${status.llm_readiness?.chat_ready === true}`,
     });
   } catch (e) {
     checks.push({ name: "System status", passed: false, detail: e.message });
@@ -111,7 +111,8 @@ export async function run(ctx) {
 
   // 7. Verify compute nodes endpoint (if exists)
   try {
-    const compute = await api.get("/api/compute/nodes");
+    if (!ctx.projectId) throw new Error("Missing ctx.projectId for project-scoped compute nodes");
+    const compute = await api.get(`/api/compute/nodes?project_id=${encodeURIComponent(ctx.projectId)}`);
     const nodes = compute.nodes || compute || [];
     checks.push({
       name: "Compute nodes endpoint",

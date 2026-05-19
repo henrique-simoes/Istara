@@ -241,12 +241,12 @@ class AgentResearchMixin:
             await db.commit()
             await broadcast_task_progress(task.id, 1.0, "Verification failed: response too short")
             await self._persist_agent_state(AgentState.IDLE)
-            await broadcast_agent_status("warning", f"Needs attention: {task.title}")
+            await broadcast_agent_status("warning", f"Needs attention: {task.title}", project_id=task.project_id)
         else:
             await self._mark_task_ready_for_review(db, task, f"{tool_summary}{result}")
             await broadcast_task_progress(task.id, 1.0, "Complete — ready for review.")
             await self._persist_agent_state(AgentState.IDLE)
-            await broadcast_agent_status("idle", f"Completed: {task.title}")
+            await broadcast_agent_status("idle", f"Completed: {task.title}", project_id=task.project_id)
 
     async def _execute_react_skill_tool(
         self,
@@ -326,7 +326,12 @@ class AgentResearchMixin:
             timeout_seconds=settings.agent_react_skill_tool_timeout_seconds,
         )
 
-        skill_manager.record_execution(skill_name, output.success, 0.8 if output.success else 0.2)
+        skill_manager.record_execution(
+            skill_name,
+            output.success,
+            0.8 if output.success else 0.2,
+            project_id=project.id,
+        )
         task.skill_name = skill_name
         if output.success:
             try:
@@ -603,7 +608,7 @@ class AgentResearchMixin:
             task.id, 1.0, f"Plan complete — {len(plan.past_steps)} steps ({total_steps} planned)."
         )
         await self._persist_agent_state(AgentState.IDLE)
-        await broadcast_agent_status("idle", f"Completed plan: {task.title}")
+        await broadcast_agent_status("idle", f"Completed plan: {task.title}", project_id=task.project_id)
 
     async def _execute_single_step(
         self,
@@ -1079,7 +1084,7 @@ class AgentResearchMixin:
                 company_context=project.company_context,
             )
 
-            await broadcast_agent_status("working", f"Running {skill.display_name}...")
+            await broadcast_agent_status("working", f"Running {skill.display_name}...", project_id=project_id)
 
             try:
                 output = await skill.execute(skill_input)
@@ -1129,21 +1134,26 @@ class AgentResearchMixin:
                     logger.warning("Failed to store findings for %s: %s", skill_name, store_err)
 
                 skill_manager.record_execution(
-                    skill_name, output.success, 0.8 if output.success else 0.2
+                    skill_name,
+                    output.success,
+                    0.8 if output.success else 0.2,
+                    project_id=project_id,
                 )
 
                 if verified:
-                    await broadcast_agent_status("idle", f"Completed: {skill.display_name}")
+                    await broadcast_agent_status("idle", f"Completed: {skill.display_name}", project_id=project_id)
                 else:
                     await broadcast_agent_status(
-                        "warning", f"Needs review: {skill.display_name} — {verify_reason}"
+                        "warning",
+                        f"Needs review: {skill.display_name} — {verify_reason}",
+                        project_id=project_id,
                     )
 
                 return output
 
             except Exception as e:
                 logger.exception("Manual skill execution failed")
-                await broadcast_agent_status("error", str(e))
+                await broadcast_agent_status("error", str(e), project_id=project_id)
                 return SkillOutput(success=False, summary=f"Execution failed: {e}", errors=[str(e)])
 
     async def plan_skill(self, skill_name: str, project_id: str, user_context: str = "") -> dict:

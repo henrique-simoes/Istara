@@ -157,7 +157,12 @@ async def _handle_questions(
     if config.get("adaptive", False) and last_message:
         needs_probe = await _should_probe(deployment, last_message, config)
         if needs_probe:
-            clarification = await generate_clarification(conversation, last_message, config)
+            clarification = await generate_clarification(
+                conversation,
+                last_message,
+                config,
+                project_id=deployment.project_id,
+            )
             if clarification:
                 metadata["state"] = ConversationState.PROBING
                 metadata["probe_count"] = metadata.get("probe_count", 0) + 1
@@ -198,7 +203,11 @@ async def _handle_probing(
     probe_count = metadata.get("probe_count", 0)
 
     # Check saturation
-    if probe_count >= max_probes or await _is_saturated(last_message, config):
+    if probe_count >= max_probes or await _is_saturated(
+        last_message,
+        config,
+        project_id=deployment.project_id,
+    ):
         # Return to questions flow
         metadata["state"] = ConversationState.QUESTIONS
         metadata["probe_count"] = 0
@@ -219,7 +228,12 @@ async def _handle_probing(
         return _handle_wrap_up(config, metadata)
 
     # Generate another probe
-    clarification = await generate_clarification(conversation, last_message, config)
+    clarification = await generate_clarification(
+        conversation,
+        last_message,
+        config,
+        project_id=deployment.project_id,
+    )
     if clarification:
         metadata["probe_count"] = probe_count + 1
         metadata["last_sent_at"] = time.time()
@@ -269,6 +283,7 @@ async def generate_clarification(
     conversation: ChannelConversation,
     response: str,
     config: dict | None = None,
+    project_id: str | None = None,
 ) -> str | None:
     """Use LLM to generate a probing/clarification question based on the response."""
     config = config or {}
@@ -290,7 +305,10 @@ async def generate_clarification(
             "Only output the question text, nothing else."
         )
 
-        result = await llm_router.chat([{"role": "user", "content": prompt}])
+        result = await llm_router.chat(
+            [{"role": "user", "content": prompt}],
+            project_id=project_id,
+        )
         content = result.get("content", "").strip()
         if content and content.upper() != "NONE":
             return content
@@ -321,7 +339,11 @@ async def _should_probe(
     return True
 
 
-async def _is_saturated(response: str, config: dict) -> bool:
+async def _is_saturated(
+    response: str,
+    config: dict,
+    project_id: str | None = None,
+) -> bool:
     """Check if the probing has reached saturation.
 
     Uses LLM to judge whether further probing would yield new information.
@@ -338,7 +360,10 @@ async def _is_saturated(response: str, config: dict) -> bool:
                 "participant repeating themselves / giving minimal answers?\n"
                 'Respond with exactly "SATURATED" or "NOT_SATURATED".'
             )
-            result = await llm_router.chat([{"role": "user", "content": prompt}])
+            result = await llm_router.chat(
+                [{"role": "user", "content": prompt}],
+                project_id=project_id,
+            )
             content = result.get("content", "").strip().upper()
             return "SATURATED" in content
         except Exception:

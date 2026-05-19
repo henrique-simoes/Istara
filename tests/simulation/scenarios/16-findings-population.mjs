@@ -149,7 +149,7 @@ export async function run(ctx) {
     const allRecs = await api.get(`/api/findings/recommendations?project_id=${ctx.projectId}`);
     const simRec = allRecs.find((r) => r.text.startsWith("[SIM]"));
     if (simRec) {
-      const chain = await api.get(`/api/findings/recommendation/${simRec.id}/evidence-chain`);
+      const chain = await api.get(`/api/findings/recommendation/${simRec.id}/evidence-chain?project_id=${ctx.projectId}`);
       const c = chain.chain || {};
       const hasInsights = (c.insight || []).length > 0;
       const hasFacts = (c.fact || []).length > 0;

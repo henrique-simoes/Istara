@@ -101,9 +101,9 @@ export default function AgentTimeline() {
       if (!entry || !activeProjectId) continue;
       try {
         if (entry.type === "task") {
-          await tasksApi.delete(id);
+          await tasksApi.delete(id, activeProjectId);
         } else {
-          await findingsApi.delete(entry.type, id);
+          await findingsApi.delete(entry.type, id, activeProjectId);
         }
       } catch {
         // continue with others

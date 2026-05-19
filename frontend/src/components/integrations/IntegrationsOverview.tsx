@@ -31,18 +31,38 @@ export default function IntegrationsOverview() {
   const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
+    let cancelled = false;
+    setLoaded(false);
     Promise.all([
-      fetchChannels(undefined, activeProjectId || undefined),
-      fetchDeployments(),
-      fetchSurveyIntegrations(activeProjectId || undefined),
-      fetchMCPClients(),
-    ]).finally(() => setLoaded(true));
+      fetchChannels(undefined, activeProjectId),
+      fetchDeployments(activeProjectId),
+      fetchSurveyIntegrations(activeProjectId),
+      fetchMCPClients(activeProjectId),
+    ]).finally(() => {
+      if (!cancelled) setLoaded(true);
+    });
+    return () => {
+      cancelled = true;
+    };
   }, [activeProjectId, fetchChannels, fetchDeployments, fetchSurveyIntegrations, fetchMCPClients]);
 
-  const activeChannels = (channelInstances || []).filter((c) => c.is_active).length;
-  const activeDeployments = (deploymentsList || []).filter((d) => d.state === "active").length;
-  const totalSurveyResponses = (surveyIntegrations || []).length;
-  const totalMCPTools = (mcpClients || []).reduce((acc, c) => acc + (c.tools?.length || 0), 0);
+  const scopedChannels = activeProjectId
+    ? (channelInstances || []).filter((c) => c.project_id === activeProjectId)
+    : [];
+  const scopedDeployments = activeProjectId
+    ? (deploymentsList || []).filter((d) => d.project_id === activeProjectId)
+    : [];
+  const scopedSurveyIntegrations = activeProjectId
+    ? (surveyIntegrations || []).filter((s) => s.project_id === activeProjectId)
+    : [];
+  const scopedMCPClients = activeProjectId
+    ? (mcpClients || []).filter((c) => c.project_id === activeProjectId)
+    : [];
+
+  const activeChannels = scopedChannels.filter((c) => c.is_active).length;
+  const activeDeployments = scopedDeployments.filter((d) => d.state === "active").length;
+  const totalSurveyResponses = scopedSurveyIntegrations.length;
+  const totalMCPTools = scopedMCPClients.reduce((acc, c) => acc + (c.tools?.length || 0), 0);
 
   const stats: StatCard[] = [
     { label: "Channels Active", value: activeChannels, icon: MessageSquare, color: "text-blue-500", tab: "messaging" },
@@ -53,14 +73,14 @@ export default function IntegrationsOverview() {
 
   // Build recent activity from channel instances + deployments
   const recentActivity = [
-    ...(channelInstances || []).slice(0, 3).map((c) => ({
+    ...scopedChannels.slice(0, 3).map((c) => ({
       id: c.id,
       type: "channel" as const,
       label: `${c.platform} channel "${c.name}"`,
       detail: c.is_active ? "Active" : "Inactive",
       time: c.updated_at,
     })),
-    ...(deploymentsList || []).slice(0, 3).map((d) => ({
+    ...scopedDeployments.slice(0, 3).map((d) => ({
       id: d.id,
       type: "deployment" as const,
       label: `${d.deployment_type} "${d.name}"`,

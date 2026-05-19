@@ -9,20 +9,24 @@ import logging
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, Request
 from pydantic import BaseModel
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
-from app.core.permissions import require_global_role, require_project_access
+from app.core.permissions import (
+    get_active_project_or_404,
+    require_global_admin,
+    require_global_role,
+    require_project_access,
+)
 from app.models.database import get_db
 from app.models.agent import Agent, AgentState, HeartbeatStatus
 from app.models.code_application import CodeApplication
 from app.models.document import Document, DocumentStatus
 from app.models.finding import Fact, Insight, Nugget, Recommendation
 from app.models.method_metric import MethodMetric
-from app.models.model_skill_stats import ModelSkillStats
 from app.models.research_deployment import ResearchDeployment
 from app.models.survey_integration import SurveyIntegration, SurveyLink
 from app.models.task import Task, TaskStatus
@@ -110,31 +114,67 @@ def _clamp_iterations(requested: int) -> int:
     return max(1, min(int(requested or 1), max_per_run))
 
 
-async def _build_operational_metrics(db: AsyncSession) -> dict:
-    """Summarize operational signals that AutoResearch can use."""
-    total_tasks = await db.scalar(select(func.count(Task.id))) or 0
+async def _require_project_scope(
+    db: AsyncSession,
+    request: Request,
+    project_id: str,
+    *,
+    min_role: str = "viewer",
+) -> None:
+    if not project_id:
+        raise HTTPException(status_code=400, detail="project_id is required")
+    await require_project_access(db, request, project_id, min_role=min_role)
+
+
+async def _require_active_project_scope(
+    db: AsyncSession,
+    request: Request,
+    project_id: str,
+    *,
+    min_role: str = "researcher",
+) -> str:
+    if not project_id:
+        raise HTTPException(status_code=400, detail="project_id is required")
+    project = await get_active_project_or_404(db, request, project_id, min_role=min_role)
+    return project.id
+
+
+async def _build_operational_metrics(db: AsyncSession, project_id: str) -> dict:
+    """Summarize project-scoped operational signals that AutoResearch can use."""
+    total_tasks = await db.scalar(
+        select(func.count(Task.id)).where(Task.project_id == project_id)
+    ) or 0
     done_tasks = (
-        await db.scalar(select(func.count(Task.id)).where(Task.status == TaskStatus.DONE))
+        await db.scalar(select(func.count(Task.id)).where(Task.project_id == project_id, Task.status == TaskStatus.DONE))
     ) or 0
     in_review_tasks = (
-        await db.scalar(select(func.count(Task.id)).where(Task.status == TaskStatus.IN_REVIEW))
+        await db.scalar(select(func.count(Task.id)).where(Task.project_id == project_id, Task.status == TaskStatus.IN_REVIEW))
     ) or 0
     needs_revision_tasks = (
         await db.scalar(
             select(func.count(Task.id)).where(
+                Task.project_id == project_id,
                 Task.review_state.in_(("needs_revision", "rejected_after_done", "system_failed"))
             )
         )
     ) or 0
     approved_tasks = (
-        await db.scalar(select(func.count(Task.id)).where(Task.review_state == "approved"))
+        await db.scalar(select(func.count(Task.id)).where(Task.project_id == project_id, Task.review_state == "approved"))
     ) or 0
-    total_review_cycles = await db.scalar(select(func.coalesce(func.sum(Task.review_cycle_count), 0))) or 0
+    total_review_cycles = await db.scalar(
+        select(func.coalesce(func.sum(Task.review_cycle_count), 0)).where(Task.project_id == project_id)
+    ) or 0
     avg_feedback = await db.scalar(
-        select(func.avg(Task.human_feedback_score)).where(Task.human_feedback_score.is_not(None))
+        select(func.avg(Task.human_feedback_score)).where(
+            Task.project_id == project_id,
+            Task.human_feedback_score.is_not(None),
+        )
     )
     avg_consensus = await db.scalar(
-        select(func.avg(Task.consensus_score)).where(Task.consensus_score.is_not(None))
+        select(func.avg(Task.consensus_score)).where(
+            Task.project_id == project_id,
+            Task.consensus_score.is_not(None),
+        )
     )
     validation_method_rows = (
         (
@@ -145,7 +185,7 @@ async def _build_operational_metrics(db: AsyncSession) -> dict:
                     func.sum(MethodMetric.success_count),
                     func.sum(MethodMetric.fail_count),
                     func.avg(MethodMetric.avg_consensus_score),
-                ).group_by(MethodMetric.method)
+                ).where(MethodMetric.project_id == project_id).group_by(MethodMetric.method)
             )
         )
         .all()
@@ -163,64 +203,113 @@ async def _build_operational_metrics(db: AsyncSession) -> dict:
     ]
     validation_runs = sum(row["total_runs"] for row in validation_method_stats)
     validation_successes = sum(row["success_count"] for row in validation_method_stats)
-    review_events = await db.scalar(select(func.count(TaskReviewEvent.id))) or 0
+    review_events = await db.scalar(
+        select(func.count(TaskReviewEvent.id)).where(TaskReviewEvent.project_id == project_id)
+    ) or 0
     approval_events = (
-        await db.scalar(select(func.count(TaskReviewEvent.id)).where(TaskReviewEvent.outcome == "approved"))
+        await db.scalar(
+            select(func.count(TaskReviewEvent.id)).where(
+                TaskReviewEvent.project_id == project_id,
+                TaskReviewEvent.outcome == "approved",
+            )
+        )
     ) or 0
     revision_events = (
         await db.scalar(
             select(func.count(TaskReviewEvent.id)).where(
+                TaskReviewEvent.project_id == project_id,
                 TaskReviewEvent.outcome.in_(("needs_revision", "rejected_after_done", "system_failed"))
             )
         )
     ) or 0
 
-    total_agents = await db.scalar(select(func.count(Agent.id))) or 0
-    active_agents = await db.scalar(select(func.count(Agent.id)).where(Agent.is_active.is_(True))) or 0
-    working_agents = await db.scalar(select(func.count(Agent.id)).where(Agent.state == AgentState.WORKING)) or 0
-    paused_agents = await db.scalar(select(func.count(Agent.id)).where(Agent.state == AgentState.PAUSED)) or 0
-    agent_errors = await db.scalar(select(func.coalesce(func.sum(Agent.error_count), 0))) or 0
-    agent_executions = await db.scalar(select(func.coalesce(func.sum(Agent.executions), 0))) or 0
+    total_agents = await db.scalar(
+        select(func.count(Agent.id)).where(Agent.project_id == project_id)
+    ) or 0
+    active_agents = await db.scalar(
+        select(func.count(Agent.id)).where(Agent.project_id == project_id, Agent.is_active.is_(True))
+    ) or 0
+    working_agents = await db.scalar(
+        select(func.count(Agent.id)).where(Agent.project_id == project_id, Agent.state == AgentState.WORKING)
+    ) or 0
+    paused_agents = await db.scalar(
+        select(func.count(Agent.id)).where(Agent.project_id == project_id, Agent.state == AgentState.PAUSED)
+    ) or 0
+    agent_errors = await db.scalar(
+        select(func.coalesce(func.sum(Agent.error_count), 0)).where(Agent.project_id == project_id)
+    ) or 0
+    agent_executions = await db.scalar(
+        select(func.coalesce(func.sum(Agent.executions), 0)).where(Agent.project_id == project_id)
+    ) or 0
     unhealthy_heartbeats = (
         await db.scalar(
             select(func.count(Agent.id)).where(
+                Agent.project_id == project_id,
                 Agent.heartbeat_status.in_((HeartbeatStatus.DEGRADED, HeartbeatStatus.ERROR, HeartbeatStatus.STOPPED))
             )
         )
     ) or 0
 
-    total_documents = await db.scalar(select(func.count(Document.id))) or 0
-    ready_documents = await db.scalar(select(func.count(Document.id)).where(Document.status == DocumentStatus.READY)) or 0
-    errored_documents = await db.scalar(select(func.count(Document.id)).where(Document.status == DocumentStatus.ERROR)) or 0
+    total_documents = await db.scalar(
+        select(func.count(Document.id)).where(Document.project_id == project_id)
+    ) or 0
+    ready_documents = await db.scalar(
+        select(func.count(Document.id)).where(Document.project_id == project_id, Document.status == DocumentStatus.READY)
+    ) or 0
+    errored_documents = await db.scalar(
+        select(func.count(Document.id)).where(Document.project_id == project_id, Document.status == DocumentStatus.ERROR)
+    ) or 0
     indexed_text_documents = (
-        await db.scalar(select(func.count(Document.id)).where(Document.content_text != ""))
+        await db.scalar(select(func.count(Document.id)).where(Document.project_id == project_id, Document.content_text != ""))
     ) or 0
     total_findings = sum(
         [
-            await db.scalar(select(func.count(Nugget.id))) or 0,
-            await db.scalar(select(func.count(Fact.id))) or 0,
-            await db.scalar(select(func.count(Insight.id))) or 0,
-            await db.scalar(select(func.count(Recommendation.id))) or 0,
+            await db.scalar(select(func.count(Nugget.id)).where(Nugget.project_id == project_id)) or 0,
+            await db.scalar(select(func.count(Fact.id)).where(Fact.project_id == project_id)) or 0,
+            await db.scalar(select(func.count(Insight.id)).where(Insight.project_id == project_id)) or 0,
+            await db.scalar(select(func.count(Recommendation.id)).where(Recommendation.project_id == project_id)) or 0,
         ]
     )
-    avg_insight_confidence = await db.scalar(select(func.avg(Insight.confidence)))
+    avg_insight_confidence = await db.scalar(
+        select(func.avg(Insight.confidence)).where(Insight.project_id == project_id)
+    )
 
-    total_code_applications = await db.scalar(select(func.count(CodeApplication.id))) or 0
+    total_code_applications = await db.scalar(
+        select(func.count(CodeApplication.id)).where(CodeApplication.project_id == project_id)
+    ) or 0
     pending_code_reviews = (
-        await db.scalar(select(func.count(CodeApplication.id)).where(CodeApplication.review_status == "pending"))
+        await db.scalar(
+            select(func.count(CodeApplication.id)).where(
+                CodeApplication.project_id == project_id,
+                CodeApplication.review_status == "pending",
+            )
+        )
     ) or 0
     approved_code_reviews = (
-        await db.scalar(select(func.count(CodeApplication.id)).where(CodeApplication.review_status == "approved"))
+        await db.scalar(
+            select(func.count(CodeApplication.id)).where(
+                CodeApplication.project_id == project_id,
+                CodeApplication.review_status == "approved",
+            )
+        )
     ) or 0
 
     recent_cutoff = datetime.now(timezone.utc) - timedelta(days=1)
-    total_spans = await db.scalar(select(func.count(TelemetrySpan.id))) or 0
+    total_spans = await db.scalar(
+        select(func.count(TelemetrySpan.id)).where(TelemetrySpan.project_id == project_id)
+    ) or 0
     spans_last_24h = (
-        await db.scalar(select(func.count(TelemetrySpan.id)).where(TelemetrySpan.created_at >= recent_cutoff))
+        await db.scalar(
+            select(func.count(TelemetrySpan.id)).where(
+                TelemetrySpan.project_id == project_id,
+                TelemetrySpan.created_at >= recent_cutoff,
+            )
+        )
     ) or 0
     error_spans_last_24h = (
         await db.scalar(
             select(func.count(TelemetrySpan.id)).where(
+                TelemetrySpan.project_id == project_id,
                 TelemetrySpan.created_at >= recent_cutoff,
                 TelemetrySpan.status.in_(("error", "timeout")),
             )
@@ -228,50 +317,108 @@ async def _build_operational_metrics(db: AsyncSession) -> dict:
     ) or 0
     avg_quality_24h = await db.scalar(
         select(func.avg(TelemetrySpan.quality_score)).where(
+            TelemetrySpan.project_id == project_id,
             TelemetrySpan.created_at >= recent_cutoff,
             TelemetrySpan.quality_score.is_not(None),
         )
     )
-    total_model_entries = await db.scalar(select(func.count(ModelSkillStats.id))) or 0
+    total_model_entries = await db.scalar(
+        select(func.count(func.distinct(TelemetrySpan.model_name))).where(
+            TelemetrySpan.project_id == project_id,
+            TelemetrySpan.model_name != "",
+        )
+    ) or 0
     production_model_entries = (
-        await db.scalar(select(func.count(ModelSkillStats.id)).where(ModelSkillStats.source == "production"))
+        await db.scalar(
+            select(func.count(func.distinct(TelemetrySpan.model_name))).where(
+                TelemetrySpan.project_id == project_id,
+                TelemetrySpan.model_name != "",
+                TelemetrySpan.source == "production",
+            )
+        )
     ) or 0
     autoresearch_model_entries = (
-        await db.scalar(select(func.count(ModelSkillStats.id)).where(ModelSkillStats.source == "autoresearch"))
+        await db.scalar(
+            select(func.count(func.distinct(TelemetrySpan.model_name))).where(
+                TelemetrySpan.project_id == project_id,
+                TelemetrySpan.model_name != "",
+                TelemetrySpan.source == "autoresearch",
+            )
+        )
     ) or 0
-    avg_model_quality = await db.scalar(select(func.avg(ModelSkillStats.quality_ema)))
-    best_model_quality = await db.scalar(select(func.max(ModelSkillStats.best_quality)))
+    avg_model_quality = await db.scalar(
+        select(func.avg(TelemetrySpan.quality_score)).where(TelemetrySpan.project_id == project_id)
+    )
+    best_model_quality = await db.scalar(
+        select(func.max(TelemetrySpan.quality_score)).where(TelemetrySpan.project_id == project_id)
+    )
 
-    total_deployments = await db.scalar(select(func.count(ResearchDeployment.id))) or 0
+    total_deployments = await db.scalar(
+        select(func.count(ResearchDeployment.id)).where(ResearchDeployment.project_id == project_id)
+    ) or 0
     active_deployments = (
-        await db.scalar(select(func.count(ResearchDeployment.id)).where(ResearchDeployment.state == "active"))
+        await db.scalar(
+            select(func.count(ResearchDeployment.id)).where(
+                ResearchDeployment.project_id == project_id,
+                ResearchDeployment.state == "active",
+            )
+        )
     ) or 0
-    deployment_responses = await db.scalar(select(func.coalesce(func.sum(ResearchDeployment.current_responses), 0))) or 0
-    deployment_targets = await db.scalar(select(func.coalesce(func.sum(ResearchDeployment.target_responses), 0))) or 0
-    survey_integrations = await db.scalar(select(func.count(SurveyIntegration.id))) or 0
+    deployment_responses = await db.scalar(
+        select(func.coalesce(func.sum(ResearchDeployment.current_responses), 0)).where(ResearchDeployment.project_id == project_id)
+    ) or 0
+    deployment_targets = await db.scalar(
+        select(func.coalesce(func.sum(ResearchDeployment.target_responses), 0)).where(ResearchDeployment.project_id == project_id)
+    ) or 0
+    survey_integrations = await db.scalar(
+        select(func.count(SurveyIntegration.id)).where(SurveyIntegration.project_id == project_id)
+    ) or 0
     active_survey_integrations = (
-        await db.scalar(select(func.count(SurveyIntegration.id)).where(SurveyIntegration.is_active.is_(True)))
+        await db.scalar(
+            select(func.count(SurveyIntegration.id)).where(
+                SurveyIntegration.project_id == project_id,
+                SurveyIntegration.is_active.is_(True),
+            )
+        )
     ) or 0
-    survey_links = await db.scalar(select(func.count(SurveyLink.id))) or 0
-    survey_responses = await db.scalar(select(func.coalesce(func.sum(SurveyLink.response_count), 0))) or 0
+    survey_links = await db.scalar(
+        select(func.count(SurveyLink.id)).where(SurveyLink.project_id == project_id)
+    ) or 0
+    survey_responses = await db.scalar(
+        select(func.coalesce(func.sum(SurveyLink.response_count), 0)).where(SurveyLink.project_id == project_id)
+    ) or 0
 
     try:
         from app.core.scheduler import ScheduledTask
 
-        total_schedules = await db.scalar(select(func.count(ScheduledTask.id))) or 0
+        total_schedules = await db.scalar(
+            select(func.count(ScheduledTask.id)).where(ScheduledTask.project_id == project_id)
+        ) or 0
         active_schedules = (
-            await db.scalar(select(func.count(ScheduledTask.id)).where(ScheduledTask.enabled.is_(True)))
+            await db.scalar(
+                select(func.count(ScheduledTask.id)).where(
+                    ScheduledTask.project_id == project_id,
+                    ScheduledTask.enabled.is_(True),
+                )
+            )
         ) or 0
         running_schedules = (
-            await db.scalar(select(func.count(ScheduledTask.id)).where(ScheduledTask.is_running.is_(True)))
+            await db.scalar(
+                select(func.count(ScheduledTask.id)).where(
+                    ScheduledTask.project_id == project_id,
+                    ScheduledTask.is_running.is_(True),
+                )
+            )
         ) or 0
-        schedule_executions = await db.scalar(select(func.coalesce(func.sum(ScheduledTask.execution_count), 0))) or 0
+        schedule_executions = await db.scalar(
+            select(func.coalesce(func.sum(ScheduledTask.execution_count), 0)).where(ScheduledTask.project_id == project_id)
+        ) or 0
     except Exception:
         total_schedules = active_schedules = running_schedules = schedule_executions = 0
 
     from app.core.compute_registry import compute_registry
 
-    compute_stats = compute_registry.get_stats()
+    compute_stats = compute_registry.get_stats(project_id=project_id)
     nodes = compute_stats.get("nodes", [])
     healthy_nodes = [
         node
@@ -374,16 +521,22 @@ async def _build_operational_metrics(db: AsyncSession) -> dict:
 
 
 @router.get("/status")
-async def autoresearch_status(request: Request, db: AsyncSession = Depends(get_db)):
-    """Get autoresearch engine status and current experiment."""
-    require_global_role(request, "researcher")
+async def autoresearch_status(
+    request: Request,
+    project_id: str = Query(...),
+    db: AsyncSession = Depends(get_db),
+):
+    """Get autoresearch engine status and current project experiment."""
+    await _require_project_scope(db, request, project_id, min_role="viewer")
     engine = _get_engine()
     current = engine.get_current_experiment()
+    current_project_id = current.get("project_id") if current else None
+    current_for_project = current if current_project_id == project_id else None
     return {
-        "running": engine.is_running,
+        "running": bool(engine.is_running and current_for_project),
         "enabled": getattr(settings, "autoresearch_enabled", False),
-        "current_experiment": current,
-        "operational_metrics": await _build_operational_metrics(db),
+        "current_experiment": current_for_project,
+        "operational_metrics": await _build_operational_metrics(db, project_id),
     }
 
 
@@ -394,11 +547,14 @@ async def list_experiments(
     kept: Optional[bool] = None,
     limit: int = 50,
     offset: int = 0,
+    project_id: str = Query(...),
+    db: AsyncSession = Depends(get_db),
 ):
-    """Get paginated experiment history with optional filters."""
-    require_global_role(request, "researcher")
+    """Get paginated project experiment history with optional filters."""
+    await _require_project_scope(db, request, project_id, min_role="viewer")
     engine = _get_engine()
     experiments = await engine.get_experiments(
+        project_id=project_id,
         loop_type=loop_type,
         kept=kept,
         limit=limit,
@@ -408,13 +564,18 @@ async def list_experiments(
 
 
 @router.get("/experiments/{experiment_id}")
-async def get_experiment(experiment_id: str, request: Request):
-    """Get a single experiment by ID."""
+async def get_experiment(
+    experiment_id: str,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+):
+    """Get a single experiment by ID after enforcing its project access."""
     require_global_role(request, "researcher")
     engine = _get_engine()
     experiment = await engine.get_experiment(experiment_id)
     if not experiment:
         raise HTTPException(status_code=404, detail="Experiment not found")
+    await _require_project_scope(db, request, experiment.get("project_id", ""), min_role="viewer")
     return experiment
 
 
@@ -426,10 +587,12 @@ async def start_experiment(
     db: AsyncSession = Depends(get_db),
 ):
     """Start an autoresearch experiment loop in the background."""
-    if body.project_id:
-        await require_project_access(db, request, body.project_id, min_role="researcher")
-    else:
-        require_global_role(request, "researcher")
+    scoped_project_id = await _require_active_project_scope(
+        db,
+        request,
+        body.project_id,
+        min_role="researcher",
+    )
     engine = _get_engine()
 
     if engine.is_running:
@@ -453,7 +616,7 @@ async def start_experiment(
                 runner=runner,
                 target=body.target,
                 max_iterations=max_iterations,
-                project_id=body.project_id,
+                project_id=scoped_project_id,
             )
         except Exception as exc:
             logger.error(f"Autoresearch loop failed: {exc}", exc_info=True)
@@ -464,18 +627,24 @@ async def start_experiment(
         "status": "started",
         "loop_type": body.loop_type,
         "target": body.target,
+        "project_id": scoped_project_id,
         "max_iterations": max_iterations,
     }
 
 
 @router.post("/stop")
-async def stop_experiment(request: Request):
-    """Stop the currently running experiment loop."""
-    require_global_role(request, "researcher")
+async def stop_experiment(
+    request: Request,
+    project_id: str = Query(...),
+    db: AsyncSession = Depends(get_db),
+):
+    """Stop the currently running experiment loop for the active project."""
+    await _require_project_scope(db, request, project_id, min_role="researcher")
     engine = _get_engine()
 
-    if not engine.is_running:
-        raise HTTPException(status_code=409, detail="No experiment loop is currently running.")
+    current = engine.get_current_experiment()
+    if not engine.is_running or not current or current.get("project_id") != project_id:
+        raise HTTPException(status_code=409, detail="No experiment loop is currently running for this project.")
 
     engine.request_stop()
     return {"status": "stopped"}
@@ -497,7 +666,7 @@ async def get_config(request: Request):
 @router.patch("/config")
 async def update_config(body: ConfigUpdate, request: Request):
     """Update autoresearch configuration."""
-    require_global_role(request, "researcher")
+    require_global_admin(request)
     if body.enabled is not None:
         settings.autoresearch_enabled = body.enabled
     if body.max_experiments_per_run is not None:
@@ -527,17 +696,21 @@ async def update_config(body: ConfigUpdate, request: Request):
 
 
 @router.get("/leaderboard")
-async def get_leaderboard(request: Request):
-    """Get best model+temperature leaderboard per skill."""
-    require_global_role(request, "researcher")
+async def get_leaderboard(
+    request: Request,
+    project_id: str = Query(...),
+    db: AsyncSession = Depends(get_db),
+):
+    """Get best model+temperature leaderboard per skill for a project."""
+    await _require_project_scope(db, request, project_id, min_role="viewer")
     engine = _get_engine()
-    return await engine.get_leaderboard()
+    return await engine.get_leaderboard(project_id=project_id)
 
 
 @router.post("/toggle")
 async def toggle_autoresearch(body: ToggleRequest, request: Request):
     """Enable or disable autoresearch."""
-    require_global_role(request, "researcher")
+    require_global_admin(request)
     settings.autoresearch_enabled = body.enabled
 
     engine = _get_engine()

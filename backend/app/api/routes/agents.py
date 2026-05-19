@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+import json
 import logging
 import re
 from pathlib import Path
@@ -15,7 +16,7 @@ def _get_version() -> str:
     except Exception:
         return "dev"
 
-from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile
+from fastapi import APIRouter, Depends, File, HTTPException, Query, Request, UploadFile
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
 from sqlalchemy import select
@@ -26,10 +27,19 @@ from app.agents.ux_eval_agent import ux_eval_agent
 from app.agents.user_sim_agent import user_sim_agent
 from app.config import settings
 from app.core.improvement_governance import improvement_governance
-from app.core.permissions import require_project_access
-from app.core.resource_governor import governor
+from app.core.permissions import get_active_project_or_404, require_project_access
 from app.core.security_middleware import require_admin_from_request
-from app.core.context_hierarchy import context_hierarchy, ContextDocument
+from app.api.agent_project_scope import (
+    agent_project_id,
+    clean_project_id,
+    filter_agent_dicts_for_project,
+    filter_work_log,
+    is_team_non_admin,
+    redact_global_agent_state_for_project_view,
+    require_agent_by_id,
+    require_agent_collection_scope,
+    require_project_owned_agent,
+)
 from app.models.database import get_db
 from app.services import agent_service, a2a
 
@@ -89,19 +99,6 @@ def _resolve_avatar_path(avatar_path: str) -> Path:
     return resolved
 
 
-async def _require_context_access(
-    db: AsyncSession,
-    request: Request,
-    doc: ContextDocument,
-    *,
-    min_role: str = "viewer",
-) -> None:
-    if doc.project_id:
-        await require_project_access(db, request, doc.project_id, min_role=min_role)
-        return
-    require_admin_from_request(request)
-
-
 # ───── Agent CRUD ─────
 
 
@@ -111,6 +108,7 @@ class CreateAgentRequest(BaseModel):
     system_prompt: str = ""
     capabilities: list[str] | None = None
     heartbeat_interval: int = 60
+    project_id: str | None = None
 
 
 class UpdateAgentRequest(BaseModel):
@@ -124,21 +122,16 @@ class UpdateAgentRequest(BaseModel):
 
 @router.get("/agents")
 async def list_agents(
+    request: Request,
     include_system: bool = True,
     project_id: str | None = None,
     db: AsyncSession = Depends(get_db),
 ):
     """List agents — universal agents are always included, project-scoped
     agents are filtered to the given project_id."""
+    scoped_project_id = await require_agent_collection_scope(db, request, project_id)
     agents = await agent_service.list_agents(db, include_system)
-    if project_id:
-        # Show universal agents + agents scoped to this project
-        agents = [
-            a for a in agents
-            if a.get("scope", "universal") == "universal"
-            or a.get("project_id") == project_id
-        ]
-    return {"agents": agents}
+    return {"agents": filter_agent_dicts_for_project(agents, scoped_project_id, request)}
 
 
 @router.get("/agents/capacity")
@@ -148,9 +141,15 @@ async def check_capacity():
 
 
 @router.get("/agents/heartbeat/status")
-async def heartbeat_status(db: AsyncSession = Depends(get_db)):
-    """Get heartbeat status for all agents."""
+async def heartbeat_status(
+    request: Request,
+    project_id: str | None = None,
+    db: AsyncSession = Depends(get_db),
+):
+    """Get heartbeat status for agents visible in one project, or all for admins."""
+    scoped_project_id = await require_agent_collection_scope(db, request, project_id)
     agents = await agent_service.list_agents(db)
+    agents = filter_agent_dicts_for_project(agents, scoped_project_id, request)
     return {
         "agents": [
             {
@@ -166,25 +165,46 @@ async def heartbeat_status(db: AsyncSession = Depends(get_db)):
 
 
 @router.get("/agents/a2a/log")
-async def get_a2a_log(limit: int = 100, db: AsyncSession = Depends(get_db)):
-    """Get the full A2A message log."""
-    messages = await a2a.get_full_log(db, limit)
+async def get_a2a_log(
+    request: Request,
+    limit: int = 100,
+    project_id: str = Query(...),
+    db: AsyncSession = Depends(get_db),
+):
+    """Get the A2A message log for one authorized project."""
+    await require_project_access(db, request, project_id, min_role="viewer")
+    messages = await a2a.get_full_log(db, limit, project_id=project_id)
     return {"messages": messages}
 
 
 @router.get("/agents/status")
-async def get_orchestrator_status():
+async def get_orchestrator_status(request: Request):
     """Get full orchestrator status."""
+    require_admin_from_request(request)
     return meta_orchestrator.get_status()
 
 
 @router.get("/agents/log/recent")
-async def get_agent_log(agent_id: str | None = None, limit: int = 50):
+async def get_agent_log(
+    request: Request,
+    agent_id: str | None = None,
+    limit: int = 50,
+    project_id: str | None = None,
+    db: AsyncSession = Depends(get_db),
+):
     limit = max(1, min(limit, 100))
+    scoped_project_id = await require_agent_collection_scope(db, request, project_id)
+    if agent_id and (scoped_project_id or is_team_non_admin(request)):
+        await require_agent_by_id(db, request, agent_id, project_id=scoped_project_id)
     log = meta_orchestrator.get_work_log(limit=limit)
-    if agent_id:
-        log = [entry for entry in log if entry.get("agent_id") == agent_id]
-    return {"log": log[-limit:]}
+    return {
+        "log": filter_work_log(
+            log,
+            project_id=scoped_project_id,
+            agent_id=agent_id,
+            limit=limit,
+        )
+    }
 
 
 @router.post("/agents", status_code=201)
@@ -194,7 +214,10 @@ async def create_agent(
     db: AsyncSession = Depends(get_db),
 ):
     """Create a new user agent with full persona file support."""
-    require_admin_from_request(request)
+    scoped_project_id = clean_project_id(data.project_id)
+    if not scoped_project_id:
+        raise HTTPException(status_code=400, detail="project_id is required")
+    await require_project_access(db, request, scoped_project_id, min_role="project_admin")
     agent = await agent_service.create_agent(
         db,
         name=data.name,
@@ -202,6 +225,8 @@ async def create_agent(
         system_prompt=data.system_prompt,
         capabilities=data.capabilities,
         heartbeat_interval=data.heartbeat_interval,
+        scope="project",
+        project_id=scoped_project_id,
     )
 
     # Auto-create persona MD files for the custom agent so it can
@@ -229,7 +254,7 @@ async def create_agent(
 
     try:
         from app.api.websocket import manager as ws_manager
-        await ws_manager.broadcast("agent_created", agent)
+        await ws_manager.broadcast("agent_created", {**agent, "project_id": scoped_project_id})
     except Exception:
         pass
     # Start the custom agent's work loop
@@ -242,12 +267,15 @@ async def create_agent(
 
 
 @router.get("/agents/{agent_id}")
-async def get_agent(agent_id: str, db: AsyncSession = Depends(get_db)):
+async def get_agent(
+    agent_id: str,
+    request: Request,
+    project_id: str | None = None,
+    db: AsyncSession = Depends(get_db),
+):
     """Get a specific agent's full details."""
-    agent = await agent_service.get_agent(db, agent_id)
-    if not agent:
-        raise HTTPException(status_code=404, detail="Agent not found")
-    return agent
+    agent = await require_agent_by_id(db, request, agent_id, project_id=project_id)
+    return redact_global_agent_state_for_project_view(agent.to_dict(), request)
 
 
 @router.patch("/agents/{agent_id}")
@@ -255,10 +283,11 @@ async def update_agent(
     agent_id: str,
     data: UpdateAgentRequest,
     request: Request,
+    project_id: str | None = None,
     db: AsyncSession = Depends(get_db),
 ):
     """Update an agent's configuration."""
-    require_admin_from_request(request)
+    await require_project_owned_agent(db, request, agent_id, project_id)
     updates = data.model_dump(exclude_unset=True)
     if "heartbeat_interval" in updates:
         updates["heartbeat_interval_seconds"] = updates.pop("heartbeat_interval")
@@ -269,9 +298,9 @@ async def update_agent(
 
 
 @router.delete("/agents/{agent_id}", status_code=204)
-async def delete_agent(agent_id: str, request: Request, db: AsyncSession = Depends(get_db)):
-    """Soft-delete an agent. Admin only."""
-    require_admin_from_request(request)
+async def delete_agent(agent_id: str, request: Request, project_id: str | None = None, db: AsyncSession = Depends(get_db)):
+    """Soft-delete a project-owned agent from the active project."""
+    await require_project_owned_agent(db, request, agent_id, project_id)
     # Stop custom agent worker if running
     try:
         from app.agents.custom_worker import stop_custom_agent
@@ -283,8 +312,8 @@ async def delete_agent(agent_id: str, request: Request, db: AsyncSession = Depen
 
 
 @router.post("/agents/{agent_id}/pause")
-async def pause_agent(agent_id: str, request: Request, db: AsyncSession = Depends(get_db)):
-    require_admin_from_request(request)
+async def pause_agent(agent_id: str, request: Request, project_id: str | None = None, db: AsyncSession = Depends(get_db)):
+    await require_project_owned_agent(db, request, agent_id, project_id)
     from app.models.agent import AgentState
     if not await agent_service.set_agent_state(db, agent_id, AgentState.PAUSED):
         raise HTTPException(status_code=404, detail="Agent not found")
@@ -292,8 +321,8 @@ async def pause_agent(agent_id: str, request: Request, db: AsyncSession = Depend
 
 
 @router.post("/agents/{agent_id}/resume")
-async def resume_agent(agent_id: str, request: Request, db: AsyncSession = Depends(get_db)):
-    require_admin_from_request(request)
+async def resume_agent(agent_id: str, request: Request, project_id: str | None = None, db: AsyncSession = Depends(get_db)):
+    await require_project_owned_agent(db, request, agent_id, project_id)
     from app.models.agent import AgentState
     if not await agent_service.set_agent_state(db, agent_id, AgentState.IDLE):
         raise HTTPException(status_code=404, detail="Agent not found")
@@ -301,9 +330,9 @@ async def resume_agent(agent_id: str, request: Request, db: AsyncSession = Depen
 
 
 @router.post("/agents/{agent_id}/restart")
-async def restart_agent(agent_id: str, request: Request, db: AsyncSession = Depends(get_db)):
+async def restart_agent(agent_id: str, request: Request, project_id: str | None = None, db: AsyncSession = Depends(get_db)):
     """Reset an agent from ERROR state back to IDLE, clearing error counters."""
-    require_admin_from_request(request)
+    await require_project_owned_agent(db, request, agent_id, project_id)
     from app.models.agent import AgentState, HeartbeatStatus
     from app.models.agent import Agent
 
@@ -359,18 +388,24 @@ async def set_agent_scope(
 
 
 @router.post("/agents/{agent_id}/request-promotion")
-async def request_promotion(agent_id: str, request: Request, db: AsyncSession = Depends(get_db)):
+async def request_promotion(
+    agent_id: str,
+    request: Request,
+    project_id: str | None = None,
+    db: AsyncSession = Depends(get_db),
+):
     """Submit a request to promote a project-scoped agent to universal.
     Creates a notification for admins to review."""
-    from app.models.agent import Agent
-
-    result = await db.execute(select(Agent).where(Agent.id == agent_id))
-    agent = result.scalar_one_or_none()
-    if not agent:
-        raise HTTPException(status_code=404, detail="Agent not found")
+    agent = await require_agent_by_id(
+        db, request, agent_id, project_id=project_id, min_role="researcher"
+    )
 
     if agent.scope == "universal":
         return {"status": "already_universal"}
+
+    scoped_project_id = agent_project_id(agent)
+    if not scoped_project_id:
+        raise HTTPException(status_code=400, detail="project_id is required")
 
     # Create a notification for admins
     from app.models.notification import Notification
@@ -383,12 +418,21 @@ async def request_promotion(agent_id: str, request: Request, db: AsyncSession = 
         category="agent_promotion",
         severity="info",
         agent_id=agent_id,
+        project_id=scoped_project_id,
         action_type="review_agent_promotion",
         action_target=agent_id,
+        metadata_json=json.dumps(
+            {
+                "agent_id": agent_id,
+                "agent_name": agent.name,
+                "project_id": scoped_project_id,
+                "requested_scope": "universal",
+            }
+        ),
     )
     db.add(notif)
     await db.commit()
-    return {"status": "requested", "agent_id": agent_id}
+    return {"status": "requested", "agent_id": agent_id, "project_id": scoped_project_id}
 
 
 # ───── Avatar ─────
@@ -398,14 +442,12 @@ async def request_promotion(agent_id: str, request: Request, db: AsyncSession = 
 async def upload_avatar(
     agent_id: str,
     request: Request,
+    project_id: str | None = None,
     file: UploadFile = File(...),
     db: AsyncSession = Depends(get_db),
 ):
     """Upload an avatar image for an agent."""
-    require_admin_from_request(request)
-    agent = await agent_service.get_agent(db, agent_id)
-    if not agent:
-        raise HTTPException(status_code=404, detail="Agent not found")
+    await require_project_owned_agent(db, request, agent_id, project_id)
 
     ext = AVATAR_CONTENT_TYPES.get(file.content_type or "")
     if not ext:
@@ -423,12 +465,18 @@ async def upload_avatar(
 
 
 @router.get("/agents/{agent_id}/avatar")
-async def get_avatar(agent_id: str, db: AsyncSession = Depends(get_db)):
+async def get_avatar(
+    agent_id: str,
+    request: Request,
+    project_id: str | None = None,
+    db: AsyncSession = Depends(get_db),
+):
     """Serve an agent's avatar image."""
-    agent = await agent_service.get_agent(db, agent_id)
-    if not agent or not agent.get("avatar_path"):
+    agent = await require_agent_by_id(db, request, agent_id, project_id=project_id)
+    serialized = agent.to_dict()
+    if not serialized.get("avatar_path"):
         raise HTTPException(status_code=404, detail="No avatar found")
-    path = _resolve_avatar_path(agent["avatar_path"])
+    path = _resolve_avatar_path(serialized["avatar_path"])
     if not path.exists():
         raise HTTPException(status_code=404, detail="Avatar file missing")
     return FileResponse(path)
@@ -438,7 +486,12 @@ async def get_avatar(agent_id: str, db: AsyncSession = Depends(get_db)):
 
 
 @router.get("/agents/{agent_id}/identity")
-async def get_identity(agent_id: str):
+async def get_identity(
+    agent_id: str,
+    request: Request,
+    project_id: str | None = None,
+    db: AsyncSession = Depends(get_db),
+):
     """Get an agent's full identity from its persona MD files."""
     from app.core.agent_identity import (
         load_agent_identity,
@@ -446,6 +499,8 @@ async def get_identity(agent_id: str):
         IDENTITY_FILES,
         persona_file_path,
     )
+
+    await require_agent_by_id(db, request, agent_id, project_id=project_id)
 
     display_name = get_agent_display_name(agent_id)
     identity = load_agent_identity(agent_id)
@@ -467,9 +522,9 @@ async def get_identity(agent_id: str):
 
 
 @router.put("/agents/{agent_id}/identity")
-async def update_identity(agent_id: str, data: dict, request: Request):
+async def update_identity(agent_id: str, data: dict, request: Request, project_id: str | None = None, db: AsyncSession = Depends(get_db)):
     """Update an agent's local persona overlay files."""
-    require_admin_from_request(request)
+    await require_project_owned_agent(db, request, agent_id, project_id)
     from app.core.agent_identity import (
         IDENTITY_FILES,
         load_agent_identity,
@@ -523,8 +578,9 @@ async def update_identity(agent_id: str, data: dict, request: Request):
 
 
 @router.get("/agents/personas/list")
-async def list_personas():
+async def list_personas(request: Request):
     """List all agents that have persona directories."""
+    require_admin_from_request(request)
     from app.core.agent_identity import list_agent_personas, get_agent_display_name
     personas = list_agent_personas()
     return {
@@ -541,44 +597,73 @@ async def list_personas():
 @router.get("/agents/{agent_id}/learnings")
 async def get_learnings(
     agent_id: str,
+    request: Request,
     category: str | None = None,
     limit: int = 20,
+    project_id: str | None = None,
+    db: AsyncSession = Depends(get_db),
 ):
     """Get an agent's structured learnings."""
     from app.core.agent_learning import agent_learning
-    learnings = await agent_learning.get_relevant_learnings(
-        agent_id, category=category, limit=limit
+    scoped_project_id = clean_project_id(project_id)
+    if not scoped_project_id:
+        raise HTTPException(status_code=400, detail="project_id is required")
+    agent = await require_agent_by_id(
+        db,
+        request,
+        agent_id,
+        project_id=scoped_project_id,
     )
-    return {"agent_id": agent_id, "learnings": learnings}
+    if is_team_non_admin(request) and not agent_project_id(agent):
+        return {"agent_id": agent_id, "learnings": []}
+    learnings = await agent_learning.get_relevant_learnings(
+        agent_id,
+        category=category,
+        limit=limit,
+        project_id=scoped_project_id,
+    )
+    return {"agent_id": agent_id, "project_id": scoped_project_id, "learnings": learnings}
 
 
 # ───── Self-Evolution ─────
 
 
-@router.get("/agents/{agent_id}/evolution/candidates")
-async def get_evolution_candidates(agent_id: str, request: Request):
-    """Scan an agent's learnings for patterns ready for promotion."""
+async def _require_self_evolution_project_scope(
+    db: AsyncSession, request: Request, project_id: str | None, *, min_role: str = "project_admin",
+) -> str:
     require_admin_from_request(request)
+    scoped_project_id = clean_project_id(project_id)
+    if not scoped_project_id:
+        raise HTTPException(status_code=400, detail="project_id is required")
+    project = await get_active_project_or_404(
+        db,
+        request,
+        scoped_project_id,
+        min_role=min_role,
+    )
+    return project.id
+
+
+@router.get("/agents/{agent_id}/evolution/candidates")
+async def get_evolution_candidates(agent_id: str, request: Request, project_id: str | None = None, db: AsyncSession = Depends(get_db)):
+    """Scan an agent's learnings for patterns ready for promotion."""
+    scoped_project_id = await _require_self_evolution_project_scope(db, request, project_id)
+    await require_agent_by_id(db, request, agent_id, project_id=scoped_project_id)
     from app.core.self_evolution import self_evolution
-    candidates = await self_evolution.scan_for_promotions(agent_id)
-    return {
-        "agent_id": agent_id,
-        "candidates": candidates,
-        "count": len(candidates),
-    }
+    candidates = await self_evolution.scan_for_promotions(agent_id, project_id=scoped_project_id)
+    return {"agent_id": agent_id, "project_id": scoped_project_id, "candidates": candidates, "count": len(candidates)}
 
 
 @router.post("/agents/{agent_id}/evolution/promote/{learning_id}")
 async def promote_learning(
-    agent_id: str,
-    learning_id: int,
-    request: Request,
-    target_file: str | None = None,
+    agent_id: str, learning_id: int, request: Request, target_file: str | None = None,
+    project_id: str | None = None, db: AsyncSession = Depends(get_db),
 ):
     """Promote a specific learning into the agent's persona files."""
-    require_admin_from_request(request)
+    scoped_project_id = await _require_self_evolution_project_scope(db, request, project_id)
+    await require_agent_by_id(db, request, agent_id, project_id=scoped_project_id)
     from app.core.self_evolution import self_evolution
-    result = await self_evolution.promote_learning(agent_id, learning_id, target_file)
+    result = await self_evolution.promote_learning(agent_id, learning_id, target_file, project_id=scoped_project_id)
     if not result.get("success"):
         raise HTTPException(status_code=400, detail=result.get("error", "Promotion failed"))
     try:
@@ -589,11 +674,12 @@ async def promote_learning(
 
 
 @router.post("/agents/{agent_id}/evolution/auto")
-async def auto_evolve(agent_id: str, request: Request):
+async def auto_evolve(agent_id: str, request: Request, project_id: str | None = None, db: AsyncSession = Depends(get_db)):
     """Run the full self-evolution cycle (auto-promote mature patterns)."""
-    require_admin_from_request(request)
+    scoped_project_id = await _require_self_evolution_project_scope(db, request, project_id)
+    await require_agent_by_id(db, request, agent_id, project_id=scoped_project_id)
     from app.core.self_evolution import self_evolution
-    promotions = await self_evolution.auto_evolve(agent_id)
+    promotions = await self_evolution.auto_evolve(agent_id, project_id=scoped_project_id)
     for promotion in promotions:
         try:
             await improvement_governance.register_self_evolution_promotion(promotion, applied=True)
@@ -601,23 +687,20 @@ async def auto_evolve(agent_id: str, request: Request):
             pass
     return {
         "agent_id": agent_id,
+        "project_id": scoped_project_id,
         "promotions_applied": len(promotions),
         "promotions": promotions,
     }
 
 
 @router.get("/agents/evolution/scan")
-async def scan_all_evolution(request: Request):
+async def scan_all_evolution(request: Request, project_id: str | None = None, db: AsyncSession = Depends(get_db)):
     """Scan all agents for promotable learnings."""
-    require_admin_from_request(request)
+    scoped_project_id = await _require_self_evolution_project_scope(db, request, project_id)
     from app.core.self_evolution import self_evolution
-    results = await self_evolution.scan_all_agents()
+    results = await self_evolution.scan_all_agents(project_id=scoped_project_id)
     total = sum(len(v) for v in results.values())
-    return {
-        "agents_with_candidates": len(results),
-        "total_candidates": total,
-        "results": results,
-    }
+    return {"project_id": scoped_project_id, "agents_with_candidates": len(results), "total_candidates": total, "results": results}
 
 
 # ───── Agent Creation Proposals (Memento-Skills) ─────
@@ -627,25 +710,48 @@ class RejectProposalRequest(BaseModel):
     reason: str = ""
 
 
+async def _require_agent_proposal_project_scope(
+    db: AsyncSession,
+    request: Request,
+    project_id: str | None,
+    *,
+    min_role: str = "project_admin",
+) -> str:
+    scoped_project_id = clean_project_id(project_id)
+    if not scoped_project_id:
+        raise HTTPException(status_code=400, detail="project_id is required")
+    await require_project_access(db, request, scoped_project_id, min_role=min_role)
+    return scoped_project_id
+
+
 @router.get("/agents/creation-proposals/pending")
-async def get_pending_proposals(request: Request):
+async def get_pending_proposals(
+    request: Request,
+    project_id: str | None = None,
+    db: AsyncSession = Depends(get_db),
+):
     """Get all pending agent creation proposals."""
-    require_admin_from_request(request)
+    scoped_project_id = await _require_agent_proposal_project_scope(db, request, project_id)
     from app.core.agent_factory import AgentFactory
 
     factory = AgentFactory()
-    proposals = factory.get_pending_proposals()
+    proposals = factory.get_pending_proposals(project_id=scoped_project_id)
     return {"proposals": proposals, "count": len(proposals)}
 
 
 @router.get("/agents/creation-proposals/all")
-async def get_all_proposals(request: Request, limit: int = 20):
+async def get_all_proposals(
+    request: Request,
+    limit: int = 20,
+    project_id: str | None = None,
+    db: AsyncSession = Depends(get_db),
+):
     """Get all agent creation proposals (any status)."""
-    require_admin_from_request(request)
+    scoped_project_id = await _require_agent_proposal_project_scope(db, request, project_id)
     from app.core.agent_factory import AgentFactory
 
     factory = AgentFactory()
-    proposals = factory.get_all_proposals(limit)
+    proposals = factory.get_all_proposals(limit, project_id=scoped_project_id)
     return {"proposals": proposals, "count": len(proposals)}
 
 
@@ -653,14 +759,19 @@ async def get_all_proposals(request: Request, limit: int = 20):
 async def approve_proposal(
     proposal_id: str,
     request: Request,
+    project_id: str | None = None,
     db: AsyncSession = Depends(get_db),
 ):
     """Approve a proposal — creates the agent in DB, scaffolds persona, starts worker."""
-    require_admin_from_request(request)
+    scoped_project_id = await _require_agent_proposal_project_scope(
+        db,
+        request,
+        project_id,
+    )
     from app.core.agent_factory import AgentFactory
 
     factory = AgentFactory()
-    proposal = factory.approve_proposal(proposal_id)
+    proposal = factory.approve_proposal(proposal_id, project_id=scoped_project_id)
     if not proposal:
         raise HTTPException(status_code=404, detail="Proposal not found or not pending")
 
@@ -672,19 +783,10 @@ async def approve_proposal(
         system_prompt=proposal["proposed_system_prompt"],
         capabilities=None,
         heartbeat_interval=60,
+        scope="project",
+        project_id=scoped_project_id,
+        specialties=proposal["proposed_specialties"],
     )
-
-    # Set specialties on the newly created agent
-    try:
-        import json as _json
-
-        await agent_service.update_agent(
-            db,
-            agent["id"],
-            {"specialties": _json.dumps(proposal["proposed_specialties"])},
-        )
-    except Exception:
-        pass
 
     # Scaffold persona MD files from the proposal's CORE.md
     try:
@@ -725,7 +827,7 @@ async def approve_proposal(
 
         await ws_manager.broadcast(
             "agent_created_from_proposal",
-            {"proposal_id": proposal_id, "agent": agent},
+            {"proposal_id": proposal_id, "project_id": scoped_project_id, "agent": agent},
         )
     except Exception:
         pass
@@ -734,6 +836,7 @@ async def approve_proposal(
         governance = await improvement_governance.get_proposal_by_source(
             source_system="memento_agent_factory",
             source_id=proposal_id,
+            project_id=scoped_project_id,
         )
         if governance and governance.status in {"draft", "proposed"}:
             await improvement_governance.approve_proposal(
@@ -744,12 +847,17 @@ async def approve_proposal(
         governance = await improvement_governance.get_proposal_by_source(
             source_system="memento_agent_factory",
             source_id=proposal_id,
+            project_id=scoped_project_id,
         )
         if governance and governance.status == "approved":
             await improvement_governance.apply_proposal(
                 governance.id,
                 actor_id="agents-ui",
-                evidence={"agent_id": agent.get("id"), "agent_name": agent.get("name")},
+                evidence={
+                    "agent_id": agent.get("id"),
+                    "agent_name": agent.get("name"),
+                    "project_id": scoped_project_id,
+                },
             )
     except Exception:
         pass
@@ -766,14 +874,24 @@ async def reject_proposal(
     proposal_id: str,
     request: Request,
     data: RejectProposalRequest | None = None,
+    project_id: str | None = None,
+    db: AsyncSession = Depends(get_db),
 ):
     """Reject a pending agent creation proposal."""
-    require_admin_from_request(request)
+    scoped_project_id = await _require_agent_proposal_project_scope(
+        db,
+        request,
+        project_id,
+    )
     from app.core.agent_factory import AgentFactory
 
     factory = AgentFactory()
     reason = data.reason if data else ""
-    proposal = factory.reject_proposal(proposal_id, reason)
+    proposal = factory.reject_proposal(
+        proposal_id,
+        reason,
+        project_id=scoped_project_id,
+    )
     if not proposal:
         raise HTTPException(status_code=404, detail="Proposal not found or not pending")
 
@@ -781,6 +899,7 @@ async def reject_proposal(
         governance = await improvement_governance.get_proposal_by_source(
             source_system="memento_agent_factory",
             source_id=proposal_id,
+            project_id=scoped_project_id,
         )
         if governance and governance.status in {"draft", "proposed", "approved"}:
             await improvement_governance.reject_proposal(
@@ -798,10 +917,17 @@ async def reject_proposal(
 
 
 @router.get("/agents/{agent_id}/prompt/stats")
-async def get_prompt_stats(agent_id: str):
+async def get_prompt_stats(
+    agent_id: str,
+    request: Request,
+    project_id: str | None = None,
+    db: AsyncSession = Depends(get_db),
+):
     """Get compression stats for an agent's system prompt."""
     from app.core.agent_identity import load_agent_identity, _estimate_tokens
     from app.core.prompt_compressor import compress_prompt
+
+    await require_agent_by_id(db, request, agent_id, project_id=project_id)
 
     full = load_agent_identity(agent_id)
     if not full:
@@ -826,7 +952,13 @@ class PromptComposeRequest(BaseModel):
 
 
 @router.post("/agents/{agent_id}/prompt/compose")
-async def compose_prompt_for_query(agent_id: str, data: PromptComposeRequest):
+async def compose_prompt_for_query(
+    agent_id: str,
+    data: PromptComposeRequest,
+    request: Request,
+    project_id: str | None = None,
+    db: AsyncSession = Depends(get_db),
+):
     """Compose a query-aware prompt via Prompt RAG and return diagnostic info.
 
     This endpoint reveals which persona sections are selected for a given
@@ -841,6 +973,8 @@ async def compose_prompt_for_query(agent_id: str, data: PromptComposeRequest):
         _keyword_similarity,
     )
     from app.core.agent_identity import load_agent_identity, _estimate_tokens
+
+    await require_agent_by_id(db, request, agent_id, project_id=project_id)
 
     full_identity = load_agent_identity(agent_id)
     if not full_identity:
@@ -894,19 +1028,22 @@ async def compose_prompt_for_query(agent_id: str, data: PromptComposeRequest):
 
 
 @router.get("/agents/{agent_id}/memory")
-async def get_memory(agent_id: str, db: AsyncSession = Depends(get_db)):
+async def get_memory(
+    agent_id: str,
+    request: Request,
+    project_id: str | None = None,
+    db: AsyncSession = Depends(get_db),
+):
+    agent = await require_agent_by_id(db, request, agent_id, project_id=project_id)
+    if is_team_non_admin(request) and not agent_project_id(agent):
+        return {"agent_id": agent_id, "memory": {}}
     memory = await agent_service.get_agent_memory(db, agent_id)
     return {"agent_id": agent_id, "memory": memory}
 
 
 @router.patch("/agents/{agent_id}/memory")
-async def update_memory(
-    agent_id: str,
-    updates: dict,
-    request: Request,
-    db: AsyncSession = Depends(get_db),
-):
-    require_admin_from_request(request)
+async def update_memory(agent_id: str, updates: dict, request: Request, project_id: str | None = None, db: AsyncSession = Depends(get_db)):
+    await require_project_owned_agent(db, request, agent_id, project_id)
     memory = await agent_service.update_agent_memory(db, agent_id, updates)
     return {"agent_id": agent_id, "memory": memory}
 
@@ -918,12 +1055,22 @@ class A2AMessageRequest(BaseModel):
     to_agent_id: str | None = None
     message_type: str = "consult"
     content: str
+    project_id: str | None = None
     metadata: dict | None = None
 
 
 @router.get("/agents/{agent_id}/messages")
-async def get_messages(agent_id: str, limit: int = 50, unread_only: bool = False, db: AsyncSession = Depends(get_db)):
-    messages = await a2a.get_messages(db, agent_id, limit, unread_only)
+async def get_messages(
+    agent_id: str,
+    request: Request,
+    limit: int = 50,
+    unread_only: bool = False,
+    project_id: str = Query(...),
+    db: AsyncSession = Depends(get_db),
+):
+    await require_project_access(db, request, project_id, min_role="viewer")
+    await require_agent_by_id(db, request, agent_id, project_id=project_id)
+    messages = await a2a.get_messages(db, agent_id, limit, unread_only, project_id=project_id)
     return {"messages": messages}
 
 
@@ -935,6 +1082,16 @@ async def send_message(
     db: AsyncSession = Depends(get_db),
 ):
     require_admin_from_request(request)
+    metadata = dict(data.metadata or {})
+    project_id = data.project_id or metadata.get("project_id") or metadata.get("projectId")
+    if not isinstance(project_id, str) or not project_id.strip():
+        raise HTTPException(status_code=400, detail="project_id is required")
+    project_id = project_id.strip()
+    await require_project_access(db, request, project_id, min_role="researcher")
+    await require_agent_by_id(db, request, agent_id, project_id=project_id)
+    if data.to_agent_id:
+        await require_agent_by_id(db, request, data.to_agent_id, project_id=project_id)
+    metadata["project_id"] = project_id
     try:
         msg = await a2a.send_message(
             db,
@@ -942,7 +1099,8 @@ async def send_message(
             to_agent_id=data.to_agent_id,
             message_type=data.message_type,
             content=data.content,
-            metadata=data.metadata,
+            project_id=project_id,
+            metadata=metadata,
         )
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
@@ -953,7 +1111,8 @@ async def send_message(
 
 
 @router.get("/audit/ux/latest")
-async def get_ux_eval():
+async def get_ux_eval(request: Request):
+    require_admin_from_request(request)
     report = ux_eval_agent.get_latest_report()
     if not report:
         return {"status": "no_reports", "message": "No UX evaluation has run yet."}
@@ -967,7 +1126,8 @@ async def trigger_ux_eval(request: Request):
 
 
 @router.get("/audit/sim/latest")
-async def get_sim_report():
+async def get_sim_report(request: Request):
+    require_admin_from_request(request)
     report = user_sim_agent.get_latest_report()
     if not report:
         return {"status": "no_reports", "message": "No simulation has run yet."}
@@ -990,25 +1150,24 @@ class AgentExportData(BaseModel):
     capabilities: list[str]
     heartbeat_interval: int
     memory: dict
+    project_id: str | None = None
 
 
 @router.get("/agents/{agent_id}/export")
-async def export_agent(agent_id: str, request: Request, db: AsyncSession = Depends(get_db)):
+async def export_agent(agent_id: str, request: Request, project_id: str | None = None, db: AsyncSession = Depends(get_db)):
     """Export an agent's configuration as a portable JSON config."""
-    require_admin_from_request(request)
-    agent = await agent_service.get_agent(db, agent_id)
-    if not agent:
-        raise HTTPException(status_code=404, detail="Agent not found")
+    agent = await require_project_owned_agent(db, request, agent_id, project_id)
+    serialized = agent.to_dict()
     return {
         "istara_version": _get_version(),
         "type": "agent_config",
         "agent": {
-            "name": agent["name"],
-            "role": agent["role"],
-            "system_prompt": agent["system_prompt"],
-            "capabilities": agent["capabilities"],
-            "heartbeat_interval": agent["heartbeat_interval_seconds"],
-            "memory": agent["memory"],
+            "name": serialized["name"],
+            "role": serialized["role"],
+            "system_prompt": serialized["system_prompt"],
+            "capabilities": serialized["capabilities"],
+            "heartbeat_interval": serialized["heartbeat_interval_seconds"],
+            "memory": serialized["memory"],
         },
     }
 
@@ -1016,7 +1175,10 @@ async def export_agent(agent_id: str, request: Request, db: AsyncSession = Depen
 @router.post("/agents/import")
 async def import_agent(data: AgentExportData, request: Request, db: AsyncSession = Depends(get_db)):
     """Import an agent from an exported config."""
-    require_admin_from_request(request)
+    scoped_project_id = clean_project_id(data.project_id)
+    if not scoped_project_id:
+        raise HTTPException(status_code=400, detail="project_id is required")
+    await require_project_access(db, request, scoped_project_id, min_role="project_admin")
     agent = await agent_service.create_agent(
         db,
         name=data.name,
@@ -1024,141 +1186,11 @@ async def import_agent(data: AgentExportData, request: Request, db: AsyncSession
         system_prompt=data.system_prompt,
         capabilities=data.capabilities,
         heartbeat_interval=data.heartbeat_interval,
+        scope="project",
+        project_id=scoped_project_id,
     )
     # Apply memory if provided
     if data.memory:
         await agent_service.update_agent_memory(db, agent["id"], data.memory)
         agent = await agent_service.get_agent(db, agent["id"])
     return agent
-
-
-# ───── Resource Governor ─────
-
-
-@router.get("/resources")
-async def get_resource_status():
-    return governor.get_status()
-
-
-# ───── Context Hierarchy ─────
-
-
-class ContextCreateRequest(BaseModel):
-    name: str
-    level_type: str
-    content: str
-    project_id: str = ""
-    parent_id: str = ""
-    priority: int = 0
-
-
-class ContextUpdateRequest(BaseModel):
-    name: str | None = None
-    content: str | None = None
-    priority: int | None = None
-    enabled: bool | None = None
-
-
-@router.get("/contexts")
-async def list_contexts(
-    request: Request,
-    level_type: str | None = None,
-    project_id: str | None = None,
-    db: AsyncSession = Depends(get_db),
-):
-    if project_id:
-        await require_project_access(db, request, project_id, min_role="viewer")
-    else:
-        require_admin_from_request(request)
-
-    docs = await context_hierarchy.list_contexts(db, level_type, project_id)
-    return {
-        "contexts": [
-            {
-                "id": d.id, "name": d.name, "level": d.level,
-                "level_type": d.level_type, "content_preview": d.content[:200],
-                "content_length": len(d.content), "priority": d.priority,
-                "enabled": d.enabled, "project_id": d.project_id,
-            }
-            for d in docs
-        ]
-    }
-
-
-@router.post("/contexts", status_code=201)
-async def create_context(
-    data: ContextCreateRequest,
-    request: Request,
-    db: AsyncSession = Depends(get_db),
-):
-    if data.project_id:
-        await require_project_access(db, request, data.project_id, min_role="researcher")
-    else:
-        require_admin_from_request(request)
-
-    valid_types = {"platform", "company", "product", "project", "task", "agent"}
-    if data.level_type not in valid_types:
-        raise HTTPException(status_code=400, detail=f"Invalid level_type. Must be: {', '.join(valid_types)}")
-    doc = await context_hierarchy.create_context(
-        db, data.name, data.level_type, data.content,
-        data.project_id, data.parent_id, data.priority,
-    )
-    return {"id": doc.id, "name": doc.name, "level": doc.level, "level_type": doc.level_type}
-
-
-@router.get("/contexts/{doc_id}")
-async def get_context(doc_id: str, request: Request, db: AsyncSession = Depends(get_db)):
-    result = await db.execute(select(ContextDocument).where(ContextDocument.id == doc_id))
-    doc = result.scalar_one_or_none()
-    if not doc:
-        raise HTTPException(status_code=404, detail="Context not found")
-    await _require_context_access(db, request, doc, min_role="viewer")
-    return {
-        "id": doc.id, "name": doc.name, "level": doc.level,
-        "level_type": doc.level_type, "content": doc.content,
-        "priority": doc.priority, "enabled": doc.enabled,
-        "project_id": doc.project_id, "parent_id": doc.parent_id,
-    }
-
-
-@router.patch("/contexts/{doc_id}")
-async def update_context(
-    doc_id: str,
-    data: ContextUpdateRequest,
-    request: Request,
-    db: AsyncSession = Depends(get_db),
-):
-    result = await db.execute(select(ContextDocument).where(ContextDocument.id == doc_id))
-    existing = result.scalar_one_or_none()
-    if not existing:
-        raise HTTPException(status_code=404, detail="Context not found")
-    await _require_context_access(db, request, existing, min_role="researcher")
-
-    updates = data.model_dump(exclude_unset=True)
-    doc = await context_hierarchy.update_context(db, doc_id, updates)
-    if not doc:
-        raise HTTPException(status_code=404, detail="Context not found")
-    return {"id": doc.id, "name": doc.name, "updated": True}
-
-
-@router.delete("/contexts/{doc_id}", status_code=204)
-async def delete_context(doc_id: str, request: Request, db: AsyncSession = Depends(get_db)):
-    result = await db.execute(select(ContextDocument).where(ContextDocument.id == doc_id))
-    existing = result.scalar_one_or_none()
-    if not existing:
-        raise HTTPException(status_code=404, detail="Context not found")
-    await _require_context_access(db, request, existing, min_role="researcher")
-
-    if not await context_hierarchy.delete_context(db, doc_id):
-        raise HTTPException(status_code=404, detail="Context not found")
-
-
-@router.get("/contexts/composed/{project_id}")
-async def get_composed_context(
-    project_id: str,
-    request: Request,
-    db: AsyncSession = Depends(get_db),
-):
-    await require_project_access(db, request, project_id, min_role="viewer")
-    composed = await context_hierarchy.compose_context(db, project_id)
-    return {"project_id": project_id, "composed_context": composed, "length": len(composed)}

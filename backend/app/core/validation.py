@@ -28,7 +28,12 @@ class ValidationResult:
     metadata: dict
 
 
-async def dual_run(prompt: str, system: str = "", model: str | None = None) -> ValidationResult:
+async def dual_run(
+    prompt: str,
+    system: str = "",
+    model: str | None = None,
+    project_id: str | None = None,
+) -> ValidationResult:
     """Run the same prompt on two different servers/models and compare.
 
     Uses the LLM Router to send to two different endpoints.
@@ -36,11 +41,17 @@ async def dual_run(prompt: str, system: str = "", model: str | None = None) -> V
     from app.core.llm_router import llm_router
 
     messages = [{"role": "user", "content": prompt}]
-    servers = [s for s in llm_router._sorted_servers() if s.is_healthy]
+    servers = [s for s in llm_router._sorted_servers(project_id=project_id) if s.is_healthy]
 
     if len(servers) < 2:
         # Fallback: run twice on same server with different temperatures
-        return await self_moa(prompt, system=system, model=model, n=2)
+        return await self_moa(
+            prompt,
+            system=system,
+            model=model,
+            n=2,
+            project_id=project_id,
+        )
 
     responses = []
     for server in servers[:2]:
@@ -48,7 +59,12 @@ async def dual_run(prompt: str, system: str = "", model: str | None = None) -> V
             msgs = list(messages)
             if system:
                 msgs = [{"role": "system", "content": system}, *msgs]
-            result = await server.chat(msgs, model=model, temperature=0.7)
+            result = await server.chat(
+                msgs,
+                model=model,
+                temperature=0.7,
+                project_id=project_id,
+            )
             responses.append(result.get("message", {}).get("content", ""))
         except Exception as e:
             logger.warning(f"Dual-run: server {server.name} failed: {e}")
@@ -59,7 +75,7 @@ async def dual_run(prompt: str, system: str = "", model: str | None = None) -> V
         return _empty_result("dual_run")
 
     # Get embeddings for semantic comparison
-    embeddings = await _get_embeddings(responses)
+    embeddings = await _get_embeddings(responses, project_id=project_id)
     consensus = compute_consensus(responses, embeddings, method="dual_run")
 
     return ValidationResult(
@@ -72,7 +88,11 @@ async def dual_run(prompt: str, system: str = "", model: str | None = None) -> V
 
 
 async def adversarial_review(
-    prompt: str, initial_response: str, system: str = "", model: str | None = None
+    prompt: str,
+    initial_response: str,
+    system: str = "",
+    model: str | None = None,
+    project_id: str | None = None,
 ) -> ValidationResult:
     """Have a second model critique the first model's response."""
     from app.core.llm_router import llm_router
@@ -91,14 +111,19 @@ async def adversarial_review(
         messages = [{"role": "system", "content": system}, *messages]
 
     try:
-        result = await llm_router.chat(messages, model=model, temperature=0.3)
+        result = await llm_router.chat(
+            messages,
+            model=model,
+            temperature=0.3,
+            project_id=project_id,
+        )
         review = result.get("message", {}).get("content", "")
     except Exception as e:
         logger.warning(f"Adversarial review failed: {e}")
         return _empty_result("adversarial_review")
 
     responses = [initial_response, review]
-    embeddings = await _get_embeddings(responses)
+    embeddings = await _get_embeddings(responses, project_id=project_id)
     consensus = compute_consensus(responses, embeddings, method="adversarial_review")
 
     return ValidationResult(
@@ -111,16 +136,26 @@ async def adversarial_review(
 
 
 async def full_ensemble(
-    prompt: str, system: str = "", model: str | None = None, min_responses: int = 3
+    prompt: str,
+    system: str = "",
+    model: str | None = None,
+    min_responses: int = 3,
+    project_id: str | None = None,
 ) -> ValidationResult:
     """Run prompt across 3+ models/servers for full ensemble consensus."""
     from app.core.llm_router import llm_router
 
-    servers = [s for s in llm_router._sorted_servers() if s.is_healthy]
+    servers = [s for s in llm_router._sorted_servers(project_id=project_id) if s.is_healthy]
 
     if len(servers) < min_responses:
         # Supplement with temperature variation
-        return await self_moa(prompt, system=system, model=model, n=min_responses)
+        return await self_moa(
+            prompt,
+            system=system,
+            model=model,
+            n=min_responses,
+            project_id=project_id,
+        )
 
     responses = []
     server_names = []
@@ -132,7 +167,12 @@ async def full_ensemble(
         if len(responses) >= min_responses:
             break
         try:
-            result = await server.chat(messages, model=model, temperature=0.7)
+            result = await server.chat(
+                messages,
+                model=model,
+                temperature=0.7,
+                project_id=project_id,
+            )
             content = result.get("message", {}).get("content", "")
             if content:
                 responses.append(content)
@@ -143,7 +183,7 @@ async def full_ensemble(
     if not responses:
         return _empty_result("full_ensemble")
 
-    embeddings = await _get_embeddings(responses)
+    embeddings = await _get_embeddings(responses, project_id=project_id)
     consensus = compute_consensus(responses, embeddings, method="full_ensemble")
 
     return ValidationResult(
@@ -156,7 +196,11 @@ async def full_ensemble(
 
 
 async def self_moa(
-    prompt: str, system: str = "", model: str | None = None, n: int = 3
+    prompt: str,
+    system: str = "",
+    model: str | None = None,
+    n: int = 3,
+    project_id: str | None = None,
 ) -> ValidationResult:
     """Self Mixture-of-Agents: same model, different temperatures.
 
@@ -175,7 +219,12 @@ async def self_moa(
 
     for temp in temperatures:
         try:
-            result = await llm_router.chat(messages, model=model, temperature=temp)
+            result = await llm_router.chat(
+                messages,
+                model=model,
+                temperature=temp,
+                project_id=project_id,
+            )
             content = result.get("message", {}).get("content", "")
             if content:
                 responses.append(content)
@@ -185,7 +234,7 @@ async def self_moa(
     if not responses:
         return _empty_result("self_moa")
 
-    embeddings = await _get_embeddings(responses)
+    embeddings = await _get_embeddings(responses, project_id=project_id)
     consensus = compute_consensus(responses, embeddings, method="self_moa")
 
     return ValidationResult(
@@ -198,7 +247,11 @@ async def self_moa(
 
 
 async def debate_rounds(
-    prompt: str, system: str = "", model: str | None = None, rounds: int = 2
+    prompt: str,
+    system: str = "",
+    model: str | None = None,
+    rounds: int = 2,
+    project_id: str | None = None,
 ) -> ValidationResult:
     """Multi-round debate between models.
 
@@ -214,7 +267,12 @@ async def debate_rounds(
 
     # Initial response
     try:
-        result = await llm_router.chat(messages, model=model, temperature=0.7)
+        result = await llm_router.chat(
+            messages,
+            model=model,
+            temperature=0.7,
+            project_id=project_id,
+        )
         current = result.get("message", {}).get("content", "")
         all_responses.append(current)
     except Exception as e:
@@ -234,14 +292,19 @@ async def debate_rounds(
             {"role": "user", "content": debate_prompt},
         ]
         try:
-            result = await llm_router.chat(debate_messages, model=model, temperature=0.5)
+            result = await llm_router.chat(
+                debate_messages,
+                model=model,
+                temperature=0.5,
+                project_id=project_id,
+            )
             current = result.get("message", {}).get("content", "")
             all_responses.append(current)
         except Exception as e:
             logger.warning(f"Debate round {round_num + 1} failed: {e}")
             break
 
-    embeddings = await _get_embeddings(all_responses)
+    embeddings = await _get_embeddings(all_responses, project_id=project_id)
     consensus = compute_consensus(all_responses, embeddings, method="debate_rounds")
 
     return ValidationResult(
@@ -253,11 +316,14 @@ async def debate_rounds(
     )
 
 
-async def _get_embeddings(texts: list[str]) -> list[list[float]]:
+async def _get_embeddings(
+    texts: list[str],
+    project_id: str | None = None,
+) -> list[list[float]]:
     """Get embeddings for texts using the LLM router."""
     try:
         from app.core.llm_router import llm_router
-        return await llm_router.embed_batch(texts)
+        return await llm_router.embed_batch(texts, project_id=project_id)
     except Exception:
         return []
 

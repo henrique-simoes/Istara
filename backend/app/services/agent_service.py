@@ -195,6 +195,9 @@ async def create_agent(
     capabilities: list[str] | None = None,
     heartbeat_interval: int = 60,
     avatar_path: str | None = None,
+    scope: str = "universal",
+    project_id: str = "",
+    specialties: list[str] | None = None,
 ) -> dict:
     """Create a new user agent."""
     if capabilities is None:
@@ -206,8 +209,11 @@ async def create_agent(
         role=AgentRole(role),
         system_prompt=system_prompt,
         capabilities=json.dumps(capabilities),
+        specialties=json.dumps(specialties or []),
         heartbeat_interval_seconds=heartbeat_interval,
         avatar_path=avatar_path,
+        scope=scope,
+        project_id=project_id,
         state=AgentState.IDLE,
         heartbeat_status=HeartbeatStatus.STOPPED,
     )

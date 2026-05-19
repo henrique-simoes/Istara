@@ -17,6 +17,7 @@ import {
 import { files as filesApi } from "@/lib/api";
 import { API_BASE } from "@/lib/runtimeConfig";
 import { useAgentStore } from "@/stores/agentStore";
+import { useProjectStore } from "@/stores/projectStore";
 import { cn } from "@/lib/utils";
 
 export function fileIcon(type: string) {
@@ -301,12 +302,13 @@ export function SendToAgentButton({
   activeTag: string | null;
 }) {
   const { agents, fetchAgents } = useAgentStore();
+  const { activeProjectId } = useProjectStore();
   const [open, setOpen] = useState(false);
   const [sending, setSending] = useState(false);
 
   useEffect(() => {
-    fetchAgents();
-  }, [fetchAgents]);
+    fetchAgents(activeProjectId || undefined);
+  }, [activeProjectId, fetchAgents]);
 
   const tagsToSend = activeTag ? [activeTag] : tags;
 

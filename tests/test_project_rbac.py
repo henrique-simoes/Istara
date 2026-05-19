@@ -1,5 +1,6 @@
 """Team-mode project RBAC tests."""
 
+from types import SimpleNamespace
 import uuid
 
 import pytest
@@ -210,13 +211,166 @@ async def test_researcher_permission_request_is_reviewed_by_project_admin():
         assert any(item["id"] == request_id for item in listed.json()["requests"])
 
         reviewed = await ac.patch(
-            f"/api/permission-requests/{request_id}",
+            f"/api/permission-requests/{request_id}?project_id={project.id}",
             headers=_headers(project_admin_id, "project-admin", "researcher"),
             json={"status": "approved", "review_note": "Approved for this study."},
         )
         assert reviewed.status_code == 200
         assert reviewed.json()["status"] == "approved"
         assert reviewed.json()["reviewer_user_id"] == project_admin_id
+
+
+@pytest.mark.asyncio
+async def test_permission_request_review_requires_active_project_binding():
+    await init_db()
+    active_project = await _seed_project(f"Active Permission Scope {uuid.uuid4()}")
+    other_project = await _seed_project(f"Other Permission Scope {uuid.uuid4()}")
+    researcher_id = f"researcher-request-scope-{uuid.uuid4()}"
+    project_admin_id = f"project-admin-request-scope-{uuid.uuid4()}"
+    await _seed_member(other_project.id, researcher_id, "researcher")
+    await _seed_member(active_project.id, project_admin_id, "project_admin")
+    await _seed_member(other_project.id, project_admin_id, "project_admin")
+
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        created = await ac.post(
+            "/api/permission-requests",
+            headers=_headers(researcher_id, "researcher", "researcher"),
+            json={
+                "project_id": other_project.id,
+                "action": "project.folder",
+                "title": "Request folder change",
+            },
+        )
+        assert created.status_code == 201
+        request_id = created.json()["id"]
+
+        no_project = await ac.patch(
+            f"/api/permission-requests/{request_id}",
+            headers=_headers(project_admin_id, "project-admin", "researcher"),
+            json={"status": "approved"},
+        )
+        assert no_project.status_code == 400
+        assert no_project.json()["detail"] == "project_id is required"
+
+        wrong_active_project = await ac.patch(
+            f"/api/permission-requests/{request_id}?project_id={active_project.id}",
+            headers=_headers(project_admin_id, "project-admin", "researcher"),
+            json={"status": "approved"},
+        )
+        assert wrong_active_project.status_code == 404
+
+        reviewed = await ac.patch(
+            f"/api/permission-requests/{request_id}?project_id={other_project.id}",
+            headers=_headers(project_admin_id, "project-admin", "researcher"),
+            json={"status": "approved"},
+        )
+        assert reviewed.status_code == 200
+        assert reviewed.json()["status"] == "approved"
+        assert reviewed.json()["project_id"] == other_project.id
+
+
+@pytest.mark.asyncio
+async def test_non_admin_permission_request_mine_requires_active_project_scope():
+    await init_db()
+    project_a = await _seed_project(f"Mine Permission A {uuid.uuid4()}")
+    project_b = await _seed_project(f"Mine Permission B {uuid.uuid4()}")
+    researcher_id = f"researcher-mine-request-{uuid.uuid4()}"
+    await _seed_member(project_a.id, researcher_id, "researcher")
+    await _seed_member(project_b.id, researcher_id, "researcher")
+    headers = _headers(researcher_id, "researcher", "researcher")
+
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        created_a = await ac.post(
+            "/api/permission-requests",
+            headers=headers,
+            json={
+                "project_id": project_a.id,
+                "action": "project.folder",
+                "title": "Request A",
+            },
+        )
+        created_b = await ac.post(
+            "/api/permission-requests",
+            headers=headers,
+            json={
+                "project_id": project_b.id,
+                "action": "project.folder",
+                "title": "Request B",
+            },
+        )
+        assert created_a.status_code == 201
+        assert created_b.status_code == 201
+        request_a_id = created_a.json()["id"]
+        request_b_id = created_b.json()["id"]
+
+        unscoped = await ac.get("/api/permission-requests?mine=true", headers=headers)
+        assert unscoped.status_code == 400
+        assert unscoped.json()["detail"] == "project_id is required"
+
+        scoped = await ac.get(
+            f"/api/permission-requests?project_id={project_a.id}&mine=true",
+            headers=headers,
+        )
+        assert scoped.status_code == 200
+        request_ids = {item["id"] for item in scoped.json()["requests"]}
+        assert request_a_id in request_ids
+        assert request_b_id not in request_ids
+
+
+@pytest.mark.asyncio
+async def test_global_admin_permission_request_queue_remains_global():
+    await init_db()
+    project_a = await _seed_project(f"Admin Permission A {uuid.uuid4()}")
+    project_b = await _seed_project(f"Admin Permission B {uuid.uuid4()}")
+    researcher_a_id = f"researcher-admin-request-a-{uuid.uuid4()}"
+    researcher_b_id = f"researcher-admin-request-b-{uuid.uuid4()}"
+    await _seed_member(project_a.id, researcher_a_id, "researcher")
+    await _seed_member(project_b.id, researcher_b_id, "researcher")
+
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        created_a = await ac.post(
+            "/api/permission-requests",
+            headers=_headers(researcher_a_id, "researcher-a", "researcher"),
+            json={
+                "project_id": project_a.id,
+                "action": "project.folder",
+                "title": "Admin queue A",
+            },
+        )
+        created_b = await ac.post(
+            "/api/permission-requests",
+            headers=_headers(researcher_b_id, "researcher-b", "researcher"),
+            json={
+                "project_id": project_b.id,
+                "action": "project.folder",
+                "title": "Admin queue B",
+            },
+        )
+        assert created_a.status_code == 201
+        assert created_b.status_code == 201
+        request_a_id = created_a.json()["id"]
+        request_b_id = created_b.json()["id"]
+
+        listed = await ac.get(
+            "/api/permission-requests?status=pending",
+            headers=_headers("admin-user", "admin", "admin"),
+        )
+        assert listed.status_code == 200
+        listed_ids = {item["id"] for item in listed.json()["requests"]}
+        assert request_a_id in listed_ids
+        assert request_b_id in listed_ids
+
+        reviewed = await ac.patch(
+            f"/api/permission-requests/{request_a_id}",
+            headers=_headers("admin-user", "admin", "admin"),
+            json={"status": "approved"},
+        )
+        assert reviewed.status_code == 200
+        assert reviewed.json()["status"] == "approved"
+        assert reviewed.json()["project_id"] == project_a.id
 
 
 @pytest.mark.asyncio
@@ -274,18 +428,110 @@ async def test_chat_rejects_session_from_another_project():
 
 
 @pytest.mark.asyncio
-async def test_global_viewer_cannot_use_legacy_chat_voice_transcription_endpoint():
+async def test_chat_voice_transcription_requires_project_id_before_transcription(monkeypatch):
     await init_db()
+    calls: list[str] = []
+
+    monkeypatch.setattr(
+        "app.core.transcription.convert_audio_to_wav",
+        lambda path: calls.append("convert") or path,
+    )
+    monkeypatch.setattr(
+        "app.core.transcription.transcribe_audio",
+        lambda path, language=None: calls.append("transcribe") or SimpleNamespace(
+            text="should not run",
+            language="en",
+            confidence=1.0,
+            icr_kappa=1.0,
+            icr_confidence="high",
+            needs_review=False,
+            tags=[],
+        ),
+    )
 
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
-        response = await ac.post(
+        missing_scope = await ac.post(
             "/api/chat/voice",
-            headers=_headers(f"viewer-voice-{uuid.uuid4()}", "viewer", "viewer"),
+            headers=_headers(f"admin-voice-{uuid.uuid4()}", "admin", "admin"),
+            files={"audio": ("sample.ogg", b"not-a-real-audio-file", "audio/ogg")},
+        )
+        blank_scope = await ac.post(
+            "/api/chat/voice",
+            headers=_headers(f"admin-voice-{uuid.uuid4()}", "admin", "admin"),
+            data={"project_id": "   "},
             files={"audio": ("sample.ogg", b"not-a-real-audio-file", "audio/ogg")},
         )
 
-    assert response.status_code == 403
+    assert missing_scope.status_code == 422
+    assert blank_scope.status_code == 400
+    assert calls == []
+
+
+@pytest.mark.asyncio
+async def test_chat_voice_transcription_requires_project_researcher_role_before_audio_processing(monkeypatch):
+    await init_db()
+    project = await _seed_project(f"Voice Upload {uuid.uuid4()}")
+    hidden_project_id = str(uuid.uuid4())
+    viewer_id = f"viewer-voice-{uuid.uuid4()}"
+    researcher_id = f"researcher-voice-{uuid.uuid4()}"
+    outsider_id = f"outsider-voice-{uuid.uuid4()}"
+    await _seed_member(project.id, viewer_id, "viewer")
+    await _seed_member(project.id, researcher_id, "researcher")
+    calls: list[tuple[str, str | None]] = []
+
+    def fake_convert(path: str) -> str:
+        calls.append(("convert", None))
+        return path
+
+    def fake_transcribe(path: str, language: str | None = None) -> SimpleNamespace:
+        calls.append(("transcribe", language))
+        return SimpleNamespace(
+            text="Scoped voice note",
+            language=language or "en",
+            confidence=0.91,
+            icr_kappa=0.82,
+            icr_confidence="high",
+            needs_review=False,
+            tags=["usability"],
+        )
+
+    monkeypatch.setattr("app.core.transcription.convert_audio_to_wav", fake_convert)
+    monkeypatch.setattr("app.core.transcription.transcribe_audio", fake_transcribe)
+
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        viewer_response = await ac.post(
+            "/api/chat/voice",
+            headers=_headers(viewer_id, "viewer", "viewer"),
+            data={"project_id": project.id},
+            files={"audio": ("sample.ogg", b"not-a-real-audio-file", "audio/ogg")},
+        )
+        outsider_response = await ac.post(
+            "/api/chat/voice",
+            headers=_headers(outsider_id, "researcher", "researcher"),
+            data={"project_id": project.id},
+            files={"audio": ("sample.ogg", b"not-a-real-audio-file", "audio/ogg")},
+        )
+        hidden_response = await ac.post(
+            "/api/chat/voice",
+            headers=_headers(f"admin-voice-{uuid.uuid4()}", "admin", "admin"),
+            data={"project_id": hidden_project_id},
+            files={"audio": ("sample.ogg", b"not-a-real-audio-file", "audio/ogg")},
+        )
+        researcher_response = await ac.post(
+            "/api/chat/voice",
+            headers=_headers(researcher_id, "researcher", "researcher"),
+            data={"project_id": project.id, "language": "pt"},
+            files={"audio": ("sample.ogg", b"not-a-real-audio-file", "audio/ogg")},
+        )
+
+    assert viewer_response.status_code == 403
+    assert outsider_response.status_code == 404
+    assert hidden_response.status_code == 404
+    assert researcher_response.status_code == 200
+    assert calls == [("convert", None), ("transcribe", "pt")]
+    assert researcher_response.json()["text"] == "Scoped voice note"
 
 
 @pytest.mark.asyncio
@@ -415,6 +661,7 @@ async def test_admin_overview_is_admin_only():
 @pytest.mark.asyncio
 async def test_connection_strings_split_user_invite_from_compute_donation():
     await init_db()
+    project = await _seed_project(f"Compute Donation {uuid.uuid4()}")
     headers = _headers("admin-user", "admin", "admin")
 
     transport = ASGITransport(app=app)
@@ -427,7 +674,11 @@ async def test_connection_strings_split_user_invite_from_compute_donation():
         donation_response = await ac.post(
             "/api/connections/compute-donation/generate",
             headers=headers,
-            json={"server_url": "http://localhost:3000", "label": "Node"},
+            json={
+                "server_url": "http://localhost:3000",
+                "label": "Node",
+                "allowed_project_ids": [project.id],
+            },
         )
         donation_string = donation_response.json()["connection_string"]
         validate_response = await ac.post(
@@ -451,6 +702,8 @@ async def test_connection_strings_split_user_invite_from_compute_donation():
     assert donation_response.status_code == 200
     donation_payload = decode_connection_string(donation_string)
     assert donation_payload["kind"] == "compute_donation"
+    assert donation_payload["allowed_project_ids"] == [project.id]
+    assert donation_response.json()["allowed_project_ids"] == [project.id]
     assert "jwt" not in donation_payload
     assert validate_response.status_code == 200
     assert validate_response.json()["token_type"] == "compute_donation"
@@ -463,28 +716,39 @@ async def test_viewer_can_read_tasks_and_documents_but_cannot_mutate_them():
     project = await _seed_project(f"Viewer Resources {uuid.uuid4()}")
     viewer_id = f"viewer-resources-{uuid.uuid4()}"
     await _seed_member(project.id, viewer_id, "viewer")
-    await _seed_task(project.id)
+    task = await _seed_task(project.id)
     document = await _seed_document(project.id)
     headers = _headers(viewer_id, "viewer", "viewer")
 
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
         tasks_response = await ac.get(f"/api/tasks?project_id={project.id}", headers=headers)
+        task_detail_response = await ac.get(
+            f"/api/tasks/{task.id}?project_id={project.id}",
+            headers=headers,
+        )
         documents_response = await ac.get(f"/api/documents?project_id={project.id}", headers=headers)
         create_task_response = await ac.post(
             "/api/tasks",
             headers=headers,
             json={"project_id": project.id, "title": "Nope"},
         )
+        update_task_response = await ac.patch(
+            f"/api/tasks/{task.id}?project_id={project.id}",
+            headers=headers,
+            json={"title": "Nope"},
+        )
         update_document_response = await ac.patch(
-            f"/api/documents/{document.id}",
+            f"/api/documents/{document.id}?project_id={project.id}",
             headers=headers,
             json={"title": "Nope"},
         )
 
     assert tasks_response.status_code == 200
+    assert task_detail_response.status_code == 200
     assert documents_response.status_code == 200
     assert create_task_response.status_code == 403
+    assert update_task_response.status_code == 403
     assert update_document_response.status_code == 403
 
 
@@ -521,8 +785,11 @@ async def test_uninvited_project_metrics_are_concealed_as_404():
 
 
 @pytest.mark.asyncio
-async def test_mcp_policy_and_client_registry_are_admin_only():
+async def test_mcp_policy_is_admin_only_and_client_registry_is_project_scoped():
     await init_db()
+    project = await _seed_project(f"MCP RBAC {uuid.uuid4()}")
+    project_admin_id = f"project-admin-mcp-{uuid.uuid4()}"
+    await _seed_member(project.id, project_admin_id, "project_admin")
 
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
@@ -534,28 +801,44 @@ async def test_mcp_policy_and_client_registry_are_admin_only():
             "/api/mcp/clients",
             headers=_headers(f"researcher-mcp-{uuid.uuid4()}", "researcher", "researcher"),
         )
+        project_admin_clients = await ac.get(
+            f"/api/mcp/clients?project_id={project.id}",
+            headers=_headers(project_admin_id, "project-admin-mcp", "researcher"),
+        )
         admin_policy = await ac.get(
             "/api/mcp/server/policy",
             headers=_headers("admin-mcp", "admin", "admin"),
         )
 
     assert researcher_policy.status_code == 403
-    assert researcher_clients.status_code == 403
+    assert researcher_clients.status_code == 400
+    assert researcher_clients.json()["detail"] == "project_id is required"
+    assert project_admin_clients.status_code == 200
     assert admin_policy.status_code == 200
 
 
 @pytest.mark.asyncio
 async def test_compute_is_researcher_visible_but_steering_and_meta_hyperagent_are_admin_only():
     await init_db()
+    project = await _seed_project(f"System Compute {uuid.uuid4()}")
+    researcher_id = f"researcher-system-{uuid.uuid4()}"
+    await _seed_member(project.id, researcher_id, "researcher")
 
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
-        researcher_headers = _headers(f"researcher-system-{uuid.uuid4()}", "researcher", "researcher")
-        compute_response = await ac.get("/api/compute/stats", headers=researcher_headers)
+        researcher_headers = _headers(researcher_id, "researcher", "researcher")
+        compute_response = await ac.get(
+            f"/api/compute/stats?project_id={project.id}",
+            headers=researcher_headers,
+        )
         steering_response = await ac.get("/api/steering", headers=researcher_headers)
         meta_response = await ac.get("/api/meta-hyperagent/status", headers=researcher_headers)
 
-        admin_response = await ac.get(
+        admin_project_response = await ac.get(
+            f"/api/compute/stats?project_id={project.id}",
+            headers=_headers("admin-system", "admin", "admin"),
+        )
+        admin_unscoped_response = await ac.get(
             "/api/compute/stats",
             headers=_headers("admin-system", "admin", "admin"),
         )
@@ -563,7 +846,41 @@ async def test_compute_is_researcher_visible_but_steering_and_meta_hyperagent_ar
     assert compute_response.status_code == 200
     assert steering_response.status_code == 403
     assert meta_response.status_code == 403
-    assert admin_response.status_code == 200
+    assert admin_project_response.status_code == 200
+    assert admin_unscoped_response.status_code == 400
+    assert admin_unscoped_response.json()["detail"] == "project_id is required"
+
+
+@pytest.mark.asyncio
+async def test_compute_donation_strings_require_explicit_project_scope(monkeypatch):
+    await init_db()
+    monkeypatch.setattr(settings, "network_access_token", "test-network-token")
+    project = await _seed_project(f"Compute Scope {uuid.uuid4()}")
+
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        missing_scope = await ac.post(
+            "/api/connections/compute-donation/generate",
+            headers=_headers("admin-compute-scope", "admin", "admin"),
+            json={"server_url": "http://localhost:3000", "label": "Unscoped donor"},
+        )
+        scoped = await ac.post(
+            "/api/connections/compute-donation/generate",
+            headers=_headers("admin-compute-scope", "admin", "admin"),
+            json={
+                "server_url": "http://localhost:3000",
+                "label": "Scoped donor",
+                "allowed_project_ids": [project.id],
+            },
+        )
+
+    assert missing_scope.status_code == 422
+    assert scoped.status_code == 200
+    body = scoped.json()
+    assert body["allowed_project_ids"] == [project.id]
+    payload = decode_connection_string(body["connection_string"])
+    assert payload["kind"] == "compute_donation"
+    assert payload["allowed_project_ids"] == [project.id]
 
 
 @pytest.mark.asyncio

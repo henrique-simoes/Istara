@@ -26,6 +26,7 @@ function MetricCard({ label, value, icon: Icon, note }: { label: string; value: 
 export default function AdminDashboard() {
   const { user } = useAuthStore();
   const [overview, setOverview] = useState<any>(null);
+  const [computeStats, setComputeStats] = useState<any>(null);
   const [projects, setProjects] = useState<any[]>([]);
   const [users, setUsers] = useState<any[]>([]);
   const [memberships, setMemberships] = useState<any[]>([]);
@@ -35,6 +36,7 @@ export default function AdminDashboard() {
   const [inviteLabel, setInviteLabel] = useState("");
   const [generatedString, setGeneratedString] = useState("");
   const [accessProjectId, setAccessProjectId] = useState("");
+  const [donationProjectId, setDonationProjectId] = useState("");
   const [accessUserId, setAccessUserId] = useState("");
   const [accessRole, setAccessRole] = useState<"project_admin" | "researcher" | "viewer">("researcher");
   const [loading, setLoading] = useState(false);
@@ -47,20 +49,32 @@ export default function AdminDashboard() {
     setLoading(true);
     setError("");
     try {
-      const [overviewData, projectData, userData, accessData, connectionData, requestData] = await Promise.all([
+      const results = await Promise.allSettled([
         adminApi.overview(),
+        adminApi.computeStats(),
         adminApi.projects(),
         adminApi.users(),
         adminApi.access(),
         adminApi.connectionStrings(),
         permissionRequests.list({ status: "pending" }),
       ]);
-      setOverview(overviewData);
-      setProjects(projectData.projects || []);
-      setUsers(userData.users || []);
-      setMemberships(accessData.memberships || []);
-      setConnections(connectionData);
-      setRequests(requestData.requests || []);
+      const failures: string[] = [];
+      const [overviewData, computeData, projectData, userData, accessData, connectionData, requestData] = results;
+      if (overviewData.status === "fulfilled") setOverview(overviewData.value);
+      else failures.push("overview");
+      if (computeData.status === "fulfilled") setComputeStats(computeData.value);
+      else failures.push("compute stats");
+      if (projectData.status === "fulfilled") setProjects(projectData.value.projects || []);
+      else failures.push("projects");
+      if (userData.status === "fulfilled") setUsers(userData.value.users || []);
+      else failures.push("users");
+      if (accessData.status === "fulfilled") setMemberships(accessData.value.memberships || []);
+      else failures.push("access");
+      if (connectionData.status === "fulfilled") setConnections(connectionData.value);
+      else failures.push("connection strings");
+      if (requestData.status === "fulfilled") setRequests(requestData.value.requests || []);
+      else setRequests([]);
+      setError(failures.length ? `Could not load ${failures.join(", ")}.` : "");
     } catch (err: any) {
       setError(err.message || "Could not load admin dashboard.");
     } finally {
@@ -72,10 +86,24 @@ export default function AdminDashboard() {
     load();
   }, [load]);
 
+  useEffect(() => {
+    if (!donationProjectId && projects.length > 0) {
+      setDonationProjectId(projects[0].id);
+    }
+  }, [donationProjectId, projects]);
+
   const taskSummary = useMemo(() => {
     const byStatus = overview?.tasks?.by_status || {};
     return `${byStatus.backlog || 0} backlog / ${byStatus.in_progress || 0} active / ${byStatus.in_review || 0} review`;
   }, [overview]);
+
+  const computeSummary = useMemo(() => {
+    const nodes = computeStats?.total_nodes ?? overview?.compute?.total_nodes ?? 0;
+    const reachable = computeStats?.reachable_nodes ?? overview?.compute?.reachable_nodes ?? 0;
+    const totalRam = computeStats?.total_ram_gb;
+    const ramText = typeof totalRam === "number" ? `, ${totalRam.toFixed(1)} GB RAM` : "";
+    return `${nodes} nodes, ${reachable} reachable${ramText}`;
+  }, [computeStats, overview]);
 
   const serverUrl = useMemo(() => {
     if (typeof window === "undefined") return "";
@@ -95,9 +123,14 @@ export default function AdminDashboard() {
 
   const generateDonation = async () => {
     setError("");
+    if (!donationProjectId) {
+      setError("Select a project for compute donation access.");
+      return;
+    }
     const result = await adminApi.generateComputeDonation({
       server_url: serverUrl,
       label: inviteLabel || "Compute donation",
+      allowed_project_ids: [donationProjectId],
     });
     setGeneratedString(result.connection_string || "");
     await load();
@@ -158,7 +191,7 @@ export default function AdminDashboard() {
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
           <MetricCard label="Users" value={overview?.users?.total ?? "—"} icon={Users} note={`${overview?.users?.admins ?? 0} admins, ${overview?.users?.viewers ?? 0} viewers`} />
           <MetricCard label="Projects" value={overview?.projects?.total ?? "—"} icon={FolderOpen} note={`${overview?.projects?.memberships ?? 0} memberships`} />
-          <MetricCard label="Compute" value={overview?.compute?.healthy_llm_servers ?? "—"} icon={Cpu} note={`${overview?.compute?.llm_servers ?? 0} LLM servers, ${overview?.compute?.relay_nodes ?? 0} relay nodes`} />
+          <MetricCard label="Compute" value={computeStats?.reachable_nodes ?? overview?.compute?.reachable_nodes ?? "—"} icon={Cpu} note={computeSummary} />
           <MetricCard label="Tasks" value={overview?.tasks?.total ?? "—"} icon={Activity} note={taskSummary} />
         </div>
 
@@ -230,6 +263,12 @@ export default function AdminDashboard() {
                 <option value="researcher">Researcher invite</option>
                 <option value="viewer">Viewer invite</option>
                 <option value="admin">Admin invite</option>
+              </select>
+              <select value={donationProjectId} onChange={(event) => setDonationProjectId(event.target.value)} className="w-full rounded-md border border-slate-200 bg-white px-2 py-1 text-sm dark:border-slate-700 dark:bg-slate-950">
+                <option value="">Project for compute donation</option>
+                {projects.map((project) => (
+                  <option key={project.id} value={project.id}>{project.name}</option>
+                ))}
               </select>
               <div className="grid grid-cols-2 gap-2">
                 <button onClick={generateInvite} className="rounded-md bg-slate-900 px-3 py-2 text-xs font-medium text-white hover:bg-slate-700 dark:bg-white dark:text-slate-950">Generate Invite</button>

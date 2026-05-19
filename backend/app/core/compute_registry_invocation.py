@@ -38,7 +38,139 @@ from app.core.token_counter import count_tokens
 
 logger = logging.getLogger("app.core.compute_registry")
 
+
+def _hardware_resource_key(node: ComputeNode) -> tuple[str, str]:
+    host = getattr(node, "host", "") or getattr(node, "provider_host", "") or ""
+    if host:
+        _, hostname, _, _ = _server_endpoint_identity(host, source=getattr(node, "source", ""))
+        if hostname == "local":
+            return ("machine", "local")
+        return ("machine", hostname)
+    if getattr(node, "source", "") in {"relay", "browser"}:
+        return ("donor", getattr(node, "user_id", "") or getattr(node, "node_id", ""))
+    return ("node", getattr(node, "node_id", ""))
+
+
+def _unique_hardware_resource_nodes(nodes: list[ComputeNode]) -> list[ComputeNode]:
+    resources: dict[tuple[str, str], ComputeNode] = {}
+    for node in nodes:
+        key = _hardware_resource_key(node)
+        current = resources.get(key)
+        if current is None:
+            resources[key] = node
+            continue
+        if getattr(node, "ram_total_gb", 0) > getattr(current, "ram_total_gb", 0):
+            resources[key] = node
+            continue
+        if (
+            getattr(node, "ram_total_gb", 0) == getattr(current, "ram_total_gb", 0)
+            and getattr(node, "ram_available_gb", 0) > getattr(current, "ram_available_gb", 0)
+        ):
+            resources[key] = node
+            continue
+        if getattr(node, "is_healthy", False) and not getattr(current, "is_healthy", False):
+            resources[key] = node
+    return list(resources.values())
+
+
+def _endpoint_resource_key(node: ComputeNode) -> tuple:
+    host = getattr(node, "host", "") or getattr(node, "provider_host", "") or ""
+    if host:
+        return (
+            "endpoint",
+            getattr(node, "provider_type", ""),
+            *_server_endpoint_identity(host, source=getattr(node, "source", "")),
+        )
+    return ("node", getattr(node, "node_id", ""))
+
+
+def _node_readiness_rank(node: ComputeNode) -> int:
+    state = (getattr(node, "health_state", "") or "unknown").strip()
+    if getattr(node, "is_healthy", False) and state not in {
+        "auth_required",
+        "cooldown",
+        "no_model_loaded",
+        "no_model_server",
+        "timeout",
+        "unreachable",
+    }:
+        return 3
+    if state in {"ready", "degraded", "slow"}:
+        return 2
+    if state in {"no_model_loaded", "auth_required"}:
+        return 1
+    return 0
+
+
+def _source_snapshot_rank(node: ComputeNode) -> int:
+    source = getattr(node, "source", "")
+    if source == "local":
+        return 30
+    if source in {"relay", "browser"}:
+        return 20
+    if source == "network":
+        return 10
+    return 0
+
+
+def _prefer_node_snapshot(current: ComputeNode, candidate: ComputeNode) -> ComputeNode:
+    candidate_readiness = _node_readiness_rank(candidate)
+    current_readiness = _node_readiness_rank(current)
+    if candidate_readiness != current_readiness:
+        return candidate if candidate_readiness > current_readiness else current
+    candidate_source_rank = _source_snapshot_rank(candidate)
+    current_source_rank = _source_snapshot_rank(current)
+    if candidate_source_rank != current_source_rank:
+        return candidate if candidate_source_rank > current_source_rank else current
+    candidate_healthy = getattr(candidate, "is_healthy", False)
+    current_healthy = getattr(current, "is_healthy", False)
+    if candidate_healthy != current_healthy:
+        return candidate if candidate_healthy else current
+    if getattr(candidate, "priority", 10) < getattr(current, "priority", 10):
+        return candidate
+    candidate_models = len(getattr(candidate, "loaded_models", []) or []) + len(
+        getattr(candidate, "model_capabilities", {}) or {}
+    )
+    current_models = len(getattr(current, "loaded_models", []) or []) + len(
+        getattr(current, "model_capabilities", {}) or {}
+    )
+    if candidate_models > current_models:
+        return candidate
+    if getattr(candidate, "last_heartbeat", 0) > getattr(current, "last_heartbeat", 0):
+        return candidate
+    return current
+
+
+def _unique_endpoint_nodes(nodes: list[ComputeNode]) -> list[ComputeNode]:
+    endpoints: dict[tuple, ComputeNode] = {}
+    order: list[tuple] = []
+    for node in nodes:
+        key = _endpoint_resource_key(node)
+        current = endpoints.get(key)
+        if current is None:
+            endpoints[key] = node
+            order.append(key)
+            continue
+        endpoints[key] = _prefer_node_snapshot(current, node)
+    return [endpoints[key] for key in order]
+
+
 class ComputeRegistryInvocationMixin:
+    @staticmethod
+    def _effective_requested_chat_model(model: str | None) -> str | None:
+        requested = (model or "").strip()
+        if requested and requested != "default":
+            return requested
+        configured = (settings.lmstudio_model or "").strip()
+        if (
+            settings.strict_auto_routing
+            and settings.llm_provider == "lmstudio"
+            and configured
+            and configured != "default"
+        ):
+            return configured
+        return model
+
     async def chat(
         self,
         messages: list[dict],
@@ -50,8 +182,10 @@ class ComputeRegistryInvocationMixin:
         response_format: dict | None = None,
         min_context: int = 0,
         thinking_mode: str | None = None,
+        project_id: str | None = None,
     ) -> dict:
         """Route a chat request to the best available node."""
+        model = self._effective_requested_chat_model(model)
         msgs = list(messages)
         if system:
             msgs = [{"role": "system", "content": system}, *msgs]
@@ -74,6 +208,7 @@ class ComputeRegistryInvocationMixin:
             model=model,
             strict_model=settings.strict_auto_routing,
             include_unhealthy=True,
+            project_id=project_id,
         ):
             if (
                 require_vision
@@ -105,6 +240,7 @@ class ComputeRegistryInvocationMixin:
                                 tools=tools,
                                 response_format=response_format,
                                 thinking_mode=None,
+                                project_id=project_id,
                             )
                             self._record_success(node)
                             return data
@@ -146,6 +282,7 @@ class ComputeRegistryInvocationMixin:
                                 tools=tools,
                                 response_format=response_format,
                                 thinking_mode=None,
+                                project_id=project_id,
                             )
                             self._record_success(node)
                             return data
@@ -298,8 +435,10 @@ class ComputeRegistryInvocationMixin:
         tools: list[dict] | None = None,
         min_context: int = 0,
         thinking_mode: str | None = None,
+        project_id: str | None = None,
     ) -> AsyncGenerator[str | dict, None]:
         """Streaming chat -- yields str chunks and dict for tool calls."""
+        model = self._effective_requested_chat_model(model)
         msgs = list(messages)
         if system:
             msgs = [{"role": "system", "content": system}, *msgs]
@@ -317,6 +456,7 @@ class ComputeRegistryInvocationMixin:
             model=model,
             strict_model=settings.strict_auto_routing,
             include_unhealthy=True,
+            project_id=project_id,
         ):
             if (
                 require_vision
@@ -349,6 +489,7 @@ class ComputeRegistryInvocationMixin:
                                 max_tokens=max_tokens,
                                 tools=tools,
                                 thinking_mode=None,
+                                project_id=project_id,
                             )
                             content = data.get("message", {}).get("content", "")
                             if content:
@@ -397,6 +538,7 @@ class ComputeRegistryInvocationMixin:
                                 max_tokens=max_tokens,
                                 tools=tools,
                                 thinking_mode=None,
+                                project_id=project_id,
                             )
                             content = data.get("message", {}).get("content", "")
                             if content:
@@ -594,18 +736,24 @@ class ComputeRegistryInvocationMixin:
             raise RuntimeError("No vision-capable compute nodes available for image chat")
         raise RuntimeError("No compute nodes available for streaming")
 
-    async def embed(self, text: str, model: str | None = None) -> list[float]:
+    async def embed(
+        self,
+        text: str,
+        model: str | None = None,
+        project_id: str | None = None,
+    ) -> list[float]:
         """Route an embedding request."""
         for node in self._select_candidates(
             model=model,
             strict_model=settings.strict_auto_routing,
+            project_id=project_id,
         ):
             if node.is_anthropic:
                 continue
             node.active_requests += 1
             try:
                 if node.source in ("relay", "browser") and node.websocket:
-                    result = await node.embed(text, model=model)
+                    result = await node.embed(text, model=model, project_id=project_id)
                     self._record_success(node)
                     return result
 
@@ -651,18 +799,24 @@ class ComputeRegistryInvocationMixin:
 
         raise RuntimeError("No compute nodes available for embedding")
 
-    async def embed_batch(self, texts: list[str], model: str | None = None) -> list[list[float]]:
+    async def embed_batch(
+        self,
+        texts: list[str],
+        model: str | None = None,
+        project_id: str | None = None,
+    ) -> list[list[float]]:
         """Route a batch embedding request."""
         for node in self._select_candidates(
             model=model,
             strict_model=settings.strict_auto_routing,
+            project_id=project_id,
         ):
             if node.is_anthropic:
                 continue
             node.active_requests += 1
             try:
                 if node.source in ("relay", "browser") and node.websocket:
-                    result = await node.embed_batch(texts, model=model)
+                    result = await node.embed_batch(texts, model=model, project_id=project_id)
                     self._record_success(node)
                     return result
 
@@ -702,13 +856,15 @@ class ComputeRegistryInvocationMixin:
 
         raise RuntimeError("No compute nodes available for batch embedding")
 
-    async def list_models(self) -> list[dict]:
-        """Aggregate models from all healthy nodes."""
+    async def list_models(self, project_id: str | None = None) -> list[dict]:
+        """Aggregate models from nodes visible to the optional project scope."""
         all_models: list[dict] = []
-        for node in self._select_candidates():
+        for node in self._select_candidates(project_id=project_id):
             try:
                 if node.source in ("relay", "browser"):
-                    for name in node.loaded_models:
+                    for name in _unique_model_names(
+                        list(node.loaded_models or []) + list(node.model_capabilities.keys())
+                    ):
                         all_models.append(self._model_record_for_node(node, name))
                     continue
 
@@ -789,9 +945,9 @@ class ComputeRegistryInvocationMixin:
             )
         return record
 
-    async def list_models_async(self) -> list[dict]:
+    async def list_models_async(self, project_id: str | None = None) -> list[dict]:
         """Async alias for list_models (backward compat)."""
-        return await self.list_models()
+        return await self.list_models(project_id=project_id)
 
     async def pull_model(self, model_name: str) -> AsyncGenerator[dict, None]:
         """Pull model on the first healthy Ollama node."""
@@ -856,19 +1012,32 @@ class ComputeRegistryInvocationMixin:
     # Unified Stats
     # ================================================================
 
-    def get_stats(self) -> dict:
-        registry_nodes = list(self._nodes.values())
+    def _nodes_visible_for_project(self, project_id: str | None = None) -> list[ComputeNode]:
+        if not project_id:
+            return list(self._nodes.values())
+        return [
+            node
+            for node in self._nodes.values()
+            if self._node_authorized_for_project_content(node, project_id)
+        ]
+
+    def get_stats(self, project_id: str | None = None) -> dict:
+        registry_nodes = self._nodes_visible_for_project(project_id)
         for node in registry_nodes:
             _hydrate_local_resources(node)
-        nodes = [n.to_dict() for n in registry_nodes]
-        alive = sum(1 for n in registry_nodes if n.is_healthy)
+        logical_nodes = _unique_endpoint_nodes(registry_nodes)
+        nodes = [n.to_dict() for n in logical_nodes]
+        alive = sum(1 for n in nodes if n.get("is_ready"))
+        reachable = sum(1 for n in nodes if n.get("is_reachable"))
         all_models: set[str] = set()
-        for n in registry_nodes:
+        for n in logical_nodes:
             all_models.update(n.loaded_models or [])
-        total_ram = sum(n.ram_total_gb for n in registry_nodes)
-        avail_ram = sum(n.ram_available_gb for n in registry_nodes)
-        total_cpu = sum(n.cpu_cores for n in registry_nodes)
-        capacity = compute_capacity_envelope(registry_nodes)
+            all_models.update(str(name) for name in n.model_capabilities.keys())
+        hardware_nodes = _unique_hardware_resource_nodes(logical_nodes)
+        total_ram = sum(n.ram_total_gb for n in hardware_nodes)
+        avail_ram = sum(n.ram_available_gb for n in hardware_nodes)
+        total_cpu = sum(n.cpu_cores for n in hardware_nodes)
+        capacity = compute_capacity_envelope(logical_nodes)
 
         if alive >= 8:
             tier = "full_swarm"
@@ -884,6 +1053,9 @@ class ComputeRegistryInvocationMixin:
         return {
             "total_nodes": len(nodes),
             "alive_nodes": alive,
+            "ready_nodes": alive,
+            "reachable_nodes": reachable,
+            "hardware_node_count": len(hardware_nodes),
             "total_ram_gb": round(total_ram, 1),
             "available_ram_gb": round(avail_ram, 1),
             "total_cpu_cores": total_cpu,
@@ -893,9 +1065,9 @@ class ComputeRegistryInvocationMixin:
             "nodes": nodes,
         }
 
-    def get_warnings(self) -> list[dict]:
+    def get_warnings(self, project_id: str | None = None) -> list[dict]:
         warnings = []
-        for node in self._nodes.values():
+        for node in self._nodes_visible_for_project(project_id):
             for model_name, caps in node.model_capabilities.items():
                 if "embed" in model_name.lower():
                     continue

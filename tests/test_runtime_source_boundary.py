@@ -3,8 +3,17 @@
 from __future__ import annotations
 
 import json
+import os
+from pathlib import Path
 
 import pytest
+
+
+REPO_ROOT = Path(__file__).resolve().parents[1]
+
+
+def read_repo(path: str) -> str:
+    return (REPO_ROOT / path).read_text(encoding="utf-8")
 
 
 def test_persona_memory_writes_to_runtime_overlay(tmp_path, monkeypatch):
@@ -73,3 +82,66 @@ def test_source_skill_write_is_blocked_by_default(tmp_path, monkeypatch):
 
     with pytest.raises(PermissionError):
         writeable_skill_path("user-interviews", source=True)
+
+
+def test_runtime_freshness_flags_frontend_source_newer_than_build(tmp_path):
+    from app.core.runtime_freshness import detect_runtime_freshness
+
+    build_id = tmp_path / "frontend" / ".next" / "BUILD_ID"
+    source = tmp_path / "frontend" / "src" / "components" / "integrations" / "IntegrationsOverview.tsx"
+    build_id.parent.mkdir(parents=True)
+    source.parent.mkdir(parents=True)
+    build_id.write_text("test-build\n", encoding="utf-8")
+    source.write_text("export default function IntegrationsOverview() { return null; }\n", encoding="utf-8")
+
+    old_time = 1_700_000_000
+    new_time = old_time + 60
+    os.utime(build_id, (old_time, old_time))
+    os.utime(source, (new_time, new_time))
+
+    result = detect_runtime_freshness(tmp_path, ttl_seconds=0)
+
+    assert result["frontend"]["stale"] is True
+    assert result["frontend"]["status"] == "stale"
+    assert result["frontend"]["source_newer_than_build_count"] == 1
+    assert result["frontend"]["source_newer_than_build"] == [
+        "frontend/src/components/integrations/IntegrationsOverview.tsx"
+    ]
+
+
+def test_runtime_freshness_reports_fresh_frontend_build(tmp_path):
+    from app.core.runtime_freshness import detect_runtime_freshness
+
+    build_id = tmp_path / "frontend" / ".next" / "BUILD_ID"
+    source = tmp_path / "frontend" / "src" / "components" / "interfaces" / "InterfacesView.tsx"
+    build_id.parent.mkdir(parents=True)
+    source.parent.mkdir(parents=True)
+    build_id.write_text("test-build\n", encoding="utf-8")
+    source.write_text("export default function InterfacesView() { return null; }\n", encoding="utf-8")
+
+    build_time = 1_700_000_060
+    old_time = build_time - 60
+    os.utime(build_id, (build_time, build_time))
+    os.utime(source, (old_time, old_time))
+
+    result = detect_runtime_freshness(tmp_path, ttl_seconds=0)
+
+    assert result["frontend"]["stale"] is False
+    assert result["frontend"]["status"] == "fresh"
+    assert result["frontend"]["source_newer_than_build_count"] == 0
+
+
+def test_status_bar_surfaces_stale_runtime_bundle_diagnostics() -> None:
+    status_bar = read_repo("frontend/src/components/layout/StatusBar.tsx")
+    route = read_repo("backend/app/api/routes/settings.py")
+    freshness = read_repo("backend/app/core/runtime_freshness.py")
+
+    assert "const [runtimeFreshness, setRuntimeFreshness]" in status_bar
+    assert "setRuntimeFreshness(data.runtime?.frontend || null)" in status_bar
+    assert "runtimeFreshness?.stale" in status_bar
+    assert "Runtime bundle stale" in status_bar
+
+    assert "from app.core.runtime_freshness import detect_runtime_freshness" in route
+    assert '"runtime": detect_runtime_freshness()' in route
+    assert "source_newer_than_build_count" in freshness
+    assert "The production frontend build predates frontend source changes" in freshness

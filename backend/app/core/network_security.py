@@ -129,6 +129,11 @@ class NetworkSecurityMiddleware(BaseHTTPMiddleware):
         client_host = request.client.host if request.client else None
         path = request.url.path
 
+        # Let CORS middleware answer browser preflight requests. The follow-up
+        # non-OPTIONS request is still protected by the token checks below.
+        if request.method == "OPTIONS":
+            return await call_next(request)
+
         local_admin_denial = remote_local_admin_block_reason(client_host, path)
         if local_admin_denial:
             logger.warning(

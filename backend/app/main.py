@@ -53,6 +53,7 @@ from app.api.routes import connections as connection_routes
 from app.api.routes import (
     context_dag as context_dag_routes,
 )
+from app.api.routes import context_hierarchy as context_hierarchy_routes
 from app.api.routes import deployments as deployment_routes
 from app.api.routes import dgmh_archive as dgmh_archive_routes
 from app.api.routes import improvement_governance as improvement_governance_routes
@@ -614,17 +615,37 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         "ISTARA_DISABLE_BACKGROUND_AGENTS", ""
     ).lower() in {"1", "true", "yes"}
 
-    # Start all agents and orchestrator unless a live harness explicitly needs
-    # exclusive model access from process start.
+    autonomous_quality_agents_enabled = app_settings.autonomous_quality_agents_enabled
+
+    # Start project-scoped task workers and orchestrators unless a live harness
+    # explicitly needs exclusive model access from process start. Synthetic
+    # Dev/Admin QA loops are opt-in because they can create test projects,
+    # call audit endpoints, and ask the LLM outside the user's active project.
     if disable_background_agents:
         _log.info("Background agents and scheduler disabled for this process.")
         bg_tasks = []
-    else:
+    elif autonomous_quality_agents_enabled:
+        _log.info("Autonomous quality audit/simulation agents enabled.")
         bg_tasks = [
             asyncio.create_task(devops_agent.start()),
             asyncio.create_task(ui_audit_agent.start()),
             asyncio.create_task(ux_eval_agent.start()),
             asyncio.create_task(user_sim_agent.start()),
+            asyncio.create_task(agent_orchestrator.start()),
+            asyncio.create_task(meta_orchestrator.start()),
+            asyncio.create_task(heartbeat_manager.start()),
+            asyncio.create_task(scheduler.start()),
+        ]
+    else:
+        _log.info(
+            "Autonomous quality audit/simulation agents disabled; "
+            "starting project-scoped task workers only."
+        )
+        bg_tasks = [
+            devops_agent.start_task_worker(),
+            ui_audit_agent.start_task_worker(),
+            ux_eval_agent.start_task_worker(),
+            user_sim_agent.start_task_worker(),
             asyncio.create_task(agent_orchestrator.start()),
             asyncio.create_task(meta_orchestrator.start()),
             asyncio.create_task(heartbeat_manager.start()),
@@ -638,14 +659,14 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     # Start backup scheduler
     asyncio.create_task(backup_manager.start_scheduled())
 
-    # Meta-Hyperagent: always load confirmed overrides; conditionally start loop
+    # Meta-Hyperagent is project-scoped. The UI starts the loop only after a
+    # user selects an authorized active project.
     try:
         from app.core.meta_hyperagent import meta_hyperagent as mh
 
         mh.load_confirmed_overrides()
         if app_settings.meta_hyperagent_enabled and not disable_background_agents:
-            mh.start()
-            _log.info("Meta-hyperagent observation loop started.")
+            _log.info("Meta-hyperagent enabled; waiting for active project scope.")
     except Exception as e:
         _log.debug(f"Meta-hyperagent startup skipped: {e}")
 
@@ -790,6 +811,7 @@ app.include_router(settings.router, prefix="/api", tags=["Settings"])
 app.include_router(audit.router, prefix="/api", tags=["Audit"])
 app.include_router(skills.router, prefix="/api", tags=["Skills"])
 app.include_router(agents.router, prefix="/api", tags=["Agents"])
+app.include_router(context_hierarchy_routes.router, prefix="/api", tags=["Context"])
 app.include_router(metrics.router, prefix="/api", tags=["Metrics"])
 app.include_router(scheduler_routes.router, prefix="/api", tags=["Schedules"])
 app.include_router(channels.router, prefix="/api", tags=["Channels"])
@@ -799,6 +821,10 @@ app.include_router(documents.router, prefix="/api", tags=["Documents"])
 app.include_router(context_dag_routes.router, prefix="/api", tags=["Context DAG"])
 app.include_router(llm_servers.router, prefix="/api", tags=["LLM Servers"])
 app.include_router(compute_routes.router, prefix="/api", tags=["Compute"])
+# Connection strings and the standalone relay CLI advertise /ws/relay.
+# Keep the prefixed /api/ws/relay route above for API consistency, and expose
+# this compatibility route so donated-compute clients can connect directly.
+app.add_api_websocket_route("/ws/relay", compute_routes.relay_websocket)
 app.include_router(interfaces.router, prefix="/api", tags=["Interfaces"])
 app.include_router(loops_routes.router, prefix="/api", tags=["Loops"])
 app.include_router(notification_routes.router, prefix="/api", tags=["Notifications"])

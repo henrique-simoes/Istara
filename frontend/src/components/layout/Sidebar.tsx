@@ -26,12 +26,13 @@ interface SidebarProps {
 
 function NotificationBell({ onViewChange }: { onViewChange: (view: string) => void }) {
   const { unreadCount, fetchUnreadCount } = useNotificationStore();
+  const { activeProjectId } = useProjectStore();
 
   useEffect(() => {
-    fetchUnreadCount();
-    const interval = setInterval(fetchUnreadCount, 30_000);
+    fetchUnreadCount(activeProjectId);
+    const interval = setInterval(() => fetchUnreadCount(activeProjectId), 30_000);
     return () => clearInterval(interval);
-  }, [fetchUnreadCount]);
+  }, [fetchUnreadCount, activeProjectId]);
 
   return (
     <button

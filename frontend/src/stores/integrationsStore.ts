@@ -6,6 +6,29 @@ import type { ChannelInstance, ResearchDeployment, SurveyIntegration, MCPServerC
 
 type IntegrationsTab = "overview" | "messaging" | "surveys" | "mcp" | "deployments";
 
+type ProjectOwned = { project_id?: string | null };
+
+const filterByProject = <T extends ProjectOwned>(items: T[], projectId: string): T[] =>
+  items.filter((item) => item.project_id === projectId);
+
+const normalizedEndpointKey = (value: string | null | undefined): string =>
+  (value || "").trim().replace(/\/+$/, "").toLowerCase();
+
+const dedupeProjectMCPClients = (items: MCPServerConfig[], projectId: string): MCPServerConfig[] => {
+  const scoped = filterByProject(items, projectId);
+  const seen = new Set<string>();
+  return scoped.filter((client) => {
+    const key = [
+      client.project_id,
+      normalizedEndpointKey(client.transport),
+      normalizedEndpointKey(client.url || client.id),
+    ].join(":");
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+};
+
 interface IntegrationsStore {
   activeTab: IntegrationsTab;
   // Channels
@@ -27,11 +50,11 @@ interface IntegrationsStore {
   error: string | null;
 
   setActiveTab: (tab: IntegrationsTab) => void;
-  fetchChannels: (platform?: string, projectId?: string) => Promise<void>;
-  fetchDeployments: (projectId?: string) => Promise<void>;
-  fetchSurveyIntegrations: (projectId?: string) => Promise<void>;
+  fetchChannels: (platform?: string, projectId?: string | null) => Promise<void>;
+  fetchDeployments: (projectId?: string | null) => Promise<void>;
+  fetchSurveyIntegrations: (projectId?: string | null) => Promise<void>;
   fetchMCPStatus: () => Promise<void>;
-  fetchMCPClients: () => Promise<void>;
+  fetchMCPClients: (projectId?: string | null) => Promise<void>;
   selectInstance: (id: string | null) => void;
   selectDeployment: (id: string | null) => void;
 }
@@ -54,32 +77,47 @@ export const useIntegrationsStore = create<IntegrationsStore>((set) => ({
   setActiveTab: (tab) => set({ activeTab: tab }),
 
   fetchChannels: async (platform, projectId) => {
-    set({ channelLoading: true, error: null });
+    set({ channelInstances: [], selectedInstanceId: null, channelLoading: true, error: null });
+    if (!projectId) {
+      set({ channelInstances: [], channelLoading: false });
+      return;
+    }
     try {
       const list = await channels.list(platform, projectId);
-      set({ channelInstances: list, channelLoading: false });
+      const scoped = filterByProject(list, projectId);
+      set({ channelInstances: scoped, channelLoading: false });
     } catch (e: any) {
-      set({ channelLoading: false, error: e.message });
+      set({ channelInstances: [], selectedInstanceId: null, channelLoading: false, error: e.message });
     }
   },
 
   fetchDeployments: async (projectId) => {
-    set({ deploymentLoading: true, error: null });
+    set({ deploymentsList: [], selectedDeploymentId: null, deploymentLoading: true, error: null });
+    if (!projectId) {
+      set({ deploymentsList: [], selectedDeploymentId: null, deploymentLoading: false });
+      return;
+    }
     try {
       const list = await deployments.list(projectId);
-      set({ deploymentsList: list, deploymentLoading: false });
+      const scoped = filterByProject(list, projectId);
+      set({ deploymentsList: scoped, deploymentLoading: false });
     } catch (e: any) {
-      set({ deploymentLoading: false, error: e.message });
+      set({ deploymentsList: [], selectedDeploymentId: null, deploymentLoading: false, error: e.message });
     }
   },
 
   fetchSurveyIntegrations: async (projectId) => {
-    set({ surveyLoading: true, error: null });
+    set({ surveyIntegrations: [], surveyLoading: true, error: null });
+    if (!projectId) {
+      set({ surveyIntegrations: [], surveyLoading: false });
+      return;
+    }
     try {
       const list = await surveys.integrations.list(projectId);
-      set({ surveyIntegrations: list, surveyLoading: false });
+      const scoped = filterByProject(list, projectId);
+      set({ surveyIntegrations: scoped, surveyLoading: false });
     } catch (e: any) {
-      set({ surveyLoading: false, error: e.message });
+      set({ surveyIntegrations: [], surveyLoading: false, error: e.message });
     }
   },
 
@@ -93,12 +131,18 @@ export const useIntegrationsStore = create<IntegrationsStore>((set) => ({
     }
   },
 
-  fetchMCPClients: async () => {
+  fetchMCPClients: async (projectId) => {
+    set({ mcpClients: [], mcpLoading: true, error: null });
+    if (!projectId) {
+      set({ mcpClients: [], mcpLoading: false });
+      return;
+    }
     try {
-      const list = await mcp.clients.list();
-      set({ mcpClients: list });
+      const list = await mcp.clients.list(projectId);
+      const scoped = dedupeProjectMCPClients(list, projectId);
+      set({ mcpClients: scoped, mcpLoading: false });
     } catch (e: any) {
-      set({ error: e.message });
+      set({ mcpClients: [], mcpLoading: false, error: e.message });
     }
   },
 

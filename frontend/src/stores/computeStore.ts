@@ -29,10 +29,16 @@ interface ComputeNode {
   score: number;
   latency_ms: number;
   alive: boolean;
+  is_healthy?: boolean;
+  is_ready?: boolean;
+  is_reachable?: boolean;
+  online?: boolean;
   source?: "local" | "network" | "relay" | "browser";
   host?: string;
   health_error?: string;
+  health_state?: string;
   serving_state?: string;
+  readiness_state?: string;
   capability_probe_status?: "available" | "unavailable" | "not_applicable";
   model_list_stale?: boolean;
   model_capabilities?: Record<string, ModelCapability>;
@@ -41,6 +47,9 @@ interface ComputeNode {
 interface ComputeStats {
   total_nodes: number;
   alive_nodes: number;
+  ready_nodes?: number;
+  reachable_nodes?: number;
+  hardware_node_count?: number;
   total_ram_gb: number;
   available_ram_gb: number;
   total_cpu_cores: number;
@@ -59,8 +68,8 @@ interface ComputeState {
   stats: ComputeStats | null;
   loading: boolean;
   error: string | null;
-  fetchStats: () => Promise<void>;
-  fetchNodes: () => Promise<void>;
+  fetchStats: (projectId?: string | null) => Promise<void>;
+  fetchNodes: (projectId?: string | null) => Promise<void>;
 }
 
 export const useComputeStore = create<ComputeState>((set) => ({
@@ -68,10 +77,14 @@ export const useComputeStore = create<ComputeState>((set) => ({
   loading: false,
   error: null,
 
-  fetchStats: async () => {
+  fetchStats: async (projectId) => {
+    if (!projectId) {
+      set({ stats: null, loading: false, error: null });
+      return;
+    }
     set({ loading: true, error: null });
     try {
-      const data = await compute.stats();
+      const data = await compute.stats(projectId);
       set({ stats: data, loading: false, error: null });
     } catch (err) {
       set({
@@ -81,10 +94,14 @@ export const useComputeStore = create<ComputeState>((set) => ({
     }
   },
 
-  fetchNodes: async () => {
+  fetchNodes: async (projectId) => {
+    if (!projectId) {
+      set({ stats: null, loading: false, error: null });
+      return;
+    }
     set({ loading: true, error: null });
     try {
-      const data = await compute.nodes();
+      const data = await compute.nodes(projectId);
       set({ stats: data, loading: false, error: null });
     } catch (err) {
       set({

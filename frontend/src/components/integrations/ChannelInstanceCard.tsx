@@ -35,14 +35,16 @@ export default function ChannelInstanceCard({ instance, onSelect, selected }: Ch
 
   const handleToggle = async (e: React.MouseEvent) => {
     e.stopPropagation();
+    const projectId = instance.project_id || activeProjectId;
+    if (!projectId) return;
     setToggling(true);
     try {
       if (instance.is_active) {
-        await channelsApi.stop(instance.id);
+        await channelsApi.stop(instance.id, projectId);
       } else {
-        await channelsApi.start(instance.id);
+        await channelsApi.start(instance.id, projectId);
       }
-      await fetchChannels(undefined, activeProjectId || undefined);
+      await fetchChannels(undefined, projectId);
     } catch {
       // silently fail
     } finally {

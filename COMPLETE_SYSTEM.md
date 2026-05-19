@@ -8,26 +8,31 @@ Generated from the repository on version `2026.04.27`. This document is meant to
 - Use `AGENT.md` for the compressed operating view.
 - Use `SYSTEM_CHANGE_MATRIX.md` for cross-surface dependency mapping.
 - Use `CHANGE_CHECKLIST.md` for implementation steps and `tests/simulation/scenarios/` as the practical UI contract.
+- Use `docs/features/README.md` and `docs/features/llms.txt` for the UI-organized living feature documentation map.
 
 ## Living-Doc Rules
 
 - Source of truth is the codebase plus generated inventories below, not remembered prose.
 - Any change to routes, models, personas, stores, views, skills, or regression scenarios should be followed by `python scripts/update_agent_md.py`.
+- Any UI/menu/route/store/agent/skill/model/test behavior change that affects feature behavior should update `docs/features/inventory.json`, paired feature pages, glossary terms, generated site/manifests, and `llms.txt`.
 - `python scripts/check_integrity.py` should pass before shipping architecture-affecting changes.
+- `python scripts/feature_docs.py --seed-missing --generate-site --check` and `pytest tests/test_feature_docs.py -q` should pass before shipping feature-documentation changes.
 - If a change introduces a new subsystem that the scanner cannot see cleanly, extend the scanner in `scripts/update_agent_md.py` instead of silently documenting it by hand only once.
+- If feature docs fail to capture a surfaced capability, update `scripts/feature_docs.py` or the feature inventory instead of patching generated HTML by hand.
 
 ## Repository Architecture Snapshot
 
-- FastAPI backend with 45 route modules and 429 detected endpoints.
+- FastAPI backend with 50 route modules and 431 detected endpoints.
 - Next.js frontend with 24 mounted views and 15 Zustand stores.
 - 51 SQLAlchemy models in `backend/app/models`.
-- 6 tracked persona directories and 57 JSON-defined skills.
-- 92 active test files across 4 regression layers.
+- 6 tracked persona directories and 58 JSON-defined skills.
+- 110 active test files across 5 regression layers.
 
 ## Backend Route Inventory
 
 | Route Module | Prefix | Endpoints |
 |---|---|---|
+| `a2a.py` | `/` | 2 |
 | `admin.py` | `/admin` | 5 |
 | `agents.py` | `/` | 48 |
 | `audit.py` | `/` | 7 |
@@ -49,7 +54,11 @@ Generated from the repository on version `2026.04.27`. This document is meant to
 | `files.py` | `/` | 7 |
 | `findings.py` | `/` | 22 |
 | `improvement_governance.py` | `/improvement-governance` | 12 |
-| `interfaces.py` | `/` | 22 |
+| `interfaces.py` | `/` | 2 |
+| `interfaces_common.py` | `/` | 0 |
+| `interfaces_integrations.py` | `/` | 10 |
+| `interfaces_mock.py` | `/` | 4 |
+| `interfaces_screens.py` | `/` | 6 |
 | `laws.py` | `/laws` | 6 |
 | `llm_servers.py` | `/` | 6 |
 | `loops.py` | `/` | 10 |
@@ -76,6 +85,7 @@ Generated from the repository on version `2026.04.27`. This document is meant to
 
 ### Endpoint Coverage
 
+- **a2a**: `GET /api/.well-known/agent.json`, `POST /api/a2a`
 - **admin**: `GET /api/admin/overview`, `GET /api/admin/projects`, `GET /api/admin/users`, `GET /api/admin/access`, `GET /api/admin/connection-strings`
 - **agents**: `GET /api/agents`, `GET /api/agents/capacity`, `GET /api/agents/heartbeat/status`, `GET /api/agents/a2a/log`, `GET /api/agents/status`, `GET /api/agents/log/recent`, `POST /api/agents`, `GET /api/agents/{agent_id}`, `PATCH /api/agents/{agent_id}`, `DELETE /api/agents/{agent_id}`, `POST /api/agents/{agent_id}/pause`, `POST /api/agents/{agent_id}/resume`, `POST /api/agents/{agent_id}/restart`, `POST /api/agents/{agent_id}/set-scope`, `POST /api/agents/{agent_id}/request-promotion`, `POST /api/agents/{agent_id}/avatar`, `GET /api/agents/{agent_id}/avatar`, `GET /api/agents/{agent_id}/identity`, `PUT /api/agents/{agent_id}/identity`, `GET /api/agents/personas/list`, `GET /api/agents/{agent_id}/learnings`, `GET /api/agents/{agent_id}/evolution/candidates`, `POST /api/agents/{agent_id}/evolution/promote/{learning_id}`, `POST /api/agents/{agent_id}/evolution/auto`, `GET /api/agents/evolution/scan`, `GET /api/agents/creation-proposals/pending`, `GET /api/agents/creation-proposals/all`, `POST /api/agents/creation-proposals/{proposal_id}/approve`, `POST /api/agents/creation-proposals/{proposal_id}/reject`, `GET /api/agents/{agent_id}/prompt/stats`, `POST /api/agents/{agent_id}/prompt/compose`, `GET /api/agents/{agent_id}/memory`, `PATCH /api/agents/{agent_id}/memory`, `GET /api/agents/{agent_id}/messages`, `POST /api/agents/{agent_id}/messages`, `GET /api/audit/ux/latest`, `POST /api/audit/ux/run`, `GET /api/audit/sim/latest`, `POST /api/audit/sim/run`, `GET /api/agents/{agent_id}/export`, `POST /api/agents/import`, `GET /api/resources`, `GET /api/contexts`, `POST /api/contexts`, `GET /api/contexts/{doc_id}`, `PATCH /api/contexts/{doc_id}`, `DELETE /api/contexts/{doc_id}`, `GET /api/contexts/composed/{project_id}`
 - **audit**: `GET /api/audit/devops/latest`, `GET /api/audit/devops/history`, `POST /api/audit/devops/run`, `GET /api/audit/ui/latest`, `GET /api/audit/ui/history`, `POST /api/audit/ui/run`, `GET /api/audit/logs`
@@ -97,7 +107,11 @@ Generated from the repository on version `2026.04.27`. This document is meant to
 - **files**: `POST /api/files/upload/{project_id}`, `GET /api/files/{project_id}`, `POST /api/files/{project_id}/reprocess`, `GET /api/files/{project_id}/stats`, `GET /api/files/{project_id}/content/{filename}`, `POST /api/files/{project_id}/scan`, `GET /api/files/{project_id}/serve/{filename}`
 - **findings**: `GET /api/findings/nuggets`, `POST /api/findings/nuggets`, `DELETE /api/findings/nuggets/{nugget_id}`, `GET /api/findings/facts`, `POST /api/findings/facts`, `DELETE /api/findings/facts/{fact_id}`, `GET /api/findings/insights`, `POST /api/findings/insights`, `DELETE /api/findings/insights/{insight_id}`, `GET /api/findings/recommendations`, `POST /api/findings/recommendations`, `DELETE /api/findings/recommendations/{rec_id}`, `GET /api/findings/search/global`, `GET /api/findings/search/{project_id}`, `GET /api/findings/{finding_type}/{finding_id}/evidence-chain`, `GET /api/findings/evidence-chain`, `PATCH /api/findings/{finding_type}/{finding_id}/link`, `GET /api/findings/summary/{project_id}`, `GET /api/findings/design-decisions`, `POST /api/findings/design-decisions`, `DELETE /api/findings/design-decisions/{dd_id}`, `GET /api/findings/{finding_type}/{finding_id}/evidence-chain-extended`
 - **improvement_governance**: `GET /api/improvement-governance/proposals`, `GET /api/improvement-governance/proposals/{proposal_id}`, `POST /api/improvement-governance/proposals`, `POST /api/improvement-governance/proposals/{proposal_id}/approve`, `POST /api/improvement-governance/proposals/{proposal_id}/apply`, `POST /api/improvement-governance/proposals/{proposal_id}/reject`, `POST /api/improvement-governance/proposals/{proposal_id}/revert`, `POST /api/improvement-governance/proposals/{proposal_id}/quarantine`, `POST /api/improvement-governance/proposals/{proposal_id}/evaluation`, `POST /api/improvement-governance/proposals/{proposal_id}/sandbox-evaluation`, `GET /api/improvement-governance/summary`, `GET /api/improvement-governance/feature-contract`
-- **interfaces**: `GET /api/interfaces/design-chat/{project_id}/history`, `POST /api/interfaces/design-chat`, `GET /api/interfaces/screens`, `GET /api/interfaces/screens/{screen_id}`, `POST /api/interfaces/screens/generate`, `POST /api/interfaces/screens/edit`, `POST /api/interfaces/screens/variant`, `DELETE /api/interfaces/screens/{screen_id}`, `POST /api/interfaces/figma/import`, `POST /api/interfaces/figma/export`, `GET /api/interfaces/figma/design-system/{file_key}`, `GET /api/interfaces/figma/components/{file_key}`, `GET /api/interfaces/handoff/briefs`, `POST /api/interfaces/handoff/brief`, `POST /api/interfaces/handoff/dev-spec`, `GET /api/interfaces/status`, `POST /api/interfaces/configure/stitch`, `POST /api/interfaces/configure/figma`, `POST /api/interfaces/mock/generate`, `POST /api/interfaces/mock/edit`, `POST /api/interfaces/mock/variants`, `POST /api/interfaces/mock/figma-import`
+- **interfaces**: `GET /api/interfaces/design-chat/{project_id}/history`, `POST /api/interfaces/design-chat`
+- **interfaces_common**: No decorators detected
+- **interfaces_integrations**: `POST /api/interfaces/figma/import`, `POST /api/interfaces/figma/export`, `GET /api/interfaces/figma/design-system/{file_key}`, `GET /api/interfaces/figma/components/{file_key}`, `GET /api/interfaces/handoff/briefs`, `POST /api/interfaces/handoff/brief`, `POST /api/interfaces/handoff/dev-spec`, `GET /api/interfaces/status`, `POST /api/interfaces/configure/stitch`, `POST /api/interfaces/configure/figma`
+- **interfaces_mock**: `POST /api/interfaces/mock/generate`, `POST /api/interfaces/mock/edit`, `POST /api/interfaces/mock/variants`, `POST /api/interfaces/mock/figma-import`
+- **interfaces_screens**: `GET /api/interfaces/screens`, `GET /api/interfaces/screens/{screen_id}`, `POST /api/interfaces/screens/generate`, `POST /api/interfaces/screens/edit`, `POST /api/interfaces/screens/variant`, `DELETE /api/interfaces/screens/{screen_id}`
 - **laws**: `GET /api/laws`, `GET /api/laws/by-heuristic/{heuristic_id}`, `GET /api/laws/match`, `GET /api/laws/compliance/{project_id}`, `GET /api/laws/compliance/{project_id}/radar`, `GET /api/laws/{law_id}`
 - **llm_servers**: `GET /api/llm-servers`, `POST /api/llm-servers`, `POST /api/llm-servers/{server_id}/health-check`, `PATCH /api/llm-servers/{server_id}`, `DELETE /api/llm-servers/{server_id}`, `POST /api/llm-servers/discover`
 - **loops**: `GET /api/loops/overview`, `GET /api/loops/agents`, `GET /api/loops/agents/{agent_id}/config`, `PATCH /api/loops/agents/{agent_id}/config`, `POST /api/loops/agents/{agent_id}/pause`, `POST /api/loops/agents/{agent_id}/resume`, `GET /api/loops/executions`, `GET /api/loops/executions/stats`, `GET /api/loops/health`, `POST /api/loops/custom`
@@ -243,7 +257,7 @@ Generated from the repository on version `2026.04.27`. This document is meant to
 - **Define** (13): Affinity Mapping, Empathy Mapping, Problem Statements / HMW, Journey Mapping, Jobs-to-be-Done Analysis, Kappa Intercoder Thematic Analysis, Game Theory Participant Simulation, Persona Creation, Prioritization Matrix, Research Synthesis Report, Taxonomy Generator, Thematic Analysis, User Flow Mapping
 - **Deliver** (13): Evaluate Research Quality, Handoff Documentation, Longitudinal Study Tracking, NPS Analysis, Regression / Impact Analysis, Research Repository Curation, Evaluate Research Quality, Research Ops Retrospective, Stakeholder Presentation, Design System Synthesis, HTML to React Components, SUS / UMUX Scoring, Task Analysis (Quantitative)
 - **Develop** (16): A/B Test Analysis, Live Site Accessibility Audit, Live Site UX Audit, Card Sorting Analysis, Cognitive Walkthrough, Concept Testing, Design Critique / Expert Review, Design System Audit, Heuristic Evaluation, Prototype Feedback Analysis, Stitch Design Generation, Design Prompt Enhancement, Tree Testing Analysis, Usability Testing, UX Law Compliance Audit, Workshop Facilitation
-- **Discover** (15): Accessibility Audit, Analytics Review, Competitor UX Benchmarking, Competitive Analysis (Automated), Contextual Inquiry, Literature / Desk Research, Diary Studies, Field Studies / Ethnography, Interview Question Generator, Stakeholder Interviews, Survey AI Response Detection, Survey Design & Analysis, Survey Generator, Audio Transcription & Analysis, User Interviews
+- **Discover** (16): Accessibility Audit, Analytics Review, Competitor UX Benchmarking, Channel Research Deployment, Competitive Analysis (Automated), Contextual Inquiry, Literature / Desk Research, Diary Studies, Field Studies / Ethnography, Interview Question Generator, Stakeholder Interviews, Survey AI Response Detection, Survey Design & Analysis, Survey Generator, Audio Transcription & Analysis, User Interviews
 
 ## Real-Time and Integration Surface
 
@@ -257,8 +271,9 @@ Generated from the repository on version `2026.04.27`. This document is meant to
 
 - **Layer: Benchmarks**: `test_orchestration.py`
 - **Layer: Integration**: `test_llm_orchestration_real.py`
+- **Layer: Real User Benchmark**: `run.mjs`
 - **Layer: Simulation**: `run.mjs`
-- **Test Journeys**: `test_adaptive_validation.py`, `test_agent_avatar_security.py`, `test_agent_personas.py`, `test_agentic_eval_contract.py`, `test_agents.py`, `test_auth_security.py`, `test_autoresearch.py`, `test_backup.py`, `test_browser_skills.py`, `test_business_logic.py`, `test_channel_file_security.py`, `test_channel_inbound.py`, `test_channel_resilience.py`, `test_channels.py`, `test_chat.py`, `test_client_identity.py`, `test_code_applications.py`, `test_codebook_versions.py`, `test_codebooks.py`, `test_compute.py`, `test_compute_registry_hardening.py`, `test_compute_registry_model_loading.py`, `test_compute_vision_routing.py`, `test_connections.py`, `test_content_guard.py`, `test_context_dag.py`, `test_data_transformations.py`, `test_database_schema_bootstrap.py`, `test_dgmh_archive.py`, `test_document_preview_paths.py`, `test_documents.py`, `test_error_handling.py`, `test_evaluation_skill.py`, `test_field_encryption.py`, `test_file_watcher_config.py`, `test_files.py`, `test_findings.py`, `test_harness_config.py`, `test_improvement_governance.py`, `test_integration.py`, `test_integration_agent_work_cycle.py`, `test_integration_chat_flow.py`, `test_integration_interview.py`, `test_interfaces.py`, `test_istara_eval_runner.py`, `test_laws.py`, `test_llm_fallback_config.py`, `test_llm_output.py`, `test_llm_servers.py`, `test_loops.py`, `test_mcp.py`, `test_memory.py`, `test_meta_hyperagent.py`, `test_metrics.py`, `test_model_provider_contract.py`, `test_network_discovery.py`, `test_network_security.py`, `test_notifications.py`, `test_participant_simulation.py`, `test_project_rbac.py`, `test_projects.py`, `test_property_contracts.py`, `test_proxy_security.py`, `test_rag_resilience.py`, `test_rate_limiter.py`, `test_reasoning_bank.py`, `test_reports.py`, `test_research_integrity.py`, `test_runtime_source_boundary.py`, `test_security_benchmark.py`, `test_self_healing_rules.py`, `test_sessions.py`, `test_settings.py`, `test_skill_definitions.py`, `test_skill_factory.py`, `test_skills.py`, `test_steering.py`, `test_surveys.py`, `test_tasks.py`, `test_telemetry.py`, `test_telemetry_export.py`, `test_transcription.py`, `test_transport_headers.py`, `test_updates_security.py`, `test_version_comparison.py`, `test_webauthn.py`, `test_webhooks_security.py`, `test_websocket.py`, `e2e_test.py`
+- **Test Journeys**: `test_a2a_security.py`, `test_adaptive_validation.py`, `test_agent_avatar_security.py`, `test_agent_personas.py`, `test_agent_skill_tools.py`, `test_agentic_eval_contract.py`, `test_agents.py`, `test_auth_security.py`, `test_autoresearch.py`, `test_backup.py`, `test_browser_skills.py`, `test_business_logic.py`, `test_channel_file_security.py`, `test_channel_inbound.py`, `test_channel_resilience.py`, `test_channels.py`, `test_chat.py`, `test_client_identity.py`, `test_code_applications.py`, `test_codebook_versions.py`, `test_codebooks.py`, `test_compute.py`, `test_compute_registry_hardening.py`, `test_compute_registry_model_loading.py`, `test_compute_vision_routing.py`, `test_connections.py`, `test_content_guard.py`, `test_context_dag.py`, `test_data_transformations.py`, `test_database_schema_bootstrap.py`, `test_dgmh_archive.py`, `test_document_preview_paths.py`, `test_documents.py`, `test_error_handling.py`, `test_evaluation_skill.py`, `test_feature_docs.py`, `test_field_encryption.py`, `test_file_watcher_config.py`, `test_files.py`, `test_findings.py`, `test_harness_config.py`, `test_improvement_governance.py`, `test_integration.py`, `test_integration_agent_work_cycle.py`, `test_integration_chat_flow.py`, `test_integration_interview.py`, `test_interfaces.py`, `test_istara_eval_runner.py`, `test_laws.py`, `test_llm_fallback_config.py`, `test_llm_output.py`, `test_llm_schema_adapter.py`, `test_llm_servers.py`, `test_log_redaction.py`, `test_loops.py`, `test_mcp.py`, `test_memory.py`, `test_meta_hyperagent.py`, `test_metrics.py`, `test_model_provider_contract.py`, `test_network_discovery.py`, `test_network_security.py`, `test_notifications.py`, `test_onboarding_coverage.py`, `test_participant_simulation.py`, `test_project_rbac.py`, `test_projects.py`, `test_property_contracts.py`, `test_proxy_security.py`, `test_rag_resilience.py`, `test_rate_limiter.py`, `test_reasoning_bank.py`, `test_release_artifact_cleanliness.py`, `test_reports.py`, `test_research_integrity.py`, `test_research_integrity_code_applications.py`, `test_research_integrity_codebook.py`, `test_research_integrity_metrics.py`, `test_research_integrity_reports.py`, `test_research_integrity_validation.py`, `test_runtime_source_boundary.py`, `test_security_benchmark.py`, `test_security_release_readiness.py`, `test_self_healing_rules.py`, `test_sessions.py`, `test_settings.py`, `test_skill_definitions.py`, `test_skill_factory.py`, `test_skills.py`, `test_steering.py`, `test_steering_api.py`, `test_steering_manager.py`, `test_steering_queue.py`, `test_steering_websocket.py`, `test_surveys.py`, `test_tasks.py`, `test_telemetry.py`, `test_telemetry_export.py`, `test_transcription.py`, `test_transport_headers.py`, `test_updates_security.py`, `test_version_comparison.py`, `test_webauthn.py`, `test_webhooks_security.py`, `test_websocket.py`, `e2e_test.py`
 
 ## What Agents Must Check Before Editing
 
@@ -273,4 +288,6 @@ Generated from the repository on version `2026.04.27`. This document is meant to
 2. Update tests and any hand-authored guidance that explains the new behavior.
 3. Run `python scripts/update_agent_md.py`.
 4. Run `python scripts/check_integrity.py`.
-5. If the generated docs still miss something important, improve the generator instead of patching around it manually.
+5. Run `python scripts/feature_docs.py --seed-missing --generate-site --check` when feature documentation is affected.
+6. Run `pytest tests/test_feature_docs.py -q` when feature documentation inventory, source, glossary, or generator files change.
+7. If the generated docs still miss something important, improve the relevant generator instead of patching around it manually.

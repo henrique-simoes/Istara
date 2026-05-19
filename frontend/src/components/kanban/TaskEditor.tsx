@@ -115,9 +115,10 @@ export default function TaskEditor({ task, onClose }: TaskEditorProps) {
   const [atomicPath, setAtomicPath] = useState<TaskAtomicPath | null>(null);
   const docPickerRef = useRef<HTMLDivElement>(null);
   const closingRef = useRef(false);
+  const hasActiveTaskProject = Boolean(activeProjectId && activeProjectId === task.project_id);
 
   const saveDraft = useCallback(async () => {
-    if (saving) return;
+    if (saving || !activeProjectId || activeProjectId !== task.project_id) return;
     setSaving(true);
     try {
       await updateTask(task.id, {
@@ -131,13 +132,13 @@ export default function TaskEditor({ task, onClose }: TaskEditorProps) {
         what_to_review: whatToReview,
         input_document_ids: inputDocs,
         output_document_ids: outputDocs,
-      });
+      }, activeProjectId);
     } catch (e) {
       console.error("Failed to save task:", e);
     } finally {
       setSaving(false);
     }
-  }, [description, inputDocs, instructions, labels, outputDocs, saving, skillName, task.id, title, updateTask, urls, userContext, whatToReview]);
+  }, [activeProjectId, description, inputDocs, instructions, labels, outputDocs, saving, skillName, task.id, task.project_id, title, updateTask, urls, userContext, whatToReview]);
 
   const closeWithSave = useCallback(async () => {
     if (closingRef.current) return;
@@ -155,9 +156,14 @@ export default function TaskEditor({ task, onClose }: TaskEditorProps) {
   }, [closeWithSave]);
 
   useEffect(() => {
-    tasksApi.qualitySummary(task.id).then(setQuality).catch(() => setQuality(null));
-    tasksApi.atomicPath(task.id).then(setAtomicPath).catch(() => setAtomicPath(null));
-  }, [task.id]);
+    if (!activeProjectId || activeProjectId !== task.project_id) {
+      setQuality(null);
+      setAtomicPath(null);
+      return;
+    }
+    tasksApi.qualitySummary(task.id, activeProjectId).then(setQuality).catch(() => setQuality(null));
+    tasksApi.atomicPath(task.id, activeProjectId).then(setAtomicPath).catch(() => setAtomicPath(null));
+  }, [activeProjectId, task.id, task.project_id]);
 
   useEffect(() => {
     if (!showDocPicker || !activeProjectId) return;
@@ -198,11 +204,13 @@ export default function TaskEditor({ task, onClose }: TaskEditorProps) {
   const labelName = normalizeTagName;
 
   const approve = async () => {
+    if (!activeProjectId || activeProjectId !== task.project_id) return;
     await saveDraft();
-    await approveTask(task.id, whatToReview || "Human approved task output.");
+    await approveTask(task.id, activeProjectId, whatToReview || "Human approved task output.");
     onClose();
   };
   const flagRevision = async () => {
+    if (!activeProjectId || activeProjectId !== task.project_id) return;
     await saveDraft();
     await requestRevision(task.id, {
       what_to_review: whatToReview,
@@ -211,12 +219,13 @@ export default function TaskEditor({ task, onClose }: TaskEditorProps) {
       skill_name: skillName,
       input_document_ids: inputDocs,
       urls,
-    });
+    }, activeProjectId);
     onClose();
   };
   const sendReport = async () => {
+    if (!activeProjectId || activeProjectId !== task.project_id) return;
     await saveDraft();
-    await tasksApi.createReport(task.id);
+    await tasksApi.createReport(task.id, activeProjectId);
     onClose();
   };
 
@@ -403,7 +412,7 @@ export default function TaskEditor({ task, onClose }: TaskEditorProps) {
         </div>
 
         <div className="sticky bottom-0 flex items-center justify-end gap-2 border-t border-slate-200 bg-white px-5 py-3 dark:border-slate-700 dark:bg-slate-900">
-          <button onClick={saveDraft} disabled={saving || !title.trim()} className="secondary-action disabled:opacity-40"><Save size={15} /> Save</button>
+          <button onClick={saveDraft} disabled={saving || !title.trim() || !hasActiveTaskProject} className="secondary-action disabled:opacity-40"><Save size={15} /> Save</button>
           <button onClick={closeWithSave} className="primary-action">Done Editing</button>
         </div>
       </div>

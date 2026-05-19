@@ -94,9 +94,50 @@ async def test_code_apps_review_uses_authenticated_reviewer(auth_headers):
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
         response = await ac.patch(
             f"/api/code-applications/{app_id}/review",
+            params={"project_id": "code-review-auth"},
             json={"review_status": "approved", "reviewed_by": "spoofed-user"},
             headers=auth_headers,
         )
         assert response.status_code == 200
         assert response.json()["reviewed_by"] == "testuser"
         assert response.json()["reviewed_at"] is not None
+
+
+@pytest.mark.asyncio
+async def test_code_apps_review_rejects_stale_application_ids_from_other_projects(auth_headers):
+    """Review by-id route must bind the application id to the active project."""
+    await init_db()
+    settings.team_mode = True
+    app_id = str(uuid.uuid4())
+    project_id = f"review-project-{uuid.uuid4()}"
+    other_project_id = f"review-other-{uuid.uuid4()}"
+    async with async_session() as db:
+        db.add(
+            CodeApplication(
+                id=app_id,
+                project_id=project_id,
+                code_id="checkout-friction",
+                source_text="The checkout flow is confusing.",
+            )
+        )
+        await db.commit()
+
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        stale_response = await ac.patch(
+            f"/api/code-applications/{app_id}/review",
+            params={"project_id": other_project_id},
+            json={"review_status": "approved"},
+            headers=auth_headers,
+        )
+        active_response = await ac.patch(
+            f"/api/code-applications/{app_id}/review",
+            params={"project_id": project_id},
+            json={"review_status": "rejected"},
+            headers=auth_headers,
+        )
+
+    assert stale_response.status_code == 404
+    assert active_response.status_code == 200
+    assert active_response.json()["project_id"] == project_id
+    assert active_response.json()["review_status"] == "rejected"

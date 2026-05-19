@@ -1,9 +1,10 @@
 """Connection String model — persists generated team invite strings."""
 
 import hashlib
+import json
 import uuid
 from datetime import datetime, timezone
-from sqlalchemy import Column, String, DateTime, Boolean
+from sqlalchemy import Column, String, DateTime, Boolean, Text
 from app.models.database import Base
 
 class ConnectionString(Base):
@@ -18,6 +19,7 @@ class ConnectionString(Base):
     server_url = Column(String, nullable=False)
     ws_url = Column(String, default="")
     intended_role = Column(String, default="researcher")
+    allowed_project_ids_json = Column(Text, default="[]")
     
     # Status
     is_active = Column(Boolean, default=True)
@@ -43,6 +45,10 @@ class ConnectionString(Base):
         expires_at = self.expires_at
         if expires_at.tzinfo is None:
             expires_at = expires_at.replace(tzinfo=timezone.utc)
+        try:
+            allowed_project_ids = json.loads(self.allowed_project_ids_json or "[]")
+        except Exception:
+            allowed_project_ids = []
             
         return {
             "id": self.id,
@@ -52,6 +58,7 @@ class ConnectionString(Base):
             "server_url": self.server_url,
             "ws_url": self.ws_url,
             "intended_role": self.intended_role,
+            "allowed_project_ids": allowed_project_ids if isinstance(allowed_project_ids, list) else [],
             "is_active": self.is_active,
             "is_redeemed": self.is_redeemed,
             "redeemed_by_user_id": self.redeemed_by_user_id,

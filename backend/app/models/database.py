@@ -101,6 +101,7 @@ async def init_db() -> None:
         "app.core.scheduler",
         "app.models.context_dag",
         "app.models.design_screen",
+        "app.models.interface_config",
         "app.models.loop_execution",
         "app.models.agent_loop_config",
         "app.models.notification",
@@ -186,7 +187,23 @@ async def init_db() -> None:
             "ALTER TABLE connection_strings ADD COLUMN intended_role VARCHAR(40) "
             "NOT NULL DEFAULT 'researcher'",
             "ALTER TABLE connection_strings ADD COLUMN connection_string_hash VARCHAR(64)",
+            "ALTER TABLE connection_strings ADD COLUMN allowed_project_ids_json TEXT "
+            "NOT NULL DEFAULT '[]'",
+            "ALTER TABLE mcp_server_configs ADD COLUMN project_id VARCHAR(36) "
+            "NOT NULL DEFAULT ''",
+            "ALTER TABLE mcp_audit_log ADD COLUMN project_id VARCHAR(36) "
+            "NOT NULL DEFAULT ''",
+            "CREATE INDEX IF NOT EXISTS ix_mcp_audit_log_project_id "
+            "ON mcp_audit_log(project_id)",
             # Scheduler/loops hardening columns for existing installations.
+            "ALTER TABLE loop_executions ADD COLUMN project_id VARCHAR(36) "
+            "NOT NULL DEFAULT ''",
+            "CREATE INDEX IF NOT EXISTS ix_loop_executions_project_id "
+            "ON loop_executions(project_id)",
+            "ALTER TABLE a2a_messages ADD COLUMN project_id VARCHAR(36) "
+            "NOT NULL DEFAULT ''",
+            "CREATE INDEX IF NOT EXISTS ix_a2a_messages_project_id "
+            "ON a2a_messages(project_id)",
             "ALTER TABLE scheduled_tasks ADD COLUMN is_running BOOLEAN NOT NULL DEFAULT 0",
             "ALTER TABLE scheduled_tasks ADD COLUMN agent_id VARCHAR(36)",
             "ALTER TABLE scheduled_tasks ADD COLUMN loop_type VARCHAR(50) NOT NULL DEFAULT 'cron'",
@@ -253,6 +270,13 @@ async def init_db() -> None:
         try:
             await conn.run_sync(
                 lambda c: Base.metadata.tables["permission_requests"].create(c, checkfirst=True)
+            )
+        except Exception:
+            pass  # Table already exists
+
+        try:
+            await conn.run_sync(
+                lambda c: Base.metadata.tables["project_interface_configs"].create(c, checkfirst=True)
             )
         except Exception:
             pass  # Table already exists

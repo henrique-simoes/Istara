@@ -186,7 +186,7 @@ class AgentLifecycleMixin:
         reason: str,
         *,
         next_review_state: str = "system_failed",
-    ) -> None:
+    ):
         """Expose agent/self-verification failure to humans instead of hiding it as Done."""
         from app.core.task_review import (
             SYSTEM_FAILED,
@@ -208,6 +208,7 @@ class AgentLifecycleMixin:
             context_extra={"source": "agent_orchestrator"},
         )
         await diagnose_review_event(db, event.id)
+        return event
 
     async def _persist_agent_state(self, state: AgentState, current_task: str = "") -> None:
         """Persist the agent state to the database so the frontend can read it."""
@@ -226,16 +227,10 @@ class AgentLifecycleMixin:
 
     async def _work_cycle(self) -> bool:
         """Run one work cycle. Returns True if a task was executed."""
-        # ── Check steering queue FIRST — if there are pending steering
-        # messages, create a steering task and execute it before checking
-        # the normal task queue. This implements pi-mono's steering pattern:
-        # steering messages are injected while the agent is idle or working,
-        # and picked up at the next opportunity.
-        steering_msgs = await steering_manager.get_steering(self._agent_id)
-        if steering_msgs:
-            logger.info(f"Steering messages detected for {self._agent_id}: {len(steering_msgs)}")
-            for msg in steering_msgs:
-                await self._execute_steering_message(msg)
+        # ── Check project-bound steering queue FIRST — if there are pending
+        # steering messages, create a steering task and execute it before
+        # checking the normal task queue.
+        if await self._process_project_steering():
             return True
 
         # Check resource budget before doing work
@@ -274,32 +269,60 @@ class AgentLifecycleMixin:
                     f"Project not found for task {task.id} — sending to review (orphaned)"
                 )
                 task.agent_notes = f"Project not found: {task.project_id}"
-                await self._record_system_failed_review(
+                event = await self._record_system_failed_review(
                     db,
                     task,
                     f"Project not found for task {task.id}: {task.project_id}",
                     next_review_state="blocked",
                 )
                 await db.commit()
+                from app.core.task_review import record_review_side_effects
+
+                await record_review_side_effects(event)
+                return False
+
+            if project.is_paused:
+                logger.info(
+                    "Project %s is paused; deferring task %s for agent %s",
+                    project.id,
+                    task.id,
+                    self._agent_id,
+                )
+                task.status = TaskStatus.BACKLOG
+                task.agent_notes = "Project is paused; agent execution deferred."
+                await db.commit()
+                await broadcast_agent_status("paused", f"Project paused: {project.name}", project_id=project.id)
                 return False
 
             # 3. Execute the task (register with governor for concurrent limits)
             governor.register_agent("task-executor")
             self._current_task_id = task.id
-            await steering_manager.mark_working(self._agent_id)
+            await steering_manager.mark_working(self._agent_id, project_id=task.project_id)
             try:
                 await self._execute_task(db, task, project)
             finally:
                 self._current_task_id = None
                 governor.unregister_agent("task-executor")
-                await steering_manager.mark_idle(self._agent_id)
+                await steering_manager.mark_idle(self._agent_id, project_id=task.project_id)
 
             # 4. Check queue depth and adapt loop interval
             pending_result = await db.execute(
-                select(func.count(Task.id)).where(Task.status == TaskStatus.BACKLOG)
+                select(func.count(Task.id))
+                .join(Project, Project.id == Task.project_id)
+                .where(
+                    Task.status == TaskStatus.BACKLOG,
+                    Project.is_paused.is_(False),
+                    Task.project_id == task.project_id,
+                )
             )
             in_progress_result = await db.execute(
-                select(func.count(Task.id)).where(Task.status == TaskStatus.IN_PROGRESS)
+                select(func.count(Task.id))
+                .join(Project, Project.id == Task.project_id)
+                .where(
+                    Task.status == TaskStatus.IN_PROGRESS,
+                    Project.is_paused.is_(False),
+                    Task.project_id == task.project_id,
+                )
             )
             done_result = await db.execute(
                 select(func.count(Task.id)).where(
@@ -317,29 +340,82 @@ class AgentLifecycleMixin:
             if (pending + in_progress) > 0:
                 self._loop_interval = 5  # Process queue quickly
                 await broadcast_agent_status(
-                    "working", f"Task complete. {pending + in_progress} remaining in queue."
+                    "working",
+                    f"Task complete. {pending + in_progress} remaining in queue.",
+                    project_id=task.project_id,
                 )
             else:
                 self._loop_interval = 30  # Back to normal
-                await broadcast_agent_status("idle", "All tasks processed.")
+                await broadcast_agent_status("idle", "All tasks processed.", project_id=task.project_id)
 
             # ── Check follow-up queue — only processed when agent would
             # otherwise stop (no more tasks in the pipeline). This matches
             # pi-mono's followUpQueue pattern.
-            follow_up_msgs = await steering_manager.get_follow_up(self._agent_id)
+            follow_up_msgs = await steering_manager.get_follow_up(
+                self._agent_id,
+                project_id=task.project_id,
+            )
             if follow_up_msgs:
                 logger.info(f"Follow-up messages for {self._agent_id}: {len(follow_up_msgs)}")
                 for msg in follow_up_msgs:
-                    await self._execute_steering_message(msg)
+                    await steering_manager.mark_working(self._agent_id, project_id=project.id)
+                    try:
+                        await self._execute_steering_message(msg, project)
+                    finally:
+                        await steering_manager.mark_idle(self._agent_id, project_id=project.id)
                 return True
 
             return True
+
+    async def _process_project_steering(self) -> bool:
+        project_ids = await steering_manager.project_ids_with_queued_steering(self._agent_id)
+        if not project_ids:
+            return False
+
+        async with async_session() as db:
+            for project_id in project_ids:
+                project = await self._get_project(db, project_id)
+                if not project:
+                    logger.warning(
+                        "Dropping steering messages for missing project %s and agent %s",
+                        project_id,
+                        self._agent_id,
+                    )
+                    await steering_manager.clear_steering(self._agent_id, project_id=project_id)
+                    continue
+                if project.is_paused:
+                    logger.info(
+                        "Project %s is paused; deferring steering for agent %s",
+                        project.id,
+                        self._agent_id,
+                    )
+                    continue
+                steering_msgs = await steering_manager.get_steering(
+                    self._agent_id,
+                    project_id=project.id,
+                )
+                if not steering_msgs:
+                    continue
+                logger.info(
+                    "Project-scoped steering messages detected for %s in %s: %s",
+                    self._agent_id,
+                    project.id,
+                    len(steering_msgs),
+                )
+                for msg in steering_msgs:
+                    await steering_manager.mark_working(self._agent_id, project_id=project.id)
+                    try:
+                        await self._execute_steering_message(msg, project)
+                    finally:
+                        await steering_manager.mark_idle(self._agent_id, project_id=project.id)
+                return True
+        return False
 
     async def _get_project(self, db: AsyncSession, project_id: str) -> Project | None:
         result = await db.execute(select(Project).where(Project.id == project_id))
         return result.scalar_one_or_none()
 
-    async def _execute_steering_message(self, msg) -> None:
+    async def _execute_steering_message(self, msg, project: Project | None = None) -> None:
         """Execute a steering message as an interim task.
 
         Steering messages are user-injected mid-execution instructions.
@@ -352,11 +428,52 @@ class AgentLifecycleMixin:
 
         message_text = msg.message if hasattr(msg, "message") else str(msg)
         source = msg.source if hasattr(msg, "source") else "user"
-        logger.info(f"Executing steering message ({source}): {message_text[:100]}")
+        metadata = getattr(msg, "metadata", {}) if hasattr(msg, "metadata") else {}
+        project_id = str(metadata.get("project_id") or "").strip()
+
+        if project is None and project_id:
+            async with async_session() as db:
+                project = await self._get_project(db, project_id)
+
+        if not project:
+            logger.warning(
+                "Skipping steering message for %s because it has no valid project context",
+                self._agent_id,
+            )
+            return
+
+        if project.is_paused:
+            logger.info(
+                "Skipping steering message for paused project %s and agent %s",
+                project.id,
+                self._agent_id,
+            )
+            await broadcast_agent_status("paused", f"Project paused: {project.name}", project_id=project.id)
+            return
+
+        project_context = "\n".join(
+            part
+            for part in [
+                project.name,
+                project.description,
+                project.project_context,
+                project.guardrails,
+            ]
+            if part
+        )
+
+        logger.info(
+            "Executing steering message (%s) for project %s: %s",
+            source,
+            project.id,
+            message_text[:100],
+        )
 
         # Broadcast that we're processing a steering message
         await broadcast_agent_status(
-            "working", f"Processing steering message: {message_text[:80]}..."
+            "working",
+            f"Processing steering message: {message_text[:80]}...",
+            project_id=project.id,
         )
 
         try:
@@ -380,12 +497,12 @@ class AgentLifecycleMixin:
             if skill:
                 # Execute the skill with the steering message as context
                 skill_input = SkillInput(
-                    project_id="",  # Steering messages don't require a project
+                    project_id=project.id,
                     task_id="",
                     parameters={"mode": "analyze"},
                     user_context=message_text,
-                    project_context="",
-                    company_context="",
+                    project_context=project_context,
+                    company_context=project.company_context or "",
                 )
                 output = await asyncio.wait_for(skill.execute(skill_input), timeout=120)
 
@@ -395,6 +512,7 @@ class AgentLifecycleMixin:
                     f"Steering message processed ({skill.display_name}): {output.summary[:120]}..."
                     if output.summary
                     else f"Steering message processed ({skill.display_name})",
+                    project_id=project.id,
                 )
             else:
                 # No matching skill — use the general LLM to respond
@@ -404,20 +522,32 @@ class AgentLifecycleMixin:
                             "role": "system",
                             "content": (
                                 "You are Istara's main agent. Respond helpfully to the "
-                                "user's steering message."
+                                f"user's steering message for project {project.name}."
                             ),
                         },
                         {"role": "user", "content": message_text},
                     ]
                 )
                 reply = response.get("message", {}).get("content", "")
-                await broadcast_agent_status("idle", f"Steering response: {reply[:200]}...")
+                await broadcast_agent_status(
+                    "idle",
+                    f"Steering response: {reply[:200]}...",
+                    project_id=project.id,
+                )
         except TimeoutError:
             logger.warning("Steering message execution timed out")
-            await broadcast_agent_status("warning", "Steering message timed out after 2 minutes")
+            await broadcast_agent_status(
+                "warning",
+                "Steering message timed out after 2 minutes",
+                project_id=project.id,
+            )
         except Exception as e:
             logger.error(f"Steering message execution failed: {e}")
-            await broadcast_agent_status("warning", f"Steering message failed: {str(e)[:100]}")
+            await broadcast_agent_status(
+                "warning",
+                f"Steering message failed: {str(e)[:100]}",
+                project_id=project.id,
+            )
 
     def _is_in_backoff(self, task: Task) -> bool:
         """Check if a task is still within its retry backoff window."""
@@ -432,10 +562,13 @@ class AgentLifecycleMixin:
     async def _process_a2a_inbox(self, db: AsyncSession) -> None:
         """Process pending A2A collaboration requests from other agents."""
         try:
-            from app.services.a2a import get_messages, mark_read
+            from app.services.a2a import get_project_inbox, mark_read
 
-            messages = await get_messages(db, self._agent_id, unread_only=True, limit=3)
+            messages = await get_project_inbox(db, self._agent_id, unread_only=True, limit=3)
             for msg in messages:
+                msg_project_id = msg.get("project_id", "") if isinstance(msg, dict) else ""
+                if not msg_project_id:
+                    continue
                 msg_type = (
                     msg.get("message_type", "")
                     if isinstance(msg, dict)
@@ -449,7 +582,7 @@ class AgentLifecycleMixin:
                     await self._handle_delegate(db, msg)
                 msg_id = msg.get("id") if isinstance(msg, dict) else getattr(msg, "id", "")
                 if msg_id:
-                    await mark_read(db, msg_id)
+                    await mark_read(db, msg_id, project_id=msg_project_id)
         except Exception as e:
             logger.debug(f"A2A inbox check skipped: {e}")
 
@@ -469,6 +602,13 @@ class AgentLifecycleMixin:
 
                 project_id = data.get("project_id")
                 task_id = data.get("task_id")
+                msg_project_id = msg.get("project_id", "") if isinstance(msg, dict) else ""
+                if not project_id or (msg_project_id and msg_project_id != project_id):
+                    return
+                if task_id:
+                    task = await db.get(Task, task_id)
+                    if not task or task.project_id != project_id:
+                        return
 
                 # 1. Ensure MECE categorization on all eligible L2/L3 reports.
                 # ProjectReport derives finding counts from finding_ids_json, so
@@ -513,6 +653,7 @@ class AgentLifecycleMixin:
                         "Consulting-grade MECE reporting completed for project "
                         f"{project_id}. Updated {updated_count} reports."
                     ),
+                    project_id=project_id,
                     metadata={"project_id": project_id, "task_id": task_id},
                 )
         except Exception as e:
@@ -535,6 +676,9 @@ class AgentLifecycleMixin:
             task = await db.get(Task, task_id)
             if not task or task.status not in ("backlog", "in_progress"):
                 return
+            metadata_project_id = metadata.get("project_id") or msg.get("project_id", "")
+            if metadata_project_id and metadata_project_id != task.project_id:
+                return
 
             msg_id = msg.get("id", "") if isinstance(msg, dict) else getattr(msg, "id", "")
             msg_from = (
@@ -552,7 +696,11 @@ class AgentLifecycleMixin:
             # Load conversation thread for multi-turn context
             from app.services.a2a import get_conversation_thread, send_message
 
-            thread = await get_conversation_thread(db, context_id)
+            thread = await get_conversation_thread(
+                db,
+                context_id,
+                project_id=task.project_id,
+            )
 
             # Build LLM messages from conversation history
             from app.core.agent_identity import get_capability_card
@@ -608,7 +756,13 @@ class AgentLifecycleMixin:
                 to_agent_id=msg_from,
                 message_type="collaboration_response",
                 content=analysis[:2000],
-                metadata={"task_id": task_id, "context_id": context_id, "responding_to": msg_id},
+                project_id=task.project_id,
+                metadata={
+                    "task_id": task_id,
+                    "project_id": task.project_id,
+                    "context_id": context_id,
+                    "responding_to": msg_id,
+                },
             )
 
             # Append to task notes
@@ -646,14 +800,25 @@ class AgentLifecycleMixin:
                     "I need a critical review of this analysis.\n\n"
                     f"Task: {task.title}\n\nOutput:\n{output.summary[:1500]}"
                 ),
-                metadata={"task_id": task.id, "context_id": context_id},
+                project_id=task.project_id,
+                metadata={
+                    "task_id": task.id,
+                    "project_id": task.project_id,
+                    "context_id": context_id,
+                },
             )
             logger.info(f"A2A debate initiated with {target} for task {task.id}")
 
             # Wait for response (up to 30s, polling every 3s)
             for _ in range(10):
                 await asyncio.sleep(3)
-                msgs = await get_messages(db, self._agent_id, unread_only=True, limit=5)
+                msgs = await get_messages(
+                    db,
+                    self._agent_id,
+                    unread_only=True,
+                    limit=5,
+                    project_id=task.project_id,
+                )
                 for msg in msgs:
                     msg_meta = msg.get("metadata", {}) if isinstance(msg, dict) else {}
                     if isinstance(msg_meta, str):
@@ -706,6 +871,17 @@ class AgentLifecycleMixin:
             )
             if isinstance(metadata, str):
                 metadata = json.loads(metadata) if metadata else {}
+            project_id = metadata.get("project_id") or msg.get("project_id", "")
+            task_id = metadata.get("task_id", "")
+            if task_id:
+                task = await db.get(Task, task_id)
+                if not task:
+                    return
+                if project_id and project_id != task.project_id:
+                    return
+                project_id = task.project_id
+            if not project_id:
+                return
 
             response = await ollama.chat(
                 messages=[
@@ -732,9 +908,11 @@ class AgentLifecycleMixin:
                 to_agent_id=msg_from,
                 message_type="debate_response",
                 content=critique[:2000],
+                project_id=project_id,
                 metadata={
                     "context_id": metadata.get("context_id", ""),
-                    "task_id": metadata.get("task_id", ""),
+                    "task_id": task_id,
+                    "project_id": project_id,
                 },
             )
         except Exception as e:
@@ -752,7 +930,12 @@ class AgentLifecycleMixin:
 
             async with async_session() as db:
                 task = (
-                    await db.execute(select(Task).where(Task.id == task_id))
+                    await db.execute(
+                        select(Task).where(
+                            Task.id == task_id,
+                            Task.project_id == project_id,
+                        )
+                    )
                 ).scalar_one_or_none()
                 if not task or task.status != TaskStatus.DONE:
                     return
@@ -772,6 +955,7 @@ class AgentLifecycleMixin:
                     to_agent_id="istara-main",
                     message_type="delegate",
                     content=json.dumps(report_msg),
+                    project_id=project_id,
                     metadata={"project_id": project_id},
                 )
 
@@ -800,9 +984,11 @@ class AgentLifecycleMixin:
         # First: tasks assigned to THIS agent
         result = await db.execute(
             select(Task)
+            .join(Project, Project.id == Task.project_id)
             .where(
                 Task.status.in_([TaskStatus.BACKLOG, TaskStatus.IN_PROGRESS]),
                 Task.agent_id == self._agent_id,
+                Project.is_paused.is_(False),
                 # Skip locked tasks (locked by someone else)
                 or_(
                     Task.locked_by.is_(None),
@@ -821,9 +1007,11 @@ class AgentLifecycleMixin:
         if self._agent_id == "istara-main":
             result = await db.execute(
                 select(Task)
+                .join(Project, Project.id == Task.project_id)
                 .where(
                     Task.status.in_([TaskStatus.BACKLOG, TaskStatus.IN_PROGRESS]),
                     Task.agent_id.is_(None),
+                    Project.is_paused.is_(False),
                 )
                 .order_by(priority_order, Task.position.asc(), Task.created_at.asc())
                 .limit(10)

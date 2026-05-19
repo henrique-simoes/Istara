@@ -39,6 +39,7 @@ DESKTOP_SRC = ROOT / "desktop" / "src-tauri" / "src"
 RELAY_ROOT = ROOT / "relay"
 CHANNELS_DIR = BACKEND / "channels"
 SURVEY_PLATFORMS_DIR = BACKEND / "services" / "survey_platforms"
+FEATURE_DOCS_INVENTORY = ROOT / "docs" / "features" / "inventory.json"
 
 
 def read_text(path: Path) -> str:
@@ -275,6 +276,14 @@ def scan_simple_module_names(directory: Path, suffixes: tuple[str, ...]) -> list
     )
 
 
+def scan_feature_doc_count() -> int:
+    if not FEATURE_DOCS_INVENTORY.exists():
+        return 0
+    data = json.loads(read_text(FEATURE_DOCS_INVENTORY))
+    features = data.get("features", [])
+    return len(features) if isinstance(features, list) else 0
+
+
 def build_inventory() -> dict[str, object]:
     skills = scan_skill_definitions()
     skills_by_phase: dict[str, list[str]] = defaultdict(list)
@@ -309,6 +318,7 @@ def build_inventory() -> dict[str, object]:
             for name in scan_simple_module_names(SURVEY_PLATFORMS_DIR, (".py",))
             if name != "__init__"
         ],
+        "feature_doc_count": scan_feature_doc_count(),
     }
 
 
@@ -340,6 +350,7 @@ def render_entrypoint_generated_section(inventory: dict[str, object]) -> str:
         f"- Data models: {len(inventory['models'])}",
         f"- Personas: {len(inventory['personas'])} ({personas})",
         f"- Active test files: {total_test_files} across {len(inventory['test_layers'])} layers", # type: ignore[attr-defined]
+        f"- Living feature docs: {inventory['feature_doc_count']} tracked UI feature surfaces in `docs/features/inventory.json`",
         "",
         "## Current Product Surface",
         "",
@@ -368,7 +379,7 @@ def render_entrypoint_generated_section(inventory: dict[str, object]) -> str:
         "- Update `tests/e2e_test.py` and/or `tests/simulation/scenarios/`",
         "- Update `Tech.md` if the system/API behavior story changed",
         "- Update persona files if Istara's own agents should understand or use the new capability",
-        "- Regenerate docs and run integrity checks",
+        "- Regenerate system docs, update/regenerate affected `docs/features/` pages and manifests, and run integrity checks",
         "",
         "### 2. Model, Schema, or Persistence Change",
         "",
@@ -383,7 +394,7 @@ def render_entrypoint_generated_section(inventory: dict[str, object]) -> str:
         "- Check project deletion/cascade behavior if project-scoped",
         "- Update tests covering integrity, CRUD, and downstream UI behavior",
         "- Update `Tech.md` if the data model or architecture meaning changed",
-        "- Regenerate docs and run integrity checks",
+        "- Regenerate system docs, update/regenerate affected `docs/features/` pages and manifests, and run integrity checks",
         "",
         "### 3. Frontend View, Menu, Navigation, or UX Flow Change",
         "",
@@ -398,7 +409,8 @@ def render_entrypoint_generated_section(inventory: dict[str, object]) -> str:
         "- Update `tests/e2e_test.py` if it changes the Sarah journey or major product flow",
         "- Update `Tech.md` if the user-facing system story changed",
         "- Update persona files if Istara's own agents should discuss or navigate this feature",
-        "- Regenerate docs and run integrity checks",
+        "- Update `docs/features/inventory.json` and both feature doc audiences for affected menus, tabs, or sub-features",
+        "- Regenerate system docs, update/regenerate affected `docs/features/` pages and manifests, and run integrity checks",
         "",
         "### 4. WebSocket, Notification, or Async Workflow Change",
         "",
@@ -410,7 +422,7 @@ def render_entrypoint_generated_section(inventory: dict[str, object]) -> str:
         "- Update notifications UI/prefs if categories or event semantics changed",
         "- Update tests/scenarios that depend on real-time behavior",
         "- Update `Tech.md` if the runtime behavior story changed",
-        "- Regenerate docs and run integrity checks",
+        "- Regenerate system docs, update/regenerate affected `docs/features/` pages and manifests, and run integrity checks",
         "",
         "### 5. Skill, Persona, Agent, or Prompt Change",
         "",
@@ -423,7 +435,7 @@ def render_entrypoint_generated_section(inventory: dict[str, object]) -> str:
         "- Update tests or scenarios covering execution/routing behavior",
         "- Update `Tech.md` if this changes how Istara works conceptually",
         "- Update `SYSTEM_PROMPT.md`, `SYSTEM_CHANGE_MATRIX.md`, or `CHANGE_CHECKLIST.md` if repo doctrine changed",
-        "- Regenerate docs and run integrity checks",
+        "- Regenerate system docs, update/regenerate affected `docs/features/` pages and manifests, and run integrity checks",
         "",
         "### 6. Integrations, Channels, MCP, Deployments, or External Connectors",
         "",
@@ -435,7 +447,7 @@ def render_entrypoint_generated_section(inventory: dict[str, object]) -> str:
         "- Update fixtures and tests for security, setup, ingestion, and end-to-end behavior",
         "- Update `Tech.md` if the integration model or security model changed",
         "- Update persona files if Istara's own agents should know how to reason about the new connector/workflow",
-        "- Regenerate docs and run integrity checks",
+        "- Regenerate system docs, update/regenerate affected `docs/features/` pages and manifests, and run integrity checks",
         "",
         "### 7. Release, Versioning, Installer, or Auto-Update Change",
         "",
@@ -449,7 +461,7 @@ def render_entrypoint_generated_section(inventory: dict[str, object]) -> str:
         "- Update installer/build files",
         "- Update `Tech.md`",
         "- Update tests if release/update behavior has automated coverage",
-        "- Regenerate docs and run integrity checks",
+        "- Regenerate system docs, update/regenerate affected `docs/features/` pages and manifests, and run integrity checks",
         "- Make sure the docs describe the same model: only release-worthy `main` pushes publish installers/releases, while tag/manual flow remains available for explicit release control",
         "",
         ENTRYPOINT_END,
@@ -551,6 +563,7 @@ def build_agent_document(inventory: dict[str, object]) -> str:
     total_routes = len(inventory["routes"])  # type: ignore[arg-type]
     total_personas = len(inventory["personas"])  # type: ignore[arg-type]
     total_test_files = sum(len(files) for files in inventory["test_layers"].values()) # type: ignore[attr-defined]
+    feature_doc_count = inventory["feature_doc_count"]
 
     lines = [
         "# Istara — Agent-Readable Operating Map",
@@ -564,6 +577,7 @@ def build_agent_document(inventory: dict[str, object]) -> str:
         "- Use `SYSTEM_CHANGE_MATRIX.md` to identify dependent backend, frontend, UX, test, release, and prompt surfaces.",
         "- Use `CHANGE_CHECKLIST.md` to identify every code, test, and doc surface touched by the change.",
         "- Regenerate this file and `COMPLETE_SYSTEM.md` with `python scripts/update_agent_md.py` in the same change that modifies architecture, flows, routes, stores, skills, personas, or tests.",
+        "- Update `docs/features/` and run `python scripts/feature_docs.py --seed-missing --generate-site --check` when UI/menu/route/store/agent/skill/model/test behavior affects feature documentation.",
         "- Run `python scripts/check_integrity.py` before finalizing docs-related work.",
         "- Treat `tests/e2e_test.py` and `tests/simulation/scenarios/` as behavioral contracts for the UI and system flows.",
         "- Update `Tech.md` when architecture, workflow, installer, release, or update behavior changes.",
@@ -578,13 +592,14 @@ def build_agent_document(inventory: dict[str, object]) -> str:
         f"- Agents/personas: {total_personas} tracked persona directories under `backend/app/agents/personas`.",
         f"- Skills: {total_skills} JSON-defined skills across the Double Diamond phases.",
         f"- Regression map: {total_test_files} active test files across {len(inventory['test_layers'])} layers.", # type: ignore[attr-defined]
+        f"- Feature docs: {feature_doc_count} tracked UI feature surfaces in `docs/features/inventory.json`.",
         "",
         "## Change Hotspots",
         "",
-        "- New route or changed payload: update backend route, frontend API client, matching TypeScript types, consuming stores/components, tests, and regenerate docs.",
-        "- New model or schema field: update model, serialization, frontend types, any route/store consumers, migration path, tests, and regenerate docs.",
-        "- New view or menu item: update `Sidebar.tsx`, `HomeClient.tsx`, relevant store/components, simulation scenarios, and regenerate docs.",
-        "- Persona, skill, or workflow changes: update persona files, skill definitions/prompts, related tests, and regenerate docs.",
+        "- New route or changed payload: update backend route, frontend API client, matching TypeScript types, consuming stores/components, tests, and regenerate system plus feature docs.",
+        "- New model or schema field: update model, serialization, frontend types, any route/store consumers, migration path, tests, and regenerate system plus feature docs.",
+        "- New view or menu item: update `Sidebar.tsx`, `HomeClient.tsx`, relevant store/components, simulation scenarios, `docs/features/inventory.json`, paired feature docs, and generated manifests.",
+        "- Persona, skill, or workflow changes: update persona files, skill definitions/prompts, related tests, and affected feature docs.",
         "",
         "## Navigation Map",
         "",
@@ -645,13 +660,17 @@ def build_complete_system_document(inventory: dict[str, object]) -> str:
         "- Use `AGENT.md` for the compressed operating view.",
         "- Use `SYSTEM_CHANGE_MATRIX.md` for cross-surface dependency mapping.",
         "- Use `CHANGE_CHECKLIST.md` for implementation steps and `tests/simulation/scenarios/` as the practical UI contract.",
+        "- Use `docs/features/README.md` and `docs/features/llms.txt` for the UI-organized living feature documentation map.",
         "",
         "## Living-Doc Rules",
         "",
         "- Source of truth is the codebase plus generated inventories below, not remembered prose.",
         "- Any change to routes, models, personas, stores, views, skills, or regression scenarios should be followed by `python scripts/update_agent_md.py`.",
+        "- Any UI/menu/route/store/agent/skill/model/test behavior change that affects feature behavior should update `docs/features/inventory.json`, paired feature pages, glossary terms, generated site/manifests, and `llms.txt`.",
         "- `python scripts/check_integrity.py` should pass before shipping architecture-affecting changes.",
+        "- `python scripts/feature_docs.py --seed-missing --generate-site --check` and `pytest tests/test_feature_docs.py -q` should pass before shipping feature-documentation changes.",
         "- If a change introduces a new subsystem that the scanner cannot see cleanly, extend the scanner in `scripts/update_agent_md.py` instead of silently documenting it by hand only once.",
+        "- If feature docs fail to capture a surfaced capability, update `scripts/feature_docs.py` or the feature inventory instead of patching generated HTML by hand.",
         "",
         "## Repository Architecture Snapshot",
         "",
@@ -714,7 +733,9 @@ def build_complete_system_document(inventory: dict[str, object]) -> str:
         "2. Update tests and any hand-authored guidance that explains the new behavior.",
         "3. Run `python scripts/update_agent_md.py`.",
         "4. Run `python scripts/check_integrity.py`.",
-        "5. If the generated docs still miss something important, improve the generator instead of patching around it manually.",
+        "5. Run `python scripts/feature_docs.py --seed-missing --generate-site --check` when feature documentation is affected.",
+        "6. Run `pytest tests/test_feature_docs.py -q` when feature documentation inventory, source, glossary, or generator files change.",
+        "7. If the generated docs still miss something important, improve the relevant generator instead of patching around it manually.",
         "",
     ]
     return "\n".join(lines).rstrip() + "\n"

@@ -33,13 +33,30 @@ def auth_headers():
 
 @pytest.mark.asyncio
 async def test_documents_list_returns_list(auth_headers):
-    """GET /api/documents returns a list."""
+    """GET /api/documents returns a list for an explicit active project."""
+    await init_db()
+    project_id = f"doc-list-project-{uuid.uuid4()}"
+    async with async_session() as db:
+        db.add(Project(id=project_id, name="Document List Project"))
+        await db.commit()
+
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        response = await ac.get(f"/api/documents?project_id={project_id}", headers=auth_headers)
+        assert response.status_code == 200
+        assert isinstance(response.json(), dict)
+
+
+@pytest.mark.asyncio
+async def test_documents_list_requires_active_project(auth_headers):
+    """Document library listing must not silently fall back to a global list."""
     await init_db()
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
         response = await ac.get("/api/documents", headers=auth_headers)
-        assert response.status_code in (200, 422, 500, 502)
-        assert isinstance(response.json(), dict)
+
+    assert response.status_code == 400
+    assert response.json()["detail"] == "project_id is required"
 
 
 @pytest.mark.asyncio
@@ -57,9 +74,17 @@ async def test_documents_list_requires_auth():
 async def test_document_get_nonexistent_returns_404(auth_headers):
     """GET /api/documents/{id} returns 404 for non-existent document."""
     await init_db()
+    project_id = f"doc-missing-project-{uuid.uuid4()}"
+    async with async_session() as db:
+        db.add(Project(id=project_id, name="Missing Document Project"))
+        await db.commit()
+
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
-        response = await ac.get("/api/documents/non-existent-id", headers=auth_headers)
+        response = await ac.get(
+            f"/api/documents/non-existent-id?project_id={project_id}",
+            headers=auth_headers,
+        )
         assert response.status_code == 404
 
 
@@ -67,10 +92,18 @@ async def test_document_get_nonexistent_returns_404(auth_headers):
 async def test_documents_search_returns_list(auth_headers):
     """GET /api/documents/search/full returns search results."""
     await init_db()
+    project_id = f"doc-search-project-{uuid.uuid4()}"
+    async with async_session() as db:
+        db.add(Project(id=project_id, name="Document Search Project"))
+        await db.commit()
+
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
-        response = await ac.get("/api/documents/search/full?q=test", headers=auth_headers)
-        assert response.status_code in (200, 422, 500, 502)
+        response = await ac.get(
+            f"/api/documents/search/full?project_id={project_id}&q=test",
+            headers=auth_headers,
+        )
+        assert response.status_code == 200
         assert isinstance(response.json(), dict)
 
 
@@ -188,7 +221,10 @@ async def test_document_content_returns_audio_transcript(auth_headers, tmp_path,
 
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
-        response = await ac.get(f"/api/documents/{doc_id}/content", headers=auth_headers)
+        response = await ac.get(
+            f"/api/documents/{doc_id}/content?project_id={project_id}",
+            headers=auth_headers,
+        )
 
     assert response.status_code == 200
     payload = response.json()
@@ -220,6 +256,62 @@ async def test_documents_list_rejects_invalid_filter_enums(auth_headers):
 
     assert source_response.status_code == 422
     assert status_response.status_code == 422
+
+
+@pytest.mark.asyncio
+async def test_document_id_routes_require_active_project_match(auth_headers):
+    """ID-based document routes must stay bound to the caller's active project."""
+    await init_db()
+    project_id = f"doc-bound-project-{uuid.uuid4()}"
+    other_project_id = f"doc-bound-other-{uuid.uuid4()}"
+    doc_id = str(uuid.uuid4())
+
+    async with async_session() as db:
+        db.add(Project(id=project_id, name="Document Bound Project"))
+        db.add(Project(id=other_project_id, name="Other Document Bound Project"))
+        db.add(
+            Document(
+                id=doc_id,
+                project_id=project_id,
+                title="Project Document",
+                file_name="project.txt",
+                file_type=".txt",
+                status=DocumentStatus.READY,
+                content_text="project only",
+                content_preview="project only",
+            )
+        )
+        await db.commit()
+
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        get_response = await ac.get(
+            f"/api/documents/{doc_id}?project_id={other_project_id}",
+            headers=auth_headers,
+        )
+        content_response = await ac.get(
+            f"/api/documents/{doc_id}/content?project_id={other_project_id}",
+            headers=auth_headers,
+        )
+        update_response = await ac.patch(
+            f"/api/documents/{doc_id}?project_id={other_project_id}",
+            headers=auth_headers,
+            json={"title": "Wrong Context"},
+        )
+        delete_response = await ac.delete(
+            f"/api/documents/{doc_id}?project_id={other_project_id}",
+            headers=auth_headers,
+        )
+
+    assert get_response.status_code == 404
+    assert content_response.status_code == 404
+    assert update_response.status_code == 404
+    assert delete_response.status_code == 404
+
+    async with async_session() as db:
+        doc = await db.get(Document, doc_id)
+    assert doc is not None
+    assert doc.title == "Project Document"
 
 
 @pytest.mark.asyncio
@@ -289,7 +381,10 @@ async def test_document_content_refuses_file_path_outside_project_roots(auth_hea
 
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
-        response = await ac.get(f"/api/documents/{doc_id}/content", headers=auth_headers)
+        response = await ac.get(
+            f"/api/documents/{doc_id}/content?project_id={project_id}",
+            headers=auth_headers,
+        )
 
     assert response.status_code == 200
     assert response.json()["content"] == "safe fallback"

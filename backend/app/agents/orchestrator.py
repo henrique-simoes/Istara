@@ -300,6 +300,7 @@ class MetaOrchestrator:
         """Route unassigned tasks to the best agent based on specialties."""
         try:
             from app.models.database import async_session
+            from app.models.project import Project
             from app.models.task import Task, TaskStatus
             from app.core.task_router import route_task
             from app.services.a2a import send_message
@@ -308,9 +309,11 @@ class MetaOrchestrator:
             async with async_session() as db:
                 result = await db.execute(
                     select(Task)
+                    .join(Project, Project.id == Task.project_id)
                     .where(
                         Task.status == TaskStatus.BACKLOG,
                         Task.agent_id.is_(None),
+                        Project.is_paused.is_(False),
                     )
                     .order_by(Task.created_at.asc())
                     .limit(10)
@@ -334,7 +337,12 @@ class MetaOrchestrator:
                     # Merge any existing A2A collaboration responses into task context
                     try:
                         from app.services.a2a import get_messages
-                        collab_responses = await get_messages(db, routing["primary_agent_id"], limit=10)
+                        collab_responses = await get_messages(
+                            db,
+                            routing["primary_agent_id"],
+                            limit=10,
+                            project_id=task.project_id,
+                        )
                         for resp in collab_responses:
                             resp_type = resp.get("message_type") if isinstance(resp, dict) else getattr(resp, "message_type", "")
                             if resp_type != "collaboration_response":
@@ -383,13 +391,15 @@ class MetaOrchestrator:
                                     task.description or "",
                                     task.id,
                                     routing.get("specialties_needed", []),
+                                    project_id=task.project_id,
                                 )
                                 try:
                                     from dataclasses import asdict
                                     from app.core.improvement_governance import improvement_governance
 
                                     await improvement_governance.register_agent_creation_proposal(
-                                        asdict(proposal)
+                                        asdict(proposal),
+                                        project_id=task.project_id,
                                     )
                                 except Exception:
                                     pass
@@ -408,6 +418,7 @@ class MetaOrchestrator:
                                         "agent_creation_proposed",
                                         {
                                             "proposal_id": proposal.id,
+                                            "project_id": task.project_id,
                                             "proposed_name": proposal.proposed_name,
                                             "reason": gap,
                                         },
@@ -426,8 +437,10 @@ class MetaOrchestrator:
                                 to_agent_id=collab_id,
                                 message_type="collaboration_request",
                                 content=f"Task '{task.title}' needs your expertise. Specialties: {', '.join(routing['specialties_needed'])}. Please review when complete and provide feedback.",
+                                project_id=task.project_id,
                                 metadata={
                                     "task_id": task.id,
+                                    "project_id": task.project_id,
                                     "task_title": task.title,
                                     "specialties_needed": routing["specialties_needed"],
                                 },

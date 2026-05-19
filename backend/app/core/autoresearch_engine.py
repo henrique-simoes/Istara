@@ -16,6 +16,7 @@ from app.core.autoresearch_isolation import autoresearch_context
 from app.core.autoresearch_rate_limiter import check_experiment_limit
 from app.models.autoresearch_experiment import AutoresearchExperiment
 from app.models.database import async_session
+from app.models.project import Project
 
 logger = logging.getLogger(__name__)
 
@@ -26,6 +27,7 @@ class AutoresearchEngine:
     def __init__(self):
         self._running = False
         self._current_experiment: dict | None = None
+        self._active_project_id: str | None = None
         self._stop_requested = False
 
     @property
@@ -35,6 +37,11 @@ class AutoresearchEngine:
     @property
     def current_experiment(self) -> dict | None:
         return self._current_experiment
+
+    @property
+    def active_project_id(self) -> str | None:
+        """Project that owns the currently running loop, including baseline measurement."""
+        return self._active_project_id if self._running else None
 
     def get_current_experiment(self) -> dict | None:
         """Return the currently running experiment, or None."""
@@ -59,13 +66,20 @@ class AutoresearchEngine:
 
         Returns list of experiment results.
         """
+        project_id = await self._require_active_project_id(project_id)
         if self._running:
             raise RuntimeError("Engine already running")
 
+        bind_project = getattr(runner, "bind_project", None)
+        if callable(bind_project):
+            bind_project(project_id)
+
         self._running = True
+        self._active_project_id = project_id
         self._stop_requested = False
         results: list[dict] = []
         baseline = 0.0
+        best_score = baseline
         min_delta = max(0.0, float(getattr(settings, "autoresearch_min_improvement_delta", 0.01)))
         measurement_repeats = max(1, min(10, int(getattr(settings, "autoresearch_measurement_repeats", 1))))
 
@@ -77,17 +91,32 @@ class AutoresearchEngine:
                 if not acquire_persona_lock(target, f"autoresearch-{runner.loop_type}"):
                     raise RuntimeError(f"Cannot acquire persona lock for {target}")
 
-            # Measure baseline
-            baseline = await runner.measure_baseline(target)
-            best_score = baseline
-            logger.info(
-                f"Autoresearch [{runner.loop_type}] baseline for '{target}': {baseline:.4f}"
-            )
-
             async with autoresearch_context():
+                if not await self._is_project_active(project_id):
+                    logger.info(
+                        "Autoresearch stopped before baseline because project %s is paused or missing",
+                        project_id,
+                    )
+                    return []
+
+                # Measure baseline under isolation so experiment probes cannot
+                # pollute learning or self-improvement stores.
+                baseline = await runner.measure_baseline(target)
+                best_score = baseline
+                logger.info(
+                    f"Autoresearch [{runner.loop_type}] baseline for '{target}': {baseline:.4f}"
+                )
+
                 for i in range(max_iterations):
                     if self._stop_requested:
                         logger.info("Autoresearch stop requested")
+                        break
+                    if not await self._is_project_active(project_id):
+                        logger.info(
+                            "Autoresearch stopped before iteration %s because project %s is paused or missing",
+                            i + 1,
+                            project_id,
+                        )
                         break
 
                     # Check rate limits
@@ -98,7 +127,7 @@ class AutoresearchEngine:
                         break
 
                     # Check mutual exclusion with meta-hyperagent
-                    if self._conflicts_with_meta(runner):
+                    if self._conflicts_with_meta(runner, project_id):
                         logger.info(
                             "Skipping — meta-hyperagent has active variant on target parameters"
                         )
@@ -110,6 +139,7 @@ class AutoresearchEngine:
                         "id": experiment_id,
                         "loop_type": runner.loop_type,
                         "target_name": target,
+                        "project_id": project_id,
                         "iteration": i + 1,
                         "baseline_score": best_score,
                     }
@@ -216,6 +246,9 @@ class AutoresearchEngine:
         finally:
             self._running = False
             self._current_experiment = None
+            self._active_project_id = None
+            if callable(bind_project):
+                bind_project("")
             # Release persona lock
             if runner.needs_persona_lock:
                 from app.core.agent_identity import release_persona_lock
@@ -229,6 +262,7 @@ class AutoresearchEngine:
                 await manager.broadcast(
                     "autoresearch_complete",
                     {
+                        "project_id": project_id,
                         "loop_type": runner.loop_type,
                         "total": len(results),
                         "kept": sum(1 for r in results if r.get("kept")),
@@ -240,6 +274,20 @@ class AutoresearchEngine:
                 pass
 
         return results
+
+    async def _require_active_project_id(self, project_id: str) -> str:
+        """Validate project ownership before any runner can touch models."""
+        scoped_project_id = str(project_id or "").strip()
+        if not scoped_project_id:
+            raise RuntimeError("project_id is required for autoresearch")
+        if not await self._is_project_active(scoped_project_id):
+            raise RuntimeError("Project is paused or not found")
+        return scoped_project_id
+
+    async def _is_project_active(self, project_id: str) -> bool:
+        async with async_session() as db:
+            project = await db.get(Project, project_id)
+            return bool(project and not project.is_paused)
 
     async def _measure_candidate(self, runner, target: str, repeats: int) -> dict:
         """Measure a candidate once or repeatedly and summarize uncertainty."""
@@ -273,14 +321,14 @@ class AutoresearchEngine:
             )
         return True, "delta exceeds configured minimum and uncertainty guard"
 
-    def _conflicts_with_meta(self, runner) -> bool:
+    def _conflicts_with_meta(self, runner, project_id: str) -> bool:
         """Check if meta-hyperagent has active variants on parameters this runner modifies."""
         try:
             from app.core.meta_hyperagent import meta_hyperagent
 
             if not settings.meta_hyperagent_enabled:
                 return False
-            variants = meta_hyperagent.get_active_variants()
+            variants = meta_hyperagent.get_active_variants(project_id=project_id)
             # Check overlap based on runner type
             conflict_prefixes: dict[str, list[str]] = {
                 "rag_params": ["rag_"],
@@ -361,6 +409,7 @@ class AutoresearchEngine:
 
     async def get_experiments(
         self,
+        project_id: str,
         loop_type: str | None = None,
         kept: bool | None = None,
         limit: int = 50,
@@ -372,7 +421,7 @@ class AutoresearchEngine:
         async with async_session() as db:
             query = select(AutoresearchExperiment).order_by(
                 AutoresearchExperiment.started_at.desc()
-            )
+            ).where(AutoresearchExperiment.project_id == project_id)
             if loop_type:
                 query = query.where(AutoresearchExperiment.loop_type == loop_type)
             if kept is not None:
@@ -392,27 +441,58 @@ class AutoresearchEngine:
             record = result.scalar_one_or_none()
             return record.to_dict() if record else None
 
-    async def get_leaderboard(self) -> list[dict]:
-        """Get best model+temp per skill from model_skill_stats."""
-        from sqlalchemy import select
+    async def get_leaderboard(self, project_id: str) -> list[dict]:
+        """Get best model+temp per skill from project-scoped telemetry."""
+        from sqlalchemy import func, select
 
-        from app.models.model_skill_stats import ModelSkillStats
+        from app.models.telemetry_span import TelemetrySpan
 
         async with async_session() as db:
             result = await db.execute(
-                select(ModelSkillStats)
-                .where(ModelSkillStats.executions >= 3)
-                .order_by(ModelSkillStats.best_quality.desc())
+                select(
+                    TelemetrySpan.skill_name,
+                    TelemetrySpan.model_name,
+                    func.coalesce(TelemetrySpan.temperature, 0.0),
+                    func.count(TelemetrySpan.id),
+                    func.avg(TelemetrySpan.quality_score),
+                    func.max(TelemetrySpan.quality_score),
+                )
+                .where(
+                    TelemetrySpan.project_id == project_id,
+                    TelemetrySpan.skill_name != "",
+                    TelemetrySpan.model_name != "",
+                    TelemetrySpan.quality_score.is_not(None),
+                )
+                .group_by(
+                    TelemetrySpan.skill_name,
+                    TelemetrySpan.model_name,
+                    TelemetrySpan.temperature,
+                )
+                .having(func.count(TelemetrySpan.id) >= 3)
+                .order_by(func.max(TelemetrySpan.quality_score).desc())
             )
-            stats = result.scalars().all()
+            stats = result.all()
             # Group by skill, pick best
             best_per_skill: dict[str, dict] = {}
             for s in stats:
+                skill_name = str(s[0] or "")
+                model_name = str(s[1] or "")
+                avg_quality = float(s[4] or 0.0)
+                best_quality = float(s[5] or 0.0)
+                entry = {
+                    "skill_name": skill_name,
+                    "model_name": model_name,
+                    "temperature": float(s[2] or 0.0),
+                    "executions": int(s[3] or 0),
+                    "avg_quality": avg_quality,
+                    "quality_ema": avg_quality,
+                    "best_quality": best_quality,
+                }
                 if (
-                    s.skill_name not in best_per_skill
-                    or s.best_quality > best_per_skill[s.skill_name]["best_quality"]
+                    skill_name not in best_per_skill
+                    or best_quality > best_per_skill[skill_name]["best_quality"]
                 ):
-                    best_per_skill[s.skill_name] = s.to_dict()
+                    best_per_skill[skill_name] = entry
             return list(best_per_skill.values())
 
 

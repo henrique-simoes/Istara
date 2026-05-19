@@ -146,6 +146,7 @@ async def _generate_native_design_tools(
             temperature=llm_temperature,
             max_tokens=llm_max_tokens,
             tools=OPENAI_DESIGN_TOOLS,
+            project_id=request.project_id,
         ):
             if isinstance(chunk, dict) and chunk.get("tool_calls"):
                 tool_calls_payload = chunk
@@ -579,6 +580,7 @@ async def design_chat(request: DesignChatRequest, http_request: Request, db: Asy
                     model=llm_model,
                     temperature=llm_temperature,
                     max_tokens=llm_max_tokens,
+                    project_id=request.project_id,
                 ):
                     full_text.append(chunk)
 

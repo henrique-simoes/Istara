@@ -17,6 +17,36 @@ from app.models.research_deployment import ResearchDeployment
 logger = logging.getLogger(__name__)
 
 
+def _normalize_channel_instance_ids(channel_instance_ids: list[str]) -> list[str]:
+    normalized = [str(channel_id).strip() for channel_id in channel_instance_ids]
+    if any(not channel_id for channel_id in normalized):
+        raise ValueError("Channel instance not found")
+    return list(dict.fromkeys(normalized))
+
+
+async def validate_channel_instances_for_project(
+    db: AsyncSession,
+    project_id: str,
+    channel_instance_ids: list[str],
+) -> list[str]:
+    """Return canonical channel IDs only when every channel belongs to project."""
+    scoped_ids = _normalize_channel_instance_ids(channel_instance_ids)
+    if not scoped_ids:
+        return []
+
+    result = await db.execute(
+        select(ChannelInstance).where(ChannelInstance.id.in_(scoped_ids))
+    )
+    instances = {instance.id: instance for instance in result.scalars().all()}
+    if set(instances) != set(scoped_ids):
+        raise ValueError("Channel instance not found")
+
+    if any(instance.project_id != project_id for instance in instances.values()):
+        raise ValueError("Channel instance not found")
+
+    return scoped_ids
+
+
 # ---------------------------------------------------------------------------
 # Deployment CRUD
 # ---------------------------------------------------------------------------
@@ -33,6 +63,9 @@ async def create_deployment(
     target_responses: int = 0,
 ) -> ResearchDeployment:
     """Create a new research deployment."""
+    scoped_channel_instance_ids = await validate_channel_instances_for_project(
+        db, project_id, channel_instance_ids
+    )
     deployment = ResearchDeployment(
         id=str(uuid.uuid4()),
         project_id=project_id,
@@ -40,7 +73,7 @@ async def create_deployment(
         deployment_type=deployment_type,
         questions_json=json.dumps(questions),
         config_json=json.dumps(config or {}),
-        channel_instance_ids_json=json.dumps(channel_instance_ids),
+        channel_instance_ids_json=json.dumps(scoped_channel_instance_ids),
         target_responses=target_responses,
     )
     db.add(deployment)
@@ -50,18 +83,33 @@ async def create_deployment(
     return deployment
 
 
-async def get_deployment(db: AsyncSession, deployment_id: str) -> ResearchDeployment | None:
-    """Fetch a single deployment by id."""
-    return await db.get(ResearchDeployment, deployment_id)
+async def get_deployment(
+    db: AsyncSession,
+    deployment_id: str,
+    *,
+    project_id: str,
+) -> ResearchDeployment | None:
+    """Fetch a single deployment only inside the caller's active project scope."""
+    result = await db.execute(
+        select(ResearchDeployment).where(
+            ResearchDeployment.id == deployment_id,
+            ResearchDeployment.project_id == project_id,
+        )
+    )
+    return result.scalar_one_or_none()
 
 
 async def list_deployments(
-    db: AsyncSession, project_id: str | None = None
+    db: AsyncSession,
+    *,
+    project_id: str,
 ) -> list[ResearchDeployment]:
-    """List deployments, optionally filtered by project."""
-    query = select(ResearchDeployment).order_by(ResearchDeployment.created_at.desc())
-    if project_id:
-        query = query.where(ResearchDeployment.project_id == project_id)
+    """List deployments for exactly one active project."""
+    query = (
+        select(ResearchDeployment)
+        .where(ResearchDeployment.project_id == project_id)
+        .order_by(ResearchDeployment.created_at.desc())
+    )
     result = await db.execute(query)
     return list(result.scalars().all())
 
@@ -71,9 +119,14 @@ async def list_deployments(
 # ---------------------------------------------------------------------------
 
 
-async def activate_deployment(db: AsyncSession, deployment_id: str) -> dict:
+async def activate_deployment(
+    db: AsyncSession,
+    deployment_id: str,
+    *,
+    project_id: str,
+) -> dict:
     """Activate a deployment — marks it ready to receive responses."""
-    deployment = await db.get(ResearchDeployment, deployment_id)
+    deployment = await get_deployment(db, deployment_id, project_id=project_id)
     if not deployment:
         raise ValueError(f"Deployment {deployment_id} not found")
 
@@ -100,9 +153,14 @@ async def activate_deployment(db: AsyncSession, deployment_id: str) -> dict:
     }
 
 
-async def pause_deployment(db: AsyncSession, deployment_id: str) -> dict:
+async def pause_deployment(
+    db: AsyncSession,
+    deployment_id: str,
+    *,
+    project_id: str,
+) -> dict:
     """Pause a deployment — no new messages are sent to participants."""
-    deployment = await db.get(ResearchDeployment, deployment_id)
+    deployment = await get_deployment(db, deployment_id, project_id=project_id)
     if not deployment:
         raise ValueError(f"Deployment {deployment_id} not found")
     deployment.state = "paused"
@@ -111,9 +169,14 @@ async def pause_deployment(db: AsyncSession, deployment_id: str) -> dict:
     return {"status": "paused", "deployment_id": deployment_id}
 
 
-async def complete_deployment(db: AsyncSession, deployment_id: str) -> dict:
+async def complete_deployment(
+    db: AsyncSession,
+    deployment_id: str,
+    *,
+    project_id: str,
+) -> dict:
     """Mark a deployment as completed."""
-    deployment = await db.get(ResearchDeployment, deployment_id)
+    deployment = await get_deployment(db, deployment_id, project_id=project_id)
     if not deployment:
         raise ValueError(f"Deployment {deployment_id} not found")
     deployment.state = "completed"
@@ -132,6 +195,8 @@ async def handle_response(
     deployment_id: str,
     conversation_id: str,
     message_text: str,
+    *,
+    project_id: str,
 ) -> dict:
     """Process a participant response and determine the next action.
 
@@ -141,9 +206,19 @@ async def handle_response(
     - complete: all questions answered
     - error: something went wrong
     """
-    conversation = await db.get(ChannelConversation, conversation_id)
-    deployment = await db.get(ResearchDeployment, deployment_id)
+    deployment = await get_deployment(db, deployment_id, project_id=project_id)
+    conversation = await get_conversation(
+        db,
+        conversation_id,
+        deployment_id=deployment_id,
+        project_id=project_id,
+    )
     if not conversation or not deployment:
+        return {"action": "error", "error": "Conversation or deployment not found"}
+    if (
+        conversation.deployment_id != deployment_id
+        or conversation.project_id != deployment.project_id
+    ):
         return {"action": "error", "error": "Conversation or deployment not found"}
 
     questions = json.loads(deployment.questions_json)
@@ -230,7 +305,10 @@ async def _generate_adaptive_followup(
             "Only output the question text, nothing else."
         )
 
-        result = await llm_router.chat([{"role": "user", "content": prompt}])
+        result = await llm_router.chat(
+            [{"role": "user", "content": prompt}],
+            project_id=deployment.project_id,
+        )
         followup = result.get("content", "").strip()
         if followup and followup.upper() != "NONE":
             return followup
@@ -244,16 +322,22 @@ async def _generate_adaptive_followup(
 # ---------------------------------------------------------------------------
 
 
-async def get_deployment_analytics(db: AsyncSession, deployment_id: str) -> dict:
+async def get_deployment_analytics(
+    db: AsyncSession,
+    deployment_id: str,
+    *,
+    project_id: str,
+) -> dict:
     """Get comprehensive analytics for a deployment."""
-    deployment = await db.get(ResearchDeployment, deployment_id)
+    deployment = await get_deployment(db, deployment_id, project_id=project_id)
     if not deployment:
         return {}
 
     # Get conversations for this deployment
     result = await db.execute(
         select(ChannelConversation).where(
-            ChannelConversation.deployment_id == deployment_id
+            ChannelConversation.deployment_id == deployment_id,
+            ChannelConversation.project_id == deployment.project_id,
         )
     )
     conversations = list(result.scalars().all())
@@ -263,7 +347,10 @@ async def get_deployment_analytics(db: AsyncSession, deployment_id: str) -> dict
     messages: list[ChannelMessage] = []
     if conv_ids:
         msg_result = await db.execute(
-            select(ChannelMessage).where(ChannelMessage.thread_id.in_(conv_ids))
+            select(ChannelMessage).where(
+                ChannelMessage.thread_id.in_(conv_ids),
+                ChannelMessage.project_id == deployment.project_id,
+            )
         )
         messages = list(msg_result.scalars().all())
 
@@ -343,8 +430,15 @@ async def get_deployment_overview(db: AsyncSession, project_id: str) -> dict:
     # Count conversations in last 24h
     cutoff = datetime.now(timezone.utc) - timedelta(hours=24)
     conv_result = await db.execute(
-        select(func.count(ChannelConversation.id)).where(
-            ChannelConversation.started_at >= cutoff
+        select(func.count(ChannelConversation.id))
+        .join(
+            ResearchDeployment,
+            ChannelConversation.deployment_id == ResearchDeployment.id,
+        )
+        .where(
+            ResearchDeployment.project_id == project_id,
+            ChannelConversation.project_id == project_id,
+            ChannelConversation.started_at >= cutoff,
         )
     )
     recent_conversations = conv_result.scalar() or 0
@@ -381,31 +475,68 @@ async def get_deployment_overview(db: AsyncSession, project_id: str) -> dict:
 
 
 async def list_conversations(
-    db: AsyncSession, deployment_id: str
+    db: AsyncSession,
+    deployment_id: str,
+    *,
+    project_id: str,
 ) -> list[ChannelConversation]:
     """List all conversations for a deployment."""
+    deployment = await get_deployment(db, deployment_id, project_id=project_id)
+    if not deployment:
+        return []
+
     result = await db.execute(
         select(ChannelConversation)
-        .where(ChannelConversation.deployment_id == deployment_id)
+        .where(
+            ChannelConversation.deployment_id == deployment_id,
+            ChannelConversation.project_id == deployment.project_id,
+        )
         .order_by(ChannelConversation.started_at.desc())
     )
     return list(result.scalars().all())
 
 
 async def get_conversation(
-    db: AsyncSession, conversation_id: str
+    db: AsyncSession,
+    conversation_id: str,
+    *,
+    deployment_id: str,
+    project_id: str,
 ) -> ChannelConversation | None:
-    """Get a single conversation by id."""
-    return await db.get(ChannelConversation, conversation_id)
+    """Get a single conversation only inside a scoped deployment/project pair."""
+    result = await db.execute(
+        select(ChannelConversation).where(
+            ChannelConversation.id == conversation_id,
+            ChannelConversation.deployment_id == deployment_id,
+            ChannelConversation.project_id == project_id,
+        )
+    )
+    return result.scalar_one_or_none()
 
 
 async def get_conversation_transcript(
-    db: AsyncSession, conversation_id: str
+    db: AsyncSession,
+    conversation_id: str,
+    *,
+    deployment_id: str,
+    project_id: str,
 ) -> list[dict]:
     """Get the full message transcript for a conversation."""
+    conversation = await get_conversation(
+        db,
+        conversation_id,
+        deployment_id=deployment_id,
+        project_id=project_id,
+    )
+    if not conversation:
+        return []
+
     result = await db.execute(
         select(ChannelMessage)
-        .where(ChannelMessage.thread_id == conversation_id)
+        .where(
+            ChannelMessage.thread_id == conversation_id,
+            ChannelMessage.project_id == conversation.project_id,
+        )
         .order_by(ChannelMessage.created_at.asc())
     )
     messages = result.scalars().all()

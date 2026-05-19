@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 import { History, ChevronLeft, ChevronRight, AlertTriangle } from "lucide-react";
 import { useLoopsStore } from "@/stores/loopsStore";
+import { useProjectStore } from "@/stores/projectStore";
 import { cn, formatDate } from "@/lib/utils";
 import type { ExecutionStatus } from "@/lib/types";
 
@@ -25,17 +26,18 @@ export default function ExecutionHistoryTab() {
     executions, executionPage, executionTotalPages, executionFilters,
     fetchExecutions, setExecutionFilter, loading,
   } = useLoopsStore();
+  const { activeProjectId } = useProjectStore();
 
   useEffect(() => {
-    fetchExecutions(1);
-  }, [fetchExecutions]);
+    fetchExecutions(1, activeProjectId);
+  }, [activeProjectId, fetchExecutions]);
 
   const handleFilterChange = (key: string, value: string) => {
     setExecutionFilter(key, value);
   };
 
   const applyFilters = () => {
-    fetchExecutions(1);
+    fetchExecutions(1, activeProjectId);
   };
 
   return (
@@ -164,7 +166,7 @@ export default function ExecutionHistoryTab() {
       {executionTotalPages > 1 && (
         <div className="flex items-center justify-center gap-3 pt-2">
           <button
-            onClick={() => fetchExecutions(executionPage - 1)}
+            onClick={() => fetchExecutions(executionPage - 1, activeProjectId)}
             disabled={executionPage <= 1}
             className="p-1.5 rounded hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-30 disabled:cursor-not-allowed text-slate-600 dark:text-slate-400"
             aria-label="Previous page"
@@ -175,7 +177,7 @@ export default function ExecutionHistoryTab() {
             Page {executionPage} of {executionTotalPages}
           </span>
           <button
-            onClick={() => fetchExecutions(executionPage + 1)}
+            onClick={() => fetchExecutions(executionPage + 1, activeProjectId)}
             disabled={executionPage >= executionTotalPages}
             className="p-1.5 rounded hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-30 disabled:cursor-not-allowed text-slate-600 dark:text-slate-400"
             aria-label="Next page"

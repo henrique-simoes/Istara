@@ -1,6 +1,6 @@
 # Istara Security Benchmark
 
-Last reviewed: 2026-05-08
+Last reviewed: 2026-05-19
 
 This benchmark is the release gate for Istara changes that touch authentication, authorization, sessions, passkeys, secrets, connection strings, pooled compute, MCP/tool execution, webhooks, LLM provider access, autoresearch, self-evolution, or agentic orchestration.
 
@@ -73,18 +73,241 @@ The following areas are always treated as ASVS Level 3 style surfaces even when 
 - TOTP and WebAuthn/passkey registration, challenge storage, replay prevention, origin/RP validation, credential ownership, and credential revocation.
 - Team mode, local mode remote-login rejection, role and project permission checks, user management, and admin APIs.
 - File upload, document ingestion, folder linking, media preview/serve paths, and any user-controlled artifact that enters RAG/vector/BM25 storage.
-- Connection strings, relay/node joining, pooled compute credentials, LLM server API keys, and encrypted provider secrets.
-- MCP client/server tools, webhook ingress, channel integrations, WhatsApp/Telegram connectors, and any public callback endpoint.
-- A2A JSON-RPC, autoresearch, skill evolution, Hyperagent/DGM-H proposals, Memento-style agent creation, ReasoningBank memories, rollback, and proposal approval.
+- Connection strings, relay/node joining, pooled compute credentials and project scopes, LLM server API keys, and encrypted provider secrets.
+- MCP client/server tools, webhook ingress, channel integrations, WhatsApp/Telegram connectors, Interfaces Figma/Stitch configuration, and any public callback endpoint.
+- A2A JSON-RPC, loop/background process dashboards, autoresearch, skill evolution, Hyperagent/DGM-H proposals, Memento-style agent creation, ReasoningBank memories, rollback, and proposal approval.
 - Prompt-RAG, vector/RAG, BM25, LLMLingua-style compression, model routing, ensemble/consensus, telemetry, and audit logs where prompt or memory content may affect tool use.
+- Chat voice transcription uploads: callers must submit the active
+  `project_id`, the project must exist and be visible to the caller, and
+  researcher-level project access must be proven before uploaded audio bytes
+  are read or transcription/model-adjacent processing starts.
 
 Release hardening for these surfaces now includes exact replay rejection for
 webhook and A2A mutation ingress, optional upload scanner hooks, deterministic
 file-signature checks, quarantine before RAG ingestion, production CSP/HSTS and
-auth-origin validation, MCP/LLM endpoint URL validation, prompt-sanitized MCP
-tool descriptors, untrusted ReasoningBank retrieval wrapping, and backup
+auth-origin validation, MCP/LLM endpoint URL validation, prompt-sanitized and
+project-owned MCP client descriptors, project-only ReasoningBank retrieval defaults,
+untrusted ReasoningBank retrieval wrapping, and backup
 exclusion of secret-like files plus protected local `LLMs/` and
 `Model_Finetuning/` artifact folders.
+Global LLM server inventory, registration, network discovery, deletion, and
+manual health-check endpoints are shared infrastructure surfaces, not
+project-content lists, but they are still security-sensitive: team-mode callers
+must be global admins before provider endpoint status, capability metadata,
+router health, model/provider switches, hardware/integration/vector/data
+integrity metadata, or explicit health/discovery probes are exposed. The public
+`/api/settings/status` health endpoint remains unauthenticated for login,
+onboarding, and status bars, but it must be passive and redacted: no provider
+endpoint details, active model identifiers, embedding model identifiers, RAG
+configuration, loaded-model discovery, or explicit LLM probes.
+Loop health, schedule, agent-loop, and execution-history views are treated as
+project-content surfaces: non-admin users must supply an authorized active
+project before seeing background process state or mutating recurring work.
+Schedule detail, update, and delete routes also require the active `project_id`,
+so stale schedule ids from another project resolve as not found instead of
+letting project-facing clients operate by global id.
+Notification list, unread-count, mark-all-read, mark-read, and delete routes
+are also project-content surfaces: every caller, including global admins, must
+provide an authorized active `project_id`, and missing project scope must return
+an error instead of falling back to a global inbox. By-id notification actions
+must constrain the lookup by both notification id and active project id so stale
+ids from another project resolve as not found. Cross-project notification
+aggregation belongs only on explicit admin reporting surfaces. Lower-level
+notification helpers must require project scope by default, project-bound
+notification persistence must refuse orphan records, and system-wide
+notification-style websocket events such as updates, backups, and resource
+throttles must fan out only to global admins.
+Permission request queues and reviews are project-content surfaces too:
+project-facing request lists require an authorized active `project_id`, requester
+`mine=true` lists cannot fall back to a cross-project inbox, and project-admin
+reviews bind the request id back to the active project before mutation. The only
+permission-request route that may omit `project_id` is the Admin dashboard's
+global queue and review path, and that path remains global-admin-only.
+Startup quality/audit/simulation loops are opt-in because they may create test
+projects, call app/API state, or use LLMs; normal project task workers,
+orchestrator routing, schedules, skill execution/planning, autoresearch,
+Meta-Hyperagent starts/applies, and self-evolution scans/promotions must skip
+paused projects before model work or proposal side effects.
+Loop execution history and statistics are project-content surfaces: new
+background execution records must persist the owning project id, and
+history/stat aggregate reads may use metadata or source-id fallback only for
+legacy rows inside the authorized active project.
+Messaging integrations and deployments are included in that paused-project
+dispatch boundary: channel adapters must not start or auto-start for paused or
+missing projects, inbound channel messages for paused projects must be dropped
+before persistence or adaptive routing, and deployment activation/response
+handling must reject paused projects before participant-facing work reaches LLM
+or improvement-governance paths.
+Autonomous skill improvement and skill creation producers must also reject
+missing or blank project scope before persisting local proposal records or
+registering governed-evolution proposals; project-owned skill proposal evidence
+must not be created as global activity by omission.
+Simulation harnesses that exercise skill health, improvement proposals, or
+skill creation proposals must pass the active simulation project id and skip
+rather than call those endpoints when no project id is available.
+Simulation harnesses that exercise agent creation proposals, project-filtered
+agent lists, or Meta-Hyperagent project-content routes follow the same rule:
+pass the active simulation project id and skip instead of issuing an unscoped
+request when the runner has not supplied one.
+Simulation harnesses that exercise scheduler smoke/audit probes, loop overview,
+agent loop config, schedule, custom loop, execution history, or execution
+statistics routes must also bind requests to the active simulation project id
+and skip rather than call those project-content endpoints without project
+scope.
+Agent registry, heartbeat, detail, identity, memory, recent-log, prompt
+diagnostic, A2A message views, A2A JSON-RPC discovery, and realtime agent
+events are also project-content surfaces: non-admin users must supply an
+authorized active project, project-scoped agents cannot be read from another
+project, universal agent runtime memory/current-task state is redacted in
+project views unless a global admin is using an admin surface, and malformed
+project-bound websocket events must not fall back to global delivery. Realtime
+fan-out must recheck project membership before delivery so revoked access stops
+receiving project events immediately, and browser websocket consumers must
+discard project-bound events that do not carry the active project id.
+A2A background processing follows the same boundary: autonomous agent inbox
+polling excludes messages without a resolved project, project-scoped agents only
+consume inbox messages for their own project, conversation/debate thread context
+is rebuilt with the task project's id, and LLM-callable task/A2A system actions
+must resolve tasks, documents, and target agents inside the active project before
+mutating or sending content. New A2A service writes must receive the active
+project id explicitly, persist it on the message row, and reject conflicting
+metadata aliases before persistence or realtime broadcast; read mutations such
+as mark-read also require the active project. Metadata, row, task, and
+project-scoped sender/recipient agent claims must agree before an A2A message
+or realtime event is considered project-resolved; conflicting claims are
+excluded instead of being delivered to the claimed project.
+Structured agent learnings and error-resolution lookup are project-content too:
+task/review learnings must carry the source project and must not append private
+project observations into universal persona MEMORY overlays.
+Self-evolution candidate scans, all-agent scans, auto-evolution, and promotion
+mutations are also project-content surfaces: they must receive an explicit
+authorized active project id, qualify learnings only from that project, and must
+not use cross-project or paused-project learning evidence to mutate persona
+files.
+Autoresearch runners inherit the same boundary: the engine binds the authorized
+active project into runner work before baseline measurement, and question-bank
+deployment targets must be loaded, evaluated, and updated by both deployment id
+and project id so stale cross-project deployment ids cannot drive LLM evaluation
+or mutation.
+Governed Evolution, DGM-H archive, and ReasoningBank review surfaces are also
+project-content surfaces: proposal/archive/reasoning lists and mutation actions
+must carry an explicit `project_id`, bind record ids back to that project, and
+ReasoningBank retrieval must default to project-only memory unless trusted code
+explicitly opts into global memories.
+Meta-Hyperagent proposal, observation, variant, WebSocket, and governance-sync
+surfaces are also project-content surfaces: they may run only after an
+authorized active project is supplied, and legacy/global observations or
+proposals must not render inside a project view. Meta-Hyperagent tuning
+proposals must also be evidence-gated by the active project's own learning and
+execution history, not by generic/global defaults.
+Chat sessions, chat history, active-session persistence, and related context DAG
+pickers are project-content surfaces: session-by-id APIs require the caller's
+authorized active project, frontend session state is stored per project, and a
+stale session id from another authorized project must not render or mutate chat
+messages in the current project view.
+Memory and Context DAG inspection are project-content surfaces too: memory
+indexes may only open after the requested project exists and is visible to the
+caller, and every Context DAG structure, health, expansion, search, node, and
+compaction request must bind the session id to the caller's active project id.
+Context hierarchy prompts and previews are project-content surfaces too:
+database-backed company, product, project, task, and agent context documents
+may only compose when their `project_id` exactly matches the active project.
+Context document detail, update, and delete routes must bind document ids to the
+explicit active `project_id`, so stale ids from another authorized project cannot
+render or mutate the current project context.
+Unassigned/admin-only context rows must not be inherited into project prompt
+composition; shared platform guidance belongs in reviewed code defaults.
+Findings evidence, evidence-chain traversal, shell findings search, and project
+reports are project-content surfaces: project-facing list/search/report clients
+and APIs require an explicit authorized active project, linked evidence rows are
+filtered by the same project before being returned, evidence-chain/link/delete
+by-id routes load findings and design decisions by both id and active project,
+report-summary LLM calls carry the report's project id, and cross-project
+findings search belongs only on explicit admin dashboard/reporting routes.
+Research-integrity codebook,
+code, and code-application review by-id routes also require the caller's active
+project and load records by both id and project id, so stale ids from another
+authorized project cannot render or mutate the current project view.
+Project-facing integrations, deployments, survey links, channel records, and
+MCP client registries are project-content surfaces for every user role: list
+APIs require an explicit authorized active project and must not silently fall
+back to global admin lists. MCP client detail/action routes, including
+discovery, cached tools, tool calls, health checks, and deletion, must carry the
+active project and reject server ids from any other project. Survey integration
+and link detail/action routes, including deletion, platform survey creation,
+sync, and response reads, must carry the active project and reject stale ids
+from any other project. Channel detail, lifecycle, health, message-history,
+conversation, and manual-send endpoints must also carry the active project and
+verify that the channel instance and returned rows belong to that project.
+Channel and MCP client service helpers also require explicit project ids and
+load by both record id and project id, so future internal callers cannot
+accidentally use globally unique ids to bypass the project-facing route guards.
+MCP client producer evidence from project-owned registration, discovery, and
+tool-call activity must carry the active project id at the governance proposal
+level, not only inside telemetry payloads, so improvement surfaces cannot mix
+project evidence into global recommendations.
+External Istara MCP server tools follow the same rule: project-content tools
+must receive `project_id`, pass a non-empty MCP allowlist check, avoid empty or
+global memory retrieval, and filter deployment status by the requested project.
+MCP project listing must be constrained to the allowlist and return no projects
+when no ids are explicitly allowed.
+MCP audit entries persist project evidence from tool arguments, project-facing
+audit reads require an authorized active project, and omitted `project_id`
+remains an explicit global-admin-only audit aggregation path.
+Deployment creation must only attach channel instances owned by the same
+project, and deployment detail, lifecycle, response, conversation, transcript,
+analytics, and overview counters must require the caller's active project,
+authorize that project before by-id lookups, and verify matching
+deployment/project ownership before reading, mutating, or summarizing
+participant content. Deployment service helpers must also require an explicit
+project id so background processes, future tools, or internal callers cannot
+fall back to global deployment or conversation ids. Deployment websocket
+progress, response, and finding events must resolve the deployment's project
+before fan-out, include the resolved project id in delivered payloads, and drop
+conflicting claims. Global cross-project aggregation belongs only on dedicated
+admin reporting surfaces.
+Inbound channel processors must resolve deployments only inside the channel
+instance's project and only when the active deployment explicitly lists that
+channel instance; unbound or other-project deployments must not receive
+participant content. Inbound processors must also reject unscoped, missing, or
+paused projects before persisting messages, updating conversations, recording
+producer evidence, or returning adaptive outbound messages.
+Interfaces screens, design briefs, developer handoff specs, Figma imports, and
+Stitch/Figma credentials are also project-content surfaces: status/list/helper
+APIs require an authorized active project, frontend stores clear stale project
+data on project switches, and Figma/Stitch secrets are stored in project-owned
+encrypted records instead of process-wide configuration.
+Document library and preview are project-content surfaces as well: list and
+ID-based document APIs require an authorized active project, records are loaded
+by both document id and project id, and frontend document state clears on
+project switches so stale documents from another authorized project cannot
+render in the current project view.
+Task and Kanban views are project-content surfaces too: task list APIs require
+an authorized active project even for global admins, task stores clear stale
+cards on project switches, and every project-facing task by-id route must carry
+the active `project_id` and load by both task id and project id before reading,
+mutating, reviewing, locking, attaching documents, deleting, or creating task
+reports. A stale task id from another authorized project must resolve as not
+found in the current project view. Cross-project task aggregation belongs only
+on dedicated admin reporting surfaces.
+Donated relay/browser compute is also a project-content boundary: a relay can
+be connected for status, but prompt and embedding payloads may only route to it
+when the request includes a concrete project and the donor scope was resolved
+from project membership or a validated compute-donation connection string.
+Browser/JWT relay scope for bound auth sessions is resolved from the current
+database user role and project memberships, not from stale token role claims, so
+admin demotion, deletion, or membership removal changes donation scope before
+project content is routed.
+The lower-level relay/browser node dispatch methods also reject missing or
+mismatched project ids before websocket dispatch so direct callers cannot bypass
+registry candidate filtering.
+Regular Compute Pool stats, node lists, and model warnings require an
+authorized active project for every role; cross-project compute aggregation
+belongs only on dedicated admin reporting surfaces such as
+`/api/admin/compute/stats`, which requires global-admin authorization and is
+separate from the project-facing `/api/compute/*` routes. Team-mode wildcard
+donation scopes are rejected during relay validation so legacy all-project
+strings cannot process arbitrary project content.
 
 ## Compass Forge Contract
 

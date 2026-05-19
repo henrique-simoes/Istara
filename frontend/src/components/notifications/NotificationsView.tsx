@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 import { Bell, Settings2 } from "lucide-react";
 import { useNotificationStore } from "@/stores/notificationStore";
+import { useProjectStore } from "@/stores/projectStore";
 import { cn } from "@/lib/utils";
 import NotificationListTab from "./NotificationListTab";
 import NotificationPrefsTab from "./NotificationPrefsTab";
@@ -17,11 +18,12 @@ const TABS: { id: NotificationsTab; icon: any; label: string }[] = [
 
 export default function NotificationsView() {
   const { activeTab, setActiveTab, fetchNotifications, fetchUnreadCount, unreadCount } = useNotificationStore();
+  const { activeProjectId } = useProjectStore();
 
   useEffect(() => {
-    fetchNotifications();
-    fetchUnreadCount();
-  }, [fetchNotifications, fetchUnreadCount]);
+    fetchNotifications(1, activeProjectId);
+    fetchUnreadCount(activeProjectId);
+  }, [fetchNotifications, fetchUnreadCount, activeProjectId]);
 
   const renderTab = () => {
     switch (activeTab) {

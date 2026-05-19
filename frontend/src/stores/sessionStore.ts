@@ -4,23 +4,29 @@ import { create } from "zustand";
 import type { ChatSession, InferencePresetConfig } from "@/lib/types";
 import { sessions as sessionsApi } from "@/lib/api";
 
-// Persist activeSessionId to localStorage so it survives page refreshes
-const ACTIVE_SESSION_KEY = "istara-active-session";
+// Persist active sessions per project so switching projects cannot replay another
+// project's chat into the current view.
+const ACTIVE_SESSION_KEY_PREFIX = "istara-active-session:";
 
-function getSavedSessionId(): string | null {
-  if (typeof window === "undefined") return null;
-  try { return localStorage.getItem(ACTIVE_SESSION_KEY); } catch { return null; }
+function activeSessionKey(projectId: string): string {
+  return `${ACTIVE_SESSION_KEY_PREFIX}${projectId}`;
 }
 
-function saveSessionId(id: string | null) {
+function getSavedSessionId(projectId: string): string | null {
+  if (typeof window === "undefined") return null;
+  try { return localStorage.getItem(activeSessionKey(projectId)); } catch { return null; }
+}
+
+function saveSessionId(projectId: string, id: string | null) {
   if (typeof window === "undefined") return;
   try {
-    if (id) localStorage.setItem(ACTIVE_SESSION_KEY, id);
-    else localStorage.removeItem(ACTIVE_SESSION_KEY);
+    if (id) localStorage.setItem(activeSessionKey(projectId), id);
+    else localStorage.removeItem(activeSessionKey(projectId));
   } catch {}
 }
 
 interface SessionStore {
+  projectId: string | null;
   sessions: ChatSession[];
   activeSessionId: string | null;
   presets: Record<string, InferencePresetConfig> | null;
@@ -30,12 +36,12 @@ interface SessionStore {
 
   fetchSessions: (projectId: string) => Promise<void>;
   createSession: (projectId: string, title?: string, agentId?: string) => Promise<ChatSession>;
-  selectSession: (id: string | null) => void;
+  selectSession: (projectId: string, id: string | null) => void;
   setPendingPrefill: (message: string | null) => void;
-  updateSession: (id: string, data: Record<string, unknown>) => Promise<void>;
-  deleteSession: (id: string) => Promise<void>;
-  toggleStar: (id: string) => Promise<void>;
-  renameSession: (id: string, title: string) => Promise<void>;
+  updateSession: (projectId: string, id: string, data: Record<string, unknown>) => Promise<void>;
+  deleteSession: (projectId: string, id: string) => Promise<void>;
+  toggleStar: (projectId: string, id: string) => Promise<void>;
+  renameSession: (projectId: string, id: string, title: string) => Promise<void>;
   ensureDefault: (projectId: string) => Promise<ChatSession>;
   fetchPresets: () => Promise<void>;
 
@@ -43,33 +49,49 @@ interface SessionStore {
 }
 
 export const useSessionStore = create<SessionStore>((set, get) => ({
+  projectId: null,
   sessions: [],
-  activeSessionId: getSavedSessionId(),
+  activeSessionId: null,
   presets: null,
   loading: false,
   pendingPrefill: null,
 
   fetchSessions: async (projectId) => {
-    set({ loading: true });
+    const isProjectSwitch = get().projectId !== projectId;
+    set(
+      isProjectSwitch
+        ? { projectId, sessions: [], activeSessionId: null, loading: true }
+        : { projectId, loading: true }
+    );
     try {
-      const sessions = await sessionsApi.list(projectId);
-      // Restore saved session if it exists in the fetched list;
+      const sessions = (await sessionsApi.list(projectId)).filter((session) => session.project_id === projectId);
+      // Restore saved session if it exists in the fetched project list;
       // otherwise auto-select the most recent session so the UI never shows empty.
       const current = get().activeSessionId;
-      const hasCurrent = current && sessions.some((s) => s.id === current);
-      const resolvedId = hasCurrent
-        ? current
-        : sessions.length > 0
-          ? sessions[0].id
-          : null;
-      if (resolvedId && resolvedId !== current) saveSessionId(resolvedId);
+      const hasCurrent = !isProjectSwitch && current && sessions.some((s) => s.id === current);
+      const savedId = getSavedSessionId(projectId);
+      const hasSaved = savedId && sessions.some((s) => s.id === savedId);
+      let resolvedId: string | null = null;
+      if (hasCurrent) {
+        resolvedId = current;
+      } else if (hasSaved) {
+        resolvedId = savedId;
+      } else if (sessions.length > 0) {
+        resolvedId = sessions[0].id;
+      }
+      saveSessionId(projectId, resolvedId);
       set({
         sessions,
         loading: false,
         activeSessionId: resolvedId,
       });
     } catch {
-      set({ loading: false });
+      if (isProjectSwitch) saveSessionId(projectId, null);
+      set(
+        isProjectSwitch
+          ? { sessions: [], activeSessionId: null, loading: false }
+          : { loading: false }
+      );
     }
   },
 
@@ -79,51 +101,57 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
       title: title || "New Chat",
       agent_id: agentId,
     });
-    saveSessionId(session.id);
-    set((s) => ({ sessions: [session, ...s.sessions], activeSessionId: session.id }));
+    saveSessionId(projectId, session.id);
+    set((s) => ({
+      projectId,
+      sessions: [session, ...s.sessions.filter((existing) => existing.project_id === projectId && existing.id !== session.id)],
+      activeSessionId: session.id,
+    }));
     return session;
   },
 
-  selectSession: (id) => {
-    saveSessionId(id);
-    set({ activeSessionId: id });
+  selectSession: (projectId, id) => {
+    saveSessionId(projectId, id);
+    set({ projectId, activeSessionId: id });
   },
 
   setPendingPrefill: (message) => set({ pendingPrefill: message }),
 
-  updateSession: async (id, data) => {
-    const updated = await sessionsApi.update(id, data);
+  updateSession: async (projectId, id, data) => {
+    const updated = await sessionsApi.update(id, projectId, data);
     set((s) => ({
-      sessions: s.sessions.map((sess) => (sess.id === id ? { ...sess, ...updated } : sess)),
+      sessions: s.sessions.map((sess) =>
+        sess.id === id && sess.project_id === projectId ? { ...sess, ...updated } : sess
+      ),
     }));
   },
 
-  deleteSession: async (id) => {
-    await sessionsApi.delete(id);
+  deleteSession: async (projectId, id) => {
+    await sessionsApi.delete(id, projectId);
     set((s) => {
       const newActiveId = s.activeSessionId === id ? null : s.activeSessionId;
-      saveSessionId(newActiveId);
+      saveSessionId(projectId, newActiveId);
       return {
-        sessions: s.sessions.filter((sess) => sess.id !== id),
+        sessions: s.sessions.filter((sess) => !(sess.id === id && sess.project_id === projectId)),
         activeSessionId: newActiveId,
       };
     });
   },
 
-  toggleStar: async (id) => {
-    const result = await sessionsApi.star(id);
+  toggleStar: async (projectId, id) => {
+    const result = await sessionsApi.star(id, projectId);
     set((s) => ({
       sessions: s.sessions.map((sess) =>
-        sess.id === id ? { ...sess, starred: result.starred } : sess
+        sess.id === id && sess.project_id === projectId ? { ...sess, starred: result.starred } : sess
       ),
     }));
   },
 
-  renameSession: async (id, title) => {
-    await sessionsApi.update(id, { title });
+  renameSession: async (projectId, id, title) => {
+    await sessionsApi.update(id, projectId, { title });
     set((s) => ({
       sessions: s.sessions.map((sess) =>
-        sess.id === id ? { ...sess, title } : sess
+        sess.id === id && sess.project_id === projectId ? { ...sess, title } : sess
       ),
     }));
   },
@@ -131,11 +159,16 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
   ensureDefault: async (projectId) => {
     const session = await sessionsApi.ensureDefault(projectId);
     set((s) => {
-      const exists = s.sessions.some((sess) => sess.id === session.id);
-      const newActiveId = s.activeSessionId || session.id;
-      saveSessionId(newActiveId);
+      const projectSessions = s.sessions.filter((sess) => sess.project_id === projectId);
+      const exists = projectSessions.some((sess) => sess.id === session.id);
+      const savedId = getSavedSessionId(projectId);
+      const hasCurrent = s.activeSessionId && projectSessions.some((sess) => sess.id === s.activeSessionId);
+      const hasSaved = savedId && projectSessions.some((sess) => sess.id === savedId);
+      const newActiveId = hasCurrent ? s.activeSessionId : hasSaved ? savedId : session.id;
+      saveSessionId(projectId, newActiveId);
       return {
-        sessions: exists ? s.sessions : [session, ...s.sessions],
+        projectId,
+        sessions: exists ? projectSessions : [session, ...projectSessions],
         activeSessionId: newActiveId,
       };
     });
@@ -152,7 +185,7 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
   },
 
   activeSession: () => {
-    const { sessions, activeSessionId } = get();
-    return sessions.find((s) => s.id === activeSessionId);
+    const { sessions, activeSessionId, projectId } = get();
+    return sessions.find((s) => s.id === activeSessionId && (!projectId || s.project_id === projectId));
   },
 }));

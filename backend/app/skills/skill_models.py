@@ -94,8 +94,10 @@ class SkillUpdateProposal:
         proposed_value: str,
         reason: str,
         confidence: float = 0.5,
+        project_id: str = "",
     ) -> None:
         self.id = f"{skill_name}_{field}_{datetime.now(timezone.utc).strftime('%Y%m%d%H%M%S')}"
+        self.project_id = str(project_id or "").strip()
         self.skill_name = skill_name
         self.field = field
         self.current_value = current_value
@@ -109,6 +111,7 @@ class SkillUpdateProposal:
     def to_dict(self) -> dict:
         return {
             "id": self.id,
+            "project_id": self.project_id,
             "skill_name": self.skill_name,
             "field": self.field,
             "current_value": self.current_value,
@@ -131,6 +134,7 @@ class SkillCreationProposal:
     source_agent_id: str
     reason: str
     confidence: int
+    project_id: str = ""
     status: str = "pending"
     created_at: str = ""
     reviewed_at: str | None = None
@@ -140,6 +144,7 @@ class SkillCreationProposal:
     def to_dict(self) -> dict:
         return {
             "id": self.id,
+            "project_id": self.project_id,
             "proposed_definition": self.proposed_definition,
             "source_task_id": self.source_task_id,
             "source_agent_id": self.source_agent_id,

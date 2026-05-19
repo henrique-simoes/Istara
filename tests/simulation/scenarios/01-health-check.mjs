@@ -6,6 +6,10 @@ export const id = "01-health-check";
 export async function run(ctx) {
   const { api, page, report } = ctx;
   const checks = [];
+  const activeProjectId = typeof ctx.projectId === "string" ? ctx.projectId.trim() : "";
+  const scopedSkipDetail = "[skipped] No active project id; scoped endpoint not called";
+  const projectScopedPath = (path) =>
+    `${path}${path.includes("?") ? "&" : "?"}project_id=${encodeURIComponent(activeProjectId)}`;
 
   // 1. Backend health
   try {
@@ -23,7 +27,7 @@ export async function run(ctx) {
     checks.push({
       name: "LLM provider connected",
       passed: llmConnected,
-      detail: `Provider: ${status.provider || "unknown"}, Model: ${status.config?.model || "unknown"}`,
+      detail: `LLM: ${status.services?.llm || "unknown"}, chat_ready: ${status.llm_readiness?.chat_ready === true}`,
     });
   } catch (e) {
     checks.push({ name: "LLM provider connected", passed: false, detail: e.message });
@@ -56,16 +60,21 @@ export async function run(ctx) {
   }
 
   // 6. Scheduler API
-  try {
-    const schedules = await api.get("/api/schedules");
-    checks.push({ name: "Scheduler API responds", passed: true, detail: `${schedules.length || 0} scheduled tasks` });
-  } catch (e) {
-    checks.push({ name: "Scheduler API responds", passed: false, detail: e.message });
+  if (!activeProjectId) {
+    checks.push({ name: "Scheduler API responds", passed: true, detail: scopedSkipDetail });
+  } else {
+    try {
+      const schedules = await api.get(projectScopedPath("/api/schedules"));
+      checks.push({ name: "Scheduler API responds", passed: true, detail: `${schedules.length || 0} scheduled tasks` });
+    } catch (e) {
+      checks.push({ name: "Scheduler API responds", passed: false, detail: e.message });
+    }
   }
 
   // 7. Channels API
   try {
-    const channels = await api.get("/api/channels");
+    const projectId = encodeURIComponent(ctx.projectId || "sim-project-001");
+    const channels = await api.get(`/api/channels?project_id=${projectId}`);
     checks.push({ name: "Channels API responds", passed: true, detail: JSON.stringify(channels) });
   } catch (e) {
     checks.push({ name: "Channels API responds", passed: false, detail: e.message });

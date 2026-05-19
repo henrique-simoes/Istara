@@ -1,11 +1,14 @@
 """Context Hierarchy System — layered system prompts as source of truth.
 
 The context hierarchy ensures agents never hallucinate or go off-track.
-Each layer acts as a system prompt, with strict inheritance:
+Each database-backed layer is scoped to one project. Shared platform defaults
+come from the built-in ``PLATFORM_CONTEXT`` constant instead of mutable global
+context rows, so one project's agents never inherit another project's context.
+Within a project, each layer acts as a system prompt:
 
     Level 0: Platform defaults (Istara UXR expertise)
-    Level 1: Company context (org-wide — culture, product, terminology, guardrails)
-    Level 2: Product contexts (per-product — features, users, domain knowledge)
+    Level 1: Company context (project-local — culture, product, terminology, guardrails)
+    Level 2: Product contexts (project-local — features, users, domain knowledge)
     Level 3: Project contexts (per-project — research questions, goals, timeline, phase)
     Level 4: Task contexts (per-task — specific instructions from Kanban cards)
     Level 5: Agent contexts (per-agent — agent-specific system prompts, personality, constraints)
@@ -74,6 +77,10 @@ Core principles:
 class ContextHierarchy:
     """Composes the full context hierarchy for any agent/task execution."""
 
+    @staticmethod
+    def _normalize_project_id(project_id: str | None) -> str:
+        return str(project_id or "").strip()
+
     async def compose_context(
         self,
         db: AsyncSession,
@@ -97,18 +104,16 @@ class ContextHierarchy:
         # Level 0: Platform defaults
         layers.append(f"## Istara Platform Context\n{PLATFORM_CONTEXT}")
 
-        # Level 1-5: Load from database
+        # Level 1-5: Load project-local context rows from database.
+        scoped_project_id = self._normalize_project_id(project_id)
         query = select(ContextDocument).where(
             ContextDocument.enabled == True
         ).order_by(ContextDocument.level, ContextDocument.priority.desc())
 
-        if project_id:
-            # Get project-specific + global contexts
-            query = query.where(
-                (ContextDocument.project_id == project_id) |
-                (ContextDocument.project_id == "") |
-                (ContextDocument.level <= 2)  # Company/product are always included
-            )
+        if scoped_project_id:
+            query = query.where(ContextDocument.project_id == scoped_project_id)
+        else:
+            query = query.where(ContextDocument.project_id == "")
 
         result = await db.execute(query)
         docs = result.scalars().all()
@@ -162,7 +167,7 @@ class ContextHierarchy:
             level=level,
             level_type=level_type,
             parent_id=parent_id,
-            project_id=project_id,
+            project_id=self._normalize_project_id(project_id),
             content=content,
             priority=priority,
         )
@@ -177,22 +182,41 @@ class ContextHierarchy:
         level_type: str | None = None,
         project_id: str | None = None,
     ) -> list[ContextDocument]:
-        """List context documents with optional filters."""
+        """List context documents with optional filters.
+
+        Project-facing calls return only rows owned by that project. Admin-only
+        calls without a project id return only unassigned maintenance rows and
+        are never mixed into project prompt composition.
+        """
+        scoped_project_id = self._normalize_project_id(project_id)
         query = select(ContextDocument).order_by(
             ContextDocument.level, ContextDocument.priority.desc()
         )
         if level_type:
             query = query.where(ContextDocument.level_type == level_type)
-        if project_id:
-            query = query.where(
-                (ContextDocument.project_id == project_id) | (ContextDocument.project_id == "")
-            )
+        if scoped_project_id:
+            query = query.where(ContextDocument.project_id == scoped_project_id)
+        else:
+            query = query.where(ContextDocument.project_id == "")
         result = await db.execute(query)
         return list(result.scalars().all())
 
-    async def update_context(self, db: AsyncSession, doc_id: str, updates: dict) -> ContextDocument | None:
+    async def update_context(
+        self,
+        db: AsyncSession,
+        doc_id: str,
+        updates: dict,
+        *,
+        project_id: str | None = None,
+    ) -> ContextDocument | None:
         """Update a context document."""
-        result = await db.execute(select(ContextDocument).where(ContextDocument.id == doc_id))
+        scoped_project_id = self._normalize_project_id(project_id)
+        result = await db.execute(
+            select(ContextDocument).where(
+                ContextDocument.id == doc_id,
+                ContextDocument.project_id == scoped_project_id,
+            )
+        )
         doc = result.scalar_one_or_none()
         if not doc:
             return None
@@ -203,8 +227,20 @@ class ContextHierarchy:
         await db.refresh(doc)
         return doc
 
-    async def delete_context(self, db: AsyncSession, doc_id: str) -> bool:
-        result = await db.execute(select(ContextDocument).where(ContextDocument.id == doc_id))
+    async def delete_context(
+        self,
+        db: AsyncSession,
+        doc_id: str,
+        *,
+        project_id: str | None = None,
+    ) -> bool:
+        scoped_project_id = self._normalize_project_id(project_id)
+        result = await db.execute(
+            select(ContextDocument).where(
+                ContextDocument.id == doc_id,
+                ContextDocument.project_id == scoped_project_id,
+            )
+        )
         doc = result.scalar_one_or_none()
         if not doc:
             return False
