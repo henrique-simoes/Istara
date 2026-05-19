@@ -69,11 +69,11 @@ class ComputeRegistryLifecycleMixin:
         """Register a ComputeNode."""
         _hydrate_local_resources(node)
         if node.host:
-            new_identity = _server_endpoint_identity(node.host)
+            new_identity = _server_endpoint_identity(node.host, source=node.source)
             for existing_id, existing in list(self._nodes.items()):
                 if existing_id == node.node_id or not existing.host:
                     continue
-                if _server_endpoint_identity(existing.host) != new_identity:
+                if _server_endpoint_identity(existing.host, source=existing.source) != new_identity:
                     continue
                 if self._should_keep_duplicate_node(existing, node):
                     self._merge_duplicate_node(existing, node)

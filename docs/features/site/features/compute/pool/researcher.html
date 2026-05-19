@@ -271,7 +271,7 @@
 <li>Project-scoped state or artifact updates associated with compute pool.</li>
 <li>Visible status, lists, forms, generated artifacts, or review results shown by the referenced component and routes.</li>
 <li>RAM and CPU totals reflect unique physical hardware, not every IP address or provider process registered in the pool.</li>
-<li>Servers with no loaded model remain online when reachable and show their loadable model capabilities, but continue to score as not ready until a model is loaded.</li>
+<li>Servers with no loaded model remain online when reachable and show their loadable model capabilities, but continue to score as not ready until a model is loaded, even if an older health flag has not caught up yet.</li>
 <li>Relay/browser donors without a validated project scope are status-only and cannot receive project chat, task, report, integration, or embedding payloads.</li>
 </ul>
 <h2 id="caveats">Caveats</h2>
@@ -292,7 +292,7 @@
 <ul>
 <li>Source files: <code>frontend/src/components/common/ComputePoolView.tsx</code>, <code>backend/app/api/routes/compute.py</code>, <code>backend/app/core/compute_pool.py</code></li>
 <li>API references: <code>backend/app/api/routes/compute.py</code></li>
-<li>Tests: <code>tests/test_compute.py</code>, <code>tests/test_compute_registry_model_loading.py</code>, <code>tests/test_compute_registry_hardening.py</code>, <code>tests/test_network_discovery.py</code>, <code>tests/test_project_rbac.py</code></li>
+<li>Tests: <code>tests/test_compute.py</code>, <code>tests/compute_cases/status_contracts.py</code>, <code>tests/test_compute_registry_model_loading.py</code>, <code>tests/test_compute_registry_hardening.py</code>, <code>tests/test_network_discovery.py</code>, <code>tests/test_project_rbac.py</code></li>
 </ul>
         </article>
         <aside class="toc-panel" aria-label="Page sections">

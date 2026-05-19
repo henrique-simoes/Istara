@@ -126,15 +126,20 @@ def _canonical_endpoint_hostname(hostname: str | None) -> str:
     return normalized
 
 
-def _server_endpoint_identity(host: str) -> tuple[str, str, int | None, str]:
+def _server_endpoint_identity(
+    host: str,
+    *,
+    source: str | None = None,
+) -> tuple[str, str, int | None, str]:
     """Canonicalize an LLM server endpoint enough to catch accidental duplicates."""
     parsed = urlparse(host if "://" in host else f"http://{host}")
     path = parsed.path.rstrip("/")
     if path == "/v1":
         path = ""
+    hostname = "local" if source == "local" else _canonical_endpoint_hostname(parsed.hostname)
     return (
         (parsed.scheme or "http").lower(),
-        _canonical_endpoint_hostname(parsed.hostname),
+        hostname,
         parsed.port,
         path,
     )

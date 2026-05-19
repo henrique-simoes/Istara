@@ -368,6 +368,15 @@ class ComputeNodeInvocationMixin:
             capability_probe_status = "available" if self.model_capabilities else "unavailable"
         elif self.model_capabilities:
             capability_probe_status = "available"
+        not_ready_states = {
+            "auth_required",
+            "cooldown",
+            "no_model_loaded",
+            "no_model_server",
+            "timeout",
+            "unreachable",
+        }
+        is_ready = bool(self.is_healthy and self.health_state not in not_ready_states)
         reachable_states = {
             "ready",
             "no_model_loaded",
@@ -375,11 +384,11 @@ class ComputeNodeInvocationMixin:
             "degraded",
             "slow",
         }
-        is_reachable = bool(self.is_healthy or self.health_state in reachable_states)
+        is_reachable = bool(is_ready or self.health_state in reachable_states)
         if self.health_state in {"unreachable", "timeout"}:
             is_reachable = False
         readiness_state = self.health_state or "unknown"
-        if self.is_healthy and readiness_state in {"unknown", "unhealthy"}:
+        if is_ready and readiness_state in {"unknown", "unhealthy"}:
             readiness_state = "ready"
         model_list_stale = bool(
             self.source in ("relay", "browser")
@@ -394,14 +403,14 @@ class ComputeNodeInvocationMixin:
             "source": self.source,
             "provider_type": self.provider_type,
             "state": self.health_state,
-            "serving_state": "serving" if self.is_healthy and self.websocket else self.health_state,
+            "serving_state": "serving" if is_ready and self.websocket else self.health_state,
             "readiness_state": readiness_state,
             "health_error": self.health_error,
             "capability_probe_status": capability_probe_status,
             "model_list_stale": model_list_stale,
             "last_heartbeat": self.last_heartbeat,
             "is_healthy": self.is_healthy,
-            "is_ready": self.is_healthy,
+            "is_ready": is_ready,
             "is_reachable": is_reachable,
             "online": is_reachable,
             "is_local": self.is_local,
@@ -409,7 +418,7 @@ class ComputeNodeInvocationMixin:
             "latency_ms": self.latency_ms,
             "active_requests": self.active_requests,
             "score": round(self.score(), 1) if self.score() >= 0 else 0,
-            "alive": self.is_healthy,
+            "alive": is_ready,
             "ram_total_gb": self.ram_total_gb,
             "ram_available_gb": self.ram_available_gb,
             "cpu_cores": self.cpu_cores,

@@ -9,8 +9,8 @@ related_glossary: ["rag"]
 code_references: ["frontend/src/components/common/SettingsView.tsx", "frontend/src/components/layout/StatusBar.tsx", "backend/app/api/routes/settings.py"]
 api_references: ["backend/app/api/routes/settings.py"]
 test_references: ["tests/test_settings.py"]
-last_verified: 2026-05-18
-compass: CF-SPEC-55 / CF-684
+last_verified: 2026-05-19
+compass: CF-SPEC-55 / CF-684; CF-SPEC-66 / CF-856
 ---
 
 # System Status And Models Architecture
@@ -38,6 +38,7 @@ Settings shows backend, LLM, hardware, model recommendation, and available model
 
 - The feature is mounted through `frontend/src/components/common/SettingsView.tsx` and the UI navigation path recorded in the inventory.
 - `frontend/src/components/layout/StatusBar.tsx` reconciles WebSocket LLM events with passive `/api/settings/status` polling.
+- `/api/settings/status` reports `services.llm` from provider reachability and `llm_readiness.chat_ready` separately, so status bars and guided checks can distinguish connected-but-not-ready from disconnected.
 - The frontmatter and manifest entries are the durable contract for agents updating this page after code changes.
 - When the referenced component, store, route, agent, skill, or test behavior changes, regenerate and validate the feature documentation.
 

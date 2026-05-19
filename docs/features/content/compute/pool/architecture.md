@@ -8,9 +8,9 @@ related_features: ["settings.compute-donation", "settings.general"]
 related_glossary: ["rag"]
 code_references: ["frontend/src/components/common/ComputePoolView.tsx", "frontend/src/stores/computeStore.ts", "backend/app/api/routes/compute.py", "backend/app/core/compute_node_invocation.py", "backend/app/core/compute_registry_helpers.py", "backend/app/core/compute_registry_invocation.py", "backend/app/core/compute_registry_lifecycle.py", "backend/app/core/compute_registry_routing.py", "backend/app/core/network_discovery.py", "backend/app/core/compute_pool.py"]
 api_references: ["backend/app/api/routes/compute.py"]
-test_references: ["tests/test_compute.py", "tests/test_compute_registry_model_loading.py", "tests/test_compute_registry_hardening.py", "tests/test_network_discovery.py", "tests/test_project_rbac.py"]
+test_references: ["tests/test_compute.py", "tests/compute_cases/status_contracts.py", "tests/test_compute_registry_model_loading.py", "tests/test_compute_registry_hardening.py", "tests/test_network_discovery.py", "tests/test_project_rbac.py"]
 last_verified: 2026-05-19
-compass: CF-SPEC-60 / CF-774; CF-SPEC-63 / CF-814; CF-SPEC-63 / CF-815
+compass: CF-SPEC-60 / CF-774; CF-SPEC-63 / CF-814; CF-SPEC-63 / CF-815; CF-SPEC-66 / CF-856
 ---
 
 # Compute Pool Architecture
@@ -42,7 +42,8 @@ Donated relay/browser nodes are treated as a project-content security boundary. 
 - The feature is mounted through `frontend/src/components/common/ComputePoolView.tsx` and the UI navigation path recorded in the inventory.
 - Model chips are rendered from both advertised loaded models and cached model capability records, so capability-only models remain visible in the pool UI.
 - Node payloads expose `is_reachable`, `is_ready`, `readiness_state`, and `reachable_nodes` so UI labels can distinguish online/no-model-loaded from offline/unreachable without changing the conservative routing meaning of `alive_nodes`.
-- Compute registry identity uses passive local OS interface aliases to collapse duplicate local endpoints without silently merging unrelated remote machines that happen to expose the same model catalog.
+- Compute registry identity uses passive local OS interface aliases and the configured local provider source to collapse duplicate local endpoints without silently merging unrelated remote machines that happen to expose the same model catalog.
+- Node readiness derives from explicit readiness state before legacy health booleans, so a stale `is_healthy` flag cannot make `no_model_loaded` look routable.
 - Network discovery excludes all known local interface aliases before probing the subnet, preventing the server from discovering itself through a second LAN address.
 - Relay/browser donors carry `allowed_project_ids` resolved from either the authenticated user's project memberships or a validated compute-donation connection string. A bare network token can connect for status only, not receive project content.
 - Team-mode compute donation strings with wildcard project scope are rejected at relay validation so legacy all-project tokens cannot become global project processors.
@@ -59,6 +60,7 @@ Donated relay/browser nodes are treated as a project-content security boundary. 
 ## Tests And Verification
 
 - `tests/test_compute.py`
+- `tests/compute_cases/status_contracts.py`
 - `tests/test_project_rbac.py`
 - `tests/test_compute_registry_hardening.py`
 - `tests/test_compute_registry_model_loading.py`
@@ -75,7 +77,7 @@ Donated relay/browser nodes are treated as a project-content security boundary. 
 
 ## Compass Evidence
 
-- Spec/task: CF-SPEC-60 / CF-774; CF-SPEC-63 / CF-814; CF-SPEC-63 / CF-815
+- Spec/task: CF-SPEC-60 / CF-774; CF-SPEC-63 / CF-814; CF-SPEC-63 / CF-815; CF-SPEC-66 / CF-856
 - Inventory source: `docs/features/inventory.json`
 
 ## When To Update

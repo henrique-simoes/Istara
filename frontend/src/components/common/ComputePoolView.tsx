@@ -76,6 +76,23 @@ const SOURCE_BADGES: Record<string, { label: string; icon: typeof Monitor; class
   },
 };
 
+const NOT_READY_NODE_STATES = new Set([
+  "auth_required",
+  "cooldown",
+  "no_model_loaded",
+  "no_model_server",
+  "timeout",
+  "unreachable",
+]);
+const READY_NODE_STATES = new Set(["ready", "degraded", "slow"]);
+const REACHABLE_NODE_STATES = new Set([
+  "auth_required",
+  "degraded",
+  "no_model_loaded",
+  "ready",
+  "slow",
+]);
+
 function formatGb(value?: number | null): string {
   return Number.isFinite(value) && Number(value) > 0
     ? `${Number(value).toFixed(1)} GB`
@@ -339,11 +356,18 @@ export default function ComputePoolView() {
                 new Set([...(node.loaded_models || []), ...Object.keys(capabilities)])
               ).filter(Boolean);
               const readinessState =
-                node.readiness_state || node.serving_state || node.state || "";
+                node.readiness_state || node.serving_state || node.health_state || node.state || "";
+              const stateBlocksReady = NOT_READY_NODE_STATES.has(readinessState);
               const nodeReady = Boolean(
-                node.alive || node.is_healthy || node.is_ready || node.serving_state === "serving"
+                !stateBlocksReady &&
+                (
+                  node.alive ||
+                  node.is_ready ||
+                  node.serving_state === "serving" ||
+                  (node.is_healthy && (!readinessState || READY_NODE_STATES.has(readinessState)))
+                )
               );
-              const inferredReachable = nodeReady || readinessState === "no_model_loaded";
+              const inferredReachable = nodeReady || REACHABLE_NODE_STATES.has(readinessState);
               const nodeReachable = Boolean(
                 (node.is_reachable ?? node.online) ?? inferredReachable
               );

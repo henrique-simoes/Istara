@@ -11,6 +11,14 @@ def node_capacity_score(node: Any, *, now: float | None = None) -> float:
     current = time.time() if now is None else now
     if not getattr(node, "is_healthy", False):
         return -1
+    if getattr(node, "health_state", "") in {
+        "auth_required",
+        "no_model_loaded",
+        "no_model_server",
+        "timeout",
+        "unreachable",
+    }:
+        return -1
     if getattr(node, "active_requests", 0) >= getattr(node, "max_active_requests", 0):
         return -1
     if getattr(node, "health_state", "") == "cooldown" and current < getattr(node, "cooldown_until", 0):
