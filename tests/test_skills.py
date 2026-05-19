@@ -156,6 +156,39 @@ async def test_skill_improvement_proposals_are_filtered_by_project(monkeypatch, 
         skills_route.skill_manager._proposals = original
 
 
+def test_skill_usage_does_not_auto_mutate_global_skill_lifecycle(monkeypatch):
+    """Low utility in one project should surface for review, not mutate global skills."""
+    manager = skills_route.skill_manager
+    original_stats = manager._usage_stats
+    manager._usage_stats = {}
+    update_calls: list[tuple] = []
+    monkeypatch.setattr(manager, "_save_stats", lambda: None)
+    monkeypatch.setattr(
+        manager,
+        "update_skill",
+        lambda *args, **kwargs: update_calls.append((args, kwargs)),
+    )
+
+    try:
+        for _ in range(10):
+            manager.record_execution(
+                "low-utility-test-skill",
+                success=False,
+                quality_score=0.0,
+                project_id="project-low-utility",
+            )
+
+        project_stats = manager.get_usage_stats(
+            "low-utility-test-skill",
+            project_id="project-low-utility",
+        )
+        assert project_stats["executions"] == 10
+        assert project_stats["utility_score"] < 0.3
+        assert update_calls == []
+    finally:
+        manager._usage_stats = original_stats
+
+
 @pytest.mark.asyncio
 async def test_skill_creation_proposals_are_filtered_by_project(monkeypatch, auth_headers):
     """Autonomous creation proposals keep their source project boundary."""

@@ -300,6 +300,7 @@ class MetaOrchestrator:
         """Route unassigned tasks to the best agent based on specialties."""
         try:
             from app.models.database import async_session
+            from app.models.project import Project
             from app.models.task import Task, TaskStatus
             from app.core.task_router import route_task
             from app.services.a2a import send_message
@@ -308,9 +309,11 @@ class MetaOrchestrator:
             async with async_session() as db:
                 result = await db.execute(
                     select(Task)
+                    .join(Project, Project.id == Task.project_id)
                     .where(
                         Task.status == TaskStatus.BACKLOG,
                         Task.agent_id.is_(None),
+                        Project.is_paused.is_(False),
                     )
                     .order_by(Task.created_at.asc())
                     .limit(10)

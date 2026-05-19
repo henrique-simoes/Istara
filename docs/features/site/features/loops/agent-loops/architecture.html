@@ -247,6 +247,8 @@
 <li><code>frontend/src/components/loops/AgentLoopsTab.tsx</code></li>
 <li><code>backend/app/api/routes/loops.py</code></li>
 <li><code>backend/app/core/scheduler.py</code></li>
+<li><code>backend/app/main.py</code></li>
+<li><code>backend/app/agents/orchestrator.py</code></li>
 </ul>
 <h2 id="state-api-and-backend-contracts">State, API, And Backend Contracts</h2>
 <h3 id="stores">Stores</h3>
@@ -257,16 +259,19 @@
 <ul>
 <li><code>backend/app/api/routes/loops.py</code></li>
 <li>Agent-loop configs are visible or mutable only when the agent belongs to the active project or has an explicit loop project filter for that project.</li>
+<li>Startup keeps project-scoped task workers available for assigned active-project work, but DevOps/UI/UX/User Simulation quality loops are disabled by default and run only when <code>autonomous_quality_agents_enabled</code> is explicitly enabled.</li>
 </ul>
 <h2 id="architecture-notes">Architecture Notes</h2>
 <ul>
 <li>The feature is mounted through <code>frontend/src/components/loops/AgentLoopsTab.tsx</code> and the UI navigation path recorded in the inventory.</li>
+<li>The meta-orchestrator selects unassigned tasks only from non-paused projects before routing, proposing agents, or sending A2A collaboration messages.</li>
 <li>The frontmatter and manifest entries are the durable contract for agents updating this page after code changes.</li>
 <li>When the referenced component, store, route, agent, skill, or test behavior changes, regenerate and validate the feature documentation.</li>
 </ul>
 <h2 id="agents-skills-llm-mcp-and-permissions">Agents, Skills, LLM, MCP, And Permissions</h2>
 <ul>
 <li>Agent-to-agent behavior should be traced through agent stores, A2A routes, permissions, and review surfaces before changing assumptions.</li>
+<li>Autonomous QA agents can fetch app/API state or call an LLM, so they are treated as admin/dev testing loops rather than normal project background processing.</li>
 </ul>
 <h2 id="tests-and-verification">Tests And Verification</h2>
 <ul>
@@ -284,7 +289,7 @@
 </ul>
 <h2 id="compass-evidence">Compass Evidence</h2>
 <ul>
-<li>Spec/task: CF-SPEC-53 / CF-657</li>
+<li>Spec/task: CF-SPEC-60 / CF-776</li>
 <li>Inventory source: <code>docs/features/inventory.json</code></li>
 </ul>
 <h2 id="when-to-update">When To Update</h2>

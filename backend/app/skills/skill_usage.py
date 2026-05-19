@@ -70,12 +70,6 @@ class SkillUsageMixin:
             self._update_usage_stats(scoped_stats, success, quality_score)
 
         self._save_stats()
-        if stats["executions"] >= 10 and stats["utility_score"] < 0.3:
-            self._notify_low_utility_skill(
-                skill_name,
-                stats,
-                allow_lifecycle_change=True,
-            )
         if scoped_project_id and scoped_stats and scoped_stats["executions"] >= 10 and scoped_stats["utility_score"] < 0.3:
             self._notify_low_utility_skill(
                 skill_name,
@@ -95,31 +89,19 @@ class SkillUsageMixin:
             import asyncio
             from app.api.websocket import broadcast_suggestion
 
-            if allow_lifecycle_change and stats["utility_score"] < 0.2:
-                defn = self._definitions.get(skill_name)
-                if defn:
-                    self.update_skill(
-                        skill_name,
-                        {"lifecycle": "deprecated"},
-                        "Auto-deprecated after chronically low utility",
-                    )
-                    logger.warning(
-                        "Skill '%s' auto-deprecated (utility=%.2f after %s runs)",
-                        skill_name,
-                        stats["utility_score"],
-                        stats["executions"],
-                    )
+            if allow_lifecycle_change:
+                logger.info(
+                    "Ignoring automatic global lifecycle mutation for skill %s; "
+                    "skill health is reported per project for review.",
+                    skill_name,
+                )
 
             loop = asyncio.get_event_loop()
             if loop.is_running():
                 message = (
                     f"Skill '{skill_name}' has low utility "
                     f"({stats['utility_score']:.0%} after {stats['executions']} runs). "
-                    + (
-                        "It has been auto-deprecated."
-                        if stats["utility_score"] < 0.2
-                        else "Consider reviewing or replacing it."
-                    )
+                    "Consider reviewing or replacing it for this project."
                 )
                 scoped_project_id = str(project_id or "").strip()
                 if scoped_project_id:

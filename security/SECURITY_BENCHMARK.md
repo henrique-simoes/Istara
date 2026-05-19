@@ -88,6 +88,10 @@ exclusion of secret-like files plus protected local `LLMs/` and
 Loop health, schedule, agent-loop, and execution-history views are treated as
 project-content surfaces: non-admin users must supply an authorized active
 project before seeing background process state or mutating recurring work.
+Startup quality/audit/simulation loops are opt-in because they may create test
+projects, call app/API state, or use LLMs; normal project task workers,
+orchestrator routing, and schedules must skip paused projects before model work
+or proposal side effects.
 Agent registry, heartbeat, detail, identity, memory, recent-log, prompt
 diagnostic, A2A message views, A2A JSON-RPC discovery, and realtime agent
 events are also project-content surfaces: non-admin users must supply an
@@ -95,6 +99,9 @@ authorized active project, project-scoped agents cannot be read from another
 project, universal agent runtime memory/current-task state is redacted in
 project views unless a global admin is using an admin surface, and malformed
 project-bound websocket events must not fall back to global delivery.
+Structured agent learnings and error-resolution lookup are project-content too:
+task/review learnings must carry the source project and must not append private
+project observations into universal persona MEMORY overlays.
 Governed Evolution, DGM-H archive, and ReasoningBank review surfaces are also
 project-content surfaces: proposal/archive/reasoning lists and mutation actions
 must carry an explicit `project_id`, bind record ids back to that project, and
@@ -102,7 +109,9 @@ avoid mixing project-facing retrieval with unscoped reasoning memories.
 Meta-Hyperagent proposal, observation, variant, WebSocket, and governance-sync
 surfaces are also project-content surfaces: they may run only after an
 authorized active project is supplied, and legacy/global observations or
-proposals must not render inside a project view.
+proposals must not render inside a project view. Meta-Hyperagent tuning
+proposals must also be evidence-gated by the active project's own learning and
+execution history, not by generic/global defaults.
 Chat sessions, chat history, active-session persistence, and related context DAG
 pickers are project-content surfaces: session-by-id APIs require the caller's
 authorized active project, frontend session state is stored per project, and a

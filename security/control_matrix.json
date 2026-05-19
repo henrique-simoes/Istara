@@ -68,12 +68,14 @@
         "backend/app/core/compute_node*.py",
         "backend/app/core/compute_pool.py",
         "backend/app/core/compute_capacity.py",
+        "backend/app/core/agent_learning.py",
         "backend/app/core/agent_factory.py",
         "backend/app/core/dgmh_archive.py",
         "backend/app/core/improvement_governance*.py",
         "backend/app/core/meta_hyperagent.py",
         "backend/app/core/reasoning_bank.py",
         "backend/app/core/sandbox_evaluation.py",
+        "backend/app/core/scheduler.py",
         "backend/app/agents/orchestrator.py",
         "backend/app/skills/*.py",
         "backend/app/main.py",
@@ -180,6 +182,7 @@
         "tests/test_tasks.py",
         "tests/test_notifications.py",
         "tests/test_agents.py",
+        "tests/test_agent_learning_scope.py",
         "tests/test_interfaces.py",
         "tests/test_loops.py",
         "tests/test_sessions.py",
@@ -524,8 +527,12 @@
         "backend/app/api/routes/mcp.py",
         "backend/app/api/routes/reasoning_bank.py",
         "backend/app/api/routes/surveys.py",
+        "backend/app/main.py",
+        "backend/app/agents/orchestrator.py",
+        "backend/app/core/agent_learning.py",
         "backend/app/core/report_manager.py",
         "backend/app/core/reporting_worker.py",
+        "backend/app/core/scheduler.py",
         "frontend/src/components/interfaces/FigmaTab.tsx",
         "frontend/src/components/interfaces/HandoffTab.tsx",
         "frontend/src/components/interfaces/ScreensGalleryTab.tsx",
@@ -579,10 +586,11 @@
         "tests/test_improvement_governance.py",
         "tests/test_reasoning_bank.py",
         "tests/test_meta_hyperagent.py",
+        "tests/test_agent_learning_scope.py",
         "tests/test_auth_security.py"
       ],
       "future_change_trigger": true,
-      "notes": "Global admin, project admin, researcher, viewer, legacy role mappings, active-project notification, websocket subscription, chat session/history scope, Context DAG session scope, memory/index scope, findings/evidence/search/report scope, task/Kanban scope, governed-evolution proposal/archive/reasoning scope, Meta-Hyperagent proposal/observation/variant scope, agent status/log/detail/realtime/A2A-discovery, loop/background-process scope, project-owned Interfaces screens/briefs/status/configuration, integration/deployment/MCP-client list/detail/lifecycle routes, document library/preview routes, and donated-compute project scopes are governed. Project-facing APIs require an explicit active project; admin-only global aggregation belongs to dedicated admin surfaces."
+      "notes": "Global admin, project admin, researcher, viewer, legacy role mappings, active-project notification, websocket subscription, chat session/history scope, Context DAG session scope, memory/index scope, findings/evidence/search/report scope, task/Kanban scope, governed-evolution proposal/archive/reasoning scope, Meta-Hyperagent proposal/observation/variant scope, agent status/log/detail/learning/realtime/A2A-discovery, loop/background-process scope, project-owned Interfaces screens/briefs/status/configuration, integration/deployment/MCP-client list/detail/lifecycle routes, document library/preview routes, and donated-compute project scopes are governed. Project-facing APIs require an explicit active project; admin-only global aggregation belongs to dedicated admin surfaces. Startup QA/simulation loops are opt-in; project task workers, schedule execution, and orchestrator routing skip paused projects before model or proposal work."
     },
     {
       "id": "AUTHZ-002",
@@ -847,6 +855,8 @@
         "backend/app/api/routes/improvement_governance.py",
         "backend/app/core/meta_hyperagent.py",
         "backend/app/api/routes/meta_hyperagent.py",
+        "backend/app/core/agent_learning.py",
+        "backend/app/skills/skill_usage.py",
         "backend/app/core/sandbox_evaluation.py",
         "backend/app/core/dgmh_archive.py",
         "backend/app/api/routes/dgmh_archive.py",
@@ -856,12 +866,13 @@
         "frontend/src/lib/dgmhArchiveApi.ts",
         "frontend/src/lib/api.ts",
         "tests/test_meta_hyperagent.py",
+        "tests/test_agent_learning_scope.py",
         "tests/test_improvement_governance.py",
         "tests/test_dgmh_archive.py",
         "scripts/production_rehearsal.py"
       ],
       "future_change_trigger": true,
-      "notes": "Production self-evolution is allowed only as governed proposals with UI approval, evidence, metrics, rollback lineage, and explicit project scope for project-facing review surfaces, including Meta-Hyperagent observations, proposals, variants, and governance sync."
+      "notes": "Production self-evolution is allowed only as governed proposals with UI approval, evidence, metrics, rollback lineage, and explicit project scope for project-facing review surfaces, including Meta-Hyperagent observations, proposals, variants, and governance sync. Meta-Hyperagent tuning suggestions require active-project learning evidence, and project task learnings remain in project-scoped records instead of universal persona memory overlays."
     },
     {
       "id": "AI-003",

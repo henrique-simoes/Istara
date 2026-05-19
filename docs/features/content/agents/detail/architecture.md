@@ -6,11 +6,11 @@ audience: architecture
 status: documented
 related_features: ["agents.registry", "memory.agent"]
 related_glossary: ["a2a"]
-code_references: ["frontend/src/components/agents/AgentsView.tsx", "frontend/src/lib/api.ts", "backend/app/api/routes/agents.py", "backend/app/api/agent_project_scope.py", "backend/app/core/agent_identity.py", "backend/app/core/agent_memory.py", "backend/app/core/permissions.py"]
+code_references: ["frontend/src/components/agents/AgentsView.tsx", "frontend/src/lib/api.ts", "backend/app/api/routes/agents.py", "backend/app/api/agent_project_scope.py", "backend/app/core/agent_identity.py", "backend/app/core/agent_learning.py", "backend/app/core/agent_memory.py", "backend/app/core/permissions.py"]
 api_references: ["backend/app/api/routes/agents.py", "backend/app/api/agent_project_scope.py"]
-test_references: ["tests/test_agents.py"]
-last_verified: 2026-05-18
-compass: CF-SPEC-53 / CF-657
+test_references: ["tests/test_agents.py", "tests/test_agent_learning_scope.py"]
+last_verified: 2026-05-19
+compass: CF-SPEC-60 / CF-776
 ---
 
 # Agent Detail Panels Architecture
@@ -23,6 +23,7 @@ Selected agent details expose overview, identity, memory, and permission informa
 
 - `frontend/src/components/agents/AgentsView.tsx`
 - `backend/app/core/agent_identity.py`
+- `backend/app/core/agent_learning.py`
 - `backend/app/core/agent_memory.py`
 - `backend/app/core/permissions.py`
 
@@ -41,6 +42,7 @@ Selected agent details expose overview, identity, memory, and permission informa
 - The feature is mounted through `frontend/src/components/agents/AgentsView.tsx` and the UI navigation path recorded in the inventory.
 - Shared detail access policy lives in `backend/app/api/agent_project_scope.py`, with the route layer passing active project ids from `frontend/src/lib/api.ts`.
 - Detail, identity, prompt diagnostic, learning, and memory reads must include the active project for non-admin users. The backend verifies that project-scoped agents belong to that project before returning agent data.
+- Structured agent learnings are stored and retrieved only with an explicit project id. Project task failures or review feedback must not append private project content into universal persona MEMORY overlays.
 - Universal agent runtime memory is not exposed in project detail panels for non-admin users; project-specific notes should be read through the project-scoped memory APIs.
 - The frontmatter and manifest entries are the durable contract for agents updating this page after code changes.
 - When the referenced component, store, route, agent, skill, or test behavior changes, regenerate and validate the feature documentation.
@@ -52,6 +54,7 @@ Selected agent details expose overview, identity, memory, and permission informa
 ## Tests And Verification
 
 - `tests/test_agents.py` verifies active-project guards for detail, identity, memory, recent logs, promotion requests, and A2A messages.
+- `tests/test_agent_learning_scope.py` verifies that structured learnings and resolution lookup do not cross project boundaries.
 
 ## Related Features
 
@@ -64,7 +67,7 @@ Selected agent details expose overview, identity, memory, and permission informa
 
 ## Compass Evidence
 
-- Spec/task: CF-SPEC-53 / CF-657
+- Spec/task: CF-SPEC-60 / CF-776
 - Inventory source: `docs/features/inventory.json`
 
 ## When To Update

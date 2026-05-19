@@ -247,6 +247,7 @@
 <li><code>frontend/src/components/loops/SchedulesTab.tsx</code></li>
 <li><code>frontend/src/components/loops/CronBuilder.tsx</code></li>
 <li><code>backend/app/api/routes/scheduler.py</code></li>
+<li><code>backend/app/core/scheduler.py</code></li>
 </ul>
 <h2 id="state-api-and-backend-contracts">State, API, And Backend Contracts</h2>
 <h3 id="stores">Stores</h3>
@@ -258,16 +259,19 @@
 <li><code>backend/app/api/routes/scheduler.py</code></li>
 <li><code>backend/app/api/routes/loops.py</code></li>
 <li>Schedule listing and creation operate only in the active project context; the project-facing UI does not expose a cross-project selector.</li>
+<li>The scheduler selects due work only for non-paused projects and treats missing project ownership as a permanent schedule error instead of executing against a dangling project id.</li>
 </ul>
 <h2 id="architecture-notes">Architecture Notes</h2>
 <ul>
 <li>The feature is mounted through <code>frontend/src/components/loops/SchedulesTab.tsx</code> and the UI navigation path recorded in the inventory.</li>
+<li>Pausing a project prevents scheduled skills and reminders from mutating task state, broadcasting project suggestions, or consuming model resources for that project.</li>
 <li>The frontmatter and manifest entries are the durable contract for agents updating this page after code changes.</li>
 <li>When the referenced component, store, route, agent, skill, or test behavior changes, regenerate and validate the feature documentation.</li>
 </ul>
 <h2 id="agents-skills-llm-mcp-and-permissions">Agents, Skills, LLM, MCP, And Permissions</h2>
 <ul>
 <li>Agent-to-agent behavior should be traced through agent stores, A2A routes, permissions, and review surfaces before changing assumptions.</li>
+<li>Scheduled skill execution is project content processing; it must remain bound to the schedule&#x27;s project id and active pause state.</li>
 </ul>
 <h2 id="tests-and-verification">Tests And Verification</h2>
 <ul>
@@ -285,7 +289,7 @@
 </ul>
 <h2 id="compass-evidence">Compass Evidence</h2>
 <ul>
-<li>Spec/task: CF-SPEC-53 / CF-657</li>
+<li>Spec/task: CF-SPEC-60 / CF-776</li>
 <li>Inventory source: <code>docs/features/inventory.json</code></li>
 </ul>
 <h2 id="when-to-update">When To Update</h2>

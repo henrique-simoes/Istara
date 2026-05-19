@@ -6,11 +6,11 @@ audience: architecture
 status: documented
 related_features: ["agents.registry", "loops.schedules"]
 related_glossary: ["a2a"]
-code_references: ["frontend/src/components/loops/AgentLoopsTab.tsx", "backend/app/api/routes/loops.py", "backend/app/core/scheduler.py"]
+code_references: ["frontend/src/components/loops/AgentLoopsTab.tsx", "backend/app/api/routes/loops.py", "backend/app/core/scheduler.py", "backend/app/main.py", "backend/app/agents/orchestrator.py"]
 api_references: ["backend/app/api/routes/loops.py"]
-test_references: []
-last_verified: 2026-05-15
-compass: CF-SPEC-53 / CF-657
+test_references: ["tests/test_loops.py", "tests/test_project_scope_contracts.py"]
+last_verified: 2026-05-19
+compass: CF-SPEC-60 / CF-776
 ---
 
 # Agent Loops Architecture
@@ -24,6 +24,8 @@ Agent Loops connects recurring work with configured agents and their automated r
 - `frontend/src/components/loops/AgentLoopsTab.tsx`
 - `backend/app/api/routes/loops.py`
 - `backend/app/core/scheduler.py`
+- `backend/app/main.py`
+- `backend/app/agents/orchestrator.py`
 
 ## State, API, And Backend Contracts
 
@@ -35,16 +37,19 @@ Agent Loops connects recurring work with configured agents and their automated r
 
 - `backend/app/api/routes/loops.py`
 - Agent-loop configs are visible or mutable only when the agent belongs to the active project or has an explicit loop project filter for that project.
+- Startup keeps project-scoped task workers available for assigned active-project work, but DevOps/UI/UX/User Simulation quality loops are disabled by default and run only when `autonomous_quality_agents_enabled` is explicitly enabled.
 
 ## Architecture Notes
 
 - The feature is mounted through `frontend/src/components/loops/AgentLoopsTab.tsx` and the UI navigation path recorded in the inventory.
+- The meta-orchestrator selects unassigned tasks only from non-paused projects before routing, proposing agents, or sending A2A collaboration messages.
 - The frontmatter and manifest entries are the durable contract for agents updating this page after code changes.
 - When the referenced component, store, route, agent, skill, or test behavior changes, regenerate and validate the feature documentation.
 
 ## Agents, Skills, LLM, MCP, And Permissions
 
 - Agent-to-agent behavior should be traced through agent stores, A2A routes, permissions, and review surfaces before changing assumptions.
+- Autonomous QA agents can fetch app/API state or call an LLM, so they are treated as admin/dev testing loops rather than normal project background processing.
 
 ## Tests And Verification
 
@@ -62,7 +67,7 @@ Agent Loops connects recurring work with configured agents and their automated r
 
 ## Compass Evidence
 
-- Spec/task: CF-SPEC-53 / CF-657
+- Spec/task: CF-SPEC-60 / CF-776
 - Inventory source: `docs/features/inventory.json`
 
 ## When To Update

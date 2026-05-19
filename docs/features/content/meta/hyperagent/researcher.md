@@ -50,6 +50,7 @@ Meta-Agent exists so the work represented by Meta-Agent has a stable, discoverab
 
 - Needs interactive verification for exact empty, loading, error, and permission-denied states.
 - Meta-Hyperagent state is not a global project feed. If a project has no observations or proposals, it should render empty even when other projects have active history.
+- Self-evolution suggestions are evidence-gated by the active project's own learning history, so a newly created or empty project should not receive generic skill or threshold improvement proposals.
 - Do not expand this documentation beyond the cited source files without adding new code or walkthrough evidence.
 
 ## Related Features

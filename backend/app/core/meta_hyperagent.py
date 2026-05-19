@@ -268,9 +268,45 @@ class MetaHyperagent:
         # 2. Self-evolution — current thresholds and promotion stats
         try:
             import app.core.self_evolution as se
-            observation["self_evolution"] = {
+            self_evolution_stats = {
                 "thresholds": dict(se.PROMOTION_THRESHOLDS),
             }
+            try:
+                from sqlalchemy import func, select
+
+                from app.core.agent_learning import AgentLearning
+                from app.models.database import async_session
+
+                async with async_session() as db:
+                    project_learnings = await db.execute(
+                        select(func.count(AgentLearning.id)).where(
+                            AgentLearning.project_id == scoped_project_id,
+                            AgentLearning.active == True,
+                        )
+                    )
+                    promoted_learnings = await db.execute(
+                        select(func.count(AgentLearning.id)).where(
+                            AgentLearning.project_id == scoped_project_id,
+                            AgentLearning.active == True,
+                            AgentLearning.resolution.like("%[PROMOTED]%"),
+                        )
+                    )
+                    distinct_agents = await db.execute(
+                        select(func.count(func.distinct(AgentLearning.agent_id))).where(
+                            AgentLearning.project_id == scoped_project_id,
+                            AgentLearning.active == True,
+                        )
+                    )
+                self_evolution_stats.update(
+                    {
+                        "project_learning_count": project_learnings.scalar() or 0,
+                        "project_promoted_count": promoted_learnings.scalar() or 0,
+                        "project_learning_agent_count": distinct_agents.scalar() or 0,
+                    }
+                )
+            except Exception as exc:
+                logger.debug(f"Meta-hyperagent: project self_evolution stats failed: {exc}")
+            observation["self_evolution"] = self_evolution_stats
         except Exception as exc:
             logger.debug(f"Meta-hyperagent: self_evolution observe failed: {exc}")
 
@@ -421,8 +457,11 @@ class MetaHyperagent:
             se_data = latest.get("self_evolution", {})
             thresholds = se_data.get("thresholds", {})
             min_occ = thresholds.get("min_occurrences", 3)
-            if min_occ > 2:
-                # Check if there's evidence of low promotion rates
+            learning_count = se_data.get("project_learning_count", 0) or 0
+            promoted_count = se_data.get("project_promoted_count", 0) or 0
+            promotion_rate = promoted_count / learning_count if learning_count else 0
+            if min_occ > 2 and learning_count >= 10 and promotion_rate < 0.05:
+                # Require project-local evidence before suggesting evolution tuning.
                 proposals.append(MetaProposal(
                     id=f"mp_{uuid.uuid4().hex[:12]}",
                     target_system="self_evolution",
@@ -430,13 +469,17 @@ class MetaHyperagent:
                     current_value=min_occ,
                     proposed_value=max(1, min_occ - 1),
                     reason=(
-                        f"Current min_occurrences={min_occ} may be too restrictive "
-                        f"for early-stage deployments. Lowering to {max(1, min_occ - 1)} "
-                        f"could allow faster agent learning."
+                        f"Project has {learning_count} active learnings and only "
+                        f"{promoted_count} promoted ({promotion_rate:.0%}). "
+                        f"Lowering min_occurrences from {min_occ} to "
+                        f"{max(1, min_occ - 1)} may allow reviewed project-local "
+                        f"learning to mature faster."
                     ),
                     evidence=[{
-                        "metric": "min_occurrences",
-                        "current": min_occ,
+                        "metric": "project_promotion_rate",
+                        "project_learning_count": learning_count,
+                        "project_promoted_count": promoted_count,
+                        "value": round(promotion_rate, 3),
                     }],
                     confidence=45,
                     expected_impact="More learnings promoted, faster agent adaptation",
