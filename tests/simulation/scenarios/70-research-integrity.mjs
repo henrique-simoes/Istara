@@ -355,7 +355,7 @@ export async function run(ctx) {
   // ── 12. Evidence chain API — verify traceability ──
   if (recId) {
     try {
-      const chain = await api.get(`/api/findings/evidence-chain?finding_type=recommendation&finding_id=${recId}`);
+      const chain = await api.get(`/api/findings/evidence-chain?finding_type=recommendation&finding_id=${recId}&project_id=${projectId}`);
       const hasChain = !!chain && !!chain.chain;
       checks.push({
         name: "Evidence chain API returns linked findings",
@@ -373,16 +373,16 @@ export async function run(ctx) {
 
   // ── Cleanup ──
   for (const id of cleanup.recIds) {
-    try { await api.delete(`/api/findings/recommendations/${id}`); } catch {}
+    try { await api.delete(`/api/findings/recommendations/${id}?project_id=${projectId}`); } catch {}
   }
   for (const id of cleanup.insightIds) {
-    try { await api.delete(`/api/findings/insights/${id}`); } catch {}
+    try { await api.delete(`/api/findings/insights/${id}?project_id=${projectId}`); } catch {}
   }
   for (const id of cleanup.factIds) {
-    try { await api.delete(`/api/findings/facts/${id}`); } catch {}
+    try { await api.delete(`/api/findings/facts/${id}?project_id=${projectId}`); } catch {}
   }
   for (const id of cleanup.nuggetIds) {
-    try { await api.delete(`/api/findings/nuggets/${id}`); } catch {}
+    try { await api.delete(`/api/findings/nuggets/${id}?project_id=${projectId}`); } catch {}
   }
 
   return {

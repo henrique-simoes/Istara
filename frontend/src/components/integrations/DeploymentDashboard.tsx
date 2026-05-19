@@ -33,25 +33,26 @@ export default function DeploymentDashboard({ deployment, onBack }: DeploymentDa
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
   const [transcriptConvId, setTranscriptConvId] = useState<string | null>(null);
+  const projectId = deployment.project_id;
 
   useEffect(() => {
     Promise.all([
-      deploymentsApi.analytics(deployment.id).then(setAnalytics).catch(() => {}),
-      deploymentsApi.conversations(deployment.id).then(setConversations).catch(() => {}),
+      deploymentsApi.analytics(deployment.id, projectId).then(setAnalytics).catch(() => {}),
+      deploymentsApi.conversations(deployment.id, projectId).then(setConversations).catch(() => {}),
     ]).finally(() => setLoading(false));
-  }, [deployment.id]);
+  }, [deployment.id, projectId]);
 
   const handleActivate = async () => {
     setActionLoading(true);
-    try { await deploymentsApi.activate(deployment.id); } catch {} finally { setActionLoading(false); }
+    try { await deploymentsApi.activate(deployment.id, projectId); } catch {} finally { setActionLoading(false); }
   };
   const handlePause = async () => {
     setActionLoading(true);
-    try { await deploymentsApi.pause(deployment.id); } catch {} finally { setActionLoading(false); }
+    try { await deploymentsApi.pause(deployment.id, projectId); } catch {} finally { setActionLoading(false); }
   };
   const handleComplete = async () => {
     setActionLoading(true);
-    try { await deploymentsApi.complete(deployment.id); } catch {} finally { setActionLoading(false); }
+    try { await deploymentsApi.complete(deployment.id, projectId); } catch {} finally { setActionLoading(false); }
   };
 
   const progress = deployment.target_responses > 0
@@ -154,6 +155,7 @@ export default function DeploymentDashboard({ deployment, onBack }: DeploymentDa
         <ConversationTranscript
           deploymentId={deployment.id}
           conversationId={transcriptConvId}
+          projectId={projectId}
           onClose={() => setTranscriptConvId(null)}
         />
       )}

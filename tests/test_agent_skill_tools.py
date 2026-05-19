@@ -55,6 +55,15 @@ async def test_rank_skill_candidates_uses_reasoning_bank_and_memento(monkeypatch
             "failures": 0,
             "total_quality": 7.2,
             "utility_score": 0.9,
+            "projects": {
+                "project-1": {
+                    "executions": 8,
+                    "successes": 8,
+                    "failures": 0,
+                    "total_quality": 7.2,
+                    "utility_score": 0.9,
+                }
+            },
         }
     }
 

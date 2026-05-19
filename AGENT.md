@@ -9,6 +9,7 @@ Generated from the repository on version `2026.04.27`. Treat this file as the fa
 - Use `SYSTEM_CHANGE_MATRIX.md` to identify dependent backend, frontend, UX, test, release, and prompt surfaces.
 - Use `CHANGE_CHECKLIST.md` to identify every code, test, and doc surface touched by the change.
 - Regenerate this file and `COMPLETE_SYSTEM.md` with `python scripts/update_agent_md.py` in the same change that modifies architecture, flows, routes, stores, skills, personas, or tests.
+- Update `docs/features/` and run `python scripts/feature_docs.py --seed-missing --generate-site --check` when UI/menu/route/store/agent/skill/model/test behavior affects feature documentation.
 - Run `python scripts/check_integrity.py` before finalizing docs-related work.
 - Treat `tests/e2e_test.py` and `tests/simulation/scenarios/` as behavioral contracts for the UI and system flows.
 - Update `Tech.md` when architecture, workflow, installer, release, or update behavior changes.
@@ -18,18 +19,19 @@ Generated from the repository on version `2026.04.27`. Treat this file as the fa
 ## System Snapshot
 
 - Frontend: Next.js app with 24 mounted views and 15 Zustand stores.
-- Backend: FastAPI app with 45 route modules and 429 detected endpoints.
+- Backend: FastAPI app with 50 route modules and 431 detected endpoints.
 - Data layer: 51 SQLAlchemy models plus LanceDB-backed retrieval/context systems.
 - Agents/personas: 6 tracked persona directories under `backend/app/agents/personas`.
-- Skills: 57 JSON-defined skills across the Double Diamond phases.
-- Regression map: 92 active test files across 4 layers.
+- Skills: 58 JSON-defined skills across the Double Diamond phases.
+- Regression map: 110 active test files across 5 layers.
+- Feature docs: 86 tracked UI feature surfaces in `docs/features/inventory.json`.
 
 ## Change Hotspots
 
-- New route or changed payload: update backend route, frontend API client, matching TypeScript types, consuming stores/components, tests, and regenerate docs.
-- New model or schema field: update model, serialization, frontend types, any route/store consumers, migration path, tests, and regenerate docs.
-- New view or menu item: update `Sidebar.tsx`, `HomeClient.tsx`, relevant store/components, simulation scenarios, and regenerate docs.
-- Persona, skill, or workflow changes: update persona files, skill definitions/prompts, related tests, and regenerate docs.
+- New route or changed payload: update backend route, frontend API client, matching TypeScript types, consuming stores/components, tests, and regenerate system plus feature docs.
+- New model or schema field: update model, serialization, frontend types, any route/store consumers, migration path, tests, and regenerate system plus feature docs.
+- New view or menu item: update `Sidebar.tsx`, `HomeClient.tsx`, relevant store/components, simulation scenarios, `docs/features/inventory.json`, paired feature docs, and generated manifests.
+- Persona, skill, or workflow changes: update persona files, skill definitions/prompts, related tests, and affected feature docs.
 
 ## Navigation Map
 
@@ -76,12 +78,13 @@ Generated from the repository on version `2026.04.27`. Treat this file as the fa
 - **Define** (13): Affinity Mapping, Empathy Mapping, Problem Statements / HMW, Journey Mapping, Jobs-to-be-Done Analysis, Kappa Intercoder Thematic Analysis, Game Theory Participant Simulation, Persona Creation, Prioritization Matrix, Research Synthesis Report, Taxonomy Generator, Thematic Analysis, User Flow Mapping
 - **Deliver** (13): Evaluate Research Quality, Handoff Documentation, Longitudinal Study Tracking, NPS Analysis, Regression / Impact Analysis, Research Repository Curation, Evaluate Research Quality, Research Ops Retrospective, Stakeholder Presentation, Design System Synthesis, HTML to React Components, SUS / UMUX Scoring, Task Analysis (Quantitative)
 - **Develop** (16): A/B Test Analysis, Live Site Accessibility Audit, Live Site UX Audit, Card Sorting Analysis, Cognitive Walkthrough, Concept Testing, Design Critique / Expert Review, Design System Audit, Heuristic Evaluation, Prototype Feedback Analysis, Stitch Design Generation, Design Prompt Enhancement, Tree Testing Analysis, Usability Testing, UX Law Compliance Audit, Workshop Facilitation
-- **Discover** (15): Accessibility Audit, Analytics Review, Competitor UX Benchmarking, Competitive Analysis (Automated), Contextual Inquiry, Literature / Desk Research, Diary Studies, Field Studies / Ethnography, Interview Question Generator, Stakeholder Interviews, Survey AI Response Detection, Survey Design & Analysis, Survey Generator, Audio Transcription & Analysis, User Interviews
+- **Discover** (16): Accessibility Audit, Analytics Review, Competitor UX Benchmarking, Channel Research Deployment, Competitive Analysis (Automated), Contextual Inquiry, Literature / Desk Research, Diary Studies, Field Studies / Ethnography, Interview Question Generator, Stakeholder Interviews, Survey AI Response Detection, Survey Design & Analysis, Survey Generator, Audio Transcription & Analysis, User Interviews
 
 ## Backend Route Modules
 
 | Route Module | Prefix | Endpoints |
 |---|---|---|
+| `a2a.py` | `/` | 2 |
 | `admin.py` | `/admin` | 5 |
 | `agents.py` | `/` | 48 |
 | `audit.py` | `/` | 7 |
@@ -103,7 +106,11 @@ Generated from the repository on version `2026.04.27`. Treat this file as the fa
 | `files.py` | `/` | 7 |
 | `findings.py` | `/` | 22 |
 | `improvement_governance.py` | `/improvement-governance` | 12 |
-| `interfaces.py` | `/` | 22 |
+| `interfaces.py` | `/` | 2 |
+| `interfaces_common.py` | `/` | 0 |
+| `interfaces_integrations.py` | `/` | 10 |
+| `interfaces_mock.py` | `/` | 4 |
+| `interfaces_screens.py` | `/` | 6 |
 | `laws.py` | `/laws` | 6 |
 | `llm_servers.py` | `/` | 6 |
 | `loops.py` | `/` | 10 |
@@ -213,8 +220,9 @@ Generated from the repository on version `2026.04.27`. Treat this file as the fa
 
 - **Layer: Benchmarks**: `test_orchestration.py`
 - **Layer: Integration**: `test_llm_orchestration_real.py`
+- **Layer: Real User Benchmark**: `run.mjs`
 - **Layer: Simulation**: `run.mjs`
-- **Test Journeys**: `test_adaptive_validation.py`, `test_agent_avatar_security.py`, `test_agent_personas.py`, `test_agentic_eval_contract.py`, `test_agents.py`, `test_auth_security.py`, `test_autoresearch.py`, `test_backup.py`, `test_browser_skills.py`, `test_business_logic.py`, `test_channel_file_security.py`, `test_channel_inbound.py`, `test_channel_resilience.py`, `test_channels.py`, `test_chat.py`, `test_client_identity.py`, `test_code_applications.py`, `test_codebook_versions.py`, `test_codebooks.py`, `test_compute.py`, `test_compute_registry_hardening.py`, `test_compute_registry_model_loading.py`, `test_compute_vision_routing.py`, `test_connections.py`, `test_content_guard.py`, `test_context_dag.py`, `test_data_transformations.py`, `test_database_schema_bootstrap.py`, `test_dgmh_archive.py`, `test_document_preview_paths.py`, `test_documents.py`, `test_error_handling.py`, `test_evaluation_skill.py`, `test_field_encryption.py`, `test_file_watcher_config.py`, `test_files.py`, `test_findings.py`, `test_harness_config.py`, `test_improvement_governance.py`, `test_integration.py`, `test_integration_agent_work_cycle.py`, `test_integration_chat_flow.py`, `test_integration_interview.py`, `test_interfaces.py`, `test_istara_eval_runner.py`, `test_laws.py`, `test_llm_fallback_config.py`, `test_llm_output.py`, `test_llm_servers.py`, `test_loops.py`, `test_mcp.py`, `test_memory.py`, `test_meta_hyperagent.py`, `test_metrics.py`, `test_model_provider_contract.py`, `test_network_discovery.py`, `test_network_security.py`, `test_notifications.py`, `test_participant_simulation.py`, `test_project_rbac.py`, `test_projects.py`, `test_property_contracts.py`, `test_proxy_security.py`, `test_rag_resilience.py`, `test_rate_limiter.py`, `test_reasoning_bank.py`, `test_reports.py`, `test_research_integrity.py`, `test_runtime_source_boundary.py`, `test_security_benchmark.py`, `test_self_healing_rules.py`, `test_sessions.py`, `test_settings.py`, `test_skill_definitions.py`, `test_skill_factory.py`, `test_skills.py`, `test_steering.py`, `test_surveys.py`, `test_tasks.py`, `test_telemetry.py`, `test_telemetry_export.py`, `test_transcription.py`, `test_transport_headers.py`, `test_updates_security.py`, `test_version_comparison.py`, `test_webauthn.py`, `test_webhooks_security.py`, `test_websocket.py`, `e2e_test.py`
+- **Test Journeys**: `test_a2a_security.py`, `test_adaptive_validation.py`, `test_agent_avatar_security.py`, `test_agent_personas.py`, `test_agent_skill_tools.py`, `test_agentic_eval_contract.py`, `test_agents.py`, `test_auth_security.py`, `test_autoresearch.py`, `test_backup.py`, `test_browser_skills.py`, `test_business_logic.py`, `test_channel_file_security.py`, `test_channel_inbound.py`, `test_channel_resilience.py`, `test_channels.py`, `test_chat.py`, `test_client_identity.py`, `test_code_applications.py`, `test_codebook_versions.py`, `test_codebooks.py`, `test_compute.py`, `test_compute_registry_hardening.py`, `test_compute_registry_model_loading.py`, `test_compute_vision_routing.py`, `test_connections.py`, `test_content_guard.py`, `test_context_dag.py`, `test_data_transformations.py`, `test_database_schema_bootstrap.py`, `test_dgmh_archive.py`, `test_document_preview_paths.py`, `test_documents.py`, `test_error_handling.py`, `test_evaluation_skill.py`, `test_feature_docs.py`, `test_field_encryption.py`, `test_file_watcher_config.py`, `test_files.py`, `test_findings.py`, `test_harness_config.py`, `test_improvement_governance.py`, `test_integration.py`, `test_integration_agent_work_cycle.py`, `test_integration_chat_flow.py`, `test_integration_interview.py`, `test_interfaces.py`, `test_istara_eval_runner.py`, `test_laws.py`, `test_llm_fallback_config.py`, `test_llm_output.py`, `test_llm_schema_adapter.py`, `test_llm_servers.py`, `test_log_redaction.py`, `test_loops.py`, `test_mcp.py`, `test_memory.py`, `test_meta_hyperagent.py`, `test_metrics.py`, `test_model_provider_contract.py`, `test_network_discovery.py`, `test_network_security.py`, `test_notifications.py`, `test_onboarding_coverage.py`, `test_participant_simulation.py`, `test_project_rbac.py`, `test_projects.py`, `test_property_contracts.py`, `test_proxy_security.py`, `test_rag_resilience.py`, `test_rate_limiter.py`, `test_reasoning_bank.py`, `test_release_artifact_cleanliness.py`, `test_reports.py`, `test_research_integrity.py`, `test_research_integrity_code_applications.py`, `test_research_integrity_codebook.py`, `test_research_integrity_metrics.py`, `test_research_integrity_reports.py`, `test_research_integrity_validation.py`, `test_runtime_source_boundary.py`, `test_security_benchmark.py`, `test_security_release_readiness.py`, `test_self_healing_rules.py`, `test_sessions.py`, `test_settings.py`, `test_skill_definitions.py`, `test_skill_factory.py`, `test_skills.py`, `test_steering.py`, `test_steering_api.py`, `test_steering_manager.py`, `test_steering_queue.py`, `test_steering_websocket.py`, `test_surveys.py`, `test_tasks.py`, `test_telemetry.py`, `test_telemetry_export.py`, `test_transcription.py`, `test_transport_headers.py`, `test_updates_security.py`, `test_version_comparison.py`, `test_webauthn.py`, `test_webhooks_security.py`, `test_websocket.py`, `e2e_test.py`
 
 ## Documentation Contract
 

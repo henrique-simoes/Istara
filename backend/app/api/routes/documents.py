@@ -13,7 +13,7 @@ from sqlalchemy import and_, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
-from app.core.permissions import get_subject, get_visible_project_or_404, is_global_admin, require_project_access
+from app.core.permissions import get_visible_project_or_404
 from app.models.code_application import CodeApplication
 from app.models.database import get_db
 from app.models.document import Document, DocumentSource, DocumentStatus
@@ -133,6 +133,34 @@ def _source_matches_document(source: str, doc: Document) -> bool:
     source_name = Path(source).name
     names = {doc.file_name, doc.title, Path(doc.file_path or "").name}
     return any(name and (name in source or source_name == name) for name in names)
+
+
+def _require_active_project_id(project_id: str | None) -> str:
+    if not project_id or not project_id.strip():
+        raise HTTPException(status_code=400, detail="project_id is required")
+    return project_id.strip()
+
+
+async def _require_active_project_document(
+    db: AsyncSession,
+    request: Request,
+    document_id: str,
+    project_id: str | None,
+    *,
+    min_role: str,
+) -> tuple[str, Document]:
+    scoped_project_id = _require_active_project_id(project_id)
+    await get_visible_project_or_404(db, request, scoped_project_id, min_role=min_role)
+    result = await db.execute(
+        select(Document).where(
+            Document.id == document_id,
+            Document.project_id == scoped_project_id,
+        )
+    )
+    doc = result.scalar_one_or_none()
+    if not doc:
+        raise HTTPException(status_code=404, detail="Document not found")
+    return scoped_project_id, doc
 
 
 async def _project_tag_counts(db: AsyncSession, project_id: str) -> dict[str, int]:
@@ -284,19 +312,13 @@ async def list_documents(
     db: AsyncSession = Depends(get_db),
 ):
     """List documents with filtering, search, and pagination."""
-    if project_id:
-        await get_visible_project_or_404(db, request, project_id, min_role="viewer")
-    else:
-        subject = get_subject(request)
-        if not is_global_admin(subject):
-            raise HTTPException(status_code=422, detail="project_id is required")
+    scoped_project_id = _require_active_project_id(project_id)
+    await get_visible_project_or_404(db, request, scoped_project_id, min_role="viewer")
 
     query = select(Document).order_by(Document.updated_at.desc())
 
     # Filters
-    conditions = []
-    if project_id:
-        conditions.append(Document.project_id == project_id)
+    conditions = [Document.project_id == scoped_project_id]
     if phase:
         conditions.append(Document.phase == phase)
     if source:
@@ -307,7 +329,7 @@ async def list_documents(
         conditions.append(Document.task_id == task_id)
     if tag:
         # Search direct document tags and tag-bearing nugget sources.
-        tagged_doc_ids = await _document_ids_for_project_tag(db, project_id, tag)
+        tagged_doc_ids = await _document_ids_for_project_tag(db, scoped_project_id, tag)
         conditions.append(or_(Document.tags.contains(f'"{tag}"'), Document.id.in_(tagged_doc_ids)))
 
     # Full-text search across title, description, content, tags
@@ -351,13 +373,20 @@ async def list_documents(
 
 
 @router.get("/documents/{document_id}")
-async def get_document(document_id: str, request: Request, db: AsyncSession = Depends(get_db)):
+async def get_document(
+    document_id: str,
+    request: Request,
+    project_id: str | None = None,
+    db: AsyncSession = Depends(get_db),
+):
     """Get a single document with full details."""
-    result = await db.execute(select(Document).where(Document.id == document_id))
-    doc = result.scalar_one_or_none()
-    if not doc:
-        raise HTTPException(status_code=404, detail="Document not found")
-    await require_project_access(db, request, doc.project_id, min_role="viewer")
+    _, doc = await _require_active_project_document(
+        db,
+        request,
+        document_id,
+        project_id,
+        min_role="viewer",
+    )
 
     data = doc.to_dict()
     # Include full content for single-document view
@@ -415,14 +444,20 @@ async def create_document(data: DocumentCreate, request: Request, db: AsyncSessi
 
 @router.patch("/documents/{document_id}")
 async def update_document(
-    document_id: str, data: DocumentUpdate, request: Request, db: AsyncSession = Depends(get_db)
+    document_id: str,
+    data: DocumentUpdate,
+    request: Request,
+    project_id: str | None = None,
+    db: AsyncSession = Depends(get_db),
 ):
     """Update a document."""
-    result = await db.execute(select(Document).where(Document.id == document_id))
-    doc = result.scalar_one_or_none()
-    if not doc:
-        raise HTTPException(status_code=404, detail="Document not found")
-    await require_project_access(db, request, doc.project_id, min_role="researcher")
+    _, doc = await _require_active_project_document(
+        db,
+        request,
+        document_id,
+        project_id,
+        min_role="researcher",
+    )
 
     if data.title is not None:
         doc.title = data.title
@@ -467,26 +502,40 @@ async def update_document(
 
 
 @router.delete("/documents/{document_id}", status_code=204)
-async def delete_document(document_id: str, request: Request, db: AsyncSession = Depends(get_db)):
+async def delete_document(
+    document_id: str,
+    request: Request,
+    project_id: str | None = None,
+    db: AsyncSession = Depends(get_db),
+):
     """Delete a document."""
-    result = await db.execute(select(Document).where(Document.id == document_id))
-    doc = result.scalar_one_or_none()
-    if not doc:
-        raise HTTPException(status_code=404, detail="Document not found")
-    await require_project_access(db, request, doc.project_id, min_role="researcher")
+    _, doc = await _require_active_project_document(
+        db,
+        request,
+        document_id,
+        project_id,
+        min_role="researcher",
+    )
 
     await db.delete(doc)
     await db.commit()
 
 
 @router.get("/documents/{document_id}/content")
-async def get_document_content(document_id: str, request: Request, db: AsyncSession = Depends(get_db)):
+async def get_document_content(
+    document_id: str,
+    request: Request,
+    project_id: str | None = None,
+    db: AsyncSession = Depends(get_db),
+):
     """Get full document content for preview."""
-    result = await db.execute(select(Document).where(Document.id == document_id))
-    doc = result.scalar_one_or_none()
-    if not doc:
-        raise HTTPException(status_code=404, detail="Document not found")
-    await require_project_access(db, request, doc.project_id, min_role="viewer")
+    _, doc = await _require_active_project_document(
+        db,
+        request,
+        document_id,
+        project_id,
+        min_role="viewer",
+    )
     project = (
         await db.execute(select(Project).where(Project.id == doc.project_id))
     ).scalar_one_or_none()

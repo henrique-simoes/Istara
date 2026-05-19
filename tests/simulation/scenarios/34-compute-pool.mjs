@@ -7,11 +7,25 @@ export const id = "34-compute-pool";
 export async function run(ctx) {
   const { api } = ctx;
   const checks = [];
+  const projectId = ctx.projectId;
+  const computePath = (path) => `${path}?project_id=${encodeURIComponent(projectId)}`;
+
+  if (!projectId) {
+    return {
+      checks: [{
+        name: "Active project scope",
+        passed: false,
+        detail: "Compute Pool scenario requires ctx.projectId for project-scoped endpoints",
+      }],
+      passed: 0,
+      failed: 1,
+    };
+  }
 
   // 1. Compute nodes endpoint
   let nodes;
   try {
-    nodes = await api.get("/api/compute/nodes");
+    nodes = await api.get(computePath("/api/compute/nodes"));
     checks.push({
       name: "Compute nodes endpoint",
       passed: nodes.total_nodes !== undefined && Array.isArray(nodes.nodes),
@@ -24,7 +38,7 @@ export async function run(ctx) {
   // 2. Compute stats endpoint
   let stats;
   try {
-    stats = await api.get("/api/compute/stats");
+    stats = await api.get(computePath("/api/compute/stats"));
     checks.push({
       name: "Compute stats endpoint",
       passed: stats.swarm_tier !== undefined,
@@ -36,7 +50,7 @@ export async function run(ctx) {
 
   // 3. Swarm tier is valid
   try {
-    if (!stats) stats = await api.get("/api/compute/stats");
+    if (!stats) stats = await api.get(computePath("/api/compute/stats"));
     const validTiers = ["full_swarm", "standard", "conservative", "minimal", "local_only"];
     checks.push({
       name: "Valid swarm tier",
@@ -49,7 +63,7 @@ export async function run(ctx) {
 
   // 4. Swarm tier matches alive count
   try {
-    if (!stats) stats = await api.get("/api/compute/stats");
+    if (!stats) stats = await api.get(computePath("/api/compute/stats"));
     const alive = stats.alive_nodes || 0;
     let expectedTier;
     if (alive >= 8) expectedTier = "full_swarm";
@@ -68,7 +82,7 @@ export async function run(ctx) {
 
   // 5. No duplicate network+relay nodes for same host
   try {
-    if (!nodes) nodes = await api.get("/api/compute/nodes");
+    if (!nodes) nodes = await api.get(computePath("/api/compute/nodes"));
     const hostMap = {};
     let duplicates = 0;
     for (const node of nodes.nodes || []) {
@@ -91,7 +105,7 @@ export async function run(ctx) {
 
   // 6. Relay nodes have resolved host (not localhost)
   try {
-    if (!nodes) nodes = await api.get("/api/compute/nodes");
+    if (!nodes) nodes = await api.get(computePath("/api/compute/nodes"));
     const relays = (nodes.nodes || []).filter((n) => n.source === "relay");
     const unresolved = relays.filter((n) => {
       const host = n.host || "";
@@ -110,7 +124,7 @@ export async function run(ctx) {
 
   // 7. Healthy nodes have model capabilities detected
   try {
-    if (!nodes) nodes = await api.get("/api/compute/nodes");
+    if (!nodes) nodes = await api.get(computePath("/api/compute/nodes"));
     const healthy = (nodes.nodes || []).filter((n) => n.is_healthy);
     const noCaps = healthy.filter(
       (n) => !n.model_capabilities || Object.keys(n.model_capabilities).length === 0
@@ -129,7 +143,7 @@ export async function run(ctx) {
 
   // 8. Model warnings endpoint
   try {
-    const warns = await api.get("/api/compute/model-warnings");
+    const warns = await api.get(computePath("/api/compute/model-warnings"));
     checks.push({
       name: "Model warnings endpoint",
       passed: Array.isArray(warns.warnings),

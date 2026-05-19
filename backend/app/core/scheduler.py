@@ -9,12 +9,13 @@ import asyncio
 import logging
 from datetime import datetime, timedelta, timezone
 
-from sqlalchemy import Boolean, DateTime, Integer, String, Text, delete, select
+from sqlalchemy import Boolean, DateTime, Integer, String, Text, delete, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.datetime_utils import ensure_utc
 from app.models.database import Base, async_session
+from app.models.project import Project
 
 logger = logging.getLogger(__name__)
 
@@ -213,13 +214,15 @@ class Scheduler:
         async with async_session() as db:
             await self._reset_stale_running_tasks(db, now)
 
-            # Fetch all enabled tasks then filter in Python to avoid
-            # SQLite naive-vs-aware datetime comparison crashes.
-            # Also skip tasks that are currently running.
+            # Fetch enabled tasks for active projects, then filter due time in
+            # Python to avoid SQLite naive-vs-aware datetime comparison crashes.
             result = await db.execute(
-                select(ScheduledTask).where(
+                select(ScheduledTask)
+                .outerjoin(Project, Project.id == ScheduledTask.project_id)
+                .where(
                     ScheduledTask.enabled.is_(True),
                     ScheduledTask.is_running.is_(False),
+                    or_(Project.id.is_(None), Project.is_paused.is_(False)),
                 )
             )
             all_enabled = result.scalars().all()
@@ -239,7 +242,7 @@ class Scheduler:
 
                 permanent_failure = False
                 try:
-                    await self._execute(task, db)
+                    exec_status = await self._execute(task, db)
                 except PermanentScheduleError as exc:
                     permanent_failure = True
                     exec_status = "failure"
@@ -267,6 +270,7 @@ class Scheduler:
                         await record_execution(
                             source_type="custom" if task.loop_type == "custom" else "schedule",
                             source_id=task.id,
+                            project_id=task.project_id,
                             source_name=task.name,
                             status=exec_status,
                             started_at=exec_started,
@@ -312,9 +316,22 @@ class Scheduler:
             logger.warning("Released %s stale scheduled task leases", reset_count)
             await db.commit()
 
-    async def _execute(self, task: ScheduledTask, db: AsyncSession) -> None:
+    async def _execute(self, task: ScheduledTask, db: AsyncSession) -> str:
         """Execute a single scheduled task."""
         logger.info(f"Executing scheduled task: {task.name} (skill={task.skill_name or 'none'})")
+
+        project = await db.get(Project, task.project_id)
+        if not project:
+            raise PermanentScheduleError(
+                f"Project {task.project_id!r} not found for scheduled task {task.id}"
+            )
+        if project and project.is_paused:
+            logger.info(
+                "Skipping scheduled task %s because project %s is paused",
+                task.id,
+                task.project_id,
+            )
+            return "paused"
 
         if task.skill_name:
             # Run the named skill via the registry
@@ -346,6 +363,8 @@ class Scheduler:
                 project_id=task.project_id,
                 action="scheduled_reminder",
             )
+
+        return "success"
 
 
 # Module-level singleton

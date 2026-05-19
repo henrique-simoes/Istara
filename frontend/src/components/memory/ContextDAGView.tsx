@@ -222,6 +222,12 @@ export default function ContextDAGView() {
   const { activeProjectId } = useProjectStore();
   const { sessions, activeSessionId, fetchSessions, selectSession } =
     useSessionStore();
+  const scopedSessions = activeProjectId
+    ? sessions.filter((session) => session.project_id === activeProjectId)
+    : [];
+  const scopedActiveSessionId = scopedSessions.some((session) => session.id === activeSessionId)
+    ? activeSessionId
+    : null;
 
   const [nodes, setNodes] = useState<DAGNode[]>([]);
   const [health, setHealth] = useState<DAGHealth | null>(null);
@@ -249,13 +255,13 @@ export default function ContextDAGView() {
 
   // Fetch DAG structure when session changes
   const fetchDAG = useCallback(async () => {
-    if (!activeSessionId) return;
+    if (!activeProjectId || !scopedActiveSessionId) return;
     setLoading(true);
     setError(null);
     try {
       const [data, healthData] = await Promise.all([
-        contextDag.getStructure(activeSessionId),
-        contextDag.health(activeSessionId),
+        contextDag.getStructure(scopedActiveSessionId, activeProjectId),
+        contextDag.health(scopedActiveSessionId, activeProjectId),
       ]);
       setNodes(Array.isArray(data.nodes) ? data.nodes : []);
       setHealth(healthData || data.stats);
@@ -265,7 +271,7 @@ export default function ContextDAGView() {
       setHealth(null);
     }
     setLoading(false);
-  }, [activeSessionId]);
+  }, [activeProjectId, scopedActiveSessionId]);
 
   useEffect(() => {
     fetchDAG();
@@ -290,10 +296,14 @@ export default function ContextDAGView() {
       setExpandedNodes((prev) => new Set(prev).add(nodeId));
 
       // Only fetch if we don't already have the content
-      if (!expandedContent[nodeId] && activeSessionId) {
+      if (!expandedContent[nodeId] && activeProjectId && scopedActiveSessionId) {
         setExpandingNodeId(nodeId);
         try {
-          const result = await contextDag.expand(activeSessionId, nodeId);
+          const result = await contextDag.expand(
+            scopedActiveSessionId,
+            activeProjectId,
+            nodeId
+          );
           setExpandedContent((prev) => ({ ...prev, [nodeId]: result }));
         } catch (e: any) {
           setError(e.message || "Failed to expand DAG node");
@@ -302,17 +312,21 @@ export default function ContextDAGView() {
         setExpandingNodeId(null);
       }
     },
-    [expandedNodes, expandedContent, activeSessionId]
+    [activeProjectId, expandedNodes, expandedContent, scopedActiveSessionId]
   );
 
   const handleSearch = async () => {
-    if (!searchQuery.trim() || !activeSessionId) {
+    if (!searchQuery.trim() || !activeProjectId || !scopedActiveSessionId) {
       setSearchResults(null);
       return;
     }
     setSearching(true);
     try {
-      const results = await contextDag.grep(activeSessionId, searchQuery);
+      const results = await contextDag.grep(
+        scopedActiveSessionId,
+        activeProjectId,
+        searchQuery
+      );
       setSearchResults(results);
     } catch (e: any) {
       setError(e.message || "DAG search failed");
@@ -322,9 +336,9 @@ export default function ContextDAGView() {
   };
 
   const handleCompact = async () => {
-    if (!activeSessionId) return;
+    if (!activeProjectId || !scopedActiveSessionId) return;
     try {
-      await contextDag.compact(activeSessionId);
+      await contextDag.compact(scopedActiveSessionId, activeProjectId);
       fetchDAG();
     } catch (e: any) {
       setError(e.message || "DAG compaction failed");
@@ -345,7 +359,7 @@ export default function ContextDAGView() {
     .sort((a, b) => a - b);
 
   // No active session
-  if (!activeSessionId) {
+  if (!scopedActiveSessionId) {
     return (
       <div className="flex flex-col items-center justify-center py-16">
         <GitBranch
@@ -355,18 +369,18 @@ export default function ContextDAGView() {
         <p className="text-sm text-slate-500">
           Select a chat session to view context history
         </p>
-        {activeProjectId && sessions.length > 0 && (
+        {activeProjectId && scopedSessions.length > 0 && (
           <div className="mt-4">
             <select
               value=""
-              onChange={(e) => selectSession(e.target.value)}
+              onChange={(e) => selectSession(activeProjectId, e.target.value)}
               aria-label="Select chat session"
               className="px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-istara-500"
             >
               <option value="" disabled>
                 Choose a session...
               </option>
-              {sessions.map((s) => (
+              {scopedSessions.map((s) => (
                 <option key={s.id} value={s.id}>
                   {s.title || "Untitled"} ({s.message_count} messages)
                 </option>
@@ -390,12 +404,12 @@ export default function ContextDAGView() {
         </label>
         <select
           id="dag-session-select"
-          value={activeSessionId}
-          onChange={(e) => selectSession(e.target.value)}
+          value={scopedActiveSessionId}
+          onChange={(e) => activeProjectId && selectSession(activeProjectId, e.target.value)}
           aria-label="Select chat session"
           className="flex-1 px-3 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-istara-500 truncate"
         >
-          {sessions.map((s) => (
+          {scopedSessions.map((s) => (
             <option key={s.id} value={s.id}>
               {s.title || "Untitled"} ({s.message_count} msgs)
             </option>

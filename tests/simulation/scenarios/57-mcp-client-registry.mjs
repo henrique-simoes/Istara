@@ -10,10 +10,26 @@ export async function run(ctx) {
   const { api } = ctx;
   const checks = [];
   const cleanup = { serverIds: [] };
+  const projectId = ctx.projectId;
+  const projectQuery = projectId ? `?project_id=${encodeURIComponent(projectId)}` : "";
+
+  if (!projectId) {
+    checks.push({
+      name: "Project-scoped MCP registry requires simulation project",
+      passed: false,
+      detail: "No project_id available in scenario context",
+    });
+    return {
+      checks,
+      passed: 0,
+      failed: checks.length,
+      summary: checks.map((c) => `${c.passed ? "PASS" : "FAIL"} ${c.name}`).join("\n"),
+    };
+  }
 
   // ── 1. GET /api/mcp/clients — returns array ──
   try {
-    const result = await api.get("/api/mcp/clients");
+    const result = await api.get(`/api/mcp/clients${projectQuery}`);
     const list = Array.isArray(result) ? result : result?.servers || [];
     checks.push({
       name: "GET /api/mcp/clients returns array",
@@ -31,6 +47,7 @@ export async function run(ctx) {
       name: "SIM: Test MCP Server",
       url: "http://localhost:9999/mcp",
       transport: "http",
+      project_id: projectId,
     });
     cleanup.serverIds.push(testServer.id);
     checks.push({
@@ -45,7 +62,7 @@ export async function run(ctx) {
   // ── 3. GET /api/mcp/clients/{id}/tools — cached tools (empty initially) ──
   if (testServer) {
     try {
-      const tools = await api.get(`/api/mcp/clients/${testServer.id}/tools`);
+      const tools = await api.get(`/api/mcp/clients/${testServer.id}/tools${projectQuery}`);
       const list = Array.isArray(tools) ? tools : tools?.tools || [];
       checks.push({
         name: "GET /api/mcp/clients/{id}/tools returns array",
@@ -60,7 +77,7 @@ export async function run(ctx) {
   // ── 4. GET /api/mcp/clients/{id}/health — health check ──
   if (testServer) {
     try {
-      const health = await api.get(`/api/mcp/clients/${testServer.id}/health`);
+      const health = await api.get(`/api/mcp/clients/${testServer.id}/health${projectQuery}`);
       checks.push({
         name: "GET /api/mcp/clients/{id}/health returns status",
         passed: typeof health.healthy === "boolean",
@@ -84,6 +101,7 @@ export async function run(ctx) {
       url: "http://localhost:9998/mcp",
       transport: "http",
       headers: { Authorization: "Bearer sim-token" },
+      project_id: projectId,
     });
     cleanup.serverIds.push(testServer2.id);
     checks.push({
@@ -97,7 +115,7 @@ export async function run(ctx) {
 
   // ── 6. GET /api/mcp/clients — lists both ──
   try {
-    const result = await api.get("/api/mcp/clients");
+    const result = await api.get(`/api/mcp/clients${projectQuery}`);
     const list = Array.isArray(result) ? result : result?.servers || [];
     const simOnes = list.filter((s) => s.name && s.name.startsWith("SIM:"));
     checks.push({
@@ -111,7 +129,7 @@ export async function run(ctx) {
 
   // ── 7. GET /api/mcp/clients/tools — aggregate tools ──
   try {
-    const allTools = await api.get("/api/mcp/clients/tools");
+    const allTools = await api.get(`/api/mcp/clients/tools${projectQuery}`);
     const list = Array.isArray(allTools) ? allTools : allTools?.tools || [];
     checks.push({
       name: "GET /api/mcp/clients/tools returns aggregated tools",
@@ -125,7 +143,7 @@ export async function run(ctx) {
   // ── 8. DELETE /api/mcp/clients/{id} — unregister ──
   if (testServer2) {
     try {
-      await api.delete(`/api/mcp/clients/${testServer2.id}`);
+      await api.delete(`/api/mcp/clients/${testServer2.id}${projectQuery}`);
       cleanup.serverIds = cleanup.serverIds.filter((id) => id !== testServer2.id);
       checks.push({
         name: "DELETE /api/mcp/clients/{id} removes server",
@@ -139,7 +157,7 @@ export async function run(ctx) {
 
   // ── 9. Verify count after deletion ──
   try {
-    const result = await api.get("/api/mcp/clients");
+    const result = await api.get(`/api/mcp/clients${projectQuery}`);
     const list = Array.isArray(result) ? result : result?.servers || [];
     const simOnes = list.filter((s) => s.name && s.name.startsWith("SIM:"));
     checks.push({
@@ -157,6 +175,7 @@ export async function run(ctx) {
       name: "SIM: WebSocket Server",
       url: "ws://localhost:9997",
       transport: "websocket",
+      project_id: projectId,
     });
     cleanup.serverIds.push(wsServer.id);
     checks.push({
@@ -175,7 +194,7 @@ export async function run(ctx) {
 
   // ── Cleanup ──
   for (const id of cleanup.serverIds) {
-    try { await api.delete(`/api/mcp/clients/${id}`); } catch (_) {}
+    try { await api.delete(`/api/mcp/clients/${id}${projectQuery}`); } catch (_) {}
   }
 
   return {

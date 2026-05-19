@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils";
 
 interface SteeringInputProps {
   agentId: string;
+  projectId?: string | null;
   isWorking: boolean;
   onMessageSent?: () => void;
   className?: string;
@@ -27,6 +28,7 @@ interface SteeringInputProps {
  */
 export default function SteeringInput({
   agentId,
+  projectId,
   isWorking,
   onMessageSent,
   className,
@@ -39,14 +41,14 @@ export default function SteeringInput({
 
   // Poll queue count when agent is working
   useEffect(() => {
-    if (!agentId || !isWorking) {
+    if (!agentId || !projectId || !isWorking) {
       setQueueCount(0);
       return;
     }
     let cancelled = false;
     const poll = async () => {
       try {
-        const status = await steering.getStatus(agentId);
+        const status = await steering.getStatus(agentId, projectId);
         if (!cancelled) {
           setQueueCount(status.steering_queue_count + status.follow_up_queue_count);
         }
@@ -57,14 +59,14 @@ export default function SteeringInput({
     poll();
     const interval = setInterval(poll, 3000);
     return () => { cancelled = true; clearInterval(interval); };
-  }, [agentId, isWorking]);
+  }, [agentId, projectId, isWorking]);
 
   const handleSend = async () => {
-    if (!message.trim() || sending) return;
+    if (!message.trim() || sending || !projectId) return;
     setSending(true);
     setError(null);
     try {
-      await steering.send(agentId, message.trim());
+      await steering.send(agentId, message.trim(), projectId);
       setMessage("");
       setQueueCount((prev) => prev + 1);
       onMessageSent?.();
@@ -77,8 +79,9 @@ export default function SteeringInput({
   };
 
   const handleAbort = async () => {
+    if (!projectId) return;
     try {
-      await steering.abort(agentId);
+      await steering.abort(agentId, projectId);
       setQueueCount(0);
       setMessage("");
     } catch (err: any) {
@@ -87,8 +90,9 @@ export default function SteeringInput({
   };
 
   const handleRetrieveQueued = () => {
+    if (!projectId) return;
     // Restore queued messages to input
-    steering.getQueues(agentId).then((queues) => {
+    steering.getQueues(agentId, projectId).then((queues) => {
       const allMessages = [...queues.steering_queue, ...queues.follow_up_queue]
         .map((m) => m.message)
         .join("\n");
@@ -100,7 +104,7 @@ export default function SteeringInput({
     }).catch(() => {});
   };
 
-  if (!isWorking && queueCount === 0) return null;
+  if (!projectId || (!isWorking && queueCount === 0)) return null;
 
   return (
     <div className={cn("mt-3 p-3 bg-slate-50 dark:bg-slate-900/50 rounded-lg border border-slate-200 dark:border-slate-700", className)}>

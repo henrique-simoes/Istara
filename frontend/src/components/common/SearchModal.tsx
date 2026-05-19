@@ -53,6 +53,12 @@ export default function SearchModal({ open, onClose, onNavigate }: SearchModalPr
     }
   }, [open]);
 
+  useEffect(() => {
+    if (!activeProjectId) {
+      setResults([]);
+    }
+  }, [activeProjectId]);
+
   // Keyboard shortcut: Cmd/Ctrl + K
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -72,26 +78,17 @@ export default function SearchModal({ open, onClose, onNavigate }: SearchModalPr
   }, [open, onClose]);
 
   const handleSearch = async () => {
-    if (!query.trim()) return;
+    if (!query.trim() || !activeProjectId) return;
     setSearching(true);
     setError(null);
 
     try {
-      // Search across all finding types
-      // If project selected, search project. Otherwise search globally.
-      const [nuggets, facts, insights, recs] = activeProjectId
-        ? await Promise.all([
-            findingsApi.nuggets(activeProjectId),
-            findingsApi.facts(activeProjectId),
-            findingsApi.insights(activeProjectId),
-            findingsApi.recommendations(activeProjectId),
-          ])
-        : await Promise.all([
-            findingsApi.nuggets(),
-            findingsApi.facts(),
-            findingsApi.insights(),
-            findingsApi.recommendations(),
-          ]);
+      const [nuggets, facts, insights, recs] = await Promise.all([
+        findingsApi.nuggets(activeProjectId),
+        findingsApi.facts(activeProjectId),
+        findingsApi.insights(activeProjectId),
+        findingsApi.recommendations(activeProjectId),
+      ]);
 
       const q = query.toLowerCase();
       const matched: SearchResult[] = [];
@@ -143,6 +140,7 @@ export default function SearchModal({ open, onClose, onNavigate }: SearchModalPr
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && handleSearch()}
             placeholder="Search findings, nuggets, insights..."
+            disabled={!activeProjectId}
             className="flex-1 bg-transparent text-slate-900 dark:text-white text-sm focus:outline-none placeholder:text-slate-400"
           />
           {searching && <Loader2 size={16} className="animate-spin text-slate-400" />}
@@ -210,7 +208,7 @@ export default function SearchModal({ open, onClose, onNavigate }: SearchModalPr
           ) : (
             <div className="p-8 text-center text-slate-400">
               <p className="text-sm">
-              {activeProjectId ? "Search across all findings in this project" : "Search across all projects"}
+              {activeProjectId ? "Search across findings in this project" : "Select a project to search findings"}
             </p>
               <p className="text-xs mt-1">
                 Nuggets, facts, insights, and recommendations

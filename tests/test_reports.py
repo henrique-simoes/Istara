@@ -53,11 +53,51 @@ async def test_slide_instructions_fallback_when_llm_unavailable(auth_headers):
     ):
         async with AsyncClient(transport=transport, base_url="http://test") as ac:
             response = await ac.get(
-                f"/api/presentation/reports/{report_id}/slide-instructions",
+                f"/api/presentation/reports/{report_id}/slide-instructions?project_id=reports-fallback",
                 headers=auth_headers,
             )
 
     assert response.status_code == 200
     body = response.json()
     assert body["report_id"] == report_id
+    assert body["project_id"] == "reports-fallback"
     assert "SYSTEM PROMPT" in body["instructions"]
+
+
+@pytest.mark.asyncio
+async def test_slide_instructions_require_active_project_scope(auth_headers):
+    """Report-id-only slide generation must not bypass the active project."""
+    await init_db()
+    report_id = str(uuid.uuid4())
+    async with async_session() as db:
+        db.add(
+            ProjectReport(
+                id=report_id,
+                project_id="reports-active-scope",
+                title="Scoped Report",
+                executive_summary="Scoped report summary.",
+            )
+        )
+        await db.commit()
+
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        missing_scope = await ac.get(
+            f"/api/presentation/reports/{report_id}/slide-instructions",
+            headers=auth_headers,
+        )
+        wrong_scope = await ac.get(
+            f"/api/presentation/reports/{report_id}/slide-instructions?project_id=other-project",
+            headers=auth_headers,
+        )
+        right_scope = await ac.get(
+            f"/api/presentation/reports/{report_id}/slide-instructions?project_id=reports-active-scope",
+            headers=auth_headers,
+        )
+
+    assert missing_scope.status_code == 400
+    assert missing_scope.json()["detail"] == "project_id is required"
+    assert wrong_scope.status_code == 404
+    assert wrong_scope.json()["detail"] == "Report not found"
+    assert right_scope.status_code == 200
+    assert right_scope.json()["project_id"] == "reports-active-scope"

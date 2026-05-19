@@ -11,6 +11,7 @@ import {
   Users,
 } from "lucide-react";
 import { useAgentStore } from "@/stores/agentStore";
+import { useProjectStore } from "@/stores/projectStore";
 import { cn } from "@/lib/utils";
 import type { AgentCapability, AgentRole } from "@/lib/types";
 import { ALL_CAPABILITIES, ROLE_COLORS, ROLE_LABELS } from "./agentViewConfig";
@@ -31,6 +32,7 @@ function ramUsedPct(available?: number | null, total?: number | null): number | 
 
 export default function CreateAgentWizard({ onDone }: { onDone: () => void }) {
   const { createAgent, fetchCapacity, capacity } = useAgentStore();
+  const { activeProjectId } = useProjectStore();
   const [step, setStep] = useState(0);
   const [name, setName] = useState("");
   const [role, setRole] = useState<AgentRole>("custom");
@@ -59,16 +61,19 @@ export default function CreateAgentWizard({ onDone }: { onDone: () => void }) {
   const memoryUsedPct = ramUsedPct(capacity?.ram_available_gb, capacity?.ram_total_gb);
 
   const handleCreate = async () => {
-    if (!name.trim()) return;
+    if (!name.trim() || !activeProjectId) return;
     setCreating(true);
     try {
-      await createAgent({
-        name: name.trim(),
-        role,
-        system_prompt: prompt,
-        capabilities,
-        heartbeat_interval: heartbeatInterval,
-      });
+      await createAgent(
+        {
+          name: name.trim(),
+          role,
+          system_prompt: prompt,
+          capabilities,
+          heartbeat_interval: heartbeatInterval,
+        },
+        activeProjectId
+      );
       onDone();
     } catch (e: any) {
       alert(e.message);
@@ -295,7 +300,7 @@ export default function CreateAgentWizard({ onDone }: { onDone: () => void }) {
         ) : (
           <button
             onClick={handleCreate}
-            disabled={creating || !name.trim()}
+            disabled={creating || !name.trim() || !activeProjectId}
             className="px-4 py-2 text-sm bg-istara-600 text-white rounded-lg hover:bg-istara-700 disabled:opacity-50"
           >
             {creating ? "Creating..." : "Create Agent"}

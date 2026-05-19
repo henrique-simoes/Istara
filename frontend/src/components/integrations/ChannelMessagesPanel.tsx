@@ -8,23 +8,24 @@ import type { ChannelMessage } from "@/lib/types";
 
 interface ChannelMessagesPanelProps {
   channelId: string;
+  projectId: string;
 }
 
-export default function ChannelMessagesPanel({ channelId }: ChannelMessagesPanelProps) {
+export default function ChannelMessagesPanel({ channelId, projectId }: ChannelMessagesPanelProps) {
   const [messages, setMessages] = useState<ChannelMessage[]>([]);
   const [loading, setLoading] = useState(true);
 
   const fetchMessages = useCallback(async () => {
     setLoading(true);
     try {
-      const data = await channelsApi.messages(channelId);
+      const data = await channelsApi.messages(channelId, projectId);
       setMessages(data);
     } catch {
       // silent
     } finally {
       setLoading(false);
     }
-  }, [channelId]);
+  }, [channelId, projectId]);
 
   useEffect(() => {
     fetchMessages();

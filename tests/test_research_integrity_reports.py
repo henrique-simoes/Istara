@@ -300,8 +300,9 @@ class TestReportManager:
         db_session.add_all([rec, report])
         await db_session.commit()
 
-        async def fake_chat(messages, temperature=0.3):
+        async def fake_chat(messages, temperature=0.3, project_id=None):
             assert "Replace buried exports" in messages[0]["content"]
+            assert project_id == "proj-summary-rec"
             return {"message": {"content": "SITUATION\nA summary with recommendations."}}
 
         with patch("app.core.llm_router.llm_router.chat", new=fake_chat):

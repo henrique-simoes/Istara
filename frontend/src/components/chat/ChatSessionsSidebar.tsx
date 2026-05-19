@@ -45,13 +45,14 @@ export default function ChatSessionsSidebar({ projectId }: ChatSessionsSidebarPr
 
   const handleRenameSubmit = async (id: string) => {
     if (renameValue.trim()) {
-      await renameSession(id, renameValue.trim());
+      await renameSession(projectId, id, renameValue.trim());
     }
     setRenamingId(null);
   };
 
-  const starred = sessions.filter((s) => s.starred);
-  const unstarred = sessions.filter((s) => !s.starred);
+  const scopedSessions = sessions.filter((s) => s.project_id === projectId);
+  const starred = scopedSessions.filter((s) => s.starred);
+  const unstarred = scopedSessions.filter((s) => !s.starred);
 
   const getAgentForSession = (agentId: string | null) => {
     if (!agentId) return null;
@@ -78,7 +79,7 @@ export default function ChatSessionsSidebar({ projectId }: ChatSessionsSidebarPr
     return (
       <div
         key={session.id}
-        onClick={() => !isRenaming && selectSession(session.id)}
+        onClick={() => !isRenaming && selectSession(projectId, session.id)}
         className={cn(
           "group flex items-center gap-2 px-3 py-2 rounded-lg cursor-pointer transition-colors",
           isActive
@@ -164,14 +165,14 @@ export default function ChatSessionsSidebar({ projectId }: ChatSessionsSidebarPr
                 </button>
                 <button
                   role="menuitem"
-                  onClick={() => { toggleStar(session.id); setMenuOpenId(null); }}
+                  onClick={() => { toggleStar(projectId, session.id); setMenuOpenId(null); }}
                   className="w-full text-left px-3 py-1.5 text-xs hover:bg-slate-100 dark:hover:bg-slate-700 flex items-center gap-2"
                 >
                   <Star size={10} /> {session.starred ? "Unstar" : "Star"}
                 </button>
                 <button
                   role="menuitem"
-                  onClick={() => { if (confirm("Delete this chat?")) deleteSession(session.id); setMenuOpenId(null); }}
+                  onClick={() => { if (confirm("Delete this chat?")) deleteSession(projectId, session.id); setMenuOpenId(null); }}
                   className="w-full text-left px-3 py-1.5 text-xs hover:bg-slate-100 dark:hover:bg-slate-700 flex items-center gap-2 text-red-500"
                 >
                   <Trash2 size={10} /> Delete
@@ -209,7 +210,7 @@ export default function ChatSessionsSidebar({ projectId }: ChatSessionsSidebarPr
 
       {/* Sessions list */}
       <div className="flex-1 overflow-y-auto p-1.5 space-y-0.5" tabIndex={0} role="region" aria-label="Chat sessions">
-        {loading && sessions.length === 0 ? (
+        {loading && scopedSessions.length === 0 ? (
           <p className="text-xs text-slate-400 text-center py-4">Loading...</p>
         ) : (
           <>
@@ -227,7 +228,7 @@ export default function ChatSessionsSidebar({ projectId }: ChatSessionsSidebarPr
             {/* Regular sessions */}
             {unstarred.map(renderSession)}
 
-            {sessions.length === 0 && (
+            {scopedSessions.length === 0 && (
               <div className="text-center py-8">
                 <MessageSquare size={20} className="mx-auto text-slate-300 mb-2" />
                 <p className="text-xs text-slate-400">No chats yet</p>

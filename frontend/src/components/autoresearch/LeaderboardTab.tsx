@@ -3,14 +3,16 @@
 import { useEffect } from "react";
 import { Trophy, Cpu, Thermometer, BarChart3, Zap } from "lucide-react";
 import { useAutoresearchStore } from "@/stores/autoresearchStore";
+import { useProjectStore } from "@/stores/projectStore";
 import { cn } from "@/lib/utils";
 
 export default function LeaderboardTab() {
   const { leaderboard, loading, fetchLeaderboard } = useAutoresearchStore();
+  const { activeProjectId } = useProjectStore();
 
   useEffect(() => {
-    fetchLeaderboard();
-  }, [fetchLeaderboard]);
+    fetchLeaderboard(activeProjectId);
+  }, [activeProjectId, fetchLeaderboard]);
 
   // Group leaderboard entries by skill
   const bySkill = leaderboard.reduce<Record<string, typeof leaderboard>>((acc, entry) => {

@@ -1,0 +1,315 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Keyboard Shortcuts - Istara Feature Docs</title>
+  <link rel="stylesheet" href="../../../assets/site.css">
+</head>
+<body class="feature-page">
+  <a class="skip-link" href="#main">Skip to content</a>
+  <header class="topbar" role="banner">
+    <a class="brand" href="../../../index.html" aria-label="Istara feature documentation home">
+      <span class="brand-mark" aria-hidden="true">I</span>
+      <span><strong>Istara Docs</strong><small>Engineering/AI</small></span>
+    </a>
+    <button class="menu-button" type="button" data-nav-toggle aria-expanded="false" aria-controls="docs-sidebar">Menu</button>
+    <form class="search-form" role="search">
+      <label class="visually-hidden" for="doc-search">Search documentation</label>
+      <input id="doc-search" name="q" type="search" autocomplete="off" placeholder="Search features, routes, concepts">
+    </form>
+    <nav class="utility-nav" aria-label="Machine-readable documentation">
+      <a href="../../../manifest.json">Manifest</a>
+      <a href="../../../llms.txt">llms.txt</a>
+      <button type="button" data-theme-toggle>Theme: system</button>
+    </nav>
+  </header>
+  <div class="layout-shell">
+    <aside id="docs-sidebar" class="sidebar" aria-label="Feature documentation navigation">
+      <div class="sidebar-heading">
+        <strong>Feature Map</strong>
+        <span>UI organized</span>
+      </div>
+      <nav class="nav-tree" aria-label="Istara UI feature map">
+<section class="nav-section" data-nav-section>
+<h2>Shell</h2>
+<ul>
+<li data-search-item data-search-text="application navigation shell &gt; navigation the main shell organizes istara into primary, secondary, utility, and mobile navigation surfaces and routes each selected view into the mounted work area."><a href="../navigation/architecture.html"><span>Application Navigation</span><small>Shell &gt; Navigation</small></a></li>
+<li data-search-item data-search-text="project switcher shell &gt; projects the sidebar project control lists available projects and lets users create, select, pause, resume, or delete the active project context used by most istara views."><a href="../projects/architecture.html"><span>Project Switcher</span><small>Shell &gt; Projects</small></a></li>
+<li data-search-item data-search-text="global search shell &gt; search the shell exposes a command/search modal from the sidebar and keyboard shortcut so users can find navigable work surfaces and project objects."><a href="../search/architecture.html"><span>Global Search</span><small>Shell &gt; Search</small></a></li>
+<li data-search-item data-search-text="notification bell shell &gt; notifications bell the sidebar notification bell polls unread notification counts and links users into the notifications surface."><a href="../notifications-bell/architecture.html"><span>Notification Bell</span><small>Shell &gt; Notifications Bell</small></a></li>
+<li data-search-item data-search-text="keyboard shortcuts shell &gt; keyboard shortcuts homeclient wires global shortcuts for search, view switching, shortcut help, and right-panel toggling."><a class="active" aria-current="page" href="architecture.html"><span>Keyboard Shortcuts</span><small>Shell &gt; Keyboard Shortcuts</small></a></li>
+<li data-search-item data-search-text="view onboarding shell &gt; onboarding reusable onboarding overlays and tour state introduce major istara views and offer context-specific chat prompts."><a href="../onboarding/architecture.html"><span>View Onboarding</span><small>Shell &gt; Onboarding</small></a></li>
+<li data-search-item data-search-text="login and session bootstrap shell &gt; authentication the application shell checks authentication state, shows the login surface when needed, and loads session state before mounting protected views."><a href="../../auth/login/architecture.html"><span>Login And Session Bootstrap</span><small>Shell &gt; Authentication</small></a></li>
+</ul>
+</section>
+<section class="nav-section" data-nav-section>
+<h2>Chat</h2>
+<ul>
+<li data-search-item data-search-text="chat workspace chat chat is the project-scoped conversational workspace for working with istara agents, context, files, and model settings."><a href="../../chat/overview/architecture.html"><span>Chat Workspace</span><small>Chat</small></a></li>
+<li data-search-item data-search-text="chat sessions chat &gt; sessions the chat session sidebar manages project-scoped conversation history and new session creation."><a href="../../chat/sessions/architecture.html"><span>Chat Sessions</span><small>Chat &gt; Sessions</small></a></li>
+<li data-search-item data-search-text="chat model controls chat &gt; model controls chat exposes model, thinking, and reasoning controls so users can tune how the assistant responds within the configured local or server-backed model environment."><a href="../../chat/model-controls/architecture.html"><span>Chat Model Controls</span><small>Chat &gt; Model Controls</small></a></li>
+<li data-search-item data-search-text="chat file attachments chat &gt; file attachments chat can attach uploaded project files and documents so the conversation can use project evidence and user-provided material."><a href="../../chat/files/architecture.html"><span>Chat File Attachments</span><small>Chat &gt; File Attachments</small></a></li>
+<li data-search-item data-search-text="chat audio conversation chat &gt; audio the chat audio flow records user speech through the browser, sends it to the voice route, and returns transcription or voice-assisted chat input."><a href="../../chat/audio/architecture.html"><span>Chat Audio Conversation</span><small>Chat &gt; Audio</small></a></li>
+<li data-search-item data-search-text="chat steering chat &gt; steering steering controls collect lightweight user guidance that can shape downstream assistant behavior and project context."><a href="../../chat/steering/architecture.html"><span>Chat Steering</span><small>Chat &gt; Steering</small></a></li>
+</ul>
+</section>
+<section class="nav-section" data-nav-section>
+<h2>Findings</h2>
+<ul>
+<li data-search-item data-search-text="findings evidence findings &gt; evidence the findings evidence tab lists research insights and recommendations for the active project and supports phase-oriented review."><a href="../../findings/evidence/architecture.html"><span>Findings Evidence</span><small>Findings &gt; Evidence</small></a></li>
+<li data-search-item data-search-text="findings phase tabs findings &gt; evidence &gt; phase tabs the evidence view segments findings by discover, define, develop, and deliver project phases."><a href="../../findings/phase-tabs/architecture.html"><span>Findings Phase Tabs</span><small>Findings &gt; Evidence &gt; Phase Tabs</small></a></li>
+<li data-search-item data-search-text="findings codebook findings &gt; codebook the codebook tab surfaces qualitative coding structures and codebook versions associated with project findings."><a href="../../findings/codebook/architecture.html"><span>Findings Codebook</span><small>Findings &gt; Codebook</small></a></li>
+<li data-search-item data-search-text="findings code review findings &gt; review the review tab presents code review queues for validating and adjudicating qualitative coding work."><a href="../../findings/review/architecture.html"><span>Findings Code Review</span><small>Findings &gt; Review</small></a></li>
+<li data-search-item data-search-text="project reports findings &gt; reports the reports tab lets users generate, inspect, and manage project reports produced from findings and research evidence."><a href="../../findings/reports/architecture.html"><span>Project Reports</span><small>Findings &gt; Reports</small></a></li>
+<li data-search-item data-search-text="report slide instructions findings &gt; reports &gt; slide instructions report-related surfaces support presentation or slide guidance that can carry research findings into communicable report artifacts."><a href="../../findings/slide-instructions/architecture.html"><span>Report Slide Instructions</span><small>Findings &gt; Reports &gt; Slide Instructions</small></a></li>
+</ul>
+</section>
+<section class="nav-section" data-nav-section>
+<h2>UX Laws</h2>
+<ul>
+<li data-search-item data-search-text="ux laws catalog ux laws &gt; catalog the ux laws catalog gives researchers a structured reference for applying ux laws to research and design interpretation."><a href="../../laws/catalog/architecture.html"><span>UX Laws Catalog</span><small>UX Laws &gt; Catalog</small></a></li>
+<li data-search-item data-search-text="ux laws compliance ux laws &gt; compliance the compliance tab checks or summarizes how project work aligns with selected ux laws."><a href="../../laws/compliance/architecture.html"><span>UX Laws Compliance</span><small>UX Laws &gt; Compliance</small></a></li>
+</ul>
+</section>
+<section class="nav-section" data-nav-section>
+<h2>Tasks</h2>
+<ul>
+<li data-search-item data-search-text="task kanban board tasks &gt; kanban tasks presents project work as a kanban board for tracking research operations, agent work, and review handoffs."><a href="../../tasks/kanban/architecture.html"><span>Task Kanban Board</span><small>Tasks &gt; Kanban</small></a></li>
+<li data-search-item data-search-text="task editor tasks &gt; task editor the task editor creates and updates task details, assignments, status, and task-linked research context."><a href="../../tasks/editor/architecture.html"><span>Task Editor</span><small>Tasks &gt; Task Editor</small></a></li>
+<li data-search-item data-search-text="human task review tasks &gt; review review actions support approving, requesting revision, or otherwise resolving human-in-the-loop task work."><a href="../../tasks/review/architecture.html"><span>Human Task Review</span><small>Tasks &gt; Review</small></a></li>
+<li data-search-item data-search-text="task attachments tasks &gt; attachments tasks can reference project files or documents so research work stays connected to the evidence it depends on."><a href="../../tasks/attachments/architecture.html"><span>Task Attachments</span><small>Tasks &gt; Attachments</small></a></li>
+<li data-search-item data-search-text="send task to report tasks &gt; send to report task surfaces can move validated task outputs toward report generation or reporting workflows."><a href="../../tasks/send-report/architecture.html"><span>Send Task To Report</span><small>Tasks &gt; Send To Report</small></a></li>
+</ul>
+</section>
+<section class="nav-section" data-nav-section>
+<h2>Interviews</h2>
+<ul>
+<li data-search-item data-search-text="interview files interviews &gt; files the interviews view manages interview recordings and source files for participant research analysis."><a href="../../interviews/files/architecture.html"><span>Interview Files</span><small>Interviews &gt; Files</small></a></li>
+<li data-search-item data-search-text="interview transcription interviews &gt; transcription interview audio processing uses backend transcription capabilities to turn recordings into usable research text."><a href="../../interviews/transcription/architecture.html"><span>Interview Transcription</span><small>Interviews &gt; Transcription</small></a></li>
+<li data-search-item data-search-text="interview preview and tags interviews &gt; preview and tags interview preview parts display file previews, send-to-agent actions, and tag creation controls."><a href="../../interviews/preview-tags/architecture.html"><span>Interview Preview And Tags</span><small>Interviews &gt; Preview And Tags</small></a></li>
+</ul>
+</section>
+<section class="nav-section" data-nav-section>
+<h2>Documents</h2>
+<ul>
+<li data-search-item data-search-text="document library documents &gt; library documents centralizes project documents and makes source material available for preview, chat, and analysis workflows."><a href="../../documents/library/architecture.html"><span>Document Library</span><small>Documents &gt; Library</small></a></li>
+<li data-search-item data-search-text="document upload documents &gt; upload upload controls import project files and documents into istara for downstream reading, chat, and evidence workflows."><a href="../../documents/upload/architecture.html"><span>Document Upload</span><small>Documents &gt; Upload</small></a></li>
+<li data-search-item data-search-text="document preview documents &gt; preview document preview lets users inspect uploaded project material before using it in chat, interviews, or findings workflows."><a href="../../documents/preview/architecture.html"><span>Document Preview</span><small>Documents &gt; Preview</small></a></li>
+<li data-search-item data-search-text="document suggestions documents &gt; suggestions interactive suggestions surface possible next actions or edits for document-centered workflows."><a href="../../documents/suggestions/architecture.html"><span>Document Suggestions</span><small>Documents &gt; Suggestions</small></a></li>
+</ul>
+</section>
+<section class="nav-section" data-nav-section>
+<h2>Context</h2>
+<ul>
+<li data-search-item data-search-text="project context editor context &gt; editor the context view edits project background, goals, assumptions, and other structured context used by istara workflows."><a href="../../context/editor/architecture.html"><span>Project Context Editor</span><small>Context &gt; Editor</small></a></li>
+</ul>
+</section>
+<section class="nav-section" data-nav-section>
+<h2>Skills</h2>
+<ul>
+<li data-search-item data-search-text="skills catalog skills &gt; catalog the skills catalog lists available capabilities agents can use or propose for research workflows."><a href="../../skills/catalog/architecture.html"><span>Skills Catalog</span><small>Skills &gt; Catalog</small></a></li>
+<li data-search-item data-search-text="skill proposals skills &gt; proposals skill proposal flows present candidate tool or capability changes for review before they are adopted."><a href="../../skills/proposals/architecture.html"><span>Skill Proposals</span><small>Skills &gt; Proposals</small></a></li>
+<li data-search-item data-search-text="create skill skills &gt; create create skill supports adding or configuring a new skill surface from inside istara."><a href="../../skills/create/architecture.html"><span>Create Skill</span><small>Skills &gt; Create</small></a></li>
+</ul>
+</section>
+<section class="nav-section" data-nav-section>
+<h2>Agents</h2>
+<ul>
+<li data-search-item data-search-text="agent registry agents &gt; agents the agents view lists and manages available agents, including their status and project-facing roles."><a href="../../agents/registry/architecture.html"><span>Agent Registry</span><small>Agents &gt; Agents</small></a></li>
+<li data-search-item data-search-text="agent detail panels agents &gt; agents &gt; detail selected agent details expose overview, identity, memory, and permission information for that agent."><a href="../../agents/detail/architecture.html"><span>Agent Detail Panels</span><small>Agents &gt; Agents &gt; Detail</small></a></li>
+<li data-search-item data-search-text="agent-to-agent log agents &gt; a2a the a2a tab displays agent-to-agent communication or coordination events for operational visibility."><a href="../../agents/a2a/architecture.html"><span>Agent-To-Agent Log</span><small>Agents &gt; A2A</small></a></li>
+<li data-search-item data-search-text="agent proposals agents &gt; proposals agent proposal workflows surface suggested agent changes or actions for review."><a href="../../agents/proposals/architecture.html"><span>Agent Proposals</span><small>Agents &gt; Proposals</small></a></li>
+<li data-search-item data-search-text="create agent agents &gt; create create agent supports configuring new agents and their role-facing metadata."><a href="../../agents/create/architecture.html"><span>Create Agent</span><small>Agents &gt; Create</small></a></li>
+</ul>
+</section>
+<section class="nav-section" data-nav-section>
+<h2>Memory</h2>
+<ul>
+<li data-search-item data-search-text="knowledge memory memory &gt; knowledge the memory knowledge tab manages project knowledge artifacts and retrieval material."><a href="../../memory/knowledge/architecture.html"><span>Knowledge Memory</span><small>Memory &gt; Knowledge</small></a></li>
+<li data-search-item data-search-text="agent memory memory &gt; agent the agent memory tab exposes memory tied to agent behavior and project collaboration."><a href="../../memory/agent/architecture.html"><span>Agent Memory</span><small>Memory &gt; Agent</small></a></li>
+<li data-search-item data-search-text="memory health memory &gt; health memory health surfaces status and quality signals for memory or retrieval infrastructure."><a href="../../memory/health/architecture.html"><span>Memory Health</span><small>Memory &gt; Health</small></a></li>
+<li data-search-item data-search-text="context dag memory &gt; context dag the context dag tab visualizes or inspects relationships across project context nodes."><a href="../../memory/context-dag/architecture.html"><span>Context DAG</span><small>Memory &gt; Context DAG</small></a></li>
+</ul>
+</section>
+<section class="nav-section" data-nav-section>
+<h2>Interfaces</h2>
+<ul>
+<li data-search-item data-search-text="interface design chat interfaces &gt; design chat design chat is the conversational starting point for generating, refining, and reasoning about interface concepts."><a href="../../interfaces/design-chat/architecture.html"><span>Interface Design Chat</span><small>Interfaces &gt; Design Chat</small></a></li>
+<li data-search-item data-search-text="generate interfaces interfaces &gt; generate the generate tab creates interface assets or screen proposals from project context and design prompts."><a href="../../interfaces/generate/architecture.html"><span>Generate Interfaces</span><small>Interfaces &gt; Generate</small></a></li>
+<li data-search-item data-search-text="screens gallery interfaces &gt; screens screens displays generated interface screens and previews for review."><a href="../../interfaces/screens/architecture.html"><span>Screens Gallery</span><small>Interfaces &gt; Screens</small></a></li>
+<li data-search-item data-search-text="configuration interfaces &gt; configuration the configuration tab connects interface work with design-tool setup, including figma-oriented import or export flows."><a href="../../interfaces/figma/architecture.html"><span>Configuration</span><small>Interfaces &gt; Configuration</small></a></li>
+<li data-search-item data-search-text="interface handoff interfaces &gt; handoff handoff packages interface outputs into developer-facing specifications or exportable artifacts."><a href="../../interfaces/handoff/architecture.html"><span>Interface Handoff</span><small>Interfaces &gt; Handoff</small></a></li>
+<li data-search-item data-search-text="findings picker interfaces &gt; findings picker the findings picker lets interface workflows reference insights and recommendations from the findings area."><a href="../../interfaces/findings-picker/architecture.html"><span>Findings Picker</span><small>Interfaces &gt; Findings Picker</small></a></li>
+</ul>
+</section>
+<section class="nav-section" data-nav-section>
+<h2>Integrations</h2>
+<ul>
+<li data-search-item data-search-text="integrations overview integrations &gt; overview the integrations overview summarizes connected channels, deployment surfaces, and integration health."><a href="../../integrations/overview/architecture.html"><span>Integrations Overview</span><small>Integrations &gt; Overview</small></a></li>
+<li data-search-item data-search-text="messaging integrations integrations &gt; messaging messaging connects external conversation channels such as team or participant messaging tools into istara."><a href="../../integrations/messaging/architecture.html"><span>Messaging Integrations</span><small>Integrations &gt; Messaging</small></a></li>
+<li data-search-item data-search-text="survey integrations integrations &gt; surveys surveys configures participant question and survey collection flows connected to project research."><a href="../../integrations/surveys/architecture.html"><span>Survey Integrations</span><small>Integrations &gt; Surveys</small></a></li>
+<li data-search-item data-search-text="mcp integrations integrations &gt; mcp the mcp tab configures model context protocol server access, policies, and audit visibility."><a href="../../integrations/mcp/architecture.html"><span>MCP Integrations</span><small>Integrations &gt; MCP</small></a></li>
+<li data-search-item data-search-text="research deployments integrations &gt; deployments deployments configure participant-facing research deployments and link them to channels, questions, findings, and timeline views."><a href="../../integrations/deployments/architecture.html"><span>Research Deployments</span><small>Integrations &gt; Deployments</small></a></li>
+<li data-search-item data-search-text="deployment dashboard integrations &gt; deployments &gt; dashboard the deployment dashboard has sub-tabs for live status, questions, participants, findings, channels, and timeline activity."><a href="../../integrations/deployment-dashboard/architecture.html"><span>Deployment Dashboard</span><small>Integrations &gt; Deployments &gt; Dashboard</small></a></li>
+</ul>
+</section>
+<section class="nav-section" data-nav-section>
+<h2>Loops</h2>
+<ul>
+<li data-search-item data-search-text="loops overview loops &gt; overview loops overview summarizes automated and scheduled research loop health."><a href="../../loops/overview/architecture.html"><span>Loops Overview</span><small>Loops &gt; Overview</small></a></li>
+<li data-search-item data-search-text="loop schedules loops &gt; schedules schedules configure recurring loop timing, including cron-style recurrence controls."><a href="../../loops/schedules/architecture.html"><span>Loop Schedules</span><small>Loops &gt; Schedules</small></a></li>
+<li data-search-item data-search-text="agent loops loops &gt; agent loops agent loops connects recurring work with configured agents and their automated research responsibilities."><a href="../../loops/agent-loops/architecture.html"><span>Agent Loops</span><small>Loops &gt; Agent Loops</small></a></li>
+<li data-search-item data-search-text="custom loops loops &gt; custom custom loops provide a surface for user-defined recurring or automated research actions."><a href="../../loops/custom/architecture.html"><span>Custom Loops</span><small>Loops &gt; Custom</small></a></li>
+<li data-search-item data-search-text="loop execution history loops &gt; history execution history records loop runs, outcomes, and recent automation activity."><a href="../../loops/history/architecture.html"><span>Loop Execution History</span><small>Loops &gt; History</small></a></li>
+</ul>
+</section>
+<section class="nav-section" data-nav-section>
+<h2>Settings</h2>
+<ul>
+<li data-search-item data-search-text="system status and models settings &gt; system status and models settings shows backend, llm, hardware, model recommendation, and available model status for the local installation."><a href="../../settings/general/architecture.html"><span>System Status And Models</span><small>Settings &gt; System Status And Models</small></a></li>
+<li data-search-item data-search-text="llm server settings settings &gt; llm servers settings manages configured llm providers, server endpoints, provider labels, and active model switching."><a href="../../settings/llm-servers/architecture.html"><span>LLM Server Settings</span><small>Settings &gt; LLM Servers</small></a></li>
+<li data-search-item data-search-text="user management settings &gt; users user management supports team member visibility and administrative user operations."><a href="../../settings/users/architecture.html"><span>User Management</span><small>Settings &gt; Users</small></a></li>
+<li data-search-item data-search-text="connection strings settings &gt; connection strings connection string settings provide governed admin-only configuration for sensitive external or local service connection data."><a href="../../settings/connection-strings/architecture.html"><span>Connection Strings</span><small>Settings &gt; Connection Strings</small></a></li>
+<li data-search-item data-search-text="passkeys and two-factor authentication settings &gt; security factors settings includes passkey and totp management for strengthening account authentication."><a href="../../settings/security-factors/architecture.html"><span>Passkeys And Two-Factor Authentication</span><small>Settings &gt; Security Factors</small></a></li>
+<li data-search-item data-search-text="active sessions settings &gt; sessions session management lists active authentication sessions and supports session-level control."><a href="../../settings/sessions/architecture.html"><span>Active Sessions</span><small>Settings &gt; Sessions</small></a></li>
+<li data-search-item data-search-text="software updates settings &gt; software updates the update checker surfaces available istara software updates from the settings view."><a href="../../settings/updates/architecture.html"><span>Software Updates</span><small>Settings &gt; Software Updates</small></a></li>
+<li data-search-item data-search-text="governed evolution settings &gt; governed evolution governed evolution displays proposals, archive, reasoning, and contract information for controlled system self-improvement."><a href="../../settings/governed-evolution/architecture.html"><span>Governed Evolution</span><small>Settings &gt; Governed Evolution</small></a></li>
+<li data-search-item data-search-text="compute donation settings &gt; compute donation compute donation lets a browser session contribute local compute capacity under controlled limits."><a href="../../settings/compute-donation/architecture.html"><span>Compute Donation</span><small>Settings &gt; Compute Donation</small></a></li>
+</ul>
+</section>
+<section class="nav-section" data-nav-section>
+<h2>Secondary</h2>
+<ul>
+<li data-search-item data-search-text="project settings project settings project settings configure project-specific metadata and operational preferences separate from global system settings."><a href="../../settings/project/architecture.html"><span>Project Settings</span><small>Project Settings</small></a></li>
+<li data-search-item data-search-text="compute pool compute pool compute pool provides operational visibility into available compute nodes, routing, and local or pooled execution capacity."><a href="../../compute/pool/architecture.html"><span>Compute Pool</span><small>Compute Pool</small></a></li>
+<li data-search-item data-search-text="ensemble health ensemble health ensemble health surfaces health and consensus signals for istara&#x27;s multi-model or multi-agent ensemble behavior."><a href="../../ensemble/health/architecture.html"><span>Ensemble Health</span><small>Ensemble Health</small></a></li>
+<li data-search-item data-search-text="quality dashboard quality dashboard quality dashboard summarizes system quality, validation, and operational signals for the running istara installation."><a href="../../quality/dashboard/architecture.html"><span>Quality Dashboard</span><small>Quality Dashboard</small></a></li>
+<li data-search-item data-search-text="backup backup backup provides project or system backup controls and status for preserving istara data."><a href="../../backup/view/architecture.html"><span>Backup</span><small>Backup</small></a></li>
+<li data-search-item data-search-text="meta-agent meta-agent the meta-agent surface exposes the meta-hyperagent system for inspecting or governing higher-level agentic improvement behavior."><a href="../../meta/hyperagent/architecture.html"><span>Meta-Agent</span><small>Meta-Agent</small></a></li>
+<li data-search-item data-search-text="admin dashboard admin the admin dashboard provides administrator-only operational controls and visibility."><a href="../../admin/dashboard/architecture.html"><span>Admin Dashboard</span><small>Admin</small></a></li>
+<li data-search-item data-search-text="version history history history lists project or artifact version events for traceability and recovery."><a href="../../history/version/architecture.html"><span>Version History</span><small>History</small></a></li>
+</ul>
+</section>
+<section class="nav-section" data-nav-section>
+<h2>Autoresearch</h2>
+<ul>
+<li data-search-item data-search-text="autoresearch dashboard autoresearch &gt; dashboard the autoresearch dashboard summarizes automated research experiment status and recent results."><a href="../../autoresearch/dashboard/architecture.html"><span>Autoresearch Dashboard</span><small>Autoresearch &gt; Dashboard</small></a></li>
+<li data-search-item data-search-text="autoresearch experiments autoresearch &gt; experiments experiments configure and inspect automated research runs across strategies or parameters."><a href="../../autoresearch/experiments/architecture.html"><span>Autoresearch Experiments</span><small>Autoresearch &gt; Experiments</small></a></li>
+<li data-search-item data-search-text="autoresearch leaderboard autoresearch &gt; leaderboard the leaderboard ranks automated research experiment outcomes for comparison."><a href="../../autoresearch/leaderboard/architecture.html"><span>Autoresearch Leaderboard</span><small>Autoresearch &gt; Leaderboard</small></a></li>
+<li data-search-item data-search-text="autoresearch configuration autoresearch &gt; config autoresearch configuration sets parameters for automated research strategies and runs."><a href="../../autoresearch/config/architecture.html"><span>Autoresearch Configuration</span><small>Autoresearch &gt; Config</small></a></li>
+</ul>
+</section>
+<section class="nav-section" data-nav-section>
+<h2>Notifications</h2>
+<ul>
+<li data-search-item data-search-text="notifications list notifications &gt; all notifications lists system and project notifications with read/unread state."><a href="../../notifications/list/architecture.html"><span>Notifications List</span><small>Notifications &gt; All</small></a></li>
+<li data-search-item data-search-text="notification preferences notifications &gt; preferences notification preferences let users configure which notifications they receive and how notification categories are handled."><a href="../../notifications/preferences/architecture.html"><span>Notification Preferences</span><small>Notifications &gt; Preferences</small></a></li>
+</ul>
+</section>
+</nav>
+    </aside>
+    <main id="main" class="content" tabindex="-1">
+      <div class="content-grid">
+        <article class="doc-panel">
+          <header class="feature-hero">
+  <nav class="breadcrumbs" aria-label="Breadcrumb">
+    <a href="../../../index.html">Docs</a>
+    <span>Shell</span>
+    <span>Keyboard Shortcuts</span>
+  </nav>
+  <div class="feature-title-row">
+    <div>
+      <p class="eyebrow">Engineering/AI documentation</p>
+      <h1>Keyboard Shortcuts</h1>
+      <p class="lede">HomeClient wires global shortcuts for search, view switching, shortcut help, and right-panel toggling.</p>
+    </div>
+    <span class="status-chip">documented</span>
+  </div>
+  <nav class="audience-tabs" aria-label="Documentation audience">
+    <a href="researcher.html">Researcher</a>
+    <a href="architecture.html" aria-current="page">Architecture</a>
+  </nav>
+  <dl class="meta-grid">
+    <div><dt>UI Path</dt><dd>Shell &gt; Keyboard Shortcuts</dd></div>
+    <div><dt>Component</dt><dd><code>KeyboardShortcuts</code></dd></div>
+    <div><dt>Source Refs</dt><dd>2</dd></div>
+    <div><dt>Tests</dt><dd>0</dd></div>
+  </dl>
+  <div class="link-cluster" aria-label="Related feature links"><a href="../search/architecture.html">Global Search</a>
+<a href="../navigation/architecture.html">Application Navigation</a></div>
+  <p class="concept-line"><strong>Concepts:</strong> wcag</p>
+</header>
+<h2 id="implementation-summary">Implementation Summary</h2>
+<p>HomeClient wires global shortcuts for search, view switching, shortcut help, and right-panel toggling.</p>
+<h2 id="frontend-surface">Frontend Surface</h2>
+<ul>
+<li><code>frontend/src/components/layout/HomeClient.tsx</code></li>
+<li><code>frontend/src/components/common/KeyboardShortcuts.tsx</code></li>
+</ul>
+<h2 id="state-api-and-backend-contracts">State, API, And Backend Contracts</h2>
+<h3 id="stores">Stores</h3>
+<ul>
+<li>None recorded.</li>
+</ul>
+<h3 id="api-and-backend">API And Backend</h3>
+<ul>
+<li>None recorded.</li>
+</ul>
+<h2 id="architecture-notes">Architecture Notes</h2>
+<ul>
+<li>The feature is mounted through <code>frontend/src/components/layout/HomeClient.tsx</code> and the UI navigation path recorded in the inventory.</li>
+<li>The frontmatter and manifest entries are the durable contract for agents updating this page after code changes.</li>
+<li>When the referenced component, store, route, agent, skill, or test behavior changes, regenerate and validate the feature documentation.</li>
+</ul>
+<h2 id="agents-skills-llm-mcp-and-permissions">Agents, Skills, LLM, MCP, And Permissions</h2>
+<ul>
+<li>No direct agent, skill, LLM, or MCP behavior is asserted beyond the cited source files.</li>
+</ul>
+<h2 id="tests-and-verification">Tests And Verification</h2>
+<ul>
+<li>No focused test reference recorded yet.</li>
+</ul>
+<h2 id="related-features">Related Features</h2>
+<ul>
+<li><a href="../search/architecture.html">shell.search</a></li>
+<li><a href="../navigation/architecture.html">shell.navigation</a></li>
+</ul>
+<h2 id="related-concepts">Related Concepts</h2>
+<ul>
+<li><a href="../../../glossary/wcag.html">wcag</a></li>
+</ul>
+<h2 id="compass-evidence">Compass Evidence</h2>
+<ul>
+<li>Spec/task: CF-SPEC-53 / CF-657</li>
+<li>Inventory source: <code>docs/features/inventory.json</code></li>
+</ul>
+<h2 id="when-to-update">When To Update</h2>
+<ul>
+<li>Update this page whenever the listed UI components, stores, routes, model behavior, permissions, or tests change.</li>
+<li>Regenerate the site and machine manifests with <code>python scripts/feature_docs.py --seed-missing --generate-site --check</code>.</li>
+</ul>
+        </article>
+        <aside class="toc-panel" aria-label="Page sections">
+          <h2>On This Page</h2>
+          <nav aria-label="On this page"><ul>
+<li class="toc-level-2"><a href="#implementation-summary">Implementation Summary</a></li>
+<li class="toc-level-2"><a href="#frontend-surface">Frontend Surface</a></li>
+<li class="toc-level-2"><a href="#state-api-and-backend-contracts">State, API, And Backend Contracts</a></li>
+<li class="toc-level-3"><a href="#stores">Stores</a></li>
+<li class="toc-level-3"><a href="#api-and-backend">API And Backend</a></li>
+<li class="toc-level-2"><a href="#architecture-notes">Architecture Notes</a></li>
+<li class="toc-level-2"><a href="#agents-skills-llm-mcp-and-permissions">Agents, Skills, LLM, MCP, And Permissions</a></li>
+<li class="toc-level-2"><a href="#tests-and-verification">Tests And Verification</a></li>
+<li class="toc-level-2"><a href="#related-features">Related Features</a></li>
+<li class="toc-level-2"><a href="#related-concepts">Related Concepts</a></li>
+<li class="toc-level-2"><a href="#compass-evidence">Compass Evidence</a></li>
+<li class="toc-level-2"><a href="#when-to-update">When To Update</a></li>
+</ul></nav>
+        </aside>
+      </div>
+    </main>
+  </div>
+  <script src="../../../assets/site.js" defer></script>
+</body>
+</html>

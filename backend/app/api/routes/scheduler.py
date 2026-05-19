@@ -3,16 +3,45 @@
 import uuid
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.permissions import get_subject, is_global_admin, require_project_access
+from app.core.permissions import get_active_project_or_404, require_project_access
 from app.core.scheduler import CronParser, ScheduledTask
 from app.models.database import get_db
 
 router = APIRouter()
+
+
+def _require_project_id(project_id: str | None) -> str:
+    scoped_project_id = (project_id or "").strip()
+    if not scoped_project_id:
+        raise HTTPException(status_code=400, detail="project_id is required")
+    return scoped_project_id
+
+
+async def _get_project_schedule_or_404(
+    db: AsyncSession,
+    request: Request,
+    schedule_id: str,
+    project_id: str | None,
+    *,
+    min_role: str,
+) -> ScheduledTask:
+    scoped_project_id = _require_project_id(project_id)
+    await require_project_access(db, request, scoped_project_id, min_role=min_role)
+    result = await db.execute(
+        select(ScheduledTask).where(
+            ScheduledTask.id == schedule_id,
+            ScheduledTask.project_id == scoped_project_id,
+        )
+    )
+    task = result.scalar_one_or_none()
+    if not task:
+        raise HTTPException(status_code=404, detail="Scheduled task not found")
+    return task
 
 
 # ---------------------------------------------------------------------------
@@ -75,7 +104,8 @@ async def create_schedule(data: ScheduleCreate, request: Request, db: AsyncSessi
     cron_expression = data.cron_expression.strip()
     if not name or not project_id:
         raise HTTPException(status_code=422, detail="name and project_id are required")
-    await require_project_access(db, request, project_id, min_role="researcher")
+    project = await get_active_project_or_404(db, request, project_id, min_role="researcher")
+    project_id = project.id
 
     # Validate cron expression
     try:
@@ -112,30 +142,26 @@ async def list_schedules(
     project_id: str | None = None,
     db: AsyncSession = Depends(get_db),
 ):
-    """List all scheduled tasks, optionally filtered by project."""
-    subject = get_subject(request)
-    if project_id:
-        await require_project_access(db, request, project_id, min_role="viewer")
-    elif not is_global_admin(subject):
-        raise HTTPException(status_code=400, detail="project_id is required")
+    """List scheduled tasks for the active project."""
+    project_id = _require_project_id(project_id)
+    await require_project_access(db, request, project_id, min_role="viewer")
     query = select(ScheduledTask).order_by(ScheduledTask.created_at)
-    if project_id:
-        query = query.where(ScheduledTask.project_id == project_id)
+    query = query.where(ScheduledTask.project_id == project_id)
     result = await db.execute(query)
     return result.scalars().all()
 
 
 @router.get("/schedules/{schedule_id}", response_model=ScheduleResponse)
-async def get_schedule(schedule_id: str, request: Request, db: AsyncSession = Depends(get_db)):
+async def get_schedule(
+    schedule_id: str,
+    request: Request,
+    project_id: str | None = Query(None, description="Active project"),
+    db: AsyncSession = Depends(get_db),
+):
     """Get a scheduled task by ID."""
-    result = await db.execute(
-        select(ScheduledTask).where(ScheduledTask.id == schedule_id)
+    return await _get_project_schedule_or_404(
+        db, request, schedule_id, project_id, min_role="viewer"
     )
-    task = result.scalar_one_or_none()
-    if not task:
-        raise HTTPException(status_code=404, detail="Scheduled task not found")
-    await require_project_access(db, request, task.project_id, min_role="viewer")
-    return task
 
 
 @router.patch("/schedules/{schedule_id}", response_model=ScheduleResponse)
@@ -143,16 +169,14 @@ async def update_schedule(
     schedule_id: str,
     data: ScheduleUpdate,
     request: Request,
+    project_id: str | None = Query(None, description="Active project"),
     db: AsyncSession = Depends(get_db),
 ):
     """Update a scheduled task (enable/disable, change cron, etc.)."""
-    result = await db.execute(
-        select(ScheduledTask).where(ScheduledTask.id == schedule_id)
+    task = await _get_project_schedule_or_404(
+        db, request, schedule_id, project_id, min_role="researcher"
     )
-    task = result.scalar_one_or_none()
-    if not task:
-        raise HTTPException(status_code=404, detail="Scheduled task not found")
-    await require_project_access(db, request, task.project_id, min_role="researcher")
+    scoped_project_id = _require_project_id(project_id)
 
     update_data = data.model_dump(exclude_unset=True)
     for key in ("name", "cron_expression", "skill_name", "description"):
@@ -161,7 +185,17 @@ async def update_schedule(
             if key in {"name", "cron_expression"} and not update_data[key]:
                 raise HTTPException(status_code=422, detail=f"{key} cannot be empty")
 
-    # If cron expression is changing, validate and recalculate next_run
+    # Any update that leaves a schedule runnable must target an active project.
+    # Disabling a paused project's schedule remains allowed so teams can stop work.
+    will_be_enabled = update_data.get("enabled", task.enabled)
+    if will_be_enabled:
+        await get_active_project_or_404(
+            db,
+            request,
+            scoped_project_id,
+            min_role="researcher",
+        )
+
     if "cron_expression" in update_data:
         try:
             CronParser.parse(update_data["cron_expression"])
@@ -192,15 +226,16 @@ async def update_schedule(
 
 
 @router.delete("/schedules/{schedule_id}", status_code=204)
-async def delete_schedule(schedule_id: str, request: Request, db: AsyncSession = Depends(get_db)):
+async def delete_schedule(
+    schedule_id: str,
+    request: Request,
+    project_id: str | None = Query(None, description="Active project"),
+    db: AsyncSession = Depends(get_db),
+):
     """Delete a scheduled task."""
-    result = await db.execute(
-        select(ScheduledTask).where(ScheduledTask.id == schedule_id)
+    task = await _get_project_schedule_or_404(
+        db, request, schedule_id, project_id, min_role="researcher"
     )
-    task = result.scalar_one_or_none()
-    if not task:
-        raise HTTPException(status_code=404, detail="Scheduled task not found")
-    await require_project_access(db, request, task.project_id, min_role="researcher")
 
     await db.delete(task)
     await db.commit()

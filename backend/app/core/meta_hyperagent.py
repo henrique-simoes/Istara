@@ -28,6 +28,7 @@ from pathlib import Path
 from typing import Any
 
 from app.config import settings
+from app.core.project_activity import is_project_active
 
 logger = logging.getLogger(__name__)
 
@@ -76,6 +77,7 @@ class MetaProposal:
     reviewed_at: str | None = None
     applied_at: str | None = None
     reverted_at: str | None = None
+    project_id: str = ""
 
 
 @dataclass
@@ -92,6 +94,7 @@ class MetaVariant:
     metrics_after: dict | None = None
     observation_window_hours: int = 72
     status: str = "active"  # "active"|"reverted"|"confirmed"
+    project_id: str = ""
 
 
 # ---------------------------------------------------------------------------
@@ -126,8 +129,60 @@ class MetaHyperagent:
         self._variants: list[dict] = []
         self._running = False
         self._task: asyncio.Task | None = None
+        self._active_project_id: str | None = None
         self._recent_observations: list[dict] = []
         self._load()
+
+    # -- Project scope ------------------------------------------------------
+
+    @staticmethod
+    def _require_project_id(project_id: str | None) -> str:
+        scoped_project_id = str(project_id or "").strip()
+        if not scoped_project_id:
+            raise ValueError("project_id is required")
+        return scoped_project_id
+
+    @staticmethod
+    def _matches_project(record: dict, project_id: str) -> bool:
+        return str(record.get("project_id") or "") == project_id
+
+    def _latest_observation_for_project(self, project_id: str) -> dict | None:
+        for observation in reversed(self._recent_observations):
+            if self._matches_project(observation, project_id):
+                return observation
+        return None
+
+    @staticmethod
+    async def _agent_factory_proposals_for_project(
+        proposals: list[dict],
+        project_id: str,
+    ) -> list[dict]:
+        task_ids = [str(item.get("source_task_id") or "") for item in proposals]
+        task_ids = [task_id for task_id in task_ids if task_id]
+        if not task_ids:
+            return []
+        try:
+            from sqlalchemy import select
+
+            from app.models.database import async_session
+            from app.models.task import Task
+
+            async with async_session() as db:
+                result = await db.execute(
+                    select(Task.id).where(
+                        Task.id.in_(task_ids),
+                        Task.project_id == project_id,
+                    )
+                )
+                visible_task_ids = {str(task_id) for task_id in result.scalars().all()}
+            return [
+                proposal
+                for proposal in proposals
+                if str(proposal.get("source_task_id") or "") in visible_task_ids
+            ]
+        except Exception as exc:
+            logger.debug(f"Meta-hyperagent: project agent proposal filter failed: {exc}")
+            return []
 
     # -- Persistence --------------------------------------------------------
 
@@ -180,13 +235,15 @@ class MetaHyperagent:
 
     # -- Observation --------------------------------------------------------
 
-    async def observe_cycle(self) -> dict:
-        """Collect metrics from all observed subsystems.
+    async def observe_cycle(self, project_id: str | None = None) -> dict:
+        """Collect metrics from observed subsystems for one project.
 
         Returns an observation dict with per-subsystem stats.
         """
+        scoped_project_id = self._require_project_id(project_id)
         observation: dict[str, Any] = {
             "timestamp": datetime.now(timezone.utc).isoformat(),
+            "project_id": scoped_project_id,
             "task_routing": {},
             "self_evolution": {},
             "skill_selection": {},
@@ -212,16 +269,53 @@ class MetaHyperagent:
         # 2. Self-evolution — current thresholds and promotion stats
         try:
             import app.core.self_evolution as se
-            observation["self_evolution"] = {
+            self_evolution_stats = {
                 "thresholds": dict(se.PROMOTION_THRESHOLDS),
             }
+            try:
+                from sqlalchemy import func, select
+
+                from app.core.agent_learning import AgentLearning
+                from app.models.database import async_session
+
+                async with async_session() as db:
+                    project_learnings = await db.execute(
+                        select(func.count(AgentLearning.id)).where(
+                            AgentLearning.project_id == scoped_project_id,
+                            AgentLearning.active == True,
+                        )
+                    )
+                    promoted_learnings = await db.execute(
+                        select(func.count(AgentLearning.id)).where(
+                            AgentLearning.project_id == scoped_project_id,
+                            AgentLearning.active == True,
+                            AgentLearning.resolution.like("%[PROMOTED]%"),
+                        )
+                    )
+                    distinct_agents = await db.execute(
+                        select(func.count(func.distinct(AgentLearning.agent_id))).where(
+                            AgentLearning.project_id == scoped_project_id,
+                            AgentLearning.active == True,
+                        )
+                    )
+                self_evolution_stats.update(
+                    {
+                        "project_learning_count": project_learnings.scalar() or 0,
+                        "project_promoted_count": promoted_learnings.scalar() or 0,
+                        "project_learning_agent_count": distinct_agents.scalar() or 0,
+                    }
+                )
+            except Exception as exc:
+                logger.debug(f"Meta-hyperagent: project self_evolution stats failed: {exc}")
+            observation["self_evolution"] = self_evolution_stats
         except Exception as exc:
             logger.debug(f"Meta-hyperagent: self_evolution observe failed: {exc}")
 
         # 3. Skill selection — usage stats from skill_manager
         try:
             from app.skills.skill_manager import skill_manager
-            stats = skill_manager.get_usage_stats()
+
+            stats = skill_manager.get_usage_stats(project_id=scoped_project_id)
             total_executions = sum(s.get("executions", 0) for s in stats.values())
             total_successes = sum(s.get("successes", 0) for s in stats.values())
             total_failures = sum(s.get("failures", 0) for s in stats.values())
@@ -229,6 +323,7 @@ class MetaHyperagent:
                 1 for s in stats.values() if s.get("matched_via") == "semantic"
             )
             observation["skill_selection"] = {
+                "project_id": scoped_project_id,
                 "total_skills_tracked": len(stats),
                 "total_executions": total_executions,
                 "total_successes": total_successes,
@@ -246,7 +341,8 @@ class MetaHyperagent:
         # 4. Quality evaluation — verification pass/fail (read from skill stats)
         try:
             from app.skills.skill_manager import skill_manager
-            stats = skill_manager.get_usage_stats()
+
+            stats = skill_manager.get_usage_stats(project_id=scoped_project_id)
             verification_passes = sum(
                 s.get("verification_passes", 0) for s in stats.values()
             )
@@ -254,6 +350,7 @@ class MetaHyperagent:
                 s.get("verification_fails", 0) for s in stats.values()
             )
             observation["quality_eval"] = {
+                "project_id": scoped_project_id,
                 "verification_passes": verification_passes,
                 "verification_fails": verification_fails,
                 "pass_rate": (
@@ -272,10 +369,12 @@ class MetaHyperagent:
         # 5. Agent capabilities — agent factory gap detections
         try:
             from app.core.agent_factory import AgentFactory
+
             factory = AgentFactory()
-            pending = factory.get_pending_proposals()
-            all_proposals = factory.get_all_proposals()
+            pending = factory.get_pending_proposals(project_id=scoped_project_id)
+            all_proposals = factory.get_all_proposals(project_id=scoped_project_id)
             observation["agent_capabilities"] = {
+                "project_id": scoped_project_id,
                 "pending_agent_proposals": len(pending),
                 "total_agent_proposals": len(all_proposals),
             }
@@ -286,7 +385,9 @@ class MetaHyperagent:
         try:
             from app.core.reasoning_bank import reasoning_bank
 
-            observation["reasoning_bank"] = await reasoning_bank.summary()
+            observation["reasoning_bank"] = await reasoning_bank.summary(
+                project_id=scoped_project_id
+            )
         except Exception as exc:
             logger.debug(f"Meta-hyperagent: reasoning_bank observe failed: {exc}")
 
@@ -296,19 +397,24 @@ class MetaHyperagent:
             self._recent_observations = self._recent_observations[-100:]
         self._save_observations()
 
-        self._log_audit("observation_cycle", {"summary": {
-            k: bool(v) for k, v in observation.items() if k != "timestamp"
-        }})
+        self._log_audit("observation_cycle", {
+            "project_id": scoped_project_id,
+            "summary": {
+                k: bool(v)
+                for k, v in observation.items()
+                if k not in {"timestamp", "project_id"}
+            },
+        })
         return observation
 
     # -- Analysis & Proposal Generation -------------------------------------
 
-    async def analyze_and_propose(self) -> list[MetaProposal]:
-        """Analyze recent observations and generate parameter change proposals."""
-        if not self._recent_observations:
+    async def analyze_and_propose(self, project_id: str | None = None) -> list[MetaProposal]:
+        """Analyze recent project observations and generate parameter proposals."""
+        scoped_project_id = self._require_project_id(project_id)
+        latest = self._latest_observation_for_project(scoped_project_id)
+        if latest is None:
             return []
-
-        latest = self._recent_observations[-1]
         proposals: list[MetaProposal] = []
 
         # Rule 1: If skill selection semantic fallback rate > 40%, propose
@@ -341,6 +447,7 @@ class MetaHyperagent:
                         expected_impact="More skills matched directly, fewer semantic fallbacks",
                         status="pending",
                         created_at=datetime.now(timezone.utc).isoformat(),
+                        project_id=scoped_project_id,
                     ))
         except Exception as exc:
             logger.debug(f"Meta-hyperagent: skill selection analysis failed: {exc}")
@@ -351,8 +458,11 @@ class MetaHyperagent:
             se_data = latest.get("self_evolution", {})
             thresholds = se_data.get("thresholds", {})
             min_occ = thresholds.get("min_occurrences", 3)
-            if min_occ > 2:
-                # Check if there's evidence of low promotion rates
+            learning_count = se_data.get("project_learning_count", 0) or 0
+            promoted_count = se_data.get("project_promoted_count", 0) or 0
+            promotion_rate = promoted_count / learning_count if learning_count else 0
+            if min_occ > 2 and learning_count >= 10 and promotion_rate < 0.05:
+                # Require project-local evidence before suggesting evolution tuning.
                 proposals.append(MetaProposal(
                     id=f"mp_{uuid.uuid4().hex[:12]}",
                     target_system="self_evolution",
@@ -360,18 +470,23 @@ class MetaHyperagent:
                     current_value=min_occ,
                     proposed_value=max(1, min_occ - 1),
                     reason=(
-                        f"Current min_occurrences={min_occ} may be too restrictive "
-                        f"for early-stage deployments. Lowering to {max(1, min_occ - 1)} "
-                        f"could allow faster agent learning."
+                        f"Project has {learning_count} active learnings and only "
+                        f"{promoted_count} promoted ({promotion_rate:.0%}). "
+                        f"Lowering min_occurrences from {min_occ} to "
+                        f"{max(1, min_occ - 1)} may allow reviewed project-local "
+                        f"learning to mature faster."
                     ),
                     evidence=[{
-                        "metric": "min_occurrences",
-                        "current": min_occ,
+                        "metric": "project_promotion_rate",
+                        "project_learning_count": learning_count,
+                        "project_promoted_count": promoted_count,
+                        "value": round(promotion_rate, 3),
                     }],
                     confidence=45,
                     expected_impact="More learnings promoted, faster agent adaptation",
                     status="pending",
                     created_at=datetime.now(timezone.utc).isoformat(),
+                    project_id=scoped_project_id,
                 ))
         except Exception as exc:
             logger.debug(f"Meta-hyperagent: self-evolution analysis failed: {exc}")
@@ -409,6 +524,7 @@ class MetaHyperagent:
                         expected_impact="Higher quality promoted learnings, fewer bad promotions",
                         status="pending",
                         created_at=datetime.now(timezone.utc).isoformat(),
+                        project_id=scoped_project_id,
                     ))
         except Exception as exc:
             logger.debug(f"Meta-hyperagent: quality eval analysis failed: {exc}")
@@ -418,7 +534,8 @@ class MetaHyperagent:
         existing_paths = set()
         for p in self._proposals:
             if p.get("status") in ("pending", "applied"):
-                existing_paths.add(p.get("parameter_path"))
+                if self._matches_project(p, scoped_project_id):
+                    existing_paths.add(p.get("parameter_path"))
 
         new_proposals = []
         for proposal in proposals:
@@ -430,6 +547,7 @@ class MetaHyperagent:
         if new_proposals:
             self._save()
             self._log_audit("proposals_generated", {
+                "project_id": scoped_project_id,
                 "count": len(new_proposals),
                 "paths": [p.parameter_path for p in new_proposals],
             })
@@ -442,6 +560,7 @@ class MetaHyperagent:
                         proposal_id=p.id,
                         target_system=p.target_system,
                         reason=p.reason,
+                        project_id=scoped_project_id,
                     )
                 except Exception:
                     pass
@@ -450,7 +569,10 @@ class MetaHyperagent:
                 from app.core.improvement_governance import improvement_governance
 
                 for proposal in new_proposals:
-                    await improvement_governance.register_meta_proposal(asdict(proposal))
+                    await improvement_governance.register_meta_proposal(
+                        asdict(proposal),
+                        project_id=scoped_project_id,
+                    )
             except Exception as exc:
                 logger.debug(f"Meta-hyperagent governance registration skipped: {exc}")
 
@@ -474,18 +596,23 @@ class MetaHyperagent:
             return True
         return True
 
-    def _active_variant_count(self) -> int:
-        """Return number of currently active (non-reverted, non-confirmed) variants."""
-        return sum(1 for v in self._variants if v.get("status") == "active")
+    def _active_variant_count(self, project_id: str) -> int:
+        """Return active variants for one project."""
+        return sum(
+            1
+            for v in self._variants
+            if v.get("status") == "active" and self._matches_project(v, project_id)
+        )
 
-    async def apply_proposal(self, proposal_id: str) -> dict:
+    async def apply_proposal(self, proposal_id: str, project_id: str | None = None) -> dict:
         """Approve and apply a pending proposal as an active variant.
 
         Returns the created variant dict or an error dict.
         """
+        scoped_project_id = self._require_project_id(project_id)
         proposal = None
         for p in self._proposals:
-            if p["id"] == proposal_id:
+            if p["id"] == proposal_id and self._matches_project(p, scoped_project_id):
                 proposal = p
                 break
         if not proposal:
@@ -494,7 +621,7 @@ class MetaHyperagent:
             return {"error": f"Proposal status is '{proposal['status']}', expected 'pending'"}
 
         # Safety: max active variants
-        if self._active_variant_count() >= MAX_ACTIVE_VARIANTS:
+        if self._active_variant_count(scoped_project_id) >= MAX_ACTIVE_VARIANTS:
             return {"error": f"Max active variants ({MAX_ACTIVE_VARIANTS}) reached. Revert or confirm existing variants first."}
 
         # Validate bounds
@@ -519,6 +646,7 @@ class MetaHyperagent:
             applied_at=now_iso,
             observation_window_hours=settings.meta_hyperagent_variant_observation_hours,
             status="active",
+            project_id=scoped_project_id,
         )
         variant_dict = asdict(variant)
         self._variants.append(variant_dict)
@@ -530,6 +658,7 @@ class MetaHyperagent:
 
         self._save()
         self._log_audit("proposal_applied", {
+            "project_id": scoped_project_id,
             "proposal_id": proposal_id,
             "variant_id": variant.id,
             "parameter_path": proposal["parameter_path"],
@@ -539,11 +668,12 @@ class MetaHyperagent:
 
         return variant_dict
 
-    async def revert_variant(self, variant_id: str) -> dict:
+    async def revert_variant(self, variant_id: str, project_id: str | None = None) -> dict:
         """Revert an active variant back to its original value."""
+        scoped_project_id = self._require_project_id(project_id)
         variant = None
         for v in self._variants:
-            if v["id"] == variant_id:
+            if v["id"] == variant_id and self._matches_project(v, scoped_project_id):
                 variant = v
                 break
         if not variant:
@@ -562,24 +692,26 @@ class MetaHyperagent:
 
         # Update associated proposal
         for p in self._proposals:
-            if p.get("id") == variant["proposal_id"]:
+            if p.get("id") == variant["proposal_id"] and self._matches_project(p, scoped_project_id):
                 p["status"] = "reverted"
                 p["reverted_at"] = now_iso
                 break
 
         self._save()
         self._log_audit("variant_reverted", {
+            "project_id": scoped_project_id,
             "variant_id": variant_id,
             "parameter_path": variant["parameter_path"],
             "restored_value": variant["old_value"],
         })
         return variant
 
-    async def confirm_variant(self, variant_id: str) -> dict:
+    async def confirm_variant(self, variant_id: str, project_id: str | None = None) -> dict:
         """Confirm an active variant — persist the override permanently."""
+        scoped_project_id = self._require_project_id(project_id)
         variant = None
         for v in self._variants:
-            if v["id"] == variant_id:
+            if v["id"] == variant_id and self._matches_project(v, scoped_project_id):
                 variant = v
                 break
         if not variant:
@@ -591,21 +723,24 @@ class MetaHyperagent:
 
         # Update associated proposal
         for p in self._proposals:
-            if p.get("id") == variant["proposal_id"]:
+            if p.get("id") == variant["proposal_id"] and self._matches_project(p, scoped_project_id):
                 p["status"] = "approved"
                 break
 
         # Persist to overrides file
         overrides = self._load_overrides_file()
-        overrides[variant["parameter_path"]] = {
+        project_overrides = overrides.setdefault("projects", {}).setdefault(scoped_project_id, {})
+        project_overrides[variant["parameter_path"]] = {
             "value": variant["new_value"],
             "variant_id": variant_id,
             "confirmed_at": datetime.now(timezone.utc).isoformat(),
+            "project_id": scoped_project_id,
         }
         _atomic_write(OVERRIDES_FILE, json.dumps(overrides, indent=2, default=str))
 
         self._save()
         self._log_audit("variant_confirmed", {
+            "project_id": scoped_project_id,
             "variant_id": variant_id,
             "parameter_path": variant["parameter_path"],
             "confirmed_value": variant["new_value"],
@@ -623,18 +758,22 @@ class MetaHyperagent:
                 return {}
         return {}
 
-    def load_confirmed_overrides(self) -> None:
-        """Apply all confirmed overrides at startup.
-
-        Called during application lifespan startup so confirmed parameter
-        changes survive restarts.
-        """
+    def load_confirmed_overrides(self, project_id: str | None = None) -> None:
+        """Apply confirmed overrides for a project."""
+        scoped_project_id = str(project_id or "").strip()
+        if not scoped_project_id:
+            logger.info("Meta-hyperagent: skipping confirmed overrides without project scope")
+            return
         overrides = self._load_overrides_file()
         if not overrides:
             return
 
+        project_overrides = (overrides.get("projects") or {}).get(scoped_project_id, {})
+        if not project_overrides:
+            return
+
         applied = 0
-        for param_path, entry in overrides.items():
+        for param_path, entry in project_overrides.items():
             value = entry.get("value") if isinstance(entry, dict) else entry
             try:
                 self._apply_parameter(param_path, value)
@@ -647,7 +786,8 @@ class MetaHyperagent:
 
         if applied:
             logger.info(
-                f"Meta-hyperagent: applied {applied} confirmed override(s) at startup"
+                f"Meta-hyperagent: applied {applied} confirmed override(s) "
+                f"for project {scoped_project_id}"
             )
 
     # -- Parameter application to live modules ------------------------------
@@ -725,31 +865,70 @@ class MetaHyperagent:
         """Whether the observation loop task is active."""
         return bool(self._running and self._task and not self._task.done())
 
-    def start(self) -> asyncio.Task:
+    @property
+    def active_project_id(self) -> str | None:
+        """Project currently owned by the observation loop, if any."""
+        return self._active_project_id if self.is_running else None
+
+    def is_running_for_project(self, project_id: str | None) -> bool:
+        """Return whether the observation loop is active for the requested project."""
+        scoped_project_id = str(project_id or "").strip()
+        return bool(
+            scoped_project_id
+            and self.is_running
+            and self._active_project_id == scoped_project_id
+        )
+
+    def start(self, project_id: str | None = None) -> asyncio.Task:
         """Start the observation loop and retain the task handle."""
-        if self._task and not self._task.done():
+        scoped_project_id = self._require_project_id(project_id)
+        if (
+            self._task
+            and not self._task.done()
+            and self._active_project_id == scoped_project_id
+        ):
             return self._task
-        self.load_confirmed_overrides()
-        self._task = asyncio.create_task(self.start_observation_loop())
+        if self._task and not self._task.done():
+            self.stop()
+        self._active_project_id = scoped_project_id
+        self.load_confirmed_overrides(project_id=scoped_project_id)
+        self._task = asyncio.create_task(
+            self.start_observation_loop(project_id=scoped_project_id)
+        )
         return self._task
 
-    async def start_observation_loop(self) -> None:
+    async def start_observation_loop(self, project_id: str | None = None) -> None:
         """Background loop that observes and analyzes at configured intervals."""
+        scoped_project_id = self._require_project_id(project_id)
         current_task = asyncio.current_task()
         if current_task is not None and (self._task is None or self._task.done()):
             self._task = current_task
+        self._active_project_id = scoped_project_id
         self._running = True
         interval_secs = settings.meta_hyperagent_observation_interval_hours * 3600
         logger.info(
             f"Meta-hyperagent observation loop started "
-            f"(interval={settings.meta_hyperagent_observation_interval_hours}h)"
+            f"(project={scoped_project_id}, "
+            f"interval={settings.meta_hyperagent_observation_interval_hours}h)"
         )
 
         try:
             while self._running:
                 try:
-                    await self.observe_cycle()
-                    await self.analyze_and_propose()
+                    if not await is_project_active(scoped_project_id):
+                        logger.info(
+                            "Meta-hyperagent stopped because project %s is paused or missing",
+                            scoped_project_id,
+                        )
+                        break
+                    await self.observe_cycle(project_id=scoped_project_id)
+                    if not await is_project_active(scoped_project_id):
+                        logger.info(
+                            "Meta-hyperagent skipped proposal analysis because project %s is paused or missing",
+                            scoped_project_id,
+                        )
+                        break
+                    await self.analyze_and_propose(project_id=scoped_project_id)
                 except Exception as exc:
                     logger.error(f"Meta-hyperagent observation cycle error: {exc}")
 
@@ -762,47 +941,84 @@ class MetaHyperagent:
             self._running = False
             if self._task is current_task:
                 self._task = None
+            if self._active_project_id == scoped_project_id:
+                self._active_project_id = None
             logger.info("Meta-hyperagent observation loop stopped.")
 
-    def stop(self) -> None:
+    def stop(self, project_id: str | None = None) -> None:
         """Stop the observation loop."""
+        scoped_project_id = str(project_id or "").strip()
+        if scoped_project_id and self._active_project_id != scoped_project_id:
+            return
         self._running = False
         if self._task and not self._task.done():
             self._task.cancel()
         self._task = None
+        self._active_project_id = None
 
     # -- Query helpers ------------------------------------------------------
 
-    def get_pending_proposals(self) -> list[dict]:
+    def get_pending_proposals(self, project_id: str | None = None) -> list[dict]:
         """Return proposals awaiting review."""
-        return [p for p in self._proposals if p.get("status") == "pending"]
+        scoped_project_id = self._require_project_id(project_id)
+        return [
+            p
+            for p in self._proposals
+            if p.get("status") == "pending" and self._matches_project(p, scoped_project_id)
+        ]
 
-    def get_all_proposals(self, limit: int = 50) -> list[dict]:
+    def get_all_proposals(self, limit: int = 50, project_id: str | None = None) -> list[dict]:
         """Return the most recent proposals (all statuses)."""
-        return self._proposals[-limit:]
+        scoped_project_id = self._require_project_id(project_id)
+        proposals = [p for p in self._proposals if self._matches_project(p, scoped_project_id)]
+        return proposals[-limit:]
 
-    def get_active_variants(self) -> list[dict]:
+    def get_active_variants(self, project_id: str | None = None) -> list[dict]:
         """Return currently active (un-reverted, un-confirmed) variants."""
-        return [v for v in self._variants if v.get("status") == "active"]
+        scoped_project_id = self._require_project_id(project_id)
+        return [
+            v
+            for v in self._variants
+            if v.get("status") == "active" and self._matches_project(v, scoped_project_id)
+        ]
 
-    def get_all_variants(self, limit: int = 50) -> list[dict]:
+    def get_all_variants(self, limit: int = 50, project_id: str | None = None) -> list[dict]:
         """Return the most recent variants (all statuses)."""
-        return self._variants[-limit:]
+        scoped_project_id = self._require_project_id(project_id)
+        variants = [v for v in self._variants if self._matches_project(v, scoped_project_id)]
+        return variants[-limit:]
 
-    def get_recent_observations(self, limit: int = 10) -> list[dict]:
+    def get_recent_observations(self, limit: int = 10, project_id: str | None = None) -> list[dict]:
         """Return the most recent observation snapshots."""
-        return self._recent_observations[-limit:]
+        scoped_project_id = self._require_project_id(project_id)
+        observations = [
+            item
+            for item in self._recent_observations
+            if self._matches_project(item, scoped_project_id)
+        ]
+        return observations[-limit:]
 
-    def reject_proposal(self, proposal_id: str, reason: str = "") -> dict | None:
+    def reject_proposal(
+        self,
+        proposal_id: str,
+        reason: str = "",
+        project_id: str | None = None,
+    ) -> dict | None:
         """Reject a pending proposal with optional reason."""
+        scoped_project_id = self._require_project_id(project_id)
         for p in self._proposals:
-            if p["id"] == proposal_id and p["status"] == "pending":
+            if (
+                p["id"] == proposal_id
+                and p["status"] == "pending"
+                and self._matches_project(p, scoped_project_id)
+            ):
                 p["status"] = "rejected"
                 p["reviewed_at"] = datetime.now(timezone.utc).isoformat()
                 if reason:
                     p["reject_reason"] = reason
                 self._save()
                 self._log_audit("proposal_rejected", {
+                    "project_id": scoped_project_id,
                     "proposal_id": proposal_id,
                     "reason": reason,
                 })

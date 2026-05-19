@@ -32,7 +32,7 @@ export const memory = {
       page_size: number;
       sources?: Array<{ name: string; count: number }>;
       error?: string;
-    }>(`/api/memory/${projectId}?page=${page}&page_size=${pageSize}`),
+    }>(`/api/memory/${encodeURIComponent(projectId)}?page=${page}&page_size=${pageSize}`),
   search: (
     projectId: string,
     query: string,
@@ -52,7 +52,7 @@ export const memory = {
       query: string;
       total: number;
       filters?: { source: string | null; file_type: string | null };
-    }>(`/api/memory/${projectId}/search?${params.toString()}`);
+    }>(`/api/memory/${encodeURIComponent(projectId)}/search?${params.toString()}`);
   },
   stats: (projectId: string) =>
     json<{
@@ -64,16 +64,18 @@ export const memory = {
       chunk_size: number;
       chunk_overlap: number;
       hybrid_weights: { vector: number; keyword: number };
-    }>(`/api/memory/${projectId}/stats`),
+    }>(`/api/memory/${encodeURIComponent(projectId)}/stats`),
   agentNotes: (projectId: string, agentId: string) =>
     json<{
       agent_id: string;
       project_id: string;
       notes: Array<{ text: string; source: string }>;
-    }>(`/api/memory/${projectId}/agent/${agentId}/notes`),
+    }>(
+      `/api/memory/${encodeURIComponent(projectId)}/agent/${encodeURIComponent(agentId)}/notes`
+    ),
   deleteSource: (projectId: string, sourceName: string) =>
     json<{ deleted: boolean; source: string }>(
-      `/api/memory/${projectId}/source/${encodeURIComponent(sourceName)}`,
+      `/api/memory/${encodeURIComponent(projectId)}/source/${encodeURIComponent(sourceName)}`,
       { method: "DELETE" }
     ),
 };

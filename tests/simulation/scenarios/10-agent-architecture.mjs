@@ -9,6 +9,7 @@ export const id = "10-agent-architecture";
 export async function run(ctx) {
   const { api } = ctx;
   const checks = [];
+  const projectId = ctx.projectId || "sim-project-001";
 
   // ── Helpers ──
 
@@ -190,6 +191,7 @@ export async function run(ctx) {
       system_prompt: "Architecture test agent created by simulation.",
       capabilities: ["findings_read", "task_management", "a2a_messaging"],
       heartbeat_interval: 30,
+      project_id: projectId,
     });
     testAgentId = agent.id;
 
@@ -288,6 +290,7 @@ export async function run(ctx) {
       system_prompt: "Recipient agent for A2A test.",
       capabilities: ["a2a_messaging"],
       heartbeat_interval: 30,
+      project_id: projectId,
     });
     secondAgentId = agent.id;
 
@@ -307,6 +310,7 @@ export async function run(ctx) {
       to_agent_id: secondAgentId,
       message_type: "consult",
       content: "[SIM-ARCH] Architecture test message from sender to recipient",
+      project_id: projectId,
     });
     sentMessageId = msg.id;
 
@@ -327,7 +331,7 @@ export async function run(ctx) {
     if (!secondAgentId || !sentMessageId) {
       return { name: "A2A Messaging — recipient inbox contains message", passed: false, detail: "Missing agent or message" };
     }
-    const inbox = await api.get(`/api/agents/${secondAgentId}/messages?limit=20`);
+    const inbox = await api.get(`/api/agents/${secondAgentId}/messages?project_id=${encodeURIComponent(projectId)}&limit=20`);
     const messages = inbox.messages || [];
     const found = messages.some(
       (m) => m.from_agent_id === testAgentId && m.content.includes("[SIM-ARCH]")
@@ -340,13 +344,13 @@ export async function run(ctx) {
     };
   });
 
-  await safeCheck("A2A Messaging — message in global A2A log", async () => {
-    const log = await api.get("/api/agents/a2a/log?limit=50");
+  await safeCheck("A2A Messaging — message in project A2A log", async () => {
+    const log = await api.get(`/api/agents/a2a/log?project_id=${encodeURIComponent(projectId)}&limit=50`);
     const messages = log.messages || [];
     const found = messages.some((m) => m.content.includes("[SIM-ARCH] Architecture test message"));
 
     return {
-      name: "A2A Messaging — message in global A2A log",
+      name: "A2A Messaging — message in project A2A log",
       passed: found,
       detail: `${messages.length} messages in log, target found=${found}`,
     };

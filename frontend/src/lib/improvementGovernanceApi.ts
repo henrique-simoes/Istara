@@ -33,13 +33,15 @@ const get = <T>(path: string): Promise<T> => request<T>(path);
 const post = <T>(path: string, data: unknown): Promise<T> =>
   request<T>(path, { method: "POST", body: JSON.stringify(data) });
 
+function projectQuery(projectId: string): string {
+  return `project_id=${encodeURIComponent(projectId)}`;
+}
+
 export const improvementGovernance = {
-  summary: (projectId?: string) =>
-    get<ImprovementGovernanceSummary>(
-      `/api/improvement-governance/summary${projectId ? `?project_id=${projectId}` : ""}`
-    ),
-  proposals: (params?: {
-    project_id?: string;
+  summary: (projectId: string) =>
+    get<ImprovementGovernanceSummary>(`/api/improvement-governance/summary?${projectQuery(projectId)}`),
+  proposals: (params: {
+    project_id: string;
     source_system?: string;
     status?: string;
     affected_surface?: string;
@@ -47,36 +49,38 @@ export const improvementGovernance = {
     offset?: number;
   }) => {
     const p = new URLSearchParams();
-    if (params?.project_id) p.set("project_id", params.project_id);
-    if (params?.source_system) p.set("source_system", params.source_system);
-    if (params?.status) p.set("status", params.status);
-    if (params?.affected_surface) p.set("affected_surface", params.affected_surface);
-    if (params?.limit) p.set("limit", String(params.limit));
-    if (params?.offset) p.set("offset", String(params.offset));
+    p.set("project_id", params.project_id);
+    if (params.source_system) p.set("source_system", params.source_system);
+    if (params.status) p.set("status", params.status);
+    if (params.affected_surface) p.set("affected_surface", params.affected_surface);
+    if (params.limit) p.set("limit", String(params.limit));
+    if (params.offset) p.set("offset", String(params.offset));
     return get<{ proposals: ImprovementProposal[]; count: number; limit: number; offset: number }>(
       `/api/improvement-governance/proposals?${p}`
     );
   },
-  get: (id: string) => get<{ proposal: ImprovementProposal }>(`/api/improvement-governance/proposals/${id}`),
+  get: (id: string, projectId: string) =>
+    get<{ proposal: ImprovementProposal }>(`/api/improvement-governance/proposals/${id}?${projectQuery(projectId)}`),
   create: (data: ImprovementProposalCreateRequest) =>
     post<{ proposal: ImprovementProposal }>("/api/improvement-governance/proposals", data),
-  approve: (id: string, note = "") =>
-    post<{ proposal: ImprovementProposal }>(`/api/improvement-governance/proposals/${id}/approve`, { note }),
-  apply: (id: string, evidence: Record<string, any> = {}) =>
-    post<{ proposal: ImprovementProposal }>(`/api/improvement-governance/proposals/${id}/apply`, { evidence }),
-  reject: (id: string, reason = "") =>
-    post<{ proposal: ImprovementProposal }>(`/api/improvement-governance/proposals/${id}/reject`, { reason }),
-  revert: (id: string, reason = "") =>
-    post<{ proposal: ImprovementProposal }>(`/api/improvement-governance/proposals/${id}/revert`, { reason }),
-  quarantine: (id: string, reason = "") =>
-    post<{ proposal: ImprovementProposal }>(`/api/improvement-governance/proposals/${id}/quarantine`, { reason }),
+  approve: (id: string, projectId: string, note = "") =>
+    post<{ proposal: ImprovementProposal }>(`/api/improvement-governance/proposals/${id}/approve?${projectQuery(projectId)}`, { note }),
+  apply: (id: string, projectId: string, evidence: Record<string, any> = {}) =>
+    post<{ proposal: ImprovementProposal }>(`/api/improvement-governance/proposals/${id}/apply?${projectQuery(projectId)}`, { evidence }),
+  reject: (id: string, projectId: string, reason = "") =>
+    post<{ proposal: ImprovementProposal }>(`/api/improvement-governance/proposals/${id}/reject?${projectQuery(projectId)}`, { reason }),
+  revert: (id: string, projectId: string, reason = "") =>
+    post<{ proposal: ImprovementProposal }>(`/api/improvement-governance/proposals/${id}/revert?${projectQuery(projectId)}`, { reason }),
+  quarantine: (id: string, projectId: string, reason = "") =>
+    post<{ proposal: ImprovementProposal }>(`/api/improvement-governance/proposals/${id}/quarantine?${projectQuery(projectId)}`, { reason }),
   evaluation: (
     id: string,
+    projectId: string,
     data: ProposalEvaluationRequest
-  ) => post<{ proposal: ImprovementProposal }>(`/api/improvement-governance/proposals/${id}/evaluation`, data),
-  sandboxEvaluation: (id: string, data: ProposalSandboxEvaluationRequest = {}) =>
+  ) => post<{ proposal: ImprovementProposal }>(`/api/improvement-governance/proposals/${id}/evaluation?${projectQuery(projectId)}`, data),
+  sandboxEvaluation: (id: string, projectId: string, data: ProposalSandboxEvaluationRequest = {}) =>
     post<{ proposal: ImprovementProposal; sandbox_evaluation: ProposalSandboxEvaluation }>(
-      `/api/improvement-governance/proposals/${id}/sandbox-evaluation`,
+      `/api/improvement-governance/proposals/${id}/sandbox-evaluation?${projectQuery(projectId)}`,
       data
     ),
   featureContract: () =>

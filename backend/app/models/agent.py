@@ -134,6 +134,7 @@ class A2AMessage(Base):
     __tablename__ = "a2a_messages"
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    project_id: Mapped[str] = mapped_column(String(36), default="", index=True)
     from_agent_id: Mapped[str] = mapped_column(String(36), nullable=False)
     to_agent_id: Mapped[str | None] = mapped_column(String(36), nullable=True)  # null = broadcast
     message_type: Mapped[str] = mapped_column(String(50), nullable=False)  # consult, finding, status, request, response
@@ -148,6 +149,7 @@ class A2AMessage(Base):
         import json
         return {
             "id": self.id,
+            "project_id": self.project_id or "",
             "from_agent_id": self.from_agent_id,
             "to_agent_id": self.to_agent_id,
             "message_type": self.message_type,

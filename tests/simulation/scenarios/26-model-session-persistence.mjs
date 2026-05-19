@@ -8,26 +8,27 @@ export async function run(ctx) {
   const checks = [];
   const fixedTestModel = ctx.fixedTestModel || process.env.ISTARA_FIXED_LLM_TEST_MODEL || null;
 
-  // ── 1. System status reports correct provider and model ──
+  // ── 1. Admin model inventory reports correct provider and model ──
   let initialModel = null;
   let provider = null;
+  let models = [];
   try {
-    const status = await api.get("/api/settings/status");
-    provider = status.provider;
-    initialModel = status.config?.model;
+    const inventory = await api.get("/api/settings/models");
+    provider = inventory.provider;
+    initialModel = inventory.active_model;
+    models = inventory.models || [];
     checks.push({
-      name: "System reports active model",
+      name: "Model inventory reports active model",
       passed: !!initialModel && initialModel !== "default",
       detail: `provider=${provider}, model=${initialModel}`,
     });
   } catch (e) {
-    checks.push({ name: "System reports active model", passed: false, detail: e.message });
+    checks.push({ name: "Model inventory reports active model", passed: false, detail: e.message });
   }
 
   // ── 2. Model list returns available models ──
-  let models = [];
   try {
-    const mdl = await api.get("/api/settings/models");
+    const mdl = models.length > 0 ? { models, status: "online" } : await api.get("/api/settings/models");
     models = mdl.models || [];
     checks.push({
       name: "Model list available",
@@ -77,14 +78,14 @@ export async function run(ctx) {
   // ── 5. Verify model switch reflected in status ──
   if (switchedModel) {
     try {
-      const status = await api.get("/api/settings/status");
+      const inventory = await api.get("/api/settings/models");
       checks.push({
-        name: "Model switch reflected in status",
-        passed: status.config?.model === switchedModel,
-        detail: `expected=${switchedModel}, got=${status.config?.model}`,
+        name: "Model switch reflected in inventory",
+        passed: inventory.active_model === switchedModel,
+        detail: `expected=${switchedModel}, got=${inventory.active_model}`,
       });
     } catch (e) {
-      checks.push({ name: "Model switch reflected in status", passed: false, detail: e.message });
+      checks.push({ name: "Model switch reflected in inventory", passed: false, detail: e.message });
     }
   }
 
@@ -248,13 +249,13 @@ export async function run(ctx) {
     }
   }
 
-  // ── 9. Provider detection is consistent ──
+  // ── 9. Provider inventory is consistent ──
   try {
-    const status = await api.get("/api/settings/status");
+    const inventory = await api.get("/api/settings/models");
     checks.push({
       name: "Provider consistent after operations",
-      passed: status.provider === provider,
-      detail: `expected=${provider}, got=${status.provider}`,
+      passed: inventory.provider === provider,
+      detail: `expected=${provider}, got=${inventory.provider}`,
     });
   } catch (e) {
     checks.push({ name: "Provider consistent after operations", passed: false, detail: e.message });

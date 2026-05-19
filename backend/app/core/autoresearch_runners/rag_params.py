@@ -166,7 +166,12 @@ class RAGParamsRunner(BaseLoopRunner):
         ]
 
         try:
-            response = await llm_router.chat(messages, temperature=0.7, max_tokens=200)
+            response = await llm_router.chat(
+                messages,
+                temperature=0.7,
+                max_tokens=200,
+                project_id=self._project_id,
+            )
             content = response.get("message", {}).get("content", "")
             # Parse JSON from response
             import json

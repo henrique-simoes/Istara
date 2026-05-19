@@ -71,7 +71,7 @@ export default function AtomicDrilldown({ projectId, finding: initialFinding, on
   const loadChain = useCallback(async (type: string, id: string) => {
     setLoading(true);
     try {
-      const result = await findingsApi.evidenceChain(type, id);
+      const result = await findingsApi.evidenceChain(type, id, projectId);
       setChain(result.chain || EMPTY_CHAIN);
       setDiagnostics(result.diagnostics || {});
     } catch {
@@ -137,7 +137,7 @@ export default function AtomicDrilldown({ projectId, finding: initialFinding, on
 
     setLinkingId(linkId);
     try {
-      await findingsApi.linkEvidence(activeFinding.type, activeFinding.id, linkId, linkInfo.linkType);
+      await findingsApi.linkEvidence(activeFinding.type, activeFinding.id, linkId, linkInfo.linkType, projectId);
       // Refresh the chain to show the new link
       await loadChain(activeFinding.type, activeFinding.id);
       // Remove the linked item from candidates

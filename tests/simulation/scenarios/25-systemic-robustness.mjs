@@ -54,7 +54,8 @@ export async function run(ctx) {
   // ── 2. Verify DAG health endpoint works for our session ──
   if (sessionId) {
     try {
-      const health = await api.get(`/api/context-dag/${sessionId}/health`);
+      const dagProjectParam = new URLSearchParams({ project_id: projectId }).toString();
+      const health = await api.get(`/api/context-dag/${sessionId}/health?${dagProjectParam}`);
       checks.push({
         name: "DAG health before deletion",
         passed: typeof health.total_messages === "number",
@@ -80,7 +81,8 @@ export async function run(ctx) {
   // ── 4. Verify session was cascade-deleted ──
   if (sessionId) {
     try {
-      const res = await fetch(`http://localhost:8000/api/sessions/detail/${sessionId}`, { headers: api._headers() });
+      const sessionProjectParam = new URLSearchParams({ project_id: projectId }).toString();
+      const res = await fetch(`http://localhost:8000/api/sessions/detail/${sessionId}?${sessionProjectParam}`, { headers: api._headers() });
       checks.push({
         name: "Session cascade-deleted",
         passed: res.status === 404,
@@ -110,7 +112,8 @@ export async function run(ctx) {
   // ── 6. Verify DAG nodes were cleaned up (session gone → DAG nodes gone) ──
   if (sessionId) {
     try {
-      const structure = await api.get(`/api/context-dag/${sessionId}`);
+      const dagProjectParam = new URLSearchParams({ project_id: projectId }).toString();
+      const structure = await api.get(`/api/context-dag/${sessionId}?${dagProjectParam}`);
       const nodesEmpty = structure.nodes && structure.nodes.length === 0;
       checks.push({
         name: "DAG nodes cleaned on session deletion",

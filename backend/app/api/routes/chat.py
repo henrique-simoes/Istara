@@ -20,12 +20,13 @@ import uuid
 from datetime import datetime, timezone
 from pathlib import Path
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request, UploadFile, File
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, Request, UploadFile
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.api.agent_project_scope import require_agent_assignable_to_project
 from app.config import settings
 from app.core.agent import agent
 from app.core.agent_identity import load_agent_identity, get_agent_display_name
@@ -34,13 +35,12 @@ from app.core.prompt_rag import compose_dynamic_prompt, compose_keyword_prompt
 from app.core.context_summarizer import context_summarizer
 from app.core.llm_thinking import ThinkingMode, apply_thinking_control, normalize_thinking_mode
 from app.core.ollama import ollama
-from app.core.permissions import get_subject, get_visible_project_or_404, require_project_access
+from app.core.permissions import get_visible_project_or_404, require_project_access
 from app.core.rag import build_augmented_prompt, retrieve_context
 from app.core.token_counter import context_guard
 from app.models.database import get_db, async_session
 
 _guard = ContentGuard()
-from app.models.agent import Agent
 from app.models.message import Message
 from app.models.project import Project
 from app.models.session import ChatSession, INFERENCE_PRESETS
@@ -128,6 +128,7 @@ async def _generate_native_tools(
             temperature=llm_temperature,
             max_tokens=llm_max_tokens,
             tools=OPENAI_TOOLS,
+            project_id=request.project_id,
         ):
             if isinstance(chunk, dict) and chunk.get("tool_calls"):
                 tool_calls_payload = chunk
@@ -269,6 +270,7 @@ async def _generate_text_fallback(
             model=llm_model,
             temperature=llm_temperature,
             max_tokens=llm_max_tokens,
+            project_id=request.project_id,
         ):
             if isinstance(chunk, str):
                 full_text.append(chunk)
@@ -463,6 +465,14 @@ async def chat(request: ChatRequest, http_request: Request, db: AsyncSession = D
         # persona sections based on the user's message)
         session_agent_id = session.agent_id
         if session_agent_id:
+            assigned_agent = await require_agent_assignable_to_project(
+                db,
+                http_request,
+                session_agent_id,
+                request.project_id,
+                min_role="viewer",
+            )
+            session_agent_id = assigned_agent.id if assigned_agent else None
             try:
                 agent_identity_prompt = await compose_dynamic_prompt(
                     session_agent_id,
@@ -480,12 +490,8 @@ async def chat(request: ChatRequest, http_request: Request, db: AsyncSession = D
                 )
             else:
                 # Fallback: load system_prompt from DB agent record
-                agent_result = await db.execute(
-                    select(Agent).where(Agent.id == session_agent_id)
-                )
-                db_agent = agent_result.scalar_one_or_none()
-                if db_agent and db_agent.system_prompt:
-                    agent_identity_prompt = db_agent.system_prompt
+                if assigned_agent and assigned_agent.system_prompt:
+                    agent_identity_prompt = assigned_agent.system_prompt
 
         # Update session message count and last_message_at
         session.message_count = (session.message_count or 0) + 1
@@ -856,15 +862,20 @@ async def get_chat_history(
 async def transcribe_voice(
     request: Request,
     audio: UploadFile = File(...),
-    language: str | None = None,
+    project_id: str = Form(...),
+    language: str | None = Form(None),
+    db: AsyncSession = Depends(get_db),
 ):
     """Transcribe voice input from chat mic button.
 
     Accepts audio files (wav, mp3, ogg, m4a, flac) and returns
     transcribed text with ICR confidence scores.
     """
-    if settings.team_mode and get_subject(request).role == "viewer":
-        raise HTTPException(status_code=403, detail="Viewers cannot use chat voice transcription")
+    scoped_project_id = project_id.strip()
+    if not scoped_project_id:
+        raise HTTPException(status_code=400, detail="project_id is required")
+
+    await get_visible_project_or_404(db, request, scoped_project_id, min_role="researcher")
 
     try:
         # Save uploaded audio to temp file
@@ -907,11 +918,19 @@ class VoiceTranscribeRequest(BaseModel):
     project_id: str
     dummy: bool = False
 
+    @field_validator("project_id")
+    @classmethod
+    def normalize_project_id(cls, value: str) -> str:
+        project_id = value.strip()
+        if not project_id:
+            raise ValueError("project_id is required")
+        return project_id
+
 
 @router.post("/chat/voice-transcribe")
 async def voice_transcribe(request: VoiceTranscribeRequest, http_request: Request, db: AsyncSession = Depends(get_db)):
     """Voice transcription endpoint (Phase Alpha)."""
-    await require_project_access(db, http_request, request.project_id, min_role="researcher")
+    await get_visible_project_or_404(db, http_request, request.project_id, min_role="researcher")
     if request.dummy:
         return {"status": "success", "text": "Mock transcription"}
 

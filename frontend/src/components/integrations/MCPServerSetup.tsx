@@ -5,10 +5,11 @@ import { X, CheckCircle2, AlertCircle, Server, RefreshCw } from "lucide-react";
 import { mcp as mcpApi } from "@/lib/api";
 
 interface MCPServerSetupProps {
+  projectId: string | null;
   onClose: () => void;
 }
 
-export default function MCPServerSetup({ onClose }: MCPServerSetupProps) {
+export default function MCPServerSetup({ projectId, onClose }: MCPServerSetupProps) {
   const [name, setName] = useState("");
   const [url, setUrl] = useState("");
   const [transport] = useState("http");
@@ -21,6 +22,7 @@ export default function MCPServerSetup({ onClose }: MCPServerSetupProps) {
   const [createdServerId, setCreatedServerId] = useState<string | null>(null);
 
   const handleTest = async () => {
+    if (!projectId) return;
     setTesting(true);
     setTestResult(null);
     setTestError(null);
@@ -43,11 +45,12 @@ export default function MCPServerSetup({ onClose }: MCPServerSetupProps) {
         url,
         transport,
         headers: parsedHeaders,
+        project_id: projectId,
       });
       serverId = server.id;
 
       // Try discovery
-      const discovery = await mcpApi.clients.discover(server.id);
+      const discovery = await mcpApi.clients.discover(server.id, projectId);
       if (discovery?.count === 0) {
         throw new Error("Connected, but no MCP tools were discovered.");
       }
@@ -56,7 +59,7 @@ export default function MCPServerSetup({ onClose }: MCPServerSetupProps) {
     } catch (e: any) {
       if (serverId) {
         try {
-          await mcpApi.clients.delete(serverId);
+          await mcpApi.clients.delete(serverId, projectId);
         } catch {
           // Best-effort cleanup. The connection error remains the useful signal.
         }
@@ -69,6 +72,7 @@ export default function MCPServerSetup({ onClose }: MCPServerSetupProps) {
   };
 
   const handleSave = async () => {
+    if (!projectId) return;
     if (testResult === "success" && createdServerId) {
       // Already created during test
       setSaved(true);
@@ -87,6 +91,7 @@ export default function MCPServerSetup({ onClose }: MCPServerSetupProps) {
         url,
         transport,
         headers: parsedHeaders,
+        project_id: projectId,
       });
       setSaved(true);
     } catch (e: any) {
@@ -194,7 +199,7 @@ export default function MCPServerSetup({ onClose }: MCPServerSetupProps) {
         <div className="flex items-center justify-end gap-2 px-6 py-4 border-t border-slate-200 dark:border-slate-800">
           <button
             onClick={handleTest}
-            disabled={!url.trim() || testing}
+            disabled={!url.trim() || !projectId || testing}
             className="flex items-center gap-1.5 px-3 py-2 text-sm text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-700 disabled:opacity-50 transition-colors"
           >
             <RefreshCw size={14} className={testing ? "animate-spin" : ""} />
@@ -202,7 +207,7 @@ export default function MCPServerSetup({ onClose }: MCPServerSetupProps) {
           </button>
           <button
             onClick={handleSave}
-            disabled={!url.trim() || saving}
+            disabled={!url.trim() || !projectId || saving}
             className="px-4 py-2 text-sm bg-istara-600 text-white rounded-lg hover:bg-istara-700 disabled:opacity-50 transition-colors"
           >
             {saving ? "Saving..." : "Save Server"}

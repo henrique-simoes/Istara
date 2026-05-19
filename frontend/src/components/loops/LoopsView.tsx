@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 import { Activity, Clock, RefreshCw, Plus, History } from "lucide-react";
 import { useLoopsStore } from "@/stores/loopsStore";
+import { useProjectStore } from "@/stores/projectStore";
 import { cn } from "@/lib/utils";
 import LoopOverviewTab from "./LoopOverviewTab";
 import SchedulesTab from "./SchedulesTab";
@@ -23,11 +24,12 @@ const TABS: { id: LoopsTab; icon: any; label: string }[] = [
 
 export default function LoopsView() {
   const { activeTab, setActiveTab, fetchOverview, fetchHealth } = useLoopsStore();
+  const { activeProjectId } = useProjectStore();
 
   useEffect(() => {
-    fetchOverview();
-    fetchHealth();
-  }, [fetchOverview, fetchHealth]);
+    fetchOverview(activeProjectId);
+    fetchHealth(activeProjectId);
+  }, [activeProjectId, fetchOverview, fetchHealth]);
 
   const renderTab = () => {
     switch (activeTab) {

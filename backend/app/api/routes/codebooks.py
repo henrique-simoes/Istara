@@ -3,7 +3,7 @@
 import json
 import uuid
 
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -55,6 +55,55 @@ class CodeUpdate(BaseModel):
     kappa: float | None = None
 
 
+def _require_project_id(project_id: str | None) -> str:
+    scoped_project_id = (project_id or "").strip()
+    if not scoped_project_id:
+        raise HTTPException(status_code=400, detail="project_id is required")
+    return scoped_project_id
+
+
+async def _get_project_codebook_or_404(
+    db: AsyncSession,
+    request: Request,
+    codebook_id: str,
+    project_id: str | None,
+    *,
+    min_role: str,
+) -> Codebook:
+    scoped_project_id = _require_project_id(project_id)
+    await require_project_access(db, request, scoped_project_id, min_role=min_role)
+    result = await db.execute(
+        select(Codebook)
+        .where(Codebook.id == codebook_id, Codebook.project_id == scoped_project_id)
+        .options(selectinload(Codebook.codes))
+    )
+    codebook = result.scalar_one_or_none()
+    if not codebook:
+        raise HTTPException(status_code=404, detail="Codebook not found")
+    return codebook
+
+
+async def _get_project_code_or_404(
+    db: AsyncSession,
+    request: Request,
+    code_id: str,
+    project_id: str | None,
+    *,
+    min_role: str,
+) -> Code:
+    scoped_project_id = _require_project_id(project_id)
+    await require_project_access(db, request, scoped_project_id, min_role=min_role)
+    result = await db.execute(
+        select(Code)
+        .join(Codebook, Codebook.id == Code.codebook_id)
+        .where(Code.id == code_id, Codebook.project_id == scoped_project_id)
+    )
+    code = result.scalar_one_or_none()
+    if not code:
+        raise HTTPException(status_code=404, detail="Code not found")
+    return code
+
+
 # --- Codebook endpoints ---
 
 @router.get("/codebooks")
@@ -93,17 +142,16 @@ async def create_codebook(data: CodebookCreate, request: Request, db: AsyncSessi
 
 
 @router.get("/codebooks/{codebook_id}")
-async def get_codebook(codebook_id: str, request: Request, db: AsyncSession = Depends(get_db)):
+async def get_codebook(
+    codebook_id: str,
+    request: Request,
+    project_id: str | None = Query(default=None),
+    db: AsyncSession = Depends(get_db),
+):
     """Get a codebook with all its codes."""
-    result = await db.execute(
-        select(Codebook)
-        .where(Codebook.id == codebook_id)
-        .options(selectinload(Codebook.codes))
+    codebook = await _get_project_codebook_or_404(
+        db, request, codebook_id, project_id, min_role="viewer"
     )
-    codebook = result.scalar_one_or_none()
-    if not codebook:
-        raise HTTPException(status_code=404, detail="Codebook not found")
-    await require_project_access(db, request, codebook.project_id, min_role="viewer")
     data = codebook.to_dict()
     data["codes"] = [c.to_dict() for c in codebook.codes]
     return data
@@ -111,14 +159,16 @@ async def get_codebook(codebook_id: str, request: Request, db: AsyncSession = De
 
 @router.patch("/codebooks/{codebook_id}")
 async def update_codebook(
-    codebook_id: str, data: CodebookUpdate, request: Request, db: AsyncSession = Depends(get_db)
+    codebook_id: str,
+    data: CodebookUpdate,
+    request: Request,
+    project_id: str | None = Query(default=None),
+    db: AsyncSession = Depends(get_db),
 ):
     """Update a codebook."""
-    result = await db.execute(select(Codebook).where(Codebook.id == codebook_id))
-    codebook = result.scalar_one_or_none()
-    if not codebook:
-        raise HTTPException(status_code=404, detail="Codebook not found")
-    await require_project_access(db, request, codebook.project_id, min_role="researcher")
+    codebook = await _get_project_codebook_or_404(
+        db, request, codebook_id, project_id, min_role="researcher"
+    )
     for field, value in data.model_dump(exclude_unset=True).items():
         setattr(codebook, field, value)
     await db.commit()
@@ -127,13 +177,16 @@ async def update_codebook(
 
 
 @router.delete("/codebooks/{codebook_id}", status_code=204)
-async def delete_codebook(codebook_id: str, request: Request, db: AsyncSession = Depends(get_db)):
+async def delete_codebook(
+    codebook_id: str,
+    request: Request,
+    project_id: str | None = Query(default=None),
+    db: AsyncSession = Depends(get_db),
+):
     """Delete a codebook and all its codes."""
-    result = await db.execute(select(Codebook).where(Codebook.id == codebook_id))
-    codebook = result.scalar_one_or_none()
-    if not codebook:
-        raise HTTPException(status_code=404, detail="Codebook not found")
-    await require_project_access(db, request, codebook.project_id, min_role="researcher")
+    codebook = await _get_project_codebook_or_404(
+        db, request, codebook_id, project_id, min_role="researcher"
+    )
     await db.delete(codebook)
     await db.commit()
 
@@ -141,15 +194,19 @@ async def delete_codebook(codebook_id: str, request: Request, db: AsyncSession =
 # --- Code endpoints ---
 
 @router.post("/codes", status_code=201)
-async def create_code(data: CodeCreate, request: Request, db: AsyncSession = Depends(get_db)):
+async def create_code(
+    data: CodeCreate,
+    request: Request,
+    project_id: str | None = Query(default=None),
+    db: AsyncSession = Depends(get_db),
+):
     """Add a code to a codebook."""
-    codebook = await db.get(Codebook, data.codebook_id)
-    if not codebook:
-        raise HTTPException(status_code=404, detail="Codebook not found")
-    await require_project_access(db, request, codebook.project_id, min_role="researcher")
+    codebook = await _get_project_codebook_or_404(
+        db, request, data.codebook_id, project_id, min_role="researcher"
+    )
     code = Code(
         id=str(uuid.uuid4()),
-        codebook_id=data.codebook_id,
+        codebook_id=codebook.id,
         name=data.name,
         definition=data.definition,
         inclusion_criteria=data.inclusion_criteria,
@@ -166,17 +223,16 @@ async def create_code(data: CodeCreate, request: Request, db: AsyncSession = Dep
 
 @router.patch("/codes/{code_id}")
 async def update_code(
-    code_id: str, data: CodeUpdate, request: Request, db: AsyncSession = Depends(get_db)
+    code_id: str,
+    data: CodeUpdate,
+    request: Request,
+    project_id: str | None = Query(default=None),
+    db: AsyncSession = Depends(get_db),
 ):
     """Update a code."""
-    result = await db.execute(select(Code).where(Code.id == code_id))
-    code = result.scalar_one_or_none()
-    if not code:
-        raise HTTPException(status_code=404, detail="Code not found")
-    codebook = await db.get(Codebook, code.codebook_id)
-    if not codebook:
-        raise HTTPException(status_code=404, detail="Codebook not found")
-    await require_project_access(db, request, codebook.project_id, min_role="researcher")
+    code = await _get_project_code_or_404(
+        db, request, code_id, project_id, min_role="researcher"
+    )
     update_data = data.model_dump(exclude_unset=True)
     if "examples" in update_data:
         update_data["examples"] = json.dumps(update_data["examples"])
@@ -188,15 +244,15 @@ async def update_code(
 
 
 @router.delete("/codes/{code_id}", status_code=204)
-async def delete_code(code_id: str, request: Request, db: AsyncSession = Depends(get_db)):
+async def delete_code(
+    code_id: str,
+    request: Request,
+    project_id: str | None = Query(default=None),
+    db: AsyncSession = Depends(get_db),
+):
     """Delete a code."""
-    result = await db.execute(select(Code).where(Code.id == code_id))
-    code = result.scalar_one_or_none()
-    if not code:
-        raise HTTPException(status_code=404, detail="Code not found")
-    codebook = await db.get(Codebook, code.codebook_id)
-    if not codebook:
-        raise HTTPException(status_code=404, detail="Codebook not found")
-    await require_project_access(db, request, codebook.project_id, min_role="researcher")
+    code = await _get_project_code_or_404(
+        db, request, code_id, project_id, min_role="researcher"
+    )
     await db.delete(code)
     await db.commit()

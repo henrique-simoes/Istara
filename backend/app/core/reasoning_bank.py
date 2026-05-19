@@ -310,6 +310,7 @@ class ReasoningMemoryService:
         agent_id: str | None = None,
         source_kinds: list[str] | None = None,
         limit: int = 5,
+        include_global: bool = False,
         db: AsyncSession | None = None,
     ) -> list[dict]:
         query_tokens = _tokens(query)
@@ -319,12 +320,15 @@ class ReasoningMemoryService:
         async def _retrieve(session: AsyncSession) -> list[dict]:
             stmt = select(ReasoningMemoryItem).where(ReasoningMemoryItem.status == ACTIVE_STATUS)
             if project_id:
-                stmt = stmt.where(
-                    or_(
-                        ReasoningMemoryItem.project_id == project_id,
-                        ReasoningMemoryItem.project_id == "",
+                if include_global:
+                    stmt = stmt.where(
+                        or_(
+                            ReasoningMemoryItem.project_id == project_id,
+                            ReasoningMemoryItem.project_id == "",
+                        )
                     )
-                )
+                else:
+                    stmt = stmt.where(ReasoningMemoryItem.project_id == project_id)
             else:
                 stmt = stmt.where(ReasoningMemoryItem.project_id == "")
             if agent_id:
@@ -390,6 +394,7 @@ class ReasoningMemoryService:
         source_kinds: list[str] | None = None,
         limit: int = 5,
         max_chars: int = 1500,
+        include_global: bool = False,
     ) -> str:
         memories = await self.retrieve(
             project_id=project_id,
@@ -397,6 +402,7 @@ class ReasoningMemoryService:
             agent_id=agent_id,
             source_kinds=source_kinds,
             limit=limit,
+            include_global=include_global,
         )
         if not memories:
             return ""

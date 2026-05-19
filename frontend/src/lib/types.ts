@@ -264,6 +264,7 @@ export interface A2AMessage {
   message_type: string;
   content: string;
   metadata: Record<string, unknown>;
+  project_id?: string;
   read: boolean;
   created_at: string;
 }
@@ -480,7 +481,7 @@ export interface InterfacesStatus {
   onboarding_needed: boolean;
   screens_count: number;
   briefs_count: number;
-  scope?: "project" | "global" | "integration-only";
+  scope: "project";
 }
 
 // --- Loops & Schedule ---
@@ -490,6 +491,7 @@ export type ExecutionStatus = "success" | "failure" | "running" | "skipped";
 
 export interface LoopExecution {
   id: string; source_type: LoopSourceType; source_id: string; source_name: string;
+  project_id?: string;
   status: ExecutionStatus; started_at: string; finished_at: string | null;
   duration_ms: number | null; error_message: string; findings_count: number;
   metadata: Record<string, unknown>; metadata_json?: Record<string, unknown>; created_at: string;
@@ -497,6 +499,7 @@ export interface LoopExecution {
 
 export interface AgentLoopConfig {
   id: string; agent_id: string; loop_interval_seconds: number; paused: boolean;
+  scope: string; project_id: string;
   skills_to_run: string[]; project_filter: string; last_cycle_at: string | null;
   cycle_count: number;
 }
@@ -510,6 +513,7 @@ export interface ScheduledLoop {
 
 export interface LoopHealthItem {
   source_type: LoopSourceType; source_id: string; source_name: string;
+  project_id: string;
   status: LoopStatus; interval_seconds: number | null;
   last_execution_at: string | null; next_expected_at: string | null;
   behind_by_seconds: number | null; cron_expression?: string; skill_name?: string;
@@ -517,7 +521,7 @@ export interface LoopHealthItem {
 }
 
 // --- Notifications ---
-export type NotificationCategory = "agent_status" | "task_progress" | "finding_created" | "file_processed" | "suggestion" | "resource_throttle" | "scheduled_reminder" | "document" | "loop_execution" | "system";
+export type NotificationCategory = "agent_status" | "agent_promotion" | "task_progress" | "finding_created" | "file_processed" | "suggestion" | "resource_throttle" | "scheduled_reminder" | "document" | "loop_execution" | "system";
 export type NotificationSeverity = "info" | "warning" | "error" | "success";
 
 export interface AppNotification {
@@ -562,6 +566,7 @@ export interface BackupConfig {
 
 export interface MetaProposal {
   id: string;
+  project_id: string;
   target_system: string;
   parameter_path: string;
   current_value: any;
@@ -579,6 +584,7 @@ export interface MetaProposal {
 
 export interface MetaVariant {
   id: string;
+  project_id: string;
   proposal_id: string;
   target_system: string;
   parameter_path: string;
@@ -594,6 +600,10 @@ export interface MetaVariant {
 
 export interface MetaHyperagentStatus {
   enabled: boolean;
+  configured_enabled?: boolean;
+  running: boolean;
+  project_id: string;
+  active_project_id?: string | null;
   experimental: boolean;
   pending_proposals: number;
   active_variants: number;
@@ -717,6 +727,7 @@ export interface SurveyLink {
 
 export interface MCPServerConfig {
   id: string;
+  project_id: string;
   name: string;
   url: string;
   transport: "http" | "stdio" | "websocket";
@@ -745,6 +756,7 @@ export interface MCPAuditEntry {
   id: string;
   timestamp: string;
   tool_name: string;
+  project_id: string;
   caller_info: string;
   access_granted: boolean;
   result_summary: string;

@@ -45,6 +45,20 @@ export default function CodeReviewQueue({ projectId }: CodeReviewQueueProps) {
     loadPending();
   }, [loadPending]);
 
+  const handleReview = useCallback(async (
+    applicationId: string,
+    status: "approved" | "rejected"
+  ) => {
+    setReviewingId(applicationId);
+    try {
+      await codeAppApi.review(applicationId, status, projectId);
+      setItems((prev) => prev.filter((item) => item.id !== applicationId));
+    } catch (err) {
+      console.error("Failed to review code application:", err);
+    }
+    setReviewingId(null);
+  }, [projectId]);
+
   // Keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -74,21 +88,7 @@ export default function CodeReviewQueue({ projectId }: CodeReviewQueueProps) {
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [items]);
-
-  const handleReview = async (
-    applicationId: string,
-    status: "approved" | "rejected"
-  ) => {
-    setReviewingId(applicationId);
-    try {
-      await codeAppApi.review(applicationId, status);
-      setItems((prev) => prev.filter((item) => item.id !== applicationId));
-    } catch (err) {
-      console.error("Failed to review code application:", err);
-    }
-    setReviewingId(null);
-  };
+  }, [items, handleReview]);
 
   const handleBulkApprove = async () => {
     setBulkApproving(true);

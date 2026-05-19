@@ -353,7 +353,7 @@ export async function run(ctx) {
 
   // ── 14. Design decisions endpoint ──
   try {
-    const decisions = await api.get("/api/findings/design-decisions");
+    const decisions = await api.get(`/api/findings/design-decisions?project_id=${projectId}`);
     checks.push({
       name: "GET /api/findings/design-decisions returns 200",
       passed: true,
@@ -400,7 +400,7 @@ export async function run(ctx) {
     try { await fetch(`http://localhost:8000/api/interfaces/screens/${id}`, { method: "DELETE", headers: api._headers() }); } catch {}
   }
   for (const id of cleanup.decisionIds) {
-    try { await api.delete(`/api/findings/design-decisions/${id}`); } catch {}
+    try { await api.delete(`/api/findings/design-decisions/${id}?project_id=${projectId}`); } catch {}
   }
 
   return {

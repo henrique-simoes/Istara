@@ -1,11 +1,15 @@
 """Tests for Chat API routes — POST /api/chat and GET /api/chat/history."""
 
 import pytest
+import uuid
 from httpx import AsyncClient, ASGITransport
 from app.main import app
 from app.api.routes.chat import ChatRequest
 from app.config import settings
-from app.models.database import init_db
+from app.models.agent import Agent
+from app.models.database import async_session, init_db
+from app.models.project import Project
+from app.models.session import ChatSession
 from app.core.auth import create_token
 
 
@@ -146,6 +150,56 @@ async def test_chat_rejects_blank_message_before_project_lookup():
             headers={"Authorization": f"Bearer {token}"},
         )
         assert response.status_code == 422
+
+
+@pytest.mark.asyncio
+async def test_chat_rejects_session_with_cross_project_agent_before_llm():
+    """Chat must not compose prompts from a session's stale foreign agent id."""
+    await init_db()
+    if not settings.jwt_secret:
+        settings.jwt_secret = "test-secret"
+
+    token = create_token("user1", "testuser", "admin")
+    project_id = str(uuid.uuid4())
+    hidden_project_id = str(uuid.uuid4())
+    hidden_agent_id = str(uuid.uuid4())
+    session_id = str(uuid.uuid4())
+    async with async_session() as db:
+        db.add_all(
+            [
+                Project(id=project_id, name="Chat Agent Project A"),
+                Project(id=hidden_project_id, name="Chat Agent Project B"),
+                Agent(
+                    id=hidden_agent_id,
+                    name="Hidden Agent",
+                    system_prompt="Hidden prompt should never be loaded",
+                    scope="project",
+                    project_id=hidden_project_id,
+                ),
+                ChatSession(
+                    id=session_id,
+                    project_id=project_id,
+                    title="Stale hidden agent session",
+                    agent_id=hidden_agent_id,
+                ),
+            ]
+        )
+        await db.commit()
+
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        response = await ac.post(
+            "/api/chat",
+            json={
+                "message": "hello",
+                "project_id": project_id,
+                "session_id": session_id,
+            },
+            headers={"Authorization": f"Bearer {token}"},
+        )
+
+    assert response.status_code == 404
+    assert response.json()["detail"] == "Agent not found"
 
 
 def test_chat_request_accepts_only_supported_thinking_modes():

@@ -37,10 +37,17 @@ export const projects = {
 
 // --- Tasks ---
 
+const taskScopeParams = (projectId: string, values: Record<string, string | number | boolean | undefined | null> = {}) => {
+  const params = new URLSearchParams({ project_id: projectId });
+  for (const [key, value] of Object.entries(values)) {
+    if (value !== undefined && value !== null) params.set(key, String(value));
+  }
+  return params.toString();
+};
+
 export const tasks = {
-  list: (projectId?: string, status?: string) => {
-    const params = new URLSearchParams();
-    if (projectId) params.set("project_id", projectId);
+  list: (projectId: string, status?: string) => {
+    const params = new URLSearchParams({ project_id: projectId });
     if (status) params.set("status", status);
     return request<any[]>(`/api/tasks?${params}`);
   },
@@ -58,17 +65,19 @@ export const tasks = {
     user_context?: string;
     agent_id?: string;
   }) => request<any>("/api/tasks", { method: "POST", body: JSON.stringify(data) }),
-  update: (id: string, data: Record<string, unknown>) =>
-    request<any>(`/api/tasks/${id}`, { method: "PATCH", body: JSON.stringify(data) }),
-  move: (id: string, status: string) =>
-    request<any>(`/api/tasks/${id}/move?status=${status}`, { method: "POST" }),
-  delete: (id: string) => del(`/api/tasks/${id}`),
-  attach: (taskId: string, documentId: string, direction: "input" | "output" = "input") =>
-    post<{ attached: boolean }>(`/api/tasks/${taskId}/attach?document_id=${documentId}&direction=${direction}`, {}),
-  detach: (taskId: string, documentId: string, direction: "input" | "output" = "input") =>
-    post<{ detached: boolean }>(`/api/tasks/${taskId}/detach?document_id=${documentId}&direction=${direction}`, {}),
-  approve: (taskId: string, data: { reviewed_by?: string; note?: string } = {}) =>
-    post<{ task: Task; event: TaskReviewEvent }>(`/api/tasks/${taskId}/review/approve`, data),
+  get: (id: string, projectId: string) =>
+    get<any>(`/api/tasks/${id}?${taskScopeParams(projectId)}`),
+  update: (id: string, data: Record<string, unknown>, projectId: string) =>
+    request<any>(`/api/tasks/${id}?${taskScopeParams(projectId)}`, { method: "PATCH", body: JSON.stringify(data) }),
+  move: (id: string, status: string, projectId: string, position?: number) =>
+    request<any>(`/api/tasks/${id}/move?${taskScopeParams(projectId, { status, position })}`, { method: "POST" }),
+  delete: (id: string, projectId: string) => del(`/api/tasks/${id}?${taskScopeParams(projectId)}`),
+  attach: (taskId: string, documentId: string, projectId: string, direction: "input" | "output" = "input") =>
+    post<{ attached: boolean }>(`/api/tasks/${taskId}/attach?${taskScopeParams(projectId, { document_id: documentId, direction })}`, {}),
+  detach: (taskId: string, documentId: string, projectId: string, direction: "input" | "output" = "input") =>
+    post<{ detached: boolean }>(`/api/tasks/${taskId}/detach?${taskScopeParams(projectId, { document_id: documentId, direction })}`, {}),
+  approve: (taskId: string, projectId: string, data: { reviewed_by?: string; note?: string } = {}) =>
+    post<{ task: Task; event: TaskReviewEvent }>(`/api/tasks/${taskId}/review/approve?${taskScopeParams(projectId)}`, data),
   requestRevision: (taskId: string, data: {
     what_to_review: string;
     next_status: Extract<TaskStatus, "backlog" | "in_progress">;
@@ -79,15 +88,15 @@ export const tasks = {
     skill_name?: string | null;
     input_document_ids?: string[];
     urls?: string[];
-  }) => post<{ task: Task; event: TaskReviewEvent }>(`/api/tasks/${taskId}/review/request-revision`, data),
-  reviewEvents: (taskId: string) =>
-    get<{ events: TaskReviewEvent[] }>(`/api/tasks/${taskId}/review-events`),
-  atomicPath: (taskId: string) =>
-    get<TaskAtomicPath>(`/api/tasks/${taskId}/atomic-path`),
-  qualitySummary: (taskId: string) =>
-    get<TaskQualitySummary>(`/api/tasks/${taskId}/quality-summary`),
-  createReport: (taskId: string) =>
-    post<{ report: ProjectReport }>(`/api/tasks/${taskId}/reports`, {}),
+  }, projectId: string) => post<{ task: Task; event: TaskReviewEvent }>(`/api/tasks/${taskId}/review/request-revision?${taskScopeParams(projectId)}`, data),
+  reviewEvents: (taskId: string, projectId: string) =>
+    get<{ events: TaskReviewEvent[] }>(`/api/tasks/${taskId}/review-events?${taskScopeParams(projectId)}`),
+  atomicPath: (taskId: string, projectId: string) =>
+    get<TaskAtomicPath>(`/api/tasks/${taskId}/atomic-path?${taskScopeParams(projectId)}`),
+  qualitySummary: (taskId: string, projectId: string) =>
+    get<TaskQualitySummary>(`/api/tasks/${taskId}/quality-summary?${taskScopeParams(projectId)}`),
+  createReport: (taskId: string, projectId: string) =>
+    post<{ report: ProjectReport }>(`/api/tasks/${taskId}/reports?${taskScopeParams(projectId)}`, {}),
 };
 
 export { chat } from "./chatApi";
@@ -226,38 +235,30 @@ export const validation = {
 // --- Findings ---
 
 export const findings = {
-  nuggets: (projectId?: string) => {
-    const params = projectId ? `?project_id=${projectId}` : "";
-    return request<any[]>(`/api/findings/nuggets${params}`);
-  },
-  facts: (projectId?: string) => {
-    const params = projectId ? `?project_id=${projectId}` : "";
-    return request<any[]>(`/api/findings/facts${params}`);
-  },
-  insights: (projectId?: string) => {
-    const params = projectId ? `?project_id=${projectId}` : "";
-    return request<any[]>(`/api/findings/insights${params}`);
-  },
-  recommendations: (projectId?: string) => {
-    const params = projectId ? `?project_id=${projectId}` : "";
-    return request<any[]>(`/api/findings/recommendations${params}`);
-  },
+  nuggets: (projectId: string) =>
+    request<any[]>(`/api/findings/nuggets?project_id=${encodeURIComponent(projectId)}`),
+  facts: (projectId: string) =>
+    request<any[]>(`/api/findings/facts?project_id=${encodeURIComponent(projectId)}`),
+  insights: (projectId: string) =>
+    request<any[]>(`/api/findings/insights?project_id=${encodeURIComponent(projectId)}`),
+  recommendations: (projectId: string) =>
+    request<any[]>(`/api/findings/recommendations?project_id=${encodeURIComponent(projectId)}`),
   summary: (projectId: string) =>
     request<any>(`/api/findings/summary/${projectId}`),
-  evidenceChain: (findingType: string, findingId: string) =>
-    request<any>(`/api/findings/${findingType}/${findingId}/evidence-chain`),
+  evidenceChain: (findingType: string, findingId: string, projectId: string) =>
+    request<any>(`/api/findings/${findingType}/${findingId}/evidence-chain?project_id=${encodeURIComponent(projectId)}`),
   createNugget: (projectId: string, data: { text: string; source: string; source_location?: string; tags?: string[] }) =>
     post<any>("/api/findings/nuggets", { project_id: projectId, ...data }),
-  linkEvidence: (findingType: string, findingId: string, linkId: string, linkType: string) =>
-    patch<any>(`/api/findings/${findingType}/${findingId}/link`, { link_id: linkId, link_type: linkType }),
-  delete: (type: "nugget" | "fact" | "insight" | "recommendation", id: string) => {
+  linkEvidence: (findingType: string, findingId: string, linkId: string, linkType: string, projectId: string) =>
+    patch<any>(`/api/findings/${findingType}/${findingId}/link?project_id=${encodeURIComponent(projectId)}`, { link_id: linkId, link_type: linkType }),
+  delete: (type: "nugget" | "fact" | "insight" | "recommendation", id: string, projectId: string) => {
     const plural: Record<string, string> = {
       nugget: "nuggets",
       fact: "facts",
       insight: "insights",
       recommendation: "recommendations",
     };
-    return fetch(`${API_BASE}/api/findings/${plural[type]}/${id}`, { method: "DELETE", headers: { ..._getAuthHeaders() } });
+    return fetch(`${API_BASE}/api/findings/${plural[type]}/${id}?project_id=${encodeURIComponent(projectId)}`, { method: "DELETE", headers: { ..._getAuthHeaders() } });
   },
 };
 
@@ -294,7 +295,10 @@ export const skills = {
     const params = phase ? `?phase=${phase}` : "";
     return request<any>(`/api/skills${params}`);
   },
-  get: (name: string) => request<any>(`/api/skills/${name}`),
+  get: (name: string, projectId?: string | null) => {
+    const suffix = projectId ? `?project_id=${encodeURIComponent(projectId)}` : "";
+    return request<any>(`/api/skills/${name}${suffix}`);
+  },
   create: (data: {
     name: string;
     display_name: string;
@@ -312,29 +316,49 @@ export const skills = {
     request<any>(`/api/skills/${name}/toggle?enabled=${enabled}`, { method: "POST" }),
   execute: (name: string, data: { project_id: string; user_context?: string }) =>
     request<any>(`/api/skills/${name}/execute`, { method: "POST", body: JSON.stringify(data) }),
-  health: () => request<any>("/api/skills/health/all"),
-  skillHealth: (name: string) => request<any>(`/api/skills/${name}/health`),
+  health: (projectId: string) =>
+    request<any>(`/api/skills/health/all?project_id=${encodeURIComponent(projectId)}`),
+  skillHealth: (name: string, projectId: string) =>
+    request<any>(`/api/skills/${name}/health?project_id=${encodeURIComponent(projectId)}`),
   proposals: {
-    pending: () => request<any>("/api/skills/proposals/pending"),
-    all: (limit = 50) => request<any>(`/api/skills/proposals/all?limit=${limit}`),
-    approve: (id: string) =>
-      request<any>(`/api/skills/proposals/${id}/approve`, { method: "POST" }),
-    reject: (id: string, reason = "") =>
-      request<any>(`/api/skills/proposals/${id}/reject?reason=${encodeURIComponent(reason)}`, { method: "POST" }),
+    pending: (projectId: string) =>
+      request<any>(`/api/skills/proposals/pending?project_id=${encodeURIComponent(projectId)}`),
+    all: (projectId: string, limit = 50) =>
+      request<any>(`/api/skills/proposals/all?project_id=${encodeURIComponent(projectId)}&limit=${limit}`),
+    approve: (id: string, projectId: string) =>
+      request<any>(`/api/skills/proposals/${id}/approve?project_id=${encodeURIComponent(projectId)}`, { method: "POST" }),
+    reject: (id: string, projectId: string, reason = "") =>
+      request<any>(`/api/skills/proposals/${id}/reject?project_id=${encodeURIComponent(projectId)}&reason=${encodeURIComponent(reason)}`, { method: "POST" }),
   },
   creationProposals: {
-    pending: () => request<any>("/api/skills/creation-proposals/pending"),
-    all: (limit = 20) => request<any>(`/api/skills/creation-proposals/all?limit=${limit}`),
-    verify: (id: string) =>
-      request<any>(`/api/skills/creation-proposals/${id}/verify`, { method: "POST" }),
-    approve: (id: string) =>
-      request<any>(`/api/skills/creation-proposals/${id}/approve`, { method: "POST" }),
-    reject: (id: string, reason = "") =>
-      request<any>(`/api/skills/creation-proposals/${id}/reject?reason=${encodeURIComponent(reason)}`, { method: "POST" }),
+    pending: (projectId: string) =>
+      request<any>(`/api/skills/creation-proposals/pending?project_id=${encodeURIComponent(projectId)}`),
+    all: (projectId: string, limit = 20) =>
+      request<any>(`/api/skills/creation-proposals/all?project_id=${encodeURIComponent(projectId)}&limit=${limit}`),
+    verify: (id: string, projectId: string) =>
+      request<any>(`/api/skills/creation-proposals/${id}/verify?project_id=${encodeURIComponent(projectId)}`, { method: "POST" }),
+    approve: (id: string, projectId: string) =>
+      request<any>(`/api/skills/creation-proposals/${id}/approve?project_id=${encodeURIComponent(projectId)}`, { method: "POST" }),
+    reject: (id: string, projectId: string, reason = "") =>
+      request<any>(`/api/skills/creation-proposals/${id}/reject?project_id=${encodeURIComponent(projectId)}&reason=${encodeURIComponent(reason)}`, { method: "POST" }),
   },
 };
 
 // --- Agents ---
+
+const agentScopeParams = (
+  projectId: string,
+  values: Record<string, string | number | boolean | undefined | null> = {}
+) => {
+  const params = new URLSearchParams({ project_id: projectId });
+  for (const [key, value] of Object.entries(values)) {
+    if (value !== undefined && value !== null) params.set(key, String(value));
+  }
+  return params.toString();
+};
+
+const agentProjectPath = (id: string, projectId: string, suffix = "") =>
+  `/api/agents/${id}${suffix}?${agentScopeParams(projectId)}`;
 
 export const agents = {
   list: (includeSystem = true, projectId?: string) => {
@@ -342,27 +366,42 @@ export const agents = {
     if (projectId) params.set("project_id", projectId);
     return request<any>(`/api/agents?${params}`);
   },
-  get: (id: string) => request<any>(`/api/agents/${id}`),
+  get: (id: string, projectId?: string | null) => {
+    const suffix = projectId ? `?project_id=${encodeURIComponent(projectId)}` : "";
+    return request<any>(`/api/agents/${id}${suffix}`);
+  },
   create: (data: {
     name: string;
     role?: string;
     system_prompt?: string;
     capabilities?: string[];
     heartbeat_interval?: number;
-  }) => request<any>("/api/agents", { method: "POST", body: JSON.stringify(data) }),
-  update: (id: string, data: Record<string, unknown>) =>
-    request<any>(`/api/agents/${id}`, { method: "PATCH", body: JSON.stringify(data) }),
-  delete: (id: string) => del(`/api/agents/${id}`),
-  pause: (id: string) => request<any>(`/api/agents/${id}/pause`, { method: "POST" }),
-  resume: (id: string) => request<any>(`/api/agents/${id}/resume`, { method: "POST" }),
-  restart: (id: string) => request<any>(`/api/agents/${id}/restart`, { method: "POST" }),
+  }, projectId: string) =>
+    request<any>("/api/agents", {
+      method: "POST",
+      body: JSON.stringify({ ...data, project_id: projectId }),
+    }),
+  update: (id: string, data: Record<string, unknown>, projectId: string) =>
+    request<any>(agentProjectPath(id, projectId), { method: "PATCH", body: JSON.stringify(data) }),
+  delete: (id: string, projectId: string) => del(agentProjectPath(id, projectId)),
+  pause: (id: string, projectId: string) => request<any>(agentProjectPath(id, projectId, "/pause"), { method: "POST" }),
+  resume: (id: string, projectId: string) => request<any>(agentProjectPath(id, projectId, "/resume"), { method: "POST" }),
+  restart: (id: string, projectId: string) => request<any>(agentProjectPath(id, projectId, "/restart"), { method: "POST" }),
   setScope: (id: string, scope: string, projectId?: string) => request<any>(`/api/agents/${id}/set-scope`, { method: "POST", body: JSON.stringify({ scope, project_id: projectId || "" }) }),
-  requestPromotion: (id: string) => request<any>(`/api/agents/${id}/request-promotion`, { method: "POST" }),
-  recentLog: (agentId?: string, limit = 50) => request<any>(`/api/agents/log/recent?limit=${limit}${agentId ? `&agent_id=${encodeURIComponent(agentId)}` : ""}`),
-  uploadAvatar: async (id: string, file: File) => {
+  requestPromotion: (id: string, projectId?: string | null) => {
+    const suffix = projectId ? `?project_id=${encodeURIComponent(projectId)}` : "";
+    return request<any>(`/api/agents/${id}/request-promotion${suffix}`, { method: "POST" });
+  },
+  recentLog: (agentId?: string, limit = 50, projectId?: string | null) => {
+    const params = new URLSearchParams({ limit: String(limit) });
+    if (agentId) params.set("agent_id", agentId);
+    if (projectId) params.set("project_id", projectId);
+    return request<any>(`/api/agents/log/recent?${params}`);
+  },
+  uploadAvatar: async (id: string, file: File, projectId: string) => {
     const formData = new FormData();
     formData.append("file", file);
-    const res = await fetch(`${API_BASE}/api/agents/${id}/avatar`, {
+    const res = await fetch(`${API_BASE}${agentProjectPath(id, projectId, "/avatar")}`, {
       method: "POST",
       headers: { ..._getAuthHeaders() },
       body: formData,
@@ -370,30 +409,46 @@ export const agents = {
     if (!res.ok) throw new Error(`Upload error: ${res.status}`);
     return res.json();
   },
-  avatarUrl: (id: string) => `${API_BASE}/api/agents/${id}/avatar`,
-  memory: (id: string) => request<any>(`/api/agents/${id}/memory`),
-  updateMemory: (id: string, data: Record<string, unknown>) =>
-    request<any>(`/api/agents/${id}/memory`, { method: "PATCH", body: JSON.stringify(data) }),
-  messages: (id: string, limit = 50) =>
-    request<any>(`/api/agents/${id}/messages?limit=${limit}`),
+  avatarUrl: (id: string, projectId?: string | null) =>
+    `${API_BASE}/api/agents/${id}/avatar${projectId ? `?project_id=${encodeURIComponent(projectId)}` : ""}`,
+  memory: (id: string, projectId?: string | null) => {
+    const suffix = projectId ? `?project_id=${encodeURIComponent(projectId)}` : "";
+    return request<any>(`/api/agents/${id}/memory${suffix}`);
+  },
+  updateMemory: (id: string, data: Record<string, unknown>, projectId: string) =>
+    request<any>(agentProjectPath(id, projectId, "/memory"), { method: "PATCH", body: JSON.stringify(data) }),
+  messages: (id: string, projectId: string, limit = 50) => {
+    const params = new URLSearchParams({ limit: String(limit) });
+    params.set("project_id", projectId);
+    return request<any>(`/api/agents/${id}/messages?${params}`);
+  },
   sendMessage: (
     id: string,
-    data: { to_agent_id?: string; content: string; message_type?: string }
+    data: { to_agent_id?: string; content: string; message_type?: string; project_id: string; metadata?: Record<string, unknown> }
   ) =>
     request<any>(`/api/agents/${id}/messages`, { method: "POST", body: JSON.stringify(data) }),
-  a2aLog: (limit = 100) => request<any>(`/api/agents/a2a/log?limit=${limit}`),
-  heartbeat: () => request<any>("/api/agents/heartbeat/status"),
+  a2aLog: (projectId: string, limit = 100) => {
+    const params = new URLSearchParams({ limit: String(limit) });
+    params.set("project_id", projectId);
+    return request<any>(`/api/agents/a2a/log?${params}`);
+  },
+  heartbeat: (projectId?: string | null) => {
+    const suffix = projectId ? `?project_id=${encodeURIComponent(projectId)}` : "";
+    return request<any>(`/api/agents/heartbeat/status${suffix}`);
+  },
   capacity: () => request<any>("/api/agents/capacity"),
-  getIdentity: (id: string) =>
-    request<{
+  getIdentity: (id: string, projectId?: string | null) => {
+    const suffix = projectId ? `?project_id=${encodeURIComponent(projectId)}` : "";
+    return request<{
       agent_id: string;
       display_name: string;
       has_persona: boolean;
       identity_length: number;
       files: Record<string, string>;
-    }>(`/api/agents/${id}/identity`),
-  updateIdentity: (id: string, files: Record<string, string>) =>
-    request<any>(`/api/agents/${id}/identity`, {
+    }>(`/api/agents/${id}/identity${suffix}`);
+  },
+  updateIdentity: (id: string, files: Record<string, string>, projectId: string) =>
+    request<any>(agentProjectPath(id, projectId, "/identity"), {
       method: "PUT",
       body: JSON.stringify({ files }),
     }),
@@ -402,19 +457,31 @@ export const agents = {
       "/api/agents/personas/list"
     ),
   creationProposals: {
-    pending: () => request<any>("/api/agents/creation-proposals/pending"),
-    all: (limit = 20) => request<any>(`/api/agents/creation-proposals/all?limit=${limit}`),
-    approve: (id: string) =>
-      request<any>(`/api/agents/creation-proposals/${id}/approve`, { method: "POST" }),
-    reject: (id: string, reason = "") => request<any>(`/api/agents/creation-proposals/${id}/reject`, { method: "POST", body: JSON.stringify({ reason }) }),
+    pending: (projectId: string) =>
+      request<any>(`/api/agents/creation-proposals/pending?project_id=${encodeURIComponent(projectId)}`),
+    all: (projectId: string, limit = 20) =>
+      request<any>(`/api/agents/creation-proposals/all?project_id=${encodeURIComponent(projectId)}&limit=${limit}`),
+    approve: (id: string, projectId: string) =>
+      request<any>(`/api/agents/creation-proposals/${id}/approve?project_id=${encodeURIComponent(projectId)}`, { method: "POST" }),
+    reject: (id: string, projectId: string, reason = "") =>
+      request<any>(`/api/agents/creation-proposals/${id}/reject?project_id=${encodeURIComponent(projectId)}`, { method: "POST", body: JSON.stringify({ reason }) }),
   },
-  exportConfig: (id: string) => request<any>(`/api/agents/${id}/export`),
-  importConfig: (data: Record<string, unknown>) => request<any>("/api/agents/import", { method: "POST", body: JSON.stringify(data) }),
+  exportConfig: (id: string, projectId: string) =>
+    request<any>(agentProjectPath(id, projectId, "/export")),
+  importConfig: (data: Record<string, unknown>, projectId: string) =>
+    request<any>("/api/agents/import", { method: "POST", body: JSON.stringify({ ...data, project_id: projectId }) }),
   evolution: {
-    scan: () => request<any>("/api/agents/evolution/scan"),
-    candidates: (id: string) => request<any>(`/api/agents/${id}/evolution/candidates`),
-    promote: (id: string, learningId: number, targetFile?: string) => request<any>(`/api/agents/${id}/evolution/promote/${learningId}${targetFile ? `?target_file=${encodeURIComponent(targetFile)}` : ""}`, { method: "POST" }),
-    auto: (id: string) => request<any>(`/api/agents/${id}/evolution/auto`, { method: "POST" }),
+    scan: (projectId: string) =>
+      request<any>(`/api/agents/evolution/scan?project_id=${encodeURIComponent(projectId)}`),
+    candidates: (id: string, projectId: string) =>
+      request<any>(`/api/agents/${id}/evolution/candidates?project_id=${encodeURIComponent(projectId)}`),
+    promote: (id: string, learningId: number, projectId: string, targetFile?: string) => {
+      const params = new URLSearchParams({ project_id: projectId });
+      if (targetFile) params.set("target_file", targetFile);
+      return request<any>(`/api/agents/${id}/evolution/promote/${learningId}?${params}`, { method: "POST" });
+    },
+    auto: (id: string, projectId: string) =>
+      request<any>(`/api/agents/${id}/evolution/auto?project_id=${encodeURIComponent(projectId)}`, { method: "POST" }),
   },
 };
 
@@ -498,10 +565,10 @@ export const dataManagement = {
 // --- Task Locking ---
 
 export const taskLocking = {
-  lock: (taskId: string, userId: string = "local") =>
-    post<any>(`/api/tasks/${taskId}/lock?user_id=${userId}`, {}),
-  unlock: (taskId: string, userId: string = "local", force: boolean = false) =>
-    post<any>(`/api/tasks/${taskId}/unlock?user_id=${userId}&force=${force}`, {}),
+  lock: (taskId: string, projectId: string, userId: string = "local") =>
+    post<any>(`/api/tasks/${taskId}/lock?${taskScopeParams(projectId, { user_id: userId })}`, {}),
+  unlock: (taskId: string, projectId: string, userId: string = "local", force: boolean = false) =>
+    post<any>(`/api/tasks/${taskId}/unlock?${taskScopeParams(projectId, { user_id: userId, force })}`, {}),
 };
 
 // --- LLM Servers ---
@@ -521,9 +588,12 @@ export const llmServers = {
 // --- Compute Pool ---
 
 export const compute = {
-  nodes: () => request<any>("/api/compute/nodes"),
-  stats: () => request<any>("/api/compute/stats"),
-  modelWarnings: () => request<any>("/api/compute/model-warnings"),
+  nodes: (projectId: string) =>
+    request<any>(`/api/compute/nodes?project_id=${encodeURIComponent(projectId)}`),
+  stats: (projectId: string) =>
+    request<any>(`/api/compute/stats?project_id=${encodeURIComponent(projectId)}`),
+  modelWarnings: (projectId: string) =>
+    request<any>(`/api/compute/model-warnings?project_id=${encodeURIComponent(projectId)}`),
 };
 
 // --- Documents ---
@@ -551,7 +621,10 @@ export const documents = {
       total_pages: number;
     }>(`/api/documents?${query}`);
   },
-  get: (id: string) => get<ReclawDocument & { content_text: string }>(`/api/documents/${id}`),
+  get: (id: string, projectId: string) =>
+    get<ReclawDocument & { content_text: string }>(
+      `/api/documents/${id}?project_id=${encodeURIComponent(projectId)}`
+    ),
   create: (data: {
     project_id: string;
     title: string;
@@ -569,10 +642,17 @@ export const documents = {
     content_preview?: string;
     content_text?: string;
   }) => post<ReclawDocument>("/api/documents", data),
-  update: (id: string, data: Record<string, unknown>) =>
-    patch<ReclawDocument>(`/api/documents/${id}`, data),
-  delete: (id: string) => del(`/api/documents/${id}`),
-  content: (id: string) => get<DocumentContent>(`/api/documents/${id}/content`),
+  update: (id: string, projectId: string, data: Record<string, unknown>) =>
+    patch<ReclawDocument>(
+      `/api/documents/${id}?project_id=${encodeURIComponent(projectId)}`,
+      data
+    ),
+  delete: (id: string, projectId: string) =>
+    del(`/api/documents/${id}?project_id=${encodeURIComponent(projectId)}`),
+  content: (id: string, projectId: string) =>
+    get<DocumentContent>(
+      `/api/documents/${id}/content?project_id=${encodeURIComponent(projectId)}`
+    ),
   search: (projectId: string, q: string, phase?: string, tag?: string, limit = 20) => {
     const params = new URLSearchParams({ project_id: projectId, q, limit: String(limit) });
     if (phase) params.set("phase", phase);
@@ -592,10 +672,8 @@ export const documents = {
 // --- Interfaces ---
 
 export const interfaces = {
-  status: (projectId?: string) => {
-    const suffix = projectId ? `?project_id=${encodeURIComponent(projectId)}` : "";
-    return get<InterfacesStatus>(`/api/interfaces/status${suffix}`);
-  },
+  status: (projectId: string) =>
+    get<InterfacesStatus>(`/api/interfaces/status?project_id=${encodeURIComponent(projectId)}`),
 
   screens: {
     list: (projectId: string) => get<any[]>(`/api/interfaces/screens?project_id=${encodeURIComponent(projectId)}`),
@@ -615,8 +693,10 @@ export const interfaces = {
       post<any>("/api/interfaces/figma/import", data),
     export: (data: { screen_id: string; figma_file_key: string }) =>
       post<any>("/api/interfaces/figma/export", data),
-    designSystem: (fileKey: string) => get<any>(`/api/interfaces/figma/design-system/${fileKey}`),
-    components: (fileKey: string) => get<any>(`/api/interfaces/figma/components/${fileKey}`),
+    designSystem: (fileKey: string, projectId: string) =>
+      get<any>(`/api/interfaces/figma/design-system/${encodeURIComponent(fileKey)}?project_id=${encodeURIComponent(projectId)}`),
+    components: (fileKey: string, projectId: string) =>
+      get<any>(`/api/interfaces/figma/components/${encodeURIComponent(fileKey)}?project_id=${encodeURIComponent(projectId)}`),
   },
 
   handoff: {
@@ -624,12 +704,12 @@ export const interfaces = {
       post<any>("/api/interfaces/handoff/brief", data),
     generateDevSpec: (data: { screen_id: string }) =>
       post<any>("/api/interfaces/handoff/dev-spec", data),
-    listBriefs: (projectId: string) => get<{ briefs: any[] }>(`/api/interfaces/handoff/briefs?project_id=${projectId}`),
+    listBriefs: (projectId: string) => get<{ briefs: any[] }>(`/api/interfaces/handoff/briefs?project_id=${encodeURIComponent(projectId)}`),
   },
 
   configure: {
-    stitch: (data: { api_key: string; project_id?: string }) => post<any>("/api/interfaces/configure/stitch", data),
-    figma: (data: { api_token: string; project_id?: string }) => post<any>("/api/interfaces/configure/figma", data),
+    stitch: (data: { api_key: string; project_id: string }) => post<any>("/api/interfaces/configure/stitch", data),
+    figma: (data: { api_token: string; project_id: string }) => post<any>("/api/interfaces/configure/figma", data),
   },
 
   designChat: {
@@ -670,24 +750,34 @@ export { contextDag } from "./contextDagApi";
 
 // --- Loops & Schedule ---
 export const loops = {
-  overview: () => get<any>("/api/loops/overview"),
-  agents: () => get<any>("/api/loops/agents"),
-  schedules: (params?: Record<string, string>) => get<any>(`/api/schedules${params ? "?" + new URLSearchParams(Object.entries(params).filter(([, v]) => v !== "")).toString() : ""}`),
-  getSchedule: (scheduleId: string) => get<any>(`/api/schedules/${scheduleId}`),
+  overview: (projectId: string) => get<any>(`/api/loops/overview?project_id=${encodeURIComponent(projectId)}`),
+  agents: (projectId: string) => get<any>(`/api/loops/agents?project_id=${encodeURIComponent(projectId)}`),
+  schedules: (projectId: string) => get<any>(`/api/schedules?project_id=${encodeURIComponent(projectId)}`),
+  getSchedule: (scheduleId: string, projectId: string) =>
+    get<any>(`/api/schedules/${scheduleId}?project_id=${encodeURIComponent(projectId)}`),
   createSchedule: (data: { name: string; cron_expression: string; project_id: string; skill_name?: string; description?: string }) => post<any>("/api/schedules", data),
-  updateSchedule: (scheduleId: string, data: { name?: string; cron_expression?: string; skill_name?: string; description?: string; enabled?: boolean }) => patch<any>(`/api/schedules/${scheduleId}`, data),
-  deleteSchedule: (scheduleId: string) => del(`/api/schedules/${scheduleId}`),
-  agentConfig: (agentId: string) => get<any>(`/api/loops/agents/${agentId}/config`),
-  updateAgentConfig: (agentId: string, data: Record<string, unknown>) =>
-    patch<any>(`/api/loops/agents/${agentId}/config`, data),
-  pauseAgent: (agentId: string) => post<any>(`/api/loops/agents/${agentId}/pause`, {}),
-  resumeAgent: (agentId: string) => post<any>(`/api/loops/agents/${agentId}/resume`, {}),
+  updateSchedule: (scheduleId: string, data: { name?: string; cron_expression?: string; skill_name?: string; description?: string; enabled?: boolean }, projectId: string) =>
+    patch<any>(`/api/schedules/${scheduleId}?project_id=${encodeURIComponent(projectId)}`, data),
+  deleteSchedule: (scheduleId: string, projectId: string) =>
+    del(`/api/schedules/${scheduleId}?project_id=${encodeURIComponent(projectId)}`),
+  agentConfig: (agentId: string, projectId: string) =>
+    get<any>(`/api/loops/agents/${agentId}/config?project_id=${encodeURIComponent(projectId)}`),
+  updateAgentConfig: (agentId: string, data: Record<string, unknown>, projectId: string) =>
+    patch<any>(`/api/loops/agents/${agentId}/config?project_id=${encodeURIComponent(projectId)}`, data),
+  pauseAgent: (agentId: string, projectId: string) =>
+    post<any>(`/api/loops/agents/${agentId}/pause?project_id=${encodeURIComponent(projectId)}`, {}),
+  resumeAgent: (agentId: string, projectId: string) =>
+    post<any>(`/api/loops/agents/${agentId}/resume?project_id=${encodeURIComponent(projectId)}`, {}),
   executions: (params?: Record<string, string | number>) => {
     const query = params ? "?" + new URLSearchParams(Object.entries(params).map(([k, v]) => [k, String(v)])).toString() : "";
     return get<any>(`/api/loops/executions${query}`);
   },
-  executionStats: (sourceId?: string) => get<any>(`/api/loops/executions/stats${sourceId ? `?${new URLSearchParams({ source_id: sourceId }).toString()}` : ""}`),
-  health: () => get<any>("/api/loops/health"),
+  executionStats: (projectId: string, sourceId?: string) => {
+    const params = new URLSearchParams({ project_id: projectId });
+    if (sourceId) params.set("source_id", sourceId);
+    return get<any>(`/api/loops/executions/stats?${params.toString()}`);
+  },
+  health: (projectId: string) => get<any>(`/api/loops/health?project_id=${encodeURIComponent(projectId)}`),
   createCustom: (data: { name: string; skill_name: string; project_id: string; cron_expression?: string; interval_seconds?: number; description?: string }) =>
     post<any>("/api/loops/custom", data),
 };
@@ -698,41 +788,64 @@ export { backups } from "./backupApi";
 // --- Meta-Hyperagent ---
 
 export const metaHyperagent = {
-  status: () => request<MetaHyperagentStatus>("/api/meta-hyperagent/status"),
-  proposals: () => request<MetaProposal[]>("/api/meta-hyperagent/proposals"),
-  approveProposal: (id: string) =>
-    request<any>(`/api/meta-hyperagent/proposals/${id}/approve`, { method: "POST" }),
-  rejectProposal: (id: string) =>
-    request<any>(`/api/meta-hyperagent/proposals/${id}/reject`, { method: "POST" }),
-  variants: () => request<MetaVariant[]>("/api/meta-hyperagent/variants"),
-  revertVariant: (id: string) =>
-    request<any>(`/api/meta-hyperagent/variants/${id}/revert`, { method: "POST" }),
-  confirmVariant: (id: string) =>
-    request<any>(`/api/meta-hyperagent/variants/${id}/confirm`, { method: "POST" }),
-  observations: () => request<any>("/api/meta-hyperagent/observations"),
-  toggle: (enabled: boolean) =>
-    request<any>("/api/meta-hyperagent/toggle", { method: "POST", body: JSON.stringify({ enabled }) }),
+  status: (projectId: string) =>
+    request<MetaHyperagentStatus>(`/api/meta-hyperagent/status?project_id=${encodeURIComponent(projectId)}`),
+  proposals: (projectId: string) =>
+    request<{ project_id: string; proposals: MetaProposal[]; pending_count: number }>(
+      `/api/meta-hyperagent/proposals?project_id=${encodeURIComponent(projectId)}`
+    ),
+  approveProposal: (id: string, projectId: string) =>
+    request<any>(
+      `/api/meta-hyperagent/proposals/${id}/approve?project_id=${encodeURIComponent(projectId)}`,
+      { method: "POST" }
+    ),
+  rejectProposal: (id: string, projectId: string) =>
+    request<any>(
+      `/api/meta-hyperagent/proposals/${id}/reject?project_id=${encodeURIComponent(projectId)}`,
+      { method: "POST" }
+    ),
+  variants: (projectId: string) =>
+    request<{ project_id: string; variants: MetaVariant[]; active_count: number }>(
+      `/api/meta-hyperagent/variants?project_id=${encodeURIComponent(projectId)}`
+    ),
+  revertVariant: (id: string, projectId: string) =>
+    request<any>(
+      `/api/meta-hyperagent/variants/${id}/revert?project_id=${encodeURIComponent(projectId)}`,
+      { method: "POST" }
+    ),
+  confirmVariant: (id: string, projectId: string) =>
+    request<any>(
+      `/api/meta-hyperagent/variants/${id}/confirm?project_id=${encodeURIComponent(projectId)}`,
+      { method: "POST" }
+    ),
+  observations: (projectId: string) =>
+    request<any>(`/api/meta-hyperagent/observations?project_id=${encodeURIComponent(projectId)}`),
+  toggle: (enabled: boolean, projectId: string) =>
+    request<any>(
+      `/api/meta-hyperagent/toggle?project_id=${encodeURIComponent(projectId)}`,
+      { method: "POST", body: JSON.stringify({ enabled }) }
+    ),
 };
 // Route coverage hints: /meta-hyperagent/proposals/{proposal_id}/approve /meta-hyperagent/proposals/{proposal_id}/reject /meta-hyperagent/variants/{variant_id}/revert /meta-hyperagent/variants/{variant_id}/confirm /.well-known/agent.json /api/health /api/skill-registry
 
 // --- ReasoningBank ---
 
 export const reasoningBank = {
-  summary: (projectId?: string) =>
-    get<ReasoningBankSummary>(`/api/reasoning-bank/summary${projectId ? `?project_id=${projectId}` : ""}`),
-  memories: (params?: { project_id?: string; source_kind?: string; outcome?: string; limit?: number; offset?: number }) => {
+  summary: (projectId: string) =>
+    get<ReasoningBankSummary>(`/api/reasoning-bank/summary?project_id=${encodeURIComponent(projectId)}`),
+  memories: (params: { project_id: string; source_kind?: string; outcome?: string; limit?: number; offset?: number }) => {
     const p = new URLSearchParams();
-    if (params?.project_id) p.set("project_id", params.project_id);
-    if (params?.source_kind) p.set("source_kind", params.source_kind);
-    if (params?.outcome) p.set("outcome", params.outcome);
-    if (params?.limit) p.set("limit", String(params.limit));
-    if (params?.offset) p.set("offset", String(params.offset));
+    p.set("project_id", params.project_id);
+    if (params.source_kind) p.set("source_kind", params.source_kind);
+    if (params.outcome) p.set("outcome", params.outcome);
+    if (params.limit) p.set("limit", String(params.limit));
+    if (params.offset) p.set("offset", String(params.offset));
     return get<{ memories: ReasoningMemoryItem[]; count: number; limit: number; offset: number }>(
       `/api/reasoning-bank/memories?${p}`
     );
   },
   create: (data: {
-    project_id?: string;
+    project_id: string;
     agent_id?: string;
     source_kind?: string;
     source_id?: string;
@@ -747,15 +860,15 @@ export const reasoningBank = {
     confidence?: number;
   }) => post<{ memory: ReasoningMemoryItem }>("/api/reasoning-bank/memories", data),
   retrieve: (data: {
-    project_id?: string;
+    project_id: string;
     query: string;
     agent_id?: string | null;
     source_kinds?: string[] | null;
     limit?: number;
   }) => post<{ memories: ReasoningMemoryItem[]; context: string }>("/api/reasoning-bank/retrieve", data),
-  consolidate: (projectId?: string) =>
+  consolidate: (projectId: string) =>
     post<{ merged: number; active: number }>(
-      `/api/reasoning-bank/consolidate${projectId ? `?project_id=${projectId}` : ""}`,
+      `/api/reasoning-bank/consolidate?project_id=${encodeURIComponent(projectId)}`,
       {}
     ),
 };
@@ -766,68 +879,88 @@ export { dgmhArchive } from "./dgmhArchiveApi";
 
 // --- Channels ---
 
+const channelProjectQuery = (projectId: string) => `project_id=${encodeURIComponent(projectId)}`;
+const channelProjectPath = (id: string, projectId: string, suffix = "") =>
+  `/api/channels/${id}${suffix}?${channelProjectQuery(projectId)}`;
+
 export const channels = {
-  list: (platform?: string, projectId?: string) => {
+  list: (platform: string | undefined, projectId: string) => {
     const query = new URLSearchParams();
     if (platform) query.set("platform", platform);
-    if (projectId) query.set("project_id", projectId);
-    const params = query.toString() ? `?${query.toString()}` : "";
-    return get<ChannelInstance[]>(`/api/channels${params}`);
+    query.set("project_id", projectId);
+    return get<ChannelInstance[]>(`/api/channels?${query.toString()}`);
   },
-  get: (id: string) => get<ChannelInstance>(`/api/channels/${id}`),
+  get: (id: string, projectId: string) => get<ChannelInstance>(channelProjectPath(id, projectId)),
   create: (data: { platform: string; name: string; config: Record<string, any>; project_id?: string }) =>
     post<ChannelInstance>("/api/channels", data),
-  update: (id: string, data: Record<string, any>) => patch<ChannelInstance>(`/api/channels/${id}`, data),
-  delete: (id: string) => del(`/api/channels/${id}`),
-  start: (id: string) => post<any>(`/api/channels/${id}/start`, {}),
-  stop: (id: string) => post<any>(`/api/channels/${id}/stop`, {}),
-  health: (id: string) => get<any>(`/api/channels/${id}/health`),
-  messages: (id: string, limit = 50, offset = 0) =>
-    get<ChannelMessage[]>(`/api/channels/${id}/messages?limit=${limit}&offset=${offset}`),
-  conversations: (id: string) => get<ChannelConversation[]>(`/api/channels/${id}/conversations`),
-  send: (id: string, data: { channel_id: string; text: string; metadata?: any }) =>
-    post<any>(`/api/channels/${id}/send`, data),
+  update: (id: string, data: Record<string, any>, projectId: string) =>
+    patch<ChannelInstance>(channelProjectPath(id, projectId), data),
+  delete: (id: string, projectId: string) => del(channelProjectPath(id, projectId)),
+  start: (id: string, projectId: string) => post<any>(channelProjectPath(id, projectId, "/start"), {}),
+  stop: (id: string, projectId: string) => post<any>(channelProjectPath(id, projectId, "/stop"), {}),
+  health: (id: string, projectId: string) => get<any>(channelProjectPath(id, projectId, "/health")),
+  messages: (id: string, projectId: string, limit = 50, offset = 0) =>
+    get<ChannelMessage[]>(
+      `/api/channels/${id}/messages?${channelProjectQuery(projectId)}&limit=${limit}&offset=${offset}`
+    ),
+  conversations: (id: string, projectId: string) =>
+    get<ChannelConversation[]>(channelProjectPath(id, projectId, "/conversations")),
+  send: (id: string, data: { channel_id: string; text: string; metadata?: any }, projectId: string) =>
+    post<any>(channelProjectPath(id, projectId, "/send"), data),
 };
 
 // --- Deployments ---
 
 export const deployments = {
-  list: (projectId?: string) => {
-    const params = projectId ? `?project_id=${projectId}` : "";
+  list: (projectId: string) => {
+    const params = `?project_id=${encodeURIComponent(projectId)}`;
     return get<ResearchDeployment[]>(`/api/deployments${params}`);
   },
-  get: (id: string) => get<ResearchDeployment>(`/api/deployments/${id}`),
-  create: (data: any) => post<ResearchDeployment>("/api/deployments", data),
-  activate: (id: string) => post<any>(`/api/deployments/${id}/activate`, {}),
-  pause: (id: string) => post<any>(`/api/deployments/${id}/pause`, {}),
-  complete: (id: string) => post<any>(`/api/deployments/${id}/complete`, {}),
-  analytics: (id: string) => get<DeploymentAnalytics>(`/api/deployments/${id}/analytics`),
-  overview: (projectId: string) => get<any>(`/api/deployments/overview?project_id=${projectId}`),
-  conversations: (id: string) => get<ChannelConversation[]>(`/api/deployments/${id}/conversations`),
-  transcript: (deploymentId: string, conversationId: string) =>
-    get<any>(`/api/deployments/${deploymentId}/conversations/${conversationId}/transcript`),
+  get: (id: string, projectId: string) =>
+    get<ResearchDeployment>(`/api/deployments/${id}?project_id=${encodeURIComponent(projectId)}`),
+  create: (data: { project_id: string; [key: string]: any }) => post<ResearchDeployment>("/api/deployments", data),
+  activate: (id: string, projectId: string) =>
+    post<any>(`/api/deployments/${id}/activate?project_id=${encodeURIComponent(projectId)}`, {}),
+  pause: (id: string, projectId: string) =>
+    post<any>(`/api/deployments/${id}/pause?project_id=${encodeURIComponent(projectId)}`, {}),
+  complete: (id: string, projectId: string) =>
+    post<any>(`/api/deployments/${id}/complete?project_id=${encodeURIComponent(projectId)}`, {}),
+  analytics: (id: string, projectId: string) =>
+    get<DeploymentAnalytics>(`/api/deployments/${id}/analytics?project_id=${encodeURIComponent(projectId)}`),
+  overview: (projectId: string) => get<any>(`/api/deployments/overview?project_id=${encodeURIComponent(projectId)}`),
+  conversations: (id: string, projectId: string) =>
+    get<ChannelConversation[]>(`/api/deployments/${id}/conversations?project_id=${encodeURIComponent(projectId)}`),
+  transcript: (deploymentId: string, conversationId: string, projectId: string) =>
+    get<any>(
+      `/api/deployments/${deploymentId}/conversations/${conversationId}/transcript?project_id=${encodeURIComponent(projectId)}`
+    ),
 };
 
 // --- Surveys ---
 
 export const surveys = {
   integrations: {
-    list: async (projectId?: string): Promise<SurveyIntegration[]> => {
-      const suffix = projectId ? `?project_id=${encodeURIComponent(projectId)}` : "";
-      const res = await get<any>(`/api/surveys/integrations${suffix}`);
+    list: async (projectId: string): Promise<SurveyIntegration[]> => {
+      const res = await get<any>(`/api/surveys/integrations?project_id=${encodeURIComponent(projectId)}`);
       return Array.isArray(res) ? res : (res?.integrations ?? []);
     },
     create: (data: { platform: string; name: string; config: Record<string, any>; project_id?: string }) =>
       post<SurveyIntegration>("/api/surveys/integrations", data),
-    delete: (id: string) => del(`/api/surveys/integrations/${id}`),
-    surveys: (id: string) => get<any[]>(`/api/surveys/integrations/${id}/surveys`),
-    createSurvey: (id: string, data: any) => post<any>(`/api/surveys/integrations/${id}/create`, data),
+    delete: (id: string, projectId: string) =>
+      del(`/api/surveys/integrations/${id}?project_id=${encodeURIComponent(projectId)}`),
+    surveys: (id: string, projectId: string) =>
+      get<any[]>(`/api/surveys/integrations/${id}/surveys?project_id=${encodeURIComponent(projectId)}`),
+    createSurvey: (id: string, data: any, projectId: string) =>
+      post<any>(`/api/surveys/integrations/${id}/create?project_id=${encodeURIComponent(projectId)}`, data),
   },
   links: {
-    list: (projectId?: string) => get<SurveyLink[]>(`/api/surveys/links${projectId ? `?project_id=${projectId}` : ""}`),
+    list: (projectId: string) =>
+      get<SurveyLink[]>(`/api/surveys/links?project_id=${encodeURIComponent(projectId)}`),
     create: (data: any) => post<SurveyLink>("/api/surveys/links", data),
-    sync: (id: string) => post<any>(`/api/surveys/links/${id}/sync`, {}),
-    responses: (id: string) => get<any[]>(`/api/surveys/links/${id}/responses`),
+    sync: (id: string, projectId: string) =>
+      post<any>(`/api/surveys/links/${id}/sync?project_id=${encodeURIComponent(projectId)}`, {}),
+    responses: (id: string, projectId: string) =>
+      get<any[]>(`/api/surveys/links/${id}/responses?project_id=${encodeURIComponent(projectId)}`),
   },
 };
 
@@ -849,8 +982,10 @@ export const permissionRequests = {
     details?: string;
     payload_summary?: string;
   }) => post<PermissionRequestItem>("/api/permission-requests", data),
-  review: (id: string, data: { status: "approved" | "rejected"; review_note?: string }) =>
-    patch<PermissionRequestItem>(`/api/permission-requests/${id}`, data),
+  review: (id: string, data: { status: "approved" | "rejected"; review_note?: string }, projectId?: string) => {
+    const suffix = projectId ? `?project_id=${encodeURIComponent(projectId)}` : "";
+    return patch<PermissionRequestItem>(`/api/permission-requests/${id}${suffix}`, data);
+  },
 };
 
 // --- MCP ---
@@ -861,44 +996,63 @@ export const mcp = {
     toggle: (enabled: boolean) => post<any>("/api/mcp/server/toggle", { enabled }),
     policy: () => get<MCPAccessPolicy>("/api/mcp/server/policy"),
     updatePolicy: (data: Record<string, any>) => patch<MCPAccessPolicy>("/api/mcp/server/policy", data),
-    audit: async (limit = 50, offset = 0): Promise<MCPAuditEntry[]> => {
-      const res = await get<any>(`/api/mcp/server/audit?limit=${limit}&offset=${offset}`);
+    audit: async (projectId: string, limit = 50, offset = 0): Promise<MCPAuditEntry[]> => {
+      const params = new URLSearchParams({
+        project_id: projectId,
+        limit: String(limit),
+        offset: String(offset),
+      });
+      const res = await get<any>(`/api/mcp/server/audit?${params.toString()}`);
       return Array.isArray(res) ? res : (res?.entries ?? []);
     },
     exposure: () => get<any>("/api/mcp/server/exposure"),
   },
   clients: {
-    list: async (): Promise<MCPServerConfig[]> => {
-      const res = await get<any>("/api/mcp/clients");
+    list: async (projectId: string): Promise<MCPServerConfig[]> => {
+      const res = await get<any>(`/api/mcp/clients?project_id=${encodeURIComponent(projectId)}`);
       return Array.isArray(res) ? res : (res?.servers ?? []);
     },
-    create: (data: { name: string; url: string; transport?: string; headers?: any }) =>
+    create: (data: { name: string; url: string; transport?: string; headers?: any; project_id?: string }) =>
       post<MCPServerConfig>("/api/mcp/clients", data),
-    delete: (id: string) => del(`/api/mcp/clients/${id}`),
-    discover: (id: string) => post<any>(`/api/mcp/clients/${id}/discover`, {}),
-    tools: (id: string) => get<any[]>(`/api/mcp/clients/${id}/tools`),
-    call: (id: string, toolName: string, args: any) =>
-      post<any>(`/api/mcp/clients/${id}/call`, { tool_name: toolName, arguments: args }),
-    health: (id: string) => get<any>(`/api/mcp/clients/${id}/health`),
-    allTools: async (): Promise<any[]> => {
-      const res = await get<any>("/api/mcp/clients/tools");
+    delete: (id: string, projectId: string) =>
+      del(`/api/mcp/clients/${id}?project_id=${encodeURIComponent(projectId)}`),
+    discover: (id: string, projectId: string) =>
+      post<any>(`/api/mcp/clients/${id}/discover?project_id=${encodeURIComponent(projectId)}`, {}),
+    tools: (id: string, projectId: string) =>
+      get<any[]>(`/api/mcp/clients/${id}/tools?project_id=${encodeURIComponent(projectId)}`),
+    call: (id: string, toolName: string, args: any, projectId: string) =>
+      post<any>(`/api/mcp/clients/${id}/call?project_id=${encodeURIComponent(projectId)}`, {
+        tool_name: toolName,
+        arguments: args,
+      }),
+    health: (id: string, projectId: string) =>
+      get<any>(`/api/mcp/clients/${id}/health?project_id=${encodeURIComponent(projectId)}`),
+    allTools: async (projectId: string): Promise<any[]> => {
+      const res = await get<any>(`/api/mcp/clients/tools?project_id=${encodeURIComponent(projectId)}`);
       return Array.isArray(res) ? res : (res?.tools ?? []);
     },
   },
   featured: {
-    list: () => get<FeaturedMCPServer[]>("/api/mcp/featured"),
-    get: (id: string) => get<FeaturedMCPServer>(`/api/mcp/featured/${id}`),
-    connect: (id: string, envVars?: Record<string, string>) =>
-      post<any>(`/api/mcp/featured/${id}/connect`, { env_vars: envVars || {} }),
+    list: (projectId: string) =>
+      get<FeaturedMCPServer[]>(`/api/mcp/featured?project_id=${encodeURIComponent(projectId)}`),
+    get: (id: string, projectId: string) =>
+      get<FeaturedMCPServer>(`/api/mcp/featured/${id}?project_id=${encodeURIComponent(projectId)}`),
+    connect: (id: string, envVars: Record<string, string> | undefined, projectId: string) =>
+      post<any>(`/api/mcp/featured/${id}/connect`, {
+        env_vars: envVars || {},
+        project_id: projectId,
+      }),
   },
 };
 
 // --- Autoresearch ---
 
 export const autoresearch = {
-  status: () => get<AutoresearchStatus>("/api/autoresearch/status"),
-  experiments: (params?: { loop_type?: string; kept?: boolean; limit?: number; offset?: number }) => {
+  status: (projectId: string) =>
+    get<AutoresearchStatus>(`/api/autoresearch/status?project_id=${encodeURIComponent(projectId)}`),
+  experiments: (params: { project_id: string; loop_type?: string; kept?: boolean; limit?: number; offset?: number }) => {
     const p = new URLSearchParams();
+    p.set("project_id", params.project_id);
     if (params?.loop_type) p.set("loop_type", params.loop_type);
     if (params?.kept !== undefined) p.set("kept", String(params.kept));
     if (params?.limit) p.set("limit", String(params.limit));
@@ -908,10 +1062,12 @@ export const autoresearch = {
   experiment: (id: string) => get<AutoresearchExperiment>(`/api/autoresearch/experiments/${id}`),
   start: (data: { loop_type: string; target: string; max_iterations?: number; project_id?: string }) =>
     post<any>("/api/autoresearch/start", data),
-  stop: () => post<any>("/api/autoresearch/stop", {}),
+  stop: (projectId: string) =>
+    post<any>(`/api/autoresearch/stop?project_id=${encodeURIComponent(projectId)}`, {}),
   config: () => get<AutoresearchConfig>("/api/autoresearch/config"),
   updateConfig: (data: Record<string, any>) => patch<AutoresearchConfig>("/api/autoresearch/config", data),
-  leaderboard: () => get<ModelSkillLeaderboard[]>("/api/autoresearch/leaderboard"),
+  leaderboard: (projectId: string) =>
+    get<ModelSkillLeaderboard[]>(`/api/autoresearch/leaderboard?project_id=${encodeURIComponent(projectId)}`),
   toggle: (enabled: boolean) => post<any>("/api/autoresearch/toggle", { enabled }),
 };
 
@@ -946,6 +1102,7 @@ export const users = {
 
 export const admin = {
   overview: () => get<any>("/api/admin/overview"),
+  computeStats: () => get<any>("/api/admin/compute/stats"),
   projects: () => get<{ projects: any[] }>("/api/admin/projects"),
   users: () => get<{ users: any[] }>("/api/admin/users"),
   access: () => get<{ memberships: any[] }>("/api/admin/access"),
@@ -962,7 +1119,7 @@ export const admin = {
     del(`/api/projects/${projectId}`),
   generateUserInvite: (data: { server_url: string; ws_url?: string; label?: string; expires_hours?: number; role?: string }) =>
     post<any>("/api/connections/generate", data),
-  generateComputeDonation: (data: { server_url: string; ws_url?: string; label?: string; expires_hours?: number }) =>
+  generateComputeDonation: (data: { server_url: string; ws_url?: string; label?: string; expires_hours?: number; allowed_project_ids?: string[] }) =>
     post<any>("/api/connections/compute-donation/generate", data),
 };
 

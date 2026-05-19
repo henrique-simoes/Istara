@@ -74,7 +74,7 @@ export const chat = {
   },
   history: (projectId: string, limit = 50) =>
     json<any[]>(`/api/chat/history/${projectId}?limit=${limit}`),
-  transcribeVoice: async (audioFile: File, language?: string): Promise<{
+  transcribeVoice: async (audioFile: File, projectId: string, language?: string): Promise<{
     text: string;
     language: string;
     confidence: number;
@@ -85,6 +85,7 @@ export const chat = {
   }> => {
     const formData = new FormData();
     formData.append("audio", audioFile);
+    formData.append("project_id", projectId);
     if (language) formData.append("language", language);
 
     const res = await fetch(`${API_BASE}/api/chat/voice`, {

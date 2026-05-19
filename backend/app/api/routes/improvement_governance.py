@@ -7,6 +7,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.improvement_governance import improvement_governance
+from app.core.permissions import get_visible_project_or_404
 from app.core.security_middleware import (
     get_user_from_request,
     require_admin_from_request,
@@ -58,6 +59,36 @@ class ProposalSandboxEvaluationRequest(BaseModel):
     evidence: dict = Field(default_factory=dict)
 
 
+def _require_project_id(project_id: str | None) -> str:
+    scoped_project_id = (project_id or "").strip()
+    if not scoped_project_id:
+        raise HTTPException(status_code=400, detail="project_id is required")
+    return scoped_project_id
+
+
+async def _require_admin_project_scope(
+    db: AsyncSession,
+    request: Request,
+    project_id: str | None,
+) -> str:
+    """Require global admin plus an explicit, visible project scope."""
+    require_admin_from_request(request)
+    scoped_project_id = _require_project_id(project_id)
+    await get_visible_project_or_404(db, request, scoped_project_id, min_role="viewer")
+    return scoped_project_id
+
+
+async def _get_project_proposal_or_404(
+    proposal_id: str,
+    project_id: str,
+    db: AsyncSession,
+):
+    proposal = await improvement_governance.get_proposal(proposal_id, db=db)
+    if proposal is None or proposal.project_id != project_id:
+        raise HTTPException(status_code=404, detail="Proposal not found")
+    return proposal
+
+
 @router.get("/proposals")
 async def list_proposals(
     request: Request,
@@ -70,9 +101,9 @@ async def list_proposals(
     db: AsyncSession = Depends(get_db),
 ):
     """List improvement proposals. Admin-only because proposals can expose system internals."""
-    require_admin_from_request(request)
+    scoped_project_id = await _require_admin_project_scope(db, request, project_id)
     proposals = await improvement_governance.list_proposals(
-        project_id=project_id,
+        project_id=scoped_project_id,
         source_system=source_system,
         status=status,
         affected_surface=affected_surface,
@@ -87,13 +118,12 @@ async def list_proposals(
 async def get_proposal(
     proposal_id: str,
     request: Request,
+    project_id: str | None = Query(default=None),
     db: AsyncSession = Depends(get_db),
 ):
     """Get one improvement proposal."""
-    require_admin_from_request(request)
-    proposal = await improvement_governance.get_proposal(proposal_id, db=db)
-    if proposal is None:
-        raise HTTPException(status_code=404, detail="Proposal not found")
+    scoped_project_id = await _require_admin_project_scope(db, request, project_id)
+    proposal = await _get_project_proposal_or_404(proposal_id, scoped_project_id, db)
     return {"proposal": proposal.to_dict()}
 
 
@@ -104,10 +134,12 @@ async def create_proposal(
     db: AsyncSession = Depends(get_db),
 ):
     """Create a manual or integration-origin improvement proposal."""
-    require_admin_from_request(request)
+    scoped_project_id = await _require_admin_project_scope(db, request, body.project_id)
     user = get_user_from_request(request)
+    data = body.model_dump()
+    data["project_id"] = scoped_project_id
     proposal = await improvement_governance.create_proposal(
-        **body.model_dump(),
+        **data,
         created_by=user.get("id", ""),
         db=db,
     )
@@ -121,10 +153,12 @@ async def approve_proposal(
     proposal_id: str,
     request: Request,
     body: ProposalDecisionRequest | None = None,
+    project_id: str | None = Query(default=None),
     db: AsyncSession = Depends(get_db),
 ):
     """Approve a proposal so it can be applied through its owning subsystem."""
-    require_admin_from_request(request)
+    scoped_project_id = await _require_admin_project_scope(db, request, project_id)
+    await _get_project_proposal_or_404(proposal_id, scoped_project_id, db)
     user = get_user_from_request(request)
     result = await improvement_governance.approve_proposal(
         proposal_id,
@@ -143,10 +177,12 @@ async def apply_proposal(
     proposal_id: str,
     request: Request,
     body: ProposalApplyRequest | None = None,
+    project_id: str | None = Query(default=None),
     db: AsyncSession = Depends(get_db),
 ):
     """Mark an approved proposal as applied after its subsystem applies it."""
-    require_admin_from_request(request)
+    scoped_project_id = await _require_admin_project_scope(db, request, project_id)
+    await _get_project_proposal_or_404(proposal_id, scoped_project_id, db)
     user = get_user_from_request(request)
     result = await improvement_governance.apply_proposal(
         proposal_id,
@@ -165,10 +201,12 @@ async def reject_proposal(
     proposal_id: str,
     request: Request,
     body: ProposalDecisionRequest | None = None,
+    project_id: str | None = Query(default=None),
     db: AsyncSession = Depends(get_db),
 ):
     """Reject a pending proposal."""
-    require_admin_from_request(request)
+    scoped_project_id = await _require_admin_project_scope(db, request, project_id)
+    await _get_project_proposal_or_404(proposal_id, scoped_project_id, db)
     user = get_user_from_request(request)
     result = await improvement_governance.reject_proposal(
         proposal_id,
@@ -187,10 +225,12 @@ async def revert_proposal(
     proposal_id: str,
     request: Request,
     body: ProposalDecisionRequest | None = None,
+    project_id: str | None = Query(default=None),
     db: AsyncSession = Depends(get_db),
 ):
     """Mark an applied proposal as reverted after its rollback path is executed."""
-    require_admin_from_request(request)
+    scoped_project_id = await _require_admin_project_scope(db, request, project_id)
+    await _get_project_proposal_or_404(proposal_id, scoped_project_id, db)
     user = get_user_from_request(request)
     result = await improvement_governance.revert_proposal(
         proposal_id,
@@ -209,10 +249,12 @@ async def quarantine_proposal(
     proposal_id: str,
     request: Request,
     body: ProposalDecisionRequest | None = None,
+    project_id: str | None = Query(default=None),
     db: AsyncSession = Depends(get_db),
 ):
     """Quarantine a suspicious proposal or memory-linked change."""
-    require_admin_from_request(request)
+    scoped_project_id = await _require_admin_project_scope(db, request, project_id)
+    await _get_project_proposal_or_404(proposal_id, scoped_project_id, db)
     user = get_user_from_request(request)
     result = await improvement_governance.quarantine_proposal(
         proposal_id,
@@ -231,10 +273,12 @@ async def record_evaluation(
     proposal_id: str,
     body: ProposalEvaluationRequest,
     request: Request,
+    project_id: str | None = Query(default=None),
     db: AsyncSession = Depends(get_db),
 ):
     """Append evaluation evidence to a proposal."""
-    require_admin_from_request(request)
+    scoped_project_id = await _require_admin_project_scope(db, request, project_id)
+    await _get_project_proposal_or_404(proposal_id, scoped_project_id, db)
     result = await improvement_governance.record_evaluation(
         proposal_id,
         metrics_before=body.metrics_before,
@@ -254,10 +298,12 @@ async def record_sandbox_evaluation(
     proposal_id: str,
     body: ProposalSandboxEvaluationRequest,
     request: Request,
+    project_id: str | None = Query(default=None),
     db: AsyncSession = Depends(get_db),
 ):
     """Run and persist local sandbox checks before apply."""
-    require_admin_from_request(request)
+    scoped_project_id = await _require_admin_project_scope(db, request, project_id)
+    await _get_project_proposal_or_404(proposal_id, scoped_project_id, db)
     result = await improvement_governance.record_sandbox_evaluation(
         proposal_id,
         evidence=body.evidence,
@@ -273,10 +319,11 @@ async def record_sandbox_evaluation(
 async def governance_summary(
     request: Request,
     project_id: str | None = Query(default=None),
+    db: AsyncSession = Depends(get_db),
 ):
     """Return aggregate governance counts for dashboards and telemetry."""
-    require_admin_from_request(request)
-    return await improvement_governance.summary(project_id=project_id)
+    scoped_project_id = await _require_admin_project_scope(db, request, project_id)
+    return await improvement_governance.summary(project_id=scoped_project_id)
 
 
 @router.get("/feature-contract")

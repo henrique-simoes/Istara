@@ -11,6 +11,7 @@ import logging
 import re
 import uuid
 from datetime import datetime, timezone
+from urllib.parse import urlsplit, urlunsplit
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -40,6 +41,13 @@ except ImportError:
     logger.info("mcp client library not installed -- MCP client registry unavailable")
 
 
+def _require_project_scope(project_id: str | None) -> str:
+    scoped_project_id = (project_id or "").strip()
+    if not scoped_project_id:
+        raise ValueError("project_id is required")
+    return scoped_project_id
+
+
 # ---------------------------------------------------------------------------
 # Server registration
 # ---------------------------------------------------------------------------
@@ -51,6 +59,8 @@ async def register_server(
     url: str,
     transport: str = "http",
     headers: dict | None = None,
+    *,
+    project_id: str,
 ) -> MCPServerConfig:
     """Register a new external MCP server.
 
@@ -77,9 +87,35 @@ async def register_server(
         EndpointPolicy(service_name="MCP server"),
     )
     safe_headers = _validate_headers(headers or {})
+    normalized_project_id = _require_project_scope(project_id)
+
+    existing_result = await db.execute(
+        select(MCPServerConfig)
+        .where(
+            MCPServerConfig.project_id == normalized_project_id,
+            MCPServerConfig.url == normalized_url,
+            MCPServerConfig.transport == transport,
+            MCPServerConfig.is_active.is_(True),
+        )
+        .order_by(MCPServerConfig.updated_at.desc())
+    )
+    existing = existing_result.scalars().first()
+    if existing:
+        existing.name = name
+        existing.headers_json = encrypt_field(json.dumps(safe_headers))
+        existing.updated_at = datetime.now(timezone.utc)
+        await db.commit()
+        await db.refresh(existing)
+        logger.info(
+            "Reused MCP server '%s' at %s",
+            name,
+            redacted_endpoint_label(normalized_url),
+        )
+        return existing
 
     config = MCPServerConfig(
         id=str(uuid.uuid4()),
+        project_id=normalized_project_id,
         name=name,
         url=normalized_url,
         transport=transport,
@@ -154,13 +190,25 @@ def _safe_tool_descriptor(tool) -> dict | None:
 # ---------------------------------------------------------------------------
 
 
-async def discover_tools(db: AsyncSession, server_id: str) -> list[dict]:
+async def discover_tools(
+    db: AsyncSession,
+    server_id: str,
+    *,
+    project_id: str,
+) -> list[dict]:
     """Connect to an MCP server, list its tools, and cache the result.
 
     Returns:
         List of tool descriptors ``[{"name", "description", "input_schema"}, ...]``.
     """
-    server = await db.get(MCPServerConfig, server_id)
+    scoped_project_id = _require_project_scope(project_id)
+    result = await db.execute(
+        select(MCPServerConfig).where(
+            MCPServerConfig.id == server_id,
+            MCPServerConfig.project_id == scoped_project_id,
+        )
+    )
+    server = result.scalar_one_or_none()
     if not server:
         return []
 
@@ -209,13 +257,22 @@ async def call_tool(
     server_id: str,
     tool_name: str,
     arguments: dict,
+    *,
+    project_id: str,
 ) -> dict:
     """Call a tool on an external MCP server.
 
     Opens a short-lived MCP session, invokes the tool, and returns the
     parsed result.
     """
-    server = await db.get(MCPServerConfig, server_id)
+    scoped_project_id = _require_project_scope(project_id)
+    result = await db.execute(
+        select(MCPServerConfig).where(
+            MCPServerConfig.id == server_id,
+            MCPServerConfig.project_id == scoped_project_id,
+        )
+    )
+    server = result.scalar_one_or_none()
     if not server:
         return {"error": "Server not found"}
 
@@ -261,9 +318,21 @@ async def call_tool(
 # ---------------------------------------------------------------------------
 
 
-async def health_check(db: AsyncSession, server_id: str) -> dict:
+async def health_check(
+    db: AsyncSession,
+    server_id: str,
+    *,
+    project_id: str,
+) -> dict:
     """Check connectivity to an MCP server by attempting tool discovery."""
-    server = await db.get(MCPServerConfig, server_id)
+    scoped_project_id = _require_project_scope(project_id)
+    result = await db.execute(
+        select(MCPServerConfig).where(
+            MCPServerConfig.id == server_id,
+            MCPServerConfig.project_id == scoped_project_id,
+        )
+    )
+    server = result.scalar_one_or_none()
     if not server:
         return {"healthy": False, "error": "Server not found"}
 
@@ -294,9 +363,21 @@ async def health_check(db: AsyncSession, server_id: str) -> dict:
 # ---------------------------------------------------------------------------
 
 
-async def unregister_server(db: AsyncSession, server_id: str) -> bool:
+async def unregister_server(
+    db: AsyncSession,
+    server_id: str,
+    *,
+    project_id: str,
+) -> bool:
     """Remove an MCP server from the registry."""
-    server = await db.get(MCPServerConfig, server_id)
+    scoped_project_id = _require_project_scope(project_id)
+    result = await db.execute(
+        select(MCPServerConfig).where(
+            MCPServerConfig.id == server_id,
+            MCPServerConfig.project_id == scoped_project_id,
+        )
+    )
+    server = result.scalar_one_or_none()
     if not server:
         return False
     await db.delete(server)
@@ -305,29 +386,74 @@ async def unregister_server(db: AsyncSession, server_id: str) -> bool:
     return True
 
 
-async def list_servers(db: AsyncSession, active_only: bool = False) -> list[dict]:
-    """List all registered MCP servers."""
-    query = select(MCPServerConfig).order_by(MCPServerConfig.created_at.desc())
+def _dedupe_url(url: str) -> str:
+    raw = (url or "").strip().rstrip("/")
+    try:
+        parsed = urlsplit(raw)
+    except Exception:
+        return raw.lower()
+    scheme = parsed.scheme.lower()
+    hostname = (parsed.hostname or "").lower()
+    try:
+        port = parsed.port
+    except ValueError:
+        port = None
+    if port and not ((scheme == "http" and port == 80) or (scheme == "https" and port == 443)):
+        hostname = f"{hostname}:{port}"
+    path = parsed.path.rstrip("/")
+    return urlunsplit((scheme, hostname, path, "", ""))
+
+
+async def list_servers(
+    db: AsyncSession,
+    active_only: bool = False,
+    *,
+    project_id: str,
+) -> list[dict]:
+    """List registered MCP servers for exactly one active project."""
+    scoped_project_id = _require_project_scope(project_id)
+    query = select(MCPServerConfig).order_by(
+        MCPServerConfig.updated_at.desc(),
+        MCPServerConfig.created_at.desc(),
+    )
     if active_only:
         query = query.where(MCPServerConfig.is_active.is_(True))
+    query = query.where(MCPServerConfig.project_id == scoped_project_id)
     result = await db.execute(query)
     servers = result.scalars().all()
-    return [s.to_dict() for s in servers]
+    deduped: dict[tuple[str, str, str], dict] = {}
+    for server in servers:
+        key = (server.project_id or "", (server.transport or "").lower(), _dedupe_url(server.url))
+        if key not in deduped:
+            row = server.to_dict()
+            row["duplicate_count"] = 1
+            deduped[key] = row
+        else:
+            deduped[key]["duplicate_count"] += 1
+    return list(deduped.values())
 
 
-async def list_all_tools(db: AsyncSession) -> list[dict]:
-    """Aggregate cached tools from all active servers.
+async def list_all_tools(db: AsyncSession, *, project_id: str) -> list[dict]:
+    """Aggregate cached tools from active servers in exactly one project.
 
     Returns a flat list of tool descriptors, each annotated with the
     server_id and server_name they belong to.
     """
-    result = await db.execute(
-        select(MCPServerConfig).where(MCPServerConfig.is_active.is_(True))
+    scoped_project_id = _require_project_scope(project_id)
+    query = select(MCPServerConfig).where(
+        MCPServerConfig.is_active.is_(True),
+        MCPServerConfig.project_id == scoped_project_id,
     )
+    result = await db.execute(query)
     servers = result.scalars().all()
 
     all_tools: list[dict] = []
+    seen_servers: set[tuple[str, str, str]] = set()
     for server in servers:
+        key = (server.project_id or "", (server.transport or "").lower(), _dedupe_url(server.url))
+        if key in seen_servers:
+            continue
+        seen_servers.add(key)
         tools = json.loads(server.tools_json) if server.tools_json else []
         for tool in tools:
             all_tools.append({

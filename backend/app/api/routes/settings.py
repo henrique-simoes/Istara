@@ -12,6 +12,7 @@ from app.core.env_persistence import persist_env_value
 from app.core.hardware import detect_hardware, recommend_model
 from app.core.ollama import ollama
 from app.core.permissions import require_global_role, require_project_access
+from app.core.runtime_freshness import detect_runtime_freshness
 from app.core.security_middleware import require_admin_from_request
 from app.models.database import get_db
 
@@ -44,9 +45,28 @@ def _embed_model() -> str:
     return settings.ollama_embed_model
 
 
+def _cached_llm_readiness() -> tuple[bool, bool]:
+    """Return cached reachability/readiness without probing provider endpoints."""
+    nodes = getattr(ollama, "_nodes", None)
+    if not nodes:
+        return False, False
+
+    reachable = False
+    chat_ready = False
+    for node in nodes.values():
+        try:
+            snapshot = node.to_dict()
+        except Exception:
+            continue
+        reachable = reachable or bool(snapshot.get("is_reachable"))
+        chat_ready = chat_ready or bool(snapshot.get("is_ready"))
+    return reachable, chat_ready
+
+
 @router.get("/settings/hardware")
-async def get_hardware_info():
+async def get_hardware_info(request: Request):
     """Get hardware detection results and model recommendation."""
+    require_global_role(request, "admin")
     try:
         profile = detect_hardware()
         recommendation = recommend_model(profile)
@@ -85,12 +105,13 @@ async def get_hardware_info():
 
 
 @router.get("/settings/models")
-async def get_models():
+async def get_models(request: Request):
     """Get available and active models.
 
     For LM Studio, probes the actually loaded model via a minimal chat request
     since /v1/models returns all downloaded (not just loaded) models.
     """
+    require_global_role(request, "admin")
     from app.core.compute_registry import compute_registry
 
     healthy = await ollama.health()
@@ -98,8 +119,10 @@ async def get_models():
     if not healthy and not registry_models:
         return {
             "status": "offline",
+            "provider": settings.llm_provider,
             "models": [],
             "active_model": _active_model(),
+            "embed_model": _embed_model(),
         }
 
     models = registry_models or await ollama.list_models()
@@ -154,6 +177,7 @@ async def get_models():
 
     return {
         "status": "online",
+        "provider": settings.llm_provider,
         "models": enriched,
         "active_model": active,
         "embed_model": _embed_model(),
@@ -163,7 +187,7 @@ async def get_models():
 @router.post("/settings/model")
 async def switch_model(model_name: str, request: Request):
     """Switch the active model at runtime (pulls if using Ollama and not available)."""
-    require_global_role(request, "researcher")
+    require_global_role(request, "admin")
     models = await ollama.list_models()
     model_names = [m.get("name", "") for m in models]
 
@@ -207,7 +231,7 @@ async def switch_model(model_name: str, request: Request):
 @router.post("/settings/provider")
 async def switch_provider(provider: str, request: Request):
     """Switch the LLM provider at runtime (ollama or lmstudio)."""
-    require_global_role(request, "researcher")
+    require_global_role(request, "admin")
 
     if provider not in ("ollama", "lmstudio"):
         raise HTTPException(status_code=400, detail="Provider must be 'ollama' or 'lmstudio'")
@@ -300,8 +324,9 @@ async def maintenance_resume(request: Request):
 
 
 @router.get("/settings/maintenance")
-async def maintenance_status():
+async def maintenance_status(request: Request):
     """Check current maintenance mode status."""
+    require_global_role(request, "admin")
     from app.core.resource_governor import governor
 
     return {
@@ -331,8 +356,9 @@ async def toggle_strict_routing(data: StrictRoutingRequest, request: Request):
 
 
 @router.get("/settings/integrations-status")
-async def integrations_status():
+async def integrations_status(request: Request):
     """Check configuration status of design integrations (Stitch, Figma)."""
+    require_global_role(request, "admin")
     return {
         "stitch_configured": bool(settings.stitch_api_key),
         "figma_configured": bool(settings.figma_api_token),
@@ -340,8 +366,9 @@ async def integrations_status():
 
 
 @router.get("/settings/vector-health")
-async def vector_health():
+async def vector_health(request: Request):
     """Check embedding dimension consistency across vector stores."""
+    require_global_role(request, "admin")
     from app.core.vector_health import check_embedding_dimensions
 
     return await check_embedding_dimensions()
@@ -351,8 +378,9 @@ async def vector_health():
 
 
 @router.get("/settings/data-integrity")
-async def check_data_integrity(db: AsyncSession = Depends(get_db)):
+async def check_data_integrity(request: Request, db: AsyncSession = Depends(get_db)):
     """Run a data integrity check and return health report."""
+    require_global_role(request, "admin")
     from app.core.data_integrity import run_integrity_check
 
     report = await run_integrity_check(db)
@@ -400,55 +428,15 @@ async def import_database(
 async def system_status():
     """Get overall system status.
 
-    Read the cached LLM health maintained by the compute registry health loop.
-    This endpoint is called often by the UI, so it must not deep-scan every
-    donated server or trigger model loading.
+    This endpoint is intentionally public so login, onboarding, and status bars
+    can tell whether the backend is alive. Keep it passive and non-sensitive:
+    do not probe provider endpoints, do not discover loaded models, and do not
+    expose shared provider/model/RAG configuration.
     """
-    import app.core.ollama as ollama_mod
-
-    active = _active_model()
-
-    # Use cached health from the background loop. A status poll should never
-    # load models or serially probe many donated/offline endpoints.
-    llm_healthy = await ollama.health()
-
-    llm_ready = llm_healthy
-    if llm_healthy and hasattr(ollama_mod.ollama, "ensure_chat_ready"):
-        try:
-            llm_ready = await ollama_mod.ollama.ensure_chat_ready(
-                model=active,
-                probe_lmstudio=False,
-                allow_model_load=False,
-                refresh_health=False,
-            )
-        except Exception as exc:
-            logger.warning("LLM chat-readiness probe failed: %s", exc)
-            llm_ready = False
-
-    # For LM Studio, detect the actually loaded model only when no concrete
-    # model was configured. Explicit OpenAI-compatible model config is
-    # authoritative for routing and should not drift after status checks.
-    if llm_ready and settings.llm_provider == "lmstudio":
-        import app.core.ollama as ollama_mod
-        from app.core.lmstudio import (
-            LMStudioClient,
-            configured_lmstudio_model_is_authoritative,
-        )
-
-        client = ollama_mod.ollama
-        if isinstance(client, LMStudioClient) and not configured_lmstudio_model_is_authoritative():
-            loaded = await client.detect_loaded_model()
-            if loaded and loaded != active:
-                settings.lmstudio_model = loaded
-                active = loaded
-                try:
-                    _persist_env("LMSTUDIO_MODEL", loaded)
-                except Exception:
-                    pass
+    llm_healthy, llm_ready = _cached_llm_readiness()
 
     return {
         "status": "healthy" if llm_ready else "degraded",
-        "provider": settings.llm_provider,
         "team_mode": settings.team_mode,
         "strict_auto_routing": settings.strict_auto_routing,
         "llm_readiness": {
@@ -457,14 +445,9 @@ async def system_status():
         },
         "services": {
             "backend": "running",
-            "llm": "connected" if llm_ready else "disconnected",
+            "llm": "connected" if llm_healthy else "disconnected",
         },
-        "config": {
-            "model": active,
-            "embed_model": _embed_model(),
-            "rag_chunk_size": settings.rag_chunk_size,
-            "rag_top_k": settings.rag_top_k,
-        },
+        "runtime": detect_runtime_freshness(),
     }
 
 

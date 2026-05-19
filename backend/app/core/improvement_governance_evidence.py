@@ -21,6 +21,14 @@ from app.core.sandbox_evaluation import sandbox_evaluation
 from app.models.database import async_session
 from app.models.improvement_governance import ImprovementProposal
 
+
+def _require_project_owned_producer_id(project_id: str, source_system: str) -> str:
+    scoped_project_id = str(project_id or "").strip()
+    if not scoped_project_id:
+        raise ValueError(f"project_id is required for {source_system} proposals")
+    return scoped_project_id
+
+
 class ImprovementGovernanceEvidenceMixin:
     async def record_feature_evidence(
         self,
@@ -48,6 +56,7 @@ class ImprovementGovernanceEvidenceMixin:
             existing = await self.get_proposal_by_source(
                 source_system=source_system,
                 source_id=proposal_source_id,
+                project_id=project_id,
                 db=session,
             )
             event = {
@@ -174,12 +183,16 @@ class ImprovementGovernanceEvidenceMixin:
     ) -> list[str]:
         if not experiment.get("kept"):
             return []
+        scoped_project_id = _require_project_owned_producer_id(
+            project_id,
+            "autoresearch",
+        )
         loop_type = str(experiment.get("loop_type", ""))
         surfaces = self.infer_autoresearch_surfaces(loop_type)
         proposal = await self.create_proposal(
             source_system="autoresearch",
             source_id=str(experiment.get("id", "")),
-            project_id=project_id,
+            project_id=scoped_project_id,
             agent_id="autoresearch",
             title=f"Promote autoresearch improvement for {loop_type or 'unknown loop'}",
             summary=str(experiment.get("hypothesis", "")),
@@ -229,11 +242,21 @@ class ImprovementGovernanceEvidenceMixin:
             return ["skills", "orchestration", "configs"]
         return ["configs"]
 
-    async def register_meta_proposal(self, proposal: dict) -> str | None:
+    async def register_meta_proposal(
+        self,
+        proposal: dict,
+        *,
+        project_id: str = "",
+    ) -> str | None:
         parameter_path = str(proposal.get("parameter_path", ""))
+        scoped_project_id = _require_project_owned_producer_id(
+            proposal.get("project_id") or project_id or "",
+            "hyperagent",
+        )
         created = await self.create_proposal(
             source_system="hyperagent",
             source_id=str(proposal.get("id", "")),
+            project_id=scoped_project_id,
             agent_id="meta-hyperagent",
             title=f"Review HyperAgent tuning for {parameter_path or 'parameter'}",
             summary=str(proposal.get("reason", "")),
@@ -259,10 +282,20 @@ class ImprovementGovernanceEvidenceMixin:
         )
         return created.id
 
-    async def register_agent_creation_proposal(self, proposal: dict) -> str | None:
+    async def register_agent_creation_proposal(
+        self,
+        proposal: dict,
+        *,
+        project_id: str = "",
+    ) -> str | None:
+        scoped_project_id = _require_project_owned_producer_id(
+            proposal.get("project_id") or project_id or "",
+            "memento_agent_factory",
+        )
         created = await self.create_proposal(
             source_system="memento_agent_factory",
             source_id=str(proposal.get("id", "")),
+            project_id=scoped_project_id,
             agent_id="agent-factory",
             title=f"Review agent creation for {proposal.get('proposed_name', 'new agent')}",
             summary=str(proposal.get("reason", "")),
@@ -284,6 +317,7 @@ class ImprovementGovernanceEvidenceMixin:
             },
             evidence=[{
                 "kind": "memento_agent_creation",
+                "project_id": scoped_project_id,
                 "confidence": proposal.get("confidence"),
                 "created_at": proposal.get("created_at"),
             }],
@@ -292,10 +326,20 @@ class ImprovementGovernanceEvidenceMixin:
         )
         return created.id
 
-    async def register_skill_update_proposal(self, proposal: dict) -> str | None:
+    async def register_skill_update_proposal(
+        self,
+        proposal: dict,
+        *,
+        project_id: str = "",
+    ) -> str | None:
+        scoped_project_id = _require_project_owned_producer_id(
+            proposal.get("project_id") or project_id or "",
+            "skill_evolution",
+        )
         created = await self.create_proposal(
             source_system="skill_evolution",
             source_id=str(proposal.get("id", "")),
+            project_id=scoped_project_id,
             agent_id="skill-manager",
             title=f"Review skill update for {proposal.get('skill_name', 'skill')}",
             summary=str(proposal.get("reason", "")),
@@ -319,6 +363,7 @@ class ImprovementGovernanceEvidenceMixin:
             },
             evidence=[{
                 "kind": "skill_update_proposal",
+                "project_id": scoped_project_id,
                 "confidence": proposal.get("confidence"),
                 "created_at": proposal.get("created_at"),
             }],
@@ -327,11 +372,21 @@ class ImprovementGovernanceEvidenceMixin:
         )
         return created.id
 
-    async def register_skill_creation_proposal(self, proposal: dict) -> str | None:
+    async def register_skill_creation_proposal(
+        self,
+        proposal: dict,
+        *,
+        project_id: str = "",
+    ) -> str | None:
         definition = proposal.get("proposed_definition") or {}
+        scoped_project_id = _require_project_owned_producer_id(
+            proposal.get("project_id") or project_id or "",
+            "memento_skill_factory",
+        )
         created = await self.create_proposal(
             source_system="memento_skill_factory",
             source_id=str(proposal.get("id", "")),
+            project_id=scoped_project_id,
             agent_id=str(proposal.get("source_agent_id", "skill-manager")),
             title=f"Review skill creation for {definition.get('name', 'new skill')}",
             summary=str(proposal.get("reason", "")),
@@ -345,6 +400,7 @@ class ImprovementGovernanceEvidenceMixin:
             },
             evidence=[{
                 "kind": "memento_skill_creation",
+                "project_id": scoped_project_id,
                 "confidence": proposal.get("confidence"),
                 "test_result": proposal.get("test_result"),
             }],
@@ -353,10 +409,21 @@ class ImprovementGovernanceEvidenceMixin:
         )
         return created.id
 
-    async def register_self_evolution_promotion(self, promotion: dict, *, applied: bool = False) -> str | None:
+    async def register_self_evolution_promotion(
+        self,
+        promotion: dict,
+        *,
+        project_id: str = "",
+        applied: bool = False,
+    ) -> str | None:
+        scoped_project_id = _require_project_owned_producer_id(
+            promotion.get("project_id") or project_id or "",
+            "self_evolution",
+        )
         created = await self.create_proposal(
             source_system="self_evolution",
             source_id=f"{promotion.get('agent_id', '')}:{promotion.get('learning_id', '')}",
+            project_id=scoped_project_id,
             agent_id=str(promotion.get("agent_id", "")),
             title=f"Track self-evolution promotion for {promotion.get('agent_id', 'agent')}",
             summary=str(promotion.get("learning", "")) or str(promotion.get("promotion_text", "")),

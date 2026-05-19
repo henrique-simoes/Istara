@@ -12,23 +12,22 @@ logger = logging.getLogger(__name__)
 
 
 class SkillUsageMixin:
-    def record_execution(self, skill_name: str, success: bool, quality_score: float = 0.0) -> None:
-        """Record a skill execution for usage tracking."""
-        from app.core.autoresearch_isolation import is_autoresearch_active
+    def _empty_usage_stats(self) -> dict:
+        return {
+            "executions": 0,
+            "successes": 0,
+            "failures": 0,
+            "total_quality": 0.0,
+            "utility_score": 0.5,
+            "last_used": None,
+        }
 
-        if is_autoresearch_active():
-            return
-        stats = self._usage_stats.setdefault(
-            skill_name,
-            {
-                "executions": 0,
-                "successes": 0,
-                "failures": 0,
-                "total_quality": 0.0,
-                "utility_score": 0.5,
-                "last_used": None,
-            },
-        )
+    def _update_usage_stats(self, stats: dict, success: bool, quality_score: float) -> None:
+        stats.setdefault("executions", 0)
+        stats.setdefault("successes", 0)
+        stats.setdefault("failures", 0)
+        stats.setdefault("total_quality", 0.0)
+        stats.setdefault("utility_score", 0.5)
         stats["executions"] += 1
         if success:
             stats["successes"] += 1
@@ -39,67 +38,110 @@ class SkillUsageMixin:
         stats["total_quality"] += quality_score
         stats["last_used"] = datetime.now(timezone.utc).isoformat()
 
-        self._save_stats()
-        if stats["executions"] >= 10 and stats["utility_score"] < 0.3:
-            self._notify_low_utility_skill(skill_name, stats)
+    def _usage_stats_with_rates(self, stats: dict) -> dict:
+        result = dict(stats)
+        executions = result.get("executions", 0)
+        if executions > 0:
+            result["avg_quality"] = result.get("total_quality", 0.0) / executions
+            result["success_rate"] = result.get("successes", 0) / executions
+        result.setdefault("utility_score", 0.5)
+        return result
 
-    def _notify_low_utility_skill(self, skill_name: str, stats: dict) -> None:
+    def record_execution(
+        self,
+        skill_name: str,
+        success: bool,
+        quality_score: float = 0.0,
+        project_id: str | None = None,
+    ) -> None:
+        """Record a skill execution for usage tracking."""
+        from app.core.autoresearch_isolation import is_autoresearch_active
+
+        if is_autoresearch_active():
+            return
+        stats = self._usage_stats.setdefault(skill_name, self._empty_usage_stats())
+        self._update_usage_stats(stats, success, quality_score)
+
+        scoped_project_id = str(project_id or "").strip()
+        scoped_stats = None
+        if scoped_project_id:
+            projects = stats.setdefault("projects", {})
+            scoped_stats = projects.setdefault(scoped_project_id, self._empty_usage_stats())
+            self._update_usage_stats(scoped_stats, success, quality_score)
+
+        self._save_stats()
+        if scoped_project_id and scoped_stats and scoped_stats["executions"] >= 10 and scoped_stats["utility_score"] < 0.3:
+            self._notify_low_utility_skill(
+                skill_name,
+                scoped_stats,
+                project_id=scoped_project_id,
+            )
+
+    def _notify_low_utility_skill(
+        self,
+        skill_name: str,
+        stats: dict,
+        project_id: str | None = None,
+        *,
+        allow_lifecycle_change: bool = False,
+    ) -> None:
         try:
             import asyncio
             from app.api.websocket import broadcast_suggestion
 
-            if stats["utility_score"] < 0.2:
-                defn = self._definitions.get(skill_name)
-                if defn:
-                    self.update_skill(
-                        skill_name,
-                        {"lifecycle": "deprecated"},
-                        "Auto-deprecated after chronically low utility",
-                    )
-                    logger.warning(
-                        "Skill '%s' auto-deprecated (utility=%.2f after %s runs)",
-                        skill_name,
-                        stats["utility_score"],
-                        stats["executions"],
-                    )
+            if allow_lifecycle_change:
+                logger.info(
+                    "Ignoring automatic global lifecycle mutation for skill %s; "
+                    "skill health is reported per project for review.",
+                    skill_name,
+                )
 
             loop = asyncio.get_event_loop()
             if loop.is_running():
                 message = (
                     f"Skill '{skill_name}' has low utility "
                     f"({stats['utility_score']:.0%} after {stats['executions']} runs). "
-                    + (
-                        "It has been auto-deprecated."
-                        if stats["utility_score"] < 0.2
-                        else "Consider reviewing or replacing it."
-                    )
+                    "Consider reviewing or replacing it for this project."
                 )
-                asyncio.ensure_future(broadcast_suggestion(message, ""))
+                scoped_project_id = str(project_id or "").strip()
+                if scoped_project_id:
+                    asyncio.ensure_future(broadcast_suggestion(message, scoped_project_id))
         except Exception:
             pass
 
-    def get_usage_stats(self, skill_name: str | None = None) -> dict:
+    def get_usage_stats(self, skill_name: str | None = None, project_id: str | None = None) -> dict:
         """Get usage statistics for one or all skills."""
+        scoped_project_id = str(project_id or "").strip()
         if skill_name:
-            stats = self._usage_stats.get(skill_name, {})
-            if stats and stats.get("executions", 0) > 0:
-                stats["avg_quality"] = stats["total_quality"] / stats["executions"]
-                stats["success_rate"] = stats["successes"] / stats["executions"]
-            stats.setdefault("utility_score", 0.5)
-            return stats
+            aggregate = self._usage_stats.get(skill_name, {})
+            stats = aggregate
+            if scoped_project_id:
+                stats = (aggregate.get("projects") or {}).get(scoped_project_id, {})
+            return self._usage_stats_with_rates(stats)
+        if scoped_project_id:
+            project_stats: dict[str, dict] = {}
+            for name, aggregate in self._usage_stats.items():
+                scoped = (aggregate.get("projects") or {}).get(scoped_project_id)
+                if scoped:
+                    project_stats[name] = self._usage_stats_with_rates(scoped)
+            return project_stats
         return self._usage_stats
 
     def _save_stats(self) -> None:
         self.ensure_definitions_dir()
         atomic_write(self._stats_file, json.dumps(self._usage_stats, indent=2))
 
-    def get_skill_health(self, name: str) -> dict:
+    def get_skill_health(self, name: str, project_id: str | None = None) -> dict:
         """Get health score for a skill."""
         defn = self._definitions.get(name)
         if not defn:
             return {"status": "not_found"}
 
-        stats = self._usage_stats.get(name, {})
+        scoped_project_id = str(project_id or "").strip()
+        aggregate = self._usage_stats.get(name, {})
+        stats = aggregate
+        if scoped_project_id:
+            stats = (aggregate.get("projects") or {}).get(scoped_project_id, {})
         executions = stats.get("executions", 0)
         success_rate = stats.get("successes", 0) / max(executions, 1)
         avg_quality = stats.get("total_quality", 0) / max(executions, 1)
@@ -134,10 +176,19 @@ class SkillUsageMixin:
             "health_score": round(health_score, 2),
             "last_used": stats.get("last_used"),
             "pending_proposals": len(
-                [p for p in self._proposals if p.skill_name == name and p.status == "pending"]
+                [
+                    p
+                    for p in self._proposals
+                    if p.skill_name == name
+                    and p.status == "pending"
+                    and (
+                        not scoped_project_id
+                        or getattr(p, "project_id", "") == scoped_project_id
+                    )
+                ]
             ),
         }
 
-    def get_all_health(self) -> list[dict]:
+    def get_all_health(self, project_id: str | None = None) -> list[dict]:
         """Get health scores for all skills."""
-        return [self.get_skill_health(name) for name in self._definitions]
+        return [self.get_skill_health(name, project_id=project_id) for name in self._definitions]

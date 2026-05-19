@@ -6,6 +6,10 @@ function authHeaders(): Record<string, string> {
   return token ? { Authorization: `Bearer ${token}` } : {};
 }
 
+function projectQuery(projectId: string): string {
+  return `project_id=${encodeURIComponent(projectId)}`;
+}
+
 async function json<T>(path: string, options?: RequestInit): Promise<T> {
   const res = await fetch(`${API_BASE}${path}`, {
     headers: { "Content-Type": "application/json", ...authHeaders(), ...options?.headers },
@@ -26,17 +30,19 @@ export const sessions = {
     inference_preset?: string;
     thinking_mode?: ThinkingMode;
   }) => json<ChatSession>("/api/sessions", { method: "POST", body: JSON.stringify(data) }),
-  get: (sessionId: string) =>
-    json<ChatSession & { messages: ChatMessage[] }>(`/api/sessions/detail/${sessionId}`),
-  update: (sessionId: string, data: Record<string, unknown>) =>
-    json<ChatSession>(`/api/sessions/${sessionId}`, {
+  get: (sessionId: string, projectId: string) =>
+    json<ChatSession & { messages: ChatMessage[] }>(
+      `/api/sessions/detail/${sessionId}?${projectQuery(projectId)}`
+    ),
+  update: (sessionId: string, projectId: string, data: Record<string, unknown>) =>
+    json<ChatSession>(`/api/sessions/${sessionId}?${projectQuery(projectId)}`, {
       method: "PATCH",
       body: JSON.stringify(data),
     }),
-  delete: (sessionId: string) =>
-    json<void>(`/api/sessions/${sessionId}`, { method: "DELETE" }),
-  star: (sessionId: string) =>
-    json<{ starred: boolean }>(`/api/sessions/${sessionId}/star`, {
+  delete: (sessionId: string, projectId: string) =>
+    json<void>(`/api/sessions/${sessionId}?${projectQuery(projectId)}`, { method: "DELETE" }),
+  star: (sessionId: string, projectId: string) =>
+    json<{ starred: boolean }>(`/api/sessions/${sessionId}/star?${projectQuery(projectId)}`, {
       method: "POST",
       body: "{}",
     }),

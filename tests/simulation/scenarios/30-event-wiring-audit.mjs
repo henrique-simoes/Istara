@@ -23,6 +23,10 @@ const REPO_ROOT = join(__dirname, "..", "..", "..");
 export async function run(ctx) {
   const { api, page } = ctx;
   const checks = [];
+  const activeProjectId = typeof ctx.projectId === "string" ? ctx.projectId.trim() : "";
+  const scopedSkipDetail = "[skipped] No active project id; scoped endpoint not called";
+  const projectScopedPath = (path) =>
+    `${path}${path.includes("?") ? "&" : "?"}project_id=${encodeURIComponent(activeProjectId)}`;
 
   function check(id, label, passed, detail = "") {
     checks.push({ id, label, passed, detail });
@@ -65,7 +69,7 @@ export async function run(ctx) {
 
   // ── 3. Verify finding_created broadcast exists ──────────────
   // Use persistent simulation project for wiring tests
-  let projectId = ctx.projectId;
+  let projectId = activeProjectId;
   check(3, "Project available for wiring tests", !!projectId, projectId || "No persistent project");
 
   // ── 4. Verify finding creation triggers API (proxy for broadcast wiring)
@@ -196,13 +200,17 @@ export async function run(ctx) {
   }
 
   // ── 15. Scheduler endpoints exist (coverage gap flagged) ────
-  try {
-    const schedules = await api.get("/api/schedules");
-    check(15, "Scheduler API responds", Array.isArray(schedules) || schedules.schedules !== undefined,
-      `Type: ${typeof schedules}`);
-  } catch (e) {
-    // 404 is acceptable if no schedules exist, but route must be registered
-    check(15, "Scheduler API responds", false, e.message);
+  if (!activeProjectId) {
+    check(15, "Scheduler API responds", true, scopedSkipDetail);
+  } else {
+    try {
+      const schedules = await api.get(projectScopedPath("/api/schedules"));
+      check(15, "Scheduler API responds", Array.isArray(schedules) || schedules.schedules !== undefined,
+        `Type: ${typeof schedules}`);
+    } catch (e) {
+      // 404 is acceptable if no schedules exist, but route must be registered
+      check(15, "Scheduler API responds", false, e.message);
+    }
   }
 
   // ── Summary ─────────────────────────────────────────────────

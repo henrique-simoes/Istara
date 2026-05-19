@@ -10,17 +10,19 @@ from typing import Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel, Field
-from sqlalchemy import func, select
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.datetime_utils import ensure_utc
+from app.core.permissions import get_active_project_or_404, require_project_access
 from app.core.scheduler import CronParser, ScheduledTask
-from app.core.permissions import require_global_role, require_project_access
 from app.models.agent import Agent, AgentState
 from app.models.database import get_db
-from app.models.loop_execution import LoopExecution
-from app.services.loop_execution_service import get_execution_stats, list_executions as list_recorded_executions
 from app.services import agent_service
+from app.services.loop_execution_service import (
+    get_execution_stats,
+    list_executions as list_recorded_executions,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -179,6 +181,8 @@ def _loop_config_for_agent(agent: Agent) -> dict:
         "id": agent.id,
         "agent_id": agent.id,
         "name": agent.name,
+        "scope": agent.scope or "universal",
+        "project_id": agent.project_id or "",
         "loop_interval_seconds": agent.heartbeat_interval_seconds or 60,
         "paused": agent.state == AgentState.PAUSED,
         "state": agent.state.value if agent.state else "idle",
@@ -193,20 +197,112 @@ def _loop_config_for_agent(agent: Agent) -> dict:
     }
 
 
+async def _require_loop_project_scope(
+    db: AsyncSession,
+    request: Request,
+    project_id: str | None,
+    *,
+    min_role: Literal["viewer", "researcher", "project_admin"] = "viewer",
+) -> str:
+    scoped_project_id = project_id.strip() if project_id else None
+    if not scoped_project_id:
+        raise HTTPException(status_code=400, detail="project_id is required")
+    await require_project_access(db, request, scoped_project_id, min_role=min_role)
+    return scoped_project_id
+
+
+async def _require_active_loop_project_scope(
+    db: AsyncSession,
+    request: Request,
+    project_id: str | None,
+    *,
+    min_role: Literal["viewer", "researcher", "project_admin"] = "researcher",
+) -> str:
+    scoped_project_id = project_id.strip() if project_id else None
+    if not scoped_project_id:
+        raise HTTPException(status_code=400, detail="project_id is required")
+    project = await get_active_project_or_404(
+        db,
+        request,
+        scoped_project_id,
+        min_role=min_role,
+    )
+    return project.id
+
+
+def _agent_matches_project(agent: Agent, project_id: str | None) -> bool:
+    if project_id is None:
+        return True
+    config = _loop_config_for_agent(agent)
+    return (agent.project_id or "") == project_id or config["project_filter"] == project_id
+
+
+async def _load_loop_agents(db: AsyncSession, project_id: str | None) -> list[Agent]:
+    query = select(Agent).where(Agent.is_active.is_(True)).order_by(Agent.created_at)
+    if project_id is not None:
+        query = query.where((Agent.project_id == project_id) | (Agent.memory.contains(project_id)))
+    result = await db.execute(query)
+    agents = result.scalars().all()
+    if project_id is None:
+        return list(agents)
+    return [agent for agent in agents if _agent_matches_project(agent, project_id)]
+
+
+def _schedule_query_for_project(project_id: str | None):
+    query = select(ScheduledTask).order_by(ScheduledTask.created_at)
+    if project_id is not None:
+        query = query.where(ScheduledTask.project_id == project_id)
+    return query
+
+
+async def _project_loop_source_ids(db: AsyncSession, project_id: str | None) -> list[str] | None:
+    if project_id is None:
+        return None
+    agents = await _load_loop_agents(db, project_id)
+    schedule_result = await db.execute(
+        select(ScheduledTask.id).where(ScheduledTask.project_id == project_id)
+    )
+    schedule_ids = list(schedule_result.scalars().all())
+    return [*[agent.id for agent in agents], *schedule_ids]
+
+
+async def _load_loop_agent_for_project(
+    db: AsyncSession,
+    request: Request,
+    agent_id: str,
+    project_id: str | None,
+    *,
+    min_role: Literal["viewer", "researcher", "project_admin"] = "viewer",
+) -> tuple[Agent, str | None]:
+    scoped_project_id = await _require_loop_project_scope(
+        db,
+        request,
+        project_id,
+        min_role=min_role,
+    )
+    result = await db.execute(select(Agent).where(Agent.id == agent_id))
+    agent = result.scalar_one_or_none()
+    if not agent or not agent.is_active:
+        raise HTTPException(status_code=404, detail="Agent not found")
+    if not _agent_matches_project(agent, scoped_project_id):
+        raise HTTPException(status_code=404, detail="Agent not found")
+    return agent, scoped_project_id
+
+
 # ---------------------------------------------------------------------------
 # Routes
 # ---------------------------------------------------------------------------
 
 
 @router.get("/loops/overview")
-async def loops_overview(request: Request, db: AsyncSession = Depends(get_db)):
+async def loops_overview(
+    request: Request,
+    project_id: str | None = None,
+    db: AsyncSession = Depends(get_db),
+):
     """Consolidated overview: agents with loop configs, schedules, and health summary."""
-    require_global_role(request, "researcher")
-    # Agents
-    agent_result = await db.execute(
-        select(Agent).where(Agent.is_active.is_(True)).order_by(Agent.created_at)
-    )
-    agents = agent_result.scalars().all()
+    scoped_project_id = await _require_loop_project_scope(db, request, project_id)
+    agents = await _load_loop_agents(db, scoped_project_id)
 
     agent_dicts = []
     for a in agents:
@@ -215,9 +311,7 @@ async def loops_overview(request: Request, db: AsyncSession = Depends(get_db)):
         agent_dicts.append(d)
 
     # Schedules
-    sched_result = await db.execute(
-        select(ScheduledTask).order_by(ScheduledTask.created_at)
-    )
+    sched_result = await db.execute(_schedule_query_for_project(scoped_project_id))
     schedules = sched_result.scalars().all()
     sched_dicts = [_schedule_to_dict(s) for s in schedules]
 
@@ -234,10 +328,20 @@ async def loops_overview(request: Request, db: AsyncSession = Depends(get_db)):
         "total": len(all_statuses),
     }
     since_24h = datetime.now(timezone.utc) - timedelta(hours=24)
-    total_24h = (await db.execute(
-        select(func.count(LoopExecution.id)).where(LoopExecution.started_at >= since_24h)
-    )).scalar() or 0
-    execution_stats = await get_execution_stats(db)
+    source_ids = await _project_loop_source_ids(db, scoped_project_id)
+    recent_executions = await list_recorded_executions(
+        db,
+        project_id=scoped_project_id,
+        source_ids=source_ids,
+        started_from=since_24h,
+        page_size=1,
+    )
+    total_24h = recent_executions["total"]
+    execution_stats = await get_execution_stats(
+        db,
+        project_id=scoped_project_id,
+        source_ids=source_ids,
+    )
     success_rate = (execution_stats.get("success_rate", 0.0) or 0.0) / 100
 
     return {
@@ -253,23 +357,26 @@ async def loops_overview(request: Request, db: AsyncSession = Depends(get_db)):
 
 
 @router.get("/loops/agents")
-async def list_loop_agents(request: Request, db: AsyncSession = Depends(get_db)):
+async def list_loop_agents(
+    request: Request,
+    project_id: str | None = None,
+    db: AsyncSession = Depends(get_db),
+):
     """List all agents with their loop configurations."""
-    require_global_role(request, "researcher")
-    result = await db.execute(
-        select(Agent).where(Agent.is_active.is_(True)).order_by(Agent.created_at)
-    )
-    return {"agents": [_loop_config_for_agent(agent) for agent in result.scalars().all()]}
+    scoped_project_id = await _require_loop_project_scope(db, request, project_id)
+    agents = await _load_loop_agents(db, scoped_project_id)
+    return {"agents": [_loop_config_for_agent(agent) for agent in agents]}
 
 
 @router.get("/loops/agents/{agent_id}/config")
-async def get_loop_config(agent_id: str, request: Request, db: AsyncSession = Depends(get_db)):
+async def get_loop_config(
+    agent_id: str,
+    request: Request,
+    project_id: str | None = None,
+    db: AsyncSession = Depends(get_db),
+):
     """Get loop configuration for a specific agent."""
-    require_global_role(request, "researcher")
-    result = await db.execute(select(Agent).where(Agent.id == agent_id))
-    agent_model = result.scalar_one_or_none()
-    if not agent_model:
-        raise HTTPException(status_code=404, detail="Agent not found")
+    agent_model, _ = await _load_loop_agent_for_project(db, request, agent_id, project_id)
     return _loop_config_for_agent(agent_model)
 
 
@@ -278,14 +385,17 @@ async def update_loop_config(
     agent_id: str,
     data: UpdateLoopConfigRequest,
     request: Request,
+    project_id: str | None = None,
     db: AsyncSession = Depends(get_db),
 ):
     """Update an agent's loop configuration (interval, paused state, skills)."""
-    require_global_role(request, "researcher")
-    result = await db.execute(select(Agent).where(Agent.id == agent_id))
-    agent = result.scalar_one_or_none()
-    if not agent:
-        raise HTTPException(status_code=404, detail="Agent not found")
+    agent, scoped_project_id = await _load_loop_agent_for_project(
+        db,
+        request,
+        agent_id,
+        project_id,
+        min_role="researcher",
+    )
 
     if data.loop_interval_seconds is not None:
         if data.loop_interval_seconds < 10 or data.loop_interval_seconds > 86_400:
@@ -295,6 +405,13 @@ async def update_loop_config(
             )
 
     if data.paused is not None:
+        if data.paused is False:
+            await _require_active_loop_project_scope(
+                db,
+                request,
+                scoped_project_id,
+                min_role="researcher",
+            )
         if data.paused and agent.state != AgentState.PAUSED:
             agent.state = AgentState.PAUSED
         elif not data.paused and agent.state == AgentState.PAUSED:
@@ -311,7 +428,14 @@ async def update_loop_config(
         if data.skills_to_run is not None:
             loop_config["skills_to_run"] = _normalize_skills(data.skills_to_run)
         if data.project_filter is not None:
-            loop_config["project_filter"] = data.project_filter.strip()
+            next_project_filter = data.project_filter.strip()
+            if scoped_project_id:
+                owns_agent = (agent.project_id or "") == scoped_project_id
+                if next_project_filter and next_project_filter != scoped_project_id:
+                    raise HTTPException(status_code=403, detail="Cannot move loop outside active project")
+                if not owns_agent and next_project_filter != scoped_project_id:
+                    raise HTTPException(status_code=403, detail="Cannot clear project filter for shared agent loop")
+            loop_config["project_filter"] = next_project_filter
         memory[LOOP_MEMORY_KEY] = loop_config
         agent.memory = json.dumps(memory)
 
@@ -325,18 +449,34 @@ async def update_loop_config(
 
 
 @router.post("/loops/agents/{agent_id}/pause")
-async def pause_agent_loop(agent_id: str, request: Request, db: AsyncSession = Depends(get_db)):
+async def pause_agent_loop(
+    agent_id: str,
+    request: Request,
+    project_id: str | None = None,
+    db: AsyncSession = Depends(get_db),
+):
     """Pause an agent's loop."""
-    require_global_role(request, "researcher")
+    await _load_loop_agent_for_project(db, request, agent_id, project_id, min_role="researcher")
     if not await agent_service.set_agent_state(db, agent_id, AgentState.PAUSED):
         raise HTTPException(status_code=404, detail="Agent not found")
     return {"agent_id": agent_id, "status": "paused"}
 
 
 @router.post("/loops/agents/{agent_id}/resume")
-async def resume_agent_loop(agent_id: str, request: Request, db: AsyncSession = Depends(get_db)):
+async def resume_agent_loop(
+    agent_id: str,
+    request: Request,
+    project_id: str | None = None,
+    db: AsyncSession = Depends(get_db),
+):
     """Resume an agent's loop."""
-    require_global_role(request, "researcher")
+    await _require_active_loop_project_scope(
+        db,
+        request,
+        project_id,
+        min_role="researcher",
+    )
+    await _load_loop_agent_for_project(db, request, agent_id, project_id, min_role="researcher")
     if not await agent_service.set_agent_state(db, agent_id, AgentState.IDLE):
         raise HTTPException(status_code=404, detail="Agent not found")
     return {"agent_id": agent_id, "status": "resumed"}
@@ -345,6 +485,7 @@ async def resume_agent_loop(agent_id: str, request: Request, db: AsyncSession = 
 @router.get("/loops/executions")
 async def list_executions(
     request: Request,
+    project_id: str | None = None,
     source_type: str | None = None,
     source_id: str | None = None,
     status: str | None = None,
@@ -355,15 +496,18 @@ async def list_executions(
     db: AsyncSession = Depends(get_db),
 ):
     """Paginated execution history across agents and schedules."""
-    require_global_role(request, "researcher")
+    scoped_project_id = await _require_loop_project_scope(db, request, project_id)
     if status and status not in VALID_EXECUTION_STATUSES:
         allowed = ", ".join(sorted(VALID_EXECUTION_STATUSES))
         raise HTTPException(status_code=422, detail=f"status must be one of: {allowed}")
 
+    source_ids = await _project_loop_source_ids(db, scoped_project_id)
     result = await list_recorded_executions(
         db,
         source_types=_normalize_source_type(source_type),
         source_id=source_id,
+        source_ids=source_ids,
+        project_id=scoped_project_id,
         status=status,
         started_from=_parse_filter_datetime(from_date),
         started_to=_parse_filter_datetime(to_date, end_of_day=True),
@@ -385,12 +529,19 @@ async def list_executions(
 @router.get("/loops/executions/stats")
 async def execution_stats(
     request: Request,
+    project_id: str | None = None,
     source_id: str | None = None,
     db: AsyncSession = Depends(get_db),
 ):
     """Aggregated execution statistics."""
-    require_global_role(request, "researcher")
-    stats = await get_execution_stats(db, source_id=source_id)
+    scoped_project_id = await _require_loop_project_scope(db, request, project_id)
+    source_ids = await _project_loop_source_ids(db, scoped_project_id)
+    stats = await get_execution_stats(
+        db,
+        source_id=source_id,
+        source_ids=source_ids,
+        project_id=scoped_project_id,
+    )
     return {
         "total": stats["total"],
         "success": stats["success_count"],
@@ -404,17 +555,18 @@ async def execution_stats(
 
 
 @router.get("/loops/health")
-async def loops_health(request: Request, db: AsyncSession = Depends(get_db)):
+async def loops_health(
+    request: Request,
+    project_id: str | None = None,
+    db: AsyncSession = Depends(get_db),
+):
     """Loop health dashboard — unified status for all loop sources."""
-    require_global_role(request, "researcher")
+    scoped_project_id = await _require_loop_project_scope(db, request, project_id)
     health_items: list[dict] = []
     now = datetime.now(timezone.utc)
 
     # Agents
-    agent_result = await db.execute(
-        select(Agent).where(Agent.is_active.is_(True)).order_by(Agent.created_at)
-    )
-    for a in agent_result.scalars().all():
+    for a in await _load_loop_agents(db, scoped_project_id):
         interval = a.heartbeat_interval_seconds or 60
         last_exec = ensure_utc(a.last_heartbeat_at) if a.last_heartbeat_at else None
 
@@ -428,6 +580,7 @@ async def loops_health(request: Request, db: AsyncSession = Depends(get_db)):
             "source_type": "agent",
             "source_id": a.id,
             "source_name": a.name,
+            "project_id": a.project_id or "",
             "status": _agent_loop_status(a),
             "interval_seconds": interval,
             "last_execution_at": last_exec.isoformat() if last_exec else None,
@@ -440,9 +593,7 @@ async def loops_health(request: Request, db: AsyncSession = Depends(get_db)):
         })
 
     # Schedules
-    sched_result = await db.execute(
-        select(ScheduledTask).order_by(ScheduledTask.created_at)
-    )
+    sched_result = await db.execute(_schedule_query_for_project(scoped_project_id))
     for s in sched_result.scalars().all():
         last_exec = ensure_utc(s.last_run) if s.last_run else None
         next_run = ensure_utc(s.next_run) if s.next_run else None
@@ -455,6 +606,7 @@ async def loops_health(request: Request, db: AsyncSession = Depends(get_db)):
             "source_type": _schedule_source_type(s),
             "source_id": s.id,
             "source_name": s.name,
+            "project_id": s.project_id,
             "status": _schedule_loop_status(s),
             "interval_seconds": s.interval_seconds,
             "last_execution_at": last_exec.isoformat() if last_exec else None,
@@ -482,7 +634,12 @@ async def create_custom_loop(
     description = data.description.strip()
     if not name or not skill_name or not project_id:
         raise HTTPException(status_code=422, detail="name, skill_name, and project_id are required")
-    await require_project_access(db, request, project_id, min_role="researcher")
+    project_id = await _require_active_loop_project_scope(
+        db,
+        request,
+        project_id,
+        min_role="researcher",
+    )
 
     # Determine cron expression: explicit or derived from interval
     cron_expr = data.cron_expression.strip() if data.cron_expression else None

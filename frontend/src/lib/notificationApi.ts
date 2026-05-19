@@ -20,10 +20,10 @@ const queryString = (params?: Record<string, string | number | boolean>) =>
 
 export const notificationsApi = {
   list: (params?: Record<string, string | number | boolean>) => json<any>(`/api/notifications${queryString(params)}`),
-  unreadCount: (projectId?: string) => json<{ count: number }>(`/api/notifications/unread-count${projectId ? `?${new URLSearchParams({ project_id: projectId }).toString()}` : ""}`),
-  markRead: (id: string) => json<any>(`/api/notifications/${id}/read`, { method: "POST", body: "{}" }),
-  markAllRead: (projectId?: string) => json<any>("/api/notifications/read-all", { method: "POST", body: JSON.stringify(projectId ? { project_id: projectId } : {}) }),
-  delete: (id: string) => json<void>(`/api/notifications/${id}`, { method: "DELETE" }),
+  unreadCount: (projectId: string) => json<{ count: number }>(`/api/notifications/unread-count?${new URLSearchParams({ project_id: projectId }).toString()}`),
+  markRead: (id: string, projectId: string) => json<any>(`/api/notifications/${id}/read${queryString({ project_id: projectId })}`, { method: "POST", body: "{}" }),
+  markAllRead: (projectId: string) => json<any>("/api/notifications/read-all", { method: "POST", body: JSON.stringify({ project_id: projectId }) }),
+  delete: (id: string, projectId: string) => json<void>(`/api/notifications/${id}${queryString({ project_id: projectId })}`, { method: "DELETE" }),
   preferences: () => json<any>("/api/notifications/preferences"),
   updatePreferences: (prefs: any[]) => json<any>("/api/notifications/preferences", { method: "PUT", body: JSON.stringify({ preferences: prefs }) }),
 };

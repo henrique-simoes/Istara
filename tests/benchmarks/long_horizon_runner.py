@@ -154,7 +154,10 @@ async def main():
             
         # 6. Check A2A Messages
         print("\n🤖 Checking A2A Inter-Agent Communication...")
-        a2a_res = await client.get(f"{API_BASE}/api/agents/a2a/log?limit=20", headers=headers)
+        a2a_res = await client.get(
+            f"{API_BASE}/api/agents/a2a/log?limit=20&project_id={project_id}",
+            headers=headers,
+        )
         a2a_data = a2a_res.json()
         messages = a2a_data if isinstance(a2a_data, list) else a2a_data.get("messages", [])
         proj_messages = [m for m in messages if m.get("project_id") == project_id]

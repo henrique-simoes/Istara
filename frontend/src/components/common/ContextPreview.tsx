@@ -81,7 +81,7 @@ export default function ContextPreview() {
                 {composedContext}
               </pre>
               <p className="text-[10px] text-slate-400 mt-2">
-                {composedContext.length.toLocaleString()} characters • Composed from all active context layers
+                {composedContext.length.toLocaleString()} characters • Composed from active project context layers
               </p>
             </div>
           )}

@@ -38,12 +38,17 @@ class ComputeRegistryRoutingMixin:
         require_tools: bool = False,
         require_vision: bool = False,
         min_context: int = 0,
+        project_id: str | None = None,
     ) -> list[ComputeNode]:
         """Get nodes sorted by priority (lower = better), healthy first.
 
         Backward compat with LLMRouter._sorted_servers().
         """
-        servers = list(self._nodes.values())
+        servers = [
+            node
+            for node in self._nodes.values()
+            if self._node_authorized_for_project_content(node, project_id)
+        ]
         if require_tools:
             # Nodes with detected tool support
             tool_nodes = [
@@ -87,6 +92,7 @@ class ComputeRegistryRoutingMixin:
         model: str | None = None,
         strict_model: bool = False,
         include_unhealthy: bool = False,
+        project_id: str | None = None,
     ) -> list[ComputeNode]:
         """Get candidate nodes sorted by score, filtered by capabilities and circuit breaker."""
         candidates = [
@@ -116,6 +122,10 @@ class ComputeRegistryRoutingMixin:
                 )
             ]
             candidates.extend(rescue_candidates)
+
+        candidates = [
+            n for n in candidates if self._node_authorized_for_project_content(n, project_id)
+        ]
 
         if require_tools and candidates:
             tool_capable = [
@@ -169,6 +179,30 @@ class ComputeRegistryRoutingMixin:
 
         candidates.sort(key=lambda n: (not n.is_healthy, n.priority, -n.score()))
         return candidates
+
+    @staticmethod
+    def _node_authorized_for_project_content(
+        node: ComputeNode,
+        project_id: str | None,
+    ) -> bool:
+        """Return whether a node may receive project prompt/embedding content.
+
+        Server-owned local/network nodes are controlled by the Istara host and
+        remain eligible. Donated relay/browser nodes are untrusted compute
+        boundaries: they only receive content when the request has a concrete
+        project_id and the node's authenticated donation scope includes it.
+        """
+        if node.source not in {"relay", "browser"}:
+            return True
+        requested_project = (project_id or "").strip()
+        if not requested_project:
+            return False
+        allowed = {
+            str(pid).strip()
+            for pid in getattr(node, "allowed_project_ids", []) or []
+            if str(pid).strip()
+        }
+        return "*" in allowed or requested_project in allowed
 
     @staticmethod
     def _model_aliases(model: str) -> set[str]:
@@ -290,11 +324,24 @@ class ComputeRegistryRoutingMixin:
         except Exception:
             pass
 
+        requested_model = (model or "").strip()
+        strict_requested_model = (
+            settings.strict_auto_routing
+            and requested_model
+            and requested_model != "default"
+        )
+
         loaded_models = [
             name
             for name in self._node_explicit_loaded_model_names(node)
             if not require_vision or self._node_supports_vision_model(node, name)
         ]
+        if strict_requested_model:
+            loaded_models = [
+                name
+                for name in loaded_models
+                if name in self._model_aliases(requested_model)
+            ]
         if loaded_models:
             candidates = loaded_models
         else:
@@ -304,11 +351,14 @@ class ComputeRegistryRoutingMixin:
                 node.is_healthy = False
                 return None
             max_attempts = max(1, int(settings.lmstudio_max_load_attempts_per_request or 1))
-            candidates = self._node_load_candidates(
-                node,
-                model,
-                require_vision=require_vision,
-            )[:max_attempts]
+            if strict_requested_model:
+                candidates = [requested_model]
+            else:
+                candidates = self._node_load_candidates(
+                    node,
+                    model,
+                    require_vision=require_vision,
+                )[:max_attempts]
 
         errors: list[str] = []
         for candidate in candidates:
@@ -400,11 +450,19 @@ class ComputeRegistryRoutingMixin:
             )
             return None
 
-        candidates = self._node_load_candidates(
-            node,
-            model,
-            require_vision=require_vision,
-        )
+        requested_model = (model or "").strip()
+        if (
+            settings.strict_auto_routing
+            and requested_model
+            and requested_model != "default"
+        ):
+            candidates = [requested_model]
+        else:
+            candidates = self._node_load_candidates(
+                node,
+                model,
+                require_vision=require_vision,
+            )
         context_capable = []
         for candidate in candidates:
             caps = node.model_capabilities.get(candidate)

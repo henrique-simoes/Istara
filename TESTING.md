@@ -13,6 +13,7 @@ Compass Forge.
 | `testing/TEST_HISTORY.md` | Curated tracked baseline history. Raw artifacts stay gitignored. |
 | `tests/evals/registry.json` | Machine-readable eval registry. |
 | `tests/agentic_eval_contract.json` | Agentic workflow evidence and metric contract. |
+| `tests/real_user_benchmark/README.md` | Long-form real UX researcher benchmark for sandboxed installs, UI/chat/task-review flows, integration harness discovery, and comparison-ready scorecards. |
 
 ## Quick Verification Matrix
 
@@ -55,6 +56,36 @@ ISTARA_SCENARIO20_SKILL_LIMIT=3 node tests/simulation/run.mjs --scenario 20
 For live or long-running scenarios, keep run output under
 `tests/simulation/.results/` and summarize only release-relevant baselines in
 `testing/TEST_HISTORY.md`.
+
+## Real User UX Research Benchmark
+
+The reusable long-form benchmark lives in `tests/real_user_benchmark/`. It
+generates a large synthetic UX research archive, attempts sandboxed
+server/client installation, drives onboarding and app UI through Playwright,
+exercises chat, task review, integrations, loops, Autoresearch, URL fetching,
+interfaces, reports, and emits JSONL logs plus scorecards.
+
+```bash
+# Static process/corpus/scoring rehearsal
+npm --prefix tests/real_user_benchmark run plan
+
+# Bounded probe against an already running app; requires donated compute by default
+ISTARA_E2E_ALLOW_LOCAL_TOKEN=1 npm --prefix tests/real_user_benchmark run probe
+
+# Full sandboxed benchmark with donated Gemma live chat gated on the shared live LLM profile
+npm --prefix tests/real_user_benchmark run full
+```
+
+Raw outputs stay under `tests/real_user_benchmark/.results/`. If Docker,
+credentials, or a missing developer harness blocks completion, keep the blocker
+evidence in the run folder and treat it as a product finding.
+
+For comparison runs, the real-user benchmark defaults to donated compute and
+non-empty live chat using `google/gemma-4-e4b`. Use
+`ISTARA_BENCHMARK_REQUIRE_COMPUTE_DONATION=0 ISTARA_BENCHMARK_REQUIRE_LIVE_CHAT=0`
+only for harness debugging, not for product-quality comparisons. Colima
+autostart defaults to `--root-disk 10 --disk 10` and every run records
+actual/apparent storage snapshots against 10GB/20GB budgets.
 
 ## Live LLM Contract
 
@@ -108,12 +139,21 @@ The benchmark suite validates long-horizon DAG decomposition, tool-calling
 accuracy and resilience, A2A mathematical consensus, and async steering
 responsiveness.
 
+The real-user benchmark uses these artifacts as references, not replacements.
+Its default chat script additionally probes donated compute routing, real
+Gemma output, tool/skill-call observability, RAG/source grounding, context
+management, ReasoningBank, Memento-style project memory, Hyperagent/governed
+improvement paths, ensemble/MoA health, integrations, reports, and human task
+review through realistic UI/API workflows.
+
 ## Artifact History Rules
 
 Raw run output should not become scattered Markdown. Use this policy:
 
 - Keep raw eval outputs under `tests/evals/.results/`.
 - Keep simulation screenshots/reports/traces under `tests/simulation/.results/`.
+- Keep real-user benchmark logs, screenshots, corpus copies, traces, and
+  scorecards under `tests/real_user_benchmark/.results/`.
 - Keep local data-integrity findings in ignored runtime output unless they are
   summarized for a release.
 - Keep security scorecards in `security/security_scorecard.json` locally or CI

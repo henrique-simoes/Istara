@@ -84,6 +84,14 @@ class UIAuditAgent:
         # Task execution worker
         from app.core.sub_agent_worker import SubAgentWorker
         self._worker = SubAgentWorker("istara-ui-audit", check_interval=30)
+        self._worker_task: asyncio.Task | None = None
+
+    def start_task_worker(self) -> asyncio.Task:
+        """Start only the project-scoped task worker for assigned tasks."""
+        if self._worker_task and not self._worker_task.done():
+            return self._worker_task
+        self._worker_task = asyncio.create_task(self._worker.start_task_loop())
+        return self._worker_task
 
     async def _get_client(self) -> httpx.AsyncClient:
         if self._client is None or self._client.is_closed:
@@ -96,7 +104,7 @@ class UIAuditAgent:
         logger.info("UI Audit Agent started.")
 
         # Start task worker alongside audit cycle
-        asyncio.create_task(self._worker.start_task_loop())
+        self.start_task_worker()
 
         # Wait for frontend to be ready
         await asyncio.sleep(30)
@@ -133,6 +141,9 @@ class UIAuditAgent:
     def stop(self) -> None:
         self._running = False
         self._worker.stop_task_loop()
+        if self._worker_task and not self._worker_task.done():
+            self._worker_task.cancel()
+        self._worker_task = None
 
     async def run_audit(self) -> UIAuditReport:
         """Run a complete UI audit cycle."""

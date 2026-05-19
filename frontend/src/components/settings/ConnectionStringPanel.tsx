@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { Copy, Check, Key, Loader2, Shield, Trash2, Clock } from "lucide-react";
 import { useAuthStore } from "@/stores/authStore";
+import { useProjectStore } from "@/stores/projectStore";
 import { cn, formatDate } from "@/lib/utils";
 
 import { API_BASE, WS_BASE } from "@/lib/runtimeConfig";
@@ -15,6 +16,7 @@ interface ActiveConnectionString {
   is_expired: boolean;
   is_active: boolean;
   is_redeemed: boolean;
+  allowed_project_ids?: string[];
   redeemed_username?: string | null;
   redeemed_at?: string | null;
   last_validated_at?: string | null;
@@ -22,12 +24,14 @@ interface ActiveConnectionString {
 
 export default function ConnectionStringPanel() {
   const { user } = useAuthStore();
+  const { projects, activeProjectId, fetchProjects } = useProjectStore();
   const isAdmin = user?.role === "admin";
 
   const [label, setLabel] = useState("");
   const [expiryHours, setExpiryHours] = useState(168);
   const [tokenType, setTokenType] = useState<"user_invite" | "compute_donation">("user_invite");
   const [role, setRole] = useState<"researcher" | "viewer" | "admin">("researcher");
+  const [selectedProjectIds, setSelectedProjectIds] = useState<string[]>([]);
   const [connectionString, setConnectionString] = useState("");
   const [generatedTokenType, setGeneratedTokenType] = useState<"user_invite" | "compute_donation">("user_invite");
   const [activeStrings, setActiveStrings] = useState<ActiveConnectionString[]>([]);
@@ -61,6 +65,24 @@ export default function ConnectionStringPanel() {
     if (isAdmin) loadActiveStrings();
   }, [isAdmin, loadActiveStrings]);
 
+  useEffect(() => {
+    if (isAdmin) void fetchProjects();
+  }, [fetchProjects, isAdmin]);
+
+  useEffect(() => {
+    if (tokenType !== "compute_donation" || selectedProjectIds.length > 0) return;
+    const defaultProjectId = activeProjectId || projects[0]?.id;
+    if (defaultProjectId) setSelectedProjectIds([defaultProjectId]);
+  }, [activeProjectId, projects, selectedProjectIds.length, tokenType]);
+
+  const toggleSelectedProject = (projectId: string) => {
+    setSelectedProjectIds((current) =>
+      current.includes(projectId)
+        ? current.filter((id) => id !== projectId)
+        : [...current, projectId]
+    );
+  };
+
   const handleGenerate = async () => {
     setGenerating(true);
     setError(null);
@@ -71,6 +93,9 @@ export default function ConnectionStringPanel() {
       const endpoint = tokenType === "compute_donation"
         ? "/api/connections/compute-donation/generate"
         : "/api/connections/generate";
+      if (tokenType === "compute_donation" && selectedProjectIds.length === 0) {
+        throw new Error("Select at least one project for compute donation access");
+      }
       const res = await fetch(`${API_BASE}${endpoint}`, {
         method: "POST",
         headers: {
@@ -83,6 +108,9 @@ export default function ConnectionStringPanel() {
           label: label.trim() || (tokenType === "compute_donation" ? "Compute Node" : "Team Member"),
           expires_hours: expiryHours,
           ...(tokenType === "user_invite" ? { role } : {}),
+          ...(tokenType === "compute_donation"
+            ? { allowed_project_ids: selectedProjectIds }
+            : {}),
         }),
       });
       if (!res.ok) {
@@ -169,6 +197,35 @@ export default function ConnectionStringPanel() {
         </h3>
         {loading && <Loader2 size={14} className="animate-spin text-slate-400" />}
       </div>
+
+      {tokenType === "compute_donation" && (
+        <div className="mb-4 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/40 p-3">
+          <div className="mb-2 text-xs font-medium text-slate-700 dark:text-slate-200">
+            Project access
+          </div>
+          <div className="grid gap-2 sm:grid-cols-2">
+            {projects.map((project) => (
+              <label
+                key={project.id}
+                className="flex items-center gap-2 rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-2 py-1.5 text-xs text-slate-600 dark:text-slate-300"
+              >
+                <input
+                  type="checkbox"
+                  checked={selectedProjectIds.includes(project.id)}
+                  onChange={() => toggleSelectedProject(project.id)}
+                  className="h-3.5 w-3.5 rounded border-slate-300 text-istara-600 focus:ring-istara-500"
+                />
+                <span className="min-w-0 truncate">{project.name}</span>
+              </label>
+            ))}
+          </div>
+          {projects.length === 0 && (
+            <p className="text-xs text-slate-500 dark:text-slate-400">
+              Create a project before generating a compute donation string.
+            </p>
+          )}
+        </div>
+      )}
       <p className="text-sm text-slate-500 mb-4">
         Generate connection strings to invite team members or allow researchers to contribute local compute power to the network.
       </p>
@@ -241,6 +298,13 @@ export default function ConnectionStringPanel() {
                   <span className="font-medium text-slate-500 dark:text-slate-300">
                     {str.token_type === "compute_donation" ? "Compute" : str.intended_role || "Invite"}
                   </span>
+                  {str.token_type === "compute_donation" && (
+                    <span>
+                      {str.allowed_project_ids?.includes("*")
+                        ? "All projects"
+                        : `${str.allowed_project_ids?.length || 0} projects`}
+                    </span>
+                  )}
                   <span className="flex items-center gap-0.5"><Clock size={10} /> Exp: {formatDate(str.expires_at)}</span>
                   {str.is_redeemed && <span className="text-green-600 dark:text-green-400 font-medium">Redeemed</span>}
                   {!str.is_active && <span className="text-red-500 font-medium">Revoked</span>}

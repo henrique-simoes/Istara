@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 import { LayoutDashboard, FlaskConical, Trophy, Settings } from "lucide-react";
 import { useAutoresearchStore } from "@/stores/autoresearchStore";
+import { useProjectStore } from "@/stores/projectStore";
 import { cn } from "@/lib/utils";
 import ExperimentDashboard from "./ExperimentDashboard";
 import ExperimentHistory from "./ExperimentHistory";
@@ -21,10 +22,11 @@ const TABS: { id: AutoresearchTab; icon: any; label: string }[] = [
 
 export default function AutoresearchView() {
   const { activeTab, setActiveTab, fetchStatus } = useAutoresearchStore();
+  const { activeProjectId } = useProjectStore();
 
   useEffect(() => {
-    fetchStatus();
-  }, [fetchStatus]);
+    fetchStatus(activeProjectId);
+  }, [activeProjectId, fetchStatus]);
 
   const renderTab = () => {
     switch (activeTab) {

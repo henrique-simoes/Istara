@@ -89,9 +89,9 @@ export default function DesignChatTab() {
   };
 
   const handleVoiceToggle = async () => {
-    if (!canWrite) return;
+    if (!canWrite || !activeProjectId) return;
     if (isRecording) {
-      const transcribedText = await stopRecording();
+      const transcribedText = await stopRecording(activeProjectId);
       if (transcribedText) {
         setInput((prev) => (prev ? `${prev} ${transcribedText}` : transcribedText));
       }

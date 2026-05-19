@@ -33,6 +33,7 @@ _EXPORTS: dict[str, tuple[str, str]] = {
     "ReasoningMemoryItem": ("app.models.reasoning_memory", "ReasoningMemoryItem"),
     "ImprovementProposal": ("app.models.improvement_governance", "ImprovementProposal"),
     "DGMHArchiveVariant": ("app.models.dgmh_archive", "DGMHArchiveVariant"),
+    "ProjectInterfaceConfig": ("app.models.interface_config", "ProjectInterfaceConfig"),
     "AuthSession": ("app.models.auth_session", "AuthSession"),
     "RecoveryCode": ("app.models.recovery_code", "RecoveryCode"),
     "WebAuthnChallenge": ("app.models.webauthn_challenge", "WebAuthnChallenge"),

@@ -17,6 +17,7 @@ from datetime import datetime, timezone
 from sqlalchemy import case, select, or_
 
 from app.models.database import async_session
+from app.models.project import Project
 from app.models.task import Task, TaskStatus
 from app.models.agent import Agent, AgentState
 from app.api.websocket import broadcast_agent_status, broadcast_task_progress
@@ -62,10 +63,13 @@ class SubAgentWorker:
         async with async_session() as db:
             # Process A2A inbox before looking for tasks
             try:
-                from app.services.a2a import get_messages, mark_read
+                from app.services.a2a import get_project_inbox, mark_read
 
-                messages = await get_messages(db, self._agent_id, unread_only=True, limit=3)
+                messages = await get_project_inbox(db, self._agent_id, unread_only=True, limit=3)
                 for msg in messages:
+                    msg_project_id = msg.get("project_id", "") if isinstance(msg, dict) else ""
+                    if not msg_project_id:
+                        continue
                     msg_type = (
                         msg.get("message_type")
                         if isinstance(msg, dict)
@@ -82,13 +86,13 @@ class SubAgentWorker:
                         task_id = metadata.get("task_id")
                         if task_id:
                             task_obj = await db.get(Task, task_id)
-                            if task_obj:
+                            if task_obj and task_obj.project_id == msg_project_id:
                                 logger.info(
                                     f"SubAgent {self._agent_id} processing A2A for task {task_id}"
                                 )
                     msg_id = msg.get("id") if isinstance(msg, dict) else getattr(msg, "id", "")
                     if msg_id:
-                        await mark_read(db, msg_id)
+                        await mark_read(db, msg_id, project_id=msg_project_id)
             except Exception as e:
                 logger.debug(f"SubAgent A2A check skipped: {e}")
 
@@ -102,9 +106,11 @@ class SubAgentWorker:
 
             result = await db.execute(
                 select(Task)
+                .join(Project, Project.id == Task.project_id)
                 .where(
                     Task.status.in_([TaskStatus.BACKLOG, TaskStatus.IN_PROGRESS]),
                     Task.agent_id == self._agent_id,
+                    Project.is_paused.is_(False),
                     or_(
                         Task.locked_by.is_(None),
                         Task.locked_by == self._agent_id,
@@ -137,6 +143,17 @@ class SubAgentWorker:
         if not project:
             logger.warning(f"Project {task.project_id} not found for task {task.id}")
             return
+        if project.is_paused:
+            logger.info(
+                "SubAgent %s deferring task %s because project %s is paused",
+                self._agent_id,
+                task.id,
+                project.id,
+            )
+            task.status = TaskStatus.BACKLOG
+            task.agent_notes = "Project is paused; agent execution deferred."
+            await db.commit()
+            return
 
         try:
             await executor._execute_task(db, task, project)
@@ -146,6 +163,7 @@ class SubAgentWorker:
             task.last_retry_at = datetime.now(timezone.utc)
             task.agent_notes = f"Execution failed: {str(e)[:200]}"
 
+            event = None
             if task.retry_count < (task.max_retries or 3):
                 task.status = TaskStatus.BACKLOG
             else:
@@ -166,13 +184,23 @@ class SubAgentWorker:
                 )
                 await diagnose_review_event(db, event.id)
             await db.commit()
+            if event is not None:
+                from app.core.task_review import record_review_side_effects
 
-    async def check_collaboration_requests(self) -> list[dict]:
+                await record_review_side_effects(event)
+
+    async def check_collaboration_requests(self, project_id: str) -> list[dict]:
         """Check A2A inbox for collaboration requests."""
         from app.services.a2a import get_messages
 
         async with async_session() as db:
-            messages = await get_messages(db, self._agent_id, limit=10, unread_only=True)
+            messages = await get_messages(
+                db,
+                self._agent_id,
+                limit=10,
+                unread_only=True,
+                project_id=project_id,
+            )
             collab_requests = [
                 m for m in messages if m.get("message_type") == "collaboration_request"
             ]

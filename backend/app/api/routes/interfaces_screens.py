@@ -15,10 +15,12 @@ from app.api.routes.interfaces_common import (
     EditRequest,
     GenerateRequest,
     VariantRequest,
+    get_project_interface_config,
     get_screen_or_404,
+    require_project_id,
 )
 from app.config import settings
-from app.core.permissions import get_subject, is_global_admin, require_project_access
+from app.core.permissions import require_project_access
 from app.models.database import get_db
 from app.models.design_screen import DesignDecision, DesignScreen
 from app.services.design_evidence import build_seeded_prompt, resolve_seed_findings
@@ -34,16 +36,15 @@ async def list_screens(
     project_id: str | None = None,
     db: AsyncSession = Depends(get_db),
 ):
-    """List design screens, optionally filtered by project."""
-    subject = get_subject(request)
-    if project_id:
-        await require_project_access(db, request, project_id, min_role="viewer")
-    elif not is_global_admin(subject):
-        raise HTTPException(status_code=400, detail="project_id is required")
+    """List design screens for the active project."""
+    scoped_project_id = require_project_id(project_id)
+    await require_project_access(db, request, scoped_project_id, min_role="viewer")
 
-    query = select(DesignScreen).order_by(DesignScreen.created_at.desc())
-    if project_id:
-        query = query.where(DesignScreen.project_id == project_id)
+    query = (
+        select(DesignScreen)
+        .where(DesignScreen.project_id == scoped_project_id)
+        .order_by(DesignScreen.created_at.desc())
+    )
     result = await db.execute(query)
     return [s.to_dict() for s in result.scalars().all()]
 
@@ -83,7 +84,10 @@ async def generate_screen(
     seed_ids = [finding.id for finding in seed_findings]
     enriched_prompt = build_seeded_prompt(data.prompt, seed_findings)
 
-    if not settings.stitch_api_key:
+    interface_config = await get_project_interface_config(db, data.project_id)
+    stitch_api_key = interface_config.stitch_api_key if interface_config else ""
+
+    if not stitch_api_key:
         return await execute_design_tool(
             "generate_screen",
             {
@@ -98,7 +102,10 @@ async def generate_screen(
     guard = ContentGuard()
     stitch_project_id = "default"
     try:
-        stitch_proj = await stitch_service.create_project(f"Istara-{data.project_id[:8]}")
+        stitch_proj = await stitch_service.create_project(
+            f"Istara-{data.project_id[:8]}",
+            api_key=stitch_api_key,
+        )
         raw_name = stitch_proj.get("name", "")
         stitch_project_id = stitch_service.extract_project_id(raw_name) if raw_name else "default"
     except Exception:
@@ -106,7 +113,11 @@ async def generate_screen(
 
     try:
         stitch_data = await stitch_service.generate_screen(
-            stitch_project_id, enriched_prompt, data.device_type, data.model
+            stitch_project_id,
+            enriched_prompt,
+            data.device_type,
+            data.model,
+            api_key=stitch_api_key,
         )
     except Exception as e:
         raise HTTPException(status_code=502, detail=f"Stitch API error: {e}")
@@ -227,7 +238,10 @@ async def edit_screen(data: EditRequest, request: Request, db: AsyncSession = De
     parent = await get_screen_or_404(db, data.screen_id)
     await require_project_access(db, request, parent.project_id, min_role="researcher")
 
-    if not settings.stitch_api_key:
+    interface_config = await get_project_interface_config(db, parent.project_id)
+    stitch_api_key = interface_config.stitch_api_key if interface_config else ""
+
+    if not stitch_api_key:
         return await execute_design_tool(
             "edit_screen",
             {"screen_id": data.screen_id, "instructions": data.instructions},
@@ -244,7 +258,10 @@ async def edit_screen(data: EditRequest, request: Request, db: AsyncSession = De
 
     try:
         stitch_data = await stitch_service.edit_screen(
-            stitch_proj_id, stitch_screen_ids, data.instructions
+            stitch_proj_id,
+            stitch_screen_ids,
+            data.instructions,
+            api_key=stitch_api_key,
         )
     except Exception as e:
         raise HTTPException(status_code=502, detail=f"Stitch edit error: {e}")
@@ -328,7 +345,10 @@ async def create_variant(data: VariantRequest, request: Request, db: AsyncSessio
     parent = await get_screen_or_404(db, data.screen_id)
     await require_project_access(db, request, parent.project_id, min_role="researcher")
 
-    if not settings.stitch_api_key:
+    interface_config = await get_project_interface_config(db, parent.project_id)
+    stitch_api_key = interface_config.stitch_api_key if interface_config else ""
+
+    if not stitch_api_key:
         return await execute_design_tool(
             "create_variant",
             {
@@ -354,6 +374,7 @@ async def create_variant(data: VariantRequest, request: Request, db: AsyncSessio
             parent.prompt or f"Create {data.variant_type} variants",
             variant_count=data.count,
             creative_range=data.variant_type,
+            api_key=stitch_api_key,
         )
     except Exception as e:
         raise HTTPException(status_code=502, detail=f"Stitch variant error: {e}")

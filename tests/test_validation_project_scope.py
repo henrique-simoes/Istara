@@ -1,0 +1,102 @@
+"""Project-scope contracts for ensemble validation compute routing."""
+
+from __future__ import annotations
+
+from pathlib import Path
+
+import pytest
+
+
+REPO_ROOT = Path(__file__).resolve().parents[1]
+
+
+def read_repo(path: str) -> str:
+    return (REPO_ROOT / path).read_text(encoding="utf-8")
+
+
+class _FakeValidationServer:
+    def __init__(self, name: str, project_calls: list[str | None]) -> None:
+        self.name = name
+        self.is_healthy = True
+        self.project_calls = project_calls
+
+    async def chat(self, messages, **kwargs):  # noqa: ANN001
+        self.project_calls.append(kwargs.get("project_id"))
+        return {"message": {"content": f"{self.name} validation response"}}
+
+
+class _FakeValidationRouter:
+    def __init__(self) -> None:
+        self.chat_project_calls: list[str | None] = []
+        self.embed_project_calls: list[str | None] = []
+        self.sorted_project_calls: list[str | None] = []
+        self.server_project_calls: list[str | None] = []
+        self.servers = [
+            _FakeValidationServer("server-a", self.server_project_calls),
+            _FakeValidationServer("server-b", self.server_project_calls),
+            _FakeValidationServer("server-c", self.server_project_calls),
+        ]
+
+    def _sorted_servers(self, **kwargs):
+        self.sorted_project_calls.append(kwargs.get("project_id"))
+        return self.servers
+
+    async def chat(self, messages, **kwargs):  # noqa: ANN001
+        self.chat_project_calls.append(kwargs.get("project_id"))
+        return {"message": {"content": "project scoped validation response"}}
+
+    async def embed_batch(self, texts, **kwargs):  # noqa: ANN001
+        self.embed_project_calls.append(kwargs.get("project_id"))
+        return [[1.0, 0.0] for _ in texts]
+
+
+@pytest.mark.asyncio
+async def test_validation_helpers_forward_project_id_to_llm_and_embeddings(monkeypatch):
+    from app.core import llm_router as llm_router_module
+    from app.core import validation
+
+    fake_router = _FakeValidationRouter()
+    monkeypatch.setattr(llm_router_module, "llm_router", fake_router)
+
+    await validation.adversarial_review(
+        "Review this",
+        "Candidate output",
+        project_id="project-a",
+    )
+    await validation.self_moa("Validate this", n=2, project_id="project-a")
+    await validation.debate_rounds("Debate this", rounds=1, project_id="project-a")
+    await validation.dual_run("Compare this", project_id="project-a")
+    await validation.full_ensemble("Ensemble this", min_responses=2, project_id="project-a")
+
+    assert fake_router.chat_project_calls == [
+        "project-a",
+        "project-a",
+        "project-a",
+        "project-a",
+        "project-a",
+    ]
+    assert fake_router.embed_project_calls == [
+        "project-a",
+        "project-a",
+        "project-a",
+        "project-a",
+        "project-a",
+    ]
+    assert fake_router.sorted_project_calls == ["project-a", "project-a"]
+    assert fake_router.server_project_calls == [
+        "project-a",
+        "project-a",
+        "project-a",
+        "project-a",
+    ]
+
+
+def test_task_ensemble_validation_passes_active_project_scope() -> None:
+    agent_execution = read_repo("backend/app/core/agent_execution.py")
+    validation_module = read_repo("backend/app/core/validation.py")
+
+    assert '"project_id": project.id' in agent_execution
+    assert "project_id: str | None = None" in validation_module
+    assert "llm_router._sorted_servers(project_id=project_id)" in validation_module
+    assert "project_id=project_id" in validation_module
+    assert "llm_router.embed_batch(texts, project_id=project_id)" in validation_module

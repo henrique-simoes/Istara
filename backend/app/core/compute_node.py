@@ -72,6 +72,7 @@ class ComputeNode(ComputeNodeTransportMixin, ComputeNodeModelMixin, ComputeNodeI
     user_id: str = ""
     ip_address: str = ""
     provider_host: str = ""
+    allowed_project_ids: list[str] = field(default_factory=list)
     state: str = "idle"
     priority_level: int = 3
     connected_at: float = 0

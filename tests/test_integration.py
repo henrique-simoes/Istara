@@ -1,11 +1,14 @@
 """Integration tests for cross-feature flows."""
 
+import uuid
+
 import pytest
 from httpx import AsyncClient, ASGITransport
 from app.main import app
 from app.config import settings
-from app.models.database import init_db
+from app.models.database import async_session, init_db
 from app.core.auth import create_token
+from app.models.project import Project
 
 
 @pytest.fixture(autouse=True)
@@ -25,13 +28,22 @@ def auth_headers():
     return {"Authorization": f"Bearer {token}"}
 
 
+async def _seed_project(name: str) -> Project:
+    project = Project(id=str(uuid.uuid4()), name=f"{name} {uuid.uuid4()}")
+    async with async_session() as db:
+        db.add(project)
+        await db.commit()
+        await db.refresh(project)
+    return project
+
+
 @pytest.mark.asyncio
 async def test_autoresearch_integration(auth_headers):
     """Verify autoresearch system endpoints are integrated."""
     await init_db()
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
-        response = await ac.get("/api/autoresearch/status", headers=auth_headers)
+        response = await ac.get("/api/autoresearch/status?project_id=test", headers=auth_headers)
         assert response.status_code < 600  # Endpoint exists (may have backend bugs)
 
 
@@ -39,12 +51,13 @@ async def test_autoresearch_integration(auth_headers):
 async def test_steering_integration(auth_headers):
     """Verify steering system integrates with agent work cycle."""
     await init_db()
+    project = await _seed_project("Steering Integration")
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
         response = await ac.post(
             "/api/steering/istara-main",
             headers=auth_headers,
-            json={"message": "Test"},
+            json={"message": "Test", "project_id": project.id},
         )
         assert response.status_code in (200, 404)
 
@@ -86,9 +99,12 @@ async def test_channels_integration(auth_headers):
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
         # Channels accessible
-        response = await ac.get("/api/channels", headers=auth_headers)
+        response = await ac.get("/api/channels?project_id=integration-channel-project", headers=auth_headers)
         assert response.status_code == 200
 
         # Findings accessible
-        response = await ac.get("/api/findings/nuggets", headers=auth_headers)
+        response = await ac.get(
+            "/api/findings/nuggets?project_id=integration-channel-project",
+            headers=auth_headers,
+        )
         assert response.status_code == 200

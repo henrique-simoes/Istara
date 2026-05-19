@@ -5,11 +5,12 @@ from __future__ import annotations
 import hashlib
 import json
 
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import JSONResponse
 
 from app.config import settings as app_settings
 from app.core.client_identity import BoundedWindowRateLimiter, get_client_ip
+from app.core.permissions import require_project_access
 from app.core.replay_cache import BoundedReplayCache
 from app.core.version import read_istara_version
 from app.models.database import async_session
@@ -235,6 +236,30 @@ def _a2a_metadata(value: object) -> dict:
     return value
 
 
+def _a2a_project_id(*sources: dict) -> str | None:
+    for source in sources:
+        value = source.get("project_id") or source.get("projectId")
+        if isinstance(value, str) and value.strip():
+            return value.strip()
+    return None
+
+
+async def _authorize_project_scope(
+    db,
+    request: Request,
+    project_id: str,
+    req_id,
+    *,
+    min_role: str,
+) -> JSONResponse | None:
+    try:
+        await require_project_access(db, request, project_id, min_role=min_role)
+    except HTTPException as exc:
+        detail = exc.detail if isinstance(exc.detail, str) else "Project access denied."
+        return _a2a_jsonrpc_error(exc.status_code, -32043, detail, req_id)
+    return None
+
+
 @router.get("/.well-known/agent.json")
 async def agent_card(request: Request):
     """A2A Protocol: Agent Card discovery endpoint."""
@@ -289,6 +314,7 @@ async def a2a_jsonrpc(request: Request):
             details={"reason": "authorization_failed"},
         )
         return authorized
+    request.state.user = authorized
 
     client_key = _a2a_client_key(request, authorized)
     if _a2a_rate_limiter.is_limited(
@@ -385,6 +411,15 @@ async def a2a_jsonrpc(request: Request):
             if not isinstance(message, dict):
                 raise ValueError("message must be an object")
             metadata = _a2a_metadata(message.get("metadata"))
+            project_id = _a2a_project_id(metadata, params)
+            if not project_id:
+                return _a2a_jsonrpc_error(
+                    400,
+                    -32602,
+                    "project_id is required for A2A tasks/send.",
+                    req_id,
+                )
+            metadata["project_id"] = project_id
             metadata["submitted_by_user_id"] = authorized.get("id", "")
             metadata["submitted_by_username"] = authorized.get("username", "")
             from_agent_id = _a2a_limited_text(
@@ -400,14 +435,27 @@ async def a2a_jsonrpc(request: Request):
             return _a2a_jsonrpc_error(400, -32602, str(exc), req_id)
 
         async with async_session() as db:
-            msg = await a2a_svc.send_message(
+            denied = await _authorize_project_scope(
                 db,
-                from_agent_id=from_agent_id or "external",
-                to_agent_id=to_agent_id or "istara-main",
-                message_type="a2a_task",
-                content=content,
-                metadata=metadata,
+                request,
+                project_id,
+                req_id,
+                min_role="researcher",
             )
+            if denied:
+                return denied
+            try:
+                msg = await a2a_svc.send_message(
+                    db,
+                    from_agent_id=from_agent_id or "external",
+                    to_agent_id=to_agent_id or "istara-main",
+                    message_type="a2a_task",
+                    content=content,
+                    project_id=project_id,
+                    metadata=metadata,
+                )
+            except ValueError as exc:
+                return _a2a_jsonrpc_error(400, -32602, str(exc), req_id)
             await _record_a2a_event(
                 request,
                 "a2a.tasks_send.accepted",
@@ -429,8 +477,25 @@ async def a2a_jsonrpc(request: Request):
         from app.services import a2a as a2a_svc
 
         task_id = params.get("id")
+        project_id = _a2a_project_id(params)
+        if not project_id:
+            return _a2a_jsonrpc_error(
+                400,
+                -32602,
+                "project_id is required for A2A tasks/get.",
+                req_id,
+            )
         async with async_session() as db:
-            messages = await a2a_svc.get_full_log(db, limit=200)
+            denied = await _authorize_project_scope(
+                db,
+                request,
+                project_id,
+                req_id,
+                min_role="viewer",
+            )
+            if denied:
+                return denied
+            messages = await a2a_svc.get_full_log(db, limit=200, project_id=project_id)
             task = next((m for m in messages if m["id"] == task_id), None)
             if task:
                 return {"jsonrpc": "2.0", "result": task, "id": req_id}
@@ -446,6 +511,14 @@ async def a2a_jsonrpc(request: Request):
     if method == "tasks/list":
         from app.services import a2a as a2a_svc
 
+        project_id = _a2a_project_id(params)
+        if not project_id:
+            return _a2a_jsonrpc_error(
+                400,
+                -32602,
+                "project_id is required for A2A tasks/list.",
+                req_id,
+            )
         try:
             limit = int(params.get("limit", 50))
         except (TypeError, ValueError):
@@ -453,17 +526,46 @@ async def a2a_jsonrpc(request: Request):
         limit = max(1, min(limit, 200))
 
         async with async_session() as db:
-            messages = await a2a_svc.get_full_log(db, limit=limit)
+            denied = await _authorize_project_scope(
+                db,
+                request,
+                project_id,
+                req_id,
+                min_role="viewer",
+            )
+            if denied:
+                return denied
+            messages = await a2a_svc.get_full_log(db, limit=limit, project_id=project_id)
             return {"jsonrpc": "2.0", "result": {"tasks": messages}, "id": req_id}
 
     if method == "tasks/cancel":
         return {"jsonrpc": "2.0", "result": {"status": "canceled"}, "id": req_id}
 
     if method == "agent/discover":
+        project_id = _a2a_project_id(params)
+        if not project_id:
+            return _a2a_jsonrpc_error(
+                400,
+                -32602,
+                "project_id is required for A2A agent/discover.",
+                req_id,
+            )
+
         from app.services import agent_service
+        from app.api.agent_project_scope import filter_agent_dicts_for_project
 
         async with async_session() as db:
+            denied = await _authorize_project_scope(
+                db,
+                request,
+                project_id,
+                req_id,
+                min_role="viewer",
+            )
+            if denied:
+                return denied
             agents = await agent_service.list_agents(db)
+            agents = filter_agent_dicts_for_project(agents, project_id, request)
             return {"jsonrpc": "2.0", "result": {"agents": agents}, "id": req_id}
 
     return _a2a_jsonrpc_error(400, -32601, f"Method not found: {method}", req_id)

@@ -11,6 +11,7 @@ from app.models.channel_conversation import ChannelConversation
 from app.models.channel_instance import ChannelInstance
 from app.models.channel_message import ChannelMessage
 from app.models.database import async_session, init_db
+from app.models.project import Project
 from app.models.research_deployment import ResearchDeployment
 from app.services.inbound_processor import process_inbound_channel_message
 
@@ -22,6 +23,7 @@ async def test_inbound_message_without_deployment_is_persisted():
     project_id = str(uuid.uuid4())
 
     async with async_session() as db:
+        db.add(Project(id=project_id, name="Inbound Project"))
         db.add(
             ChannelInstance(
                 id=instance_id,
@@ -73,6 +75,66 @@ async def test_inbound_message_without_deployment_is_persisted():
 
 
 @pytest.mark.asyncio
+async def test_inbound_message_ignores_unbound_deployment_from_another_project():
+    await init_db()
+    instance_id = str(uuid.uuid4())
+    project_id = str(uuid.uuid4())
+    other_project_id = str(uuid.uuid4())
+
+    async with async_session() as db:
+        db.add(Project(id=project_id, name="Inbound Project"))
+        db.add(Project(id=other_project_id, name="Other Inbound Project"))
+        db.add(
+            ChannelInstance(
+                id=instance_id,
+                platform="whatsapp",
+                name="Project WhatsApp",
+                config_json="{}",
+                project_id=project_id,
+            )
+        )
+        db.add(
+            ResearchDeployment(
+                id=str(uuid.uuid4()),
+                project_id=other_project_id,
+                name="Other Project Deployment",
+                deployment_type="interview",
+                questions_json=json.dumps([{"text": "Should not route"}]),
+                config_json=json.dumps({"intro_message": "Hello from another project"}),
+                channel_instance_ids_json=json.dumps([]),
+                state="active",
+            )
+        )
+        await db.commit()
+
+    response = await process_inbound_channel_message(
+        IncomingMessage(
+            channel="whatsapp",
+            channel_id="5511888888888",
+            sender_id="5511888888888",
+            sender_name="Lin",
+            text="Hello",
+            instance_id=instance_id,
+            metadata={"content_type": "text", "external_message_id": "msg-cross-project"},
+        )
+    )
+
+    assert response is None
+    async with async_session() as db:
+        conversation = (
+            await db.execute(
+                select(ChannelConversation).where(
+                    ChannelConversation.channel_instance_id == instance_id,
+                    ChannelConversation.participant_id == "5511888888888",
+                )
+            )
+        ).scalar_one()
+
+    assert conversation.project_id == project_id
+    assert conversation.deployment_id is None
+
+
+@pytest.mark.asyncio
 async def test_inbound_active_deployment_advances_questions_without_repeating():
     await init_db()
     instance_id = str(uuid.uuid4())
@@ -80,6 +142,7 @@ async def test_inbound_active_deployment_advances_questions_without_repeating():
     project_id = str(uuid.uuid4())
 
     async with async_session() as db:
+        db.add(Project(id=project_id, name="Active Deployment Project"))
         db.add(
             ChannelInstance(
                 id=instance_id,
@@ -156,3 +219,68 @@ async def test_inbound_active_deployment_advances_questions_without_repeating():
     assert [m.direction for m in messages] == ["inbound", "outbound", "inbound", "outbound"]
     assert messages[-1].content == "Q2"
     assert instance.message_count == 4
+
+
+@pytest.mark.asyncio
+async def test_inbound_message_for_paused_project_is_not_persisted_or_routed():
+    await init_db()
+    instance_id = str(uuid.uuid4())
+    project_id = str(uuid.uuid4())
+    deployment_id = str(uuid.uuid4())
+
+    async with async_session() as db:
+        db.add(Project(id=project_id, name="Paused Inbound Project", is_paused=True))
+        db.add(
+            ChannelInstance(
+                id=instance_id,
+                platform="telegram",
+                name="Paused Telegram",
+                config_json="{}",
+                project_id=project_id,
+            )
+        )
+        db.add(
+            ResearchDeployment(
+                id=deployment_id,
+                project_id=project_id,
+                name="Paused Interview",
+                deployment_type="interview",
+                questions_json=json.dumps([{"text": "Should not route"}]),
+                config_json=json.dumps({"intro_message": "Hello"}),
+                channel_instance_ids_json=json.dumps([instance_id]),
+                state="active",
+            )
+        )
+        await db.commit()
+
+    response = await process_inbound_channel_message(
+        IncomingMessage(
+            channel="telegram",
+            channel_id="123",
+            sender_id="123",
+            sender_name="Ada",
+            text="start",
+            instance_id=instance_id,
+            metadata={"content_type": "text", "external_message_id": "msg-paused"},
+        )
+    )
+
+    assert response is None
+    async with async_session() as db:
+        messages = (
+            await db.execute(
+                select(ChannelMessage).where(ChannelMessage.channel_instance_id == instance_id)
+            )
+        ).scalars().all()
+        conversations = (
+            await db.execute(
+                select(ChannelConversation).where(
+                    ChannelConversation.channel_instance_id == instance_id
+                )
+            )
+        ).scalars().all()
+        instance = await db.get(ChannelInstance, instance_id)
+
+    assert messages == []
+    assert conversations == []
+    assert instance.message_count == 0

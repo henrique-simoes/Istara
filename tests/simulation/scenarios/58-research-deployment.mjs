@@ -10,6 +10,10 @@ export async function run(ctx) {
   const { api } = ctx;
   const checks = [];
   const cleanup = { deploymentIds: [], channelIds: [] };
+  const projectId = ctx.projectId || "sim-project-001";
+  const projectQuery = encodeURIComponent(projectId);
+  const deploymentPath = (deploymentId, suffix = "") =>
+    `/api/deployments/${deploymentId}${suffix}?project_id=${projectQuery}`;
 
   // ── 1. Create a channel instance for deployment ──
   let channel = null;
@@ -18,6 +22,7 @@ export async function run(ctx) {
       platform: "telegram",
       name: "SIM: Deployment Channel",
       config: { bot_token: "sim-deploy-bot-token" },
+      project_id: projectId,
     });
     cleanup.channelIds.push(channel.id);
     checks.push({
@@ -33,7 +38,7 @@ export async function run(ctx) {
   let deployment = null;
   try {
     deployment = await api.post("/api/deployments", {
-      project_id: "sim-project-001",
+      project_id: projectId,
       name: "SIM: User Interview Study",
       deployment_type: "interview",
       questions: [
@@ -63,7 +68,7 @@ export async function run(ctx) {
 
   // ── 3. GET /api/deployments — list ──
   try {
-    const result = await api.get("/api/deployments?project_id=sim-project-001");
+    const result = await api.get(`/api/deployments?project_id=${projectQuery}`);
     const list = Array.isArray(result) ? result : result?.deployments || [];
     checks.push({
       name: "GET /api/deployments returns project deployments",
@@ -77,7 +82,7 @@ export async function run(ctx) {
   // ── 4. GET /api/deployments/{id} — detail ──
   if (deployment) {
     try {
-      const detail = await api.get(`/api/deployments/${deployment.id}`);
+      const detail = await api.get(deploymentPath(deployment.id));
       const hasQuestions = detail.questions && detail.questions.length === 3;
       checks.push({
         name: "GET /api/deployments/{id} returns full detail",
@@ -92,7 +97,7 @@ export async function run(ctx) {
   // ── 5. POST /api/deployments/{id}/activate — activate ──
   if (deployment) {
     try {
-      const result = await api.post(`/api/deployments/${deployment.id}/activate`, {});
+      const result = await api.post(deploymentPath(deployment.id, "/activate"), {});
       checks.push({
         name: "POST /api/deployments/{id}/activate starts deployment",
         passed: result.status === "activated" || result.status === "active",
@@ -106,7 +111,7 @@ export async function run(ctx) {
   // ── 6. Verify state changed to active ──
   if (deployment) {
     try {
-      const detail = await api.get(`/api/deployments/${deployment.id}`);
+      const detail = await api.get(deploymentPath(deployment.id));
       checks.push({
         name: "Deployment state is active after activation",
         passed: detail.state === "active",
@@ -120,7 +125,7 @@ export async function run(ctx) {
   // ── 7. POST /api/deployments/{id}/pause — pause ──
   if (deployment) {
     try {
-      const result = await api.post(`/api/deployments/${deployment.id}/pause`, {});
+      const result = await api.post(deploymentPath(deployment.id, "/pause"), {});
       checks.push({
         name: "POST /api/deployments/{id}/pause pauses deployment",
         passed: result.status === "paused",
@@ -134,7 +139,7 @@ export async function run(ctx) {
   // ── 8. POST /api/deployments/{id}/complete — complete ──
   if (deployment) {
     try {
-      const result = await api.post(`/api/deployments/${deployment.id}/complete`, {});
+      const result = await api.post(deploymentPath(deployment.id, "/complete"), {});
       checks.push({
         name: "POST /api/deployments/{id}/complete ends deployment",
         passed: result.status === "completed",
@@ -148,7 +153,7 @@ export async function run(ctx) {
   // ── 9. GET /api/deployments/{id}/analytics — analytics data ──
   if (deployment) {
     try {
-      const analytics = await api.get(`/api/deployments/${deployment.id}/analytics`);
+      const analytics = await api.get(deploymentPath(deployment.id, "/analytics"));
       checks.push({
         name: "GET /api/deployments/{id}/analytics returns analytics",
         passed: analytics.deployment_id === deployment.id && analytics.per_question_stats !== undefined,
@@ -162,7 +167,7 @@ export async function run(ctx) {
   // ── 10. GET /api/deployments/{id}/conversations — empty initially ──
   if (deployment) {
     try {
-      const convos = await api.get(`/api/deployments/${deployment.id}/conversations`);
+      const convos = await api.get(deploymentPath(deployment.id, "/conversations"));
       const list = Array.isArray(convos) ? convos : convos?.conversations || [];
       checks.push({
         name: "GET /api/deployments/{id}/conversations returns array",
@@ -176,7 +181,7 @@ export async function run(ctx) {
 
   // ── 11. GET /api/deployments/overview — cross-deployment summary ──
   try {
-    const overview = await api.get("/api/deployments/overview?project_id=sim-project-001");
+    const overview = await api.get(`/api/deployments/overview?project_id=${projectQuery}`);
     checks.push({
       name: "GET /api/deployments/overview returns summary",
       passed: overview.total_deployments !== undefined || overview.active_deployments !== undefined,
@@ -190,7 +195,7 @@ export async function run(ctx) {
   let surveyDeployment = null;
   try {
     surveyDeployment = await api.post("/api/deployments", {
-      project_id: "sim-project-001",
+      project_id: projectId,
       name: "SIM: Quick Survey",
       deployment_type: "survey",
       questions: [
@@ -214,7 +219,7 @@ export async function run(ctx) {
   let diaryDeployment = null;
   try {
     diaryDeployment = await api.post("/api/deployments", {
-      project_id: "sim-project-001",
+      project_id: projectId,
       name: "SIM: Week-long Diary",
       deployment_type: "diary_study",
       questions: [
@@ -236,7 +241,7 @@ export async function run(ctx) {
 
   // ── 14. All 3 deployment types in project ──
   try {
-    const result = await api.get("/api/deployments?project_id=sim-project-001");
+    const result = await api.get(`/api/deployments?project_id=${projectQuery}`);
     const list = Array.isArray(result) ? result : result?.deployments || [];
     const types = new Set(list.map((d) => d.deployment_type));
     checks.push({
@@ -251,7 +256,7 @@ export async function run(ctx) {
   // ── 15. Adaptive config persisted ──
   if (deployment) {
     try {
-      const detail = await api.get(`/api/deployments/${deployment.id}`);
+      const detail = await api.get(deploymentPath(deployment.id));
       const config = detail.config || {};
       checks.push({
         name: "Adaptive config persisted correctly",
@@ -265,10 +270,10 @@ export async function run(ctx) {
 
   // ── Cleanup ──
   for (const id of cleanup.deploymentIds) {
-    try { await api.delete(`/api/deployments/${id}`); } catch (_) {}
+    try { await api.delete(deploymentPath(id)); } catch (_) {}
   }
   for (const id of cleanup.channelIds) {
-    try { await api.delete(`/api/channels/${id}`); } catch (_) {}
+    try { await api.delete(`/api/channels/${id}?project_id=${projectQuery}`); } catch (_) {}
   }
 
   return checks;

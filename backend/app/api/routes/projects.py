@@ -55,6 +55,50 @@ def _validate_watch_folder(folder_path: str) -> Path:
     return resolved
 
 
+async def _stop_project_background_work(project_id: str, db: AsyncSession) -> dict:
+    """Best-effort shutdown for project-owned autonomous/background work."""
+    stopped = {
+        "meta_hyperagent": False,
+        "autoresearch": False,
+        "channels": 0,
+    }
+
+    try:
+        from app.core.meta_hyperagent import meta_hyperagent
+
+        if meta_hyperagent.is_running_for_project(project_id):
+            meta_hyperagent.stop(project_id=project_id)
+            stopped["meta_hyperagent"] = True
+    except Exception:
+        logger.exception("Failed to stop Meta-Hyperagent for paused project %s", project_id)
+
+    try:
+        from app.core.autoresearch_engine import autoresearch_engine
+
+        current = autoresearch_engine.get_current_experiment()
+        active_project_id = (
+            str(getattr(autoresearch_engine, "active_project_id", "") or "")
+            or (str(current.get("project_id") or "") if current else "")
+        )
+        if (
+            autoresearch_engine.is_running
+            and active_project_id == project_id
+        ):
+            autoresearch_engine.request_stop()
+            stopped["autoresearch"] = True
+    except Exception:
+        logger.exception("Failed to stop AutoResearch for paused project %s", project_id)
+
+    try:
+        from app.services.channel_service import stop_project_channel_instances
+
+        stopped["channels"] = await stop_project_channel_instances(db, project_id)
+    except Exception:
+        logger.exception("Failed to stop channels for paused project %s", project_id)
+
+    return stopped
+
+
 class ProjectCreate(BaseModel):
     """Request body for creating a project."""
 
@@ -268,7 +312,8 @@ async def pause_project(project_id: str, request: Request, db: AsyncSession = De
     project = await get_visible_project_or_404(db, request, project_id, min_role="project_admin")
     project.is_paused = True
     await db.commit()
-    return {"status": "paused", "project_id": project_id}
+    stopped = await _stop_project_background_work(project_id, db)
+    return {"status": "paused", "project_id": project_id, "stopped": stopped}
 
 
 @router.post("/projects/{project_id}/resume")

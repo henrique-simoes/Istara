@@ -48,9 +48,10 @@ export default function FigmaTab() {
     setStitchSaved(false);
     try {
       if (canManageIntegrations) {
+        if (!activeProjectId) throw new Error("Select a project before configuring Stitch.");
         await interfacesApi.configure.stitch({
           api_key: stitchKey.trim(),
-          project_id: activeProjectId || undefined,
+          project_id: activeProjectId,
         });
       } else if (activeProjectId) {
         await permissionRequests.create({
@@ -80,9 +81,10 @@ export default function FigmaTab() {
     setTokenSaved(false);
     try {
       if (canManageIntegrations) {
+        if (!activeProjectId) throw new Error("Select a project before configuring Figma.");
         await interfacesApi.configure.figma({
           api_token: apiToken.trim(),
-          project_id: activeProjectId || undefined,
+          project_id: activeProjectId,
         });
       } else if (activeProjectId) {
         await permissionRequests.create({
@@ -121,12 +123,12 @@ export default function FigmaTab() {
   };
 
   const handleExtractDS = async () => {
-    if (!fileKey.trim() || extracting) return;
+    if (!fileKey.trim() || !activeProjectId || extracting) return;
     setExtracting(true);
     setDsError(null);
     setDesignSystem(null);
     try {
-      const result = await interfacesApi.figma.designSystem(fileKey.trim());
+      const result = await interfacesApi.figma.designSystem(fileKey.trim(), activeProjectId);
       setDesignSystem(result);
     } catch (e: any) {
       setDsError(e.message);
@@ -172,7 +174,7 @@ export default function FigmaTab() {
             />
             <button
               onClick={handleSaveToken}
-              disabled={!apiToken.trim() || savingToken}
+              disabled={!apiToken.trim() || !activeProjectId || savingToken}
               className="flex items-center gap-1.5 px-4 py-2 text-sm bg-istara-600 text-white rounded-lg hover:bg-istara-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
               {savingToken ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
@@ -226,7 +228,7 @@ export default function FigmaTab() {
             />
             <button
               onClick={handleSaveStitch}
-              disabled={!stitchKey.trim() || savingStitch}
+              disabled={!stitchKey.trim() || !activeProjectId || savingStitch}
               className="flex items-center gap-1.5 px-4 py-2 text-sm bg-istara-600 text-white rounded-lg hover:bg-istara-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
               {savingStitch ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
@@ -274,7 +276,7 @@ export default function FigmaTab() {
                 />
                 <button
                   onClick={handleImport}
-                  disabled={!figmaUrl.trim() || importing}
+                  disabled={!figmaUrl.trim() || !activeProjectId || importing}
                   className="flex items-center gap-1.5 px-4 py-2 text-sm bg-istara-600 text-white rounded-lg hover:bg-istara-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                 >
                   {importing ? <Loader2 size={14} className="animate-spin" /> : <Download size={14} />}
@@ -317,7 +319,7 @@ export default function FigmaTab() {
                 />
                 <button
                   onClick={handleExtractDS}
-                  disabled={!fileKey.trim() || extracting}
+                  disabled={!fileKey.trim() || !activeProjectId || extracting}
                   className="flex items-center gap-1.5 px-4 py-2 text-sm bg-istara-600 text-white rounded-lg hover:bg-istara-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                 >
                   {extracting ? <Loader2 size={14} className="animate-spin" /> : <Layers size={14} />}

@@ -56,6 +56,12 @@ async def test_settings_models_preserves_configured_lmstudio_model(monkeypatch):
     monkeypatch.setattr(settings, "llm_provider", "lmstudio")
     monkeypatch.setattr(settings, "lmstudio_model", "gemini-3.1-flash-lite-preview")
 
+    class AdminRequest:
+        class State:
+            user = {"id": "admin", "username": "admin", "role": "admin"}
+
+        state = State()
+
     class MismatchedProbeClient(LMStudioClient):
         def __init__(self):
             super().__init__("https://generativelanguage.googleapis.com/v1beta/openai/")
@@ -83,7 +89,7 @@ async def test_settings_models_preserves_configured_lmstudio_model(monkeypatch):
     monkeypatch.setattr(compute_registry, "list_models", no_registry_models)
     monkeypatch.setattr(settings_routes, "_persist_env", fail_persist)
 
-    response = await settings_routes.get_models()
+    response = await settings_routes.get_models(AdminRequest())
 
     assert response["active_model"] == "gemini-3.1-flash-lite-preview"
     assert settings.lmstudio_model == "gemini-3.1-flash-lite-preview"

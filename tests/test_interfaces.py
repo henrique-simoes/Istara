@@ -12,6 +12,7 @@ from app.models.database import async_session, init_db
 from app.core.auth import create_token
 from app.models.design_screen import DesignBrief, DesignDecision, DesignScreen
 from app.models.finding import Insight, Recommendation
+from app.models.interface_config import ProjectInterfaceConfig
 from app.models.project import Project
 
 
@@ -47,6 +48,23 @@ async def _seed_project(name: str = "Interfaces Test Project") -> Project:
         await db.commit()
         await db.refresh(project)
     return project
+
+
+async def _seed_interface_config(
+    project_id: str,
+    *,
+    stitch_api_key: str = "",
+    figma_api_token: str = "",
+) -> ProjectInterfaceConfig:
+    config = ProjectInterfaceConfig(project_id=project_id)
+    config.set_stitch_api_key(stitch_api_key)
+    config.set_figma_api_token(figma_api_token)
+    async with async_session() as db:
+        await db.merge(config)
+        await db.commit()
+        saved = await db.get(ProjectInterfaceConfig, project_id)
+        assert saved is not None
+        return saved
 
 
 async def _seed_recommendation(project_id: str, text: str | None = None) -> Recommendation:
@@ -86,12 +104,27 @@ async def _seed_insight(project_id: str) -> Insight:
 async def test_interfaces_screens_returns_list(auth_headers):
     """GET /api/interfaces/screens returns screen list."""
     await init_db()
+    project = await _seed_project("Screens List")
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        response = await ac.get(
+            f"/api/interfaces/screens?project_id={project.id}",
+            headers=auth_headers,
+        )
+        assert response.status_code == 200
+        assert isinstance(response.json(), list)
+
+
+@pytest.mark.asyncio
+async def test_interfaces_screens_require_project_id_for_project_facing_api(auth_headers):
+    """Project-facing Interfaces screens never fall back to global lists."""
+    await init_db()
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
         response = await ac.get("/api/interfaces/screens", headers=auth_headers)
-        assert response.status_code in (200, 404, 500)
-        if response.status_code == 200:
-            assert isinstance(response.json(), list)
+
+    assert response.status_code == 400
+    assert response.json()["detail"] == "project_id is required"
 
 
 @pytest.mark.asyncio
@@ -109,10 +142,84 @@ async def test_interfaces_requires_auth():
 async def test_interfaces_status_returns_response(auth_headers):
     """GET /api/interfaces/status returns interface status."""
     await init_db()
+    project = await _seed_project("Interfaces Status")
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        response = await ac.get(
+            f"/api/interfaces/status?project_id={project.id}",
+            headers=auth_headers,
+        )
+        assert response.status_code == 200
+        assert response.json()["scope"] == "project"
+
+
+@pytest.mark.asyncio
+async def test_interfaces_status_requires_project_id_for_project_facing_api(auth_headers):
+    """Project-facing Interfaces status never exposes global counts."""
+    await init_db()
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
         response = await ac.get("/api/interfaces/status", headers=auth_headers)
-        assert response.status_code in (200, 404, 500)
+
+    assert response.status_code == 400
+    assert response.json()["detail"] == "project_id is required"
+
+
+@pytest.mark.asyncio
+async def test_interfaces_status_is_project_scoped(auth_headers):
+    """Interfaces status counts artifacts and credentials in the active project only."""
+    await init_db()
+    project_a = await _seed_project("Interfaces Status A")
+    project_b = await _seed_project("Interfaces Status B")
+    await _seed_interface_config(project_a.id, figma_api_token="figma-project-a")
+    async with async_session() as db:
+        db.add(
+            DesignScreen(
+                id=str(uuid.uuid4()),
+                project_id=project_a.id,
+                title="Project A Screen",
+                prompt="A",
+                device_type="DESKTOP",
+            )
+        )
+        db.add(
+            DesignScreen(
+                id=str(uuid.uuid4()),
+                project_id=project_b.id,
+                title="Project B Screen",
+                prompt="B",
+                device_type="DESKTOP",
+            )
+        )
+        db.add(
+            DesignBrief(
+                id=str(uuid.uuid4()),
+                project_id=project_a.id,
+                title="Project A Brief",
+                content="A",
+            )
+        )
+        await db.commit()
+
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        response_a = await ac.get(
+            f"/api/interfaces/status?project_id={project_a.id}",
+            headers=auth_headers,
+        )
+        response_b = await ac.get(
+            f"/api/interfaces/status?project_id={project_b.id}",
+            headers=auth_headers,
+        )
+
+    assert response_a.status_code == 200
+    assert response_a.json()["screens_count"] == 1
+    assert response_a.json()["briefs_count"] == 1
+    assert response_a.json()["figma_configured"] is True
+    assert response_b.status_code == 200
+    assert response_b.json()["screens_count"] == 1
+    assert response_b.json()["briefs_count"] == 0
+    assert response_b.json()["figma_configured"] is False
 
 
 @pytest.mark.asyncio
@@ -170,6 +277,18 @@ async def test_handoff_briefs_hydrate_evidence_payload(auth_headers):
     assert payload["source_findings"][0]["id"] == insight.id
     assert payload["recommendations"][0]["id"] == rec.id
     assert payload["ux_laws"]
+
+
+@pytest.mark.asyncio
+async def test_handoff_briefs_require_project_id_for_project_facing_api(auth_headers):
+    """Project-facing handoff brief lists never fall back to global admin data."""
+    await init_db()
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        response = await ac.get("/api/interfaces/handoff/briefs", headers=auth_headers)
+
+    assert response.status_code == 400
+    assert response.json()["detail"] == "project_id is required"
 
 
 @pytest.mark.asyncio
@@ -247,7 +366,7 @@ async def test_figma_import_creates_design_screen(auth_headers, monkeypatch):
     """Configured Figma import persists an inspectable DesignScreen record."""
     await init_db()
     project = await _seed_project("Figma Import")
-    settings.figma_api_token = "figma-test-token"
+    await _seed_interface_config(project.id, figma_api_token="figma-test-token")
 
     from app.services.figma_service import figma_service
 
@@ -284,7 +403,8 @@ async def test_figma_import_creates_design_screen(auth_headers, monkeypatch):
 async def test_figma_components_endpoint_matches_frontend_helper(auth_headers, monkeypatch):
     """The frontend components helper has a real backend endpoint."""
     await init_db()
-    settings.figma_api_token = "figma-test-token"
+    project = await _seed_project("Figma Components")
+    await _seed_interface_config(project.id, figma_api_token="figma-test-token")
 
     from app.services.figma_service import figma_service
 
@@ -297,12 +417,60 @@ async def test_figma_components_endpoint_matches_frontend_helper(auth_headers, m
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
         response = await ac.get(
-            "/api/interfaces/figma/components/ABC123",
+            f"/api/interfaces/figma/components/ABC123?project_id={project.id}",
             headers=auth_headers,
         )
 
     assert response.status_code == 200
     assert response.json()["components"][0]["name"] == "Card"
+
+
+@pytest.mark.asyncio
+async def test_interfaces_configuration_is_project_scoped(auth_headers):
+    """Figma/Stitch credentials are stored per project and do not mutate global settings."""
+    await init_db()
+    project_a = await _seed_project("Interface Config A")
+    project_b = await _seed_project("Interface Config B")
+    settings.figma_api_token = ""
+    settings.stitch_api_key = ""
+
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        configure_response = await ac.post(
+            "/api/interfaces/configure/figma",
+            headers=auth_headers,
+            json={"project_id": project_a.id, "api_token": "figma-project-a"},
+        )
+        status_a = await ac.get(
+            f"/api/interfaces/status?project_id={project_a.id}",
+            headers=auth_headers,
+        )
+        status_b = await ac.get(
+            f"/api/interfaces/status?project_id={project_b.id}",
+            headers=auth_headers,
+        )
+
+    assert configure_response.status_code == 200
+    assert configure_response.json()["project_id"] == project_a.id
+    assert settings.figma_api_token == ""
+    assert settings.stitch_api_key == ""
+    assert status_a.json()["figma_configured"] is True
+    assert status_b.json()["figma_configured"] is False
+
+
+@pytest.mark.asyncio
+async def test_figma_file_helpers_require_project_id(auth_headers):
+    """Figma account reads require an active project and project-owned credentials."""
+    await init_db()
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        response = await ac.get(
+            "/api/interfaces/figma/components/ABC123",
+            headers=auth_headers,
+        )
+
+    assert response.status_code == 400
+    assert response.json()["detail"] == "project_id is required"
 
 
 @pytest.mark.asyncio
@@ -326,7 +494,7 @@ async def test_mock_endpoints_are_blocked_in_public_profile(auth_headers):
 
 @pytest.mark.asyncio
 async def test_query_style_evidence_chain_includes_design_nodes(auth_headers):
-    """Legacy query-style evidence-chain callers receive the extended chain."""
+    """Query-style evidence-chain callers receive the extended chain within the active project."""
     await init_db()
     project = await _seed_project("Evidence Chain")
     rec = await _seed_recommendation(project.id)
@@ -354,7 +522,7 @@ async def test_query_style_evidence_chain_includes_design_nodes(auth_headers):
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
         response = await ac.get(
-            f"/api/findings/evidence-chain?finding_type=recommendation&finding_id={rec.id}",
+            f"/api/findings/evidence-chain?finding_type=recommendation&finding_id={rec.id}&project_id={project.id}",
             headers=auth_headers,
         )
 

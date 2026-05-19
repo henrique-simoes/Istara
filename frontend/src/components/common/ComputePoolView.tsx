@@ -23,6 +23,7 @@ import { cn } from "@/lib/utils";
 import ViewOnboarding from "@/components/common/ViewOnboarding";
 import { compute as computeApi, settings as settingsApi } from "@/lib/api";
 import { useAuthStore } from "@/stores/authStore";
+import { useProjectStore } from "@/stores/projectStore";
 
 const SWARM_TIERS: Record<string, { label: string; color: string; description: string }> = {
   full_swarm: {
@@ -75,6 +76,23 @@ const SOURCE_BADGES: Record<string, { label: string; icon: typeof Monitor; class
   },
 };
 
+const NOT_READY_NODE_STATES = new Set([
+  "auth_required",
+  "cooldown",
+  "no_model_loaded",
+  "no_model_server",
+  "timeout",
+  "unreachable",
+]);
+const READY_NODE_STATES = new Set(["ready", "degraded", "slow"]);
+const REACHABLE_NODE_STATES = new Set([
+  "auth_required",
+  "degraded",
+  "no_model_loaded",
+  "ready",
+  "slow",
+]);
+
 function formatGb(value?: number | null): string {
   return Number.isFinite(value) && Number(value) > 0
     ? `${Number(value).toFixed(1)} GB`
@@ -91,14 +109,15 @@ interface ModelWarning {
 export default function ComputePoolView() {
   const { stats, error, fetchStats } = useComputeStore();
   const { user } = useAuthStore();
+  const { activeProjectId } = useProjectStore();
   const [warnings, setWarnings] = useState<ModelWarning[]>([]);
   const [showWarnings, setShowWarnings] = useState(false);
   const [strictRouting, setStrictRouting] = useState(false);
   const [routingError, setRoutingError] = useState<string | null>(null);
 
   useEffect(() => {
-    fetchStats();
-    const interval = setInterval(fetchStats, 15000);
+    fetchStats(activeProjectId);
+    const interval = setInterval(() => fetchStats(activeProjectId), 15000);
 
     settingsApi.status()
       .then((d) => {
@@ -110,7 +129,7 @@ export default function ComputePoolView() {
       .catch((err) => setRoutingError(err instanceof Error ? err.message : "Could not load routing settings"));
 
     return () => clearInterval(interval);
-  }, [fetchStats]);
+  }, [fetchStats, activeProjectId]);
 
   const toggleStrictRouting = async () => {
     const newVal = !strictRouting;
@@ -126,10 +145,14 @@ export default function ComputePoolView() {
   };
 
   useEffect(() => {
-    computeApi.modelWarnings()
+    if (!activeProjectId) {
+      setWarnings([]);
+      return;
+    }
+    computeApi.modelWarnings(activeProjectId)
       .then((d) => setWarnings(d.warnings || []))
       .catch(() => {});
-  }, []);
+  }, [activeProjectId]);
 
   const tier = stats?.swarm_tier
     ? SWARM_TIERS[stats.swarm_tier] || SWARM_TIERS.local_only
@@ -138,12 +161,12 @@ export default function ComputePoolView() {
 
   return (
     <div className="flex-1 overflow-y-auto">
-    <ViewOnboarding viewId="compute" title="LLM Compute" description="All LLM servers powering your agents — local, network-discovered, and relay nodes. Donate compute or manage connections." chatPrompt="How does the compute pool work?" />
+    <ViewOnboarding viewId="compute" title="LLM Compute" description="LLM servers and relay nodes available to the active project. Donate compute or manage connections." chatPrompt="How does the compute pool work?" />
     <div className="p-6 max-w-5xl mx-auto space-y-6">
       <div>
         <h2 className="text-xl font-bold text-slate-900 dark:text-white">Compute Pool</h2>
         <p className="text-sm text-slate-500 mt-1">
-          LLM servers and relay nodes powering your agent compute
+          LLM servers and relay nodes available to the active project
         </p>
       </div>
 
@@ -237,7 +260,7 @@ export default function ComputePoolView() {
           icon={Server}
           label="Total Nodes"
           value={stats?.total_nodes || 0}
-          sub={`${stats?.alive_nodes || 0} alive`}
+          sub={`${stats?.alive_nodes || 0} ready / ${stats?.reachable_nodes ?? stats?.alive_nodes ?? 0} online / ${stats?.hardware_node_count ?? stats?.total_nodes ?? 0} machines`}
         />
         <StatCard
           icon={HardDrive}
@@ -329,6 +352,51 @@ export default function ComputePoolView() {
               const sourceBadge = SOURCE_BADGES[node.source || "relay"] || SOURCE_BADGES.relay;
               const SourceIcon = sourceBadge.icon;
               const capabilities = node.model_capabilities || {};
+              const modelNames = Array.from(
+                new Set([...(node.loaded_models || []), ...Object.keys(capabilities)])
+              ).filter(Boolean);
+              const readinessState =
+                node.readiness_state || node.serving_state || node.health_state || node.state || "";
+              const stateBlocksReady = NOT_READY_NODE_STATES.has(readinessState);
+              const nodeReady = Boolean(
+                !stateBlocksReady &&
+                (
+                  node.alive ||
+                  node.is_ready ||
+                  node.serving_state === "serving" ||
+                  (node.is_healthy && (!readinessState || READY_NODE_STATES.has(readinessState)))
+                )
+              );
+              const inferredReachable = nodeReady || REACHABLE_NODE_STATES.has(readinessState);
+              const nodeReachable = Boolean(
+                (node.is_reachable ?? node.online) ?? inferredReachable
+              );
+              const nodeNeedsModel =
+                !nodeReady && nodeReachable && readinessState === "no_model_loaded";
+              const nodeStatusTone = nodeReady ? "green" : nodeReachable ? "amber" : "red";
+              const nodeStatusLabel = nodeReachable ? (nodeReady ? "healthy" : "online") : "offline";
+              const nodeStatusClass = nodeReady
+                ? "text-green-600 dark:text-green-400"
+                : nodeReachable
+                  ? "text-amber-600 dark:text-amber-400"
+                  : "text-red-500 dark:text-red-400";
+              const NodeConnectivityIcon = nodeReachable ? Wifi : WifiOff;
+              const primaryBadgeLabel =
+                node.serving_state === "serving"
+                  ? "Serving"
+                  : nodeNeedsModel
+                    ? "No model loaded"
+                    : nodeReady
+                      ? "Ready"
+                      : nodeReachable
+                        ? "Reachable"
+                        : "Offline";
+              const showStatusBadges =
+                node.source === "relay" ||
+                node.source === "browser" ||
+                nodeNeedsModel ||
+                (!nodeReady && nodeReachable) ||
+                Boolean(node.health_error && readinessState !== "no_model_loaded");
 
               return (
                 <div
@@ -359,16 +427,12 @@ export default function ComputePoolView() {
                       <span
                         className={cn(
                           "inline-flex items-center gap-1 text-xs font-medium",
-                          node.alive ? "text-green-600 dark:text-green-400" : "text-red-500 dark:text-red-400"
+                          nodeStatusClass
                         )}
-                        aria-label={node.alive ? "Healthy" : "Offline"}
+                        aria-label={nodeReachable ? (nodeReady ? "Healthy" : "Online") : "Offline"}
                       >
-                        {node.alive ? (
-                          <Wifi size={12} aria-hidden="true" />
-                        ) : (
-                          <WifiOff size={12} aria-hidden="true" />
-                        )}
-                        {node.alive ? "healthy" : "offline"}
+                        <NodeConnectivityIcon size={12} aria-hidden="true" />
+                        {nodeStatusLabel}
                       </span>
                     </div>
                   </div>
@@ -383,35 +447,37 @@ export default function ComputePoolView() {
                     {formatGb(node.ram_available_gb)} free | CPU {node.cpu_load_pct?.toFixed(0) || "0"}%
                   </div>
 
-                  {(node.source === "relay" || node.source === "browser") && (
+                  {showStatusBadges && (
                     <div className="flex flex-wrap gap-1.5 mb-3">
-                      <NodeStatusBadge tone={node.alive ? "green" : "red"}>
-                        {node.serving_state === "serving" ? "Serving" : node.alive ? "Connected" : "Offline"}
+                      <NodeStatusBadge tone={nodeStatusTone}>
+                        {primaryBadgeLabel}
                       </NodeStatusBadge>
-                      <NodeStatusBadge
-                        tone={node.capability_probe_status === "available" ? "green" : "amber"}
-                      >
-                        {node.capability_probe_status === "available"
-                          ? "Capabilities ready"
-                          : "Capability probe unavailable"}
-                      </NodeStatusBadge>
+                      {(node.source === "relay" || node.source === "browser") && (
+                        <NodeStatusBadge
+                          tone={node.capability_probe_status === "available" ? "green" : "amber"}
+                        >
+                          {node.capability_probe_status === "available"
+                            ? "Capabilities ready"
+                            : "Capability probe unavailable"}
+                        </NodeStatusBadge>
+                      )}
                       {node.model_list_stale && (
                         <NodeStatusBadge tone="amber">Model list stale</NodeStatusBadge>
                       )}
-                      {node.health_error && (
+                      {node.health_error && readinessState !== "no_model_loaded" && (
                         <NodeStatusBadge tone="red">{node.health_error}</NodeStatusBadge>
                       )}
                     </div>
                   )}
 
                   {/* Model Capabilities */}
-                  {node.loaded_models && node.loaded_models.length > 0 && (
+                  {modelNames.length > 0 && (
                     <div>
                       <div className="text-xs font-medium text-slate-500 dark:text-slate-400 mb-1.5">
                         Models
                       </div>
                       <div className="space-y-1.5">
-                        {node.loaded_models.map((modelName) => {
+                        {modelNames.map((modelName) => {
                           const caps = capabilities[modelName];
                           return (
                             <div

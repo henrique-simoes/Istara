@@ -295,7 +295,7 @@ def main():
 
     run_test_step(
         "Get steering status",
-        lambda: assert_ok(client.get("/api/steering/istara-main/status")),
+        lambda: assert_ok(client.get(f"/api/steering/istara-main/status?project_id={project_id}")),
     )
 
     # =========================================================

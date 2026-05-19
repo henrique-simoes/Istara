@@ -50,7 +50,7 @@ export interface DGMHArchiveVariant {
 export interface DGMHVariantCreateRequest {
   source_system?: string;
   source_id?: string;
-  project_id?: string;
+  project_id: string;
   agent_id?: string;
   governance_proposal_id?: string;
   parent_id?: string;

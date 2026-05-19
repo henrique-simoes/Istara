@@ -1,0 +1,68 @@
+---
+stable_id: loops.schedules
+title: Loop Schedules
+ui_path: Loops > Schedules
+audience: researcher
+status: documented
+related_features: ["loops.overview", "loops.history"]
+related_glossary: ["a2a"]
+code_references: ["frontend/src/components/loops/SchedulesTab.tsx", "frontend/src/components/loops/CronBuilder.tsx", "backend/app/api/routes/scheduler.py"]
+api_references: ["backend/app/api/routes/scheduler.py", "backend/app/api/routes/loops.py"]
+test_references: ["tests/test_loops.py", "tests/test_project_scope_contracts.py"]
+last_verified: 2026-05-19
+compass: CF-SPEC-61 / CF-779
+---
+
+# Loop Schedules
+
+## What It Does
+
+Schedules configure recurring loop timing, including cron-style recurrence controls.
+
+## Why It Exists
+
+Loop Schedules exists so the work represented by Loops > Schedules has a stable, discoverable place in Istara's project workflow. It keeps user actions, generated artifacts, and related follow-up surfaces connected to the active project rather than scattering them across unrelated tools.
+
+## Where It Lives
+
+- UI path: Loops > Schedules
+- Navigation group: Loops
+- Primary component: `SchedulesTab / CronBuilder`
+
+## How UX Researchers Use It
+
+- Open Loops > Schedules from the Istara navigation or the parent tab.
+- Use the visible controls in this surface to work with loop schedules in the active project context.
+- Review the output in the same view and follow the related feature links when the workflow moves into another Istara surface.
+
+## Supported Workflows
+
+- Start from Loops > Schedules when the current research task needs loop schedules.
+- Use the visible controls to create, inspect, refine, or route project work without leaving the active Istara context.
+- Move to related surfaces when needed: loops.overview, loops.history.
+
+## Inputs, Outputs, And Expected Outcomes
+
+- Project-scoped state or artifact updates associated with loop schedules.
+- Visible status, lists, forms, generated artifacts, or review results shown by the referenced component and routes.
+- Existing schedules can be viewed, paused/resumed, edited, or deleted only when the active project matches the schedule's project.
+
+## Caveats
+
+- Needs interactive verification for exact empty, loading, error, and permission-denied states.
+- Do not expand this documentation beyond the cited source files without adding new code or walkthrough evidence.
+
+## Related Features
+
+- [loops.overview](../../loops/overview/researcher.md)
+- [loops.history](../../loops/history/researcher.md)
+
+## Related Concepts
+
+- [a2a](../../../glossary/a2a.md)
+
+## Evidence
+
+- Source files: `frontend/src/components/loops/SchedulesTab.tsx`, `frontend/src/components/loops/CronBuilder.tsx`, `backend/app/api/routes/scheduler.py`
+- API references: `backend/app/api/routes/scheduler.py`, `backend/app/api/routes/loops.py`
+- Tests: `tests/test_loops.py`, `tests/test_project_scope_contracts.py`

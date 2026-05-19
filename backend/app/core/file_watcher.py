@@ -71,6 +71,14 @@ class FileWatcher:
         """Get all watched directories."""
         return dict(self._watched_dirs)
 
+    async def _is_project_paused(self, project_id: str) -> bool:
+        from app.models.database import async_session
+        from app.models.project import Project
+
+        async with async_session() as db:
+            project = await db.get(Project, project_id)
+            return bool(project and project.is_paused)
+
     # ── File classification for auto-task creation ──────────────────────
 
     def _classify_file(self, file_path: Path) -> list[tuple[str, str, str]]:
@@ -138,6 +146,10 @@ class FileWatcher:
         Returns:
             Number of tasks created.
         """
+        if await self._is_project_paused(project_id):
+            logger.info("Skipping auto-task creation for paused project %s", project_id)
+            return 0
+
         skill_tasks = self._classify_file(file_path)
         if not skill_tasks:
             return 0
@@ -211,6 +223,10 @@ class FileWatcher:
         Ensures every file in the project folder appears in the Documents UI.
         Skips if a document for this file already exists.
         """
+        if await self._is_project_paused(project_id):
+            logger.info("Skipping document registration for paused project %s", project_id)
+            return
+
         from app.models.database import async_session
         from app.models.document import Document, DocumentSource, DocumentStatus
         from sqlalchemy import select
@@ -302,6 +318,10 @@ class FileWatcher:
         if self._is_temp_file(file_path):
             return None
 
+        if await self._is_project_paused(project_id):
+            logger.info("Skipping file processing for paused project %s", project_id)
+            return None
+
         # Skip if file disappeared (cloud conflict resolution)
         if not file_path.exists():
             return None
@@ -380,6 +400,9 @@ class FileWatcher:
         dir_path = Path(directory)
         if not dir_path.exists() or not dir_path.is_dir():
             logger.warning(f"Directory not found: {directory}")
+            return []
+        if await self._is_project_paused(project_id):
+            logger.info("Skipping watched directory scan for paused project %s", project_id)
             return []
 
         results = []

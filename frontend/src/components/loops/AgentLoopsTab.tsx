@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { Pause, Play, RefreshCw, Clock, Activity } from "lucide-react";
 import { useLoopsStore } from "@/stores/loopsStore";
 import { useAgentStore } from "@/stores/agentStore";
+import { useProjectStore } from "@/stores/projectStore";
 import { cn } from "@/lib/utils";
 import type { Agent } from "@/lib/types";
 
@@ -30,11 +31,12 @@ const ROLE_COLORS: Record<string, string> = {
 export default function AgentLoopsTab() {
   const { agentLoops, fetchAgentLoops, updateAgentConfig, pauseAgent, resumeAgent, loading } = useLoopsStore();
   const { agents, fetchAgents } = useAgentStore();
+  const { activeProjectId } = useProjectStore();
 
   useEffect(() => {
-    fetchAgentLoops();
-    fetchAgents();
-  }, [fetchAgentLoops, fetchAgents]);
+    fetchAgentLoops(activeProjectId);
+    fetchAgents(activeProjectId || undefined);
+  }, [activeProjectId, fetchAgentLoops, fetchAgents]);
 
   // Merge agent data with loop config
   const agentWithLoops = agents.map((agent) => {
@@ -47,7 +49,7 @@ export default function AgentLoopsTab() {
       <div className="flex items-center justify-between">
         <h2 className="text-lg font-semibold text-slate-900 dark:text-white">Agent Loop Configuration</h2>
         <button
-          onClick={() => fetchAgentLoops()}
+          onClick={() => fetchAgentLoops(activeProjectId)}
           className="p-1.5 rounded hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400"
           aria-label="Refresh"
         >
@@ -67,9 +69,9 @@ export default function AgentLoopsTab() {
               key={agent.id}
               agent={agent}
               loopConfig={loopConfig || null}
-              onUpdateConfig={(data) => updateAgentConfig(agent.id, data)}
-              onPause={() => pauseAgent(agent.id)}
-              onResume={() => resumeAgent(agent.id)}
+              onUpdateConfig={(data) => updateAgentConfig(agent.id, data, activeProjectId)}
+              onPause={() => pauseAgent(agent.id, activeProjectId)}
+              onResume={() => resumeAgent(agent.id, activeProjectId)}
             />
           ))}
         </div>

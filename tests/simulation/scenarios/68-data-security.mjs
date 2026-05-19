@@ -12,6 +12,8 @@ export async function run(ctx) {
   const appStatus = await api.get("/api/settings/status").catch(() => null);
   const teamMode = !!appStatus?.team_mode;
   const suffix = `${Date.now()}-${Math.floor(Math.random() * 10000)}`;
+  const projectId = ctx.projectId || "sim-project-001";
+  const projectQuery = `project_id=${encodeURIComponent(projectId)}`;
 
   // ── 1. Admin user management — list users ──
   if (teamMode) {
@@ -106,11 +108,12 @@ export async function run(ctx) {
       platform: "telegram",
       name: "SIM: Encryption Test Bot",
       config: { bot_token: "test-secret-token-12345" },
+      project_id: projectId,
     });
     channelId = channel.id;
     // The config should be stored encrypted — we can't verify from API
     // but we verify the channel was created and can be read back
-    const detail = await api.get(`/api/channels/${channel.id}`);
+    const detail = await api.get(`/api/channels/${channel.id}?${projectQuery}`);
     checks.push({
       name: "Channel credentials stored (encryption active if key configured)",
       passed: !!detail.id,
@@ -122,7 +125,7 @@ export async function run(ctx) {
 
   // ── 7. Cleanup test channel ──
   if (channelId) {
-    try { await api.delete(`/api/channels/${channelId}`); } catch {}
+    try { await api.delete(`/api/channels/${channelId}?${projectQuery}`); } catch {}
   }
 
   // ── 8. Settings status accessible (exempt from auth for frontend check) ──
