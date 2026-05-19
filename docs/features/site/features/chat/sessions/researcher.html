@@ -241,7 +241,7 @@
   <p class="concept-line"><strong>Concepts:</strong> rag</p>
 </header>
 <h2 id="what-it-does">What It Does</h2>
-<p>The chat session sidebar manages project-scoped conversation history and new session creation.</p>
+<p>The chat session sidebar manages project-scoped conversation history and new session creation. A saved chat selection belongs to one project only, so switching projects cannot show another project&#x27;s conversation even when the same user is authorized in both projects.</p>
 <h2 id="why-it-exists">Why It Exists</h2>
 <p>Chat Sessions exists so the work represented by Chat &gt; Sessions has a stable, discoverable place in Istara&#x27;s project workflow. It keeps user actions, generated artifacts, and related follow-up surfaces connected to the active project rather than scattering them across unrelated tools.</p>
 <h2 id="where-it-lives">Where It Lives</h2>
@@ -254,6 +254,7 @@
 <ul>
 <li>Open Chat &gt; Sessions from the Istara navigation or the parent tab.</li>
 <li>Use the visible controls in this surface to work with chat sessions in the active project context.</li>
+<li>Rename, star, delete, and reopen sessions only inside the active project; stale sessions from another project are cleared before the new project&#x27;s list loads.</li>
 <li>Review the output in the same view and follow the related feature links when the workflow moves into another Istara surface.</li>
 </ul>
 <h2 id="supported-workflows">Supported Workflows</h2>
@@ -266,6 +267,7 @@
 <ul>
 <li>Project-scoped state or artifact updates associated with chat sessions.</li>
 <li>Visible status, lists, forms, generated artifacts, or review results shown by the referenced component and routes.</li>
+<li>Session history and messages whose <code>project_id</code> matches the active project and the current user&#x27;s authorization.</li>
 </ul>
 <h2 id="caveats">Caveats</h2>
 <ul>
@@ -285,7 +287,7 @@
 <ul>
 <li>Source files: <code>frontend/src/components/chat/ChatSessionsSidebar.tsx</code>, <code>frontend/src/stores/sessionStore.ts</code>, <code>backend/app/api/routes/sessions.py</code></li>
 <li>API references: <code>frontend/src/lib/sessionsApi.ts</code>, <code>backend/app/api/routes/sessions.py</code></li>
-<li>Tests: none recorded</li>
+<li>Tests: <code>tests/test_sessions.py</code>, <code>tests/test_project_scope_contracts.py</code></li>
 </ul>
         </article>
         <aside class="toc-panel" aria-label="Page sections">

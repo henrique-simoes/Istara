@@ -241,10 +241,12 @@
   <p class="concept-line"><strong>Concepts:</strong> rag</p>
 </header>
 <h2 id="implementation-summary">Implementation Summary</h2>
-<p>The Context DAG tab visualizes or inspects relationships across project context nodes.</p>
+<p>The Context DAG tab visualizes or inspects relationships across project context nodes. Its chat-session picker only renders sessions from the active project, so context DAG reads cannot be driven by a stale session selection from another project.</p>
 <h2 id="frontend-surface">Frontend Surface</h2>
 <ul>
 <li><code>frontend/src/components/memory/MemoryView.tsx</code></li>
+<li><code>frontend/src/components/memory/ContextDAGView.tsx</code></li>
+<li><code>frontend/src/stores/sessionStore.ts</code></li>
 <li><code>frontend/src/lib/contextDagApi.ts</code></li>
 <li><code>backend/app/api/routes/context_dag.py</code></li>
 <li><code>backend/app/core/context_dag.py</code></li>
@@ -252,7 +254,7 @@
 <h2 id="state-api-and-backend-contracts">State, API, And Backend Contracts</h2>
 <h3 id="stores">Stores</h3>
 <ul>
-<li>None recorded.</li>
+<li><code>frontend/src/stores/sessionStore.ts</code></li>
 </ul>
 <h3 id="api-and-backend">API And Backend</h3>
 <ul>
@@ -261,6 +263,8 @@
 <h2 id="architecture-notes">Architecture Notes</h2>
 <ul>
 <li>The feature is mounted through <code>frontend/src/components/memory/MemoryView.tsx</code> and the UI navigation path recorded in the inventory.</li>
+<li><code>ContextDAGView</code> derives <code>scopedSessions</code> from the active project before rendering the session selector and derives <code>scopedActiveSessionId</code> before calling context DAG structure, health, expand, grep, or compact APIs.</li>
+<li>When no active project session is selected, the DAG stays in the empty selection state instead of rendering or querying a session from another project.</li>
 <li>The frontmatter and manifest entries are the durable contract for agents updating this page after code changes.</li>
 <li>When the referenced component, store, route, agent, skill, or test behavior changes, regenerate and validate the feature documentation.</li>
 </ul>
@@ -270,12 +274,13 @@
 </ul>
 <h2 id="tests-and-verification">Tests And Verification</h2>
 <ul>
-<li>No focused test reference recorded yet.</li>
+<li><code>tests/test_project_scope_contracts.py</code></li>
 </ul>
 <h2 id="related-features">Related Features</h2>
 <ul>
 <li><a href="../../context/editor/architecture.html">context.editor</a></li>
 <li><a href="../knowledge/architecture.html">memory.knowledge</a></li>
+<li><a href="../../chat/sessions/architecture.html">chat.sessions</a></li>
 </ul>
 <h2 id="related-concepts">Related Concepts</h2>
 <ul>
@@ -283,7 +288,7 @@
 </ul>
 <h2 id="compass-evidence">Compass Evidence</h2>
 <ul>
-<li>Spec/task: CF-SPEC-53 / CF-657</li>
+<li>Spec/task: CF-SPEC-60 / CF-761</li>
 <li>Inventory source: <code>docs/features/inventory.json</code></li>
 </ul>
 <h2 id="when-to-update">When To Update</h2>

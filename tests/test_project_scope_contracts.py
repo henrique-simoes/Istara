@@ -252,6 +252,54 @@ def test_agents_a2a_project_view_passes_active_project_id() -> None:
     assert "messages = await a2a.get_full_log(db, limit, project_id=project_id)" in route
 
 
+def test_chat_sessions_require_active_project_scope() -> None:
+    sessions_api = read_repo("frontend/src/lib/sessionsApi.ts")
+    session_store = read_repo("frontend/src/stores/sessionStore.ts")
+    chat_store = read_repo("frontend/src/stores/chatStore.ts")
+    chat_view = read_repo("frontend/src/components/chat/ChatView.tsx")
+    sidebar = read_repo("frontend/src/components/chat/ChatSessionsSidebar.tsx")
+    context_dag = read_repo("frontend/src/components/memory/ContextDAGView.tsx")
+    route = read_repo("backend/app/api/routes/sessions.py")
+
+    assert "get: (sessionId: string, projectId: string)" in sessions_api
+    assert "`/api/sessions/detail/${sessionId}?${projectQuery(projectId)}`" in sessions_api
+    assert "update: (sessionId: string, projectId: string, data: Record<string, unknown>)" in sessions_api
+    assert "delete: (sessionId: string, projectId: string)" in sessions_api
+    assert "star: (sessionId: string, projectId: string)" in sessions_api
+
+    assert 'const ACTIVE_SESSION_KEY_PREFIX = "istara-active-session:";' in session_store
+    assert "function activeSessionKey(projectId: string): string" in session_store
+    assert "activeSessionId: null" in session_store
+    assert "const isProjectSwitch = get().projectId !== projectId;" in session_store
+    assert "{ projectId, sessions: [], activeSessionId: null, loading: true }" in session_store
+    assert "const hasCurrent = !isProjectSwitch && current" in session_store
+    assert "const savedId = getSavedSessionId(projectId);" in session_store
+    assert "sessionsApi.update(id, projectId, data)" in session_store
+    assert "sessionsApi.delete(id, projectId)" in session_store
+    assert "sessionsApi.star(id, projectId)" in session_store
+
+    assert "sessionsApi.get(sessionId, projectId)" in chat_store
+    assert 'set({ messages: [], streamingContent: "", error: null });' in chat_store
+    assert "set({ messages: [], error: e.message });" in chat_store
+
+    assert "updateSession(activeProjectId, activeSessionId, data)" in chat_view
+    assert "const scopedSessions = sessions.filter((s) => s.project_id === projectId);" in sidebar
+    assert "selectSession(projectId, session.id)" in sidebar
+    assert "deleteSession(projectId, session.id)" in sidebar
+    assert "toggleStar(projectId, session.id)" in sidebar
+
+    assert "const scopedSessions = activeProjectId" in context_dag
+    assert "sessions.filter((session) => session.project_id === activeProjectId)" in context_dag
+    assert "const scopedActiveSessionId = scopedSessions.some" in context_dag
+    assert "selectSession(activeProjectId, e.target.value)" in context_dag
+
+    assert "def require_project_id(project_id: str | None) -> str:" in route
+    assert 'raise HTTPException(status_code=400, detail="project_id is required")' in route
+    assert "async def require_active_project_session" in route
+    assert "ChatSession.project_id == scoped_project_id" in route
+    assert "Message.project_id == scoped_project_id" in route
+
+
 def test_agent_detail_status_and_log_routes_require_active_project_scope() -> None:
     view = read_repo("frontend/src/components/agents/AgentsView.tsx")
     visuals = read_repo("frontend/src/components/agents/AgentVisuals.tsx")

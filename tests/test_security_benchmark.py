@@ -160,6 +160,27 @@ def test_security_benchmark_detects_agent_project_scope_paths() -> None:
     assert result.scorecard["triggered_paths"] == sorted(changed_paths)
 
 
+def test_security_benchmark_detects_chat_session_project_scope_paths() -> None:
+    matrix = load_matrix(ROOT / "security" / "control_matrix.json")
+
+    changed_paths = [
+        "backend/app/api/routes/chat.py",
+        "backend/app/api/routes/sessions.py",
+        "frontend/src/components/chat/ChatSessionsSidebar.tsx",
+        "frontend/src/components/chat/ChatView.tsx",
+        "frontend/src/components/memory/ContextDAGView.tsx",
+        "frontend/src/lib/sessionsApi.ts",
+        "frontend/src/stores/chatStore.ts",
+        "frontend/src/stores/sessionStore.ts",
+        "tests/test_sessions.py",
+    ]
+    result = evaluate_matrix(matrix, changed_paths=changed_paths)
+
+    assert result.passed is True
+    assert result.scorecard["auth_security_change_detected"] is True
+    assert result.scorecard["triggered_paths"] == sorted(changed_paths)
+
+
 def test_security_benchmark_detects_context_hierarchy_project_scope_paths() -> None:
     matrix = load_matrix(ROOT / "security" / "control_matrix.json")
 

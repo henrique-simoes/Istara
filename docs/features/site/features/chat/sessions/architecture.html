@@ -241,17 +241,20 @@
   <p class="concept-line"><strong>Concepts:</strong> rag</p>
 </header>
 <h2 id="implementation-summary">Implementation Summary</h2>
-<p>The chat session sidebar manages project-scoped conversation history and new session creation.</p>
+<p>The chat session sidebar manages project-scoped conversation history and new session creation. Session-by-id reads and mutations require the active project id so stale session state from another authorized project cannot render or change the current project&#x27;s chat.</p>
 <h2 id="frontend-surface">Frontend Surface</h2>
 <ul>
 <li><code>frontend/src/components/chat/ChatSessionsSidebar.tsx</code></li>
 <li><code>frontend/src/stores/sessionStore.ts</code></li>
+<li><code>frontend/src/stores/chatStore.ts</code></li>
+<li><code>frontend/src/lib/sessionsApi.ts</code></li>
 <li><code>backend/app/api/routes/sessions.py</code></li>
 </ul>
 <h2 id="state-api-and-backend-contracts">State, API, And Backend Contracts</h2>
 <h3 id="stores">Stores</h3>
 <ul>
 <li><code>frontend/src/stores/sessionStore.ts</code></li>
+<li><code>frontend/src/stores/chatStore.ts</code></li>
 </ul>
 <h3 id="api-and-backend">API And Backend</h3>
 <ul>
@@ -261,6 +264,10 @@
 <h2 id="architecture-notes">Architecture Notes</h2>
 <ul>
 <li>The feature is mounted through <code>frontend/src/components/chat/ChatSessionsSidebar.tsx</code> and the UI navigation path recorded in the inventory.</li>
+<li><code>sessionStore</code> persists active session ids under per-project keys, clears session state on project switches, and only restores a saved id if that id exists in the active project&#x27;s fetched sessions.</li>
+<li><code>sessionsApi.get</code>, <code>update</code>, <code>delete</code>, and <code>star</code> all include <code>project_id</code>; the backend verifies access to that active project and then looks up the chat session with both <code>ChatSession.id</code> and <code>ChatSession.project_id</code>.</li>
+<li>Session detail responses load messages with both <code>Message.session_id</code> and <code>Message.project_id</code>, and a cross-project active scope returns 404 instead of revealing that another project&#x27;s session exists.</li>
+<li>The sidebar derives <code>scopedSessions</code> from the active project before rendering rows, counts, and actions.</li>
 <li>The frontmatter and manifest entries are the durable contract for agents updating this page after code changes.</li>
 <li>When the referenced component, store, route, agent, skill, or test behavior changes, regenerate and validate the feature documentation.</li>
 </ul>
@@ -270,7 +277,8 @@
 </ul>
 <h2 id="tests-and-verification">Tests And Verification</h2>
 <ul>
-<li>No focused test reference recorded yet.</li>
+<li><code>tests/test_sessions.py</code></li>
+<li><code>tests/test_project_scope_contracts.py</code></li>
 </ul>
 <h2 id="related-features">Related Features</h2>
 <ul>
@@ -283,7 +291,7 @@
 </ul>
 <h2 id="compass-evidence">Compass Evidence</h2>
 <ul>
-<li>Spec/task: CF-SPEC-53 / CF-657</li>
+<li>Spec/task: CF-SPEC-60 / CF-761</li>
 <li>Inventory source: <code>docs/features/inventory.json</code></li>
 </ul>
 <h2 id="when-to-update">When To Update</h2>

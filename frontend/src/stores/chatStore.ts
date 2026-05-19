@@ -32,10 +32,11 @@ export const useChatStore = create<ChatStore>((set, get) => ({
   abortController: null,
 
   fetchHistory: async (projectId, sessionId) => {
+    set({ messages: [], streamingContent: "", error: null });
     try {
       if (sessionId) {
         // Fetch session-scoped messages
-        const detail = await sessionsApi.get(sessionId);
+        const detail = await sessionsApi.get(sessionId, projectId);
         const msgs: ChatMessage[] = (detail.messages || []).map((m: any) => ({
           id: m.id,
           role: m.role,
@@ -50,7 +51,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
         set({ messages: history, error: null });
       }
     } catch (e: any) {
-      set({ error: e.message });
+      set({ messages: [], error: e.message });
     }
   },
 

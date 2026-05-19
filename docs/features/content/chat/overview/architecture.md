@@ -6,11 +6,11 @@ audience: architecture
 status: documented
 related_features: ["chat.sessions", "chat.model-controls", "chat.files", "chat.audio", "chat.steering"]
 related_glossary: ["rag", "mcp"]
-code_references: ["frontend/src/components/chat/ChatView.tsx", "frontend/src/stores/chatStore.ts", "backend/app/api/routes/chat.py"]
-api_references: ["backend/app/api/routes/chat.py", "frontend/src/lib/chatApi.ts"]
-test_references: []
-last_verified: 2026-05-15
-compass: CF-SPEC-53 / CF-657
+code_references: ["frontend/src/components/chat/ChatView.tsx", "frontend/src/stores/chatStore.ts", "frontend/src/stores/sessionStore.ts", "backend/app/api/routes/chat.py", "backend/app/api/routes/sessions.py"]
+api_references: ["backend/app/api/routes/chat.py", "backend/app/api/routes/sessions.py", "frontend/src/lib/chatApi.ts", "frontend/src/lib/sessionsApi.ts"]
+test_references: ["tests/test_sessions.py", "tests/test_project_scope_contracts.py"]
+last_verified: 2026-05-19
+compass: CF-SPEC-60 / CF-761
 ---
 
 # Chat Workspace Architecture
@@ -23,7 +23,9 @@ Chat is the project-scoped conversational workspace for working with Istara agen
 
 - `frontend/src/components/chat/ChatView.tsx`
 - `frontend/src/stores/chatStore.ts`
+- `frontend/src/stores/sessionStore.ts`
 - `backend/app/api/routes/chat.py`
+- `backend/app/api/routes/sessions.py`
 
 ## State, API, And Backend Contracts
 
@@ -35,11 +37,16 @@ Chat is the project-scoped conversational workspace for working with Istara agen
 ### API And Backend
 
 - `backend/app/api/routes/chat.py`
+- `backend/app/api/routes/sessions.py`
 - `frontend/src/lib/chatApi.ts`
+- `frontend/src/lib/sessionsApi.ts`
 
 ## Architecture Notes
 
 - The feature is mounted through `frontend/src/components/chat/ChatView.tsx` and the UI navigation path recorded in the inventory.
+- Chat history fetches clear previous messages before loading the active project's session history; errors also clear messages so stale conversations cannot remain visible.
+- Session detail fetches include the active project id and the backend authorizes that project before loading the session and its messages.
+- Toolbar session updates carry the active project id so model, agent, preset, and thinking-mode changes cannot mutate a stale session from another project.
 - The frontmatter and manifest entries are the durable contract for agents updating this page after code changes.
 - When the referenced component, store, route, agent, skill, or test behavior changes, regenerate and validate the feature documentation.
 
@@ -50,7 +57,8 @@ Chat is the project-scoped conversational workspace for working with Istara agen
 
 ## Tests And Verification
 
-- No focused test reference recorded yet.
+- `tests/test_sessions.py`
+- `tests/test_project_scope_contracts.py`
 
 ## Related Features
 
@@ -67,7 +75,7 @@ Chat is the project-scoped conversational workspace for working with Istara agen
 
 ## Compass Evidence
 
-- Spec/task: CF-SPEC-53 / CF-657
+- Spec/task: CF-SPEC-60 / CF-761
 - Inventory source: `docs/features/inventory.json`
 
 ## When To Update

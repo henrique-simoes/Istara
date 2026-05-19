@@ -6,11 +6,11 @@ audience: researcher
 status: documented
 related_features: ["chat.sessions", "chat.model-controls", "chat.files", "chat.audio", "chat.steering"]
 related_glossary: ["rag", "mcp"]
-code_references: ["frontend/src/components/chat/ChatView.tsx", "frontend/src/stores/chatStore.ts", "backend/app/api/routes/chat.py"]
-api_references: ["backend/app/api/routes/chat.py", "frontend/src/lib/chatApi.ts"]
-test_references: []
-last_verified: 2026-05-15
-compass: CF-SPEC-53 / CF-657
+code_references: ["frontend/src/components/chat/ChatView.tsx", "frontend/src/stores/chatStore.ts", "frontend/src/stores/sessionStore.ts", "backend/app/api/routes/chat.py", "backend/app/api/routes/sessions.py"]
+api_references: ["backend/app/api/routes/chat.py", "backend/app/api/routes/sessions.py", "frontend/src/lib/chatApi.ts", "frontend/src/lib/sessionsApi.ts"]
+test_references: ["tests/test_sessions.py", "tests/test_project_scope_contracts.py"]
+last_verified: 2026-05-19
+compass: CF-SPEC-60 / CF-761
 ---
 
 # Chat Workspace
@@ -33,6 +33,7 @@ Chat Workspace exists so the work represented by Chat has a stable, discoverable
 
 - Open Chat from the Istara navigation or the parent tab.
 - Use the visible controls in this surface to work with chat workspace in the active project context.
+- Project switches clear the prior project's session history before the active project's chat loads.
 - Review the output in the same view and follow the related feature links when the workflow moves into another Istara surface.
 
 ## Supported Workflows
@@ -45,6 +46,7 @@ Chat Workspace exists so the work represented by Chat has a stable, discoverable
 
 - Project-scoped state or artifact updates associated with chat workspace.
 - Visible status, lists, forms, generated artifacts, or review results shown by the referenced component and routes.
+- Chat messages and session settings that belong to the active project and the current user's authorization.
 
 ## Caveats
 
@@ -66,6 +68,6 @@ Chat Workspace exists so the work represented by Chat has a stable, discoverable
 
 ## Evidence
 
-- Source files: `frontend/src/components/chat/ChatView.tsx`, `frontend/src/stores/chatStore.ts`, `backend/app/api/routes/chat.py`
-- API references: `backend/app/api/routes/chat.py`, `frontend/src/lib/chatApi.ts`
-- Tests: none recorded
+- Source files: `frontend/src/components/chat/ChatView.tsx`, `frontend/src/stores/chatStore.ts`, `frontend/src/stores/sessionStore.ts`, `backend/app/api/routes/chat.py`, `backend/app/api/routes/sessions.py`
+- API references: `backend/app/api/routes/chat.py`, `backend/app/api/routes/sessions.py`, `frontend/src/lib/chatApi.ts`, `frontend/src/lib/sessionsApi.ts`
+- Tests: `tests/test_sessions.py`, `tests/test_project_scope_contracts.py`

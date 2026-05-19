@@ -589,7 +589,7 @@ export default function ChatView() {
           activeSession={activeSession}
           agents={agents}
           onUpdateSession={(data) => {
-            if (activeSessionId) updateSession(activeSessionId, data);
+            if (activeProjectId && activeSessionId) updateSession(activeProjectId, activeSessionId, data);
           }}
         />
 

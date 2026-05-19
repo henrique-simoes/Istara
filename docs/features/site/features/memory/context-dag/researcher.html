@@ -241,7 +241,7 @@
   <p class="concept-line"><strong>Concepts:</strong> rag</p>
 </header>
 <h2 id="what-it-does">What It Does</h2>
-<p>The Context DAG tab visualizes or inspects relationships across project context nodes.</p>
+<p>The Context DAG tab visualizes or inspects relationships across project context nodes. Its chat session selector only shows sessions that belong to the active project.</p>
 <h2 id="why-it-exists">Why It Exists</h2>
 <p>Context DAG exists so the work represented by Memory &gt; Context DAG has a stable, discoverable place in Istara&#x27;s project workflow. It keeps user actions, generated artifacts, and related follow-up surfaces connected to the active project rather than scattering them across unrelated tools.</p>
 <h2 id="where-it-lives">Where It Lives</h2>
@@ -254,18 +254,20 @@
 <ul>
 <li>Open Memory &gt; Context DAG from the Istara navigation or the parent tab.</li>
 <li>Use the visible controls in this surface to work with context dag in the active project context.</li>
+<li>If no active-project chat session exists, the DAG remains empty instead of showing a previous project&#x27;s context graph.</li>
 <li>Review the output in the same view and follow the related feature links when the workflow moves into another Istara surface.</li>
 </ul>
 <h2 id="supported-workflows">Supported Workflows</h2>
 <ul>
 <li>Start from Memory &gt; Context DAG when the current research task needs context dag.</li>
 <li>Use the visible controls to create, inspect, refine, or route project work without leaving the active Istara context.</li>
-<li>Move to related surfaces when needed: context.editor, memory.knowledge.</li>
+<li>Move to related surfaces when needed: context.editor, memory.knowledge, chat.sessions.</li>
 </ul>
 <h2 id="inputs-outputs-and-expected-outcomes">Inputs, Outputs, And Expected Outcomes</h2>
 <ul>
 <li>Project-scoped state or artifact updates associated with context dag.</li>
 <li>Visible status, lists, forms, generated artifacts, or review results shown by the referenced component and routes.</li>
+<li>Context DAG structure, search, expansion, and compaction for the selected session in the active project.</li>
 </ul>
 <h2 id="caveats">Caveats</h2>
 <ul>
@@ -276,6 +278,7 @@
 <ul>
 <li><a href="../../context/editor/researcher.html">context.editor</a></li>
 <li><a href="../knowledge/researcher.html">memory.knowledge</a></li>
+<li><a href="../../chat/sessions/researcher.html">chat.sessions</a></li>
 </ul>
 <h2 id="related-concepts">Related Concepts</h2>
 <ul>
@@ -283,9 +286,9 @@
 </ul>
 <h2 id="evidence">Evidence</h2>
 <ul>
-<li>Source files: <code>frontend/src/components/memory/MemoryView.tsx</code>, <code>frontend/src/lib/contextDagApi.ts</code>, <code>backend/app/api/routes/context_dag.py</code>, <code>backend/app/core/context_dag.py</code></li>
+<li>Source files: <code>frontend/src/components/memory/MemoryView.tsx</code>, <code>frontend/src/components/memory/ContextDAGView.tsx</code>, <code>frontend/src/stores/sessionStore.ts</code>, <code>frontend/src/lib/contextDagApi.ts</code>, <code>backend/app/api/routes/context_dag.py</code>, <code>backend/app/core/context_dag.py</code></li>
 <li>API references: <code>backend/app/api/routes/context_dag.py</code></li>
-<li>Tests: none recorded</li>
+<li>Tests: <code>tests/test_project_scope_contracts.py</code></li>
 </ul>
         </article>
         <aside class="toc-panel" aria-label="Page sections">
