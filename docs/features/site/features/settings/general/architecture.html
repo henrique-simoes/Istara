@@ -261,6 +261,7 @@
 <li>The feature is mounted through <code>frontend/src/components/common/SettingsView.tsx</code> and the UI navigation path recorded in the inventory.</li>
 <li><code>frontend/src/components/layout/StatusBar.tsx</code> reconciles WebSocket LLM events with passive <code>/api/settings/status</code> polling.</li>
 <li><code>/api/settings/status</code> reports <code>services.llm</code> from provider reachability and <code>llm_readiness.chat_ready</code> separately, so status bars and guided checks can distinguish connected-but-not-ready from disconnected.</li>
+<li><code>/api/settings/status</code> also includes <code>runtime.frontend</code> freshness diagnostics. The status bar shows <code>Runtime bundle stale</code> when the production Next build predates tracked frontend source files, preventing stale bundles from being mistaken for current project-isolation behavior.</li>
 <li>The frontmatter and manifest entries are the durable contract for agents updating this page after code changes.</li>
 <li>When the referenced component, store, route, agent, skill, or test behavior changes, regenerate and validate the feature documentation.</li>
 </ul>
@@ -271,6 +272,7 @@
 <h2 id="tests-and-verification">Tests And Verification</h2>
 <ul>
 <li><code>tests/test_settings.py</code></li>
+<li><code>tests/test_runtime_source_boundary.py</code></li>
 </ul>
 <h2 id="related-features">Related Features</h2>
 <ul>
@@ -284,6 +286,7 @@
 <h2 id="compass-evidence">Compass Evidence</h2>
 <ul>
 <li>Spec/task: CF-SPEC-55 / CF-684</li>
+<li>Spec/task: CF-SPEC-91 / CF-1156</li>
 <li>Inventory source: <code>docs/features/inventory.json</code></li>
 </ul>
 <h2 id="when-to-update">When To Update</h2>

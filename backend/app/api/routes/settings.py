@@ -12,6 +12,7 @@ from app.core.env_persistence import persist_env_value
 from app.core.hardware import detect_hardware, recommend_model
 from app.core.ollama import ollama
 from app.core.permissions import require_global_role, require_project_access
+from app.core.runtime_freshness import detect_runtime_freshness
 from app.core.security_middleware import require_admin_from_request
 from app.models.database import get_db
 
@@ -459,6 +460,7 @@ async def system_status():
             "backend": "running",
             "llm": "connected" if llm_healthy else "disconnected",
         },
+        "runtime": detect_runtime_freshness(),
         "config": {
             "model": active,
             "embed_model": _embed_model(),
