@@ -12,23 +12,22 @@ logger = logging.getLogger(__name__)
 
 
 class SkillUsageMixin:
-    def record_execution(self, skill_name: str, success: bool, quality_score: float = 0.0) -> None:
-        """Record a skill execution for usage tracking."""
-        from app.core.autoresearch_isolation import is_autoresearch_active
+    def _empty_usage_stats(self) -> dict:
+        return {
+            "executions": 0,
+            "successes": 0,
+            "failures": 0,
+            "total_quality": 0.0,
+            "utility_score": 0.5,
+            "last_used": None,
+        }
 
-        if is_autoresearch_active():
-            return
-        stats = self._usage_stats.setdefault(
-            skill_name,
-            {
-                "executions": 0,
-                "successes": 0,
-                "failures": 0,
-                "total_quality": 0.0,
-                "utility_score": 0.5,
-                "last_used": None,
-            },
-        )
+    def _update_usage_stats(self, stats: dict, success: bool, quality_score: float) -> None:
+        stats.setdefault("executions", 0)
+        stats.setdefault("successes", 0)
+        stats.setdefault("failures", 0)
+        stats.setdefault("total_quality", 0.0)
+        stats.setdefault("utility_score", 0.5)
         stats["executions"] += 1
         if success:
             stats["successes"] += 1
@@ -39,16 +38,64 @@ class SkillUsageMixin:
         stats["total_quality"] += quality_score
         stats["last_used"] = datetime.now(timezone.utc).isoformat()
 
+    def _usage_stats_with_rates(self, stats: dict) -> dict:
+        result = dict(stats)
+        executions = result.get("executions", 0)
+        if executions > 0:
+            result["avg_quality"] = result.get("total_quality", 0.0) / executions
+            result["success_rate"] = result.get("successes", 0) / executions
+        result.setdefault("utility_score", 0.5)
+        return result
+
+    def record_execution(
+        self,
+        skill_name: str,
+        success: bool,
+        quality_score: float = 0.0,
+        project_id: str | None = None,
+    ) -> None:
+        """Record a skill execution for usage tracking."""
+        from app.core.autoresearch_isolation import is_autoresearch_active
+
+        if is_autoresearch_active():
+            return
+        stats = self._usage_stats.setdefault(skill_name, self._empty_usage_stats())
+        self._update_usage_stats(stats, success, quality_score)
+
+        scoped_project_id = str(project_id or "").strip()
+        scoped_stats = None
+        if scoped_project_id:
+            projects = stats.setdefault("projects", {})
+            scoped_stats = projects.setdefault(scoped_project_id, self._empty_usage_stats())
+            self._update_usage_stats(scoped_stats, success, quality_score)
+
         self._save_stats()
         if stats["executions"] >= 10 and stats["utility_score"] < 0.3:
-            self._notify_low_utility_skill(skill_name, stats)
+            self._notify_low_utility_skill(
+                skill_name,
+                stats,
+                allow_lifecycle_change=True,
+            )
+        if scoped_project_id and scoped_stats and scoped_stats["executions"] >= 10 and scoped_stats["utility_score"] < 0.3:
+            self._notify_low_utility_skill(
+                skill_name,
+                scoped_stats,
+                project_id=scoped_project_id,
+            )
 
-    def _notify_low_utility_skill(self, skill_name: str, stats: dict) -> None:
+    def _notify_low_utility_skill(
+        self,
+        skill_name: str,
+        stats: dict,
+        project_id: str | None = None,
+        *,
+        allow_lifecycle_change: bool = False,
+    ) -> None:
         try:
             import asyncio
             from app.api.websocket import broadcast_suggestion
 
-            if stats["utility_score"] < 0.2:
+            if allow_lifecycle_change and stats["utility_score"] < 0.2:
                 defn = self._definitions.get(skill_name)
                 if defn:
                     self.update_skill(
@@ -74,19 +121,28 @@ class SkillUsageMixin:
                         else "Consider reviewing or replacing it."
                     )
                 )
-                asyncio.ensure_future(broadcast_suggestion(message, ""))
+                scoped_project_id = str(project_id or "").strip()
+                if scoped_project_id:
+                    asyncio.ensure_future(broadcast_suggestion(message, scoped_project_id))
         except Exception:
             pass
 
-    def get_usage_stats(self, skill_name: str | None = None) -> dict:
+    def get_usage_stats(self, skill_name: str | None = None, project_id: str | None = None) -> dict:
         """Get usage statistics for one or all skills."""
+        scoped_project_id = str(project_id or "").strip()
         if skill_name:
-            stats = self._usage_stats.get(skill_name, {})
-            if stats and stats.get("executions", 0) > 0:
-                stats["avg_quality"] = stats["total_quality"] / stats["executions"]
-                stats["success_rate"] = stats["successes"] / stats["executions"]
-            stats.setdefault("utility_score", 0.5)
-            return stats
+            aggregate = self._usage_stats.get(skill_name, {})
+            stats = aggregate
+            if scoped_project_id:
+                stats = (aggregate.get("projects") or {}).get(scoped_project_id, {})
+            return self._usage_stats_with_rates(stats)
+        if scoped_project_id:
+            project_stats: dict[str, dict] = {}
+            for name, aggregate in self._usage_stats.items():
+                scoped = (aggregate.get("projects") or {}).get(scoped_project_id)
+                if scoped:
+                    project_stats[name] = self._usage_stats_with_rates(scoped)
+            return project_stats
         return self._usage_stats
 
     def _save_stats(self) -> None:

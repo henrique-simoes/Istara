@@ -230,11 +230,18 @@ class ImprovementGovernanceEvidenceMixin:
             return ["skills", "orchestration", "configs"]
         return ["configs"]
 
-    async def register_meta_proposal(self, proposal: dict) -> str | None:
+    async def register_meta_proposal(
+        self,
+        proposal: dict,
+        *,
+        project_id: str = "",
+    ) -> str | None:
         parameter_path = str(proposal.get("parameter_path", ""))
+        scoped_project_id = str(proposal.get("project_id") or project_id or "")
         created = await self.create_proposal(
             source_system="hyperagent",
             source_id=str(proposal.get("id", "")),
+            project_id=scoped_project_id,
             agent_id="meta-hyperagent",
             title=f"Review HyperAgent tuning for {parameter_path or 'parameter'}",
             summary=str(proposal.get("reason", "")),

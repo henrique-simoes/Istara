@@ -97,6 +97,10 @@ Governed Evolution, DGM-H archive, and ReasoningBank review surfaces are also
 project-content surfaces: proposal/archive/reasoning lists and mutation actions
 must carry an explicit `project_id`, bind record ids back to that project, and
 avoid mixing project-facing retrieval with unscoped reasoning memories.
+Meta-Hyperagent proposal, observation, variant, WebSocket, and governance-sync
+surfaces are also project-content surfaces: they may run only after an
+authorized active project is supplied, and legacy/global observations or
+proposals must not render inside a project view.
 Chat sessions, chat history, active-session persistence, and related context DAG
 pickers are project-content surfaces: session-by-id APIs require the caller's
 authorized active project, frontend session state is stored per project, and a

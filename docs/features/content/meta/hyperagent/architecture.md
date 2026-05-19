@@ -6,24 +6,25 @@ audience: architecture
 status: documented
 related_features: ["settings.governed-evolution", "agents.registry"]
 related_glossary: ["a2a", "compass-forge"]
-code_references: ["frontend/src/components/meta/MetaHyperagentView.tsx", "backend/app/api/routes/meta_hyperagent.py", "backend/app/core/meta_hyperagent.py"]
+code_references: ["frontend/src/components/meta/MetaHyperagentView.tsx", "backend/app/api/routes/meta_hyperagent.py", "backend/app/core/meta_hyperagent.py", "backend/app/skills/skill_usage.py"]
 api_references: ["backend/app/api/routes/meta_hyperagent.py"]
-test_references: []
-last_verified: 2026-05-15
-compass: CF-SPEC-53 / CF-657
+test_references: ["tests/test_meta_hyperagent.py", "tests/test_project_scope_contracts.py", "tests/test_security_benchmark.py"]
+last_verified: 2026-05-19
+compass: CF-SPEC-60 / CF-757
 ---
 
 # Meta-Agent Architecture
 
 ## Implementation Summary
 
-The Meta-Agent surface exposes the meta-hyperagent system for inspecting or governing higher-level agentic improvement behavior.
+The Meta-Agent surface exposes the meta-hyperagent system for inspecting or governing higher-level agentic improvement behavior inside the active project.
 
 ## Frontend Surface
 
 - `frontend/src/components/meta/MetaHyperagentView.tsx`
 - `backend/app/api/routes/meta_hyperagent.py`
 - `backend/app/core/meta_hyperagent.py`
+- `backend/app/skills/skill_usage.py`
 
 ## State, API, And Backend Contracts
 
@@ -38,16 +39,23 @@ The Meta-Agent surface exposes the meta-hyperagent system for inspecting or gove
 ## Architecture Notes
 
 - The feature is mounted through `frontend/src/components/meta/MetaHyperagentView.tsx` and the UI navigation path recorded in the inventory.
+- All project-facing Meta-Hyperagent status, proposals, observations, variants, toggle, and mutation routes require an explicit `project_id`, verify the project is visible to the admin subject, and filter persisted records by exact project id.
+- The observation loop is no longer started globally during application startup. It starts only from a project-scoped UI/API request and records its active project id.
+- Skill usage stats now maintain per-project counters so Meta-Hyperagent skill-selection analysis does not infer proposals from another project's execution history.
+- Confirmed Meta-Hyperagent overrides are persisted under project-specific override buckets instead of process-wide override keys.
 - The frontmatter and manifest entries are the durable contract for agents updating this page after code changes.
 - When the referenced component, store, route, agent, skill, or test behavior changes, regenerate and validate the feature documentation.
 
 ## Agents, Skills, LLM, MCP, And Permissions
 
-- Agent-to-agent behavior should be traced through agent stores, A2A routes, permissions, and review surfaces before changing assumptions.
+- Agent-to-agent behavior should be traced through agent stores, A2A routes, permissions, active project ids, and review surfaces before changing assumptions.
+- Meta-Hyperagent WebSocket proposal broadcasts include `project_id` so live updates are delivered only to connections scoped to the same active project.
 
 ## Tests And Verification
 
-- No focused test reference recorded yet.
+- `tests/test_meta_hyperagent.py`
+- `tests/test_project_scope_contracts.py`
+- `tests/test_security_benchmark.py`
 
 ## Related Features
 
@@ -61,7 +69,7 @@ The Meta-Agent surface exposes the meta-hyperagent system for inspecting or gove
 
 ## Compass Evidence
 
-- Spec/task: CF-SPEC-53 / CF-657
+- Spec/task: CF-SPEC-60 / CF-757
 - Inventory source: `docs/features/inventory.json`
 
 ## When To Update

@@ -98,7 +98,7 @@ class AutoresearchEngine:
                         break
 
                     # Check mutual exclusion with meta-hyperagent
-                    if self._conflicts_with_meta(runner):
+                    if self._conflicts_with_meta(runner, project_id):
                         logger.info(
                             "Skipping — meta-hyperagent has active variant on target parameters"
                         )
@@ -275,14 +275,14 @@ class AutoresearchEngine:
             )
         return True, "delta exceeds configured minimum and uncertainty guard"
 
-    def _conflicts_with_meta(self, runner) -> bool:
+    def _conflicts_with_meta(self, runner, project_id: str) -> bool:
         """Check if meta-hyperagent has active variants on parameters this runner modifies."""
         try:
             from app.core.meta_hyperagent import meta_hyperagent
 
             if not settings.meta_hyperagent_enabled:
                 return False
-            variants = meta_hyperagent.get_active_variants()
+            variants = meta_hyperagent.get_active_variants(project_id=project_id)
             # Check overlap based on runner type
             conflict_prefixes: dict[str, list[str]] = {
                 "rag_params": ["rag_"],

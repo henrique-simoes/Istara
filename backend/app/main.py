@@ -639,14 +639,14 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     # Start backup scheduler
     asyncio.create_task(backup_manager.start_scheduled())
 
-    # Meta-Hyperagent: always load confirmed overrides; conditionally start loop
+    # Meta-Hyperagent is project-scoped. The UI starts the loop only after a
+    # user selects an authorized active project.
     try:
         from app.core.meta_hyperagent import meta_hyperagent as mh
 
         mh.load_confirmed_overrides()
         if app_settings.meta_hyperagent_enabled and not disable_background_agents:
-            mh.start()
-            _log.info("Meta-hyperagent observation loop started.")
+            _log.info("Meta-hyperagent enabled; waiting for active project scope.")
     except Exception as e:
         _log.debug(f"Meta-hyperagent startup skipped: {e}")
 

@@ -745,20 +745,43 @@ export { backups } from "./backupApi";
 // --- Meta-Hyperagent ---
 
 export const metaHyperagent = {
-  status: () => request<MetaHyperagentStatus>("/api/meta-hyperagent/status"),
-  proposals: () => request<MetaProposal[]>("/api/meta-hyperagent/proposals"),
-  approveProposal: (id: string) =>
-    request<any>(`/api/meta-hyperagent/proposals/${id}/approve`, { method: "POST" }),
-  rejectProposal: (id: string) =>
-    request<any>(`/api/meta-hyperagent/proposals/${id}/reject`, { method: "POST" }),
-  variants: () => request<MetaVariant[]>("/api/meta-hyperagent/variants"),
-  revertVariant: (id: string) =>
-    request<any>(`/api/meta-hyperagent/variants/${id}/revert`, { method: "POST" }),
-  confirmVariant: (id: string) =>
-    request<any>(`/api/meta-hyperagent/variants/${id}/confirm`, { method: "POST" }),
-  observations: () => request<any>("/api/meta-hyperagent/observations"),
-  toggle: (enabled: boolean) =>
-    request<any>("/api/meta-hyperagent/toggle", { method: "POST", body: JSON.stringify({ enabled }) }),
+  status: (projectId: string) =>
+    request<MetaHyperagentStatus>(`/api/meta-hyperagent/status?project_id=${encodeURIComponent(projectId)}`),
+  proposals: (projectId: string) =>
+    request<{ project_id: string; proposals: MetaProposal[]; pending_count: number }>(
+      `/api/meta-hyperagent/proposals?project_id=${encodeURIComponent(projectId)}`
+    ),
+  approveProposal: (id: string, projectId: string) =>
+    request<any>(
+      `/api/meta-hyperagent/proposals/${id}/approve?project_id=${encodeURIComponent(projectId)}`,
+      { method: "POST" }
+    ),
+  rejectProposal: (id: string, projectId: string) =>
+    request<any>(
+      `/api/meta-hyperagent/proposals/${id}/reject?project_id=${encodeURIComponent(projectId)}`,
+      { method: "POST" }
+    ),
+  variants: (projectId: string) =>
+    request<{ project_id: string; variants: MetaVariant[]; active_count: number }>(
+      `/api/meta-hyperagent/variants?project_id=${encodeURIComponent(projectId)}`
+    ),
+  revertVariant: (id: string, projectId: string) =>
+    request<any>(
+      `/api/meta-hyperagent/variants/${id}/revert?project_id=${encodeURIComponent(projectId)}`,
+      { method: "POST" }
+    ),
+  confirmVariant: (id: string, projectId: string) =>
+    request<any>(
+      `/api/meta-hyperagent/variants/${id}/confirm?project_id=${encodeURIComponent(projectId)}`,
+      { method: "POST" }
+    ),
+  observations: (projectId: string) =>
+    request<any>(`/api/meta-hyperagent/observations?project_id=${encodeURIComponent(projectId)}`),
+  toggle: (enabled: boolean, projectId: string) =>
+    request<any>(
+      `/api/meta-hyperagent/toggle?project_id=${encodeURIComponent(projectId)}`,
+      { method: "POST", body: JSON.stringify({ enabled }) }
+    ),
 };
 // Route coverage hints: /meta-hyperagent/proposals/{proposal_id}/approve /meta-hyperagent/proposals/{proposal_id}/reject /meta-hyperagent/variants/{variant_id}/revert /meta-hyperagent/variants/{variant_id}/confirm /.well-known/agent.json /api/health /api/skill-registry
 

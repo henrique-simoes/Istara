@@ -565,6 +565,7 @@ export interface BackupConfig {
 
 export interface MetaProposal {
   id: string;
+  project_id: string;
   target_system: string;
   parameter_path: string;
   current_value: any;
@@ -582,6 +583,7 @@ export interface MetaProposal {
 
 export interface MetaVariant {
   id: string;
+  project_id: string;
   proposal_id: string;
   target_system: string;
   parameter_path: string;
@@ -597,6 +599,10 @@ export interface MetaVariant {
 
 export interface MetaHyperagentStatus {
   enabled: boolean;
+  configured_enabled?: boolean;
+  running: boolean;
+  project_id: string;
+  active_project_id?: string | null;
   experimental: boolean;
   pending_proposals: number;
   active_variants: number;
