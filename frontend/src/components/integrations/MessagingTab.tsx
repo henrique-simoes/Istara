@@ -140,7 +140,7 @@ export default function MessagingTab() {
 
       {/* Right: detail panel */}
       <div className="flex-1 flex flex-col overflow-hidden">
-        {selectedInstance ? (
+        {selectedInstance && activeProjectId ? (
           <>
             {/* Detail header */}
             <div className="px-5 py-3 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
@@ -177,9 +177,9 @@ export default function MessagingTab() {
             </div>
 
             {detailView === "messages" ? (
-              <ChannelMessagesPanel channelId={selectedInstance.id} />
+              <ChannelMessagesPanel channelId={selectedInstance.id} projectId={activeProjectId} />
             ) : (
-              <ChannelConversationsPanel channelId={selectedInstance.id} />
+              <ChannelConversationsPanel channelId={selectedInstance.id} projectId={activeProjectId} />
             )}
           </>
         ) : (

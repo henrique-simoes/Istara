@@ -322,6 +322,7 @@ async def get_message_history(
     instance_id: str,
     limit: int = 50,
     offset: int = 0,
+    project_id: str | None = None,
 ) -> list[dict]:
     """Retrieve message history for a channel instance."""
     stmt = (
@@ -331,18 +332,26 @@ async def get_message_history(
         .offset(offset)
         .limit(limit)
     )
+    if project_id is not None:
+        stmt = stmt.where(ChannelMessage.project_id == project_id)
     result = await db.execute(stmt)
     messages = result.scalars().all()
     return [m.to_dict() for m in messages]
 
 
-async def get_conversations(db: AsyncSession, instance_id: str) -> list[dict]:
+async def get_conversations(
+    db: AsyncSession,
+    instance_id: str,
+    project_id: str | None = None,
+) -> list[dict]:
     """Retrieve all conversations for a channel instance."""
     stmt = (
         select(ChannelConversation)
         .where(ChannelConversation.channel_instance_id == instance_id)
         .order_by(ChannelConversation.last_message_at.desc().nullslast())
     )
+    if project_id is not None:
+        stmt = stmt.where(ChannelConversation.project_id == project_id)
     result = await db.execute(stmt)
     conversations = result.scalars().all()
     return [c.to_dict() for c in conversations]
@@ -354,6 +363,7 @@ async def send_message(
     channel_id: str,
     text: str,
     metadata: dict | None = None,
+    project_id: str | None = None,
 ) -> dict:
     """Send a message via the channel adapter and persist it."""
     adapter = channel_router.get(instance_id)
@@ -380,6 +390,7 @@ async def send_message(
         sender_name="Istara",
         content=text,
         channel_id=channel_id,
+        project_id=project_id,
     )
     return record.to_dict()
 
@@ -398,10 +409,18 @@ async def record_message(
     project_id: str | None = None,
 ) -> ChannelMessage:
     """Persist a message to the database and increment instance message_count."""
+    result = await db.execute(
+        select(ChannelInstance).where(ChannelInstance.id == instance_id)
+    )
+    instance = result.scalar_one_or_none()
+    resolved_project_id = project_id
+    if resolved_project_id is None and instance is not None:
+        resolved_project_id = instance.project_id
+
     msg = ChannelMessage(
         id=str(uuid.uuid4()),
         channel_instance_id=instance_id,
-        project_id=project_id,
+        project_id=resolved_project_id,
         direction=direction,
         sender_id=sender_id,
         sender_name=sender_name,
@@ -413,10 +432,6 @@ async def record_message(
     db.add(msg)
 
     # Increment message count on the instance
-    result = await db.execute(
-        select(ChannelInstance).where(ChannelInstance.id == instance_id)
-    )
-    instance = result.scalar_one_or_none()
     if instance is not None:
         instance.message_count = (instance.message_count or 0) + 1
 

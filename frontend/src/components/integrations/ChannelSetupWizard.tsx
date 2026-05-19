@@ -69,7 +69,7 @@ export default function ChannelSetupWizard({ onClose }: ChannelSetupWizardProps)
   };
 
   const handleTest = async () => {
-    if (!selectedPlatform) return;
+    if (!selectedPlatform || !activeProjectId) return;
     setTesting(true);
     setTestResult(null);
     setTestError(null);
@@ -79,14 +79,14 @@ export default function ChannelSetupWizard({ onClose }: ChannelSetupWizardProps)
         platform: selectedPlatform,
         name: channelName || `${selectedPlatform}-channel`,
         config: credentials,
-        project_id: activeProjectId || undefined,
+        project_id: activeProjectId,
       });
       instanceId = instance.id;
-      const start = await channelsApi.start(instance.id);
+      const start = await channelsApi.start(instance.id, activeProjectId);
       if (!["started", "already_running"].includes(start?.status)) {
         throw new Error(start?.detail || "Channel could not be started with the supplied credentials.");
       }
-      const health = await channelsApi.health(instance.id);
+      const health = await channelsApi.health(instance.id, activeProjectId);
       if (health?.status !== "healthy") {
         throw new Error(health?.error || health?.detail || `Health check returned ${health?.status || "unknown"}.`);
       }
@@ -96,8 +96,8 @@ export default function ChannelSetupWizard({ onClose }: ChannelSetupWizardProps)
     } catch (e: any) {
       if (instanceId) {
         try {
-          await channelsApi.stop(instanceId);
-          await channelsApi.delete(instanceId);
+          await channelsApi.stop(instanceId, activeProjectId);
+          await channelsApi.delete(instanceId, activeProjectId);
         } catch {
           // Best-effort cleanup: the visible error below is the connection failure.
         }
@@ -120,7 +120,7 @@ export default function ChannelSetupWizard({ onClose }: ChannelSetupWizardProps)
           .every((field) => (credentials[field.key] || "").trim().length > 0);
       }
       case "name": return channelName.trim().length > 0;
-      case "test": return testResult === "success" && !!createdInstanceId;
+      case "test": return testResult === "success" && !!createdInstanceId && !!activeProjectId;
       default: return true;
     }
   };
@@ -229,7 +229,7 @@ export default function ChannelSetupWizard({ onClose }: ChannelSetupWizardProps)
                   <p className="text-sm text-red-600 dark:text-red-400">{testError || "Connection failed"}</p>
                   <button
                     onClick={handleTest}
-                    disabled={testing}
+                    disabled={testing || !activeProjectId}
                     className="px-4 py-2 text-sm bg-istara-600 text-white rounded-lg hover:bg-istara-700 disabled:opacity-50 transition-colors"
                   >
                     {testing ? "Testing..." : "Retry"}
@@ -239,7 +239,7 @@ export default function ChannelSetupWizard({ onClose }: ChannelSetupWizardProps)
                 <div className="space-y-3">
                   <button
                     onClick={handleTest}
-                    disabled={testing}
+                    disabled={testing || !activeProjectId}
                     className="px-6 py-2.5 text-sm bg-istara-600 text-white rounded-lg hover:bg-istara-700 disabled:opacity-50 transition-colors"
                   >
                     {testing ? "Testing Connection..." : "Test Connection"}

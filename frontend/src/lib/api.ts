@@ -850,6 +850,10 @@ export { dgmhArchive } from "./dgmhArchiveApi";
 
 // --- Channels ---
 
+const channelProjectQuery = (projectId: string) => `project_id=${encodeURIComponent(projectId)}`;
+const channelProjectPath = (id: string, projectId: string, suffix = "") =>
+  `/api/channels/${id}${suffix}?${channelProjectQuery(projectId)}`;
+
 export const channels = {
   list: (platform?: string, projectId?: string) => {
     const query = new URLSearchParams();
@@ -858,19 +862,23 @@ export const channels = {
     const params = query.toString() ? `?${query.toString()}` : "";
     return get<ChannelInstance[]>(`/api/channels${params}`);
   },
-  get: (id: string) => get<ChannelInstance>(`/api/channels/${id}`),
+  get: (id: string, projectId: string) => get<ChannelInstance>(channelProjectPath(id, projectId)),
   create: (data: { platform: string; name: string; config: Record<string, any>; project_id?: string }) =>
     post<ChannelInstance>("/api/channels", data),
-  update: (id: string, data: Record<string, any>) => patch<ChannelInstance>(`/api/channels/${id}`, data),
-  delete: (id: string) => del(`/api/channels/${id}`),
-  start: (id: string) => post<any>(`/api/channels/${id}/start`, {}),
-  stop: (id: string) => post<any>(`/api/channels/${id}/stop`, {}),
-  health: (id: string) => get<any>(`/api/channels/${id}/health`),
-  messages: (id: string, limit = 50, offset = 0) =>
-    get<ChannelMessage[]>(`/api/channels/${id}/messages?limit=${limit}&offset=${offset}`),
-  conversations: (id: string) => get<ChannelConversation[]>(`/api/channels/${id}/conversations`),
-  send: (id: string, data: { channel_id: string; text: string; metadata?: any }) =>
-    post<any>(`/api/channels/${id}/send`, data),
+  update: (id: string, data: Record<string, any>, projectId: string) =>
+    patch<ChannelInstance>(channelProjectPath(id, projectId), data),
+  delete: (id: string, projectId: string) => del(channelProjectPath(id, projectId)),
+  start: (id: string, projectId: string) => post<any>(channelProjectPath(id, projectId, "/start"), {}),
+  stop: (id: string, projectId: string) => post<any>(channelProjectPath(id, projectId, "/stop"), {}),
+  health: (id: string, projectId: string) => get<any>(channelProjectPath(id, projectId, "/health")),
+  messages: (id: string, projectId: string, limit = 50, offset = 0) =>
+    get<ChannelMessage[]>(
+      `/api/channels/${id}/messages?${channelProjectQuery(projectId)}&limit=${limit}&offset=${offset}`
+    ),
+  conversations: (id: string, projectId: string) =>
+    get<ChannelConversation[]>(channelProjectPath(id, projectId, "/conversations")),
+  send: (id: string, data: { channel_id: string; text: string; metadata?: any }, projectId: string) =>
+    post<any>(channelProjectPath(id, projectId, "/send"), data),
 };
 
 // --- Deployments ---

@@ -245,9 +245,13 @@
 <h2 id="frontend-surface">Frontend Surface</h2>
 <ul>
 <li><code>frontend/src/components/integrations/MessagingTab.tsx</code></li>
+<li><code>frontend/src/components/integrations/ChannelInstanceCard.tsx</code></li>
+<li><code>frontend/src/components/integrations/ChannelMessagesPanel.tsx</code></li>
+<li><code>frontend/src/components/integrations/ChannelConversationsPanel.tsx</code></li>
 <li><code>frontend/src/components/integrations/ChannelSetupWizard.tsx</code></li>
 <li><code>backend/app/api/routes/channels.py</code></li>
 <li><code>backend/app/api/routes/webhooks.py</code></li>
+<li><code>backend/app/services/channel_service.py</code></li>
 <li><code>backend/app/services/inbound_processor.py</code></li>
 </ul>
 <h2 id="state-api-and-backend-contracts">State, API, And Backend Contracts</h2>
@@ -259,13 +263,16 @@
 <ul>
 <li><code>backend/app/api/routes/channels.py</code></li>
 <li><code>backend/app/api/routes/webhooks.py</code></li>
+<li><code>backend/app/services/channel_service.py</code></li>
 <li><code>backend/app/services/inbound_processor.py</code></li>
 </ul>
 <h2 id="architecture-notes">Architecture Notes</h2>
 <ul>
 <li>The feature is mounted through <code>frontend/src/components/integrations/MessagingTab.tsx</code> and the UI navigation path recorded in the inventory.</li>
 <li><code>MessagingTab</code> passes the active project into channel listing, clears stale channel state during project changes, and renders only channel records whose <code>project_id</code> matches the active project.</li>
-<li><code>backend/app/api/routes/channels.py</code> requires an explicit <code>project_id</code> for project-facing channel lists and enforces project viewer access for reads; channel creation and lifecycle mutations remain project-admin operations.</li>
+<li>Channel cards, setup testing, message history, and conversation detail panels pass the active project into every channel detail, lifecycle, health, message, conversation, and cleanup call so stale channel ids from another project cannot be dereferenced.</li>
+<li><code>backend/app/api/routes/channels.py</code> requires an explicit <code>project_id</code> for project-facing channel lists and detail routes, verifies the channel instance belongs to that same project even for global admins, and enforces project viewer access for reads; channel creation and lifecycle mutations remain project-admin operations.</li>
+<li><code>backend/app/services/channel_service.py</code> filters message and conversation rows by the same project and stamps new recorded messages with the owning channel instance project when a caller does not already provide one.</li>
 <li>Inbound message routing resolves active deployments only within the receiving channel instance&#x27;s project and only when the deployment explicitly lists that channel instance, so an active deployment from another project or an unbound deployment cannot receive participant content.</li>
 <li>The frontmatter and manifest entries are the durable contract for agents updating this page after code changes.</li>
 <li>When the referenced component, store, route, agent, skill, or test behavior changes, regenerate and validate the feature documentation.</li>
@@ -291,7 +298,7 @@
 </ul>
 <h2 id="compass-evidence">Compass Evidence</h2>
 <ul>
-<li>Spec/task: CF-SPEC-53 / CF-657; CF-SPEC-60 / CF-762; CF-SPEC-60 / CF-773</li>
+<li>Spec/task: CF-SPEC-53 / CF-657; CF-SPEC-60 / CF-762; CF-SPEC-60 / CF-773; CF-SPEC-60 / CF-776</li>
 <li>Inventory source: <code>docs/features/inventory.json</code></li>
 </ul>
 <h2 id="when-to-update">When To Update</h2>
