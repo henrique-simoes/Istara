@@ -241,7 +241,7 @@
   <p class="concept-line"><strong>Concepts:</strong> wcag</p>
 </header>
 <h2 id="implementation-summary">Implementation Summary</h2>
-<p>Compute donation lets a browser session or relay process contribute local compute capacity under controlled limits. Donated nodes are never treated as global project processors: project prompt and embedding payloads are routed to a donor only when the relay is authenticated and its resolved project scope includes the active project. The relay node methods themselves reject missing or mismatched project ids before sending websocket payloads, so direct callers inherit the same project-content boundary as registry-routed requests.</p>
+<p>Compute donation lets a browser session or relay process contribute local compute capacity under controlled limits. Donated nodes are never treated as global project processors: project prompt and embedding payloads are routed to a donor only when the relay is authenticated and its resolved project scope includes the active project. Browser/JWT relay scope is derived from the current database user role and project memberships for bound sessions, not from stale token role claims. The relay node methods themselves reject missing or mismatched project ids before sending websocket payloads, so direct callers inherit the same project-content boundary as registry-routed requests.</p>
 <h2 id="frontend-surface">Frontend Surface</h2>
 <ul>
 <li><code>frontend/src/components/common/DonateComputeToggle.tsx</code></li>
@@ -259,7 +259,7 @@
 <h2 id="architecture-notes">Architecture Notes</h2>
 <ul>
 <li>The feature is mounted through <code>frontend/src/components/common/DonateComputeToggle.tsx</code> and the UI navigation path recorded in the inventory.</li>
-<li>Browser donation uses the authenticated user&#x27;s project memberships as its donation scope.</li>
+<li>Browser donation uses the authenticated user&#x27;s current database role and project memberships as its donation scope. Bound auth sessions are rehydrated from the database before relay registration so user deletion, demotion, or membership changes are reflected in the donation boundary.</li>
 <li>Relay/desktop donation strings must include at least one selected project in team mode. The relay sends the issued connection string back to <code>/ws/relay</code>, where the server verifies issuance, active status, token type, expiry, and <code>allowed_project_ids</code> before the node can process project content.</li>
 <li>Team-mode relay validation rejects wildcard donation scope, including legacy all-project donation strings, so donated machines cannot silently become global project processors.</li>
 <li>A relay authenticated only by the shared network token can register for status but is excluded from prompt and embedding routing because it has no project scope.</li>
@@ -274,7 +274,9 @@
 <h2 id="tests-and-verification">Tests And Verification</h2>
 <ul>
 <li><code>tests/test_compute.py</code></li>
+<li><code>tests/compute_cases/stats_websocket.py</code></li>
 <li><code>tests/test_project_rbac.py</code></li>
+<li><code>tests/test_project_scope_contracts.py</code></li>
 </ul>
 <h2 id="related-features">Related Features</h2>
 <ul>
@@ -287,7 +289,7 @@
 </ul>
 <h2 id="compass-evidence">Compass Evidence</h2>
 <ul>
-<li>Spec/task: CF-SPEC-60 / CF-754; CF-SPEC-63 / CF-814</li>
+<li>Spec/task: CF-SPEC-60 / CF-754; CF-SPEC-63 / CF-814; CF-SPEC-70 / CF-899</li>
 <li>Inventory source: <code>docs/features/inventory.json</code></li>
 </ul>
 <h2 id="when-to-update">When To Update</h2>

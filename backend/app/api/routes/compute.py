@@ -17,6 +17,7 @@ from app.core.permissions import get_visible_project_or_404, require_global_role
 from app.models.connection_string import ConnectionString
 from app.models.database import get_db
 from app.models.project_member import ProjectMember
+from app.models.user import User
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -104,6 +105,9 @@ async def _scope_from_connection_string(
 async def _scope_from_user(db, user_id: str, role: str) -> list[str]:
     if not user_id:
         return []
+    user = await db.get(User, user_id)
+    if user is not None:
+        role = str(getattr(user.role, "value", user.role))
     if role == "admin":
         return ["*"]
     result = await db.execute(
@@ -200,7 +204,7 @@ async def relay_websocket(ws: WebSocket):
     # A relay/browser node can provide either the network access token from an
     # invite string or a valid user JWT from an authenticated browser session.
     from app.core.auth import verify_token
-    from app.core.auth_sessions import validate_auth_session
+    from app.core.auth_sessions import current_user_context_for_payload, validate_auth_session
     from app.models.database import async_session
 
     network_token = ws.headers.get("x-access-token", "") or ws.query_params.get("access_token", "")
@@ -219,15 +223,20 @@ async def relay_websocket(ws: WebSocket):
         settings.network_access_token and network_token == settings.network_access_token
     )
     jwt_payload = verify_token(jwt_token) if jwt_token else None
+    jwt_user_context: dict[str, str] | None = None
     if jwt_payload is not None:
         async with async_session() as db:
             if not await validate_auth_session(db, jwt_payload):
                 jwt_payload = None
+            else:
+                jwt_user_context = await current_user_context_for_payload(db, jwt_payload)
+                if jwt_user_context is None:
+                    jwt_payload = None
     if not has_valid_network_token and jwt_payload is None:
         await ws.close(code=4001, reason="Authentication required for relay connections")
         return
-    authenticated_user_id = str(jwt_payload.get("sub", "")) if jwt_payload else ""
-    authenticated_role = str(jwt_payload.get("role", "")) if jwt_payload else ""
+    authenticated_user_id = str(jwt_user_context.get("id", "")) if jwt_user_context else ""
+    authenticated_role = str(jwt_user_context.get("role", "")) if jwt_user_context else ""
     connection_scope: list[str] | None = None
     user_scope: list[str] | None = None
     async with async_session() as db:

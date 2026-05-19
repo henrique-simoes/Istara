@@ -8,16 +8,16 @@ related_features: ["compute.pool", "settings.general"]
 related_glossary: ["wcag"]
 code_references: ["frontend/src/components/common/DonateComputeToggle.tsx", "frontend/src/components/settings/ConnectionStringPanel.tsx", "backend/app/api/routes/compute.py", "backend/app/api/routes/connections.py", "backend/app/core/compute_node_invocation.py", "backend/app/core/compute_pool.py", "backend/app/core/compute_registry_routing.py"]
 api_references: ["backend/app/api/routes/compute.py", "backend/app/api/routes/connections.py"]
-test_references: ["tests/test_compute.py", "tests/test_project_rbac.py"]
+test_references: ["tests/test_compute.py", "tests/compute_cases/stats_websocket.py", "tests/test_project_rbac.py", "tests/test_project_scope_contracts.py"]
 last_verified: 2026-05-19
-compass: CF-SPEC-60 / CF-754; CF-SPEC-63 / CF-814
+compass: CF-SPEC-60 / CF-754; CF-SPEC-63 / CF-814; CF-SPEC-70 / CF-899
 ---
 
 # Compute Donation Architecture
 
 ## Implementation Summary
 
-Compute donation lets a browser session or relay process contribute local compute capacity under controlled limits. Donated nodes are never treated as global project processors: project prompt and embedding payloads are routed to a donor only when the relay is authenticated and its resolved project scope includes the active project. The relay node methods themselves reject missing or mismatched project ids before sending websocket payloads, so direct callers inherit the same project-content boundary as registry-routed requests.
+Compute donation lets a browser session or relay process contribute local compute capacity under controlled limits. Donated nodes are never treated as global project processors: project prompt and embedding payloads are routed to a donor only when the relay is authenticated and its resolved project scope includes the active project. Browser/JWT relay scope is derived from the current database user role and project memberships for bound sessions, not from stale token role claims. The relay node methods themselves reject missing or mismatched project ids before sending websocket payloads, so direct callers inherit the same project-content boundary as registry-routed requests.
 
 ## Frontend Surface
 
@@ -37,7 +37,7 @@ Compute donation lets a browser session or relay process contribute local comput
 ## Architecture Notes
 
 - The feature is mounted through `frontend/src/components/common/DonateComputeToggle.tsx` and the UI navigation path recorded in the inventory.
-- Browser donation uses the authenticated user's project memberships as its donation scope.
+- Browser donation uses the authenticated user's current database role and project memberships as its donation scope. Bound auth sessions are rehydrated from the database before relay registration so user deletion, demotion, or membership changes are reflected in the donation boundary.
 - Relay/desktop donation strings must include at least one selected project in team mode. The relay sends the issued connection string back to `/ws/relay`, where the server verifies issuance, active status, token type, expiry, and `allowed_project_ids` before the node can process project content.
 - Team-mode relay validation rejects wildcard donation scope, including legacy all-project donation strings, so donated machines cannot silently become global project processors.
 - A relay authenticated only by the shared network token can register for status but is excluded from prompt and embedding routing because it has no project scope.
@@ -52,7 +52,9 @@ Compute donation lets a browser session or relay process contribute local comput
 ## Tests And Verification
 
 - `tests/test_compute.py`
+- `tests/compute_cases/stats_websocket.py`
 - `tests/test_project_rbac.py`
+- `tests/test_project_scope_contracts.py`
 
 ## Related Features
 
@@ -65,7 +67,7 @@ Compute donation lets a browser session or relay process contribute local comput
 
 ## Compass Evidence
 
-- Spec/task: CF-SPEC-60 / CF-754; CF-SPEC-63 / CF-814
+- Spec/task: CF-SPEC-60 / CF-754; CF-SPEC-63 / CF-814; CF-SPEC-70 / CF-899
 - Inventory source: `docs/features/inventory.json`
 
 ## When To Update

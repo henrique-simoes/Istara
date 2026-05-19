@@ -771,13 +771,16 @@
         "backend/app/core/compute_registry.py",
         "backend/app/core/compute_registry_routing.py",
         "backend/app/core/compute_node.py",
+        "backend/app/core/auth_sessions.py",
         "relay/lib/connection.mjs",
         "tests/test_connections.py",
         "tests/test_compute.py",
-        "tests/test_project_rbac.py"
+        "tests/compute_cases/stats_websocket.py",
+        "tests/test_project_rbac.py",
+        "tests/test_project_scope_contracts.py"
       ],
       "future_change_trigger": true,
-      "notes": "Connection string lifecycle is part of auth, not a separate trust path; compute donation strings carry explicit allowed_project_ids, reject wildcard scope in team mode, and are revalidated before relay nodes or project-scoped pool status can receive project content. Regular Compute Pool nodes, stats, and model warnings require an explicit active project for every role; any cross-project capacity summary belongs on explicit admin reporting surfaces."
+      "notes": "Connection string lifecycle is part of auth, not a separate trust path; compute donation strings carry explicit allowed_project_ids, reject wildcard scope in team mode, and are revalidated before relay nodes or project-scoped pool status can receive project content. Browser/JWT relay donation scope for bound sessions is derived from the current database user role and project memberships, not stale token role claims. Regular Compute Pool nodes, stats, and model warnings require an explicit active project for every role; any cross-project capacity summary belongs on explicit admin reporting surfaces."
     },
     {
       "id": "MCP-001",

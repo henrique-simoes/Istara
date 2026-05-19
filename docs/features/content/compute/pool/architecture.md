@@ -8,9 +8,9 @@ related_features: ["settings.compute-donation", "settings.general"]
 related_glossary: ["rag"]
 code_references: ["frontend/src/components/common/ComputePoolView.tsx", "frontend/src/stores/computeStore.ts", "backend/app/api/routes/compute.py", "backend/app/core/compute_node_invocation.py", "backend/app/core/compute_registry_helpers.py", "backend/app/core/compute_registry_invocation.py", "backend/app/core/compute_registry_lifecycle.py", "backend/app/core/compute_registry_routing.py", "backend/app/core/network_discovery.py", "backend/app/core/compute_pool.py"]
 api_references: ["backend/app/api/routes/compute.py"]
-test_references: ["tests/test_compute.py", "tests/compute_cases/status_contracts.py", "tests/test_compute_registry_model_loading.py", "tests/test_compute_registry_hardening.py", "tests/test_network_discovery.py", "tests/test_project_rbac.py"]
+test_references: ["tests/test_compute.py", "tests/compute_cases/status_contracts.py", "tests/compute_cases/stats_websocket.py", "tests/test_compute_registry_model_loading.py", "tests/test_compute_registry_hardening.py", "tests/test_network_discovery.py", "tests/test_project_rbac.py", "tests/test_project_scope_contracts.py"]
 last_verified: 2026-05-19
-compass: CF-SPEC-60 / CF-774; CF-SPEC-63 / CF-814; CF-SPEC-63 / CF-815; CF-SPEC-66 / CF-856
+compass: CF-SPEC-60 / CF-774; CF-SPEC-63 / CF-814; CF-SPEC-63 / CF-815; CF-SPEC-66 / CF-856; CF-SPEC-70 / CF-899
 ---
 
 # Compute Pool Architecture
@@ -19,7 +19,7 @@ compass: CF-SPEC-60 / CF-774; CF-SPEC-63 / CF-814; CF-SPEC-63 / CF-815; CF-SPEC-
 
 Compute Pool provides active-project operational visibility into available compute nodes, routing, and local or pooled execution capacity. Hardware totals are deduplicated by physical provider machine so local/network/relay views of the same server do not inflate RAM or CPU totals. Local interface aliases are canonicalized before endpoint display and capacity aggregation, so one Mac exposed through multiple LAN IP addresses appears as one logical endpoint for the same provider and port. Provider reachability is reported separately from chat readiness: a reachable LM Studio server with loadable models but no model in memory is online, not offline, while routing still treats it as not ready until a model is loaded.
 
-Donated relay/browser nodes are treated as a project-content security boundary. Regular Compute Pool endpoints require an authorized `project_id` for every role, including global admins, and node stats, hardware totals, available models, and model warnings are filtered to local/server-owned capacity plus donors authorized for that project. Cross-project compute aggregation belongs only on explicit admin reporting surfaces, currently `/api/admin/compute/stats`, which is protected by global-admin authorization and is separate from the project-facing `/api/compute/*` contract. Prompt, chat, embedding, and model-load recovery paths may only select donated nodes when the request carries a concrete `project_id` and the node's authenticated donation scope includes that project. The direct relay/browser `ComputeNode` dispatch methods enforce the same rule before sending any websocket payload, so lower-level callers cannot bypass the registry selector. Server-owned local/network nodes remain available for unscoped internal work.
+Donated relay/browser nodes are treated as a project-content security boundary. Regular Compute Pool endpoints require an authorized `project_id` for every role, including global admins, and node stats, hardware totals, available models, and model warnings are filtered to local/server-owned capacity plus donors authorized for that project. Cross-project compute aggregation belongs only on explicit admin reporting surfaces, currently `/api/admin/compute/stats`, which is protected by global-admin authorization and is separate from the project-facing `/api/compute/*` contract. Prompt, chat, embedding, and model-load recovery paths may only select donated nodes when the request carries a concrete `project_id` and the node's authenticated donation scope includes that project. For browser/JWT relay connections, bound auth sessions resolve the current database user and project memberships before scope is assigned, so a stale admin token cannot keep all-project donation rights after the user is demoted or removed. The direct relay/browser `ComputeNode` dispatch methods enforce the same rule before sending any websocket payload, so lower-level callers cannot bypass the registry selector. Server-owned local/network nodes remain available for unscoped internal work.
 
 ## Frontend Surface
 
@@ -45,7 +45,8 @@ Donated relay/browser nodes are treated as a project-content security boundary. 
 - Compute registry identity uses passive local OS interface aliases and the configured local provider source to collapse duplicate local endpoints without silently merging unrelated remote machines that happen to expose the same model catalog.
 - Node readiness derives from explicit readiness state before legacy health booleans, so a stale `is_healthy` flag cannot make `no_model_loaded` look routable.
 - Network discovery excludes all known local interface aliases before probing the subnet, preventing the server from discovering itself through a second LAN address.
-- Relay/browser donors carry `allowed_project_ids` resolved from either the authenticated user's project memberships or a validated compute-donation connection string. A bare network token can connect for status only, not receive project content.
+- Relay/browser donors carry `allowed_project_ids` resolved from either the authenticated user's current database-backed role and project memberships or a validated compute-donation connection string. A bare network token can connect for status only, not receive project content.
+- Bound browser/JWT relay sessions use `current_user_context_for_payload` before deriving donation scope, and `_scope_from_user` re-reads the database user role before granting all-project admin scope.
 - Team-mode compute donation strings with wildcard project scope are rejected at relay validation so legacy all-project tokens cannot become global project processors.
 - `ComputeRegistry._select_candidates(..., project_id=...)` is the central guard: relay/browser nodes are excluded unless the project scope matches, preventing unpatched callers without project context from leaking content to donated machines.
 - `ComputeNode.chat`, `ComputeNode.embed`, and `ComputeNode.embed_batch` also require the request project to match `allowed_project_ids` before direct relay/browser websocket dispatch, preventing tests, maintenance scripts, or future services from bypassing registry project filtering.
@@ -61,6 +62,8 @@ Donated relay/browser nodes are treated as a project-content security boundary. 
 
 - `tests/test_compute.py`
 - `tests/compute_cases/status_contracts.py`
+- `tests/compute_cases/stats_websocket.py`
+- `tests/test_project_scope_contracts.py`
 - `tests/test_project_rbac.py`
 - `tests/test_compute_registry_hardening.py`
 - `tests/test_compute_registry_model_loading.py`
@@ -77,7 +80,7 @@ Donated relay/browser nodes are treated as a project-content security boundary. 
 
 ## Compass Evidence
 
-- Spec/task: CF-SPEC-60 / CF-774; CF-SPEC-63 / CF-814; CF-SPEC-63 / CF-815; CF-SPEC-66 / CF-856
+- Spec/task: CF-SPEC-60 / CF-774; CF-SPEC-63 / CF-814; CF-SPEC-63 / CF-815; CF-SPEC-66 / CF-856; CF-SPEC-70 / CF-899
 - Inventory source: `docs/features/inventory.json`
 
 ## When To Update
