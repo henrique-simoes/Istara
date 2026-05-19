@@ -241,11 +241,17 @@
   <p class="concept-line"><strong>Concepts:</strong> wcag</p>
 </header>
 <h2 id="implementation-summary">Implementation Summary</h2>
-<p>The Configuration tab connects interface work with design-tool setup, including Figma-oriented import or export flows.</p>
+<p>The Configuration tab connects interface work with design-tool setup, including Figma-oriented import/export flows and Stitch-backed generation setup. Configuration is project-owned: a token or API key saved here belongs to the active project, not to a global process setting.</p>
 <h2 id="frontend-surface">Frontend Surface</h2>
 <ul>
 <li><code>frontend/src/components/interfaces/FigmaTab.tsx</code></li>
+<li><code>frontend/src/components/interfaces/InterfacesOnboarding.tsx</code></li>
+<li><code>frontend/src/stores/interfacesStore.ts</code></li>
+<li><code>backend/app/api/routes/interfaces_common.py</code></li>
 <li><code>backend/app/api/routes/interfaces_integrations.py</code></li>
+<li><code>backend/app/models/interface_config.py</code></li>
+<li><code>backend/app/services/figma_service.py</code></li>
+<li><code>backend/app/services/stitch_service.py</code></li>
 </ul>
 <h2 id="state-api-and-backend-contracts">State, API, And Backend Contracts</h2>
 <h3 id="stores">Stores</h3>
@@ -255,20 +261,25 @@
 <h3 id="api-and-backend">API And Backend</h3>
 <ul>
 <li><code>backend/app/api/routes/interfaces_integrations.py</code></li>
+<li><code>backend/app/models/interface_config.py</code></li>
 </ul>
 <h2 id="architecture-notes">Architecture Notes</h2>
 <ul>
 <li>The feature is mounted through <code>frontend/src/components/interfaces/FigmaTab.tsx</code> behind the <code>Configuration</code> tab label, and the UI navigation path is recorded in the inventory.</li>
 <li><code>tests/test_project_scope_contracts.py</code> guards the source-level tab-label contract so the project-facing Interfaces tab does not regress to the old <code>Figma</code> menu copy.</li>
+<li>Configuration actions require an active project in the UI and call project-scoped backend routes. Global admins still configure a concrete project; the route does not fall back to a global configuration path.</li>
+<li>Figma and Stitch secrets are stored on <code>ProjectInterfaceConfig</code> as encrypted per-project fields. The configure routes no longer mutate <code>settings.figma_api_token</code>, <code>settings.stitch_api_key</code>, or process environment values.</li>
+<li>Figma file helpers require <code>project_id</code>, check project access, and use the active project&#x27;s Figma token before reading components or design-system data.</li>
 <li>The frontmatter and manifest entries are the durable contract for agents updating this page after code changes.</li>
 <li>When the referenced component, store, route, agent, skill, or test behavior changes, regenerate and validate the feature documentation.</li>
 </ul>
 <h2 id="agents-skills-llm-mcp-and-permissions">Agents, Skills, LLM, MCP, And Permissions</h2>
 <ul>
-<li>No direct agent, skill, LLM, or MCP behavior is asserted beyond the cited source files.</li>
+<li>Stitch is reached through the Stitch MCP protocol with the active project&#x27;s encrypted API key. It must never use a process-wide fallback for project-facing Interfaces flows.</li>
 </ul>
 <h2 id="tests-and-verification">Tests And Verification</h2>
 <ul>
+<li><code>tests/test_interfaces.py</code></li>
 <li><code>tests/test_project_scope_contracts.py</code></li>
 </ul>
 <h2 id="related-features">Related Features</h2>
@@ -282,7 +293,7 @@
 </ul>
 <h2 id="compass-evidence">Compass Evidence</h2>
 <ul>
-<li>Spec/task: CF-SPEC-53 / CF-657; CF-SPEC-59 / CF-740; local UI copy update 2026-05-18</li>
+<li>Spec/task: CF-SPEC-53 / CF-657; CF-SPEC-59 / CF-740; CF-SPEC-60 / CF-763</li>
 <li>Inventory source: <code>docs/features/inventory.json</code></li>
 </ul>
 <h2 id="when-to-update">When To Update</h2>

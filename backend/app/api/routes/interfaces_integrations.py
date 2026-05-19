@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 import uuid
 
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -16,12 +16,13 @@ from app.api.routes.interfaces_common import (
     FigmaImportRequest,
     HandoffBriefRequest,
     HandoffDevSpecRequest,
+    get_or_create_project_interface_config,
+    get_project_interface_config,
     get_screen_or_404,
+    require_project_id,
     require_integration_admin,
 )
-from app.config import settings
-from app.core.permissions import get_subject, is_global_admin, require_project_access
-from app.core.security_middleware import require_admin_from_request
+from app.core.permissions import require_project_access
 from app.models.database import get_db
 from app.models.design_screen import DesignBrief, DesignScreen
 from app.services.design_evidence import (
@@ -41,6 +42,8 @@ async def figma_import(data: FigmaImportRequest, request: Request, db: AsyncSess
     from app.services.figma_service import figma_service
 
     await require_project_access(db, request, data.project_id, min_role="researcher")
+    interface_config = await get_project_interface_config(db, data.project_id)
+    figma_api_token = interface_config.figma_api_token if interface_config else ""
 
     parsed = figma_service.parse_figma_url(data.figma_url)
     file_key = parsed.get("file_key", "")
@@ -48,7 +51,7 @@ async def figma_import(data: FigmaImportRequest, request: Request, db: AsyncSess
     if not file_key:
         raise HTTPException(status_code=422, detail="Could not extract file key from Figma URL")
 
-    if not settings.figma_api_token:
+    if not figma_api_token:
         return await execute_design_tool(
             "import_from_figma",
             {"figma_url": data.figma_url},
@@ -56,24 +59,31 @@ async def figma_import(data: FigmaImportRequest, request: Request, db: AsyncSess
         )
 
     try:
-        file_data = await figma_service.get_file(file_key)
+        file_data = await figma_service.get_file(file_key, api_token=figma_api_token)
         file_name = file_data.get("name", "Untitled")
 
         node_data = None
         if node_id:
             try:
-                node_data = await figma_service.get_file_nodes(file_key, [node_id])
+                node_data = await figma_service.get_file_nodes(
+                    file_key,
+                    [node_id],
+                    api_token=figma_api_token,
+                )
             except Exception:
                 pass
 
         components_data = {}
         styles_data = {}
         try:
-            components_data = await figma_service.get_components(file_key)
+            components_data = await figma_service.get_components(
+                file_key,
+                api_token=figma_api_token,
+            )
         except Exception:
             pass
         try:
-            styles_data = await figma_service.get_styles(file_key)
+            styles_data = await figma_service.get_styles(file_key, api_token=figma_api_token)
         except Exception:
             pass
 
@@ -160,20 +170,31 @@ async def figma_export(data: FigmaExportRequest, request: Request, db: AsyncSess
 
 
 @router.get("/interfaces/figma/design-system/{file_key}")
-async def figma_design_system(file_key: str, request: Request, db: AsyncSession = Depends(get_db)):
+async def figma_design_system(
+    file_key: str,
+    request: Request,
+    project_id: str | None = Query(None, description="Active project"),
+    db: AsyncSession = Depends(get_db),
+):
     """Extract a design system summary from a Figma file."""
-    require_admin_from_request(request)
+    scoped_project_id = require_project_id(project_id)
+    await require_project_access(db, request, scoped_project_id, min_role="researcher")
+    interface_config = await get_project_interface_config(db, scoped_project_id)
+    figma_api_token = interface_config.figma_api_token if interface_config else ""
 
     from app.services.figma_service import figma_service
 
-    if not settings.figma_api_token:
+    if not figma_api_token:
         raise HTTPException(
             status_code=422,
-            detail="Figma API token not configured. Set FIGMA_API_TOKEN in settings.",
+            detail="Figma API token not configured for this project.",
         )
 
     try:
-        design_system = await figma_service.extract_design_system(file_key)
+        design_system = await figma_service.extract_design_system(
+            file_key,
+            api_token=figma_api_token,
+        )
         return {
             "success": True,
             "file_key": design_system["file_key"],
@@ -185,20 +206,28 @@ async def figma_design_system(file_key: str, request: Request, db: AsyncSession 
 
 
 @router.get("/interfaces/figma/components/{file_key}")
-async def figma_components(file_key: str, request: Request, db: AsyncSession = Depends(get_db)):
+async def figma_components(
+    file_key: str,
+    request: Request,
+    project_id: str | None = Query(None, description="Active project"),
+    db: AsyncSession = Depends(get_db),
+):
     """List Figma components for a file."""
-    require_admin_from_request(request)
+    scoped_project_id = require_project_id(project_id)
+    await require_project_access(db, request, scoped_project_id, min_role="researcher")
+    interface_config = await get_project_interface_config(db, scoped_project_id)
+    figma_api_token = interface_config.figma_api_token if interface_config else ""
 
     from app.services.figma_service import figma_service
 
-    if not settings.figma_api_token:
+    if not figma_api_token:
         raise HTTPException(
             status_code=422,
-            detail="Figma API token not configured. Set FIGMA_API_TOKEN in settings.",
+            detail="Figma API token not configured for this project.",
         )
 
     try:
-        data = await figma_service.get_components(file_key)
+        data = await figma_service.get_components(file_key, api_token=figma_api_token)
         components = data.get("meta", {}).get("components", [])
         return {
             "success": True,
@@ -223,15 +252,14 @@ async def list_briefs(
     db: AsyncSession = Depends(get_db),
 ):
     """List design briefs for a project."""
-    subject = get_subject(request)
-    if project_id:
-        await require_project_access(db, request, project_id, min_role="viewer")
-    elif not is_global_admin(subject):
-        raise HTTPException(status_code=400, detail="project_id is required")
+    scoped_project_id = require_project_id(project_id)
+    await require_project_access(db, request, scoped_project_id, min_role="viewer")
 
-    query = select(DesignBrief).order_by(DesignBrief.created_at.desc())
-    if project_id:
-        query = query.where(DesignBrief.project_id == project_id)
+    query = (
+        select(DesignBrief)
+        .where(DesignBrief.project_id == scoped_project_id)
+        .order_by(DesignBrief.created_at.desc())
+    )
     result = await db.execute(query)
     briefs = result.scalars().all()
     return {"briefs": [await hydrate_design_brief(db, b) for b in briefs]}
@@ -297,36 +325,29 @@ async def interfaces_status(
     db: AsyncSession = Depends(get_db),
 ):
     """Get the current status of the Interfaces module."""
-    subject = get_subject(request)
-    if project_id:
-        await require_project_access(db, request, project_id, min_role="viewer")
-        screens_query = select(func.count()).select_from(DesignScreen).where(
-            DesignScreen.project_id == project_id
-        )
-        briefs_query = select(func.count()).select_from(DesignBrief).where(
-            DesignBrief.project_id == project_id
-        )
-        scope = "project"
-    elif is_global_admin(subject) or not settings.team_mode:
-        screens_query = select(func.count()).select_from(DesignScreen)
-        briefs_query = select(func.count()).select_from(DesignBrief)
-        scope = "global"
-    else:
-        screens_query = None
-        briefs_query = None
-        scope = "integration-only"
+    scoped_project_id = require_project_id(project_id)
+    await require_project_access(db, request, scoped_project_id, min_role="viewer")
+    screens_query = select(func.count()).select_from(DesignScreen).where(
+        DesignScreen.project_id == scoped_project_id
+    )
+    briefs_query = select(func.count()).select_from(DesignBrief).where(
+        DesignBrief.project_id == scoped_project_id
+    )
+    interface_config = await get_project_interface_config(db, scoped_project_id)
 
-    screens_count = await db.execute(screens_query) if screens_query is not None else None
-    briefs_count = await db.execute(briefs_query) if briefs_query is not None else None
+    screens_count = await db.execute(screens_query)
+    briefs_count = await db.execute(briefs_query)
 
     return {
-        "stitch_configured": bool(settings.stitch_api_key),
-        "figma_configured": bool(settings.figma_api_token),
-        "onboarding_needed": not bool(settings.stitch_api_key)
-        and not bool(settings.figma_api_token),
-        "screens_count": (screens_count.scalar() if screens_count is not None else 0) or 0,
-        "briefs_count": (briefs_count.scalar() if briefs_count is not None else 0) or 0,
-        "scope": scope,
+        "stitch_configured": bool(interface_config and interface_config.stitch_configured),
+        "figma_configured": bool(interface_config and interface_config.figma_configured),
+        "onboarding_needed": not bool(
+            interface_config
+            and (interface_config.stitch_configured or interface_config.figma_configured)
+        ),
+        "screens_count": screens_count.scalar() or 0,
+        "briefs_count": briefs_count.scalar() or 0,
+        "scope": "project",
     }
 
 
@@ -337,20 +358,16 @@ async def configure_stitch(
     db: AsyncSession = Depends(get_db),
 ):
     """Configure the Stitch (Google Generative AI) API key."""
-    await require_integration_admin(db, request, data.project_id)
-    from app.api.routes.settings import _persist_env
-
-    settings.stitch_api_key = data.api_key
-    try:
-        _persist_env("STITCH_API_KEY", data.api_key)
-        persisted = True
-    except Exception:
-        persisted = False
+    project_id = await require_integration_admin(db, request, data.project_id)
+    config = await get_or_create_project_interface_config(db, project_id)
+    config.set_stitch_api_key(data.api_key)
+    await db.commit()
 
     return {
         "success": True,
         "stitch_configured": bool(data.api_key),
-        "persisted": persisted,
+        "project_id": project_id,
+        "persisted": True,
     }
 
 
@@ -361,18 +378,14 @@ async def configure_figma(
     db: AsyncSession = Depends(get_db),
 ):
     """Configure the Figma API token."""
-    await require_integration_admin(db, request, data.project_id)
-    from app.api.routes.settings import _persist_env
-
-    settings.figma_api_token = data.api_token
-    try:
-        _persist_env("FIGMA_API_TOKEN", data.api_token)
-        persisted = True
-    except Exception:
-        persisted = False
+    project_id = await require_integration_admin(db, request, data.project_id)
+    config = await get_or_create_project_interface_config(db, project_id)
+    config.set_figma_api_token(data.api_token)
+    await db.commit()
 
     return {
         "success": True,
         "figma_configured": bool(data.api_token),
-        "persisted": persisted,
+        "project_id": project_id,
+        "persisted": True,
     }

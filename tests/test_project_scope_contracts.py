@@ -24,6 +24,77 @@ def test_interfaces_tab_label_uses_configuration_copy() -> None:
     assert 'label: "Figma"' not in source
 
 
+def test_interfaces_status_screens_and_handoff_require_active_project_scope() -> None:
+    api = read_repo("frontend/src/lib/api.ts")
+    store = read_repo("frontend/src/stores/interfacesStore.ts")
+    screens_tab = read_repo("frontend/src/components/interfaces/ScreensGalleryTab.tsx")
+    handoff_tab = read_repo("frontend/src/components/interfaces/HandoffTab.tsx")
+    screens_route = read_repo("backend/app/api/routes/interfaces_screens.py")
+    integrations_route = read_repo("backend/app/api/routes/interfaces_integrations.py")
+
+    assert "status: (projectId: string)" in api
+    assert "/api/interfaces/status?project_id=${encodeURIComponent(projectId)}" in api
+    assert "list: (projectId: string)" in api
+    assert "/api/interfaces/screens?project_id=${encodeURIComponent(projectId)}" in api
+    assert "/api/interfaces/handoff/briefs?project_id=${encodeURIComponent(projectId)}" in api
+
+    assert "if (!projectId)" in store
+    assert "set({ status: null, error: null });" in store
+    assert "set({ screens: [], selectedScreenId: null, loading: true, error: null });" in store
+    assert "set({ briefs: [] });" in store
+
+    assert "const scopedScreens = activeProjectId" in screens_tab
+    assert "screens.filter((screen: any) => screen.project_id === activeProjectId)" in screens_tab
+    assert "selectedScreen && selectedScreen.project_id === activeProjectId" in screens_tab
+
+    assert "const scopedScreens = activeProjectId" in handoff_tab
+    assert "screens.filter((screen: any) => screen.project_id === activeProjectId)" in handoff_tab
+    assert "const scopedBriefs = activeProjectId" in handoff_tab
+    assert "briefs.filter((brief: any) => brief.project_id === activeProjectId)" in handoff_tab
+    assert "disabled={!activeProjectId || generatingBrief}" in handoff_tab
+
+    assert "scoped_project_id = require_project_id(project_id)" in screens_route
+    assert "await require_project_access(db, request, scoped_project_id, min_role=\"viewer\")" in screens_route
+    assert "DesignScreen.project_id == scoped_project_id" in screens_route
+
+    assert "scoped_project_id = require_project_id(project_id)" in integrations_route
+    assert "DesignBrief.project_id == scoped_project_id" in integrations_route
+    assert "DesignScreen.project_id == scoped_project_id" in integrations_route
+    assert "scope\": \"project\"" in integrations_route
+
+
+def test_interfaces_configuration_credentials_are_project_owned() -> None:
+    api = read_repo("frontend/src/lib/api.ts")
+    figma_tab = read_repo("frontend/src/components/interfaces/FigmaTab.tsx")
+    onboarding = read_repo("frontend/src/components/interfaces/InterfacesOnboarding.tsx")
+    common = read_repo("backend/app/api/routes/interfaces_common.py")
+    integrations_route = read_repo("backend/app/api/routes/interfaces_integrations.py")
+    config_model = read_repo("backend/app/models/interface_config.py")
+    database = read_repo("backend/app/models/database.py")
+
+    assert "stitch: (data: { api_key: string; project_id: string })" in api
+    assert "figma: (data: { api_token: string; project_id: string })" in api
+    assert "interfacesApi.figma.designSystem(fileKey.trim(), activeProjectId)" in figma_tab
+    assert "disabled={!figmaUrl.trim() || !activeProjectId || importing}" in figma_tab
+    assert "project_id: activeProjectId" in figma_tab
+    assert "project_id: activeProjectId" in onboarding
+
+    assert "await require_project_access(db, request, scoped_project_id, min_role=\"project_admin\")" in common
+    assert "get_or_create_project_interface_config" in integrations_route
+    assert "config.set_stitch_api_key(data.api_key)" in integrations_route
+    assert "config.set_figma_api_token(data.api_token)" in integrations_route
+    assert "_persist_env" not in integrations_route
+    assert "settings.figma_api_token" not in integrations_route
+    assert "settings.stitch_api_key" not in integrations_route
+
+    assert "__tablename__ = \"project_interface_configs\"" in config_model
+    assert "stitch_api_key_encrypted" in config_model
+    assert "figma_api_token_encrypted" in config_model
+    assert "encrypt_field" in config_model
+    assert "decrypt_field" in config_model
+    assert "\"app.models.interface_config\"" in database
+
+
 def test_integrations_overview_recent_activity_is_project_scoped() -> None:
     source = read_repo("frontend/src/components/integrations/IntegrationsOverview.tsx")
 

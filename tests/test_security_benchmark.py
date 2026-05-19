@@ -87,6 +87,28 @@ def test_security_benchmark_detects_integration_project_scope_paths() -> None:
     assert result.scorecard["triggered_paths"] == sorted(changed_paths)
 
 
+def test_security_benchmark_detects_interfaces_project_scope_paths() -> None:
+    matrix = load_matrix(ROOT / "security" / "control_matrix.json")
+
+    changed_paths = [
+        "backend/app/api/routes/interfaces_common.py",
+        "backend/app/api/routes/interfaces_integrations.py",
+        "backend/app/api/routes/interfaces_screens.py",
+        "backend/app/models/interface_config.py",
+        "backend/app/services/stitch_service.py",
+        "backend/alembic/versions/016_project_interface_configs.py",
+        "frontend/src/components/interfaces/FigmaTab.tsx",
+        "frontend/src/components/interfaces/HandoffTab.tsx",
+        "frontend/src/stores/interfacesStore.ts",
+        "tests/test_interfaces.py",
+    ]
+    result = evaluate_matrix(matrix, changed_paths=changed_paths)
+
+    assert result.passed is True
+    assert result.scorecard["auth_security_change_detected"] is True
+    assert result.scorecard["triggered_paths"] == sorted(changed_paths)
+
+
 def test_security_benchmark_detects_notification_project_scope_paths() -> None:
     matrix = load_matrix(ROOT / "security" / "control_matrix.json")
 

@@ -42,9 +42,10 @@ export default function InterfacesOnboarding() {
     setStitchError(null);
     try {
       if (canManageIntegrations) {
+        if (!activeProjectId) throw new Error("Select a project before configuring Stitch.");
         await interfacesApi.configure.stitch({
           api_key: stitchKey.trim(),
-          project_id: activeProjectId || undefined,
+          project_id: activeProjectId,
         });
       } else if (activeProjectId) {
         await permissionRequests.create({
@@ -71,9 +72,10 @@ export default function InterfacesOnboarding() {
     setFigmaError(null);
     try {
       if (canManageIntegrations) {
+        if (!activeProjectId) throw new Error("Select a project before configuring Figma.");
         await interfacesApi.configure.figma({
           api_token: figmaToken.trim(),
-          project_id: activeProjectId || undefined,
+          project_id: activeProjectId,
         });
       } else if (activeProjectId) {
         await permissionRequests.create({
@@ -164,7 +166,7 @@ export default function InterfacesOnboarding() {
                 <div className="flex items-center gap-2">
                   <button
                     onClick={handleSaveStitch}
-                    disabled={!stitchKey.trim() || savingStitch}
+                    disabled={!stitchKey.trim() || !activeProjectId || savingStitch}
                     className="px-4 py-2 text-sm bg-istara-600 text-white rounded-lg hover:bg-istara-700 disabled:opacity-50 transition-colors"
                   >
                     {savingStitch ? "Saving..." : "Save Key"}
@@ -214,7 +216,7 @@ export default function InterfacesOnboarding() {
                 <div className="flex items-center gap-2">
                   <button
                     onClick={handleSaveFigma}
-                    disabled={!figmaToken.trim() || savingFigma}
+                    disabled={!figmaToken.trim() || !activeProjectId || savingFigma}
                     className="px-4 py-2 text-sm bg-istara-600 text-white rounded-lg hover:bg-istara-700 disabled:opacity-50 transition-colors"
                   >
                     {savingFigma ? "Saving..." : "Save Token"}

@@ -101,6 +101,7 @@ async def init_db() -> None:
         "app.core.scheduler",
         "app.models.context_dag",
         "app.models.design_screen",
+        "app.models.interface_config",
         "app.models.loop_execution",
         "app.models.agent_loop_config",
         "app.models.notification",
@@ -257,6 +258,13 @@ async def init_db() -> None:
         try:
             await conn.run_sync(
                 lambda c: Base.metadata.tables["permission_requests"].create(c, checkfirst=True)
+            )
+        except Exception:
+            pass  # Table already exists
+
+        try:
+            await conn.run_sync(
+                lambda c: Base.metadata.tables["project_interface_configs"].create(c, checkfirst=True)
             )
         except Exception:
             pass  # Table already exists
