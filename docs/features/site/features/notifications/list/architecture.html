@@ -250,6 +250,8 @@
 <li><code>frontend/src/lib/notificationApi.ts</code></li>
 <li><code>frontend/src/lib/types.ts</code></li>
 <li><code>backend/app/api/routes/notifications.py</code></li>
+<li><code>backend/app/services/notification_service.py</code></li>
+<li><code>backend/app/api/websocket.py</code></li>
 </ul>
 <h2 id="state-api-and-backend-contracts">State, API, And Backend Contracts</h2>
 <h3 id="stores">Stores</h3>
@@ -267,6 +269,8 @@
 <li>The notification store passes the active project into by-id mark-read and delete actions, and the backend constrains those lookups by both notification id and project id.</li>
 <li>The list UI does not expose an &quot;All projects&quot; filter; project context comes from the active project store and backend RBAC verifies that membership.</li>
 <li>The backend list, unread-count, mark-all-read, mark-read, and delete APIs never fall back to a global inbox; cross-project notification aggregation belongs only on explicit admin reporting surfaces.</li>
+<li>Lower-level notification service helpers also require <code>project_id</code>, and project-bound event persistence skips records that cannot be tied to a project.</li>
+<li>System-wide notification-style websocket events such as updates, backups, and resource throttles fan out only to global admins.</li>
 <li>Agent promotion review notifications use the <code>agent_promotion</code> category in the API allow-list, frontend category filters, and badge styling so project-scoped review requests remain visible when users filter notification categories.</li>
 <li>The frontmatter and manifest entries are the durable contract for agents updating this page after code changes.</li>
 <li>When the referenced component, store, route, agent, skill, or test behavior changes, regenerate and validate the feature documentation.</li>
@@ -279,6 +283,7 @@
 <ul>
 <li><code>tests/test_notifications.py</code></li>
 <li><code>tests/test_project_scope_contracts.py</code></li>
+<li><code>tests/test_websocket.py</code></li>
 </ul>
 <h2 id="related-features">Related Features</h2>
 <ul>
@@ -291,7 +296,7 @@
 </ul>
 <h2 id="compass-evidence">Compass Evidence</h2>
 <ul>
-<li>Spec/task: CF-SPEC-53 / CF-657; CF-SPEC-60 / CF-759; CF-SPEC-71 / CF-913; CF-SPEC-79 / CF-1019; CF-SPEC-89 / CF-1125</li>
+<li>Spec/task: CF-SPEC-53 / CF-657; CF-SPEC-60 / CF-759; CF-SPEC-71 / CF-913; CF-SPEC-79 / CF-1019; CF-SPEC-89 / CF-1125; CF-SPEC-94 / CF-1205</li>
 <li>Inventory source: <code>docs/features/inventory.json</code></li>
 </ul>
 <h2 id="when-to-update">When To Update</h2>

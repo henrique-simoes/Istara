@@ -35,13 +35,18 @@ def _fallback_slide_instructions(report: ProjectReport, full_text: str) -> str:
 async def get_slide_instructions(
     report_id: str,
     request: Request,
+    project_id: str | None = None,
     db: AsyncSession = Depends(get_db),
 ):
     """Generate professional slide creation instructions for an external AI."""
+    scoped_project_id = project_id.strip() if project_id else ""
+    if not scoped_project_id:
+        raise HTTPException(status_code=400, detail="project_id is required")
+
     report = await db.get(ProjectReport, report_id)
-    if not report:
+    if not report or report.project_id != scoped_project_id:
         raise HTTPException(status_code=404, detail="Report not found")
-    await require_project_access(db, request, report.project_id, min_role="viewer")
+    await require_project_access(db, request, scoped_project_id, min_role="viewer")
         
     content = json.loads(report.content_json or "{}")
     full_text = content.get("full_document", "")
@@ -70,6 +75,7 @@ async def get_slide_instructions(
 
     return {
         "report_id": report_id,
+        "project_id": report.project_id,
         "title": f"Slide Instructions: {report.title}",
         "instructions": instructions,
         "methodology": "Minto Pyramid / Action Titles / SCR Framework"

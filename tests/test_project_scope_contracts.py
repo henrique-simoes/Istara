@@ -1157,11 +1157,9 @@ def test_notifications_are_active_project_scoped() -> None:
     types = read_repo("frontend/src/lib/types.ts")
     navigation = read_repo("frontend/src/lib/navigation.ts")
     route = read_repo("backend/app/api/routes/notifications.py")
-
     assert "const { activeProjectId } = useProjectStore();" in sidebar
     assert "fetchUnreadCount(activeProjectId)" in sidebar
     assert "setInterval(() => fetchUnreadCount(activeProjectId), 30_000)" in sidebar
-
     assert "const { activeProjectId } = useProjectStore();" in view
     assert "fetchNotifications(1, activeProjectId)" in view
     assert "fetchUnreadCount(activeProjectId)" in view
@@ -1181,8 +1179,7 @@ def test_notifications_are_active_project_scoped() -> None:
     assert "deleteNotification: async (id, projectId) =>" in store and "await notificationsApi.delete(id, projectId)" in store
     assert "notification.project_id !== activeProjectId" in store
 
-    assert "markRead: (id: string, projectId: string)" in api and "`/api/notifications/${id}/read${queryString({ project_id: projectId })}`" in api
-    assert "delete: (id: string, projectId: string)" in api and "`/api/notifications/${id}${queryString({ project_id: projectId })}`" in api
+    assert "markRead: (id: string, projectId: string)" in api and "unreadCount: (projectId: string)" in api and "markAllRead: (projectId: string)" in api and "delete: (id: string, projectId: string)" in api and "JSON.stringify({ project_id: projectId })" in api
 
     assert '"backup",\n  "notifications",' in navigation
     assert "async def _require_notification_project_scope" in route

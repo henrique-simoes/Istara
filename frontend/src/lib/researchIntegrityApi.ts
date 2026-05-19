@@ -7,13 +7,14 @@ export const reports = {
 };
 
 export const presentation = {
-  slideInstructions: (reportId: string) =>
+  slideInstructions: (reportId: string, projectId: string) =>
     get<{
       report_id: string;
+      project_id: string;
       title: string;
       instructions: string;
       methodology: string;
-    }>(`/api/presentation/reports/${reportId}/slide-instructions`),
+    }>(`/api/presentation/reports/${reportId}/slide-instructions?project_id=${encodeURIComponent(projectId)}`),
 };
 
 export const codebookVersions = {

@@ -102,7 +102,11 @@ provide an authorized active `project_id`, and missing project scope must return
 an error instead of falling back to a global inbox. By-id notification actions
 must constrain the lookup by both notification id and active project id so stale
 ids from another project resolve as not found. Cross-project notification
-aggregation belongs only on explicit admin reporting surfaces.
+aggregation belongs only on explicit admin reporting surfaces. Lower-level
+notification helpers must require project scope by default, project-bound
+notification persistence must refuse orphan records, and system-wide
+notification-style websocket events such as updates, backups, and resource
+throttles must fan out only to global admins.
 Permission request queues and reviews are project-content surfaces too:
 project-facing request lists require an authorized active `project_id`, requester
 `mine=true` lists cannot fall back to a cross-project inbox, and project-admin

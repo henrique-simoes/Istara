@@ -257,6 +257,7 @@
 <li>The unread badge reflects only the currently selected project and resets when no project is selected.</li>
 <li>Realtime project notifications follow the active project selection, so events from other projects are not delivered into the current project shell.</li>
 <li>If the realtime connection names a project the user cannot access, the socket is rejected instead of receiving that project&#x27;s events.</li>
+<li>Project-bound notification records are not persisted when a producer omits the project id.</li>
 <li>Review the output in the same view and follow the related feature links when the workflow moves into another Istara surface.</li>
 </ul>
 <h2 id="supported-workflows">Supported Workflows</h2>
@@ -271,6 +272,7 @@
 <li>Project scope is mandatory for notification lists, unread counts, and mark-all-read actions for every role, including admins using project-facing notification surfaces.</li>
 <li>Project-tagged websocket events must carry or resolve to a project before they can be delivered to project-connected clients.</li>
 <li>Project-bound realtime events that cannot be resolved to a project are not shown as global notifications.</li>
+<li>System-wide backup, update, and resource-throttle notifications are kept out of project-user sockets unless the user is a global admin.</li>
 <li>Visible status, lists, forms, generated artifacts, or review results shown by the referenced component and routes.</li>
 </ul>
 <h2 id="caveats">Caveats</h2>
@@ -289,7 +291,7 @@
 </ul>
 <h2 id="evidence">Evidence</h2>
 <ul>
-<li>Source files: <code>frontend/src/components/layout/Sidebar.tsx</code>, <code>frontend/src/hooks/useWebSocket.ts</code>, <code>frontend/src/stores/notificationStore.ts</code>, <code>backend/app/api/routes/notifications.py</code>, <code>backend/app/api/websocket.py</code></li>
+<li>Source files: <code>frontend/src/components/layout/Sidebar.tsx</code>, <code>frontend/src/hooks/useWebSocket.ts</code>, <code>frontend/src/stores/notificationStore.ts</code>, <code>backend/app/api/routes/notifications.py</code>, <code>backend/app/api/websocket.py</code>, <code>backend/app/services/notification_service.py</code></li>
 <li>API references: <code>backend/app/api/routes/notifications.py</code>, <code>backend/app/api/websocket.py</code></li>
 <li>Tests: <code>tests/test_notifications.py</code>, <code>tests/test_project_scope_contracts.py</code>, <code>tests/test_websocket.py</code></li>
 </ul>

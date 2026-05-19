@@ -8,16 +8,16 @@ related_features: ["findings.reports", "interfaces.handoff"]
 related_glossary: ["minto-pyramid"]
 code_references: ["frontend/src/components/findings/ProjectReportsView.tsx", "backend/app/api/routes/presentation.py"]
 api_references: ["backend/app/api/routes/presentation.py", "backend/app/api/routes/reports.py"]
-test_references: []
-last_verified: 2026-05-15
-compass: CF-SPEC-53 / CF-657
+test_references: ["tests/test_reports.py"]
+last_verified: 2026-05-19
+compass: CF-SPEC-94 / CF-1205
 ---
 
 # Report Slide Instructions
 
 ## What It Does
 
-Report-related surfaces support presentation or slide guidance that can carry research findings into communicable report artifacts.
+Report-related surfaces support presentation or slide guidance that can carry research findings into communicable report artifacts. The slide-instruction action only works for reports that belong to the currently active project.
 
 ## Why It Exists
 
@@ -44,6 +44,7 @@ Report Slide Instructions exists so the work represented by Findings > Reports >
 ## Inputs, Outputs, And Expected Outcomes
 
 - Project-scoped state or artifact updates associated with report slide instructions.
+- Slide instructions generated from the selected active-project report; stale report ids from another project are rejected.
 - Visible status, lists, forms, generated artifacts, or review results shown by the referenced component and routes.
 
 ## Caveats
@@ -64,4 +65,4 @@ Report Slide Instructions exists so the work represented by Findings > Reports >
 
 - Source files: `frontend/src/components/findings/ProjectReportsView.tsx`, `backend/app/api/routes/presentation.py`
 - API references: `backend/app/api/routes/presentation.py`, `backend/app/api/routes/reports.py`
-- Tests: none recorded
+- Tests: `tests/test_reports.py`
