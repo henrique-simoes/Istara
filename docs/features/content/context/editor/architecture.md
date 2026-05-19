@@ -42,7 +42,8 @@ The Context view edits project background, goals, assumptions, and other structu
 
 - The feature is mounted through `frontend/src/components/projects/ContextEditor.tsx` and the UI navigation path recorded in the inventory.
 - Context preview calls `/api/contexts/composed/{project_id}` for the active project. The route verifies project viewer access and the backend composer filters context rows by exact project id.
-- Admin-only unscoped context maintenance may list unassigned rows, but those rows are not inherited by project prompt composition.
+- Context document detail, update, and delete routes bind document ids to the supplied active `project_id`; a missing active project returns 400 for project-owned rows, and a document id from another authorized project returns 404 instead of following the record's own project.
+- Admin-only unscoped context maintenance may list or manage unassigned rows, but those rows are not inherited by project prompt composition.
 - The frontmatter and manifest entries are the durable contract for agents updating this page after code changes.
 - When the referenced component, store, route, agent, skill, or test behavior changes, regenerate and validate the feature documentation.
 

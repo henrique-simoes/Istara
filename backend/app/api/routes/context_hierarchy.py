@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -16,17 +16,43 @@ from app.models.database import get_db
 router = APIRouter()
 
 
-async def _require_context_access(
+def _require_project_id(project_id: str | None) -> str:
+    scoped_project_id = str(project_id or "").strip()
+    if not scoped_project_id:
+        raise HTTPException(status_code=400, detail="project_id is required")
+    return scoped_project_id
+
+
+async def _get_active_context_or_404(
     db: AsyncSession,
     request: Request,
-    doc: ContextDocument,
+    doc_id: str,
+    project_id: str | None,
     *,
     min_role: str = "viewer",
-) -> None:
+) -> tuple[str, ContextDocument]:
+    scoped_project_id = str(project_id or "").strip()
+    if scoped_project_id:
+        await require_project_access(db, request, scoped_project_id, min_role=min_role)
+        result = await db.execute(
+            select(ContextDocument).where(
+                ContextDocument.id == doc_id,
+                ContextDocument.project_id == scoped_project_id,
+            )
+        )
+        doc = result.scalar_one_or_none()
+        if not doc:
+            raise HTTPException(status_code=404, detail="Context not found")
+        return scoped_project_id, doc
+
+    result = await db.execute(select(ContextDocument).where(ContextDocument.id == doc_id))
+    doc = result.scalar_one_or_none()
+    if not doc:
+        raise HTTPException(status_code=404, detail="Context not found")
     if doc.project_id:
-        await require_project_access(db, request, doc.project_id, min_role=min_role)
-        return
+        _require_project_id(project_id)
     require_admin_from_request(request)
+    return "", doc
 
 
 class ContextCreateRequest(BaseModel):
@@ -115,12 +141,15 @@ async def create_context(
 
 
 @router.get("/contexts/{doc_id}")
-async def get_context(doc_id: str, request: Request, db: AsyncSession = Depends(get_db)):
-    result = await db.execute(select(ContextDocument).where(ContextDocument.id == doc_id))
-    doc = result.scalar_one_or_none()
-    if not doc:
-        raise HTTPException(status_code=404, detail="Context not found")
-    await _require_context_access(db, request, doc, min_role="viewer")
+async def get_context(
+    doc_id: str,
+    request: Request,
+    project_id: str | None = Query(None, description="Active project"),
+    db: AsyncSession = Depends(get_db),
+):
+    _, doc = await _get_active_context_or_404(
+        db, request, doc_id, project_id, min_role="viewer"
+    )
     return {
         "id": doc.id,
         "name": doc.name,
@@ -139,30 +168,36 @@ async def update_context(
     doc_id: str,
     data: ContextUpdateRequest,
     request: Request,
+    project_id: str | None = Query(None, description="Active project"),
     db: AsyncSession = Depends(get_db),
 ):
-    result = await db.execute(select(ContextDocument).where(ContextDocument.id == doc_id))
-    existing = result.scalar_one_or_none()
-    if not existing:
-        raise HTTPException(status_code=404, detail="Context not found")
-    await _require_context_access(db, request, existing, min_role="researcher")
+    scoped_project_id, _ = await _get_active_context_or_404(
+        db, request, doc_id, project_id, min_role="researcher"
+    )
 
     updates = data.model_dump(exclude_unset=True)
-    doc = await context_hierarchy.update_context(db, doc_id, updates)
+    doc = await context_hierarchy.update_context(
+        db, doc_id, updates, project_id=scoped_project_id
+    )
     if not doc:
         raise HTTPException(status_code=404, detail="Context not found")
     return {"id": doc.id, "name": doc.name, "updated": True}
 
 
 @router.delete("/contexts/{doc_id}", status_code=204)
-async def delete_context(doc_id: str, request: Request, db: AsyncSession = Depends(get_db)):
-    result = await db.execute(select(ContextDocument).where(ContextDocument.id == doc_id))
-    existing = result.scalar_one_or_none()
-    if not existing:
-        raise HTTPException(status_code=404, detail="Context not found")
-    await _require_context_access(db, request, existing, min_role="researcher")
+async def delete_context(
+    doc_id: str,
+    request: Request,
+    project_id: str | None = Query(None, description="Active project"),
+    db: AsyncSession = Depends(get_db),
+):
+    scoped_project_id, _ = await _get_active_context_or_404(
+        db, request, doc_id, project_id, min_role="researcher"
+    )
 
-    if not await context_hierarchy.delete_context(db, doc_id):
+    if not await context_hierarchy.delete_context(
+        db, doc_id, project_id=scoped_project_id
+    ):
         raise HTTPException(status_code=404, detail="Context not found")
 
 

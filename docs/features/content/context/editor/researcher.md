@@ -45,6 +45,7 @@ Project Context Editor exists so the work represented by Context > Editor has a 
 
 - Project-scoped state or artifact updates associated with project context editor.
 - Active-project composed context preview for agent prompt review.
+- Context documents can only be opened or changed through the active project that owns them.
 - Visible status, lists, forms, generated artifacts, or review results shown by the referenced component and routes.
 
 ## Caveats

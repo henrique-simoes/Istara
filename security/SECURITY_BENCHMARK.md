@@ -173,6 +173,9 @@ compaction request must bind the session id to the caller's active project id.
 Context hierarchy prompts and previews are project-content surfaces too:
 database-backed company, product, project, task, and agent context documents
 may only compose when their `project_id` exactly matches the active project.
+Context document detail, update, and delete routes must bind document ids to the
+explicit active `project_id`, so stale ids from another authorized project cannot
+render or mutate the current project context.
 Unassigned/admin-only context rows must not be inherited into project prompt
 composition; shared platform guidance belongs in reviewed code defaults.
 Findings evidence, evidence-chain traversal, shell findings search, and project

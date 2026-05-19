@@ -2,11 +2,27 @@
 
 from __future__ import annotations
 
+import uuid
+
 import pytest
 import pytest_asyncio
+from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
+from app.config import settings
 from app.core.context_hierarchy import ContextDocument, PLATFORM_CONTEXT, context_hierarchy
+from app.main import app
+from app.models.database import async_session, init_db
+from app.models.project import Project
+
+
+@pytest.fixture(autouse=True)
+def reset_settings():
+    original_team_mode = settings.team_mode
+    original_jwt_secret = settings.jwt_secret
+    yield
+    settings.team_mode = original_team_mode
+    settings.jwt_secret = original_jwt_secret
 
 
 @pytest_asyncio.fixture
@@ -111,3 +127,112 @@ async def test_admin_unscoped_context_list_and_composition_exclude_project_rows(
     assert "Global company defaults must stay admin-only." in composed
     assert "Project A research goals." not in composed
     assert "Project B confidential context." not in composed
+
+
+async def _seed_api_context_documents() -> tuple[str, str, str, str, str]:
+    project_a = f"context-api-a-{uuid.uuid4()}"
+    project_b = f"context-api-b-{uuid.uuid4()}"
+    read_doc_id = f"context-read-{uuid.uuid4()}"
+    delete_doc_id = f"context-delete-{uuid.uuid4()}"
+    global_doc_id = f"context-global-{uuid.uuid4()}"
+    async with async_session() as db:
+        db.add_all(
+            [
+                Project(id=project_a, name="Context API A"),
+                Project(id=project_b, name="Context API B"),
+                ContextDocument(
+                    id=read_doc_id,
+                    name="Project A Read Context",
+                    level=3,
+                    level_type="project",
+                    project_id=project_a,
+                    content="Project A route content.",
+                    priority=10,
+                ),
+                ContextDocument(
+                    id=delete_doc_id,
+                    name="Project A Delete Context",
+                    level=3,
+                    level_type="project",
+                    project_id=project_a,
+                    content="Project A delete content.",
+                    priority=10,
+                ),
+                ContextDocument(
+                    id=global_doc_id,
+                    name="Global Maintenance Context",
+                    level=1,
+                    level_type="company",
+                    project_id="",
+                    content="Admin-only maintenance context.",
+                    priority=10,
+                ),
+            ]
+        )
+        await db.commit()
+    return project_a, project_b, read_doc_id, delete_doc_id, global_doc_id
+
+
+@pytest.mark.asyncio
+async def test_context_by_id_routes_require_active_project_scope(admin_auth_headers):
+    await init_db()
+    project_a, project_b, read_doc_id, delete_doc_id, global_doc_id = (
+        await _seed_api_context_documents()
+    )
+
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        missing = await ac.get(f"/api/contexts/{read_doc_id}", headers=admin_auth_headers)
+        wrong = await ac.get(
+            f"/api/contexts/{read_doc_id}?project_id={project_b}",
+            headers=admin_auth_headers,
+        )
+        correct = await ac.get(
+            f"/api/contexts/{read_doc_id}?project_id={project_a}",
+            headers=admin_auth_headers,
+        )
+        wrong_update = await ac.patch(
+            f"/api/contexts/{read_doc_id}?project_id={project_b}",
+            headers=admin_auth_headers,
+            json={"content": "wrong"},
+        )
+        correct_update = await ac.patch(
+            f"/api/contexts/{read_doc_id}?project_id={project_a}",
+            headers=admin_auth_headers,
+            json={"content": "updated"},
+        )
+        delete_missing = await ac.delete(
+            f"/api/contexts/{delete_doc_id}", headers=admin_auth_headers
+        )
+        delete_wrong = await ac.delete(
+            f"/api/contexts/{delete_doc_id}?project_id={project_b}",
+            headers=admin_auth_headers,
+        )
+        delete_correct = await ac.delete(
+            f"/api/contexts/{delete_doc_id}?project_id={project_a}",
+            headers=admin_auth_headers,
+        )
+        global_unscoped = await ac.get(
+            f"/api/contexts/{global_doc_id}", headers=admin_auth_headers
+        )
+        global_project_scoped = await ac.get(
+            f"/api/contexts/{global_doc_id}?project_id={project_a}",
+            headers=admin_auth_headers,
+        )
+
+    assert missing.status_code == 400
+    assert missing.json()["detail"] == "project_id is required"
+    assert wrong.status_code == 404
+    assert correct.status_code == 200
+    assert correct.json()["project_id"] == project_a
+
+    assert wrong_update.status_code == 404
+    assert correct_update.status_code == 200
+
+    assert delete_missing.status_code == 400
+    assert delete_wrong.status_code == 404
+    assert delete_correct.status_code == 204
+
+    assert global_unscoped.status_code == 200
+    assert global_unscoped.json()["project_id"] == ""
+    assert global_project_scoped.status_code == 404
