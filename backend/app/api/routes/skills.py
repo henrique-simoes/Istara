@@ -12,13 +12,37 @@ from pydantic import BaseModel
 from app.config import settings
 from app.core.agent import agent
 from app.core.improvement_governance import improvement_governance
-from app.core.permissions import require_global_admin, require_global_role, require_project_access
+from app.core.permissions import (
+    ProjectRole,
+    require_global_admin,
+    require_global_role,
+    require_project_access,
+)
 from app.models.database import get_db
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.skills.skill_manager import skill_manager
 from app.skills.registry import registry
 
 router = APIRouter()
+
+
+def _require_project_id(project_id: str | None) -> str:
+    scoped_project_id = str(project_id or "").strip()
+    if not scoped_project_id:
+        raise HTTPException(status_code=400, detail="project_id is required")
+    return scoped_project_id
+
+
+async def _require_skill_project_scope(
+    db: AsyncSession,
+    request: Request,
+    project_id: str | None,
+    *,
+    min_role: ProjectRole = "viewer",
+) -> str:
+    scoped_project_id = _require_project_id(project_id)
+    await require_project_access(db, request, scoped_project_id, min_role=min_role)
+    return scoped_project_id
 
 
 def _bounded_timeout(
@@ -96,34 +120,59 @@ async def list_skills(phase: str | None = None):
 # --- Routes with fixed paths MUST come before {name} parameterized routes ---
 
 @router.get("/skills/health/all")
-async def get_all_health():
+async def get_all_health(
+    request: Request,
+    project_id: str | None = None,
+    db: AsyncSession = Depends(get_db),
+):
     """Get health scores for all skills."""
-    return {"skills": skill_manager.get_all_health()}
+    scoped_project_id = await _require_skill_project_scope(db, request, project_id)
+    return {"skills": skill_manager.get_all_health(project_id=scoped_project_id)}
 
 
 @router.get("/skills/proposals/pending")
-async def get_pending_proposals():
+async def get_pending_proposals(
+    request: Request,
+    project_id: str | None = None,
+    db: AsyncSession = Depends(get_db),
+):
     """Get all pending skill improvement proposals."""
+    scoped_project_id = await _require_skill_project_scope(db, request, project_id)
+    proposals = skill_manager.get_pending_proposals(project_id=scoped_project_id)
     return {
-        "proposals": [p.to_dict() for p in skill_manager.get_pending_proposals()],
-        "count": len(skill_manager.get_pending_proposals()),
+        "proposals": [p.to_dict() for p in proposals],
+        "count": len(proposals),
     }
 
 
 @router.get("/skills/proposals/all")
-async def get_all_proposals(limit: int = 50):
+async def get_all_proposals(
+    request: Request,
+    limit: int = 50,
+    project_id: str | None = None,
+    db: AsyncSession = Depends(get_db),
+):
     """Get all proposals (pending, approved, rejected)."""
+    scoped_project_id = await _require_skill_project_scope(db, request, project_id)
     return {
-        "proposals": [p.to_dict() for p in skill_manager.get_all_proposals(limit)],
+        "proposals": [
+            p.to_dict()
+            for p in skill_manager.get_all_proposals(limit, project_id=scoped_project_id)
+        ],
     }
 
 
 # --- Skill Creation Proposals ---
 
 @router.get("/skills/creation-proposals/pending")
-async def get_pending_creation_proposals():
+async def get_pending_creation_proposals(
+    request: Request,
+    project_id: str | None = None,
+    db: AsyncSession = Depends(get_db),
+):
     """Get all pending skill creation proposals."""
-    proposals = skill_manager.get_pending_creation_proposals()
+    scoped_project_id = await _require_skill_project_scope(db, request, project_id)
+    proposals = skill_manager.get_pending_creation_proposals(project_id=scoped_project_id)
     return {
         "proposals": [p.to_dict() for p in proposals],
         "count": len(proposals),
@@ -131,27 +180,54 @@ async def get_pending_creation_proposals():
 
 
 @router.get("/skills/creation-proposals/all")
-async def get_all_creation_proposals(limit: int = 20):
+async def get_all_creation_proposals(
+    request: Request,
+    limit: int = 20,
+    project_id: str | None = None,
+    db: AsyncSession = Depends(get_db),
+):
     """Get all skill creation proposals (pending, approved, rejected)."""
-    proposals = skill_manager.get_all_creation_proposals(limit)
+    scoped_project_id = await _require_skill_project_scope(db, request, project_id)
+    proposals = skill_manager.get_all_creation_proposals(
+        limit,
+        project_id=scoped_project_id,
+    )
     return {
         "proposals": [p.to_dict() for p in proposals],
     }
 
 
 @router.post("/skills/creation-proposals/{proposal_id}/approve")
-async def approve_creation_proposal(proposal_id: str, request: Request):
+async def approve_creation_proposal(
+    proposal_id: str,
+    request: Request,
+    project_id: str | None = None,
+    db: AsyncSession = Depends(get_db),
+):
     """Approve a skill creation proposal — writes definition file and registers skill."""
     require_global_role(request, "researcher")
+    scoped_project_id = await _require_skill_project_scope(
+        db,
+        request,
+        project_id,
+        min_role="researcher",
+    )
     proposal = next(
-        (p for p in skill_manager.get_pending_creation_proposals() if p.id == proposal_id),
+        (
+            p
+            for p in skill_manager.get_pending_creation_proposals(project_id=scoped_project_id)
+            if p.id == proposal_id
+        ),
         None,
     )
     if proposal is None:
         raise HTTPException(status_code=404, detail="Creation proposal not found or not pending")
 
     if not proposal.test_result:
-        verification = await skill_manager.verify_skill_proposal(proposal_id)
+        verification = await skill_manager.verify_skill_proposal(
+            proposal_id,
+            project_id=scoped_project_id,
+        )
         if not verification.get("passed"):
             raise HTTPException(
                 status_code=422,
@@ -161,7 +237,10 @@ async def approve_creation_proposal(proposal_id: str, request: Request):
                 },
             )
 
-    result = skill_manager.approve_creation_proposal(proposal_id)
+    result = skill_manager.approve_creation_proposal(
+        proposal_id,
+        project_id=scoped_project_id,
+    )
     if result is None:
         raise HTTPException(status_code=404, detail="Creation proposal not found or not pending")
 
@@ -175,6 +254,7 @@ async def approve_creation_proposal(proposal_id: str, request: Request):
         governance = await improvement_governance.get_proposal_by_source(
             source_system="memento_skill_factory",
             source_id=proposal_id,
+            project_id=scoped_project_id,
         )
         if governance and governance.status in {"draft", "proposed"}:
             await improvement_governance.approve_proposal(
@@ -185,6 +265,7 @@ async def approve_creation_proposal(proposal_id: str, request: Request):
         governance = await improvement_governance.get_proposal_by_source(
             source_system="memento_skill_factory",
             source_id=proposal_id,
+            project_id=scoped_project_id,
         )
         if governance and governance.status == "approved":
             await improvement_governance.apply_proposal(
@@ -199,25 +280,56 @@ async def approve_creation_proposal(proposal_id: str, request: Request):
 
 
 @router.post("/skills/creation-proposals/{proposal_id}/verify")
-async def verify_creation_proposal(proposal_id: str, request: Request):
+async def verify_creation_proposal(
+    proposal_id: str,
+    request: Request,
+    project_id: str | None = None,
+    db: AsyncSession = Depends(get_db),
+):
     """Run the verification gate for a pending skill creation proposal."""
     require_global_role(request, "researcher")
-    result = await skill_manager.verify_skill_proposal(proposal_id)
+    scoped_project_id = await _require_skill_project_scope(
+        db,
+        request,
+        project_id,
+        min_role="researcher",
+    )
+    result = await skill_manager.verify_skill_proposal(
+        proposal_id,
+        project_id=scoped_project_id,
+    )
     if not result.get("passed") and result.get("issues") == ["Proposal not found or not pending"]:
         raise HTTPException(status_code=404, detail="Creation proposal not found or not pending")
     return result
 
 
 @router.post("/skills/creation-proposals/{proposal_id}/reject")
-async def reject_creation_proposal(proposal_id: str, request: Request, reason: str = ""):
+async def reject_creation_proposal(
+    proposal_id: str,
+    request: Request,
+    reason: str = "",
+    project_id: str | None = None,
+    db: AsyncSession = Depends(get_db),
+):
     """Reject a skill creation proposal."""
     require_global_role(request, "researcher")
-    if not skill_manager.reject_creation_proposal(proposal_id, reason):
+    scoped_project_id = await _require_skill_project_scope(
+        db,
+        request,
+        project_id,
+        min_role="researcher",
+    )
+    if not skill_manager.reject_creation_proposal(
+        proposal_id,
+        reason,
+        project_id=scoped_project_id,
+    ):
         raise HTTPException(status_code=404, detail="Creation proposal not found or not pending")
     try:
         governance = await improvement_governance.get_proposal_by_source(
             source_system="memento_skill_factory",
             source_id=proposal_id,
+            project_id=scoped_project_id,
         )
         if governance and governance.status in {"draft", "proposed", "approved"}:
             await improvement_governance.reject_proposal(
@@ -233,15 +345,31 @@ async def reject_creation_proposal(proposal_id: str, request: Request, reason: s
 # --- Parameterized routes ---
 
 @router.get("/skills/{name}")
-async def get_skill(name: str):
+async def get_skill(
+    name: str,
+    request: Request,
+    project_id: str | None = None,
+    db: AsyncSession = Depends(get_db),
+):
     """Get a single skill definition with full details."""
     defn = skill_manager.get(name)
     if not defn:
         raise HTTPException(status_code=404, detail=f"Skill not found: {name}")
 
     result = defn.to_dict()
-    result["health"] = skill_manager.get_skill_health(name)
-    result["usage"] = skill_manager.get_usage_stats(name)
+    scoped_project_id = None
+    if project_id:
+        scoped_project_id = await _require_skill_project_scope(db, request, project_id)
+    result["health"] = (
+        skill_manager.get_skill_health(name, project_id=scoped_project_id)
+        if scoped_project_id
+        else None
+    )
+    result["usage"] = (
+        skill_manager.get_usage_stats(name, project_id=scoped_project_id)
+        if scoped_project_id
+        else {}
+    )
     return result
 
 
@@ -290,9 +418,15 @@ async def toggle_skill(name: str, request: Request, enabled: bool = True):
 # --- Health & Usage (specific {name} routes) ---
 
 @router.get("/skills/{name}/health")
-async def get_skill_health(name: str):
+async def get_skill_health(
+    name: str,
+    request: Request,
+    project_id: str | None = None,
+    db: AsyncSession = Depends(get_db),
+):
     """Get health score for a specific skill."""
-    health = skill_manager.get_skill_health(name)
+    scoped_project_id = await _require_skill_project_scope(db, request, project_id)
+    health = skill_manager.get_skill_health(name, project_id=scoped_project_id)
     if health.get("status") == "not_found":
         raise HTTPException(status_code=404, detail=f"Skill not found: {name}")
     return health
@@ -301,15 +435,27 @@ async def get_skill_health(name: str):
 # --- Self-Improvement Proposals ---
 
 @router.post("/skills/proposals/{proposal_id}/approve")
-async def approve_proposal(proposal_id: str, request: Request):
+async def approve_proposal(
+    proposal_id: str,
+    request: Request,
+    project_id: str | None = None,
+    db: AsyncSession = Depends(get_db),
+):
     """Approve a skill improvement proposal (applies the change)."""
     require_global_role(request, "researcher")
-    if not skill_manager.approve_proposal(proposal_id):
+    scoped_project_id = await _require_skill_project_scope(
+        db,
+        request,
+        project_id,
+        min_role="researcher",
+    )
+    if not skill_manager.approve_proposal(proposal_id, project_id=scoped_project_id):
         raise HTTPException(status_code=404, detail="Proposal not found or not pending")
     try:
         governance = await improvement_governance.get_proposal_by_source(
             source_system="skill_evolution",
             source_id=proposal_id,
+            project_id=scoped_project_id,
         )
         if governance and governance.status in {"draft", "proposed"}:
             await improvement_governance.approve_proposal(
@@ -320,6 +466,7 @@ async def approve_proposal(proposal_id: str, request: Request):
         governance = await improvement_governance.get_proposal_by_source(
             source_system="skill_evolution",
             source_id=proposal_id,
+            project_id=scoped_project_id,
         )
         if governance and governance.status == "approved":
             await improvement_governance.apply_proposal(
@@ -333,15 +480,32 @@ async def approve_proposal(proposal_id: str, request: Request):
 
 
 @router.post("/skills/proposals/{proposal_id}/reject")
-async def reject_proposal(proposal_id: str, request: Request, reason: str = ""):
+async def reject_proposal(
+    proposal_id: str,
+    request: Request,
+    reason: str = "",
+    project_id: str | None = None,
+    db: AsyncSession = Depends(get_db),
+):
     """Reject a skill improvement proposal."""
     require_global_role(request, "researcher")
-    if not skill_manager.reject_proposal(proposal_id, reason):
+    scoped_project_id = await _require_skill_project_scope(
+        db,
+        request,
+        project_id,
+        min_role="researcher",
+    )
+    if not skill_manager.reject_proposal(
+        proposal_id,
+        reason,
+        project_id=scoped_project_id,
+    ):
         raise HTTPException(status_code=404, detail="Proposal not found or not pending")
     try:
         governance = await improvement_governance.get_proposal_by_source(
             source_system="skill_evolution",
             source_id=proposal_id,
+            project_id=scoped_project_id,
         )
         if governance and governance.status in {"draft", "proposed", "approved"}:
             await improvement_governance.reject_proposal(

@@ -300,10 +300,17 @@ class ImprovementGovernanceEvidenceMixin:
         )
         return created.id
 
-    async def register_skill_update_proposal(self, proposal: dict) -> str | None:
+    async def register_skill_update_proposal(
+        self,
+        proposal: dict,
+        *,
+        project_id: str = "",
+    ) -> str | None:
+        scoped_project_id = str(proposal.get("project_id") or project_id or "")
         created = await self.create_proposal(
             source_system="skill_evolution",
             source_id=str(proposal.get("id", "")),
+            project_id=scoped_project_id,
             agent_id="skill-manager",
             title=f"Review skill update for {proposal.get('skill_name', 'skill')}",
             summary=str(proposal.get("reason", "")),
@@ -327,6 +334,7 @@ class ImprovementGovernanceEvidenceMixin:
             },
             evidence=[{
                 "kind": "skill_update_proposal",
+                "project_id": scoped_project_id,
                 "confidence": proposal.get("confidence"),
                 "created_at": proposal.get("created_at"),
             }],
@@ -335,11 +343,18 @@ class ImprovementGovernanceEvidenceMixin:
         )
         return created.id
 
-    async def register_skill_creation_proposal(self, proposal: dict) -> str | None:
+    async def register_skill_creation_proposal(
+        self,
+        proposal: dict,
+        *,
+        project_id: str = "",
+    ) -> str | None:
         definition = proposal.get("proposed_definition") or {}
+        scoped_project_id = str(proposal.get("project_id") or project_id or "")
         created = await self.create_proposal(
             source_system="memento_skill_factory",
             source_id=str(proposal.get("id", "")),
+            project_id=scoped_project_id,
             agent_id=str(proposal.get("source_agent_id", "skill-manager")),
             title=f"Review skill creation for {definition.get('name', 'new skill')}",
             summary=str(proposal.get("reason", "")),
@@ -353,6 +368,7 @@ class ImprovementGovernanceEvidenceMixin:
             },
             evidence=[{
                 "kind": "memento_skill_creation",
+                "project_id": scoped_project_id,
                 "confidence": proposal.get("confidence"),
                 "test_result": proposal.get("test_result"),
             }],

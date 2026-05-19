@@ -39,12 +39,14 @@ Skills Catalog exists so the work represented by Skills > Catalog has a stable, 
 
 - Start from Skills > Catalog when the current research task needs skills catalog.
 - Use the visible controls to create, inspect, refine, or route project work without leaving the active Istara context.
+- Inspect project-specific skill health, usage, and pending proposal counts for the active project.
 - Move to related surfaces when needed: skills.proposals, agents.registry.
 
 ## Inputs, Outputs, And Expected Outcomes
 
 - Project-scoped state or artifact updates associated with skills catalog.
 - Visible status, lists, forms, generated artifacts, or review results shown by the referenced component and routes.
+- Health and usage metrics shown in the catalog are fetched with the active `project_id`.
 
 ## Caveats
 

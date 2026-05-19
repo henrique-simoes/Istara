@@ -39,12 +39,14 @@ Create Skill exists so the work represented by Skills > Create has a stable, dis
 
 - Start from Skills > Create when the current research task needs create skill.
 - Use the visible controls to create, inspect, refine, or route project work without leaving the active Istara context.
+- Review autonomous creation proposals only for the active project before any generated skill can be approved.
 - Move to related surfaces when needed: skills.catalog, agents.create.
 
 ## Inputs, Outputs, And Expected Outcomes
 
 - Project-scoped state or artifact updates associated with create skill.
 - Visible status, lists, forms, generated artifacts, or review results shown by the referenced component and routes.
+- Verify, approve, and reject actions require the proposal's source project to match the active project.
 
 ## Caveats
 
