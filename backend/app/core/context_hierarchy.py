@@ -201,9 +201,22 @@ class ContextHierarchy:
         result = await db.execute(query)
         return list(result.scalars().all())
 
-    async def update_context(self, db: AsyncSession, doc_id: str, updates: dict) -> ContextDocument | None:
+    async def update_context(
+        self,
+        db: AsyncSession,
+        doc_id: str,
+        updates: dict,
+        *,
+        project_id: str | None = None,
+    ) -> ContextDocument | None:
         """Update a context document."""
-        result = await db.execute(select(ContextDocument).where(ContextDocument.id == doc_id))
+        scoped_project_id = self._normalize_project_id(project_id)
+        result = await db.execute(
+            select(ContextDocument).where(
+                ContextDocument.id == doc_id,
+                ContextDocument.project_id == scoped_project_id,
+            )
+        )
         doc = result.scalar_one_or_none()
         if not doc:
             return None
@@ -214,8 +227,20 @@ class ContextHierarchy:
         await db.refresh(doc)
         return doc
 
-    async def delete_context(self, db: AsyncSession, doc_id: str) -> bool:
-        result = await db.execute(select(ContextDocument).where(ContextDocument.id == doc_id))
+    async def delete_context(
+        self,
+        db: AsyncSession,
+        doc_id: str,
+        *,
+        project_id: str | None = None,
+    ) -> bool:
+        scoped_project_id = self._normalize_project_id(project_id)
+        result = await db.execute(
+            select(ContextDocument).where(
+                ContextDocument.id == doc_id,
+                ContextDocument.project_id == scoped_project_id,
+            )
+        )
         doc = result.scalar_one_or_none()
         if not doc:
             return False

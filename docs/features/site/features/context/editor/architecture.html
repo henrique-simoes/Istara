@@ -264,7 +264,8 @@
 <ul>
 <li>The feature is mounted through <code>frontend/src/components/projects/ContextEditor.tsx</code> and the UI navigation path recorded in the inventory.</li>
 <li>Context preview calls <code>/api/contexts/composed/{project_id}</code> for the active project. The route verifies project viewer access and the backend composer filters context rows by exact project id.</li>
-<li>Admin-only unscoped context maintenance may list unassigned rows, but those rows are not inherited by project prompt composition.</li>
+<li>Context document detail, update, and delete routes bind document ids to the supplied active <code>project_id</code>; a missing active project returns 400 for project-owned rows, and a document id from another authorized project returns 404 instead of following the record&#x27;s own project.</li>
+<li>Admin-only unscoped context maintenance may list or manage unassigned rows, but those rows are not inherited by project prompt composition.</li>
 <li>The frontmatter and manifest entries are the durable contract for agents updating this page after code changes.</li>
 <li>When the referenced component, store, route, agent, skill, or test behavior changes, regenerate and validate the feature documentation.</li>
 </ul>

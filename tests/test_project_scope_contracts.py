@@ -971,10 +971,8 @@ def test_context_hierarchy_project_composition_is_project_local() -> None:
     assert "(ContextDocument.project_id == \"\") |" not in core
     assert "ContextDocument.level <= 2" not in core
 
-    assert "scoped_project_id = str(project_id or \"\").strip()" in route
-    assert "await require_project_access(db, request, scoped_project_id, min_role=\"viewer\")" in route
-    assert "await require_project_access(db, request, scoped_project_id, min_role=\"researcher\")" in route
-    assert "composed = await context_hierarchy.compose_context(db, scoped_project_id)" in route
+    route_markers = ("scoped_project_id = str(project_id or \"\").strip()", "await require_project_access(db, request, scoped_project_id, min_role=\"viewer\")", "await require_project_access(db, request, scoped_project_id, min_role=\"researcher\")", "async def _get_active_context_or_404", "ContextDocument.id == doc_id,\n                ContextDocument.project_id == scoped_project_id", 'raise HTTPException(status_code=400, detail="project_id is required")', "project_id: str | None = Query(None, description=\"Active project\")", "project_id=scoped_project_id", "composed = await context_hierarchy.compose_context(db, scoped_project_id)")
+    assert all(marker in route for marker in route_markers)
 
     assert "Composed from active project context layers" in preview
     assert "context hierarchy prompt composition is project-local" in docs
