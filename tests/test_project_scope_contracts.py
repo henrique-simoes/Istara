@@ -209,6 +209,33 @@ def test_backend_deployments_enforce_project_owned_channels_and_conversations() 
     assert "if instance.id in channel_ids:" in inbound
 
 
+def test_research_integrity_by_id_routes_require_active_project_scope() -> None:
+    codebooks_route = read_repo("backend/app/api/routes/codebooks.py")
+    code_apps_route = read_repo("backend/app/api/routes/code_applications.py")
+    api = read_repo("frontend/src/lib/researchIntegrityApi.ts")
+    review_queue = read_repo("frontend/src/components/findings/CodeReviewQueue.tsx")
+
+    assert "async def _get_project_codebook_or_404" in codebooks_route
+    assert "async def _get_project_code_or_404" in codebooks_route
+    assert 'raise HTTPException(status_code=400, detail="project_id is required")' in codebooks_route
+    assert "Codebook.id == codebook_id, Codebook.project_id == scoped_project_id" in codebooks_route
+    assert ".join(Codebook, Codebook.id == Code.codebook_id)" in codebooks_route
+    assert "Code.id == code_id, Codebook.project_id == scoped_project_id" in codebooks_route
+    assert "project_id: str | None = Query(default=None)" in codebooks_route
+
+    assert "def _require_project_id(project_id: str | None) -> str:" in code_apps_route
+    assert 'raise HTTPException(status_code=400, detail="project_id is required")' in code_apps_route
+    assert "project_id: str | None = Query(default=None)" in code_apps_route
+    assert "CodeApplication.id == application_id" in code_apps_route
+    assert "CodeApplication.project_id == scoped_project_id" in code_apps_route
+    assert "await require_project_access(db, request, scoped_project_id, min_role=\"researcher\")" in code_apps_route
+
+    assert "review: (applicationId: string, reviewStatus: string, projectId: string" in api
+    assert "/api/code-applications/${applicationId}/review?project_id=${encodeURIComponent(projectId)}" in api
+    assert "codeAppApi.review(applicationId, status, projectId)" in review_queue
+    assert "}, [projectId]);" in review_queue
+
+
 def test_integrations_subtabs_defensively_filter_by_active_project() -> None:
     messaging = read_repo("frontend/src/components/integrations/MessagingTab.tsx")
     surveys = read_repo("frontend/src/components/integrations/SurveysTab.tsx")

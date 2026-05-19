@@ -224,7 +224,7 @@
       <h1>Findings Code Review</h1>
       <p class="lede">The Review tab presents code review queues for validating and adjudicating qualitative coding work.</p>
     </div>
-    <span class="status-chip">needs-verification</span>
+    <span class="status-chip">documented</span>
   </div>
   <nav class="audience-tabs" aria-label="Documentation audience">
     <a href="researcher.html" aria-current="page">Researcher</a>
@@ -233,8 +233,8 @@
   <dl class="meta-grid">
     <div><dt>UI Path</dt><dd>Findings &gt; Review</dd></div>
     <div><dt>Component</dt><dd><code>CodeReviewQueue</code></dd></div>
-    <div><dt>Source Refs</dt><dd>2</dd></div>
-    <div><dt>Tests</dt><dd>0</dd></div>
+    <div><dt>Source Refs</dt><dd>3</dd></div>
+    <div><dt>Tests</dt><dd>2</dd></div>
   </dl>
   <div class="link-cluster" aria-label="Related feature links"><a href="../codebook/researcher.html">Findings Codebook</a>
 <a href="../../tasks/review/researcher.html">Human Task Review</a></div>
@@ -265,6 +265,7 @@
 <h2 id="inputs-outputs-and-expected-outcomes">Inputs, Outputs, And Expected Outcomes</h2>
 <ul>
 <li>Project-scoped state or artifact updates associated with findings code review.</li>
+<li>Approve/reject actions carry the active project id so stale queue items or links from another project cannot change records in the current project.</li>
 <li>Visible status, lists, forms, generated artifacts, or review results shown by the referenced component and routes.</li>
 </ul>
 <h2 id="caveats">Caveats</h2>
@@ -283,9 +284,9 @@
 </ul>
 <h2 id="evidence">Evidence</h2>
 <ul>
-<li>Source files: <code>frontend/src/components/findings/FindingsView.tsx</code>, <code>frontend/src/components/findings/CodeReviewQueue.tsx</code></li>
-<li>API references: <code>backend/app/api/routes/codebooks.py</code></li>
-<li>Tests: none recorded</li>
+<li>Source files: <code>frontend/src/components/findings/FindingsView.tsx</code>, <code>frontend/src/components/findings/CodeReviewQueue.tsx</code>, <code>frontend/src/lib/researchIntegrityApi.ts</code></li>
+<li>API references: <code>backend/app/api/routes/code_applications.py</code>, <code>backend/app/api/routes/codebooks.py</code></li>
+<li>Tests: <code>tests/test_code_applications.py</code>, <code>tests/test_project_scope_contracts.py</code></li>
 </ul>
         </article>
         <aside class="toc-panel" aria-label="Page sections">

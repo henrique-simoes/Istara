@@ -20,6 +20,13 @@ class ReviewAction(BaseModel):
     reviewed_by: str | None = None
 
 
+def _require_project_id(project_id: str | None) -> str:
+    scoped_project_id = (project_id or "").strip()
+    if not scoped_project_id:
+        raise HTTPException(status_code=400, detail="project_id is required")
+    return scoped_project_id
+
+
 @router.get("/{project_id}")
 async def get_project_code_applications(
     project_id: str,
@@ -64,16 +71,21 @@ async def review_code_application(
     application_id: str,
     action: ReviewAction,
     request: Request,
+    project_id: str | None = Query(default=None),
     db: AsyncSession = Depends(get_db),
 ):
     """Review a code application (approve/reject/modify)."""
+    scoped_project_id = _require_project_id(project_id)
+    await require_project_access(db, request, scoped_project_id, min_role="researcher")
     result = await db.execute(
-        select(CodeApplication).where(CodeApplication.id == application_id)
+        select(CodeApplication).where(
+            CodeApplication.id == application_id,
+            CodeApplication.project_id == scoped_project_id,
+        )
     )
     ca = result.scalar_one_or_none()
     if not ca:
         raise HTTPException(status_code=404, detail="Code application not found")
-    await require_project_access(db, request, ca.project_id, min_role="researcher")
 
     if action.review_status not in ("approved", "rejected", "modified"):
         raise HTTPException(status_code=400, detail="Invalid review status")

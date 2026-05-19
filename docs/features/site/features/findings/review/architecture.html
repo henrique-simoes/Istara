@@ -224,7 +224,7 @@
       <h1>Findings Code Review</h1>
       <p class="lede">The Review tab presents code review queues for validating and adjudicating qualitative coding work.</p>
     </div>
-    <span class="status-chip">needs-verification</span>
+    <span class="status-chip">documented</span>
   </div>
   <nav class="audience-tabs" aria-label="Documentation audience">
     <a href="researcher.html">Researcher</a>
@@ -233,19 +233,20 @@
   <dl class="meta-grid">
     <div><dt>UI Path</dt><dd>Findings &gt; Review</dd></div>
     <div><dt>Component</dt><dd><code>CodeReviewQueue</code></dd></div>
-    <div><dt>Source Refs</dt><dd>2</dd></div>
-    <div><dt>Tests</dt><dd>0</dd></div>
+    <div><dt>Source Refs</dt><dd>3</dd></div>
+    <div><dt>Tests</dt><dd>2</dd></div>
   </dl>
   <div class="link-cluster" aria-label="Related feature links"><a href="../codebook/architecture.html">Findings Codebook</a>
 <a href="../../tasks/review/architecture.html">Human Task Review</a></div>
   <p class="concept-line"><strong>Concepts:</strong> triangulation</p>
 </header>
 <h2 id="implementation-summary">Implementation Summary</h2>
-<p>The Review tab presents code review queues for validating and adjudicating qualitative coding work.</p>
+<p>The Review tab presents code review queues for validating and adjudicating qualitative coding work. Review mutations pass the active project id and the backend binds each code-application id to that same project before applying reviewer decisions.</p>
 <h2 id="frontend-surface">Frontend Surface</h2>
 <ul>
 <li><code>frontend/src/components/findings/FindingsView.tsx</code></li>
 <li><code>frontend/src/components/findings/CodeReviewQueue.tsx</code></li>
+<li><code>frontend/src/lib/researchIntegrityApi.ts</code></li>
 </ul>
 <h2 id="state-api-and-backend-contracts">State, API, And Backend Contracts</h2>
 <h3 id="stores">Stores</h3>
@@ -254,6 +255,7 @@
 </ul>
 <h3 id="api-and-backend">API And Backend</h3>
 <ul>
+<li><code>backend/app/api/routes/code_applications.py</code></li>
 <li><code>backend/app/api/routes/codebooks.py</code></li>
 </ul>
 <h2 id="architecture-notes">Architecture Notes</h2>
@@ -264,11 +266,12 @@
 </ul>
 <h2 id="agents-skills-llm-mcp-and-permissions">Agents, Skills, LLM, MCP, And Permissions</h2>
 <ul>
-<li>No direct agent, skill, LLM, or MCP behavior is asserted beyond the cited source files.</li>
+<li>Code review is a project-content surface. Pending queues, bulk approval, and review mutations must stay inside the caller&#x27;s authorized active project and must not infer project scope from a globally unique application id.</li>
 </ul>
 <h2 id="tests-and-verification">Tests And Verification</h2>
 <ul>
-<li>No focused test reference recorded yet.</li>
+<li><code>tests/test_code_applications.py</code></li>
+<li><code>tests/test_project_scope_contracts.py</code></li>
 </ul>
 <h2 id="related-features">Related Features</h2>
 <ul>
@@ -281,7 +284,7 @@
 </ul>
 <h2 id="compass-evidence">Compass Evidence</h2>
 <ul>
-<li>Spec/task: CF-SPEC-53 / CF-657</li>
+<li>Spec/task: CF-SPEC-78 / CF-1005</li>
 <li>Inventory source: <code>docs/features/inventory.json</code></li>
 </ul>
 <h2 id="when-to-update">When To Update</h2>

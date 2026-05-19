@@ -316,6 +316,25 @@ def test_security_benchmark_detects_findings_project_scope_paths() -> None:
     assert result.scorecard["triggered_paths"] == sorted(changed_paths)
 
 
+def test_security_benchmark_detects_research_integrity_project_scope_paths() -> None:
+    matrix = load_matrix(ROOT / "security" / "control_matrix.json")
+
+    changed_paths = [
+        "backend/app/api/routes/code_applications.py",
+        "backend/app/api/routes/codebooks.py",
+        "frontend/src/components/findings/CodeReviewQueue.tsx",
+        "frontend/src/lib/researchIntegrityApi.ts",
+        "tests/test_code_applications.py",
+        "tests/test_codebooks.py",
+        "tests/test_project_scope_contracts.py",
+    ]
+    result = evaluate_matrix(matrix, changed_paths=changed_paths)
+
+    assert result.passed is True
+    assert result.scorecard["auth_security_change_detected"] is True
+    assert result.scorecard["triggered_paths"] == sorted(changed_paths)
+
+
 def test_security_benchmark_detects_task_project_scope_paths() -> None:
     matrix = load_matrix(ROOT / "security" / "control_matrix.json")
 

@@ -6,23 +6,24 @@ audience: architecture
 status: needs-verification
 related_features: ["findings.codebook", "tasks.review"]
 related_glossary: ["triangulation"]
-code_references: ["frontend/src/components/findings/FindingsView.tsx", "frontend/src/components/findings/CodeReviewQueue.tsx"]
-api_references: ["backend/app/api/routes/codebooks.py"]
-test_references: []
-last_verified: 2026-05-15
-compass: CF-SPEC-53 / CF-657
+code_references: ["frontend/src/components/findings/FindingsView.tsx", "frontend/src/components/findings/CodeReviewQueue.tsx", "frontend/src/lib/researchIntegrityApi.ts"]
+api_references: ["backend/app/api/routes/code_applications.py", "backend/app/api/routes/codebooks.py"]
+test_references: ["tests/test_code_applications.py", "tests/test_project_scope_contracts.py"]
+last_verified: 2026-05-19
+compass: CF-SPEC-78 / CF-1005
 ---
 
 # Findings Code Review Architecture
 
 ## Implementation Summary
 
-The Review tab presents code review queues for validating and adjudicating qualitative coding work.
+The Review tab presents code review queues for validating and adjudicating qualitative coding work. Review mutations pass the active project id and the backend binds each code-application id to that same project before applying reviewer decisions.
 
 ## Frontend Surface
 
 - `frontend/src/components/findings/FindingsView.tsx`
 - `frontend/src/components/findings/CodeReviewQueue.tsx`
+- `frontend/src/lib/researchIntegrityApi.ts`
 
 ## State, API, And Backend Contracts
 
@@ -32,6 +33,7 @@ The Review tab presents code review queues for validating and adjudicating quali
 
 ### API And Backend
 
+- `backend/app/api/routes/code_applications.py`
 - `backend/app/api/routes/codebooks.py`
 
 ## Architecture Notes
@@ -42,11 +44,12 @@ The Review tab presents code review queues for validating and adjudicating quali
 
 ## Agents, Skills, LLM, MCP, And Permissions
 
-- No direct agent, skill, LLM, or MCP behavior is asserted beyond the cited source files.
+- Code review is a project-content surface. Pending queues, bulk approval, and review mutations must stay inside the caller's authorized active project and must not infer project scope from a globally unique application id.
 
 ## Tests And Verification
 
-- No focused test reference recorded yet.
+- `tests/test_code_applications.py`
+- `tests/test_project_scope_contracts.py`
 
 ## Related Features
 
@@ -59,7 +62,7 @@ The Review tab presents code review queues for validating and adjudicating quali
 
 ## Compass Evidence
 
-- Spec/task: CF-SPEC-53 / CF-657
+- Spec/task: CF-SPEC-78 / CF-1005
 - Inventory source: `docs/features/inventory.json`
 
 ## When To Update

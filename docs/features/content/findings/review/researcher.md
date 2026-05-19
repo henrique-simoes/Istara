@@ -6,11 +6,11 @@ audience: researcher
 status: needs-verification
 related_features: ["findings.codebook", "tasks.review"]
 related_glossary: ["triangulation"]
-code_references: ["frontend/src/components/findings/FindingsView.tsx", "frontend/src/components/findings/CodeReviewQueue.tsx"]
-api_references: ["backend/app/api/routes/codebooks.py"]
-test_references: []
-last_verified: 2026-05-15
-compass: CF-SPEC-53 / CF-657
+code_references: ["frontend/src/components/findings/FindingsView.tsx", "frontend/src/components/findings/CodeReviewQueue.tsx", "frontend/src/lib/researchIntegrityApi.ts"]
+api_references: ["backend/app/api/routes/code_applications.py", "backend/app/api/routes/codebooks.py"]
+test_references: ["tests/test_code_applications.py", "tests/test_project_scope_contracts.py"]
+last_verified: 2026-05-19
+compass: CF-SPEC-78 / CF-1005
 ---
 
 # Findings Code Review
@@ -44,6 +44,7 @@ Findings Code Review exists so the work represented by Findings > Review has a s
 ## Inputs, Outputs, And Expected Outcomes
 
 - Project-scoped state or artifact updates associated with findings code review.
+- Approve/reject actions carry the active project id so stale queue items or links from another project cannot change records in the current project.
 - Visible status, lists, forms, generated artifacts, or review results shown by the referenced component and routes.
 
 ## Caveats
@@ -62,6 +63,6 @@ Findings Code Review exists so the work represented by Findings > Review has a s
 
 ## Evidence
 
-- Source files: `frontend/src/components/findings/FindingsView.tsx`, `frontend/src/components/findings/CodeReviewQueue.tsx`
-- API references: `backend/app/api/routes/codebooks.py`
-- Tests: none recorded
+- Source files: `frontend/src/components/findings/FindingsView.tsx`, `frontend/src/components/findings/CodeReviewQueue.tsx`, `frontend/src/lib/researchIntegrityApi.ts`
+- API references: `backend/app/api/routes/code_applications.py`, `backend/app/api/routes/codebooks.py`
+- Tests: `tests/test_code_applications.py`, `tests/test_project_scope_contracts.py`
