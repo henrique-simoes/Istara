@@ -231,7 +231,7 @@ async def _reasoning_memory_boosts(
     return boosts
 
 
-def _meta_hyperagent_notes() -> list[str]:
+def _meta_hyperagent_notes(project_id: str) -> list[str]:
     module = sys.modules.get("app.core.meta_hyperagent")
     meta_hyperagent = getattr(module, "meta_hyperagent", None) if module else None
     if meta_hyperagent is None:
@@ -239,10 +239,10 @@ def _meta_hyperagent_notes() -> list[str]:
 
     try:
         notes: list[str] = []
-        for variant in meta_hyperagent.get_active_variants():
+        for variant in meta_hyperagent.get_active_variants(project_id=project_id):
             if variant.get("target_system") == "skill_selection":
                 notes.append(f"meta_variant:{variant.get('parameter_path')}")
-        recent = meta_hyperagent.get_recent_observations(limit=1)
+        recent = meta_hyperagent.get_recent_observations(limit=1, project_id=project_id)
         if recent:
             selection = recent[-1].get("skill_selection") or {}
             if selection.get("success_rate") is not None:
@@ -297,7 +297,7 @@ async def rank_skill_candidates(
             )
 
     for skill in all_skills:
-        stats = skill_manager.get_usage_stats(skill.name)
+        stats = skill_manager.get_usage_stats(skill.name, project_id=project_id)
         executions = int(stats.get("executions", 0) or 0)
         if executions <= 0:
             continue
@@ -345,7 +345,7 @@ async def rank_skill_candidates(
         except Exception as exc:
             logger.debug("Semantic skill candidate boost skipped: %s", exc)
 
-    meta_notes = _meta_hyperagent_notes()
+    meta_notes = _meta_hyperagent_notes(project_id)
     if meta_notes:
         for candidate in candidates.values():
             candidate.reasons.extend(note for note in meta_notes if note not in candidate.reasons)

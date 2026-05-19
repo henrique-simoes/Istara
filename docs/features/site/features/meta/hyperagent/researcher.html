@@ -241,7 +241,7 @@
   <p class="concept-line"><strong>Concepts:</strong> a2a, compass-forge</p>
 </header>
 <h2 id="what-it-does">What It Does</h2>
-<p>The Meta-Agent surface exposes the meta-hyperagent system for inspecting or governing higher-level agentic improvement behavior.</p>
+<p>The Meta-Agent surface exposes the meta-hyperagent system for inspecting or governing higher-level agentic improvement behavior for the active project.</p>
 <h2 id="why-it-exists">Why It Exists</h2>
 <p>Meta-Agent exists so the work represented by Meta-Agent has a stable, discoverable place in Istara&#x27;s project workflow. It keeps user actions, generated artifacts, and related follow-up surfaces connected to the active project rather than scattering them across unrelated tools.</p>
 <h2 id="where-it-lives">Where It Lives</h2>
@@ -253,7 +253,7 @@
 <h2 id="how-ux-researchers-use-it">How UX Researchers Use It</h2>
 <ul>
 <li>Open Meta-Agent from the Istara navigation or the parent tab.</li>
-<li>Use the visible controls in this surface to work with meta-agent in the active project context.</li>
+<li>Use the visible controls in this surface to work with meta-agent in the active project context; no proposal, variant, or observation list is loaded without an active project.</li>
 <li>Review the output in the same view and follow the related feature links when the workflow moves into another Istara surface.</li>
 </ul>
 <h2 id="supported-workflows">Supported Workflows</h2>
@@ -264,12 +264,13 @@
 </ul>
 <h2 id="inputs-outputs-and-expected-outcomes">Inputs, Outputs, And Expected Outcomes</h2>
 <ul>
-<li>Project-scoped state or artifact updates associated with meta-agent.</li>
+<li>Project-scoped observations, proposals, variants, and review actions associated with meta-agent.</li>
 <li>Visible status, lists, forms, generated artifacts, or review results shown by the referenced component and routes.</li>
 </ul>
 <h2 id="caveats">Caveats</h2>
 <ul>
 <li>Needs interactive verification for exact empty, loading, error, and permission-denied states.</li>
+<li>Meta-Hyperagent state is not a global project feed. If a project has no observations or proposals, it should render empty even when other projects have active history.</li>
 <li>Do not expand this documentation beyond the cited source files without adding new code or walkthrough evidence.</li>
 </ul>
 <h2 id="related-features">Related Features</h2>
@@ -284,9 +285,9 @@
 </ul>
 <h2 id="evidence">Evidence</h2>
 <ul>
-<li>Source files: <code>frontend/src/components/meta/MetaHyperagentView.tsx</code>, <code>backend/app/api/routes/meta_hyperagent.py</code>, <code>backend/app/core/meta_hyperagent.py</code></li>
+<li>Source files: <code>frontend/src/components/meta/MetaHyperagentView.tsx</code>, <code>backend/app/api/routes/meta_hyperagent.py</code>, <code>backend/app/core/meta_hyperagent.py</code>, <code>backend/app/skills/skill_usage.py</code></li>
 <li>API references: <code>backend/app/api/routes/meta_hyperagent.py</code></li>
-<li>Tests: none recorded</li>
+<li>Tests: <code>tests/test_meta_hyperagent.py</code>, <code>tests/test_project_scope_contracts.py</code>, <code>tests/test_security_benchmark.py</code></li>
 </ul>
         </article>
         <aside class="toc-panel" aria-label="Page sections">

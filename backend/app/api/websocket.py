@@ -341,14 +341,20 @@ async def broadcast_backup_event(event: str, backup_id: str, details: Optional[d
 
 
 async def broadcast_meta_proposal(
-    proposal_id: str, target_system: str, reason: str
+    proposal_id: str,
+    target_system: str,
+    reason: str,
+    project_id: str | None = None,
 ) -> None:
     """Broadcast a meta-hyperagent proposal notification."""
-    await manager.broadcast("meta_proposal", {
+    data = {
         "proposal_id": proposal_id,
         "target_system": target_system,
         "reason": reason,
-    })
+    }
+    if project_id:
+        data["project_id"] = project_id
+    await manager.broadcast("meta_proposal", data)
 
 
 async def broadcast_deployment_response(

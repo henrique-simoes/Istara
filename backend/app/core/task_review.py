@@ -297,7 +297,12 @@ async def record_review_side_effects(event: TaskReviewEvent, score: float | None
         try:
             from app.skills.skill_manager import skill_manager
 
-            skill_manager.record_execution(event.skill_name, event.outcome == APPROVED, score)
+            skill_manager.record_execution(
+                event.skill_name,
+                event.outcome == APPROVED,
+                score,
+                project_id=event.project_id,
+            )
         except Exception as exc:
             logger.debug(f"Review skill-manager side effect failed: {exc}")
 

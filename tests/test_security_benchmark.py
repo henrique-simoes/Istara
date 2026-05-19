@@ -241,6 +241,24 @@ def test_security_benchmark_detects_governed_evolution_project_scope_paths() -> 
     assert result.scorecard["triggered_paths"] == sorted(changed_paths)
 
 
+def test_security_benchmark_detects_meta_hyperagent_project_scope_paths() -> None:
+    matrix = load_matrix(ROOT / "security" / "control_matrix.json")
+
+    changed_paths = [
+        "backend/app/api/routes/meta_hyperagent.py",
+        "backend/app/core/meta_hyperagent.py",
+        "backend/app/skills/skill_usage.py",
+        "frontend/src/components/meta/MetaHyperagentView.tsx",
+        "frontend/src/lib/types.ts",
+        "tests/test_meta_hyperagent.py",
+    ]
+    result = evaluate_matrix(matrix, changed_paths=changed_paths)
+
+    assert result.passed is True
+    assert result.scorecard["auth_security_change_detected"] is True
+    assert result.scorecard["triggered_paths"] == sorted(changed_paths)
+
+
 def test_security_benchmark_detects_context_hierarchy_project_scope_paths() -> None:
     matrix = load_matrix(ROOT / "security" / "control_matrix.json")
 

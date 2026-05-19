@@ -252,6 +252,46 @@ def test_agents_a2a_project_view_passes_active_project_id() -> None:
     assert "messages = await a2a.get_full_log(db, limit, project_id=project_id)" in route
 
 
+def test_meta_hyperagent_surfaces_require_active_project_scope() -> None:
+    api = read_repo("frontend/src/lib/api.ts")
+    view = read_repo("frontend/src/components/meta/MetaHyperagentView.tsx")
+    route = read_repo("backend/app/api/routes/meta_hyperagent.py")
+    core = read_repo("backend/app/core/meta_hyperagent.py")
+    main = read_repo("backend/app/main.py")
+    usage = read_repo("backend/app/skills/skill_usage.py")
+
+    assert "status: (projectId: string)" in api
+    assert "/api/meta-hyperagent/status?project_id=${encodeURIComponent(projectId)}" in api
+    assert "proposals: (projectId: string)" in api
+    assert "toggle: (enabled: boolean, projectId: string)" in api
+
+    assert 'import { useProjectStore } from "@/stores/projectStore";' in view
+    assert "const { activeProjectId } = useProjectStore();" in view
+    assert "if (!activeProjectId)" in view
+    assert "metaApi.status(activeProjectId)" in view
+    assert "metaApi.proposals(activeProjectId)" in view
+    assert "metaApi.toggle(!status.enabled, activeProjectId)" in view
+
+    assert "async def _require_admin_project_scope" in route
+    assert 'raise HTTPException(status_code=400, detail="project_id is required")' in route
+    assert "await get_visible_project_or_404(db, request, scoped_project_id, min_role=\"viewer\")" in route
+    assert "meta_hyperagent.get_pending_proposals(project_id=scoped_project_id)" in route
+    assert "meta_hyperagent.start(project_id=scoped_project_id)" in route
+    assert "project_id=project_id" in route
+
+    assert "project_id: str = \"\"" in core
+    assert "async def observe_cycle(self, project_id: str | None = None)" in core
+    assert "reasoning_bank.summary(\n                project_id=scoped_project_id" in core
+    assert "skill_manager.get_usage_stats(project_id=scoped_project_id)" in core
+    assert "self._matches_project(p, scoped_project_id)" in core
+    assert "register_meta_proposal(\n                        asdict(proposal),\n                        project_id=scoped_project_id" in core
+
+    assert "Meta-Hyperagent is project-scoped" in main
+    assert "mh.start()" not in main
+    assert "project_id: str | None = None" in usage
+    assert "projects = stats.setdefault(\"projects\", {})" in usage
+
+
 def test_chat_sessions_require_active_project_scope() -> None:
     sessions_api = read_repo("frontend/src/lib/sessionsApi.ts")
     session_store = read_repo("frontend/src/stores/sessionStore.ts")

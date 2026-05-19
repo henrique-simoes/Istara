@@ -275,10 +275,12 @@ async def test_autoresearch_kept_experiment_registers_governance_proposal():
 async def test_hyperagent_proposal_registers_governance_contract():
     await init_db()
     meta_proposal_id = f"mp_test_{uuid.uuid4().hex[:12]}"
+    project_id = "project-hyperagent-governance"
 
     proposal_id = await improvement_governance.register_meta_proposal(
         {
             "id": meta_proposal_id,
+            "project_id": project_id,
             "target_system": "skill_selection",
             "parameter_path": "agent.skill_similarity_threshold",
             "current_value": 0.6,
@@ -293,12 +295,17 @@ async def test_hyperagent_proposal_registers_governance_contract():
     proposal = await improvement_governance.get_proposal_by_source(
         source_system="hyperagent",
         source_id=meta_proposal_id,
+        project_id=project_id,
     )
     assert proposal is not None
     assert proposal.id == proposal_id
+    assert proposal.project_id == project_id
     assert proposal.status == "proposed"
     assert set(proposal.get_affected_surfaces()) >= {"skills", "orchestration", "configs"}
-    variants = await dgmh_archive.list_variants(source_system="hyperagent")
+    variants = await dgmh_archive.list_variants(
+        source_system="hyperagent",
+        project_id=project_id,
+    )
     assert any(item["governance_proposal_id"] == proposal.id for item in variants)
 
 

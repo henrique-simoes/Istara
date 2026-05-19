@@ -416,7 +416,12 @@ class AgentExecutionMixin:
                 )
 
             # Record skill usage and check health for self-evolution
-            skill_manager.record_execution(skill.name, output.success, quality_score)
+            skill_manager.record_execution(
+                skill.name,
+                output.success,
+                quality_score,
+                project_id=task.project_id,
+            )
             try:
                 health = skill_manager.get_skill_health(skill.name)
                 # LLM-based skill improvement when quality is consistently low
@@ -647,7 +652,7 @@ class AgentExecutionMixin:
     ) -> None:
         """Check if the agent should propose creating a new skill based on this task."""
         # Maturity gate: agent must have executed 5+ tasks
-        usage = skill_manager.get_usage_stats()
+        usage = skill_manager.get_usage_stats(project_id=task.project_id)
         total_executions = sum(s.get("executions", 0) for s in usage.values())
         if total_executions < 5:
             return

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   Sparkles,
   AlertTriangle,
@@ -18,6 +18,7 @@ import { metaHyperagent as metaApi } from "@/lib/api";
 import type { MetaProposal, MetaVariant, MetaHyperagentStatus } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import ViewOnboarding from "@/components/common/ViewOnboarding";
+import { useProjectStore } from "@/stores/projectStore";
 
 function timeAgo(dateStr: string): string {
   const now = new Date();
@@ -64,6 +65,7 @@ const SYSTEM_COLORS: Record<string, string> = {
 };
 
 export default function MetaHyperagentView() {
+  const { activeProjectId } = useProjectStore();
   const [status, setStatus] = useState<MetaHyperagentStatus | null>(null);
   const [proposals, setProposals] = useState<MetaProposal[]>([]);
   const [variants, setVariants] = useState<MetaVariant[]>([]);
@@ -72,14 +74,22 @@ export default function MetaHyperagentView() {
   const [toggling, setToggling] = useState(false);
   const [actionLoading, setActionLoading] = useState<Record<string, boolean>>({});
 
-  const fetchAll = async () => {
+  const fetchAll = useCallback(async () => {
+    if (!activeProjectId) {
+      setStatus(null);
+      setProposals([]);
+      setVariants([]);
+      setObservations(null);
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     try {
       const [st, props, vars, obs] = await Promise.all([
-        metaApi.status().catch(() => null),
-        metaApi.proposals().catch(() => []),
-        metaApi.variants().catch(() => []),
-        metaApi.observations().catch(() => null),
+        metaApi.status(activeProjectId).catch(() => null),
+        metaApi.proposals(activeProjectId).catch(() => []),
+        metaApi.variants(activeProjectId).catch(() => []),
+        metaApi.observations(activeProjectId).catch(() => null),
       ]);
       if (st) setStatus(st);
       const proposalArr = Array.isArray(props) ? props : (props as any)?.proposals || [];
@@ -91,18 +101,18 @@ export default function MetaHyperagentView() {
       console.error("Failed to load meta-hyperagent data:", e);
     }
     setLoading(false);
-  };
+  }, [activeProjectId]);
 
   useEffect(() => {
     fetchAll();
-  }, []);
+  }, [fetchAll]);
 
   const handleToggle = async () => {
-    if (!status) return;
+    if (!status || !activeProjectId) return;
     setToggling(true);
     try {
-      await metaApi.toggle(!status.enabled);
-      const st = await metaApi.status();
+      await metaApi.toggle(!status.enabled, activeProjectId);
+      const st = await metaApi.status(activeProjectId);
       setStatus(st);
     } catch (e) {
       console.error("Failed to toggle:", e);
@@ -111,9 +121,10 @@ export default function MetaHyperagentView() {
   };
 
   const handleApprove = async (id: string) => {
+    if (!activeProjectId) return;
     setActionLoading((prev) => ({ ...prev, [`approve-${id}`]: true }));
     try {
-      await metaApi.approveProposal(id);
+      await metaApi.approveProposal(id, activeProjectId);
       await fetchAll();
     } catch (e) {
       console.error("Failed to approve:", e);
@@ -122,9 +133,10 @@ export default function MetaHyperagentView() {
   };
 
   const handleReject = async (id: string) => {
+    if (!activeProjectId) return;
     setActionLoading((prev) => ({ ...prev, [`reject-${id}`]: true }));
     try {
-      await metaApi.rejectProposal(id);
+      await metaApi.rejectProposal(id, activeProjectId);
       await fetchAll();
     } catch (e) {
       console.error("Failed to reject:", e);
@@ -133,9 +145,10 @@ export default function MetaHyperagentView() {
   };
 
   const handleRevert = async (id: string) => {
+    if (!activeProjectId) return;
     setActionLoading((prev) => ({ ...prev, [`revert-${id}`]: true }));
     try {
-      await metaApi.revertVariant(id);
+      await metaApi.revertVariant(id, activeProjectId);
       await fetchAll();
     } catch (e) {
       console.error("Failed to revert:", e);
@@ -144,9 +157,10 @@ export default function MetaHyperagentView() {
   };
 
   const handleConfirm = async (id: string) => {
+    if (!activeProjectId) return;
     setActionLoading((prev) => ({ ...prev, [`confirm-${id}`]: true }));
     try {
-      await metaApi.confirmVariant(id);
+      await metaApi.confirmVariant(id, activeProjectId);
       await fetchAll();
     } catch (e) {
       console.error("Failed to confirm:", e);
@@ -159,6 +173,22 @@ export default function MetaHyperagentView() {
       <div className="flex-1 flex items-center justify-center text-slate-400">
         <RefreshCw size={20} className="animate-spin mr-2" />
         Loading meta-hyperagent data...
+      </div>
+    );
+  }
+
+  if (!activeProjectId) {
+    return (
+      <div className="flex-1 overflow-y-auto p-6 max-w-4xl mx-auto space-y-6">
+        <div className="flex items-center gap-3">
+          <Sparkles size={24} className="text-istara-600 dark:text-istara-400" />
+          <h2 className="text-lg font-semibold text-slate-900 dark:text-white">
+            Meta-Hyperagent
+          </h2>
+        </div>
+        <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-5 text-sm text-slate-500 dark:text-slate-400">
+          Select a project to review Meta-Hyperagent observations, proposals, and variants.
+        </div>
       </div>
     );
   }

@@ -326,7 +326,12 @@ class AgentResearchMixin:
             timeout_seconds=settings.agent_react_skill_tool_timeout_seconds,
         )
 
-        skill_manager.record_execution(skill_name, output.success, 0.8 if output.success else 0.2)
+        skill_manager.record_execution(
+            skill_name,
+            output.success,
+            0.8 if output.success else 0.2,
+            project_id=project.id,
+        )
         task.skill_name = skill_name
         if output.success:
             try:
@@ -1129,7 +1134,10 @@ class AgentResearchMixin:
                     logger.warning("Failed to store findings for %s: %s", skill_name, store_err)
 
                 skill_manager.record_execution(
-                    skill_name, output.success, 0.8 if output.success else 0.2
+                    skill_name,
+                    output.success,
+                    0.8 if output.success else 0.2,
+                    project_id=project_id,
                 )
 
                 if verified:
