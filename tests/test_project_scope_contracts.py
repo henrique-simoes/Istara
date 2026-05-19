@@ -552,6 +552,11 @@ def test_compute_pool_requires_active_project_scope() -> None:
     view = read_repo("frontend/src/components/common/ComputePoolView.tsx")
     route = read_repo("backend/app/api/routes/compute.py")
     admin_route = read_repo("backend/app/api/routes/admin.py")
+    node_invocation = read_repo("backend/app/core/compute_node_invocation.py")
+    chat_stream_body = node_invocation.split("    async def chat_stream(", 1)[1].split(
+        "    async def embed(",
+        1,
+    )[0]
 
     assert "nodes: (projectId: string)" in api
     assert "stats: (projectId: string)" in api
@@ -584,6 +589,7 @@ def test_compute_pool_requires_active_project_scope() -> None:
     assert "authorized_project_count" in route
     assert "is_global_admin" not in route
     assert "all nodes for global admins" not in route
+    assert "project_id = self._authorized_project_for_content_dispatch(project_id)" in chat_stream_body
 
     assert 'computeStats: () => get<any>("/api/admin/compute/stats")' in api
     assert '@router.get("/compute/stats")' in admin_route
