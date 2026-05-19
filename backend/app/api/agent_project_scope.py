@@ -100,6 +100,38 @@ async def require_project_owned_agent(
     return agent
 
 
+async def require_agent_assignable_to_project(
+    db: AsyncSession,
+    request: Request,
+    agent_id: str | None,
+    project_id: str | None,
+    *,
+    min_role: str = "viewer",
+) -> Agent | None:
+    """Return an active agent that may be attached to project-scoped chat."""
+    cleaned_agent_id = (agent_id or "").strip()
+    if not cleaned_agent_id:
+        return None
+
+    scoped_project_id = clean_project_id(project_id)
+    if not scoped_project_id:
+        raise HTTPException(status_code=400, detail="project_id is required")
+
+    await require_project_access(db, request, scoped_project_id, min_role=min_role)
+    agent = await load_agent_or_404(db, cleaned_agent_id)
+    owned_project_id = agent_project_id(agent)
+    scope = (agent.scope or "universal").strip() or "universal"
+
+    if not agent.is_active:
+        raise HTTPException(status_code=404, detail="Agent not found")
+    if owned_project_id and owned_project_id != scoped_project_id:
+        raise HTTPException(status_code=404, detail="Agent not found")
+    if scope == "project" and owned_project_id != scoped_project_id:
+        raise HTTPException(status_code=404, detail="Agent not found")
+
+    return agent
+
+
 async def require_agent_collection_scope(
     db: AsyncSession,
     request: Request,

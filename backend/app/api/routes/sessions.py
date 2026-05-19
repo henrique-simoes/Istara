@@ -10,6 +10,7 @@ from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import delete, select, func, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.api.agent_project_scope import require_agent_assignable_to_project
 from app.models.database import get_db
 from app.models.session import ChatSession, InferencePreset, INFERENCE_PRESETS
 from app.models.message import Message
@@ -110,12 +111,19 @@ async def list_sessions(
 async def create_session(data: CreateSessionRequest, request: Request, db: AsyncSession = Depends(get_db)):
     """Create a new chat session."""
     await require_project_access(db, request, data.project_id, min_role="researcher")
+    assigned_agent = await require_agent_assignable_to_project(
+        db,
+        request,
+        data.agent_id,
+        data.project_id,
+        min_role="viewer",
+    )
 
     session = ChatSession(
         id=str(uuid.uuid4()),
         project_id=data.project_id,
         title=data.title,
-        agent_id=data.agent_id,
+        agent_id=assigned_agent.id if assigned_agent else None,
         model_override=data.model_override,
         inference_preset=data.inference_preset,
         thinking_mode=normalize_thinking_mode(data.thinking_mode),
@@ -185,6 +193,15 @@ async def update_session(
     for key, value in updates.items():
         if key == "thinking_mode":
             value = normalize_thinking_mode(value)
+        elif key == "agent_id":
+            assigned_agent = await require_agent_assignable_to_project(
+                db,
+                request,
+                value,
+                session.project_id,
+                min_role="viewer",
+            )
+            value = assigned_agent.id if assigned_agent else None
         setattr(session, key, value)
 
     await db.commit()

@@ -267,6 +267,7 @@
 <li><code>sessionStore</code> persists active session ids under per-project keys, clears session state on project switches, and only restores a saved id if that id exists in the active project&#x27;s fetched sessions.</li>
 <li><code>sessionsApi.get</code>, <code>update</code>, <code>delete</code>, and <code>star</code> all include <code>project_id</code>; the backend verifies access to that active project and then looks up the chat session with both <code>ChatSession.id</code> and <code>ChatSession.project_id</code>.</li>
 <li>Session detail responses load messages with both <code>Message.session_id</code> and <code>Message.project_id</code>, and a cross-project active scope returns 404 instead of revealing that another project&#x27;s session exists.</li>
+<li>Session create and update validate <code>agent_id</code> against the same active project before storing it. Universal system agents are allowed; project-owned agents from another project, inactive agents, and orphaned project-scoped agents are rejected.</li>
 <li>The sidebar derives <code>scopedSessions</code> from the active project before rendering rows, counts, and actions.</li>
 <li>The frontmatter and manifest entries are the durable contract for agents updating this page after code changes.</li>
 <li>When the referenced component, store, route, agent, skill, or test behavior changes, regenerate and validate the feature documentation.</li>
@@ -274,6 +275,7 @@
 <h2 id="agents-skills-llm-mcp-and-permissions">Agents, Skills, LLM, MCP, And Permissions</h2>
 <ul>
 <li>RAG-related behavior depends on project context, documents, memory, or retrieval material referenced by the cited stores and routes.</li>
+<li>Agent-specific chat personas are only valid when the selected session agent is universal or belongs to the active project.</li>
 </ul>
 <h2 id="tests-and-verification">Tests And Verification</h2>
 <ul>
@@ -291,7 +293,7 @@
 </ul>
 <h2 id="compass-evidence">Compass Evidence</h2>
 <ul>
-<li>Spec/task: CF-SPEC-60 / CF-761</li>
+<li>Spec/task: CF-SPEC-84 / CF-1089</li>
 <li>Inventory source: <code>docs/features/inventory.json</code></li>
 </ul>
 <h2 id="when-to-update">When To Update</h2>

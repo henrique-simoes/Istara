@@ -26,6 +26,7 @@ from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.api.agent_project_scope import require_agent_assignable_to_project
 from app.config import settings
 from app.core.agent import agent
 from app.core.agent_identity import load_agent_identity, get_agent_display_name
@@ -40,7 +41,6 @@ from app.core.token_counter import context_guard
 from app.models.database import get_db, async_session
 
 _guard = ContentGuard()
-from app.models.agent import Agent
 from app.models.message import Message
 from app.models.project import Project
 from app.models.session import ChatSession, INFERENCE_PRESETS
@@ -465,6 +465,14 @@ async def chat(request: ChatRequest, http_request: Request, db: AsyncSession = D
         # persona sections based on the user's message)
         session_agent_id = session.agent_id
         if session_agent_id:
+            assigned_agent = await require_agent_assignable_to_project(
+                db,
+                http_request,
+                session_agent_id,
+                request.project_id,
+                min_role="viewer",
+            )
+            session_agent_id = assigned_agent.id if assigned_agent else None
             try:
                 agent_identity_prompt = await compose_dynamic_prompt(
                     session_agent_id,
@@ -482,12 +490,8 @@ async def chat(request: ChatRequest, http_request: Request, db: AsyncSession = D
                 )
             else:
                 # Fallback: load system_prompt from DB agent record
-                agent_result = await db.execute(
-                    select(Agent).where(Agent.id == session_agent_id)
-                )
-                db_agent = agent_result.scalar_one_or_none()
-                if db_agent and db_agent.system_prompt:
-                    agent_identity_prompt = db_agent.system_prompt
+                if assigned_agent and assigned_agent.system_prompt:
+                    agent_identity_prompt = assigned_agent.system_prompt
 
         # Update session message count and last_message_at
         session.message_count = (session.message_count or 0) + 1
