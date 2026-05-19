@@ -255,6 +255,8 @@
 <h3 id="api-and-backend">API And Backend</h3>
 <ul>
 <li><code>backend/app/api/routes/documents.py</code></li>
+<li>Preview content requests require an explicit active <code>project_id</code> and only return content when the document belongs to that project.</li>
+<li>Media preview URLs continue to use project-scoped file routes, and the document content route keeps path resolution bounded to the document project&#x27;s upload or watch-folder roots.</li>
 </ul>
 <h2 id="architecture-notes">Architecture Notes</h2>
 <ul>
@@ -268,7 +270,8 @@
 </ul>
 <h2 id="tests-and-verification">Tests And Verification</h2>
 <ul>
-<li>No focused test reference recorded yet.</li>
+<li><code>tests/test_documents.py</code></li>
+<li><code>tests/test_project_rbac.py</code></li>
 </ul>
 <h2 id="related-features">Related Features</h2>
 <ul>

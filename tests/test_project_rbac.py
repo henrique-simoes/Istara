@@ -484,7 +484,7 @@ async def test_viewer_can_read_tasks_and_documents_but_cannot_mutate_them():
             json={"project_id": project.id, "title": "Nope"},
         )
         update_document_response = await ac.patch(
-            f"/api/documents/{document.id}",
+            f"/api/documents/{document.id}?project_id={project.id}",
             headers=headers,
             json={"title": "Nope"},
         )

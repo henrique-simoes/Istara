@@ -8,8 +8,8 @@ related_features: ["documents.library", "documents.suggestions"]
 related_glossary: ["rag"]
 code_references: ["frontend/src/components/documents/DocumentsView.tsx", "frontend/src/components/common/ContextPreview.tsx"]
 api_references: ["backend/app/api/routes/documents.py"]
-test_references: []
-last_verified: 2026-05-15
+test_references: ["tests/test_documents.py", "tests/test_project_rbac.py"]
+last_verified: 2026-05-19
 compass: CF-SPEC-53 / CF-657
 ---
 
@@ -33,6 +33,8 @@ Document preview lets users inspect uploaded project material before using it in
 ### API And Backend
 
 - `backend/app/api/routes/documents.py`
+- Preview content requests require an explicit active `project_id` and only return content when the document belongs to that project.
+- Media preview URLs continue to use project-scoped file routes, and the document content route keeps path resolution bounded to the document project's upload or watch-folder roots.
 
 ## Architecture Notes
 
@@ -46,7 +48,8 @@ Document preview lets users inspect uploaded project material before using it in
 
 ## Tests And Verification
 
-- No focused test reference recorded yet.
+- `tests/test_documents.py`
+- `tests/test_project_rbac.py`
 
 ## Related Features
 

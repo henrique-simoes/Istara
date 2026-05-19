@@ -581,7 +581,10 @@ export const documents = {
       total_pages: number;
     }>(`/api/documents?${query}`);
   },
-  get: (id: string) => get<ReclawDocument & { content_text: string }>(`/api/documents/${id}`),
+  get: (id: string, projectId: string) =>
+    get<ReclawDocument & { content_text: string }>(
+      `/api/documents/${id}?project_id=${encodeURIComponent(projectId)}`
+    ),
   create: (data: {
     project_id: string;
     title: string;
@@ -599,10 +602,17 @@ export const documents = {
     content_preview?: string;
     content_text?: string;
   }) => post<ReclawDocument>("/api/documents", data),
-  update: (id: string, data: Record<string, unknown>) =>
-    patch<ReclawDocument>(`/api/documents/${id}`, data),
-  delete: (id: string) => del(`/api/documents/${id}`),
-  content: (id: string) => get<DocumentContent>(`/api/documents/${id}/content`),
+  update: (id: string, projectId: string, data: Record<string, unknown>) =>
+    patch<ReclawDocument>(
+      `/api/documents/${id}?project_id=${encodeURIComponent(projectId)}`,
+      data
+    ),
+  delete: (id: string, projectId: string) =>
+    del(`/api/documents/${id}?project_id=${encodeURIComponent(projectId)}`),
+  content: (id: string, projectId: string) =>
+    get<DocumentContent>(
+      `/api/documents/${id}/content?project_id=${encodeURIComponent(projectId)}`
+    ),
   search: (projectId: string, q: string, phase?: string, tag?: string, limit = 20) => {
     const params = new URLSearchParams({ project_id: projectId, q, limit: String(limit) });
     if (phase) params.set("phase", phase);
