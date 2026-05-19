@@ -241,13 +241,19 @@
   <p class="concept-line"><strong>Concepts:</strong> compass-forge</p>
 </header>
 <h2 id="implementation-summary">Implementation Summary</h2>
-<p>Governed Evolution displays proposals, archive, reasoning, and contract information for controlled system self-improvement.</p>
+<p>Governed Evolution displays project-scoped proposals, archive variants, reasoning memories, and contract information for controlled system self-improvement.</p>
 <h2 id="frontend-surface">Frontend Surface</h2>
 <ul>
 <li><code>frontend/src/components/settings/GovernedEvolutionView.tsx</code></li>
 <li><code>frontend/src/lib/improvementGovernanceApi.ts</code></li>
+<li><code>frontend/src/lib/dgmhArchiveApi.ts</code></li>
+<li><code>frontend/src/lib/api.ts</code></li>
 <li><code>backend/app/api/routes/improvement_governance.py</code></li>
+<li><code>backend/app/api/routes/dgmh_archive.py</code></li>
+<li><code>backend/app/api/routes/reasoning_bank.py</code></li>
 <li><code>backend/app/core/improvement_governance.py</code></li>
+<li><code>backend/app/core/dgmh_archive.py</code></li>
+<li><code>backend/app/core/reasoning_bank.py</code></li>
 </ul>
 <h2 id="state-api-and-backend-contracts">State, API, And Backend Contracts</h2>
 <h3 id="stores">Stores</h3>
@@ -257,20 +263,28 @@
 <h3 id="api-and-backend">API And Backend</h3>
 <ul>
 <li><code>backend/app/api/routes/improvement_governance.py</code></li>
+<li><code>backend/app/api/routes/dgmh_archive.py</code></li>
+<li><code>backend/app/api/routes/reasoning_bank.py</code></li>
 </ul>
 <h2 id="architecture-notes">Architecture Notes</h2>
 <ul>
 <li>The feature is mounted through <code>frontend/src/components/settings/GovernedEvolutionView.tsx</code> and the UI navigation path recorded in the inventory.</li>
+<li>The view does not fetch governed evolution data without an active project. Proposal, archive, and ReasoningBank requests pass the active <code>project_id</code>; backend routes reject missing project scope and verify that the project exists before returning project content.</li>
+<li>Proposal and archive action routes bind the record id to the same <code>project_id</code> supplied by the UI, so approvals, sandbox evaluations, applies, reverts, and quarantines cannot act on records from another project.</li>
+<li>ReasoningBank retrieval through this API excludes global memories when a project scope is supplied, preventing project-facing prompt context from mixing with unscoped traces.</li>
 <li>The frontmatter and manifest entries are the durable contract for agents updating this page after code changes.</li>
 <li>When the referenced component, store, route, agent, skill, or test behavior changes, regenerate and validate the feature documentation.</li>
 </ul>
 <h2 id="agents-skills-llm-mcp-and-permissions">Agents, Skills, LLM, MCP, And Permissions</h2>
 <ul>
-<li>No direct agent, skill, LLM, or MCP behavior is asserted beyond the cited source files.</li>
+<li>Governed evolution, DGM-H archive, and ReasoningBank are agentic governance surfaces. They remain admin-only, but this project-facing settings surface still requires an explicit active project; cross-project aggregation belongs to dedicated admin reporting surfaces.</li>
 </ul>
 <h2 id="tests-and-verification">Tests And Verification</h2>
 <ul>
-<li>No focused test reference recorded yet.</li>
+<li><code>tests/test_improvement_governance.py</code></li>
+<li><code>tests/test_dgmh_archive.py</code></li>
+<li><code>tests/test_reasoning_bank.py</code></li>
+<li><code>tests/test_project_scope_contracts.py</code></li>
 </ul>
 <h2 id="related-features">Related Features</h2>
 <ul>
@@ -283,7 +297,7 @@
 </ul>
 <h2 id="compass-evidence">Compass Evidence</h2>
 <ul>
-<li>Spec/task: CF-SPEC-53 / CF-657</li>
+<li>Spec/task: CF-SPEC-60 / CF-757</li>
 <li>Inventory source: <code>docs/features/inventory.json</code></li>
 </ul>
 <h2 id="when-to-update">When To Update</h2>

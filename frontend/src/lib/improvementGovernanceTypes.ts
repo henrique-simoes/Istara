@@ -49,7 +49,7 @@ export interface ImprovementProposal {
 export interface ImprovementProposalCreateRequest {
   source_system?: string;
   source_id?: string;
-  project_id?: string;
+  project_id: string;
   agent_id?: string;
   title: string;
   summary?: string;

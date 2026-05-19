@@ -10,7 +10,8 @@ from app.core.auth import create_token
 from app.core.dgmh_archive import dgmh_archive
 from app.core.improvement_governance import improvement_governance
 from app.main import app
-from app.models.database import init_db
+from app.models.database import async_session, init_db
+from app.models.project import Project
 
 
 @pytest.fixture(autouse=True)
@@ -28,6 +29,12 @@ def auth_headers():
         settings.jwt_secret = "test-secret"
     token = create_token("user1", "testuser", "admin")
     return {"Authorization": f"Bearer {token}"}
+
+
+async def create_project(project_id: str, name: str = "Governance Test Project") -> None:
+    async with async_session() as db:
+        db.add(Project(id=project_id, name=name))
+        await db.commit()
 
 
 def test_governance_policy_separates_learning_from_behavioral_mutations():
@@ -119,15 +126,37 @@ async def test_governance_lifecycle_redacts_evaluates_and_reverts():
 async def test_governance_api_contract_and_admin_guard(auth_headers):
     await init_db()
     settings.team_mode = True
+    project_id = f"ig-api-{uuid.uuid4().hex[:8]}"
+    other_project_id = f"ig-api-other-{uuid.uuid4().hex[:8]}"
+    await create_project(project_id)
+    await create_project(other_project_id, "Other Governance Test Project")
 
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        missing_scope = await ac.get(
+            "/api/improvement-governance/proposals",
+            headers=auth_headers,
+        )
+        assert missing_scope.status_code == 400
+        assert missing_scope.json()["detail"] == "project_id is required"
+
+        unknown_project = await ac.post(
+            "/api/improvement-governance/proposals",
+            headers=auth_headers,
+            json={
+                "project_id": "missing-governance-project",
+                "title": "Unknown project proposal",
+            },
+        )
+        assert unknown_project.status_code == 404
+
         created = await ac.post(
             "/api/improvement-governance/proposals",
             headers=auth_headers,
             json={
                 "source_system": "reasoning_bank",
                 "source_id": "api-auto-learning",
+                "project_id": project_id,
                 "title": "Record safe reasoning memory",
                 "affected_surfaces": ["memory", "telemetry"],
                 "risk_level": "low",
@@ -141,11 +170,18 @@ async def test_governance_api_contract_and_admin_guard(auth_headers):
         assert proposal["auto_apply_allowed"] is True
 
         listed = await ac.get(
-            "/api/improvement-governance/proposals?source_system=reasoning_bank",
+            f"/api/improvement-governance/proposals?project_id={project_id}&source_system=reasoning_bank",
             headers=auth_headers,
         )
         assert listed.status_code == 200
         assert any(item["id"] == proposal["id"] for item in listed.json()["proposals"])
+
+        other_listed = await ac.get(
+            f"/api/improvement-governance/proposals?project_id={other_project_id}&source_system=reasoning_bank",
+            headers=auth_headers,
+        )
+        assert other_listed.status_code == 200
+        assert all(item["id"] != proposal["id"] for item in other_listed.json()["proposals"])
 
         feature_contract = await ac.get(
             "/api/improvement-governance/feature-contract",
@@ -158,7 +194,7 @@ async def test_governance_api_contract_and_admin_guard(auth_headers):
         assert "interviews_audio_upload_transcription_tagging_documents" in features
 
         sandbox = await ac.post(
-            f"/api/improvement-governance/proposals/{proposal['id']}/sandbox-evaluation",
+            f"/api/improvement-governance/proposals/{proposal['id']}/sandbox-evaluation?project_id={project_id}",
             headers=auth_headers,
             json={"evidence": {"tests": "api contract smoke"}},
         )
@@ -169,6 +205,13 @@ async def test_governance_api_contract_and_admin_guard(auth_headers):
             item.get("event") == "sandbox_evaluation"
             for item in payload["proposal"]["evidence"]
         )
+
+        wrong_scope = await ac.post(
+            f"/api/improvement-governance/proposals/{proposal['id']}/sandbox-evaluation?project_id={other_project_id}",
+            headers=auth_headers,
+            json={"evidence": {"tests": "wrong project"}},
+        )
+        assert wrong_scope.status_code == 404
 
     token = create_token("user2", "researcher", "researcher")
     async with AsyncClient(transport=transport, base_url="http://test") as ac:

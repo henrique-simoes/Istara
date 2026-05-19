@@ -49,7 +49,9 @@ class DGMHArchiveService:
         if mutation_surface:
             stmt = stmt.where(DGMHArchiveVariant.mutation_surface == mutation_surface)
         if project_id:
-            stmt = stmt.where(DGMHArchiveVariant.project_id.in_([project_id, ""]))
+            stmt = stmt.where(DGMHArchiveVariant.project_id == project_id)
+        else:
+            stmt = stmt.where(DGMHArchiveVariant.project_id == "")
         result = await session.execute(stmt)
         candidates = result.scalars().all()
         if not candidates:
@@ -96,6 +98,7 @@ class DGMHArchiveService:
             safe_source = clean_string(source_system, max_chars=60) or "manual"
             safe_source_id = clean_string(source_id, max_chars=120)
             safe_governance_id = clean_string(governance_proposal_id, max_chars=36)
+            safe_project_id = clean_string(project_id, max_chars=36)
             if safe_governance_id:
                 existing = await session.execute(
                     select(DGMHArchiveVariant).where(
@@ -111,6 +114,7 @@ class DGMHArchiveService:
                         DGMHArchiveVariant.source_system == safe_source,
                         DGMHArchiveVariant.source_id == safe_source_id,
                         DGMHArchiveVariant.mutation_kind == normalize_token(mutation_kind, "proposal"),
+                        DGMHArchiveVariant.project_id == safe_project_id,
                     )
                 )
                 existing_variant = existing.scalar_one_or_none()
@@ -130,7 +134,7 @@ class DGMHArchiveService:
                     target_system=clean_target,
                     artifact_kind=clean_artifact,
                     mutation_surface=clean_surface,
-                    project_id=project_id,
+                    project_id=safe_project_id,
                 )
 
             lineage: list[str] = []
@@ -153,7 +157,7 @@ class DGMHArchiveService:
                 generation=generation,
                 source_system=safe_source,
                 source_id=safe_source_id,
-                project_id=clean_string(project_id, max_chars=36),
+                project_id=safe_project_id,
                 agent_id=clean_string(agent_id, max_chars=100),
                 governance_proposal_id=safe_governance_id,
                 target_system=clean_target,
@@ -527,17 +531,20 @@ class DGMHArchiveService:
             await session.commit()
             return result
 
-    async def lineage(self, variant_id: str) -> dict:
+    async def lineage(self, variant_id: str, *, project_id: str | None = None) -> dict:
         async with async_session() as session:
             variant = await self._get_variant(session, variant_id)
             if variant is None:
                 return {"error": "DGM-H archive variant not found"}
+            if project_id is not None and variant.project_id != project_id:
+                return {"error": "DGM-H archive variant not found"}
             ids = [*variant.get_lineage(), variant.id]
             if not ids:
                 return {"variants": [variant.to_dict()]}
-            result = await session.execute(
-                select(DGMHArchiveVariant).where(DGMHArchiveVariant.id.in_(ids))
-            )
+            stmt = select(DGMHArchiveVariant).where(DGMHArchiveVariant.id.in_(ids))
+            if project_id is not None:
+                stmt = stmt.where(DGMHArchiveVariant.project_id == project_id)
+            result = await session.execute(stmt)
             variants_by_id = {item.id: item.to_dict() for item in result.scalars().all()}
             return {
                 "root_id": variant.root_id,
