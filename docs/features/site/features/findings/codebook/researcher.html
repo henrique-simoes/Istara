@@ -234,7 +234,7 @@
     <div><dt>UI Path</dt><dd>Findings &gt; Codebook</dd></div>
     <div><dt>Component</dt><dd><code>CodebookViewer</code></dd></div>
     <div><dt>Source Refs</dt><dd>4</dd></div>
-    <div><dt>Tests</dt><dd>0</dd></div>
+    <div><dt>Tests</dt><dd>2</dd></div>
   </dl>
   <div class="link-cluster" aria-label="Related feature links"><a href="../evidence/researcher.html">Findings Evidence</a>
 <a href="../review/researcher.html">Findings Code Review</a></div>
@@ -265,6 +265,7 @@
 <h2 id="inputs-outputs-and-expected-outcomes">Inputs, Outputs, And Expected Outcomes</h2>
 <ul>
 <li>Project-scoped state or artifact updates associated with findings codebook.</li>
+<li>Direct codebook and code actions stay bound to the active project; stale links or ids from other projects do not open or update records in this view.</li>
 <li>Visible status, lists, forms, generated artifacts, or review results shown by the referenced component and routes.</li>
 </ul>
 <h2 id="caveats">Caveats</h2>
@@ -285,7 +286,7 @@
 <ul>
 <li>Source files: <code>frontend/src/components/findings/FindingsView.tsx</code>, <code>frontend/src/components/findings/CodebookViewer.tsx</code>, <code>backend/app/api/routes/codebooks.py</code>, <code>backend/app/api/routes/codebook_versions.py</code></li>
 <li>API references: <code>backend/app/api/routes/codebooks.py</code>, <code>backend/app/api/routes/codebook_versions.py</code></li>
-<li>Tests: none recorded</li>
+<li>Tests: <code>tests/test_codebooks.py</code>, <code>tests/test_project_scope_contracts.py</code></li>
 </ul>
         </article>
         <aside class="toc-panel" aria-label="Page sections">

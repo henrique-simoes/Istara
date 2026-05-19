@@ -8,9 +8,9 @@ related_features: ["findings.evidence", "findings.review"]
 related_glossary: ["atomic-research"]
 code_references: ["frontend/src/components/findings/FindingsView.tsx", "frontend/src/components/findings/CodebookViewer.tsx", "backend/app/api/routes/codebooks.py", "backend/app/api/routes/codebook_versions.py"]
 api_references: ["backend/app/api/routes/codebooks.py", "backend/app/api/routes/codebook_versions.py"]
-test_references: []
-last_verified: 2026-05-15
-compass: CF-SPEC-53 / CF-657
+test_references: ["tests/test_codebooks.py", "tests/test_project_scope_contracts.py"]
+last_verified: 2026-05-19
+compass: CF-SPEC-78 / CF-1005
 ---
 
 # Findings Codebook
@@ -44,6 +44,7 @@ Findings Codebook exists so the work represented by Findings > Codebook has a st
 ## Inputs, Outputs, And Expected Outcomes
 
 - Project-scoped state or artifact updates associated with findings codebook.
+- Direct codebook and code actions stay bound to the active project; stale links or ids from other projects do not open or update records in this view.
 - Visible status, lists, forms, generated artifacts, or review results shown by the referenced component and routes.
 
 ## Caveats
@@ -64,4 +65,4 @@ Findings Codebook exists so the work represented by Findings > Codebook has a st
 
 - Source files: `frontend/src/components/findings/FindingsView.tsx`, `frontend/src/components/findings/CodebookViewer.tsx`, `backend/app/api/routes/codebooks.py`, `backend/app/api/routes/codebook_versions.py`
 - API references: `backend/app/api/routes/codebooks.py`, `backend/app/api/routes/codebook_versions.py`
-- Tests: none recorded
+- Tests: `tests/test_codebooks.py`, `tests/test_project_scope_contracts.py`

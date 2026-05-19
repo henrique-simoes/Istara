@@ -179,7 +179,10 @@ reports are project-content surfaces: project-facing list/search/report clients
 and APIs require an explicit authorized active project, linked evidence rows are
 filtered by the same project before being returned, report-summary LLM calls
 carry the report's project id, and cross-project findings search belongs only
-on explicit admin dashboard/reporting routes.
+on explicit admin dashboard/reporting routes. Research-integrity codebook,
+code, and code-application review by-id routes also require the caller's active
+project and load records by both id and project id, so stale ids from another
+authorized project cannot render or mutate the current project view.
 Project-facing integrations, deployments, survey links, channel records, and
 MCP client registries are project-content surfaces for every user role: list
 APIs require an explicit authorized active project and must not silently fall

@@ -258,7 +258,7 @@
       "code_refs": ["frontend/src/components/findings/FindingsView.tsx", "frontend/src/components/findings/CodebookViewer.tsx", "backend/app/api/routes/codebooks.py", "backend/app/api/routes/codebook_versions.py"],
       "store_refs": [],
       "api_refs": ["backend/app/api/routes/codebooks.py", "backend/app/api/routes/codebook_versions.py"],
-      "test_refs": [],
+      "test_refs": ["tests/test_codebooks.py", "tests/test_project_scope_contracts.py"],
       "related_features": ["findings.evidence", "findings.review"],
       "glossary_terms": ["atomic-research"],
       "status": "documented"
@@ -271,13 +271,13 @@
       "nav_group": "Findings",
       "order": 230,
       "component": "CodeReviewQueue",
-      "code_refs": ["frontend/src/components/findings/FindingsView.tsx", "frontend/src/components/findings/CodeReviewQueue.tsx"],
+      "code_refs": ["frontend/src/components/findings/FindingsView.tsx", "frontend/src/components/findings/CodeReviewQueue.tsx", "frontend/src/lib/researchIntegrityApi.ts"],
       "store_refs": [],
-      "api_refs": ["backend/app/api/routes/codebooks.py"],
-      "test_refs": [],
+      "api_refs": ["backend/app/api/routes/code_applications.py", "backend/app/api/routes/codebooks.py"],
+      "test_refs": ["tests/test_code_applications.py", "tests/test_project_scope_contracts.py"],
       "related_features": ["findings.codebook", "tasks.review"],
       "glossary_terms": ["triangulation"],
-      "status": "needs-verification"
+      "status": "documented"
     },
     {
       "id": "findings.reports",

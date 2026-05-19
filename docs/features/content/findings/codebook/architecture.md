@@ -8,16 +8,16 @@ related_features: ["findings.evidence", "findings.review"]
 related_glossary: ["atomic-research"]
 code_references: ["frontend/src/components/findings/FindingsView.tsx", "frontend/src/components/findings/CodebookViewer.tsx", "backend/app/api/routes/codebooks.py", "backend/app/api/routes/codebook_versions.py"]
 api_references: ["backend/app/api/routes/codebooks.py", "backend/app/api/routes/codebook_versions.py"]
-test_references: []
-last_verified: 2026-05-15
-compass: CF-SPEC-53 / CF-657
+test_references: ["tests/test_codebooks.py", "tests/test_project_scope_contracts.py"]
+last_verified: 2026-05-19
+compass: CF-SPEC-78 / CF-1005
 ---
 
 # Findings Codebook Architecture
 
 ## Implementation Summary
 
-The Codebook tab surfaces qualitative coding structures and codebook versions associated with project findings.
+The Codebook tab surfaces qualitative coding structures and codebook versions associated with project findings. Project-facing codebook and code by-id routes require the active project id and load records by both record id and project id before returning or mutating data.
 
 ## Frontend Surface
 
@@ -45,11 +45,12 @@ The Codebook tab surfaces qualitative coding structures and codebook versions as
 
 ## Agents, Skills, LLM, MCP, And Permissions
 
-- No direct agent, skill, LLM, or MCP behavior is asserted beyond the cited source files.
+- Codebook and code reads/mutations are project-content surfaces. They must reject stale ids from any other project with `404`, even when the same authenticated user can access both projects through another surface.
 
 ## Tests And Verification
 
-- No focused test reference recorded yet.
+- `tests/test_codebooks.py`
+- `tests/test_project_scope_contracts.py`
 
 ## Related Features
 
@@ -62,7 +63,7 @@ The Codebook tab surfaces qualitative coding structures and codebook versions as
 
 ## Compass Evidence
 
-- Spec/task: CF-SPEC-53 / CF-657
+- Spec/task: CF-SPEC-78 / CF-1005
 - Inventory source: `docs/features/inventory.json`
 
 ## When To Update

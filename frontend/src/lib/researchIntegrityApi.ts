@@ -37,8 +37,8 @@ export const codeApplications = {
     get<CodeApplicationType[]>(`/api/code-applications/${projectId}${status ? `?status=${status}` : ""}`),
   pending: (projectId: string) =>
     get<CodeApplicationType[]>(`/api/code-applications/${projectId}/pending`),
-  review: (applicationId: string, reviewStatus: string, reviewedBy?: string) =>
-    patch<CodeApplicationType>(`/api/code-applications/${applicationId}/review`, {
+  review: (applicationId: string, reviewStatus: string, projectId: string, reviewedBy?: string) =>
+    patch<CodeApplicationType>(`/api/code-applications/${applicationId}/review?project_id=${encodeURIComponent(projectId)}`, {
       review_status: reviewStatus,
       reviewed_by: reviewedBy || "user",
     }),
