@@ -472,21 +472,54 @@ def test_task_kanban_requires_active_project_scope() -> None:
     api = read_repo("frontend/src/lib/api.ts")
     store = read_repo("frontend/src/stores/taskStore.ts")
     kanban = read_repo("frontend/src/components/kanban/KanbanBoard.tsx")
+    editor = read_repo("frontend/src/components/kanban/TaskEditor.tsx")
     timeline = read_repo("frontend/src/components/agents/AgentTimeline.tsx")
     route = read_repo("backend/app/api/routes/tasks.py")
 
     assert "list: (projectId: string, status?: string)" in api
     assert "new URLSearchParams({ project_id: projectId })" in api
+    assert "const taskScopeParams = (projectId: string" in api
+    assert "get: (id: string, projectId: string)" in api
+    assert "update: (id: string, data: Record<string, unknown>, projectId: string)" in api
+    assert "move: (id: string, status: string, projectId: string" in api
+    assert "delete: (id: string, projectId: string)" in api
+    assert "approve: (taskId: string, projectId: string" in api
+    assert "qualitySummary: (taskId: string, projectId: string)" in api
+    assert "createReport: (taskId: string, projectId: string)" in api
+    assert "lock: (taskId: string, projectId: string" in api
+    assert "unlock: (taskId: string, projectId: string" in api
+    assert "/api/tasks/${id}?${taskScopeParams(projectId)}" in api
+    assert "/api/tasks/${id}/move?${taskScopeParams(projectId" in api
+    assert "/api/tasks/${taskId}/review/approve?${taskScopeParams(projectId)}" in api
     assert "fetchTasks: (projectId: string) => Promise<void>;" in store
+    assert "moveTask: (taskId: string, status: TaskStatus, projectId: string) => Promise<void>;" in store
+    assert "updateTask: (taskId: string, data: Record<string, unknown>, projectId: string) => Promise<void>;" in store
+    assert "deleteTask: (taskId: string, projectId: string) => Promise<void>;" in store
     assert "if (!projectId)" in store
     assert "set({ tasks: [], loading: false, error: null });" in store
     assert "data.filter((task) => task.project_id === projectId)" in store
+    assert "tasksApi.move(taskId, status, projectId)" in store
+    assert "tasksApi.update(taskId, data, projectId)" in store
     assert "if (activeProjectId) fetchTasks(activeProjectId);" in kanban
+    assert "projectId={activeProjectId}" in kanban
+    assert "moveTask(task.id, status === \"done\" ? \"in_review\" : status, activeProjectId)" in kanban
+    assert "moveTask(taskId, newStatus, activeProjectId)" in kanban
+    assert "deleteTask(deleteConfirm, activeProjectId)" in kanban
+    assert "activeProjectId !== task.project_id" in editor
+    assert "tasksApi.qualitySummary(task.id, activeProjectId)" in editor
+    assert "approveTask(task.id, activeProjectId" in editor
+    assert "tasksApi.createReport(task.id, activeProjectId)" in editor
     assert "tasksApi.list(activeProjectId)" in timeline
+    assert "tasksApi.delete(id, activeProjectId)" in timeline
 
     assert "def _require_project_id(project_id: str | None) -> str:" in route
+    assert "async def _get_project_task_or_404" in route
+    assert "async def _get_authorized_project_task_or_404" in route
     assert 'raise HTTPException(status_code=422, detail="project_id is required")' in route
     assert "await get_visible_project_or_404(db, request, scoped_project_id, min_role=\"viewer\")" in route
+    assert "await get_visible_project_or_404(db, request, scoped_project_id, min_role=min_role)" in route
+    assert "select(Task).where(Task.id == task_id, Task.project_id == project_id)" in route
+    assert "return await _get_project_task_or_404(db, task_id, scoped_project_id)" in route
     assert "Task.project_id == scoped_project_id" in route
     assert "is_global_admin" not in route
 

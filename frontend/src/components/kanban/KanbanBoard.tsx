@@ -56,7 +56,7 @@ function AgentMiniAvatar({ agentId }: { agentId: string }) {
   );
 }
 
-function AgentAssignMenu({ taskId, currentAgentId, onClose }: { taskId: string; currentAgentId: string | null; onClose: () => void }) {
+function AgentAssignMenu({ taskId, projectId, currentAgentId, onClose }: { taskId: string; projectId: string; currentAgentId: string | null; onClose: () => void }) {
   const agents = useAgentStore((s) => s.agents);
   const { updateTask } = useTaskStore();
   const menuRef = useRef<HTMLDivElement>(null);
@@ -74,7 +74,7 @@ function AgentAssignMenu({ taskId, currentAgentId, onClose }: { taskId: string; 
       <button
         onClick={async (e) => {
           e.stopPropagation();
-          await updateTask(taskId, { agent_id: null });
+          await updateTask(taskId, { agent_id: null }, projectId);
           onClose();
         }}
         className={cn("w-full px-3 py-2 text-left text-xs hover:bg-slate-50 dark:hover:bg-slate-700", !currentAgentId && "bg-slate-50 dark:bg-slate-700")}
@@ -86,7 +86,7 @@ function AgentAssignMenu({ taskId, currentAgentId, onClose }: { taskId: string; 
           key={agent.id}
           onClick={async (e) => {
             e.stopPropagation();
-            await updateTask(taskId, { agent_id: agent.id });
+            await updateTask(taskId, { agent_id: agent.id }, projectId);
             onClose();
           }}
           className={cn("w-full px-3 py-2 text-left text-xs hover:bg-slate-50 dark:hover:bg-slate-700", currentAgentId === agent.id && "bg-istara-50 dark:bg-istara-900/20")}
@@ -98,7 +98,7 @@ function AgentAssignMenu({ taskId, currentAgentId, onClose }: { taskId: string; 
   );
 }
 
-function PriorityPicker({ taskId, currentPriority, onClose }: { taskId: string; currentPriority: string; onClose: () => void }) {
+function PriorityPicker({ taskId, projectId, currentPriority, onClose }: { taskId: string; projectId: string; currentPriority: string; onClose: () => void }) {
   const { updateTask } = useTaskStore();
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -117,7 +117,7 @@ function PriorityPicker({ taskId, currentPriority, onClose }: { taskId: string; 
           key={p}
           onClick={async (e) => {
             e.stopPropagation();
-            await updateTask(taskId, { priority: p });
+            await updateTask(taskId, { priority: p }, projectId);
             onClose();
           }}
           className={cn("flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs hover:bg-slate-50 dark:hover:bg-slate-700", currentPriority === p && "bg-slate-50 dark:bg-slate-700")}
@@ -130,7 +130,7 @@ function PriorityPicker({ taskId, currentPriority, onClose }: { taskId: string; 
   );
 }
 
-function TaskCard({ task, canWrite, onOpen, onDelete }: { task: Task; canWrite: boolean; onOpen: () => void; onDelete: () => void }) {
+function TaskCard({ task, projectId, canWrite, onOpen, onDelete }: { task: Task; projectId: string; canWrite: boolean; onOpen: () => void; onDelete: () => void }) {
   const [showAgentMenu, setShowAgentMenu] = useState(false);
   const [showPriorityMenu, setShowPriorityMenu] = useState(false);
   const [dragging, setDragging] = useState(false);
@@ -180,7 +180,7 @@ function TaskCard({ task, canWrite, onOpen, onDelete }: { task: Task; canWrite: 
               >
                 {task.agent_id ? <AgentMiniAvatar agentId={task.agent_id} /> : <span className="flex h-6 w-6 items-center justify-center rounded-full border-2 border-dashed border-slate-300 text-slate-400"><Plus size={10} /></span>}
               </button>
-              {showAgentMenu && <AgentAssignMenu taskId={task.id} currentAgentId={task.agent_id} onClose={() => setShowAgentMenu(false)} />}
+              {showAgentMenu && <AgentAssignMenu taskId={task.id} projectId={projectId} currentAgentId={task.agent_id} onClose={() => setShowAgentMenu(false)} />}
             </div>
           </div>
 
@@ -209,7 +209,7 @@ function TaskCard({ task, canWrite, onOpen, onDelete }: { task: Task; canWrite: 
                 {PRIORITY_LABELS[priority]}
                 <ChevronDown size={8} />
               </button>
-              {showPriorityMenu && <PriorityPicker taskId={task.id} currentPriority={priority} onClose={() => setShowPriorityMenu(false)} />}
+              {showPriorityMenu && <PriorityPicker taskId={task.id} projectId={projectId} currentPriority={priority} onClose={() => setShowPriorityMenu(false)} />}
             </div>
             {((task.input_document_ids?.length || 0) + (task.output_document_ids?.length || 0)) > 0 && <span className="inline-flex items-center gap-0.5 rounded bg-purple-100 px-1.5 py-0.5 text-[10px] text-purple-700 dark:bg-purple-900/30 dark:text-purple-300"><FileText size={10} />{(task.input_document_ids?.length || 0) + (task.output_document_ids?.length || 0)}</span>}
             {(task.urls?.length || 0) > 0 && <span className="inline-flex items-center gap-0.5 rounded bg-blue-100 px-1.5 py-0.5 text-[10px] text-blue-700 dark:bg-blue-900/30 dark:text-blue-300"><Globe size={10} />{task.urls.length}</span>}
@@ -264,7 +264,7 @@ export default function KanbanBoard() {
   const handleCreate = async (status: TaskStatus) => {
     if (!newTaskTitle.trim() || !activeProjectId || !canWriteActiveProject()) return;
     const task = await createTask(activeProjectId, newTaskTitle.trim());
-    if (status !== "backlog") await moveTask(task.id, status === "done" ? "in_review" : status);
+    if (status !== "backlog") await moveTask(task.id, status === "done" ? "in_review" : status, activeProjectId);
     setNewTaskTitle("");
     setAddingTo(null);
   };
@@ -292,7 +292,8 @@ export default function KanbanBoard() {
       return;
     }
     try {
-      await moveTask(taskId, newStatus);
+      if (!activeProjectId) return;
+      await moveTask(taskId, newStatus, activeProjectId);
     } catch (e) {
       console.error("Failed to move task:", e);
       showTaskToast(
@@ -355,7 +356,7 @@ export default function KanbanBoard() {
 
               <div className="min-h-[100px] space-y-2 p-2">
                 {columnTasks.map((task) => (
-                  <TaskCard key={task.id} task={task} canWrite={canWriteActiveProject()} onOpen={() => setEditingTask(task.id)} onDelete={() => canWriteActiveProject() && setDeleteConfirm(task.id)} />
+                  <TaskCard key={task.id} task={task} projectId={activeProjectId} canWrite={canWriteActiveProject()} onOpen={() => setEditingTask(task.id)} onDelete={() => canWriteActiveProject() && setDeleteConfirm(task.id)} />
                 ))}
               </div>
             </div>
@@ -375,7 +376,7 @@ export default function KanbanBoard() {
         confirmLabel="Delete"
         variant="danger"
         onConfirm={() => {
-          if (deleteConfirm && canWriteActiveProject()) deleteTask(deleteConfirm);
+          if (deleteConfirm && canWriteActiveProject()) deleteTask(deleteConfirm, activeProjectId);
           setDeleteConfirm(null);
         }}
         onCancel={() => setDeleteConfirm(null)}

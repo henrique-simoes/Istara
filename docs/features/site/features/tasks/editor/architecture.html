@@ -260,6 +260,8 @@
 <h2 id="architecture-notes">Architecture Notes</h2>
 <ul>
 <li>The feature is mounted through <code>frontend/src/components/kanban/TaskEditor.tsx</code> and the UI navigation path recorded in the inventory.</li>
+<li>The editor treats the selected project as part of every task action. Saves, quality summaries, atomic-path reads, review approvals, revision requests, and report sends require <code>activeProjectId</code> to match <code>task.project_id</code> before calling the backend.</li>
+<li>Backend task-by-id routes require the active <code>project_id</code> and bind it to <code>Task.project_id</code> before returning or mutating task data, preventing stale editor state from acting on another project&#x27;s task.</li>
 <li>The frontmatter and manifest entries are the durable contract for agents updating this page after code changes.</li>
 <li>When the referenced component, store, route, agent, skill, or test behavior changes, regenerate and validate the feature documentation.</li>
 </ul>
@@ -282,7 +284,7 @@
 </ul>
 <h2 id="compass-evidence">Compass Evidence</h2>
 <ul>
-<li>Spec/task: CF-SPEC-53 / CF-657</li>
+<li>Spec/task: CF-SPEC-53 / CF-657; CF-SPEC-73 / CF-941</li>
 <li>Inventory source: <code>docs/features/inventory.json</code></li>
 </ul>
 <h2 id="when-to-update">When To Update</h2>

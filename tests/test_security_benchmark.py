@@ -307,8 +307,11 @@ def test_security_benchmark_detects_task_project_scope_paths() -> None:
     changed_paths = [
         "backend/app/api/routes/tasks.py",
         "frontend/src/components/kanban/KanbanBoard.tsx",
+        "frontend/src/components/kanban/TaskEditor.tsx",
+        "frontend/src/components/agents/AgentTimeline.tsx",
         "frontend/src/lib/api.ts",
         "frontend/src/stores/taskStore.ts",
+        "tests/test_project_rbac.py",
         "tests/test_project_scope_contracts.py",
         "tests/test_tasks.py",
     ]

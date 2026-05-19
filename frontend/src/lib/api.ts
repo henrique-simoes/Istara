@@ -37,6 +37,14 @@ export const projects = {
 
 // --- Tasks ---
 
+const taskScopeParams = (projectId: string, values: Record<string, string | number | boolean | undefined | null> = {}) => {
+  const params = new URLSearchParams({ project_id: projectId });
+  for (const [key, value] of Object.entries(values)) {
+    if (value !== undefined && value !== null) params.set(key, String(value));
+  }
+  return params.toString();
+};
+
 export const tasks = {
   list: (projectId: string, status?: string) => {
     const params = new URLSearchParams({ project_id: projectId });
@@ -57,17 +65,19 @@ export const tasks = {
     user_context?: string;
     agent_id?: string;
   }) => request<any>("/api/tasks", { method: "POST", body: JSON.stringify(data) }),
-  update: (id: string, data: Record<string, unknown>) =>
-    request<any>(`/api/tasks/${id}`, { method: "PATCH", body: JSON.stringify(data) }),
-  move: (id: string, status: string) =>
-    request<any>(`/api/tasks/${id}/move?status=${status}`, { method: "POST" }),
-  delete: (id: string) => del(`/api/tasks/${id}`),
-  attach: (taskId: string, documentId: string, direction: "input" | "output" = "input") =>
-    post<{ attached: boolean }>(`/api/tasks/${taskId}/attach?document_id=${documentId}&direction=${direction}`, {}),
-  detach: (taskId: string, documentId: string, direction: "input" | "output" = "input") =>
-    post<{ detached: boolean }>(`/api/tasks/${taskId}/detach?document_id=${documentId}&direction=${direction}`, {}),
-  approve: (taskId: string, data: { reviewed_by?: string; note?: string } = {}) =>
-    post<{ task: Task; event: TaskReviewEvent }>(`/api/tasks/${taskId}/review/approve`, data),
+  get: (id: string, projectId: string) =>
+    get<any>(`/api/tasks/${id}?${taskScopeParams(projectId)}`),
+  update: (id: string, data: Record<string, unknown>, projectId: string) =>
+    request<any>(`/api/tasks/${id}?${taskScopeParams(projectId)}`, { method: "PATCH", body: JSON.stringify(data) }),
+  move: (id: string, status: string, projectId: string, position?: number) =>
+    request<any>(`/api/tasks/${id}/move?${taskScopeParams(projectId, { status, position })}`, { method: "POST" }),
+  delete: (id: string, projectId: string) => del(`/api/tasks/${id}?${taskScopeParams(projectId)}`),
+  attach: (taskId: string, documentId: string, projectId: string, direction: "input" | "output" = "input") =>
+    post<{ attached: boolean }>(`/api/tasks/${taskId}/attach?${taskScopeParams(projectId, { document_id: documentId, direction })}`, {}),
+  detach: (taskId: string, documentId: string, projectId: string, direction: "input" | "output" = "input") =>
+    post<{ detached: boolean }>(`/api/tasks/${taskId}/detach?${taskScopeParams(projectId, { document_id: documentId, direction })}`, {}),
+  approve: (taskId: string, projectId: string, data: { reviewed_by?: string; note?: string } = {}) =>
+    post<{ task: Task; event: TaskReviewEvent }>(`/api/tasks/${taskId}/review/approve?${taskScopeParams(projectId)}`, data),
   requestRevision: (taskId: string, data: {
     what_to_review: string;
     next_status: Extract<TaskStatus, "backlog" | "in_progress">;
@@ -78,15 +88,15 @@ export const tasks = {
     skill_name?: string | null;
     input_document_ids?: string[];
     urls?: string[];
-  }) => post<{ task: Task; event: TaskReviewEvent }>(`/api/tasks/${taskId}/review/request-revision`, data),
-  reviewEvents: (taskId: string) =>
-    get<{ events: TaskReviewEvent[] }>(`/api/tasks/${taskId}/review-events`),
-  atomicPath: (taskId: string) =>
-    get<TaskAtomicPath>(`/api/tasks/${taskId}/atomic-path`),
-  qualitySummary: (taskId: string) =>
-    get<TaskQualitySummary>(`/api/tasks/${taskId}/quality-summary`),
-  createReport: (taskId: string) =>
-    post<{ report: ProjectReport }>(`/api/tasks/${taskId}/reports`, {}),
+  }, projectId: string) => post<{ task: Task; event: TaskReviewEvent }>(`/api/tasks/${taskId}/review/request-revision?${taskScopeParams(projectId)}`, data),
+  reviewEvents: (taskId: string, projectId: string) =>
+    get<{ events: TaskReviewEvent[] }>(`/api/tasks/${taskId}/review-events?${taskScopeParams(projectId)}`),
+  atomicPath: (taskId: string, projectId: string) =>
+    get<TaskAtomicPath>(`/api/tasks/${taskId}/atomic-path?${taskScopeParams(projectId)}`),
+  qualitySummary: (taskId: string, projectId: string) =>
+    get<TaskQualitySummary>(`/api/tasks/${taskId}/quality-summary?${taskScopeParams(projectId)}`),
+  createReport: (taskId: string, projectId: string) =>
+    post<{ report: ProjectReport }>(`/api/tasks/${taskId}/reports?${taskScopeParams(projectId)}`, {}),
 };
 
 export { chat } from "./chatApi";
@@ -539,10 +549,10 @@ export const dataManagement = {
 // --- Task Locking ---
 
 export const taskLocking = {
-  lock: (taskId: string, userId: string = "local") =>
-    post<any>(`/api/tasks/${taskId}/lock?user_id=${userId}`, {}),
-  unlock: (taskId: string, userId: string = "local", force: boolean = false) =>
-    post<any>(`/api/tasks/${taskId}/unlock?user_id=${userId}&force=${force}`, {}),
+  lock: (taskId: string, projectId: string, userId: string = "local") =>
+    post<any>(`/api/tasks/${taskId}/lock?${taskScopeParams(projectId, { user_id: userId })}`, {}),
+  unlock: (taskId: string, projectId: string, userId: string = "local", force: boolean = false) =>
+    post<any>(`/api/tasks/${taskId}/unlock?${taskScopeParams(projectId, { user_id: userId, force })}`, {}),
 };
 
 // --- LLM Servers ---

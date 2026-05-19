@@ -623,18 +623,27 @@ async def test_viewer_can_read_tasks_and_documents_but_cannot_mutate_them():
     project = await _seed_project(f"Viewer Resources {uuid.uuid4()}")
     viewer_id = f"viewer-resources-{uuid.uuid4()}"
     await _seed_member(project.id, viewer_id, "viewer")
-    await _seed_task(project.id)
+    task = await _seed_task(project.id)
     document = await _seed_document(project.id)
     headers = _headers(viewer_id, "viewer", "viewer")
 
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
         tasks_response = await ac.get(f"/api/tasks?project_id={project.id}", headers=headers)
+        task_detail_response = await ac.get(
+            f"/api/tasks/{task.id}?project_id={project.id}",
+            headers=headers,
+        )
         documents_response = await ac.get(f"/api/documents?project_id={project.id}", headers=headers)
         create_task_response = await ac.post(
             "/api/tasks",
             headers=headers,
             json={"project_id": project.id, "title": "Nope"},
+        )
+        update_task_response = await ac.patch(
+            f"/api/tasks/{task.id}?project_id={project.id}",
+            headers=headers,
+            json={"title": "Nope"},
         )
         update_document_response = await ac.patch(
             f"/api/documents/{document.id}?project_id={project.id}",
@@ -643,8 +652,10 @@ async def test_viewer_can_read_tasks_and_documents_but_cannot_mutate_them():
         )
 
     assert tasks_response.status_code == 200
+    assert task_detail_response.status_code == 200
     assert documents_response.status_code == 200
     assert create_task_response.status_code == 403
+    assert update_task_response.status_code == 403
     assert update_document_response.status_code == 403
 
 

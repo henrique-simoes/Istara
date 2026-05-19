@@ -260,6 +260,8 @@
 <h2 id="architecture-notes">Architecture Notes</h2>
 <ul>
 <li>The feature is mounted through <code>frontend/src/components/kanban/KanbanBoard.tsx</code> and the UI navigation path recorded in the inventory.</li>
+<li>Human review routes are active-project-bound: approval, revision, review-event reads, and legacy verification require <code>project_id</code> and resolve the task inside that project before any transition or side effect runs.</li>
+<li>The Task Editor passes the active project id for approval and revision calls, so a task selected from a previous project cannot be approved or reopened in the current project view.</li>
 <li>The frontmatter and manifest entries are the durable contract for agents updating this page after code changes.</li>
 <li>When the referenced component, store, route, agent, skill, or test behavior changes, regenerate and validate the feature documentation.</li>
 </ul>
@@ -282,7 +284,7 @@
 </ul>
 <h2 id="compass-evidence">Compass Evidence</h2>
 <ul>
-<li>Spec/task: CF-SPEC-53 / CF-657</li>
+<li>Spec/task: CF-SPEC-53 / CF-657; CF-SPEC-73 / CF-941</li>
 <li>Inventory source: <code>docs/features/inventory.json</code></li>
 </ul>
 <h2 id="when-to-update">When To Update</h2>
