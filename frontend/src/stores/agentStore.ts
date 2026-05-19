@@ -131,14 +131,24 @@ export const useAgentStore = create<AgentStore>((set, get) => ({
 
   fetchA2ALog: async (projectId) => {
     if (!projectId) {
-      set({ a2aMessages: [] });
+      set({ a2aMessages: [], error: null });
       return;
     }
+    set({ a2aMessages: [], error: null });
     try {
       const data = await agentsApi.a2aLog(projectId, 100);
-      set({ a2aMessages: data.messages || [] });
-    } catch {
-      // silent
+      const messages = (data.messages || []).filter((message: A2AMessage) => {
+        const metadataProjectId =
+          typeof message.metadata?.project_id === "string"
+            ? message.metadata.project_id
+            : typeof message.metadata?.projectId === "string"
+              ? message.metadata.projectId
+              : null;
+        return (message.project_id || metadataProjectId) === projectId;
+      });
+      set({ a2aMessages: messages });
+    } catch (e: any) {
+      set({ a2aMessages: [], error: e?.message || "Failed to load A2A messages" });
     }
   },
 

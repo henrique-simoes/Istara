@@ -50,6 +50,37 @@ def _resolve_project_folder(project, project_id: str) -> Path:
     return Path(settings.upload_dir) / project_id
 
 
+_BUILTIN_UNIVERSAL_AGENTS = {
+    "istara-main",
+    "istara-devops",
+    "istara-ui-audit",
+    "istara-ux-eval",
+    "istara-sim",
+}
+
+
+async def _validate_agent_for_project(
+    db: AsyncSession,
+    target_agent_id: str,
+    project_id: str,
+) -> str | None:
+    """Return an error string when a tool targets an agent outside the project."""
+    result = await db.execute(select(Agent).where(Agent.id == target_agent_id))
+    target_agent = result.scalar_one_or_none()
+    if not target_agent:
+        if target_agent_id in _BUILTIN_UNIVERSAL_AGENTS:
+            return None
+        return f"Agent not found: {target_agent_id}"
+
+    if not target_agent.is_active:
+        return f"Agent is not active: {target_agent_id}"
+
+    if target_agent.scope == "project" and target_agent.project_id != project_id:
+        return f"Agent '{target_agent_id}' is not available in this project."
+
+    return None
+
+
 # ── OpenAI-Compatible Tool Definitions ───────────────────────────
 # These are passed via the `tools` parameter for native function calling.
 
@@ -864,7 +895,12 @@ async def _exec_list_tasks(params: dict, project_id: str, agent_id: str) -> str:
 
 async def _exec_move_task(params: dict, project_id: str, agent_id: str) -> str:
     async with async_session() as db:
-        result = await db.execute(select(Task).where(Task.id == params["task_id"]))
+        result = await db.execute(
+            select(Task).where(
+                Task.id == params["task_id"],
+                Task.project_id == project_id,
+            )
+        )
         task = result.scalar_one_or_none()
         if not task:
             return f"Task not found: {params['task_id']}"
@@ -886,12 +922,22 @@ async def _exec_move_task(params: dict, project_id: str, agent_id: str) -> str:
 
 async def _exec_attach_document(params: dict, project_id: str, agent_id: str) -> str:
     async with async_session() as db:
-        result = await db.execute(select(Task).where(Task.id == params["task_id"]))
+        result = await db.execute(
+            select(Task).where(
+                Task.id == params["task_id"],
+                Task.project_id == project_id,
+            )
+        )
         task = result.scalar_one_or_none()
         if not task:
             return f"Task not found: {params['task_id']}"
 
-        doc_result = await db.execute(select(Document).where(Document.id == params["document_id"]))
+        doc_result = await db.execute(
+            select(Document).where(
+                Document.id == params["document_id"],
+                Document.project_id == project_id,
+            )
+        )
         doc = doc_result.scalar_one_or_none()
         if not doc:
             return f"Document not found: {params['document_id']}"
@@ -971,10 +1017,22 @@ async def _exec_list_project_files(params: dict, project_id: str, agent_id: str)
 
 async def _exec_assign_agent(params: dict, project_id: str, agent_id: str) -> str:
     async with async_session() as db:
-        result = await db.execute(select(Task).where(Task.id == params["task_id"]))
+        result = await db.execute(
+            select(Task).where(
+                Task.id == params["task_id"],
+                Task.project_id == project_id,
+            )
+        )
         task = result.scalar_one_or_none()
         if not task:
             return f"Task not found: {params['task_id']}"
+        agent_error = await _validate_agent_for_project(
+            db,
+            params["agent_id"],
+            project_id,
+        )
+        if agent_error:
+            return agent_error
 
         task.agent_id = params["agent_id"]
         await db.commit()
@@ -989,6 +1047,13 @@ async def _exec_assign_agent(params: dict, project_id: str, agent_id: str) -> st
 async def _exec_send_agent_message(params: dict, project_id: str, agent_id: str) -> str:
     async with async_session() as db:
         from app.services.a2a import send_message
+        agent_error = await _validate_agent_for_project(
+            db,
+            params["to_agent_id"],
+            project_id,
+        )
+        if agent_error:
+            return agent_error
 
         await send_message(
             db=db,
@@ -1003,7 +1068,12 @@ async def _exec_send_agent_message(params: dict, project_id: str, agent_id: str)
 
 async def _exec_get_document_content(params: dict, project_id: str, agent_id: str) -> str:
     async with async_session() as db:
-        result = await db.execute(select(Document).where(Document.id == params["document_id"]))
+        result = await db.execute(
+            select(Document).where(
+                Document.id == params["document_id"],
+                Document.project_id == project_id,
+            )
+        )
         doc = result.scalar_one_or_none()
         if not doc:
             return f"Document not found: {params['document_id']}"
@@ -1044,7 +1114,12 @@ async def _exec_search_memory(params: dict, project_id: str, agent_id: str) -> s
 
 async def _exec_update_task(params: dict, project_id: str, agent_id: str) -> str:
     async with async_session() as db:
-        result = await db.execute(select(Task).where(Task.id == params["task_id"]))
+        result = await db.execute(
+            select(Task).where(
+                Task.id == params["task_id"],
+                Task.project_id == project_id,
+            )
+        )
         task = result.scalar_one_or_none()
         if not task:
             return f"Task not found: {params['task_id']}"

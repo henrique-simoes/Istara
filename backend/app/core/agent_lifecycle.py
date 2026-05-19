@@ -463,10 +463,13 @@ class AgentLifecycleMixin:
     async def _process_a2a_inbox(self, db: AsyncSession) -> None:
         """Process pending A2A collaboration requests from other agents."""
         try:
-            from app.services.a2a import get_messages, mark_read
+            from app.services.a2a import get_project_inbox, mark_read
 
-            messages = await get_messages(db, self._agent_id, unread_only=True, limit=3)
+            messages = await get_project_inbox(db, self._agent_id, unread_only=True, limit=3)
             for msg in messages:
+                msg_project_id = msg.get("project_id", "") if isinstance(msg, dict) else ""
+                if not msg_project_id:
+                    continue
                 msg_type = (
                     msg.get("message_type", "")
                     if isinstance(msg, dict)
@@ -480,7 +483,7 @@ class AgentLifecycleMixin:
                     await self._handle_delegate(db, msg)
                 msg_id = msg.get("id") if isinstance(msg, dict) else getattr(msg, "id", "")
                 if msg_id:
-                    await mark_read(db, msg_id)
+                    await mark_read(db, msg_id, project_id=msg_project_id)
         except Exception as e:
             logger.debug(f"A2A inbox check skipped: {e}")
 
@@ -500,6 +503,13 @@ class AgentLifecycleMixin:
 
                 project_id = data.get("project_id")
                 task_id = data.get("task_id")
+                msg_project_id = msg.get("project_id", "") if isinstance(msg, dict) else ""
+                if not project_id or (msg_project_id and msg_project_id != project_id):
+                    return
+                if task_id:
+                    task = await db.get(Task, task_id)
+                    if not task or task.project_id != project_id:
+                        return
 
                 # 1. Ensure MECE categorization on all eligible L2/L3 reports.
                 # ProjectReport derives finding counts from finding_ids_json, so
@@ -566,6 +576,9 @@ class AgentLifecycleMixin:
             task = await db.get(Task, task_id)
             if not task or task.status not in ("backlog", "in_progress"):
                 return
+            metadata_project_id = metadata.get("project_id") or msg.get("project_id", "")
+            if metadata_project_id and metadata_project_id != task.project_id:
+                return
 
             msg_id = msg.get("id", "") if isinstance(msg, dict) else getattr(msg, "id", "")
             msg_from = (
@@ -583,7 +596,11 @@ class AgentLifecycleMixin:
             # Load conversation thread for multi-turn context
             from app.services.a2a import get_conversation_thread, send_message
 
-            thread = await get_conversation_thread(db, context_id)
+            thread = await get_conversation_thread(
+                db,
+                context_id,
+                project_id=task.project_id,
+            )
 
             # Build LLM messages from conversation history
             from app.core.agent_identity import get_capability_card
@@ -693,7 +710,13 @@ class AgentLifecycleMixin:
             # Wait for response (up to 30s, polling every 3s)
             for _ in range(10):
                 await asyncio.sleep(3)
-                msgs = await get_messages(db, self._agent_id, unread_only=True, limit=5)
+                msgs = await get_messages(
+                    db,
+                    self._agent_id,
+                    unread_only=True,
+                    limit=5,
+                    project_id=task.project_id,
+                )
                 for msg in msgs:
                     msg_meta = msg.get("metadata", {}) if isinstance(msg, dict) else {}
                     if isinstance(msg_meta, str):
@@ -746,6 +769,17 @@ class AgentLifecycleMixin:
             )
             if isinstance(metadata, str):
                 metadata = json.loads(metadata) if metadata else {}
+            project_id = metadata.get("project_id") or msg.get("project_id", "")
+            task_id = metadata.get("task_id", "")
+            if task_id:
+                task = await db.get(Task, task_id)
+                if not task:
+                    return
+                if project_id and project_id != task.project_id:
+                    return
+                project_id = task.project_id
+            if not project_id:
+                return
 
             response = await ollama.chat(
                 messages=[
@@ -774,8 +808,8 @@ class AgentLifecycleMixin:
                 content=critique[:2000],
                 metadata={
                     "context_id": metadata.get("context_id", ""),
-                    "task_id": metadata.get("task_id", ""),
-                    "project_id": metadata.get("project_id", ""),
+                    "task_id": task_id,
+                    "project_id": project_id,
                 },
             )
         except Exception as e:
@@ -793,7 +827,12 @@ class AgentLifecycleMixin:
 
             async with async_session() as db:
                 task = (
-                    await db.execute(select(Task).where(Task.id == task_id))
+                    await db.execute(
+                        select(Task).where(
+                            Task.id == task_id,
+                            Task.project_id == project_id,
+                        )
+                    )
                 ).scalar_one_or_none()
                 if not task or task.status != TaskStatus.DONE:
                     return

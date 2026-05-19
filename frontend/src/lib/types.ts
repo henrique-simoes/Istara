@@ -264,6 +264,7 @@ export interface A2AMessage {
   message_type: string;
   content: string;
   metadata: Record<string, unknown>;
+  project_id?: string;
   read: boolean;
   created_at: string;
 }

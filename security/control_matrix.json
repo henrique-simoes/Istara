@@ -71,6 +71,8 @@
         "backend/app/core/compute_pool.py",
         "backend/app/core/compute_capacity.py",
         "backend/app/core/agent_learning.py",
+        "backend/app/core/agent_lifecycle.py",
+        "backend/app/core/sub_agent_worker.py",
         "backend/app/core/self_evolution.py",
         "backend/app/core/agent_factory.py",
         "backend/app/core/dgmh_archive.py",
@@ -942,13 +944,18 @@
         "backend/app/main.py",
         "backend/app/api/routes/a2a.py",
         "backend/app/api/websocket.py",
+        "backend/app/core/agent_lifecycle.py",
+        "backend/app/core/sub_agent_worker.py",
+        "backend/app/skills/system_actions.py",
         "backend/app/core/replay_cache.py",
         "backend/app/services/a2a.py",
         "backend/app/core/network_security.py",
-        "tests/test_a2a_security.py"
+        "tests/test_a2a_security.py",
+        "tests/test_agents.py",
+        "tests/test_project_scope_contracts.py"
       ],
       "future_change_trigger": true,
-      "notes": "The non-/api A2A protocol now uses route-level auth, optional team-mode agent-card auth, local-mode network-token semantics, request size caps, metadata limits, per-client rate limits, replay rejection, audit events, actor traceability, project-authorized discovery, and project-resolved realtime delivery."
+      "notes": "The non-/api A2A protocol now uses route-level auth, optional team-mode agent-card auth, local-mode network-token semantics, request size caps, metadata limits, per-client rate limits, replay rejection, audit events, actor traceability, project-authorized discovery, project-resolved realtime delivery, project-resolved background agent inboxes, project-bound conversation/debate thread reconstruction, and active-project guarded LLM-callable task/A2A actions."
     },
     {
       "id": "AUDIT-001",

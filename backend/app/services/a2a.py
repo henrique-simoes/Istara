@@ -43,11 +43,14 @@ def _message_task_id(message: A2AMessage) -> str | None:
     return _metadata_text(_message_metadata(message), "task_id", "taskId")
 
 
-def _message_to_dict(message: A2AMessage) -> dict:
+def _message_to_dict(message: A2AMessage, project_id: str | None = None) -> dict:
     payload = message.to_dict()
-    project_id = _message_project_id(message)
-    if project_id:
-        payload["project_id"] = project_id
+    resolved_project_id = project_id or _message_project_id(message)
+    if resolved_project_id:
+        payload["project_id"] = resolved_project_id
+        metadata = payload.get("metadata")
+        if isinstance(metadata, dict):
+            metadata.setdefault("project_id", resolved_project_id)
     return payload
 
 
@@ -60,6 +63,20 @@ async def _filter_messages_by_project(
     messages: list[A2AMessage],
     project_id: str,
 ) -> list[A2AMessage]:
+    resolved_project_ids = await _resolve_message_project_ids(db, messages)
+    return [
+        message
+        for message in messages
+        if resolved_project_ids.get(str(message.id)) == project_id
+    ]
+
+
+async def _resolve_message_project_ids(
+    db: AsyncSession,
+    messages: list[A2AMessage],
+) -> dict[str, str]:
+    """Resolve message project identity from metadata, then task fallback."""
+    resolved: dict[str, str] = {}
     task_ids = {
         task_id
         for message in messages
@@ -67,6 +84,11 @@ async def _filter_messages_by_project(
         for task_id in [_message_task_id(message)]
         if task_id
     }
+    for message in messages:
+        message_project_id = _message_project_id(message)
+        if message_project_id:
+            resolved[str(message.id)] = message_project_id
+
     task_project_ids: dict[str, str] = {}
     if task_ids:
         from app.models.task import Task
@@ -80,18 +102,29 @@ async def _filter_messages_by_project(
             if task_project_id
         }
 
-    filtered: list[A2AMessage] = []
     for message in messages:
-        message_project_id = _message_project_id(message)
-        if message_project_id == project_id:
-            filtered.append(message)
+        if str(message.id) in resolved:
             continue
-
         task_id = _message_task_id(message)
-        if message_project_id is None and task_id and task_project_ids.get(task_id) == project_id:
-            filtered.append(message)
+        if task_id and task_project_ids.get(task_id):
+            resolved[str(message.id)] = task_project_ids[task_id]
 
-    return filtered
+    return resolved
+
+
+async def _agent_scope_project_id(db: AsyncSession, agent_id: str) -> str | None:
+    from app.models.agent import Agent
+
+    result = await db.execute(
+        select(Agent.project_id, Agent.scope).where(Agent.id == agent_id)
+    )
+    row = result.first()
+    if not row:
+        return None
+    project_id, scope = row
+    if scope == "project" and project_id:
+        return str(project_id)
+    return None
 
 
 async def send_message(
@@ -323,13 +356,60 @@ async def get_messages(
     messages = list(result.scalars().all())
     if project_id:
         messages = await _filter_messages_by_project(db, messages, project_id)
+        return [_message_to_dict(m, project_id=project_id) for m in messages[:limit]]
     return [_message_to_dict(m) for m in messages[:limit]]
+
+
+async def get_project_inbox(
+    db: AsyncSession,
+    agent_id: str,
+    limit: int = 50,
+    unread_only: bool = True,
+) -> list[dict]:
+    """Get project-resolved inbox messages for background agent processing.
+
+    Global/unresolvable messages are excluded from autonomous processing. Project-scoped
+    agents only receive messages for their own project; universal agents may receive
+    multiple projects, with every returned message carrying a resolved project_id.
+    """
+    query = select(A2AMessage).where(
+        or_(
+            A2AMessage.to_agent_id == agent_id,
+            A2AMessage.to_agent_id == None,  # broadcasts
+            A2AMessage.from_agent_id == agent_id,
+        )
+    )
+    if unread_only:
+        query = query.where(A2AMessage.read == False)
+
+    query = query.order_by(A2AMessage.created_at.desc()).limit(
+        _project_scoped_fetch_limit(limit)
+    )
+    result = await db.execute(query)
+    messages = list(result.scalars().all())
+    resolved_project_ids = await _resolve_message_project_ids(db, messages)
+    scoped_agent_project_id = await _agent_scope_project_id(db, agent_id)
+
+    inbox: list[dict] = []
+    for message in messages:
+        resolved_project_id = resolved_project_ids.get(str(message.id))
+        if not resolved_project_id:
+            continue
+        if scoped_agent_project_id and resolved_project_id != scoped_agent_project_id:
+            continue
+        inbox.append(_message_to_dict(message, project_id=resolved_project_id))
+        if len(inbox) >= limit:
+            break
+
+    return inbox
 
 
 async def get_conversation(
     db: AsyncSession,
     agent_a: str,
     agent_b: str,
+    *,
+    project_id: str,
     limit: int = 50,
 ) -> list[dict]:
     """Get messages between two specific agents."""
@@ -338,15 +418,18 @@ async def get_conversation(
             (A2AMessage.from_agent_id == agent_a) & (A2AMessage.to_agent_id == agent_b),
             (A2AMessage.from_agent_id == agent_b) & (A2AMessage.to_agent_id == agent_a),
         )
-    ).order_by(A2AMessage.created_at.desc()).limit(limit)
+    ).order_by(A2AMessage.created_at.desc()).limit(_project_scoped_fetch_limit(limit))
 
     result = await db.execute(query)
-    return [_message_to_dict(m) for m in result.scalars().all()]
+    messages = await _filter_messages_by_project(db, list(result.scalars().all()), project_id)
+    return [_message_to_dict(m, project_id=project_id) for m in messages[:limit]]
 
 
 async def get_conversation_thread(
     db: AsyncSession,
     context_id: str,
+    *,
+    project_id: str,
     limit: int = 20,
 ) -> list[dict]:
     """Get all messages in a conversation thread by context_id.
@@ -356,17 +439,20 @@ async def get_conversation_thread(
     """
     # Context ID is stored in extra_data JSON as "context_id"
     # We query all messages and filter by context_id in extra_data
-    query = select(A2AMessage).order_by(A2AMessage.created_at.asc()).limit(limit * 3)
+    query = select(A2AMessage).order_by(A2AMessage.created_at.asc()).limit(
+        _project_scoped_fetch_limit(limit)
+    )
     result = await db.execute(query)
     thread = []
     for msg in result.scalars().all():
         try:
             extra = json.loads(msg.extra_data or "{}") if isinstance(msg.extra_data, str) else (msg.extra_data or {})
             if extra.get("context_id") == context_id or msg.id == context_id:
-                thread.append(_message_to_dict(msg))
+                thread.append(msg)
         except Exception:
             continue
-    return thread[:limit]
+    thread = await _filter_messages_by_project(db, thread, project_id)
+    return [_message_to_dict(m, project_id=project_id) for m in thread[:limit]]
 
 
 async def get_full_log(
@@ -381,10 +467,15 @@ async def get_full_log(
     messages = list(result.scalars().all())
     if project_id:
         messages = await _filter_messages_by_project(db, messages, project_id)
+        return [_message_to_dict(m, project_id=project_id) for m in messages[:limit]]
     return [_message_to_dict(m) for m in messages[:limit]]
 
 
-async def mark_read(db: AsyncSession, message_id: str) -> bool:
+async def mark_read(
+    db: AsyncSession,
+    message_id: str,
+    project_id: str | None = None,
+) -> bool:
     """Mark a message as read."""
     result = await db.execute(
         select(A2AMessage).where(A2AMessage.id == message_id)
@@ -392,6 +483,10 @@ async def mark_read(db: AsyncSession, message_id: str) -> bool:
     msg = result.scalar_one_or_none()
     if not msg:
         return False
+    if project_id:
+        scoped = await _filter_messages_by_project(db, [msg], project_id)
+        if not scoped:
+            return False
     msg.read = True
     await db.commit()
     return True

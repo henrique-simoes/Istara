@@ -102,6 +102,12 @@ authorized active project, project-scoped agents cannot be read from another
 project, universal agent runtime memory/current-task state is redacted in
 project views unless a global admin is using an admin surface, and malformed
 project-bound websocket events must not fall back to global delivery.
+A2A background processing follows the same boundary: autonomous agent inbox
+polling excludes messages without a resolved project, project-scoped agents only
+consume inbox messages for their own project, conversation/debate thread context
+is rebuilt with the task project's id, and LLM-callable task/A2A system actions
+must resolve tasks, documents, and target agents inside the active project before
+mutating or sending content.
 Structured agent learnings and error-resolution lookup are project-content too:
 task/review learnings must carry the source project and must not append private
 project observations into universal persona MEMORY overlays.
