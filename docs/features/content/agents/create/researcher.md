@@ -6,18 +6,18 @@ audience: researcher
 status: needs-verification
 related_features: ["agents.registry", "skills.catalog"]
 related_glossary: ["a2a", "mcp"]
-code_references: ["frontend/src/components/agents/AgentsView.tsx", "backend/app/api/routes/agents.py", "backend/app/core/agent_factory.py"]
+code_references: ["frontend/src/components/agents/AgentsView.tsx", "frontend/src/components/agents/CreateAgentWizard.tsx", "frontend/src/stores/agentStore.ts", "frontend/src/lib/api.ts", "backend/app/api/routes/agents.py", "backend/app/services/agent_service.py", "backend/app/core/agent_factory.py"]
 api_references: ["backend/app/api/routes/agents.py"]
-test_references: []
-last_verified: 2026-05-15
-compass: CF-SPEC-53 / CF-657
+test_references: ["tests/test_agents.py", "tests/test_project_scope_contracts.py"]
+last_verified: 2026-05-19
+compass: CF-SPEC-60 / CF-757
 ---
 
 # Create Agent
 
 ## What It Does
 
-Create Agent supports configuring new agents and their role-facing metadata.
+Create Agent supports configuring new project-scoped agents and their role-facing metadata.
 
 ## Why It Exists
 
@@ -32,19 +32,20 @@ Create Agent exists so the work represented by Agents > Create has a stable, dis
 ## How UX Researchers Use It
 
 - Open Agents > Create from the Istara navigation or the parent tab.
-- Use the visible controls in this surface to work with create agent in the active project context.
+- Use the visible controls in this surface to create agents in the active project context.
 - Review the output in the same view and follow the related feature links when the workflow moves into another Istara surface.
 
 ## Supported Workflows
 
-- Start from Agents > Create when the current research task needs create agent.
-- Use the visible controls to create, inspect, refine, or route project work without leaving the active Istara context.
+- Start from Agents > Create when the current project needs a specialized custom agent.
+- Use the visible controls to create, inspect, refine, or route project work without leaving the active project.
 - Move to related surfaces when needed: agents.registry, skills.catalog.
 
 ## Inputs, Outputs, And Expected Outcomes
 
-- Project-scoped state or artifact updates associated with create agent.
+- A custom agent with `scope=project` and the active project id.
 - Visible status, lists, forms, generated artifacts, or review results shown by the referenced component and routes.
+- Missing active project context prevents creation rather than creating a global agent.
 
 ## Caveats
 
@@ -63,6 +64,6 @@ Create Agent exists so the work represented by Agents > Create has a stable, dis
 
 ## Evidence
 
-- Source files: `frontend/src/components/agents/AgentsView.tsx`, `backend/app/api/routes/agents.py`, `backend/app/core/agent_factory.py`
+- Source files: `frontend/src/components/agents/AgentsView.tsx`, `frontend/src/components/agents/CreateAgentWizard.tsx`, `frontend/src/stores/agentStore.ts`, `frontend/src/lib/api.ts`, `backend/app/api/routes/agents.py`, `backend/app/services/agent_service.py`, `backend/app/core/agent_factory.py`
 - API references: `backend/app/api/routes/agents.py`
-- Tests: none recorded
+- Tests: `tests/test_agents.py`, `tests/test_project_scope_contracts.py`

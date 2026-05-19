@@ -242,11 +242,16 @@
   <p class="concept-line"><strong>Concepts:</strong> a2a</p>
 </header>
 <h2 id="implementation-summary">Implementation Summary</h2>
-<p>Agent proposal workflows surface suggested agent changes or actions for review.</p>
+<p>Agent proposal workflows surface project-specific suggested agent changes or actions for review.</p>
 <h2 id="frontend-surface">Frontend Surface</h2>
 <ul>
 <li><code>frontend/src/components/agents/AgentsView.tsx</code></li>
+<li><code>frontend/src/lib/api.ts</code></li>
 <li><code>backend/app/api/routes/agents.py</code></li>
+<li><code>backend/app/core/agent_factory.py</code></li>
+<li><code>backend/app/core/improvement_governance_evidence.py</code></li>
+<li><code>backend/app/core/meta_hyperagent.py</code></li>
+<li><code>backend/app/agents/orchestrator.py</code></li>
 <li><code>backend/app/api/routes/permission_requests.py</code></li>
 </ul>
 <h2 id="state-api-and-backend-contracts">State, API, And Backend Contracts</h2>
@@ -257,11 +262,17 @@
 <h3 id="api-and-backend">API And Backend</h3>
 <ul>
 <li><code>backend/app/api/routes/agents.py</code></li>
+<li><code>backend/app/core/agent_factory.py</code></li>
 <li><code>backend/app/api/routes/permission_requests.py</code></li>
 </ul>
 <h2 id="architecture-notes">Architecture Notes</h2>
 <ul>
 <li>The feature is mounted through <code>frontend/src/components/agents/AgentsView.tsx</code> and the UI navigation path recorded in the inventory.</li>
+<li>Agent creation proposals created by the Memento-style factory carry the originating <code>project_id</code> from the task that exposed the capability gap.</li>
+<li>The Proposals tab calls <code>/api/agents/creation-proposals/*</code> with the active project id and clears proposal state when no active project is selected.</li>
+<li>The route layer requires <code>project_id</code>, verifies project-admin access, and filters list/approve/reject operations through <code>AgentFactory</code> project matching.</li>
+<li>Governance evidence and Meta Hyperagent observations also pass project ids so autonomous improvement review does not read proposal history from unrelated projects.</li>
+<li>Approved proposal agents are created directly as project-scoped custom agents; proposal approval cannot create a universal custom agent.</li>
 <li>The frontmatter and manifest entries are the durable contract for agents updating this page after code changes.</li>
 <li>When the referenced component, store, route, agent, skill, or test behavior changes, regenerate and validate the feature documentation.</li>
 </ul>
@@ -271,7 +282,8 @@
 </ul>
 <h2 id="tests-and-verification">Tests And Verification</h2>
 <ul>
-<li>No focused test reference recorded yet.</li>
+<li><code>tests/test_agents.py</code> covers missing project ids, cross-project proposal filtering, and reject immutability across projects.</li>
+<li><code>tests/test_project_scope_contracts.py</code> pins frontend, factory, governance, orchestrator, and Meta Hyperagent project-scope contracts.</li>
 </ul>
 <h2 id="related-features">Related Features</h2>
 <ul>
@@ -285,7 +297,7 @@
 </ul>
 <h2 id="compass-evidence">Compass Evidence</h2>
 <ul>
-<li>Spec/task: CF-SPEC-53 / CF-657</li>
+<li>Spec/task: CF-SPEC-60 / CF-757</li>
 <li>Inventory source: <code>docs/features/inventory.json</code></li>
 </ul>
 <h2 id="when-to-update">When To Update</h2>

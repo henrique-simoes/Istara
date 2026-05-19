@@ -334,14 +334,8 @@ class MetaHyperagent:
             from app.core.agent_factory import AgentFactory
 
             factory = AgentFactory()
-            pending = await self._agent_factory_proposals_for_project(
-                factory.get_pending_proposals(),
-                scoped_project_id,
-            )
-            all_proposals = await self._agent_factory_proposals_for_project(
-                factory.get_all_proposals(),
-                scoped_project_id,
-            )
+            pending = factory.get_pending_proposals(project_id=scoped_project_id)
+            all_proposals = factory.get_all_proposals(project_id=scoped_project_id)
             observation["agent_capabilities"] = {
                 "project_id": scoped_project_id,
                 "pending_agent_proposals": len(pending),

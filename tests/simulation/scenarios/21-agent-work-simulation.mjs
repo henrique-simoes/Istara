@@ -209,6 +209,7 @@ export async function run(ctx) {
       const agent = await api.post("/api/agents", {
         ...def,
         heartbeat_interval: 30,
+        project_id: projectId,
       });
       customAgents.push(agent);
       cleanup.agents.push(agent.id);

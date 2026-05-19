@@ -26,7 +26,7 @@ interface AgentStore {
     system_prompt?: string;
     capabilities?: string[];
     heartbeat_interval?: number;
-  }) => Promise<Agent>;
+  }, projectId: string) => Promise<Agent>;
   updateAgent: (id: string, data: Record<string, unknown>) => Promise<void>;
   deleteAgent: (id: string) => Promise<void>;
   pauseAgent: (id: string) => Promise<void>;
@@ -90,8 +90,8 @@ export const useAgentStore = create<AgentStore>((set, get) => ({
 
   selectAgent: (id) => set({ selectedAgentId: id }),
 
-  createAgent: async (data) => {
-    const agent = await agentsApi.create(data);
+  createAgent: async (data, projectId) => {
+    const agent = await agentsApi.create(data, projectId);
     set((s) => ({ agents: [...s.agents, agent] }));
     return agent;
   },

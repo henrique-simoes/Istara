@@ -42,6 +42,7 @@ export async function run(ctx) {
       system_prompt: "You are a test agent created by the simulation.",
       capabilities: ["findings_read", "task_management"],
       heartbeat_interval: 30,
+      project_id: projectId,
     });
     testAgentId = agent.id;
     checks.push({

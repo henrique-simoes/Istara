@@ -241,7 +241,7 @@
   <p class="concept-line"><strong>Concepts:</strong> a2a, mcp</p>
 </header>
 <h2 id="what-it-does">What It Does</h2>
-<p>Create Agent supports configuring new agents and their role-facing metadata.</p>
+<p>Create Agent supports configuring new project-scoped agents and their role-facing metadata.</p>
 <h2 id="why-it-exists">Why It Exists</h2>
 <p>Create Agent exists so the work represented by Agents &gt; Create has a stable, discoverable place in Istara&#x27;s project workflow. It keeps user actions, generated artifacts, and related follow-up surfaces connected to the active project rather than scattering them across unrelated tools.</p>
 <h2 id="where-it-lives">Where It Lives</h2>
@@ -253,19 +253,20 @@
 <h2 id="how-ux-researchers-use-it">How UX Researchers Use It</h2>
 <ul>
 <li>Open Agents &gt; Create from the Istara navigation or the parent tab.</li>
-<li>Use the visible controls in this surface to work with create agent in the active project context.</li>
+<li>Use the visible controls in this surface to create agents in the active project context.</li>
 <li>Review the output in the same view and follow the related feature links when the workflow moves into another Istara surface.</li>
 </ul>
 <h2 id="supported-workflows">Supported Workflows</h2>
 <ul>
-<li>Start from Agents &gt; Create when the current research task needs create agent.</li>
-<li>Use the visible controls to create, inspect, refine, or route project work without leaving the active Istara context.</li>
+<li>Start from Agents &gt; Create when the current project needs a specialized custom agent.</li>
+<li>Use the visible controls to create, inspect, refine, or route project work without leaving the active project.</li>
 <li>Move to related surfaces when needed: agents.registry, skills.catalog.</li>
 </ul>
 <h2 id="inputs-outputs-and-expected-outcomes">Inputs, Outputs, And Expected Outcomes</h2>
 <ul>
-<li>Project-scoped state or artifact updates associated with create agent.</li>
+<li>A custom agent with <code>scope=project</code> and the active project id.</li>
 <li>Visible status, lists, forms, generated artifacts, or review results shown by the referenced component and routes.</li>
+<li>Missing active project context prevents creation rather than creating a global agent.</li>
 </ul>
 <h2 id="caveats">Caveats</h2>
 <ul>
@@ -284,9 +285,9 @@
 </ul>
 <h2 id="evidence">Evidence</h2>
 <ul>
-<li>Source files: <code>frontend/src/components/agents/AgentsView.tsx</code>, <code>backend/app/api/routes/agents.py</code>, <code>backend/app/core/agent_factory.py</code></li>
+<li>Source files: <code>frontend/src/components/agents/AgentsView.tsx</code>, <code>frontend/src/components/agents/CreateAgentWizard.tsx</code>, <code>frontend/src/stores/agentStore.ts</code>, <code>frontend/src/lib/api.ts</code>, <code>backend/app/api/routes/agents.py</code>, <code>backend/app/services/agent_service.py</code>, <code>backend/app/core/agent_factory.py</code></li>
 <li>API references: <code>backend/app/api/routes/agents.py</code></li>
-<li>Tests: none recorded</li>
+<li>Tests: <code>tests/test_agents.py</code>, <code>tests/test_project_scope_contracts.py</code></li>
 </ul>
         </article>
         <aside class="toc-panel" aria-label="Page sections">

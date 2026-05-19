@@ -6,6 +6,7 @@ export const id = "40-agent-identity-editing";
 export async function run(ctx) {
   const { api, page, screenshot } = ctx;
   const checks = [];
+  const projectId = ctx.projectId || "sim-project-001";
 
   // ── 1. GET identity returns all 4 files ──
   try {
@@ -96,6 +97,7 @@ export async function run(ctx) {
       role: "custom",
       system_prompt: "A test agent for persona scaffolding.",
       capabilities: ["skill_execution", "chat"],
+      project_id: projectId,
     });
     testAgentId = agent.id;
 

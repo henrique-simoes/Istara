@@ -19,6 +19,7 @@ export async function run(ctx) {
       system_prompt: "Test agent Alpha for A2A simulation.",
       capabilities: ["a2a_messaging", "chat"],
       heartbeat_interval: 30,
+      project_id: projectId,
     });
     checks.push({
       name: "Create Agent Alpha",
@@ -36,6 +37,7 @@ export async function run(ctx) {
       system_prompt: "Test agent Beta for A2A simulation.",
       capabilities: ["a2a_messaging", "chat", "findings_write"],
       heartbeat_interval: 30,
+      project_id: projectId,
     });
     checks.push({
       name: "Create Agent Beta",
