@@ -413,6 +413,7 @@ def test_compute_pool_requires_active_project_scope() -> None:
     store = read_repo("frontend/src/stores/computeStore.ts")
     view = read_repo("frontend/src/components/common/ComputePoolView.tsx")
     route = read_repo("backend/app/api/routes/compute.py")
+    admin_route = read_repo("backend/app/api/routes/admin.py")
 
     assert "nodes: (projectId: string)" in api
     assert "stats: (projectId: string)" in api
@@ -437,6 +438,12 @@ def test_compute_pool_requires_active_project_scope() -> None:
     assert "compute_registry.get_warnings(project_id=scoped_project_id)" in route
     assert "is_global_admin" not in route
     assert "all nodes for global admins" not in route
+
+    assert 'computeStats: () => get<any>("/api/admin/compute/stats")' in api
+    assert '@router.get("/compute/stats")' in admin_route
+    assert "async def admin_compute_stats(request: Request):" in admin_route
+    assert "require_global_admin(request)" in admin_route
+    assert "compute_registry.get_stats(project_id=None)" in admin_route
 
 
 def test_autoresearch_project_surfaces_require_active_project_scope() -> None:

@@ -1077,6 +1077,7 @@ export const users = {
 
 export const admin = {
   overview: () => get<any>("/api/admin/overview"),
+  computeStats: () => get<any>("/api/admin/compute/stats"),
   projects: () => get<{ projects: any[] }>("/api/admin/projects"),
   users: () => get<{ users: any[] }>("/api/admin/users"),
   access: () => get<{ memberships: any[] }>("/api/admin/access"),

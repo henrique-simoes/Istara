@@ -26,6 +26,7 @@ function MetricCard({ label, value, icon: Icon, note }: { label: string; value: 
 export default function AdminDashboard() {
   const { user } = useAuthStore();
   const [overview, setOverview] = useState<any>(null);
+  const [computeStats, setComputeStats] = useState<any>(null);
   const [projects, setProjects] = useState<any[]>([]);
   const [users, setUsers] = useState<any[]>([]);
   const [memberships, setMemberships] = useState<any[]>([]);
@@ -50,6 +51,7 @@ export default function AdminDashboard() {
     try {
       const results = await Promise.allSettled([
         adminApi.overview(),
+        adminApi.computeStats(),
         adminApi.projects(),
         adminApi.users(),
         adminApi.access(),
@@ -57,9 +59,11 @@ export default function AdminDashboard() {
         permissionRequests.list({ status: "pending" }),
       ]);
       const failures: string[] = [];
-      const [overviewData, projectData, userData, accessData, connectionData, requestData] = results;
+      const [overviewData, computeData, projectData, userData, accessData, connectionData, requestData] = results;
       if (overviewData.status === "fulfilled") setOverview(overviewData.value);
       else failures.push("overview");
+      if (computeData.status === "fulfilled") setComputeStats(computeData.value);
+      else failures.push("compute stats");
       if (projectData.status === "fulfilled") setProjects(projectData.value.projects || []);
       else failures.push("projects");
       if (userData.status === "fulfilled") setUsers(userData.value.users || []);
@@ -92,6 +96,14 @@ export default function AdminDashboard() {
     const byStatus = overview?.tasks?.by_status || {};
     return `${byStatus.backlog || 0} backlog / ${byStatus.in_progress || 0} active / ${byStatus.in_review || 0} review`;
   }, [overview]);
+
+  const computeSummary = useMemo(() => {
+    const nodes = computeStats?.total_nodes ?? overview?.compute?.total_nodes ?? 0;
+    const reachable = computeStats?.reachable_nodes ?? overview?.compute?.reachable_nodes ?? 0;
+    const totalRam = computeStats?.total_ram_gb;
+    const ramText = typeof totalRam === "number" ? `, ${totalRam.toFixed(1)} GB RAM` : "";
+    return `${nodes} nodes, ${reachable} reachable${ramText}`;
+  }, [computeStats, overview]);
 
   const serverUrl = useMemo(() => {
     if (typeof window === "undefined") return "";
@@ -179,7 +191,7 @@ export default function AdminDashboard() {
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
           <MetricCard label="Users" value={overview?.users?.total ?? "—"} icon={Users} note={`${overview?.users?.admins ?? 0} admins, ${overview?.users?.viewers ?? 0} viewers`} />
           <MetricCard label="Projects" value={overview?.projects?.total ?? "—"} icon={FolderOpen} note={`${overview?.projects?.memberships ?? 0} memberships`} />
-          <MetricCard label="Compute" value={overview?.compute?.healthy_llm_servers ?? "—"} icon={Cpu} note={`${overview?.compute?.llm_servers ?? 0} LLM servers, ${overview?.compute?.relay_nodes ?? 0} relay nodes`} />
+          <MetricCard label="Compute" value={computeStats?.reachable_nodes ?? overview?.compute?.reachable_nodes ?? "—"} icon={Cpu} note={computeSummary} />
           <MetricCard label="Tasks" value={overview?.tasks?.total ?? "—"} icon={Activity} note={taskSummary} />
         </div>
 
