@@ -43,3 +43,40 @@ def test_simulation_skill_harness_passes_active_project_scope() -> None:
         "/api/skills/health/all",
     ):
         assert f'fetchProjectScoped(\n      "{path}"' in scenario_41
+
+
+def test_simulation_agent_and_meta_harnesses_pass_active_project_scope() -> None:
+    scenario_44 = read_repo("tests/simulation/scenarios/44-agent-factory.mjs")
+    scenario_52 = read_repo("tests/simulation/scenarios/52-meta-hyperagent.mjs")
+    scenario_73 = read_repo("tests/simulation/scenarios/73-a2a-debate-and-reports.mjs")
+
+    assert "No active project id; scoped endpoint not called" in scenario_44
+    assert "project_id=${encodeURIComponent(projectId)}" in scenario_44
+    assert 'apiGetProjectScoped("/api/agents"' in scenario_44
+    for path in (
+        "/api/agents/creation-proposals/pending",
+        "/api/agents/creation-proposals/all",
+        "/api/agents/creation-proposals/nonexistent/approve",
+        "/api/agents/creation-proposals/nonexistent/reject",
+    ):
+        assert f'fetchProjectScoped("{path}"' in scenario_44
+    assert 'fetch("http://localhost:8000/api/agents/creation-proposals' not in scenario_44
+
+    assert "No active project id; scoped endpoint not called" in scenario_52
+    assert "project_id=${encodeURIComponent(projectId)}" in scenario_52
+    for path in (
+        "/api/meta-hyperagent/status",
+        "/api/meta-hyperagent/toggle",
+        "/api/meta-hyperagent/proposals",
+        "/api/meta-hyperagent/variants",
+        "/api/meta-hyperagent/observations",
+        "/api/meta-hyperagent/proposals/nonexistent/approve",
+        "/api/meta-hyperagent/proposals/nonexistent/reject",
+        "/api/meta-hyperagent/variants/nonexistent/revert",
+    ):
+        assert f'"{path}"' in scenario_52
+    assert 'api.get("/api/meta-hyperagent/' not in scenario_52
+    assert 'api.post("/api/meta-hyperagent/' not in scenario_52
+
+    assert "/api/agents?include_system=true&project_id=${encodeURIComponent(projectId)}" in scenario_73
+    assert "/api/agents/creation-proposals/all?project_id=${encodeURIComponent(projectId)}&limit=5" in scenario_73

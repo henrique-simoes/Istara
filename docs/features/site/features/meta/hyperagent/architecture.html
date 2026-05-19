@@ -269,6 +269,7 @@
 <li>Skill usage stats now maintain per-project counters so Meta-Hyperagent skill-selection analysis does not infer proposals from another project&#x27;s execution history.</li>
 <li>Self-evolution tuning proposals require project-local learning evidence. An empty project, or a project with only global/other-project learning history, must not generate threshold-lowering proposals.</li>
 <li>Confirmed Meta-Hyperagent overrides are persisted under project-specific override buckets instead of process-wide override keys.</li>
+<li>Simulation scenarios that exercise Meta-Hyperagent status, proposals, variants, observations, toggles, or mutation checks pass the active simulation project id and skip scoped endpoint calls when no project id exists.</li>
 <li>The frontmatter and manifest entries are the durable contract for agents updating this page after code changes.</li>
 <li>When the referenced component, store, route, agent, skill, or test behavior changes, regenerate and validate the feature documentation.</li>
 </ul>
@@ -282,6 +283,7 @@
 <li><code>tests/test_meta_hyperagent.py</code></li>
 <li><code>tests/test_project_scope_contracts.py</code></li>
 <li><code>tests/test_security_benchmark.py</code></li>
+<li><code>tests/test_simulation_project_scope_contracts.py</code></li>
 </ul>
 <h2 id="related-features">Related Features</h2>
 <ul>
@@ -295,7 +297,7 @@
 </ul>
 <h2 id="compass-evidence">Compass Evidence</h2>
 <ul>
-<li>Spec/task: CF-SPEC-60 / CF-757; CF-SPEC-68 / CF-870</li>
+<li>Spec/task: CF-SPEC-60 / CF-757; CF-SPEC-68 / CF-870; CF-SPEC-106 / CF-1337</li>
 <li>Inventory source: <code>docs/features/inventory.json</code></li>
 </ul>
 <h2 id="when-to-update">When To Update</h2>

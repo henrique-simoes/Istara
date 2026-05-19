@@ -145,6 +145,10 @@ must not be created as global activity by omission.
 Simulation harnesses that exercise skill health, improvement proposals, or
 skill creation proposals must pass the active simulation project id and skip
 rather than call those endpoints when no project id is available.
+Simulation harnesses that exercise agent creation proposals, project-filtered
+agent lists, or Meta-Hyperagent project-content routes follow the same rule:
+pass the active simulation project id and skip instead of issuing an unscoped
+request when the runner has not supplied one.
 Agent registry, heartbeat, detail, identity, memory, recent-log, prompt
 diagnostic, A2A message views, A2A JSON-RPC discovery, and realtime agent
 events are also project-content surfaces: non-admin users must supply an
