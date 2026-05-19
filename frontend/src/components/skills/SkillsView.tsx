@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   Wand2,
   Plus,
@@ -45,6 +45,7 @@ export default function SkillsView() {
   const [expandedSkill, setExpandedSkill] = useState<string | null>(null);
   const [editingSkill, setEditingSkill] = useState<string | null>(null);
   const [proposals, setProposals] = useState<ProposalData[]>([]);
+  const [creationProposals, setCreationProposals] = useState<any[]>([]);
   const [phaseCounts, setPhaseCounts] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
   const [skillsError, setSkillsError] = useState<string | null>(null);
@@ -67,13 +68,14 @@ export default function SkillsView() {
 
   const { activeProjectId, canWriteActiveProject } = useProjectStore();
 
-  const fetchSkills = async () => {
+  const fetchSkills = useCallback(async () => {
     setLoading(true);
     setSkillsError(null);
     try {
+      const projectId = activeProjectId;
       const [skillsRes, healthRes] = await Promise.all([
         skillsApi.list(),
-        skillsApi.health(),
+        projectId ? skillsApi.health(projectId) : Promise.resolve({ skills: [] }),
       ]);
       setAllSkills(skillsRes.skills || []);
       setPhaseCounts(skillsRes.by_phase || {});
@@ -86,25 +88,50 @@ export default function SkillsView() {
       setSkillsError(e instanceof Error ? e.message : "Failed to load skills");
     }
     setLoading(false);
-  };
+  }, [activeProjectId]);
 
-  const fetchProposals = async () => {
+  const fetchProposals = useCallback(async () => {
     setProposalsLoading(true);
     setProposalsError(null);
+    if (!activeProjectId) {
+      setProposals([]);
+      setProposalsLoading(false);
+      return;
+    }
     try {
-      const res = await skillsApi.proposals.all();
+      const res = await skillsApi.proposals.all(activeProjectId);
       setProposals(res.proposals || []);
     } catch (e) {
       setProposalsError(e instanceof Error ? e.message : "Failed to load proposals");
     }
     setProposalsLoading(false);
-  };
+  }, [activeProjectId]);
+
+  const fetchCreationProposals = useCallback(async () => {
+    setCreationProposalsLoading(true);
+    setCreationProposalsError(null);
+    if (!activeProjectId) {
+      setCreationProposals([]);
+      setCreationProposalsLoading(false);
+      return;
+    }
+    try {
+      const res = await skillsApi.creationProposals.all(activeProjectId);
+      setCreationProposals(res.proposals || []);
+    } catch (e) {
+      setCreationProposalsError(e instanceof Error ? e.message : "Failed to load creation proposals");
+    }
+    setCreationProposalsLoading(false);
+  }, [activeProjectId]);
 
   useEffect(() => {
+    setHealthMap({});
+    setProposals([]);
+    setCreationProposals([]);
     fetchSkills();
     fetchProposals();
     fetchCreationProposals();
-  }, []);
+  }, [activeProjectId, fetchCreationProposals, fetchProposals, fetchSkills]);
 
   const filtered = allSkills.filter((s) => {
     if (phaseFilter !== "all" && s.phase !== phaseFilter) return false;
@@ -127,24 +154,12 @@ export default function SkillsView() {
     : 0;
 
   // Skill creation proposals (autonomous)
-  const [creationProposals, setCreationProposals] = useState<any[]>([]);
   const pendingCreations = creationProposals.filter((p: any) => p.status === "pending");
 
-  const fetchCreationProposals = async () => {
-    setCreationProposalsLoading(true);
-    setCreationProposalsError(null);
-    try {
-      const res = await skillsApi.creationProposals.all();
-      setCreationProposals(res.proposals || []);
-    } catch (e) {
-      setCreationProposalsError(e instanceof Error ? e.message : "Failed to load creation proposals");
-    }
-    setCreationProposalsLoading(false);
-  };
-
   const handleApproveCreation = async (id: string) => {
+    if (!activeProjectId) return;
     try {
-      await skillsApi.creationProposals.approve(id);
+      await skillsApi.creationProposals.approve(id, activeProjectId);
       await Promise.all([fetchSkills(), fetchCreationProposals()]);
       showSkillToast("success", "Skill registered", "The proposed skill passed verification and was added to the runtime catalog.");
     } catch (e) {
@@ -154,8 +169,9 @@ export default function SkillsView() {
   };
 
   const handleRejectCreation = async (id: string) => {
+    if (!activeProjectId) return;
     try {
-      await skillsApi.creationProposals.reject(id);
+      await skillsApi.creationProposals.reject(id, activeProjectId);
       await fetchCreationProposals();
     } catch (e) { console.error("Reject creation failed:", e); }
   };
@@ -170,8 +186,9 @@ export default function SkillsView() {
   };
 
   const handleApprove = async (id: string) => {
+    if (!activeProjectId) return;
     try {
-      await skillsApi.proposals.approve(id);
+      await skillsApi.proposals.approve(id, activeProjectId);
       await Promise.all([fetchSkills(), fetchProposals()]);
       showSkillToast("success", "Skill updated", "The approved improvement was applied to the skill definition.");
     } catch (e) {
@@ -181,8 +198,9 @@ export default function SkillsView() {
   };
 
   const handleReject = async (id: string) => {
+    if (!activeProjectId) return;
     try {
-      await skillsApi.proposals.reject(id);
+      await skillsApi.proposals.reject(id, activeProjectId);
       await fetchProposals();
     } catch (e) {
       console.error("Reject failed:", e);

@@ -294,7 +294,10 @@ export const skills = {
     const params = phase ? `?phase=${phase}` : "";
     return request<any>(`/api/skills${params}`);
   },
-  get: (name: string) => request<any>(`/api/skills/${name}`),
+  get: (name: string, projectId?: string | null) => {
+    const suffix = projectId ? `?project_id=${encodeURIComponent(projectId)}` : "";
+    return request<any>(`/api/skills/${name}${suffix}`);
+  },
   create: (data: {
     name: string;
     display_name: string;
@@ -312,25 +315,31 @@ export const skills = {
     request<any>(`/api/skills/${name}/toggle?enabled=${enabled}`, { method: "POST" }),
   execute: (name: string, data: { project_id: string; user_context?: string }) =>
     request<any>(`/api/skills/${name}/execute`, { method: "POST", body: JSON.stringify(data) }),
-  health: () => request<any>("/api/skills/health/all"),
-  skillHealth: (name: string) => request<any>(`/api/skills/${name}/health`),
+  health: (projectId: string) =>
+    request<any>(`/api/skills/health/all?project_id=${encodeURIComponent(projectId)}`),
+  skillHealth: (name: string, projectId: string) =>
+    request<any>(`/api/skills/${name}/health?project_id=${encodeURIComponent(projectId)}`),
   proposals: {
-    pending: () => request<any>("/api/skills/proposals/pending"),
-    all: (limit = 50) => request<any>(`/api/skills/proposals/all?limit=${limit}`),
-    approve: (id: string) =>
-      request<any>(`/api/skills/proposals/${id}/approve`, { method: "POST" }),
-    reject: (id: string, reason = "") =>
-      request<any>(`/api/skills/proposals/${id}/reject?reason=${encodeURIComponent(reason)}`, { method: "POST" }),
+    pending: (projectId: string) =>
+      request<any>(`/api/skills/proposals/pending?project_id=${encodeURIComponent(projectId)}`),
+    all: (projectId: string, limit = 50) =>
+      request<any>(`/api/skills/proposals/all?project_id=${encodeURIComponent(projectId)}&limit=${limit}`),
+    approve: (id: string, projectId: string) =>
+      request<any>(`/api/skills/proposals/${id}/approve?project_id=${encodeURIComponent(projectId)}`, { method: "POST" }),
+    reject: (id: string, projectId: string, reason = "") =>
+      request<any>(`/api/skills/proposals/${id}/reject?project_id=${encodeURIComponent(projectId)}&reason=${encodeURIComponent(reason)}`, { method: "POST" }),
   },
   creationProposals: {
-    pending: () => request<any>("/api/skills/creation-proposals/pending"),
-    all: (limit = 20) => request<any>(`/api/skills/creation-proposals/all?limit=${limit}`),
-    verify: (id: string) =>
-      request<any>(`/api/skills/creation-proposals/${id}/verify`, { method: "POST" }),
-    approve: (id: string) =>
-      request<any>(`/api/skills/creation-proposals/${id}/approve`, { method: "POST" }),
-    reject: (id: string, reason = "") =>
-      request<any>(`/api/skills/creation-proposals/${id}/reject?reason=${encodeURIComponent(reason)}`, { method: "POST" }),
+    pending: (projectId: string) =>
+      request<any>(`/api/skills/creation-proposals/pending?project_id=${encodeURIComponent(projectId)}`),
+    all: (projectId: string, limit = 20) =>
+      request<any>(`/api/skills/creation-proposals/all?project_id=${encodeURIComponent(projectId)}&limit=${limit}`),
+    verify: (id: string, projectId: string) =>
+      request<any>(`/api/skills/creation-proposals/${id}/verify?project_id=${encodeURIComponent(projectId)}`, { method: "POST" }),
+    approve: (id: string, projectId: string) =>
+      request<any>(`/api/skills/creation-proposals/${id}/approve?project_id=${encodeURIComponent(projectId)}`, { method: "POST" }),
+    reject: (id: string, projectId: string, reason = "") =>
+      request<any>(`/api/skills/creation-proposals/${id}/reject?project_id=${encodeURIComponent(projectId)}&reason=${encodeURIComponent(reason)}`, { method: "POST" }),
   },
 };
 

@@ -25,6 +25,7 @@ class SkillCreationMixin:
         agent_id: str,
         reason: str,
         confidence: int,
+        project_id: str = "",
     ) -> SkillCreationProposal:
         """Create a proposal for a brand-new skill definition."""
         required = [
@@ -59,6 +60,7 @@ class SkillCreationMixin:
             source_agent_id=agent_id,
             reason=reason,
             confidence=confidence,
+            project_id=str(project_id or "").strip(),
             created_at=datetime.now(timezone.utc).isoformat(),
         )
         self._creation_proposals.append(proposal)
@@ -66,17 +68,53 @@ class SkillCreationMixin:
         logger.info("Proposed new skill creation: %s (confidence=%s)", definition["name"], confidence)
         return proposal
 
-    def get_pending_creation_proposals(self) -> list[SkillCreationProposal]:
+    def _matches_creation_project(
+        self,
+        proposal: SkillCreationProposal,
+        project_id: str | None,
+    ) -> bool:
+        if project_id is None:
+            return True
+        scoped_project_id = str(project_id or "").strip()
+        return bool(scoped_project_id) and proposal.project_id == scoped_project_id
+
+    def get_pending_creation_proposals(
+        self,
+        project_id: str | None = None,
+    ) -> list[SkillCreationProposal]:
         """Return creation proposals with status == 'pending'."""
-        return [p for p in self._creation_proposals if p.status == "pending"]
+        return [
+            p
+            for p in self._creation_proposals
+            if p.status == "pending" and self._matches_creation_project(p, project_id)
+        ]
 
-    def get_all_creation_proposals(self, limit: int = 20) -> list[SkillCreationProposal]:
+    def get_all_creation_proposals(
+        self,
+        limit: int = 20,
+        project_id: str | None = None,
+    ) -> list[SkillCreationProposal]:
         """Return the last N creation proposals."""
-        return self._creation_proposals[-limit:]
+        return [
+            p
+            for p in self._creation_proposals
+            if self._matches_creation_project(p, project_id)
+        ][-limit:]
 
-    async def verify_skill_proposal(self, proposal_id: str) -> dict:
+    async def verify_skill_proposal(
+        self,
+        proposal_id: str,
+        project_id: str | None = None,
+    ) -> dict:
         """Run automatic verification on a proposed skill before human approval."""
-        proposal = next((p for p in self._creation_proposals if p.id == proposal_id), None)
+        proposal = next(
+            (
+                p
+                for p in self._creation_proposals
+                if p.id == proposal_id and self._matches_creation_project(p, project_id)
+            ),
+            None,
+        )
         if not proposal or proposal.status != "pending":
             return {"passed": False, "issues": ["Proposal not found or not pending"]}
 
@@ -136,10 +174,18 @@ class SkillCreationMixin:
             test_path.unlink(missing_ok=True)
             return {"passed": False, "issues": [f"Verification error: {str(e)[:200]}"]}
 
-    def approve_creation_proposal(self, proposal_id: str) -> dict | None:
+    def approve_creation_proposal(
+        self,
+        proposal_id: str,
+        project_id: str | None = None,
+    ) -> dict | None:
         """Approve a creation proposal and write the skill JSON."""
         for proposal in self._creation_proposals:
-            if proposal.id == proposal_id and proposal.status == "pending":
+            if (
+                proposal.id == proposal_id
+                and proposal.status == "pending"
+                and self._matches_creation_project(proposal, project_id)
+            ):
                 if isinstance(proposal.test_result, dict) and not proposal.test_result.get("passed", True):
                     logger.warning(
                         "Skill approval blocked; verification failed: %s",
@@ -182,10 +228,19 @@ class SkillCreationMixin:
                 return defn
         return None
 
-    def reject_creation_proposal(self, proposal_id: str, reason: str = "") -> bool:
+    def reject_creation_proposal(
+        self,
+        proposal_id: str,
+        reason: str = "",
+        project_id: str | None = None,
+    ) -> bool:
         """Reject a creation proposal with an optional reason."""
         for proposal in self._creation_proposals:
-            if proposal.id == proposal_id and proposal.status == "pending":
+            if (
+                proposal.id == proposal_id
+                and proposal.status == "pending"
+                and self._matches_creation_project(proposal, project_id)
+            ):
                 proposal.status = "rejected"
                 proposal.reviewed_at = datetime.now(timezone.utc).isoformat()
                 proposal.reject_reason = reason or None

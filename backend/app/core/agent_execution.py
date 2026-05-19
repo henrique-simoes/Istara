@@ -423,7 +423,7 @@ class AgentExecutionMixin:
                 project_id=task.project_id,
             )
             try:
-                health = skill_manager.get_skill_health(skill.name)
+                health = skill_manager.get_skill_health(skill.name, project_id=task.project_id)
                 # LLM-based skill improvement when quality is consistently low
                 if health.get("executions", 0) >= 3 and health.get("avg_quality", 1.0) < 0.5:
                     # Ask LLM to reflect on why the skill is underperforming
@@ -470,12 +470,14 @@ class AgentExecutionMixin:
                             f"{execution_count} runs"
                         ),
                         confidence=0.6,
+                        project_id=task.project_id,
                     )
                     try:
                         from app.core.improvement_governance import improvement_governance
 
                         await improvement_governance.register_skill_update_proposal(
-                            proposal.to_dict()
+                            proposal.to_dict(),
+                            project_id=task.project_id,
                         )
                     except Exception:
                         pass
@@ -688,11 +690,15 @@ class AgentExecutionMixin:
                 agent_id=self._agent_id,
                 reason=f"High-quality output ({total_findings} findings) from task: {task.title}",
                 confidence=min(70, 50 + total_findings * 5),
+                project_id=task.project_id,
             )
             try:
                 from app.core.improvement_governance import improvement_governance
 
-                await improvement_governance.register_skill_creation_proposal(proposal.to_dict())
+                await improvement_governance.register_skill_creation_proposal(
+                    proposal.to_dict(),
+                    project_id=task.project_id,
+                )
             except Exception:
                 pass
             await broadcast_suggestion(

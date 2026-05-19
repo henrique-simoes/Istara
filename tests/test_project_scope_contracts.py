@@ -292,6 +292,53 @@ def test_meta_hyperagent_surfaces_require_active_project_scope() -> None:
     assert "projects = stats.setdefault(\"projects\", {})" in usage
 
 
+def test_skills_surfaces_require_active_project_scope() -> None:
+    api = read_repo("frontend/src/lib/api.ts")
+    view = read_repo("frontend/src/components/skills/SkillsView.tsx")
+    route = read_repo("backend/app/api/routes/skills.py")
+    proposals = read_repo("backend/app/skills/skill_proposals.py")
+    creation = read_repo("backend/app/skills/skill_creation.py")
+    models = read_repo("backend/app/skills/skill_models.py")
+    usage = read_repo("backend/app/skills/skill_usage.py")
+    execution = read_repo("backend/app/core/agent_execution.py")
+    governance = read_repo("backend/app/core/improvement_governance_evidence.py")
+
+    assert "health: (projectId: string)" in api
+    assert "/api/skills/health/all?project_id=${encodeURIComponent(projectId)}" in api
+    assert "all: (projectId: string, limit = 50)" in api
+    assert "/api/skills/proposals/all?project_id=${encodeURIComponent(projectId)}" in api
+    assert "approve: (id: string, projectId: string)" in api
+    assert "all: (projectId: string, limit = 20)" in api
+    assert "/api/skills/creation-proposals/all?project_id=${encodeURIComponent(projectId)}" in api
+
+    assert 'const { activeProjectId, canWriteActiveProject } = useProjectStore();' in view
+    assert "projectId ? skillsApi.health(projectId)" in view
+    assert "skillsApi.proposals.all(activeProjectId)" in view
+    assert "skillsApi.creationProposals.all(activeProjectId)" in view
+    assert "skillsApi.proposals.approve(id, activeProjectId)" in view
+    assert "skillsApi.creationProposals.approve(id, activeProjectId)" in view
+    assert "}, [activeProjectId, fetchCreationProposals, fetchProposals, fetchSkills]);" in view
+
+    assert "async def _require_skill_project_scope" in route
+    assert 'raise HTTPException(status_code=400, detail="project_id is required")' in route
+    assert "await require_project_access(db, request, scoped_project_id, min_role=min_role)" in route
+    assert "skill_manager.get_pending_proposals(project_id=scoped_project_id)" in route
+    assert "skill_manager.get_all_proposals(limit, project_id=scoped_project_id)" in route
+    assert "skill_manager.get_pending_creation_proposals(project_id=scoped_project_id)" in route
+    assert "skill_manager.get_all_creation_proposals(" in route and "project_id=scoped_project_id" in route
+    assert "skill_manager.approve_proposal(proposal_id, project_id=scoped_project_id)" in route
+    assert "skill_manager.approve_creation_proposal(" in route and "project_id=scoped_project_id" in route
+
+    assert "project_id: str = \"\"" in models
+    assert "proposal.project_id == scoped_project_id" in proposals
+    assert "proposal.project_id == scoped_project_id" in creation
+    assert "def get_skill_health(self, name: str, project_id: str | None = None)" in usage
+    assert "skill_manager.get_skill_health(skill.name, project_id=task.project_id)" in execution
+    assert "project_id=task.project_id" in execution
+    assert "async def register_skill_update_proposal(" in governance
+    assert "project_id=scoped_project_id" in governance
+
+
 def test_chat_sessions_require_active_project_scope() -> None:
     sessions_api = read_repo("frontend/src/lib/sessionsApi.ts")
     session_store = read_repo("frontend/src/stores/sessionStore.ts")

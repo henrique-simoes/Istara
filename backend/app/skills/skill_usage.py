@@ -149,13 +149,17 @@ class SkillUsageMixin:
         self.ensure_definitions_dir()
         atomic_write(self._stats_file, json.dumps(self._usage_stats, indent=2))
 
-    def get_skill_health(self, name: str) -> dict:
+    def get_skill_health(self, name: str, project_id: str | None = None) -> dict:
         """Get health score for a skill."""
         defn = self._definitions.get(name)
         if not defn:
             return {"status": "not_found"}
 
-        stats = self._usage_stats.get(name, {})
+        scoped_project_id = str(project_id or "").strip()
+        aggregate = self._usage_stats.get(name, {})
+        stats = aggregate
+        if scoped_project_id:
+            stats = (aggregate.get("projects") or {}).get(scoped_project_id, {})
         executions = stats.get("executions", 0)
         success_rate = stats.get("successes", 0) / max(executions, 1)
         avg_quality = stats.get("total_quality", 0) / max(executions, 1)
@@ -190,10 +194,19 @@ class SkillUsageMixin:
             "health_score": round(health_score, 2),
             "last_used": stats.get("last_used"),
             "pending_proposals": len(
-                [p for p in self._proposals if p.skill_name == name and p.status == "pending"]
+                [
+                    p
+                    for p in self._proposals
+                    if p.skill_name == name
+                    and p.status == "pending"
+                    and (
+                        not scoped_project_id
+                        or getattr(p, "project_id", "") == scoped_project_id
+                    )
+                ]
             ),
         }
 
-    def get_all_health(self) -> list[dict]:
+    def get_all_health(self, project_id: str | None = None) -> list[dict]:
         """Get health scores for all skills."""
-        return [self.get_skill_health(name) for name in self._definitions]
+        return [self.get_skill_health(name, project_id=project_id) for name in self._definitions]

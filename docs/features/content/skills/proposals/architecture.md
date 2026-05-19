@@ -37,16 +37,20 @@ Skill proposal flows present candidate tool or capability changes for review bef
 ## Architecture Notes
 
 - The feature is mounted through `frontend/src/components/skills/SkillsView.tsx` and the UI navigation path recorded in the inventory.
+- Skill update proposals are stored with their source `project_id`; list, approve, and reject APIs require the active project and return 404 for proposals from another project.
+- `SkillsView` clears and reloads proposal state when the active project changes so self-evolution review never carries proposals from a previous project.
 - The frontmatter and manifest entries are the durable contract for agents updating this page after code changes.
 - When the referenced component, store, route, agent, skill, or test behavior changes, regenerate and validate the feature documentation.
 
 ## Agents, Skills, LLM, MCP, And Permissions
 
+- Agent execution passes the task project into skill improvement proposals and governed-evolution evidence, preserving project authorization for review.
 - MCP-related behavior must keep access policy, audit evidence, and tool/resource exposure synchronized with the cited route or integration component.
 
 ## Tests And Verification
 
-- No focused test reference recorded yet.
+- `tests/test_skills.py`
+- `tests/test_project_scope_contracts.py`
 
 ## Related Features
 

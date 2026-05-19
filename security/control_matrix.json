@@ -102,6 +102,7 @@
         "frontend/src/components/loops/**",
         "frontend/src/components/memory/**",
         "frontend/src/components/meta/**",
+        "frontend/src/components/skills/**",
         "frontend/src/stores/agentStore.ts",
         "frontend/src/stores/chatStore.ts",
         "frontend/src/stores/computeStore.ts",

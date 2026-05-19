@@ -38,16 +38,19 @@ The Skills catalog lists available capabilities agents can use or propose for re
 ## Architecture Notes
 
 - The feature is mounted through `frontend/src/components/skills/SkillsView.tsx` and the UI navigation path recorded in the inventory.
+- Skill definitions remain the shared catalog, while health, usage, and proposal badges are fetched with the active project and reset on project changes.
 - The frontmatter and manifest entries are the durable contract for agents updating this page after code changes.
 - When the referenced component, store, route, agent, skill, or test behavior changes, regenerate and validate the feature documentation.
 
 ## Agents, Skills, LLM, MCP, And Permissions
 
+- Skill health APIs require explicit `project_id` so one project's execution quality, failures, and pending updates are not exposed in another project.
 - MCP-related behavior must keep access policy, audit evidence, and tool/resource exposure synchronized with the cited route or integration component.
 
 ## Tests And Verification
 
-- No focused test reference recorded yet.
+- `tests/test_skills.py`
+- `tests/test_project_scope_contracts.py`
 
 ## Related Features
 

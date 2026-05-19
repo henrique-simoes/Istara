@@ -86,7 +86,8 @@ class SkillManager(SkillUsageMixin, SkillProposalMixin, SkillCreationMixin):
                 self._proposals = []
                 for p in data:
                     prop = SkillUpdateProposal(p["skill_name"], p["field"], p.get("current_value", ""),
-                                                p.get("proposed_value", ""), p["reason"], p.get("confidence", 0.5))
+                                                p.get("proposed_value", ""), p["reason"], p.get("confidence", 0.5),
+                                                project_id=p.get("project_id", ""))
                     prop.id = p["id"]
                     prop.status = p["status"]
                     prop.created_at = p["created_at"]
@@ -108,6 +109,7 @@ class SkillManager(SkillUsageMixin, SkillProposalMixin, SkillCreationMixin):
                         source_agent_id=p["source_agent_id"],
                         reason=p["reason"],
                         confidence=p["confidence"],
+                        project_id=p.get("project_id", ""),
                         status=p.get("status", "pending"),
                         created_at=p.get("created_at", ""),
                         reviewed_at=p.get("reviewed_at"),
