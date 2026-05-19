@@ -75,9 +75,13 @@ def test_security_benchmark_detects_integration_project_scope_paths() -> None:
         "backend/app/api/routes/channels.py",
         "backend/app/api/routes/deployments.py",
         "backend/app/api/routes/surveys.py",
+        "backend/app/services/deployment_service.py",
+        "frontend/src/components/integrations/DeploymentsTab.tsx",
+        "frontend/src/components/integrations/IntegrationsOverview.tsx",
         "frontend/src/components/integrations/MessagingTab.tsx",
         "frontend/src/components/integrations/SurveysTab.tsx",
         "tests/test_channels.py",
+        "tests/test_deployments.py",
         "tests/test_surveys.py",
     ]
     result = evaluate_matrix(matrix, changed_paths=changed_paths)

@@ -113,8 +113,12 @@ compaction request must bind the session id to the caller's active project id.
 Project-facing integrations, deployments, survey links, channel records, and
 MCP client registries are project-content surfaces for every user role: list
 APIs require an explicit authorized active project and must not silently fall
-back to global admin lists. Global cross-project aggregation belongs only on
-dedicated admin reporting surfaces.
+back to global admin lists. Deployment creation must only attach channel
+instances owned by the same project, and deployment response, conversation,
+transcript, analytics, and overview counters must verify matching deployment
+and project ownership before reading, mutating, or summarizing participant
+content. Global cross-project aggregation belongs only on dedicated admin
+reporting surfaces.
 Interfaces screens, design briefs, developer handoff specs, Figma imports, and
 Stitch/Figma credentials are also project-content surfaces: status/list/helper
 APIs require an authorized active project, frontend stores clear stale project

@@ -6,11 +6,11 @@ audience: architecture
 status: documented
 related_features: ["integrations.deployments", "findings.evidence"]
 related_glossary: ["triangulation"]
-code_references: ["frontend/src/components/integrations/DeploymentDashboard.tsx", "backend/app/api/routes/deployments.py"]
-api_references: ["backend/app/api/routes/deployments.py"]
-test_references: []
-last_verified: 2026-05-15
-compass: CF-SPEC-53 / CF-657
+code_references: ["frontend/src/components/integrations/DeploymentDashboard.tsx", "backend/app/api/routes/deployments.py", "backend/app/services/deployment_service.py"]
+api_references: ["backend/app/api/routes/deployments.py", "backend/app/services/deployment_service.py"]
+test_references: ["tests/test_deployments.py"]
+last_verified: 2026-05-19
+compass: CF-SPEC-53 / CF-657; CF-SPEC-60 / CF-767
 ---
 
 # Deployment Dashboard Architecture
@@ -23,6 +23,7 @@ The deployment dashboard has sub-tabs for live status, questions, participants, 
 
 - `frontend/src/components/integrations/DeploymentDashboard.tsx`
 - `backend/app/api/routes/deployments.py`
+- `backend/app/services/deployment_service.py`
 
 ## State, API, And Backend Contracts
 
@@ -33,20 +34,22 @@ The deployment dashboard has sub-tabs for live status, questions, participants, 
 ### API And Backend
 
 - `backend/app/api/routes/deployments.py`
+- `backend/app/services/deployment_service.py`
 
 ## Architecture Notes
 
 - The feature is mounted through `frontend/src/components/integrations/DeploymentDashboard.tsx` and the UI navigation path recorded in the inventory.
+- Conversation detail, transcript, response handling, and analytics routes verify that the conversation and deployment belong to the same project before exposing or updating participant content.
 - The frontmatter and manifest entries are the durable contract for agents updating this page after code changes.
 - When the referenced component, store, route, agent, skill, or test behavior changes, regenerate and validate the feature documentation.
 
 ## Agents, Skills, LLM, MCP, And Permissions
 
-- No direct agent, skill, LLM, or MCP behavior is asserted beyond the cited source files.
+- Adaptive follow-up generation routes through the deployment's project id, and donated or routed compute must receive only content from projects the requester is authorized to use.
 
 ## Tests And Verification
 
-- No focused test reference recorded yet.
+- `tests/test_deployments.py`
 
 ## Related Features
 
@@ -59,7 +62,7 @@ The deployment dashboard has sub-tabs for live status, questions, participants, 
 
 ## Compass Evidence
 
-- Spec/task: CF-SPEC-53 / CF-657
+- Spec/task: CF-SPEC-53 / CF-657; CF-SPEC-60 / CF-767
 - Inventory source: `docs/features/inventory.json`
 
 ## When To Update

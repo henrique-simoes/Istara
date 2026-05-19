@@ -3,15 +3,14 @@
 from __future__ import annotations
 
 import json
-import uuid
 from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel
-from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.permissions import require_project_access
+from app.models.channel_conversation import ChannelConversation
 from app.models.database import get_db
 from app.models.research_deployment import ResearchDeployment
 from app.services import deployment_service
@@ -24,6 +23,21 @@ async def _get_deployment_or_404(db: AsyncSession, deployment_id: str) -> Resear
     if not deployment:
         raise HTTPException(status_code=404, detail="Deployment not found")
     return deployment
+
+
+async def _get_project_deployment_conversation_or_404(
+    db: AsyncSession,
+    deployment: ResearchDeployment,
+    conversation_id: str,
+) -> ChannelConversation:
+    conversation = await deployment_service.get_conversation(db, conversation_id)
+    if (
+        not conversation
+        or conversation.deployment_id != deployment.id
+        or conversation.project_id != deployment.project_id
+    ):
+        raise HTTPException(status_code=404, detail="Conversation not found")
+    return conversation
 
 
 # ---------------------------------------------------------------------------
@@ -106,16 +120,19 @@ async def create_deployment(
     await require_project_access(db, request, data.project_id, min_role="researcher")
 
     questions = [q.model_dump() for q in data.questions]
-    deployment = await deployment_service.create_deployment(
-        db=db,
-        project_id=data.project_id,
-        name=data.name,
-        deployment_type=data.deployment_type,
-        questions=questions,
-        channel_instance_ids=data.channel_instance_ids,
-        config=data.config,
-        target_responses=data.target_responses,
-    )
+    try:
+        deployment = await deployment_service.create_deployment(
+            db=db,
+            project_id=data.project_id,
+            name=data.name,
+            deployment_type=data.deployment_type,
+            questions=questions,
+            channel_instance_ids=data.channel_instance_ids,
+            config=data.config,
+            target_responses=data.target_responses,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
     return DeploymentResponse.from_model(deployment)
 
 
@@ -278,6 +295,9 @@ async def handle_response(
     """
     deployment = await _get_deployment_or_404(db, deployment_id)
     await require_project_access(db, request, deployment.project_id, min_role="researcher")
+    await _get_project_deployment_conversation_or_404(
+        db, deployment, data.conversation_id
+    )
 
     result = await deployment_service.handle_response(
         db=db,
@@ -348,9 +368,9 @@ async def get_conversation(
     deployment = await _get_deployment_or_404(db, deployment_id)
     await require_project_access(db, request, deployment.project_id, min_role="viewer")
 
-    conversation = await deployment_service.get_conversation(db, conversation_id)
-    if not conversation or conversation.deployment_id != deployment_id:
-        raise HTTPException(status_code=404, detail="Conversation not found")
+    conversation = await _get_project_deployment_conversation_or_404(
+        db, deployment, conversation_id
+    )
     return conversation.to_dict()
 
 
@@ -367,9 +387,9 @@ async def get_conversation_transcript(
     deployment = await _get_deployment_or_404(db, deployment_id)
     await require_project_access(db, request, deployment.project_id, min_role="viewer")
 
-    conversation = await deployment_service.get_conversation(db, conversation_id)
-    if not conversation or conversation.deployment_id != deployment_id:
-        raise HTTPException(status_code=404, detail="Conversation not found")
+    conversation = await _get_project_deployment_conversation_or_404(
+        db, deployment, conversation_id
+    )
     transcript = await deployment_service.get_conversation_transcript(
         db, conversation_id
     )

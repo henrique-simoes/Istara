@@ -6,11 +6,11 @@ audience: researcher
 status: documented
 related_features: ["integrations.deployments", "findings.evidence"]
 related_glossary: ["triangulation"]
-code_references: ["frontend/src/components/integrations/DeploymentDashboard.tsx", "backend/app/api/routes/deployments.py"]
-api_references: ["backend/app/api/routes/deployments.py"]
-test_references: []
-last_verified: 2026-05-15
-compass: CF-SPEC-53 / CF-657
+code_references: ["frontend/src/components/integrations/DeploymentDashboard.tsx", "backend/app/api/routes/deployments.py", "backend/app/services/deployment_service.py"]
+api_references: ["backend/app/api/routes/deployments.py", "backend/app/services/deployment_service.py"]
+test_references: ["tests/test_deployments.py"]
+last_verified: 2026-05-19
+compass: CF-SPEC-53 / CF-657; CF-SPEC-60 / CF-767
 ---
 
 # Deployment Dashboard
@@ -45,6 +45,7 @@ Deployment Dashboard exists so the work represented by Integrations > Deployment
 
 - Project-scoped state or artifact updates associated with deployment dashboard.
 - Visible status, lists, forms, generated artifacts, or review results shown by the referenced component and routes.
+- Conversation details, transcripts, responses, and analytics are read or updated only when they belong to the same project as the selected deployment.
 
 ## Caveats
 
@@ -62,6 +63,6 @@ Deployment Dashboard exists so the work represented by Integrations > Deployment
 
 ## Evidence
 
-- Source files: `frontend/src/components/integrations/DeploymentDashboard.tsx`, `backend/app/api/routes/deployments.py`
-- API references: `backend/app/api/routes/deployments.py`
-- Tests: none recorded
+- Source files: `frontend/src/components/integrations/DeploymentDashboard.tsx`, `backend/app/api/routes/deployments.py`, `backend/app/services/deployment_service.py`
+- API references: `backend/app/api/routes/deployments.py`, `backend/app/services/deployment_service.py`
+- Tests: `tests/test_deployments.py`
