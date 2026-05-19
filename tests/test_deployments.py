@@ -14,6 +14,7 @@ from app.config import settings
 from app.main import app
 from app.models.channel_conversation import ChannelConversation
 from app.models.channel_instance import ChannelInstance
+from app.models.channel_message import ChannelMessage
 from app.models.database import async_session, init_db
 from app.models.research_deployment import ResearchDeployment
 
@@ -67,6 +68,39 @@ def _conversation(
         current_question_index=0,
         started_at=datetime.now(timezone.utc),
     )
+
+
+def _message(
+    *,
+    project_id: str,
+    channel_instance_id: str,
+    conversation_id: str,
+) -> ChannelMessage:
+    return ChannelMessage(
+        id=_id("message"),
+        channel_instance_id=channel_instance_id,
+        project_id=project_id,
+        direction="inbound",
+        sender_id=_id("sender"),
+        sender_name="Participant",
+        content="Scoped response",
+        thread_id=conversation_id,
+    )
+
+
+@pytest.mark.asyncio
+async def test_deployment_project_lists_require_active_project_scope(admin_auth_headers):
+    await init_db()
+
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        deployments = await ac.get("/api/deployments", headers=admin_auth_headers)
+        overview = await ac.get("/api/deployments/overview", headers=admin_auth_headers)
+
+    assert deployments.status_code == 400
+    assert deployments.json()["detail"] == "project_id is required"
+    assert overview.status_code == 400
+    assert overview.json()["detail"] == "project_id is required"
 
 
 @pytest.mark.asyncio
@@ -227,6 +261,104 @@ async def test_deployment_detail_requires_matching_active_project_for_admin(admi
 
 
 @pytest.mark.asyncio
+async def test_deployment_detail_actions_require_matching_active_project_scope(admin_auth_headers):
+    await init_db()
+    project_a = _id("project-a")
+    project_b = _id("project-b")
+    channel_a = ChannelInstance(
+        id=_id("channel-a"),
+        platform="slack",
+        name="Project A Slack",
+        project_id=project_a,
+    )
+    deployment_a = _deployment(
+        project_id=project_a,
+        channel_instance_id=channel_a.id,
+        state="draft",
+    )
+    conversation_a = _conversation(
+        project_id=project_a,
+        channel_instance_id=channel_a.id,
+        deployment_id=deployment_a.id,
+    )
+    message_a = _message(
+        project_id=project_a,
+        channel_instance_id=channel_a.id,
+        conversation_id=conversation_a.id,
+    )
+    cross_project_message = _message(
+        project_id=project_b,
+        channel_instance_id=channel_a.id,
+        conversation_id=conversation_a.id,
+    )
+    async with async_session() as db:
+        db.add_all(
+            [channel_a, deployment_a, conversation_a, message_a, cross_project_message]
+        )
+        await db.commit()
+
+    paths = [
+        ("get", f"/api/deployments/{deployment_a.id}/analytics"),
+        ("post", f"/api/deployments/{deployment_a.id}/activate"),
+        ("post", f"/api/deployments/{deployment_a.id}/pause"),
+        ("post", f"/api/deployments/{deployment_a.id}/complete"),
+        ("get", f"/api/deployments/{deployment_a.id}/conversations"),
+        ("get", f"/api/deployments/{deployment_a.id}/conversations/{conversation_a.id}"),
+        (
+            "get",
+            f"/api/deployments/{deployment_a.id}/conversations/{conversation_a.id}/transcript",
+        ),
+    ]
+
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        for method, path in paths:
+            unscoped = await getattr(ac, method)(path, headers=admin_auth_headers)
+            wrong_project = await getattr(ac, method)(
+                f"{path}?project_id={project_b}",
+                headers=admin_auth_headers,
+            )
+
+            assert unscoped.status_code == 400
+            assert unscoped.json()["detail"] == "project_id is required"
+            assert wrong_project.status_code == 404
+            assert wrong_project.json()["detail"] == "Deployment not found"
+
+        analytics = await ac.get(
+            f"/api/deployments/{deployment_a.id}/analytics?project_id={project_a}",
+            headers=admin_auth_headers,
+        )
+        conversations = await ac.get(
+            f"/api/deployments/{deployment_a.id}/conversations?project_id={project_a}",
+            headers=admin_auth_headers,
+        )
+        conversation = await ac.get(
+            f"/api/deployments/{deployment_a.id}/conversations/{conversation_a.id}?project_id={project_a}",
+            headers=admin_auth_headers,
+        )
+        transcript = await ac.get(
+            f"/api/deployments/{deployment_a.id}/conversations/{conversation_a.id}/transcript?project_id={project_a}",
+            headers=admin_auth_headers,
+        )
+
+    assert analytics.status_code == 200
+    assert analytics.json()["deployment_id"] == deployment_a.id
+    assert conversations.status_code == 200
+    assert [item["id"] for item in conversations.json()] == [conversation_a.id]
+    assert conversation.status_code == 200
+    assert conversation.json()["project_id"] == project_a
+    assert transcript.status_code == 200
+    transcript_messages = transcript.json()["messages"]
+    assert len(transcript_messages) == 1
+    assert transcript_messages[0]["project_id"] == project_a
+
+    async with async_session() as db:
+        unchanged = await db.get(ResearchDeployment, deployment_a.id)
+        assert unchanged is not None
+        assert unchanged.state == "draft"
+
+
+@pytest.mark.asyncio
 async def test_deployment_response_rejects_cross_project_conversation(admin_auth_headers):
     await init_db()
     project_a = _id("project-a")
@@ -256,6 +388,22 @@ async def test_deployment_response_rejects_cross_project_conversation(admin_auth
 
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        unscoped = await ac.post(
+            f"/api/deployments/{deployment_a.id}/respond",
+            headers=admin_auth_headers,
+            json={
+                "conversation_id": conversation_b.id,
+                "message_text": "This belongs to another project.",
+            },
+        )
+        wrong_project = await ac.post(
+            f"/api/deployments/{deployment_a.id}/respond?project_id={project_b}",
+            headers=admin_auth_headers,
+            json={
+                "conversation_id": conversation_b.id,
+                "message_text": "This belongs to another project.",
+            },
+        )
         response = await ac.post(
             f"/api/deployments/{deployment_a.id}/respond?project_id={project_a}",
             headers=admin_auth_headers,
@@ -265,6 +413,10 @@ async def test_deployment_response_rejects_cross_project_conversation(admin_auth
             },
         )
 
+    assert unscoped.status_code == 400
+    assert unscoped.json()["detail"] == "project_id is required"
+    assert wrong_project.status_code == 404
+    assert wrong_project.json()["detail"] == "Deployment not found"
     assert response.status_code == 404
     assert response.json()["detail"] == "Conversation not found"
 

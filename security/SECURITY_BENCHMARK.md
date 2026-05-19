@@ -151,11 +151,12 @@ from any other project. Channel detail, lifecycle, health, message-history,
 conversation, and manual-send endpoints must also carry the active project and
 verify that the channel instance and returned rows belong to that project.
 Deployment creation must only attach channel instances owned by the same
-project, and deployment detail, lifecycle,
-response, conversation, transcript, analytics, and overview counters must
-require the caller's active project and verify matching deployment/project
-ownership before reading, mutating, or summarizing participant content. Global
-cross-project aggregation belongs only on dedicated admin reporting surfaces.
+project, and deployment detail, lifecycle, response, conversation, transcript,
+analytics, and overview counters must require the caller's active project,
+authorize that project before by-id lookups, and verify matching
+deployment/project ownership before reading, mutating, or summarizing
+participant content. Global cross-project aggregation belongs only on dedicated
+admin reporting surfaces.
 Inbound channel processors must resolve deployments only inside the channel
 instance's project and only when the active deployment explicitly lists that
 channel instance; unbound or other-project deployments must not receive

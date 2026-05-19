@@ -158,8 +158,10 @@ def test_backend_deployments_enforce_project_owned_channels_and_conversations() 
     assert "async def _get_active_project_deployment_or_404" in route
     assert 'raise HTTPException(status_code=400, detail="project_id is required")' in route
     assert 'raise HTTPException(status_code=404, detail="Deployment not found")' in route
-    assert "deployment.project_id != scoped_project_id" in route
+    assert "ResearchDeployment.id == deployment_id" in route
+    assert "ResearchDeployment.project_id == scoped_project_id" in route
     assert "await require_project_access(db, request, scoped_project_id, min_role=min_role)" in route
+    assert "async def _get_deployment_or_404" not in route
     assert "validate_channel_instances_for_project" in service
     assert "instance.project_id != project_id" in service
     assert "channel_instance_ids_json=json.dumps(scoped_channel_instance_ids)" in service
