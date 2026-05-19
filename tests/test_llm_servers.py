@@ -57,6 +57,17 @@ async def test_llm_servers_list_requires_auth():
         assert response.status_code == 401
 
 
+@pytest.mark.asyncio
+async def test_llm_server_health_check_requires_auth():
+    """Manual LLM server health checks require authentication in team mode."""
+    await init_db()
+    settings.team_mode = True
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        response = await ac.post("/api/llm-servers/server-1/health-check", json={})
+        assert response.status_code == 401
+
+
 def test_local_server_detection_rejects_remote_hosts_marked_local():
     assert _is_local_host("http://localhost:11434")
     assert _is_local_host("127.0.0.1:1234")

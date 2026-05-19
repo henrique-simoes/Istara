@@ -8,9 +8,9 @@ related_features: ["settings.llm-servers", "settings.general", "compute.pool"]
 related_glossary: ["rag"]
 code_references: ["frontend/src/components/chat/ChatView.tsx", "frontend/src/components/chat/chatViewParts.tsx", "frontend/src/lib/modelProviders.ts", "backend/app/api/routes/llm_servers.py"]
 api_references: ["backend/app/api/routes/llm_servers.py", "backend/app/core/llm_router.py"]
-test_references: ["frontend/src/lib/modelProviders.test.ts"]
-last_verified: 2026-05-15
-compass: CF-SPEC-53 / CF-657
+test_references: ["frontend/src/lib/modelProviders.test.ts", "tests/test_llm_servers.py", "tests/test_project_scope_contracts.py"]
+last_verified: 2026-05-19
+compass: CF-SPEC-77 / CF-986
 ---
 
 # Chat Model Controls Architecture
@@ -37,6 +37,12 @@ Chat exposes model, thinking, and reasoning controls so users can tune how the a
 - `backend/app/api/routes/llm_servers.py`
 - `backend/app/core/llm_router.py`
 
+Model controls may display shared LLM-provider availability, but the backing
+server inventory and manual health-check APIs require authenticated global
+access in team mode before endpoint status or capability metadata is returned.
+Project prompt, retrieval, and compute payloads remain governed by the active
+project routes that call the model controls.
+
 ## Architecture Notes
 
 - The feature is mounted through `frontend/src/components/chat/ChatView.tsx` and the UI navigation path recorded in the inventory.
@@ -50,6 +56,8 @@ Chat exposes model, thinking, and reasoning controls so users can tune how the a
 ## Tests And Verification
 
 - `frontend/src/lib/modelProviders.test.ts`
+- `tests/test_llm_servers.py`
+- `tests/test_project_scope_contracts.py`
 
 ## Related Features
 
@@ -63,7 +71,7 @@ Chat exposes model, thinking, and reasoning controls so users can tune how the a
 
 ## Compass Evidence
 
-- Spec/task: CF-SPEC-53 / CF-657
+- Spec/task: CF-SPEC-77 / CF-986
 - Inventory source: `docs/features/inventory.json`
 
 ## When To Update
