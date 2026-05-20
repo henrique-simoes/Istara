@@ -16,19 +16,7 @@ export async function run(ctx) {
   // ── Helper: ensure we have a project ──
   let projectId = ctx.projectId;
   if (!projectId) {
-    try {
-      const created = await api.post("/api/projects", {
-        name: "[SIM-47] Atomic Research Design Test",
-        description: "Temporary project for Atomic Research design extension tests",
-      });
-      projectId = created.id;
-    } catch {
-      try {
-        const projects = await api.get("/api/projects");
-        const list = projects.projects || projects || [];
-        if (list.length > 0) projectId = list[0].id;
-      } catch {}
-    }
+    return [{ name: "Project available for atomic research design", passed: false, detail: "No persistent project from runner" }];
   }
 
   // ── 1. DesignDecision model — list endpoint returns 200 ──

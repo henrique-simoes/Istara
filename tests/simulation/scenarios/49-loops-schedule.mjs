@@ -18,19 +18,7 @@ export async function run(ctx) {
   // ── Helper: ensure we have a project ──
   let projectId = normalizeProjectId(ctx.projectId);
   if (!projectId) {
-    try {
-      const created = await api.post("/api/projects", {
-        name: "[SIM-49] Loops & Schedule Test Project",
-        description: "Temporary project for Loops & Schedule integration tests",
-      });
-      projectId = normalizeProjectId(created?.id);
-    } catch {
-      try {
-        const projects = await api.get("/api/projects");
-        const list = projects.projects || projects || [];
-        if (list.length > 0) projectId = normalizeProjectId(list[0].id);
-      } catch {}
-    }
+    return [{ name: "Project available for loops and schedule", passed: false, detail: "No persistent project from runner" }];
   }
 
   const scopedPath = (path) => {

@@ -17,21 +17,9 @@ export async function run(ctx) {
   // ── Helper: ensure we have a project ──
   let projectId = ctx.projectId;
   if (!projectId) {
-    try {
-      const created = await api.post("/api/projects", {
-        name: "[SIM-45] Interfaces Test Project",
-        description: "Temporary project for Interfaces menu integration tests",
-      });
-      projectId = created.id;
-    } catch {
-      // Fall back to any existing project
-      try {
-        const projects = await api.get("/api/projects");
-        const list = projects.projects || projects || [];
-        if (list.length > 0) projectId = list[0].id;
-      } catch {}
-    }
+    return [{ name: "Project available for interfaces menu", passed: false, detail: "No persistent project from runner" }];
   }
+  const projectQuery = `project_id=${encodeURIComponent(projectId)}`;
 
   // ── 1. GET /api/interfaces/status ──
   try {
@@ -114,7 +102,7 @@ export async function run(ctx) {
   // ── 3. List screens — verify generated screen appears ──
   if (projectId) {
     try {
-      const screens = await api.get(`/api/interfaces/screens?project_id=${projectId}`);
+      const screens = await api.get(`/api/interfaces/screens?${projectQuery}`);
       const screenList = Array.isArray(screens) ? screens : screens.screens || [];
       checks.push({
         name: "GET /api/interfaces/screens returns array",
@@ -228,7 +216,7 @@ export async function run(ctx) {
         detail: `status=${res.status}`,
       });
       // Verify removed from list
-      const screens = await api.get(`/api/interfaces/screens?project_id=${projectId}`);
+      const screens = await api.get(`/api/interfaces/screens?${projectQuery}`);
       const screenList = Array.isArray(screens) ? screens : screens.screens || [];
       const stillPresent = screenList.some((s) => s.id === editedScreenId);
       checks.push({
@@ -301,7 +289,7 @@ export async function run(ctx) {
   // ── 11. Handoff briefs endpoint ──
   if (projectId) {
     try {
-      const briefs = await api.get(`/api/interfaces/handoff/briefs?project_id=${projectId}`);
+      const briefs = await api.get(`/api/interfaces/handoff/briefs?${projectQuery}`);
       checks.push({
         name: "GET /api/interfaces/handoff/briefs returns 200",
         passed: !!briefs && (briefs.briefs !== undefined || Array.isArray(briefs)),
@@ -320,7 +308,7 @@ export async function run(ctx) {
       body: JSON.stringify({
         prompt: "A login screen",
         device_type: "mobile",
-        project_id: projectId || "test",
+        project_id: projectId,
       }),
     });
     checks.push({
@@ -339,7 +327,7 @@ export async function run(ctx) {
       headers: api._headers(),
       body: JSON.stringify({
         figma_url: "https://figma.com/file/test123",
-        project_id: projectId || "test",
+        project_id: projectId,
       }),
     });
     checks.push({
@@ -353,7 +341,7 @@ export async function run(ctx) {
 
   // ── 14. Design decisions endpoint ──
   try {
-    const decisions = await api.get(`/api/findings/design-decisions?project_id=${projectId}`);
+    const decisions = await api.get(`/api/findings/design-decisions?${projectQuery}`);
     checks.push({
       name: "GET /api/findings/design-decisions returns 200",
       passed: true,
@@ -400,7 +388,7 @@ export async function run(ctx) {
     try { await fetch(`http://localhost:8000/api/interfaces/screens/${id}`, { method: "DELETE", headers: api._headers() }); } catch {}
   }
   for (const id of cleanup.decisionIds) {
-    try { await api.delete(`/api/findings/design-decisions/${id}?project_id=${projectId}`); } catch {}
+    try { await api.delete(`/api/findings/design-decisions/${id}?${projectQuery}`); } catch {}
   }
 
   return {

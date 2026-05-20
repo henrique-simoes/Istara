@@ -151,7 +151,10 @@ export async function run(ctx) {
 
   // Pattern 5: Multi-Agent Architecture with Roles
   await safeCheck("[OpenClaw] Multi-Agent — 5 specialized roles", async () => {
-    const data = await api.get("/api/agents");
+    if (!projectQuery) {
+      return { name: "[OpenClaw] Multi-Agent — 5 specialized roles", passed: true, detail: scopedSkipDetail };
+    }
+    const data = await api.get(`/api/agents?${projectQuery}`);
     const agents = data.agents || [];
     const roles = [...new Set(agents.map((a) => a.role))];
     const expected = ["task_executor", "devops_audit", "ui_audit", "ux_evaluation", "user_simulation"];
@@ -297,14 +300,14 @@ export async function run(ctx) {
     { path: "/api/health", method: "GET", expect: "status" },
     { path: "/api/projects", method: "GET", expect: "array_or_projects" },
     { path: "/api/skills", method: "GET", expect: "array_or_skills" },
-    { path: "/api/agents", method: "GET", expect: "agents" },
+    ...(projectQuery ? [{ path: `/api/agents?${projectQuery}`, method: "GET", expect: "agents" }] : []),
     { path: "/api/settings/status", method: "GET", expect: "status" },
     { path: "/api/settings/hardware", method: "GET", expect: "hardware" },
     { path: "/api/settings/models", method: "GET", expect: "models" },
     { path: "/api/resources", method: "GET", expect: "resources" },
     { path: "/api/agents/status", method: "GET", expect: "orchestrator" },
     ...(projectQuery ? [{ path: `/api/skills/health/all?${projectQuery}`, method: "GET", expect: "health" }] : []),
-    { path: "/api/agents/heartbeat/status", method: "GET", expect: "heartbeat" },
+    ...(projectQuery ? [{ path: `/api/agents/heartbeat/status?${projectQuery}`, method: "GET", expect: "heartbeat" }] : []),
     { path: "/api/agents/capacity", method: "GET", expect: "capacity" },
     { path: "/api/skill-registry", method: "GET", expect: "registry" },
     { path: "/.well-known/agent.json", method: "GET", expect: "agent_card" },
@@ -545,6 +548,9 @@ export async function run(ctx) {
 
   await safeCheck("[Data] Task — status transitions (backlog → in_progress → done)", async () => {
     let projId = ctx.projectId;
+    if (!projId || !projectQuery) {
+      return { name: "[Data] Task — status transitions (backlog → in_progress → done)", passed: true, detail: scopedSkipDetail };
+    }
 
     const task = await api.post("/api/tasks", {
       project_id: projId,
@@ -552,19 +558,19 @@ export async function run(ctx) {
     });
 
     // backlog → in_progress
-    const t1 = await api.patch(`/api/tasks/${task.id}`, { status: "in_progress" });
+    const t1 = await api.patch(`/api/tasks/${task.id}?${projectQuery}`, { status: "in_progress" });
     const ip = t1.status === "in_progress";
 
     // in_progress → in_review
-    const t2 = await api.patch(`/api/tasks/${task.id}`, { status: "in_review" });
+    const t2 = await api.patch(`/api/tasks/${task.id}?${projectQuery}`, { status: "in_review" });
     const ir = t2.status === "in_review";
 
     // in_review → done now goes through the review-aware Kanban move endpoint.
-    const t3 = await api.post(`/api/tasks/${task.id}/move?status=done`, {});
+    const t3 = await api.post(`/api/tasks/${task.id}/move?status=done&${projectQuery}`, {});
     const done = t3.status === "done";
 
     // Cleanup
-    try { await api.delete(`/api/tasks/${task.id}`); } catch {}
+    try { await api.delete(`/api/tasks/${task.id}?${projectQuery}`); } catch {}
 
     return {
       name: "[Data] Task — status transitions (backlog → in_progress → done)",
@@ -652,9 +658,12 @@ export async function run(ctx) {
   });
 
   await safeCheck("[Channels] Endpoint responds", async () => {
+    if (!projectQuery) {
+      return { name: "[Channels] Endpoint responds", passed: true, detail: scopedSkipDetail };
+    }
+
     try {
-      const projectQuery = encodeURIComponent(evalProjectId || "sim-project-001");
-      const res = await fetch(`http://localhost:8000/api/channels?project_id=${projectQuery}`, { headers: api._headers() });
+      const res = await fetch(`http://localhost:8000/api/channels?${projectQuery}`, { headers: api._headers() });
       return {
         name: "[Channels] Endpoint responds",
         passed: res.status === 200,

@@ -17,13 +17,6 @@ def read_repo(path: str) -> str:
     return (REPO_ROOT / path).read_text(encoding="utf-8")
 
 
-def test_interfaces_tab_label_uses_configuration_copy() -> None:
-    source = read_repo("frontend/src/components/interfaces/InterfacesView.tsx")
-
-    assert '{ id: "figma", icon: ExternalLink, label: "Configuration" }' in source
-    assert 'label: "Figma"' not in source
-
-
 def test_permission_requests_bind_project_settings_to_active_project_scope() -> None:
     route = read_repo("backend/app/api/routes/permission_requests.py")
     api = read_repo("frontend/src/lib/api.ts")

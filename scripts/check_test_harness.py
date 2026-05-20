@@ -128,8 +128,10 @@ def check_llm_profiles(issues: list[str]) -> None:
 
 def check_simulation_runner(issues: list[str]) -> None:
     runner = read("tests/simulation/run.mjs")
+    scenario_registry = read("tests/simulation/lib/scenario-registry.mjs")
     client = read("tests/simulation/lib/api-client.mjs")
     marathon = read("scripts/marathon/run-cycle.mjs")
+    simulation_package = json.loads(read("tests/simulation/package.json"))
     scenario_sources = "\n".join(
         path.read_text(encoding="utf-8")
         for path in sorted((ROOT / "tests" / "simulation" / "scenarios").glob("*.mjs"))
@@ -148,8 +150,10 @@ def check_simulation_runner(issues: list[str]) -> None:
         ]
     )
     for scenario in sorted(REQUIRED_SIMULATION_SCENARIOS):
-        if f'"{scenario}"' not in runner:
-            issues.append(f"tests/simulation/run.mjs: missing scenario `{scenario}`")
+        if f'"{scenario}"' not in scenario_registry:
+            issues.append(f"tests/simulation/lib/scenario-registry.mjs: missing scenario `{scenario}`")
+    if "scenarioFiles" not in runner or "./lib/scenario-registry.mjs" not in runner:
+        issues.append("tests/simulation/run.mjs: must load scenarios from the shared registry")
     if "process.env.ISTARA_API_URL" not in runner:
         issues.append(
             "tests/simulation/run.mjs: API base must be environment-configurable"
@@ -210,6 +214,80 @@ def check_simulation_runner(issues: list[str]) -> None:
         issues.append(
             "scripts/marathon/run-cycle.mjs: protected probes must send auth headers"
         )
+    if "runCustomChecks" not in marathon or "./custom-checks.mjs" not in marathon:
+        issues.append("scripts/marathon/run-cycle.mjs: custom checks must use the registry module")
+    if "Placeholder" in marathon:
+        issues.append("scripts/marathon/run-cycle.mjs: custom checks must not silently pass placeholders")
+    if simulation_package.get("scripts", {}).get("test:static") != 'node lib/static-check.mjs && node --test "lib/**/*.test.mjs"':
+        issues.append("tests/simulation/package.json: missing deterministic `test:static` script")
+
+
+def check_project_scope_harness(issues: list[str]) -> None:
+    required_files = [
+        "tests/test_harness_project_scope_contracts.py",
+        "tests/simulation/lib/project-selection.mjs",
+        "tests/simulation/lib/project-selection.test.mjs",
+    ]
+    for relative_path in required_files:
+        if not (ROOT / relative_path).exists():
+            issues.append(f"{relative_path}: missing project-scope harness guard")
+
+    runner = read("tests/simulation/run.mjs")
+    selection = read("tests/simulation/lib/project-selection.mjs")
+    selection_test = read("tests/simulation/lib/project-selection.test.mjs")
+    if "selectCanonicalSimulationProject" not in runner:
+        issues.append("tests/simulation/run.mjs: must use deterministic simulation project selection")
+    if "SIMULATION_PROJECT_NAME" not in runner:
+        issues.append("tests/simulation/run.mjs: must use the shared simulation project name")
+    if "does not fall back to the first project" not in selection_test:
+        issues.append("tests/simulation/lib/project-selection.test.mjs: missing many-project fallback guard")
+    if "requireActiveProjectId" not in selection:
+        issues.append("tests/simulation/lib/project-selection.mjs: missing explicit project_id helper")
+
+
+def check_marathon_config_integrity(issues: list[str]) -> None:
+    custom_checks = read("scripts/marathon/custom-checks.mjs")
+    integrity_test = read("tests/test_marathon_config_integrity.py")
+    for snippet in (
+        "CUSTOM_CHECKS",
+        "CUSTOM_CHECK_NAMES",
+        "DOCUMENTED_CYCLE_REQUIREMENTS",
+        "validateCustomCheckNames",
+    ):
+        if snippet not in custom_checks:
+            issues.append(f"scripts/marathon/custom-checks.mjs: missing `{snippet}`")
+    if "Unknown marathon custom check" not in custom_checks:
+        issues.append("scripts/marathon/custom-checks.mjs: unknown checks must fail explicitly")
+    if "Placeholder" in custom_checks:
+        issues.append("scripts/marathon/custom-checks.mjs: custom checks must not contain placeholders")
+    for snippet in (
+        "test_marathon_scenario_refs_resolve_to_registered_simulation_scenarios",
+        "test_marathon_custom_checks_resolve_to_registered_implementations",
+        "test_marathon_cycle_requirements_are_documented_and_bounded",
+    ):
+        if snippet not in integrity_test:
+            issues.append(f"tests/test_marathon_config_integrity.py: missing `{snippet}`")
+
+
+def check_js_static_harness(issues: list[str]) -> None:
+    ci = read(".github/workflows/ci.yml")
+    simulation_static = read("tests/simulation/lib/static-check.mjs")
+    real_user_package = json.loads(read("tests/real_user_benchmark/package.json"))
+
+    required_ci_snippets = {
+        "relay job working directory": "working-directory: relay",
+        "relay unit tests": "npm test",
+        "simulation static checks": "npm run test:static",
+        "real-user benchmark static checks": "npm run check",
+    }
+    for label, snippet in required_ci_snippets.items():
+        if snippet not in ci:
+            issues.append(f".github/workflows/ci.yml: missing {label}")
+    for snippet in ("node_modules", ".results", "test-results", '"--check"'):
+        if snippet not in simulation_static:
+            issues.append(f"tests/simulation/lib/static-check.mjs: missing `{snippet}`")
+    if "node --check run.mjs" not in real_user_package.get("scripts", {}).get("check", ""):
+        issues.append("tests/real_user_benchmark/package.json: missing `check` syntax script")
 
 
 def check_agentic_eval_contract(issues: list[str]) -> None:
@@ -243,6 +321,10 @@ def check_ci_governance(issues: list[str]) -> None:
         issues.append(
             ".github/workflows/ci.yml: missing agentic eval contract smoke test"
         )
+    if "tests/test_harness_project_scope_contracts.py" not in ci:
+        issues.append(".github/workflows/ci.yml: missing project-scope harness smoke test")
+    if "tests/test_marathon_config_integrity.py" not in ci:
+        issues.append(".github/workflows/ci.yml: missing marathon config integrity smoke test")
     governance = read("scripts/check_ci_governance.py")
     if "check_test_harness.py" not in governance:
         issues.append("scripts/check_ci_governance.py: missing test harness self-check")
@@ -301,6 +383,9 @@ def main() -> int:
     check_pytest_markers(issues)
     check_llm_profiles(issues)
     check_simulation_runner(issues)
+    check_project_scope_harness(issues)
+    check_marathon_config_integrity(issues)
+    check_js_static_harness(issues)
     check_agentic_eval_contract(issues)
     check_ci_governance(issues)
     check_mutation_property_harness(issues)

@@ -333,11 +333,13 @@ def main():
             client.post(
                 "/api/chat/voice-transcribe",
                 json={
-                    "project_id": project_id if project_id else "0",
+                    "project_id": project_id,
                     "dummy": True,
                 },
             )
-        ),
+        )
+        if assert_true(project_id)
+        else None,
     )
 
     # =========================================================

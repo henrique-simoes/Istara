@@ -6,13 +6,17 @@ export const id = "11-agents-system";
 export async function run(ctx) {
   const { api, page, screenshot } = ctx;
   const checks = [];
-  const projectId = ctx.projectId || "sim-project-001";
+  if (!ctx.projectId) {
+    return { checks: [{ name: "Simulation project required", passed: false, detail: "No project ID" }], passed: 0, failed: 1 };
+  }
+  const projectId = ctx.projectId;
+  const projectQuery = `project_id=${encodeURIComponent(projectId)}`;
 
   // ── API Tests ──
 
   // 1. List agents — should have system agents seeded
   try {
-    const data = await api.get("/api/agents");
+    const data = await api.get(`/api/agents?${projectQuery}`);
     const agents = data.agents || [];
     const systemAgents = agents.filter((a) => a.is_system);
     checks.push({
@@ -57,7 +61,7 @@ export async function run(ctx) {
   // 3. Get agent details
   if (testAgentId) {
     try {
-      const agent = await api.get(`/api/agents/${testAgentId}`);
+      const agent = await api.get(`/api/agents/${testAgentId}?${projectQuery}`);
       checks.push({
         name: "Get agent details",
         passed: agent.name === "Sim Test Agent" && agent.capabilities?.length === 2,
@@ -71,7 +75,7 @@ export async function run(ctx) {
   // 4. Update agent
   if (testAgentId) {
     try {
-      const updated = await api.patch(`/api/agents/${testAgentId}`, {
+      const updated = await api.patch(`/api/agents/${testAgentId}?${projectQuery}`, {
         system_prompt: "Updated test prompt.",
       });
       checks.push({
@@ -87,12 +91,12 @@ export async function run(ctx) {
   // 5. Pause and resume agent
   if (testAgentId) {
     try {
-      await api.post(`/api/agents/${testAgentId}/pause`, {});
-      const paused = await api.get(`/api/agents/${testAgentId}`);
+      await api.post(`/api/agents/${testAgentId}/pause?${projectQuery}`, {});
+      const paused = await api.get(`/api/agents/${testAgentId}?${projectQuery}`);
       const isPaused = paused.state === "paused";
 
-      await api.post(`/api/agents/${testAgentId}/resume`, {});
-      const resumed = await api.get(`/api/agents/${testAgentId}`);
+      await api.post(`/api/agents/${testAgentId}/resume?${projectQuery}`, {});
+      const resumed = await api.get(`/api/agents/${testAgentId}?${projectQuery}`);
       const isIdle = resumed.state === "idle";
 
       checks.push({
@@ -108,10 +112,10 @@ export async function run(ctx) {
   // 6. Agent memory
   if (testAgentId) {
     try {
-      await api.patch(`/api/agents/${testAgentId}/memory`, {
+      await api.patch(`/api/agents/${testAgentId}/memory?${projectQuery}`, {
         test_key: "simulation_value",
       });
-      const mem = await api.get(`/api/agents/${testAgentId}/memory`);
+      const mem = await api.get(`/api/agents/${testAgentId}/memory?${projectQuery}`);
       checks.push({
         name: "Agent memory read/write",
         passed: mem.memory?.test_key === "simulation_value",
@@ -165,7 +169,7 @@ export async function run(ctx) {
 
   // 9. Heartbeat status
   try {
-    const hb = await api.get("/api/agents/heartbeat/status");
+    const hb = await api.get(`/api/agents/heartbeat/status?${projectQuery}`);
     const agentStatuses = hb.agents || [];
     checks.push({
       name: "Heartbeat status API",
@@ -179,7 +183,7 @@ export async function run(ctx) {
   // 10. Delete user agent (system agents should be protected)
   if (testAgentId) {
     try {
-      const res = await api.delete(`/api/agents/${testAgentId}`);
+      const res = await api.delete(`/api/agents/${testAgentId}?${projectQuery}`);
       checks.push({
         name: "Delete user agent",
         passed: res.status === 204,
@@ -192,10 +196,10 @@ export async function run(ctx) {
 
   // 11. System agent delete protection
   try {
-    const data = await api.get("/api/agents");
+    const data = await api.get(`/api/agents?${projectQuery}`);
     const systemAgent = (data.agents || []).find((a) => a.is_system);
     if (systemAgent) {
-      const res = await api.delete(`/api/agents/${systemAgent.id}`);
+      const res = await api.delete(`/api/agents/${systemAgent.id}?${projectQuery}`);
       checks.push({
         name: "System agent delete protection",
         passed: res.status === 404,
@@ -298,7 +302,7 @@ export async function run(ctx) {
   if (agentsViewVisible) {
     // First, check the current heartbeat status via API for any error states
     try {
-      const hb = await api.get("/api/agents/heartbeat/status");
+      const hb = await api.get(`/api/agents/heartbeat/status?${projectQuery}`);
       const agentStatuses = hb.agents || [];
 
       // Check the UI text for any agents that have error state

@@ -6,7 +6,11 @@ export const id = "14-agent-communication";
 export async function run(ctx) {
   const { api } = ctx;
   const checks = [];
-  const projectId = ctx.projectId || "sim-project-001";
+  if (!ctx.projectId) {
+    return { checks: [{ name: "Simulation project required", passed: false, detail: "No project ID" }], passed: 0, failed: 1 };
+  }
+  const projectId = ctx.projectId;
+  const projectQuery = `project_id=${encodeURIComponent(projectId)}`;
 
   // 1. Create two test agents
   let agentA = null;
@@ -163,7 +167,7 @@ export async function run(ctx) {
   for (const agent of [agentA, agentB]) {
     if (agent?.id) {
       try {
-        await api.delete(`/api/agents/${agent.id}`);
+        await api.delete(`/api/agents/${agent.id}?${projectQuery}`);
       } catch {}
     }
   }

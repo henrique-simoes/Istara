@@ -15,6 +15,7 @@ import { readFileSync, writeFileSync, mkdirSync, existsSync, readdirSync } from 
 import { join, dirname } from "path";
 import { fileURLToPath } from "url";
 import { execSync } from "child_process";
+import { runCustomChecks } from "./custom-checks.mjs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const PROJECT_ROOT = join(__dirname, "..", "..");
@@ -190,78 +191,6 @@ async function runScenarios(scenarioIds) {
   return results;
 }
 
-// Run custom checks (API sweep, DB integrity, etc.)
-async function runCustomChecks(checkNames) {
-  const results = [];
-  for (const check of checkNames || []) {
-    switch (check) {
-      case "api_endpoint_sweep": {
-        // Quick sweep of major API groups
-        const endpoints = [
-          "/api/health", "/api/projects", "/api/skills", "/api/agents",
-          "/api/channels", "/api/surveys/integrations", "/api/deployments?project_id=test",
-          "/api/mcp/server/status", "/api/mcp/clients", "/api/mcp/featured",
-          "/api/autoresearch/status", "/api/laws", "/api/laws?category=perception",
-          "/api/backups", "/api/backups/config",
-        ];
-        for (const ep of endpoints) {
-          try {
-            const res = await fetch(`${API_BASE}${ep}`, { headers: authHeaders() });
-            results.push({
-              check: `API ${ep}`,
-              passed: res.ok,
-              status: res.status,
-              detail: res.ok ? "OK" : `Status ${res.status}`,
-            });
-          } catch (e) {
-            results.push({ check: `API ${ep}`, passed: false, detail: e.message });
-          }
-        }
-        break;
-      }
-      case "db_integrity": {
-        // Check critical DB tables have data
-        const tables = ["projects", "skills", "agents"];
-        for (const table of tables) {
-          try {
-            const res = await fetch(`${API_BASE}/api/${table}`, { headers: authHeaders() });
-            const data = await res.json();
-            const count = Array.isArray(data) ? data.length : (data?.[table]?.length || 0);
-            results.push({
-              check: `DB ${table} populated`,
-              passed: count > 0,
-              detail: `${count} records`,
-            });
-          } catch (e) {
-            results.push({ check: `DB ${table}`, passed: false, detail: e.message });
-          }
-        }
-        break;
-      }
-      case "network_discovery": {
-        try {
-          const res = await fetch(`${API_BASE}/api/llm-servers`, { headers: authHeaders() });
-          if (res.ok) {
-            const servers = await res.json();
-            const list = Array.isArray(servers) ? servers : servers?.servers || [];
-            results.push({
-              check: "Network LLM discovery",
-              passed: list.length >= 1,
-              detail: `${list.length} server(s) discovered`,
-            });
-          }
-        } catch (e) {
-          results.push({ check: "Network LLM discovery", passed: false, detail: e.message });
-        }
-        break;
-      }
-      default:
-        results.push({ check, passed: true, detail: "Placeholder — not yet implemented" });
-    }
-  }
-  return results;
-}
-
 // Generate cycle report
 function generateCycleReport(cycle, env, scenarioResults, customResults, startTime) {
   const endTime = new Date();
@@ -389,7 +318,12 @@ async function main() {
     const scenarioResults = await runScenarios(cycle.scenarios || []);
 
     // Run custom checks
-    const customResults = await runCustomChecks(cycle.custom_checks);
+    const customResults = await runCustomChecks(cycle.custom_checks, {
+      apiBase: API_BASE,
+      projectRoot: PROJECT_ROOT,
+      authHeaders,
+      fetchImpl: fetch,
+    });
 
     // Generate report
     const report = generateCycleReport(cycle, env, scenarioResults, customResults, startTime);

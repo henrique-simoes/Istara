@@ -6,13 +6,25 @@ export const id = "77-voice-transcription";
 export async function run(ctx) {
   const { api, page } = ctx;
   const checks = [];
+  if (!ctx.projectId) {
+    return { checks: [{ name: "Project available for voice transcription", passed: false, detail: "No persistent project from runner" }], passed: 0, failed: 1 };
+  }
 
   // 1. Voice transcription API endpoint exists and returns proper errors without audio
   try {
-    const resp = await api.post("/api/chat/voice", {});
+    const form = new FormData();
+    form.append("project_id", ctx.projectId);
+    const headers = {};
+    const auth = api._headers()["Authorization"];
+    if (auth) headers.Authorization = auth;
+    const resp = await fetch("http://localhost:8000/api/chat/voice", {
+      method: "POST",
+      headers,
+      body: form,
+    });
     checks.push({
-      name: "Voice API returns 422 without audio file",
-      passed: resp.status === 422 || resp.status === 401 || resp.status === 400 || resp.status === 200,
+      name: "Voice API requires audio after project scope is accepted",
+      passed: resp.status === 422,
       detail: `Status: ${resp.status}`,
     });
   } catch (e) {
@@ -21,8 +33,8 @@ export async function run(ctx) {
     const status = e.message.includes("422") ? 422 : 
                    e.message.includes("401") ? 401 : 
                    e.message.includes("404") ? 404 : "unknown";
-    checks.push({ 
-      name: "Voice API returns 422 without audio file", 
+    checks.push({
+      name: "Voice API requires audio after project scope is accepted",
       passed: status === 422, 
       detail: e.message 
     });

@@ -778,9 +778,9 @@ Sage analyzes user journeys for cognitive load, workflow friction, and mental mo
 
 ### Echo (`istara-sim`) — End-to-End Tester
 
-Echo is the quality assurance agent. She runs the 75-scenario simulation test suite, performs regression testing on research workflows, and validates that system changes don't break existing research pipelines.
+Echo is the quality assurance agent. She runs the 76-scenario simulation test suite, performs regression testing on research workflows, and validates that system changes don't break existing research pipelines.
 
-**Core capabilities:** 75-scenario E2E test suite · Regression testing · User simulation · API endpoint validation · Performance benchmarking
+**Core capabilities:** 76-scenario E2E test suite · Regression testing · User simulation · API endpoint validation · Performance benchmarking
 
 </details>
 
@@ -817,7 +817,7 @@ istara/
 ├── security/                  # Security benchmark matrix, release checklist, assessments
 ├── testing/                   # Testing, eval, benchmark, and historical baseline strategy
 ├── tests/
-│   └── simulation/            # 75-scenario E2E simulation test suite
+│   └── simulation/            # 76-scenario E2E simulation test suite
 └── scripts/                   # Integrity checks, agent MEMORY.md updaters
 ```
 
@@ -838,7 +838,7 @@ Istara is MIT-licensed and actively welcomes contributions. High-impact areas:
 # Run the backend test suite
 pytest tests/
 
-# Run the 75-scenario E2E simulation agent
+# Run the 76-scenario E2E simulation agent
 node tests/simulation/run.mjs
 
 # Verify system integrity before committing

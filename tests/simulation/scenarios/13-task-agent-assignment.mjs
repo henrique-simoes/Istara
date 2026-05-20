@@ -10,11 +10,12 @@ export async function run(ctx) {
   if (!ctx.projectId) {
     return { checks: [{ name: "Skip — no project", passed: false, detail: "No project ID" }], passed: 0, failed: 1 };
   }
+  const projectQuery = `project_id=${encodeURIComponent(ctx.projectId)}`;
 
   // 1. Get available agents
   let agents = [];
   try {
-    const data = await api.get("/api/agents");
+    const data = await api.get(`/api/agents?${projectQuery}`);
     agents = data.agents || [];
     checks.push({
       name: "Agents available for assignment",
@@ -47,7 +48,7 @@ export async function run(ctx) {
   if (taskId && agents.length > 0) {
     const agentToAssign = agents[0];
     try {
-      const updated = await api.patch(`/api/tasks/${taskId}`, {
+      const updated = await api.patch(`/api/tasks/${taskId}?${projectQuery}`, {
         agent_id: agentToAssign.id,
       });
       checks.push({
@@ -63,7 +64,7 @@ export async function run(ctx) {
   // 4. Set task priority
   if (taskId) {
     try {
-      const updated = await api.patch(`/api/tasks/${taskId}`, {
+      const updated = await api.patch(`/api/tasks/${taskId}?${projectQuery}`, {
         priority: "high",
       });
       checks.push({
@@ -79,7 +80,7 @@ export async function run(ctx) {
   // 5. Verify task state via GET
   if (taskId) {
     try {
-      const task = await api.get(`/api/tasks/${taskId}`);
+      const task = await api.get(`/api/tasks/${taskId}?${projectQuery}`);
       checks.push({
         name: "Verify task state",
         passed: task.agent_id === agents[0]?.id && task.priority === "high",
@@ -93,7 +94,7 @@ export async function run(ctx) {
   // 6. Clear agent assignment
   if (taskId) {
     try {
-      const updated = await api.patch(`/api/tasks/${taskId}`, {
+      const updated = await api.patch(`/api/tasks/${taskId}?${projectQuery}`, {
         agent_id: null,
       });
       checks.push({
@@ -111,7 +112,7 @@ export async function run(ctx) {
   for (const p of priorities) {
     if (!taskId) break;
     try {
-      const updated = await api.patch(`/api/tasks/${taskId}`, { priority: p });
+      const updated = await api.patch(`/api/tasks/${taskId}?${projectQuery}`, { priority: p });
       checks.push({
         name: `Set priority: ${p}`,
         passed: updated.priority === p,
@@ -146,7 +147,7 @@ export async function run(ctx) {
   // Cleanup
   if (taskId) {
     try {
-      await api.delete(`/api/tasks/${taskId}`);
+      await api.delete(`/api/tasks/${taskId}?${projectQuery}`);
     } catch {}
   }
 

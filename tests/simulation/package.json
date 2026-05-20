@@ -4,6 +4,7 @@
   "type": "module",
   "scripts": {
     "test": "node run.mjs",
+    "test:static": "node lib/static-check.mjs && node --test \"lib/**/*.test.mjs\"",
     "test:headed": "node run.mjs --headless=false",
     "test:scenario": "node run.mjs --scenario"
   },

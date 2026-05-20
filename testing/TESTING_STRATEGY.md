@@ -1,6 +1,8 @@
 # Istara Testing Strategy
 
-This file is active release governance. It defines the test contracts that must
+This file is active release governance. For developer navigation, command
+selection, suite topology, CI coverage, and project-scoped testing rules, start
+with `../TESTING.md`. This file defines the durable test contracts that must
 stay aligned with Compass Forge, CI, and the production behavior described in
 `Tech.md`.
 
@@ -41,17 +43,24 @@ stay aligned with Compass Forge, CI, and the production behavior described in
 4. Simulation acceptance: `tests/simulation/run.mjs` exercises menus,
    submenus, auth, data flows, agentic features, voice/transcription, and UI
    acceptance with authenticated API and browser state.
-5. Live LLM evals: `scripts/test_llm_integration.py`,
+5. Deterministic JS harness static checks: `tests/simulation/lib/static-check.mjs`,
+   `tests/simulation/lib/project-selection.test.mjs`, relay `npm test`, and
+   real-user benchmark `npm run check` keep CI coverage over Node harnesses
+   without starting live services.
+6. Marathon config integrity: `tests/test_marathon_config_integrity.py` keeps
+   marathon cycle scenario references, custom-check names, and environment
+   requirements aligned with the simulation runner and `scripts/marathon/custom-checks.mjs`.
+7. Live LLM evals: `scripts/test_llm_integration.py`,
    `tests/integration/test_llm_orchestration_real.py`, and
    `scripts/run_istara_evals.py` use the same single private
    OpenAI-compatible profile. There is no secondary model probing in tests.
    Secrets must come from gitignored environment files, environment variables,
    or macOS Keychain only.
-6. Agentic eval contract: `tests/agentic_eval_contract.json` maps autoresearch,
+8. Agentic eval contract: `tests/agentic_eval_contract.json` maps autoresearch,
    ReasoningBank, Memento skill/agent creation, Hyperagent, DGM-H, ensemble
    orchestration, ReAct tool-calling, and acceptance UI to test evidence and
    quantifiable metrics.
-7. Versioned AI eval registry: `tests/evals/registry.json` and
+9. Versioned AI eval registry: `tests/evals/registry.json` and
    `tests/evals/cases/core_eval_cases.json` define repeatable subsystem evals.
    Raw run outputs go under gitignored `tests/evals/.results/`.
 
@@ -96,6 +105,8 @@ outputs under the gitignored result roots:
 - `tests/evals/.results/` for eval manifests, summaries, JSONL results, and
   reports.
 - `tests/simulation/.results/` for scenario reports, screenshots, and traces.
+- `tests/real_user_benchmark/.results/` for benchmark logs, generated corpus,
+  screenshots, traces, and scorecards.
 - `security/security_scorecard.json` locally or CI artifacts for benchmark
   scorecards.
 - ignored benchmark output directories for transient JSON reports.

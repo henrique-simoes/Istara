@@ -9,7 +9,11 @@ export const id = "10-agent-architecture";
 export async function run(ctx) {
   const { api } = ctx;
   const checks = [];
-  const projectId = ctx.projectId || "sim-project-001";
+  if (!ctx.projectId) {
+    return { checks: [{ name: "Simulation project required", passed: false, detail: "No project ID" }], passed: 0, failed: 1 };
+  }
+  const projectId = ctx.projectId;
+  const projectQuery = `project_id=${encodeURIComponent(projectId)}`;
 
   // ── Helpers ──
 
@@ -33,7 +37,7 @@ export async function run(ctx) {
 
   let systemAgents = [];
   await safeCheck("Agent Discovery — system agents present", async () => {
-    const data = await api.get("/api/agents");
+    const data = await api.get(`/api/agents?${projectQuery}`);
     const agents = data.agents || [];
     systemAgents = agents.filter((a) => a.is_system);
 
@@ -51,7 +55,7 @@ export async function run(ctx) {
   });
 
   await safeCheck("Agent Discovery — agents have required fields", async () => {
-    const data = await api.get("/api/agents");
+    const data = await api.get(`/api/agents?${projectQuery}`);
     const agents = data.agents || [];
     const requiredFields = ["id", "name", "role", "state", "is_system"];
     const missingFields = [];
@@ -215,7 +219,7 @@ export async function run(ctx) {
     if (!testAgentId) {
       return { name: "Agent Creation — GET confirms persisted agent", passed: false, detail: "No agent created" };
     }
-    const agent = await api.get(`/api/agents/${testAgentId}`);
+    const agent = await api.get(`/api/agents/${testAgentId}?${projectQuery}`);
     const passed =
       agent.name === "[SIM-ARCH] Test Agent" &&
       agent.role === "custom" &&
@@ -237,8 +241,8 @@ export async function run(ctx) {
     if (!testAgentId) {
       return { name: "Agent Lifecycle — pause sets state to paused", passed: false, detail: "No agent created" };
     }
-    await api.post(`/api/agents/${testAgentId}/pause`, {});
-    const agent = await api.get(`/api/agents/${testAgentId}`);
+    await api.post(`/api/agents/${testAgentId}/pause?${projectQuery}`, {});
+    const agent = await api.get(`/api/agents/${testAgentId}?${projectQuery}`);
     const passed = agent.state === "paused";
 
     return {
@@ -252,8 +256,8 @@ export async function run(ctx) {
     if (!testAgentId) {
       return { name: "Agent Lifecycle — resume sets state to idle", passed: false, detail: "No agent created" };
     }
-    await api.post(`/api/agents/${testAgentId}/resume`, {});
-    const agent = await api.get(`/api/agents/${testAgentId}`);
+    await api.post(`/api/agents/${testAgentId}/resume?${projectQuery}`, {});
+    const agent = await api.get(`/api/agents/${testAgentId}?${projectQuery}`);
     const passed = agent.state === "idle";
 
     return {
@@ -267,7 +271,7 @@ export async function run(ctx) {
     if (!testAgentId) {
       return { name: "Agent Lifecycle — update agent config", passed: false, detail: "No agent created" };
     }
-    const updated = await api.patch(`/api/agents/${testAgentId}`, {
+    const updated = await api.patch(`/api/agents/${testAgentId}?${projectQuery}`, {
       system_prompt: "Updated by architecture test.",
     });
     const passed = updated.system_prompt === "Updated by architecture test.";
@@ -383,7 +387,7 @@ export async function run(ctx) {
     taskId = task.id;
 
     // Assign agent
-    const updated = await api.patch(`/api/tasks/${task.id}`, {
+    const updated = await api.patch(`/api/tasks/${task.id}?${projectQuery}`, {
       agent_id: testAgentId,
     });
 
@@ -406,7 +410,7 @@ export async function run(ctx) {
         detail: "No task or agent available",
       };
     }
-    const task = await api.get(`/api/tasks/${taskId}`);
+    const task = await api.get(`/api/tasks/${taskId}?${projectQuery}`);
     const passed = task.agent_id === testAgentId;
 
     return {
@@ -466,7 +470,7 @@ export async function run(ctx) {
     if (!testAgentId) {
       return { name: "Agent Export — returns portable config", passed: false, detail: "No agent to export" };
     }
-    const exported = await api.get(`/api/agents/${testAgentId}/export`);
+    const exported = await api.get(`/api/agents/${testAgentId}/export?${projectQuery}`);
 
     const hasVersion = typeof exported.istara_version === "string";
     const hasType = exported.type === "agent_config";
@@ -493,7 +497,7 @@ export async function run(ctx) {
       return { name: "Agent Import — creates agent from exported config", passed: false, detail: "No agent to export" };
     }
     // First export
-    const exported = await api.get(`/api/agents/${testAgentId}/export`);
+    const exported = await api.get(`/api/agents/${testAgentId}/export?${projectQuery}`);
     const agentData = exported.agent;
 
     // Import with a modified name to avoid collision
@@ -504,6 +508,7 @@ export async function run(ctx) {
       capabilities: agentData.capabilities,
       heartbeat_interval: agentData.heartbeat_interval,
       memory: agentData.memory || {},
+      project_id: projectId,
     });
     importedAgentId = imported.id;
 
@@ -526,7 +531,7 @@ export async function run(ctx) {
     if (!importedAgentId) {
       return { name: "Agent Import — imported agent is retrievable", passed: false, detail: "No imported agent" };
     }
-    const agent = await api.get(`/api/agents/${importedAgentId}`);
+    const agent = await api.get(`/api/agents/${importedAgentId}?${projectQuery}`);
     const passed =
       agent.id === importedAgentId &&
       agent.name.includes("(imported)") &&
@@ -618,7 +623,7 @@ export async function run(ctx) {
   // Delete test task
   if (taskId) {
     try {
-      await api.delete(`/api/tasks/${taskId}`);
+      await api.delete(`/api/tasks/${taskId}?${projectQuery}`);
     } catch {}
   }
 
@@ -626,7 +631,7 @@ export async function run(ctx) {
   for (const agentId of [importedAgentId, secondAgentId, testAgentId]) {
     if (agentId) {
       try {
-        await api.delete(`/api/agents/${agentId}`);
+        await api.delete(`/api/agents/${agentId}?${projectQuery}`);
       } catch {}
     }
   }

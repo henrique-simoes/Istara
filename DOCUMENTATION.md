@@ -23,7 +23,7 @@ do not drift into scattered one-off notes.
 
 | File | Purpose |
 | --- | --- |
-| `TESTING.md` | Top-level verification guide, command matrix, live LLM contract, and artifact logging rules. |
+| `TESTING.md` | Top-level developer testing guide: suite topology, command matrix, CI map, project-scoped testing rules, live LLM contract, and artifact logging rules. |
 | `testing/TESTING_STRATEGY.md` | Active release-governance strategy for test layers, eval contracts, mutation/property gates, and metrics. |
 | `testing/AI_EVALS_STRATEGY.md` | Academic/industry evaluation strategy for RAG, Prompt RAG, LLMLingua, DAG/ReAct, memory, ReasoningBank, Memento Skills, and Meta Hyperagents. |
 | `testing/TEST_HISTORY.md` | Curated historical verification log. Raw run artifacts stay gitignored. |

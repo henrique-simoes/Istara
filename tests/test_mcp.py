@@ -292,6 +292,7 @@ async def test_mcp_client_registration_reuses_same_http_server(auth_headers):
 @pytest.mark.asyncio
 async def test_mcp_clients_are_project_scoped_for_project_admins(auth_headers):
     await init_db()
+    settings.team_mode = True
     project_a = await _seed_project("MCP Alpha")
     project_b = await _seed_project("MCP Beta")
     project_admin_id = f"mcp-admin-{uuid.uuid4()}"

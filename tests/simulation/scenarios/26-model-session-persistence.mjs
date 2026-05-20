@@ -114,25 +114,18 @@ export async function run(ctx) {
   }
 
   // ── 8. Session CRUD with persistence ──
-  let projectId = null;
-  let createdProjectForCleanup = false;
+  let projectId = ctx.projectId;
+  const createdProjectForCleanup = false;
   let sessionId = null;
 
-  try {
-    const project = await api.post("/api/projects", {
-      name: "[SIM-TEMP] Model Session Persistence",
-      description: "Temporary project for model/session persistence checks",
-    });
-    projectId = project.id;
-    createdProjectForCleanup = true;
-    checks.push({ name: "Create temporary project for session tests", passed: !!projectId, detail: `id=${projectId}` });
-  } catch (e) {
-    projectId = ctx.projectId;
+  if (!projectId) {
     checks.push({
-      name: "Create temporary project for session tests",
-      passed: !!projectId,
-      detail: projectId ? `using persistent fallback: ${projectId}` : e.message,
+      name: "Project available for session tests",
+      passed: false,
+      detail: "No persistent project from runner",
     });
+  } else {
+    checks.push({ name: "Project available for session tests", passed: true, detail: `id=${projectId}` });
   }
 
   if (projectId) {

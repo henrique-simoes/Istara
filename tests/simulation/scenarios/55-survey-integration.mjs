@@ -10,7 +10,10 @@ export async function run(ctx) {
   const { api } = ctx;
   const checks = [];
   const cleanup = { integrationIds: [], linkIds: [] };
-  const projectId = ctx.projectId || "sim-project-001";
+  if (!ctx.projectId) {
+    return [{ name: "Project available for survey integration", passed: false, detail: "No persistent project from runner" }];
+  }
+  const projectId = ctx.projectId;
   const projectQuery = `project_id=${encodeURIComponent(projectId)}`;
 
   // ── 1. GET /api/surveys/integrations — returns array ──
