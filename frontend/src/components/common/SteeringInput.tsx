@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect } from "react";
 import { Send, X, MessageSquare, AlertTriangle, Undo2 } from "lucide-react";
 import { steering } from "@/lib/api";
+import { useRoleCapabilities } from "@/hooks/useRoleCapabilities";
 import { cn } from "@/lib/utils";
 
 interface SteeringInputProps {
@@ -33,6 +34,7 @@ export default function SteeringInput({
   onMessageSent,
   className,
 }: SteeringInputProps) {
+  const capabilities = useRoleCapabilities();
   const [message, setMessage] = useState("");
   const [sending, setSending] = useState(false);
   const [queueCount, setQueueCount] = useState(0);
@@ -41,7 +43,7 @@ export default function SteeringInput({
 
   // Poll queue count when agent is working
   useEffect(() => {
-    if (!agentId || !projectId || !isWorking) {
+    if (!capabilities.canUseSteering || !agentId || !projectId || !isWorking) {
       setQueueCount(0);
       return;
     }
@@ -59,10 +61,10 @@ export default function SteeringInput({
     poll();
     const interval = setInterval(poll, 3000);
     return () => { cancelled = true; clearInterval(interval); };
-  }, [agentId, projectId, isWorking]);
+  }, [capabilities.canUseSteering, agentId, projectId, isWorking]);
 
   const handleSend = async () => {
-    if (!message.trim() || sending || !projectId) return;
+    if (!capabilities.canUseSteering || !message.trim() || sending || !projectId) return;
     setSending(true);
     setError(null);
     try {
@@ -79,7 +81,7 @@ export default function SteeringInput({
   };
 
   const handleAbort = async () => {
-    if (!projectId) return;
+    if (!capabilities.canUseSteering || !projectId) return;
     try {
       await steering.abort(agentId, projectId);
       setQueueCount(0);
@@ -90,7 +92,7 @@ export default function SteeringInput({
   };
 
   const handleRetrieveQueued = () => {
-    if (!projectId) return;
+    if (!capabilities.canUseSteering || !projectId) return;
     // Restore queued messages to input
     steering.getQueues(agentId, projectId).then((queues) => {
       const allMessages = [...queues.steering_queue, ...queues.follow_up_queue]
@@ -104,7 +106,7 @@ export default function SteeringInput({
     }).catch(() => {});
   };
 
-  if (!projectId || (!isWorking && queueCount === 0)) return null;
+  if (!capabilities.canUseSteering || !projectId || (!isWorking && queueCount === 0)) return null;
 
   return (
     <div className={cn("mt-3 p-3 bg-slate-50 dark:bg-slate-900/50 rounded-lg border border-slate-200 dark:border-slate-700", className)}>

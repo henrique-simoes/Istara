@@ -74,6 +74,8 @@ def _unique_hardware_resource_nodes(nodes: list[ComputeNode]) -> list[ComputeNod
 
 
 def _endpoint_resource_key(node: ComputeNode) -> tuple:
+    if getattr(node, "source", "") in {"relay", "browser"}:
+        return ("donor-endpoint", getattr(node, "node_id", ""))
     host = getattr(node, "host", "") or getattr(node, "provider_host", "") or ""
     if host:
         return (
@@ -221,6 +223,12 @@ class ComputeRegistryInvocationMixin:
             logger.info(
                 f"ComputeRegistry: routing chat to {node.name} ({node.host}) model={resolved_model}"
             )
+            self._record_selected(
+                node,
+                route_kind="chat",
+                project_id=project_id,
+                model=resolved_model,
+            )
             node.active_requests += 1
             try:
                 for attempt in range(1, TRANSIENT_CHAT_MAX_ATTEMPTS + 1):
@@ -242,7 +250,12 @@ class ComputeRegistryInvocationMixin:
                                 thinking_mode=None,
                                 project_id=project_id,
                             )
-                            self._record_success(node)
+                            self._record_success(
+                                node,
+                                route_kind="chat",
+                                project_id=project_id,
+                                model=resolved_model,
+                            )
                             return data
 
                         client = await node._get_client()
@@ -270,7 +283,12 @@ class ComputeRegistryInvocationMixin:
                             message = data.get("message")
                             if isinstance(message, dict):
                                 data["message"] = visible_assistant_message(message)
-                            self._record_success(node)
+                            self._record_success(
+                                node,
+                                route_kind="chat",
+                                project_id=project_id,
+                                model=resolved_model,
+                            )
                             return data
 
                         if node.is_anthropic:
@@ -284,7 +302,12 @@ class ComputeRegistryInvocationMixin:
                                 thinking_mode=None,
                                 project_id=project_id,
                             )
-                            self._record_success(node)
+                            self._record_success(
+                                node,
+                                route_kind="chat",
+                                project_id=project_id,
+                                model=resolved_model,
+                            )
                             return data
 
                         payload = {
@@ -324,7 +347,12 @@ class ComputeRegistryInvocationMixin:
                             result["message"]["tool_calls"] = message["tool_calls"]
                             result["finish_reason"] = choice.get("finish_reason", "tool_calls")
 
-                        self._record_success(node)
+                        self._record_success(
+                            node,
+                            route_kind="chat",
+                            project_id=project_id,
+                            model=resolved_model,
+                        )
                         return result
                     except Exception as e:
                         if _looks_like_model_availability_error(e):
@@ -373,7 +401,13 @@ class ComputeRegistryInvocationMixin:
                                 min_context or "unknown",
                             )
                             break
-                        self._record_failure(node, e)
+                        self._record_failure(
+                            node,
+                            e,
+                            route_kind="chat",
+                            project_id=project_id,
+                            model=resolved_model,
+                        )
                         transient = self._is_transient_error(e)
                         if attempt < TRANSIENT_CHAT_MAX_ATTEMPTS and transient:
                             delay = self._retry_delay(attempt)
@@ -470,6 +504,12 @@ class ComputeRegistryInvocationMixin:
                 f"ComputeRegistry: routing stream to {node.name} "
                 f"({node.host}) model={resolved_model}"
             )
+            self._record_selected(
+                node,
+                route_kind="stream",
+                project_id=project_id,
+                model=resolved_model,
+            )
             node.active_requests += 1
             try:
                 for attempt in range(1, TRANSIENT_CHAT_MAX_ATTEMPTS + 1):
@@ -495,7 +535,12 @@ class ComputeRegistryInvocationMixin:
                             if content:
                                 emitted_chunk = True
                                 yield content
-                            self._record_success(node)
+                            self._record_success(
+                                node,
+                                route_kind="stream",
+                                project_id=project_id,
+                                model=resolved_model,
+                            )
                             return
 
                         client = await node._get_client()
@@ -638,7 +683,12 @@ class ComputeRegistryInvocationMixin:
                                 emitted_chunk = True
                                 yield remaining
 
-                        self._record_success(node)
+                        self._record_success(
+                            node,
+                            route_kind="stream",
+                            project_id=project_id,
+                            model=resolved_model,
+                        )
                         return
                     except Exception as e:
                         if not emitted_chunk and _looks_like_model_availability_error(e):
@@ -687,7 +737,13 @@ class ComputeRegistryInvocationMixin:
                                 min_context or "unknown",
                             )
                             break
-                        self._record_failure(node, e)
+                        self._record_failure(
+                            node,
+                            e,
+                            route_kind="stream",
+                            project_id=project_id,
+                            model=resolved_model,
+                        )
                         transient = self._is_transient_error(e)
                         if (
                             not emitted_chunk

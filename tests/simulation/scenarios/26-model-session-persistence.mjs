@@ -114,9 +114,10 @@ export async function run(ctx) {
   }
 
   // ── 8. Session CRUD with persistence ──
-  let projectId = ctx.projectId;
+  let projectId = typeof ctx.projectId === "string" ? ctx.projectId.trim() : "";
   const createdProjectForCleanup = false;
   let sessionId = null;
+  const projectQuery = projectId ? `project_id=${encodeURIComponent(projectId)}` : "";
 
   if (!projectId) {
     checks.push({
@@ -163,7 +164,7 @@ export async function run(ctx) {
     // Update session with model override
     if (sessionId && initialModel) {
       try {
-        const updated = await api.patch(`/api/sessions/${sessionId}`, {
+        const updated = await api.patch(`/api/sessions/${sessionId}?${projectQuery}`, {
           model_override: initialModel,
           inference_preset: "custom",
           custom_temperature: 0.5,
@@ -182,7 +183,7 @@ export async function run(ctx) {
     // Star session
     if (sessionId) {
       try {
-        const star = await api.post(`/api/sessions/${sessionId}/star`, {});
+        const star = await api.post(`/api/sessions/${sessionId}/star?${projectQuery}`, {});
         checks.push({
           name: "Star session toggle",
           passed: star.starred === true,
@@ -208,7 +209,7 @@ export async function run(ctx) {
     // Delete session
     if (sessionId) {
       try {
-        const res = await api.delete(`/api/sessions/${sessionId}`);
+        const res = await api.delete(`/api/sessions/${sessionId}?${projectQuery}`);
         checks.push({
           name: "Delete session",
           passed: res.status === 204,
@@ -220,7 +221,7 @@ export async function run(ctx) {
 
       // Verify session actually gone
       try {
-        const res = await fetch(`http://localhost:8000/api/sessions/detail/${sessionId}`, { headers: api._headers() });
+        const res = await fetch(`http://localhost:8000/api/sessions/detail/${sessionId}?${projectQuery}`, { headers: api._headers() });
         checks.push({
           name: "Session deletion confirmed (404)",
           passed: res.status === 404,

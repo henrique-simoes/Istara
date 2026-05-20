@@ -20,10 +20,11 @@ export async function run(ctx) {
     return [{ name: "Project available for interfaces menu", passed: false, detail: "No persistent project from runner" }];
   }
   const projectQuery = `project_id=${encodeURIComponent(projectId)}`;
+  const statusPath = `/api/interfaces/status?${projectQuery}`;
 
   // ── 1. GET /api/interfaces/status ──
   try {
-    const status = await api.get("/api/interfaces/status");
+    const status = await api.get(statusPath);
     checks.push({
       name: "GET /api/interfaces/status returns 200",
       passed: true,
@@ -233,9 +234,12 @@ export async function run(ctx) {
 
   // ── 8. Configure Stitch key (save original, test, restore) ──
   try {
-    const beforeStatus = await api.get("/api/interfaces/status");
+    const beforeStatus = await api.get(statusPath);
     const wasStitchConfigured = beforeStatus.stitch_configured;
-    const result = await api.post("/api/interfaces/configure/stitch", { api_key: "sim-test-key-45" });
+    const result = await api.post("/api/interfaces/configure/stitch", {
+      project_id: projectId,
+      api_key: "sim-test-key-45",
+    });
     checks.push({
       name: "Configure Stitch returns success",
       passed: result.success === true && result.stitch_configured === true,
@@ -244,7 +248,7 @@ export async function run(ctx) {
     // Restore: if it was configured before, we can't restore the real key via API
     // so we leave it configured (test key is harmless). If it wasn't, reset to empty.
     if (!wasStitchConfigured) {
-      await api.post("/api/interfaces/configure/stitch", { api_key: "" });
+      await api.post("/api/interfaces/configure/stitch", { project_id: projectId, api_key: "" });
     }
   } catch (e) {
     checks.push({ name: "Configure Stitch returns success", passed: false, detail: e.message });
@@ -252,16 +256,19 @@ export async function run(ctx) {
 
   // ── 9. Configure Figma token (save original, test, restore) ──
   try {
-    const beforeFigma = await api.get("/api/interfaces/status");
+    const beforeFigma = await api.get(statusPath);
     const wasFigmaConfigured = beforeFigma.figma_configured;
-    const result = await api.post("/api/interfaces/configure/figma", { api_token: "sim-test-token-45" });
+    const result = await api.post("/api/interfaces/configure/figma", {
+      project_id: projectId,
+      api_token: "sim-test-token-45",
+    });
     checks.push({
       name: "Configure Figma returns success",
       passed: result.success === true && result.figma_configured === true,
       detail: `success=${result.success}, configured=${result.figma_configured}`,
     });
     if (!wasFigmaConfigured) {
-      await api.post("/api/interfaces/configure/figma", { api_token: "" });
+      await api.post("/api/interfaces/configure/figma", { project_id: projectId, api_token: "" });
     }
   } catch (e) {
     checks.push({ name: "Configure Figma returns success", passed: false, detail: e.message });
@@ -365,11 +372,14 @@ export async function run(ctx) {
 
   // ── 16. Onboarding flips after configuration ──
   try {
-    const before = await api.get("/api/interfaces/status");
+    const before = await api.get(statusPath);
     const wasPending = before.onboarding_needed;
     // Configure stitch
-    await api.post("/api/interfaces/configure/stitch", { api_key: "sim-test-onboarding" });
-    const after = await api.get("/api/interfaces/status");
+    await api.post("/api/interfaces/configure/stitch", {
+      project_id: projectId,
+      api_key: "sim-test-onboarding",
+    });
+    const after = await api.get(statusPath);
     checks.push({
       name: "Onboarding_needed flips false after Stitch config",
       passed: after.onboarding_needed === false || after.stitch_configured === true,
@@ -377,7 +387,7 @@ export async function run(ctx) {
     });
     // Only reset if it wasn't configured before
     if (wasPending) {
-      await api.post("/api/interfaces/configure/stitch", { api_key: "" });
+      await api.post("/api/interfaces/configure/stitch", { project_id: projectId, api_key: "" });
     }
   } catch (e) {
     checks.push({ name: "Onboarding flips after configuration", passed: false, detail: e.message });

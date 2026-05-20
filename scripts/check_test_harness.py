@@ -170,6 +170,10 @@ def check_simulation_runner(issues: list[str]) -> None:
         issues.append(
             "tests/simulation/run.mjs: simulation context must carry backend chat-readiness status"
         )
+    if "ISTARA_TEST_AUTH_TOKEN" not in runner:
+        issues.append(
+            "tests/simulation/run.mjs: must honor provided simulation test auth tokens"
+        )
     if "ISTARA_FIXED_LLM_TEST_MODEL" not in simulation_sources:
         issues.append(
             "tests/simulation: model/session scenario must honor the fixed live-test LLM model"
@@ -216,6 +220,9 @@ def check_simulation_runner(issues: list[str]) -> None:
         )
     if "runCustomChecks" not in marathon or "./custom-checks.mjs" not in marathon:
         issues.append("scripts/marathon/run-cycle.mjs: custom checks must use the registry module")
+    for snippet in ("ISTARA_TEST_AUTH_TOKEN", "ISTARA_E2E_ALLOW_LOCAL_TOKEN", 'create_token("marathon-admin"'):
+        if snippet not in marathon:
+            issues.append(f"scripts/marathon/run-cycle.mjs: missing marathon auth fallback `{snippet}`")
     if "Placeholder" in marathon:
         issues.append("scripts/marathon/run-cycle.mjs: custom checks must not silently pass placeholders")
     if simulation_package.get("scripts", {}).get("test:static") != 'node lib/static-check.mjs && node --test "lib/**/*.test.mjs"':
@@ -241,6 +248,10 @@ def check_project_scope_harness(issues: list[str]) -> None:
         issues.append("tests/simulation/run.mjs: must use the shared simulation project name")
     if "does not fall back to the first project" not in selection_test:
         issues.append("tests/simulation/lib/project-selection.test.mjs: missing many-project fallback guard")
+    if "does not reuse paused simulation projects" not in selection_test:
+        issues.append("tests/simulation/lib/project-selection.test.mjs: missing paused-project selection guard")
+    if "isProjectPaused" not in selection:
+        issues.append("tests/simulation/lib/project-selection.mjs: missing paused project helper")
     if "requireActiveProjectId" not in selection:
         issues.append("tests/simulation/lib/project-selection.mjs: missing explicit project_id helper")
 
@@ -252,10 +263,14 @@ def check_marathon_config_integrity(issues: list[str]) -> None:
         "CUSTOM_CHECKS",
         "CUSTOM_CHECK_NAMES",
         "DOCUMENTED_CYCLE_REQUIREMENTS",
+        "resolveProjectId",
+        "isProjectPaused",
         "validateCustomCheckNames",
     ):
         if snippet not in custom_checks:
             issues.append(f"scripts/marathon/custom-checks.mjs: missing `{snippet}`")
+    if "project_id=test" in custom_checks:
+        issues.append("scripts/marathon/custom-checks.mjs: must not use fake project_id=test")
     if "Unknown marathon custom check" not in custom_checks:
         issues.append("scripts/marathon/custom-checks.mjs: unknown checks must fail explicitly")
     if "Placeholder" in custom_checks:

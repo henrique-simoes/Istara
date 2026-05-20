@@ -149,6 +149,12 @@ class ComputeRegistryRoutingMixin:
             ]
             candidates = vision_capable
 
+        requested_model = (model or "").strip()
+        if requested_model and requested_model != "default" and strict_model and candidates:
+            candidates = [
+                n for n in candidates if self._node_supports_model(n, requested_model)
+            ]
+
         if min_context > 0 and candidates:
             context_capable = [
                 n
@@ -160,7 +166,6 @@ class ComputeRegistryRoutingMixin:
             if context_capable:
                 candidates = context_capable
 
-        requested_model = (model or "").strip()
         if requested_model and requested_model != "default" and candidates:
             model_capable = [n for n in candidates if self._node_supports_model(n, requested_model)]
             if strict_model:
@@ -588,17 +593,57 @@ class ComputeRegistryRoutingMixin:
         return requested
 
     @staticmethod
-    def _record_success(node: ComputeNode) -> None:
+    def _record_selected(
+        node: ComputeNode,
+        *,
+        route_kind: str,
+        project_id: str | None = None,
+        model: str | None = None,
+    ) -> None:
+        node.selected_request_count += 1
+        node.last_selected_at = time.time()
+        node.last_route_kind = route_kind
+        node.last_selected_project_id = project_id or ""
+        node.last_selected_model = model or ""
+
+    @staticmethod
+    def _record_success(
+        node: ComputeNode,
+        *,
+        route_kind: str | None = None,
+        project_id: str | None = None,
+        model: str | None = None,
+    ) -> None:
         node.consecutive_failures = 0
         node.health_state = "ready"
         node.health_error = ""
         node.is_healthy = True
         node.cb_record_success()
+        if route_kind:
+            node.served_request_count += 1
+            node.last_served_at = time.time()
+            node.last_route_kind = route_kind
+            node.last_served_project_id = project_id or ""
+            node.last_served_model = model or ""
 
     @staticmethod
-    def _record_failure(node: ComputeNode, error: Exception) -> None:
+    def _record_failure(
+        node: ComputeNode,
+        error: Exception,
+        *,
+        route_kind: str | None = None,
+        project_id: str | None = None,
+        model: str | None = None,
+    ) -> None:
         node.consecutive_failures += 1
         node.health_error = str(error)[:200] if str(error) else "Request failed"
+        if route_kind:
+            node.failed_request_count += 1
+            node.last_failed_at = time.time()
+            node.last_route_kind = route_kind
+            node.last_selected_project_id = project_id or node.last_selected_project_id
+            node.last_selected_model = model or node.last_selected_model
+            node.last_failure_error = node.health_error
         node.cb_record_failure()
         if node.consecutive_failures >= 3:
             node.health_state = "cooldown"

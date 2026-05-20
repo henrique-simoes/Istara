@@ -91,3 +91,15 @@ def test_marathon_cycle_requirements_are_documented_and_bounded() -> None:
     assert config["settings"]["cycle_interval_minutes"] >= 1
     assert config["settings"]["max_scenario_timeout_seconds"] <= 7200
     assert config["settings"]["log_dir"] == "data/test-marathon"
+
+
+def test_marathon_auth_and_project_scope_match_current_harness_contract() -> None:
+    runner = read("scripts/marathon/run-cycle.mjs")
+    custom_checks = read("scripts/marathon/custom-checks.mjs")
+
+    assert "ISTARA_TEST_AUTH_TOKEN" in runner
+    assert "ISTARA_E2E_ALLOW_LOCAL_TOKEN" in runner
+    assert 'create_token("marathon-admin"' in runner
+    assert "resolveProjectId" in custom_checks
+    assert "isProjectPaused" in custom_checks
+    assert "project_id=test" not in custom_checks

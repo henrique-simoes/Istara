@@ -145,7 +145,7 @@ export async function run(ctx) {
 
   // ── Cleanup: delete test session ──
   try {
-    await api.delete(`/api/sessions/${sessionId}`);
+    await api.delete(`/api/sessions/${sessionId}?${dagProjectParam}`);
   } catch { /* best effort */ }
 
   return {

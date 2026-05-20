@@ -676,7 +676,14 @@ async def chat(request: ChatRequest, http_request: Request, db: AsyncSession = D
                     err_str = str(native_err).lower()
                     if any(
                         k in err_str
-                        for k in ("tools", "400", "422", "unprocessable", "not supported")
+                        for k in (
+                            "tools",
+                            "400",
+                            "422",
+                            "unprocessable",
+                            "not supported",
+                            "no compute nodes available",
+                        )
                     ):
                         _chat_log.warning(
                             "Native tool calling rejected, falling back to text-based: %s",

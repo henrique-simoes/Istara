@@ -125,6 +125,8 @@ Rules for new or changed tests:
 
 - Keep the active project explicit. Use the project created or selected by the
   current test context.
+- Treat paused projects as inactive for test selection. Harnesses may report a
+  paused project as evidence, but they must not reuse it for active-work tests.
 - In JavaScript simulation code, use `ctx.projectId` or another explicit
   scenario project id. If it is missing, fail or skip clearly instead of
   inventing a fallback.
@@ -143,6 +145,12 @@ Rules for new or changed tests:
   should refuse transcription when no active project exists.
 - Static guard tests are intentionally strict. If a guard fails, fix the scoped
   test or product path rather than weakening the guard.
+
+Marathon and simulation auth should mirror the app's current security contract:
+use `ISTARA_TEST_AUTH_TOKEN` when a bounded test JWT is supplied, or set
+`ISTARA_E2E_ALLOW_LOCAL_TOKEN=1` to allow the harness to mint a local signed
+admin token from backend code. LM Studio API keys are provider credentials, not
+Istara admin JWTs.
 
 The main guard files are:
 
@@ -191,6 +199,14 @@ npm run test:headed
 npm run test:scenario -- 77
 ```
 
+Scenario 20 verifies the full registered skill catalog, fixture coverage, and
+skill-health surface, then executes a deterministic bounded live subset by
+default (`ISTARA_SCENARIO20_DEFAULT_SKILL_LIMIT`, default `1`). For a deliberate
+full live skill sweep, set `ISTARA_SCENARIO20_SKILL_LIMIT` to the current
+registered skill count; the default full simulation suite should not spend its
+entire timeout budget executing every skill when the registration contract has
+already been checked.
+
 Use `tests/real_user_benchmark/package.json` for benchmark modes:
 
 ```bash
@@ -203,6 +219,14 @@ npm --prefix tests/real_user_benchmark run full
 Probe and full benchmark modes require prepared services and, by default,
 donated compute plus non-empty live chat. For harness debugging only, the README
 documents explicit opt-out variables.
+
+For real multi-donor compute validation, each required donor must resolve to a
+distinct provider/host endpoint. The real-user benchmark can start opt-in
+per-donor llama.cpp or Ollama model server containers with Q4/4-bit guardrails
+before it starts relay containers; see
+`tests/real_user_benchmark/README.md` for the Colima/Docker model sandbox
+variables. This mode is for deliberate live benchmark runs only and does not
+download models unless explicitly configured to do so.
 
 ## Live LLM Contract
 

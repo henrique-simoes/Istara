@@ -46,10 +46,15 @@ stay aligned with Compass Forge, CI, and the production behavior described in
 5. Deterministic JS harness static checks: `tests/simulation/lib/static-check.mjs`,
    `tests/simulation/lib/project-selection.test.mjs`, relay `npm test`, and
    real-user benchmark `npm run check` keep CI coverage over Node harnesses
-   without starting live services.
+   without starting live services. The real-user benchmark check includes
+   per-donor model sandbox config tests so Colima/Docker donor setup can evolve
+   without silently weakening the live multi-donor contract.
 6. Marathon config integrity: `tests/test_marathon_config_integrity.py` keeps
    marathon cycle scenario references, custom-check names, and environment
    requirements aligned with the simulation runner and `scripts/marathon/custom-checks.mjs`.
+   Marathon auth follows the same test-token contract as simulation: a supplied
+   `ISTARA_TEST_AUTH_TOKEN` wins, and `ISTARA_E2E_ALLOW_LOCAL_TOKEN=1` permits a
+   local signed admin token for bounded local runs.
 7. Live LLM evals: `scripts/test_llm_integration.py`,
    `tests/integration/test_llm_orchestration_real.py`, and
    `scripts/run_istara_evals.py` use the same single private

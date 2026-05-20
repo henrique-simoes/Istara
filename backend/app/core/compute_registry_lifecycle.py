@@ -81,6 +81,8 @@ class ComputeRegistryLifecycleMixin:
                 )
                 if not same_endpoint:
                     continue
+                if self._should_keep_relay_endpoint_distinct(existing, node):
+                    continue
                 if self._should_keep_duplicate_node(existing, node):
                     self._merge_duplicate_node(existing, node)
                     logger.info(
@@ -138,6 +140,20 @@ class ComputeRegistryLifecycleMixin:
         if existing_rank != incoming_rank:
             return existing_rank > incoming_rank
         return existing.priority <= incoming.priority
+
+    @staticmethod
+    def _should_keep_relay_endpoint_distinct(
+        existing: ComputeNode,
+        incoming: ComputeNode,
+    ) -> bool:
+        sources = {getattr(existing, "source", ""), getattr(incoming, "source", "")}
+        relay_sources = {"relay", "browser"}
+        if sources and sources <= relay_sources:
+            return True
+        return bool(
+            sources & relay_sources
+            and sources & {"local"}
+        )
 
     @staticmethod
     def _endpoint_parts(node: ComputeNode) -> tuple[str, int | None, str] | None:

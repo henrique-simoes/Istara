@@ -105,11 +105,27 @@ export class IstaraApiClient {
       join(this.repoRoot, ".env.local"),
       join(this.repoRoot, ".env"),
     ];
-    let password = this.adminPassword || process.env.ISTARA_BENCHMARK_ADMIN_PASSWORD || process.env.ISTARA_ADMIN_PASSWORD || process.env.ADMIN_PASSWORD || "";
+    const localTokenAllowed = ["1", "true", "yes"].includes(String(process.env.ISTARA_E2E_ALLOW_LOCAL_TOKEN || "").toLowerCase());
+    const passwordCandidates = [
+      [this.adminPassword, "constructor"],
+      [process.env.ISTARA_BENCHMARK_ADMIN_PASSWORD, "env:ISTARA_BENCHMARK_ADMIN_PASSWORD"],
+      [process.env.ISTARA_ADMIN_PASSWORD, "env:ISTARA_ADMIN_PASSWORD"],
+      [process.env.ADMIN_PASSWORD, "env:ADMIN_PASSWORD"],
+    ];
+    let password = "";
+    let passwordSource = "";
+    for (const [candidate, source] of passwordCandidates) {
+      if (candidate) {
+        password = String(candidate).trim();
+        passwordSource = source;
+        break;
+      }
+    }
     for (const path of envFiles) {
       if (password) break;
       try {
         password = parseEnvFileValue(readFileSync(path, "utf8"), "ADMIN_PASSWORD");
+        if (password) passwordSource = `file:${path.replace(`${this.repoRoot}/`, "")}:ADMIN_PASSWORD`;
       } catch {}
     }
 
@@ -120,16 +136,30 @@ export class IstaraApiClient {
         this.userId = result.user?.id || result.user_id || username;
         if (this.token) return { ok: true, method: "password", user_id: this.userId };
       } catch (error) {
-        this.logger?.issue({
-          area: "auth",
-          severity: "low",
-          title: "Password auth failed during benchmark setup",
+        const explicitBenchmarkCredential = ["constructor", "env:ISTARA_BENCHMARK_ADMIN_PASSWORD"].includes(passwordSource);
+        const failure = {
+          source: passwordSource || "unknown",
+          fallback_allowed: localTokenAllowed,
           detail: error.message,
-        });
+        };
+        if (explicitBenchmarkCredential || !localTokenAllowed) {
+          this.logger?.issue({
+            area: "auth",
+            severity: "low",
+            title: "Password auth failed during benchmark setup",
+            detail: error.message,
+            evidence: {
+              credential_source: passwordSource || "unknown",
+              fallback_allowed: localTokenAllowed,
+            },
+          });
+        } else {
+          this.logger?.action("auth.password_failed_using_local_token_fallback", failure);
+        }
       }
     }
 
-    if (!["1", "true", "yes"].includes(String(process.env.ISTARA_E2E_ALLOW_LOCAL_TOKEN || "").toLowerCase())) {
+    if (!localTokenAllowed) {
       return { ok: false, method: "none", reason: "No credentials and local signed token disabled." };
     }
 

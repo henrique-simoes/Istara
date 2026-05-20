@@ -30,6 +30,16 @@ export class BenchmarkLogger {
       integrationAttempts: 0,
       screenshots: 0,
     };
+    this.sanitizer = null;
+  }
+
+  setSanitizer(sanitizer) {
+    this.sanitizer = typeof sanitizer === "function" ? sanitizer : null;
+  }
+
+  sanitize(value) {
+    if (!this.sanitizer) return value;
+    return this.sanitizer(value);
   }
 
   init() {
@@ -52,8 +62,9 @@ export class BenchmarkLogger {
       run_id: this.runId,
       ...payload,
     };
-    appendFileSync(join(this.runDir, file), `${JSON.stringify(record)}\n`);
-    return record;
+    const sanitized = this.sanitize(record);
+    appendFileSync(join(this.runDir, file), `${JSON.stringify(sanitized)}\n`);
+    return sanitized;
   }
 
   action(step, payload = {}) {
@@ -86,18 +97,19 @@ export class BenchmarkLogger {
       detail: issue.detail || "",
       evidence: issue.evidence || {},
     };
-    this.issues.push(item);
-    this.line("issues.jsonl", item);
-    return item;
+    const sanitized = this.sanitize(item);
+    this.issues.push(sanitized);
+    this.line("issues.jsonl", sanitized);
+    return sanitized;
   }
 
   writeJson(relPath, payload) {
-    writeFileSync(join(this.runDir, relPath), JSON.stringify(payload, null, 2));
+    writeFileSync(join(this.runDir, relPath), JSON.stringify(this.sanitize(payload), null, 2));
   }
 
   writeRootJson(relPath, payload) {
     mkdirSync(this.rootDir, { recursive: true });
-    writeFileSync(join(this.rootDir, relPath), JSON.stringify(payload, null, 2));
+    writeFileSync(join(this.rootDir, relPath), JSON.stringify(this.sanitize(payload), null, 2));
   }
 
   rootLine(file, payload) {
@@ -107,8 +119,9 @@ export class BenchmarkLogger {
       run_id: this.runId,
       ...payload,
     };
-    appendFileSync(join(this.rootDir, file), `${JSON.stringify(record)}\n`);
-    return record;
+    const sanitized = this.sanitize(record);
+    appendFileSync(join(this.rootDir, file), `${JSON.stringify(sanitized)}\n`);
+    return sanitized;
   }
 
   writeText(relPath, content) {

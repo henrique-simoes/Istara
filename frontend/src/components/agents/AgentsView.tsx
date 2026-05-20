@@ -28,6 +28,7 @@ import { useAgentStore } from "@/stores/agentStore";
 import { agents as agentsApi, memory as memoryApi } from "@/lib/api";
 import { useProjectStore } from "@/stores/projectStore";
 import { useWebSocket } from "@/hooks/useWebSocket";
+import { useRoleCapabilities } from "@/hooks/useRoleCapabilities";
 import SteeringInput from "@/components/common/SteeringInput";
 import { cn } from "@/lib/utils";
 import ViewOnboarding from "@/components/common/ViewOnboarding";
@@ -118,7 +119,9 @@ interface AgentRAGNote {
 function AgentDetail({ agent }: { agent: Agent }) {
   const { updateAgent, pauseAgent, resumeAgent, deleteAgent } = useAgentStore();
   const { activeProjectId } = useProjectStore();
+  const capabilities = useRoleCapabilities();
   const isProjectOwnedAgent = Boolean(activeProjectId && agent.project_id === activeProjectId);
+  const canManageProjectAgent = capabilities.canManageProjectAgents && isProjectOwnedAgent;
   const [tab, setTab] = useState<"overview" | "identity" | "memory" | "permissions">("overview");
   const [ragNotes, setRagNotes] = useState<AgentRAGNote[]>([]);
   const [ragLoading, setRagLoading] = useState(false);
@@ -233,7 +236,7 @@ function AgentDetail({ agent }: { agent: Agent }) {
           </div>
 
           {/* Mid-execution steering — inject messages while agent is working */}
-          {agent.name === "Istara" && (
+          {capabilities.canUseSteering && agent.name === "Istara" && (
             <SteeringInput
               agentId={agent.id}
               projectId={activeProjectId}
@@ -244,7 +247,7 @@ function AgentDetail({ agent }: { agent: Agent }) {
           {/* Recent Errors section */}
           <RecentErrors agentId={agent.id} />
           <div className="flex flex-wrap gap-2">
-            {isProjectOwnedAgent && (
+            {canManageProjectAgent && (
               agent.state === "paused" ? (
                 <button onClick={() => resumeAgent(agent.id, activeProjectId!)} className="flex items-center gap-1 px-3 py-1.5 text-xs bg-green-100 text-green-700 rounded-lg hover:bg-green-200 dark:bg-green-900/30 dark:text-green-400">
                   <Play size={12} /> Resume
@@ -255,7 +258,7 @@ function AgentDetail({ agent }: { agent: Agent }) {
                 </button>
               )
             )}
-            {isProjectOwnedAgent && (
+            {canManageProjectAgent && (
               <button
                 onClick={async () => {
                   try {
@@ -286,7 +289,7 @@ function AgentDetail({ agent }: { agent: Agent }) {
             >
               <MessageSquare size={12} /> Chat
             </button>
-            {isProjectOwnedAgent && !agent.is_system && (
+            {canManageProjectAgent && !agent.is_system && (
               <button
                 onClick={async () => {
                   if (confirm(`Delete agent "${agent.name}"? This cannot be undone.`)) {
@@ -352,7 +355,7 @@ function AgentDetail({ agent }: { agent: Agent }) {
                           <>
                             <button
                               onClick={async () => {
-                                if (!isProjectOwnedAgent) return;
+                                if (!canManageProjectAgent) return;
                                 setIdentitySaving(true);
                                 try {
                                   await agentsApi.updateIdentity(agent.id, {
@@ -382,7 +385,7 @@ function AgentDetail({ agent }: { agent: Agent }) {
                         ) : (
                           <button
                             onClick={() => { setEditingFile(filename); setEditContent(content); }}
-                            disabled={!isProjectOwnedAgent}
+                            disabled={!canManageProjectAgent}
                             className="flex items-center gap-1 px-2 py-1 text-xs bg-slate-100 text-slate-600 rounded hover:bg-slate-200 dark:bg-slate-700 dark:text-slate-300"
                           >
                             <Edit3 size={10} /> Edit
@@ -477,7 +480,7 @@ function AgentDetail({ agent }: { agent: Agent }) {
             </div>
             <button
               onClick={async () => {
-                if (!isProjectOwnedAgent) return;
+                if (!canManageProjectAgent) return;
                 if (agent.is_active) {
                   await pauseAgent(agent.id, activeProjectId!);
                   await updateAgent(agent.id, { is_active: false }, activeProjectId!);
@@ -486,10 +489,10 @@ function AgentDetail({ agent }: { agent: Agent }) {
                   await updateAgent(agent.id, { is_active: true }, activeProjectId!);
                 }
               }}
-              disabled={!isProjectOwnedAgent}
+              disabled={!canManageProjectAgent}
               className={cn(
                 "relative inline-flex h-6 w-11 items-center rounded-full transition-colors",
-                !isProjectOwnedAgent && "cursor-not-allowed opacity-50",
+                !canManageProjectAgent && "cursor-not-allowed opacity-50",
                 agent.is_active ? "bg-istara-600" : "bg-slate-300 dark:bg-slate-600"
               )}
               role="switch"
@@ -515,16 +518,16 @@ function AgentDetail({ agent }: { agent: Agent }) {
                   </div>
                   <button
                     onClick={async () => {
-                      if (!isProjectOwnedAgent) return;
+                      if (!canManageProjectAgent) return;
                       const newCaps = enabled
                         ? agent.capabilities.filter((c) => c !== cap.id)
                         : [...agent.capabilities, cap.id];
                       await updateAgent(agent.id, { capabilities: newCaps }, activeProjectId!);
                     }}
-                    disabled={!isProjectOwnedAgent}
+                    disabled={!canManageProjectAgent}
                     className={cn(
                       "relative inline-flex h-5 w-9 items-center rounded-full transition-colors",
-                      !isProjectOwnedAgent && "cursor-not-allowed opacity-50",
+                      !canManageProjectAgent && "cursor-not-allowed opacity-50",
                       enabled ? "bg-istara-500" : "bg-slate-300 dark:bg-slate-600"
                     )}
                     role="switch"
@@ -562,9 +565,13 @@ export default function AgentsView() {
   const [expandedAgent, setExpandedAgent] = useState<string | null>(null);
   const [agentProposals, setAgentProposals] = useState<any[]>([]);
   const { activeProjectId } = useProjectStore();
+  const capabilities = useRoleCapabilities();
+  const agentTabs = capabilities.canManageProjectAgents
+    ? (["agents", "a2a", "proposals", "create"] as const)
+    : (["agents", "a2a"] as const);
 
   const fetchAgentProposals = useCallback(async () => {
-    if (!activeProjectId) {
+    if (!activeProjectId || !capabilities.canManageProjectAgents) {
       setAgentProposals([]);
       return;
     }
@@ -572,7 +579,7 @@ export default function AgentsView() {
       const res = await agentsApi.creationProposals.all(activeProjectId);
       setAgentProposals(res.proposals || []);
     } catch { /* endpoint may not exist yet */ }
-  }, [activeProjectId]);
+  }, [activeProjectId, capabilities.canManageProjectAgents]);
 
   // Initial fetch + start polling every 10s to keep agent statuses current
   useEffect(() => {
@@ -604,6 +611,12 @@ export default function AgentsView() {
     if (activeTab === "proposals") fetchAgentProposals();
   }, [activeProjectId, activeTab, fetchA2ALog, fetchAgentProposals]);
 
+  useEffect(() => {
+    if (!capabilities.canManageProjectAgents && (activeTab === "proposals" || activeTab === "create")) {
+      setActiveTab("agents");
+    }
+  }, [activeTab, capabilities.canManageProjectAgents]);
+
   const systemAgents = agents.filter((a) => a.is_system);
   const userAgents = agents.filter((a) => !a.is_system);
 
@@ -623,7 +636,7 @@ export default function AgentsView() {
 
       {/* Tabs */}
       <div className="flex items-center gap-1 px-4 pt-3">
-        {(["agents", "a2a", "proposals", "create"] as const).map((tab) => (
+        {agentTabs.map((tab) => (
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
@@ -695,51 +708,55 @@ export default function AgentsView() {
             <div>
               <div className="flex items-center justify-between mb-2">
                 <h3 className="text-xs font-semibold uppercase text-slate-500">Your Agents</h3>
-                <div className="flex items-center gap-3">
-                  <button
-                    onClick={() => {
-                      const input = document.createElement("input");
-                      input.type = "file";
-                      input.accept = ".json";
-                      input.onchange = async (e: any) => {
-                        const file = e.target.files?.[0];
-                        if (!file) return;
-                        try {
-                          const text = await file.text();
-                          const data = JSON.parse(text);
-                          const agentData = data.agent || data;
-                          if (!activeProjectId) return;
-                          await agentsApi.importConfig(agentData, activeProjectId);
-                          fetchAgents(activeProjectId || undefined);
-                        } catch (err) {
-                          console.error("Import failed:", err);
-                        }
-                      };
-                      input.click();
-                    }}
-                    className="flex items-center gap-1 text-xs text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
-                  >
-                    <Upload size={12} /> Import
-                  </button>
-                  <button
-                    onClick={() => setActiveTab("create")}
-                    className="flex items-center gap-1 text-xs text-istara-600 hover:text-istara-700"
-                  >
-                    <Plus size={14} /> New Agent
-                  </button>
-                </div>
+                {capabilities.canManageProjectAgents && (
+                  <div className="flex items-center gap-3">
+                    <button
+                      onClick={() => {
+                        const input = document.createElement("input");
+                        input.type = "file";
+                        input.accept = ".json";
+                        input.onchange = async (e: any) => {
+                          const file = e.target.files?.[0];
+                          if (!file) return;
+                          try {
+                            const text = await file.text();
+                            const data = JSON.parse(text);
+                            const agentData = data.agent || data;
+                            if (!activeProjectId) return;
+                            await agentsApi.importConfig(agentData, activeProjectId);
+                            fetchAgents(activeProjectId || undefined);
+                          } catch (err) {
+                            console.error("Import failed:", err);
+                          }
+                        };
+                        input.click();
+                      }}
+                      className="flex items-center gap-1 text-xs text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
+                    >
+                      <Upload size={12} /> Import
+                    </button>
+                    <button
+                      onClick={() => setActiveTab("create")}
+                      className="flex items-center gap-1 text-xs text-istara-600 hover:text-istara-700"
+                    >
+                      <Plus size={14} /> New Agent
+                    </button>
+                  </div>
+                )}
               </div>
               {userAgents.length === 0 ? (
                 <div className="text-center py-12 border border-dashed border-slate-300 dark:border-slate-700 rounded-xl">
                   <Users size={32} className="mx-auto text-slate-300 dark:text-slate-600 mb-3" />
                   <p className="text-sm text-slate-500 mb-1">No custom agents yet</p>
                   <p className="text-xs text-slate-400 mb-4">Create an agent to specialize in specific research tasks</p>
-                  <button
-                    onClick={() => setActiveTab("create")}
-                    className="inline-flex items-center gap-1 px-4 py-2 text-sm bg-istara-600 text-white rounded-lg hover:bg-istara-700"
-                  >
-                    <Plus size={14} /> Create Agent
-                  </button>
+                  {capabilities.canManageProjectAgents && (
+                    <button
+                      onClick={() => setActiveTab("create")}
+                      className="inline-flex items-center gap-1 px-4 py-2 text-sm bg-istara-600 text-white rounded-lg hover:bg-istara-700"
+                    >
+                      <Plus size={14} /> Create Agent
+                    </button>
+                  )}
                 </div>
               ) : (
                 <div className="space-y-2">
@@ -830,7 +847,7 @@ export default function AgentsView() {
           </div>
         )}
 
-        {activeTab === "proposals" && (
+        {activeTab === "proposals" && capabilities.canManageProjectAgents && (
           <div className="space-y-4">
             <div className="flex items-center gap-2 mb-2">
               <Brain size={16} className="text-purple-500" />
@@ -890,7 +907,7 @@ export default function AgentsView() {
                   <button
                     onClick={async () => {
                       try {
-                        if (!activeProjectId) return;
+                        if (!activeProjectId || !capabilities.canManageProjectAgents) return;
                         await agentsApi.creationProposals.approve(p.id, activeProjectId);
                         await Promise.all([
                           fetchAgents(activeProjectId || undefined),
@@ -905,7 +922,7 @@ export default function AgentsView() {
                   <button
                     onClick={async () => {
                       try {
-                        if (!activeProjectId) return;
+                        if (!activeProjectId || !capabilities.canManageProjectAgents) return;
                         await agentsApi.creationProposals.reject(p.id, activeProjectId);
                         await fetchAgentProposals();
                       } catch (e) { console.error("Reject failed:", e); }
@@ -939,7 +956,7 @@ export default function AgentsView() {
           </div>
         )}
 
-        {activeTab === "create" && (
+        {activeTab === "create" && capabilities.canManageProjectAgents && (
           <div className="max-w-lg mx-auto">
             <CreateAgentWizard
               onDone={() => {
