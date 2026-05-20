@@ -9,6 +9,14 @@ const nextConfig = {
       "http://127.0.0.1:8000",
       "ws://localhost:8000",
       "ws://127.0.0.1:8000",
+      "http://localhost:1234",
+      "http://127.0.0.1:1234",
+      "http://localhost:11434",
+      "http://127.0.0.1:11434",
+      "http://localhost:8080",
+      "http://127.0.0.1:8080",
+      "http://localhost:30000",
+      "http://127.0.0.1:30000",
     ].join(" ");
 
     return [

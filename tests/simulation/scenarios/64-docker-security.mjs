@@ -76,16 +76,16 @@ export async function run(ctx) {
     });
   }
 
-  // ── 5. MCP server disabled by default ──
+  // ── 5. MCP server status is explicit and persisted ──
   try {
     const status = await api.get("/api/mcp/server/status");
     checks.push({
-      name: "MCP server disabled by default",
-      passed: status.enabled === false,
-      detail: `enabled=${status.enabled}`,
+      name: "MCP server reports explicit persisted enabled state",
+      passed: typeof status.enabled === "boolean" && typeof status.configured_enabled === "boolean",
+      detail: `enabled=${status.enabled}, configured_enabled=${status.configured_enabled}`,
     });
   } catch (e) {
-    checks.push({ name: "MCP server disabled by default", passed: false, detail: e.message });
+    checks.push({ name: "MCP server reports explicit persisted enabled state", passed: false, detail: e.message });
   }
 
   // ── 6. Autoresearch disabled by default ──

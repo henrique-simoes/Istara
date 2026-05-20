@@ -186,14 +186,18 @@ export async function run(ctx) {
   // Pattern 7: RAG Vector Store Integration
   await safeCheck("[OpenClaw] RAG — vector store health endpoint", async () => {
     try {
-      const status = await api.get("/api/settings/status");
-      const hasConfig = status.config && typeof status.config.rag_chunk_size === "number";
-      const hasTopK = typeof status.config?.rag_top_k === "number";
+      if (!evalProjectId) {
+        return { name: "[OpenClaw] RAG — vector store health endpoint", passed: false, detail: scopedSkipDetail };
+      }
+      const vectorHealth = await api.get("/api/settings/vector-health");
+      const memoryStats = await api.get(`/api/memory/${encodeURIComponent(evalProjectId)}/stats`);
+      const dimensionsOk = vectorHealth.status === "ok" && typeof vectorHealth.stored_dim === "number";
+      const hasChunkStats = typeof memoryStats.vector_chunks === "number" && typeof memoryStats.keyword_chunks === "number";
 
       return {
         name: "[OpenClaw] RAG — vector store health endpoint",
-        passed: hasConfig,
-        detail: `chunk_size=${status.config?.rag_chunk_size}, top_k=${status.config?.rag_top_k}`,
+        passed: dimensionsOk && hasChunkStats,
+        detail: `vector_status=${vectorHealth.status}, stored_dim=${vectorHealth.stored_dim}, vector_chunks=${memoryStats.vector_chunks}, keyword_chunks=${memoryStats.keyword_chunks}`,
       };
     } catch (e) {
       return { name: "[OpenClaw] RAG — vector store health endpoint", passed: false, detail: e.message };
@@ -220,7 +224,7 @@ export async function run(ctx) {
   // ═══════════════════════════════════════════════════════════════════
 
   await safeCheck("[A2A] Agent Card — /.well-known/agent.json spec compliance", async () => {
-    const res = await fetch("http://localhost:8000/.well-known/agent.json");
+    const res = await fetch("http://localhost:8000/.well-known/agent.json", { headers: api._headers() });
     const card = await res.json();
 
     const specFields = {
@@ -248,8 +252,11 @@ export async function run(ctx) {
   });
 
   await safeCheck("[A2A] JSON-RPC — all methods respond correctly", async () => {
+    if (!evalProjectId) {
+      return { name: "[A2A] JSON-RPC — all methods respond correctly", passed: false, detail: scopedSkipDetail };
+    }
     const methods = [
-      { method: "agent/discover", params: {} },
+      { method: "agent/discover", params: { project_id: evalProjectId } },
       { method: "tasks/list", params: { project_id: evalProjectId, limit: 5 } },
       { method: "tasks/cancel", params: { id: "test" } },
     ];
@@ -258,7 +265,7 @@ export async function run(ctx) {
     for (const m of methods) {
       const res = await fetch("http://localhost:8000/a2a", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: api._headers(),
         body: JSON.stringify({ jsonrpc: "2.0", method: m.method, params: m.params, id: `sim-22-${m.method}` }),
       });
       const body = await res.json();
@@ -279,7 +286,7 @@ export async function run(ctx) {
   await safeCheck("[A2A] JSON-RPC — error handling for invalid JSON", async () => {
     const res = await fetch("http://localhost:8000/a2a", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: api._headers(),
       body: "not json {{{",
     });
     const body = await res.json();

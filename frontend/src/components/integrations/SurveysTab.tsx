@@ -5,7 +5,7 @@ import { Plus, FileQuestion, RefreshCw, Trash2, Link2 } from "lucide-react";
 import { useIntegrationsStore } from "@/stores/integrationsStore";
 import { useProjectStore } from "@/stores/projectStore";
 import { permissionRequests, surveys as surveysApi } from "@/lib/api";
-import { useAuthStore } from "@/stores/authStore";
+import { useRoleCapabilities } from "@/hooks/useRoleCapabilities";
 import { cn } from "@/lib/utils";
 import SurveySetupWizard from "./SurveySetupWizard";
 import type { SurveyLink } from "@/lib/types";
@@ -18,14 +18,12 @@ const PLATFORM_META: Record<string, { label: string; color: string; bg: string }
 
 export default function SurveysTab() {
   const { surveyIntegrations, surveyLoading, fetchSurveyIntegrations } = useIntegrationsStore();
-  const { activeProjectId, canAdminActiveProject } = useProjectStore();
-  const { user } = useAuthStore();
+  const { activeProjectId } = useProjectStore();
+  const { canManageProjectIntegrations: canManageSurveyIntegrations } = useRoleCapabilities();
   const [showWizard, setShowWizard] = useState(false);
   const [linkedSurveys, setLinkedSurveys] = useState<SurveyLink[]>([]);
   const [linksLoading, setLinksLoading] = useState(false);
   const [syncing, setSyncing] = useState<string | null>(null);
-  const canManageSurveyIntegrations = user?.role === "admin" || canAdminActiveProject();
-
   const fetchLinks = useCallback(async () => {
     setLinkedSurveys([]);
     setLinksLoading(true);

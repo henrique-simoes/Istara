@@ -81,7 +81,7 @@ export async function run(ctx) {
   // GET /.well-known/agent.json returns valid agent card with required fields
 
   await safeCheck("A2A Agent Card — endpoint responds", async () => {
-    const res = await fetch("http://localhost:8000/.well-known/agent.json");
+    const res = await fetch("http://localhost:8000/.well-known/agent.json", { headers: api._headers() });
     const card = await res.json();
 
     const requiredKeys = ["name", "description", "url", "version", "capabilities", "skills"];
@@ -104,7 +104,7 @@ export async function run(ctx) {
   });
 
   await safeCheck("A2A Agent Card — skill structure valid", async () => {
-    const res = await fetch("http://localhost:8000/.well-known/agent.json");
+    const res = await fetch("http://localhost:8000/.well-known/agent.json", { headers: api._headers() });
     const card = await res.json();
 
     const skill = (card.skills || [])[0];
@@ -133,11 +133,11 @@ export async function run(ctx) {
   await safeCheck("A2A JSON-RPC — agent/discover", async () => {
     const res = await fetch("http://localhost:8000/a2a", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: api._headers(),
       body: JSON.stringify({
         jsonrpc: "2.0",
         method: "agent/discover",
-        params: {},
+        params: { project_id: projectId },
         id: "sim-arch-discover-1",
       }),
     });
@@ -161,11 +161,11 @@ export async function run(ctx) {
   await safeCheck("A2A JSON-RPC — unknown method returns error", async () => {
     const res = await fetch("http://localhost:8000/a2a", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: api._headers(),
       body: JSON.stringify({
         jsonrpc: "2.0",
         method: "nonexistent/method",
-        params: {},
+        params: { project_id: projectId },
         id: "sim-arch-unknown-1",
       }),
     });

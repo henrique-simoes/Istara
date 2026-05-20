@@ -7,7 +7,7 @@
     "plan": "node run.mjs --mode plan-only",
     "probe": "node run.mjs --mode probe --max-chat-turns 8 --max-tasks 8",
     "full": "node run.mjs --mode full --start-sandbox",
-    "check": "node --check run.mjs && node --check lib/api-client.mjs && node --check lib/corpus.mjs && node --check lib/integration-discovery.mjs && node --check lib/logger.mjs && node --check lib/persona.mjs && node --check lib/playwright-ui.mjs && node --check lib/scoring.mjs"
+    "check": "node --check run.mjs && node --check lib/api-client.mjs && node --check lib/corpus.mjs && node --check lib/donor-sandboxes.mjs && node --check lib/integration-discovery.mjs && node --check lib/logger.mjs && node --check lib/persona.mjs && node --check lib/playwright-ui.mjs && node --check lib/scoring.mjs && node --test \"lib/**/*.test.mjs\""
   },
   "dependencies": {
     "playwright": "^1.59.1"

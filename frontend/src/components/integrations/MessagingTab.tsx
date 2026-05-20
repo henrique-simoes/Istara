@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { Plus, MessageSquare } from "lucide-react";
 import { useIntegrationsStore } from "@/stores/integrationsStore";
 import { useProjectStore } from "@/stores/projectStore";
-import { useAuthStore } from "@/stores/authStore";
+import { useRoleCapabilities } from "@/hooks/useRoleCapabilities";
 import { permissionRequests } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import ChannelInstanceCard from "./ChannelInstanceCard";
@@ -28,14 +28,12 @@ export default function MessagingTab() {
     fetchChannels,
     selectInstance,
   } = useIntegrationsStore();
-  const { activeProjectId, canAdminActiveProject } = useProjectStore();
-  const { user } = useAuthStore();
+  const { activeProjectId } = useProjectStore();
+  const { canManageProjectIntegrations: canManageChannels } = useRoleCapabilities();
 
   const [platformFilter, setPlatformFilter] = useState<string | null>(null);
   const [showWizard, setShowWizard] = useState(false);
   const [detailView, setDetailView] = useState<"messages" | "conversations">("messages");
-
-  const canManageChannels = user?.role === "admin" || canAdminActiveProject();
 
   useEffect(() => {
     selectInstance(null);

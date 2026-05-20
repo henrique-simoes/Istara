@@ -21,14 +21,17 @@ from app.models.project import Project
 
 
 @pytest.fixture(autouse=True)
-def reset_settings():
+def reset_settings(monkeypatch):
     original_team_mode = settings.team_mode
     original_jwt_secret = settings.jwt_secret
+    original_network_token = settings.network_access_token
+    monkeypatch.setattr(connection_routes, "persist_env_value", lambda key, value: None)
     connection_routes._validation_limiter.clear()
     connection_routes._redeem_limiter.clear()
     yield
     settings.team_mode = original_team_mode
     settings.jwt_secret = original_jwt_secret
+    settings.network_access_token = original_network_token
     connection_routes._validation_limiter.clear()
     connection_routes._redeem_limiter.clear()
 
@@ -113,6 +116,7 @@ def test_connection_string_keeps_http_and_websocket_urls_separate():
 @pytest.mark.asyncio
 async def test_compute_donation_string_validates_but_cannot_redeem_user_account(auth_headers):
     await init_db()
+    settings.network_access_token = ""
     project_id = f"project-{uuid.uuid4()}"
     async with async_session() as db:
         db.add(Project(id=project_id, name="Donation Scope Project"))
@@ -131,7 +135,9 @@ async def test_compute_donation_string_validates_but_cannot_redeem_user_account(
             },
         )
         assert generated.status_code == 200
-        conn_str = generated.json()["connection_string"]
+        generated_body = generated.json()
+        conn_str = generated_body["connection_string"]
+        payload = decode_connection_string(conn_str)
 
         validation = await ac.post(
             "/api/connections/validate",
@@ -150,6 +156,10 @@ async def test_compute_donation_string_validates_but_cannot_redeem_user_account(
     assert validation.json()["valid"] is True
     assert validation.json()["token_type"] == "compute_donation"
     assert validation.json()["ws_url"] == "ws://server.test:8000/ws/relay"
+    assert generated_body["network_token_configured"] is True
+    assert generated_body["network_token_auto_created"] is True
+    assert payload["network_token"]
+    assert payload["network_token"] == settings.network_access_token
     assert redemption.status_code == 400
     assert redemption.json()["detail"] == "Compute donation strings cannot create user accounts"
 

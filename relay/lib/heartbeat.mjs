@@ -88,9 +88,10 @@ export function buildRegistrationPayload({
   providerType,
   providerHost,
   userId,
+  connectionString = "",
 }) {
   const models = modelProbe.models || [];
-  return {
+  const payload = {
     type: "register",
     hostname: stats.hostname,
     user_id: userId,
@@ -105,6 +106,10 @@ export function buildRegistrationPayload({
     provider_type: providerType,
     provider_host: providerHost,
   };
+  if (connectionString) {
+    payload.connection_string = connectionString;
+  }
+  return payload;
 }
 
 export function startHeartbeat(ws, intervalMs, llmProxy) {

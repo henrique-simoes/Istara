@@ -23,6 +23,7 @@ test("relay registration includes available RAM from the first payload", () => {
     providerType: "lmstudio",
     providerHost: "http://localhost:1234",
     userId: "authenticated",
+    connectionString: "rcl_signed_compute_donation",
   });
 
   assert.equal(payload.type, "register");
@@ -31,4 +32,5 @@ test("relay registration includes available RAM from the first payload", () => {
   assert.equal(payload.cpu_cores, 16);
   assert.deepEqual(payload.loaded_models, ["google/gemma-4-e4b"]);
   assert.equal(payload.health_error, "");
+  assert.equal(payload.connection_string, "rcl_signed_compute_donation");
 });

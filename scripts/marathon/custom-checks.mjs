@@ -11,22 +11,24 @@ export const DOCUMENTED_CYCLE_REQUIREMENTS = Object.freeze([
 ]);
 
 const DEFAULT_ENDPOINTS = Object.freeze([
-  "/api/health",
-  "/api/projects",
-  "/api/skills",
-  "/api/agents",
-  "/api/channels",
-  "/api/surveys/integrations",
-  "/api/deployments?project_id=test",
-  "/api/mcp/server/status",
-  "/api/mcp/clients",
-  "/api/mcp/featured",
-  "/api/autoresearch/status",
-  "/api/laws",
-  "/api/laws?category=perception",
-  "/api/backups",
-  "/api/backups/config",
+  { path: "/api/health" },
+  { path: "/api/projects" },
+  { path: "/api/skills" },
+  { path: "/api/agents", needsProject: true },
+  { path: "/api/channels", needsProject: true },
+  { path: "/api/surveys/integrations", needsProject: true },
+  { path: "/api/deployments", needsProject: true },
+  { path: "/api/mcp/server/status" },
+  { path: "/api/mcp/clients", needsProject: true },
+  { path: "/api/mcp/featured", needsProject: true },
+  { path: "/api/autoresearch/status", needsProject: true },
+  { path: "/api/laws" },
+  { path: "/api/laws?category=perception" },
+  { path: "/api/backups" },
+  { path: "/api/backups/config" },
 ]);
+
+const SIMULATION_PROJECT_NAME = "[SIM] Istara Simulation Project";
 
 function result(check, passed, detail, extra = {}) {
   return { check, passed, detail, ...extra };
@@ -39,16 +41,72 @@ function authHeaders(context) {
   return { "Content-Type": "application/json" };
 }
 
+function hasAuth(context) {
+  return Boolean(authHeaders(context).Authorization);
+}
+
+function isProjectPaused(project) {
+  const status = String(project?.status || "").toLowerCase();
+  return project?.is_paused === true || project?.paused === true || status === "paused";
+}
+
+function isSimulationProject(project) {
+  const name = String(project?.name || "");
+  return name.startsWith("[SIM]") || name.startsWith("[SIM-");
+}
+
+function appendProjectScope(path, projectId) {
+  const separator = path.includes("?") ? "&" : "?";
+  return `${path}${separator}project_id=${encodeURIComponent(projectId)}`;
+}
+
+async function resolveProjectId(context) {
+  if (typeof context.projectId === "string" && context.projectId.trim()) {
+    return context.projectId.trim();
+  }
+
+  const apiBase = context.apiBase;
+  const fetchImpl = context.fetchImpl || fetch;
+  try {
+    const response = await fetchImpl(`${apiBase}/api/projects`, { headers: authHeaders(context) });
+    if (!response.ok) return null;
+    const data = await response.json();
+    const projects = Array.isArray(data) ? data : data?.projects || [];
+    const activeProjects = projects.filter((project) => !isProjectPaused(project));
+    const canonicalSim = activeProjects.find((project) => project?.name === SIMULATION_PROJECT_NAME);
+    const activeSim = activeProjects.find(isSimulationProject);
+    return canonicalSim?.id || activeSim?.id || activeProjects[0]?.id || null;
+  } catch {
+    return null;
+  }
+}
+
+function endpointPath(endpoint, projectId) {
+  if (!endpoint.needsProject) return endpoint.path;
+  return projectId ? appendProjectScope(endpoint.path, projectId) : endpoint.path;
+}
+
+function countList(data, key) {
+  const list = Array.isArray(data) ? data : data?.[key] || [];
+  return Array.isArray(list) ? list.length : 0;
+}
+
 async function apiEndpointSweep(context) {
   const results = [];
   const apiBase = context.apiBase;
   const fetchImpl = context.fetchImpl || fetch;
+  const projectId = await resolveProjectId(context);
   for (const endpoint of DEFAULT_ENDPOINTS) {
+    const scopedPath = endpointPath(endpoint, projectId);
+    if (endpoint.needsProject && !projectId) {
+      results.push(result(`API ${endpoint.path}`, false, hasAuth(context) ? "No active unpaused project available" : "Auth unavailable; cannot resolve active project", { setup_blocker: true }));
+      continue;
+    }
     try {
-      const response = await fetchImpl(`${apiBase}${endpoint}`, { headers: authHeaders(context) });
-      results.push(result(`API ${endpoint}`, response.ok, response.ok ? "OK" : `Status ${response.status}`, { status: response.status }));
+      const response = await fetchImpl(`${apiBase}${scopedPath}`, { headers: authHeaders(context) });
+      results.push(result(`API ${scopedPath}`, response.ok, response.ok ? "OK" : `Status ${response.status}`, { status: response.status }));
     } catch (error) {
-      results.push(result(`API ${endpoint}`, false, error.message));
+      results.push(result(`API ${scopedPath}`, false, error.message));
     }
   }
   return results;
@@ -58,14 +116,29 @@ async function dbIntegrity(context) {
   const results = [];
   const apiBase = context.apiBase;
   const fetchImpl = context.fetchImpl || fetch;
-  for (const table of ["projects", "skills", "agents"]) {
+  const projectId = await resolveProjectId(context);
+  const tables = [
+    { table: "projects", path: "/api/projects", count: (data) => countList(data, "projects") },
+    { table: "skills", path: "/api/skills", count: (data) => countList(data, "skills") },
+    { table: "agents", path: "/api/agents", needsProject: true, count: (data) => countList(data, "agents") },
+  ];
+  for (const table of tables) {
+    const scopedPath = endpointPath(table, projectId);
+    if (table.needsProject && !projectId) {
+      results.push(result(`DB ${table.table}`, false, hasAuth(context) ? "No active unpaused project available" : "Auth unavailable; cannot resolve active project", { setup_blocker: true }));
+      continue;
+    }
     try {
-      const response = await fetchImpl(`${apiBase}/api/${table}`, { headers: authHeaders(context) });
+      const response = await fetchImpl(`${apiBase}${scopedPath}`, { headers: authHeaders(context) });
+      if (!response.ok) {
+        results.push(result(`DB ${table.table}`, false, `Status ${response.status}`, { status: response.status }));
+        continue;
+      }
       const data = await response.json();
-      const count = Array.isArray(data) ? data.length : (data?.[table]?.length || 0);
-      results.push(result(`DB ${table} populated`, count > 0, `${count} records`));
+      const count = table.count(data);
+      results.push(result(`DB ${table.table} populated`, count > 0, `${count} records`));
     } catch (error) {
-      results.push(result(`DB ${table}`, false, error.message));
+      results.push(result(`DB ${table.table}`, false, error.message));
     }
   }
   return results;

@@ -564,15 +564,16 @@ export default function UserManagement() {
   };
 
   useEffect(() => {
-    if (teamMode) {
+    if (teamMode && isAdmin) {
       fetchUsers();
     } else {
+      setUserList([]);
       setLoading(false);
     }
-  }, [teamMode]);
+  }, [teamMode, isAdmin]);
 
   // Don't render if team mode is not active
-  if (!teamMode) return null;
+  if (!teamMode || !isAdmin) return null;
 
   const handleCreated = (user: ReclawUser, password: string) => {
     setCreatedCredentials({ username: user.username, password });

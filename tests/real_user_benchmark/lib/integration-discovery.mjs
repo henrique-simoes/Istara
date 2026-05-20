@@ -86,7 +86,7 @@ export async function runIntegrationMatrix({ api, projectId, repoRoot, logger })
   const projectScopeQuery = `project_id=${encodeURIComponent(projectId)}`;
   const projectQuerySuffix = `?${projectScopeQuery}`;
 
-  const interfaceStatus = await attempt(logger, "interfaces", "GET /api/interfaces/status", () => api.get("/api/interfaces/status"));
+  const interfaceStatus = await attempt(logger, "interfaces", "GET /api/interfaces/status", () => api.get(`/api/interfaces/status${projectQuerySuffix}`));
 
   let stitchClass = staticHarnesses.stitch.hasMockEndpoints ? CLASSIFICATIONS.harness : CLASSIFICATIONS.missing;
   const stitchGenerate = await attempt(logger, "google_stitch", "POST /api/interfaces/mock/generate", () => api.post("/api/interfaces/mock/generate", {

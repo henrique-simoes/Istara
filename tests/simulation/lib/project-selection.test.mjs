@@ -3,6 +3,7 @@ import test from "node:test";
 
 import {
   SIMULATION_PROJECT_NAME,
+  isProjectPaused,
   projectScopedPath,
   requireActiveProjectId,
   selectCanonicalSimulationProject,
@@ -27,6 +28,23 @@ test("selectCanonicalSimulationProject selects the known simulation project amon
   assert.ok(!selected.staleProjects.some((project) => project.id === "real-first-project"));
 });
 
+test("selectCanonicalSimulationProject does not reuse paused simulation projects", () => {
+  const selected = selectCanonicalSimulationProject([
+    { id: "paused-canonical", name: SIMULATION_PROJECT_NAME, is_paused: true },
+    { id: "paused-legacy", name: "[SIM] Legacy Smoke Project", status: "paused" },
+    { id: "active-legacy", name: "[SIM-21] Previous Harness Run", is_paused: false },
+    { id: "real-project", name: "Customer Interviews", is_paused: false },
+  ]);
+
+  assert.equal(selected.canonical, null);
+  assert.deepEqual(selected.activeSimProjects.map((project) => project.id), ["active-legacy"]);
+  assert.deepEqual(
+    selected.pausedSimProjects.map((project) => project.id).sort(),
+    ["paused-canonical", "paused-legacy"],
+  );
+  assert.deepEqual(selected.staleProjects.map((project) => project.id), ["active-legacy"]);
+});
+
 test("selectCanonicalSimulationProject does not fall back to the first project", () => {
   const selected = selectCanonicalSimulationProject([
     { id: "admin-first-project", name: "Admin Project 001" },
@@ -36,6 +54,13 @@ test("selectCanonicalSimulationProject does not fall back to the first project",
   assert.equal(selected.canonical, null);
   assert.deepEqual(selected.simProjects, []);
   assert.deepEqual(selected.staleProjects, []);
+});
+
+test("isProjectPaused recognizes current paused-project shapes", () => {
+  assert.equal(isProjectPaused({ is_paused: true }), true);
+  assert.equal(isProjectPaused({ paused: true }), true);
+  assert.equal(isProjectPaused({ status: "paused" }), true);
+  assert.equal(isProjectPaused({ status: "active" }), false);
 });
 
 test("requireActiveProjectId rejects empty project ids and trims real ids", () => {

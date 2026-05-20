@@ -359,11 +359,12 @@ export async function run(ctx) {
     await safeCheck("A2A JSON-RPC — tasks/send", async () => {
       const res = await fetch("http://localhost:8000/a2a", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...api._headers() },
         body: JSON.stringify({
           jsonrpc: "2.0",
           method: "tasks/send",
           params: {
+            project_id: projectId,
             from: sender.id,
             to: "istara-main",
             message: {
@@ -388,7 +389,7 @@ export async function run(ctx) {
     await safeCheck("A2A JSON-RPC — tasks/list", async () => {
       const res = await fetch("http://localhost:8000/a2a", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...api._headers() },
         body: JSON.stringify({
           jsonrpc: "2.0",
           method: "tasks/list",

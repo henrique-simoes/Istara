@@ -396,6 +396,87 @@ def test_relay_alias_replaces_network_discovery_for_same_endpoint(monkeypatch):
     assert stats["nodes"][0]["node_id"] == "relay-142"
 
 
+def test_project_scoped_relay_stays_visible_beside_local_same_endpoint(monkeypatch):
+    import app.core.compute_registry_helpers as compute_registry_helpers
+
+    monkeypatch.setattr(
+        compute_registry_helpers,
+        "_local_machine_aliases",
+        lambda: {"localhost", "127.0.0.1", "192.0.2.142"},
+    )
+    registry = ComputeRegistry()
+    registry.register_node(
+        ComputeNode(
+            node_id="local-lmstudio",
+            name="Local LM Studio",
+            host="http://192.0.2.142:1234",
+            source="local",
+            provider_type="lmstudio",
+            is_healthy=True,
+            health_state="ready",
+            ram_total_gb=36.0,
+            loaded_models=["qwen3"],
+        )
+    )
+    registry.register_node(
+        ComputeNode(
+            node_id="relay-lmstudio",
+            name="Relay Mac Studio",
+            host="http://192.0.2.142:1234",
+            source="relay",
+            provider_type="lmstudio",
+            is_relay=True,
+            is_healthy=True,
+            health_state="ready",
+            ram_total_gb=36.0,
+            allowed_project_ids=["project-a"],
+            loaded_models=["qwen3"],
+        )
+    )
+
+    stats = registry.get_stats(project_id="project-a")
+
+    assert set(registry._nodes) == {"local-lmstudio", "relay-lmstudio"}
+    assert {node["node_id"] for node in stats["nodes"]} == {"local-lmstudio", "relay-lmstudio"}
+    assert stats["hardware_node_count"] == 1
+
+
+def test_project_scoped_relay_stays_distinct_from_unscoped_relay_same_endpoint():
+    registry = ComputeRegistry()
+    registry.register_node(
+        ComputeNode(
+            node_id="relay-unscoped",
+            name="Relay Unscoped",
+            host="http://host.docker.internal:18112",
+            source="relay",
+            provider_type="openai_compat",
+            is_relay=True,
+            is_healthy=True,
+            health_state="ready",
+            loaded_models=["qwen3"],
+        )
+    )
+    registry.register_node(
+        ComputeNode(
+            node_id="relay-scoped",
+            name="Relay Scoped",
+            host="http://host.docker.internal:18112",
+            source="relay",
+            provider_type="openai_compat",
+            is_relay=True,
+            is_healthy=True,
+            health_state="ready",
+            allowed_project_ids=["project-a"],
+            loaded_models=["qwen3"],
+        )
+    )
+
+    stats = registry.get_stats(project_id="project-a")
+
+    assert set(registry._nodes) == {"relay-unscoped", "relay-scoped"}
+    assert [node["node_id"] for node in stats["nodes"]] == ["relay-scoped"]
+
+
 def test_compute_stats_keep_distinct_local_services_but_count_machine_ram_once(monkeypatch):
     import app.core.compute_registry_helpers as compute_registry_helpers
 

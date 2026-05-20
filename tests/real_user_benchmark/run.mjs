@@ -14,6 +14,14 @@ import { BenchmarkLogger, makeRunId } from "./lib/logger.mjs";
 import { buildChatTurns, buildTaskPlan, reviewerAssessment } from "./lib/persona.mjs";
 import { runUiJourney } from "./lib/playwright-ui.mjs";
 import { scoreRun, writeScorecardMarkdown } from "./lib/scoring.mjs";
+import {
+  buildDonorModelSandboxConfig,
+  dockerArgsForDonorModelSandbox,
+  donorEndpointDiversity,
+  q4EvidenceFrom,
+  summarizeDonorModelSandbox,
+  validateDonorModelSandbox,
+} from "./lib/donor-sandboxes.mjs";
 import { inferProviderType } from "../../relay/lib/llm-proxy.mjs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -325,10 +333,6 @@ function parseConnectionStringList(raw) {
   return trimmed.split(/\r?\n|[,|]/).map((item) => item.trim()).filter(Boolean);
 }
 
-function base64UrlEncode(text) {
-  return Buffer.from(text, "utf8").toString("base64").replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
-}
-
 function decodeConnectionStringPayloadUnsafe(connectionString) {
   const value = String(connectionString || "");
   if (!value.startsWith("rcl_")) return null;
@@ -347,28 +351,31 @@ function decodeConnectionStringPayloadUnsafe(connectionString) {
 function rewriteRelayConnectionStringForContainer(connectionString) {
   const decoded = decodeConnectionStringPayloadUnsafe(connectionString);
   if (!decoded) return { connectionString, rewritten: false };
-  const payload = { ...decoded.payload };
+  const payload = decoded.payload;
   const before = {
     server_url: payload.server_url || "",
     ws_url: payload.ws_url || "",
   };
-  if (payload.server_url) payload.server_url = replaceLocalhostForContainer(payload.server_url);
-  if (payload.ws_url) payload.ws_url = replaceLocalhostForContainer(payload.ws_url);
-  const rewritten = before.server_url !== payload.server_url || before.ws_url !== payload.ws_url;
-  if (!rewritten) return { connectionString, rewritten: false };
-  const payloadB64 = base64UrlEncode(JSON.stringify(payload));
+  const after = {
+    server_url: payload.server_url ? replaceLocalhostForContainer(payload.server_url) : "",
+    ws_url: payload.ws_url ? replaceLocalhostForContainer(payload.ws_url) : "",
+  };
+  const wouldNeedRewrite = before.server_url !== after.server_url || before.ws_url !== after.ws_url;
   return {
-    connectionString: `rcl_${payloadB64}.${decoded.signature}`,
-    rewritten: true,
+    connectionString,
+    rewritten: false,
+    needsContainerReachableUrl: wouldNeedRewrite,
     before: {
       server_url: hostSummary(before.server_url),
       ws_url: hostSummary(before.ws_url),
     },
     after: {
-      server_url: hostSummary(payload.server_url),
-      ws_url: hostSummary(payload.ws_url),
+      server_url: hostSummary(after.server_url),
+      ws_url: hostSummary(after.ws_url),
     },
-    note: "Relay CLI does not verify the connection-string HMAC; rewriting localhost lets a container reach an external host-server while preserving the embedded network token. User invite strings are not rewritten because the server validates their HMAC.",
+    note: wouldNeedRewrite
+      ? "The relay container needs a Docker-reachable server URL, but compute donation strings are HMAC-signed by the server and cannot be rewritten locally. Generate the string with ISTARA_BENCHMARK_CONNECTION_SERVER_URL/WS_URL or let the benchmark generate Docker-reachable URLs."
+      : "Connection string already uses container-reachable relay URLs; no local payload rewrite was applied.",
   };
 }
 
@@ -546,6 +553,7 @@ function profileValue(profile, keys) {
 
 function normalizeDonorProfile(rawProfile, index, { required = true, defaultKind = "" } = {}) {
   const raw = rawProfile || {};
+  const envId = envDonorValue(index, ["ID", "NAME", "LABEL"]);
   const envHost = envDonorValue(index, ["LLM_HOST", "HOST", "BASE_URL"]);
   const envProvider = envDonorValue(index, ["LLM_PROVIDER", "PROVIDER"]);
   const envModel = envDonorValue(index, ["LLM_MODEL", "MODEL"]);
@@ -557,6 +565,7 @@ function normalizeDonorProfile(rawProfile, index, { required = true, defaultKind
   const profileProvider = profileValue(raw, ["provider", "llm_provider", "llmProvider"]);
 
   const id = firstNonEmpty(
+    envId.value,
     raw.id,
     raw.name,
     isQwenDefault ? `donor-${index}-qwen35-4b` : "",
@@ -602,9 +611,18 @@ function normalizeDonorProfile(rawProfile, index, { required = true, defaultKind
     envConnection.value,
     profileValue(raw, ["connection_string", "connectionString", "compute_connection_string", "computeConnectionString"]),
   );
+  const modelSandbox = buildDonorModelSandboxConfig(raw, index, {
+    donorId: id,
+    model,
+    runId,
+  });
+  const effectiveProvider = modelSandbox.requested ? modelSandbox.kind : provider;
+  const effectiveHostRaw = modelSandbox.requested ? modelSandbox.hostUrl : rawHost;
+  const effectiveHostForContainer = modelSandbox.requested ? modelSandbox.hostUrl : hostForContainer;
+  const effectiveHost = modelSandbox.requested ? modelSandbox.hostUrl : host;
   const provisionedOnly = Boolean(raw.provisioned_only ?? raw.provisionedOnly ?? isQwenDefault);
   const disabledByConfig = raw.enabled === false || raw.disabled === true;
-  const enabled = !disabledByConfig && Boolean(host);
+  const enabled = !disabledByConfig && Boolean(effectiveHost);
   const blockedReason = enabled
     ? ""
     : disabledByConfig
@@ -618,13 +636,13 @@ function normalizeDonorProfile(rawProfile, index, { required = true, defaultKind
     enabled,
     blockedReason,
     provisionedOnly,
-    provider,
-    providerSource: envProvider.source || (profileProvider ? "donor-profile" : isFirstLegacyDefault ? relayLlmProviderSource : isQwenDefault ? "future-qwen-profile" : providerRaw ? "configured" : "inferred"),
-    hostRaw: rawHost,
-    hostForContainer,
-    host,
-    hostSource: envHost.source || (rawHost ? (isFirstLegacyDefault ? relayLlmHostSource : "donor-profile") : "unset"),
-    hostNormalized: host !== hostForContainer,
+    provider: effectiveProvider,
+    providerSource: modelSandbox.requested ? `model-sandbox:${modelSandbox.source}` : envProvider.source || (profileProvider ? "donor-profile" : isFirstLegacyDefault ? relayLlmProviderSource : isQwenDefault ? "future-qwen-profile" : providerRaw ? "configured" : "inferred"),
+    hostRaw: effectiveHostRaw,
+    hostForContainer: effectiveHostForContainer,
+    host: effectiveHost,
+    hostSource: modelSandbox.requested ? `model-sandbox:${modelSandbox.source}` : envHost.source || (rawHost ? (isFirstLegacyDefault ? relayLlmHostSource : "donor-profile") : "unset"),
+    hostNormalized: effectiveHost !== effectiveHostForContainer,
     apiKey,
     apiKeySource: envApiKey.source || (apiKeyFromNamedEnv ? `env:${apiKeyEnvName}` : isFirstLegacyDefault && apiKey ? relayLlmApiKeySource : apiKey ? "donor-profile" : "unset"),
     model,
@@ -632,6 +650,7 @@ function normalizeDonorProfile(rawProfile, index, { required = true, defaultKind
     modelFamily: modelFamilyFromId(model),
     connectionString,
     connectionStringSource: envConnection.source || (connectionString ? "donor-profile" : "unset"),
+    modelSandbox,
   };
 }
 
@@ -675,10 +694,15 @@ function summarizeDonorProfile(profile) {
     model_id_redacted: true,
     connection_string_configured: Boolean(profile.connectionString),
     connection_string_source: profile.connectionStringSource,
+    model_sandbox: summarizeDonorModelSandbox(profile.modelSandbox),
   };
 }
 
 let donorProfiles = buildDonorProfiles();
+const requireDistinctDonorEndpoints = boolEnv(
+  "ISTARA_BENCHMARK_REQUIRE_DISTINCT_DONOR_ENDPOINTS",
+  donorProfiles.filter((profile) => profile.required).length > 1,
+);
 const serverLmstudioModel = (
   process.env.ISTARA_BENCHMARK_SERVER_LMSTUDIO_MODEL ||
   relayLlmModel ||
@@ -718,7 +742,11 @@ const chatTimeoutMs = intArg("chat-timeout-ms", 120000);
 const keepClientContainers = ["1", "true", "yes"].includes(
   String(process.env.ISTARA_BENCHMARK_KEEP_CLIENT_CONTAINERS || "").toLowerCase(),
 );
+const keepDonorModelContainers = ["1", "true", "yes"].includes(
+  String(process.env.ISTARA_BENCHMARK_KEEP_DONOR_MODEL_CONTAINERS || "").toLowerCase(),
+);
 const colimaStoragePolicy = (process.env.ISTARA_BENCHMARK_COLIMA_STORAGE_POLICY || "warn").trim().toLowerCase();
+const enforceColimaApparentStorage = boolEnv("ISTARA_BENCHMARK_COLIMA_ENFORCE_APPARENT_STORAGE", false);
 const colimaStorageBudget = {
   actualGb: floatEnv("ISTARA_BENCHMARK_COLIMA_MAX_ACTUAL_GB", 10),
   apparentGb: floatEnv("ISTARA_BENCHMARK_COLIMA_MAX_APPARENT_GB", 20),
@@ -770,6 +798,7 @@ logger.action("llm.config.sources", {
   researcher_count: runtimeResearcherCount,
   donor_count_requested: donorProfiles.filter((profile) => profile.required).length,
   donor_profiles: donorProfiles.map(summarizeDonorProfile),
+  require_distinct_donor_endpoints: requireDistinctDonorEndpoints,
   keychain_service_configured: liveLlmProfile.keychainServiceConfigured,
   keychain_service_source: liveLlmProfile.keychainServiceSource,
   model_configured: Boolean(relayLlmModel && relayLlmModel !== "default"),
@@ -805,6 +834,7 @@ const featureResults = {
   urlFetch: false,
   interfaces: false,
   multiDonorCompute: false,
+  distinctDonorEndpoints: false,
 };
 
 const sandbox = {
@@ -819,8 +849,12 @@ const sandbox = {
   relayStartedCount: 0,
   researcherExpectedCount: runtimeResearcherCount,
   researcherStartedCount: 0,
+  modelServerAttempted: false,
+  modelServerExpectedCount: donorProfiles.filter((profile) => profile.required && profile.modelSandbox?.requested).length,
+  modelServerStartedCount: 0,
 };
 const relayClientContainers = [];
+const donorModelContainers = [];
 const extraSensitiveLogValues = new Set();
 let relayClientImageBuilt = false;
 let clientDockerReady = null;
@@ -847,6 +881,8 @@ function sensitiveLogValues() {
       profile.apiKey,
       profile.connectionString,
       profile.model,
+      profile.modelSandbox?.hostUrl,
+      profile.modelSandbox?.hostProbeUrl,
     ]),
     configuredLmStudioHost,
     serverLmstudioHost,
@@ -865,8 +901,24 @@ function sanitizeLogText(text) {
   output = output.replace(/Failed to load LLM '([^']+)'/g, "Failed to load LLM '[redacted-model]'");
   output = output.replace(/failed to load model \S+ on/gi, "failed to load model [redacted-model] on");
   output = output.replace(/Model load failed: \S+:/g, "Model load failed: [redacted-model]:");
+  output = output.replace(/([?&](?:token|access_token|network_token)=)[^&\s'"<>]+/gi, "$1[redacted]");
+  output = output.replace(/\b(Bearer\s+)[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+/g, "$1[redacted]");
+  output = output.replace(/\beyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\b/g, "[redacted-jwt]");
   return output;
 }
+
+function sanitizeLogPayload(value) {
+  if (typeof value === "string") return sanitizeLogText(value);
+  if (Array.isArray(value)) return value.map((item) => sanitizeLogPayload(item));
+  if (value && typeof value === "object") {
+    return Object.fromEntries(
+      Object.entries(value).map(([key, item]) => [key, sanitizeLogPayload(item)]),
+    );
+  }
+  return value;
+}
+
+logger.setSanitizer(sanitizeLogPayload);
 
 function redactArgForLog(value, index, args) {
   const previous = args[index - 1] || "";
@@ -1001,6 +1053,7 @@ function captureColimaStorageSnapshot(label, { recordIssue = false } = {}) {
   }));
   const total = entries.find((entry) => entry.name === "colima-home");
   const overBudget = [];
+  const apparentOverBudget = [];
   if (total?.actual?.ok && total.actual.gib > colimaStorageBudget.actualGb + colimaStorageBudget.toleranceGb) {
     overBudget.push({
       measure: "actual",
@@ -1010,20 +1063,26 @@ function captureColimaStorageSnapshot(label, { recordIssue = false } = {}) {
     });
   }
   if (total?.apparent?.ok && total.apparent.gib > colimaStorageBudget.apparentGb + colimaStorageBudget.toleranceGb) {
-    overBudget.push({
+    const apparentEntry = {
       measure: "apparent",
       path: total.path,
       observed_gb: total.apparent.gib,
       budget_gb: colimaStorageBudget.apparentGb,
-    });
+      advisory: !enforceColimaApparentStorage,
+      detail: "Apparent Colima size includes sparse disk image capacity; actual disk usage is the enforced cap unless ISTARA_BENCHMARK_COLIMA_ENFORCE_APPARENT_STORAGE=1.",
+    };
+    apparentOverBudget.push(apparentEntry);
+    if (enforceColimaApparentStorage) overBudget.push(apparentEntry);
   }
   const snapshot = {
     label,
     captured_at: new Date().toISOString(),
     policy: colimaStoragePolicy,
     budgets_gb: colimaStorageBudget,
+    enforce_apparent_storage: enforceColimaApparentStorage,
     paths: entries,
     over_budget: overBudget,
+    apparent_over_budget: apparentOverBudget,
     remediation: overBudget.length
       ? "Use a fresh Colima profile with --root-disk 10 --disk 10, or explicitly raise ISTARA_BENCHMARK_COLIMA_MAX_*_GB for larger benchmark images."
       : "",
@@ -1476,6 +1535,144 @@ function ensureRelayClientImage() {
   return true;
 }
 
+async function waitForDonorModelEndpoint(donor, timeoutMs = 120000) {
+  const config = donor?.modelSandbox;
+  if (!config?.requested) return { skipped: true };
+  const endpoint = config.kind === "ollama"
+    ? `${config.hostProbeUrl}/api/tags`
+    : `${config.hostProbeUrl}/v1/models`;
+  const deadline = Date.now() + timeoutMs;
+  let lastError = "";
+  while (Date.now() < deadline) {
+    try {
+      const response = await fetch(endpoint, { signal: AbortSignal.timeout(5000) });
+      const text = await response.text();
+      if (response.ok) {
+        logger.action("sandbox.donor_model.ready", {
+          donor_id: donor.id,
+          kind: config.kind,
+          container_name: config.containerName,
+          endpoint: config.kind,
+          response_chars: text.length,
+        });
+        return { ok: true };
+      }
+      lastError = `${response.status} ${text.slice(0, 200)}`;
+    } catch (error) {
+      lastError = error.message;
+    }
+    await new Promise((resolveDelay) => setTimeout(resolveDelay, 3000));
+  }
+  return { ok: false, error: lastError || "timed out waiting for donor model endpoint" };
+}
+
+async function startDonorModelSandbox(donor) {
+  const config = donor?.modelSandbox;
+  if (!config?.requested || mode === "plan-only") {
+    logger.action("sandbox.donor_model.skip", {
+      donor_id: donor?.id || "unknown",
+      requested: Boolean(config?.requested),
+      mode,
+    });
+    return { skipped: true };
+  }
+  sandbox.modelServerAttempted = true;
+  const validationIssues = validateDonorModelSandbox(config);
+  const validation = {
+    donor_id: donor.id,
+    ok: validationIssues.length === 0,
+    model_sandbox: summarizeDonorModelSandbox(config),
+    issues: validationIssues,
+  };
+  logger.writeJson(`donor-model-sandbox-${donor.id}.json`, validation);
+  logger.action("sandbox.donor_model.validation", validation);
+  if (validationIssues.length > 0) {
+    blockers.push(`Donor ${donor.id} model sandbox is not runnable: ${validationIssues.map((issue) => issue.code).join(", ")}.`);
+    for (const issue of validationIssues) {
+      logger.issue({
+        area: "compute-donation",
+        severity: issue.severity || "critical",
+        title: `Donor model sandbox validation failed: ${issue.code}`,
+        detail: issue.detail,
+      });
+    }
+    return { ok: false, validation };
+  }
+
+  const daemon = ensureClientDockerDaemon(`donor-model-${donor.id}`);
+  if (!daemon.ok) return { ok: false, skipped: true };
+  if (keepDonorModelContainers) {
+    const inspect = runCommand(`docker-inspect-donor-model-${donor.id}`, "docker", [
+      "inspect",
+      "-f",
+      "{{.State.Running}}",
+      config.containerName,
+    ], {
+      allowFailure: true,
+      timeoutMs: 30 * 1000,
+    });
+    if (inspect.status === 0) {
+      const alreadyRunning = String(inspect.stdout || "").trim() === "true";
+      if (!alreadyRunning) {
+        const start = runCommand(`docker-start-donor-model-${donor.id}`, "docker", ["start", config.containerName], {
+          timeoutMs: 60 * 1000,
+        });
+        if (start.status !== 0) {
+          blockers.push(`Donor ${donor.id} model sandbox exists but could not be started.`);
+          logger.issue({
+            area: "compute-donation",
+            severity: "critical",
+            title: "Donor model sandbox reuse failed",
+            detail: sanitizeLogText(start.stderr || start.error?.message || "docker start returned non-zero status"),
+          });
+          return { ok: false, start_status: start.status };
+        }
+      }
+      if (!donorModelContainers.includes(config.containerName)) donorModelContainers.push(config.containerName);
+      sandbox.modelServerStartedCount += 1;
+      logger.action("sandbox.donor_model.reuse", {
+        donor_id: donor.id,
+        container_name: config.containerName,
+        already_running: alreadyRunning,
+      });
+      const readiness = await waitForDonorModelEndpoint(donor);
+      return { ok: Boolean(readiness.ok), reused: true, readiness };
+    }
+  }
+  if (!keepDonorModelContainers) {
+    runCommand(`docker-rm-donor-model-${donor.id}`, "docker", ["rm", "-f", config.containerName], {
+      allowFailure: true,
+      timeoutMs: 60 * 1000,
+    });
+  }
+  const run = runCommand(`docker-run-donor-model-${donor.id}`, "docker", dockerArgsForDonorModelSandbox(config, dockerHostAccessArgs()), {
+    timeoutMs: 5 * 60 * 1000,
+  });
+  if (run.status !== 0) {
+    blockers.push(`Donor ${donor.id} model sandbox did not start.`);
+    logger.issue({
+      area: "compute-donation",
+      severity: "critical",
+      title: "Donor model sandbox failed to start",
+      detail: sanitizeLogText(run.stderr || run.error?.message || "docker run returned non-zero status"),
+    });
+    return { ok: false, run_status: run.status };
+  }
+  donorModelContainers.push(config.containerName);
+  sandbox.modelServerStartedCount += 1;
+  const readiness = await waitForDonorModelEndpoint(donor);
+  if (!readiness.ok) {
+    blockers.push(`Donor ${donor.id} model sandbox started but did not become ready.`);
+    logger.issue({
+      area: "compute-donation",
+      severity: "critical",
+      title: "Donor model sandbox readiness failed",
+      detail: readiness.error || "model endpoint did not respond",
+    });
+  }
+  return { ok: Boolean(readiness.ok), readiness };
+}
+
 function startRelayClientSandbox(connectionString, donorProfile = donorProfiles[0], donorIndex = 0) {
   const donor = donorProfile || donorProfiles[0];
   if (!startClientSandboxes || !connectionString || mode === "plan-only") {
@@ -1503,19 +1700,23 @@ function startRelayClientSandbox(connectionString, donorProfile = donorProfiles[
     return;
   }
   sandbox.relayAttempted = true;
-  if (!benchmarkNetworkToken) {
+  const decodedConnection = decodeConnectionStringPayloadUnsafe(connectionString);
+  const embeddedNetworkToken = String(decodedConnection?.payload?.network_token || "").trim();
+  const embeddedJwt = String(decodedConnection?.payload?.jwt || "").trim();
+  if (!embeddedNetworkToken && !embeddedJwt) {
     if (requireComputeDonation) {
       blockers.push("Compute donation was required, but no network access token was available for relay authentication.");
       logger.issue({
         area: "compute-donation",
         severity: "critical",
         title: "Missing network access token for required compute donation",
-        detail: "Relay connections to /ws/relay require either a network token or JWT. The benchmark could not start a donated-compute client without one.",
+        detail: "Relay connections to /ws/relay require either a network token or JWT. The compute donation string did not include one.",
       });
     }
     logger.action("sandbox.relay.skip", {
       donor_id: donor.id,
-      reason: "The default UI benchmark profile runs Team Mode without NETWORK_ACCESS_TOKEN so browser API requests are not blocked. Set ISTARA_BENCHMARK_NETWORK_ACCESS_TOKEN to live-test compute relay connection strings in a separate profile.",
+      connection_string_kind: decodedConnection?.payload?.kind || "",
+      reason: "Compute donation relay auth was unavailable. Generate a fresh compute donation string from a server with NETWORK_ACCESS_TOKEN configured or let the current server auto-provision one before generation.",
     });
     return;
   }
@@ -1533,14 +1734,33 @@ function startRelayClientSandbox(connectionString, donorProfile = donorProfiles[
     donor: summarizeDonorProfile(donor),
     container_name: containerName,
     connection_string_present: Boolean(connectionString),
+    connection_string_has_embedded_network_token: Boolean(embeddedNetworkToken),
+    connection_string_has_embedded_jwt: Boolean(embeddedJwt),
     connection_string_rewritten_for_container: Boolean(relayConnection.rewritten),
+    connection_string_needs_container_reachable_url: Boolean(relayConnection.needsContainerReachableUrl),
     rewrite_evidence: relayConnection.rewritten
       ? {
           before: relayConnection.before,
           after: relayConnection.after,
         }
+      : relayConnection.needsContainerReachableUrl
+        ? {
+            before: relayConnection.before,
+            suggested: relayConnection.after,
+            note: relayConnection.note,
+          }
       : null,
   });
+  if (relayConnection.needsContainerReachableUrl) {
+    blockers.push(`Relay/client sandbox for donor ${donor.id} received a signed connection string with localhost URLs that Docker cannot use.`);
+    logger.issue({
+      area: "connection-string",
+      severity: "critical",
+      title: "Relay connection string is not Docker-reachable",
+      detail: relayConnection.note,
+    });
+    return;
+  }
   const run = runCommand(`docker-run-relay-client-${donor.id}`, "docker", [
     "run",
     "-d",
@@ -1608,6 +1828,11 @@ const decodePayload = (connectionString) => {
   return JSON.parse(Buffer.from(padded.replace(/-/g, "+").replace(/_/g, "/"), "base64").toString("utf8"));
 };
 const post = async (serverUrl, path, body, headers = {}) => {
+  const result = await postResult(serverUrl, path, body, headers);
+  if (!result.ok) throw new Error(path + " " + result.status + " " + String(result.text).slice(0, 300));
+  return result.data;
+};
+const postResult = async (serverUrl, path, body, headers = {}) => {
   const response = await fetch(serverUrl + path, {
     method: "POST",
     headers: { "Content-Type": "application/json", ...headers },
@@ -1616,8 +1841,7 @@ const post = async (serverUrl, path, body, headers = {}) => {
   const text = await response.text();
   let data = text;
   try { data = text ? JSON.parse(text) : {}; } catch {}
-  if (!response.ok) throw new Error(path + " " + response.status + " " + String(text).slice(0, 300));
-  return data;
+  return { ok: response.ok, status: response.status, data, text };
 };
 const main = async () => {
   const connectionString = process.env.ISTARA_CONNECTION_STRING || "";
@@ -1630,13 +1854,27 @@ const main = async () => {
   const email = process.env.ISTARA_CLIENT_EMAIL || username + "@benchmark.istara.local";
   const validation = await post(serverUrl, "/api/connections/validate", { connection_string: connectionString }, networkHeaders);
   if (!validation.valid) throw new Error("Connection string validation failed: " + JSON.stringify(validation));
-  const redemption = await post(serverUrl, "/api/connections/redeem", {
+  const redemptionAttempt = await postResult(serverUrl, "/api/connections/redeem", {
     connection_string: connectionString,
     username,
     password,
     email,
     display_name: "Maya Rodrigues Client Sandbox",
   }, networkHeaders);
+  let redemption = redemptionAttempt.data;
+  let reusedExistingUser = false;
+  if (!redemptionAttempt.ok) {
+    const conflict = redemptionAttempt.status === 409 && /already exists/i.test(String(redemptionAttempt.text || ""));
+    if (!conflict) {
+      throw new Error("/api/connections/redeem " + redemptionAttempt.status + " " + String(redemptionAttempt.text).slice(0, 300));
+    }
+    const login = await post(serverUrl, "/api/auth/login", { username, password }, networkHeaders);
+    redemption = {
+      token: login.token || login.access_token || "",
+      user: login.user || {},
+    };
+    reusedExistingUser = true;
+  }
   const meResponse = await fetch(serverUrl + "/api/auth/me", {
     headers: { Authorization: "Bearer " + redemption.token, ...networkHeaders },
   });
@@ -1653,6 +1891,7 @@ const main = async () => {
     role: redemption.user && redemption.user.role,
     me_id: me.id,
     me_role: me.role,
+    reused_existing_user: reusedExistingUser,
   }));
 };
 main().catch((error) => {
@@ -1661,6 +1900,11 @@ main().catch((error) => {
 });
 `;
   const clientUsername = `maya-client-${index + 1}-${runId.replace(/[^a-z0-9]+/gi, "-").slice(0, 26)}`;
+  const clientPassword = process.env[`ISTARA_BENCHMARK_CLIENT_${index + 1}_PASSWORD`]
+    || process.env.ISTARA_BENCHMARK_CLIENT_PASSWORD
+    || "IstaraBenchmarkClient123!";
+  const clientEmail = process.env[`ISTARA_BENCHMARK_CLIENT_${index + 1}_EMAIL`]
+    || `${clientUsername}@benchmark.istara.local`;
   const result = runCommand(`docker-run-user-invite-client-${index + 1}`, "docker", [
     "run",
     "--rm",
@@ -1685,9 +1929,9 @@ main().catch((error) => {
     env: {
       ISTARA_CONNECTION_STRING: connectionString,
       ISTARA_CLIENT_SERVER_URL: process.env.ISTARA_BENCHMARK_CLIENT_SERVER_URL || containerReachableUrl(apiBase),
-      ISTARA_CLIENT_USERNAME: clientUsername,
-      ISTARA_CLIENT_PASSWORD: process.env.ISTARA_BENCHMARK_CLIENT_PASSWORD || "IstaraBenchmarkClient123!",
-      ISTARA_CLIENT_EMAIL: `${clientUsername}@benchmark.istara.local`,
+      ISTARA_CLIENT_USERNAME: process.env[`ISTARA_BENCHMARK_CLIENT_${index + 1}_USERNAME`] || clientUsername,
+      ISTARA_CLIENT_PASSWORD: clientPassword,
+      ISTARA_CLIENT_EMAIL: clientEmail,
       ISTARA_CLIENT_NETWORK_ACCESS_TOKEN: benchmarkNetworkToken,
     },
     timeoutMs: 3 * 60 * 1000,
@@ -1717,9 +1961,9 @@ main().catch((error) => {
   }
   return {
     ok: result.status === 0,
-    username: clientUsername,
-    password: process.env.ISTARA_BENCHMARK_CLIENT_PASSWORD || "IstaraBenchmarkClient123!",
-    email: `${clientUsername}@benchmark.istara.local`,
+    username: process.env[`ISTARA_BENCHMARK_CLIENT_${index + 1}_USERNAME`] || clientUsername,
+    password: clientPassword,
+    email: clientEmail,
     parsed,
   };
 }
@@ -1727,6 +1971,18 @@ main().catch((error) => {
 function cleanupRelayClientSandboxes() {
   if (keepClientContainers || relayClientContainers.length === 0) return;
   for (const containerName of relayClientContainers) {
+    runCommand(`docker-logs-${containerName}`, "docker", ["logs", containerName], {
+      timeoutMs: 30 * 1000,
+    });
+    runCommand(`docker-rm-${containerName}`, "docker", ["rm", "-f", containerName], {
+      timeoutMs: 30 * 1000,
+    });
+  }
+}
+
+function cleanupDonorModelSandboxes() {
+  if (keepDonorModelContainers || donorModelContainers.length === 0) return;
+  for (const containerName of donorModelContainers) {
     runCommand(`docker-logs-${containerName}`, "docker", ["logs", containerName], {
       timeoutMs: 30 * 1000,
     });
@@ -1783,12 +2039,18 @@ let modelCount = 0;
 let configuredModelListed = null;
 let selectedModelIdLength = 0;
 let modelListSource = "";
+let selectedQuantization = "";
+let selectedQ4Evidence = false;
 const redact = (value) => {
   let output = String(value || "");
   for (const secret of [host, apiKey, configuredModel].filter(Boolean)) {
     output = output.split(secret).join("[redacted]");
   }
   return output;
+};
+const q4EvidenceFrom = (...values) => {
+  const joined = values.filter(Boolean).map((value) => String(value)).join(" ");
+  return /(^|[^a-z0-9])(?:q4(?:[_\\-.][a-z0-9]+)?|4bit|4-bit|int4)([^a-z0-9]|$)/i.test(joined);
 };
 const openAIUrl = (suffix) => {
   const clean = suffix.replace(/^\\/+/, "");
@@ -1837,8 +2099,10 @@ const main = async () => {
   try {
     modelData = provider === "lmstudio"
       ? await fetchJson(host + "/api/v1/models")
+      : provider === "ollama"
+        ? await fetchJson(host + "/api/tags")
       : await fetchJson(openAIUrl("models"));
-    modelListSource = provider === "lmstudio" ? "lmstudio-native" : "openai-compatible";
+    modelListSource = provider === "lmstudio" ? "lmstudio-native" : provider === "ollama" ? "ollama-native" : "openai-compatible";
   } catch (firstError) {
     modelData = await fetchJson(openAIUrl("models"));
     modelListSource = "openai-compatible";
@@ -1858,6 +2122,15 @@ const main = async () => {
   const model = configuredModel && configuredModel !== "default" ? configuredModel : models[0];
   selectedModelIdLength = model ? model.length : 0;
   if (!model) throw new Error("No chat model available from configured relay LLM target");
+  const selectedRawModel = rawModels.find((item) => modelId(item) === model) || {};
+  selectedQuantization = String(
+    selectedRawModel?.quantization?.name
+    || selectedRawModel?.quantization
+    || selectedRawModel?.details?.quantization_level
+    || selectedRawModel?.metadata?.quantization
+    || ""
+  );
+  selectedQ4Evidence = q4EvidenceFrom(selectedQuantization, model, configuredModel);
   let completion;
   try {
     completion = await tinyChat(model);
@@ -1883,6 +2156,9 @@ const main = async () => {
     model_list_source: modelListSource,
     selected_model_source: configuredModel && configuredModel !== "default" ? "configured" : "first-listed",
     selected_model_id_length: selectedModelIdLength,
+    selected_quantization_present: Boolean(selectedQuantization),
+    selected_quantization_redacted: Boolean(selectedQuantization),
+    selected_q4_evidence_present: selectedQ4Evidence,
     load_attempted: loadAttempted,
     load_ok: loadOk,
     load_error_present: Boolean(loadError),
@@ -1892,7 +2168,7 @@ const main = async () => {
   }));
 };
 main().catch((error) => {
-  console.error(JSON.stringify({ ok: false, error: redact(error.message), model_count: modelCount, configured_model_listed: configuredModelListed, model_list_source: modelListSource, selected_model_source: configuredModel && configuredModel !== "default" ? "configured" : "first-listed", selected_model_id_length: selectedModelIdLength, load_attempted: loadAttempted, load_ok: loadOk, load_error_present: Boolean(loadError), load_error_preview: loadError.slice(0, 240) }));
+  console.error(JSON.stringify({ ok: false, error: redact(error.message), model_count: modelCount, configured_model_listed: configuredModelListed, model_list_source: modelListSource, selected_model_source: configuredModel && configuredModel !== "default" ? "configured" : "first-listed", selected_model_id_length: selectedModelIdLength, selected_quantization_present: Boolean(selectedQuantization), selected_quantization_redacted: Boolean(selectedQuantization), selected_q4_evidence_present: selectedQ4Evidence, load_attempted: loadAttempted, load_ok: loadOk, load_error_present: Boolean(loadError), load_error_preview: loadError.slice(0, 240) }));
   process.exit(1);
 });
 `;
@@ -1946,6 +2222,18 @@ main().catch((error) => {
     model_configured: Boolean(donor.model && donor.model !== "default"),
     model_source: donor.modelSource,
   };
+  const q4FromPreflight = q4EvidenceFrom(
+    donor.model,
+    donor.modelSandbox?.quantization,
+    donor.modelSandbox?.modelFile,
+  );
+  preflight.q4 = {
+    required: Boolean(donor.modelSandbox?.requireQ4),
+    configured_evidence_present: Boolean(donor.modelSandbox?.q4?.ok),
+    preflight_quantization_present: Boolean(parsed?.selected_quantization_present),
+    preflight_q4_evidence_present: Boolean(parsed?.selected_q4_evidence_present),
+    ok: Boolean(donor.modelSandbox?.q4?.ok || q4FromPreflight.ok || parsed?.selected_q4_evidence_present),
+  };
   logger.writeJson(`relay-llm-preflight-${donor.id}.json`, preflight);
   if (donor.index === 1) logger.writeJson("relay-llm-preflight.json", preflight);
   logger.action("compute.preflight.result", preflight);
@@ -1956,6 +2244,15 @@ main().catch((error) => {
       severity: "critical",
       title: "Relay LLM target failed container preflight",
       detail: parsed?.error || sanitizeLogText(result.stderr || "") || "The client container could not list models and complete a tiny chat request against the configured LM Studio target.",
+    });
+  }
+  if (preflight.ok && donor.modelSandbox?.requireQ4 && !preflight.q4.ok) {
+    blockers.push(`Donor ${donor.id} did not prove Q4/4-bit quantization.`);
+    logger.issue({
+      area: "compute-donation",
+      severity: "critical",
+      title: "Donor quantization evidence missing",
+      detail: "The donor model sandbox was required to prove Q4/4-bit quantization through config or provider metadata.",
     });
   }
   return preflight;
@@ -1999,12 +2296,37 @@ async function waitForRelayRegistrations(api, projectId, expectedCount = 1, time
     }
     await new Promise((resolveDelay) => setTimeout(resolveDelay, 3000));
   }
-  const nodes = Array.isArray(lastStats?.nodes) ? lastStats.nodes.map(summarizeRelayNode) : [];
+  const nodes = Array.isArray(lastStats?.nodes)
+    ? lastStats.nodes.filter((node) => ["relay", "browser"].includes(node.source)).map(summarizeRelayNode)
+    : [];
   return { ok: false, expected_count: expectedCount, nodes, stats: summarizeComputeStats(lastStats) };
 }
 
 async function waitForRelayRegistration(api, projectId, timeoutMs = 90000) {
   return waitForRelayRegistrations(api, projectId, 1, timeoutMs);
+}
+
+function expectedObservableRelayCount(profiles) {
+  const enabled = profiles.filter((profile) => profile.enabled);
+  const dedicatedDonors = enabled.filter((profile) => (
+    profile.provisionedOnly
+    || profile.provisioned_only
+    || profile.modelSandbox?.requested
+  ));
+  return Math.max(1, dedicatedDonors.length || enabled.length);
+}
+
+function relayProbeModelOverride(profiles) {
+  const enabled = profiles.filter((profile) => profile.enabled);
+  const dedicated = enabled.find((profile) => (
+    profile.model
+    && (
+      profile.provisionedOnly
+      || profile.provisioned_only
+      || profile.modelSandbox?.requested
+    )
+  ));
+  return (dedicated?.model || enabled.find((profile) => profile.model)?.model || "").trim();
 }
 
 function summarizeRelayNode(node) {
@@ -2020,6 +2342,14 @@ function summarizeRelayNode(node) {
     loaded_model_count: Array.isArray(node.loaded_models) ? node.loaded_models.length : 0,
     capability_model_count: Object.keys(capabilities).length,
     active_requests: node.active_requests || 0,
+    selected_request_count: node.selected_request_count || 0,
+    served_request_count: node.served_request_count || 0,
+    failed_request_count: node.failed_request_count || 0,
+    last_route_kind: node.last_route_kind || "",
+    last_selected_project_id: node.last_selected_project_id || "",
+    last_served_project_id: node.last_served_project_id || "",
+    last_selected_model: node.last_selected_model || "",
+    last_served_model: node.last_served_model || "",
     score: node.score || 0,
   };
 }
@@ -2054,7 +2384,9 @@ async function verifyComputeDonation(api, projectId, { activeDonorProfiles = don
     logger.action("compute.donation.verify.skip", { requireComputeDonation });
     return { skipped: true };
   }
-  const expectedRelayCount = Math.max(1, activeDonorProfiles.filter((profile) => profile.enabled).length);
+  const enabledDonorCount = activeDonorProfiles.filter((profile) => profile.enabled).length;
+  const expectedRelayCount = expectedObservableRelayCount(activeDonorProfiles);
+  const expectedLocalDedupedDonorCount = Math.max(0, enabledDonorCount - expectedRelayCount);
   const registration = await waitForRelayRegistrations(api, projectId, expectedRelayCount);
   if (!registration.ok) {
     blockers.push(`Compute donation relay registration incomplete: ${registration.nodes?.length || 0}/${expectedRelayCount} relay nodes observed.`);
@@ -2065,7 +2397,9 @@ async function verifyComputeDonation(api, projectId, { activeDonorProfiles = don
       detail: "The benchmark generated or consumed compute donation strings and started relay clients, but project-scoped /api/compute/stats did not show the expected relay/browser node count.",
     });
     logger.writeJson("compute-donation-results.json", {
+      expected_donor_count: enabledDonorCount,
       expected_relay_count: expectedRelayCount,
+      expected_local_deduped_donor_count: expectedLocalDedupedDonorCount,
       donor_profiles: activeDonorProfiles.map(summarizeDonorProfile),
       registration,
     });
@@ -2075,49 +2409,158 @@ async function verifyComputeDonation(api, projectId, { activeDonorProfiles = don
   const startedAt = Date.now();
   let chat = null;
   let chatError = "";
+  let relayProbeSessionId = "";
+  let relayModelOverride = "";
+  let strictRoutingRestoreValue = null;
+  if (forceDonatedChat) {
+    relayModelOverride = relayProbeModelOverride(activeDonorProfiles);
+    if (relayModelOverride) {
+      try {
+        const status = await api.get("/api/settings/status");
+        strictRoutingRestoreValue = Boolean(status.strict_auto_routing);
+        if (!strictRoutingRestoreValue) {
+          await api.post("/api/settings/strict-routing", { enabled: true });
+        }
+      } catch (error) {
+        logger.issue({
+          area: "compute-donation",
+          severity: "medium",
+          title: "Could not enable strict routing for donated-compute probe",
+          detail: error.message,
+        });
+      }
+      try {
+        const session = await api.post("/api/sessions", {
+          project_id: projectId,
+          title: `[RU-BENCH] Donated compute probe ${runId}`,
+          model_override: relayModelOverride,
+          inference_preset: "medium",
+        });
+        relayProbeSessionId = session.id || "";
+      } catch (error) {
+        logger.issue({
+          area: "compute-donation",
+          severity: "medium",
+          title: "Could not create model-pinned donated-compute chat session",
+          detail: error.message,
+        });
+      }
+    }
+  }
   try {
     chat = await api.sendChat({
       projectId,
       message: "Benchmark technical probe: answer with the phrase BENCHMARK_DONATION_OK and one short sentence about donated compute being connected.",
+      sessionId: relayProbeSessionId || null,
       maxHistory: 0,
       timeoutMs: chatTimeoutMs,
     });
   } catch (error) {
     chatError = error.message;
+  } finally {
+    if (strictRoutingRestoreValue === false) {
+      try {
+        await api.post("/api/settings/strict-routing", { enabled: false });
+      } catch (error) {
+        logger.issue({
+          area: "compute-donation",
+          severity: "low",
+          title: "Could not restore strict routing after donated-compute probe",
+          detail: error.message,
+        });
+      }
+    }
+  }
+  let postProbeStats = null;
+  try {
+    postProbeStats = summarizeComputeStats(
+      await api.get(`/api/compute/stats?project_id=${encodeURIComponent(projectId)}`, { timeoutMs: 15000 })
+    );
+  } catch (error) {
+    logger.action("compute.donation.post_probe_stats_error", { error: error.message });
   }
   const backendLogs = captureBackendLogs("compute-donation-probe", "5m");
   const routeUsedRelay = /routing (stream|chat) to Relay:/i.test(`${backendLogs.stdout}\n${backendLogs.stderr}`);
-  const routeAttemptedRelay = routeUsedRelay || /(stream|chat) failed on Relay:/i.test(`${backendLogs.stdout}\n${backendLogs.stderr}`);
+  const routeAttemptedRelayFromLogs = routeUsedRelay || /(stream|chat) failed on Relay:/i.test(`${backendLogs.stdout}\n${backendLogs.stderr}`);
   const responseChars = chat?.content?.trim().length || 0;
-  const statsNodes = Array.isArray(registration.stats?.nodes) ? registration.stats.nodes : [];
+  const statsNodes = Array.isArray(postProbeStats?.nodes) ? postProbeStats.nodes : (Array.isArray(registration.stats?.nodes) ? registration.stats.nodes : []);
+  const beforeServedByNode = new Map((registration.nodes || []).map((node) => [node.node_id, node.served_request_count || 0]));
+  const beforeSelectedByNode = new Map((registration.nodes || []).map((node) => [node.node_id, node.selected_request_count || 0]));
   const aliveRelayNodes = statsNodes.filter((node) => ["relay", "browser"].includes(node.source) && node.alive);
   const aliveDirectNodes = statsNodes.filter((node) => !["relay", "browser"].includes(node.source) && node.alive);
+  const selectedRelayNodes = aliveRelayNodes.filter((node) =>
+    (node.selected_request_count || 0) > (beforeSelectedByNode.get(node.node_id) || 0)
+  );
+  const servedRelayNodes = aliveRelayNodes.filter((node) =>
+    (node.served_request_count || 0) > (beforeServedByNode.get(node.node_id) || 0)
+    && (!node.last_served_project_id || node.last_served_project_id === projectId)
+    && (!node.last_route_kind || ["chat", "stream"].includes(node.last_route_kind))
+  );
   const forcedRelayTopology = forceDonatedChat && aliveRelayNodes.length > 0 && aliveDirectNodes.length === 0;
-  const routeVerifiedBy = routeUsedRelay
+  const modelOverrideRelayEvidence = Boolean(
+    forceDonatedChat
+    && relayProbeSessionId
+    && relayModelOverride
+    && aliveRelayNodes.length > 0
+  );
+  const routeAttemptedRelay = routeAttemptedRelayFromLogs || selectedRelayNodes.length > 0;
+  const donorRegistered = registration.ok;
+  const donorHealthy = aliveRelayNodes.length >= expectedRelayCount;
+  const donorSelected = selectedRelayNodes.length > 0 || routeAttemptedRelay;
+  const donorServedRequest = responseChars > 0 && (
+    servedRelayNodes.length > 0
+    || routeUsedRelay
+    || forcedRelayTopology
+  );
+  const routeVerifiedBy = servedRelayNodes.length > 0
+    ? "compute-stats-served-counter"
+    : routeUsedRelay
     ? "backend-route-log"
     : forcedRelayTopology
       ? "forced-topology-only-alive-node"
-      : "unverified";
-  const ok = !chatError && responseChars > 0 && (routeUsedRelay || forcedRelayTopology);
+      : modelOverrideRelayEvidence
+        ? "relay-model-override"
+        : "unverified";
+  const ok = !chatError && donorServedRequest;
   const result = {
     ok,
     duration_ms: Date.now() - startedAt,
+    expected_donor_count: enabledDonorCount,
     expected_relay_count: expectedRelayCount,
+    expected_local_deduped_donor_count: expectedLocalDedupedDonorCount,
     donor_profiles: activeDonorProfiles.map(summarizeDonorProfile),
     registration,
+    post_probe_stats: postProbeStats,
+    donor_registered: donorRegistered,
+    donor_healthy: donorHealthy,
+    donor_selected: donorSelected,
+    donor_served_request: donorServedRequest,
+    selected_relay_node_count: selectedRelayNodes.length,
+    served_relay_node_count: servedRelayNodes.length,
+    selected_relay_nodes: selectedRelayNodes,
+    served_relay_nodes: servedRelayNodes,
     donated_compute_chat_verified: ok,
+    relay_model_override_configured: Boolean(relayModelOverride),
+    relay_model_override_source: relayProbeSessionId ? "dedicated-donor-session" : "unavailable",
+    relay_model_override_id_length: relayModelOverride.length,
     route_used_relay: routeUsedRelay,
     route_attempted_relay: routeAttemptedRelay,
     route_verified_by: routeVerifiedBy,
     route_evidence_detail: routeUsedRelay
       ? "Backend logs explicitly reported Relay routing."
+      : servedRelayNodes.length > 0
+        ? "Project-scoped compute stats showed a relay/browser node served a chat or stream request during the probe."
       : forcedRelayTopology
         ? "The benchmark forced direct server providers unreachable and project-scoped /api/compute/stats showed the relay as the only alive compute node."
+        : modelOverrideRelayEvidence
+          ? "The probe used a chat session pinned to a dedicated donor model while project-scoped compute stats showed alive relay donors, but this is not accepted as proof that a donor served the request."
         : "Relay routing could not be proved from backend logs or forced topology.",
     forced_relay_topology: forcedRelayTopology,
+    model_override_relay_evidence: modelOverrideRelayEvidence,
     alive_relay_node_count: aliveRelayNodes.length,
     alive_direct_node_count: aliveDirectNodes.length,
     multi_donor_registered: expectedRelayCount > 1 && (registration.nodes?.length || 0) >= expectedRelayCount,
+    multi_donor_healthy: expectedRelayCount > 1 && aliveRelayNodes.length >= expectedRelayCount,
     chat_error: chatError,
     response_chars: responseChars,
     response_preview: (chat?.content || "").slice(0, 600),
@@ -2135,7 +2578,7 @@ async function verifyComputeDonation(api, projectId, { activeDonorProfiles = don
     });
   } else {
     featureResults.computeDonation = true;
-    featureResults.multiDonorCompute = expectedRelayCount > 1 && (registration.nodes?.length || 0) >= expectedRelayCount;
+    featureResults.multiDonorCompute = expectedRelayCount > 1 && (registration.nodes?.length || 0) >= expectedRelayCount && donorHealthy && donorServedRequest;
     featureResults.liveChat = true;
   }
   return result;
@@ -2255,14 +2698,20 @@ function uploadedDocumentIds(uploaded) {
     .filter(Boolean);
 }
 
-async function createConnectionStrings(api, { donorProfilesForRun = donorProfiles, researcherCount = runtimeResearcherCount } = {}) {
+async function createConnectionStrings(api, { projectId, donorProfilesForRun = donorProfiles, researcherCount = runtimeResearcherCount } = {}) {
   const output = {
     userInvites: [],
     computeDonations: [],
   };
-  const defaultConnectionServerUrl = startSandbox && !skipSandbox ? containerReachableUrl(apiBase) : apiBase;
+  const clientSandboxesNeedHostUrl = startClientSandboxes || (startSandbox && !skipSandbox);
+  const defaultConnectionServerUrl = clientSandboxesNeedHostUrl ? containerReachableUrl(apiBase) : apiBase;
   const connectionServerUrl = (process.env.ISTARA_BENCHMARK_CONNECTION_SERVER_URL || defaultConnectionServerUrl).replace(/\/$/, "");
   const connectionWsUrl = (process.env.ISTARA_BENCHMARK_CONNECTION_WS_URL || `${connectionServerUrl.replace(/^http/, "ws")}/ws/relay`).replace(/\/$/, "");
+  logger.action("connection.urls.selected", {
+    server_url: hostSummary(connectionServerUrl),
+    ws_url: hostSummary(connectionWsUrl),
+    client_sandboxes_need_host_url: clientSandboxesNeedHostUrl,
+  });
   for (let index = 0; index < researcherCount; index += 1) {
     try {
       const userInvite = await api.post("/api/connections/generate", {
@@ -2296,6 +2745,7 @@ async function createConnectionStrings(api, { donorProfilesForRun = donorProfile
         ws_url: connectionWsUrl,
         label: `Real user benchmark relay ${donor.id} ${runId}`,
         expires_hours: 24,
+        allowed_project_ids: projectId ? [projectId] : [],
       });
       output.computeDonations.push({ ...computeDonation, donor_id: donor.id });
       if (!output.computeDonation) output.computeDonation = computeDonation;
@@ -2553,20 +3003,47 @@ async function runChatBenchmark(api, projectId, turns) {
   return completed.length;
 }
 
-function syntheticAgentNotes(task, { weak = false } = {}) {
-  if (weak) return "Done. Users were confused.";
-  return [
-    `Evidence summary for ${task.title}:`,
-    "Sources reviewed: interviews P01/P06/P13, carenav-survey-180.csv, usability-test-02.md, support-tickets.jsonl.",
-    `Evidence: ${task.description}`,
-    "Interpretation: the strongest pattern is that users need source freshness and role boundaries before they trust readiness automation.",
-    "Recommendation: prototype a timeline that marks required, optional, blocked, and stale tasks, with a caregiver-safe permission label.",
-    "Confidence: medium-high because interviews, survey responses, and tickets converge, but analytics needs a larger post-redesign sample.",
-  ].join("\n");
+async function runTaskAgentPass(api, projectId, task, plan, uploaded, { revisionInstruction = "", weakFirstPass = false } = {}) {
+  const documentRefs = uploaded
+    .slice(0, 8)
+    .map((item) => item.file_name || item.result?.saved_as || item.document_id)
+    .filter(Boolean)
+    .join(", ");
+  const prompt = [
+    weakFirstPass
+      ? "You are doing a first-pass Istara task attempt. Keep it brief, identify what is missing, and do not pretend certainty."
+      : "You are Istara executing a researcher task against project evidence. Produce task notes that a human researcher can review.",
+    `Task title: ${task.title}`,
+    `Task description: ${plan.description}`,
+    `Acceptance criteria:\n${plan.acceptance.map((item) => `- ${item}`).join("\n")}`,
+    documentRefs ? `Available project documents/files: ${documentRefs}` : "Available project documents/files: none resolved by the benchmark.",
+    revisionInstruction ? `Revision instruction from human reviewer: ${revisionInstruction}` : "",
+    "Return a grounded evidence summary, sources used or attempted, findings, recommendation, confidence, and any limitation.",
+  ].filter(Boolean).join("\n\n");
+  const response = await api.sendChat({
+    projectId,
+    message: prompt,
+    maxHistory: 0,
+    timeoutMs: chatTimeoutMs,
+  });
+  const content = (response.content || "").trim();
+  if (requireLiveChat && !content) {
+    throw new Error(`Task agent pass for ${task.title} returned no live assistant output.`);
+  }
+  logger.action("task.agent_execution", {
+    task_id: task.id,
+    title: task.title,
+    weak_first_pass: weakFirstPass,
+    response_chars: content.length,
+    event_count: response.events?.length || 0,
+    session_id: response.session_id || "",
+  });
+  return content;
 }
 
 async function createReviewAndApproveTasks(api, projectId, taskPlan, uploaded) {
   let approvals = 0;
+  const taskProjectQuery = `project_id=${encodeURIComponent(projectId)}`;
   for (const plan of taskPlan) {
     try {
       const task = await api.post("/api/tasks", {
@@ -2589,15 +3066,15 @@ async function createReviewAndApproveTasks(api, projectId, taskPlan, uploaded) {
       });
 
       if (plan.shouldReviseFirst) {
-        const weakNotes = syntheticAgentNotes(plan, { weak: true });
-        const inReview = await api.patch(`/api/tasks/${task.id}`, {
+        const weakNotes = await runTaskAgentPass(api, projectId, task, plan, uploaded, { weakFirstPass: true });
+        const inReview = await api.patch(`/api/tasks/${task.id}?${taskProjectQuery}`, {
           status: "in_review",
           agent_notes: weakNotes,
           progress: 1,
           what_to_review: "Check whether this has enough evidence and source specificity.",
         });
         const assessment = reviewerAssessment(plan, inReview.agent_notes);
-        await api.post(`/api/tasks/${task.id}/review/request-revision`, {
+        await api.post(`/api/tasks/${task.id}/review/request-revision?${taskProjectQuery}`, {
           what_to_review: assessment.revisionInstruction,
           next_status: "in_progress",
           reviewed_by: "Maya Rodrigues benchmark",
@@ -2614,15 +3091,18 @@ async function createReviewAndApproveTasks(api, projectId, taskPlan, uploaded) {
         });
       }
 
-      const revised = await api.patch(`/api/tasks/${task.id}`, {
+      const finalAgentNotes = await runTaskAgentPass(api, projectId, task, plan, uploaded, {
+        revisionInstruction: "Address any review gaps with concrete source grounding and a clear recommendation.",
+      });
+      const revised = await api.patch(`/api/tasks/${task.id}?${taskProjectQuery}`, {
         status: "in_review",
-        agent_notes: syntheticAgentNotes(plan),
+        agent_notes: finalAgentNotes,
         progress: 1,
         what_to_review: "Review for grounding, utility, and safety.",
       });
       const finalAssessment = reviewerAssessment(plan, revised.agent_notes);
       if (!finalAssessment.approved) {
-        await api.post(`/api/tasks/${task.id}/review/request-revision`, {
+        await api.post(`/api/tasks/${task.id}/review/request-revision?${taskProjectQuery}`, {
           what_to_review: finalAssessment.revisionInstruction,
           next_status: "in_progress",
           reviewed_by: "Maya Rodrigues benchmark",
@@ -2640,7 +3120,7 @@ async function createReviewAndApproveTasks(api, projectId, taskPlan, uploaded) {
         continue;
       }
 
-      const approved = await api.post(`/api/tasks/${task.id}/review/approve`, {
+      const approved = await api.post(`/api/tasks/${task.id}/review/approve?${taskProjectQuery}`, {
         reviewed_by: "Maya Rodrigues benchmark",
         note: finalAssessment.revisionInstruction,
       });
@@ -2667,9 +3147,10 @@ async function createReviewAndApproveTasks(api, projectId, taskPlan, uploaded) {
 
 async function exerciseLoopsAutoresearch(api, projectId) {
   let ok = false;
+  const projectQuery = `project_id=${encodeURIComponent(projectId)}`;
   for (const [label, fn] of [
-    ["loops overview", () => api.get("/api/loops/overview")],
-    ["loops agents", () => api.get("/api/loops/agents")],
+    ["loops overview", () => api.get(`/api/loops/overview?${projectQuery}`)],
+    ["loops agents", () => api.get(`/api/loops/agents?${projectQuery}`)],
     ["loop schedule create", () => api.post("/api/schedules", {
       name: `[RU-BENCH] Weekly support ticket review ${runId}`,
       cron_expression: "0 9 * * 1",
@@ -2799,6 +3280,7 @@ async function main() {
     donor_profiles: donorProfiles.map(summarizeDonorProfile),
     colima_storage_policy: colimaStoragePolicy,
     colima_storage_budget: colimaStorageBudget,
+    colima_enforce_apparent_storage: enforceColimaApparentStorage,
     relayLlm: {
       provider: relayLlmProvider,
       provider_source: relayLlmProviderSource,
@@ -2911,11 +3393,38 @@ async function main() {
     const shouldGenerateConnectionStrings = !hasAllExternalOverrides || boolEnv("ISTARA_BENCHMARK_GENERATE_CONNECTION_STRINGS_WITH_OVERRIDES", false);
     const generatedConnectionStrings = shouldGenerateConnectionStrings
       ? await createConnectionStrings(api, {
+          projectId: project.id,
           donorProfilesForRun: donorProfiles,
           researcherCount: runtimeResearcherCount,
         })
       : { userInvites: [], computeDonations: [] };
     connectionStrings = materializeConnectionStrings(generatedConnectionStrings, connectionOverrides);
+    const requiredDonors = donorProfiles.filter((profile) => profile.required);
+    const enabledRequiredDonors = requiredDonors.filter((profile) => profile.enabled);
+    const endpointDiversity = {
+      ...donorEndpointDiversity(enabledRequiredDonors),
+      required_donor_count: requiredDonors.length,
+      enabled_required_donor_count: enabledRequiredDonors.length,
+      all_required_donors_enabled: enabledRequiredDonors.length === requiredDonors.length,
+    };
+    endpointDiversity.ok = endpointDiversity.all_required_donors_enabled
+      && (!requireDistinctDonorEndpoints || endpointDiversity.distinct);
+    featureResults.distinctDonorEndpoints = endpointDiversity.ok;
+    logger.writeJson("donor-endpoint-diversity.json", endpointDiversity);
+    logger.action("compute.donor.endpoint_diversity", endpointDiversity);
+    if (!endpointDiversity.ok && requireDistinctDonorEndpoints) {
+      blockers.push("Required compute donors do not resolve to distinct runnable LLM endpoints.");
+      logger.issue({
+        area: "compute-donation",
+        severity: "critical",
+        title: "Required donor endpoints are not distinct",
+        detail: `Enabled donors: ${endpointDiversity.enabled_required_donor_count}/${endpointDiversity.required_donor_count}. Duplicate endpoint groups: ${JSON.stringify(endpointDiversity.duplicate_groups)}.`,
+      });
+    }
+
+    for (const donor of requiredDonors) {
+      await startDonorModelSandbox(donor);
+    }
 
     const researcherInviteResults = [];
     for (let index = 0; index < connectionStrings.userInvites.length; index += 1) {
@@ -2938,8 +3447,8 @@ async function main() {
     });
 
     const activeDonorProfiles = [];
-    for (let index = 0; index < donorProfiles.filter((profile) => profile.required).length; index += 1) {
-      const donor = donorProfiles.filter((profile) => profile.required)[index];
+    for (let index = 0; index < requiredDonors.length; index += 1) {
+      const donor = requiredDonors[index];
       preflightRelayLlmFromContainer(donor);
       const donation = connectionStrings.computeDonations.find((item) => item.donor_id === donor.id) || connectionStrings.computeDonations[index];
       if (donation?.connection_string && donor.enabled) activeDonorProfiles.push(donor);
@@ -2961,6 +3470,7 @@ async function main() {
     });
     featureResults.uiVisited = uiResult.visited;
     featureResults.uiOnboarding = uiResult.onboarding;
+    featureResults.adminUiRoleContract = uiResult.visited && (uiResult.unexpectedForbiddenCount || 0) === 0;
 
     if (researcherInviteResult?.ok) {
       const researcherApi = new IstaraApiClient({
@@ -2991,7 +3501,9 @@ async function main() {
           },
         });
         logger.action("researcher.ui.result", researcherUiResult);
-        featureResults.researcherUi = researcherUiResult.visited && ["chat", "shell", "no_project"].includes(researcherUiResult.finalState);
+        featureResults.researcherUi = researcherUiResult.visited
+          && ["chat", "shell", "no_project"].includes(researcherUiResult.finalState)
+          && (researcherUiResult.unexpectedForbiddenCount || 0) === 0;
       }
     }
 
@@ -3038,8 +3550,11 @@ async function main() {
     blocker_count: blockers.length,
     compute_donation_verified: Boolean(featureResults.computeDonation),
     multi_donor_compute_verified: Boolean(featureResults.multiDonorCompute),
+    distinct_donor_endpoints_verified: Boolean(featureResults.distinctDonorEndpoints),
     compute_donor_count_requested: donorProfiles.filter((profile) => profile.required).length,
     compute_donor_count_started: sandbox.relayStartedCount,
+    donor_model_server_count_requested: sandbox.modelServerExpectedCount,
+    donor_model_server_count_started: sandbox.modelServerStartedCount,
     researcher_client_count_requested: runtimeResearcherCount,
     researcher_client_count_started: sandbox.researcherStartedCount,
     live_chat_verified: Boolean(featureResults.liveChat),
@@ -3067,6 +3582,8 @@ async function main() {
   logger.appendReport(`Human-approved completed tasks: ${completedTasks}\n\n`);
   logger.appendReport(`Compute donation verified: ${featureResults.computeDonation ? "yes" : "no"}\n\n`);
   logger.appendReport(`Compute donor containers: ${sandbox.relayStartedCount}/${donorProfiles.filter((profile) => profile.required).length} started\n\n`);
+  logger.appendReport(`Donor model server containers: ${sandbox.modelServerStartedCount}/${sandbox.modelServerExpectedCount} started\n\n`);
+  logger.appendReport(`Distinct donor endpoints verified: ${featureResults.distinctDonorEndpoints ? "yes" : "no"}\n\n`);
   logger.appendReport(`Researcher client containers: ${sandbox.researcherStartedCount}/${runtimeResearcherCount} redeemed\n\n`);
   logger.appendReport(`Multi-donor compute verified: ${featureResults.multiDonorCompute ? "yes" : "no"}\n\n`);
   logger.appendReport(`Live model chat verified: ${featureResults.liveChat ? "yes" : "no"}\n\n`);
@@ -3080,6 +3597,7 @@ async function main() {
     logger.appendReport(`- [${issue.severity}] ${issue.area}: ${issue.title}. ${issue.detail}\n`);
   }
   cleanupRelayClientSandboxes();
+  cleanupDonorModelSandboxes();
   logger.finalize({ scorecard, project_id: project?.id || "", uploaded_documents: uploaded.length });
 }
 
@@ -3105,6 +3623,7 @@ main().catch((error) => {
   logger.appendReport("\nBenchmark crashed before completing. See `issues.jsonl` and `action-log.jsonl`.\n\n");
   logger.appendReport(writeScorecardMarkdown(scorecard));
   cleanupRelayClientSandboxes();
+  cleanupDonorModelSandboxes();
   logger.finalize({ scorecard });
   process.exitCode = 1;
 });

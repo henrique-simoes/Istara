@@ -251,6 +251,22 @@ const apiClient = {
   },
 
   async authenticate() {
+    const providedToken = String(process.env.ISTARA_TEST_AUTH_TOKEN || "").trim();
+    if (providedToken) {
+      this._token = providedToken;
+      try {
+        const meRes = await fetch(`${API_BASE}/api/auth/me`, {
+          headers: this._headers(),
+        });
+        if (meRes.ok) {
+          const me = await meRes.json();
+          this._userId = me.id || null;
+        }
+      } catch {}
+      console.log("  ✅ Authenticated with provided simulation test token");
+      return;
+    }
+
     // Try to login with admin credentials from env or the backend env files.
     // Match app precedence: local overrides are tried before shared defaults.
     const envFiles = [
@@ -877,6 +893,7 @@ async function main() {
     screenshot: screenshotFn,
     generators,
     projectId: simProjectId,
+    maintenancePaused,
     frontendUrl: FRONTEND,
     token: apiClient._token,
     llmConnected: settingsStatus?.services?.llm === "connected",

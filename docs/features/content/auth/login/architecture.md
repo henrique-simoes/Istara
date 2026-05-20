@@ -8,9 +8,9 @@ related_features: ["settings.security-factors", "settings.sessions"]
 related_glossary: ["webauthn", "totp"]
 code_references: ["frontend/src/components/layout/HomeClient.tsx", "frontend/src/stores/authStore.ts", "backend/app/api/routes/auth.py", "backend/app/core/auth_sessions.py"]
 api_references: ["backend/app/api/routes/auth.py", "backend/app/api/routes/sessions.py"]
-test_references: []
-last_verified: 2026-05-15
-compass: CF-SPEC-53 / CF-657
+test_references: ["tests/test_marathon_config_integrity.py", "scripts/marathon/run-cycle.mjs"]
+last_verified: 2026-05-20
+compass: CF-SPEC-53 / CF-657; CF-SPEC-116
 ---
 
 # Login And Session Bootstrap Architecture
@@ -40,6 +40,8 @@ The application shell checks authentication state, shows the login surface when 
 ## Architecture Notes
 
 - The feature is mounted through `frontend/src/components/layout/HomeClient.tsx` and the UI navigation path recorded in the inventory.
+- Local marathon and simulation harnesses must use an explicit test JWT or the opt-in local signed-token path; third-party LLM provider tokens are not Istara admin session credentials.
+- Frontend role checks use `frontend/src/lib/roleCapabilities.ts` and `frontend/src/hooks/useRoleCapabilities.ts` so global role and active-project role are evaluated together. Researcher sessions may mount personal settings, project workspaces, and researcher workflows, but must not mount global-admin panels that call user-management, connection-string, telemetry-toggle, governed-evolution, or steering endpoints.
 - The frontmatter and manifest entries are the durable contract for agents updating this page after code changes.
 - When the referenced component, store, route, agent, skill, or test behavior changes, regenerate and validate the feature documentation.
 
@@ -49,7 +51,8 @@ The application shell checks authentication state, shows the login surface when 
 
 ## Tests And Verification
 
-- No focused test reference recorded yet.
+- `tests/test_marathon_config_integrity.py`
+- `scripts/marathon/run-cycle.mjs`
 
 ## Related Features
 
@@ -63,7 +66,7 @@ The application shell checks authentication state, shows the login surface when 
 
 ## Compass Evidence
 
-- Spec/task: CF-SPEC-53 / CF-657
+- Spec/task: CF-SPEC-53 / CF-657; CF-SPEC-116
 - Inventory source: `docs/features/inventory.json`
 
 ## When To Update

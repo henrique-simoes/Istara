@@ -79,8 +79,58 @@ const NAV_VIEW_IDS = new Map([
   ["Interfaces", "interfaces"],
   ["Loops", "loops"],
   ["Autoresearch", "autoresearch"],
+  ["Project Settings", "project-settings"],
+  ["Compute Pool", "compute"],
+  ["Ensemble Health", "ensemble"],
   ["Settings", "settings"],
 ]);
+
+function navigationForActor(actor) {
+  if (actor === "admin") {
+    return [
+      "Chat",
+      "Documents",
+      "Tasks",
+      "Findings",
+      "Integrations",
+      "Interfaces",
+      "Loops",
+      "Autoresearch",
+      "Project Settings",
+      "Compute Pool",
+      "Ensemble Health",
+      "Settings",
+    ];
+  }
+  if (actor === "project_admin") {
+    return [
+      "Chat",
+      "Documents",
+      "Tasks",
+      "Findings",
+      "Integrations",
+      "Interfaces",
+      "Loops",
+      "Autoresearch",
+      "Project Settings",
+      "Compute Pool",
+      "Ensemble Health",
+    ];
+  }
+  return [
+    "Chat",
+    "Documents",
+    "Tasks",
+    "Findings",
+    "Integrations",
+    "Interfaces",
+    "Loops",
+    "Autoresearch",
+    "Project Settings",
+    "Compute Pool",
+    "Ensemble Health",
+  ];
+}
 
 async function clickLocator(locator, method) {
   try {
@@ -284,7 +334,7 @@ async function captureDiagnostics(page, logger, title, detail, severity = "mediu
   return state;
 }
 
-function attachPageDiagnostics(page, logger) {
+function attachPageDiagnostics(page, logger, diagnostics = {}) {
   const counters = { console: 0, pageerror: 0, requestfailed: 0, http: 0 };
   page.on("console", (message) => {
     if (counters.console >= 80) return;
@@ -311,10 +361,12 @@ function attachPageDiagnostics(page, logger) {
   page.on("response", (response) => {
     if (counters.http >= 80 || response.status() < 400) return;
     counters.http += 1;
-    logger.action("ui.http_error", {
+    const entry = {
       status: response.status(),
       url: response.url(),
-    });
+    };
+    diagnostics.httpErrors?.push(entry);
+    logger.action("ui.http_error", entry);
   });
 }
 
@@ -332,13 +384,16 @@ export async function runUiJourney({ frontendUrl, api, projectId, logger, chatTu
   });
   await context.tracing.start({ screenshots: true, snapshots: true, sources: false }).catch(() => {});
   const page = await context.newPage();
-  attachPageDiagnostics(page, logger);
+  const diagnostics = { httpErrors: [] };
+  attachPageDiagnostics(page, logger, diagnostics);
   const results = {
     visited: false,
     onboarding: false,
     chatUiTurns: 0,
     uploadAttempted: false,
     nav: [],
+    forbiddenResponses: [],
+    unexpectedForbiddenCount: 0,
     finalState: "",
   };
 
@@ -392,7 +447,9 @@ export async function runUiJourney({ frontendUrl, api, projectId, logger, chatTu
       return results;
     }
 
-    for (const nav of ["Chat", "Documents", "Tasks", "Findings", "Integrations", "Interfaces", "Loops", "Autoresearch", "Settings"]) {
+    const navItems = navigationForActor(actor);
+    logger.action("ui.nav.plan", { actor, nav: navItems });
+    for (const nav of navItems) {
       const beforeNav = await waitForUiState(page, logger, `before-nav-${nav}`, {
         timeoutMs: 15000,
         accepted: ["chat", "shell", "no_project"],
@@ -458,6 +515,16 @@ export async function runUiJourney({ frontendUrl, api, projectId, logger, chatTu
     logger.action("ui.chat_upload_probe", { upload_input_present: results.uploadAttempted });
     const finalState = await classifyUiState(page);
     results.finalState = finalState.state;
+    results.forbiddenResponses = diagnostics.httpErrors.filter((entry) => entry.status === 403);
+    results.unexpectedForbiddenCount = results.forbiddenResponses.length;
+    if (results.unexpectedForbiddenCount > 0) {
+      logger.issue({
+        area: "ui-role-contract",
+        severity: "high",
+        title: `${actor} UI journey hit forbidden endpoints`,
+        detail: results.forbiddenResponses.map((entry) => entry.url).slice(0, 8).join(" | "),
+      });
+    }
     logger.action("ui.final_state", finalState);
   } catch (error) {
     logger.issue({

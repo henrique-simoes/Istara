@@ -34,9 +34,13 @@ export async function run(ctx) {
   // ── 0. Check integration status ──
   let stitchConfigured = false;
   let figmaConfigured = false;
+  const projectId = typeof ctx.projectId === "string" ? ctx.projectId.trim() : "";
 
   try {
-    const status = await api.get("/api/interfaces/status");
+    if (!projectId) {
+      throw new Error("No persistent project from runner");
+    }
+    const status = await api.get(`/api/interfaces/status?project_id=${encodeURIComponent(projectId)}`);
     stitchConfigured = status.stitch_configured === true;
     figmaConfigured = status.figma_configured === true;
 
@@ -75,7 +79,6 @@ export async function run(ctx) {
   }
 
   // ── 1. Setup: ensure project exists ──
-  let projectId = ctx.projectId;
   if (!projectId) {
     checks.push({ name: "Project setup", passed: false, detail: "No persistent project from runner" });
     return {

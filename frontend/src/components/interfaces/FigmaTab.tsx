@@ -5,14 +5,13 @@ import { ExternalLink, Save, Loader2, CheckCircle2, XCircle, Download, Layers } 
 import { interfaces as interfacesApi, permissionRequests } from "@/lib/api";
 import { useInterfacesStore } from "@/stores/interfacesStore";
 import { useProjectStore } from "@/stores/projectStore";
-import { useAuthStore } from "@/stores/authStore";
+import { useRoleCapabilities } from "@/hooks/useRoleCapabilities";
 import PrivacyWarningBanner from "./PrivacyWarningBanner";
 
 export default function FigmaTab() {
   const { status, privacyAcknowledged, acknowledgePrivacy } = useInterfacesStore();
-  const { activeProjectId, canAdminActiveProject } = useProjectStore();
-  const { user } = useAuthStore();
-  const canManageIntegrations = user?.role === "admin" || canAdminActiveProject();
+  const { activeProjectId } = useProjectStore();
+  const { canManageProjectIntegrations: canManageIntegrations } = useRoleCapabilities();
 
   // Configuration
   const [apiToken, setApiToken] = useState("");

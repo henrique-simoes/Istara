@@ -8,8 +8,8 @@ import { useChatStore } from "@/stores/chatStore";
 import { useProjectStore } from "@/stores/projectStore";
 import { useSessionStore } from "@/stores/sessionStore";
 import { useAgentStore } from "@/stores/agentStore";
-import { useAuthStore } from "@/stores/authStore";
 import { useVoiceRecorder } from "@/hooks/useVoiceRecorder";
+import { useRoleCapabilities } from "@/hooks/useRoleCapabilities";
 import { cn, formatDate } from "@/lib/utils";
 import { files as filesApi, documents as documentsApi, steering as steeringApi } from "@/lib/api";
 import type { ThinkingMode } from "@/lib/types";
@@ -346,11 +346,19 @@ function ChatToolbar({
   );
 }
 
-function SteeringQueueIndicator({ agentId, projectId }: { agentId: string | null; projectId: string | null }) {
+function SteeringQueueIndicator({
+  agentId,
+  projectId,
+  enabled,
+}: {
+  agentId: string | null;
+  projectId: string | null;
+  enabled: boolean;
+}) {
   const [status, setStatus] = useState<any>(null);
 
   useEffect(() => {
-    if (!agentId || !projectId) {
+    if (!enabled || !agentId || !projectId) {
       setStatus(null);
       return;
     }
@@ -363,7 +371,7 @@ function SteeringQueueIndicator({ agentId, projectId }: { agentId: string | null
     fetchStatus();
     const interval = setInterval(fetchStatus, 5000);
     return () => clearInterval(interval);
-  }, [agentId, projectId]);
+  }, [enabled, agentId, projectId]);
 
   if (!status || (!status.steering_queue_count && !status.follow_up_queue_count)) return null;
 
@@ -384,7 +392,7 @@ export default function ChatView() {
   const { activeProjectId, canWriteActiveProject } = useProjectStore();
   const { activeSessionId, ensureDefault, updateSession, pendingPrefill, setPendingPrefill, fetchSessions } = useSessionStore();
   const { agents, fetchAgents } = useAgentStore();
-  const { user } = useAuthStore();
+  const capabilities = useRoleCapabilities();
   const activeSession = useSessionStore((s) => s.activeSession());
   const { isRecording, isTranscribing, startRecording, stopRecording, cancelRecording, error: voiceError } = useVoiceRecorder();
   const [input, setInput] = useState("");
@@ -398,7 +406,7 @@ export default function ChatView() {
   const [pendingDocRefs, setPendingDocRefs] = useState<{ id: string; title: string }[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const canWrite = user?.role === "admin" || canWriteActiveProject();
+  const canWrite = capabilities.canWriteActiveProject || canWriteActiveProject();
 
   // Initialize sessions: fetch list first (restores localStorage session), then ensure a default exists
   useEffect(() => {
@@ -780,10 +788,13 @@ export default function ChatView() {
         <div className="border-t border-slate-200 dark:border-slate-800 p-4">
           <div className="max-w-3xl mx-auto">
             {/* Queue status */}
-            <SteeringQueueIndicator
-              agentId={activeSession?.agent_id || "istara-main"}
-              projectId={activeProjectId}
-            />
+            {capabilities.canUseSteering && (
+              <SteeringQueueIndicator
+                agentId={activeSession?.agent_id || "istara-main"}
+                projectId={activeProjectId}
+                enabled={capabilities.canUseSteering}
+              />
+            )}
             
             {/* Pending file chips */}
             {(pendingFiles.length > 0 || pendingDocRefs.length > 0) && (
