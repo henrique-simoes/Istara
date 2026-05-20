@@ -8,8 +8,12 @@ export const id = "64-docker-security";
 
 export async function run(ctx) {
   const { api } = ctx;
-  const projectId = ctx.projectId || "test";
   const checks = [];
+  if (!ctx.projectId) {
+    return [{ name: "Project available for Docker security checks", passed: false, detail: "No persistent project from runner" }];
+  }
+  const projectId = ctx.projectId;
+  const projectQuery = `project_id=${encodeURIComponent(projectId)}`;
 
   // ── 1. Health endpoint responds ──
   try {
@@ -86,7 +90,7 @@ export async function run(ctx) {
 
   // ── 6. Autoresearch disabled by default ──
   try {
-    const status = await api.get(`/api/autoresearch/status?project_id=${projectId}`);
+    const status = await api.get(`/api/autoresearch/status?${projectQuery}`);
     checks.push({
       name: "Autoresearch disabled by default",
       passed: status.running === false,
@@ -126,12 +130,12 @@ export async function run(ctx) {
   const routerChecks = [
     "/api/projects",
     "/api/skills",
-    "/api/agents",
-    `/api/channels?project_id=${encodeURIComponent(projectId)}`,
-    `/api/surveys/integrations?project_id=${encodeURIComponent(projectId)}`,
-    "/api/deployments?project_id=test",
-    `/api/mcp/clients?project_id=${encodeURIComponent(projectId)}`,
-    `/api/autoresearch/status?project_id=${projectId}`,
+    `/api/agents?${projectQuery}`,
+    `/api/channels?${projectQuery}`,
+    `/api/surveys/integrations?${projectQuery}`,
+    `/api/deployments?${projectQuery}`,
+    `/api/mcp/clients?${projectQuery}`,
+    `/api/autoresearch/status?${projectQuery}`,
   ];
 
   for (const path of routerChecks) {

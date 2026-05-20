@@ -6,6 +6,7 @@ export const id = "43-process-hardening";
 export async function run(ctx) {
   const { api } = ctx;
   const checks = [];
+  const projectQuery = ctx.projectId ? `project_id=${encodeURIComponent(ctx.projectId)}` : "";
 
   // ── 1. System health ──
   try {
@@ -145,7 +146,7 @@ export async function run(ctx) {
 
   // ── Cleanup ──
   if (taskId) {
-    try { await api.delete(`/api/tasks/${taskId}`); } catch {}
+    try { await api.delete(`/api/tasks/${taskId}?${projectQuery}`); } catch {}
   }
 
   return {

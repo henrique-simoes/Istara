@@ -24,11 +24,12 @@ export async function run(ctx) {
 
   // 1. Setup Project & Upload Stress Test Data
   if (!projectId) {
-    const project = await api.post("/api/projects", { 
-      name: "[STRESS] Long Horizon Trajectory",
-      company_context: "Global HealthTech specializing in remote patient monitoring."
-    });
-    projectId = project.id;
+    return {
+      checks: [{ name: "Project available for long-horizon trajectory", passed: false, detail: "No persistent project from runner" }],
+      passed: 0,
+      failed: 1,
+      summary: "Missing project_id",
+    };
   }
 
   // Helper to log passes

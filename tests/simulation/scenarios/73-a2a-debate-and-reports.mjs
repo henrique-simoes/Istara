@@ -10,13 +10,8 @@ export async function run(ctx) {
 
   // 1. Ensure project
   if (!projectId) {
-    try {
-      const project = await api.post("/api/projects", { name: "A2A Report Test" });
-      projectId = project.id;
-    } catch (e) {
-      checks.push({ name: "Project setup", passed: false, detail: e.message });
-      return { checks, passed: 0, failed: 1, summary: "Cannot create project" };
-    }
+    checks.push({ name: "Project setup", passed: false, detail: "No persistent project from runner" });
+    return { checks, passed: 0, failed: 1, summary: "Missing project_id" };
   }
 
   // 2. Verify A2A message system works

@@ -263,6 +263,7 @@
 <li>The dashboard loads compute capacity through the admin-only aggregate endpoint instead of reusing project-facing <code>/api/compute/*</code> routes.</li>
 <li>The dashboard&#x27;s donation-string action sends <code>allowed_project_ids</code> for the chosen project so donated compute does not become a global content processor.</li>
 <li>The dashboard may list and review pending permission requests without <code>project_id</code> only because the route checks global admin status; Project Settings must pass the active project id for the same permission-request APIs.</li>
+<li>Simulation and harness smoke tests model the admin-many-projects case by selecting the canonical simulation project by name and failing if the harness would fall back to the first visible admin project.</li>
 <li>The frontmatter and manifest entries are the durable contract for agents updating this page after code changes.</li>
 <li>When the referenced component, store, route, agent, skill, or test behavior changes, regenerate and validate the feature documentation.</li>
 </ul>
@@ -275,6 +276,8 @@
 <li><code>tests/test_project_rbac.py</code></li>
 <li><code>tests/test_compute.py</code></li>
 <li><code>tests/test_project_scope_contracts.py</code></li>
+<li><code>tests/test_harness_project_scope_contracts.py</code></li>
+<li><code>tests/simulation/lib/project-selection.test.mjs</code></li>
 </ul>
 <h2 id="related-features">Related Features</h2>
 <ul>
@@ -288,7 +291,7 @@
 </ul>
 <h2 id="compass-evidence">Compass Evidence</h2>
 <ul>
-<li>Spec/task: CF-SPEC-60 / CF-754; CF-SPEC-63 / CF-815; CF-SPEC-72 / CF-927</li>
+<li>Spec/task: CF-SPEC-60 / CF-754; CF-SPEC-63 / CF-815; CF-SPEC-72 / CF-927; CF-SPEC-115</li>
 <li>Inventory source: <code>docs/features/inventory.json</code></li>
 </ul>
 <h2 id="when-to-update">When To Update</h2>

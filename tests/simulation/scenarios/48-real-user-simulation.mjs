@@ -77,23 +77,7 @@ export async function run(ctx) {
   // ── 1. Setup: ensure project exists ──
   let projectId = ctx.projectId;
   if (!projectId) {
-    try {
-      const created = await api.post("/api/projects", {
-        name: "[SIM-48] Real User Simulation",
-        description: "End-to-end test with real Stitch/Figma APIs",
-      });
-      projectId = created.id;
-    } catch {
-      try {
-        const projects = await api.get("/api/projects");
-        const list = projects.projects || projects || [];
-        if (list.length > 0) projectId = list[0].id;
-      } catch {}
-    }
-  }
-
-  if (!projectId) {
-    checks.push({ name: "Project setup", passed: false, detail: "No project available" });
+    checks.push({ name: "Project setup", passed: false, detail: "No persistent project from runner" });
     return {
       checks,
       passed: checks.filter((c) => c.passed).length,

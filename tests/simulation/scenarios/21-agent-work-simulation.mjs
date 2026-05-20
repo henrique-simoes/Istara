@@ -29,11 +29,17 @@ export async function run(ctx) {
     }
   }
 
+  const projectId = ctx.projectId;
+  if (!projectId) {
+    return { checks, passed: 0, failed: 1, summary: "No project available" };
+  }
+  const projectQuery = `project_id=${encodeURIComponent(projectId)}`;
+
   // ── Step 1: Verify system agents are seeded and running ──
 
   let systemAgents = [];
   await safeCheck("System agents seeded (5 expected)", async () => {
-    const data = await api.get("/api/agents");
+    const data = await api.get(`/api/agents?${projectQuery}`);
     const agents = data.agents || [];
     systemAgents = agents.filter((a) => a.is_system);
 
@@ -53,7 +59,7 @@ export async function run(ctx) {
   // ── Step 2: Verify each system agent has correct capabilities ──
 
   await safeCheck("Agent capabilities — task executor has all capabilities", async () => {
-    const data = await api.get("/api/agents");
+    const data = await api.get(`/api/agents?${projectQuery}`);
     const main = (data.agents || []).find((a) => a.id === "istara-main");
     if (!main) return { name: "Agent capabilities — task executor has all capabilities", passed: false, detail: "istara-main not found" };
 
@@ -68,7 +74,7 @@ export async function run(ctx) {
   });
 
   await safeCheck("Agent capabilities — each agent has system_prompt", async () => {
-    const data = await api.get("/api/agents");
+    const data = await api.get(`/api/agents?${projectQuery}`);
     const agents = (data.agents || []).filter((a) => a.is_system);
     const withoutPrompt = agents.filter((a) => !a.system_prompt || a.system_prompt.length < 10);
 
@@ -83,14 +89,7 @@ export async function run(ctx) {
 
   // ── Step 3: Create project and tasks for agent processing ──
 
-  let projectId = ctx.projectId;
-  if (projectId) {
-    checks.push({ name: "Using persistent simulation project", passed: true, detail: `project_id=${projectId}` });
-  }
-
-  if (!projectId) {
-    return { checks, passed: 0, failed: 1, summary: "No project available" };
-  }
+  checks.push({ name: "Using persistent simulation project", passed: true, detail: `project_id=${projectId}` });
 
   // Create tasks with different priorities and skill assignments
   const taskDefs = [
@@ -134,7 +133,7 @@ export async function run(ctx) {
   // ── Step 4: Verify task priority ordering ──
 
   await safeCheck("Priority ordering — high priority tasks first", async () => {
-    const resp = await api.get(`/api/tasks?project_id=${projectId}&status=backlog`);
+    const resp = await api.get(`/api/tasks?${projectQuery}&status=backlog`);
     const tasks = Array.isArray(resp) ? resp : resp.tasks || [];
     const simTasks = tasks.filter((t) => t.title.startsWith("[SIM-21]"));
 
@@ -168,7 +167,7 @@ export async function run(ctx) {
     let assigned = 0;
     for (const task of createdTasks) {
       try {
-        await api.patch(`/api/tasks/${task.id}`, { agent_id: "istara-main" });
+        await api.patch(`/api/tasks/${task.id}?${projectQuery}`, { agent_id: "istara-main" });
         assigned++;
       } catch {}
     }
@@ -228,8 +227,8 @@ export async function run(ctx) {
     const testAgent = customAgents[0];
 
     await safeCheck("Agent lifecycle — pause custom agent", async () => {
-      await api.post(`/api/agents/${testAgent.id}/pause`, {});
-      const agent = await api.get(`/api/agents/${testAgent.id}`);
+      await api.post(`/api/agents/${testAgent.id}/pause?${projectQuery}`, {});
+      const agent = await api.get(`/api/agents/${testAgent.id}?${projectQuery}`);
       return {
         name: "Agent lifecycle — pause custom agent",
         passed: agent.state === "paused",
@@ -238,8 +237,8 @@ export async function run(ctx) {
     });
 
     await safeCheck("Agent lifecycle — resume custom agent", async () => {
-      await api.post(`/api/agents/${testAgent.id}/resume`, {});
-      const agent = await api.get(`/api/agents/${testAgent.id}`);
+      await api.post(`/api/agents/${testAgent.id}/resume?${projectQuery}`, {});
+      const agent = await api.get(`/api/agents/${testAgent.id}?${projectQuery}`);
       return {
         name: "Agent lifecycle — resume custom agent",
         passed: agent.state === "idle",
@@ -249,7 +248,7 @@ export async function run(ctx) {
 
     await safeCheck("Agent lifecycle — update system prompt", async () => {
       const newPrompt = "Updated system prompt for simulation test. This agent specializes in qualitative research analysis.";
-      const updated = await api.patch(`/api/agents/${testAgent.id}`, { system_prompt: newPrompt });
+      const updated = await api.patch(`/api/agents/${testAgent.id}?${projectQuery}`, { system_prompt: newPrompt });
       return {
         name: "Agent lifecycle — update system prompt",
         passed: updated.system_prompt === newPrompt,
@@ -269,8 +268,8 @@ export async function run(ctx) {
         preferred_methods: ["thematic analysis", "affinity mapping"],
         session_count: 3,
       };
-      await api.patch(`/api/agents/${memAgent.id}/memory`, memory);
-      const agent = await api.get(`/api/agents/${memAgent.id}`);
+      await api.patch(`/api/agents/${memAgent.id}/memory?${projectQuery}`, memory);
+      const agent = await api.get(`/api/agents/${memAgent.id}?${projectQuery}`);
       const stored = agent.memory || {};
 
       return {
@@ -281,7 +280,7 @@ export async function run(ctx) {
     });
 
     await safeCheck("Agent memory — persists across reads", async () => {
-      const agent = await api.get(`/api/agents/${memAgent.id}`);
+      const agent = await api.get(`/api/agents/${memAgent.id}?${projectQuery}`);
       const stored = agent.memory || {};
       const hasData = Object.keys(stored).length >= 2;
       return {
@@ -492,7 +491,7 @@ export async function run(ctx) {
   // ── Step 12: Heartbeat monitoring ──
 
   await safeCheck("Heartbeat — status endpoint responds", async () => {
-    const hb = await api.get("/api/agents/heartbeat/status");
+    const hb = await api.get(`/api/agents/heartbeat/status?${projectQuery}`);
     const agents = hb.agents || [];
     const healthy = agents.filter((a) => a.status === "healthy" || a.heartbeat_status === "healthy");
 
@@ -521,7 +520,7 @@ export async function run(ctx) {
     const exportAgent = customAgents[0];
 
     await safeCheck("Export/Import — round-trip preserves config", async () => {
-      const exported = await api.get(`/api/agents/${exportAgent.id}/export`);
+      const exported = await api.get(`/api/agents/${exportAgent.id}/export?${projectQuery}`);
       const agentData = exported.agent || {};
 
       const imported = await api.post("/api/agents/import", {
@@ -531,6 +530,7 @@ export async function run(ctx) {
         capabilities: agentData.capabilities,
         heartbeat_interval: agentData.heartbeat_interval || 30,
         memory: agentData.memory || {},
+        project_id: projectId,
       });
       cleanup.agents.push(imported.id);
 
@@ -593,10 +593,10 @@ export async function run(ctx) {
   // ── Cleanup ──
 
   for (const taskId of cleanup.tasks) {
-    try { await api.delete(`/api/tasks/${taskId}`); } catch {}
+    try { await api.delete(`/api/tasks/${taskId}?${projectQuery}`); } catch {}
   }
   for (const agentId of cleanup.agents) {
-    try { await api.delete(`/api/agents/${agentId}`); } catch {}
+    try { await api.delete(`/api/agents/${agentId}?${projectQuery}`); } catch {}
   }
 
   return {

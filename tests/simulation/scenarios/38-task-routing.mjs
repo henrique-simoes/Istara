@@ -10,11 +10,12 @@ export async function run(ctx) {
   if (!ctx.projectId) {
     return { checks: [{ name: "Skip — no project", passed: false, detail: "No project ID" }], passed: 0, failed: 1 };
   }
+  const projectQuery = `project_id=${encodeURIComponent(ctx.projectId)}`;
 
   // ── 1. Verify all system agents are present ──
   let agents = [];
   try {
-    const data = await api.get("/api/agents");
+    const data = await api.get(`/api/agents?${projectQuery}`);
     agents = data.agents || [];
     const systemIds = ["istara-main", "istara-devops", "istara-ui-audit", "istara-ux-eval", "istara-sim"];
     const foundSystem = systemIds.filter((id) => agents.some((a) => a.id === id));
@@ -113,7 +114,7 @@ export async function run(ctx) {
 
   // ── 6. Agent specialties field ──
   try {
-    const mainAgent = await api.get("/api/agents/istara-main");
+    const mainAgent = await api.get(`/api/agents/istara-main?${projectQuery}`);
     checks.push({
       name: "Agent has specialties field",
       passed: Array.isArray(mainAgent.specialties),
@@ -137,14 +138,14 @@ export async function run(ctx) {
 
     // Set specialties via memory
     try {
-      await api.patch(`/api/agents/${agent.id}/memory`, {
+      await api.patch(`/api/agents/${agent.id}/memory?${projectQuery}`, {
         specialties: ["ux", "research"],
       });
     } catch {
       // memory endpoint might not exist, that's ok
     }
 
-    const updated = await api.get(`/api/agents/${agent.id}`);
+    const updated = await api.get(`/api/agents/${agent.id}?${projectQuery}`);
     checks.push({
       name: "User-created agent gets specialties",
       passed: true,
@@ -172,10 +173,10 @@ export async function run(ctx) {
   // ── Cleanup ──
   const cleanupIds = [uiTaskId, devopsTaskId, researchTaskId, explicitTaskId].filter(Boolean);
   for (const id of cleanupIds) {
-    try { await api.delete(`/api/tasks/${id}`); } catch {}
+    try { await api.delete(`/api/tasks/${id}?${projectQuery}`); } catch {}
   }
   if (customAgentId) {
-    try { await api.delete(`/api/agents/${customAgentId}`); } catch {}
+    try { await api.delete(`/api/agents/${customAgentId}?${projectQuery}`); } catch {}
   }
 
   return {

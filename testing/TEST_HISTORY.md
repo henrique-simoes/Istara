@@ -6,6 +6,31 @@ scorecards remain in gitignored artifact directories. Add a compact entry here
 when a run becomes a release baseline or materially changes confidence in the
 system.
 
+## 2026-05-20 - Testing Suite Governance Refresh
+
+Scope: deterministic testing-suite alignment after project-isolation hardening,
+including relay CI coverage, simulation/real-user static checks, marathon
+config integrity, and admin-many-project simulation project selection.
+
+| Area | Result |
+| --- | --- |
+| Harness governance | `python scripts/check_test_harness.py` passed |
+| CI governance | `python scripts/check_ci_governance.py` passed |
+| Marathon integrity and project-scope smoke | `pytest tests/test_harness_project_scope_contracts.py tests/test_marathon_config_integrity.py -q` passed with `7 passed` |
+| Relay tests | `npm --prefix relay test` passed with `17 passed` |
+| Simulation static checks | `npm --prefix tests/simulation run test:static` passed with `99` files syntax-checked and `4` helper tests passed |
+| Real-user benchmark syntax | `npm --prefix tests/real_user_benchmark run check` passed |
+| Feature docs | `python scripts/feature_docs.py --seed-missing --generate-site --check` passed for `86` features |
+| Compass Forge after-gate | `compass-forge gate after CF-SPEC-115 --report-format json` returned `status: warn`, `failures: []`, `unexpected_large_files: []`, and `new_issues: []` |
+| Compass Forge test suggestions | `compass-forge suggest-tests "testing suite project_id simulation marathon relay real-user"` returned no `node_modules` or `.results` paths |
+
+Residual notes:
+- This checkpoint deliberately did not start backend/frontend servers, run live
+  simulation scenarios, run marathon cycles, or load/probe live LLM models.
+- Compass Forge `CF-SPEC-115` clarified and planned cleanly, but task creation
+  hung before producing linked tasks; implementation evidence stayed attached
+  to the explicit eight-item scope instead of a generated task graph.
+
 ## 2026-05-08 - Release Security Hardening Baseline
 
 Scope: auth/security release hardening, LLM-provider endpoint safety, upload

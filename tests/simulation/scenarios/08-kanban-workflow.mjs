@@ -10,6 +10,7 @@ export async function run(ctx) {
   if (!ctx.projectId) {
     return { checks: [{ name: "Skip", passed: false, detail: "No project ID" }], passed: 0, failed: 1 };
   }
+  const projectQuery = `project_id=${encodeURIComponent(ctx.projectId)}`;
 
   // Navigate to Tasks
   await page.goto(ctx.frontendUrl, { waitUntil: "domcontentloaded" });
@@ -74,11 +75,11 @@ export async function run(ctx) {
   // Move a task via API
   if (createdTasks.length > 0) {
     try {
-      await api.post(`/api/tasks/${createdTasks[0].id}/move?status=in_progress`);
+      await api.post(`/api/tasks/${createdTasks[0].id}/move?status=in_progress&${projectQuery}`);
       checks.push({ name: "Move task to In Progress", passed: true, detail: createdTasks[0].id });
 
       // Verify via API
-      const tasks = await api.get(`/api/tasks?project_id=${ctx.projectId}`);
+      const tasks = await api.get(`/api/tasks?${projectQuery}`);
       const movedTask = tasks.find((t) => t.id === createdTasks[0].id);
       checks.push({
         name: "Task status updated",
@@ -93,7 +94,7 @@ export async function run(ctx) {
   // Update a task
   if (createdTasks.length > 1) {
     try {
-      await api.patch(`/api/tasks/${createdTasks[1].id}`, {
+      await api.patch(`/api/tasks/${createdTasks[1].id}?${projectQuery}`, {
         description: "Updated: Build 3-4 data-driven personas from interview and survey data",
       });
       checks.push({ name: "Update task description", passed: true, detail: "" });
@@ -105,8 +106,8 @@ export async function run(ctx) {
   // Delete a task
   if (createdTasks.length > 2) {
     try {
-      await api.delete(`/api/tasks/${createdTasks[2].id}`);
-      const remaining = await api.get(`/api/tasks?project_id=${ctx.projectId}`);
+      await api.delete(`/api/tasks/${createdTasks[2].id}?${projectQuery}`);
+      const remaining = await api.get(`/api/tasks?${projectQuery}`);
       const deleted = remaining.find((t) => t.id === createdTasks[2].id);
       checks.push({ name: "Delete task", passed: !deleted, detail: "" });
     } catch (e) {

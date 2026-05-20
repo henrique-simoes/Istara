@@ -8,9 +8,9 @@ related_features: ["settings.users", "settings.connection-strings", "compute.poo
 related_glossary: ["wcag"]
 code_references: ["frontend/src/components/admin/AdminDashboard.tsx", "backend/app/api/routes/admin.py", "backend/app/api/routes/permission_requests.py", "backend/app/core/compute_registry_invocation.py"]
 api_references: ["backend/app/api/routes/admin.py", "backend/app/api/routes/permission_requests.py"]
-test_references: ["tests/test_project_rbac.py", "tests/test_compute.py", "tests/test_project_scope_contracts.py"]
-last_verified: 2026-05-19
-compass: CF-SPEC-60 / CF-754; CF-SPEC-63 / CF-815; CF-SPEC-72 / CF-927
+test_references: ["tests/test_project_rbac.py", "tests/test_compute.py", "tests/test_project_scope_contracts.py", "tests/test_harness_project_scope_contracts.py", "tests/simulation/lib/project-selection.test.mjs"]
+last_verified: 2026-05-20
+compass: CF-SPEC-60 / CF-754; CF-SPEC-63 / CF-815; CF-SPEC-72 / CF-927; CF-SPEC-115
 ---
 
 # Admin Dashboard Architecture
@@ -41,6 +41,7 @@ The Admin dashboard provides administrator-only operational controls and visibil
 - The dashboard loads compute capacity through the admin-only aggregate endpoint instead of reusing project-facing `/api/compute/*` routes.
 - The dashboard's donation-string action sends `allowed_project_ids` for the chosen project so donated compute does not become a global content processor.
 - The dashboard may list and review pending permission requests without `project_id` only because the route checks global admin status; Project Settings must pass the active project id for the same permission-request APIs.
+- Simulation and harness smoke tests model the admin-many-projects case by selecting the canonical simulation project by name and failing if the harness would fall back to the first visible admin project.
 - The frontmatter and manifest entries are the durable contract for agents updating this page after code changes.
 - When the referenced component, store, route, agent, skill, or test behavior changes, regenerate and validate the feature documentation.
 
@@ -53,6 +54,8 @@ The Admin dashboard provides administrator-only operational controls and visibil
 - `tests/test_project_rbac.py`
 - `tests/test_compute.py`
 - `tests/test_project_scope_contracts.py`
+- `tests/test_harness_project_scope_contracts.py`
+- `tests/simulation/lib/project-selection.test.mjs`
 
 ## Related Features
 
@@ -66,7 +69,7 @@ The Admin dashboard provides administrator-only operational controls and visibil
 
 ## Compass Evidence
 
-- Spec/task: CF-SPEC-60 / CF-754; CF-SPEC-63 / CF-815; CF-SPEC-72 / CF-927
+- Spec/task: CF-SPEC-60 / CF-754; CF-SPEC-63 / CF-815; CF-SPEC-72 / CF-927; CF-SPEC-115
 - Inventory source: `docs/features/inventory.json`
 
 ## When To Update

@@ -32,23 +32,7 @@ export async function run(ctx) {
   // ── Ensure project ──
   let projectId = ctx.projectId;
   if (!projectId) {
-    try {
-      const created = await api.post("/api/projects", {
-        name: "[SIM-70] Research Integrity Test",
-        description: "Temporary project for research integrity system tests",
-      });
-      projectId = created.id;
-    } catch {
-      try {
-        const projects = await api.get("/api/projects");
-        const list = projects.projects || projects || [];
-        if (list.length > 0) projectId = list[0].id;
-      } catch {}
-    }
-  }
-
-  if (!projectId) {
-    checks.push({ name: "Project available", passed: false, detail: "Could not create or find project" });
+    checks.push({ name: "Project available", passed: false, detail: "No persistent project from runner" });
     return { checks, passed: 0, failed: checks.length };
   }
   checks.push({ name: "Project available", passed: true, detail: `id=${projectId}` });

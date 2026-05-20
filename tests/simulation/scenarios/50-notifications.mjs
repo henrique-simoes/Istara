@@ -16,19 +16,7 @@ export async function run(ctx) {
   // ── Helper: ensure we have a project ──
   let projectId = ctx.projectId;
   if (!projectId) {
-    try {
-      const created = await api.post("/api/projects", {
-        name: "[SIM-50] Notifications Test Project",
-        description: "Temporary project for Notifications integration tests",
-      });
-      projectId = created.id;
-    } catch {
-      try {
-        const projects = await api.get("/api/projects");
-        const list = projects.projects || projects || [];
-        if (list.length > 0) projectId = list[0].id;
-      } catch {}
-    }
+    return [{ name: "Project available for notifications", passed: false, detail: "No persistent project from runner" }];
   }
   const withProject = (url) => {
     if (!projectId) return url;
@@ -293,7 +281,7 @@ export async function run(ctx) {
 
   // ── Cleanup ──
   for (const id of cleanup.taskIds) {
-    try { await fetch(`http://localhost:8000/api/tasks/${id}`, { method: "DELETE", headers: api._headers() }); } catch {}
+    try { await fetch(`http://localhost:8000${withProject(`/api/tasks/${id}`)}`, { method: "DELETE", headers: api._headers() }); } catch {}
   }
   // Mark all notifications as read to leave system clean
   try { await api.post("/api/notifications/read-all", { project_id: projectId }); } catch {}
