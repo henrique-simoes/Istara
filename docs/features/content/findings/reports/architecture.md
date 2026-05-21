@@ -10,7 +10,7 @@ code_references: ["frontend/src/components/findings/FindingsView.tsx", "frontend
 api_references: ["backend/app/api/routes/reports.py"]
 test_references: ["tests/test_research_integrity_reports.py", "tests/real_user_benchmark/run.mjs"]
 last_verified: 2026-05-21
-compass: CF-SPEC-53 / CF-657; CF-SPEC-60 / CF-773; CF-SPEC-121; CF-SPEC-122
+compass: CF-SPEC-53 / CF-657; CF-SPEC-60 / CF-773; CF-SPEC-121; CF-SPEC-122; CF-SPEC-123 / CF-1581
 ---
 
 # Project Reports Architecture
@@ -71,7 +71,7 @@ The Reports tab lets users generate, inspect, and manage project reports produce
 
 ## Compass Evidence
 
-- Spec/task: CF-SPEC-53 / CF-657; CF-SPEC-60 / CF-773; CF-SPEC-121; CF-SPEC-122
+- Spec/task: CF-SPEC-53 / CF-657; CF-SPEC-60 / CF-773; CF-SPEC-121; CF-SPEC-122; CF-SPEC-123 / CF-1581
 - Inventory source: `docs/features/inventory.json`
 
 ## When To Update

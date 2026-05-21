@@ -10,7 +10,7 @@
     "storage_guardrail": "Colima autostart uses --root-disk 10 --disk 10 and records actual/apparent storage snapshots with 10GB actual and 20GB apparent budgets.",
     "client_sandbox_policy": "Server sandboxing and client/donor sandboxing are independent. External Istara servers can receive donated compute from disposable benchmark containers.",
     "multi_donor_policy": "Default comparison uses one Gemma donor. Multi-donor runs require per-donor pre-provisioned OpenAI-compatible/LM Studio endpoints and connection strings; missing Qwen endpoints are blockers, not downloads. Ordinary research work uses Istara's normal scheduler; forced relay mode is an explicit technical isolation override only.",
-    "document_corpus_policy": "Document-heavy probe/full runs use the shared Istara corpus contract and should materialize at least 120 long-form sources before scoring corpus grounding as representative.",
+    "document_corpus_policy": "Document-heavy probe/full runs use tests/document_corpus/canonical/ through the shared Istara corpus helper and should materialize at least 120 long-form canonical sources before scoring corpus grounding as representative.",
     "opt_out": "Set ISTARA_BENCHMARK_REQUIRE_COMPUTE_DONATION=0 and ISTARA_BENCHMARK_REQUIRE_LIVE_CHAT=0 only for offline harness debugging, not comparison runs."
   },
   "live_model_profile": {

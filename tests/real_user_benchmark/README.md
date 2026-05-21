@@ -1,6 +1,6 @@
 # Istara Real User UX Research Benchmark
 
-This benchmark is a durable, repeatable long-form rehearsal of Istara as used by a realistic research team. It is intentionally heavier than the normal simulation suite: it installs or targets sandboxed Istara services, generates a large synthetic research corpus, drives the actual UI where possible, exercises API-backed workflows, reviews tasks like human researchers, records every action, and emits comparison-ready scorecards.
+This benchmark is a durable, repeatable long-form rehearsal of Istara as used by a realistic research team. It is intentionally heavier than the normal simulation suite: it installs or targets sandboxed Istara services, materializes the canonical synthetic research corpus, drives the actual UI where possible, exercises API-backed workflows, reviews tasks like human researchers, records every action, and emits comparison-ready scorecards.
 
 Plan mode is credential-free. Probe and full comparison runs require donated compute and non-empty live chat by default, using the same configured `google/gemma-4-e4b` live-test profile as Istara's LLM eval contract. Offline harness debugging can opt out with explicit environment variables, but those runs should not be treated as product-quality comparisons.
 
@@ -291,7 +291,7 @@ Every run creates a timestamped folder under `tests/real_user_benchmark/.results
 - `conversation-turns.jsonl`: chat prompts, responses, timings, and quality notes.
 - `task-review-log.jsonl`: task creation, review, revision, and approval records.
 - `integration-attempts.jsonl`: third-party integration attempts and classifications.
-- `corpus/`: generated UX research documents plus the shared Istara test document corpus. Probe and full runs default to at least 120 long-form sources so document-heavy agentic workflows are not judged from a tiny fixture set.
+- `corpus/`: materialized canonical UX research documents from `tests/document_corpus/canonical/`. Probe and full runs default to at least 120 long-form sources so document-heavy agentic workflows are not judged from a tiny fixture set.
 - `corpus-manifest.json`: document inventory and intended use.
 - `screenshots/` and `traces/`: Playwright evidence.
 - `report.md`: human-readable run narrative.

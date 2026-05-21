@@ -4,11 +4,28 @@
  *  registry size when a deliberate full live sweep is needed.
  */
 
+import { readFileSync } from "fs";
+import { basename, dirname, join } from "path";
+import { fileURLToPath } from "url";
+import { selectCanonicalCorpus } from "../../document_corpus/shared-corpus.mjs";
+
 export const name = "Comprehensive Skills Test (All Registered Skills)";
 export const id = "20-all-skills-comprehensive";
 
+const __dirname = dirname(fileURLToPath(import.meta.url));
+
 function isExpectedMaintenanceConflict(error, ctx) {
   return ctx.maintenancePaused === true && String(error?.message || "").includes("409");
+}
+
+function canonicalSkillSource(slice, index = 0) {
+  const sources = selectCanonicalCorpus({ slice, minimumSources: index + 1 });
+  const source = sources[index];
+  const path = join(__dirname, "..", "..", "document_corpus", "canonical", source.path || source.relative_path);
+  return {
+    filename: basename(source.relative_path || source.path),
+    content: readFileSync(path, "utf-8"),
+  };
 }
 
 // ── Mock data generators for each skill type ──
@@ -598,24 +615,25 @@ export async function run(ctx) {
     return { checks, passed: 0, failed: 1, summary: "No project available" };
   }
 
-  // ── Step 2: Upload mock data files and track server paths ──
+  // ── Step 2: Upload canonical research files and track server paths ──
   const uploadedFiles = {};
   const filePaths = {}; // Map data-key → server-side file path
   const fileUploads = [
-    { key: "interview", filename: "interview-mobile-banking.md", gen: interviewTranscript },
-    { key: "survey", filename: "survey-onboarding.csv", gen: surveyCSV },
-    { key: "usability", filename: "usability-checkout-flow.md", gen: usabilityReport },
-    { key: "field", filename: "field-notes-coworking.md", gen: fieldNotes },
-    { key: "diary", filename: "diary-study-week3.md", gen: diaryEntry },
-    { key: "competitor", filename: "competitor-analysis-pm.md", gen: competitorProfile },
-    { key: "analytics", filename: "analytics-march-2026.csv", gen: analyticsCSV },
-    { key: "nps", filename: "nps-survey-results.csv", gen: npsData },
-    { key: "sus", filename: "sus-questionnaire-results.csv", gen: susData },
+    { key: "interview", source: canonicalSkillSource("interview-heavy", 0) },
+    { key: "survey", source: canonicalSkillSource("survey-heavy", 0) },
+    { key: "usability", source: canonicalSkillSource("usability-heavy", 0) },
+    { key: "field", source: canonicalSkillSource("interview-heavy", 5) },
+    { key: "diary", source: canonicalSkillSource("interview-heavy", 12) },
+    { key: "competitor", source: canonicalSkillSource("full-end-to-end", 120) },
+    { key: "analytics", source: canonicalSkillSource("findings-reporting", 0) },
+    { key: "nps", source: canonicalSkillSource("survey-heavy", 8) },
+    { key: "sus", source: canonicalSkillSource("survey-heavy", 12) },
   ];
 
-  for (const { key, filename, gen } of fileUploads) {
+  for (const { key, source } of fileUploads) {
+    const { filename, content } = source;
     try {
-      const result = await api.uploadContent(projectId, gen(), filename);
+      const result = await api.uploadContent(projectId, content, filename);
       uploadedFiles[key] = filename;
       // Track the server-side path for custom skills that need files
       if (result && result.saved_as) {
@@ -625,7 +643,7 @@ export async function run(ctx) {
       // Try alternate upload method via direct fetch
       try {
         const formData = new FormData();
-        const blob = new Blob([gen()], { type: "text/plain" });
+        const blob = new Blob([content], { type: "text/plain" });
         formData.append("file", blob, filename);
         const resp = await fetch(`http://localhost:8000/api/files/upload/${projectId}`, {
           method: "POST",
@@ -644,7 +662,7 @@ export async function run(ctx) {
   }
 
   pushCheck({
-    name: "Mock data files uploaded",
+    name: "Canonical research files uploaded",
     passed: Object.keys(uploadedFiles).length >= 7,
     detail: `${Object.keys(uploadedFiles).length}/9 file types uploaded: ${Object.keys(uploadedFiles).join(", ")} | ${Object.keys(filePaths).length} paths tracked`,
   });

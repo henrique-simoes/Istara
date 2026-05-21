@@ -243,6 +243,7 @@
 <h2 id="implementation-summary">Implementation Summary</h2>
 <p>Compute Pool provides active-project operational visibility into available compute nodes, routing, and local or pooled execution capacity. Hardware totals are deduplicated by physical provider machine so local/network/relay views of the same server do not inflate RAM or CPU totals. Local interface aliases are canonicalized before endpoint display and capacity aggregation, so one Mac exposed through multiple LAN IP addresses appears as one logical endpoint for the same provider and port. Provider reachability is reported separately from chat readiness: a reachable LM Studio server with loadable models but no model in memory is online, not offline, while routing still treats it as not ready until a model is loaded.</p>
 <p>Donated relay/browser nodes are treated as a project-content security boundary. Regular Compute Pool endpoints require an authorized <code>project_id</code> for every role, including global admins, and node stats, hardware totals, available models, and model warnings are filtered to local/server-owned capacity plus donors authorized for that project. Cross-project compute aggregation belongs only on explicit admin reporting surfaces, currently <code>/api/admin/compute/stats</code>, which is protected by global-admin authorization and is separate from the project-facing <code>/api/compute/*</code> contract. Prompt, chat, embedding, and model-load recovery paths may only select donated nodes when the request carries a concrete <code>project_id</code> and the node&#x27;s authenticated donation scope includes that project. For browser/JWT relay connections, bound auth sessions resolve the current database user and project memberships before scope is assigned, so a stale admin token cannot keep all-project donation rights after the user is demoted or removed. The direct relay/browser <code>ComputeNode</code> dispatch methods enforce the same rule before sending any websocket payload, so lower-level callers cannot bypass the registry selector. Server-owned local/network nodes remain available for unscoped internal work.</p>
+<p>The architecture is Petals-inspired in collaboration and donation semantics, but it routes whole requests to authorized OpenAI-compatible or relay/browser nodes. It does not implement Petals-equivalent transformer layer sharding or cross-machine model partitioning.</p>
 <h2 id="frontend-surface">Frontend Surface</h2>
 <ul>
 <li><code>frontend/src/components/common/ComputePoolView.tsx</code></li>
@@ -309,7 +310,7 @@
 </ul>
 <h2 id="compass-evidence">Compass Evidence</h2>
 <ul>
-<li>Spec/task: CF-SPEC-60 / CF-774; CF-SPEC-63 / CF-814; CF-SPEC-63 / CF-815; CF-SPEC-66 / CF-856; CF-SPEC-70 / CF-899; CF-SPEC-90 / CF-1142; CF-SPEC-92 / CF-1170; CF-SPEC-121; CF-SPEC-122</li>
+<li>Spec/task: CF-SPEC-60 / CF-774; CF-SPEC-63 / CF-814; CF-SPEC-63 / CF-815; CF-SPEC-66 / CF-856; CF-SPEC-70 / CF-899; CF-SPEC-90 / CF-1142; CF-SPEC-92 / CF-1170; CF-SPEC-121; CF-SPEC-122; CF-SPEC-123 / CF-1581</li>
 <li>Inventory source: <code>docs/features/inventory.json</code></li>
 </ul>
 <h2 id="when-to-update">When To Update</h2>

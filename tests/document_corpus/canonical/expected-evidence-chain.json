@@ -1,0 +1,18 @@
+{
+  "project": "CareNav Renewal",
+  "rules": [
+    "Raw corpus sources are not directly report-ready.",
+    "Agent task outputs may create findings, nuggets, facts, insights, and recommendations.",
+    "Tasks in Backlog, To Do, In Progress, or In Review are not report eligible.",
+    "Only approved Done tasks may contribute task-bound findings to Reports.",
+    "Reports should cite source ids, task ids, finding ids, and approval state."
+  ],
+  "example_flow": [
+    "Upload canonical corpus slice.",
+    "Create project-scoped research task.",
+    "Run agent/skill work against documents.",
+    "Review task output and route back if evidence is weak.",
+    "Approve task to Done when evidence is sufficient.",
+    "Generate Findings and Reports from approved evidence only."
+  ]
+}

@@ -1,7 +1,7 @@
-"""Consensus Engine — academic-grade inter-rater reliability for LLM outputs.
+"""Consensus Engine for LLM validation outputs.
 
 Implements:
-- Fleiss' Kappa (categorical agreement among multiple raters)
+- Fleiss' Kappa formula over heuristic response category-presence labels
 - Cosine similarity (semantic agreement via embeddings)
 - Composite consensus scoring
 
@@ -111,7 +111,9 @@ def pairwise_cosine_similarity(embeddings: list[list[float]]) -> float:
 def _categorize_response(text: str) -> list[str]:
     """Extract categorical labels from a response for Kappa computation.
 
-    Uses simple keyword extraction for theme categorization.
+    Uses simple keyword extraction for theme categorization. This is a product
+    heuristic for LLM-output agreement, not a substitute for a study where
+    independent human raters code the same evidence items.
     """
     text_lower = text.lower()
     categories = []
@@ -244,6 +246,13 @@ def compute_consensus(
         details={
             "n_responses": n_responses,
             "categories_found": cat_list,
+            "agreement_method": "hybrid_keyword_category_presence_and_optional_embedding_similarity",
+            "kappa_basis": "category_presence_by_response",
+            "kappa_basis_note": (
+                "Fleiss' Kappa is computed on heuristic keyword categories "
+                "extracted from model responses; it is not a human-coded "
+                "item-by-rater research reliability matrix."
+            ),
             "kappa_interpretation": _interpret_kappa(kappa),
         },
     )

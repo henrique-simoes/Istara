@@ -49,7 +49,7 @@ For every failed action:
 
 ## Required Benchmark
 
-Create and run a repeatable benchmark under the repo, normally `tests/real_user_benchmark/`, with scripts, docs, synthetic data generation, Playwright automation, logging, screenshots/traces, scoring, and final reports.
+Create and run a repeatable benchmark under the repo, normally `tests/real_user_benchmark/`, with scripts, docs, canonical synthetic corpus materialization, Playwright automation, logging, screenshots/traces, scoring, and final reports.
 
 This benchmark is a longitudinal real-user layer. Do not re-run or re-implement the classical deterministic studies already covered by `tests/simulation`, `tests/evals`, `tests/benchmarks`, or `scripts/security_benchmark.py`. Use those suites as baseline evidence and coverage references. This benchmark should add realistic cross-feature user behavior, compute donation, integration ergonomics, human task review, longitudinal usefulness, and product-risk evidence.
 
@@ -60,7 +60,7 @@ The simulation must:
 - Start/connect separate sandbox/container clients using those connection strings.
 - Complete onboarding through the real UI.
 - Use realistic research team personas and project context: admin/project lead performs setup and governance; researchers perform ordinary project work through their own accounts.
-- Generate a large messy prior UX research corpus using Istara's shared document-corpus contract: at least 120 long-form sources spanning interviews, usability tests, survey CSVs, diary studies, field notes, analytics, briefs/presentations, competitor notes, support tickets, design notes, malformed files, multilingual examples, and edge cases.
+- Materialize the canonical prior UX research corpus using Istara's shared document-corpus contract: at least 120 long-form sources spanning interviews, usability tests, survey CSVs, diary studies, field notes, analytics, briefs, competitor notes, support tickets, accessibility/design notes, malformed files, multilingual examples, and edge cases.
 - Add context, guardrails, folders, uploads, and new docs through UI where possible.
 - Conduct at least 100 natural Chat turns as real researchers: clarify, steer, challenge, correct, upload, ask for evidence, request reports, ask follow-ups.
 - Treat chat as useful only when Istara returns non-empty live model output through the configured donated compute path or a deliberately documented equivalent. Empty mocked output is not a valid real-user benchmark pass.

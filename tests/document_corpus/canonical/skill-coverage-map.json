@@ -1,0 +1,1823 @@
+{
+  "project": "CareNav Renewal",
+  "total_skills": 58,
+  "covered_skills": 58,
+  "coverage": {
+    "ab-test-analysis": {
+      "source_count": 3,
+      "slices": [
+        "findings-reporting",
+        "full-end-to-end",
+        "survey-heavy",
+        "usability-heavy"
+      ],
+      "methods": [
+        "analytics",
+        "report",
+        "usability"
+      ],
+      "example_sources": [
+        "CR-058",
+        "CR-116",
+        "CR-174"
+      ]
+    },
+    "accessibility-audit": {
+      "source_count": 6,
+      "slices": [
+        "accessibility-heavy",
+        "findings-reporting",
+        "full-end-to-end",
+        "interview-heavy",
+        "survey-heavy",
+        "usability-heavy"
+      ],
+      "methods": [
+        "analytics",
+        "card-sort",
+        "laws-of-ux",
+        "participant-profile",
+        "report",
+        "usability"
+      ],
+      "example_sources": [
+        "CR-025",
+        "CR-058",
+        "CR-083",
+        "CR-116",
+        "CR-141"
+      ]
+    },
+    "affinity-mapping": {
+      "source_count": 9,
+      "slices": [
+        "accessibility-heavy",
+        "findings-reporting",
+        "full-end-to-end",
+        "interview-heavy",
+        "multilingual",
+        "survey-heavy",
+        "usability-heavy"
+      ],
+      "methods": [
+        "analytics",
+        "card-sort",
+        "laws-of-ux",
+        "multilingual",
+        "participant-profile",
+        "report",
+        "support",
+        "usability"
+      ],
+      "example_sources": [
+        "CR-025",
+        "CR-050",
+        "CR-058",
+        "CR-083",
+        "CR-108"
+      ]
+    },
+    "analytics-review": {
+      "source_count": 12,
+      "slices": [
+        "accessibility-heavy",
+        "findings-reporting",
+        "full-end-to-end",
+        "interview-heavy",
+        "multilingual",
+        "survey-heavy",
+        "usability-heavy"
+      ],
+      "methods": [
+        "analytics",
+        "card-sort",
+        "heuristic",
+        "interview",
+        "laws-of-ux",
+        "multilingual",
+        "participant-profile",
+        "report",
+        "support",
+        "sus",
+        "usability"
+      ],
+      "example_sources": [
+        "CR-017",
+        "CR-025",
+        "CR-050",
+        "CR-058",
+        "CR-075"
+      ]
+    },
+    "browser-accessibility-check": {
+      "source_count": 12,
+      "slices": [
+        "accessibility-heavy",
+        "findings-reporting",
+        "full-end-to-end",
+        "interview-heavy",
+        "multilingual",
+        "survey-heavy",
+        "upload-smoke",
+        "usability-heavy"
+      ],
+      "methods": [
+        "card-sort",
+        "diary",
+        "field-note",
+        "guide",
+        "heuristic",
+        "interview",
+        "laws-of-ux",
+        "multilingual",
+        "participant-profile",
+        "support",
+        "sus",
+        "usability"
+      ],
+      "example_sources": [
+        "CR-017",
+        "CR-025",
+        "CR-042",
+        "CR-050",
+        "CR-075"
+      ]
+    },
+    "browser-competitive-benchmark": {
+      "source_count": 12,
+      "slices": [
+        "accessibility-heavy",
+        "findings-reporting",
+        "full-end-to-end",
+        "interview-heavy",
+        "multilingual",
+        "survey-heavy",
+        "upload-smoke",
+        "usability-heavy"
+      ],
+      "methods": [
+        "competitor",
+        "diary",
+        "field-note",
+        "guide",
+        "heuristic",
+        "interview",
+        "multilingual",
+        "support",
+        "survey",
+        "sus",
+        "usability"
+      ],
+      "example_sources": [
+        "CR-009",
+        "CR-017",
+        "CR-042",
+        "CR-050",
+        "CR-067"
+      ]
+    },
+    "browser-ux-audit": {
+      "source_count": 12,
+      "slices": [
+        "accessibility-heavy",
+        "findings-reporting",
+        "full-end-to-end",
+        "interview-heavy",
+        "survey-heavy",
+        "upload-smoke"
+      ],
+      "methods": [
+        "competitor",
+        "diary",
+        "field-note",
+        "guide",
+        "heuristic",
+        "interview",
+        "participant-profile",
+        "stakeholder",
+        "survey",
+        "sus",
+        "tree-test"
+      ],
+      "example_sources": [
+        "CR-009",
+        "CR-017",
+        "CR-034",
+        "CR-042",
+        "CR-067"
+      ]
+    },
+    "card-sorting": {
+      "source_count": 12,
+      "slices": [
+        "findings-reporting",
+        "full-end-to-end",
+        "interview-heavy",
+        "survey-heavy",
+        "upload-smoke",
+        "usability-heavy"
+      ],
+      "methods": [
+        "analytics",
+        "competitor",
+        "diary",
+        "field-note",
+        "guide",
+        "interview",
+        "participant-profile",
+        "stakeholder",
+        "survey",
+        "tree-test",
+        "usability"
+      ],
+      "example_sources": [
+        "CR-001",
+        "CR-009",
+        "CR-034",
+        "CR-042",
+        "CR-059"
+      ]
+    },
+    "channel-research-deployment": {
+      "source_count": 12,
+      "slices": [
+        "accessibility-heavy",
+        "findings-reporting",
+        "full-end-to-end",
+        "interview-heavy",
+        "survey-heavy",
+        "usability-heavy"
+      ],
+      "methods": [
+        "analytics",
+        "card-sort",
+        "competitor",
+        "interview",
+        "laws-of-ux",
+        "participant-profile",
+        "stakeholder",
+        "survey",
+        "tree-test",
+        "usability"
+      ],
+      "example_sources": [
+        "CR-001",
+        "CR-009",
+        "CR-026",
+        "CR-034",
+        "CR-059"
+      ]
+    },
+    "cognitive-walkthrough": {
+      "source_count": 12,
+      "slices": [
+        "accessibility-heavy",
+        "findings-reporting",
+        "full-end-to-end",
+        "interview-heavy",
+        "multilingual",
+        "survey-heavy",
+        "usability-heavy"
+      ],
+      "methods": [
+        "analytics",
+        "card-sort",
+        "interview",
+        "laws-of-ux",
+        "multilingual",
+        "participant-profile",
+        "stakeholder",
+        "support",
+        "tree-test",
+        "usability"
+      ],
+      "example_sources": [
+        "CR-001",
+        "CR-026",
+        "CR-034",
+        "CR-051",
+        "CR-059"
+      ]
+    },
+    "competitive-analysis": {
+      "source_count": 12,
+      "slices": [
+        "accessibility-heavy",
+        "findings-reporting",
+        "full-end-to-end",
+        "interview-heavy",
+        "multilingual",
+        "survey-heavy",
+        "usability-heavy"
+      ],
+      "methods": [
+        "analytics",
+        "card-sort",
+        "heuristic",
+        "interview",
+        "laws-of-ux",
+        "multilingual",
+        "participant-profile",
+        "support",
+        "sus",
+        "usability"
+      ],
+      "example_sources": [
+        "CR-001",
+        "CR-018",
+        "CR-026",
+        "CR-051",
+        "CR-059"
+      ]
+    },
+    "concept-testing": {
+      "source_count": 12,
+      "slices": [
+        "accessibility-heavy",
+        "findings-reporting",
+        "full-end-to-end",
+        "interview-heavy",
+        "multilingual",
+        "survey-heavy",
+        "upload-smoke",
+        "usability-heavy"
+      ],
+      "methods": [
+        "card-sort",
+        "diary",
+        "field-note",
+        "guide",
+        "heuristic",
+        "interview",
+        "laws-of-ux",
+        "multilingual",
+        "participant-profile",
+        "support",
+        "sus",
+        "usability"
+      ],
+      "example_sources": [
+        "CR-018",
+        "CR-026",
+        "CR-043",
+        "CR-051",
+        "CR-076"
+      ]
+    },
+    "contextual-inquiry": {
+      "source_count": 12,
+      "slices": [
+        "accessibility-heavy",
+        "findings-reporting",
+        "full-end-to-end",
+        "interview-heavy",
+        "multilingual",
+        "survey-heavy",
+        "upload-smoke",
+        "usability-heavy"
+      ],
+      "methods": [
+        "competitor",
+        "diary",
+        "field-note",
+        "guide",
+        "heuristic",
+        "interview",
+        "multilingual",
+        "support",
+        "survey",
+        "sus",
+        "usability"
+      ],
+      "example_sources": [
+        "CR-010",
+        "CR-018",
+        "CR-043",
+        "CR-051",
+        "CR-068"
+      ]
+    },
+    "design-critique": {
+      "source_count": 12,
+      "slices": [
+        "accessibility-heavy",
+        "findings-reporting",
+        "full-end-to-end",
+        "interview-heavy",
+        "survey-heavy",
+        "upload-smoke"
+      ],
+      "methods": [
+        "competitor",
+        "diary",
+        "field-note",
+        "guide",
+        "heuristic",
+        "interview",
+        "journey",
+        "participant-profile",
+        "stakeholder",
+        "survey",
+        "sus"
+      ],
+      "example_sources": [
+        "CR-010",
+        "CR-018",
+        "CR-035",
+        "CR-043",
+        "CR-068"
+      ]
+    },
+    "design-system-audit": {
+      "source_count": 12,
+      "slices": [
+        "findings-reporting",
+        "full-end-to-end",
+        "interview-heavy",
+        "survey-heavy",
+        "upload-smoke",
+        "usability-heavy"
+      ],
+      "methods": [
+        "analytics",
+        "competitor",
+        "diary",
+        "field-note",
+        "guide",
+        "interview",
+        "journey",
+        "participant-profile",
+        "stakeholder",
+        "survey",
+        "usability"
+      ],
+      "example_sources": [
+        "CR-002",
+        "CR-010",
+        "CR-035",
+        "CR-043",
+        "CR-060"
+      ]
+    },
+    "desk-research": {
+      "source_count": 12,
+      "slices": [
+        "accessibility-heavy",
+        "findings-reporting",
+        "full-end-to-end",
+        "interview-heavy",
+        "survey-heavy",
+        "usability-heavy"
+      ],
+      "methods": [
+        "analytics",
+        "card-sort",
+        "competitor",
+        "interview",
+        "journey",
+        "laws-of-ux",
+        "participant-profile",
+        "stakeholder",
+        "survey",
+        "usability"
+      ],
+      "example_sources": [
+        "CR-002",
+        "CR-010",
+        "CR-027",
+        "CR-035",
+        "CR-060"
+      ]
+    },
+    "diary-studies": {
+      "source_count": 12,
+      "slices": [
+        "accessibility-heavy",
+        "findings-reporting",
+        "full-end-to-end",
+        "interview-heavy",
+        "malformed-edge-case",
+        "survey-heavy",
+        "usability-heavy"
+      ],
+      "methods": [
+        "analytics",
+        "card-sort",
+        "interview",
+        "journey",
+        "laws-of-ux",
+        "malformed",
+        "participant-profile",
+        "stakeholder",
+        "support",
+        "usability"
+      ],
+      "example_sources": [
+        "CR-002",
+        "CR-027",
+        "CR-035",
+        "CR-052",
+        "CR-060"
+      ]
+    },
+    "empathy-mapping": {
+      "source_count": 12,
+      "slices": [
+        "accessibility-heavy",
+        "findings-reporting",
+        "full-end-to-end",
+        "interview-heavy",
+        "malformed-edge-case",
+        "survey-heavy",
+        "usability-heavy"
+      ],
+      "methods": [
+        "accessibility",
+        "analytics",
+        "card-sort",
+        "interview",
+        "laws-of-ux",
+        "malformed",
+        "participant-profile",
+        "support",
+        "umux",
+        "usability"
+      ],
+      "example_sources": [
+        "CR-002",
+        "CR-019",
+        "CR-027",
+        "CR-052",
+        "CR-060"
+      ]
+    },
+    "evaluate-research": {
+      "source_count": 12,
+      "slices": [
+        "accessibility-heavy",
+        "findings-reporting",
+        "full-end-to-end",
+        "interview-heavy",
+        "malformed-edge-case",
+        "survey-heavy",
+        "upload-smoke",
+        "usability-heavy"
+      ],
+      "methods": [
+        "accessibility",
+        "card-sort",
+        "diary",
+        "field-note",
+        "guide",
+        "interview",
+        "laws-of-ux",
+        "malformed",
+        "participant-profile",
+        "support",
+        "umux",
+        "usability"
+      ],
+      "example_sources": [
+        "CR-019",
+        "CR-027",
+        "CR-044",
+        "CR-052",
+        "CR-077"
+      ]
+    },
+    "field-studies": {
+      "source_count": 12,
+      "slices": [
+        "accessibility-heavy",
+        "findings-reporting",
+        "full-end-to-end",
+        "interview-heavy",
+        "malformed-edge-case",
+        "survey-heavy",
+        "upload-smoke",
+        "usability-heavy"
+      ],
+      "methods": [
+        "accessibility",
+        "competitor",
+        "diary",
+        "field-note",
+        "guide",
+        "interview",
+        "malformed",
+        "nps",
+        "support",
+        "umux",
+        "usability"
+      ],
+      "example_sources": [
+        "CR-011",
+        "CR-019",
+        "CR-044",
+        "CR-052",
+        "CR-069"
+      ]
+    },
+    "handoff-documentation": {
+      "source_count": 12,
+      "slices": [
+        "accessibility-heavy",
+        "findings-reporting",
+        "full-end-to-end",
+        "interview-heavy",
+        "survey-heavy",
+        "upload-smoke"
+      ],
+      "methods": [
+        "accessibility",
+        "competitor",
+        "diary",
+        "field-note",
+        "guide",
+        "interview",
+        "journey",
+        "nps",
+        "participant-profile",
+        "stakeholder",
+        "umux"
+      ],
+      "example_sources": [
+        "CR-011",
+        "CR-019",
+        "CR-036",
+        "CR-044",
+        "CR-069"
+      ]
+    },
+    "heuristic-evaluation": {
+      "source_count": 12,
+      "slices": [
+        "findings-reporting",
+        "full-end-to-end",
+        "interview-heavy",
+        "survey-heavy",
+        "upload-smoke"
+      ],
+      "methods": [
+        "analytics",
+        "competitor",
+        "diary",
+        "field-note",
+        "guide",
+        "interview",
+        "journey",
+        "nps",
+        "participant-profile",
+        "stakeholder",
+        "survey"
+      ],
+      "example_sources": [
+        "CR-003",
+        "CR-011",
+        "CR-036",
+        "CR-044",
+        "CR-061"
+      ]
+    },
+    "hmw-statements": {
+      "source_count": 12,
+      "slices": [
+        "findings-reporting",
+        "full-end-to-end",
+        "interview-heavy",
+        "survey-heavy"
+      ],
+      "methods": [
+        "analytics",
+        "brief",
+        "card-sort",
+        "competitor",
+        "interview",
+        "journey",
+        "nps",
+        "participant-profile",
+        "stakeholder",
+        "survey"
+      ],
+      "example_sources": [
+        "CR-003",
+        "CR-011",
+        "CR-028",
+        "CR-036",
+        "CR-061"
+      ]
+    },
+    "interview-question-generator": {
+      "source_count": 12,
+      "slices": [
+        "findings-reporting",
+        "full-end-to-end",
+        "interview-heavy",
+        "malformed-edge-case",
+        "survey-heavy",
+        "usability-heavy"
+      ],
+      "methods": [
+        "analytics",
+        "brief",
+        "card-sort",
+        "interview",
+        "journey",
+        "malformed",
+        "participant-profile",
+        "stakeholder",
+        "support",
+        "survey",
+        "usability"
+      ],
+      "example_sources": [
+        "CR-003",
+        "CR-028",
+        "CR-036",
+        "CR-053",
+        "CR-061"
+      ]
+    },
+    "journey-mapping": {
+      "source_count": 12,
+      "slices": [
+        "accessibility-heavy",
+        "findings-reporting",
+        "full-end-to-end",
+        "interview-heavy",
+        "malformed-edge-case",
+        "survey-heavy",
+        "usability-heavy"
+      ],
+      "methods": [
+        "accessibility",
+        "analytics",
+        "brief",
+        "card-sort",
+        "interview",
+        "malformed",
+        "participant-profile",
+        "support",
+        "survey",
+        "umux",
+        "usability"
+      ],
+      "example_sources": [
+        "CR-003",
+        "CR-020",
+        "CR-028",
+        "CR-053",
+        "CR-061"
+      ]
+    },
+    "jtbd-analysis": {
+      "source_count": 12,
+      "slices": [
+        "accessibility-heavy",
+        "findings-reporting",
+        "full-end-to-end",
+        "interview-heavy",
+        "malformed-edge-case",
+        "multilingual",
+        "survey-heavy",
+        "usability-heavy"
+      ],
+      "methods": [
+        "accessibility",
+        "brief",
+        "card-sort",
+        "consent",
+        "diary",
+        "field-note",
+        "interview",
+        "malformed",
+        "participant-profile",
+        "support",
+        "umux",
+        "usability"
+      ],
+      "example_sources": [
+        "CR-020",
+        "CR-028",
+        "CR-045",
+        "CR-053",
+        "CR-078"
+      ]
+    },
+    "kappa-thematic-analysis": {
+      "source_count": 12,
+      "slices": [
+        "accessibility-heavy",
+        "findings-reporting",
+        "full-end-to-end",
+        "interview-heavy",
+        "malformed-edge-case",
+        "multilingual",
+        "survey-heavy",
+        "usability-heavy"
+      ],
+      "methods": [
+        "accessibility",
+        "competitor",
+        "consent",
+        "diary",
+        "field-note",
+        "interview",
+        "malformed",
+        "nps",
+        "support",
+        "umux",
+        "usability"
+      ],
+      "example_sources": [
+        "CR-012",
+        "CR-020",
+        "CR-045",
+        "CR-053",
+        "CR-070"
+      ]
+    },
+    "longitudinal-tracking": {
+      "source_count": 12,
+      "slices": [
+        "accessibility-heavy",
+        "findings-reporting",
+        "full-end-to-end",
+        "interview-heavy",
+        "multilingual",
+        "survey-heavy",
+        "upload-smoke"
+      ],
+      "methods": [
+        "accessibility",
+        "competitor",
+        "consent",
+        "diary",
+        "field-note",
+        "interview",
+        "journey",
+        "nps",
+        "plan",
+        "umux"
+      ],
+      "example_sources": [
+        "CR-012",
+        "CR-020",
+        "CR-037",
+        "CR-045",
+        "CR-070"
+      ]
+    },
+    "nps-analysis": {
+      "source_count": 12,
+      "slices": [
+        "findings-reporting",
+        "full-end-to-end",
+        "interview-heavy",
+        "multilingual",
+        "survey-heavy",
+        "upload-smoke"
+      ],
+      "methods": [
+        "analytics",
+        "competitor",
+        "consent",
+        "diary",
+        "field-note",
+        "interview",
+        "journey",
+        "nps",
+        "plan",
+        "survey"
+      ],
+      "example_sources": [
+        "CR-004",
+        "CR-012",
+        "CR-037",
+        "CR-045",
+        "CR-062"
+      ]
+    },
+    "participant-simulation": {
+      "source_count": 12,
+      "slices": [
+        "findings-reporting",
+        "full-end-to-end",
+        "interview-heavy",
+        "survey-heavy",
+        "upload-smoke"
+      ],
+      "methods": [
+        "analytics",
+        "brief",
+        "competitor",
+        "diary",
+        "interview",
+        "journey",
+        "nps",
+        "participant-profile",
+        "plan",
+        "survey",
+        "tree-test"
+      ],
+      "example_sources": [
+        "CR-004",
+        "CR-012",
+        "CR-029",
+        "CR-037",
+        "CR-062"
+      ]
+    },
+    "persona-creation": {
+      "source_count": 12,
+      "slices": [
+        "findings-reporting",
+        "full-end-to-end",
+        "interview-heavy",
+        "malformed-edge-case",
+        "survey-heavy",
+        "upload-smoke",
+        "usability-heavy"
+      ],
+      "methods": [
+        "analytics",
+        "brief",
+        "diary",
+        "interview",
+        "journey",
+        "malformed",
+        "participant-profile",
+        "plan",
+        "support",
+        "survey",
+        "tree-test",
+        "usability"
+      ],
+      "example_sources": [
+        "CR-004",
+        "CR-029",
+        "CR-037",
+        "CR-054",
+        "CR-062"
+      ]
+    },
+    "prioritization-matrix": {
+      "source_count": 12,
+      "slices": [
+        "accessibility-heavy",
+        "findings-reporting",
+        "full-end-to-end",
+        "interview-heavy",
+        "malformed-edge-case",
+        "survey-heavy",
+        "usability-heavy"
+      ],
+      "methods": [
+        "accessibility",
+        "analytics",
+        "brief",
+        "interview",
+        "malformed",
+        "participant-profile",
+        "support",
+        "survey",
+        "tree-test",
+        "umux",
+        "usability"
+      ],
+      "example_sources": [
+        "CR-004",
+        "CR-021",
+        "CR-029",
+        "CR-054",
+        "CR-062"
+      ]
+    },
+    "prototype-feedback": {
+      "source_count": 12,
+      "slices": [
+        "accessibility-heavy",
+        "findings-reporting",
+        "full-end-to-end",
+        "interview-heavy",
+        "malformed-edge-case",
+        "multilingual",
+        "survey-heavy",
+        "usability-heavy"
+      ],
+      "methods": [
+        "accessibility",
+        "brief",
+        "consent",
+        "diary",
+        "field-note",
+        "interview",
+        "malformed",
+        "participant-profile",
+        "support",
+        "tree-test",
+        "umux",
+        "usability"
+      ],
+      "example_sources": [
+        "CR-021",
+        "CR-029",
+        "CR-046",
+        "CR-054",
+        "CR-079"
+      ]
+    },
+    "regression-impact": {
+      "source_count": 12,
+      "slices": [
+        "accessibility-heavy",
+        "findings-reporting",
+        "full-end-to-end",
+        "interview-heavy",
+        "malformed-edge-case",
+        "multilingual",
+        "survey-heavy",
+        "usability-heavy"
+      ],
+      "methods": [
+        "accessibility",
+        "competitor",
+        "consent",
+        "diary",
+        "field-note",
+        "interview",
+        "malformed",
+        "nps",
+        "support",
+        "umux",
+        "usability"
+      ],
+      "example_sources": [
+        "CR-013",
+        "CR-021",
+        "CR-046",
+        "CR-054",
+        "CR-071"
+      ]
+    },
+    "repository-curation": {
+      "source_count": 12,
+      "slices": [
+        "accessibility-heavy",
+        "findings-reporting",
+        "full-end-to-end",
+        "interview-heavy",
+        "multilingual",
+        "survey-heavy",
+        "upload-smoke"
+      ],
+      "methods": [
+        "accessibility",
+        "competitor",
+        "consent",
+        "diary",
+        "field-note",
+        "interview",
+        "journey",
+        "nps",
+        "plan",
+        "umux"
+      ],
+      "example_sources": [
+        "CR-013",
+        "CR-021",
+        "CR-038",
+        "CR-046",
+        "CR-071"
+      ]
+    },
+    "research-quality-evaluation": {
+      "source_count": 12,
+      "slices": [
+        "findings-reporting",
+        "full-end-to-end",
+        "interview-heavy",
+        "multilingual",
+        "survey-heavy",
+        "upload-smoke"
+      ],
+      "methods": [
+        "ab-test",
+        "competitor",
+        "consent",
+        "diary",
+        "field-note",
+        "interview",
+        "journey",
+        "nps",
+        "plan",
+        "survey"
+      ],
+      "example_sources": [
+        "CR-005",
+        "CR-013",
+        "CR-038",
+        "CR-046",
+        "CR-063"
+      ]
+    },
+    "research-retro": {
+      "source_count": 12,
+      "slices": [
+        "findings-reporting",
+        "full-end-to-end",
+        "interview-heavy",
+        "survey-heavy",
+        "upload-smoke"
+      ],
+      "methods": [
+        "ab-test",
+        "brief",
+        "competitor",
+        "diary",
+        "interview",
+        "journey",
+        "nps",
+        "participant-profile",
+        "plan",
+        "survey",
+        "tree-test"
+      ],
+      "example_sources": [
+        "CR-005",
+        "CR-013",
+        "CR-030",
+        "CR-038",
+        "CR-063"
+      ]
+    },
+    "research-synthesis": {
+      "source_count": 12,
+      "slices": [
+        "findings-reporting",
+        "full-end-to-end",
+        "interview-heavy",
+        "survey-heavy",
+        "upload-smoke",
+        "usability-heavy"
+      ],
+      "methods": [
+        "ab-test",
+        "brief",
+        "diary",
+        "interview",
+        "journey",
+        "participant-profile",
+        "plan",
+        "report",
+        "support",
+        "survey",
+        "tree-test",
+        "usability"
+      ],
+      "example_sources": [
+        "CR-005",
+        "CR-030",
+        "CR-038",
+        "CR-055",
+        "CR-063"
+      ]
+    },
+    "stakeholder-interviews": {
+      "source_count": 12,
+      "slices": [
+        "accessibility-heavy",
+        "findings-reporting",
+        "full-end-to-end",
+        "interview-heavy",
+        "survey-heavy",
+        "usability-heavy"
+      ],
+      "methods": [
+        "ab-test",
+        "accessibility",
+        "brief",
+        "interview",
+        "participant-profile",
+        "report",
+        "support",
+        "survey",
+        "tree-test",
+        "umux",
+        "usability"
+      ],
+      "example_sources": [
+        "CR-005",
+        "CR-022",
+        "CR-030",
+        "CR-055",
+        "CR-063"
+      ]
+    },
+    "stakeholder-presentation": {
+      "source_count": 12,
+      "slices": [
+        "accessibility-heavy",
+        "findings-reporting",
+        "full-end-to-end",
+        "interview-heavy",
+        "multilingual",
+        "survey-heavy",
+        "usability-heavy"
+      ],
+      "methods": [
+        "accessibility",
+        "brief",
+        "consent",
+        "field-note",
+        "interview",
+        "participant-profile",
+        "report",
+        "support",
+        "tree-test",
+        "umux",
+        "usability"
+      ],
+      "example_sources": [
+        "CR-022",
+        "CR-030",
+        "CR-047",
+        "CR-055",
+        "CR-080"
+      ]
+    },
+    "stitch-design": {
+      "source_count": 12,
+      "slices": [
+        "accessibility-heavy",
+        "findings-reporting",
+        "full-end-to-end",
+        "interview-heavy",
+        "multilingual",
+        "survey-heavy",
+        "usability-heavy"
+      ],
+      "methods": [
+        "accessibility",
+        "consent",
+        "field-note",
+        "heuristic",
+        "interview",
+        "nps",
+        "report",
+        "support",
+        "umux",
+        "usability"
+      ],
+      "example_sources": [
+        "CR-014",
+        "CR-022",
+        "CR-047",
+        "CR-055",
+        "CR-072"
+      ]
+    },
+    "stitch-design-system": {
+      "source_count": 12,
+      "slices": [
+        "accessibility-heavy",
+        "findings-reporting",
+        "full-end-to-end",
+        "interview-heavy",
+        "multilingual",
+        "survey-heavy",
+        "upload-smoke",
+        "usability-heavy"
+      ],
+      "methods": [
+        "accessibility",
+        "consent",
+        "diary",
+        "field-note",
+        "heuristic",
+        "interview",
+        "journey",
+        "nps",
+        "plan",
+        "umux",
+        "usability"
+      ],
+      "example_sources": [
+        "CR-014",
+        "CR-022",
+        "CR-039",
+        "CR-047",
+        "CR-072"
+      ]
+    },
+    "stitch-enhance-prompt": {
+      "source_count": 12,
+      "slices": [
+        "accessibility-heavy",
+        "findings-reporting",
+        "full-end-to-end",
+        "interview-heavy",
+        "multilingual",
+        "survey-heavy",
+        "upload-smoke",
+        "usability-heavy"
+      ],
+      "methods": [
+        "ab-test",
+        "consent",
+        "diary",
+        "field-note",
+        "heuristic",
+        "interview",
+        "journey",
+        "nps",
+        "plan",
+        "survey",
+        "usability"
+      ],
+      "example_sources": [
+        "CR-006",
+        "CR-014",
+        "CR-039",
+        "CR-047",
+        "CR-064"
+      ]
+    },
+    "stitch-react-components": {
+      "source_count": 12,
+      "slices": [
+        "accessibility-heavy",
+        "findings-reporting",
+        "full-end-to-end",
+        "interview-heavy",
+        "survey-heavy",
+        "upload-smoke"
+      ],
+      "methods": [
+        "ab-test",
+        "brief",
+        "diary",
+        "heuristic",
+        "interview",
+        "journey",
+        "nps",
+        "participant-profile",
+        "plan",
+        "survey",
+        "tree-test"
+      ],
+      "example_sources": [
+        "CR-006",
+        "CR-014",
+        "CR-031",
+        "CR-039",
+        "CR-064"
+      ]
+    },
+    "survey-ai-detection": {
+      "source_count": 12,
+      "slices": [
+        "findings-reporting",
+        "full-end-to-end",
+        "interview-heavy",
+        "survey-heavy",
+        "upload-smoke",
+        "usability-heavy"
+      ],
+      "methods": [
+        "ab-test",
+        "brief",
+        "diary",
+        "interview",
+        "journey",
+        "participant-profile",
+        "plan",
+        "report",
+        "support",
+        "survey",
+        "tree-test",
+        "usability"
+      ],
+      "example_sources": [
+        "CR-006",
+        "CR-031",
+        "CR-039",
+        "CR-056",
+        "CR-064"
+      ]
+    },
+    "survey-design": {
+      "source_count": 12,
+      "slices": [
+        "accessibility-heavy",
+        "findings-reporting",
+        "full-end-to-end",
+        "interview-heavy",
+        "survey-heavy",
+        "usability-heavy"
+      ],
+      "methods": [
+        "ab-test",
+        "accessibility",
+        "brief",
+        "card-sort",
+        "interview",
+        "participant-profile",
+        "report",
+        "support",
+        "survey",
+        "tree-test",
+        "usability"
+      ],
+      "example_sources": [
+        "CR-006",
+        "CR-023",
+        "CR-031",
+        "CR-056",
+        "CR-064"
+      ]
+    },
+    "survey-generator": {
+      "source_count": 12,
+      "slices": [
+        "accessibility-heavy",
+        "findings-reporting",
+        "full-end-to-end",
+        "interview-heavy",
+        "multilingual",
+        "usability-heavy"
+      ],
+      "methods": [
+        "accessibility",
+        "brief",
+        "card-sort",
+        "field-note",
+        "interview",
+        "multilingual",
+        "participant-profile",
+        "report",
+        "support",
+        "tree-test",
+        "usability"
+      ],
+      "example_sources": [
+        "CR-023",
+        "CR-031",
+        "CR-048",
+        "CR-056",
+        "CR-081"
+      ]
+    },
+    "sus-umux-scoring": {
+      "source_count": 12,
+      "slices": [
+        "accessibility-heavy",
+        "findings-reporting",
+        "full-end-to-end",
+        "interview-heavy",
+        "multilingual",
+        "survey-heavy",
+        "usability-heavy"
+      ],
+      "methods": [
+        "accessibility",
+        "card-sort",
+        "field-note",
+        "heuristic",
+        "interview",
+        "multilingual",
+        "report",
+        "support",
+        "sus",
+        "usability"
+      ],
+      "example_sources": [
+        "CR-015",
+        "CR-023",
+        "CR-048",
+        "CR-056",
+        "CR-073"
+      ]
+    },
+    "task-analysis-quant": {
+      "source_count": 12,
+      "slices": [
+        "accessibility-heavy",
+        "findings-reporting",
+        "full-end-to-end",
+        "interview-heavy",
+        "multilingual",
+        "survey-heavy",
+        "upload-smoke",
+        "usability-heavy"
+      ],
+      "methods": [
+        "accessibility",
+        "card-sort",
+        "diary",
+        "field-note",
+        "heuristic",
+        "interview",
+        "journey",
+        "multilingual",
+        "plan",
+        "sus",
+        "usability"
+      ],
+      "example_sources": [
+        "CR-015",
+        "CR-023",
+        "CR-040",
+        "CR-048",
+        "CR-073"
+      ]
+    },
+    "taxonomy-generator": {
+      "source_count": 12,
+      "slices": [
+        "accessibility-heavy",
+        "findings-reporting",
+        "full-end-to-end",
+        "interview-heavy",
+        "multilingual",
+        "survey-heavy",
+        "upload-smoke",
+        "usability-heavy"
+      ],
+      "methods": [
+        "ab-test",
+        "diary",
+        "field-note",
+        "heuristic",
+        "interview",
+        "journey",
+        "multilingual",
+        "plan",
+        "survey",
+        "sus",
+        "usability"
+      ],
+      "example_sources": [
+        "CR-007",
+        "CR-015",
+        "CR-040",
+        "CR-048",
+        "CR-065"
+      ]
+    },
+    "thematic-analysis": {
+      "source_count": 12,
+      "slices": [
+        "accessibility-heavy",
+        "findings-reporting",
+        "full-end-to-end",
+        "interview-heavy",
+        "survey-heavy",
+        "upload-smoke"
+      ],
+      "methods": [
+        "ab-test",
+        "diary",
+        "heuristic",
+        "interview",
+        "journey",
+        "participant-profile",
+        "plan",
+        "stakeholder",
+        "survey",
+        "sus",
+        "tree-test"
+      ],
+      "example_sources": [
+        "CR-007",
+        "CR-015",
+        "CR-032",
+        "CR-040",
+        "CR-065"
+      ]
+    },
+    "transcribe-audio": {
+      "source_count": 12,
+      "slices": [
+        "findings-reporting",
+        "full-end-to-end",
+        "interview-heavy",
+        "survey-heavy",
+        "upload-smoke",
+        "usability-heavy"
+      ],
+      "methods": [
+        "ab-test",
+        "analytics",
+        "diary",
+        "interview",
+        "journey",
+        "participant-profile",
+        "plan",
+        "report",
+        "stakeholder",
+        "survey",
+        "tree-test",
+        "usability"
+      ],
+      "example_sources": [
+        "CR-007",
+        "CR-032",
+        "CR-040",
+        "CR-057",
+        "CR-065"
+      ]
+    },
+    "tree-testing": {
+      "source_count": 12,
+      "slices": [
+        "accessibility-heavy",
+        "findings-reporting",
+        "full-end-to-end",
+        "interview-heavy",
+        "survey-heavy",
+        "usability-heavy"
+      ],
+      "methods": [
+        "ab-test",
+        "analytics",
+        "card-sort",
+        "interview",
+        "laws-of-ux",
+        "participant-profile",
+        "report",
+        "stakeholder",
+        "survey",
+        "tree-test",
+        "usability"
+      ],
+      "example_sources": [
+        "CR-007",
+        "CR-024",
+        "CR-032",
+        "CR-057",
+        "CR-065"
+      ]
+    },
+    "usability-testing": {
+      "source_count": 12,
+      "slices": [
+        "accessibility-heavy",
+        "findings-reporting",
+        "full-end-to-end",
+        "interview-heavy",
+        "multilingual",
+        "survey-heavy",
+        "usability-heavy"
+      ],
+      "methods": [
+        "analytics",
+        "card-sort",
+        "interview",
+        "laws-of-ux",
+        "multilingual",
+        "participant-profile",
+        "report",
+        "stakeholder",
+        "support",
+        "tree-test",
+        "usability"
+      ],
+      "example_sources": [
+        "CR-024",
+        "CR-032",
+        "CR-049",
+        "CR-057",
+        "CR-082"
+      ]
+    },
+    "user-flow-mapping": {
+      "source_count": 12,
+      "slices": [
+        "accessibility-heavy",
+        "findings-reporting",
+        "full-end-to-end",
+        "interview-heavy",
+        "multilingual",
+        "survey-heavy",
+        "usability-heavy"
+      ],
+      "methods": [
+        "analytics",
+        "card-sort",
+        "heuristic",
+        "interview",
+        "laws-of-ux",
+        "multilingual",
+        "report",
+        "support",
+        "sus",
+        "usability"
+      ],
+      "example_sources": [
+        "CR-016",
+        "CR-024",
+        "CR-049",
+        "CR-057",
+        "CR-074"
+      ]
+    },
+    "user-interviews": {
+      "source_count": 12,
+      "slices": [
+        "accessibility-heavy",
+        "findings-reporting",
+        "full-end-to-end",
+        "interview-heavy",
+        "multilingual",
+        "survey-heavy",
+        "upload-smoke",
+        "usability-heavy"
+      ],
+      "methods": [
+        "card-sort",
+        "diary",
+        "field-note",
+        "guide",
+        "heuristic",
+        "interview",
+        "laws-of-ux",
+        "multilingual",
+        "support",
+        "sus",
+        "usability"
+      ],
+      "example_sources": [
+        "CR-016",
+        "CR-024",
+        "CR-041",
+        "CR-049",
+        "CR-074"
+      ]
+    },
+    "ux-law-compliance": {
+      "source_count": 12,
+      "slices": [
+        "accessibility-heavy",
+        "findings-reporting",
+        "full-end-to-end",
+        "interview-heavy",
+        "multilingual",
+        "survey-heavy",
+        "upload-smoke",
+        "usability-heavy"
+      ],
+      "methods": [
+        "ab-test",
+        "diary",
+        "field-note",
+        "guide",
+        "heuristic",
+        "interview",
+        "multilingual",
+        "support",
+        "survey",
+        "sus",
+        "usability"
+      ],
+      "example_sources": [
+        "CR-008",
+        "CR-016",
+        "CR-041",
+        "CR-049",
+        "CR-066"
+      ]
+    },
+    "workshop-facilitation": {
+      "source_count": 12,
+      "slices": [
+        "accessibility-heavy",
+        "findings-reporting",
+        "full-end-to-end",
+        "interview-heavy",
+        "survey-heavy",
+        "upload-smoke"
+      ],
+      "methods": [
+        "ab-test",
+        "diary",
+        "field-note",
+        "guide",
+        "heuristic",
+        "interview",
+        "participant-profile",
+        "stakeholder",
+        "survey",
+        "sus",
+        "tree-test"
+      ],
+      "example_sources": [
+        "CR-008",
+        "CR-016",
+        "CR-033",
+        "CR-041",
+        "CR-066"
+      ]
+    }
+  }
+}

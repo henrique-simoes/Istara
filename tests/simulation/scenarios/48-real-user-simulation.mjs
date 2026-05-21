@@ -15,8 +15,15 @@
  *  Gracefully skips if not configured.
  */
 
+import { readFileSync } from "fs";
+import { basename, dirname, join } from "path";
+import { fileURLToPath } from "url";
+import { selectCanonicalCorpus } from "../../document_corpus/shared-corpus.mjs";
+
 export const name = "Real User Simulation (Live APIs)";
 export const id = "48-real-user-simulation";
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
 
 export async function run(ctx) {
   const { api } = ctx;
@@ -35,6 +42,7 @@ export async function run(ctx) {
   let stitchConfigured = false;
   let figmaConfigured = false;
   const projectId = typeof ctx.projectId === "string" ? ctx.projectId.trim() : "";
+  let sourceName = "canonical-care-nav-source.md";
 
   try {
     if (!projectId) {
@@ -90,22 +98,15 @@ export async function run(ctx) {
 
   // ── 2. Upload a research file (interview transcript) ──
   try {
-    const transcript = [
-      "[00:00] Interviewer: Tell me about your onboarding experience.",
-      "[00:15] P1: Honestly it was overwhelming. There were like 8 steps just to create a workspace.",
-      "[00:45] P1: I almost gave up at step 3 when it asked for team details.",
-      "[01:10] Interviewer: What would have helped?",
-      "[01:25] P1: Fewer steps. Maybe just name and one goal, then let me explore.",
-      "[01:50] P1: Also the help text was tiny and hard to read on mobile.",
-      "[02:15] Interviewer: Did you complete onboarding eventually?",
-      "[02:30] P1: Yes, but I had to come back the next day. I closed the tab in frustration.",
-    ].join("\n");
-
-    const uploadResult = await api.uploadContent(projectId, transcript, "interview-p1-onboarding.txt");
+    const [source] = selectCanonicalCorpus({ slice: "interview-heavy", minimumSources: 1 });
+    sourceName = basename(source.relative_path || source.path);
+    const sourcePath = join(__dirname, "..", "..", "document_corpus", "canonical", source.path || source.relative_path);
+    const transcript = readFileSync(sourcePath, "utf-8");
+    const uploadResult = await api.uploadContent(projectId, transcript, sourceName);
     checks.push({
       name: "Upload research file (interview transcript)",
       passed: !!uploadResult && (!!uploadResult.id || !!uploadResult.file_id),
-      detail: `file_id=${uploadResult?.id || uploadResult?.file_id || "unknown"}`,
+      detail: `source=${sourceName}, file_id=${uploadResult?.id || uploadResult?.file_id || "unknown"}`,
     });
   } catch (e) {
     checks.push({
@@ -125,10 +126,10 @@ export async function run(ctx) {
   try {
     const nugget = await api.post("/api/findings/nuggets", {
       project_id: projectId,
-      text: "[SIM-48] P1: 'I almost gave up at step 3 when it asked for team details'",
-      source: "interview-p1-onboarding.txt",
-      source_location: "00:45",
-      tags: ["onboarding", "friction", "abandonment"],
+      text: "[SIM-48] Canonical CareNav evidence shows readiness trust depends on clear source trails",
+      source: sourceName,
+      source_location: `${sourceName}:L11`,
+      tags: ["readiness", "source-traceability", "trust"],
       phase: "discover",
     });
     nuggetId = nugget.id;
@@ -146,7 +147,7 @@ export async function run(ctx) {
   try {
     const fact = await api.post("/api/findings/facts", {
       project_id: projectId,
-      text: "[SIM-48] 4/5 participants abandoned onboarding at step 3 (team details)",
+      text: "[SIM-48] Multiple canonical sources connect readiness trust to visible source and approval evidence",
       nugget_ids: nuggetId ? [nuggetId] : [],
       phase: "discover",
     });
@@ -165,7 +166,7 @@ export async function run(ctx) {
   try {
     const insight = await api.post("/api/findings/insights", {
       project_id: projectId,
-      text: "[SIM-48] Complex onboarding with team setup requirements causes 80% abandonment at step 3",
+      text: "[SIM-48] CareNav readiness automation is trusted only when source evidence and approval state are visible",
       fact_ids: factId ? [factId] : [],
       phase: "define",
       impact: "critical",
@@ -185,7 +186,7 @@ export async function run(ctx) {
   try {
     const rec = await api.post("/api/findings/recommendations", {
       project_id: projectId,
-      text: "[SIM-48] Reduce onboarding to 2 steps: (1) name + goal, (2) optional team setup with skip option",
+      text: "[SIM-48] Design a readiness timeline that exposes source traceability, blocked steps, and caregiver-safe permissions",
       insight_ids: insightId ? [insightId] : [],
       phase: "deliver",
       priority: "critical",
@@ -256,7 +257,7 @@ export async function run(ctx) {
     try {
       const screen = await api.post("/api/interfaces/screens/generate", {
         project_id: projectId,
-        prompt: "A streamlined 2-step onboarding wizard: step 1 asks for workspace name and primary goal, step 2 offers optional team invitation with a prominent skip button. Clean, modern UI with progress indicator.",
+        prompt: "A CareNav readiness timeline for appointment preparation: required and optional steps, source freshness, blocked item reasons, caregiver-safe permission labels, and a clear review/approval state.",
         device_type: "DESKTOP",
         model: "GEMINI_3_FLASH",
         seed_finding_ids: [recId],
@@ -532,7 +533,7 @@ export async function run(ctx) {
     try {
       const mockScreen = await api.post("/api/interfaces/mock/generate", {
         project_id: projectId,
-        prompt: "[SIM-48] Mock fallback: streamlined onboarding wizard",
+        prompt: "[SIM-48] Mock fallback: CareNav readiness timeline with source traceability",
         device_type: "DESKTOP",
         seed_finding_ids: [recId],
       });
@@ -680,7 +681,7 @@ export async function run(ctx) {
     try {
       const mockScreen = await api.post("/api/interfaces/mock/generate", {
         project_id: projectId,
-        prompt: "[SIM-48] Mock coexistence test",
+        prompt: "[SIM-48] Mock coexistence test for CareNav readiness evidence",
         device_type: "DESKTOP",
       });
       cleanup.screenIds.push(mockScreen.id);
