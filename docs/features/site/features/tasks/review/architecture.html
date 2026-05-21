@@ -264,6 +264,7 @@
 <li>The Task Editor passes the active project id for approval and revision calls, so a task selected from a previous project cannot be approved or reopened in the current project view.</li>
 <li>The real-user benchmark must not use the admin API as a substitute for normal researcher task work. Admin may set up users and project access, but collaborative task creation, revision requests, and approval evidence should be produced by authenticated researcher actors when the product contract allows it.</li>
 <li>Benchmark reviewer actors reject outputs that are explicitly blocked, missing required source data, low confidence because data is unavailable, or synthetic for a source-backed task. Those outputs receive revision instructions instead of being counted as done.</li>
+<li>Source-backed task tests should draw their source material from the canonical synthetic corpus or a manifest-backed canonical slice, so review decisions are based on representative documents instead of tiny ad hoc fixtures.</li>
 <li>Approval is the reporting boundary. When review moves a task to Done and <code>approved</code>, review side effects route that task&#x27;s atomic findings into the report manager; revision and In Review states keep the findings visible for evaluation but outside Reports.</li>
 <li>The frontmatter and manifest entries are the durable contract for agents updating this page after code changes.</li>
 <li>When the referenced component, store, route, agent, skill, or test behavior changes, regenerate and validate the feature documentation.</li>
@@ -288,7 +289,7 @@
 </ul>
 <h2 id="compass-evidence">Compass Evidence</h2>
 <ul>
-<li>Spec/task: CF-SPEC-53 / CF-657; CF-SPEC-73 / CF-941; CF-SPEC-121; CF-SPEC-122</li>
+<li>Spec/task: CF-SPEC-53 / CF-657; CF-SPEC-73 / CF-941; CF-SPEC-121; CF-SPEC-122; CF-SPEC-123 / CF-1581</li>
 <li>Inventory source: <code>docs/features/inventory.json</code></li>
 </ul>
 <h2 id="when-to-update">When To Update</h2>

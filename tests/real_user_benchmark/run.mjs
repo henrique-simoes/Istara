@@ -2743,7 +2743,7 @@ async function linkProjectFolder(api, projectId, corpusDir) {
     logger.issue({
       area: "project-context",
       severity: "low",
-      title: "Could not link generated corpus folder",
+      title: "Could not link canonical corpus folder",
       detail: error.message,
     });
     return false;

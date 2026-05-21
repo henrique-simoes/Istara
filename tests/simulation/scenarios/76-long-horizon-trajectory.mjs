@@ -14,8 +14,15 @@
  *  8. Final L4 report generation.
  */
 
+import { readFileSync } from "fs";
+import { basename, dirname, join } from "path";
+import { fileURLToPath } from "url";
+import { selectCanonicalCorpus } from "../../document_corpus/shared-corpus.mjs";
+
 export const name = "Long-Horizon Orchestration Trajectory";
 export const id = "76-long-horizon-trajectory";
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
 
 export async function run(ctx) {
   const { api } = ctx;
@@ -40,19 +47,19 @@ export async function run(ctx) {
 
   try {
     console.log("    --- Phase 1: Data Ingestion & Seeding ---");
-    // Seed 5 research documents
-    const docs = [
-      { name: "interview_p1.txt", content: "Patient reports difficulty with login sync. 'It takes too long to see my data.'" },
-      { name: "interview_p2.txt", content: "Patient Marcus loves the medication tracker but hates the font size." },
-      { name: "competitor_audit.md", content: "Competitor HealthSync has 2-tap login and 14pt minimum font." },
-      { name: "survey_results.csv", content: "user_id,satisfaction,speed\n101,4,slow\n102,5,fast" },
-      { name: "internal_spec.pdf", content: "Our current technical debt prevents sub-1s data hydration." }
-    ];
+    const selectedSources = selectCanonicalCorpus({ slice: "full-end-to-end", limit: 12, minimumSources: 12 });
+    const docs = selectedSources.map((entry) => {
+      const sourcePath = join(__dirname, "..", "..", "document_corpus", "canonical", entry.path || entry.relative_path);
+      return {
+        name: basename(entry.relative_path || entry.path),
+        content: readFileSync(sourcePath, "utf-8"),
+      };
+    });
 
     for (const doc of docs) {
       await api.uploadContent(projectId, doc.content, doc.name);
     }
-    checkPass("Data Seeding", `${docs.length} documents uploaded.`);
+    checkPass("Data Seeding", `${docs.length} canonical documents uploaded.`);
 
     console.log("    --- Phase 2: Start 50-Message Trajectory ---");
     
@@ -62,7 +69,7 @@ export async function run(ctx) {
       headers: api._headers(),
       body: JSON.stringify({
         project_id: projectId,
-        message: "I need a comprehensive analysis. Cross-reference the patient complaints about speed with our competitor audit and technical specs. Propose a journey map that solves this.",
+        message: "I need a comprehensive analysis of the canonical CareNav corpus. Cross-reference appointment-prep readiness complaints with competitor, accessibility, survey, and analytics evidence. Propose a journey map that solves this.",
       }),
     });
     if (!chatRes.ok) throw new Error(`POST /api/chat: ${chatRes.status}`);

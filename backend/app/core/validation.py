@@ -3,7 +3,8 @@
 Academic foundations:
 - Dual-run: Basic inter-rater reliability (2 models)
 - Adversarial review: One model critiques another (Du et al., ICML 2024)
-- Full ensemble: 3+ models with Fleiss' Kappa (Wang et al., ICLR 2025)
+- Full ensemble: 3+ models with heuristic consensus metrics inspired by
+  Mixture-of-Agents and Fleiss' Kappa
 - Self-MoA: Temperature variation on same model (Li et al., 2025)
 - Debate rounds: Iterative refinement between models (Du et al., ICML 2024)
 """

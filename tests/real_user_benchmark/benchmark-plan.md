@@ -53,23 +53,11 @@ For compute, the benchmark treats donated relays as part of the product under te
 
 ## Corpus
 
-The generator creates:
+The benchmark materializes the canonical corpus from `tests/document_corpus/canonical/` through `tests/document_corpus/shared-corpus.mjs`.
 
-- interview transcripts
-- usability test notes
-- survey CSVs
-- diary studies
-- field notes
-- analytics exports
-- support tickets
-- design critique notes
-- competitor reviews
-- research readouts and presentation files
-- malformed and edge-case files
-- multilingual Portuguese and Spanish examples
-- URL and web-fetch prompts
+The canonical corpus contains interview transcripts, participant profiles, diary studies, usability tests, survey/NPS/SUS/UMUX exports, card sorting, tree testing, journey maps, field notes, support tickets, analytics, A/B tests, competitor analysis, heuristic and accessibility audits, Laws of UX audits, briefs, stakeholder memos, research plans, discussion guides, consent/privacy notes, multilingual examples, malformed edge cases, and report-readiness material.
 
-The generated corpus intentionally contains overlap, contradictions, missing metadata, and repeated pain points so Istara must synthesize rather than simply list. Document-heavy runs use the shared corpus helper in `tests/document_corpus/shared-corpus.mjs` and should upload at least 120 long-form sources before corpus grounding receives full benchmark credit.
+The corpus intentionally contains overlap, contradictions, missing metadata, and repeated pain points so Istara must synthesize rather than simply list. Document-heavy runs should upload at least 120 long-form canonical sources before corpus grounding receives full benchmark credit. Smaller named slices are allowed for focused checks only when the slice is manifest-backed and the test is explicit about the scope.
 
 ## Feature Coverage Matrix
 

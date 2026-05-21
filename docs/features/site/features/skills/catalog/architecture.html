@@ -265,6 +265,7 @@
 <li>Simulation skill catalog checks keep the global <code>/api/skills</code> definition list unchanged, but every skill health or proposal request in the harness includes the active simulation project id.</li>
 <li>When the simulation runner has deliberately entered maintenance mode, live skill execution checks record the backend&#x27;s 409 deferral as expected test isolation instead of treating paused agent/LLM operations as product failure.</li>
 <li>Scenario 20 verifies registration and fixture coverage for the full skill catalog, then executes a deterministic bounded live subset by default; set <code>ISTARA_SCENARIO20_SKILL_LIMIT</code> to the current catalog size for a deliberate full live sweep.</li>
+<li><code>tests/document_corpus/canonical/skill-coverage-map.json</code> maps the canonical UX research corpus to the current skill catalog so document-heavy skill tests can choose representative research material instead of inventing tiny one-off documents.</li>
 <li>The frontmatter and manifest entries are the durable contract for agents updating this page after code changes.</li>
 <li>When the referenced component, store, route, agent, skill, or test behavior changes, regenerate and validate the feature documentation.</li>
 </ul>
@@ -284,6 +285,7 @@
 <li><code>tests/simulation/scenarios/20-all-skills-comprehensive.mjs</code></li>
 <li><code>tests/simulation/scenarios/22-architecture-evaluation.mjs</code></li>
 <li><code>tests/simulation/scenarios/41-skill-creation.mjs</code></li>
+<li><code>tests/document_corpus/canonical/skill-coverage-map.json</code></li>
 </ul>
 <h2 id="related-features">Related Features</h2>
 <ul>
@@ -296,7 +298,7 @@
 </ul>
 <h2 id="compass-evidence">Compass Evidence</h2>
 <ul>
-<li>Spec/task: CF-SPEC-53 / CF-657; CF-SPEC-68 / CF-870; CF-SPEC-104 / CF-1309; CF-SPEC-116</li>
+<li>Spec/task: CF-SPEC-53 / CF-657; CF-SPEC-68 / CF-870; CF-SPEC-104 / CF-1309; CF-SPEC-116; CF-SPEC-123 / CF-1581</li>
 <li>Inventory source: <code>docs/features/inventory.json</code></li>
 </ul>
 <h2 id="when-to-update">When To Update</h2>

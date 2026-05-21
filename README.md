@@ -33,7 +33,7 @@
 
 | Feature | What It Does |
 |---|---|
-| 🧠 Intelligent Chat | Grounded conversations with your research data — no hallucinations, just evidence-backed answers |
+| 🧠 Intelligent Chat | Grounded conversations with your research data, source-aware answers, and reviewable evidence |
 | ⚛️ Atomic Findings | Nuggets → Facts → Insights → Recommendations, every claim linked to its original source |
 | 📐 Laws of UX | 30+ psychological principles audited automatically against your designs with scoring |
 | 📋 Kanban Board | Agents pick up tasks, execute skills, and report progress in real time — fully autonomous |
@@ -190,7 +190,7 @@ UX researchers deserve tools that respect their data, enforce methodological rig
 
 Istara runs entirely on your hardware. It ships with five specialized AI agents, 53 UX research skills, and an evidence-chain methodology grounded in peer-reviewed research. The agents improve themselves over time. Skills track their own quality. The platform learns your workflow.
 
-**No cloud. No subscription. No hallucinated insights.**
+**No cloud. No subscription. Evidence first.**
 
 ---
 
@@ -203,7 +203,7 @@ Istara runs entirely on your hardware. It ships with five specialized AI agents,
 | Research methodology | Atomic Research chain with evidence provenance | Ad-hoc summarization |
 | Skill improvement | Self-evolving quality scores per model × skill | Static prompts |
 | Agent creation | Runtime agent factory — new agents without code | Fixed feature set |
-| Multi-model validation | Mixture-of-Agents debate + Fleiss' Kappa | Single model, no validation |
+| Multi-model validation | Compute-aware ensemble + heuristic consensus metadata | Single model, no validation |
 | Memory compression | LLMLingua-inspired, 30–74% token savings | No long-context management |
 | UX compliance | 30 Laws of UX automated auditing | Not available |
 | Compute sharing | Donate GPU via WebSocket relay — team cluster | Pay-per-API-call |
@@ -274,11 +274,11 @@ All self-improvement now runs through an **Improvement Governance** contract and
 
 ---
 
-## 2. 🔬 Academic-Grade Multi-Model Validation
+## 2. 🔬 Multi-Model Validation With Human Review
 
 > *"Improving Factuality and Reasoning in Language Models through Multiagent Debate"* — Du et al. (2024)
 
-Research findings produced by a single LLM are unreliable. Istara employs a **Mixture-of-Agents validation pipeline** where multiple independent model instances analyze the same data, challenge each other's conclusions via adversarial debate, and only promote a finding when consensus is reached — quantified by Fleiss' Kappa inter-coder reliability.
+Research findings produced by a single LLM are unreliable. Istara employs a **compute-aware validation pipeline** that prefers distinct authorized models when they are healthy, falls back to dual-run validation when only two models are available, and uses Self-MoA-style single-model variation only when compute is constrained. The system records route evidence, model identities where available, heuristic consensus metrics, and human review state instead of treating one model answer as research fact.
 
 ### The Validation Stack
 
@@ -289,21 +289,22 @@ Agent A analyzes independently → draft findings
 Agent B analyzes independently → draft findings
 Agent C analyzes independently → draft findings
       ↓
-Adversarial debate round: each agent challenges the others
+Adversarial/debate paths refine disputed outputs when available
       ↓
-Fleiss' Kappa computed across all agent outputs (κ ≥ 0.60 required)
+Consensus is recorded from heuristic response categories and optional embeddings
       ↓
-High-agreement findings promoted to evidence chain
-Low-agreement findings flagged for human review
+Borderline outputs are refined or kept in human review
       ↓
-LLM-as-Judge final quality assessment
+Approved Done tasks can create report-ready findings
       ↓
-Validated finding with provenance, confidence, and dissent notes
+Finding with provenance, confidence, validation metadata, and review state
 ```
 
-**Research findings are never hallucinated — they are grounded in evidence chains with quantified reliability scores.**
+**Research findings are evidence-constrained, not magic-proof.** Istara stores source links, task review state, consensus scores, and dissent metadata so researchers can reject weak work. Reports draw from approved Done task evidence; tasks still in review are deliberately excluded.
 
-The Self-MoA variant (Li et al., 2025) enables single-agent validation loops when compute is constrained, maintaining rigour without requiring three simultaneous model instances.
+The Fleiss' Kappa implementation uses the standard formula, but the current LLM-output consensus path applies it to heuristic keyword-category presence across model responses. It should be read as an operational agreement signal, not as a replacement for a human-coded item-by-rater reliability study.
+
+The Self-MoA variant (Li et al., 2025) enables single-agent validation loops when compute is constrained, maintaining a fallback validation signal without requiring three simultaneous model instances.
 
 > **References:** Wang et al. (2024) "Mixture-of-Agents Enhances Large Language Model Capabilities"; Du et al. (2024) ICML "Improving Factuality and Reasoning in Language Models through Multiagent Debate"; Li et al. (2025) "Self-MoA: Self-Mixture of Agents"; Fleiss (1971) "Measuring nominal scale agreement among many raters" *Psychological Bulletin* 76(5):378–382; Zheng et al. (2023) "Judging LLM-as-a-Judge with MT-Bench and Chatbot Arena" NeurIPS 2023
 
@@ -338,9 +339,9 @@ The **DAG Context Summarizer** (inspired by MemWalker, Chen et al. 2023) builds 
 
 > *"Petals: Collaborative Inference and Fine-tuning of Large Models"* — Borzunov et al. (2022/2023)
 
-Your team's idle hardware is a cluster waiting to be used. Istara's **Compute Relay** implements a WebSocket-based distributed inference network where team members donate spare GPU or CPU capacity to a shared pool. Inference requests are routed to available nodes with **priority-based scheduling, automatic capability detection, and seamless failover**.
+Your team's idle hardware is a cluster waiting to be used. Istara's **Compute Relay** implements a WebSocket-based whole-request inference network where team members donate spare GPU or CPU capacity to a project-scoped pool. Inference requests are routed to available nodes with **priority-based scheduling, automatic capability detection, route counters, and failover**.
 
-Like Petals — but purpose-built for UX research teams, requiring no special setup beyond pasting a connection string.
+It is Petals-inspired in the collaboration sense, but it is not Petals-equivalent transformer layer sharding. Istara donates and routes complete chat, embedding, and model-server requests through authorized nodes.
 
 ### Relay Architecture
 
@@ -409,7 +410,7 @@ The system maintains a **Skill Health Monitor** dashboard showing per-skill perf
 
 > *"The Atomic Research model"* — Sharon & Gadbaw (2018)
 
-Every insight Istara produces is **structurally impossible to hallucinate** because it cannot exist without tracing back through a verified evidence chain to exact source quotes. This implements the Atomic Research methodology developed at WeWork (Sharon & Gadbaw, 2018) as a computational pipeline.
+Every insight Istara produces is expected to remain traceable because it is connected to a verified evidence chain with source references and task review state. This implements the Atomic Research methodology developed at WeWork (Sharon & Gadbaw, 2018) as a computational pipeline.
 
 ```
 Raw quote or observation (Nugget)
@@ -424,7 +425,7 @@ Actionable proposal with priority score (Recommendation)
 
 **No recommendation without an insight. No insight without a fact. No fact without nuggets. No nugget without a source.**
 
-Every level of the chain is stored as a discrete database record with foreign key relationships enforcing the hierarchy. When you export a research report, every recommendation hyperlinks back through the chain to the exact interview passage, survey response, or observation that supports it.
+Every level of the chain is stored as a discrete database record with foreign key relationships enforcing the hierarchy. Reports use findings from approved Done tasks; task outputs still in review are not report evidence. When you export a research report, every recommendation should hyperlink back through the chain to the exact interview passage, survey response, or observation that supports it.
 
 > **Reference:** Sharon & Gadbaw (2018) "Atomic Research" WeWork Research Operations
 
@@ -461,7 +462,7 @@ This means Istara finds semantically similar content ("participant struggled wit
 
 > *"AURA: Adaptive User Research Assistant"* — arXiv:2510.27126
 
-Istara deploys **AURA-style adaptive interview agents** directly to messaging channels your participants already use. No app installs. No survey links to click. The interview comes to them.
+Istara supports **AURA-style adaptive interview workflows** and credentialed setup paths for messaging and survey channels. Live participant channels require the relevant provider credentials or bounded test simulators; without them, Istara documents the setup/error path rather than pretending a real participant deployment occurred.
 
 ```
 Researcher designs interview guide in Istara
@@ -480,7 +481,7 @@ Auto-analyze: extract nuggets, detect themes, flag anomalies
 AI-Detection check flags responses that appear machine-generated
 ```
 
-The adaptive interview engine dynamically adjusts question phrasing and order based on prior answers — producing richer qualitative data than static survey forms while requiring zero technical setup from participants.
+The adaptive interview engine is intended to adjust question phrasing and order based on prior answers, producing richer qualitative data than static survey forms when the channel integration is configured.
 
 > **Reference:** AURA: Adaptive User Research Assistant, arXiv:2510.27126
 
@@ -605,7 +606,7 @@ Istara is **zero-trust by default**:
 │  │  LLMLingua Prompt Compressor (30–74% token savings)        │    │
 │  │  Self-Evolution Engine + Skill Health Monitor              │    │
 │  │  Autoresearch Loop (~12 experiments/hour)                  │    │
-│  │  Multi-model Validation (MoA + Fleiss' Kappa)              │    │
+│  │  Multi-model Validation (ensemble + consensus metadata)    │    │
 │  │  Resource Governor + Priority Scheduler                    │    │
 │  │  Atomic Research Chain (Nugget→Fact→Insight→Rec)           │    │
 │  └─────────────────────────────────┬──────────────────────────┘    │
@@ -873,13 +874,13 @@ See [TESTING.md](TESTING.md), [SECURITY.md](SECURITY.md), and [DOCUMENTATION.md]
 
 ### Multi-Model Validation
 
-3. **Wang et al. (2024)** — "Mixture-of-Agents Enhances Large Language Model Capabilities" *arXiv:2406.04692*. The MoA architecture underlying Istara's multi-agent validation layer.
+3. **Wang et al. (2024)** — "Mixture-of-Agents Enhances Large Language Model Capabilities" *arXiv:2406.04692*. Inspiration for Istara's multi-agent validation layer.
 
-4. **Du et al. (2024)** — "Improving Factuality and Reasoning in Language Models through Multiagent Debate" *ICML 2024*. Adversarial debate protocol for reducing hallucination; implemented in Istara's validation stack.
+4. **Du et al. (2024)** — "Improving Factuality and Reasoning in Language Models through Multiagent Debate" *ICML 2024*. Adversarial debate protocol for reducing unsupported outputs; implemented as a validation/refinement path in Istara's stack.
 
-5. **Li et al. (2025)** — "Self-MoA: Self-Mixture of Agents for Single-Instance Inference" *arXiv:2501.xxxxx*. Single-agent MoA variant for constrained-compute environments.
+5. **Li et al. (2025)** — "Rethinking Mixture-of-Agents: Is Mixing Different Large Language Models Beneficial?" *arXiv:2502.00674*. Single-model Self-MoA variant for constrained-compute environments.
 
-6. **Fleiss, J. L. (1971)** — "Measuring nominal scale agreement among many raters" *Psychological Bulletin* 76(5):378–382. The κ statistic used in Istara's inter-coder reliability scoring for thematic analysis.
+6. **Fleiss, J. L. (1971)** — "Measuring nominal scale agreement among many raters" *Psychological Bulletin* 76(5):378–382. The Kappa statistic whose formula Istara uses for heuristic response-category agreement.
 
 7. **Zheng et al. (2023)** — "Judging LLM-as-a-Judge with MT-Bench and Chatbot Arena" *NeurIPS 2023*. LLM-as-Judge methodology used in Istara's final validation pass.
 
@@ -975,7 +976,7 @@ MIT © 2026 Istara Contributors — see [LICENSE](LICENSE).
 
 Built for researchers who believe their data should stay theirs.
 
-**Autonomous. Self-improving. Zero-trust. Never hallucinate.**
+**Autonomous. Self-improving. Zero-trust. Evidence first.**
 
 [GitHub](https://github.com/henrique-simoes/Istara) · [Issues](https://github.com/henrique-simoes/Istara/issues) · [Discussions](https://github.com/henrique-simoes/Istara/discussions)
 

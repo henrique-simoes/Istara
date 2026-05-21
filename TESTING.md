@@ -188,7 +188,7 @@ These layers are easy to confuse, so use this split:
 | `tests/e2e_test.py` | Phase-based live API and system path script. It is a Python script, not a normal pytest module. | `python tests/e2e_test.py` |
 | `tests/simulation/run.mjs` | Browser/API behavioral scenarios with authenticated app state, accessibility checks, and user-facing flows. | `cd tests/simulation` then `npm test` |
 | `scripts/marathon/` | Long-running pre-release cycle orchestration over simulation scenarios plus custom checks. | `./scripts/marathon/start-marathon.sh --cycle A` |
-| `tests/real_user_benchmark/` | Realistic UX researcher journey with corpus generation, onboarding, chat, task review, integrations, reports, donated compute, and scorecards. | `npm --prefix tests/real_user_benchmark run plan` |
+| `tests/real_user_benchmark/` | Realistic UX researcher journey with canonical corpus materialization, onboarding, chat, task review, integrations, reports, donated compute, and scorecards. | `npm --prefix tests/real_user_benchmark run plan` |
 
 Use `tests/simulation/package.json` for the supported simulation scripts:
 
@@ -206,6 +206,12 @@ full live skill sweep, set `ISTARA_SCENARIO20_SKILL_LIMIT` to the current
 registered skill count; the default full simulation suite should not spend its
 entire timeout budget executing every skill when the registration contract has
 already been checked.
+
+Document-heavy product tests should use the canonical synthetic UX research
+corpus in `tests/document_corpus/canonical/` through
+`tests/document_corpus/shared-corpus.mjs`. Use named manifest slices for focused
+checks and reserve tiny ad hoc files for parser/unit tests that are explicitly
+labeled as such.
 
 Use `tests/real_user_benchmark/package.json` for benchmark modes:
 

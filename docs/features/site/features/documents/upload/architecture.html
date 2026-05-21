@@ -262,7 +262,8 @@
 <h2 id="architecture-notes">Architecture Notes</h2>
 <ul>
 <li>The feature is mounted through <code>frontend/src/components/documents/DocumentsView.tsx</code> and the UI navigation path recorded in the inventory.</li>
-<li>Document-heavy benchmarks and simulations use <code>tests/document_corpus/shared-corpus.mjs</code> as their corpus contract. Agentic research, task execution, Findings, and Reports tests should use at least 120 long-form sources unless they are explicitly narrow parser/unit checks.</li>
+<li>Document-heavy benchmarks and simulations use <code>tests/document_corpus/canonical/</code> through <code>tests/document_corpus/shared-corpus.mjs</code> as their corpus contract. Agentic research, task execution, Findings, and Reports tests should use at least 120 long-form canonical sources unless they are explicitly narrow parser/unit checks.</li>
+<li>Product-level tests can request manifest-backed slices such as <code>interview-heavy</code>, <code>survey-heavy</code>, <code>usability-heavy</code>, <code>accessibility-heavy</code>, <code>findings-reporting</code>, <code>multilingual</code>, <code>malformed-edge-case</code>, <code>upload-smoke</code>, or <code>full-end-to-end</code>. Tiny generated fixtures are reserved for parser/unit tests and should not receive representative corpus credit.</li>
 <li>The frontmatter and manifest entries are the durable contract for agents updating this page after code changes.</li>
 <li>When the referenced component, store, route, agent, skill, or test behavior changes, regenerate and validate the feature documentation.</li>
 </ul>
@@ -273,6 +274,7 @@
 <h2 id="tests-and-verification">Tests And Verification</h2>
 <ul>
 <li><code>tests/document_corpus/shared-corpus.mjs</code></li>
+<li><code>tests/document_corpus/canonical/manifest.json</code></li>
 <li><code>tests/real_user_benchmark/run.mjs</code></li>
 </ul>
 <h2 id="related-features">Related Features</h2>
@@ -287,7 +289,7 @@
 </ul>
 <h2 id="compass-evidence">Compass Evidence</h2>
 <ul>
-<li>Spec/task: CF-SPEC-53 / CF-657; CF-SPEC-122</li>
+<li>Spec/task: CF-SPEC-53 / CF-657; CF-SPEC-122; CF-SPEC-123 / CF-1581</li>
 <li>Inventory source: <code>docs/features/inventory.json</code></li>
 </ul>
 <h2 id="when-to-update">When To Update</h2>

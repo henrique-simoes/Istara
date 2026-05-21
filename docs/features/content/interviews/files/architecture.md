@@ -8,9 +8,9 @@ related_features: ["interviews.transcription", "documents.upload"]
 related_glossary: ["atomic-research"]
 code_references: ["frontend/src/components/interviews/InterviewView.tsx", "backend/app/api/routes/files.py"]
 api_references: ["backend/app/api/routes/files.py"]
-test_references: []
-last_verified: 2026-05-15
-compass: CF-SPEC-53 / CF-657
+test_references: ["tests/document_corpus/canonical/manifest.json", "tests/simulation/scenarios/70-research-integrity.mjs"]
+last_verified: 2026-05-21
+compass: CF-SPEC-53 / CF-657; CF-SPEC-123 / CF-1581
 ---
 
 # Interview Files Architecture
@@ -37,6 +37,7 @@ The Interviews view manages interview recordings and source files for participan
 ## Architecture Notes
 
 - The feature is mounted through `frontend/src/components/interviews/InterviewView.tsx` and the UI navigation path recorded in the inventory.
+- Interview-heavy tests should use the canonical corpus `interview-heavy` slice through `tests/document_corpus/shared-corpus.mjs` when they evaluate product behavior. Tiny transcript strings are reserved for parser/unit tests only.
 - The frontmatter and manifest entries are the durable contract for agents updating this page after code changes.
 - When the referenced component, store, route, agent, skill, or test behavior changes, regenerate and validate the feature documentation.
 
@@ -46,7 +47,8 @@ The Interviews view manages interview recordings and source files for participan
 
 ## Tests And Verification
 
-- No focused test reference recorded yet.
+- `tests/document_corpus/canonical/manifest.json`
+- `tests/simulation/scenarios/70-research-integrity.mjs`
 
 ## Related Features
 
@@ -59,7 +61,7 @@ The Interviews view manages interview recordings and source files for participan
 
 ## Compass Evidence
 
-- Spec/task: CF-SPEC-53 / CF-657
+- Spec/task: CF-SPEC-53 / CF-657; CF-SPEC-123 / CF-1581
 - Inventory source: `docs/features/inventory.json`
 
 ## When To Update

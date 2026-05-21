@@ -3,6 +3,7 @@ import { basename, join } from "path";
 import { spawnSync } from "child_process";
 import {
   SHARED_DOCUMENT_CORPUS_MINIMUM_SOURCES,
+  canonicalCorpusSummary,
   materializeSharedDocumentCorpus,
 } from "../../document_corpus/shared-corpus.mjs";
 
@@ -312,132 +313,25 @@ function writeMinimalPptx(root, relPath) {
 export function generateCorpus({ outputDir, logger }) {
   mkdirSync(outputDir, { recursive: true });
   const manifest = [];
-
-  manifest.push(writeFile(outputDir, "00-project-context.md", [
-    `# ${PROJECT_CONTEXT.name}`,
-    "",
-    `Company: ${PROJECT_CONTEXT.company}`,
-    `Audience: ${PROJECT_CONTEXT.audience}`,
-    `Product: ${PROJECT_CONTEXT.product}`,
-    `Stage: ${PROJECT_CONTEXT.stage}`,
-    "",
-    "## Guardrails",
-    ...PROJECT_CONTEXT.guardrails.map((item) => `- ${item}`),
-    "",
-    "## Research Questions",
-    ...PROJECT_CONTEXT.researchQuestions.map((item) => `- ${item}`),
-  ].join("\n")));
-
-  participants.forEach((participant, index) => {
-    manifest.push(writeFile(outputDir, `interviews/${participant[0]}-${participant[2].replace(/\s+/g, "-")}.md`, interviewTranscript(index, participant)));
-  });
-
-  for (let i = 0; i < 6; i += 1) {
-    manifest.push(writeFile(outputDir, `usability/usability-test-${String(i + 1).padStart(2, "0")}.md`, usabilityReport(i)));
-  }
-
-  manifest.push(writeFile(outputDir, "surveys/carenav-survey-180.csv", surveyCsv()));
-  manifest.push(writeFile(outputDir, "diary/diary-study-week.csv", diaryStudy()));
-  manifest.push(writeFile(outputDir, "analytics/pilot-analytics.csv", analyticsCsv()));
-  manifest.push(writeFile(outputDir, "support/support-tickets.jsonl", supportTicketsJsonl()));
-  manifest.push(writeFile(outputDir, "competitive/competitor-notes.md", competitorNotes()));
-  manifest.push(writeFile(outputDir, "design/design-critique-notes.md", [
-    "# Design Critique Notes",
-    "",
-    "- Readiness badge looks definitive even when evidence is stale.",
-    "- Staff need a visible override reason before trusting automated reminders.",
-    "- Caregiver panel uses the same visual hierarchy as patient tasks, causing role confusion.",
-    "- The timeline prototype scored better than the checklist prototype in scan tests.",
-  ].join("\n")));
-  manifest.push(writeFile(outputDir, "field-notes/clinic-shadowing.md", [
-    "# Clinic Shadowing Field Notes",
-    "",
-    "Morning huddle: three coordinators compared portal tasks with handwritten notes.",
-    "One nurse said the team trusts the sticky note because it has a person's initials.",
-    "A caregiver called twice about a lab form that was complete in one system but missing in another.",
-    "Staff asked for a readiness queue grouped by next action, not appointment date.",
-  ].join("\n")));
-  for (let i = 1; i <= 8; i += 1) {
-    manifest.push(writeFile(outputDir, `stakeholder-memos/stakeholder-memo-${String(i).padStart(2, "0")}.md`, [
-      `# Stakeholder Memo ${i}`,
-      "",
-      `Owner: ${["Operations", "Clinical Safety", "Patient Experience", "Compliance"][i % 4]}`,
-      `Decision pressure: ${painPoints[(i + 2) % painPoints.length]}.`,
-      "",
-      "## Position",
-      `The stakeholder believes the redesign should prioritize ${opportunities[(i + 1) % opportunities.length]}.`,
-      "",
-      "## Tension",
-      `This may conflict with ${opportunities[(i + 4) % opportunities.length]} because teams have different views of readiness ownership.`,
-      "",
-      "## Evidence requested",
-      "- More separation between patient, caregiver, and staff workflows.",
-      "- Stronger proof that source trails reduce support calls.",
-      "- A clear privacy review before caregiver-facing launch.",
-    ].join("\n")));
-  }
-  for (let i = 1; i <= 12; i += 1) {
-    manifest.push(writeFile(outputDir, `experiments/concept-test-${String(i).padStart(2, "0")}.md`, [
-      `# Concept Test ${i}`,
-      "",
-      `Concept: ${["Timeline", "Checklist", "Readiness Score", "Caregiver Card"][i % 4]}`,
-      `Stimulus: mid-fidelity screen set ${String.fromCharCode(64 + ((i % 4) + 1))}`,
-      "",
-      "## What worked",
-      `- ${opportunities[i % opportunities.length]}.`,
-      "- Participants understood required versus optional labels faster than status-only labels.",
-      "",
-      "## What failed",
-      `- ${painPoints[(i + 1) % painPoints.length]}.`,
-      "- Confidence labels were interpreted as medical confidence by two participants.",
-      "",
-      "## Follow-up needed",
-      "- Test whether 'source freshness' reads as data freshness rather than clinical recency.",
-    ].join("\n")));
-  }
-  for (let i = 1; i <= 10; i += 1) {
-    manifest.push(writeFile(outputDir, `call-center/call-snippet-${String(i).padStart(2, "0")}.txt`, [
-      `Call ${i}`,
-      `Caller role: ${["patient", "caregiver", "care coordinator"][i % 3]}`,
-      `Issue: ${painPoints[(i + 5) % painPoints.length]}.`,
-      `Quote: "I do not need another reminder. I need to know which thing is actually blocking the visit."`,
-      `Disposition: ${i % 2 === 0 ? "escalated to coordinator" : "resolved with manual explanation"}`,
-    ].join("\n")));
-  }
-  for (let i = 1; i <= 6; i += 1) {
-    manifest.push(writeFile(outputDir, `privacy/consent-review-${String(i).padStart(2, "0")}.md`, [
-      `# Consent Review ${i}`,
-      "",
-      "Risk area: caregiver access and reminder content.",
-      `Observed issue: ${painPoints[(i + 6) % painPoints.length]}.`,
-      "Guidance: do not reveal clinical details in caregiver-safe reminders unless permission is explicit.",
-      "Research implication: evaluate whether role labels are understood before expanding automated outreach.",
-    ].join("\n")));
-  }
-  manifest.push(writeFile(outputDir, "multilingual/pt-es-reminder-examples.md", multilingualExamples()));
-  manifest.push(writeFile(outputDir, "edge-cases/malformed-survey-export.csv", malformedFile()));
-  manifest.push(writeFile(outputDir, "web/url-fetch-targets.md", [
-    "# URL Fetch Targets for Benchmark",
-    "",
-    "Use these URLs in chat and task prompts to test graceful web fetching:",
-    "- https://example.com/healthcare-coordination-benchmark",
-    "- https://www.nngroup.com/articles/service-blueprints-definition/",
-    "- https://www.w3.org/WAI/WCAG22/quickref/",
-  ].join("\n")));
-  manifest.push(writeMinimalPptx(outputDir, "presentations/carenav-readout.pptx"));
   const sharedCorpus = materializeSharedDocumentCorpus({
     outputDir,
     existingManifest: manifest,
     minimumSources: SHARED_DOCUMENT_CORPUS_MINIMUM_SOURCES,
+    slice: "full-end-to-end",
+    canonicalOnly: true,
     logger,
   });
   manifest.push(...sharedCorpus.manifest);
+  const canonicalSummary = canonicalCorpusSummary();
 
   const summary = {
     project: PROJECT_CONTEXT,
     generated_at: new Date().toISOString(),
+    canonical_corpus: canonicalSummary,
     shared_corpus: {
       minimum_sources: SHARED_DOCUMENT_CORPUS_MINIMUM_SOURCES,
+      slice: sharedCorpus.slice,
+      canonical_count: sharedCorpus.canonical_count,
       fixture_count: sharedCorpus.fixture_count,
       generated_count: sharedCorpus.generated_count,
     },
