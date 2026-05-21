@@ -1,3 +1,24 @@
+export const RESEARCHER_PERSONAS = [
+  {
+    key: "admin",
+    displayName: "Maya Rodrigues",
+    role: "global-admin-project-lead",
+    focus: "project setup, access, governance, and final evidence quality",
+  },
+  {
+    key: "researcher-1",
+    displayName: "Ana Lima",
+    role: "researcher",
+    focus: "interviews, caregiver trust, multilingual evidence, and document work",
+  },
+  {
+    key: "researcher-2",
+    displayName: "Theo Mendes",
+    role: "researcher",
+    focus: "task review, source grounding, survey sanity checks, and findings readiness",
+  },
+];
+
 export function buildChatTurns({ total = 108 } = {}) {
   const seedTurns = [
     "I am starting a new project called CareNav Renewal. Before you analyze anything, ask me the minimum clarifying questions you need as my research partner.",
@@ -78,7 +99,24 @@ export function buildChatTurns({ total = 108 } = {}) {
   }));
 }
 
-export function buildTaskPlan({ total = 60 } = {}) {
+export function buildCollaborativeChatTurns({ total = 108, actors = RESEARCHER_PERSONAS.slice(1) } = {}) {
+  const activeActors = actors.length ? actors : RESEARCHER_PERSONAS.slice(1);
+  return buildChatTurns({ total }).map((turn, index) => {
+    const actor = activeActors[index % activeActors.length] || RESEARCHER_PERSONAS[0];
+    return {
+      ...turn,
+      speaker: actor.displayName,
+      actor_key: actor.key,
+      actor_role: actor.role,
+      actor_focus: actor.focus,
+      content: index < activeActors.length
+        ? `${turn.content}\n\nI am ${actor.displayName}; focus this answer on ${actor.focus}.`
+        : turn.content,
+    };
+  });
+}
+
+export function buildTaskPlan({ total = 60, actors = RESEARCHER_PERSONAS.slice(1) } = {}) {
   const taskTypes = [
     ["Analyze staff interview trust signals", "Extract staff evidence about readiness-status trust, source trails, and manual overrides."],
     ["Analyze patient appointment-prep blockers", "Identify patient-facing blockers, especially required versus optional tasks."],
@@ -97,14 +135,23 @@ export function buildTaskPlan({ total = 60 } = {}) {
     ["Compute and ensemble health audit", "Verify donated compute health, model routing, and any ensemble/MoA health evidence before relying on synthesis."],
   ];
   const tasks = [];
+  const activeActors = actors.length ? actors : RESEARCHER_PERSONAS.slice(1);
   for (let i = 0; i < total; i += 1) {
     const [title, description] = taskTypes[i % taskTypes.length];
+    const creator = activeActors[i % activeActors.length] || RESEARCHER_PERSONAS[0];
+    const reviewer = activeActors.length > 1
+      ? activeActors[(i + 1) % activeActors.length]
+      : RESEARCHER_PERSONAS[0];
     tasks.push({
       title: `[RU-${String(i + 1).padStart(2, "0")}] ${title}`,
       description,
       skill_name: i % 5 === 0 ? "analyze-interview" : "",
       priority: i % 9 === 0 ? "high" : "medium",
       labels: ["real-user-benchmark", i % 7 === 0 ? "needs-citations" : "synthesis"],
+      creator_key: creator.key,
+      creator_name: creator.displayName,
+      reviewer_key: reviewer.key,
+      reviewer_name: reviewer.displayName,
       shouldReviseFirst: i % 8 === 0,
       acceptance: [
         "Names at least two source documents when evidence is synthesized.",
@@ -117,6 +164,29 @@ export function buildTaskPlan({ total = 60 } = {}) {
   return tasks;
 }
 
+export function buildInterviewProcessPlan() {
+  return {
+    title: "[RU-INTERVIEW] Appointment-prep adaptive interview process",
+    description: "Use uploaded interview transcripts and local project evidence to prepare follow-up questions, analyze participant responses, and identify what a credential-free run can and cannot prove.",
+    skill_name: "analyze-interview",
+    priority: "high",
+    labels: ["real-user-benchmark", "interviews", "agentic-workflow"],
+    creator_key: "researcher-1",
+    creator_name: "Ana Lima",
+    reviewer_key: "researcher-2",
+    reviewer_name: "Theo Mendes",
+    shouldReviseFirst: true,
+    external_credentials_required: ["Telegram bot token", "AURA participant channel credentials"],
+    future_improvement: "Add a credential-free participant conversation simulator so AURA deployments can be tested through real inbound conversations without external tokens.",
+    acceptance: [
+      "Names at least two interview or transcript sources.",
+      "Separates interview-guide questions from transcript analysis.",
+      "States which external participant-channel steps were skipped because credentials are not available.",
+      "Produces a reviewable next-pass research task.",
+    ],
+  };
+}
+
 export function reviewerAssessment(task, agentNotes) {
   const notes = String(agentNotes || "");
   const issues = [];
@@ -124,6 +194,19 @@ export function reviewerAssessment(task, agentNotes) {
   if (!/source|interview|survey|usability|ticket|diary/i.test(notes)) issues.push("missing source references");
   if (!/confidence|uncertain|evidence|because/i.test(notes)) issues.push("missing confidence or evidence reasoning");
   if (/medical advice|diagnose|treatment plan/i.test(notes)) issues.push("unsafe medical inference");
+  if (/\b(blocked|awaiting data|awaiting input|input data missing|required source documents|missing source material|source material.*missing|raw .*data .*not provided|cannot (?:complete|proceed|provide|perform|execute)|could not be (?:found|located)|document not found|no documents found)\b/i.test(notes)) {
+    issues.push("output says the work is blocked or required sources are missing");
+  }
+  if (/\b(confidence (?:level:?\s*)?low|confidence:\s*low|confidence in task completion:\s*low)\b/i.test(notes)) {
+    issues.push("output is low confidence");
+  }
+  if (/\bsynthetic\b/i.test(notes) && /source|interview|survey|usability|ticket|diary|transcript/i.test(`${task.title} ${task.description || ""}`)) {
+    issues.push("source-backed task relies on synthetic evidence");
+  }
+  const concreteSourceMentions = notes.match(/\b(?:P\d{2}[-\w]*\.md|[\w-]+\.csv|Transcript\s*\([^)]+\)|Source:\s*[^)\]\n]+|`[^`]+\.(?:md|csv|json)`)\b/gi) || [];
+  if (concreteSourceMentions.length < 2 && /source|interview|survey|usability|ticket|diary|transcript/i.test(`${task.title} ${task.description || ""}`)) {
+    issues.push("names fewer than two concrete source artifacts");
+  }
   const approved = issues.length === 0;
   return {
     approved,

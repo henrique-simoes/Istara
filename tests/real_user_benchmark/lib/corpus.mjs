@@ -1,6 +1,10 @@
 import { existsSync, mkdirSync, rmSync, writeFileSync } from "fs";
 import { basename, join } from "path";
 import { spawnSync } from "child_process";
+import {
+  SHARED_DOCUMENT_CORPUS_MINIMUM_SOURCES,
+  materializeSharedDocumentCorpus,
+} from "../../document_corpus/shared-corpus.mjs";
 
 export const PROJECT_CONTEXT = {
   name: "CareNav Renewal",
@@ -421,10 +425,22 @@ export function generateCorpus({ outputDir, logger }) {
     "- https://www.w3.org/WAI/WCAG22/quickref/",
   ].join("\n")));
   manifest.push(writeMinimalPptx(outputDir, "presentations/carenav-readout.pptx"));
+  const sharedCorpus = materializeSharedDocumentCorpus({
+    outputDir,
+    existingManifest: manifest,
+    minimumSources: SHARED_DOCUMENT_CORPUS_MINIMUM_SOURCES,
+    logger,
+  });
+  manifest.push(...sharedCorpus.manifest);
 
   const summary = {
     project: PROJECT_CONTEXT,
     generated_at: new Date().toISOString(),
+    shared_corpus: {
+      minimum_sources: SHARED_DOCUMENT_CORPUS_MINIMUM_SOURCES,
+      fixture_count: sharedCorpus.fixture_count,
+      generated_count: sharedCorpus.generated_count,
+    },
     document_count: manifest.length,
     total_bytes: manifest.reduce((sum, item) => sum + (item.bytes || 0), 0),
     manifest,

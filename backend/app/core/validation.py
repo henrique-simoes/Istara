@@ -17,6 +17,36 @@ from app.core.consensus import ConsensusResult, compute_consensus
 logger = logging.getLogger(__name__)
 
 
+def _server_model_names(server) -> set[str]:
+    names: set[str] = set()
+    for attr in ("loaded_models", "models", "model_names"):
+        raw = getattr(server, attr, None)
+        if isinstance(raw, (list, tuple, set)):
+            names.update(str(item).strip() for item in raw if str(item).strip())
+    capabilities = getattr(server, "model_capabilities", None)
+    if isinstance(capabilities, dict):
+        names.update(str(name).strip() for name in capabilities if str(name).strip())
+    default_model = getattr(server, "default_model", None) or getattr(server, "model", None)
+    if default_model:
+        names.add(str(default_model).strip())
+    return names
+
+
+def _diverse_servers(servers: list) -> list:
+    """Prefer different advertised models, then fill with healthy servers."""
+    selected = []
+    seen_models: set[str] = set()
+    for server in servers:
+        names = _server_model_names(server) or {getattr(server, "name", "")}
+        if names.isdisjoint(seen_models):
+            selected.append(server)
+            seen_models.update(names)
+    for server in servers:
+        if server not in selected:
+            selected.append(server)
+    return selected
+
+
 @dataclass
 class ValidationResult:
     """Full result of a validation run."""
@@ -41,7 +71,9 @@ async def dual_run(
     from app.core.llm_router import llm_router
 
     messages = [{"role": "user", "content": prompt}]
-    servers = [s for s in llm_router._sorted_servers(project_id=project_id) if s.is_healthy]
+    servers = _diverse_servers(
+        [s for s in llm_router._sorted_servers(project_id=project_id) if s.is_healthy]
+    )
 
     if len(servers) < 2:
         # Fallback: run twice on same server with different temperatures
@@ -145,10 +177,20 @@ async def full_ensemble(
     """Run prompt across 3+ models/servers for full ensemble consensus."""
     from app.core.llm_router import llm_router
 
-    servers = [s for s in llm_router._sorted_servers(project_id=project_id) if s.is_healthy]
+    servers = _diverse_servers(
+        [s for s in llm_router._sorted_servers(project_id=project_id) if s.is_healthy]
+    )
 
     if len(servers) < min_responses:
-        # Supplement with temperature variation
+        if len(servers) >= 2:
+            return await dual_run(
+                prompt,
+                system=system,
+                model=model,
+                project_id=project_id,
+            )
+        # Self-MoA is the constrained fallback when project compute has only
+        # one healthy model endpoint available.
         return await self_moa(
             prompt,
             system=system,

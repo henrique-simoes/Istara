@@ -113,6 +113,15 @@ class ReportManager:
         consensus_score: float | None = None,
     ) -> None:
         """Route new findings to the correct report (find or create)."""
+        finding_ids = await self._filter_reportable_finding_ids(project_id, finding_ids, db)
+        if not finding_ids:
+            logger.info(
+                "ReportManager: skipped report routing for project=%s skill=%s because no findings are reportable",
+                project_id,
+                skill_name,
+            )
+            return
+
         scope = SCOPE_MAP.get(skill_name, "General Analysis")
         layer = 3 if skill_name in SYNTHESIS_SKILLS else 2
 
@@ -165,6 +174,97 @@ class ReportManager:
         await self._generate_mece_categories(report_snapshot, db)
 
         await self._check_synthesis_trigger(project_id, db)
+
+    async def route_approved_task_findings(
+        self,
+        project_id: str,
+        task_id: str,
+        skill_name: str,
+        db: AsyncSession,
+        consensus_score: float | None = None,
+    ) -> int:
+        """Route task findings only after human review approves the Done task."""
+        from app.models.finding import Fact, Insight, Nugget, Recommendation
+        from app.models.task import Task, TaskStatus
+
+        task = await db.get(Task, task_id)
+        if (
+            not task
+            or task.project_id != project_id
+            or task.status != TaskStatus.DONE
+            or task.review_state != "approved"
+        ):
+            return 0
+
+        finding_ids: list[str] = []
+        for model_cls in [Nugget, Fact, Insight, Recommendation]:
+            result = await db.execute(
+                select(model_cls.id).where(
+                    model_cls.project_id == project_id,
+                    model_cls.task_id == task_id,
+                )
+            )
+            finding_ids.extend(result.scalars().all())
+
+        if not finding_ids or not skill_name:
+            return 0
+
+        await self.route_findings(
+            project_id,
+            skill_name,
+            finding_ids,
+            db,
+            consensus_score=consensus_score,
+        )
+        return len(finding_ids)
+
+    async def _filter_reportable_finding_ids(
+        self,
+        project_id: str,
+        finding_ids: list[str],
+        db: AsyncSession,
+    ) -> list[str]:
+        """Exclude task-bound findings until their task is Done and approved."""
+        if not finding_ids:
+            return []
+
+        from app.models.finding import Fact, Insight, Nugget, Recommendation
+        from app.models.task import Task, TaskStatus
+
+        requested_ids = set(finding_ids)
+        task_id_by_finding_id: dict[str, str] = {}
+        for model_cls in [Nugget, Fact, Insight, Recommendation]:
+            result = await db.execute(
+                select(model_cls.id, model_cls.task_id).where(
+                    model_cls.project_id == project_id,
+                    model_cls.id.in_(requested_ids),
+                )
+            )
+            for finding_id, task_id in result.all():
+                if task_id:
+                    task_id_by_finding_id[finding_id] = task_id
+
+        if not task_id_by_finding_id:
+            return finding_ids
+
+        result = await db.execute(
+            select(Task.id).where(
+                Task.project_id == project_id,
+                Task.id.in_(set(task_id_by_finding_id.values())),
+                Task.status == TaskStatus.DONE,
+                Task.review_state == "approved",
+            )
+        )
+        reportable_task_ids = set(result.scalars().all())
+
+        return [
+            finding_id
+            for finding_id in finding_ids
+            if (
+                finding_id not in task_id_by_finding_id
+                or task_id_by_finding_id[finding_id] in reportable_task_ids
+            )
+        ]
 
     async def _find_or_create_report(
         self, project_id: str, scope: str, layer: int, db: AsyncSession

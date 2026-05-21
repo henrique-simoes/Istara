@@ -222,14 +222,13 @@ class TestCodeApplicationModel:
         ):
             await orchestrator._store_findings(db_session, "proj-route-recs", output, task)
 
-        routed_ids = route_findings.await_args.args[2]
-        assert len(routed_ids) == 4
+        route_findings.assert_not_awaited()
 
         stored_recs = await db_session.execute(
             select(finding.Recommendation).where(finding.Recommendation.project_id == "proj-route-recs")
         )
         rec = stored_recs.scalar_one()
-        assert rec.id in routed_ids
+        assert rec.task_id == task.id
 
 
 # ============================================================

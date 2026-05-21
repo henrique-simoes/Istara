@@ -721,6 +721,7 @@ class AgentResearchMixin:
         created_fact_ids: list[str] = []
         created_insight_ids: list[str] = []
         created_recommendation_ids: list[str] = []
+        finding_agent_id = task.agent_id or self.agent_id
 
         # Store nuggets
         for nugget_data in output.nuggets:
@@ -752,6 +753,8 @@ class AgentResearchMixin:
             nugget = Nugget(
                 id=nid,
                 project_id=project_id,
+                agent_id=finding_agent_id,
+                task_id=task.id,
                 text=nugget_data.get("text", ""),
                 source=nugget_data.get("source", task.title),
                 source_location=nugget_data.get("source_location", ""),
@@ -794,6 +797,8 @@ class AgentResearchMixin:
             fact = Fact(
                 id=fid,
                 project_id=project_id,
+                agent_id=finding_agent_id,
+                task_id=task.id,
                 text=fact_data.get("text", ""),
                 nugget_ids=json.dumps(linked_nuggets),
                 phase=fact_phase,
@@ -810,6 +815,8 @@ class AgentResearchMixin:
             insight = Insight(
                 id=iid,
                 project_id=project_id,
+                agent_id=finding_agent_id,
+                task_id=task.id,
                 text=insight_data.get("text", ""),
                 fact_ids=json.dumps(linked_facts),
                 phase=insight_phase,
@@ -827,6 +834,8 @@ class AgentResearchMixin:
             rec = Recommendation(
                 id=rid,
                 project_id=project_id,
+                agent_id=finding_agent_id,
+                task_id=task.id,
                 text=rec_data.get("text", ""),
                 insight_ids=json.dumps(linked_insights),
                 phase=rec_phase,
@@ -837,29 +846,8 @@ class AgentResearchMixin:
             created_recommendation_ids.append(rid)
 
         await db.commit()
-
-        # Route findings to convergent project reports (with consensus score)
-        try:
-            from app.core.report_manager import report_manager
-
-            all_finding_ids = (
-                created_nugget_ids
-                + created_fact_ids
-                + created_insight_ids
-                + created_recommendation_ids
-            )
-            if all_finding_ids and skill:
-                consensus = getattr(task, "consensus_score", None)
-                async with async_session() as report_db:
-                    await report_manager.route_findings(
-                        project_id,
-                        skill.name,
-                        all_finding_ids,
-                        report_db,
-                        consensus_score=consensus,
-                    )
-        except Exception as e:
-            logger.warning("Report routing failed: %s", e)
+        # Findings are report-eligible only after human approval moves the task
+        # to Done. record_review_side_effects performs that routing.
 
         # Broadcast finding_created events so the frontend updates in real-time
         total_findings = (

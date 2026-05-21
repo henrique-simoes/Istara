@@ -254,9 +254,12 @@ class AgentExecutionMixin:
                                 1, int(getattr(settings, "validation_timeout_seconds", 120))
                             ),
                         )
-                        task.validation_method = method
+                        actual_method = val_result.method or method
+                        task.validation_method = actual_method
                         task.validation_result = _json.dumps(
                             {
+                                "requested_method": method,
+                                "actual_method": actual_method,
                                 "agreement_score": val_result.consensus.agreement_score,
                                 "kappa": val_result.consensus.kappa,
                                 "cosine_sim": val_result.consensus.cosine_sim,
@@ -272,13 +275,13 @@ class AgentExecutionMixin:
                             project.id,
                             skill.name,
                             self.agent_id,
-                            method,
+                            actual_method,
                             val_result.consensus.agreement_score,
                             val_result.consensus.agreement_score >= 0.5,
                         )
                         logger.info(
                             "Validation [%s]: score=%.2f",
-                            method,
+                            actual_method,
                             val_result.consensus.agreement_score,
                         )
 
@@ -291,7 +294,8 @@ class AgentExecutionMixin:
                                 "agent_id": self.agent_id,
                                 "project_id": project.id,
                                 "task_id": task.id,
-                                "validation_method": method,
+                                "validation_method": actual_method,
+                                "requested_validation_method": method,
                                 "validation_passed": val_result.consensus.agreement_score >= 0.5,
                                 "consensus_score": val_result.consensus.agreement_score,
                                 "validation_quality": val_result.consensus.agreement_score,

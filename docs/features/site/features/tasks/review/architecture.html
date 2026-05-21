@@ -241,7 +241,7 @@
   <p class="concept-line"><strong>Concepts:</strong> triangulation</p>
 </header>
 <h2 id="implementation-summary">Implementation Summary</h2>
-<p>Review actions support approving, requesting revision, or otherwise resolving human-in-the-loop task work.</p>
+<p>Review actions support approving, requesting revision, or otherwise resolving human-in-the-loop task work. The real-user benchmark treats review as a collaborative researcher workflow: one researcher creates or revises work, another researcher reads the output and either sends it back with concrete instructions or approves it for reporting.</p>
 <h2 id="frontend-surface">Frontend Surface</h2>
 <ul>
 <li><code>frontend/src/components/kanban/KanbanBoard.tsx</code></li>
@@ -262,6 +262,9 @@
 <li>The feature is mounted through <code>frontend/src/components/kanban/KanbanBoard.tsx</code> and the UI navigation path recorded in the inventory.</li>
 <li>Human review routes are active-project-bound: approval, revision, review-event reads, and legacy verification require <code>project_id</code> and resolve the task inside that project before any transition or side effect runs.</li>
 <li>The Task Editor passes the active project id for approval and revision calls, so a task selected from a previous project cannot be approved or reopened in the current project view.</li>
+<li>The real-user benchmark must not use the admin API as a substitute for normal researcher task work. Admin may set up users and project access, but collaborative task creation, revision requests, and approval evidence should be produced by authenticated researcher actors when the product contract allows it.</li>
+<li>Benchmark reviewer actors reject outputs that are explicitly blocked, missing required source data, low confidence because data is unavailable, or synthetic for a source-backed task. Those outputs receive revision instructions instead of being counted as done.</li>
+<li>Approval is the reporting boundary. When review moves a task to Done and <code>approved</code>, review side effects route that task&#x27;s atomic findings into the report manager; revision and In Review states keep the findings visible for evaluation but outside Reports.</li>
 <li>The frontmatter and manifest entries are the durable contract for agents updating this page after code changes.</li>
 <li>When the referenced component, store, route, agent, skill, or test behavior changes, regenerate and validate the feature documentation.</li>
 </ul>
@@ -272,6 +275,7 @@
 <h2 id="tests-and-verification">Tests And Verification</h2>
 <ul>
 <li><code>tests/test_tasks.py</code></li>
+<li><code>tests/real_user_benchmark/run.mjs</code></li>
 </ul>
 <h2 id="related-features">Related Features</h2>
 <ul>
@@ -284,7 +288,7 @@
 </ul>
 <h2 id="compass-evidence">Compass Evidence</h2>
 <ul>
-<li>Spec/task: CF-SPEC-53 / CF-657; CF-SPEC-73 / CF-941</li>
+<li>Spec/task: CF-SPEC-53 / CF-657; CF-SPEC-73 / CF-941; CF-SPEC-121; CF-SPEC-122</li>
 <li>Inventory source: <code>docs/features/inventory.json</code></li>
 </ul>
 <h2 id="when-to-update">When To Update</h2>

@@ -204,6 +204,15 @@ async def init_db() -> None:
             "NOT NULL DEFAULT ''",
             "CREATE INDEX IF NOT EXISTS ix_a2a_messages_project_id "
             "ON a2a_messages(project_id)",
+            # Finding provenance for approved-task-only reporting.
+            "ALTER TABLE nuggets ADD COLUMN task_id VARCHAR(36)",
+            "CREATE INDEX IF NOT EXISTS ix_nuggets_task_id ON nuggets(task_id)",
+            "ALTER TABLE facts ADD COLUMN task_id VARCHAR(36)",
+            "CREATE INDEX IF NOT EXISTS ix_facts_task_id ON facts(task_id)",
+            "ALTER TABLE insights ADD COLUMN task_id VARCHAR(36)",
+            "CREATE INDEX IF NOT EXISTS ix_insights_task_id ON insights(task_id)",
+            "ALTER TABLE recommendations ADD COLUMN task_id VARCHAR(36)",
+            "CREATE INDEX IF NOT EXISTS ix_recommendations_task_id ON recommendations(task_id)",
             "ALTER TABLE scheduled_tasks ADD COLUMN is_running BOOLEAN NOT NULL DEFAULT 0",
             "ALTER TABLE scheduled_tasks ADD COLUMN agent_id VARCHAR(36)",
             "ALTER TABLE scheduled_tasks ADD COLUMN loop_type VARCHAR(50) NOT NULL DEFAULT 'cron'",
