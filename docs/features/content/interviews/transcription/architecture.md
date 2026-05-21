@@ -8,16 +8,16 @@ related_features: ["interviews.files", "findings.evidence"]
 related_glossary: ["atomic-research"]
 code_references: ["frontend/src/components/interviews/InterviewView.tsx", "frontend/src/components/interviews/AudioPlayer.tsx", "backend/app/core/transcription.py"]
 api_references: ["backend/app/api/routes/files.py"]
-test_references: []
-last_verified: 2026-05-15
-compass: CF-SPEC-53 / CF-657
+test_references: ["tests/real_user_benchmark/run.mjs"]
+last_verified: 2026-05-20
+compass: CF-SPEC-53 / CF-657; CF-SPEC-121
 ---
 
 # Interview Transcription Architecture
 
 ## Implementation Summary
 
-Interview audio processing uses backend transcription capabilities to turn recordings into usable research text.
+Interview audio processing uses backend transcription capabilities to turn recordings into usable research text. The real-user benchmark exercises the credential-free interview path through uploaded transcripts and `analyze-interview` task review; live participant-channel deployment remains optional unless explicit bounded test credentials are provided.
 
 ## Frontend Surface
 
@@ -38,6 +38,7 @@ Interview audio processing uses backend transcription capabilities to turn recor
 ## Architecture Notes
 
 - The feature is mounted through `frontend/src/components/interviews/InterviewView.tsx` and the UI navigation path recorded in the inventory.
+- Benchmark interview evidence should include uploaded transcript sources plus an approved interview-analysis task. Telegram/AURA live participant conversations are recorded as future improvement when no local simulator or channel credentials are available.
 - The frontmatter and manifest entries are the durable contract for agents updating this page after code changes.
 - When the referenced component, store, route, agent, skill, or test behavior changes, regenerate and validate the feature documentation.
 
@@ -47,7 +48,7 @@ Interview audio processing uses backend transcription capabilities to turn recor
 
 ## Tests And Verification
 
-- No focused test reference recorded yet.
+- `tests/real_user_benchmark/run.mjs`
 
 ## Related Features
 
@@ -60,7 +61,7 @@ Interview audio processing uses backend transcription capabilities to turn recor
 
 ## Compass Evidence
 
-- Spec/task: CF-SPEC-53 / CF-657
+- Spec/task: CF-SPEC-53 / CF-657; CF-SPEC-121
 - Inventory source: `docs/features/inventory.json`
 
 ## When To Update

@@ -9,8 +9,8 @@ related_glossary: ["fleiss-kappa"]
 code_references: ["frontend/src/components/common/EnsembleHealthView.tsx", "backend/app/core/consensus.py", "backend/app/core/validation.py", "backend/app/core/agent_execution.py"]
 api_references: ["backend/app/api/routes/metrics.py"]
 test_references: ["tests/test_validation_project_scope.py", "tests/test_evaluation_skill.py"]
-last_verified: 2026-05-19
-compass: CF-SPEC-53 / CF-657; CF-SPEC-92 / CF-1170
+last_verified: 2026-05-21
+compass: CF-SPEC-53 / CF-657; CF-SPEC-92 / CF-1170; CF-SPEC-122
 ---
 
 # Ensemble Health Architecture
@@ -40,6 +40,8 @@ Ensemble Health surfaces health and consensus signals for Istara's multi-model o
 
 - The feature is mounted through `frontend/src/components/common/EnsembleHealthView.tsx` and the UI navigation path recorded in the inventory.
 - Project-bound ensemble validation must carry the active `project_id` into adversarial review, self-MoA, full ensemble, debate rounds, model-server selection, and validation embeddings, so donated relay/browser compute is only selected when authorized for that project.
+- When a project has multiple healthy authorized model endpoints, adaptive validation selects Istara's natural multi-model path: three or more distinct available models use full ensemble/Fleiss' Kappa, two models use dual-run validation, and Self-MoA is reserved for constrained single-model conditions.
+- Real-user and Colima/Docker benchmarks must not enable strict single-model routing as their default architecture test. Strict routing is a technical isolation probe; the product-faithful benchmark observes the normal compute/model manager selecting and serving work across registered donors.
 - Validation calls without project context remain server-owned/local only; cross-project compute aggregation is reserved for explicit admin-only surfaces.
 - The frontmatter and manifest entries are the durable contract for agents updating this page after code changes.
 - When the referenced component, store, route, agent, skill, or test behavior changes, regenerate and validate the feature documentation.
@@ -64,7 +66,7 @@ Ensemble Health surfaces health and consensus signals for Istara's multi-model o
 
 ## Compass Evidence
 
-- Spec/task: CF-SPEC-53 / CF-657; CF-SPEC-92 / CF-1170
+- Spec/task: CF-SPEC-53 / CF-657; CF-SPEC-92 / CF-1170; CF-SPEC-122
 - Inventory source: `docs/features/inventory.json`
 
 ## When To Update

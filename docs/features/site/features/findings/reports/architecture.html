@@ -242,7 +242,7 @@
   <p class="concept-line"><strong>Concepts:</strong> minto-pyramid, scr, triangulation</p>
 </header>
 <h2 id="implementation-summary">Implementation Summary</h2>
-<p>The Reports tab lets users generate, inspect, and manage project reports produced from findings and research evidence.</p>
+<p>The Reports tab lets users generate, inspect, and manage project reports produced from findings and research evidence. In the real-user benchmark, report evidence is strongest when the Findings chain is created from approved task outputs rather than synthetic notes created before review.</p>
 <h2 id="frontend-surface">Frontend Surface</h2>
 <ul>
 <li><code>frontend/src/components/findings/FindingsView.tsx</code></li>
@@ -265,16 +265,20 @@
 <ul>
 <li>The feature is mounted through <code>frontend/src/components/findings/FindingsView.tsx</code> and the UI navigation path recorded in the inventory.</li>
 <li>Report generation and executive-summary calls preserve the report&#x27;s <code>project_id</code> through async database boundaries and pass that project id into LLM routing so summaries cannot lose their project context.</li>
+<li>Task-produced findings carry <code>task_id</code> provenance. Reports consume those findings only after the associated task is Done and <code>review_state=approved</code>; In Review work can create findings for researcher review, but it is not report evidence at any reporting layer.</li>
+<li>The real-user benchmark records approved task ids before creating task-backed nuggets, facts, insights, and recommendations, then requests report/brief generation after that chain exists. This keeps Findings/reporting aligned with Istara&#x27;s human-in-the-loop review process.</li>
 <li>The frontmatter and manifest entries are the durable contract for agents updating this page after code changes.</li>
 <li>When the referenced component, store, route, agent, skill, or test behavior changes, regenerate and validate the feature documentation.</li>
 </ul>
 <h2 id="agents-skills-llm-mcp-and-permissions">Agents, Skills, LLM, MCP, And Permissions</h2>
 <ul>
 <li>Executive-summary and report-composition LLM calls are project-contextual and must keep the report project id attached to generated content.</li>
+<li>Agentic reporting is based on reviewed project evidence. Benchmark artifacts must distinguish approved-task-backed report generation from fallback baseline report checks, and must not count In Review findings as approved report material.</li>
 </ul>
 <h2 id="tests-and-verification">Tests And Verification</h2>
 <ul>
 <li><code>tests/test_research_integrity_reports.py</code></li>
+<li><code>tests/real_user_benchmark/run.mjs</code></li>
 </ul>
 <h2 id="related-features">Related Features</h2>
 <ul>
@@ -290,7 +294,7 @@
 </ul>
 <h2 id="compass-evidence">Compass Evidence</h2>
 <ul>
-<li>Spec/task: CF-SPEC-53 / CF-657; CF-SPEC-60 / CF-773</li>
+<li>Spec/task: CF-SPEC-53 / CF-657; CF-SPEC-60 / CF-773; CF-SPEC-121; CF-SPEC-122</li>
 <li>Inventory source: <code>docs/features/inventory.json</code></li>
 </ul>
 <h2 id="when-to-update">When To Update</h2>

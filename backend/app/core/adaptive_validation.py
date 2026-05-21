@@ -20,6 +20,59 @@ DEFAULT_METHOD = "self_moa"
 HALF_LIFE_DAYS = 30
 
 
+def _server_model_names(server) -> set[str]:
+    """Best-effort model inventory for a routed server/node."""
+    names: set[str] = set()
+    for attr in ("loaded_models", "models", "model_names"):
+        raw = getattr(server, attr, None)
+        if isinstance(raw, (list, tuple, set)):
+            names.update(str(item).strip() for item in raw if str(item).strip())
+    capabilities = getattr(server, "model_capabilities", None)
+    if isinstance(capabilities, dict):
+        names.update(str(name).strip() for name in capabilities if str(name).strip())
+    default_model = getattr(server, "default_model", None) or getattr(server, "model", None)
+    if default_model:
+        names.add(str(default_model).strip())
+    return names
+
+
+def _compute_aware_default_method(project_id: str | None) -> str:
+    """Choose the natural validation method from currently available compute.
+
+    Istara's architecture treats Self-MoA as the constrained fallback. When the
+    project has multiple healthy model endpoints, validation should use the
+    multi-model path without a benchmark or caller forcing a specific node.
+    """
+    try:
+        from app.core.llm_router import llm_router
+
+        servers = [
+            server
+            for server in llm_router._sorted_servers(project_id=project_id)
+            if getattr(server, "is_healthy", False)
+        ]
+    except Exception as exc:
+        logger.debug("Adaptive validation compute inventory failed: %s", exc)
+        return DEFAULT_METHOD
+
+    if not servers:
+        return DEFAULT_METHOD
+
+    distinct_models: set[str] = set()
+    for server in servers:
+        distinct_models.update(_server_model_names(server))
+
+    if len(distinct_models) >= 3:
+        return "full_ensemble"
+    if len(distinct_models) >= 2:
+        return "dual_run"
+    if len(servers) >= 3:
+        return "full_ensemble"
+    if len(servers) >= 2:
+        return "dual_run"
+    return DEFAULT_METHOD
+
+
 def _recency_weight(last_used: datetime) -> float:
     """Exponential decay weight based on recency (half-life = 30 days)."""
     from app.core.datetime_utils import ensure_utc
@@ -41,6 +94,15 @@ class AdaptiveSelector:
         self, project_id: str, skill_name: str = "", agent_id: str = ""
     ) -> str:
         """Select the best validation method for the given context."""
+        compute_default = _compute_aware_default_method(project_id)
+        if compute_default != DEFAULT_METHOD:
+            logger.debug(
+                "Adaptive: selected '%s' from live project compute inventory for project=%s",
+                compute_default,
+                project_id,
+            )
+            return compute_default
+
         try:
             from app.models.method_metric import MethodMetric
             from sqlalchemy import select

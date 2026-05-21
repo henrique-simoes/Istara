@@ -1,6 +1,6 @@
 # Istara Real User UX Research Benchmark
 
-This benchmark is a durable, repeatable long-form rehearsal of Istara as used by a realistic UX researcher. It is intentionally heavier than the normal simulation suite: it installs or targets sandboxed Istara services, generates a large synthetic research corpus, drives the actual UI where possible, exercises API-backed workflows, reviews tasks like a human researcher, records every action, and emits comparison-ready scorecards.
+This benchmark is a durable, repeatable long-form rehearsal of Istara as used by a realistic research team. It is intentionally heavier than the normal simulation suite: it installs or targets sandboxed Istara services, generates a large synthetic research corpus, drives the actual UI where possible, exercises API-backed workflows, reviews tasks like human researchers, records every action, and emits comparison-ready scorecards.
 
 Plan mode is credential-free. Probe and full comparison runs require donated compute and non-empty live chat by default, using the same configured `google/gemma-4-e4b` live-test profile as Istara's LLM eval contract. Offline harness debugging can opt out with explicit environment variables, but those runs should not be treated as product-quality comparisons.
 
@@ -35,7 +35,11 @@ ISTARA_BENCHMARK_ADMIN_PASSWORD='IstaraBenchmarkAdmin123!' \
 npm --prefix tests/real_user_benchmark run full
 ```
 
-The full run starts a fresh Team Mode server sandbox with an admin bootstrap user, drives the browser UI with those credentials, generates a user invite connection string, redeems that invite inside a separate disposable client container, grants the researcher access to the project, and runs a second Playwright journey as that researcher. When compute donation is required, the server must have a network access token before generating compute donation strings; sandbox runs provide one up front, and current Istara servers auto-provision one during admin compute-donation generation when missing. The benchmark then starts a separate relay client container using the same live LLM profile contract as `tests/llm_test_config.py`, waits for project-scoped `/api/compute/stats?project_id=...` to show a relay node, and requires a relay-routed chat response before treating chat as useful evidence.
+The full run starts a fresh Team Mode server sandbox with an admin bootstrap user, drives the browser UI with those credentials, generates researcher invite connection strings, redeems those invites inside separate disposable client containers, grants the researchers access to the project, and runs Playwright journeys for each researcher. When compute donation is required, the server must have a network access token before generating compute donation strings; sandbox runs provide one up front, and current Istara servers auto-provision one during admin compute-donation generation when missing. The benchmark then starts relay client containers using the same live LLM profile contract as `tests/llm_test_config.py`, waits for project-scoped `/api/compute/stats?project_id=...` to show relay nodes, and requires live chat output before treating chat as useful evidence.
+
+Admin-only setup remains admin-owned. Normal research work is performed by authenticated researcher actors: collaborative chat, document/interview analysis, task creation, review/revision, approval, and task-backed Findings/report generation. If a researcher path is blocked by permissions, the run records a role/product finding instead of silently substituting the admin session.
+
+Researcher approval is intentionally strict. A task output that says it is blocked, missing required source material, low confidence because data is unavailable, or synthetic for a source-backed task is sent back for revision instead of being counted as done.
 
 Server and client sandboxes are separate. `--start-sandbox` starts Istara itself; donor/researcher containers are controlled by `ISTARA_BENCHMARK_START_CLIENT_SANDBOXES` and default on whenever donated compute or external connection strings are required. This means you can run the orchestrator outside Docker, generate connection strings in the real admin UI, pass those strings to the benchmark, and still have the benchmark spin up fresh disposable donor/researcher containers.
 
@@ -188,7 +192,7 @@ ISTARA_BENCHMARK_DONOR_COUNT=2 \
 npm --prefix tests/real_user_benchmark run probe
 ```
 
-When two required donors are configured, the benchmark waits for project-scoped `/api/compute/stats?project_id=...` to expose two relay/browser nodes. The run records `compute-donation-results.json`, per-donor `relay-llm-preflight-<donor>.json`, connection-string materialization evidence, route evidence, and whether multi-donor compute was actually verified. If only one donor is reachable, the run is not silently accepted as a multi-donor success.
+When two required donors are configured, the benchmark waits for project-scoped `/api/compute/stats?project_id=...` to expose two relay/browser nodes. The run records `compute-donation-results.json`, per-donor `relay-llm-preflight-<donor>.json`, connection-string materialization evidence, route evidence, and whether multi-donor compute was actually verified. If only one donor is reachable, the run is not silently accepted as a multi-donor success. During the collaborative research workflow, the benchmark also records `natural-compute-orchestration.json`, which observes Istara's normal model manager and scheduler counters after real chat/task/report work without pinning a particular donor. Observing scheduler counters is not the same as proving donor usage; the scorecard keeps those concepts separate.
 
 When the Mac Studio host also donates the same LM Studio endpoint that the server already sees as local capacity, Istara may deduplicate that relay into the server-local node. In that topology the benchmark records the host donor as started and preflighted, but waits for dedicated relay visibility from the simulated donor computers instead of counting the same physical endpoint twice.
 
@@ -218,6 +222,18 @@ colima start --cpu 4 --memory 6 --root-disk 10 --disk 10 --runtime docker
 - `probe`: targets existing services and runs a bounded subset of onboarding, integration, chat, upload, and review flows.
 - `full`: targets or starts sandboxed services and aims for 100 chat turns plus 50 human-approved tasks.
 
+## Real-User Workflow Evidence
+
+The benchmark writes dedicated evidence files for the team workflow:
+
+- `researcher-actors.json`: authenticated researcher accounts and personas.
+- `collaborative-chat-contributions.json`: which researchers contributed chat turns.
+- `collaborative-task-workflow.json`: task creators, reviewers, revision requests, approvals, and actor contributions.
+- `interview-process-evidence.json`: transcript sources plus approved `analyze-interview` task evidence.
+- `natural-compute-orchestration.json`: project-scoped selected/served compute counter deltas after real research work.
+
+Credentialed integrations such as live Figma, Google Stitch, Telegram, and AURA participant channels are optional unless bounded test tokens are explicitly supplied. The harness still exercises local/mock or setup-error paths where available and records missing credential-free participant simulation as future improvement.
+
 ## Important Environment Variables
 
 - `ISTARA_API_URL`: backend URL, default `http://localhost:8000`.
@@ -240,10 +256,10 @@ colima start --cpu 4 --memory 6 --root-disk 10 --disk 10 --runtime docker
 - `ISTARA_BENCHMARK_ADMIN_USERNAME` and `ISTARA_BENCHMARK_ADMIN_PASSWORD`: bootstrap credentials for the sandbox admin account.
 - `ISTARA_BENCHMARK_REQUIRE_COMPUTE_DONATION`: defaults to `1` for every non-plan run. Sandbox server runs use a per-run network token when no `NETWORK_ACCESS_TOKEN` or `ISTARA_BENCHMARK_NETWORK_ACCESS_TOKEN` is present; existing servers auto-provision the token when an admin generates fresh compute donation strings.
 - `ISTARA_BENCHMARK_REQUIRE_LIVE_CHAT`: defaults to `1` for full runs and whenever compute donation is required. Empty assistant text or SSE chat errors fail the benchmark instead of counting the turn.
-- `ISTARA_BENCHMARK_FORCE_DONATED_CHAT=1`: defaults to `1` when compute donation is required. It intentionally makes the server's direct LM Studio and Ollama routes unreachable so chat must fall through to the donated relay path.
+- `ISTARA_BENCHMARK_FORCE_DONATED_CHAT=1`: optional technical isolation mode. It intentionally makes the server's direct LM Studio and Ollama routes unreachable so a probe must fall through to the donated relay path. Leave it unset for the real-user architecture test, where Istara's normal compute/model manager should decide routing and the benchmark observes natural selected/served counters.
 - `ISTARA_BENCHMARK_LMSTUDIO_AUTO_LOAD_ENABLED`: defaults to `true` when compute donation is required so the server can ask the relay to load the configured LM Studio model once before declaring the donated node unusable.
 - `ISTARA_BENCHMARK_LMSTUDIO_AUTO_CONTEXT_RELOAD`: defaults to `true` when compute donation is required so real chat prompts can ask the donated LM Studio relay to reload the configured model with a larger context window before the routing layer opens the streaming circuit breaker.
-- `ISTARA_BENCHMARK_STRICT_AUTO_ROUTING`: defaults to `true` when compute donation is required so the benchmark stays pinned to the configured LM Studio model instead of recovering by loading a different advertised model.
+- `ISTARA_BENCHMARK_STRICT_AUTO_ROUTING`: defaults to `false` for real-user architecture runs so Istara's compute/model manager can naturally choose across registered donated models. It switches on only with `ISTARA_BENCHMARK_FORCE_DONATED_CHAT=1` or an explicit override, which is a technical isolation probe rather than the product-faithful multi-donor benchmark.
 - `ISTARA_BENCHMARK_PRUNE_DANGLING_IMAGES`: defaults to `true`; after Docker rebuilds the harness prunes dangling image layers so repeated runs do not inflate Colima/Docker disk usage. Active containers, tagged images, and volumes are not removed by this step.
 - `ISTARA_BENCHMARK_INSTALL_WHISPER`: defaults to `false` for benchmark Docker builds. Voice transcription remains exercised through UI/API graceful-degradation paths, while avoiding the Torch/Whisper dependency stack in the reusable benchmark image.
 - `ISTARA_BENCHMARK_RELAY_LLM_PROVIDER`, `ISTARA_BENCHMARK_RELAY_LLM_HOST`, `ISTARA_BENCHMARK_RELAY_LLM_MODEL`, `ISTARA_BENCHMARK_RELAY_LLM_API_KEY`: optional overrides for the client-side donated target. If omitted, the benchmark uses `tests/llm_test_config.py` live-profile rules without logging secret values.
@@ -275,7 +291,7 @@ Every run creates a timestamped folder under `tests/real_user_benchmark/.results
 - `conversation-turns.jsonl`: chat prompts, responses, timings, and quality notes.
 - `task-review-log.jsonl`: task creation, review, revision, and approval records.
 - `integration-attempts.jsonl`: third-party integration attempts and classifications.
-- `corpus/`: generated UX research documents.
+- `corpus/`: generated UX research documents plus the shared Istara test document corpus. Probe and full runs default to at least 120 long-form sources so document-heavy agentic workflows are not judged from a tiny fixture set.
 - `corpus-manifest.json`: document inventory and intended use.
 - `screenshots/` and `traces/`: Playwright evidence.
 - `report.md`: human-readable run narrative.

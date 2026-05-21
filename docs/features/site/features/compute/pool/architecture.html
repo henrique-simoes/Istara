@@ -275,6 +275,8 @@
 <li><code>ComputeNode.chat</code>, <code>ComputeNode.chat_stream</code>, <code>ComputeNode.embed</code>, and <code>ComputeNode.embed_batch</code> also require the request project to match <code>allowed_project_ids</code> before direct relay/browser websocket or streaming dispatch, preventing tests, maintenance scripts, or future services from bypassing registry project filtering.</li>
 <li><code>ComputeRegistry.get_stats(project_id=...)</code> and <code>get_warnings(project_id=...)</code> reuse the same project visibility rule so the regular Compute Pool UI cannot disclose other projects&#x27; donors, models, hosts, or RAM totals. The <code>/api/compute/nodes</code>, <code>/api/compute/stats</code>, and <code>/api/compute/model-warnings</code> routes reject missing <code>project_id</code> instead of falling back to global admin capacity; global fleet stats are exposed only by <code>/api/admin/compute/stats</code> after <code>require_global_admin</code>.</li>
 <li>Compute node stats distinguish donor lifecycle states: registration/health comes from visible relay/browser nodes, selection increments <code>selected_request_count</code>, successful chat/stream service increments <code>served_request_count</code>, and failures increment <code>failed_request_count</code>. The real-user benchmark must use these counters or explicit backend route logs/forced topology to prove donor usage; a model override alone is not proof that donated compute served a request.</li>
+<li>Collaborative benchmark scoring separates technical relay verification from natural orchestration evidence. After real chat, task execution, review, and findings work, the benchmark snapshots project-scoped compute stats and records selected/served counter deltas without pinning a specific donor or bypassing Istara&#x27;s model manager. Observing scheduler activity is not enough for full agentic-orchestration credit; the score remains capped until donated relay usage is actually proven.</li>
+<li>Multi-donor real-user benchmarks leave <code>STRICT_AUTO_ROUTING</code> off by default. Enabling it is an explicit single-model isolation mode, because strict routing can intentionally exclude otherwise healthy donated models whose advertised model names differ from the Mac Studio live-test profile.</li>
 <li>The frontmatter and manifest entries are the durable contract for agents updating this page after code changes.</li>
 <li>When the referenced component, store, route, agent, skill, or test behavior changes, regenerate and validate the feature documentation.</li>
 </ul>
@@ -294,6 +296,7 @@
 <li><code>tests/test_compute_registry_model_loading.py</code></li>
 <li><code>tests/test_network_discovery.py</code></li>
 <li><code>tests/test_validation_project_scope.py</code></li>
+<li><code>tests/real_user_benchmark/run.mjs</code></li>
 </ul>
 <h2 id="related-features">Related Features</h2>
 <ul>
@@ -306,7 +309,7 @@
 </ul>
 <h2 id="compass-evidence">Compass Evidence</h2>
 <ul>
-<li>Spec/task: CF-SPEC-60 / CF-774; CF-SPEC-63 / CF-814; CF-SPEC-63 / CF-815; CF-SPEC-66 / CF-856; CF-SPEC-70 / CF-899; CF-SPEC-90 / CF-1142; CF-SPEC-92 / CF-1170</li>
+<li>Spec/task: CF-SPEC-60 / CF-774; CF-SPEC-63 / CF-814; CF-SPEC-63 / CF-815; CF-SPEC-66 / CF-856; CF-SPEC-70 / CF-899; CF-SPEC-90 / CF-1142; CF-SPEC-92 / CF-1170; CF-SPEC-121; CF-SPEC-122</li>
 <li>Inventory source: <code>docs/features/inventory.json</code></li>
 </ul>
 <h2 id="when-to-update">When To Update</h2>

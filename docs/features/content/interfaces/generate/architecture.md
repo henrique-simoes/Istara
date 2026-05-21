@@ -8,9 +8,9 @@ related_features: ["interfaces.screens", "interfaces.design-chat"]
 related_glossary: ["minto-pyramid"]
 code_references: ["frontend/src/components/interfaces/GenerateTab.tsx", "frontend/src/stores/interfacesStore.ts", "backend/app/api/routes/interfaces_screens.py", "backend/app/models/interface_config.py", "backend/app/services/stitch_service.py"]
 api_references: ["backend/app/api/routes/interfaces_screens.py"]
-test_references: ["tests/test_interfaces.py", "tests/test_project_scope_contracts.py"]
-last_verified: 2026-05-19
-compass: CF-SPEC-53 / CF-657; CF-SPEC-60 / CF-763
+test_references: ["tests/test_interfaces.py", "tests/test_project_scope_contracts.py", "tests/real_user_benchmark/run.mjs"]
+last_verified: 2026-05-20
+compass: CF-SPEC-53 / CF-657; CF-SPEC-60 / CF-763; CF-SPEC-121
 ---
 
 # Generate Interfaces Architecture
@@ -43,6 +43,7 @@ The Generate tab creates interface assets or screen proposals from the active pr
 - Screen generation checks project researcher access and stores new `DesignScreen`/`DesignDecision` records with the request project's id.
 - When Stitch is configured, generation uses the active project's encrypted `ProjectInterfaceConfig.stitch_api_key`; otherwise it falls back to the local design tool path for that same project id.
 - Seed findings are resolved within the request project before any generation call is made, preventing cross-project finding references from shaping generated screens.
+- The real-user benchmark records Stitch/mock design-generation attempts as optional credentialed integration evidence. A run without Stitch credentials should still validate the rest of the research workflow and document live design-tool coverage as future improvement.
 - The frontmatter and manifest entries are the durable contract for agents updating this page after code changes.
 - When the referenced component, store, route, agent, skill, or test behavior changes, regenerate and validate the feature documentation.
 
@@ -54,6 +55,7 @@ The Generate tab creates interface assets or screen proposals from the active pr
 
 - `tests/test_interfaces.py`
 - `tests/test_project_scope_contracts.py`
+- `tests/real_user_benchmark/run.mjs`
 
 ## Related Features
 
@@ -66,7 +68,7 @@ The Generate tab creates interface assets or screen proposals from the active pr
 
 ## Compass Evidence
 
-- Spec/task: CF-SPEC-53 / CF-657; CF-SPEC-60 / CF-763
+- Spec/task: CF-SPEC-53 / CF-657; CF-SPEC-60 / CF-763; CF-SPEC-121
 - Inventory source: `docs/features/inventory.json`
 
 ## When To Update

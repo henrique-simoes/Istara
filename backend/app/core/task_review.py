@@ -87,7 +87,7 @@ async def build_atomic_snapshot(db: AsyncSession, task: Task) -> dict:
     nuggets = (
         await db.execute(
             select(Nugget)
-            .where(Nugget.project_id == task.project_id, Nugget.agent_id == task.agent_id)
+            .where(Nugget.project_id == task.project_id, Nugget.task_id == task.id)
             .order_by(Nugget.created_at.desc())
             .limit(25)
         )
@@ -95,7 +95,7 @@ async def build_atomic_snapshot(db: AsyncSession, task: Task) -> dict:
     facts = (
         await db.execute(
             select(Fact)
-            .where(Fact.project_id == task.project_id, Fact.agent_id == task.agent_id)
+            .where(Fact.project_id == task.project_id, Fact.task_id == task.id)
             .order_by(Fact.created_at.desc())
             .limit(25)
         )
@@ -103,7 +103,7 @@ async def build_atomic_snapshot(db: AsyncSession, task: Task) -> dict:
     insights = (
         await db.execute(
             select(Insight)
-            .where(Insight.project_id == task.project_id, Insight.agent_id == task.agent_id)
+            .where(Insight.project_id == task.project_id, Insight.task_id == task.id)
             .order_by(Insight.created_at.desc())
             .limit(25)
         )
@@ -111,7 +111,7 @@ async def build_atomic_snapshot(db: AsyncSession, task: Task) -> dict:
     recommendations = (
         await db.execute(
             select(Recommendation)
-            .where(Recommendation.project_id == task.project_id, Recommendation.agent_id == task.agent_id)
+            .where(Recommendation.project_id == task.project_id, Recommendation.task_id == task.id)
             .order_by(Recommendation.created_at.desc())
             .limit(25)
         )
@@ -305,6 +305,22 @@ async def record_review_side_effects(event: TaskReviewEvent, score: float | None
             )
         except Exception as exc:
             logger.debug(f"Review skill-manager side effect failed: {exc}")
+
+    if event.outcome == APPROVED and event.skill_name:
+        try:
+            from app.core.report_manager import report_manager
+            from app.models.database import async_session
+
+            async with async_session() as report_db:
+                await report_manager.route_approved_task_findings(
+                    event.project_id,
+                    event.task_id,
+                    event.skill_name,
+                    report_db,
+                    consensus_score=event.consensus_score,
+                )
+        except Exception as exc:
+            logger.debug(f"Approved task report-routing side effect failed: {exc}")
 
 
 async def diagnose_review_event(db: AsyncSession, event_id: str) -> None:

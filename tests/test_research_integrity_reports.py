@@ -24,7 +24,7 @@ from app.models.database import Base
 from app.models.codebook_version import CodebookVersion
 from app.models.code_application import CodeApplication
 from app.models.project_report import ProjectReport
-from app.models.task import Task
+from app.models.task import Task, TaskStatus
 from app.core.agent import AgentOrchestrator
 from app.skills.intercoder import cohen_kappa, krippendorff_alpha
 from app.skills.base import SkillOutput
@@ -189,6 +189,56 @@ class TestReportManager:
         report = result.scalar_one()
         finding_ids = json.loads(report.finding_ids_json)
         assert len(finding_ids) == 3  # f-1, f-2, f-3 (no duplicates)
+
+    async def test_task_bound_findings_wait_for_human_approved_done_task(self, db_session):
+        """Task-bound findings should not reach reports while the task is still in review."""
+        manager = ReportManager()
+        task_row = Task(
+            id="task-report-gate",
+            project_id="proj-report-gate",
+            title="Review pending evidence",
+            skill_name="user-interviews",
+            status=TaskStatus.IN_REVIEW,
+            review_state="awaiting_review",
+        )
+        nugget = finding.Nugget(
+            id="nugget-report-gate",
+            project_id="proj-report-gate",
+            task_id=task_row.id,
+            text="Pending review quote",
+            source="interview",
+        )
+        db_session.add_all([task_row, nugget])
+        await db_session.commit()
+
+        await manager.route_findings(
+            "proj-report-gate",
+            "user-interviews",
+            [nugget.id],
+            db_session,
+        )
+        result = await db_session.execute(
+            select(ProjectReport).where(ProjectReport.project_id == "proj-report-gate")
+        )
+        assert result.scalars().all() == []
+
+        task_row.status = TaskStatus.DONE
+        task_row.review_state = "approved"
+        await db_session.commit()
+
+        routed_count = await manager.route_approved_task_findings(
+            "proj-report-gate",
+            task_row.id,
+            "user-interviews",
+            db_session,
+        )
+        assert routed_count == 1
+
+        result = await db_session.execute(
+            select(ProjectReport).where(ProjectReport.project_id == "proj-report-gate")
+        )
+        report = result.scalar_one()
+        assert json.loads(report.finding_ids_json) == [nugget.id]
 
     async def test_synthesis_skill_creates_layer_3(self, db_session):
         """Synthesis skills create layer 3 reports."""

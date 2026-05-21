@@ -11,7 +11,14 @@ import { IstaraApiClient } from "./lib/api-client.mjs";
 import { generateCorpus, PROJECT_CONTEXT } from "./lib/corpus.mjs";
 import { runIntegrationMatrix } from "./lib/integration-discovery.mjs";
 import { BenchmarkLogger, makeRunId } from "./lib/logger.mjs";
-import { buildChatTurns, buildTaskPlan, reviewerAssessment } from "./lib/persona.mjs";
+import {
+  RESEARCHER_PERSONAS,
+  buildChatTurns,
+  buildCollaborativeChatTurns,
+  buildInterviewProcessPlan,
+  buildTaskPlan,
+  reviewerAssessment,
+} from "./lib/persona.mjs";
 import { runUiJourney } from "./lib/playwright-ui.mjs";
 import { scoreRun, writeScorecardMarkdown } from "./lib/scoring.mjs";
 import {
@@ -469,7 +476,7 @@ const backendEnv = loadBackendEnv();
 const liveLlmProfile = liveLlmProfileFromTestingContract();
 const requireComputeDonation = boolEnv("ISTARA_BENCHMARK_REQUIRE_COMPUTE_DONATION", mode !== "plan-only");
 const requireLiveChat = boolEnv("ISTARA_BENCHMARK_REQUIRE_LIVE_CHAT", requireComputeDonation || mode === "full");
-const forceDonatedChat = boolEnv("ISTARA_BENCHMARK_FORCE_DONATED_CHAT", requireComputeDonation);
+const forceDonatedChat = boolEnv("ISTARA_BENCHMARK_FORCE_DONATED_CHAT", false);
 const defaultApiBase = startSandbox && !skipSandbox ? "http://localhost:18000" : "http://localhost:8000";
 const defaultFrontendUrl = startSandbox && !skipSandbox ? "http://localhost:13000" : "http://localhost:3000";
 const apiBase = (process.env.ISTARA_API_URL || defaultApiBase).replace(/\/$/, "");
@@ -710,7 +717,7 @@ const serverLmstudioModel = (
 ).trim();
 const serverLlmProvider = (
   process.env.ISTARA_BENCHMARK_SERVER_LLM_PROVIDER ||
-  (forceDonatedChat ? "lmstudio" : "ollama")
+  (forceDonatedChat || relayLlmProvider === "lmstudio" || liveLlmProfile.baseUrl ? "lmstudio" : "ollama")
 ).trim();
 const serverLmstudioHost = forceDonatedChat
   ? "http://127.0.0.1:9"
@@ -733,11 +740,11 @@ const serverLmstudioAutoContextReload = (
 ).trim();
 const serverStrictAutoRouting = (
   process.env.ISTARA_BENCHMARK_STRICT_AUTO_ROUTING ||
-  (requireComputeDonation ? "true" : "false")
+  (forceDonatedChat ? "true" : "false")
 ).trim();
 const maxChatTurns = intArg("max-chat-turns", mode === "full" ? 100 : mode === "probe" ? 8 : 0);
 const maxTasks = intArg("max-tasks", mode === "full" ? 55 : mode === "probe" ? 8 : 0);
-const maxUploads = intArg("max-uploads", mode === "full" ? 80 : mode === "probe" ? 14 : 0);
+const maxUploads = intArg("max-uploads", mode === "full" ? 140 : mode === "probe" ? 120 : 0);
 const chatTimeoutMs = intArg("chat-timeout-ms", 120000);
 const keepClientContainers = ["1", "true", "yes"].includes(
   String(process.env.ISTARA_BENCHMARK_KEEP_CLIENT_CONTAINERS || "").toLowerCase(),
@@ -835,6 +842,14 @@ const featureResults = {
   interfaces: false,
   multiDonorCompute: false,
   distinctDonorEndpoints: false,
+  researcherUi: false,
+  adminUiRoleContract: false,
+  multiUserCollaboration: false,
+  taskReviewLoop: false,
+  approvedTaskFindings: false,
+  interviewEvidence: false,
+  interviewProcess: false,
+  naturalComputeOrchestration: false,
 };
 
 const sandbox = {
@@ -2626,6 +2641,98 @@ async function grantResearcherProjectAccess(api, projectId, inviteResult) {
   }
 }
 
+function personaForKey(key, fallbackIndex = 0) {
+  return RESEARCHER_PERSONAS.find((persona) => persona.key === key)
+    || RESEARCHER_PERSONAS[Math.min(fallbackIndex, RESEARCHER_PERSONAS.length - 1)]
+    || RESEARCHER_PERSONAS[0];
+}
+
+function actorSummary(actor) {
+  if (!actor) return {};
+  return {
+    key: actor.key,
+    label: actor.label,
+    username: actor.username,
+    role: actor.role,
+    persona: actor.persona?.displayName || actor.displayName || "",
+  };
+}
+
+function actorByKey(actors, key) {
+  return actors.find((actor) => actor.key === key || actor.persona?.key === key || actor.username === key);
+}
+
+function trackActorContribution(map, actor, kind) {
+  const key = actor?.key || actor?.username || "unknown";
+  const current = map.get(key) || {
+    actor: actorSummary(actor),
+    chat_turns: 0,
+    tasks_created: 0,
+    tasks_reviewed: 0,
+    revisions_requested: 0,
+    tasks_approved: 0,
+  };
+  if (kind === "chat") current.chat_turns += 1;
+  if (kind === "created") current.tasks_created += 1;
+  if (kind === "reviewed") current.tasks_reviewed += 1;
+  if (kind === "revision_requested") current.revisions_requested += 1;
+  if (kind === "approved") current.tasks_approved += 1;
+  map.set(key, current);
+}
+
+function makeAdminActor(api) {
+  const persona = personaForKey("admin");
+  return {
+    key: persona.key,
+    label: persona.displayName,
+    displayName: persona.displayName,
+    role: persona.role,
+    persona,
+    username: benchmarkAdminUsername,
+    api,
+  };
+}
+
+async function authenticateResearcherActors(inviteResults) {
+  const actors = [];
+  for (let index = 0; index < inviteResults.length; index += 1) {
+    const inviteResult = inviteResults[index];
+    if (!inviteResult?.ok) continue;
+    const persona = personaForKey(`researcher-${index + 1}`, index + 1);
+    const researcherApi = new IstaraApiClient({
+      apiBase,
+      repoRoot,
+      logger,
+      networkAccessToken: benchmarkNetworkToken,
+      adminUsername: inviteResult.username,
+      adminPassword: inviteResult.password,
+    });
+    const researcherAuth = await researcherApi.authenticate();
+    logger.action("researcher.auth.result", {
+      actor: persona.displayName,
+      actor_key: persona.key,
+      ok: researcherAuth.ok,
+      method: researcherAuth.method,
+      user_id: researcherAuth.user_id,
+    });
+    if (researcherAuth.ok) {
+      actors.push({
+        key: persona.key,
+        label: persona.displayName,
+        displayName: persona.displayName,
+        role: persona.role,
+        persona,
+        api: researcherApi,
+        username: inviteResult.username,
+        password: inviteResult.password,
+        user_id: researcherAuth.user_id,
+      });
+    }
+  }
+  logger.writeJson("researcher-actors.json", actors.map(actorSummary));
+  return actors;
+}
+
 async function linkProjectFolder(api, projectId, corpusDir) {
   const folderPath = startSandbox && !skipSandbox ? `/benchmark-results/runs/${runId}/corpus` : corpusDir;
   try {
@@ -2944,7 +3051,7 @@ function materializeConnectionStrings(generated, overrides) {
   return output;
 }
 
-async function runChatBenchmark(api, projectId, turns) {
+async function runChatBenchmark(api, projectId, turns, { actor = null, contributionMap = null } = {}) {
   let sessionId = null;
   const completed = [];
   for (const turn of turns) {
@@ -2965,9 +3072,13 @@ async function runChatBenchmark(api, projectId, turns) {
       const hasCitation = /interview|survey|usability|diary|ticket|source|file/i.test(content);
       if (hasCitation) featureResults.citedSources = true;
       if (content.trim()) featureResults.liveChat = true;
+      if (contributionMap && actor) trackActorContribution(contributionMap, actor, "chat");
       completed.push({ turn: turn.turn, ok: true });
       logger.chatTurn({
         turn: turn.turn,
+        actor: actor?.label || turn.speaker || "benchmark",
+        actor_key: actor?.key || turn.actor_key || "",
+        actor_role: actor?.role || turn.actor_role || "",
         intent: turn.intent,
         prompt: turn.content,
         ok: true,
@@ -2983,6 +3094,9 @@ async function runChatBenchmark(api, projectId, turns) {
     } catch (error) {
       logger.chatTurn({
         turn: turn.turn,
+        actor: actor?.label || turn.speaker || "benchmark",
+        actor_key: actor?.key || turn.actor_key || "",
+        actor_role: actor?.role || turn.actor_role || "",
         intent: turn.intent,
         prompt: turn.content,
         ok: false,
@@ -3003,7 +3117,90 @@ async function runChatBenchmark(api, projectId, turns) {
   return completed.length;
 }
 
-async function runTaskAgentPass(api, projectId, task, plan, uploaded, { revisionInstruction = "", weakFirstPass = false } = {}) {
+async function runCollaborativeChatBenchmark({ projectId, actors, turns }) {
+  const activeActors = actors.length ? actors : [];
+  if (activeActors.length <= 1) {
+    return runChatBenchmark(activeActors[0]?.api || actors[0]?.api, projectId, turns, { actor: activeActors[0] || null });
+  }
+  const contributionMap = new Map();
+  const sessions = new Map();
+  let completed = 0;
+  for (let index = 0; index < turns.length; index += 1) {
+    const turn = turns[index];
+    const actor = actorByKey(activeActors, turn.actor_key) || activeActors[index % activeActors.length];
+    const started = Date.now();
+    try {
+      const response = await actor.api.sendChat({
+        projectId,
+        message: turn.content,
+        sessionId: sessions.get(actor.key) || null,
+        maxHistory: 40,
+        timeoutMs: chatTimeoutMs,
+      });
+      sessions.set(actor.key, response.session_id || sessions.get(actor.key) || null);
+      const content = response.content || "";
+      if (requireLiveChat && !content.trim()) {
+        throw new Error("Chat returned no assistant text. Live model-backed output is required for this benchmark profile.");
+      }
+      const hasCitation = /interview|survey|usability|diary|ticket|source|file/i.test(content);
+      if (hasCitation) featureResults.citedSources = true;
+      if (content.trim()) featureResults.liveChat = true;
+      trackActorContribution(contributionMap, actor, "chat");
+      completed += 1;
+      logger.chatTurn({
+        turn: turn.turn,
+        actor: actor.label,
+        actor_key: actor.key,
+        actor_role: actor.role,
+        actor_focus: actor.persona?.focus || "",
+        intent: turn.intent,
+        prompt: turn.content,
+        ok: true,
+        duration_ms: Date.now() - started,
+        response_preview: content.slice(0, 1200),
+        event_count: response.events.length,
+        session_id: sessions.get(actor.key),
+        quality_notes: {
+          mentions_sources: hasCitation,
+          response_chars: content.length,
+        },
+      });
+    } catch (error) {
+      logger.chatTurn({
+        turn: turn.turn,
+        actor: actor.label,
+        actor_key: actor.key,
+        actor_role: actor.role,
+        intent: turn.intent,
+        prompt: turn.content,
+        ok: false,
+        duration_ms: Date.now() - started,
+        error: error.message,
+      });
+      logger.issue({
+        area: "chat",
+        severity: "high",
+        title: `Collaborative chat turn ${turn.turn} failed for ${actor.label}`,
+        detail: error.message,
+        evidence: actorSummary(actor),
+      });
+      blockers.push(`Collaborative chat stopped at turn ${turn.turn} for ${actor.label}: ${error.message}`);
+      break;
+    }
+  }
+  if (completed > 0) featureResults.uploadedAndQueried = true;
+  const contributions = Array.from(contributionMap.values());
+  logger.writeJson("collaborative-chat-contributions.json", contributions);
+  logger.action("chat.collaboration.summary", {
+    actor_count: activeActors.length,
+    completed_turns: completed,
+    active_actor_count: contributions.filter((item) => item.chat_turns > 0).length,
+    contributions,
+  });
+  return completed;
+}
+
+async function runTaskAgentPass(api, projectId, task, plan, uploaded, { revisionInstruction = "", weakFirstPass = false, actor = null } = {}) {
   const documentRefs = uploaded
     .slice(0, 8)
     .map((item) => item.file_name || item.result?.saved_as || item.document_id)
@@ -3033,6 +3230,9 @@ async function runTaskAgentPass(api, projectId, task, plan, uploaded, { revision
   logger.action("task.agent_execution", {
     task_id: task.id,
     title: task.title,
+    actor: actor?.label || "benchmark",
+    actor_key: actor?.key || "",
+    actor_role: actor?.role || "",
     weak_first_pass: weakFirstPass,
     response_chars: content.length,
     event_count: response.events?.length || 0,
@@ -3041,49 +3241,93 @@ async function runTaskAgentPass(api, projectId, task, plan, uploaded, { revision
   return content;
 }
 
-async function createReviewAndApproveTasks(api, projectId, taskPlan, uploaded) {
+async function createReviewAndApproveTasks(options, projectIdArg, taskPlanArg, uploadedArg) {
+  const config = options?.adminApi
+    ? options
+    : {
+        adminApi: options,
+        adminActor: makeAdminActor(options),
+        projectId: projectIdArg,
+        taskPlan: taskPlanArg,
+        uploaded: uploadedArg,
+        researcherActors: [],
+      };
+  const {
+    adminApi,
+    adminActor = makeAdminActor(adminApi),
+    projectId,
+    taskPlan,
+    uploaded,
+    researcherActors = [],
+  } = config;
   let approvals = 0;
+  let revisions = 0;
+  const approvedTasks = [];
+  const createdTasks = [];
+  const contributionMap = new Map();
+  const activeResearchers = researcherActors.filter((actor) => actor?.api);
+  const allActors = [...activeResearchers, adminActor].filter((actor) => actor?.api);
   const taskProjectQuery = `project_id=${encodeURIComponent(projectId)}`;
-  for (const plan of taskPlan) {
+  for (let index = 0; index < taskPlan.length; index += 1) {
+    const plan = taskPlan[index];
+    const creator = actorByKey(activeResearchers, plan.creator_key) || activeResearchers[index % activeResearchers.length] || adminActor;
+    const reviewer = actorByKey(activeResearchers, plan.reviewer_key)
+      || activeResearchers[(index + 1) % activeResearchers.length]
+      || adminActor;
     try {
-      const task = await api.post("/api/tasks", {
+      const task = await creator.api.post("/api/tasks", {
         project_id: projectId,
         title: plan.title,
         description: plan.description,
         skill_name: plan.skill_name,
-        user_context: `Benchmark researcher Maya will review this. Acceptance criteria:\n${plan.acceptance.join("\n")}`,
+        user_context: `Benchmark actor ${creator.label} will create this and ${reviewer.label} will review it. Acceptance criteria:\n${plan.acceptance.join("\n")}`,
         input_document_ids: uploadedDocumentIds(uploaded).slice(0, 8),
         urls: plan.title.includes("Integration") ? ["https://example.com/healthcare-coordination-benchmark"] : [],
         instructions: plan.acceptance.join("\n"),
         labels: plan.labels,
         priority: plan.priority,
       });
+      createdTasks.push({ id: task.id, title: task.title, creator: actorSummary(creator), reviewer: actorSummary(reviewer) });
+      trackActorContribution(contributionMap, creator, "created");
       logger.taskReview({
         task_id: task.id,
         title: task.title,
+        actor: creator.label,
+        actor_key: creator.key,
+        actor_role: creator.role,
+        reviewer: reviewer.label,
+        reviewer_key: reviewer.key,
         action: "created",
         outcome: "created",
       });
 
       if (plan.shouldReviseFirst) {
-        const weakNotes = await runTaskAgentPass(api, projectId, task, plan, uploaded, { weakFirstPass: true });
-        const inReview = await api.patch(`/api/tasks/${task.id}?${taskProjectQuery}`, {
+        const weakNotes = await runTaskAgentPass(creator.api, projectId, task, plan, uploaded, { weakFirstPass: true, actor: creator });
+        const inReview = await creator.api.patch(`/api/tasks/${task.id}?${taskProjectQuery}`, {
           status: "in_review",
           agent_notes: weakNotes,
           progress: 1,
           what_to_review: "Check whether this has enough evidence and source specificity.",
         });
         const assessment = reviewerAssessment(plan, inReview.agent_notes);
-        await api.post(`/api/tasks/${task.id}/review/request-revision?${taskProjectQuery}`, {
+        await reviewer.api.post(`/api/tasks/${task.id}/review/request-revision?${taskProjectQuery}`, {
           what_to_review: assessment.revisionInstruction,
           next_status: "in_progress",
-          reviewed_by: "Maya Rodrigues benchmark",
+          reviewed_by: `${reviewer.label} benchmark`,
           severity: "medium",
           failure_category: "unsupported_summary",
         });
+        revisions += 1;
+        trackActorContribution(contributionMap, reviewer, "reviewed");
+        trackActorContribution(contributionMap, reviewer, "revision_requested");
         logger.taskReview({
           task_id: task.id,
           title: task.title,
+          actor: reviewer.label,
+          actor_key: reviewer.key,
+          actor_role: reviewer.role,
+          creator: creator.label,
+          creator_key: creator.key,
           action: "reviewed",
           outcome: "revision_requested",
           issues: assessment.issues,
@@ -3091,10 +3335,11 @@ async function createReviewAndApproveTasks(api, projectId, taskPlan, uploaded) {
         });
       }
 
-      const finalAgentNotes = await runTaskAgentPass(api, projectId, task, plan, uploaded, {
+      const finalAgentNotes = await runTaskAgentPass(creator.api, projectId, task, plan, uploaded, {
         revisionInstruction: "Address any review gaps with concrete source grounding and a clear recommendation.",
+        actor: creator,
       });
-      const revised = await api.patch(`/api/tasks/${task.id}?${taskProjectQuery}`, {
+      const revised = await creator.api.patch(`/api/tasks/${task.id}?${taskProjectQuery}`, {
         status: "in_review",
         agent_notes: finalAgentNotes,
         progress: 1,
@@ -3102,16 +3347,24 @@ async function createReviewAndApproveTasks(api, projectId, taskPlan, uploaded) {
       });
       const finalAssessment = reviewerAssessment(plan, revised.agent_notes);
       if (!finalAssessment.approved) {
-        await api.post(`/api/tasks/${task.id}/review/request-revision?${taskProjectQuery}`, {
+        await reviewer.api.post(`/api/tasks/${task.id}/review/request-revision?${taskProjectQuery}`, {
           what_to_review: finalAssessment.revisionInstruction,
           next_status: "in_progress",
-          reviewed_by: "Maya Rodrigues benchmark",
+          reviewed_by: `${reviewer.label} benchmark`,
           severity: "high",
           failure_category: "reviewer_quality_gate",
         });
+        revisions += 1;
+        trackActorContribution(contributionMap, reviewer, "reviewed");
+        trackActorContribution(contributionMap, reviewer, "revision_requested");
         logger.taskReview({
           task_id: task.id,
           title: task.title,
+          actor: reviewer.label,
+          actor_key: reviewer.key,
+          actor_role: reviewer.role,
+          creator: creator.label,
+          creator_key: creator.key,
           action: "reviewed",
           outcome: "revision_requested",
           issues: finalAssessment.issues,
@@ -3120,14 +3373,31 @@ async function createReviewAndApproveTasks(api, projectId, taskPlan, uploaded) {
         continue;
       }
 
-      const approved = await api.post(`/api/tasks/${task.id}/review/approve?${taskProjectQuery}`, {
-        reviewed_by: "Maya Rodrigues benchmark",
+      const approved = await reviewer.api.post(`/api/tasks/${task.id}/review/approve?${taskProjectQuery}`, {
+        reviewed_by: `${reviewer.label} benchmark`,
         note: finalAssessment.revisionInstruction,
       });
       approvals += 1;
+      trackActorContribution(contributionMap, reviewer, "reviewed");
+      trackActorContribution(contributionMap, reviewer, "approved");
+      approvedTasks.push({
+        id: task.id,
+        title: task.title,
+        creator: actorSummary(creator),
+        reviewer: actorSummary(reviewer),
+        agent_notes: finalAgentNotes,
+        review_event_id: approved.event?.id || "",
+        skill_name: plan.skill_name || "",
+        labels: plan.labels || [],
+      });
       logger.taskReview({
         task_id: task.id,
         title: task.title,
+        actor: reviewer.label,
+        actor_key: reviewer.key,
+        actor_role: reviewer.role,
+        creator: creator.label,
+        creator_key: creator.key,
         action: "reviewed",
         outcome: "approved",
         review_event_id: approved.event?.id || "",
@@ -3139,10 +3409,44 @@ async function createReviewAndApproveTasks(api, projectId, taskPlan, uploaded) {
         severity: "high",
         title: `Task review flow failed for ${plan.title}`,
         detail: error.message,
+        evidence: {
+          creator: actorSummary(creator),
+          reviewer: actorSummary(reviewer),
+        },
       });
     }
   }
-  return approvals;
+  const contributions = Array.from(contributionMap.values());
+  const activeActorCount = contributions.filter((item) => (
+    item.chat_turns > 0
+    || item.tasks_created > 0
+    || item.tasks_reviewed > 0
+    || item.tasks_approved > 0
+  )).length;
+  const result = {
+    approvals,
+    revisions,
+    created_count: createdTasks.length,
+    approvedTasks,
+    createdTasks,
+    actorContributions: contributions,
+    activeActorCount,
+    researcherActorCount: activeResearchers.length,
+    adminActor: actorSummary(adminActor),
+    actor_count: allActors.length,
+  };
+  featureResults.taskReviewLoop = approvals > 0 && (revisions > 0 || taskPlan.some((plan) => plan.shouldReviseFirst));
+  featureResults.multiUserCollaboration = featureResults.multiUserCollaboration || (activeActorCount >= 2 && activeResearchers.length >= 2);
+  logger.writeJson("collaborative-task-workflow.json", result);
+  logger.action("task.collaboration.summary", {
+    approvals,
+    revisions,
+    created_count: createdTasks.length,
+    active_actor_count: activeActorCount,
+    researcher_actor_count: activeResearchers.length,
+    contributions,
+  });
+  return result;
 }
 
 async function exerciseLoopsAutoresearch(api, projectId) {
@@ -3223,6 +3527,180 @@ async function exerciseFindingsReports(api, projectId) {
   }
 }
 
+async function captureComputeSnapshot(api, projectId, label) {
+  if (!projectId) return null;
+  try {
+    const stats = summarizeComputeStats(
+      await api.get(`/api/compute/stats?project_id=${encodeURIComponent(projectId)}`, { timeoutMs: 15000 })
+    );
+    logger.action("compute.natural.snapshot", { label, stats });
+    return stats;
+  } catch (error) {
+    logger.action("compute.natural.snapshot_error", { label, error: error.message });
+    return null;
+  }
+}
+
+function computeRouteDeltas(beforeStats, afterStats, projectId) {
+  const beforeNodes = new Map((beforeStats?.nodes || []).map((node) => [node.node_id, node]));
+  const deltas = (afterStats?.nodes || []).map((node) => {
+    const before = beforeNodes.get(node.node_id) || {};
+    const selectedDelta = Math.max(0, (node.selected_request_count || 0) - (before.selected_request_count || 0));
+    const servedDelta = Math.max(0, (node.served_request_count || 0) - (before.served_request_count || 0));
+    const failedDelta = Math.max(0, (node.failed_request_count || 0) - (before.failed_request_count || 0));
+    return {
+      ...node,
+      selected_delta: selectedDelta,
+      served_delta: servedDelta,
+      failed_delta: failedDelta,
+      project_match: !node.last_served_project_id || node.last_served_project_id === projectId,
+    };
+  });
+  const servedNodes = deltas.filter((node) => node.served_delta > 0 && node.project_match);
+  const selectedNodes = deltas.filter((node) => node.selected_delta > 0);
+  return {
+    selected_delta_total: deltas.reduce((sum, node) => sum + node.selected_delta, 0),
+    served_delta_total: deltas.reduce((sum, node) => sum + node.served_delta, 0),
+    failed_delta_total: deltas.reduce((sum, node) => sum + node.failed_delta, 0),
+    served_node_count: servedNodes.length,
+    selected_node_count: selectedNodes.length,
+    served_nodes: servedNodes,
+    selected_nodes: selectedNodes,
+    nodes: deltas,
+  };
+}
+
+async function recordNaturalComputeOrchestration(api, projectId, beforeStats, label) {
+  const afterStats = await captureComputeSnapshot(api, projectId, label);
+  const routeDeltas = computeRouteDeltas(beforeStats, afterStats, projectId);
+  const result = {
+    label,
+    before: beforeStats,
+    after: afterStats,
+    route_deltas: routeDeltas,
+    verifies_natural_scheduler_use: routeDeltas.served_delta_total > 0 || routeDeltas.selected_delta_total > 0,
+    note: "This evidence observes Istara's normal compute/model scheduler after real research work. It does not pin an individual model or donor.",
+  };
+  featureResults.naturalComputeOrchestration = Boolean(result.verifies_natural_scheduler_use);
+  logger.writeJson("natural-compute-orchestration.json", result);
+  logger.action("compute.natural.orchestration", {
+    label,
+    verifies_natural_scheduler_use: result.verifies_natural_scheduler_use,
+    selected_delta_total: routeDeltas.selected_delta_total,
+    served_delta_total: routeDeltas.served_delta_total,
+    served_node_count: routeDeltas.served_node_count,
+  });
+  return result;
+}
+
+function compactTaskNote(note, fallback) {
+  const text = String(note || fallback || "").replace(/\s+/g, " ").trim();
+  return text.length > 280 ? `${text.slice(0, 277)}...` : text;
+}
+
+async function exerciseTaskBackedFindingsReports(api, projectId, taskWorkflow) {
+  const approvedTasks = taskWorkflow?.approvedTasks || [];
+  if (!approvedTasks.length) {
+    logger.action("feature.findings.task_backed.skip", { reason: "no-approved-tasks" });
+    return false;
+  }
+  const sourceTasks = approvedTasks.slice(0, 3);
+  try {
+    const nugget = await api.post("/api/findings/nuggets", {
+      project_id: projectId,
+      text: `Approved task evidence: ${compactTaskNote(sourceTasks[0]?.agent_notes, sourceTasks[0]?.title)}`,
+      source: `task:${sourceTasks[0].id}`,
+      source_location: "approved_agent_notes",
+      tags: ["task-backed", "real-user-benchmark", "approved-work"],
+      phase: "discover",
+    });
+    const fact = await api.post("/api/findings/facts", {
+      project_id: projectId,
+      text: `Approved task review found usable evidence across ${sourceTasks.length} research task(s).`,
+      nugget_ids: [nugget.id],
+      phase: "define",
+    });
+    const insight = await api.post("/api/findings/insights", {
+      project_id: projectId,
+      text: "Only reviewed and approved agent work should advance into the reporting chain.",
+      fact_ids: [fact.id],
+      phase: "define",
+      impact: "high",
+    });
+    const recommendation = await api.post("/api/findings/recommendations", {
+      project_id: projectId,
+      text: "Generate leadership reporting from approved task outputs, preserving reviewer notes and source traceability.",
+      insight_ids: [insight.id],
+      phase: "deliver",
+      priority: "high",
+      effort: "medium",
+    });
+    featureResults.findingsCreated = true;
+    featureResults.approvedTaskFindings = true;
+    logger.action("feature.findings.task_backed.created", {
+      approved_task_ids: sourceTasks.map((task) => task.id),
+      nugget_id: nugget.id,
+      fact_id: fact.id,
+      insight_id: insight.id,
+      recommendation_id: recommendation.id,
+    });
+  } catch (error) {
+    logger.issue({
+      area: "findings",
+      severity: "medium",
+      title: "Could not create approved-task-backed findings",
+      detail: error.message,
+    });
+  }
+  try {
+    const brief = await api.post("/api/interfaces/handoff/brief", { project_id: projectId }, { timeoutMs: 180000 });
+    featureResults.reportGenerated = true;
+    logger.action("feature.report.task_backed.generated", { result: preview(brief) });
+  } catch (error) {
+    logger.action("feature.report.task_backed.generated", { ok: false, error: error.message });
+  }
+  return Boolean(featureResults.approvedTaskFindings);
+}
+
+function recordInterviewProcessEvidence({ uploaded, taskWorkflow }) {
+  const transcriptFiles = uploaded.filter((item) => {
+    const name = `${item.file_name || ""} ${item.path || ""} ${item.result?.saved_as || ""}`;
+    return /interview|transcript|participant|p\d{2}/i.test(name);
+  });
+  const approvedInterviewTasks = (taskWorkflow?.approvedTasks || []).filter((task) => (
+    task.skill_name === "analyze-interview"
+    || /interview|transcript|participant|aura/i.test(task.title)
+    || (task.labels || []).some((label) => /interview/i.test(label))
+  ));
+  const evidence = {
+    transcript_file_count: transcriptFiles.length,
+    transcript_files: transcriptFiles.slice(0, 12).map((item) => item.file_name || item.result?.saved_as || item.document_id || ""),
+    approved_interview_task_count: approvedInterviewTasks.length,
+    approved_interview_tasks: approvedInterviewTasks.map((task) => ({
+      id: task.id,
+      title: task.title,
+      creator: task.creator,
+      reviewer: task.reviewer,
+    })),
+    credential_free_required_path: "uploaded transcripts plus analyze-interview task workflow",
+    external_channel_required_path: "Telegram/AURA live participant deployment requires explicit bounded test credentials and is documented as future improvement when unavailable.",
+  };
+  featureResults.interviewEvidence = evidence.transcript_file_count > 0 || evidence.approved_interview_task_count > 0;
+  featureResults.interviewProcess = evidence.approved_interview_task_count > 0;
+  logger.writeJson("interview-process-evidence.json", evidence);
+  logger.action("feature.interview_process.evidence", evidence);
+  if (!evidence.approved_interview_task_count) {
+    logger.issue({
+      area: "interviews",
+      severity: "low",
+      title: "Interview process did not reach an approved task",
+      detail: "The benchmark found or generated transcript material, but no analyze-interview task was approved by the collaborative task workflow.",
+      evidence,
+    });
+  }
+  return evidence;
+}
+
 function preview(value) {
   return JSON.parse(JSON.stringify(value, (_key, val) => {
     if (typeof val === "string" && val.length > 400) return `${val.slice(0, 400)}...`;
@@ -3239,15 +3717,16 @@ function writePlanSnapshot(corpusSummary) {
       sha256: systemPromptHash,
       bytes: Buffer.byteLength(systemPromptContent, "utf8"),
     },
-    persona: "Maya Rodrigues, senior UX researcher",
+    persona: "Maya Rodrigues leads a small research team instead of acting as the only user",
+    personas: RESEARCHER_PERSONAS,
     project: PROJECT_CONTEXT,
     requested_full_chat_turns: 100,
     requested_completed_tasks: 50,
     requested_researcher_client_count: runtimeResearcherCount,
     requested_compute_donor_count: donorProfiles.filter((profile) => profile.required).length,
     compute_donor_profiles: donorProfiles.map(summarizeDonorProfile),
-    generated_chat_turn_templates: buildChatTurns({ total: 108 }),
-    generated_task_templates: buildTaskPlan({ total: 60 }),
+    generated_chat_turn_templates: buildCollaborativeChatTurns({ total: 108 }),
+    generated_task_templates: [buildInterviewProcessPlan(), ...buildTaskPlan({ total: 59 })],
     corpus_summary: {
       document_count: corpusSummary.document_count,
       total_bytes: corpusSummary.total_bytes,
@@ -3377,7 +3856,9 @@ async function main() {
   let integrationMatrix = [];
   let chatTurnCount = 0;
   let completedTasks = 0;
-  let researcherInviteResult = null;
+  let taskWorkflow = null;
+  let researcherInviteResults = [];
+  let researcherActors = [];
 
   if (auth.ok) {
     project = await createProject(api);
@@ -3426,13 +3907,12 @@ async function main() {
       await startDonorModelSandbox(donor);
     }
 
-    const researcherInviteResults = [];
+    researcherInviteResults = [];
     for (let index = 0; index < connectionStrings.userInvites.length; index += 1) {
       const result = startInviteClientSandbox(connectionStrings.userInvites[index]?.connection_string || "", index);
       if (result) researcherInviteResults.push(result);
       await grantResearcherProjectAccess(api, project.id, result);
     }
-    researcherInviteResult = researcherInviteResults[0] || null;
     logger.writeJson("connection-client-results.json", {
       attempted: researcherInviteResults.length > 0,
       expected_count: runtimeResearcherCount,
@@ -3445,6 +3925,7 @@ async function main() {
         role: result.parsed?.role || result.parsed?.me_role || "",
       })),
     });
+    researcherActors = await authenticateResearcherActors(researcherInviteResults);
 
     const activeDonorProfiles = [];
     for (let index = 0; index < requiredDonors.length; index += 1) {
@@ -3455,6 +3936,7 @@ async function main() {
       startRelayClientSandbox(donation?.connection_string || "", donor, index);
     }
     await verifyComputeDonation(api, project.id, { activeDonorProfiles });
+    const adminActor = makeAdminActor(api);
 
     const uiResult = await runUiJourney({
       frontendUrl,
@@ -3472,53 +3954,75 @@ async function main() {
     featureResults.uiOnboarding = uiResult.onboarding;
     featureResults.adminUiRoleContract = uiResult.visited && (uiResult.unexpectedForbiddenCount || 0) === 0;
 
-    if (researcherInviteResult?.ok) {
-      const researcherApi = new IstaraApiClient({
-        apiBase,
-        repoRoot,
-        logger,
-        networkAccessToken: benchmarkNetworkToken,
-        adminUsername: researcherInviteResult.username,
-        adminPassword: researcherInviteResult.password,
-      });
-      const researcherAuth = await researcherApi.authenticate();
-      logger.action("researcher.auth.result", {
-        ok: researcherAuth.ok,
-        method: researcherAuth.method,
-        user_id: researcherAuth.user_id,
-      });
-      if (researcherAuth.ok) {
+    let researcherUiSuccessCount = 0;
+    for (let index = 0; index < researcherActors.length; index += 1) {
+      const actor = researcherActors[index];
+      try {
         const researcherUiResult = await runUiJourney({
           frontendUrl,
-          api: researcherApi,
+          api: actor.api,
           projectId: project.id,
           logger,
-          chatTurns: buildChatTurns({ total: 3 }),
-          actor: "researcher",
+          chatTurns: buildCollaborativeChatTurns({ total: 3, actors: [actor.persona] }),
+          actor: actor.key,
           credentials: {
-            username: researcherInviteResult.username,
-            password: researcherInviteResult.password,
+            username: actor.username,
+            password: actor.password,
           },
         });
-        logger.action("researcher.ui.result", researcherUiResult);
-        featureResults.researcherUi = researcherUiResult.visited
+        const ok = researcherUiResult.visited
           && ["chat", "shell", "no_project"].includes(researcherUiResult.finalState)
           && (researcherUiResult.unexpectedForbiddenCount || 0) === 0;
+        if (ok) researcherUiSuccessCount += 1;
+        logger.action("researcher.ui.result", { actor: actorSummary(actor), ok, result: researcherUiResult });
+      } catch (error) {
+        logger.issue({
+          area: "ui",
+          severity: "high",
+          title: `Researcher UI journey failed for ${actor.label}`,
+          detail: error.message,
+          evidence: actorSummary(actor),
+        });
       }
     }
+    featureResults.researcherUi = researcherUiSuccessCount > 0;
+    featureResults.multiUserCollaboration = researcherUiSuccessCount >= Math.min(2, runtimeResearcherCount);
 
-    await exerciseFindingsReports(api, project.id);
+    const computeBeforeResearch = await captureComputeSnapshot(api, project.id, "before-collaborative-research");
     await exerciseLoopsAutoresearch(api, project.id);
     integrationMatrix = await runIntegrationMatrix({ api, projectId: project.id, repoRoot, logger });
     featureResults.interfaces = integrationMatrix.some((item) => ["Google Stitch", "Figma"].includes(item.integration) && item.classification === "developer-harness-tested");
 
     const turns = buildChatTurns({ total: Math.max(maxChatTurns, 0) }).slice(0, maxChatTurns);
     if (turns.length > 0) {
-      chatTurnCount = await runChatBenchmark(api, project.id, turns);
+      const chatActors = researcherActors.length ? researcherActors : [adminActor];
+      const collaborativeTurns = researcherActors.length > 1
+        ? buildCollaborativeChatTurns({ total: turns.length, actors: researcherActors.map((actor) => actor.persona) })
+        : turns;
+      chatTurnCount = researcherActors.length > 1
+        ? await runCollaborativeChatBenchmark({ projectId: project.id, actors: chatActors, turns: collaborativeTurns })
+        : await runChatBenchmark(chatActors[0].api, project.id, turns, { actor: chatActors[0] });
       featureResults.urlFetch = chatTurnCount >= 10 || turns.some((turn) => /URL|fetch|web/i.test(turn.content));
     }
 
-    completedTasks = await createReviewAndApproveTasks(api, project.id, buildTaskPlan({ total: maxTasks }), uploaded);
+    const taskPlan = maxTasks > 0
+      ? [buildInterviewProcessPlan(), ...buildTaskPlan({ total: Math.max(maxTasks - 1, 0) })]
+      : [];
+    taskWorkflow = await createReviewAndApproveTasks({
+      adminApi: api,
+      adminActor,
+      projectId: project.id,
+      taskPlan,
+      uploaded,
+      researcherActors,
+    });
+    completedTasks = taskWorkflow.approvals;
+    recordInterviewProcessEvidence({ uploaded, taskWorkflow });
+    await exerciseTaskBackedFindingsReports(api, project.id, taskWorkflow);
+    if (!featureResults.approvedTaskFindings) {
+      await exerciseFindingsReports(api, project.id);
+    }
+    await recordNaturalComputeOrchestration(api, project.id, computeBeforeResearch, "after-collaborative-research");
   }
 
   if (mode === "full" && chatTurnCount < 100) blockers.push(`Full run completed only ${chatTurnCount}/100 required chat turns.`);
@@ -3550,7 +4054,12 @@ async function main() {
     blocker_count: blockers.length,
     compute_donation_verified: Boolean(featureResults.computeDonation),
     multi_donor_compute_verified: Boolean(featureResults.multiDonorCompute),
+    natural_compute_orchestration_verified: Boolean(featureResults.naturalComputeOrchestration),
     distinct_donor_endpoints_verified: Boolean(featureResults.distinctDonorEndpoints),
+    multi_user_collaboration_verified: Boolean(featureResults.multiUserCollaboration),
+    task_review_loop_verified: Boolean(featureResults.taskReviewLoop),
+    approved_task_findings_verified: Boolean(featureResults.approvedTaskFindings),
+    interview_process_verified: Boolean(featureResults.interviewProcess),
     compute_donor_count_requested: donorProfiles.filter((profile) => profile.required).length,
     compute_donor_count_started: sandbox.relayStartedCount,
     donor_model_server_count_requested: sandbox.modelServerExpectedCount,
@@ -3558,6 +4067,15 @@ async function main() {
     researcher_client_count_requested: runtimeResearcherCount,
     researcher_client_count_started: sandbox.researcherStartedCount,
     live_chat_verified: Boolean(featureResults.liveChat),
+    researcher_actor_count: researcherActors.length,
+    task_workflow_summary: taskWorkflow
+      ? {
+          approvals: taskWorkflow.approvals,
+          revisions: taskWorkflow.revisions,
+          active_actor_count: taskWorkflow.activeActorCount,
+          researcher_actor_count: taskWorkflow.researcherActorCount,
+        }
+      : null,
     integration_classifications: scorecard.integration_summary,
     companion_suites: benchmarkRegistry.companion_suites.map((suite) => suite.path),
     industry_alignment: benchmarkRegistry.industry_alignment.map((item) => item.reference),
@@ -3586,7 +4104,13 @@ async function main() {
   logger.appendReport(`Distinct donor endpoints verified: ${featureResults.distinctDonorEndpoints ? "yes" : "no"}\n\n`);
   logger.appendReport(`Researcher client containers: ${sandbox.researcherStartedCount}/${runtimeResearcherCount} redeemed\n\n`);
   logger.appendReport(`Multi-donor compute verified: ${featureResults.multiDonorCompute ? "yes" : "no"}\n\n`);
+  logger.appendReport(`Natural compute orchestration observed: ${featureResults.naturalComputeOrchestration ? "yes" : "no"}\n\n`);
+  logger.appendReport(`Multi-user collaboration verified: ${featureResults.multiUserCollaboration ? "yes" : "no"}\n\n`);
+  logger.appendReport(`Task review/revision loop verified: ${featureResults.taskReviewLoop ? "yes" : "no"}\n\n`);
+  logger.appendReport(`Approved-task-backed Findings/reporting verified: ${featureResults.approvedTaskFindings ? "yes" : "no"}\n\n`);
+  logger.appendReport(`Interview process verified: ${featureResults.interviewProcess ? "yes" : "no"}\n\n`);
   logger.appendReport(`Live model chat verified: ${featureResults.liveChat ? "yes" : "no"}\n\n`);
+  logger.appendReport("Credentialed integrations (Figma, Stitch, Telegram/AURA live participant paths): optional in this run unless bounded test tokens are explicitly provided.\n\n");
   const colimaStorage = summarizeColimaStorage(latestColimaStorageSnapshot);
   if (colimaStorage) {
     logger.appendReport(`Colima storage: ${colimaStorage.actual_gb} GB actual, ${colimaStorage.apparent_gb} GB apparent\n\n`);
