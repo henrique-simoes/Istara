@@ -24,6 +24,7 @@ from app.core.connection_string import (
     hash_connection_string,
     preview_connection_string,
 )
+from app.core.env_persistence import persist_env_value
 from app.core.field_encryption import hash_field
 from app.core.recovery_codes import replace_recovery_codes
 from app.core.security_middleware import require_admin_from_request
@@ -38,6 +39,21 @@ VALIDATION_RATE_LIMIT = 30
 VALIDATION_RATE_WINDOW_S = 60
 REDEEM_RATE_LIMIT = 10
 REDEEM_RATE_WINDOW_S = 300
+
+
+def _ensure_network_access_token() -> tuple[str, bool]:
+    """Ensure compute donation strings can authenticate relay connections."""
+    token = (settings.network_access_token or "").strip()
+    if token:
+        return token, False
+
+    token = secrets.token_urlsafe(32)
+    settings.network_access_token = token
+    try:
+        persist_env_value("NETWORK_ACCESS_TOKEN", token)
+    except Exception as exc:
+        logger.warning("Could not persist generated NETWORK_ACCESS_TOKEN: %s", exc)
+    return token, True
 
 
 def _strip_text(value: object) -> str:
@@ -246,6 +262,8 @@ async def generate_compute_donation_string(
     elif not allowed_project_ids:
         allowed_project_ids = ["*"]
 
+    network_token, network_token_created = _ensure_network_access_token()
+
     conn_str = create_compute_donation_string(
         server_url=data.server_url,
         ws_url=data.ws_url or None,
@@ -285,6 +303,8 @@ async def generate_compute_donation_string(
                 "has_hash": bool(new_conn.connection_string_hash),
                 "has_ws_url": bool(new_conn.ws_url),
                 "allowed_project_count": len(allowed_project_ids),
+                "network_token_configured": bool(network_token),
+                "network_token_auto_created": network_token_created,
             },
         )
     except Exception:
@@ -297,6 +317,8 @@ async def generate_compute_donation_string(
         "server_url": data.server_url,
         "ws_url": new_conn.ws_url,
         "allowed_project_ids": allowed_project_ids,
+        "network_token_configured": bool(network_token),
+        "network_token_auto_created": network_token_created,
         "label": data.label,
         "expires_at": new_conn.expires_at.isoformat(),
     }

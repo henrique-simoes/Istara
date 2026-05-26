@@ -18,7 +18,13 @@ REQUIRED_SNIPPETS: dict[str, dict[str, str]] = {
         "security scorecard artifact": "istara-security-scorecard",
         "production rehearsal": "python ../scripts/production_rehearsal.py --json",
         "agentic eval contract smoke tests": "tests/test_agentic_eval_contract.py",
+        "project-scope harness smoke tests": "tests/test_harness_project_scope_contracts.py",
+        "marathon integrity smoke tests": "tests/test_marathon_config_integrity.py",
         "property-based contract tests": "pytest ../tests/test_property_contracts.py -q",
+        "relay test harness job": "working-directory: relay",
+        "relay unit test gate": "npm test",
+        "simulation static test gate": "npm run test:static",
+        "real-user benchmark static gate": "npm run check",
         "backend mutation gate": "python ../scripts/run_backend_mutation.py",
         "governed evolution regression tests": (
             "pytest ../tests/test_improvement_governance.py ../tests/test_compute.py -q"
@@ -122,6 +128,9 @@ REQUIRED_SNIPPETS: dict[str, dict[str, str]] = {
     "scripts/check_test_harness.py": {
         "LLM profile audit": "check_llm_profiles",
         "simulation runner audit": "check_simulation_runner",
+        "project-scope harness audit": "check_project_scope_harness",
+        "marathon config integrity audit": "check_marathon_config_integrity",
+        "JavaScript harness static audit": "check_js_static_harness",
         "agentic eval manifest audit": "check_agentic_eval_contract",
         "mutation property harness audit": "check_mutation_property_harness",
     },

@@ -10,8 +10,9 @@ import logging
 import uuid
 from datetime import datetime, timezone
 
-from sqlalchemy import select, func
+from sqlalchemy import select, func, or_
 
+from app.core.research_validity import research_validity_telemetry_contract, telemetry_operation_names
 from app.models.database import async_session
 from app.models.telemetry_span import TelemetrySpan
 
@@ -35,8 +36,16 @@ class TelemetryRecorder:
         status: str = "success",
         quality_score: float | None = None,
         consensus_score: float | None = None,
+        reliability_score: float | None = None,
         error_type: str | None = None,
         error_message: str | None = None,
+        event_kind: str = "",
+        route_id: str = "",
+        donor_id: str = "",
+        retrieval_mode: str = "",
+        coding_run_id: str = "",
+        evidence_unit_id: str = "",
+        codebook_version_id: str = "",
         temperature: float | None = None,
         tool_name: str | None = None,
         tool_success: bool | None = None,
@@ -59,10 +68,18 @@ class TelemetryRecorder:
                     status=status,
                     quality_score=quality_score,
                     consensus_score=consensus_score,
+                    reliability_score=reliability_score,
                     error_type=error_type,
                     error_message=(error_message or "")[:500] if error_message else None,
                     project_id=project_id,
                     task_id=task_id,
+                    event_kind=event_kind,
+                    route_id=route_id,
+                    donor_id=donor_id,
+                    retrieval_mode=retrieval_mode,
+                    coding_run_id=coding_run_id,
+                    evidence_unit_id=evidence_unit_id,
+                    codebook_version_id=codebook_version_id,
                     temperature=temperature,
                     tool_name=tool_name,
                     tool_success=int(tool_success) if tool_success is not None else None,
@@ -73,6 +90,61 @@ class TelemetryRecorder:
                 await session.commit()
         except Exception as e:
             logger.debug(f"Telemetry span write failed: {e}")
+
+    async def record_research_validity_event(
+        self,
+        *,
+        operation: str,
+        project_id: str,
+        trace_id: str | None = None,
+        task_id: str | None = None,
+        status: str = "success",
+        skill_name: str = "",
+        model_name: str = "",
+        agent_id: str = "",
+        route_id: str = "",
+        donor_id: str = "",
+        retrieval_mode: str = "",
+        coding_run_id: str = "",
+        evidence_unit_id: str = "",
+        codebook_version_id: str = "",
+        reliability_score: float | None = None,
+        consensus_score: float | None = None,
+        quality_score: float | None = None,
+        error_type: str | None = None,
+        error_message: str | None = None,
+        source: str = "production",
+    ) -> None:
+        """Record a content-free research-validity lifecycle event.
+
+        The taxonomy lives in ``app.core.research_validity`` so the API,
+        frontend, tests, and docs all reason about the same workflow events.
+        """
+        if operation not in set(telemetry_operation_names()):
+            logger.debug("Unknown research-validity telemetry operation: %s", operation)
+        await self.record_span(
+            trace_id=trace_id or uuid.uuid4().hex[:36],
+            operation=operation,
+            skill_name=skill_name,
+            model_name=model_name,
+            agent_id=agent_id,
+            project_id=project_id,
+            task_id=task_id,
+            status=status,
+            quality_score=quality_score,
+            consensus_score=consensus_score,
+            reliability_score=reliability_score,
+            error_type=error_type,
+            error_message=error_message,
+            event_kind="research_validity",
+            route_id=route_id,
+            donor_id=donor_id,
+            retrieval_mode=retrieval_mode,
+            coding_run_id=coding_run_id,
+            evidence_unit_id=evidence_unit_id,
+            codebook_version_id=codebook_version_id,
+            source=source,
+        )
 
     async def record_json_parse(
         self,
@@ -107,13 +179,19 @@ class TelemetryRecorder:
         temperature: float = 0.7,
         quality: float = 0.5,
         success: bool = True,
+        project_id: str = "",
     ) -> None:
-        """Upsert ModelSkillStats from production path."""
+        """Upsert project-scoped ModelSkillStats from production path."""
+        scoped_project_id = str(project_id or "").strip()
+        if not scoped_project_id:
+            logger.debug("Model performance write skipped: project_id is required")
+            return
         try:
             from app.models.model_skill_stats import ModelSkillStats
 
             async with async_session() as session:
                 stmt = select(ModelSkillStats).where(
+                    ModelSkillStats.project_id == scoped_project_id,
                     ModelSkillStats.skill_name == skill_name,
                     ModelSkillStats.model_name == model_name,
                     ModelSkillStats.temperature == temperature,
@@ -124,6 +202,7 @@ class TelemetryRecorder:
 
                 if row is None:
                     row = ModelSkillStats(
+                        project_id=scoped_project_id,
                         skill_name=skill_name,
                         model_name=model_name,
                         temperature=temperature,
@@ -160,7 +239,10 @@ class TelemetryRecorder:
 
                 stmt = (
                     select(ModelSkillStats)
-                    .where(ModelSkillStats.executions >= 1)
+                    .where(
+                        ModelSkillStats.project_id == project_id,
+                        ModelSkillStats.executions >= 1,
+                    )
                     .order_by(ModelSkillStats.best_quality.desc())
                     .limit(limit)
                 )
@@ -169,6 +251,7 @@ class TelemetryRecorder:
 
                 leaderboard = [
                     {
+                        "project_id": r.project_id,
                         "skill_name": r.skill_name,
                         "model_name": r.model_name,
                         "temperature": r.temperature,
@@ -380,6 +463,123 @@ class TelemetryRecorder:
         except Exception as e:
             logger.debug(f"Task health query failed: {e}")
             return {"status": "unknown", "error_count": 0, "avg_quality": None}
+
+    async def get_research_validity_audit(self, project_id: str, limit: int = 500) -> dict:
+        """Summarize project research-validity telemetry without content payloads."""
+        contract = research_validity_telemetry_contract()
+        operation_meta = {row["operation"]: row for row in contract["operations"]}
+        operation_names = set(operation_meta)
+        capped_limit = max(1, min(limit, 2000))
+        try:
+            async with async_session() as session:
+                stmt = (
+                    select(TelemetrySpan)
+                    .where(
+                        TelemetrySpan.project_id == project_id,
+                        or_(
+                            TelemetrySpan.event_kind == "research_validity",
+                            TelemetrySpan.operation.in_(operation_names),
+                        ),
+                    )
+                    .order_by(TelemetrySpan.created_at.desc())
+                    .limit(capped_limit)
+                )
+                result = await session.execute(stmt)
+                spans = list(result.scalars().all())
+        except Exception as e:
+            logger.warning(f"Research-validity telemetry audit failed: {e}")
+            return {
+                "project_id": project_id,
+                "status": "unavailable",
+                "error_type": "telemetry_query_failed",
+                "operation_counts": {},
+                "category_counts": {},
+                "retrieval_mode_counts": {},
+                "donor_lifecycle_counts": {},
+                "route_evidence_count": 0,
+                "coding_run_ids": [],
+                "evidence_unit_ids": [],
+                "codebook_version_ids": [],
+                "unobserved_contract_operations": telemetry_operation_names(),
+                "content_policy": contract["content_policy"],
+            }
+
+        operation_counts: dict[str, int] = {}
+        category_counts: dict[str, int] = {}
+        status_counts: dict[str, int] = {}
+        retrieval_mode_counts: dict[str, int] = {}
+        donor_lifecycle_counts: dict[str, int] = {}
+        coding_run_ids: set[str] = set()
+        evidence_unit_ids: set[str] = set()
+        codebook_version_ids: set[str] = set()
+        reliability_scores: list[float] = []
+        route_evidence: list[dict] = []
+
+        for span in spans:
+            operation_counts[span.operation] = operation_counts.get(span.operation, 0) + 1
+            category = operation_meta.get(span.operation, {}).get("category", "uncategorized")
+            category_counts[category] = category_counts.get(category, 0) + 1
+            status_counts[span.status] = status_counts.get(span.status, 0) + 1
+            if span.retrieval_mode:
+                retrieval_mode_counts[span.retrieval_mode] = (
+                    retrieval_mode_counts.get(span.retrieval_mode, 0) + 1
+                )
+            if category == "donor_lifecycle":
+                donor_lifecycle_counts[span.operation] = donor_lifecycle_counts.get(span.operation, 0) + 1
+            if span.coding_run_id:
+                coding_run_ids.add(span.coding_run_id)
+            if span.evidence_unit_id:
+                evidence_unit_ids.add(span.evidence_unit_id)
+            if span.codebook_version_id:
+                codebook_version_ids.add(span.codebook_version_id)
+            if span.reliability_score is not None:
+                reliability_scores.append(float(span.reliability_score))
+            if span.route_id or span.donor_id or span.model_name:
+                route_evidence.append(
+                    {
+                        "operation": span.operation,
+                        "status": span.status,
+                        "model_name": span.model_name,
+                        "route_id": span.route_id,
+                        "donor_id": span.donor_id,
+                        "coding_run_id": span.coding_run_id,
+                        "evidence_unit_id": span.evidence_unit_id,
+                        "retrieval_mode": span.retrieval_mode,
+                        "reliability_score": span.reliability_score,
+                        "created_at": span.created_at.isoformat() if span.created_at else None,
+                    }
+                )
+
+        observed = set(operation_counts)
+        reliability_summary = {
+            "count": len(reliability_scores),
+            "min": round(min(reliability_scores), 3) if reliability_scores else None,
+            "max": round(max(reliability_scores), 3) if reliability_scores else None,
+            "avg": round(sum(reliability_scores) / len(reliability_scores), 3)
+            if reliability_scores
+            else None,
+        }
+        return {
+            "project_id": project_id,
+            "status": "ok",
+            "span_count": len(spans),
+            "operation_counts": operation_counts,
+            "category_counts": category_counts,
+            "status_counts": status_counts,
+            "retrieval_mode_counts": retrieval_mode_counts,
+            "donor_lifecycle_counts": donor_lifecycle_counts,
+            "route_evidence_count": len(route_evidence),
+            "route_evidence": route_evidence[:50],
+            "coding_run_ids": sorted(coding_run_ids),
+            "evidence_unit_ids": sorted(evidence_unit_ids),
+            "codebook_version_ids": sorted(codebook_version_ids),
+            "reliability_summary": reliability_summary,
+            "unobserved_contract_operations": [
+                operation for operation in telemetry_operation_names() if operation not in observed
+            ],
+            "content_policy": contract["content_policy"],
+            "protected_fields": contract["protected_fields"],
+        }
 
 
 telemetry_recorder = TelemetryRecorder()

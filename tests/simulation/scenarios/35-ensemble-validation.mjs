@@ -13,6 +13,7 @@ export async function run(ctx) {
     checks.push({ name: "Project available", passed: false, detail: "No persistent project from runner" });
     return { checks, passed: 0, failed: 1 };
   }
+  const projectQuery = `project_id=${encodeURIComponent(projectId)}`;
 
   // 1. LLM servers list endpoint
   try {
@@ -64,7 +65,7 @@ export async function run(ctx) {
       detail: `validation_method=${task.validation_method}, consensus_score=${task.consensus_score}`,
     });
     // Cleanup
-    try { await api.delete(`/api/tasks/${task.id}`); } catch {}
+    try { await api.delete(`/api/tasks/${task.id}?${projectQuery}`); } catch {}
   } catch (e) {
     checks.push({ name: "Task has validation fields", passed: false, detail: e.message });
   }

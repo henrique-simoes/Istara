@@ -28,6 +28,14 @@ class DataIntegrityQuarantineRequest(BaseModel):
     dry_run: bool = True
 
 
+class FileEncryptionEnableRequest(BaseModel):
+    confirm_loss_warning: bool = False
+
+
+class FileEncryptionRotateRequest(BaseModel):
+    confirm_rotation: bool = False
+
+
 def _persist_env(key: str, value: str) -> None:
     """Backward-compatible wrapper for settings persistence."""
     persist_env_value(key, value)
@@ -102,6 +110,83 @@ async def get_hardware_info(request: Request):
             "recommendation": None,
             "error": f"Hardware detection failed: {e}",
         }
+
+
+@router.get("/settings/file-encryption/status")
+async def get_file_encryption_status(request: Request):
+    """Return file/content encryption status without exposing key material."""
+    require_global_role(request, "admin")
+    from app.core.file_encryption import (
+        CRYPTO_AVAILABLE,
+        key_fingerprint,
+        managed_upload_files,
+        is_encrypted_file,
+        resolve_file_encryption_key,
+    )
+
+    files = managed_upload_files()
+    encrypted_files = sum(1 for path in files if is_encrypted_file(path))
+    key_available = bool(resolve_file_encryption_key(create=False))
+    return {
+        "enabled": settings.file_encryption_enabled,
+        "crypto_available": CRYPTO_AVAILABLE,
+        "key_available": key_available,
+        "key_storage": (
+            "environment"
+            if settings.file_encryption_key
+            else "macos_keychain_or_owner_key_file"
+        ),
+        "key_fingerprint": key_fingerprint() if key_available else "",
+        "managed_file_count": len(files),
+        "encrypted_file_count": encrypted_files,
+        "backups_encrypted_when_enabled": True,
+        "warning": (
+            "If the file encryption key is lost, encrypted uploads, document text, "
+            "and encrypted backups cannot be decrypted."
+        ),
+    }
+
+
+@router.post("/settings/file-encryption/enable")
+async def enable_file_encryption(
+    data: FileEncryptionEnableRequest,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+):
+    """Enable encryption and migrate existing managed uploads/document text."""
+    require_global_role(request, "admin")
+    if not data.confirm_loss_warning:
+        raise HTTPException(
+            status_code=400,
+            detail="Confirm that the file encryption key must be saved; losing it is destructive.",
+        )
+    from app.core.file_encryption import CRYPTO_AVAILABLE
+    from app.services.file_encryption_migration import encrypt_existing_project_content
+
+    if not CRYPTO_AVAILABLE:
+        raise HTTPException(status_code=503, detail="cryptography is required for file encryption")
+    settings.file_encryption_enabled = True
+    _persist_env("FILE_ENCRYPTION_ENABLED", "true")
+    result = await encrypt_existing_project_content(db)
+    return {"status": "enabled", **result}
+
+
+@router.post("/settings/file-encryption/rotate")
+async def rotate_file_encryption_key(
+    data: FileEncryptionRotateRequest,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+):
+    """Rotate the file/content encryption key and re-encrypt protected data."""
+    require_global_role(request, "admin")
+    if not settings.file_encryption_enabled:
+        raise HTTPException(status_code=400, detail="File encryption is not enabled.")
+    if not data.confirm_rotation:
+        raise HTTPException(status_code=400, detail="Confirm key rotation before proceeding.")
+    from app.services.file_encryption_migration import rotate_existing_project_content
+
+    result = await rotate_existing_project_content(db)
+    return {"status": "rotated", **result}
 
 
 @router.get("/settings/models")

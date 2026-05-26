@@ -44,6 +44,7 @@ class TelemetrySpan(Base):
 
     quality_score: Mapped[float | None] = mapped_column(Float, nullable=True, default=None)
     consensus_score: Mapped[float | None] = mapped_column(Float, nullable=True, default=None)
+    reliability_score: Mapped[float | None] = mapped_column(Float, nullable=True, default=None)
 
     error_type: Mapped[str | None] = mapped_column(String(50), nullable=True, default=None)
     # "json_parse", "hallucination", "timeout", "rate_limit",
@@ -53,6 +54,13 @@ class TelemetrySpan(Base):
 
     project_id: Mapped[str] = mapped_column(String(36), default="", index=True)
     task_id: Mapped[str | None] = mapped_column(String(36), nullable=True, default=None)
+    event_kind: Mapped[str] = mapped_column(String(80), default="", index=True)
+    route_id: Mapped[str] = mapped_column(String(120), default="", index=True)
+    donor_id: Mapped[str] = mapped_column(String(120), default="", index=True)
+    retrieval_mode: Mapped[str] = mapped_column(String(40), default="")
+    coding_run_id: Mapped[str] = mapped_column(String(36), default="", index=True)
+    evidence_unit_id: Mapped[str] = mapped_column(String(36), default="", index=True)
+    codebook_version_id: Mapped[str] = mapped_column(String(36), default="", index=True)
     temperature: Mapped[float | None] = mapped_column(Float, nullable=True, default=None)
 
     tool_name: Mapped[str | None] = mapped_column(String(100), nullable=True, default=None)

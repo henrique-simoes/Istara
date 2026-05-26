@@ -6,10 +6,14 @@ export const id = "27-agent-identity";
 export async function run(ctx) {
   const { api } = ctx;
   const checks = [];
+  if (!ctx.projectId) {
+    return { checks: [{ name: "Simulation project required", passed: false, detail: "No project ID" }], passed: 0, failed: 1 };
+  }
+  const projectQuery = `project_id=${encodeURIComponent(ctx.projectId)}`;
 
   // ── 1. All 5 system agents have persona names ──
   try {
-    const agentsRes = await api.get("/api/agents");
+    const agentsRes = await api.get(`/api/agents?${projectQuery}`);
     const agents = agentsRes.agents || [];
     const systemAgents = agents.filter((a) => a.is_system);
 
@@ -52,7 +56,7 @@ export async function run(ctx) {
   const agentIds = ["istara-main", "istara-devops", "istara-ui-audit", "istara-ux-eval", "istara-sim"];
   for (const agentId of agentIds) {
     try {
-      const identity = await api.get(`/api/agents/${agentId}/identity`);
+      const identity = await api.get(`/api/agents/${agentId}/identity?${projectQuery}`);
       checks.push({
         name: `${agentId} has persona files loaded`,
         passed: identity.has_persona === true,
@@ -87,7 +91,7 @@ export async function run(ctx) {
 
   // ── 4. Learnings endpoint ──
   try {
-    const learnings = await api.get("/api/agents/istara-main/learnings");
+    const learnings = await api.get(`/api/agents/istara-main/learnings?${projectQuery}`);
     checks.push({
       name: "Learnings endpoint returns correct structure",
       passed: learnings.agent_id === "istara-main" && Array.isArray(learnings.learnings),
@@ -100,7 +104,7 @@ export async function run(ctx) {
   // ── 5. CORE.md content structure ──
   for (const agentId of agentIds) {
     try {
-      const identity = await api.get(`/api/agents/${agentId}/identity`);
+      const identity = await api.get(`/api/agents/${agentId}/identity?${projectQuery}`);
       const core = identity.files?.["CORE.md"] || "";
       checks.push({
         name: `${agentId} CORE.md has Identity section`,
@@ -121,7 +125,7 @@ export async function run(ctx) {
 
   // ── 6. MEMORY.md has learnings structure ──
   try {
-    const identity = await api.get("/api/agents/istara-main/identity");
+    const identity = await api.get(`/api/agents/istara-main/identity?${projectQuery}`);
     const memory = identity.files?.["MEMORY.md"] || "";
     checks.push({
       name: "Istara MEMORY.md has learnings structure",
@@ -135,7 +139,7 @@ export async function run(ctx) {
   // ── 7. Enriched persona files are substantive (80+ lines in CORE.md) ──
   for (const agentId of agentIds) {
     try {
-      const identity = await api.get(`/api/agents/${agentId}/identity`);
+      const identity = await api.get(`/api/agents/${agentId}/identity?${projectQuery}`);
       const core = identity.files?.["CORE.md"] || "";
       const coreLines = core.split("\n").length;
       checks.push({
@@ -156,14 +160,23 @@ export async function run(ctx) {
   }
 
   // ── 8. PUT identity endpoint exists and works ──
+  let identityEditAgentId = null;
   try {
-    const identity = await api.get("/api/agents/istara-main/identity");
+    const editAgent = await api.post("/api/agents", {
+      name: "[SIM-27] Identity Edit Agent",
+      role: "custom",
+      system_prompt: "A project-scoped test agent for identity editing.",
+      capabilities: ["skill_execution"],
+      project_id: ctx.projectId,
+    });
+    identityEditAgentId = editAgent.id;
+    const identity = await api.get(`/api/agents/${identityEditAgentId}/identity?${projectQuery}`);
     const originalCore = identity.files?.["CORE.md"] || "";
     // Save with marker
-    await api.put("/api/agents/istara-main/identity", {
+    await api.put(`/api/agents/${identityEditAgentId}/identity?${projectQuery}`, {
       files: { "CORE.md": originalCore + "\n<!-- test27 -->" },
     });
-    const verify = await api.get("/api/agents/istara-main/identity");
+    const verify = await api.get(`/api/agents/${identityEditAgentId}/identity?${projectQuery}`);
     const hasMarker = (verify.files?.["CORE.md"] || "").includes("<!-- test27 -->");
     checks.push({
       name: "PUT identity endpoint works",
@@ -171,16 +184,20 @@ export async function run(ctx) {
       detail: hasMarker ? "Update confirmed" : "Update not persisted",
     });
     // Restore
-    await api.put("/api/agents/istara-main/identity", {
+    await api.put(`/api/agents/${identityEditAgentId}/identity?${projectQuery}`, {
       files: { "CORE.md": originalCore },
     });
   } catch (e) {
     checks.push({ name: "PUT identity endpoint", passed: false, detail: e.message });
+  } finally {
+    if (identityEditAgentId) {
+      try { await api.delete(`/api/agents/${identityEditAgentId}?${projectQuery}`); } catch {}
+    }
   }
 
   // ── 9. Agent specialties field present ──
   try {
-    const agent = await api.get("/api/agents/istara-main");
+    const agent = await api.get(`/api/agents/istara-main?${projectQuery}`);
     checks.push({
       name: "Agent model has specialties field",
       passed: agent.specialties !== undefined,

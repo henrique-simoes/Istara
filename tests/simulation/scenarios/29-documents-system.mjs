@@ -24,13 +24,14 @@ export async function run(ctx) {
     check(1, "Project setup", false, "No persistent project available from runner");
     return { checks, passed: 0, failed: checks.length };
   }
+  const projectQuery = `project_id=${encodeURIComponent(projectId)}`;
   check(1, "Project setup", true, `Using persistent project: ${projectId}`);
 
   // ──────────────────────────────────────────────────────────────────
   // 1. Documents API endpoint exists
   // ──────────────────────────────────────────────────────────────────
   try {
-    const res = await api.get(`/api/documents?project_id=${projectId}`);
+    const res = await api.get(`/api/documents?${projectQuery}`);
     check(1, "GET /api/documents returns valid response", !!res && "documents" in res && "total" in res, `keys: ${Object.keys(res)}`);
   } catch (e) {
     check(1, "GET /api/documents returns valid response", false, e.message);
@@ -74,7 +75,7 @@ export async function run(ctx) {
   // 3. Get document by ID
   // ──────────────────────────────────────────────────────────────────
   try {
-    const doc = await api.get(`/api/documents/${docId}`);
+    const doc = await api.get(`/api/documents/${docId}?${projectQuery}`);
     const hasContent = doc.content_text && doc.content_text.includes("Interview Analysis");
     const hasAtomicPath = doc.atomic_path && Object.keys(doc.atomic_path).length >= 4;
     const hasTags = Array.isArray(doc.tags) && doc.tags.length === 3;
@@ -109,7 +110,7 @@ export async function run(ctx) {
       phase: "develop",
       content_text: "# Usability Report\n\nCompletion rate: 78%. SUS Score: 72.",
     });
-    const listRes = await api.get(`/api/documents?project_id=${projectId}`);
+    const listRes = await api.get(`/api/documents?${projectQuery}`);
     check(4, "Multiple documents created for test suite",
       listRes.total >= 3,
       `total=${listRes.total}`);
@@ -121,7 +122,7 @@ export async function run(ctx) {
   // 5. Search documents by title content
   // ──────────────────────────────────────────────────────────────────
   try {
-    const res = await api.get(`/api/documents?project_id=${projectId}&search=Survey`);
+    const res = await api.get(`/api/documents?${projectQuery}&search=Survey`);
     const found = res.documents.some(d => d.title.toLowerCase().includes("survey"));
     check(5, "Search by title finds matching documents",
       found && res.documents.length >= 1,
@@ -134,7 +135,7 @@ export async function run(ctx) {
   // 6. Search documents by content
   // ──────────────────────────────────────────────────────────────────
   try {
-    const res = await api.get(`/api/documents?project_id=${projectId}&search=SUS+Score`);
+    const res = await api.get(`/api/documents?${projectQuery}&search=SUS+Score`);
     const found = res.documents.some(d => d.title === "Usability Test Report");
     check(6, "Search by content finds matching documents",
       found,
@@ -147,9 +148,9 @@ export async function run(ctx) {
   // 7. Filter by Double Diamond phase
   // ──────────────────────────────────────────────────────────────────
   try {
-    const discover = await api.get(`/api/documents?project_id=${projectId}&phase=discover`);
-    const define = await api.get(`/api/documents?project_id=${projectId}&phase=define`);
-    const develop = await api.get(`/api/documents?project_id=${projectId}&phase=develop`);
+    const discover = await api.get(`/api/documents?${projectQuery}&phase=discover`);
+    const define = await api.get(`/api/documents?${projectQuery}&phase=define`);
+    const develop = await api.get(`/api/documents?${projectQuery}&phase=develop`);
     check(7, "Phase filter returns correct documents",
       discover.documents.length >= 1 && define.documents.length >= 1 && develop.documents.length >= 1,
       `discover=${discover.documents.length}, define=${define.documents.length}, develop=${develop.documents.length}`);
@@ -161,7 +162,7 @@ export async function run(ctx) {
   // 8. Filter by tag
   // ──────────────────────────────────────────────────────────────────
   try {
-    const res = await api.get(`/api/documents?project_id=${projectId}&tag=interviews`);
+    const res = await api.get(`/api/documents?${projectQuery}&tag=interviews`);
     check(8, "Tag filter returns tagged documents",
       res.documents.length >= 1 && res.documents[0].tags.includes("interviews"),
       `results=${res.documents.length}`);
@@ -198,7 +199,7 @@ export async function run(ctx) {
   // 11. Update document (add tags, change phase)
   // ──────────────────────────────────────────────────────────────────
   try {
-    const updated = await api.patch(`/api/documents/${docId}`, {
+    const updated = await api.patch(`/api/documents/${docId}?${projectQuery}`, {
       tags: ["interviews", "onboarding", "friction", "priority-high"],
       phase: "define",
     });
@@ -213,7 +214,7 @@ export async function run(ctx) {
   // 12. Document content endpoint
   // ──────────────────────────────────────────────────────────────────
   try {
-    const content = await api.get(`/api/documents/${docId}/content`);
+    const content = await api.get(`/api/documents/${docId}/content?${projectQuery}`);
     check(12, "Document content endpoint returns content",
       content.content && content.content.includes("Interview Analysis"),
       `content_length=${content.content?.length || 0}`);
@@ -225,7 +226,7 @@ export async function run(ctx) {
   // 13. Full-text search API endpoint
   // ──────────────────────────────────────────────────────────────────
   try {
-    const res = await api.get(`/api/documents/search/full?project_id=${projectId}&q=onboarding`);
+    const res = await api.get(`/api/documents/search/full?${projectQuery}&q=onboarding`);
     check(13, "Full-text search endpoint works",
       res.results.length >= 1 && res.query === "onboarding",
       `results=${res.results.length}`);
@@ -296,8 +297,8 @@ export async function run(ctx) {
   // 15. Filter by source type
   // ──────────────────────────────────────────────────────────────────
   try {
-    const agent = await api.get(`/api/documents?project_id=${projectId}&source=agent_output`);
-    const task = await api.get(`/api/documents?project_id=${projectId}&source=task_output`);
+    const agent = await api.get(`/api/documents?${projectQuery}&source=agent_output`);
+    const task = await api.get(`/api/documents?${projectQuery}&source=task_output`);
     check(15, "Source filter returns correct documents",
       agent.documents.length >= 1 && task.documents.length >= 1,
       `agent_output=${agent.documents.length}, task_output=${task.documents.length}`);
@@ -309,7 +310,7 @@ export async function run(ctx) {
   // 16. Document atomic path is preserved and accessible
   // ──────────────────────────────────────────────────────────────────
   try {
-    const doc = await api.get(`/api/documents/${docId}`);
+    const doc = await api.get(`/api/documents/${docId}?${projectQuery}`);
     const ap = doc.atomic_path || {};
     check(16, "Atomic path preserved with step details",
       ap.step_1 && ap.step_2 && ap.step_3 && ap.step_4,
@@ -322,7 +323,7 @@ export async function run(ctx) {
   // 17. Pagination works
   // ──────────────────────────────────────────────────────────────────
   try {
-    const page1 = await api.get(`/api/documents?project_id=${projectId}&page=1&page_size=2`);
+    const page1 = await api.get(`/api/documents?${projectQuery}&page=1&page_size=2`);
     check(17, "Pagination returns correct page structure",
       page1.page === 1 && page1.page_size === 2 && page1.total >= 3 && page1.total_pages >= 2,
       `page=${page1.page}, page_size=${page1.page_size}, total=${page1.total}, total_pages=${page1.total_pages}`);
@@ -521,11 +522,11 @@ export async function run(ctx) {
       source: "external",
     });
     // Delete it
-    const delRes = await fetch(`http://localhost:8000/api/documents/${tempDoc.id}`, { method: "DELETE", headers: api._headers() });
+    const delRes = await fetch(`http://localhost:8000/api/documents/${tempDoc.id}?${projectQuery}`, { method: "DELETE", headers: api._headers() });
     // Verify it's gone
     let gone = false;
     try {
-      await api.get(`/api/documents/${tempDoc.id}`);
+      await api.get(`/api/documents/${tempDoc.id}?${projectQuery}`);
     } catch {
       gone = true;
     }

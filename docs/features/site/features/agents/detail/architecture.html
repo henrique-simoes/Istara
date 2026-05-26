@@ -264,9 +264,11 @@
 <li>The feature is mounted through <code>frontend/src/components/agents/AgentsView.tsx</code> and the UI navigation path recorded in the inventory.</li>
 <li>Shared detail access policy lives in <code>backend/app/api/agent_project_scope.py</code>, with the route layer passing active project ids from <code>frontend/src/lib/api.ts</code>.</li>
 <li>Detail, identity, prompt diagnostic, learning, and memory reads must include the active project for non-admin users. The backend verifies that project-scoped agents belong to that project before returning agent data.</li>
-<li>Detail panel mutations are project-owned operations. The UI only exposes pause/resume, delete, identity-save, permissions toggles, export, and import for agents whose <code>project_id</code> matches the active project, and every corresponding API call includes that active project id.</li>
+<li>Detail panel mutations are project-owned operations. The UI only exposes pause/resume, delete, identity-save, permissions toggles, export, and import for agents whose <code>project_id</code> matches the active project when the shared role-capability contract says the user is a global admin or active-project admin. Every corresponding API call includes that active project id.</li>
+<li>The embedded steering input follows the current backend steering contract and is mounted only for global-admin-capable sessions.</li>
 <li>The backend rejects project-facing detail mutations when <code>project_id</code> is missing, when the id belongs to another project, or when the target is a universal/system agent whose mutable state is shared outside the current project.</li>
 <li>Structured agent learnings are stored and retrieved only with an explicit project id. Project task failures or review feedback must not append private project content into universal persona MEMORY overlays.</li>
+<li>Agent-run and manually-run skill outputs are stored as candidate/provisional Research Spine artifacts unless exact source spans are available for governed coding and later reliability/reconciliation gates accept them. Agent detail and work history must not imply those artifacts are reportable before Done-task approval.</li>
 <li>Self-evolution candidate scans, auto-evolution, and promotion mutations require an explicit active project id. The route and engine reject paused or missing projects before returning candidates or writing persona-file promotions, so one project&#x27;s evidence cannot mature or mutate another project&#x27;s agent behavior.</li>
 <li>Agent promotion review notifications are persisted with the selected agent&#x27;s owning project id and project metadata. Review queues must not create global notification records from project-owned agent improvement activity.</li>
 <li>Universal agent runtime memory is not exposed in project detail panels for non-admin users; project-specific notes should be read through the project-scoped memory APIs.</li>
@@ -296,7 +298,7 @@
 </ul>
 <h2 id="compass-evidence">Compass Evidence</h2>
 <ul>
-<li>Spec/task: CF-SPEC-60 / CF-776; CF-SPEC-68 / CF-870; CF-SPEC-83 / CF-1075; CF-SPEC-89 / CF-1125</li>
+<li>Spec/task: CF-SPEC-60 / CF-776; CF-SPEC-68 / CF-870; CF-SPEC-83 / CF-1075; CF-SPEC-89 / CF-1125; CF-SPEC-129</li>
 <li>Inventory source: <code>docs/features/inventory.json</code></li>
 </ul>
 <h2 id="when-to-update">When To Update</h2>

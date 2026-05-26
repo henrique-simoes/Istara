@@ -14,6 +14,7 @@ from app.models.design_screen import DesignBrief, DesignDecision, DesignScreen
 from app.models.finding import Insight, Recommendation
 from app.models.interface_config import ProjectInterfaceConfig
 from app.models.project import Project
+from app.services.design_evidence import build_seeded_prompt, resolve_seed_findings
 
 
 @pytest.fixture(autouse=True)
@@ -101,6 +102,32 @@ async def _seed_insight(project_id: str) -> Insight:
 
 
 @pytest.mark.asyncio
+async def test_seeded_design_prompt_marks_provisional_research_context():
+    """Design generation prompts must not turn provisional findings into trusted context."""
+    await init_db()
+    project = await _seed_project("Seed Prompt Validity")
+    rec = await _seed_recommendation(project.id)
+
+    async with async_session() as db:
+        seed_findings, missing = await resolve_seed_findings(
+            db,
+            project.id,
+            [rec.id],
+        )
+
+    prompt = build_seeded_prompt("Create a calmer onboarding screen", seed_findings)
+
+    assert missing == []
+    assert seed_findings[0].research_validity is not None
+    assert seed_findings[0].research_validity["status"] == "provisional"
+    assert seed_findings[0].research_validity["report_allowed"] is False
+    assert seed_findings[0].to_dict()["research_validity"]["status"] == "provisional"
+    assert f"[recommendation:{rec.id} provisional]" in prompt
+    assert "candidate context only" in prompt
+    assert "not accepted report evidence" in prompt
+
+
+@pytest.mark.asyncio
 async def test_interfaces_screens_returns_list(auth_headers):
     """GET /api/interfaces/screens returns screen list."""
     await init_db()
@@ -113,6 +140,46 @@ async def test_interfaces_screens_returns_list(auth_headers):
         )
         assert response.status_code == 200
         assert isinstance(response.json(), list)
+
+
+@pytest.mark.asyncio
+async def test_interfaces_screens_surface_research_spine_state(auth_headers):
+    """Screens must show whether their research seeds are accepted or provisional."""
+    await init_db()
+    project = await _seed_project("Screen Validity")
+    rec = await _seed_recommendation(project.id)
+    screen = DesignScreen(
+        id=str(uuid.uuid4()),
+        project_id=project.id,
+        title="Seeded screen",
+        description="Uses a provisional recommendation",
+        prompt="Design an onboarding screen",
+        device_type="DESKTOP",
+        source_findings=json.dumps([rec.id]),
+    )
+    async with async_session() as db:
+        db.add(screen)
+        await db.commit()
+
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        listed = await ac.get(
+            f"/api/interfaces/screens?project_id={project.id}",
+            headers=auth_headers,
+        )
+        fetched = await ac.get(
+            f"/api/interfaces/screens/{screen.id}",
+            headers=auth_headers,
+        )
+
+    assert listed.status_code == 200
+    payload = next(item for item in listed.json() if item["id"] == screen.id)
+    assert payload["source_findings"] == [rec.id]
+    assert payload["source_finding_details"][0]["id"] == rec.id
+    assert payload["source_finding_details"][0]["research_validity"]["status"] == "provisional"
+    assert payload["research_validity"]["report_allowed"] is False
+    assert fetched.status_code == 200
+    assert fetched.json()["research_validity"]["blocked_source_ids"] == [rec.id]
 
 
 @pytest.mark.asyncio
@@ -275,7 +342,10 @@ async def test_handoff_briefs_hydrate_evidence_payload(auth_headers):
     assert response.status_code == 200
     payload = response.json()["briefs"][0]
     assert payload["source_findings"][0]["id"] == insight.id
+    assert payload["source_findings"][0]["research_validity"]["status"] == "provisional"
     assert payload["recommendations"][0]["id"] == rec.id
+    assert payload["recommendations"][0]["research_validity"]["report_allowed"] is False
+    assert payload["research_validity"]["report_allowed"] is False
     assert payload["ux_laws"]
 
 
@@ -358,7 +428,10 @@ async def test_handoff_dev_spec_resolves_source_findings(auth_headers):
     payload = response.json()
     assert payload["success"] is True
     assert "Developer Spec" in payload["content"]
+    assert "(provisional)" in payload["content"]
     assert payload["dev_spec"]["source_findings"][0]["id"] == rec.id
+    assert payload["dev_spec"]["source_findings"][0]["research_validity"]["status"] == "provisional"
+    assert payload["dev_spec"]["research_validity"]["report_allowed"] is False
 
 
 @pytest.mark.asyncio

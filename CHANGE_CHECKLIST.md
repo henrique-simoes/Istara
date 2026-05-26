@@ -491,7 +491,7 @@ Before pushing to production:
 
 ### Testing
 - [ ] All tests pass: `pytest tests/`
-- [ ] All E2E tests pass: `pytest tests/e2e_test.py`
+- [ ] All E2E tests pass: `python tests/e2e_test.py`
 - [ ] Simulation scenarios pass: `node tests/simulation/run.mjs`
 - [ ] Relevant future-facing test coverage was added or updated for the changed behavior
 - [ ] If the changed behavior introduces a new user journey, installer path, onboarding path, release path, or major feature flow, a new simulation scenario was added instead of only stretching unrelated coverage
@@ -562,16 +562,16 @@ Before pushing to production:
 
 - [ ] Changes pushed to the correct review target: `staging` by default, or a review/integration branch for stale/divergent work
 - [ ] **Stale branch check:** Verify branch age, divergence, and deleted/resurrected paths with Compass Forge and `git` before treating it as a merge candidate
-- [ ] TESTING.md updated — entry added under "Awaiting Review"
+- [ ] Testing evidence recorded in `testing/TEST_HISTORY.md` when the run becomes release-relevant
 - [ ] Changes tested locally on the branch that contains the proposed change (`git checkout <branch> && ./istara.sh start`)
 - [ ] E2E tests pass: `ISTARA_ADMIN_USER=<user> ISTARA_ADMIN_PASSWORD=<pass> python tests/e2e_test.py`
 - [ ] Unit tests pass: `pytest tests/`
 - [ ] Simulation scenarios pass: `ADMIN_USERNAME=<user> ADMIN_PASSWORD=<pass> node tests/simulation/run.mjs --skip-skills`
-- [ ] TESTING.md entry moved to "Verified & Ready for main"
+- [ ] `testing/TEST_HISTORY.md` entry updated with final verified status when this becomes release evidence
 - [ ] PR created from the reviewed integration path → main
 - [ ] CI passes on PR (governance + backend checks)
 - [ ] PR reviewed and merged
-- [ ] TESTING.md verified entries cleared after merge
+- [ ] Temporary run artifacts remain in ignored result folders after merge; only durable summaries stay in `testing/TEST_HISTORY.md`
 
 ### Release Flow
 - [ ] Only release-worthy pushes to `main` are being treated as releases
@@ -746,7 +746,7 @@ lms server start  # Starts on http://localhost:1234
 
 # Tests
 pytest tests/
-pytest tests/simulation/run.mjs
+node tests/simulation/run.mjs
 python scripts/check_integrity.py
 python scripts/check_ci_governance.py
 ```

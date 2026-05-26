@@ -17,25 +17,14 @@ export async function run(ctx) {
   // ── Helper: ensure we have a project ──
   let projectId = ctx.projectId;
   if (!projectId) {
-    try {
-      const created = await api.post("/api/projects", {
-        name: "[SIM-45] Interfaces Test Project",
-        description: "Temporary project for Interfaces menu integration tests",
-      });
-      projectId = created.id;
-    } catch {
-      // Fall back to any existing project
-      try {
-        const projects = await api.get("/api/projects");
-        const list = projects.projects || projects || [];
-        if (list.length > 0) projectId = list[0].id;
-      } catch {}
-    }
+    return [{ name: "Project available for interfaces menu", passed: false, detail: "No persistent project from runner" }];
   }
+  const projectQuery = `project_id=${encodeURIComponent(projectId)}`;
+  const statusPath = `/api/interfaces/status?${projectQuery}`;
 
   // ── 1. GET /api/interfaces/status ──
   try {
-    const status = await api.get("/api/interfaces/status");
+    const status = await api.get(statusPath);
     checks.push({
       name: "GET /api/interfaces/status returns 200",
       passed: true,
@@ -114,7 +103,7 @@ export async function run(ctx) {
   // ── 3. List screens — verify generated screen appears ──
   if (projectId) {
     try {
-      const screens = await api.get(`/api/interfaces/screens?project_id=${projectId}`);
+      const screens = await api.get(`/api/interfaces/screens?${projectQuery}`);
       const screenList = Array.isArray(screens) ? screens : screens.screens || [];
       checks.push({
         name: "GET /api/interfaces/screens returns array",
@@ -228,7 +217,7 @@ export async function run(ctx) {
         detail: `status=${res.status}`,
       });
       // Verify removed from list
-      const screens = await api.get(`/api/interfaces/screens?project_id=${projectId}`);
+      const screens = await api.get(`/api/interfaces/screens?${projectQuery}`);
       const screenList = Array.isArray(screens) ? screens : screens.screens || [];
       const stillPresent = screenList.some((s) => s.id === editedScreenId);
       checks.push({
@@ -245,9 +234,12 @@ export async function run(ctx) {
 
   // ── 8. Configure Stitch key (save original, test, restore) ──
   try {
-    const beforeStatus = await api.get("/api/interfaces/status");
+    const beforeStatus = await api.get(statusPath);
     const wasStitchConfigured = beforeStatus.stitch_configured;
-    const result = await api.post("/api/interfaces/configure/stitch", { api_key: "sim-test-key-45" });
+    const result = await api.post("/api/interfaces/configure/stitch", {
+      project_id: projectId,
+      api_key: "sim-test-key-45",
+    });
     checks.push({
       name: "Configure Stitch returns success",
       passed: result.success === true && result.stitch_configured === true,
@@ -256,7 +248,7 @@ export async function run(ctx) {
     // Restore: if it was configured before, we can't restore the real key via API
     // so we leave it configured (test key is harmless). If it wasn't, reset to empty.
     if (!wasStitchConfigured) {
-      await api.post("/api/interfaces/configure/stitch", { api_key: "" });
+      await api.post("/api/interfaces/configure/stitch", { project_id: projectId, api_key: "" });
     }
   } catch (e) {
     checks.push({ name: "Configure Stitch returns success", passed: false, detail: e.message });
@@ -264,16 +256,19 @@ export async function run(ctx) {
 
   // ── 9. Configure Figma token (save original, test, restore) ──
   try {
-    const beforeFigma = await api.get("/api/interfaces/status");
+    const beforeFigma = await api.get(statusPath);
     const wasFigmaConfigured = beforeFigma.figma_configured;
-    const result = await api.post("/api/interfaces/configure/figma", { api_token: "sim-test-token-45" });
+    const result = await api.post("/api/interfaces/configure/figma", {
+      project_id: projectId,
+      api_token: "sim-test-token-45",
+    });
     checks.push({
       name: "Configure Figma returns success",
       passed: result.success === true && result.figma_configured === true,
       detail: `success=${result.success}, configured=${result.figma_configured}`,
     });
     if (!wasFigmaConfigured) {
-      await api.post("/api/interfaces/configure/figma", { api_token: "" });
+      await api.post("/api/interfaces/configure/figma", { project_id: projectId, api_token: "" });
     }
   } catch (e) {
     checks.push({ name: "Configure Figma returns success", passed: false, detail: e.message });
@@ -301,7 +296,7 @@ export async function run(ctx) {
   // ── 11. Handoff briefs endpoint ──
   if (projectId) {
     try {
-      const briefs = await api.get(`/api/interfaces/handoff/briefs?project_id=${projectId}`);
+      const briefs = await api.get(`/api/interfaces/handoff/briefs?${projectQuery}`);
       checks.push({
         name: "GET /api/interfaces/handoff/briefs returns 200",
         passed: !!briefs && (briefs.briefs !== undefined || Array.isArray(briefs)),
@@ -320,7 +315,7 @@ export async function run(ctx) {
       body: JSON.stringify({
         prompt: "A login screen",
         device_type: "mobile",
-        project_id: projectId || "test",
+        project_id: projectId,
       }),
     });
     checks.push({
@@ -339,7 +334,7 @@ export async function run(ctx) {
       headers: api._headers(),
       body: JSON.stringify({
         figma_url: "https://figma.com/file/test123",
-        project_id: projectId || "test",
+        project_id: projectId,
       }),
     });
     checks.push({
@@ -353,7 +348,7 @@ export async function run(ctx) {
 
   // ── 14. Design decisions endpoint ──
   try {
-    const decisions = await api.get(`/api/findings/design-decisions?project_id=${projectId}`);
+    const decisions = await api.get(`/api/findings/design-decisions?${projectQuery}`);
     checks.push({
       name: "GET /api/findings/design-decisions returns 200",
       passed: true,
@@ -377,11 +372,14 @@ export async function run(ctx) {
 
   // ── 16. Onboarding flips after configuration ──
   try {
-    const before = await api.get("/api/interfaces/status");
+    const before = await api.get(statusPath);
     const wasPending = before.onboarding_needed;
     // Configure stitch
-    await api.post("/api/interfaces/configure/stitch", { api_key: "sim-test-onboarding" });
-    const after = await api.get("/api/interfaces/status");
+    await api.post("/api/interfaces/configure/stitch", {
+      project_id: projectId,
+      api_key: "sim-test-onboarding",
+    });
+    const after = await api.get(statusPath);
     checks.push({
       name: "Onboarding_needed flips false after Stitch config",
       passed: after.onboarding_needed === false || after.stitch_configured === true,
@@ -389,7 +387,7 @@ export async function run(ctx) {
     });
     // Only reset if it wasn't configured before
     if (wasPending) {
-      await api.post("/api/interfaces/configure/stitch", { api_key: "" });
+      await api.post("/api/interfaces/configure/stitch", { project_id: projectId, api_key: "" });
     }
   } catch (e) {
     checks.push({ name: "Onboarding flips after configuration", passed: false, detail: e.message });
@@ -400,7 +398,7 @@ export async function run(ctx) {
     try { await fetch(`http://localhost:8000/api/interfaces/screens/${id}`, { method: "DELETE", headers: api._headers() }); } catch {}
   }
   for (const id of cleanup.decisionIds) {
-    try { await api.delete(`/api/findings/design-decisions/${id}?project_id=${projectId}`); } catch {}
+    try { await api.delete(`/api/findings/design-decisions/${id}?${projectQuery}`); } catch {}
   }
 
   return {

@@ -1,8 +1,16 @@
+import json
 import uuid
+from datetime import UTC, datetime, timedelta
 
 from app.core.auth import hash_password
 from app.core.auth_sessions import issue_auth_session_token
+from app.core.connection_string import (
+    create_compute_donation_string,
+    hash_connection_string,
+    preview_connection_string,
+)
 from app.core.field_encryption import hash_field
+from app.models.connection_string import ConnectionString
 from app.models.database import async_session
 from app.models.project import Project
 from app.models.project_member import ProjectMember
@@ -119,6 +127,64 @@ async def test_relay_websocket_accepts_network_token_and_cleans_up_node():
         assert compute_registry._nodes == {}
     finally:
         settings.network_access_token = original_network_token
+        compute_registry._nodes.clear()
+        compute_registry._nodes.update(original_nodes)
+
+
+@pytest.mark.asyncio
+async def test_relay_websocket_uses_registration_connection_string_scope(monkeypatch):
+    original_nodes = dict(compute_registry._nodes)
+    try:
+        compute_registry._nodes.clear()
+        await init_db()
+        monkeypatch.setattr(settings, "network_access_token", "relay-test-token")
+        project_id = f"relay-project-{uuid.uuid4().hex}"
+        conn_str = create_compute_donation_string(
+            "http://localhost:3000",
+            ws_url="ws://localhost:8000/ws/relay",
+            label="Scoped relay donor",
+            allowed_project_ids=[project_id],
+        )
+        async with async_session() as db:
+            db.add(
+                ConnectionString(
+                    connection_string=preview_connection_string(conn_str),
+                    connection_string_hash=hash_connection_string(conn_str),
+                    token_type="compute_donation",
+                    label="Scoped relay donor",
+                    server_url="http://localhost:3000",
+                    ws_url="ws://localhost:8000/ws/relay",
+                    intended_role="compute_node",
+                    allowed_project_ids_json=json.dumps([project_id]),
+                    expires_at=datetime.now(UTC) + timedelta(hours=1),
+                )
+            )
+            await db.commit()
+
+        ws = FakeRelayWebSocket(
+            headers={"x-access-token": "relay-test-token"},
+            messages=[
+                json.dumps(
+                    {
+                        "type": "register",
+                        "hostname": "relay-host",
+                        "user_id": "relay-user",
+                        "provider_type": "openai_compat",
+                        "provider_host": "http://host.docker.internal:18112",
+                        "loaded_models": ["qwen-test"],
+                        "connection_string": conn_str,
+                    }
+                )
+            ],
+        )
+
+        await relay_websocket(ws)
+
+        assert ws.accepted
+        assert ws.sent[0]["type"] == "registered"
+        assert ws.sent[0]["authorized_project_count"] == 1
+        assert compute_registry._nodes == {}
+    finally:
         compute_registry._nodes.clear()
         compute_registry._nodes.update(original_nodes)
 

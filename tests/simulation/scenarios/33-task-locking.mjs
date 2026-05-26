@@ -13,6 +13,7 @@ export async function run(ctx) {
     checks.push({ name: "Project available", passed: false, detail: "No persistent project from runner" });
     return { checks, passed: 0, failed: 1 };
   }
+  const projectQuery = `project_id=${encodeURIComponent(projectId)}`;
 
   // 1. Create a test task
   let taskId;
@@ -35,7 +36,7 @@ export async function run(ctx) {
 
   // 2. Lock the task
   try {
-    const lock = await api.post(`/api/tasks/${taskId}/lock?user_id=test-user`, {});
+    const lock = await api.post(`/api/tasks/${taskId}/lock?user_id=test-user&${projectQuery}`, {});
     checks.push({
       name: "Lock task",
       passed: !!lock.locked_by && lock.locked_by === "test-user",
@@ -47,7 +48,7 @@ export async function run(ctx) {
 
   // 3. Verify lock is visible in task data
   try {
-    const task = await api.get(`/api/tasks/${taskId}`);
+    const task = await api.get(`/api/tasks/${taskId}?${projectQuery}`);
     checks.push({
       name: "Task shows lock info",
       passed: task.locked_by === "test-user",
@@ -59,7 +60,7 @@ export async function run(ctx) {
 
   // 4. Try locking from different user (should fail with 409)
   try {
-    await api.post(`/api/tasks/${taskId}/lock?user_id=other-user`, {});
+    await api.post(`/api/tasks/${taskId}/lock?user_id=other-user&${projectQuery}`, {});
     checks.push({ name: "Lock conflict detection", passed: false, detail: "Should have rejected" });
   } catch (e) {
     checks.push({
@@ -71,7 +72,7 @@ export async function run(ctx) {
 
   // 5. Unlock the task
   try {
-    const unlock = await api.post(`/api/tasks/${taskId}/unlock?user_id=test-user`, {});
+    const unlock = await api.post(`/api/tasks/${taskId}/unlock?user_id=test-user&${projectQuery}`, {});
     checks.push({
       name: "Unlock task",
       passed: unlock.unlocked === true,
@@ -83,7 +84,7 @@ export async function run(ctx) {
 
   // 6. Verify task is unlocked
   try {
-    const task = await api.get(`/api/tasks/${taskId}`);
+    const task = await api.get(`/api/tasks/${taskId}?${projectQuery}`);
     checks.push({
       name: "Task unlocked successfully",
       passed: task.locked_by === null || task.locked_by === undefined,
@@ -94,7 +95,7 @@ export async function run(ctx) {
   }
 
   // Cleanup
-  try { await api.delete(`/api/tasks/${taskId}`); } catch {}
+  try { await api.delete(`/api/tasks/${taskId}?${projectQuery}`); } catch {}
 
   const passed = checks.filter((c) => c.passed).length;
   const failed = checks.filter((c) => !c.passed).length;

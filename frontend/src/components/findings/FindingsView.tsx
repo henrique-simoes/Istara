@@ -14,6 +14,8 @@ import {
   ClipboardCheck,
   Layers,
   X,
+  AlertTriangle,
+  ShieldCheck,
 } from "lucide-react";
 import { useProjectStore } from "@/stores/projectStore";
 import { findings as findingsApi } from "@/lib/api";
@@ -380,6 +382,24 @@ export default function FindingsView({ navigationFilter = null }: FindingsViewPr
                           )}
                         </div>
                         <div className="flex items-center gap-3 mt-2">
+                          {item.research_validity && (
+                            <span
+                              className={cn(
+                                "inline-flex shrink-0 items-center gap-1 rounded-full px-1.5 py-0.5 text-[10px] font-medium",
+                                item.research_validity.report_allowed
+                                  ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-900/20 dark:text-emerald-300"
+                                  : "bg-amber-50 text-amber-700 dark:bg-amber-900/20 dark:text-amber-300"
+                              )}
+                              title={item.research_validity.reason}
+                            >
+                              {item.research_validity.report_allowed ? (
+                                <ShieldCheck size={10} aria-hidden="true" />
+                              ) : (
+                                <AlertTriangle size={10} aria-hidden="true" />
+                              )}
+                              {item.research_validity.report_allowed ? "Accepted evidence" : "Provisional"}
+                            </span>
+                          )}
                           {item.confidence !== undefined && (
                             <span className={cn("text-xs", confidenceColor(item.confidence))}>
                               Confidence: {Math.round(item.confidence * 100)}%

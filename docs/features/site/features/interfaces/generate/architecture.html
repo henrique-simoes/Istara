@@ -263,8 +263,13 @@
 <ul>
 <li>The feature is mounted through <code>frontend/src/components/interfaces/GenerateTab.tsx</code> and the UI navigation path recorded in the inventory.</li>
 <li>Screen generation checks project researcher access and stores new <code>DesignScreen</code>/<code>DesignDecision</code> records with the request project&#x27;s id.</li>
+<li>Generated design decisions are traceability artifacts, not reportable research by themselves. Their <code>research_validity</code> follows the linked source recommendations/insights and stays provisional until those sources pass the Research Spine.</li>
+<li>Interface and design-tool generated <code>DesignDecision.rationale</code> values must explicitly mark the decision as a provisional Research Spine candidate so generated screens cannot imply trusted research acceptance before linked evidence is accepted/reconciled and tied to a human-approved Done task.</li>
+<li>Seeded generation prompts carry each source finding&#x27;s Research Spine status. Provisional seeds may guide design exploration as candidate context, but prompt construction must not present them as accepted report evidence.</li>
+<li>Returned screen payloads include <code>source_finding_details</code> and <code>research_validity</code>; generation cannot hide whether the design was based on provisional or accepted research.</li>
 <li>When Stitch is configured, generation uses the active project&#x27;s encrypted <code>ProjectInterfaceConfig.stitch_api_key</code>; otherwise it falls back to the local design tool path for that same project id.</li>
 <li>Seed findings are resolved within the request project before any generation call is made, preventing cross-project finding references from shaping generated screens.</li>
+<li>The real-user benchmark records Stitch/mock design-generation attempts as optional credentialed integration evidence. A run without Stitch credentials should still validate the rest of the research workflow and document live design-tool coverage as future improvement.</li>
 <li>The frontmatter and manifest entries are the durable contract for agents updating this page after code changes.</li>
 <li>When the referenced component, store, route, agent, skill, or test behavior changes, regenerate and validate the feature documentation.</li>
 </ul>
@@ -276,6 +281,7 @@
 <ul>
 <li><code>tests/test_interfaces.py</code></li>
 <li><code>tests/test_project_scope_contracts.py</code></li>
+<li><code>tests/real_user_benchmark/run.mjs</code></li>
 </ul>
 <h2 id="related-features">Related Features</h2>
 <ul>
@@ -288,7 +294,7 @@
 </ul>
 <h2 id="compass-evidence">Compass Evidence</h2>
 <ul>
-<li>Spec/task: CF-SPEC-53 / CF-657; CF-SPEC-60 / CF-763</li>
+<li>Spec/task: CF-SPEC-53 / CF-657; CF-SPEC-60 / CF-763; CF-SPEC-121; CF-SPEC-130</li>
 <li>Inventory source: <code>docs/features/inventory.json</code></li>
 </ul>
 <h2 id="when-to-update">When To Update</h2>

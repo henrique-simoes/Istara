@@ -270,6 +270,7 @@
 <li>Configuration actions require an active project in the UI and call project-scoped backend routes. Global admins still configure a concrete project; the route does not fall back to a global configuration path.</li>
 <li>Figma and Stitch secrets are stored on <code>ProjectInterfaceConfig</code> as encrypted per-project fields. The configure routes no longer mutate <code>settings.figma_api_token</code>, <code>settings.stitch_api_key</code>, or process environment values.</li>
 <li>Figma file helpers require <code>project_id</code>, check project access, and use the active project&#x27;s Figma token before reading components or design-system data.</li>
+<li>The real-user benchmark treats live Figma and Stitch calls as optional unless bounded test credentials are explicitly supplied. It may exercise mock/setup-error paths, but scoring should not fail because private design-tool tokens are absent.</li>
 <li>The frontmatter and manifest entries are the durable contract for agents updating this page after code changes.</li>
 <li>When the referenced component, store, route, agent, skill, or test behavior changes, regenerate and validate the feature documentation.</li>
 </ul>
@@ -281,6 +282,7 @@
 <ul>
 <li><code>tests/test_interfaces.py</code></li>
 <li><code>tests/test_project_scope_contracts.py</code></li>
+<li><code>tests/real_user_benchmark/run.mjs</code></li>
 </ul>
 <h2 id="related-features">Related Features</h2>
 <ul>
@@ -293,7 +295,7 @@
 </ul>
 <h2 id="compass-evidence">Compass Evidence</h2>
 <ul>
-<li>Spec/task: CF-SPEC-53 / CF-657; CF-SPEC-59 / CF-740; CF-SPEC-60 / CF-763</li>
+<li>Spec/task: CF-SPEC-53 / CF-657; CF-SPEC-59 / CF-740; CF-SPEC-60 / CF-763; CF-SPEC-121</li>
 <li>Inventory source: <code>docs/features/inventory.json</code></li>
 </ul>
 <h2 id="when-to-update">When To Update</h2>

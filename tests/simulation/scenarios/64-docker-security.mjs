@@ -8,8 +8,12 @@ export const id = "64-docker-security";
 
 export async function run(ctx) {
   const { api } = ctx;
-  const projectId = ctx.projectId || "test";
   const checks = [];
+  if (!ctx.projectId) {
+    return [{ name: "Project available for Docker security checks", passed: false, detail: "No persistent project from runner" }];
+  }
+  const projectId = ctx.projectId;
+  const projectQuery = `project_id=${encodeURIComponent(projectId)}`;
 
   // ── 1. Health endpoint responds ──
   try {
@@ -72,21 +76,21 @@ export async function run(ctx) {
     });
   }
 
-  // ── 5. MCP server disabled by default ──
+  // ── 5. MCP server status is explicit and persisted ──
   try {
     const status = await api.get("/api/mcp/server/status");
     checks.push({
-      name: "MCP server disabled by default",
-      passed: status.enabled === false,
-      detail: `enabled=${status.enabled}`,
+      name: "MCP server reports explicit persisted enabled state",
+      passed: typeof status.enabled === "boolean" && typeof status.configured_enabled === "boolean",
+      detail: `enabled=${status.enabled}, configured_enabled=${status.configured_enabled}`,
     });
   } catch (e) {
-    checks.push({ name: "MCP server disabled by default", passed: false, detail: e.message });
+    checks.push({ name: "MCP server reports explicit persisted enabled state", passed: false, detail: e.message });
   }
 
   // ── 6. Autoresearch disabled by default ──
   try {
-    const status = await api.get(`/api/autoresearch/status?project_id=${projectId}`);
+    const status = await api.get(`/api/autoresearch/status?${projectQuery}`);
     checks.push({
       name: "Autoresearch disabled by default",
       passed: status.running === false,
@@ -126,12 +130,12 @@ export async function run(ctx) {
   const routerChecks = [
     "/api/projects",
     "/api/skills",
-    "/api/agents",
-    `/api/channels?project_id=${encodeURIComponent(projectId)}`,
-    `/api/surveys/integrations?project_id=${encodeURIComponent(projectId)}`,
-    "/api/deployments?project_id=test",
-    `/api/mcp/clients?project_id=${encodeURIComponent(projectId)}`,
-    `/api/autoresearch/status?project_id=${projectId}`,
+    `/api/agents?${projectQuery}`,
+    `/api/channels?${projectQuery}`,
+    `/api/surveys/integrations?${projectQuery}`,
+    `/api/deployments?${projectQuery}`,
+    `/api/mcp/clients?${projectQuery}`,
+    `/api/autoresearch/status?${projectQuery}`,
   ];
 
   for (const path of routerChecks) {

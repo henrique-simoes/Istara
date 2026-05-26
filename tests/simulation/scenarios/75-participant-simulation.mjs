@@ -6,28 +6,28 @@ export const id = "75-participant-simulation";
 export async function run(ctx) {
   const { api } = ctx;
   const checks = [];
+  if (!ctx.projectId) {
+    return {
+      checks: [{ name: "Project available for participant simulation", passed: false, detail: "No persistent project from runner" }],
+      passed: 0,
+      failed: 1,
+      summary: "Game Theory Participant Simulation: 0/1 passed",
+    };
+  }
+  const projectId = ctx.projectId;
 
-  // 1. Participant simulation module imports
+  // 1. Participant simulation skill is registered without requiring a live chat probe
   try {
-    const projectResp = await api.get("/api/projects");
-    const projects = projectResp.projects || projectResp || [];
-    const projectId = ctx.projectId || (projects.length > 0 ? projects[0].id : null);
-    const resp = await fetch("http://localhost:8000/api/chat", {
-      method: "POST",
-      headers: api._headers(),
-      body: JSON.stringify({
-        message: "What is the participant-simulation skill?",
-        project_id: projectId,
-        include_history: false,
-      }),
-    });
+    const skills = await api.get("/api/skills");
+    const list = Array.isArray(skills) ? skills : skills.skills || [];
+    const skill = list.find((item) => item.name === "participant-simulation");
     checks.push({
-      name: "Chat responds with skill knowledge",
-      passed: resp.status === 200 || resp.status === 201,
-      detail: `Status: ${resp.status}`,
+      name: "Participant simulation skill registered",
+      passed: !!skill,
+      detail: skill ? `${skill.display_name || skill.name}` : "Skill not found",
     });
   } catch (e) {
-    checks.push({ name: "Chat responds with skill knowledge", passed: false, detail: e.message });
+    checks.push({ name: "Participant simulation skill registered", passed: false, detail: e.message });
   }
 
   // 2. Audit log endpoint exists and responds
@@ -44,9 +44,6 @@ export async function run(ctx) {
 
   // 3. Validation metrics endpoint responds
   try {
-    const projectResp = await api.get("/api/projects");
-    const projects = projectResp.projects || projectResp || [];
-    const projectId = projects.length > 0 ? projects[0].id : "test";
     const resp = await api.get(`/api/metrics/${projectId}/validation`);
     checks.push({
       name: "Validation metrics endpoint responds",

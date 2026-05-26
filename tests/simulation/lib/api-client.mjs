@@ -147,15 +147,12 @@ export const projects = {
 
 export const tasks = {
   /**
-   * @param {string} [projectId]
+   * @param {string} projectId
    * @param {string} [status]
    */
   list: (projectId, status) => {
-    const params = new URLSearchParams();
-    if (projectId) params.set("project_id", projectId);
-    if (status) params.set("status", status);
-    const qs = params.toString();
-    return request(`/api/tasks${qs ? `?${qs}` : ""}`);
+    const qs = projectScopedQuery(projectId, "tasks.list", { status });
+    return request(`/api/tasks?${qs}`);
   },
 
   /**
@@ -169,10 +166,11 @@ export const tasks = {
 
   /**
    * @param {string} id
+   * @param {string} projectId
    * @param {Record<string,unknown>} data
    */
-  update: (id, data) =>
-    request(`/api/tasks/${id}`, {
+  update: (id, projectId, data) =>
+    request(`/api/tasks/${id}?${projectScopedQuery(projectId, "tasks.update")}`, {
       method: "PATCH",
       body: JSON.stringify(data),
     }),
@@ -180,16 +178,20 @@ export const tasks = {
   /**
    * Move a task to a new status column.
    * @param {string} id
+   * @param {string} projectId
    * @param {string} status  e.g. "backlog", "in_progress", "in_review", "done"
    */
-  move: (id, status) =>
-    request(`/api/tasks/${id}/move?status=${encodeURIComponent(status)}`, {
+  move: (id, projectId, status) =>
+    request(`/api/tasks/${id}/move?${projectScopedQuery(projectId, "tasks.move", { status })}`, {
       method: "POST",
     }),
 
-  /** @param {string} id */
-  delete: (id) =>
-    requestVoid(`/api/tasks/${id}`, { method: "DELETE" }),
+  /**
+   * @param {string} id
+   * @param {string} projectId
+   */
+  delete: (id, projectId) =>
+    requestVoid(`/api/tasks/${id}?${projectScopedQuery(projectId, "tasks.delete")}`, { method: "DELETE" }),
 };
 
 // ---------------------------------------------------------------------------
@@ -250,29 +252,21 @@ export const chat = {
 // ---------------------------------------------------------------------------
 
 export const findings = {
-  /** @param {string} [projectId] */
-  nuggets: (projectId) => {
-    const qs = projectId ? `?project_id=${projectId}` : "";
-    return request(`/api/findings/nuggets${qs}`);
-  },
+  /** @param {string} projectId */
+  nuggets: (projectId) =>
+    request(`/api/findings/nuggets?${projectScopedQuery(projectId, "findings.nuggets")}`),
 
-  /** @param {string} [projectId] */
-  facts: (projectId) => {
-    const qs = projectId ? `?project_id=${projectId}` : "";
-    return request(`/api/findings/facts${qs}`);
-  },
+  /** @param {string} projectId */
+  facts: (projectId) =>
+    request(`/api/findings/facts?${projectScopedQuery(projectId, "findings.facts")}`),
 
-  /** @param {string} [projectId] */
-  insights: (projectId) => {
-    const qs = projectId ? `?project_id=${projectId}` : "";
-    return request(`/api/findings/insights${qs}`);
-  },
+  /** @param {string} projectId */
+  insights: (projectId) =>
+    request(`/api/findings/insights?${projectScopedQuery(projectId, "findings.insights")}`),
 
-  /** @param {string} [projectId] */
-  recommendations: (projectId) => {
-    const qs = projectId ? `?project_id=${projectId}` : "";
-    return request(`/api/findings/recommendations${qs}`);
-  },
+  /** @param {string} projectId */
+  recommendations: (projectId) =>
+    request(`/api/findings/recommendations?${projectScopedQuery(projectId, "findings.recommendations")}`),
 
   /** @param {string} projectId */
   summary: (projectId) =>
@@ -496,15 +490,12 @@ export const settings = {
 
 export const contexts = {
   /**
-   * @param {string} [projectId]
+   * @param {string} projectId
    * @param {number} [level]
    */
   list: (projectId, level) => {
-    const params = new URLSearchParams();
-    if (projectId) params.set("project_id", projectId);
-    if (level !== undefined) params.set("level", String(level));
-    const qs = params.toString();
-    return request(`/api/contexts${qs ? `?${qs}` : ""}`);
+    const qs = projectScopedQuery(projectId, "contexts.list", { level });
+    return request(`/api/contexts?${qs}`);
   },
 
   /** @param {string} docId */

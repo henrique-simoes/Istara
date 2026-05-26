@@ -14,6 +14,7 @@ import httpx
 
 from app.config import settings
 from app.core.compute_node import ComputeNode
+from app.core.compute_route_evidence import schedule_compute_telemetry_event
 from app.core.compute_registry_helpers import (
     TRANSIENT_CHAT_BASE_DELAY_S,
     TRANSIENT_CHAT_MAX_ATTEMPTS,
@@ -32,6 +33,51 @@ from app.core.llm_thinking import apply_thinking_control
 from app.core.token_counter import count_tokens
 
 logger = logging.getLogger("app.core.compute_registry")
+
+
+def _node_project_scopes(node: ComputeNode) -> list[str]:
+    return [
+        str(project_id).strip()
+        for project_id in getattr(node, "allowed_project_ids", []) or []
+        if str(project_id).strip() and str(project_id).strip() != "*"
+    ]
+
+
+def _emit_lifecycle_once(node: ComputeNode, operation: str, *, status: str = "success") -> None:
+    emitted = getattr(node, "_research_validity_lifecycle_events", set())
+    for project_id in _node_project_scopes(node):
+        key = f"{operation}:{project_id}"
+        if key in emitted:
+            continue
+        emitted.add(key)
+        schedule_compute_telemetry_event(
+            node,
+            operation=operation,
+            project_id=project_id,
+            route_kind="lifecycle",
+            model=(node.loaded_models or [""])[0] if getattr(node, "loaded_models", None) else "",
+            status=status,
+        )
+    setattr(node, "_research_validity_lifecycle_events", emitted)
+
+
+def _emit_lifecycle_snapshot(node: ComputeNode) -> None:
+    if getattr(node, "source", "") not in {"relay", "browser"}:
+        return
+    _emit_lifecycle_once(node, "donor.visible")
+    state = (getattr(node, "health_state", "") or "").strip()
+    if getattr(node, "is_healthy", False) or state in {"ready", "degraded", "slow", "no_model_loaded"}:
+        _emit_lifecycle_once(node, "donor.reachable")
+    if getattr(node, "is_healthy", False) and state not in {
+        "auth_required",
+        "cooldown",
+        "no_model_loaded",
+        "no_model_server",
+        "timeout",
+        "unreachable",
+    }:
+        _emit_lifecycle_once(node, "donor.ready")
+
 
 class ComputeRegistryLifecycleMixin:
     def __init__(self):
@@ -81,6 +127,8 @@ class ComputeRegistryLifecycleMixin:
                 )
                 if not same_endpoint:
                     continue
+                if self._should_keep_relay_endpoint_distinct(existing, node):
+                    continue
                 if self._should_keep_duplicate_node(existing, node):
                     self._merge_duplicate_node(existing, node)
                     logger.info(
@@ -110,6 +158,9 @@ class ComputeRegistryLifecycleMixin:
             node.last_heartbeat = time.time()
         self._nodes[node.node_id] = node
         self._invalidate_chat_ready_cache()
+        if node.source in {"relay", "browser"}:
+            _emit_lifecycle_once(node, "donor.registered")
+            _emit_lifecycle_snapshot(node)
         logger.info(
             "ComputeRegistry: registered %s node '%s' (%s)",
             node.source,
@@ -138,6 +189,20 @@ class ComputeRegistryLifecycleMixin:
         if existing_rank != incoming_rank:
             return existing_rank > incoming_rank
         return existing.priority <= incoming.priority
+
+    @staticmethod
+    def _should_keep_relay_endpoint_distinct(
+        existing: ComputeNode,
+        incoming: ComputeNode,
+    ) -> bool:
+        sources = {getattr(existing, "source", ""), getattr(incoming, "source", "")}
+        relay_sources = {"relay", "browser"}
+        if sources and sources <= relay_sources:
+            return True
+        return bool(
+            sources & relay_sources
+            and sources & {"local"}
+        )
 
     @staticmethod
     def _endpoint_parts(node: ComputeNode) -> tuple[str, int | None, str] | None:
@@ -361,6 +426,7 @@ class ComputeRegistryLifecycleMixin:
         node.last_heartbeat = time.time()
         node.is_healthy = True
         self._invalidate_chat_ready_cache()
+        _emit_lifecycle_snapshot(node)
 
     # ================================================================
     # Health Checking

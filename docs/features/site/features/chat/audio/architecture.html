@@ -241,11 +241,13 @@
   <p class="concept-line"><strong>Concepts:</strong> wcag</p>
 </header>
 <h2 id="implementation-summary">Implementation Summary</h2>
-<p>The chat audio flow records user speech through the browser, sends it to the voice route, and returns transcription or voice-assisted chat input.</p>
+<p>The chat audio flow records user speech through the browser, sends it to the voice route with the active <code>project_id</code>, and returns transcription or voice-assisted chat input only inside that project scope.</p>
 <h2 id="frontend-surface">Frontend Surface</h2>
 <ul>
 <li><code>frontend/src/hooks/useVoiceRecorder.ts</code></li>
 <li><code>frontend/src/components/chat/ChatView.tsx</code></li>
+<li><code>frontend/src/lib/chatApi.ts</code></li>
+<li><code>backend/app/api/routes/chat.py</code></li>
 <li><code>backend/app/api/routes/chat_voice.py</code></li>
 <li><code>backend/app/core/transcription.py</code></li>
 </ul>
@@ -256,11 +258,14 @@
 </ul>
 <h3 id="api-and-backend">API And Backend</h3>
 <ul>
-<li><code>backend/app/api/routes/chat_voice.py</code></li>
+<li><code>frontend/src/lib/chatApi.ts</code> appends <code>project_id</code> to the voice transcription <code>FormData</code>.</li>
+<li><code>frontend/src/hooks/useVoiceRecorder.ts</code> trims and validates the project id before transcribing, and stops the recording with a project-selection error when no active project is available.</li>
+<li><code>backend/app/api/routes/chat.py</code> and <code>backend/app/api/routes/chat_voice.py</code> reject blank or unauthorized project ids before returning dummy or real transcription responses.</li>
 </ul>
 <h2 id="architecture-notes">Architecture Notes</h2>
 <ul>
 <li>The feature is mounted through <code>frontend/src/hooks/useVoiceRecorder.ts</code> and the UI navigation path recorded in the inventory.</li>
+<li>Voice tests must use the runner&#x27;s persistent simulation project. They must not fall back to placeholder project ids or the first project visible to a global admin.</li>
 <li>The frontmatter and manifest entries are the durable contract for agents updating this page after code changes.</li>
 <li>When the referenced component, store, route, agent, skill, or test behavior changes, regenerate and validate the feature documentation.</li>
 </ul>
@@ -270,7 +275,10 @@
 </ul>
 <h2 id="tests-and-verification">Tests And Verification</h2>
 <ul>
-<li>No focused test reference recorded yet.</li>
+<li><code>tests/e2e_test.py</code> sends the created E2E project id to <code>/api/chat/voice-transcribe</code> without a fallback placeholder.</li>
+<li><code>tests/simulation/scenarios/77-voice-transcription.mjs</code> posts a project-scoped <code>FormData</code> request and expects the route to fail on missing audio only after accepting the project scope.</li>
+<li><code>tests/simulation/scenarios/78-real-time-voice.mjs</code> seeds the active project in browser storage before checking microphone controls.</li>
+<li><code>tests/test_project_scope_contracts.py</code> prevents regression to placeholder project ids in voice and simulation harness checks.</li>
 </ul>
 <h2 id="related-features">Related Features</h2>
 <ul>

@@ -12,7 +12,10 @@ export async function run(ctx) {
   const appStatus = await api.get("/api/settings/status").catch(() => null);
   const teamMode = !!appStatus?.team_mode;
   const suffix = `${Date.now()}-${Math.floor(Math.random() * 10000)}`;
-  const projectId = ctx.projectId || "sim-project-001";
+  if (!ctx.projectId) {
+    return { checks: [{ name: "Project available for data security checks", passed: false, detail: "No persistent project from runner" }], passed: 0, failed: 1 };
+  }
+  const projectId = ctx.projectId;
   const projectQuery = `project_id=${encodeURIComponent(projectId)}`;
 
   // ── 1. Admin user management — list users ──

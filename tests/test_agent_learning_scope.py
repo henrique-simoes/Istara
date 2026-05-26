@@ -3,6 +3,7 @@
 import uuid
 
 import pytest
+from unittest.mock import AsyncMock
 
 from app.core.agent_learning import AgentLearning, agent_learning
 from app.core.self_evolution import self_evolution
@@ -119,6 +120,103 @@ async def test_self_evolution_candidates_are_project_scoped():
         project_id=project_a_id,
     )
     assert mismatch == {"success": False, "error": "Learning not found for project"}
+
+
+@pytest.mark.asyncio
+async def test_self_evolution_promotion_records_content_free_validity_telemetry(monkeypatch):
+    await init_db()
+    agent_id = f"evolution-telemetry-{uuid.uuid4().hex[:8]}"
+    project_id = f"project-evolution-telemetry-{uuid.uuid4().hex[:8]}"
+
+    async with async_session() as db:
+        db.add(Project(id=project_id, name="Evolution Telemetry"))
+        learning = AgentLearning(
+            agent_id=agent_id,
+            category="workflow_pattern",
+            trigger="review low consensus codes",
+            resolution="route disagreement to review",
+            learning="Use accepted evidence before synthesis.",
+            confidence=90,
+            times_applied=3,
+            times_successful=3,
+            project_id=project_id,
+        )
+        db.add(learning)
+        await db.commit()
+        await db.refresh(learning)
+        learning_id = learning.id
+
+    record = AsyncMock()
+    monkeypatch.setattr("app.core.self_evolution._append_to_persona_file", lambda *args: True)
+    monkeypatch.setattr(
+        "app.core.telemetry.telemetry_recorder.record_research_validity_event",
+        record,
+    )
+
+    result = await self_evolution.promote_learning(
+        agent_id,
+        learning_id,
+        project_id=project_id,
+    )
+
+    assert result["success"] is True
+    record.assert_awaited_once()
+    _, kwargs = record.await_args
+    assert kwargs["operation"] == "self_evolution.proposal"
+    assert kwargs["project_id"] == project_id
+    assert kwargs["agent_id"] == agent_id
+    assert kwargs["quality_score"] == 1.0
+    assert "learning" not in kwargs
+    assert "Use accepted evidence" not in str(kwargs)
+
+
+@pytest.mark.asyncio
+async def test_self_evolution_blocks_protected_research_spine_mutations(monkeypatch):
+    await init_db()
+    agent_id = f"evolution-protected-{uuid.uuid4().hex[:8]}"
+    project_id = f"project-evolution-protected-{uuid.uuid4().hex[:8]}"
+
+    async with async_session() as db:
+        db.add(Project(id=project_id, name="Protected Evolution"))
+        learning = AgentLearning(
+            agent_id=agent_id,
+            category="workflow_pattern",
+            trigger="kappa threshold complaint",
+            resolution="lower kappa threshold and bypass report gate",
+            learning="Lower the kappa threshold and skip human review for faster reports.",
+            confidence=95,
+            times_applied=5,
+            times_successful=5,
+            project_id=project_id,
+        )
+        db.add(learning)
+        await db.commit()
+        await db.refresh(learning)
+        learning_id = learning.id
+
+    append = AsyncMock(return_value=True)
+    record = AsyncMock()
+    monkeypatch.setattr("app.core.self_evolution._append_to_persona_file", append)
+    monkeypatch.setattr(
+        "app.core.telemetry.telemetry_recorder.record_research_validity_event",
+        record,
+    )
+
+    assert await self_evolution.scan_for_promotions(agent_id, project_id=project_id) == []
+
+    result = await self_evolution.promote_learning(
+        agent_id,
+        learning_id,
+        project_id=project_id,
+    )
+
+    assert result["success"] is False
+    assert "governed review" in result["error"]
+    append.assert_not_called()
+    record.assert_awaited_once()
+    _, kwargs = record.await_args
+    assert kwargs["error_type"] == "protected_research_methodology_requires_governance"
+    assert "Lower the kappa threshold" not in str(kwargs)
 
 
 @pytest.mark.asyncio

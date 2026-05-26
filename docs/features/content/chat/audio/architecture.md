@@ -6,23 +6,25 @@ audience: architecture
 status: needs-verification
 related_features: ["chat.overview", "interviews.transcription"]
 related_glossary: ["wcag"]
-code_references: ["frontend/src/hooks/useVoiceRecorder.ts", "frontend/src/components/chat/ChatView.tsx", "backend/app/api/routes/chat_voice.py", "backend/app/core/transcription.py"]
-api_references: ["backend/app/api/routes/chat_voice.py"]
-test_references: []
-last_verified: 2026-05-15
-compass: CF-SPEC-53 / CF-657
+code_references: ["frontend/src/hooks/useVoiceRecorder.ts", "frontend/src/components/chat/ChatView.tsx", "frontend/src/lib/chatApi.ts", "backend/app/api/routes/chat.py", "backend/app/api/routes/chat_voice.py", "backend/app/core/transcription.py"]
+api_references: ["backend/app/api/routes/chat.py", "backend/app/api/routes/chat_voice.py"]
+test_references: ["tests/e2e_test.py", "tests/simulation/scenarios/77-voice-transcription.mjs", "tests/simulation/scenarios/78-real-time-voice.mjs", "tests/test_project_scope_contracts.py"]
+last_verified: 2026-05-19
+compass: CF-SPEC-109 / CF-1379
 ---
 
 # Chat Audio Conversation Architecture
 
 ## Implementation Summary
 
-The chat audio flow records user speech through the browser, sends it to the voice route, and returns transcription or voice-assisted chat input.
+The chat audio flow records user speech through the browser, sends it to the voice route with the active `project_id`, and returns transcription or voice-assisted chat input only inside that project scope.
 
 ## Frontend Surface
 
 - `frontend/src/hooks/useVoiceRecorder.ts`
 - `frontend/src/components/chat/ChatView.tsx`
+- `frontend/src/lib/chatApi.ts`
+- `backend/app/api/routes/chat.py`
 - `backend/app/api/routes/chat_voice.py`
 - `backend/app/core/transcription.py`
 
@@ -34,11 +36,14 @@ The chat audio flow records user speech through the browser, sends it to the voi
 
 ### API And Backend
 
-- `backend/app/api/routes/chat_voice.py`
+- `frontend/src/lib/chatApi.ts` appends `project_id` to the voice transcription `FormData`.
+- `frontend/src/hooks/useVoiceRecorder.ts` trims and validates the project id before transcribing, and stops the recording with a project-selection error when no active project is available.
+- `backend/app/api/routes/chat.py` and `backend/app/api/routes/chat_voice.py` reject blank or unauthorized project ids before returning dummy or real transcription responses.
 
 ## Architecture Notes
 
 - The feature is mounted through `frontend/src/hooks/useVoiceRecorder.ts` and the UI navigation path recorded in the inventory.
+- Voice tests must use the runner's persistent simulation project. They must not fall back to placeholder project ids or the first project visible to a global admin.
 - The frontmatter and manifest entries are the durable contract for agents updating this page after code changes.
 - When the referenced component, store, route, agent, skill, or test behavior changes, regenerate and validate the feature documentation.
 
@@ -48,7 +53,10 @@ The chat audio flow records user speech through the browser, sends it to the voi
 
 ## Tests And Verification
 
-- No focused test reference recorded yet.
+- `tests/e2e_test.py` sends the created E2E project id to `/api/chat/voice-transcribe` without a fallback placeholder.
+- `tests/simulation/scenarios/77-voice-transcription.mjs` posts a project-scoped `FormData` request and expects the route to fail on missing audio only after accepting the project scope.
+- `tests/simulation/scenarios/78-real-time-voice.mjs` seeds the active project in browser storage before checking microphone controls.
+- `tests/test_project_scope_contracts.py` prevents regression to placeholder project ids in voice and simulation harness checks.
 
 ## Related Features
 

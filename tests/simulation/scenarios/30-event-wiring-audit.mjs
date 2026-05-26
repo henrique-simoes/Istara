@@ -70,7 +70,7 @@ export async function run(ctx) {
   // ── 3. Verify finding_created broadcast exists ──────────────
   // Use persistent simulation project for wiring tests
   let projectId = activeProjectId;
-  check(3, "Project available for wiring tests", !!projectId, projectId || "No persistent project");
+  check(3, "Project available for wiring tests", !!projectId, projectId ? projectId : "No persistent project");
 
   // ── 4. Verify finding creation triggers API (proxy for broadcast wiring)
   if (projectId) {
@@ -101,13 +101,13 @@ export async function run(ctx) {
       check(5, "Document creation API works", !!doc.id, doc.id);
 
       // Update to test document_updated event path
-      const updated = await api.patch(`/api/documents/${doc.id}`, {
+      const updated = await api.patch(projectScopedPath(`/api/documents/${doc.id}`), {
         title: "Wiring Audit Document (Updated)",
       });
       check(6, "Document update API works", updated.title?.includes("Updated"), updated.title);
 
       // Cleanup
-      await api.delete(`/api/documents/${doc.id}`);
+      await api.delete(projectScopedPath(`/api/documents/${doc.id}`));
     } catch (e) {
       check(5, "Document creation API works", false, e.message);
       check(6, "Document update API works", false, e.message);
@@ -118,11 +118,15 @@ export async function run(ctx) {
   }
 
   // ── 7. Agent status endpoint (governor lifecycle proxy) ─────
-  try {
-    const agents = await api.get("/api/agents");
-    check(7, "Agents API responds", Array.isArray(agents.agents), `${agents.agents?.length} agents`);
-  } catch (e) {
-    check(7, "Agents API responds", false, e.message);
+  if (projectId) {
+    try {
+      const agents = await api.get(projectScopedPath("/api/agents"));
+      check(7, "Agents API responds", Array.isArray(agents.agents), `${agents.agents?.length} agents`);
+    } catch (e) {
+      check(7, "Agents API responds", false, e.message);
+    }
+  } else {
+    check(7, "Agents API responds", false, "No project");
   }
 
   // ── 8. Agent capacity (governor concurrent limit) ───────────
@@ -153,7 +157,7 @@ export async function run(ctx) {
       check(10, "Task creation for queue test", !!task.id, task.id);
 
       // Clean up
-      await api.delete(`/api/tasks/${task.id}`);
+      await api.delete(projectScopedPath(`/api/tasks/${task.id}`));
     } catch (e) {
       check(10, "Task creation for queue test", false, e.message);
     }

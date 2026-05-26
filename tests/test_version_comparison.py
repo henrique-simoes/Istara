@@ -1,6 +1,11 @@
+from pathlib import Path
 from types import SimpleNamespace
 
 from app.api.routes.updates import get_latest_release_version_from_git, is_newer
+
+
+ROOT = Path(__file__).resolve().parents[1]
+
 
 def test_is_newer_numeric():
     # Basic numeric comparison
@@ -44,3 +49,20 @@ def test_get_latest_release_version_from_git_handles_failures(monkeypatch):
 
     monkeypatch.setattr("app.api.routes.updates.subprocess.run", fake_run)
     assert get_latest_release_version_from_git() == ""
+
+
+def test_readme_version_badges_track_github_release():
+    readmes = {
+        "README.md": "label=version",
+        "README.pt-BR.md": "label=vers%C3%A3o",
+    }
+
+    for filename, label in readmes.items():
+        text = (ROOT / filename).read_text(encoding="utf-8")
+        assert "img.shields.io/badge/version-20" not in text
+        assert "img.shields.io/badge/versão-20" not in text
+        assert (
+            f"https://img.shields.io/github/v/release/henrique-simoes/Istara?{label}&sort=semver"
+            in text
+        )
+        assert "https://github.com/henrique-simoes/Istara/releases/latest" in text

@@ -19,6 +19,7 @@ class ModelSkillStats(Base):
     __tablename__ = "model_skill_stats"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    project_id: Mapped[str] = mapped_column(String(36), default="", nullable=False, index=True)
     skill_name: Mapped[str] = mapped_column(String(100), nullable=False, index=True)
     model_name: Mapped[str] = mapped_column(String(200), nullable=False, index=True)
     temperature: Mapped[float] = mapped_column(Float, default=0.7)
@@ -35,6 +36,7 @@ class ModelSkillStats(Base):
     def to_dict(self) -> dict:
         return {
             "id": self.id,
+            "project_id": self.project_id,
             "skill_name": self.skill_name,
             "model_name": self.model_name,
             "temperature": self.temperature,

@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import { useProjectStore } from "@/stores/projectStore";
 import { useAuthStore } from "@/stores/authStore";
+import { useRoleCapabilities } from "@/hooks/useRoleCapabilities";
 import { permissionRequests, users as usersApi } from "@/lib/api";
 import type { PermissionRequestItem } from "@/lib/types";
 import { cn } from "@/lib/utils";
@@ -74,10 +75,11 @@ export default function ProjectSettingsView() {
     resumeProject,
     deleteProject,
   } = useProjectStore();
-  const { user, teamMode } = useAuthStore();
+  const { teamMode } = useAuthStore();
+  const capabilities = useRoleCapabilities();
   const project = activeProject();
-  const isGlobalAdmin = user?.role === "admin";
-  const canManageProject = isGlobalAdmin || canAdminActiveProject();
+  const isGlobalAdmin = capabilities.isGlobalAdmin;
+  const canManageProject = capabilities.canAdminActiveProject || canAdminActiveProject();
   const canRequestProjectAdmin = !canManageProject && Boolean(activeProjectId);
 
   // Metrics

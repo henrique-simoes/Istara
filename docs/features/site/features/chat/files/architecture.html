@@ -243,6 +243,7 @@
 </header>
 <h2 id="implementation-summary">Implementation Summary</h2>
 <p>Chat can attach uploaded project files and documents so the conversation can use project evidence and user-provided material.</p>
+<p>Attached files remain raw source material unless their evidence units have passed the governed Research Spine. Chat may retrieve and discuss attached material, but it must distinguish source/provisional material from accepted research evidence.</p>
 <h2 id="frontend-surface">Frontend Surface</h2>
 <ul>
 <li><code>frontend/src/components/chat/ChatView.tsx</code></li>
@@ -258,10 +259,12 @@
 <ul>
 <li><code>backend/app/api/routes/files.py</code></li>
 <li><code>backend/app/api/routes/documents.py</code></li>
+<li>File upload and document APIs create source evidence units for clean text and successful transcripts. Chat consumes those sources through retrieval, but reportable findings still require independent extraction/coding, reliability or reconciliation, and Done-task approval.</li>
 </ul>
 <h2 id="architecture-notes">Architecture Notes</h2>
 <ul>
 <li>The feature is mounted through <code>frontend/src/components/chat/ChatView.tsx</code> and the UI navigation path recorded in the inventory.</li>
+<li>Chat file attachments must not become trusted nuggets, facts, insights, recommendations, or report content directly from RAG snippets or raw model output.</li>
 <li>The frontmatter and manifest entries are the durable contract for agents updating this page after code changes.</li>
 <li>When the referenced component, store, route, agent, skill, or test behavior changes, regenerate and validate the feature documentation.</li>
 </ul>
@@ -285,7 +288,7 @@
 </ul>
 <h2 id="compass-evidence">Compass Evidence</h2>
 <ul>
-<li>Spec/task: CF-SPEC-53 / CF-657</li>
+<li>Spec/task: CF-SPEC-53 / CF-657; CF-SPEC-131</li>
 <li>Inventory source: <code>docs/features/inventory.json</code></li>
 </ul>
 <h2 id="when-to-update">When To Update</h2>

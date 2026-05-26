@@ -150,13 +150,18 @@ def _bump(
 async def _telemetry_quality_boost(
     skill_names: set[str],
     db: AsyncSession | None,
+    project_id: str = "",
 ) -> dict[str, float]:
-    if not skill_names:
+    scoped_project_id = str(project_id or "").strip()
+    if not skill_names or not scoped_project_id:
         return {}
 
     async def _query(session: AsyncSession) -> dict[str, float]:
         result = await session.execute(
-            select(ModelSkillStats).where(ModelSkillStats.skill_name.in_(skill_names))
+            select(ModelSkillStats).where(
+                ModelSkillStats.project_id == scoped_project_id,
+                ModelSkillStats.skill_name.in_(skill_names),
+            )
         )
         boosts: dict[str, float] = {}
         for row in result.scalars().all():
@@ -218,6 +223,8 @@ async def _reasoning_memory_boosts(
         ).lower()
         score = float(memory.get("retrieval_score") or 0.0)
         outcome = str(memory.get("outcome") or "").lower()
+        if outcome not in SUCCESS_OUTCOMES and outcome not in FAILURE_OUTCOMES:
+            continue
         for skill in registry.list_all():
             name = skill.name.lower()
             if name not in haystack and name.replace("-", " ") not in haystack:
@@ -307,7 +314,11 @@ async def rank_skill_candidates(
         amount = min(0.18, success_rate * 0.06 + avg_quality * 0.07 + utility * 0.05)
         _bump(candidates, skill.name, amount, "memento_usage", "learned")
 
-    telemetry_boosts = await _telemetry_quality_boost({s.name for s in all_skills}, db)
+    telemetry_boosts = await _telemetry_quality_boost(
+        {s.name for s in all_skills},
+        db,
+        project_id=project_id,
+    )
     for skill_name, amount in telemetry_boosts.items():
         _bump(candidates, skill_name, amount, "telemetry_model_quality", "learned")
 

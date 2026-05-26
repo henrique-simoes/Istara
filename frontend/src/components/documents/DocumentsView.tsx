@@ -63,6 +63,7 @@ const STATUS_COLORS: Record<string, string> = {
   ready: "text-green-600 bg-green-50 dark:bg-green-900/20",
   processing: "text-blue-600 bg-blue-50 dark:bg-blue-900/20",
   pending: "text-yellow-600 bg-yellow-50 dark:bg-yellow-900/20",
+  quarantined: "text-red-600 bg-red-50 dark:bg-red-900/20",
   error: "text-red-600 bg-red-50 dark:bg-red-900/20",
 };
 
@@ -73,6 +74,39 @@ const SOURCE_LABELS: Record<string, string> = {
   project_file: "Project File",
   external: "External",
 };
+
+function documentSpineLabel(doc: ReclawDocument): string {
+  const spine = doc.research_spine;
+  const count = spine?.source_evidence_units || 0;
+  switch (spine?.source_evidence_state) {
+    case "source_evidence_ready":
+      return `${count} source unit${count === 1 ? "" : "s"}`;
+    case "awaiting_processing":
+      return "Awaiting source units";
+    case "blocked_security_review":
+      return "Security review";
+    case "missing_source_evidence_units":
+      return "Needs source units";
+    case "non_text_or_no_source_units":
+      return "No text source units";
+    default:
+      return count > 0 ? `${count} source unit${count === 1 ? "" : "s"}` : "Raw source";
+  }
+}
+
+function documentSpineClass(doc: ReclawDocument): string {
+  switch (doc.research_spine?.source_evidence_state) {
+    case "source_evidence_ready":
+      return "bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300";
+    case "awaiting_processing":
+      return "bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300";
+    case "blocked_security_review":
+    case "missing_source_evidence_units":
+      return "bg-red-50 text-red-700 dark:bg-red-900/30 dark:text-red-300";
+    default:
+      return "bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300";
+  }
+}
 
 function isMarkdownLike(type?: string, fileName?: string): boolean {
   const normalizedType = (type || "").toLowerCase();
@@ -686,6 +720,9 @@ function DocumentCompactRow({
       <span className="text-xs px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400 shrink-0">
         {doc.phase}
       </span>
+      <span className={cn("text-xs px-1.5 py-0.5 rounded shrink-0", documentSpineClass(doc))}>
+        {documentSpineLabel(doc)}
+      </span>
       <span className="text-xs text-slate-400 shrink-0 whitespace-nowrap">
         {timeAgo(doc.updated_at || doc.created_at)}
       </span>
@@ -786,6 +823,9 @@ function DocumentGridCard({
         </span>
         <span className="text-[10px] px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400">
           {doc.phase}
+        </span>
+        <span className={cn("text-[10px] px-1.5 py-0.5 rounded truncate", documentSpineClass(doc))}>
+          {documentSpineLabel(doc)}
         </span>
         <span className="text-[10px] text-slate-400 ml-auto whitespace-nowrap">
           {timeAgo(doc.updated_at || doc.created_at)}
@@ -888,6 +928,10 @@ function DocumentCard({
                 Task linked
               </span>
             )}
+
+            <span className={cn("px-1.5 py-0.5 rounded", documentSpineClass(doc))}>
+              {documentSpineLabel(doc)}
+            </span>
           </div>
 
           {tags.length > 0 && (
@@ -1063,6 +1107,25 @@ function DocumentPreview({
               {doc.updated_at && doc.updated_at !== doc.created_at && (
                 <MetaRow label="Updated" value={new Date(doc.updated_at).toLocaleString()} />
               )}
+            </div>
+          </MetaSection>
+
+          <MetaSection title="Research Spine">
+            <div className="space-y-2 text-xs">
+              <span className={cn("inline-flex px-1.5 py-0.5 rounded", documentSpineClass(doc))}>
+                {documentSpineLabel(doc)}
+              </span>
+              <MetaRow
+                label="Artifact"
+                value={doc.research_spine?.artifact_state || "raw_source"}
+              />
+              <MetaRow
+                label="Reportable"
+                value={doc.research_spine?.report_allowed ? "Yes" : "No"}
+              />
+              <p className="text-[11px] leading-relaxed text-slate-500 dark:text-slate-400">
+                {doc.research_spine?.spine_policy || "Raw source documents require coding, reliability, review, and Done-task approval before report use."}
+              </p>
             </div>
           </MetaSection>
 

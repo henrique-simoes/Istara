@@ -77,6 +77,10 @@ class Settings(BaseSettings):
     upload_quarantine_on_prompt_injection: bool = True
     avatar_max_bytes: int = 5 * 1024 * 1024
     channel_attachment_max_bytes: int = 25 * 1024 * 1024
+    file_encryption_enabled: bool = False
+    file_encryption_key: str = ""
+    file_encryption_keychain_service: str = "istara-file-encryption"
+    file_encryption_key_file: str = "./data/security/file-encryption.key"
 
     # Team mode (multi-user)
     team_mode: bool = False

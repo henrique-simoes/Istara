@@ -74,6 +74,37 @@ test("uses LM Studio native model metadata when a 1234 host was mislabeled as Ol
   }
 });
 
+test("advertises LM Studio loaded instance aliases for route-proof model selection", async () => {
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async () => new Response(JSON.stringify({
+    models: [{
+      key: "google/gemma-4-e4b",
+      type: "llm",
+      quantization: { name: "Q8_0" },
+      loaded_instances: [
+        { id: "google/gemma-4-e4b", config: { context_length: 131072 } },
+        { id: "google/gemma-4-e4b:2", config: { context_length: 131072 } },
+      ],
+    }],
+  }), {
+    status: 200,
+    headers: { "Content-Type": "application/json" },
+  });
+
+  try {
+    const proxy = new LLMProxy("lmstudio", "http://localhost:1234", "");
+    const probe = await proxy.probeModels();
+
+    assert.deepEqual(probe.models, ["google/gemma-4-e4b", "google/gemma-4-e4b:2"]);
+    assert.equal(probe.modelCapabilities["google/gemma-4-e4b"].is_loaded, true);
+    assert.equal(probe.modelCapabilities["google/gemma-4-e4b:2"].is_loaded, true);
+    assert.equal(probe.modelCapabilities["google/gemma-4-e4b:2"].loaded_instance_alias, true);
+    assert.equal(probe.modelCapabilities["google/gemma-4-e4b:2"].context_length, 131072);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
 test("detects the first reachable local OpenAI-compatible server", async () => {
   const originalFetch = globalThis.fetch;
   const calls = [];

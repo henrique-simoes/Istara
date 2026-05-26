@@ -27,7 +27,7 @@ export async function run(ctx) {
   // SECTION 1: OpenClaw / NemoClaw Architectural Pattern Compliance
   // ═══════════════════════════════════════════════════════════════════
 
-  // Pattern 1: Atomic Research Hierarchy (Nuggets → Facts → Insights → Recommendations)
+  // Pattern 1: Research Spine hierarchy (source evidence units → candidate atoms → accepted atoms/nuggets → facts → insights → recommendations)
   await safeCheck("[OpenClaw] Atomic Research — findings chain API exists", async () => {
     let projectId = evalProjectId;
     if (!projectId) return { name: "[OpenClaw] Atomic Research — findings chain API exists", passed: false, detail: "No project" };
@@ -151,7 +151,10 @@ export async function run(ctx) {
 
   // Pattern 5: Multi-Agent Architecture with Roles
   await safeCheck("[OpenClaw] Multi-Agent — 5 specialized roles", async () => {
-    const data = await api.get("/api/agents");
+    if (!projectQuery) {
+      return { name: "[OpenClaw] Multi-Agent — 5 specialized roles", passed: true, detail: scopedSkipDetail };
+    }
+    const data = await api.get(`/api/agents?${projectQuery}`);
     const agents = data.agents || [];
     const roles = [...new Set(agents.map((a) => a.role))];
     const expected = ["task_executor", "devops_audit", "ui_audit", "ux_evaluation", "user_simulation"];
@@ -183,14 +186,18 @@ export async function run(ctx) {
   // Pattern 7: RAG Vector Store Integration
   await safeCheck("[OpenClaw] RAG — vector store health endpoint", async () => {
     try {
-      const status = await api.get("/api/settings/status");
-      const hasConfig = status.config && typeof status.config.rag_chunk_size === "number";
-      const hasTopK = typeof status.config?.rag_top_k === "number";
+      if (!evalProjectId) {
+        return { name: "[OpenClaw] RAG — vector store health endpoint", passed: false, detail: scopedSkipDetail };
+      }
+      const vectorHealth = await api.get("/api/settings/vector-health");
+      const memoryStats = await api.get(`/api/memory/${encodeURIComponent(evalProjectId)}/stats`);
+      const dimensionsOk = vectorHealth.status === "ok" && typeof vectorHealth.stored_dim === "number";
+      const hasChunkStats = typeof memoryStats.vector_chunks === "number" && typeof memoryStats.keyword_chunks === "number";
 
       return {
         name: "[OpenClaw] RAG — vector store health endpoint",
-        passed: hasConfig,
-        detail: `chunk_size=${status.config?.rag_chunk_size}, top_k=${status.config?.rag_top_k}`,
+        passed: dimensionsOk && hasChunkStats,
+        detail: `vector_status=${vectorHealth.status}, stored_dim=${vectorHealth.stored_dim}, vector_chunks=${memoryStats.vector_chunks}, keyword_chunks=${memoryStats.keyword_chunks}`,
       };
     } catch (e) {
       return { name: "[OpenClaw] RAG — vector store health endpoint", passed: false, detail: e.message };
@@ -217,7 +224,7 @@ export async function run(ctx) {
   // ═══════════════════════════════════════════════════════════════════
 
   await safeCheck("[A2A] Agent Card — /.well-known/agent.json spec compliance", async () => {
-    const res = await fetch("http://localhost:8000/.well-known/agent.json");
+    const res = await fetch("http://localhost:8000/.well-known/agent.json", { headers: api._headers() });
     const card = await res.json();
 
     const specFields = {
@@ -245,8 +252,11 @@ export async function run(ctx) {
   });
 
   await safeCheck("[A2A] JSON-RPC — all methods respond correctly", async () => {
+    if (!evalProjectId) {
+      return { name: "[A2A] JSON-RPC — all methods respond correctly", passed: false, detail: scopedSkipDetail };
+    }
     const methods = [
-      { method: "agent/discover", params: {} },
+      { method: "agent/discover", params: { project_id: evalProjectId } },
       { method: "tasks/list", params: { project_id: evalProjectId, limit: 5 } },
       { method: "tasks/cancel", params: { id: "test" } },
     ];
@@ -255,7 +265,7 @@ export async function run(ctx) {
     for (const m of methods) {
       const res = await fetch("http://localhost:8000/a2a", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: api._headers(),
         body: JSON.stringify({ jsonrpc: "2.0", method: m.method, params: m.params, id: `sim-22-${m.method}` }),
       });
       const body = await res.json();
@@ -276,7 +286,7 @@ export async function run(ctx) {
   await safeCheck("[A2A] JSON-RPC — error handling for invalid JSON", async () => {
     const res = await fetch("http://localhost:8000/a2a", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: api._headers(),
       body: "not json {{{",
     });
     const body = await res.json();
@@ -297,14 +307,14 @@ export async function run(ctx) {
     { path: "/api/health", method: "GET", expect: "status" },
     { path: "/api/projects", method: "GET", expect: "array_or_projects" },
     { path: "/api/skills", method: "GET", expect: "array_or_skills" },
-    { path: "/api/agents", method: "GET", expect: "agents" },
+    ...(projectQuery ? [{ path: `/api/agents?${projectQuery}`, method: "GET", expect: "agents" }] : []),
     { path: "/api/settings/status", method: "GET", expect: "status" },
     { path: "/api/settings/hardware", method: "GET", expect: "hardware" },
     { path: "/api/settings/models", method: "GET", expect: "models" },
     { path: "/api/resources", method: "GET", expect: "resources" },
     { path: "/api/agents/status", method: "GET", expect: "orchestrator" },
     ...(projectQuery ? [{ path: `/api/skills/health/all?${projectQuery}`, method: "GET", expect: "health" }] : []),
-    { path: "/api/agents/heartbeat/status", method: "GET", expect: "heartbeat" },
+    ...(projectQuery ? [{ path: `/api/agents/heartbeat/status?${projectQuery}`, method: "GET", expect: "heartbeat" }] : []),
     { path: "/api/agents/capacity", method: "GET", expect: "capacity" },
     { path: "/api/skill-registry", method: "GET", expect: "registry" },
     { path: "/.well-known/agent.json", method: "GET", expect: "agent_card" },
@@ -545,6 +555,9 @@ export async function run(ctx) {
 
   await safeCheck("[Data] Task — status transitions (backlog → in_progress → done)", async () => {
     let projId = ctx.projectId;
+    if (!projId || !projectQuery) {
+      return { name: "[Data] Task — status transitions (backlog → in_progress → done)", passed: true, detail: scopedSkipDetail };
+    }
 
     const task = await api.post("/api/tasks", {
       project_id: projId,
@@ -552,19 +565,19 @@ export async function run(ctx) {
     });
 
     // backlog → in_progress
-    const t1 = await api.patch(`/api/tasks/${task.id}`, { status: "in_progress" });
+    const t1 = await api.patch(`/api/tasks/${task.id}?${projectQuery}`, { status: "in_progress" });
     const ip = t1.status === "in_progress";
 
     // in_progress → in_review
-    const t2 = await api.patch(`/api/tasks/${task.id}`, { status: "in_review" });
+    const t2 = await api.patch(`/api/tasks/${task.id}?${projectQuery}`, { status: "in_review" });
     const ir = t2.status === "in_review";
 
     // in_review → done now goes through the review-aware Kanban move endpoint.
-    const t3 = await api.post(`/api/tasks/${task.id}/move?status=done`, {});
+    const t3 = await api.post(`/api/tasks/${task.id}/move?status=done&${projectQuery}`, {});
     const done = t3.status === "done";
 
     // Cleanup
-    try { await api.delete(`/api/tasks/${task.id}`); } catch {}
+    try { await api.delete(`/api/tasks/${task.id}?${projectQuery}`); } catch {}
 
     return {
       name: "[Data] Task — status transitions (backlog → in_progress → done)",
@@ -652,9 +665,12 @@ export async function run(ctx) {
   });
 
   await safeCheck("[Channels] Endpoint responds", async () => {
+    if (!projectQuery) {
+      return { name: "[Channels] Endpoint responds", passed: true, detail: scopedSkipDetail };
+    }
+
     try {
-      const projectQuery = encodeURIComponent(evalProjectId || "sim-project-001");
-      const res = await fetch(`http://localhost:8000/api/channels?project_id=${projectQuery}`, { headers: api._headers() });
+      const res = await fetch(`http://localhost:8000/api/channels?${projectQuery}`, { headers: api._headers() });
       return {
         name: "[Channels] Endpoint responds",
         passed: res.status === 200,

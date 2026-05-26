@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import re
 from pathlib import Path
 
 import pytest
@@ -57,10 +58,15 @@ def test_agentic_eval_contract_evidence_files_exist():
 def test_agentic_eval_simulation_scenarios_are_loaded_by_runner():
     manifest = load_manifest()
     runner = (ROOT / "tests" / "simulation" / "run.mjs").read_text(encoding="utf-8")
+    registry = (ROOT / "tests" / "simulation" / "lib" / "scenario-registry.mjs").read_text(encoding="utf-8")
+    match = re.search(r"export const scenarioFiles = Object\.freeze\(\[(?P<body>.*?)\]\);", registry, re.S)
+    assert match, "scenario registry must export scenarioFiles"
+    loaded_scenarios = set(re.findall(r'"([^"]+)"', match.group("body")))
+    assert "./lib/scenario-registry.mjs" in runner
     for contract in manifest["contracts"]:
         for relative_path in contract.get("simulation_scenarios", []):
             scenario_name = Path(relative_path).stem
-            assert f'"{scenario_name}"' in runner, (
+            assert scenario_name in loaded_scenarios, (
                 f"{contract['id']} scenario {scenario_name} is not loaded by run.mjs"
             )
 

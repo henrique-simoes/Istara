@@ -46,6 +46,15 @@ IDENTITY_ANCHOR_MAX_TOKENS = 600
 
 # How many dynamic sections to retrieve per query
 DEFAULT_DYNAMIC_SECTIONS = 8
+PROMPT_RAG_SPINE_NOTICE = (
+    "<promotion_gate>"
+    "Prompt-RAG persona and memory sections are supporting context only. "
+    "They are not mandatory qualitative coding methodology, not accepted "
+    "Atomic Research artifacts, and not report evidence. Coding protocol, "
+    "codebook, reliability policy, promotion gates, and report eligibility "
+    "must be injected and enforced by the owning Research Spine service."
+    "</promotion_gate>"
+)
 
 PROMPT_RAG_STOPWORDS = {
     "about",
@@ -377,9 +386,46 @@ def _extract_identity_anchor(agent_id: str) -> str:
     return "\n".join(anchor_lines).strip()
 
 
+def _with_spine_notice(anchor: str) -> str:
+    return "\n\n".join(part for part in [anchor, PROMPT_RAG_SPINE_NOTICE] if part)
+
+
 # ---------------------------------------------------------------------------
 # Main composition engine
 # ---------------------------------------------------------------------------
+
+
+async def _record_prompt_rag_telemetry(
+    *,
+    project_id: str | None,
+    agent_id: str,
+    use_embeddings: bool,
+    selected_count: int,
+    total_sections: int,
+    status: str = "success",
+    error_type: str | None = None,
+) -> None:
+    if not project_id:
+        return
+    try:
+        from app.core.telemetry import telemetry_recorder
+
+        await telemetry_recorder.record_research_validity_event(
+            operation="prompt_rag.context",
+            project_id=project_id,
+            agent_id=agent_id,
+            retrieval_mode="prompt-rag-embedding" if use_embeddings else "prompt-rag-keyword",
+            status=status,
+            quality_score=(
+                min(1.0, selected_count / total_sections)
+                if total_sections > 0
+                else None
+            ),
+            error_type=error_type,
+        )
+    except Exception as e:
+        logger.debug("Prompt-RAG telemetry skipped: %s", e)
+
 
 async def compose_dynamic_prompt(
     agent_id: str,
@@ -387,6 +433,7 @@ async def compose_dynamic_prompt(
     max_tokens: int | None = None,
     use_embeddings: bool = True,
     top_k: int = DEFAULT_DYNAMIC_SECTIONS,
+    project_id: str | None = None,
 ) -> str:
     """Compose an agent's system prompt dynamically based on the query.
 
@@ -412,12 +459,30 @@ async def compose_dynamic_prompt(
     remaining_budget = budget - anchor_tokens
     if remaining_budget <= 100:
         # Budget too tight — just return the anchor
-        return anchor
+        await _record_prompt_rag_telemetry(
+            project_id=project_id,
+            agent_id=agent_id,
+            use_embeddings=use_embeddings,
+            selected_count=0,
+            total_sections=0,
+            status="degraded",
+            error_type="prompt_rag_budget_too_small",
+        )
+        return _with_spine_notice(anchor)
 
     # 2. Index all sections
     all_sections = index_agent_sections(agent_id)
     if not all_sections:
-        return anchor
+        await _record_prompt_rag_telemetry(
+            project_id=project_id,
+            agent_id=agent_id,
+            use_embeddings=use_embeddings,
+            selected_count=0,
+            total_sections=0,
+            status="degraded",
+            error_type="prompt_rag_no_sections",
+        )
+        return _with_spine_notice(anchor)
 
     # 3. Score sections by relevance to query
     query_tokens = _tokenize(query)
@@ -477,7 +542,7 @@ async def compose_dynamic_prompt(
         key=lambda s: (file_order.get(s.filename, 99), s.depth)
     )
 
-    parts = [anchor]
+    parts = [_with_spine_notice(anchor)]
     for section in selected_sections:
         parts.append(section.to_text())
 
@@ -487,6 +552,16 @@ async def compose_dynamic_prompt(
         f"Prompt RAG for {agent_id}: {anchor_tokens} anchor + "
         f"{used_tokens} dynamic = {anchor_tokens + used_tokens} tokens "
         f"({len(selected_sections)} sections selected from {len(all_sections)})"
+    )
+
+    await _record_prompt_rag_telemetry(
+        project_id=project_id,
+        agent_id=agent_id,
+        use_embeddings=use_embeddings,
+        selected_count=len(selected_sections),
+        total_sections=len(all_sections),
+        status="success" if selected_sections else "degraded",
+        error_type=None if selected_sections else "prompt_rag_no_relevant_sections",
     )
 
     return composed
@@ -501,6 +576,7 @@ def compose_keyword_prompt(
     query: str,
     max_tokens: int | None = None,
     top_k: int = DEFAULT_DYNAMIC_SECTIONS,
+    project_id: str | None = None,
 ) -> str:
     """Synchronous, keyword-only version of compose_dynamic_prompt.
 
@@ -516,11 +592,11 @@ def compose_keyword_prompt(
     remaining = budget - anchor_tokens
 
     if remaining <= 100:
-        return anchor
+        return _with_spine_notice(anchor)
 
     all_sections = index_agent_sections(agent_id)
     if not all_sections:
-        return anchor
+        return _with_spine_notice(anchor)
 
     query_tokens = _tokenize(query)
     scored = [
@@ -545,7 +621,7 @@ def compose_keyword_prompt(
     file_order = {f: i for i, f in enumerate(IDENTITY_FILES)}
     selected.sort(key=lambda s: (file_order.get(s.filename, 99), s.depth))
 
-    parts = [anchor]
+    parts = [_with_spine_notice(anchor)]
     for section in selected:
         parts.append(section.to_text())
 

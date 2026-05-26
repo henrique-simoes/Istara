@@ -243,6 +243,7 @@
 </header>
 <h2 id="implementation-summary">Implementation Summary</h2>
 <p>Upload controls import project files and documents into Istara for downstream reading, chat, and evidence workflows.</p>
+<p>Clean text uploads now register raw source evidence units immediately. Upload does not create trusted Atomic Research artifacts; it creates a <code>Document</code> raw source, hybrid-search chunks, source evidence units, and content-free extraction telemetry so later coding, reliability, reconciliation, task review, and report gates can operate on original source spans.</p>
 <h2 id="frontend-surface">Frontend Surface</h2>
 <ul>
 <li><code>frontend/src/components/documents/DocumentsView.tsx</code></li>
@@ -258,10 +259,16 @@
 <ul>
 <li><code>backend/app/api/routes/files.py</code></li>
 <li><code>backend/app/api/routes/documents.py</code></li>
+<li>Clean uploaded text returns <code>doc_id</code> and <code>evidence_units_created</code>. These units are <code>source_span</code> rows linked to the uploaded <code>Document</code>, not accepted nuggets/findings.</li>
+<li>Quarantined uploads stay blocked for security review and are not indexed or converted into source evidence units.</li>
+<li>Audio uploads create source evidence units only after transcription succeeds and the document reaches <code>ready</code>.</li>
 </ul>
 <h2 id="architecture-notes">Architecture Notes</h2>
 <ul>
 <li>The feature is mounted through <code>frontend/src/components/documents/DocumentsView.tsx</code> and the UI navigation path recorded in the inventory.</li>
+<li>Document-heavy benchmarks and simulations use <code>tests/document_corpus/canonical/</code> through <code>tests/document_corpus/shared-corpus.mjs</code> as their corpus contract. Agentic research, task execution, Findings, and Reports tests should use at least 120 long-form canonical sources unless they are explicitly narrow parser/unit checks.</li>
+<li>Upload and folder-sync ingestion are Research Spine entry points: raw source -&gt; evidence units -&gt; independent extraction/coding -&gt; reliability/reconciliation -&gt; accepted atoms/findings -&gt; Done tasks -&gt; reports.</li>
+<li>Product-level tests can request manifest-backed slices such as <code>interview-heavy</code>, <code>survey-heavy</code>, <code>usability-heavy</code>, <code>accessibility-heavy</code>, <code>findings-reporting</code>, <code>multilingual</code>, <code>malformed-edge-case</code>, <code>upload-smoke</code>, <code>coding-reliability</code>, <code>graph-synthesis</code>, <code>low-consensus-review</code>, or <code>full-end-to-end</code>. Tiny generated fixtures are reserved for parser/unit tests and should not receive representative corpus credit.</li>
 <li>The frontmatter and manifest entries are the durable contract for agents updating this page after code changes.</li>
 <li>When the referenced component, store, route, agent, skill, or test behavior changes, regenerate and validate the feature documentation.</li>
 </ul>
@@ -271,7 +278,11 @@
 </ul>
 <h2 id="tests-and-verification">Tests And Verification</h2>
 <ul>
-<li>No focused test reference recorded yet.</li>
+<li><code>tests/document_corpus/shared-corpus.mjs</code></li>
+<li><code>tests/document_corpus/canonical/manifest.json</code></li>
+<li><code>tests/test_files.py::test_text_upload_registers_raw_source_evidence_units</code></li>
+<li><code>tests/test_documents.py::test_documents_sync_registers_raw_source_evidence_units</code></li>
+<li><code>tests/real_user_benchmark/run.mjs</code></li>
 </ul>
 <h2 id="related-features">Related Features</h2>
 <ul>
@@ -285,7 +296,7 @@
 </ul>
 <h2 id="compass-evidence">Compass Evidence</h2>
 <ul>
-<li>Spec/task: CF-SPEC-53 / CF-657</li>
+<li>Spec/task: CF-SPEC-53 / CF-657; CF-SPEC-122; CF-SPEC-123 / CF-1581; CF-SPEC-131</li>
 <li>Inventory source: <code>docs/features/inventory.json</code></li>
 </ul>
 <h2 id="when-to-update">When To Update</h2>

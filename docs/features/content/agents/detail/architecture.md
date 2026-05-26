@@ -9,8 +9,8 @@ related_glossary: ["a2a"]
 code_references: ["frontend/src/components/agents/AgentsView.tsx", "frontend/src/lib/api.ts", "backend/app/api/routes/agents.py", "backend/app/api/agent_project_scope.py", "backend/app/core/agent_identity.py", "backend/app/core/agent_learning.py", "backend/app/core/self_evolution.py", "backend/app/core/agent_memory.py", "backend/app/core/permissions.py"]
 api_references: ["backend/app/api/routes/agents.py", "backend/app/api/agent_project_scope.py"]
 test_references: ["tests/test_agents.py", "tests/test_agent_mutation_scope.py", "tests/test_agent_scope_contracts.py", "tests/test_agent_learning_scope.py", "tests/test_project_scope_contracts.py"]
-last_verified: 2026-05-19
-compass: CF-SPEC-60 / CF-776; CF-SPEC-68 / CF-870; CF-SPEC-83 / CF-1075; CF-SPEC-89 / CF-1125
+last_verified: 2026-05-22
+compass: CF-SPEC-60 / CF-776; CF-SPEC-68 / CF-870; CF-SPEC-83 / CF-1075; CF-SPEC-89 / CF-1125; CF-SPEC-129
 ---
 
 # Agent Detail Panels Architecture
@@ -42,9 +42,11 @@ Selected agent details expose overview, identity, memory, and permission informa
 - The feature is mounted through `frontend/src/components/agents/AgentsView.tsx` and the UI navigation path recorded in the inventory.
 - Shared detail access policy lives in `backend/app/api/agent_project_scope.py`, with the route layer passing active project ids from `frontend/src/lib/api.ts`.
 - Detail, identity, prompt diagnostic, learning, and memory reads must include the active project for non-admin users. The backend verifies that project-scoped agents belong to that project before returning agent data.
-- Detail panel mutations are project-owned operations. The UI only exposes pause/resume, delete, identity-save, permissions toggles, export, and import for agents whose `project_id` matches the active project, and every corresponding API call includes that active project id.
+- Detail panel mutations are project-owned operations. The UI only exposes pause/resume, delete, identity-save, permissions toggles, export, and import for agents whose `project_id` matches the active project when the shared role-capability contract says the user is a global admin or active-project admin. Every corresponding API call includes that active project id.
+- The embedded steering input follows the current backend steering contract and is mounted only for global-admin-capable sessions.
 - The backend rejects project-facing detail mutations when `project_id` is missing, when the id belongs to another project, or when the target is a universal/system agent whose mutable state is shared outside the current project.
 - Structured agent learnings are stored and retrieved only with an explicit project id. Project task failures or review feedback must not append private project content into universal persona MEMORY overlays.
+- Agent-run and manually-run skill outputs are stored as candidate/provisional Research Spine artifacts unless exact source spans are available for governed coding and later reliability/reconciliation gates accept them. Agent detail and work history must not imply those artifacts are reportable before Done-task approval.
 - Self-evolution candidate scans, auto-evolution, and promotion mutations require an explicit active project id. The route and engine reject paused or missing projects before returning candidates or writing persona-file promotions, so one project's evidence cannot mature or mutate another project's agent behavior.
 - Agent promotion review notifications are persisted with the selected agent's owning project id and project metadata. Review queues must not create global notification records from project-owned agent improvement activity.
 - Universal agent runtime memory is not exposed in project detail panels for non-admin users; project-specific notes should be read through the project-scoped memory APIs.
@@ -74,7 +76,7 @@ Selected agent details expose overview, identity, memory, and permission informa
 
 ## Compass Evidence
 
-- Spec/task: CF-SPEC-60 / CF-776; CF-SPEC-68 / CF-870; CF-SPEC-83 / CF-1075; CF-SPEC-89 / CF-1125
+- Spec/task: CF-SPEC-60 / CF-776; CF-SPEC-68 / CF-870; CF-SPEC-83 / CF-1075; CF-SPEC-89 / CF-1125; CF-SPEC-129
 - Inventory source: `docs/features/inventory.json`
 
 ## When To Update

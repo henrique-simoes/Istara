@@ -147,6 +147,7 @@ const ws = createConnection(opts.server, {
       providerType: llmProxy.providerType,
       providerHost: llmProxy.host,
       userId: opts.token ? "authenticated" : "anonymous",
+      connectionString: connStr || "",
     })));
 
     // Start heartbeat
@@ -157,7 +158,10 @@ const ws = createConnection(opts.server, {
       const msg = JSON.parse(data);
 
       if (msg.type === "registered") {
-        console.log(`📋 Registered as node: ${msg.node_id}`);
+        const scopeLabel = msg.authorized_project_count === "all"
+          ? "all projects"
+          : `${msg.authorized_project_count ?? 0} project(s)`;
+        console.log(`📋 Registered as node: ${msg.node_id} (${scopeLabel})`);
       } else if (msg.type === "llm_request") {
         stateMachine.transition("donating");
         try {

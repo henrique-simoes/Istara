@@ -19,6 +19,7 @@ from app.core.compute_registry_helpers import (
 
 logger = logging.getLogger("app.core.compute_registry")
 
+
 class ComputeNodeModelMixin:
     async def check_health(self) -> bool:
         """Probe the server health endpoint and discover available models.
@@ -49,7 +50,9 @@ class ComputeNodeModelMixin:
                 # server as Ollama. LM Studio may return 200 for unknown paths, so a
                 # status-only check would keep routing the wrong endpoint forever.
                 openai_start = time.time()
-                openai_resp = await client.get(self._openai_endpoint("models"), timeout=10.0)
+                openai_resp = await client.get(
+                    self._openai_endpoint("models"), timeout=10.0
+                )
                 self.latency_ms = (time.time() - openai_start) * 1000
                 if openai_resp.status_code == 200:
                     try:
@@ -94,7 +97,9 @@ class ComputeNodeModelMixin:
                 else:
                     self.is_healthy = False
                     self.health_state = "no_model_loaded"
-                    self.health_error = "Server is reachable, but no chat model is loaded"
+                    self.health_error = (
+                        "Server is reachable, but no chat model is loaded"
+                    )
             elif resp.status_code in (401, 403):
                 # Auth failure — server requires an API key
                 self.health_state = "auth_required"
@@ -139,7 +144,9 @@ class ComputeNodeModelMixin:
         return supported
 
     def _models_marked_loaded(self) -> set[str]:
-        loaded = {str(model).strip() for model in self.loaded_models if str(model).strip()}
+        loaded = {
+            str(model).strip() for model in self.loaded_models if str(model).strip()
+        }
         for model_name, caps in self.model_capabilities.items():
             if isinstance(caps, dict) and caps.get("is_loaded"):
                 loaded.add(str(model_name).strip())
@@ -153,6 +160,7 @@ class ComputeNodeModelMixin:
 
     def _known_chat_models(self, require_vision: bool = False) -> list[str]:
         names: list[Any] = []
+        loaded_aliases_from_caps: list[str] = []
         loaded_from_caps: list[str] = []
         loadable_from_caps: list[str] = []
         other_from_caps: list[str] = []
@@ -162,12 +170,15 @@ class ComputeNodeModelMixin:
                 continue
             if require_vision and not caps.get("supports_vision"):
                 continue
-            if caps.get("is_loaded"):
+            if caps.get("is_loaded") and caps.get("loaded_instance_alias"):
+                loaded_aliases_from_caps.append(model_name)
+            elif caps.get("is_loaded"):
                 loaded_from_caps.append(model_name)
             elif caps.get("loadable") is not False:
                 loadable_from_caps.append(model_name)
             else:
                 other_from_caps.append(model_name)
+        names.extend(loaded_aliases_from_caps)
         names.extend(loaded_from_caps)
         names.extend(self.loaded_models or [])
         names.extend(loadable_from_caps)
@@ -199,13 +210,19 @@ class ComputeNodeModelMixin:
             and configured_lmstudio_host
             and self.host.rstrip("/") == configured_lmstudio_host
         )
-        parsed_host = urlparse(self.host if "://" in self.host else f"http://{self.host}")
-        is_native_lmstudio = self.provider_type == "lmstudio" and parsed_host.port == 1234
+        parsed_host = urlparse(
+            self.host if "://" in self.host else f"http://{self.host}"
+        )
+        is_native_lmstudio = (
+            self.provider_type == "lmstudio" and parsed_host.port == 1234
+        )
         if require_vision:
             vision_models = [m for m in self._models_supporting("supports_vision") if m]
             loaded = self._models_marked_loaded()
-            if model and model != "default" and self._capability_supports(
-                model, "supports_vision"
+            if (
+                model
+                and model != "default"
+                and self._capability_supports(model, "supports_vision")
             ):
                 return model
             loaded_vision = [m for m in vision_models if m in loaded]
@@ -235,6 +252,8 @@ class ComputeNodeModelMixin:
             if known_chat_models and not is_configured_lmstudio:
                 return known_chat_models[0]
             return model
+        if self.source in {"relay", "browser"} and known_chat_models:
+            return known_chat_models[0]
         if (
             is_configured_lmstudio
             and settings.lmstudio_model
@@ -275,12 +294,13 @@ class ComputeNodeModelMixin:
         caps = self.model_capabilities.get(requested)
         if (
             not force
-            and
-            isinstance(caps, dict)
+            and isinstance(caps, dict)
             and caps.get("is_loaded")
             and (
                 not context_length
-                or int(caps.get("loaded_context_length") or caps.get("context_length") or 0)
+                or int(
+                    caps.get("loaded_context_length") or caps.get("context_length") or 0
+                )
                 >= context_length
             )
         ):
@@ -293,7 +313,8 @@ class ComputeNodeModelMixin:
                     {
                         "model": requested,
                         "context_length": context_length,
-                        "allow_unload": force and settings.lmstudio_allow_unload_on_reload,
+                        "allow_unload": force
+                        and settings.lmstudio_allow_unload_on_reload,
                     },
                 )
             result = response.get("result", {})
@@ -327,8 +348,12 @@ class ComputeNodeModelMixin:
                 loaded_context = context_length
                 try:
                     data = resp.json()
-                    load_config = data.get("load_config") if isinstance(data, dict) else None
-                    if isinstance(load_config, dict) and load_config.get("context_length"):
+                    load_config = (
+                        data.get("load_config") if isinstance(data, dict) else None
+                    )
+                    if isinstance(load_config, dict) and load_config.get(
+                        "context_length"
+                    ):
                         loaded_context = int(load_config["context_length"])
                 except Exception:
                     pass
@@ -354,7 +379,9 @@ class ComputeNodeModelMixin:
             for instance in model.get("loaded_instances") or []:
                 if not isinstance(instance, dict):
                     continue
-                instance_id = str(instance.get("id") or instance.get("instance_id") or "").strip()
+                instance_id = str(
+                    instance.get("id") or instance.get("instance_id") or ""
+                ).strip()
                 if not instance_id or instance_id in unloaded:
                     continue
                 try:
@@ -390,7 +417,9 @@ class ComputeNodeModelMixin:
             caps["is_loaded"] = True
             if context_length:
                 caps["loaded_context_length"] = context_length
-                caps["context_length"] = max(int(caps.get("context_length") or 0), context_length)
+                caps["context_length"] = max(
+                    int(caps.get("context_length") or 0), context_length
+                )
 
     def _resolve_embed_model(self, model: str | None) -> str:
         """Resolve embedding model — prefer embedding-specific models."""

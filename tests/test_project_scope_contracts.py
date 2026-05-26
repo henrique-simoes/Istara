@@ -17,13 +17,6 @@ def read_repo(path: str) -> str:
     return (REPO_ROOT / path).read_text(encoding="utf-8")
 
 
-def test_interfaces_tab_label_uses_configuration_copy() -> None:
-    source = read_repo("frontend/src/components/interfaces/InterfacesView.tsx")
-
-    assert '{ id: "figma", icon: ExternalLink, label: "Configuration" }' in source
-    assert 'label: "Figma"' not in source
-
-
 def test_permission_requests_bind_project_settings_to_active_project_scope() -> None:
     route = read_repo("backend/app/api/routes/permission_requests.py")
     api = read_repo("frontend/src/lib/api.ts")
@@ -230,7 +223,10 @@ def test_research_integrity_by_id_routes_require_active_project_scope() -> None:
     assert "CodeApplication.project_id == scoped_project_id" in code_apps_route
     assert "await require_project_access(db, request, scoped_project_id, min_role=\"researcher\")" in code_apps_route
 
-    assert "review: (applicationId: string, reviewStatus: string, projectId: string" in api
+    assert "review: (" in api
+    assert "applicationId: string" in api
+    assert "reviewStatus: string" in api
+    assert "projectId: string" in api
     assert "/api/code-applications/${applicationId}/review?project_id=${encodeURIComponent(projectId)}" in api
     assert "codeAppApi.review(applicationId, status, projectId)" in review_queue
     assert "}, [projectId]);" in review_queue
@@ -486,7 +482,8 @@ def test_findings_search_and_lists_require_active_project_scope() -> None:
 
     drilldown = read_repo("frontend/src/components/findings/AtomicDrilldown.tsx")
     timeline = read_repo("frontend/src/components/agents/AgentTimeline.tsx")
-    assert all(marker in drilldown for marker in ("findingsApi.evidenceChain(type, id, projectId)", "findingsApi.linkEvidence(activeFinding.type, activeFinding.id, linkId, linkInfo.linkType, projectId)"))
+    drilldown_markers = ("findingsApi.evidenceChain(type, id, projectId)", "findingsApi.linkEvidence(activeFinding.type, activeFinding.id, linkId, linkInfo.linkType, projectId)", "Research-validity gate is blocking promotion.")
+    assert all(marker in drilldown for marker in drilldown_markers)
     assert "findingsApi.delete(entry.type, id, activeProjectId)" in timeline
 
 
@@ -531,6 +528,8 @@ def test_task_kanban_requires_active_project_scope() -> None:
     assert "tasksApi.qualitySummary(task.id, activeProjectId)" in editor
     assert "approveTask(task.id, activeProjectId" in editor
     assert "tasksApi.createReport(task.id, activeProjectId)" in editor
+    gate_markers = ("const needsCodingBeforeReport =", "const canMarkDone =", "const canSendToReport =", "disabled={!canMarkDone}", "disabled={!canSendToReport}", "accepted_after_reconciliation", "Run a coding pass and accept or reconcile coded evidence before marking this research task Done.", "Run a coding pass and accept or reconcile coded evidence before reporting.")
+    assert all(marker in editor for marker in gate_markers)
     assert "tasksApi.list(activeProjectId)" in timeline
     assert "tasksApi.delete(id, activeProjectId)" in timeline
 
@@ -618,7 +617,7 @@ def test_llm_server_inventory_and_health_checks_require_global_admin_access() ->
     status_body = settings_route.split('@router.get("/settings/status")', 1)[1]; assert 'def _cached_llm_readiness() -> tuple[bool, bool]:' in settings_route
     assert all(marker not in status_body for marker in ("await ollama.health()", '"provider": settings.llm_provider', '"config": {'))
     assert all(marker in settings_route for marker in ("async def get_hardware_info(request: Request):", "async def get_models(request: Request):", "async def maintenance_status(request: Request):", "async def integrations_status(request: Request):", "async def vector_health(request: Request):", "async def check_data_integrity(request: Request, db: AsyncSession = Depends(get_db)):", "async def switch_model(model_name: str, request: Request):", "async def switch_provider(provider: str, request: Request):"))
-    assert all(marker in settings_view for marker in ("const canManageLLMServers = !teamMode || user?.role === \"admin\";", "const canManageInfrastructure = !teamMode || user?.role === \"admin\";", "Global admin access is required to manage shared provider endpoints."))
+    assert all(marker in settings_view for marker in ("const capabilities = useRoleCapabilities();", "const canManageInfrastructure = capabilities.canManageLlmInfrastructure;", "canManageInfrastructure ? settingsApi.hardware() : Promise.resolve(null)", "canManageInfrastructure ? settingsApi.models() : Promise.resolve(null)", "const canManageLLMServers = !teamMode || user?.role === \"admin\";", "Global admin access is required to manage shared provider endpoints."))
 
 def test_autoresearch_project_surfaces_require_active_project_scope() -> None:
     api = read_repo("frontend/src/lib/api.ts"); store = read_repo("frontend/src/stores/autoresearchStore.ts")

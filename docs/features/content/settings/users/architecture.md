@@ -6,23 +6,23 @@ audience: architecture
 status: needs-verification
 related_features: ["auth.login", "settings.security-factors"]
 related_glossary: ["wcag"]
-code_references: ["frontend/src/components/common/UserManagement.tsx", "backend/app/api/routes/admin.py"]
-api_references: ["backend/app/api/routes/admin.py"]
-test_references: []
-last_verified: 2026-05-15
-compass: CF-SPEC-53 / CF-657
+code_references: ["frontend/src/components/common/UserManagement.tsx", "backend/app/api/routes/auth.py"]
+api_references: ["backend/app/api/routes/auth.py"]
+test_references: ["tests/test_auth_security.py"]
+last_verified: 2026-05-22
+compass: CF-SPEC-134 / CF-1671
 ---
 
 # User Management Architecture
 
 ## Implementation Summary
 
-User management supports team member visibility and administrative user operations.
+User management supports team member visibility and administrative user operations through `/auth/users`.
 
 ## Frontend Surface
 
 - `frontend/src/components/common/UserManagement.tsx`
-- `backend/app/api/routes/admin.py`
+- `backend/app/api/routes/auth.py`
 
 ## State, API, And Backend Contracts
 
@@ -32,7 +32,7 @@ User management supports team member visibility and administrative user operatio
 
 ### API And Backend
 
-- `backend/app/api/routes/admin.py`
+- `backend/app/api/routes/auth.py`
 
 ## Architecture Notes
 
@@ -42,11 +42,11 @@ User management supports team member visibility and administrative user operatio
 
 ## Agents, Skills, LLM, MCP, And Permissions
 
-- No direct agent, skill, LLM, or MCP behavior is asserted beyond the cited source files.
+- User creation is global-admin scoped and returns one-time recovery codes for the new account. Researchers do not call this admin-only surface in normal journeys.
 
 ## Tests And Verification
 
-- No focused test reference recorded yet.
+- `tests/test_auth_security.py`
 
 ## Related Features
 

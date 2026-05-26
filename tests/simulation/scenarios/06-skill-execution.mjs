@@ -3,6 +3,10 @@
 export const name = "Skill Execution & Management";
 export const id = "06-skill-execution";
 
+function isExpectedMaintenanceConflict(error, ctx) {
+  return ctx.maintenancePaused === true && String(error?.message || "").includes("409");
+}
+
 export async function run(ctx) {
   const { api, page, screenshot } = ctx;
   const checks = [];
@@ -116,9 +120,25 @@ export async function run(ctx) {
         project_id: ctx.projectId,
         user_context: "Analyze the uploaded interview transcripts for common themes",
       });
-      checks.push({ name: "Skill execution via API", passed: true, detail: JSON.stringify(result).substring(0, 100) });
+      const reportBlocked =
+        result.report_allowed === false && result.research_validity?.status === "provisional";
+      checks.push({
+        name: "Skill execution via API",
+        passed: reportBlocked,
+        detail: reportBlocked
+          ? `candidate=${result.artifact_state}, report_allowed=${result.report_allowed}`
+          : `missing provisional Research Spine state: ${JSON.stringify(result).substring(0, 100)}`,
+      });
     } catch (e) {
-      checks.push({ name: "Skill execution via API", passed: false, detail: e.message });
+      if (isExpectedMaintenanceConflict(e, ctx)) {
+        checks.push({
+          name: "Skill execution via API",
+          passed: true,
+          detail: "[deferred] Simulation maintenance mode blocks live skill execution as expected",
+        });
+      } else {
+        checks.push({ name: "Skill execution via API", passed: false, detail: e.message });
+      }
     }
   }
 

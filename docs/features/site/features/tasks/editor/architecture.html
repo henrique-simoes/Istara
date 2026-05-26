@@ -262,16 +262,23 @@
 <li>The feature is mounted through <code>frontend/src/components/kanban/TaskEditor.tsx</code> and the UI navigation path recorded in the inventory.</li>
 <li>The editor treats the selected project as part of every task action. Saves, quality summaries, atomic-path reads, review approvals, revision requests, and report sends require <code>activeProjectId</code> to match <code>task.project_id</code> before calling the backend.</li>
 <li>Backend task-by-id routes require the active <code>project_id</code> and bind it to <code>Task.project_id</code> before returning or mutating task data, preventing stale editor state from acting on another project&#x27;s task.</li>
+<li>Chat and agent system-action task creation follows the same active-project contract for task-bound context. LLM-created tasks remain backlog work items, attached <code>input_document_ids</code> must belong to the active project, and legacy <code>critical</code> priority is normalized to the canonical <code>urgent</code> priority before storage.</li>
+<li>Task atomic paths include task-linked research-validity state: coding-run counts, code-application counts, accepted code counts, latest coding-run status, and blocked/review items. Review UI uses that data to explain low reliability, missing accepted codes, missing coding, or reconciliation needs before a task is approved or sent to Reports.</li>
+<li>The editor disables Mark Done and Send to Report for research tasks with task-bound findings until accepted/reconciled coded evidence exists. Researchers see whether they need to start a coding run, reconcile low-agreement codes, or accept governed code applications.</li>
+<li>The Task Editor also calls the project-scoped research-validity traceability API for the active task. It shows <code>graph+hybrid</code> Evidence Graph counts for low-agreement dependencies, reconciliation decisions, report links, and graph edges so researchers can understand why work needs review without treating GraphRAG as a promotion shortcut.</li>
+<li>Report creation from the task route still requires human-approved Done status, and also checks the research-validity gate. If a task has unreconciled code applications or no accepted/reconciled evidence after review, <code>POST /tasks/{task_id}/reports</code> returns a conflict instead of letting unreviewed evidence flow into Reports.</li>
 <li>The frontmatter and manifest entries are the durable contract for agents updating this page after code changes.</li>
 <li>When the referenced component, store, route, agent, skill, or test behavior changes, regenerate and validate the feature documentation.</li>
 </ul>
 <h2 id="agents-skills-llm-mcp-and-permissions">Agents, Skills, LLM, MCP, And Permissions</h2>
 <ul>
-<li>No direct agent, skill, LLM, or MCP behavior is asserted beyond the cited source files.</li>
+<li>Agent skill output that stores nuggets creates task-linked evidence units and starts a governed coding run through <code>backend/app/services/research_validity_service.py</code>. The coding run may use donated/project-authorized compute through Compute Manager; route evidence and reliability status remain project scoped.</li>
+<li>Manual skill execution receives a task id before the skill runs, then stores the output on that same In Review task so any task-aware skill can attach provenance to the eventual review artifact.</li>
 </ul>
 <h2 id="tests-and-verification">Tests And Verification</h2>
 <ul>
 <li><code>tests/test_tasks.py</code></li>
+<li><code>tests/test_agents.py</code></li>
 </ul>
 <h2 id="related-features">Related Features</h2>
 <ul>

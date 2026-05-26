@@ -60,6 +60,18 @@ interface SessionRevokeResult {
   revoked_current: boolean;
 }
 
+interface ProfileUpdatePayload {
+  current_password: string;
+  username?: string;
+  email?: string;
+  display_name?: string;
+}
+
+interface PasswordChangeResult {
+  status: string;
+  revoked_sessions: number;
+}
+
 interface AuthState {
   user: User | null;
   token: string | null;
@@ -75,6 +87,9 @@ interface AuthState {
   checkTeamStatus: () => Promise<{ team_mode: boolean; has_users: boolean; insecure: boolean }>;
   fetchMe: () => Promise<boolean>;
   updatePreferences: (prefs: Record<string, unknown>) => Promise<void>;
+  updateProfile: (payload: ProfileUpdatePayload) => Promise<User>;
+  changePassword: (currentPassword: string, newPassword: string) => Promise<PasswordChangeResult>;
+  generateRecoveryCodes: (currentPassword: string) => Promise<string[]>;
   getAuthHeaders: () => Record<string, string>;
   listAuthSessions: () => Promise<AuthSession[]>;
   revokeAuthSession: (sessionId: string) => Promise<SessionRevokeResult>;
@@ -285,6 +300,64 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     } catch {
       // Ignore preference update errors
     }
+  },
+
+  updateProfile: async (payload) => {
+    const { token } = get();
+    if (!token) throw new Error("Not authenticated");
+    const res = await fetch(`${API_BASE}/api/auth/profile`, {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify(payload),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ detail: "Failed to update profile" }));
+      throw new Error(err.detail || "Failed to update profile");
+    }
+    const data = await res.json();
+    set({ user: { ...data.user, preferences: data.user?.preferences || {} } });
+    return data.user;
+  },
+
+  changePassword: async (currentPassword, newPassword) => {
+    const { token } = get();
+    if (!token) throw new Error("Not authenticated");
+    const res = await fetch(`${API_BASE}/api/auth/password/change`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ current_password: currentPassword, new_password: newPassword }),
+      credentials: "include",
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ detail: "Failed to change password" }));
+      throw new Error(err.detail || "Failed to change password");
+    }
+    return res.json();
+  },
+
+  generateRecoveryCodes: async (currentPassword) => {
+    const { token } = get();
+    if (!token) throw new Error("Not authenticated");
+    const res = await fetch(`${API_BASE}/api/auth/recovery-codes/generate`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ current_password: currentPassword }),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ detail: "Failed to generate recovery codes" }));
+      throw new Error(err.detail || "Failed to generate recovery codes");
+    }
+    const data = await res.json();
+    return data.recovery_codes || [];
   },
 
   getAuthHeaders: (): Record<string, string> => {

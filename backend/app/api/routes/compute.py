@@ -264,6 +264,19 @@ async def relay_websocket(ws: WebSocket):
             msg_type = msg.get("type", "")
 
             if msg_type == "register":
+                node_allowed_project_ids = allowed_project_ids
+                registration_connection_string = str(msg.get("connection_string") or "").strip()
+                if not node_allowed_project_ids and registration_connection_string:
+                    async with async_session() as db:
+                        message_scope, reason = await _scope_from_connection_string(
+                            db,
+                            registration_connection_string,
+                        )
+                    if reason != "ok":
+                        await ws.close(code=4001, reason="Invalid compute donation connection string")
+                        return
+                    node_allowed_project_ids = _combine_project_scopes(user_scope, message_scope)
+
                 # Resolve provider_host for optional provider metadata probes.
                 # Chat execution itself uses the relay WebSocket so remote
                 # donors do not need inbound provider ports.
@@ -295,7 +308,7 @@ async def relay_websocket(ws: WebSocket):
                     user_id=authenticated_user_id or msg.get("user_id", "anonymous"),
                     ip_address=ip_addr,
                     provider_host=provider_host,
-                    allowed_project_ids=allowed_project_ids,
+                    allowed_project_ids=node_allowed_project_ids,
                     ram_total_gb=msg.get("ram_total_gb", 0),
                     ram_available_gb=msg.get("ram_available_gb", 0),
                     cpu_cores=msg.get("cpu_cores", 0),
@@ -342,8 +355,8 @@ async def relay_websocket(ws: WebSocket):
                         "node_id": node_id,
                         "authorized_project_count": (
                             "all"
-                            if "*" in allowed_project_ids
-                            else len(allowed_project_ids)
+                            if "*" in node_allowed_project_ids
+                            else len(node_allowed_project_ids)
                         ),
                     }
                 )

@@ -5,7 +5,7 @@ import json
 import pytest
 
 from app.config import settings
-from app.skills.base import SkillInput, SkillPhase, SkillType
+from app.skills.base import SkillInput, SkillOutput, SkillPhase, SkillType
 from app.skills.skill_factory import _make_schema_strict, create_skill
 from app.core.token_counter import count_tokens
 
@@ -19,6 +19,10 @@ async def test_generated_skill_preserves_literal_prompt_braces(monkeypatch):
         assert "Context: test project context" in prompt
         assert "Survey Data: [RESEARCH_DATA_BELOW]" in prompt
         assert "Tag findings with ux-law:{id}." in prompt
+        assert "candidate/provisional Research Spine artifacts" in prompt
+        assert "<research_spine_contract>" in prompt
+        assert "Sources and exact source spans come before trusted Atomic Research" in prompt
+        assert "Do not describe any artifact as accepted" in prompt
         return {
             "message": {
                 "content": json.dumps(
@@ -76,6 +80,30 @@ async def test_generated_skill_preserves_literal_prompt_braces(monkeypatch):
     assert output.success is True
     assert output.json_success is True
     assert output.nuggets[0]["tags"] == ["ux-law:{id}"]
+    assert output.nuggets[0]["artifact_state"] == "candidate_atom"
+    assert output.nuggets[0]["research_validity"]["report_allowed"] is False
+    assert output.insights[0]["artifact_state"] == "candidate_insight"
+
+
+def test_skill_output_cannot_self_promote_reportability():
+    output = SkillOutput(
+        success=True,
+        summary="Attempted self-promotion.",
+        research_validity={"status": "accepted", "report_allowed": True},
+        nuggets=[
+            {
+                "text": "A model-generated observation.",
+                "source": "skill",
+                "tags": ["friction"],
+                "research_validity": {"status": "accepted", "report_allowed": True},
+            }
+        ],
+    )
+
+    assert output.research_validity["status"] == "provisional"
+    assert output.research_validity["report_allowed"] is False
+    assert output.nuggets[0]["research_validity"]["status"] == "provisional"
+    assert output.nuggets[0]["research_validity"]["report_allowed"] is False
 
 
 @pytest.mark.asyncio

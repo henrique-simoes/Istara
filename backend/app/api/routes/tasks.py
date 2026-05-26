@@ -281,6 +281,26 @@ async def _approve_task(
     note: str = "",
 ) -> TaskReviewEvent:
     from app.core.task_review import APPROVED, diagnose_review_event, record_task_review_event
+    from app.services.research_validity_service import assess_task_research_validity
+
+    validity = await assess_task_research_validity(db, project_id=task.project_id, task_id=task.id)
+    has_research_artifacts = bool(
+        validity.get("task_finding_count", 0)
+        or validity.get("code_application_count", 0)
+        or validity.get("latest_coding_run")
+    )
+    if has_research_artifacts and not validity.get("report_allowed", False):
+        task.what_to_review = (
+            "Research-validity gate blocked Done approval: "
+            f"{validity.get('reason', 'coded evidence requires review')}"
+        )
+        raise HTTPException(
+            status_code=409,
+            detail=(
+                "Task research-validity gate blocked Done approval: "
+                f"{validity.get('reason', 'coded evidence requires review')}"
+            ),
+        )
 
     event = await record_task_review_event(
         db,
@@ -428,6 +448,7 @@ async def update_task(
     task = await _get_authorized_project_task_or_404(
         db, request, task_id, project_id, min_role="researcher"
     )
+    previous_status = task.status.value if isinstance(task.status, TaskStatus) else str(task.status or "")
 
     update_data = data.model_dump(exclude_unset=True)
     if update_data.get("status") == TaskStatus.DONE:
@@ -452,6 +473,15 @@ async def update_task(
 
     await db.commit()
     await db.refresh(task)
+    if "status" in update_data:
+        from app.core.task_review import record_kanban_status_transition
+
+        await record_kanban_status_transition(
+            project_id=task.project_id,
+            task_id=task.id,
+            previous_status=previous_status,
+            next_status=task.status.value if isinstance(task.status, TaskStatus) else str(task.status or ""),
+        )
 
     # If an agent was assigned, wake the orchestrator to pick up the task immediately
     if "agent_id" in update_data and update_data["agent_id"]:
@@ -473,6 +503,7 @@ async def move_task(
     task = await _get_authorized_project_task_or_404(
         db, request, task_id, project_id, min_role="researcher"
     )
+    previous_status = task.status.value if isinstance(task.status, TaskStatus) else str(task.status or "")
 
     if status == TaskStatus.DONE:
         if task.status != TaskStatus.IN_REVIEW:
@@ -503,6 +534,14 @@ async def move_task(
 
     await db.commit()
     await db.refresh(task)
+    from app.core.task_review import record_kanban_status_transition
+
+    await record_kanban_status_transition(
+        project_id=task.project_id,
+        task_id=task.id,
+        previous_status=previous_status,
+        next_status=task.status.value if isinstance(task.status, TaskStatus) else str(task.status or ""),
+    )
     return task
 
 
@@ -728,6 +767,14 @@ async def create_report_from_task(
     )
     if task.status != TaskStatus.DONE or task.review_state != "approved":
         raise HTTPException(status_code=409, detail="Only human-approved Done tasks can be sent to Reports.")
+    from app.services.research_validity_service import assess_task_research_validity
+
+    validity = await assess_task_research_validity(db, project_id=task.project_id, task_id=task.id)
+    if not validity["report_allowed"]:
+        raise HTTPException(
+            status_code=409,
+            detail=f"Task research-validity gate blocked reporting: {validity['reason']}",
+        )
 
     from app.core.task_review import build_atomic_snapshot
     from app.models.project_report import ProjectReport

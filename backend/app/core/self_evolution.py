@@ -57,6 +57,28 @@ PROMOTION_THRESHOLDS = {
     "min_success_rate": 0.6,    # 60% success rate when applied
 }
 
+
+def get_effective_promotion_thresholds(project_id: str | None = None) -> dict:
+    """Return base thresholds plus approved project-scoped meta overrides.
+
+    Meta-Hyperagent variants are project policy, not global module mutation.
+    This helper is the read-time boundary that lets self-evolution benefit
+    from governed project tuning without leaking changes across projects.
+    """
+    effective = dict(PROMOTION_THRESHOLDS)
+    scoped_project_id = str(project_id or "").strip()
+    if not scoped_project_id:
+        return effective
+    try:
+        from app.core.meta_overrides import get_self_evolution_threshold_overrides
+
+        effective.update(
+            get_self_evolution_threshold_overrides(project_id=scoped_project_id)
+        )
+    except Exception as exc:
+        logger.debug("Project-scoped self-evolution thresholds unavailable: %s", exc)
+    return effective
+
 # Which MD file receives promotions for each learning category
 PROMOTION_TARGETS = {
     "error_pattern": "PROTOCOLS.md",
@@ -74,6 +96,44 @@ PROMOTION_SECTIONS = {
     "MEMORY.md": "### Promoted Learnings",
 }
 
+_PROTECTED_RESEARCH_TERMS = (
+    "accepted evidence",
+    "auth constraint",
+    "backend authorization",
+    "codebook",
+    "cohen",
+    "done task",
+    "fleiss",
+    "human review",
+    "kappa",
+    "krippendorff",
+    "promotion gate",
+    "qualitative coding",
+    "reliability threshold",
+    "report gate",
+    "research spine",
+)
+_RISKY_METHOD_MUTATION_TERMS = (
+    "auto-approve",
+    "bypass",
+    "disable",
+    "ignore",
+    "lower",
+    "mutate",
+    "remove",
+    "report unreviewed",
+    "rewrite",
+    "skip",
+    "weaken",
+)
+
+
+def _requires_governed_research_review(*parts: str | None) -> bool:
+    text = " ".join(part or "" for part in parts).lower()
+    return any(term in text for term in _PROTECTED_RESEARCH_TERMS) and any(
+        term in text for term in _RISKY_METHOD_MUTATION_TERMS
+    )
+
 
 # ---------------------------------------------------------------------------
 # Self-Evolution Engine
@@ -85,6 +145,33 @@ class SelfEvolutionEngine:
     @staticmethod
     def _normalize_project_id(project_id: str | None) -> str:
         return str(project_id or "").strip()
+
+    async def _record_validity_proposal(
+        self,
+        *,
+        project_id: str,
+        agent_id: str,
+        success: bool,
+        confidence: float | int | None = None,
+        error_type: str | None = None,
+    ) -> None:
+        try:
+            from app.core.telemetry import telemetry_recorder
+
+            await telemetry_recorder.record_research_validity_event(
+                operation="self_evolution.proposal",
+                project_id=project_id,
+                agent_id=agent_id,
+                status="success" if success else "degraded",
+                quality_score=(
+                    max(0.0, min(1.0, float(confidence) / 100.0))
+                    if confidence is not None
+                    else None
+                ),
+                error_type=error_type,
+            )
+        except Exception as exc:
+            logger.debug("Self-evolution validity telemetry skipped: %s", exc)
 
     async def _is_project_active(self, project_id: str) -> bool:
         try:
@@ -123,7 +210,7 @@ class SelfEvolutionEngine:
                 scoped_project_id,
             )
             return []
-        th = thresholds or PROMOTION_THRESHOLDS
+        th = thresholds or get_effective_promotion_thresholds(scoped_project_id)
         cutoff = datetime.now(timezone.utc) - timedelta(days=th["max_age_days"])
         candidates = []
 
@@ -176,6 +263,18 @@ class SelfEvolutionEngine:
                     ])
 
                     if qualifies:
+                        if _requires_governed_research_review(
+                            learning.category,
+                            learning.trigger,
+                            learning.resolution,
+                            learning.learning,
+                        ):
+                            logger.info(
+                                "Skipping self-evolution promotion for %s because it "
+                                "touches protected Research Spine methodology/gates",
+                                learning.id,
+                            )
+                            continue
                         target_file = PROMOTION_TARGETS.get(
                             learning.category, "MEMORY.md"
                         )
@@ -241,6 +340,26 @@ class SelfEvolutionEngine:
                 learning = result.scalar_one_or_none()
                 if not learning:
                     return {"success": False, "error": "Learning not found for project"}
+                if _requires_governed_research_review(
+                    learning.category,
+                    learning.trigger,
+                    learning.resolution,
+                    learning.learning,
+                ):
+                    await self._record_validity_proposal(
+                        project_id=scoped_project_id,
+                        agent_id=agent_id,
+                        success=False,
+                        confidence=learning.confidence,
+                        error_type="protected_research_methodology_requires_governance",
+                    )
+                    return {
+                        "success": False,
+                        "error": (
+                            "Protected Research Spine methodology, reliability thresholds, "
+                            "authorization constraints, and report gates require governed review"
+                        ),
+                    }
 
                 # Determine target file
                 tf = target_file or PROMOTION_TARGETS.get(
@@ -262,6 +381,12 @@ class SelfEvolutionEngine:
                     )
                     learning.confidence = min(100, (learning.confidence or 50) + 10)
                     await db.commit()
+                    await self._record_validity_proposal(
+                        project_id=scoped_project_id,
+                        agent_id=agent_id,
+                        success=True,
+                        confidence=learning.confidence,
+                    )
 
                     logger.info(
                         f"Promoted learning {learning_id} for {agent_id} → {tf}"
@@ -276,6 +401,13 @@ class SelfEvolutionEngine:
                         "promotion_text": promotion_text,
                     }
                 else:
+                    await self._record_validity_proposal(
+                        project_id=scoped_project_id,
+                        agent_id=agent_id,
+                        success=False,
+                        confidence=learning.confidence,
+                        error_type="self_evolution_write_failed",
+                    )
                     return {
                         "success": False,
                         "error": f"Failed to write to {tf} for {agent_id}",
@@ -403,11 +535,13 @@ Your primary directive is defined by your creator's system prompt.
 ## Personality
 - Helpful and task-focused
 - Follow instructions precisely
-- Report findings with evidence
+- Treat raw model output as candidate/provisional only
+- Route research findings through the Research Spine before treating them as accepted
 - Ask for clarification when uncertain
 
 ## Values
 - Evidence over assumption
+- Accepted evidence over provisional synthesis
 - Transparency about limitations
 - Respect for project context
 """
@@ -417,12 +551,13 @@ Your primary directive is defined by your creator's system prompt.
 
 ## Capabilities
 - Execute assigned UX research skills
-- Analyze documents and extract findings
+- Analyze source evidence and produce candidate/provisional findings
 - Communicate findings to other agents via A2A
 
 ## Limitations
 - Custom agent — capabilities defined by creator
 - Defer to system agents for specialized audits
+- Cannot create trusted/reportable Atomic Research artifacts directly
 """
 
             # Generate PROTOCOLS.md
@@ -431,15 +566,17 @@ Your primary directive is defined by your creator's system prompt.
 ## Task Execution
 1. Read task description and user context
 2. Select appropriate skill or use general reasoning
-3. Execute with evidence-based methodology
-4. Store findings in Atomic Research hierarchy
-5. Self-verify output quality
+3. Execute with source-grounded methodology
+4. Store research outputs as candidate/provisional unless they already cite accepted evidence
+5. Send candidates through evidence units, independent coding, reliability, reconciliation, task review, and Done gates before report use
+6. Self-verify output quality
 
 ## Error Handling
 - On error: log the pattern, attempt retry with modified approach
 - Record error learnings for future reference
 - Broadcast warning (not crash) on recoverable errors
 - Escalate to system agents for critical failures
+- Never weaken qualitative coding protocol, reliability thresholds, authorization, or report gates through self-evolution
 
 ## Learned Error Patterns
 (Auto-populated by the self-evolution engine)

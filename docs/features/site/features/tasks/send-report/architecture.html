@@ -263,6 +263,7 @@
 <li>The feature is mounted through <code>frontend/src/components/kanban/KanbanBoard.tsx</code> and the UI navigation path recorded in the inventory.</li>
 <li>Sending a task to Reports is active-project-bound: the UI passes <code>activeProjectId</code>, and <code>/api/tasks/{task_id}/reports</code> loads the task by both task id and project id before creating a project report.</li>
 <li>Report creation remains limited to human-approved Done tasks in the same project; stale task ids from another project resolve as not found instead of creating cross-project report drafts.</li>
+<li>Done status is necessary but not sufficient. The task must also have accepted/reconciled Research Spine evidence or reportable task artifacts; task notes alone cannot be sent to Reports.</li>
 <li>The frontmatter and manifest entries are the durable contract for agents updating this page after code changes.</li>
 <li>When the referenced component, store, route, agent, skill, or test behavior changes, regenerate and validate the feature documentation.</li>
 </ul>

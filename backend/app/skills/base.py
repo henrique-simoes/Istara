@@ -41,7 +41,12 @@ class SkillInput:
 
 @dataclass
 class SkillOutput:
-    """Output from a skill execution."""
+    """Output from a skill execution.
+
+    Skill outputs are visible candidate research artifacts. They are not
+    reportable evidence until the Research Spine accepts/reconciles them from
+    source-grounded coding, reliability checks, and human Done-task gates.
+    """
 
     success: bool
     summary: str
@@ -53,6 +58,46 @@ class SkillOutput:
     suggestions: list[str] = field(default_factory=list)
     errors: list[str] = field(default_factory=list)
     json_success: bool = True  # Track if LLM output was valid JSON
+    research_validity: dict[str, Any] = field(default_factory=dict)
+
+    def __post_init__(self) -> None:
+        self.mark_research_artifacts_candidate()
+
+    def mark_research_artifacts_candidate(self) -> None:
+        """Mark skill-created research artifacts as provisional by default."""
+        previous_validity = self.research_validity if isinstance(self.research_validity, dict) else {}
+        self.research_validity = {
+            **previous_validity,
+            "status": "provisional",
+            "artifact_state": "skill_output_candidate",
+            "report_allowed": False,
+            "promotion_required": (
+                "source_grounded_coding_reliability_reconciliation_done_gate"
+            ),
+        }
+        artifact_states = {
+            "nuggets": "candidate_atom",
+            "facts": "candidate_fact",
+            "insights": "candidate_insight",
+            "recommendations": "candidate_recommendation",
+        }
+        for collection_name, artifact_state in artifact_states.items():
+            for item in getattr(self, collection_name, []) or []:
+                if not isinstance(item, dict):
+                    continue
+                item.setdefault("artifact_state", artifact_state)
+                validity = item.get("research_validity")
+                if not isinstance(validity, dict):
+                    validity = {}
+                item["research_validity"] = {
+                    **validity,
+                    "status": "provisional",
+                    "artifact_state": artifact_state,
+                    "report_allowed": False,
+                    "promotion_required": (
+                        "source_grounded_coding_reliability_reconciliation_done_gate"
+                    ),
+                }
 
 
 class BaseSkill(ABC):
@@ -127,8 +172,8 @@ class BaseSkill(ABC):
     async def validate_output(self, output: SkillOutput) -> list[str]:
         """Validate the skill output for quality issues.
 
-        Checks: summary presence, evidence extraction, source attribution,
-        phrase-level coding rules, and evidence chain integrity.
+        Checks: summary presence, candidate evidence proposal, source attribution,
+        code-ready candidate quality, and provisional evidence chain integrity.
 
         Args:
             output: The output to validate.
@@ -142,27 +187,26 @@ class BaseSkill(ABC):
             warnings.append("No summary generated.")
 
         if not output.nuggets and not output.facts:
-            warnings.append("No evidence (nuggets or facts) extracted.")
+            warnings.append("No candidate evidence (nuggets or facts) proposed.")
 
         for nugget in output.nuggets:
             if not nugget.get("source"):
-                warnings.append(f"Nugget missing source: '{nugget.get('text', '')[:50]}...'")
-            # Phrase-level coding: nugget text should be 3-30 words
+                warnings.append(f"Candidate nugget missing source: '{nugget.get('text', '')[:50]}...'")
             text = nugget.get("text", "")
             word_count = len(text.split())
             if word_count < 3:
-                warnings.append(f"Nugget too short ({word_count} words): '{text[:50]}...'")
+                warnings.append(f"Candidate nugget too short ({word_count} words): '{text[:50]}...'")
             if not nugget.get("tags"):
-                warnings.append(f"Nugget missing tags/codes: '{text[:50]}...'")
+                warnings.append(f"Candidate nugget missing tags/codes: '{text[:50]}...'")
 
         # Evidence chain integrity
         if output.insights and not output.facts and not output.nuggets:
             warnings.append(
-                "Insights generated without supporting nuggets or facts (broken evidence chain)."
+                "Candidate insights generated without supporting nuggets or facts (broken provisional evidence chain)."
             )
         if output.recommendations and not output.insights:
             warnings.append(
-                "Recommendations generated without supporting insights (broken evidence chain)."
+                "Candidate recommendations generated without supporting insights (broken provisional evidence chain)."
             )
 
         # Confidence score bounds

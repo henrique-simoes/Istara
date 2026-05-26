@@ -10,11 +10,14 @@ import ConnectionStringPanel from "@/components/settings/ConnectionStringPanel";
 import UpdateChecker from "@/components/settings/UpdateChecker";
 import GovernedEvolutionView from "@/components/settings/GovernedEvolutionView";
 import DonateComputeToggle from "@/components/common/DonateComputeToggle";
+import AccountSecurityManager from "@/components/settings/AccountSecurityManager";
+import FileEncryptionManager from "@/components/settings/FileEncryptionManager";
 import PasskeyManager from "@/components/settings/PasskeyManager";
 import TOTPManager from "@/components/settings/TOTPManager";
 import SessionManager from "@/components/settings/SessionManager";
 import ViewOnboarding from "@/components/common/ViewOnboarding";
 import { resetAllOnboarding } from "@/hooks/useViewOnboarding";
+import { useRoleCapabilities } from "@/hooks/useRoleCapabilities";
 import {
   MODEL_PROVIDER_OPTIONS,
   defaultHostForProvider,
@@ -28,13 +31,13 @@ function formatGb(value?: number | null): string {
 }
 
 export default function SettingsView() {
-  const { user, teamMode } = useAuthStore();
+  const capabilities = useRoleCapabilities();
   const [hardware, setHardware] = useState<HardwareInfo | null>(null);
   const [recommendation, setRecommendation] = useState<ModelRecommendation | null>(null);
   const [systemStatus, setSystemStatus] = useState<any>(null);
   const [models, setModels] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  const canManageInfrastructure = !teamMode || user?.role === "admin";
+  const canManageInfrastructure = capabilities.canManageLlmInfrastructure;
 
   const fetchAll = useCallback(async () => {
     setLoading(true);
@@ -85,21 +88,29 @@ export default function SettingsView() {
   return (
     <div className="flex-1 overflow-y-auto p-6 max-w-5xl mx-auto space-y-6">
       <h2 className="text-lg font-semibold text-slate-900 dark:text-white">⚙️ Settings</h2>
-      <ViewOnboarding viewId="settings" title="System Settings" description="Configure model providers, connection strings, authentication factors, sessions, updates, and local compute donation." chatPrompt="What should I configure first in settings?" />
+      <ViewOnboarding viewId="settings" title="System Settings" description="Configure model providers, connection strings, authentication factors, sessions, account security, encrypted files, updates, and local compute donation." chatPrompt="What should I configure first in settings?" />
 
       {/* Software Updates */}
       <UpdateChecker />
 
       {/* Governed Evolution */}
-      <GovernedEvolutionView />
+      {capabilities.canUseGovernedEvolution && <GovernedEvolutionView />}
 
       {/* Team Members */}
-      <div id="tour-target-user-management">
-        <UserManagement />
-      </div>
+      {capabilities.canManageAuthUsers && (
+        <div id="tour-target-user-management">
+          <UserManagement />
+        </div>
+      )}
 
       {/* Connection Strings (admin only, team mode) */}
-      <ConnectionStringPanel />
+      {capabilities.canManageConnectionStrings && <ConnectionStringPanel />}
+
+      {/* Account security */}
+      <AccountSecurityManager />
+
+      {/* File and backup encryption */}
+      {capabilities.canManageSystemSettings && <FileEncryptionManager />}
 
       {/* Compute Donation */}
       <DonateComputeToggle />
@@ -330,60 +341,62 @@ export default function SettingsView() {
       )}
 
       {/* LLM Servers */}
-      <LLMServersSection />
+      {capabilities.canManageLlmInfrastructure && <LLMServersSection />}
 
       {/* Telemetry (Local-first, No phone-home) */}
-      <TelemetrySection />
+      {capabilities.canManageTelemetry && <TelemetrySection />}
 
       {/* Team Mode */}
-      <div id="tour-target-team-mode" className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-5">
-        <h3 className="font-medium text-slate-900 dark:text-white mb-3 flex items-center gap-2">
-          <Users size={18} />
-          Team Mode
-        </h3>
-        <p className="text-sm text-slate-500 mb-3">
-          Enable team mode to allow multiple users to connect, authenticate, and collaborate on research projects.
-          First registered user becomes admin.
-        </p>
-        <div className="flex items-center gap-3 mb-3">
-          <button
-            onClick={async () => {
-              const newState = !systemStatus?.team_mode;
-              try {
-                await settingsApi.toggleTeamMode(newState);
-                await fetchAll();
-                // Refresh auth store so UserManagement appears/disappears
-                await useAuthStore.getState().checkTeamStatus();
-                await useAuthStore.getState().fetchMe();
-                // Notify guided tour
-                window.dispatchEvent(new CustomEvent("istara:team-mode-toggled", { detail: { enabled: newState } }));
-              } catch (e) {
-                console.error("Failed to toggle team mode:", e);
-              }
-            }}
-            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-              systemStatus?.team_mode
-                ? "bg-istara-600"
-                : "bg-slate-300 dark:bg-slate-600"
-            }`}
-            role="switch"
-            aria-checked={systemStatus?.team_mode || false}
-            aria-label="Toggle team mode"
-          >
-            <span
-              className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                systemStatus?.team_mode ? "translate-x-6" : "translate-x-1"
+      {capabilities.canManageSystemSettings && (
+        <div id="tour-target-team-mode" className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-5">
+          <h3 className="font-medium text-slate-900 dark:text-white mb-3 flex items-center gap-2">
+            <Users size={18} />
+            Team Mode
+          </h3>
+          <p className="text-sm text-slate-500 mb-3">
+            Enable team mode to allow multiple users to connect, authenticate, and collaborate on research projects.
+            First registered user becomes admin.
+          </p>
+          <div className="flex items-center gap-3 mb-3">
+            <button
+              onClick={async () => {
+                const newState = !systemStatus?.team_mode;
+                try {
+                  await settingsApi.toggleTeamMode(newState);
+                  await fetchAll();
+                  // Refresh auth store so UserManagement appears/disappears
+                  await useAuthStore.getState().checkTeamStatus();
+                  await useAuthStore.getState().fetchMe();
+                  // Notify guided tour
+                  window.dispatchEvent(new CustomEvent("istara:team-mode-toggled", { detail: { enabled: newState } }));
+                } catch (e) {
+                  console.error("Failed to toggle team mode:", e);
+                }
+              }}
+              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                systemStatus?.team_mode
+                  ? "bg-istara-600"
+                  : "bg-slate-300 dark:bg-slate-600"
               }`}
-            />
-          </button>
-          <span className="text-sm font-medium text-slate-700 dark:text-slate-300">
-            {systemStatus?.team_mode ? "Enabled" : "Disabled"}
-          </span>
+              role="switch"
+              aria-checked={systemStatus?.team_mode || false}
+              aria-label="Toggle team mode"
+            >
+              <span
+                className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                  systemStatus?.team_mode ? "translate-x-6" : "translate-x-1"
+                }`}
+              />
+            </button>
+            <span className="text-sm font-medium text-slate-700 dark:text-slate-300">
+              {systemStatus?.team_mode ? "Enabled" : "Disabled"}
+            </span>
+          </div>
+          <div className="text-xs text-slate-400">
+            Server restart recommended after changing. In team mode, users register and authenticate with JWT.
+          </div>
         </div>
-        <div className="text-xs text-slate-400">
-          Server restart recommended after changing. In team mode, users register and authenticate with JWT.
-        </div>
-      </div>
+      )}
 
       {/* Onboarding Hints Reset */}
       <div className="flex items-center gap-4">

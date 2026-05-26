@@ -10,13 +10,13 @@ Istara is a production-grade agent platform designed for UX researchers who want
 
 Before diving into details, here are the design decisions that make Istara a robust choice for researchers and teams who care about data ownership, cost, and reliability.
 
-### 1. Agents That Actually Improve Themselves
+### 1. Agents That Improve Through Governed Evidence
 
-Most agent frameworks treat prompts as static configuration. Istara's agents **evolve**: they record error patterns, track workflow preferences, and when patterns reach maturity thresholds (3+ occurrences, 2+ contexts, 30 days), those learnings are permanently promoted into the agent's persona files. This is not fine-tuning — it's structured prompt evolution that works with any local model.
+Most agent frameworks treat prompts as static configuration. Istara's agents can improve, but the current architecture routes improvement through governed evidence. Telemetry observes, ReasoningBank stores process memory, Memento-style skill memory learns from verified outcomes, Autoresearch runs sandboxed experiments, Meta-Hyperagent proposes project-scoped variants, and Self-Evolution applies only approved changes. Process memories and experiments are never report evidence and cannot silently rewrite Research Spine methodology, authorization, thresholds, or report gates.
 
-### 2. Every Finding Is Traceable to Source
+### 2. Every Trusted Finding Passes the Research Spine
 
-Istara implements the **Atomic Research** methodology (Nugget → Fact → Insight → Recommendation) with full evidence chains. Every insight links back through facts to the exact quote or data point that supports it. No hallucinated conclusions without provenance.
+Istara implements Atomic Research as an accepted-output layer, not a pre-validation summary shortcut. The mandatory spine is: Sources -> Evidence Units -> Independent Multi-Model Atomic Extraction + Open Coding -> Reliability + Grounding -> Reconciliation -> Accepted Atoms/Nuggets -> Facts -> Insights -> Recommendations -> In Review -> Human-Approved Done -> Reports. Every trusted insight links back through accepted artifacts to source evidence, route evidence, reliability state, reconciliation/review status, and a Done task. Raw model output can create candidates only.
 
 ### 3. Lossless Context Memory
 
@@ -26,9 +26,9 @@ Conversations are never thrown away. Istara's **DAG-based context summarization*
 
 A hardware-aware **Resource Governor** monitors RAM, CPU, and GPU to prevent system overload. **Prompt RAG** dynamically retrieves only the relevant persona sections for each query (30-50% token savings). **LLMLingua-inspired compression** removes filler without losing meaning (15-30% savings). Together, these allow Istara to run meaningfully on a 3B model with a 2K context window — or scale up to use everything a 70B model offers.
 
-### 5. 45+ Research Skills, Self-Monitoring
+### 5. 53+ Research Skills, Self-Monitoring
 
-Each skill follows the Double Diamond methodology and produces structured outputs. A **Skill Health Monitor** tracks execution quality over time, and when a skill's performance drops below threshold, it auto-proposes prompt improvements. Skills are self-contained modules with `plan()`, `execute()`, and `validate()` methods.
+Each skill follows the Double Diamond methodology and produces structured outputs. Research-facing skill output is provisional unless it is tied to accepted Research Spine evidence. A **Skill Health Monitor** tracks execution, verification, research quality, and reportability as separate signals; raw tool success is not enough to strengthen Memento skill memory or promote report evidence. When quality drops or experiments suggest an improvement, Istara creates governed proposals instead of live prompt mutations.
 
 ### 6. Five Coordinated Agents, Not One
 
@@ -1690,7 +1690,17 @@ Legacy Compass markdown (`AGENT.md`, `AGENT_ENTRYPOINT.md`, `COMPLETE_SYSTEM.md`
 
 The tracked security benchmark lives under `security/` and is active release governance, not ignored documentation. `security/SECURITY_BENCHMARK.md` documents Istara's current standard set: OWASP ASVS 5.0.0, NIST SP 800-63 Revision 4, OWASP WSTG latest, OWASP SAMM 2.0.3, NIST SSDF 1.1, CIS Controls v8.1, SLSA v1.2, OpenSSF Scorecard, WebAuthn Level 3, RFC 9700, OWASP LLM Top 10 2025, OWASP Agentic Top 10 2026, NIST AI RMF, and MITRE ATLAS. `security/control_matrix.json` maps those standards to Istara controls, statuses, severity, evidence, and auth/security trigger paths.
 
-`scripts/security_benchmark.py` renders the quantifiable scorecard used by CI, release prep, and Compass Forge evidence. The production threshold is 90 percent. Any failed control blocks release; any critical/high partial control blocks release; medium/low partials are reported as maturity work. Future auth, session, WebAuthn, connection-string, pooled-compute, MCP, webhook, LLM-provider, autoresearch, self-evolution, or agentic-memory changes must update or explicitly revalidate the benchmark package, and PR CI passes changed paths into the benchmark so `auth_security_change_detected` is visible in the scorecard.
+`scripts/security_benchmark.py` renders the quantifiable scorecard used by CI, release prep, and Compass Forge evidence. The production threshold is 90 percent. Any failed control blocks release; any critical/high partial control blocks release; medium/low partials are reported as maturity work. Future auth, session, WebAuthn, connection-string, pooled-compute, MCP, webhook, LLM-provider, autoresearch, self-evolution, file-encryption, backup-encryption, or agentic-memory changes must update or explicitly revalidate the benchmark package, and PR CI passes changed paths into the benchmark so `auth_security_change_detected` is visible in the scorecard.
+
+#### 2026 Research Spine Governance Update
+
+The current PR architecture makes the Research Spine the governing boundary for every feature that ingests, transforms, retrieves, validates, displays, learns from, or reports research data. Documents, interviews, surveys, AURA-style research, deployments, chat, skills, ReAct tools, interfaces, design evidence, integrations, simulations, and benchmarks must enter or respect the same evidence lifecycle: raw source, stable evidence unit, candidate atom/code application, reliability/grounding, reconciliation or human review, accepted artifact, task review, Done, then report.
+
+Atomic Research artifacts are trusted only after the source-grounded multi-model extraction/coding and reliability/reconciliation gates accept them. This means tests, fixtures, simulations, and real-user benchmark probes must not pass by constructing reportable nuggets, facts, insights, recommendations, design decisions, tasks, or reports directly from unvalidated model output. Legacy or unlinked artifacts are provisional or `legacy_unverified` until migrated or reconciled.
+
+Self-improvement follows the same governance rule. Telemetry observes process behavior; ReasoningBank and Memento Skills provide weak routing/process priors; Autoresearch evaluates sandboxed mutations; Meta-Hyperagent proposes governed variants; Self-Evolution applies only approved changes with rollback/evidence. RAG/BM25, Hybrid RAG, GraphRAG, Prompt-RAG, and LLMLingua assist grounding and context management but do not inject mandatory coding methodology opportunistically or bypass Research Spine gates.
+
+The canonical corpus under `tests/document_corpus/canonical/` is the source of truth for product-level synthetic UX research tests. Real-user benchmark and simulation flows now validate canonical long-form material, route evidence, donor lifecycle states, multi-model coding proof, report gating, self-improvement governance evidence, and upload-compatible corpus formats. CI governance therefore requires `Tech.md` to change when architecture/process/release-sensitive files change so reviewers can compare implementation, tests, and release contracts from one durable technical record.
 
 The production rehearsal is the lightweight release smoke test for the new self-improvement architecture. It verifies importability and wiring for the Improvement Governance contract, sandbox evaluation, DGM-H archive, ReasoningBank, compute capacity envelope, dependency manifest coverage, route/type contract expectations, and rollback/evidence surfaces before the full backend test suite runs. This keeps CI aligned with the production rule that autoresearch, skill evolution, agent creation, meta-agent proposals, UI changes, integrations, and backend-code mutations must become governed proposals with evidence and rollback rather than invisible mutations.
 

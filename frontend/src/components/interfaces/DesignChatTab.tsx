@@ -6,7 +6,7 @@ import remarkGfm from "remark-gfm";
 import { Send, Loader2, Palette, User, Mic } from "lucide-react";
 import { useInterfacesStore } from "@/stores/interfacesStore";
 import { useProjectStore } from "@/stores/projectStore";
-import { useAuthStore } from "@/stores/authStore";
+import { useRoleCapabilities } from "@/hooks/useRoleCapabilities";
 import { useVoiceRecorder } from "@/hooks/useVoiceRecorder";
 import { cn, formatDate } from "@/lib/utils";
 
@@ -64,13 +64,11 @@ function MarkdownMessage({ content, streaming = false }: { content: string; stre
 
 export default function DesignChatTab() {
   const { designMessages, designStreaming, designStreamingContent, designProjectId, error, sendDesignMessage, fetchDesignHistory } = useInterfacesStore();
-  const { activeProjectId, canWriteActiveProject } = useProjectStore();
-  const { user } = useAuthStore();
+  const { activeProjectId } = useProjectStore();
+  const { canWriteActiveProject: canWrite } = useRoleCapabilities();
   const { isRecording, isTranscribing, startRecording, stopRecording, cancelRecording, error: voiceError } = useVoiceRecorder();
   const [input, setInput] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const canWrite = user?.role === "admin" || canWriteActiveProject();
-
   // Fetch design chat history when entering Interfaces or switching projects.
   useEffect(() => {
     if (activeProjectId && designProjectId !== activeProjectId) {

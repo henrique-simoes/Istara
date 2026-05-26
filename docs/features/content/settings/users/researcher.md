@@ -6,18 +6,18 @@ audience: researcher
 status: needs-verification
 related_features: ["auth.login", "settings.security-factors"]
 related_glossary: ["wcag"]
-code_references: ["frontend/src/components/common/UserManagement.tsx", "backend/app/api/routes/admin.py"]
-api_references: ["backend/app/api/routes/admin.py"]
-test_references: []
-last_verified: 2026-05-15
-compass: CF-SPEC-53 / CF-657
+code_references: ["frontend/src/components/common/UserManagement.tsx", "backend/app/api/routes/auth.py"]
+api_references: ["backend/app/api/routes/auth.py"]
+test_references: ["tests/test_auth_security.py"]
+last_verified: 2026-05-22
+compass: CF-SPEC-134 / CF-1671
 ---
 
 # User Management
 
 ## What It Does
 
-User management supports team member visibility and administrative user operations.
+User management supports team member visibility and administrative user operations. Admin-created users receive initial credentials and one-time recovery codes that must be shared securely.
 
 ## Why It Exists
 
@@ -32,7 +32,7 @@ User Management exists so the work represented by Settings > Users has a stable,
 ## How UX Researchers Use It
 
 - Open Settings > Users from the Istara navigation or the parent tab.
-- Use the visible controls in this surface to work with user management in the active project context.
+- Admins use the visible controls to create, inspect, and manage team accounts. Researchers do not use this admin-only journey.
 - Review the output in the same view and follow the related feature links when the workflow moves into another Istara surface.
 
 ## Supported Workflows
@@ -43,13 +43,14 @@ User Management exists so the work represented by Settings > Users has a stable,
 
 ## Inputs, Outputs, And Expected Outcomes
 
-- Project-scoped state or artifact updates associated with user management.
+- Team account state, initial credentials, one-time recovery codes, and role updates.
 - Visible status, lists, forms, generated artifacts, or review results shown by the referenced component and routes.
 
 ## Caveats
 
 - Needs interactive verification for exact empty, loading, error, and permission-denied states.
 - Do not expand this documentation beyond the cited source files without adding new code or walkthrough evidence.
+- Recovery codes are shown once in the admin-created user success card.
 
 ## Related Features
 
@@ -62,6 +63,6 @@ User Management exists so the work represented by Settings > Users has a stable,
 
 ## Evidence
 
-- Source files: `frontend/src/components/common/UserManagement.tsx`, `backend/app/api/routes/admin.py`
-- API references: `backend/app/api/routes/admin.py`
-- Tests: none recorded
+- Source files: `frontend/src/components/common/UserManagement.tsx`, `backend/app/api/routes/auth.py`
+- API references: `backend/app/api/routes/auth.py`
+- Tests: `tests/test_auth_security.py`

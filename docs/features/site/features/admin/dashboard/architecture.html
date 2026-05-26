@@ -262,19 +262,28 @@
 <li>The dashboard should prefer partial data with an explicit section error over all-or-nothing loading.</li>
 <li>The dashboard loads compute capacity through the admin-only aggregate endpoint instead of reusing project-facing <code>/api/compute/*</code> routes.</li>
 <li>The dashboard&#x27;s donation-string action sends <code>allowed_project_ids</code> for the chosen project so donated compute does not become a global content processor.</li>
+<li>When the server has no network access token yet, compute donation string generation creates one before signing the donation string; invite strings for human users remain separate and do not include relay credentials.</li>
 <li>The dashboard may list and review pending permission requests without <code>project_id</code> only because the route checks global admin status; Project Settings must pass the active project id for the same permission-request APIs.</li>
+<li>Simulation and harness smoke tests model the admin-many-projects case by selecting the canonical unpaused simulation project by name and failing if the harness would fall back to the first visible admin project or a paused project.</li>
+<li>The real-user benchmark uses role-specific UI journeys: global admins visit global settings and admin-only panels, project admins visit project-scoped administration surfaces, and researchers avoid Settings/global-admin panels during normal journeys. Any unexpected 403 during a normal UI journey is recorded as a role-contract failure instead of being treated as a harmless console error.</li>
+<li>The real-user benchmark now models the admin as setup/governance lead, then authenticates multiple researcher actors who perform normal project work. Admin-only setup remains admin-owned; researcher chat, task creation, review, and document/interview work must happen through researcher-authorized routes.</li>
 <li>The frontmatter and manifest entries are the durable contract for agents updating this page after code changes.</li>
 <li>When the referenced component, store, route, agent, skill, or test behavior changes, regenerate and validate the feature documentation.</li>
 </ul>
 <h2 id="agents-skills-llm-mcp-and-permissions">Agents, Skills, LLM, MCP, And Permissions</h2>
 <ul>
 <li>Admin aggregates global metrics, while delegated compute remains project-scoped for LLM routing and donor authorization.</li>
+<li>The real-user benchmark can validate multi-donor compute by requiring distinct donor endpoints and, when explicitly configured, starting per-donor Colima/Docker model server sandboxes with Q4/4-bit evidence before relay donation. Architecture scoring observes Istara&#x27;s natural scheduler counters after collaborative research work rather than forcing a specific donor for the agentic workflow.</li>
 </ul>
 <h2 id="tests-and-verification">Tests And Verification</h2>
 <ul>
 <li><code>tests/test_project_rbac.py</code></li>
 <li><code>tests/test_compute.py</code></li>
 <li><code>tests/test_project_scope_contracts.py</code></li>
+<li><code>tests/test_harness_project_scope_contracts.py</code></li>
+<li><code>tests/simulation/lib/project-selection.test.mjs</code></li>
+<li><code>tests/real_user_benchmark/run.mjs</code></li>
+<li><code>tests/real_user_benchmark/lib/donor-sandboxes.test.mjs</code></li>
 </ul>
 <h2 id="related-features">Related Features</h2>
 <ul>
@@ -288,7 +297,7 @@
 </ul>
 <h2 id="compass-evidence">Compass Evidence</h2>
 <ul>
-<li>Spec/task: CF-SPEC-60 / CF-754; CF-SPEC-63 / CF-815; CF-SPEC-72 / CF-927</li>
+<li>Spec/task: CF-SPEC-60 / CF-754; CF-SPEC-63 / CF-815; CF-SPEC-72 / CF-927; CF-SPEC-115; CF-SPEC-116; CF-SPEC-118; CF-SPEC-121</li>
 <li>Inventory source: <code>docs/features/inventory.json</code></li>
 </ul>
 <h2 id="when-to-update">When To Update</h2>

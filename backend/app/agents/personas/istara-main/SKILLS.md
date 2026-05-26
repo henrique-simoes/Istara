@@ -9,7 +9,7 @@
 - Validate skill outputs against source evidence before marking tasks complete
 
 ### Knowledge Management
-- Maintain the Atomic Research evidence chain: Nuggets (raw data) -> Facts (verified patterns) -> Insights (interpreted meanings) -> Recommendations (actionable proposals)
+- Maintain the Research Spine evidence chain: source evidence units -> candidate atoms/nuggets -> accepted/reconciled atoms/nuggets -> facts -> insights -> recommendations
 - Ingest and index documents (PDF, DOCX, CSV, TXT, MD) into the project's vector store for RAG retrieval
 - Cross-reference findings across multiple data sources and research methods
 - Track research phases using the Double Diamond framework (Discover -> Define -> Develop -> Deliver)
@@ -20,7 +20,7 @@
 - Every transcription passes through Inter-Coder Reliability (ICR) consensus: primary model vs alternative model, scored via Fleiss' Kappa + cosine similarity
 - Low-confidence transcriptions are flagged for human review (`needs_review: true`)
 - Auto-tag transcriptions with research-relevant categories (pain-point, feature-request, usability, accessibility, etc.)
-- Transcriptions feed directly into the Atomic Research chain: transcript text → nuggets → facts → insights
+- Transcriptions feed into the Research Spine as transcript source units, then candidate atoms/codes, reliability or reconciliation, accepted atoms/nuggets, facts, and insights
 - Audio format conversion: OGG/MP3/M4A/FLAC → WAV (16kHz mono) via ffmpeg or pydub fallback
 
 ### Communication & Steering
@@ -120,10 +120,10 @@
 - Context-aware intent detection from spoken research queries.
 
 ## Quality Criteria by Output Type
-- **Nuggets**: Must have source document, page/timestamp, verbatim quote, participant ID. Minimum quality: attributable to a specific source.
-- **Facts**: Must reference 2+ nuggets. Must be a verifiable pattern, not an interpretation. Minimum quality: independently confirmable.
-- **Insights**: Must reference 1+ facts. Must answer "so what?" Must be interpretive, not just descriptive. Minimum quality: actionable by a design team.
-- **Recommendations**: Must reference 1+ insights. Must be specific and feasible. Must include priority level. Minimum quality: implementable without further research.
+- **Source evidence units and candidate atoms/nuggets**: Must have source document, page/timestamp, verbatim quote, participant ID, and provisional state until accepted by the Research Spine.
+- **Accepted facts**: Must reference accepted/reconciled atoms/nuggets. Must be a verifiable pattern, not an interpretation. Minimum quality: independently confirmable.
+- **Accepted insights**: Must reference accepted facts. Must answer "so what?" Must be interpretive, not just descriptive. Minimum quality: actionable by a design team.
+- **Accepted recommendations**: Must reference accepted insights, remain blocked from reports until tied to human-approved Done tasks, and include priority level.
 
 ## Tool Access
 - All registered UXR skills (35+ methods)
@@ -147,7 +147,7 @@
 - Connect to SurveyMonkey (OAuth), Google Forms (service account), and Typeform (API token)
 - Create surveys on external platforms directly from Istara skill outputs
 - Link external surveys to projects for automatic response ingestion
-- Survey responses automatically become Nuggets in the Atomic Research chain with full source attribution
+- Survey responses become source evidence units and candidate atoms in the Research Spine with full source attribution, provisional until accepted
 - Explain platform differences: SurveyMonkey has webhooks, Google Forms requires polling, Typeform has HMAC verification
 - Microsoft Forms has no API support for form operations — explain this limitation to users
 

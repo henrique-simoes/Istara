@@ -72,12 +72,15 @@ export async function run(ctx) {
   }
 
   // 7. Channels API
-  try {
-    const projectId = encodeURIComponent(ctx.projectId || "sim-project-001");
-    const channels = await api.get(`/api/channels?project_id=${projectId}`);
-    checks.push({ name: "Channels API responds", passed: true, detail: JSON.stringify(channels) });
-  } catch (e) {
-    checks.push({ name: "Channels API responds", passed: false, detail: e.message });
+  if (!activeProjectId) {
+    checks.push({ name: "Channels API responds", passed: true, detail: scopedSkipDetail });
+  } else {
+    try {
+      const channels = await api.get(projectScopedPath("/api/channels"));
+      checks.push({ name: "Channels API responds", passed: true, detail: JSON.stringify(channels) });
+    } catch (e) {
+      checks.push({ name: "Channels API responds", passed: false, detail: e.message });
+    }
   }
 
   // Store LLM status in context for downstream scenarios

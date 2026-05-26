@@ -231,6 +231,7 @@ class ModelTempRunner(BaseLoopRunner):
         async with async_session() as db:
             result = await db.execute(
                 select(ModelSkillStats).where(
+                    ModelSkillStats.project_id == self.require_project_id(),
                     ModelSkillStats.skill_name == skill_name,
                     ModelSkillStats.model_name == model_name,
                     ModelSkillStats.temperature == temperature,
@@ -248,6 +249,7 @@ class ModelTempRunner(BaseLoopRunner):
                 stats.source = "autoresearch"
             else:
                 stats = ModelSkillStats(
+                    project_id=self.require_project_id(),
                     skill_name=skill_name,
                     model_name=model_name,
                     temperature=temperature,
@@ -261,9 +263,9 @@ class ModelTempRunner(BaseLoopRunner):
                 db.add(stats)
 
             await db.commit()
-
-        # Update the best-config file
-        await self._save_best_config(skill_name, model_name, temperature, score)
+        # Do not write the global best-config here. Autoresearch measurements
+        # are sandbox evidence; applying a preferred model/temperature requires
+        # an approved governance proposal.
 
     async def _save_best_config(
         self,
