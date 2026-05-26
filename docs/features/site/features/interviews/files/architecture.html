@@ -262,6 +262,7 @@
 <ul>
 <li>The feature is mounted through <code>frontend/src/components/interviews/InterviewView.tsx</code> and the UI navigation path recorded in the inventory.</li>
 <li>Interview-heavy tests should use the canonical corpus <code>interview-heavy</code> slice through <code>tests/document_corpus/shared-corpus.mjs</code> when they evaluate product behavior. Tiny transcript strings are reserved for parser/unit tests only.</li>
+<li>Canonical interview sources must remain transcript-like raw material: coherent participant IDs, timestamped speaker turns, monotonic transcript positions, varied quotes, and language/content consistency. They must not ship as pre-digested candidate evidence blocks.</li>
 <li>Interview transcript text is a source substrate for coding, not accepted Atomic Research. Any interview-derived nuggets/facts/insights/recommendations remain provisional until accepted by the Research Spine gates.</li>
 <li>The frontmatter and manifest entries are the durable contract for agents updating this page after code changes.</li>
 <li>When the referenced component, store, route, agent, skill, or test behavior changes, regenerate and validate the feature documentation.</li>
@@ -273,6 +274,8 @@
 <h2 id="tests-and-verification">Tests And Verification</h2>
 <ul>
 <li><code>tests/document_corpus/canonical/manifest.json</code></li>
+<li><code>tests/document_corpus/shared-corpus.test.mjs</code></li>
+<li><code>tests/test_public_repo_quality.py</code></li>
 <li><code>tests/simulation/scenarios/70-research-integrity.mjs</code></li>
 </ul>
 <h2 id="related-features">Related Features</h2>

@@ -8,9 +8,9 @@ related_features: ["interviews.transcription", "documents.upload"]
 related_glossary: ["atomic-research"]
 code_references: ["frontend/src/components/interviews/InterviewView.tsx", "backend/app/api/routes/files.py"]
 api_references: ["backend/app/api/routes/files.py"]
-test_references: ["tests/document_corpus/canonical/manifest.json", "tests/simulation/scenarios/70-research-integrity.mjs"]
-last_verified: 2026-05-22
-compass: CF-SPEC-53 / CF-657; CF-SPEC-123 / CF-1581; CF-SPEC-131
+test_references: ["tests/document_corpus/canonical/manifest.json", "tests/document_corpus/shared-corpus.test.mjs", "tests/test_public_repo_quality.py", "tests/simulation/scenarios/70-research-integrity.mjs"]
+last_verified: 2026-05-26
+compass: CF-SPEC-53 / CF-657; CF-SPEC-123 / CF-1581; CF-SPEC-131; CF-SPEC-142
 ---
 
 # Interview Files Architecture
@@ -40,6 +40,7 @@ Interview files enter the Research Spine as raw sources. Audio recordings do not
 
 - The feature is mounted through `frontend/src/components/interviews/InterviewView.tsx` and the UI navigation path recorded in the inventory.
 - Interview-heavy tests should use the canonical corpus `interview-heavy` slice through `tests/document_corpus/shared-corpus.mjs` when they evaluate product behavior. Tiny transcript strings are reserved for parser/unit tests only.
+- Canonical interview sources must remain transcript-like raw material: coherent participant IDs, timestamped speaker turns, monotonic transcript positions, varied quotes, and language/content consistency. They must not ship as pre-digested candidate evidence blocks.
 - Interview transcript text is a source substrate for coding, not accepted Atomic Research. Any interview-derived nuggets/facts/insights/recommendations remain provisional until accepted by the Research Spine gates.
 - The frontmatter and manifest entries are the durable contract for agents updating this page after code changes.
 - When the referenced component, store, route, agent, skill, or test behavior changes, regenerate and validate the feature documentation.
@@ -51,6 +52,8 @@ Interview files enter the Research Spine as raw sources. Audio recordings do not
 ## Tests And Verification
 
 - `tests/document_corpus/canonical/manifest.json`
+- `tests/document_corpus/shared-corpus.test.mjs`
+- `tests/test_public_repo_quality.py`
 - `tests/simulation/scenarios/70-research-integrity.mjs`
 
 ## Related Features

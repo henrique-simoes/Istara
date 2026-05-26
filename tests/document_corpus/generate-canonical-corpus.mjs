@@ -24,7 +24,7 @@ const project = {
   product: "CareNav, a patient-care coordination workspace for appointment preparation, readiness evidence, caregiver collaboration, multilingual reminders, staff handoff, and governed automation",
   stage: "end-to-end UX research program for appointment preparation, caregiver access, staff readiness queues, and evidence-grounded automation",
   business_context: "Northstar Health operates 43 clinics across community health, cardiology, oncology, pediatrics, fertility, and post-operative care. The organization piloted CareNav after missed preparation tasks increased same-day cancellations and staff manually reconciled portal messages, SMS reminders, EHR tasks, phone calls, and paper notes. The renewal program must decide which automation can be trusted, which workflows need human review, and which patient/caregiver experiences are safe to launch in multiple languages.",
-  research_program: "This canonical corpus simulates a full mixed-methods UX research program: hour-long interviews, diary studies, survey exports, usability sessions, accessibility audits, journey maps, field observations, support tickets, analytics, competitor benchmarks, stakeholder memos, design briefs, discussion guides, consent/privacy notes, malformed edge cases, and report-readiness material. Sources intentionally contain contradictions, low-consensus evidence, stale metrics, multilingual ambiguity, and privacy-sensitive scenarios so tests must follow the Research Spine rather than summarizing raw data directly.",
+  research_program: "This canonical corpus simulates a full mixed-methods UX research program: extended interview transcripts, diary studies, survey exports, usability sessions, accessibility audits, journey maps, field observations, support tickets, analytics, competitor benchmarks, stakeholder memos, design briefs, discussion guides, consent/privacy notes, malformed edge cases, and report-readiness material. Sources intentionally contain contradictions, low-consensus evidence, stale metrics, multilingual ambiguity, and privacy-sensitive scenarios so tests must follow the Research Spine rather than summarizing raw data directly.",
   guardrails: [
     "Do not infer medical advice, diagnosis, treatment priority, clinical eligibility, insurance coverage, or medication guidance.",
     "Treat every participant story as synthetic PHI-like material; do not expose names, phone numbers, addresses, or unnecessary identity details in report outputs.",
@@ -245,8 +245,8 @@ function methodFrame(spec) {
   const method = spec.method.replace(/-/g, " ");
   if (spec.method === "interview") {
     return {
-      title: "One-hour interview transcript",
-      unit: "timestamped interview segment",
+      title: "Extended interview transcript",
+      unit: "timestamped speaker turn",
       analyst: "Moderator probes for concrete examples, emotional language, workflow workarounds, and contradictions.",
     };
   }
@@ -271,7 +271,162 @@ function methodFrame(spec) {
   };
 }
 
-function evidenceBlock(spec, section) {
+const participantSituations = [
+  "arriving after a referral that changed twice in one week",
+  "helping a parent prepare documents from another city",
+  "covering the front desk while two coordinators are out",
+  "checking a readiness queue between phone calls",
+  "following up after a cancelled oncology appointment",
+  "switching between English portal copy and Spanish SMS copy",
+  "trying to explain an insurance upload error without giving clinical advice",
+  "reviewing whether a caregiver can safely see reminder details",
+  "watching a patient miss the same lab instruction in two channels",
+  "reconciling a paper note with a portal task before closing the chart",
+];
+
+const transcriptFollowUps = [
+  "walk me through the last time this happened from the first reminder to the final handoff",
+  "show me where you looked for proof before you trusted the status",
+  "tell me what changed your confidence and what still felt risky",
+  "describe what you would need before letting an automated recommendation stand",
+  "separate what the patient understood from what the staff queue showed",
+  "point to the exact wording that made the permission boundary clear or unclear",
+  "explain how you would recover if this evidence turned out to be stale",
+  "name the moment where you would ask for human review instead of moving forward",
+];
+
+const quoteSeeds = [
+  "I need the prep task, the owner, and the date in one place before I can tell someone they are ready",
+  "The status looked finished, but I still had to open three places to find out whether the lab was attached",
+  "I trust the reminder more when it admits what it does not know yet",
+  "When the caregiver text is vague, the next thing that happens is a phone call to the clinic",
+  "The queue is fast for sorting, but it hides the story I need when a patient pushes back",
+  "I do not want fewer reminders; I want the reminders to stop repeating the wrong thing",
+  "If the Spanish message and the portal disagree, I choose the safer wording and ask a coordinator",
+  "The automation is helpful only when I can see why it chose that next action",
+  "A green status should not mean final if the source is older than the form someone just uploaded",
+  "I need to know whether I am seeing patient permission, caregiver permission, or staff-only notes",
+  "The report should show the messy path, not just the polished recommendation",
+  "If the system cannot cite the source, I treat the suggestion as a draft",
+];
+
+const languageQuoteSeeds = {
+  en: quoteSeeds,
+  es: [
+    "Necesito ver la tarea, la fecha y quien la reviso antes de decir que la visita esta lista",
+    "El mensaje en espanol parecia claro, pero el portal usaba otra palabra para el mismo paso",
+    "Confio mas en la automatizacion cuando muestra de donde salio la recomendacion",
+    "Si el permiso del cuidador no esta claro, prefiero llamar antes de compartir detalles",
+    "El estado verde no deberia cerrar la conversacion cuando falta un documento reciente",
+    "La recomendacion sirve si tambien muestra que evidencia todavia necesita revision",
+  ],
+  "pt-BR": [
+    "Preciso ver a tarefa, a data e quem revisou antes de dizer que a consulta esta pronta",
+    "A mensagem em portugues parecia simples, mas o portal usava outra palavra para o mesmo passo",
+    "Eu confio mais quando a automacao mostra de onde veio a recomendacao",
+    "Se a permissao do cuidador nao esta clara, eu prefiro pedir revisao humana",
+    "Status verde nao deveria encerrar o caso quando o documento novo ainda nao foi lido",
+    "A recomendacao ajuda quando tambem mostra qual evidencia ainda esta fraca",
+  ],
+};
+
+const methodObservations = {
+  diary: [
+    "The participant logged the reminder during a work break and returned to it after clinic hours.",
+    "The caregiver copied the checklist into a shared note because the permission label felt temporary.",
+    "A staff member wrote that a source looked current in the morning but stale after an afternoon upload.",
+    "The participant ignored a duplicate SMS because it repeated yesterday's missing-task wording.",
+  ],
+  usability: [
+    "The participant scanned the readiness row, opened source details, then hesitated before trusting the automation label.",
+    "The participant found the caregiver permission drawer but missed the stale-source warning on first pass.",
+    "The task succeeded only after the moderator asked the participant to compare portal and SMS wording.",
+    "The participant used keyboard navigation successfully until the status change message failed to announce.",
+  ],
+  "field-note": [
+    "Front-desk staff kept a paper fallback list beside the queue for high-risk handoffs.",
+    "Coordinators asked each other to verify whether the latest attachment changed readiness.",
+    "A nurse manager rejected an automation suggestion because no reviewer identity was visible.",
+    "Two staff members used different language for required versus optional tasks in the same huddle.",
+  ],
+  competitor: [
+    "Competitor screen shows faster triage but gives less evidence provenance than Northstar needs.",
+    "The benchmark product groups caregiver permissions separately from appointment prep tasks.",
+    "The strongest competitor pattern is explicit source age, not a more decorative dashboard.",
+    "The weakest competitor pattern is hiding escalation rationale behind a generic confidence badge.",
+  ],
+  heuristic: [
+    "Recognition improves when required, optional, and blocked tasks are visually separated.",
+    "Error recovery weakens when the override reason is detached from the source evidence.",
+    "Consistency breaks when SMS, portal, and staff queue use different readiness terms.",
+    "User control improves when automation suggestions remain reversible and explained.",
+  ],
+  accessibility: [
+    "Focus order follows the queue visually but skips the source freshness chip.",
+    "Screen-reader output announces the status but not the review state.",
+    "Contrast passes on primary task labels and fails on secondary stale-source text.",
+    "Keyboard users can open the detail drawer but cannot reach the evidence trail reliably.",
+  ],
+};
+
+function escapeCsv(value) {
+  const text = String(value).replace(/"/g, '""');
+  return `"${text}"`;
+}
+
+function sourceTimestamp(section, spacingSeconds = 45) {
+  const total = (section - 1) * spacingSeconds;
+  const minute = String(Math.floor(total / 60)).padStart(2, "0");
+  const second = String(total % 60).padStart(2, "0");
+  return `${minute}:${second}`;
+}
+
+function localizedQuote(spec, section) {
+  const id = numericId(spec);
+  const quotes = languageQuoteSeeds[spec.language] || languageQuoteSeeds.en;
+  const base = quotes[(id + section) % quotes.length];
+  const journey = journeys[(id + section) % journeys.length];
+  const detail = [
+    "because the source trail changed the decision",
+    "after comparing the portal task with the staff note",
+    "when the caregiver boundary was still ambiguous",
+    "while checking whether the newest document was included",
+    "before a coordinator could approve the next action",
+  ][(id + section) % 5];
+  return `${base} (${journey}, ${detail}, source ${spec.id}, turn ${section})`;
+}
+
+function transcriptSegment(spec, section) {
+  const id = numericId(spec);
+  const pain = pains[(id + section) % pains.length];
+  const second = pains[(id + section + 4) % pains.length];
+  const opportunity = opportunities[(id + section) % opportunities.length];
+  const tension = evidenceTensions[(id + section) % evidenceTensions.length];
+  const journey = journeys[(id + section) % journeys.length];
+  const situation = participantSituations[(id + section) % participantSituations.length];
+  const followUp = transcriptFollowUps[(id + section) % transcriptFollowUps.length];
+  const participant = spec.participant_ids[0];
+  const timestamp = sourceTimestamp(section, 42);
+  return [
+    `### ${timestamp} - ${journey}`,
+    "",
+    `Moderator: Earlier you mentioned ${situation}. Can you ${followUp}, especially around ${journey}?`,
+    `${participant}: "${localizedQuote(spec, section)}" The hard part is that ${pain}, but another part of the same visit says ${second}. In this moment I would not treat the status as finished. I would compare the reminder, the latest attachment, and the person who last reviewed the queue before I told anyone the appointment was ready.`,
+    `Moderator: What would make that safe enough to move forward without overclaiming?`,
+    `${participant}: For source ${spec.id} turn ${section}, I would need the product to show the exact source, the age of that source, and whether a human already checked the contradiction. ${tension} A summary alone would be too smooth. The useful next step would be to ${opportunity}, but only after someone can see the evidence path and decide whether the conflict is real or just a wording mismatch.`,
+    "",
+  ].join("\n");
+}
+
+function interviewTranscript(spec) {
+  const paragraphs = [];
+  for (let section = 1; section <= sourceDepth(spec.method); section += 1) {
+    paragraphs.push(transcriptSegment(spec, section));
+  }
+  return paragraphs.join("\n");
+}
+
+function rawResearchSection(spec, section) {
   const id = numericId(spec);
   const pain = pains[(id + section) % pains.length];
   const second = pains[(id + section + 4) % pains.length];
@@ -279,28 +434,32 @@ function evidenceBlock(spec, section) {
   const tension = evidenceTensions[(id + section) % evidenceTensions.length];
   const journey = journeys[(id + section) % journeys.length];
   const artifact = sourceArtifacts[(id + section) % sourceArtifacts.length];
-  const participant = `P${String(((id + section) % 48) + 1).padStart(2, "0")}`;
-  const minute = String(Math.min(59, Math.floor((section - 1) * 60 / Math.max(sourceDepth(spec.method), 1)))).padStart(2, "0");
-  const secondMark = String((section * 17) % 60).padStart(2, "0");
+  const observationPool = methodObservations[spec.method] || [
+    "The source captures a specific moment where readiness, evidence trust, and review policy intersect.",
+    "The note preserves context that would be lost in a single polished finding.",
+    "The source includes enough friction detail for independent coders to disagree productively.",
+    "The material should be segmented from raw spans before any atomic artifact is trusted.",
+  ];
+  const observation = observationPool[(id + section) % observationPool.length];
+  const timestamp = sourceTimestamp(section, 75);
+  const participant = spec.participant_ids[0];
   return [
-    `## Evidence unit candidate ${section}: ${journey}`,
+    `## Raw record ${section}: ${journey}`,
     "",
-    `Source position: [${minute}:${secondMark}] in ${methodFrame(spec).title}; candidate participant ${participant}; role ${spec.role}; language ${spec.language}; clinic ${spec.clinic}.`,
-    `Observed moment: ${pain}. The participant or operational record describes the issue while moving through ${journey}, and the note explicitly connects the issue to appointment preparation, readiness evidence, or caregiver-safe coordination.`,
-    `Thick description: The team member first checks the dashboard, then cross-references another ${artifact}, and then decides whether the readiness status is safe enough to act on. The source describes how the person looks for freshness, owner, evidence source, permission status, and whether an automated recommendation has been reviewed. The detail matters because a generic summary such as "users want clarity" would hide the difference between evidence traceability, emotional reassurance, workflow speed, and clinical safety boundaries.`,
-    `Direct quote: "I can only approve a recommendation when the system shows which task, transcript, ticket, or survey row produced it; otherwise I have to rebuild the story myself before I trust the status."`,
-    `Counter-signal: ${second}. ${tension} This contradiction is intentional canonical material for reliability, debate, reconciliation, and low-consensus review tests.`,
-    `Coding hints: likely open codes include evidence traceability, readiness confidence, caregiver boundary, multilingual risk, staff override, stale-source concern, task priority ambiguity, and automation trust. Coders should decide independently, cite spans, record confidence, and memo ambiguity before reliability is computed.`,
-    `Implication candidate: ${opportunity}. This is only a candidate implication until source-grounded multi-model extraction, coding, reliability or reconciliation, human review, and Done-task gates accept it.`,
-    `Report gate reminder: raw source material is not report-ready. Any future nugget, fact, insight, recommendation, design decision, or report paragraph must preserve the source id ${spec.id}, evidence-unit location, codebook version, route evidence, review state, and task approval path.`,
+    `Position: ${timestamp}. Method: ${spec.method}. Participant or record id: ${participant}. Clinic: ${spec.clinic}. Artifact checked: ${artifact}.`,
+    `${observation} The concrete friction was that ${pain}. The same record also mentions that ${second}, so a clean one-line synthesis would hide a genuine interpretation problem.`,
+    `Verbatim/source excerpt: "${localizedQuote(spec, section)}"`,
+    `Context note: ${tension} The note is intentionally raw; it is not a code, finding, nugget, recommendation, or report paragraph. A research process should segment this span, code it independently, compare agreement, and send unresolved contradictions to review.`,
+    `Operational detail: the next product idea in the room was to ${opportunity}. That idea remains a raw observation from this source until the Research Spine accepts or rejects it.`,
     "",
   ].join("\n");
 }
 
-function repeatedEvidence(spec) {
+function rawMarkdownBody(spec) {
+  if (spec.method === "interview") return interviewTranscript(spec);
   const paragraphs = [];
   for (let section = 1; section <= sourceDepth(spec.method); section += 1) {
-    paragraphs.push(evidenceBlock(spec, section));
+    paragraphs.push(rawResearchSection(spec, section));
   }
   return paragraphs.join("\n");
 }
@@ -333,11 +492,11 @@ function markdownContent(spec) {
     "",
     ...project.guardrails.map((guardrail) => `- ${guardrail}`),
     "",
-    repeatedEvidence(spec),
+    rawMarkdownBody(spec),
     "## Analyst memo",
     "",
-    `This synthetic source supports ${spec.skills.slice(0, 5).join(", ")} coverage.`,
-    "The source includes messy but plausible UX research evidence and must be interpreted with source traceability, codebook criteria, item-level reliability, and human review.",
+    `Coverage focus: ${spec.skills.slice(0, 5).join(", ")}.`,
+    "This file is a raw synthetic research source. It may contain contradictions and interpretation traps; it should not be pasted into findings or reports without evidence-unit extraction, independent coding, reliability or reconciliation, and human task approval.",
   ].join("\n");
 }
 
@@ -350,21 +509,23 @@ function csvContent(spec) {
     const pain = pains[(row + id) % pains.length];
     const opportunity = opportunities[(row + 3) % opportunities.length];
     const tension = evidenceTensions[(row + id) % evidenceTensions.length];
+    const rowLanguage = languages[(row + id) % languages.length];
+    const quoteSpec = { ...spec, language: rowLanguage };
     rows.push([
       `${spec.id}-R${String(row).padStart(3, "0")}`,
       `P${String(((row + id) % 48) + 1).padStart(2, "0")}`,
       roles[row % roles.length],
-      languages[row % languages.length],
+      rowLanguage,
       clinics[(row + id) % clinics.length],
-      `"${journeys[(row + id) % journeys.length]}"`,
+      escapeCsv(journeys[(row + id) % journeys.length]),
       spec.method,
       1 + ((row + id) % 7),
       ["low", "medium", "high"][(row + id) % 3],
-      `"${pain}; requested ${opportunity}; source says the decision cannot be trusted without source freshness, owner, and review state."`,
-      `"${tension}"`,
-      `"Synthetic ${project.name} corpus row. Preserve participant, method, language, journey, metric definition, and review state."`,
+      escapeCsv(`${localizedQuote(quoteSpec, row)}; ${pain}; requested ${opportunity}.`),
+      escapeCsv(tension),
+      escapeCsv(`Raw ${project.name} ${spec.method} row ${row}; preserve participant, method, language, journey, metric definition, source row, and review state.`),
       "false",
-      `"source evidence unit -> independent extraction/coding -> reliability/reconciliation -> Done task approval"`,
+      escapeCsv("source evidence unit -> independent extraction/coding -> reliability/reconciliation -> Done task approval"),
     ].join(","));
   }
   return rows.join("\n");
@@ -376,17 +537,19 @@ function supportCsvContent(spec) {
   ];
   for (let row = 1; row <= 180; row += 1) {
     const id = numericId(spec);
+    const rowLanguage = languages[(row + id) % languages.length];
+    const quoteSpec = { ...spec, language: rowLanguage };
     rows.push([
       `${spec.id}-T${String(row).padStart(3, "0")}`,
       project.name,
       spec.method,
       spec.phase,
       roles[row % roles.length],
-      languages[row % languages.length],
-      `"${pains[(row + id) % pains.length]} during ${journeys[(row + id) % journeys.length]}"`,
-      `"${opportunities[(row + id) % opportunities.length]}"`,
+      rowLanguage,
+      escapeCsv(`${localizedQuote(quoteSpec, row)}; ${pains[(row + id) % pains.length]} during ${journeys[(row + id) % journeys.length]}`),
+      escapeCsv(opportunities[(row + id) % opportunities.length]),
       "false",
-      `"Only findings derived from approved Done tasks may feed Reports."`,
+      escapeCsv("Only findings derived from approved Done tasks may feed Reports."),
     ].join(","));
   }
   return rows.join("\n");
@@ -503,8 +666,11 @@ function writeDocs(manifest, skills) {
     "- Canonical sources must remain compatible with Istara upload/processable file types so benchmark failures test product behavior, not bad fixture formats.",
     "- Tiny ad hoc fixtures are allowed only for parser/unit tests and must be labeled as unit fixtures.",
     "- Raw corpus sources are not report-ready evidence. Reports are generated only from Findings derived from approved Done tasks.",
+    "- Raw Markdown sources must look like plausible source artifacts, not pre-digested candidate evidence, coding hints, canned implications, or report paragraphs.",
+    "- Interview sources must preserve coherent participant IDs, timestamped speaker turns, monotonic transcript positions, varied participant quotes, and language/content consistency.",
     "- The corpus is fully synthetic and contains no private data.",
     "- The corpus is intentionally large enough to stress retrieval, coding, task review, summarization, report gating, and multi-model route evidence.",
+    "- Run `python scripts/public_repo_quality_audit.py --check` with corpus tests before merging corpus or public-doc changes.",
     "",
     "## Named slices",
     "",
@@ -546,7 +712,7 @@ function writeDocs(manifest, skills) {
     },
     rules: [
       "Raw corpus sources are not directly report-ready.",
-      "Agent task outputs may create findings, nuggets, facts, insights, and recommendations.",
+      "Agent task outputs may propose candidate findings, nuggets, facts, insights, and recommendations.",
       "Tasks in Backlog, To Do, In Progress, or In Review are not report eligible.",
       "Only approved Done tasks may contribute task-bound findings to Reports.",
       "Reports should cite source ids, task ids, finding ids, and approval state.",

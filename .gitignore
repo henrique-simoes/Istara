@@ -110,11 +110,6 @@ current_plans.md
 old_plans.md
 .rtk/
 
-# Documentation snapshots are local/Compass Forge archival material.
-docs/
-!docs/
-!docs/CODEBASE_HEALTH_PASS.md
-
 # Generated security benchmark artifacts are CI/local evidence, not source.
 security/security_scorecard.json
 
