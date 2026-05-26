@@ -59,12 +59,7 @@ The generated HTML site was upgraded from a basic static page into a more comple
 ## Files Changed
 
 - `scripts/feature_docs.py`
-- `scripts/update_agent_md.py`
 - `AGENTS.md`
-- `AGENT.md`
-- `AGENT_ENTRYPOINT.md`
-- `COMPLETE_SYSTEM.md`
-- `SYSTEM_PROMPT.md`
 - `DOCUMENTATION.md`
 - `CHANGE_CHECKLIST.md`
 - `SYSTEM_CHANGE_MATRIX.md`
@@ -94,12 +89,9 @@ Additional files changed in `CF-SPEC-54`:
 - `python scripts/feature_docs.py --check` - passed for 86 features after the generator changes.
 - `pytest tests/test_feature_docs.py -q` - 5 passed after adding generated-page, source-link, and accessible shell coverage.
 - `rg "\\]\\(\\.\\./\\.\\./glossary/" docs/features/content -n` - no matches after source regeneration, confirming the old broken source glossary link pattern was removed.
-- `python scripts/update_agent_md.py` - regenerated agent-facing system maps after updating the generator.
-- `python scripts/update_agent_md.py --check` - confirmed generated agent maps are current.
 - `python scripts/check_integrity.py` - confirmed active release/governance docs remain coherent after process-doc updates.
-- `python scripts/update_agent_md.py --check` - still current after the `CF-SPEC-54` documentation-site changes.
 - `python scripts/check_integrity.py` - active release/governance docs remain coherent after the `CF-SPEC-54` process-doc updates.
-- `compass-forge gate after CF-SPEC-53 --task CF-657` - status `warn`, no failures or new issues; pre-existing warning-level complexity findings remain for `SYSTEM_INTEGRITY_GUIDE.md`, `Tech.md`, and `backend/app/core/meta_hyperagent.py`, with the known `frontend/package-lock.json` large-file suppression still active.
+- `compass-forge gate after CF-SPEC-53 --task CF-657` - status `warn`, no failures or new issues; pre-existing warning-level complexity findings remained for large architecture docs, `Tech.md`, and `backend/app/core/meta_hyperagent.py`, with the known `frontend/package-lock.json` large-file suppression still active.
 - `compass-forge gate after CF-SPEC-54 --task CF-670` - status `warn`, no failures. It reports one new warning because `scripts/feature_docs.py` now exceeds the configured 1,200-line threshold after adding the static site shell, CSS, JS, glossary generation, and link validation. This is doc-generator maintainability debt, not runtime product risk.
 
 ## Unresolved Gaps

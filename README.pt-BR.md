@@ -210,7 +210,6 @@ O Istara roda inteiramente no seu hardware. Ele vem com cinco agentes de IA espe
 | Compartilhamento de computação | Doe GPU via relay WebSocket — cluster da equipe | Pague por chamada de API |
 | Pesquisa autônoma | Propostas de autoresearch em sandbox; sem mutação live antes de governança | Execução manual apenas |
 | Canais de survey | WhatsApp, Telegram, Typeform, SurveyMonkey | Integrações limitadas |
-| Preço | Gratuito, open source, licença MIT | R$X.XXX/ano SaaS |
 
 ---
 
@@ -793,9 +792,9 @@ Sage analisa jornadas de usuário em busca de carga cognitiva, fricção de flux
 
 ### Echo (`istara-sim`) — Testadora End-to-End
 
-Echo é a agente de garantia de qualidade. Ela executa a suíte de teste de simulação com 75 cenários, realiza testes de regressão em fluxos de trabalho de pesquisa, e valida que mudanças no sistema não quebram pipelines de pesquisa existentes.
+Echo é a agente de garantia de qualidade. Ela executa a suíte de teste de simulação com 76 cenários, realiza testes de regressão em fluxos de trabalho de pesquisa, e valida que mudanças no sistema não quebram pipelines de pesquisa existentes.
 
-**Capacidades principais:** Suite de testes E2E com 75 cenários · Testes de regressão · Simulação de usuário · Validação de endpoints de API · Benchmarking de performance
+**Capacidades principais:** Suite de testes E2E com 76 cenários · Testes de regressão · Simulação de usuário · Validação de endpoints de API · Benchmarking de performance
 
 </details>
 
@@ -803,7 +802,7 @@ Echo é a agente de garantia de qualidade. Ela executa a suíte de teste de simu
 
 ## Screenshots
 
-<!-- TODO: Adicionar screenshots após o primeiro deploy público -->
+Capturas de tela são omitidas intencionalmente até que os ativos do deploy público estejam estáveis.
 *Referências adicionais de arquitetura e processo estão em [DOCUMENTATION.md](DOCUMENTATION.md).*
 
 ---

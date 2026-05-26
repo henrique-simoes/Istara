@@ -3,9 +3,9 @@
 
 Compass Forge is the control plane for this repository.
 
-- Project root: `/Users/studio/Documents/Istara-main`
+- Project root: this repository checkout (`<repo-root>`)
 - Recipe: `istararustgraphtrial`
-- MCP server: `python -m compass_forge.cli --workspace /Users/studio/Documents/compass-forge mcp --target /Users/studio/Documents/Istara-main --recipe istararustgraphtrial`
+- MCP server: `python -m compass_forge.cli --workspace <compass-forge-root> mcp --target <repo-root> --recipe istararustgraphtrial`
 
 Before editing, run `compass-forge status` and `compass-forge agent-brief --request "<user request>"`.
 For Standard, Full, or uncertain changes, create a durable spec first: `compass-forge spec create "<user request>"`, then `spec plan` and `spec tasks`.

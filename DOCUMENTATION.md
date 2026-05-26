@@ -12,7 +12,6 @@ do not drift into scattered one-off notes.
 | `README.pt-BR.md` | Public Portuguese product overview with the same process/security/eval posture. |
 | `CONTRIBUTING.md` | Contributor setup and contribution expectations. |
 | `AGENTS.md` | Repository-local instructions for Codex and other coding agents. |
-| `AGENT_ENTRYPOINT.md` | Agent-facing reading order and generated product-surface snapshot. |
 | `CHANGE_CHECKLIST.md` | Change execution checklist tied to Compass Forge. |
 | `SYSTEM_CHANGE_MATRIX.md` | Cross-surface impact matrix. |
 | `Tech.md` | Narrative technical architecture. |
@@ -57,13 +56,14 @@ python scripts/security_release_readiness.py
 
 | File | Status |
 | --- | --- |
-| `AGENT.md` | Generated compact system map. Regenerate with the approved script when product surfaces change. |
-| `COMPLETE_SYSTEM.md` | Generated/living system map. Keep as generated architecture evidence. |
 | `docs/features/site/` | Generated hostable feature documentation website. Regenerate with `python scripts/feature_docs.py --seed-missing --generate-site --check`. |
 | `docs/features/site/manifest.json`, `feature-graph.json`, `search-index.json`, `sitemap.xml`, `llms.txt` | Machine-readable feature indexes for agents and documentation hosting. Do not edit by hand; update `docs/features/inventory.json` and source docs first. |
-| `SYSTEM_INTEGRITY_GUIDE.md` | Legacy deep reference. Use only when the current Compass Forge map and `Tech.md` are insufficient. |
 | `planner.md` | Legacy compatibility note. Do not use it for new active plans. |
-| `CLAUDE.md`, `GEMINI.md`, `QWEN.md` | Agent-wrapper instructions that must stay aligned with `AGENTS.md` and Compass Forge. |
+
+Legacy generated agent wrappers and one-off diagnostic registers were removed
+from the repository root. Current agent behavior belongs in `AGENTS.md`,
+Compass Forge specs/tasks/evidence, `SYSTEM_CHANGE_MATRIX.md`,
+`CHANGE_CHECKLIST.md`, `Tech.md`, and the living feature docs.
 
 ## Living Feature Documentation
 

@@ -268,7 +268,7 @@ def main() -> int:
         print("Change-governance check failed:\n")
         for issue in issues:
             print(f"- {issue}\n")
-        print("See SYSTEM_PROMPT.md, SYSTEM_CHANGE_MATRIX.md, and CHANGE_CHECKLIST.md.")
+        print("See AGENTS.md, SYSTEM_CHANGE_MATRIX.md, CHANGE_CHECKLIST.md, and Tech.md.")
         return 1
 
     print("Change-governance check passed.")

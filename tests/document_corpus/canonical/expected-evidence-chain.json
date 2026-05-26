@@ -2,13 +2,13 @@
   "project": "CareNav Renewal",
   "corpus_depth": {
     "total_sources": 174,
-    "total_words": 3294834,
-    "average_words_per_source": 18936,
-    "sources_with_at_least_10000_words": 129
+    "total_words": 2716595,
+    "average_words_per_source": 15613,
+    "sources_with_at_least_10000_words": 114
   },
   "rules": [
     "Raw corpus sources are not directly report-ready.",
-    "Agent task outputs may create findings, nuggets, facts, insights, and recommendations.",
+    "Agent task outputs may propose candidate findings, nuggets, facts, insights, and recommendations.",
     "Tasks in Backlog, To Do, In Progress, or In Review are not report eligible.",
     "Only approved Done tasks may contribute task-bound findings to Reports.",
     "Reports should cite source ids, task ids, finding ids, and approval state."

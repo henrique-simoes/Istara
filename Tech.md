@@ -1684,7 +1684,7 @@ System tray application for macOS, Windows, and Linux. **Mode-aware manager only
 - That governance check fails when architecture/process/release-sensitive code changes without corresponding updates to `Tech.md`, tests, or Istara persona files
 - Backend CI compiles release-critical governed surfaces, runs `python scripts/production_rehearsal.py --json`, and then runs the dedicated governed evolution regression pair: `tests/test_improvement_governance.py` and `tests/test_compute.py`
 
-Legacy Compass markdown (`AGENT.md`, `AGENT_ENTRYPOINT.md`, `COMPLETE_SYSTEM.md`, and `SYSTEM_INTEGRITY_GUIDE.md`) is no longer a blocking CI/CD governance source. Those files may remain as historical references, but Compass Forge is the local-first control plane for repository onboarding, impact analysis, gates, work orders, and evidence. CI therefore guards against accidentally re-promoting the legacy generator or legacy markdown drift checks back into release governance.
+Legacy generated agent wrappers and one-off diagnostic registers are no longer blocking CI/CD governance sources. Compass Forge is the local-first control plane for repository onboarding, impact analysis, gates, work orders, and evidence. CI therefore guards against accidentally re-promoting retired generators or retired markdown drift checks back into release governance.
 
 ### Industry Security Benchmark
 
@@ -2691,7 +2691,7 @@ Canonical source skills remain in `backend/app/skills/definitions/`. User-create
 
 ### Legacy Compass Markdown
 
-`AGENT.md`, `AGENT_ENTRYPOINT.md`, `COMPLETE_SYSTEM.md`, `SYSTEM_INTEGRITY_GUIDE.md`, and `scripts/update_agent_md.py` are legacy Compass inventory artifacts. They are optional historical references and must not be treated as blocking CI/CD governance now that Compass Forge owns repository mapping and process evidence.
+Retired generated agent wrappers and retired local diagnostic registers are not part of active release governance now that Compass Forge owns repository mapping and process evidence. Current repository instructions live in `AGENTS.md`, `CHANGE_CHECKLIST.md`, `SYSTEM_CHANGE_MATRIX.md`, `DOCUMENTATION.md`, `Tech.md`, and the living feature documentation system.
 
 ### Feature Documentation
 

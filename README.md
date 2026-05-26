@@ -209,7 +209,6 @@ Istara runs entirely on your hardware. It ships with five specialized AI agents,
 | Compute sharing | Donate GPU via WebSocket relay — team cluster | Pay-per-API-call |
 | Autonomous research | Sandboxed autoresearch proposals; no live mutation before governance | Manual execution only |
 | Survey channels | WhatsApp, Telegram, Typeform, SurveyMonkey | Limited integrations |
-| Price | Free, open source, MIT licensed | $X,XXX/year SaaS |
 
 ---
 ![](https://istara.goatcounter.com/count?p=/count-features)
@@ -803,7 +802,7 @@ Echo is the quality assurance agent. She runs the 76-scenario simulation test su
 
 ## Screenshots
 
-<!-- TODO: Add screenshots after first public deployment -->
+Screenshots are intentionally omitted until the public deployment assets are stable.
 *Additional architecture and process references are listed in [DOCUMENTATION.md](DOCUMENTATION.md).*
 
 ---

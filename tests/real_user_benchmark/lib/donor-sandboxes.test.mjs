@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { resolve } from "node:path";
 
 import {
   buildDonorModelSandboxConfig,
@@ -17,6 +18,7 @@ test("q4EvidenceFrom recognizes Q4, 4-bit, and int4 quantization hints", () => {
 });
 
 test("buildDonorModelSandboxConfig creates an opt-in llama.cpp donor endpoint", () => {
+  const modelFile = resolve("/tmp/istara-models/qwen3.5-4b-q4_k_m.gguf");
   const config = buildDonorModelSandboxConfig({}, 2, {
     donorId: "Donor Two",
     model: "fallback-model",
@@ -24,7 +26,7 @@ test("buildDonorModelSandboxConfig creates an opt-in llama.cpp donor endpoint", 
     env: {
       ISTARA_BENCHMARK_DONOR_2_MODEL_SERVER: "llama.cpp",
       ISTARA_BENCHMARK_DONOR_2_MODEL_SERVER_PORT: "18122",
-      ISTARA_BENCHMARK_DONOR_2_MODEL_FILE: "/Users/studio/Istara-Projects/models/qwen3.5-4b-q4_k_m.gguf",
+      ISTARA_BENCHMARK_DONOR_2_MODEL_FILE: modelFile,
       ISTARA_BENCHMARK_DONOR_2_CPUS: "2",
       ISTARA_BENCHMARK_DONOR_2_MEMORY: "6g",
     },
@@ -45,13 +47,15 @@ test("buildDonorModelSandboxConfig creates an opt-in llama.cpp donor endpoint", 
 });
 
 test("dockerArgsForDonorModelSandbox binds llama.cpp models read-only and exposes only localhost", () => {
+  const modelRoot = resolve("/tmp/istara-models");
+  const modelFile = resolve(modelRoot, "qwen3.5-4b-q4_k_m.gguf");
   const config = buildDonorModelSandboxConfig({}, 2, {
     donorId: "donor-2",
     runId: "test-run",
     env: {
       ISTARA_BENCHMARK_DONOR_2_MODEL_SERVER: "llamacpp",
       ISTARA_BENCHMARK_DONOR_2_MODEL_SERVER_PORT: "18122",
-      ISTARA_BENCHMARK_DONOR_2_MODEL_FILE: "/Users/studio/Istara-Projects/models/qwen3.5-4b-q4_k_m.gguf",
+      ISTARA_BENCHMARK_DONOR_2_MODEL_FILE: modelFile,
     },
   });
 
@@ -59,7 +63,7 @@ test("dockerArgsForDonorModelSandbox binds llama.cpp models read-only and expose
 
   assert.deepEqual(args.slice(0, 4), ["run", "-d", "--name", "istara-donor-model-test-run-donor-2"]);
   assert.ok(args.includes("127.0.0.1:18122:8080"));
-  assert.ok(args.includes("/Users/studio/Istara-Projects/models:/models:ro"));
+  assert.ok(args.includes(`${modelRoot}:/models:ro`));
   assert.ok(args.includes("/models/qwen3.5-4b-q4_k_m.gguf"));
   assert.ok(args.includes("--alias"));
   assert.ok(args.includes("--reasoning"));

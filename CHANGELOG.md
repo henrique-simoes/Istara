@@ -96,7 +96,7 @@ Forge evidence.
 - **ComputeRegistry Unification**: Centralized all LLM routing. Replaced brittle heuristics with a **BFCL-pattern dynamic probe** to actively verify `tool_calls` support.
 - **RFC 3986 URL Normalization**: Enforced trailing-slash normalization in `ComputeRegistry` to eliminate 404 errors on generic OpenAI-compatible providers.
 - **Five-Layer Testing Architecture**: Expanded from three layers to explicitly include Orchestration Benchmarks (Layer 4) and Real-World Integration (Layer 5).
-- **Dynamic Documentation Scripts**: `check_integrity.py` and `update_agent_md.py` are now dynamically self-maintaining, automatically discovering new test layers and wrapper docs.
+- **Dynamic Documentation Scripts**: `check_integrity.py` now validates active release-governance docs and test-harness coverage.
 
 ### Fixed
 - **RBAC Security Reinforcements**: Restricted project deletion to admins only; allowed non-admins to contribute local compute power.
@@ -283,7 +283,7 @@ Forge evidence.
 - 51+ SQLAlchemy 2.0 models with mapped_column and cascade relationships
 - Data integrity check endpoint (`POST /api/settings/data-integrity`)
 - `python scripts/check_integrity.py` — cross-references models, routes, skills, and frontend types against documentation; exits 1 if out of sync
-- `python scripts/update_agent_md.py` — auto-regenerates AGENT.md capabilities catalog
+- Living feature documentation is generated through `python scripts/feature_docs.py --seed-missing --generate-site --check`
 - Docker Compose for single-command local deployment
 - Docker Compose GPU variant for CUDA-accelerated inference
 - Caddy reverse proxy configuration

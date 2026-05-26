@@ -69,6 +69,17 @@ const researchDomains = [
   "source traceability",
 ];
 
+const fallbackQuotes = [
+  "The queue is useful only when the source trail is visible before the status is accepted",
+  "I need a human-readable reason when automation changes the next action",
+  "The reminder helped, but the duplicate wording made me question which task was current",
+  "Caregiver access has to say exactly what is shared and what stays private",
+  "The report should keep the evidence path, not just the final recommendation",
+  "A stale document should block confidence even if the row looks complete",
+  "The staff view moves quickly until someone has to prove why a status changed",
+  "Language consistency matters because one unclear word can trigger a phone call",
+];
+
 function listFiles(root) {
   if (!existsSync(root)) return [];
   const output = [];
@@ -101,14 +112,16 @@ function generatedLongSource(index) {
   const role = ["patient", "caregiver", "care coordinator", "nurse manager"][index % 4];
   const sections = [];
   for (let section = 1; section <= 12; section += 1) {
+    const quote = fallbackQuotes[(index + section) % fallbackQuotes.length];
+    const journey = researchDomains[(index + section + 2) % researchDomains.length];
     sections.push([
-      `## Observation ${section}`,
+      `## Raw fallback note ${section}`,
       "",
-      `Participant group: ${role}. Domain: ${domain}.`,
-      `Evidence says the team needs clearer source labels before trusting automation, especially when ${domain} overlaps with ${contradiction}.`,
-      `Quote: "I can approve a workflow only when I know which document, transcript, or ticket produced the recommendation."`,
-      "Counter-signal: analytics suggest some users skip details when reminders arrive late, so the synthesis must not overfit to interview enthusiasm.",
-      "Research implication: findings should cite concrete files and distinguish approved tasks from material still waiting for human review.",
+      `Participant group: ${role}. Domain: ${domain}. Related journey: ${journey}.`,
+      `Raw note: the team needs clearer source labels before trusting automation, especially when ${domain} overlaps with ${contradiction}.`,
+      `Quote: "${quote} (fallback source ${String(index).padStart(3, "0")}, note ${section})."`,
+      `Counter-signal: the same note says some users skip details when reminders arrive late, so synthesis must not overfit to the ${domain} perspective alone.`,
+      "Research implication: this fallback is still untrusted raw material; product-level tests should prefer canonical sources and only treat outputs as reportable after the Research Spine accepts them.",
       "",
     ].join("\n"));
   }

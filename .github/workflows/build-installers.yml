@@ -72,7 +72,7 @@ jobs:
               scripts/check_integrity.py|scripts/check_change_obligations.py|scripts/check_ci_governance.py|scripts/check_test_harness.py|scripts/production_rehearsal.py|scripts/security_benchmark.py|scripts/security_release_readiness.py)
                 SHOULD_RELEASE=true
                 ;;
-              SYSTEM_PROMPT.md|SYSTEM_CHANGE_MATRIX.md|CHANGE_CHECKLIST.md|Tech.md|CLAUDE.md|GEMINI.md|security/*|testing/*)
+              AGENTS.md|DOCUMENTATION.md|README.md|README.pt-BR.md|TESTING.md|SYSTEM_CHANGE_MATRIX.md|CHANGE_CHECKLIST.md|Tech.md|security/*|testing/*|docs/features/*)
                 SHOULD_RELEASE=true
                 ;;
               backend/app/agents/personas/*)

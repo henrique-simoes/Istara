@@ -1,9 +1,10 @@
 import { basename, dirname, resolve } from "path";
 import { existsSync, realpathSync, statSync } from "fs";
+import { homedir } from "os";
 
 const DEFAULT_LLAMA_CPP_IMAGE = "ghcr.io/ggml-org/llama.cpp:server";
 const DEFAULT_OLLAMA_IMAGE = "ollama/ollama:latest";
-const DEFAULT_MODEL_ROOT = "/Users/studio/Istara-Projects/models";
+const DEFAULT_MODEL_ROOT = resolve(homedir(), "Istara-Projects", "models");
 const Q4_PATTERN = /(^|[^a-z0-9])(?:q4(?:[_\-.][a-z0-9]+)?|4bit|4-bit|int4)([^a-z0-9]|$)/i;
 
 function firstNonEmpty(...values) {
