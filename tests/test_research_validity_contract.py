@@ -10,6 +10,7 @@ import pytest
 _RUNTIME_PERSONA_DIR = re.compile(
     r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
 )
+REPO_ROOT = Path(__file__).resolve().parents[1]
 
 
 def _is_gitignored_runtime_persona(path: Path) -> bool:
@@ -88,9 +89,8 @@ def test_skill_output_defaults_research_artifacts_to_provisional_candidates():
 
 
 def test_architecture_contract_covers_task_creation_surfaces():
-    contract = "docs/architecture/research-validity-contract.md"
-    with open(contract, encoding="utf-8") as handle:
-        text = " ".join(handle.read().split())
+    contract = REPO_ROOT / "docs/architecture/research-validity-contract.md"
+    text = " ".join(contract.read_text(encoding="utf-8").split())
 
     assert "API, Kanban, chat, and LLM-callable system-action tools" in text
     assert "Attached input documents must belong to the active project" in text
@@ -98,12 +98,14 @@ def test_architecture_contract_covers_task_creation_surfaces():
 
 
 def test_project_agent_instructions_make_research_spine_non_optional():
-    with open("AGENTS.md", encoding="utf-8") as handle:
-        agent_rules = " ".join(handle.read().split())
-    with open(
-        "docs/architecture/research-validity-contract.md", encoding="utf-8"
-    ) as handle:
-        contract = " ".join(handle.read().split())
+    agent_rules = " ".join(
+        (REPO_ROOT / "AGENTS.md").read_text(encoding="utf-8").split()
+    )
+    contract = " ".join(
+        (REPO_ROOT / "docs/architecture/research-validity-contract.md")
+        .read_text(encoding="utf-8")
+        .split()
+    )
 
     required_phrases = [
         "Every product feature that ingests, creates, processes, retrieves, summarizes, validates, visualizes, routes, promotes, or reports user research data",
@@ -137,7 +139,7 @@ def test_chat_runtime_prompt_injects_protected_research_spine_gate():
 def test_static_research_artifact_constructors_stay_inside_approved_boundaries():
     """New production surfaces must not bypass the Research Spine by accident."""
 
-    repo_root = Path(".")
+    repo_root = REPO_ROOT
     allowed_files = {
         "backend/app/api/routes/findings.py",
         "backend/app/api/routes/interfaces_mock.py",
@@ -154,7 +156,7 @@ def test_static_research_artifact_constructors_stay_inside_approved_boundaries()
     )
     violations: list[str] = []
     for path in sorted((repo_root / "backend/app").rglob("*.py")):
-        rel = path.as_posix()
+        rel = path.relative_to(repo_root).as_posix()
         if "/models/" in rel or "/alembic/" in rel:
             continue
         text = path.read_text(encoding="utf-8")
@@ -171,9 +173,9 @@ def test_static_design_decision_constructors_mark_provisional_rationale():
     """Interface-generated design decisions must carry their provisional state."""
 
     constructor_files = [
-        Path("backend/app/api/routes/interfaces_mock.py"),
-        Path("backend/app/api/routes/interfaces_screens.py"),
-        Path("backend/app/skills/design_tools.py"),
+        REPO_ROOT / "backend/app/api/routes/interfaces_mock.py",
+        REPO_ROOT / "backend/app/api/routes/interfaces_screens.py",
+        REPO_ROOT / "backend/app/skills/design_tools.py",
     ]
     violations: list[str] = []
     for path in constructor_files:
@@ -182,7 +184,7 @@ def test_static_design_decision_constructors_mark_provisional_rationale():
             "DesignDecision(" in text
             and "provisional_design_decision_rationale" not in text
         ):
-            violations.append(path.as_posix())
+            violations.append(path.relative_to(REPO_ROOT).as_posix())
 
     assert not violations, (
         "DesignDecision constructors outside Findings must visibly mark generated "
@@ -194,16 +196,16 @@ def test_docs_and_skill_prompts_do_not_describe_trusted_nugget_first_flow():
     """Docs/prompts may mention Atomic artifacts only as accepted spine outputs."""
 
     roots = [
-        Path("AGENTS.md"),
-        Path("README.md"),
-        Path("README.pt-BR.md"),
-        Path("TESTING.md"),
-        Path("docs/architecture"),
-        Path("docs/features/content"),
-        Path("docs/scientific_audit"),
-        Path("backend/app/agents/personas"),
-        Path("backend/app/skills/definitions"),
-        Path("tests/simulation/scenarios"),
+        REPO_ROOT / "AGENTS.md",
+        REPO_ROOT / "README.md",
+        REPO_ROOT / "README.pt-BR.md",
+        REPO_ROOT / "TESTING.md",
+        REPO_ROOT / "docs/architecture",
+        REPO_ROOT / "docs/features/content",
+        REPO_ROOT / "docs/scientific_audit",
+        REPO_ROOT / "backend/app/agents/personas",
+        REPO_ROOT / "backend/app/skills/definitions",
+        REPO_ROOT / "tests/simulation/scenarios",
     ]
     files: list[Path] = []
     for root in roots:
