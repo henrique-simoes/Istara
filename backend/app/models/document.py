@@ -124,6 +124,9 @@ class Document(Base):
 
     def to_dict(self) -> dict:
         """Serialize to API-ready dict."""
+        from app.core.file_encryption import reveal_document_text
+
+        preview = reveal_document_text(self.content_preview or "")
         return {
             "id": self.id,
             "project_id": self.project_id,
@@ -141,7 +144,7 @@ class Document(Base):
             "tags": self.get_tags(),
             "phase": self.phase,
             "atomic_path": self.get_atomic_path(),
-            "content_preview": self.content_preview[:500] if self.content_preview else "",
+            "content_preview": preview[:500] if preview else "",
             "version": self.version,
             "created_at": self.created_at.isoformat() if self.created_at else None,
             "updated_at": self.updated_at.isoformat() if self.updated_at else None,

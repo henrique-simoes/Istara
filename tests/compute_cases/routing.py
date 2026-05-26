@@ -160,6 +160,49 @@ def test_select_candidates_strict_model_filters_missing_models():
     assert [node.node_id for node in candidates] == ["requested"]
 
 
+def test_select_candidates_strict_model_keeps_project_relay_before_context_filter():
+    registry = ComputeRegistry()
+    local_high_context = ComputeNode(
+        node_id="local-high-context",
+        name="Local High Context",
+        host="http://localhost:1234",
+        source="local",
+        provider_type="lmstudio",
+        is_healthy=True,
+        loaded_models=["server-model"],
+        model_capabilities={
+            "server-model": {"supports_tools": True, "context_length": 131072}
+        },
+    )
+    donated_requested_model = ComputeNode(
+        node_id="relay-requested",
+        name="Relay Requested",
+        host="",
+        source="relay",
+        provider_type="llamacpp",
+        is_healthy=True,
+        loaded_models=["Qwen3.5-4B-Q4_K_M.gguf"],
+        model_capabilities={
+            "Qwen3.5-4B-Q4_K_M.gguf": {
+                "supports_tools": False,
+                "context_length": 4096,
+            }
+        },
+        allowed_project_ids=["project-a"],
+    )
+    registry.register_node(local_high_context)
+    registry.register_node(donated_requested_model)
+
+    candidates = registry._select_candidates(
+        model="Qwen3.5-4B-Q4_K_M.gguf",
+        strict_model=True,
+        min_context=12000,
+        project_id="project-a",
+    )
+
+    assert [node.node_id for node in candidates] == ["relay-requested"]
+
+
 def test_relay_candidates_require_matching_project_scope_for_project_content():
     registry = ComputeRegistry()
     unscoped_relay = ComputeNode(

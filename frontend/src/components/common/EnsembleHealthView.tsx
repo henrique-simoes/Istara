@@ -22,6 +22,7 @@ import {
 import { cn } from "@/lib/utils";
 import { validation, telemetry } from "@/lib/api";
 import { useProjectStore } from "@/stores/projectStore";
+import { useRoleCapabilities } from "@/hooks/useRoleCapabilities";
 import ViewOnboarding from "@/components/common/ViewOnboarding";
 
 interface MethodStatRow {
@@ -471,6 +472,7 @@ interface ModelIntelligenceSectionProps {
 }
 
 function ModelIntelligenceSection({ projectId }: ModelIntelligenceSectionProps) {
+  const capabilities = useRoleCapabilities();
   const [telemetryEnabled, setTelemetryEnabled] = useState(false);
   const [telemetryStats, setTelemetryStats] = useState<{
     total_spans: number;
@@ -516,11 +518,12 @@ function ModelIntelligenceSection({ projectId }: ModelIntelligenceSectionProps) 
   const [loadingIntel, setLoadingIntel] = useState(false);
 
   useEffect(() => {
+    if (!capabilities.canManageTelemetry) return;
     telemetry.status().then((s) => {
       setTelemetryEnabled(s.telemetry_enabled);
       setTelemetryStats(s.stats);
     }).catch(() => {});
-  }, []);
+  }, [capabilities.canManageTelemetry]);
 
   useEffect(() => {
     if (!projectId) return;
@@ -541,6 +544,7 @@ function ModelIntelligenceSection({ projectId }: ModelIntelligenceSectionProps) 
   }, [projectId]);
 
   const handleToggleTelemetry = async () => {
+    if (!capabilities.canManageTelemetry) return;
     try {
       const result = await telemetry.toggle(!telemetryEnabled);
       setTelemetryEnabled(result.telemetry_enabled);
@@ -548,7 +552,7 @@ function ModelIntelligenceSection({ projectId }: ModelIntelligenceSectionProps) 
   };
 
   const handleExport = async () => {
-    if (!projectId) return;
+    if (!capabilities.canManageTelemetry || !projectId) return;
     setExporting(true);
     setExportResult(null);
     try {
@@ -570,6 +574,7 @@ function ModelIntelligenceSection({ projectId }: ModelIntelligenceSectionProps) 
       </div>
 
       {/* Telemetry Controls */}
+      {capabilities.canManageTelemetry && (
       <div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 p-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -629,6 +634,7 @@ function ModelIntelligenceSection({ projectId }: ModelIntelligenceSectionProps) 
           . No phone-home.
         </div>
       </div>
+      )}
 
       {/* Model Leaderboard */}
       {loadingIntel ? (

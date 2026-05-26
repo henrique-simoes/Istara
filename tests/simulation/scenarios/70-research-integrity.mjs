@@ -4,8 +4,9 @@
  */
 
 import { readFileSync } from "fs";
-import { join, dirname } from "path";
+import { basename, join, dirname } from "path";
 import { fileURLToPath } from "url";
+import { selectCanonicalCorpus } from "../../document_corpus/shared-corpus.mjs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -32,61 +33,25 @@ export async function run(ctx) {
   // ── Ensure project ──
   let projectId = ctx.projectId;
   if (!projectId) {
-    try {
-      const created = await api.post("/api/projects", {
-        name: "[SIM-70] Research Integrity Test",
-        description: "Temporary project for research integrity system tests",
-      });
-      projectId = created.id;
-    } catch {
-      try {
-        const projects = await api.get("/api/projects");
-        const list = projects.projects || projects || [];
-        if (list.length > 0) projectId = list[0].id;
-      } catch {}
-    }
-  }
-
-  if (!projectId) {
-    checks.push({ name: "Project available", passed: false, detail: "Could not create or find project" });
+    checks.push({ name: "Project available", passed: false, detail: "No persistent project from runner" });
     return { checks, passed: 0, failed: checks.length };
   }
   checks.push({ name: "Project available", passed: true, detail: `id=${projectId}` });
 
   // ── 2. Upload test interview transcript ──
   let uploadSuccess = false;
+  let sourceName = "canonical-interview.md";
   try {
-    // Try reading the fixture file from tests/fixtures/
-    const fixturePath = join(__dirname, "..", "..", "fixtures", "interview_p1_sarah.txt");
-    let content;
-    try {
-      content = readFileSync(fixturePath, "utf-8");
-    } catch {
-      // Fallback: use a synthetic transcript
-      content = [
-        "Interview Transcript — Participant 1 (Sarah)",
-        "Date: 2024-01-15  Duration: 45 minutes",
-        "",
-        "[00:00] Interviewer: Tell me about your daily workflow.",
-        "[00:30] Sarah: I spend most of my morning checking emails and trying to find where I left off yesterday. The dashboard is confusing because there are too many options.",
-        "[02:15] Interviewer: What specific parts of the dashboard are confusing?",
-        "[02:45] Sarah: The navigation is buried under three menus. I can never find the export button. Also, the search doesn't work well — I type something and get irrelevant results.",
-        "[05:00] Interviewer: How does that affect your productivity?",
-        "[05:30] Sarah: I waste about 30 minutes every day just trying to find things. It's frustrating because the actual analysis tools are great once you find them.",
-        "[08:00] Interviewer: What would you change if you could?",
-        "[08:30] Sarah: Simpler navigation, better search, and a way to bookmark my most-used features. Also the loading times are terrible — sometimes I wait 10 seconds for a page to load.",
-        "[12:00] Interviewer: Tell me about collaboration with your team.",
-        "[12:30] Sarah: We share findings via email which is awful. I wish there was a way to share insights directly within the tool and get feedback from colleagues.",
-        "[END OF TRANSCRIPT]",
-      ].join("\n");
-    }
-
-    const result = await api.uploadContent(projectId, content, "interview_p1_sarah.txt");
+    const [canonicalInterview] = selectCanonicalCorpus({ slice: "interview-heavy", minimumSources: 1 });
+    sourceName = basename(canonicalInterview.relative_path || canonicalInterview.path);
+    const sourcePath = join(__dirname, "..", "..", "document_corpus", "canonical", canonicalInterview.path || canonicalInterview.relative_path);
+    const content = readFileSync(sourcePath, "utf-8");
+    const result = await api.uploadContent(projectId, content, sourceName);
     uploadSuccess = true;
     checks.push({
       name: "Upload interview transcript",
       passed: true,
-      detail: `chunks=${result.chunks_indexed || result.chunks || "uploaded"}`,
+      detail: `source=${sourceName}, chunks=${result.chunks_indexed || result.chunks || "uploaded"}`,
     });
   } catch (e) {
     checks.push({ name: "Upload interview transcript", passed: false, detail: e.message });
@@ -115,7 +80,7 @@ export async function run(ctx) {
     try {
       skillResult = await api.post("/api/skills/thematic-analysis/execute", {
         project_id: projectId,
-        user_context: "Analyze the uploaded interview transcript for navigation and usability themes",
+        user_context: "Analyze the uploaded canonical interview source for readiness trust and source traceability themes",
       });
       checks.push({
         name: "Thematic analysis execution",
@@ -141,31 +106,31 @@ export async function run(ctx) {
   // ── 5. Create nuggets with source_location and verify ──
   const nuggets = [
     {
-      text: "[SIM-70] Sarah said the navigation is buried under three menus",
-      source: "interview_p1_sarah.txt",
-      source_location: "interview_p1_sarah.txt:L7",
-      tags: ["navigation", "usability", "friction"],
+      text: "[SIM-70] Canonical interview evidence says appointment-prep readiness is hard to trust without source trails",
+      source: sourceName,
+      source_location: `${sourceName}:L11`,
+      tags: ["readiness", "source-traceability", "friction"],
       phase: "discover",
     },
     {
-      text: "[SIM-70] Search returns irrelevant results according to Sarah",
-      source: "interview_p1_sarah.txt",
-      source_location: "interview_p1_sarah.txt:L7",
-      tags: ["search", "usability"],
+      text: "[SIM-70] Canonical interview evidence says patients cannot tell which tasks are required before appointments",
+      source: sourceName,
+      source_location: `${sourceName}:L12`,
+      tags: ["appointment-prep", "clarity"],
       phase: "discover",
     },
     {
-      text: "[SIM-70] Sarah wastes 30 minutes daily finding things in the interface",
-      source: "interview_p1_sarah.txt",
-      source_location: "interview_p1_sarah.txt:L9",
-      tags: ["productivity", "navigation", "time-waste"],
+      text: "[SIM-70] Canonical interview evidence says staff need source labels before trusting automation",
+      source: sourceName,
+      source_location: `${sourceName}:L16`,
+      tags: ["trust", "source-traceability"],
       phase: "discover",
     },
     {
-      text: "[SIM-70] Loading times of 10 seconds frustrate Sarah",
-      source: "interview_p1_sarah.txt",
-      source_location: "interview_p1_sarah.txt:L11",
-      tags: ["performance", "frustration"],
+      text: "[SIM-70] Canonical interview evidence says report eligibility requires approved Done task evidence",
+      source: sourceName,
+      source_location: `${sourceName}:L17`,
+      tags: ["reporting", "approval"],
       phase: "discover",
     },
   ];
@@ -213,7 +178,7 @@ export async function run(ctx) {
   try {
     const fact = await api.post("/api/findings/facts", {
       project_id: projectId,
-      text: "[SIM-70] 3/4 navigation-related nuggets indicate users cannot find core features",
+      text: "[SIM-70] 3/4 canonical interview nuggets indicate readiness and reporting trust depend on traceable approved evidence",
       nugget_ids: cleanup.nuggetIds.slice(0, 3),
       phase: "discover",
     });
@@ -224,7 +189,7 @@ export async function run(ctx) {
   try {
     const insight = await api.post("/api/findings/insights", {
       project_id: projectId,
-      text: "[SIM-70] Navigation complexity is the primary barrier to user productivity",
+      text: "[SIM-70] Readiness automation is trusted only when source evidence and approval state are visible",
       fact_ids: factId ? [factId] : [],
       phase: "define",
       impact: "high",
@@ -236,7 +201,7 @@ export async function run(ctx) {
   try {
     const rec = await api.post("/api/findings/recommendations", {
       project_id: projectId,
-      text: "[SIM-70] Simplify navigation to 2-level hierarchy with persistent search bar",
+      text: "[SIM-70] Show source traceability and Done-task approval state beside generated readiness findings",
       insight_ids: insightId ? [insightId] : [],
       phase: "deliver",
       priority: "high",

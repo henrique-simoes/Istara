@@ -7,6 +7,16 @@ import { useInterfacesStore } from "@/stores/interfacesStore";
 import { useProjectStore } from "@/stores/projectStore";
 import { formatDate } from "@/lib/utils";
 
+function researchValidityLabel(validity: any) {
+  return validity?.report_allowed ? "Accepted evidence" : "Provisional evidence";
+}
+
+function researchValidityClass(validity: any) {
+  return validity?.report_allowed
+    ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300"
+    : "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300";
+}
+
 export default function HandoffTab() {
   const { screens, briefs, fetchScreens, fetchBriefs } = useInterfacesStore();
   const { activeProjectId } = useProjectStore();
@@ -117,7 +127,12 @@ export default function HandoffTab() {
                       <h4 className="text-sm font-medium text-slate-900 dark:text-white">
                         {brief.title || "Untitled Brief"}
                       </h4>
-                      <p className="text-xs text-slate-400 mt-0.5">{formatDate(brief.created_at)}</p>
+                      <div className="mt-1 flex flex-wrap items-center gap-2">
+                        <p className="text-xs text-slate-400">{formatDate(brief.created_at)}</p>
+                        <span className={`inline-flex px-2 py-0.5 text-xs rounded-full font-medium ${researchValidityClass(brief.research_validity)}`}>
+                          {researchValidityLabel(brief.research_validity)}
+                        </span>
+                      </div>
                     </div>
                     {expandedBriefId === brief.id ? (
                       <ChevronDown size={16} className="text-slate-400 shrink-0" />
@@ -162,6 +177,9 @@ export default function HandoffTab() {
                                   {f.type || "finding"}
                                 </span>
                                 <span className="text-slate-600 dark:text-slate-400 line-clamp-2">{f.text}</span>
+                                <span className={`shrink-0 px-1.5 py-0.5 rounded text-[11px] font-medium ${researchValidityClass(f.research_validity)}`}>
+                                  {f.research_validity?.status || "provisional"}
+                                </span>
                               </div>
                             ))}
                             {brief.source_findings.length > 5 && (
@@ -240,7 +258,14 @@ export default function HandoffTab() {
 
               {devSpec && (
                 <div className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-lg">
-                  <h4 className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Developer Specification</h4>
+                  <div className="mb-2 flex items-center justify-between gap-3">
+                    <h4 className="text-sm font-medium text-slate-700 dark:text-slate-300">Developer Specification</h4>
+                    {typeof devSpec !== "string" && devSpec.dev_spec?.research_validity && (
+                      <span className={`shrink-0 px-2 py-0.5 text-xs rounded-full font-medium ${researchValidityClass(devSpec.dev_spec.research_validity)}`}>
+                        {researchValidityLabel(devSpec.dev_spec.research_validity)}
+                      </span>
+                    )}
+                  </div>
                   <div className="text-sm text-slate-600 dark:text-slate-400 whitespace-pre-wrap">
                     {typeof devSpec === "string"
                       ? devSpec

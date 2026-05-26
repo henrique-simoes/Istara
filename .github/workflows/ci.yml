@@ -99,7 +99,7 @@ jobs:
         run: python ../scripts/production_rehearsal.py --json
 
       - name: Run test harness contract smoke tests
-        run: pytest ../tests/test_harness_config.py ../tests/test_agentic_eval_contract.py -q
+        run: pytest ../tests/test_harness_config.py ../tests/test_agentic_eval_contract.py ../tests/test_harness_project_scope_contracts.py ../tests/test_marathon_config_integrity.py -q
 
       - name: Run property-based contract tests
         run: pytest ../tests/test_property_contracts.py -q
@@ -161,6 +161,33 @@ jobs:
 
       - name: Build
         run: npm run build
+
+  test-harness-js:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+
+      - name: Install relay dependencies
+        working-directory: relay
+        run: npm ci
+
+      - name: Run relay unit tests
+        working-directory: relay
+        run: npm test
+
+      - name: Run simulation static checks
+        working-directory: tests/simulation
+        run: npm run test:static
+
+      - name: Run real-user benchmark static checks
+        working-directory: tests/real_user_benchmark
+        run: npm run check
 
   desktop:
     runs-on: ubuntu-latest

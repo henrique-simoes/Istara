@@ -273,7 +273,10 @@
 <li>Proposal and archive action routes bind the record id to the same <code>project_id</code> supplied by the UI, so approvals, sandbox evaluations, applies, reverts, and quarantines cannot act on records from another project.</li>
 <li>Agent self-evolution scan, auto-evolution, and promotion routes also require a <code>project_id</code>. Candidate qualification uses only project-local learning records; DevOps global audits no longer run persona self-evolution scans without project context.</li>
 <li>Project-owned autonomous producers, including AutoResearch, Meta-Hyperagent, Memento agent factory, skill proposal producers, and self-evolution promotions, must provide a concrete project id before governance can create a proposal record.</li>
+<li>Autoresearch proposals are generated from sandboxed measurements. Candidate mutations are reverted before governance records are created, and approval is the only path toward applying them to production state.</li>
+<li>Meta-Hyperagent proposals create project-scoped variants that owning services consult at read time; they do not mutate process globals. Self-evolution thresholds therefore remain isolated per project.</li>
 <li>ReasoningBank retrieval defaults to project-only scope, and this API also passes <code>include_global=False</code>, preventing project-facing prompt context from mixing with unscoped traces unless global memory is explicitly requested in trusted code.</li>
+<li>ReasoningBank memory writes and self-evolution promotions emit content-free governed-learning telemetry (<code>reasoning_bank.lesson</code> and <code>self_evolution.proposal</code>) so dashboards can audit process learning without treating memory bodies or persona-promotion text as report evidence.</li>
 <li>The frontmatter and manifest entries are the durable contract for agents updating this page after code changes.</li>
 <li>When the referenced component, store, route, agent, skill, or test behavior changes, regenerate and validate the feature documentation.</li>
 </ul>

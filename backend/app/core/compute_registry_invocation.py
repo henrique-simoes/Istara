@@ -14,6 +14,7 @@ import httpx
 from app.config import settings
 from app.core.compute_capacity import compute_capacity_envelope
 from app.core.compute_node import ComputeNode
+from app.core.compute_route_evidence import attach_route_evidence
 from app.core.compute_registry_helpers import (
     TRANSIENT_CHAT_BASE_DELAY_S,
     TRANSIENT_CHAT_MAX_ATTEMPTS,
@@ -42,7 +43,9 @@ logger = logging.getLogger("app.core.compute_registry")
 def _hardware_resource_key(node: ComputeNode) -> tuple[str, str]:
     host = getattr(node, "host", "") or getattr(node, "provider_host", "") or ""
     if host:
-        _, hostname, _, _ = _server_endpoint_identity(host, source=getattr(node, "source", ""))
+        _, hostname, _, _ = _server_endpoint_identity(
+            host, source=getattr(node, "source", "")
+        )
         if hostname == "local":
             return ("machine", "local")
         return ("machine", hostname)
@@ -62,18 +65,23 @@ def _unique_hardware_resource_nodes(nodes: list[ComputeNode]) -> list[ComputeNod
         if getattr(node, "ram_total_gb", 0) > getattr(current, "ram_total_gb", 0):
             resources[key] = node
             continue
-        if (
-            getattr(node, "ram_total_gb", 0) == getattr(current, "ram_total_gb", 0)
-            and getattr(node, "ram_available_gb", 0) > getattr(current, "ram_available_gb", 0)
+        if getattr(node, "ram_total_gb", 0) == getattr(
+            current, "ram_total_gb", 0
+        ) and getattr(node, "ram_available_gb", 0) > getattr(
+            current, "ram_available_gb", 0
         ):
             resources[key] = node
             continue
-        if getattr(node, "is_healthy", False) and not getattr(current, "is_healthy", False):
+        if getattr(node, "is_healthy", False) and not getattr(
+            current, "is_healthy", False
+        ):
             resources[key] = node
     return list(resources.values())
 
 
 def _endpoint_resource_key(node: ComputeNode) -> tuple:
+    if getattr(node, "source", "") in {"relay", "browser"}:
+        return ("donor-endpoint", getattr(node, "node_id", ""))
     host = getattr(node, "host", "") or getattr(node, "provider_host", "") or ""
     if host:
         return (
@@ -157,7 +165,9 @@ def _unique_endpoint_nodes(nodes: list[ComputeNode]) -> list[ComputeNode]:
 
 class ComputeRegistryInvocationMixin:
     @staticmethod
-    def _effective_requested_chat_model(model: str | None) -> str | None:
+    def _effective_requested_chat_model(
+        model: str | None,
+    ) -> str | None:
         requested = (model or "").strip()
         if requested and requested != "default":
             return requested
@@ -170,6 +180,27 @@ class ComputeRegistryInvocationMixin:
         ):
             return configured
         return model
+
+    def _project_donor_should_choose_native_model(
+        self,
+        model: str | None,
+        *,
+        project_id: str | None,
+    ) -> bool:
+        requested = (model or "").strip()
+        if not requested or requested == "default" or not (project_id or "").strip():
+            return False
+        project_donors = [
+            node
+            for node in self._nodes.values()
+            if node.source in {"relay", "browser"}
+            and self._node_authorized_for_project_content(node, project_id)
+        ]
+        if not project_donors:
+            return False
+        return not any(
+            self._node_supports_model(node, requested) for node in project_donors
+        )
 
     async def chat(
         self,
@@ -185,6 +216,9 @@ class ComputeRegistryInvocationMixin:
         project_id: str | None = None,
     ) -> dict:
         """Route a chat request to the best available node."""
+        explicit_model_requested = bool(
+            (model or "").strip() and (model or "").strip() != "default"
+        )
         model = self._effective_requested_chat_model(model)
         msgs = list(messages)
         if system:
@@ -192,6 +226,19 @@ class ComputeRegistryInvocationMixin:
         msgs = apply_thinking_control(msgs, thinking_mode)
         msgs = self._sanitize_messages(msgs)
         require_vision = self._messages_require_vision(msgs)
+        if require_vision and not explicit_model_requested:
+            model = None
+        elif (
+            not explicit_model_requested
+            and self._project_donor_should_choose_native_model(
+                model,
+                project_id=project_id,
+            )
+        ):
+            model = None
+        strict_requested_model = (
+            settings.strict_auto_routing and explicit_model_requested
+        )
         if min_context <= 0:
             min_context = self._estimate_context_tokens(
                 msgs,
@@ -206,7 +253,7 @@ class ComputeRegistryInvocationMixin:
             require_vision=require_vision,
             min_context=min_context,
             model=model,
-            strict_model=settings.strict_auto_routing,
+            strict_model=strict_requested_model,
             include_unhealthy=True,
             project_id=project_id,
         ):
@@ -221,6 +268,12 @@ class ComputeRegistryInvocationMixin:
             logger.info(
                 f"ComputeRegistry: routing chat to {node.name} ({node.host}) model={resolved_model}"
             )
+            self._record_selected(
+                node,
+                route_kind="chat",
+                project_id=project_id,
+                model=resolved_model,
+            )
             node.active_requests += 1
             try:
                 for attempt in range(1, TRANSIENT_CHAT_MAX_ATTEMPTS + 1):
@@ -230,6 +283,7 @@ class ComputeRegistryInvocationMixin:
                             resolved_model,
                             require_vision=require_vision,
                             min_context=min_context,
+                            strict_model=strict_requested_model,
                         )
                         if node.source in ("relay", "browser") and node.websocket:
                             data = await node.chat(
@@ -242,8 +296,19 @@ class ComputeRegistryInvocationMixin:
                                 thinking_mode=None,
                                 project_id=project_id,
                             )
-                            self._record_success(node)
-                            return data
+                            self._record_success(
+                                node,
+                                route_kind="chat",
+                                project_id=project_id,
+                                model=resolved_model,
+                            )
+                            return attach_route_evidence(
+                                data,
+                                node,
+                                route_kind="chat",
+                                project_id=project_id,
+                                model=resolved_model,
+                            )
 
                         client = await node._get_client()
 
@@ -270,8 +335,19 @@ class ComputeRegistryInvocationMixin:
                             message = data.get("message")
                             if isinstance(message, dict):
                                 data["message"] = visible_assistant_message(message)
-                            self._record_success(node)
-                            return data
+                            self._record_success(
+                                node,
+                                route_kind="chat",
+                                project_id=project_id,
+                                model=resolved_model,
+                            )
+                            return attach_route_evidence(
+                                data,
+                                node,
+                                route_kind="chat",
+                                project_id=project_id,
+                                model=resolved_model,
+                            )
 
                         if node.is_anthropic:
                             data = await node.chat(
@@ -284,8 +360,19 @@ class ComputeRegistryInvocationMixin:
                                 thinking_mode=None,
                                 project_id=project_id,
                             )
-                            self._record_success(node)
-                            return data
+                            self._record_success(
+                                node,
+                                route_kind="chat",
+                                project_id=project_id,
+                                model=resolved_model,
+                            )
+                            return attach_route_evidence(
+                                data,
+                                node,
+                                route_kind="chat",
+                                project_id=project_id,
+                                model=resolved_model,
+                            )
 
                         payload = {
                             "model": resolved_model,
@@ -322,10 +409,32 @@ class ComputeRegistryInvocationMixin:
                         }
                         if message.get("tool_calls"):
                             result["message"]["tool_calls"] = message["tool_calls"]
-                            result["finish_reason"] = choice.get("finish_reason", "tool_calls")
+                            result["finish_reason"] = choice.get(
+                                "finish_reason", "tool_calls"
+                            )
 
-                        self._record_success(node)
-                        return result
+                        self._record_success(
+                            node,
+                            route_kind="chat",
+                            project_id=project_id,
+                            model=resolved_model,
+                        )
+                        return attach_route_evidence(
+                            result,
+                            node,
+                            route_kind="chat",
+                            project_id=project_id,
+                            model=resolved_model,
+                        )
+                    except (asyncio.CancelledError, GeneratorExit):
+                        self._record_failure(
+                            node,
+                            RuntimeError("Chat cancelled before completion"),
+                            route_kind="chat",
+                            project_id=project_id,
+                            model=resolved_model,
+                        )
+                        raise
                     except Exception as e:
                         if _looks_like_model_availability_error(e):
                             loaded_recovery_models = [
@@ -352,6 +461,7 @@ class ComputeRegistryInvocationMixin:
                                 resolved_model,
                                 require_vision=require_vision,
                                 min_context=min_context,
+                                strict_model=strict_requested_model,
                             )
                             if recovered and attempt < TRANSIENT_CHAT_MAX_ATTEMPTS:
                                 resolved_model = recovered
@@ -373,7 +483,13 @@ class ComputeRegistryInvocationMixin:
                                 min_context or "unknown",
                             )
                             break
-                        self._record_failure(node, e)
+                        self._record_failure(
+                            node,
+                            e,
+                            route_kind="chat",
+                            project_id=project_id,
+                            model=resolved_model,
+                        )
                         transient = self._is_transient_error(e)
                         if attempt < TRANSIENT_CHAT_MAX_ATTEMPTS and transient:
                             delay = self._retry_delay(attempt)
@@ -422,7 +538,9 @@ class ComputeRegistryInvocationMixin:
                 node.active_requests -= 1
 
         if require_vision:
-            raise RuntimeError("No vision-capable compute nodes available for image chat")
+            raise RuntimeError(
+                "No vision-capable compute nodes available for image chat"
+            )
         raise RuntimeError("No compute nodes available for chat")
 
     async def chat_stream(
@@ -438,6 +556,9 @@ class ComputeRegistryInvocationMixin:
         project_id: str | None = None,
     ) -> AsyncGenerator[str | dict, None]:
         """Streaming chat -- yields str chunks and dict for tool calls."""
+        explicit_model_requested = bool(
+            (model or "").strip() and (model or "").strip() != "default"
+        )
         model = self._effective_requested_chat_model(model)
         msgs = list(messages)
         if system:
@@ -445,6 +566,19 @@ class ComputeRegistryInvocationMixin:
         msgs = apply_thinking_control(msgs, thinking_mode)
         msgs = self._sanitize_messages(msgs)
         require_vision = self._messages_require_vision(msgs)
+        if require_vision and not explicit_model_requested:
+            model = None
+        elif (
+            not explicit_model_requested
+            and self._project_donor_should_choose_native_model(
+                model,
+                project_id=project_id,
+            )
+        ):
+            model = None
+        strict_requested_model = (
+            settings.strict_auto_routing and explicit_model_requested
+        )
         if min_context <= 0:
             min_context = self._estimate_context_tokens(msgs, max_tokens, tools=tools)
 
@@ -454,7 +588,7 @@ class ComputeRegistryInvocationMixin:
             require_vision=require_vision,
             min_context=min_context,
             model=model,
-            strict_model=settings.strict_auto_routing,
+            strict_model=strict_requested_model,
             include_unhealthy=True,
             project_id=project_id,
         ):
@@ -470,6 +604,12 @@ class ComputeRegistryInvocationMixin:
                 f"ComputeRegistry: routing stream to {node.name} "
                 f"({node.host}) model={resolved_model}"
             )
+            self._record_selected(
+                node,
+                route_kind="stream",
+                project_id=project_id,
+                model=resolved_model,
+            )
             node.active_requests += 1
             try:
                 for attempt in range(1, TRANSIENT_CHAT_MAX_ATTEMPTS + 1):
@@ -480,6 +620,7 @@ class ComputeRegistryInvocationMixin:
                             resolved_model,
                             require_vision=require_vision,
                             min_context=min_context,
+                            strict_model=strict_requested_model,
                         )
                         if node.source in ("relay", "browser") and node.websocket:
                             data = await node.chat(
@@ -495,7 +636,12 @@ class ComputeRegistryInvocationMixin:
                             if content:
                                 emitted_chunk = True
                                 yield content
-                            self._record_success(node)
+                            self._record_success(
+                                node,
+                                route_kind="stream",
+                                project_id=project_id,
+                                model=resolved_model,
+                            )
                             return
 
                         client = await node._get_client()
@@ -548,7 +694,9 @@ class ComputeRegistryInvocationMixin:
                                 emitted_chunk = True
                                 yield {
                                     "tool_calls": data["message"]["tool_calls"],
-                                    "finish_reason": data.get("finish_reason", "tool_calls"),
+                                    "finish_reason": data.get(
+                                        "finish_reason", "tool_calls"
+                                    ),
                                 }
                         else:
                             payload = {
@@ -590,7 +738,9 @@ class ComputeRegistryInvocationMixin:
                                             tool_call_mode = True
                                             for tc_delta in delta["tool_calls"]:
                                                 idx = tc_delta.get("index", 0)
-                                                while len(accumulated_tool_calls) <= idx:
+                                                while (
+                                                    len(accumulated_tool_calls) <= idx
+                                                ):
                                                     accumulated_tool_calls.append(
                                                         {
                                                             "id": "",
@@ -613,7 +763,9 @@ class ComputeRegistryInvocationMixin:
                                                     ]
                                             continue
 
-                                        content = content_filter.push(delta.get("content", ""))
+                                        content = content_filter.push(
+                                            delta.get("content", "")
+                                        )
                                         if content:
                                             emitted_chunk = True
                                             yield content
@@ -638,10 +790,31 @@ class ComputeRegistryInvocationMixin:
                                 emitted_chunk = True
                                 yield remaining
 
-                        self._record_success(node)
+                        self._record_success(
+                            node,
+                            route_kind="stream",
+                            project_id=project_id,
+                            model=resolved_model,
+                        )
                         return
+                    except (asyncio.CancelledError, GeneratorExit):
+                        message = (
+                            "Stream cancelled before donor returned visible output"
+                            if not emitted_chunk
+                            else "Stream cancelled before completion"
+                        )
+                        self._record_failure(
+                            node,
+                            RuntimeError(message),
+                            route_kind="stream",
+                            project_id=project_id,
+                            model=resolved_model,
+                        )
+                        raise
                     except Exception as e:
-                        if not emitted_chunk and _looks_like_model_availability_error(e):
+                        if not emitted_chunk and _looks_like_model_availability_error(
+                            e
+                        ):
                             loaded_recovery_models = [
                                 name
                                 for name in self._node_explicit_loaded_model_names(node)
@@ -666,6 +839,7 @@ class ComputeRegistryInvocationMixin:
                                 resolved_model,
                                 require_vision=require_vision,
                                 min_context=min_context,
+                                strict_model=strict_requested_model,
                             )
                             if recovered and attempt < TRANSIENT_CHAT_MAX_ATTEMPTS:
                                 resolved_model = recovered
@@ -687,7 +861,13 @@ class ComputeRegistryInvocationMixin:
                                 min_context or "unknown",
                             )
                             break
-                        self._record_failure(node, e)
+                        self._record_failure(
+                            node,
+                            e,
+                            route_kind="stream",
+                            project_id=project_id,
+                            model=resolved_model,
+                        )
                         transient = self._is_transient_error(e)
                         if (
                             not emitted_chunk
@@ -733,7 +913,9 @@ class ComputeRegistryInvocationMixin:
                 node.active_requests -= 1
 
         if require_vision:
-            raise RuntimeError("No vision-capable compute nodes available for image chat")
+            raise RuntimeError(
+                "No vision-capable compute nodes available for image chat"
+            )
         raise RuntimeError("No compute nodes available for streaming")
 
     async def embed(
@@ -816,7 +998,9 @@ class ComputeRegistryInvocationMixin:
             node.active_requests += 1
             try:
                 if node.source in ("relay", "browser") and node.websocket:
-                    result = await node.embed_batch(texts, model=model, project_id=project_id)
+                    result = await node.embed_batch(
+                        texts, model=model, project_id=project_id
+                    )
                     self._record_success(node)
                     return result
 
@@ -838,7 +1022,10 @@ class ComputeRegistryInvocationMixin:
                     )
                     resp.raise_for_status()
                     self._record_success(node)
-                    return [item.get("embedding", []) for item in resp.json().get("data", [])]
+                    return [
+                        item.get("embedding", [])
+                        for item in resp.json().get("data", [])
+                    ]
 
             except Exception as e:
                 if hasattr(e, "response") and hasattr(e.response, "text"):
@@ -849,7 +1036,9 @@ class ComputeRegistryInvocationMixin:
                         e.response.text,
                     )
                 else:
-                    logger.warning(f"ComputeRegistry: embed_batch failed on {node.name}: {e}")
+                    logger.warning(
+                        f"ComputeRegistry: embed_batch failed on {node.name}: {e}"
+                    )
                 self._record_auxiliary_failure(node, e)
             finally:
                 node.active_requests -= 1
@@ -863,7 +1052,8 @@ class ComputeRegistryInvocationMixin:
             try:
                 if node.source in ("relay", "browser"):
                     for name in _unique_model_names(
-                        list(node.loaded_models or []) + list(node.model_capabilities.keys())
+                        list(node.loaded_models or [])
+                        + list(node.model_capabilities.keys())
                     ):
                         all_models.append(self._model_record_for_node(node, name))
                     continue
@@ -874,9 +1064,13 @@ class ComputeRegistryInvocationMixin:
                     data = resp.json()
                     models = data.get("models", [])
                 else:
-                    resp = await client.get(node._openai_endpoint("models"), timeout=10.0)
+                    resp = await client.get(
+                        node._openai_endpoint("models"), timeout=10.0
+                    )
                     data = resp.json()
-                    models = [{"name": m.get("id", ""), **m} for m in data.get("data", [])]
+                    models = [
+                        {"name": m.get("id", ""), **m} for m in data.get("data", [])
+                    ]
                 for m in models:
                     m["_server"] = node.name
                     m["_server_id"] = node.node_id
@@ -887,14 +1081,18 @@ class ComputeRegistryInvocationMixin:
                             m.update(
                                 {
                                     "supports_tools": caps.get("supports_tools", False),
-                                    "supports_vision": caps.get("supports_vision", False),
+                                    "supports_vision": caps.get(
+                                        "supports_vision", False
+                                    ),
                                     "supports_audio": caps.get("supports_audio", False),
                                     "supports_json": caps.get("supports_json", False),
                                     "context_length": caps.get("context_length"),
                                     "trained_context_length": caps.get(
                                         "trained_context_length"
                                     ),
-                                    "loaded_context_length": caps.get("loaded_context_length"),
+                                    "loaded_context_length": caps.get(
+                                        "loaded_context_length"
+                                    ),
                                     "parameter_count": caps.get("parameter_count"),
                                     "quantization": caps.get("quantization"),
                                     "is_loaded": caps.get("is_loaded"),
@@ -991,7 +1189,11 @@ class ComputeRegistryInvocationMixin:
     def total_capacity(self) -> int:
         """Total number of alive donated compute nodes (relay/browser)."""
         return len(
-            [n for n in self._nodes.values() if n.source in ("relay", "browser") and n.is_alive()]
+            [
+                n
+                for n in self._nodes.values()
+                if n.source in ("relay", "browser") and n.is_alive()
+            ]
         )
 
     def available_models_list(self) -> list[str]:
@@ -1012,7 +1214,9 @@ class ComputeRegistryInvocationMixin:
     # Unified Stats
     # ================================================================
 
-    def _nodes_visible_for_project(self, project_id: str | None = None) -> list[ComputeNode]:
+    def _nodes_visible_for_project(
+        self, project_id: str | None = None
+    ) -> list[ComputeNode]:
         if not project_id:
             return list(self._nodes.values())
         return [

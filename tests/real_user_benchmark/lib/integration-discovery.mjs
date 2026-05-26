@@ -86,7 +86,7 @@ export async function runIntegrationMatrix({ api, projectId, repoRoot, logger })
   const projectScopeQuery = `project_id=${encodeURIComponent(projectId)}`;
   const projectQuerySuffix = `?${projectScopeQuery}`;
 
-  const interfaceStatus = await attempt(logger, "interfaces", "GET /api/interfaces/status", () => api.get("/api/interfaces/status"));
+  const interfaceStatus = await attempt(logger, "interfaces", "GET /api/interfaces/status", () => api.get(`/api/interfaces/status${projectQuerySuffix}`));
 
   let stitchClass = staticHarnesses.stitch.hasMockEndpoints ? CLASSIFICATIONS.harness : CLASSIFICATIONS.missing;
   const stitchGenerate = await attempt(logger, "google_stitch", "POST /api/interfaces/mock/generate", () => api.post("/api/interfaces/mock/generate", {
@@ -98,6 +98,8 @@ export async function runIntegrationMatrix({ api, projectId, repoRoot, logger })
   matrix.push({
     integration: "Google Stitch",
     classification: stitchGenerate.ok ? CLASSIFICATIONS.harness : stitchClass,
+    required_success: false,
+    future_improvement: "Run live Stitch generation when a bounded test API credential is provided.",
     evidence: { static: staticHarnesses.stitch, status: interfaceStatus.result, attempt: stitchGenerate },
   });
 
@@ -121,6 +123,8 @@ export async function runIntegrationMatrix({ api, projectId, repoRoot, logger })
   matrix.push({
     integration: "Figma",
     classification: figmaImport.ok ? CLASSIFICATIONS.harness : (staticHarnesses.figma.hasLiveRoute ? CLASSIFICATIONS.setup : CLASSIFICATIONS.blocked),
+    required_success: false,
+    future_improvement: "Run live Figma import when a bounded test token and fixture file are provided.",
     evidence: { static: staticHarnesses.figma, attempt: figmaImport },
   });
 
@@ -173,12 +177,16 @@ export async function runIntegrationMatrix({ api, projectId, repoRoot, logger })
     matrix.push({
       integration: "Telegram",
       classification: telegramClassification,
+      required_success: false,
+      future_improvement: "Run live Telegram recruitment only with an explicit benchmark bot token.",
       evidence: { static: staticHarnesses.telegram, created: telegram, start, health },
     });
   } else {
     matrix.push({
       integration: "Telegram",
       classification: telegramClassification,
+      required_success: false,
+      future_improvement: "Run live Telegram recruitment only with an explicit benchmark bot token.",
       evidence: { static: staticHarnesses.telegram, created: telegram },
     });
   }
@@ -223,6 +231,8 @@ export async function runIntegrationMatrix({ api, projectId, repoRoot, logger })
     matrix.push({
       integration: "Telegram AURA research process",
       classification: auraClassification,
+      required_success: false,
+      future_improvement: "Add a credential-free local participant conversation simulator, then run live AURA only with explicit channel credentials.",
       evidence: { static: staticHarnesses.aura, deployment, response },
     });
   }

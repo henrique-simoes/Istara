@@ -1,16 +1,24 @@
 """File upload and processing API routes."""
 
+import mimetypes
 import os
 import uuid
 from pathlib import Path
 
 import aiofiles
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request, UploadFile
-from fastapi.responses import FileResponse
+from fastapi.responses import StreamingResponse
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
+from app.core.file_encryption import (
+    decrypted_file_path,
+    encrypt_file_in_place,
+    protect_document_text,
+    read_file_text,
+    reveal_document_text,
+)
 from app.core.file_processor import get_supported_extensions, process_file
 from app.core.keyword_index import KeywordIndex
 from app.core.permissions import get_visible_project_or_404
@@ -19,6 +27,10 @@ from app.core.upload_security import UploadSecurityVerdict, scan_upload_file
 from app.models.database import async_session, get_db
 from app.models.document import Document, DocumentSource, DocumentStatus
 from app.models.project import Project
+from app.services.research_validity_service import (
+    persist_document_source_evidence_units,
+    record_source_evidence_unit_telemetry,
+)
 
 # Media and image extensions that can be uploaded/served but not text-processed
 MEDIA_EXTENSIONS = {
@@ -84,6 +96,10 @@ def _set_upload_security(doc: Document, verdict: UploadSecurityVerdict) -> None:
         doc.set_tags(sorted(set([*doc.get_tags(), *verdict.warnings])))
 
 
+def _protected_preview(content_text: str) -> str:
+    return protect_document_text(content_text[:2000]) if content_text else ""
+
+
 async def _store_quarantined_document(
     db: AsyncSession,
     *,
@@ -96,6 +112,7 @@ async def _store_quarantined_document(
     verdict: UploadSecurityVerdict,
     content_text: str = "",
 ) -> Document:
+    encrypt_file_in_place(file_path)
     doc = Document(
         id=str(uuid.uuid4()),
         project_id=project_id,
@@ -107,8 +124,8 @@ async def _store_quarantined_document(
         file_size=file_size,
         source=DocumentSource.USER_UPLOAD,
         status=DocumentStatus.QUARANTINED,
-        content_text=content_text,
-        content_preview=content_text[:2000],
+        content_text=protect_document_text(content_text),
+        content_preview=_protected_preview(content_text),
     )
     _set_upload_security(doc, verdict)
     db.add(doc)
@@ -255,6 +272,7 @@ async def upload_file(
 
     # Media files (Images/Video): store only, skip text extraction
     if suffix in MEDIA_EXTENSIONS and suffix not in AUDIO_EXTENSIONS:
+        encrypt_file_in_place(file_path)
         doc = Document(
             id=str(uuid.uuid4()),
             project_id=project_id,
@@ -268,6 +286,7 @@ async def upload_file(
         )
         _set_upload_security(doc, initial_verdict)
         db.add(doc)
+        encrypt_file_in_place(file_path)
         await db.commit()
         return {
             "status": "stored",
@@ -316,6 +335,7 @@ async def upload_file(
     result = process_file(file_path)
 
     if result.error:
+        encrypt_file_in_place(file_path)
         return {
             "status": "error",
             "file_id": file_id,
@@ -367,6 +387,7 @@ async def upload_file(
         }
 
     chunks_indexed = await ingest_chunks(project_id, result.chunks)
+    encrypt_file_in_place(file_path)
 
     # Create a Document record so the file appears in Documents view immediately
     doc = Document(
@@ -379,21 +400,44 @@ async def upload_file(
         file_size=file_size,
         source=DocumentSource.USER_UPLOAD,
         status=DocumentStatus.READY,
-        content_text=content_text,
-        content_preview=content_text[:2000],
+        content_text=protect_document_text(content_text),
+        content_preview=_protected_preview(content_text),
     )
     _set_upload_security(doc, content_verdict)
     db.add(doc)
+    evidence_units = await persist_document_source_evidence_units(
+        db,
+        project_id=project_id,
+        document_id=doc.id,
+        source_text=content_text,
+        source_location=doc.file_name or safe_filename,
+        source_document_id=doc.id,
+        source_type=doc.source.value if doc.source else "user_upload",
+        method="file_upload",
+        phase=doc.phase,
+        version=doc.version or 1,
+        metadata={
+            "file_name": doc.file_name,
+            "file_type": doc.file_type,
+            "ingestion_surface": "files_upload",
+        },
+    )
     await db.commit()
+    await record_source_evidence_unit_telemetry(
+        project_id=project_id,
+        units=evidence_units,
+    )
 
     response = {
         "status": "processed",
         "file_id": file_id,
+        "doc_id": doc.id,
         "filename": file.filename,
         "saved_as": safe_filename,
         "total_chars": result.total_chars,
         "pages": result.pages,
         "chunks_indexed": chunks_indexed,
+        "evidence_units_created": len(evidence_units),
         "indexing_status": "vector" if chunks_indexed else "keyword_only",
         "threat_level": result.threat_level,
     }
@@ -464,8 +508,8 @@ async def _process_audio_background(project_id: str, doc_id: str, file_path: Pat
                     "Upload quarantined after transcription: "
                     f"{content_verdict.reason or 'security review required'}"
                 )
-                doc.content_text = content_text
-                doc.content_preview = content_text[:2000]
+                doc.content_text = protect_document_text(content_text)
+                doc.content_preview = _protected_preview(content_text)
                 _set_upload_security(doc, content_verdict)
                 await db.commit()
                 return
@@ -474,8 +518,8 @@ async def _process_audio_background(project_id: str, doc_id: str, file_path: Pat
             await ingest_chunks(project_id, result.chunks)
 
             # 3. Update document record
-            doc.content_text = content_text
-            doc.content_preview = doc.content_text[:2000]
+            doc.content_text = protect_document_text(content_text)
+            doc.content_preview = _protected_preview(content_text)
             if isinstance(transcription, dict):
                 doc.description = (
                     f"Audio transcript. Language: {transcription.get('language', 'unknown')}. "
@@ -483,6 +527,23 @@ async def _process_audio_background(project_id: str, doc_id: str, file_path: Pat
                     f"Needs review: {bool(transcription.get('needs_review'))}."
                 )
             doc.status = DocumentStatus.READY
+            audio_evidence_units = await persist_document_source_evidence_units(
+                db,
+                project_id=project_id,
+                document_id=doc.id,
+                source_text=content_text,
+                source_location=doc.file_name or file_path.name,
+                source_document_id=doc.id,
+                source_type=doc.source.value if doc.source else "user_upload",
+                method="audio_transcription",
+                phase=doc.phase,
+                version=doc.version or 1,
+                metadata={
+                    "file_name": doc.file_name,
+                    "file_type": doc.file_type,
+                    "ingestion_surface": "audio_transcription",
+                },
+            )
             try:
                 from app.core.improvement_governance import improvement_governance
 
@@ -542,6 +603,10 @@ async def _process_audio_background(project_id: str, doc_id: str, file_path: Pat
             except Exception:
                 pass
             await db.commit()
+            await record_source_evidence_unit_telemetry(
+                project_id=project_id,
+                units=audio_evidence_units,
+            )
 
     except Exception as e:
         import logging
@@ -707,8 +772,7 @@ async def get_file_content(
 
     # Text-based files: return content directly
     if suffix in {".txt", ".md", ".csv"}:
-        async with aiofiles.open(file_path, errors="replace") as f:
-            content = await f.read()
+        content = read_file_text(file_path)
         return {"filename": filename, "type": suffix, "content": content, "size": len(content)}
 
     # PDF: try to extract text
@@ -732,7 +796,7 @@ async def get_file_content(
     # Media files: return metadata only (frontend handles playback via direct URL)
     if suffix in MEDIA_EXTENSIONS:
         stat = os.stat(file_path)
-        content = (doc.content_text or doc.content_preview) if doc else None
+        content = reveal_document_text(doc.content_text or doc.content_preview) if doc else None
         atomic_path = doc.get_atomic_path() if doc else {}
         return {
             "filename": filename,
@@ -787,4 +851,16 @@ async def serve_file(
     project = await _get_project(db, request, project_id, min_role="viewer")
     file_path, _doc = await _resolve_project_file(db, project, project_id, filename)
 
-    return FileResponse(file_path)
+    media_type = mimetypes.guess_type(file_path.name)[0] or "application/octet-stream"
+
+    def _iter_file():
+        with decrypted_file_path(file_path) as readable_path:
+            with open(readable_path, "rb") as handle:
+                while chunk := handle.read(1 << 16):
+                    yield chunk
+
+    return StreamingResponse(
+        _iter_file(),
+        media_type=media_type,
+        headers={"Content-Disposition": f'inline; filename="{filename}"'},
+    )

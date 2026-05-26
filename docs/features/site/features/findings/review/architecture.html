@@ -241,7 +241,7 @@
   <p class="concept-line"><strong>Concepts:</strong> triangulation</p>
 </header>
 <h2 id="implementation-summary">Implementation Summary</h2>
-<p>The Review tab presents code review queues for validating and adjudicating qualitative coding work. Review mutations pass the active project id and the backend binds each code-application id to that same project before applying reviewer decisions.</p>
+<p>The Review tab presents code review queues for validating and adjudicating qualitative coding work. Review mutations pass the active project id and the backend binds each code-application id to that same project before applying reviewer decisions. The queue now exposes evidence-unit, coding-run, route/model/donor, reliability, reconciliation, and promotion state so researchers can see why a code can be accepted, blocked, or sent back for review.</p>
 <h2 id="frontend-surface">Frontend Surface</h2>
 <ul>
 <li><code>frontend/src/components/findings/FindingsView.tsx</code></li>
@@ -257,6 +257,8 @@
 <ul>
 <li><code>backend/app/api/routes/code_applications.py</code></li>
 <li><code>backend/app/api/routes/codebooks.py</code></li>
+<li><code>backend/app/api/routes/research_validity.py</code></li>
+<li><code>backend/app/services/research_validity_service.py</code></li>
 </ul>
 <h2 id="architecture-notes">Architecture Notes</h2>
 <ul>
@@ -267,11 +269,17 @@
 <h2 id="agents-skills-llm-mcp-and-permissions">Agents, Skills, LLM, MCP, And Permissions</h2>
 <ul>
 <li>Code review is a project-content surface. Pending queues, bulk approval, and review mutations must stay inside the caller&#x27;s authorized active project and must not infer project scope from a globally unique application id.</li>
+<li>Bulk approval requires both confidence and accepted reliability/promotion status; high confidence alone cannot approve low-assurance coding.</li>
+<li>Researchers review coded evidence units, not keyword tags. Code applications should point at stable evidence units and coding runs whenever the corrected pipeline produced them.</li>
+<li>Governed coding runs are started from the project-scoped research-validity route with researcher access. The service persists model coder identities, route evidence, reliability matrix output, and promotion state so the review queue can distinguish accepted coding from low-consensus or lower-assurance output.</li>
+<li>Approving, rejecting, or revising a disputed code application creates a <code>ReconciliationDecision</code>, updates the code application&#x27;s reconciliation/promotion state, and links the decision back into the Evidence Graph with a <code>reconciled_by</code> edge. A task remains blocked while any low-agreement code application is still unreconciled.</li>
+<li>Task review snapshots expose task-linked coding-run status and blocked review items. Kanban review should explain whether the task is waiting on low agreement, no accepted code applications, missing route evidence, or human reconciliation before Done approval or report routing.</li>
 </ul>
 <h2 id="tests-and-verification">Tests And Verification</h2>
 <ul>
 <li><code>tests/test_code_applications.py</code></li>
 <li><code>tests/test_project_scope_contracts.py</code></li>
+<li><code>tests/test_research_validity_contract.py</code></li>
 </ul>
 <h2 id="related-features">Related Features</h2>
 <ul>
@@ -284,7 +292,7 @@
 </ul>
 <h2 id="compass-evidence">Compass Evidence</h2>
 <ul>
-<li>Spec/task: CF-SPEC-78 / CF-1005</li>
+<li>Spec/task: CF-SPEC-78 / CF-1005; CF-SPEC-124 / CF-1590</li>
 <li>Inventory source: <code>docs/features/inventory.json</code></li>
 </ul>
 <h2 id="when-to-update">When To Update</h2>

@@ -241,12 +241,14 @@
   <p class="concept-line"><strong>Concepts:</strong> triangulation</p>
 </header>
 <h2 id="implementation-summary">Implementation Summary</h2>
-<p>The Autoresearch dashboard summarizes automated research experiment status and recent results.</p>
+<p>The Autoresearch dashboard summarizes automated research experiment status and recent results. Autoresearch must follow the same research-validity pipeline as human-led research: evidence units, governed coding, reliability, reconciliation, review, and approved Done-task report gating.</p>
 <h2 id="frontend-surface">Frontend Surface</h2>
 <ul>
 <li><code>frontend/src/components/autoresearch/AutoresearchView.tsx</code></li>
 <li><code>frontend/src/stores/autoresearchStore.ts</code></li>
 <li><code>backend/app/api/routes/autoresearch.py</code></li>
+<li><code>backend/app/core/agent_research.py</code></li>
+<li><code>backend/app/core/research_validity.py</code></li>
 </ul>
 <h2 id="state-api-and-backend-contracts">State, API, And Backend Contracts</h2>
 <h3 id="stores">Stores</h3>
@@ -258,6 +260,7 @@
 <ul>
 <li><code>backend/app/api/routes/autoresearch.py</code></li>
 <li><code>/api/autoresearch/status</code> requires <code>project_id</code>, enforces project access, and returns task, agent, document, finding, telemetry, schedule, and deployment metrics filtered to that project.</li>
+<li>Agent-generated code applications created from skill output should carry an evidence-unit handle and remain lower assurance until reliability/review gates are satisfied.</li>
 </ul>
 <h2 id="architecture-notes">Architecture Notes</h2>
 <ul>
@@ -268,20 +271,25 @@
 <h2 id="agents-skills-llm-mcp-and-permissions">Agents, Skills, LLM, MCP, And Permissions</h2>
 <ul>
 <li>Autoresearch status can inform automated experiment loops, so every operational signal in the dashboard must be scoped to the active project before it can influence agents, skills, LLM routing, or improvement proposals.</li>
+<li>Autoresearch may optimize retrieval, graph synthesis, coding prompts, and orchestration from telemetry, but it cannot silently alter protected methodology, codebooks, thresholds, authorization, human review, or report gates.</li>
 </ul>
 <h2 id="tests-and-verification">Tests And Verification</h2>
 <ul>
 <li><code>tests/test_autoresearch.py</code> verifies project-scoped status metrics.</li>
 <li><code>tests/test_project_scope_contracts.py</code> verifies frontend status calls carry the active project id and backend status uses project-filtered queries.</li>
+<li><code>tests/test_research_validity_contract.py</code> verifies the shared research-validity contract that autoresearch must respect.</li>
 </ul>
 <h2 id="related-features">Related Features</h2>
 <ul>
 <li><a href="../experiments/architecture.html">autoresearch.experiments</a></li>
 <li><a href="../leaderboard/architecture.html">autoresearch.leaderboard</a></li>
+<li><a href="../../findings/review/architecture.html">findings.review</a></li>
 </ul>
 <h2 id="related-concepts">Related Concepts</h2>
 <ul>
 <li><a href="../../../glossary/triangulation.html">triangulation</a></li>
+<li><a href="../../../glossary/fleiss-kappa.html">fleiss-kappa</a></li>
+<li><a href="../../../glossary/rag.html">rag</a></li>
 </ul>
 <h2 id="compass-evidence">Compass Evidence</h2>
 <ul>

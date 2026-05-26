@@ -156,11 +156,11 @@ class DesignBrief(Base):
 
 
 class DesignDecision(Base):
-    """An atomic research decision linking recommendations to design screens.
+    """A provisional or accepted design decision linked to recommendations.
 
-    Extends the Atomic Research chain (Nugget -> Fact -> Insight ->
-    Recommendation) with a final Decision node that records which
-    recommendations were acted upon and which screens resulted.
+    Design decisions extend the accepted Atomic Research chain only when their
+    recommendation IDs are themselves backed by accepted/reconciled evidence.
+    Generated interface decisions remain candidate/provisional until review.
     """
 
     __tablename__ = "design_decisions"

@@ -60,9 +60,14 @@ def test_mid_execution_steering_is_project_scoped() -> None:
     assert "steering.send(agentId, message.trim(), projectId)" in steering_input
     assert "steering.abort(agentId, projectId)" in steering_input
     assert "steering.getQueues(agentId, projectId)" in steering_input
-    assert "if (!projectId || (!isWorking && queueCount === 0)) return null;" in steering_input
+    assert (
+        "if (!capabilities.canUseSteering || !projectId || (!isWorking && queueCount === 0)) "
+        "return null;"
+    ) in steering_input
 
     assert "projectId={activeProjectId}" in agents_view
-    assert "function SteeringQueueIndicator({ agentId, projectId }" in chat_view
+    assert "function SteeringQueueIndicator({" in chat_view
+    assert "enabled," in chat_view
+    assert "if (!enabled || !agentId || !projectId)" in chat_view
     assert "steeringApi.getAllStatus(projectId)" in chat_view
     assert "projectId={activeProjectId}" in chat_view

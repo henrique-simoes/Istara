@@ -276,6 +276,7 @@
 <li>Deployment response handling, conversations, transcripts, analytics, and overview counters all require the conversation/deployment/channel records to match the same project boundary before participant content or findings are read, updated, or summarized.</li>
 <li>Deployment websocket progress, response, and finding events resolve project ownership from <code>deployment_id</code>, deliver only to sockets subscribed to that project, and drop events with conflicting deployment/project claims.</li>
 <li>Simulation and real-user benchmark deployment paths must carry active project scope on by-id lifecycle, response, analytics, conversation, delete, and channel cleanup calls, proving the same boundary exercised by the UI.</li>
+<li>Real-user benchmark scoring does not require live Telegram/AURA participant-channel success unless bounded test credentials or a credential-free local participant simulator are present. Missing external tokens are recorded as future improvement, while project-scoped deployment route behavior remains testable.</li>
 </ul>
 <h2 id="architecture-notes">Architecture Notes</h2>
 <ul>
@@ -286,6 +287,7 @@
 <h2 id="agents-skills-llm-mcp-and-permissions">Agents, Skills, LLM, MCP, And Permissions</h2>
 <ul>
 <li>Deployments are project-owned integration records. Any agent, skill, LLM, MCP, channel, or deployment worker that uses deployment data must preserve the same active-project and authorization boundary before routing participant content or generated research artifacts.</li>
+<li>Participant responses enter the Research Spine as raw source evidence units. The <code>channel-research-deployment</code> skill may propose candidate nuggets, insights, and recommendations for review, but those model-generated artifacts are provisional and blocked from Reports until governed coding, reliability/reconciliation, and Done-task gates accept them.</li>
 </ul>
 <h2 id="tests-and-verification">Tests And Verification</h2>
 <ul>
@@ -293,6 +295,7 @@
 <li><code>tests/test_project_scope_contracts.py</code> asserts that <code>DeploymentsTab</code>, <code>DeploymentDashboard</code>, <code>ConversationTranscript</code>, and the deployment API client pass the active project id into list, detail, lifecycle, analytics, conversation, and transcript calls rather than falling back to global deployment ids.</li>
 <li><code>tests/test_websocket.py</code> proves deployment realtime events inherit project scope from the deployment id before fan-out and reject conflicting project claims.</li>
 <li><code>tests/test_integration_simulation_scope.py</code> prevents simulation and real-user benchmark deployment calls from reintroducing unscoped by-id integration paths.</li>
+<li><code>tests/real_user_benchmark/run.mjs</code> classifies credentialed AURA/Telegram live participant flow as optional and records local transcript/interview task evidence separately.</li>
 </ul>
 <h2 id="related-features">Related Features</h2>
 <ul>
@@ -306,7 +309,7 @@
 </ul>
 <h2 id="compass-evidence">Compass Evidence</h2>
 <ul>
-<li>Spec/task: CF-SPEC-60 / CF-767; CF-SPEC-60 / CF-773; CF-SPEC-62 / CF-793; CF-SPEC-75 / CF-964; CF-SPEC-82 / CF-1061; CF-SPEC-93 / CF-1184</li>
+<li>Spec/task: CF-SPEC-60 / CF-767; CF-SPEC-60 / CF-773; CF-SPEC-62 / CF-793; CF-SPEC-75 / CF-964; CF-SPEC-82 / CF-1061; CF-SPEC-93 / CF-1184; CF-SPEC-121</li>
 <li>Inventory source: <code>docs/features/inventory.json</code></li>
 </ul>
 <h2 id="when-to-update">When To Update</h2>

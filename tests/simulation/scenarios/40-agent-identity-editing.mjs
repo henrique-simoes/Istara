@@ -6,11 +6,15 @@ export const id = "40-agent-identity-editing";
 export async function run(ctx) {
   const { api, page, screenshot } = ctx;
   const checks = [];
-  const projectId = ctx.projectId || "sim-project-001";
+  if (!ctx.projectId) {
+    return { checks: [{ name: "Simulation project required", passed: false, detail: "No project ID" }], passed: 0, failed: 1 };
+  }
+  const projectId = ctx.projectId;
+  const projectQuery = `project_id=${encodeURIComponent(projectId)}`;
 
   // ── 1. GET identity returns all 4 files ──
   try {
-    const identity = await api.get("/api/agents/istara-main/identity");
+    const identity = await api.get(`/api/agents/istara-main/identity?${projectQuery}`);
     checks.push({
       name: "GET identity returns files",
       passed: identity.files && Object.keys(identity.files).length === 4,
@@ -35,22 +39,42 @@ export async function run(ctx) {
     checks.push({ name: "GET identity", passed: false, detail: e.message });
   }
 
+  let testAgentId = null;
+  try {
+    const agent = await api.post("/api/agents", {
+      name: "[SIM] Persona Test Agent",
+      role: "custom",
+      system_prompt: "A test agent for persona scaffolding and editing.",
+      capabilities: ["skill_execution", "chat"],
+      project_id: projectId,
+    });
+    testAgentId = agent.id;
+    checks.push({
+      name: "Create project-owned persona test agent",
+      passed: !!testAgentId,
+      detail: `id=${testAgentId}`,
+    });
+  } catch (e) {
+    checks.push({ name: "Create project-owned persona test agent", passed: false, detail: e.message });
+  }
+
   // ── 2. PUT identity updates files ──
   let originalCore = "";
+  if (testAgentId) {
   try {
-    const identity = await api.get("/api/agents/istara-main/identity");
+    const identity = await api.get(`/api/agents/${testAgentId}/identity?${projectQuery}`);
     originalCore = identity.files?.["CORE.md"] || "";
 
     // Update with test content appended
     const testMarker = "\n\n<!-- SIM TEST MARKER -->";
-    const updated = await api.put("/api/agents/istara-main/identity", {
+    const updated = await api.put(`/api/agents/${testAgentId}/identity?${projectQuery}`, {
       files: {
         "CORE.md": originalCore + testMarker,
       },
     });
 
     // Verify the update persisted
-    const verify = await api.get("/api/agents/istara-main/identity");
+    const verify = await api.get(`/api/agents/${testAgentId}/identity?${projectQuery}`);
     const hasMarker = (verify.files?.["CORE.md"] || "").includes("SIM TEST MARKER");
     checks.push({
       name: "PUT identity saves changes",
@@ -59,7 +83,7 @@ export async function run(ctx) {
     });
 
     // Restore original
-    await api.put("/api/agents/istara-main/identity", {
+    await api.put(`/api/agents/${testAgentId}/identity?${projectQuery}`, {
       files: { "CORE.md": originalCore },
     });
     checks.push({ name: "Identity restore after test", passed: true, detail: "Restored" });
@@ -68,16 +92,20 @@ export async function run(ctx) {
     // Attempt restore
     if (originalCore) {
       try {
-        await api.put("/api/agents/istara-main/identity", {
+        await api.put(`/api/agents/${testAgentId}/identity?${projectQuery}`, {
           files: { "CORE.md": originalCore },
         });
       } catch {}
     }
   }
+  } else {
+    checks.push({ name: "PUT identity", passed: false, detail: "No project-owned test agent created" });
+  }
 
   // ── 3. PUT identity rejects invalid file names ──
+  if (testAgentId) {
   try {
-    await api.put("/api/agents/istara-main/identity", {
+    await api.put(`/api/agents/${testAgentId}/identity?${projectQuery}`, {
       files: { "EVIL.md": "hacker content" },
     });
     checks.push({ name: "Rejects invalid file names", passed: false, detail: "Should have thrown" });
@@ -88,21 +116,15 @@ export async function run(ctx) {
       detail: `Rejected: ${e.message}`,
     });
   }
+  } else {
+    checks.push({ name: "Rejects invalid file names", passed: false, detail: "No project-owned test agent created" });
+  }
 
   // ── 4. User-created agent gets scaffolded persona ──
-  let testAgentId = null;
+  if (testAgentId) {
   try {
-    const agent = await api.post("/api/agents", {
-      name: "[SIM] Persona Test Agent",
-      role: "custom",
-      system_prompt: "A test agent for persona scaffolding.",
-      capabilities: ["skill_execution", "chat"],
-      project_id: projectId,
-    });
-    testAgentId = agent.id;
-
     // Check identity was scaffolded
-    const identity = await api.get(`/api/agents/${agent.id}/identity`);
+    const identity = await api.get(`/api/agents/${testAgentId}/identity?${projectQuery}`);
     checks.push({
       name: "New agent gets persona scaffold",
       passed: identity.has_persona === true,
@@ -120,6 +142,9 @@ export async function run(ctx) {
     });
   } catch (e) {
     checks.push({ name: "Persona scaffolding", passed: false, detail: e.message });
+  }
+  } else {
+    checks.push({ name: "Persona scaffolding", passed: false, detail: "No project-owned test agent created" });
   }
 
   // ── 5. UI — Identity tab visible in Agents view ──
@@ -201,7 +226,7 @@ export async function run(ctx) {
 
   // ── Cleanup ──
   if (testAgentId) {
-    try { await api.delete(`/api/agents/${testAgentId}`); } catch {}
+    try { await api.delete(`/api/agents/${testAgentId}?${projectQuery}`); } catch {}
   }
 
   return {

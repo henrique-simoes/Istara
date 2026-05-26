@@ -50,7 +50,8 @@ Surveys configures participant question and survey collection flows connected to
 
 ## Agents, Skills, LLM, MCP, And Permissions
 
-- No direct agent, skill, LLM, or MCP behavior is asserted beyond the cited source files.
+- Survey ingestion creates provisional visible nuggets plus raw survey-response evidence units for the Research Spine. These artifacts are not reportable until governed coding, reliability/reconciliation, and Done-task gates accept the linked evidence.
+- Skills or agents that analyze survey or deployment responses may propose candidate findings, but they cannot mark those outputs as accepted report evidence.
 
 ## Tests And Verification
 

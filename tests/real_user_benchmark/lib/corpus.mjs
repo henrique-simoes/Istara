@@ -1,25 +1,56 @@
 import { existsSync, mkdirSync, rmSync, writeFileSync } from "fs";
 import { basename, join } from "path";
 import { spawnSync } from "child_process";
+import {
+  SHARED_DOCUMENT_CORPUS_MINIMUM_SOURCES,
+  canonicalCorpusSummary,
+  materializeSharedDocumentCorpus,
+} from "../../document_corpus/shared-corpus.mjs";
 
 export const PROJECT_CONTEXT = {
   name: "CareNav Renewal",
   company: "Northstar Health",
-  audience: "care coordinators, patients, family caregivers, and clinic administrators",
-  product: "a patient-care coordination workspace for appointment prep, reminders, and task follow-up",
-  stage: "mid-fidelity redesign after a failed pilot",
+  industry: "multi-site outpatient health operations",
+  audience: "care coordinators, patients, family caregivers, nurse managers, clinic administrators, operations analysts, accessibility reviewers, and product stakeholders",
+  product: "CareNav, a patient-care coordination workspace for appointment preparation, readiness evidence, caregiver collaboration, multilingual reminders, staff handoff, and governed automation",
+  stage: "research-heavy renewal after a failed multi-clinic pilot and before a high-risk regional relaunch decision",
+  companyContext: [
+    "Northstar Health operates 43 outpatient clinics across community health, cardiology, oncology, pediatrics, fertility, and post-operative care. The organization introduced CareNav to reduce missed appointment-preparation tasks, same-day cancellations, staff phone burden, and unsafe manual workarounds across portal messages, SMS reminders, EHR work queues, caregiver calls, and paper notes.",
+    "The failed pilot produced mixed evidence. Operations leaders saw early reductions in missed prep for some clinics, but coordinators still rebuilt source trails by hand, caregivers called because permission states were unclear, multilingual reminders diverged from English source copy, and patients could not tell which tasks were required before the visit. Northstar now needs a governed relaunch decision that respects clinical safety, privacy, multilingual accessibility, staff workload, and the Research Spine.",
+    "The benchmark project should feel like a real senior UX research engagement. A researcher configures business context, risk boundaries, source inventory, stakeholder decision pressure, and explicit report gates. Istara must not treat raw model output, memory, telemetry, RAG snippets, GraphRAG synthesis, or generated interface ideas as accepted evidence unless they pass source-grounded extraction/coding, reliability or reconciliation, task review, and Done/report gates.",
+  ].join("\n\n"),
+  projectContext: [
+    "Research objective: decide what CareNav should redesign first for a regional relaunch, what should remain human-reviewed, and what evidence is strong enough to support leadership recommendations. The core problem is not simply reminders; it is whether appointment readiness can be made trustworthy across patients, caregivers, coordinators, nurse managers, and administrators without turning automation into a black box.",
+    "Source inventory: the canonical program contains 174 upload-compatible synthetic sources spanning one-hour interview transcripts, participant profiles, diary studies, moderated usability sessions, surveys, NPS/SUS/UMUX exports, card sorting, tree testing, journey maps, field notes, support tickets, analytics exports, A/B tests, competitor analysis, heuristic evaluation, accessibility review, Laws of UX audit, product briefs, stakeholder memos, research plans, discussion guides, consent/privacy notes, multilingual material, malformed edge-case files, and report-readiness material. The evidence intentionally includes contradictions, stale metrics, low-confidence statements, and multilingual ambiguity.",
+    "Research process requirement: every source should become stable evidence units before trusted atomic artifacts exist. Independent model coders should extract candidate atomic facts and open codes from source spans, preserve quote/span grounding, compare claim and code agreement, compute reliability or companion grounding checks, reconcile disagreement through debate/adversarial/human review, and only then promote accepted atoms into facts, insights, recommendations, In Review tasks, Done tasks, and Reports.",
+    "Decision horizon: the executive team wants a relaunch recommendation in two weeks. The research team must identify the smallest high-confidence design slice to prototype, document unresolved risks, and avoid overclaiming. The benchmark should test whether Istara can sustain this complexity while preserving route evidence, project-scoped compute donation, reviewer state, and report gating.",
+  ].join("\n\n"),
+  successMetrics: [
+    "Evidence-chain completeness from raw source to report paragraph.",
+    "Ability to separate patient, caregiver, staff, admin, and operations evidence.",
+    "Correct handling of contradictory evidence and low-agreement coding.",
+    "Usefulness of task review loops and human Done approval.",
+    "Route evidence for multi-model donated compute during coding, chat, and synthesis.",
+    "Quality of report exclusions: what Istara refuses to report because evidence is provisional, low-consensus, or taskless.",
+  ],
   guardrails: [
-    "Do not infer medical advice.",
-    "Treat patient stories as synthetic PHI-like data and avoid exposing names in reports.",
-    "Separate staff workflow evidence from patient/caregiver evidence.",
-    "Flag contradictions and missing sampling context.",
-    "Prefer source-cited recommendations over generic UX advice.",
+    "Do not infer medical advice, diagnosis, treatment priority, clinical eligibility, insurance coverage, or medication guidance.",
+    "Treat every participant story as synthetic PHI-like material; do not expose names, phone numbers, addresses, or unnecessary identity details in report outputs.",
+    "Separate staff workflow evidence from patient, caregiver, administrator, and operations analyst evidence until a synthesis explicitly compares them.",
+    "Flag contradictions, stale evidence, sampling gaps, language-specific wording risks, and automation-trust risks instead of smoothing them into one confident theme.",
+    "Do not let raw model output, RAG retrieval, GraphRAG synthesis, ReasoningBank memory, Memento skill memory, telemetry, or self-improvement proposals become report evidence by themselves.",
+    "Recommendations must cite source ids, exact quotes or spans where possible, codebook/reliability status, reconciliation status, reviewer state, and human-approved Done task links before they become reportable.",
+    "When only one model is available, mark the path lower assurance; when two or three distinct healthy project-authorized models are available, use the correct two-coder or full multi-model validation path.",
+    "Credential-free integration probes for AURA, surveys, Telegram, Figma, Stitch, and forms should classify setup blockers honestly; do not invent third-party data or claim successful integration without evidence.",
   ],
   researchQuestions: [
-    "Where does appointment-prep coordination break down?",
-    "Which reminders feel supportive versus nagging?",
-    "What does staff need to trust automation?",
-    "How should caregiver involvement be represented without confusing consent?",
+    "Where does appointment-preparation coordination break down across portal tasks, SMS reminders, caregiver calls, staff dashboards, EHR work queues, and manual paper workarounds?",
+    "Which reminders feel supportive, timely, and privacy-aware versus repetitive, nagging, or unsafe, and how does that differ by role, language, clinic type, and appointment journey?",
+    "What evidence does staff need before they trust an automated readiness status, override recommendation, escalation, or task-priority label?",
+    "How should caregiver involvement be represented so patients understand consent boundaries, caregivers know what they can safely do, and staff can explain the source of each permission state?",
+    "Which contradictions require reconciliation before leadership can act, especially when survey metrics, support tickets, interviews, usability observations, and analytics point in different directions?",
+    "Which atomic facts/nuggets can become accepted after source-grounded coding and reliability checks, which remain provisional, and which must be rejected as unsupported or over-interpreted?",
+    "What should the first relaunch prototype include, what should remain explicitly human-reviewed, and what should be excluded from Reports until more evidence is gathered?",
   ],
 };
 
@@ -308,123 +339,28 @@ function writeMinimalPptx(root, relPath) {
 export function generateCorpus({ outputDir, logger }) {
   mkdirSync(outputDir, { recursive: true });
   const manifest = [];
-
-  manifest.push(writeFile(outputDir, "00-project-context.md", [
-    `# ${PROJECT_CONTEXT.name}`,
-    "",
-    `Company: ${PROJECT_CONTEXT.company}`,
-    `Audience: ${PROJECT_CONTEXT.audience}`,
-    `Product: ${PROJECT_CONTEXT.product}`,
-    `Stage: ${PROJECT_CONTEXT.stage}`,
-    "",
-    "## Guardrails",
-    ...PROJECT_CONTEXT.guardrails.map((item) => `- ${item}`),
-    "",
-    "## Research Questions",
-    ...PROJECT_CONTEXT.researchQuestions.map((item) => `- ${item}`),
-  ].join("\n")));
-
-  participants.forEach((participant, index) => {
-    manifest.push(writeFile(outputDir, `interviews/${participant[0]}-${participant[2].replace(/\s+/g, "-")}.md`, interviewTranscript(index, participant)));
+  const sharedCorpus = materializeSharedDocumentCorpus({
+    outputDir,
+    existingManifest: manifest,
+    minimumSources: SHARED_DOCUMENT_CORPUS_MINIMUM_SOURCES,
+    slice: "full-end-to-end",
+    canonicalOnly: true,
+    logger,
   });
-
-  for (let i = 0; i < 6; i += 1) {
-    manifest.push(writeFile(outputDir, `usability/usability-test-${String(i + 1).padStart(2, "0")}.md`, usabilityReport(i)));
-  }
-
-  manifest.push(writeFile(outputDir, "surveys/carenav-survey-180.csv", surveyCsv()));
-  manifest.push(writeFile(outputDir, "diary/diary-study-week.csv", diaryStudy()));
-  manifest.push(writeFile(outputDir, "analytics/pilot-analytics.csv", analyticsCsv()));
-  manifest.push(writeFile(outputDir, "support/support-tickets.jsonl", supportTicketsJsonl()));
-  manifest.push(writeFile(outputDir, "competitive/competitor-notes.md", competitorNotes()));
-  manifest.push(writeFile(outputDir, "design/design-critique-notes.md", [
-    "# Design Critique Notes",
-    "",
-    "- Readiness badge looks definitive even when evidence is stale.",
-    "- Staff need a visible override reason before trusting automated reminders.",
-    "- Caregiver panel uses the same visual hierarchy as patient tasks, causing role confusion.",
-    "- The timeline prototype scored better than the checklist prototype in scan tests.",
-  ].join("\n")));
-  manifest.push(writeFile(outputDir, "field-notes/clinic-shadowing.md", [
-    "# Clinic Shadowing Field Notes",
-    "",
-    "Morning huddle: three coordinators compared portal tasks with handwritten notes.",
-    "One nurse said the team trusts the sticky note because it has a person's initials.",
-    "A caregiver called twice about a lab form that was complete in one system but missing in another.",
-    "Staff asked for a readiness queue grouped by next action, not appointment date.",
-  ].join("\n")));
-  for (let i = 1; i <= 8; i += 1) {
-    manifest.push(writeFile(outputDir, `stakeholder-memos/stakeholder-memo-${String(i).padStart(2, "0")}.md`, [
-      `# Stakeholder Memo ${i}`,
-      "",
-      `Owner: ${["Operations", "Clinical Safety", "Patient Experience", "Compliance"][i % 4]}`,
-      `Decision pressure: ${painPoints[(i + 2) % painPoints.length]}.`,
-      "",
-      "## Position",
-      `The stakeholder believes the redesign should prioritize ${opportunities[(i + 1) % opportunities.length]}.`,
-      "",
-      "## Tension",
-      `This may conflict with ${opportunities[(i + 4) % opportunities.length]} because teams have different views of readiness ownership.`,
-      "",
-      "## Evidence requested",
-      "- More separation between patient, caregiver, and staff workflows.",
-      "- Stronger proof that source trails reduce support calls.",
-      "- A clear privacy review before caregiver-facing launch.",
-    ].join("\n")));
-  }
-  for (let i = 1; i <= 12; i += 1) {
-    manifest.push(writeFile(outputDir, `experiments/concept-test-${String(i).padStart(2, "0")}.md`, [
-      `# Concept Test ${i}`,
-      "",
-      `Concept: ${["Timeline", "Checklist", "Readiness Score", "Caregiver Card"][i % 4]}`,
-      `Stimulus: mid-fidelity screen set ${String.fromCharCode(64 + ((i % 4) + 1))}`,
-      "",
-      "## What worked",
-      `- ${opportunities[i % opportunities.length]}.`,
-      "- Participants understood required versus optional labels faster than status-only labels.",
-      "",
-      "## What failed",
-      `- ${painPoints[(i + 1) % painPoints.length]}.`,
-      "- Confidence labels were interpreted as medical confidence by two participants.",
-      "",
-      "## Follow-up needed",
-      "- Test whether 'source freshness' reads as data freshness rather than clinical recency.",
-    ].join("\n")));
-  }
-  for (let i = 1; i <= 10; i += 1) {
-    manifest.push(writeFile(outputDir, `call-center/call-snippet-${String(i).padStart(2, "0")}.txt`, [
-      `Call ${i}`,
-      `Caller role: ${["patient", "caregiver", "care coordinator"][i % 3]}`,
-      `Issue: ${painPoints[(i + 5) % painPoints.length]}.`,
-      `Quote: "I do not need another reminder. I need to know which thing is actually blocking the visit."`,
-      `Disposition: ${i % 2 === 0 ? "escalated to coordinator" : "resolved with manual explanation"}`,
-    ].join("\n")));
-  }
-  for (let i = 1; i <= 6; i += 1) {
-    manifest.push(writeFile(outputDir, `privacy/consent-review-${String(i).padStart(2, "0")}.md`, [
-      `# Consent Review ${i}`,
-      "",
-      "Risk area: caregiver access and reminder content.",
-      `Observed issue: ${painPoints[(i + 6) % painPoints.length]}.`,
-      "Guidance: do not reveal clinical details in caregiver-safe reminders unless permission is explicit.",
-      "Research implication: evaluate whether role labels are understood before expanding automated outreach.",
-    ].join("\n")));
-  }
-  manifest.push(writeFile(outputDir, "multilingual/pt-es-reminder-examples.md", multilingualExamples()));
-  manifest.push(writeFile(outputDir, "edge-cases/malformed-survey-export.csv", malformedFile()));
-  manifest.push(writeFile(outputDir, "web/url-fetch-targets.md", [
-    "# URL Fetch Targets for Benchmark",
-    "",
-    "Use these URLs in chat and task prompts to test graceful web fetching:",
-    "- https://example.com/healthcare-coordination-benchmark",
-    "- https://www.nngroup.com/articles/service-blueprints-definition/",
-    "- https://www.w3.org/WAI/WCAG22/quickref/",
-  ].join("\n")));
-  manifest.push(writeMinimalPptx(outputDir, "presentations/carenav-readout.pptx"));
+  manifest.push(...sharedCorpus.manifest);
+  const canonicalSummary = canonicalCorpusSummary();
 
   const summary = {
     project: PROJECT_CONTEXT,
     generated_at: new Date().toISOString(),
+    canonical_corpus: canonicalSummary,
+    shared_corpus: {
+      minimum_sources: SHARED_DOCUMENT_CORPUS_MINIMUM_SOURCES,
+      slice: sharedCorpus.slice,
+      canonical_count: sharedCorpus.canonical_count,
+      fixture_count: sharedCorpus.fixture_count,
+      generated_count: sharedCorpus.generated_count,
+    },
     document_count: manifest.length,
     total_bytes: manifest.reduce((sum, item) => sum + (item.bytes || 0), 0),
     manifest,

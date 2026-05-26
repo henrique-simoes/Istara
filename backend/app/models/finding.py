@@ -1,4 +1,9 @@
-"""Atomic Research finding models — Nuggets, Facts, Insights, Recommendations."""
+"""Atomic Research finding models.
+
+These rows are visible research artifacts. They are reportable only when the
+Research Spine links them to accepted/reconciled evidence and a human-approved
+Done task.
+"""
 
 from datetime import datetime, timezone
 
@@ -9,10 +14,10 @@ from app.models.database import Base
 
 
 class Nugget(Base):
-    """Raw evidence extracted from a source — the atomic unit of research.
+    """Visible atomic observation or candidate nugget.
 
-    A nugget is a direct quote, observation, or data point from a research source.
-    Example: "P1 said 'I hate giving my phone number to random sites'" @ interview_p1.mp3 4:32
+    Raw source text belongs in EvidenceUnit rows. Nugget rows stay provisional
+    until source-grounded coding/reliability/reconciliation accepts them.
     """
 
     __tablename__ = "nuggets"
@@ -20,6 +25,7 @@ class Nugget(Base):
     id: Mapped[str] = mapped_column(String(36), primary_key=True)
     project_id: Mapped[str] = mapped_column(ForeignKey("projects.id"), nullable=False)
     agent_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
+    task_id: Mapped[str | None] = mapped_column(String(36), nullable=True, index=True)
     text: Mapped[str] = mapped_column(Text, nullable=False)
     source: Mapped[str] = mapped_column(String(500), nullable=False)
     source_location: Mapped[str] = mapped_column(String(255), default="")
@@ -46,6 +52,7 @@ class Fact(Base):
     id: Mapped[str] = mapped_column(String(36), primary_key=True)
     project_id: Mapped[str] = mapped_column(ForeignKey("projects.id"), nullable=False)
     agent_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
+    task_id: Mapped[str | None] = mapped_column(String(36), nullable=True, index=True)
     text: Mapped[str] = mapped_column(Text, nullable=False)
     nugget_ids: Mapped[str] = mapped_column(Text, default="")  # JSON array of nugget IDs
     phase: Mapped[str] = mapped_column(String(20), default="discover")
@@ -70,6 +77,7 @@ class Insight(Base):
     id: Mapped[str] = mapped_column(String(36), primary_key=True)
     project_id: Mapped[str] = mapped_column(ForeignKey("projects.id"), nullable=False)
     agent_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
+    task_id: Mapped[str | None] = mapped_column(String(36), nullable=True, index=True)
     text: Mapped[str] = mapped_column(Text, nullable=False)
     fact_ids: Mapped[str] = mapped_column(Text, default="")  # JSON array of fact IDs
     phase: Mapped[str] = mapped_column(String(20), default="define")
@@ -95,6 +103,7 @@ class Recommendation(Base):
     id: Mapped[str] = mapped_column(String(36), primary_key=True)
     project_id: Mapped[str] = mapped_column(ForeignKey("projects.id"), nullable=False)
     agent_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
+    task_id: Mapped[str | None] = mapped_column(String(36), nullable=True, index=True)
     text: Mapped[str] = mapped_column(Text, nullable=False)
     insight_ids: Mapped[str] = mapped_column(Text, default="")  # JSON array of insight IDs
     phase: Mapped[str] = mapped_column(String(20), default="deliver")

@@ -318,7 +318,10 @@ export default function LoginScreen({ onLogin }: LoginScreenProps) {
         }
         const data = await res.json();
         localStorage.setItem("istara_token", data.token);
-        await onLogin();
+        if (data.user?.id) localStorage.setItem("istara_auth_user_id", data.user.id);
+        setRecoveryCodes(data.recovery_codes || []);
+        setRecoveryCodesConfirmed(false);
+        setOnboardingStep("recovery");
       } catch (err) {
         if (err instanceof TypeError && err.message === "Failed to fetch") {
           setError("Cannot connect to the Istara server. Make sure the backend is running on port 8000.");
@@ -453,7 +456,7 @@ export default function LoginScreen({ onLogin }: LoginScreenProps) {
           <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-800 p-8">
             <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Save your recovery codes</h1>
             <p className="text-sm text-slate-500 dark:text-slate-400 mt-2">
-              These codes are shown once. They let you get back into Istara if two-factor authentication is enabled and your authenticator is unavailable.
+              These codes are shown once. They let you get back into Istara when an authenticator is unavailable; if you lose them and have no passkey or 2FA access, account recovery requires an administrator.
             </p>
             <div className="mt-5 grid grid-cols-1 sm:grid-cols-2 gap-2">
               {recoveryCodes.map((code) => (
@@ -469,7 +472,7 @@ export default function LoginScreen({ onLogin }: LoginScreenProps) {
                 onChange={(e) => setRecoveryCodesConfirmed(e.target.checked)}
                 className="mt-1"
               />
-              <span>I saved these codes somewhere private.</span>
+              <span>I saved these codes somewhere private and offline.</span>
             </label>
             <button
               type="button"

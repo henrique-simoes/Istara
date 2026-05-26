@@ -40,6 +40,8 @@ Screens displays generated interface screens and previews for review in the acti
 
 - The feature is mounted through `frontend/src/components/interfaces/ScreensGalleryTab.tsx` and the UI navigation path recorded in the inventory.
 - `GET /api/interfaces/screens` requires an explicit `project_id`, checks project viewer access, and filters `DesignScreen.project_id` at the database query.
+- Screen list/get/generation/edit/variant payloads are hydrated with `source_finding_details` and a content-free `research_validity` summary so researchers can see whether a screen is backed by accepted Research Spine evidence or only provisional design context.
+- Imported or generated screens remain design artifacts; they do not become report evidence and their linked findings must pass source-grounded coding, reliability/reconciliation, and Done-task gates before downstream claims can be trusted.
 - The frontend store clears stale screens when fetching a new project, and `ScreensGalleryTab` defensively renders only screens whose `project_id` equals the active project id.
 - The frontmatter and manifest entries are the durable contract for agents updating this page after code changes.
 - When the referenced component, store, route, agent, skill, or test behavior changes, regenerate and validate the feature documentation.

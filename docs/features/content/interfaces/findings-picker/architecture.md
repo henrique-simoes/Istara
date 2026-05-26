@@ -37,6 +37,7 @@ The Findings Picker lets interface workflows reference insights and recommendati
 ## Architecture Notes
 
 - The feature is mounted through `frontend/src/components/interfaces/FindingsPicker.tsx` and the UI navigation path recorded in the inventory.
+- Picked insights/recommendations are project-scoped inputs to interface workflows. They do not make a generated design decision accepted unless the linked finding already carries accepted/reconciled evidence and Done-task approval through the Research Spine.
 - The frontmatter and manifest entries are the durable contract for agents updating this page after code changes.
 - When the referenced component, store, route, agent, skill, or test behavior changes, regenerate and validate the feature documentation.
 

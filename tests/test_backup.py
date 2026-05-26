@@ -19,9 +19,17 @@ from app.core.backup_manager import BackupManager
 def reset_settings():
     original_team_mode = settings.team_mode
     original_jwt_secret = settings.jwt_secret
+    original_file_encryption_enabled = settings.file_encryption_enabled
+    original_file_encryption_key = settings.file_encryption_key
+    original_file_encryption_key_file = settings.file_encryption_key_file
+    original_file_encryption_keychain_service = settings.file_encryption_keychain_service
     yield
     settings.team_mode = original_team_mode
     settings.jwt_secret = original_jwt_secret
+    settings.file_encryption_enabled = original_file_encryption_enabled
+    settings.file_encryption_key = original_file_encryption_key
+    settings.file_encryption_key_file = original_file_encryption_key_file
+    settings.file_encryption_keychain_service = original_file_encryption_keychain_service
 
 
 @pytest.fixture
@@ -39,9 +47,8 @@ async def test_backups_list_returns_list(auth_headers):
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
         response = await ac.get("/api/backups", headers=auth_headers)
-        assert response.status_code in (200, 404, 500)
-        if response.status_code == 200:
-            assert isinstance(response.json(), dict)
+    assert response.status_code == 200
+    assert isinstance(response.json(), dict)
 
 
 @pytest.mark.asyncio
@@ -62,7 +69,8 @@ async def test_backups_config_returns_response(auth_headers):
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
         response = await ac.get("/api/backups/config", headers=auth_headers)
-        assert response.status_code in (200, 404, 500)
+    assert response.status_code == 200
+    assert isinstance(response.json(), dict)
 
 
 @pytest.mark.asyncio
@@ -132,6 +140,40 @@ async def test_upload_restore_rejects_path_traversal_archive(auth_headers, tmp_p
 
     assert response.status_code == 400
     assert "Unsafe archive member path" in response.json()["detail"]
+
+
+@pytest.mark.asyncio
+async def test_upload_restore_accepts_encrypted_backup_archive(auth_headers, tmp_path, monkeypatch):
+    """Encrypted .tar.gz.enc archives restore when the configured key is present."""
+    from app.core.file_encryption import encrypt_bytes, resolve_file_encryption_key
+
+    await init_db()
+    monkeypatch.setattr(settings, "backup_dir", str(tmp_path / "backups"))
+    monkeypatch.setattr(settings, "file_encryption_enabled", True)
+    monkeypatch.setattr(settings, "file_encryption_key", "")
+    monkeypatch.setattr(settings, "file_encryption_key_file", str(tmp_path / "file-encryption.key"))
+    monkeypatch.setattr(settings, "file_encryption_keychain_service", "")
+    resolve_file_encryption_key(create=True)
+
+    archive = _backup_tar_bytes(
+        {
+            "manifest.json": json.dumps(
+                {"version": "1.0", "checksums": {}, "components": {}}
+            ).encode(),
+        }
+    )
+    encrypted_archive = encrypt_bytes(archive)
+
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        response = await ac.post(
+            "/api/backups/upload-restore",
+            files={"file": ("restore.tar.gz.enc", encrypted_archive, "application/octet-stream")},
+            headers=auth_headers,
+        )
+
+    assert response.status_code == 200
+    assert response.json()["status"] == "restored"
 
 
 @pytest.mark.asyncio

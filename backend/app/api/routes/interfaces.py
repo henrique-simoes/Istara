@@ -401,6 +401,7 @@ async def design_chat(request: DesignChatRequest, http_request: Request, db: Asy
             "design-lead",
             query=request.message,
             use_embeddings=True,
+            project_id=request.project_id,
         )
     except Exception:
         pass
@@ -414,7 +415,10 @@ async def design_chat(request: DesignChatRequest, http_request: Request, db: Asy
 
     # Budget-aware pipeline
     from app.core.budget_coordinator import budget_coordinator, compute_surplus_level
-    from app.core.prompt_compressor import compress_rag_chunks
+    from app.core.prompt_compressor import (
+        compress_rag_chunks,
+        record_protected_compression_telemetry,
+    )
 
     budget = budget_coordinator.allocate(settings.max_context_tokens)
     surplus = compute_surplus_level()
@@ -427,6 +431,7 @@ async def design_chat(request: DesignChatRequest, http_request: Request, db: Asy
                 query=request.message,
                 max_tokens=budget.identity_tokens,
                 use_embeddings=True,
+                project_id=request.project_id,
             )
         except Exception:
             pass
@@ -437,6 +442,11 @@ async def design_chat(request: DesignChatRequest, http_request: Request, db: Asy
         chunk_texts = [r.text for r in rag_result.retrieved if r.text]
         compressed_chunks, _ = compress_rag_chunks(
             chunk_texts, request.message, budget.rag_tokens, surplus
+        )
+        await record_protected_compression_telemetry(
+            project_id=request.project_id,
+            original_chunks=chunk_texts,
+            compressed_chunks=compressed_chunks,
         )
         rag_context = "\n---\n".join(compressed_chunks) if compressed_chunks else ""
 

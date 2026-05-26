@@ -24,6 +24,29 @@ ACTIVE_STATUS = "active"
 MERGED_STATUS = "merged"
 SUCCESS_OUTCOMES = {"success", "kept", "completed", "verified"}
 FAILURE_OUTCOMES = {"failure", "failed", "reverted", "timeout", "rejected"}
+PROCESS_ONLY_SOURCE_KINDS = {
+    "autoresearch",
+    "candidate_atom",
+    "codebook_revision",
+    "coding_run",
+    "donor_model_performance",
+    "evidence_unit_extraction",
+    "graph_synthesis",
+    "manual",
+    "qualitative_protocol",
+    "reasoning_bank",
+    "reconciliation",
+    "report_grounding",
+    "retrieval_quality",
+    "skill",
+    "source_ingestion",
+}
+REASONING_BANK_SPINE_NOTICE = (
+    "ReasoningBank memories are process guidance only. They are never report "
+    "evidence, never accepted Atomic Research artifacts, and must not bypass "
+    "source evidence units, independent coding, reliability, reconciliation, "
+    "human-approved Done tasks, or report gates."
+)
 
 _SECRET_PATTERNS = [
     re.compile(
@@ -78,6 +101,24 @@ def _dedupe_tags(tags: list[str]) -> list[str]:
     return out
 
 
+async def _record_reasoning_bank_telemetry(item: ReasoningMemoryItem) -> None:
+    if not item.project_id:
+        return
+    try:
+        from app.core.telemetry import telemetry_recorder
+
+        await telemetry_recorder.record_research_validity_event(
+            operation="reasoning_bank.lesson",
+            project_id=item.project_id,
+            agent_id=item.agent_id or "",
+            skill_name=item.source_kind or "",
+            status="success",
+            quality_score=item.confidence,
+        )
+    except Exception as exc:
+        logger.debug("ReasoningBank telemetry skipped: %s", exc)
+
+
 class ReasoningMemoryService:
     """Persist, retrieve, and summarize distilled reasoning memories."""
 
@@ -114,17 +155,21 @@ class ReasoningMemoryService:
             status=ACTIVE_STATUS,
         )
         item.set_tags(_dedupe_tags(tags or []))
+        if item.source_kind in PROCESS_ONLY_SOURCE_KINDS:
+            item.set_tags(_dedupe_tags([*item.get_tags(), "process-memory-only"]))
         item.set_evidence_refs(evidence_refs or [])
 
         if db is not None:
             db.add(item)
             await db.flush()
+            await _record_reasoning_bank_telemetry(item)
             return item
 
         async with async_session() as session:
             session.add(item)
             await session.commit()
             await session.refresh(item)
+            await _record_reasoning_bank_telemetry(item)
             return item
 
     def extract_memory_items(
@@ -272,7 +317,7 @@ class ReasoningMemoryService:
         project_id: str = "",
     ) -> list[dict]:
         status = str(experiment.get("status", "unknown")).lower()
-        outcome = "success" if experiment.get("kept") else "failure"
+        outcome = "candidate_proposal" if experiment.get("kept") else "failure"
         if status == "failed":
             outcome = "failure"
         trajectory = {
@@ -288,6 +333,9 @@ class ReasoningMemoryService:
             "score_stddev": experiment.get("score_stddev"),
             "confidence_interval_95": experiment.get("confidence_interval_95"),
             "error_message": experiment.get("error_message"),
+            "research_spine_policy": experiment.get("research_spine_policy"),
+            "governance_required": experiment.get("governance_required"),
+            "mutation_live_after_measurement": experiment.get("mutation_live_after_measurement"),
         }
         return await self.record_trace(
             project_id=project_id,
@@ -406,7 +454,10 @@ class ReasoningMemoryService:
         )
         if not memories:
             return ""
-        lines = ["## Relevant Reasoning Memory"]
+        lines = [
+            "## Relevant Reasoning Memory",
+            REASONING_BANK_SPINE_NOTICE,
+        ]
         for memory in memories:
             memory_id = str(memory.get("id", ""))
             content = _guard.wrap_untrusted(

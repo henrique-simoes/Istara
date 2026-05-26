@@ -4,6 +4,7 @@ import uuid
 
 import pytest
 from httpx import ASGITransport, AsyncClient
+from unittest.mock import AsyncMock
 
 from app.config import settings
 from app.core.auth import create_token
@@ -60,6 +61,7 @@ async def test_reasoning_bank_redacts_and_retrieves_project_scoped_memory():
     assert stored
     assert "super-secret-value" not in stored[0]["content"]
     assert "[REDACTED]" in stored[0]["content"]
+    assert "process-memory-only" in stored[0]["tags"]
 
     matches = await reasoning_bank.retrieve(
         project_id=project_id,
@@ -74,6 +76,37 @@ async def test_reasoning_bank_redacts_and_retrieves_project_scoped_memory():
         limit=3,
     )
     assert all(item["id"] != stored[0]["id"] for item in isolated)
+
+
+@pytest.mark.asyncio
+async def test_reasoning_bank_records_content_free_validity_telemetry(monkeypatch):
+    await init_db()
+    record = AsyncMock()
+    monkeypatch.setattr(
+        "app.core.telemetry.telemetry_recorder.record_research_validity_event",
+        record,
+    )
+
+    await reasoning_bank.record_memory(
+        project_id="reasoning-project-telemetry",
+        agent_id="istara-main",
+        source_kind="coding_run",
+        outcome="success",
+        title="Reusable coding lesson",
+        content="Do not expose this lesson body through telemetry.",
+        tags=["coding-run"],
+        confidence=0.82,
+    )
+
+    record.assert_awaited_once()
+    _, kwargs = record.await_args
+    assert kwargs["operation"] == "reasoning_bank.lesson"
+    assert kwargs["project_id"] == "reasoning-project-telemetry"
+    assert kwargs["agent_id"] == "istara-main"
+    assert kwargs["skill_name"] == "coding_run"
+    assert kwargs["quality_score"] == 0.82
+    assert "content" not in kwargs
+    assert "lesson body" not in str(kwargs)
 
 
 @pytest.mark.asyncio
@@ -115,6 +148,8 @@ async def test_reasoning_bank_defaults_to_project_only_and_requires_global_opt_i
     )
     assert "Project-only" in default_context
     assert "Global" not in default_context
+    assert "process guidance only" in default_context
+    assert "never report evidence" in default_context
 
     explicit_matches = await reasoning_bank.retrieve(
         project_id=project_id,

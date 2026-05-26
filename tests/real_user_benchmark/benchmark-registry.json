@@ -1,15 +1,16 @@
 {
-  "version": "2026-05-09.3",
+  "version": "2026-05-23.1",
   "benchmark_id": "istara-real-user-ux-research-longform",
   "purpose": "Longitudinal, human-in-the-loop UX research benchmark that complements deterministic Istara scenario, eval, security, and long-horizon benchmark suites.",
   "non_duplication_policy": "Do not re-run or re-implement classical deterministic studies from tests/simulation, tests/evals, tests/benchmarks, or scripts/security_benchmark.py inside this benchmark. Treat those suites as baseline evidence. This benchmark should test realistic cross-feature user behavior, longitudinal usefulness, integration ergonomics, compute donation, and human review quality.",
   "default_run_contract": {
     "non_plan_runs_require_compute_donation": true,
     "non_plan_runs_require_non_empty_live_chat": true,
-    "force_donated_chat_when_compute_required": true,
-    "storage_guardrail": "Colima autostart uses --root-disk 10 --disk 10 and records actual/apparent storage snapshots with 10GB actual and 20GB apparent budgets.",
-    "client_sandbox_policy": "Server sandboxing and client/donor sandboxing are independent. External Istara servers can receive donated compute from disposable benchmark containers.",
-    "multi_donor_policy": "Default comparison uses one Gemma donor. Multi-donor runs require per-donor pre-provisioned OpenAI-compatible/LM Studio endpoints and connection strings; missing Qwen endpoints are blockers, not downloads.",
+    "force_donated_chat_when_compute_required": false,
+    "storage_guardrail": "General Colima autostart uses --root-disk 10 --disk 10 and records actual/apparent storage snapshots with 10GB actual and 20GB apparent budgets. The host-managed three-model probe raises Colima memory to 12GB for the two llama.cpp donors.",
+    "client_sandbox_policy": "Server sandboxing and client/donor sandboxing are independent. The canonical three-model probe is host-managed: Mac Studio runs Istara and the admin user, while Colima runs only disposable researcher clients and donor model/relay containers.",
+    "multi_donor_policy": "Default comparison uses one Gemma donor. The local three-model topology is ISTARA_BENCHMARK_DONOR_TOPOLOGY=macstudio-colima-qwen-gemma with ISTARA_BENCHMARK_SKIP_SANDBOX=1, pairing the configured Mac Studio Gemma donor with already-downloaded Qwen3.5 4B Q4 and Gemma 4 E2B Q4 llama.cpp donors. Other multi-donor runs require per-donor pre-provisioned OpenAI-compatible/LM Studio endpoints and connection strings; missing local GGUF files or endpoints are blockers, not downloads. Ordinary research work uses Istara's normal scheduler; forced relay mode is an explicit technical isolation override only. Benchmark-owned Colima containers are removed and Colima is stopped after the canonical three-model run unless explicit keep/debug flags are set.",
+    "document_corpus_policy": "Document-heavy probe/full runs use tests/document_corpus/canonical/ through the shared Istara corpus helper and should materialize at least 120 long-form canonical sources before scoring corpus grounding as representative.",
     "opt_out": "Set ISTARA_BENCHMARK_REQUIRE_COMPUTE_DONATION=0 and ISTARA_BENCHMARK_REQUIRE_LIVE_CHAT=0 only for offline harness debugging, not comparison runs."
   },
   "live_model_profile": {
@@ -45,7 +46,7 @@
     {
       "area": "live chat and donated compute routing",
       "baseline": "testing/TESTING_STRATEGY.md live LLM contract and tests/integration/test_llm_orchestration_real.py",
-      "benchmark_role": "Prove that realistic chat turns return non-empty output through the donated compute path before scoring researcher usefulness."
+      "benchmark_role": "Prove that realistic chat turns return non-empty live output and record whether project-scoped compute counters show donated/pooled compute usage under Istara's normal scheduler."
     },
     {
       "area": "tool calling and ReAct skill use",
@@ -70,13 +71,13 @@
     {
       "area": "ensemble and MoA health",
       "baseline": "tests/agentic_eval_contract.json ensemble orchestration suite",
-      "benchmark_role": "Record compute-health and ensemble/MoA readiness evidence; multi-donor runs wait for the requested relay-node count and preserve route evidence before scoring ensemble readiness."
+      "benchmark_role": "Record compute-health and ensemble/MoA readiness evidence; multi-donor runs wait for the requested relay-node count and preserve natural scheduler route/counter evidence before scoring ensemble readiness."
     }
   ],
   "future_multi_donor_profiles": [
     {
       "id": "donor-admin-gemma4",
-      "persona": "admin/server-side benchmark researcher workstation",
+      "persona": "Mac Studio benchmark donor using the existing configured live-test model",
       "model": "google/gemma-4-e4b",
       "provider": "LM Studio/OpenAI-compatible",
       "enabled_by_default": true,
@@ -86,13 +87,23 @@
     },
     {
       "id": "donor-researcher-qwen35-4b",
-      "persona": "future separate researcher workstation",
+      "persona": "simulated researcher workstation donor",
       "model": "Qwen3.5-4B",
       "provider": "LM Studio/OpenAI-compatible",
       "enabled_by_default": false,
       "model_download_allowed": false,
-      "runtime_status": "endpoint-gated-donor",
-      "notes": "Activated by ISTARA_BENCHMARK_DONOR_COUNT=2 plus a provisioned endpoint such as ISTARA_BENCHMARK_DONOR_2_LLM_HOST or ISTARA_BENCHMARK_QWEN_LLM_HOST. Do not download or autoload this model until explicitly provisioned by the user."
+      "runtime_status": "local-three-model-preset-donor",
+      "notes": "Activated by ISTARA_BENCHMARK_DONOR_TOPOLOGY=macstudio-colima-qwen-gemma or by ISTARA_BENCHMARK_DONOR_COUNT=2 plus a provisioned endpoint. The preset points llama.cpp at an already downloaded local Q4 file and must not download a missing model."
+    },
+    {
+      "id": "donor-researcher-gemma4-e2b",
+      "persona": "simulated researcher workstation donor",
+      "model": "Gemma 4 E2B Q4",
+      "provider": "LM Studio/OpenAI-compatible or llama.cpp",
+      "enabled_by_default": false,
+      "model_download_allowed": false,
+      "runtime_status": "local-three-model-preset-donor",
+      "notes": "Activated by ISTARA_BENCHMARK_DONOR_TOPOLOGY=macstudio-colima-qwen-gemma or by ISTARA_BENCHMARK_DONOR_COUNT=3 plus a provisioned endpoint/model-server sandbox. The preset points llama.cpp at an already downloaded Q4 file and must not download a missing model."
     }
   ],
   "industry_alignment": [

@@ -7,6 +7,7 @@ import pytest
 from httpx import ASGITransport, AsyncClient
 
 from app.config import settings
+from app.api.routes import connections as connection_routes
 from app.core.auth import create_token
 from app.core.connection_string import decode_connection_string
 from app.main import app
@@ -19,15 +20,18 @@ from app.models.task import Task, TaskStatus
 
 
 @pytest.fixture(autouse=True)
-def reset_settings():
+def reset_settings(monkeypatch):
     original_team_mode = settings.team_mode
     original_jwt_secret = settings.jwt_secret
+    original_network_token = settings.network_access_token
+    monkeypatch.setattr(connection_routes, "persist_env_value", lambda key, value: None)
     if not settings.jwt_secret:
         settings.jwt_secret = "test-secret"
     settings.team_mode = True
     yield
     settings.team_mode = original_team_mode
     settings.jwt_secret = original_jwt_secret
+    settings.network_access_token = original_network_token
 
 
 def _headers(user_id: str, username: str, role: str) -> dict[str, str]:

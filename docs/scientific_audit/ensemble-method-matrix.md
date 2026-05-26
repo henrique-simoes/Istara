@@ -1,0 +1,19 @@
+# Ensemble Method Matrix
+
+Spec: CF-SPEC-123 / CF-1581; CF-SPEC-124 / CF-1590
+
+| Method | Implementation Surface | Current Behavior | Classification | Action |
+| --- | --- | --- | --- | --- |
+| Compute-aware default selection | `backend/app/core/adaptive_validation.py` | Chooses full ensemble when 3+ distinct healthy project-authorized models exist, dual-run when 2 exist, and Self-MoA when constrained. | Scientifically aligned as orchestration policy | Documented in README and feature docs. |
+| Full ensemble / Mixture-of-Agents inspired validation | `backend/app/core/validation.py` | Calls up to 3 diverse healthy authorized servers and computes consensus over responses. | Acceptable heuristic | README now says MoA-inspired validation, not guaranteed formal MoA layering. |
+| Dual-run validation | `backend/app/core/validation.py` | Uses two diverse healthy servers when available; falls back to Self-MoA if fewer than two responses. | Scientifically reasonable heuristic | Keep tests focused on project scope and diversity. |
+| Self-MoA fallback | `backend/app/core/validation.py` | Repeats one model with temperature variation and consensus scoring. | Acceptable constrained-compute fallback | README now frames as fallback signal. |
+| Adversarial review | `backend/app/core/validation.py` | One draft response and one critique/refinement pass. | Acceptable heuristic | Do not claim this alone proves consensus. |
+| Debate rounds | `backend/app/core/validation.py` | Iterative refinement using router calls; may reuse the same model depending router state. | Test gap / docs caveat | Future improvement: record route identity per debate round and prefer distinct models when available. |
+| Fleiss' Kappa formula | `backend/app/core/consensus.py` | Standard formula over an N x category-count matrix. | Scientifically faithful formula | Keep formula tests. |
+| Qualitative coding protocol | `backend/app/core/research_validity.py` | Coding prompts deterministically inject protected qualitative protocol, active codebook, evidence units, and reliability policy. | Scientifically aligned scaffold | Models must code phrases/segments, not keywords. |
+| Evidence-unit segmentation | `backend/app/core/research_validity.py`, `backend/app/models/research_validity.py` | Stable speaker-turn/paragraph/sentence units receive IDs, spans, method/phase metadata, and provenance. | Correct substrate | Retrieval chunks are search support, not the coding substrate. |
+| Fleiss' Kappa input semantics | `backend/app/core/research_validity.py`, `backend/app/core/consensus.py` | Formal research-validity path computes over evidence-unit by rater coding matrices; legacy final-response consensus remains a heuristic. | Corrected contract | Docs/tests distinguish formal coding reliability from response-level consensus. |
+| Kappa >= 0.60 enforcement | `backend/app/core/research_validity.py`, `backend/app/api/routes/code_applications.py` | Reliability gate returns accepted/needs_reconciliation/needs_human_review; bulk code approval requires accepted reliability and promotion status. | Contract enforced for code review path | Downstream agent pipelines must use the same promotion policy before report evidence. |
+| Low-consensus promotion | `backend/app/core/research_validity.py`, reports code | Low agreement routes to reconciliation or human review; Reports remain gated by approved Done tasks. | Human-in-loop architecture | In Review tasks and unreconciled evidence are not report evidence. |
+| Route/model identity evidence | `backend/app/models/code_application.py`, `backend/app/models/research_validity.py`, telemetry spans | Code applications and coding runs can store route/model/donor identity. Reused model identity is rejected as independent ensemble reliability. | Improved evidence | Debate/adversarial paths should attach these records for every validation call. |

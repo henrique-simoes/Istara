@@ -10,6 +10,7 @@ export async function run(ctx) {
   if (!ctx.projectId) {
     return { checks: [{ name: "Skip — no project", passed: false, detail: "No project ID" }], passed: 0, failed: 1 };
   }
+  const projectQuery = `project_id=${encodeURIComponent(ctx.projectId)}`;
 
   // 1. Ensure default session
   let defaultSession = null;
@@ -56,7 +57,7 @@ export async function run(ctx) {
   // 4. Get session details
   if (testSession) {
     try {
-      const detail = await api.get(`/api/sessions/detail/${testSession.id}`);
+      const detail = await api.get(`/api/sessions/detail/${testSession.id}?${projectQuery}`);
       checks.push({
         name: "Get session details",
         passed: detail.id === testSession.id,
@@ -70,7 +71,7 @@ export async function run(ctx) {
   // 5. Rename session
   if (testSession) {
     try {
-      const updated = await api.patch(`/api/sessions/${testSession.id}`, {
+      const updated = await api.patch(`/api/sessions/${testSession.id}?${projectQuery}`, {
         title: "[SIM] Renamed Session",
       });
       checks.push({
@@ -86,7 +87,7 @@ export async function run(ctx) {
   // 6. Star session
   if (testSession) {
     try {
-      const starResult = await api.post(`/api/sessions/${testSession.id}/star`, {});
+      const starResult = await api.post(`/api/sessions/${testSession.id}/star?${projectQuery}`, {});
       checks.push({
         name: "Star session",
         passed: typeof starResult.starred === "boolean",
@@ -124,7 +125,7 @@ export async function run(ctx) {
   // 8. Delete test session (cleanup)
   if (testSession) {
     try {
-      await api.delete(`/api/sessions/${testSession.id}`);
+      await api.delete(`/api/sessions/${testSession.id}?${projectQuery}`);
       checks.push({ name: "Delete session", passed: true, detail: "" });
     } catch (e) {
       checks.push({ name: "Delete session", passed: false, detail: e.message });

@@ -10,6 +10,7 @@ export async function run(ctx) {
   if (!ctx.projectId) {
     return { checks: [{ name: "Skip — no project", passed: false, detail: "No project ID" }], passed: 0, failed: 1 };
   }
+  const projectQuery = `project_id=${encodeURIComponent(ctx.projectId)}`;
 
   // 1. Create a task with empty notes — verify endpoint should flag it
   let taskId = null;
@@ -29,7 +30,7 @@ export async function run(ctx) {
   // 2. Move to in_review with no notes
   if (taskId) {
     try {
-      await api.post(`/api/tasks/${taskId}/move?status=in_review`);
+      await api.post(`/api/tasks/${taskId}/move?status=in_review&${projectQuery}`);
       checks.push({ name: "Move to in_review", passed: true, detail: "" });
     } catch (e) {
       checks.push({ name: "Move to in_review", passed: false, detail: e.message });
@@ -39,7 +40,7 @@ export async function run(ctx) {
   // 3. Call verify — should fail (empty notes)
   if (taskId) {
     try {
-      const result = await api.post(`/api/tasks/${taskId}/verify`);
+      const result = await api.post(`/api/tasks/${taskId}/verify?${projectQuery}`);
       checks.push({
         name: "Verify rejects empty notes",
         passed: result.verified === false,
@@ -53,11 +54,11 @@ export async function run(ctx) {
   // 4. Add error notes and verify — should still fail
   if (taskId) {
     try {
-      await api.patch(`/api/tasks/${taskId}`, {
+      await api.patch(`/api/tasks/${taskId}?${projectQuery}`, {
         agent_notes: "Error: No files provided for analysis.",
         progress: 1.0,
       });
-      const result = await api.post(`/api/tasks/${taskId}/verify`);
+      const result = await api.post(`/api/tasks/${taskId}/verify?${projectQuery}`);
       checks.push({
         name: "Verify rejects error notes",
         passed: result.verified === false,
@@ -71,11 +72,11 @@ export async function run(ctx) {
   // 5. Add valid notes and verify — should pass and move to done
   if (taskId) {
     try {
-      await api.patch(`/api/tasks/${taskId}`, {
+      await api.patch(`/api/tasks/${taskId}?${projectQuery}`, {
         agent_notes: "[SIM] Analysis complete. Found 5 key themes: onboarding friction, search preference, mobile usage, export complexity, and organization overhead. Extracted 12 nuggets, 3 facts, and 2 insights.",
         progress: 1.0,
       });
-      const result = await api.post(`/api/tasks/${taskId}/verify`);
+      const result = await api.post(`/api/tasks/${taskId}/verify?${projectQuery}`);
       checks.push({
         name: "Verify accepts valid notes",
         passed: result.verified === true,
@@ -100,12 +101,12 @@ export async function run(ctx) {
       description: "Task for testing progress check",
     });
     task2Id = task.id;
-    await api.post(`/api/tasks/${task2Id}/move?status=in_review`);
-    await api.patch(`/api/tasks/${task2Id}`, {
+    await api.post(`/api/tasks/${task2Id}/move?status=in_review&${projectQuery}`);
+    await api.patch(`/api/tasks/${task2Id}?${projectQuery}`, {
       agent_notes: "Partial analysis done. Identified 2 themes so far but need more data.",
       progress: 0.5,
     });
-    const result = await api.post(`/api/tasks/${task2Id}/verify`);
+    const result = await api.post(`/api/tasks/${task2Id}/verify?${projectQuery}`);
     checks.push({
       name: "Verify rejects incomplete progress",
       passed: result.verified === false,
@@ -118,7 +119,7 @@ export async function run(ctx) {
   // Cleanup
   for (const id of [taskId, task2Id]) {
     if (id) {
-      try { await api.delete(`/api/tasks/${id}`); } catch {}
+      try { await api.delete(`/api/tasks/${id}?${projectQuery}`); } catch {}
     }
   }
 

@@ -12,6 +12,7 @@ from app.core.llm_output import (
     visible_assistant_content,
     visible_assistant_message,
 )
+from app.core.compute_route_evidence import attach_route_evidence
 from app.core.llm_schema_adapter import provider_response_format_fields
 from app.core.llm_thinking import apply_thinking_control
 
@@ -67,7 +68,13 @@ class ComputeNodeInvocationMixin:
                     "project_id": project_id,
                 },
             )
-            return response.get("result", {})
+            return attach_route_evidence(
+                response.get("result", {}),
+                self,
+                route_kind="chat",
+                project_id=project_id,
+                model=self._resolve_model(model),
+            )
 
         client = await self._get_client()
 
@@ -89,7 +96,13 @@ class ComputeNodeInvocationMixin:
             message = data.get("message")
             if isinstance(message, dict):
                 data["message"] = visible_assistant_message(message)
-            return data
+            return attach_route_evidence(
+                data,
+                self,
+                route_kind="chat",
+                project_id=project_id,
+                model=self._resolve_model(model),
+            )
         elif self.is_anthropic:
             payload = self._anthropic_payload(
                 msgs,
@@ -101,7 +114,13 @@ class ComputeNodeInvocationMixin:
             )
             resp = await client.post(self._openai_endpoint("messages"), json=payload)
             resp.raise_for_status()
-            return self._normalize_anthropic_response(resp.json())
+            return attach_route_evidence(
+                self._normalize_anthropic_response(resp.json()),
+                self,
+                route_kind="chat",
+                project_id=project_id,
+                model=self._resolve_model(model),
+            )
         else:
             payload = {
                 "model": self._resolve_model(model),
@@ -129,7 +148,13 @@ class ComputeNodeInvocationMixin:
             if message.get("tool_calls"):
                 result["message"]["tool_calls"] = message["tool_calls"]
                 result["finish_reason"] = choice.get("finish_reason", "tool_calls")
-            return result
+            return attach_route_evidence(
+                result,
+                self,
+                route_kind="chat",
+                project_id=project_id,
+                model=self._resolve_model(model),
+            )
 
     async def chat_stream(
         self,
@@ -418,6 +443,18 @@ class ComputeNodeInvocationMixin:
             "priority": self.priority,
             "latency_ms": self.latency_ms,
             "active_requests": self.active_requests,
+            "selected_request_count": self.selected_request_count,
+            "served_request_count": self.served_request_count,
+            "failed_request_count": self.failed_request_count,
+            "last_selected_at": self.last_selected_at,
+            "last_served_at": self.last_served_at,
+            "last_failed_at": self.last_failed_at,
+            "last_route_kind": self.last_route_kind,
+            "last_selected_project_id": self.last_selected_project_id,
+            "last_served_project_id": self.last_served_project_id,
+            "last_selected_model": self.last_selected_model,
+            "last_served_model": self.last_served_model,
+            "last_failure_error": self.last_failure_error,
             "score": round(self.score(), 1) if self.score() >= 0 else 0,
             "alive": is_ready,
             "ram_total_gb": self.ram_total_gb,

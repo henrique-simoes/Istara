@@ -55,20 +55,24 @@ async def test_laws_list_requires_auth():
 async def test_laws_compliance_returns_response(auth_headers):
     """GET /api/laws/compliance/{project_id} returns compliance data."""
     await init_db()
+    project_id = f"law-compliance-{uuid.uuid4()}"
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
-        response = await ac.get("/api/laws/compliance/test-project", headers=auth_headers)
-        assert response.status_code in (200, 404, 500)
+        response = await ac.get(f"/api/laws/compliance/{project_id}", headers=auth_headers)
+    assert response.status_code == 200
+    assert "by_law" in response.json()
 
 
 @pytest.mark.asyncio
 async def test_laws_radar_returns_response(auth_headers):
     """GET /api/laws/compliance/{project_id}/radar returns radar data."""
     await init_db()
+    project_id = f"law-radar-{uuid.uuid4()}"
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
-        response = await ac.get("/api/laws/compliance/test-project/radar", headers=auth_headers)
-        assert response.status_code in (200, 404, 500)
+        response = await ac.get(f"/api/laws/compliance/{project_id}/radar", headers=auth_headers)
+    assert response.status_code == 200
+    assert {"categories", "category_scores", "detailed_axes"}.issubset(response.json())
 
 
 @pytest.mark.asyncio

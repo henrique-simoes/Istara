@@ -13,6 +13,7 @@ from app.main import app
 from app.config import settings
 from app.models.database import init_db
 from app.core.auth import create_token
+from app.skills.base import SkillOutput
 
 
 @pytest.fixture(autouse=True)
@@ -357,6 +358,49 @@ async def test_execute_skill_enforces_route_timeout(monkeypatch):
 
     assert exc.value.status_code == 504
     assert "timed out" in exc.value.detail
+
+
+@pytest.mark.asyncio
+async def test_execute_skill_exposes_provisional_research_validity(monkeypatch):
+    """Skill execution responses cannot present candidate output as reportable."""
+
+    async def allow_active_project(*args, **kwargs):
+        return SimpleNamespace(id="project-1", is_paused=False)
+
+    class SelfPromotingSkillAgent:
+        async def execute_skill(self, **kwargs):
+            return SkillOutput(
+                success=True,
+                summary="Skill generated candidate evidence.",
+                research_validity={"status": "accepted", "report_allowed": True},
+                nuggets=[
+                    {
+                        "text": "A model-generated observation.",
+                        "source": "skill",
+                        "tags": ["friction"],
+                        "research_validity": {
+                            "status": "accepted",
+                            "report_allowed": True,
+                        },
+                    }
+                ],
+            )
+
+    monkeypatch.setattr(skills_route.registry, "get", lambda name: object())
+    monkeypatch.setattr(skills_route, "get_active_project_or_404", allow_active_project)
+    monkeypatch.setattr(skills_route, "agent", SelfPromotingSkillAgent())
+
+    response = await skills_route.execute_skill(
+        "candidate-skill",
+        skills_route.SkillExecuteRequest(project_id="project-1", timeout_seconds=0.1),
+        _request(),
+        db=None,
+    )
+
+    assert response["artifact_state"] == "skill_output_candidate"
+    assert response["report_allowed"] is False
+    assert response["research_validity"]["status"] == "provisional"
+    assert response["research_validity"]["report_allowed"] is False
 
 
 @pytest.mark.asyncio

@@ -11,6 +11,7 @@ from app.models.database import async_session, init_db
 from app.core.auth import create_token
 from app.models.document import Document, DocumentSource, DocumentStatus
 from app.models.project import Project
+from app.models.research_validity import EvidenceUnit
 from app.models.task import Task, TaskStatus
 
 
@@ -111,10 +112,63 @@ async def test_documents_search_returns_list(auth_headers):
 async def test_documents_sync_returns_response(auth_headers):
     """POST /api/documents/sync/{project_id} triggers file sync."""
     await init_db()
+    project_id = f"doc-sync-empty-{uuid.uuid4()}"
+    async with async_session() as db:
+        db.add(Project(id=project_id, name="Document Sync Empty Project"))
+        await db.commit()
+
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
-        response = await ac.post("/api/documents/sync/test-project", headers=auth_headers)
-        assert response.status_code in (200, 422, 404, 500, 502)
+        response = await ac.post(f"/api/documents/sync/{project_id}", headers=auth_headers)
+
+    assert response.status_code == 200
+    assert {"synced", "total"}.issubset(response.json())
+
+
+@pytest.mark.asyncio
+async def test_document_create_registers_raw_source_evidence_units(auth_headers):
+    """Document creation must enter the Research Spine as raw source units."""
+    await init_db()
+    project_id = f"doc-spine-create-{uuid.uuid4()}"
+    async with async_session() as db:
+        db.add(Project(id=project_id, name="Document Spine Create Project"))
+        await db.commit()
+
+    source_text = (
+        "Participant: Export is hidden behind too many menus.\n\n"
+        "Moderator: What did you expect to happen next?"
+    )
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        response = await ac.post(
+            "/api/documents",
+            headers=auth_headers,
+            json={
+                "project_id": project_id,
+                "title": "Interview Note",
+                "file_name": "interview-note.txt",
+                "file_type": ".txt",
+                "content_text": source_text,
+            },
+        )
+
+    assert response.status_code == 201
+    payload = response.json()
+    assert payload["research_spine"]["artifact_state"] == "raw_source"
+    assert payload["research_spine"]["source_evidence_units"] >= 2
+    assert payload["research_spine"]["report_allowed"] is False
+
+    async with async_session() as db:
+        units = (
+            await db.execute(
+                select(EvidenceUnit).where(EvidenceUnit.source_document_id == payload["id"])
+            )
+        ).scalars().all()
+
+    assert len(units) == payload["research_spine"]["source_evidence_units"]
+    assert {unit.unit_type for unit in units} == {"source_span"}
+    assert all(unit.source_id.startswith(f"document:{payload['id']}:v1") for unit in units)
+    assert any("Export is hidden" in unit.source_text for unit in units)
 
 
 @pytest.mark.asyncio
@@ -171,6 +225,47 @@ async def test_documents_sync_dedupes_by_resolved_path_not_filename(
 
     assert len(docs) == 2
     assert str(second_file.resolve()) in {Path(doc.file_path).resolve().as_posix() for doc in docs}
+
+
+@pytest.mark.asyncio
+async def test_documents_sync_registers_raw_source_evidence_units(
+    auth_headers, tmp_path, monkeypatch
+):
+    """Folder sync must not leave imported text outside the Research Spine."""
+    await init_db()
+    monkeypatch.setattr(settings, "lance_db_path", str(tmp_path / "lance"))
+
+    project_id = f"doc-sync-spine-{uuid.uuid4()}"
+    watch_dir = tmp_path / "watch"
+    watch_dir.mkdir()
+    source_file = watch_dir / "support-notes.txt"
+    source_file.write_text(
+        "Participant: The search filter resets every time.\n\n"
+        "Observer: The participant repeated the workaround twice.",
+        encoding="utf-8",
+    )
+
+    async with async_session() as db:
+        db.add(Project(id=project_id, name="Document Sync Spine Project", watch_folder_path=str(watch_dir)))
+        await db.commit()
+
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        response = await ac.post(f"/api/documents/sync/{project_id}", headers=auth_headers)
+
+    assert response.status_code == 200
+    assert response.json()["synced"] == 1
+
+    async with async_session() as db:
+        doc = (
+            await db.execute(select(Document).where(Document.project_id == project_id))
+        ).scalar_one()
+        units = (
+            await db.execute(select(EvidenceUnit).where(EvidenceUnit.source_document_id == doc.id))
+        ).scalars().all()
+
+    assert len(units) >= 2
+    assert all(unit.unit_type == "source_span" for unit in units)
 
 
 @pytest.mark.asyncio

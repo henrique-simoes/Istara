@@ -187,10 +187,12 @@ function UserAvatar({ name, size = "md" }: { name: string; size?: "sm" | "md" })
 function CredentialsCard({
   username,
   password,
+  recoveryCodes,
   onDismiss,
 }: {
   username: string;
   password: string;
+  recoveryCodes: string[];
   onDismiss: () => void;
 }) {
   const [copiedField, setCopiedField] = useState<string | null>(null);
@@ -223,7 +225,7 @@ function CredentialsCard({
         </button>
       </div>
       <p className="text-xs text-green-700 dark:text-green-400 mb-3">
-        Share these credentials with your team member. They can change their password after first login.
+        Share these credentials and recovery codes securely. Codes are shown once; the user can change their password and add a passkey after first login.
       </p>
       <div className="space-y-2">
         <div className="flex items-center justify-between bg-white dark:bg-slate-900 rounded px-3 py-1.5 border border-green-200 dark:border-green-800">
@@ -256,6 +258,25 @@ function CredentialsCard({
             {copiedField === "password" ? <Check size={14} className="text-green-600" /> : <Copy size={14} />}
           </button>
         </div>
+        {recoveryCodes.length > 0 && (
+          <div className="bg-white dark:bg-slate-900 rounded px-3 py-2 border border-green-200 dark:border-green-800">
+            <div className="mb-1 flex items-center justify-between">
+              <span className="text-xs text-slate-500">Recovery codes</span>
+              <button
+                onClick={() => copyToClipboard(recoveryCodes.join("\n"), "recovery")}
+                className="p-1 rounded hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400 hover:text-slate-600"
+                aria-label="Copy recovery codes"
+              >
+                {copiedField === "recovery" ? <Check size={14} className="text-green-600" /> : <Copy size={14} />}
+              </button>
+            </div>
+            <div className="grid grid-cols-2 gap-1 font-mono text-xs text-slate-900 dark:text-white">
+              {recoveryCodes.map((code) => (
+                <span key={code}>{code}</span>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -542,6 +563,7 @@ export default function UserManagement() {
   const [createdCredentials, setCreatedCredentials] = useState<{
     username: string;
     password: string;
+    recoveryCodes: string[];
   } | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<ReclawUser | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -564,18 +586,19 @@ export default function UserManagement() {
   };
 
   useEffect(() => {
-    if (teamMode) {
+    if (teamMode && isAdmin) {
       fetchUsers();
     } else {
+      setUserList([]);
       setLoading(false);
     }
-  }, [teamMode]);
+  }, [teamMode, isAdmin]);
 
   // Don't render if team mode is not active
-  if (!teamMode) return null;
+  if (!teamMode || !isAdmin) return null;
 
   const handleCreated = (user: ReclawUser, password: string) => {
-    setCreatedCredentials({ username: user.username, password });
+    setCreatedCredentials({ username: user.username, password, recoveryCodes: user.recovery_codes || [] });
     setShowInviteForm(false);
     fetchUsers();
   };
@@ -632,6 +655,7 @@ export default function UserManagement() {
         <CredentialsCard
           username={createdCredentials.username}
           password={createdCredentials.password}
+          recoveryCodes={createdCredentials.recoveryCodes}
           onDismiss={() => setCreatedCredentials(null)}
         />
       )}

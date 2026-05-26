@@ -6,11 +6,22 @@ export const id = "78-real-time-voice";
 export async function run(ctx) {
   const { page, screenshot } = ctx;
   const checks = [];
+  if (!ctx.projectId) {
+    return {
+      checks: [{ name: "Project available for real-time voice", passed: false, detail: "No persistent project from runner" }],
+      passed: 0,
+      failed: 1,
+      summary: "Real-Time Voice: 0/1 passed",
+    };
+  }
 
   try {
     // 1. Navigate to Chat directly
     await page.goto(ctx.frontendUrl, { waitUntil: "domcontentloaded", timeout: 15000 });
-    await page.evaluate(() => localStorage.setItem("istara_active_view", "chat")).catch(() => {});
+    await page.evaluate((projectId) => {
+      localStorage.setItem("istara-active-project", projectId);
+      localStorage.setItem("istara_active_view", "chat");
+    }, ctx.projectId).catch(() => {});
     await page.reload({ waitUntil: "domcontentloaded", timeout: 15000 }).catch(() => {});
     await page.waitForSelector('button[aria-label="Chat"], main', { timeout: 15000 }).catch(() => {});
     await page.evaluate(() => window.dispatchEvent(new CustomEvent("istara:navigate", { detail: "chat" })));

@@ -138,7 +138,7 @@ def _make_schema_strict(schema: Any) -> dict:
 
 
 def _normalized_skill_output_response_format(skill_name: str) -> dict:
-    """Return the compact schema Istara needs to normalize skill results."""
+    """Return the compact schema Istara needs to normalize candidate skill results."""
     return openai_json_schema_response_format(
         name=f"{skill_name.replace('-', '_')}_normalized_output",
         schema=_make_schema_strict(
@@ -617,7 +617,9 @@ def create_skill(
                     "}\n"
                     "Keep arrays concise: at most "
                     f"{item_limit} nuggets, {item_limit} facts, {item_limit} insights, "
-                    f"and {item_limit} recommendations unless the data clearly requires fewer."
+                    f"and {item_limit} recommendations unless the data clearly requires fewer. "
+                    "All returned findings are candidate/provisional Research Spine artifacts, not accepted "
+                    "or reportable evidence."
                 )
             else:
                 output_contract = output_schema[: settings.skill_schema_prompt_char_limit]
@@ -637,18 +639,30 @@ def create_skill(
                     f"<research_data>\n"
                     f"{research_data}\n"
                     f"</research_data>\n\n"
+                    f"<research_spine_contract>\n"
+                    f"Sources and exact source spans come before trusted Atomic Research. "
+                    f"Return only candidate/provisional atoms, facts, insights, and recommendations. "
+                    f"Do not present documents -> nuggets -> facts -> insights as trusted before "
+                    f"independent extraction/coding, reliability/reconciliation, and Done-task gates. "
+                    f"Every candidate nugget should include a source, quote/span/location when available, "
+                    f"and code-ready tags for later independent coding.\n"
+                    f"</research_spine_contract>\n\n"
                     f"<instructions>\n"
                     f"1. **Think First**: Analyze the research data against the methodology privately.\n"
-                    f"2. **Extract Evidence**: Find exact nuggets (quotes) with source tracking.\n"
-                    f"3. **Synthesize**: Move from nuggets to facts, then to high-level insights.\n"
+                    f"2. **Propose Candidate Evidence**: Find exact source quotes/spans and mark them as provisional.\n"
+                    f"3. **Propose Candidate Synthesis**: Derive candidate facts, insights, and recommendations only from those spans.\n"
                     f"4. **Format**: Respond only with a valid JSON object matching the output contract.\n"
-                    f"5. **Be concise**: Prefer the strongest evidence and avoid exhaustive lists.\n"
+                    f"5. **Do Not Promote**: Do not describe any artifact as accepted, trusted, or reportable.\n"
+                    f"6. **Be concise**: Prefer the strongest evidence and avoid exhaustive lists.\n"
                     f"</instructions>\n\n"
                     f"## Output Contract\n"
                     f"{output_contract}"
                 )
 
-            system_prompt = "You are a meticulous UX Research Auditor. You prioritize evidence over assumption."
+            system_prompt = (
+                "You are a meticulous UX Research Auditor. You prioritize evidence over assumption. "
+                "Your skill output is candidate/provisional until Istara's Research Spine accepts it."
+            )
             skill_context_limit = min(
                 max(settings.max_context_tokens, 2048),
                 max(2048, settings.skill_execute_context_limit_tokens),
@@ -768,8 +782,9 @@ def create_skill(
                 plain_repair_prompt = (
                     "You are converting a UX research skill result into Istara JSON.\n"
                     "Return one valid JSON object only. No markdown, no commentary, no hidden reasoning.\n"
-                    "The object must contain summary, nuggets, facts, insights, recommendations, and suggestions.\n"
-                    "Use empty arrays when evidence is missing.\n\n"
+                        "The object must contain provisional candidate summary, nuggets, facts, insights, recommendations, and suggestions.\n"
+                        "Atomic Research artifacts are not trusted at this stage; use exact source spans where available.\n"
+                        "Use empty arrays when evidence is missing.\n\n"
                     f"Skill: {self.name}\n"
                     f"Display name: {display}\n"
                     f"Research data sample:\n{data_content[:2500]}\n\n"
@@ -834,9 +849,10 @@ def create_skill(
             if finding_count() == 0 and use_empty_findings_repair:
                 empty_findings_prompt = (
                     "The previous skill JSON was syntactically valid but contained no Istara findings.\n"
-                    "Extract concise evidence-backed findings from the research data and return one JSON object only.\n"
+                    "Extract concise candidate/provisional evidence-backed findings from the research data and return one JSON object only.\n"
                     "Required keys: summary, nuggets, facts, insights, recommendations, suggestions.\n"
-                    "If the data has any usable evidence, include at least one fact or insight. Do not invent beyond the data.\n\n"
+                    "If the data has usable source evidence, include at least one candidate atom/fact or insight. "
+                    "Do not invent beyond the data, skip exact source spans, or mark anything accepted/reportable.\n\n"
                     f"Skill: {self.name}\n"
                     f"Display name: {display}\n"
                     f"Context:\n{(ctx or skill_input.user_context or '')[:1200]}\n\n"

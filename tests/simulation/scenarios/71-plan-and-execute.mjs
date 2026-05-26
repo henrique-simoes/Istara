@@ -8,17 +8,11 @@ export async function run(ctx) {
   const checks = [];
   let projectId = ctx.projectId;
 
-  // 1. Create a project if needed
   if (!projectId) {
-    try {
-      const project = await api.post("/api/projects", { name: "Plan-Execute Test" });
-      projectId = project.id;
-      checks.push({ name: "Project created", passed: true, detail: projectId });
-    } catch (e) {
-      checks.push({ name: "Project created", passed: false, detail: e.message });
-      return { checks, passed: 0, failed: 1, summary: "Cannot create project" };
-    }
+    checks.push({ name: "Project available", passed: false, detail: "No persistent project from runner" });
+    return { checks, passed: 0, failed: 1, summary: "No project available" };
   }
+  const projectQuery = `project_id=${encodeURIComponent(projectId)}`;
 
   // 2. Create a complex task (no explicit skill — should trigger planning)
   let taskId;
@@ -51,7 +45,7 @@ export async function run(ctx) {
       for (let i = 0; i < 20; i++) {
         await new Promise((r) => setTimeout(r, 3000));
         try {
-          const task = await api.get(`/api/tasks/${taskId}`);
+          const task = await api.get(`/api/tasks/${taskId}?${projectQuery}`);
           if (task.agent_notes && task.agent_notes.includes("Research Plan")) {
             planFound = true;
             // Verify plan JSON structure
@@ -111,7 +105,7 @@ export async function run(ctx) {
   // 4. Verify task model has validation fields
   if (taskId) {
     try {
-      const task = await api.get(`/api/tasks/${taskId}`);
+      const task = await api.get(`/api/tasks/${taskId}?${projectQuery}`);
       checks.push({
         name: "Task has validation fields",
         passed: task.validation_method !== undefined,
@@ -134,6 +128,10 @@ export async function run(ctx) {
     });
   } catch (e) {
     checks.push({ name: "Skills API", passed: false, detail: e.message });
+  }
+
+  if (taskId) {
+    try { await api.delete(`/api/tasks/${taskId}?${projectQuery}`); } catch {}
   }
 
   return {

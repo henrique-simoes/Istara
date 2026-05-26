@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import uuid
 from datetime import datetime
+from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel
@@ -15,28 +16,20 @@ from app.models.database import get_db
 from app.models.design_screen import DesignDecision, DesignScreen
 from app.models.finding import Fact, Insight, Nugget, Recommendation
 from app.core.permissions import get_subject, is_global_admin, require_project_access
+from app.services.finding_validity_service import (
+    chain_research_validity_diagnostics,
+    design_decision_research_validity_map,
+    ensure_project_link_ids,
+    finding_research_validity_map,
+    parse_json_list as _parse_json_list,
+    provisional_finding_validity,
+)
+from app.services.research_validity_service import persist_task_nugget_evidence_units
 
 router = APIRouter()
 
 
-def _parse_json_list(raw) -> list:
-    if isinstance(raw, list):
-        return raw
-    if not raw:
-        return []
-    try:
-        parsed = json.loads(raw)
-    except (json.JSONDecodeError, TypeError):
-        return []
-    return parsed if isinstance(parsed, list) else []
-
-
-async def _require_project_scope(
-    db: AsyncSession,
-    request: Request,
-    project_id: str | None,
-    min_role: str = "viewer",
-) -> str:
+async def _require_project_scope(db: AsyncSession, request: Request, project_id: str | None, min_role: str = "viewer") -> str:
     scoped_project_id = (project_id or "").strip()
     if not scoped_project_id:
         raise HTTPException(status_code=422, detail="project_id is required")
@@ -45,22 +38,10 @@ async def _require_project_scope(
 
 
 async def _get_project_record_or_404(
-    db: AsyncSession,
-    request: Request,
-    model,
-    record_id: str,
-    not_found_detail: str,
-    project_id: str | None,
-    *,
-    min_role: str,
+    db: AsyncSession, request: Request, model, record_id: str, not_found_detail: str, project_id: str | None, *, min_role: str
 ):
     scoped_project_id = await _require_project_scope(db, request, project_id, min_role=min_role)
-    result = await db.execute(
-        select(model).where(
-            model.id == record_id,
-            model.project_id == scoped_project_id,
-        )
-    )
+    result = await db.execute(select(model).where(model.id == record_id, model.project_id == scoped_project_id))
     record = result.scalar_one_or_none()
     if not record:
         raise HTTPException(status_code=404, detail=not_found_detail)
@@ -113,6 +94,7 @@ class NuggetCreate(BaseModel):
 class NuggetResponse(BaseModel):
     id: str
     project_id: str
+    task_id: str | None = None
     text: str
     source: str
     source_location: str
@@ -120,16 +102,22 @@ class NuggetResponse(BaseModel):
     phase: str
     confidence: float
     created_at: datetime
+    research_validity: dict[str, Any] | None = None
 
     model_config = {"from_attributes": True}
 
     @classmethod
-    def from_orm_with_tags(cls, nugget: Nugget) -> "NuggetResponse":
+    def from_orm_with_tags(
+        cls,
+        nugget: Nugget,
+        research_validity: dict[str, Any] | None = None,
+    ) -> "NuggetResponse":
         tags = _parse_json_list(nugget.tags) or ["untagged"]
         source_location = nugget.source_location or nugget.source or "unknown"
         return cls(
             id=nugget.id,
             project_id=nugget.project_id,
+            task_id=nugget.task_id,
             text=nugget.text,
             source=nugget.source,
             source_location=source_location,
@@ -137,6 +125,7 @@ class NuggetResponse(BaseModel):
             phase=nugget.phase,
             confidence=nugget.confidence,
             created_at=nugget.created_at,
+            research_validity=research_validity,
         )
 
 
@@ -150,21 +139,27 @@ class FactCreate(BaseModel):
 class FactResponse(BaseModel):
     id: str
     project_id: str
+    task_id: str | None = None
     text: str
     nugget_ids: list[str]
     phase: str
     confidence: float
     created_at: datetime
+    research_validity: dict[str, Any] | None = None
 
     model_config = {"from_attributes": True}
 
     @classmethod
-    def from_orm_with_ids(cls, fact: Fact) -> "FactResponse":
+    def from_orm_with_ids(
+        cls,
+        fact: Fact,
+        research_validity: dict[str, Any] | None = None,
+    ) -> "FactResponse":
         nugget_ids = _parse_json_list(fact.nugget_ids)
         return cls(
-            id=fact.id, project_id=fact.project_id, text=fact.text,
+            id=fact.id, project_id=fact.project_id, task_id=fact.task_id, text=fact.text,
             nugget_ids=nugget_ids, phase=fact.phase, confidence=fact.confidence,
-            created_at=fact.created_at,
+            created_at=fact.created_at, research_validity=research_validity,
         )
 
 
@@ -179,22 +174,29 @@ class InsightCreate(BaseModel):
 class InsightResponse(BaseModel):
     id: str
     project_id: str
+    task_id: str | None = None
     text: str
     fact_ids: list[str]
     phase: str
     confidence: float
     impact: str
     created_at: datetime
+    research_validity: dict[str, Any] | None = None
 
     model_config = {"from_attributes": True}
 
     @classmethod
-    def from_orm_with_ids(cls, insight: Insight) -> "InsightResponse":
+    def from_orm_with_ids(
+        cls,
+        insight: Insight,
+        research_validity: dict[str, Any] | None = None,
+    ) -> "InsightResponse":
         fact_ids = _parse_json_list(insight.fact_ids)
         return cls(
-            id=insight.id, project_id=insight.project_id, text=insight.text,
+            id=insight.id, project_id=insight.project_id, task_id=insight.task_id, text=insight.text,
             fact_ids=fact_ids, phase=insight.phase, confidence=insight.confidence,
             impact=insight.impact, created_at=insight.created_at,
+            research_validity=research_validity,
         )
 
 
@@ -210,6 +212,7 @@ class RecommendationCreate(BaseModel):
 class RecommendationResponse(BaseModel):
     id: str
     project_id: str
+    task_id: str | None = None
     text: str
     insight_ids: list[str]
     phase: str
@@ -217,16 +220,22 @@ class RecommendationResponse(BaseModel):
     effort: str
     status: str
     created_at: datetime
+    research_validity: dict[str, Any] | None = None
 
     model_config = {"from_attributes": True}
 
     @classmethod
-    def from_orm_with_ids(cls, rec: Recommendation) -> "RecommendationResponse":
+    def from_orm_with_ids(
+        cls,
+        rec: Recommendation,
+        research_validity: dict[str, Any] | None = None,
+    ) -> "RecommendationResponse":
         insight_ids = _parse_json_list(rec.insight_ids)
         return cls(
-            id=rec.id, project_id=rec.project_id, text=rec.text,
+            id=rec.id, project_id=rec.project_id, task_id=rec.task_id, text=rec.text,
             insight_ids=insight_ids, phase=rec.phase, priority=rec.priority,
             effort=rec.effort, status=rec.status, created_at=rec.created_at,
+            research_validity=research_validity,
         )
 
 
@@ -244,25 +253,44 @@ async def list_nuggets(
     if phase:
         query = query.where(Nugget.phase == phase)
     result = await db.execute(query)
-    return [NuggetResponse.from_orm_with_tags(n) for n in result.scalars().all()]
+    rows = list(result.scalars().all())
+    validity = await finding_research_validity_map(
+        db,
+        project_id=scoped_project_id,
+        findings=rows,
+    )
+    return [NuggetResponse.from_orm_with_tags(n, validity.get(n.id)) for n in rows]
 
 
 @router.post("/findings/nuggets", response_model=NuggetResponse, status_code=201)
 async def create_nugget(data: NuggetCreate, request: Request, db: AsyncSession = Depends(get_db)):
     await require_project_access(db, request, data.project_id, min_role="researcher")
+    source_location = data.source_location or data.source or "unknown"
     nugget = Nugget(
         id=str(uuid.uuid4()),
         project_id=data.project_id,
         text=data.text,
         source=data.source,
-        source_location=data.source_location or data.source or "unknown",
+        source_location=source_location,
         tags=json.dumps(data.tags or ["untagged"]),
         phase=data.phase,
     )
     db.add(nugget)
+    await persist_task_nugget_evidence_units(
+        db,
+        project_id=data.project_id,
+        task_id=None,
+        nugget_id=nugget.id,
+        source_text=data.text,
+        source_location=source_location,
+        method="manual_finding",
+        phase=data.phase,
+        source_type="manual_finding",
+        candidate_only=True,
+    )
     await db.commit()
     await db.refresh(nugget)
-    return NuggetResponse.from_orm_with_tags(nugget)
+    return NuggetResponse.from_orm_with_tags(nugget, provisional_finding_validity())
 
 
 @router.delete("/findings/nuggets/{nugget_id}", status_code=204)
@@ -299,23 +327,36 @@ async def list_facts(
     if phase:
         query = query.where(Fact.phase == phase)
     result = await db.execute(query)
-    return [FactResponse.from_orm_with_ids(f) for f in result.scalars().all()]
+    rows = list(result.scalars().all())
+    validity = await finding_research_validity_map(
+        db,
+        project_id=scoped_project_id,
+        findings=rows,
+    )
+    return [FactResponse.from_orm_with_ids(f, validity.get(f.id)) for f in rows]
 
 
 @router.post("/findings/facts", response_model=FactResponse, status_code=201)
 async def create_fact(data: FactCreate, request: Request, db: AsyncSession = Depends(get_db)):
     await require_project_access(db, request, data.project_id, min_role="researcher")
+    nugget_ids = await ensure_project_link_ids(
+        db,
+        project_id=data.project_id,
+        model=Nugget,
+        ids=data.nugget_ids,
+        field_name="nugget_ids",
+    )
     fact = Fact(
         id=str(uuid.uuid4()),
         project_id=data.project_id,
         text=data.text,
-        nugget_ids=json.dumps(data.nugget_ids),
+        nugget_ids=json.dumps(nugget_ids),
         phase=data.phase,
     )
     db.add(fact)
     await db.commit()
     await db.refresh(fact)
-    return FactResponse.from_orm_with_ids(fact)
+    return FactResponse.from_orm_with_ids(fact, provisional_finding_validity())
 
 
 @router.delete("/findings/facts/{fact_id}", status_code=204)
@@ -352,24 +393,37 @@ async def list_insights(
     if phase:
         query = query.where(Insight.phase == phase)
     result = await db.execute(query)
-    return [InsightResponse.from_orm_with_ids(i) for i in result.scalars().all()]
+    rows = list(result.scalars().all())
+    validity = await finding_research_validity_map(
+        db,
+        project_id=scoped_project_id,
+        findings=rows,
+    )
+    return [InsightResponse.from_orm_with_ids(i, validity.get(i.id)) for i in rows]
 
 
 @router.post("/findings/insights", response_model=InsightResponse, status_code=201)
 async def create_insight(data: InsightCreate, request: Request, db: AsyncSession = Depends(get_db)):
     await require_project_access(db, request, data.project_id, min_role="researcher")
+    fact_ids = await ensure_project_link_ids(
+        db,
+        project_id=data.project_id,
+        model=Fact,
+        ids=data.fact_ids,
+        field_name="fact_ids",
+    )
     insight = Insight(
         id=str(uuid.uuid4()),
         project_id=data.project_id,
         text=data.text,
-        fact_ids=json.dumps(data.fact_ids),
+        fact_ids=json.dumps(fact_ids),
         phase=data.phase,
         impact=data.impact,
     )
     db.add(insight)
     await db.commit()
     await db.refresh(insight)
-    return InsightResponse.from_orm_with_ids(insight)
+    return InsightResponse.from_orm_with_ids(insight, provisional_finding_validity())
 
 
 @router.delete("/findings/insights/{insight_id}", status_code=204)
@@ -406,17 +460,30 @@ async def list_recommendations(
     if phase:
         query = query.where(Recommendation.phase == phase)
     result = await db.execute(query)
-    return [RecommendationResponse.from_orm_with_ids(r) for r in result.scalars().all()]
+    rows = list(result.scalars().all())
+    validity = await finding_research_validity_map(
+        db,
+        project_id=scoped_project_id,
+        findings=rows,
+    )
+    return [RecommendationResponse.from_orm_with_ids(r, validity.get(r.id)) for r in rows]
 
 
 @router.post("/findings/recommendations", response_model=RecommendationResponse, status_code=201)
 async def create_recommendation(data: RecommendationCreate, request: Request, db: AsyncSession = Depends(get_db)):
     await require_project_access(db, request, data.project_id, min_role="researcher")
+    insight_ids = await ensure_project_link_ids(
+        db,
+        project_id=data.project_id,
+        model=Insight,
+        ids=data.insight_ids,
+        field_name="insight_ids",
+    )
     rec = Recommendation(
         id=str(uuid.uuid4()),
         project_id=data.project_id,
         text=data.text,
-        insight_ids=json.dumps(data.insight_ids),
+        insight_ids=json.dumps(insight_ids),
         phase=data.phase,
         priority=data.priority,
         effort=data.effort,
@@ -424,7 +491,7 @@ async def create_recommendation(data: RecommendationCreate, request: Request, db
     db.add(rec)
     await db.commit()
     await db.refresh(rec)
-    return RecommendationResponse.from_orm_with_ids(rec)
+    return RecommendationResponse.from_orm_with_ids(rec, provisional_finding_validity())
 
 
 @router.delete("/findings/recommendations/{rec_id}", status_code=204)
@@ -672,6 +739,11 @@ async def get_evidence_chain(
     elif finding_type == "nugget" and not chain["fact"]:
         missing_links.append("nugget_to_fact")
 
+    research_validity = await chain_research_validity_diagnostics(
+        db,
+        project_id=project_id,
+        chain=chain,
+    )
     return {
         "finding_type": finding_type,
         "finding_id": finding_id,
@@ -680,6 +752,7 @@ async def get_evidence_chain(
             "supporting_counts": supporting_counts,
             "has_supporting_evidence": any(supporting_counts.values()),
             "missing_links": missing_links,
+            "research_validity": research_validity,
         },
     }
 
@@ -859,11 +932,16 @@ class DesignDecisionResponse(BaseModel):
     phase: str
     confidence: float
     created_at: datetime
+    research_validity: dict[str, Any] | None = None
 
     model_config = {"from_attributes": True}
 
     @classmethod
-    def from_orm_with_ids(cls, dd: DesignDecision) -> "DesignDecisionResponse":
+    def from_orm_with_ids(
+        cls,
+        dd: DesignDecision,
+        research_validity: dict[str, Any] | None = None,
+    ) -> "DesignDecisionResponse":
         rec_ids = _parse_json_list(dd.recommendation_ids)
         scr_ids = _parse_json_list(dd.screen_ids)
         return cls(
@@ -877,6 +955,13 @@ class DesignDecisionResponse(BaseModel):
             phase=dd.phase,
             confidence=dd.confidence,
             created_at=dd.created_at,
+            research_validity=research_validity
+            or provisional_finding_validity(
+                reason=(
+                    "Design decision is provisional until its recommendations trace to "
+                    "accepted/reconciled evidence and a human-approved Done task."
+                )
+            ),
         )
 
 
@@ -893,7 +978,13 @@ async def list_design_decisions(
     scoped_project_id = await _require_project_scope(db, request, project_id, min_role="viewer")
     query = select(DesignDecision).where(DesignDecision.project_id == scoped_project_id).order_by(DesignDecision.created_at.desc())
     result = await db.execute(query)
-    return [DesignDecisionResponse.from_orm_with_ids(dd) for dd in result.scalars().all()]
+    decisions = list(result.scalars().all())
+    validity = await design_decision_research_validity_map(
+        db,
+        project_id=scoped_project_id,
+        decisions=decisions,
+    )
+    return [DesignDecisionResponse.from_orm_with_ids(dd, validity.get(str(dd.id))) for dd in decisions]
 
 
 @router.post("/findings/design-decisions", response_model=DesignDecisionResponse, status_code=201)
@@ -904,20 +995,39 @@ async def create_design_decision(
 ):
     """Create a new design decision linking recommendations to screens."""
     await require_project_access(db, request, data.project_id, min_role="researcher")
+    recommendation_ids = await ensure_project_link_ids(
+        db,
+        project_id=data.project_id,
+        model=Recommendation,
+        ids=data.recommendation_ids,
+        field_name="recommendation_ids",
+    )
+    screen_ids = await ensure_project_link_ids(
+        db,
+        project_id=data.project_id,
+        model=DesignScreen,
+        ids=data.screen_ids,
+        field_name="screen_ids",
+    )
     dd = DesignDecision(
         id=str(uuid.uuid4()),
         project_id=data.project_id,
         agent_id=data.agent_id,
         text=data.text,
-        recommendation_ids=json.dumps(data.recommendation_ids),
-        screen_ids=json.dumps(data.screen_ids),
+        recommendation_ids=json.dumps(recommendation_ids),
+        screen_ids=json.dumps(screen_ids),
         rationale=data.rationale,
         phase=data.phase,
     )
     db.add(dd)
     await db.commit()
     await db.refresh(dd)
-    return DesignDecisionResponse.from_orm_with_ids(dd)
+    validity = await design_decision_research_validity_map(
+        db,
+        project_id=data.project_id,
+        decisions=[dd],
+    )
+    return DesignDecisionResponse.from_orm_with_ids(dd, validity.get(str(dd.id)))
 
 
 @router.delete("/findings/design-decisions/{dd_id}", status_code=204)
@@ -954,8 +1064,8 @@ async def get_evidence_chain_extended(
 ):
     """Get the full evidence chain including DesignDecision and DesignScreen nodes.
 
-    Extends the standard evidence-chain to traverse:
-    Nugget -> Fact -> Insight -> Recommendation -> DesignDecision -> DesignScreen
+    Extends the standard evidence chain to traverse accepted/provisional state:
+    Atom/Nugget -> Fact -> Insight -> Recommendation -> DesignDecision -> DesignScreen
     """
     scoped_project_id, finding = await _get_project_finding_or_404(
         db,
@@ -1020,6 +1130,7 @@ async def get_evidence_chain_extended(
         )
         for key in ("recommendation", "insight", "fact", "nugget"):
             chain[key] = list(base["chain"].get(key, []))
+        diagnostics = base.get("diagnostics", {})
 
         recommendation_ids: set[str] = {
             rid for rid in (response_id(rec) for rec in chain["recommendation"]) if rid
@@ -1027,6 +1138,7 @@ async def get_evidence_chain_extended(
         await append_design_nodes_for_recommendations(recommendation_ids)
 
     elif finding_type == "design_decision":
+        diagnostics = {}
         chain["design_decision"] = [finding.to_dict()]
         # Down: screens
         for sid in parse_ids(finding.screen_ids):
@@ -1068,4 +1180,5 @@ async def get_evidence_chain_extended(
         "finding_type": finding_type,
         "finding_id": finding_id,
         "chain": chain,
+        "diagnostics": diagnostics,
     }

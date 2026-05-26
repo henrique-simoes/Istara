@@ -148,10 +148,14 @@ async def test_skills_have_health_data(auth_headers):
 async def test_laws_have_compliance_data(auth_headers):
     """UX Laws compliance endpoint returns structured data."""
     await init_db()
+    project = await _seed_project("Business Laws")
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
-        response = await ac.get("/api/laws/compliance/test-project", headers=auth_headers)
-        assert response.status_code in (200, 404, 500)
+        response = await ac.get(f"/api/laws/compliance/{project.id}", headers=auth_headers)
+    assert response.status_code == 200
+    body = response.json()
+    assert "evaluated" in body
+    assert "by_law" in body
 
 
 # ---------------------------------------------------------------------------
@@ -165,7 +169,8 @@ async def test_backup_estimate_returns_data(auth_headers):
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
         response = await ac.get("/api/backups/estimate", headers=auth_headers)
-        assert response.status_code in (200, 404, 500)
+    assert response.status_code == 200
+    assert isinstance(response.json(), dict)
 
 
 # ---------------------------------------------------------------------------
@@ -180,7 +185,10 @@ async def test_meta_agent_variants_returns_list(auth_headers):
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
         response = await ac.get(f"/api/meta-hyperagent/variants?project_id={project.id}", headers=auth_headers)
-        assert response.status_code in (200, 404, 500)
+    assert response.status_code == 200
+    body = response.json()
+    assert body["project_id"] == project.id
+    assert isinstance(body["variants"], list)
 
 
 # ---------------------------------------------------------------------------
@@ -212,4 +220,5 @@ async def test_settings_models_returns_model_list(auth_headers):
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
         response = await ac.get("/api/settings/models", headers=auth_headers)
-        assert response.status_code in (200, 404, 500)
+    assert response.status_code == 200
+    assert "models" in response.json()

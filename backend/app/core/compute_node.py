@@ -61,6 +61,18 @@ class ComputeNode(ComputeNodeTransportMixin, ComputeNodeModelMixin, ComputeNodeI
     max_active_requests: int = 4
     is_local: bool = False
     is_relay: bool = False
+    selected_request_count: int = 0
+    served_request_count: int = 0
+    failed_request_count: int = 0
+    last_selected_at: float = 0
+    last_served_at: float = 0
+    last_failed_at: float = 0
+    last_route_kind: str = ""
+    last_selected_project_id: str = ""
+    last_served_project_id: str = ""
+    last_selected_model: str = ""
+    last_served_model: str = ""
+    last_failure_error: str = ""
 
     # Connection (relay nodes)
     websocket: Any = None

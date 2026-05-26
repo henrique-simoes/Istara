@@ -9,7 +9,7 @@
 ### Local-first AI agents for UX Research — your data never leaves your machine
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/version-2026.04.27-brightgreen.svg)](VERSION)
+[![Version](https://img.shields.io/github/v/release/henrique-simoes/Istara?label=version&sort=semver)](https://github.com/henrique-simoes/Istara/releases/latest)
 [![Python](https://img.shields.io/badge/python-3.12-blue.svg)](backend/)
 [![Node](https://img.shields.io/badge/node-20-green.svg)](frontend/)
 [![Platform](https://img.shields.io/badge/platform-macOS%20%7C%20Windows%20%7C%20Linux-lightgrey.svg)](installer/)
@@ -19,8 +19,8 @@
 
 ---
 
-*Five autonomous AI agents. Fifty-three self-improving research skills. Zero cloud dependency.*
-*Every insight is evidence-grounded. Every agent gets smarter with every session.*
+*Five autonomous AI agents. Fifty-three governed research skills. Zero cloud dependency.*
+*Every trusted insight is source-validated. Agent learning is governed, project-scoped, and auditable.*
 *Scale your intelligence: share compute between team members to run more agents simultaneously—a smarter, faster team working as one agentic swarm.*
 
 ![](https://istara.goatcounter.com/count?p=/count-top)
@@ -33,21 +33,21 @@
 
 | Feature | What It Does |
 |---|---|
-| 🧠 Intelligent Chat | Grounded conversations with your research data — no hallucinations, just evidence-backed answers |
-| ⚛️ Atomic Findings | Nuggets → Facts → Insights → Recommendations, every claim linked to its original source |
+| 🧠 Intelligent Chat | Grounded conversations with your research data, source-aware answers, and reviewable evidence |
+| ⚛️ Atomic Findings | Accepted atoms/nuggets → facts → insights → recommendations, every trusted claim linked to validated source evidence |
 | 📐 Laws of UX | 30+ psychological principles audited automatically against your designs with scoring |
-| 📋 Kanban Board | Agents pick up tasks, execute skills, and report progress in real time — fully autonomous |
+| 📋 Kanban Board | Agents pick up tasks and execute skills, while review, Done, and report gates stay explicit |
 | 🎯 Smart Routing | Match tasks to specialists — Pixel for UI audits, Sage for UX eval, Echo for simulations |
 | 🎙️ Interview Analysis | Transcribe, tag, analyze, relate and generate reports across your entire participant pool |
 | 🧭 Context Engine | Ground agents in company culture, project goals and custom guardrails for better performance |
 | 🛠️ 53+ Research Skills | Competitive analysis, card sorting, journey mapping — agents equipped for any challenge |
-| 🐝 Agent Swarm | Five specialized agents that learn from each other and evolve with every single task |
+| 🐝 Agent Swarm | Five specialized agents that learn from verified outcomes and project-scoped process memory |
 | 🎨 Google Stitch & Figma | Generative AI screen design, handoff specs, component audits — design-to-dev bridge built in |
 | 💬 Messaging Channels | Deploy research to Slack, Telegram, WhatsApp — managed entirely by your agents |
-| 📊 Survey Sync | Pull from SurveyMonkey, Typeform, Google Forms — synthesize thousands of responses fast |
-| 🔄 Autoresearch | Continuous self-improvement — agents optimize their own prompts and RAG parameters |
-| 🧾 Improvement Governance | Self-evolution changes are tracked with approval, evidence, metrics, rollback, and revert state |
-| ✅ Ensemble Health | Multi-model consensus, adversarial review, debate rounds — every insight rock solid |
+| 📊 Survey Sync | Pull from SurveyMonkey, Typeform, Google Forms — ingest responses into the Research Spine with source, review, and reliability state |
+| 🔄 Autoresearch | Sandboxed self-improvement experiments — candidate prompt/RAG/model changes become governed proposals before production use |
+| 🧾 Improvement Governance | Self-evolution changes are project-scoped, evidence-backed, approval-gated, rollbackable, and barred from bypassing the Research Spine |
+| ✅ Ensemble Health | Multi-model coding, reliability metrics, route evidence, adversarial review, and human reconciliation |
 
 <details>
 <summary><strong>View product screenshots</strong></summary>
@@ -56,13 +56,13 @@
   <p><strong>Intelligent Chat:</strong> Talk to your research context. Ask about findings, brainstorm with agents, and get instant answers grounded in your data.</p>
   <img src="Screenshots/Screenshot%202026-04-02%20at%2016.37.30.png" width="1600" />
 
-  <p><strong>Atomic Research Findings:</strong> Automatically extract nuggets, facts, insights, and recommendations. Every claim is linked to its original source for total traceability.</p>
+  <p><strong>Atomic Research Findings:</strong> Extract candidate atoms, validate them against source evidence, then promote accepted nuggets, facts, insights, and recommendations. Every trusted claim stays linked to its original source.</p>
   <img src="Screenshots/Screenshot%202026-04-02%20at%2016.37.34.png" width="1600" />
 
   <p><strong>Laws of UX Compliance:</strong> Audit your designs against 30+ psychological principles and Nielsen heuristics. See exactly where your UI excels or needs improvement.</p>
   <img src="Screenshots/Screenshot%202026-04-02%20at%2016.38.34.png" width="1600" />
 
-  <p><strong>Autonomous Task Management:</strong> A powerful Kanban board where agents pick up tasks, execute skills, and report progress in real-time.</p>
+  <p><strong>Autonomous Task Management:</strong> A powerful Kanban board where agents pick up tasks, execute skills, and report progress in real-time while research outputs remain reviewable until approved.</p>
   <img src="Screenshots/Screenshot%202026-04-02%20at%2016.38.47.png" width="1600" />
 
   <p><strong>Multi-Agent Assignment:</strong> Choose the best agent for the job. Route tasks to specialists like Pixel for UI audits or Sage for UX evaluation.</p>
@@ -77,7 +77,7 @@
   <p><strong>Skill Catalog:</strong> Over 50 research skills ready to go. From Competitive Analysis to Card Sorting, your agents are equipped for any research challenge.</p>
   <img src="Screenshots/Screenshot%202026-04-02%20at%2016.39.11.png" width="1600" />
 
-  <p><strong>Agentic Swarm:</strong> Meet your team—Cleo, Sentinel, Pixel, Sage, and Echo. Five specialized agents that learn from each other and evolve with every task.</p>
+  <p><strong>Agentic Swarm:</strong> Meet your team—Cleo, Sentinel, Pixel, Sage, and Echo. Five specialized agents that learn from verified outcomes, project-scoped telemetry, and governed process memory.</p>
   <img src="Screenshots/Screenshot%202026-04-02%20at%2016.39.16.png" width="1600" />
 
   <p><strong>Google Stitch & Figma Integration:</strong> Generate screens with AI, connect Figma for handoff specs, audit components, and close the gap between design intent and dev implementation.</p>
@@ -86,13 +86,13 @@
   <p><strong>Messaging Channels:</strong> Deploy your research directly to Slack, Telegram, or WhatsApp. Collect data where your users are, managed entirely by your agents.</p>
   <img src="Screenshots/Screenshot%202026-04-02%20at%2016.39.36.png" width="1600" />
 
-  <p><strong>Survey Integrations:</strong> Pull data from SurveyMonkey, Typeform, or Google Forms. Let agents detect AI bots and synthesize thousands of responses in seconds.</p>
+  <p><strong>Survey Integrations:</strong> Pull data from SurveyMonkey, Typeform, or Google Forms. Responses enter the same evidence-unit, coding, reliability, review, and report-gate pipeline as interviews and documents.</p>
   <img src="Screenshots/Screenshot%202026-04-02%20at%2016.39.40.png" width="1600" />
 
-  <p><strong>Autoresearch Engine:</strong> Enable continuous self-improvement loops. Watch as your agents optimize their own prompts and RAG parameters for better results.</p>
+  <p><strong>Autoresearch Engine:</strong> Enable sandboxed self-improvement loops. Agents measure candidate prompt, RAG, or model changes, revert them after evaluation, and send successful candidates through governed approval before production use.</p>
   <img src="Screenshots/Screenshot%202026-04-02%20at%2016.39.59.png" width="1600" />
 
-  <p><strong>Ensemble Health:</strong> Trust through verification. Istara uses multi-model consensus, adversarial review, and debate rounds to ensure every insight is rock solid.</p>
+  <p><strong>Ensemble Health:</strong> Trust through verification. Istara uses multi-model coding, reliability metrics, route evidence, adversarial review, debate rounds, and human reconciliation before evidence becomes reportable.</p>
   <img src="Screenshots/Screenshot%202026-04-02%20at%2016.40.15.png" width="1600" />
 </div>
 
@@ -188,9 +188,9 @@ curated release baselines instead of scattered temporary logs.
 
 UX researchers deserve tools that respect their data, enforce methodological rigor, and improve through use — not SaaS platforms that upload transcripts to foreign servers, charge per seat, and forget everything the moment you close the tab.
 
-Istara runs entirely on your hardware. It ships with five specialized AI agents, 53 UX research skills, and an evidence-chain methodology grounded in peer-reviewed research. The agents improve themselves over time. Skills track their own quality. The platform learns your workflow.
+Istara runs entirely on your hardware. It ships with five specialized AI agents, 53 UX research skills, and an evidence-chain methodology grounded in peer-reviewed research. Agents and skills can improve, but only through project-scoped telemetry, verified outcomes, governed proposals, and Research Spine gates.
 
-**No cloud. No subscription. No hallucinated insights.**
+**No cloud. No subscription. Evidence first.**
 
 ---
 
@@ -200,14 +200,14 @@ Istara runs entirely on your hardware. It ships with five specialized AI agents,
 |---|---|---|
 | Data privacy | 100% local — data never leaves your machine | Uploaded to vendor cloud |
 | Agent memory | Persistent, evolving personas across sessions | Stateless API calls |
-| Research methodology | Atomic Research chain with evidence provenance | Ad-hoc summarization |
-| Skill improvement | Self-evolving quality scores per model × skill | Static prompts |
+| Research methodology | Research Spine with source-validated Atomic Research artifacts | Ad-hoc summarization |
+| Skill improvement | Project-scoped, verified skill health and governed prompt changes | Static prompts |
 | Agent creation | Runtime agent factory — new agents without code | Fixed feature set |
-| Multi-model validation | Mixture-of-Agents debate + Fleiss' Kappa | Single model, no validation |
+| Multi-model validation | Source-evidence coding, reliability metrics, route evidence, reconciliation | Single model, no validation |
 | Memory compression | LLMLingua-inspired, 30–74% token savings | No long-context management |
 | UX compliance | 30 Laws of UX automated auditing | Not available |
 | Compute sharing | Donate GPU via WebSocket relay — team cluster | Pay-per-API-call |
-| Autonomous research | Karpathy-style autoresearch loops | Manual execution only |
+| Autonomous research | Sandboxed autoresearch proposals; no live mutation before governance | Manual execution only |
 | Survey channels | WhatsApp, Telegram, Typeform, SurveyMonkey | Limited integrations |
 | Price | Free, open source, MIT licensed | $X,XXX/year SaaS |
 
@@ -219,7 +219,7 @@ Istara runs entirely on your hardware. It ships with five specialized AI agents,
 
 Istara implements a **Memento-inspired agent factory** grounded in the insight that the most effective way to extend an AI system is to have it design its own extensions. When an existing agent detects a capability gap — a research task it cannot handle well — it proposes a new specialized agent: defines the persona, selects skills, writes the protocols, and registers it in the orchestration pipeline.
 
-**No code changes. No restarts. The system extends itself.**
+**No direct production mutation. The system can propose its own extensions, but governed approval decides what becomes active.**
 
 The five built-in agents each carry four evolving persona files:
 
@@ -231,24 +231,24 @@ The five built-in agents each carry four evolving persona files:
 | `istara-ux-eval` | **Sage** | Cognitive load analyst — user journeys, workflow friction detection |
 | `istara-sim` | **Echo** | End-to-end tester — simulates users, runs 75 regression scenarios |
 
-Each agent's persona is stored in four files — `CORE.md` (identity), `SKILLS.md` (capabilities), `PROTOCOLS.md` (behavioral rules), `MEMORY.md` (accumulated learnings) — and **all four evolve as the agent works**.
+Each agent's persona is stored in four files — `CORE.md` (identity), `SKILLS.md` (capabilities), `PROTOCOLS.md` (behavioral rules), `MEMORY.md` (accumulated learnings) — but updates are bounded by project scope, verification, and governance rules. Protected research methodology, reliability thresholds, auth constraints, and report gates are not silently rewritten.
 
 ### Self-Evolution Pipeline
 
 ```
 User interaction
       ↓
-Agent records error pattern or workflow preference
+Agent records project-scoped process signal
       ↓
-Pattern tracked: occurrences · contexts · time elapsed
+Telemetry separates tool success · execution success · verification · research quality · reportability
       ↓
-Threshold reached: 3+ occurrences, 2+ contexts, within 30 days
+Candidate learning tracked: 3+ occurrences · active project context · 30-day window · confidence · success rate
       ↓
-Learning promoted → written into agent MEMORY.md
+Governance check blocks protected methodology/gate/auth mutations
       ↓
-Persona updated permanently across all future sessions
+Approved or allowed learning is promoted into the appropriate persona memory/protocol surface
       ↓
-Next conversation starts with an improved agent
+Future work can use the improvement, still inside Research Spine gates
 ```
 
 This is not fine-tuning. It is **structured prompt evolution** — it works with any local model, including 3B parameter models on modest consumer hardware.
@@ -257,6 +257,7 @@ Skills also self-evolve. Every invocation records quality per model × skill com
 
 ```python
 ModelSkillStats(
+    project_id="project-123",
     model_name="llama-3.2-3b",
     skill_name="thematic_analysis",
     success_rate=0.94,
@@ -266,7 +267,7 @@ ModelSkillStats(
 )
 ```
 
-When quality drops below threshold, Istara surfaces a diff between the current prompt and the proposed revision. You approve or reject. Skills that consistently perform well earn higher health scores and priority routing.
+When quality drops below threshold, Istara surfaces a diff between the current prompt and the proposed revision. You approve or reject. Skills that consistently produce verified, spine-valid outcomes earn higher health scores and priority routing inside that project. Raw tool success alone does not improve a skill.
 
 All self-improvement now runs through an **Improvement Governance** contract and **DGM-H Archive**. Reasoning memories and telemetry can be recorded automatically, while behavior-changing updates to prompts, configs, skills, agents, UI, integrations, compute, or backend code become visible proposals with evidence, metrics, approval state, lineage, parent-selection scores, and rollback/revert tracking.
 
@@ -274,38 +275,41 @@ All self-improvement now runs through an **Improvement Governance** contract and
 
 ---
 
-## 2. 🔬 Academic-Grade Multi-Model Validation
+## 2. 🔬 Multi-Model Validation With Human Review
 
 > *"Improving Factuality and Reasoning in Language Models through Multiagent Debate"* — Du et al. (2024)
 
-Research findings produced by a single LLM are unreliable. Istara employs a **Mixture-of-Agents validation pipeline** where multiple independent model instances analyze the same data, challenge each other's conclusions via adversarial debate, and only promote a finding when consensus is reached — quantified by Fleiss' Kappa inter-coder reliability.
+Research findings produced by a single LLM are unreliable. Istara employs a **compute-aware validation pipeline** that prefers distinct authorized models when they are healthy, falls back to dual-run validation when only two models are available, and uses Self-MoA-style single-model variation only when compute is constrained. The system records route evidence, model identities where available, coded evidence-unit reliability metrics, disagreement state, and human review state instead of treating one model answer as research fact.
 
 ### The Validation Stack
 
 ```
-Raw data (transcript, survey responses, observation notes)
+Sources (transcripts, surveys, notes, tickets, diaries, analytics)
       ↓
-Agent A analyzes independently → draft findings
-Agent B analyzes independently → draft findings
-Agent C analyzes independently → draft findings
+Stable evidence units with source span, participant, method, project provenance
       ↓
-Adversarial debate round: each agent challenges the others
+Inductive/open coding calibration → draft codebook → governed codebook freeze
       ↓
-Fleiss' Kappa computed across all agent outputs (κ ≥ 0.60 required)
+Distinct project-authorized models independently code the same evidence units
       ↓
-High-agreement findings promoted to evidence chain
-Low-agreement findings flagged for human review
+Fleiss/Cohen/Krippendorff reliability over coded evidence-unit matrices
       ↓
-LLM-as-Judge final quality assessment
+Debate, adversarial review, and human reconciliation resolve disagreement
       ↓
-Validated finding with provenance, confidence, and dissent notes
+Accepted/reconciled source-grounded atoms/nuggets feed Facts → Insights → Recommendations
+      ↓
+Only approved Done tasks can create report-ready findings
+      ↓
+Report with evidence chain, reliability status, route evidence, and review state
 ```
 
-**Research findings are never hallucinated — they are grounded in evidence chains with quantified reliability scores.**
+**Research findings are evidence-constrained, not magic-proof.** Istara stores source links, task review state, consensus scores, and dissent metadata so researchers can reject weak work. Reports draw from approved Done task evidence; tasks still in review are deliberately excluded.
 
-The Self-MoA variant (Li et al., 2025) enables single-agent validation loops when compute is constrained, maintaining rigour without requiring three simultaneous model instances.
+The research-validity contract lives in [`docs/architecture/research-validity-contract.md`](docs/architecture/research-validity-contract.md). The self-improvement contract lives in [`docs/architecture/self-improvement-governance-contract.md`](docs/architecture/self-improvement-governance-contract.md). Fleiss' Kappa, Cohen's Kappa, and Krippendorff's Alpha are applied to coded evidence-unit matrices. Qualitative coding is not keyword tagging: models receive a protected coding protocol, codebook, inclusion/exclusion criteria, examples, evidence-unit schema, reliability policy, and promotion gate before they code. Autoresearch, ReasoningBank, Memento Skills, Meta-Hyperagent, self-evolution, RAG/GraphRAG, Prompt-RAG, and LLMLingua may improve process quality, but they cannot become report evidence or bypass the Research Spine.
 
-> **References:** Wang et al. (2024) "Mixture-of-Agents Enhances Large Language Model Capabilities"; Du et al. (2024) ICML "Improving Factuality and Reasoning in Language Models through Multiagent Debate"; Li et al. (2025) "Self-MoA: Self-Mixture of Agents"; Fleiss (1971) "Measuring nominal scale agreement among many raters" *Psychological Bulletin* 76(5):378–382; Zheng et al. (2023) "Judging LLM-as-a-Judge with MT-Bench and Chatbot Arena" NeurIPS 2023
+When three or more distinct healthy project-authorized models exist, Istara defaults to multi-model coding/validation. With two distinct models it uses a two-coder reliability path. With one model it can run a Self-MoA-style fallback, but that result is marked lower assurance and cannot be represented as full ensemble reliability.
+
+> **References:** Fleiss (1971) "Measuring nominal scale agreement among many raters"; Cohen (1960) "A coefficient of agreement for nominal scales"; O'Connor & Joffe (2020) "Intercoder Reliability in Qualitative Research"; MacQueen et al. (1998) "Codebook Development for Team-Based Qualitative Analysis"; Wang et al. (2024) "Mixture-of-Agents Enhances Large Language Model Capabilities"; Du et al. (2023) "Improving Factuality and Reasoning in Language Models through Multiagent Debate"; Li et al. (2025) "Rethinking Mixture-of-Agents"; Zheng et al. (2023) "Judging LLM-as-a-Judge with MT-Bench and Chatbot Arena"
 
 ---
 
@@ -330,6 +334,8 @@ The **DAG Context Summarizer** (inspired by MemWalker, Chen et al. 2023) builds 
 
 **Prompt RAG** (Pan et al., 2024) retrieves relevant past context snippets at inference time, injecting them into the current prompt — turning a limited context window into an effectively unlimited research memory.
 
+In research workflows, context tools stay subordinate to the Research Spine. Prompt RAG can add supporting context, but mandatory coding methodology, codebook criteria, reliability policy, and promotion gates are injected deterministically by the relevant services. LLMLingua-style compression preserves protected protocol, codebook, evidence schema, reliability, promotion, and auth blocks during compression and final trimming.
+
 > **References:** Jiang et al. (2023) "LLMLingua: Compressing Prompts for Accelerated Inference of Large Language Models" EMNLP 2023; Chen et al. (2023) "Walking Down the Memory Maze: Beyond Context Limit through Interactive Reading" arXiv:2310.05029; Pan et al. (2024) "From RAG to Prompt RAG" ACL 2024
 
 ---
@@ -338,9 +344,9 @@ The **DAG Context Summarizer** (inspired by MemWalker, Chen et al. 2023) builds 
 
 > *"Petals: Collaborative Inference and Fine-tuning of Large Models"* — Borzunov et al. (2022/2023)
 
-Your team's idle hardware is a cluster waiting to be used. Istara's **Compute Relay** implements a WebSocket-based distributed inference network where team members donate spare GPU or CPU capacity to a shared pool. Inference requests are routed to available nodes with **priority-based scheduling, automatic capability detection, and seamless failover**.
+Your team's idle hardware is a cluster waiting to be used. Istara's **Compute Relay** implements a WebSocket-based whole-request inference network where team members donate spare GPU or CPU capacity to a project-scoped pool. Inference requests are routed to available nodes with **priority-based scheduling, automatic capability detection, route counters, and failover**.
 
-Like Petals — but purpose-built for UX research teams, requiring no special setup beyond pasting a connection string.
+It is Petals-inspired in the collaboration sense, but it is not Petals-equivalent transformer layer sharding. Istara donates and routes complete chat, embedding, and model-server requests through authorized nodes.
 
 ### Relay Architecture
 
@@ -377,9 +383,9 @@ server-backed session and one-time recovery codes.
 
 > *"autoresearch: autonomous experiment loops for AI systems"* — Karpathy (2026)
 
-Istara includes an **autonomous research optimization engine** inspired by Karpathy's autoresearch framework. It continuously runs controlled experiments to improve its own performance — adjusting RAG retrieval parameters, optimizing skill prompt templates, tuning model temperature settings, and measuring the quality impact of each change.
+Istara includes an **autonomous research optimization engine** inspired by Karpathy's autoresearch framework. It runs controlled, project-scoped experiments to improve process quality — testing RAG retrieval parameters, skill prompt templates, model temperature settings, and related configuration without letting the experiment mutate production state.
 
-**~12 experiments per hour, running in the background while you work.**
+Experiments are sandboxed, rate-limited, reversible, and non-reportable. A successful experiment becomes a governed proposal, not an automatic production change.
 
 ### Autoresearch Loop
 
@@ -392,39 +398,39 @@ Run controlled A/B test on held-out evaluation set
       ↓
 Measure quality delta (retrieval precision, skill output scores)
       ↓
-If improvement ≥ threshold: promote change to production config
+If improvement ≥ threshold: revert sandbox mutation and create proposal_ready candidate
       ↓
-Log finding to research optimization journal
+Governance review approves, rejects, or archives the proposal with rollback evidence
       ↓
 Repeat: next hypothesis
 ```
 
-The system maintains a **Skill Health Monitor** dashboard showing per-skill performance trends, which experiments are running, and which optimizations have been promoted.
+The system maintains a **Skill Health Monitor** dashboard showing per-skill performance trends, which experiments are running, which proposals are awaiting review, and which governed changes have been approved. Autoresearch artifacts are process evidence only; they cannot become research findings or report evidence.
 
 > **Reference:** Karpathy (2026) "autoresearch" github.com/karpathy/autoresearch
 
 ---
 
-## 6. 📊 Atomic Research Evidence Chain
+## 6. 📊 Research Spine Evidence Chain
 
 > *"The Atomic Research model"* — Sharon & Gadbaw (2018)
 
-Every insight Istara produces is **structurally impossible to hallucinate** because it cannot exist without tracing back through a verified evidence chain to exact source quotes. This implements the Atomic Research methodology developed at WeWork (Sharon & Gadbaw, 2018) as a computational pipeline.
+Every insight Istara produces is expected to remain traceable because it is connected to a verified evidence chain with source references and task review state. This implements the Atomic Research methodology developed at WeWork (Sharon & Gadbaw, 2018) as a computational pipeline.
 
 ```
-Raw quote or observation (Nugget)
-      ↓  requires: exact text + source + timestamp
-Verified pattern from 2+ independent nuggets (Fact)
-      ↓  requires: ≥2 nuggets + cross-validation
-Interpreted meaning — the "so what" (Insight)
-      ↓  requires: ≥1 fact + reasoning chain
-Actionable proposal with priority score (Recommendation)
-      ↓  requires: ≥1 insight + feasibility assessment
+Raw source quote or observation
+      ↓  creates: source evidence unit with exact text + provenance
+Candidate atom/nugget
+      ↓  requires: independent extraction/coding + grounding + reliability/reconciliation
+Accepted atom/nugget
+      ↓  promotes: verified pattern, fact, insight, recommendation
+Report evidence
+      ↓  requires: accepted/reconciled evidence on a human-approved Done task
 ```
 
-**No recommendation without an insight. No insight without a fact. No fact without nuggets. No nugget without a source.**
+**No reportable recommendation without an accepted insight. No accepted insight without accepted facts. No accepted fact without accepted atoms/nuggets. No accepted atom/nugget without source-grounded validation.**
 
-Every level of the chain is stored as a discrete database record with foreign key relationships enforcing the hierarchy. When you export a research report, every recommendation hyperlinks back through the chain to the exact interview passage, survey response, or observation that supports it.
+Every level of the chain is stored as a discrete database record with foreign key relationships enforcing the hierarchy. Atomic Research artifacts are not trusted merely because a model wrote them; raw model outputs remain candidate/provisional until the Research Spine accepts or reconciles them. Reports use findings from approved Done tasks; task outputs still in review are not report evidence. When you export a research report, every recommendation should hyperlink back through the chain to the exact interview passage, survey response, or observation that supports it.
 
 > **Reference:** Sharon & Gadbaw (2018) "Atomic Research" WeWork Research Operations
 
@@ -451,6 +457,8 @@ Query
 
 This means Istara finds semantically similar content ("participant struggled with navigation") AND exact terminology matches ("information architecture"). Switch to pure vector or pure keyword mode per-query when you need it.
 
+Hybrid RAG is Istara's exact-evidence retrieval layer. BM25 fallback preserves `evidence_unit_id`, document/source span, review status, reliability status, and provenance; when that provenance is missing, the result is marked non-promotional. Evidence Graph / GraphRAG is the synthesis and traceability layer, used for cross-document relationships and dependency questions, but graph answers must backfill exact evidence through Hybrid RAG before anything can be promoted.
+
 **LanceDB is embedded** — no separate vector database process, no network overhead, no configuration.
 
 > **References:** Lewis et al. (2020) "Retrieval-Augmented Generation for Knowledge-Intensive NLP Tasks" NeurIPS 2020; Cormack et al. (2009) "Reciprocal rank fusion outperforms condorcet and individual rank learning methods" SIGIR 2009; Robertson & Zaragoza (2009) "The Probabilistic Relevance Framework: BM25 and Beyond" *Foundations and Trends in Information Retrieval* 3(4)
@@ -461,7 +469,7 @@ This means Istara finds semantically similar content ("participant struggled wit
 
 > *"AURA: Adaptive User Research Assistant"* — arXiv:2510.27126
 
-Istara deploys **AURA-style adaptive interview agents** directly to messaging channels your participants already use. No app installs. No survey links to click. The interview comes to them.
+Istara supports **AURA-style adaptive interview workflows** and credentialed setup paths for messaging and survey channels. Live participant channels require the relevant provider credentials or bounded test simulators; without them, Istara documents the setup/error path rather than pretending a real participant deployment occurred.
 
 ```
 Researcher designs interview guide in Istara
@@ -475,12 +483,14 @@ adjusts question order based on prior responses
       ↓
 Responses stream back to Istara in real time
       ↓
-Auto-analyze: extract nuggets, detect themes, flag anomalies
+Register raw source → extract evidence units → create candidate atoms/codes
+      ↓
+Run reliability, grounding, reconciliation, and review gates
       ↓
 AI-Detection check flags responses that appear machine-generated
 ```
 
-The adaptive interview engine dynamically adjusts question phrasing and order based on prior answers — producing richer qualitative data than static survey forms while requiring zero technical setup from participants.
+The adaptive interview engine is intended to adjust question phrasing and order based on prior answers, producing richer qualitative data than static survey forms when the channel integration is configured. Imported responses do not become trusted findings directly; they enter the same Research Spine as documents, interviews, and manual notes.
 
 > **Reference:** AURA: Adaptive User Research Assistant, arXiv:2510.27126
 
@@ -490,10 +500,10 @@ The adaptive interview engine dynamically adjusts question phrasing and order ba
 
 Istara bridges research and design in a single workflow:
 
-- **Figma Integration**: Import design files, extract design system tokens, link design decisions to research evidence, run compliance checks against UX Laws
-- **Google Stitch MCP**: Generate screen wireframes and UI concepts directly from research insights — describe what users need, get design proposals
-- **Design Briefs**: Auto-generate design briefs from research findings, with UX Law references attached to each recommendation
-- **Evidence-to-Design Traceability**: Every design decision links back to the nuggets that motivated it
+- **Figma Integration**: Import design files, extract design system tokens, link design decisions to accepted/reconciled research evidence, run compliance checks against UX Laws
+- **Google Stitch MCP**: Generate screen wireframes and UI concepts from accepted insights and clearly marked candidate evidence — describe what users need, get design proposals
+- **Design Briefs**: Auto-generate design briefs from reportable findings, with UX Law references attached to each recommendation
+- **Evidence-to-Design Traceability**: Every reportable design decision links back to accepted atoms/nuggets and source evidence that motivated it
 
 ---
 
@@ -533,7 +543,7 @@ Upload (PDF · DOCX · TXT · transcript · spec)
 Auto-classify: research report / interview transcript / survey data /
                design spec / competitive analysis / academic paper
       ↓
-Extract nuggets → create tasks → tag participants
+Extract source evidence units → draft candidate atoms/codes → validate/reconcile before tasks
       ↓
 Link findings back to exact source passages with page/line references
       ↓
@@ -569,11 +579,15 @@ Both interfaces are gated by `MCPAccessPolicy` with per-tool permissions, JWT au
 Istara is **zero-trust by default**:
 
 - **JWT authentication** on every API endpoint — no unauthenticated access
+- **Better Auth-inspired account hardening** — first admin receives one-time recovery codes during onboarding, passkey setup is offered immediately, users can change username/profile/password from Settings, and admin-created users receive one-time recovery codes
+- **Two-factor options** — password sign-in can be protected with TOTP, recovery codes are the fallback factor, and WebAuthn/passkeys provide phishing-resistant passwordless sign-in; Istara does not use SMS or email OTP factors
 - **Fernet field encryption** on sensitive database fields — secrets are encrypted at rest
+- **Admin-managed file and backup encryption** — when enabled, managed uploads, stored document text, and future backup archives are encrypted at rest; backups are written as `.tar.gz.enc` and require the correct file-encryption key to restore
+- **Secure key handling** — the file-encryption key should live in a secrets manager or macOS Keychain, with an owner-only local key-file fallback for source installs; losing the key is destructive for encrypted files and backups
 - **Local-first architecture** — LLM inference runs on your hardware via LM Studio or Ollama; no data transmitted to external APIs unless you explicitly configure one
 - **MCP server OFF by default** — external agent access requires conscious opt-in
 - **SQLite database** — a single portable file you control completely
-- **No telemetry** — Istara never phones home
+- **No phone-home telemetry** — Istara records local process, route, quality, and governance events for audits, but never sends them to an external service
 
 ---
 
@@ -601,13 +615,14 @@ Istara is **zero-trust by default**:
 │  │                                                            │    │
 │  │  MetaOrchestrator (A2A message routing)                    │    │
 │  │  Context Hierarchy (6 levels) + DAG Summarizer             │    │
-│  │  Hybrid RAG: LanceDB (70%) + BM25 (30%) + RRF merge        │    │
-│  │  LLMLingua Prompt Compressor (30–74% token savings)        │    │
-│  │  Self-Evolution Engine + Skill Health Monitor              │    │
-│  │  Autoresearch Loop (~12 experiments/hour)                  │    │
-│  │  Multi-model Validation (MoA + Fleiss' Kappa)              │    │
+│  │  Hybrid RAG: LanceDB + BM25 + RRF + provenance status      │    │
+│  │  Evidence Graph / GraphRAG traceability and synthesis      │    │
+│  │  LLMLingua Compressor with protected Research Spine blocks │    │
+│  │  Self-Improvement Governance + Skill Health Monitor        │    │
+│  │  Sandboxed Autoresearch proposals, not live mutations      │    │
+│  │  Multi-model Coding/Validation (Kappa/Alpha + route proof) │    │
 │  │  Resource Governor + Priority Scheduler                    │    │
-│  │  Atomic Research Chain (Nugget→Fact→Insight→Rec)           │    │
+│  │  Accepted Atomic Chain (Atom→Fact→Insight→Rec)             │    │
 │  └─────────────────────────────────┬──────────────────────────┘    │
 │                                    │                                │
 │  ┌──────────────────┐  ┌───────────▼──────────┐  ┌──────────────┐  │
@@ -736,12 +751,12 @@ istara start
 | Skill | Description |
 |---|---|
 | Agent Factory | Create new specialized agents at runtime |
-| Skill Evolution | Propose and apply prompt improvements to existing skills |
+| Skill Evolution | Propose governed prompt/skill improvements from verified Research Spine outcomes |
 | UX Law Compliance | Automated audit against 30 Laws of UX |
 | Design Brief Generator | Generate design briefs from research findings |
-| Evidence Chain Validator | Verify nugget→fact→insight→recommendation linkage |
-| Multi-model Validator | Run MoA validation with Fleiss' Kappa on any finding set |
-| Autoresearch Optimizer | Run autonomous parameter optimization experiments |
+| Evidence Chain Validator | Verify accepted atom/nugget → fact → insight → recommendation linkage |
+| Multi-model Validator | Validate source evidence units with distinct project-authorized models and reliability metrics |
+| Autoresearch Optimizer | Run sandboxed optimization experiments that produce governed improvement proposals |
 
 </details>
 
@@ -778,9 +793,9 @@ Sage analyzes user journeys for cognitive load, workflow friction, and mental mo
 
 ### Echo (`istara-sim`) — End-to-End Tester
 
-Echo is the quality assurance agent. She runs the 75-scenario simulation test suite, performs regression testing on research workflows, and validates that system changes don't break existing research pipelines.
+Echo is the quality assurance agent. She runs the 76-scenario simulation test suite, performs regression testing on research workflows, and validates that system changes don't break existing research pipelines.
 
-**Core capabilities:** 75-scenario E2E test suite · Regression testing · User simulation · API endpoint validation · Performance benchmarking
+**Core capabilities:** 76-scenario E2E test suite · Regression testing · User simulation · API endpoint validation · Performance benchmarking
 
 </details>
 
@@ -817,7 +832,7 @@ istara/
 ├── security/                  # Security benchmark matrix, release checklist, assessments
 ├── testing/                   # Testing, eval, benchmark, and historical baseline strategy
 ├── tests/
-│   └── simulation/            # 75-scenario E2E simulation test suite
+│   └── simulation/            # 76-scenario E2E simulation test suite
 └── scripts/                   # Integrity checks, agent MEMORY.md updaters
 ```
 
@@ -831,14 +846,14 @@ Istara is MIT-licensed and actively welcomes contributions. High-impact areas:
 - **LLM adapters** — Support for new local inference backends
 - **Channel integrations** — Discord, Microsoft Teams, Signal, etc.
 - **UI components** — Accessibility improvements, new research views
-- **Research methodology** — Improved prompts, new validation logic
+- **Research methodology** — Improved prompts and validation logic, with protected protocol/gate changes governed
 - **Academic citations** — Connect features to relevant research literature
 
 ```bash
 # Run the backend test suite
 pytest tests/
 
-# Run the 75-scenario E2E simulation agent
+# Run the 76-scenario E2E simulation agent
 node tests/simulation/run.mjs
 
 # Verify system integrity before committing
@@ -873,51 +888,63 @@ See [TESTING.md](TESTING.md), [SECURITY.md](SECURITY.md), and [DOCUMENTATION.md]
 
 ### Multi-Model Validation
 
-3. **Wang et al. (2024)** — "Mixture-of-Agents Enhances Large Language Model Capabilities" *arXiv:2406.04692*. The MoA architecture underlying Istara's multi-agent validation layer.
+3. **Fleiss, J. L. (1971)** — "Measuring Nominal Scale Agreement among Many Raters" *Psychological Bulletin* 76(5):378-382. DOI: 10.1037/h0031619. Used for 3+ coder reliability over item-by-rater nominal coding matrices.
 
-4. **Du et al. (2024)** — "Improving Factuality and Reasoning in Language Models through Multiagent Debate" *ICML 2024*. Adversarial debate protocol for reducing hallucination; implemented in Istara's validation stack.
+4. **Cohen, J. (1960)** — "A Coefficient of Agreement for Nominal Scales" *Educational and Psychological Measurement* 20(1):37-46. DOI: 10.1177/001316446002000104. Used for two-coder reliability.
 
-5. **Li et al. (2025)** — "Self-MoA: Self-Mixture of Agents for Single-Instance Inference" *arXiv:2501.xxxxx*. Single-agent MoA variant for constrained-compute environments.
+5. **O'Connor & Joffe (2020)** — "Intercoder Reliability in Qualitative Research: Debates and Practical Guidelines" *International Journal of Qualitative Methods*. DOI: 10.1177/1609406919899220. Used for the independent-coder/reconciliation process.
 
-6. **Fleiss, J. L. (1971)** — "Measuring nominal scale agreement among many raters" *Psychological Bulletin* 76(5):378–382. The κ statistic used in Istara's inter-coder reliability scoring for thematic analysis.
+6. **MacQueen et al. (1998)** — "Codebook Development for Team-Based Qualitative Analysis" *Cultural Anthropology Methods* 10(2):31-36. DOI: 10.1177/1525822X980100020301. Used for code definitions, inclusion/exclusion criteria, and team codebook discipline.
 
-7. **Zheng et al. (2023)** — "Judging LLM-as-a-Judge with MT-Bench and Chatbot Arena" *NeurIPS 2023*. LLM-as-Judge methodology used in Istara's final validation pass.
+7. **Wang et al. (2024)** — "Mixture-of-Agents Enhances Large Language Model Capabilities" *arXiv:2406.04692*. Inspiration for Istara's multi-agent validation layer.
+
+8. **Du et al. (2023)** — "Improving Factuality and Reasoning in Language Models through Multiagent Debate" *arXiv:2305.14325*. Adversarial debate protocol for reducing unsupported outputs; implemented as a validation/refinement path in Istara's stack.
+
+9. **Li et al. (2025)** — "Rethinking Mixture-of-Agents: Is Mixing Different Large Language Models Beneficial?" *arXiv:2502.00674*. Single-model Self-MoA variant for constrained-compute environments.
+
+10. **Zheng et al. (2023)** — "Judging LLM-as-a-Judge with MT-Bench and Chatbot Arena" *NeurIPS 2023*. LLM-as-Judge methodology used only as auxiliary validation and not as a replacement for evidence/reliability/human review gates.
 
 ### Memory and Context Management
 
-8. **Jiang et al. (2023)** — "LLMLingua: Compressing Prompts for Accelerated Inference of Large Language Models" *EMNLP 2023*. Prompt compression achieving 30–74% token reduction; implemented in Istara's context compressor.
+11. **Jiang et al. (2023)** — "LLMLingua: Compressing Prompts for Accelerated Inference of Large Language Models" *EMNLP 2023*. Prompt compression; Istara protects methodology/codebook/evidence/reliability blocks from compression loss.
 
-9. **Chen et al. (2023)** — "Walking Down the Memory Maze: Beyond Context Limit through Interactive Reading" *arXiv:2310.05029*. MemWalker DAG-based hierarchical summarization; implemented in Istara's context hierarchy.
+12. **Jiang et al. (2023)** — "LongLLMLingua: Accelerating and Enhancing LLMs in Long Context Scenarios via Prompt Compression" *arXiv:2310.06839*. Long-context compression reference; protected research-validity blocks remain non-compressible.
 
-10. **Pan et al. (2024)** — "From RAG to Prompt RAG: Revisiting Retrieval-Augmented Generation for Long-Context Language Models" *ACL 2024*. Prompt RAG for injecting retrieved context at inference time.
+13. **Chen et al. (2023)** — "Walking Down the Memory Maze: Beyond Context Limit through Interactive Reading" *arXiv:2310.05029*. MemWalker DAG-based hierarchical summarization; implemented in Istara's context hierarchy.
 
-11. **Ouyang et al. (2026)** — "ReasoningBank: Scaling Agent Self-Evolving with Reasoning Memory" *arXiv:2509.25140*. Structured reasoning memory for distilling successful and failed agent trajectories into reusable strategies; implemented as Istara's shared orchestration-memory layer for Memento routing, autoresearch, and meta-agent observation.
+14. **Pan et al. (2024)** — "From RAG to Prompt RAG: Revisiting Retrieval-Augmented Generation for Long-Context Language Models" *ACL 2024*. Prompt RAG for injecting retrieved context at inference time; Istara still injects mandatory coding methodology deterministically.
+
+15. **Ouyang et al. (2026)** — "ReasoningBank: Scaling Agent Self-Evolving with Reasoning Memory" *arXiv:2509.25140*. Structured reasoning memory for distilling successful and failed agent trajectories into reusable strategies; implemented as Istara's shared orchestration-memory layer for Memento routing, autoresearch, and meta-agent observation.
 
 ### Retrieval-Augmented Generation
 
-12. **Lewis et al. (2020)** — "Retrieval-Augmented Generation for Knowledge-Intensive NLP Tasks" *NeurIPS 2020*. The foundational RAG paper; Istara's hybrid retrieval implements this architecture.
+16. **Lewis et al. (2020)** — "Retrieval-Augmented Generation for Knowledge-Intensive NLP Tasks" *NeurIPS 2020*. The foundational RAG paper; Istara's hybrid retrieval is the exact-evidence layer.
 
-13. **Cormack et al. (2009)** — "Reciprocal rank fusion outperforms condorcet and individual rank learning methods" *SIGIR 2009*. RRF algorithm merging vector and keyword search rankings in Istara.
+17. **Edge et al. (2024)** — "From Local to Global: A Graph RAG Approach to Query-Focused Summarization" *arXiv:2404.16130*. Basis for GraphRAG-style global synthesis; Istara uses graph synthesis only over traceable evidence and never as a bypass around coding/reliability/review gates.
 
-14. **Robertson & Zaragoza (2009)** — "The Probabilistic Relevance Framework: BM25 and Beyond" *Foundations and Trends in Information Retrieval* 3(4). BM25 keyword search component of Istara's hybrid retrieval.
+18. **Microsoft Research GraphRAG / LazyGraphRAG / DRIFT Search** — Official Microsoft Research and GraphRAG documentation. Used for local/global/DRIFT search concepts and cost-aware graph retrieval design.
+
+19. **Cormack et al. (2009)** — "Reciprocal rank fusion outperforms condorcet and individual rank learning methods" *SIGIR 2009*. RRF algorithm merging vector and keyword search rankings in Istara.
+
+20. **Robertson & Zaragoza (2009)** — "The Probabilistic Relevance Framework: BM25 and Beyond" *Foundations and Trends in Information Retrieval* 3(4). BM25 keyword search component of Istara's hybrid retrieval.
 
 ### Distributed Compute
 
-15. **Borzunov et al. (2022)** — "Petals: Collaborative Inference and Fine-tuning of Large Models" *arXiv:2209.01188*. Distributed inference architecture; Istara's Compute Relay is inspired by Petals.
+21. **Borzunov et al. (2022)** — "Petals: Collaborative Inference and Fine-tuning of Large Models" *arXiv:2209.01188*. Distributed inference architecture; Istara's Compute Relay is inspired by Petals.
 
-16. **Borzunov et al. (2023)** — "Distributed Inference and Fine-tuning of Large Language Models Over the Internet" *NeurIPS 2023*.
+22. **Borzunov et al. (2023)** — "Distributed Inference and Fine-tuning of Large Language Models Over the Internet" *NeurIPS 2023*.
 
 ### Survey and Interview Channels
 
-17. **AURA (2025)** — "AURA: Adaptive User Research Assistant" *arXiv:2510.27126*. Adaptive interview agent architecture deployed by Istara across messaging channels.
+23. **AURA (2025)** — "AURA: Adaptive User Research Assistant" *arXiv:2510.27126*. Adaptive interview agent architecture deployed by Istara across messaging channels.
 
 ### Research Methodology
 
-18. **Sharon & Gadbaw (2018)** — "Atomic Research" WeWork Research Operations. The Nugget→Fact→Insight→Recommendation evidence chain implemented as Istara's core data model.
+24. **Sharon & Gadbaw (2018)** — "Atomic Research" WeWork Research Operations. Istara implements Atomic Research as an accepted, source-validated Atom/Nugget→Fact→Insight→Recommendation evidence chain.
 
-19. **Yablonski, J. (2020)** — *Laws of UX: Design Principles for Persuasive and Ethical Products*. O'Reilly Media. The 30 Laws of UX audited by Istara's compliance checker.
+25. **Yablonski, J. (2020)** — *Laws of UX: Design Principles for Persuasive and Ethical Products*. O'Reilly Media. The 30 Laws of UX audited by Istara's compliance checker.
 
-20. **Karpathy, A. (2026)** — "autoresearch: autonomous experiment loops for AI systems" github.com/karpathy/autoresearch. Autonomous optimization framework; implemented as Istara's autoresearch engine.
+26. **Karpathy, A. (2026)** — "autoresearch: autonomous experiment loops for AI systems" github.com/karpathy/autoresearch. Autonomous optimization framework; implemented as Istara's autoresearch engine.
 
 ### Interoperability Standards
 
@@ -975,7 +1002,7 @@ MIT © 2026 Istara Contributors — see [LICENSE](LICENSE).
 
 Built for researchers who believe their data should stay theirs.
 
-**Autonomous. Self-improving. Zero-trust. Never hallucinate.**
+**Autonomous. Self-improving. Zero-trust. Evidence first.**
 
 [GitHub](https://github.com/henrique-simoes/Istara) · [Issues](https://github.com/henrique-simoes/Istara/issues) · [Discussions](https://github.com/henrique-simoes/Istara/discussions)
 

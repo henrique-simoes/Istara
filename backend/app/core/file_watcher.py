@@ -11,6 +11,7 @@ from pathlib import Path
 from watchfiles import awatch, Change
 
 from app.core.embeddings import embed_chunks
+from app.core.file_encryption import encrypt_file_in_place, protect_document_text, read_file_text
 from app.core.file_processor import get_supported_extensions, process_file
 from app.core.rag import VectorStore
 from app.api.websocket import broadcast_file_processed, broadcast_suggestion
@@ -89,7 +90,7 @@ class FileWatcher:
 
         # Read first 500 chars for content-based heuristics
         try:
-            preview = file_path.read_text(errors="replace")[:500].lower()
+            preview = read_file_text(file_path)[:500].lower()
         except Exception:
             preview = ""
 
@@ -139,6 +140,13 @@ class FileWatcher:
             tasks.append(("research-synthesis", f"Synthesize: {stem}", "low"))
 
         return tasks
+
+    def _is_managed_upload_path(self, file_path: Path) -> bool:
+        try:
+            file_path.resolve().relative_to(Path(settings.upload_dir).expanduser().resolve())
+            return True
+        except (OSError, ValueError):
+            return False
 
     async def _create_research_tasks(self, file_path: Path, project_id: str) -> int:
         """Create research tasks for a processed file based on its classification.
@@ -229,6 +237,10 @@ class FileWatcher:
 
         from app.models.database import async_session
         from app.models.document import Document, DocumentSource, DocumentStatus
+        from app.services.research_validity_service import (
+            persist_document_source_evidence_units,
+            record_source_evidence_unit_telemetry,
+        )
         from sqlalchemy import select
 
         async with async_session() as db:
@@ -250,7 +262,7 @@ class FileWatcher:
             content_text = ""
             if suffix in {".txt", ".md", ".csv", ".json"}:
                 try:
-                    text = file_path.read_text(errors="replace")
+                    text = read_file_text(file_path)
                     content_preview = text[:2000]
                     content_text = text
                 except Exception:
@@ -269,13 +281,36 @@ class FileWatcher:
                 file_size=stat.st_size,
                 status=DocumentStatus.READY,
                 source=DocumentSource.PROJECT_FILE,
-                content_preview=content_preview,
-                content_text=content_text,
+                content_preview=protect_document_text(content_preview),
+                content_text=protect_document_text(content_text),
             )
             doc.set_tags([])
 
             db.add(doc)
+            evidence_units = []
+            if content_text.strip():
+                evidence_units = await persist_document_source_evidence_units(
+                    db,
+                    project_id=project_id,
+                    document_id=doc.id,
+                    source_text=content_text,
+                    source_location=doc.file_name or file_path.name,
+                    source_document_id=doc.id,
+                    source_type=doc.source.value if doc.source else "project_file",
+                    method="file_watcher",
+                    phase=doc.phase,
+                    version=doc.version or 1,
+                    metadata={
+                        "file_name": doc.file_name,
+                        "file_type": doc.file_type,
+                        "ingestion_surface": "file_watcher",
+                    },
+                )
             await db.commit()
+            await record_source_evidence_unit_telemetry(
+                project_id=project_id,
+                units=evidence_units,
+            )
 
             # Notify via WebSocket
             try:
@@ -344,10 +379,14 @@ class FileWatcher:
         # Process the file
         result = process_file(file_path)
         if result.error:
+            if self._is_managed_upload_path(file_path):
+                encrypt_file_in_place(file_path)
             logger.error(f"Error processing {file_path}: {result.error}")
             return {"file": file_key, "error": result.error}
 
         if not result.chunks:
+            if self._is_managed_upload_path(file_path):
+                encrypt_file_in_place(file_path)
             logger.warning(f"No text extracted from {file_path}")
             return None
 
@@ -359,8 +398,11 @@ class FileWatcher:
         embedded = await embed_chunks(result.chunks)
         count = await store.add_chunks(embedded)
 
+        if self._is_managed_upload_path(file_path):
+            encrypt_file_in_place(file_path)
+
         # Mark as processed
-        self._processed_files[file_key] = last_modified
+        self._processed_files[file_key] = file_path.stat().st_mtime
         self._save_state()
 
         summary = {

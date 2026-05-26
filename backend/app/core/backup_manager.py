@@ -25,6 +25,7 @@ from pathlib import Path, PurePosixPath
 from sqlalchemy import delete, select
 
 from app.config import settings
+from app.core.file_encryption import decrypted_file_path, encrypt_file_to_path
 from app.models.backup import BackupRecord
 from app.models.database import async_session
 
@@ -277,8 +278,11 @@ class BackupManager:
         record_id = str(uuid.uuid4())
         now = datetime.now(timezone.utc)
         timestamp = now.strftime("%Y%m%d_%H%M%S")
-        filename = f"istara_backup_{timestamp}_{record_id[:8]}.tar.gz"
+        base_filename = f"istara_backup_{timestamp}_{record_id[:8]}.tar.gz"
+        encrypted_archive = bool(settings.file_encryption_enabled)
+        filename = f"{base_filename}.enc" if encrypted_archive else base_filename
         archive_path = _safe_backup_path(filename)
+        build_archive_path = archive_path.with_name(base_filename) if encrypted_archive else archive_path
 
         # Create DB record (in_progress)
         async with async_session() as db:
@@ -308,10 +312,19 @@ class BackupManager:
             result = await loop.run_in_executor(
                 _executor,
                 self._build_archive_sync,
-                str(archive_path),
+                str(build_archive_path),
                 backup_type,
                 previous_checksums,
+                encrypted_archive,
             )
+            if encrypted_archive:
+                result = await loop.run_in_executor(
+                    _executor,
+                    self._encrypt_archive_sync,
+                    str(build_archive_path),
+                    str(archive_path),
+                    result,
+                )
 
             manifest = result["manifest"]
             total_size = result["total_size"]
@@ -367,9 +380,16 @@ class BackupManager:
                 "status": "completed",
                 "components": components,
                 "checksum": archive_checksum,
+                "encrypted": encrypted_archive,
             }
 
         except Exception as exc:
+            if encrypted_archive:
+                for cleanup_path in {build_archive_path, archive_path}:
+                    try:
+                        cleanup_path.unlink(missing_ok=True)
+                    except OSError:
+                        pass
             # Mark as failed
             async with async_session() as db:
                 rec_result = await db.execute(
@@ -390,6 +410,7 @@ class BackupManager:
         archive_path: str,
         backup_type: str,
         previous_checksums: dict[str, str],
+        encrypted_archive: bool = False,
     ) -> dict:
         """Build the tar.gz archive (blocking — runs in executor)."""
         with tempfile.TemporaryDirectory(prefix="istara_backup_") as tmp_dir:
@@ -508,6 +529,7 @@ class BackupManager:
                 "components": components,
                 "excluded_names": sorted(BACKUP_EXCLUDED_NAMES),
                 "excluded_globs": list(BACKUP_EXCLUDED_GLOBS),
+                "encrypted_archive": encrypted_archive,
             }
 
             manifest_path = tmp / "manifest.json"
@@ -533,6 +555,19 @@ class BackupManager:
                 "file_count": file_count,
                 "archive_checksum": archive_checksum,
             }
+
+    def _encrypt_archive_sync(self, plain_archive: str, encrypted_archive: str, result: dict) -> dict:
+        """Encrypt a freshly built backup archive and remove the plaintext copy."""
+        encrypt_file_to_path(plain_archive, encrypted_archive, force=True)
+        try:
+            Path(plain_archive).unlink(missing_ok=True)
+        except OSError:
+            pass
+        encrypted_result = dict(result)
+        encrypted_result["total_size"] = Path(encrypted_archive).stat().st_size
+        encrypted_result["archive_checksum"] = _sha256_file(encrypted_archive)
+        encrypted_result["encrypted"] = True
+        return encrypted_result
 
     def _copy_dir(
         self,
@@ -681,8 +716,9 @@ class BackupManager:
 
         with tempfile.TemporaryDirectory(prefix="istara_restore_") as tmp_dir:
             # Extract
-            with tarfile.open(archive_path, "r:gz") as tar:
-                _safe_extract_tar(tar, tmp_dir)
+            with decrypted_file_path(archive_path) as readable_archive:
+                with tarfile.open(readable_archive, "r:gz") as tar:
+                    _safe_extract_tar(tar, tmp_dir)
 
             tmp = Path(tmp_dir)
 
@@ -800,8 +836,9 @@ class BackupManager:
     def _verify_sync(self, archive_path: str) -> dict:
         """Verify archive checksums (blocking)."""
         with tempfile.TemporaryDirectory(prefix="istara_verify_") as tmp_dir:
-            with tarfile.open(archive_path, "r:gz") as tar:
-                _safe_extract_tar(tar, tmp_dir)
+            with decrypted_file_path(archive_path) as readable_archive:
+                with tarfile.open(readable_archive, "r:gz") as tar:
+                    _safe_extract_tar(tar, tmp_dir)
 
             # Fix permissions so git object files are readable
             for root, dirs, files in os.walk(tmp_dir):

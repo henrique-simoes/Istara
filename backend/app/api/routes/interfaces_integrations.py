@@ -29,7 +29,9 @@ from app.services.design_evidence import (
     build_dev_spec_content,
     build_figma_import_html,
     hydrate_design_brief,
+    hydrate_design_screen,
     resolve_screen_source_findings,
+    summarize_source_validity,
 )
 from app.skills.design_tools import execute_design_tool
 
@@ -129,7 +131,7 @@ async def figma_import(data: FigmaImportRequest, request: Request, db: AsyncSess
             "name": file_name,
             "screens_imported": 1,
             "screen_ids": [screen_id],
-            "screens": [screen.to_dict()],
+            "screens": [await hydrate_design_screen(db, screen)],
             "components": [
                 {
                     "name": c.get("name", ""),
@@ -313,6 +315,7 @@ async def handoff_dev_spec(
         "parent_screen_id": screen.parent_screen_id,
         "variant_type": screen.variant_type,
         "source_findings": findings,
+        "research_validity": summarize_source_validity(findings),
         "created_at": screen.created_at.isoformat() if screen.created_at else None,
     }
     return {"success": True, "dev_spec": spec, "content": content}

@@ -18,12 +18,14 @@ do not drift into scattered one-off notes.
 | `Tech.md` | Narrative technical architecture. |
 | `docs/features/README.md` | Living feature documentation system: source docs, generated HTML, manifests, `llms.txt`, glossary, and update workflow. |
 | `docs/FEATURE_DOCUMENTATION_PROGRESS.md` | Current handoff/status for the feature documentation system and remaining verification gaps. |
+| `docs/architecture/research-validity-contract.md` | Non-negotiable Research Spine contract for research data, coding, reliability, review, and reports. |
+| `docs/architecture/self-improvement-governance-contract.md` | Non-negotiable contract for telemetry, autoresearch, ReasoningBank, Memento Skills, Meta-Hyperagent, self-evolution, RAG/GraphRAG, Prompt-RAG, and LLMLingua as one governed learning system. |
 
 ## Testing, Evals, and Benchmarks
 
 | File | Purpose |
 | --- | --- |
-| `TESTING.md` | Top-level verification guide, command matrix, live LLM contract, and artifact logging rules. |
+| `TESTING.md` | Top-level developer testing guide: suite topology, command matrix, CI map, project-scoped testing rules, live LLM contract, and artifact logging rules. |
 | `testing/TESTING_STRATEGY.md` | Active release-governance strategy for test layers, eval contracts, mutation/property gates, and metrics. |
 | `testing/AI_EVALS_STRATEGY.md` | Academic/industry evaluation strategy for RAG, Prompt RAG, LLMLingua, DAG/ReAct, memory, ReasoningBank, Memento Skills, and Meta Hyperagents. |
 | `testing/TEST_HISTORY.md` | Curated historical verification log. Raw run artifacts stay gitignored. |

@@ -10,7 +10,10 @@ export async function run(ctx) {
   const { api } = ctx;
   const checks = [];
   const cleanup = { deploymentIds: [], channelIds: [] };
-  const projectId = ctx.projectId || "sim-project-001";
+  if (!ctx.projectId) {
+    return [{ name: "Project available for research deployment", passed: false, detail: "No persistent project from runner" }];
+  }
+  const projectId = ctx.projectId;
   const projectQuery = encodeURIComponent(projectId);
   const deploymentPath = (deploymentId, suffix = "") =>
     `/api/deployments/${deploymentId}${suffix}?project_id=${projectQuery}`;

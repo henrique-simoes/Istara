@@ -13,11 +13,15 @@ export const id = "28-self-evolution-prompt-compression";
 export async function run(ctx) {
   const { api } = ctx;
   const checks = [];
-  const projectId = ctx.projectId || "sim-project-001";
+  if (!ctx.projectId) {
+    return { checks: [{ name: "Simulation project required", passed: false, detail: "No project ID" }], passed: 0, failed: 1 };
+  }
+  const projectId = ctx.projectId;
+  const projectQuery = `project_id=${encodeURIComponent(projectId)}`;
 
   // ── 1. Self-Evolution API endpoints exist ──
   try {
-    const scan = await api.get("/api/agents/evolution/scan");
+    const scan = await api.get(`/api/agents/evolution/scan?${projectQuery}`);
     checks.push({
       name: "Evolution scan endpoint works",
       passed:
@@ -44,7 +48,7 @@ export async function run(ctx) {
   for (const agentId of agentIds) {
     try {
       const result = await api.get(
-        `/api/agents/${agentId}/evolution/candidates`
+        `/api/agents/${agentId}/evolution/candidates?${projectQuery}`
       );
       checks.push({
         name: `${agentId} evolution candidates endpoint`,
@@ -63,7 +67,7 @@ export async function run(ctx) {
 
   // ── 3. Auto-evolve endpoint (safe to call — only promotes mature patterns) ──
   try {
-    const evolve = await api.post("/api/agents/istara-main/evolution/auto");
+    const evolve = await api.post(`/api/agents/istara-main/evolution/auto?${projectQuery}`);
     checks.push({
       name: "Auto-evolve endpoint returns valid response",
       passed:
@@ -83,7 +87,7 @@ export async function run(ctx) {
   // ── 4. Prompt compression stats endpoint ──
   for (const agentId of agentIds) {
     try {
-      const stats = await api.get(`/api/agents/${agentId}/prompt/stats`);
+      const stats = await api.get(`/api/agents/${agentId}/prompt/stats?${projectQuery}`);
       checks.push({
         name: `${agentId} prompt compression stats`,
         passed:
@@ -104,7 +108,7 @@ export async function run(ctx) {
 
   // ── 5. Compression actually reduces token count for large prompts ──
   try {
-    const stats = await api.get("/api/agents/istara-main/prompt/stats");
+    const stats = await api.get(`/api/agents/istara-main/prompt/stats?${projectQuery}`);
     checks.push({
       name: "LLMLingua compression produces smaller output",
       passed: stats.compressed_tokens < stats.full_tokens,
@@ -121,7 +125,7 @@ export async function run(ctx) {
   // ── 6. Identity still loads correctly ──
   for (const agentId of agentIds) {
     try {
-      const identity = await api.get(`/api/agents/${agentId}/identity`);
+      const identity = await api.get(`/api/agents/${agentId}/identity?${projectQuery}`);
       checks.push({
         name: `${agentId} identity still loads after compression integration`,
         passed: identity.has_persona === true && identity.identity_length > 1000,
@@ -138,7 +142,7 @@ export async function run(ctx) {
 
   // ── 7. Learnings endpoint still works ──
   try {
-    const learnings = await api.get("/api/agents/istara-main/learnings");
+    const learnings = await api.get(`/api/agents/istara-main/learnings?${projectQuery}`);
     checks.push({
       name: "Learnings endpoint still returns valid data",
       passed:
@@ -177,11 +181,11 @@ export async function run(ctx) {
   // ── 9. Prompt RAG: different queries retrieve different sections ──
   try {
     const interviewPrompt = await api.post(
-      "/api/agents/istara-main/prompt/compose",
+      `/api/agents/istara-main/prompt/compose?${projectQuery}`,
       { query: "How do I analyze interview transcripts?", use_embeddings: false }
     );
     const usabilityPrompt = await api.post(
-      "/api/agents/istara-main/prompt/compose",
+      `/api/agents/istara-main/prompt/compose?${projectQuery}`,
       { query: "Run a usability heuristic evaluation", use_embeddings: false }
     );
 
@@ -216,7 +220,7 @@ export async function run(ctx) {
   // ── 10. Prompt RAG: identity anchor always preserved ──
   try {
     const result = await api.post(
-      "/api/agents/istara-main/prompt/compose",
+      `/api/agents/istara-main/prompt/compose?${projectQuery}`,
       { query: "random nonsensical question about nothing relevant" }
     );
     checks.push({
@@ -236,7 +240,7 @@ export async function run(ctx) {
   // ── 11. Prompt RAG: composed prompt is smaller than full identity ──
   try {
     const result = await api.post(
-      "/api/agents/istara-main/prompt/compose",
+      `/api/agents/istara-main/prompt/compose?${projectQuery}`,
       { query: "Tell me about user research", max_tokens: 1024 }
     );
     // Allow 10% overshoot since token estimation is ~4 chars/token heuristic
@@ -259,7 +263,7 @@ export async function run(ctx) {
   for (const agentId of agentIds) {
     try {
       const result = await api.post(
-        `/api/agents/${agentId}/prompt/compose`,
+        `/api/agents/${agentId}/prompt/compose?${projectQuery}`,
         { query: "Help me with UX research analysis" }
       );
       checks.push({
@@ -282,7 +286,7 @@ export async function run(ctx) {
   // ── 13. Compression preserves domain terms (UX research vocabulary) ──
   try {
     // Use the full identity endpoint to verify domain terms survive compression
-    const identity = await api.get("/api/agents/istara-main/identity");
+    const identity = await api.get(`/api/agents/istara-main/identity?${projectQuery}`);
     const fullText = Object.values(identity.files || {}).join(" ").toLowerCase();
 
     // Key domain terms that should exist in the agent's persona
@@ -302,7 +306,7 @@ export async function run(ctx) {
 
     // Check composed prompt includes sections whose HEADERS reference domain terms
     const result = await api.post(
-      "/api/agents/istara-main/prompt/compose",
+      `/api/agents/istara-main/prompt/compose?${projectQuery}`,
       { query: "Analyze research findings and create usability insights and recommendations" }
     );
 
@@ -331,7 +335,7 @@ export async function run(ctx) {
   // ── 14. Tiny budget test: even at 512 tokens, identity + some skills remain ──
   try {
     const result = await api.post(
-      "/api/agents/istara-main/prompt/compose",
+      `/api/agents/istara-main/prompt/compose?${projectQuery}`,
       { query: "Help me with research", max_tokens: 512 }
     );
     checks.push({
@@ -354,7 +358,7 @@ export async function run(ctx) {
   // ── 15. Section relevance scoring: interview query scores interview sections higher ──
   try {
     const result = await api.post(
-      "/api/agents/istara-main/prompt/compose",
+      `/api/agents/istara-main/prompt/compose?${projectQuery}`,
       { query: "How to conduct and analyze user interviews" }
     );
     // Find section scores related to interviews vs unrelated sections
@@ -411,7 +415,7 @@ export async function run(ctx) {
     });
     customAgentId = created.id;
 
-    const identity = await api.get(`/api/agents/${customAgentId}/identity`);
+    const identity = await api.get(`/api/agents/${customAgentId}/identity?${projectQuery}`);
     checks.push({
       name: "Custom agent gets auto-created persona files",
       passed: identity.has_persona === true,
@@ -420,7 +424,7 @@ export async function run(ctx) {
 
     // Custom agent evolution candidates
     const candidates = await api.get(
-      `/api/agents/${customAgentId}/evolution/candidates`
+      `/api/agents/${customAgentId}/evolution/candidates?${projectQuery}`
     );
     checks.push({
       name: "Custom agent evolution candidates endpoint works",
@@ -433,7 +437,7 @@ export async function run(ctx) {
     // Custom agent Prompt RAG also works
     try {
       const composed = await api.post(
-        `/api/agents/${customAgentId}/prompt/compose`,
+        `/api/agents/${customAgentId}/prompt/compose?${projectQuery}`,
         { query: "test query" }
       );
       checks.push({
@@ -459,7 +463,7 @@ export async function run(ctx) {
   // ── 17. Cleanup test custom agent ──
   if (customAgentId) {
     try {
-      await api.delete(`/api/agents/${customAgentId}`);
+      await api.delete(`/api/agents/${customAgentId}?${projectQuery}`);
     } catch (_) {
       // Non-critical
     }

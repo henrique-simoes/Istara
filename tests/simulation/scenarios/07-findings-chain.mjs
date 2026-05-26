@@ -1,4 +1,4 @@
-/** Scenario 07 — Findings Chain: verify Atomic Research Nuggets → Facts → Insights → Recs. */
+/** Scenario 07 — Findings Chain: verify accepted Atomic Research atoms/nuggets → facts → insights → recs. */
 
 export const name = "Findings & Atomic Research";
 export const id = "07-findings-chain";

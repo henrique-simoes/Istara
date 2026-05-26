@@ -23,6 +23,8 @@ export async function run(ctx) {
       skipped: true,
     };
   }
+  const projectQuery = ctx.projectId ? `project_id=${encodeURIComponent(ctx.projectId)}` : "";
+  const scopedPath = (path) => projectQuery ? `${path}?${projectQuery}` : path;
 
   // First, we need to login to get a JWT for authenticated tests
   let jwt = null;
@@ -65,7 +67,7 @@ export async function run(ctx) {
 
   // 3. Findings returns 401 without JWT
   try {
-    const res = await fetch("http://localhost:8000/api/findings/nuggets?project_id=test");
+    const res = await fetch(`http://localhost:8000${scopedPath("/api/findings/nuggets")}`);
     checks.push({
       name: "Findings returns 401 without JWT",
       passed: res.status === 401,
@@ -138,7 +140,7 @@ export async function run(ctx) {
 
   // 8. Channels returns 401 without JWT
   try {
-    const res = await fetch("http://localhost:8000/api/channels");
+    const res = await fetch(`http://localhost:8000${scopedPath("/api/channels")}`);
     checks.push({
       name: "Channels returns 401 without JWT",
       passed: res.status === 401,
@@ -150,7 +152,7 @@ export async function run(ctx) {
 
   // 9. Agents returns 401 without JWT
   try {
-    const res = await fetch("http://localhost:8000/api/agents");
+    const res = await fetch(`http://localhost:8000${scopedPath("/api/agents")}`);
     checks.push({
       name: "Agents returns 401 without JWT",
       passed: res.status === 401,
@@ -162,7 +164,7 @@ export async function run(ctx) {
 
   // 10. Autoresearch returns 401 without JWT
   try {
-    const res = await fetch("http://localhost:8000/api/autoresearch/status?project_id=test");
+    const res = await fetch(`http://localhost:8000${scopedPath("/api/autoresearch/status")}`);
     checks.push({
       name: "Autoresearch returns 401 without JWT",
       passed: res.status === 401,

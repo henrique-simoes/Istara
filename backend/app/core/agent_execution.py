@@ -34,6 +34,7 @@ from app.core.ollama import ollama
 from app.core.rag import ingest_chunks, retrieve_context
 from app.core.resource_governor import governor
 from app.core.self_check import Confidence, verify_claim
+from app.core.self_improvement_policy import learning_signal_for_research_output
 from app.core.steering import steering_manager
 from app.core.telemetry import telemetry_recorder
 from app.models.agent import Agent, AgentState
@@ -199,9 +200,10 @@ class AgentExecutionMixin:
                 },
             )
 
-            # ── Ensemble validation (if available) ──
-            # Validates findings using multi-perspective methods before storing.
-            # Self-MoA works with a single server (varies temperature).
+            # ── Operational response validation (if available) ──
+            # This is a quality signal over the candidate summary, not formal
+            # qualitative-coding reliability. Task-linked coding runs happen
+            # after findings are stored through research_validity_service.
             try:
                 import json as _json
 
@@ -254,15 +256,21 @@ class AgentExecutionMixin:
                                 1, int(getattr(settings, "validation_timeout_seconds", 120))
                             ),
                         )
-                        task.validation_method = method
+                        actual_method = val_result.method or method
+                        task.validation_method = actual_method
                         task.validation_result = _json.dumps(
                             {
+                                "requested_method": method,
+                                "actual_method": actual_method,
                                 "agreement_score": val_result.consensus.agreement_score,
                                 "kappa": val_result.consensus.kappa,
                                 "cosine_sim": val_result.consensus.cosine_sim,
                                 "confidence": val_result.consensus.confidence,
                                 "best_response": val_result.best_response,
                                 "response_count": len(val_result.responses),
+                                "route_evidence": val_result.metadata.get("route_evidence", []),
+                                "models_used": val_result.metadata.get("models_used", []),
+                                "assurance": val_result.metadata.get("assurance", actual_method),
                             }
                         )
                         task.consensus_score = val_result.consensus.agreement_score
@@ -272,13 +280,13 @@ class AgentExecutionMixin:
                             project.id,
                             skill.name,
                             self.agent_id,
-                            method,
+                            actual_method,
                             val_result.consensus.agreement_score,
                             val_result.consensus.agreement_score >= 0.5,
                         )
                         logger.info(
                             "Validation [%s]: score=%.2f",
-                            method,
+                            actual_method,
                             val_result.consensus.agreement_score,
                         )
 
@@ -291,10 +299,13 @@ class AgentExecutionMixin:
                                 "agent_id": self.agent_id,
                                 "project_id": project.id,
                                 "task_id": task.id,
-                                "validation_method": method,
+                                "validation_method": actual_method,
+                                "requested_validation_method": method,
                                 "validation_passed": val_result.consensus.agreement_score >= 0.5,
                                 "consensus_score": val_result.consensus.agreement_score,
                                 "validation_quality": val_result.consensus.agreement_score,
+                                "route_evidence": val_result.metadata.get("route_evidence", []),
+                                "models_used": val_result.metadata.get("models_used", []),
                             },
                         )
             except Exception as e:
@@ -359,7 +370,11 @@ class AgentExecutionMixin:
 
             # Self-verify output quality (LLM reflection with heuristic fallback)
             verified, verify_reason = await self._self_verify_output(task, output)
-            quality_score = 0.8 if output.success else 0.2
+            learning_signal = learning_signal_for_research_output(
+                execution_success=bool(output.success),
+                verification_success=bool(verified),
+            )
+            quality_score = learning_signal.research_quality_score
 
             try:
                 await self._record_reasoning_memory_for_task(
@@ -419,12 +434,33 @@ class AgentExecutionMixin:
             # Record skill usage and check health for self-evolution
             skill_manager.record_execution(
                 skill.name,
-                output.success,
+                learning_signal.learning_success,
                 quality_score,
                 project_id=task.project_id,
             )
             try:
                 health = skill_manager.get_skill_health(skill.name, project_id=task.project_id)
+                try:
+                    await telemetry_recorder.record_research_validity_event(
+                        operation="memento_skill.health",
+                        project_id=task.project_id,
+                        task_id=task.id,
+                        skill_name=skill.name,
+                        agent_id=self.agent_id,
+                        status=(
+                            "success"
+                            if health.get("health_score", 0) >= 0.5
+                            else "degraded"
+                        ),
+                        quality_score=health.get("health_score"),
+                        error_type=(
+                            None
+                            if health.get("health_score", 0) >= 0.5
+                            else "memento_skill_low_health"
+                        ),
+                    )
+                except Exception as exc:
+                    logger.debug(f"Memento skill health telemetry skipped: {exc}")
                 # LLM-based skill improvement when quality is consistently low
                 if health.get("executions", 0) >= 3 and health.get("avg_quality", 1.0) < 0.5:
                     # Ask LLM to reflect on why the skill is underperforming
@@ -495,7 +531,7 @@ class AgentExecutionMixin:
 
             # Autonomous skill creation check
             total_findings = len(output.nuggets) + len(output.facts) + len(output.insights)
-            if output.success and quality_score >= 0.8 and total_findings >= 3:
+            if learning_signal.learning_success and quality_score >= 0.8 and total_findings >= 3:
                 try:
                     await self._maybe_propose_skill(db, task, skill, output, total_findings)
                 except Exception:
@@ -815,7 +851,21 @@ class AgentExecutionMixin:
                 best_score = score
                 best_skill = skill
 
-        if best_skill and best_score >= _META_SKILL_SIMILARITY_THRESHOLD:
+        threshold = _META_SKILL_SIMILARITY_THRESHOLD
+        try:
+            from app.core.meta_overrides import get_parameter_override
+
+            threshold = float(
+                get_parameter_override(
+                    "agent.skill_similarity_threshold",
+                    project_id=getattr(task, "project_id", ""),
+                    default=threshold,
+                )
+            )
+        except Exception:
+            pass
+
+        if best_skill and best_score >= threshold:
             logger.info(
                 f"Semantic skill match: {best_skill.name} "
                 f"(similarity={best_score:.2f}) for task '{task.title[:60]}'"

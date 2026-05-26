@@ -24,6 +24,7 @@ import type {
   ProposalSandboxEvaluation,
 } from "@/lib/improvementGovernanceTypes";
 import type { ReasoningBankSummary, ReasoningMemoryItem } from "@/lib/reasoningBankTypes";
+import { useRoleCapabilities } from "@/hooks/useRoleCapabilities";
 import { useProjectStore } from "@/stores/projectStore";
 import { cn, formatDate } from "@/lib/utils";
 
@@ -67,6 +68,7 @@ function summarizeSurfaces(surfaces: string[] = []) {
 
 export default function GovernedEvolutionView() {
   const projectId = useProjectStore((s) => s.activeProjectId);
+  const capabilities = useRoleCapabilities();
   const [tab, setTab] = useState<Tab>("proposals");
   const [loading, setLoading] = useState(false);
   const [actionId, setActionId] = useState<string | null>(null);
@@ -79,7 +81,7 @@ export default function GovernedEvolutionView() {
   const [featureContract, setFeatureContract] = useState<ImprovementFeatureContract[]>([]);
 
   const fetchAll = useCallback(async () => {
-    if (!projectId) {
+    if (!capabilities.canUseGovernedEvolution || !projectId) {
       setSummary(null);
       setProposals([]);
       setVariants([]);
@@ -114,7 +116,7 @@ export default function GovernedEvolutionView() {
       setError(err instanceof Error ? err.message : "Could not load governed evolution data");
     }
     setLoading(false);
-  }, [projectId]);
+  }, [capabilities.canUseGovernedEvolution, projectId]);
 
   useEffect(() => {
     fetchAll();
@@ -127,6 +129,7 @@ export default function GovernedEvolutionView() {
   );
 
   const runProposalAction = async (id: string, action: "sandbox" | "approve" | "apply" | "reject" | "revert") => {
+    if (!capabilities.canUseGovernedEvolution) return;
     if (!projectId) {
       setError("Select a project before reviewing governed evolution.");
       return;
@@ -153,6 +156,7 @@ export default function GovernedEvolutionView() {
   };
 
   const runVariantAction = async (id: string, action: "approve" | "apply" | "confirm" | "revert" | "quarantine") => {
+    if (!capabilities.canUseGovernedEvolution) return;
     if (!projectId) {
       setError("Select a project before reviewing governed evolution.");
       return;
@@ -171,6 +175,8 @@ export default function GovernedEvolutionView() {
     }
     setActionId(null);
   };
+
+  if (!capabilities.canUseGovernedEvolution) return null;
 
   return (
     <section className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-5 space-y-4">

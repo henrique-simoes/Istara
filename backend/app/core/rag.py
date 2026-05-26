@@ -5,6 +5,7 @@ from __future__ import annotations
 import logging
 import time
 from dataclasses import dataclass
+from hashlib import sha256
 from pathlib import Path
 
 import lancedb
@@ -18,6 +19,17 @@ _guard = ContentGuard()
 
 logger = logging.getLogger(__name__)
 
+RAG_RESEARCH_SPINE_NOTICE = (
+    "<promotion_gate>"
+    "Hybrid RAG retrieves exact supporting context and source passages. "
+    "Retrieved chunks are not accepted Atomic Research artifacts or report "
+    "evidence by themselves. Any finding, recommendation, design decision, "
+    "task, or report must still pass source evidence-unit extraction, "
+    "independent coding, reliability/reconciliation, human-approved Done-task "
+    "gating, and report gates."
+    "</promotion_gate>"
+)
+
 
 @dataclass
 class RetrievalResult:
@@ -30,6 +42,16 @@ class RetrievalResult:
     agent_id: str = ""
     created_at: float = 0.0
     confidence: float = 1.0
+    evidence_unit_id: str = ""
+    source_document_id: str = ""
+    start_offset: int | None = None
+    end_offset: int | None = None
+    codebook_version_id: str = ""
+    coding_run_id: str = ""
+    review_status: str = ""
+    reliability_status: str = ""
+    retrieval_mode: str = "hybrid"
+    provenance_key: str = ""
 
 
 @dataclass
@@ -118,6 +140,7 @@ class VectorStore:
             source = ec.chunk.source
             file_type = Path(source).suffix.lstrip(".") if source else ""
             chunk_type = getattr(ec.chunk, "chunk_type", "character")
+            metadata = ec.chunk.metadata or {}
             records.append(
                 {
                     "vector": ec.vector,
@@ -130,6 +153,31 @@ class VectorStore:
                     "chunk_type": chunk_type,
                     "created_at": now,
                     "confidence": confidence,
+                    "evidence_unit_id": str(metadata.get("evidence_unit_id", "")),
+                    "source_document_id": str(metadata.get("source_document_id", "")),
+                    "start_offset": metadata.get("start_offset")
+                    if metadata.get("start_offset") is not None
+                    else -1,
+                    "end_offset": metadata.get("end_offset")
+                    if metadata.get("end_offset") is not None
+                    else -1,
+                    "codebook_version_id": str(metadata.get("codebook_version_id", "")),
+                    "coding_run_id": str(metadata.get("coding_run_id", "")),
+                    "review_status": str(metadata.get("review_status", "")),
+                    "reliability_status": str(metadata.get("reliability_status", "")),
+                    "retrieval_mode": str(metadata.get("retrieval_mode", "hybrid")),
+                    "provenance_key": _provenance_key(
+                        text=ec.chunk.text,
+                        source=source,
+                        page=ec.chunk.page or 0,
+                        evidence_unit_id=str(metadata.get("evidence_unit_id", "")),
+                        start_offset=metadata.get("start_offset")
+                        if metadata.get("start_offset") is not None
+                        else None,
+                        end_offset=metadata.get("end_offset")
+                        if metadata.get("end_offset") is not None
+                        else None,
+                    ),
                 }
             )
 
@@ -209,6 +257,15 @@ class VectorStore:
             ):
                 continue
             if score >= threshold:
+                def _optional_int(column: str) -> int | None:
+                    if column not in row.index:
+                        return None
+                    value = row.get(column)
+                    if value is None or (isinstance(value, float) and pd.isna(value)):
+                        return None
+                    parsed = int(value)
+                    return parsed if parsed >= 0 else None
+
                 retrieval_results.append(
                     RetrievalResult(
                         text=str(row["text"]),
@@ -222,6 +279,32 @@ class VectorStore:
                         confidence=float(row.get("confidence", 1.0))
                         if "confidence" in row.index
                         else 1.0,
+                        evidence_unit_id=str(row.get("evidence_unit_id", ""))
+                        if "evidence_unit_id" in row.index
+                        else "",
+                        source_document_id=str(row.get("source_document_id", ""))
+                        if "source_document_id" in row.index
+                        else "",
+                        start_offset=_optional_int("start_offset"),
+                        end_offset=_optional_int("end_offset"),
+                        codebook_version_id=str(row.get("codebook_version_id", ""))
+                        if "codebook_version_id" in row.index
+                        else "",
+                        coding_run_id=str(row.get("coding_run_id", ""))
+                        if "coding_run_id" in row.index
+                        else "",
+                        review_status=str(row.get("review_status", ""))
+                        if "review_status" in row.index
+                        else "",
+                        reliability_status=str(row.get("reliability_status", ""))
+                        if "reliability_status" in row.index
+                        else "",
+                        retrieval_mode=str(row.get("retrieval_mode", "hybrid"))
+                        if "retrieval_mode" in row.index
+                        else "hybrid",
+                        provenance_key=str(row.get("provenance_key", ""))
+                        if "provenance_key" in row.index
+                        else "",
                     )
                 )
 
@@ -254,6 +337,121 @@ class VectorStore:
 # ---------------------------------------------------------------------------
 # Hybrid search helpers
 # ---------------------------------------------------------------------------
+
+
+def _provenance_key(
+    *,
+    text: str,
+    source: str,
+    page: int | None,
+    evidence_unit_id: str = "",
+    start_offset: int | None = None,
+    end_offset: int | None = None,
+) -> str:
+    """Return a dedupe key that preserves evidence provenance.
+
+    Two participants may say the same sentence, and those are different
+    research evidence units. Dedupe must never collapse provenance down to
+    chunk text alone.
+    """
+    if evidence_unit_id:
+        return f"evidence:{evidence_unit_id}"
+    fingerprint = sha256(text.encode("utf-8")).hexdigest()[:16]
+    return f"{source}:{page or 0}:{start_offset or ''}:{end_offset or ''}:{fingerprint}"
+
+
+def retrieval_result_key(result: RetrievalResult) -> str:
+    if result.provenance_key:
+        return result.provenance_key
+    return _provenance_key(
+        text=result.text,
+        source=result.source,
+        page=result.page,
+        evidence_unit_id=result.evidence_unit_id,
+        start_offset=result.start_offset,
+        end_offset=result.end_offset,
+    )
+
+
+def _keyword_retrieval_result(kr, *, score: float = 0.0) -> RetrievalResult:
+    """Convert a BM25 hit into a provenance-carrying retrieval result."""
+
+    def _optional_int(value) -> int | None:
+        if value in (None, ""):
+            return None
+        try:
+            parsed = int(value)
+            return parsed if parsed >= 0 else None
+        except (TypeError, ValueError):
+            return None
+
+    provenance_key = kr.provenance_key or _provenance_key(
+        text=kr.text,
+        source=kr.source,
+        page=kr.page if kr.page else None,
+        evidence_unit_id=kr.evidence_unit_id,
+        start_offset=_optional_int(kr.start_offset),
+        end_offset=_optional_int(kr.end_offset),
+    )
+    review_status = kr.review_status or (
+        "non_promotional" if not kr.evidence_unit_id else ""
+    )
+    reliability_status = kr.reliability_status or (
+        "missing_provenance" if not kr.evidence_unit_id else ""
+    )
+    return RetrievalResult(
+        text=kr.text,
+        source=kr.source,
+        page=kr.page if kr.page else None,
+        score=score,
+        evidence_unit_id=kr.evidence_unit_id,
+        source_document_id=kr.source_document_id,
+        start_offset=_optional_int(kr.start_offset),
+        end_offset=_optional_int(kr.end_offset),
+        codebook_version_id=kr.codebook_version_id,
+        coding_run_id=kr.coding_run_id,
+        review_status=review_status,
+        reliability_status=reliability_status,
+        retrieval_mode="keyword",
+        provenance_key=provenance_key,
+    )
+
+
+async def _record_retrieval_telemetry(
+    *,
+    project_id: str,
+    retrieval_mode: str,
+    results: list[RetrievalResult],
+    degraded_reason: str | None = None,
+) -> None:
+    """Record a content-free retrieval event for research-validity audits."""
+    try:
+        from app.core.telemetry import telemetry_recorder
+
+        representative = next(
+            (
+                result
+                for result in results
+                if result.evidence_unit_id
+                or result.coding_run_id
+                or result.codebook_version_id
+            ),
+            results[0] if results else None,
+        )
+        status = "success" if results and not degraded_reason else "degraded"
+        await telemetry_recorder.record_research_validity_event(
+            operation="retrieval.hybrid",
+            project_id=project_id,
+            status=status,
+            retrieval_mode=retrieval_mode,
+            evidence_unit_id=representative.evidence_unit_id if representative else "",
+            coding_run_id=representative.coding_run_id if representative else "",
+            codebook_version_id=representative.codebook_version_id if representative else "",
+            error_type="retrieval_fallback" if degraded_reason else None,
+            error_message=degraded_reason[:160] if degraded_reason else None,
+        )
+    except Exception as e:
+        logger.debug("Retrieval telemetry skipped: %s", e)
 
 
 async def hybrid_search(
@@ -302,25 +500,22 @@ async def hybrid_search(
     vw = settings.rag_hybrid_vector_weight
     kw = settings.rag_hybrid_keyword_weight
 
-    # Build RRF scores keyed by chunk text (for deduplication)
+    # Build RRF scores keyed by provenance, not text. Qualitative evidence can
+    # repeat verbatim across documents/participants and still remain distinct.
     scores: dict[str, dict] = {}
 
     for rank, r in enumerate(vector_results, 1):
-        key = r.text
+        key = retrieval_result_key(r)
         if key not in scores:
             scores[key] = {"result": r, "score": 0.0}
         scores[key]["score"] += vw * (1.0 / (rrf_k + rank))
 
     for rank, kr in enumerate(keyword_results, 1):
-        key = kr.text
+        keyword_result = _keyword_retrieval_result(kr)
+        key = retrieval_result_key(keyword_result)
         if key not in scores:
             scores[key] = {
-                "result": RetrievalResult(
-                    text=kr.text,
-                    source=kr.source,
-                    page=kr.page if kr.page else None,
-                    score=0.0,
-                ),
+                "result": keyword_result,
                 "score": 0.0,
             }
         scores[key]["score"] += kw * (1.0 / (rrf_k + rank))
@@ -368,12 +563,7 @@ async def _keyword_only_search(
     results: list[RetrievalResult] = []
     for rank, kr in enumerate(keyword_results[:k], 1):
         results.append(
-            RetrievalResult(
-                text=kr.text,
-                source=kr.source,
-                page=kr.page if kr.page else None,
-                score=1.0 / rank,
-            )
+            _keyword_retrieval_result(kr, score=1.0 / rank)
         )
     return results
 
@@ -443,6 +633,8 @@ async def retrieve_context(
     Returns:
         RAGContext with retrieved documents and formatted context.
     """
+    degraded_reason: str | None = None
+    retrieval_mode = "hybrid"
     try:
         query_vector = await embed_text(query)
         results = await hybrid_search(
@@ -455,6 +647,8 @@ async def retrieve_context(
             agent_id=agent_id,
         )
     except Exception as e:
+        degraded_reason = str(e)
+        retrieval_mode = "keyword"
         logger.warning(
             "Embedding retrieval unavailable for project %s; falling back to keyword search: %s",
             project_id,
@@ -468,6 +662,12 @@ async def retrieve_context(
             file_type_filter=file_type_filter,
             agent_id=agent_id,
         )
+    await _record_retrieval_telemetry(
+        project_id=project_id,
+        retrieval_mode=retrieval_mode,
+        results=results,
+        degraded_reason=degraded_reason,
+    )
 
     # Format context for the LLM — wrap each chunk in untrusted delimiters
     context_parts = []
@@ -510,7 +710,8 @@ def build_augmented_prompt(
         "You are Istara, an expert UX Research assistant. "
         "You help researchers organize, analyze, and synthesize research findings. "
         "Always cite your sources when referencing specific documents. "
-        "If you're uncertain, say so — never fabricate evidence."
+        "If you're uncertain, say so — never fabricate evidence.",
+        RAG_RESEARCH_SPINE_NOTICE,
     ]
 
     if company_context:
@@ -535,7 +736,9 @@ def build_augmented_prompt(
         parts.append(
             f"\n## Relevant Documents\n"
             f"The following documents were retrieved from the project knowledge base. "
-            f"Reference them when relevant to the user's question.\n\n"
+            f"Use them only as supporting source context; do not present them as "
+            f"accepted research unless the evidence chain says they passed the "
+            f"Research Spine.\n\n"
             f"{rag_text}"
         )
 

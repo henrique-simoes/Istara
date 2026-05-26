@@ -987,6 +987,7 @@ async def compose_prompt_for_query(
         max_tokens=data.max_tokens,
         use_embeddings=data.use_embeddings,
         top_k=data.top_k,
+        project_id=project_id,
     )
 
     # Get section-level details for diagnostics

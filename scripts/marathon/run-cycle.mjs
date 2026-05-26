@@ -14,7 +14,8 @@
 import { readFileSync, writeFileSync, mkdirSync, existsSync, readdirSync } from "fs";
 import { join, dirname } from "path";
 import { fileURLToPath } from "url";
-import { execSync } from "child_process";
+import { execSync, spawnSync } from "child_process";
+import { runCustomChecks } from "./custom-checks.mjs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const PROJECT_ROOT = join(__dirname, "..", "..");
@@ -37,17 +38,85 @@ function authHeaders() {
   return h;
 }
 
-async function authenticate() {
-  // Read admin password from backend/.env
-  let password = process.env.ADMIN_PASSWORD || "";
-  if (!password) {
+function stripEnvValue(value) {
+  return String(value || "").trim().replace(/^['"]|['"]$/g, "");
+}
+
+function envValue(key) {
+  const envFiles = [
+    join(PROJECT_ROOT, "backend", ".env.local"),
+    join(PROJECT_ROOT, "backend", ".env"),
+    join(PROJECT_ROOT, ".env.local"),
+    join(PROJECT_ROOT, ".env"),
+  ];
+  for (const envFile of envFiles) {
     try {
-      const envContent = readFileSync(join(PROJECT_ROOT, "backend", ".env"), "utf-8");
-      const match = envContent.match(/ADMIN_PASSWORD=(.+)/);
-      if (match) password = match[1].trim();
+      const envContent = readFileSync(envFile, "utf-8");
+      const match = envContent.match(new RegExp(`^(?:export\\s+)?${key}=(.+)$`, "m"));
+      if (match) return stripEnvValue(match[1]);
     } catch {}
   }
+  return "";
+}
+
+function localTokenAllowed() {
+  return ["1", "true", "yes"].includes(String(process.env.ISTARA_E2E_ALLOW_LOCAL_TOKEN || "").toLowerCase());
+}
+
+function useLocalSignedToken(username) {
+  if (!localTokenAllowed()) return false;
+
+  const backendPath = join(PROJECT_ROOT, "backend");
+  const script = [
+    "import sys",
+    `sys.path.insert(0, ${JSON.stringify(backendPath)})`,
+    "from app.core.auth import create_token",
+    `print(create_token("marathon-admin", ${JSON.stringify(username)}, "admin", mfa_verified=True))`,
+  ].join("\n");
+
+  const candidates = [
+    process.env.PYTHON,
+    process.env.PYTHON_EXECUTABLE,
+    "python",
+    "python3",
+  ].filter(Boolean);
+
+  let lastError = "";
+  for (const pythonBin of candidates) {
+    const result = spawnSync(pythonBin, ["-c", script], {
+      encoding: "utf-8",
+      env: process.env,
+      stdio: ["ignore", "pipe", "pipe"],
+    });
+    if (result.status !== 0) {
+      lastError = (result.stderr || result.error?.message || "").trim();
+      continue;
+    }
+    const token = stripEnvValue(result.stdout);
+    if (!token) {
+      lastError = `${pythonBin} returned an empty token`;
+      continue;
+    }
+    AUTH_TOKEN = token;
+    console.log("  ✅ Marathon authenticated with local signed token");
+    return true;
+  }
+
+  console.log(`  ⚠ Local signed token fallback failed: ${lastError.substring(0, 160)}`);
+  return false;
+}
+
+async function authenticate() {
+  const providedToken = stripEnvValue(process.env.ISTARA_TEST_AUTH_TOKEN || "");
+  if (providedToken) {
+    AUTH_TOKEN = providedToken;
+    console.log("  ✅ Marathon using provided test auth token");
+    return;
+  }
+  const username = process.env.ADMIN_USERNAME || envValue("ADMIN_USERNAME") || "admin";
+  let password = process.env.ADMIN_PASSWORD || envValue("ADMIN_PASSWORD") || process.env.ISTARA_TEST_ADMIN_PASSWORD || "istara123";
   if (!password) {
+    if (useLocalSignedToken(username)) return;
     console.log("  ⚠ No ADMIN_PASSWORD found — marathon may fail auth");
     return;
   }
@@ -55,7 +124,7 @@ async function authenticate() {
     const res = await fetch(`${API_BASE}/api/auth/login`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ username: "admin", password }),
+      body: JSON.stringify({ username, password: stripEnvValue(password) }),
     });
     if (res.ok) {
       const data = await res.json();
@@ -63,9 +132,11 @@ async function authenticate() {
       console.log("  ✅ Marathon authenticated");
     } else {
       console.log(`  ⚠ Auth failed: ${res.status}`);
+      useLocalSignedToken(username);
     }
   } catch (e) {
     console.log(`  ⚠ Auth error: ${e.message}`);
+    useLocalSignedToken(username);
   }
 }
 
@@ -158,105 +229,53 @@ function canRunCycle(cycle, env) {
 }
 
 // Run simulation scenarios via the existing test runner
+function parseScenarioOutput(output) {
+  const scenarioSummary = output.match(/(?:PASS|FAIL)\s+\((\d+)\/(\d+)\)/);
+  if (scenarioSummary) {
+    const passed = Number.parseInt(scenarioSummary[1], 10);
+    const total = Number.parseInt(scenarioSummary[2], 10);
+    return { passed, failed: Math.max(0, total - passed) };
+  }
+  const passMatch = output.match(/(\d+)\s*passed/i);
+  const failMatch = output.match(/(\d+)\s*failed/i);
+  return {
+    passed: passMatch ? Number.parseInt(passMatch[1], 10) : 0,
+    failed: failMatch ? Number.parseInt(failMatch[1], 10) : 0,
+  };
+}
+
 async function runScenarios(scenarioIds) {
   const results = [];
+  const scenarioEnv = { ...process.env };
+  if (AUTH_TOKEN && !scenarioEnv.ISTARA_TEST_AUTH_TOKEN) {
+    scenarioEnv.ISTARA_TEST_AUTH_TOKEN = AUTH_TOKEN;
+  }
   for (const id of scenarioIds) {
     try {
       const output = execSync(
         `cd "${PROJECT_ROOT}" && node tests/simulation/run.mjs --scenario ${id} --skip-eval 2>&1`,
-        { timeout: 300000, encoding: "utf-8", maxBuffer: 10 * 1024 * 1024 }
+        { timeout: 300000, encoding: "utf-8", maxBuffer: 10 * 1024 * 1024, env: scenarioEnv }
       );
       // Parse results from output
-      const passMatch = output.match(/(\d+)\s*passed/i);
-      const failMatch = output.match(/(\d+)\s*failed/i);
+      const parsed = parseScenarioOutput(output);
       results.push({
         scenario: id,
-        passed: passMatch ? parseInt(passMatch[1]) : 0,
-        failed: failMatch ? parseInt(failMatch[1]) : 0,
-        output: output.slice(-500), // Last 500 chars
-        success: !failMatch || parseInt(failMatch[1]) === 0,
+        passed: parsed.passed,
+        failed: parsed.failed,
+        output: output.slice(-1200),
+        success: parsed.failed === 0,
       });
     } catch (e) {
+      const output = String(e.stdout || e.stderr || e.message || "Execution error");
+      const parsed = parseScenarioOutput(output);
       results.push({
         scenario: id,
-        passed: 0,
-        failed: 1,
-        output: e.message?.slice(0, 500) || "Execution error",
+        passed: parsed.passed,
+        failed: parsed.failed || 1,
+        output: output.slice(-1200),
         success: false,
         error: true,
       });
-    }
-  }
-  return results;
-}
-
-// Run custom checks (API sweep, DB integrity, etc.)
-async function runCustomChecks(checkNames) {
-  const results = [];
-  for (const check of checkNames || []) {
-    switch (check) {
-      case "api_endpoint_sweep": {
-        // Quick sweep of major API groups
-        const endpoints = [
-          "/api/health", "/api/projects", "/api/skills", "/api/agents",
-          "/api/channels", "/api/surveys/integrations", "/api/deployments?project_id=test",
-          "/api/mcp/server/status", "/api/mcp/clients", "/api/mcp/featured",
-          "/api/autoresearch/status", "/api/laws", "/api/laws?category=perception",
-          "/api/backups", "/api/backups/config",
-        ];
-        for (const ep of endpoints) {
-          try {
-            const res = await fetch(`${API_BASE}${ep}`, { headers: authHeaders() });
-            results.push({
-              check: `API ${ep}`,
-              passed: res.ok,
-              status: res.status,
-              detail: res.ok ? "OK" : `Status ${res.status}`,
-            });
-          } catch (e) {
-            results.push({ check: `API ${ep}`, passed: false, detail: e.message });
-          }
-        }
-        break;
-      }
-      case "db_integrity": {
-        // Check critical DB tables have data
-        const tables = ["projects", "skills", "agents"];
-        for (const table of tables) {
-          try {
-            const res = await fetch(`${API_BASE}/api/${table}`, { headers: authHeaders() });
-            const data = await res.json();
-            const count = Array.isArray(data) ? data.length : (data?.[table]?.length || 0);
-            results.push({
-              check: `DB ${table} populated`,
-              passed: count > 0,
-              detail: `${count} records`,
-            });
-          } catch (e) {
-            results.push({ check: `DB ${table}`, passed: false, detail: e.message });
-          }
-        }
-        break;
-      }
-      case "network_discovery": {
-        try {
-          const res = await fetch(`${API_BASE}/api/llm-servers`, { headers: authHeaders() });
-          if (res.ok) {
-            const servers = await res.json();
-            const list = Array.isArray(servers) ? servers : servers?.servers || [];
-            results.push({
-              check: "Network LLM discovery",
-              passed: list.length >= 1,
-              detail: `${list.length} server(s) discovered`,
-            });
-          }
-        } catch (e) {
-          results.push({ check: "Network LLM discovery", passed: false, detail: e.message });
-        }
-        break;
-      }
-      default:
-        results.push({ check, passed: true, detail: "Placeholder — not yet implemented" });
     }
   }
   return results;
@@ -389,7 +408,12 @@ async function main() {
     const scenarioResults = await runScenarios(cycle.scenarios || []);
 
     // Run custom checks
-    const customResults = await runCustomChecks(cycle.custom_checks);
+    const customResults = await runCustomChecks(cycle.custom_checks, {
+      apiBase: API_BASE,
+      projectRoot: PROJECT_ROOT,
+      authHeaders,
+      fetchImpl: fetch,
+    });
 
     // Generate report
     const report = generateCycleReport(cycle, env, scenarioResults, customResults, startTime);

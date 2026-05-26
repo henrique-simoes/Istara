@@ -112,7 +112,7 @@ export default function TOTPManager() {
         Two-Factor Authentication
       </h3>
       <p className="text-sm text-slate-500 dark:text-slate-400">
-        Protect team accounts with a 6-digit authenticator code. Recovery codes generated at account creation remain the backup path.
+        Protect password sign-in with a 6-digit authenticator code. Recovery codes are the fallback factor, and passkeys are available as a separate passwordless sign-in option. Istara does not use SMS or email OTP factors.
       </p>
 
       {message && <p className="mt-3 text-sm text-green-700 dark:text-green-400">{message}</p>}

@@ -1,3 +1,71 @@
+export const RESEARCHER_PERSONAS = [
+  {
+    key: "admin",
+    displayName: "Maya Rodrigues",
+    role: "global-admin-project-lead",
+    focus: "project setup, access, governance, and final evidence quality",
+  },
+  {
+    key: "researcher-1",
+    displayName: "Ana Lima",
+    role: "researcher",
+    focus: "interviews, caregiver trust, multilingual evidence, and document work",
+  },
+  {
+    key: "researcher-2",
+    displayName: "Theo Mendes",
+    role: "researcher",
+    focus: "task review, source grounding, survey sanity checks, and findings readiness",
+  },
+];
+
+const PROGRAM_CONTEXT = [
+  "Northstar Health is preparing a high-risk regional relaunch of CareNav, a patient-care coordination workspace that tries to make appointment-preparation tasks trustworthy across portal messages, SMS reminders, caregiver permissions, staff dashboards, EHR handoffs, analytics, and human review. The previous pilot failed unevenly: some clinics saw fewer missed prep tasks, but coordinators rebuilt evidence trails manually, caregivers called because permissions were unclear, multilingual reminders diverged from English source copy, and patients could not tell which steps were required before an appointment. Treat this benchmark as a senior mixed-methods research engagement, not a toy demo.",
+  "The canonical source archive contains 174 synthetic but realistic sources: long interview transcripts, participant profiles, diary studies, usability studies, surveys, NPS/SUS/UMUX exports, card sorting, tree testing, journey maps, field notes, support tickets, analytics exports, A/B tests, competitor benchmarks, heuristic and accessibility audits, Laws of UX audits, stakeholder memos, research plans, discussion guides, consent notes, multilingual material, malformed edge-case exports, and report-readiness documents. The material intentionally contains contradictions, stale metrics, low-confidence observations, language-specific risk, and evidence that should remain provisional until reconciled.",
+  "Use Istara according to the Research Spine. Segment raw sources into stable evidence units. Treat model outputs as candidate atomic facts and candidate codes until independent multi-model extraction/coding, quote/span comparison, reliability or grounding checks, and reconciliation make them accepted. Do not let RAG, GraphRAG, Prompt-RAG, LLMLingua, ReasoningBank, Memento Skills, Meta-Hyperagent, Autoresearch, telemetry, or a skill result become report evidence by itself. Reports must use accepted/reconciled evidence attached to human-approved Done tasks.",
+].join("\n\n");
+
+const STANDARD_DELIVERABLES = [
+  "Name the exact source types or source ids you expect to use, and say where retrieval or coding should begin.",
+  "Separate evidence, interpretation, recommendation, confidence, contradiction, and next action.",
+  "Call out which claims are candidate/provisional and which could become accepted only after reliability or reconciliation.",
+  "Preserve patient, caregiver, staff, admin, language, clinic, and journey distinctions.",
+  "Flag any missing data, role permission issue, integration credential blocker, or unsafe medical inference.",
+  "Explain what should become an In Review task and what would be required before the task can move to Done.",
+];
+
+function detailedChatPrompt(base, index, intent) {
+  const focusAreas = [
+    "evidence-unit extraction and open coding",
+    "multi-model reliability and disagreement reconciliation",
+    "caregiver permission language and multilingual risk",
+    "staff trust in readiness automation and source trails",
+    "patient appointment-prep confusion and reminder fatigue",
+    "survey, analytics, and support-ticket triangulation",
+    "usability, accessibility, and interface decision quality",
+    "task review, Done approval, and report gating",
+    "ReasoningBank, Memento Skills, Meta-Hyperagent, Autoresearch, and governed self-improvement",
+    "donated compute, route evidence, and ensemble health",
+  ];
+  const focus = focusAreas[index % focusAreas.length];
+  return [
+    `Researcher request ${index + 1} (${intent}; focus: ${focus}).`,
+    "",
+    base,
+    "",
+    PROGRAM_CONTEXT,
+    "",
+    "Work the way a real senior UX researcher would. Assume I am under stakeholder pressure to produce a launch recommendation, but I do not want an easy narrative. I want you to slow down where the evidence is messy, use the canonical corpus rather than generic UX advice, and keep every downstream artifact tied to source-grounded evidence. If you need to use search, RAG, GraphRAG, a skill, a tool call, an agent workflow, a task, or a review queue, explain why that surface is appropriate and what evidence it should preserve. If a feature is unavailable because credentials are missing, classify the blocker rather than pretending it worked.",
+    "",
+    "Please respond with a research-grade structure. Start with the specific evidence path you would use. Then give the synthesis or requested action. Then list contradictions, confidence, and what should remain provisional. When you propose a task, finding, insight, recommendation, interface direction, or report paragraph, explicitly state how it would travel through evidence units, candidate atoms/codes, reliability or reconciliation, human review, Done approval, and report gating. Do not collapse staff, patient, caregiver, language, or clinic evidence unless you explain the comparison basis.",
+    "",
+    "Minimum deliverables for this turn:",
+    ...STANDARD_DELIVERABLES.map((item) => `- ${item}`),
+    "",
+    "If you cannot complete a requested action, say exactly what blocked it and produce the most useful next research task instead. Avoid medical advice and avoid exposing participant identity. Prefer source-cited, uncertainty-aware output over polished but unsupported synthesis.",
+  ].join("\n");
+}
+
 export function buildChatTurns({ total = 108 } = {}) {
   const seedTurns = [
     "I am starting a new project called CareNav Renewal. Before you analyze anything, ask me the minimum clarifying questions you need as my research partner.",
@@ -73,12 +141,29 @@ export function buildChatTurns({ total = 108 } = {}) {
   return turns.slice(0, total).map((content, index) => ({
     turn: index + 1,
     speaker: "Maya Rodrigues",
-    content,
+    content: detailedChatPrompt(content, index, index < seedTurns.length ? "scenario-steering" : "natural-follow-up"),
     intent: index < seedTurns.length ? "scenario-steering" : "natural-follow-up",
   }));
 }
 
-export function buildTaskPlan({ total = 60 } = {}) {
+export function buildCollaborativeChatTurns({ total = 108, actors = RESEARCHER_PERSONAS.slice(1) } = {}) {
+  const activeActors = actors.length ? actors : RESEARCHER_PERSONAS.slice(1);
+  return buildChatTurns({ total }).map((turn, index) => {
+    const actor = activeActors[index % activeActors.length] || RESEARCHER_PERSONAS[0];
+    return {
+      ...turn,
+      speaker: actor.displayName,
+      actor_key: actor.key,
+      actor_role: actor.role,
+      actor_focus: actor.focus,
+      content: index < activeActors.length
+        ? `${turn.content}\n\nI am ${actor.displayName}; focus this answer on ${actor.focus}.`
+        : turn.content,
+    };
+  });
+}
+
+export function buildTaskPlan({ total = 60, actors = RESEARCHER_PERSONAS.slice(1) } = {}) {
   const taskTypes = [
     ["Analyze staff interview trust signals", "Extract staff evidence about readiness-status trust, source trails, and manual overrides."],
     ["Analyze patient appointment-prep blockers", "Identify patient-facing blockers, especially required versus optional tasks."],
@@ -97,14 +182,27 @@ export function buildTaskPlan({ total = 60 } = {}) {
     ["Compute and ensemble health audit", "Verify donated compute health, model routing, and any ensemble/MoA health evidence before relying on synthesis."],
   ];
   const tasks = [];
+  const activeActors = actors.length ? actors : RESEARCHER_PERSONAS.slice(1);
   for (let i = 0; i < total; i += 1) {
     const [title, description] = taskTypes[i % taskTypes.length];
+    const creator = activeActors[i % activeActors.length] || RESEARCHER_PERSONAS[0];
+    const reviewer = activeActors.length > 1
+      ? activeActors[(i + 1) % activeActors.length]
+      : RESEARCHER_PERSONAS[0];
     tasks.push({
       title: `[RU-${String(i + 1).padStart(2, "0")}] ${title}`,
-      description,
+      description: detailedTaskDescription({
+        title,
+        description,
+        index: i,
+      }),
       skill_name: i % 5 === 0 ? "analyze-interview" : "",
       priority: i % 9 === 0 ? "high" : "medium",
       labels: ["real-user-benchmark", i % 7 === 0 ? "needs-citations" : "synthesis"],
+      creator_key: creator.key,
+      creator_name: creator.displayName,
+      reviewer_key: reviewer.key,
+      reviewer_name: reviewer.displayName,
       shouldReviseFirst: i % 8 === 0,
       acceptance: [
         "Names at least two source documents when evidence is synthesized.",
@@ -117,6 +215,57 @@ export function buildTaskPlan({ total = 60 } = {}) {
   return tasks;
 }
 
+function detailedTaskDescription({ title, description, index }) {
+  const methodMixes = [
+    "interviews, diary studies, field notes, and support tickets",
+    "surveys, NPS/SUS/UMUX rows, analytics exports, and open verbatims",
+    "usability sessions, accessibility audits, heuristic notes, and interface artifacts",
+    "stakeholder memos, competitor benchmarks, A/B tests, and report-readiness material",
+    "AURA-style interview planning, integration setup evidence, and credential-free blocker logs",
+  ];
+  const methodMix = methodMixes[index % methodMixes.length];
+  return [
+    description,
+    "",
+    PROGRAM_CONTEXT,
+    "",
+    `Task objective: perform "${title}" as if you are preparing evidence for a real human research review, using ${methodMix}. The goal is not to produce a pretty summary. The goal is to create reviewable research work that can survive the Research Spine. Start from raw source material, name the likely source ids or file types, identify stable evidence units, and describe how candidate atomic facts and open codes should be generated independently by available project-authorized models. Where the evidence is contradictory or low-confidence, keep it provisional and route it to reconciliation instead of turning it into a finding.`,
+    "",
+    "Required analysis depth: distinguish staff, patient, caregiver, administrator, operations analyst, language, clinic type, and journey context. Compare at least two evidence types, and say whether they agree, conflict, or answer different questions. Look for source freshness, owner, permission state, reminder timing, readiness confidence, manual workaround, accessibility friction, and automation-trust signals. If a skill, RAG search, GraphRAG synthesis, ReasoningBank memory, Memento Skill, Meta-Hyperagent proposal, Autoresearch result, Prompt-RAG context, or compression path helps, use it only as process support and state why it cannot bypass evidence validation.",
+    "",
+    "Review output requirements: produce notes that a reviewer can approve or send back. Include source references, candidate evidence units, candidate codes, confidence, contradictions, risk classification, and next action. Separate evidence from interpretation and recommendations. Identify what would become an accepted atom only after reliability or reconciliation, what should become an In Review task, what would be required for Done approval, and which report paragraph or interface decision would remain blocked until the evidence is accepted. Do not infer medical advice, do not expose participant identity, and do not claim integration success without credentialed or mock-path evidence.",
+    "",
+    "Acceptance standard: this task should be rejected if it has fewer than two concrete source references, merges incompatible roles without explanation, summarizes raw material as reportable evidence, treats telemetry or memory as research evidence, ignores low-consensus contradictions, lacks confidence language, or proposes a report recommendation before task approval. It should be approved only if it is source-grounded, uncertainty-aware, role-aware, and explicit about the path from source evidence to accepted research artifact.",
+  ].join("\n");
+}
+
+export function buildInterviewProcessPlan() {
+  return {
+    title: "[RU-INTERVIEW] Appointment-prep adaptive interview process",
+    description: detailedTaskDescription({
+      title: "Appointment-prep adaptive interview process",
+      description: "Use uploaded interview transcripts and local project evidence to prepare adaptive follow-up questions, analyze participant responses, and identify what a credential-free run can and cannot prove.",
+      index: 0,
+    }),
+    skill_name: "analyze-interview",
+    priority: "high",
+    labels: ["real-user-benchmark", "interviews", "agentic-workflow"],
+    creator_key: "researcher-1",
+    creator_name: "Ana Lima",
+    reviewer_key: "researcher-2",
+    reviewer_name: "Theo Mendes",
+    shouldReviseFirst: true,
+    external_credentials_required: ["Telegram bot token", "AURA participant channel credentials"],
+    future_improvement: "Add a credential-free participant conversation simulator so AURA deployments can be tested through real inbound conversations without external tokens.",
+    acceptance: [
+      "Names at least two interview or transcript sources.",
+      "Separates interview-guide questions from transcript analysis.",
+      "States which external participant-channel steps were skipped because credentials are not available.",
+      "Produces a reviewable next-pass research task.",
+    ],
+  };
+}
+
 export function reviewerAssessment(task, agentNotes) {
   const notes = String(agentNotes || "");
   const issues = [];
@@ -124,6 +273,19 @@ export function reviewerAssessment(task, agentNotes) {
   if (!/source|interview|survey|usability|ticket|diary/i.test(notes)) issues.push("missing source references");
   if (!/confidence|uncertain|evidence|because/i.test(notes)) issues.push("missing confidence or evidence reasoning");
   if (/medical advice|diagnose|treatment plan/i.test(notes)) issues.push("unsafe medical inference");
+  if (/\b(blocked|awaiting data|awaiting input|input data missing|required source documents|missing source material|source material.*missing|raw .*data .*not provided|cannot (?:complete|proceed|provide|perform|execute)|could not be (?:found|located)|document not found|no documents found)\b/i.test(notes)) {
+    issues.push("output says the work is blocked or required sources are missing");
+  }
+  if (/\b(confidence (?:level:?\s*)?low|confidence:\s*low|confidence in task completion:\s*low)\b/i.test(notes)) {
+    issues.push("output is low confidence");
+  }
+  if (/\bsynthetic\b/i.test(notes) && /source|interview|survey|usability|ticket|diary|transcript/i.test(`${task.title} ${task.description || ""}`)) {
+    issues.push("source-backed task relies on synthetic evidence");
+  }
+  const concreteSourceMentions = notes.match(/\b(?:P\d{2}[-\w]*\.md|[\w-]+\.csv|Transcript\s*\([^)]+\)|Source:\s*[^)\]\n]+|`[^`]+\.(?:md|csv|json)`)\b/gi) || [];
+  if (concreteSourceMentions.length < 2 && /source|interview|survey|usability|ticket|diary|transcript/i.test(`${task.title} ${task.description || ""}`)) {
+    issues.push("names fewer than two concrete source artifacts");
+  }
   const approved = issues.length === 0;
   return {
     approved,

@@ -34,6 +34,7 @@ export async function run(ctx) {
     check(1, "Project setup", false, "No persistent project available from runner");
     return { checks, passed: 0, failed: 1, total: 1 };
   }
+  const projectQuery = `project_id=${encodeURIComponent(projectId)}`;
 
   // ── 1. Create task with new fields ──────────────────────────
   let taskId;
@@ -59,7 +60,7 @@ export async function run(ctx) {
   // ── 2. Verify new fields in response ────────────────────────
   if (taskId) {
     try {
-      const task = await api.get(`/api/tasks/${taskId}`);
+      const task = await api.get(`/api/tasks/${taskId}?${projectQuery}`);
       const hasUrls = Array.isArray(task.urls) && task.urls.length === 2;
       const hasInstructions = task.instructions === "Focus on pricing pages and onboarding flows";
       const hasArrayFields = Array.isArray(task.input_document_ids) && Array.isArray(task.output_document_ids);
@@ -91,7 +92,7 @@ export async function run(ctx) {
   // ── 4. Attach document to task (input) ──────────────────────
   if (taskId && docId) {
     try {
-      const result = await api.post(`/api/tasks/${taskId}/attach?document_id=${docId}&direction=input`, {});
+      const result = await api.post(`/api/tasks/${taskId}/attach?document_id=${docId}&direction=input&${projectQuery}`, {});
       check(4, "Attach document as input", result.attached === true, JSON.stringify(result));
     } catch (e) {
       check(4, "Attach document as input", false, e.message);
@@ -103,7 +104,7 @@ export async function run(ctx) {
   // ── 5. Verify attachment persisted ──────────────────────────
   if (taskId) {
     try {
-      const task = await api.get(`/api/tasks/${taskId}`);
+      const task = await api.get(`/api/tasks/${taskId}?${projectQuery}`);
       const attached = Array.isArray(task.input_document_ids) && task.input_document_ids.includes(docId);
       check(5, "Attachment persisted on task", attached,
         `input_document_ids: ${JSON.stringify(task.input_document_ids)}`);
@@ -117,8 +118,8 @@ export async function run(ctx) {
   // ── 6. Attach document as output ────────────────────────────
   if (taskId && docId) {
     try {
-      const result = await api.post(`/api/tasks/${taskId}/attach?document_id=${docId}&direction=output`, {});
-      const task = await api.get(`/api/tasks/${taskId}`);
+      const result = await api.post(`/api/tasks/${taskId}/attach?document_id=${docId}&direction=output&${projectQuery}`, {});
+      const task = await api.get(`/api/tasks/${taskId}?${projectQuery}`);
       const hasOutput = Array.isArray(task.output_document_ids) && task.output_document_ids.includes(docId);
       check(6, "Attach document as output", hasOutput,
         `output_document_ids: ${JSON.stringify(task.output_document_ids)}`);
@@ -132,8 +133,8 @@ export async function run(ctx) {
   // ── 7. Detach document ──────────────────────────────────────
   if (taskId && docId) {
     try {
-      const result = await api.post(`/api/tasks/${taskId}/detach?document_id=${docId}&direction=input`, {});
-      const task = await api.get(`/api/tasks/${taskId}`);
+      const result = await api.post(`/api/tasks/${taskId}/detach?document_id=${docId}&direction=input&${projectQuery}`, {});
+      const task = await api.get(`/api/tasks/${taskId}?${projectQuery}`);
       const detached = Array.isArray(task.input_document_ids) && !task.input_document_ids.includes(docId);
       check(7, "Detach document from task", detached,
         `input_document_ids after detach: ${JSON.stringify(task.input_document_ids)}`);
@@ -147,7 +148,7 @@ export async function run(ctx) {
   // ── 8. Update task URLs ─────────────────────────────────────
   if (taskId) {
     try {
-      const updated = await api.patch(`/api/tasks/${taskId}`, {
+      const updated = await api.patch(`/api/tasks/${taskId}?${projectQuery}`, {
         urls: ["https://new-competitor.com"],
         instructions: "Updated: analyze mobile app only",
       });
@@ -274,7 +275,7 @@ export async function run(ctx) {
 
     // Attach the document
     if (indicatorTaskId && indicatorDocId) {
-      await api.post(`/api/tasks/${indicatorTaskId}/attach?document_id=${indicatorDocId}&direction=input`, {});
+      await api.post(`/api/tasks/${indicatorTaskId}/attach?document_id=${indicatorDocId}&direction=input&${projectQuery}`, {});
     }
 
     // Now navigate to Tasks view and check for document indicators on cards
@@ -346,10 +347,10 @@ export async function run(ctx) {
 
   // ── 16. Cleanup ─────────────────────────────────────────────
   try {
-    if (indicatorDocId) await api.delete(`/api/documents/${indicatorDocId}`);
-    if (indicatorTaskId) await api.delete(`/api/tasks/${indicatorTaskId}`);
-    if (docId) await api.delete(`/api/documents/${docId}`);
-    if (taskId) await api.delete(`/api/tasks/${taskId}`);
+    if (indicatorDocId) await api.delete(`/api/documents/${indicatorDocId}?${projectQuery}`);
+    if (indicatorTaskId) await api.delete(`/api/tasks/${indicatorTaskId}?${projectQuery}`);
+    if (docId) await api.delete(`/api/documents/${docId}?${projectQuery}`);
+    if (taskId) await api.delete(`/api/tasks/${taskId}?${projectQuery}`);
     check(16, "Cleanup successful", true, "");
   } catch (e) {
     check(16, "Cleanup successful", false, e.message);

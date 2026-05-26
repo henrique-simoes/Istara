@@ -24,7 +24,8 @@ from app.models.database import Base
 from app.models.codebook_version import CodebookVersion
 from app.models.code_application import CodeApplication
 from app.models.project_report import ProjectReport
-from app.models.task import Task
+from app.models.research_validity import EvidenceUnit, ResearchEvidenceEdge
+from app.models.task import Task, TaskStatus
 from app.core.agent import AgentOrchestrator
 from app.skills.intercoder import cohen_kappa, krippendorff_alpha
 from app.skills.base import SkillOutput
@@ -33,6 +34,7 @@ from app.core.report_manager import ReportManager, SCOPE_MAP, SYNTHESIS_SKILLS
 
 # Ensure ALL models are registered with Base (mirrors database.init_db imports)
 from app.models import agent, codebook, document, finding, message, project, session, task  # noqa: F401
+from app.models import research_validity  # noqa: F401
 from app.models import user  # noqa: F401
 from app.models import llm_server, method_metric  # noqa: F401
 from app.core.checkpoint import TaskCheckpoint  # noqa: F401
@@ -80,12 +82,154 @@ async def db_session():
     await engine.dispose()
 
 
+async def add_reportable_nugget_fixture(
+    db_session,
+    *,
+    project_id: str,
+    finding_id: str,
+    task_id: str,
+    skill_name: str = "user-interviews",
+) -> None:
+    evidence_unit_id = f"eu-{finding_id}"
+    db_session.add(
+        Task(
+            id=task_id,
+            project_id=project_id,
+            title=f"Approved task for {finding_id}",
+            skill_name=skill_name,
+            status=TaskStatus.DONE,
+            review_state="approved",
+        )
+    )
+    db_session.add(
+        finding.Nugget(
+            id=finding_id,
+            project_id=project_id,
+            task_id=task_id,
+            text=f"Accepted evidence for {finding_id}",
+            source="canonical-corpus",
+        )
+    )
+    db_session.add(
+        EvidenceUnit(
+            id=evidence_unit_id,
+            project_id=project_id,
+            task_id=task_id,
+            source_id=f"task:{task_id}:nugget:{finding_id}",
+            stable_id=f"test-unit:{evidence_unit_id}",
+            unit_index=0,
+            unit_type="source_span",
+            source_type="test_fixture",
+            method="test",
+            phase="discover",
+            source_text=f"Accepted evidence for {finding_id}",
+        )
+    )
+    db_session.add(
+        ResearchEvidenceEdge(
+            id=f"edge-{project_id}-{finding_id}",
+            project_id=project_id,
+            source_type="nugget",
+            source_id=finding_id,
+            relation="grounded_in",
+            target_type="evidence_unit",
+            target_id=evidence_unit_id,
+            evidence_unit_id=evidence_unit_id,
+            task_id=task_id,
+        )
+    )
+    db_session.add(
+        CodeApplication(
+            id=f"ca-{project_id}-{finding_id}",
+            project_id=project_id,
+            task_id=task_id,
+            code_id="accepted-research-evidence",
+            evidence_unit_id=evidence_unit_id,
+            source_text=f"Accepted evidence for {finding_id}",
+            promotion_status="accepted",
+            reliability_status="accepted",
+            reconciliation_status="accepted",
+        )
+    )
+
+
 # ============================================================
 # 1. CodebookVersion Model Tests
 # ============================================================
 
 class TestReportManager:
     """Test the ReportManager progressive document convergence."""
+
+    async def _add_reportable_nugget(
+        self,
+        db_session,
+        *,
+        project_id: str,
+        finding_id: str,
+        task_id: str,
+        skill_name: str = "user-interviews",
+    ) -> None:
+        evidence_unit_id = f"eu-{finding_id}"
+        db_session.add(
+            Task(
+                id=task_id,
+                project_id=project_id,
+                title=f"Approved task for {finding_id}",
+                skill_name=skill_name,
+                status=TaskStatus.DONE,
+                review_state="approved",
+            )
+        )
+        db_session.add(
+            finding.Nugget(
+                id=finding_id,
+                project_id=project_id,
+                task_id=task_id,
+                text=f"Accepted evidence for {finding_id}",
+                source="canonical-corpus",
+            )
+        )
+        db_session.add(
+            EvidenceUnit(
+                id=evidence_unit_id,
+                project_id=project_id,
+                task_id=task_id,
+                source_id=f"task:{task_id}:nugget:{finding_id}",
+                stable_id=f"test-unit:{evidence_unit_id}",
+                unit_index=0,
+                unit_type="source_span",
+                source_type="test_fixture",
+                method="test",
+                phase="discover",
+                source_text=f"Accepted evidence for {finding_id}",
+            )
+        )
+        db_session.add(
+            ResearchEvidenceEdge(
+                id=f"edge-{finding_id}",
+                project_id=project_id,
+                source_type="nugget",
+                source_id=finding_id,
+                relation="grounded_in",
+                target_type="evidence_unit",
+                target_id=evidence_unit_id,
+                evidence_unit_id=evidence_unit_id,
+                task_id=task_id,
+            )
+        )
+        db_session.add(
+            CodeApplication(
+                id=f"ca-{finding_id}",
+                project_id=project_id,
+                task_id=task_id,
+                code_id="accepted-research-evidence",
+                evidence_unit_id=evidence_unit_id,
+                source_text=f"Accepted evidence for {finding_id}",
+                promotion_status="accepted",
+                reliability_status="accepted",
+                reconciliation_status="accepted",
+            )
+        )
 
     def test_skill_to_scope_mapping(self):
         """Verify SCOPE_MAP maps known skills to correct scopes."""
@@ -144,21 +288,30 @@ class TestReportManager:
     async def test_route_findings_updates_existing_report(self, db_session):
         """route_findings merges finding_ids into existing report."""
         manager = ReportManager()
+        project_id = "proj-rm-003"
+        for finding_id in ["f-1", "f-2", "f-3", "f-4"]:
+            await self._add_reportable_nugget(
+                db_session,
+                project_id=project_id,
+                finding_id=finding_id,
+                task_id=f"task-{finding_id}",
+            )
+        await db_session.commit()
 
         # First call creates report and adds findings
         await manager.route_findings(
-            "proj-rm-003", "thematic-analysis", ["f-1", "f-2"], db_session
+            project_id, "thematic-analysis", ["f-1", "f-2"], db_session
         )
 
         # Second call adds more findings to the same report
         await manager.route_findings(
-            "proj-rm-003", "user-interviews", ["f-3", "f-4"], db_session
+            project_id, "user-interviews", ["f-3", "f-4"], db_session
         )
 
         # Both skills map to "Interview Analysis" scope
         result = await db_session.execute(
             select(ProjectReport).where(
-                ProjectReport.project_id == "proj-rm-003",
+                ProjectReport.project_id == project_id,
                 ProjectReport.scope == "Interview Analysis",
             )
         )
@@ -172,17 +325,26 @@ class TestReportManager:
     async def test_route_findings_deduplicates(self, db_session):
         """route_findings does not duplicate finding IDs."""
         manager = ReportManager()
+        project_id = "proj-rm-004"
+        for finding_id in ["f-1", "f-2", "f-3"]:
+            await self._add_reportable_nugget(
+                db_session,
+                project_id=project_id,
+                finding_id=finding_id,
+                task_id=f"task-{finding_id}",
+            )
+        await db_session.commit()
 
         await manager.route_findings(
-            "proj-rm-004", "thematic-analysis", ["f-1", "f-2"], db_session
+            project_id, "thematic-analysis", ["f-1", "f-2"], db_session
         )
         await manager.route_findings(
-            "proj-rm-004", "thematic-analysis", ["f-2", "f-3"], db_session
+            project_id, "thematic-analysis", ["f-2", "f-3"], db_session
         )
 
         result = await db_session.execute(
             select(ProjectReport).where(
-                ProjectReport.project_id == "proj-rm-004",
+                ProjectReport.project_id == project_id,
                 ProjectReport.scope == "Interview Analysis",
             )
         )
@@ -190,9 +352,135 @@ class TestReportManager:
         finding_ids = json.loads(report.finding_ids_json)
         assert len(finding_ids) == 3  # f-1, f-2, f-3 (no duplicates)
 
+    async def test_route_findings_blocks_taskless_unmanaged_findings(self, db_session):
+        """route_findings cannot create reports from IDs outside the Research Spine."""
+        manager = ReportManager()
+
+        await manager.route_findings(
+            "proj-rm-taskless-block",
+            "thematic-analysis",
+            ["taskless-or-missing-finding"],
+            db_session,
+        )
+
+        result = await db_session.execute(
+            select(ProjectReport).where(ProjectReport.project_id == "proj-rm-taskless-block")
+        )
+        assert result.scalars().all() == []
+
+    async def test_task_bound_findings_wait_for_human_approved_done_task(self, db_session):
+        """Task-bound findings should not reach reports while the task is still in review."""
+        manager = ReportManager()
+        task_row = Task(
+            id="task-report-gate",
+            project_id="proj-report-gate",
+            title="Review pending evidence",
+            skill_name="user-interviews",
+            status=TaskStatus.IN_REVIEW,
+            review_state="awaiting_review",
+        )
+        nugget = finding.Nugget(
+            id="nugget-report-gate",
+            project_id="proj-report-gate",
+            task_id=task_row.id,
+            text="Pending review quote",
+            source="interview",
+        )
+        db_session.add_all([task_row, nugget])
+        await db_session.commit()
+
+        await manager.route_findings(
+            "proj-report-gate",
+            "user-interviews",
+            [nugget.id],
+            db_session,
+        )
+        result = await db_session.execute(
+            select(ProjectReport).where(ProjectReport.project_id == "proj-report-gate")
+        )
+        assert result.scalars().all() == []
+
+        task_row.status = TaskStatus.DONE
+        task_row.review_state = "approved"
+        await db_session.commit()
+
+        routed_count = await manager.route_approved_task_findings(
+            "proj-report-gate",
+            task_row.id,
+            "user-interviews",
+            db_session,
+        )
+        assert routed_count == 0
+
+        evidence_unit_id = "eu-report-gate"
+        db_session.add(
+            EvidenceUnit(
+                id=evidence_unit_id,
+                project_id="proj-report-gate",
+                task_id=task_row.id,
+                source_id=f"task:{task_row.id}:nugget:{nugget.id}",
+                stable_id="test-unit:eu-report-gate",
+                unit_index=0,
+                unit_type="source_span",
+                source_type="test_fixture",
+                method="test",
+                phase="discover",
+                source_text="Pending review quote",
+            )
+        )
+        db_session.add(
+            ResearchEvidenceEdge(
+                id="edge-report-gate",
+                project_id="proj-report-gate",
+                source_type="nugget",
+                source_id=nugget.id,
+                relation="grounded_in",
+                target_type="evidence_unit",
+                target_id=evidence_unit_id,
+                evidence_unit_id=evidence_unit_id,
+                task_id=task_row.id,
+            )
+        )
+        db_session.add(
+            CodeApplication(
+                id="ca-report-gate",
+                project_id="proj-report-gate",
+                task_id=task_row.id,
+                code_id="pending-review-quote",
+                evidence_unit_id=evidence_unit_id,
+                source_text="Pending review quote",
+                promotion_status="accepted",
+                reliability_status="accepted",
+                reconciliation_status="accepted",
+            )
+        )
+        await db_session.commit()
+
+        routed_count = await manager.route_approved_task_findings(
+            "proj-report-gate",
+            task_row.id,
+            "user-interviews",
+            db_session,
+        )
+        assert routed_count == 1
+
+        result = await db_session.execute(
+            select(ProjectReport).where(ProjectReport.project_id == "proj-report-gate")
+        )
+        report = result.scalar_one()
+        assert json.loads(report.finding_ids_json) == [nugget.id]
+
     async def test_synthesis_skill_creates_layer_3(self, db_session):
         """Synthesis skills create layer 3 reports."""
         manager = ReportManager()
+        await self._add_reportable_nugget(
+            db_session,
+            project_id="proj-rm-005",
+            finding_id="f-synth-1",
+            task_id="task-f-synth-1",
+            skill_name="research-synthesis",
+        )
+        await db_session.commit()
 
         await manager.route_findings(
             "proj-rm-005", "research-synthesis", ["f-synth-1"], db_session
@@ -211,6 +499,14 @@ class TestReportManager:
     async def test_l4_report_uses_derived_finding_count(self, db_session):
         """L4 generation should not depend on a non-persisted finding_count column."""
         manager = ReportManager()
+        finding_ids = [f"f-{i}" for i in range(10)]
+        for finding_id in finding_ids:
+            await add_reportable_nugget_fixture(
+                db_session,
+                project_id="proj-rm-l4-derived",
+                finding_id=finding_id,
+                task_id=f"task-{finding_id}",
+            )
         l3 = ProjectReport(
             id="report-l3-derived-count",
             project_id="proj-rm-l4-derived",
@@ -218,7 +514,7 @@ class TestReportManager:
             layer=3,
             report_type="synthesis",
             scope="Research Synthesis",
-            finding_ids_json=json.dumps([f"f-{i}" for i in range(10)]),
+            finding_ids_json=json.dumps(finding_ids),
         )
         db_session.add(l3)
         await db_session.commit()
@@ -239,24 +535,47 @@ class TestReportManager:
         )
         l4 = result.scalar_one()
         assert l4.to_dict()["finding_count"] == 10
-        assert json.loads(l4.finding_ids_json) == [f"f-{i}" for i in range(10)]
+        assert json.loads(l4.finding_ids_json) == finding_ids
 
     async def test_get_project_reports(self, db_session):
         """get_project_reports returns reports ordered by layer desc."""
         manager = ReportManager()
+        project_id = "proj-rm-006"
+        await add_reportable_nugget_fixture(
+            db_session,
+            project_id=project_id,
+            finding_id="f-1",
+            task_id="task-f-1",
+            skill_name="thematic-analysis",
+        )
+        await add_reportable_nugget_fixture(
+            db_session,
+            project_id=project_id,
+            finding_id="f-2",
+            task_id="task-f-2",
+            skill_name="usability-testing",
+        )
+        await add_reportable_nugget_fixture(
+            db_session,
+            project_id=project_id,
+            finding_id="f-3",
+            task_id="task-f-3",
+            skill_name="research-synthesis",
+        )
+        await db_session.commit()
 
         # Create L2 and L3 reports
         await manager.route_findings(
-            "proj-rm-006", "thematic-analysis", ["f-1"], db_session
+            project_id, "thematic-analysis", ["f-1"], db_session
         )
         await manager.route_findings(
-            "proj-rm-006", "usability-testing", ["f-2"], db_session
+            project_id, "usability-testing", ["f-2"], db_session
         )
         await manager.route_findings(
-            "proj-rm-006", "research-synthesis", ["f-3"], db_session
+            project_id, "research-synthesis", ["f-3"], db_session
         )
 
-        reports = await manager.get_project_reports("proj-rm-006", db_session)
+        reports = await manager.get_project_reports(project_id, db_session)
         assert len(reports) >= 2
         # First report should be highest layer
         layers = [r["layer"] for r in reports]
@@ -265,17 +584,26 @@ class TestReportManager:
     async def test_route_findings_preserves_finding_order(self, db_session):
         """Report IDs stay deterministic for stable UI diffs and exports."""
         manager = ReportManager()
+        project_id = "proj-rm-order"
+        for finding_id in ["f-1", "f-2", "f-3"]:
+            await add_reportable_nugget_fixture(
+                db_session,
+                project_id=project_id,
+                finding_id=finding_id,
+                task_id=f"task-{finding_id}",
+            )
+        await db_session.commit()
 
         await manager.route_findings(
-            "proj-rm-order", "thematic-analysis", ["f-1", "f-2"], db_session
+            project_id, "thematic-analysis", ["f-1", "f-2"], db_session
         )
         await manager.route_findings(
-            "proj-rm-order", "thematic-analysis", ["f-2", "f-3"], db_session
+            project_id, "thematic-analysis", ["f-2", "f-3"], db_session
         )
 
         result = await db_session.execute(
             select(ProjectReport).where(
-                ProjectReport.project_id == "proj-rm-order",
+                ProjectReport.project_id == project_id,
                 ProjectReport.scope == "Interview Analysis",
             )
         )
@@ -384,10 +712,26 @@ class TestProjectReportModel:
     async def test_convergence_layer_3_requires_2_plus_layer_2(self, db_session):
         """Layer 3 synthesis is only triggered when 2+ layer 2 reports exist."""
         manager = ReportManager()
+        project_id = "proj-pr-conv"
+        await add_reportable_nugget_fixture(
+            db_session,
+            project_id=project_id,
+            finding_id="f-1",
+            task_id="task-f-1",
+            skill_name="thematic-analysis",
+        )
+        await add_reportable_nugget_fixture(
+            db_session,
+            project_id=project_id,
+            finding_id="f-2",
+            task_id="task-f-2",
+            skill_name="usability-testing",
+        )
+        await db_session.commit()
 
         # Create only one L2 report
         await manager.route_findings(
-            "proj-pr-conv", "thematic-analysis", ["f-1"], db_session
+            project_id, "thematic-analysis", ["f-1"], db_session
         )
 
         # Check no auto-synthesis created yet
@@ -403,7 +747,7 @@ class TestProjectReportModel:
 
         # Add a second L2 report (different scope)
         await manager.route_findings(
-            "proj-pr-conv", "usability-testing", ["f-2"], db_session
+            project_id, "usability-testing", ["f-2"], db_session
         )
 
         # Now check that L3 synthesis was auto-created
@@ -421,6 +765,44 @@ class TestProjectReportModel:
         synth_findings = json.loads(synth.finding_ids_json)
         assert "f-1" in synth_findings
         assert "f-2" in synth_findings
+
+    async def test_synthesis_revalidates_l2_findings_before_layer_3(self, db_session):
+        """Layer 3 synthesis must not trust stale L2 report IDs as accepted evidence."""
+        manager = ReportManager()
+        project_id = "proj-pr-l3-revalidates"
+        db_session.add_all(
+            [
+                ProjectReport(
+                    id="report-l2-stale-a",
+                    project_id=project_id,
+                    title="Stale Interview Analysis",
+                    layer=2,
+                    report_type="study_analysis",
+                    scope="Interview Analysis",
+                    finding_ids_json=json.dumps(["legacy-unverified-a"]),
+                ),
+                ProjectReport(
+                    id="report-l2-stale-b",
+                    project_id=project_id,
+                    title="Stale Usability Analysis",
+                    layer=2,
+                    report_type="study_analysis",
+                    scope="Usability Analysis",
+                    finding_ids_json=json.dumps(["legacy-unverified-b"]),
+                ),
+            ]
+        )
+        await db_session.commit()
+
+        await manager._check_synthesis_trigger(project_id, db_session)
+
+        result = await db_session.execute(
+            select(ProjectReport).where(
+                ProjectReport.project_id == project_id,
+                ProjectReport.layer == 3,
+            )
+        )
+        assert result.scalars().all() == []
 
     async def test_to_dict_finding_count(self, db_session):
         """to_dict() returns correct finding_count from finding_ids_json."""

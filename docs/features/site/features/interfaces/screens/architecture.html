@@ -262,6 +262,8 @@
 <ul>
 <li>The feature is mounted through <code>frontend/src/components/interfaces/ScreensGalleryTab.tsx</code> and the UI navigation path recorded in the inventory.</li>
 <li><code>GET /api/interfaces/screens</code> requires an explicit <code>project_id</code>, checks project viewer access, and filters <code>DesignScreen.project_id</code> at the database query.</li>
+<li>Screen list/get/generation/edit/variant payloads are hydrated with <code>source_finding_details</code> and a content-free <code>research_validity</code> summary so researchers can see whether a screen is backed by accepted Research Spine evidence or only provisional design context.</li>
+<li>Imported or generated screens remain design artifacts; they do not become report evidence and their linked findings must pass source-grounded coding, reliability/reconciliation, and Done-task gates before downstream claims can be trusted.</li>
 <li>The frontend store clears stale screens when fetching a new project, and <code>ScreensGalleryTab</code> defensively renders only screens whose <code>project_id</code> equals the active project id.</li>
 <li>The frontmatter and manifest entries are the durable contract for agents updating this page after code changes.</li>
 <li>When the referenced component, store, route, agent, skill, or test behavior changes, regenerate and validate the feature documentation.</li>

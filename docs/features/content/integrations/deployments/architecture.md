@@ -8,9 +8,9 @@ related_features: ["integrations.deployment-dashboard", "integrations.surveys", 
 related_glossary: ["triangulation"]
 code_references: ["frontend/src/components/integrations/DeploymentsTab.tsx", "frontend/src/components/integrations/DeploymentWizard.tsx", "frontend/src/components/integrations/DeploymentDashboard.tsx", "frontend/src/components/integrations/ConversationTranscript.tsx", "frontend/src/lib/api.ts", "backend/app/api/routes/deployments.py", "backend/app/services/deployment_service.py"]
 api_references: ["backend/app/api/routes/deployments.py", "backend/app/services/deployment_service.py"]
-test_references: ["tests/test_deployments.py", "tests/test_project_scope_contracts.py", "tests/test_integration_simulation_scope.py"]
-last_verified: 2026-05-19
-compass: CF-SPEC-60 / CF-767; CF-SPEC-60 / CF-773; CF-SPEC-62 / CF-793; CF-SPEC-75 / CF-964; CF-SPEC-82 / CF-1061; CF-SPEC-93 / CF-1184
+test_references: ["tests/test_deployments.py", "tests/test_project_scope_contracts.py", "tests/test_integration_simulation_scope.py", "tests/real_user_benchmark/run.mjs"]
+last_verified: 2026-05-20
+compass: CF-SPEC-60 / CF-767; CF-SPEC-60 / CF-773; CF-SPEC-62 / CF-793; CF-SPEC-75 / CF-964; CF-SPEC-82 / CF-1061; CF-SPEC-93 / CF-1184; CF-SPEC-121
 ---
 
 # Research Deployments Architecture
@@ -53,6 +53,7 @@ Deployments configure participant-facing research deployments and link them to c
 - Deployment response handling, conversations, transcripts, analytics, and overview counters all require the conversation/deployment/channel records to match the same project boundary before participant content or findings are read, updated, or summarized.
 - Deployment websocket progress, response, and finding events resolve project ownership from `deployment_id`, deliver only to sockets subscribed to that project, and drop events with conflicting deployment/project claims.
 - Simulation and real-user benchmark deployment paths must carry active project scope on by-id lifecycle, response, analytics, conversation, delete, and channel cleanup calls, proving the same boundary exercised by the UI.
+- Real-user benchmark scoring does not require live Telegram/AURA participant-channel success unless bounded test credentials or a credential-free local participant simulator are present. Missing external tokens are recorded as future improvement, while project-scoped deployment route behavior remains testable.
 
 ## Architecture Notes
 
@@ -63,6 +64,7 @@ Deployments configure participant-facing research deployments and link them to c
 ## Agents, Skills, LLM, MCP, And Permissions
 
 - Deployments are project-owned integration records. Any agent, skill, LLM, MCP, channel, or deployment worker that uses deployment data must preserve the same active-project and authorization boundary before routing participant content or generated research artifacts.
+- Participant responses enter the Research Spine as raw source evidence units. The `channel-research-deployment` skill may propose candidate nuggets, insights, and recommendations for review, but those model-generated artifacts are provisional and blocked from Reports until governed coding, reliability/reconciliation, and Done-task gates accept them.
 
 ## Tests And Verification
 
@@ -70,6 +72,7 @@ Deployments configure participant-facing research deployments and link them to c
 - `tests/test_project_scope_contracts.py` asserts that `DeploymentsTab`, `DeploymentDashboard`, `ConversationTranscript`, and the deployment API client pass the active project id into list, detail, lifecycle, analytics, conversation, and transcript calls rather than falling back to global deployment ids.
 - `tests/test_websocket.py` proves deployment realtime events inherit project scope from the deployment id before fan-out and reject conflicting project claims.
 - `tests/test_integration_simulation_scope.py` prevents simulation and real-user benchmark deployment calls from reintroducing unscoped by-id integration paths.
+- `tests/real_user_benchmark/run.mjs` classifies credentialed AURA/Telegram live participant flow as optional and records local transcript/interview task evidence separately.
 
 ## Related Features
 
@@ -83,7 +86,7 @@ Deployments configure participant-facing research deployments and link them to c
 
 ## Compass Evidence
 
-- Spec/task: CF-SPEC-60 / CF-767; CF-SPEC-60 / CF-773; CF-SPEC-62 / CF-793; CF-SPEC-75 / CF-964; CF-SPEC-82 / CF-1061; CF-SPEC-93 / CF-1184
+- Spec/task: CF-SPEC-60 / CF-767; CF-SPEC-60 / CF-773; CF-SPEC-62 / CF-793; CF-SPEC-75 / CF-964; CF-SPEC-82 / CF-1061; CF-SPEC-93 / CF-1184; CF-SPEC-121
 - Inventory source: `docs/features/inventory.json`
 
 ## When To Update

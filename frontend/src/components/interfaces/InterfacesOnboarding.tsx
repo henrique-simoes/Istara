@@ -5,7 +5,7 @@ import { ChevronLeft, ChevronRight, Palette, ExternalLink, AlertTriangle, CheckC
 import { interfaces as interfacesApi, permissionRequests } from "@/lib/api";
 import { useInterfacesStore } from "@/stores/interfacesStore";
 import { useProjectStore } from "@/stores/projectStore";
-import { useAuthStore } from "@/stores/authStore";
+import { useRoleCapabilities } from "@/hooks/useRoleCapabilities";
 import { cn } from "@/lib/utils";
 
 const STEPS = ["welcome", "stitch", "figma", "privacy", "done"] as const;
@@ -13,9 +13,8 @@ type Step = typeof STEPS[number];
 
 export default function InterfacesOnboarding() {
   const { dismissOnboarding, acknowledgePrivacy } = useInterfacesStore();
-  const { activeProjectId, canAdminActiveProject } = useProjectStore();
-  const { user } = useAuthStore();
-  const canManageIntegrations = user?.role === "admin" || canAdminActiveProject();
+  const { activeProjectId } = useProjectStore();
+  const { canManageProjectIntegrations: canManageIntegrations } = useRoleCapabilities();
   const [currentStep, setCurrentStep] = useState<Step>("welcome");
   const [stitchKey, setStitchKey] = useState("");
   const [figmaToken, setFigmaToken] = useState("");

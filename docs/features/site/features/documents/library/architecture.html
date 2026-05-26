@@ -243,6 +243,7 @@
 </header>
 <h2 id="implementation-summary">Implementation Summary</h2>
 <p>Documents centralizes project documents and makes source material available for preview, chat, and analysis workflows.</p>
+<p>Library payloads expose each document&#x27;s Research Spine state. Documents remain raw sources: their source evidence units can feed governed coding, but the library must not label a document or its text as accepted research, report evidence, or a trusted Atomic artifact.</p>
 <h2 id="frontend-surface">Frontend Surface</h2>
 <ul>
 <li><code>frontend/src/components/documents/DocumentsView.tsx</code></li>
@@ -260,10 +261,13 @@
 <li><code>backend/app/api/routes/documents.py</code></li>
 <li>Document listing requires an explicit <code>project_id</code>; project-facing document library views do not fall back to a global document list.</li>
 <li>ID-based document operations require the same active <code>project_id</code> used by the UI and load records by <code>(document_id, project_id)</code> so stale IDs from another authorized project resolve as not found.</li>
+<li>List, get, create, and update responses include <code>research_spine</code> with <code>artifact_state=raw_source</code>, source evidence-unit counts, and a report-blocking policy.</li>
+<li>Text document creation and content updates register versioned raw source evidence units. Content updates create a new document evidence source version instead of treating old source spans as silently current.</li>
 </ul>
 <h2 id="architecture-notes">Architecture Notes</h2>
 <ul>
 <li>The feature is mounted through <code>frontend/src/components/documents/DocumentsView.tsx</code> and the UI navigation path recorded in the inventory.</li>
+<li>Folder sync and file-watch registration must create <code>source_span</code> evidence units from raw file text before any later skill, agent, or report can use the material as accepted research.</li>
 <li>The frontmatter and manifest entries are the durable contract for agents updating this page after code changes.</li>
 <li>When the referenced component, store, route, agent, skill, or test behavior changes, regenerate and validate the feature documentation.</li>
 </ul>
@@ -274,6 +278,8 @@
 <h2 id="tests-and-verification">Tests And Verification</h2>
 <ul>
 <li><code>tests/test_documents.py</code></li>
+<li><code>tests/test_documents.py::test_document_create_registers_raw_source_evidence_units</code></li>
+<li><code>tests/test_documents.py::test_documents_sync_registers_raw_source_evidence_units</code></li>
 <li><code>tests/test_project_rbac.py</code></li>
 </ul>
 <h2 id="related-features">Related Features</h2>
@@ -288,7 +294,7 @@
 </ul>
 <h2 id="compass-evidence">Compass Evidence</h2>
 <ul>
-<li>Spec/task: CF-SPEC-53 / CF-657</li>
+<li>Spec/task: CF-SPEC-53 / CF-657; CF-SPEC-131</li>
 <li>Inventory source: <code>docs/features/inventory.json</code></li>
 </ul>
 <h2 id="when-to-update">When To Update</h2>

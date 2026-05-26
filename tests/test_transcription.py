@@ -183,6 +183,8 @@ def test_icr_consensus_computes():
     result = compute_consensus(responses)
     assert result.agreement_score > 0.5
     assert result.confidence in ("high", "medium")
+    assert result.details["kappa_basis"] == "category_presence_by_response"
+    assert "heuristic keyword categories" in result.details["kappa_basis_note"]
 
 
 def test_icr_low_agreement_flags_review():
