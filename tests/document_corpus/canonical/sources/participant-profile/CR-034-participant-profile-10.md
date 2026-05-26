@@ -2,86 +2,341 @@
 
 Project: CareNav Renewal
 Company: Northstar Health
+Business context: Northstar Health operates 43 clinics across community health, cardiology, oncology, pediatrics, fertility, and post-operative care. The organization piloted CareNav after missed preparation tasks increased same-day cancellations and staff manually reconciled portal messages, SMS reminders, EHR tasks, phone calls, and paper notes. The renewal program must decide which automation can be trusted, which workflows need human review, and which patient/caregiver experiences are safe to launch in multiple languages.
+Research program: This canonical corpus simulates a full mixed-methods UX research program: hour-long interviews, diary studies, survey exports, usability sessions, accessibility audits, journey maps, field observations, support tickets, analytics, competitor benchmarks, stakeholder memos, design briefs, discussion guides, consent/privacy notes, malformed edge cases, and report-readiness material. Sources intentionally contain contradictions, low-consensus evidence, stale metrics, multilingual ambiguity, and privacy-sensitive scenarios so tests must follow the Research Spine rather than summarizing raw data directly.
 Method: participant-profile
+Source frame: participant profile research source
+Evidence unit model: evidence note
 Double Diamond phase: discover
 Participant ids: P34
 Primary role: care coordinator
 Clinic: pediatric clinic
 Language: pt-BR
+Journey focus: specialist referral handoff
 
-## Evidence block 1
+## Source-specific protocol notes
 
-Role and context: care coordinator in a pediatric clinic; language pt-BR.
-Observed issue: Spanish and Portuguese copy is inconsistent across reminders.
-Counter-signal: readiness statuses look final even when evidence is old. This source intentionally includes tension so synthesis must weigh contradictions instead of averaging them away.
-Quote: "I can only approve a recommendation when the system shows which task, transcript, or ticket produced it."
-Implication: add confidence labels when evidence is incomplete.
-Reporting rule: this raw source is not report-ready until a human-approved Done task turns it into a finding with evidence citations.
+Analyst should preserve exact source context, method limits, contradictions, and report-readiness gates.
+Do not use this file as a ready-made finding. Segment stable evidence units from the raw source, run independent extraction and open coding, compare source span, claim, code, model identity, and route evidence, then move low-consensus claims to reconciliation before any atomic research artifact becomes trusted.
 
-## Evidence block 2
+## Project guardrails carried into this source
 
-Role and context: care coordinator in a pediatric clinic; language pt-BR.
-Observed issue: staff do not trust automation when no source trail is shown.
-Counter-signal: patients cannot tell which tasks are required before the appointment. This source intentionally includes tension so synthesis must weigh contradictions instead of averaging them away.
-Quote: "I can only approve a recommendation when the system shows which task, transcript, or ticket produced it."
-Implication: summarize appointment readiness without medical interpretation.
-Reporting rule: this raw source is not report-ready until a human-approved Done task turns it into a finding with evidence citations.
+- Do not infer medical advice, diagnosis, treatment priority, clinical eligibility, insurance coverage, or medication guidance.
+- Treat every participant story as synthetic PHI-like material; do not expose names, phone numbers, addresses, or unnecessary identity details in report outputs.
+- Keep staff workflow evidence separate from patient, caregiver, administrator, and operations analyst evidence until a synthesis explicitly compares them.
+- Flag contradictions, stale evidence, sampling gaps, language-specific wording risks, and automation-trust risks instead of smoothing them into one confident theme.
+- Distinguish raw source evidence, evidence units, candidate atoms, accepted atoms, facts, insights, recommendations, In Review tasks, Done tasks, and Reports.
+- Recommendations must cite source ids, exact quotes or spans where possible, codebook/reliability status, and human approval state before they become reportable.
 
-## Evidence block 3
+## Evidence unit candidate 1: same-day cancellation recovery
 
-Role and context: care coordinator in a pediatric clinic; language pt-BR.
-Observed issue: patients miss reminders sent during working hours.
-Counter-signal: staff duplicate reminders in SMS, portal messages, and handwritten notes. This source intentionally includes tension so synthesis must weigh contradictions instead of averaging them away.
-Quote: "I can only approve a recommendation when the system shows which task, transcript, or ticket produced it."
-Implication: let staff filter by next patient action instead of visit date only.
-Reporting rule: this raw source is not report-ready until a human-approved Done task turns it into a finding with evidence citations.
+Source position: [00:17] in participant profile research source; candidate participant P36; role care coordinator; language pt-BR; clinic pediatric clinic.
+Observed moment: Spanish and Portuguese copy is inconsistent across reminders. The participant or operational record describes the issue while moving through same-day cancellation recovery, and the note explicitly connects the issue to appointment preparation, readiness evidence, or caregiver-safe coordination.
+Thick description: The team member first checks the dashboard, then cross-references another survey verbatim, and then decides whether the readiness status is safe enough to act on. The source describes how the person looks for freshness, owner, evidence source, permission status, and whether an automated recommendation has been reviewed. The detail matters because a generic summary such as "users want clarity" would hide the difference between evidence traceability, emotional reassurance, workflow speed, and clinical safety boundaries.
+Direct quote: "I can only approve a recommendation when the system shows which task, transcript, ticket, or survey row produced it; otherwise I have to rebuild the story myself before I trust the status."
+Counter-signal: readiness statuses look final even when evidence is old. Prototype A improves scan speed, while Prototype B improves source trust; neither fully solves multilingual permission wording. This contradiction is intentional canonical material for reliability, debate, reconciliation, and low-consensus review tests.
+Coding hints: likely open codes include evidence traceability, readiness confidence, caregiver boundary, multilingual risk, staff override, stale-source concern, task priority ambiguity, and automation trust. Coders should decide independently, cite spans, record confidence, and memo ambiguity before reliability is computed.
+Implication candidate: add confidence labels when evidence is incomplete. This is only a candidate implication until source-grounded multi-model extraction, coding, reliability or reconciliation, human review, and Done-task gates accept it.
+Report gate reminder: raw source material is not report-ready. Any future nugget, fact, insight, recommendation, design decision, or report paragraph must preserve the source id CR-034, evidence-unit location, codebook version, route evidence, review state, and task approval path.
 
-## Evidence block 4
+## Evidence unit candidate 2: post-operative checklist review
 
-Role and context: care coordinator in a pediatric clinic; language pt-BR.
-Observed issue: care coordinators need a safe way to override automation.
-Counter-signal: caregivers receive partial information and then call the clinic. This source intentionally includes tension so synthesis must weigh contradictions instead of averaging them away.
-Quote: "I can only approve a recommendation when the system shows which task, transcript, or ticket produced it."
-Implication: separate patient language from staff workflow language.
-Reporting rule: this raw source is not report-ready until a human-approved Done task turns it into a finding with evidence citations.
+Source position: [02:34] in participant profile research source; candidate participant P37; role care coordinator; language pt-BR; clinic pediatric clinic.
+Observed moment: staff do not trust automation when no source trail is shown. The participant or operational record describes the issue while moving through post-operative checklist review, and the note explicitly connects the issue to appointment preparation, readiness evidence, or caregiver-safe coordination.
+Thick description: The team member first checks the dashboard, then cross-references another usability observation, and then decides whether the readiness status is safe enough to act on. The source describes how the person looks for freshness, owner, evidence source, permission status, and whether an automated recommendation has been reviewed. The detail matters because a generic summary such as "users want clarity" would hide the difference between evidence traceability, emotional reassurance, workflow speed, and clinical safety boundaries.
+Direct quote: "I can only approve a recommendation when the system shows which task, transcript, ticket, or survey row produced it; otherwise I have to rebuild the story myself before I trust the status."
+Counter-signal: patients cannot tell which tasks are required before the appointment. Survey ratings look positive for reminder clarity, while open feedback describes confusion about which tasks are required versus optional. This contradiction is intentional canonical material for reliability, debate, reconciliation, and low-consensus review tests.
+Coding hints: likely open codes include evidence traceability, readiness confidence, caregiver boundary, multilingual risk, staff override, stale-source concern, task priority ambiguity, and automation trust. Coders should decide independently, cite spans, record confidence, and memo ambiguity before reliability is computed.
+Implication candidate: summarize appointment readiness without medical interpretation. This is only a candidate implication until source-grounded multi-model extraction, coding, reliability or reconciliation, human review, and Done-task gates accept it.
+Report gate reminder: raw source material is not report-ready. Any future nugget, fact, insight, recommendation, design decision, or report paragraph must preserve the source id CR-034, evidence-unit location, codebook version, route evidence, review state, and task approval path.
 
-## Evidence block 5
+## Evidence unit candidate 3: multilingual reminder escalation
 
-Role and context: care coordinator in a pediatric clinic; language pt-BR.
-Observed issue: readiness statuses look final even when evidence is old.
-Counter-signal: the dashboard hides stale tasks until the day before a visit. This source intentionally includes tension so synthesis must weigh contradictions instead of averaging them away.
-Quote: "I can only approve a recommendation when the system shows which task, transcript, or ticket produced it."
-Implication: make every generated finding traceable to approved task evidence.
-Reporting rule: this raw source is not report-ready until a human-approved Done task turns it into a finding with evidence citations.
+Source position: [04:51] in participant profile research source; candidate participant P38; role care coordinator; language pt-BR; clinic pediatric clinic.
+Observed moment: patients miss reminders sent during working hours. The participant or operational record describes the issue while moving through multilingual reminder escalation, and the note explicitly connects the issue to appointment preparation, readiness evidence, or caregiver-safe coordination.
+Thick description: The team member first checks the dashboard, then cross-references another analytics row, and then decides whether the readiness status is safe enough to act on. The source describes how the person looks for freshness, owner, evidence source, permission status, and whether an automated recommendation has been reviewed. The detail matters because a generic summary such as "users want clarity" would hide the difference between evidence traceability, emotional reassurance, workflow speed, and clinical safety boundaries.
+Direct quote: "I can only approve a recommendation when the system shows which task, transcript, ticket, or survey row produced it; otherwise I have to rebuild the story myself before I trust the status."
+Counter-signal: staff duplicate reminders in SMS, portal messages, and handwritten notes. Operations leaders want a launch recommendation, while researchers keep finding low-consensus evidence that requires reconciliation. This contradiction is intentional canonical material for reliability, debate, reconciliation, and low-consensus review tests.
+Coding hints: likely open codes include evidence traceability, readiness confidence, caregiver boundary, multilingual risk, staff override, stale-source concern, task priority ambiguity, and automation trust. Coders should decide independently, cite spans, record confidence, and memo ambiguity before reliability is computed.
+Implication candidate: let staff filter by next patient action instead of visit date only. This is only a candidate implication until source-grounded multi-model extraction, coding, reliability or reconciliation, human review, and Done-task gates accept it.
+Report gate reminder: raw source material is not report-ready. Any future nugget, fact, insight, recommendation, design decision, or report paragraph must preserve the source id CR-034, evidence-unit location, codebook version, route evidence, review state, and task approval path.
 
-## Evidence block 6
+## Evidence unit candidate 4: insurance document clarification
 
-Role and context: care coordinator in a pediatric clinic; language pt-BR.
-Observed issue: patients cannot tell which tasks are required before the appointment.
-Counter-signal: forms look complete even when lab attachments are missing. This source intentionally includes tension so synthesis must weigh contradictions instead of averaging them away.
-Quote: "I can only approve a recommendation when the system shows which task, transcript, or ticket produced it."
-Implication: show a preparation timeline with required, optional, and blocked steps.
-Reporting rule: this raw source is not report-ready until a human-approved Done task turns it into a finding with evidence citations.
+Source position: [06:08] in participant profile research source; candidate participant P39; role care coordinator; language pt-BR; clinic pediatric clinic.
+Observed moment: care coordinators need a safe way to override automation. The participant or operational record describes the issue while moving through insurance document clarification, and the note explicitly connects the issue to appointment preparation, readiness evidence, or caregiver-safe coordination.
+Thick description: The team member first checks the dashboard, then cross-references another competitor benchmark, and then decides whether the readiness status is safe enough to act on. The source describes how the person looks for freshness, owner, evidence source, permission status, and whether an automated recommendation has been reviewed. The detail matters because a generic summary such as "users want clarity" would hide the difference between evidence traceability, emotional reassurance, workflow speed, and clinical safety boundaries.
+Direct quote: "I can only approve a recommendation when the system shows which task, transcript, ticket, or survey row produced it; otherwise I have to rebuild the story myself before I trust the status."
+Counter-signal: caregivers receive partial information and then call the clinic. Support tickets emphasize account access, while interviews emphasize emotional confidence and readiness trust. This contradiction is intentional canonical material for reliability, debate, reconciliation, and low-consensus review tests.
+Coding hints: likely open codes include evidence traceability, readiness confidence, caregiver boundary, multilingual risk, staff override, stale-source concern, task priority ambiguity, and automation trust. Coders should decide independently, cite spans, record confidence, and memo ambiguity before reliability is computed.
+Implication candidate: separate patient language from staff workflow language. This is only a candidate implication until source-grounded multi-model extraction, coding, reliability or reconciliation, human review, and Done-task gates accept it.
+Report gate reminder: raw source material is not report-ready. Any future nugget, fact, insight, recommendation, design decision, or report paragraph must preserve the source id CR-034, evidence-unit location, codebook version, route evidence, review state, and task approval path.
 
-## Evidence block 7
+## Evidence unit candidate 5: readiness dashboard triage
 
-Role and context: care coordinator in a pediatric clinic; language pt-BR.
-Observed issue: staff duplicate reminders in SMS, portal messages, and handwritten notes.
-Counter-signal: Spanish and Portuguese copy is inconsistent across reminders. This source intentionally includes tension so synthesis must weigh contradictions instead of averaging them away.
-Quote: "I can only approve a recommendation when the system shows which task, transcript, or ticket produced it."
-Implication: surface the source and freshness of each task.
-Reporting rule: this raw source is not report-ready until a human-approved Done task turns it into a finding with evidence citations.
+Source position: [08:25] in participant profile research source; candidate participant P40; role care coordinator; language pt-BR; clinic pediatric clinic.
+Observed moment: readiness statuses look final even when evidence is old. The participant or operational record describes the issue while moving through readiness dashboard triage, and the note explicitly connects the issue to appointment preparation, readiness evidence, or caregiver-safe coordination.
+Thick description: The team member first checks the dashboard, then cross-references another stakeholder memo, and then decides whether the readiness status is safe enough to act on. The source describes how the person looks for freshness, owner, evidence source, permission status, and whether an automated recommendation has been reviewed. The detail matters because a generic summary such as "users want clarity" would hide the difference between evidence traceability, emotional reassurance, workflow speed, and clinical safety boundaries.
+Direct quote: "I can only approve a recommendation when the system shows which task, transcript, ticket, or survey row produced it; otherwise I have to rebuild the story myself before I trust the status."
+Counter-signal: the dashboard hides stale tasks until the day before a visit. Accessibility audits praise information hierarchy but flag keyboard focus, contrast, and screen-reader status changes in the same flow. This contradiction is intentional canonical material for reliability, debate, reconciliation, and low-consensus review tests.
+Coding hints: likely open codes include evidence traceability, readiness confidence, caregiver boundary, multilingual risk, staff override, stale-source concern, task priority ambiguity, and automation trust. Coders should decide independently, cite spans, record confidence, and memo ambiguity before reliability is computed.
+Implication candidate: make every generated finding traceable to approved task evidence. This is only a candidate implication until source-grounded multi-model extraction, coding, reliability or reconciliation, human review, and Done-task gates accept it.
+Report gate reminder: raw source material is not report-ready. Any future nugget, fact, insight, recommendation, design decision, or report paragraph must preserve the source id CR-034, evidence-unit location, codebook version, route evidence, review state, and task approval path.
 
-## Evidence block 8
+## Evidence unit candidate 6: pre-visit lab completion
 
-Role and context: care coordinator in a pediatric clinic; language pt-BR.
-Observed issue: caregivers receive partial information and then call the clinic.
-Counter-signal: staff do not trust automation when no source trail is shown. This source intentionally includes tension so synthesis must weigh contradictions instead of averaging them away.
-Quote: "I can only approve a recommendation when the system shows which task, transcript, or ticket produced it."
-Implication: give coordinators a one-click reason for overriding automation.
-Reporting rule: this raw source is not report-ready until a human-approved Done task turns it into a finding with evidence citations.
+Source position: [10:42] in participant profile research source; candidate participant P41; role care coordinator; language pt-BR; clinic pediatric clinic.
+Observed moment: patients cannot tell which tasks are required before the appointment. The participant or operational record describes the issue while moving through pre-visit lab completion, and the note explicitly connects the issue to appointment preparation, readiness evidence, or caregiver-safe coordination.
+Thick description: The team member first checks the dashboard, then cross-references another interview transcript, and then decides whether the readiness status is safe enough to act on. The source describes how the person looks for freshness, owner, evidence source, permission status, and whether an automated recommendation has been reviewed. The detail matters because a generic summary such as "users want clarity" would hide the difference between evidence traceability, emotional reassurance, workflow speed, and clinical safety boundaries.
+Direct quote: "I can only approve a recommendation when the system shows which task, transcript, ticket, or survey row produced it; otherwise I have to rebuild the story myself before I trust the status."
+Counter-signal: forms look complete even when lab attachments are missing. Patients say fewer reminders would reduce stress, while staff analytics show missed prep falls when reminders are repeated across SMS and portal. This contradiction is intentional canonical material for reliability, debate, reconciliation, and low-consensus review tests.
+Coding hints: likely open codes include evidence traceability, readiness confidence, caregiver boundary, multilingual risk, staff override, stale-source concern, task priority ambiguity, and automation trust. Coders should decide independently, cite spans, record confidence, and memo ambiguity before reliability is computed.
+Implication candidate: show a preparation timeline with required, optional, and blocked steps. This is only a candidate implication until source-grounded multi-model extraction, coding, reliability or reconciliation, human review, and Done-task gates accept it.
+Report gate reminder: raw source material is not report-ready. Any future nugget, fact, insight, recommendation, design decision, or report paragraph must preserve the source id CR-034, evidence-unit location, codebook version, route evidence, review state, and task approval path.
+
+## Evidence unit candidate 7: caregiver invitation and consent
+
+Source position: [12:59] in participant profile research source; candidate participant P42; role care coordinator; language pt-BR; clinic pediatric clinic.
+Observed moment: staff duplicate reminders in SMS, portal messages, and handwritten notes. The participant or operational record describes the issue while moving through caregiver invitation and consent, and the note explicitly connects the issue to appointment preparation, readiness evidence, or caregiver-safe coordination.
+Thick description: The team member first checks the dashboard, then cross-references another field note, and then decides whether the readiness status is safe enough to act on. The source describes how the person looks for freshness, owner, evidence source, permission status, and whether an automated recommendation has been reviewed. The detail matters because a generic summary such as "users want clarity" would hide the difference between evidence traceability, emotional reassurance, workflow speed, and clinical safety boundaries.
+Direct quote: "I can only approve a recommendation when the system shows which task, transcript, ticket, or survey row produced it; otherwise I have to rebuild the story myself before I trust the status."
+Counter-signal: Spanish and Portuguese copy is inconsistent across reminders. Care coordinators want automation to assign urgency, while nurse managers want every urgency label to show a source trail and reviewer identity. This contradiction is intentional canonical material for reliability, debate, reconciliation, and low-consensus review tests.
+Coding hints: likely open codes include evidence traceability, readiness confidence, caregiver boundary, multilingual risk, staff override, stale-source concern, task priority ambiguity, and automation trust. Coders should decide independently, cite spans, record confidence, and memo ambiguity before reliability is computed.
+Implication candidate: surface the source and freshness of each task. This is only a candidate implication until source-grounded multi-model extraction, coding, reliability or reconciliation, human review, and Done-task gates accept it.
+Report gate reminder: raw source material is not report-ready. Any future nugget, fact, insight, recommendation, design decision, or report paragraph must preserve the source id CR-034, evidence-unit location, codebook version, route evidence, review state, and task approval path.
+
+## Evidence unit candidate 8: specialist referral handoff
+
+Source position: [15:16] in participant profile research source; candidate participant P43; role care coordinator; language pt-BR; clinic pediatric clinic.
+Observed moment: caregivers receive partial information and then call the clinic. The participant or operational record describes the issue while moving through specialist referral handoff, and the note explicitly connects the issue to appointment preparation, readiness evidence, or caregiver-safe coordination.
+Thick description: The team member first checks the dashboard, then cross-references another support ticket export, and then decides whether the readiness status is safe enough to act on. The source describes how the person looks for freshness, owner, evidence source, permission status, and whether an automated recommendation has been reviewed. The detail matters because a generic summary such as "users want clarity" would hide the difference between evidence traceability, emotional reassurance, workflow speed, and clinical safety boundaries.
+Direct quote: "I can only approve a recommendation when the system shows which task, transcript, ticket, or survey row produced it; otherwise I have to rebuild the story myself before I trust the status."
+Counter-signal: staff do not trust automation when no source trail is shown. Caregivers ask for broader visibility, while patients in privacy-sensitive visits want narrow permissions and quiet notifications. This contradiction is intentional canonical material for reliability, debate, reconciliation, and low-consensus review tests.
+Coding hints: likely open codes include evidence traceability, readiness confidence, caregiver boundary, multilingual risk, staff override, stale-source concern, task priority ambiguity, and automation trust. Coders should decide independently, cite spans, record confidence, and memo ambiguity before reliability is computed.
+Implication candidate: give coordinators a one-click reason for overriding automation. This is only a candidate implication until source-grounded multi-model extraction, coding, reliability or reconciliation, human review, and Done-task gates accept it.
+Report gate reminder: raw source material is not report-ready. Any future nugget, fact, insight, recommendation, design decision, or report paragraph must preserve the source id CR-034, evidence-unit location, codebook version, route evidence, review state, and task approval path.
+
+## Evidence unit candidate 9: same-day cancellation recovery
+
+Source position: [17:33] in participant profile research source; candidate participant P44; role care coordinator; language pt-BR; clinic pediatric clinic.
+Observed moment: the dashboard hides stale tasks until the day before a visit. The participant or operational record describes the issue while moving through same-day cancellation recovery, and the note explicitly connects the issue to appointment preparation, readiness evidence, or caregiver-safe coordination.
+Thick description: The team member first checks the dashboard, then cross-references another survey verbatim, and then decides whether the readiness status is safe enough to act on. The source describes how the person looks for freshness, owner, evidence source, permission status, and whether an automated recommendation has been reviewed. The detail matters because a generic summary such as "users want clarity" would hide the difference between evidence traceability, emotional reassurance, workflow speed, and clinical safety boundaries.
+Direct quote: "I can only approve a recommendation when the system shows which task, transcript, ticket, or survey row produced it; otherwise I have to rebuild the story myself before I trust the status."
+Counter-signal: patients miss reminders sent during working hours. Prototype A improves scan speed, while Prototype B improves source trust; neither fully solves multilingual permission wording. This contradiction is intentional canonical material for reliability, debate, reconciliation, and low-consensus review tests.
+Coding hints: likely open codes include evidence traceability, readiness confidence, caregiver boundary, multilingual risk, staff override, stale-source concern, task priority ambiguity, and automation trust. Coders should decide independently, cite spans, record confidence, and memo ambiguity before reliability is computed.
+Implication candidate: create a caregiver-safe view with explicit permission labels. This is only a candidate implication until source-grounded multi-model extraction, coding, reliability or reconciliation, human review, and Done-task gates accept it.
+Report gate reminder: raw source material is not report-ready. Any future nugget, fact, insight, recommendation, design decision, or report paragraph must preserve the source id CR-034, evidence-unit location, codebook version, route evidence, review state, and task approval path.
+
+## Evidence unit candidate 10: post-operative checklist review
+
+Source position: [19:50] in participant profile research source; candidate participant P45; role care coordinator; language pt-BR; clinic pediatric clinic.
+Observed moment: forms look complete even when lab attachments are missing. The participant or operational record describes the issue while moving through post-operative checklist review, and the note explicitly connects the issue to appointment preparation, readiness evidence, or caregiver-safe coordination.
+Thick description: The team member first checks the dashboard, then cross-references another usability observation, and then decides whether the readiness status is safe enough to act on. The source describes how the person looks for freshness, owner, evidence source, permission status, and whether an automated recommendation has been reviewed. The detail matters because a generic summary such as "users want clarity" would hide the difference between evidence traceability, emotional reassurance, workflow speed, and clinical safety boundaries.
+Direct quote: "I can only approve a recommendation when the system shows which task, transcript, ticket, or survey row produced it; otherwise I have to rebuild the story myself before I trust the status."
+Counter-signal: care coordinators need a safe way to override automation. Survey ratings look positive for reminder clarity, while open feedback describes confusion about which tasks are required versus optional. This contradiction is intentional canonical material for reliability, debate, reconciliation, and low-consensus review tests.
+Coding hints: likely open codes include evidence traceability, readiness confidence, caregiver boundary, multilingual risk, staff override, stale-source concern, task priority ambiguity, and automation trust. Coders should decide independently, cite spans, record confidence, and memo ambiguity before reliability is computed.
+Implication candidate: collapse duplicate reminders into a single communication history. This is only a candidate implication until source-grounded multi-model extraction, coding, reliability or reconciliation, human review, and Done-task gates accept it.
+Report gate reminder: raw source material is not report-ready. Any future nugget, fact, insight, recommendation, design decision, or report paragraph must preserve the source id CR-034, evidence-unit location, codebook version, route evidence, review state, and task approval path.
+
+## Evidence unit candidate 11: multilingual reminder escalation
+
+Source position: [21:07] in participant profile research source; candidate participant P46; role care coordinator; language pt-BR; clinic pediatric clinic.
+Observed moment: Spanish and Portuguese copy is inconsistent across reminders. The participant or operational record describes the issue while moving through multilingual reminder escalation, and the note explicitly connects the issue to appointment preparation, readiness evidence, or caregiver-safe coordination.
+Thick description: The team member first checks the dashboard, then cross-references another analytics row, and then decides whether the readiness status is safe enough to act on. The source describes how the person looks for freshness, owner, evidence source, permission status, and whether an automated recommendation has been reviewed. The detail matters because a generic summary such as "users want clarity" would hide the difference between evidence traceability, emotional reassurance, workflow speed, and clinical safety boundaries.
+Direct quote: "I can only approve a recommendation when the system shows which task, transcript, ticket, or survey row produced it; otherwise I have to rebuild the story myself before I trust the status."
+Counter-signal: readiness statuses look final even when evidence is old. Operations leaders want a launch recommendation, while researchers keep finding low-consensus evidence that requires reconciliation. This contradiction is intentional canonical material for reliability, debate, reconciliation, and low-consensus review tests.
+Coding hints: likely open codes include evidence traceability, readiness confidence, caregiver boundary, multilingual risk, staff override, stale-source concern, task priority ambiguity, and automation trust. Coders should decide independently, cite spans, record confidence, and memo ambiguity before reliability is computed.
+Implication candidate: add confidence labels when evidence is incomplete. This is only a candidate implication until source-grounded multi-model extraction, coding, reliability or reconciliation, human review, and Done-task gates accept it.
+Report gate reminder: raw source material is not report-ready. Any future nugget, fact, insight, recommendation, design decision, or report paragraph must preserve the source id CR-034, evidence-unit location, codebook version, route evidence, review state, and task approval path.
+
+## Evidence unit candidate 12: insurance document clarification
+
+Source position: [23:24] in participant profile research source; candidate participant P47; role care coordinator; language pt-BR; clinic pediatric clinic.
+Observed moment: staff do not trust automation when no source trail is shown. The participant or operational record describes the issue while moving through insurance document clarification, and the note explicitly connects the issue to appointment preparation, readiness evidence, or caregiver-safe coordination.
+Thick description: The team member first checks the dashboard, then cross-references another competitor benchmark, and then decides whether the readiness status is safe enough to act on. The source describes how the person looks for freshness, owner, evidence source, permission status, and whether an automated recommendation has been reviewed. The detail matters because a generic summary such as "users want clarity" would hide the difference between evidence traceability, emotional reassurance, workflow speed, and clinical safety boundaries.
+Direct quote: "I can only approve a recommendation when the system shows which task, transcript, ticket, or survey row produced it; otherwise I have to rebuild the story myself before I trust the status."
+Counter-signal: patients cannot tell which tasks are required before the appointment. Support tickets emphasize account access, while interviews emphasize emotional confidence and readiness trust. This contradiction is intentional canonical material for reliability, debate, reconciliation, and low-consensus review tests.
+Coding hints: likely open codes include evidence traceability, readiness confidence, caregiver boundary, multilingual risk, staff override, stale-source concern, task priority ambiguity, and automation trust. Coders should decide independently, cite spans, record confidence, and memo ambiguity before reliability is computed.
+Implication candidate: summarize appointment readiness without medical interpretation. This is only a candidate implication until source-grounded multi-model extraction, coding, reliability or reconciliation, human review, and Done-task gates accept it.
+Report gate reminder: raw source material is not report-ready. Any future nugget, fact, insight, recommendation, design decision, or report paragraph must preserve the source id CR-034, evidence-unit location, codebook version, route evidence, review state, and task approval path.
+
+## Evidence unit candidate 13: readiness dashboard triage
+
+Source position: [25:41] in participant profile research source; candidate participant P48; role care coordinator; language pt-BR; clinic pediatric clinic.
+Observed moment: patients miss reminders sent during working hours. The participant or operational record describes the issue while moving through readiness dashboard triage, and the note explicitly connects the issue to appointment preparation, readiness evidence, or caregiver-safe coordination.
+Thick description: The team member first checks the dashboard, then cross-references another stakeholder memo, and then decides whether the readiness status is safe enough to act on. The source describes how the person looks for freshness, owner, evidence source, permission status, and whether an automated recommendation has been reviewed. The detail matters because a generic summary such as "users want clarity" would hide the difference between evidence traceability, emotional reassurance, workflow speed, and clinical safety boundaries.
+Direct quote: "I can only approve a recommendation when the system shows which task, transcript, ticket, or survey row produced it; otherwise I have to rebuild the story myself before I trust the status."
+Counter-signal: staff duplicate reminders in SMS, portal messages, and handwritten notes. Accessibility audits praise information hierarchy but flag keyboard focus, contrast, and screen-reader status changes in the same flow. This contradiction is intentional canonical material for reliability, debate, reconciliation, and low-consensus review tests.
+Coding hints: likely open codes include evidence traceability, readiness confidence, caregiver boundary, multilingual risk, staff override, stale-source concern, task priority ambiguity, and automation trust. Coders should decide independently, cite spans, record confidence, and memo ambiguity before reliability is computed.
+Implication candidate: let staff filter by next patient action instead of visit date only. This is only a candidate implication until source-grounded multi-model extraction, coding, reliability or reconciliation, human review, and Done-task gates accept it.
+Report gate reminder: raw source material is not report-ready. Any future nugget, fact, insight, recommendation, design decision, or report paragraph must preserve the source id CR-034, evidence-unit location, codebook version, route evidence, review state, and task approval path.
+
+## Evidence unit candidate 14: pre-visit lab completion
+
+Source position: [27:58] in participant profile research source; candidate participant P01; role care coordinator; language pt-BR; clinic pediatric clinic.
+Observed moment: care coordinators need a safe way to override automation. The participant or operational record describes the issue while moving through pre-visit lab completion, and the note explicitly connects the issue to appointment preparation, readiness evidence, or caregiver-safe coordination.
+Thick description: The team member first checks the dashboard, then cross-references another interview transcript, and then decides whether the readiness status is safe enough to act on. The source describes how the person looks for freshness, owner, evidence source, permission status, and whether an automated recommendation has been reviewed. The detail matters because a generic summary such as "users want clarity" would hide the difference between evidence traceability, emotional reassurance, workflow speed, and clinical safety boundaries.
+Direct quote: "I can only approve a recommendation when the system shows which task, transcript, ticket, or survey row produced it; otherwise I have to rebuild the story myself before I trust the status."
+Counter-signal: caregivers receive partial information and then call the clinic. Patients say fewer reminders would reduce stress, while staff analytics show missed prep falls when reminders are repeated across SMS and portal. This contradiction is intentional canonical material for reliability, debate, reconciliation, and low-consensus review tests.
+Coding hints: likely open codes include evidence traceability, readiness confidence, caregiver boundary, multilingual risk, staff override, stale-source concern, task priority ambiguity, and automation trust. Coders should decide independently, cite spans, record confidence, and memo ambiguity before reliability is computed.
+Implication candidate: separate patient language from staff workflow language. This is only a candidate implication until source-grounded multi-model extraction, coding, reliability or reconciliation, human review, and Done-task gates accept it.
+Report gate reminder: raw source material is not report-ready. Any future nugget, fact, insight, recommendation, design decision, or report paragraph must preserve the source id CR-034, evidence-unit location, codebook version, route evidence, review state, and task approval path.
+
+## Evidence unit candidate 15: caregiver invitation and consent
+
+Source position: [30:15] in participant profile research source; candidate participant P02; role care coordinator; language pt-BR; clinic pediatric clinic.
+Observed moment: readiness statuses look final even when evidence is old. The participant or operational record describes the issue while moving through caregiver invitation and consent, and the note explicitly connects the issue to appointment preparation, readiness evidence, or caregiver-safe coordination.
+Thick description: The team member first checks the dashboard, then cross-references another field note, and then decides whether the readiness status is safe enough to act on. The source describes how the person looks for freshness, owner, evidence source, permission status, and whether an automated recommendation has been reviewed. The detail matters because a generic summary such as "users want clarity" would hide the difference between evidence traceability, emotional reassurance, workflow speed, and clinical safety boundaries.
+Direct quote: "I can only approve a recommendation when the system shows which task, transcript, ticket, or survey row produced it; otherwise I have to rebuild the story myself before I trust the status."
+Counter-signal: the dashboard hides stale tasks until the day before a visit. Care coordinators want automation to assign urgency, while nurse managers want every urgency label to show a source trail and reviewer identity. This contradiction is intentional canonical material for reliability, debate, reconciliation, and low-consensus review tests.
+Coding hints: likely open codes include evidence traceability, readiness confidence, caregiver boundary, multilingual risk, staff override, stale-source concern, task priority ambiguity, and automation trust. Coders should decide independently, cite spans, record confidence, and memo ambiguity before reliability is computed.
+Implication candidate: make every generated finding traceable to approved task evidence. This is only a candidate implication until source-grounded multi-model extraction, coding, reliability or reconciliation, human review, and Done-task gates accept it.
+Report gate reminder: raw source material is not report-ready. Any future nugget, fact, insight, recommendation, design decision, or report paragraph must preserve the source id CR-034, evidence-unit location, codebook version, route evidence, review state, and task approval path.
+
+## Evidence unit candidate 16: specialist referral handoff
+
+Source position: [32:32] in participant profile research source; candidate participant P03; role care coordinator; language pt-BR; clinic pediatric clinic.
+Observed moment: patients cannot tell which tasks are required before the appointment. The participant or operational record describes the issue while moving through specialist referral handoff, and the note explicitly connects the issue to appointment preparation, readiness evidence, or caregiver-safe coordination.
+Thick description: The team member first checks the dashboard, then cross-references another support ticket export, and then decides whether the readiness status is safe enough to act on. The source describes how the person looks for freshness, owner, evidence source, permission status, and whether an automated recommendation has been reviewed. The detail matters because a generic summary such as "users want clarity" would hide the difference between evidence traceability, emotional reassurance, workflow speed, and clinical safety boundaries.
+Direct quote: "I can only approve a recommendation when the system shows which task, transcript, ticket, or survey row produced it; otherwise I have to rebuild the story myself before I trust the status."
+Counter-signal: forms look complete even when lab attachments are missing. Caregivers ask for broader visibility, while patients in privacy-sensitive visits want narrow permissions and quiet notifications. This contradiction is intentional canonical material for reliability, debate, reconciliation, and low-consensus review tests.
+Coding hints: likely open codes include evidence traceability, readiness confidence, caregiver boundary, multilingual risk, staff override, stale-source concern, task priority ambiguity, and automation trust. Coders should decide independently, cite spans, record confidence, and memo ambiguity before reliability is computed.
+Implication candidate: show a preparation timeline with required, optional, and blocked steps. This is only a candidate implication until source-grounded multi-model extraction, coding, reliability or reconciliation, human review, and Done-task gates accept it.
+Report gate reminder: raw source material is not report-ready. Any future nugget, fact, insight, recommendation, design decision, or report paragraph must preserve the source id CR-034, evidence-unit location, codebook version, route evidence, review state, and task approval path.
+
+## Evidence unit candidate 17: same-day cancellation recovery
+
+Source position: [34:49] in participant profile research source; candidate participant P04; role care coordinator; language pt-BR; clinic pediatric clinic.
+Observed moment: staff duplicate reminders in SMS, portal messages, and handwritten notes. The participant or operational record describes the issue while moving through same-day cancellation recovery, and the note explicitly connects the issue to appointment preparation, readiness evidence, or caregiver-safe coordination.
+Thick description: The team member first checks the dashboard, then cross-references another survey verbatim, and then decides whether the readiness status is safe enough to act on. The source describes how the person looks for freshness, owner, evidence source, permission status, and whether an automated recommendation has been reviewed. The detail matters because a generic summary such as "users want clarity" would hide the difference between evidence traceability, emotional reassurance, workflow speed, and clinical safety boundaries.
+Direct quote: "I can only approve a recommendation when the system shows which task, transcript, ticket, or survey row produced it; otherwise I have to rebuild the story myself before I trust the status."
+Counter-signal: Spanish and Portuguese copy is inconsistent across reminders. Prototype A improves scan speed, while Prototype B improves source trust; neither fully solves multilingual permission wording. This contradiction is intentional canonical material for reliability, debate, reconciliation, and low-consensus review tests.
+Coding hints: likely open codes include evidence traceability, readiness confidence, caregiver boundary, multilingual risk, staff override, stale-source concern, task priority ambiguity, and automation trust. Coders should decide independently, cite spans, record confidence, and memo ambiguity before reliability is computed.
+Implication candidate: surface the source and freshness of each task. This is only a candidate implication until source-grounded multi-model extraction, coding, reliability or reconciliation, human review, and Done-task gates accept it.
+Report gate reminder: raw source material is not report-ready. Any future nugget, fact, insight, recommendation, design decision, or report paragraph must preserve the source id CR-034, evidence-unit location, codebook version, route evidence, review state, and task approval path.
+
+## Evidence unit candidate 18: post-operative checklist review
+
+Source position: [36:06] in participant profile research source; candidate participant P05; role care coordinator; language pt-BR; clinic pediatric clinic.
+Observed moment: caregivers receive partial information and then call the clinic. The participant or operational record describes the issue while moving through post-operative checklist review, and the note explicitly connects the issue to appointment preparation, readiness evidence, or caregiver-safe coordination.
+Thick description: The team member first checks the dashboard, then cross-references another usability observation, and then decides whether the readiness status is safe enough to act on. The source describes how the person looks for freshness, owner, evidence source, permission status, and whether an automated recommendation has been reviewed. The detail matters because a generic summary such as "users want clarity" would hide the difference between evidence traceability, emotional reassurance, workflow speed, and clinical safety boundaries.
+Direct quote: "I can only approve a recommendation when the system shows which task, transcript, ticket, or survey row produced it; otherwise I have to rebuild the story myself before I trust the status."
+Counter-signal: staff do not trust automation when no source trail is shown. Survey ratings look positive for reminder clarity, while open feedback describes confusion about which tasks are required versus optional. This contradiction is intentional canonical material for reliability, debate, reconciliation, and low-consensus review tests.
+Coding hints: likely open codes include evidence traceability, readiness confidence, caregiver boundary, multilingual risk, staff override, stale-source concern, task priority ambiguity, and automation trust. Coders should decide independently, cite spans, record confidence, and memo ambiguity before reliability is computed.
+Implication candidate: give coordinators a one-click reason for overriding automation. This is only a candidate implication until source-grounded multi-model extraction, coding, reliability or reconciliation, human review, and Done-task gates accept it.
+Report gate reminder: raw source material is not report-ready. Any future nugget, fact, insight, recommendation, design decision, or report paragraph must preserve the source id CR-034, evidence-unit location, codebook version, route evidence, review state, and task approval path.
+
+## Evidence unit candidate 19: multilingual reminder escalation
+
+Source position: [38:23] in participant profile research source; candidate participant P06; role care coordinator; language pt-BR; clinic pediatric clinic.
+Observed moment: the dashboard hides stale tasks until the day before a visit. The participant or operational record describes the issue while moving through multilingual reminder escalation, and the note explicitly connects the issue to appointment preparation, readiness evidence, or caregiver-safe coordination.
+Thick description: The team member first checks the dashboard, then cross-references another analytics row, and then decides whether the readiness status is safe enough to act on. The source describes how the person looks for freshness, owner, evidence source, permission status, and whether an automated recommendation has been reviewed. The detail matters because a generic summary such as "users want clarity" would hide the difference between evidence traceability, emotional reassurance, workflow speed, and clinical safety boundaries.
+Direct quote: "I can only approve a recommendation when the system shows which task, transcript, ticket, or survey row produced it; otherwise I have to rebuild the story myself before I trust the status."
+Counter-signal: patients miss reminders sent during working hours. Operations leaders want a launch recommendation, while researchers keep finding low-consensus evidence that requires reconciliation. This contradiction is intentional canonical material for reliability, debate, reconciliation, and low-consensus review tests.
+Coding hints: likely open codes include evidence traceability, readiness confidence, caregiver boundary, multilingual risk, staff override, stale-source concern, task priority ambiguity, and automation trust. Coders should decide independently, cite spans, record confidence, and memo ambiguity before reliability is computed.
+Implication candidate: create a caregiver-safe view with explicit permission labels. This is only a candidate implication until source-grounded multi-model extraction, coding, reliability or reconciliation, human review, and Done-task gates accept it.
+Report gate reminder: raw source material is not report-ready. Any future nugget, fact, insight, recommendation, design decision, or report paragraph must preserve the source id CR-034, evidence-unit location, codebook version, route evidence, review state, and task approval path.
+
+## Evidence unit candidate 20: insurance document clarification
+
+Source position: [40:40] in participant profile research source; candidate participant P07; role care coordinator; language pt-BR; clinic pediatric clinic.
+Observed moment: forms look complete even when lab attachments are missing. The participant or operational record describes the issue while moving through insurance document clarification, and the note explicitly connects the issue to appointment preparation, readiness evidence, or caregiver-safe coordination.
+Thick description: The team member first checks the dashboard, then cross-references another competitor benchmark, and then decides whether the readiness status is safe enough to act on. The source describes how the person looks for freshness, owner, evidence source, permission status, and whether an automated recommendation has been reviewed. The detail matters because a generic summary such as "users want clarity" would hide the difference between evidence traceability, emotional reassurance, workflow speed, and clinical safety boundaries.
+Direct quote: "I can only approve a recommendation when the system shows which task, transcript, ticket, or survey row produced it; otherwise I have to rebuild the story myself before I trust the status."
+Counter-signal: care coordinators need a safe way to override automation. Support tickets emphasize account access, while interviews emphasize emotional confidence and readiness trust. This contradiction is intentional canonical material for reliability, debate, reconciliation, and low-consensus review tests.
+Coding hints: likely open codes include evidence traceability, readiness confidence, caregiver boundary, multilingual risk, staff override, stale-source concern, task priority ambiguity, and automation trust. Coders should decide independently, cite spans, record confidence, and memo ambiguity before reliability is computed.
+Implication candidate: collapse duplicate reminders into a single communication history. This is only a candidate implication until source-grounded multi-model extraction, coding, reliability or reconciliation, human review, and Done-task gates accept it.
+Report gate reminder: raw source material is not report-ready. Any future nugget, fact, insight, recommendation, design decision, or report paragraph must preserve the source id CR-034, evidence-unit location, codebook version, route evidence, review state, and task approval path.
+
+## Evidence unit candidate 21: readiness dashboard triage
+
+Source position: [42:57] in participant profile research source; candidate participant P08; role care coordinator; language pt-BR; clinic pediatric clinic.
+Observed moment: Spanish and Portuguese copy is inconsistent across reminders. The participant or operational record describes the issue while moving through readiness dashboard triage, and the note explicitly connects the issue to appointment preparation, readiness evidence, or caregiver-safe coordination.
+Thick description: The team member first checks the dashboard, then cross-references another stakeholder memo, and then decides whether the readiness status is safe enough to act on. The source describes how the person looks for freshness, owner, evidence source, permission status, and whether an automated recommendation has been reviewed. The detail matters because a generic summary such as "users want clarity" would hide the difference between evidence traceability, emotional reassurance, workflow speed, and clinical safety boundaries.
+Direct quote: "I can only approve a recommendation when the system shows which task, transcript, ticket, or survey row produced it; otherwise I have to rebuild the story myself before I trust the status."
+Counter-signal: readiness statuses look final even when evidence is old. Accessibility audits praise information hierarchy but flag keyboard focus, contrast, and screen-reader status changes in the same flow. This contradiction is intentional canonical material for reliability, debate, reconciliation, and low-consensus review tests.
+Coding hints: likely open codes include evidence traceability, readiness confidence, caregiver boundary, multilingual risk, staff override, stale-source concern, task priority ambiguity, and automation trust. Coders should decide independently, cite spans, record confidence, and memo ambiguity before reliability is computed.
+Implication candidate: add confidence labels when evidence is incomplete. This is only a candidate implication until source-grounded multi-model extraction, coding, reliability or reconciliation, human review, and Done-task gates accept it.
+Report gate reminder: raw source material is not report-ready. Any future nugget, fact, insight, recommendation, design decision, or report paragraph must preserve the source id CR-034, evidence-unit location, codebook version, route evidence, review state, and task approval path.
+
+## Evidence unit candidate 22: pre-visit lab completion
+
+Source position: [45:14] in participant profile research source; candidate participant P09; role care coordinator; language pt-BR; clinic pediatric clinic.
+Observed moment: staff do not trust automation when no source trail is shown. The participant or operational record describes the issue while moving through pre-visit lab completion, and the note explicitly connects the issue to appointment preparation, readiness evidence, or caregiver-safe coordination.
+Thick description: The team member first checks the dashboard, then cross-references another interview transcript, and then decides whether the readiness status is safe enough to act on. The source describes how the person looks for freshness, owner, evidence source, permission status, and whether an automated recommendation has been reviewed. The detail matters because a generic summary such as "users want clarity" would hide the difference between evidence traceability, emotional reassurance, workflow speed, and clinical safety boundaries.
+Direct quote: "I can only approve a recommendation when the system shows which task, transcript, ticket, or survey row produced it; otherwise I have to rebuild the story myself before I trust the status."
+Counter-signal: patients cannot tell which tasks are required before the appointment. Patients say fewer reminders would reduce stress, while staff analytics show missed prep falls when reminders are repeated across SMS and portal. This contradiction is intentional canonical material for reliability, debate, reconciliation, and low-consensus review tests.
+Coding hints: likely open codes include evidence traceability, readiness confidence, caregiver boundary, multilingual risk, staff override, stale-source concern, task priority ambiguity, and automation trust. Coders should decide independently, cite spans, record confidence, and memo ambiguity before reliability is computed.
+Implication candidate: summarize appointment readiness without medical interpretation. This is only a candidate implication until source-grounded multi-model extraction, coding, reliability or reconciliation, human review, and Done-task gates accept it.
+Report gate reminder: raw source material is not report-ready. Any future nugget, fact, insight, recommendation, design decision, or report paragraph must preserve the source id CR-034, evidence-unit location, codebook version, route evidence, review state, and task approval path.
+
+## Evidence unit candidate 23: caregiver invitation and consent
+
+Source position: [47:31] in participant profile research source; candidate participant P10; role care coordinator; language pt-BR; clinic pediatric clinic.
+Observed moment: patients miss reminders sent during working hours. The participant or operational record describes the issue while moving through caregiver invitation and consent, and the note explicitly connects the issue to appointment preparation, readiness evidence, or caregiver-safe coordination.
+Thick description: The team member first checks the dashboard, then cross-references another field note, and then decides whether the readiness status is safe enough to act on. The source describes how the person looks for freshness, owner, evidence source, permission status, and whether an automated recommendation has been reviewed. The detail matters because a generic summary such as "users want clarity" would hide the difference between evidence traceability, emotional reassurance, workflow speed, and clinical safety boundaries.
+Direct quote: "I can only approve a recommendation when the system shows which task, transcript, ticket, or survey row produced it; otherwise I have to rebuild the story myself before I trust the status."
+Counter-signal: staff duplicate reminders in SMS, portal messages, and handwritten notes. Care coordinators want automation to assign urgency, while nurse managers want every urgency label to show a source trail and reviewer identity. This contradiction is intentional canonical material for reliability, debate, reconciliation, and low-consensus review tests.
+Coding hints: likely open codes include evidence traceability, readiness confidence, caregiver boundary, multilingual risk, staff override, stale-source concern, task priority ambiguity, and automation trust. Coders should decide independently, cite spans, record confidence, and memo ambiguity before reliability is computed.
+Implication candidate: let staff filter by next patient action instead of visit date only. This is only a candidate implication until source-grounded multi-model extraction, coding, reliability or reconciliation, human review, and Done-task gates accept it.
+Report gate reminder: raw source material is not report-ready. Any future nugget, fact, insight, recommendation, design decision, or report paragraph must preserve the source id CR-034, evidence-unit location, codebook version, route evidence, review state, and task approval path.
+
+## Evidence unit candidate 24: specialist referral handoff
+
+Source position: [49:48] in participant profile research source; candidate participant P11; role care coordinator; language pt-BR; clinic pediatric clinic.
+Observed moment: care coordinators need a safe way to override automation. The participant or operational record describes the issue while moving through specialist referral handoff, and the note explicitly connects the issue to appointment preparation, readiness evidence, or caregiver-safe coordination.
+Thick description: The team member first checks the dashboard, then cross-references another support ticket export, and then decides whether the readiness status is safe enough to act on. The source describes how the person looks for freshness, owner, evidence source, permission status, and whether an automated recommendation has been reviewed. The detail matters because a generic summary such as "users want clarity" would hide the difference between evidence traceability, emotional reassurance, workflow speed, and clinical safety boundaries.
+Direct quote: "I can only approve a recommendation when the system shows which task, transcript, ticket, or survey row produced it; otherwise I have to rebuild the story myself before I trust the status."
+Counter-signal: caregivers receive partial information and then call the clinic. Caregivers ask for broader visibility, while patients in privacy-sensitive visits want narrow permissions and quiet notifications. This contradiction is intentional canonical material for reliability, debate, reconciliation, and low-consensus review tests.
+Coding hints: likely open codes include evidence traceability, readiness confidence, caregiver boundary, multilingual risk, staff override, stale-source concern, task priority ambiguity, and automation trust. Coders should decide independently, cite spans, record confidence, and memo ambiguity before reliability is computed.
+Implication candidate: separate patient language from staff workflow language. This is only a candidate implication until source-grounded multi-model extraction, coding, reliability or reconciliation, human review, and Done-task gates accept it.
+Report gate reminder: raw source material is not report-ready. Any future nugget, fact, insight, recommendation, design decision, or report paragraph must preserve the source id CR-034, evidence-unit location, codebook version, route evidence, review state, and task approval path.
+
+## Evidence unit candidate 25: same-day cancellation recovery
+
+Source position: [51:05] in participant profile research source; candidate participant P12; role care coordinator; language pt-BR; clinic pediatric clinic.
+Observed moment: readiness statuses look final even when evidence is old. The participant or operational record describes the issue while moving through same-day cancellation recovery, and the note explicitly connects the issue to appointment preparation, readiness evidence, or caregiver-safe coordination.
+Thick description: The team member first checks the dashboard, then cross-references another survey verbatim, and then decides whether the readiness status is safe enough to act on. The source describes how the person looks for freshness, owner, evidence source, permission status, and whether an automated recommendation has been reviewed. The detail matters because a generic summary such as "users want clarity" would hide the difference between evidence traceability, emotional reassurance, workflow speed, and clinical safety boundaries.
+Direct quote: "I can only approve a recommendation when the system shows which task, transcript, ticket, or survey row produced it; otherwise I have to rebuild the story myself before I trust the status."
+Counter-signal: the dashboard hides stale tasks until the day before a visit. Prototype A improves scan speed, while Prototype B improves source trust; neither fully solves multilingual permission wording. This contradiction is intentional canonical material for reliability, debate, reconciliation, and low-consensus review tests.
+Coding hints: likely open codes include evidence traceability, readiness confidence, caregiver boundary, multilingual risk, staff override, stale-source concern, task priority ambiguity, and automation trust. Coders should decide independently, cite spans, record confidence, and memo ambiguity before reliability is computed.
+Implication candidate: make every generated finding traceable to approved task evidence. This is only a candidate implication until source-grounded multi-model extraction, coding, reliability or reconciliation, human review, and Done-task gates accept it.
+Report gate reminder: raw source material is not report-ready. Any future nugget, fact, insight, recommendation, design decision, or report paragraph must preserve the source id CR-034, evidence-unit location, codebook version, route evidence, review state, and task approval path.
+
+## Evidence unit candidate 26: post-operative checklist review
+
+Source position: [53:22] in participant profile research source; candidate participant P13; role care coordinator; language pt-BR; clinic pediatric clinic.
+Observed moment: patients cannot tell which tasks are required before the appointment. The participant or operational record describes the issue while moving through post-operative checklist review, and the note explicitly connects the issue to appointment preparation, readiness evidence, or caregiver-safe coordination.
+Thick description: The team member first checks the dashboard, then cross-references another usability observation, and then decides whether the readiness status is safe enough to act on. The source describes how the person looks for freshness, owner, evidence source, permission status, and whether an automated recommendation has been reviewed. The detail matters because a generic summary such as "users want clarity" would hide the difference between evidence traceability, emotional reassurance, workflow speed, and clinical safety boundaries.
+Direct quote: "I can only approve a recommendation when the system shows which task, transcript, ticket, or survey row produced it; otherwise I have to rebuild the story myself before I trust the status."
+Counter-signal: forms look complete even when lab attachments are missing. Survey ratings look positive for reminder clarity, while open feedback describes confusion about which tasks are required versus optional. This contradiction is intentional canonical material for reliability, debate, reconciliation, and low-consensus review tests.
+Coding hints: likely open codes include evidence traceability, readiness confidence, caregiver boundary, multilingual risk, staff override, stale-source concern, task priority ambiguity, and automation trust. Coders should decide independently, cite spans, record confidence, and memo ambiguity before reliability is computed.
+Implication candidate: show a preparation timeline with required, optional, and blocked steps. This is only a candidate implication until source-grounded multi-model extraction, coding, reliability or reconciliation, human review, and Done-task gates accept it.
+Report gate reminder: raw source material is not report-ready. Any future nugget, fact, insight, recommendation, design decision, or report paragraph must preserve the source id CR-034, evidence-unit location, codebook version, route evidence, review state, and task approval path.
+
+## Evidence unit candidate 27: multilingual reminder escalation
+
+Source position: [55:39] in participant profile research source; candidate participant P14; role care coordinator; language pt-BR; clinic pediatric clinic.
+Observed moment: staff duplicate reminders in SMS, portal messages, and handwritten notes. The participant or operational record describes the issue while moving through multilingual reminder escalation, and the note explicitly connects the issue to appointment preparation, readiness evidence, or caregiver-safe coordination.
+Thick description: The team member first checks the dashboard, then cross-references another analytics row, and then decides whether the readiness status is safe enough to act on. The source describes how the person looks for freshness, owner, evidence source, permission status, and whether an automated recommendation has been reviewed. The detail matters because a generic summary such as "users want clarity" would hide the difference between evidence traceability, emotional reassurance, workflow speed, and clinical safety boundaries.
+Direct quote: "I can only approve a recommendation when the system shows which task, transcript, ticket, or survey row produced it; otherwise I have to rebuild the story myself before I trust the status."
+Counter-signal: Spanish and Portuguese copy is inconsistent across reminders. Operations leaders want a launch recommendation, while researchers keep finding low-consensus evidence that requires reconciliation. This contradiction is intentional canonical material for reliability, debate, reconciliation, and low-consensus review tests.
+Coding hints: likely open codes include evidence traceability, readiness confidence, caregiver boundary, multilingual risk, staff override, stale-source concern, task priority ambiguity, and automation trust. Coders should decide independently, cite spans, record confidence, and memo ambiguity before reliability is computed.
+Implication candidate: surface the source and freshness of each task. This is only a candidate implication until source-grounded multi-model extraction, coding, reliability or reconciliation, human review, and Done-task gates accept it.
+Report gate reminder: raw source material is not report-ready. Any future nugget, fact, insight, recommendation, design decision, or report paragraph must preserve the source id CR-034, evidence-unit location, codebook version, route evidence, review state, and task approval path.
+
+## Evidence unit candidate 28: insurance document clarification
+
+Source position: [57:56] in participant profile research source; candidate participant P15; role care coordinator; language pt-BR; clinic pediatric clinic.
+Observed moment: caregivers receive partial information and then call the clinic. The participant or operational record describes the issue while moving through insurance document clarification, and the note explicitly connects the issue to appointment preparation, readiness evidence, or caregiver-safe coordination.
+Thick description: The team member first checks the dashboard, then cross-references another competitor benchmark, and then decides whether the readiness status is safe enough to act on. The source describes how the person looks for freshness, owner, evidence source, permission status, and whether an automated recommendation has been reviewed. The detail matters because a generic summary such as "users want clarity" would hide the difference between evidence traceability, emotional reassurance, workflow speed, and clinical safety boundaries.
+Direct quote: "I can only approve a recommendation when the system shows which task, transcript, ticket, or survey row produced it; otherwise I have to rebuild the story myself before I trust the status."
+Counter-signal: staff do not trust automation when no source trail is shown. Support tickets emphasize account access, while interviews emphasize emotional confidence and readiness trust. This contradiction is intentional canonical material for reliability, debate, reconciliation, and low-consensus review tests.
+Coding hints: likely open codes include evidence traceability, readiness confidence, caregiver boundary, multilingual risk, staff override, stale-source concern, task priority ambiguity, and automation trust. Coders should decide independently, cite spans, record confidence, and memo ambiguity before reliability is computed.
+Implication candidate: give coordinators a one-click reason for overriding automation. This is only a candidate implication until source-grounded multi-model extraction, coding, reliability or reconciliation, human review, and Done-task gates accept it.
+Report gate reminder: raw source material is not report-ready. Any future nugget, fact, insight, recommendation, design decision, or report paragraph must preserve the source id CR-034, evidence-unit location, codebook version, route evidence, review state, and task approval path.
 
 ## Analyst memo
 
 This synthetic source supports persona_creation, empathy_map, stakeholder_analysis, browser-ux-audit, card-sorting coverage.
-The source includes messy but plausible UX research evidence and must be interpreted with source traceability.
+The source includes messy but plausible UX research evidence and must be interpreted with source traceability, codebook criteria, item-level reliability, and human review.

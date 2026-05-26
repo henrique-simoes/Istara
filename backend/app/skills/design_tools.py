@@ -19,6 +19,7 @@ from typing import Any
 from sqlalchemy import select
 
 from app.models.database import async_session
+from app.services.finding_validity_service import provisional_design_decision_rationale
 
 logger = logging.getLogger(__name__)
 
@@ -261,7 +262,9 @@ async def _exec_generate_screen(params: dict, project_id: str, agent_id: str) ->
                         text=f"Design decision: {prompt[:200]}",
                         recommendation_ids=json.dumps(seed_ids),
                         screen_ids=json.dumps(created_screen_ids),
-                        rationale=f"Generated from research findings via Stitch ({model})",
+                        rationale=provisional_design_decision_rationale(
+                            f"Generated from research findings via Stitch ({model})"
+                        ),
                     )
                     db.add(dd)
 
@@ -295,7 +298,9 @@ async def _exec_generate_screen(params: dict, project_id: str, agent_id: str) ->
                         text=f"Design decision: {prompt[:200]}",
                         recommendation_ids=json.dumps(seed_ids),
                         screen_ids=json.dumps([screen_id]),
-                        rationale=f"Generated from research findings via Stitch ({model})",
+                        rationale=provisional_design_decision_rationale(
+                            f"Generated from research findings via Stitch ({model})"
+                        ),
                     )
                     db.add(dd)
                 await db.commit()

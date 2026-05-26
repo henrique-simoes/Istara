@@ -10,6 +10,8 @@ import ConnectionStringPanel from "@/components/settings/ConnectionStringPanel";
 import UpdateChecker from "@/components/settings/UpdateChecker";
 import GovernedEvolutionView from "@/components/settings/GovernedEvolutionView";
 import DonateComputeToggle from "@/components/common/DonateComputeToggle";
+import AccountSecurityManager from "@/components/settings/AccountSecurityManager";
+import FileEncryptionManager from "@/components/settings/FileEncryptionManager";
 import PasskeyManager from "@/components/settings/PasskeyManager";
 import TOTPManager from "@/components/settings/TOTPManager";
 import SessionManager from "@/components/settings/SessionManager";
@@ -86,7 +88,7 @@ export default function SettingsView() {
   return (
     <div className="flex-1 overflow-y-auto p-6 max-w-5xl mx-auto space-y-6">
       <h2 className="text-lg font-semibold text-slate-900 dark:text-white">⚙️ Settings</h2>
-      <ViewOnboarding viewId="settings" title="System Settings" description="Configure model providers, connection strings, authentication factors, sessions, updates, and local compute donation." chatPrompt="What should I configure first in settings?" />
+      <ViewOnboarding viewId="settings" title="System Settings" description="Configure model providers, connection strings, authentication factors, sessions, account security, encrypted files, updates, and local compute donation." chatPrompt="What should I configure first in settings?" />
 
       {/* Software Updates */}
       <UpdateChecker />
@@ -103,6 +105,12 @@ export default function SettingsView() {
 
       {/* Connection Strings (admin only, team mode) */}
       {capabilities.canManageConnectionStrings && <ConnectionStringPanel />}
+
+      {/* Account security */}
+      <AccountSecurityManager />
+
+      {/* File and backup encryption */}
+      {capabilities.canManageSystemSettings && <FileEncryptionManager />}
 
       {/* Compute Donation */}
       <DonateComputeToggle />

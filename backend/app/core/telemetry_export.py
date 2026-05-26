@@ -109,10 +109,13 @@ async def export_telemetry(
                     .where(ModelSkillStats.executions >= 1)
                     .order_by(ModelSkillStats.best_quality.desc())
                 )
+                if project_id:
+                    stmt = stmt.where(ModelSkillStats.project_id == project_id)
                 result = await session.execute(stmt)
                 for r in result.scalars().all():
                     models_data.append(
                         {
+                            "project_id": r.project_id,
                             "skill_name": r.skill_name,
                             "model_name": r.model_name,
                             "temperature": r.temperature,

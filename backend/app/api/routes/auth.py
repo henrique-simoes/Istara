@@ -12,6 +12,7 @@ Supports:
 import asyncio
 import json
 import logging
+import re
 import uuid
 from datetime import UTC, datetime, timedelta
 
@@ -141,6 +142,22 @@ class RecoveryCodeRequest(BaseModel):
     current_password: str
 
 
+class ProfileUpdateRequest(BaseModel):
+    """Update the current user's profile and login identifier."""
+
+    current_password: str
+    username: str | None = None
+    email: str | None = None
+    display_name: str | None = None
+
+
+class PasswordChangeRequest(BaseModel):
+    """Change the current user's password."""
+
+    current_password: str
+    new_password: str
+
+
 class PreferencesRequest(BaseModel):
     preferences: dict
 
@@ -240,6 +257,33 @@ def _require_current_password(user: User, current_password: str) -> None:
         raise HTTPException(status_code=401, detail="Invalid current password.")
 
 
+def _validate_username(username: str) -> str:
+    value = username.strip()
+    if not 3 <= len(value) <= 100:
+        raise HTTPException(status_code=400, detail="Username must be 3-100 characters.")
+    if not re.fullmatch(r"[A-Za-z0-9_.-]+", value):
+        raise HTTPException(
+            status_code=400,
+            detail="Username may only contain letters, numbers, dots, dashes, and underscores.",
+        )
+    return value
+
+
+async def _validate_new_password(password: str) -> None:
+    if len(password) < 8:
+        raise HTTPException(status_code=400, detail="Password must be at least 8 characters.")
+    if len(password) > 256:
+        raise HTTPException(status_code=400, detail="Password must be at most 256 characters.")
+    if await is_password_breached(password):
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                "This password has appeared in a known data breach. "
+                "Please choose a different password."
+            ),
+        )
+
+
 def _require_trusted_auth_origin(request: Request) -> None:
     """Reject browser login/register attempts from untrusted origins."""
     denial = browser_origin_denial(request)
@@ -332,6 +376,8 @@ async def register(req: RegisterRequest, response: Response, request: Request):
             status_code=400, detail="Registration requires team mode. Enable TEAM_MODE=true."
         )
 
+    username = _validate_username(req.username)
+
     # NIST: password length check (8-64 chars)
     if len(req.password) < 8:
         raise HTTPException(status_code=400, detail="Password must be at least 8 characters.")
@@ -363,7 +409,7 @@ async def register(req: RegisterRequest, response: Response, request: Request):
             email_hash = hash_field(req.email)
             existing = await db.execute(
                 select(User).where(
-                    (User.username == req.username) | (User.email_hash == email_hash)
+                    (User.username == username) | (User.email_hash == email_hash)
                 )
             )
             if existing.scalars().first():
@@ -373,12 +419,12 @@ async def register(req: RegisterRequest, response: Response, request: Request):
 
             user = User(
                 id=str(uuid.uuid4()),
-                username=req.username,
+                username=username,
                 email=req.email,
                 email_hash=email_hash,
                 password_hash=hash_password(req.password),
                 role="admin",
-                display_name=req.display_name or req.username,
+                display_name=req.display_name or username,
             )
             db.add(user)
             await _replace_user_recovery_codes(
@@ -898,6 +944,109 @@ async def get_me(request: Request):
     }
 
 
+@router.patch("/auth/profile")
+async def update_profile(
+    req: ProfileUpdateRequest,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+):
+    """Update the current user's username, email, or display name.
+
+    Username and email changes require a fresh password confirmation and are
+    audited. This mirrors Better Auth's guidance that account-management
+    operations belong beside authentication, not in a generic user settings
+    route.
+    """
+    payload = await _token_payload_from_request(request, db)
+    user = await db.get(User, payload.get("sub"))
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    if user.id == "local":
+        raise HTTPException(status_code=400, detail="Local mode profile cannot be changed.")
+
+    _require_current_password(user, req.current_password)
+
+    changed: list[str] = []
+    if req.username is not None:
+        username = _validate_username(req.username)
+        if username != user.username:
+            existing = await db.execute(select(User.id).where(User.username == username))
+            if existing.scalar_one_or_none():
+                raise HTTPException(status_code=409, detail="Username already exists.")
+            user.username = username
+            changed.append("username")
+
+    if req.email is not None:
+        email = req.email.strip()
+        if not email or "@" not in email:
+            raise HTTPException(status_code=400, detail="A valid email address is required.")
+        email_hash = hash_field(email)
+        if email_hash != user.email_hash:
+            existing = await db.execute(
+                select(User.id).where(User.email_hash == email_hash, User.id != user.id)
+            )
+            if existing.scalar_one_or_none():
+                raise HTTPException(status_code=409, detail="Email already exists.")
+            user.email = email
+            user.email_hash = email_hash
+            changed.append("email")
+
+    if req.display_name is not None:
+        display_name = req.display_name.strip()[:200]
+        if display_name != (user.display_name or ""):
+            user.display_name = display_name or user.username
+            changed.append("display_name")
+
+    if changed:
+        await db.commit()
+        await record_auth_event(
+            request,
+            "auth.profile.updated",
+            user_id=user.id,
+            details={"changed": changed},
+        )
+    return {"status": "ok", "user": _user_to_dict(user), "changed": changed}
+
+
+@router.post("/auth/password/change")
+async def change_password(
+    req: PasswordChangeRequest,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+):
+    """Change the current user's password and revoke other sessions."""
+    payload = await _token_payload_from_request(request, db)
+    user = await db.get(User, payload.get("sub"))
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    if user.id == "local":
+        raise HTTPException(status_code=400, detail="Local mode password cannot be changed.")
+
+    _require_current_password(user, req.current_password)
+    await _validate_new_password(req.new_password)
+    if verify_password(req.new_password, user.password_hash):
+        raise HTTPException(status_code=400, detail="New password must be different.")
+
+    user.password_hash = hash_password(req.new_password)
+    revoked_count = 0
+    if is_session_bound(payload):
+        try:
+            _user_id, session_id = _require_bound_session_payload(payload)
+            revoked_count = await revoke_other_auth_sessions(db, user.id, session_id)
+        except HTTPException:
+            revoked_count = await revoke_user_auth_sessions(db, user.id)
+    else:
+        revoked_count = await revoke_user_auth_sessions(db, user.id)
+    await db.commit()
+    await record_auth_event(
+        request,
+        "auth.password.changed",
+        user_id=user.id,
+        details={"revoked_sessions": revoked_count},
+    )
+    return {"status": "ok", "revoked_sessions": revoked_count}
+
+
 @router.put("/auth/preferences")
 async def update_preferences(
     req: PreferencesRequest, request: Request, db: AsyncSession = Depends(get_db)
@@ -972,6 +1121,7 @@ async def create_user(
 ):
     """Create a new user. Admin only. Works regardless of TEAM_MODE."""
     require_admin_from_request(request)
+    username = _validate_username(body.username)
 
     # NIST: password length check
     if len(body.password) < 8:
@@ -988,7 +1138,7 @@ async def create_user(
 
     email_hash = hash_field(body.email)
     existing = await db.execute(
-        select(User).where((User.username == body.username) | (User.email_hash == email_hash))
+        select(User).where((User.username == username) | (User.email_hash == email_hash))
     )
     if existing.scalar_one_or_none():
         raise HTTPException(status_code=409, detail="Username or email already exists")
@@ -998,12 +1148,12 @@ async def create_user(
 
     user = User(
         id=str(uuid.uuid4()),
-        username=body.username,
+        username=username,
         email=body.email,
         email_hash=email_hash,
         password_hash=hash_password(body.password),
         role="researcher",
-        display_name=body.display_name or body.username,
+        display_name=body.display_name or username,
     )
     db.add(user)
     await _replace_user_recovery_codes(

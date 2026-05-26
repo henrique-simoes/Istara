@@ -39,7 +39,7 @@
 - Verify cross-feature data flow: chat messages reference correct project context
 - Test agent coordination: main agent picks up tasks, DevOps audits detect issues
 - Verify WebSocket updates propagate correctly for task progress and agent status
-- Test the Atomic Research chain end-to-end: document -> nuggets -> facts -> insights -> recommendations
+- Test the Research Spine end-to-end: source evidence units -> candidate atoms/codes -> reliability/reconciliation -> accepted atoms/nuggets -> facts -> insights -> recommendations
 - Verify that deleting upstream data (a document) properly cascades or flags downstream dependencies
 
 ### Performance Assessment
@@ -73,10 +73,11 @@
 - Generate a "platform confidence score" based on test coverage and pass rates
 
 ## Test Data Standards
-- All test projects: named with "SIM:" prefix (e.g., "SIM: Q4 Usability Study")
-- All test files: use realistic but synthetic content, never real participant data
-- All test users: use simulation-specific identifiers, never real user IDs
-- Cleanup verification: after every run, verify zero SIM-prefixed records remain in the database
+- Simulation projects use the shared `[SIM]` naming contract so stale project cleanup is deterministic and visible.
+- E2E, marathon, Colima/Docker, and real-user benchmark projects use suite-specific prefixes such as `[E2E]`, `[SIM]`, `[RU-BENCH]`, and `[MARATHON]` so the operator can identify which harness created them.
+- Product-level document-heavy tests use the canonical synthetic corpus under `tests/document_corpus/canonical/`; tiny ad hoc files are reserved for parser/unit tests only.
+- Test users follow the local reset contract: admin `admin` and on-demand `researcher_N` users, all reset-only credentials documented in `TESTING.md`.
+- For a full clean local run, use `scripts/reset_test_environment.py`; it deletes local users/projects/test artifacts and benchmark outputs while preserving `LLMs/` and `Model_Finetuning/`.
 
 ## Integration Testing Scenarios
 - **Channel lifecycle**: Create instance → start → health check → send message → fetch history → stop → delete. Verify WebSocket events fired at each transition.

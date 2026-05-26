@@ -13,6 +13,7 @@ from app.models.channel_instance import ChannelInstance
 from app.models.channel_message import ChannelMessage
 from app.models.finding import Nugget
 from app.models.research_deployment import ResearchDeployment
+from app.services.research_validity_service import persist_task_nugget_evidence_units
 
 logger = logging.getLogger(__name__)
 
@@ -228,16 +229,30 @@ async def handle_response(
     q_index = conversation.current_question_index
     q_text = questions[q_index]["text"] if q_index < len(questions) else "follow-up"
 
-    # Create a nugget from the response
+    # Create a provisional nugget plus raw source evidence for later governed coding.
+    source_location = f"conversation:{conversation_id}:question:{q_index}"
+    source_text = f"Q: {q_text}\nA: {message_text}"
     nugget = Nugget(
         id=str(uuid.uuid4()),
         project_id=deployment.project_id,
-        text=f"Q: {q_text}\nA: {message_text}",
+        text=source_text,
         source=f"deployment:{deployment.name}",
-        source_location=f"conversation:{conversation_id}",
+        source_location=source_location,
         tags=json.dumps([deployment.deployment_type, "channel-research"]),
     )
     db.add(nugget)
+    await persist_task_nugget_evidence_units(
+        db,
+        project_id=deployment.project_id,
+        task_id=None,
+        nugget_id=nugget.id,
+        source_text=source_text,
+        source_location=source_location,
+        method=f"deployment:{deployment.deployment_type}",
+        phase="discover",
+        source_type="deployment_response",
+        candidate_only=False,
+    )
 
     # Advance question index
     conversation.current_question_index += 1

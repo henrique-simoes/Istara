@@ -5,6 +5,7 @@ import pytest
 from httpx import AsyncClient, ASGITransport
 from types import SimpleNamespace
 import uuid
+from unittest.mock import AsyncMock
 
 from app.main import app
 from app.config import settings
@@ -420,6 +421,8 @@ async def test_autoresearch_records_reasoning_memory_ids(monkeypatch):
 
         def __init__(self):
             self.project_id = ""
+            self.mutated = False
+            self.reverted = False
 
         def bind_project(self, project_id):
             self.project_id = project_id
@@ -433,7 +436,11 @@ async def test_autoresearch_records_reasoning_memory_ids(monkeypatch):
             return "Improve model temperature for synthesis", {"description": "temperature +0.1"}
 
         async def apply_mutation(self, target, mutation):
+            self.mutated = True
+
             async def revert():
+                self.mutated = False
+                self.reverted = True
                 return None
 
             return revert
@@ -441,6 +448,7 @@ async def test_autoresearch_records_reasoning_memory_ids(monkeypatch):
         async def measure(self, target):
             assert is_autoresearch_active() is True
             assert self.project_id == project_id
+            assert self.mutated is True
             return 0.6
 
     async def allow_experiment(db, target):
@@ -457,10 +465,15 @@ async def test_autoresearch_records_reasoning_memory_ids(monkeypatch):
     async def fake_register(self, experiment, project_id):
         return ["proposal-1"]
 
+    record = AsyncMock()
     monkeypatch.setattr("app.core.autoresearch_engine.check_experiment_limit", allow_experiment)
     monkeypatch.setattr(AutoresearchEngine, "_persist_experiment", fake_persist)
     monkeypatch.setattr(AutoresearchEngine, "_record_reasoning_memory", fake_record)
     monkeypatch.setattr(AutoresearchEngine, "_register_improvement_proposals", fake_register)
+    monkeypatch.setattr(
+        "app.core.telemetry.telemetry_recorder.record_research_validity_event",
+        record,
+    )
 
     engine = AutoresearchEngine()
     runner = FakeRunner()
@@ -473,9 +486,24 @@ async def test_autoresearch_records_reasoning_memory_ids(monkeypatch):
 
     assert persisted
     assert results[0]["kept"] is True
+    assert results[0]["status"] == "proposal_ready"
+    assert results[0]["sandboxed"] is True
+    assert results[0]["governance_required"] is True
+    assert results[0]["mutation_live_after_measurement"] is False
+    assert runner.reverted is True
+    assert runner.mutated is False
+    assert results[0]["research_spine_policy"]["report_evidence"] is False
+    assert results[0]["research_spine_policy"]["can_bypass_research_spine"] is False
     assert results[0]["reasoning_memory_ids"] == ["memory-1"]
     assert results[0]["improvement_proposal_ids"] == ["proposal-1"]
     assert runner.project_id == ""
+    record.assert_awaited_once()
+    _, kwargs = record.await_args
+    assert kwargs["operation"] == "autoresearch.validity_update"
+    assert kwargs["project_id"] == project_id
+    assert kwargs["agent_id"] == "autoresearch"
+    assert kwargs["skill_name"] == "model_temp"
+    assert "hypothesis" not in kwargs
 
 
 @pytest.mark.asyncio

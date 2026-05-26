@@ -19,7 +19,8 @@ from app.api.routes.interfaces_common import (
 from app.core.permissions import require_project_access
 from app.models.database import get_db
 from app.models.design_screen import DesignDecision, DesignScreen
-from app.services.design_evidence import resolve_seed_findings
+from app.services.design_evidence import hydrate_design_screen, resolve_seed_findings
+from app.services.finding_validity_service import provisional_design_decision_rationale
 
 router = APIRouter()
 
@@ -187,13 +188,15 @@ async def mock_generate_screen(
                 text=f"Design decision: {data.prompt[:200]}",
                 recommendation_ids=json.dumps(seed_ids),
                 screen_ids=json.dumps([screen_id]),
-                rationale="Generated from mock endpoint for integration testing",
+                rationale=provisional_design_decision_rationale(
+                    "Generated from mock endpoint for integration testing"
+                ),
             )
         )
 
     await db.commit()
     await db.refresh(screen)
-    resp = screen.to_dict()
+    resp = await hydrate_design_screen(db, screen)
     resp["design_decision_id"] = decision_id
     return resp
 
@@ -228,7 +231,7 @@ async def mock_edit_screen(
     db.add(edited)
     await db.commit()
     await db.refresh(edited)
-    return edited.to_dict()
+    return await hydrate_design_screen(db, edited)
 
 
 @router.post("/interfaces/mock/variants")
@@ -269,7 +272,10 @@ async def mock_generate_variants(
     for variant in variants:
         await db.refresh(variant)
 
-    return {"variants": [v.to_dict() for v in variants], "count": len(variants)}
+    return {
+        "variants": [await hydrate_design_screen(db, v) for v in variants],
+        "count": len(variants),
+    }
 
 
 @router.post("/interfaces/mock/figma-import")

@@ -124,9 +124,49 @@ async def build_atomic_snapshot(db: AsyncSession, task: Task) -> dict:
             .limit(10)
         )
     ).scalars().all()
+    try:
+        from app.models.code_application import CodeApplication
+        from app.models.research_validity import CodingRun
+        from app.services.finding_validity_service import finding_research_validity_map
+
+        code_applications = (
+            await db.execute(
+                select(CodeApplication)
+                .where(CodeApplication.project_id == task.project_id, CodeApplication.task_id == task.id)
+                .order_by(CodeApplication.created_at.desc())
+                .limit(25)
+            )
+        ).scalars().all()
+        coding_runs = (
+            await db.execute(
+                select(CodingRun)
+                .where(CodingRun.project_id == task.project_id, CodingRun.task_id == task.id)
+                .order_by(CodingRun.created_at.desc())
+                .limit(5)
+            )
+        ).scalars().all()
+        validity_by_id = await finding_research_validity_map(
+            db,
+            project_id=task.project_id,
+            findings=[*nuggets, *facts, *insights, *recommendations],
+        )
+    except Exception:
+        code_applications = []
+        coding_runs = []
+        validity_by_id = {}
 
     def preview(rows):
-        return [{"id": r.id, "text": getattr(r, "text", getattr(r, "title", ""))[:220]} for r in rows[:5]]
+        items = []
+        for row in rows[:5]:
+            item = {
+                "id": row.id,
+                "text": getattr(row, "text", getattr(row, "title", ""))[:220],
+            }
+            validity = validity_by_id.get(str(row.id))
+            if validity:
+                item["research_validity"] = validity
+            items.append(item)
+        return items
 
     return {
         "documents": {"count": len(docs), "items": [{"id": d.id, "title": d.title} for d in docs[:5]]},
@@ -135,6 +175,25 @@ async def build_atomic_snapshot(db: AsyncSession, task: Task) -> dict:
         "insights": {"count": len(insights), "items": preview(insights)},
         "recommendations": {"count": len(recommendations), "items": preview(recommendations)},
         "reports": {"count": len(reports), "items": [{"id": r.id, "title": r.title} for r in reports[:5]]},
+        "research_validity": {
+            "coding_run_count": len(coding_runs),
+            "code_application_count": len(code_applications),
+            "accepted_code_application_count": len(
+                [row for row in code_applications if row.promotion_status == "accepted"]
+            ),
+            "latest_coding_run": coding_runs[0].to_dict() if coding_runs else None,
+            "blocked_or_review_items": [
+                {
+                    "id": row.id,
+                    "code_id": row.code_id,
+                    "promotion_status": row.promotion_status,
+                    "reliability_status": row.reliability_status,
+                    "review_status": row.review_status,
+                }
+                for row in code_applications[:5]
+                if row.promotion_status != "accepted" or row.review_status == "pending"
+            ],
+        },
     }
 
 
@@ -269,6 +328,33 @@ async def record_review_side_effects(event: TaskReviewEvent, score: float | None
             error_type=event.failure_category,
             source="production",
         )
+        research_status = "success" if event.outcome == APPROVED else "degraded"
+        await telemetry_recorder.record_research_validity_event(
+            trace_id=event.trace_id,
+            operation="human_review.decision",
+            project_id=event.project_id,
+            task_id=event.task_id,
+            status=research_status,
+            skill_name=event.skill_name or "",
+            agent_id=event.agent_id or "",
+            quality_score=score,
+            consensus_score=event.consensus_score,
+            error_type=event.failure_category,
+            source="production",
+        )
+        await telemetry_recorder.record_research_validity_event(
+            trace_id=event.trace_id,
+            operation="kanban.status_transition",
+            project_id=event.project_id,
+            task_id=event.task_id,
+            status=research_status,
+            skill_name=event.skill_name or "",
+            agent_id=event.agent_id or "",
+            quality_score=score,
+            consensus_score=event.consensus_score,
+            error_type=event.failure_category,
+            source="production",
+        )
         if event.skill_name:
             await telemetry_recorder.record_model_performance(
                 event.skill_name,
@@ -276,6 +362,7 @@ async def record_review_side_effects(event: TaskReviewEvent, score: float | None
                 event.temperature or 0.3,
                 quality=score,
                 success=event.outcome == APPROVED,
+                project_id=event.project_id,
             )
     except Exception as exc:
         logger.debug(f"Review telemetry side effect failed: {exc}")
@@ -321,6 +408,32 @@ async def record_review_side_effects(event: TaskReviewEvent, score: float | None
                 )
         except Exception as exc:
             logger.debug(f"Approved task report-routing side effect failed: {exc}")
+
+
+async def record_kanban_status_transition(
+    *,
+    project_id: str,
+    task_id: str,
+    previous_status: str,
+    next_status: str,
+    trace_id: str | None = None,
+) -> None:
+    """Record content-free task status movement for research-validity audits."""
+    if previous_status == next_status:
+        return
+    try:
+        from app.core.telemetry import telemetry_recorder
+
+        await telemetry_recorder.record_research_validity_event(
+            trace_id=trace_id or str(uuid.uuid4())[:36],
+            operation="kanban.status_transition",
+            project_id=project_id,
+            task_id=task_id,
+            status="success",
+            source="production",
+        )
+    except Exception as exc:
+        logger.debug(f"Kanban transition telemetry side effect failed: {exc}")
 
 
 async def diagnose_review_event(db: AsyncSession, event_id: str) -> None:

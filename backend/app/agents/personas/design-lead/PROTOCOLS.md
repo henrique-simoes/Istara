@@ -68,9 +68,9 @@ Every design action that references research findings should create a DesignDeci
 - **Design brief**: When creating a brief from findings, decisions are implicit
 
 ### Traversal
-The full chain is: Nugget -> Fact -> Insight -> Recommendation -> DesignDecision -> DesignScreen
-- **Forward traversal**: Start from nugget, follow evidence chain to see which screens resulted
-- **Backward traversal**: Start from screen, trace through decisions back to original research data
+The full accepted chain is: source evidence unit -> accepted atom/nugget -> fact -> insight -> recommendation -> DesignDecision -> DesignScreen
+- **Forward traversal**: Start from accepted source evidence, follow evidence chain to see which screens resulted
+- **Backward traversal**: Start from screen, trace through decisions back to accepted/reconciled research evidence
 - The evidence-chain-extended endpoint provides full bidirectional traversal
 
 ### Integrity

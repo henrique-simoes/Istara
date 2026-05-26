@@ -40,6 +40,18 @@ OVERRIDES_FILE = DATA_DIR / "_meta_overrides.json"
 AUDIT_LOG_FILE = DATA_DIR / "_meta_audit_log.jsonl"
 
 MAX_ACTIVE_VARIANTS = 3
+PROTECTED_RESEARCH_PARAMETER_PREFIXES = (
+    "auth.",
+    "codebook.",
+    "compute_registry.",
+    "finding_validity.",
+    "qualitative_coding.",
+    "report_manager.",
+    "research_spine.",
+    "research_validity.",
+    "validation.kappa",
+    "validation.reliability",
+)
 
 
 # ---------------------------------------------------------------------------
@@ -145,6 +157,26 @@ class MetaHyperagent:
     @staticmethod
     def _matches_project(record: dict, project_id: str) -> bool:
         return str(record.get("project_id") or "") == project_id
+
+    async def _record_validity_proposal(
+        self,
+        proposal: MetaProposal,
+        *,
+        project_id: str,
+    ) -> None:
+        try:
+            from app.core.telemetry import telemetry_recorder
+
+            await telemetry_recorder.record_research_validity_event(
+                operation="meta_hyperagent.proposal",
+                project_id=project_id,
+                agent_id="meta-hyperagent",
+                skill_name=proposal.target_system,
+                status="success",
+                quality_score=max(0.0, min(1.0, proposal.confidence / 100.0)),
+            )
+        except Exception as exc:
+            logger.debug(f"Meta-hyperagent validity telemetry skipped: {exc}")
 
     def _latest_observation_for_project(self, project_id: str) -> dict | None:
         for observation in reversed(self._recent_observations):
@@ -270,7 +302,7 @@ class MetaHyperagent:
         try:
             import app.core.self_evolution as se
             self_evolution_stats = {
-                "thresholds": dict(se.PROMOTION_THRESHOLDS),
+                "thresholds": se.get_effective_promotion_thresholds(scoped_project_id),
             }
             try:
                 from sqlalchemy import func, select
@@ -500,7 +532,9 @@ class MetaHyperagent:
             total = passes + fails
             if total >= 10 and fails / total > 0.30:
                 import app.core.self_evolution as se
-                current_conf = se.PROMOTION_THRESHOLDS.get("min_confidence", 70)
+                current_conf = se.get_effective_promotion_thresholds(
+                    scoped_project_id
+                ).get("min_confidence", 70)
                 proposed_conf = min(95, current_conf + 5)
                 if proposed_conf != current_conf:
                     proposals.append(MetaProposal(
@@ -554,6 +588,7 @@ class MetaHyperagent:
 
             # Broadcast each new proposal via WebSocket
             for p in new_proposals:
+                await self._record_validity_proposal(p, project_id=scoped_project_id)
                 try:
                     from app.api.websocket import broadcast_meta_proposal
                     await broadcast_meta_proposal(
@@ -582,6 +617,8 @@ class MetaHyperagent:
 
     def _validate_bounds(self, parameter_path: str, value: Any) -> bool:
         """Check that a proposed value falls within PARAMETER_BOUNDS."""
+        if self._is_protected_research_parameter(parameter_path):
+            return False
         bounds = PARAMETER_BOUNDS.get(parameter_path)
         if bounds is None:
             return True  # No bounds defined — allow
@@ -595,6 +632,14 @@ class MetaHyperagent:
             # Dictionary bounds — structural checks
             return True
         return True
+
+    @staticmethod
+    def _is_protected_research_parameter(parameter_path: str) -> bool:
+        normalized = str(parameter_path or "").strip().lower()
+        return any(
+            normalized.startswith(prefix)
+            for prefix in PROTECTED_RESEARCH_PARAMETER_PREFIXES
+        )
 
     def _active_variant_count(self, project_id: str) -> int:
         """Return active variants for one project."""
@@ -624,17 +669,22 @@ class MetaHyperagent:
         if self._active_variant_count(scoped_project_id) >= MAX_ACTIVE_VARIANTS:
             return {"error": f"Max active variants ({MAX_ACTIVE_VARIANTS}) reached. Revert or confirm existing variants first."}
 
+        if self._is_protected_research_parameter(proposal["parameter_path"]):
+            return {
+                "error": (
+                    "Protected Research Spine methodology, reliability thresholds, "
+                    "authorization constraints, and report gates cannot be changed "
+                    "by meta-hyperagent variants"
+                )
+            }
+
         # Validate bounds
         if not self._validate_bounds(proposal["parameter_path"], proposal["proposed_value"]):
             return {"error": f"Proposed value {proposal['proposed_value']} is outside bounds for {proposal['parameter_path']}"}
 
-        # Apply the change to the live module globals
-        try:
-            self._apply_parameter(proposal["parameter_path"], proposal["proposed_value"])
-        except Exception as exc:
-            return {"error": f"Failed to apply parameter: {exc}"}
-
-        # Create variant
+        # Create a project-scoped variant. The owning services consult active
+        # variants at read time; meta-hyperagent must not mutate module globals
+        # for project-specific evidence.
         now_iso = datetime.now(timezone.utc).isoformat()
         variant = MetaVariant(
             id=f"mv_{uuid.uuid4().hex[:12]}",
@@ -680,11 +730,6 @@ class MetaHyperagent:
             return {"error": "Variant not found"}
         if variant["status"] != "active":
             return {"error": f"Variant status is '{variant['status']}', expected 'active'"}
-
-        try:
-            self._apply_parameter(variant["parameter_path"], variant["old_value"])
-        except Exception as exc:
-            return {"error": f"Failed to revert parameter: {exc}"}
 
         now_iso = datetime.now(timezone.utc).isoformat()
         variant["status"] = "reverted"
@@ -759,7 +804,7 @@ class MetaHyperagent:
         return {}
 
     def load_confirmed_overrides(self, project_id: str | None = None) -> None:
-        """Apply confirmed overrides for a project."""
+        """Warm confirmed overrides for a project without mutating globals."""
         scoped_project_id = str(project_id or "").strip()
         if not scoped_project_id:
             logger.info("Meta-hyperagent: skipping confirmed overrides without project scope")
@@ -772,28 +817,60 @@ class MetaHyperagent:
         if not project_overrides:
             return
 
-        applied = 0
-        for param_path, entry in project_overrides.items():
-            value = entry.get("value") if isinstance(entry, dict) else entry
-            try:
-                self._apply_parameter(param_path, value)
-                applied += 1
-            except Exception as exc:
-                logger.warning(
-                    f"Meta-hyperagent: failed to apply confirmed override "
-                    f"{param_path}={value}: {exc}"
-                )
+        logger.info(
+            "Meta-hyperagent: loaded %s confirmed project-scoped override(s) for project %s",
+            len(project_overrides),
+            scoped_project_id,
+        )
 
-        if applied:
-            logger.info(
-                f"Meta-hyperagent: applied {applied} confirmed override(s) "
-                f"for project {scoped_project_id}"
-            )
+    def get_project_parameter_overrides(self, project_id: str | None = None) -> dict[str, Any]:
+        """Return active/confirmed overrides for one project without applying them globally."""
+        scoped_project_id = self._require_project_id(project_id)
+        overrides: dict[str, Any] = {}
+        persisted = (self._load_overrides_file().get("projects") or {}).get(scoped_project_id, {})
+        for param_path, entry in persisted.items():
+            overrides[param_path] = entry.get("value") if isinstance(entry, dict) else entry
+        for variant in self._variants:
+            if (
+                variant.get("status") in {"active", "confirmed"}
+                and self._matches_project(variant, scoped_project_id)
+            ):
+                overrides[str(variant.get("parameter_path", ""))] = variant.get("new_value")
+        return {key: value for key, value in overrides.items() if key}
+
+    def get_parameter_override(
+        self,
+        parameter_path: str,
+        *,
+        project_id: str | None = None,
+        default: Any = None,
+    ) -> Any:
+        """Return a project-scoped override value for one parameter path."""
+        return self.get_project_parameter_overrides(project_id).get(parameter_path, default)
+
+    def get_self_evolution_threshold_overrides(
+        self,
+        project_id: str | None = None,
+    ) -> dict[str, Any]:
+        """Return project-scoped overrides for self-evolution thresholds."""
+        prefix = "self_evolution.PROMOTION_THRESHOLDS."
+        result: dict[str, Any] = {}
+        for path, value in self.get_project_parameter_overrides(project_id).items():
+            if path.startswith(prefix):
+                key = path[len(prefix):]
+                if key:
+                    result[key] = value
+        return result
 
     # -- Parameter application to live modules ------------------------------
 
     def _apply_parameter(self, parameter_path: str, value: Any) -> None:
-        """Modify an in-memory module global based on parameter_path.
+        """Legacy direct module mutation helper.
+
+        Normal meta-hyperagent flow stores project-scoped variants and lets the
+        owning service read overrides at execution time.  This helper remains
+        only for explicit maintenance/migration paths and must not be called by
+        project proposal application.
 
         Supported paths:
             self_evolution.PROMOTION_THRESHOLDS.<key>

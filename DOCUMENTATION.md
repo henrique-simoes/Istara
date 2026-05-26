@@ -18,6 +18,8 @@ do not drift into scattered one-off notes.
 | `Tech.md` | Narrative technical architecture. |
 | `docs/features/README.md` | Living feature documentation system: source docs, generated HTML, manifests, `llms.txt`, glossary, and update workflow. |
 | `docs/FEATURE_DOCUMENTATION_PROGRESS.md` | Current handoff/status for the feature documentation system and remaining verification gaps. |
+| `docs/architecture/research-validity-contract.md` | Non-negotiable Research Spine contract for research data, coding, reliability, review, and reports. |
+| `docs/architecture/self-improvement-governance-contract.md` | Non-negotiable contract for telemetry, autoresearch, ReasoningBank, Memento Skills, Meta-Hyperagent, self-evolution, RAG/GraphRAG, Prompt-RAG, and LLMLingua as one governed learning system. |
 
 ## Testing, Evals, and Benchmarks
 

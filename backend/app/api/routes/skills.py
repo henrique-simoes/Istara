@@ -80,6 +80,24 @@ def _bounded_timeout(
     return max(0.1, min(value, max_seconds))
 
 
+def _skill_output_research_validity(output) -> dict:
+    if hasattr(output, "mark_research_artifacts_candidate"):
+        output.mark_research_artifacts_candidate()
+    validity = getattr(output, "research_validity", None)
+    validity = validity if isinstance(validity, dict) else {}
+    return {
+        **validity,
+        "status": "provisional",
+        "artifact_state": "skill_output_candidate",
+        "report_allowed": False,
+        "promotion_required": "source_grounded_coding_reliability_reconciliation_done_gate",
+        "reason": (
+            "Skill outputs are candidate Research Spine artifacts until source-grounded "
+            "coding, reliability/reconciliation, and Done-task gates accept them."
+        ),
+    }
+
+
 class SkillExecuteRequest(BaseModel):
     project_id: str
     files: list[str] = []
@@ -545,11 +563,13 @@ async def execute_skill(
     request: Request,
     db: AsyncSession = Depends(get_db),
 ):
-    """Execute a skill on a project. Stores findings automatically.
+    """Execute a skill on a project and store task-backed findings for review.
 
     This is the main way to invoke skills — from the UI, chat, or API.
-    The agent runs the skill, stores nuggets/facts/insights/recommendations,
-    and returns the output.
+    The agent runs the skill, creates an In Review task, stores Atomic Research
+    artifacts, and starts task-linked evidence-unit/coding-run orchestration when
+    the output includes nuggets. Done/report gates still enforce the
+    research-validity contract before findings become report evidence.
     """
     if not registry.get(name):
         raise HTTPException(status_code=404, detail=f"Skill not found: {name}")
@@ -591,6 +611,7 @@ async def execute_skill(
                 schema_budget = {"parse_error": True}
             break
 
+    research_validity = _skill_output_research_validity(output)
     return {
         "success": output.success,
         "summary": output.summary,
@@ -603,6 +624,9 @@ async def execute_skill(
         "artifacts": list(output.artifacts.keys()),
         "schema_budget": schema_budget,
         "json_success": output.json_success,
+        "artifact_state": research_validity["artifact_state"],
+        "report_allowed": research_validity["report_allowed"],
+        "research_validity": research_validity,
     }
 
 

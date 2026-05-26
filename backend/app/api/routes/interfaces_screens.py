@@ -23,7 +23,12 @@ from app.config import settings
 from app.core.permissions import require_project_access
 from app.models.database import get_db
 from app.models.design_screen import DesignDecision, DesignScreen
-from app.services.design_evidence import build_seeded_prompt, resolve_seed_findings
+from app.services.design_evidence import (
+    build_seeded_prompt,
+    hydrate_design_screen,
+    resolve_seed_findings,
+)
+from app.services.finding_validity_service import provisional_design_decision_rationale
 from app.skills.design_tools import execute_design_tool
 
 router = APIRouter()
@@ -46,7 +51,7 @@ async def list_screens(
         .order_by(DesignScreen.created_at.desc())
     )
     result = await db.execute(query)
-    return [s.to_dict() for s in result.scalars().all()]
+    return [await hydrate_design_screen(db, s) for s in result.scalars().all()]
 
 
 @router.get("/interfaces/screens/{screen_id}")
@@ -54,7 +59,7 @@ async def get_screen(screen_id: str, request: Request, db: AsyncSession = Depend
     """Get a single design screen by ID."""
     screen = await get_screen_or_404(db, screen_id)
     await require_project_access(db, request, screen.project_id, min_role="viewer")
-    return screen.to_dict()
+    return await hydrate_design_screen(db, screen)
 
 
 @router.post("/interfaces/screens/generate")
@@ -211,7 +216,9 @@ async def generate_screen(
                 text=f"Design decision: {data.prompt[:200]}",
                 recommendation_ids=json.dumps(seed_ids),
                 screen_ids=json.dumps([s.id for s in created_screens]),
-                rationale=f"Generated from research findings via Stitch ({data.model})",
+                rationale=provisional_design_decision_rationale(
+                    f"Generated from research findings via Stitch ({data.model})"
+                ),
             )
         )
 
@@ -220,10 +227,12 @@ async def generate_screen(
         await db.refresh(screen)
 
     if created_screens:
-        resp = created_screens[0].to_dict()
+        resp = await hydrate_design_screen(db, created_screens[0])
         resp["design_decision_id"] = decision_id
         if len(created_screens) > 1:
-            resp["additional_screens"] = [s.to_dict() for s in created_screens[1:]]
+            resp["additional_screens"] = [
+                await hydrate_design_screen(db, s) for s in created_screens[1:]
+            ]
         return resp
 
     raise HTTPException(status_code=502, detail="Stitch returned no screens")
@@ -333,7 +342,7 @@ async def edit_screen(data: EditRequest, request: Request, db: AsyncSession = De
     db.add(edited)
     await db.commit()
     await db.refresh(edited)
-    return edited.to_dict()
+    return await hydrate_design_screen(db, edited)
 
 
 @router.post("/interfaces/screens/variant")
@@ -446,7 +455,10 @@ async def create_variant(data: VariantRequest, request: Request, db: AsyncSessio
     for variant in created_variants:
         await db.refresh(variant)
 
-    return {"variants": [v.to_dict() for v in created_variants], "count": len(created_variants)}
+    return {
+        "variants": [await hydrate_design_screen(db, v) for v in created_variants],
+        "count": len(created_variants),
+    }
 
 
 @router.delete("/interfaces/screens/{screen_id}", status_code=204)

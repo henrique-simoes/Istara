@@ -11,6 +11,7 @@ Academic foundations:
 
 import json
 import logging
+import uuid
 from dataclasses import dataclass
 
 from app.core.consensus import ConsensusResult, compute_consensus
@@ -46,6 +47,61 @@ def _diverse_servers(servers: list) -> list:
         if server not in selected:
             selected.append(server)
     return selected
+
+
+def _route_evidence(result: dict) -> dict:
+    route = result.get("_istara_route", {}) if isinstance(result, dict) else {}
+    return route if isinstance(route, dict) else {}
+
+
+def _models_used(route_evidence: list[dict]) -> list[str]:
+    return [str(route.get("model", "")) for route in route_evidence if route.get("model")]
+
+
+def _review_scope(coding_run_id: str | None) -> str:
+    return "coded_evidence_review" if coding_run_id else "response_level_quality_signal"
+
+
+async def _record_review_telemetry(
+    *,
+    operation: str,
+    project_id: str | None,
+    trace_id: str | None,
+    coding_run_id: str | None,
+    evidence_unit_ids: list[str] | None,
+    codebook_version_id: str | None,
+    route_evidence: list[dict],
+    consensus_score: float | None,
+    status: str,
+    error_type: str | None = None,
+    error_message: str | None = None,
+) -> None:
+    """Record content-free review telemetry only for coded-evidence reviews."""
+    if not project_id or not coding_run_id:
+        return
+    try:
+        from app.core.telemetry import telemetry_recorder
+
+        route = route_evidence[0] if route_evidence else {}
+        donor_id = str(route.get("node_id") or route.get("donor_id") or "")
+        route_id = str(route.get("route_id") or donor_id or "")
+        await telemetry_recorder.record_research_validity_event(
+            trace_id=trace_id or uuid.uuid4().hex[:36],
+            operation=operation,
+            project_id=project_id,
+            status=status,
+            model_name=str(route.get("model") or ""),
+            route_id=route_id,
+            donor_id=donor_id,
+            coding_run_id=coding_run_id,
+            evidence_unit_id=(evidence_unit_ids or [""])[0],
+            codebook_version_id=codebook_version_id or "",
+            consensus_score=consensus_score,
+            error_type=error_type,
+            error_message=error_message,
+        )
+    except Exception as exc:
+        logger.debug("Research-validity review telemetry skipped: %s", exc)
 
 
 @dataclass
@@ -87,6 +143,7 @@ async def dual_run(
         )
 
     responses = []
+    route_evidence = []
     for server in servers[:2]:
         try:
             msgs = list(messages)
@@ -99,6 +156,7 @@ async def dual_run(
                 project_id=project_id,
             )
             responses.append(result.get("message", {}).get("content", ""))
+            route_evidence.append(_route_evidence(result))
         except Exception as e:
             logger.warning(f"Dual-run: server {server.name} failed: {e}")
             responses.append("")
@@ -116,7 +174,11 @@ async def dual_run(
         consensus=consensus,
         responses=responses,
         best_response=responses[consensus.best_response_idx],
-        metadata={"servers_used": [s.name for s in servers[:2]]},
+        metadata={
+            "servers_used": [s.name for s in servers[:2]],
+            "route_evidence": route_evidence,
+            "models_used": [r.get("model", "") for r in route_evidence if r],
+        },
     )
 
 
@@ -126,6 +188,10 @@ async def adversarial_review(
     system: str = "",
     model: str | None = None,
     project_id: str | None = None,
+    coding_run_id: str | None = None,
+    evidence_unit_ids: list[str] | None = None,
+    codebook_version_id: str | None = None,
+    trace_id: str | None = None,
 ) -> ValidationResult:
     """Have a second model critique the first model's response."""
     from app.core.llm_router import llm_router
@@ -151,20 +217,54 @@ async def adversarial_review(
             project_id=project_id,
         )
         review = result.get("message", {}).get("content", "")
+        route_evidence = [_route_evidence(result)]
     except Exception as e:
         logger.warning(f"Adversarial review failed: {e}")
+        await _record_review_telemetry(
+            operation="adversarial.review",
+            project_id=project_id,
+            trace_id=trace_id,
+            coding_run_id=coding_run_id,
+            evidence_unit_ids=evidence_unit_ids,
+            codebook_version_id=codebook_version_id,
+            route_evidence=[],
+            consensus_score=None,
+            status="error",
+            error_type="adversarial_review_failed",
+            error_message=str(e)[:160],
+        )
         return _empty_result("adversarial_review")
 
     responses = [initial_response, review]
     embeddings = await _get_embeddings(responses, project_id=project_id)
     consensus = compute_consensus(responses, embeddings, method="adversarial_review")
+    await _record_review_telemetry(
+        operation="adversarial.review",
+        project_id=project_id,
+        trace_id=trace_id,
+        coding_run_id=coding_run_id,
+        evidence_unit_ids=evidence_unit_ids,
+        codebook_version_id=codebook_version_id,
+        route_evidence=route_evidence,
+        consensus_score=consensus.agreement_score,
+        status="success",
+    )
 
     return ValidationResult(
         method="adversarial_review",
         consensus=consensus,
         responses=responses,
         best_response=initial_response,  # Original response is the primary output
-        metadata={"review_text": review},
+        metadata={
+            "review_text": review,
+            "route_evidence": route_evidence,
+            "models_used": _models_used(route_evidence),
+            "validation_scope": _review_scope(coding_run_id),
+            "formal_reliability": False,
+            "coding_run_id": coding_run_id or "",
+            "evidence_unit_ids": evidence_unit_ids or [],
+            "codebook_version_id": codebook_version_id or "",
+        },
     )
 
 
@@ -201,6 +301,7 @@ async def full_ensemble(
         )
 
     responses = []
+    route_evidence = []
     server_names = []
     messages = [{"role": "user", "content": prompt}]
     if system:
@@ -220,6 +321,7 @@ async def full_ensemble(
             if content:
                 responses.append(content)
                 server_names.append(server.name)
+                route_evidence.append(_route_evidence(result))
         except Exception as e:
             logger.warning(f"Ensemble: server {server.name} failed: {e}")
 
@@ -234,7 +336,12 @@ async def full_ensemble(
         consensus=consensus,
         responses=responses,
         best_response=responses[consensus.best_response_idx],
-        metadata={"servers_used": server_names, "n_responses": len(responses)},
+        metadata={
+            "servers_used": server_names,
+            "n_responses": len(responses),
+            "route_evidence": route_evidence,
+            "models_used": [r.get("model", "") for r in route_evidence if r],
+        },
     )
 
 
@@ -256,6 +363,7 @@ async def self_moa(
         temperatures.extend([0.5, 0.9][: n - 3])
 
     responses = []
+    route_evidence = []
     messages = [{"role": "user", "content": prompt}]
     if system:
         messages = [{"role": "system", "content": system}, *messages]
@@ -271,6 +379,7 @@ async def self_moa(
             content = result.get("message", {}).get("content", "")
             if content:
                 responses.append(content)
+                route_evidence.append(_route_evidence(result))
         except Exception as e:
             logger.warning(f"Self-MoA: temperature {temp} failed: {e}")
 
@@ -285,7 +394,11 @@ async def self_moa(
         consensus=consensus,
         responses=responses,
         best_response=responses[consensus.best_response_idx],
-        metadata={"temperatures": temperatures[:len(responses)]},
+        metadata={
+            "temperatures": temperatures[:len(responses)],
+            "route_evidence": route_evidence,
+            "assurance": "single_model_temperature_variation",
+        },
     )
 
 
@@ -295,6 +408,10 @@ async def debate_rounds(
     model: str | None = None,
     rounds: int = 2,
     project_id: str | None = None,
+    coding_run_id: str | None = None,
+    evidence_unit_ids: list[str] | None = None,
+    codebook_version_id: str | None = None,
+    trace_id: str | None = None,
 ) -> ValidationResult:
     """Multi-round debate between models.
 
@@ -307,6 +424,7 @@ async def debate_rounds(
         messages = [{"role": "system", "content": system}, *messages]
 
     all_responses = []
+    route_evidence = []
 
     # Initial response
     try:
@@ -318,8 +436,22 @@ async def debate_rounds(
         )
         current = result.get("message", {}).get("content", "")
         all_responses.append(current)
+        route_evidence.append(_route_evidence(result))
     except Exception as e:
         logger.warning(f"Debate: initial response failed: {e}")
+        await _record_review_telemetry(
+            operation="debate.review",
+            project_id=project_id,
+            trace_id=trace_id,
+            coding_run_id=coding_run_id,
+            evidence_unit_ids=evidence_unit_ids,
+            codebook_version_id=codebook_version_id,
+            route_evidence=[],
+            consensus_score=None,
+            status="error",
+            error_type="debate_review_failed",
+            error_message=str(e)[:160],
+        )
         return _empty_result("debate_rounds")
 
     # Debate rounds
@@ -343,19 +475,40 @@ async def debate_rounds(
             )
             current = result.get("message", {}).get("content", "")
             all_responses.append(current)
+            route_evidence.append(_route_evidence(result))
         except Exception as e:
             logger.warning(f"Debate round {round_num + 1} failed: {e}")
             break
 
     embeddings = await _get_embeddings(all_responses, project_id=project_id)
     consensus = compute_consensus(all_responses, embeddings, method="debate_rounds")
+    await _record_review_telemetry(
+        operation="debate.review",
+        project_id=project_id,
+        trace_id=trace_id,
+        coding_run_id=coding_run_id,
+        evidence_unit_ids=evidence_unit_ids,
+        codebook_version_id=codebook_version_id,
+        route_evidence=route_evidence,
+        consensus_score=consensus.agreement_score,
+        status="success",
+    )
 
     return ValidationResult(
         method="debate_rounds",
         consensus=consensus,
         responses=all_responses,
         best_response=all_responses[-1],  # Last round is most refined
-        metadata={"rounds_completed": len(all_responses) - 1},
+        metadata={
+            "rounds_completed": len(all_responses) - 1,
+            "route_evidence": route_evidence,
+            "models_used": _models_used(route_evidence),
+            "validation_scope": _review_scope(coding_run_id),
+            "formal_reliability": False,
+            "coding_run_id": coding_run_id or "",
+            "evidence_unit_ids": evidence_unit_ids or [],
+            "codebook_version_id": codebook_version_id or "",
+        },
     )
 
 

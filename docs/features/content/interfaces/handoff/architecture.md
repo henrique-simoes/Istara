@@ -40,6 +40,8 @@ Handoff packages interface outputs into developer-facing specifications or expor
 - The feature is mounted through `frontend/src/components/interfaces/HandoffTab.tsx` and the UI navigation path recorded in the inventory.
 - `GET /api/interfaces/handoff/briefs` requires an explicit `project_id`, checks project viewer access, and filters `DesignBrief.project_id` in the query.
 - Handoff brief generation uses the request project's id; developer specs are authorized through the selected screen's project before returning screen content.
+- Handoff briefs and developer specs include content-free `research_validity` summaries. Their source findings are rendered as accepted or provisional, and provisional sources must not be treated as report-ready research evidence.
+- Developer specs read the same hydrated screen/source-finding state exposed by the Screens API, so a design handoff cannot silently strip the Research Spine status from generated or imported interface work.
 - `HandoffTab` clears selected/expanded state when the active project changes and renders only briefs and screens that match the active project.
 - The frontmatter and manifest entries are the durable contract for agents updating this page after code changes.
 - When the referenced component, store, route, agent, skill, or test behavior changes, regenerate and validate the feature documentation.

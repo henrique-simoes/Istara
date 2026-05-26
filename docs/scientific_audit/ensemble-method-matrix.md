@@ -1,6 +1,6 @@
 # Ensemble Method Matrix
 
-Spec: CF-SPEC-123 / CF-1581
+Spec: CF-SPEC-123 / CF-1581; CF-SPEC-124 / CF-1590
 
 | Method | Implementation Surface | Current Behavior | Classification | Action |
 | --- | --- | --- | --- | --- |
@@ -11,7 +11,9 @@ Spec: CF-SPEC-123 / CF-1581
 | Adversarial review | `backend/app/core/validation.py` | One draft response and one critique/refinement pass. | Acceptable heuristic | Do not claim this alone proves consensus. |
 | Debate rounds | `backend/app/core/validation.py` | Iterative refinement using router calls; may reuse the same model depending router state. | Test gap / docs caveat | Future improvement: record route identity per debate round and prefer distinct models when available. |
 | Fleiss' Kappa formula | `backend/app/core/consensus.py` | Standard formula over an N x category-count matrix. | Scientifically faithful formula | Keep formula tests. |
-| Fleiss' Kappa input semantics | `backend/app/core/consensus.py` | Matrix is built from keyword-category presence across LLM responses. | Acceptable heuristic, misleading if called formal inter-rater reliability | Runtime metadata and docs now state `kappa_basis=category_presence_by_response`. |
-| Kappa >= 0.60 enforcement | `backend/app/core/agent_execution.py` | Consensus score is recorded; low/borderline scores can trigger refinement and human review, but there is no strict Kappa >= 0.60 promotion gate. | README stale claim fixed | Do not add tests that require strict Kappa gating unless product code intentionally changes. |
-| Low-consensus promotion | `backend/app/core/agent_execution.py`, reports code | Task output still enters review flow; Reports are gated by approved Done task findings. | Human-in-loop architecture | README/docs now point to Done-task report eligibility. |
-| Route/model identity evidence | `backend/app/core/validation.py`, compute registry counters | Full ensemble and dual-run record server names. Debate path route evidence is weaker. | Partial coverage | Future improvement: record per-validation call route evidence across all methods. |
+| Qualitative coding protocol | `backend/app/core/research_validity.py` | Coding prompts deterministically inject protected qualitative protocol, active codebook, evidence units, and reliability policy. | Scientifically aligned scaffold | Models must code phrases/segments, not keywords. |
+| Evidence-unit segmentation | `backend/app/core/research_validity.py`, `backend/app/models/research_validity.py` | Stable speaker-turn/paragraph/sentence units receive IDs, spans, method/phase metadata, and provenance. | Correct substrate | Retrieval chunks are search support, not the coding substrate. |
+| Fleiss' Kappa input semantics | `backend/app/core/research_validity.py`, `backend/app/core/consensus.py` | Formal research-validity path computes over evidence-unit by rater coding matrices; legacy final-response consensus remains a heuristic. | Corrected contract | Docs/tests distinguish formal coding reliability from response-level consensus. |
+| Kappa >= 0.60 enforcement | `backend/app/core/research_validity.py`, `backend/app/api/routes/code_applications.py` | Reliability gate returns accepted/needs_reconciliation/needs_human_review; bulk code approval requires accepted reliability and promotion status. | Contract enforced for code review path | Downstream agent pipelines must use the same promotion policy before report evidence. |
+| Low-consensus promotion | `backend/app/core/research_validity.py`, reports code | Low agreement routes to reconciliation or human review; Reports remain gated by approved Done tasks. | Human-in-loop architecture | In Review tasks and unreconciled evidence are not report evidence. |
+| Route/model identity evidence | `backend/app/models/code_application.py`, `backend/app/models/research_validity.py`, telemetry spans | Code applications and coding runs can store route/model/donor identity. Reused model identity is rejected as independent ensemble reliability. | Improved evidence | Debate/adversarial paths should attach these records for every validation call. |

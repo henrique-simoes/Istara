@@ -13,6 +13,7 @@ import httpx
 
 from app.config import settings
 from app.core.compute_node import ComputeNode
+from app.core.compute_route_evidence import schedule_compute_telemetry_event
 from app.core.compute_registry_helpers import (
     TRANSIENT_CHAT_BASE_DELAY_S,
     TRANSIENT_CHAT_MAX_ATTEMPTS,
@@ -152,7 +153,9 @@ class ComputeRegistryRoutingMixin:
         requested_model = (model or "").strip()
         if requested_model and requested_model != "default" and strict_model and candidates:
             candidates = [
-                n for n in candidates if self._node_supports_model(n, requested_model)
+                n
+                for n in candidates
+                if self._node_can_attempt_requested_model(n, requested_model)
             ]
 
         if min_context > 0 and candidates:
@@ -167,9 +170,24 @@ class ComputeRegistryRoutingMixin:
                 candidates = context_capable
 
         if requested_model and requested_model != "default" and candidates:
-            model_capable = [n for n in candidates if self._node_supports_model(n, requested_model)]
+            support_check = (
+                self._node_can_attempt_requested_model
+                if strict_model
+                else self._node_supports_model
+            )
+            model_capable = [n for n in candidates if support_check(n, requested_model)]
             if strict_model:
                 candidates = model_capable
+                if project_id:
+                    candidates.sort(
+                        key=lambda n: (
+                            0 if n.source in {"relay", "browser"} else 1,
+                            not n.is_healthy,
+                            n.priority,
+                            -n.score(),
+                        )
+                    )
+                    return candidates
             elif model_capable:
                 capable_ids = {n.node_id for n in model_capable}
                 candidates.sort(
@@ -226,6 +244,24 @@ class ComputeRegistryRoutingMixin:
         capability_keys = {str(m).strip() for m in node.model_capabilities.keys() if str(m).strip()}
         advertised = loaded | capability_keys
         return bool(advertised and advertised.intersection(aliases))
+
+    @classmethod
+    def _node_can_attempt_requested_model(cls, node: ComputeNode, model: str) -> bool:
+        if cls._node_supports_model(node, model):
+            return True
+        requested = (model or "").strip()
+        configured = (settings.lmstudio_model or "").strip()
+        configured_host = (settings.lmstudio_host or "").rstrip("/")
+        return bool(
+            requested
+            and configured
+            and requested == configured
+            and configured != "default"
+            and node.provider_type == "lmstudio"
+            and node.source not in {"relay", "browser"}
+            and configured_host
+            and node.host.rstrip("/") == configured_host
+        )
 
     @classmethod
     def _node_supports_vision_model(cls, node: ComputeNode, model: str | None) -> bool:
@@ -318,6 +354,7 @@ class ComputeRegistryRoutingMixin:
         *,
         require_vision: bool = False,
         min_context: int = 0,
+        strict_model: bool = False,
     ) -> str | None:
         if node.provider_type != "lmstudio" and not (
             node.source in ("relay", "browser") and node.websocket
@@ -331,7 +368,7 @@ class ComputeRegistryRoutingMixin:
 
         requested_model = (model or "").strip()
         strict_requested_model = (
-            settings.strict_auto_routing
+            strict_model
             and requested_model
             and requested_model != "default"
         )
@@ -525,6 +562,7 @@ class ComputeRegistryRoutingMixin:
         require_vision: bool = False,
         min_context: int = 0,
         allow_model_load: bool = True,
+        strict_model: bool = False,
     ) -> str:
         requested = (model or "").strip()
         if not requested or requested == "default":
@@ -535,7 +573,7 @@ class ComputeRegistryRoutingMixin:
 
         if requested not in node.model_capabilities:
             loaded = self._node_loaded_model_names(node)
-            if loaded and requested not in loaded:
+            if loaded and requested not in loaded and not strict_model:
                 return loaded[0]
 
         caps = node.model_capabilities.get(requested)
@@ -547,6 +585,7 @@ class ComputeRegistryRoutingMixin:
                 requested,
                 require_vision=require_vision,
                 min_context=min_context,
+                strict_model=strict_model,
             )
             if loaded:
                 return loaded
@@ -560,6 +599,7 @@ class ComputeRegistryRoutingMixin:
                 requested,
                 require_vision=require_vision,
                 min_context=min_context,
+                strict_model=strict_model,
             )
             if loaded:
                 return loaded
@@ -605,6 +645,13 @@ class ComputeRegistryRoutingMixin:
         node.last_route_kind = route_kind
         node.last_selected_project_id = project_id or ""
         node.last_selected_model = model or ""
+        schedule_compute_telemetry_event(
+            node,
+            operation="donor.selected",
+            project_id=project_id,
+            route_kind=route_kind,
+            model=model,
+        )
 
     @staticmethod
     def _record_success(
@@ -625,6 +672,13 @@ class ComputeRegistryRoutingMixin:
             node.last_route_kind = route_kind
             node.last_served_project_id = project_id or ""
             node.last_served_model = model or ""
+            schedule_compute_telemetry_event(
+                node,
+                operation="donor.served",
+                project_id=project_id,
+                route_kind=route_kind,
+                model=model,
+            )
 
     @staticmethod
     def _record_failure(
@@ -644,6 +698,16 @@ class ComputeRegistryRoutingMixin:
             node.last_selected_project_id = project_id or node.last_selected_project_id
             node.last_selected_model = model or node.last_selected_model
             node.last_failure_error = node.health_error
+            schedule_compute_telemetry_event(
+                node,
+                operation="donor.failed",
+                project_id=project_id,
+                route_kind=route_kind,
+                model=model,
+                status="error",
+                error_type="compute_route_failed",
+                error_message=node.health_error,
+            )
         node.cb_record_failure()
         if node.consecutive_failures >= 3:
             node.health_state = "cooldown"

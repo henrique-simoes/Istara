@@ -66,6 +66,7 @@ from app.api.routes import permission_requests as permission_request_routes
 from app.api.routes import presentation as presentation_routes
 from app.api.routes import reasoning_bank as reasoning_bank_routes
 from app.api.routes import reports as reports_routes
+from app.api.routes import research_validity as research_validity_routes
 from app.api.routes import (
     scheduler as scheduler_routes,
 )
@@ -841,6 +842,7 @@ app.include_router(survey_routes.router, prefix="/api", tags=["Surveys"])
 app.include_router(mcp_routes.router, prefix="/api", tags=["MCP"])
 app.include_router(autoresearch_routes.router, prefix="/api", tags=["Autoresearch"])
 app.include_router(reports_routes.router, prefix="/api", tags=["Reports"])
+app.include_router(research_validity_routes.router, prefix="/api", tags=["Research Validity"])
 app.include_router(presentation_routes.router, prefix="/api", tags=["Presentation"])
 app.include_router(code_applications_routes.router, prefix="/api", tags=["Code Applications"])
 app.include_router(codebook_versions_routes.router, prefix="/api", tags=["Codebook Versions"])

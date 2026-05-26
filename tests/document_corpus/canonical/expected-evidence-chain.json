@@ -1,5 +1,11 @@
 {
   "project": "CareNav Renewal",
+  "corpus_depth": {
+    "total_sources": 174,
+    "total_words": 3294834,
+    "average_words_per_source": 18936,
+    "sources_with_at_least_10000_words": 129
+  },
   "rules": [
     "Raw corpus sources are not directly report-ready.",
     "Agent task outputs may create findings, nuggets, facts, insights, and recommendations.",

@@ -12,6 +12,18 @@ import { fileURLToPath } from "url";
 
 export const SHARED_DOCUMENT_CORPUS_MINIMUM_SOURCES = 120;
 export const SHARED_DOCUMENT_CORPUS_MIN_BYTES = 1000;
+export const ISTARA_UPLOAD_PROCESSABLE_EXTENSIONS = [
+  ".txt",
+  ".md",
+  ".markdown",
+  ".pdf",
+  ".docx",
+  ".csv",
+  ".mp3",
+  ".wav",
+  ".m4a",
+  ".ogg",
+];
 
 const MODULE_DIR = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = resolve(MODULE_DIR, "../..");
@@ -27,7 +39,19 @@ export const CANONICAL_CORPUS_SLICES = [
   "malformed-edge-case",
   "upload-smoke",
   "full-end-to-end",
+  "coding-reliability",
+  "graph-synthesis",
+  "low-consensus-review",
 ];
+
+export const CANONICAL_CORPUS_SLICE_ALIASES = {
+  "findings/reporting": "findings-reporting",
+  "malformed/edge-case": "malformed-edge-case",
+  "full end-to-end": "full-end-to-end",
+  "low consensus review": "low-consensus-review",
+  "coding reliability": "coding-reliability",
+  "graph synthesis": "graph-synthesis",
+};
 
 const CURATED_FIXTURE_DIRS = [
   "tests/simulation/data/fixtures",
@@ -132,6 +156,8 @@ export function canonicalCorpusSummary() {
   return {
     total_sources: manifest.sources.length,
     long_form_sources: manifest.sources.filter((entry) => (entry.bytes || 0) >= SHARED_DOCUMENT_CORPUS_MIN_BYTES).length,
+    total_words: manifest.total_words || manifest.sources.reduce((sum, entry) => sum + (entry.word_count || 0), 0),
+    average_words_per_source: manifest.average_words_per_source || 0,
     slices: manifest.slices || {},
     project: manifest.project,
   };
@@ -144,6 +170,7 @@ export function selectCanonicalCorpus({
   minBytes = SHARED_DOCUMENT_CORPUS_MIN_BYTES,
 } = {}) {
   const manifest = loadCanonicalManifest();
+  slice = CANONICAL_CORPUS_SLICE_ALIASES[slice] || slice;
   if (!CANONICAL_CORPUS_SLICES.includes(slice)) {
     throw new Error(`Unknown canonical corpus slice: ${slice}`);
   }

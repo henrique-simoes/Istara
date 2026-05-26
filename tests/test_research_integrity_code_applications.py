@@ -54,6 +54,7 @@ from app.models.mcp_access_policy import MCPAccessPolicy  # noqa: F401
 from app.models.mcp_audit_log import MCPAuditEntry  # noqa: F401
 from app.models.model_skill_stats import ModelSkillStats  # noqa: F401
 from app.models.autoresearch_experiment import AutoresearchExperiment  # noqa: F401
+from app.models.research_validity import EvidenceUnit  # noqa: F401
 
 
 # ============================================================
@@ -209,7 +210,15 @@ class TestCodeApplicationModel:
         output = SkillOutput(
             success=True,
             summary="done",
-            nuggets=[{"text": "raw quote", "source": "interview"}],
+            nuggets=[
+                {
+                    "text": "raw quote",
+                    "source": "interview",
+                    "source_document_id": "doc-route-recs",
+                    "source_location": "interview-p1:12",
+                    "source_text": "Participant P1 said the export flow hid data permissions.",
+                }
+            ],
             facts=[{"text": "verified fact"}],
             insights=[{"text": "pattern"}],
             recommendations=[{"text": "action to take"}],
@@ -219,16 +228,35 @@ class TestCodeApplicationModel:
         with (
             patch("app.core.agent_research.registry.get", return_value=SkillStub()),
             patch("app.core.report_manager.report_manager.route_findings", new_callable=AsyncMock) as route_findings,
+            patch("app.services.research_validity_service.run_independent_coding_run", new_callable=AsyncMock) as coding_run,
         ):
+            coding_run.return_value = {
+                "id": "coding-run-route-recs",
+                "promotion_status": "accepted",
+                "reliability_method": "fleiss_kappa_with_krippendorff_alpha_companion",
+                "kappa": 1.0,
+                "alpha": 1.0,
+                "rater_count": 3,
+                "distinct_model_count": 3,
+                "fallback_reason": "",
+            }
             await orchestrator._store_findings(db_session, "proj-route-recs", output, task)
 
         route_findings.assert_not_awaited()
+        coding_run.assert_awaited_once()
 
         stored_recs = await db_session.execute(
             select(finding.Recommendation).where(finding.Recommendation.project_id == "proj-route-recs")
         )
         rec = stored_recs.scalar_one()
         assert rec.task_id == task.id
+        evidence_units = (
+            await db_session.execute(
+                select(EvidenceUnit).where(EvidenceUnit.project_id == "proj-route-recs")
+            )
+        ).scalars().all()
+        assert len(evidence_units) == 1
+        assert evidence_units[0].task_id == task.id
 
 
 # ============================================================

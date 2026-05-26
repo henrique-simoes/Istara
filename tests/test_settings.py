@@ -200,7 +200,10 @@ async def test_settings_hardware_returns_response(auth_headers):
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
         response = await ac.get("/api/settings/hardware", headers=auth_headers)
-        assert response.status_code in (200, 404, 500)
+    assert response.status_code == 200
+    body = response.json()
+    assert "hardware" in body
+    assert "recommendation" in body
 
 
 @pytest.mark.asyncio
@@ -210,7 +213,10 @@ async def test_settings_models_returns_response(auth_headers):
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
         response = await ac.get("/api/settings/models", headers=auth_headers)
-        assert response.status_code in (200, 404, 500)
+    assert response.status_code == 200
+    body = response.json()
+    assert "models" in body
+    assert "active_model" in body
 
 
 @pytest.mark.asyncio
@@ -220,7 +226,8 @@ async def test_settings_data_integrity_returns_response(auth_headers):
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
         response = await ac.get("/api/settings/data-integrity", headers=auth_headers)
-        assert response.status_code in (200, 404, 500)
+    assert response.status_code == 200
+    assert {"status", "checks", "orphans", "invalid_files", "warnings"}.issubset(response.json())
 
 
 @pytest.mark.asyncio

@@ -172,8 +172,26 @@ def test_scenario_20_supports_seeded_random_skill_subset():
 
     assert "ISTARA_SCENARIO20_SKILL_LIMIT" in scenario
     assert "ISTARA_SCENARIO20_SKILL_SEED" in scenario
+    assert 'positiveIntegerEnv("ISTARA_SCENARIO20_DEFAULT_SKILL_LIMIT", 3)' in scenario
+    assert "ISTARA_SCENARIO20_AGENTIC_SELECTION" in scenario
     assert "Scenario 20 skill selection" in scenario
     assert "seededRandom" in scenario
+    assert "selection_mode" in scenario
+    assert "llm-agentic" in scenario
+    assert "seeded-logical-random" in scenario
+
+
+def test_scenario_20_uses_canonical_corpus_instead_of_inline_research_generators():
+    scenario = (ROOT / "tests/simulation/scenarios/20-all-skills-comprehensive.mjs").read_text(
+        encoding="utf-8"
+    )
+
+    assert "selectCanonicalCorpus" in scenario
+    assert "skill-coverage-map.json" in scenario
+    assert "canonicalDataForSkill" in scenario
+    assert "canonicalData.content" in scenario
+    assert "dataGen" not in scenario
+    assert "dataContent" not in scenario
 
 
 def test_simulation_runner_uses_backend_chat_readiness_status():
@@ -192,6 +210,33 @@ def test_simulation_runner_retries_transient_auth_failures():
     assert "[429, 500, 502, 503, 504]" in runner
     assert "Auth transient status" in runner
     assert "../../backend/.env.local" in runner
+
+
+def test_live_harnesses_use_reset_test_identity_contract():
+    e2e = (ROOT / "tests/e2e_test.py").read_text(encoding="utf-8")
+    marathon = (ROOT / "scripts/marathon/run-cycle.mjs").read_text(encoding="utf-8")
+    benchmark_client = (ROOT / "tests/real_user_benchmark/lib/api-client.mjs").read_text(
+        encoding="utf-8"
+    )
+    benchmark_run = (ROOT / "tests/real_user_benchmark/run.mjs").read_text(encoding="utf-8")
+
+    assert "ISTARA_TEST_ADMIN_PASSWORD" in e2e
+    assert "istara123" in e2e
+    assert "ISTARA_TEST_ADMIN_PASSWORD" in marathon
+    assert "istara123" in marathon
+    assert "reset-test-default" in benchmark_client
+    assert "`researcher_${index + 1}`" in benchmark_run
+    assert "istara123" in benchmark_run
+
+
+def test_product_level_e2e_uses_canonical_corpus_not_tiny_fixtures():
+    e2e = (ROOT / "tests/e2e_test.py").read_text(encoding="utf-8")
+
+    assert "CANONICAL_CORPUS" in e2e
+    assert "CANONICAL_MANIFEST" in e2e
+    assert "canonical_e2e_files" in e2e
+    assert "tests/fixtures" not in e2e
+    assert "FIXTURES" not in e2e
 
 
 def test_standalone_live_llm_script_treats_missing_key_as_skip():

@@ -111,6 +111,7 @@ export class IstaraApiClient {
       [process.env.ISTARA_BENCHMARK_ADMIN_PASSWORD, "env:ISTARA_BENCHMARK_ADMIN_PASSWORD"],
       [process.env.ISTARA_ADMIN_PASSWORD, "env:ISTARA_ADMIN_PASSWORD"],
       [process.env.ADMIN_PASSWORD, "env:ADMIN_PASSWORD"],
+      [process.env.ISTARA_TEST_ADMIN_PASSWORD || "istara123", "reset-test-default"],
     ];
     let password = "";
     let passwordSource = "";

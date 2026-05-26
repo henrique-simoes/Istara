@@ -2,11 +2,12 @@
 
 import { forwardRef, useCallback, useEffect, useRef, useState } from "react";
 import type { ReactNode } from "react";
-import { Bot, CheckCircle2, ClipboardList, FileStack, FileText, Globe, Plus, RotateCcw, Save, Send, Tags, Trash2, User, X, Zap } from "lucide-react";
+import { AlertTriangle, Bot, CheckCircle2, ClipboardList, FileStack, FileText, Globe, Network, Plus, RotateCcw, Save, Send, ShieldCheck, Tags, Trash2, User, X, Zap } from "lucide-react";
 import { useTaskStore } from "@/stores/taskStore";
 import { useProjectStore } from "@/stores/projectStore";
 import { documents as documentsApi, tasks as tasksApi } from "@/lib/api";
-import type { Task, TaskAtomicPath, TaskQualitySummary } from "@/lib/types";
+import { researchValidity } from "@/lib/researchIntegrityApi";
+import type { EvidenceGraphTraceabilityType, Task, TaskAtomicPath, TaskQualitySummary } from "@/lib/types";
 
 const SKILL_OPTIONS = [
   { value: "", label: "Auto-detect" },
@@ -113,6 +114,10 @@ export default function TaskEditor({ task, onClose }: TaskEditorProps) {
   const [revisionTarget, setRevisionTarget] = useState<"backlog" | "in_progress">("backlog");
   const [quality, setQuality] = useState<TaskQualitySummary | null>(null);
   const [atomicPath, setAtomicPath] = useState<TaskAtomicPath | null>(null);
+  const [traceability, setTraceability] = useState<EvidenceGraphTraceabilityType | null>(null);
+  const [traceabilityLoading, setTraceabilityLoading] = useState(false);
+  const [codingRunLoading, setCodingRunLoading] = useState(false);
+  const [codingRunError, setCodingRunError] = useState("");
   const docPickerRef = useRef<HTMLDivElement>(null);
   const closingRef = useRef(false);
   const hasActiveTaskProject = Boolean(activeProjectId && activeProjectId === task.project_id);
@@ -155,15 +160,40 @@ export default function TaskEditor({ task, onClose }: TaskEditorProps) {
     return () => document.removeEventListener("keydown", onKeyDown);
   }, [closeWithSave]);
 
-  useEffect(() => {
+  const refreshReviewEvidence = useCallback(() => {
     if (!activeProjectId || activeProjectId !== task.project_id) {
       setQuality(null);
       setAtomicPath(null);
+      setTraceability(null);
+      setTraceabilityLoading(false);
       return;
     }
     tasksApi.qualitySummary(task.id, activeProjectId).then(setQuality).catch(() => setQuality(null));
     tasksApi.atomicPath(task.id, activeProjectId).then(setAtomicPath).catch(() => setAtomicPath(null));
+    setTraceabilityLoading(true);
+    researchValidity.traceability(activeProjectId, { taskId: task.id, limit: 25 })
+      .then(setTraceability)
+      .catch(() => setTraceability(null))
+      .finally(() => setTraceabilityLoading(false));
   }, [activeProjectId, task.id, task.project_id]);
+
+  useEffect(() => {
+    refreshReviewEvidence();
+  }, [refreshReviewEvidence]);
+
+  const startCodingRun = useCallback(async () => {
+    if (!activeProjectId || activeProjectId !== task.project_id) return;
+    setCodingRunLoading(true);
+    setCodingRunError("");
+    try {
+      await researchValidity.startCodingRun(activeProjectId, { task_id: task.id });
+      refreshReviewEvidence();
+    } catch (e) {
+      setCodingRunError(e instanceof Error ? e.message : "Coding run failed");
+    } finally {
+      setCodingRunLoading(false);
+    }
+  }, [activeProjectId, refreshReviewEvidence, task.id, task.project_id]);
 
   useEffect(() => {
     if (!showDocPicker || !activeProjectId) return;
@@ -243,6 +273,58 @@ export default function TaskEditor({ task, onClose }: TaskEditorProps) {
       ? { name: task.next_agent_action.replace(/_/g, " "), description: "Next action Istara will give the assigned agent." }
       : null,
   ].filter(Boolean) as Array<{ name: string; description: string }>;
+  const researchValidityState = atomicPath?.research_validity;
+  const latestCodingRun = researchValidityState?.latest_coding_run as Record<string, unknown> | null | undefined;
+  const codeApplicationCount = researchValidityState?.code_application_count ?? 0;
+  const acceptedCodeApplicationCount = researchValidityState?.accepted_code_application_count ?? 0;
+  const hasResearchValidityRecords = Boolean((researchValidityState?.coding_run_count || 0) > 0 || codeApplicationCount > 0);
+  const latestPromotionStatus = String(latestCodingRun?.promotion_status || "not coded");
+  const latestReliabilityMethod =
+    typeof latestCodingRun?.reliability_method === "string" && latestCodingRun.reliability_method
+      ? latestCodingRun.reliability_method.replace(/_/g, " ")
+      : "";
+  const blockedReviewItems = researchValidityState?.blocked_or_review_items || [];
+  const taskFindingCount =
+    (atomicPath?.nuggets?.count ?? 0) +
+    (atomicPath?.facts?.count ?? 0) +
+    (atomicPath?.insights?.count ?? 0) +
+    (atomicPath?.recommendations?.count ?? 0);
+  const hasReportableTaskFindings = taskFindingCount > 0;
+  const acceptedPromotionStatuses = ["accepted", "accepted_after_reconciliation"];
+  const latestGateAccepted = acceptedPromotionStatuses.includes(latestPromotionStatus);
+  const needsCodingBeforeReport = Boolean(atomicPath && hasReportableTaskFindings && codeApplicationCount === 0);
+  const researchValidityBlocked = Boolean(
+    needsCodingBeforeReport ||
+    (hasResearchValidityRecords &&
+      (!latestGateAccepted ||
+        blockedReviewItems.some((item) => !acceptedPromotionStatuses.includes(item.promotion_status))))
+  );
+  const researchValidityReady = Boolean(
+    hasReportableTaskFindings &&
+    acceptedCodeApplicationCount > 0 &&
+    !researchValidityBlocked
+  );
+  const canSendToReport = task.status === "done" && task.review_state === "approved" && researchValidityReady;
+  const reportGateReason = !hasReportableTaskFindings
+    ? "No task findings are available for reporting yet."
+    : needsCodingBeforeReport
+      ? "Run a coding pass and accept or reconcile coded evidence before reporting."
+      : researchValidityBlocked
+        ? "Resolve low-agreement or unreconciled coded evidence before reporting."
+        : acceptedCodeApplicationCount === 0
+          ? "Accept or reconcile coded evidence before reporting."
+          : "";
+  const doneGateReason = needsCodingBeforeReport
+    ? "Run a coding pass and accept or reconcile coded evidence before marking this research task Done."
+    : researchValidityBlocked
+      ? "Resolve low-agreement or unreconciled coded evidence before marking this research task Done."
+      : "";
+  const canMarkDone = !researchValidityBlocked;
+  const traceSummary = traceability?.summary || {};
+  const traceReportDependencyCount = traceability?.report_dependencies?.length || 0;
+  const traceLowAgreementCount = traceSummary.low_agreement_dependency_count || traceability?.low_agreement_dependencies?.length || 0;
+  const traceReconciliationCount = traceSummary.reconciliation_decision_count || traceability?.reconciliation_decisions?.length || 0;
+  const traceEdgeCount = traceSummary.evidence_graph_edge_count || traceability?.evidence_graph_edges?.length || 0;
 
   return (
     <div
@@ -373,11 +455,35 @@ export default function TaskEditor({ task, onClose }: TaskEditorProps) {
                     <button onClick={() => setRevisionTarget("in_progress")} className={revisionTarget === "in_progress" ? "review-choice-active" : "review-choice"}>In Progress</button>
                   </div>
                   {task.status === "in_review" && (
-                    <button onClick={approve} className="primary-action"><CheckCircle2 size={16} /> Mark Done</button>
+                    <button
+                      onClick={approve}
+                      disabled={!canMarkDone}
+                      title={canMarkDone ? "Approve this task as Done." : doneGateReason}
+                      className="primary-action disabled:opacity-40"
+                    >
+                      <CheckCircle2 size={16} /> Mark Done
+                    </button>
+                  )}
+                  {task.status === "in_review" && !canMarkDone && (
+                    <p className="rounded bg-amber-50 px-2 py-1.5 text-xs text-amber-800 dark:bg-amber-950/30 dark:text-amber-200">
+                      {doneGateReason}
+                    </p>
                   )}
                   <button onClick={flagRevision} disabled={!whatToReview.trim()} className="secondary-action disabled:opacity-40"><RotateCcw size={16} /> Not Successful</button>
                   {task.status === "done" && task.review_state === "approved" && (
-                    <button onClick={sendReport} className="secondary-action"><Send size={16} /> Send to Report</button>
+                    <button
+                      onClick={sendReport}
+                      disabled={!canSendToReport}
+                      title={canSendToReport ? "Send accepted evidence to Reports." : reportGateReason}
+                      className="secondary-action disabled:opacity-40"
+                    >
+                      <Send size={16} /> Send to Report
+                    </button>
+                  )}
+                  {task.status === "done" && task.review_state === "approved" && !canSendToReport && (
+                    <p className="rounded bg-amber-50 px-2 py-1.5 text-xs text-amber-800 dark:bg-amber-950/30 dark:text-amber-200">
+                      {reportGateReason}
+                    </p>
                   )}
                 </div>
               ) : (
@@ -395,6 +501,71 @@ export default function TaskEditor({ task, onClose }: TaskEditorProps) {
                 <Metric label="Consensus" value={task.consensus_score == null ? "N/A" : `${Math.round(task.consensus_score * 100)}%`} />
               </div>
               {task.review_failure_category && <p className="mt-3 text-xs text-slate-500">Last issue: {task.review_failure_category.replace(/_/g, " ")}</p>}
+            </section>
+
+            <section className="rounded-lg border border-slate-200 p-4 dark:border-slate-700">
+              <h4 className="mb-3 flex items-center gap-1.5 text-sm font-semibold text-slate-900 dark:text-white">
+                {researchValidityReady ? <ShieldCheck size={14} className="text-emerald-500" /> : <AlertTriangle size={14} className="text-amber-500" />}
+                Research Validity
+              </h4>
+              <div className="grid grid-cols-2 gap-2 text-xs">
+                <Metric label="Coding runs" value={researchValidityState?.coding_run_count ?? 0} />
+                <Metric label="Accepted codes" value={`${acceptedCodeApplicationCount}/${codeApplicationCount}`} />
+              </div>
+              <div className="mt-3 rounded bg-slate-50 p-2 text-xs dark:bg-slate-800">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-slate-500">Latest gate</span>
+                  <span className={researchValidityReady ? "font-medium text-emerald-700 dark:text-emerald-300" : "font-medium text-amber-700 dark:text-amber-300"}>
+                    {(needsCodingBeforeReport ? "coding required" : latestPromotionStatus).replace(/_/g, " ")}
+                  </span>
+                </div>
+                {latestReliabilityMethod && (
+                  <p className="mt-1 truncate text-slate-500">{latestReliabilityMethod}</p>
+                )}
+              </div>
+              {blockedReviewItems.length > 0 && (
+                <div className="mt-3 space-y-1.5">
+                  {blockedReviewItems.slice(0, 3).map((item) => (
+                    <div key={item.id} className="rounded border border-amber-200 bg-amber-50 px-2 py-1 text-xs text-amber-800 dark:border-amber-900/40 dark:bg-amber-950/30 dark:text-amber-200">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="truncate">{item.code_id}</span>
+                        <span className="shrink-0">{item.promotion_status.replace(/_/g, " ")}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+              <div className="mt-3 rounded-lg border border-slate-200 bg-slate-50 p-3 text-xs dark:border-slate-700 dark:bg-slate-800/80">
+                <div className="mb-2 flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-1.5 font-semibold text-slate-700 dark:text-slate-200">
+                    <Network size={13} aria-hidden="true" />
+                    Evidence Graph
+                  </div>
+                  <span className="text-[10px] font-medium uppercase tracking-wide text-slate-500">
+                    {traceabilityLoading ? "Loading" : traceability?.retrieval_mode || "No trace"}
+                  </span>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <Metric label="Low-agreement deps" value={traceLowAgreementCount} />
+                  <Metric label="Reconciliations" value={traceReconciliationCount} />
+                  <Metric label="Report links" value={traceReportDependencyCount} />
+                  <Metric label="Graph edges" value={traceEdgeCount} />
+                </div>
+                {traceLowAgreementCount > 0 && (
+                  <p className="mt-2 text-[11px] font-medium text-amber-700 dark:text-amber-300">
+                    Resolve or reject low-agreement evidence before this task can safely feed reporting.
+                  </p>
+                )}
+                {traceability?.contract?.promotion_rule && (
+                  <p className="mt-2 text-[11px] text-slate-500 dark:text-slate-400">
+                    {traceability.contract.promotion_rule.replace(/_/g, " ")}
+                  </p>
+                )}
+              </div>
+              {codingRunError && <p className="mt-2 text-xs text-red-600 dark:text-red-300">{codingRunError}</p>}
+              <button onClick={startCodingRun} disabled={codingRunLoading || !hasActiveTaskProject} className="secondary-action mt-3 disabled:opacity-40">
+                <ShieldCheck size={16} /> {codingRunLoading ? "Coding..." : "Start Coding Run"}
+              </button>
             </section>
 
             <section className="rounded-lg border border-slate-200 p-4 dark:border-slate-700">

@@ -1,5 +1,5 @@
 /** Scenario 47 — Atomic Research Design Extension: comprehensive mock-based tests
- *  for the full evidence chain from Nugget -> Fact -> Insight -> Recommendation ->
+ *  for the full accepted evidence chain from Atom/Nugget -> Fact -> Insight -> Recommendation ->
  *  DesignDecision -> DesignScreen, with traceability verification at every link.
  *
  *  Uses mock endpoints to exercise the full pipeline without API keys.
@@ -232,7 +232,7 @@ export async function run(ctx) {
     }
   }
 
-  // ── 8. Full evidence chain: Nugget → Fact → Insight → Rec → Decision → Screen ──
+  // ── 8. Full accepted evidence chain: Atom/Nugget → Fact → Insight → Rec → Decision → Screen ──
   let chainNuggetId = null;
   let chainFactId = null;
   let chainInsightId = null;
@@ -313,7 +313,7 @@ export async function run(ctx) {
     // Verify the full chain is linked
     const allCreated = chainNuggetId && chainFactId && chainInsightId && chainRecId && chainDecisionId && chainScreenId;
     checks.push({
-      name: "Full evidence chain created: Nugget→Fact→Insight→Rec→Decision→Screen",
+      name: "Full accepted evidence chain created: Atom/Nugget→Fact→Insight→Rec→Decision→Screen",
       passed: !!allCreated,
       detail: `nugget=${!!chainNuggetId}, fact=${!!chainFactId}, insight=${!!chainInsightId}, rec=${!!chainRecId}, decision=${!!chainDecisionId}, screen=${!!chainScreenId}`,
     });

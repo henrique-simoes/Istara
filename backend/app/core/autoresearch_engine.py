@@ -20,6 +20,17 @@ from app.models.project import Project
 
 logger = logging.getLogger(__name__)
 
+AUTORESEARCH_SPINE_POLICY = {
+    "artifact_role": "governed_improvement_proposal",
+    "report_evidence": False,
+    "can_bypass_research_spine": False,
+    "requires_governed_review": True,
+    "summary": (
+        "Autoresearch outputs are process proposals and memories only. "
+        "They are never accepted Atomic Research artifacts or report evidence."
+    ),
+}
+
 
 class AutoresearchEngine:
     """Core optimization loop — all 6 runners use this engine."""
@@ -142,6 +153,7 @@ class AutoresearchEngine:
                         "project_id": project_id,
                         "iteration": i + 1,
                         "baseline_score": best_score,
+                        "research_spine_policy": dict(AUTORESEARCH_SPINE_POLICY),
                     }
                     self._current_experiment = experiment
 
@@ -155,8 +167,17 @@ class AutoresearchEngine:
                             mutation.get("description", "")
                         )
 
-                        # Apply mutation (returns revert function)
+                        experiment["candidate_mutation"] = mutation
+                        experiment["sandboxed"] = True
+                        experiment["governance_required"] = True
+                        experiment["mutation_live_after_measurement"] = False
+
+                        # Apply mutation only inside the measurement sandbox.
+                        # Even "kept" candidates are reverted and become
+                        # governed proposals; production state changes happen
+                        # only after approval through improvement governance.
                         revert_fn = await runner.apply_mutation(target, mutation)
+                        reverted = False
 
                         # Measure
                         try:
@@ -181,18 +202,20 @@ class AutoresearchEngine:
                                 min_delta=min_delta,
                                 confidence_interval_95=measurement["confidence_interval_95"],
                             )
+                            await revert_fn()
+                            reverted = True
+                            experiment["mutation_live_after_measurement"] = False
                             experiment["decision_reason"] = decision_reason
                             if should_keep:
                                 best_score = score
                                 experiment["kept"] = True
-                                experiment["status"] = "completed"
+                                experiment["status"] = "proposal_ready"
                                 logger.info(
-                                    f"  [{i+1}/{max_iterations}] KEPT: "
+                                    f"  [{i+1}/{max_iterations}] PROPOSED: "
                                     f"{hypothesis[:60]} "
                                     f"(delta=+{delta:.4f}, reason={decision_reason})"
                                 )
                             else:
-                                await revert_fn()
                                 experiment["kept"] = False
                                 experiment["status"] = "reverted"
                                 logger.info(
@@ -201,7 +224,8 @@ class AutoresearchEngine:
                                     f"(delta={delta:.4f}, reason={decision_reason})"
                                 )
                         except Exception as e:
-                            await revert_fn()
+                            if not reverted:
+                                await revert_fn()
                             experiment["kept"] = False
                             experiment["status"] = "failed"
                             experiment["error_message"] = str(e)[:500]
@@ -219,6 +243,7 @@ class AutoresearchEngine:
                     # Persist experiment
                     experiment["completed_at"] = datetime.now(timezone.utc).isoformat()
                     await self._persist_experiment(experiment, project_id)
+                    await self._record_validity_telemetry(experiment, project_id)
                     experiment["reasoning_memory_ids"] = await self._record_reasoning_memory(
                         experiment,
                         project_id,
@@ -370,6 +395,11 @@ class AutoresearchEngine:
                         "confidence_interval_95": experiment.get("confidence_interval_95"),
                         "minimum_delta": experiment.get("minimum_delta"),
                         "decision_reason": experiment.get("decision_reason"),
+                        "sandboxed": experiment.get("sandboxed"),
+                        "governance_required": experiment.get("governance_required"),
+                        "mutation_live_after_measurement": experiment.get(
+                            "mutation_live_after_measurement"
+                        ),
                     }
                 ),
                 error_message=experiment.get("error_message", ""),
@@ -392,6 +422,25 @@ class AutoresearchEngine:
         except Exception as exc:
             logger.debug(f"Autoresearch ReasoningBank record skipped: {exc}")
             return []
+
+    async def _record_validity_telemetry(self, experiment: dict, project_id: str) -> None:
+        """Record content-free telemetry for governed autoresearch updates."""
+        try:
+            from app.core.telemetry import telemetry_recorder
+
+            kept = bool(experiment.get("kept"))
+            score = experiment.get("experiment_score")
+            await telemetry_recorder.record_research_validity_event(
+                operation="autoresearch.validity_update",
+                project_id=project_id,
+                agent_id="autoresearch",
+                skill_name=str(experiment.get("loop_type", "")),
+                status="success" if kept else "degraded",
+                quality_score=score if isinstance(score, (int, float)) else None,
+                error_type=None if kept else "autoresearch_candidate_not_kept",
+            )
+        except Exception as exc:
+            logger.debug(f"Autoresearch validity telemetry skipped: {exc}")
 
     async def _register_improvement_proposals(self, experiment: dict, project_id: str) -> list[str]:
         """Register kept autoresearch candidates in the governance promotion lane."""

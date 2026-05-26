@@ -1,6 +1,5 @@
 """Code Application API — view and review code-to-source traceability records."""
 
-import uuid
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
@@ -11,6 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.permissions import get_subject, require_project_access
 from app.models.code_application import CodeApplication
 from app.models.database import get_db
+from app.services.research_validity_service import create_reconciliation_decision
 
 router = APIRouter(prefix="/code-applications")
 
@@ -18,6 +18,8 @@ router = APIRouter(prefix="/code-applications")
 class ReviewAction(BaseModel):
     review_status: str  # "approved" | "rejected" | "modified"
     reviewed_by: str | None = None
+    rationale: str | None = None
+    accepted_code_id: str | None = None
 
 
 def _require_project_id(project_id: str | None) -> str:
@@ -32,6 +34,7 @@ async def get_project_code_applications(
     project_id: str,
     request: Request,
     status: str | None = None,
+    task_id: str | None = None,
     db: AsyncSession = Depends(get_db),
 ):
     """Get all code applications for a project, optionally filtered by review status."""
@@ -42,6 +45,8 @@ async def get_project_code_applications(
     )
     if status:
         query = query.where(CodeApplication.review_status == status)
+    if task_id:
+        query = query.where(CodeApplication.task_id == task_id)
     query = query.order_by(CodeApplication.created_at.desc())
 
     result = await db.execute(query)
@@ -91,12 +96,25 @@ async def review_code_application(
         raise HTTPException(status_code=400, detail="Invalid review status")
 
     subject = get_subject(request)
-    ca.review_status = action.review_status
-    ca.reviewed_by = subject.username or subject.id or action.reviewed_by or "local-user"
-    ca.reviewed_at = datetime.now(timezone.utc)
-    await db.commit()
-    await db.refresh(ca)
-    return ca.to_dict()
+    decision_type = {
+        "approved": "accepted",
+        "rejected": "rejected",
+        "modified": "revised",
+    }[action.review_status]
+    try:
+        decision = await create_reconciliation_decision(
+            db,
+            project_id=scoped_project_id,
+            code_application_id=ca.id,
+            decision_type=decision_type,
+            decided_by=subject.username or subject.id or action.reviewed_by or "local-user",
+            rationale=action.rationale or "",
+            accepted_code_id=action.accepted_code_id,
+            source="human_review",
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return decision["code_application"]
 
 
 @router.post("/{project_id}/bulk-approve")
@@ -106,7 +124,7 @@ async def bulk_approve_high_confidence(
     min_confidence: float = Query(default=0.9, ge=0.0, le=1.0),
     db: AsyncSession = Depends(get_db),
 ):
-    """Bulk-approve all pending code applications above a confidence threshold."""
+    """Bulk-approve pending applications only when confidence and reliability agree."""
     await require_project_access(db, request, project_id, min_role="researcher")
 
     result = await db.execute(
@@ -114,6 +132,8 @@ async def bulk_approve_high_confidence(
             CodeApplication.project_id == project_id,
             CodeApplication.review_status == "pending",
             CodeApplication.confidence >= min_confidence,
+            CodeApplication.promotion_status == "accepted",
+            CodeApplication.reliability_status.in_(("accepted", "reliable", "passed")),
         )
     )
     applications = result.scalars().all()

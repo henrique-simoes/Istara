@@ -68,7 +68,8 @@ async def test_agent_work_cycle_integration(auth_headers):
 
         # 5. Verify memory endpoint is accessible
         response = await ac.get(f"/api/memory/{project.id}", headers=auth_headers)
-        assert response.status_code in (200, 404, 500)
+        assert response.status_code == 200
+        assert isinstance(response.json(), dict)
 
 
 @pytest.mark.asyncio

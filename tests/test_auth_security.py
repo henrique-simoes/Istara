@@ -187,8 +187,103 @@ async def test_public_registration_bootstraps_first_admin_and_closes():
     assert before.json()["registration_enabled"] is True
     assert reg.status_code == 200
     assert reg.json()["user"]["role"] == "admin"
+    assert len(reg.json()["recovery_codes"]) >= 8
     assert after.json()["has_users"] is True
     assert after.json()["registration_enabled"] is False
+
+
+@pytest.mark.asyncio
+async def test_user_can_update_profile_with_current_password(monkeypatch):
+    """Users can change username/email/display name only after password verification."""
+    await init_db()
+    await _clear_auth_accounts()
+    settings.team_mode = True
+    if not settings.jwt_secret:
+        settings.jwt_secret = "test-secret"
+    async def not_breached(_password: str) -> bool:
+        return False
+
+    monkeypatch.setattr("app.api.routes.auth.is_password_breached", not_breached)
+    await _create_team_user(
+        username="security_user",
+        email="security_user@example.com",
+        password="xK9#mP2$vL7nQ4@wR1!",
+    )
+
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        login = await ac.post(
+            "/api/auth/login",
+            json={"username": "security_user", "password": "xK9#mP2$vL7nQ4@wR1!"},
+        )
+        token = login.json()["token"]
+        denied = await ac.patch(
+            "/api/auth/profile",
+            json={"current_password": "wrong", "username": "security_user_2"},
+            headers={"Authorization": f"Bearer {token}"},
+        )
+        updated = await ac.patch(
+            "/api/auth/profile",
+            json={
+                "current_password": "xK9#mP2$vL7nQ4@wR1!",
+                "username": "security_user_2",
+                "email": "security_user_2@example.com",
+                "display_name": "Security User Two",
+            },
+            headers={"Authorization": f"Bearer {token}"},
+        )
+
+    assert denied.status_code == 401
+    assert updated.status_code == 200
+    assert updated.json()["user"]["username"] == "security_user_2"
+    assert updated.json()["user"]["email"] == "security_user_2@example.com"
+
+
+@pytest.mark.asyncio
+async def test_user_can_change_password_and_old_password_stops_working(monkeypatch):
+    """Password changes require the current password and immediately affect login."""
+    await init_db()
+    await _clear_auth_accounts()
+    settings.team_mode = True
+    if not settings.jwt_secret:
+        settings.jwt_secret = "test-secret"
+    async def not_breached(_password: str) -> bool:
+        return False
+
+    monkeypatch.setattr("app.api.routes.auth.is_password_breached", not_breached)
+    await _create_team_user(
+        username="password_user",
+        email="password_user@example.com",
+        password="xK9#mP2$vL7nQ4@wR1!",
+    )
+
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        login = await ac.post(
+            "/api/auth/login",
+            json={"username": "password_user", "password": "xK9#mP2$vL7nQ4@wR1!"},
+        )
+        token = login.json()["token"]
+        changed = await ac.post(
+            "/api/auth/password/change",
+            json={
+                "current_password": "xK9#mP2$vL7nQ4@wR1!",
+                "new_password": "zR8$vQ3#nL6!pT2@fresh",
+            },
+            headers={"Authorization": f"Bearer {token}"},
+        )
+        old_login = await ac.post(
+            "/api/auth/login",
+            json={"username": "password_user", "password": "xK9#mP2$vL7nQ4@wR1!"},
+        )
+        new_login = await ac.post(
+            "/api/auth/login",
+            json={"username": "password_user", "password": "zR8$vQ3#nL6!pT2@fresh"},
+        )
+
+    assert changed.status_code == 200
+    assert old_login.status_code == 401
+    assert new_login.status_code == 200
 
 
 @pytest.mark.asyncio

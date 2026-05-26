@@ -12,6 +12,7 @@ test("real-user corpus materializes representative shared document volume", () =
     const summary = generateCorpus({ outputDir: join(root, "corpus") });
     assert.ok(summary.document_count >= 120);
     assert.ok(summary.canonical_corpus.total_sources >= 120);
+    assert.ok(summary.canonical_corpus.total_words >= 1_000_000);
     assert.ok(summary.shared_corpus.canonical_count >= 120);
     assert.equal(summary.shared_corpus.fixture_count, 0);
     assert.equal(summary.shared_corpus.generated_count, 0);

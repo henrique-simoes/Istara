@@ -6,6 +6,7 @@ from __future__ import annotations
 import argparse
 import os
 import platform
+import shutil
 import sys
 from pathlib import Path
 
@@ -31,6 +32,15 @@ def main(argv: list[str] | None = None) -> int:
         help="Maximum mutmut worker children. Defaults to 1 on macOS, up to 4 elsewhere.",
     )
     parser.add_argument("mutants", nargs="*", help="Optional mutmut mutant names to rerun.")
+    parser.add_argument(
+        "--keep-mutants",
+        action="store_true",
+        help=(
+            "Keep mutmut's generated backend/mutants tree after a successful run. "
+            "By default the wrapper removes it so repository gates do not treat "
+            "generated mutants as source files."
+        ),
+    )
     args = parser.parse_args(argv)
 
     repo_root = Path(__file__).resolve().parent.parent
@@ -46,8 +56,24 @@ def main(argv: list[str] | None = None) -> int:
     import mutmut.__main__ as mutmut_main
 
     mutmut_main.setproctitle = lambda _title: None
-    mutmut_main._run(tuple(args.mutants), args.max_children)
-    return 0
+    exit_code = 0
+    try:
+        result = mutmut_main._run(tuple(args.mutants), args.max_children)
+        if isinstance(result, int):
+            exit_code = result
+    except SystemExit as exc:
+        raw_code = exc.code
+        if raw_code in (None, 0):
+            exit_code = 0
+        elif isinstance(raw_code, int):
+            exit_code = raw_code
+        else:
+            exit_code = 1
+        if exit_code:
+            raise
+    if exit_code == 0 and not args.keep_mutants:
+        shutil.rmtree(backend_root / "mutants", ignore_errors=True)
+    return exit_code
 
 
 if __name__ == "__main__":

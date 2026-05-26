@@ -44,6 +44,12 @@ interface ChainDiagnostics {
   supporting_counts?: Partial<Record<FindingType, number>>;
   has_supporting_evidence?: boolean;
   missing_links?: string[];
+  research_validity?: {
+    task_ids?: string[];
+    report_allowed?: boolean;
+    task_gates?: Record<string, { reason?: string; report_allowed?: boolean }>;
+    policy?: string;
+  };
 }
 
 /** Map finding types to what can be linked TO them */
@@ -179,6 +185,11 @@ export default function AtomicDrilldown({ projectId, finding: initialFinding, on
     .filter((type) => type !== activeFinding.type)
     .reduce((sum, type) => sum + (chain[type]?.length || 0), 0);
   const missingLinks = diagnostics.missing_links || [];
+  const researchValidity = diagnostics.research_validity;
+  const validityBlocked = Boolean(
+    researchValidity?.task_ids?.length && researchValidity.report_allowed === false
+  );
+  const firstBlockedGate = Object.values(researchValidity?.task_gates || {}).find((gate) => gate.report_allowed === false);
 
   return (
     <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
@@ -401,6 +412,14 @@ export default function AtomicDrilldown({ projectId, finding: initialFinding, on
                     {missingLinks.includes("insight_to_fact") && "The chain reaches insights, but those insights are not linked to supporting facts."}
                     {missingLinks.includes("fact_to_nugget") && "The chain reaches facts, but those facts are not linked to source evidence."}
                     {missingLinks.includes("nugget_to_fact") && "This source evidence has not been synthesized into facts yet."}
+                  </p>
+                </div>
+              )}
+              {validityBlocked && (
+                <div className="mb-4 ml-8 rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800 dark:border-amber-800 dark:bg-amber-900/20 dark:text-amber-200">
+                  <p className="font-medium">Research-validity gate is blocking promotion.</p>
+                  <p className="mt-1">
+                    {firstBlockedGate?.reason || "Resolve coding, reliability, reconciliation, or Done-task gates before this chain can feed reports."}
                   </p>
                 </div>
               )}

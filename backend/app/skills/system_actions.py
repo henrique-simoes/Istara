@@ -2,13 +2,9 @@
 
 These tools allow agents to perform any user-level operation through chat:
 creating tasks, searching documents, attaching files, moving tasks, querying
-findings, and delegating work to other agents via A2A.
-
-Architecture:
-- OPENAI_TOOLS: OpenAI-compatible tool definitions passed via the `tools` API
-  parameter for native function calling (LM Studio, OpenAI, etc.)
-- SYSTEM_TOOLS: Legacy custom format kept for backward compatibility
-- build_tools_prompt(): Text-based fallback for models without native tool support
+findings, and delegating work to other agents via A2A. `OPENAI_TOOLS` supports
+native function calling, while `SYSTEM_TOOLS` and `build_tools_prompt()` keep the
+text fallback path working for models without native tool support.
 """
 
 import json
@@ -23,12 +19,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
 from app.core.orchestrator_runtime import wake_orchestrator
+from app.core.task_contracts import ensure_project_documents, normalize_task_priority
 from app.models.database import async_session
 from app.models.task import Task, TaskStatus
 from app.models.project import Project
 from app.models.document import Document
 from app.models.finding import Nugget, Fact, Insight, Recommendation
 from app.models.agent import Agent
+from app.services.finding_validity_service import finding_research_validity_map
 from app.skills.system_web_context_actions import (
     _exec_browse_website,
     _exec_context_expand,
@@ -50,13 +48,7 @@ def _resolve_project_folder(project, project_id: str) -> Path:
     return Path(settings.upload_dir) / project_id
 
 
-_BUILTIN_UNIVERSAL_AGENTS = {
-    "istara-main",
-    "istara-devops",
-    "istara-ui-audit",
-    "istara-ux-eval",
-    "istara-sim",
-}
+_BUILTIN_UNIVERSAL_AGENTS = {"istara-main", "istara-devops", "istara-ui-audit", "istara-ux-eval", "istara-sim"}
 
 
 async def _validate_agent_for_project(
@@ -107,7 +99,7 @@ OPENAI_TOOLS: list[dict] = [
                     },
                     "priority": {
                         "type": "string",
-                        "enum": ["critical", "high", "medium", "low"],
+                        "enum": ["urgent", "high", "medium", "low"],
                         "description": "Task priority (default: medium)",
                     },
                     "instructions": {
@@ -343,7 +335,7 @@ OPENAI_TOOLS: list[dict] = [
                     "description": {"type": "string", "description": "New description"},
                     "priority": {
                         "type": "string",
-                        "enum": ["critical", "high", "medium", "low"],
+                        "enum": ["urgent", "high", "medium", "low"],
                         "description": "New priority",
                     },
                     "instructions": {"type": "string", "description": "New specific instructions"},
@@ -464,7 +456,7 @@ SYSTEM_TOOLS = [
             "priority": {
                 "type": "string",
                 "required": False,
-                "description": "critical, high, medium, or low. Default: medium",
+                "description": "urgent, high, medium, or low. Default: medium",
             },
             "instructions": {
                 "type": "string",
@@ -634,7 +626,7 @@ SYSTEM_TOOLS = [
             "priority": {
                 "type": "string",
                 "required": False,
-                "description": "New priority: critical, high, medium, low",
+                "description": "New priority: urgent, high, medium, low",
             },
             "instructions": {
                 "type": "string",
@@ -796,6 +788,14 @@ async def execute_tool(
 
 async def _exec_create_task(params: dict, project_id: str, agent_id: str) -> str:
     async with async_session() as db:
+        input_document_ids, doc_error = await ensure_project_documents(
+            db,
+            project_id,
+            params.get("input_document_ids", []),
+        )
+        if doc_error:
+            return doc_error
+
         result = await db.execute(
             select(Task.position)
             .where(Task.project_id == project_id)
@@ -810,10 +810,10 @@ async def _exec_create_task(params: dict, project_id: str, agent_id: str) -> str
             title=params["title"],
             description=params.get("description", ""),
             skill_name=params.get("skill_name", ""),
-            priority=params.get("priority", "medium"),
+            priority=normalize_task_priority(params.get("priority", "medium")),
             instructions=params.get("instructions", ""),
             user_context=params.get("user_context", ""),
-            input_document_ids=json.dumps(params.get("input_document_ids", [])),
+            input_document_ids=json.dumps(input_document_ids),
             output_document_ids=json.dumps([]),
             urls=json.dumps(params.get("urls", [])),
             position=max_pos + 1,
@@ -986,9 +986,21 @@ async def _exec_search_findings(params: dict, project_id: str, agent_id: str) ->
                 query = query.where(model_cls.phase == phase)
 
             res = await db.execute(query.limit(5))
-            for item in res.scalars().all():
+            items = list(res.scalars().all())
+            validity_by_id = await finding_research_validity_map(
+                db,
+                project_id=project_id,
+                findings=items,
+            )
+            for item in items:
+                validity = validity_by_id.get(str(item.id), {})
+                status = "accepted" if validity.get("report_allowed") else validity.get("status", "provisional")
+                report_note = "reportable" if validity.get("report_allowed") else "not reportable"
                 text_preview = item.text[:150] + "..." if len(item.text) > 150 else item.text
-                results.append(f"- [{type_name}] {text_preview} (ID: {item.id})")
+                results.append(
+                    f"- [{type_name} | {status} | {report_note}] {text_preview} "
+                    f"(ID: {item.id})"
+                )
 
         if not results:
             return f"No findings found matching '{search}'."
@@ -1128,7 +1140,8 @@ async def _exec_update_task(params: dict, project_id: str, agent_id: str) -> str
         updated_fields = []
         for field in ("title", "description", "priority", "instructions", "skill_name"):
             if field in params and params[field] is not None:
-                setattr(task, field, params[field])
+                value = normalize_task_priority(params[field]) if field == "priority" else params[field]
+                setattr(task, field, value)
                 updated_fields.append(field)
 
         await db.commit()

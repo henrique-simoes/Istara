@@ -12,6 +12,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.design_screen import DesignBrief, DesignScreen
 from app.models.finding import Insight, Recommendation
+from app.services.finding_validity_service import (
+    finding_research_validity_map,
+    provisional_finding_validity,
+)
 from app.services.laws_of_ux_service import laws_service
 
 
@@ -27,6 +31,7 @@ class DesignSeedFinding:
     impact: str | None = None
     priority: str | None = None
     effort: str | None = None
+    research_validity: dict[str, Any] | None = None
 
     def to_dict(self) -> dict[str, Any]:
         data: dict[str, Any] = {
@@ -43,6 +48,8 @@ class DesignSeedFinding:
             data["priority"] = self.priority
         if self.effort:
             data["effort"] = self.effort
+        if self.research_validity:
+            data["research_validity"] = self.research_validity
         return data
 
 
@@ -88,20 +95,15 @@ async def resolve_seed_findings(
     if not normalized:
         return [], []
 
-    by_id: dict[str, DesignSeedFinding] = {}
+    row_by_id: dict[str, Any] = {}
+    kind_by_id: dict[str, str] = {}
 
     insight_rows = await db.execute(
         select(Insight).where(Insight.project_id == project_id, Insight.id.in_(normalized))
     )
     for insight in insight_rows.scalars().all():
-        by_id[insight.id] = DesignSeedFinding(
-            id=insight.id,
-            type="insight",
-            text=insight.text,
-            phase=insight.phase,
-            confidence=insight.confidence,
-            impact=insight.impact,
-        )
+        row_by_id[insight.id] = insight
+        kind_by_id[insight.id] = "insight"
 
     rec_rows = await db.execute(
         select(Recommendation).where(
@@ -110,13 +112,42 @@ async def resolve_seed_findings(
         )
     )
     for rec in rec_rows.scalars().all():
-        by_id[rec.id] = DesignSeedFinding(
-            id=rec.id,
+        row_by_id[rec.id] = rec
+        kind_by_id[rec.id] = "recommendation"
+
+    validity_by_id = await finding_research_validity_map(
+        db,
+        project_id=project_id,
+        findings=list(row_by_id.values()),
+    )
+
+    by_id: dict[str, DesignSeedFinding] = {}
+    for item_id, row in row_by_id.items():
+        validity = validity_by_id.get(
+            item_id,
+            provisional_finding_validity(
+                reason="Design seed finding is provisional until accepted through the Research Spine."
+            ),
+        )
+        if kind_by_id[item_id] == "insight":
+            by_id[item_id] = DesignSeedFinding(
+                id=row.id,
+                type="insight",
+                text=row.text,
+                phase=row.phase,
+                confidence=row.confidence,
+                impact=row.impact,
+                research_validity=validity,
+            )
+            continue
+        by_id[item_id] = DesignSeedFinding(
+            id=row.id,
             type="recommendation",
-            text=rec.text,
-            phase=rec.phase,
-            priority=rec.priority,
-            effort=rec.effort,
+            text=row.text,
+            phase=row.phase,
+            priority=row.priority,
+            effort=row.effort,
+            research_validity=validity,
         )
 
     resolved = [by_id[item] for item in normalized if item in by_id]
@@ -129,10 +160,25 @@ def build_seeded_prompt(prompt: str, findings: list[DesignSeedFinding]) -> str:
     if not findings:
         return prompt
     lines = [
-        f"- [{finding.type}:{finding.id}] {finding.text}"
+        f"- [{finding.type}:{finding.id} {_seed_finding_status_label(finding)}] {finding.text}"
         for finding in findings
     ]
-    return "Based on these project-local research findings:\n" + "\n".join(lines) + f"\n\nDesign: {prompt}"
+    return (
+        "Use these project-local research seed findings as design context. "
+        "Preserve each Research Spine status: provisional sources are candidate "
+        "context only, not accepted report evidence.\n"
+        + "\n".join(lines)
+        + f"\n\nDesign: {prompt}"
+    )
+
+
+def _seed_finding_status_label(finding: DesignSeedFinding) -> str:
+    validity = finding.research_validity or provisional_finding_validity(
+        reason="Design seed finding is provisional until accepted through the Research Spine."
+    )
+    if validity.get("report_allowed") is True:
+        return "accepted"
+    return str(validity.get("status") or "provisional")
 
 
 def _first_law_match(text: str) -> dict[str, Any] | None:
@@ -158,6 +204,7 @@ async def hydrate_design_brief(db: AsyncSession, brief: DesignBrief) -> dict[str
 
     source_findings: list[dict[str, Any]] = []
     recommendations: list[dict[str, Any]] = []
+    resolved_rows: list[Any] = []
     ux_laws: dict[str, str] = {}
 
     if insight_ids:
@@ -168,6 +215,7 @@ async def hydrate_design_brief(db: AsyncSession, brief: DesignBrief) -> dict[str
         for iid in insight_ids:
             insight = insight_by_id.get(iid)
             if insight:
+                resolved_rows.append(insight)
                 source_findings.append(
                     {
                         "id": insight.id,
@@ -191,6 +239,7 @@ async def hydrate_design_brief(db: AsyncSession, brief: DesignBrief) -> dict[str
             rec = rec_by_id.get(rid)
             if not rec:
                 continue
+            resolved_rows.append(rec)
             law = _first_law_match(rec.text)
             if law:
                 ux_laws[law["id"]] = law["name"]
@@ -208,8 +257,10 @@ async def hydrate_design_brief(db: AsyncSession, brief: DesignBrief) -> dict[str
             recommendations.append(rec_payload)
             source_findings.append(rec_payload)
 
+    await _attach_source_validity(db, brief.project_id, source_findings, resolved_rows)
     data["source_findings"] = source_findings
     data["recommendations"] = recommendations
+    data["research_validity"] = summarize_source_validity(source_findings)
     data["ux_laws"] = list(ux_laws.values())
     return data
 
@@ -230,7 +281,19 @@ async def resolve_screen_source_findings(
         ids,
         max_items=max_items,
     )
-    return [finding.to_dict() for finding in resolved]
+    payloads = [finding.to_dict() for finding in resolved]
+    resolved_rows = await _load_source_finding_rows(db, screen.project_id, ids)
+    await _attach_source_validity(db, screen.project_id, payloads, resolved_rows)
+    return payloads
+
+
+async def hydrate_design_screen(db: AsyncSession, screen: DesignScreen) -> dict[str, Any]:
+    """Serialize a screen with Research Spine status for its source findings."""
+    data = screen.to_dict()
+    source_findings = await resolve_screen_source_findings(db, screen)
+    data["source_finding_details"] = source_findings
+    data["research_validity"] = summarize_source_validity(source_findings)
+    return data
 
 
 def build_dev_spec_content(screen: DesignScreen, source_findings: list[dict[str, Any]]) -> str:
@@ -261,10 +324,82 @@ def build_dev_spec_content(screen: DesignScreen, source_findings: list[dict[str,
             label = finding.get("type", "finding")
             fid = finding.get("id", "")
             text = finding.get("text", "")
-            lines.append(f"- [{label}:{fid}] {text}")
+            status = finding.get("research_validity", {}).get("status")
+            status_note = f" ({status})" if status and status != "accepted" else ""
+            lines.append(f"- [{label}:{fid}]{status_note} {text}")
     if screen.html_content:
         lines.extend(["", "## HTML", "```html", screen.html_content, "```"])
     return "\n".join(lines)
+
+
+async def _load_source_finding_rows(
+    db: AsyncSession,
+    project_id: str,
+    source_ids: list[str],
+) -> list[Any]:
+    resolved: dict[str, Any] = {}
+    for model in (Insight, Recommendation):
+        rows = await db.execute(
+            select(model).where(
+                model.project_id == project_id,
+                model.id.in_(source_ids),
+            )
+        )
+        for row in rows.scalars().all():
+            resolved[str(row.id)] = row
+    return [resolved[item] for item in source_ids if item in resolved]
+
+
+async def _attach_source_validity(
+    db: AsyncSession,
+    project_id: str,
+    payloads: list[dict[str, Any]],
+    rows: list[Any],
+) -> None:
+    validity = await finding_research_validity_map(db, project_id=project_id, findings=rows)
+    for payload in payloads:
+        payload["research_validity"] = validity.get(
+            str(payload.get("id", "")),
+            provisional_finding_validity(
+                reason="Source finding is provisional until accepted through the Research Spine."
+            ),
+        )
+
+
+def summarize_source_validity(source_findings: list[dict[str, Any]]) -> dict[str, Any]:
+    source_ids = [str(item.get("id", "")) for item in source_findings if item.get("id")]
+    accepted_ids = [
+        str(item.get("id", ""))
+        for item in source_findings
+        if item.get("id") and item.get("research_validity", {}).get("report_allowed") is True
+    ]
+    blocked_ids = [item for item in source_ids if item not in accepted_ids]
+    if source_ids and not blocked_ids:
+        return {
+            "status": "accepted",
+            "report_allowed": True,
+            "done_approved": True,
+            "source_finding_ids": source_ids,
+            "accepted_source_ids": accepted_ids,
+            "blocked_source_ids": [],
+            "reason": "All handoff source findings are accepted through the Research Spine.",
+            "policy": "interface_handoff_requires_accepted_spine_sources",
+        }
+    payload = provisional_finding_validity(
+        reason=(
+            "Interface handoff remains provisional until every source finding is "
+            "accepted/reconciled through a human-approved Done task."
+        )
+    )
+    payload.update(
+        {
+            "source_finding_ids": source_ids,
+            "accepted_source_ids": accepted_ids,
+            "blocked_source_ids": blocked_ids,
+            "policy": "interface_handoff_requires_accepted_spine_sources",
+        }
+    )
+    return payload
 
 
 def build_figma_import_html(

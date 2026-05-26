@@ -241,11 +241,11 @@
   <p class="concept-line"><strong>Concepts:</strong> wcag</p>
 </header>
 <h2 id="implementation-summary">Implementation Summary</h2>
-<p>User management supports team member visibility and administrative user operations.</p>
+<p>User management supports team member visibility and administrative user operations through <code>/auth/users</code>.</p>
 <h2 id="frontend-surface">Frontend Surface</h2>
 <ul>
 <li><code>frontend/src/components/common/UserManagement.tsx</code></li>
-<li><code>backend/app/api/routes/admin.py</code></li>
+<li><code>backend/app/api/routes/auth.py</code></li>
 </ul>
 <h2 id="state-api-and-backend-contracts">State, API, And Backend Contracts</h2>
 <h3 id="stores">Stores</h3>
@@ -254,7 +254,7 @@
 </ul>
 <h3 id="api-and-backend">API And Backend</h3>
 <ul>
-<li><code>backend/app/api/routes/admin.py</code></li>
+<li><code>backend/app/api/routes/auth.py</code></li>
 </ul>
 <h2 id="architecture-notes">Architecture Notes</h2>
 <ul>
@@ -264,11 +264,11 @@
 </ul>
 <h2 id="agents-skills-llm-mcp-and-permissions">Agents, Skills, LLM, MCP, And Permissions</h2>
 <ul>
-<li>No direct agent, skill, LLM, or MCP behavior is asserted beyond the cited source files.</li>
+<li>User creation is global-admin scoped and returns one-time recovery codes for the new account. Researchers do not call this admin-only surface in normal journeys.</li>
 </ul>
 <h2 id="tests-and-verification">Tests And Verification</h2>
 <ul>
-<li>No focused test reference recorded yet.</li>
+<li><code>tests/test_auth_security.py</code></li>
 </ul>
 <h2 id="related-features">Related Features</h2>
 <ul>

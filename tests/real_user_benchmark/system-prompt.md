@@ -18,6 +18,7 @@ Do not treat a failure as an Istara product bug until you have proven it is not 
 - Run Compass Forge gates before and after meaningful changes.
 - Attach command, gate, review, and run evidence to Compass Forge tasks.
 - Do not touch, delete, move, prune, or clean `LLMs/` or `Model_Finetuning/`.
+- When a clean local benchmark state is required, use `scripts/reset_test_environment.py` with `ISTARA_DESTRUCTIVE_TEST_RESET=1`; it seeds admin `admin` / `istara123`, creates on-demand `researcher_N` accounts, leaves zero projects, and preserves local model artifact folders.
 - Use the default one bounded configured LLM target/model profile for normal comparison runs.
 - When explicitly running multi-donor compute benchmarks, use only the bounded per-donor profiles requested by the run configuration. Each additional model must already be provisioned; never download or silently load a missing secondary heavy model.
 - For comparison runs, use the shared live-test donated compute profile by default: `google/gemma-4-e4b` from Istara's gitignored/keychain LM Studio/OpenAI-compatible configuration.
@@ -78,8 +79,8 @@ The simulation must:
 - Verify compute donation with evidence: relay/client registration, project-scoped `/api/compute/stats?project_id=...`, backend route logs or counter deltas, and an actual chat response.
 - Keep technical donor registration/route probes separate from the agentic workflow check. Real research chat, tasks, and reports should use Istara's normal model manager and scheduler; after that work, record selected/served counter deltas as natural orchestration evidence instead of forcing a specific donor.
 - Treat server sandboxing and client/donor sandboxing as separate concerns. The benchmark may target an Istara orchestrator already running outside Docker while still starting disposable researcher and donor containers.
-- For multi-donor runs, ask or read how many compute donor containers are required, assign one connection string per donor, preflight each donor's own LM Studio/OpenAI-compatible endpoint, and wait for the requested relay-node count in project-scoped `/api/compute/stats?project_id=...`.
-- The default first donor is Gemma (`google/gemma-4-e4b`). A second Qwen donor (`Qwen3.5-4B`) must be explicitly provisioned through a separate endpoint/profile; missing Qwen provisioning is a benchmark blocker, not something to fake or auto-download.
+- For multi-donor runs, ask or read how many compute donor containers are required, assign one connection string per donor, preflight each donor's own LM Studio/OpenAI-compatible or local llama.cpp endpoint, start only preflight-passing relays, wait for the requested relay-node count in project-scoped `/api/compute/stats?project_id=...`, then require every required donor to serve a bounded technical probe before claiming multi-donor readiness.
+- The default first donor is Gemma (`google/gemma-4-e4b`). For the local three-model benchmark, use `ISTARA_BENCHMARK_DONOR_TOPOLOGY=macstudio-colima-qwen-gemma` or `npm --prefix tests/real_user_benchmark run probe:deep:three-model` so the Mac Studio Gemma donor is paired with the already-downloaded Qwen3.5 4B Q4 and Gemma 4 E2B Q4 llama.cpp donors. Missing local GGUF files or endpoints are benchmark blockers, not something to fake or auto-download.
 - Do not claim ensemble/MoA health unless multiple required donor nodes are registered and chat/compute evidence shows the orchestrator can use donated compute through normal scheduling or explicit route evidence.
 - If donation fails, iterate until the technical reason is known: wrong model id, model not loaded, token/auth issue, container networking, server direct-provider fallback, route scoring, circuit breaker, or missing product support.
 - Do not proceed to score chat/task/research quality as successful until live chat returns real output.
@@ -122,6 +123,7 @@ Create a timestamped result folder for every run. Capture:
 - registry/alignment data that links the run to existing Istara testing/eval suites and industry-style benchmark evidence practices
 - per-donor compute preflight, relay registration, connection-string materialization, and multi-donor/ensemble health evidence when multi-donor mode is enabled
 - researcher actor, collaborative chat, task review/revision/approval, interview-process, approved-task-backed findings, and natural compute orchestration evidence
+- Research Spine coding/traceability/telemetry evidence and governed self-improvement evidence for ReasoningBank, Memento skill health, Meta-Hyperagent, Autoresearch, and improvement proposals
 
 ## Final Deliverables
 
@@ -129,7 +131,7 @@ Create a timestamped result folder for every run. Capture:
 - README with rerun instructions, optional live credential paths, and credential-free fallbacks.
 - Benchmark playbook with persona, project narrative, corpus, feature matrix, and rubric.
 - Completed full run with at least 100 chat turns and 50 human-approved tasks, unless blocked by a proven product issue.
-- Scorecard out of 100 covering install, onboarding, chat, grounding, task execution, human review, approved-task-backed reports/findings, integrations, Autoresearch/loops, URL fetching, interfaces, stability, performance, researcher usefulness, multi-user collaboration, interviews, and agentic orchestration.
+- Scorecard out of 100 covering install, onboarding, chat, grounding, task execution, human review, approved-task-backed reports/findings, integrations, Autoresearch/loops/telemetry/governed learning, URL fetching, interfaces, stability, performance, researcher usefulness, multi-user collaboration, interviews, and agentic orchestration.
 - Actionable product improvements, especially missing developer test harnesses.
 
 ## Standard Of Success

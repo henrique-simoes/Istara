@@ -79,6 +79,8 @@ Run commands from the repository root unless the command says otherwise.
 | Real-user plan | `npm --prefix tests/real_user_benchmark run plan` | You want a credential-free benchmark plan/corpus/scaffold. | No |
 | Real-user syntax | `npm --prefix tests/real_user_benchmark run check` | You changed the benchmark harness and want JS syntax coverage. | No |
 | Real-user probe | `npm --prefix tests/real_user_benchmark run probe` | You have running services and want a bounded realistic UX researcher run. | Yes |
+| Real-user deep probe | `npm --prefix tests/real_user_benchmark run probe:deep` | You want video/demo material plus full canonical corpus upload, Research Spine traceability, telemetry, donation, and governed self-improvement evidence. | Yes |
+| Real-user three-model deep probe | `npm --prefix tests/real_user_benchmark run probe:deep:three-model` | You want the validated Mac Studio LM Studio donor plus two Colima llama.cpp donors, two researchers, canonical corpus upload, Research Spine traceability, telemetry, donation, and governed self-improvement evidence. | Yes |
 | Real-user full | `npm --prefix tests/real_user_benchmark run full` | You are deliberately running the sandboxed comparison benchmark. | Yes, Docker/Colima and often live LLM |
 
 ## Current Suite Topology
@@ -199,19 +201,74 @@ npm run test:headed
 npm run test:scenario -- 77
 ```
 
-Scenario 20 verifies the full registered skill catalog, fixture coverage, and
-skill-health surface, then executes a deterministic bounded live subset by
-default (`ISTARA_SCENARIO20_DEFAULT_SKILL_LIMIT`, default `1`). For a deliberate
-full live skill sweep, set `ISTARA_SCENARIO20_SKILL_LIMIT` to the current
-registered skill count; the default full simulation suite should not spend its
-entire timeout budget executing every skill when the registration contract has
-already been checked.
+Scenario 20 verifies the full registered skill catalog, canonical coverage, and
+skill-health surface, then executes a bounded live subset of 3 skills by default
+(`ISTARA_SCENARIO20_DEFAULT_SKILL_LIMIT`, default `3`). When live LLM execution
+is available, Scenario 20 may ask Istara to choose a coherent 3-skill test plan
+from the registered catalog and canonical skill-coverage map; otherwise it uses
+seeded logical random selection (`ISTARA_SCENARIO20_SKILL_SEED`) that preserves
+phase diversity. Set `ISTARA_SCENARIO20_AGENTIC_SELECTION=0` to force the seeded
+fallback. For a deliberate full live skill sweep, set
+`ISTARA_SCENARIO20_SKILL_LIMIT` to the current registered skill count; the
+default full simulation suite should not spend its entire timeout budget
+executing every skill when the registration contract has already been checked.
 
 Document-heavy product tests should use the canonical synthetic UX research
 corpus in `tests/document_corpus/canonical/` through
 `tests/document_corpus/shared-corpus.mjs`. Use named manifest slices for focused
-checks and reserve tiny ad hoc files for parser/unit tests that are explicitly
-labeled as such.
+checks, including `coding-reliability`, `graph-synthesis`, and
+`low-consensus-review`, and reserve tiny ad hoc files for parser/unit tests
+that are explicitly labeled as such.
+
+The canonical corpus is intentionally deep enough for realistic research
+evaluation rather than fixture-only parsing. The manifest records 174 long-form
+synthetic upload-compatible sources and more than three million words/row-word
+equivalents across interviews, diary studies, usability tests, surveys,
+support tickets, analytics, accessibility audits, competitor benchmarks,
+stakeholder memos, multilingual/privacy material, and report-readiness sources.
+Use selectors for speed; do not replace representative product tests with tiny
+10-20 source fallbacks.
+
+The canonical corpus is also an upload contract. Manifest sources must use
+Istara upload-processable file types, currently text/markdown, PDF, DOCX, CSV,
+and supported audio. If a new corpus method needs an archive/export format that
+Istara cannot ingest, add product support or mark it as a narrow parser fixture
+instead of putting it in the product-level canonical upload path.
+
+Use `scripts/reset_test_environment.py` when a live harness needs a clean local
+test server. The script is destructive, local SQLite only by default, and
+requires `ISTARA_DESTRUCTIVE_TEST_RESET=1` plus
+`--confirm DELETE-ISTARA-LOCAL-TEST-DATA`. It deletes users, admins, projects,
+local app artifacts, marathon outputs, simulation outputs, and real-user
+benchmark outputs, then seeds admin `admin` / `istara123` and an on-demand count
+of `researcher_N` users with password `istara123`. It leaves zero projects so
+E2E, simulation, marathon, Colima/Docker, and benchmark runs create clearly
+named per-suite projects. It never touches `LLMs/` or `Model_Finetuning/`.
+
+Example:
+
+```bash
+ISTARA_DESTRUCTIVE_TEST_RESET=1 python scripts/reset_test_environment.py \
+  --confirm DELETE-ISTARA-LOCAL-TEST-DATA --researchers 2
+```
+
+Research-validity tests must follow the architecture contract in
+`docs/architecture/research-validity-contract.md`: source material becomes
+stable evidence units, independent coders apply a governed codebook, reliability
+is computed on evidence-unit matrices, low agreement goes to reconciliation or
+human review, and reports draw only from accepted evidence attached to approved
+Done tasks. Tests must keep Hybrid RAG exact-evidence behavior separate from
+Evidence Graph / GraphRAG synthesis, and compression tests must prove protected
+methodology/codebook/evidence/reliability blocks survive trimming.
+
+Self-improvement tests must follow
+`docs/architecture/self-improvement-governance-contract.md`: autoresearch
+mutations are sandboxed and reverted before proposals, Meta-Hyperagent variants
+are project-scoped read-time overrides, Memento learns from verified/spine-valid
+outcomes rather than raw tool success, ReasoningBank remains process memory,
+model/skill rankings are project-scoped, BM25 fallback preserves provenance or
+marks hits non-promotional, and GraphRAG fails closed when Done-task or evidence
+gates are missing.
 
 Use `tests/real_user_benchmark/package.json` for benchmark modes:
 
@@ -219,6 +276,7 @@ Use `tests/real_user_benchmark/package.json` for benchmark modes:
 npm --prefix tests/real_user_benchmark run plan
 npm --prefix tests/real_user_benchmark run check
 npm --prefix tests/real_user_benchmark run probe
+npm --prefix tests/real_user_benchmark run probe:deep:three-model
 npm --prefix tests/real_user_benchmark run full
 ```
 
@@ -227,12 +285,14 @@ donated compute plus non-empty live chat. For harness debugging only, the README
 documents explicit opt-out variables.
 
 For real multi-donor compute validation, each required donor must resolve to a
-distinct provider/host endpoint. The real-user benchmark can start opt-in
-per-donor llama.cpp or Ollama model server containers with Q4/4-bit guardrails
-before it starts relay containers; see
-`tests/real_user_benchmark/README.md` for the Colima/Docker model sandbox
-variables. This mode is for deliberate live benchmark runs only and does not
-download models unless explicitly configured to do so.
+distinct provider/host endpoint. The canonical three-model probe is
+host-managed: Mac Studio runs Istara, the admin session, and the LM Studio
+donor; Colima runs only two researcher/client simulations plus their Qwen/Gemma
+llama.cpp donor endpoints. It skips the Istara server sandbox, starts disposable
+client/donor containers, removes benchmark-owned containers, and stops Colima
+after the run unless keep/debug flags are set. This mode is for deliberate live
+benchmark runs only and does not download models unless explicitly configured
+to do so.
 
 ## Live LLM Contract
 

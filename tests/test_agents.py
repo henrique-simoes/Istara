@@ -11,10 +11,11 @@ from app.core.auth import create_token
 from app.main import app
 from app.models.agent import A2AMessage, Agent, AgentRole, AgentState, HeartbeatStatus
 from app.models.database import async_session, init_db
+from app.models.document import Document
 from app.models.notification import Notification
 from app.models.project import Project
 from app.models.project_member import ProjectMember
-from app.models.task import Task
+from app.models.task import Task, TaskStatus
 from httpx import ASGITransport, AsyncClient
 from types import SimpleNamespace
 
@@ -132,7 +133,10 @@ async def test_agents_capacity_returns_response(auth_headers):
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
         response = await ac.get("/api/agents/capacity", headers=auth_headers)
-        assert response.status_code in (200, 404, 500)
+    assert response.status_code == 200
+    body = response.json()
+    assert "can_create" in body
+    assert "pressure" in body
 
 
 @pytest.mark.asyncio
@@ -257,7 +261,8 @@ async def test_agents_heartbeat_returns_response(auth_headers):
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
         response = await ac.get("/api/agents/heartbeat/status", headers=auth_headers)
-        assert response.status_code in (200, 404, 500)
+    assert response.status_code == 200
+    assert isinstance(response.json()["agents"], list)
 
 
 @pytest.mark.asyncio
@@ -771,6 +776,79 @@ async def test_system_action_agent_tools_reject_cross_project_targets():
 
 
 @pytest.mark.asyncio
+async def test_system_action_create_task_validates_project_documents_and_priority():
+    """LLM task creation should use the same project/document contract as the API path."""
+    await init_db()
+    from app.skills.system_actions import execute_tool
+
+    visible_project_id = f"tool-create-visible-project-{uuid.uuid4()}"
+    hidden_project_id = f"tool-create-hidden-project-{uuid.uuid4()}"
+    visible_doc_id = f"tool-visible-doc-{uuid.uuid4()}"
+    hidden_doc_id = f"tool-hidden-doc-{uuid.uuid4()}"
+
+    async with async_session() as db:
+        db.add_all(
+            [
+                Project(id=visible_project_id, name="Tool Create Visible Project"),
+                Project(id=hidden_project_id, name="Tool Create Hidden Project"),
+                Document(
+                    id=visible_doc_id,
+                    project_id=visible_project_id,
+                    title="Visible document",
+                    file_name="visible.txt",
+                ),
+                Document(
+                    id=hidden_doc_id,
+                    project_id=hidden_project_id,
+                    title="Hidden document",
+                    file_name="hidden.txt",
+                ),
+            ]
+        )
+        await db.commit()
+
+    rejected = await execute_tool(
+        "create_task",
+        {
+            "title": "Should not attach a hidden document",
+            "input_document_ids": [hidden_doc_id],
+        },
+        visible_project_id,
+    )
+    accepted = await execute_tool(
+        "create_task",
+        {
+            "title": "Create task with visible document",
+            "priority": "critical",
+            "input_document_ids": [visible_doc_id, visible_doc_id],
+        },
+        visible_project_id,
+    )
+
+    async with async_session() as db:
+        tasks = (
+            await db.execute(
+                select(Task).where(Task.project_id == visible_project_id).order_by(Task.created_at)
+            )
+        ).scalars().all()
+
+    assert rejected["success"] is True
+    assert "unknown documents for this project" in rejected["result"]
+    assert accepted["success"] is True
+    assert len(tasks) == 1
+    assert tasks[0].priority == "urgent"
+    assert json.loads(tasks[0].input_document_ids) == [visible_doc_id]
+
+    async with async_session() as db:
+        await db.execute(delete(Task).where(Task.project_id == visible_project_id))
+        await db.execute(delete(Document).where(Document.id.in_([visible_doc_id, hidden_doc_id])))
+        await db.execute(
+            delete(Project).where(Project.id.in_([visible_project_id, hidden_project_id]))
+        )
+        await db.commit()
+
+
+@pytest.mark.asyncio
 async def test_agent_recent_log_filters_by_agent(auth_headers):
     """The recent-log endpoint should return the documented log key and honor agent_id."""
     await init_db()
@@ -1024,6 +1102,7 @@ async def test_manual_skill_execute_survives_poisoned_storage_session(monkeypatc
             return {"steps": ["run"]}
 
         async def execute(self, skill_input: SkillInput) -> SkillOutput:
+            seen_task_ids.append(skill_input.task_id)
             return SkillOutput(
                 success=True,
                 summary="Valid skill output",
@@ -1031,6 +1110,7 @@ async def test_manual_skill_execute_survives_poisoned_storage_session(monkeypatc
                 facts=[{"text": "A valid fact"}],
             )
 
+    seen_task_ids: list[str | None] = []
     original_skill = registry._skills.get("storage-isolation-test")
     registry._skills["storage-isolation-test"] = StorageIsolationSkill()
 
@@ -1061,3 +1141,53 @@ async def test_manual_skill_execute_survives_poisoned_storage_session(monkeypatc
     assert output.success is True
     assert output.summary == "Valid skill output"
     assert output.errors == []
+    assert seen_task_ids and seen_task_ids[0]
+
+
+@pytest.mark.asyncio
+async def test_agent_store_findings_blocks_skill_output_without_source_span():
+    """Skill-created artifacts without raw source spans remain provisional."""
+    from app.core.agent import AgentOrchestrator
+    from app.models.finding import Fact
+    from app.skills.base import SkillOutput
+
+    await init_db()
+    unique_id = uuid.uuid4().hex
+    project_id = f"agent-skill-provisional-project-{unique_id}"
+    task_id = f"agent-skill-provisional-task-{unique_id}"
+
+    async with async_session() as db:
+        if await db.get(Project, project_id) is None:
+            db.add(Project(id=project_id, name="Agent skill provisional project"))
+        task = await db.get(Task, task_id)
+        if task is None:
+            task = Task(
+                id=task_id,
+                project_id=project_id,
+                title="Store provisional skill output",
+                status=TaskStatus.IN_REVIEW,
+                review_state="awaiting_review",
+            )
+            db.add(task)
+        await db.commit()
+
+        output = SkillOutput(
+            success=True,
+            summary="Candidate skill output",
+            facts=[{"text": "Users were confused by billing labels."}],
+        )
+
+        await AgentOrchestrator()._store_findings(db, project_id, output, task)
+        await db.refresh(task)
+
+        payload = json.loads(task.validation_result or "{}")
+        validity = payload["research_validity"]
+        assert validity["status"] == "provisional"
+        assert validity["report_allowed"] is False
+        assert validity["promotion_status"] == "blocked"
+        assert "provisional" in task.what_to_review
+
+        facts = (
+            await db.execute(select(Fact).where(Fact.task_id == task_id))
+        ).scalars().all()
+        assert len(facts) == 1

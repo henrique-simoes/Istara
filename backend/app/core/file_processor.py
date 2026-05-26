@@ -12,6 +12,7 @@ from pathlib import Path
 from app.config import settings
 from app.core.content_guard import ContentGuard
 from app.core.embeddings import TextChunk
+from app.core.file_encryption import decrypted_file_path
 
 logger = logging.getLogger(__name__)
 _guard = ContentGuard()
@@ -416,16 +417,22 @@ def process_file(file_path: Path) -> ProcessedFile:
     Returns:
         ProcessedFile with extracted and chunked text.
     """
-    suffix = file_path.suffix.lower()
+    original_path = Path(file_path)
+    suffix = original_path.suffix.lower()
     processor = PROCESSORS.get(suffix)
 
     if processor is None:
         return ProcessedFile(
-            source=str(file_path),
+            source=str(original_path),
             error=f"Unsupported file type: {suffix}. Supported: {', '.join(PROCESSORS.keys())}",
         )
 
-    result = processor(file_path)
+    with decrypted_file_path(original_path) as readable_path:
+        result = processor(readable_path)
+    if result.source != str(original_path):
+        result.source = str(original_path)
+        for chunk in result.chunks:
+            chunk.source = str(original_path)
 
     # --- Content Guard: scan extracted text for prompt injection ---
     if result.chunks and not result.error:
@@ -436,7 +443,7 @@ def process_file(file_path: Path) -> ProcessedFile:
         if scan.threat_level in ("medium", "high"):
             logger.warning(
                 "Content guard flagged %s: %s - %s",
-                file_path,
+                original_path,
                 scan.threat_level,
                 scan.threats,
             )

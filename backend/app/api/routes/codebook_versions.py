@@ -9,6 +9,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.permissions import require_project_access
+from app.core.telemetry import telemetry_recorder
 from app.models.code_application import CodeApplication
 from app.models.codebook_version import CodebookVersion
 from app.models.database import get_db
@@ -149,6 +150,11 @@ async def create_codebook_version(
 ):
     """Create a new codebook version."""
     await require_project_access(db, request, data.project_id, min_role="researcher")
+    existing_count = await db.scalar(
+        select(func.count())
+        .select_from(CodebookVersion)
+        .where(CodebookVersion.project_id == data.project_id)
+    )
 
     cv = CodebookVersion(
         id=str(uuid.uuid4()),
@@ -162,6 +168,12 @@ async def create_codebook_version(
     db.add(cv)
     await db.commit()
     await db.refresh(cv)
+    await telemetry_recorder.record_research_validity_event(
+        operation="codebook.freeze" if not existing_count else "codebook.revise",
+        project_id=data.project_id,
+        codebook_version_id=cv.id,
+        status="success",
+    )
     return cv.to_dict()
 
 

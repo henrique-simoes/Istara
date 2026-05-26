@@ -241,7 +241,7 @@
   <p class="concept-line"><strong>Concepts:</strong> triangulation, fleiss-kappa</p>
 </header>
 <h2 id="implementation-summary">Implementation Summary</h2>
-<p>Quality Dashboard summarizes system quality, validation, and operational signals for the running Istara installation.</p>
+<p>Quality Dashboard summarizes system quality, validation, research-validity, and operational signals for the running Istara installation.</p>
 <h2 id="frontend-surface">Frontend Surface</h2>
 <ul>
 <li><code>frontend/src/components/common/QualityView.tsx</code></li>
@@ -262,12 +262,20 @@
 <li>The feature is mounted through <code>frontend/src/components/common/QualityView.tsx</code> and the UI navigation path recorded in the inventory.</li>
 <li>Project-bound ensemble validation receives the active <code>project_id</code> from task execution and forwards it through adversarial review, self-MoA, full ensemble, debate rounds, and validation embeddings so donated relay/browser compute is only eligible when authorized for that project.</li>
 <li>Validation helpers without a project context keep relay/browser donors excluded by the compute registry, preserving the explicit admin/global compute exception on admin surfaces instead of making validation global by omission.</li>
+<li>Research-validity telemetry records content-free handles for coding runs, evidence units, codebook versions, route IDs, donor IDs, retrieval mode, and reliability score. Telemetry must support audits without storing prompts, responses, source quotes, or private document content.</li>
+<li>The project-scoped research-validity telemetry audit route summarizes the canonical lifecycle categories: evidence extraction, codebook governance, coding reliability, review/reconciliation, donor lifecycle, retrieval traceability, context safety, promotion gates, and governed learning. These signals are process evidence for dashboards and self-improvement systems, not report evidence.</li>
+<li>Quality signals that come from response-level validation must stay distinct from formal qualitative coding reliability over evidence-unit matrices. Debate/adversarial validation only emits review/reconciliation telemetry when the caller supplies coded-evidence handles such as coding run, evidence unit, and codebook version.</li>
+<li>Governed-learning producers emit content-free audit events: <code>autoresearch.validity_update</code>, <code>self_evolution.proposal</code>, <code>reasoning_bank.lesson</code>, <code>memento_skill.health</code>, and <code>meta_hyperagent.proposal</code>. These events carry project/agent/skill handles and quality status only; they do not store memory bodies, proposal reasons, hypotheses, prompts, source quotes, or report text.</li>
+<li>The real-user benchmark records <code>research-spine-evidence.json</code> and <code>self-improvement-evidence.json</code> as test evidence for this contract: telemetry, ReasoningBank, Memento skill health, Meta-Hyperagent, Autoresearch, RAG/GraphRAG traceability, and governance proposal checks are process-learning inputs, never report evidence by themselves.</li>
+<li>The dashboard must interpret tool success, execution success, verification result, research quality, and reportability as separate signals. Verification-failed or provisional skill output can be visible for review but cannot improve Memento health, model ranking, or report eligibility as accepted research.</li>
+<li>Model/skill quality statistics are project-scoped. Telemetry leaderboards and skill routing boosts must not use another project&#x27;s model performance as positive evidence.</li>
 <li>The frontmatter and manifest entries are the durable contract for agents updating this page after code changes.</li>
 <li>When the referenced component, store, route, agent, skill, or test behavior changes, regenerate and validate the feature documentation.</li>
 </ul>
 <h2 id="agents-skills-llm-mcp-and-permissions">Agents, Skills, LLM, MCP, And Permissions</h2>
 <ul>
 <li>LLM validation calls must carry project scope whenever they validate project task output or skill artifacts.</li>
+<li>Self-evolution, autoresearch, Memento skills, and ReasoningBank may use research-validity telemetry to propose improvements, but they must not silently weaken methodology, thresholds, authorization, review, or report gates. ReasoningBank memories remain process lessons and cannot be used as report evidence.</li>
 </ul>
 <h2 id="tests-and-verification">Tests And Verification</h2>
 <ul>

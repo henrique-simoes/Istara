@@ -10,6 +10,7 @@ Usage:
 """
 
 import argparse
+import json
 import os
 import secrets
 import sys
@@ -23,7 +24,8 @@ except ImportError:
     sys.exit(1)
 
 BASE_URL = "http://localhost:8000"
-FIXTURES = Path(__file__).parent / "fixtures"
+CANONICAL_CORPUS = Path(__file__).parent / "document_corpus" / "canonical"
+CANONICAL_MANIFEST = CANONICAL_CORPUS / "manifest.json"
 
 # Test results tracking
 results = []
@@ -60,6 +62,34 @@ def persist_backend_env_value(key: str, value: str) -> None:
     env_path.write_text("\n".join(lines) + "\n")
 
 
+def canonical_e2e_files(limit: int = 8) -> list[Path]:
+    """Return canonical corpus files for product-level E2E ingestion."""
+    manifest = json.loads(CANONICAL_MANIFEST.read_text(encoding="utf-8"))
+    preferred_slices = {
+        "interview-heavy",
+        "survey-heavy",
+        "usability-heavy",
+        "findings-reporting",
+        "coding-reliability",
+        "low-consensus-review",
+    }
+    selected: list[Path] = []
+    for source in manifest.get("sources", []):
+        slices = set(source.get("slices", []))
+        if not slices.intersection(preferred_slices):
+            continue
+        if source.get("long_form") is not True:
+            continue
+        path = CANONICAL_CORPUS / (source.get("relative_path") or source.get("path", ""))
+        if path.is_file():
+            selected.append(path)
+        if len(selected) >= limit:
+            break
+    if len(selected) < min(limit, 6):
+        raise RuntimeError("Canonical E2E corpus selection did not find enough long-form sources.")
+    return selected
+
+
 def authenticate_or_bootstrap_admin(client: httpx.Client) -> None:
     """Authenticate in team mode, creating the first admin only on a fresh server."""
     backend_env = read_backend_env()
@@ -72,8 +102,9 @@ def authenticate_or_bootstrap_admin(client: httpx.Client) -> None:
     admin_pass = (
         os.environ.get("ISTARA_ADMIN_PASSWORD")
         or os.environ.get("ADMIN_PASSWORD")
+        or os.environ.get("ISTARA_TEST_ADMIN_PASSWORD")
         or backend_env.get("ADMIN_PASSWORD")
-        or ""
+        or "istara123"
     )
 
     def try_login(username: str, password: str) -> bool:
@@ -183,7 +214,7 @@ def main():
 
     print("\n🐾 Istara End-to-End Test")
     print(f"   Target: {BASE_URL}")
-    print(f"   Fixtures: {FIXTURES}")
+    print(f"   Canonical corpus: {CANONICAL_CORPUS}")
     print("=" * 60)
 
     # =========================================================
@@ -215,7 +246,7 @@ def main():
             client.post(
                 "/api/projects",
                 json={
-                    "name": "Onboarding Redesign Study",
+                    "name": "[E2E] Research Spine Canonical Corpus",
                     "description": "Investigating onboarding drop-off for our PM tool.",
                 },
             )
@@ -261,10 +292,10 @@ def main():
     print("\n📄 Phase 4: File Upload")
 
     if project_id:
-        for f in sorted(FIXTURES.glob("*")):
+        for f in canonical_e2e_files():
             if f.is_file():
                 run_test_step(
-                    f"Upload {f.name}",
+                    f"Upload canonical {f.name}",
                     lambda file=f: upload_file(client, project_id, file),
                 )
 

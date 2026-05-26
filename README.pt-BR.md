@@ -9,7 +9,7 @@
 ### IA local para pesquisa de UX — seus dados nunca saem da sua máquina
 
 [![License: MIT](https://img.shields.io/badge/Licença-MIT-blue.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/versão-2026.04.27-brightgreen.svg)](VERSION)
+[![Versão](https://img.shields.io/github/v/release/henrique-simoes/Istara?label=vers%C3%A3o&sort=semver)](https://github.com/henrique-simoes/Istara/releases/latest)
 [![Python](https://img.shields.io/badge/python-3.12-blue.svg)](backend/)
 [![Node](https://img.shields.io/badge/node-20-green.svg)](frontend/)
 [![Platform](https://img.shields.io/badge/plataforma-macOS%20%7C%20Windows%20%7C%20Linux-lightgrey.svg)](installer/)
@@ -19,8 +19,8 @@
 
 ---
 
-*Cinco agentes autônomos de IA. Cinquenta e três skills de pesquisa auto-evolutivas. Zero dependência de nuvem.*
-*Todo insight tem base em evidências. Todo agente fica mais inteligente a cada sessão.*
+*Cinco agentes autônomos de IA. Cinquenta e três skills de pesquisa com melhoria governada. Zero dependência de nuvem.*
+*Todo insight confiável é validado na fonte. O aprendizado dos agentes é governado, por projeto e auditável.*
 *Inteligência em escala: compartilhe poder computacional entre membros da equipe para rodar mais agentes simultaneamente—um time mais inteligente e rápido trabalhando como um enxame agentic.*
 
 <div align="center">
@@ -33,20 +33,20 @@
 | Recurso | O Que Faz |
 |---|---|
 | 🧠 Chat Inteligente | Conversas fundamentadas nos seus dados de pesquisa, respostas conscientes de fonte e evidências revisáveis |
-| ⚛️ Achados Atômicos | Nuggets → Fatos → Insights → Recomendações, cada afirmação vinculada à sua fonte original |
+| ⚛️ Achados Atômicos | Átomos/nuggets aceitos → fatos → insights → recomendações, cada afirmação confiável vinculada à evidência validada |
 | 📐 Leis de UX | 30+ princípios psicológicos auditados automaticamente nos seus designs com pontuação |
-| 📋 Quadro Kanban | Agentes assumem tarefas, executam skills e reportam progresso em tempo real — totalmente autônomo |
+| 📋 Quadro Kanban | Agentes assumem tarefas e executam skills, enquanto revisão, Done e portões de relatório continuam explícitos |
 | 🎯 Roteamento Inteligente | Direcione tarefas para especialistas — Pixel para auditorias de UI, Sage para avaliação de UX |
 | 🎙️ Análise de Entrevistas | Transcreva, categorize, analise e relacione padrões em todo o seu grupo de participantes de uma vez |
 | 🧭 Motor de Contexto | Baseie agentes na cultura da empresa, objetivos e diretrizes — quanto mais contexto, melhor a análise |
 | 🛠️ 53+ Skills de Pesquisa | Análise competitiva, card sorting, jornada do usuário — agentes prontos para qualquer desafio |
-| 🐝 Enxame de Agentes | Cinco especialistas que aprendem uns com os outros, debatem entre si e melhoram a cada tarefa |
+| 🐝 Enxame de Agentes | Cinco especialistas que aprendem com resultados verificados e memória de processo por projeto |
 | 🎨 Google Stitch e Figma | Geração de telas com IA, specs de handoff, auditoria de componentes — ponte design-dev num só lugar |
 | 💬 Canais de Mensageria | Slack, Telegram, WhatsApp — colete dados onde seus usuários estão, gerenciado pelos agentes |
-| 📊 Sincronização de Surveys | SurveyMonkey, Typeform, Google Forms — sintetize milhares de respostas em segundos, não horas |
-| 🔄 Autoresearch | Melhoria contínua automática — agentes otimizam seus próprios prompts e parâmetros de RAG |
-| 🧾 Governança de Melhorias | Mudanças de auto-evolução têm aprovação, evidências, métricas, rollback e reversão rastreáveis |
-| ✅ Saúde do Ensemble | Consenso multi-modelo, revisão adversarial e debates — cada insight sobrevive ao escrutínio |
+| 📊 Sincronização de Surveys | SurveyMonkey, Typeform, Google Forms — ingira respostas na Research Spine com fonte, revisão e confiabilidade |
+| 🔄 Autoresearch | Experimentos de auto-melhoria em sandbox — mudanças candidatas de prompt/RAG/modelo viram propostas governadas antes de uso em produção |
+| 🧾 Governança de Melhorias | Mudanças de auto-evolução são por projeto, baseadas em evidência, aprovadas por governança, reversíveis e impedidas de contornar a Research Spine |
+| ✅ Saúde do Ensemble | Codificação multi-modelo, métricas de confiabilidade, evidência de rota, revisão adversarial e reconciliação humana |
 
 <details>
 <summary><strong>Ver screenshots do produto</strong></summary>
@@ -55,13 +55,13 @@
   <p><strong>Chat Inteligente:</strong> Converse com o contexto da sua pesquisa. Pergunte sobre achados, faça brainstorm com os agentes e obtenha respostas instantâneas baseadas nos seus dados.</p>
   <img src="Screenshots/Screenshot%202026-04-02%20at%2016.37.30.png" width="900" />
 
-  <p><strong>Achados de Pesquisa Atômica:</strong> Extraia automaticamente nuggets, fatos, insights e recomendações. Cada afirmação é vinculada à sua fonte original para rastreabilidade total.</p>
+  <p><strong>Achados de Pesquisa Atômica:</strong> Extraia átomos candidatos, valide-os contra evidência de fonte, e então promova nuggets, fatos, insights e recomendações aceitos. Cada afirmação confiável permanece ligada à sua fonte original.</p>
   <img src="Screenshots/Screenshot%202026-04-02%20at%2016.37.34.png" width="900" />
 
   <p><strong>Conformidade com Leis de UX:</strong> Audite seus designs contra mais de 30 princípios psicológicos e heurísticas de Nielsen. Veja exatamente onde sua UI brilha ou precisa melhorar.</p>
   <img src="Screenshots/Screenshot%202026-04-02%20at%2016.38.34.png" width="900" />
 
-  <p><strong>Gestão Autônoma de Tarefas:</strong> Um poderoso quadro Kanban onde os agentes assumem tarefas, executam skills e reportam o progresso em tempo real.</p>
+  <p><strong>Gestão Autônoma de Tarefas:</strong> Um poderoso quadro Kanban onde os agentes assumem tarefas, executam skills e reportam o progresso em tempo real, enquanto outputs de pesquisa permanecem revisáveis até aprovação.</p>
   <img src="Screenshots/Screenshot%202026-04-02%20at%2016.38.47.png" width="900" />
 
   <p><strong>Atribuição Multi-Agente:</strong> Escolha o melhor agente para o trabalho. Direcione tarefas para especialistas como Pixel para auditorias de UI ou Sage para avaliação de UX.</p>
@@ -76,7 +76,7 @@
   <p><strong>Catálogo de Skills:</strong> Mais de 50 skills de pesquisa prontas para uso. De Análise Competitiva a Card Sorting, seus agentes estão equipados para qualquer desafio de pesquisa.</p>
   <img src="Screenshots/Screenshot%202026-04-02%20at%2016.39.11.png" width="900" />
 
-  <p><strong>Enxame Agentic:</strong> Conheça sua equipe—Cleo, Sentinel, Pixel, Sage e Echo. Cinco agentes especializados que aprendem uns com os outros e evoluem a cada tarefa.</p>
+  <p><strong>Enxame Agentic:</strong> Conheça sua equipe—Cleo, Sentinel, Pixel, Sage e Echo. Cinco agentes especializados que aprendem com resultados verificados, telemetria por projeto e memória de processo governada.</p>
   <img src="Screenshots/Screenshot%202026-04-02%20at%2016.39.16.png" width="900" />
 
   <p><strong>Integração Google Stitch & Figma:</strong> Gere telas com IA, conecte ao Figma para specs de handoff, audite componentes e feche a lacuna entre intenção de design e implementação.</p>
@@ -85,13 +85,13 @@
   <p><strong>Canais de Mensageria:</strong> Implante sua pesquisa diretamente no Slack, Telegram ou WhatsApp. Colete dados onde seus usuários estão, gerenciado inteiramente por seus agentes.</p>
   <img src="Screenshots/Screenshot%202026-04-02%20at%2016.39.36.png" width="900" />
 
-  <p><strong>Integrações de Pesquisa (Surveys):</strong> Puxe dados do SurveyMonkey, Typeform ou Google Forms. Deixe que os agentes detectem bots de IA e sintetizem milhares de respostas em segundos.</p>
+  <p><strong>Integrações de Pesquisa (Surveys):</strong> Puxe dados do SurveyMonkey, Typeform ou Google Forms. As respostas entram no mesmo pipeline de unidades de evidência, codificação, confiabilidade, revisão e portão de relatório usado por entrevistas e documentos.</p>
   <img src="Screenshots/Screenshot%202026-04-02%20at%2016.39.40.png" width="900" />
 
-  <p><strong>Motor de Autoresearch:</strong> Ative loops de melhoria contínua. Assista enquanto seus agentes otimizam seus próprios prompts e parâmetros de RAG para melhores resultados.</p>
+  <p><strong>Motor de Autoresearch:</strong> Ative loops de auto-melhoria em sandbox. Os agentes medem mudanças candidatas de prompt, RAG ou modelo, revertem após a avaliação e enviam candidatos bem-sucedidos para aprovação governada antes de uso em produção.</p>
   <img src="Screenshots/Screenshot%202026-04-02%20at%2016.39.59.png" width="900" />
 
-  <p><strong>Saúde do Ensemble:</strong> Confiança através da verificação. Istara usa consenso multi-modelo, revisão adversarial e rodadas de debate para garantir que cada insight seja sólido como uma rocha.</p>
+  <p><strong>Saúde do Ensemble:</strong> Confiança através da verificação. Istara usa codificação multi-modelo, métricas de confiabilidade, evidência de rota, revisão adversarial, debates e reconciliação humana antes que evidências virem reportáveis.</p>
   <img src="Screenshots/Screenshot%202026-04-02%20at%2016.40.15.png" width="900" />
 </div>
 
@@ -189,7 +189,7 @@ temporários espalhados.
 
 Pesquisadores de UX merecem ferramentas que respeitam seus dados, garantem rigor metodológico e melhoram com o uso — não plataformas SaaS que fazem upload de transcrições para servidores externos, cobram por usuário, e esquecem tudo no momento em que você fecha a aba.
 
-O Istara roda inteiramente no seu hardware. Ele vem com cinco agentes de IA especializados, 53 skills de pesquisa UX e uma metodologia de cadeia de evidências fundamentada em pesquisas científicas revisadas por pares. Os agentes melhoram a si mesmos com o tempo. As skills rastreiam sua própria qualidade. A plataforma aprende seu fluxo de trabalho.
+O Istara roda inteiramente no seu hardware. Ele vem com cinco agentes de IA especializados, 53 skills de pesquisa UX e uma metodologia de cadeia de evidências fundamentada em pesquisas científicas revisadas por pares. Agentes e skills podem melhorar, mas somente por telemetria com escopo de projeto, resultados verificados, propostas governadas e portões da Research Spine.
 
 **Sem nuvem. Sem assinatura. Evidência em primeiro lugar.**
 
@@ -201,14 +201,14 @@ O Istara roda inteiramente no seu hardware. Ele vem com cinco agentes de IA espe
 |---|---|---|
 | Privacidade de dados | 100% local — dados nunca saem da sua máquina | Upload para servidores do fornecedor |
 | Memória dos agentes | Personas persistentes e evolutivas entre sessões | Chamadas de API sem estado |
-| Metodologia de pesquisa | Cadeia Atomic Research com proveniência de evidências | Sumarização ad-hoc |
-| Melhoria de skills | Pontuações de qualidade auto-evolutivas por modelo × skill | Prompts estáticos |
+| Metodologia de pesquisa | Research Spine com artefatos Atomic Research validados na fonte | Sumarização ad-hoc |
+| Melhoria de skills | Saúde de skill verificada por projeto e mudanças de prompt governadas | Prompts estáticos |
 | Criação de agentes | Fábrica de agentes em tempo de execução — sem código | Conjunto de funcionalidades fixo |
-| Validação multi-modelo | Ensemble sensível à computação + metadados heurísticos de consenso | Modelo único, sem validação |
+| Validação multi-modelo | Codificação de evidência, métricas de confiabilidade, evidência de rota e reconciliação | Modelo único, sem validação |
 | Compressão de memória | Inspirado no LLMLingua, 30–74% de economia de tokens | Sem gestão de contexto longo |
 | Conformidade UX | Auditoria automatizada das 30 Leis de UX | Não disponível |
 | Compartilhamento de computação | Doe GPU via relay WebSocket — cluster da equipe | Pague por chamada de API |
-| Pesquisa autônoma | Loops de autoresearch no estilo Karpathy | Execução manual apenas |
+| Pesquisa autônoma | Propostas de autoresearch em sandbox; sem mutação live antes de governança | Execução manual apenas |
 | Canais de survey | WhatsApp, Telegram, Typeform, SurveyMonkey | Integrações limitadas |
 | Preço | Gratuito, open source, licença MIT | R$X.XXX/ano SaaS |
 
@@ -220,7 +220,7 @@ O Istara roda inteiramente no seu hardware. Ele vem com cinco agentes de IA espe
 
 O Istara implementa uma **fábrica de agentes inspirada no Memento**, fundamentada na percepção de que a forma mais eficaz de estender um sistema de IA é fazer com que ele projete suas próprias extensões. Quando um agente existente detecta uma lacuna de capacidade — uma tarefa de pesquisa que não consegue executar bem — ele propõe um novo agente especializado: define a persona, seleciona as skills, escreve os protocolos e o registra no pipeline de orquestração.
 
-**Sem mudanças de código. Sem reinicializações. O sistema se estende por conta própria.**
+**Sem mutação direta em produção. O sistema pode propor suas próprias extensões, mas a aprovação governada decide o que fica ativo.**
 
 Os cinco agentes integrados carregam, cada um, quatro arquivos de persona evolutivos:
 
@@ -232,24 +232,24 @@ Os cinco agentes integrados carregam, cada um, quatro arquivos de persona evolut
 | `istara-ux-eval` | **Sage** | Analista de carga cognitiva — jornadas de usuário, detecção de fricção em fluxos |
 | `istara-sim` | **Echo** | Testadora end-to-end — simula usuários, executa 75 cenários de regressão |
 
-A persona de cada agente é armazenada em quatro arquivos — `CORE.md` (identidade), `SKILLS.md` (capacidades), `PROTOCOLS.md` (regras de comportamento), `MEMORY.md` (aprendizados acumulados) — e **todos os quatro evoluem conforme o agente trabalha**.
+A persona de cada agente é armazenada em quatro arquivos — `CORE.md` (identidade), `SKILLS.md` (capacidades), `PROTOCOLS.md` (regras de comportamento), `MEMORY.md` (aprendizados acumulados) — mas atualizações são limitadas por escopo de projeto, verificação e regras de governança. Metodologia protegida de pesquisa, limites de confiabilidade, autorização e portões de relatório não são reescritos silenciosamente.
 
 ### Pipeline de Auto-Evolução
 
 ```
 Interação do usuário
       ↓
-Agente registra padrão de erro ou preferência de fluxo
+Agente registra sinal de processo com escopo de projeto
       ↓
-Padrão rastreado: ocorrências · contextos · tempo decorrido
+Telemetria separa sucesso de ferramenta · sucesso de execução · verificação · qualidade de pesquisa · reportabilidade
       ↓
-Limite atingido: 3+ ocorrências, 2+ contextos, em 30 dias
+Aprendizado candidato rastreado: 3+ ocorrências · projeto ativo · janela de 30 dias · confiança · taxa de sucesso
       ↓
-Aprendizado promovido → escrito no MEMORY.md do agente
+Governança bloqueia mutações protegidas de metodologia, portões e auth
       ↓
-Persona atualizada permanentemente para todas as sessões futuras
+Aprendizado aprovado ou permitido é promovido para a superfície correta de persona/memória/protocolo
       ↓
-Próxima conversa começa com um agente melhorado
+Trabalhos futuros podem usar a melhoria, ainda dentro dos portões da Research Spine
 ```
 
 Isso não é fine-tuning. É **evolução estruturada de prompts** — funciona com qualquer modelo local, incluindo modelos de 3B parâmetros em hardware modesto de consumidor.
@@ -258,6 +258,7 @@ As skills também se auto-evoluem. Cada invocação registra qualidade por combi
 
 ```python
 ModelSkillStats(
+    project_id="project-123",
     model_name="llama-3.2-3b",
     skill_name="thematic_analysis",
     success_rate=0.94,
@@ -267,7 +268,7 @@ ModelSkillStats(
 )
 ```
 
-Quando a qualidade cai abaixo do limite, o Istara exibe um diff entre o prompt atual e a revisão proposta. Você aprova ou rejeita. Skills que consistentemente performam bem ganham pontuações de saúde maiores e prioridade no roteamento.
+Quando a qualidade cai abaixo do limite, o Istara exibe um diff entre o prompt atual e a revisão proposta. Você aprova ou rejeita. Skills que consistentemente produzem resultados verificados e válidos pela Research Spine ganham pontuações de saúde maiores e prioridade no roteamento dentro daquele projeto. Sucesso bruto de ferramenta, sozinho, não melhora uma skill.
 
 Toda auto-melhoria agora passa por um contrato de **Governança de Melhorias** e pelo **Arquivo DGM-H**. Memórias de raciocínio e telemetria podem ser registradas automaticamente, enquanto mudanças de comportamento em prompts, configs, skills, agentes, UI, integrações, computação ou código backend viram propostas visíveis com evidências, métricas, aprovação, linhagem, pontuação de seleção de pais e rastreamento de rollback/reversão.
 
@@ -279,35 +280,37 @@ Toda auto-melhoria agora passa por um contrato de **Governança de Melhorias** e
 
 > *"Improving Factuality and Reasoning in Language Models through Multiagent Debate"* — Du et al. (2024)
 
-Descobertas de pesquisa produzidas por um único LLM são não confiáveis. O Istara emprega um **pipeline de validação sensível à computação disponível** que prefere modelos distintos autorizados para o projeto quando eles estão saudáveis, usa validação dual-run quando há apenas dois modelos, e recorre a variações Self-MoA de um único modelo somente quando a computação está restrita. O sistema registra evidência de rota, identidade de modelo quando disponível, métricas heurísticas de consenso e estado de revisão humana em vez de tratar uma resposta de modelo como fato de pesquisa.
+Descobertas de pesquisa produzidas por um único LLM são não confiáveis. O Istara emprega um **pipeline de validação sensível à computação disponível** que prefere modelos distintos autorizados para o projeto quando eles estão saudáveis, usa validação dual-run quando há apenas dois modelos, e recorre a variações Self-MoA de um único modelo somente quando a computação está restrita. O sistema registra evidência de rota, identidade de modelo quando disponível, métricas de confiabilidade sobre unidades de evidência codificadas, estado de discordância e estado de revisão humana em vez de tratar uma resposta de modelo como fato de pesquisa.
 
 ### A Pilha de Validação
 
 ```
-Dados brutos (transcrição, respostas de survey, notas de observação)
+Fontes (transcrições, surveys, notas, tickets, diários, analytics)
       ↓
-Agente A analisa independentemente → descobertas preliminares
-Agente B analisa independentemente → descobertas preliminares
-Agente C analisa independentemente → descobertas preliminares
+Unidades de evidência estáveis com span, participante, método e projeto
       ↓
-Debate/revisão adversarial refina outputs disputados quando disponível
+Calibração de codificação aberta → codebook preliminar → freeze governado
       ↓
-Consenso é registrado a partir de categorias heurísticas e embeddings opcionais
+Modelos distintos autorizados ao projeto codificam independentemente
       ↓
-Outputs limítrofes são refinados ou ficam em revisão humana
+Kappa/Alpha são calculados sobre matrizes de unidades de evidência codificadas
       ↓
-Tarefas aprovadas como Done podem gerar achados prontos para relatório
+Debate, revisão adversarial e reconciliação humana resolvem discordâncias
       ↓
-Achado com proveniência, confiança, metadados de validação e estado de revisão
+Átomos/nuggets aceitos e reconciliados viram Fatos → Insights → Recomendações
+      ↓
+Somente tarefas aprovadas como Done geram evidências prontas para relatório
+      ↓
+Relatório com cadeia de evidência, confiabilidade, rota e estado de revisão
 ```
 
 **As descobertas de pesquisa são restringidas por evidências, não magicamente imunes a erro.** O Istara armazena links de fonte, estado de revisão de tarefa, pontuações de consenso e metadados de discordância para que pesquisadores rejeitem trabalho fraco. Relatórios usam evidências de tarefas aprovadas como Done; tarefas ainda em revisão são excluídas.
 
-A implementação de Kappa de Fleiss usa a fórmula padrão, mas o caminho atual de consenso de outputs de LLM aplica essa métrica a categorias heurísticas extraídas por palavras-chave. Ela deve ser lida como um sinal operacional de concordância, não como substituto para um estudo de confiabilidade com itens codificados por avaliadores humanos.
+O contrato de validade de pesquisa vive em [`docs/architecture/research-validity-contract.md`](docs/architecture/research-validity-contract.md). O contrato de auto-melhoria vive em [`docs/architecture/self-improvement-governance-contract.md`](docs/architecture/self-improvement-governance-contract.md). Kappa de Fleiss, Kappa de Cohen e Alpha de Krippendorff são aplicados a matrizes de unidades de evidência codificadas. Codificação qualitativa não é marcação por palavras-chave: modelos recebem protocolo protegido, codebook, critérios de inclusão/exclusão, exemplos, esquema de unidade de evidência, política de confiabilidade e portão de promoção antes de codificar. Autoresearch, ReasoningBank, Memento Skills, Meta-Hyperagent, auto-evolução, RAG/GraphRAG, Prompt-RAG e LLMLingua podem melhorar a qualidade do processo, mas não viram evidência de relatório nem contornam a Research Spine.
 
-A variante Self-MoA (Li et al., 2025) habilita loops de validação de agente único quando a computação é limitada, mantendo um sinal de validação sem exigir três instâncias de modelo simultâneas.
+Quando três ou mais modelos distintos, saudáveis e autorizados ao projeto existem, o Istara usa por padrão o caminho multi-modelo de codificação/validação. Com dois modelos distintos, usa o caminho de dois codificadores. Com um modelo, pode rodar fallback estilo Self-MoA, mas o resultado é marcado como menor garantia e não pode ser apresentado como confiabilidade de ensemble completa.
 
-> **Referências:** Wang et al. (2024) "Mixture-of-Agents Enhances Large Language Model Capabilities"; Du et al. (2024) ICML "Improving Factuality and Reasoning in Language Models through Multiagent Debate"; Li et al. (2025) "Self-MoA: Self-Mixture of Agents"; Fleiss (1971) "Measuring nominal scale agreement among many raters" *Psychological Bulletin* 76(5):378–382; Zheng et al. (2023) "Judging LLM-as-a-Judge with MT-Bench and Chatbot Arena" NeurIPS 2023
+> **Referências:** Fleiss (1971) "Measuring nominal scale agreement among many raters"; Cohen (1960) "A coefficient of agreement for nominal scales"; O'Connor & Joffe (2020) "Intercoder Reliability in Qualitative Research"; MacQueen et al. (1998) "Codebook Development for Team-Based Qualitative Analysis"; Wang et al. (2024) "Mixture-of-Agents Enhances Large Language Model Capabilities"; Du et al. (2023) "Improving Factuality and Reasoning in Language Models through Multiagent Debate"; Li et al. (2025) "Rethinking Mixture-of-Agents"; Zheng et al. (2023) "Judging LLM-as-a-Judge with MT-Bench and Chatbot Arena"
 
 ---
 
@@ -331,6 +334,8 @@ Nível 6 — Sistema: capacidades da plataforma + registro de skills
 O **Sumarizador de Contexto DAG** (inspirado no MemWalker, Chen et al. 2023) constrói um grafo acíclico dirigido de segmentos de conversa, habilitando recuperação hierárquica sem perda de informação. Sumarizações antigas colapsam em nós de nível superior; contexto recente permanece em resolução completa. O sistema navega pelo grafo para recuperar o contexto passado mais relevante para cada nova consulta.
 
 O **Prompt RAG** (Pan et al., 2024) recupera trechos de contexto passado relevantes no momento da inferência, injetando-os no prompt atual — transformando uma janela de contexto limitada em uma memória de pesquisa efetivamente ilimitada.
+
+Em fluxos de pesquisa, ferramentas de contexto continuam subordinadas à Research Spine. Prompt RAG pode adicionar contexto de apoio, mas metodologia obrigatória de codificação, critérios de codebook, política de confiabilidade e portões de promoção são injetados deterministicamente pelos serviços relevantes. A compressão estilo LLMLingua preserva blocos protegidos de protocolo, codebook, esquema de evidência, confiabilidade, promoção e auth durante compressão e corte final.
 
 > **Referências:** Jiang et al. (2023) "LLMLingua: Compressing Prompts for Accelerated Inference of Large Language Models" EMNLP 2023; Chen et al. (2023) "Walking Down the Memory Maze: Beyond Context Limit through Interactive Reading" arXiv:2310.05029; Pan et al. (2024) "From RAG to Prompt RAG" ACL 2024
 
@@ -378,9 +383,9 @@ Strings de convite de usuário não carregam um JWT de login pré-gerado; elas s
 
 > *"autoresearch: autonomous experiment loops for AI systems"* — Karpathy (2026)
 
-O Istara inclui um **motor autônomo de otimização de pesquisa** inspirado no framework autoresearch de Karpathy. Ele executa continuamente experimentos controlados para melhorar sua própria performance — ajustando parâmetros de recuperação RAG, otimizando templates de prompt de skills, ajustando configurações de temperatura dos modelos, e medindo o impacto de qualidade de cada mudança.
+O Istara inclui um **motor autônomo de otimização de pesquisa** inspirado no framework autoresearch de Karpathy. Ele executa experimentos controlados com escopo de projeto para melhorar a qualidade do processo — testando parâmetros de recuperação RAG, templates de prompt de skills, configurações de temperatura dos modelos e configurações relacionadas sem deixar o experimento mutar estado de produção.
 
-**~12 experimentos por hora, rodando em segundo plano enquanto você trabalha.**
+Experimentos são executados em sandbox, com limite de taxa, reversíveis e não-reportáveis. Um experimento bem-sucedido vira proposta governada, não mudança automática em produção.
 
 ### Loop de Autoresearch
 
@@ -393,14 +398,14 @@ Executa teste A/B controlado em conjunto de avaliação reservado
       ↓
 Mede delta de qualidade (precisão de recuperação, pontuações de output de skill)
       ↓
-Se melhoria ≥ limite: promove mudança para configuração de produção
+Se melhoria ≥ limite: reverte a mutação de sandbox e cria candidato proposal_ready
       ↓
-Registra descoberta no diário de otimização de pesquisa
+Revisão governada aprova, rejeita ou arquiva a proposta com evidência de rollback
       ↓
 Repete: próxima hipótese
 ```
 
-O sistema mantém um painel **Monitor de Saúde de Skills** exibindo tendências de desempenho por skill, quais experimentos estão em execução, e quais otimizações foram promovidas.
+O sistema mantém um painel **Monitor de Saúde de Skills** exibindo tendências de desempenho por skill, quais experimentos estão em execução, quais propostas aguardam revisão e quais mudanças governadas foram aprovadas. Artefatos de autoresearch são somente evidência de processo; não podem virar achados de pesquisa nem evidência de relatório.
 
 > **Referência:** Karpathy (2026) "autoresearch" github.com/karpathy/autoresearch
 
@@ -413,19 +418,19 @@ O sistema mantém um painel **Monitor de Saúde de Skills** exibindo tendências
 Cada insight que o Istara produz deve permanecer rastreável porque se conecta a uma cadeia de evidências verificada com referências de fonte e estado de revisão de tarefa. Isso implementa a metodologia de Atomic Research desenvolvida na WeWork (Sharon & Gadbaw, 2018) como um pipeline computacional.
 
 ```
-Citação bruta ou observação (Nugget)
-      ↓  requer: texto exato + fonte + timestamp
-Padrão verificado a partir de 2+ nuggets independentes (Fato)
-      ↓  requer: ≥2 nuggets + validação cruzada
-Significado interpretado — o "e daí" (Insight)
-      ↓  requer: ≥1 fato + cadeia de raciocínio
-Proposta acionável com pontuação de prioridade (Recomendação)
-      ↓  requer: ≥1 insight + avaliação de viabilidade
+Citação bruta ou observação de fonte
+      ↓  cria: unidade de evidência com texto exato + proveniência
+Átomo/nugget candidato
+      ↓  requer: extração/codificação independente + grounding + confiabilidade/reconciliação
+Átomo/nugget aceito
+      ↓  promove: padrão verificado, fato, insight, recomendação
+Evidência de relatório
+      ↓  requer: evidência aceita/reconciliada em tarefa Done aprovada por humano
 ```
 
-**Sem recomendação sem insight. Sem insight sem fato. Sem fato sem nuggets. Sem nugget sem fonte.**
+**Sem recomendação reportável sem insight aceito. Sem insight aceito sem fatos aceitos. Sem fato aceito sem átomos/nuggets aceitos. Sem átomo/nugget aceito sem validação fundamentada na fonte.**
 
-Cada nível da cadeia é armazenado como um registro discreto no banco de dados com relacionamentos de chave estrangeira impondo a hierarquia. Relatórios usam achados de tarefas aprovadas como Done; outputs de tarefas ainda em revisão não são evidência de relatório. Quando você exporta um relatório de pesquisa, cada recomendação deve voltar pela cadeia até a passagem exata de entrevista, resposta de survey ou observação que a sustenta.
+Cada nível da cadeia é armazenado como um registro discreto no banco de dados com relacionamentos de chave estrangeira impondo a hierarquia. Artefatos de Atomic Research não são confiáveis só porque um modelo os escreveu; outputs brutos de modelo permanecem candidatos/provisórios até que a Research Spine os aceite ou reconcilie. Relatórios usam achados de tarefas aprovadas como Done; outputs de tarefas ainda em revisão não são evidência de relatório. Quando você exporta um relatório de pesquisa, cada recomendação deve voltar pela cadeia até a passagem exata de entrevista, resposta de survey ou observação que a sustenta.
 
 > **Referência:** Sharon & Gadbaw (2018) "Atomic Research" WeWork Research Operations
 
@@ -452,6 +457,8 @@ Consulta
 
 Isso significa que o Istara encontra conteúdo semanticamente similar ("participante teve dificuldade com navegação") E correspondências de terminologia exata ("arquitetura de informação"). Mude para modo vetorial puro ou por palavras-chave puro por consulta quando precisar.
 
+RAG Híbrido é a camada de recuperação de evidência exata do Istara. O fallback BM25 preserva `evidence_unit_id`, span de documento/fonte, estado de revisão, estado de confiabilidade e proveniência; quando essa proveniência falta, o resultado é marcado como não-promocional. Evidence Graph / GraphRAG é a camada de síntese e rastreabilidade, usada para relações entre documentos e perguntas de dependência, mas respostas em grafo precisam preencher a evidência exata via RAG Híbrido antes de qualquer promoção.
+
 **O LanceDB é embutido** — sem processo de banco de dados vetorial separado, sem sobrecarga de rede, sem configuração.
 
 > **Referências:** Lewis et al. (2020) "Retrieval-Augmented Generation for Knowledge-Intensive NLP Tasks" NeurIPS 2020; Cormack et al. (2009) "Reciprocal rank fusion outperforms condorcet and individual rank learning methods" SIGIR 2009; Robertson & Zaragoza (2009) "The Probabilistic Relevance Framework: BM25 and Beyond" *Foundations and Trends in Information Retrieval* 3(4)
@@ -476,12 +483,14 @@ respostas interessantes, ajusta ordem das perguntas com base nas respostas anter
       ↓
 Respostas transmitidas de volta ao Istara em tempo real
       ↓
-Análise automática: extrai nuggets, detecta temas, sinaliza anomalias
+Registra fonte bruta → extrai unidades de evidência → cria átomos/códigos candidatos
+      ↓
+Executa confiabilidade, grounding, reconciliação e portões de revisão
       ↓
 Verificação de detecção de IA sinaliza respostas que parecem geradas por máquina
 ```
 
-O motor de entrevista adaptativa deve ajustar dinamicamente a formulação e a ordem das perguntas com base nas respostas anteriores, produzindo dados qualitativos mais ricos do que formulários de survey estáticos quando a integração do canal está configurada.
+O motor de entrevista adaptativa deve ajustar dinamicamente a formulação e a ordem das perguntas com base nas respostas anteriores, produzindo dados qualitativos mais ricos do que formulários de survey estáticos quando a integração do canal está configurada. Respostas importadas não viram achados confiáveis diretamente; elas entram na mesma Research Spine de documentos, entrevistas e notas manuais.
 
 > **Referência:** AURA: Adaptive User Research Assistant, arXiv:2510.27126
 
@@ -491,10 +500,10 @@ O motor de entrevista adaptativa deve ajustar dinamicamente a formulação e a o
 
 O Istara conecta pesquisa e design em um único fluxo de trabalho:
 
-- **Integração Figma**: Importe arquivos de design, extraia tokens de design system, vincule decisões de design a evidências de pesquisa, execute verificações de conformidade com as Leis de UX
-- **Google Stitch MCP**: Gere wireframes de tela e conceitos de UI diretamente a partir de insights de pesquisa — descreva o que os usuários precisam, receba propostas de design
-- **Design Briefs**: Gere automaticamente design briefs a partir de descobertas de pesquisa, com referências às Leis de UX anexadas a cada recomendação
-- **Rastreabilidade Evidência-para-Design**: Cada decisão de design se conecta de volta aos nuggets que a motivaram
+- **Integração Figma**: Importe arquivos de design, extraia tokens de design system, vincule decisões de design a evidências aceitas/reconciliadas, execute verificações de conformidade com as Leis de UX
+- **Google Stitch MCP**: Gere wireframes de tela e conceitos de UI a partir de insights aceitos e evidência candidata claramente marcada — descreva o que os usuários precisam, receba propostas de design
+- **Design Briefs**: Gere automaticamente design briefs a partir de achados reportáveis, com referências às Leis de UX anexadas a cada recomendação
+- **Rastreabilidade Evidência-para-Design**: Cada decisão de design reportável se conecta de volta a átomos/nuggets aceitos e à evidência de fonte que a motivou
 
 ---
 
@@ -534,7 +543,7 @@ Upload (PDF · DOCX · TXT · transcrição · especificação)
 Classificação automática: relatório de pesquisa / transcrição de entrevista /
 dados de survey / especificação de design / análise competitiva / artigo acadêmico
       ↓
-Extrai nuggets → cria tarefas → etiqueta participantes
+Extrai unidades de evidência → cria átomos/códigos candidatos → valida/reconcilia antes de tarefas
       ↓
 Vincula descobertas de volta às passagens de origem com referências de página/linha
       ↓
@@ -570,11 +579,15 @@ Ambas as interfaces são controladas por `MCPAccessPolicy` com permissões por f
 O Istara é **zero-trust por padrão**:
 
 - **Autenticação JWT** em todos os endpoints de API — nenhum acesso não autenticado
+- **Endurecimento de conta inspirado no Better Auth** — o primeiro admin recebe códigos de recuperação de uso único no onboarding, a configuração de passkey é oferecida imediatamente, usuários podem mudar username/perfil/senha em Configurações, e usuários criados por admin recebem códigos de recuperação de uso único
+- **Opções de segundo fator** — login com senha pode exigir TOTP, códigos de recuperação são o fator de fallback, e WebAuthn/passkeys oferecem login passwordless resistente a phishing; o Istara não usa SMS nem OTP por email
 - **Criptografia de campo Fernet** em campos sensíveis do banco de dados — segredos criptografados em repouso
+- **Criptografia de arquivos e backups administrada por admin** — quando habilitada, uploads gerenciados, texto armazenado de documentos e backups futuros são criptografados em repouso; backups são gravados como `.tar.gz.enc` e exigem a chave correta para restauração
+- **Tratamento seguro de chaves** — a chave de criptografia de arquivos deve ficar em um gerenciador de segredos ou no macOS Keychain, com fallback para arquivo local apenas-leitura-do-dono em instalações source; perder a chave é destrutivo para arquivos e backups criptografados
 - **Arquitetura local-first** — a inferência de LLM roda no seu hardware via LM Studio ou Ollama; nenhum dado é transmitido para APIs externas a menos que você configure explicitamente uma
 - **Servidor MCP DESATIVADO por padrão** — o acesso externo de agentes requer opt-in consciente
 - **Banco de dados SQLite** — um único arquivo portátil sob seu controle completo
-- **Sem telemetria** — o Istara nunca envia dados para casa
+- **Sem telemetria externa** — o Istara registra eventos locais de processo, rota, qualidade e governança para auditoria, mas nunca os envia para um serviço externo
 
 ---
 
@@ -602,13 +615,14 @@ O Istara é **zero-trust por padrão**:
 │  │                                                            │    │
 │  │  MetaOrchestrator (roteamento de mensagens A2A)            │    │
 │  │  Hierarquia de Contexto (6 níveis) + Sumarizador DAG       │    │
-│  │  RAG Híbrido: LanceDB (70%) + BM25 (30%) + merge RRF       │    │
-│  │  Compressor de Prompt LLMLingua (30–74% economia tokens)   │    │
-│  │  Motor de Auto-Evolução + Monitor de Saúde de Skills       │    │
-│  │  Loop de Autoresearch (~12 experimentos/hora)              │    │
-│  │  Validação Multi-modelo (ensemble + metadados consenso)    │    │
+│  │  RAG Híbrido: LanceDB + BM25 + RRF + estado proveniência   │    │
+│  │  Evidence Graph / GraphRAG para rastreabilidade e síntese  │    │
+│  │  Compressor LLMLingua com blocos protegidos da Spine       │    │
+│  │  Governança de Auto-Melhoria + Saúde de Skills             │    │
+│  │  Propostas de Autoresearch em sandbox, não mutações live   │    │
+│  │  Codificação/Validação multi-modelo (Kappa/Alpha + rota)   │    │
 │  │  Governador de Recursos + Agendador por Prioridade         │    │
-│  │  Cadeia Atomic Research (Nugget→Fato→Insight→Rec)          │    │
+│  │  Cadeia Atomic Research aceita (Atom→Fato→Insight→Rec)     │    │
 │  └─────────────────────────────────┬──────────────────────────┘    │
 │                                    │                                │
 │  ┌──────────────────┐  ┌───────────▼──────────┐  ┌──────────────┐  │
@@ -737,12 +751,12 @@ istara start
 | Skill | Descrição |
 |---|---|
 | Fábrica de Agentes | Criar novos agentes especializados em tempo de execução |
-| Evolução de Skill | Propor e aplicar melhorias de prompt em skills existentes |
+| Evolução de Skill | Propor melhorias governadas de prompt/skill a partir de resultados verificados pela Research Spine |
 | Conformidade com Leis de UX | Auditoria automatizada contra as 30 Leis de UX |
 | Gerador de Design Brief | Gerar design briefs a partir de descobertas de pesquisa |
-| Validador de Cadeia de Evidências | Verificar vinculação nugget→fato→insight→recomendação |
-| Validador Multi-modelo | Executar validação MoA com Kappa de Fleiss em qualquer conjunto de descobertas |
-| Otimizador de Autoresearch | Executar experimentos autônomos de otimização de parâmetros |
+| Validador de Cadeia de Evidências | Verificar vinculação átomo/nugget aceito → fato → insight → recomendação |
+| Validador Multi-modelo | Validar unidades de evidência de fonte com modelos distintos autorizados por projeto e métricas de confiabilidade |
+| Otimizador de Autoresearch | Executar experimentos de otimização em sandbox que produzem propostas governadas de melhoria |
 
 </details>
 
@@ -832,7 +846,7 @@ O Istara tem licença MIT e aceita ativamente contribuições. Áreas de alto im
 - **Adaptadores de LLM** — Suporte para novos backends de inferência local
 - **Integrações de canais** — Discord, Microsoft Teams, Signal, etc.
 - **Componentes de UI** — Melhorias de acessibilidade, novas visões de pesquisa
-- **Metodologia de pesquisa** — Prompts melhorados, nova lógica de validação
+- **Metodologia de pesquisa** — Prompts melhorados e lógica de validação, com mudanças protegidas de protocolo/portões sob governança
 - **Citações acadêmicas** — Conecte funcionalidades a literatura de pesquisa relevante
 
 ```bash
@@ -870,51 +884,63 @@ Veja [TESTING.md](TESTING.md), [SECURITY.md](SECURITY.md) e [DOCUMENTATION.md](D
 
 ### Validação Multi-Modelo
 
-3. **Wang et al. (2024)** — "Mixture-of-Agents Enhances Large Language Model Capabilities" *arXiv:2406.04692*. Inspiração para a camada de validação multi-agente do Istara.
+3. **Fleiss, J. L. (1971)** — "Measuring Nominal Scale Agreement among Many Raters" *Psychological Bulletin* 76(5):378-382. DOI: 10.1037/h0031619. Usado para confiabilidade de 3+ codificadores em matrizes nominais item-por-avaliador.
 
-4. **Du et al. (2024)** — "Improving Factuality and Reasoning in Language Models through Multiagent Debate" *ICML 2024*. Protocolo de debate adversarial para reduzir outputs sem suporte; implementado como caminho de validação/refinamento no Istara.
+4. **Cohen, J. (1960)** — "A Coefficient of Agreement for Nominal Scales" *Educational and Psychological Measurement* 20(1):37-46. DOI: 10.1177/001316446002000104. Usado para confiabilidade com dois codificadores.
 
-5. **Li et al. (2025)** — "Rethinking Mixture-of-Agents: Is Mixing Different Large Language Models Beneficial?" *arXiv:2502.00674*. Variante Self-MoA de modelo único para ambientes com computação limitada.
+5. **O'Connor & Joffe (2020)** — "Intercoder Reliability in Qualitative Research: Debates and Practical Guidelines" *International Journal of Qualitative Methods*. DOI: 10.1177/1609406919899220. Usado para o processo de codificação independente e reconciliação.
 
-6. **Fleiss, J. L. (1971)** — "Measuring nominal scale agreement among many raters" *Psychological Bulletin* 76(5):378–382. A estatística Kappa cuja fórmula o Istara usa para concordância heurística entre categorias de resposta.
+6. **MacQueen et al. (1998)** — "Codebook Development for Team-Based Qualitative Analysis" *Cultural Anthropology Methods* 10(2):31-36. DOI: 10.1177/1525822X980100020301. Usado para definições de códigos, critérios de inclusão/exclusão e disciplina de codebook em equipe.
 
-7. **Zheng et al. (2023)** — "Judging LLM-as-a-Judge with MT-Bench and Chatbot Arena" *NeurIPS 2023*. Metodologia LLM-as-Judge usada no passo de validação final do Istara.
+7. **Wang et al. (2024)** — "Mixture-of-Agents Enhances Large Language Model Capabilities" *arXiv:2406.04692*. Inspiração para a camada de validação multi-agente do Istara.
+
+8. **Du et al. (2023)** — "Improving Factuality and Reasoning in Language Models through Multiagent Debate" *arXiv:2305.14325*. Protocolo de debate adversarial para reduzir outputs sem suporte; implementado como caminho de validação/refinamento no Istara.
+
+9. **Li et al. (2025)** — "Rethinking Mixture-of-Agents: Is Mixing Different Large Language Models Beneficial?" *arXiv:2502.00674*. Variante Self-MoA de modelo único para ambientes com computação limitada.
+
+10. **Zheng et al. (2023)** — "Judging LLM-as-a-Judge with MT-Bench and Chatbot Arena" *NeurIPS 2023*. Metodologia LLM-as-Judge usada somente como validação auxiliar, não como substituto de evidência, confiabilidade e revisão humana.
 
 ### Memória e Gestão de Contexto
 
-8. **Jiang et al. (2023)** — "LLMLingua: Compressing Prompts for Accelerated Inference of Large Language Models" *EMNLP 2023*. Compressão de prompt alcançando 30–74% de redução de tokens; implementado no compressor de contexto do Istara.
+11. **Jiang et al. (2023)** — "LLMLingua: Compressing Prompts for Accelerated Inference of Large Language Models" *EMNLP 2023*. Compressão de prompt; o Istara protege blocos de metodologia, codebook, evidência e confiabilidade contra perda por compressão.
 
-9. **Chen et al. (2023)** — "Walking Down the Memory Maze: Beyond Context Limit through Interactive Reading" *arXiv:2310.05029*. Sumarização hierárquica baseada em DAG do MemWalker; implementada na hierarquia de contexto do Istara.
+12. **Jiang et al. (2023)** — "LongLLMLingua: Accelerating and Enhancing LLMs in Long Context Scenarios via Prompt Compression" *arXiv:2310.06839*. Referência de compressão para contexto longo; blocos protegidos de validade de pesquisa não são compressíveis.
 
-10. **Pan et al. (2024)** — "From RAG to Prompt RAG: Revisiting Retrieval-Augmented Generation for Long-Context Language Models" *ACL 2024*. Prompt RAG para injetar contexto recuperado no momento da inferência.
+13. **Chen et al. (2023)** — "Walking Down the Memory Maze: Beyond Context Limit through Interactive Reading" *arXiv:2310.05029*. Sumarização hierárquica baseada em DAG do MemWalker; implementada na hierarquia de contexto do Istara.
 
-11. **Ouyang et al. (2026)** — "ReasoningBank: Scaling Agent Self-Evolving with Reasoning Memory" *arXiv:2509.25140*. Memória estruturada de raciocínio para destilar trajetórias bem-sucedidas e falhas de agentes em estratégias reutilizáveis; implementada como camada compartilhada de memória de orquestração para roteamento Memento, autoresearch e observação meta-agente.
+14. **Pan et al. (2024)** — "From RAG to Prompt RAG: Revisiting Retrieval-Augmented Generation for Long-Context Language Models" *ACL 2024*. Prompt RAG para injetar contexto recuperado no momento da inferência; o Istara ainda injeta metodologia obrigatória de codificação de forma determinística.
+
+15. **Ouyang et al. (2026)** — "ReasoningBank: Scaling Agent Self-Evolving with Reasoning Memory" *arXiv:2509.25140*. Memória estruturada de raciocínio para destilar trajetórias bem-sucedidas e falhas de agentes em estratégias reutilizáveis; implementada como camada compartilhada de memória de orquestração para roteamento Memento, autoresearch e observação meta-agente.
 
 ### Geração Aumentada por Recuperação
 
-12. **Lewis et al. (2020)** — "Retrieval-Augmented Generation for Knowledge-Intensive NLP Tasks" *NeurIPS 2020*. O artigo fundacional de RAG; a recuperação híbrida do Istara implementa esta arquitetura.
+16. **Lewis et al. (2020)** — "Retrieval-Augmented Generation for Knowledge-Intensive NLP Tasks" *NeurIPS 2020*. O artigo fundacional de RAG; a recuperação híbrida do Istara é a camada de evidência exata.
 
-13. **Cormack et al. (2009)** — "Reciprocal rank fusion outperforms condorcet and individual rank learning methods" *SIGIR 2009*. Algoritmo RRF mesclando rankings de busca vetorial e por palavras-chave no Istara.
+17. **Edge et al. (2024)** — "From Local to Global: A Graph RAG Approach to Query-Focused Summarization" *arXiv:2404.16130*. Base para síntese global estilo GraphRAG; o Istara usa síntese em grafo apenas sobre evidência rastreável e nunca como bypass de codificação, confiabilidade e revisão.
 
-14. **Robertson & Zaragoza (2009)** — "The Probabilistic Relevance Framework: BM25 and Beyond" *Foundations and Trends in Information Retrieval* 3(4). Componente de busca por palavras-chave BM25 da recuperação híbrida do Istara.
+18. **Microsoft Research GraphRAG / LazyGraphRAG / DRIFT Search** — Documentação oficial da Microsoft Research e GraphRAG. Usada para conceitos de busca local/global/DRIFT e desenho de recuperação em grafo com custo controlado.
+
+19. **Cormack et al. (2009)** — "Reciprocal rank fusion outperforms condorcet and individual rank learning methods" *SIGIR 2009*. Algoritmo RRF mesclando rankings de busca vetorial e por palavras-chave no Istara.
+
+20. **Robertson & Zaragoza (2009)** — "The Probabilistic Relevance Framework: BM25 and Beyond" *Foundations and Trends in Information Retrieval* 3(4). Componente de busca por palavras-chave BM25 da recuperação híbrida do Istara.
 
 ### Computação Distribuída
 
-15. **Borzunov et al. (2022)** — "Petals: Collaborative Inference and Fine-tuning of Large Models" *arXiv:2209.01188*. Arquitetura de inferência distribuída; o Compute Relay do Istara é inspirado no Petals.
+21. **Borzunov et al. (2022)** — "Petals: Collaborative Inference and Fine-tuning of Large Models" *arXiv:2209.01188*. Arquitetura de inferência distribuída; o Compute Relay do Istara é inspirado no Petals.
 
-16. **Borzunov et al. (2023)** — "Distributed Inference and Fine-tuning of Large Language Models Over the Internet" *NeurIPS 2023*.
+22. **Borzunov et al. (2023)** — "Distributed Inference and Fine-tuning of Large Language Models Over the Internet" *NeurIPS 2023*.
 
 ### Canais de Survey e Entrevista
 
-17. **AURA (2025)** — "AURA: Adaptive User Research Assistant" *arXiv:2510.27126*. Arquitetura de agente de entrevista adaptativa implantada pelo Istara em canais de mensagens.
+23. **AURA (2025)** — "AURA: Adaptive User Research Assistant" *arXiv:2510.27126*. Arquitetura de agente de entrevista adaptativa implantada pelo Istara em canais de mensagens.
 
 ### Metodologia de Pesquisa
 
-18. **Sharon & Gadbaw (2018)** — "Atomic Research" WeWork Research Operations. A cadeia de evidências Nugget→Fato→Insight→Recomendação implementada como modelo de dados central do Istara.
+24. **Sharon & Gadbaw (2018)** — "Atomic Research" WeWork Research Operations. O Istara implementa Atomic Research como cadeia de evidências aceita e validada na fonte: Atom/Nugget→Fato→Insight→Recomendação.
 
-19. **Yablonski, J. (2020)** — *Laws of UX: Design Principles for Persuasive and Ethical Products*. O'Reilly Media. As 30 Leis de UX auditadas pelo verificador de conformidade do Istara.
+25. **Yablonski, J. (2020)** — *Laws of UX: Design Principles for Persuasive and Ethical Products*. O'Reilly Media. As 30 Leis de UX auditadas pelo verificador de conformidade do Istara.
 
-20. **Karpathy, A. (2026)** — "autoresearch: autonomous experiment loops for AI systems" github.com/karpathy/autoresearch. Framework de otimização autônoma; implementado como motor de autoresearch do Istara.
+26. **Karpathy, A. (2026)** — "autoresearch: autonomous experiment loops for AI systems" github.com/karpathy/autoresearch. Framework de otimização autônoma; implementado como motor de autoresearch do Istara.
 
 ### Padrões de Interoperabilidade
 

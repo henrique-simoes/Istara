@@ -8,6 +8,8 @@
       "slices": [
         "findings-reporting",
         "full-end-to-end",
+        "graph-synthesis",
+        "low-consensus-review",
         "survey-heavy",
         "usability-heavy"
       ],
@@ -26,9 +28,12 @@
       "source_count": 6,
       "slices": [
         "accessibility-heavy",
+        "coding-reliability",
         "findings-reporting",
         "full-end-to-end",
+        "graph-synthesis",
         "interview-heavy",
+        "low-consensus-review",
         "survey-heavy",
         "usability-heavy"
       ],
@@ -52,9 +57,12 @@
       "source_count": 9,
       "slices": [
         "accessibility-heavy",
+        "coding-reliability",
         "findings-reporting",
         "full-end-to-end",
+        "graph-synthesis",
         "interview-heavy",
+        "low-consensus-review",
         "multilingual",
         "survey-heavy",
         "usability-heavy"
@@ -81,9 +89,12 @@
       "source_count": 12,
       "slices": [
         "accessibility-heavy",
+        "coding-reliability",
         "findings-reporting",
         "full-end-to-end",
+        "graph-synthesis",
         "interview-heavy",
+        "low-consensus-review",
         "multilingual",
         "survey-heavy",
         "usability-heavy"
@@ -113,9 +124,12 @@
       "source_count": 12,
       "slices": [
         "accessibility-heavy",
+        "coding-reliability",
         "findings-reporting",
         "full-end-to-end",
+        "graph-synthesis",
         "interview-heavy",
+        "low-consensus-review",
         "multilingual",
         "survey-heavy",
         "upload-smoke",
@@ -147,9 +161,12 @@
       "source_count": 12,
       "slices": [
         "accessibility-heavy",
+        "coding-reliability",
         "findings-reporting",
         "full-end-to-end",
+        "graph-synthesis",
         "interview-heavy",
+        "low-consensus-review",
         "multilingual",
         "survey-heavy",
         "upload-smoke",
@@ -180,9 +197,12 @@
       "source_count": 12,
       "slices": [
         "accessibility-heavy",
+        "coding-reliability",
         "findings-reporting",
         "full-end-to-end",
+        "graph-synthesis",
         "interview-heavy",
+        "low-consensus-review",
         "survey-heavy",
         "upload-smoke"
       ],
@@ -210,9 +230,12 @@
     "card-sorting": {
       "source_count": 12,
       "slices": [
+        "coding-reliability",
         "findings-reporting",
         "full-end-to-end",
+        "graph-synthesis",
         "interview-heavy",
+        "low-consensus-review",
         "survey-heavy",
         "upload-smoke",
         "usability-heavy"
@@ -242,9 +265,12 @@
       "source_count": 12,
       "slices": [
         "accessibility-heavy",
+        "coding-reliability",
         "findings-reporting",
         "full-end-to-end",
+        "graph-synthesis",
         "interview-heavy",
+        "low-consensus-review",
         "survey-heavy",
         "usability-heavy"
       ],
@@ -272,9 +298,12 @@
       "source_count": 12,
       "slices": [
         "accessibility-heavy",
+        "coding-reliability",
         "findings-reporting",
         "full-end-to-end",
+        "graph-synthesis",
         "interview-heavy",
+        "low-consensus-review",
         "multilingual",
         "survey-heavy",
         "usability-heavy"
@@ -303,9 +332,12 @@
       "source_count": 12,
       "slices": [
         "accessibility-heavy",
+        "coding-reliability",
         "findings-reporting",
         "full-end-to-end",
+        "graph-synthesis",
         "interview-heavy",
+        "low-consensus-review",
         "multilingual",
         "survey-heavy",
         "usability-heavy"
@@ -334,9 +366,12 @@
       "source_count": 12,
       "slices": [
         "accessibility-heavy",
+        "coding-reliability",
         "findings-reporting",
         "full-end-to-end",
+        "graph-synthesis",
         "interview-heavy",
+        "low-consensus-review",
         "multilingual",
         "survey-heavy",
         "upload-smoke",
@@ -368,9 +403,12 @@
       "source_count": 12,
       "slices": [
         "accessibility-heavy",
+        "coding-reliability",
         "findings-reporting",
         "full-end-to-end",
+        "graph-synthesis",
         "interview-heavy",
+        "low-consensus-review",
         "multilingual",
         "survey-heavy",
         "upload-smoke",
@@ -401,9 +439,12 @@
       "source_count": 12,
       "slices": [
         "accessibility-heavy",
+        "coding-reliability",
         "findings-reporting",
         "full-end-to-end",
+        "graph-synthesis",
         "interview-heavy",
+        "low-consensus-review",
         "survey-heavy",
         "upload-smoke"
       ],
@@ -431,9 +472,12 @@
     "design-system-audit": {
       "source_count": 12,
       "slices": [
+        "coding-reliability",
         "findings-reporting",
         "full-end-to-end",
+        "graph-synthesis",
         "interview-heavy",
+        "low-consensus-review",
         "survey-heavy",
         "upload-smoke",
         "usability-heavy"
@@ -463,9 +507,12 @@
       "source_count": 12,
       "slices": [
         "accessibility-heavy",
+        "coding-reliability",
         "findings-reporting",
         "full-end-to-end",
+        "graph-synthesis",
         "interview-heavy",
+        "low-consensus-review",
         "survey-heavy",
         "usability-heavy"
       ],
@@ -493,9 +540,12 @@
       "source_count": 12,
       "slices": [
         "accessibility-heavy",
+        "coding-reliability",
         "findings-reporting",
         "full-end-to-end",
+        "graph-synthesis",
         "interview-heavy",
+        "low-consensus-review",
         "malformed-edge-case",
         "survey-heavy",
         "usability-heavy"
@@ -524,9 +574,12 @@
       "source_count": 12,
       "slices": [
         "accessibility-heavy",
+        "coding-reliability",
         "findings-reporting",
         "full-end-to-end",
+        "graph-synthesis",
         "interview-heavy",
+        "low-consensus-review",
         "malformed-edge-case",
         "survey-heavy",
         "usability-heavy"
@@ -555,9 +608,12 @@
       "source_count": 12,
       "slices": [
         "accessibility-heavy",
+        "coding-reliability",
         "findings-reporting",
         "full-end-to-end",
+        "graph-synthesis",
         "interview-heavy",
+        "low-consensus-review",
         "malformed-edge-case",
         "survey-heavy",
         "upload-smoke",
@@ -589,9 +645,12 @@
       "source_count": 12,
       "slices": [
         "accessibility-heavy",
+        "coding-reliability",
         "findings-reporting",
         "full-end-to-end",
+        "graph-synthesis",
         "interview-heavy",
+        "low-consensus-review",
         "malformed-edge-case",
         "survey-heavy",
         "upload-smoke",
@@ -622,9 +681,12 @@
       "source_count": 12,
       "slices": [
         "accessibility-heavy",
+        "coding-reliability",
         "findings-reporting",
         "full-end-to-end",
+        "graph-synthesis",
         "interview-heavy",
+        "low-consensus-review",
         "survey-heavy",
         "upload-smoke"
       ],
@@ -652,9 +714,12 @@
     "heuristic-evaluation": {
       "source_count": 12,
       "slices": [
+        "coding-reliability",
         "findings-reporting",
         "full-end-to-end",
+        "graph-synthesis",
         "interview-heavy",
+        "low-consensus-review",
         "survey-heavy",
         "upload-smoke"
       ],
@@ -682,9 +747,12 @@
     "hmw-statements": {
       "source_count": 12,
       "slices": [
+        "coding-reliability",
         "findings-reporting",
         "full-end-to-end",
+        "graph-synthesis",
         "interview-heavy",
+        "low-consensus-review",
         "survey-heavy"
       ],
       "methods": [
@@ -710,9 +778,12 @@
     "interview-question-generator": {
       "source_count": 12,
       "slices": [
+        "coding-reliability",
         "findings-reporting",
         "full-end-to-end",
+        "graph-synthesis",
         "interview-heavy",
+        "low-consensus-review",
         "malformed-edge-case",
         "survey-heavy",
         "usability-heavy"
@@ -742,9 +813,12 @@
       "source_count": 12,
       "slices": [
         "accessibility-heavy",
+        "coding-reliability",
         "findings-reporting",
         "full-end-to-end",
+        "graph-synthesis",
         "interview-heavy",
+        "low-consensus-review",
         "malformed-edge-case",
         "survey-heavy",
         "usability-heavy"
@@ -774,9 +848,12 @@
       "source_count": 12,
       "slices": [
         "accessibility-heavy",
+        "coding-reliability",
         "findings-reporting",
         "full-end-to-end",
+        "graph-synthesis",
         "interview-heavy",
+        "low-consensus-review",
         "malformed-edge-case",
         "multilingual",
         "survey-heavy",
@@ -808,9 +885,12 @@
       "source_count": 12,
       "slices": [
         "accessibility-heavy",
+        "coding-reliability",
         "findings-reporting",
         "full-end-to-end",
+        "graph-synthesis",
         "interview-heavy",
+        "low-consensus-review",
         "malformed-edge-case",
         "multilingual",
         "survey-heavy",
@@ -841,9 +921,12 @@
       "source_count": 12,
       "slices": [
         "accessibility-heavy",
+        "coding-reliability",
         "findings-reporting",
         "full-end-to-end",
+        "graph-synthesis",
         "interview-heavy",
+        "low-consensus-review",
         "multilingual",
         "survey-heavy",
         "upload-smoke"
@@ -871,9 +954,12 @@
     "nps-analysis": {
       "source_count": 12,
       "slices": [
+        "coding-reliability",
         "findings-reporting",
         "full-end-to-end",
+        "graph-synthesis",
         "interview-heavy",
+        "low-consensus-review",
         "multilingual",
         "survey-heavy",
         "upload-smoke"
@@ -901,9 +987,12 @@
     "participant-simulation": {
       "source_count": 12,
       "slices": [
+        "coding-reliability",
         "findings-reporting",
         "full-end-to-end",
+        "graph-synthesis",
         "interview-heavy",
+        "low-consensus-review",
         "survey-heavy",
         "upload-smoke"
       ],
@@ -931,9 +1020,12 @@
     "persona-creation": {
       "source_count": 12,
       "slices": [
+        "coding-reliability",
         "findings-reporting",
         "full-end-to-end",
+        "graph-synthesis",
         "interview-heavy",
+        "low-consensus-review",
         "malformed-edge-case",
         "survey-heavy",
         "upload-smoke",
@@ -965,9 +1057,12 @@
       "source_count": 12,
       "slices": [
         "accessibility-heavy",
+        "coding-reliability",
         "findings-reporting",
         "full-end-to-end",
+        "graph-synthesis",
         "interview-heavy",
+        "low-consensus-review",
         "malformed-edge-case",
         "survey-heavy",
         "usability-heavy"
@@ -997,9 +1092,12 @@
       "source_count": 12,
       "slices": [
         "accessibility-heavy",
+        "coding-reliability",
         "findings-reporting",
         "full-end-to-end",
+        "graph-synthesis",
         "interview-heavy",
+        "low-consensus-review",
         "malformed-edge-case",
         "multilingual",
         "survey-heavy",
@@ -1031,9 +1129,12 @@
       "source_count": 12,
       "slices": [
         "accessibility-heavy",
+        "coding-reliability",
         "findings-reporting",
         "full-end-to-end",
+        "graph-synthesis",
         "interview-heavy",
+        "low-consensus-review",
         "malformed-edge-case",
         "multilingual",
         "survey-heavy",
@@ -1064,9 +1165,12 @@
       "source_count": 12,
       "slices": [
         "accessibility-heavy",
+        "coding-reliability",
         "findings-reporting",
         "full-end-to-end",
+        "graph-synthesis",
         "interview-heavy",
+        "low-consensus-review",
         "multilingual",
         "survey-heavy",
         "upload-smoke"
@@ -1094,9 +1198,12 @@
     "research-quality-evaluation": {
       "source_count": 12,
       "slices": [
+        "coding-reliability",
         "findings-reporting",
         "full-end-to-end",
+        "graph-synthesis",
         "interview-heavy",
+        "low-consensus-review",
         "multilingual",
         "survey-heavy",
         "upload-smoke"
@@ -1124,9 +1231,12 @@
     "research-retro": {
       "source_count": 12,
       "slices": [
+        "coding-reliability",
         "findings-reporting",
         "full-end-to-end",
+        "graph-synthesis",
         "interview-heavy",
+        "low-consensus-review",
         "survey-heavy",
         "upload-smoke"
       ],
@@ -1154,9 +1264,12 @@
     "research-synthesis": {
       "source_count": 12,
       "slices": [
+        "coding-reliability",
         "findings-reporting",
         "full-end-to-end",
+        "graph-synthesis",
         "interview-heavy",
+        "low-consensus-review",
         "survey-heavy",
         "upload-smoke",
         "usability-heavy"
@@ -1187,9 +1300,12 @@
       "source_count": 12,
       "slices": [
         "accessibility-heavy",
+        "coding-reliability",
         "findings-reporting",
         "full-end-to-end",
+        "graph-synthesis",
         "interview-heavy",
+        "low-consensus-review",
         "survey-heavy",
         "usability-heavy"
       ],
@@ -1218,9 +1334,12 @@
       "source_count": 12,
       "slices": [
         "accessibility-heavy",
+        "coding-reliability",
         "findings-reporting",
         "full-end-to-end",
+        "graph-synthesis",
         "interview-heavy",
+        "low-consensus-review",
         "multilingual",
         "survey-heavy",
         "usability-heavy"
@@ -1250,9 +1369,12 @@
       "source_count": 12,
       "slices": [
         "accessibility-heavy",
+        "coding-reliability",
         "findings-reporting",
         "full-end-to-end",
+        "graph-synthesis",
         "interview-heavy",
+        "low-consensus-review",
         "multilingual",
         "survey-heavy",
         "usability-heavy"
@@ -1281,9 +1403,12 @@
       "source_count": 12,
       "slices": [
         "accessibility-heavy",
+        "coding-reliability",
         "findings-reporting",
         "full-end-to-end",
+        "graph-synthesis",
         "interview-heavy",
+        "low-consensus-review",
         "multilingual",
         "survey-heavy",
         "upload-smoke",
@@ -1314,9 +1439,12 @@
       "source_count": 12,
       "slices": [
         "accessibility-heavy",
+        "coding-reliability",
         "findings-reporting",
         "full-end-to-end",
+        "graph-synthesis",
         "interview-heavy",
+        "low-consensus-review",
         "multilingual",
         "survey-heavy",
         "upload-smoke",
@@ -1347,9 +1475,12 @@
       "source_count": 12,
       "slices": [
         "accessibility-heavy",
+        "coding-reliability",
         "findings-reporting",
         "full-end-to-end",
+        "graph-synthesis",
         "interview-heavy",
+        "low-consensus-review",
         "survey-heavy",
         "upload-smoke"
       ],
@@ -1377,9 +1508,12 @@
     "survey-ai-detection": {
       "source_count": 12,
       "slices": [
+        "coding-reliability",
         "findings-reporting",
         "full-end-to-end",
+        "graph-synthesis",
         "interview-heavy",
+        "low-consensus-review",
         "survey-heavy",
         "upload-smoke",
         "usability-heavy"
@@ -1410,9 +1544,12 @@
       "source_count": 12,
       "slices": [
         "accessibility-heavy",
+        "coding-reliability",
         "findings-reporting",
         "full-end-to-end",
+        "graph-synthesis",
         "interview-heavy",
+        "low-consensus-review",
         "survey-heavy",
         "usability-heavy"
       ],
@@ -1441,9 +1578,12 @@
       "source_count": 12,
       "slices": [
         "accessibility-heavy",
+        "coding-reliability",
         "findings-reporting",
         "full-end-to-end",
+        "graph-synthesis",
         "interview-heavy",
+        "low-consensus-review",
         "multilingual",
         "usability-heavy"
       ],
@@ -1472,9 +1612,12 @@
       "source_count": 12,
       "slices": [
         "accessibility-heavy",
+        "coding-reliability",
         "findings-reporting",
         "full-end-to-end",
+        "graph-synthesis",
         "interview-heavy",
+        "low-consensus-review",
         "multilingual",
         "survey-heavy",
         "usability-heavy"
@@ -1503,9 +1646,12 @@
       "source_count": 12,
       "slices": [
         "accessibility-heavy",
+        "coding-reliability",
         "findings-reporting",
         "full-end-to-end",
+        "graph-synthesis",
         "interview-heavy",
+        "low-consensus-review",
         "multilingual",
         "survey-heavy",
         "upload-smoke",
@@ -1536,9 +1682,12 @@
       "source_count": 12,
       "slices": [
         "accessibility-heavy",
+        "coding-reliability",
         "findings-reporting",
         "full-end-to-end",
+        "graph-synthesis",
         "interview-heavy",
+        "low-consensus-review",
         "multilingual",
         "survey-heavy",
         "upload-smoke",
@@ -1569,9 +1718,12 @@
       "source_count": 12,
       "slices": [
         "accessibility-heavy",
+        "coding-reliability",
         "findings-reporting",
         "full-end-to-end",
+        "graph-synthesis",
         "interview-heavy",
+        "low-consensus-review",
         "survey-heavy",
         "upload-smoke"
       ],
@@ -1599,9 +1751,12 @@
     "transcribe-audio": {
       "source_count": 12,
       "slices": [
+        "coding-reliability",
         "findings-reporting",
         "full-end-to-end",
+        "graph-synthesis",
         "interview-heavy",
+        "low-consensus-review",
         "survey-heavy",
         "upload-smoke",
         "usability-heavy"
@@ -1632,9 +1787,12 @@
       "source_count": 12,
       "slices": [
         "accessibility-heavy",
+        "coding-reliability",
         "findings-reporting",
         "full-end-to-end",
+        "graph-synthesis",
         "interview-heavy",
+        "low-consensus-review",
         "survey-heavy",
         "usability-heavy"
       ],
@@ -1663,9 +1821,12 @@
       "source_count": 12,
       "slices": [
         "accessibility-heavy",
+        "coding-reliability",
         "findings-reporting",
         "full-end-to-end",
+        "graph-synthesis",
         "interview-heavy",
+        "low-consensus-review",
         "multilingual",
         "survey-heavy",
         "usability-heavy"
@@ -1695,9 +1856,12 @@
       "source_count": 12,
       "slices": [
         "accessibility-heavy",
+        "coding-reliability",
         "findings-reporting",
         "full-end-to-end",
+        "graph-synthesis",
         "interview-heavy",
+        "low-consensus-review",
         "multilingual",
         "survey-heavy",
         "usability-heavy"
@@ -1726,9 +1890,12 @@
       "source_count": 12,
       "slices": [
         "accessibility-heavy",
+        "coding-reliability",
         "findings-reporting",
         "full-end-to-end",
+        "graph-synthesis",
         "interview-heavy",
+        "low-consensus-review",
         "multilingual",
         "survey-heavy",
         "upload-smoke",
@@ -1759,9 +1926,12 @@
       "source_count": 12,
       "slices": [
         "accessibility-heavy",
+        "coding-reliability",
         "findings-reporting",
         "full-end-to-end",
+        "graph-synthesis",
         "interview-heavy",
+        "low-consensus-review",
         "multilingual",
         "survey-heavy",
         "upload-smoke",
@@ -1792,9 +1962,12 @@
       "source_count": 12,
       "slices": [
         "accessibility-heavy",
+        "coding-reliability",
         "findings-reporting",
         "full-end-to-end",
+        "graph-synthesis",
         "interview-heavy",
+        "low-consensus-review",
         "survey-heavy",
         "upload-smoke"
       ],

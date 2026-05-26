@@ -20,6 +20,10 @@ import {
   reviewerAssessment,
 } from "./lib/persona.mjs";
 import { runUiJourney } from "./lib/playwright-ui.mjs";
+import {
+  exerciseResearchSpineValidation,
+  exerciseSelfImprovementGovernance,
+} from "./lib/research-spine-probes.mjs";
 import { scoreRun, writeScorecardMarkdown } from "./lib/scoring.mjs";
 import {
   buildDonorModelSandboxConfig,
@@ -70,6 +74,15 @@ const PRIMARY_TEST_MODEL = "google/gemma-4-e4b";
 const FUTURE_QWEN_DONOR_MODEL = "Qwen3.5-4B";
 const DEFAULT_LIVE_LLM_KEYCHAIN_SERVICE = "istara-live-openai-compatible-tests";
 const startupConfigWarnings = [];
+const THREE_MODEL_DONOR_TOPOLOGY_ALIASES = new Set([
+  "3-model",
+  "3model",
+  "three-model",
+  "macstudio-colima",
+  "macstudio-colima-qwen-gemma",
+  "macstudio+colima",
+  "local-three-model",
+]);
 
 function arg(name, fallback = null) {
   const index = process.argv.indexOf(`--${name}`);
@@ -85,6 +98,12 @@ function intArg(name, fallback) {
   const value = arg(name, process.env[`ISTARA_BENCHMARK_${name.toUpperCase().replace(/-/g, "_")}`]);
   const parsed = Number.parseInt(value, 10);
   return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
+}
+
+function nonNegativeIntArg(name, fallback) {
+  const value = arg(name, process.env[`ISTARA_BENCHMARK_${name.toUpperCase().replace(/-/g, "_")}`]);
+  const parsed = Number.parseInt(value, 10);
+  return Number.isFinite(parsed) && parsed >= 0 ? parsed : fallback;
 }
 
 function floatEnv(name, fallback) {
@@ -408,6 +427,13 @@ function firstNonEmpty(...values) {
   return "";
 }
 
+function firstExistingPath(...paths) {
+  for (const path of paths) {
+    if (path && existsSync(path)) return path;
+  }
+  return firstNonEmpty(...paths);
+}
+
 function envDonorValue(index, keys) {
   for (const key of keys) {
     const value = process.env[`ISTARA_BENCHMARK_DONOR_${index}_${key}`];
@@ -457,6 +483,8 @@ const startSandbox = hasFlag("start-sandbox") || ["1", "true", "yes"].includes(S
 const skipSandbox = ["1", "true", "yes"].includes(String(process.env.ISTARA_BENCHMARK_SKIP_SANDBOX || "").toLowerCase());
 const mode = arg("mode", process.env.ISTARA_BENCHMARK_MODE || "probe");
 const runId = arg("run-id", makeRunId());
+const donorTopology = String(arg("donor-topology", process.env.ISTARA_BENCHMARK_DONOR_TOPOLOGY || "") || "").trim().toLowerCase();
+const useLocalThreeModelDonorTopology = THREE_MODEL_DONOR_TOPOLOGY_ALIASES.has(donorTopology);
 const resultsRoot = resolve(arg("results-dir", process.env.ISTARA_BENCHMARK_RESULTS_DIR || join(__dirname, ".results")));
 const externalConnectionStringMode = boolEnv("ISTARA_BENCHMARK_EXTERNAL_CONNECTION_STRINGS", false)
   || boolEnv("ISTARA_BENCHMARK_INTERACTIVE_CONNECTION_STRINGS", false)
@@ -558,8 +586,54 @@ function profileValue(profile, keys) {
   return "";
 }
 
+function localThreeModelDonorPreset(index) {
+  if (!useLocalThreeModelDonorTopology) return null;
+  if (index === 1) {
+    return {
+      id: "donor-1-gemma4",
+      provider: "lmstudio",
+      model: relayLlmModel || PRIMARY_TEST_MODEL,
+    };
+  }
+  if (index === 2) {
+    return {
+      id: "sim-qwen35-4b",
+      model_server: "llamacpp",
+      model_server_container: "istara-donor-qwen35-4b",
+      model_server_port: 18112,
+      model_file: firstExistingPath(
+        process.env.ISTARA_BENCHMARK_QWEN_GGUF,
+        "/Users/studio/Istara-Projects/models/qwen3.5-4b-q4_k_m/Qwen3.5-4B-Q4_K_M.gguf",
+      ),
+      model: "Qwen3.5-4B-Q4_K_M.gguf",
+      context_length: 12288,
+      reasoning: "off",
+    };
+  }
+  if (index === 3) {
+    return {
+      id: "sim-gemma4-e2b",
+      model_server: "llamacpp",
+      model_server_container: "istara-donor-gemma4-e2b",
+      model_server_port: 18113,
+      model_file: firstExistingPath(
+        process.env.ISTARA_BENCHMARK_GEMMA_E2B_GGUF,
+        "/Users/studio/Istara-Projects/models/gemma-4-e2b-it-q4_k_m/gemma-4-E2B-it-Q4_K_M.gguf",
+        "/Users/studio/Documents/Istara-main/LLMs/quantized_models/gemma-4-e2b-it-istara-ux-research/gemma-4-e2b-it-istara-ux-research-Q4_K_M.gguf",
+      ),
+      model: "gemma-4-E2B-it-Q4_K_M.gguf",
+      context_length: 12288,
+      reasoning: "off",
+    };
+  }
+  return null;
+}
+
 function normalizeDonorProfile(rawProfile, index, { required = true, defaultKind = "" } = {}) {
-  const raw = rawProfile || {};
+  const raw = {
+    ...(localThreeModelDonorPreset(index) || {}),
+    ...(rawProfile || {}),
+  };
   const envId = envDonorValue(index, ["ID", "NAME", "LABEL"]);
   const envHost = envDonorValue(index, ["LLM_HOST", "HOST", "BASE_URL"]);
   const envProvider = envDonorValue(index, ["LLM_PROVIDER", "PROVIDER"]);
@@ -665,7 +739,7 @@ function buildDonorProfiles({ donorCountOverride = null } = {}) {
   const configuredProfiles = loadConfiguredDonorProfiles();
   const requested = Number.isFinite(donorCountOverride) && donorCountOverride > 0
     ? donorCountOverride
-    : intArg("donor-count", Math.max(1, configuredProfiles.length || 1));
+    : intArg("donor-count", Math.max(useLocalThreeModelDonorTopology ? 3 : 1, configuredProfiles.length || 1));
   const total = Math.max(requested, configuredProfiles.length, 1);
   const profiles = [];
   for (let index = 1; index <= total; index += 1) {
@@ -742,9 +816,13 @@ const serverStrictAutoRouting = (
   process.env.ISTARA_BENCHMARK_STRICT_AUTO_ROUTING ||
   (forceDonatedChat ? "true" : "false")
 ).trim();
-const maxChatTurns = intArg("max-chat-turns", mode === "full" ? 100 : mode === "probe" ? 8 : 0);
-const maxTasks = intArg("max-tasks", mode === "full" ? 55 : mode === "probe" ? 8 : 0);
-const maxUploads = intArg("max-uploads", mode === "full" ? 140 : mode === "probe" ? 120 : 0);
+const maxChatTurns = nonNegativeIntArg("max-chat-turns", mode === "full" ? 100 : mode === "probe" ? 8 : 0);
+const maxTasks = nonNegativeIntArg("max-tasks", mode === "full" ? 55 : mode === "probe" ? 8 : 0);
+const maxUploads = nonNegativeIntArg("max-uploads", mode === "full" ? 140 : mode === "probe" ? 120 : 0);
+const codingValidationEnabled = boolEnv("ISTARA_BENCHMARK_RUN_CODING_VALIDATION", mode !== "plan-only");
+const codingValidationLimit = nonNegativeIntArg("coding-limit", mode === "full" ? 50 : mode === "probe" ? 12 : 0);
+const selfImprovementProbeEnabled = boolEnv("ISTARA_BENCHMARK_SELF_IMPROVEMENT_PROBE", mode !== "plan-only");
+const startAutoresearchExperiment = boolEnv("ISTARA_BENCHMARK_START_AUTORESEARCH_EXPERIMENT", false);
 const chatTimeoutMs = intArg("chat-timeout-ms", 120000);
 const keepClientContainers = ["1", "true", "yes"].includes(
   String(process.env.ISTARA_BENCHMARK_KEEP_CLIENT_CONTAINERS || "").toLowerCase(),
@@ -752,6 +830,15 @@ const keepClientContainers = ["1", "true", "yes"].includes(
 const keepDonorModelContainers = ["1", "true", "yes"].includes(
   String(process.env.ISTARA_BENCHMARK_KEEP_DONOR_MODEL_CONTAINERS || "").toLowerCase(),
 );
+const hostManagedThreeModelRun = useLocalThreeModelDonorTopology && skipSandbox && startClientSandboxes;
+const hostManagedServerContainerNames = [
+  "istara-benchmark-backend",
+  "istara-benchmark-frontend",
+  "istara-benchmark-ollama",
+];
+const stopColimaAfterRun = boolEnv("ISTARA_BENCHMARK_STOP_COLIMA_AFTER_RUN", hostManagedThreeModelRun);
+let colimaAutostartAttempted = false;
+let colimaStartedByBenchmark = false;
 const colimaStoragePolicy = (process.env.ISTARA_BENCHMARK_COLIMA_STORAGE_POLICY || "warn").trim().toLowerCase();
 const enforceColimaApparentStorage = boolEnv("ISTARA_BENCHMARK_COLIMA_ENFORCE_APPARENT_STORAGE", false);
 const colimaStorageBudget = {
@@ -801,11 +888,19 @@ logger.action("llm.config.sources", {
   relay_model_source: relayLlmModelSource,
   relay_api_key_source: relayLlmApiKeySource,
   start_client_sandboxes: startClientSandboxes,
+  host_managed_three_model_run: hostManagedThreeModelRun,
+  stop_colima_after_run: stopColimaAfterRun,
   external_connection_string_mode: externalConnectionStringMode,
   researcher_count: runtimeResearcherCount,
+  donor_topology: donorTopology || "manual/default",
+  local_three_model_donor_topology: useLocalThreeModelDonorTopology,
   donor_count_requested: donorProfiles.filter((profile) => profile.required).length,
   donor_profiles: donorProfiles.map(summarizeDonorProfile),
   require_distinct_donor_endpoints: requireDistinctDonorEndpoints,
+  coding_validation_enabled: codingValidationEnabled,
+  coding_validation_limit: codingValidationLimit,
+  self_improvement_probe_enabled: selfImprovementProbeEnabled,
+  autoresearch_experiment_enabled: startAutoresearchExperiment,
   keychain_service_configured: liveLlmProfile.keychainServiceConfigured,
   keychain_service_source: liveLlmProfile.keychainServiceSource,
   model_configured: Boolean(relayLlmModel && relayLlmModel !== "default"),
@@ -850,6 +945,15 @@ const featureResults = {
   interviewEvidence: false,
   interviewProcess: false,
   naturalComputeOrchestration: false,
+  codingValidation: false,
+  researchSpineTraceability: false,
+  telemetryEvidence: false,
+  reasoningBankEvidence: false,
+  mementoSkillEvidence: false,
+  metaHyperagentEvidence: false,
+  selfImprovementGovernance: false,
+  autoresearchEvidence: false,
+  ragTraceabilityEvidence: false,
 };
 
 const sandbox = {
@@ -961,8 +1065,12 @@ function runCommand(label, command, args, options = {}) {
     status: result.status,
     signal: result.signal,
     duration_ms: Date.now() - started,
-    stdout: sanitizeLogText(result.stdout || "").slice(-12000),
-    stderr: sanitizeLogText(result.stderr || "").slice(-12000),
+    stdout: options.redactStdout
+      ? `[redacted-stdout:${String(result.stdout || "").length}]`
+      : sanitizeLogText(result.stdout || "").slice(-12000),
+    stderr: options.redactStderr
+      ? `[redacted-stderr:${String(result.stderr || "").length}]`
+      : sanitizeLogText(result.stderr || "").slice(-12000),
     error: sanitizeLogText(result.error?.message || ""),
   };
   logger.action("command.finish", payload);
@@ -1159,7 +1267,8 @@ function ensureDockerDaemon() {
     storage_policy: colimaStoragePolicy,
     budgets_gb: colimaStorageBudget,
   });
-  runCommand("colima-start", "colima", [
+  colimaAutostartAttempted = true;
+  const colimaStart = runCommand("colima-start", "colima", [
     "start",
     "--cpu",
     cpu,
@@ -1174,6 +1283,7 @@ function ensureDockerDaemon() {
   ], {
     timeoutMs: 15 * 60 * 1000,
   });
+  colimaStartedByBenchmark = colimaStart.status === 0;
   captureColimaStorageSnapshot("after-colima-autostart", { recordIssue: true });
   const second = dockerDaemonIsReady();
   logger.action("docker.daemon.after_colima", {
@@ -1399,6 +1509,86 @@ function startServerSandboxIfRequested() {
       detail: result.stderr || result.error?.message || "docker compose returned non-zero status",
     });
   }
+}
+
+function assertHostManagedThreeModelTopology() {
+  if (!hostManagedThreeModelRun) return;
+  const issues = [];
+  try {
+    const apiUrl = new URL(apiBase);
+    if (["18000", "18001"].includes(apiUrl.port)) {
+      issues.push(`apiBase=${apiBase} looks like a benchmark-owned server sandbox; use the host Istara server such as http://localhost:8000.`);
+    }
+  } catch {
+    issues.push(`apiBase=${apiBase} is not a valid URL.`);
+  }
+  try {
+    const uiUrl = new URL(frontendUrl);
+    if (["13000", "13001"].includes(uiUrl.port)) {
+      issues.push(`frontendUrl=${frontendUrl} looks like a benchmark-owned frontend sandbox; use the host Istara frontend such as http://localhost:3000.`);
+    }
+  } catch {
+    issues.push(`frontendUrl=${frontendUrl} is not a valid URL.`);
+  }
+  const evidence = {
+    host_managed_three_model_run: true,
+    start_sandbox: startSandbox,
+    skip_sandbox: skipSandbox,
+    start_client_sandboxes: startClientSandboxes,
+    api_base: apiBase,
+    frontend_url: frontendUrl,
+    issues,
+  };
+  logger.writeJson("host-managed-topology-contract.json", evidence);
+  logger.action("topology.host_managed.contract", evidence);
+  if (issues.length) {
+    blockers.push("Host-managed three-model topology was configured against benchmark server-sandbox endpoints.");
+    logger.issue({
+      area: "compute-donation",
+      severity: "critical",
+      title: "Host-managed benchmark topology points at sandbox endpoints",
+      detail: issues.join(" "),
+    });
+  }
+}
+
+function cleanupHostManagedServerSandboxConflict(label) {
+  if (!hostManagedThreeModelRun || mode === "plan-only") return;
+  const daemon = ensureClientDockerDaemon(`host-managed-server-cleanup-${label}`);
+  if (!daemon.ok) return;
+  const result = runCommand(`docker-rm-host-managed-server-containers-${label}`, "docker", [
+    "rm",
+    "-f",
+    ...hostManagedServerContainerNames,
+  ], {
+    allowFailure: true,
+    timeoutMs: 60 * 1000,
+  });
+  const compose = composeCommand();
+  let composeDown = { status: 0, skipped: true };
+  if (compose.command) {
+    composeDown = runCommand(`docker-compose-host-managed-server-down-${label}`, compose.command, [
+      ...compose.prefixArgs,
+      "-p",
+      "istara-real-user-benchmark-server",
+      "-f",
+      "docker-compose.yml",
+      "-f",
+      "tests/real_user_benchmark/docker-compose.benchmark.yml",
+      "down",
+      "--remove-orphans",
+    ], {
+      allowFailure: true,
+      timeoutMs: 2 * 60 * 1000,
+    });
+  }
+  logger.action("sandbox.server.host_managed_cleanup", {
+    label,
+    removed_known_containers_status: result.status,
+    compose_flavor: compose.flavor,
+    compose_down_status: composeDown.status,
+    note: "Host-managed three-model runs keep Istara on the Mac Studio host and use Docker/Colima only for researcher clients plus donor model/relay containers.",
+  });
 }
 
 function startServerSandboxWithDocker(model) {
@@ -1914,12 +2104,12 @@ main().catch((error) => {
   process.exit(1);
 });
 `;
-  const clientUsername = `maya-client-${index + 1}-${runId.replace(/[^a-z0-9]+/gi, "-").slice(0, 26)}`;
+  const clientUsername = `researcher_${index + 1}`;
   const clientPassword = process.env[`ISTARA_BENCHMARK_CLIENT_${index + 1}_PASSWORD`]
     || process.env.ISTARA_BENCHMARK_CLIENT_PASSWORD
-    || "IstaraBenchmarkClient123!";
+    || "istara123";
   const clientEmail = process.env[`ISTARA_BENCHMARK_CLIENT_${index + 1}_EMAIL`]
-    || `${clientUsername}@benchmark.istara.local`;
+    || `${clientUsername}@istara.test`;
   const result = runCommand(`docker-run-user-invite-client-${index + 1}`, "docker", [
     "run",
     "--rm",
@@ -2007,6 +2197,54 @@ function cleanupDonorModelSandboxes() {
   }
 }
 
+function stopColimaIfRequested(label) {
+  const usedBenchmarkColimaResources = (
+    colimaAutostartAttempted ||
+    relayClientContainers.length > 0 ||
+    donorModelContainers.length > 0
+  );
+  const skipReason = !stopColimaAfterRun
+    ? "disabled"
+    : mode === "plan-only"
+      ? "plan-only"
+      : keepClientContainers || keepDonorModelContainers
+        ? "keep-containers-requested"
+        : !usedBenchmarkColimaResources
+          ? "no-benchmark-colima-resources"
+          : !hasExecutable("colima")
+            ? "colima-not-installed"
+            : "";
+  if (skipReason) {
+    logger.action("colima.stop.skip", {
+      label,
+      reason: skipReason,
+      stop_colima_after_run: stopColimaAfterRun,
+      colima_autostart_attempted: colimaAutostartAttempted,
+      colima_started_by_benchmark: colimaStartedByBenchmark,
+      relay_client_container_count: relayClientContainers.length,
+      donor_model_container_count: donorModelContainers.length,
+    });
+    return;
+  }
+
+  captureColimaStorageSnapshot(`before-colima-stop-${label}`, { recordIssue: true });
+  const result = runCommand(`colima-stop-${label}`, "colima", ["stop"], {
+    timeoutMs: 5 * 60 * 1000,
+  });
+  logger.action("colima.stop.result", {
+    label,
+    ok: result.status === 0,
+    status: result.status,
+    signal: result.signal,
+    colima_autostart_attempted: colimaAutostartAttempted,
+    colima_started_by_benchmark: colimaStartedByBenchmark,
+    relay_client_container_count: relayClientContainers.length,
+    donor_model_container_count: donorModelContainers.length,
+    stderr: sanitizeLogText(result.stderr || "").slice(-800),
+  });
+  captureColimaStorageSnapshot(`after-colima-stop-${label}`, { recordIssue: false });
+}
+
 function preflightRelayLlmFromContainer(donorProfile = donorProfiles[0]) {
   const donor = donorProfile || donorProfiles[0];
   if (!requireComputeDonation || !startClientSandboxes || mode === "plan-only") {
@@ -2083,6 +2321,15 @@ const fetchJson = async (url, options = {}) => {
   return data;
 };
 const modelId = (item) => typeof item === "string" ? item : (item && (item.id || item.name || item.model || item.path)) || "";
+const modelAliases = (item) => {
+  const ids = [modelId(item)];
+  if (Array.isArray(item?.loaded_instances)) {
+    for (const instance of item.loaded_instances) {
+      if (instance?.id) ids.push(String(instance.id));
+    }
+  }
+  return Array.from(new Set(ids.filter(Boolean)));
+};
 const loadConfiguredModel = async (model) => {
   if (provider !== "lmstudio" || !model || model === "default") return false;
   loadAttempted = true;
@@ -2097,6 +2344,32 @@ const loadConfiguredModel = async (model) => {
     loadError = redact(error.message);
     return false;
   }
+};
+const candidateModelsFor = (configured, models, rawModels) => {
+  const candidates = [];
+  const add = (value) => {
+    const model = String(value || "").trim();
+    if (model && !candidates.includes(model)) candidates.push(model);
+  };
+  if (configured && configured !== "default") add(configured);
+  for (const raw of rawModels) {
+    const aliases = modelAliases(raw);
+    if (!aliases.length) continue;
+    const primary = aliases[0];
+    const matchesConfigured = configured
+      && configured !== "default"
+      && (primary === configured || aliases.includes(configured) || aliases.some((alias) => alias.startsWith(configured + ":")));
+    if (matchesConfigured) {
+      for (const alias of aliases) add(alias);
+    }
+  }
+  if (configured && configured !== "default") {
+    for (const model of models) {
+      if (model.startsWith(configured + ":")) add(model);
+    }
+  }
+  if (!candidates.length && models[0]) add(models[0]);
+  return candidates;
 };
 const tinyChat = async (model) => fetchJson(openAIUrl("chat/completions"), {
   method: "POST",
@@ -2123,21 +2396,51 @@ const main = async () => {
     modelListSource = "openai-compatible";
   }
   let rawModels = Array.isArray(modelData?.data) ? modelData.data : Array.isArray(modelData?.models) ? modelData.models : [];
-  let models = rawModels.map(modelId).filter(Boolean);
+  let models = Array.from(new Set(rawModels.flatMap(modelAliases).filter(Boolean)));
   if (provider === "lmstudio" && models.length === 0) {
     try {
       modelData = await fetchJson(openAIUrl("models"));
       rawModels = Array.isArray(modelData?.data) ? modelData.data : Array.isArray(modelData?.models) ? modelData.models : [];
-      models = rawModels.map(modelId).filter(Boolean);
+      models = Array.from(new Set(rawModels.flatMap(modelAliases).filter(Boolean)));
       modelListSource = "openai-compatible";
     } catch {}
   }
   modelCount = models.length;
   configuredModelListed = configuredModel && configuredModel !== "default" ? models.includes(configuredModel) : null;
-  const model = configuredModel && configuredModel !== "default" ? configuredModel : models[0];
-  selectedModelIdLength = model ? model.length : 0;
-  if (!model) throw new Error("No chat model available from configured relay LLM target");
-  const selectedRawModel = rawModels.find((item) => modelId(item) === model) || {};
+  const candidates = candidateModelsFor(configuredModel, models, rawModels);
+  if (!candidates.length) throw new Error("No chat model available from configured relay LLM target");
+  let model = "";
+  let completion;
+  let lastChatError = null;
+  for (const candidate of candidates) {
+    try {
+      completion = await tinyChat(candidate);
+      model = candidate;
+      break;
+    } catch (chatError) {
+      lastChatError = chatError;
+      const retryableLmStudioLoadError = /no models loaded|not loaded|load|compute error/i.test(chatError.message);
+      if (
+        provider === "lmstudio"
+        && configuredModel
+        && configuredModel !== "default"
+        && candidate === configuredModel
+        && retryableLmStudioLoadError
+      ) {
+        await loadConfiguredModel(configuredModel);
+        try {
+          completion = await tinyChat(candidate);
+          model = candidate;
+          break;
+        } catch (reloadChatError) {
+          lastChatError = reloadChatError;
+        }
+      }
+    }
+  }
+  if (!model || !completion) throw lastChatError || new Error("No chat model candidate served the configured relay LLM target");
+  selectedModelIdLength = model.length;
+  const selectedRawModel = rawModels.find((item) => modelAliases(item).includes(model)) || {};
   selectedQuantization = String(
     selectedRawModel?.quantization?.name
     || selectedRawModel?.quantization
@@ -2146,22 +2449,6 @@ const main = async () => {
     || ""
   );
   selectedQ4Evidence = q4EvidenceFrom(selectedQuantization, model, configuredModel);
-  let completion;
-  try {
-    completion = await tinyChat(model);
-  } catch (chatError) {
-    if (
-      provider === "lmstudio"
-      && configuredModel
-      && configuredModel !== "default"
-      && /no models loaded|not loaded|load/i.test(chatError.message)
-    ) {
-      await loadConfiguredModel(configuredModel);
-      completion = await tinyChat(model);
-    } else {
-      throw chatError;
-    }
-  }
   const content = completion?.choices?.[0]?.message?.content || "";
   console.log(JSON.stringify({
     ok: true,
@@ -2169,7 +2456,8 @@ const main = async () => {
     model_count: modelCount,
     configured_model_listed: configuredModelListed,
     model_list_source: modelListSource,
-    selected_model_source: configuredModel && configuredModel !== "default" ? "configured" : "first-listed",
+    selected_model: model,
+    selected_model_source: model === configuredModel ? "configured" : configuredModel && model.startsWith(configuredModel + ":") ? "loaded-instance-alias" : "candidate",
     selected_model_id_length: selectedModelIdLength,
     selected_quantization_present: Boolean(selectedQuantization),
     selected_quantization_redacted: Boolean(selectedQuantization),
@@ -2210,6 +2498,8 @@ main().catch((error) => {
       ISTARA_RELAY_LLM_API_KEY: donor.apiKey,
       ISTARA_RELAY_LLM_MODEL: donor.model,
     },
+    redactStdout: true,
+    redactStderr: true,
     timeoutMs: 2 * 60 * 1000,
   });
   let parsed = null;
@@ -2220,12 +2510,26 @@ main().catch((error) => {
       break;
     } catch {}
   }
+  const resolvedModel = String(parsed?.selected_model || "").trim();
+  if (result.status === 0 && parsed?.ok === true && resolvedModel && resolvedModel !== donor.model) {
+    donor.model = resolvedModel;
+    donor.modelSource = `${donor.modelSource}+preflight-served-alias`;
+  }
+  const loggedParsed = parsed
+    ? {
+        ...parsed,
+        selected_model: parsed.selected_model ? "[redacted]" : parsed.selected_model,
+        selected_model_redacted: Boolean(parsed.selected_model),
+      }
+    : parsed;
   const preflight = {
     attempted: true,
     donor: summarizeDonorProfile(donor),
     ok: result.status === 0 && parsed?.ok === true,
-    result: parsed,
-    stderr_preview: sanitizeLogText(result.stderr || "").slice(-1000),
+    result: loggedParsed,
+    stderr_preview: sanitizeLogText(
+      resolvedModel ? String(result.stderr || "").split(resolvedModel).join("[redacted]") : result.stderr || "",
+    ).slice(-1000),
     relay_host: hostSummary(donor.host),
     relay_host_source: donor.hostSource,
     relay_provider: donor.provider,
@@ -2321,8 +2625,64 @@ async function waitForRelayRegistration(api, projectId, timeoutMs = 90000) {
   return waitForRelayRegistrations(api, projectId, 1, timeoutMs);
 }
 
+async function waitForHealthyRelayRoutes(api, projectId, expectedCount = 1, timeoutMs = 180000, label = "relay-health") {
+  if (!projectId || expectedCount <= 0) {
+    return {
+      ok: false,
+      label,
+      expected_count: expectedCount,
+      alive_relay_count: 0,
+      nodes: [],
+      stats: null,
+      error: projectId ? "expected_count must be positive" : "project_id is required",
+    };
+  }
+  const deadline = Date.now() + timeoutMs;
+  let lastStats = null;
+  while (Date.now() < deadline) {
+    try {
+      lastStats = summarizeComputeStats(
+        await api.get(`/api/compute/stats?project_id=${encodeURIComponent(projectId)}`, { timeoutMs: 15000 }),
+      );
+      const aliveRelayNodes = (lastStats.nodes || []).filter((node) => ["relay", "browser"].includes(node.source) && node.alive);
+      logger.action("compute.relay.health_poll", {
+        label,
+        expected_count: expectedCount,
+        alive_relay_count: aliveRelayNodes.length,
+        relay_nodes: (lastStats.nodes || []).filter((node) => ["relay", "browser"].includes(node.source)),
+      });
+      if (aliveRelayNodes.length >= expectedCount) {
+        return {
+          ok: true,
+          label,
+          expected_count: expectedCount,
+          alive_relay_count: aliveRelayNodes.length,
+          nodes: aliveRelayNodes,
+          stats: lastStats,
+        };
+      }
+    } catch (error) {
+      logger.action("compute.relay.health_poll_error", { label, error: error.message });
+    }
+    await new Promise((resolveDelay) => setTimeout(resolveDelay, 5000));
+  }
+  const relayNodes = (lastStats?.nodes || []).filter((node) => ["relay", "browser"].includes(node.source));
+  const aliveRelayNodes = relayNodes.filter((node) => node.alive);
+  return {
+    ok: false,
+    label,
+    expected_count: expectedCount,
+    alive_relay_count: aliveRelayNodes.length,
+    nodes: relayNodes,
+    stats: lastStats,
+  };
+}
+
 function expectedObservableRelayCount(profiles) {
   const enabled = profiles.filter((profile) => profile.enabled);
+  if (hostManagedThreeModelRun) {
+    return enabled.filter((profile) => profile.required).length;
+  }
   const dedicatedDonors = enabled.filter((profile) => (
     profile.provisionedOnly
     || profile.provisioned_only
@@ -2382,6 +2742,33 @@ function summarizeComputeStats(stats) {
   };
 }
 
+async function readComputeStatsSummary(api, projectId, label) {
+  try {
+    const stats = summarizeComputeStats(
+      await api.get(`/api/compute/stats?project_id=${encodeURIComponent(projectId)}`, { timeoutMs: 15000 }),
+    );
+    logger.action("compute.stats.snapshot", { label, stats });
+    return stats;
+  } catch (error) {
+    logger.action("compute.stats.snapshot_error", { label, error: error.message });
+    return null;
+  }
+}
+
+function relayRouteDelta(beforeStats, afterStats, projectId) {
+  const beforeNodes = new Map((beforeStats?.nodes || []).map((node) => [node.node_id, node]));
+  const relayNodes = (afterStats?.nodes || []).filter((node) => ["relay", "browser"].includes(node.source) && node.alive);
+  const selected = relayNodes.filter((node) =>
+    (node.selected_request_count || 0) > (beforeNodes.get(node.node_id)?.selected_request_count || 0)
+  );
+  const served = relayNodes.filter((node) =>
+    (node.served_request_count || 0) > (beforeNodes.get(node.node_id)?.served_request_count || 0)
+    && (!node.last_served_project_id || node.last_served_project_id === projectId)
+    && (!node.last_route_kind || ["chat", "stream"].includes(node.last_route_kind))
+  );
+  return { selected, served };
+}
+
 function captureBackendLogs(label, since = "5m") {
   if (!startSandbox || skipSandbox) return { stdout: "", stderr: "", status: 0 };
   return runCommand(`docker-logs-backend-${label}`, "docker", [
@@ -2402,6 +2789,25 @@ async function verifyComputeDonation(api, projectId, { activeDonorProfiles = don
   const enabledDonorCount = activeDonorProfiles.filter((profile) => profile.enabled).length;
   const expectedRelayCount = expectedObservableRelayCount(activeDonorProfiles);
   const expectedLocalDedupedDonorCount = Math.max(0, enabledDonorCount - expectedRelayCount);
+  if (enabledDonorCount === 0 || expectedRelayCount <= 0) {
+    blockers.push("No runnable compute donors remained after LLM endpoint preflight.");
+    const result = {
+      ok: false,
+      expected_donor_count: enabledDonorCount,
+      expected_relay_count: expectedRelayCount,
+      expected_local_deduped_donor_count: expectedLocalDedupedDonorCount,
+      donor_profiles: activeDonorProfiles.map(summarizeDonorProfile),
+      reason: "no-runnable-preflighted-donors",
+    };
+    logger.writeJson("compute-donation-results.json", result);
+    logger.issue({
+      area: "compute-donation",
+      severity: "critical",
+      title: "No runnable donated compute donors",
+      detail: "Every required donor failed or skipped the container-side LLM preflight, so the benchmark did not count donor registration as donor usage.",
+    });
+    return result;
+  }
   const registration = await waitForRelayRegistrations(api, projectId, expectedRelayCount);
   if (!registration.ok) {
     blockers.push(`Compute donation relay registration incomplete: ${registration.nodes?.length || 0}/${expectedRelayCount} relay nodes observed.`);
@@ -2427,9 +2833,12 @@ async function verifyComputeDonation(api, projectId, { activeDonorProfiles = don
   let relayProbeSessionId = "";
   let relayModelOverride = "";
   let strictRoutingRestoreValue = null;
-  if (forceDonatedChat) {
-    relayModelOverride = relayProbeModelOverride(activeDonorProfiles);
-    if (relayModelOverride) {
+  const technicalProbeResults = [];
+  const uniqueByNodeId = (items) => Array.from(
+    new Map(items.filter((item) => item?.node_id).map((item) => [item.node_id, item])).values(),
+  );
+  try {
+    if (forceDonatedChat) {
       try {
         const status = await api.get("/api/settings/status");
         strictRoutingRestoreValue = Boolean(status.strict_auto_routing);
@@ -2444,34 +2853,76 @@ async function verifyComputeDonation(api, projectId, { activeDonorProfiles = don
           detail: error.message,
         });
       }
+      for (const donor of activeDonorProfiles.filter((profile) => profile.enabled)) {
+        const modelOverride = (donor.model && donor.model !== "default" ? donor.model : relayProbeModelOverride([donor])).trim();
+        const probe = {
+          donor_id: donor.id,
+          model_override_configured: Boolean(modelOverride),
+          model_override_id_length: modelOverride.length,
+          session_id_present: false,
+          response_chars: 0,
+          selected_relay_node_count: 0,
+          served_relay_node_count: 0,
+          selected_relay_nodes: [],
+          served_relay_nodes: [],
+          ok: false,
+          error: "",
+        };
+        if (!modelOverride) {
+          probe.error = "No model override was available for this required donor.";
+          technicalProbeResults.push(probe);
+          continue;
+        }
+        const beforeStats = await readComputeStatsSummary(api, projectId, `before-donor-probe-${donor.id}`);
+        try {
+          const session = await api.post("/api/sessions", {
+            project_id: projectId,
+            title: `[RU-BENCH] Donated compute probe ${donor.id} ${runId}`,
+            model_override: modelOverride,
+            inference_preset: "lightweight",
+          });
+          probe.session_id_present = Boolean(session.id);
+          relayProbeSessionId = relayProbeSessionId || session.id || "";
+          relayModelOverride = relayModelOverride || modelOverride;
+          const probeChat = await api.sendChat({
+            projectId,
+            message: `Benchmark technical probe for donor ${donor.id}: reply with BENCHMARK_DONATION_OK and one sentence confirming this donor route served the request.`,
+            sessionId: session.id || null,
+            maxHistory: 0,
+            timeoutMs: chatTimeoutMs,
+          });
+          if ((probeChat?.content || "").trim()) chat = probeChat;
+          probe.response_chars = probeChat?.content?.trim().length || 0;
+        } catch (error) {
+          probe.error = error.message;
+        }
+        const afterStats = await readComputeStatsSummary(api, projectId, `after-donor-probe-${donor.id}`);
+        const delta = relayRouteDelta(beforeStats, afterStats, projectId);
+        probe.selected_relay_nodes = delta.selected;
+        probe.served_relay_nodes = delta.served;
+        probe.selected_relay_node_count = delta.selected.length;
+        probe.served_relay_node_count = delta.served.length;
+        probe.ok = !probe.error && probe.response_chars > 0 && probe.served_relay_node_count > 0;
+        technicalProbeResults.push(probe);
+        logger.action("compute.donation.technical_probe", probe);
+      }
+      chatError = technicalProbeResults
+        .filter((probe) => !probe.ok)
+        .map((probe) => `${probe.donor_id}: ${probe.error || "no relay served the probe"}`)
+        .join(" | ");
+    } else {
       try {
-        const session = await api.post("/api/sessions", {
-          project_id: projectId,
-          title: `[RU-BENCH] Donated compute probe ${runId}`,
-          model_override: relayModelOverride,
-          inference_preset: "medium",
+        chat = await api.sendChat({
+          projectId,
+          message: "Benchmark technical probe: answer with the phrase BENCHMARK_DONATION_OK and one short sentence about donated compute being connected.",
+          sessionId: null,
+          maxHistory: 0,
+          timeoutMs: chatTimeoutMs,
         });
-        relayProbeSessionId = session.id || "";
       } catch (error) {
-        logger.issue({
-          area: "compute-donation",
-          severity: "medium",
-          title: "Could not create model-pinned donated-compute chat session",
-          detail: error.message,
-        });
+        chatError = error.message;
       }
     }
-  }
-  try {
-    chat = await api.sendChat({
-      projectId,
-      message: "Benchmark technical probe: answer with the phrase BENCHMARK_DONATION_OK and one short sentence about donated compute being connected.",
-      sessionId: relayProbeSessionId || null,
-      maxHistory: 0,
-      timeoutMs: chatTimeoutMs,
-    });
-  } catch (error) {
-    chatError = error.message;
   } finally {
     if (strictRoutingRestoreValue === false) {
       try {
@@ -2497,20 +2948,26 @@ async function verifyComputeDonation(api, projectId, { activeDonorProfiles = don
   const backendLogs = captureBackendLogs("compute-donation-probe", "5m");
   const routeUsedRelay = /routing (stream|chat) to Relay:/i.test(`${backendLogs.stdout}\n${backendLogs.stderr}`);
   const routeAttemptedRelayFromLogs = routeUsedRelay || /(stream|chat) failed on Relay:/i.test(`${backendLogs.stdout}\n${backendLogs.stderr}`);
-  const responseChars = chat?.content?.trim().length || 0;
+  const responseChars = forceDonatedChat
+    ? technicalProbeResults.reduce((sum, probe) => sum + (probe.response_chars || 0), 0)
+    : chat?.content?.trim().length || 0;
   const statsNodes = Array.isArray(postProbeStats?.nodes) ? postProbeStats.nodes : (Array.isArray(registration.stats?.nodes) ? registration.stats.nodes : []);
   const beforeServedByNode = new Map((registration.nodes || []).map((node) => [node.node_id, node.served_request_count || 0]));
   const beforeSelectedByNode = new Map((registration.nodes || []).map((node) => [node.node_id, node.selected_request_count || 0]));
   const aliveRelayNodes = statsNodes.filter((node) => ["relay", "browser"].includes(node.source) && node.alive);
   const aliveDirectNodes = statsNodes.filter((node) => !["relay", "browser"].includes(node.source) && node.alive);
-  const selectedRelayNodes = aliveRelayNodes.filter((node) =>
-    (node.selected_request_count || 0) > (beforeSelectedByNode.get(node.node_id) || 0)
-  );
-  const servedRelayNodes = aliveRelayNodes.filter((node) =>
-    (node.served_request_count || 0) > (beforeServedByNode.get(node.node_id) || 0)
-    && (!node.last_served_project_id || node.last_served_project_id === projectId)
-    && (!node.last_route_kind || ["chat", "stream"].includes(node.last_route_kind))
-  );
+  const selectedRelayNodes = forceDonatedChat
+    ? uniqueByNodeId(technicalProbeResults.flatMap((probe) => probe.selected_relay_nodes || []))
+    : aliveRelayNodes.filter((node) =>
+        (node.selected_request_count || 0) > (beforeSelectedByNode.get(node.node_id) || 0)
+      );
+  const servedRelayNodes = forceDonatedChat
+    ? uniqueByNodeId(technicalProbeResults.flatMap((probe) => probe.served_relay_nodes || []))
+    : aliveRelayNodes.filter((node) =>
+        (node.served_request_count || 0) > (beforeServedByNode.get(node.node_id) || 0)
+        && (!node.last_served_project_id || node.last_served_project_id === projectId)
+        && (!node.last_route_kind || ["chat", "stream"].includes(node.last_route_kind))
+      );
   const forcedRelayTopology = forceDonatedChat && aliveRelayNodes.length > 0 && aliveDirectNodes.length === 0;
   const modelOverrideRelayEvidence = Boolean(
     forceDonatedChat
@@ -2522,11 +2979,17 @@ async function verifyComputeDonation(api, projectId, { activeDonorProfiles = don
   const donorRegistered = registration.ok;
   const donorHealthy = aliveRelayNodes.length >= expectedRelayCount;
   const donorSelected = selectedRelayNodes.length > 0 || routeAttemptedRelay;
-  const donorServedRequest = responseChars > 0 && (
-    servedRelayNodes.length > 0
-    || routeUsedRelay
-    || forcedRelayTopology
-  );
+  const technicalProbesServed = forceDonatedChat
+    && technicalProbeResults.length >= expectedRelayCount
+    && technicalProbeResults.every((probe) => probe.ok)
+    && servedRelayNodes.length >= expectedRelayCount;
+  const donorServedRequest = forceDonatedChat
+    ? technicalProbesServed
+    : responseChars > 0 && (
+        servedRelayNodes.length > 0
+        || routeUsedRelay
+        || forcedRelayTopology
+      );
   const routeVerifiedBy = servedRelayNodes.length > 0
     ? "compute-stats-served-counter"
     : routeUsedRelay
@@ -2561,7 +3024,9 @@ async function verifyComputeDonation(api, projectId, { activeDonorProfiles = don
     route_used_relay: routeUsedRelay,
     route_attempted_relay: routeAttemptedRelay,
     route_verified_by: routeVerifiedBy,
-    route_evidence_detail: routeUsedRelay
+    route_evidence_detail: technicalProbesServed
+      ? "Every required donor relay served a bounded strict project/model probe with project-scoped counter evidence."
+      : routeUsedRelay
       ? "Backend logs explicitly reported Relay routing."
       : servedRelayNodes.length > 0
         ? "Project-scoped compute stats showed a relay/browser node served a chat or stream request during the probe."
@@ -2580,6 +3045,8 @@ async function verifyComputeDonation(api, projectId, { activeDonorProfiles = don
     response_chars: responseChars,
     response_preview: (chat?.content || "").slice(0, 600),
     event_count: chat?.events?.length || 0,
+    technical_probe_results: technicalProbeResults,
+    technical_probes_all_served: technicalProbesServed,
   };
   logger.writeJson("compute-donation-results.json", result);
   logger.action("compute.donation.verify.result", result);
@@ -2604,9 +3071,17 @@ async function createProject(api) {
     name: `[RU-BENCH] ${PROJECT_CONTEXT.name} ${runId}`,
     description: `${PROJECT_CONTEXT.product}. Synthetic long-form benchmark project.`,
     phase: "discover",
-    company_context: `${PROJECT_CONTEXT.company}: ${PROJECT_CONTEXT.audience}.`,
-    project_context: PROJECT_CONTEXT.researchQuestions.join("\n"),
-    guardrails: PROJECT_CONTEXT.guardrails.join("\n"),
+    company_context: PROJECT_CONTEXT.companyContext || `${PROJECT_CONTEXT.company}: ${PROJECT_CONTEXT.audience}.`,
+    project_context: PROJECT_CONTEXT.projectContext || PROJECT_CONTEXT.researchQuestions.join("\n"),
+    guardrails: [
+      ...(PROJECT_CONTEXT.guardrails || []),
+      "",
+      "Research questions:",
+      ...(PROJECT_CONTEXT.researchQuestions || []),
+      "",
+      "Success metrics:",
+      ...(PROJECT_CONTEXT.successMetrics || []),
+    ].join("\n"),
   };
   const project = await api.post("/api/projects", body);
   logger.action("project.created", { project_id: project.id, name: project.name });
@@ -3744,9 +4219,15 @@ async function main() {
     maxChatTurns,
     maxTasks,
     maxUploads,
+    codingValidationEnabled,
+    codingValidationLimit,
+    selfImprovementProbeEnabled,
+    startAutoresearchExperiment,
     startSandbox,
     skipSandbox,
     startClientSandboxes,
+    hostManagedThreeModelRun,
+    stopColimaAfterRun,
     externalConnectionStringMode,
     freshSandbox,
     benchmarkTeamMode,
@@ -3802,7 +4283,9 @@ async function main() {
     return;
   }
 
+  assertHostManagedThreeModelTopology();
   startServerSandboxIfRequested();
+  cleanupHostManagedServerSandboxConflict("pre-health");
   const api = new IstaraApiClient({
     apiBase,
     repoRoot,
@@ -3834,6 +4317,7 @@ async function main() {
     logger.writeJson("scorecard.json", scorecard);
     logger.appendReport("The benchmark could not reach the Istara API, so the run is a documented environment/product blocker.\n\n");
     logger.appendReport(writeScorecardMarkdown(scorecard));
+    stopColimaIfRequested("api-unreachable");
     logger.finalize({ scorecard });
     return;
   }
@@ -3857,6 +4341,7 @@ async function main() {
   let chatTurnCount = 0;
   let completedTasks = 0;
   let taskWorkflow = null;
+  let researchSpineEvidence = null;
   let researcherInviteResults = [];
   let researcherActors = [];
 
@@ -3930,10 +4415,24 @@ async function main() {
     const activeDonorProfiles = [];
     for (let index = 0; index < requiredDonors.length; index += 1) {
       const donor = requiredDonors[index];
-      preflightRelayLlmFromContainer(donor);
       const donation = connectionStrings.computeDonations.find((item) => item.donor_id === donor.id) || connectionStrings.computeDonations[index];
-      if (donation?.connection_string && donor.enabled) activeDonorProfiles.push(donor);
-      startRelayClientSandbox(donation?.connection_string || "", donor, index);
+      const preflight = preflightRelayLlmFromContainer(donor);
+      const preflightOk = preflight?.ok === true || (preflight?.skipped === true && !requireComputeDonation);
+      if (donation?.connection_string && donor.enabled && preflightOk) {
+        activeDonorProfiles.push(donor);
+        startRelayClientSandbox(donation.connection_string, donor, index);
+      } else {
+        logger.action("sandbox.relay.blocked_by_preflight", {
+          donor_id: donor.id,
+          has_connection_string: Boolean(donation?.connection_string),
+          donor_enabled: Boolean(donor.enabled),
+          preflight_ok: Boolean(preflightOk),
+          preflight_skipped: Boolean(preflight?.skipped),
+        });
+        if (requireComputeDonation) {
+          blockers.push(`Required compute donor ${donor.id} was not started because its LLM preflight did not prove a runnable endpoint.`);
+        }
+      }
     }
     await verifyComputeDonation(api, project.id, { activeDonorProfiles });
     const adminActor = makeAdminActor(api);
@@ -4018,6 +4517,55 @@ async function main() {
     });
     completedTasks = taskWorkflow.approvals;
     recordInterviewProcessEvidence({ uploaded, taskWorkflow });
+    const expectedResearchSpineDonorRoutes = hostManagedThreeModelRun
+      ? Math.min(3, donorProfiles.filter((profile) => profile.required && profile.enabled).length)
+      : 0;
+    if (codingValidationEnabled && expectedResearchSpineDonorRoutes >= 2) {
+      const preCodingRelayHealth = await waitForHealthyRelayRoutes(
+        api,
+        project.id,
+        expectedResearchSpineDonorRoutes,
+        180000,
+        "before-research-spine-coding",
+      );
+      logger.writeJson("research-spine-pre-coding-relay-health.json", preCodingRelayHealth);
+      if (!preCodingRelayHealth.ok) {
+        blockers.push(`Research Spine coding did not have all required donor relays healthy: ${preCodingRelayHealth.alive_relay_count}/${expectedResearchSpineDonorRoutes}.`);
+        logger.issue({
+          area: "research-spine",
+          severity: "high",
+          title: "Required donor relays were not healthy before Research Spine coding",
+          detail: "The benchmark must prove the host donor plus both Colima donors can serve the coding pass. Registration or earlier technical probes are not enough.",
+          evidence: {
+            expected_distinct_donor_routes: expectedResearchSpineDonorRoutes,
+            alive_relay_count: preCodingRelayHealth.alive_relay_count,
+          },
+        });
+      }
+    }
+    researchSpineEvidence = await exerciseResearchSpineValidation({
+      api,
+      projectId: project.id,
+      taskWorkflow,
+      logger,
+      featureResults,
+      blockers,
+      codingValidationEnabled,
+      codingValidationLimit,
+      expectedDistinctCoders: expectedResearchSpineDonorRoutes,
+      expectedDistinctDonorRoutes: expectedResearchSpineDonorRoutes,
+    });
+    await exerciseSelfImprovementGovernance({
+      api,
+      projectId: project.id,
+      taskWorkflow,
+      researchSpineEvidence,
+      logger,
+      featureResults,
+      runId,
+      selfImprovementProbeEnabled,
+      startAutoresearchExperiment,
+    });
     await exerciseTaskBackedFindingsReports(api, project.id, taskWorkflow);
     if (!featureResults.approvedTaskFindings) {
       await exerciseFindingsReports(api, project.id);
@@ -4060,6 +4608,20 @@ async function main() {
     task_review_loop_verified: Boolean(featureResults.taskReviewLoop),
     approved_task_findings_verified: Boolean(featureResults.approvedTaskFindings),
     interview_process_verified: Boolean(featureResults.interviewProcess),
+    coding_validation_verified: Boolean(featureResults.codingValidation),
+    research_spine_traceability_verified: Boolean(featureResults.researchSpineTraceability),
+    telemetry_evidence_verified: Boolean(featureResults.telemetryEvidence),
+    reasoning_bank_evidence_verified: Boolean(featureResults.reasoningBankEvidence),
+    memento_skill_health_exercised: Boolean(featureResults.mementoSkillEvidence),
+    meta_hyperagent_evidence_verified: Boolean(featureResults.metaHyperagentEvidence),
+    self_improvement_governance_verified: Boolean(featureResults.selfImprovementGovernance),
+    autoresearch_evidence_verified: Boolean(featureResults.autoresearchEvidence),
+    rag_traceability_evidence_verified: Boolean(featureResults.ragTraceabilityEvidence),
+    autoresearch_experiment_started: Boolean(startAutoresearchExperiment),
+    host_managed_three_model_run: Boolean(hostManagedThreeModelRun),
+    stop_colima_after_run: Boolean(stopColimaAfterRun),
+    colima_autostart_attempted: Boolean(colimaAutostartAttempted),
+    colima_started_by_benchmark: Boolean(colimaStartedByBenchmark),
     compute_donor_count_requested: donorProfiles.filter((profile) => profile.required).length,
     compute_donor_count_started: sandbox.relayStartedCount,
     donor_model_server_count_requested: sandbox.modelServerExpectedCount,
@@ -4099,6 +4661,8 @@ async function main() {
   logger.appendReport(`Chat turns completed: ${chatTurnCount}\n\n`);
   logger.appendReport(`Human-approved completed tasks: ${completedTasks}\n\n`);
   logger.appendReport(`Compute donation verified: ${featureResults.computeDonation ? "yes" : "no"}\n\n`);
+  logger.appendReport(`Host-managed three-model topology: ${hostManagedThreeModelRun ? "yes" : "no"}\n\n`);
+  logger.appendReport(`Stop Colima after benchmark resources are cleaned up: ${stopColimaAfterRun ? "yes" : "no"}\n\n`);
   logger.appendReport(`Compute donor containers: ${sandbox.relayStartedCount}/${donorProfiles.filter((profile) => profile.required).length} started\n\n`);
   logger.appendReport(`Donor model server containers: ${sandbox.modelServerStartedCount}/${sandbox.modelServerExpectedCount} started\n\n`);
   logger.appendReport(`Distinct donor endpoints verified: ${featureResults.distinctDonorEndpoints ? "yes" : "no"}\n\n`);
@@ -4108,6 +4672,15 @@ async function main() {
   logger.appendReport(`Multi-user collaboration verified: ${featureResults.multiUserCollaboration ? "yes" : "no"}\n\n`);
   logger.appendReport(`Task review/revision loop verified: ${featureResults.taskReviewLoop ? "yes" : "no"}\n\n`);
   logger.appendReport(`Approved-task-backed Findings/reporting verified: ${featureResults.approvedTaskFindings ? "yes" : "no"}\n\n`);
+  logger.appendReport(`Research Spine coding validation observed: ${featureResults.codingValidation ? "yes" : "no"}\n\n`);
+  logger.appendReport(`Research Spine traceability observed: ${featureResults.researchSpineTraceability ? "yes" : "no"}\n\n`);
+  logger.appendReport(`Telemetry evidence observed: ${featureResults.telemetryEvidence ? "yes" : "no"}\n\n`);
+  logger.appendReport(`ReasoningBank process-memory probe verified: ${featureResults.reasoningBankEvidence ? "yes" : "no"}\n\n`);
+  logger.appendReport(`Memento/skill health probe verified: ${featureResults.mementoSkillEvidence ? "yes" : "no"}\n\n`);
+  logger.appendReport(`Meta-Hyperagent project-scoped probe verified: ${featureResults.metaHyperagentEvidence ? "yes" : "no"}\n\n`);
+  logger.appendReport(`Governed self-improvement proposal path verified: ${featureResults.selfImprovementGovernance ? "yes" : "no"}\n\n`);
+  logger.appendReport(`Autoresearch evidence observed: ${featureResults.autoresearchEvidence ? "yes" : "no"}\n\n`);
+  logger.appendReport(`Graph/RAG traceability observed: ${featureResults.ragTraceabilityEvidence ? "yes" : "no"}\n\n`);
   logger.appendReport(`Interview process verified: ${featureResults.interviewProcess ? "yes" : "no"}\n\n`);
   logger.appendReport(`Live model chat verified: ${featureResults.liveChat ? "yes" : "no"}\n\n`);
   logger.appendReport("Credentialed integrations (Figma, Stitch, Telegram/AURA live participant paths): optional in this run unless bounded test tokens are explicitly provided.\n\n");
@@ -4122,6 +4695,7 @@ async function main() {
   }
   cleanupRelayClientSandboxes();
   cleanupDonorModelSandboxes();
+  stopColimaIfRequested("run-complete");
   logger.finalize({ scorecard, project_id: project?.id || "", uploaded_documents: uploaded.length });
 }
 
@@ -4148,6 +4722,7 @@ main().catch((error) => {
   logger.appendReport(writeScorecardMarkdown(scorecard));
   cleanupRelayClientSandboxes();
   cleanupDonorModelSandboxes();
+  stopColimaIfRequested("crash");
   logger.finalize({ scorecard });
   process.exitCode = 1;
 });

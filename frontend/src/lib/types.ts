@@ -7,7 +7,7 @@ export type TaskStatus = "backlog" | "in_progress" | "in_review" | "done";
 // TOTPSetupRequest, TOTPDisableRequest, TOTPVerifyRequest, RecoveryCodeRequest, PreferencesRequest,
 // PasskeyRegistrationStartRequest, PasskeyRegistrationFinishRequest, PasskeyAuthenticationStartRequest,
 // PasskeyAuthenticationFinishRequest, PasskeyCredentialInfo, DataIntegrityQuarantineRequest,
-// LLMServerCreate, LLMServerUpdate.
+// LLMServerCreate, LLMServerUpdate, StartCodingRunRequest.
 
 export interface Project {
   id: string;
@@ -118,6 +118,19 @@ export interface TaskAtomicPath {
   insights: { count: number; items: Array<{ id: string; text: string }> };
   recommendations: { count: number; items: Array<{ id: string; text: string }> };
   reports: { count: number; items: Array<{ id: string; title: string }> };
+  research_validity?: {
+    coding_run_count: number;
+    code_application_count: number;
+    accepted_code_application_count: number;
+    latest_coding_run: Record<string, unknown> | null;
+    blocked_or_review_items: Array<{
+      id: string;
+      code_id: string;
+      promotion_status: string;
+      reliability_status: string;
+      review_status: string;
+    }>;
+  };
 }
 
 export interface TaskQualitySummary {
@@ -146,9 +159,21 @@ export interface ChatMessage {
   agent_name?: string;
 }
 
+export interface FindingResearchValidity {
+  status: "accepted" | "provisional" | string;
+  report_allowed: boolean;
+  task_id: string | null;
+  done_approved: boolean;
+  reason: string;
+  code_application_count?: number;
+  accepted_code_application_count?: number;
+  policy: string;
+}
+
 export interface Nugget {
   id: string;
   project_id: string;
+  task_id?: string | null;
   text: string;
   source: string;
   source_location: string;
@@ -156,32 +181,38 @@ export interface Nugget {
   phase: string;
   confidence: number;
   created_at: string;
+  research_validity?: FindingResearchValidity | null;
 }
 
 export interface Fact {
   id: string;
   project_id: string;
+  task_id?: string | null;
   text: string;
   nugget_ids: string[];
   phase: string;
   confidence: number;
   created_at: string;
+  research_validity?: FindingResearchValidity | null;
 }
 
 export interface Insight {
   id: string;
   project_id: string;
+  task_id?: string | null;
   text: string;
   fact_ids: string[];
   phase: string;
   confidence: number;
   impact: string;
   created_at: string;
+  research_validity?: FindingResearchValidity | null;
 }
 
 export interface Recommendation {
   id: string;
   project_id: string;
+  task_id?: string | null;
   text: string;
   insight_ids: string[];
   phase: string;
@@ -189,6 +220,7 @@ export interface Recommendation {
   effort: string;
   status: string;
   created_at: string;
+  research_validity?: FindingResearchValidity | null;
 }
 
 export interface FindingsSummary {
@@ -371,8 +403,17 @@ export interface DAGGrepResult {
 
 // --- Documents ---
 
-export type DocumentStatus = "pending" | "processing" | "ready" | "error";
+export type DocumentStatus = "pending" | "processing" | "ready" | "quarantined" | "error";
 export type DocumentSource = "user_upload" | "agent_output" | "task_output" | "external" | "project_file";
+
+export interface DocumentResearchSpine {
+  artifact_state: "raw_source" | string;
+  source_evidence_state: string;
+  source_evidence_units: number;
+  source: string;
+  report_allowed: boolean;
+  spine_policy: string;
+}
 
 export interface ReclawDocument {
   id: string;
@@ -393,6 +434,7 @@ export interface ReclawDocument {
   atomic_path: Record<string, unknown>;
   content_preview: string;
   content_text?: string;
+  research_spine?: DocumentResearchSpine | null;
   version: number;
   created_at: string;
   updated_at: string;
@@ -443,6 +485,8 @@ export interface DesignScreen {
   figma_node_id: string | null;
   status: DesignScreenStatus;
   source_findings: string[];
+  source_finding_details?: Array<Record<string, unknown>>;
+  research_validity?: FindingResearchValidity | null;
   metadata_json: Record<string, unknown>;
   created_at: string;
   updated_at: string;
@@ -457,6 +501,7 @@ export interface DesignBrief {
   source_recommendation_ids: string[];
   source_findings?: Array<Record<string, unknown>>;
   recommendations?: Array<Record<string, unknown>>;
+  research_validity?: FindingResearchValidity | null;
   ux_laws?: string[];
   created_at: string;
   updated_at: string;
@@ -473,6 +518,7 @@ export interface DesignDecision {
   phase: string;
   confidence: number;
   created_at: string;
+  research_validity?: FindingResearchValidity | null;
 }
 
 export interface InterfacesStatus {
@@ -899,12 +945,16 @@ export type {
   CodeEntry,
   CodebookVersionType,
   ComplianceProfile,
+  EvidenceGraphTraceabilityType,
   FeaturedMCPServer,
   LawCategory,
   LawMatch,
   ProjectReport,
   RadarChartData,
   ReclawUser,
+  ReconciliationDecisionType,
+  ResearchValidityTelemetryAuditType,
+  StartCodingRunRequest,
   UXLaw,
 } from "./catalogTypes";
 
@@ -932,6 +982,13 @@ export type {
   DGMHVariantEvaluationRequest,
   DGMHVariantStatusRequest,
 } from "./dgmhArchiveTypes";
+
+export type {
+  FileEncryptionEnableRequest,
+  FileEncryptionRotateRequest,
+  PasswordChangeRequest,
+  ProfileUpdateRequest,
+} from "./apiRequestTypes";
 
 // DGM-H archive request contracts live in dgmhArchiveTypes.ts:
 // DGMHVariantCreateRequest, DGMHVariantEvaluationRequest,

@@ -4,12 +4,16 @@ import uuid
 
 import pytest
 from httpx import AsyncClient, ASGITransport
+from sqlalchemy import select
 from app.main import app
 from app.config import settings
 from app.models.database import async_session, init_db
 from app.core.auth import create_token
+from app.models.code_application import CodeApplication
 from app.models.document import Document, DocumentStatus
+from app.models.finding import Nugget
 from app.models.project import Project
+from app.models.research_validity import EvidenceUnit, ResearchEvidenceEdge
 from app.models.task import Task, TaskStatus
 
 
@@ -41,6 +45,58 @@ async def _seed_project(name: str = "Tasks Test Project", *, is_paused: bool = F
         await db.commit()
         await db.refresh(project)
     return project
+
+
+def _add_accepted_nugget_support(
+    db,
+    *,
+    project_id: str,
+    task_id: str,
+    nugget_id: str,
+    source_text: str,
+) -> None:
+    evidence_unit_id = str(uuid.uuid4())
+    db.add(
+        EvidenceUnit(
+            id=evidence_unit_id,
+            project_id=project_id,
+            task_id=task_id,
+            source_id=f"task:{task_id}:nugget:{nugget_id}",
+            stable_id=f"test-unit:{evidence_unit_id}",
+            unit_index=0,
+            unit_type="source_span",
+            source_type="test_fixture",
+            method="test",
+            phase="discover",
+            source_text=source_text,
+        )
+    )
+    db.add(
+        ResearchEvidenceEdge(
+            id=str(uuid.uuid4()),
+            project_id=project_id,
+            source_type="nugget",
+            source_id=nugget_id,
+            relation="grounded_in",
+            target_type="evidence_unit",
+            target_id=evidence_unit_id,
+            evidence_unit_id=evidence_unit_id,
+            task_id=task_id,
+        )
+    )
+    db.add(
+        CodeApplication(
+            id=str(uuid.uuid4()),
+            project_id=project_id,
+            task_id=task_id,
+            code_id="accepted-research-evidence",
+            evidence_unit_id=evidence_unit_id,
+            source_text=source_text,
+            promotion_status="accepted",
+            reliability_status="accepted",
+            reconciliation_status="accepted",
+        )
+    )
 
 
 async def _seed_document(project_id: str, title: str = "Task Document") -> Document:
@@ -287,6 +343,11 @@ async def test_human_approval_moves_review_task_to_done(auth_headers):
         assert payload["task"]["status"] == "done"
         assert payload["task"]["review_state"] == "approved"
         assert payload["event"]["outcome"] == "approved"
+        from app.core.telemetry import telemetry_recorder
+
+        audit = await telemetry_recorder.get_research_validity_audit(project.id)
+        assert audit["operation_counts"]["kanban.status_transition"] == 2
+        assert audit["operation_counts"]["human_review.decision"] == 1
 
 
 @pytest.mark.asyncio
@@ -324,6 +385,224 @@ async def test_task_review_side_effects_observe_committed_task(auth_headers, mon
 
 
 @pytest.mark.asyncio
+async def test_task_approval_blocks_uncoded_reportable_findings(auth_headers):
+    """A research task with findings cannot move to Done before coded evidence is accepted."""
+    await init_db()
+    project = await _seed_project("Approval Validity Gate")
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        created = await ac.post(
+            "/api/tasks",
+            headers=auth_headers,
+            json={"project_id": project.id, "title": "Approve only after coding"},
+        )
+        assert created.status_code == 201
+        task_id = created.json()["id"]
+
+        async with async_session() as db:
+            db.add(
+                Nugget(
+                    id=str(uuid.uuid4()),
+                    project_id=project.id,
+                    task_id=task_id,
+                    text="Participant could not find the invite flow.",
+                    source="interview",
+                )
+            )
+            await db.commit()
+
+        moved = await ac.post(
+            f"/api/tasks/{task_id}/move?status=in_review&project_id={project.id}",
+            headers=auth_headers,
+        )
+        assert moved.status_code == 200
+
+        blocked = await ac.post(
+            f"/api/tasks/{task_id}/review/approve?project_id={project.id}",
+            headers=auth_headers,
+            json={"reviewed_by": "tester", "note": "Trying to approve uncoded evidence."},
+        )
+        assert blocked.status_code == 409
+        assert "no coded evidence applications" in blocked.json()["detail"]
+
+        async with async_session() as db:
+            _add_accepted_nugget_support(
+                db,
+                project_id=project.id,
+                task_id=task_id,
+                nugget_id=(
+                    await db.execute(
+                        select(Nugget.id).where(
+                            Nugget.project_id == project.id,
+                            Nugget.task_id == task_id,
+                        )
+                    )
+                ).scalar_one(),
+                source_text="Participant could not find the invite flow.",
+            )
+            await db.commit()
+
+        approved = await ac.post(
+            f"/api/tasks/{task_id}/review/approve?project_id={project.id}",
+            headers=auth_headers,
+            json={"reviewed_by": "tester", "note": "Coded evidence accepted."},
+        )
+        assert approved.status_code == 200
+        assert approved.json()["task"]["status"] == "done"
+
+
+@pytest.mark.asyncio
+async def test_task_report_gate_blocks_aggregate_reliability_bulk_acceptance(auth_headers):
+    """One accepted code application must not make every task finding reportable."""
+    await init_db()
+    project = await _seed_project("Item Level Report Gate")
+    task_id = str(uuid.uuid4())
+    supported_nugget_id = str(uuid.uuid4())
+    unsupported_nugget_id = str(uuid.uuid4())
+
+    async with async_session() as db:
+        db.add(
+            Task(
+                id=task_id,
+                project_id=project.id,
+                title="Do not bulk accept findings",
+                status=TaskStatus.DONE,
+                review_state="approved",
+            )
+        )
+        db.add_all(
+            [
+                Nugget(
+                    id=supported_nugget_id,
+                    project_id=project.id,
+                    task_id=task_id,
+                    text="Supported quote",
+                    source="interview",
+                ),
+                Nugget(
+                    id=unsupported_nugget_id,
+                    project_id=project.id,
+                    task_id=task_id,
+                    text="Unsupported quote",
+                    source="interview",
+                ),
+            ]
+        )
+        _add_accepted_nugget_support(
+            db,
+            project_id=project.id,
+            task_id=task_id,
+            nugget_id=supported_nugget_id,
+            source_text="Supported quote",
+        )
+        await db.commit()
+
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        blocked = await ac.post(
+            f"/api/tasks/{task_id}/reports?project_id={project.id}",
+            headers=auth_headers,
+        )
+        assert blocked.status_code == 409
+        assert "without accepted/reconciled source evidence" in blocked.json()["detail"]
+
+    async with async_session() as db:
+        _add_accepted_nugget_support(
+            db,
+            project_id=project.id,
+            task_id=task_id,
+            nugget_id=unsupported_nugget_id,
+            source_text="Unsupported quote",
+        )
+        await db.commit()
+
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        allowed = await ac.post(
+            f"/api/tasks/{task_id}/reports?project_id={project.id}",
+            headers=auth_headers,
+        )
+        assert allowed.status_code == 200
+        assert allowed.json()["report"]["finding_count"] == 2
+
+
+@pytest.mark.asyncio
+async def test_task_report_gate_blocks_done_task_without_accepted_evidence(auth_headers):
+    """A Done task with only notes cannot become report content."""
+    await init_db()
+    project = await _seed_project("Empty Report Gate")
+    task_id = str(uuid.uuid4())
+
+    async with async_session() as db:
+        db.add(
+            Task(
+                id=task_id,
+                project_id=project.id,
+                title="Done but no accepted evidence",
+                description="Operational notes are not research evidence.",
+                status=TaskStatus.DONE,
+                review_state="approved",
+            )
+        )
+        await db.commit()
+
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        blocked = await ac.post(
+            f"/api/tasks/{task_id}/reports?project_id={project.id}",
+            headers=auth_headers,
+        )
+
+    assert blocked.status_code == 409
+    assert "no accepted/reconciled evidence" in blocked.json()["detail"]
+
+
+@pytest.mark.asyncio
+async def test_task_atomic_snapshot_exposes_finding_research_validity():
+    """Kanban/review snapshots must show whether task findings are accepted or provisional."""
+    await init_db()
+    project = await _seed_project("Atomic Snapshot Validity")
+    task_id = str(uuid.uuid4())
+    nugget_id = str(uuid.uuid4())
+
+    async with async_session() as db:
+        task = Task(
+            id=task_id,
+            project_id=project.id,
+            title="Show validity in review",
+            status=TaskStatus.DONE,
+            review_state="approved",
+        )
+        db.add(task)
+        db.add(
+            Nugget(
+                id=nugget_id,
+                project_id=project.id,
+                task_id=task_id,
+                text="Accepted source span",
+                source="interview",
+            )
+        )
+        _add_accepted_nugget_support(
+            db,
+            project_id=project.id,
+            task_id=task_id,
+            nugget_id=nugget_id,
+            source_text="Accepted source span",
+        )
+        await db.commit()
+        await db.refresh(task)
+
+        from app.core.task_review import build_atomic_snapshot
+
+        snapshot = await build_atomic_snapshot(db, task)
+
+    item = snapshot["nuggets"]["items"][0]
+    assert item["id"] == nugget_id
+    assert item["research_validity"]["status"] == "accepted"
+    assert item["research_validity"]["report_allowed"] is True
+
+
+@pytest.mark.asyncio
 async def test_done_task_revision_returns_to_backlog_with_feedback(auth_headers):
     """A Done task can be flagged later and must leave Done for agent action."""
     await init_db()
@@ -356,6 +635,11 @@ async def test_done_task_revision_returns_to_backlog_with_feedback(auth_headers)
         assert payload["task"]["failure_streak"] == 1
         assert payload["event"]["next_status"] == "backlog"
         assert payload["event"]["failure_category"] == "missing_evidence"
+        from app.core.telemetry import telemetry_recorder
+
+        audit = await telemetry_recorder.get_research_validity_audit(project.id)
+        assert audit["operation_counts"]["kanban.status_transition"] == 3
+        assert audit["operation_counts"]["human_review.decision"] == 2
 
 
 @pytest.mark.asyncio

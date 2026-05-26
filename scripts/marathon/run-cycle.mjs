@@ -114,7 +114,7 @@ async function authenticate() {
     return;
   }
   const username = process.env.ADMIN_USERNAME || envValue("ADMIN_USERNAME") || "admin";
-  let password = process.env.ADMIN_PASSWORD || envValue("ADMIN_PASSWORD");
+  let password = process.env.ADMIN_PASSWORD || envValue("ADMIN_PASSWORD") || process.env.ISTARA_TEST_ADMIN_PASSWORD || "istara123";
   if (!password) {
     if (useLocalSignedToken(username)) return;
     console.log("  ⚠ No ADMIN_PASSWORD found — marathon may fail auth");

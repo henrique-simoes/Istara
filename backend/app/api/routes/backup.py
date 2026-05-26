@@ -163,7 +163,7 @@ async def get_backup_estimate(request: Request):
 
 @router.post("/backups/upload-restore")
 async def upload_and_restore_backup(request: Request, file: UploadFile = File(...)):
-    """Upload a .tar.gz backup and restore the system from it. Admin only."""
+    """Upload a .tar.gz or .tar.gz.enc backup and restore the system. Admin only."""
     require_admin_from_request(request)
 
     filename = file.filename or ""
@@ -171,14 +171,15 @@ async def upload_and_restore_backup(request: Request, file: UploadFile = File(..
         Path(filename).name != filename
         or "/" in filename
         or "\\" in filename
-        or not filename.endswith(".tar.gz")
+        or not (filename.endswith(".tar.gz") or filename.endswith(".tar.gz.enc"))
     ):
-        raise HTTPException(status_code=400, detail="Invalid file format. Must be .tar.gz")
+        raise HTTPException(status_code=400, detail="Invalid file format. Must be .tar.gz or .tar.gz.enc")
 
     # Save to temp location
     backup_dir = Path(settings.backup_dir)
     backup_dir.mkdir(parents=True, exist_ok=True)
-    temp_path = backup_dir / f"upload_{uuid.uuid4().hex}.tar.gz"
+    temp_suffix = ".tar.gz.enc" if filename.endswith(".tar.gz.enc") else ".tar.gz"
+    temp_path = backup_dir / f"upload_{uuid.uuid4().hex}{temp_suffix}"
     try:
         with open(temp_path, "wb") as f:
             total = 0
@@ -222,7 +223,7 @@ async def download_backup(backup_id: str, request: Request):
 
     return StreamingResponse(
         _iter_file(),
-        media_type="application/gzip",
+        media_type="application/octet-stream" if archive_path.name.endswith(".enc") else "application/gzip",
         headers={
             "Content-Disposition": f"attachment; filename={archive_path.name}",
             "Content-Length": str(archive_path.stat().st_size),

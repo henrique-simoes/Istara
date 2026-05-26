@@ -12,7 +12,7 @@ Include the affected version, deployment mode, operating system, reproduction st
 
 ## Handling Timeline
 
-Istara treats authentication, authorization, WebAuthn/passkeys, recovery codes, connection strings, pooled compute, MCP/tool execution, webhooks, LLM-provider routing, autoresearch, self-evolution, agentic memory, and release packaging as high-risk surfaces.
+Istara treats authentication, authorization, WebAuthn/passkeys, TOTP, recovery codes, password/profile changes, managed file encryption, encrypted backups, encryption key rotation, connection strings, pooled compute, MCP/tool execution, webhooks, LLM-provider routing, autoresearch, self-evolution, agentic memory, and release packaging as high-risk surfaces.
 
 The release owner should acknowledge a report within three business days, triage severity, create a private fix branch or local Compass Forge work order, run the tracked security benchmark, and publish a patched release when the fix is verified. Critical issues should receive a mitigation notice as soon as a safe workaround exists.
 
@@ -23,12 +23,22 @@ The release owner should acknowledge a report within three business days, triage
 - `security/ISTARA_SECURITY_ASSESSMENT_2026-05-08.md` is the current release-hardening assessment and follow-up backlog.
 - `TESTING.md` and `testing/TEST_HISTORY.md` describe how security evidence is logged without committing raw scorecards, private URLs, secrets, or runtime data.
 
+## File Encryption Key Handling
+
+When admin-managed file encryption is enabled, Istara encrypts managed uploads,
+stored document text, and future backup archives. The file-encryption key should
+live in a secrets manager or macOS Keychain; local source installs may fall back
+to an owner-only key file under `data/security/`. Losing this key is destructive:
+encrypted uploads, document text, and `.tar.gz.enc` backups cannot be decrypted
+without it. Back up the key separately from encrypted backups and rotate it only
+after verifying a current restore path.
+
 ## Incident Response
 
 For suspected exploitation:
 
 1. Preserve logs and affected runtime data without exposing them in public issues.
-2. Rotate exposed JWT, encryption, LLM-provider, webhook, connection-string, and relay secrets.
+2. Rotate exposed JWT, database field-encryption, file-encryption, LLM-provider, webhook, connection-string, and relay secrets.
 3. Revoke affected sessions, passkeys, recovery codes, and compute donation strings.
 4. Run `python scripts/security_benchmark.py --fail-on-threshold` and `python scripts/security_release_readiness.py`.
 5. Document scope, affected versions, remediation, and follow-up tests in the release notes or a private incident record.
