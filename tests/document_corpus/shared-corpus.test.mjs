@@ -1,10 +1,11 @@
 import assert from "node:assert/strict";
-import { mkdtempSync, rmSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { extname, join } from "node:path";
 import test from "node:test";
 
 import {
+  CANONICAL_CORPUS_DIR,
   CANONICAL_CORPUS_SLICES,
   ISTARA_UPLOAD_PROCESSABLE_EXTENSIONS,
   SHARED_DOCUMENT_CORPUS_MINIMUM_SOURCES,
@@ -74,6 +75,86 @@ test("canonical corpus preserves deep source-level word counts for realistic res
   assert.ok(deepSources.length >= 40, "expected many sources with long-form research depth");
   assert.ok(interviewSources.length >= 20);
   assert.ok(interviewSources.every((entry) => (entry.word_count || 0) >= 25_000));
+});
+
+test("canonical markdown sources stay raw and do not ship pre-digested candidate evidence", () => {
+  const manifest = loadCanonicalManifest();
+  const forbiddenRawSourcePhrases = [
+    "## Evidence unit candidate",
+    "Coding hints:",
+    "Implication candidate:",
+    "Report gate reminder:",
+    "This synthetic source supports",
+    [
+      "I can only approve a recommendation when the system shows which task,",
+      "transcript, ticket, or survey row produced it",
+    ].join(" "),
+  ];
+  const violations = [];
+
+  for (const entry of manifest.sources.filter((source) => extname(source.path).toLowerCase() === ".md")) {
+    const content = readFileSync(join(CANONICAL_CORPUS_DIR, entry.path), "utf8");
+    for (const phrase of forbiddenRawSourcePhrases) {
+      if (content.includes(phrase)) violations.push(`${entry.id}:${phrase}`);
+    }
+  }
+
+  assert.deepEqual(violations, []);
+});
+
+test("canonical interviews are transcript-like raw sources with coherent participants and timestamps", () => {
+  const manifest = loadCanonicalManifest();
+  const failures = [];
+
+  for (const entry of manifest.sources.filter((source) => source.method === "interview")) {
+    const content = readFileSync(join(CANONICAL_CORPUS_DIR, entry.path), "utf8");
+    const lines = content.split(/\r?\n/);
+    const participant = entry.participant_ids?.[0];
+    const speakerLines = lines.filter((line) => /^(Moderator|P\d{2}): /.test(line));
+    const participantLines = speakerLines.filter((line) => /^P\d{2}: /.test(line));
+    const wrongParticipantLines = participantLines.filter((line) => !line.startsWith(`${participant}: `));
+    const timestamps = lines
+      .map((line) => line.match(/^### (\d{2}):(\d{2}) - /))
+      .filter(Boolean)
+      .map((match) => Number(match[1]) * 60 + Number(match[2]));
+    const nonMonotonic = timestamps.some((value, index) => index > 0 && value <= timestamps[index - 1]);
+    const participantQuotes = participantLines.map((line) => line.replace(/^P\d{2}: /, ""));
+    const uniqueQuoteRatio = new Set(participantQuotes).size / Math.max(participantQuotes.length, 1);
+
+    if (speakerLines.length < 250) failures.push(`${entry.id}:too_few_speaker_turns:${speakerLines.length}`);
+    if (wrongParticipantLines.length > 0) failures.push(`${entry.id}:mixed_participants:${wrongParticipantLines.length}`);
+    if (timestamps.length < 80) failures.push(`${entry.id}:too_few_timestamps:${timestamps.length}`);
+    if (nonMonotonic) failures.push(`${entry.id}:non_monotonic_timestamps`);
+    if (uniqueQuoteRatio < 0.9) failures.push(`${entry.id}:repeated_participant_quotes:${uniqueQuoteRatio.toFixed(2)}`);
+    if (entry.language === "es" && !/Necesito|Confio|permiso|evidencia/.test(content)) {
+      failures.push(`${entry.id}:spanish_label_without_spanish_turns`);
+    }
+    if (entry.language === "pt-BR" && !/Preciso|confio|permissao|evidencia/.test(content)) {
+      failures.push(`${entry.id}:portuguese_label_without_portuguese_turns`);
+    }
+  }
+
+  assert.deepEqual(failures, []);
+});
+
+test("canonical raw source excerpts are varied enough to catch template repetition", () => {
+  const manifest = loadCanonicalManifest();
+  const excerptCounts = new Map();
+
+  for (const entry of manifest.sources) {
+    if (extname(entry.path).toLowerCase() !== ".md") continue;
+    const content = readFileSync(join(CANONICAL_CORPUS_DIR, entry.path), "utf8");
+    for (const line of content.split(/\r?\n/)) {
+      if (!/^(Verbatim\/source excerpt:|P\d{2}: ")/.test(line)) continue;
+      const normalized = line.trim();
+      excerptCounts.set(normalized, (excerptCounts.get(normalized) || 0) + 1);
+    }
+  }
+
+  const repeated = [...excerptCounts.entries()]
+    .filter(([, count]) => count > 1)
+    .map(([line, count]) => `${count}x ${line.slice(0, 120)}`);
+  assert.deepEqual(repeated, []);
 });
 
 test("shared corpus materialization can require canonical-only sources", () => {

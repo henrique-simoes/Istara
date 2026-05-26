@@ -5,7 +5,7 @@ This document tells coding agents what else must be inspected, updated, or reval
 Compass Forge is the active control plane this matrix belongs to: impact analysis, work orders, gates, evidence, active process docs, Tech narrative, persona knowledge, and ongoing test/simulation maintenance.
 
 Use it with:
-- `SYSTEM_PROMPT.md` for repo-wide operating rules
+- `AGENTS.md` for repo-wide operating rules
 - Compass Forge status/brief/impact/gates for the current repository map
 - `CHANGE_CHECKLIST.md` for step-by-step execution
 - `DOCUMENTATION.md`, `TESTING.md`, and `SECURITY.md` when docs, verification history, or release/security process changes
@@ -149,7 +149,7 @@ For any non-trivial change, check these six surfaces:
 | persona files in `backend/app/agents/personas/*` | any docs/prompts that describe agent behavior, tests/simulations that rely on that persona, Compass Forge freshness if tracked inventory changes |
 | skill definition JSON | skills API/routes, planning/execution flows, reports, recommendation logic, `scripts/validate_skills.py`, simulation/e2e coverage |
 | removed legacy skill generator/export modules | do not reintroduce them as sources of truth; keep `definitions/*.json` canonical; run `python scripts/validate_skills.py` |
-| system prompt / repo instructions | `SYSTEM_PROMPT.md`, `AGENTS.md`, wrappers (`CLAUDE.md`, `GEMINI.md`, `QWEN.md`), checklist references, docs describing the workflow |
+| system prompt / repo instructions | `AGENTS.md`, checklist references, docs describing the workflow |
 | agent orchestration/routing | task routing keywords, specialty assumptions, chat/session creation, audit behavior |
 
 ## Testing Matrix
@@ -176,7 +176,7 @@ If a change would confuse a future agent reading the UI or API map, it probably 
 | If You Change | Must Also Inspect |
 |---|---|
 | architecture shape | Compass Forge map/impact/gate, `Tech.md` if the narrative architecture changed |
-| workflow/process expectations | `SYSTEM_PROMPT.md`, `AGENTS.md`, `CHANGE_CHECKLIST.md`, model wrappers, contributor docs |
+| workflow/process expectations | `AGENTS.md`, `CHANGE_CHECKLIST.md`, `SYSTEM_CHANGE_MATRIX.md`, contributor docs |
 | release/update behavior | `Tech.md`, release workflow docs, updater descriptions, versioning script references |
 | user-facing capabilities | README/wiki/docs feature docs where applicable |
 | UI menu/tab/sub-feature behavior | `docs/features/inventory.json`, both `researcher.md` and `architecture.md` pages, glossary terms, generated `docs/features/site/`, `docs/features/llms.txt`, `tests/test_feature_docs.py` |

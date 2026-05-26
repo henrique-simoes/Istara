@@ -10,7 +10,7 @@ Compass Forge is the active control plane for repository mapping, impact analysi
 
 Before making ANY change:
 
-- [ ] Read `SYSTEM_PROMPT.md` for the repo-wide agent contract
+- [ ] Read `AGENTS.md` for the repo-wide agent contract
 - [ ] Run Compass Forge status/brief/impact for non-trivial work
 - [ ] Create or use the active Compass Forge spec/tasks/work order for planned, multi-agent, branch-review, stale-branch, or review/correction work
 - [ ] Read `SYSTEM_CHANGE_MATRIX.md` for dependent surfaces that must move with this change
@@ -786,10 +786,10 @@ curl http://localhost:8000/api/compute/nodes \
 
 ## REFERENCES
 
-- **Active Governance**: Compass Forge + `Tech.md`
+- **Active Governance**: `AGENTS.md`, Compass Forge, and `Tech.md`
 - **Architecture**: `Tech.md`
-- **Development Patterns**: `CLAUDE.md`
-- **Legacy References**: `AGENT.md`, `COMPLETE_SYSTEM.md`, `SYSTEM_INTEGRITY_GUIDE.md` (optional, non-blocking)
+- **Development Patterns**: `CHANGE_CHECKLIST.md`, `SYSTEM_CHANGE_MATRIX.md`, and `DOCUMENTATION.md`
+- **Legacy References**: Retired generated agent wrappers are not release-governance sources
 
 ---
 

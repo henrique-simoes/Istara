@@ -50,6 +50,8 @@ REQUIRED_SNIPPETS: dict[str, dict[str, str]] = {
         "change obligation release trigger": "scripts/check_change_obligations.py",
         "security benchmark release trigger": "scripts/security_benchmark.py",
         "release security readiness release trigger": "scripts/security_release_readiness.py",
+        "active agent contract release trigger": "AGENTS.md",
+        "documentation map release trigger": "DOCUMENTATION.md",
         "security benchmark docs release trigger": "security/*",
         "testing strategy release trigger": "testing/*",
         "artifact attestation action": "actions/attest-build-provenance",
@@ -195,8 +197,13 @@ FORBIDDEN_SNIPPETS: dict[str, dict[str, str]] = {
     ".github/workflows/build-installers.yml": {
         "legacy Compass doc generator release trigger": "scripts/update_agent_md.py",
         "legacy Compass AGENT release trigger": "AGENT.md",
+        "legacy Compass entrypoint release trigger": "AGENT_ENTRYPOINT.md",
+        "legacy Claude wrapper release trigger": "CLAUDE.md",
         "legacy Compass COMPLETE_SYSTEM release trigger": "COMPLETE_SYSTEM.md",
+        "legacy Gemini wrapper release trigger": "GEMINI.md",
+        "legacy Qwen wrapper release trigger": "QWEN.md",
         "legacy Compass guide release trigger": "SYSTEM_INTEGRITY_GUIDE.md",
+        "legacy system prompt release trigger": "SYSTEM_PROMPT.md",
         "Node 20 installer runtime": "node-version: 20",
     },
     "frontend/Dockerfile": {

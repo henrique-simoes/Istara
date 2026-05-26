@@ -38,7 +38,7 @@ ISTARA_BENCHMARK_RESEARCHER_COUNT=2 \
 npm --prefix tests/real_user_benchmark run probe:deep
 ```
 
-`probe:deep` uploads the full 174-source canonical corpus, runs 20 detailed researcher chat turns, creates/reviews 16 detailed research tasks, executes a bounded coding-validation pass, captures Research Spine summary/traceability/telemetry evidence, and probes ReasoningBank, Memento skill health, improvement governance, Meta-Hyperagent, and Autoresearch surfaces without applying live self-evolution mutations by default. The canonical corpus now carries more than three million words/row-word equivalents, and the benchmark project context, chat turns, and task prompts are deliberately long-form so the run tests realistic senior-researcher complexity rather than one-line demo prompts. Set `ISTARA_BENCHMARK_START_AUTORESEARCH_EXPERIMENT=1` only when you explicitly want a bounded one-iteration Autoresearch background experiment.
+`probe:deep` uploads the full 174-source canonical corpus, runs 20 detailed researcher chat turns, creates/reviews 16 detailed research tasks, executes a bounded coding-validation pass, captures Research Spine summary/traceability/telemetry evidence, and probes ReasoningBank, Memento skill health, improvement governance, Meta-Hyperagent, and Autoresearch surfaces without applying live self-evolution mutations by default. The canonical corpus now carries more than 2.5 million words/row-word equivalents, and the benchmark project context, chat turns, and task prompts are deliberately long-form so the run tests realistic senior-researcher complexity rather than one-line demo prompts. Set `ISTARA_BENCHMARK_START_AUTORESEARCH_EXPERIMENT=1` only when you explicitly want a bounded one-iteration Autoresearch background experiment.
 
 Run the full benchmark with sandbox orchestration enabled:
 
@@ -102,7 +102,7 @@ Supported local model server modes:
 - `ISTARA_BENCHMARK_DONOR_<N>_MODEL_SERVER=llamacpp`: starts `ghcr.io/ggml-org/llama.cpp:server` against a local `.gguf` file.
 - `ISTARA_BENCHMARK_DONOR_<N>_MODEL_SERVER=ollama`: starts `ollama/ollama:latest` with a bind-mounted Ollama model directory.
 
-The model sandbox never downloads models by default. Put Q4/4-bit GGUFs or Ollama model stores under `/Users/studio/Istara-Projects/models`, or set `ISTARA_BENCHMARK_MODEL_ROOT` to another local model root. Q4 evidence is required by default through the model filename, configured model id, or `ISTARA_BENCHMARK_DONOR_<N>_QUANTIZATION`; disable that only for a deliberate negative/control run with `ISTARA_BENCHMARK_DONOR_<N>_REQUIRE_Q4=0`.
+The model sandbox never downloads models by default. Put Q4/4-bit GGUFs or Ollama model stores under `$HOME/Istara-Projects/models`, or set `ISTARA_BENCHMARK_MODEL_ROOT` to another local model root. Q4 evidence is required by default through the model filename, configured model id, or `ISTARA_BENCHMARK_DONOR_<N>_QUANTIZATION`; disable that only for a deliberate negative/control run with `ISTARA_BENCHMARK_DONOR_<N>_REQUIRE_Q4=0`.
 
 Example: main Istara server on the Mac Studio, donor 1 using the host LM Studio, and donor 2 using a Colima-hosted llama.cpp Q4 model endpoint:
 
@@ -120,7 +120,7 @@ ISTARA_BENCHMARK_DONOR_1_LLM_MODEL=google/gemma-4-e4b \
 ISTARA_BENCHMARK_DONOR_1_LLM_API_KEY_ENV=LMSTUDIO_API_KEY \
 ISTARA_BENCHMARK_DONOR_2_MODEL_SERVER=llamacpp \
 ISTARA_BENCHMARK_DONOR_2_MODEL_SERVER_PORT=18112 \
-ISTARA_BENCHMARK_DONOR_2_MODEL_FILE=/Users/studio/Istara-Projects/models/qwen3.5-4b-q4_k_m.gguf \
+ISTARA_BENCHMARK_DONOR_2_MODEL_FILE=$HOME/Istara-Projects/models/qwen3.5-4b-q4_k_m.gguf \
 ISTARA_BENCHMARK_DONOR_2_LLM_MODEL=qwen3.5-4b-q4_k_m \
 npm --prefix tests/real_user_benchmark run probe
 ```
@@ -137,7 +137,7 @@ The `probe:deep:three-model` script sets `ISTARA_BENCHMARK_DONOR_TOPOLOGY=macstu
 - donor 2: `istara-donor-qwen35-4b` via llama.cpp on port `18112`, context length `12288`
 - donor 3: `istara-donor-gemma4-e2b` via llama.cpp on port `18113`, context length `12288`
 
-The expected local Q4 files are `/Users/studio/Istara-Projects/models/qwen3.5-4b-q4_k_m/Qwen3.5-4B-Q4_K_M.gguf` and `/Users/studio/Istara-Projects/models/gemma-4-e2b-it-q4_k_m/gemma-4-E2B-it-Q4_K_M.gguf`. Override them with `ISTARA_BENCHMARK_QWEN_GGUF` and `ISTARA_BENCHMARK_GEMMA_E2B_GGUF` when the files live elsewhere. The benchmark still refuses to download or invent models.
+The expected local Q4 files default to `$HOME/Istara-Projects/models/qwen3.5-4b-q4_k_m/Qwen3.5-4B-Q4_K_M.gguf` and `$HOME/Istara-Projects/models/gemma-4-e2b-it-q4_k_m/gemma-4-E2B-it-Q4_K_M.gguf`. Override them with `ISTARA_BENCHMARK_QWEN_GGUF` and `ISTARA_BENCHMARK_GEMMA_E2B_GGUF` when the files live elsewhere. The benchmark still refuses to download or invent models.
 
 The preset matches the existing local llama.cpp donor-container contract and treats missing GGUF files or unreachable endpoints as setup blockers. By default it removes relay/model containers and stops Colima after benchmark-owned resources are cleaned up, returning the host LM Studio donor to ordinary idle service. For debugging only, set `ISTARA_BENCHMARK_KEEP_DONOR_MODEL_CONTAINERS=1`, `ISTARA_BENCHMARK_KEEP_CLIENT_CONTAINERS=1`, or `ISTARA_BENCHMARK_STOP_COLIMA_AFTER_RUN=0`.
 
@@ -293,7 +293,7 @@ Credentialed integrations such as live Figma, Google Stitch, Telegram, and AURA 
 - `ISTARA_BENCHMARK_CLIENT_<N>_USERNAME`, `ISTARA_BENCHMARK_CLIENT_<N>_PASSWORD`, `ISTARA_BENCHMARK_CLIENT_<N>_EMAIL`: optional deterministic researcher account values for invite-client redemption. Defaults are `researcher_1`, `researcher_2`, ... with password `istara123` and `@istara.test` email addresses.
 - `ISTARA_BENCHMARK_REQUIRE_DISTINCT_DONOR_ENDPOINTS`: defaults to `1` when more than one required donor is configured. Fails multi-donor runs where required donors point at the same provider/host pair.
 - `ISTARA_BENCHMARK_DONOR_<N>_MODEL_SERVER`: optional per-donor model server sandbox. Use `llamacpp` for local Q4 GGUF files or `ollama` for a bind-mounted Ollama model store.
-- `ISTARA_BENCHMARK_MODEL_ROOT`: local host model root for model-server donors. Defaults to `/Users/studio/Istara-Projects/models`.
+- `ISTARA_BENCHMARK_MODEL_ROOT`: local host model root for model-server donors. Defaults to `$HOME/Istara-Projects/models`.
 - `ISTARA_BENCHMARK_DONOR_<N>_MODEL_FILE`, `ISTARA_BENCHMARK_DONOR_<N>_MODEL_DIR`, `ISTARA_BENCHMARK_DONOR_<N>_MODEL_SERVER_PORT`, `ISTARA_BENCHMARK_DONOR_<N>_QUANTIZATION`: model sandbox file/directory, port, and Q4 evidence controls.
 - `ISTARA_BENCHMARK_DONOR_<N>_REASONING`: llama.cpp reasoning mode. Defaults to `off` for benchmark model sandboxes so health probes and chat checks receive visible assistant content instead of spending small token budgets on hidden thinking.
 - `ISTARA_BENCHMARK_DONOR_<N>_CPUS`, `ISTARA_BENCHMARK_DONOR_<N>_MEMORY`: optional Docker resource limits for an individual donor model server.

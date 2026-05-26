@@ -222,12 +222,13 @@ that are explicitly labeled as such.
 
 The canonical corpus is intentionally deep enough for realistic research
 evaluation rather than fixture-only parsing. The manifest records 174 long-form
-synthetic upload-compatible sources and more than three million words/row-word
-equivalents across interviews, diary studies, usability tests, surveys,
-support tickets, analytics, accessibility audits, competitor benchmarks,
-stakeholder memos, multilingual/privacy material, and report-readiness sources.
-Use selectors for speed; do not replace representative product tests with tiny
-10-20 source fallbacks.
+synthetic upload-compatible sources and more than 2.5 million words/row-word
+equivalents across extended interview transcripts, diary studies, usability
+tests, surveys, support tickets, analytics, accessibility audits, competitor
+benchmarks, stakeholder memos, multilingual/privacy material, and
+report-readiness sources. Raw sources must not be pre-digested candidate
+evidence blocks or canned report prose. Use selectors for speed; do not replace
+representative product tests with tiny 10-20 source fallbacks.
 
 The canonical corpus is also an upload contract. Manifest sources must use
 Istara upload-processable file types, currently text/markdown, PDF, DOCX, CSV,

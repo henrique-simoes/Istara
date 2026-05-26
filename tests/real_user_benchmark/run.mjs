@@ -3,6 +3,7 @@
 import { existsSync, readFileSync } from "fs";
 import { createHash, randomBytes } from "crypto";
 import { dirname, join, resolve } from "path";
+import { homedir } from "os";
 import { fileURLToPath } from "url";
 import { spawnSync } from "child_process";
 import { createInterface } from "readline/promises";
@@ -37,6 +38,7 @@ import { inferProviderType } from "../../relay/lib/llm-proxy.mjs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const repoRoot = resolve(__dirname, "../..");
+const benchmarkModelRoot = resolve(homedir(), "Istara-Projects", "models");
 const systemPromptPath = join(__dirname, "system-prompt.md");
 const benchmarkRegistryPath = join(__dirname, "benchmark-registry.json");
 const systemPromptContent = readFileSync(systemPromptPath, "utf8");
@@ -603,7 +605,7 @@ function localThreeModelDonorPreset(index) {
       model_server_port: 18112,
       model_file: firstExistingPath(
         process.env.ISTARA_BENCHMARK_QWEN_GGUF,
-        "/Users/studio/Istara-Projects/models/qwen3.5-4b-q4_k_m/Qwen3.5-4B-Q4_K_M.gguf",
+        join(benchmarkModelRoot, "qwen3.5-4b-q4_k_m", "Qwen3.5-4B-Q4_K_M.gguf"),
       ),
       model: "Qwen3.5-4B-Q4_K_M.gguf",
       context_length: 12288,
@@ -618,8 +620,8 @@ function localThreeModelDonorPreset(index) {
       model_server_port: 18113,
       model_file: firstExistingPath(
         process.env.ISTARA_BENCHMARK_GEMMA_E2B_GGUF,
-        "/Users/studio/Istara-Projects/models/gemma-4-e2b-it-q4_k_m/gemma-4-E2B-it-Q4_K_M.gguf",
-        "/Users/studio/Documents/Istara-main/LLMs/quantized_models/gemma-4-e2b-it-istara-ux-research/gemma-4-e2b-it-istara-ux-research-Q4_K_M.gguf",
+        join(benchmarkModelRoot, "gemma-4-e2b-it-q4_k_m", "gemma-4-E2B-it-Q4_K_M.gguf"),
+        join(repoRoot, "LLMs", "quantized_models", "gemma-4-e2b-it-istara-ux-research", "gemma-4-e2b-it-istara-ux-research-Q4_K_M.gguf"),
       ),
       model: "gemma-4-E2B-it-Q4_K_M.gguf",
       context_length: 12288,

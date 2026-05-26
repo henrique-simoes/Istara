@@ -69,7 +69,7 @@ See [TESTING.md](TESTING.md) for the review queue, recently integrated mainline 
 - **TypeScript:** ESLint + Prettier, strict mode, no `any` where avoidable
 - **Commits:** Conventional commits (`feat:`, `fix:`, `docs:`, `refactor:`)
 - **Tests:** Run `pytest tests/` — all tests must pass. New features need test coverage.
-- **Compass:** Run `python scripts/update_agent_md.py` and `python scripts/check_integrity.py` after architecture changes.
+- **Compass:** Run Compass Forge status/brief/impact/gates and `python scripts/check_integrity.py` after architecture changes.
 
 ## Release Prep
 

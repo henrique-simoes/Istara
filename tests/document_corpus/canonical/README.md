@@ -5,9 +5,9 @@ This committed corpus is Istara's source of truth for product-level synthetic re
 Project: CareNav Renewal
 Source count: 174
 Long-form sources: 174
-Approximate total words: 3,294,834
-Average words per source: 18,936
-Sources with at least 10,000 words/row-word equivalents: 129
+Approximate total words: 2,716,595
+Average words per source: 15,613
+Sources with at least 10,000 words/row-word equivalents: 114
 Skill definitions covered by manifest: 58
 
 ## Contract
@@ -16,8 +16,11 @@ Skill definitions covered by manifest: 58
 - Canonical sources must remain compatible with Istara upload/processable file types so benchmark failures test product behavior, not bad fixture formats.
 - Tiny ad hoc fixtures are allowed only for parser/unit tests and must be labeled as unit fixtures.
 - Raw corpus sources are not report-ready evidence. Reports are generated only from Findings derived from approved Done tasks.
+- Raw Markdown sources must look like plausible source artifacts, not pre-digested candidate evidence, coding hints, canned implications, or report paragraphs.
+- Interview sources must preserve coherent participant IDs, timestamped speaker turns, monotonic transcript positions, varied participant quotes, and language/content consistency.
 - The corpus is fully synthetic and contains no private data.
 - The corpus is intentionally large enough to stress retrieval, coding, task review, summarization, report gating, and multi-model route evidence.
+- Run `python scripts/public_repo_quality_audit.py --check` with corpus tests before merging corpus or public-doc changes.
 
 ## Named slices
 

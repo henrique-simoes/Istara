@@ -1,7 +1,7 @@
 # Security
 
 > Status: Public/reference security page.
-> Authority: Useful for wiki/security guidance, but not the canonical internal development-control entrypoint. For live repo doctrine and change obligations, start with `AGENT_ENTRYPOINT.md`.
+> Authority: Useful for wiki/security guidance, but not the canonical internal development-control entrypoint. For live repo doctrine and change obligations, start with `AGENTS.md`, Compass Forge, and `DOCUMENTATION.md`.
 
 Istara is designed with a **local-first, privacy-first** security model. This page documents the security architecture, authentication system, and best practices for securing your Istara installation.
 
