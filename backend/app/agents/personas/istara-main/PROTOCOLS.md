@@ -15,9 +15,10 @@
 2. **Context composition**: Build the full context hierarchy (platform + company + product + project + task + agent) before executing
 3. **Execute with monitoring**: Track progress, broadcast updates via WebSocket, respect timeout limits
 4. **Post-flight verification**: Self-verify output quality. Check for empty results, error patterns, hallucination indicators
-5. **Store findings**: Persist results in the Atomic Research chain with proper evidence links
-6. **Report and suggest**: Broadcast ready-for-review status, suggest logical next steps
-7. **Use review feedback**: If a task carries What to Review, last_review_feedback, labels, or failure streaks, treat that as the strongest instruction for the next attempt.
+5. **Route research artifacts**: Persist source-grounded outputs as candidate/provisional artifacts unless they already cite accepted/reconciled Research Spine evidence
+6. **Respect promotion gates**: Candidate artifacts must pass evidence-unit extraction, independent coding, reliability/reconciliation, task review, and human-approved Done gates before report use
+7. **Report and suggest**: Broadcast ready-for-review status, suggest logical next steps
+8. **Use review feedback**: If a task carries What to Review, last_review_feedback, labels, or failure streaks, treat that as the strongest instruction for the next attempt.
 
 ```
 [Task Received] --> [Pre-flight Check]
@@ -32,7 +33,7 @@
                                                                   |
                                                                  Yes
                                                                   |
-                                                            [Store Findings] --> [Suggest Next Steps]
+                                                            [Candidate Artifacts] --> [Spine Gates] --> [Suggest Next Steps]
 ```
 
 ### Error Handling Protocol

@@ -1,11 +1,17 @@
 from types import SimpleNamespace
+import uuid
 
 import pytest
 
 import app.core.agent_skill_tools as agent_skill_tools
+from app.models.database import async_session, init_db
+from app.models.finding import Nugget
+from app.models.model_skill_stats import ModelSkillStats
+from app.models.project import Project
 from app.skills.base import BaseSkill, SkillInput, SkillOutput, SkillPhase, SkillType
 from app.skills.registry import registry
 from app.skills.skill_manager import skill_manager
+from app.skills.system_actions import execute_tool
 
 
 class DummySkill(BaseSkill):
@@ -108,6 +114,52 @@ async def test_rank_skill_candidates_uses_reasoning_bank_and_memento(monkeypatch
     assert any("reasoning_bank" in reason for reason in candidates[0].reasons)
 
 
+@pytest.mark.asyncio
+async def test_telemetry_quality_boost_is_project_scoped():
+    await init_db()
+    async with async_session() as db:
+        db.add(
+            ModelSkillStats(
+                project_id="project-a",
+                skill_name="journey-mapping",
+                model_name="model-a",
+                temperature=0.3,
+                executions=10,
+                total_quality=9.0,
+                quality_ema=0.9,
+                best_quality=0.9,
+                source="production",
+            )
+        )
+        db.add(
+            ModelSkillStats(
+                project_id="project-b",
+                skill_name="journey-mapping",
+                model_name="model-b",
+                temperature=0.3,
+                executions=10,
+                total_quality=1.0,
+                quality_ema=0.1,
+                best_quality=0.1,
+                source="production",
+            )
+        )
+        await db.commit()
+
+        project_a = await agent_skill_tools._telemetry_quality_boost(
+            {"journey-mapping"},
+            db,
+            project_id="project-a",
+        )
+        project_b = await agent_skill_tools._telemetry_quality_boost(
+            {"journey-mapping"},
+            db,
+            project_id="project-b",
+        )
+
+    assert project_a["journey-mapping"] > project_b["journey-mapping"]
+
+
 def test_build_run_skill_tool_constrains_skill_enum():
     candidates = [
         agent_skill_tools.SkillCandidate(
@@ -124,3 +176,33 @@ def test_build_run_skill_tool_constrains_skill_enum():
     skill_prop = tool["function"]["parameters"]["properties"]["skill_name"]
     assert skill_prop["enum"] == ["user-interviews"]
     assert tool["function"]["parameters"]["additionalProperties"] is False
+
+
+@pytest.mark.asyncio
+async def test_search_findings_tool_surfaces_research_validity_status():
+    """Chat/ReAct finding lookup must not present provisional artifacts as accepted."""
+    await init_db()
+    project_id = f"tool-findings-{uuid.uuid4()}"
+    nugget_id = f"nugget-{uuid.uuid4()}"
+    async with async_session() as db:
+        db.add(Project(id=project_id, name="Tool Findings Project"))
+        db.add(
+            Nugget(
+                id=nugget_id,
+                project_id=project_id,
+                text="Participants could not find billing settings.",
+                source="manual-note",
+            )
+        )
+        await db.commit()
+
+    result = await execute_tool(
+        "search_findings",
+        {"query": "billing", "finding_type": "nugget"},
+        project_id,
+        agent_id="istara-main",
+    )
+
+    assert result["success"] is True
+    assert "[Nugget | provisional | not reportable]" in result["result"]
+    assert nugget_id in result["result"]

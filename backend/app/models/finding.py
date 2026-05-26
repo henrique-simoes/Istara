@@ -1,4 +1,9 @@
-"""Atomic Research finding models — Nuggets, Facts, Insights, Recommendations."""
+"""Atomic Research finding models.
+
+These rows are visible research artifacts. They are reportable only when the
+Research Spine links them to accepted/reconciled evidence and a human-approved
+Done task.
+"""
 
 from datetime import datetime, timezone
 
@@ -9,10 +14,10 @@ from app.models.database import Base
 
 
 class Nugget(Base):
-    """Raw evidence extracted from a source — the atomic unit of research.
+    """Visible atomic observation or candidate nugget.
 
-    A nugget is a direct quote, observation, or data point from a research source.
-    Example: "P1 said 'I hate giving my phone number to random sites'" @ interview_p1.mp3 4:32
+    Raw source text belongs in EvidenceUnit rows. Nugget rows stay provisional
+    until source-grounded coding/reliability/reconciliation accepts them.
     """
 
     __tablename__ = "nuggets"

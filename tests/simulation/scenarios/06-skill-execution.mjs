@@ -120,7 +120,15 @@ export async function run(ctx) {
         project_id: ctx.projectId,
         user_context: "Analyze the uploaded interview transcripts for common themes",
       });
-      checks.push({ name: "Skill execution via API", passed: true, detail: JSON.stringify(result).substring(0, 100) });
+      const reportBlocked =
+        result.report_allowed === false && result.research_validity?.status === "provisional";
+      checks.push({
+        name: "Skill execution via API",
+        passed: reportBlocked,
+        detail: reportBlocked
+          ? `candidate=${result.artifact_state}, report_allowed=${result.report_allowed}`
+          : `missing provisional Research Spine state: ${JSON.stringify(result).substring(0, 100)}`,
+      });
     } catch (e) {
       if (isExpectedMaintenanceConflict(e, ctx)) {
         checks.push({

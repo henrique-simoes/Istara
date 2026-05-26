@@ -1,4 +1,12 @@
-import type { CodeApplicationType, CodebookVersionType, ProjectReport } from "@/lib/types";
+import type {
+  CodeApplicationType,
+  CodebookVersionType,
+  EvidenceGraphTraceabilityType,
+  ProjectReport,
+  ReconciliationDecisionType,
+  ResearchValidityTelemetryAuditType,
+  StartCodingRunRequest,
+} from "@/lib/types";
 
 import { apiUrl, del, get, patch, post } from "@/lib/apiClient";
 
@@ -34,20 +42,105 @@ export const codebooks = {
 };
 
 export const codeApplications = {
-  list: (projectId: string, status?: string) =>
-    get<CodeApplicationType[]>(`/api/code-applications/${projectId}${status ? `?status=${status}` : ""}`),
+  list: (projectId: string, status?: string, taskId?: string) => {
+    const params = new URLSearchParams();
+    if (status) params.set("status", status);
+    if (taskId) params.set("task_id", taskId);
+    const query = params.toString();
+    return get<CodeApplicationType[]>(`/api/code-applications/${projectId}${query ? `?${query}` : ""}`);
+  },
   pending: (projectId: string) =>
     get<CodeApplicationType[]>(`/api/code-applications/${projectId}/pending`),
-  review: (applicationId: string, reviewStatus: string, projectId: string, reviewedBy?: string) =>
+  review: (
+    applicationId: string,
+    reviewStatus: string,
+    projectId: string,
+    reviewedBy?: string,
+    rationale?: string,
+    acceptedCodeId?: string
+  ) =>
     patch<CodeApplicationType>(`/api/code-applications/${applicationId}/review?project_id=${encodeURIComponent(projectId)}`, {
       review_status: reviewStatus,
       reviewed_by: reviewedBy || "user",
+      rationale: rationale || "",
+      accepted_code_id: acceptedCodeId || null,
     }),
   bulkApprove: (projectId: string, minConfidence?: number) =>
     post<{ approved_count: number }>(
       `/api/code-applications/${projectId}/bulk-approve?min_confidence=${minConfidence || 0.9}`,
       {}
     ),
+};
+
+export const researchValidity = {
+  contract: () =>
+    get<{
+      contract: Record<string, unknown>;
+      qualitative_coding_protocol: Record<string, unknown>;
+      telemetry_operations: string[];
+      telemetry_contract: Record<string, unknown>;
+    }>("/api/research-validity/contract"),
+  summary: (projectId: string) =>
+    get<{
+      project_id: string;
+      evidence_unit_count: number;
+      coding_run_count: number;
+      pending_review_count: number;
+      accepted_code_application_count: number;
+      low_consensus_or_blocked_count: number;
+      reconciliation_decision_count: number;
+      report_gate: string;
+    }>(`/api/research-validity/${projectId}/summary`),
+  evidenceUnits: (projectId: string, limit = 100, taskId?: string) => {
+    const params = new URLSearchParams({ limit: String(limit) });
+    if (taskId) params.set("task_id", taskId);
+    return get<Record<string, unknown>[]>(
+      `/api/research-validity/${projectId}/evidence-units?${params.toString()}`
+    );
+  },
+  codingRuns: (projectId: string, limit = 50, taskId?: string) => {
+    const params = new URLSearchParams({ limit: String(limit) });
+    if (taskId) params.set("task_id", taskId);
+    return get<Record<string, unknown>[]>(
+      `/api/research-validity/${projectId}/coding-runs?${params.toString()}`
+    );
+  },
+  startCodingRun: (
+    projectId: string,
+    payload: StartCodingRunRequest = {}
+  ) => post<Record<string, unknown>>(`/api/research-validity/${projectId}/coding-runs`, payload),
+  evidenceGraph: (projectId: string, limit = 200) =>
+    get<Record<string, unknown>[]>(
+      `/api/research-validity/${projectId}/evidence-graph?limit=${limit}`
+    ),
+  telemetryAudit: (projectId: string, limit = 500) =>
+    get<ResearchValidityTelemetryAuditType>(
+      `/api/research-validity/${projectId}/telemetry-audit?limit=${limit}`
+    ),
+  traceability: (
+    projectId: string,
+    options: { reportId?: string; taskId?: string; findingId?: string; limit?: number } = {}
+  ) => {
+    const params = new URLSearchParams({ limit: String(options.limit || 50) });
+    if (options.reportId) params.set("report_id", options.reportId);
+    if (options.taskId) params.set("task_id", options.taskId);
+    if (options.findingId) params.set("finding_id", options.findingId);
+    return get<EvidenceGraphTraceabilityType>(
+      `/api/research-validity/${projectId}/traceability?${params.toString()}`
+    );
+  },
+  reconciliationDecisions: (
+    projectId: string,
+    options: { taskId?: string; codingRunId?: string; evidenceUnitId?: string; limit?: number } = {}
+  ) => {
+    const params = new URLSearchParams({ limit: String(options.limit || 100) });
+    if (options.taskId) params.set("task_id", options.taskId);
+    if (options.codingRunId) params.set("coding_run_id", options.codingRunId);
+    if (options.evidenceUnitId) params.set("evidence_unit_id", options.evidenceUnitId);
+    return get<ReconciliationDecisionType[]>(
+      `/api/research-validity/${projectId}/reconciliation-decisions?${params.toString()}`
+    );
+  },
 };
 
 const steeringProjectParam = (projectId: string) => `project_id=${encodeURIComponent(projectId)}`;

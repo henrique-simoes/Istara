@@ -20,6 +20,24 @@ PROTECTED_TAGS = [
     "</research_data>",
     "<tool_output>",
     "</tool_output>",
+    "<qualitative_coding_protocol>",
+    "</qualitative_coding_protocol>",
+    "<codebook>",
+    "</codebook>",
+    "<evidence_units>",
+    "</evidence_units>",
+    "<coding_matrix>",
+    "</coding_matrix>",
+    "<reliability_policy>",
+    "</reliability_policy>",
+    "<promotion_gate>",
+    "</promotion_gate>",
+    "<route_evidence>",
+    "</route_evidence>",
+    "<evidence_graph>",
+    "</evidence_graph>",
+    "<authorization_policy>",
+    "</authorization_policy>",
 ]
 
 # Keywords that signal high-importance instructions
@@ -32,6 +50,18 @@ CRITICAL_INSTRUCTIONS = [
     "MoSCoW",
     "JSON",
     "schema",
+    "qualitative coding protocol",
+    "evidence unit",
+    "codebook version",
+    "inclusion criteria",
+    "exclusion criteria",
+    "Cohen",
+    "Krippendorff",
+    "promotion gate",
+    "route evidence",
+    "GraphRAG",
+    "Hybrid RAG",
+    "Done tasks",
 ]
 
 def is_protected(text: str) -> bool:

@@ -30,15 +30,45 @@ def auth_headers():
 
 
 @pytest.mark.asyncio
-async def test_codebooks_list_returns_list(auth_headers):
-    """GET /api/codebooks returns a list."""
+async def test_codebooks_list_requires_project_scope(auth_headers):
+    """GET /api/codebooks requires an explicit active project."""
     await init_db()
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
         response = await ac.get("/api/codebooks", headers=auth_headers)
-        assert response.status_code in (200, 422, 404, 500)
-        if response.status_code == 200:
-            assert isinstance(response.json(), list)
+
+    assert response.status_code == 422
+
+
+@pytest.mark.asyncio
+async def test_codebooks_list_returns_project_codebooks(auth_headers):
+    """GET /api/codebooks?project_id=... returns only active-project codebooks."""
+    await init_db()
+    project_id = str(uuid.uuid4())
+    other_project_id = str(uuid.uuid4())
+    visible_id = str(uuid.uuid4())
+    hidden_id = str(uuid.uuid4())
+    async with async_session() as db:
+        db.add_all(
+            [
+                Project(id=project_id, name="Codebook List A"),
+                Project(id=other_project_id, name="Codebook List B"),
+                Codebook(id=visible_id, project_id=project_id, name="Visible Codebook"),
+                Codebook(id=hidden_id, project_id=other_project_id, name="Hidden Codebook"),
+            ]
+        )
+        await db.commit()
+
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        response = await ac.get(
+            "/api/codebooks",
+            params={"project_id": project_id},
+            headers=auth_headers,
+        )
+
+    assert response.status_code == 200
+    assert [item["id"] for item in response.json()] == [visible_id]
 
 
 @pytest.mark.asyncio

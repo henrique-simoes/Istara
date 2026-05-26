@@ -1,6 +1,8 @@
 """Focused hardening tests for compute registry safety paths."""
 
+import asyncio
 from types import SimpleNamespace
+from unittest.mock import AsyncMock
 
 import httpx
 import pytest
@@ -14,10 +16,12 @@ def reset_settings():
     original_lmstudio_host = settings.lmstudio_host
     original_lmstudio_model = settings.lmstudio_model
     original_active_probe = settings.llm_capability_active_probe_enabled
+    original_strict_auto_routing = settings.strict_auto_routing
     yield
     settings.lmstudio_host = original_lmstudio_host
     settings.lmstudio_model = original_lmstudio_model
     settings.llm_capability_active_probe_enabled = original_active_probe
+    settings.strict_auto_routing = original_strict_auto_routing
 
 
 class _SuccessfulChatClient:
@@ -161,6 +165,84 @@ async def test_lmstudio_no_loaded_model_is_reachable_not_ready(monkeypatch):
     assert payload["is_reachable"] is True
     assert payload["online"] is True
     assert payload["readiness_state"] == "no_model_loaded"
+
+
+def test_strict_project_model_routing_prefers_authorized_relay_over_local_duplicate():
+    registry = ComputeRegistry()
+    settings.strict_auto_routing = True
+    registry.register_node(
+        ComputeNode(
+            node_id="local-lmstudio",
+            name="Local LM Studio",
+            host="http://localhost:1234",
+            source="local",
+            provider_type="lmstudio",
+            priority=1,
+            is_healthy=True,
+            loaded_models=["gemma-test"],
+        )
+    )
+    registry.register_node(
+        ComputeNode(
+            node_id="relay-gemma",
+            name="Relay Gemma",
+            host="http://relay.local:1234",
+            source="relay",
+            provider_type="lmstudio",
+            priority=20,
+            is_healthy=True,
+            loaded_models=["gemma-test"],
+            allowed_project_ids=["project-a"],
+            last_heartbeat=9999999999,
+        )
+    )
+
+    candidates = registry._select_candidates(
+        model="gemma-test",
+        strict_model=True,
+        project_id="project-a",
+    )
+
+    assert [candidate.node_id for candidate in candidates[:2]] == [
+        "relay-gemma",
+        "local-lmstudio",
+    ]
+
+
+@pytest.mark.asyncio
+async def test_cancelled_relay_stream_records_route_failure(monkeypatch):
+    registry = ComputeRegistry()
+    node = ComputeNode(
+        node_id="relay-cancelled",
+        name="Relay Cancelled",
+        host="http://relay.local:1234",
+        source="relay",
+        provider_type="lmstudio",
+        is_healthy=True,
+        websocket=object(),
+        loaded_models=["gemma-test"],
+        allowed_project_ids=["project-a"],
+        last_heartbeat=9999999999,
+    )
+
+    async def cancelled_chat(*_args, **_kwargs):
+        raise asyncio.CancelledError()
+
+    monkeypatch.setattr(node, "chat", cancelled_chat)
+    registry.register_node(node)
+
+    with pytest.raises(asyncio.CancelledError):
+        async for _ in registry.chat_stream(
+            [{"role": "user", "content": "hello"}],
+            model="gemma-test",
+            project_id="project-a",
+        ):
+            pass
+
+    assert node.selected_request_count == 1
+    assert node.failed_request_count == 1
+    assert node.active_requests == 0
+    assert "cancelled" in node.last_failure_error.lower()
 
 
 def test_compute_stats_count_reachable_nodes_separately_from_ready_nodes():
@@ -784,6 +866,116 @@ async def test_registry_openai_compatible_chat_suppresses_reasoning_content(monk
 
     assert result["message"]["content"] == ""
     assert "reasoning_content" not in result["message"]
+
+
+@pytest.mark.asyncio
+async def test_registry_chat_returns_content_free_route_evidence(monkeypatch):
+    registry = ComputeRegistry()
+    node = ComputeNode(
+        node_id="qwen-node",
+        name="Qwen",
+        host="http://localhost:1234",
+        source="local",
+        provider_type="lmstudio",
+        is_healthy=True,
+        loaded_models=["qwen3"],
+    )
+
+    async def get_client():
+        return _SuccessfulChatClient()
+
+    monkeypatch.setattr(node, "_get_client", get_client)
+    registry.register_node(node)
+
+    result = await registry.chat(
+        [{"role": "user", "content": "hello"}],
+        model="qwen3",
+        project_id="project-a",
+    )
+
+    route = result["_istara_route"]
+    assert route["node_id"] == "qwen-node"
+    assert route["node_source"] == "local"
+    assert route["provider_type"] == "lmstudio"
+    assert route["route_kind"] == "chat"
+    assert route["project_id"] == "project-a"
+    assert route["model"] == "qwen3"
+    assert route["outcome"] == "served"
+    assert route["served_request_count"] == 1
+    assert "host" not in route
+
+
+@pytest.mark.asyncio
+async def test_registry_chat_emits_content_free_donor_route_telemetry(monkeypatch):
+    from app.core import telemetry as telemetry_module
+
+    record_event = AsyncMock()
+    monkeypatch.setattr(
+        telemetry_module.telemetry_recorder,
+        "record_research_validity_event",
+        record_event,
+    )
+    registry = ComputeRegistry()
+    node = ComputeNode(
+        node_id="qwen-node",
+        name="Qwen",
+        host="http://localhost:1234",
+        source="local",
+        provider_type="lmstudio",
+        is_healthy=True,
+        loaded_models=["qwen3"],
+    )
+
+    async def get_client():
+        return _SuccessfulChatClient()
+
+    monkeypatch.setattr(node, "_get_client", get_client)
+    registry.register_node(node)
+
+    await registry.chat(
+        [{"role": "user", "content": "hello"}],
+        model="qwen3",
+        project_id="project-a",
+    )
+    await asyncio.sleep(0)
+
+    operations = [call.kwargs["operation"] for call in record_event.await_args_list]
+    assert operations == ["donor.selected", "donor.served"]
+    assert all(call.kwargs["project_id"] == "project-a" for call in record_event.await_args_list)
+    assert all(call.kwargs["donor_id"] == "qwen-node" for call in record_event.await_args_list)
+    assert all("host" not in call.kwargs for call in record_event.await_args_list)
+
+
+@pytest.mark.asyncio
+async def test_relay_registration_emits_project_scoped_lifecycle_telemetry(monkeypatch):
+    from app.core import telemetry as telemetry_module
+
+    record_event = AsyncMock()
+    monkeypatch.setattr(
+        telemetry_module.telemetry_recorder,
+        "record_research_validity_event",
+        record_event,
+    )
+    registry = ComputeRegistry()
+    node = ComputeNode(
+        node_id="relay-node",
+        name="Relay Node",
+        host="",
+        source="relay",
+        provider_type="ollama",
+        is_healthy=True,
+        health_state="ready",
+        loaded_models=["gemma"],
+        allowed_project_ids=["project-a"],
+    )
+
+    registry.register_node(node)
+    await asyncio.sleep(0)
+
+    operations = [call.kwargs["operation"] for call in record_event.await_args_list]
+    assert operations == ["donor.registered", "donor.visible", "donor.reachable", "donor.ready"]
+    assert all(call.kwargs["project_id"] == "project-a" for call in record_event.await_args_list)
+    assert all(call.kwargs["donor_id"] == "relay-node" for call in record_event.await_args_list)
 
 
 @pytest.mark.asyncio

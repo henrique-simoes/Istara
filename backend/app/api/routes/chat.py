@@ -37,6 +37,7 @@ from app.core.llm_thinking import ThinkingMode, apply_thinking_control, normaliz
 from app.core.ollama import ollama
 from app.core.permissions import get_visible_project_or_404, require_project_access
 from app.core.rag import build_augmented_prompt, retrieve_context
+from app.core.research_validity import RESEARCH_VALIDITY_CONTRACT, protected_block
 from app.core.token_counter import context_guard
 from app.models.database import get_db, async_session
 
@@ -65,6 +66,23 @@ router = APIRouter()
 
 # Maximum tool-call iterations per message (prevents infinite loops)
 MAX_TOOL_ITERATIONS = 8
+
+
+def _research_spine_chat_contract() -> str:
+    """Protected runtime policy that prevents chat/RAG from bypassing gates."""
+    return protected_block(
+        "promotion_gate",
+        {
+            "pipeline": RESEARCH_VALIDITY_CONTRACT["pipeline"],
+            "chat_policy": [
+                "Chat may discuss provisional findings only when clearly labeled provisional.",
+                "Do not present raw model output, RAG snippets, memories, or tool output as accepted research.",
+                "Accepted research requires source-grounded evidence units, independent coding, reliability/reconciliation, and human-approved Done tasks.",
+                "Reports and report-like recommendations must use accepted/reconciled evidence only.",
+            ],
+        },
+    )
+
 
 # ── Text-based fallback (kept for models without native tool support) ──
 
@@ -478,6 +496,7 @@ async def chat(request: ChatRequest, http_request: Request, db: AsyncSession = D
                     session_agent_id,
                     query=request.message,
                     use_embeddings=True,
+                    project_id=request.project_id,
                 )
             except Exception:
                 # Fall back to full identity load
@@ -505,6 +524,7 @@ async def chat(request: ChatRequest, http_request: Request, db: AsyncSession = D
                 "istara-main",
                 query=request.message,
                 use_embeddings=True,
+                project_id=request.project_id,
             )
         except Exception:
             agent_identity_prompt = load_agent_identity("istara-main")
@@ -514,7 +534,10 @@ async def chat(request: ChatRequest, http_request: Request, db: AsyncSession = D
 
     # Budget-aware pipeline: allocate tokens based on detected context window
     from app.core.budget_coordinator import budget_coordinator, compute_surplus_level
-    from app.core.prompt_compressor import compress_rag_chunks
+    from app.core.prompt_compressor import (
+        compress_rag_chunks,
+        record_protected_compression_telemetry,
+    )
 
     budget = budget_coordinator.allocate(settings.max_context_tokens)
     surplus = compute_surplus_level()
@@ -527,6 +550,7 @@ async def chat(request: ChatRequest, http_request: Request, db: AsyncSession = D
                 query=request.message,
                 max_tokens=budget.identity_tokens,
                 use_embeddings=True,
+                project_id=request.project_id,
             )
         except Exception:
             pass  # Keep the previously loaded identity
@@ -537,6 +561,11 @@ async def chat(request: ChatRequest, http_request: Request, db: AsyncSession = D
         chunk_texts = [r.text for r in rag_result.retrieved if r.text]
         compressed_chunks, _ = compress_rag_chunks(
             chunk_texts, request.message, budget.rag_tokens, surplus
+        )
+        await record_protected_compression_telemetry(
+            project_id=request.project_id,
+            original_chunks=chunk_texts,
+            compressed_chunks=compressed_chunks,
         )
         rag_context = "\n---\n".join(compressed_chunks) if compressed_chunks else ""
 
@@ -551,6 +580,7 @@ async def chat(request: ChatRequest, http_request: Request, db: AsyncSession = D
     # Inject agent identity at the top of the system prompt
     if agent_identity_prompt:
         system_prompt = agent_identity_prompt + "\n\n---\n\n" + system_prompt
+    system_prompt += "\n\n" + _research_spine_chat_contract()
 
     # Native tool calling: tools are passed via the `tools` API parameter.
     # The text-based tools prompt is only injected as a fallback (see below).

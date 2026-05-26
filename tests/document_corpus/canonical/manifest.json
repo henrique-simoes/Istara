@@ -4,11 +4,24 @@
   "project": {
     "name": "CareNav Renewal",
     "company": "Northstar Health",
-    "product": "patient-care coordination workspace",
-    "stage": "end-to-end UX research program for appointment preparation, caregiver access, staff readiness queues, and evidence-grounded automation"
+    "industry": "multi-site outpatient health operations",
+    "product": "CareNav, a patient-care coordination workspace for appointment preparation, readiness evidence, caregiver collaboration, multilingual reminders, staff handoff, and governed automation",
+    "stage": "end-to-end UX research program for appointment preparation, caregiver access, staff readiness queues, and evidence-grounded automation",
+    "business_context": "Northstar Health operates 43 clinics across community health, cardiology, oncology, pediatrics, fertility, and post-operative care. The organization piloted CareNav after missed preparation tasks increased same-day cancellations and staff manually reconciled portal messages, SMS reminders, EHR tasks, phone calls, and paper notes. The renewal program must decide which automation can be trusted, which workflows need human review, and which patient/caregiver experiences are safe to launch in multiple languages.",
+    "research_program": "This canonical corpus simulates a full mixed-methods UX research program: hour-long interviews, diary studies, survey exports, usability sessions, accessibility audits, journey maps, field observations, support tickets, analytics, competitor benchmarks, stakeholder memos, design briefs, discussion guides, consent/privacy notes, malformed edge cases, and report-readiness material. Sources intentionally contain contradictions, low-consensus evidence, stale metrics, multilingual ambiguity, and privacy-sensitive scenarios so tests must follow the Research Spine rather than summarizing raw data directly.",
+    "guardrails": [
+      "Do not infer medical advice, diagnosis, treatment priority, clinical eligibility, insurance coverage, or medication guidance.",
+      "Treat every participant story as synthetic PHI-like material; do not expose names, phone numbers, addresses, or unnecessary identity details in report outputs.",
+      "Keep staff workflow evidence separate from patient, caregiver, administrator, and operations analyst evidence until a synthesis explicitly compares them.",
+      "Flag contradictions, stale evidence, sampling gaps, language-specific wording risks, and automation-trust risks instead of smoothing them into one confident theme.",
+      "Distinguish raw source evidence, evidence units, candidate atoms, accepted atoms, facts, insights, recommendations, In Review tasks, Done tasks, and Reports.",
+      "Recommendations must cite source ids, exact quotes or spans where possible, codebook/reliability status, and human approval state before they become reportable."
+    ]
   },
   "total_sources": 174,
   "long_form_sources": 174,
+  "total_words": 3294834,
+  "average_words_per_source": 18936,
   "slices": {
     "interview-heavy": {
       "source_count": 54,
@@ -19,6 +32,38 @@
         "participant-profile"
       ],
       "phases": [
+        "discover"
+      ]
+    },
+    "coding-reliability": {
+      "source_count": 70,
+      "methods": [
+        "diary",
+        "field-note",
+        "interview",
+        "participant-profile",
+        "support",
+        "survey"
+      ],
+      "phases": [
+        "define",
+        "discover"
+      ]
+    },
+    "low-consensus-review": {
+      "source_count": 67,
+      "methods": [
+        "accessibility",
+        "field-note",
+        "heuristic",
+        "interview",
+        "malformed",
+        "support",
+        "usability"
+      ],
+      "phases": [
+        "deliver",
+        "develop",
         "discover"
       ]
     },
@@ -57,6 +102,25 @@
         "define",
         "deliver",
         "develop",
+        "discover"
+      ]
+    },
+    "graph-synthesis": {
+      "source_count": 52,
+      "methods": [
+        "ab-test",
+        "analytics",
+        "brief",
+        "competitor",
+        "diary",
+        "journey",
+        "report",
+        "stakeholder",
+        "survey"
+      ],
+      "phases": [
+        "define",
+        "deliver",
         "discover"
       ]
     },
@@ -155,6 +219,8 @@
       "relative_path": "sources/interview/CR-001-interview-01.md",
       "slices": [
         "interview-heavy",
+        "coding-reliability",
+        "low-consensus-review",
         "full-end-to-end"
       ],
       "tags": [
@@ -175,7 +241,8 @@
         "competitive-analysis"
       ],
       "path": "sources/interview/CR-001-interview-01.md",
-      "bytes": 5953,
+      "bytes": 329411,
+      "word_count": 43577,
       "long_form": true,
       "synthetic": true,
       "project": "CareNav Renewal",
@@ -197,6 +264,8 @@
       "relative_path": "sources/interview/CR-002-interview-02.md",
       "slices": [
         "interview-heavy",
+        "coding-reliability",
+        "low-consensus-review",
         "full-end-to-end"
       ],
       "tags": [
@@ -217,7 +286,8 @@
         "empathy-mapping"
       ],
       "path": "sources/interview/CR-002-interview-02.md",
-      "bytes": 6016,
+      "bytes": 330060,
+      "word_count": 43703,
       "long_form": true,
       "synthetic": true,
       "project": "CareNav Renewal",
@@ -239,6 +309,8 @@
       "relative_path": "sources/interview/CR-003-interview-03.md",
       "slices": [
         "interview-heavy",
+        "coding-reliability",
+        "low-consensus-review",
         "full-end-to-end"
       ],
       "tags": [
@@ -259,7 +331,8 @@
         "journey-mapping"
       ],
       "path": "sources/interview/CR-003-interview-03.md",
-      "bytes": 5890,
+      "bytes": 328065,
+      "word_count": 43436,
       "long_form": true,
       "synthetic": true,
       "project": "CareNav Renewal",
@@ -281,6 +354,8 @@
       "relative_path": "sources/interview/CR-004-interview-04.md",
       "slices": [
         "interview-heavy",
+        "coding-reliability",
+        "low-consensus-review",
         "full-end-to-end"
       ],
       "tags": [
@@ -301,7 +376,8 @@
         "prioritization-matrix"
       ],
       "path": "sources/interview/CR-004-interview-04.md",
-      "bytes": 6042,
+      "bytes": 330323,
+      "word_count": 43706,
       "long_form": true,
       "synthetic": true,
       "project": "CareNav Renewal",
@@ -323,6 +399,8 @@
       "relative_path": "sources/interview/CR-005-interview-05.md",
       "slices": [
         "interview-heavy",
+        "coding-reliability",
+        "low-consensus-review",
         "full-end-to-end"
       ],
       "tags": [
@@ -343,7 +421,8 @@
         "stakeholder-interviews"
       ],
       "path": "sources/interview/CR-005-interview-05.md",
-      "bytes": 5927,
+      "bytes": 328376,
+      "word_count": 43587,
       "long_form": true,
       "synthetic": true,
       "project": "CareNav Renewal",
@@ -365,6 +444,8 @@
       "relative_path": "sources/interview/CR-006-interview-06.md",
       "slices": [
         "interview-heavy",
+        "coding-reliability",
+        "low-consensus-review",
         "full-end-to-end"
       ],
       "tags": [
@@ -385,7 +466,8 @@
         "survey-design"
       ],
       "path": "sources/interview/CR-006-interview-06.md",
-      "bytes": 5900,
+      "bytes": 328232,
+      "word_count": 43456,
       "long_form": true,
       "synthetic": true,
       "project": "CareNav Renewal",
@@ -407,6 +489,8 @@
       "relative_path": "sources/interview/CR-007-interview-07.md",
       "slices": [
         "interview-heavy",
+        "coding-reliability",
+        "low-consensus-review",
         "full-end-to-end"
       ],
       "tags": [
@@ -427,7 +511,8 @@
         "tree-testing"
       ],
       "path": "sources/interview/CR-007-interview-07.md",
-      "bytes": 6036,
+      "bytes": 330608,
+      "word_count": 43721,
       "long_form": true,
       "synthetic": true,
       "project": "CareNav Renewal",
@@ -449,6 +534,8 @@
       "relative_path": "sources/interview/CR-008-interview-08.md",
       "slices": [
         "interview-heavy",
+        "coding-reliability",
+        "low-consensus-review",
         "full-end-to-end"
       ],
       "tags": [
@@ -467,7 +554,8 @@
         "workshop-facilitation"
       ],
       "path": "sources/interview/CR-008-interview-08.md",
-      "bytes": 5925,
+      "bytes": 328773,
+      "word_count": 43589,
       "long_form": true,
       "synthetic": true,
       "project": "CareNav Renewal",
@@ -489,6 +577,8 @@
       "relative_path": "sources/interview/CR-009-interview-09.md",
       "slices": [
         "interview-heavy",
+        "coding-reliability",
+        "low-consensus-review",
         "full-end-to-end"
       ],
       "tags": [
@@ -509,7 +599,8 @@
         "channel-research-deployment"
       ],
       "path": "sources/interview/CR-009-interview-09.md",
-      "bytes": 5972,
+      "bytes": 329181,
+      "word_count": 43578,
       "long_form": true,
       "synthetic": true,
       "project": "CareNav Renewal",
@@ -531,6 +622,8 @@
       "relative_path": "sources/interview/CR-010-interview-10.md",
       "slices": [
         "interview-heavy",
+        "coding-reliability",
+        "low-consensus-review",
         "full-end-to-end"
       ],
       "tags": [
@@ -551,7 +644,8 @@
         "desk-research"
       ],
       "path": "sources/interview/CR-010-interview-10.md",
-      "bytes": 5921,
+      "bytes": 328877,
+      "word_count": 43572,
       "long_form": true,
       "synthetic": true,
       "project": "CareNav Renewal",
@@ -573,6 +667,8 @@
       "relative_path": "sources/interview/CR-011-interview-11.md",
       "slices": [
         "interview-heavy",
+        "coding-reliability",
+        "low-consensus-review",
         "full-end-to-end"
       ],
       "tags": [
@@ -593,7 +689,8 @@
         "hmw-statements"
       ],
       "path": "sources/interview/CR-011-interview-11.md",
-      "bytes": 5918,
+      "bytes": 328868,
+      "word_count": 43573,
       "long_form": true,
       "synthetic": true,
       "project": "CareNav Renewal",
@@ -615,6 +712,8 @@
       "relative_path": "sources/interview/CR-012-interview-12.md",
       "slices": [
         "interview-heavy",
+        "coding-reliability",
+        "low-consensus-review",
         "full-end-to-end"
       ],
       "tags": [
@@ -635,7 +734,8 @@
         "participant-simulation"
       ],
       "path": "sources/interview/CR-012-interview-12.md",
-      "bytes": 5975,
+      "bytes": 329396,
+      "word_count": 43574,
       "long_form": true,
       "synthetic": true,
       "project": "CareNav Renewal",
@@ -657,6 +757,8 @@
       "relative_path": "sources/interview/CR-013-interview-13.md",
       "slices": [
         "interview-heavy",
+        "coding-reliability",
+        "low-consensus-review",
         "full-end-to-end"
       ],
       "tags": [
@@ -677,7 +779,8 @@
         "research-retro"
       ],
       "path": "sources/interview/CR-013-interview-13.md",
-      "bytes": 5968,
+      "bytes": 329262,
+      "word_count": 43581,
       "long_form": true,
       "synthetic": true,
       "project": "CareNav Renewal",
@@ -699,6 +802,8 @@
       "relative_path": "sources/interview/CR-014-interview-14.md",
       "slices": [
         "interview-heavy",
+        "coding-reliability",
+        "low-consensus-review",
         "full-end-to-end"
       ],
       "tags": [
@@ -719,7 +824,8 @@
         "stitch-react-components"
       ],
       "path": "sources/interview/CR-014-interview-14.md",
-      "bytes": 6007,
+      "bytes": 329813,
+      "word_count": 43719,
       "long_form": true,
       "synthetic": true,
       "project": "CareNav Renewal",
@@ -741,6 +847,8 @@
       "relative_path": "sources/interview/CR-015-interview-15.md",
       "slices": [
         "interview-heavy",
+        "coding-reliability",
+        "low-consensus-review",
         "full-end-to-end"
       ],
       "tags": [
@@ -761,7 +869,8 @@
         "thematic-analysis"
       ],
       "path": "sources/interview/CR-015-interview-15.md",
-      "bytes": 5871,
+      "bytes": 327704,
+      "word_count": 43457,
       "long_form": true,
       "synthetic": true,
       "project": "CareNav Renewal",
@@ -783,6 +892,8 @@
       "relative_path": "sources/interview/CR-016-interview-16.md",
       "slices": [
         "interview-heavy",
+        "coding-reliability",
+        "low-consensus-review",
         "full-end-to-end"
       ],
       "tags": [
@@ -803,7 +914,8 @@
         "workshop-facilitation"
       ],
       "path": "sources/interview/CR-016-interview-16.md",
-      "bytes": 5977,
+      "bytes": 329424,
+      "word_count": 43585,
       "long_form": true,
       "synthetic": true,
       "project": "CareNav Renewal",
@@ -825,6 +937,8 @@
       "relative_path": "sources/interview/CR-017-interview-17.md",
       "slices": [
         "interview-heavy",
+        "coding-reliability",
+        "low-consensus-review",
         "full-end-to-end"
       ],
       "tags": [
@@ -845,7 +959,8 @@
         "browser-ux-audit"
       ],
       "path": "sources/interview/CR-017-interview-17.md",
-      "bytes": 5998,
+      "bytes": 330079,
+      "word_count": 43710,
       "long_form": true,
       "synthetic": true,
       "project": "CareNav Renewal",
@@ -867,6 +982,8 @@
       "relative_path": "sources/interview/CR-018-interview-18.md",
       "slices": [
         "interview-heavy",
+        "coding-reliability",
+        "low-consensus-review",
         "full-end-to-end"
       ],
       "tags": [
@@ -887,7 +1004,8 @@
         "design-critique"
       ],
       "path": "sources/interview/CR-018-interview-18.md",
-      "bytes": 5883,
+      "bytes": 328094,
+      "word_count": 43443,
       "long_form": true,
       "synthetic": true,
       "project": "CareNav Renewal",
@@ -909,6 +1027,8 @@
       "relative_path": "sources/interview/CR-019-interview-19.md",
       "slices": [
         "interview-heavy",
+        "coding-reliability",
+        "low-consensus-review",
         "full-end-to-end"
       ],
       "tags": [
@@ -929,7 +1049,8 @@
         "handoff-documentation"
       ],
       "path": "sources/interview/CR-019-interview-19.md",
-      "bytes": 6039,
+      "bytes": 330352,
+      "word_count": 43707,
       "long_form": true,
       "synthetic": true,
       "project": "CareNav Renewal",
@@ -951,6 +1072,8 @@
       "relative_path": "sources/interview/CR-020-interview-20.md",
       "slices": [
         "interview-heavy",
+        "coding-reliability",
+        "low-consensus-review",
         "full-end-to-end"
       ],
       "tags": [
@@ -971,7 +1094,8 @@
         "longitudinal-tracking"
       ],
       "path": "sources/interview/CR-020-interview-20.md",
-      "bytes": 5882,
+      "bytes": 328339,
+      "word_count": 43576,
       "long_form": true,
       "synthetic": true,
       "project": "CareNav Renewal",
@@ -993,6 +1117,8 @@
       "relative_path": "sources/interview/CR-021-interview-21.md",
       "slices": [
         "interview-heavy",
+        "coding-reliability",
+        "low-consensus-review",
         "full-end-to-end"
       ],
       "tags": [
@@ -1013,7 +1139,8 @@
         "repository-curation"
       ],
       "path": "sources/interview/CR-021-interview-21.md",
-      "bytes": 5881,
+      "bytes": 328214,
+      "word_count": 43452,
       "long_form": true,
       "synthetic": true,
       "project": "CareNav Renewal",
@@ -1035,6 +1162,8 @@
       "relative_path": "sources/interview/CR-022-interview-22.md",
       "slices": [
         "interview-heavy",
+        "coding-reliability",
+        "low-consensus-review",
         "full-end-to-end"
       ],
       "tags": [
@@ -1055,7 +1184,8 @@
         "stitch-design-system"
       ],
       "path": "sources/interview/CR-022-interview-22.md",
-      "bytes": 6055,
+      "bytes": 330613,
+      "word_count": 43720,
       "long_form": true,
       "synthetic": true,
       "project": "CareNav Renewal",
@@ -1077,6 +1207,8 @@
       "relative_path": "sources/interview/CR-023-interview-23.md",
       "slices": [
         "interview-heavy",
+        "coding-reliability",
+        "low-consensus-review",
         "full-end-to-end"
       ],
       "tags": [
@@ -1097,7 +1229,8 @@
         "task-analysis-quant"
       ],
       "path": "sources/interview/CR-023-interview-23.md",
-      "bytes": 5928,
+      "bytes": 328730,
+      "word_count": 43584,
       "long_form": true,
       "synthetic": true,
       "project": "CareNav Renewal",
@@ -1119,6 +1252,8 @@
       "relative_path": "sources/interview/CR-024-interview-24.md",
       "slices": [
         "interview-heavy",
+        "coding-reliability",
+        "low-consensus-review",
         "full-end-to-end"
       ],
       "tags": [
@@ -1139,7 +1274,8 @@
         "user-interviews"
       ],
       "path": "sources/interview/CR-024-interview-24.md",
-      "bytes": 5961,
+      "bytes": 329146,
+      "word_count": 43582,
       "long_form": true,
       "synthetic": true,
       "project": "CareNav Renewal",
@@ -1161,6 +1297,7 @@
       "relative_path": "sources/participant-profile/CR-025-participant-profile-01.md",
       "slices": [
         "interview-heavy",
+        "coding-reliability",
         "full-end-to-end"
       ],
       "tags": [
@@ -1180,7 +1317,8 @@
         "browser-accessibility-check"
       ],
       "path": "sources/participant-profile/CR-025-participant-profile-01.md",
-      "bytes": 6064,
+      "bytes": 72828,
+      "word_count": 9629,
       "long_form": true,
       "synthetic": true,
       "project": "CareNav Renewal",
@@ -1202,6 +1340,7 @@
       "relative_path": "sources/participant-profile/CR-026-participant-profile-02.md",
       "slices": [
         "interview-heavy",
+        "coding-reliability",
         "full-end-to-end"
       ],
       "tags": [
@@ -1221,7 +1360,8 @@
         "concept-testing"
       ],
       "path": "sources/participant-profile/CR-026-participant-profile-02.md",
-      "bytes": 5966,
+      "bytes": 72494,
+      "word_count": 9594,
       "long_form": true,
       "synthetic": true,
       "project": "CareNav Renewal",
@@ -1243,6 +1383,7 @@
       "relative_path": "sources/participant-profile/CR-027-participant-profile-03.md",
       "slices": [
         "interview-heavy",
+        "coding-reliability",
         "full-end-to-end"
       ],
       "tags": [
@@ -1262,7 +1403,8 @@
         "evaluate-research"
       ],
       "path": "sources/participant-profile/CR-027-participant-profile-03.md",
-      "bytes": 5948,
+      "bytes": 72540,
+      "word_count": 9590,
       "long_form": true,
       "synthetic": true,
       "project": "CareNav Renewal",
@@ -1284,6 +1426,7 @@
       "relative_path": "sources/participant-profile/CR-028-participant-profile-04.md",
       "slices": [
         "interview-heavy",
+        "coding-reliability",
         "full-end-to-end"
       ],
       "tags": [
@@ -1303,7 +1446,8 @@
         "jtbd-analysis"
       ],
       "path": "sources/participant-profile/CR-028-participant-profile-04.md",
-      "bytes": 5962,
+      "bytes": 72507,
+      "word_count": 9595,
       "long_form": true,
       "synthetic": true,
       "project": "CareNav Renewal",
@@ -1325,6 +1469,7 @@
       "relative_path": "sources/participant-profile/CR-029-participant-profile-05.md",
       "slices": [
         "interview-heavy",
+        "coding-reliability",
         "full-end-to-end"
       ],
       "tags": [
@@ -1344,7 +1489,8 @@
         "prototype-feedback"
       ],
       "path": "sources/participant-profile/CR-029-participant-profile-05.md",
-      "bytes": 5993,
+      "bytes": 72608,
+      "word_count": 9604,
       "long_form": true,
       "synthetic": true,
       "project": "CareNav Renewal",
@@ -1366,6 +1512,7 @@
       "relative_path": "sources/participant-profile/CR-030-participant-profile-06.md",
       "slices": [
         "interview-heavy",
+        "coding-reliability",
         "full-end-to-end"
       ],
       "tags": [
@@ -1385,7 +1532,8 @@
         "stakeholder-presentation"
       ],
       "path": "sources/participant-profile/CR-030-participant-profile-06.md",
-      "bytes": 5947,
+      "bytes": 72533,
+      "word_count": 9604,
       "long_form": true,
       "synthetic": true,
       "project": "CareNav Renewal",
@@ -1407,6 +1555,7 @@
       "relative_path": "sources/participant-profile/CR-031-participant-profile-07.md",
       "slices": [
         "interview-heavy",
+        "coding-reliability",
         "full-end-to-end"
       ],
       "tags": [
@@ -1426,7 +1575,8 @@
         "survey-generator"
       ],
       "path": "sources/participant-profile/CR-031-participant-profile-07.md",
-      "bytes": 5977,
+      "bytes": 72596,
+      "word_count": 9606,
       "long_form": true,
       "synthetic": true,
       "project": "CareNav Renewal",
@@ -1448,6 +1598,7 @@
       "relative_path": "sources/participant-profile/CR-032-participant-profile-08.md",
       "slices": [
         "interview-heavy",
+        "coding-reliability",
         "full-end-to-end"
       ],
       "tags": [
@@ -1467,7 +1618,8 @@
         "usability-testing"
       ],
       "path": "sources/participant-profile/CR-032-participant-profile-08.md",
-      "bytes": 6015,
+      "bytes": 72720,
+      "word_count": 9633,
       "long_form": true,
       "synthetic": true,
       "project": "CareNav Renewal",
@@ -1489,6 +1641,7 @@
       "relative_path": "sources/participant-profile/CR-033-participant-profile-09.md",
       "slices": [
         "interview-heavy",
+        "coding-reliability",
         "full-end-to-end"
       ],
       "tags": [
@@ -1505,7 +1658,8 @@
         "workshop-facilitation"
       ],
       "path": "sources/participant-profile/CR-033-participant-profile-09.md",
-      "bytes": 5865,
+      "bytes": 72249,
+      "word_count": 9566,
       "long_form": true,
       "synthetic": true,
       "project": "CareNav Renewal",
@@ -1527,6 +1681,7 @@
       "relative_path": "sources/participant-profile/CR-034-participant-profile-10.md",
       "slices": [
         "interview-heavy",
+        "coding-reliability",
         "full-end-to-end"
       ],
       "tags": [
@@ -1546,7 +1701,8 @@
         "cognitive-walkthrough"
       ],
       "path": "sources/participant-profile/CR-034-participant-profile-10.md",
-      "bytes": 6025,
+      "bytes": 72713,
+      "word_count": 9593,
       "long_form": true,
       "synthetic": true,
       "project": "CareNav Renewal",
@@ -1568,6 +1724,7 @@
       "relative_path": "sources/participant-profile/CR-035-participant-profile-11.md",
       "slices": [
         "interview-heavy",
+        "coding-reliability",
         "full-end-to-end"
       ],
       "tags": [
@@ -1587,7 +1744,8 @@
         "diary-studies"
       ],
       "path": "sources/participant-profile/CR-035-participant-profile-11.md",
-      "bytes": 6027,
+      "bytes": 72699,
+      "word_count": 9625,
       "long_form": true,
       "synthetic": true,
       "project": "CareNav Renewal",
@@ -1609,6 +1767,7 @@
       "relative_path": "sources/participant-profile/CR-036-participant-profile-12.md",
       "slices": [
         "interview-heavy",
+        "coding-reliability",
         "full-end-to-end"
       ],
       "tags": [
@@ -1628,7 +1787,8 @@
         "interview-question-generator"
       ],
       "path": "sources/participant-profile/CR-036-participant-profile-12.md",
-      "bytes": 5914,
+      "bytes": 72339,
+      "word_count": 9569,
       "long_form": true,
       "synthetic": true,
       "project": "CareNav Renewal",
@@ -1650,6 +1810,8 @@
       "relative_path": "sources/diary/CR-037-diary-01.md",
       "slices": [
         "interview-heavy",
+        "coding-reliability",
+        "graph-synthesis",
         "full-end-to-end"
       ],
       "tags": [
@@ -1669,7 +1831,8 @@
         "persona-creation"
       ],
       "path": "sources/diary/CR-037-diary-01.md",
-      "bytes": 5907,
+      "bytes": 106471,
+      "word_count": 14143,
       "long_form": true,
       "synthetic": true,
       "project": "CareNav Renewal",
@@ -1691,6 +1854,8 @@
       "relative_path": "sources/diary/CR-038-diary-02.md",
       "slices": [
         "interview-heavy",
+        "coding-reliability",
+        "graph-synthesis",
         "full-end-to-end"
       ],
       "tags": [
@@ -1710,7 +1875,8 @@
         "research-synthesis"
       ],
       "path": "sources/diary/CR-038-diary-02.md",
-      "bytes": 5936,
+      "bytes": 106525,
+      "word_count": 14156,
       "long_form": true,
       "synthetic": true,
       "project": "CareNav Renewal",
@@ -1732,6 +1898,8 @@
       "relative_path": "sources/diary/CR-039-diary-03.md",
       "slices": [
         "interview-heavy",
+        "coding-reliability",
+        "graph-synthesis",
         "full-end-to-end"
       ],
       "tags": [
@@ -1751,7 +1919,8 @@
         "survey-ai-detection"
       ],
       "path": "sources/diary/CR-039-diary-03.md",
-      "bytes": 5948,
+      "bytes": 106570,
+      "word_count": 14159,
       "long_form": true,
       "synthetic": true,
       "project": "CareNav Renewal",
@@ -1773,6 +1942,8 @@
       "relative_path": "sources/diary/CR-040-diary-04.md",
       "slices": [
         "interview-heavy",
+        "coding-reliability",
+        "graph-synthesis",
         "full-end-to-end"
       ],
       "tags": [
@@ -1792,7 +1963,8 @@
         "transcribe-audio"
       ],
       "path": "sources/diary/CR-040-diary-04.md",
-      "bytes": 5967,
+      "bytes": 106760,
+      "word_count": 14153,
       "long_form": true,
       "synthetic": true,
       "project": "CareNav Renewal",
@@ -1814,6 +1986,8 @@
       "relative_path": "sources/diary/CR-041-diary-05.md",
       "slices": [
         "interview-heavy",
+        "coding-reliability",
+        "graph-synthesis",
         "full-end-to-end"
       ],
       "tags": [
@@ -1832,7 +2006,8 @@
         "workshop-facilitation"
       ],
       "path": "sources/diary/CR-041-diary-05.md",
-      "bytes": 5973,
+      "bytes": 106782,
+      "word_count": 14190,
       "long_form": true,
       "synthetic": true,
       "project": "CareNav Renewal",
@@ -1854,6 +2029,8 @@
       "relative_path": "sources/diary/CR-042-diary-06.md",
       "slices": [
         "interview-heavy",
+        "coding-reliability",
+        "graph-synthesis",
         "full-end-to-end"
       ],
       "tags": [
@@ -1873,7 +2050,8 @@
         "card-sorting"
       ],
       "path": "sources/diary/CR-042-diary-06.md",
-      "bytes": 5864,
+      "bytes": 106122,
+      "word_count": 14103,
       "long_form": true,
       "synthetic": true,
       "project": "CareNav Renewal",
@@ -1895,6 +2073,8 @@
       "relative_path": "sources/diary/CR-043-diary-07.md",
       "slices": [
         "interview-heavy",
+        "coding-reliability",
+        "graph-synthesis",
         "full-end-to-end"
       ],
       "tags": [
@@ -1914,7 +2094,8 @@
         "design-system-audit"
       ],
       "path": "sources/diary/CR-043-diary-07.md",
-      "bytes": 5966,
+      "bytes": 106663,
+      "word_count": 14142,
       "long_form": true,
       "synthetic": true,
       "project": "CareNav Renewal",
@@ -1936,6 +2117,8 @@
       "relative_path": "sources/diary/CR-044-diary-08.md",
       "slices": [
         "interview-heavy",
+        "coding-reliability",
+        "graph-synthesis",
         "full-end-to-end"
       ],
       "tags": [
@@ -1955,7 +2138,8 @@
         "heuristic-evaluation"
       ],
       "path": "sources/diary/CR-044-diary-08.md",
-      "bytes": 5988,
+      "bytes": 106732,
+      "word_count": 14180,
       "long_form": true,
       "synthetic": true,
       "project": "CareNav Renewal",
@@ -1977,6 +2161,8 @@
       "relative_path": "sources/diary/CR-045-diary-09.md",
       "slices": [
         "interview-heavy",
+        "coding-reliability",
+        "graph-synthesis",
         "full-end-to-end"
       ],
       "tags": [
@@ -1996,7 +2182,8 @@
         "nps-analysis"
       ],
       "path": "sources/diary/CR-045-diary-09.md",
-      "bytes": 5918,
+      "bytes": 106369,
+      "word_count": 14102,
       "long_form": true,
       "synthetic": true,
       "project": "CareNav Renewal",
@@ -2018,6 +2205,8 @@
       "relative_path": "sources/diary/CR-046-diary-10.md",
       "slices": [
         "interview-heavy",
+        "coding-reliability",
+        "graph-synthesis",
         "full-end-to-end"
       ],
       "tags": [
@@ -2037,7 +2226,8 @@
         "research-quality-evaluation"
       ],
       "path": "sources/diary/CR-046-diary-10.md",
-      "bytes": 6031,
+      "bytes": 106973,
+      "word_count": 14195,
       "long_form": true,
       "synthetic": true,
       "project": "CareNav Renewal",
@@ -2059,6 +2249,7 @@
       "relative_path": "sources/usability/CR-047-usability-01.md",
       "slices": [
         "usability-heavy",
+        "low-consensus-review",
         "full-end-to-end"
       ],
       "tags": [
@@ -2078,7 +2269,8 @@
         "stitch-enhance-prompt"
       ],
       "path": "sources/usability/CR-047-usability-01.md",
-      "bytes": 5850,
+      "bytes": 179838,
+      "word_count": 23886,
       "long_form": true,
       "synthetic": true,
       "project": "CareNav Renewal",
@@ -2100,6 +2292,7 @@
       "relative_path": "sources/usability/CR-048-usability-02.md",
       "slices": [
         "usability-heavy",
+        "low-consensus-review",
         "full-end-to-end"
       ],
       "tags": [
@@ -2119,7 +2312,8 @@
         "taxonomy-generator"
       ],
       "path": "sources/usability/CR-048-usability-02.md",
-      "bytes": 5978,
+      "bytes": 180802,
+      "word_count": 23963,
       "long_form": true,
       "synthetic": true,
       "project": "CareNav Renewal",
@@ -2141,6 +2335,7 @@
       "relative_path": "sources/usability/CR-049-usability-03.md",
       "slices": [
         "usability-heavy",
+        "low-consensus-review",
         "full-end-to-end"
       ],
       "tags": [
@@ -2160,7 +2355,8 @@
         "ux-law-compliance"
       ],
       "path": "sources/usability/CR-049-usability-03.md",
-      "bytes": 6006,
+      "bytes": 180956,
+      "word_count": 24034,
       "long_form": true,
       "synthetic": true,
       "project": "CareNav Renewal",
@@ -2182,6 +2378,7 @@
       "relative_path": "sources/usability/CR-050-usability-04.md",
       "slices": [
         "usability-heavy",
+        "low-consensus-review",
         "full-end-to-end"
       ],
       "tags": [
@@ -2201,7 +2398,8 @@
         "browser-competitive-benchmark"
       ],
       "path": "sources/usability/CR-050-usability-04.md",
-      "bytes": 5901,
+      "bytes": 180281,
+      "word_count": 23886,
       "long_form": true,
       "synthetic": true,
       "project": "CareNav Renewal",
@@ -2223,6 +2421,7 @@
       "relative_path": "sources/usability/CR-051-usability-05.md",
       "slices": [
         "usability-heavy",
+        "low-consensus-review",
         "full-end-to-end"
       ],
       "tags": [
@@ -2242,7 +2441,8 @@
         "contextual-inquiry"
       ],
       "path": "sources/usability/CR-051-usability-05.md",
-      "bytes": 6038,
+      "bytes": 181307,
+      "word_count": 24032,
       "long_form": true,
       "synthetic": true,
       "project": "CareNav Renewal",
@@ -2264,6 +2464,7 @@
       "relative_path": "sources/usability/CR-052-usability-06.md",
       "slices": [
         "usability-heavy",
+        "low-consensus-review",
         "full-end-to-end"
       ],
       "tags": [
@@ -2283,7 +2484,8 @@
         "field-studies"
       ],
       "path": "sources/usability/CR-052-usability-06.md",
-      "bytes": 5901,
+      "bytes": 180193,
+      "word_count": 23957,
       "long_form": true,
       "synthetic": true,
       "project": "CareNav Renewal",
@@ -2305,6 +2507,7 @@
       "relative_path": "sources/usability/CR-053-usability-07.md",
       "slices": [
         "usability-heavy",
+        "low-consensus-review",
         "full-end-to-end"
       ],
       "tags": [
@@ -2324,7 +2527,8 @@
         "kappa-thematic-analysis"
       ],
       "path": "sources/usability/CR-053-usability-07.md",
-      "bytes": 5915,
+      "bytes": 180131,
+      "word_count": 23882,
       "long_form": true,
       "synthetic": true,
       "project": "CareNav Renewal",
@@ -2346,6 +2550,7 @@
       "relative_path": "sources/usability/CR-054-usability-08.md",
       "slices": [
         "usability-heavy",
+        "low-consensus-review",
         "full-end-to-end"
       ],
       "tags": [
@@ -2365,7 +2570,8 @@
         "regression-impact"
       ],
       "path": "sources/usability/CR-054-usability-08.md",
-      "bytes": 6051,
+      "bytes": 181232,
+      "word_count": 24029,
       "long_form": true,
       "synthetic": true,
       "project": "CareNav Renewal",
@@ -2387,6 +2593,7 @@
       "relative_path": "sources/usability/CR-055-usability-09.md",
       "slices": [
         "usability-heavy",
+        "low-consensus-review",
         "full-end-to-end"
       ],
       "tags": [
@@ -2406,7 +2613,8 @@
         "stitch-design"
       ],
       "path": "sources/usability/CR-055-usability-09.md",
-      "bytes": 5987,
+      "bytes": 180668,
+      "word_count": 23961,
       "long_form": true,
       "synthetic": true,
       "project": "CareNav Renewal",
@@ -2428,6 +2636,7 @@
       "relative_path": "sources/usability/CR-056-usability-10.md",
       "slices": [
         "usability-heavy",
+        "low-consensus-review",
         "full-end-to-end"
       ],
       "tags": [
@@ -2447,7 +2656,8 @@
         "sus-umux-scoring"
       ],
       "path": "sources/usability/CR-056-usability-10.md",
-      "bytes": 5967,
+      "bytes": 180642,
+      "word_count": 23959,
       "long_form": true,
       "synthetic": true,
       "project": "CareNav Renewal",
@@ -2469,6 +2679,7 @@
       "relative_path": "sources/usability/CR-057-usability-11.md",
       "slices": [
         "usability-heavy",
+        "low-consensus-review",
         "full-end-to-end"
       ],
       "tags": [
@@ -2488,7 +2699,8 @@
         "user-flow-mapping"
       ],
       "path": "sources/usability/CR-057-usability-11.md",
-      "bytes": 5922,
+      "bytes": 180492,
+      "word_count": 23960,
       "long_form": true,
       "synthetic": true,
       "project": "CareNav Renewal",
@@ -2510,6 +2722,7 @@
       "relative_path": "sources/usability/CR-058-usability-12.md",
       "slices": [
         "usability-heavy",
+        "low-consensus-review",
         "full-end-to-end"
       ],
       "tags": [
@@ -2529,7 +2742,8 @@
         "analytics-review"
       ],
       "path": "sources/usability/CR-058-usability-12.md",
-      "bytes": 5945,
+      "bytes": 180516,
+      "word_count": 23963,
       "long_form": true,
       "synthetic": true,
       "project": "CareNav Renewal",
@@ -2551,6 +2765,7 @@
       "relative_path": "sources/usability/CR-059-usability-13.md",
       "slices": [
         "usability-heavy",
+        "low-consensus-review",
         "full-end-to-end"
       ],
       "tags": [
@@ -2570,7 +2785,8 @@
         "competitive-analysis"
       ],
       "path": "sources/usability/CR-059-usability-13.md",
-      "bytes": 5966,
+      "bytes": 180594,
+      "word_count": 23960,
       "long_form": true,
       "synthetic": true,
       "project": "CareNav Renewal",
@@ -2592,6 +2808,7 @@
       "relative_path": "sources/usability/CR-060-usability-14.md",
       "slices": [
         "usability-heavy",
+        "low-consensus-review",
         "full-end-to-end"
       ],
       "tags": [
@@ -2611,7 +2828,8 @@
         "empathy-mapping"
       ],
       "path": "sources/usability/CR-060-usability-14.md",
-      "bytes": 5982,
+      "bytes": 180942,
+      "word_count": 23959,
       "long_form": true,
       "synthetic": true,
       "project": "CareNav Renewal",
@@ -2633,6 +2851,8 @@
       "relative_path": "sources/survey/CR-061-survey-01.csv",
       "slices": [
         "survey-heavy",
+        "coding-reliability",
+        "graph-synthesis",
         "full-end-to-end"
       ],
       "tags": [
@@ -2652,7 +2872,8 @@
         "journey-mapping"
       ],
       "path": "sources/survey/CR-061-survey-01.csv",
-      "bytes": 21245,
+      "bytes": 154894,
+      "word_count": 17285,
       "long_form": true,
       "synthetic": true,
       "project": "CareNav Renewal",
@@ -2674,6 +2895,8 @@
       "relative_path": "sources/survey/CR-062-survey-02.csv",
       "slices": [
         "survey-heavy",
+        "coding-reliability",
+        "graph-synthesis",
         "full-end-to-end"
       ],
       "tags": [
@@ -2693,7 +2916,8 @@
         "prioritization-matrix"
       ],
       "path": "sources/survey/CR-062-survey-02.csv",
-      "bytes": 21245,
+      "bytes": 154908,
+      "word_count": 17288,
       "long_form": true,
       "synthetic": true,
       "project": "CareNav Renewal",
@@ -2715,6 +2939,8 @@
       "relative_path": "sources/survey/CR-063-survey-03.csv",
       "slices": [
         "survey-heavy",
+        "coding-reliability",
+        "graph-synthesis",
         "full-end-to-end"
       ],
       "tags": [
@@ -2734,7 +2960,8 @@
         "stakeholder-interviews"
       ],
       "path": "sources/survey/CR-063-survey-03.csv",
-      "bytes": 21245,
+      "bytes": 154907,
+      "word_count": 17287,
       "long_form": true,
       "synthetic": true,
       "project": "CareNav Renewal",
@@ -2756,6 +2983,8 @@
       "relative_path": "sources/survey/CR-064-survey-04.csv",
       "slices": [
         "survey-heavy",
+        "coding-reliability",
+        "graph-synthesis",
         "full-end-to-end"
       ],
       "tags": [
@@ -2775,7 +3004,8 @@
         "survey-design"
       ],
       "path": "sources/survey/CR-064-survey-04.csv",
-      "bytes": 21245,
+      "bytes": 154905,
+      "word_count": 17284,
       "long_form": true,
       "synthetic": true,
       "project": "CareNav Renewal",
@@ -2797,6 +3027,8 @@
       "relative_path": "sources/survey/CR-065-survey-05.csv",
       "slices": [
         "survey-heavy",
+        "coding-reliability",
+        "graph-synthesis",
         "full-end-to-end"
       ],
       "tags": [
@@ -2816,7 +3048,8 @@
         "tree-testing"
       ],
       "path": "sources/survey/CR-065-survey-05.csv",
-      "bytes": 21245,
+      "bytes": 154892,
+      "word_count": 17276,
       "long_form": true,
       "synthetic": true,
       "project": "CareNav Renewal",
@@ -2838,6 +3071,8 @@
       "relative_path": "sources/survey/CR-066-survey-06.csv",
       "slices": [
         "survey-heavy",
+        "coding-reliability",
+        "graph-synthesis",
         "full-end-to-end"
       ],
       "tags": [
@@ -2855,7 +3090,8 @@
         "workshop-facilitation"
       ],
       "path": "sources/survey/CR-066-survey-06.csv",
-      "bytes": 21245,
+      "bytes": 154880,
+      "word_count": 17273,
       "long_form": true,
       "synthetic": true,
       "project": "CareNav Renewal",
@@ -2877,6 +3113,8 @@
       "relative_path": "sources/survey/CR-067-survey-07.csv",
       "slices": [
         "survey-heavy",
+        "coding-reliability",
+        "graph-synthesis",
         "full-end-to-end"
       ],
       "tags": [
@@ -2896,7 +3134,8 @@
         "channel-research-deployment"
       ],
       "path": "sources/survey/CR-067-survey-07.csv",
-      "bytes": 21245,
+      "bytes": 154882,
+      "word_count": 17274,
       "long_form": true,
       "synthetic": true,
       "project": "CareNav Renewal",
@@ -2918,6 +3157,8 @@
       "relative_path": "sources/survey/CR-068-survey-08.csv",
       "slices": [
         "survey-heavy",
+        "coding-reliability",
+        "graph-synthesis",
         "full-end-to-end"
       ],
       "tags": [
@@ -2937,7 +3178,8 @@
         "desk-research"
       ],
       "path": "sources/survey/CR-068-survey-08.csv",
-      "bytes": 21245,
+      "bytes": 154881,
+      "word_count": 17277,
       "long_form": true,
       "synthetic": true,
       "project": "CareNav Renewal",
@@ -2977,7 +3219,8 @@
         "hmw-statements"
       ],
       "path": "sources/nps/CR-069-nps-01.csv",
-      "bytes": 21005,
+      "bytes": 154236,
+      "word_count": 17285,
       "long_form": true,
       "synthetic": true,
       "project": "CareNav Renewal",
@@ -3017,7 +3260,8 @@
         "participant-simulation"
       ],
       "path": "sources/nps/CR-070-nps-02.csv",
-      "bytes": 21005,
+      "bytes": 154249,
+      "word_count": 17288,
       "long_form": true,
       "synthetic": true,
       "project": "CareNav Renewal",
@@ -3057,7 +3301,8 @@
         "research-retro"
       ],
       "path": "sources/nps/CR-071-nps-03.csv",
-      "bytes": 21005,
+      "bytes": 154244,
+      "word_count": 17287,
       "long_form": true,
       "synthetic": true,
       "project": "CareNav Renewal",
@@ -3097,7 +3342,8 @@
         "stitch-react-components"
       ],
       "path": "sources/nps/CR-072-nps-04.csv",
-      "bytes": 21005,
+      "bytes": 154247,
+      "word_count": 17284,
       "long_form": true,
       "synthetic": true,
       "project": "CareNav Renewal",
@@ -3137,7 +3383,8 @@
         "thematic-analysis"
       ],
       "path": "sources/sus/CR-073-sus-01.csv",
-      "bytes": 21005,
+      "bytes": 154233,
+      "word_count": 17276,
       "long_form": true,
       "synthetic": true,
       "project": "CareNav Renewal",
@@ -3177,7 +3424,8 @@
         "workshop-facilitation"
       ],
       "path": "sources/sus/CR-074-sus-02.csv",
-      "bytes": 21005,
+      "bytes": 154217,
+      "word_count": 17273,
       "long_form": true,
       "synthetic": true,
       "project": "CareNav Renewal",
@@ -3217,7 +3465,8 @@
         "browser-ux-audit"
       ],
       "path": "sources/sus/CR-075-sus-03.csv",
-      "bytes": 21005,
+      "bytes": 154224,
+      "word_count": 17274,
       "long_form": true,
       "synthetic": true,
       "project": "CareNav Renewal",
@@ -3257,7 +3506,8 @@
         "design-critique"
       ],
       "path": "sources/sus/CR-076-sus-04.csv",
-      "bytes": 21005,
+      "bytes": 154222,
+      "word_count": 17277,
       "long_form": true,
       "synthetic": true,
       "project": "CareNav Renewal",
@@ -3297,7 +3547,8 @@
         "handoff-documentation"
       ],
       "path": "sources/umux/CR-077-umux-01.csv",
-      "bytes": 21085,
+      "bytes": 154453,
+      "word_count": 17285,
       "long_form": true,
       "synthetic": true,
       "project": "CareNav Renewal",
@@ -3337,7 +3588,8 @@
         "longitudinal-tracking"
       ],
       "path": "sources/umux/CR-078-umux-02.csv",
-      "bytes": 21085,
+      "bytes": 154471,
+      "word_count": 17288,
       "long_form": true,
       "synthetic": true,
       "project": "CareNav Renewal",
@@ -3377,7 +3629,8 @@
         "repository-curation"
       ],
       "path": "sources/umux/CR-079-umux-03.csv",
-      "bytes": 21085,
+      "bytes": 154465,
+      "word_count": 17287,
       "long_form": true,
       "synthetic": true,
       "project": "CareNav Renewal",
@@ -3417,7 +3670,8 @@
         "stitch-design-system"
       ],
       "path": "sources/umux/CR-080-umux-04.csv",
-      "bytes": 21085,
+      "bytes": 154464,
+      "word_count": 17284,
       "long_form": true,
       "synthetic": true,
       "project": "CareNav Renewal",
@@ -3456,7 +3710,8 @@
         "task-analysis-quant"
       ],
       "path": "sources/card-sort/CR-081-card-sort-01.csv",
-      "bytes": 21485,
+      "bytes": 155555,
+      "word_count": 17276,
       "long_form": true,
       "synthetic": true,
       "project": "CareNav Renewal",
@@ -3495,7 +3750,8 @@
         "user-interviews"
       ],
       "path": "sources/card-sort/CR-082-card-sort-02.csv",
-      "bytes": 21485,
+      "bytes": 155538,
+      "word_count": 17273,
       "long_form": true,
       "synthetic": true,
       "project": "CareNav Renewal",
@@ -3534,7 +3790,8 @@
         "browser-accessibility-check"
       ],
       "path": "sources/card-sort/CR-083-card-sort-03.csv",
-      "bytes": 21485,
+      "bytes": 155541,
+      "word_count": 17274,
       "long_form": true,
       "synthetic": true,
       "project": "CareNav Renewal",
@@ -3573,7 +3830,8 @@
         "concept-testing"
       ],
       "path": "sources/card-sort/CR-084-card-sort-04.csv",
-      "bytes": 21485,
+      "bytes": 155544,
+      "word_count": 17277,
       "long_form": true,
       "synthetic": true,
       "project": "CareNav Renewal",
@@ -3612,7 +3870,8 @@
         "evaluate-research"
       ],
       "path": "sources/card-sort/CR-085-card-sort-05.csv",
-      "bytes": 21485,
+      "bytes": 155554,
+      "word_count": 17285,
       "long_form": true,
       "synthetic": true,
       "project": "CareNav Renewal",
@@ -3651,7 +3910,8 @@
         "jtbd-analysis"
       ],
       "path": "sources/card-sort/CR-086-card-sort-06.csv",
-      "bytes": 21485,
+      "bytes": 155568,
+      "word_count": 17288,
       "long_form": true,
       "synthetic": true,
       "project": "CareNav Renewal",
@@ -3690,7 +3950,8 @@
         "prototype-feedback"
       ],
       "path": "sources/tree-test/CR-087-tree-test-01.csv",
-      "bytes": 21485,
+      "bytes": 155567,
+      "word_count": 17287,
       "long_form": true,
       "synthetic": true,
       "project": "CareNav Renewal",
@@ -3729,7 +3990,8 @@
         "stakeholder-presentation"
       ],
       "path": "sources/tree-test/CR-088-tree-test-02.csv",
-      "bytes": 21485,
+      "bytes": 155565,
+      "word_count": 17284,
       "long_form": true,
       "synthetic": true,
       "project": "CareNav Renewal",
@@ -3768,7 +4030,8 @@
         "survey-generator"
       ],
       "path": "sources/tree-test/CR-089-tree-test-03.csv",
-      "bytes": 21485,
+      "bytes": 155552,
+      "word_count": 17276,
       "long_form": true,
       "synthetic": true,
       "project": "CareNav Renewal",
@@ -3807,7 +4070,8 @@
         "usability-testing"
       ],
       "path": "sources/tree-test/CR-090-tree-test-04.csv",
-      "bytes": 21485,
+      "bytes": 155540,
+      "word_count": 17273,
       "long_form": true,
       "synthetic": true,
       "project": "CareNav Renewal",
@@ -3843,7 +4107,8 @@
         "workshop-facilitation"
       ],
       "path": "sources/tree-test/CR-091-tree-test-05.csv",
-      "bytes": 21485,
+      "bytes": 155542,
+      "word_count": 17274,
       "long_form": true,
       "synthetic": true,
       "project": "CareNav Renewal",
@@ -3882,7 +4147,8 @@
         "cognitive-walkthrough"
       ],
       "path": "sources/tree-test/CR-092-tree-test-06.csv",
-      "bytes": 21485,
+      "bytes": 155541,
+      "word_count": 17277,
       "long_form": true,
       "synthetic": true,
       "project": "CareNav Renewal",
@@ -3904,6 +4170,7 @@
       "relative_path": "sources/journey/CR-093-journey-01.md",
       "slices": [
         "findings-reporting",
+        "graph-synthesis",
         "full-end-to-end"
       ],
       "tags": [
@@ -3923,7 +4190,8 @@
         "diary-studies"
       ],
       "path": "sources/journey/CR-093-journey-01.md",
-      "bytes": 6035,
+      "bytes": 72442,
+      "word_count": 9603,
       "long_form": true,
       "synthetic": true,
       "project": "CareNav Renewal",
@@ -3945,6 +4213,7 @@
       "relative_path": "sources/journey/CR-094-journey-02.md",
       "slices": [
         "findings-reporting",
+        "graph-synthesis",
         "full-end-to-end"
       ],
       "tags": [
@@ -3964,7 +4233,8 @@
         "interview-question-generator"
       ],
       "path": "sources/journey/CR-094-journey-02.md",
-      "bytes": 5878,
+      "bytes": 71916,
+      "word_count": 9551,
       "long_form": true,
       "synthetic": true,
       "project": "CareNav Renewal",
@@ -3986,6 +4256,7 @@
       "relative_path": "sources/journey/CR-095-journey-03.md",
       "slices": [
         "findings-reporting",
+        "graph-synthesis",
         "full-end-to-end"
       ],
       "tags": [
@@ -4005,7 +4276,8 @@
         "persona-creation"
       ],
       "path": "sources/journey/CR-095-journey-03.md",
-      "bytes": 5992,
+      "bytes": 72283,
+      "word_count": 9581,
       "long_form": true,
       "synthetic": true,
       "project": "CareNav Renewal",
@@ -4027,6 +4299,7 @@
       "relative_path": "sources/journey/CR-096-journey-04.md",
       "slices": [
         "findings-reporting",
+        "graph-synthesis",
         "full-end-to-end"
       ],
       "tags": [
@@ -4046,7 +4319,8 @@
         "research-synthesis"
       ],
       "path": "sources/journey/CR-096-journey-04.md",
-      "bytes": 6011,
+      "bytes": 72348,
+      "word_count": 9606,
       "long_form": true,
       "synthetic": true,
       "project": "CareNav Renewal",
@@ -4068,6 +4342,7 @@
       "relative_path": "sources/journey/CR-097-journey-05.md",
       "slices": [
         "findings-reporting",
+        "graph-synthesis",
         "full-end-to-end"
       ],
       "tags": [
@@ -4087,7 +4362,8 @@
         "survey-ai-detection"
       ],
       "path": "sources/journey/CR-097-journey-05.md",
-      "bytes": 5875,
+      "bytes": 71971,
+      "word_count": 9535,
       "long_form": true,
       "synthetic": true,
       "project": "CareNav Renewal",
@@ -4109,6 +4385,7 @@
       "relative_path": "sources/journey/CR-098-journey-06.md",
       "slices": [
         "findings-reporting",
+        "graph-synthesis",
         "full-end-to-end"
       ],
       "tags": [
@@ -4128,7 +4405,8 @@
         "transcribe-audio"
       ],
       "path": "sources/journey/CR-098-journey-06.md",
-      "bytes": 6067,
+      "bytes": 72547,
+      "word_count": 9590,
       "long_form": true,
       "synthetic": true,
       "project": "CareNav Renewal",
@@ -4150,6 +4428,8 @@
       "relative_path": "sources/field-note/CR-099-field-note-01.md",
       "slices": [
         "interview-heavy",
+        "coding-reliability",
+        "low-consensus-review",
         "full-end-to-end"
       ],
       "tags": [
@@ -4168,7 +4448,8 @@
         "workshop-facilitation"
       ],
       "path": "sources/field-note/CR-099-field-note-01.md",
-      "bytes": 5939,
+      "bytes": 106711,
+      "word_count": 14191,
       "long_form": true,
       "synthetic": true,
       "project": "CareNav Renewal",
@@ -4190,6 +4471,8 @@
       "relative_path": "sources/field-note/CR-100-field-note-02.md",
       "slices": [
         "interview-heavy",
+        "coding-reliability",
+        "low-consensus-review",
         "full-end-to-end"
       ],
       "tags": [
@@ -4209,7 +4492,8 @@
         "card-sorting"
       ],
       "path": "sources/field-note/CR-100-field-note-02.md",
-      "bytes": 5968,
+      "bytes": 106827,
+      "word_count": 14184,
       "long_form": true,
       "synthetic": true,
       "project": "CareNav Renewal",
@@ -4231,6 +4515,8 @@
       "relative_path": "sources/field-note/CR-101-field-note-03.md",
       "slices": [
         "interview-heavy",
+        "coding-reliability",
+        "low-consensus-review",
         "full-end-to-end"
       ],
       "tags": [
@@ -4250,7 +4536,8 @@
         "design-system-audit"
       ],
       "path": "sources/field-note/CR-101-field-note-03.md",
-      "bytes": 5956,
+      "bytes": 106834,
+      "word_count": 14187,
       "long_form": true,
       "synthetic": true,
       "project": "CareNav Renewal",
@@ -4272,6 +4559,8 @@
       "relative_path": "sources/field-note/CR-102-field-note-04.md",
       "slices": [
         "interview-heavy",
+        "coding-reliability",
+        "low-consensus-review",
         "full-end-to-end"
       ],
       "tags": [
@@ -4291,7 +4580,8 @@
         "heuristic-evaluation"
       ],
       "path": "sources/field-note/CR-102-field-note-04.md",
-      "bytes": 5937,
+      "bytes": 106714,
+      "word_count": 14194,
       "long_form": true,
       "synthetic": true,
       "project": "CareNav Renewal",
@@ -4313,6 +4603,8 @@
       "relative_path": "sources/field-note/CR-103-field-note-05.md",
       "slices": [
         "interview-heavy",
+        "coding-reliability",
+        "low-consensus-review",
         "full-end-to-end"
       ],
       "tags": [
@@ -4332,7 +4624,8 @@
         "nps-analysis"
       ],
       "path": "sources/field-note/CR-103-field-note-05.md",
-      "bytes": 5960,
+      "bytes": 106767,
+      "word_count": 14198,
       "long_form": true,
       "synthetic": true,
       "project": "CareNav Renewal",
@@ -4354,6 +4647,8 @@
       "relative_path": "sources/field-note/CR-104-field-note-06.md",
       "slices": [
         "interview-heavy",
+        "coding-reliability",
+        "low-consensus-review",
         "full-end-to-end"
       ],
       "tags": [
@@ -4373,7 +4668,8 @@
         "research-quality-evaluation"
       ],
       "path": "sources/field-note/CR-104-field-note-06.md",
-      "bytes": 5984,
+      "bytes": 106854,
+      "word_count": 14194,
       "long_form": true,
       "synthetic": true,
       "project": "CareNav Renewal",
@@ -4395,6 +4691,8 @@
       "relative_path": "sources/field-note/CR-105-field-note-07.md",
       "slices": [
         "interview-heavy",
+        "coding-reliability",
+        "low-consensus-review",
         "full-end-to-end"
       ],
       "tags": [
@@ -4414,7 +4712,8 @@
         "stitch-enhance-prompt"
       ],
       "path": "sources/field-note/CR-105-field-note-07.md",
-      "bytes": 6027,
+      "bytes": 107043,
+      "word_count": 14236,
       "long_form": true,
       "synthetic": true,
       "project": "CareNav Renewal",
@@ -4436,6 +4735,8 @@
       "relative_path": "sources/field-note/CR-106-field-note-08.md",
       "slices": [
         "interview-heavy",
+        "coding-reliability",
+        "low-consensus-review",
         "full-end-to-end"
       ],
       "tags": [
@@ -4455,7 +4756,8 @@
         "taxonomy-generator"
       ],
       "path": "sources/field-note/CR-106-field-note-08.md",
-      "bytes": 5893,
+      "bytes": 106474,
+      "word_count": 14149,
       "long_form": true,
       "synthetic": true,
       "project": "CareNav Renewal",
@@ -4467,16 +4769,18 @@
       "title": "CareNav Renewal support source 01",
       "method": "support",
       "phase": "discover",
-      "file_type": "jsonl",
+      "file_type": "csv",
       "role": "patient",
       "language": "es",
       "clinic": "rural clinic",
       "participant_ids": [
         "P11"
       ],
-      "relative_path": "sources/support/CR-107-support-01.jsonl",
+      "relative_path": "sources/support/CR-107-support-01.csv",
       "slices": [
         "findings-reporting",
+        "coding-reliability",
+        "low-consensus-review",
         "full-end-to-end"
       ],
       "tags": [
@@ -4495,8 +4799,9 @@
         "user-interviews",
         "ux-law-compliance"
       ],
-      "path": "sources/support/CR-107-support-01.jsonl",
-      "bytes": 25470,
+      "path": "sources/support/CR-107-support-01.csv",
+      "bytes": 53713,
+      "word_count": 5651,
       "long_form": true,
       "synthetic": true,
       "project": "CareNav Renewal",
@@ -4508,16 +4813,18 @@
       "title": "CareNav Renewal support source 02",
       "method": "support",
       "phase": "discover",
-      "file_type": "jsonl",
+      "file_type": "csv",
       "role": "care coordinator",
       "language": "en",
       "clinic": "pediatric clinic",
       "participant_ids": [
         "P12"
       ],
-      "relative_path": "sources/support/CR-108-support-02.jsonl",
+      "relative_path": "sources/support/CR-108-support-02.csv",
       "slices": [
         "findings-reporting",
+        "coding-reliability",
+        "low-consensus-review",
         "full-end-to-end"
       ],
       "tags": [
@@ -4536,8 +4843,9 @@
         "browser-accessibility-check",
         "browser-competitive-benchmark"
       ],
-      "path": "sources/support/CR-108-support-02.jsonl",
-      "bytes": 25480,
+      "path": "sources/support/CR-108-support-02.csv",
+      "bytes": 53706,
+      "word_count": 5651,
       "long_form": true,
       "synthetic": true,
       "project": "CareNav Renewal",
@@ -4549,16 +4857,18 @@
       "title": "CareNav Renewal support source 03",
       "method": "support",
       "phase": "discover",
-      "file_type": "jsonl",
+      "file_type": "csv",
       "role": "clinic admin",
       "language": "en",
       "clinic": "urban specialty clinic",
       "participant_ids": [
         "P13"
       ],
-      "relative_path": "sources/support/CR-109-support-03.jsonl",
+      "relative_path": "sources/support/CR-109-support-03.csv",
       "slices": [
         "findings-reporting",
+        "coding-reliability",
+        "low-consensus-review",
         "full-end-to-end"
       ],
       "tags": [
@@ -4577,8 +4887,9 @@
         "concept-testing",
         "contextual-inquiry"
       ],
-      "path": "sources/support/CR-109-support-03.jsonl",
-      "bytes": 25482,
+      "path": "sources/support/CR-109-support-03.csv",
+      "bytes": 53706,
+      "word_count": 5652,
       "long_form": true,
       "synthetic": true,
       "project": "CareNav Renewal",
@@ -4590,16 +4901,18 @@
       "title": "CareNav Renewal support source 04",
       "method": "support",
       "phase": "discover",
-      "file_type": "jsonl",
+      "file_type": "csv",
       "role": "patient",
       "language": "pt-BR",
       "clinic": "oncology clinic",
       "participant_ids": [
         "P14"
       ],
-      "relative_path": "sources/support/CR-110-support-04.jsonl",
+      "relative_path": "sources/support/CR-110-support-04.csv",
       "slices": [
         "findings-reporting",
+        "coding-reliability",
+        "low-consensus-review",
         "full-end-to-end"
       ],
       "tags": [
@@ -4618,8 +4931,9 @@
         "evaluate-research",
         "field-studies"
       ],
-      "path": "sources/support/CR-110-support-04.jsonl",
-      "bytes": 25453,
+      "path": "sources/support/CR-110-support-04.csv",
+      "bytes": 53701,
+      "word_count": 5652,
       "long_form": true,
       "synthetic": true,
       "project": "CareNav Renewal",
@@ -4631,16 +4945,18 @@
       "title": "CareNav Renewal support source 05",
       "method": "support",
       "phase": "discover",
-      "file_type": "jsonl",
+      "file_type": "csv",
       "role": "care coordinator",
       "language": "en",
       "clinic": "community health center",
       "participant_ids": [
         "P15"
       ],
-      "relative_path": "sources/support/CR-111-support-05.jsonl",
+      "relative_path": "sources/support/CR-111-support-05.csv",
       "slices": [
         "findings-reporting",
+        "coding-reliability",
+        "low-consensus-review",
         "full-end-to-end"
       ],
       "tags": [
@@ -4659,8 +4975,9 @@
         "jtbd-analysis",
         "kappa-thematic-analysis"
       ],
-      "path": "sources/support/CR-111-support-05.jsonl",
-      "bytes": 25457,
+      "path": "sources/support/CR-111-support-05.csv",
+      "bytes": 53705,
+      "word_count": 5652,
       "long_form": true,
       "synthetic": true,
       "project": "CareNav Renewal",
@@ -4672,16 +4989,18 @@
       "title": "CareNav Renewal support source 06",
       "method": "support",
       "phase": "discover",
-      "file_type": "jsonl",
+      "file_type": "csv",
       "role": "clinic admin",
       "language": "es",
       "clinic": "rural clinic",
       "participant_ids": [
         "P16"
       ],
-      "relative_path": "sources/support/CR-112-support-06.jsonl",
+      "relative_path": "sources/support/CR-112-support-06.csv",
       "slices": [
         "findings-reporting",
+        "coding-reliability",
+        "low-consensus-review",
         "full-end-to-end"
       ],
       "tags": [
@@ -4700,8 +5019,9 @@
         "prototype-feedback",
         "regression-impact"
       ],
-      "path": "sources/support/CR-112-support-06.jsonl",
-      "bytes": 25447,
+      "path": "sources/support/CR-112-support-06.csv",
+      "bytes": 53712,
+      "word_count": 5652,
       "long_form": true,
       "synthetic": true,
       "project": "CareNav Renewal",
@@ -4713,16 +5033,18 @@
       "title": "CareNav Renewal support source 07",
       "method": "support",
       "phase": "discover",
-      "file_type": "jsonl",
+      "file_type": "csv",
       "role": "patient",
       "language": "en",
       "clinic": "pediatric clinic",
       "participant_ids": [
         "P17"
       ],
-      "relative_path": "sources/support/CR-113-support-07.jsonl",
+      "relative_path": "sources/support/CR-113-support-07.csv",
       "slices": [
         "findings-reporting",
+        "coding-reliability",
+        "low-consensus-review",
         "full-end-to-end"
       ],
       "tags": [
@@ -4741,8 +5063,9 @@
         "stakeholder-presentation",
         "stitch-design"
       ],
-      "path": "sources/support/CR-113-support-07.jsonl",
-      "bytes": 25437,
+      "path": "sources/support/CR-113-support-07.csv",
+      "bytes": 53712,
+      "word_count": 5651,
       "long_form": true,
       "synthetic": true,
       "project": "CareNav Renewal",
@@ -4754,16 +5077,18 @@
       "title": "CareNav Renewal support source 08",
       "method": "support",
       "phase": "discover",
-      "file_type": "jsonl",
+      "file_type": "csv",
       "role": "care coordinator",
       "language": "en",
       "clinic": "urban specialty clinic",
       "participant_ids": [
         "P18"
       ],
-      "relative_path": "sources/support/CR-114-support-08.jsonl",
+      "relative_path": "sources/support/CR-114-support-08.csv",
       "slices": [
         "findings-reporting",
+        "coding-reliability",
+        "low-consensus-review",
         "full-end-to-end"
       ],
       "tags": [
@@ -4782,8 +5107,9 @@
         "survey-generator",
         "sus-umux-scoring"
       ],
-      "path": "sources/support/CR-114-support-08.jsonl",
-      "bytes": 25435,
+      "path": "sources/support/CR-114-support-08.csv",
+      "bytes": 53717,
+      "word_count": 5651,
       "long_form": true,
       "synthetic": true,
       "project": "CareNav Renewal",
@@ -4806,6 +5132,7 @@
       "slices": [
         "survey-heavy",
         "findings-reporting",
+        "graph-synthesis",
         "full-end-to-end"
       ],
       "tags": [
@@ -4825,7 +5152,8 @@
         "user-flow-mapping"
       ],
       "path": "sources/analytics/CR-115-analytics-01.csv",
-      "bytes": 21485,
+      "bytes": 155542,
+      "word_count": 17274,
       "long_form": true,
       "synthetic": true,
       "project": "CareNav Renewal",
@@ -4848,6 +5176,7 @@
       "slices": [
         "survey-heavy",
         "findings-reporting",
+        "graph-synthesis",
         "full-end-to-end"
       ],
       "tags": [
@@ -4867,7 +5196,8 @@
         "analytics-review"
       ],
       "path": "sources/analytics/CR-116-analytics-02.csv",
-      "bytes": 21485,
+      "bytes": 155541,
+      "word_count": 17277,
       "long_form": true,
       "synthetic": true,
       "project": "CareNav Renewal",
@@ -4890,6 +5220,7 @@
       "slices": [
         "survey-heavy",
         "findings-reporting",
+        "graph-synthesis",
         "full-end-to-end"
       ],
       "tags": [
@@ -4909,7 +5240,8 @@
         "competitive-analysis"
       ],
       "path": "sources/analytics/CR-117-analytics-03.csv",
-      "bytes": 21485,
+      "bytes": 155556,
+      "word_count": 17285,
       "long_form": true,
       "synthetic": true,
       "project": "CareNav Renewal",
@@ -4932,6 +5264,7 @@
       "slices": [
         "survey-heavy",
         "findings-reporting",
+        "graph-synthesis",
         "full-end-to-end"
       ],
       "tags": [
@@ -4951,7 +5284,8 @@
         "empathy-mapping"
       ],
       "path": "sources/analytics/CR-118-analytics-04.csv",
-      "bytes": 21485,
+      "bytes": 155569,
+      "word_count": 17288,
       "long_form": true,
       "synthetic": true,
       "project": "CareNav Renewal",
@@ -4974,6 +5308,7 @@
       "slices": [
         "survey-heavy",
         "findings-reporting",
+        "graph-synthesis",
         "full-end-to-end"
       ],
       "tags": [
@@ -4993,7 +5328,8 @@
         "journey-mapping"
       ],
       "path": "sources/analytics/CR-119-analytics-05.csv",
-      "bytes": 21485,
+      "bytes": 155564,
+      "word_count": 17287,
       "long_form": true,
       "synthetic": true,
       "project": "CareNav Renewal",
@@ -5016,6 +5352,7 @@
       "slices": [
         "survey-heavy",
         "findings-reporting",
+        "graph-synthesis",
         "full-end-to-end"
       ],
       "tags": [
@@ -5035,7 +5372,8 @@
         "prioritization-matrix"
       ],
       "path": "sources/analytics/CR-120-analytics-06.csv",
-      "bytes": 21485,
+      "bytes": 155567,
+      "word_count": 17284,
       "long_form": true,
       "synthetic": true,
       "project": "CareNav Renewal",
@@ -5057,6 +5395,7 @@
       "relative_path": "sources/ab-test/CR-121-ab-test-01.csv",
       "slices": [
         "findings-reporting",
+        "graph-synthesis",
         "full-end-to-end"
       ],
       "tags": [
@@ -5075,7 +5414,8 @@
         "stakeholder-interviews"
       ],
       "path": "sources/ab-test/CR-121-ab-test-01.csv",
-      "bytes": 21325,
+      "bytes": 155113,
+      "word_count": 17276,
       "long_form": true,
       "synthetic": true,
       "project": "CareNav Renewal",
@@ -5097,6 +5437,7 @@
       "relative_path": "sources/ab-test/CR-122-ab-test-02.csv",
       "slices": [
         "findings-reporting",
+        "graph-synthesis",
         "full-end-to-end"
       ],
       "tags": [
@@ -5115,7 +5456,8 @@
         "survey-design"
       ],
       "path": "sources/ab-test/CR-122-ab-test-02.csv",
-      "bytes": 21325,
+      "bytes": 155097,
+      "word_count": 17273,
       "long_form": true,
       "synthetic": true,
       "project": "CareNav Renewal",
@@ -5137,6 +5479,7 @@
       "relative_path": "sources/ab-test/CR-123-ab-test-03.csv",
       "slices": [
         "findings-reporting",
+        "graph-synthesis",
         "full-end-to-end"
       ],
       "tags": [
@@ -5155,7 +5498,8 @@
         "tree-testing"
       ],
       "path": "sources/ab-test/CR-123-ab-test-03.csv",
-      "bytes": 21325,
+      "bytes": 155104,
+      "word_count": 17274,
       "long_form": true,
       "synthetic": true,
       "project": "CareNav Renewal",
@@ -5177,6 +5521,7 @@
       "relative_path": "sources/ab-test/CR-124-ab-test-04.csv",
       "slices": [
         "findings-reporting",
+        "graph-synthesis",
         "full-end-to-end"
       ],
       "tags": [
@@ -5193,7 +5538,8 @@
         "workshop-facilitation"
       ],
       "path": "sources/ab-test/CR-124-ab-test-04.csv",
-      "bytes": 21325,
+      "bytes": 155102,
+      "word_count": 17277,
       "long_form": true,
       "synthetic": true,
       "project": "CareNav Renewal",
@@ -5214,6 +5560,7 @@
       ],
       "relative_path": "sources/competitor/CR-125-competitor-01.md",
       "slices": [
+        "graph-synthesis",
         "full-end-to-end"
       ],
       "tags": [
@@ -5232,7 +5579,8 @@
         "channel-research-deployment"
       ],
       "path": "sources/competitor/CR-125-competitor-01.md",
-      "bytes": 5975,
+      "bytes": 136350,
+      "word_count": 18077,
       "long_form": true,
       "synthetic": true,
       "project": "CareNav Renewal",
@@ -5253,6 +5601,7 @@
       ],
       "relative_path": "sources/competitor/CR-126-competitor-02.md",
       "slices": [
+        "graph-synthesis",
         "full-end-to-end"
       ],
       "tags": [
@@ -5271,7 +5620,8 @@
         "desk-research"
       ],
       "path": "sources/competitor/CR-126-competitor-02.md",
-      "bytes": 5976,
+      "bytes": 136488,
+      "word_count": 18085,
       "long_form": true,
       "synthetic": true,
       "project": "CareNav Renewal",
@@ -5292,6 +5642,7 @@
       ],
       "relative_path": "sources/competitor/CR-127-competitor-03.md",
       "slices": [
+        "graph-synthesis",
         "full-end-to-end"
       ],
       "tags": [
@@ -5310,7 +5661,8 @@
         "hmw-statements"
       ],
       "path": "sources/competitor/CR-127-competitor-03.md",
-      "bytes": 5991,
+      "bytes": 136700,
+      "word_count": 18134,
       "long_form": true,
       "synthetic": true,
       "project": "CareNav Renewal",
@@ -5331,6 +5683,7 @@
       ],
       "relative_path": "sources/competitor/CR-128-competitor-04.md",
       "slices": [
+        "graph-synthesis",
         "full-end-to-end"
       ],
       "tags": [
@@ -5349,7 +5702,8 @@
         "participant-simulation"
       ],
       "path": "sources/competitor/CR-128-competitor-04.md",
-      "bytes": 5865,
+      "bytes": 135812,
+      "word_count": 18018,
       "long_form": true,
       "synthetic": true,
       "project": "CareNav Renewal",
@@ -5370,6 +5724,7 @@
       ],
       "relative_path": "sources/competitor/CR-129-competitor-05.md",
       "slices": [
+        "graph-synthesis",
         "full-end-to-end"
       ],
       "tags": [
@@ -5388,7 +5743,8 @@
         "research-retro"
       ],
       "path": "sources/competitor/CR-129-competitor-05.md",
-      "bytes": 6024,
+      "bytes": 136682,
+      "word_count": 18065,
       "long_form": true,
       "synthetic": true,
       "project": "CareNav Renewal",
@@ -5410,6 +5766,7 @@
       "relative_path": "sources/heuristic/CR-130-heuristic-01.md",
       "slices": [
         "accessibility-heavy",
+        "low-consensus-review",
         "full-end-to-end"
       ],
       "tags": [
@@ -5428,7 +5785,8 @@
         "stitch-react-components"
       ],
       "path": "sources/heuristic/CR-130-heuristic-01.md",
-      "bytes": 6035,
+      "bytes": 136875,
+      "word_count": 18121,
       "long_form": true,
       "synthetic": true,
       "project": "CareNav Renewal",
@@ -5450,6 +5808,7 @@
       "relative_path": "sources/heuristic/CR-131-heuristic-02.md",
       "slices": [
         "accessibility-heavy",
+        "low-consensus-review",
         "full-end-to-end"
       ],
       "tags": [
@@ -5468,7 +5827,8 @@
         "thematic-analysis"
       ],
       "path": "sources/heuristic/CR-131-heuristic-02.md",
-      "bytes": 5892,
+      "bytes": 136000,
+      "word_count": 18016,
       "long_form": true,
       "synthetic": true,
       "project": "CareNav Renewal",
@@ -5490,6 +5850,7 @@
       "relative_path": "sources/heuristic/CR-132-heuristic-03.md",
       "slices": [
         "accessibility-heavy",
+        "low-consensus-review",
         "full-end-to-end"
       ],
       "tags": [
@@ -5508,7 +5869,8 @@
         "workshop-facilitation"
       ],
       "path": "sources/heuristic/CR-132-heuristic-03.md",
-      "bytes": 6007,
+      "bytes": 136646,
+      "word_count": 18123,
       "long_form": true,
       "synthetic": true,
       "project": "CareNav Renewal",
@@ -5530,6 +5892,7 @@
       "relative_path": "sources/heuristic/CR-133-heuristic-04.md",
       "slices": [
         "accessibility-heavy",
+        "low-consensus-review",
         "full-end-to-end"
       ],
       "tags": [
@@ -5548,7 +5911,8 @@
         "browser-ux-audit"
       ],
       "path": "sources/heuristic/CR-133-heuristic-04.md",
-      "bytes": 5984,
+      "bytes": 136351,
+      "word_count": 18073,
       "long_form": true,
       "synthetic": true,
       "project": "CareNav Renewal",
@@ -5570,6 +5934,7 @@
       "relative_path": "sources/heuristic/CR-134-heuristic-05.md",
       "slices": [
         "accessibility-heavy",
+        "low-consensus-review",
         "full-end-to-end"
       ],
       "tags": [
@@ -5588,7 +5953,8 @@
         "design-critique"
       ],
       "path": "sources/heuristic/CR-134-heuristic-05.md",
-      "bytes": 5954,
+      "bytes": 136245,
+      "word_count": 18023,
       "long_form": true,
       "synthetic": true,
       "project": "CareNav Renewal",
@@ -5610,6 +5976,7 @@
       "relative_path": "sources/accessibility/CR-135-accessibility-01.md",
       "slices": [
         "accessibility-heavy",
+        "low-consensus-review",
         "full-end-to-end"
       ],
       "tags": [
@@ -5628,7 +5995,8 @@
         "handoff-documentation"
       ],
       "path": "sources/accessibility/CR-135-accessibility-01.md",
-      "bytes": 6008,
+      "bytes": 136805,
+      "word_count": 18135,
       "long_form": true,
       "synthetic": true,
       "project": "CareNav Renewal",
@@ -5650,6 +6018,7 @@
       "relative_path": "sources/accessibility/CR-136-accessibility-02.md",
       "slices": [
         "accessibility-heavy",
+        "low-consensus-review",
         "full-end-to-end"
       ],
       "tags": [
@@ -5668,7 +6037,8 @@
         "longitudinal-tracking"
       ],
       "path": "sources/accessibility/CR-136-accessibility-02.md",
-      "bytes": 5894,
+      "bytes": 136136,
+      "word_count": 18018,
       "long_form": true,
       "synthetic": true,
       "project": "CareNav Renewal",
@@ -5690,6 +6060,7 @@
       "relative_path": "sources/accessibility/CR-137-accessibility-03.md",
       "slices": [
         "accessibility-heavy",
+        "low-consensus-review",
         "full-end-to-end"
       ],
       "tags": [
@@ -5708,7 +6079,8 @@
         "repository-curation"
       ],
       "path": "sources/accessibility/CR-137-accessibility-03.md",
-      "bytes": 6029,
+      "bytes": 137059,
+      "word_count": 18120,
       "long_form": true,
       "synthetic": true,
       "project": "CareNav Renewal",
@@ -5730,6 +6102,7 @@
       "relative_path": "sources/accessibility/CR-138-accessibility-04.md",
       "slices": [
         "accessibility-heavy",
+        "low-consensus-review",
         "full-end-to-end"
       ],
       "tags": [
@@ -5748,7 +6121,8 @@
         "stitch-design-system"
       ],
       "path": "sources/accessibility/CR-138-accessibility-04.md",
-      "bytes": 5913,
+      "bytes": 136251,
+      "word_count": 18072,
       "long_form": true,
       "synthetic": true,
       "project": "CareNav Renewal",
@@ -5770,6 +6144,7 @@
       "relative_path": "sources/accessibility/CR-139-accessibility-05.md",
       "slices": [
         "accessibility-heavy",
+        "low-consensus-review",
         "full-end-to-end"
       ],
       "tags": [
@@ -5788,7 +6163,8 @@
         "task-analysis-quant"
       ],
       "path": "sources/accessibility/CR-139-accessibility-05.md",
-      "bytes": 5925,
+      "bytes": 136356,
+      "word_count": 18021,
       "long_form": true,
       "synthetic": true,
       "project": "CareNav Renewal",
@@ -5828,7 +6204,8 @@
         "user-interviews"
       ],
       "path": "sources/laws-of-ux/CR-140-laws-of-ux-01.md",
-      "bytes": 5985,
+      "bytes": 72409,
+      "word_count": 9650,
       "long_form": true,
       "synthetic": true,
       "project": "CareNav Renewal",
@@ -5868,7 +6245,8 @@
         "browser-accessibility-check"
       ],
       "path": "sources/laws-of-ux/CR-141-laws-of-ux-02.md",
-      "bytes": 5974,
+      "bytes": 72368,
+      "word_count": 9633,
       "long_form": true,
       "synthetic": true,
       "project": "CareNav Renewal",
@@ -5908,7 +6286,8 @@
         "concept-testing"
       ],
       "path": "sources/laws-of-ux/CR-142-laws-of-ux-03.md",
-      "bytes": 5993,
+      "bytes": 72378,
+      "word_count": 9638,
       "long_form": true,
       "synthetic": true,
       "project": "CareNav Renewal",
@@ -5948,7 +6327,8 @@
         "evaluate-research"
       ],
       "path": "sources/laws-of-ux/CR-143-laws-of-ux-04.md",
-      "bytes": 5911,
+      "bytes": 72149,
+      "word_count": 9637,
       "long_form": true,
       "synthetic": true,
       "project": "CareNav Renewal",
@@ -5969,6 +6349,7 @@
       ],
       "relative_path": "sources/brief/CR-144-brief-01.md",
       "slices": [
+        "graph-synthesis",
         "full-end-to-end"
       ],
       "tags": [
@@ -5987,7 +6368,8 @@
         "jtbd-analysis"
       ],
       "path": "sources/brief/CR-144-brief-01.md",
-      "bytes": 5913,
+      "bytes": 121069,
+      "word_count": 16063,
       "long_form": true,
       "synthetic": true,
       "project": "CareNav Renewal",
@@ -6008,6 +6390,7 @@
       ],
       "relative_path": "sources/brief/CR-145-brief-02.md",
       "slices": [
+        "graph-synthesis",
         "full-end-to-end"
       ],
       "tags": [
@@ -6026,7 +6409,8 @@
         "prototype-feedback"
       ],
       "path": "sources/brief/CR-145-brief-02.md",
-      "bytes": 6028,
+      "bytes": 121672,
+      "word_count": 16164,
       "long_form": true,
       "synthetic": true,
       "project": "CareNav Renewal",
@@ -6047,6 +6431,7 @@
       ],
       "relative_path": "sources/brief/CR-146-brief-03.md",
       "slices": [
+        "graph-synthesis",
         "full-end-to-end"
       ],
       "tags": [
@@ -6065,7 +6450,8 @@
         "stakeholder-presentation"
       ],
       "path": "sources/brief/CR-146-brief-03.md",
-      "bytes": 5984,
+      "bytes": 121503,
+      "word_count": 16113,
       "long_form": true,
       "synthetic": true,
       "project": "CareNav Renewal",
@@ -6086,6 +6472,7 @@
       ],
       "relative_path": "sources/brief/CR-147-brief-04.md",
       "slices": [
+        "graph-synthesis",
         "full-end-to-end"
       ],
       "tags": [
@@ -6104,7 +6491,8 @@
         "survey-generator"
       ],
       "path": "sources/brief/CR-147-brief-04.md",
-      "bytes": 5890,
+      "bytes": 121092,
+      "word_count": 16059,
       "long_form": true,
       "synthetic": true,
       "project": "CareNav Renewal",
@@ -6126,6 +6514,7 @@
       "relative_path": "sources/stakeholder/CR-148-stakeholder-01.md",
       "slices": [
         "findings-reporting",
+        "graph-synthesis",
         "full-end-to-end"
       ],
       "tags": [
@@ -6144,7 +6533,8 @@
         "usability-testing"
       ],
       "path": "sources/stakeholder/CR-148-stakeholder-01.md",
-      "bytes": 6080,
+      "bytes": 122337,
+      "word_count": 16159,
       "long_form": true,
       "synthetic": true,
       "project": "CareNav Renewal",
@@ -6166,6 +6556,7 @@
       "relative_path": "sources/stakeholder/CR-149-stakeholder-02.md",
       "slices": [
         "findings-reporting",
+        "graph-synthesis",
         "full-end-to-end"
       ],
       "tags": [
@@ -6181,7 +6572,8 @@
         "workshop-facilitation"
       ],
       "path": "sources/stakeholder/CR-149-stakeholder-02.md",
-      "bytes": 5853,
+      "bytes": 121191,
+      "word_count": 16059,
       "long_form": true,
       "synthetic": true,
       "project": "CareNav Renewal",
@@ -6203,6 +6595,7 @@
       "relative_path": "sources/stakeholder/CR-150-stakeholder-03.md",
       "slices": [
         "findings-reporting",
+        "graph-synthesis",
         "full-end-to-end"
       ],
       "tags": [
@@ -6221,7 +6614,8 @@
         "cognitive-walkthrough"
       ],
       "path": "sources/stakeholder/CR-150-stakeholder-03.md",
-      "bytes": 5941,
+      "bytes": 121599,
+      "word_count": 16106,
       "long_form": true,
       "synthetic": true,
       "project": "CareNav Renewal",
@@ -6243,6 +6637,7 @@
       "relative_path": "sources/stakeholder/CR-151-stakeholder-04.md",
       "slices": [
         "findings-reporting",
+        "graph-synthesis",
         "full-end-to-end"
       ],
       "tags": [
@@ -6261,7 +6656,8 @@
         "diary-studies"
       ],
       "path": "sources/stakeholder/CR-151-stakeholder-04.md",
-      "bytes": 6034,
+      "bytes": 122126,
+      "word_count": 16158,
       "long_form": true,
       "synthetic": true,
       "project": "CareNav Renewal",
@@ -6283,6 +6679,7 @@
       "relative_path": "sources/stakeholder/CR-152-stakeholder-05.md",
       "slices": [
         "findings-reporting",
+        "graph-synthesis",
         "full-end-to-end"
       ],
       "tags": [
@@ -6301,7 +6698,8 @@
         "interview-question-generator"
       ],
       "path": "sources/stakeholder/CR-152-stakeholder-05.md",
-      "bytes": 5909,
+      "bytes": 121359,
+      "word_count": 16061,
       "long_form": true,
       "synthetic": true,
       "project": "CareNav Renewal",
@@ -6341,7 +6739,8 @@
         "persona-creation"
       ],
       "path": "sources/plan/CR-153-plan-01.md",
-      "bytes": 6032,
+      "bytes": 72361,
+      "word_count": 9595,
       "long_form": true,
       "synthetic": true,
       "project": "CareNav Renewal",
@@ -6381,7 +6780,8 @@
         "research-synthesis"
       ],
       "path": "sources/plan/CR-154-plan-02.md",
-      "bytes": 5873,
+      "bytes": 71806,
+      "word_count": 9534,
       "long_form": true,
       "synthetic": true,
       "project": "CareNav Renewal",
@@ -6421,7 +6821,8 @@
         "survey-ai-detection"
       ],
       "path": "sources/plan/CR-155-plan-03.md",
-      "bytes": 5999,
+      "bytes": 72196,
+      "word_count": 9566,
       "long_form": true,
       "synthetic": true,
       "project": "CareNav Renewal",
@@ -6461,7 +6862,8 @@
         "transcribe-audio"
       ],
       "path": "sources/plan/CR-156-plan-04.md",
-      "bytes": 5995,
+      "bytes": 72225,
+      "word_count": 9597,
       "long_form": true,
       "synthetic": true,
       "project": "CareNav Renewal",
@@ -6500,7 +6902,8 @@
         "workshop-facilitation"
       ],
       "path": "sources/guide/CR-157-guide-01.md",
-      "bytes": 5917,
+      "bytes": 72066,
+      "word_count": 9572,
       "long_form": true,
       "synthetic": true,
       "project": "CareNav Renewal",
@@ -6540,7 +6943,8 @@
         "card-sorting"
       ],
       "path": "sources/guide/CR-158-guide-02.md",
-      "bytes": 5952,
+      "bytes": 72112,
+      "word_count": 9578,
       "long_form": true,
       "synthetic": true,
       "project": "CareNav Renewal",
@@ -6580,7 +6984,8 @@
         "design-system-audit"
       ],
       "path": "sources/guide/CR-159-guide-03.md",
-      "bytes": 5945,
+      "bytes": 72118,
+      "word_count": 9577,
       "long_form": true,
       "synthetic": true,
       "project": "CareNav Renewal",
@@ -6620,7 +7025,8 @@
         "heuristic-evaluation"
       ],
       "path": "sources/guide/CR-160-guide-04.md",
-      "bytes": 5971,
+      "bytes": 72250,
+      "word_count": 9570,
       "long_form": true,
       "synthetic": true,
       "project": "CareNav Renewal",
@@ -6660,7 +7066,8 @@
         "nps-analysis"
       ],
       "path": "sources/consent/CR-161-consent-01.md",
-      "bytes": 5876,
+      "bytes": 71992,
+      "word_count": 9536,
       "long_form": true,
       "synthetic": true,
       "project": "CareNav Renewal",
@@ -6700,7 +7107,8 @@
         "research-quality-evaluation"
       ],
       "path": "sources/consent/CR-162-consent-02.md",
-      "bytes": 6046,
+      "bytes": 72506,
+      "word_count": 9590,
       "long_form": true,
       "synthetic": true,
       "project": "CareNav Renewal",
@@ -6740,7 +7148,8 @@
         "stitch-enhance-prompt"
       ],
       "path": "sources/consent/CR-163-consent-03.md",
-      "bytes": 5931,
+      "bytes": 72115,
+      "word_count": 9562,
       "long_form": true,
       "synthetic": true,
       "project": "CareNav Renewal",
@@ -6780,7 +7189,8 @@
         "taxonomy-generator"
       ],
       "path": "sources/multilingual/CR-164-multilingual-01.md",
-      "bytes": 5963,
+      "bytes": 72305,
+      "word_count": 9567,
       "long_form": true,
       "synthetic": true,
       "project": "CareNav Renewal",
@@ -6820,7 +7230,8 @@
         "ux-law-compliance"
       ],
       "path": "sources/multilingual/CR-165-multilingual-02.md",
-      "bytes": 6083,
+      "bytes": 72695,
+      "word_count": 9607,
       "long_form": true,
       "synthetic": true,
       "project": "CareNav Renewal",
@@ -6860,7 +7271,8 @@
         "browser-competitive-benchmark"
       ],
       "path": "sources/multilingual/CR-166-multilingual-03.md",
-      "bytes": 5928,
+      "bytes": 72211,
+      "word_count": 9552,
       "long_form": true,
       "synthetic": true,
       "project": "CareNav Renewal",
@@ -6900,7 +7312,8 @@
         "contextual-inquiry"
       ],
       "path": "sources/multilingual/CR-167-multilingual-04.md",
-      "bytes": 5947,
+      "bytes": 72323,
+      "word_count": 9575,
       "long_form": true,
       "synthetic": true,
       "project": "CareNav Renewal",
@@ -6922,6 +7335,7 @@
       "relative_path": "sources/malformed/CR-168-malformed-01.csv",
       "slices": [
         "malformed-edge-case",
+        "low-consensus-review",
         "full-end-to-end"
       ],
       "tags": [
@@ -6940,7 +7354,8 @@
         "field-studies"
       ],
       "path": "sources/malformed/CR-168-malformed-01.csv",
-      "bytes": 21485,
+      "bytes": 155567,
+      "word_count": 17284,
       "long_form": true,
       "synthetic": true,
       "project": "CareNav Renewal",
@@ -6962,6 +7377,7 @@
       "relative_path": "sources/malformed/CR-169-malformed-02.csv",
       "slices": [
         "malformed-edge-case",
+        "low-consensus-review",
         "full-end-to-end"
       ],
       "tags": [
@@ -6980,7 +7396,8 @@
         "kappa-thematic-analysis"
       ],
       "path": "sources/malformed/CR-169-malformed-02.csv",
-      "bytes": 21485,
+      "bytes": 155553,
+      "word_count": 17276,
       "long_form": true,
       "synthetic": true,
       "project": "CareNav Renewal",
@@ -7002,6 +7419,7 @@
       "relative_path": "sources/malformed/CR-170-malformed-03.csv",
       "slices": [
         "malformed-edge-case",
+        "low-consensus-review",
         "full-end-to-end"
       ],
       "tags": [
@@ -7020,7 +7438,8 @@
         "regression-impact"
       ],
       "path": "sources/malformed/CR-170-malformed-03.csv",
-      "bytes": 21485,
+      "bytes": 155537,
+      "word_count": 17273,
       "long_form": true,
       "synthetic": true,
       "project": "CareNav Renewal",
@@ -7042,6 +7461,7 @@
       "relative_path": "sources/report/CR-171-report-01.md",
       "slices": [
         "findings-reporting",
+        "graph-synthesis",
         "full-end-to-end"
       ],
       "tags": [
@@ -7061,7 +7481,8 @@
         "stitch-design"
       ],
       "path": "sources/report/CR-171-report-01.md",
-      "bytes": 5914,
+      "bytes": 121285,
+      "word_count": 16109,
       "long_form": true,
       "synthetic": true,
       "project": "CareNav Renewal",
@@ -7083,6 +7504,7 @@
       "relative_path": "sources/report/CR-172-report-02.md",
       "slices": [
         "findings-reporting",
+        "graph-synthesis",
         "full-end-to-end"
       ],
       "tags": [
@@ -7102,7 +7524,8 @@
         "sus-umux-scoring"
       ],
       "path": "sources/report/CR-172-report-02.md",
-      "bytes": 5953,
+      "bytes": 121485,
+      "word_count": 16110,
       "long_form": true,
       "synthetic": true,
       "project": "CareNav Renewal",
@@ -7124,6 +7547,7 @@
       "relative_path": "sources/report/CR-173-report-03.md",
       "slices": [
         "findings-reporting",
+        "graph-synthesis",
         "full-end-to-end"
       ],
       "tags": [
@@ -7143,7 +7567,8 @@
         "user-flow-mapping"
       ],
       "path": "sources/report/CR-173-report-03.md",
-      "bytes": 5948,
+      "bytes": 121441,
+      "word_count": 16110,
       "long_form": true,
       "synthetic": true,
       "project": "CareNav Renewal",
@@ -7165,6 +7590,7 @@
       "relative_path": "sources/report/CR-174-report-04.md",
       "slices": [
         "findings-reporting",
+        "graph-synthesis",
         "full-end-to-end"
       ],
       "tags": [
@@ -7184,7 +7610,8 @@
         "analytics-review"
       ],
       "path": "sources/report/CR-174-report-04.md",
-      "bytes": 5998,
+      "bytes": 121651,
+      "word_count": 16161,
       "long_form": true,
       "synthetic": true,
       "project": "CareNav Renewal",

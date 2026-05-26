@@ -259,6 +259,7 @@
 <h2 id="architecture-notes">Architecture Notes</h2>
 <ul>
 <li>The feature is mounted through <code>frontend/src/components/interfaces/FindingsPicker.tsx</code> and the UI navigation path recorded in the inventory.</li>
+<li>Picked insights/recommendations are project-scoped inputs to interface workflows. They do not make a generated design decision accepted unless the linked finding already carries accepted/reconciled evidence and Done-task approval through the Research Spine.</li>
 <li>The frontmatter and manifest entries are the durable contract for agents updating this page after code changes.</li>
 <li>When the referenced component, store, route, agent, skill, or test behavior changes, regenerate and validate the feature documentation.</li>
 </ul>

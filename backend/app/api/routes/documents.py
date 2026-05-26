@@ -13,12 +13,24 @@ from sqlalchemy import and_, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
+from app.core.file_encryption import (
+    encrypt_file_in_place,
+    protect_document_text,
+    read_file_text,
+    reveal_document_text,
+)
 from app.core.permissions import get_visible_project_or_404
 from app.models.code_application import CodeApplication
 from app.models.database import get_db
 from app.models.document import Document, DocumentSource, DocumentStatus
 from app.models.finding import Nugget
 from app.models.project import Project
+from app.services.research_validity_service import (
+    document_research_spine_summary,
+    document_source_unit_count_map,
+    persist_document_source_evidence_units,
+    record_source_evidence_unit_telemetry,
+)
 
 router = APIRouter()
 
@@ -73,6 +85,14 @@ def _is_allowed_project_path(path: Path, project, project_id: str) -> bool:
     return False
 
 
+def _is_managed_upload_path(path: Path) -> bool:
+    try:
+        path.expanduser().resolve().relative_to(Path(settings.upload_dir).expanduser().resolve())
+        return True
+    except (OSError, ValueError):
+        return False
+
+
 def _resolve_project_folder(project, project_id: str) -> Path:
     """Resolve the primary folder to scan for project files.
 
@@ -117,6 +137,55 @@ def _resolve_document_file_path(doc: Document, project=None) -> Path | None:
             return candidate
     fallback = candidates[-1]
     return fallback if _is_allowed_project_path(fallback, project, doc.project_id) else None
+
+
+def _document_payload(doc: Document, source_evidence_units: int = 0) -> dict[str, Any]:
+    data = doc.to_dict()
+    source_text = reveal_document_text(doc.content_text or doc.content_preview or "")
+    data["research_spine"] = document_research_spine_summary(
+        source_evidence_units=source_evidence_units,
+        status=data.get("status", "ready"),
+        source=data.get("source", "user_upload"),
+        text_available=bool(source_text),
+    )
+    return data
+
+
+async def _document_payloads(
+    db: AsyncSession, project_id: str, docs: list[Document]
+) -> list[dict[str, Any]]:
+    counts = await document_source_unit_count_map(
+        db,
+        project_id=project_id,
+        document_ids=[doc.id for doc in docs],
+    )
+    return [_document_payload(doc, counts.get(doc.id, 0)) for doc in docs]
+
+
+async def _persist_document_source_units(db: AsyncSession, doc: Document) -> list[Any]:
+    if doc.status != DocumentStatus.READY:
+        return []
+    source_text = reveal_document_text(doc.content_text or doc.content_preview or "")
+    if not source_text.strip():
+        return []
+    return await persist_document_source_evidence_units(
+        db,
+        project_id=doc.project_id,
+        document_id=doc.id,
+        source_text=source_text,
+        source_location=doc.file_name or doc.title or doc.id,
+        source_document_id=doc.id,
+        source_type=doc.source.value if doc.source else "document",
+        method="document_ingestion",
+        phase=doc.phase,
+        task_id=doc.task_id,
+        version=doc.version or 1,
+        metadata={
+            "file_name": doc.file_name,
+            "file_type": doc.file_type,
+            "ingestion_surface": "documents_api",
+        },
+    )
 
 
 def _safe_json_list(value: str | None) -> list:
@@ -332,22 +401,55 @@ async def list_documents(
         tagged_doc_ids = await _document_ids_for_project_tag(db, scoped_project_id, tag)
         conditions.append(or_(Document.tags.contains(f'"{tag}"'), Document.id.in_(tagged_doc_ids)))
 
+    decrypted_search = bool(search and settings.file_encryption_enabled)
     # Full-text search across title, description, content, tags
     if search:
         search_pattern = f"%{search}%"
-        conditions.append(
-            or_(
-                Document.title.ilike(search_pattern),
-                Document.description.ilike(search_pattern),
-                Document.content_preview.ilike(search_pattern),
-                Document.content_text.ilike(search_pattern),
-                Document.tags.ilike(search_pattern),
-                Document.file_name.ilike(search_pattern),
+        if not decrypted_search:
+            conditions.append(
+                or_(
+                    Document.title.ilike(search_pattern),
+                    Document.description.ilike(search_pattern),
+                    Document.content_preview.ilike(search_pattern),
+                    Document.content_text.ilike(search_pattern),
+                    Document.tags.ilike(search_pattern),
+                    Document.file_name.ilike(search_pattern),
+                )
             )
-        )
 
     if conditions:
         query = query.where(and_(*conditions))
+
+    if decrypted_search:
+        # Encrypted content cannot be searched with SQL LIKE. Fetch the filtered
+        # project set, decrypt in application memory, then paginate.
+        result = await db.execute(query)
+        query_text = (search or "").lower()
+        all_docs = []
+        for doc in result.scalars().all():
+            plain_content = reveal_document_text(doc.content_text or doc.content_preview or "")
+            haystack = "\n".join(
+                [
+                    doc.title or "",
+                    doc.description or "",
+                    doc.file_name or "",
+                    doc.tags or "",
+                    plain_content,
+                ]
+            ).lower()
+            if query_text in haystack:
+                all_docs.append(doc)
+        total = len(all_docs)
+        offset = (page - 1) * page_size
+        docs = all_docs[offset : offset + page_size]
+        payloads = await _document_payloads(db, scoped_project_id, list(docs))
+        return {
+            "documents": payloads,
+            "total": total,
+            "page": page,
+            "page_size": page_size,
+            "total_pages": (total + page_size - 1) // page_size if total > 0 else 0,
+        }
 
     # Count total
     count_query = select(func.count(Document.id))
@@ -362,9 +464,10 @@ async def list_documents(
 
     result = await db.execute(query)
     docs = result.scalars().all()
+    payloads = await _document_payloads(db, scoped_project_id, list(docs))
 
     return {
-        "documents": [d.to_dict() for d in docs],
+        "documents": payloads,
         "total": total,
         "page": page,
         "page_size": page_size,
@@ -388,9 +491,14 @@ async def get_document(
         min_role="viewer",
     )
 
-    data = doc.to_dict()
+    counts = await document_source_unit_count_map(
+        db,
+        project_id=doc.project_id,
+        document_ids=[doc.id],
+    )
+    data = _document_payload(doc, counts.get(doc.id, 0))
     # Include full content for single-document view
-    data["content_text"] = doc.content_text or ""
+    data["content_text"] = reveal_document_text(doc.content_text or "")
     return data
 
 
@@ -414,16 +522,31 @@ async def create_document(data: DocumentCreate, request: Request, db: AsyncSessi
         source=data.source,
         task_id=data.task_id,
         phase=data.phase,
-        content_preview=data.content_preview[:2000] if data.content_preview else "",
-        content_text=data.content_text,
+        content_preview=protect_document_text(
+            (data.content_preview or data.content_text[:2000])[:2000]
+        )
+        if (data.content_preview or data.content_text)
+        else "",
+        content_text=protect_document_text(data.content_text),
+        version=1,
     )
     doc.set_agent_ids(data.agent_ids)
     doc.set_skill_names(data.skill_names)
     doc.set_tags(data.tags)
     doc.set_atomic_path(data.atomic_path)
+    if data.file_path:
+        candidate_path = Path(data.file_path)
+        if candidate_path.exists() and _is_managed_upload_path(candidate_path):
+            encrypt_file_in_place(candidate_path)
 
     db.add(doc)
+    units = await _persist_document_source_units(db, doc)
     await db.commit()
+    await record_source_evidence_unit_telemetry(
+        project_id=doc.project_id,
+        task_id=doc.task_id,
+        units=units,
+    )
     await db.refresh(doc)
 
     # Broadcast to agents via WebSocket
@@ -439,7 +562,7 @@ async def create_document(data: DocumentCreate, request: Request, db: AsyncSessi
     except Exception:
         pass
 
-    return doc.to_dict()
+    return _document_payload(doc, len(units))
 
 
 @router.patch("/documents/{document_id}")
@@ -471,14 +594,30 @@ async def update_document(
         doc.set_tags(data.tags)
     if data.atomic_path is not None:
         doc.set_atomic_path(data.atomic_path)
+    content_changed = False
     if data.content_preview is not None:
-        doc.content_preview = data.content_preview[:2000]
+        doc.content_preview = protect_document_text(data.content_preview[:2000])
     if data.content_text is not None:
-        doc.content_text = data.content_text
+        current_content = reveal_document_text(doc.content_text or "")
+        content_changed = data.content_text != current_content
+        doc.content_text = protect_document_text(data.content_text)
+        if data.content_preview is None:
+            doc.content_preview = protect_document_text(data.content_text[:2000])
     if data.version is not None:
         doc.version = data.version
+    elif content_changed:
+        doc.version = (doc.version or 1) + 1
+
+    units = []
+    if content_changed:
+        units = await _persist_document_source_units(db, doc)
 
     await db.commit()
+    await record_source_evidence_unit_telemetry(
+        project_id=doc.project_id,
+        task_id=doc.task_id,
+        units=units,
+    )
     await db.refresh(doc)
 
     # Broadcast update
@@ -498,7 +637,12 @@ async def update_document(
     except Exception:
         pass
 
-    return doc.to_dict()
+    counts = await document_source_unit_count_map(
+        db,
+        project_id=doc.project_id,
+        document_ids=[doc.id],
+    )
+    return _document_payload(doc, counts.get(doc.id, len(units)))
 
 
 @router.delete("/documents/{document_id}", status_code=204)
@@ -546,7 +690,7 @@ async def get_document_content(
         if file_path.exists() and file_path.is_file():
             suffix = file_path.suffix.lower()
             if suffix in {".txt", ".md", ".csv", ".json"}:
-                content = file_path.read_text(errors="replace")
+                content = read_file_text(file_path)
                 return {
                     "id": doc.id,
                     "file_name": doc.file_name,
@@ -577,7 +721,7 @@ async def get_document_content(
                     "size": file_path.stat().st_size,
                 }
             elif suffix in {".mp3", ".wav", ".m4a", ".ogg"}:
-                content = doc.content_text or doc.content_preview or ""
+                content = reveal_document_text(doc.content_text or doc.content_preview or "")
                 return {
                     "id": doc.id,
                     "file_name": doc.file_name,
@@ -600,12 +744,13 @@ async def get_document_content(
                 }
 
     # Fallback to stored content_text
+    stored_content = reveal_document_text(doc.content_text or doc.content_preview or "")
     return {
         "id": doc.id,
         "file_name": doc.file_name,
         "type": doc.file_type,
-        "content": doc.content_text or doc.content_preview or "",
-        "size": len(doc.content_text or doc.content_preview or ""),
+        "content": stored_content,
+        "size": len(stored_content),
     }
 
 
@@ -621,30 +766,33 @@ async def search_documents(
 ):
     """Full-text search across document titles, descriptions, content, and tags."""
     await get_visible_project_or_404(db, request, project_id, min_role="viewer")
-    search_pattern = f"%{q}%"
-    conditions = [
-        Document.project_id == project_id,
-        or_(
-            Document.title.ilike(search_pattern),
-            Document.description.ilike(search_pattern),
-            Document.content_text.ilike(search_pattern),
-            Document.content_preview.ilike(search_pattern),
-            Document.tags.ilike(search_pattern),
-            Document.file_name.ilike(search_pattern),
-        ),
-    ]
+    conditions = [Document.project_id == project_id]
 
     if phase:
         conditions.append(Document.phase == phase)
     if tag:
         conditions.append(Document.tags.contains(f'"{tag}"'))
 
-    query = (
-        select(Document).where(and_(*conditions)).order_by(Document.updated_at.desc()).limit(limit)
-    )
+    query = select(Document).where(and_(*conditions)).order_by(Document.updated_at.desc())
 
     result = await db.execute(query)
-    docs = result.scalars().all()
+    query_text = q.lower()
+    docs = []
+    for doc in result.scalars().all():
+        plain_content = reveal_document_text(doc.content_text or doc.content_preview or "")
+        haystack = "\n".join(
+            [
+                doc.title or "",
+                doc.description or "",
+                doc.file_name or "",
+                doc.tags or "",
+                plain_content,
+            ]
+        ).lower()
+        if query_text in haystack:
+            docs.append(doc)
+        if len(docs) >= limit:
+            break
 
     return {
         "query": q,
@@ -708,6 +856,7 @@ async def sync_project_documents(
 
     synced = 0
     total_chunks_indexed = 0
+    synced_units = []
     for file_path in sorted(scan_dir.iterdir()):
         if not file_path.is_file():
             continue
@@ -757,12 +906,16 @@ async def sync_project_documents(
             file_size=stat.st_size,
             status=status,
             source=DocumentSource.PROJECT_FILE,
-            content_preview=content_preview,
-            content_text=content_text,
+            content_preview=protect_document_text(content_preview),
+            content_text=protect_document_text(content_text),
         )
         doc.set_tags([])
 
         db.add(doc)
+        if content_text and status == DocumentStatus.READY:
+            synced_units.extend(await _persist_document_source_units(db, doc))
+        if _is_managed_upload_path(file_path):
+            encrypt_file_in_place(file_path)
         if suffix in AUDIO_EXTENSIONS:
             from app.api.routes.files import _process_audio_background
 
@@ -776,6 +929,10 @@ async def sync_project_documents(
 
     if synced > 0:
         await db.commit()
+        await record_source_evidence_unit_telemetry(
+            project_id=project_id,
+            units=synced_units,
+        )
 
     total_result = await db.execute(
         select(func.count(Document.id)).where(Document.project_id == project_id)

@@ -265,7 +265,12 @@
 <li>The real-user benchmark must not use the admin API as a substitute for normal researcher task work. Admin may set up users and project access, but collaborative task creation, revision requests, and approval evidence should be produced by authenticated researcher actors when the product contract allows it.</li>
 <li>Benchmark reviewer actors reject outputs that are explicitly blocked, missing required source data, low confidence because data is unavailable, or synthetic for a source-backed task. Those outputs receive revision instructions instead of being counted as done.</li>
 <li>Source-backed task tests should draw their source material from the canonical synthetic corpus or a manifest-backed canonical slice, so review decisions are based on representative documents instead of tiny ad hoc fixtures.</li>
-<li>Approval is the reporting boundary. When review moves a task to Done and <code>approved</code>, review side effects route that task&#x27;s atomic findings into the report manager; revision and In Review states keep the findings visible for evaluation but outside Reports.</li>
+<li>Approval is a research-validity boundary, not a bypass. Review can move a task to Done only when task-linked research artifacts have no unresolved validity blockers: findings must have accepted/reconciled coded evidence, and low-agreement code applications must be resolved or rejected first.</li>
+<li>Approval and report routing check item-level support. A task is still blocked when any task nugget lacks an accepted/reconciled coded evidence unit, or when a fact, insight, or recommendation depends on an unsupported upstream artifact. Aggregate accepted-code counts are diagnostics only, never a bulk promotion rule.</li>
+<li>Task atomic-path snapshots include each visible task finding&#x27;s research-validity state, so review/Kanban surfaces can show whether a nugget, fact, insight, or recommendation is accepted, provisional, blocked, or excluded instead of only showing its text.</li>
+<li>When review moves a valid task to Done and <code>approved</code>, review side effects route that task&#x27;s accepted atomic findings into the report manager; revision and In Review states keep findings visible for evaluation but outside Reports.</li>
+<li>Review surfaces expose research-validity traceability for the active task: low-agreement dependencies, reconciliation decisions, report links, and stored Evidence Graph edges. These counts help researchers decide whether to approve or send work back, but the graph trail remains explanatory; report promotion still requires accepted/reconciled evidence and Done approval.</li>
+<li>Human approval and revision requests emit content-free <code>human_review.decision</code> telemetry. Kanban status changes, including review-driven Done or revision transitions, emit <code>kanban.status_transition</code> telemetry so Quality Dashboard and governed learning can inspect review throughput without storing review text or source content.</li>
 <li>The frontmatter and manifest entries are the durable contract for agents updating this page after code changes.</li>
 <li>When the referenced component, store, route, agent, skill, or test behavior changes, regenerate and validate the feature documentation.</li>
 </ul>
@@ -276,6 +281,8 @@
 <h2 id="tests-and-verification">Tests And Verification</h2>
 <ul>
 <li><code>tests/test_tasks.py</code></li>
+<li><code>tests/test_tasks.py::test_task_report_gate_blocks_aggregate_reliability_bulk_acceptance</code></li>
+<li><code>tests/test_tasks.py::test_task_atomic_snapshot_exposes_finding_research_validity</code></li>
 <li><code>tests/real_user_benchmark/run.mjs</code></li>
 </ul>
 <h2 id="related-features">Related Features</h2>

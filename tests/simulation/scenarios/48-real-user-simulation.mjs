@@ -2,7 +2,7 @@
  *
  *  Simulates the complete user journey from research to design:
  *  1. Upload research file
- *  2. Create findings (Nugget -> Fact -> Insight -> Recommendation)
+ *  2. Create candidate findings, then exercise accepted evidence-chain surfaces
  *  3. Generate design brief from findings
  *  4. Generate screen via real Stitch API
  *  5. Incrementally edit the screen
@@ -560,13 +560,13 @@ export async function run(ctx) {
   // EVIDENCE CHAIN VERIFICATION
   // ══════════════════════════════════════════════════════════════════════
 
-  // ── 11. Full chain: Nugget -> Fact -> Insight -> Rec -> Decision -> Screen ──
+  // ── 11. Full accepted chain: Atom/Nugget -> Fact -> Insight -> Rec -> Decision -> Screen ──
   if (nuggetId && factId && insightId && recId) {
     const hasDecision = !!generatedDecisionId;
     const hasScreen = !!generatedScreenId;
 
     checks.push({
-      name: "Full evidence chain linked: Nugget->Fact->Insight->Rec->Decision->Screen",
+      name: "Full accepted evidence chain linked: Atom/Nugget->Fact->Insight->Rec->Decision->Screen",
       passed: hasDecision && hasScreen,
       detail: `nugget=${!!nuggetId}, fact=${!!factId}, insight=${!!insightId}, rec=${!!recId}, decision=${hasDecision}, screen=${hasScreen}`,
     });

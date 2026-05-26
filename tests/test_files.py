@@ -12,6 +12,7 @@ from app.models.database import async_session, init_db
 from app.core.auth import create_token
 from app.models.document import Document, DocumentSource, DocumentStatus
 from app.models.project import Project
+from app.models.research_validity import EvidenceUnit
 
 
 @pytest.fixture(autouse=True)
@@ -20,6 +21,7 @@ def reset_settings():
     original_jwt_secret = settings.jwt_secret
     original_upload_dir = settings.upload_dir
     original_upload_max_bytes = settings.upload_max_bytes
+    original_lance_db_path = settings.lance_db_path
     original_scanner_command = settings.upload_scanner_command
     original_quarantine_prompt = settings.upload_quarantine_on_prompt_injection
     yield
@@ -27,6 +29,7 @@ def reset_settings():
     settings.jwt_secret = original_jwt_secret
     settings.upload_dir = original_upload_dir
     settings.upload_max_bytes = original_upload_max_bytes
+    settings.lance_db_path = original_lance_db_path
     settings.upload_scanner_command = original_scanner_command
     settings.upload_quarantine_on_prompt_injection = original_quarantine_prompt
 
@@ -188,6 +191,48 @@ async def test_upload_scanner_hook_can_quarantine(auth_headers, tmp_path):
     assert response.json()["status"] == "quarantined"
     assert response.json()["upload_security"]["scanner_enabled"] is True
     assert response.json()["upload_security"]["scanner_exit_code"] == 1
+
+
+@pytest.mark.asyncio
+async def test_text_upload_registers_raw_source_evidence_units(auth_headers, tmp_path):
+    """Clean uploads should create raw source evidence units, not trusted findings."""
+    await init_db()
+    settings.upload_dir = str(tmp_path / "uploads")
+    settings.lance_db_path = str(tmp_path / "lance")
+    project_id = f"upload-spine-{uuid.uuid4()}"
+
+    async with async_session() as db:
+        db.add(Project(id=project_id, name="Upload Spine Project"))
+        await db.commit()
+
+    payload = (
+        "Participant: I cannot find the billing export.\n\n"
+        "Observer: They used search, then gave up after the empty result."
+    ).encode()
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        response = await ac.post(
+            f"/api/files/upload/{project_id}",
+            headers=auth_headers,
+            files={"file": ("billing-notes.txt", payload, "text/plain")},
+        )
+
+    body = response.json()
+    assert response.status_code == 200
+    assert body["status"] == "processed"
+    assert body["doc_id"]
+    assert body["evidence_units_created"] >= 2
+
+    async with async_session() as db:
+        units = (
+            await db.execute(
+                select(EvidenceUnit).where(EvidenceUnit.source_document_id == body["doc_id"])
+            )
+        ).scalars().all()
+
+    assert len(units) == body["evidence_units_created"]
+    assert {unit.unit_type for unit in units} == {"source_span"}
+    assert any("billing export" in unit.source_text for unit in units)
 
 
 @pytest.mark.asyncio

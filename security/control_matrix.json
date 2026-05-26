@@ -70,6 +70,7 @@
         "backend/app/core/backup_manager.py",
         "backend/app/core/permissions.py",
         "backend/app/core/field_encryption.py",
+        "backend/app/core/file_encryption.py",
         "backend/app/core/connection_string.py",
         "backend/app/core/compute_registry*.py",
         "backend/app/core/compute_node*.py",
@@ -98,6 +99,7 @@
         "backend/app/services/a2a.py",
         "backend/app/services/channel_service.py",
         "backend/app/services/deployment_service.py",
+        "backend/app/services/file_encryption_migration.py",
         "backend/app/services/inbound_processor.py",
         "backend/app/services/notification_service.py",
         "backend/app/services/figma_service.py",
@@ -125,6 +127,7 @@
         "frontend/src/stores/notificationStore.ts",
         "frontend/src/app/login/page.tsx",
         "frontend/src/components/auth/**",
+        "frontend/src/components/settings/**",
         "frontend/src/components/common/UserManagement.tsx",
         "frontend/src/components/common/SettingsView.tsx",
         "frontend/src/components/common/ComputePoolView.tsx",
@@ -758,12 +761,15 @@
       ],
       "evidence": [
         "backend/app/core/backup_manager.py",
+        "backend/app/core/file_encryption.py",
+        "backend/app/services/file_encryption_migration.py",
         "tests/test_backup.py",
+        "tests/test_file_encryption.py",
         "security/RELEASE_SECURITY_READINESS.md",
         "security/control_matrix.json"
       ],
       "future_change_trigger": true,
-      "notes": "Backups redact backend .env content and skip secret-like files, private keys, LLMs/, and Model_Finetuning/ from copied directories while preserving restore integrity checks."
+      "notes": "Backups redact backend .env content, skip secret-like files/private keys/LLMs/Model_Finetuning, preserve restore integrity checks, and are written as encrypted .tar.gz.enc archives when admin file encryption is enabled."
     },
     {
       "id": "SECRETS-001",
@@ -800,17 +806,20 @@
       ],
       "evidence": [
         "backend/app/core/field_encryption.py",
+        "backend/app/core/file_encryption.py",
+        "backend/app/services/file_encryption_migration.py",
         "backend/app/api/routes/llm_servers.py",
         "backend/app/api/routes/interfaces_integrations.py",
         "backend/app/core/endpoint_security.py",
         "backend/app/models/database.py",
         "backend/app/models/interface_config.py",
         "tests/test_field_encryption.py",
+        "tests/test_file_encryption.py",
         "tests/test_interfaces.py",
         "tests/test_llm_servers.py"
       ],
       "future_change_trigger": true,
-      "notes": "LLM server API keys, project-owned Figma/Stitch credentials, and integration secrets are encrypted at rest, and user-configured provider URLs reject embedded credentials, sensitive query tokens, metadata endpoints, and public plaintext transport."
+      "notes": "LLM server API keys, project-owned Figma/Stitch credentials, integration secrets, managed uploaded files, stored document text, and encrypted backups are protected at rest; user-configured provider URLs reject embedded credentials, sensitive query tokens, metadata endpoints, and public plaintext transport."
     },
     {
       "id": "CONN-001",

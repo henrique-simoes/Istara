@@ -265,6 +265,51 @@ async def test_meta_hyperagent_requires_project_evidence_for_self_evolution_prop
 
 
 @pytest.mark.asyncio
+async def test_meta_hyperagent_records_content_free_validity_telemetry(monkeypatch):
+    from unittest.mock import AsyncMock
+
+    from app.core.meta_hyperagent import MetaHyperagent
+
+    mh = MetaHyperagent()
+    mh._save = lambda: None
+    mh._log_audit = lambda *_args, **_kwargs: None
+    mh._proposals = []
+    mh._variants = []
+    mh._recent_observations = [
+        {
+            "timestamp": "2026-05-19T00:00:00+00:00",
+            "project_id": "telemetry-project",
+            "task_routing": {},
+            "self_evolution": {
+                "thresholds": {"min_occurrences": 3},
+                "project_learning_count": 0,
+                "project_promoted_count": 0,
+            },
+            "skill_selection": {"total_executions": 20, "semantic_fallback_count": 10},
+            "quality_eval": {"verification_passes": 0, "verification_fails": 0},
+            "agent_capabilities": {},
+            "reasoning_bank": {},
+        }
+    ]
+    record = AsyncMock()
+    monkeypatch.setattr(
+        "app.core.telemetry.telemetry_recorder.record_research_validity_event",
+        record,
+    )
+
+    proposals = await mh.analyze_and_propose(project_id="telemetry-project")
+
+    assert proposals
+    record.assert_awaited_once()
+    _, kwargs = record.await_args
+    assert kwargs["operation"] == "meta_hyperagent.proposal"
+    assert kwargs["project_id"] == "telemetry-project"
+    assert kwargs["agent_id"] == "meta-hyperagent"
+    assert kwargs["skill_name"] == "skill_selection"
+    assert "reason" not in kwargs
+
+
+@pytest.mark.asyncio
 async def test_meta_hyperagent_filters_proposals_by_project():
     from app.core.meta_hyperagent import MetaHyperagent
 
@@ -297,3 +342,64 @@ async def test_meta_hyperagent_filters_proposals_by_project():
     assert [p["id"] for p in mh.get_pending_proposals(project_id="project-b")] == ["proposal-b"]
     assert mh.reject_proposal("proposal-b", project_id="project-a") is None
     assert mh.reject_proposal("proposal-a", project_id="project-a")["status"] == "rejected"
+
+
+@pytest.mark.asyncio
+async def test_meta_hyperagent_refuses_protected_research_spine_parameters():
+    from app.core.meta_hyperagent import MetaHyperagent
+
+    mh = MetaHyperagent()
+    mh._save = lambda: None
+    mh._log_audit = lambda *_args, **_kwargs: None
+    mh._proposals = [
+        {
+            "id": "proposal-protected",
+            "project_id": "project-protected",
+            "status": "pending",
+            "target_system": "research_validity",
+            "parameter_path": "research_validity.kappa_threshold",
+            "current_value": 0.6,
+            "proposed_value": 0.2,
+        }
+    ]
+    mh._variants = []
+
+    result = await mh.apply_proposal(
+        "proposal-protected",
+        project_id="project-protected",
+    )
+
+    assert "Protected Research Spine" in result["error"]
+    assert mh._variants == []
+
+
+@pytest.mark.asyncio
+async def test_meta_hyperagent_project_variant_does_not_mutate_global_thresholds():
+    import app.core.self_evolution as self_evolution
+    from app.core.meta_hyperagent import MetaHyperagent
+
+    original = dict(self_evolution.PROMOTION_THRESHOLDS)
+    mh = MetaHyperagent()
+    mh._save = lambda: None
+    mh._log_audit = lambda *_args, **_kwargs: None
+    mh._proposals = [
+        {
+            "id": "proposal-project-a",
+            "project_id": "project-a",
+            "status": "pending",
+            "target_system": "self_evolution",
+            "parameter_path": "self_evolution.PROMOTION_THRESHOLDS.min_confidence",
+            "current_value": original["min_confidence"],
+            "proposed_value": original["min_confidence"] + 5,
+        }
+    ]
+    mh._variants = []
+
+    variant = await mh.apply_proposal("proposal-project-a", project_id="project-a")
+
+    assert variant["status"] == "active"
+    assert self_evolution.PROMOTION_THRESHOLDS == original
+    assert mh.get_self_evolution_threshold_overrides("project-a") == {
+        "min_confidence": original["min_confidence"] + 5
+    }
+    assert mh.get_self_evolution_threshold_overrides("project-b") == {}

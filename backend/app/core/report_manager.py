@@ -101,6 +101,42 @@ def _finding_count(report) -> int:
     return len(_safe_json_list(getattr(report, "finding_ids_json", None)))
 
 
+async def _record_report_promotion_gate(
+    *,
+    project_id: str,
+    task_id: str,
+    allowed: bool,
+    reason: str,
+) -> None:
+    from app.core.telemetry import telemetry_recorder
+
+    await telemetry_recorder.record_research_validity_event(
+        operation="report.promotion_gate",
+        project_id=project_id,
+        task_id=task_id,
+        status="success" if allowed else "degraded",
+        error_type=None if allowed else "report_promotion_blocked",
+        error_message=None if allowed else reason[:160],
+    )
+
+
+async def _record_finding_promotion(
+    *,
+    project_id: str,
+    task_id: str,
+    skill_name: str,
+) -> None:
+    from app.core.telemetry import telemetry_recorder
+
+    await telemetry_recorder.record_research_validity_event(
+        operation="finding.promotion",
+        project_id=project_id,
+        task_id=task_id,
+        skill_name=skill_name,
+        status="success",
+    )
+
+
 class ReportManager:
     """Manages progressive refinement of project reports."""
 
@@ -113,7 +149,12 @@ class ReportManager:
         consensus_score: float | None = None,
     ) -> None:
         """Route new findings to the correct report (find or create)."""
-        finding_ids = await self._filter_reportable_finding_ids(project_id, finding_ids, db)
+        finding_ids = await self._filter_reportable_finding_ids(
+            project_id,
+            finding_ids,
+            db,
+            skill_name=skill_name,
+        )
         if not finding_ids:
             logger.info(
                 "ReportManager: skipped report routing for project=%s skill=%s because no findings are reportable",
@@ -194,6 +235,28 @@ class ReportManager:
             or task.status != TaskStatus.DONE
             or task.review_state != "approved"
         ):
+            await _record_report_promotion_gate(
+                project_id=project_id,
+                task_id=task_id,
+                allowed=False,
+                reason="Task is not an approved Done task.",
+            )
+            return 0
+        from app.services.research_validity_service import assess_task_research_validity
+
+        validity = await assess_task_research_validity(db, project_id=project_id, task_id=task_id)
+        await _record_report_promotion_gate(
+            project_id=project_id,
+            task_id=task_id,
+            allowed=bool(validity["report_allowed"]),
+            reason=str(validity["reason"]),
+        )
+        if not validity["report_allowed"]:
+            logger.info(
+                "ReportManager: skipped approved task %s because research-validity gate blocked reporting: %s",
+                task_id,
+                validity["reason"],
+            )
             return 0
 
         finding_ids: list[str] = []
@@ -223,6 +286,7 @@ class ReportManager:
         project_id: str,
         finding_ids: list[str],
         db: AsyncSession,
+        skill_name: str = "",
     ) -> list[str]:
         """Exclude task-bound findings until their task is Done and approved."""
         if not finding_ids:
@@ -233,6 +297,8 @@ class ReportManager:
 
         requested_ids = set(finding_ids)
         task_id_by_finding_id: dict[str, str] = {}
+        found_finding_ids: set[str] = set()
+        unlinked_finding_ids: set[str] = set()
         for model_cls in [Nugget, Fact, Insight, Recommendation]:
             result = await db.execute(
                 select(model_cls.id, model_cls.task_id).where(
@@ -241,30 +307,77 @@ class ReportManager:
                 )
             )
             for finding_id, task_id in result.all():
+                found_finding_ids.add(finding_id)
                 if task_id:
                     task_id_by_finding_id[finding_id] = task_id
+                else:
+                    unlinked_finding_ids.add(finding_id)
 
         if not task_id_by_finding_id:
-            return finding_ids
+            for finding_id in sorted(requested_ids - found_finding_ids):
+                await _record_report_promotion_gate(
+                    project_id=project_id,
+                    task_id="",
+                    allowed=False,
+                    reason=f"Finding {finding_id} does not exist or is not managed by the Research Spine.",
+                )
+            for finding_id in sorted(unlinked_finding_ids):
+                await _record_report_promotion_gate(
+                    project_id=project_id,
+                    task_id="",
+                    allowed=False,
+                    reason=f"Finding {finding_id} is not linked to a human-approved Done task.",
+                )
+            return []
 
+        all_task_ids = set(task_id_by_finding_id.values())
         result = await db.execute(
             select(Task.id).where(
                 Task.project_id == project_id,
-                Task.id.in_(set(task_id_by_finding_id.values())),
+                Task.id.in_(all_task_ids),
                 Task.status == TaskStatus.DONE,
                 Task.review_state == "approved",
             )
         )
         reportable_task_ids = set(result.scalars().all())
-
-        return [
-            finding_id
-            for finding_id in finding_ids
-            if (
-                finding_id not in task_id_by_finding_id
-                or task_id_by_finding_id[finding_id] in reportable_task_ids
+        for task_id in sorted(all_task_ids - reportable_task_ids):
+            await _record_report_promotion_gate(
+                project_id=project_id,
+                task_id=task_id,
+                allowed=False,
+                reason="Task is not an approved Done task.",
             )
-        ]
+        if reportable_task_ids:
+            from app.services.research_validity_service import assess_task_research_validity
+
+            validity_allowed: set[str] = set()
+            for task_id in reportable_task_ids:
+                validity = await assess_task_research_validity(
+                    db, project_id=project_id, task_id=task_id
+                )
+                await _record_report_promotion_gate(
+                    project_id=project_id,
+                    task_id=task_id,
+                    allowed=bool(validity["report_allowed"]),
+                    reason=str(validity["reason"]),
+                )
+                if validity["report_allowed"]:
+                    validity_allowed.add(task_id)
+            reportable_task_ids = validity_allowed
+
+        reportable_finding_ids: list[str] = []
+        for finding_id in finding_ids:
+            task_id = task_id_by_finding_id.get(finding_id)
+            if not task_id:
+                continue
+            if task_id in reportable_task_ids:
+                reportable_finding_ids.append(finding_id)
+                await _record_finding_promotion(
+                    project_id=project_id,
+                    task_id=task_id,
+                    skill_name=skill_name,
+                )
+        return reportable_finding_ids
 
     async def _find_or_create_report(
         self, project_id: str, scope: str, layer: int, db: AsyncSession
@@ -309,12 +422,23 @@ class ReportManager:
         l2_reports = result.scalars().all()
 
         if len(l2_reports) >= 2:
-            synth = await self._find_or_create_report(project_id, "Research Synthesis", 3, db)
             all_ids = []
-            for r in l2_reports:
-                ids = _safe_json_list(r.finding_ids_json)
-                all_ids.extend(ids)
-            merged_ids = _merge_ids([], all_ids)
+            for report in l2_reports:
+                all_ids.extend(_safe_json_list(report.finding_ids_json))
+            reportable_ids = await self._filter_reportable_finding_ids(
+                project_id,
+                all_ids,
+                db,
+                skill_name="research-synthesis",
+            )
+            if not reportable_ids:
+                logger.info(
+                    "ReportManager: skipped L3 synthesis for project=%s because no L2 findings passed Research Spine gates",
+                    project_id,
+                )
+                return
+            synth = await self._find_or_create_report(project_id, "Research Synthesis", 3, db)
+            merged_ids = _merge_ids([], reportable_ids)
             synth.finding_ids_json = json.dumps(merged_ids)
             synth.version += 1
             synth.updated_at = datetime.now(timezone.utc)
@@ -470,10 +594,23 @@ class ReportManager:
             )
         )
         existing_l4 = result.scalar_one_or_none()
-        finding_count = _finding_count(l3_report)
+        reportable_ids = await self._filter_reportable_finding_ids(
+            project_id,
+            _safe_json_list(l3_report.finding_ids_json),
+            db,
+            skill_name="final-report",
+        )
+        if not reportable_ids:
+            logger.info(
+                "ReportManager: skipped L4 final report for project=%s because no L3 findings passed Research Spine gates",
+                project_id,
+            )
+            return
+        reportable_ids_json = json.dumps(reportable_ids)
+        finding_count = len(reportable_ids)
 
         if existing_l4:
-            existing_l4.finding_ids_json = l3_report.finding_ids_json
+            existing_l4.finding_ids_json = reportable_ids_json
             existing_l4.version += 1
             existing_l4.updated_at = datetime.now(timezone.utc)
             l4 = existing_l4
@@ -486,7 +623,7 @@ class ReportManager:
                 report_type="final_report",
                 scope="Final Report",
                 status="draft",
-                finding_ids_json=l3_report.finding_ids_json,
+                finding_ids_json=reportable_ids_json,
             )
             db.add(l4)
 

@@ -6,11 +6,11 @@ audience: architecture
 status: documented
 related_features: ["compute.pool", "settings.general"]
 related_glossary: ["wcag"]
-code_references: ["frontend/src/components/common/DonateComputeToggle.tsx", "frontend/src/components/settings/ConnectionStringPanel.tsx", "backend/app/api/routes/compute.py", "backend/app/api/routes/connections.py", "backend/app/core/compute_node_invocation.py", "backend/app/core/compute_pool.py", "backend/app/core/compute_registry_routing.py"]
+code_references: ["frontend/src/components/common/DonateComputeToggle.tsx", "frontend/src/components/settings/ConnectionStringPanel.tsx", "backend/app/api/routes/compute.py", "backend/app/api/routes/connections.py", "backend/app/core/compute_node_invocation.py", "backend/app/core/compute_pool.py", "backend/app/core/compute_registry_routing.py", "backend/app/core/compute_route_evidence.py"]
 api_references: ["backend/app/api/routes/compute.py", "backend/app/api/routes/connections.py"]
 test_references: ["tests/test_compute.py", "tests/compute_cases/stats_websocket.py", "tests/test_project_rbac.py", "tests/test_project_scope_contracts.py"]
 last_verified: 2026-05-19
-compass: CF-SPEC-60 / CF-754; CF-SPEC-63 / CF-814; CF-SPEC-70 / CF-899
+compass: CF-SPEC-60 / CF-754; CF-SPEC-63 / CF-814; CF-SPEC-70 / CF-899; CF-SPEC-124 / CF-1590
 ---
 
 # Compute Donation Architecture
@@ -42,6 +42,7 @@ Compute donation lets a browser session or relay process contribute local comput
 - Team-mode relay validation rejects wildcard donation scope, including legacy all-project donation strings, so donated machines cannot silently become global project processors.
 - A relay authenticated only by the shared network token can register for status but is excluded from prompt and embedding routing because it has no project scope.
 - Direct relay/browser dispatch through `ComputeNode.chat`, `ComputeNode.chat_stream`, `ComputeNode.embed`, or `ComputeNode.embed_batch` requires the active project to match the node's resolved donation scope before any content is sent over websocket or direct streaming transport.
+- Chat responses include content-free route evidence so benchmark and telemetry layers can distinguish registered, visible, selected, served, and failed donated compute without logging prompt content, response content, provider hosts, or private endpoint details.
 - The frontmatter and manifest entries are the durable contract for agents updating this page after code changes.
 - When the referenced component, store, route, agent, skill, or test behavior changes, regenerate and validate the feature documentation.
 
@@ -67,7 +68,7 @@ Compute donation lets a browser session or relay process contribute local comput
 
 ## Compass Evidence
 
-- Spec/task: CF-SPEC-60 / CF-754; CF-SPEC-63 / CF-814; CF-SPEC-70 / CF-899
+- Spec/task: CF-SPEC-60 / CF-754; CF-SPEC-63 / CF-814; CF-SPEC-70 / CF-899; CF-SPEC-124 / CF-1590
 - Inventory source: `docs/features/inventory.json`
 
 ## When To Update

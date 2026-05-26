@@ -47,6 +47,9 @@ The Meta-Agent surface exposes the meta-hyperagent system for inspecting or gove
 - Skill usage stats now maintain per-project counters so Meta-Hyperagent skill-selection analysis does not infer proposals from another project's execution history.
 - Self-evolution tuning proposals require project-local learning evidence. An empty project, or a project with only global/other-project learning history, must not generate threshold-lowering proposals.
 - Confirmed Meta-Hyperagent overrides are persisted under project-specific override buckets instead of process-wide override keys.
+- Applying a proposal creates an active project-scoped variant; it does not mutate module globals. Self-evolution and skill-routing code consult active or confirmed overrides at read time, so project A variants cannot affect project B.
+- Protected Research Spine methodology, reliability thresholds, authorization constraints, and report gates cannot be changed through Meta-Hyperagent variants. Such changes require explicit governed architecture work.
+- New project-scoped proposals emit content-free `meta_hyperagent.proposal` telemetry with the project id, meta-hyperagent handle, target system, and confidence only. Proposal reasons and evidence details stay in governed proposal records, not telemetry spans.
 - Simulation scenarios that exercise Meta-Hyperagent status, proposals, variants, observations, toggles, or mutation checks pass the active simulation project id and skip scoped endpoint calls when no project id exists.
 - The frontmatter and manifest entries are the durable contract for agents updating this page after code changes.
 - When the referenced component, store, route, agent, skill, or test behavior changes, regenerate and validate the feature documentation.

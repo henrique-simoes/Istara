@@ -11,6 +11,7 @@ import { authHeaders as _getAuthHeaders, del, get, patch, post, request } from "
 // /api/updates/version, /api/updates/check, /api/updates/prepare, /api/updates/apply.
 // Auth/passkey routes are implemented in authStore and Settings managers:
 // /auth/login /auth/register /auth/logout /auth/me /auth/team-status /auth/preferences
+// /auth/profile /auth/password/change
 // /auth/sessions /auth/sessions/{session_id} /auth/sessions/revoke-others
 // /auth/totp/setup /auth/totp/verify /auth/totp/disable
 // /auth/recovery-codes/generate /auth/recovery-codes/status
@@ -541,6 +542,28 @@ export const settings = {
         body: JSON.stringify({ enabled }),
       }
     ),
+  fileEncryptionStatus: () =>
+    request<{
+      enabled: boolean;
+      crypto_available: boolean;
+      key_available: boolean;
+      key_storage: string;
+      key_fingerprint: string;
+      managed_file_count: number;
+      encrypted_file_count: number;
+      backups_encrypted_when_enabled: boolean;
+      warning: string;
+    }>("/api/settings/file-encryption/status"),
+  enableFileEncryption: () =>
+    request<any>("/api/settings/file-encryption/enable", {
+      method: "POST",
+      body: JSON.stringify({ confirm_loss_warning: true }),
+    }),
+  rotateFileEncryptionKey: () =>
+    request<any>("/api/settings/file-encryption/rotate", {
+      method: "POST",
+      body: JSON.stringify({ confirm_rotation: true }),
+    }),
 };
 
 // --- Data Management ---
@@ -1131,5 +1154,6 @@ export {
   codebooks,
   presentation,
   reports,
+  researchValidity,
   steering,
 } from "./researchIntegrityApi";

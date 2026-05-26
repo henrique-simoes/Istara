@@ -51,6 +51,9 @@ Experiments configure and inspect automated research runs across strategies or p
 - Autoresearch experiments can mutate strategies that later affect agents, skills, LLM choice, RAG behavior, question banks, or UI simulations. Each experiment must remain attached to the project that authorized it.
 - Paused projects are execution-stop boundaries for autoresearch: no baseline measurement, mutation, model-choice exploration, reasoning memory, or improvement proposal should be produced after the project is paused.
 - Baseline and candidate measurements run inside the autoresearch isolation context, so experiment probes do not write normal learning, skill-stat, or self-improvement evidence until they are explicitly promoted through project-bound governance.
+- Candidate mutations are reverted after measurement even when they improve the score. A successful iteration is recorded as `proposal_ready`: it may create a governed improvement proposal, but it does not leave prompt, persona, UI, RAG, model, deployment, or skill state mutated in production.
+- Model/temperature exploration writes project-scoped measurement evidence only. It does not update the global best-model config directly; applying a preferred configuration must go through improvement governance.
+- Completed project-scoped experiments emit content-free `autoresearch.validity_update` telemetry after persistence. The event records project, loop type, agent handle, status, and score only; hypotheses, mutation bodies, prompts, and experiment text remain out of telemetry.
 
 ## Tests And Verification
 

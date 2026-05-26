@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import re
 from pathlib import Path
 
 import aiosqlite
@@ -12,14 +13,55 @@ from app.config import settings
 logger = logging.getLogger(__name__)
 
 
+def _fts_terms(query: str) -> list[str]:
+    return [term for term in re.findall(r"\w+", query.lower()) if len(term) > 2]
+
+
+def _fts_phrase_query(query: str) -> str:
+    terms = _fts_terms(query)
+    if not terms:
+        return ""
+    return '"' + " ".join(term.replace('"', '""') for term in terms) + '"'
+
+
+def _fts_or_query(query: str) -> str:
+    terms = _fts_terms(query)
+    return " OR ".join(f'"{term}"' for term in terms)
+
+
 class KeywordResult:
     """A single keyword search result."""
 
-    def __init__(self, text: str, source: str, page: int, rank: float):
+    def __init__(
+        self,
+        text: str,
+        source: str,
+        page: int,
+        rank: float,
+        *,
+        evidence_unit_id: str = "",
+        source_document_id: str = "",
+        start_offset: int | None = None,
+        end_offset: int | None = None,
+        codebook_version_id: str = "",
+        coding_run_id: str = "",
+        review_status: str = "",
+        reliability_status: str = "",
+        provenance_key: str = "",
+    ):
         self.text = text
         self.source = source
         self.page = page
         self.rank = rank
+        self.evidence_unit_id = evidence_unit_id
+        self.source_document_id = source_document_id
+        self.start_offset = start_offset
+        self.end_offset = end_offset
+        self.codebook_version_id = codebook_version_id
+        self.coding_run_id = coding_run_id
+        self.review_status = review_status
+        self.reliability_status = reliability_status
+        self.provenance_key = provenance_key
 
 
 class KeywordIndex:
@@ -35,8 +77,13 @@ class KeywordIndex:
         db = await aiosqlite.connect(self.db_path)
         await self._migrate_legacy_contentless_table(db)
         await db.execute(
-            "CREATE VIRTUAL TABLE IF NOT EXISTS chunks_fts "
-            "USING fts5(text, source UNINDEXED, page UNINDEXED, tokenize='porter unicode61')"
+            "CREATE VIRTUAL TABLE IF NOT EXISTS chunks_fts USING fts5("
+            "text, source UNINDEXED, page UNINDEXED, "
+            "evidence_unit_id UNINDEXED, source_document_id UNINDEXED, "
+            "start_offset UNINDEXED, end_offset UNINDEXED, "
+            "codebook_version_id UNINDEXED, coding_run_id UNINDEXED, "
+            "review_status UNINDEXED, reliability_status UNINDEXED, "
+            "provenance_key UNINDEXED, tokenize='porter unicode61')"
         )
         await db.commit()
         return db
@@ -49,11 +96,16 @@ class KeywordIndex:
             row = await cur.fetchone()
 
         create_sql = str(row[0]).lower().replace(" ", "") if row and row[0] else ""
-        if "content=''" not in create_sql and 'content=""' not in create_sql:
+        needs_rebuild = (
+            "content=''" in create_sql
+            or 'content=""' in create_sql
+            or "evidence_unit_id" not in create_sql
+        )
+        if not needs_rebuild:
             return
 
         logger.warning(
-            "Migrating legacy contentless keyword index for project %s; "
+            "Migrating legacy keyword index for project %s; "
             "files may need reprocessing to restore keyword hits.",
             self.project_id,
         )
@@ -66,9 +118,32 @@ class KeywordIndex:
             return 0
         db = await self._get_db()
         try:
-            rows = [(c.text, c.source, c.page or 0) for c in chunks]
+            rows = []
+            for c in chunks:
+                metadata = c.metadata or {}
+                rows.append(
+                    (
+                        c.text,
+                        c.source,
+                        c.page or 0,
+                        str(metadata.get("evidence_unit_id", "")),
+                        str(metadata.get("source_document_id", "")),
+                        metadata.get("start_offset"),
+                        metadata.get("end_offset"),
+                        str(metadata.get("codebook_version_id", "")),
+                        str(metadata.get("coding_run_id", "")),
+                        str(metadata.get("review_status", "")),
+                        str(metadata.get("reliability_status", "")),
+                        str(metadata.get("provenance_key", "")),
+                    )
+                )
             await db.executemany(
-                "INSERT INTO chunks_fts (text, source, page) VALUES (?, ?, ?)", rows
+                "INSERT INTO chunks_fts ("
+                "text, source, page, evidence_unit_id, source_document_id, "
+                "start_offset, end_offset, codebook_version_id, coding_run_id, "
+                "review_status, reliability_status, provenance_key"
+                ") VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                rows,
             )
             await db.commit()
             return len(rows)
@@ -79,32 +154,49 @@ class KeywordIndex:
         """Search using BM25 ranking."""
         if not query.strip():
             return []
-        # Escape special FTS5 chars
-        safe_query = query.replace('"', '""')
+        phrase_query = _fts_phrase_query(query)
+        if not phrase_query:
+            return []
         db = await self._get_db()
         try:
             sql = (
-                "SELECT text, source, page, rank "
+                "SELECT text, source, page, evidence_unit_id, source_document_id, "
+                "start_offset, end_offset, codebook_version_id, coding_run_id, "
+                "review_status, reliability_status, provenance_key, rank "
                 "FROM chunks_fts "
                 "WHERE chunks_fts MATCH ? "
                 "ORDER BY rank "
                 "LIMIT ?"
             )
-            async with db.execute(sql, (f'"{safe_query}"', top_k)) as cur:
+
+            def _result_from_row(row) -> KeywordResult:
+                return KeywordResult(
+                    text=row[0],
+                    source=row[1],
+                    page=row[2],
+                    rank=row[12],
+                    evidence_unit_id=row[3] or "",
+                    source_document_id=row[4] or "",
+                    start_offset=row[5],
+                    end_offset=row[6],
+                    codebook_version_id=row[7] or "",
+                    coding_run_id=row[8] or "",
+                    review_status=row[9] or "",
+                    reliability_status=row[10] or "",
+                    provenance_key=row[11] or "",
+                )
+
+            async with db.execute(sql, (phrase_query, top_k)) as cur:
                 results = []
                 async for row in cur:
-                    results.append(
-                        KeywordResult(text=row[0], source=row[1], page=row[2], rank=row[3])
-                    )
+                    results.append(_result_from_row(row))
             # If exact phrase match returns nothing, try individual terms
             if not results:
-                terms = " OR ".join(f'"{t}"' for t in query.split() if len(t) > 2)
+                terms = _fts_or_query(query)
                 if terms:
                     async with db.execute(sql, (terms, top_k)) as cur:
                         async for row in cur:
-                            results.append(
-                                KeywordResult(text=row[0], source=row[1], page=row[2], rank=row[3])
-                            )
+                            results.append(_result_from_row(row))
             return results
         except Exception as e:
             logger.warning(f"Keyword search failed: {e}")

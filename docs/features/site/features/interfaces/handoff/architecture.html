@@ -262,6 +262,8 @@
 <li>The feature is mounted through <code>frontend/src/components/interfaces/HandoffTab.tsx</code> and the UI navigation path recorded in the inventory.</li>
 <li><code>GET /api/interfaces/handoff/briefs</code> requires an explicit <code>project_id</code>, checks project viewer access, and filters <code>DesignBrief.project_id</code> in the query.</li>
 <li>Handoff brief generation uses the request project&#x27;s id; developer specs are authorized through the selected screen&#x27;s project before returning screen content.</li>
+<li>Handoff briefs and developer specs include content-free <code>research_validity</code> summaries. Their source findings are rendered as accepted or provisional, and provisional sources must not be treated as report-ready research evidence.</li>
+<li>Developer specs read the same hydrated screen/source-finding state exposed by the Screens API, so a design handoff cannot silently strip the Research Spine status from generated or imported interface work.</li>
 <li><code>HandoffTab</code> clears selected/expanded state when the active project changes and renders only briefs and screens that match the active project.</li>
 <li>The frontmatter and manifest entries are the durable contract for agents updating this page after code changes.</li>
 <li>When the referenced component, store, route, agent, skill, or test behavior changes, regenerate and validate the feature documentation.</li>

@@ -241,11 +241,13 @@
   <p class="concept-line"><strong>Concepts:</strong> webauthn, totp</p>
 </header>
 <h2 id="implementation-summary">Implementation Summary</h2>
-<p>Settings includes passkey and TOTP management for strengthening account authentication.</p>
+<p>Settings includes account profile/password controls, recovery-code regeneration, passkey management, and TOTP management for strengthening account authentication.</p>
 <h2 id="frontend-surface">Frontend Surface</h2>
 <ul>
+<li><code>frontend/src/components/settings/AccountSecurityManager.tsx</code></li>
 <li><code>frontend/src/components/settings/PasskeyManager.tsx</code></li>
 <li><code>frontend/src/components/settings/TOTPManager.tsx</code></li>
+<li><code>backend/app/api/routes/auth.py</code></li>
 <li><code>backend/app/api/routes/webauthn.py</code></li>
 <li><code>backend/app/core/recovery_codes.py</code></li>
 </ul>
@@ -268,10 +270,13 @@
 <h2 id="agents-skills-llm-mcp-and-permissions">Agents, Skills, LLM, MCP, And Permissions</h2>
 <ul>
 <li>Authentication-factor behavior is security-sensitive and must be verified with the repository security benchmark when implementation changes.</li>
+<li>Current factors are password plus optional TOTP, one-time recovery-code fallback, and WebAuthn/passkeys for passwordless sign-in. SMS and email OTP factors are not implemented.</li>
+<li>Recovery codes are shown once during first-admin onboarding, connection-string account creation, and admin-created user flows; regeneration invalidates previous codes.</li>
+<li>Profile and password changes require the current password. Password changes revoke other sessions where possible.</li>
 </ul>
 <h2 id="tests-and-verification">Tests And Verification</h2>
 <ul>
-<li>No focused test reference recorded yet.</li>
+<li><code>tests/test_auth_security.py</code></li>
 </ul>
 <h2 id="related-features">Related Features</h2>
 <ul>
@@ -285,7 +290,7 @@
 </ul>
 <h2 id="compass-evidence">Compass Evidence</h2>
 <ul>
-<li>Spec/task: CF-SPEC-53 / CF-657</li>
+<li>Spec/task: CF-SPEC-134 / CF-1671</li>
 <li>Inventory source: <code>docs/features/inventory.json</code></li>
 </ul>
 <h2 id="when-to-update">When To Update</h2>

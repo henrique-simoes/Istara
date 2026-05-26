@@ -34,6 +34,7 @@ from app.core.ollama import ollama
 from app.core.rag import ingest_chunks, retrieve_context
 from app.core.resource_governor import governor
 from app.core.self_check import Confidence, verify_claim
+from app.core.self_improvement_policy import learning_signal_for_research_output
 from app.core.steering import steering_manager
 from app.core.telemetry import telemetry_recorder
 from app.core.token_counter import count_tokens
@@ -325,11 +326,14 @@ class AgentResearchMixin:
             task_id=task.id,
             timeout_seconds=settings.agent_react_skill_tool_timeout_seconds,
         )
+        learning_signal = learning_signal_for_research_output(
+            execution_success=bool(output.success),
+        )
 
         skill_manager.record_execution(
             skill_name,
-            output.success,
-            0.8 if output.success else 0.2,
+            learning_signal.learning_success,
+            learning_signal.research_quality_score,
             project_id=project.id,
         )
         task.skill_name = skill_name
@@ -349,7 +353,7 @@ class AgentResearchMixin:
             tool_duration_ms=duration_ms,
             duration_ms=duration_ms,
             status="success" if output.success else "error",
-            quality_score=0.8 if output.success else 0.2,
+            quality_score=learning_signal.research_quality_score,
             agent_id=self._agent_id,
             project_id=project.id,
             task_id=task.id,
@@ -369,13 +373,14 @@ class AgentResearchMixin:
                     "candidate_reasons": candidate.reasons,
                     "summary": output.summary,
                     "json_success": output.json_success,
+                    "learning_state": learning_signal.learning_state,
                 },
-                outcome="success" if output.success else "failure",
+                outcome=learning_signal.learning_state,
                 source_kind="skill",
                 source_id=task.id,
                 tags=[skill_name, "memento", "react-tool"],
                 domain=skill_name,
-                judge_score=0.8 if output.success else 0.2,
+                judge_score=learning_signal.research_quality_score,
             )
         except Exception as exc:
             logger.debug("ReAct skill reasoning memory skipped: %s", exc)
@@ -685,14 +690,9 @@ class AgentResearchMixin:
     async def _store_findings(
         self, db: AsyncSession, project_id: str, output: SkillOutput, task: Task
     ) -> None:
-        """Store skill output findings in the database with evidence chain links.
+        """Store visible candidate findings without bypassing the Research Spine."""
+        output.mark_research_artifacts_candidate()
 
-        The Atomic Research hierarchy is: Nuggets → Facts → Insights → Recommendations.
-        Each level links to the one below via ID arrays (nugget_ids, fact_ids, insight_ids).
-        If skills provide explicit IDs, we use them. Otherwise, we auto-link:
-        all nuggets feed into all facts, all facts feed into all insights, etc.
-        This ensures every finding has traceable evidence.
-        """
         # === VALIDATION GATE: sanitize tags before storage ===
         for nugget_data in output.nuggets or []:
             tags = nugget_data.get("tags", [])
@@ -721,9 +721,9 @@ class AgentResearchMixin:
         created_fact_ids: list[str] = []
         created_insight_ids: list[str] = []
         created_recommendation_ids: list[str] = []
+        created_evidence_unit_ids: list[str] = []
         finding_agent_id = task.agent_id or self.agent_id
 
-        # Store nuggets
         for nugget_data in output.nuggets:
             nid = str(uuid.uuid4())
             # Laws of UX finding enrichment
@@ -765,34 +765,73 @@ class AgentResearchMixin:
             db.add(nugget)
             created_nugget_ids.append(nid)
 
-            # If chain-of-thought reasoning is provided, create CodeApplication record
+            evidence_unit_id = None
+            source_document_id = nugget_data.get("source_document_id")
+            source_location = nugget_data.get("source_location", "")
+            exact_source_text = str(
+                nugget_data.get("source_text")
+                or nugget_data.get("source_quote")
+                or nugget_data.get("quote")
+                or ""
+            ).strip()
+            has_exact_source_span = bool(source_document_id and source_location and exact_source_text)
+            evidence_source_text = (
+                exact_source_text if has_exact_source_span else str(nugget_data.get("text", ""))
+            )[:2000]
+            units = []
+            if evidence_source_text.strip():
+                try:
+                    from app.services.research_validity_service import persist_task_nugget_evidence_units
+                    units = await persist_task_nugget_evidence_units(
+                        db,
+                        project_id=project_id,
+                        task_id=task.id,
+                        nugget_id=nid,
+                        source_text=evidence_source_text,
+                        source_location=source_location,
+                        source_document_id=source_document_id,
+                        method=task.skill_name or "",
+                        phase=nugget_phase,
+                        source_type="source_span" if has_exact_source_span else "candidate_atom",
+                        candidate_only=not has_exact_source_span,
+                    )
+                    for unit in units:
+                        if not evidence_unit_id:
+                            evidence_unit_id = unit.id
+                        if has_exact_source_span:
+                            created_evidence_unit_ids.append(unit.id)
+                    if units and not has_exact_source_span:
+                        task.what_to_review = (
+                            "Generated findings are provisional: exact source document/span evidence is "
+                            "required before governed coding can promote them."
+                        )
+                except Exception as e:
+                    logger.debug("EvidenceUnit creation skipped: %s", e)
+
             _reasoning = nugget_data.get("coding_reasoning", "")
             if _reasoning and isinstance(_enriched_tags, list) and _enriched_tags:
                 try:
-                    from app.models.code_application import CodeApplication
-
-                    for _tag in _enriched_tags[:5]:  # Cap per nugget
-                        if isinstance(_tag, str) and _tag.strip():
-                            ca = CodeApplication(
-                                id=str(uuid.uuid4()),
-                                project_id=project_id,
-                                code_id=_tag,
-                                source_text=nugget_data.get("text", "")[:2000],
-                                source_location=nugget_data.get("source_location", ""),
-                                coder_id=self.agent_id,
-                                coder_type="llm",
-                                confidence=_conf_val,
-                                reasoning=_reasoning,
-                            )
-                            db.add(ca)
+                    from app.services.research_validity_service import add_agent_initial_code_applications
+                    add_agent_initial_code_applications(
+                        db,
+                        project_id=project_id,
+                        task_id=task.id,
+                        tags=_enriched_tags,
+                        evidence_unit_id=evidence_unit_id,
+                        source_document_id=source_document_id,
+                        source_text=evidence_source_text,
+                        source_location=source_location,
+                        start_offset=units[0].start_offset if units else None,
+                        end_offset=units[0].end_offset if units else None,
+                        agent_id=self.agent_id,
+                        confidence=_conf_val,
+                        reasoning=_reasoning,
+                    )
                 except Exception as e:
                     logger.debug("CodeApplication creation skipped: %s", e)
 
-        # Store facts — link to nuggets
         for fact_data in output.facts:
             fid = str(uuid.uuid4())
-            # Use explicit nugget_ids from skill output if provided, else link to
-            # the most recent nuggets (capped at 5 to avoid meaningless N-to-N mapping)
             linked_nuggets = fact_data.get("nugget_ids") or created_nugget_ids[-5:]
             fact = Fact(
                 id=fid,
@@ -806,11 +845,8 @@ class AgentResearchMixin:
             db.add(fact)
             created_fact_ids.append(fid)
 
-        # Store insights — link to facts
         for insight_data in output.insights:
             iid = str(uuid.uuid4())
-            # Use explicit fact_ids from skill output if provided, else link to
-            # the most recent facts (capped at 3 to avoid meaningless N-to-N mapping)
             linked_facts = insight_data.get("fact_ids") or created_fact_ids[-3:]
             insight = Insight(
                 id=iid,
@@ -825,11 +861,8 @@ class AgentResearchMixin:
             db.add(insight)
             created_insight_ids.append(iid)
 
-        # Store recommendations — link to insights
         for rec_data in output.recommendations:
             rid = str(uuid.uuid4())
-            # Use explicit insight_ids from skill output if provided, else link to
-            # the most recent insights (capped at 2 to avoid meaningless N-to-N mapping)
             linked_insights = rec_data.get("insight_ids") or created_insight_ids[-2:]
             rec = Recommendation(
                 id=rid,
@@ -845,9 +878,30 @@ class AgentResearchMixin:
             db.add(rec)
             created_recommendation_ids.append(rid)
 
+        total_visible_findings = (
+            len(created_nugget_ids)
+            + len(created_fact_ids)
+            + len(created_insight_ids)
+            + len(created_recommendation_ids)
+        )
+        if total_visible_findings and not created_evidence_unit_ids:
+            from app.services.research_validity_service import mark_task_provisional_skill_artifacts
+
+            mark_task_provisional_skill_artifacts(task)
+
         await db.commit()
-        # Findings are report-eligible only after human approval moves the task
-        # to Done. record_review_side_effects performs that routing.
+        if created_evidence_unit_ids:
+            try:
+                from app.services.research_validity_service import run_task_coding_run_and_mark_review
+                await run_task_coding_run_and_mark_review(
+                    db,
+                    task=task,
+                    project_id=project_id,
+                    evidence_unit_ids=created_evidence_unit_ids,
+                    created_by=task.agent_id or self.agent_id,
+                )
+            except Exception as e:
+                logger.debug("Governed coding run skipped: %s", e)
 
         # Broadcast finding_created events so the frontend updates in real-time
         total_findings = (
@@ -999,8 +1053,8 @@ class AgentResearchMixin:
                 f"({total} total)\n\n"
                 "Evaluate:\n"
                 "1. Does the output address the original task?\n"
-                "2. Are findings specific and evidence-based (not generic)?\n"
-                "3. Is the evidence chain complete (nuggets support facts support insights)?\n"
+                "2. Are candidate findings specific and source-grounded (not generic)?\n"
+                "3. Is the provisional chain internally linked without claiming acceptance?\n"
                 "4. Are there obvious hallucinations or unsupported claims?\n\n"
                 "Respond with EXACTLY one JSON object:\n"
                 '{"verified": true, "confidence": 0.85, "reason": "one sentence"}'
@@ -1063,8 +1117,10 @@ class AgentResearchMixin:
                     errors=[f"Project not found: {project_id}"],
                 )
 
+            task_id = str(uuid.uuid4())
             skill_input = SkillInput(
                 project_id=project_id,
+                task_id=task_id,
                 files=files or [],
                 parameters=parameters or {},
                 user_context=user_context,
@@ -1091,7 +1147,6 @@ class AgentResearchMixin:
                 # artifact indexing, and finding storage are valuable, but they
                 # must not poison the user-facing skill response if SQLite is
                 # briefly locked by another agent process.
-                task_id = str(uuid.uuid4())
                 task = Task(
                     id=task_id,
                     project_id=project_id,
@@ -1121,10 +1176,14 @@ class AgentResearchMixin:
                 except Exception as store_err:
                     logger.warning("Failed to store findings for %s: %s", skill_name, store_err)
 
+                learning_signal = learning_signal_for_research_output(
+                    execution_success=bool(output.success),
+                    verification_success=bool(verified),
+                )
                 skill_manager.record_execution(
                     skill_name,
-                    output.success,
-                    0.8 if output.success else 0.2,
+                    learning_signal.learning_success,
+                    learning_signal.research_quality_score,
                     project_id=project_id,
                 )
 

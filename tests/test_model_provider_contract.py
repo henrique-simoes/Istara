@@ -181,4 +181,7 @@ async def test_anthropic_node_uses_messages_api_and_normalizes_response(monkeypa
     assert client.path == "v1/messages"
     assert client.payload["model"] == "claude-sonnet-4-20250514"
     assert client.payload["max_tokens"] == 1024
-    assert result == {"message": {"role": "assistant", "content": "anthropic ok"}}
+    assert result["message"] == {"role": "assistant", "content": "anthropic ok"}
+    assert result["_istara_route"]["node_id"] == "anthropic"
+    assert result["_istara_route"]["model"] == "claude-sonnet-4-20250514"
+    assert result["_istara_route"]["outcome"] == "served"

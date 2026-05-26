@@ -1,6 +1,8 @@
 """Data transformation tests — RAG, context summarization, Prompt RAG, budget coordinator."""
 
 import pytest
+from unittest.mock import AsyncMock
+
 from app.config import settings
 
 
@@ -169,6 +171,131 @@ def test_prompt_compressor_preserves_protected_blocks_under_tight_budget():
     assert protected in compressed
 
 
+def test_prompt_compressor_never_truncates_qualitative_protocol_blocks():
+    from app.core.prompt_compressor import compress_prompt
+    from app.core.research_validity import build_qualitative_coding_prompt
+
+    protected = build_qualitative_coding_prompt(
+        evidence_units=[
+            {
+                "id": "eu-protected",
+                "source_text": "Inviting collaborators is the most confusing part.",
+            }
+        ],
+        codebook={"status": "frozen", "codes": [{"code_id": "collaboration-friction"}]},
+    )
+    filler = " ".join("This generic context may be reduced safely." for _ in range(100))
+
+    compressed = compress_prompt(f"# Method\n{protected}\n\n## Filler\n{filler}", max_chars=600)
+
+    assert "<qualitative_coding_protocol>" in compressed
+    assert "</qualitative_coding_protocol>" in compressed
+    assert "<codebook>" in compressed
+    assert "</codebook>" in compressed
+    assert "<evidence_units>" in compressed
+    assert "</evidence_units>" in compressed
+    assert "<reliability_policy>" in compressed
+    assert "</reliability_policy>" in compressed
+
+
+def test_question_aware_compression_preserves_protected_protocol_blocks():
+    from app.core.prompt_compressor import compress_with_question
+
+    protected = (
+        "<qualitative_coding_protocol>"
+        "Open-code each evidence unit as a phrase with inclusion and exclusion criteria."
+        "</qualitative_coding_protocol>"
+    )
+    filler = "\n".join(
+        f"Generic unrelated context line {idx} about scheduling and logistics."
+        for idx in range(80)
+    )
+
+    compressed = compress_with_question(
+        f"# Context\n{filler}\n\n# Method\n{protected}",
+        "What does the report say about billing invoices?",
+        target_ratio=0.08,
+    )
+
+    assert protected in compressed
+    assert "[[PROTECTED_" not in compressed
+
+
+def test_rag_chunk_compression_preserves_all_protected_blocks_in_order():
+    from app.core.prompt_compressor import compress_rag_chunks
+
+    protocol = (
+        "<qualitative_coding_protocol>"
+        "First protected methodology block."
+        "</qualitative_coding_protocol>"
+    )
+    policy = (
+        "<reliability_policy>"
+        "Second protected kappa threshold block."
+        "</reliability_policy>"
+    )
+    chunks = [
+        "Relevant ordinary chunk about interviews and report synthesis. " * 20,
+        protocol,
+        "Another ordinary chunk about interviews. " * 20,
+        policy,
+    ]
+
+    compressed_chunks, used_tokens = compress_rag_chunks(
+        chunks,
+        query="interviews report synthesis",
+        max_tokens=12,
+        surplus_level="constrained",
+    )
+    compressed = "\n".join(compressed_chunks)
+
+    assert used_tokens >= 12
+    assert protocol in compressed
+    assert policy in compressed
+    assert compressed.index(protocol) < compressed.index(policy)
+
+
+@pytest.mark.asyncio
+async def test_protected_compression_telemetry_is_content_free(monkeypatch):
+    from app.core.prompt_compressor import (
+        compress_rag_chunks,
+        record_protected_compression_telemetry,
+    )
+
+    protected = (
+        "<reliability_policy>"
+        "Default kappa threshold is protected."
+        "</reliability_policy>"
+    )
+    chunks = [protected, "Ordinary interview context. " * 20]
+    compressed_chunks, _ = compress_rag_chunks(
+        chunks,
+        query="interview reliability",
+        max_tokens=12,
+        surplus_level="constrained",
+    )
+    record = AsyncMock()
+    monkeypatch.setattr(
+        "app.core.telemetry.telemetry_recorder.record_research_validity_event",
+        record,
+    )
+
+    await record_protected_compression_telemetry(
+        project_id="proj-compression-telemetry",
+        original_chunks=chunks,
+        compressed_chunks=compressed_chunks,
+    )
+
+    record.assert_awaited_once()
+    _, kwargs = record.await_args
+    assert kwargs["operation"] == "compression.protected_block"
+    assert kwargs["project_id"] == "proj-compression-telemetry"
+    assert kwargs["retrieval_mode"] == "compressed-rag"
+    assert "prompt" not in kwargs
+    assert "source_text" not in kwargs
+    assert "Default kappa" not in str(kwargs)
+
+
 def test_prompt_rag_keyword_prompt_does_not_select_zero_overlap_core_sections(tmp_path):
     from app.core.prompt_rag import compose_keyword_prompt
 
@@ -207,6 +334,56 @@ def test_prompt_rag_keyword_prompt_does_not_select_zero_overlap_core_sections(tm
     assert "You are Eval Agent" in prompt
     assert "Usability Interview Planning" in prompt
     assert "Irrelevant Billing Protocol" not in prompt
+    assert "<promotion_gate>" in prompt
+    assert "supporting context only" in prompt
+
+
+@pytest.mark.asyncio
+async def test_prompt_rag_records_content_free_context_telemetry(tmp_path, monkeypatch):
+    from app.core.prompt_rag import compose_dynamic_prompt
+
+    original_runtime_personas = settings.runtime_personas_dir
+    settings.runtime_personas_dir = str(tmp_path)
+    agent_id = "telemetry-agent"
+    persona_dir = tmp_path / agent_id
+    persona_dir.mkdir()
+    record = AsyncMock()
+    monkeypatch.setattr(
+        "app.core.telemetry.telemetry_recorder.record_research_validity_event",
+        record,
+    )
+
+    try:
+        (persona_dir / "CORE.md").write_text(
+            "# Telemetry Agent\n\n"
+            "## Identity\n"
+            "You are a research assistant.\n\n"
+            "## Interview Analysis\n"
+            "Plan interviews, synthesize coded evidence, and respect review gates.\n",
+            encoding="utf-8",
+        )
+
+        prompt = await compose_dynamic_prompt(
+            agent_id,
+            "interview evidence review",
+            max_tokens=600,
+            use_embeddings=False,
+            project_id="proj-prompt-rag-telemetry",
+        )
+    finally:
+        settings.runtime_personas_dir = original_runtime_personas
+
+    assert "Telemetry Agent" in prompt
+    assert "<promotion_gate>" in prompt
+    assert "not report evidence" in prompt
+    record.assert_awaited_once()
+    _, kwargs = record.await_args
+    assert kwargs["operation"] == "prompt_rag.context"
+    assert kwargs["project_id"] == "proj-prompt-rag-telemetry"
+    assert kwargs["agent_id"] == agent_id
+    assert kwargs["retrieval_mode"] == "prompt-rag-keyword"
+    assert "query" not in kwargs
+    assert "prompt" not in kwargs
 
 
 def test_prompt_rag_keyword_similarity_prioritizes_interview_domains():
@@ -238,3 +415,16 @@ def test_prompt_rag_keyword_similarity_prioritizes_interview_domains():
         query_tokens,
         generic_section,
     )
+
+
+def test_rag_augmented_prompt_marks_retrieved_context_as_non_report_evidence():
+    from app.core.rag import build_augmented_prompt
+
+    prompt = build_augmented_prompt(
+        "What did participants say?",
+        "Participant quote about confusing invites.",
+    )
+
+    assert "<promotion_gate>" in prompt
+    assert "not accepted Atomic Research artifacts" in prompt
+    assert "Use them only as supporting source context" in prompt

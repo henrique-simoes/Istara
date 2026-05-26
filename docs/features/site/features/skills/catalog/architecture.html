@@ -264,8 +264,15 @@
 <li>Skill execution and planning require an active, unpaused project before the agent is invoked, so paused projects cannot trigger LLM/skill work through the catalog surface.</li>
 <li>Simulation skill catalog checks keep the global <code>/api/skills</code> definition list unchanged, but every skill health or proposal request in the harness includes the active simulation project id.</li>
 <li>When the simulation runner has deliberately entered maintenance mode, live skill execution checks record the backend&#x27;s 409 deferral as expected test isolation instead of treating paused agent/LLM operations as product failure.</li>
-<li>Scenario 20 verifies registration and fixture coverage for the full skill catalog, then executes a deterministic bounded live subset by default; set <code>ISTARA_SCENARIO20_SKILL_LIMIT</code> to the current catalog size for a deliberate full live sweep.</li>
+<li>Scenario 20 verifies registration and canonical coverage for the full skill catalog, then executes 3 skills by default. With live LLM execution available, the scenario can ask Istara to choose a coherent 3-skill plan from the registered catalog and canonical skill-coverage map; otherwise it uses seeded logical random selection. Set <code>ISTARA_SCENARIO20_SKILL_LIMIT</code> to the current catalog size for a deliberate full live sweep.</li>
 <li><code>tests/document_corpus/canonical/skill-coverage-map.json</code> maps the canonical UX research corpus to the current skill catalog so document-heavy skill tests can choose representative research material instead of inventing tiny one-off documents.</li>
+<li>Skill execution outputs are candidate/provisional Research Spine artifacts by default. A skill may propose nuggets, facts, insights, and recommendations, but those visible artifacts remain blocked from Reports until exact source spans, governed coding, reliability/reconciliation, and a human-approved Done task make them accepted evidence.</li>
+<li>Skill health separates tool execution from research validity. Memento Skills receive strong positive learning only when a skill output is verified or otherwise accepted by the Research Spine; ReAct/manual skill success without verification is recorded as provisional and does not boost skill quality.</li>
+<li>ReasoningBank may store traces from skills, but provisional traces are process memory only and are not positive report-evidence or skill-routing proof. Model quality boosts also use project-scoped <code>ModelSkillStats</code> rows.</li>
+<li>The <code>/skills/{name}/execute</code> response includes <code>artifact_state</code>, <code>report_allowed</code>, and <code>research_validity</code> so UI, benchmark, and agent callers cannot treat artifact counts as accepted/reportable output.</li>
+<li>ReAct/chat access to finding search also carries accepted/provisional/reportable status, so skills and agents that inspect prior research cannot silently consume provisional artifacts as trusted findings.</li>
+<li>Skill execution simulations assert the same response contract and record candidate artifact counts separately from accepted findings.</li>
+<li>Generated skills are prompted to propose candidate evidence and candidate synthesis only; they must not describe their own output as accepted, trusted, or reportable.</li>
 <li>The frontmatter and manifest entries are the durable contract for agents updating this page after code changes.</li>
 <li>When the referenced component, store, route, agent, skill, or test behavior changes, regenerate and validate the feature documentation.</li>
 </ul>
@@ -298,7 +305,7 @@
 </ul>
 <h2 id="compass-evidence">Compass Evidence</h2>
 <ul>
-<li>Spec/task: CF-SPEC-53 / CF-657; CF-SPEC-68 / CF-870; CF-SPEC-104 / CF-1309; CF-SPEC-116; CF-SPEC-123 / CF-1581</li>
+<li>Spec/task: CF-SPEC-53 / CF-657; CF-SPEC-68 / CF-870; CF-SPEC-104 / CF-1309; CF-SPEC-116; CF-SPEC-123 / CF-1581; CF-SPEC-129</li>
 <li>Inventory source: <code>docs/features/inventory.json</code></li>
 </ul>
 <h2 id="when-to-update">When To Update</h2>

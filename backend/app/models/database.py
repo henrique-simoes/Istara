@@ -118,6 +118,7 @@ async def init_db() -> None:
         "app.models.autoresearch_experiment",
         "app.models.codebook_version",
         "app.models.code_application",
+        "app.models.research_validity",
         "app.models.connection_string",
         "app.models.reasoning_memory",
         "app.models.improvement_governance",
@@ -231,6 +232,51 @@ async def init_db() -> None:
             "NOT NULL DEFAULT ''",
             "ALTER TABLE webauthn_credentials ADD COLUMN last_used_user_agent VARCHAR(512) "
             "NOT NULL DEFAULT ''",
+            # Research-validity architecture: evidence units, coding runs, route evidence.
+            "ALTER TABLE evidence_units ADD COLUMN task_id VARCHAR(36)",
+            "CREATE INDEX IF NOT EXISTS ix_evidence_units_task_id "
+            "ON evidence_units(task_id)",
+            "ALTER TABLE coding_runs ADD COLUMN task_id VARCHAR(36)",
+            "CREATE INDEX IF NOT EXISTS ix_coding_runs_task_id "
+            "ON coding_runs(task_id)",
+            "ALTER TABLE research_evidence_edges ADD COLUMN task_id VARCHAR(36)",
+            "CREATE INDEX IF NOT EXISTS ix_research_evidence_edges_task_id "
+            "ON research_evidence_edges(task_id)",
+            "ALTER TABLE code_applications ADD COLUMN evidence_unit_id VARCHAR(36)",
+            "CREATE INDEX IF NOT EXISTS ix_code_applications_evidence_unit_id "
+            "ON code_applications(evidence_unit_id)",
+            "ALTER TABLE code_applications ADD COLUMN coding_run_id VARCHAR(36)",
+            "CREATE INDEX IF NOT EXISTS ix_code_applications_coding_run_id "
+            "ON code_applications(coding_run_id)",
+            "ALTER TABLE code_applications ADD COLUMN task_id VARCHAR(36)",
+            "CREATE INDEX IF NOT EXISTS ix_code_applications_task_id "
+            "ON code_applications(task_id)",
+            "ALTER TABLE code_applications ADD COLUMN start_offset INTEGER",
+            "ALTER TABLE code_applications ADD COLUMN end_offset INTEGER",
+            "ALTER TABLE code_applications ADD COLUMN model_name VARCHAR(200) NOT NULL DEFAULT ''",
+            "ALTER TABLE code_applications ADD COLUMN donor_id VARCHAR(120) NOT NULL DEFAULT ''",
+            "ALTER TABLE code_applications ADD COLUMN route_id VARCHAR(120) NOT NULL DEFAULT ''",
+            "ALTER TABLE code_applications ADD COLUMN route_evidence_json TEXT NOT NULL DEFAULT '{}'",
+            "ALTER TABLE code_applications ADD COLUMN reliability_status VARCHAR(40) "
+            "NOT NULL DEFAULT 'unknown'",
+            "ALTER TABLE code_applications ADD COLUMN reconciliation_status VARCHAR(40) "
+            "NOT NULL DEFAULT 'unreconciled'",
+            "ALTER TABLE code_applications ADD COLUMN promotion_status VARCHAR(40) "
+            "NOT NULL DEFAULT 'blocked'",
+            # Telemetry stays content-free but now carries research-validity audit handles.
+            "ALTER TABLE telemetry_spans ADD COLUMN event_kind VARCHAR(80) NOT NULL DEFAULT ''",
+            "ALTER TABLE telemetry_spans ADD COLUMN route_id VARCHAR(120) NOT NULL DEFAULT ''",
+            "ALTER TABLE telemetry_spans ADD COLUMN donor_id VARCHAR(120) NOT NULL DEFAULT ''",
+            "ALTER TABLE telemetry_spans ADD COLUMN retrieval_mode VARCHAR(40) NOT NULL DEFAULT ''",
+            "ALTER TABLE telemetry_spans ADD COLUMN coding_run_id VARCHAR(36) NOT NULL DEFAULT ''",
+            "ALTER TABLE telemetry_spans ADD COLUMN evidence_unit_id VARCHAR(36) NOT NULL DEFAULT ''",
+            "ALTER TABLE telemetry_spans ADD COLUMN codebook_version_id VARCHAR(36) NOT NULL DEFAULT ''",
+            "ALTER TABLE telemetry_spans ADD COLUMN reliability_score FLOAT",
+            # Project-scoped model/skill learning. Global stats must not steer
+            # another project's research process.
+            "ALTER TABLE model_skill_stats ADD COLUMN project_id VARCHAR(36) NOT NULL DEFAULT ''",
+            "CREATE INDEX IF NOT EXISTS ix_model_skill_stats_project_id "
+            "ON model_skill_stats(project_id)",
         ]
         for ddl in migrations:
             try:
@@ -289,3 +335,17 @@ async def init_db() -> None:
             )
         except Exception:
             pass  # Table already exists
+
+        for table_name in (
+            "evidence_units",
+            "coding_runs",
+            "coding_run_coders",
+            "research_evidence_edges",
+            "reconciliation_decisions",
+        ):
+            try:
+                await conn.run_sync(
+                    lambda c, name=table_name: Base.metadata.tables[name].create(c, checkfirst=True)
+                )
+            except Exception:
+                pass  # Table already exists

@@ -110,6 +110,7 @@ def register_builtin_hooks() -> None:
             temperature=context.get("temperature", 0.7),
             quality=quality or 0.5,
             success=success,
+            project_id=context.get("project_id", ""),
         )
 
     async def _post_validation_hook(context: dict) -> None:

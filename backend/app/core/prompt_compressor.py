@@ -76,6 +76,54 @@ def _restore_regions(text: str, protected_map: dict[str, str]) -> str:
     return result
 
 
+def _has_protected_placeholder(text: str) -> bool:
+    """Return true when a protected block placeholder is present."""
+    return bool(PROTECTED_PLACEHOLDER_RE.search(text))
+
+
+def _trim_preserving_protected_blocks(text: str, max_chars: int) -> str:
+    """Trim only when protected research/method blocks will remain whole.
+
+    Mandatory coding protocols, codebooks, reliability policies, route evidence,
+    and graph/evidence schemas are correctness inputs, not optional context.
+    Returning an over-budget prompt is safer than silently truncating one of
+    those blocks and letting downstream models code against a damaged protocol.
+    """
+    marker = "\n\n[...compressed for context budget; protected blocks preserved]"
+    overflow_marker = (
+        "\n\n[...context budget exceeded to preserve protected research-validity blocks]"
+    )
+    protected_blocks = get_protected_blocks(text)
+    if not protected_blocks or len(text) <= max_chars:
+        return text
+
+    protected_chars = sum(end - start for start, end, _ in protected_blocks)
+    if protected_chars >= max_chars:
+        return "\n\n".join(content for _, _, content in protected_blocks) + overflow_marker
+
+    plain_budget = max(max_chars - protected_chars - len(marker), 0)
+    remaining_plain = plain_budget
+    pieces: list[str] = []
+    cursor = 0
+
+    for start, end, content in protected_blocks:
+        plain_segment = text[cursor:start]
+        if remaining_plain > 0 and plain_segment:
+            take = min(len(plain_segment), remaining_plain)
+            pieces.append(plain_segment[:take])
+            remaining_plain -= take
+        pieces.append(content)
+        cursor = end
+
+    if remaining_plain > 0 and cursor < len(text):
+        pieces.append(text[cursor : cursor + remaining_plain])
+
+    trimmed = "".join(pieces).rstrip()
+    if not trimmed:
+        return "\n\n".join(content for _, _, content in protected_blocks) + overflow_marker
+    return trimmed + marker
+
+
 # ---------------------------------------------------------------------------
 # Filler words and patterns that can be safely removed
 # ---------------------------------------------------------------------------
@@ -537,16 +585,10 @@ def compress_prompt(
     # Restore protected regions after compression
     result = _restore_regions(result, protected_map)
 
-    # Final trim if still over budget
+    # Final trim if still over budget. Never cut through protected research
+    # blocks after restoration; those blocks define the coding contract.
     if len(result) > max_chars:
-        result = result[:max_chars]
-        # Try to end at a sentence boundary
-        last_period = result.rfind(".")
-        last_newline = result.rfind("\n")
-        cut = max(last_period, last_newline)
-        if cut > max_chars * 0.8:
-            result = result[: cut + 1]
-        result += "\n\n[...compressed for context budget]"
+        result = _trim_preserving_protected_blocks(result, max_chars)
 
     return result
 
@@ -609,6 +651,8 @@ def _sentence_level_compress(text: str, target_len: int) -> str:
         # Headers are always important
         if sent.strip().startswith("#"):
             score = 1.0
+        if _has_protected_placeholder(sent):
+            score = 1.0
 
         scored.append((score, orig_idx, sent))
 
@@ -659,6 +703,10 @@ def _word_level_compress(text: str, target_len: int) -> str:
     max_skip = len(words) - min_keep
 
     for word in words:
+        if _has_protected_placeholder(word):
+            result_words.append(word)
+            current_len += len(word) + 1
+            continue
         clean = word.strip(".,;:!?()[]{}\"'")
         importance = _word_importance(clean) if clean else 0.3
 
@@ -738,14 +786,16 @@ def compress_with_question(
     original_len = len(text)
     target_len = int(original_len * target_ratio)
 
+    working_text, protected_map = _protect_regions(text)
+
     # Phase 1: Structural compression
-    result = _structural_compress(text)
+    result = _structural_compress(working_text)
 
     # Phase 2: Redundant qualifiers (but preserve query-relevant phrases)
     result = _remove_redundant_qualifiers(result)
 
     if len(result) <= target_len:
-        return result
+        return _restore_regions(result, protected_map)
 
     # Phase 3: Question-aware sentence compression
     lines = result.split("\n")
@@ -755,7 +805,7 @@ def compress_with_question(
             sentences.append((i, line))
 
     if not sentences:
-        return text
+        return _restore_regions(result, protected_map)
 
     # Score each sentence by question relevance
     total = len(sentences)
@@ -773,6 +823,8 @@ def compress_with_question(
 
         # Headers are always important
         if sent.strip().startswith("#"):
+            score = 1.0
+        if _has_protected_placeholder(sent):
             score = 1.0
 
         scored.append((score, orig_idx, sent))
@@ -811,6 +863,9 @@ def compress_with_question(
         max_skip = len(words) - min_keep_words
 
         for word in words:
+            if _has_protected_placeholder(word):
+                kept.append(word)
+                continue
             clean = word.strip(".,;:!?()[]{}\"'")
             importance = _question_token_importance(clean, query_tokens) if clean else 0.3
             if importance >= 0.3 or skipped >= max_skip:
@@ -820,6 +875,9 @@ def compress_with_question(
 
         result = " ".join(kept)
 
+    result = _restore_regions(result, protected_map)
+    if len(result) > target_len:
+        result = _trim_preserving_protected_blocks(result, target_len)
     return result
 
 
@@ -852,29 +910,47 @@ def compress_rag_chunks(
     max_chars = max_tokens * 4
     query_tokens = set(re.findall(r"\b\w{3,}\b", query.lower()))
 
-    # Score chunks by question relevance
-    scored_chunks: list[tuple[float, str]] = []
-    for chunk in chunks:
+    # Score chunks by question relevance. Protected chunks stay pinned in their
+    # original order so compression never reorders methodology/codebook/gate
+    # blocks relative to one another.
+    protected_chunks: list[str] = []
+    scored_chunks: list[tuple[float, int, str]] = []
+    for original_index, chunk in enumerate(chunks):
+        if get_protected_blocks(chunk):
+            protected_chunks.append(chunk)
+            continue
         chunk_tokens = set(re.findall(r"\b\w{3,}\b", chunk.lower()))
         if not chunk_tokens or not query_tokens:
-            scored_chunks.append((0.0, chunk))
+            scored_chunks.append((0.0, original_index, chunk))
             continue
         overlap = query_tokens & chunk_tokens
         score = len(overlap) / max(len(query_tokens), 1)
-        scored_chunks.append((score, chunk))
+        scored_chunks.append((score, original_index, chunk))
 
     # Sort by relevance descending
-    scored_chunks.sort(key=lambda x: x[0], reverse=True)
+    scored_chunks.sort(key=lambda x: (-x[0], x[1]))
 
     # Apply differentiated compression based on surplus level
     result_chunks: list[str] = []
     used_chars = 0
 
-    for rank, (score, chunk) in enumerate(scored_chunks):
-        if used_chars >= max_chars:
+    chunks_to_process: list[tuple[float, str, bool]] = [
+        (1.0, chunk, True) for chunk in protected_chunks
+    ]
+    chunks_to_process.extend((score, chunk, False) for score, _, chunk in scored_chunks)
+
+    for rank, (_score, chunk, is_protected_chunk) in enumerate(chunks_to_process):
+        if used_chars >= max_chars and not is_protected_chunk:
             break
 
         remaining = max_chars - used_chars
+        if is_protected_chunk:
+            compressed = chunk
+            if len(compressed) > remaining:
+                compressed = _trim_preserving_protected_blocks(compressed, remaining)
+            result_chunks.append(compressed)
+            used_chars += len(compressed)
+            continue
 
         # Most relevant chunk gets least compression
         if rank == 0:
@@ -904,13 +980,43 @@ def compress_rag_chunks(
 
         # Ensure it fits
         if len(compressed) > remaining:
-            compressed = compressed[:remaining]
-            last_period = compressed.rfind(".")
-            if last_period > remaining * 0.7:
-                compressed = compressed[: last_period + 1]
+            compressed = _trim_preserving_protected_blocks(compressed, remaining)
 
         if compressed.strip():
             result_chunks.append(compressed)
             used_chars += len(compressed)
 
     return result_chunks, used_chars // 4
+
+
+async def record_protected_compression_telemetry(
+    *,
+    project_id: str,
+    original_chunks: list[str],
+    compressed_chunks: list[str],
+    retrieval_mode: str = "compressed-rag",
+) -> None:
+    """Record content-free telemetry when compression handles protected blocks."""
+    protected_count = sum(len(get_protected_blocks(chunk)) for chunk in original_chunks)
+    if not project_id or protected_count <= 0:
+        return
+    try:
+        from app.core.telemetry import telemetry_recorder
+
+        retained_protected_count = sum(
+            len(get_protected_blocks(chunk)) for chunk in compressed_chunks
+        )
+        await telemetry_recorder.record_research_validity_event(
+            operation="compression.protected_block",
+            project_id=project_id,
+            retrieval_mode=retrieval_mode,
+            status="success" if retained_protected_count >= protected_count else "degraded",
+            quality_score=min(1.0, retained_protected_count / protected_count),
+            error_type=(
+                None
+                if retained_protected_count >= protected_count
+                else "protected_block_count_changed"
+            ),
+        )
+    except Exception as e:
+        logger.debug("Compression telemetry skipped: %s", e)

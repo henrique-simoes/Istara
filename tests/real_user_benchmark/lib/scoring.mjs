@@ -50,7 +50,16 @@ export function scoreRun({ mode, metrics, integrationMatrix = [], blockers = [],
     tasks: featureResults.taskReviewLoop && completedTasks >= 50 ? 1 : featureResults.taskReviewLoop && completedTasks >= 8 ? 0.55 : completedTasks > 0 ? 0.3 : 0.1,
     reports_findings: featureResults.approvedTaskFindings && featureResults.reportGenerated ? 1 : featureResults.findingsCreated || featureResults.reportGenerated ? 0.75 : 0.25,
     integrations: avgIntegration,
-    loops_autoresearch: featureResults.loops ? 0.65 : 0.2,
+    loops_autoresearch: featureResults.selfImprovementGovernance
+      && featureResults.telemetryEvidence
+      && featureResults.autoresearchEvidence
+      ? 1
+      : featureResults.selfImprovementGovernance
+        || featureResults.reasoningBankEvidence
+        || featureResults.metaHyperagentEvidence
+        || featureResults.loops
+          ? 0.65
+          : 0.2,
     url_fetching: featureResults.urlFetch ? 0.7 : 0.2,
     interfaces: featureResults.interfaces ? 0.85 : 0.2,
     stability_performance: blockers.length === 0 ? 0.85 : blockers.length < 4 ? 0.55 : 0.25,
@@ -92,6 +101,15 @@ export function scoreRun({ mode, metrics, integrationMatrix = [], blockers = [],
     task_review_loop_verified: Boolean(featureResults.taskReviewLoop),
     approved_task_findings_verified: Boolean(featureResults.approvedTaskFindings),
     interview_process_verified: Boolean(featureResults.interviewProcess),
+    coding_validation_verified: Boolean(featureResults.codingValidation),
+    research_spine_traceability_verified: Boolean(featureResults.researchSpineTraceability),
+    telemetry_evidence_verified: Boolean(featureResults.telemetryEvidence),
+    reasoning_bank_evidence_verified: Boolean(featureResults.reasoningBankEvidence),
+    memento_skill_evidence_verified: Boolean(featureResults.mementoSkillEvidence),
+    meta_hyperagent_evidence_verified: Boolean(featureResults.metaHyperagentEvidence),
+    self_improvement_governance_verified: Boolean(featureResults.selfImprovementGovernance),
+    autoresearch_evidence_verified: Boolean(featureResults.autoresearchEvidence),
+    rag_traceability_evidence_verified: Boolean(featureResults.ragTraceabilityEvidence),
     compute_donor_count_requested: sandbox.relayExpectedCount || 0,
     compute_donor_count_started: sandbox.relayStartedCount || 0,
     donor_model_server_count_requested: sandbox.modelServerExpectedCount || 0,

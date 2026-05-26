@@ -193,12 +193,20 @@ def check_simulation_runner(issues: list[str]) -> None:
     for snippet in (
         "ISTARA_SCENARIO20_SKILL_LIMIT",
         "ISTARA_SCENARIO20_SKILL_SEED",
+        "ISTARA_SCENARIO20_DEFAULT_SKILL_LIMIT",
+        "ISTARA_SCENARIO20_AGENTIC_SELECTION",
+        "llm-agentic",
+        "seeded-logical-random",
         "Scenario 20 skill selection",
     ):
         if snippet not in scenario20:
             issues.append(
                 f"tests/simulation/scenarios/20-all-skills-comprehensive.mjs: missing `{snippet}`"
             )
+    if 'positiveIntegerEnv("ISTARA_SCENARIO20_DEFAULT_SKILL_LIMIT", 3)' not in scenario20:
+        issues.append(
+            "tests/simulation/scenarios/20-all-skills-comprehensive.mjs: default live subset must be 3 skills"
+        )
     for snippet in ("setAuthToken", "authHeaders", "ISTARA_TEST_AUTH_TOKEN"):
         if snippet not in client:
             issues.append(f"tests/simulation/lib/api-client.mjs: missing `{snippet}`")
@@ -254,6 +262,37 @@ def check_project_scope_harness(issues: list[str]) -> None:
         issues.append("tests/simulation/lib/project-selection.mjs: missing paused project helper")
     if "requireActiveProjectId" not in selection:
         issues.append("tests/simulation/lib/project-selection.mjs: missing explicit project_id helper")
+
+
+def check_clean_test_environment_contract(issues: list[str]) -> None:
+    reset_script = read("scripts/reset_test_environment.py")
+    e2e = read("tests/e2e_test.py")
+    benchmark = read("tests/real_user_benchmark/run.mjs")
+    benchmark_client = read("tests/real_user_benchmark/lib/api-client.mjs")
+    marathon = read("scripts/marathon/run-cycle.mjs")
+
+    for snippet in (
+        "ISTARA_DESTRUCTIVE_TEST_RESET",
+        "DELETE-ISTARA-LOCAL-TEST-DATA",
+        "sqlite+aiosqlite:///",
+        "LLMs",
+        "Model_Finetuning",
+        "projects=0",
+    ):
+        if snippet not in reset_script:
+            issues.append(f"scripts/reset_test_environment.py: missing `{snippet}`")
+    if "CANONICAL_MANIFEST" not in e2e or "tests/fixtures" in e2e:
+        issues.append("tests/e2e_test.py: product-level E2E must use the canonical corpus")
+    for label, source in (
+        ("tests/e2e_test.py", e2e),
+        ("scripts/marathon/run-cycle.mjs", marathon),
+        ("tests/real_user_benchmark/lib/api-client.mjs", benchmark_client),
+        ("tests/real_user_benchmark/run.mjs", benchmark),
+    ):
+        if "istara123" not in source:
+            issues.append(f"{label}: missing reset test credential contract")
+    if "`researcher_${index + 1}`" not in benchmark:
+        issues.append("tests/real_user_benchmark/run.mjs: researcher client usernames must be researcher_N by default")
 
 
 def check_marathon_config_integrity(issues: list[str]) -> None:
@@ -399,6 +438,7 @@ def main() -> int:
     check_llm_profiles(issues)
     check_simulation_runner(issues)
     check_project_scope_harness(issues)
+    check_clean_test_environment_contract(issues)
     check_marathon_config_integrity(issues)
     check_js_static_harness(issues)
     check_agentic_eval_contract(issues)

@@ -17,6 +17,60 @@ UI/menu/route/store/agent/skill/model/test behavior changes must update Istara's
 Do not silently mutate external repos, global agent config, or generated integration files.
 <!-- compass-forge:end -->
 
+## Istara Research Spine Contract
+
+Istara is a research system. Every product feature that ingests, creates,
+processes, retrieves, summarizes, validates, visualizes, routes, promotes, or
+reports user research data is an extension of the same research-validity spine:
+
+`Sources -> Evidence Units -> Independent Multi-Model Atomic Extraction + Open Coding -> Reliability + Grounding -> Reconciliation -> Accepted Atoms/Nuggets -> Facts -> Insights -> Recommendations -> In Review -> Human-Approved Done -> Reports`.
+
+Atomic Research is not a pre-validation summary layer. Bias reduction happens
+before trust: model output can create candidate/provisional artifacts, but no
+feature may treat nuggets, facts, insights, recommendations, design decisions,
+tasks, or reports as reportable until the source-grounded coding, reliability,
+reconciliation, and Done-task gates have accepted them. Evidence units come
+from raw source spans, not synthesized nugget prose, unless exact source spans
+are preserved and the artifact remains provisional until validated.
+
+This spine is not optional and not limited to Findings, Tasks, or Reports. It
+applies to skills, task creation and execution, ReAct/tool calls, chat,
+documents, interviews, surveys, AURA-style research, integrations, deployments,
+interfaces, autoresearch, self-evolution, RAG/GraphRAG, compute donation,
+benchmarks, simulations, and any future feature that touches research data.
+
+Before changing any feature, use Compass Forge impact output as a starting map,
+then follow dependencies and feature relationships until you know whether the
+change touches the research spine. If it does, the feature must enter or respect
+the pipeline in `docs/architecture/research-validity-contract.md`. Do not treat
+parallel data paths, raw finding creation, synthetic benchmark shortcuts, or
+feature-specific objectives as acceptable substitutes for the spine unless the
+path is explicitly unit-scoped, non-research, or documented as a governed
+exception.
+
+If a feature currently bypasses the spine, classify it as architecture debt and
+either fix it in scope or report it explicitly. Never describe the system as
+fully aligned while any research-data path bypasses evidence units, coding,
+reliability, reconciliation, human review, route evidence, or Done/report gates.
+
+## Self-Improvement Governance Contract
+
+Self-improvement exists only to improve the Research Spine. Telemetry observes,
+ReasoningBank stores process lessons, Memento Skills stores validated skill
+memory, Autoresearch runs sandboxed experiments, Meta-Hyperagent proposes
+project-scoped variants, and Self-Evolution applies only governed promotions.
+RAG/BM25 retrieves exact evidence, GraphRAG synthesizes and traces
+dependencies, Prompt-RAG adds supporting context, and LLMLingua compresses only
+when protected protocol/codebook/gate/schema blocks remain intact.
+
+None of these systems may create report evidence, silently rewrite protected
+methodology, weaken authorization, mutate global process state from
+project-scoped evidence, or learn strong positive skill/model signals from raw
+tool success. If a self-improvement path touches research data or process
+policy, it must preserve project scope, route/evidence handles, verification
+state, governance status, and Research Spine gate status. The durable contract
+is `docs/architecture/self-improvement-governance-contract.md`.
+
 ## Security Benchmark Gate
 
 Auth, authorization, session, WebAuthn, connection string, pooled compute, MCP, webhook, LLM-provider, autoresearch, self-evolution, and agentic-memory changes must run the tracked security benchmark:

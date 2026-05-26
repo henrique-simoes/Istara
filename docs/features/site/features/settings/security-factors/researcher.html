@@ -241,7 +241,7 @@
   <p class="concept-line"><strong>Concepts:</strong> webauthn, totp</p>
 </header>
 <h2 id="what-it-does">What It Does</h2>
-<p>Settings includes passkey and TOTP management for strengthening account authentication.</p>
+<p>Settings includes account profile/password controls, recovery-code regeneration, passkey management, and TOTP management for strengthening account authentication.</p>
 <h2 id="why-it-exists">Why It Exists</h2>
 <p>Passkeys And Two-Factor Authentication exists so the work represented by Settings &gt; Security Factors has a stable, discoverable place in Istara&#x27;s project workflow. It keeps user actions, generated artifacts, and related follow-up surfaces connected to the active project rather than scattering them across unrelated tools.</p>
 <h2 id="where-it-lives">Where It Lives</h2>
@@ -253,7 +253,7 @@
 <h2 id="how-ux-researchers-use-it">How UX Researchers Use It</h2>
 <ul>
 <li>Open Settings &gt; Security Factors from the Istara navigation or the parent tab.</li>
-<li>Use the visible controls in this surface to work with passkeys and two-factor authentication in the active project context.</li>
+<li>Use the visible controls to update username/profile/password, regenerate recovery codes, register passkeys, and enable or disable TOTP.</li>
 <li>Review the output in the same view and follow the related feature links when the workflow moves into another Istara surface.</li>
 </ul>
 <h2 id="supported-workflows">Supported Workflows</h2>
@@ -264,13 +264,15 @@
 </ul>
 <h2 id="inputs-outputs-and-expected-outcomes">Inputs, Outputs, And Expected Outcomes</h2>
 <ul>
-<li>Project-scoped state or artifact updates associated with passkeys and two-factor authentication.</li>
+<li>Account security state associated with username/profile, password, recovery codes, passkeys, TOTP, and active sessions.</li>
 <li>Visible status, lists, forms, generated artifacts, or review results shown by the referenced component and routes.</li>
 </ul>
 <h2 id="caveats">Caveats</h2>
 <ul>
 <li>Needs interactive verification for exact empty, loading, error, and permission-denied states.</li>
 <li>Do not expand this documentation beyond the cited source files without adding new code or walkthrough evidence.</li>
+<li>Recovery codes are shown once. Save them offline before leaving the screen.</li>
+<li>Current 2FA options are TOTP plus recovery codes. Passkeys are passwordless sign-in credentials, not SMS or email OTP.</li>
 </ul>
 <h2 id="related-features">Related Features</h2>
 <ul>
@@ -284,9 +286,9 @@
 </ul>
 <h2 id="evidence">Evidence</h2>
 <ul>
-<li>Source files: <code>frontend/src/components/settings/PasskeyManager.tsx</code>, <code>frontend/src/components/settings/TOTPManager.tsx</code>, <code>backend/app/api/routes/webauthn.py</code>, <code>backend/app/core/recovery_codes.py</code></li>
+<li>Source files: <code>frontend/src/components/settings/AccountSecurityManager.tsx</code>, <code>frontend/src/components/settings/PasskeyManager.tsx</code>, <code>frontend/src/components/settings/TOTPManager.tsx</code>, <code>backend/app/api/routes/webauthn.py</code>, <code>backend/app/api/routes/auth.py</code>, <code>backend/app/core/recovery_codes.py</code></li>
 <li>API references: <code>backend/app/api/routes/webauthn.py</code>, <code>backend/app/api/routes/auth.py</code></li>
-<li>Tests: none recorded</li>
+<li>Tests: <code>tests/test_auth_security.py</code></li>
 </ul>
         </article>
         <aside class="toc-panel" aria-label="Page sections">

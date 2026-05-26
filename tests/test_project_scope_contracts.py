@@ -223,7 +223,10 @@ def test_research_integrity_by_id_routes_require_active_project_scope() -> None:
     assert "CodeApplication.project_id == scoped_project_id" in code_apps_route
     assert "await require_project_access(db, request, scoped_project_id, min_role=\"researcher\")" in code_apps_route
 
-    assert "review: (applicationId: string, reviewStatus: string, projectId: string" in api
+    assert "review: (" in api
+    assert "applicationId: string" in api
+    assert "reviewStatus: string" in api
+    assert "projectId: string" in api
     assert "/api/code-applications/${applicationId}/review?project_id=${encodeURIComponent(projectId)}" in api
     assert "codeAppApi.review(applicationId, status, projectId)" in review_queue
     assert "}, [projectId]);" in review_queue
@@ -479,7 +482,8 @@ def test_findings_search_and_lists_require_active_project_scope() -> None:
 
     drilldown = read_repo("frontend/src/components/findings/AtomicDrilldown.tsx")
     timeline = read_repo("frontend/src/components/agents/AgentTimeline.tsx")
-    assert all(marker in drilldown for marker in ("findingsApi.evidenceChain(type, id, projectId)", "findingsApi.linkEvidence(activeFinding.type, activeFinding.id, linkId, linkInfo.linkType, projectId)"))
+    drilldown_markers = ("findingsApi.evidenceChain(type, id, projectId)", "findingsApi.linkEvidence(activeFinding.type, activeFinding.id, linkId, linkInfo.linkType, projectId)", "Research-validity gate is blocking promotion.")
+    assert all(marker in drilldown for marker in drilldown_markers)
     assert "findingsApi.delete(entry.type, id, activeProjectId)" in timeline
 
 
@@ -524,6 +528,8 @@ def test_task_kanban_requires_active_project_scope() -> None:
     assert "tasksApi.qualitySummary(task.id, activeProjectId)" in editor
     assert "approveTask(task.id, activeProjectId" in editor
     assert "tasksApi.createReport(task.id, activeProjectId)" in editor
+    gate_markers = ("const needsCodingBeforeReport =", "const canMarkDone =", "const canSendToReport =", "disabled={!canMarkDone}", "disabled={!canSendToReport}", "accepted_after_reconciliation", "Run a coding pass and accept or reconcile coded evidence before marking this research task Done.", "Run a coding pass and accept or reconcile coded evidence before reporting.")
+    assert all(marker in editor for marker in gate_markers)
     assert "tasksApi.list(activeProjectId)" in timeline
     assert "tasksApi.delete(id, activeProjectId)" in timeline
 

@@ -9,6 +9,8 @@ import {
   Zap,
   MessageSquareText,
   ClipboardCheck,
+  Network,
+  ShieldCheck,
 } from "lucide-react";
 import { codeApplications as codeAppApi } from "@/lib/api";
 import type { CodeApplicationType } from "@/lib/types";
@@ -95,7 +97,7 @@ export default function CodeReviewQueue({ projectId }: CodeReviewQueueProps) {
     try {
       const result = await codeAppApi.bulkApprove(projectId, 0.9);
       // Remove approved items from the local list
-      setItems((prev) => prev.filter((item) => item.confidence < 0.9));
+      setItems((prev) => prev.filter((item) => !isBulkApprovable(item)));
       // If the result shows items were approved, we may need to refresh
       if (result.approved_count > 0) {
         await loadPending();
@@ -106,9 +108,12 @@ export default function CodeReviewQueue({ projectId }: CodeReviewQueueProps) {
     setBulkApproving(false);
   };
 
-  const highConfidenceCount = items.filter(
-    (item) => item.confidence >= 0.9
-  ).length;
+  const isBulkApprovable = (item: CodeApplicationType) =>
+    item.confidence >= 0.9 &&
+    item.promotion_status === "accepted" &&
+    ["accepted", "reliable", "passed"].includes(item.reliability_status || "");
+
+  const highConfidenceCount = items.filter(isBulkApprovable).length;
 
   // Loading state
   if (loading) {
@@ -210,7 +215,7 @@ export default function CodeReviewQueue({ projectId }: CodeReviewQueueProps) {
             <button
               onClick={handleBulkApprove}
               disabled={bulkApproving}
-              aria-label={`Bulk approve ${highConfidenceCount} high confidence codes`}
+              aria-label={`Bulk approve ${highConfidenceCount} reliable high confidence codes`}
               className={cn(
                 "inline-flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-md font-medium transition-colors",
                 bulkApproving
@@ -223,7 +228,7 @@ export default function CodeReviewQueue({ projectId }: CodeReviewQueueProps) {
               ) : (
                 <Zap size={12} aria-hidden="true" />
               )}
-              Bulk Approve High Confidence ({highConfidenceCount})
+              Bulk Approve Reliable Codes ({highConfidenceCount})
             </button>
           )}
         </div>
@@ -274,6 +279,14 @@ export default function CodeReviewQueue({ projectId }: CodeReviewQueueProps) {
                       Source: {item.source_location}
                     </p>
                   )}
+                  {(item.evidence_unit_id || item.start_offset !== undefined || item.end_offset !== undefined) && (
+                    <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-1">
+                      Evidence unit: {item.evidence_unit_id || "unlinked"}
+                      {item.start_offset !== undefined && item.end_offset !== undefined && item.start_offset !== null && item.end_offset !== null
+                        ? ` · span ${item.start_offset}-${item.end_offset}`
+                        : ""}
+                    </p>
+                  )}
                 </div>
 
                 {/* Code + Reasoning */}
@@ -303,6 +316,52 @@ export default function CodeReviewQueue({ projectId }: CodeReviewQueueProps) {
                       <span className="sr-only">Coder type: </span>
                       {item.coder_type}
                     </span>
+                    {(item.model_name || item.route_id || item.donor_id) && (
+                      <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-1 break-words">
+                        {item.model_name || item.coder_id}
+                        {item.donor_id ? ` · donor ${item.donor_id}` : ""}
+                        {item.route_id ? ` · route ${item.route_id}` : ""}
+                      </p>
+                    )}
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-2 mb-3">
+                  <div className="border border-slate-200 dark:border-slate-800 rounded-md p-2">
+                    <div className="flex items-center gap-1.5 text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide">
+                      <ShieldCheck size={12} aria-hidden="true" />
+                      Reliability
+                    </div>
+                    <p className="text-xs text-slate-700 dark:text-slate-300 mt-1">
+                      {item.reliability_status || "unknown"}
+                    </p>
+                  </div>
+                  <div className="border border-slate-200 dark:border-slate-800 rounded-md p-2">
+                    <div className="flex items-center gap-1.5 text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide">
+                      <ClipboardCheck size={12} aria-hidden="true" />
+                      Promotion
+                    </div>
+                    <p className="text-xs text-slate-700 dark:text-slate-300 mt-1">
+                      {item.promotion_status || "blocked"}
+                    </p>
+                  </div>
+                  <div className="border border-slate-200 dark:border-slate-800 rounded-md p-2">
+                    <div className="flex items-center gap-1.5 text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide">
+                      <AlertCircle size={12} aria-hidden="true" />
+                      Reconciliation
+                    </div>
+                    <p className="text-xs text-slate-700 dark:text-slate-300 mt-1">
+                      {item.reconciliation_status || "unreconciled"}
+                    </p>
+                  </div>
+                  <div className="border border-slate-200 dark:border-slate-800 rounded-md p-2">
+                    <div className="flex items-center gap-1.5 text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide">
+                      <Network size={12} aria-hidden="true" />
+                      Coding Run
+                    </div>
+                    <p className="text-xs text-slate-700 dark:text-slate-300 mt-1 break-words">
+                      {item.coding_run_id || "unlinked"}
+                    </p>
                   </div>
                 </div>
 

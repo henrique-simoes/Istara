@@ -64,6 +64,7 @@ Deployments configure participant-facing research deployments and link them to c
 ## Agents, Skills, LLM, MCP, And Permissions
 
 - Deployments are project-owned integration records. Any agent, skill, LLM, MCP, channel, or deployment worker that uses deployment data must preserve the same active-project and authorization boundary before routing participant content or generated research artifacts.
+- Participant responses enter the Research Spine as raw source evidence units. The `channel-research-deployment` skill may propose candidate nuggets, insights, and recommendations for review, but those model-generated artifacts are provisional and blocked from Reports until governed coding, reliability/reconciliation, and Done-task gates accept them.
 
 ## Tests And Verification
 

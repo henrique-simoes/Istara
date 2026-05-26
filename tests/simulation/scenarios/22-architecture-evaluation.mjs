@@ -27,7 +27,7 @@ export async function run(ctx) {
   // SECTION 1: OpenClaw / NemoClaw Architectural Pattern Compliance
   // ═══════════════════════════════════════════════════════════════════
 
-  // Pattern 1: Atomic Research Hierarchy (Nuggets → Facts → Insights → Recommendations)
+  // Pattern 1: Research Spine hierarchy (source evidence units → candidate atoms → accepted atoms/nuggets → facts → insights → recommendations)
   await safeCheck("[OpenClaw] Atomic Research — findings chain API exists", async () => {
     let projectId = evalProjectId;
     if (!projectId) return { name: "[OpenClaw] Atomic Research — findings chain API exists", passed: false, detail: "No project" };

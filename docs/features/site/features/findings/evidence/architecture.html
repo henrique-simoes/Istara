@@ -242,7 +242,7 @@
   <p class="concept-line"><strong>Concepts:</strong> atomic-research, triangulation</p>
 </header>
 <h2 id="implementation-summary">Implementation Summary</h2>
-<p>The Findings evidence tab lists research insights and recommendations for the active project and supports phase-oriented review.</p>
+<p>The Findings evidence tab lists research insights and recommendations for the active project and supports phase-oriented review. Findings must be traceable back to accepted/reconciled coded evidence units and approved Done tasks before they are eligible for reports.</p>
 <h2 id="frontend-surface">Frontend Surface</h2>
 <ul>
 <li><code>frontend/src/components/findings/FindingsView.tsx</code></li>
@@ -257,13 +257,29 @@
 <ul>
 <li><code>backend/app/api/routes/findings.py</code></li>
 <li>Project-facing findings list routes require <code>project_id</code> and verify project access before returning nuggets, facts, insights, recommendations, or design decisions.</li>
+<li><code>POST /api/findings/nuggets</code> is a manual source-ingestion path, not a reportability shortcut. It creates a visible provisional nugget, persists stable raw-source <code>EvidenceUnit</code> rows from the submitted source text/location, and links them with <code>ResearchEvidenceEdge</code> <code>grounded_in</code> edges while leaving the task link empty until governed coding, reconciliation, and Done-task approval make the evidence reportable.</li>
+<li>Manual fact, insight, recommendation, and design-decision creation validates every linked upstream artifact id against the active project before persisting the link. Cross-project nugget, fact, insight, recommendation, or screen ids are rejected so hand-built Atomic chains cannot bypass project scope or Research Spine provenance.</li>
+<li>Findings list responses include content-free <code>research_validity</code> metadata. The metadata marks each visible finding as <code>provisional</code> or <code>accepted</code>, reports whether it is currently reportable, and names the active blocker without exposing private source content.</li>
+<li>Design-decision list responses derive <code>research_validity</code> from the linked source recommendations/insights. A design decision remains provisional until every linked source finding is accepted/reconciled through a human-approved Done task.</li>
 <li>Evidence-chain traversal filters linked records by the originating finding&#x27;s project before returning nested nuggets, facts, insights, recommendations, design decisions, or screens.</li>
+<li>Evidence-chain responses include content-free research-validity diagnostics for task-linked findings. The diagnostics show task ids, accepted/reconciled coded-evidence status, Done/approved status, and whether the chain can feed reports; visibility of a chain never means reportability by itself.</li>
 <li>Evidence-chain, link, delete, and design-decision by-id routes also require the active <code>project_id</code> and load records by both id and project id. A stale finding id from another project resolves as not found even when the user can access both projects.</li>
+<li><code>backend/app/api/routes/research_validity.py</code> exposes project-scoped evidence units, coding runs, evidence graph edges, reconciliation decisions, traceability answers, and a summary of pending/accepted/blocked research-validity state. Researchers can start governed coding runs through the project-scoped coding-run route; the service selects distinct project-authorized model identities through Compute Manager and stores route evidence/reliability state.</li>
+<li><code>backend/app/core/rag.py</code> emits content-free <code>retrieval.hybrid</code> telemetry from <code>retrieve_context</code>, including retrieval mode and available evidence-unit/codebook/coding-run handles without storing queries or source text.</li>
+<li>Project Prompt-RAG and protected-block compression paths emit <code>prompt_rag.context</code> and <code>compression.protected_block</code> telemetry from project-scoped calls. These events are process evidence only; they cannot supply mandatory methodology or promote evidence.</li>
 </ul>
 <h2 id="architecture-notes">Architecture Notes</h2>
 <ul>
 <li>The feature is mounted through <code>frontend/src/components/findings/FindingsView.tsx</code> and the UI navigation path recorded in the inventory.</li>
 <li>The backend retains an explicit admin-only global findings search route for admin/reporting aggregation; project-facing evidence views do not use unscoped list routes.</li>
+<li>Hybrid RAG provides exact evidence retrieval. Evidence Graph / GraphRAG can support synthesis and traceability questions, but graph output cannot bypass qualitative coding, reliability gates, human review, approved Done task state, or report gating.</li>
+<li>The traceability API joins reports, finding ids, task ids, coding runs, code applications, reconciliation decisions, and graph edges so project users can inspect which reports or tasks still depend on low-agreement evidence before synthesis or reporting.</li>
+<li>The Evidence list renders reportability badges from <code>research_validity</code>; agent, skill, or manually created findings remain visible but are clearly provisional until accepted coded evidence and human-approved Done state make them reportable.</li>
+<li>Atomic drilldown uses the evidence-chain diagnostics to show when research-validity gates block promotion, including missing coding, unresolved reliability/reconciliation work, or the task not yet being human-approved Done.</li>
+<li>Code applications created by governed coding runs link back to stable evidence units and carry coding-run, codebook, model, donor, route, reliability, reconciliation, and promotion handles before downstream findings can use them. Disputed applications must be resolved through durable reconciliation decisions rather than silent status changes.</li>
+<li>Agent-created nuggets are converted into task-linked evidence units and evidence-graph edges before governed coding runs. This keeps task findings traceable to coded evidence units instead of keyword-like tags or final-answer summaries.</li>
+<li>Manually created nuggets follow the same raw-source-first contract. They remain provisional and non-reportable after creation even though their source text has evidence-unit traceability; downstream acceptance still requires coded evidence, reconciliation where needed, and a human-approved Done task.</li>
+<li>Evidence-unit extraction emits content-free <code>evidence_unit.extract</code> telemetry with project, task, evidence-unit, and retrieval-mode handles so Quality Dashboard and audit tools can prove source segmentation occurred without storing quotes or document content in telemetry.</li>
 <li>The frontmatter and manifest entries are the durable contract for agents updating this page after code changes.</li>
 <li>When the referenced component, store, route, agent, skill, or test behavior changes, regenerate and validate the feature documentation.</li>
 </ul>
@@ -274,6 +290,8 @@
 <h2 id="tests-and-verification">Tests And Verification</h2>
 <ul>
 <li><code>tests/test_findings.py</code></li>
+<li><code>tests/test_findings.py::test_nugget_creation_normalizes_integrity_fields</code></li>
+<li><code>tests/test_findings.py::test_manual_atomic_chain_creation_rejects_cross_project_links</code></li>
 <li><code>tests/test_project_scope_contracts.py</code></li>
 </ul>
 <h2 id="related-features">Related Features</h2>
@@ -289,7 +307,7 @@
 </ul>
 <h2 id="compass-evidence">Compass Evidence</h2>
 <ul>
-<li>Spec/task: CF-SPEC-60 / CF-772</li>
+<li>Spec/task: CF-SPEC-60 / CF-772; CF-SPEC-124 / CF-1590</li>
 <li>Inventory source: <code>docs/features/inventory.json</code></li>
 </ul>
 <h2 id="when-to-update">When To Update</h2>

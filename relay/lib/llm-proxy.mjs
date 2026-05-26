@@ -431,11 +431,31 @@ export class LLMProxy {
     const rawModels = data?.models || [];
     const models = [];
     const modelCapabilities = {};
+    const addCapability = (cap) => {
+      if (!cap?.name || modelCapabilities[cap.name]) return;
+      models.push(cap.name);
+      modelCapabilities[cap.name] = cap;
+    };
     for (const model of rawModels) {
       const cap = this._capabilityFromLMStudioModel(model);
       if (!cap) continue;
-      models.push(cap.name);
-      modelCapabilities[cap.name] = cap;
+      addCapability(cap);
+      for (const instance of model?.loaded_instances || []) {
+        const instanceId = String(instance?.id || "").trim();
+        if (!instanceId || instanceId === cap.name) continue;
+        const instanceCap = {
+          ...cap,
+          name: instanceId,
+          is_loaded: true,
+          loaded_instance_alias: true,
+        };
+        const loadedContext = instance?.config?.context_length;
+        if (Number.isFinite(loadedContext)) {
+          instanceCap.context_length = loadedContext;
+          instanceCap.loaded_context_length = loadedContext;
+        }
+        addCapability(instanceCap);
+      }
     }
     return { models, modelCapabilities };
   }

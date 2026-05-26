@@ -96,7 +96,7 @@ export default function PasskeyManager() {
         <div className="text-center py-6 text-slate-400 dark:text-slate-500">
           <Shield size={32} className="mx-auto mb-2 opacity-50" />
           <p className="text-sm">No passkeys registered yet.</p>
-          <p className="text-xs mt-1">Register a passkey to sign in without a password.</p>
+          <p className="text-xs mt-1">Register a passkey for phishing-resistant passwordless sign-in.</p>
         </div>
       ) : (
         <div className="space-y-2">

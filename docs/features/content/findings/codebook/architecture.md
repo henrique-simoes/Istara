@@ -8,9 +8,9 @@ related_features: ["findings.evidence", "findings.review"]
 related_glossary: ["atomic-research"]
 code_references: ["frontend/src/components/findings/FindingsView.tsx", "frontend/src/components/findings/CodebookViewer.tsx", "backend/app/api/routes/codebooks.py", "backend/app/api/routes/codebook_versions.py"]
 api_references: ["backend/app/api/routes/codebooks.py", "backend/app/api/routes/codebook_versions.py"]
-test_references: ["tests/test_codebooks.py", "tests/test_project_scope_contracts.py"]
-last_verified: 2026-05-19
-compass: CF-SPEC-78 / CF-1005
+test_references: ["tests/test_codebooks.py", "tests/test_project_scope_contracts.py", "tests/test_research_validity_contract.py"]
+last_verified: 2026-05-21
+compass: CF-SPEC-78 / CF-1005; CF-SPEC-124 / CF-1590
 ---
 
 # Findings Codebook Architecture
@@ -40,6 +40,7 @@ The Codebook tab surfaces qualitative coding structures and codebook versions as
 ## Architecture Notes
 
 - The feature is mounted through `frontend/src/components/findings/FindingsView.tsx` and the UI navigation path recorded in the inventory.
+- Creating the first project codebook version records a content-free `codebook.freeze` telemetry event; later versions record `codebook.revise`. The span carries project and codebook-version handles only, so governed codebook lifecycle audits do not store code definitions, examples, prompts, or source quotes in telemetry.
 - The frontmatter and manifest entries are the durable contract for agents updating this page after code changes.
 - When the referenced component, store, route, agent, skill, or test behavior changes, regenerate and validate the feature documentation.
 

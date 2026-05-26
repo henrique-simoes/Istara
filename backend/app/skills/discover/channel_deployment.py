@@ -84,19 +84,23 @@ Responses collected: {response_count}
 {responses}
 
 ## Instructions
-Analyze the collected responses and extract:
+Analyze the collected responses and propose candidate Research Spine artifacts.
+These artifacts are provisional: they are not accepted Atomic Research evidence
+until raw response evidence units pass independent coding, reliability checks,
+and review/reconciliation gates.
 
 ### 1. Key Themes
 Identify recurring patterns across responses.
 
-### 2. Nuggets (Evidence)
-Extract 5-15 direct quotes or paraphrased observations with source attribution.
+### 2. Candidate Atomic Observations
+Extract 5-15 source-grounded candidate observations with source attribution.
+Prefer direct quotes. If you paraphrase, mark the item as lower confidence.
 
-### 3. Insights
-Higher-level patterns and conclusions from the data.
+### 3. Candidate Insights
+Higher-level patterns and conclusions that remain provisional until accepted.
 
-### 4. Recommendations
-Actionable next steps based on findings.
+### 4. Candidate Recommendations
+Actionable next steps based on candidate findings.
 
 ### 5. Data Quality Assessment
 - Response quality (depth, relevance)
@@ -106,9 +110,9 @@ Actionable next steps based on findings.
 Respond in valid JSON:
 {{
     "themes": [{{"name": "...", "description": "...", "frequency": 0, "confidence": "high|medium|low"}}],
-    "nuggets": [{{"text": "...", "source": "...", "tags": ["..."]}}],
-    "insights": [{{"text": "...", "confidence": "high|medium|low", "impact": "low|medium|high"}}],
-    "recommendations": [{{"text": "...", "priority": "low|medium|high|critical", "effort": "low|medium|high"}}],
+    "candidate_nuggets": [{{"text": "...", "source": "...", "source_location": "...", "source_quote": "...", "tags": ["..."], "confidence": "high|medium|low"}}],
+    "candidate_insights": [{{"text": "...", "confidence": "high|medium|low", "impact": "low|medium|high"}}],
+    "candidate_recommendations": [{{"text": "...", "priority": "low|medium|high|critical", "effort": "low|medium|high"}}],
     "data_quality": {{
         "overall_quality": "high|medium|low",
         "biases": ["..."],
@@ -133,8 +137,8 @@ class ChannelResearchDeploymentSkill(BaseSkill):
         return (
             "Deploy interviews, surveys, and diary studies via messaging channels "
             "(Telegram, Slack, WhatsApp, Google Chat) with adaptive questioning. "
-            "Supports real-time analytics, LLM-powered probing, and automatic "
-            "evidence extraction into the Atomic Research chain."
+            "Supports real-time analytics, LLM-powered probing, and provisional "
+            "candidate evidence extraction for Research Spine validation."
         )
 
     @property
@@ -270,37 +274,77 @@ class ChannelResearchDeploymentSkill(BaseSkill):
         except json.JSONDecodeError:
             analysis = {"raw_analysis": response_text}
 
-        # Build output
+        research_validity = {
+            "status": "provisional",
+            "artifact_state": "candidate_atom",
+            "report_allowed": False,
+            "reason": (
+                "Channel deployment analysis is model-generated candidate research. "
+                "It must be grounded in raw response evidence units and accepted by "
+                "coding, reliability, reconciliation, and Done-task gates before reports."
+            ),
+            "policy": "channel_deployment_analysis_outputs_are_candidates_until_spine_acceptance",
+        }
+
+        # Build output. Keep SkillOutput's existing field names for framework
+        # compatibility, but mark every generated research artifact as candidate.
+        candidate_nuggets = analysis.get("candidate_nuggets") or analysis.get("nuggets", [])
         nuggets = [
             {
                 "text": n.get("text", ""),
                 "source": n.get("source", f"deployment:{deployment_name}"),
+                "source_location": n.get(
+                    "source_location",
+                    f"deployment:{deployment_name}:response:unverified",
+                ),
+                "source_quote": n.get("source_quote", n.get("quote", "")),
                 "tags": n.get("tags", [deployment_type, "channel-research"]),
+                "confidence": n.get("confidence", "medium"),
+                "artifact_state": "candidate_atom",
+                "research_validity": research_validity,
             }
-            for n in analysis.get("nuggets", [])
+            for n in candidate_nuggets
         ]
 
+        candidate_insights = analysis.get("candidate_insights") or analysis.get("insights", [])
         insights = [
             {
-                "text": i["text"],
+                "text": i.get("text", ""),
                 "confidence": i.get("confidence", "medium"),
+                "impact": i.get("impact", "medium"),
+                "artifact_state": "candidate_insight",
+                "research_validity": research_validity,
             }
-            for i in analysis.get("insights", [])
+            for i in candidate_insights
         ]
 
+        candidate_recommendations = (
+            analysis.get("candidate_recommendations") or analysis.get("recommendations", [])
+        )
         recommendations = [
             {
-                "text": r["text"],
+                "text": r.get("text", ""),
                 "priority": r.get("priority", "medium"),
                 "effort": r.get("effort", "medium"),
+                "artifact_state": "candidate_recommendation",
+                "research_validity": research_validity,
             }
-            for r in analysis.get("recommendations", [])
+            for r in candidate_recommendations
         ]
+
+        normalized_analysis = {
+            **analysis,
+            "research_validity": research_validity,
+            "candidate_nuggets": nuggets,
+            "candidate_insights": insights,
+            "candidate_recommendations": recommendations,
+        }
 
         summary = (
             f"Analyzed {response_count} responses from {deployment_type} deployment "
-            f"'{deployment_name}'. Extracted {len(nuggets)} nuggets, "
-            f"{len(insights)} insights, {len(recommendations)} recommendations."
+            f"'{deployment_name}'. Proposed {len(nuggets)} candidate nuggets, "
+            f"{len(insights)} candidate insights, and "
+            f"{len(recommendations)} candidate recommendations for Research Spine review."
         )
 
         return SkillOutput(
@@ -309,10 +353,10 @@ class ChannelResearchDeploymentSkill(BaseSkill):
             nuggets=nuggets,
             insights=insights,
             recommendations=recommendations,
-            artifacts={"deployment_analysis.json": json.dumps(analysis, indent=2)},
+            artifacts={"deployment_analysis.json": json.dumps(normalized_analysis, indent=2)},
             suggestions=[
-                f"Review the {len(nuggets)} extracted nuggets for accuracy",
-                "Link nuggets to facts to build the evidence chain",
-                "Consider follow-up studies to address identified gaps",
+                f"Review the {len(nuggets)} candidate nuggets against raw response spans",
+                "Run governed coding and reliability checks before accepting any artifact",
+                "Keep candidate insights and recommendations out of reports until Done gates pass",
             ],
         )

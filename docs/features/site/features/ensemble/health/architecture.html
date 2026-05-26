@@ -263,8 +263,12 @@
 <li>The feature is mounted through <code>frontend/src/components/common/EnsembleHealthView.tsx</code> and the UI navigation path recorded in the inventory.</li>
 <li>Project-bound ensemble validation must carry the active <code>project_id</code> into adversarial review, self-MoA, full ensemble, debate rounds, model-server selection, and validation embeddings, so donated relay/browser compute is only selected when authorized for that project.</li>
 <li>When a project has multiple healthy authorized model endpoints, adaptive validation selects Istara&#x27;s natural multi-model path: three or more distinct available models use full ensemble/Fleiss&#x27; Kappa, two models use dual-run validation, and Self-MoA is reserved for constrained single-model conditions.</li>
-<li>The Fleiss&#x27; Kappa implementation uses the standard formula, but the current LLM consensus path feeds it heuristic keyword-category presence labels extracted from model responses. Ensemble Health should treat this as an operational agreement signal combined with optional embedding similarity, not as a human-coded item-by-rater reliability study.</li>
-<li>Low or borderline consensus does not automatically become report evidence. Validation metadata is stored on task output, borderline outputs can trigger refinement, and report eligibility still depends on approved Done tasks.</li>
+<li>The research-validity path computes Fleiss&#x27; Kappa, Cohen&#x27;s Kappa, and Krippendorff&#x27;s Alpha over coded evidence-unit matrices. The legacy LLM consensus path may still provide operational response-level agreement, but it must not be described as formal qualitative coding reliability.</li>
+<li>Low or borderline consensus does not automatically become report evidence. Validation metadata is stored on task output, borderline outputs can trigger refinement or reconciliation, and report eligibility still depends on accepted evidence plus approved Done tasks.</li>
+<li>Dual-run, full-ensemble, debate, adversarial review, and Self-MoA validation metadata carry content-free route evidence when the serving compute path provides it. This lets telemetry and benchmarks distinguish which model/node served each validation pass without recording prompts, completions, private hosts, or tokens.</li>
+<li>Debate and adversarial helpers now label their scope explicitly. Calls without <code>coding_run_id</code> are response-level quality signals and are not formal reliability; calls with coding-run/evidence-unit/codebook handles emit <code>debate.review</code> or <code>adversarial.review</code> telemetry for coded-evidence reconciliation.</li>
+<li>Qualitative coding prompts must include protected methodology, codebook, evidence-unit schema, reliability policy, and promotion gate blocks before any model codes evidence.</li>
+<li>Governed coding runs use Compute Manager to select distinct healthy project-authorized model identities, execute independent coding passes, persist route evidence, and compute Fleiss/Cohen/Krippendorff-style reliability on evidence-unit matrices. This is the formal reliability path; response-level validation remains an operational quality signal.</li>
 <li>Real-user and Colima/Docker benchmarks must not enable strict single-model routing as their default architecture test. Strict routing is a technical isolation probe; the product-faithful benchmark observes the normal compute/model manager selecting and serving work across registered donors.</li>
 <li>Validation calls without project context remain server-owned/local only; cross-project compute aggregation is reserved for explicit admin-only surfaces.</li>
 <li>The frontmatter and manifest entries are the durable contract for agents updating this page after code changes.</li>
@@ -273,11 +277,13 @@
 <h2 id="agents-skills-llm-mcp-and-permissions">Agents, Skills, LLM, MCP, And Permissions</h2>
 <ul>
 <li>Ensemble LLM calls must preserve project scope when validating task output or skill artifacts.</li>
+<li>Full ensemble reliability requires distinct model identities. Reusing the same model as if it were multiple independent raters is rejected as lower assurance.</li>
 </ul>
 <h2 id="tests-and-verification">Tests And Verification</h2>
 <ul>
 <li><code>tests/test_validation_project_scope.py</code></li>
 <li><code>tests/test_evaluation_skill.py</code></li>
+<li><code>tests/test_research_validity_contract.py</code></li>
 </ul>
 <h2 id="related-features">Related Features</h2>
 <ul>
@@ -290,7 +296,7 @@
 </ul>
 <h2 id="compass-evidence">Compass Evidence</h2>
 <ul>
-<li>Spec/task: CF-SPEC-53 / CF-657; CF-SPEC-92 / CF-1170; CF-SPEC-122; CF-SPEC-123 / CF-1581</li>
+<li>Spec/task: CF-SPEC-53 / CF-657; CF-SPEC-92 / CF-1170; CF-SPEC-122; CF-SPEC-123 / CF-1581; CF-SPEC-124 / CF-1590</li>
 <li>Inventory source: <code>docs/features/inventory.json</code></li>
 </ul>
 <h2 id="when-to-update">When To Update</h2>

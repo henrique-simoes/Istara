@@ -207,11 +207,16 @@ class ImprovementGovernanceEvidenceMixin:
                 "target_name": experiment.get("target_name"),
                 "hypothesis": experiment.get("hypothesis"),
                 "mutation_description": experiment.get("mutation_description"),
+                "candidate_mutation": _clean_payload(
+                    experiment.get("candidate_mutation") or {}
+                ),
+                "sandboxed": bool(experiment.get("sandboxed")),
+                "governance_required": True,
             },
             rollback_plan={
-                "strategy": "restore previous runner snapshot or revert the kept mutation through its owning runner",
+                "strategy": "reject the proposal; the measured mutation was already reverted after sandbox evaluation",
                 "requires_verification": True,
-                "reason": "Autoresearch kept the candidate after measurement; permanent promotion remains governed.",
+                "reason": "Autoresearch retained only a candidate proposal; production promotion remains governed.",
             },
             evidence=[{
                 "kind": "autoresearch_experiment",
@@ -221,6 +226,9 @@ class ImprovementGovernanceEvidenceMixin:
                 "score_stddev": experiment.get("score_stddev"),
                 "confidence_interval_95": experiment.get("confidence_interval_95"),
                 "decision_reason": experiment.get("decision_reason"),
+                "mutation_live_after_measurement": bool(
+                    experiment.get("mutation_live_after_measurement")
+                ),
             }],
             metrics_before={"score": experiment.get("baseline_score")},
             metrics_after={"score": experiment.get("experiment_score"), "delta": experiment.get("delta")},

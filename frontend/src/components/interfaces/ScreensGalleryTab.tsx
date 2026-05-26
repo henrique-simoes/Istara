@@ -21,6 +21,19 @@ const STATUS_COLORS: Record<string, string> = {
   error: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400",
 };
 
+function researchValidityLabel(validity: any) {
+  if (validity?.report_allowed) return "Accepted research";
+  if (validity?.status === "legacy_unverified") return "Legacy unverified";
+  return "Provisional research";
+}
+
+function researchValidityClass(validity: any) {
+  if (validity?.report_allowed) {
+    return "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300";
+  }
+  return "bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300";
+}
+
 export default function ScreensGalleryTab() {
   const { screens, loading, fetchScreens } = useInterfacesStore();
   const { activeProjectId } = useProjectStore();
@@ -93,6 +106,11 @@ export default function ScreensGalleryTab() {
                 {selectedScreen.model_used}
               </span>
             )}
+            {selectedScreen.research_validity && (
+              <span className={cn("px-2 py-0.5 text-xs rounded-full", researchValidityClass(selectedScreen.research_validity))}>
+                {researchValidityLabel(selectedScreen.research_validity)}
+              </span>
+            )}
           </div>
 
           {selectedScreen.prompt && (
@@ -107,12 +125,31 @@ export default function ScreensGalleryTab() {
           {selectedScreen.source_findings && selectedScreen.source_findings.length > 0 && (
             <div className="mb-4">
               <h4 className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Source Findings</h4>
-              <div className="flex flex-wrap gap-1">
-                {selectedScreen.source_findings.map((id: string) => (
-                  <span key={id} className="px-2 py-0.5 text-xs bg-istara-100 dark:bg-istara-900/30 text-istara-700 dark:text-istara-400 rounded-full">
-                    {id.slice(0, 8)}...
-                  </span>
+              <div className="space-y-2">
+                {(selectedScreen.source_finding_details || []).map((finding: any) => (
+                  <div key={finding.id} className="rounded-md border border-slate-200 dark:border-slate-700 p-2">
+                    <div className="flex flex-wrap items-center gap-2 mb-1">
+                      <span className="text-xs font-medium text-slate-700 dark:text-slate-300">
+                        {finding.type || "finding"}:{String(finding.id || "").slice(0, 8)}
+                      </span>
+                      <span className={cn("px-1.5 py-0.5 rounded text-[11px] font-medium", researchValidityClass(finding.research_validity))}>
+                        {finding.research_validity?.status || "provisional"}
+                      </span>
+                    </div>
+                    {finding.text && (
+                      <p className="text-xs text-slate-500 dark:text-slate-400 line-clamp-2">{finding.text}</p>
+                    )}
+                  </div>
                 ))}
+                {(!selectedScreen.source_finding_details || selectedScreen.source_finding_details.length === 0) && (
+                  <div className="flex flex-wrap gap-1">
+                    {selectedScreen.source_findings.map((id: string) => (
+                      <span key={id} className="px-2 py-0.5 text-xs bg-istara-100 dark:bg-istara-900/30 text-istara-700 dark:text-istara-400 rounded-full">
+                        {id.slice(0, 8)}...
+                      </span>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
           )}
@@ -184,6 +221,11 @@ export default function ScreensGalleryTab() {
                   <span className={cn("px-1.5 py-0.5 text-[10px] rounded", STATUS_COLORS[screen.status] || "bg-slate-100 text-slate-600")}>
                     {screen.status}
                   </span>
+                  {screen.research_validity && (
+                    <span className={cn("px-1.5 py-0.5 text-[10px] rounded", researchValidityClass(screen.research_validity))}>
+                      {screen.research_validity.report_allowed ? "accepted" : "provisional"}
+                    </span>
+                  )}
                 </div>
 
                 <p className="text-xs text-slate-400">

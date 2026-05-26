@@ -27,6 +27,19 @@ npm --prefix tests/real_user_benchmark run probe
 
 This probe now expects a donated compute node and live chat output. For harness-only debugging against an app with no model connected, add `ISTARA_BENCHMARK_REQUIRE_COMPUTE_DONATION=0 ISTARA_BENCHMARK_REQUIRE_LIVE_CHAT=0`.
 
+Run a deeper bounded probe for video material and Research Spine evidence:
+
+```bash
+ISTARA_API_URL=http://localhost:8000 \
+ISTARA_FRONTEND_URL=http://localhost:3000 \
+ISTARA_BENCHMARK_ADMIN_USERNAME=admin \
+ISTARA_BENCHMARK_ADMIN_PASSWORD=istara123 \
+ISTARA_BENCHMARK_RESEARCHER_COUNT=2 \
+npm --prefix tests/real_user_benchmark run probe:deep
+```
+
+`probe:deep` uploads the full 174-source canonical corpus, runs 20 detailed researcher chat turns, creates/reviews 16 detailed research tasks, executes a bounded coding-validation pass, captures Research Spine summary/traceability/telemetry evidence, and probes ReasoningBank, Memento skill health, improvement governance, Meta-Hyperagent, and Autoresearch surfaces without applying live self-evolution mutations by default. The canonical corpus now carries more than three million words/row-word equivalents, and the benchmark project context, chat turns, and task prompts are deliberately long-form so the run tests realistic senior-researcher complexity rather than one-line demo prompts. Set `ISTARA_BENCHMARK_START_AUTORESEARCH_EXPERIMENT=1` only when you explicitly want a bounded one-iteration Autoresearch background experiment.
+
 Run the full benchmark with sandbox orchestration enabled:
 
 ```bash
@@ -35,13 +48,37 @@ ISTARA_BENCHMARK_ADMIN_PASSWORD='IstaraBenchmarkAdmin123!' \
 npm --prefix tests/real_user_benchmark run full
 ```
 
-The full run starts a fresh Team Mode server sandbox with an admin bootstrap user, drives the browser UI with those credentials, generates researcher invite connection strings, redeems those invites inside separate disposable client containers, grants the researchers access to the project, and runs Playwright journeys for each researcher. When compute donation is required, the server must have a network access token before generating compute donation strings; sandbox runs provide one up front, and current Istara servers auto-provision one during admin compute-donation generation when missing. The benchmark then starts relay client containers using the same live LLM profile contract as `tests/llm_test_config.py`, waits for project-scoped `/api/compute/stats?project_id=...` to show relay nodes, and requires live chat output before treating chat as useful evidence.
+The full run can start a fresh Team Mode server sandbox with an admin bootstrap user. The three-model deep probe is different by contract: Istara runs on the Mac Studio host, the admin user operates against that host server, and Colima is used only for disposable researcher/client containers plus the two llama.cpp donor model endpoints. When compute donation is required, the server must have a network access token before generating compute donation strings; sandbox runs provide one up front, and current Istara servers auto-provision one during admin compute-donation generation when missing. The benchmark then starts relay client containers using the same live LLM profile contract as `tests/llm_test_config.py`, waits for project-scoped `/api/compute/stats?project_id=...` to show every required relay node, and requires each required donor to serve a strict donated-compute technical probe before treating chat as useful evidence.
 
 Admin-only setup remains admin-owned. Normal research work is performed by authenticated researcher actors: collaborative chat, document/interview analysis, task creation, review/revision, approval, and task-backed Findings/report generation. If a researcher path is blocked by permissions, the run records a role/product finding instead of silently substituting the admin session.
 
 Researcher approval is intentionally strict. A task output that says it is blocked, missing required source material, low confidence because data is unavailable, or synthetic for a source-backed task is sent back for revision instead of being counted as done.
 
-Server and client sandboxes are separate. `--start-sandbox` starts Istara itself; donor/researcher containers are controlled by `ISTARA_BENCHMARK_START_CLIENT_SANDBOXES` and default on whenever donated compute or external connection strings are required. This means you can run the orchestrator outside Docker, generate connection strings in the real admin UI, pass those strings to the benchmark, and still have the benchmark spin up fresh disposable donor/researcher containers.
+Test data cleanup is explicit, not automatic. The benchmark creates a new `[RU-BENCH] ... <run-id>` project for each run. Use `scripts/reset_test_environment.py` before a clean video or comparison run when you want zero existing projects, seeded `admin` / `istara123`, and on-demand `researcher_N` accounts. Normal probe/full runs do not delete old projects.
+
+Server and client sandboxes are separate. `--start-sandbox` starts Istara itself; donor/researcher containers are controlled by `ISTARA_BENCHMARK_START_CLIENT_SANDBOXES` and default on whenever donated compute or external connection strings are required. This means you can run the orchestrator outside Docker, generate connection strings in the real admin UI, pass those strings to the benchmark, and still have the benchmark spin up fresh disposable donor/researcher containers. The canonical `probe:deep:three-model` command pins this separation with `ISTARA_BENCHMARK_SKIP_SANDBOX=1`: do not run the Istara server inside Colima for that topology.
+
+### Three-Model Benchmark Flow
+
+```mermaid
+flowchart TD
+  Host["Mac Studio host: Istara backend/frontend + admin user"] --> Project["Create RU-BENCH project and upload canonical corpus"]
+  Host --> AdminDonor["Admin donor: LM Studio Gemma endpoint"]
+  Project --> Strings["Generate project-scoped invite strings and compute-donation strings"]
+  Strings --> R1["Colima researcher 1 redeems invite"]
+  Strings --> R2["Colima researcher 2 redeems invite"]
+  R1 --> Qwen["Researcher 1 donor model: llama.cpp Qwen GGUF"]
+  R2 --> GemmaSmall["Researcher 2 donor model: llama.cpp Gemma GGUF"]
+  AdminDonor --> Preflight["Container-side LLM preflight for every donor"]
+  Qwen --> Preflight
+  GemmaSmall --> Preflight
+  Preflight --> Relays["Start only preflight-passing relay clients"]
+  Relays --> Stats["Project-scoped compute stats must show 3 relay nodes"]
+  Stats --> Probe["Strict donated-compute probe: each donor must serve at least one chat"]
+  Probe --> Workflow["Normal Istara research workflow: chat, uploads, tasks, coding, review"]
+  Workflow --> Evidence["Research Spine evidence, route counters, telemetry, scorecard"]
+  Evidence --> Cleanup["Remove benchmark containers and stop Colima"]
+```
 
 The donated relay defaults to the shared live-test profile:
 
@@ -88,36 +125,21 @@ ISTARA_BENCHMARK_DONOR_2_LLM_MODEL=qwen3.5-4b-q4_k_m \
 npm --prefix tests/real_user_benchmark run probe
 ```
 
-Example for the full target topology: two simulated computers plus the Mac Studio, with the host LM Studio Gemma e4b donor unchanged, a Qwen3.5 4B Q4 donor, a Gemma 4 E2B Q4 donor, and two researcher accounts:
+Example for the full target topology: the Mac Studio hosts Istara and donates the configured LM Studio Gemma e4b model, while Colima starts two simulated researcher computers. Each simulated researcher redeems an invite, registers compute from the admin-generated donation string, and serves its own Qwen3.5 4B Q4 or Gemma 4 E2B Q4 llama.cpp endpoint:
 
 ```bash
-ISTARA_BENCHMARK_SKIP_SANDBOX=1 \
-ISTARA_BENCHMARK_START_CLIENT_SANDBOXES=1 \
-ISTARA_BENCHMARK_DONOR_COUNT=3 \
-ISTARA_BENCHMARK_RESEARCHER_COUNT=2 \
-ISTARA_BENCHMARK_REQUIRE_DISTINCT_DONOR_ENDPOINTS=1 \
-ISTARA_BENCHMARK_KEEP_DONOR_MODEL_CONTAINERS=1 \
-ISTARA_BENCHMARK_COLIMA_MAX_ACTUAL_GB=25 \
-ISTARA_BENCHMARK_COLIMA_MAX_APPARENT_GB=25 \
-ISTARA_BENCHMARK_COLIMA_STORAGE_POLICY=fail \
-ISTARA_BENCHMARK_DONOR_2_MODEL_SERVER=llamacpp \
-ISTARA_BENCHMARK_DONOR_2_ID=sim-qwen35-4b \
-ISTARA_BENCHMARK_DONOR_2_MODEL_SERVER_CONTAINER=istara-donor-qwen35-4b \
-ISTARA_BENCHMARK_DONOR_2_MODEL_SERVER_PORT=18112 \
-ISTARA_BENCHMARK_DONOR_2_MODEL_FILE=/Users/studio/Istara-Projects/models/qwen3.5-4b-q4_k_m/Qwen3.5-4B-Q4_K_M.gguf \
-ISTARA_BENCHMARK_DONOR_2_LLM_MODEL=Qwen3.5-4B-Q4_K_M.gguf \
-ISTARA_BENCHMARK_DONOR_2_REASONING=off \
-ISTARA_BENCHMARK_DONOR_3_MODEL_SERVER=llamacpp \
-ISTARA_BENCHMARK_DONOR_3_ID=sim-gemma4-e2b \
-ISTARA_BENCHMARK_DONOR_3_MODEL_SERVER_CONTAINER=istara-donor-gemma4-e2b \
-ISTARA_BENCHMARK_DONOR_3_MODEL_SERVER_PORT=18113 \
-ISTARA_BENCHMARK_DONOR_3_MODEL_FILE=/Users/studio/Istara-Projects/models/gemma-4-e2b-it-q4_k_m/gemma-4-E2B-it-Q4_K_M.gguf \
-ISTARA_BENCHMARK_DONOR_3_LLM_MODEL=gemma-4-E2B-it-Q4_K_M.gguf \
-ISTARA_BENCHMARK_DONOR_3_REASONING=off \
-ISTARA_BENCHMARK_CLIENT_1_USERNAME=sim-qwen-researcher \
-ISTARA_BENCHMARK_CLIENT_2_USERNAME=sim-gemma-researcher \
-npm --prefix tests/real_user_benchmark run probe
+npm --prefix tests/real_user_benchmark run probe:deep:three-model
 ```
+
+The `probe:deep:three-model` script sets `ISTARA_BENCHMARK_DONOR_TOPOLOGY=macstudio-colima-qwen-gemma`, which expands to:
+
+- donor 1: the configured Mac Studio LM Studio/OpenAI-compatible Gemma donor
+- donor 2: `istara-donor-qwen35-4b` via llama.cpp on port `18112`, context length `12288`
+- donor 3: `istara-donor-gemma4-e2b` via llama.cpp on port `18113`, context length `12288`
+
+The expected local Q4 files are `/Users/studio/Istara-Projects/models/qwen3.5-4b-q4_k_m/Qwen3.5-4B-Q4_K_M.gguf` and `/Users/studio/Istara-Projects/models/gemma-4-e2b-it-q4_k_m/gemma-4-E2B-it-Q4_K_M.gguf`. Override them with `ISTARA_BENCHMARK_QWEN_GGUF` and `ISTARA_BENCHMARK_GEMMA_E2B_GGUF` when the files live elsewhere. The benchmark still refuses to download or invent models.
+
+The preset matches the existing local llama.cpp donor-container contract and treats missing GGUF files or unreachable endpoints as setup blockers. By default it removes relay/model containers and stops Colima after benchmark-owned resources are cleaned up, returning the host LM Studio donor to ordinary idle service. For debugging only, set `ISTARA_BENCHMARK_KEEP_DONOR_MODEL_CONTAINERS=1`, `ISTARA_BENCHMARK_KEEP_CLIENT_CONTAINERS=1`, or `ISTARA_BENCHMARK_STOP_COLIMA_AFTER_RUN=0`.
 
 For Gemma or Qwen model-server donors, use the exact model id expected by the provider. The benchmark records `donor-endpoint-diversity.json`, `donor-model-sandbox-<donor>.json`, and `relay-llm-preflight-<donor>.json` so a run can prove that multiple donations came from multiple endpoints rather than one shared LM Studio instance.
 
@@ -192,28 +214,32 @@ ISTARA_BENCHMARK_DONOR_COUNT=2 \
 npm --prefix tests/real_user_benchmark run probe
 ```
 
-When two required donors are configured, the benchmark waits for project-scoped `/api/compute/stats?project_id=...` to expose two relay/browser nodes. The run records `compute-donation-results.json`, per-donor `relay-llm-preflight-<donor>.json`, connection-string materialization evidence, route evidence, and whether multi-donor compute was actually verified. If only one donor is reachable, the run is not silently accepted as a multi-donor success. During the collaborative research workflow, the benchmark also records `natural-compute-orchestration.json`, which observes Istara's normal model manager and scheduler counters after real chat/task/report work without pinning a particular donor. Observing scheduler counters is not the same as proving donor usage; the scorecard keeps those concepts separate.
+When multiple required donors are configured, the benchmark waits for project-scoped `/api/compute/stats?project_id=...` to expose every required relay/browser node. The three-model preset expects three observable relays: the host LM Studio admin donor plus the two Colima researcher donors. The run records `compute-donation-results.json`, per-donor `relay-llm-preflight-<donor>.json`, connection-string materialization evidence, route evidence, and whether multi-donor compute was actually verified. If any required donor fails preflight, registration, or serving, the run is not silently accepted as a multi-donor success. During the collaborative research workflow, the benchmark also records `natural-compute-orchestration.json`, which observes Istara's normal model manager and scheduler counters after real chat/task/report work without pinning a particular donor. Observing scheduler counters is not the same as proving donor usage; the scorecard keeps those concepts separate.
 
-When the Mac Studio host also donates the same LM Studio endpoint that the server already sees as local capacity, Istara may deduplicate that relay into the server-local node. In that topology the benchmark records the host donor as started and preflighted, but waits for dedicated relay visibility from the simulated donor computers instead of counting the same physical endpoint twice.
+For the three-model preset, Research Spine coding must also prove multi-model validation across the actual donor topology. Immediately before coding, the benchmark waits for the host donor plus both Colima donor relays to be healthy and records `research-spine-pre-coding-relay-health.json`. A run that reaches `/api/research-validity/.../coding-runs` but falls back to a one-coder lower-assurance result, or uses three model aliases from fewer than three served donor routes, is now a benchmark blocker. `research-spine-evidence.json` should show three distinct model coders and three distinct served donor route IDs for the full topology; if a donor cannot produce valid source-unit code applications, the run records the reason and fails closed.
+
+The benchmark also records `research-spine-evidence.json` and `self-improvement-evidence.json`. Those artifacts distinguish raw source/evidence-unit/coding/reconciliation/report-gate evidence from process-learning evidence. Telemetry, ReasoningBank, Memento Skills, Meta-Hyperagent, Autoresearch, RAG/GraphRAG, Prompt-RAG, and compression evidence are benchmarked as governance/process inputs; they are not treated as report evidence unless resulting artifacts pass the Research Spine.
+
+When the Mac Studio host also donates the same LM Studio endpoint that the server already sees as local capacity, the bounded technical probe temporarily enables strict project/model routing so the project-scoped relay is preferred over the duplicate server-local node. This is only for route-proof evidence. The later collaborative chat and task workflow returns to Istara's normal scheduler and records natural selected/served/failure counter deltas separately. A configured host LM Studio default is not allowed to become an implicit strict project request during that natural workflow; only an explicit model override may pin donor selection.
 
 If Docker or the app blocks completion, the run is still useful: the blocker, logs, screenshots, and partial results are preserved. The harness treats first failures as prompts for architecture-aware diagnosis: it checks whether the benchmark misunderstood Istara state, auth, onboarding, or render timing before logging a product finding.
 
-On macOS without Docker Desktop, install and start Colima once:
+On macOS without Docker Desktop, install and start Colima once. A small smoke run can use 6GB, but the two-llama.cpp three-model topology should use at least 12GB to avoid OOM-killing one donor while the other is serving:
 
 ```bash
 brew install colima docker-compose
-colima start --cpu 4 --memory 6 --root-disk 10 --disk 10 --runtime docker
+colima start --cpu 4 --memory 12 --root-disk 10 --disk 10 --runtime docker
 docker info
 ```
 
-The benchmark will also try to auto-start Colima when `--start-sandbox` is used and `colima` is installed. Auto-start defaults to `--root-disk 10 --disk 10`, which produces a 20GB apparent sparse ceiling and should stay under the 10GB actual-data budget for normal benchmark runs. Disable auto-start with `ISTARA_BENCHMARK_AUTOSTART_COLIMA=0`.
+The benchmark will also try to auto-start Colima when Docker is needed for client/donor containers and `colima` is installed. General auto-start defaults to memory `6`, `--root-disk 10`, and `--disk 10`; `probe:deep:three-model` raises the auto-start memory to `12`. Disable auto-start with `ISTARA_BENCHMARK_AUTOSTART_COLIMA=0`.
 
 Existing Colima disks cannot be shrunk in place. If `du -sh -A ~/.colima` still reports a larger apparent ceiling from an older profile, recreate the profile after preserving anything important in Docker:
 
 ```bash
 colima stop
 colima delete -f
-colima start --cpu 4 --memory 6 --root-disk 10 --disk 10 --runtime docker
+colima start --cpu 4 --memory 12 --root-disk 10 --disk 10 --runtime docker
 ```
 
 ## Modes
@@ -247,13 +273,13 @@ Credentialed integrations such as live Figma, Google Stitch, Telegram, and AURA 
 - `ISTARA_BENCHMARK_EXTERNAL_CONNECTION_STRINGS=1`: consume connection strings supplied by env, JSON file, donor profile, or interactive prompt before generating new ones through the API.
 - `ISTARA_BENCHMARK_INTERACTIVE_CONNECTION_STRINGS=1`: ask how many donor/researcher containers to start and prompt for strings in a TTY.
 - `ISTARA_BENCHMARK_DONOR_COUNT`: number of required compute donor containers. Default `1`.
-- `ISTARA_BENCHMARK_RESEARCHER_COUNT`: number of researcher invite/client containers. Default `1`.
+- `ISTARA_BENCHMARK_RESEARCHER_COUNT`: number of researcher invite/client containers. Default `1`; Colima/multi-user runs commonly use `2`.
 - `ISTARA_BENCHMARK_CONNECTION_STRINGS_FILE`: gitignored JSON file with `compute_donations` and `user_invites` arrays.
 - `ISTARA_BENCHMARK_COMPUTE_CONNECTION_STRINGS`: comma, newline, pipe, or JSON-array list of compute donation strings.
 - `ISTARA_BENCHMARK_USER_INVITE_CONNECTION_STRINGS`: comma, newline, pipe, or JSON-array list of researcher invite strings.
 - `ISTARA_BENCHMARK_FRESH_SANDBOX=0`: reuse existing benchmark containers and volumes. The default is `1`, which recreates the server/client sandbox state for reproducibility.
 - `ISTARA_BENCHMARK_TEAM_MODE`: defaults to `true` for browser-testable sandbox auth.
-- `ISTARA_BENCHMARK_ADMIN_USERNAME` and `ISTARA_BENCHMARK_ADMIN_PASSWORD`: bootstrap credentials for the sandbox admin account.
+- `ISTARA_BENCHMARK_ADMIN_USERNAME` and `ISTARA_BENCHMARK_ADMIN_PASSWORD`: bootstrap credentials for the sandbox admin account. A locally reset test server uses admin `admin` / `istara123`; `ISTARA_TEST_ADMIN_PASSWORD=istara123` is accepted by harnesses for that reset-only profile.
 - `ISTARA_BENCHMARK_REQUIRE_COMPUTE_DONATION`: defaults to `1` for every non-plan run. Sandbox server runs use a per-run network token when no `NETWORK_ACCESS_TOKEN` or `ISTARA_BENCHMARK_NETWORK_ACCESS_TOKEN` is present; existing servers auto-provision the token when an admin generates fresh compute donation strings.
 - `ISTARA_BENCHMARK_REQUIRE_LIVE_CHAT`: defaults to `1` for full runs and whenever compute donation is required. Empty assistant text or SSE chat errors fail the benchmark instead of counting the turn.
 - `ISTARA_BENCHMARK_FORCE_DONATED_CHAT=1`: optional technical isolation mode. It intentionally makes the server's direct LM Studio and Ollama routes unreachable so a probe must fall through to the donated relay path. Leave it unset for the real-user architecture test, where Istara's normal compute/model manager should decide routing and the benchmark observes natural selected/served counters.
@@ -264,7 +290,7 @@ Credentialed integrations such as live Figma, Google Stitch, Telegram, and AURA 
 - `ISTARA_BENCHMARK_INSTALL_WHISPER`: defaults to `false` for benchmark Docker builds. Voice transcription remains exercised through UI/API graceful-degradation paths, while avoiding the Torch/Whisper dependency stack in the reusable benchmark image.
 - `ISTARA_BENCHMARK_RELAY_LLM_PROVIDER`, `ISTARA_BENCHMARK_RELAY_LLM_HOST`, `ISTARA_BENCHMARK_RELAY_LLM_MODEL`, `ISTARA_BENCHMARK_RELAY_LLM_API_KEY`: optional overrides for the client-side donated target. If omitted, the benchmark uses `tests/llm_test_config.py` live-profile rules without logging secret values.
 - `ISTARA_BENCHMARK_DONOR_<N>_ID`, `ISTARA_BENCHMARK_DONOR_<N>_LLM_PROVIDER`, `ISTARA_BENCHMARK_DONOR_<N>_LLM_HOST`, `ISTARA_BENCHMARK_DONOR_<N>_LLM_MODEL`, `ISTARA_BENCHMARK_DONOR_<N>_LLM_API_KEY`, `ISTARA_BENCHMARK_DONOR_<N>_LLM_API_KEY_ENV`, `ISTARA_BENCHMARK_DONOR_<N>_CONNECTION_STRING`: per-donor overrides for multi-donor runs. Prefer `*_API_KEY_ENV` so secrets stay outside process logs.
-- `ISTARA_BENCHMARK_CLIENT_<N>_USERNAME`, `ISTARA_BENCHMARK_CLIENT_<N>_PASSWORD`, `ISTARA_BENCHMARK_CLIENT_<N>_EMAIL`: optional deterministic researcher account values for invite-client redemption.
+- `ISTARA_BENCHMARK_CLIENT_<N>_USERNAME`, `ISTARA_BENCHMARK_CLIENT_<N>_PASSWORD`, `ISTARA_BENCHMARK_CLIENT_<N>_EMAIL`: optional deterministic researcher account values for invite-client redemption. Defaults are `researcher_1`, `researcher_2`, ... with password `istara123` and `@istara.test` email addresses.
 - `ISTARA_BENCHMARK_REQUIRE_DISTINCT_DONOR_ENDPOINTS`: defaults to `1` when more than one required donor is configured. Fails multi-donor runs where required donors point at the same provider/host pair.
 - `ISTARA_BENCHMARK_DONOR_<N>_MODEL_SERVER`: optional per-donor model server sandbox. Use `llamacpp` for local Q4 GGUF files or `ollama` for a bind-mounted Ollama model store.
 - `ISTARA_BENCHMARK_MODEL_ROOT`: local host model root for model-server donors. Defaults to `/Users/studio/Istara-Projects/models`.
@@ -273,11 +299,12 @@ Credentialed integrations such as live Figma, Google Stitch, Telegram, and AURA 
 - `ISTARA_BENCHMARK_DONOR_<N>_CPUS`, `ISTARA_BENCHMARK_DONOR_<N>_MEMORY`: optional Docker resource limits for an individual donor model server.
 - `ISTARA_BENCHMARK_DONOR_<N>_ALLOW_PULL`: defaults to `0`. Allows an Ollama model-server donor to pull a missing model when explicitly enabled.
 - `ISTARA_BENCHMARK_KEEP_DONOR_MODEL_CONTAINERS=1`: keep temporary donor model server containers after a run for inspection.
+- `ISTARA_BENCHMARK_STOP_COLIMA_AFTER_RUN`: stops Colima after benchmark-owned donor/client containers are cleaned up. Defaults to `1` for `probe:deep:three-model`; set `0` only when inspecting containers manually.
 - `ISTARA_BENCHMARK_DONOR_PROFILES_JSON` or `ISTARA_BENCHMARK_DONOR_PROFILES_FILE`: advanced JSON donor profile configuration. Profiles can include `id`, `provider`, `llm_host`, `model`, `api_key_env`, and `connection_string`.
 - `ISTARA_BENCHMARK_QWEN_LLM_HOST`, `ISTARA_BENCHMARK_QWEN_LLM_MODEL`, `ISTARA_BENCHMARK_QWEN_LLM_API_KEY_ENV`: convenience configuration for the future Qwen donor profile.
 - `ISTARA_BENCHMARK_NETWORK_ACCESS_TOKEN`: optional fixed network token for relay testing in benchmark-managed server sandboxes. For an already-running local server, generate fresh compute donation strings after the server has a network token so the signed strings embed the current relay credential.
 - `ISTARA_BENCHMARK_AUTOSTART_COLIMA=0`: prevent automatic Colima startup.
-- `ISTARA_BENCHMARK_COLIMA_CPU`, `ISTARA_BENCHMARK_COLIMA_MEMORY`, `ISTARA_BENCHMARK_COLIMA_ROOT_DISK`, `ISTARA_BENCHMARK_COLIMA_DISK`: resource settings for automatic Colima startup. Defaults are CPU `4`, memory `6`, root disk `10` GB, and data disk `10` GB.
+- `ISTARA_BENCHMARK_COLIMA_CPU`, `ISTARA_BENCHMARK_COLIMA_MEMORY`, `ISTARA_BENCHMARK_COLIMA_ROOT_DISK`, `ISTARA_BENCHMARK_COLIMA_DISK`: resource settings for automatic Colima startup. Defaults are CPU `4`, memory `6`, root disk `10` GB, and data disk `10` GB; the three-model deep probe overrides memory to `12`.
 - `ISTARA_BENCHMARK_COLIMA_MAX_ACTUAL_GB`, `ISTARA_BENCHMARK_COLIMA_MAX_APPARENT_GB`, `ISTARA_BENCHMARK_COLIMA_STORAGE_TOLERANCE_GB`, `ISTARA_BENCHMARK_COLIMA_STORAGE_POLICY`: storage budgets recorded in every run. Defaults are 10GB actual, 20GB apparent, 0.25GB tolerance for filesystem metadata, and `warn`. `fail` enforces actual disk usage by default; apparent sparse-disk ceilings are advisory unless `ISTARA_BENCHMARK_COLIMA_ENFORCE_APPARENT_STORAGE=1`.
 - `ISTARA_BENCHMARK_KEEP_CLIENT_CONTAINERS=1`: keep temporary relay/client containers after a run for interactive debugging. By default their logs are captured and the containers are removed.
 
@@ -291,7 +318,7 @@ Every run creates a timestamped folder under `tests/real_user_benchmark/.results
 - `conversation-turns.jsonl`: chat prompts, responses, timings, and quality notes.
 - `task-review-log.jsonl`: task creation, review, revision, and approval records.
 - `integration-attempts.jsonl`: third-party integration attempts and classifications.
-- `corpus/`: materialized canonical UX research documents from `tests/document_corpus/canonical/`. Probe and full runs default to at least 120 long-form sources so document-heavy agentic workflows are not judged from a tiny fixture set.
+- `corpus/`: materialized canonical UX research documents from `tests/document_corpus/canonical/`. Probe and full runs default to at least 120 long-form sources, and deep probes can upload all 174 sources, so document-heavy agentic workflows are not judged from a tiny fixture set.
 - `corpus-manifest.json`: document inventory and intended use.
 - `screenshots/` and `traces/`: Playwright evidence.
 - `report.md`: human-readable run narrative.
@@ -301,6 +328,10 @@ Every run creates a timestamped folder under `tests/real_user_benchmark/.results
 - `system-prompt.md`: the exact benchmark conductor prompt active for that run.
 - `relay-llm-preflight.json` and `relay-llm-preflight-<donor>.json`: redacted evidence that each donor container could reach its configured LM Studio/OpenAI-compatible target and complete a tiny chat request.
 - `compute-donation-results.json`: relay registration, relay-routed chat verification method, forced-topology evidence when logs are quiet, and response evidence.
+- `research-spine-pre-coding-relay-health.json`: health snapshot proving every required donor relay was alive before the benchmark starts source-unit coding.
+- `research-spine-evidence.json`: evidence-unit, coding-run, Graph/RAG traceability, donor route evidence, and research-validity telemetry audit snapshot.
+- `self-improvement-evidence.json`: telemetry, ReasoningBank, Memento skill health, improvement-governance, Meta-Hyperagent, and Autoresearch probe results.
+- `natural-compute-orchestration.json`: selected/served counter deltas from normal Istara scheduler usage after collaborative research work.
 - `storage/colima-*.json`: actual and apparent Colima disk snapshots, storage budget status, and remediation guidance.
 
 The backend sandbox mounts the benchmark result root at `/benchmark-results` so linked-folder flows can point at the generated corpus from inside the container. This is deliberately separate from API uploads: the benchmark tests both folder context and upload ingestion.
@@ -343,7 +374,7 @@ The classical scoring baselines remain in `testing/TESTING_STRATEGY.md`, `testin
 
 ## Donor Profile Policy
 
-The default comparison profile still uses one bounded donated LM Studio target: `google/gemma-4-e4b`. Multi-donor runs are now supported, but every additional donor must point at an already provisioned endpoint. The Qwen3.5-4B profile is available as a required donor when `ISTARA_BENCHMARK_DONOR_COUNT=2`, yet it remains endpoint-gated: without a configured host/API key/model serving process, the benchmark logs a blocker and does not fake ensemble health.
+The default comparison profile still uses one bounded donated LM Studio target: `google/gemma-4-e4b`. Multi-donor runs are supported through either explicit per-donor endpoints or the local `macstudio-colima-qwen-gemma` topology. That topology pairs the configured Mac Studio Gemma donor with already-downloaded Qwen3.5 4B Q4 and Gemma 4 E2B Q4 llama.cpp donors under Colima. Missing endpoints or local GGUF files remain blockers; the benchmark does not download models or fake ensemble health.
 
 ## UI Harness Rules
 

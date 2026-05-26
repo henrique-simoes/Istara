@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { reviewerAssessment } from "./persona.mjs";
+import { buildChatTurns, buildTaskPlan, reviewerAssessment } from "./persona.mjs";
 
 const sourceBackedTask = {
   title: "[RU-01] Analyze staff interview trust signals",
@@ -30,4 +30,17 @@ test("reviewerAssessment approves grounded task output with concrete sources", (
   `);
 
   assert.equal(assessment.approved, true);
+});
+
+test("real-user benchmark chat turns and task prompts preserve realistic research depth", () => {
+  const wordCount = (value) => String(value || "").trim().split(/\s+/).filter(Boolean).length;
+  const chatTurns = buildChatTurns({ total: 20 });
+  const taskPlan = buildTaskPlan({ total: 16 });
+
+  assert.equal(chatTurns.length, 20);
+  assert.equal(taskPlan.length, 16);
+  assert.ok(chatTurns.every((turn) => wordCount(turn.content) >= 500));
+  assert.ok(taskPlan.every((task) => wordCount(task.description) >= 500));
+  assert.ok(chatTurns.every((turn) => /Research Spine|evidence units|reliability|Done/i.test(turn.content)));
+  assert.ok(taskPlan.every((task) => /candidate atomic facts|reconciliation|report/i.test(task.description)));
 });
