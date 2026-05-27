@@ -4,21 +4,24 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Istara Feature Documentation - Istara Feature Docs</title>
+  <meta name="description" content="Istara documentation, installation, and feature map for local-first AI UX research.">
   <link rel="stylesheet" href="assets/site.css">
 </head>
 <body class="home-page">
   <a class="skip-link" href="#main">Skip to content</a>
   <header class="topbar" role="banner">
     <a class="brand" href="index.html" aria-label="Istara feature documentation home">
-      <span class="brand-mark" aria-hidden="true">I</span>
+      <img class="brand-logo" src="assets/istara-logo.png" alt="" aria-hidden="true">
       <span><strong>Istara Docs</strong><small>UI organized</small></span>
     </a>
     <button class="menu-button" type="button" data-nav-toggle aria-expanded="false" aria-controls="docs-sidebar">Menu</button>
     <form class="search-form" role="search">
       <label class="visually-hidden" for="doc-search">Search documentation</label>
-      <input id="doc-search" name="q" type="search" autocomplete="off" placeholder="Search features, routes, concepts">
+      <input id="doc-search" name="q" type="search" autocomplete="off" placeholder="Search docs">
     </form>
     <nav class="utility-nav" aria-label="Machine-readable documentation">
+      <a href="index.html#install">Install</a>
+      <a href="https://github.com/henrique-simoes/Istara">GitHub</a>
       <a href="manifest.json">Manifest</a>
       <a href="llms.txt">llms.txt</a>
       <button type="button" data-theme-toggle>Theme: system</button>
@@ -213,14 +216,43 @@
       <div class="content-grid">
         <article class="doc-panel">
           <header class="home-hero">
-  <p class="eyebrow">Istara living documentation</p>
-  <h1>Feature documentation that follows the product UI</h1>
-  <p class="lede">A hostable, agent-readable map of Istara's menus, submenus, feature behavior, implementation references, and shared research concepts.</p>
+  <div class="hero-copy">
+    <p class="eyebrow">Local-first AI agents for UX Research</p>
+    <h1>Istara</h1>
+    <p class="lede">Install a rigorous, local-first research workspace where documents, interviews, surveys, integrations, agents, skills, compute donation, and reports stay connected to the same evidence spine.</p>
+  </div>
   <div class="hero-actions">
-    <a href="#feature-map">Browse Feature Map</a>
-    <a href="glossary/index.html">Open Glossary</a>
+    <a href="#install">Install Istara</a>
+    <a href="#feature-map">Browse Docs</a>
+    <a href="https://github.com/henrique-simoes/Istara">View GitHub</a>
   </div>
 </header>
+<section id="install" class="install-section" aria-labelledby="install-heading">
+  <div class="section-heading"><h2 id="install-heading">Install Istara</h2><p>Pick the path that matches your machine. Native DMG and EXE installers remain disabled until release checks clear them.</p></div>
+  <div class="install-grid">
+    <article class="install-card primary">
+      <p class="eyebrow">Recommended on macOS</p>
+      <h3>Homebrew</h3>
+      <p>Use the managed cask for the simplest macOS install and update path.</p>
+      <pre><code>brew install --cask henrique-simoes/istara/istara</code></pre>
+      <button type="button" data-copy-command="brew install --cask henrique-simoes/istara/istara">Copy command</button>
+    </article>
+    <article class="install-card">
+      <p class="eyebrow">macOS / Linux</p>
+      <h3>Shell one-liner</h3>
+      <p>Installs dependencies, configures the server/client mode, and starts the guided setup.</p>
+      <pre><code>curl -fsSL https://raw.githubusercontent.com/henrique-simoes/Istara/main/scripts/install-istara.sh | bash</code></pre>
+      <button type="button" data-copy-command="curl -fsSL https://raw.githubusercontent.com/henrique-simoes/Istara/main/scripts/install-istara.sh | bash">Copy command</button>
+    </article>
+    <article class="install-card">
+      <p class="eyebrow">Windows / development</p>
+      <h3>Source or Docker</h3>
+      <p>Use source checkout or Docker while Windows native installers are being repaired.</p>
+      <pre><code>git clone https://github.com/henrique-simoes/Istara.git</code></pre>
+      <a href="https://github.com/henrique-simoes/Istara#install">Open install notes</a>
+    </article>
+  </div>
+</section>
 
 <section class="metric-grid" aria-label="Documentation coverage">
   <article><strong>86</strong><span>Tracked UI features</span></article>
