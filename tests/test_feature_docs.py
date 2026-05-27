@@ -104,7 +104,7 @@ def test_feature_docs_github_pages_workflow_builds_and_deploys_site() -> None:
     workflow = (ROOT / ".github/workflows/pages.yml").read_text(encoding="utf-8")
 
     assert "python scripts/feature_docs.py --seed-missing --generate-site --check" in workflow
-    assert "python -m pip install pytest pytest-asyncio" in workflow
+    assert 'python -m pip install pytest pytest-asyncio "sqlalchemy[asyncio]" aiosqlite pydantic-settings' in workflow
     assert "python -m pytest tests/test_feature_docs.py -q" in workflow
     assert "actions/configure-pages@v5" in workflow
     assert "actions/upload-pages-artifact@v4" in workflow
