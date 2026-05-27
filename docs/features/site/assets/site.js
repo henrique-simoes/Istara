@@ -72,4 +72,26 @@
       });
     });
   });
+
+  // Scroll reveal IntersectionObserver fallback for older or non-webkit browsers
+  if (!CSS.supports('(animation-timeline: view()) and (animation-range: entry)')) {
+    var observer = new IntersectionObserver(
+      function (entries) {
+        entries.forEach(function (entry) {
+          if (entry.isIntersecting) {
+            entry.target.classList.add('visible');
+          }
+        });
+      },
+      {
+        threshold: 0.08
+      }
+    );
+
+    var cards = document.querySelectorAll('.bento-card, .tech-card, .skill-cat-card, .research-flow-rail li, .tech-section-row');
+    cards.forEach(function (card) {
+      card.classList.add('scroll-animate');
+      observer.observe(card);
+    });
+  }
 })();

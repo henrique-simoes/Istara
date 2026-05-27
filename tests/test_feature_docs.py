@@ -42,14 +42,24 @@ def test_feature_docs_generated_site_has_all_pages_and_indexes() -> None:
     glossary_terms = list((FEATURE_DOCS / "glossary").glob("*.md"))
     html_pages = list(SITE_ROOT.rglob("*.html"))
 
-    assert len(html_pages) == len(features) * 2 + len(glossary_terms) + 2
+    assert len(html_pages) == len(features) * 2 + len(glossary_terms) + 3 + 10
     assert (SITE_ROOT / "assets/site.css").exists()
     assert (SITE_ROOT / "assets/site.js").exists()
     assert (SITE_ROOT / "assets/istara-logo.png").exists()
+    assert (SITE_ROOT / "assets/home-chat.png").exists()
+    assert (SITE_ROOT / "assets/home-tasks.png").exists()
+    assert (SITE_ROOT / "assets/home-skills.png").exists()
+    assert (SITE_ROOT / "assets/home-interfaces.png").exists()
     assert (SITE_ROOT / ".nojekyll").exists()
     assert (SITE_ROOT / "design.md").exists()
     assert (SITE_ROOT / "search-index.json").exists()
+    assert (SITE_ROOT / "docs.html").exists()
     assert (SITE_ROOT / "glossary/index.html").exists()
+    
+    for tech_id in ("grounded-chat", "ux-skills", "evolving-agents", "compute-swarm", 
+                    "hybrid-rag", "multi-model", "distributed-compute", "human-kanban", 
+                    "stitch-figma", "grounded-decisions"):
+        assert (SITE_ROOT / "technology" / f"{tech_id}.html").exists()
 
     for feature in features:
         base = SITE_ROOT / "features" / feature["id"].replace(".", "/")
@@ -81,23 +91,48 @@ def test_feature_docs_site_shell_has_accessible_landmarks_and_theme_support() ->
         assert 'data-theme-toggle' in html
 
     assert 'id="install"' in index
+    assert 'id="product-tour"' in index
+    assert 'id="main-features"' in index
+    assert 'id="research-flow"' in index
     assert "brew install --cask henrique-simoes/istara/istara" in index
     assert "scripts/install-istara.sh | bash" in index
     assert 'data-copy-command' in index
+    assert "Open-source UX Research agents and tools. Human-in-the-loop AI for UXR." in index
+    assert "Local-first AI UX research workspace" in index
+    assert "Ask research questions without losing grounding" in index
+    assert "Run focused UX research skills" in index
+    assert "Built around one research process, not scattered AI tools." in index
+    assert "From source material to approved reports." in index
+    assert "home-hero-v2" in index
+    assert "hero-command-card" in index
+    assert "hero-v2-product" in index
     assert "brand-logo" in index
     assert "navigator.clipboard.writeText" in (SITE_ROOT / "assets/site.js").read_text(encoding="utf-8")
     assert 'aria-current="page"' in feature
     assert ':focus-visible' in css
     assert ':root[data-theme="dark"]' in css
     assert ".home-page .doc-panel" in css
-    assert "istara-logo.png" in css
-    assert "--logo-bg: #bdb6a4" in css
-    assert "clamp(3rem, 6vw, 4.9rem)" in css
+    assert ".home-hero-v2" in css
+    assert ".hero-v2-product" in css
+    assert ".hero-command-card" in css
+    assert ".tour-card img" in css
+    assert ".feature-cluster-grid" in css
+    assert ".research-flow-section" in css
+    assert "--bg: #f8f2e6" in css
+    assert "--border: #dcd9ce" in css
+    assert "--action-bg: #2f4f2f" in css
+    assert "--action-text: #ffffff" in css
+    assert "grid-template-columns: minmax(0, 1fr) minmax(18rem, 1.15fr)" in css
+    assert "letter-spacing: 0" in css
 
     design = (SITE_ROOT / "design.md").read_text(encoding="utf-8")
     assert "Istara Documentation Website Design" in design
-    assert "#bdb6a4" in design
-    assert "Hero text may be larger, but the H1 must not dominate" in design
+    assert "product-led and install-first" in design
+    assert "#f8f2e6" in design
+    assert "real Istara screenshots" in design
+    assert "Product imagery must show real Istara surfaces where possible" in design
+    assert "visual inspiration only" in design
+    assert "install actions use\n  `--action-bg: #2f4f2f`" in design
 
 
 def test_feature_docs_github_pages_workflow_builds_and_deploys_site() -> None:

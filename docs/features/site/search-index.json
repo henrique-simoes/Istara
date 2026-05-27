@@ -1103,5 +1103,75 @@
     "kind": "glossary",
     "title": "WebAuthn",
     "url": "glossary/webauthn.html"
+  },
+  {
+    "id": "grounded-chat",
+    "kind": "technology",
+    "summary": "Source-bounded conversational reasoning and multi-turn verification systems.",
+    "title": "Intelligent Grounded Chat",
+    "url": "technology/grounded-chat.html"
+  },
+  {
+    "id": "ux-skills",
+    "kind": "technology",
+    "summary": "Structured Double Diamond UX evaluation workflows and skill runner execution harnesses.",
+    "title": "53+ UX Research Skills",
+    "url": "technology/ux-skills.html"
+  },
+  {
+    "id": "evolving-agents",
+    "kind": "technology",
+    "summary": "Memento runtime agent evolution factory and ReasoningBank process memory engines.",
+    "title": "Self-Evolving Agents & Personas",
+    "url": "technology/evolving-agents.html"
+  },
+  {
+    "id": "compute-swarm",
+    "kind": "technology",
+    "summary": "Shared local model processing relays and WebSocket-based collaborative GPU/CPU pooling.",
+    "title": "Collaborative Compute Swarm",
+    "url": "technology/compute-swarm.html"
+  },
+  {
+    "id": "hybrid-rag",
+    "kind": "technology",
+    "summary": "Blended vector-symbolic knowledge retrieval and network relationship traversal systems.",
+    "title": "Hybrid RAG + Graph RAG",
+    "url": "technology/hybrid-rag.html"
+  },
+  {
+    "id": "multi-model",
+    "kind": "technology",
+    "summary": "Zero-bias independent atomic coding, consensus validation, and Fleiss' Kappa scoring engines.",
+    "title": "Multi-Model Ensemble Health",
+    "url": "technology/multi-model.html"
+  },
+  {
+    "id": "distributed-compute",
+    "kind": "technology",
+    "summary": "Multi-tenant role-based access security, cryptographic passkeys, and field encryption.",
+    "title": "Distributed Compute & Roles",
+    "url": "technology/distributed-compute.html"
+  },
+  {
+    "id": "human-kanban",
+    "kind": "technology",
+    "summary": "Governed task execution workspace and provisional human-in-the-loop review gates.",
+    "title": "Human-in-the-Loop Kanban",
+    "url": "technology/human-kanban.html"
+  },
+  {
+    "id": "stitch-figma",
+    "kind": "technology",
+    "summary": "Bidirectional design canvas node syncing and automated Google Stitch spec builders.",
+    "title": "Stitch & Figma Interfaces",
+    "url": "technology/stitch-figma.html"
+  },
+  {
+    "id": "grounded-decisions",
+    "kind": "technology",
+    "summary": "Research validity spine report compiler and source-grounded document builders.",
+    "title": "Grounded Decisions & Reports",
+    "url": "technology/grounded-decisions.html"
   }
 ]

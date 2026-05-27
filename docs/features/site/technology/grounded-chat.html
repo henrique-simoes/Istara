@@ -1,0 +1,283 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Intelligent Grounded Chat - Istara Feature Docs</title>
+  <meta name="description" content="Istara documentation, installation, and feature map for local-first AI UX research.">
+  <link rel="stylesheet" href="../assets/site.css">
+</head>
+<body class="technology-page">
+  <a class="skip-link" href="#main">Skip to content</a>
+  <header class="topbar" role="banner">
+    <a class="brand" href="../index.html" aria-label="Istara feature documentation home">
+      <img class="brand-logo" src="../assets/istara-logo.png" alt="" aria-hidden="true">
+      <span><strong>Istara Docs</strong><small>Core Swarm Capability</small></span>
+    </a>
+    <button class="menu-button" type="button" data-nav-toggle aria-expanded="false" aria-controls="docs-sidebar">Menu</button>
+    <form class="search-form" role="search">
+      <label class="visually-hidden" for="doc-search">Search documentation</label>
+      <input id="doc-search" name="q" type="search" autocomplete="off" placeholder="Search docs">
+    </form>
+    <nav class="utility-nav" aria-label="Machine-readable documentation">
+      <a href="../docs.html">Docs Hub</a>
+      <a href="../index.html#install">Install</a>
+      <a href="https://github.com/henrique-simoes/Istara">GitHub</a>
+      <a href="../manifest.json">Manifest</a>
+      <a href="../llms.txt">llms.txt</a>
+      <button type="button" data-theme-toggle>Theme: system</button>
+    </nav>
+  </header>
+  <div class="layout-shell">
+    <aside id="docs-sidebar" class="sidebar" aria-label="Feature documentation navigation">
+      <div class="sidebar-heading">
+        <strong>Feature Map</strong>
+        <span>UI organized</span>
+      </div>
+      <nav class="nav-tree" aria-label="Istara UI feature map">
+<section class="nav-section" data-nav-section>
+<h2>Shell</h2>
+<ul>
+<li data-search-item data-search-text="application navigation shell &gt; navigation the main shell organizes istara into primary, secondary, utility, and mobile navigation surfaces and routes each selected view into the mounted work area."><a href="../features/shell/navigation/researcher.html"><span>Application Navigation</span><small>Shell &gt; Navigation</small></a></li>
+<li data-search-item data-search-text="project switcher shell &gt; projects the sidebar project control lists available projects and lets users create, select, pause, resume, or delete the active project context used by most istara views."><a href="../features/shell/projects/researcher.html"><span>Project Switcher</span><small>Shell &gt; Projects</small></a></li>
+<li data-search-item data-search-text="global search shell &gt; search the shell exposes a command/search modal from the sidebar and keyboard shortcut so users can find navigable work surfaces and project objects."><a href="../features/shell/search/researcher.html"><span>Global Search</span><small>Shell &gt; Search</small></a></li>
+<li data-search-item data-search-text="notification bell shell &gt; notifications bell the sidebar notification bell polls unread notification counts and links users into the notifications surface."><a href="../features/shell/notifications-bell/researcher.html"><span>Notification Bell</span><small>Shell &gt; Notifications Bell</small></a></li>
+<li data-search-item data-search-text="keyboard shortcuts shell &gt; keyboard shortcuts homeclient wires global shortcuts for search, view switching, shortcut help, and right-panel toggling."><a href="../features/shell/keyboard-shortcuts/researcher.html"><span>Keyboard Shortcuts</span><small>Shell &gt; Keyboard Shortcuts</small></a></li>
+<li data-search-item data-search-text="view onboarding shell &gt; onboarding reusable onboarding overlays and tour state introduce major istara views and offer context-specific chat prompts."><a href="../features/shell/onboarding/researcher.html"><span>View Onboarding</span><small>Shell &gt; Onboarding</small></a></li>
+<li data-search-item data-search-text="login and session bootstrap shell &gt; authentication the application shell checks authentication state, shows the login surface when needed, and loads session state before mounting protected views."><a href="../features/auth/login/researcher.html"><span>Login And Session Bootstrap</span><small>Shell &gt; Authentication</small></a></li>
+</ul>
+</section>
+<section class="nav-section" data-nav-section>
+<h2>Chat</h2>
+<ul>
+<li data-search-item data-search-text="chat workspace chat chat is the project-scoped conversational workspace for working with istara agents, context, files, and model settings."><a href="../features/chat/overview/researcher.html"><span>Chat Workspace</span><small>Chat</small></a></li>
+<li data-search-item data-search-text="chat sessions chat &gt; sessions the chat session sidebar manages project-scoped conversation history and new session creation."><a href="../features/chat/sessions/researcher.html"><span>Chat Sessions</span><small>Chat &gt; Sessions</small></a></li>
+<li data-search-item data-search-text="chat model controls chat &gt; model controls chat exposes model, thinking, and reasoning controls so users can tune how the assistant responds within the configured local or server-backed model environment."><a href="../features/chat/model-controls/researcher.html"><span>Chat Model Controls</span><small>Chat &gt; Model Controls</small></a></li>
+<li data-search-item data-search-text="chat file attachments chat &gt; file attachments chat can attach uploaded project files and documents so the conversation can use project evidence and user-provided material."><a href="../features/chat/files/researcher.html"><span>Chat File Attachments</span><small>Chat &gt; File Attachments</small></a></li>
+<li data-search-item data-search-text="chat audio conversation chat &gt; audio the chat audio flow records user speech through the browser, sends it to the voice route, and returns transcription or voice-assisted chat input."><a href="../features/chat/audio/researcher.html"><span>Chat Audio Conversation</span><small>Chat &gt; Audio</small></a></li>
+<li data-search-item data-search-text="chat steering chat &gt; steering steering controls collect lightweight user guidance that can shape downstream assistant behavior and project context."><a href="../features/chat/steering/researcher.html"><span>Chat Steering</span><small>Chat &gt; Steering</small></a></li>
+</ul>
+</section>
+<section class="nav-section" data-nav-section>
+<h2>Findings</h2>
+<ul>
+<li data-search-item data-search-text="findings evidence findings &gt; evidence the findings evidence tab lists research insights and recommendations for the active project and supports phase-oriented review."><a href="../features/findings/evidence/researcher.html"><span>Findings Evidence</span><small>Findings &gt; Evidence</small></a></li>
+<li data-search-item data-search-text="findings phase tabs findings &gt; evidence &gt; phase tabs the evidence view segments findings by discover, define, develop, and deliver project phases."><a href="../features/findings/phase-tabs/researcher.html"><span>Findings Phase Tabs</span><small>Findings &gt; Evidence &gt; Phase Tabs</small></a></li>
+<li data-search-item data-search-text="findings codebook findings &gt; codebook the codebook tab surfaces qualitative coding structures and codebook versions associated with project findings."><a href="../features/findings/codebook/researcher.html"><span>Findings Codebook</span><small>Findings &gt; Codebook</small></a></li>
+<li data-search-item data-search-text="findings code review findings &gt; review the review tab presents code review queues for validating and adjudicating qualitative coding work."><a href="../features/findings/review/researcher.html"><span>Findings Code Review</span><small>Findings &gt; Review</small></a></li>
+<li data-search-item data-search-text="project reports findings &gt; reports the reports tab lets users generate, inspect, and manage project reports produced from findings and research evidence."><a href="../features/findings/reports/researcher.html"><span>Project Reports</span><small>Findings &gt; Reports</small></a></li>
+<li data-search-item data-search-text="report slide instructions findings &gt; reports &gt; slide instructions report-related surfaces support presentation or slide guidance that can carry research findings into communicable report artifacts."><a href="../features/findings/slide-instructions/researcher.html"><span>Report Slide Instructions</span><small>Findings &gt; Reports &gt; Slide Instructions</small></a></li>
+</ul>
+</section>
+<section class="nav-section" data-nav-section>
+<h2>UX Laws</h2>
+<ul>
+<li data-search-item data-search-text="ux laws catalog ux laws &gt; catalog the ux laws catalog gives researchers a structured reference for applying ux laws to research and design interpretation."><a href="../features/laws/catalog/researcher.html"><span>UX Laws Catalog</span><small>UX Laws &gt; Catalog</small></a></li>
+<li data-search-item data-search-text="ux laws compliance ux laws &gt; compliance the compliance tab checks or summarizes how project work aligns with selected ux laws."><a href="../features/laws/compliance/researcher.html"><span>UX Laws Compliance</span><small>UX Laws &gt; Compliance</small></a></li>
+</ul>
+</section>
+<section class="nav-section" data-nav-section>
+<h2>Tasks</h2>
+<ul>
+<li data-search-item data-search-text="task kanban board tasks &gt; kanban tasks presents project work as a kanban board for tracking research operations, agent work, and review handoffs."><a href="../features/tasks/kanban/researcher.html"><span>Task Kanban Board</span><small>Tasks &gt; Kanban</small></a></li>
+<li data-search-item data-search-text="task editor tasks &gt; task editor the task editor creates and updates task details, assignments, status, and task-linked research context."><a href="../features/tasks/editor/researcher.html"><span>Task Editor</span><small>Tasks &gt; Task Editor</small></a></li>
+<li data-search-item data-search-text="human task review tasks &gt; review review actions support approving, requesting revision, or otherwise resolving human-in-the-loop task work."><a href="../features/tasks/review/researcher.html"><span>Human Task Review</span><small>Tasks &gt; Review</small></a></li>
+<li data-search-item data-search-text="task attachments tasks &gt; attachments tasks can reference project files or documents so research work stays connected to the evidence it depends on."><a href="../features/tasks/attachments/researcher.html"><span>Task Attachments</span><small>Tasks &gt; Attachments</small></a></li>
+<li data-search-item data-search-text="send task to report tasks &gt; send to report task surfaces can move validated task outputs toward report generation or reporting workflows."><a href="../features/tasks/send-report/researcher.html"><span>Send Task To Report</span><small>Tasks &gt; Send To Report</small></a></li>
+</ul>
+</section>
+<section class="nav-section" data-nav-section>
+<h2>Interviews</h2>
+<ul>
+<li data-search-item data-search-text="interview files interviews &gt; files the interviews view manages interview recordings and source files for participant research analysis."><a href="../features/interviews/files/researcher.html"><span>Interview Files</span><small>Interviews &gt; Files</small></a></li>
+<li data-search-item data-search-text="interview transcription interviews &gt; transcription interview audio processing uses backend transcription capabilities to turn recordings into usable research text."><a href="../features/interviews/transcription/researcher.html"><span>Interview Transcription</span><small>Interviews &gt; Transcription</small></a></li>
+<li data-search-item data-search-text="interview preview and tags interviews &gt; preview and tags interview preview parts display file previews, send-to-agent actions, and tag creation controls."><a href="../features/interviews/preview-tags/researcher.html"><span>Interview Preview And Tags</span><small>Interviews &gt; Preview And Tags</small></a></li>
+</ul>
+</section>
+<section class="nav-section" data-nav-section>
+<h2>Documents</h2>
+<ul>
+<li data-search-item data-search-text="document library documents &gt; library documents centralizes project documents and makes source material available for preview, chat, and analysis workflows."><a href="../features/documents/library/researcher.html"><span>Document Library</span><small>Documents &gt; Library</small></a></li>
+<li data-search-item data-search-text="document upload documents &gt; upload upload controls import project files and documents into istara for downstream reading, chat, and evidence workflows."><a href="../features/documents/upload/researcher.html"><span>Document Upload</span><small>Documents &gt; Upload</small></a></li>
+<li data-search-item data-search-text="document preview documents &gt; preview document preview lets users inspect uploaded project material before using it in chat, interviews, or findings workflows."><a href="../features/documents/preview/researcher.html"><span>Document Preview</span><small>Documents &gt; Preview</small></a></li>
+<li data-search-item data-search-text="document suggestions documents &gt; suggestions interactive suggestions surface possible next actions or edits for document-centered workflows."><a href="../features/documents/suggestions/researcher.html"><span>Document Suggestions</span><small>Documents &gt; Suggestions</small></a></li>
+</ul>
+</section>
+<section class="nav-section" data-nav-section>
+<h2>Context</h2>
+<ul>
+<li data-search-item data-search-text="project context editor context &gt; editor the context view edits project background, goals, assumptions, and other structured context used by istara workflows."><a href="../features/context/editor/researcher.html"><span>Project Context Editor</span><small>Context &gt; Editor</small></a></li>
+</ul>
+</section>
+<section class="nav-section" data-nav-section>
+<h2>Skills</h2>
+<ul>
+<li data-search-item data-search-text="skills catalog skills &gt; catalog the skills catalog lists available capabilities agents can use or propose for research workflows."><a href="../features/skills/catalog/researcher.html"><span>Skills Catalog</span><small>Skills &gt; Catalog</small></a></li>
+<li data-search-item data-search-text="skill proposals skills &gt; proposals skill proposal flows present candidate tool or capability changes for review before they are adopted."><a href="../features/skills/proposals/researcher.html"><span>Skill Proposals</span><small>Skills &gt; Proposals</small></a></li>
+<li data-search-item data-search-text="create skill skills &gt; create create skill supports adding or configuring a new skill surface from inside istara."><a href="../features/skills/create/researcher.html"><span>Create Skill</span><small>Skills &gt; Create</small></a></li>
+</ul>
+</section>
+<section class="nav-section" data-nav-section>
+<h2>Agents</h2>
+<ul>
+<li data-search-item data-search-text="agent registry agents &gt; agents the agents view lists and manages available agents, including their status and project-facing roles."><a href="../features/agents/registry/researcher.html"><span>Agent Registry</span><small>Agents &gt; Agents</small></a></li>
+<li data-search-item data-search-text="agent detail panels agents &gt; agents &gt; detail selected agent details expose overview, identity, memory, and permission information for that agent."><a href="../features/agents/detail/researcher.html"><span>Agent Detail Panels</span><small>Agents &gt; Agents &gt; Detail</small></a></li>
+<li data-search-item data-search-text="agent-to-agent log agents &gt; a2a the a2a tab displays agent-to-agent communication or coordination events for operational visibility."><a href="../features/agents/a2a/researcher.html"><span>Agent-To-Agent Log</span><small>Agents &gt; A2A</small></a></li>
+<li data-search-item data-search-text="agent proposals agents &gt; proposals agent proposal workflows surface suggested agent changes or actions for review."><a href="../features/agents/proposals/researcher.html"><span>Agent Proposals</span><small>Agents &gt; Proposals</small></a></li>
+<li data-search-item data-search-text="create agent agents &gt; create create agent supports configuring new agents and their role-facing metadata."><a href="../features/agents/create/researcher.html"><span>Create Agent</span><small>Agents &gt; Create</small></a></li>
+</ul>
+</section>
+<section class="nav-section" data-nav-section>
+<h2>Memory</h2>
+<ul>
+<li data-search-item data-search-text="knowledge memory memory &gt; knowledge the memory knowledge tab manages project knowledge artifacts and retrieval material."><a href="../features/memory/knowledge/researcher.html"><span>Knowledge Memory</span><small>Memory &gt; Knowledge</small></a></li>
+<li data-search-item data-search-text="agent memory memory &gt; agent the agent memory tab exposes memory tied to agent behavior and project collaboration."><a href="../features/memory/agent/researcher.html"><span>Agent Memory</span><small>Memory &gt; Agent</small></a></li>
+<li data-search-item data-search-text="memory health memory &gt; health memory health surfaces status and quality signals for memory or retrieval infrastructure."><a href="../features/memory/health/researcher.html"><span>Memory Health</span><small>Memory &gt; Health</small></a></li>
+<li data-search-item data-search-text="context dag memory &gt; context dag the context dag tab visualizes or inspects relationships across project context nodes."><a href="../features/memory/context-dag/researcher.html"><span>Context DAG</span><small>Memory &gt; Context DAG</small></a></li>
+</ul>
+</section>
+<section class="nav-section" data-nav-section>
+<h2>Interfaces</h2>
+<ul>
+<li data-search-item data-search-text="interface design chat interfaces &gt; design chat design chat is the conversational starting point for generating, refining, and reasoning about interface concepts."><a href="../features/interfaces/design-chat/researcher.html"><span>Interface Design Chat</span><small>Interfaces &gt; Design Chat</small></a></li>
+<li data-search-item data-search-text="generate interfaces interfaces &gt; generate the generate tab creates interface assets or screen proposals from project context and design prompts."><a href="../features/interfaces/generate/researcher.html"><span>Generate Interfaces</span><small>Interfaces &gt; Generate</small></a></li>
+<li data-search-item data-search-text="screens gallery interfaces &gt; screens screens displays generated interface screens and previews for review."><a href="../features/interfaces/screens/researcher.html"><span>Screens Gallery</span><small>Interfaces &gt; Screens</small></a></li>
+<li data-search-item data-search-text="configuration interfaces &gt; configuration the configuration tab connects interface work with design-tool setup, including figma-oriented import or export flows."><a href="../features/interfaces/figma/researcher.html"><span>Configuration</span><small>Interfaces &gt; Configuration</small></a></li>
+<li data-search-item data-search-text="interface handoff interfaces &gt; handoff handoff packages interface outputs into developer-facing specifications or exportable artifacts."><a href="../features/interfaces/handoff/researcher.html"><span>Interface Handoff</span><small>Interfaces &gt; Handoff</small></a></li>
+<li data-search-item data-search-text="findings picker interfaces &gt; findings picker the findings picker lets interface workflows reference insights and recommendations from the findings area."><a href="../features/interfaces/findings-picker/researcher.html"><span>Findings Picker</span><small>Interfaces &gt; Findings Picker</small></a></li>
+</ul>
+</section>
+<section class="nav-section" data-nav-section>
+<h2>Integrations</h2>
+<ul>
+<li data-search-item data-search-text="integrations overview integrations &gt; overview the integrations overview summarizes connected channels, deployment surfaces, and integration health."><a href="../features/integrations/overview/researcher.html"><span>Integrations Overview</span><small>Integrations &gt; Overview</small></a></li>
+<li data-search-item data-search-text="messaging integrations integrations &gt; messaging messaging connects external conversation channels such as team or participant messaging tools into istara."><a href="../features/integrations/messaging/researcher.html"><span>Messaging Integrations</span><small>Integrations &gt; Messaging</small></a></li>
+<li data-search-item data-search-text="survey integrations integrations &gt; surveys surveys configures participant question and survey collection flows connected to project research."><a href="../features/integrations/surveys/researcher.html"><span>Survey Integrations</span><small>Integrations &gt; Surveys</small></a></li>
+<li data-search-item data-search-text="mcp integrations integrations &gt; mcp the mcp tab configures model context protocol server access, policies, and audit visibility."><a href="../features/integrations/mcp/researcher.html"><span>MCP Integrations</span><small>Integrations &gt; MCP</small></a></li>
+<li data-search-item data-search-text="research deployments integrations &gt; deployments deployments configure participant-facing research deployments and link them to channels, questions, findings, and timeline views."><a href="../features/integrations/deployments/researcher.html"><span>Research Deployments</span><small>Integrations &gt; Deployments</small></a></li>
+<li data-search-item data-search-text="deployment dashboard integrations &gt; deployments &gt; dashboard the deployment dashboard has sub-tabs for live status, questions, participants, findings, channels, and timeline activity."><a href="../features/integrations/deployment-dashboard/researcher.html"><span>Deployment Dashboard</span><small>Integrations &gt; Deployments &gt; Dashboard</small></a></li>
+</ul>
+</section>
+<section class="nav-section" data-nav-section>
+<h2>Loops</h2>
+<ul>
+<li data-search-item data-search-text="loops overview loops &gt; overview loops overview summarizes automated and scheduled research loop health."><a href="../features/loops/overview/researcher.html"><span>Loops Overview</span><small>Loops &gt; Overview</small></a></li>
+<li data-search-item data-search-text="loop schedules loops &gt; schedules schedules configure recurring loop timing, including cron-style recurrence controls."><a href="../features/loops/schedules/researcher.html"><span>Loop Schedules</span><small>Loops &gt; Schedules</small></a></li>
+<li data-search-item data-search-text="agent loops loops &gt; agent loops agent loops connects recurring work with configured agents and their automated research responsibilities."><a href="../features/loops/agent-loops/researcher.html"><span>Agent Loops</span><small>Loops &gt; Agent Loops</small></a></li>
+<li data-search-item data-search-text="custom loops loops &gt; custom custom loops provide a surface for user-defined recurring or automated research actions."><a href="../features/loops/custom/researcher.html"><span>Custom Loops</span><small>Loops &gt; Custom</small></a></li>
+<li data-search-item data-search-text="loop execution history loops &gt; history execution history records loop runs, outcomes, and recent automation activity."><a href="../features/loops/history/researcher.html"><span>Loop Execution History</span><small>Loops &gt; History</small></a></li>
+</ul>
+</section>
+<section class="nav-section" data-nav-section>
+<h2>Settings</h2>
+<ul>
+<li data-search-item data-search-text="system status and models settings &gt; system status and models settings shows backend, llm, hardware, model recommendation, and available model status for the local installation."><a href="../features/settings/general/researcher.html"><span>System Status And Models</span><small>Settings &gt; System Status And Models</small></a></li>
+<li data-search-item data-search-text="llm server settings settings &gt; llm servers settings manages configured llm providers, server endpoints, provider labels, and active model switching."><a href="../features/settings/llm-servers/researcher.html"><span>LLM Server Settings</span><small>Settings &gt; LLM Servers</small></a></li>
+<li data-search-item data-search-text="user management settings &gt; users user management supports team member visibility and administrative user operations."><a href="../features/settings/users/researcher.html"><span>User Management</span><small>Settings &gt; Users</small></a></li>
+<li data-search-item data-search-text="connection strings settings &gt; connection strings connection string settings provide governed admin-only configuration for sensitive external or local service connection data."><a href="../features/settings/connection-strings/researcher.html"><span>Connection Strings</span><small>Settings &gt; Connection Strings</small></a></li>
+<li data-search-item data-search-text="passkeys and two-factor authentication settings &gt; security factors settings includes passkey and totp management for strengthening account authentication."><a href="../features/settings/security-factors/researcher.html"><span>Passkeys And Two-Factor Authentication</span><small>Settings &gt; Security Factors</small></a></li>
+<li data-search-item data-search-text="active sessions settings &gt; sessions session management lists active authentication sessions and supports session-level control."><a href="../features/settings/sessions/researcher.html"><span>Active Sessions</span><small>Settings &gt; Sessions</small></a></li>
+<li data-search-item data-search-text="software updates settings &gt; software updates the update checker surfaces available istara software updates from the settings view."><a href="../features/settings/updates/researcher.html"><span>Software Updates</span><small>Settings &gt; Software Updates</small></a></li>
+<li data-search-item data-search-text="governed evolution settings &gt; governed evolution governed evolution displays proposals, archive, reasoning, and contract information for controlled system self-improvement."><a href="../features/settings/governed-evolution/researcher.html"><span>Governed Evolution</span><small>Settings &gt; Governed Evolution</small></a></li>
+<li data-search-item data-search-text="compute donation settings &gt; compute donation compute donation lets a browser session contribute local compute capacity under controlled limits."><a href="../features/settings/compute-donation/researcher.html"><span>Compute Donation</span><small>Settings &gt; Compute Donation</small></a></li>
+</ul>
+</section>
+<section class="nav-section" data-nav-section>
+<h2>Secondary</h2>
+<ul>
+<li data-search-item data-search-text="project settings project settings project settings configure project-specific metadata and operational preferences separate from global system settings."><a href="../features/settings/project/researcher.html"><span>Project Settings</span><small>Project Settings</small></a></li>
+<li data-search-item data-search-text="compute pool compute pool compute pool provides operational visibility into available compute nodes, routing, and local or pooled execution capacity."><a href="../features/compute/pool/researcher.html"><span>Compute Pool</span><small>Compute Pool</small></a></li>
+<li data-search-item data-search-text="ensemble health ensemble health ensemble health surfaces health and consensus signals for istara&#x27;s multi-model or multi-agent ensemble behavior."><a href="../features/ensemble/health/researcher.html"><span>Ensemble Health</span><small>Ensemble Health</small></a></li>
+<li data-search-item data-search-text="quality dashboard quality dashboard quality dashboard summarizes system quality, validation, and operational signals for the running istara installation."><a href="../features/quality/dashboard/researcher.html"><span>Quality Dashboard</span><small>Quality Dashboard</small></a></li>
+<li data-search-item data-search-text="backup backup backup provides project or system backup controls and status for preserving istara data."><a href="../features/backup/view/researcher.html"><span>Backup</span><small>Backup</small></a></li>
+<li data-search-item data-search-text="meta-agent meta-agent the meta-agent surface exposes the meta-hyperagent system for inspecting or governing higher-level agentic improvement behavior."><a href="../features/meta/hyperagent/researcher.html"><span>Meta-Agent</span><small>Meta-Agent</small></a></li>
+<li data-search-item data-search-text="admin dashboard admin the admin dashboard provides administrator-only operational controls and visibility."><a href="../features/admin/dashboard/researcher.html"><span>Admin Dashboard</span><small>Admin</small></a></li>
+<li data-search-item data-search-text="version history history history lists project or artifact version events for traceability and recovery."><a href="../features/history/version/researcher.html"><span>Version History</span><small>History</small></a></li>
+</ul>
+</section>
+<section class="nav-section" data-nav-section>
+<h2>Autoresearch</h2>
+<ul>
+<li data-search-item data-search-text="autoresearch dashboard autoresearch &gt; dashboard the autoresearch dashboard summarizes automated research experiment status and recent results."><a href="../features/autoresearch/dashboard/researcher.html"><span>Autoresearch Dashboard</span><small>Autoresearch &gt; Dashboard</small></a></li>
+<li data-search-item data-search-text="autoresearch experiments autoresearch &gt; experiments experiments configure and inspect automated research runs across strategies or parameters."><a href="../features/autoresearch/experiments/researcher.html"><span>Autoresearch Experiments</span><small>Autoresearch &gt; Experiments</small></a></li>
+<li data-search-item data-search-text="autoresearch leaderboard autoresearch &gt; leaderboard the leaderboard ranks automated research experiment outcomes for comparison."><a href="../features/autoresearch/leaderboard/researcher.html"><span>Autoresearch Leaderboard</span><small>Autoresearch &gt; Leaderboard</small></a></li>
+<li data-search-item data-search-text="autoresearch configuration autoresearch &gt; config autoresearch configuration sets parameters for automated research strategies and runs."><a href="../features/autoresearch/config/researcher.html"><span>Autoresearch Configuration</span><small>Autoresearch &gt; Config</small></a></li>
+</ul>
+</section>
+<section class="nav-section" data-nav-section>
+<h2>Notifications</h2>
+<ul>
+<li data-search-item data-search-text="notifications list notifications &gt; all notifications lists system and project notifications with read/unread state."><a href="../features/notifications/list/researcher.html"><span>Notifications List</span><small>Notifications &gt; All</small></a></li>
+<li data-search-item data-search-text="notification preferences notifications &gt; preferences notification preferences let users configure which notifications they receive and how notification categories are handled."><a href="../features/notifications/preferences/researcher.html"><span>Notification Preferences</span><small>Notifications &gt; Preferences</small></a></li>
+</ul>
+</section>
+</nav>
+    </aside>
+    <main id="main" class="content" tabindex="-1">
+      <div class="content-grid">
+        <article class="doc-panel">
+          <a href="../index.html" class="tech-detail-back">Back to Homepage</a>
+        <header class="feature-hero">
+          <p class="eyebrow">Core Swarm Capability</p>
+          <h1>Intelligent Grounded Chat</h1>
+          <p class="lede">Source-bounded conversational reasoning and multi-turn verification systems.</p>
+        </header>
+        <div class="tech-detail-layout">
+          <div class="tech-detail-copy">
+            
+<h2>User & Researcher Perspective</h2>
+<p>Intelligent Grounded Chat enables researchers to interact with primary source repositories (such as video transcripts, survey responses, and session logs) using standard conversational prompts. It operates on a strict evidence backlink model: every assertion or quote rendered in chat is accompanied by clickable trace anchors linking directly to the exact source span, eliminating manual verification overhead.</p>
+<h3>Operational Workflows & Intent</h3>
+<ul>
+  <li><strong>Evidence Tracking:</strong> Researchers click trace markers within assistant responses to instantly inspect and verify the raw text blocks behind synthesized insights.</li>
+  <li><strong>Query Refinement:</strong> Conversational queries can reference active project contexts, primary nodes, or accepted code structures, allowing precise thematic deep-dives.</li>
+</ul>
+
+<h2>Engineering & Architecture Perspective</h2>
+<p>The Grounded Chat subsystem is exposed via the API endpoint <code>/api/chat</code> and handled by <code>backend/app/api/routes/chat.py</code>. It enforces local vector/keyword RAG context lookup utilizing a non-bypassable context routing DAG.</p>
+<h3>Granular Technical Data Flow</h3>
+<ol>
+  <li><strong>Payload Reception:</strong> User queries are POSTed to <code>/api/chat/message</code>, carrying active <code>project_id</code>, session identifiers, and optional vector search steering weights.</li>
+  <li><strong>Context Routing DAG:</strong> The routing engine dynamically schedules parallel tasks: a LanceDB vector similarity query using local embedding caches, and an exact-match keyword lookup using BM25.</li>
+  <li><strong>Reciprocal Rank Fusion (RRF):</strong> Results are blended to generate the precise top-N context blocks, ensuring high semantic recall and absolute symbolic precision.</li>
+  <li><strong>Research Spine Validation:</strong> Prompt assembly binds context blocks into strict system boundary envelopes, forcing the model to cite raw lines and blocking any output not grounded in the retrieved spans.</li>
+</ol>
+
+<h2>Technical Documentation Approach</h2>
+<p>Istara's chat services operate under strict security boundaries aligned with OWASP Top 10 for GenAI Applications. All retrieval prompts must protect project-scoped borders; fallback to global system context is prohibited unless explicitly authorized. The underlying data pathways are governed by <code>backend/app/services/research_validity_service.py</code>.</p>
+<h3>Compliance & Quality Invariants</h3>
+<ul>
+  <li><strong>Scope Separation:</strong> Chat routers must explicitly reject query execution if <code>project_id</code> lacks researcher-level authorization checks.</li>
+  <li><strong>Grounded Verification:</strong> Responses that fail post-generation trace verification are flagged in database records to protect against silent hallucination leakage.</li>
+</ul>
+
+<h2>Scientific Foundations & Bibliography</h2>
+<p>Grounded Chat relies on peer-reviewed, state-of-the-art frameworks for context retrieval and hallucination mitigation:</p>
+<ul>
+  <li><strong>Retrieval-Augmented Generation:</strong> <em>Lewis et al. (2020)</em> — "Retrieval-Augmented Generation for Knowledge-Intensive NLP Tasks" <em>NeurIPS 2020</em>. Establishing source-bounded prompt synthesis.</li>
+  <li><strong>Hierarchical Summarization:</strong> <em>Chen et al. (2023)</em> — "Walking Down the Memory Maze: Beyond Context Limit through Interactive Reading" <em>arXiv:2310.05029</em>. MemWalker DAG-based multi-turn reading.</li>
+  <li><strong>Prompt Injection Context:</strong> <em>Pan et al. (2024)</em> — "From RAG to Prompt RAG: Revisiting Retrieval-Augmented Generation for Long-Context Language Models" <em>ACL 2024</em>.</li>
+</ul>
+
+            
+            <div class="code-refs-box">
+              <h4>Source Code Reference</h4>
+              <ul><li><code>backend/app/api/routes/chat.py</code></li><li><code>backend/app/services/research_validity_service.py</code></li></ul>
+            </div>
+            
+          </div>
+          <div class="tech-detail-visual">
+            <img src="../assets/tech_chat.png" alt="Intelligent Grounded Chat Diagram">
+          </div>
+        </div>
+        </article>
+        <aside class="toc-panel" aria-label="Page sections">
+          <h2>On This Page</h2>
+          <nav aria-label="Page sections"><ul><li><a href="#main">Overview</a></li></ul></nav>
+        </aside>
+      </div>
+    </main>
+  </div>
+  <script src="../assets/site.js" defer></script>
+</body>
+</html>
