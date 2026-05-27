@@ -1,6 +1,17 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url><loc>index.html</loc></url>
+  <url><loc>docs.html</loc></url>
+  <url><loc>technology/grounded-chat.html</loc></url>
+  <url><loc>technology/ux-skills.html</loc></url>
+  <url><loc>technology/evolving-agents.html</loc></url>
+  <url><loc>technology/compute-swarm.html</loc></url>
+  <url><loc>technology/hybrid-rag.html</loc></url>
+  <url><loc>technology/multi-model.html</loc></url>
+  <url><loc>technology/distributed-compute.html</loc></url>
+  <url><loc>technology/human-kanban.html</loc></url>
+  <url><loc>technology/stitch-figma.html</loc></url>
+  <url><loc>technology/grounded-decisions.html</loc></url>
   <url><loc>features/shell/navigation/researcher.html</loc></url>
   <url><loc>features/shell/navigation/architecture.html</loc></url>
   <url><loc>features/shell/projects/researcher.html</loc></url>
