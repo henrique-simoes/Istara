@@ -41,7 +41,7 @@ jobs:
           python-version: "3.12"
 
       - name: Install documentation test dependencies
-        run: python -m pip install pytest
+        run: python -m pip install pytest pytest-asyncio
 
       - name: Generate feature documentation site
         run: python scripts/feature_docs.py --seed-missing --generate-site --check
