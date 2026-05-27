@@ -57,4 +57,19 @@
       section.hidden = query && !visible;
     });
   });
+
+  Array.prototype.slice.call(document.querySelectorAll("[data-copy-command]")).forEach(function (copyButton) {
+    copyButton.addEventListener("click", function () {
+      var command = copyButton.getAttribute("data-copy-command") || "";
+      if (!command || !navigator.clipboard) {
+        return;
+      }
+      navigator.clipboard.writeText(command).then(function () {
+        copyButton.textContent = "Copied";
+        window.setTimeout(function () {
+          copyButton.textContent = "Copy command";
+        }, 1800);
+      });
+    });
+  });
 })();

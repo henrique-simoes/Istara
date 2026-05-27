@@ -15,7 +15,7 @@
 [![Platform](https://img.shields.io/badge/plataforma-macOS%20%7C%20Windows%20%7C%20Linux-lightgrey.svg)](installer/)
 [![GitHub](https://img.shields.io/badge/GitHub-henrique--simoes%2FIstara-181717?logo=github)](https://github.com/henrique-simoes/Istara)
 
-[**Instalar em 1 Minuto**](#instalar) · [**Arquitetura**](#arquitetura) · [**Testes**](TESTING.md) · [**Segurança**](SECURITY.md) · [**Mapa de Docs**](DOCUMENTATION.md) · [**Referências**](#referências-acadêmicas-e-padrões) · [**Contribuir**](CONTRIBUTING.md)
+[**Instalar em 1 Minuto**](#instalar) · [**Site de documentação**](https://henrique-simoes.github.io/Istara/) · [**Arquitetura**](#arquitetura) · [**Testes**](TESTING.md) · [**Segurança**](SECURITY.md) · [**Mapa de Docs**](DOCUMENTATION.md) · [**Referências**](#referências-acadêmicas-e-padrões) · [**Contribuir**](CONTRIBUTING.md)
 
 ---
 
