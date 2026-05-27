@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Istara Feature Documentation - Istara Feature Docs</title>
+  <title>Istara: Rigorous Local-First UX Research Swarms - Istara Feature Docs</title>
   <meta name="description" content="Istara documentation, installation, and feature map for local-first AI UX research.">
   <link rel="stylesheet" href="assets/site.css">
 </head>
@@ -12,7 +12,7 @@
   <header class="topbar" role="banner">
     <a class="brand" href="index.html" aria-label="Istara feature documentation home">
       <img class="brand-logo" src="assets/istara-logo.png" alt="" aria-hidden="true">
-      <span><strong>Istara Docs</strong><small>UI organized</small></span>
+      <span><strong>Istara Docs</strong><small>Local AI swarms</small></span>
     </a>
     <button class="menu-button" type="button" data-nav-toggle aria-expanded="false" aria-controls="docs-sidebar">Menu</button>
     <form class="search-form" role="search">
@@ -20,6 +20,7 @@
       <input id="doc-search" name="q" type="search" autocomplete="off" placeholder="Search docs">
     </form>
     <nav class="utility-nav" aria-label="Machine-readable documentation">
+      <a href="docs.html">Docs Hub</a>
       <a href="index.html#install">Install</a>
       <a href="https://github.com/henrique-simoes/Istara">GitHub</a>
       <a href="manifest.json">Manifest</a>
@@ -215,119 +216,324 @@
     <main id="main" class="content" tabindex="-1">
       <div class="content-grid">
         <article class="doc-panel">
-          <header class="home-hero">
-  <div class="hero-copy">
-    <p class="eyebrow">Local-first AI agents for UX Research</p>
-    <h1>Istara</h1>
-    <p class="lede">Install a rigorous, local-first research workspace where documents, interviews, surveys, integrations, agents, skills, compute donation, and reports stay connected to the same evidence spine.</p>
+          <section class="home-hero-v2" aria-labelledby="home-hero-heading">
+  <div class="hero-v2-copy">
+    <p class="eyebrow">Local-first AI UX research workspace</p>
+    <h1 id="home-hero-heading">Open-source UX Research agents and tools. Human-in-the-loop AI for UXR.</h1>
+    <p class="hero-lede">Istara is a local-first agentic platform for UX Research. Donate AI compute between computers to one single Istara server and have many agents working together on different UX tasks, using 50+ UX skills and agents that self-evolve. Keep data local and encrypted, secure access for teams.</p>
+    <div class="hero-v2-actions">
+      <a class="primary-action" href="#install">Install Istara</a>
+      <a class="secondary-action" href="docs.html">Explore Docs Hub</a>
+      <a href="https://github.com/henrique-simoes/Istara" class="github-action">GitHub</a>
+    </div>
+    <div class="hero-command-card" aria-label="Recommended install command">
+      <div>
+        <span>Recommended on macOS</span>
+        <code>brew install --cask henrique-simoes/istara/istara</code>
+      </div>
+      <button type="button" data-copy-command="brew install --cask henrique-simoes/istara/istara">Copy</button>
+    </div>
   </div>
-  <div class="hero-actions">
-    <a href="#install">Install Istara</a>
-    <a href="#feature-map">Browse Docs</a>
-    <a href="https://github.com/henrique-simoes/Istara">View GitHub</a>
+  <div class="hero-v2-product" aria-label="Istara research swarm visualization">
+    <img src="assets/istara_presentation.gif" alt="Istara presentation" class="hero-presentation-gif">
+    <div class="spine-visual">
+      <div class="node active">
+        <span class="dot"></span>
+        <span class="label">Raw Ingestion</span>
+      </div>
+      <div class="connector"></div>
+      <div class="node active">
+        <span class="dot"></span>
+        <span class="label">Multi-Model Extraction</span>
+      </div>
+      <div class="connector"></div>
+      <div class="node active">
+        <span class="dot"></span>
+        <span class="label">Human Reconciliation</span>
+      </div>
+      <div class="connector"></div>
+      <div class="node active">
+        <span class="dot"></span>
+        <span class="label">Traceable Decisions</span>
+      </div>
+    </div>
   </div>
-</header>
-<section id="install" class="install-section" aria-labelledby="install-heading">
-  <div class="section-heading"><h2 id="install-heading">Install Istara</h2><p>Pick the path that matches your machine. Native DMG and EXE installers remain disabled until release checks clear them.</p></div>
+</section>
+<ul class="hero-proof-list" aria-label="Istara homepage proof points"><li><strong>Local-first Security</strong><span>Run workspace inference and model routing entirely on your own local machine.</span></li><li><strong>Evidence-gated Rigor</strong><span>Keep report materials tied to source spans, inter-coder review, and reconciled tasks.</span></li><li><strong>Compute Swarm Pool</strong><span>Use project-authorized local models and donated hardware compute with route evidence.</span></li></ul>
+
+<section id="install" class="install-section-v2" aria-labelledby="install-heading">
+  <div class="section-heading">
+    <div>
+      <p class="eyebrow">Install first</p>
+      <h2 id="install-heading">Start with the shortest path, then keep the docs nearby.</h2>
+    </div>
+    <p>The homepage keeps installation visible because the fastest path to understanding Istara is running it with your own research project.</p>
+  </div>
   <div class="install-grid">
-    <article class="install-card primary">
-      <p class="eyebrow">Recommended on macOS</p>
-      <h3>Homebrew</h3>
-      <p>Use the managed cask for the simplest macOS install and update path.</p>
-      <pre><code>brew install --cask henrique-simoes/istara/istara</code></pre>
-      <button type="button" data-copy-command="brew install --cask henrique-simoes/istara/istara">Copy command</button>
-    </article>
-    <article class="install-card">
-      <p class="eyebrow">macOS / Linux</p>
-      <h3>Shell one-liner</h3>
-      <p>Installs dependencies, configures the server/client mode, and starts the guided setup.</p>
-      <pre><code>curl -fsSL https://raw.githubusercontent.com/henrique-simoes/Istara/main/scripts/install-istara.sh | bash</code></pre>
-      <button type="button" data-copy-command="curl -fsSL https://raw.githubusercontent.com/henrique-simoes/Istara/main/scripts/install-istara.sh | bash">Copy command</button>
-    </article>
-    <article class="install-card">
-      <p class="eyebrow">Windows / development</p>
-      <h3>Source or Docker</h3>
-      <p>Use source checkout or Docker while Windows native installers are being repaired.</p>
-      <pre><code>git clone https://github.com/henrique-simoes/Istara.git</code></pre>
-      <a href="https://github.com/henrique-simoes/Istara#install">Open install notes</a>
-    </article>
+    <article class="install-card primary"><p class="eyebrow">Recommended on macOS</p><h3>Homebrew cask</h3><p>Use the managed cask for the simplest install and update flow.</p><pre><code>brew install --cask henrique-simoes/istara/istara</code></pre><button type="button" data-copy-command="brew install --cask henrique-simoes/istara/istara">Copy command</button></article>
+    <article class="install-card"><p class="eyebrow">macOS / Linux</p><h3>Shell installer</h3><p>Use the repository installer when you want a guided command-line setup.</p><pre><code>curl -fsSL https://raw.githubusercontent.com/henrique-simoes/Istara/main/scripts/install-istara.sh | bash</code></pre><button type="button" data-copy-command="curl -fsSL https://raw.githubusercontent.com/henrique-simoes/Istara/main/scripts/install-istara.sh | bash">Copy command</button></article>
+    <article class="install-card"><p class="eyebrow">Development / Windows notes</p><h3>Source checkout</h3><p>Use the repository for development, Docker-based work, and current platform notes.</p><pre><code>git clone https://github.com/henrique-simoes/Istara.git</code></pre><button type="button" data-copy-command="git clone https://github.com/henrique-simoes/Istara.git">Copy command</button></article>
   </div>
 </section>
 
-<section class="metric-grid" aria-label="Documentation coverage">
-  <article><strong>86</strong><span>Tracked UI features</span></article>
-  <article><strong>172</strong><span>Feature perspectives</span></article>
-  <article><strong>18</strong><span>UI menu groups</span></article>
-  <article><strong>13</strong><span>Shared concepts</span></article>
+<section id="product-tour" class="section-block capabilities-bento" aria-labelledby="capabilities-heading">
+  <div class="section-heading">
+    <div>
+      <p class="eyebrow">Core Swarm Capabilities</p>
+      <h2 id="capabilities-heading">Equip your team with five specialized AI agents.</h2>
+    </div>
+    <p>Run focused UX research skills and maintain complete control over how data is processed, analyzed, and stored.</p>
+  </div>
+  <div class="tech-sections-container">
+    
+<div class="tech-section-row scroll-animate">
+  <div class="tech-section-copy">
+    <span class="tech-section-num">01 / 10</span>
+    <span class="tech-section-tag">Spine Guarded</span>
+    <h3>Intelligent Grounded Chat</h3>
+    <p class="tech-section-desc">Ask research questions without losing grounding. Project chat keeps source material, accepted evidence, and task context close to the conversation for fully reviewable evidence.</p>
+    <p class="tech-section-detail">Istara&#x27;s source-bounded reasoning and context DAG routing ensure that every AI claim is completely backed by source citations. Powered by semantic vector search.</p>
+    <a href="technology/grounded-chat.html" class="tech-section-btn">Explore Architecture Deep-Dive →</a>
+  </div>
+  <div class="tech-section-visual">
+    <img src="assets/tech_chat.png" alt="Intelligent Grounded Chat Schematic" loading="lazy">
+  </div>
+</div>
+
+<div class="tech-section-row scroll-animate">
+  <div class="tech-section-copy">
+    <span class="tech-section-num">02 / 10</span>
+    <span class="tech-section-tag">Double Diamond</span>
+    <h3>53+ UX Research Skills</h3>
+    <p class="tech-section-desc">Run focused UX research skills from competitive analysis, card sorting, and accessibility audits to SUS usability scoring and design briefs.</p>
+    <p class="tech-section-detail">Workflows are organized across Discover, Define, Develop, and Deliver phases of the Double Diamond. The execution harness supports custom skill creation and automatic prompt-evolution.</p>
+    <a href="technology/ux-skills.html" class="tech-section-btn">Explore Architecture Deep-Dive →</a>
+  </div>
+  <div class="tech-section-visual">
+    <img src="assets/tech_skills.png" alt="53+ UX Research Skills Schematic" loading="lazy">
+  </div>
+</div>
+
+<div class="tech-section-row scroll-animate">
+  <div class="tech-section-copy">
+    <span class="tech-section-num">03 / 10</span>
+    <span class="tech-section-tag">Governed Prompts</span>
+    <h3>Self-Evolving Agents &amp; Personas</h3>
+    <p class="tech-section-desc">Evolve Cleo, Sentinel, Pixel, Sage, and Echo from project-scoped process memory and verified outcomes. Create new agents at runtime via Memento agent factory.</p>
+    <p class="tech-section-detail">The runtime Memento agent factory reads from project-scoped ReasoningBank memory stores, allowing agents to evolve their prompts and strategies governed by security contracts.</p>
+    <a href="technology/evolving-agents.html" class="tech-section-btn">Explore Architecture Deep-Dive →</a>
+  </div>
+  <div class="tech-section-visual">
+    <img src="assets/tech_swarm.png" alt="Self-Evolving Agents &amp; Personas Schematic" loading="lazy">
+  </div>
+</div>
+
+<div class="tech-section-row scroll-animate">
+  <div class="tech-section-copy">
+    <span class="tech-section-num">04 / 10</span>
+    <span class="tech-section-tag">Local Swarms</span>
+    <h3>Collaborative Compute Swarm</h3>
+    <p class="tech-section-desc">Share GPU and CPU capacity with team members via a WebSocket-based Compute Relay. Route inference requests to local nodes with capability detection and automatic failover.</p>
+    <p class="tech-section-detail">Idle hardware forms a secure WebSocket-based compute relay pool. Requests are dynamically routed to local donor nodes with automatic fallback queue management.</p>
+    <a href="technology/compute-swarm.html" class="tech-section-btn">Explore Architecture Deep-Dive →</a>
+  </div>
+  <div class="tech-section-visual">
+    <img src="assets/tech_relay.png" alt="Collaborative Compute Swarm Schematic" loading="lazy">
+  </div>
+</div>
+
+  </div>
 </section>
 
-<section id="feature-map" class="section-block">
-  <div class="section-heading"><h2>Menu Structure</h2><p>Grouped the same way Istara exposes the documented surfaces.</p></div>
-  <div class="group-grid"><article class="group-card" data-feature-card data-search-text="shell application navigation project switcher global search notification bell keyboard shortcuts view onboarding login and session bootstrap"><h2>Shell</h2><p>7 documented feature surfaces.</p><ul><li><a href="features/shell/navigation/researcher.html">Application Navigation</a></li>
-<li><a href="features/shell/projects/researcher.html">Project Switcher</a></li>
-<li><a href="features/shell/search/researcher.html">Global Search</a></li>
-<li><a href="features/shell/notifications-bell/researcher.html">Notification Bell</a></li></ul></article><article class="group-card" data-feature-card data-search-text="chat chat workspace chat sessions chat model controls chat file attachments chat audio conversation chat steering"><h2>Chat</h2><p>6 documented feature surfaces.</p><ul><li><a href="features/chat/overview/researcher.html">Chat Workspace</a></li>
-<li><a href="features/chat/sessions/researcher.html">Chat Sessions</a></li>
-<li><a href="features/chat/model-controls/researcher.html">Chat Model Controls</a></li>
-<li><a href="features/chat/files/researcher.html">Chat File Attachments</a></li></ul></article><article class="group-card" data-feature-card data-search-text="findings findings evidence findings phase tabs findings codebook findings code review project reports report slide instructions"><h2>Findings</h2><p>6 documented feature surfaces.</p><ul><li><a href="features/findings/evidence/researcher.html">Findings Evidence</a></li>
-<li><a href="features/findings/phase-tabs/researcher.html">Findings Phase Tabs</a></li>
-<li><a href="features/findings/codebook/researcher.html">Findings Codebook</a></li>
-<li><a href="features/findings/review/researcher.html">Findings Code Review</a></li></ul></article><article class="group-card" data-feature-card data-search-text="ux laws ux laws catalog ux laws compliance"><h2>UX Laws</h2><p>2 documented feature surfaces.</p><ul><li><a href="features/laws/catalog/researcher.html">UX Laws Catalog</a></li>
-<li><a href="features/laws/compliance/researcher.html">UX Laws Compliance</a></li></ul></article><article class="group-card" data-feature-card data-search-text="tasks task kanban board task editor human task review task attachments send task to report"><h2>Tasks</h2><p>5 documented feature surfaces.</p><ul><li><a href="features/tasks/kanban/researcher.html">Task Kanban Board</a></li>
-<li><a href="features/tasks/editor/researcher.html">Task Editor</a></li>
-<li><a href="features/tasks/review/researcher.html">Human Task Review</a></li>
-<li><a href="features/tasks/attachments/researcher.html">Task Attachments</a></li></ul></article><article class="group-card" data-feature-card data-search-text="interviews interview files interview transcription interview preview and tags"><h2>Interviews</h2><p>3 documented feature surfaces.</p><ul><li><a href="features/interviews/files/researcher.html">Interview Files</a></li>
-<li><a href="features/interviews/transcription/researcher.html">Interview Transcription</a></li>
-<li><a href="features/interviews/preview-tags/researcher.html">Interview Preview And Tags</a></li></ul></article><article class="group-card" data-feature-card data-search-text="documents document library document upload document preview document suggestions"><h2>Documents</h2><p>4 documented feature surfaces.</p><ul><li><a href="features/documents/library/researcher.html">Document Library</a></li>
-<li><a href="features/documents/upload/researcher.html">Document Upload</a></li>
-<li><a href="features/documents/preview/researcher.html">Document Preview</a></li>
-<li><a href="features/documents/suggestions/researcher.html">Document Suggestions</a></li></ul></article><article class="group-card" data-feature-card data-search-text="context project context editor"><h2>Context</h2><p>1 documented feature surfaces.</p><ul><li><a href="features/context/editor/researcher.html">Project Context Editor</a></li></ul></article><article class="group-card" data-feature-card data-search-text="skills skills catalog skill proposals create skill"><h2>Skills</h2><p>3 documented feature surfaces.</p><ul><li><a href="features/skills/catalog/researcher.html">Skills Catalog</a></li>
-<li><a href="features/skills/proposals/researcher.html">Skill Proposals</a></li>
-<li><a href="features/skills/create/researcher.html">Create Skill</a></li></ul></article><article class="group-card" data-feature-card data-search-text="agents agent registry agent detail panels agent-to-agent log agent proposals create agent"><h2>Agents</h2><p>5 documented feature surfaces.</p><ul><li><a href="features/agents/registry/researcher.html">Agent Registry</a></li>
-<li><a href="features/agents/detail/researcher.html">Agent Detail Panels</a></li>
-<li><a href="features/agents/a2a/researcher.html">Agent-To-Agent Log</a></li>
-<li><a href="features/agents/proposals/researcher.html">Agent Proposals</a></li></ul></article><article class="group-card" data-feature-card data-search-text="memory knowledge memory agent memory memory health context dag"><h2>Memory</h2><p>4 documented feature surfaces.</p><ul><li><a href="features/memory/knowledge/researcher.html">Knowledge Memory</a></li>
-<li><a href="features/memory/agent/researcher.html">Agent Memory</a></li>
-<li><a href="features/memory/health/researcher.html">Memory Health</a></li>
-<li><a href="features/memory/context-dag/researcher.html">Context DAG</a></li></ul></article><article class="group-card" data-feature-card data-search-text="interfaces interface design chat generate interfaces screens gallery configuration interface handoff findings picker"><h2>Interfaces</h2><p>6 documented feature surfaces.</p><ul><li><a href="features/interfaces/design-chat/researcher.html">Interface Design Chat</a></li>
-<li><a href="features/interfaces/generate/researcher.html">Generate Interfaces</a></li>
-<li><a href="features/interfaces/screens/researcher.html">Screens Gallery</a></li>
-<li><a href="features/interfaces/figma/researcher.html">Configuration</a></li></ul></article><article class="group-card" data-feature-card data-search-text="integrations integrations overview messaging integrations survey integrations mcp integrations research deployments deployment dashboard"><h2>Integrations</h2><p>6 documented feature surfaces.</p><ul><li><a href="features/integrations/overview/researcher.html">Integrations Overview</a></li>
-<li><a href="features/integrations/messaging/researcher.html">Messaging Integrations</a></li>
-<li><a href="features/integrations/surveys/researcher.html">Survey Integrations</a></li>
-<li><a href="features/integrations/mcp/researcher.html">MCP Integrations</a></li></ul></article><article class="group-card" data-feature-card data-search-text="loops loops overview loop schedules agent loops custom loops loop execution history"><h2>Loops</h2><p>5 documented feature surfaces.</p><ul><li><a href="features/loops/overview/researcher.html">Loops Overview</a></li>
-<li><a href="features/loops/schedules/researcher.html">Loop Schedules</a></li>
-<li><a href="features/loops/agent-loops/researcher.html">Agent Loops</a></li>
-<li><a href="features/loops/custom/researcher.html">Custom Loops</a></li></ul></article><article class="group-card" data-feature-card data-search-text="settings system status and models llm server settings user management connection strings passkeys and two-factor authentication active sessions software updates governed evolution compute donation"><h2>Settings</h2><p>9 documented feature surfaces.</p><ul><li><a href="features/settings/general/researcher.html">System Status And Models</a></li>
-<li><a href="features/settings/llm-servers/researcher.html">LLM Server Settings</a></li>
-<li><a href="features/settings/users/researcher.html">User Management</a></li>
-<li><a href="features/settings/connection-strings/researcher.html">Connection Strings</a></li></ul></article><article class="group-card" data-feature-card data-search-text="secondary project settings compute pool ensemble health quality dashboard backup meta-agent admin dashboard version history"><h2>Secondary</h2><p>8 documented feature surfaces.</p><ul><li><a href="features/settings/project/researcher.html">Project Settings</a></li>
-<li><a href="features/compute/pool/researcher.html">Compute Pool</a></li>
-<li><a href="features/ensemble/health/researcher.html">Ensemble Health</a></li>
-<li><a href="features/quality/dashboard/researcher.html">Quality Dashboard</a></li></ul></article><article class="group-card" data-feature-card data-search-text="autoresearch autoresearch dashboard autoresearch experiments autoresearch leaderboard autoresearch configuration"><h2>Autoresearch</h2><p>4 documented feature surfaces.</p><ul><li><a href="features/autoresearch/dashboard/researcher.html">Autoresearch Dashboard</a></li>
-<li><a href="features/autoresearch/experiments/researcher.html">Autoresearch Experiments</a></li>
-<li><a href="features/autoresearch/leaderboard/researcher.html">Autoresearch Leaderboard</a></li>
-<li><a href="features/autoresearch/config/researcher.html">Autoresearch Configuration</a></li></ul></article><article class="group-card" data-feature-card data-search-text="notifications notifications list notification preferences"><h2>Notifications</h2><p>2 documented feature surfaces.</p><ul><li><a href="features/notifications/list/researcher.html">Notifications List</a></li>
-<li><a href="features/notifications/preferences/researcher.html">Notification Preferences</a></li></ul></article></div>
-</section>
-<section class="section-block">
-  <div class="section-heading"><h2>All Feature Pages</h2><p>Each feature has a researcher/user page and an engineering/AI architecture page.</p></div>
-  <div class="feature-list"><article class="feature-card" data-feature-card data-search-text="application navigation shell &gt; navigation the main shell organizes istara into primary, secondary, utility, and mobile navigation surfaces and routes each selected view into the mounted work area. shell"><div><p class="eyebrow">Shell</p><h2>Application Navigation</h2><p>The main shell organizes Istara into primary, secondary, utility, and mobile navigation surfaces and routes each selected view into the mounted work area.</p><p class="path-line">Shell &gt; Navigation</p></div><div class="card-actions"><a href="features/shell/navigation/researcher.html">Researcher</a><a href="features/shell/navigation/architecture.html">Architecture</a></div></article><article class="feature-card" data-feature-card data-search-text="project switcher shell &gt; projects the sidebar project control lists available projects and lets users create, select, pause, resume, or delete the active project context used by most istara views. shell"><div><p class="eyebrow">Shell</p><h2>Project Switcher</h2><p>The sidebar project control lists available projects and lets users create, select, pause, resume, or delete the active project context used by most Istara views.</p><p class="path-line">Shell &gt; Projects</p></div><div class="card-actions"><a href="features/shell/projects/researcher.html">Researcher</a><a href="features/shell/projects/architecture.html">Architecture</a></div></article><article class="feature-card" data-feature-card data-search-text="global search shell &gt; search the shell exposes a command/search modal from the sidebar and keyboard shortcut so users can find navigable work surfaces and project objects. shell"><div><p class="eyebrow">Shell</p><h2>Global Search</h2><p>The shell exposes a command/search modal from the sidebar and keyboard shortcut so users can find navigable work surfaces and project objects.</p><p class="path-line">Shell &gt; Search</p></div><div class="card-actions"><a href="features/shell/search/researcher.html">Researcher</a><a href="features/shell/search/architecture.html">Architecture</a></div></article><article class="feature-card" data-feature-card data-search-text="notification bell shell &gt; notifications bell the sidebar notification bell polls unread notification counts and links users into the notifications surface. shell"><div><p class="eyebrow">Shell</p><h2>Notification Bell</h2><p>The sidebar notification bell polls unread notification counts and links users into the notifications surface.</p><p class="path-line">Shell &gt; Notifications Bell</p></div><div class="card-actions"><a href="features/shell/notifications-bell/researcher.html">Researcher</a><a href="features/shell/notifications-bell/architecture.html">Architecture</a></div></article><article class="feature-card" data-feature-card data-search-text="keyboard shortcuts shell &gt; keyboard shortcuts homeclient wires global shortcuts for search, view switching, shortcut help, and right-panel toggling. shell"><div><p class="eyebrow">Shell</p><h2>Keyboard Shortcuts</h2><p>HomeClient wires global shortcuts for search, view switching, shortcut help, and right-panel toggling.</p><p class="path-line">Shell &gt; Keyboard Shortcuts</p></div><div class="card-actions"><a href="features/shell/keyboard-shortcuts/researcher.html">Researcher</a><a href="features/shell/keyboard-shortcuts/architecture.html">Architecture</a></div></article><article class="feature-card" data-feature-card data-search-text="view onboarding shell &gt; onboarding reusable onboarding overlays and tour state introduce major istara views and offer context-specific chat prompts. shell"><div><p class="eyebrow">Shell</p><h2>View Onboarding</h2><p>Reusable onboarding overlays and tour state introduce major Istara views and offer context-specific chat prompts.</p><p class="path-line">Shell &gt; Onboarding</p></div><div class="card-actions"><a href="features/shell/onboarding/researcher.html">Researcher</a><a href="features/shell/onboarding/architecture.html">Architecture</a></div></article><article class="feature-card" data-feature-card data-search-text="login and session bootstrap shell &gt; authentication the application shell checks authentication state, shows the login surface when needed, and loads session state before mounting protected views. shell"><div><p class="eyebrow">Shell</p><h2>Login And Session Bootstrap</h2><p>The application shell checks authentication state, shows the login surface when needed, and loads session state before mounting protected views.</p><p class="path-line">Shell &gt; Authentication</p></div><div class="card-actions"><a href="features/auth/login/researcher.html">Researcher</a><a href="features/auth/login/architecture.html">Architecture</a></div></article><article class="feature-card" data-feature-card data-search-text="chat workspace chat chat is the project-scoped conversational workspace for working with istara agents, context, files, and model settings. chat"><div><p class="eyebrow">Chat</p><h2>Chat Workspace</h2><p>Chat is the project-scoped conversational workspace for working with Istara agents, context, files, and model settings.</p><p class="path-line">Chat</p></div><div class="card-actions"><a href="features/chat/overview/researcher.html">Researcher</a><a href="features/chat/overview/architecture.html">Architecture</a></div></article><article class="feature-card" data-feature-card data-search-text="chat sessions chat &gt; sessions the chat session sidebar manages project-scoped conversation history and new session creation. chat"><div><p class="eyebrow">Chat</p><h2>Chat Sessions</h2><p>The chat session sidebar manages project-scoped conversation history and new session creation.</p><p class="path-line">Chat &gt; Sessions</p></div><div class="card-actions"><a href="features/chat/sessions/researcher.html">Researcher</a><a href="features/chat/sessions/architecture.html">Architecture</a></div></article><article class="feature-card" data-feature-card data-search-text="chat model controls chat &gt; model controls chat exposes model, thinking, and reasoning controls so users can tune how the assistant responds within the configured local or server-backed model environment. chat"><div><p class="eyebrow">Chat</p><h2>Chat Model Controls</h2><p>Chat exposes model, thinking, and reasoning controls so users can tune how the assistant responds within the configured local or server-backed model environment.</p><p class="path-line">Chat &gt; Model Controls</p></div><div class="card-actions"><a href="features/chat/model-controls/researcher.html">Researcher</a><a href="features/chat/model-controls/architecture.html">Architecture</a></div></article><article class="feature-card" data-feature-card data-search-text="chat file attachments chat &gt; file attachments chat can attach uploaded project files and documents so the conversation can use project evidence and user-provided material. chat"><div><p class="eyebrow">Chat</p><h2>Chat File Attachments</h2><p>Chat can attach uploaded project files and documents so the conversation can use project evidence and user-provided material.</p><p class="path-line">Chat &gt; File Attachments</p></div><div class="card-actions"><a href="features/chat/files/researcher.html">Researcher</a><a href="features/chat/files/architecture.html">Architecture</a></div></article><article class="feature-card" data-feature-card data-search-text="chat audio conversation chat &gt; audio the chat audio flow records user speech through the browser, sends it to the voice route, and returns transcription or voice-assisted chat input. chat"><div><p class="eyebrow">Chat</p><h2>Chat Audio Conversation</h2><p>The chat audio flow records user speech through the browser, sends it to the voice route, and returns transcription or voice-assisted chat input.</p><p class="path-line">Chat &gt; Audio</p></div><div class="card-actions"><a href="features/chat/audio/researcher.html">Researcher</a><a href="features/chat/audio/architecture.html">Architecture</a></div></article><article class="feature-card" data-feature-card data-search-text="chat steering chat &gt; steering steering controls collect lightweight user guidance that can shape downstream assistant behavior and project context. chat"><div><p class="eyebrow">Chat</p><h2>Chat Steering</h2><p>Steering controls collect lightweight user guidance that can shape downstream assistant behavior and project context.</p><p class="path-line">Chat &gt; Steering</p></div><div class="card-actions"><a href="features/chat/steering/researcher.html">Researcher</a><a href="features/chat/steering/architecture.html">Architecture</a></div></article><article class="feature-card" data-feature-card data-search-text="findings evidence findings &gt; evidence the findings evidence tab lists research insights and recommendations for the active project and supports phase-oriented review. findings"><div><p class="eyebrow">Findings</p><h2>Findings Evidence</h2><p>The Findings evidence tab lists research insights and recommendations for the active project and supports phase-oriented review.</p><p class="path-line">Findings &gt; Evidence</p></div><div class="card-actions"><a href="features/findings/evidence/researcher.html">Researcher</a><a href="features/findings/evidence/architecture.html">Architecture</a></div></article><article class="feature-card" data-feature-card data-search-text="findings phase tabs findings &gt; evidence &gt; phase tabs the evidence view segments findings by discover, define, develop, and deliver project phases. findings"><div><p class="eyebrow">Findings</p><h2>Findings Phase Tabs</h2><p>The Evidence view segments findings by Discover, Define, Develop, and Deliver project phases.</p><p class="path-line">Findings &gt; Evidence &gt; Phase Tabs</p></div><div class="card-actions"><a href="features/findings/phase-tabs/researcher.html">Researcher</a><a href="features/findings/phase-tabs/architecture.html">Architecture</a></div></article><article class="feature-card" data-feature-card data-search-text="findings codebook findings &gt; codebook the codebook tab surfaces qualitative coding structures and codebook versions associated with project findings. findings"><div><p class="eyebrow">Findings</p><h2>Findings Codebook</h2><p>The Codebook tab surfaces qualitative coding structures and codebook versions associated with project findings.</p><p class="path-line">Findings &gt; Codebook</p></div><div class="card-actions"><a href="features/findings/codebook/researcher.html">Researcher</a><a href="features/findings/codebook/architecture.html">Architecture</a></div></article><article class="feature-card" data-feature-card data-search-text="findings code review findings &gt; review the review tab presents code review queues for validating and adjudicating qualitative coding work. findings"><div><p class="eyebrow">Findings</p><h2>Findings Code Review</h2><p>The Review tab presents code review queues for validating and adjudicating qualitative coding work.</p><p class="path-line">Findings &gt; Review</p></div><div class="card-actions"><a href="features/findings/review/researcher.html">Researcher</a><a href="features/findings/review/architecture.html">Architecture</a></div></article><article class="feature-card" data-feature-card data-search-text="project reports findings &gt; reports the reports tab lets users generate, inspect, and manage project reports produced from findings and research evidence. findings"><div><p class="eyebrow">Findings</p><h2>Project Reports</h2><p>The Reports tab lets users generate, inspect, and manage project reports produced from findings and research evidence.</p><p class="path-line">Findings &gt; Reports</p></div><div class="card-actions"><a href="features/findings/reports/researcher.html">Researcher</a><a href="features/findings/reports/architecture.html">Architecture</a></div></article><article class="feature-card" data-feature-card data-search-text="report slide instructions findings &gt; reports &gt; slide instructions report-related surfaces support presentation or slide guidance that can carry research findings into communicable report artifacts. findings"><div><p class="eyebrow">Findings</p><h2>Report Slide Instructions</h2><p>Report-related surfaces support presentation or slide guidance that can carry research findings into communicable report artifacts.</p><p class="path-line">Findings &gt; Reports &gt; Slide Instructions</p></div><div class="card-actions"><a href="features/findings/slide-instructions/researcher.html">Researcher</a><a href="features/findings/slide-instructions/architecture.html">Architecture</a></div></article><article class="feature-card" data-feature-card data-search-text="ux laws catalog ux laws &gt; catalog the ux laws catalog gives researchers a structured reference for applying ux laws to research and design interpretation. ux laws"><div><p class="eyebrow">UX Laws</p><h2>UX Laws Catalog</h2><p>The UX Laws catalog gives researchers a structured reference for applying UX laws to research and design interpretation.</p><p class="path-line">UX Laws &gt; Catalog</p></div><div class="card-actions"><a href="features/laws/catalog/researcher.html">Researcher</a><a href="features/laws/catalog/architecture.html">Architecture</a></div></article><article class="feature-card" data-feature-card data-search-text="ux laws compliance ux laws &gt; compliance the compliance tab checks or summarizes how project work aligns with selected ux laws. ux laws"><div><p class="eyebrow">UX Laws</p><h2>UX Laws Compliance</h2><p>The compliance tab checks or summarizes how project work aligns with selected UX laws.</p><p class="path-line">UX Laws &gt; Compliance</p></div><div class="card-actions"><a href="features/laws/compliance/researcher.html">Researcher</a><a href="features/laws/compliance/architecture.html">Architecture</a></div></article><article class="feature-card" data-feature-card data-search-text="task kanban board tasks &gt; kanban tasks presents project work as a kanban board for tracking research operations, agent work, and review handoffs. tasks"><div><p class="eyebrow">Tasks</p><h2>Task Kanban Board</h2><p>Tasks presents project work as a Kanban board for tracking research operations, agent work, and review handoffs.</p><p class="path-line">Tasks &gt; Kanban</p></div><div class="card-actions"><a href="features/tasks/kanban/researcher.html">Researcher</a><a href="features/tasks/kanban/architecture.html">Architecture</a></div></article><article class="feature-card" data-feature-card data-search-text="task editor tasks &gt; task editor the task editor creates and updates task details, assignments, status, and task-linked research context. tasks"><div><p class="eyebrow">Tasks</p><h2>Task Editor</h2><p>The task editor creates and updates task details, assignments, status, and task-linked research context.</p><p class="path-line">Tasks &gt; Task Editor</p></div><div class="card-actions"><a href="features/tasks/editor/researcher.html">Researcher</a><a href="features/tasks/editor/architecture.html">Architecture</a></div></article><article class="feature-card" data-feature-card data-search-text="human task review tasks &gt; review review actions support approving, requesting revision, or otherwise resolving human-in-the-loop task work. tasks"><div><p class="eyebrow">Tasks</p><h2>Human Task Review</h2><p>Review actions support approving, requesting revision, or otherwise resolving human-in-the-loop task work.</p><p class="path-line">Tasks &gt; Review</p></div><div class="card-actions"><a href="features/tasks/review/researcher.html">Researcher</a><a href="features/tasks/review/architecture.html">Architecture</a></div></article><article class="feature-card" data-feature-card data-search-text="task attachments tasks &gt; attachments tasks can reference project files or documents so research work stays connected to the evidence it depends on. tasks"><div><p class="eyebrow">Tasks</p><h2>Task Attachments</h2><p>Tasks can reference project files or documents so research work stays connected to the evidence it depends on.</p><p class="path-line">Tasks &gt; Attachments</p></div><div class="card-actions"><a href="features/tasks/attachments/researcher.html">Researcher</a><a href="features/tasks/attachments/architecture.html">Architecture</a></div></article><article class="feature-card" data-feature-card data-search-text="send task to report tasks &gt; send to report task surfaces can move validated task outputs toward report generation or reporting workflows. tasks"><div><p class="eyebrow">Tasks</p><h2>Send Task To Report</h2><p>Task surfaces can move validated task outputs toward report generation or reporting workflows.</p><p class="path-line">Tasks &gt; Send To Report</p></div><div class="card-actions"><a href="features/tasks/send-report/researcher.html">Researcher</a><a href="features/tasks/send-report/architecture.html">Architecture</a></div></article><article class="feature-card" data-feature-card data-search-text="interview files interviews &gt; files the interviews view manages interview recordings and source files for participant research analysis. interviews"><div><p class="eyebrow">Interviews</p><h2>Interview Files</h2><p>The Interviews view manages interview recordings and source files for participant research analysis.</p><p class="path-line">Interviews &gt; Files</p></div><div class="card-actions"><a href="features/interviews/files/researcher.html">Researcher</a><a href="features/interviews/files/architecture.html">Architecture</a></div></article><article class="feature-card" data-feature-card data-search-text="interview transcription interviews &gt; transcription interview audio processing uses backend transcription capabilities to turn recordings into usable research text. interviews"><div><p class="eyebrow">Interviews</p><h2>Interview Transcription</h2><p>Interview audio processing uses backend transcription capabilities to turn recordings into usable research text.</p><p class="path-line">Interviews &gt; Transcription</p></div><div class="card-actions"><a href="features/interviews/transcription/researcher.html">Researcher</a><a href="features/interviews/transcription/architecture.html">Architecture</a></div></article><article class="feature-card" data-feature-card data-search-text="interview preview and tags interviews &gt; preview and tags interview preview parts display file previews, send-to-agent actions, and tag creation controls. interviews"><div><p class="eyebrow">Interviews</p><h2>Interview Preview And Tags</h2><p>Interview preview parts display file previews, send-to-agent actions, and tag creation controls.</p><p class="path-line">Interviews &gt; Preview And Tags</p></div><div class="card-actions"><a href="features/interviews/preview-tags/researcher.html">Researcher</a><a href="features/interviews/preview-tags/architecture.html">Architecture</a></div></article><article class="feature-card" data-feature-card data-search-text="document library documents &gt; library documents centralizes project documents and makes source material available for preview, chat, and analysis workflows. documents"><div><p class="eyebrow">Documents</p><h2>Document Library</h2><p>Documents centralizes project documents and makes source material available for preview, chat, and analysis workflows.</p><p class="path-line">Documents &gt; Library</p></div><div class="card-actions"><a href="features/documents/library/researcher.html">Researcher</a><a href="features/documents/library/architecture.html">Architecture</a></div></article><article class="feature-card" data-feature-card data-search-text="document upload documents &gt; upload upload controls import project files and documents into istara for downstream reading, chat, and evidence workflows. documents"><div><p class="eyebrow">Documents</p><h2>Document Upload</h2><p>Upload controls import project files and documents into Istara for downstream reading, chat, and evidence workflows.</p><p class="path-line">Documents &gt; Upload</p></div><div class="card-actions"><a href="features/documents/upload/researcher.html">Researcher</a><a href="features/documents/upload/architecture.html">Architecture</a></div></article><article class="feature-card" data-feature-card data-search-text="document preview documents &gt; preview document preview lets users inspect uploaded project material before using it in chat, interviews, or findings workflows. documents"><div><p class="eyebrow">Documents</p><h2>Document Preview</h2><p>Document preview lets users inspect uploaded project material before using it in chat, interviews, or findings workflows.</p><p class="path-line">Documents &gt; Preview</p></div><div class="card-actions"><a href="features/documents/preview/researcher.html">Researcher</a><a href="features/documents/preview/architecture.html">Architecture</a></div></article><article class="feature-card" data-feature-card data-search-text="document suggestions documents &gt; suggestions interactive suggestions surface possible next actions or edits for document-centered workflows. documents"><div><p class="eyebrow">Documents</p><h2>Document Suggestions</h2><p>Interactive suggestions surface possible next actions or edits for document-centered workflows.</p><p class="path-line">Documents &gt; Suggestions</p></div><div class="card-actions"><a href="features/documents/suggestions/researcher.html">Researcher</a><a href="features/documents/suggestions/architecture.html">Architecture</a></div></article><article class="feature-card" data-feature-card data-search-text="project context editor context &gt; editor the context view edits project background, goals, assumptions, and other structured context used by istara workflows. context"><div><p class="eyebrow">Context</p><h2>Project Context Editor</h2><p>The Context view edits project background, goals, assumptions, and other structured context used by Istara workflows.</p><p class="path-line">Context &gt; Editor</p></div><div class="card-actions"><a href="features/context/editor/researcher.html">Researcher</a><a href="features/context/editor/architecture.html">Architecture</a></div></article><article class="feature-card" data-feature-card data-search-text="skills catalog skills &gt; catalog the skills catalog lists available capabilities agents can use or propose for research workflows. skills"><div><p class="eyebrow">Skills</p><h2>Skills Catalog</h2><p>The Skills catalog lists available capabilities agents can use or propose for research workflows.</p><p class="path-line">Skills &gt; Catalog</p></div><div class="card-actions"><a href="features/skills/catalog/researcher.html">Researcher</a><a href="features/skills/catalog/architecture.html">Architecture</a></div></article><article class="feature-card" data-feature-card data-search-text="skill proposals skills &gt; proposals skill proposal flows present candidate tool or capability changes for review before they are adopted. skills"><div><p class="eyebrow">Skills</p><h2>Skill Proposals</h2><p>Skill proposal flows present candidate tool or capability changes for review before they are adopted.</p><p class="path-line">Skills &gt; Proposals</p></div><div class="card-actions"><a href="features/skills/proposals/researcher.html">Researcher</a><a href="features/skills/proposals/architecture.html">Architecture</a></div></article><article class="feature-card" data-feature-card data-search-text="create skill skills &gt; create create skill supports adding or configuring a new skill surface from inside istara. skills"><div><p class="eyebrow">Skills</p><h2>Create Skill</h2><p>Create Skill supports adding or configuring a new skill surface from inside Istara.</p><p class="path-line">Skills &gt; Create</p></div><div class="card-actions"><a href="features/skills/create/researcher.html">Researcher</a><a href="features/skills/create/architecture.html">Architecture</a></div></article><article class="feature-card" data-feature-card data-search-text="agent registry agents &gt; agents the agents view lists and manages available agents, including their status and project-facing roles. agents"><div><p class="eyebrow">Agents</p><h2>Agent Registry</h2><p>The Agents view lists and manages available agents, including their status and project-facing roles.</p><p class="path-line">Agents &gt; Agents</p></div><div class="card-actions"><a href="features/agents/registry/researcher.html">Researcher</a><a href="features/agents/registry/architecture.html">Architecture</a></div></article><article class="feature-card" data-feature-card data-search-text="agent detail panels agents &gt; agents &gt; detail selected agent details expose overview, identity, memory, and permission information for that agent. agents"><div><p class="eyebrow">Agents</p><h2>Agent Detail Panels</h2><p>Selected agent details expose overview, identity, memory, and permission information for that agent.</p><p class="path-line">Agents &gt; Agents &gt; Detail</p></div><div class="card-actions"><a href="features/agents/detail/researcher.html">Researcher</a><a href="features/agents/detail/architecture.html">Architecture</a></div></article><article class="feature-card" data-feature-card data-search-text="agent-to-agent log agents &gt; a2a the a2a tab displays agent-to-agent communication or coordination events for operational visibility. agents"><div><p class="eyebrow">Agents</p><h2>Agent-To-Agent Log</h2><p>The A2A tab displays agent-to-agent communication or coordination events for operational visibility.</p><p class="path-line">Agents &gt; A2A</p></div><div class="card-actions"><a href="features/agents/a2a/researcher.html">Researcher</a><a href="features/agents/a2a/architecture.html">Architecture</a></div></article><article class="feature-card" data-feature-card data-search-text="agent proposals agents &gt; proposals agent proposal workflows surface suggested agent changes or actions for review. agents"><div><p class="eyebrow">Agents</p><h2>Agent Proposals</h2><p>Agent proposal workflows surface suggested agent changes or actions for review.</p><p class="path-line">Agents &gt; Proposals</p></div><div class="card-actions"><a href="features/agents/proposals/researcher.html">Researcher</a><a href="features/agents/proposals/architecture.html">Architecture</a></div></article><article class="feature-card" data-feature-card data-search-text="create agent agents &gt; create create agent supports configuring new agents and their role-facing metadata. agents"><div><p class="eyebrow">Agents</p><h2>Create Agent</h2><p>Create Agent supports configuring new agents and their role-facing metadata.</p><p class="path-line">Agents &gt; Create</p></div><div class="card-actions"><a href="features/agents/create/researcher.html">Researcher</a><a href="features/agents/create/architecture.html">Architecture</a></div></article><article class="feature-card" data-feature-card data-search-text="knowledge memory memory &gt; knowledge the memory knowledge tab manages project knowledge artifacts and retrieval material. memory"><div><p class="eyebrow">Memory</p><h2>Knowledge Memory</h2><p>The Memory knowledge tab manages project knowledge artifacts and retrieval material.</p><p class="path-line">Memory &gt; Knowledge</p></div><div class="card-actions"><a href="features/memory/knowledge/researcher.html">Researcher</a><a href="features/memory/knowledge/architecture.html">Architecture</a></div></article><article class="feature-card" data-feature-card data-search-text="agent memory memory &gt; agent the agent memory tab exposes memory tied to agent behavior and project collaboration. memory"><div><p class="eyebrow">Memory</p><h2>Agent Memory</h2><p>The Agent memory tab exposes memory tied to agent behavior and project collaboration.</p><p class="path-line">Memory &gt; Agent</p></div><div class="card-actions"><a href="features/memory/agent/researcher.html">Researcher</a><a href="features/memory/agent/architecture.html">Architecture</a></div></article><article class="feature-card" data-feature-card data-search-text="memory health memory &gt; health memory health surfaces status and quality signals for memory or retrieval infrastructure. memory"><div><p class="eyebrow">Memory</p><h2>Memory Health</h2><p>Memory health surfaces status and quality signals for memory or retrieval infrastructure.</p><p class="path-line">Memory &gt; Health</p></div><div class="card-actions"><a href="features/memory/health/researcher.html">Researcher</a><a href="features/memory/health/architecture.html">Architecture</a></div></article><article class="feature-card" data-feature-card data-search-text="context dag memory &gt; context dag the context dag tab visualizes or inspects relationships across project context nodes. memory"><div><p class="eyebrow">Memory</p><h2>Context DAG</h2><p>The Context DAG tab visualizes or inspects relationships across project context nodes.</p><p class="path-line">Memory &gt; Context DAG</p></div><div class="card-actions"><a href="features/memory/context-dag/researcher.html">Researcher</a><a href="features/memory/context-dag/architecture.html">Architecture</a></div></article><article class="feature-card" data-feature-card data-search-text="interface design chat interfaces &gt; design chat design chat is the conversational starting point for generating, refining, and reasoning about interface concepts. interfaces"><div><p class="eyebrow">Interfaces</p><h2>Interface Design Chat</h2><p>Design Chat is the conversational starting point for generating, refining, and reasoning about interface concepts.</p><p class="path-line">Interfaces &gt; Design Chat</p></div><div class="card-actions"><a href="features/interfaces/design-chat/researcher.html">Researcher</a><a href="features/interfaces/design-chat/architecture.html">Architecture</a></div></article><article class="feature-card" data-feature-card data-search-text="generate interfaces interfaces &gt; generate the generate tab creates interface assets or screen proposals from project context and design prompts. interfaces"><div><p class="eyebrow">Interfaces</p><h2>Generate Interfaces</h2><p>The Generate tab creates interface assets or screen proposals from project context and design prompts.</p><p class="path-line">Interfaces &gt; Generate</p></div><div class="card-actions"><a href="features/interfaces/generate/researcher.html">Researcher</a><a href="features/interfaces/generate/architecture.html">Architecture</a></div></article><article class="feature-card" data-feature-card data-search-text="screens gallery interfaces &gt; screens screens displays generated interface screens and previews for review. interfaces"><div><p class="eyebrow">Interfaces</p><h2>Screens Gallery</h2><p>Screens displays generated interface screens and previews for review.</p><p class="path-line">Interfaces &gt; Screens</p></div><div class="card-actions"><a href="features/interfaces/screens/researcher.html">Researcher</a><a href="features/interfaces/screens/architecture.html">Architecture</a></div></article><article class="feature-card" data-feature-card data-search-text="configuration interfaces &gt; configuration the configuration tab connects interface work with design-tool setup, including figma-oriented import or export flows. interfaces"><div><p class="eyebrow">Interfaces</p><h2>Configuration</h2><p>The Configuration tab connects interface work with design-tool setup, including Figma-oriented import or export flows.</p><p class="path-line">Interfaces &gt; Configuration</p></div><div class="card-actions"><a href="features/interfaces/figma/researcher.html">Researcher</a><a href="features/interfaces/figma/architecture.html">Architecture</a></div></article><article class="feature-card" data-feature-card data-search-text="interface handoff interfaces &gt; handoff handoff packages interface outputs into developer-facing specifications or exportable artifacts. interfaces"><div><p class="eyebrow">Interfaces</p><h2>Interface Handoff</h2><p>Handoff packages interface outputs into developer-facing specifications or exportable artifacts.</p><p class="path-line">Interfaces &gt; Handoff</p></div><div class="card-actions"><a href="features/interfaces/handoff/researcher.html">Researcher</a><a href="features/interfaces/handoff/architecture.html">Architecture</a></div></article><article class="feature-card" data-feature-card data-search-text="findings picker interfaces &gt; findings picker the findings picker lets interface workflows reference insights and recommendations from the findings area. interfaces"><div><p class="eyebrow">Interfaces</p><h2>Findings Picker</h2><p>The Findings Picker lets interface workflows reference insights and recommendations from the Findings area.</p><p class="path-line">Interfaces &gt; Findings Picker</p></div><div class="card-actions"><a href="features/interfaces/findings-picker/researcher.html">Researcher</a><a href="features/interfaces/findings-picker/architecture.html">Architecture</a></div></article><article class="feature-card" data-feature-card data-search-text="integrations overview integrations &gt; overview the integrations overview summarizes connected channels, deployment surfaces, and integration health. integrations"><div><p class="eyebrow">Integrations</p><h2>Integrations Overview</h2><p>The Integrations overview summarizes connected channels, deployment surfaces, and integration health.</p><p class="path-line">Integrations &gt; Overview</p></div><div class="card-actions"><a href="features/integrations/overview/researcher.html">Researcher</a><a href="features/integrations/overview/architecture.html">Architecture</a></div></article><article class="feature-card" data-feature-card data-search-text="messaging integrations integrations &gt; messaging messaging connects external conversation channels such as team or participant messaging tools into istara. integrations"><div><p class="eyebrow">Integrations</p><h2>Messaging Integrations</h2><p>Messaging connects external conversation channels such as team or participant messaging tools into Istara.</p><p class="path-line">Integrations &gt; Messaging</p></div><div class="card-actions"><a href="features/integrations/messaging/researcher.html">Researcher</a><a href="features/integrations/messaging/architecture.html">Architecture</a></div></article><article class="feature-card" data-feature-card data-search-text="survey integrations integrations &gt; surveys surveys configures participant question and survey collection flows connected to project research. integrations"><div><p class="eyebrow">Integrations</p><h2>Survey Integrations</h2><p>Surveys configures participant question and survey collection flows connected to project research.</p><p class="path-line">Integrations &gt; Surveys</p></div><div class="card-actions"><a href="features/integrations/surveys/researcher.html">Researcher</a><a href="features/integrations/surveys/architecture.html">Architecture</a></div></article><article class="feature-card" data-feature-card data-search-text="mcp integrations integrations &gt; mcp the mcp tab configures model context protocol server access, policies, and audit visibility. integrations"><div><p class="eyebrow">Integrations</p><h2>MCP Integrations</h2><p>The MCP tab configures Model Context Protocol server access, policies, and audit visibility.</p><p class="path-line">Integrations &gt; MCP</p></div><div class="card-actions"><a href="features/integrations/mcp/researcher.html">Researcher</a><a href="features/integrations/mcp/architecture.html">Architecture</a></div></article><article class="feature-card" data-feature-card data-search-text="research deployments integrations &gt; deployments deployments configure participant-facing research deployments and link them to channels, questions, findings, and timeline views. integrations"><div><p class="eyebrow">Integrations</p><h2>Research Deployments</h2><p>Deployments configure participant-facing research deployments and link them to channels, questions, findings, and timeline views.</p><p class="path-line">Integrations &gt; Deployments</p></div><div class="card-actions"><a href="features/integrations/deployments/researcher.html">Researcher</a><a href="features/integrations/deployments/architecture.html">Architecture</a></div></article><article class="feature-card" data-feature-card data-search-text="deployment dashboard integrations &gt; deployments &gt; dashboard the deployment dashboard has sub-tabs for live status, questions, participants, findings, channels, and timeline activity. integrations"><div><p class="eyebrow">Integrations</p><h2>Deployment Dashboard</h2><p>The deployment dashboard has sub-tabs for live status, questions, participants, findings, channels, and timeline activity.</p><p class="path-line">Integrations &gt; Deployments &gt; Dashboard</p></div><div class="card-actions"><a href="features/integrations/deployment-dashboard/researcher.html">Researcher</a><a href="features/integrations/deployment-dashboard/architecture.html">Architecture</a></div></article><article class="feature-card" data-feature-card data-search-text="loops overview loops &gt; overview loops overview summarizes automated and scheduled research loop health. loops"><div><p class="eyebrow">Loops</p><h2>Loops Overview</h2><p>Loops overview summarizes automated and scheduled research loop health.</p><p class="path-line">Loops &gt; Overview</p></div><div class="card-actions"><a href="features/loops/overview/researcher.html">Researcher</a><a href="features/loops/overview/architecture.html">Architecture</a></div></article><article class="feature-card" data-feature-card data-search-text="loop schedules loops &gt; schedules schedules configure recurring loop timing, including cron-style recurrence controls. loops"><div><p class="eyebrow">Loops</p><h2>Loop Schedules</h2><p>Schedules configure recurring loop timing, including cron-style recurrence controls.</p><p class="path-line">Loops &gt; Schedules</p></div><div class="card-actions"><a href="features/loops/schedules/researcher.html">Researcher</a><a href="features/loops/schedules/architecture.html">Architecture</a></div></article><article class="feature-card" data-feature-card data-search-text="agent loops loops &gt; agent loops agent loops connects recurring work with configured agents and their automated research responsibilities. loops"><div><p class="eyebrow">Loops</p><h2>Agent Loops</h2><p>Agent Loops connects recurring work with configured agents and their automated research responsibilities.</p><p class="path-line">Loops &gt; Agent Loops</p></div><div class="card-actions"><a href="features/loops/agent-loops/researcher.html">Researcher</a><a href="features/loops/agent-loops/architecture.html">Architecture</a></div></article><article class="feature-card" data-feature-card data-search-text="custom loops loops &gt; custom custom loops provide a surface for user-defined recurring or automated research actions. loops"><div><p class="eyebrow">Loops</p><h2>Custom Loops</h2><p>Custom loops provide a surface for user-defined recurring or automated research actions.</p><p class="path-line">Loops &gt; Custom</p></div><div class="card-actions"><a href="features/loops/custom/researcher.html">Researcher</a><a href="features/loops/custom/architecture.html">Architecture</a></div></article><article class="feature-card" data-feature-card data-search-text="loop execution history loops &gt; history execution history records loop runs, outcomes, and recent automation activity. loops"><div><p class="eyebrow">Loops</p><h2>Loop Execution History</h2><p>Execution History records loop runs, outcomes, and recent automation activity.</p><p class="path-line">Loops &gt; History</p></div><div class="card-actions"><a href="features/loops/history/researcher.html">Researcher</a><a href="features/loops/history/architecture.html">Architecture</a></div></article><article class="feature-card" data-feature-card data-search-text="system status and models settings &gt; system status and models settings shows backend, llm, hardware, model recommendation, and available model status for the local installation. settings"><div><p class="eyebrow">Settings</p><h2>System Status And Models</h2><p>Settings shows backend, LLM, hardware, model recommendation, and available model status for the local installation.</p><p class="path-line">Settings &gt; System Status And Models</p></div><div class="card-actions"><a href="features/settings/general/researcher.html">Researcher</a><a href="features/settings/general/architecture.html">Architecture</a></div></article><article class="feature-card" data-feature-card data-search-text="llm server settings settings &gt; llm servers settings manages configured llm providers, server endpoints, provider labels, and active model switching. settings"><div><p class="eyebrow">Settings</p><h2>LLM Server Settings</h2><p>Settings manages configured LLM providers, server endpoints, provider labels, and active model switching.</p><p class="path-line">Settings &gt; LLM Servers</p></div><div class="card-actions"><a href="features/settings/llm-servers/researcher.html">Researcher</a><a href="features/settings/llm-servers/architecture.html">Architecture</a></div></article><article class="feature-card" data-feature-card data-search-text="user management settings &gt; users user management supports team member visibility and administrative user operations. settings"><div><p class="eyebrow">Settings</p><h2>User Management</h2><p>User management supports team member visibility and administrative user operations.</p><p class="path-line">Settings &gt; Users</p></div><div class="card-actions"><a href="features/settings/users/researcher.html">Researcher</a><a href="features/settings/users/architecture.html">Architecture</a></div></article><article class="feature-card" data-feature-card data-search-text="connection strings settings &gt; connection strings connection string settings provide governed admin-only configuration for sensitive external or local service connection data. settings"><div><p class="eyebrow">Settings</p><h2>Connection Strings</h2><p>Connection string settings provide governed admin-only configuration for sensitive external or local service connection data.</p><p class="path-line">Settings &gt; Connection Strings</p></div><div class="card-actions"><a href="features/settings/connection-strings/researcher.html">Researcher</a><a href="features/settings/connection-strings/architecture.html">Architecture</a></div></article><article class="feature-card" data-feature-card data-search-text="passkeys and two-factor authentication settings &gt; security factors settings includes passkey and totp management for strengthening account authentication. settings"><div><p class="eyebrow">Settings</p><h2>Passkeys And Two-Factor Authentication</h2><p>Settings includes passkey and TOTP management for strengthening account authentication.</p><p class="path-line">Settings &gt; Security Factors</p></div><div class="card-actions"><a href="features/settings/security-factors/researcher.html">Researcher</a><a href="features/settings/security-factors/architecture.html">Architecture</a></div></article><article class="feature-card" data-feature-card data-search-text="active sessions settings &gt; sessions session management lists active authentication sessions and supports session-level control. settings"><div><p class="eyebrow">Settings</p><h2>Active Sessions</h2><p>Session management lists active authentication sessions and supports session-level control.</p><p class="path-line">Settings &gt; Sessions</p></div><div class="card-actions"><a href="features/settings/sessions/researcher.html">Researcher</a><a href="features/settings/sessions/architecture.html">Architecture</a></div></article><article class="feature-card" data-feature-card data-search-text="software updates settings &gt; software updates the update checker surfaces available istara software updates from the settings view. settings"><div><p class="eyebrow">Settings</p><h2>Software Updates</h2><p>The update checker surfaces available Istara software updates from the settings view.</p><p class="path-line">Settings &gt; Software Updates</p></div><div class="card-actions"><a href="features/settings/updates/researcher.html">Researcher</a><a href="features/settings/updates/architecture.html">Architecture</a></div></article><article class="feature-card" data-feature-card data-search-text="governed evolution settings &gt; governed evolution governed evolution displays proposals, archive, reasoning, and contract information for controlled system self-improvement. settings"><div><p class="eyebrow">Settings</p><h2>Governed Evolution</h2><p>Governed Evolution displays proposals, archive, reasoning, and contract information for controlled system self-improvement.</p><p class="path-line">Settings &gt; Governed Evolution</p></div><div class="card-actions"><a href="features/settings/governed-evolution/researcher.html">Researcher</a><a href="features/settings/governed-evolution/architecture.html">Architecture</a></div></article><article class="feature-card" data-feature-card data-search-text="compute donation settings &gt; compute donation compute donation lets a browser session contribute local compute capacity under controlled limits. settings"><div><p class="eyebrow">Settings</p><h2>Compute Donation</h2><p>Compute donation lets a browser session contribute local compute capacity under controlled limits.</p><p class="path-line">Settings &gt; Compute Donation</p></div><div class="card-actions"><a href="features/settings/compute-donation/researcher.html">Researcher</a><a href="features/settings/compute-donation/architecture.html">Architecture</a></div></article><article class="feature-card" data-feature-card data-search-text="project settings project settings project settings configure project-specific metadata and operational preferences separate from global system settings. secondary"><div><p class="eyebrow">Secondary</p><h2>Project Settings</h2><p>Project Settings configure project-specific metadata and operational preferences separate from global system settings.</p><p class="path-line">Project Settings</p></div><div class="card-actions"><a href="features/settings/project/researcher.html">Researcher</a><a href="features/settings/project/architecture.html">Architecture</a></div></article><article class="feature-card" data-feature-card data-search-text="autoresearch dashboard autoresearch &gt; dashboard the autoresearch dashboard summarizes automated research experiment status and recent results. autoresearch"><div><p class="eyebrow">Autoresearch</p><h2>Autoresearch Dashboard</h2><p>The Autoresearch dashboard summarizes automated research experiment status and recent results.</p><p class="path-line">Autoresearch &gt; Dashboard</p></div><div class="card-actions"><a href="features/autoresearch/dashboard/researcher.html">Researcher</a><a href="features/autoresearch/dashboard/architecture.html">Architecture</a></div></article><article class="feature-card" data-feature-card data-search-text="autoresearch experiments autoresearch &gt; experiments experiments configure and inspect automated research runs across strategies or parameters. autoresearch"><div><p class="eyebrow">Autoresearch</p><h2>Autoresearch Experiments</h2><p>Experiments configure and inspect automated research runs across strategies or parameters.</p><p class="path-line">Autoresearch &gt; Experiments</p></div><div class="card-actions"><a href="features/autoresearch/experiments/researcher.html">Researcher</a><a href="features/autoresearch/experiments/architecture.html">Architecture</a></div></article><article class="feature-card" data-feature-card data-search-text="autoresearch leaderboard autoresearch &gt; leaderboard the leaderboard ranks automated research experiment outcomes for comparison. autoresearch"><div><p class="eyebrow">Autoresearch</p><h2>Autoresearch Leaderboard</h2><p>The leaderboard ranks automated research experiment outcomes for comparison.</p><p class="path-line">Autoresearch &gt; Leaderboard</p></div><div class="card-actions"><a href="features/autoresearch/leaderboard/researcher.html">Researcher</a><a href="features/autoresearch/leaderboard/architecture.html">Architecture</a></div></article><article class="feature-card" data-feature-card data-search-text="autoresearch configuration autoresearch &gt; config autoresearch configuration sets parameters for automated research strategies and runs. autoresearch"><div><p class="eyebrow">Autoresearch</p><h2>Autoresearch Configuration</h2><p>Autoresearch configuration sets parameters for automated research strategies and runs.</p><p class="path-line">Autoresearch &gt; Config</p></div><div class="card-actions"><a href="features/autoresearch/config/researcher.html">Researcher</a><a href="features/autoresearch/config/architecture.html">Architecture</a></div></article><article class="feature-card" data-feature-card data-search-text="compute pool compute pool compute pool provides operational visibility into available compute nodes, routing, and local or pooled execution capacity. secondary"><div><p class="eyebrow">Secondary</p><h2>Compute Pool</h2><p>Compute Pool provides operational visibility into available compute nodes, routing, and local or pooled execution capacity.</p><p class="path-line">Compute Pool</p></div><div class="card-actions"><a href="features/compute/pool/researcher.html">Researcher</a><a href="features/compute/pool/architecture.html">Architecture</a></div></article><article class="feature-card" data-feature-card data-search-text="ensemble health ensemble health ensemble health surfaces health and consensus signals for istara&#x27;s multi-model or multi-agent ensemble behavior. secondary"><div><p class="eyebrow">Secondary</p><h2>Ensemble Health</h2><p>Ensemble Health surfaces health and consensus signals for Istara&#x27;s multi-model or multi-agent ensemble behavior.</p><p class="path-line">Ensemble Health</p></div><div class="card-actions"><a href="features/ensemble/health/researcher.html">Researcher</a><a href="features/ensemble/health/architecture.html">Architecture</a></div></article><article class="feature-card" data-feature-card data-search-text="quality dashboard quality dashboard quality dashboard summarizes system quality, validation, and operational signals for the running istara installation. secondary"><div><p class="eyebrow">Secondary</p><h2>Quality Dashboard</h2><p>Quality Dashboard summarizes system quality, validation, and operational signals for the running Istara installation.</p><p class="path-line">Quality Dashboard</p></div><div class="card-actions"><a href="features/quality/dashboard/researcher.html">Researcher</a><a href="features/quality/dashboard/architecture.html">Architecture</a></div></article><article class="feature-card" data-feature-card data-search-text="backup backup backup provides project or system backup controls and status for preserving istara data. secondary"><div><p class="eyebrow">Secondary</p><h2>Backup</h2><p>Backup provides project or system backup controls and status for preserving Istara data.</p><p class="path-line">Backup</p></div><div class="card-actions"><a href="features/backup/view/researcher.html">Researcher</a><a href="features/backup/view/architecture.html">Architecture</a></div></article><article class="feature-card" data-feature-card data-search-text="meta-agent meta-agent the meta-agent surface exposes the meta-hyperagent system for inspecting or governing higher-level agentic improvement behavior. secondary"><div><p class="eyebrow">Secondary</p><h2>Meta-Agent</h2><p>The Meta-Agent surface exposes the meta-hyperagent system for inspecting or governing higher-level agentic improvement behavior.</p><p class="path-line">Meta-Agent</p></div><div class="card-actions"><a href="features/meta/hyperagent/researcher.html">Researcher</a><a href="features/meta/hyperagent/architecture.html">Architecture</a></div></article><article class="feature-card" data-feature-card data-search-text="admin dashboard admin the admin dashboard provides administrator-only operational controls and visibility. secondary"><div><p class="eyebrow">Secondary</p><h2>Admin Dashboard</h2><p>The Admin dashboard provides administrator-only operational controls and visibility.</p><p class="path-line">Admin</p></div><div class="card-actions"><a href="features/admin/dashboard/researcher.html">Researcher</a><a href="features/admin/dashboard/architecture.html">Architecture</a></div></article><article class="feature-card" data-feature-card data-search-text="version history history history lists project or artifact version events for traceability and recovery. secondary"><div><p class="eyebrow">Secondary</p><h2>Version History</h2><p>History lists project or artifact version events for traceability and recovery.</p><p class="path-line">History</p></div><div class="card-actions"><a href="features/history/version/researcher.html">Researcher</a><a href="features/history/version/architecture.html">Architecture</a></div></article><article class="feature-card" data-feature-card data-search-text="notifications list notifications &gt; all notifications lists system and project notifications with read/unread state. notifications"><div><p class="eyebrow">Notifications</p><h2>Notifications List</h2><p>Notifications lists system and project notifications with read/unread state.</p><p class="path-line">Notifications &gt; All</p></div><div class="card-actions"><a href="features/notifications/list/researcher.html">Researcher</a><a href="features/notifications/list/architecture.html">Architecture</a></div></article><article class="feature-card" data-feature-card data-search-text="notification preferences notifications &gt; preferences notification preferences let users configure which notifications they receive and how notification categories are handled. notifications"><div><p class="eyebrow">Notifications</p><h2>Notification Preferences</h2><p>Notification preferences let users configure which notifications they receive and how notification categories are handled.</p><p class="path-line">Notifications &gt; Preferences</p></div><div class="card-actions"><a href="features/notifications/preferences/researcher.html">Researcher</a><a href="features/notifications/preferences/architecture.html">Architecture</a></div></article></div>
-</section>
-<section class="section-block agent-block">
-  <div class="section-heading"><h2>Agent Entrypoints</h2><p>Stable files for agents, validators, and static hosts.</p></div>
-  <div class="resource-grid">
-    <a href="manifest.json">Manifest JSON</a>
-    <a href="feature-graph.json">Feature Graph</a>
-    <a href="search-index.json">Search Index</a>
-    <a href="sitemap.xml">Sitemap</a>
-    <a href="llms.txt">llms.txt</a>
+<section id="main-features" class="section-block bento-details" aria-labelledby="features-heading">
+  <div class="section-heading">
+    <div>
+      <p class="eyebrow">Technical Architecture</p>
+      <h2 id="features-heading">Built around one research process, not scattered AI tools.</h2>
+    </div>
+    <p>Every feature that touches research data should either enter the Research Spine or consume accepted evidence from it.</p>
   </div>
+  <div class="tech-sections-container">
+    
+<div class="tech-section-row scroll-animate">
+  <div class="tech-section-copy">
+    <span class="tech-section-num">05 / 10</span>
+    <span class="tech-section-tag">Retrieval</span>
+    <h3>Hybrid RAG + Graph RAG</h3>
+    <p class="tech-section-desc">Get exact evidence with Hybrid RAG (LanceDB vector + BM25 keyword search blended via Reciprocal Rank Fusion) and explore relationships across sources, codes, and tasks via Graph RAG.</p>
+    <p class="tech-section-detail">Graph answers must backfill exact evidence before promotion. Hybrid rank blending prevents semantic drift and ensures precise reference lookup across multi-thousand-page repositories.</p>
+    <a href="technology/hybrid-rag.html" class="tech-section-btn">Explore Architecture Deep-Dive →</a>
+  </div>
+  <div class="tech-section-visual">
+    <img src="assets/tech_rag.png" alt="Hybrid RAG + Graph RAG Schematic" loading="lazy">
+  </div>
+</div>
+
+<div class="tech-section-row scroll-animate">
+  <div class="tech-section-copy">
+    <span class="tech-section-num">06 / 10</span>
+    <span class="tech-section-tag">Verification</span>
+    <h3>Multi-Model Ensemble Health</h3>
+    <p class="tech-section-desc">Independent atomic extraction and open coding reduce bias. Distinct project-authorized models independently code same evidence units with Fleiss&#x27; Kappa reliability before human reconciliation.</p>
+    <p class="tech-section-detail">Real-time inter-coder consensus metrics score reliability across models, automatically flagging diverging classifications for human adjudication before promotion.</p>
+    <a href="technology/multi-model.html" class="tech-section-btn">Explore Architecture Deep-Dive →</a>
+  </div>
+  <div class="tech-section-visual">
+    <img src="assets/tech_reliability.png" alt="Multi-Model Ensemble Health Schematic" loading="lazy">
+  </div>
+</div>
+
+<div class="tech-section-row scroll-animate">
+  <div class="tech-section-copy">
+    <span class="tech-section-num">07 / 10</span>
+    <span class="tech-section-tag">Collaboration</span>
+    <h3>Distributed Compute &amp; Roles</h3>
+    <p class="tech-section-desc">Idle hardware forms a collaborative compute swarm. Strict separation of access roles (Admin/Researcher) ensures secure operation, protected by WebAuthn passkeys and Fernet field encryption.</p>
+    <p class="tech-section-detail">Cryptographic passkeys and field-level AES encryption prevent data leaks, keeping active local SQLite workspaces completely isolated and secure.</p>
+    <a href="technology/distributed-compute.html" class="tech-section-btn">Explore Architecture Deep-Dive →</a>
+  </div>
+  <div class="tech-section-visual">
+    <img src="assets/tech_roles.png" alt="Distributed Compute &amp; Roles Schematic" loading="lazy">
+  </div>
+</div>
+
+<div class="tech-section-row scroll-animate">
+  <div class="tech-section-copy">
+    <span class="tech-section-num">08 / 10</span>
+    <span class="tech-section-tag">Governance</span>
+    <h3>Human-in-the-Loop Kanban</h3>
+    <p class="tech-section-desc">Agents pick up tasks and propose findings, but they remain provisional and in review. Human-in-the-loop review states and reconciliation ensure only accepted findings enter approved Done tasks.</p>
+    <p class="tech-section-detail">The human researcher retains absolute control. Task-level review gates prevent automated findings from leaking into reports without researcher sign-off.</p>
+    <a href="technology/human-kanban.html" class="tech-section-btn">Explore Architecture Deep-Dive →</a>
+  </div>
+  <div class="tech-section-visual">
+    <img src="assets/tech_kanban.png" alt="Human-in-the-Loop Kanban Schematic" loading="lazy">
+  </div>
+</div>
+
+<div class="tech-section-row scroll-animate">
+  <div class="tech-section-copy">
+    <span class="tech-section-num">09 / 10</span>
+    <span class="tech-section-tag">Design Handoff</span>
+    <h3>Stitch &amp; Figma Interfaces</h3>
+    <p class="tech-section-desc">Import Figma files to link screen design decisions to accepted research evidence. Use the Google Stitch MCP server to generate wireframes and specs directly from reportable insights.</p>
+    <p class="tech-section-detail">Bidirectional canvas syncing connects design layout layers to qualitative research nuggets. Enables evidence-backed design handoffs that developers can trace immediately.</p>
+    <a href="technology/stitch-figma.html" class="tech-section-btn">Explore Architecture Deep-Dive →</a>
+  </div>
+  <div class="tech-section-visual">
+    <img src="assets/tech_handoff.png" alt="Stitch &amp; Figma Interfaces Schematic" loading="lazy">
+  </div>
+</div>
+
+<div class="tech-section-row scroll-animate">
+  <div class="tech-section-copy">
+    <span class="tech-section-num">10 / 10</span>
+    <span class="tech-section-tag">Reporting</span>
+    <h3>Grounded Decisions &amp; Reports</h3>
+    <p class="tech-section-desc">Export research reports directly from approved Done tasks. Ground every recommendation back through the spine: accepted atoms → facts → insights → recommendations linked to raw source spans.</p>
+    <p class="tech-section-detail">Mathematically grounded in primary sources. Generates interactive trace indicators (e.g. [Evidence #42]) within compiled documents, allowing absolute audibility.</p>
+    <a href="technology/grounded-decisions.html" class="tech-section-btn">Explore Architecture Deep-Dive →</a>
+  </div>
+  <div class="tech-section-visual">
+    <img src="assets/tech_reports.png" alt="Grounded Decisions &amp; Reports Schematic" loading="lazy">
+  </div>
+</div>
+
+  </div>
+</section>
+
+<section class="section-block skills-showcase-section" aria-labelledby="skills-showcase-heading">
+  <div class="section-heading">
+    <div>
+      <p class="eyebrow">Equip Your Swarm</p>
+      <h2 id="skills-showcase-heading">53 Governed UX Research Skills by Double Diamond Category</h2>
+    </div>
+    <p>Every skill executes securely inside the Research Spine and records execution health, model-routing stats, and prompt evolution proposals.</p>
+  </div>
+  <div class="skills-categories-grid">
+    <div class="skill-cat-card">
+      <h4>🔍 Discover Phase</h4>
+      <span class="skills-count">14 Skills</span>
+      <ul>
+        <li>User Interviews</li>
+        <li>Contextual Inquiry</li>
+        <li>Survey Design & Ingest</li>
+        <li>Competitive Analysis</li>
+        <li>Diary Studies</li>
+        <li>Survey AI Response Detection</li>
+      </ul>
+    </div>
+    <div class="skill-cat-card">
+      <h4>🎯 Define Phase</h4>
+      <span class="skills-count">12 Skills</span>
+      <ul>
+        <li>Thematic Analysis (Inductive)</li>
+        <li>Kappa Inter-Coder Analysis</li>
+        <li>Affinity Mapping</li>
+        <li>Empathy Mapping</li>
+        <li>JTBD & Persona Creation</li>
+        <li>Journey & Flow Mapping</li>
+      </ul>
+    </div>
+    <div class="skill-cat-card">
+      <h4>🛠️ Develop Phase</h4>
+      <span class="skills-count">10 Skills</span>
+      <ul>
+        <li>Usability Testing Analysis</li>
+        <li>Heuristic Evaluation</li>
+        <li>Cognitive Walkthrough</li>
+        <li>Card Sorting & Tree Testing</li>
+        <li>A/B Test Analysis</li>
+        <li>Design Critique</li>
+      </ul>
+    </div>
+    <div class="skill-cat-card">
+      <h4>📦 Deliver Phase</h4>
+      <span class="skills-count">10 Skills</span>
+      <ul>
+        <li>Design System Audit</li>
+        <li>SUS/UMUX Usability Scoring</li>
+        <li>NPS Driver Analysis</li>
+        <li>Developer Handoff Docs</li>
+        <li>Regression Impact Analysis</li>
+        <li>Longitudinal Tracking</li>
+      </ul>
+    </div>
+    <div class="skill-cat-card full-row">
+      <h4>⚙️ Cross-Phase Metacognitive Skills (7 Skills)</h4>
+      <div class="skills-list-inline">
+        <span>Agent Factory</span>
+        <span>Skill Evolution</span>
+        <span>UX Law Auditing</span>
+        <span>Evidence Chain Validator</span>
+        <span>Multi-model Validator</span>
+        <span>Autoresearch Optimizer</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="research-flow" class="section-block research-flow-section" aria-labelledby="research-flow-heading">
+  <div class="research-flow-copy">
+    <p class="eyebrow">How evidence becomes reportable</p>
+    <h2 id="research-flow-heading">From source material to approved reports.</h2>
+    <p>Atomic research findings become trusted only after source-grounded extraction, coding, reliability checks, reconciliation, and human-approved Done tasks.</p>
+  </div>
+  <ol class="research-flow-rail">
+    <li><span>01</span><strong>Sources Ingestion</strong></li>
+    <li><span>02</span><strong>Evidence Units</strong></li>
+    <li><span>03</span><strong>Independent Coding</strong></li>
+    <li><span>04</span><strong>Ensemble Reliability</strong></li>
+    <li><span>05</span><strong>Human Reconciliation</strong></li>
+    <li><span>06</span><strong>Accepted Atoms & Insights</strong></li>
+    <li><span>07</span><strong>Approved Done Tasks</strong></li>
+    <li><span>08</span><strong>Traceable Reports</strong></li>
+  </ol>
 </section>
         </article>
         <aside class="toc-panel" aria-label="Page sections">
           <h2>On This Page</h2>
-          <nav aria-label="Home sections"><ul><li><a href="#feature-map">Menu Structure</a></li></ul></nav>
+          <nav aria-label="Home sections"><ul><li><a href="#install">Install</a></li><li><a href="#product-tour">Capabilities</a></li><li><a href="#main-features">Technical Architecture</a></li><li><a href="#research-flow">Research Spine</a></li></ul></nav>
         </aside>
       </div>
     </main>

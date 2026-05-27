@@ -15,6 +15,8 @@ from pathlib import Path
 from typing import Any
 
 from feature_docs_assets import site_css, site_js
+from feature_docs_home import copy_home_screenshots, home_marketing_sections
+from feature_docs_tech import TECH_PAGES
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -122,36 +124,28 @@ def default_user_flows(feature: dict[str, Any]) -> list[str]:
     return [
         f"Open {path} from the Istara navigation or the parent tab.",
         f"Use the visible controls in this surface to work with {feature['title'].lower()} in the active project context.",
-        "Review the output in the same view and follow the related feature links when the workflow moves into another Istara surface.",
+        "Review the output in the same view and follow the related feature links when the workflow moves into another Istara surface."
     ]
-
 
 def default_why(feature: dict[str, Any]) -> str:
     path = " > ".join(feature.get("ui_path", [])) or feature["title"]
-    return (
-        f"{feature['title']} exists so the work represented by {path} has a stable, discoverable place in Istara's "
-        "project workflow. It keeps user actions, generated artifacts, and related follow-up surfaces connected to "
-        "the active project rather than scattering them across unrelated tools."
-    )
-
+    return f"{feature['title']} exists so the work represented by {path} has a stable, discoverable place in Istara's project workflow. It keeps user actions, generated artifacts, and related follow-up surfaces connected to the active project rather than scattering them across unrelated tools."
 
 def default_workflows(feature: dict[str, Any]) -> list[str]:
     workflows = [
         f"Start from {(' > '.join(feature.get('ui_path', [])) or feature['title'])} when the current research task needs {feature['title'].lower()}.",
-        "Use the visible controls to create, inspect, refine, or route project work without leaving the active Istara context.",
+        "Use the visible controls to create, inspect, refine, or route project work without leaving the active Istara context."
     ]
     related = feature.get("related_features", [])
     if related:
         workflows.append(f"Move to related surfaces when needed: {', '.join(related)}.")
     return workflows
 
-
 def default_outputs(feature: dict[str, Any]) -> list[str]:
     return [
         f"Project-scoped state or artifact updates associated with {feature['title'].lower()}.",
-        "Visible status, lists, forms, generated artifacts, or review results shown by the referenced component and routes.",
+        "Visible status, lists, forms, generated artifacts, or review results shown by the referenced component and routes."
     ]
-
 
 def default_ai_architecture(feature: dict[str, Any]) -> list[str]:
     notes: list[str] = []
@@ -168,11 +162,10 @@ def default_ai_architecture(feature: dict[str, Any]) -> list[str]:
         notes.append("No direct agent, skill, LLM, or MCP behavior is asserted beyond the cited source files.")
     return notes
 
-
 def default_caveats(feature: dict[str, Any]) -> list[str]:
     return [
         "Needs interactive verification for exact empty, loading, error, and permission-denied states.",
-        "Do not expand this documentation beyond the cited source files without adding new code or walkthrough evidence.",
+        "Do not expand this documentation beyond the cited source files without adding new code or walkthrough evidence."
     ]
 
 
@@ -182,7 +175,7 @@ def default_architecture_notes(feature: dict[str, Any]) -> list[str]:
     return [
         f"The feature is mounted through `{primary}` and the UI navigation path recorded in the inventory.",
         "The frontmatter and manifest entries are the durable contract for agents updating this page after code changes.",
-        "When the referenced component, store, route, agent, skill, or test behavior changes, regenerate and validate the feature documentation.",
+        "When the referenced component, store, route, agent, skill, or test behavior changes, regenerate and validate the feature documentation."
     ]
 
 
@@ -522,6 +515,7 @@ def page_shell(
     js_href = relative_url(current_path, SITE_ROOT / "assets" / "site.js")
     logo_href = relative_url(current_path, SITE_ROOT / "assets" / "istara-logo.png")
     index_href = relative_url(current_path, SITE_ROOT / "index.html")
+    docs_href = relative_url(current_path, SITE_ROOT / "docs.html")
     manifest_href = relative_url(current_path, SITE_ROOT / "manifest.json")
     llms_href = relative_url(current_path, SITE_ROOT / "llms.txt")
     content = content.strip()
@@ -548,6 +542,7 @@ def page_shell(
       <input id="doc-search" name="q" type="search" autocomplete="off" placeholder="Search docs">
     </form>
     <nav class="utility-nav" aria-label="Machine-readable documentation">
+      <a href="{html.escape(docs_href)}">Docs Hub</a>
       <a href="{html.escape(index_href)}#install">Install</a>
       <a href="https://github.com/henrique-simoes/Istara">GitHub</a>
       <a href="{html.escape(manifest_href)}">Manifest</a>
@@ -642,7 +637,7 @@ def feature_page_header(
     return f"""
 <header class="feature-hero">
   <nav class="breadcrumbs" aria-label="Breadcrumb">
-    <a href="{html.escape(relative_url(current_path, SITE_ROOT / "index.html"))}">Docs</a>
+    <a href="{html.escape(relative_url(current_path, SITE_ROOT / "docs.html"))}">Docs</a>
     <span>{html.escape(feature.get("nav_group", "Feature"))}</span>
     <span>{html.escape(feature["title"])}</span>
   </nav>
@@ -671,12 +666,16 @@ def feature_page_header(
 
 
 def index_content(features: list[dict[str, Any]], current_path: Path) -> str:
+    return home_marketing_sections()
+
+
+def docs_content(features: list[dict[str, Any]], current_path: Path) -> str:
     groups: dict[str, list[dict[str, Any]]] = {}
     for feature in features:
         groups.setdefault(feature.get("nav_group", "Other"), []).append(feature)
     glossary_terms = sorted(path.stem for path in GLOSSARY_ROOT.glob("*.md"))
     metrics = f"""
-<section class="metric-grid" aria-label="Documentation coverage">
+<section id="metrics" class="metric-grid" aria-label="Documentation coverage">
   <article><strong>{len(features)}</strong><span>Tracked UI features</span></article>
   <article><strong>{len(features) * len(AUDIENCES)}</strong><span>Feature perspectives</span></article>
   <article><strong>{len(groups)}</strong><span>UI menu groups</span></article>
@@ -717,54 +716,21 @@ def index_content(features: list[dict[str, Any]], current_path: Path) -> str:
     sitemap_href = relative_url(current_path, SITE_ROOT / "sitemap.xml")
     llms_href = relative_url(current_path, SITE_ROOT / "llms.txt")
     return f"""
-<header class="home-hero">
-  <div class="hero-copy">
-    <p class="eyebrow">Local-first AI agents for UX Research</p>
-    <h1>Istara</h1>
-    <p class="lede">Install a rigorous, local-first research workspace where documents, interviews, surveys, integrations, agents, skills, compute donation, and reports stay connected to the same evidence spine.</p>
-  </div>
-  <div class="hero-actions">
-    <a href="#install">Install Istara</a>
-    <a href="#feature-map">Browse Docs</a>
-    <a href="https://github.com/henrique-simoes/Istara">View GitHub</a>
-  </div>
+<header class="feature-hero">
+  <p class="eyebrow">Istara Knowledge Base</p>
+  <h1>Documentation Hub</h1>
+  <p class="lede">Explore detailed researcher protocols and engineering architectures for all {len(features)}+ governed feature surfaces.</p>
 </header>
-<section id="install" class="install-section" aria-labelledby="install-heading">
-  <div class="section-heading"><h2 id="install-heading">Install Istara</h2><p>Pick the path that matches your machine. Native DMG and EXE installers remain disabled until release checks clear them.</p></div>
-  <div class="install-grid">
-    <article class="install-card primary">
-      <p class="eyebrow">Recommended on macOS</p>
-      <h3>Homebrew</h3>
-      <p>Use the managed cask for the simplest macOS install and update path.</p>
-      <pre><code>brew install --cask henrique-simoes/istara/istara</code></pre>
-      <button type="button" data-copy-command="brew install --cask henrique-simoes/istara/istara">Copy command</button>
-    </article>
-    <article class="install-card">
-      <p class="eyebrow">macOS / Linux</p>
-      <h3>Shell one-liner</h3>
-      <p>Installs dependencies, configures the server/client mode, and starts the guided setup.</p>
-      <pre><code>curl -fsSL https://raw.githubusercontent.com/henrique-simoes/Istara/main/scripts/install-istara.sh | bash</code></pre>
-      <button type="button" data-copy-command="curl -fsSL https://raw.githubusercontent.com/henrique-simoes/Istara/main/scripts/install-istara.sh | bash">Copy command</button>
-    </article>
-    <article class="install-card">
-      <p class="eyebrow">Windows / development</p>
-      <h3>Source or Docker</h3>
-      <p>Use source checkout or Docker while Windows native installers are being repaired.</p>
-      <pre><code>git clone https://github.com/henrique-simoes/Istara.git</code></pre>
-      <a href="https://github.com/henrique-simoes/Istara#install">Open install notes</a>
-    </article>
-  </div>
-</section>
 {metrics}
 <section id="feature-map" class="section-block">
   <div class="section-heading"><h2>Menu Structure</h2><p>Grouped the same way Istara exposes the documented surfaces.</p></div>
   <div class="group-grid">{"".join(group_cards)}</div>
 </section>
-<section class="section-block">
+<section id="all-features" class="section-block">
   <div class="section-heading"><h2>All Feature Pages</h2><p>Each feature has a researcher/user page and an engineering/AI architecture page.</p></div>
   <div class="feature-list">{"".join(feature_cards)}</div>
 </section>
-<section class="section-block agent-block">
+<section id="agent-entrypoints" class="section-block agent-block">
   <div class="section-heading"><h2>Agent Entrypoints</h2><p>Stable files for agents, validators, and static hosts.</p></div>
   <div class="resource-grid">
     <a href="{html.escape(manifest_href)}">Manifest JSON</a>
@@ -775,6 +741,7 @@ def index_content(features: list[dict[str, Any]], current_path: Path) -> str:
   </div>
 </section>
 """
+
 
 
 def glossary_index_content(features: list[dict[str, Any]], current_path: Path) -> str:
@@ -793,7 +760,7 @@ def glossary_index_content(features: list[dict[str, Any]], current_path: Path) -
     return f"""
 <header class="feature-hero">
   <nav class="breadcrumbs" aria-label="Breadcrumb">
-    <a href="{html.escape(relative_url(current_path, SITE_ROOT / "index.html"))}">Docs</a>
+    <a href="{html.escape(relative_url(current_path, SITE_ROOT / "docs.html"))}">Docs</a>
     <span>Glossary</span>
   </nav>
   <p class="eyebrow">Shared concepts</p>
@@ -817,7 +784,7 @@ def glossary_page_content(source: Path, features: list[dict[str, Any]], current_
     content = f"""
 <header class="feature-hero">
   <nav class="breadcrumbs" aria-label="Breadcrumb">
-    <a href="{html.escape(relative_url(current_path, SITE_ROOT / "index.html"))}">Docs</a>
+    <a href="{html.escape(relative_url(current_path, SITE_ROOT / "docs.html"))}">Docs</a>
     <a href="{html.escape(relative_url(current_path, SITE_ROOT / "glossary" / "index.html"))}">Glossary</a>
     <span>{html.escape(title)}</span>
   </nav>
@@ -831,6 +798,8 @@ def glossary_page_content(source: Path, features: list[dict[str, Any]], current_
 </section>
 """
     return title, content
+
+
 
 
 def generate_site(inventory: dict[str, Any]) -> list[Path]:
@@ -849,9 +818,66 @@ def generate_site(inventory: dict[str, Any]) -> list[Path]:
         logo_target = assets / "istara-logo.png"
         shutil.copyfile(logo_source, logo_target)
         written.append(logo_target)
+    written.extend(copy_home_screenshots(ROOT, assets))
+    
+    # Copy generated tech image assets
+    for img_path in (DOCS_ROOT / "assets").glob("tech_*.png"):
+        target = assets / img_path.name
+        shutil.copyfile(img_path, target)
+        written.append(target)
+        
     nojekyll = SITE_ROOT / ".nojekyll"
     nojekyll.write_text("", encoding="utf-8")
     written.append(nojekyll)
+
+    # Generate technology deep-dive pages
+    for tech_id, tech in TECH_PAGES.items():
+        target = SITE_ROOT / "technology" / f"{tech_id}.html"
+        target.parent.mkdir(parents=True, exist_ok=True)
+        
+        code_refs_html = ""
+        if tech.get("code_refs"):
+            refs_li = "".join(f"<li><code>{ref}</code></li>" for ref in tech["code_refs"])
+            code_refs_html = f"""
+            <div class="code-refs-box">
+              <h4>Source Code Reference</h4>
+              <ul>{refs_li}</ul>
+            </div>
+            """
+        
+        logo_rel = relative_url(target, SITE_ROOT / "assets" / "istara-logo.png")
+        img_rel = relative_url(target, SITE_ROOT / "assets" / tech["image"])
+        index_rel = relative_url(target, SITE_ROOT / "index.html")
+        
+        tech_content = f"""
+        <a href="{html.escape(index_rel)}" class="tech-detail-back">Back to Homepage</a>
+        <header class="feature-hero">
+          <p class="eyebrow">{html.escape(tech["eyebrow"])}</p>
+          <h1>{html.escape(tech["title"])}</h1>
+          <p class="lede">{html.escape(tech["summary"])}</p>
+        </header>
+        <div class="tech-detail-layout">
+          <div class="tech-detail-copy">
+            {tech["content"]}
+            {code_refs_html}
+          </div>
+          <div class="tech-detail-visual">
+            <img src="{html.escape(img_rel)}" alt="{html.escape(tech["title"])} Diagram">
+          </div>
+        </div>
+        """
+        
+        shell = page_shell(
+            tech["title"],
+            build_nav(features, target),
+            tech_content,
+            current_path=target,
+            subtitle=tech["eyebrow"],
+            toc='<nav aria-label="Page sections"><ul><li><a href="#main">Overview</a></li></ul></nav>',
+            body_class="technology-page",
+        )
+        target.write_text(shell, encoding="utf-8")
+        written.append(target)
 
     for feature in features:
         for audience in AUDIENCES:
@@ -909,17 +935,32 @@ def generate_site(inventory: dict[str, Any]) -> list[Path]:
     index_path = SITE_ROOT / "index.html"
     index_path.write_text(
         page_shell(
-            "Istara Feature Documentation",
+            "Istara: Rigorous Local-First UX Research Swarms",
             build_nav(features, index_path),
             index_content(features, index_path),
             current_path=index_path,
-            subtitle="UI organized",
-            toc='<nav aria-label="Home sections"><ul><li><a href="#feature-map">Menu Structure</a></li></ul></nav>',
+            subtitle="Local AI swarms",
+            toc='<nav aria-label="Home sections"><ul><li><a href="#install">Install</a></li><li><a href="#product-tour">Capabilities</a></li><li><a href="#main-features">Technical Architecture</a></li><li><a href="#research-flow">Research Spine</a></li></ul></nav>',
             body_class="home-page",
         ),
         encoding="utf-8",
     )
     written.append(index_path)
+
+    docs_path = SITE_ROOT / "docs.html"
+    docs_path.write_text(
+        page_shell(
+            "Istara Documentation Hub",
+            build_nav(features, docs_path),
+            docs_content(features, docs_path),
+            current_path=docs_path,
+            subtitle="UI organized",
+            toc='<nav aria-label="Docs sections"><ul><li><a href="#metrics">Coverage</a></li><li><a href="#feature-map">Menu Structure</a></li><li><a href="#all-features">All Feature Pages</a></li><li><a href="#agent-entrypoints">Agent Entrypoints</a></li></ul></nav>',
+            body_class="docs-hub-page",
+        ),
+        encoding="utf-8",
+    )
+    written.append(docs_path)
     design_path = SITE_ROOT / "design.md"
     design_path.write_text(DESIGN_SOURCE.read_text(encoding="utf-8"), encoding="utf-8")
     written.append(design_path)
@@ -973,10 +1014,20 @@ def generate_site(inventory: dict[str, Any]) -> list[Path]:
     for source in sorted(GLOSSARY_ROOT.glob("*.md")):
         title = source.read_text(encoding="utf-8").splitlines()[0].lstrip("# ").strip()
         search_index.append({"kind": "glossary", "id": source.stem, "title": title, "url": f"glossary/{source.stem}.html"})
+    for tech_id, tech in TECH_PAGES.items():
+        search_index.append({
+            "kind": "technology",
+            "id": tech_id,
+            "title": tech["title"],
+            "summary": tech["summary"],
+            "url": f"technology/{tech_id}.html"
+        })
     (SITE_ROOT / "search-index.json").write_text(json.dumps(search_index, indent=2, sort_keys=True) + "\n", encoding="utf-8")
     written.append(SITE_ROOT / "search-index.json")
 
-    urls = ["index.html"]
+    urls = ["index.html", "docs.html"]
+    for tech_id in TECH_PAGES:
+        urls.append(f"technology/{tech_id}.html")
     for feature in features:
         base = f"features/{feature['id'].replace('.', '/')}"
         urls.extend([f"{base}/researcher.html", f"{base}/architecture.html"])
@@ -1103,6 +1154,7 @@ def validate(inventory: dict[str, Any]) -> list[str]:
 
     for required in (
         "index.html",
+        "docs.html",
         "manifest.json",
         "feature-graph.json",
         "search-index.json",
@@ -1128,11 +1180,9 @@ def main(argv: list[str] | None = None) -> int:
 
     inventory = load_inventory()
     if args.seed_missing or args.overwrite_source:
-        written = seed_missing_docs(inventory["features"], overwrite=args.overwrite_source)
-        print(f"seeded {len(written)} feature doc file(s)")
+        print(f"seeded {len(seed_missing_docs(inventory['features'], overwrite=args.overwrite_source))} feature doc file(s)")
     if args.generate_site:
-        written = generate_site(inventory)
-        print(f"generated {len(written)} site artifact(s)")
+        print(f"generated {len(generate_site(inventory))} site artifact(s)")
     if args.check:
         errors = validate(inventory)
         if errors:
