@@ -40,11 +40,14 @@ jobs:
         with:
           python-version: "3.12"
 
+      - name: Install documentation test dependencies
+        run: python -m pip install pytest
+
       - name: Generate feature documentation site
         run: python scripts/feature_docs.py --seed-missing --generate-site --check
 
       - name: Verify feature documentation contracts
-        run: pytest tests/test_feature_docs.py -q
+        run: python -m pytest tests/test_feature_docs.py -q
 
       - name: Configure GitHub Pages
         if: github.event_name != 'pull_request'
