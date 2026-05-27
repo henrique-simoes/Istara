@@ -58,6 +58,7 @@ python scripts/security_release_readiness.py
 | --- | --- |
 | `docs/features/site/` | Generated hostable feature documentation website. Regenerate with `python scripts/feature_docs.py --seed-missing --generate-site --check`. |
 | `docs/features/site/manifest.json`, `feature-graph.json`, `search-index.json`, `sitemap.xml`, `llms.txt` | Machine-readable feature indexes for agents and documentation hosting. Do not edit by hand; update `docs/features/inventory.json` and source docs first. |
+| `.github/workflows/pages.yml` | GitHub Pages workflow. It regenerates the feature-docs site, runs `pytest tests/test_feature_docs.py -q`, uploads `docs/features/site`, and deploys from the `github-pages` environment on `main`. |
 | `planner.md` | Legacy compatibility note. Do not use it for new active plans. |
 
 Legacy generated agent wrappers and one-off diagnostic registers were removed
@@ -79,7 +80,7 @@ python scripts/feature_docs.py --seed-missing --generate-site --check
 pytest tests/test_feature_docs.py -q
 ```
 
-Use `docs/features/site/index.html` for human-readable hosting, `docs/features/site/manifest.json`, `feature-graph.json`, and `search-index.json` for agent navigation, and `docs/features/llms.txt` as the agent entrypoint. The generated site also includes glossary HTML pages and local-link validation so nested feature pages do not drift into broken navigation.
+Use `docs/features/site/index.html` for human-readable hosting, `docs/features/site/manifest.json`, `feature-graph.json`, and `search-index.json` for agent navigation, and `docs/features/llms.txt` as the agent entrypoint. The generated site also includes the public landing/install page, glossary HTML pages, `.nojekyll`, local-link validation, and a GitHub Pages deployment workflow so nested feature pages do not drift into broken navigation.
 
 ## Domain Docs
 
