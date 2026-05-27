@@ -23,6 +23,8 @@ CONTENT_ROOT = DOCS_ROOT / "content"
 GLOSSARY_ROOT = DOCS_ROOT / "glossary"
 SITE_ROOT = DOCS_ROOT / "site"
 INVENTORY_PATH = DOCS_ROOT / "inventory.json"
+LOGO_SOURCE = DOCS_ROOT / "assets" / "istara-logo.png"
+FALLBACK_LOGO_SOURCE = ROOT / "Istara.png"
 
 AUDIENCES = ("researcher", "architecture")
 REQUIRED_FRONTMATTER = {
@@ -517,6 +519,7 @@ def page_shell(
 ) -> str:
     css_href = relative_url(current_path, SITE_ROOT / "assets" / "site.css")
     js_href = relative_url(current_path, SITE_ROOT / "assets" / "site.js")
+    logo_href = relative_url(current_path, SITE_ROOT / "assets" / "istara-logo.png")
     index_href = relative_url(current_path, SITE_ROOT / "index.html")
     manifest_href = relative_url(current_path, SITE_ROOT / "manifest.json")
     llms_href = relative_url(current_path, SITE_ROOT / "llms.txt")
@@ -528,21 +531,24 @@ def page_shell(
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{html.escape(title)} - Istara Feature Docs</title>
+  <meta name="description" content="Istara documentation, installation, and feature map for local-first AI UX research.">
   <link rel="stylesheet" href="{html.escape(css_href)}">
 </head>
 <body class="{html.escape(body_class)}">
   <a class="skip-link" href="#main">Skip to content</a>
   <header class="topbar" role="banner">
     <a class="brand" href="{html.escape(index_href)}" aria-label="Istara feature documentation home">
-      <span class="brand-mark" aria-hidden="true">I</span>
+      <img class="brand-logo" src="{html.escape(logo_href)}" alt="" aria-hidden="true">
       <span><strong>Istara Docs</strong><small>{html.escape(subtitle)}</small></span>
     </a>
     <button class="menu-button" type="button" data-nav-toggle aria-expanded="false" aria-controls="docs-sidebar">Menu</button>
     <form class="search-form" role="search">
       <label class="visually-hidden" for="doc-search">Search documentation</label>
-      <input id="doc-search" name="q" type="search" autocomplete="off" placeholder="Search features, routes, concepts">
+      <input id="doc-search" name="q" type="search" autocomplete="off" placeholder="Search docs">
     </form>
     <nav class="utility-nav" aria-label="Machine-readable documentation">
+      <a href="{html.escape(index_href)}#install">Install</a>
+      <a href="https://github.com/henrique-simoes/Istara">GitHub</a>
       <a href="{html.escape(manifest_href)}">Manifest</a>
       <a href="{html.escape(llms_href)}">llms.txt</a>
       <button type="button" data-theme-toggle>Theme: system</button>
@@ -711,14 +717,43 @@ def index_content(features: list[dict[str, Any]], current_path: Path) -> str:
     llms_href = relative_url(current_path, SITE_ROOT / "llms.txt")
     return f"""
 <header class="home-hero">
-  <p class="eyebrow">Istara living documentation</p>
-  <h1>Feature documentation that follows the product UI</h1>
-  <p class="lede">A hostable, agent-readable map of Istara's menus, submenus, feature behavior, implementation references, and shared research concepts.</p>
+  <div class="hero-copy">
+    <p class="eyebrow">Local-first AI agents for UX Research</p>
+    <h1>Istara</h1>
+    <p class="lede">Install a rigorous, local-first research workspace where documents, interviews, surveys, integrations, agents, skills, compute donation, and reports stay connected to the same evidence spine.</p>
+  </div>
   <div class="hero-actions">
-    <a href="#feature-map">Browse Feature Map</a>
-    <a href="{html.escape(glossary_href)}">Open Glossary</a>
+    <a href="#install">Install Istara</a>
+    <a href="#feature-map">Browse Docs</a>
+    <a href="https://github.com/henrique-simoes/Istara">View GitHub</a>
   </div>
 </header>
+<section id="install" class="install-section" aria-labelledby="install-heading">
+  <div class="section-heading"><h2 id="install-heading">Install Istara</h2><p>Pick the path that matches your machine. Native DMG and EXE installers remain disabled until release checks clear them.</p></div>
+  <div class="install-grid">
+    <article class="install-card primary">
+      <p class="eyebrow">Recommended on macOS</p>
+      <h3>Homebrew</h3>
+      <p>Use the managed cask for the simplest macOS install and update path.</p>
+      <pre><code>brew install --cask henrique-simoes/istara/istara</code></pre>
+      <button type="button" data-copy-command="brew install --cask henrique-simoes/istara/istara">Copy command</button>
+    </article>
+    <article class="install-card">
+      <p class="eyebrow">macOS / Linux</p>
+      <h3>Shell one-liner</h3>
+      <p>Installs dependencies, configures the server/client mode, and starts the guided setup.</p>
+      <pre><code>curl -fsSL https://raw.githubusercontent.com/henrique-simoes/Istara/main/scripts/install-istara.sh | bash</code></pre>
+      <button type="button" data-copy-command="curl -fsSL https://raw.githubusercontent.com/henrique-simoes/Istara/main/scripts/install-istara.sh | bash">Copy command</button>
+    </article>
+    <article class="install-card">
+      <p class="eyebrow">Windows / development</p>
+      <h3>Source or Docker</h3>
+      <p>Use source checkout or Docker while Windows native installers are being repaired.</p>
+      <pre><code>git clone https://github.com/henrique-simoes/Istara.git</code></pre>
+      <a href="https://github.com/henrique-simoes/Istara#install">Open install notes</a>
+    </article>
+  </div>
+</section>
 {metrics}
 <section id="feature-map" class="section-block">
   <div class="section-heading"><h2>Menu Structure</h2><p>Grouped the same way Istara exposes the documented surfaces.</p></div>
@@ -808,6 +843,14 @@ def generate_site(inventory: dict[str, Any]) -> list[Path]:
     (assets / "site.css").write_text(site_css(), encoding="utf-8")
     (assets / "site.js").write_text(site_js(), encoding="utf-8")
     written: list[Path] = [assets / "site.css", assets / "site.js"]
+    logo_source = LOGO_SOURCE if LOGO_SOURCE.exists() else FALLBACK_LOGO_SOURCE
+    if logo_source.exists():
+        logo_target = assets / "istara-logo.png"
+        shutil.copyfile(logo_source, logo_target)
+        written.append(logo_target)
+    nojekyll = SITE_ROOT / ".nojekyll"
+    nojekyll.write_text("", encoding="utf-8")
+    written.append(nojekyll)
 
     for feature in features:
         for audience in AUDIENCES:
@@ -935,7 +978,10 @@ def generate_site(inventory: dict[str, Any]) -> list[Path]:
         urls.extend([f"{base}/researcher.html", f"{base}/architecture.html"])
     urls.append("glossary/index.html")
     urls.extend(f"glossary/{source.stem}.html" for source in sorted(GLOSSARY_ROOT.glob("*.md")))
-    sitemap = "\n".join(f"  <url><loc>{html.escape(url)}</loc></url>" for url in urls)
+    base_url = os.environ.get("ISTARA_DOCS_BASE_URL", "").rstrip("/")
+    sitemap = "\n".join(
+        f"  <url><loc>{html.escape(f'{base_url}/{url}' if base_url else url)}</loc></url>" for url in urls
+    )
     (SITE_ROOT / "sitemap.xml").write_text(
         f'<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n{sitemap}\n</urlset>\n',
         encoding="utf-8",

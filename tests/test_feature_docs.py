@@ -45,6 +45,8 @@ def test_feature_docs_generated_site_has_all_pages_and_indexes() -> None:
     assert len(html_pages) == len(features) * 2 + len(glossary_terms) + 2
     assert (SITE_ROOT / "assets/site.css").exists()
     assert (SITE_ROOT / "assets/site.js").exists()
+    assert (SITE_ROOT / "assets/istara-logo.png").exists()
+    assert (SITE_ROOT / ".nojekyll").exists()
     assert (SITE_ROOT / "search-index.json").exists()
     assert (SITE_ROOT / "glossary/index.html").exists()
 
@@ -77,7 +79,28 @@ def test_feature_docs_site_shell_has_accessible_landmarks_and_theme_support() ->
         assert 'for="doc-search">Search documentation</label>' in html
         assert 'data-theme-toggle' in html
 
+    assert 'id="install"' in index
+    assert "brew install --cask henrique-simoes/istara/istara" in index
+    assert "scripts/install-istara.sh | bash" in index
+    assert 'data-copy-command' in index
+    assert "brand-logo" in index
+    assert "navigator.clipboard.writeText" in (SITE_ROOT / "assets/site.js").read_text(encoding="utf-8")
     assert 'aria-current="page"' in feature
     assert ':focus-visible' in css
     assert 'prefers-color-scheme: dark' in css
     assert ':root[data-theme="dark"]' in css
+    assert ".home-page .doc-panel" in css
+    assert "istara-logo.png" in css
+
+
+def test_feature_docs_github_pages_workflow_builds_and_deploys_site() -> None:
+    workflow = (ROOT / ".github/workflows/pages.yml").read_text(encoding="utf-8")
+
+    assert "python scripts/feature_docs.py --seed-missing --generate-site --check" in workflow
+    assert "pytest tests/test_feature_docs.py -q" in workflow
+    assert "actions/configure-pages@v5" in workflow
+    assert "actions/upload-pages-artifact@v4" in workflow
+    assert "actions/deploy-pages@v4" in workflow
+    assert "pages: write" in workflow
+    assert "id-token: write" in workflow
+    assert "path: docs/features/site" in workflow

@@ -1562,6 +1562,7 @@ Notification types added to EVENT_METADATA: `update_available`, `update_started`
 Regular CI and installer publishing are related but distinct:
 - `.github/workflows/ci.yml` runs governance + build/test checks for normal development
 - `.github/workflows/build-installers.yml` publishes installers/releases on **release-worthy** pushes to `main`
+- `.github/workflows/pages.yml` regenerates the living feature documentation site, verifies `tests/test_feature_docs.py`, uploads `docs/features/site`, and deploys it to GitHub Pages from the `github-pages` environment
 - tag pushes (`v*`) and manual dispatch remain available for explicit release control or rebuilds
 
 Recommended local release prep:
@@ -1575,6 +1576,26 @@ On a release-worthy push to `main`, tag push (`v*`), or manual dispatch:
 3. `release` job creates GitHub Release with both artifacts and auto-generated release notes
 
 **Files**: `scripts/set-version.sh`, `scripts/prepare-release.sh`, `backend/app/api/routes/updates.py`, `frontend/src/components/settings/UpdateChecker.tsx`, `desktop/src-tauri/src/health.rs`, `.github/workflows/ci.yml`, `.github/workflows/build-installers.yml`
+
+### Documentation Website Deployment
+The public documentation website is generated from the same living feature-docs
+source used by agents and CI. The landing page is the generated
+`docs/features/site/index.html`, not a separate hand-authored microsite, so
+install CTAs, feature navigation, glossary pages, search indexes, `llms.txt`,
+and manifest files stay synchronized with `docs/features/inventory.json`.
+
+`pages.yml` uses GitHub's Pages Actions flow: checkout, Python setup,
+`python scripts/feature_docs.py --seed-missing --generate-site --check`,
+`pytest tests/test_feature_docs.py -q`, `actions/configure-pages@v5`,
+`actions/upload-pages-artifact@v4`, and `actions/deploy-pages@v4`. Pull
+requests build and test the site without deploying; pushes to `main` and manual
+dispatches deploy the artifact. The workflow sets `ISTARA_DOCS_BASE_URL` to the
+repository Pages URL so deployed sitemaps are absolute while local generated
+files remain portable.
+
+**Files**: `.github/workflows/pages.yml`, `scripts/feature_docs.py`,
+`scripts/feature_docs_assets.py`, `docs/features/site/`, `tests/test_feature_docs.py`,
+`DOCUMENTATION.md`
 
 ## Installation Methods
 

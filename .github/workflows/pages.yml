@@ -1,0 +1,69 @@
+name: Docs Website
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    paths:
+      - ".github/workflows/pages.yml"
+      - "docs/features/**"
+      - "scripts/feature_docs.py"
+      - "scripts/feature_docs_assets.py"
+      - "tests/test_feature_docs.py"
+      - "DOCUMENTATION.md"
+      - "README.md"
+      - "README.pt-BR.md"
+      - "Tech.md"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+env:
+  ISTARA_DOCS_BASE_URL: https://henrique-simoes.github.io/Istara
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Generate feature documentation site
+        run: python scripts/feature_docs.py --seed-missing --generate-site --check
+
+      - name: Verify feature documentation contracts
+        run: pytest tests/test_feature_docs.py -q
+
+      - name: Configure GitHub Pages
+        if: github.event_name != 'pull_request'
+        uses: actions/configure-pages@v5
+
+      - name: Upload GitHub Pages artifact
+        if: github.event_name != 'pull_request'
+        uses: actions/upload-pages-artifact@v4
+        with:
+          path: docs/features/site
+
+  deploy:
+    if: github.event_name != 'pull_request'
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
