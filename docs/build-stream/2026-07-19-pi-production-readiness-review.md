@@ -71,3 +71,9 @@ Did: pi-prod-readiness-20260719t173836-planner-c stage on task pi-prod-readiness
 Result: task pi-prod-readiness-20260719t173836-PLAN-C finished; worktree head ece54640.
 Verified: see Compass Forge evidence rows on pi-prod-readiness-20260719t173836-PLAN-C (command + self_report + stage_attribution).
 Next: conductor advances the pipeline on evidence.
+
+### L-5 | 2026-07-19T20:53:22Z | S1-plan | gpt-5.6-terra | planner | pi-prod-readiness-20260719t173836-planner-a <!-- bsc-ledger:pi-prod-readiness-20260719t173836-REPLAN-A-r1 -->
+Did: pi-prod-readiness-20260719t173836-planner-a stage on task pi-prod-readiness-20260719t173836-REPLAN-A-r1 (harness fallback entry; the model did not append one).
+Result: task pi-prod-readiness-20260719t173836-REPLAN-A-r1 finished; worktree head 437b9831.
+Verified: see Compass Forge evidence rows on pi-prod-readiness-20260719t173836-REPLAN-A-r1 (command + self_report + stage_attribution).
+Next: conductor advances the pipeline on evidence.
