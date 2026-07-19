@@ -140,6 +140,14 @@ Give the implementer the seam inventory, the direct-artifact governance concern,
 
 ## Decision log
 
+<!-- consensus-winner-decision -->
+DEC-consensus-winner | 2026-07-19 | S1-plan | conductor
+Context: three planner cross-votes completed
+Decision: slot a selected from pi-prod-readiness-20260719t173836-REPLAN-A-r1
+Why: votes={"a": {"task": "pi-prod-readiness-20260719t173836-JUDGE-A", "vote": "c"}, "b": {"task": "pi-prod-readiness-20260719t173836-JUDGE-B", "vote": "a"}, "c": {"task": "pi-prod-readiness-20260719t173836-JUDGE-C", "vote": "a"}}; tiebreak_used=False; plan_file=docs/build-stream/plans/pi-prod-readiness-20260719t173836-plan-a.md
+
+
+
 DEC-1 | 2026-07-19 | S1-plan | codex-main
 Context: The prior round used an OpenClaw fallback because the conductor was launched from
 the wrong nested runtime and its daemon was down.
