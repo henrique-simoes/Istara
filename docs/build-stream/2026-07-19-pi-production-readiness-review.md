@@ -5,11 +5,11 @@ item: pi-production-readiness-review
 branch: comparison/pi-replacement-core
 cf: { spec: CF-SPEC-5, tasks: [] }
 phase: "Phase 1 — literal BSC review and production-test readiness"
-stage: S1-plan
+stage: S3-review
 status: in-progress
 blocked_on: null
-last: { agent: codex-main, at: "2026-07-19T17:38:36-03:00", ledger: L-1 }
-next_action: "Generate the run-scoped CF pipeline and cast, then launch the literal conductor visibly."
+last: { agent: gpt-5.6-terra, at: "2026-07-19T20:55:43Z", ledger: L-8 }
+next_action: "Conductor: tally consensus plan votes and select the winning plan for execution."
 ```
 
 ## Plan overview
@@ -77,3 +77,21 @@ Did: pi-prod-readiness-20260719t173836-planner-a stage on task pi-prod-readiness
 Result: task pi-prod-readiness-20260719t173836-REPLAN-A-r1 finished; worktree head 437b9831.
 Verified: see Compass Forge evidence rows on pi-prod-readiness-20260719t173836-REPLAN-A-r1 (command + self_report + stage_attribution).
 Next: conductor advances the pipeline on evidence.
+
+### L-6 | 2026-07-19T20:54:00Z | S3-review | gpt-5.6-terra | reviewer | Phase 1 <!-- bsc-ledger:pi-prod-readiness-20260719t173836-JUDGE-A -->
+Did: Compared the assigned Plan B and Plan C candidates without editing either plan.
+Result: Voted for Plan C; it explicitly remediates direct accepted-artifact creation in the readiness probe and better preserves the governed Research Spine. Task pi-prod-readiness-20260719t173836-JUDGE-A.
+Verified: `sed -n` review of `docs/build-stream/plans/pi-prod-readiness-20260719t173836-plan-b.md` and `docs/build-stream/plans/pi-prod-readiness-20260719t173836-plan-c.md` completed; Compass Forge command, plan_vote, and self_report evidence recorded.
+Next: conductor tallies consensus votes and selects the execution plan; stage exit: consensus vote recorded.
+
+### L-7 | 2026-07-19T20:56:00Z | S3-review | gpt-5.6-terra | reviewer | Phase 1 <!-- bsc-ledger:pi-prod-readiness-20260719t173836-JUDGE-C -->
+Did: Compared the assigned Plan A and Plan B candidates without editing either plan.
+Result: Voted for Plan A; it defines one selection predicate, a more explicit post-gate A2A telemetry matrix, and a concrete governed-research remediation path that distinguishes provisional fixtures from accepted/reportable artifacts. Task pi-prod-readiness-20260719t173836-JUDGE-C.
+Verified: `sed -n` review of `docs/build-stream/plans/pi-prod-readiness-20260719t173836-plan-a.md` and `docs/build-stream/plans/pi-prod-readiness-20260719t173836-plan-b.md` completed; Compass Forge command, plan_vote, and self_report evidence recorded.
+Next: conductor tallies consensus votes and selects the execution plan; stage exit: consensus vote recorded.
+
+### L-8 | 2026-07-19T20:55:43Z | S3-review | gpt-5.6-terra | reviewer | Phase 1 <!-- bsc-ledger:pi-prod-readiness-20260719t173836-JUDGE-B -->
+Did: Compared the assigned Plan A and Plan C candidates without editing either plan.
+Result: Voted for Plan A because its phased task graph, acceptance-to-proof matrix, and security, feature-documentation, and gate verification sequence provide the stronger executable readiness contract. Task pi-prod-readiness-20260719t173836-JUDGE-B.
+Verified: `sed -n` review of `docs/build-stream/plans/pi-prod-readiness-20260719t173836-plan-a.md` and `docs/build-stream/plans/pi-prod-readiness-20260719t173836-plan-c.md` completed; Compass Forge command, plan_vote, and self_report evidence recorded.
+Next: conductor tallies consensus votes and selects the execution plan; stage exit: consensus vote recorded.
