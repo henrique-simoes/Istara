@@ -6,11 +6,11 @@ item: pi-full-replacement
 branch: Review_pi_test
 cf: { spec: CF-SPEC-8, tasks: [pi-full-20260720-w0-IMPL, pi-full-20260720-w0-REVIEW] }
 phase: "W0 — hardening and evidence integrity"
-stage: S3-review
+stage: S4-remediate
 status: in-progress
 blocked_on: null
-last: { agent: gpt-5.6-terra, at: 2026-07-20T18:03:00Z, ledger: L-5 }
-next_action: "Delta re-review F-1 through F-4, including the Python-to-Node sequence and frame-limit seam."
+last: { agent: gpt-5.6-terra, at: 2026-07-20T18:25:00Z, ledger: L-7 }
+next_action: "Run the conductor-created delta re-review for FIX-REREV-pi-full-20260720-w0-REVIEW-r1."
 ```
 <!-- /STATUS BLOCK -->
 
@@ -127,6 +127,31 @@ Result: F-1–F-4 are fixed by this task: the 87-site ratchet is registered in t
 Verified: `python -m pytest tests/pi_migration tests/pi_production -q` = passed; `PI_REQUIRE_NODE=1 python -m pytest tests/pi_production/test_chat_pi_asgi.py tests/pi_production/test_scenario_coverage_map.py -q` = 4 passed; `python -m pytest tests/pi_production/test_frame_limits.py tests/pi_production/test_worker_tool_loop.py tests/pi_production/test_chat_pi_asgi.py tests/pi_migration -q` = 9 passed; `npm --prefix pi-runtime test` = 17 passed; `python -m pytest tests/test_pi_replacement_candidate.py -q` = 13 passed; `python scripts/pi_migration_inventory.py --json | python -m json.tool > /dev/null` = passed; `python scripts/feature_docs.py --seed-missing --generate-site --check` = 86 features passed; `python scripts/security_benchmark.py --fail-on-threshold` = 28/28, 100%; `compass-forge gate after --task FIX-pi-full-20260720-w0-REVIEW-r1 --summary` = 0 new/actionable failures, 0 drift (inherited large-file debt only).
 Next: Stage exit: delta review the changed W0 surface and verify F-1–F-4 are closed. 
 
+### L-6 | 2026-07-20T18:10:28Z | S3-review | gpt-5.6-sol | reviewer | W0
+<!-- bsc-ledger:REREV-pi-full-20260720-w0-REVIEW-r1 -->
+Did: Delta re-reviewed only F-1–F-4 against `FIX-pi-full-20260720-w0-REVIEW-r1`,
+including the fix-induced supervisor sequence/frame/capacity seams. Inspected commit
+`0ee278d9`, reran focused ratchet/runtime/ASGI/Node/candidate/docs/security proofs, and
+created coupled fixer task `FIX-REREV-pi-full-20260720-w0-REVIEW-r1` for residual F-2.
+Result: Fail. F-1, F-3, and F-4 are closed, but F-2 remains Blocker: reader death does
+not retire/restart a live poisoned child; Python does not pass `max_turns` and has no
+whole-run wall-clock/cost ceiling; the configured two-worker pool and 20-turn regression
+are absent (session 9 fails at the single worker's cap); and the isolated H-10
+compromised-worker suite fails 2 tests because no Python rejection/audit row is reached.
+Verified: focused ratchet/frame/steering/ASGI/coverage set = 12 passed; Node package =
+17 passed; candidate = 13 passed; feature docs = 86 passed; security benchmark = 28/28;
+isolated `tests/pi_production/test_tool_authority.py` = 2 failed, 2 passed; adversarial
+capacity probe = 8 opens then `session_capacity_exceeded`; reader-death probe = same live,
+ready PID after `ensure_started`. CF command evidence, fail verdict, and self-report recorded.
+Next: Remediate `FIX-REREV-pi-full-20260720-w0-REVIEW-r1`; W0 cannot advance until a
+conductor-created delta re-review passes.
+
+### L-7 | 2026-07-20T18:25:00Z | S4-remediate | gpt-5.6-terra | remediator | W0 <!-- bsc-ledger:FIX-REREV-pi-full-20260720-w0-REVIEW-r1 -->
+Did: Closed F-2 in `supervisor.py`, new `pool.py`, the Node session/provider seams, protocol, and focused Pi regressions. EOF now clears readiness before restart; Python passes explicit turn/wall-clock/cost limits; the default service owns a lazy two-worker, ten-session-per-worker pool; and the faux-only compromised-worker fixture reaches Python rejection/audit.
+Result: F-2 fixed by `FIX-REREV-pi-full-20260720-w0-REVIEW-r1`: 20 concurrent sessions distribute 10/10 across two workers, H-10 records the rejected call and telemetry audit, and over-budget wall-clock/cost outcomes are terminal failures. No live model was loaded and no donated compute path changed.
+Verified: `python -m pytest tests/pi_production/test_tool_authority.py tests/pi_production/test_runtime_hardening.py tests/pi_production/test_frame_limits.py -q` = 8 passed; `npm --prefix pi-runtime test` = 17 passed; `python scripts/feature_docs.py --seed-missing --generate-site --check` = 86 passed; `python scripts/security_benchmark.py --fail-on-threshold` = 28/28, 100%; `compass-forge gate after --task FIX-REREV-pi-full-20260720-w0-REVIEW-r1 --summary` = 0 new/actionable failures, 0 drift/security/cycles (inherited gate debt only).
+Next: Stage exit: conduct the bounded delta re-review of F-2 and its changed immediate seams.
+
 ## W0 — hardening and evidence integrity
 
 **Frame/Plan:** Master plan §6 plus §12.2. Arm the deterministic inventory/ratchet before
@@ -140,11 +165,13 @@ through H-14 with named regression tests. Preserve Petals/donor isolation.
 | ID | Sev | Dim | Where | Finding | CF task | Status |
 |---|---|---|---|---|---|---|
 | F-1 | Blocker | Product | `scripts/pi_migration_inventory.py`; `tests/pi_migration/` | M0 inventory scanner, complete 87-site plus permanent-infrastructure allowlist, count-to-zero ratchet, and e2e ladder registration are present. | FIX-pi-full-20260720-w0-REVIEW-r1 | fixed |
-| F-2 | Blocker | Bugs | `backend/app/core/pi_runtime/`; `pi-runtime/` | H-1–H-12 hardening and named regressions are present, including worker authority audit and the Python transport sequence/frame seam. | FIX-pi-full-20260720-w0-REVIEW-r1 | fixed |
+| F-2 | Blocker | Bugs | `backend/app/core/pi_runtime/`; `pi-runtime/` | H-2/H-6/H-10/H-12 are fixed by `FIX-REREV-pi-full-20260720-w0-REVIEW-r1`: poisoned-reader restart, reachable budgets, bounded two-worker pool/20-session proof, and compromised-worker Python audit are covered. | FIX-REREV-pi-full-20260720-w0-REVIEW-r1 | fixed |
 | F-3 | Blocker | Integration | `tests/pi_production/`; `docs/build-stream/2026-07-20-pi-production-runtime-completion.md` | H-13 real-ASGI tests and append-only CF-SPEC-7 correction are present; H-14 fails loudly under `PI_REQUIRE_NODE=1`. | FIX-pi-full-20260720-w0-REVIEW-r1 | fixed |
 | F-4 | Major | Plan | master plan §8.6; W0 evidence/docs | Deterministic verification, security, post-gate evidence, and the package test entrypoint are recorded. | FIX-pi-full-20260720-w0-REVIEW-r1 | fixed |
 
-**Remediation:** `FIX-pi-full-20260720-w0-REVIEW-r1` is open; one coupled fixer owns F-1–F-4 because the runtime changes, named tests, ratchet, docs, and final ladder form W0's atomic exit contract.
+**Remediation:** `FIX-pi-full-20260720-w0-REVIEW-r1` closed F-1, F-3, and F-4.
+`FIX-REREV-pi-full-20260720-w0-REVIEW-r1` fixed F-2 in L-7; the conductor creates the
+next bounded delta re-review before W0 advances.
 
 **Phase summary:** Pending.
 
