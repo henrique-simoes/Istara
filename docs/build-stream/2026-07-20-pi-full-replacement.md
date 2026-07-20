@@ -5,12 +5,12 @@
 item: pi-full-replacement
 branch: Review_pi_test
 cf: { spec: CF-SPEC-8, tasks: [pi-full-20260720-w0-IMPL, pi-full-20260720-w0-REVIEW] }
-phase: "W0 — hardening and evidence integrity"
-stage: S3-review
+phase: "W1 — dispatcher, Pi model management, and accounting"
+stage: S2-execute
 status: in-progress
 blocked_on: null
-last: { agent: gpt-5.6-sol, at: 2026-07-20T19:55:49Z, ledger: L-14 }
-next_action: "Conductor advances from the passing W0 delta re-review; do not reopen F-2 unless new evidence exposes a concrete defect."
+last: { agent: gpt-5.6-terra, at: 2026-07-20T20:13:44Z, ledger: L-15 }
+next_action: "Conduct the independent W1 code review of the dispatcher, Pi-only catalog, structured-repair boundary, and telemetry ledger."
 ```
 <!-- /STATUS BLOCK -->
 
@@ -311,6 +311,20 @@ Verified: `node --test --test-name-pattern='real run that spends cache-read|real
 per 1M tokens.
 Next: Stage exit: pass verdict recorded; conductor advances the pipeline after the required
 CF evidence, self-report, reviewer handoff, and task finish.
+
+### L-15 | 2026-07-20T20:13:44Z | S2-execute | gpt-5.6-terra | executor | W1 <!-- bsc-ledger:pi-full-20260720-w1-IMPL -->
+Did: Added the W1 `app.core.agentic` dispatcher contract, content-free one-row agentic
+usage telemetry, an isolated `PiModelManager` catalog, and `PiExecutionService`
+completion/ReAct/structured seams with Python JSON-Schema revalidation and one bounded
+repair attempt. Added focused W1 regression coverage. No product call site or
+`legacy_allowlist.yaml` entry changed, retaining the armed 87-site inventory.
+Result: Pi selections use the existing isolated runtime/service; absent legacy integration
+fails typed rather than silently falling back. The catalog has no ComputeRegistry dependency,
+and insufficient distinct endpoints fails closed. Structured results are never returned as
+objects until JSON parsing and schema validation pass.
+Verified: `python -m pytest tests/pi_production/test_w1_agentic_contract.py tests/pi_migration/test_count_to_zero.py -q` = 6 passed; `npm --prefix pi-runtime test` = 26 passed; `python scripts/feature_docs.py --seed-missing --generate-site --check` = 86 features passed; `python scripts/security_benchmark.py --fail-on-threshold` = 28/28 pass; `compass-forge gate after --task pi-full-20260720-w1-IMPL --summary` = 0 new failures, 0 drift (inherited gate findings remain).
+Next: Independent W1 review; verify the generic seam signatures, fail-closed behavior,
+telemetry-safe identity fields, and the no-migration 87-site ratchet.
 
 ## W0 — hardening and evidence integrity
 
