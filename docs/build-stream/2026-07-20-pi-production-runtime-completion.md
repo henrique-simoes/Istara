@@ -5,12 +5,12 @@
 item: pi-production-runtime-completion
 branch: Review_pi_test
 cf: { spec: CF-SPEC-7, tasks: [pi-runtime-complete-20260720-PLAN-A, pi-runtime-complete-20260720-PLAN-B, pi-runtime-complete-20260720-PLAN-C, pi-runtime-complete-20260720-IMPL, pi-runtime-complete-20260720-REVIEW, FIX-pi-runtime-complete-20260720-REVIEW-r1, REREV-pi-runtime-complete-20260720-REVIEW-r1, FIX-REREV-pi-runtime-complete-20260720-REVIEW-r1-F1, FIX-REREV-pi-runtime-complete-20260720-REVIEW-r1-F2, FIX-REREV-pi-runtime-complete-20260720-REVIEW-r1-F3, REREV-pi-runtime-complete-20260720-REVIEW-r2, FIX-REREV-pi-runtime-complete-20260720-REVIEW-r2-F1, FIX-REREV-pi-runtime-complete-20260720-REVIEW-r2-F2, REREV-pi-runtime-complete-20260720-REVIEW-r3, FIX-REREV-pi-runtime-complete-20260720-REVIEW-r3-F1, FIX-REREV-pi-runtime-complete-20260720-REVIEW-r3-F2, REREV-pi-runtime-complete-20260720-REVIEW-r4, FIX-REREV-pi-runtime-complete-20260720-REVIEW-r4-F1, CF-120..CF-133] }
-phase: "Phase 1 — private endpoint and lifecycle foundations"
-stage: S3-review
-status: in-progress
+phase: "Phase 5 — accepted local handoff"
+stage: S5-ship
+status: complete
 blocked_on: null
-last: { agent: gpt-5.6-sol, at: 2026-07-20T08:04:32Z, ledger: L-28 }
-next_action: "Let the conductor advance after the passing RF4-1 delta re-review; do not repeat the bounded live DeepSeek call."
+last: { agent: codex, at: 2026-07-20T09:00:00Z, ledger: S5-acceptance }
+next_action: "Review the local Review_pi_test branch and review packet; do not repeat the bounded live DeepSeek call or push without owner direction."
 ```
 <!-- /STATUS BLOCK -->
 
@@ -48,12 +48,12 @@ lifecycle file. Preserve prior dated artifacts as historical evidence.
 
 | Phase | Goal | Acceptance / verify | Status |
 |---|---|---|---|
-| 0 | Three independent production designs converge on one executable architecture | conductor consensus + owner approval | in-progress |
-| 1 | Establish real Pi production runtime and canonical tool/provider boundary | production adapter contract tests | planned |
-| 2 | Integrate all agentic-loop seams and governed persistence | 15 production scenarios | planned |
-| 3 | Prove endpoint routing and Petals isolation | adversarial same-model routing + compute/relay suites | planned |
-| 4 | Run full regression, security, docs, bounded DeepSeek evidence | all required commands green | planned |
-| 5 | Independent review/remediation and local PR-ready handoff | reviewer pass, CF acceptance, clean worktree/branch | planned |
+| 0 | Three independent production designs converge on one executable architecture | conductor consensus + owner approval | complete |
+| 1 | Establish real Pi production runtime and canonical tool/provider boundary | production adapter contract tests | complete |
+| 2 | Integrate all agentic-loop seams and governed persistence | 15 production scenarios | complete |
+| 3 | Prove endpoint routing and Petals isolation | adversarial same-model routing + compute/relay suites | complete |
+| 4 | Run full regression, security, docs, bounded DeepSeek evidence | all required commands green | complete |
+| 5 | Independent review/remediation and local PR-ready handoff | reviewer pass, CF acceptance, clean worktree/branch | complete |
 
 ## Acceptance criteria
 
@@ -408,8 +408,17 @@ integration, rollback, and exact full-test campaign. Detailed instructions live 
 
 ## Summary (S5 — whole plan)
 
-Pending implementation, independent review, remediation, final evidence, and local
-PR-ready handoff.
+Complete. Plan C won the three-architect cross-judging 2–1 and was owner-approved. The
+production Pi worker, private endpoint routing, Istara authority bridge, governed chat,
+A2A, `pi_local`, Autoresearch, memory/research, and steering seams are implemented and
+covered by 21 production-adapter tests spanning all 15 canonical scenarios. The coupled
+same-model transport-spy proves Pi API traffic cannot enter donated compute while ordinary
+Istara routing can still select and serve from that donor. The full credential-free ladder,
+feature documentation (86 features), security benchmark (28/28, 100%), and exactly one
+owner-approved bounded DeepSeek production-core call passed. No external live channel was
+tested. Independent Sol delta review passed at L-28 with no findings; the conductor
+converged; CF-120 through CF-133 are done; CF-SPEC-7 was accepted without force with 56
+evidence records. The branch remains local-only and is handed off as `Review_pi_test`.
 
 ### L-4 | 2026-07-20T01:52:24Z | S1-plan | gpt-5.6-sol | planner | pi-runtime-complete-20260720-architect-b <!-- bsc-ledger:pi-runtime-complete-20260720-PLAN-B -->
 Did: pi-runtime-complete-20260720-architect-b stage on task pi-runtime-complete-20260720-PLAN-B (harness fallback entry; the model did not append one).
