@@ -436,3 +436,9 @@ Did: r2 repair of consensus Plan C (docs/build-stream/plans/pi-runtime-complete-
 Result: Plan C candidate valid, buildable, and factually exact; pi-runtime-complete-20260720-REPLAN-C-r2
 Verified: `python -m pytest tests/test_pi_replacement_candidate.py -q` -> 12 passed in 34.98s; audit script -> 31/31 seam claims PASS; 31/32 ladder paths exist (tests/pi_production is planned-new in P0); npm scripts validate/paired:no-model/collect:artifacts, relay test, real_user_benchmark check, simulation test:static all present; pi-agent-core 0.80.10 steer/followUp/abort confirmed at agent.d.ts:82-96 with zero lab call sites; spend ledger 0.09096299 USD / cap 0.5 confirmed at scenarios/collect-replacement-artifacts.mjs:12,399.
 Next: cross-judging of plans A/B/C completes; conductor consensus, then owner approval.
+
+### L-12 | 2026-07-20T02:57:25Z | S1-plan | conductor | planner | Phase 0 <!-- bsc-ledger:pi-runtime-complete-20260720-PLAN-C -->
+Did: Reconciled the original blocked Plan C scaffold after its governed repair lineage completed. The original Kimi session produced no plan artifact and was stopped after prolonged inactivity; `REPLAN-C-r1` produced Plan C, and `REPLAN-C-r2` supplied the final corrected attribution and factual audit.
+Result: The original `PLAN-C` dependency is fulfilled by `REPLAN-C-r2`, which won cross-judging 2-1 and received explicit owner approval. The original task was marked done only to release its pre-existing `PLAN-C -> IMPL` pipeline edge; its failed attempt remains recorded as blocked/canceled in actor and task history.
+Verified: Compass Forge evidence row 339 records `superseded_by=pi-runtime-complete-20260720-REPLAN-C-r2` and `owner_approved=true`; the conductor `approve` action selected `REPLAN-C-r2` as the governing plan.
+Next: Dispatch the independent code reviewer after the implementation task completes.
