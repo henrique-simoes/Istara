@@ -336,6 +336,166 @@ test("cost within budget completes and reports the run cost", async (t) => {
   assert.equal(completed.usage.cost_usd, 1);
 });
 
+// --- F-2: production cost ceiling with a REAL (non-faux) priced binding ------
+// These drive the real openai-completions HTTP stack against a loopback that
+// reports token usage. pi-ai prices that usage from the binding's model rates,
+// which now come from `endpoint.pricing`. A zero-priced real binding would
+// compute $0 and complete, so every over-budget assertion here fails if the
+// pricing regressed — the non-faux proof the delta review required.
+
+// An OpenAI-style usage-only chunk (empty choices) — parsed before the choice
+// guard, so this is how a provider reports final token counts on a stream.
+function sseUsageChunk(usage) {
+  return (
+    "data: " +
+    JSON.stringify({ id: "chatcmpl-1", object: "chat.completion.chunk", created: 1, model: "test-model", choices: [], usage }) +
+    "\n\n"
+  );
+}
+
+function sseToolCallChunk(name, args) {
+  return (
+    "data: " +
+    JSON.stringify({
+      id: "chatcmpl-1",
+      object: "chat.completion.chunk",
+      created: 1,
+      model: "test-model",
+      choices: [
+        {
+          index: 0,
+          delta: { tool_calls: [{ index: 0, id: "call-1", type: "function", function: { name, arguments: JSON.stringify(args) } }] },
+          finish_reason: null,
+        },
+      ],
+    }) +
+    "\n\n"
+  );
+}
+
+function bindLoopbackPriced(h, key, port, { params, pricing } = {}) {
+  h.send({
+    v: 1,
+    type: "provider.bind",
+    session_key: key,
+    endpoint: {
+      endpoint_id: "loopback",
+      provider_kind: "openai_compat",
+      base_url: `http://127.0.0.1:${port}/v1`,
+      model: "test-model",
+      api_key: "test-key",
+      params,
+      pricing,
+    },
+  });
+}
+
+test("real priced openai_compat run over the cost ceiling fails closed (non-faux)", async (t) => {
+  const { server, port } = await startLoopback((req, res) => {
+    res.writeHead(200, { "content-type": "text/event-stream" });
+    res.write(sseChunk("Priced output."));
+    res.write(sseChunk(null, "stop"));
+    // 1M input + 1M output priced at $1/$2 per Mtok = $3.00, over the $0.50 cap.
+    res.write(sseUsageChunk({ prompt_tokens: 1_000_000, completion_tokens: 1_000_000 }));
+    res.end("data: [DONE]\n\n");
+  });
+  t.after(() => server.close());
+
+  const h = new WorkerHarness();
+  t.after(() => h.close());
+  await openSessionWithLimits(h, "sess-real-cost", { max_cost_usd: 0.5 }, { catalog: [] });
+  bindLoopbackPriced(h, "sess-real-cost", port, {
+    params: { timeout_ms: 5000 },
+    pricing: { input_per_mtok: 1.0, output_per_mtok: 2.0 },
+  });
+  h.send({ v: 1, type: "turn.prompt", session_key: "sess-real-cost", run_id: "run-rc", text: "go" });
+  const failed = await h.waitFor((f) => f.type === "run.failed" && f.run_id === "run-rc");
+  assert.equal(failed.error, "cost_budget_exceeded");
+  assert.ok(!h.frames.some((f) => f.type === "run.completed" && f.run_id === "run-rc"));
+});
+
+test("real priced run within budget completes and reports the calculated cost", async (t) => {
+  const { server, port } = await startLoopback((req, res) => {
+    res.writeHead(200, { "content-type": "text/event-stream" });
+    res.write(sseChunk("Cheap output."));
+    res.write(sseChunk(null, "stop"));
+    res.write(sseUsageChunk({ prompt_tokens: 1_000_000, completion_tokens: 0 }));
+    res.end("data: [DONE]\n\n");
+  });
+  t.after(() => server.close());
+
+  const h = new WorkerHarness();
+  t.after(() => h.close());
+  await openSessionWithLimits(h, "sess-real-ok", { max_cost_usd: 10 }, { catalog: [] });
+  bindLoopbackPriced(h, "sess-real-ok", port, {
+    params: { timeout_ms: 5000 },
+    pricing: { input_per_mtok: 3.0, output_per_mtok: 6.0 }, // 1M input -> $3.00
+  });
+  h.send({ v: 1, type: "turn.prompt", session_key: "sess-real-ok", run_id: "run-ro", text: "go" });
+  const completed = await h.waitFor((f) => f.type === "run.completed" && f.run_id === "run-ro");
+  assert.equal(completed.stop_reason, "stop");
+  assert.equal(completed.usage.input_tokens, 1_000_000);
+  assert.ok(Math.abs(completed.usage.cost_usd - 3.0) < 1e-6, `expected ~$3.00, got ${completed.usage.cost_usd}`);
+});
+
+test("real binding that spends tokens but carries no pricing fails a budgeted run closed", async (t) => {
+  const { server, port } = await startLoopback((req, res) => {
+    res.writeHead(200, { "content-type": "text/event-stream" });
+    res.write(sseChunk("Unpriced output."));
+    res.write(sseChunk(null, "stop"));
+    res.write(sseUsageChunk({ prompt_tokens: 5000, completion_tokens: 5000 }));
+    res.end("data: [DONE]\n\n");
+  });
+  t.after(() => server.close());
+
+  const h = new WorkerHarness();
+  t.after(() => h.close());
+  await openSessionWithLimits(h, "sess-unpriced", { max_cost_usd: 0.5 }, { catalog: [] });
+  // No `pricing`: a $0 cost cannot prove the run stayed under budget.
+  bindLoopbackPriced(h, "sess-unpriced", port, { params: { timeout_ms: 5000 } });
+  h.send({ v: 1, type: "turn.prompt", session_key: "sess-unpriced", run_id: "run-up", text: "go" });
+  const failed = await h.waitFor((f) => f.type === "run.failed" && f.run_id === "run-up");
+  assert.equal(failed.error, "cost_budget_unpriced");
+  assert.ok(!h.frames.some((f) => f.type === "run.completed" && f.run_id === "run-up"));
+});
+
+test("cost ceiling is cumulative across a real multi-turn tool loop", async (t) => {
+  let requests = 0;
+  const { server, port } = await startLoopback((req, res) => {
+    requests += 1;
+    res.writeHead(200, { "content-type": "text/event-stream" });
+    if (requests === 1) {
+      // Turn 1: a tool call. 1M input priced at $0.30/Mtok = $0.30 (under $0.50).
+      res.write(sseToolCallChunk("istara_create_task", { title: "x" }));
+      res.write(sseChunk(null, "tool_calls"));
+      res.write(sseUsageChunk({ prompt_tokens: 1_000_000, completion_tokens: 0 }));
+    } else {
+      // Turn 2: final text, another $0.30. Cumulative $0.60 > the $0.50 ceiling,
+      // even though neither single turn exceeds it — the per-run sum must fail.
+      res.write(sseChunk("Final answer."));
+      res.write(sseChunk(null, "stop"));
+      res.write(sseUsageChunk({ prompt_tokens: 1_000_000, completion_tokens: 0 }));
+    }
+    res.end("data: [DONE]\n\n");
+  });
+  t.after(() => server.close());
+
+  const h = new WorkerHarness();
+  t.after(() => h.close());
+  await openSessionWithLimits(h, "sess-cumulative", { max_cost_usd: 0.5 });
+  bindLoopbackPriced(h, "sess-cumulative", port, {
+    params: { timeout_ms: 5000 },
+    pricing: { input_per_mtok: 0.3, output_per_mtok: 0.3 },
+  });
+  h.send({ v: 1, type: "turn.prompt", session_key: "sess-cumulative", run_id: "run-cum", text: "go" });
+  const toolCall = await h.waitFor((f) => f.type === "tool.call" && f.run_id === "run-cum");
+  h.send({ v: 1, type: "tool.result", session_key: "sess-cumulative", run_id: "run-cum", tool_call_id: toolCall.tool_call_id, ok: true, result: { ok: true } });
+  const failed = await h.waitFor((f) => f.type === "run.failed" && f.run_id === "run-cum");
+  assert.equal(failed.error, "cost_budget_exceeded");
+  assert.ok(!h.frames.some((f) => f.type === "run.completed" && f.run_id === "run-cum"));
+  assert.ok(requests >= 2, `expected two provider turns, saw ${requests}`);
+});
+
 // --- H-11: seq validation ---------------------------------------------------
 
 test("inbound seq violation is a run-scoped protocol_seq_violation", async (t) => {

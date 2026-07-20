@@ -15,6 +15,12 @@
 //                     budget (retries happen only before the first visible
 //                     output event of an attempt, classified by pi-ai's
 //                     isRetryableAssistantError).
+//
+// `endpoint.pricing` carries the backend-resolved model rates (USD per 1M
+// tokens: input_per_mtok/output_per_mtok/cache_read_per_mtok/cache_write_per_mtok)
+// onto the pi-ai model `cost` object so real usage is priced and the per-run
+// cost ceiling can fail closed. A real binding with no pricing is flagged so the
+// session fails a budgeted run closed rather than reporting an untrusted $0.
 
 import {
   createModels,
@@ -78,6 +84,44 @@ export function mapProviderParams(params) {
     if (params.thinking_level !== "off") mapped.reasoning = params.thinking_level;
   }
   return mapped;
+}
+
+// pi-ai's calculateCost reads model.cost.{input,output,cacheRead,cacheWrite} as
+// USD-per-million-token rates and derives usage.cost.total from them. The
+// backend resolves an endpoint's trustworthy rates (operator/contract pricing)
+// and passes them in `endpoint.pricing`; without them a real endpoint would
+// report $0 for any usage and the per-run cost ceiling could never fail closed.
+const PRICING_FIELDS = [
+  ["input_per_mtok", "input"],
+  ["output_per_mtok", "output"],
+  ["cache_read_per_mtok", "cacheRead"],
+  ["cache_write_per_mtok", "cacheWrite"],
+];
+
+/**
+ * Validate endpoint.pricing and map it onto a pi-ai model `cost` object
+ * (per-million-token USD rates). Unknown keys and non-finite/negative values are
+ * rejected so a misconfigured price fails the bind loudly instead of silently
+ * pricing usage at $0. Absent pricing yields all-zero rates; the caller reports
+ * whether any positive rate was configured so the cost ceiling can fail closed.
+ */
+export function mapProviderPricing(pricing) {
+  const cost = { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 };
+  if (pricing === undefined || pricing === null) return cost;
+  if (typeof pricing !== "object") throw new Error("invalid_provider_pricing:pricing");
+  const KNOWN = new Set(PRICING_FIELDS.map(([src]) => src));
+  for (const key of Object.keys(pricing)) {
+    if (!KNOWN.has(key)) throw new Error(`invalid_provider_pricing:${key}`);
+  }
+  for (const [srcKey, dstKey] of PRICING_FIELDS) {
+    const value = pricing[srcKey];
+    if (value === undefined || value === null) continue;
+    if (typeof value !== "number" || !Number.isFinite(value) || value < 0) {
+      throw new Error(`invalid_provider_pricing:${srcKey}`);
+    }
+    cost[dstKey] = value;
+  }
+  return cost;
 }
 
 // Events that make an attempt's output visible to the authority: once any of
@@ -162,6 +206,11 @@ export function buildRealProvider(endpoint) {
   const { api, modelApi } = apiForKind(kind);
   const params = mapProviderParams(endpoint.params);
   const maxRetries = params.maxRetries ?? 0;
+  // Real model rates come from the backend-resolved endpoint pricing, not a
+  // hardcoded zero — otherwise pi-ai prices every real turn at $0 and the
+  // per-run cost ceiling can never fail closed (see session.mjs).
+  const cost = mapProviderPricing(endpoint.pricing);
+  const pricingConfigured = cost.input > 0 || cost.output > 0 || cost.cacheRead > 0 || cost.cacheWrite > 0;
 
   const providerId = `pi-endpoint-${endpoint.endpoint_id || "default"}`;
   const envVar = `PI_RUNTIME_KEY_${ENV_KEY_COUNTER++}`;
@@ -175,7 +224,7 @@ export function buildRealProvider(endpoint) {
     baseUrl,
     reasoning: false,
     input: ["text"],
-    cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
+    cost,
     contextWindow: 128000,
     maxTokens: 4096,
   };
@@ -194,6 +243,10 @@ export function buildRealProvider(endpoint) {
     models,
     model: resolved,
     params,
+    // Real network binding: usage is priced by `model.cost` above. The session
+    // fails a budgeted run closed when a real binding carries no pricing.
+    isReal: true,
+    pricingConfigured,
     stream: (streamModel, context, options) =>
       // Endpoint params are operator policy and win over agent defaults; the
       // agent-supplied abort signal is always preserved.
@@ -227,6 +280,10 @@ export function buildFauxProviderBinding(endpoint) {
     models,
     model: faux.getModel(),
     params: {},
+    // Deterministic test double, not a network binding: the cost ceiling reads
+    // `forcedCostUsd` (below) rather than the unpriced-real fail-closed path.
+    isReal: false,
+    pricingConfigured: false,
     stream: (model, context, options) => models.streamSimple(model, context, options),
     dispose: () => {},
     // Test-only adversarial seam: lets the production Python authority

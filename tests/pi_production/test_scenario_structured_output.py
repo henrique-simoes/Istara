@@ -117,6 +117,10 @@ async def _run_structured_turn(handler_cls, provider_kind, endpoint_id):
         api_key="loopback-test-key",
         timeout_ms=30000,
         max_retries=0,
+        # A real endpoint is priced so its usage-bearing turns are not treated as
+        # an unenforceable ($0) cost budget by the worker's fail-closed ceiling.
+        cost_input_per_mtok=0.27,
+        cost_output_per_mtok=1.10,
     )
     sup = PiRuntimeSupervisor()
     svc = PiExecutionService(resolver=_FixedResolver(endpoint), supervisor=sup)

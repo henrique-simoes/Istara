@@ -128,10 +128,19 @@ def _bind_payload(endpoint: ResolvedPiEndpoint) -> dict[str, Any]:
         "timeout_ms": endpoint.timeout_ms,
         "max_retries": endpoint.max_retries,
     }
-    # Test-only deterministic provider: never set by the production resolver.
     if endpoint.provider_kind == "faux" and endpoint.faux_responses is not None:
+        # Test-only deterministic provider: never set by the production resolver.
         payload["faux_responses"] = list(endpoint.faux_responses)
         payload["faux_forced_tool_calls"] = list(endpoint.faux_forced_tool_calls or ())
+    else:
+        # Real endpoints carry their trustworthy pricing so the worker prices
+        # usage and the per-run cost ceiling fails closed (never $0-priced).
+        payload["pricing"] = {
+            "input_per_mtok": endpoint.cost_input_per_mtok,
+            "output_per_mtok": endpoint.cost_output_per_mtok,
+            "cache_read_per_mtok": endpoint.cost_cache_read_per_mtok,
+            "cache_write_per_mtok": endpoint.cost_cache_write_per_mtok,
+        }
     return payload
 
 

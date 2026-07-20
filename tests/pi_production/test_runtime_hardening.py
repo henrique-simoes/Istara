@@ -3,10 +3,20 @@
 from __future__ import annotations
 
 import asyncio
+import json
+import threading
+import uuid
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 import pytest
 
 from app.config import settings
+from app.core.pi_runtime.endpoints import (
+    DEFAULT_ENDPOINT_ID,
+    PiEndpointResolver,
+    ResolvedPiEndpoint,
+)
+from app.core.pi_runtime.engine import PiExecutionService, _bind_payload
 from app.core.pi_runtime.pool import PiRuntimePool
 from app.core.pi_runtime.supervisor import PiRuntimeSupervisor
 
@@ -178,3 +188,118 @@ async def test_run_fails_closed_when_wall_clock_budget_exceeded():
     failed = [frame for frame in frames if frame["type"] == "run.failed"]
     assert failed and failed[-1].get("error") == "wall_clock_budget_exceeded"
     assert not any(frame["type"] == "run.completed" for frame in frames)
+
+
+# ── F-2: production cost pricing flows so the ceiling fails closed ───────────
+
+
+def test_bind_payload_forwards_real_endpoint_pricing_but_not_faux():
+    """A real endpoint's resolved pricing rides the ``provider.bind`` payload so
+    the worker can price usage; a faux endpoint carries none (it prices itself
+    through the scripted-cost seam instead)."""
+    real = ResolvedPiEndpoint(
+        endpoint_id="e",
+        provider_kind="openai_compat",
+        base_url="http://x",
+        model="m",
+        api_key="k",
+        timeout_ms=1000,
+        max_retries=0,
+        cost_input_per_mtok=0.27,
+        cost_output_per_mtok=1.10,
+    )
+    assert _bind_payload(real)["pricing"] == {
+        "input_per_mtok": 0.27,
+        "output_per_mtok": 1.10,
+        "cache_read_per_mtok": 0.0,
+        "cache_write_per_mtok": 0.0,
+    }
+    assert "pricing" not in _bind_payload(faux_endpoint([final_text("ok")]))
+
+
+def test_default_endpoint_is_priced_so_its_cost_ceiling_can_fail_closed():
+    """The built-in default endpoint resolves with nonzero pricing; a $0-priced
+    default would make its per-run ``max_cost_usd`` ceiling unenforceable."""
+    endpoint = PiEndpointResolver()._endpoints[DEFAULT_ENDPOINT_ID]
+    assert endpoint.cost_input_per_mtok > 0
+    assert endpoint.cost_output_per_mtok > 0
+
+
+class _PricedUsageStubHandler(BaseHTTPRequestHandler):
+    """A loopback openai_compat stub that reports real token usage so the worker
+    can price it (2M tokens) — the non-faux fixture the cost ceiling needs."""
+
+    def log_message(self, *args):  # silence
+        pass
+
+    def do_POST(self):
+        length = int(self.headers.get("Content-Length", "0"))
+        self.rfile.read(length)
+        self.send_response(200)
+        self.send_header("Content-Type", "text/event-stream")
+        self.end_headers()
+        content = {"choices": [{"index": 0, "delta": {"content": "Priced reply."}}]}
+        self.wfile.write(f"data: {json.dumps(content)}\n\n".encode())
+        done = {"choices": [{"index": 0, "delta": {}, "finish_reason": "stop"}]}
+        self.wfile.write(f"data: {json.dumps(done)}\n\n".encode())
+        usage = {"choices": [], "usage": {"prompt_tokens": 1_000_000, "completion_tokens": 1_000_000}}
+        self.wfile.write(f"data: {json.dumps(usage)}\n\n".encode())
+        self.wfile.write(b"data: [DONE]\n\n")
+        self.wfile.flush()
+
+
+class _FixedResolver:
+    def __init__(self, endpoint: ResolvedPiEndpoint) -> None:
+        self._endpoint = endpoint
+
+    def resolve(self, endpoint_id: str, *, model=None) -> ResolvedPiEndpoint:
+        return self._endpoint
+
+
+@requires_node
+@pytest.mark.asyncio
+async def test_real_priced_turn_over_budget_fails_closed_through_engine():
+    """Full-stack non-faux proof: a real ``openai_compat`` turn whose usage
+    prices above the per-run ceiling surfaces ``cost_budget_exceeded`` end to end
+    (config pricing → ``_bind_payload`` → worker rates → cumulative ceiling).
+    A zero-priced real binding would price the same 2M tokens at $0 and complete."""
+    server = ThreadingHTTPServer(("127.0.0.1", 0), _PricedUsageStubHandler)
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    base_url = f"http://127.0.0.1:{server.server_address[1]}"
+    endpoint = ResolvedPiEndpoint(
+        endpoint_id="pi-priced-loopback",
+        provider_kind="openai_compat",
+        base_url=base_url,
+        model="stub-model",
+        api_key="loopback-test-key",
+        timeout_ms=30000,
+        max_retries=0,
+        cost_input_per_mtok=1.0,  # 1M input -> $1.00
+        cost_output_per_mtok=2.0,  # 1M output -> $2.00, total $3.00 over the $0.50 cap
+    )
+    supervisor = PiRuntimeSupervisor(max_cost_usd=0.5)
+    service = PiExecutionService(resolver=_FixedResolver(endpoint), supervisor=supervisor)
+
+    async def _no_tools(name, params, pid, aid):  # pragma: no cover - not exercised
+        return {"success": True, "result": "unused"}
+
+    events: list[dict] = []
+    try:
+        async for event in service.run_chat_turn(
+            project_id=f"pi-priced-{uuid.uuid4()}",
+            agent_id="istara-main",
+            system_prompt="Pi owns the loop.",
+            history=[],
+            user_text="Say hello.",
+            tool_executor=_no_tools,
+            allowed_tools=[],
+        ):
+            events.append(event)
+    finally:
+        await supervisor.shutdown()
+        server.shutdown()
+
+    errors = [event for event in events if event["type"] == "error"]
+    assert errors and errors[-1].get("error") == "cost_budget_exceeded"
+    assert not any(event["type"] == "done" for event in events)

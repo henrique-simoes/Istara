@@ -61,8 +61,16 @@ backend uses a lazy, bounded two-worker pool (20 concurrent sessions total).
   refused with `session.open_failed{error:"session_capacity_exceeded"}`.
 - `provider.bind` — `{v, type, seq, session_key, endpoint:{endpoint_id,
   provider_kind:"openai_compat"|"anthropic_compat", base_url, model, api_key,
-  params?}, params?}` — short-lived binding; the worker must never echo,
-  persist, or log `api_key` or `base_url`. `params` (canonical location
+  params?, pricing?}, params?}` — short-lived binding; the worker must never
+  echo, persist, or log `api_key` or `base_url`. `endpoint.pricing` carries the
+  backend-resolved model rates as USD per 1M tokens
+  (`{input_per_mtok, output_per_mtok, cache_read_per_mtok?,
+  cache_write_per_mtok?}`); pi-ai prices a turn's usage from them so the per-run
+  `max_cost_usd` ceiling can fail closed. Unknown or negative pricing keys fail
+  the bind with `provider_bind_failed:invalid_provider_pricing:<key>`. A real
+  binding left unpriced cannot enforce a cost budget: a budgeted run that spends
+  tokens settles `run.failed{error:"cost_budget_unpriced"}` rather than a
+  fail-open $0 completion. `params` (canonical location
   `endpoint.params`; a top-level `params` object is accepted as an alias)
   carries generation/retry knobs resolved by the backend:
   - `temperature` → pi-ai `StreamOptions.temperature`
@@ -104,7 +112,8 @@ backend uses a lazy, bounded two-worker pool (20 concurrent sessions total).
   output_tokens, cost_usd}, stop_reason}` — terminal for the run.
 - `run.failed` — `{v, type, seq, session_key, run_id?, error}` — terminal.
   Protocol-scoped errors include `protocol_seq_violation`,
-  `turn_budget_exceeded`, `malformed_frame_json`, `line_exceeds_max_bytes`,
+  `turn_budget_exceeded`, `wall_clock_budget_exceeded`, `cost_budget_exceeded`,
+  `cost_budget_unpriced`, `malformed_frame_json`, `line_exceeds_max_bytes`,
   `malformed_chunk_frame`, `chunk_over_bound`, `chunk_reassembly_overflow`,
   `no_provider_bound`, `unknown_session`, `session_busy`, and
   `provider_bind_failed:<reason>`.
@@ -132,8 +141,13 @@ attribute to (or isolate from) a session is reported as a run-scoped
   are never replayed, and visible output is never duplicated.
 - The backend supplies a whole-run wall-clock ceiling in
   `limits.max_wall_clock_ms`; expiry settles `run.failed{error:"wall_clock_budget_exceeded"}`.
-  A completed run over `limits.max_cost_usd` settles
-  `run.failed{error:"cost_budget_exceeded"}` rather than success.
+  The cost ceiling is cumulative over the whole run: the worker sums the priced
+  usage of every assistant turn (a tool loop emits several), and a run whose
+  total exceeds `limits.max_cost_usd` settles
+  `run.failed{error:"cost_budget_exceeded"}` rather than success. A real binding
+  that spends tokens with no configured pricing settles
+  `run.failed{error:"cost_budget_unpriced"}` when a cost budget is set, so an
+  unpriced endpoint fails closed instead of reporting an untrusted $0.
 - Disconnect, EOF, timeout, protocol violation, or authority rejection produce
   exactly one terminal event and release the session lock.
 - Secrets travel only inside `provider.bind` on this private pipe.

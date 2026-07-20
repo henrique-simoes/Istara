@@ -9,8 +9,8 @@ phase: "W0 — hardening and evidence integrity"
 stage: S4-remediate
 status: in-progress
 blocked_on: null
-last: { agent: claude-opus-4-8, at: 2026-07-20T18:48:14Z, ledger: L-9 }
-next_action: "Run the conductor-created bounded delta re-review of F-2 (pool routing + wall-clock/cost behavior proofs)."
+last: { agent: claude-opus-4-8, at: 2026-07-20T19:23:47Z, ledger: L-11 }
+next_action: "Conductor creates the bounded delta re-review of F-2's production cost pricing, cumulative per-run ceiling, and unpriced fail-closed path."
 ```
 <!-- /STATUS BLOCK -->
 
@@ -185,6 +185,49 @@ new/actionable failures, 0 drift/cycles, 0 new security (inherited large-file + 
 secret_flow debt only).
 Next: Stage exit: conduct the bounded delta re-review of F-2's pool routing and wall-clock/cost proofs.
 
+### L-10 | 2026-07-20T18:56:22Z | S3-review | gpt-5.6-sol | reviewer | W0
+<!-- bsc-ledger:REREV-pi-full-20260720-w0-REVIEW-r3 -->
+Did: Delta re-reviewed only F-2 against `FIX-REREV-pi-full-20260720-w0-REVIEW-r2` and commit `05958204`. Verified the configured deterministic session-key pool routing, the real 20-concurrent-turn proof, and the Node/Python wall-clock and cost terminal regressions. Inspection broadened only through the cost regression's immediate production provider seam because the fix introduced `forcedCostUsd` as a test-only substitute for real usage cost.
+Result: Fail; reopened F-2 and created `FIX-REREV-pi-full-20260720-w0-REVIEW-r3`. Pool routing, 20 concurrent turns, and wall-clock termination pass. The cost terminal is proven only with `faux_cost_usd`: `buildRealProvider` still hardcodes all real-endpoint model rates to zero, while Pi AI derives `usage.cost.total` from those rates. A non-network production-binding probe with two million tokens therefore calculated `$0`, so `max_cost_usd` cannot fail closed for real endpoints and the H-6 per-run production cost ceiling remains incomplete.
+Verified: `npm --prefix pi-runtime test` = 20 passed; `PI_REQUIRE_NODE=1 python -m pytest tests/pi_production/test_runtime_hardening.py -q` = 7 passed; non-network `buildRealProvider` + `calculateCost` probe = `model_cost` all zero and `calculated_cost_usd: 0` for 2,000,000 tokens (acceptance failure reproduced).
+Next: Remediate `FIX-REREV-pi-full-20260720-w0-REVIEW-r3`; the conductor creates the next bounded delta re-review after the fixer and all sibling findings finish.
+
+### L-11 | 2026-07-20T19:23:47Z | S4-remediate | claude-opus-4-8 | remediator | W0 <!-- bsc-ledger:FIX-REREV-pi-full-20260720-w0-REVIEW-r3 -->
+Did: Closed F-2's residual production-cost gap. Threaded trustworthy per-endpoint
+pricing end to end: `PiApiEndpoint`/`ResolvedPiEndpoint` gain `cost_*_per_mtok`
+fields (`config.py`, `endpoints.py`), the default DeepSeek endpoint is seeded with
+published list pricing, and `_bind_payload` forwards `endpoint.pricing` on real
+binds (`engine.py`). `buildRealProvider` now maps that pricing onto the pi-ai
+model `cost` rates instead of hardcoded zero and flags `isReal`/`pricingConfigured`
+(`provider.mjs`, new `mapProviderPricing`). `session.mjs` now enforces the ceiling
+cumulatively across every assistant turn in a run and fails a budgeted real run
+closed with `cost_budget_unpriced` when a real binding spent tokens but carries no
+pricing. Added non-faux behavioral regressions (real openai_compat loopback with
+token usage) on both the Node worker and through the Python engine, updated
+`PROTOCOL.md`, and priced the existing structured-output real-endpoint test.
+Result: F-2 fixed by `FIX-REREV-pi-full-20260720-w0-REVIEW-r3`. A real 2M-token turn
+now prices to nonzero cost and `max_cost_usd` fails closed for real endpoints; a
+zero-priced real binding would fail every new over-budget assertion. No live model
+was loaded and no donated-compute path changed.
+Verified: `npm --prefix pi-runtime test` = 24 passed (was 20; adds real over-budget
+`cost_budget_exceeded`, priced within-budget cost report, `cost_budget_unpriced`,
+and a cumulative multi-turn tool-loop ceiling — all non-faux loopback HTTP);
+`PI_REQUIRE_NODE=1 python -m pytest tests/pi_production/test_runtime_hardening.py -q`
+= 10 passed (was 7; adds `_bind_payload` pricing forwarding, default-endpoint-is-priced,
+and a full-stack real over-budget turn surfacing `cost_budget_exceeded` through the
+engine); `PI_REQUIRE_NODE=1 python -m pytest tests/pi_production tests/pi_migration -q`
+= 67 passed (was 64); `python -m pytest tests/test_pi_replacement_candidate.py -q`
+= 13 passed; `python scripts/security_benchmark.py --fail-on-threshold` = pass;
+`python scripts/feature_docs.py --seed-missing --generate-site --check` = 86 passed;
+`compass-forge gate after --task FIX-REREV-pi-full-20260720-w0-REVIEW-r3 --summary`
+= security dimension unchanged at 1, 0 drift/cycles. The one reported new_failure is
+the pre-existing `_read_pi_endpoint_secret` `secret_flow` (the config.py:90 inherited
+debt from L-9) re-fingerprinted because 10 non-secret pricing lines shifted that
+untouched function down; a diagnostic confirmed removing the shift returns
+new_failures=0 with security still 1 (no secret sink introduced).
+Next: Stage exit: conduct the bounded delta re-review of F-2's production cost
+pricing, the cumulative per-run ceiling, and the unpriced fail-closed path.
+
 ## W0 — hardening and evidence integrity
 
 **Frame/Plan:** Master plan §6 plus §12.2. Arm the deterministic inventory/ratchet before
@@ -198,7 +241,7 @@ through H-14 with named regression tests. Preserve Petals/donor isolation.
 | ID | Sev | Dim | Where | Finding | CF task | Status |
 |---|---|---|---|---|---|---|
 | F-1 | Blocker | Product | `scripts/pi_migration_inventory.py`; `tests/pi_migration/` | M0 inventory scanner, complete 87-site plus permanent-infrastructure allowlist, count-to-zero ratchet, and e2e ladder registration are present. | FIX-pi-full-20260720-w0-REVIEW-r1 | fixed |
-| F-2 | Blocker | Bugs | `backend/app/core/pi_runtime/pool.py`; `pi-runtime/src/{session,provider}.mjs`; focused regressions | Fixed: deterministic `pi_worker_pool_size`/session-key-hash routing plus a real 20-concurrent-turn pool proof (10/10 across two workers), and behavioral `wall_clock_budget_exceeded`/`cost_budget_exceeded` terminals on the Node worker and through the Python supervisor. | FIX-REREV-pi-full-20260720-w0-REVIEW-r2 | fixed |
+| F-2 | Blocker | Bugs | `pi-runtime/src/provider.mjs`; `pi-runtime/src/session.mjs`; `backend/app/config.py`; `backend/app/core/pi_runtime/{endpoints,engine}.py`; cost regressions | Production cost enforcement closed by `FIX-REREV-pi-full-20260720-w0-REVIEW-r3`: trustworthy per-endpoint pricing threads config→`_bind_payload`→`buildRealProvider` onto pi-ai model rates (default endpoint seeded, `mapProviderPricing` validates), the per-run ceiling is now cumulative across turns, an unpriced budgeted real binding fails closed (`cost_budget_unpriced`), and non-faux loopback regressions (Node + full-stack Python) prove `max_cost_usd` fires for real usage — a zero-priced real binding would fail every new over-budget assertion. | FIX-REREV-pi-full-20260720-w0-REVIEW-r3 | fixed |
 | F-3 | Blocker | Integration | `tests/pi_production/`; `docs/build-stream/2026-07-20-pi-production-runtime-completion.md` | H-13 real-ASGI tests and append-only CF-SPEC-7 correction are present; H-14 fails loudly under `PI_REQUIRE_NODE=1`. | FIX-pi-full-20260720-w0-REVIEW-r1 | fixed |
 | F-4 | Major | Plan | master plan §8.6; W0 evidence/docs | Deterministic verification, security, post-gate evidence, and the package test entrypoint are recorded. | FIX-pi-full-20260720-w0-REVIEW-r1 | fixed |
 
@@ -210,7 +253,17 @@ exact configured session-key routing/20-concurrent-turn acceptance contract.
 `FIX-REREV-pi-full-20260720-w0-REVIEW-r2` (L-9) closed F-2: the configured
 session-key-hash pool, the 20-concurrent-turn proof, and the wall-clock/cost terminal
 regressions are now present. The conductor creates the next bounded delta re-review
-before W0 advances.
+before W0 advances. L-10 reopened the production-cost portion under
+`FIX-REREV-pi-full-20260720-w0-REVIEW-r3`: the terminal regression was reachable
+only through the faux provider because real endpoint model rates remained zero.
+`FIX-REREV-pi-full-20260720-w0-REVIEW-r3` (L-11) closed that gap: trustworthy
+per-endpoint pricing now threads config → `_bind_payload` → `buildRealProvider`
+onto the pi-ai model rates (the default DeepSeek endpoint seeded, custom endpoints
+configurable), the per-run ceiling is cumulative across turns, an unpriced budgeted
+real binding fails closed (`cost_budget_unpriced`), and non-faux loopback
+regressions on the Node worker and through the Python engine prove `max_cost_usd`
+fires for real usage. The conductor creates the bounded delta re-review of this
+changed surface before W0 advances.
 
 **Phase summary:** Pending.
 

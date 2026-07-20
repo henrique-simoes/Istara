@@ -32,6 +32,16 @@ class PiApiEndpoint(BaseModel):
     keychain_account: str = ""
     timeout_ms: int = Field(default=30_000, ge=1, le=120_000)
     max_retries: int = Field(default=0, ge=0, le=3)
+    # Trustworthy per-endpoint pricing (USD per 1M tokens) resolved from the
+    # deployment's contract. The worker feeds these into the pi-ai model rates so
+    # a real turn's usage is priced and the per-run ``max_cost_usd`` ceiling can
+    # fail closed. An endpoint left unpriced cannot enforce a cost budget: a
+    # budgeted run that spends tokens fails closed at the worker rather than
+    # silently reporting $0 (see pi-runtime/src/session.mjs).
+    cost_input_per_mtok: float = Field(default=0.0, ge=0.0)
+    cost_output_per_mtok: float = Field(default=0.0, ge=0.0)
+    cost_cache_read_per_mtok: float = Field(default=0.0, ge=0.0)
+    cost_cache_write_per_mtok: float = Field(default=0.0, ge=0.0)
 
     @field_validator("endpoint_id", "base_url", "model", "keychain_service")
     @classmethod
@@ -267,6 +277,13 @@ class Settings(BaseSettings):
     pi_replacement_deepseek_model: str = "deepseek-v4-pro"
     pi_replacement_deepseek_keychain_service: str = "istara-pi-deepseek"
     pi_replacement_deepseek_keychain_account: str = "openclaw"
+    # Default endpoint pricing (USD per 1M tokens). Seeded from DeepSeek's
+    # published list price so the built-in endpoint is priced out of the box and
+    # its per-run cost ceiling fails closed; operators override per env/.env with
+    # their own negotiated contract rate. Never zero by default — an unpriced
+    # real endpoint cannot enforce a cost budget.
+    pi_replacement_deepseek_cost_input_per_mtok: float = 0.27
+    pi_replacement_deepseek_cost_output_per_mtok: float = 1.10
     # JSON-compatible settings input.  Empty preserves the existing default
     # endpoint without registering it as donated/shared compute.
     pi_api_endpoints: list[PiApiEndpoint] = []

@@ -69,6 +69,13 @@ class ResolvedPiEndpoint:
     api_key: str
     timeout_ms: int
     max_retries: int
+    # Trustworthy per-endpoint pricing (USD per 1M tokens). Forwarded to the
+    # worker so pi-ai prices real usage and the per-run cost ceiling can fail
+    # closed; a real endpoint left at 0.0 cannot enforce a cost budget.
+    cost_input_per_mtok: float = 0.0
+    cost_output_per_mtok: float = 0.0
+    cost_cache_read_per_mtok: float = 0.0
+    cost_cache_write_per_mtok: float = 0.0
     # Test-only: when ``provider_kind == "faux"`` the worker uses these scripted
     # deterministic completions instead of a network provider. The production
     # resolver never sets this — only tests construct a faux endpoint — so the
@@ -99,6 +106,10 @@ class PiEndpointResolver:
                 model=settings.pi_replacement_deepseek_model,
                 keychain_service=settings.pi_replacement_deepseek_keychain_service,
                 keychain_account=settings.pi_replacement_deepseek_keychain_account,
+                # Priced by default so the built-in endpoint's cost ceiling fails
+                # closed; operators override with their negotiated contract rate.
+                cost_input_per_mtok=settings.pi_replacement_deepseek_cost_input_per_mtok,
+                cost_output_per_mtok=settings.pi_replacement_deepseek_cost_output_per_mtok,
             )
         # endpoint_id -> (monotonic read time, secret); only non-empty secrets.
         self._secret_cache: dict[str, tuple[float, str]] = {}
@@ -153,6 +164,10 @@ class PiEndpointResolver:
             api_key=api_key,
             timeout_ms=endpoint.timeout_ms,
             max_retries=endpoint.max_retries,
+            cost_input_per_mtok=endpoint.cost_input_per_mtok,
+            cost_output_per_mtok=endpoint.cost_output_per_mtok,
+            cost_cache_read_per_mtok=endpoint.cost_cache_read_per_mtok,
+            cost_cache_write_per_mtok=endpoint.cost_cache_write_per_mtok,
         )
 
     def resolve(self, endpoint_id: str, *, model: str | None = None) -> ResolvedPiEndpoint:
