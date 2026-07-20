@@ -5,6 +5,12 @@ Architect C, task `pi-runtime-complete-20260720-REPLAN-C-r1` (the original
 is the first complete Plan C, written from independent inspection of the seams in §1),
 CF-SPEC-7, branch `Review_pi_test` (local only, no push, no PR).
 
+*r2 repair note (task `pi-runtime-complete-20260720-REPLAN-C-r2`):* full re-audit of every
+seam claim, referenced path, npm script, and ladder command in this plan against the code
+at worktree head `161fb0cf`; corrected the lab facade tool count (29, not 30) in §1 and §4.
+Architecture, phases, acceptance, risks, and rollback unchanged. Grounding baseline
+re-confirmed: `python -m pytest tests/test_pi_replacement_candidate.py -q` → 12 passed.
+
 ## 1. Verified seam map (evidence base)
 
 Every load-bearing claim below was confirmed by direct code inspection on 2026-07-20:
@@ -14,9 +20,9 @@ Every load-bearing claim below was confirmed by direct code inspection on 2026-0
 | Lab Agent host | `labs/pi-replacement/src/istara-pi-adapter.mjs:145-170` — real `Agent` with `streamFn`, `sessionId`, `toolExecution: "sequential"`, event subscription at :161-168 | Proven only in-process in the lab; no production importer exists |
 | Lab live provider | `istara-pi-adapter.mjs:312-339,419-440` — pi-ai `deepseekProvider()`, `completeSimple` | Live calls bypass `Agent` entirely; live-inside-Agent is unproven everywhere |
 | Lab Agent APIs | `steer`/`followUp`/`abort` exist in `@earendil-works/pi-agent-core@0.80.10` (`dist/agent.d.ts:82-96`) but have **zero** call sites in the lab | Steering/follow-up/abort must be wired for the first time and tested against the real Agent |
-| Lab tool facade | `labs/pi-replacement/src/canonical-tool-facade.mjs:82-481` — 30 TypeBox tools, in-memory state, `validateToolCall` at :496-510 | Lab-only state; production must execute canonical Python tools instead |
+| Lab tool facade | `labs/pi-replacement/src/canonical-tool-facade.mjs:82-481` — 29 TypeBox tools, in-memory state, `validateToolCall` at :496-510 | Lab-only state; production must execute canonical Python tools instead |
 | Usage/cost evidence | `labs/pi-replacement/src/raw-llm-capture.mjs:5-10,30-40,89-185` — pricing table, `estimateDeepSeekCostUsd`, redacted record builders | Production-quality code worth promoting; spend ledger `$0.09096299` / cap `$0.50` at `scenarios/collect-replacement-artifacts.mjs:12,394-402` |
-| Production tools | `backend/app/skills/system_actions.py:79-431` — **17** `OPENAI_TOOLS` (OpenAI function JSON Schema); executor `execute_tool` at :752-786; `TOOL_EXECUTORS` at :1193-1211 | The lab's 30 tools are a superset contract; §4 maps every scenario to real production surfaces |
+| Production tools | `backend/app/skills/system_actions.py:79-431` — **17** `OPENAI_TOOLS` (OpenAI function JSON Schema); executor `execute_tool` at :752-786; `TOOL_EXECUTORS` at :1193-1211 | The lab's 29 tools are a superset contract; §4 maps every scenario to real production surfaces |
 | Chat dispatch | `backend/app/api/routes/chat.py` — handler :501, project gate :507, prompt-RAG/system-prompt pipeline :607-775 (protected spine block :695, defined :102-115), Pi header check inside the SSE generator :803, fail-closed envelope :78-99, Python ReAct `_generate_native_tools` :154-344 (`execute_tool` call :293), `_generate_text_fallback` :347-470, post-stream save in fresh `async_session()` :891-914, fire-and-forget DAG compaction :922 | Pi currently only pins `deepseek-v4-pro` with `strict_model_routing=True` through `ollama.chat_stream`; the Python loop still owns every turn |
 | Pi shim | `backend/app/core/pi_replacement.py` — selection predicate :38-49, `ensure_pi_deepseek_registered` :52-86 (registers a transient `openai_compat` node into `ComputeRegistry`), `record_pi_a2a_event` :124-141, canned `build_pi_channel_response` :144-174, exercisers :224-493 with `production_test_ready: False` at :492 | Registration into the shared registry is the donor-collision vector; exercisers must be deleted, not extended |
 | Compute routing | `backend/app/core/compute_registry_routing.py` — `_select_candidates` :88-204; relay/browser need advertised models :106-108; strict+project sort **prefers relay/browser donors** :182-188; donor content gate `_node_authorized_for_project_content` :206-228; telemetry call sites :648,675,701 | A model alias is not endpoint identity; the strict sort would pick a same-alias donor over the pinned Pi node |
@@ -80,7 +86,7 @@ Unlike `fauxProvider` this exercises the genuine pi-ai provider HTTP stack insid
 `Agent` loop, credential-free. The lab matrix stays as the fast contract layer and is never
 cited as production evidence.
 
-Coverage rule: the lab facade declares 30 tools; production chat canonically exposes 17
+Coverage rule: the lab facade declares 29 tools; production chat canonically exposes 17
 (`system_actions.py:79-431`). Where a lab canonical id has a production tool counterpart
 (`tasks.create→create_task`, `documents.search→search_documents`, `memory.search→search_memory`,
 `findings.search→search_findings`, …) the scenario asserts the real tool executes. Where it

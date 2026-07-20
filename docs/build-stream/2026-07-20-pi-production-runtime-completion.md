@@ -9,7 +9,7 @@ phase: "Phase 0 — architecture and production boundary"
 stage: S1-plan
 status: in-progress
 blocked_on: "planning-enabled conductor consensus and owner approval"
-last: { agent: kimi-code/k3, at: 2026-07-20T02:45:53Z, ledger: L-9 }
+last: { agent: kimi-code/k3, at: 2026-07-20T02:46:40Z, ledger: L-10 }
 next_action: "Collect the remaining cross-judge vote, record consensus_result, then pause for owner approval."
 ```
 <!-- /STATUS BLOCK -->
@@ -188,3 +188,9 @@ Did: Consensus judge slot c for CF-SPEC-7 (assigned pair: Plan A vs Plan B). Rea
 Result: plan_vote recorded for slot a. Plan A wins on the load-bearing architectural decision: its ComputeRegistry-disjoint ApiEndpointRegistry makes the audited API/donor alias collision unrepresentable and it explicitly removes the audited ensure_pi_deepseek_registered transient node, whereas Plan B's LLMServer reuse (verified to live in the shared registry plane) never addresses that artifact. Plan B's superior protocol rigor (revision-digest sessions, phase-aware retry, terminal-event taxonomy) and failing-tests-first/sqlite-root-cause discipline are flagged for the implementer to absorb. pi-runtime-complete-20260720-JUDGE-C
 Verified: file-existence audit 18/18 OK; read inspection of llm_servers.py:40-99, compute_registry_routing.py:148-197, compute_route_evidence.py:40-102, pi_replacement.py:52 -> all cited claims confirmed. No tests run (judge stage; no code changed).
 Next: remaining cross-judge votes, conductor consensus_result, then owner approval of the winning plan.
+
+### L-10 | 2026-07-20T02:46:40Z | S1-plan | kimi-code/k3 | architect | Phase 0 <!-- bsc-ledger:pi-runtime-complete-20260720-REPLAN-C-r2 -->
+Did: r2 repair of consensus Plan C (docs/build-stream/plans/pi-runtime-complete-20260720-plan-c.md). Root cause of the repair round: conductor validated the REPLAN-C-r1 candidate before the harness stage_attribution row landed (evidence 315, 02:30:24Z, after r2 was created 02:29:24Z) - same race as PLAN-A r1; plan artifact was intact. Repair pass: re-audited all 31 seam claims, 32 ladder paths, npm script inventory, and symbol-level facts against head 161fb0cf; corrected one factual drift (lab facade tool count 30 -> 29 unique canonicalIds, canonical-tool-facade.mjs:82-481) in sections 1 and 4; added r2 repair note to the plan header. Architecture, phases, acceptance, risks, rollback unchanged.
+Result: Plan C candidate valid, buildable, and factually exact; pi-runtime-complete-20260720-REPLAN-C-r2
+Verified: `python -m pytest tests/test_pi_replacement_candidate.py -q` -> 12 passed in 34.98s; audit script -> 31/31 seam claims PASS; 31/32 ladder paths exist (tests/pi_production is planned-new in P0); npm scripts validate/paired:no-model/collect:artifacts, relay test, real_user_benchmark check, simulation test:static all present; pi-agent-core 0.80.10 steer/followUp/abort confirmed at agent.d.ts:82-96 with zero lab call sites; spend ledger 0.09096299 USD / cap 0.5 confirmed at scenarios/collect-replacement-artifacts.mjs:12,399.
+Next: cross-judging of plans A/B/C completes; conductor consensus, then owner approval.
