@@ -9,7 +9,6 @@ against the test-owned DB. No network, no ComputeRegistry, no orphan process.
 
 from __future__ import annotations
 
-import shutil
 import uuid
 
 import pytest
@@ -22,7 +21,9 @@ from app.models.project import Project
 from app.models.task import Task
 from app.skills.system_actions import execute_tool
 
-pytestmark = pytest.mark.skipif(shutil.which("node") is None, reason="node runtime not available")
+from .harness import requires_node
+
+pytestmark = requires_node
 
 
 @pytest.mark.asyncio

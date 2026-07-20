@@ -16,6 +16,7 @@ class WorkerHarness {
     this.frames = [];
     this._waiters = [];
     this._buffer = "";
+    this._seqs = new Map(); // session_key (null = connection-level) -> last outbound seq
     this.stderr = "";
     this.child.stdout.setEncoding("utf8");
     this.child.stdout.on("data", (chunk) => {
@@ -33,8 +34,14 @@ class WorkerHarness {
     this.child.stderr.on("data", (c) => (this.stderr += c));
   }
 
+  // Mirrors the protocol contract: every frame carries a per-session_key
+  // monotonically increasing seq (connection-level counter for keyless
+  // frames). An explicit `seq` on the frame overrides the counter.
   send(frame) {
-    this.child.stdin.write(JSON.stringify(frame) + "\n");
+    const key = typeof frame.session_key === "string" ? frame.session_key : null;
+    const next = (this._seqs.get(key) || 0) + 1;
+    this._seqs.set(key, next);
+    this.child.stdin.write(JSON.stringify({ seq: next, ...frame }) + "\n");
   }
 
   async waitFor(predicate, timeoutMs = 5000) {

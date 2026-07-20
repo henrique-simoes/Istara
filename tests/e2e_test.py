@@ -374,6 +374,13 @@ def main():
     )
 
     # =========================================================
+    # PHASE 26: Pi Migration Count-to-Zero Ratchet
+    # =========================================================
+    print("\n🧭 Phase 26: Pi Migration Count-to-Zero Ratchet")
+
+    run_test_step("Pi migration count-to-zero ratchet", pi_migration_ratchet)
+
+    # =========================================================
     # RESULTS
     # =========================================================
     elapsed = time.time() - start_time
@@ -430,6 +437,17 @@ def chat_message(client, project_id, message):
         timeout=120.0,
     )
     return assert_ok(resp)
+
+
+def pi_migration_ratchet():
+    """Deterministic count-to-zero ratchet (master plan §4.2); needs no server."""
+    tests_dir = Path(__file__).resolve().parent
+    if str(tests_dir) not in sys.path:
+        sys.path.insert(0, str(tests_dir))
+    from pi_migration.test_count_to_zero import EXPECTED_PRODUCT_SITES, check_count_to_zero
+
+    check_count_to_zero()
+    return f"legacy-plane inventory within allowlist; {EXPECTED_PRODUCT_SITES} product sites ratcheted"
 
 
 if __name__ == "__main__":

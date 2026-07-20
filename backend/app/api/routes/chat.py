@@ -117,6 +117,7 @@ async def _generate_pi_runtime(
     tool_results: list[dict],
     request,
     session_agent_id: str | None,
+    turn_status: dict | None = None,
 ):
     """Drive one chat turn through the real Pi Agent Core worker (AC-1).
 
@@ -126,7 +127,9 @@ async def _generate_pi_runtime(
     the authenticated project/agent scope. Yields the existing SSE envelope
     events and mutates *all_text_parts* / *tool_results* in place so the shared
     persistence block is unchanged. Any runtime failure fails closed with a
-    typed error — the legacy Python ReAct loop is never entered.
+    typed error — the legacy Python ReAct loop is never entered. The terminal
+    status (``success``/``error``) is reported through *turn_status* so the
+    caller can skip persistence for a failed turn (fail-closed, H-9).
     """
     agent_id = session_agent_id or "istara-main"
     system_prompt = ""
@@ -212,6 +215,8 @@ async def _generate_pi_runtime(
             }
         ) + "\n\n"
     finally:
+        if turn_status is not None:
+            turn_status["status"] = status
         try:
             await metrics.finish(status=status, error_message=error_message)
         except Exception:
@@ -920,6 +925,7 @@ async def chat(request: ChatRequest, http_request: Request, db: AsyncSession = D
         try:
             # ── Attempt native tool calling ──────────────────────────
             pi_candidate = pi_replacement_requested(http_request)
+            pi_turn_status: dict = {}
             # Resolve the opt-in target before choosing either tool-loop transport.
             # A missing Keychain registration is terminal: falling back would silently
             # route a Pi-selected request through the default provider.
@@ -943,6 +949,7 @@ async def chat(request: ChatRequest, http_request: Request, db: AsyncSession = D
                     tool_results,
                     request,
                     session_agent_id,
+                    turn_status=pi_turn_status,
                 ):
                     yield event
             elif use_native_tools:
@@ -1019,6 +1026,19 @@ async def chat(request: ChatRequest, http_request: Request, db: AsyncSession = D
                     yield event
 
             # ── Save the full assistant response ─────────────────────
+            if pi_candidate and pi_turn_status.get("status") != "success":
+                # Fail closed (H-9): a failed Pi turn must NOT persist an
+                # assistant message built from a failed or partially-streamed
+                # turn — the transcript would otherwise record a false-success
+                # reply. Terminate the stream like a registration failure.
+                _chat_log.warning(
+                    "Pi chat turn failed (%s) — no assistant message persisted",
+                    pi_turn_status.get("status"),
+                )
+                yield "data: " + json.dumps(
+                    {"type": "done", "message_id": None, "sources": [], "tools_used": []}
+                ) + "\n\n"
+                return
             async with async_session() as save_db:
                 assistant_content = "".join(all_text_parts)
                 assistant_created_at = datetime.now(timezone.utc)

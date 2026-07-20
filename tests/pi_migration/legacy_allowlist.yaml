@@ -1,0 +1,346 @@
+# Pi full-replacement — legacy-plane call-site allowlist (master plan §4.2).
+#
+# This is the ONLY file allowed to authorize a direct legacy-plane call
+# (ollama.* / llm_router.* / compute_registry.* aliases, direct per-node
+# dispatch, ChatOpenAI browser bypass) in backend/app/.
+#
+# Each wave removes the product sites it migrated and lowers
+# ratchet.expected_product_sites by exactly that many. Final state (W9):
+# `product` is empty, expected_product_sites is 0, and only `permanent`
+# remains. Any new direct call added later fails CI.
+#
+# Written in a tiny YAML subset (flow lists + quoted scalars only) so it can
+# be parsed without pyyaml; see tests/pi_migration/test_count_to_zero.py.
+
+ratchet:
+  # 69 chat + 17 embed + 1 browser bypass = 87 product sites (verified by
+  # scripts/pi_migration_inventory.py + research-callsites-core/rest.md).
+  expected_product_sites: 87
+
+# ---------------------------------------------------------------------------
+# PRODUCT SITES — all migrate to the AgenticDispatcher. Removing a site from
+# this section without migrating it breaks the ratchet.
+# ---------------------------------------------------------------------------
+product:
+  # --- Chat sites (69) ---------------------------------------------------
+  - keys: ["backend/app/agents/ui_audit_agent.py:499"]
+    kind: chat
+    note: "UIAuditAgent._evaluate_heuristics_with_data — LLM heuristic evaluation"
+  - keys: ["backend/app/api/routes/chat.py:321"]
+    kind: chat
+    note: "chat ReAct loop #1, native tools (_generate_native_tools)"
+  - keys: ["backend/app/api/routes/chat.py:510"]
+    kind: chat
+    note: "chat ReAct loop #1 fallback, text-parsed tools (_generate_text_fallback)"
+  - keys: ["backend/app/api/routes/interfaces.py:143"]
+    kind: chat
+    note: "design chat ReAct loop #2, native tools (_generate_native_design_tools)"
+  - keys: ["backend/app/api/routes/interfaces.py:588"]
+    kind: chat
+    note: "design chat ReAct loop #2 fallback, text-parsed tools"
+  - keys: ["backend/app/api/routes/presentation.py:71"]
+    kind: chat
+    note: "get_slide_instructions — slide-deck instruction package"
+  - keys: ["backend/app/core/agent_execution.py:472"]
+    kind: chat
+    note: "AgentExecutionMixin._execute_task — skill underperformance reflection"
+  - keys: ["backend/app/core/agent_lifecycle.py:519"]
+    kind: chat
+    note: "AgentLifecycleMixin._execute_steering_message — general steering reply"
+  - keys: ["backend/app/core/agent_lifecycle.py:857"]
+    kind: chat
+    note: "AgentLifecycleMixin._handle_collaboration — A2A collaboration response"
+  - keys: ["backend/app/core/agent_lifecycle.py:942"]
+    kind: chat
+    note: "AgentLifecycleMixin._initiate_debate — synthesis of output + peer critique"
+  - keys: ["backend/app/core/agent_lifecycle.py:996"]
+    kind: chat
+    note: "AgentLifecycleMixin._handle_debate — critique of peer output"
+  - keys: ["backend/app/core/agent_research.py:129"]
+    kind: chat
+    note: "AgentResearchMixin._execute_general_task — ReAct loop, tools branch"
+  - keys: ["backend/app/core/agent_research.py:131"]
+    kind: chat
+    note: "AgentResearchMixin._execute_general_task — final/no-tools branch"
+  - keys: ["backend/app/core/agent_research.py:478"]
+    kind: chat
+    note: "AgentResearchMixin._create_research_plan — 2-5 step plan decomposition"
+  - keys: ["backend/app/core/agent_research.py:667"]
+    kind: chat
+    note: "AgentResearchMixin._execute_single_step — skill-less plan step"
+  - keys: ["backend/app/core/agent_research.py:1062"]
+    kind: chat
+    note: "AgentResearchMixin._self_verify_output — LLM self-reflection gate"
+  - keys: ["backend/app/core/autoresearch_runners/model_temp.py:158"]
+    kind: chat
+    note: "ModelTempRunner._evaluate_skill — skill run under candidate model/temp"
+  - keys: ["backend/app/core/autoresearch_runners/model_temp.py:203"]
+    kind: chat
+    note: "ModelTempRunner._score_output — LLM-as-judge 0-1 score"
+  - keys: ["backend/app/core/autoresearch_runners/persona.py:108"]
+    kind: chat
+    note: "PersonaRunner.hypothesize — persona file mutation"
+  - keys: ["backend/app/core/autoresearch_runners/persona.py:204"]
+    kind: chat
+    note: "PersonaRunner._evaluate_agent — simulated UX task run"
+  - keys: ["backend/app/core/autoresearch_runners/persona.py:236"]
+    kind: chat
+    note: "PersonaRunner._score_response — score simulated response"
+  - keys: ["backend/app/core/autoresearch_runners/question_bank.py:93"]
+    kind: chat
+    note: "QuestionBankRunner.hypothesize — question-bank improvement"
+  - keys: ["backend/app/core/autoresearch_runners/question_bank.py:232"]
+    kind: chat
+    note: "QuestionBankRunner._evaluate_questions — simulated participant"
+  - keys: ["backend/app/core/autoresearch_runners/question_bank.py:280"]
+    kind: chat
+    note: "QuestionBankRunner._score_responses — score elicited responses"
+  - keys: ["backend/app/core/autoresearch_runners/rag_params.py:169"]
+    kind: chat
+    note: "RAGParamsRunner._llm_hypothesis — next RAG parameter change"
+  - keys: ["backend/app/core/autoresearch_runners/skill_prompt.py:156"]
+    kind: chat
+    note: "SkillPromptRunner.hypothesize — skill prompt mutation"
+  - keys: ["backend/app/core/autoresearch_runners/skill_prompt.py:252"]
+    kind: chat
+    note: "SkillPromptRunner._single_eval — skill prompt on sample context"
+  - keys: ["backend/app/core/autoresearch_runners/skill_prompt.py:287"]
+    kind: chat
+    note: "SkillPromptRunner._score_output — score skill output"
+  - keys: ["backend/app/core/autoresearch_runners/ui_sim.py:103"]
+    kind: chat
+    note: "UISimRunner.hypothesize — UI component a11y/UX mutation"
+  - keys: ["backend/app/core/autoresearch_runners/ui_sim.py:199"]
+    kind: chat
+    note: "UISimRunner._evaluate_component — WCAG-style component score"
+  - keys: ["backend/app/core/context_dag.py:611"]
+    kind: chat
+    note: "ContextDAG._summarize_batch — DAG context compression summary"
+  - keys: ["backend/app/core/context_summarizer.py:72"]
+    kind: chat
+    note: "ContextSummarizer.summarize_messages — context-window pressure summary"
+  - keys: ["backend/app/core/report_manager.py:498"]
+    kind: chat
+    note: "ReportManager._generate_executive_summary — SCR executive summary"
+  - keys: ["backend/app/core/report_manager.py:555"]
+    kind: chat
+    note: "ReportManager._generate_mece_categories — MECE categorization"
+  - keys: ["backend/app/core/report_manager.py:754"]
+    kind: chat
+    note: "ReportManager._compose_full_report — weakest-section scoring loop"
+  - keys: ["backend/app/core/report_manager.py:883"]
+    kind: chat
+    note: "ReportManager._compose_section — narrative section expansion"
+  - keys: ["backend/app/core/report_manager.py:937"]
+    kind: chat
+    note: "ReportManager._compose_section — recommendations expansion"
+  - keys: ["backend/app/core/report_manager.py:996"]
+    kind: chat
+    note: "ReportManager._compose_section — gaps/limitations section"
+  - keys: ["backend/app/core/self_check.py:75"]
+    kind: chat
+    note: "verify_claim — fact-check claim against RAG sources"
+  - keys: ["backend/app/core/validation.py:152"]
+    kind: chat
+    note: "dual_run — same prompt on 2 servers for consensus (direct server.chat)"
+  - keys: ["backend/app/core/validation.py:213"]
+    kind: chat
+    note: "adversarial_review — second model critiques first response"
+  - keys: ["backend/app/core/validation.py:314"]
+    kind: chat
+    note: "full_ensemble — 3+ server ensemble consensus (direct server.chat)"
+  - keys: ["backend/app/core/validation.py:373"]
+    kind: chat
+    note: "self_moa — temperature-variation ensemble"
+  - keys: ["backend/app/core/validation.py:431"]
+    kind: chat
+    note: "debate_rounds — initial debate response"
+  - keys: ["backend/app/core/validation.py:470"]
+    kind: chat
+    note: "debate_rounds — multi-round debate refinement"
+  - keys: ["backend/app/core/validation_executor.py:64"]
+    kind: chat
+    note: "ValidationExecutor._adversarial_review — LLM-as-judge on coding output"
+  - keys: ["backend/app/services/adaptive_interview.py:308"]
+    kind: chat
+    note: "generate_clarification — probing follow-up question"
+  - keys: ["backend/app/services/adaptive_interview.py:363"]
+    kind: chat
+    note: "_is_saturated — LLM saturation judgment"
+  - keys: ["backend/app/services/deployment_service.py:323"]
+    kind: chat
+    note: "_generate_adaptive_followup — adaptive follow-up question"
+  - keys: ["backend/app/services/research_validity_service.py:556"]
+    kind: chat
+    note: "_default_coder_runner — independent multi-model coding (direct coder.node.chat)"
+  - keys: ["backend/app/skills/discover/channel_deployment.py:180"]
+    kind: chat
+    note: "ChannelResearchDeploymentSkill.plan — deployment plan + questions"
+  - keys: ["backend/app/skills/discover/channel_deployment.py:261"]
+    kind: chat
+    note: "ChannelResearchDeploymentSkill._analyze — analyze deployment responses"
+  - keys: ["backend/app/skills/discover/contextual_inquiry.py:36"]
+    kind: chat
+    note: "ContextualInquirySkill.plan — observation plan"
+  - keys: ["backend/app/skills/discover/contextual_inquiry.py:83"]
+    kind: chat
+    note: "ContextualInquirySkill.execute — AEIOU analysis of notes"
+  - keys: ["backend/app/skills/discover/diary_studies.py:28"]
+    kind: chat
+    note: "DiaryStudiesSkill.plan — diary study design"
+  - keys: ["backend/app/skills/discover/diary_studies.py:70"]
+    kind: chat
+    note: "DiaryStudiesSkill.execute — diary entry analysis"
+  - keys: ["backend/app/skills/discover/user_interviews.py:201"]
+    kind: chat
+    note: "UserInterviewsSkill.plan — interview guide"
+  - keys: ["backend/app/skills/discover/user_interviews.py:297"]
+    kind: chat
+    note: "UserInterviewsSkill.execute — per-transcript analysis loop"
+  - keys: ["backend/app/skills/discover/user_interviews.py:337"]
+    kind: chat
+    note: "UserInterviewsSkill.execute — cross-transcript synthesis"
+  - keys: ["backend/app/skills/intercoder.py:390"]
+    kind: chat
+    note: "KappaIntercoderSkill.plan — analysis process plan"
+  - keys: ["backend/app/skills/intercoder.py:411"]
+    kind: chat
+    note: "KappaIntercoderSkill.execute — coder A open coding"
+  - keys: ["backend/app/skills/intercoder.py:438"]
+    kind: chat
+    note: "KappaIntercoderSkill.execute — coder B independent re-coding"
+  - keys: ["backend/app/skills/intercoder.py:496"]
+    kind: chat
+    note: "KappaIntercoderSkill.execute — disagreement reconciliation"
+  - keys: ["backend/app/skills/intercoder.py:520"]
+    kind: chat
+    note: "KappaIntercoderSkill.execute — theme extraction (full agreement)"
+  - keys: ["backend/app/skills/skill_factory.py:508"]
+    kind: chat
+    note: "GeneratedSkill.plan — factory-generated skill plan"
+  - keys: ["backend/app/skills/skill_factory.py:717"]
+    kind: chat
+    note: "GeneratedSkill.execute — primary structured execution"
+  - keys: ["backend/app/skills/skill_factory.py:755"]
+    kind: chat
+    note: "GeneratedSkill.execute — JSON repair #1 (native schema)"
+  - keys: ["backend/app/skills/skill_factory.py:794"]
+    kind: chat
+    note: "GeneratedSkill.execute — JSON repair #2 (plain prompt)"
+  - keys: ["backend/app/skills/skill_factory.py:863"]
+    kind: chat
+    note: "GeneratedSkill.execute — empty-findings repair #3"
+  # --- Embed sites (17): 3 direct alias/router calls + 14 wrapper sites ---
+  # Wrapper sites call embed_text/embed_chunks (embeddings.py) and are not
+  # detectable by the §4.1 regexes; they are tracked here so each wave's
+  # removal is ratcheted. vector_health.py:19 is counted here per §4.2's
+  # "17 embed sites" and research Table 2; §4.3 also names it as a probe —
+  # see discrepancy note in the W0 report.
+  - keys: ["backend/app/core/embeddings.py:50"]
+    kind: embed
+    note: "embed_text — canonical single-text embed wrapper (ollama.embed)"
+  - keys: ["backend/app/core/embeddings.py:90"]
+    kind: embed
+    note: "embed_chunks — canonical batch embed wrapper (ollama.embed_batch)"
+  - keys: ["backend/app/core/validation.py:522"]
+    kind: embed
+    note: "_get_embeddings — response-agreement embeddings (llm_router.embed_batch)"
+  - keys: ["backend/app/core/agent_execution.py:824"]
+    kind: embed
+    note: "_semantic_skill_match — task-text vector (via embed_text)"
+  - keys: ["backend/app/core/agent_execution.py:832"]
+    kind: embed
+    note: "_semantic_skill_match — skill-description vectors (via embed_text)"
+  - keys: ["backend/app/core/agent_memory.py:64"]
+    kind: embed
+    note: "AgentMemoryManager.read_notes — note search query vector (via embed_text)"
+  - keys: ["backend/app/core/agent_memory.py:74"]
+    kind: embed
+    note: "AgentMemoryManager.read_notes — recent-notes fallback query (via embed_text)"
+  - keys: ["backend/app/core/agent_skill_tools.py:338"]
+    kind: embed
+    note: "rank_skill_candidates — query vector (via embed_text)"
+  - keys: ["backend/app/core/agent_skill_tools.py:341"]
+    kind: embed
+    note: "rank_skill_candidates — skill-description vectors (via embed_text)"
+  - keys: ["backend/app/core/autoresearch_runners/rag_params.py:234"]
+    kind: embed
+    note: "RAGParamsRunner._score_single_query — retrieval eval query (via embed_text)"
+  - keys: ["backend/app/core/prompt_rag.py:316"]
+    kind: embed
+    note: "_embedding_similarity — query vector (via embed_text)"
+  - keys: ["backend/app/core/prompt_rag.py:319"]
+    kind: embed
+    note: "_embedding_similarity — persona-section vector (via embed_text)"
+  - keys: ["backend/app/core/prompt_rag.py:494"]
+    kind: embed
+    note: "compose_dynamic_prompt — precomputed query vector (via embed_text)"
+  - keys: ["backend/app/core/rag.py:604"]
+    kind: embed
+    note: "ingest_chunks — document ingestion embedding (via embed_chunks)"
+  - keys: ["backend/app/core/rag.py:639"]
+    kind: embed
+    note: "retrieve_context — RAG retrieval query embedding (via embed_text)"
+  - keys: ["backend/app/core/file_watcher.py:398"]
+    kind: embed
+    note: "FileWatcher._process_file — watched-file indexing (via embed_chunks)"
+  - keys: ["backend/app/core/vector_health.py:19"]
+    kind: embed
+    note: "check_embedding_dimensions — dimension probe via product embed path"
+  # --- Browser bypass (1 logical site, 3 constructor lines) --------------
+  - keys: ["backend/app/services/browser_service.py:29", "backend/app/services/browser_service.py:36", "backend/app/services/browser_service.py:43"]
+    kind: browser_bypass
+    note: "browser_service._get_llm ChatOpenAI factory — browser-use Agent loop, bypasses registry"
+
+# ---------------------------------------------------------------------------
+# PERMANENT INFRASTRUCTURE — NEVER migrate (master plan §4.3). The scanner
+# does not flag these (donor dispatch uses bare node.chat / raw HTTP, which
+# the §4.1 patterns deliberately exclude); they are recorded here so the
+# count-to-zero contract names the permanent exceptions explicitly.
+# ---------------------------------------------------------------------------
+permanent:
+  - keys: ["backend/app/core/compute_node_transport.py:298-333"]
+    category: "donated-compute transport"
+    note: "websocket request/response transport for relay/browser donors"
+  - keys: ["backend/app/core/compute_node_invocation.py:57-77", "backend/app/core/compute_node_invocation.py:178-191", "backend/app/core/compute_node_invocation.py:323-333", "backend/app/core/compute_node_invocation.py:362-372"]
+    category: "donated-compute transport"
+    note: "WS llm_request / stream fallback / embed_request / embed_batch branches"
+  - keys: ["backend/app/api/routes/compute.py"]
+    category: "donated-compute transport"
+    note: "relay routes (whole file); relay/ CLI and DonateComputeToggle.tsx outside backend/app"
+  - keys: ["backend/app/core/compute_registry_routing.py:106-109", "backend/app/core/compute_registry_routing.py:120-124", "backend/app/core/compute_registry_routing.py:181-190", "backend/app/core/compute_registry_routing.py:206-228"]
+    category: "donor scheduling/authorization"
+    note: "donor node selection and project-scope authorization"
+  - keys: ["backend/app/core/compute_registry_invocation.py:184-203", "backend/app/core/compute_registry_invocation.py:231-238", "backend/app/core/compute_registry_invocation.py:288-311", "backend/app/core/compute_registry_invocation.py:628-648", "backend/app/core/compute_registry_invocation.py:940-943", "backend/app/core/compute_registry_invocation.py:1003-1008"]
+    category: "donor scheduling/authorization"
+    note: "registry chat/chat_stream/embed/embed_batch dispatch incl. relay WS branches"
+  - keys: ["backend/app/core/compute_registry_lifecycle.py:38-79", "backend/app/core/compute_registry_lifecycle.py:161-163", "backend/app/core/compute_registry_lifecycle.py:443-476"]
+    category: "donor lifecycle/telemetry/heartbeat"
+    note: "project scopes, donor health/heartbeat tracking"
+  - keys: ["backend/app/core/compute_node.py:77-91"]
+    category: "donor lifecycle/telemetry/heartbeat"
+    note: "relay connection fields (websocket, pending_requests, last_heartbeat)"
+  - keys: ["backend/app/core/connection_string.py", "backend/app/api/routes/connections.py"]
+    category: "donor lifecycle/telemetry/heartbeat"
+    note: "connection strings"
+  - keys: ["backend/app/core/compute_registry_invocation.py:332", "backend/app/core/compute_registry_invocation.py:353", "backend/app/core/compute_registry_invocation.py:394", "backend/app/core/compute_registry_invocation.py:662", "backend/app/core/compute_registry_invocation.py:683", "backend/app/core/compute_registry_invocation.py:720", "backend/app/core/compute_registry_invocation.py:949", "backend/app/core/compute_registry_invocation.py:954", "backend/app/core/compute_registry_invocation.py:1014", "backend/app/core/compute_registry_invocation.py:1022"]
+    category: "legacy-engine internals"
+    note: "raw-HTTP provider transport branches (ollama/anthropic/openai) — the benchmark baseline"
+  - keys: ["backend/app/core/ollama.py:88-200", "backend/app/core/lmstudio.py:161-344"]
+    category: "legacy-engine internals"
+    note: "OllamaClient/LMStudioClient chat/chat_stream/embed/embed_batch transports"
+  - keys: ["backend/app/core/compute_registry_lifecycle.py:568", "backend/app/core/compute_registry_lifecycle.py:586"]
+    category: "legacy-engine internals"
+    note: "LM Studio chat-readiness health probes"
+  - keys: ["backend/app/core/model_capabilities.py:590", "backend/app/core/lmstudio.py:97"]
+    category: "legacy-engine internals"
+    note: "tool-support capability probe; LM Studio loaded-model detect probe"
+  - keys: ["backend/app/core/compute_registry_invocation.py:1153-1177", "backend/app/core/ollama.py:74-86", "backend/app/core/ollama.py:210-223"]
+    category: "local model lifecycle"
+    note: "pull_model/ensure_model provisioning (re-used by §5.2.3 provisioner)"
+  - keys: ["backend/app/core/compute_node_models.py:282-407"]
+    category: "local model lifecycle"
+    note: "LM Studio JIT model load"
+  - keys: ["backend/app/core/compute_registry_routing.py:350-633"]
+    category: "local model lifecycle"
+    note: "donor/node recovery"

@@ -17,10 +17,12 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import time
+import uuid
 from pathlib import Path
 from typing import Any, AsyncIterator, Awaitable, Callable
 
-from .protocol import MAX_HISTORY_MESSAGES, PROTOCOL_VERSION, TERMINAL_RUN_TYPES
+from .protocol import MAX_CHUNK_DATA_BYTES, MAX_HISTORY_MESSAGES, MAX_LINE_BYTES, PROTOCOL_VERSION, TERMINAL_RUN_TYPES
 
 logger = logging.getLogger(__name__)
 
@@ -59,8 +61,14 @@ class PiRuntimeSupervisor:
         self._ready_info: dict[str, Any] = {}
         self._start_lock = asyncio.Lock()
         self._write_lock = asyncio.Lock()
+        # The Node worker validates monotonically increasing sequence numbers
+        # independently for every session (and for connection-scoped frames).
+        # Keep the producer-side counter here so callers never need to know
+        # about the transport detail.
+        self._outbound_seqs: dict[str | None, int] = {}
         self._fatal: str | None = None
         self._run_counter = 0
+        self._restart_times: list[float] = []
 
     # ── lifecycle ────────────────────────────────────────────────────────
     @property
@@ -71,6 +79,15 @@ class PiRuntimeSupervisor:
         async with self._start_lock:
             if self.is_running and self._ready.is_set():
                 return
+            # EOF leaves a process handle behind.  Reclaim it before starting
+            # again so a poisoned reader cannot strand a child (H-2).
+            if self._proc is not None:
+                await self._force_stop()
+            now = time.monotonic()
+            self._restart_times = [at for at in self._restart_times if now - at < 60.0]
+            if len(self._restart_times) >= 3:
+                raise PiWorkerError("worker_restart_backoff")
+            self._restart_times.append(now)
             if not self._worker_entry.exists():
                 raise PiWorkerError(f"worker_entry_missing:{self._worker_entry}")
             self._proc = await asyncio.create_subprocess_exec(
@@ -80,6 +97,9 @@ class PiRuntimeSupervisor:
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.PIPE,
                 cwd=str(self._worker_entry.parent.parent),
+                # A worker can legitimately emit chunked protocol payloads
+                # larger than asyncio's default 64 KiB reader limit (H-2).
+                limit=8 * 1024 * 1024,
             )
             self._fatal = None
             self._ready.clear()
@@ -95,7 +115,45 @@ class PiRuntimeSupervisor:
     async def _send(self, frame: dict[str, Any]) -> None:
         if self._proc is None or self._proc.stdin is None:
             raise PiWorkerError("worker_not_started")
-        line = (json.dumps(frame, separators=(",", ":")) + "\n").encode("utf-8")
+        frame = dict(frame)
+        key = frame.get("session_key")
+        if "seq" not in frame:
+            next_seq = self._outbound_seqs.get(key, 0) + 1
+            self._outbound_seqs[key] = next_seq
+            frame["seq"] = next_seq
+        serialized = json.dumps(frame, separators=(",", ":"), ensure_ascii=False)
+        line = (serialized + "\n").encode("utf-8")
+        # Match the Node codec: large tool results/session opens are encoded as
+        # bounded payload.chunk frames, preserving the original frame's seq.
+        if len(line) > MAX_LINE_BYTES:
+            raw = serialized.encode("utf-8")
+            parts: list[bytes] = []
+            offset = 0
+            while offset < len(raw):
+                end = min(offset + MAX_CHUNK_DATA_BYTES, len(raw))
+                # A chunk payload is JSON text, so keep UTF-8 codepoints whole.
+                while end > offset:
+                    try:
+                        raw[offset:end].decode("utf-8")
+                        break
+                    except UnicodeDecodeError:
+                        end -= 1
+                if end == offset:  # defensive; a UTF-8 scalar is at most 4 bytes
+                    raise PiWorkerError("chunk_encoding_error")
+                parts.append(raw[offset:end])
+                offset = end
+            chunk_id = f"py-{uuid.uuid4().hex}"
+            line = b"".join(
+                (json.dumps({
+                    "v": PROTOCOL_VERSION,
+                    "type": "payload.chunk",
+                    "chunk_id": chunk_id,
+                    "seq": index,
+                    "total": len(parts),
+                    "data": part.decode("utf-8"),
+                }, separators=(",", ":"), ensure_ascii=False) + "\n").encode("utf-8")
+                for index, part in enumerate(parts, start=1)
+            )
         async with self._write_lock:
             self._proc.stdin.write(line)
             await self._proc.stdin.drain()
@@ -334,6 +392,8 @@ class PiRuntimeSupervisor:
             self._sessions.clear()
             self._session_runs.clear()
             self._session_locks.clear()
+            self._outbound_seqs.clear()
+            self._restart_times.clear()
 
     async def _force_stop(self) -> None:
         if self._proc is None:

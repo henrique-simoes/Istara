@@ -71,6 +71,11 @@ class SteeringManager:
 
     def __init__(self) -> None:
         self._agents: dict[str, AgentSteeringState] = {}
+        # Active work is tracked per (project_id, session_key) binding — not a
+        # single global slot — so two concurrent turns of the same agent never
+        # clear each other's working flag (no spurious aborts). Entries are
+        # (normalized_project_id_or_"", session_key_or_"").
+        self._active_work: dict[str, set[tuple[str, str]]] = {}
 
     def _get_or_create(self, agent_id: str) -> AgentSteeringState:
         """Get or create steering state for an agent."""
@@ -266,22 +271,91 @@ class SteeringManager:
     # Agent state management
     # -----------------------------------------------------------------------
 
-    async def mark_working(self, agent_id: str, project_id: str | None = None) -> None:
+    def _work_set(self, agent_id: str) -> set[tuple[str, str]]:
+        return self._active_work.setdefault(agent_id, set())
+
+    def _work_matches(
+        self,
+        entry: tuple[str, str],
+        scoped_project_id: str | None,
+        session_key: str | None,
+    ) -> bool:
+        project, sess = entry
+        if session_key is not None and sess != session_key:
+            return False
+        if scoped_project_id is not None and project != scoped_project_id:
+            return False
+        return True
+
+    def _has_work(
+        self,
+        agent_id: str,
+        *,
+        project_id: str | None = None,
+        session_key: str | None = None,
+    ) -> bool:
+        scoped_project_id = self._normalize_project_id(project_id)
+        return any(
+            self._work_matches(entry, scoped_project_id, session_key)
+            for entry in self._active_work.get(agent_id, ())
+        )
+
+    def is_binding_working(
+        self,
+        agent_id: str,
+        project_id: str | None = None,
+        session_key: str | None = None,
+    ) -> bool:
+        """Check one ``(agent_id, project_id, session_key)`` binding's working flag.
+
+        The Pi steering pump polls this — never the global single slot — so a
+        concurrent turn of the same agent finishing cannot read as an abort.
+        """
+        return self._has_work(agent_id, project_id=project_id, session_key=session_key)
+
+    async def mark_working(
+        self,
+        agent_id: str,
+        project_id: str | None = None,
+        session_key: str | None = None,
+    ) -> None:
         """Mark agent as currently working (starting a task/skill)."""
         state = self._get_or_create(agent_id)
         async with state.lock:
+            scoped_project_id = self._normalize_project_id(project_id)
+            self._work_set(agent_id).add((scoped_project_id or "", session_key or ""))
             state.is_working = True
-            state.active_project_id = self._normalize_project_id(project_id) or ""
+            state.active_project_id = scoped_project_id or ""
             state.work_complete_event.clear()
 
-    async def mark_idle(self, agent_id: str, project_id: str | None = None) -> None:
-        """Mark agent as idle (finished all work)."""
+    async def mark_idle(
+        self,
+        agent_id: str,
+        project_id: str | None = None,
+        session_key: str | None = None,
+    ) -> None:
+        """Mark agent as idle (finished all work).
+
+        Only this binding's ``(project_id, session_key)`` mark is cleared; work
+        marked by other concurrent bindings keeps the agent working. The legacy
+        single-slot mirror (``active_project_id``) is kept in sync for older
+        callers.
+        """
         state = self._get_or_create(agent_id)
         async with state.lock:
             scoped_project_id = self._normalize_project_id(project_id)
-            if scoped_project_id is None or state.active_project_id == scoped_project_id:
-                state.is_working = False
-                state.active_project_id = ""
+            work = self._work_set(agent_id)
+            for entry in list(work):
+                if self._work_matches(entry, scoped_project_id, session_key):
+                    work.discard(entry)
+            state.is_working = bool(work)
+            if (
+                scoped_project_id is None
+                or state.active_project_id == scoped_project_id
+                or not work
+            ):
+                state.active_project_id = sorted(work)[0][0] if work else ""
+            if not state.is_working:
                 state.work_complete_event.set()
 
     def is_working(self, agent_id: str) -> bool:
@@ -298,7 +372,7 @@ class SteeringManager:
         """Wait until agent finishes all work (steering + follow-up processed)."""
         state = self._get_or_create(agent_id)
         scoped_project_id = self._normalize_project_id(project_id)
-        if scoped_project_id and state.active_project_id != scoped_project_id:
+        if scoped_project_id and not self._has_work(agent_id, project_id=scoped_project_id):
             return True
         try:
             await asyncio.wait_for(state.work_complete_event.wait(), timeout=timeout)
@@ -323,7 +397,7 @@ class SteeringManager:
         follow_up_count = len(self._matching_messages(state.follow_up_queue, scoped_project_id))
         is_working = state.is_working
         if scoped_project_id is not None:
-            is_working = state.is_working and state.active_project_id == scoped_project_id
+            is_working = self._has_work(agent_id, project_id=scoped_project_id)
         return {
             "agent_id": agent_id,
             "project_id": scoped_project_id or "",
@@ -363,9 +437,18 @@ class SteeringManager:
         state = self._get_or_create(agent_id)
         async with state.lock:
             scoped_project_id = self._normalize_project_id(project_id)
-            if scoped_project_id is None or state.active_project_id == scoped_project_id:
-                state.is_working = False
-                state.active_project_id = ""
+            work = self._work_set(agent_id)
+            for entry in list(work):
+                if self._work_matches(entry, scoped_project_id, None):
+                    work.discard(entry)
+            state.is_working = bool(work)
+            if (
+                scoped_project_id is None
+                or state.active_project_id == scoped_project_id
+                or not work
+            ):
+                state.active_project_id = sorted(work)[0][0] if work else ""
+            if not state.is_working:
                 state.work_complete_event.set()
             res = {
                 "steering": self._clear_matching(state.steering_queue, project_id=scoped_project_id),

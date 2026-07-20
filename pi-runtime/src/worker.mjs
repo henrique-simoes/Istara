@@ -3,13 +3,19 @@
 //
 // Speaks the versioned NDJSON protocol (PROTOCOL.md) over stdin/stdout. stdout
 // is protocol-only; sanitized diagnostics go to stderr. Hosts one supervised
-// pi-agent-core Agent per session (max LIMITS.MAX_SESSIONS). Secrets arrive only
-// inside `provider.bind` and are never echoed, logged, or persisted.
+// pi-agent-core Agent per session (max LIMITS.MAX_SESSIONS, configurable via
+// PI_MAX_SESSIONS). Secrets arrive only inside `provider.bind` and are never
+// echoed, logged, or persisted.
+//
+// Failure discipline: malformed inbound lines, chunk-reassembly violations,
+// and seq violations terminate the affected run with a run-scoped `run.failed`
+// frame. The worker never broadcasts a process-wide `fatal` for input it can
+// attribute to (or isolate from) a session.
 
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { FrameReader, ProtocolError, PROTOCOL_VERSION, LIMITS, encodeFrame, makeSeq } from "./protocol.mjs";
+import { FrameReader, ProtocolError, PROTOCOL_VERSION, LIMITS, encodeFrameLines, makeSeq } from "./protocol.mjs";
 import { PiSession } from "./session.mjs";
 
 function pkgVersion(name) {
@@ -35,10 +41,24 @@ function pkgVersion(name) {
 }
 
 const sessions = new Map(); // session_key -> PiSession
-const nextSeq = makeSeq();
+const connectionSeq = makeSeq(); // outbound seq for frames without a session_key
+const sessionSeqs = new Map(); // session_key -> last outbound seq
+const inboundSeqs = new Map(); // session_key (null = connection-level) -> last inbound seq
+
+function nextOutboundSeq(sessionKey) {
+  if (typeof sessionKey === "string") {
+    const next = (sessionSeqs.get(sessionKey) || 0) + 1;
+    sessionSeqs.set(sessionKey, next);
+    return next;
+  }
+  return connectionSeq();
+}
 
 function write(frame) {
-  process.stdout.write(encodeFrame({ ...frame, seq: nextSeq() }));
+  const withSeq = { ...frame, seq: frame.seq ?? nextOutboundSeq(frame.session_key) };
+  for (const line of encodeFrameLines(withSeq)) {
+    process.stdout.write(line);
+  }
 }
 
 function diag(message) {
@@ -48,6 +68,46 @@ function diag(message) {
 
 function emitForSession(frame) {
   write(frame);
+}
+
+/**
+ * Validate inbound protocol seq monotonicity: per-session_key counters
+ * starting at 1, with a connection-level counter for frames that carry no
+ * session_key. payload.chunk frames never reach here (the FrameReader
+ * reassembles them); their embedded seq is the chunk ordering.
+ */
+function checkInboundSeq(frame) {
+  const key = typeof frame.session_key === "string" ? frame.session_key : null;
+  const seq = frame.seq;
+  if (typeof seq !== "number" || !Number.isInteger(seq) || seq < 1) return false;
+  const last = inboundSeqs.get(key) || 0;
+  if (seq <= last) return false;
+  inboundSeqs.set(key, seq);
+  return true;
+}
+
+/**
+ * Terminate every active run with a run-scoped error (used when an inbound
+ * line cannot be attributed to a single session: a poisoned line is almost
+ * certainly the frame an active run is waiting on). Never process-fatal.
+ */
+function failActiveRuns(error) {
+  let any = false;
+  for (const session of sessions.values()) {
+    if (session.failActiveRun(error)) any = true;
+  }
+  if (!any) diag(`inbound_error:${error}`);
+}
+
+/** Run-scoped failure for a frame we refuse to process. */
+function rejectFrame(frame, error) {
+  const session = typeof frame.session_key === "string" ? sessions.get(frame.session_key) : null;
+  if (session && session.failActiveRun(error)) return;
+  if (typeof frame.session_key === "string") {
+    write({ v: PROTOCOL_VERSION, type: "run.failed", session_key: frame.session_key, run_id: frame.run_id, error });
+  } else {
+    diag(`rejected_frame:${error}:${frame && frame.type}`);
+  }
 }
 
 async function handleFrame(frame) {
@@ -72,12 +132,12 @@ async function handleFrame(frame) {
           await existing.close();
           sessions.delete(key);
         } else {
-          write({ v: 1, type: "session.opened", session_key: key });
+          write({ v: PROTOCOL_VERSION, type: "session.opened", session_key: key });
           return;
         }
       }
       if (sessions.size >= LIMITS.MAX_SESSIONS) {
-        write({ v: 1, type: "run.failed", session_key: key, error: "max_sessions_exceeded" });
+        write({ v: PROTOCOL_VERSION, type: "session.open_failed", session_key: key, error: "session_capacity_exceeded" });
         return;
       }
       const session = new PiSession({
@@ -86,23 +146,27 @@ async function handleFrame(frame) {
         history: frame.history,
         revision: frame.revision ?? null,
         catalog: frame.catalog,
+        limits: frame.limits,
         emit: emitForSession,
       });
       sessions.set(key, session);
-      write({ v: 1, type: "session.opened", session_key: key });
+      write({ v: PROTOCOL_VERSION, type: "session.opened", session_key: key });
       return;
     }
 
     case "provider.bind": {
       const session = sessions.get(frame.session_key);
       if (!session) {
-        write({ v: 1, type: "run.failed", session_key: frame.session_key, error: "unknown_session" });
+        write({ v: PROTOCOL_VERSION, type: "run.failed", session_key: frame.session_key, error: "unknown_session" });
         return;
       }
       try {
-        session.bindProvider(frame.endpoint || {});
+        const endpoint = frame.endpoint || {};
+        // Canonical location for generation/retry params is endpoint.params;
+        // a top-level `params` object is accepted as an alias.
+        session.bindProvider({ ...endpoint, params: endpoint.params ?? frame.params });
       } catch (err) {
-        write({ v: 1, type: "run.failed", session_key: frame.session_key, error: `provider_bind_failed:${err.message}` });
+        write({ v: PROTOCOL_VERSION, type: "run.failed", session_key: frame.session_key, error: `provider_bind_failed:${err.message}` });
       }
       return;
     }
@@ -110,23 +174,33 @@ async function handleFrame(frame) {
     case "turn.prompt": {
       const session = sessions.get(frame.session_key);
       if (!session) {
-        write({ v: 1, type: "run.failed", session_key: frame.session_key, run_id: frame.run_id, error: "unknown_session" });
+        write({ v: PROTOCOL_VERSION, type: "run.failed", session_key: frame.session_key, run_id: frame.run_id, error: "unknown_session" });
         return;
       }
       // Do not await: the run streams events until its own terminal frame.
-      session.prompt(frame.run_id, frame.text);
+      session.prompt(frame.run_id, frame.text, frame.max_turns);
       return;
     }
 
     case "turn.follow_up": {
       const session = sessions.get(frame.session_key);
-      if (session) session.followUp(frame.run_id, frame.text);
+      if (session) {
+        // Contain rejections: a failed follow-up must never crash the worker.
+        Promise.resolve(session.followUp(frame.run_id, frame.text)).catch((err) => {
+          diag(`follow_up_error:${err && err.message}`);
+        });
+      }
       return;
     }
 
     case "turn.steer": {
       const session = sessions.get(frame.session_key);
-      if (session) session.steer(frame.run_id, frame.text);
+      if (session) {
+        // Contain rejections: a failed steer must never crash the worker.
+        Promise.resolve(session.steer(frame.run_id, frame.text)).catch((err) => {
+          diag(`steer_error:${err && err.message}`);
+        });
+      }
       return;
     }
 
@@ -153,8 +227,10 @@ async function handleFrame(frame) {
       if (session) {
         await session.close();
         sessions.delete(frame.session_key);
+        sessionSeqs.delete(frame.session_key);
+        inboundSeqs.delete(frame.session_key);
       }
-      write({ v: 1, type: "session.closed", session_key: frame.session_key });
+      write({ v: PROTOCOL_VERSION, type: "session.closed", session_key: frame.session_key });
       return;
     }
 
@@ -189,17 +265,24 @@ function main() {
       frames = [...reader.push(chunk)];
     } catch (err) {
       if (err instanceof ProtocolError) {
-        write({ v: 1, type: "fatal", error: err.code });
+        // A poisoned/malformed inbound line terminates the affected run(s)
+        // with a run-scoped error frame; the process keeps serving every
+        // other session.
+        failActiveRuns(err.code);
         return;
       }
       throw err;
     }
     for (const frame of frames) {
+      if (!checkInboundSeq(frame)) {
+        rejectFrame(frame, "protocol_seq_violation");
+        continue;
+      }
       Promise.resolve()
         .then(() => handleFrame(frame))
         .catch((err) => {
           diag(`frame_handler_error:${err && err.message}`);
-          write({ v: 1, type: "fatal", error: "frame_handler_error" });
+          rejectFrame(frame, "frame_handler_error");
         });
     }
   });

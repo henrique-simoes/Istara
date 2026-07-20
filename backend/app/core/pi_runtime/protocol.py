@@ -8,7 +8,11 @@ from __future__ import annotations
 
 PROTOCOL_VERSION = 1
 
-MAX_LINE_BYTES = 256 * 1024
+# Must match pi-runtime/src/protocol.mjs.  The transport chunks before this
+# ceiling, while the subprocess reader is deliberately larger (H-1/H-2).
+MAX_LINE_BYTES = 1024 * 1024
+MAX_CHUNK_DATA_BYTES = 512 * 1024
+MAX_REASSEMBLED_BYTES = 16 * 1024 * 1024
 MAX_TOOL_ARGS_BYTES = 64 * 1024
 MAX_HISTORY_MESSAGES = 200
 MAX_SESSIONS = 8
