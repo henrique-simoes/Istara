@@ -2,7 +2,9 @@
 
 from pathlib import Path
 import subprocess
+from typing import Literal
 
+from pydantic import BaseModel, Field, field_validator
 from pydantic_settings import BaseSettings
 
 
@@ -11,6 +13,31 @@ _BACKEND_ENV_FILES = (
     str(_BACKEND_DIR / ".env"),
     str(_BACKEND_DIR / ".env.local"),
 )
+
+
+class PiApiEndpoint(BaseModel):
+    """A Pi-only provider target.
+
+    These targets intentionally do not share the LLM-server/compute registry:
+    their identity is an authority boundary, not a model preference.
+    """
+
+    endpoint_id: str
+    provider_kind: Literal["openai_compat", "anthropic_compat"] = "openai_compat"
+    base_url: str
+    model: str
+    keychain_service: str
+    keychain_account: str = ""
+    timeout_ms: int = Field(default=30_000, ge=1, le=120_000)
+    max_retries: int = Field(default=0, ge=0, le=3)
+
+    @field_validator("endpoint_id", "base_url", "model", "keychain_service")
+    @classmethod
+    def required_value(cls, value: str) -> str:
+        value = value.strip()
+        if not value:
+            raise ValueError("Pi endpoint fields must be non-empty")
+        return value
 
 
 def _read_macos_keychain_secret(service: str, account: str = "") -> str:
@@ -211,6 +238,9 @@ class Settings(BaseSettings):
     pi_replacement_deepseek_model: str = "deepseek-v4-pro"
     pi_replacement_deepseek_keychain_service: str = "istara-pi-deepseek"
     pi_replacement_deepseek_keychain_account: str = "openclaw"
+    # JSON-compatible settings input.  Empty preserves the existing default
+    # endpoint without registering it as donated/shared compute.
+    pi_api_endpoints: list[PiApiEndpoint] = []
 
     # Meta-Hyperagent (optional layer that tunes subsystem parameters)
     meta_hyperagent_enabled: bool = False

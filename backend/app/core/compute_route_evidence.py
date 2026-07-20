@@ -8,6 +8,9 @@ import uuid
 from typing import Any
 
 
+_telemetry_tasks: set[asyncio.Task[None]] = set()
+
+
 def route_evidence_payload(
     node: Any,
     *,
@@ -99,4 +102,17 @@ def schedule_compute_telemetry_event(
         except Exception:
             return
 
-    loop.create_task(_emit())
+    task = loop.create_task(_emit())
+    _telemetry_tasks.add(task)
+    task.add_done_callback(_telemetry_tasks.discard)
+
+
+async def drain_compute_telemetry() -> None:
+    """Await owned compute telemetry before a DB engine/event loop is disposed.
+
+    Routing remains synchronous, but its optional telemetry no longer outlives
+    the test or application lifecycle that scheduled it.
+    """
+    while _telemetry_tasks:
+        pending = tuple(_telemetry_tasks)
+        await asyncio.gather(*pending, return_exceptions=True)
