@@ -7,10 +7,12 @@ from __future__ import annotations
 
 import asyncio
 import uuid
+from types import SimpleNamespace
 
 import pytest
 
 from app.core.pi_runtime import seams
+from app.api.routes import chat as chat_route
 from app.core.pi_runtime.supervisor import PiRuntimeSupervisor
 from app.core.steering import steering_manager
 from app.models.database import async_session, init_db
@@ -107,3 +109,44 @@ async def test_scenario13_abort_yields_exactly_one_terminal_event_and_cleanup():
     assert terminals[0]["type"] == "aborted"
     # No live worker, no stuck session after teardown.
     assert sup.is_running is False
+
+
+@pytest.mark.asyncio
+async def test_scenario13_production_chat_caller_binds_project_scoped_steering(monkeypatch):
+    """The real Pi chat caller constructs and forwards its steering binding.
+
+    This guards the integration boundary that a direct engine test cannot: a
+    selected chat turn must hand the exact authenticated project and selected
+    agent to ``steering_binding`` before it calls ``run_chat_turn``.
+    """
+    await init_db()
+    project_id = f"pi-prod-s13-route-{uuid.uuid4()}"
+    agent_id = f"chat-steer-agent-{uuid.uuid4()}"
+    async with async_session() as db:
+        db.add(Project(id=project_id, name="Pi Production Scenario 13 Chat Route"))
+        await db.commit()
+
+    captured: dict[str, object] = {}
+
+    class _ChatService:
+        def steering_binding(self, *, agent_id: str, project_id: str):
+            captured["binding_args"] = (agent_id, project_id)
+            return "bound-steering"
+
+        async def run_chat_turn(self, **kwargs):
+            captured["turn_steering"] = kwargs["steering"]
+            yield {"type": "content", "text": "Steering is bound."}
+            yield {"type": "done"}
+
+    monkeypatch.setattr(chat_route, "_get_pi_execution_service", lambda: _ChatService())
+    request = SimpleNamespace(project_id=project_id, session_id="steering-route")
+    events = [
+        event
+        async for event in chat_route._generate_pi_runtime(
+            [{"role": "user", "content": "Confirm steering."}], [], [], request, agent_id
+        )
+    ]
+
+    assert captured["binding_args"] == (agent_id, project_id)
+    assert captured["turn_steering"] == "bound-steering"
+    assert any("Steering is bound." in event for event in events)

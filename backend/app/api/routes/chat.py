@@ -160,6 +160,10 @@ async def _generate_pi_runtime(
     status = "success"
     error_message: str | None = None
     service = _get_pi_execution_service()
+    # Bind this live Pi chat turn to the project-scoped steering queue so a user's
+    # steer / follow-up / abort (via the /steering routes) reaches the real Agent
+    # mid-turn. Only Pi-selected turns reach here, so non-Pi chat is unchanged.
+    steering = service.steering_binding(agent_id=agent_id, project_id=request.project_id)
     try:
         async for event in service.run_chat_turn(
             project_id=request.project_id,
@@ -169,6 +173,7 @@ async def _generate_pi_runtime(
             user_text=user_text,
             tool_executor=_tool_exec,
             session_key=session_key,
+            steering=steering,
         ):
             etype = event["type"]
             if etype == "content":

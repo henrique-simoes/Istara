@@ -580,11 +580,100 @@ class AgentLifecycleMixin:
                     await self._handle_debate(db, msg)
                 elif msg_type == "delegate":
                     await self._handle_delegate(db, msg)
+                elif msg_type == "a2a_task":
+                    await self._handle_a2a_task(db, msg)
                 msg_id = msg.get("id") if isinstance(msg, dict) else getattr(msg, "id", "")
                 if msg_id:
                     await mark_read(db, msg_id, project_id=msg_project_id)
         except Exception as e:
             logger.debug(f"A2A inbox check skipped: {e}")
+
+    async def _handle_a2a_task(self, db: AsyncSession, msg) -> None:
+        """Dispatch an admitted A2A ``tasks/send`` envelope to governed Pi delegation.
+
+        The public ``tasks/send`` route (``a2a.py``) persists
+        ``message_type='a2a_task'`` with plain-text content and any Pi selection
+        carried in the message metadata. This is the production caller that routes
+        such an admitted, Pi-selected task through the real Pi Agent: the route's
+        full gate chain (auth, rate, size, replay, project scope, persist, audit)
+        already ran, so no gate is weakened here. A non-Pi ``a2a_task`` envelope
+        runs no Pi work.
+        """
+        try:
+            metadata = (
+                msg.get("metadata") if isinstance(msg, dict) else getattr(msg, "metadata", None)
+            )
+            if isinstance(metadata, str):
+                try:
+                    metadata = json.loads(metadata) if metadata else {}
+                except (json.JSONDecodeError, TypeError):
+                    metadata = {}
+            metadata = metadata if isinstance(metadata, dict) else {}
+            project_id = (
+                msg.get("project_id", "")
+                if isinstance(msg, dict)
+                else getattr(msg, "project_id", "")
+            )
+            meta_project_id = str(metadata.get("project_id") or "").strip()
+            if not project_id or (meta_project_id and meta_project_id != project_id):
+                return
+            content = (
+                msg.get("content", "") if isinstance(msg, dict) else getattr(msg, "content", "")
+            )
+            await self._run_and_persist_pi_delegation(
+                db, msg, project_id=project_id, task_text=content or "", metadata=metadata
+            )
+        except Exception as e:  # pragma: no cover - defensive; never break inbox polling
+            logger.debug(f"A2A pi task dispatch skipped: {e}")
+
+    async def _run_and_persist_pi_delegation(
+        self, db: AsyncSession, msg, *, project_id: str, task_text: str, metadata: dict
+    ) -> None:
+        """Run an admitted, Pi-selected A2A delegation through the real Pi Agent
+        and persist the reply.
+
+        Shared by the ``a2a_task`` (real ``tasks/send`` route shape) and the
+        ``pi_delegate`` (structured-content) dispatch paths. Only Pi-selected
+        delegations run; on any resolver/Keychain/worker failure
+        ``run_pi_delegation`` fails closed (returns ``None``) and nothing is
+        persisted. Project/agent scope is fixed by the authenticated caller —
+        the model cannot set it.
+        """
+        from app.core.pi_replacement import pi_replacement_requested
+        from app.core.pi_runtime.seams import run_pi_delegation
+
+        if not pi_replacement_requested(metadata=metadata):
+            return
+        delegation = await run_pi_delegation(
+            project_id=project_id,
+            task_text=str(task_text),
+            agent_id=self._agent_id,
+            metadata=metadata,
+        )
+        if delegation is None:
+            return
+        from app.services.a2a import send_message as a2a_send
+
+        msg_from = (
+            msg.get("from_agent_id", "")
+            if isinstance(msg, dict)
+            else getattr(msg, "from_agent_id", "")
+        )
+        await a2a_send(
+            db=db,
+            from_agent_id=self._agent_id,
+            to_agent_id=msg_from,
+            message_type="response",
+            content=(delegation.get("text") or "Pi delegation completed.")[:4000],
+            project_id=project_id,
+            metadata={
+                "project_id": project_id,
+                "engine": "pi",
+                "delegation_result": True,
+                "turn_status": delegation.get("status"),
+                "endpoint_id": delegation.get("endpoint_id"),
+            },
+        )
 
     async def _handle_delegate(self, db: AsyncSession, msg) -> None:
         """Handle delegated tasks from other agents (e.g. MECE reporting)."""
@@ -601,51 +690,19 @@ class AgentLifecycleMixin:
                 # replay, project scope, persist, audit) already ran in the route;
                 # this is where the admitted work actually executes. Only Pi-
                 # selected delegations run through the real Pi Agent.
-                from app.core.pi_replacement import pi_replacement_requested
-                from app.core.pi_runtime.seams import run_pi_delegation
-
                 metadata = data.get("metadata") or {}
                 if isinstance(metadata, str):
                     try:
                         metadata = json.loads(metadata) if metadata else {}
                     except (json.JSONDecodeError, TypeError):
                         metadata = {}
-                if not pi_replacement_requested(metadata=metadata):
-                    return
                 project_id = data.get("project_id") or metadata.get("project_id")
                 msg_project_id = msg.get("project_id", "") if isinstance(msg, dict) else ""
                 if not project_id or (msg_project_id and msg_project_id != project_id):
                     return
                 task_text = data.get("task") or data.get("text") or data.get("message") or ""
-                delegation = await run_pi_delegation(
-                    project_id=project_id,
-                    task_text=str(task_text),
-                    agent_id=self._agent_id,
-                    metadata=metadata,
-                )
-                if delegation is None:
-                    return
-                from app.services.a2a import send_message as a2a_send
-
-                msg_from = (
-                    msg.get("from_agent_id", "")
-                    if isinstance(msg, dict)
-                    else getattr(msg, "from_agent_id", "")
-                )
-                await a2a_send(
-                    db=db,
-                    from_agent_id=self._agent_id,
-                    to_agent_id=msg_from,
-                    message_type="response",
-                    content=(delegation.get("text") or "Pi delegation completed.")[:4000],
-                    project_id=project_id,
-                    metadata={
-                        "project_id": project_id,
-                        "engine": "pi",
-                        "delegation_result": True,
-                        "turn_status": delegation.get("status"),
-                        "endpoint_id": delegation.get("endpoint_id"),
-                    },
+                await self._run_and_persist_pi_delegation(
+                    db, msg, project_id=project_id, task_text=str(task_text), metadata=metadata
                 )
                 return
 
