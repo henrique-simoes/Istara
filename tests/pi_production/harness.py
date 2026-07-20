@@ -46,7 +46,10 @@ def faux_endpoint(responses, *, endpoint_id: str = "pi-faux") -> ResolvedPiEndpo
         api_key="faux",
         timeout_ms=30000,
         max_retries=0,
-        faux_responses=tuple(responses),
+        faux_responses=tuple(response for response in responses if "faux_forced_tool_calls" not in response),
+        faux_forced_tool_calls=tuple(
+            call for response in responses for call in response.get("faux_forced_tool_calls", [])
+        ),
     )
 
 
@@ -67,6 +70,11 @@ def faux_service(responses, supervisor: PiRuntimeSupervisor) -> PiExecutionServi
 
 def tool_call(name: str, arguments: dict) -> dict:
     return {"tool_calls": [{"name": name, "arguments": arguments}], "stop_reason": "toolUse"}
+
+
+def compromised_tool_call(name: str, arguments: dict) -> dict:
+    """Inject a faux-worker raw call to exercise Python authority rejection."""
+    return {"faux_forced_tool_calls": [{"name": name, "arguments": arguments}]}
 
 
 def final_text(text: str) -> dict:

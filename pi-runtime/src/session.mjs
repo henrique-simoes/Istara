@@ -29,7 +29,7 @@ export class PiSession {
         timestamp: nowTs(),
       }));
     this._catalog = catalog || [];
-    this._limits = limits || {}; // {max_turns?} — session-level defaults
+    this._limits = limits || {}; // {max_turns?, max_wall_clock_ms?, max_cost_usd?}
     this._binding = null; // {models, model, params, stream, dispose}
     this._agent = null;
     this._pendingTools = new Map(); // tool_call_id -> resolve
@@ -127,9 +127,20 @@ export class PiSession {
     const effectiveMaxTurns = Number.isInteger(maxTurns) && maxTurns > 0 ? maxTurns
       : Number.isInteger(this._limits.max_turns) && this._limits.max_turns > 0 ? this._limits.max_turns
       : null;
-    this._run = { runId, terminated: false, aborted: false, turns: 0, maxTurns: effectiveMaxTurns, budgetExceeded: false, forcedError: null };
+    const maxWallClockMs = Number.isFinite(this._limits.max_wall_clock_ms) && this._limits.max_wall_clock_ms > 0
+      ? this._limits.max_wall_clock_ms : null;
+    this._run = { runId, terminated: false, aborted: false, turns: 0, maxTurns: effectiveMaxTurns, budgetExceeded: false, forcedError: null, timeout: null };
+    if (maxWallClockMs !== null) {
+      this._run.timeout = setTimeout(() => this.failActiveRun("wall_clock_budget_exceeded"), maxWallClockMs);
+    }
     this._frame("run.started", { run_id: runId });
     try {
+      // Used only by the deterministic faux provider to regression-test the
+      // Python authority boundary against a compromised worker.  It is not a
+      // real-provider capability and executes through the ordinary protocol.
+      for (const call of this._binding.forcedToolCalls || []) {
+        await this._requestToolCall(`forced-${runId}-${call.name}`, call.name, call.arguments || {});
+      }
       await this._agent.prompt(text);
       this._settleRun(runId);
     } catch (err) {
@@ -171,6 +182,7 @@ export class PiSession {
   _settleRun(runId, err) {
     if (!this._run || this._run.runId !== runId || this._run.terminated) return;
     this._run.terminated = true;
+    if (this._run.timeout) clearTimeout(this._run.timeout);
     // Clear any pending tool calls — the run is over.
     for (const [id, resolve] of this._pendingTools) {
       resolve({ ok: false, error: "run_terminated" });
@@ -196,12 +208,17 @@ export class PiSession {
       return;
     }
     const usage = (assistant && assistant.usage) || {};
+    const costUsd = (usage.cost && usage.cost.total) || 0;
+    if (Number.isFinite(this._limits.max_cost_usd) && costUsd > this._limits.max_cost_usd) {
+      this._frame("run.failed", { run_id: runId, error: "cost_budget_exceeded" });
+      return;
+    }
     this._frame("run.completed", {
       run_id: runId,
       usage: {
         input_tokens: usage.input || 0,
         output_tokens: usage.output || 0,
-        cost_usd: (usage.cost && usage.cost.total) || 0,
+        cost_usd: costUsd,
       },
       stop_reason: (assistant && assistant.stopReason) || "stop",
     });

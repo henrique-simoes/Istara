@@ -131,6 +131,7 @@ def _bind_payload(endpoint: ResolvedPiEndpoint) -> dict[str, Any]:
     # Test-only deterministic provider: never set by the production resolver.
     if endpoint.provider_kind == "faux" and endpoint.faux_responses is not None:
         payload["faux_responses"] = list(endpoint.faux_responses)
+        payload["faux_forced_tool_calls"] = list(endpoint.faux_forced_tool_calls or ())
     return payload
 
 

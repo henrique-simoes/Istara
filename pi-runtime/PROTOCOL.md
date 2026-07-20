@@ -44,8 +44,8 @@ frame an active run is waiting on). The worker keeps serving all other
 sessions; it never emits a process-wide `fatal` frame for malformed input.
 
 Other limits: max tool arguments 64 KiB, max history messages 200, max
-in-flight tool calls per run 4, max concurrent sessions 8 (configurable via
-the `PI_MAX_SESSIONS` environment variable, default 8).
+in-flight tool calls per run 4, max concurrent sessions per worker 10. The
+backend uses a lazy, bounded two-worker pool (20 concurrent sessions total).
 
 ## Python → worker
 
@@ -53,7 +53,7 @@ the `PI_MAX_SESSIONS` environment variable, default 8).
   worker answers `ready` within the handshake timeout.
 - `session.open` — `{v, type, seq, session_key, system_prompt,
   history:[{role,content}], revision, catalog:[{name, description,
-  parameters}], limits:{max_turns}}`
+  parameters}], limits:{max_turns,max_wall_clock_ms,max_cost_usd}}`
   `history` is server-persisted transcript; `revision` identifies it. A second
   `session.open` for an existing `session_key` with a different `revision`
   closes and rehydrates instead of appending. `limits.max_turns` is the
@@ -130,6 +130,10 @@ attribute to (or isolate from) a session is reported as a run-scoped
   `isRetryableAssistantError` classifies the failure as transient. Retried
   attempts re-issue the identical provider request; acknowledged tool calls
   are never replayed, and visible output is never duplicated.
+- The backend supplies a whole-run wall-clock ceiling in
+  `limits.max_wall_clock_ms`; expiry settles `run.failed{error:"wall_clock_budget_exceeded"}`.
+  A completed run over `limits.max_cost_usd` settles
+  `run.failed{error:"cost_budget_exceeded"}` rather than success.
 - Disconnect, EOF, timeout, protocol violation, or authority rejection produce
   exactly one terminal event and release the session lock.
 - Secrets travel only inside `provider.bind` on this private pipe.
