@@ -74,6 +74,7 @@ class ResolvedPiEndpoint:
     # resolver never sets this — only tests construct a faux endpoint — so the
     # real provider HTTP stack is exercised in production paths.
     faux_responses: tuple[Any, ...] | None = None
+    faux_forced_tool_calls: tuple[Any, ...] | None = None
 
     def telemetry_identity(self) -> dict[str, str]:
         """Safe fields permitted in telemetry; never return URL/key material."""

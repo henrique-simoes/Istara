@@ -17,6 +17,7 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import os
 import time
 import uuid
 from pathlib import Path
@@ -45,11 +46,17 @@ class PiRuntimeSupervisor:
         node_path: str = "node",
         handshake_timeout: float = 15.0,
         run_timeout: float = 120.0,
+        max_turns: int = 8,
+        max_cost_usd: float = 1.0,
+        max_sessions: int = 10,
     ) -> None:
         self._worker_entry = Path(worker_entry) if worker_entry else DEFAULT_WORKER_ENTRY
         self._node_path = node_path
         self._handshake_timeout = handshake_timeout
         self._run_timeout = run_timeout
+        self._max_turns = max_turns
+        self._max_cost_usd = max_cost_usd
+        self._max_sessions = max_sessions
 
         self._proc: asyncio.subprocess.Process | None = None
         self._sessions: dict[str, asyncio.Queue[dict[str, Any]]] = {}
@@ -90,6 +97,8 @@ class PiRuntimeSupervisor:
             self._restart_times.append(now)
             if not self._worker_entry.exists():
                 raise PiWorkerError(f"worker_entry_missing:{self._worker_entry}")
+            worker_env = dict(os.environ)
+            worker_env["PI_MAX_SESSIONS"] = str(self._max_sessions)
             self._proc = await asyncio.create_subprocess_exec(
                 self._node_path,
                 str(self._worker_entry),
@@ -97,6 +106,7 @@ class PiRuntimeSupervisor:
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.PIPE,
                 cwd=str(self._worker_entry.parent.parent),
+                env=worker_env,
                 # A worker can legitimately emit chunked protocol payloads
                 # larger than asyncio's default 64 KiB reader limit (H-2).
                 limit=8 * 1024 * 1024,
@@ -179,6 +189,10 @@ class PiRuntimeSupervisor:
         finally:
             # EOF or crash: fail every open session so no run hangs.
             self._fatal = self._fatal or "worker_eof"
+            # A live child may have closed stdout while retaining stdin.  Make
+            # it ineligible immediately; ensure_started then reclaims it
+            # instead of reusing a poisoned, apparently-ready worker (H-2).
+            self._ready.clear()
             for queue in self._sessions.values():
                 queue.put_nowait({"type": "fatal", "error": self._fatal})
 
@@ -239,6 +253,11 @@ class PiRuntimeSupervisor:
                         "history": (history or [])[-MAX_HISTORY_MESSAGES:],
                         "revision": revision,
                         "catalog": catalog,
+                        "limits": {
+                            "max_turns": self._max_turns,
+                            "max_wall_clock_ms": int(self._run_timeout * 1000),
+                            "max_cost_usd": self._max_cost_usd,
+                        },
                     }
                 )
                 frame = await asyncio.wait_for(queue.get(), timeout=self._handshake_timeout)
@@ -425,13 +444,15 @@ class PiRuntimeSupervisor:
 
 
 # Process-wide singleton — one worker child per backend process.
-_supervisor: PiRuntimeSupervisor | None = None
+_supervisor: Any | None = None
 
 
-def get_supervisor() -> PiRuntimeSupervisor:
+def get_supervisor() -> Any:
     global _supervisor
     if _supervisor is None:
-        _supervisor = PiRuntimeSupervisor()
+        from .pool import PiRuntimePool
+
+        _supervisor = PiRuntimePool()
     return _supervisor
 
 

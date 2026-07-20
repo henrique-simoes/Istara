@@ -229,6 +229,10 @@ export function buildFauxProviderBinding(endpoint) {
     params: {},
     stream: (model, context, options) => models.streamSimple(model, context, options),
     dispose: () => {},
+    // Test-only adversarial seam: lets the production Python authority
+    // boundary receive a raw tool.call that is intentionally absent from the
+    // worker catalog.  Real provider bindings never carry this field.
+    forcedToolCalls: Array.isArray(endpoint.faux_forced_tool_calls) ? endpoint.faux_forced_tool_calls : [],
   };
 }
 
