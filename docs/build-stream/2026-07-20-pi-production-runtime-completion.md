@@ -9,8 +9,8 @@ phase: "Phase 0 — architecture and production boundary"
 stage: S1-plan
 status: in-progress
 blocked_on: "planning-enabled conductor consensus and owner approval"
-last: { agent: codex-gpt-5, at: 2026-07-20T01:36:00Z, ledger: L-2 }
-next_action: "Generate, preflight, and visibly spawn the planning-enabled conductor cast."
+last: { agent: claude-fable-5, at: 2026-07-20T01:52:01Z, ledger: L-3 }
+next_action: "Cross-judge consensus plans A/B/C and pause for owner approval."
 ```
 <!-- /STATUS BLOCK -->
 
@@ -119,6 +119,18 @@ work order; the pipeline is linked to CF-SPEC-7 and ready for cast generation.
 Verified: `make_pipeline.py ... --with-planning --spec CF-SPEC-7` imported five pipeline
 tasks and four dependency edges with all nine run-scoped roles verified.
 Next: Generate the registry-routed cast, run real CLI preflight, and spawn via Terminal.app.
+
+### L-3 | 2026-07-20T01:52:01Z | S1-plan | claude-fable-5 | architect | Phase 0 <!-- bsc-ledger:pi-runtime-complete-20260720-PLAN-A -->
+Did: Wrote independent consensus Plan A to docs/build-stream/plans/pi-runtime-complete-20260720-plan-a.md: supervised Node pi-runtime sidecar
+(NDJSON/stdio) hosting the real pi-agent-core Agent, Python-exported canonical tool
+manifest (no schema duplication), and a ComputeRegistry-disjoint ApiEndpointRegistry for
+endpoint-identity pinning and Petals isolation; 5 phases, 15-scenario production test
+matrix, exact verification ladder, risks, rollback.
+Result: Plan A complete and buildable; pi-runtime-complete-20260720-PLAN-A
+Verified: `python -m pytest tests/test_pi_replacement_candidate.py -q` -> 12 passed
+(grounding baseline); code seams confirmed by direct inspection (chat.py L154/L501,
+pi_replacement.py L52-86/L144-174, compute_registry_routing.py L154-190, a2a.py L306-478).
+Next: Cross-judging of plans A/B/C, then owner approval of the consensus winner.
 
 ## Phase 0 — architecture and production boundary
 
