@@ -269,6 +269,59 @@
 <p>access in team mode before endpoint status or capability metadata is returned.</p>
 <p>Project prompt, retrieval, and compute payloads remain governed by the active</p>
 <p>project routes that call the model controls.</p>
+<h3 id="agentic-dispatcher-and-engine-selection-pi-replacement-w1">Agentic Dispatcher And Engine Selection (Pi Replacement W1)</h3>
+<ul>
+<li><code>backend/app/core/agentic/dispatcher.py</code> (<code>AgenticDispatcher</code>, module</li>
+</ul>
+<p>singleton <code>agentic</code>) is the single choke point for every agentic-loop or</p>
+<p>model invocation. It exposes exactly five verbs — <code>chat_turn</code>, <code>completion</code>,</p>
+<p><code>structured</code>, <code>ensemble</code>, and <code>embed</code> — and contains no business logic: it</p>
+<p>only resolves the engine, executes, and records usage.</p>
+<ul>
+<li>Engine selection resolves in a fixed precedence order (first match wins):</li>
+</ul>
+<p>per-call override (benchmark harness / A2A envelope metadata), then the</p>
+<p><code>x-istara-agent-engine</code> request header predicate, then the project setting</p>
+<p><code>agentic_engine</code>, then <code>settings.agentic_engine_default</code>. A selected engine</p>
+<p>that cannot execute raises a typed dispatch error; the dispatcher never</p>
+<p>silently falls back to the other engine.</p>
+<ul>
+<li>Both engine seams are real: Pi selections execute through the isolated</li>
+</ul>
+<p><code>PiExecutionService</code> (<code>run_completion</code> / <code>run_structured</code> / <code>run_react</code>), and</p>
+<p>legacy selections execute through the byte-compatible legacy executor path</p>
+<p>(<code>ollama.chat_stream</code> ReAct / <code>llm_schema_adapter</code> structured) so Pi and</p>
+<p>legacy remain benchmarkable on the same axes.</p>
+<ul>
+<li><code>TurnParams</code> (<code>model</code>, <code>temperature</code>, <code>max_tokens</code>, <code>thinking_mode</code>,</li>
+</ul>
+<p><code>min_context</code>, <code>timeout_s</code>, <code>max_turns</code>, <code>require_vision</code>) is forwarded on</p>
+<p>every verb. The Pi path maps them onto pi-ai options (<code>temperature</code>,</p>
+<p><code>maxTokens</code>, <code>thinkingLevel</code>, provider <code>timeoutMs</code>); <code>min_context</code> maps to</p>
+<p>endpoint admission in the Pi model catalog; <code>thinking_mode</code> maps to</p>
+<p><code>thinkingLevel</code> where the model supports it and to the existing</p>
+<p>prompt-directive injection where it does not.</p>
+<ul>
+<li>Structured output is a forced tool call, never free-form JSON text: the Pi</li>
+</ul>
+<p>worker registers an <code>emit_structured_output</code> tool whose parameters are a</p>
+<p>mechanical JSON-Schema translation (unsupported constructs are rejected at</p>
+<p>session open, not mid-turn) and forces that tool choice per provider family.</p>
+<p>Python revalidates the captured object against the original JSON Schema,</p>
+<p>allows exactly one bounded repair turn, and then raises a typed fail-closed</p>
+<p>failure instead of returning an error-shaped result. The legacy structured</p>
+<p>path keeps using <code>llm_schema_adapter</code>, whose Anthropic forced-tool trick is</p>
+<p>the same mechanism, so both engines remain methodologically comparable.</p>
+<ul>
+<li>Every dispatcher call records exactly one usage-ledger row</li>
+</ul>
+<p>(<code>backend/app/core/agentic/usage_ledger.py</code>, telemetry</p>
+<p><code>event_kind=&quot;agentic_usage&quot;</code>) regardless of engine or outcome. Pi rows carry</p>
+<p>exact pi-ai usage including <code>cost.total</code>; legacy rows carry provider-reported</p>
+<p>usage where present and are otherwise estimated with the existing token</p>
+<p>counter and marked <code>estimate=true</code> — estimated and exact numbers are never</p>
+<p>mixed silently. Ledger identity fields carry <code>endpoint_id</code> only, never</p>
+<p>endpoint URLs, keys, prompts, or response content.</p>
 <h2 id="architecture-notes">Architecture Notes</h2>
 <ul>
 <li>The feature is mounted through <code>frontend/src/components/chat/ChatView.tsx</code> and the UI navigation path recorded in the inventory.</li>
@@ -297,7 +350,7 @@
 </ul>
 <h2 id="compass-evidence">Compass Evidence</h2>
 <ul>
-<li>Spec/task: CF-SPEC-77 / CF-986</li>
+<li>Spec/task: CF-SPEC-77 / CF-986; CF-SPEC-8 (Pi replacement W1 dispatcher)</li>
 <li>Inventory source: <code>docs/features/inventory.json</code></li>
 </ul>
 <h2 id="when-to-update">When To Update</h2>
@@ -314,6 +367,7 @@
 <li class="toc-level-2"><a href="#state-api-and-backend-contracts">State, API, And Backend Contracts</a></li>
 <li class="toc-level-3"><a href="#stores">Stores</a></li>
 <li class="toc-level-3"><a href="#api-and-backend">API And Backend</a></li>
+<li class="toc-level-3"><a href="#agentic-dispatcher-and-engine-selection-pi-replacement-w1">Agentic Dispatcher And Engine Selection (Pi Replacement W1)</a></li>
 <li class="toc-level-2"><a href="#architecture-notes">Architecture Notes</a></li>
 <li class="toc-level-2"><a href="#agents-skills-llm-mcp-and-permissions">Agents, Skills, LLM, MCP, And Permissions</a></li>
 <li class="toc-level-2"><a href="#tests-and-verification">Tests And Verification</a></li>
