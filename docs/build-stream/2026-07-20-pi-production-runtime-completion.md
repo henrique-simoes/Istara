@@ -152,3 +152,9 @@ integration, rollback, and exact full-test campaign. Detailed instructions live 
 
 Pending implementation, independent review, remediation, final evidence, and local
 PR-ready handoff.
+
+### L-4 | 2026-07-20T01:52:24Z | S1-plan | gpt-5.6-sol | planner | pi-runtime-complete-20260720-architect-b <!-- bsc-ledger:pi-runtime-complete-20260720-PLAN-B -->
+Did: pi-runtime-complete-20260720-architect-b stage on task pi-runtime-complete-20260720-PLAN-B (harness fallback entry; the model did not append one).
+Result: task pi-runtime-complete-20260720-PLAN-B finished; worktree head f86a4f51.
+Verified: see Compass Forge evidence rows on pi-runtime-complete-20260720-PLAN-B (command + self_report + stage_attribution).
+Next: conductor advances the pipeline on evidence.
