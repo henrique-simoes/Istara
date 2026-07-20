@@ -233,6 +233,11 @@ export function buildFauxProviderBinding(endpoint) {
     // boundary receive a raw tool.call that is intentionally absent from the
     // worker catalog.  Real provider bindings never carry this field.
     forcedToolCalls: Array.isArray(endpoint.faux_forced_tool_calls) ? endpoint.faux_forced_tool_calls : [],
+    // Test-only seam: the faux provider's usage estimate always reports zero
+    // cost, so it cannot exercise the worker's per-run cost ceiling. A scripted
+    // cost lets that terminal path have a deterministic behavioral regression;
+    // real bindings report cost via usage and never set this field.
+    forcedCostUsd: Number.isFinite(endpoint.faux_cost_usd) ? endpoint.faux_cost_usd : null,
   };
 }
 

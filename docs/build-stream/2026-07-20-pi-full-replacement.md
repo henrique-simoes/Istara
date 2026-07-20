@@ -9,8 +9,8 @@ phase: "W0 — hardening and evidence integrity"
 stage: S4-remediate
 status: in-progress
 blocked_on: null
-last: { agent: gpt-5.6-terra, at: 2026-07-20T18:25:00Z, ledger: L-7 }
-next_action: "Run the conductor-created delta re-review for FIX-REREV-pi-full-20260720-w0-REVIEW-r1."
+last: { agent: claude-opus-4-8, at: 2026-07-20T18:48:14Z, ledger: L-9 }
+next_action: "Run the conductor-created bounded delta re-review of F-2 (pool routing + wall-clock/cost behavior proofs)."
 ```
 <!-- /STATUS BLOCK -->
 
@@ -152,6 +152,39 @@ Result: F-2 fixed by `FIX-REREV-pi-full-20260720-w0-REVIEW-r1`: 20 concurrent se
 Verified: `python -m pytest tests/pi_production/test_tool_authority.py tests/pi_production/test_runtime_hardening.py tests/pi_production/test_frame_limits.py -q` = 8 passed; `npm --prefix pi-runtime test` = 17 passed; `python scripts/feature_docs.py --seed-missing --generate-site --check` = 86 passed; `python scripts/security_benchmark.py --fail-on-threshold` = 28/28, 100%; `compass-forge gate after --task FIX-REREV-pi-full-20260720-w0-REVIEW-r1 --summary` = 0 new/actionable failures, 0 drift/security/cycles (inherited gate debt only).
 Next: Stage exit: conduct the bounded delta re-review of F-2 and its changed immediate seams.
 
+### L-8 | 2026-07-20T18:25:34Z | S3-review | gpt-5.6-sol | reviewer | W0
+<!-- bsc-ledger:REREV-pi-full-20260720-w0-REVIEW-r2 -->
+Did: Delta re-reviewed only residual F-2 against `FIX-REREV-pi-full-20260720-w0-REVIEW-r1` and commits `e100aa5e..b64c572a`. Inspected the changed supervisor, pool, session/provider, protocol, harness, and focused tests. The new pool changes H-12 architecture/acceptance, so the review checked the governing master-plan requirements for session-key routing and 20 concurrent turns rather than broadening to unrelated W0 surfaces.
+Result: Fail; reopened F-2 and created `FIX-REREV-pi-full-20260720-w0-REVIEW-r2`. H-2 now clears readiness and reclaims/restarts a poisoned child with existing restart backoff, and H-10 now reaches the Python rejection/audit seam. H-6/H-12 remain Blocker: the pool regression opens 20 sessions but runs zero turns; pool selection is least-owned rather than the required configured session-key hash contract; and wall-clock/cost terminal paths have no behavioral regression even though L-7 claims those outcomes were verified.
+Verified: `python -m pytest tests/pi_production/test_tool_authority.py tests/pi_production/test_runtime_hardening.py tests/pi_production/test_frame_limits.py -q` = 8 passed; `npm --prefix pi-runtime test` = 17 passed; focused acceptance audit over `test_runtime_hardening.py`, `pool.py`, and `hardening.test.mjs` = failed with `h12_20_turns=false`, `h12_session_hash=false`, `h6_wall_clock_test=false`, and `h6_cost_test=false`.
+Next: Remediate `FIX-REREV-pi-full-20260720-w0-REVIEW-r2`; W0 remains in S4 until a conductor-created delta re-review passes.
+
+### L-9 | 2026-07-20T18:48:14Z | S4-remediate | claude-opus-4-8 | remediator | W0 <!-- bsc-ledger:FIX-REREV-pi-full-20260720-w0-REVIEW-r2 -->
+Did: Closed the residual F-2 H-6/H-12 acceptance gaps. Rewired `PiRuntimePool` from
+least-owned selection to the required deterministic `pi_worker_pool_size`/`session_key`-hash
+routing (`blake2b`, process-stable) with config-driven pool size (`pool.py`). Added a
+test-only faux `forcedCostUsd` seam (`provider.mjs`) honored by the worker cost ceiling
+(`session.mjs`) so the always-zero-cost faux provider can drive a real cost terminal.
+Replaced the constructor-only pool/budget assertions with behavioral proofs: 20 concurrent
+turns across the two-worker pool with per-key routing checks, deterministic/config-sized
+routing unit tests, and Python + Node wall-clock/cost terminal regressions
+(`test_runtime_hardening.py`, `hardening.test.mjs`).
+Result: F-2 fixed by `FIX-REREV-pi-full-20260720-w0-REVIEW-r2`. H-12 now runs 20 concurrent
+turns (10/10 across two bounded workers) under the deterministic session-key-hash contract,
+and H-6 `wall_clock_budget_exceeded`/`cost_budget_exceeded` terminals have real behavioral
+regressions on both the Node worker and through the Python supervisor. No live model was
+loaded and no donated-compute path changed.
+Verified: `npm --prefix pi-runtime test` = 20 passed (adds wall-clock + cost terminals);
+`PI_REQUIRE_NODE=1 python -m pytest tests/pi_production/test_tool_authority.py tests/pi_production/test_runtime_hardening.py tests/pi_production/test_frame_limits.py -q` = 12 passed;
+`python -m pytest tests/pi_production tests/pi_migration -q` = 64 passed;
+`python -m pytest tests/test_pi_replacement_candidate.py -q` = 13 passed;
+`python scripts/security_benchmark.py --fail-on-threshold` = pass;
+`python scripts/feature_docs.py --seed-missing --generate-site --check` = 86 passed;
+`compass-forge gate after --task FIX-REREV-pi-full-20260720-w0-REVIEW-r2 --summary` = 0
+new/actionable failures, 0 drift/cycles, 0 new security (inherited large-file + `config.py:90`
+secret_flow debt only).
+Next: Stage exit: conduct the bounded delta re-review of F-2's pool routing and wall-clock/cost proofs.
+
 ## W0 — hardening and evidence integrity
 
 **Frame/Plan:** Master plan §6 plus §12.2. Arm the deterministic inventory/ratchet before
@@ -165,13 +198,19 @@ through H-14 with named regression tests. Preserve Petals/donor isolation.
 | ID | Sev | Dim | Where | Finding | CF task | Status |
 |---|---|---|---|---|---|---|
 | F-1 | Blocker | Product | `scripts/pi_migration_inventory.py`; `tests/pi_migration/` | M0 inventory scanner, complete 87-site plus permanent-infrastructure allowlist, count-to-zero ratchet, and e2e ladder registration are present. | FIX-pi-full-20260720-w0-REVIEW-r1 | fixed |
-| F-2 | Blocker | Bugs | `backend/app/core/pi_runtime/`; `pi-runtime/` | H-2/H-6/H-10/H-12 are fixed by `FIX-REREV-pi-full-20260720-w0-REVIEW-r1`: poisoned-reader restart, reachable budgets, bounded two-worker pool/20-session proof, and compromised-worker Python audit are covered. | FIX-REREV-pi-full-20260720-w0-REVIEW-r1 | fixed |
+| F-2 | Blocker | Bugs | `backend/app/core/pi_runtime/pool.py`; `pi-runtime/src/{session,provider}.mjs`; focused regressions | Fixed: deterministic `pi_worker_pool_size`/session-key-hash routing plus a real 20-concurrent-turn pool proof (10/10 across two workers), and behavioral `wall_clock_budget_exceeded`/`cost_budget_exceeded` terminals on the Node worker and through the Python supervisor. | FIX-REREV-pi-full-20260720-w0-REVIEW-r2 | fixed |
 | F-3 | Blocker | Integration | `tests/pi_production/`; `docs/build-stream/2026-07-20-pi-production-runtime-completion.md` | H-13 real-ASGI tests and append-only CF-SPEC-7 correction are present; H-14 fails loudly under `PI_REQUIRE_NODE=1`. | FIX-pi-full-20260720-w0-REVIEW-r1 | fixed |
 | F-4 | Major | Plan | master plan §8.6; W0 evidence/docs | Deterministic verification, security, post-gate evidence, and the package test entrypoint are recorded. | FIX-pi-full-20260720-w0-REVIEW-r1 | fixed |
 
 **Remediation:** `FIX-pi-full-20260720-w0-REVIEW-r1` closed F-1, F-3, and F-4.
-`FIX-REREV-pi-full-20260720-w0-REVIEW-r1` fixed F-2 in L-7; the conductor creates the
-next bounded delta re-review before W0 advances.
+`FIX-REREV-pi-full-20260720-w0-REVIEW-r1` repaired H-2/H-10 and implemented initial
+H-6/H-12 limits/pooling, but L-8 reopened F-2 under
+`FIX-REREV-pi-full-20260720-w0-REVIEW-r2` for the missing budget behavior proofs and the
+exact configured session-key routing/20-concurrent-turn acceptance contract.
+`FIX-REREV-pi-full-20260720-w0-REVIEW-r2` (L-9) closed F-2: the configured
+session-key-hash pool, the 20-concurrent-turn proof, and the wall-clock/cost terminal
+regressions are now present. The conductor creates the next bounded delta re-review
+before W0 advances.
 
 **Phase summary:** Pending.
 
