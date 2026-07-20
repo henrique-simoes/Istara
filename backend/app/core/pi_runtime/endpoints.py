@@ -108,8 +108,13 @@ class PiEndpointResolver:
                 keychain_account=settings.pi_replacement_deepseek_keychain_account,
                 # Priced by default so the built-in endpoint's cost ceiling fails
                 # closed; operators override with their negotiated contract rate.
+                # Every category the endpoint can spend must be priced — pi-ai
+                # prices input, output, and cache-read (DeepSeek cache hits)
+                # independently, so a cache-read turn on an input/output-only
+                # endpoint would otherwise fail closed as unpriced.
                 cost_input_per_mtok=settings.pi_replacement_deepseek_cost_input_per_mtok,
                 cost_output_per_mtok=settings.pi_replacement_deepseek_cost_output_per_mtok,
+                cost_cache_read_per_mtok=settings.pi_replacement_deepseek_cost_cache_read_per_mtok,
             )
         # endpoint_id -> (monotonic read time, secret); only non-empty secrets.
         self._secret_cache: dict[str, tuple[float, str]] = {}

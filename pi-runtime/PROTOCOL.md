@@ -67,10 +67,13 @@ backend uses a lazy, bounded two-worker pool (20 concurrent sessions total).
   (`{input_per_mtok, output_per_mtok, cache_read_per_mtok?,
   cache_write_per_mtok?}`); pi-ai prices a turn's usage from them so the per-run
   `max_cost_usd` ceiling can fail closed. Unknown or negative pricing keys fail
-  the bind with `provider_bind_failed:invalid_provider_pricing:<key>`. A real
-  binding left unpriced cannot enforce a cost budget: a budgeted run that spends
-  tokens settles `run.failed{error:"cost_budget_unpriced"}` rather than a
-  fail-open $0 completion. `params` (canonical location
+  the bind with `provider_bind_failed:invalid_provider_pricing:<key>`. pi-ai
+  prices each usage category (input/output/cache-read/cache-write) independently,
+  so a real binding must price every category it can spend: a budgeted run that
+  spends tokens in ANY category left at a $0 rate (an entirely unpriced binding,
+  or e.g. a cache-read turn on an endpoint priced only for input/output) settles
+  `run.failed{error:"cost_budget_unpriced"}` rather than a fail-open under-count.
+  `params` (canonical location
   `endpoint.params`; a top-level `params` object is accepted as an alias)
   carries generation/retry knobs resolved by the backend:
   - `temperature` → pi-ai `StreamOptions.temperature`
@@ -144,10 +147,12 @@ attribute to (or isolate from) a session is reported as a run-scoped
   The cost ceiling is cumulative over the whole run: the worker sums the priced
   usage of every assistant turn (a tool loop emits several), and a run whose
   total exceeds `limits.max_cost_usd` settles
-  `run.failed{error:"cost_budget_exceeded"}` rather than success. A real binding
-  that spends tokens with no configured pricing settles
+  `run.failed{error:"cost_budget_exceeded"}` rather than success. Because pi-ai
+  prices each usage category independently, a real binding that spends tokens in
+  any category left at a $0 rate settles
   `run.failed{error:"cost_budget_unpriced"}` when a cost budget is set, so an
-  unpriced endpoint fails closed instead of reporting an untrusted $0.
+  unpriced (or partially-priced) endpoint fails closed instead of reporting an
+  untrusted under-count.
 - Disconnect, EOF, timeout, protocol violation, or authority rejection produce
   exactly one terminal event and release the session lock.
 - Secrets travel only inside `provider.bind` on this private pipe.

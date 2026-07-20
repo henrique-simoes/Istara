@@ -208,9 +208,13 @@ export function buildRealProvider(endpoint) {
   const maxRetries = params.maxRetries ?? 0;
   // Real model rates come from the backend-resolved endpoint pricing, not a
   // hardcoded zero — otherwise pi-ai prices every real turn at $0 and the
-  // per-run cost ceiling can never fail closed (see session.mjs).
+  // per-run cost ceiling can never fail closed (see session.mjs). pi-ai prices
+  // each usage category (input/output/cacheRead/cacheWrite) independently, so
+  // the session receives the full per-category rate map and fails a budgeted
+  // run closed when it spent tokens in ANY category left at a $0 rate. A single
+  // "some rate is set" flag would let a cache-read turn on an endpoint priced
+  // only for input/output settle at an untrusted $0.
   const cost = mapProviderPricing(endpoint.pricing);
-  const pricingConfigured = cost.input > 0 || cost.output > 0 || cost.cacheRead > 0 || cost.cacheWrite > 0;
 
   const providerId = `pi-endpoint-${endpoint.endpoint_id || "default"}`;
   const envVar = `PI_RUNTIME_KEY_${ENV_KEY_COUNTER++}`;
@@ -243,10 +247,12 @@ export function buildRealProvider(endpoint) {
     models,
     model: resolved,
     params,
-    // Real network binding: usage is priced by `model.cost` above. The session
-    // fails a budgeted run closed when a real binding carries no pricing.
+    // Real network binding: usage is priced by `model.cost` above. `pricing` is
+    // the per-category rate map the session checks against actual per-category
+    // usage — a budgeted run that spent tokens in any $0-rated category fails
+    // closed rather than reporting an untrusted under-count (see session.mjs).
     isReal: true,
-    pricingConfigured,
+    pricing: cost,
     stream: (streamModel, context, options) =>
       // Endpoint params are operator policy and win over agent defaults; the
       // agent-supplied abort signal is always preserved.
@@ -283,7 +289,7 @@ export function buildFauxProviderBinding(endpoint) {
     // Deterministic test double, not a network binding: the cost ceiling reads
     // `forcedCostUsd` (below) rather than the unpriced-real fail-closed path.
     isReal: false,
-    pricingConfigured: false,
+    pricing: null,
     stream: (model, context, options) => models.streamSimple(model, context, options),
     dispose: () => {},
     // Test-only adversarial seam: lets the production Python authority

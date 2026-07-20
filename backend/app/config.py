@@ -277,13 +277,21 @@ class Settings(BaseSettings):
     pi_replacement_deepseek_model: str = "deepseek-v4-pro"
     pi_replacement_deepseek_keychain_service: str = "istara-pi-deepseek"
     pi_replacement_deepseek_keychain_account: str = "openclaw"
-    # Default endpoint pricing (USD per 1M tokens). Seeded from DeepSeek's
-    # published list price so the built-in endpoint is priced out of the box and
-    # its per-run cost ceiling fails closed; operators override per env/.env with
-    # their own negotiated contract rate. Never zero by default — an unpriced
-    # real endpoint cannot enforce a cost budget.
-    pi_replacement_deepseek_cost_input_per_mtok: float = 0.27
-    pi_replacement_deepseek_cost_output_per_mtok: float = 1.10
+    # Default endpoint pricing (USD per 1M tokens). Sourced from the configured
+    # model's (deepseek-v4-pro) published list price as of 2026-07-20 so the
+    # built-in endpoint is priced out of the box and its per-run cost ceiling
+    # fails closed; operators override per env/.env with their own negotiated
+    # contract rate. Every category the endpoint can spend must be priced: pi-ai
+    # prices input, output, and cache-read (DeepSeek reports cache hits via
+    # ``prompt_cache_hit_tokens``) independently, and a cache-read turn on an
+    # endpoint that priced only input/output would otherwise fail closed as
+    # unpriced. DeepSeek bills cache writes at the cache-miss input rate and does
+    # not report a separate cache-write token count, so that category is never
+    # spent and needs no rate. Never zero — an unpriced real endpoint cannot
+    # enforce a cost budget.
+    pi_replacement_deepseek_cost_input_per_mtok: float = 0.435  # cache-miss input
+    pi_replacement_deepseek_cost_output_per_mtok: float = 0.87  # output
+    pi_replacement_deepseek_cost_cache_read_per_mtok: float = 0.003625  # cache-hit input
     # JSON-compatible settings input.  Empty preserves the existing default
     # endpoint without registering it as donated/shared compute.
     pi_api_endpoints: list[PiApiEndpoint] = []

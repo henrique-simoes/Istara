@@ -218,11 +218,21 @@ def test_bind_payload_forwards_real_endpoint_pricing_but_not_faux():
 
 
 def test_default_endpoint_is_priced_so_its_cost_ceiling_can_fail_closed():
-    """The built-in default endpoint resolves with nonzero pricing; a $0-priced
-    default would make its per-run ``max_cost_usd`` ceiling unenforceable."""
+    """The built-in default endpoint resolves with nonzero pricing for every
+    category it can spend. A $0-priced default would make its per-run
+    ``max_cost_usd`` ceiling unenforceable, and — because pi-ai prices each
+    category independently and the worker fails a spent-but-$0-rated category
+    closed — a cache-read turn on a default priced only for input/output would
+    fail closed as unpriced. The rates are sourced from the configured model
+    (deepseek-v4-pro) rather than an unrelated model's list price."""
     endpoint = PiEndpointResolver()._endpoints[DEFAULT_ENDPOINT_ID]
-    assert endpoint.cost_input_per_mtok > 0
-    assert endpoint.cost_output_per_mtok > 0
+    assert endpoint.model == "deepseek-v4-pro"
+    assert endpoint.cost_input_per_mtok == pytest.approx(0.435)  # cache-miss input
+    assert endpoint.cost_output_per_mtok == pytest.approx(0.87)  # output
+    assert endpoint.cost_cache_read_per_mtok == pytest.approx(0.003625)  # cache-hit input
+    # DeepSeek bills cache writes at the cache-miss input rate and reports no
+    # separate cache-write token count, so that category is never spent.
+    assert endpoint.cost_cache_write_per_mtok == 0.0
 
 
 class _PricedUsageStubHandler(BaseHTTPRequestHandler):
@@ -243,6 +253,39 @@ class _PricedUsageStubHandler(BaseHTTPRequestHandler):
         done = {"choices": [{"index": 0, "delta": {}, "finish_reason": "stop"}]}
         self.wfile.write(f"data: {json.dumps(done)}\n\n".encode())
         usage = {"choices": [], "usage": {"prompt_tokens": 1_000_000, "completion_tokens": 1_000_000}}
+        self.wfile.write(f"data: {json.dumps(usage)}\n\n".encode())
+        self.wfile.write(b"data: [DONE]\n\n")
+        self.wfile.flush()
+
+
+class _CacheReadUsageStubHandler(BaseHTTPRequestHandler):
+    """A loopback openai_compat stub whose prompt is fully cache-hit: it reports
+    1M cache-read tokens (``prompt_cache_hit_tokens``) and zero cache-miss input.
+    pi-ai prices cache reads independently, so a binding priced only for
+    input/output prices this turn at $0 unless the cache-read category is
+    checked — the exact partial-pricing gap the fail-closed path must catch."""
+
+    def log_message(self, *args):  # silence
+        pass
+
+    def do_POST(self):
+        length = int(self.headers.get("Content-Length", "0"))
+        self.rfile.read(length)
+        self.send_response(200)
+        self.send_header("Content-Type", "text/event-stream")
+        self.end_headers()
+        content = {"choices": [{"index": 0, "delta": {"content": "Cached reply."}}]}
+        self.wfile.write(f"data: {json.dumps(content)}\n\n".encode())
+        done = {"choices": [{"index": 0, "delta": {}, "finish_reason": "stop"}]}
+        self.wfile.write(f"data: {json.dumps(done)}\n\n".encode())
+        usage = {
+            "choices": [],
+            "usage": {
+                "prompt_tokens": 1_000_000,
+                "prompt_cache_hit_tokens": 1_000_000,
+                "completion_tokens": 0,
+            },
+        }
         self.wfile.write(f"data: {json.dumps(usage)}\n\n".encode())
         self.wfile.write(b"data: [DONE]\n\n")
         self.wfile.flush()
@@ -302,4 +345,55 @@ async def test_real_priced_turn_over_budget_fails_closed_through_engine():
 
     errors = [event for event in events if event["type"] == "error"]
     assert errors and errors[-1].get("error") == "cost_budget_exceeded"
+    assert not any(event["type"] == "done" for event in events)
+
+
+@requires_node
+@pytest.mark.asyncio
+async def test_real_cache_read_unpriced_turn_fails_closed_through_engine():
+    """Full-stack non-faux proof of the partial-pricing gap: a real
+    ``openai_compat`` turn that spends cache-read tokens on an endpoint priced
+    only for input/output surfaces ``cost_budget_unpriced`` end to end. pi-ai
+    prices each usage category independently, so leaving cache-read at $0 would
+    otherwise under-count this fully-cached turn to $0 and complete fail-open."""
+    server = ThreadingHTTPServer(("127.0.0.1", 0), _CacheReadUsageStubHandler)
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    base_url = f"http://127.0.0.1:{server.server_address[1]}"
+    endpoint = ResolvedPiEndpoint(
+        endpoint_id="pi-cache-unpriced-loopback",
+        provider_kind="openai_compat",
+        base_url=base_url,
+        model="stub-model",
+        api_key="loopback-test-key",
+        timeout_ms=30000,
+        max_retries=0,
+        cost_input_per_mtok=1.0,  # priced
+        cost_output_per_mtok=2.0,  # priced
+        cost_cache_read_per_mtok=0.0,  # NOT priced — the spent category is $0-rated
+    )
+    supervisor = PiRuntimeSupervisor(max_cost_usd=0.5)
+    service = PiExecutionService(resolver=_FixedResolver(endpoint), supervisor=supervisor)
+
+    async def _no_tools(name, params, pid, aid):  # pragma: no cover - not exercised
+        return {"success": True, "result": "unused"}
+
+    events: list[dict] = []
+    try:
+        async for event in service.run_chat_turn(
+            project_id=f"pi-cache-unpriced-{uuid.uuid4()}",
+            agent_id="istara-main",
+            system_prompt="Pi owns the loop.",
+            history=[],
+            user_text="Say hello.",
+            tool_executor=_no_tools,
+            allowed_tools=[],
+        ):
+            events.append(event)
+    finally:
+        await supervisor.shutdown()
+        server.shutdown()
+
+    errors = [event for event in events if event["type"] == "error"]
+    assert errors and errors[-1].get("error") == "cost_budget_unpriced"
     assert not any(event["type"] == "done" for event in events)

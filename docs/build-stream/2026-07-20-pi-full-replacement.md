@@ -9,8 +9,8 @@ phase: "W0 — hardening and evidence integrity"
 stage: S4-remediate
 status: in-progress
 blocked_on: null
-last: { agent: claude-opus-4-8, at: 2026-07-20T19:23:47Z, ledger: L-11 }
-next_action: "Conductor creates the bounded delta re-review of F-2's production cost pricing, cumulative per-run ceiling, and unpriced fail-closed path."
+last: { agent: claude-opus-4-8, at: 2026-07-20T19:46:29Z, ledger: L-13 }
+next_action: "Conductor creates one bounded delta re-review of F-2's per-category unpriced fail-closed path and the corrected deepseek-v4-pro default rates after all sibling fixes finish."
 ```
 <!-- /STATUS BLOCK -->
 
@@ -228,6 +228,68 @@ new_failures=0 with security still 1 (no secret sink introduced).
 Next: Stage exit: conduct the bounded delta re-review of F-2's production cost
 pricing, the cumulative per-run ceiling, and the unpriced fail-closed path.
 
+### L-12 | 2026-07-20T19:30:48Z | S3-review | gpt-5.6-sol | reviewer | W0
+<!-- bsc-ledger:REREV-pi-full-20260720-w0-REVIEW-r4 -->
+Did: Delta re-reviewed only F-2 against
+`FIX-REREV-pi-full-20260720-w0-REVIEW-r3` and commit `30a0f765`. Verified the
+new real-provider pricing map, cumulative multi-turn settlement, fully-unpriced
+terminal, backend bind propagation, and the source fix's CF evidence. Inspection
+broadened only to the immediate Pi AI `calculateCost` seam and the official
+DeepSeek pricing contract because the fix made production acceptance depend on
+per-category rates and claimed the built-in values were the published price.
+Result: Fail; reopened F-2 and created
+`FIX-REREV-pi-full-20260720-w0-REVIEW-r4`. `buildRealProvider` marks pricing as
+configured when any single rate is positive, but Pi AI prices input, output,
+cache-read, and cache-write independently. The adversarial real-binding probe
+therefore accepted input/output pricing while calculating 1,000,000 cache-read
+tokens at `$0`. The built-in endpoint also targets `deepseek-v4-pro` while
+shipping `0.27` input, `1.10` output, and `0` cache-read USD/Mtok; DeepSeek's
+current official v4-pro table lists `0.435` cache-miss input, `0.87` output, and
+`0.003625` cache-hit input. Input/cache-heavy runs can consequently be
+undercounted instead of failing closed. The non-faux over-budget, cumulative,
+and wholly-unpriced regressions otherwise pass.
+Verified: `npm --prefix pi-runtime test` = 24 passed;
+`PI_REQUIRE_NODE=1 python -m pytest` over the three focused pricing/default/full-stack
+tests = 3 passed; `buildRealProvider` + Pi AI `calculateCost` partial-pricing
+probe = `pricingConfigured:true`, `cacheRead:1000000`, `calculatedCostUsd:0`
+(acceptance failure reproduced); official DeepSeek Models & Pricing checked on
+2026-07-20 for the actual `deepseek-v4-pro` model.
+Next: Remediate `FIX-REREV-pi-full-20260720-w0-REVIEW-r4`; the conductor creates
+one bounded delta re-review after the fixer and all sibling findings finish.
+
+### L-13 | 2026-07-20T19:46:29Z | S4-remediate | claude-opus-4-8 | remediator | W0 <!-- bsc-ledger:FIX-REREV-pi-full-20260720-w0-REVIEW-r4 -->
+Did: Closed F-2's per-category pricing fail-open and the wrong built-in default rates.
+Replaced `buildRealProvider`'s boolean-OR `pricingConfigured` with the full per-category
+rate map exposed as `binding.pricing` (`provider.mjs`); `session.mjs` now tracks per-category
+usage (input/output/cacheRead/cacheWrite) and fails a budgeted real run closed with
+`cost_budget_unpriced` when it spent tokens in ANY $0-rated category (new `_hasUnpricedSpend`).
+Re-sourced the default `deepseek-v4-pro` rates to the 2026-07-20 published table (0.435
+cache-miss input, 0.87 output, 0.003625 cache-hit input) in `config.py` and wired the
+cache-read rate into the default endpoint (`endpoints.py`). Added non-faux regressions for
+cached/partially-priced usage (Node loopback + full-stack Python engine), pinned the
+default-endpoint pricing assertion, and updated `PROTOCOL.md`. Files: `pi-runtime/src/provider.mjs`,
+`pi-runtime/src/session.mjs`, `backend/app/config.py`, `backend/app/core/pi_runtime/endpoints.py`,
+`pi-runtime/PROTOCOL.md`, `pi-runtime/test/hardening.test.mjs`, `tests/pi_production/test_runtime_hardening.py`.
+Result: F-2 fixed by `FIX-REREV-pi-full-20260720-w0-REVIEW-r4`. A real turn that spends
+1,000,000 cache-read tokens on an endpoint priced only for input/output now fails closed
+(`cost_budget_unpriced`) instead of pricing $0; a fully-priced cached turn prices its cache
+reads nonzero and is counted; the built-in default endpoint is priced for every category it
+can spend. No live model was loaded and no donated-compute path changed.
+Verified: `npm --prefix pi-runtime test` = 26 passed (was 24; adds cache-read unpriced
+fail-closed + priced-cache-read completion); `PI_REQUIRE_NODE=1 python -m pytest
+tests/pi_production/test_runtime_hardening.py -q` = 11 passed (was 10; adds full-stack
+cache-read `cost_budget_unpriced` and default-endpoint rates pinned to the sourced v4-pro
+table incl cache-read); `PI_REQUIRE_NODE=1 python -m pytest tests/pi_production tests/pi_migration -q`
+= 68 passed (was 67); `python -m pytest tests/test_pi_replacement_candidate.py -q` = 13 passed;
+`python scripts/security_benchmark.py --fail-on-threshold` = pass; `python scripts/feature_docs.py
+--seed-missing --generate-site --check` = 86 passed; `compass-forge gate after --task
+FIX-REREV-pi-full-20260720-w0-REVIEW-r4 --summary` = new_failures=1, security=1 unchanged, 0
+drift/cycles. The one new_failure is the inherited config.py `secret_flow` re-fingerprint
+(L-9/L-11): stashing my config/endpoints edits still reports new_failures=1, so it is present
+at HEAD and not introduced by this stage.
+Next: Stage exit: conductor creates the bounded delta re-review of F-2's per-category unpriced
+fail-closed path and the corrected default rates.
+
 ## W0 — hardening and evidence integrity
 
 **Frame/Plan:** Master plan §6 plus §12.2. Arm the deterministic inventory/ratchet before
@@ -241,7 +303,7 @@ through H-14 with named regression tests. Preserve Petals/donor isolation.
 | ID | Sev | Dim | Where | Finding | CF task | Status |
 |---|---|---|---|---|---|---|
 | F-1 | Blocker | Product | `scripts/pi_migration_inventory.py`; `tests/pi_migration/` | M0 inventory scanner, complete 87-site plus permanent-infrastructure allowlist, count-to-zero ratchet, and e2e ladder registration are present. | FIX-pi-full-20260720-w0-REVIEW-r1 | fixed |
-| F-2 | Blocker | Bugs | `pi-runtime/src/provider.mjs`; `pi-runtime/src/session.mjs`; `backend/app/config.py`; `backend/app/core/pi_runtime/{endpoints,engine}.py`; cost regressions | Production cost enforcement closed by `FIX-REREV-pi-full-20260720-w0-REVIEW-r3`: trustworthy per-endpoint pricing threads config→`_bind_payload`→`buildRealProvider` onto pi-ai model rates (default endpoint seeded, `mapProviderPricing` validates), the per-run ceiling is now cumulative across turns, an unpriced budgeted real binding fails closed (`cost_budget_unpriced`), and non-faux loopback regressions (Node + full-stack Python) prove `max_cost_usd` fires for real usage — a zero-priced real binding would fail every new over-budget assertion. | FIX-REREV-pi-full-20260720-w0-REVIEW-r3 | fixed |
+| F-2 | Blocker | Bugs | `pi-runtime/src/provider.mjs`; `pi-runtime/src/session.mjs`; `backend/app/config.py`; `backend/app/core/pi_runtime/{endpoints,engine}.py`; cost regressions | Per-category pricing closed by `FIX-REREV-pi-full-20260720-w0-REVIEW-r4`: `buildRealProvider` exposes the full per-category rate map (`binding.pricing`) instead of a boolean-OR flag, and `session.mjs` fails a budgeted real run closed (`cost_budget_unpriced`) when it spent tokens in ANY $0-rated category (input/output/cache-read/cache-write, via `_hasUnpricedSpend`). The default `deepseek-v4-pro` endpoint is re-sourced to the 2026-07-20 published rates (0.435 cache-miss input, 0.87 output, 0.003625 cache-hit input) and prices cache-read. Non-faux Node + full-stack Python regressions cover cached/partially-priced usage: 1M cache-read tokens on an input/output-only endpoint now fails closed, and a priced cached turn prices its cache reads nonzero. | FIX-REREV-pi-full-20260720-w0-REVIEW-r4 | fixed |
 | F-3 | Blocker | Integration | `tests/pi_production/`; `docs/build-stream/2026-07-20-pi-production-runtime-completion.md` | H-13 real-ASGI tests and append-only CF-SPEC-7 correction are present; H-14 fails loudly under `PI_REQUIRE_NODE=1`. | FIX-pi-full-20260720-w0-REVIEW-r1 | fixed |
 | F-4 | Major | Plan | master plan §8.6; W0 evidence/docs | Deterministic verification, security, post-gate evidence, and the package test entrypoint are recorded. | FIX-pi-full-20260720-w0-REVIEW-r1 | fixed |
 
@@ -263,7 +325,11 @@ configurable), the per-run ceiling is cumulative across turns, an unpriced budge
 real binding fails closed (`cost_budget_unpriced`), and non-faux loopback
 regressions on the Node worker and through the Python engine prove `max_cost_usd`
 fires for real usage. The conductor creates the bounded delta re-review of this
-changed surface before W0 advances.
+changed surface before W0 advances. L-12 reopened F-2 under
+`FIX-REREV-pi-full-20260720-w0-REVIEW-r4`: partially priced bindings are treated
+as fully configured even when a spent category remains zero-rated, and the
+built-in `deepseek-v4-pro` defaults do not match the current official v4-pro
+cache-hit/cache-miss/output schedule. W0 remains in remediation.
 
 **Phase summary:** Pending.
 
