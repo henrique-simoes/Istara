@@ -6,11 +6,11 @@ item: pi-full-replacement
 branch: Review_pi_test
 cf: { spec: CF-SPEC-8, tasks: [pi-full-20260720-w0-IMPL, pi-full-20260720-w0-REVIEW] }
 phase: "W0 — hardening and evidence integrity"
-stage: S4-remediate
+stage: S3-review
 status: in-progress
 blocked_on: null
-last: { agent: claude-opus-4-8, at: 2026-07-20T19:46:29Z, ledger: L-13 }
-next_action: "Conductor creates one bounded delta re-review of F-2's per-category unpriced fail-closed path and the corrected deepseek-v4-pro default rates after all sibling fixes finish."
+last: { agent: gpt-5.6-sol, at: 2026-07-20T19:55:49Z, ledger: L-14 }
+next_action: "Conductor advances from the passing W0 delta re-review; do not reopen F-2 unless new evidence exposes a concrete defect."
 ```
 <!-- /STATUS BLOCK -->
 
@@ -290,6 +290,28 @@ at HEAD and not introduced by this stage.
 Next: Stage exit: conductor creates the bounded delta re-review of F-2's per-category unpriced
 fail-closed path and the corrected default rates.
 
+### L-14 | 2026-07-20T19:55:49Z | S3-review | gpt-5.6-sol | reviewer | W0
+<!-- bsc-ledger:REREV-pi-full-20260720-w0-REVIEW-r5 -->
+Did: Delta re-reviewed only F-2 against
+`FIX-REREV-pi-full-20260720-w0-REVIEW-r4` and commit `f3ccbf26`. Inspected the
+changed provider/session pricing contract, default-endpoint rate wiring, protocol, new
+non-faux regressions, and the immediate installed pi-ai cache-usage/cost calculation seam.
+Verified the current official `deepseek-v4-pro` price table because the fix's acceptance
+depends on those model-specific defaults. No live provider or model request was made.
+Result: Pass with no new findings and zero corrections. The session now checks actual
+input/output/cache-read/cache-write spend against the full per-category binding rates and
+fails a budgeted real run closed as `cost_budget_unpriced` when any spent category is
+zero-rated. The built-in endpoint matches the official v4-pro cache-miss input, output,
+and cache-hit input rates, and the new non-faux regressions prove both rejection of a
+partially-priced cached turn and nonzero settlement of a fully-priced cached turn.
+Verified: `node --test --test-name-pattern='real run that spends cache-read|real run that prices its cache-read' pi-runtime/test/hardening.test.mjs` = 2 passed;
+`PI_REQUIRE_NODE=1 python -m pytest tests/pi_production/test_runtime_hardening.py::test_default_endpoint_is_priced_so_its_cost_ceiling_can_fail_closed tests/pi_production/test_runtime_hardening.py::test_real_cache_read_unpriced_turn_fails_closed_through_engine -q` = 2 passed;
+`git show --check f3ccbf26` = pass; official DeepSeek Models & Pricing verified on
+2026-07-20 as `$0.435` cache-miss input, `$0.87` output, and `$0.003625` cache-hit input
+per 1M tokens.
+Next: Stage exit: pass verdict recorded; conductor advances the pipeline after the required
+CF evidence, self-report, reviewer handoff, and task finish.
+
 ## W0 — hardening and evidence integrity
 
 **Frame/Plan:** Master plan §6 plus §12.2. Arm the deterministic inventory/ratchet before
@@ -303,7 +325,7 @@ through H-14 with named regression tests. Preserve Petals/donor isolation.
 | ID | Sev | Dim | Where | Finding | CF task | Status |
 |---|---|---|---|---|---|---|
 | F-1 | Blocker | Product | `scripts/pi_migration_inventory.py`; `tests/pi_migration/` | M0 inventory scanner, complete 87-site plus permanent-infrastructure allowlist, count-to-zero ratchet, and e2e ladder registration are present. | FIX-pi-full-20260720-w0-REVIEW-r1 | fixed |
-| F-2 | Blocker | Bugs | `pi-runtime/src/provider.mjs`; `pi-runtime/src/session.mjs`; `backend/app/config.py`; `backend/app/core/pi_runtime/{endpoints,engine}.py`; cost regressions | Per-category pricing closed by `FIX-REREV-pi-full-20260720-w0-REVIEW-r4`: `buildRealProvider` exposes the full per-category rate map (`binding.pricing`) instead of a boolean-OR flag, and `session.mjs` fails a budgeted real run closed (`cost_budget_unpriced`) when it spent tokens in ANY $0-rated category (input/output/cache-read/cache-write, via `_hasUnpricedSpend`). The default `deepseek-v4-pro` endpoint is re-sourced to the 2026-07-20 published rates (0.435 cache-miss input, 0.87 output, 0.003625 cache-hit input) and prices cache-read. Non-faux Node + full-stack Python regressions cover cached/partially-priced usage: 1M cache-read tokens on an input/output-only endpoint now fails closed, and a priced cached turn prices its cache reads nonzero. | FIX-REREV-pi-full-20260720-w0-REVIEW-r4 | fixed |
+| F-2 | Blocker | Bugs | `pi-runtime/src/provider.mjs`; `pi-runtime/src/session.mjs`; `backend/app/config.py`; `backend/app/core/pi_runtime/{endpoints,engine}.py`; cost regressions | Per-category pricing closed by `FIX-REREV-pi-full-20260720-w0-REVIEW-r4` and independently verified by `REREV-pi-full-20260720-w0-REVIEW-r5`: `buildRealProvider` exposes the full per-category rate map (`binding.pricing`) instead of a boolean-OR flag, and `session.mjs` fails a budgeted real run closed (`cost_budget_unpriced`) when it spent tokens in ANY $0-rated category (input/output/cache-read/cache-write, via `_hasUnpricedSpend`). The default `deepseek-v4-pro` endpoint is re-sourced to the 2026-07-20 published rates (0.435 cache-miss input, 0.87 output, 0.003625 cache-hit input) and prices cache-read. Non-faux Node + full-stack Python regressions cover cached/partially-priced usage: 1M cache-read tokens on an input/output-only endpoint now fails closed, and a priced cached turn prices its cache reads nonzero. | FIX-REREV-pi-full-20260720-w0-REVIEW-r4 | fixed |
 | F-3 | Blocker | Integration | `tests/pi_production/`; `docs/build-stream/2026-07-20-pi-production-runtime-completion.md` | H-13 real-ASGI tests and append-only CF-SPEC-7 correction are present; H-14 fails loudly under `PI_REQUIRE_NODE=1`. | FIX-pi-full-20260720-w0-REVIEW-r1 | fixed |
 | F-4 | Major | Plan | master plan §8.6; W0 evidence/docs | Deterministic verification, security, post-gate evidence, and the package test entrypoint are recorded. | FIX-pi-full-20260720-w0-REVIEW-r1 | fixed |
 
@@ -329,7 +351,8 @@ changed surface before W0 advances. L-12 reopened F-2 under
 `FIX-REREV-pi-full-20260720-w0-REVIEW-r4`: partially priced bindings are treated
 as fully configured even when a spent category remains zero-rated, and the
 built-in `deepseek-v4-pro` defaults do not match the current official v4-pro
-cache-hit/cache-miss/output schedule. W0 remains in remediation.
+cache-hit/cache-miss/output schedule. `FIX-REREV-pi-full-20260720-w0-REVIEW-r4`
+closed both gaps, and the bounded L-14 delta re-review passed with no new findings.
 
 **Phase summary:** Pending.
 
