@@ -43,6 +43,8 @@ from app.core.pi_replacement import (
     pi_replacement_requested,
     record_pi_span,
 )
+from app.core.pi_runtime import PiExecutionService
+from app.core.pi_runtime.endpoints import PiEndpointResolutionError
 from app.core.rag import build_augmented_prompt, retrieve_context
 from app.core.research_validity import RESEARCH_VALIDITY_CONTRACT, protected_block
 from app.core.token_counter import context_guard
@@ -97,6 +99,118 @@ async def _pi_registration_failure_events(
     yield "data: " + json.dumps(
         {"type": "done", "message_id": None, "sources": [], "tools_used": []}
     ) + "\n\n"
+
+
+_pi_execution_service: PiExecutionService | None = None
+
+
+def _get_pi_execution_service() -> PiExecutionService:
+    global _pi_execution_service
+    if _pi_execution_service is None:
+        _pi_execution_service = PiExecutionService()
+    return _pi_execution_service
+
+
+async def _generate_pi_runtime(
+    messages: list[dict],
+    all_text_parts: list[str],
+    tool_results: list[dict],
+    request,
+    session_agent_id: str | None,
+):
+    """Drive one chat turn through the real Pi Agent Core worker (AC-1).
+
+    The already-composed system prompt (with protected research/promotion
+    blocks) and prior turns are sent to the worker; the real pi-agent-core
+    Agent owns turn progression and every tool call executes in Python under
+    the authenticated project/agent scope. Yields the existing SSE envelope
+    events and mutates *all_text_parts* / *tool_results* in place so the shared
+    persistence block is unchanged. Any runtime failure fails closed with a
+    typed error — the legacy Python ReAct loop is never entered.
+    """
+    agent_id = session_agent_id or "istara-main"
+    system_prompt = ""
+    body = list(messages or [])
+    if body and body[0].get("role") == "system":
+        system_prompt = str(body[0].get("content") or "")
+        body = body[1:]
+    user_text = ""
+    history: list[dict] = []
+    if body:
+        user_text = str(body[-1].get("content") or "")
+        for m in body[:-1]:
+            if m.get("role") in ("user", "assistant") and isinstance(m.get("content"), str):
+                history.append({"role": m["role"], "content": m["content"]})
+
+    metrics = PiChatRunMetrics(project_id=request.project_id, agent_id=agent_id)
+    metrics.observe_input(messages)
+    session_key = f"{request.project_id}:{getattr(request, 'session_id', None) or 'adhoc'}"
+
+    async def _tool_exec(name, params, project_id, agent):
+        # Authority round-trip: authenticated project/agent scope is re-injected.
+        result = await execute_tool(name, params, project_id, agent_id=agent)
+        metrics.observe_tool_call()
+        if isinstance(result, dict):
+            result_text = result.get("result", result.get("error", ""))
+        else:
+            result_text = result
+        tool_results.append({"tool": name, "result": result_text})
+        return result
+
+    status = "success"
+    error_message: str | None = None
+    service = _get_pi_execution_service()
+    try:
+        async for event in service.run_chat_turn(
+            project_id=request.project_id,
+            agent_id=agent_id,
+            system_prompt=system_prompt,
+            history=history,
+            user_text=user_text,
+            tool_executor=_tool_exec,
+            session_key=session_key,
+        ):
+            etype = event["type"]
+            if etype == "content":
+                text = event.get("text", "")
+                if text:
+                    all_text_parts.append(text)
+                    metrics.observe_chunk(text)
+                    yield "data: " + json.dumps({"type": "chunk", "content": text}) + "\n\n"
+            elif etype == "tool_call":
+                yield "data: " + json.dumps(
+                    {"type": "tool_call", "tool": event.get("tool"), "params": event.get("params", {})}
+                ) + "\n\n"
+            elif etype == "error":
+                status = "error"
+                error_message = event.get("error")
+                yield "data: " + json.dumps(
+                    {
+                        "type": "error",
+                        "code": "pi_runtime_error",
+                        "error": "pi_runtime_error",
+                        "detail": str(error_message),
+                    }
+                ) + "\n\n"
+            elif etype == "done":
+                break
+    except (PiEndpointResolutionError, Exception) as exc:  # fail closed, never fall through
+        status = "error"
+        error_message = str(exc)
+        _chat_log.warning("Pi runtime chat turn failed: %s", exc)
+        yield "data: " + json.dumps(
+            {
+                "type": "error",
+                "code": "pi_registration_unavailable",
+                "error": "pi_transport_unavailable",
+                "detail": str(exc),
+            }
+        ) + "\n\n"
+    finally:
+        try:
+            await metrics.finish(status=status, error_message=error_message)
+        except Exception:
+            pass
 
 
 def _research_spine_chat_contract() -> str:
@@ -814,7 +928,19 @@ async def chat(request: ChatRequest, http_request: Request, db: AsyncSession = D
                     ):
                         yield event
                     return
-            if use_native_tools:
+                # Registration OK → the real Pi Agent Core owns this turn. The
+                # legacy Python ReAct loop (_generate_native_tools /
+                # _generate_text_fallback) is never entered for a selected Pi
+                # request (AC-1). Non-Pi requests are byte-identical (AC-2).
+                async for event in _generate_pi_runtime(
+                    messages,
+                    all_text_parts,
+                    tool_results,
+                    request,
+                    session_agent_id,
+                ):
+                    yield event
+            elif use_native_tools:
                 try:
                     async for event in _generate_native_tools(
                         conversation,
