@@ -57,6 +57,9 @@ export const BACKEND_PYTHON_CONTRACT_NAMES = [
   "NuggetResponse",
   "PermissionRequestCreate",
   "PermissionRequestReview",
+  // PiApiEndpoint is a backend-only settings contract today; it is named here
+  // so any future settings UI must deliberately model the secret-free fields.
+  "PiApiEndpoint",
   "PolicyUpdateRequest",
   "PreferenceItem",
   "ProjectCreate",
