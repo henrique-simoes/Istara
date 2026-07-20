@@ -9,8 +9,8 @@ phase: "Phase 0 — architecture and production boundary"
 stage: S1-plan
 status: in-progress
 blocked_on: "planning-enabled conductor consensus and owner approval"
-last: { agent: claude-fable-5, at: 2026-07-20T01:57:22Z, ledger: L-5 }
-next_action: "Cross-judge consensus plans A/B/C and pause for owner approval."
+last: { agent: claude-fable-5, at: 2026-07-20T02:34:04Z, ledger: L-7 }
+next_action: "Collect remaining cross-judge votes, record consensus_result, pause for owner approval."
 ```
 <!-- /STATUS BLOCK -->
 
@@ -170,3 +170,9 @@ Did: pi-runtime-complete-20260720-architect-c stage on task pi-runtime-complete-
 Result: task pi-runtime-complete-20260720-REPLAN-C-r1 finished; worktree head b3c5d550.
 Verified: see Compass Forge evidence rows on pi-runtime-complete-20260720-REPLAN-C-r1 (command + self_report + stage_attribution).
 Next: conductor advances the pipeline on evidence.
+
+### L-7 | 2026-07-20T02:34:04Z | S1-plan | claude-fable-5 | reviewer | Phase 0 <!-- bsc-ledger:pi-runtime-complete-20260720-JUDGE-A -->
+Did: Consensus judge slot a for CF-SPEC-7. Read both candidate plans (docs/build-stream/plans/pi-runtime-complete-20260720-plan-b.md, plan-c.md) and verified their discriminating code claims by direct inspection (llm_servers.py LLMServer save -> live registry registration; compute_registry_routing.py:182-188 strict+project sort prefers relay/browser donors; compute_route_evidence.py untracked loop.create_task(_emit())). Files touched: this lifecycle file only (no plan edits, per judge contract).
+Result: plan_vote recorded for slot c. Plan C wins: it identifies and structurally avoids the LLMServer/ComputeRegistry donor-collision side effect that Plan B's endpoint reuse silently re-enters, hooks A2A at the orchestrator dispatch where delegated work executes, and carries a verified file:line seam map plus an auditable 30-vs-17 tool coverage mapping. pi-runtime-complete-20260720-JUDGE-A
+Verified: Read of both plan files; sed inspection of backend/app/api/routes/llm_servers.py:55-85, backend/app/core/compute_registry_routing.py:178-192, backend/app/core/compute_route_evidence.py:95-110 -> all three Plan C claims confirmed. No tests run (judge stage; no code changed).
+Next: remaining cross-judge votes, conductor consensus_result, then owner approval of the winning plan.
