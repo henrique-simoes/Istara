@@ -8,6 +8,7 @@ Pi API endpoint there would allow a same-model donor collision.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import Any
 
 from app.config import PiApiEndpoint, _read_macos_keychain_secret, settings
 
@@ -28,6 +29,11 @@ class ResolvedPiEndpoint:
     api_key: str
     timeout_ms: int
     max_retries: int
+    # Test-only: when ``provider_kind == "faux"`` the worker uses these scripted
+    # deterministic completions instead of a network provider. The production
+    # resolver never sets this — only tests construct a faux endpoint — so the
+    # real provider HTTP stack is exercised in production paths.
+    faux_responses: tuple[Any, ...] | None = None
 
     def telemetry_identity(self) -> dict[str, str]:
         """Safe fields permitted in telemetry; never return URL/key material."""

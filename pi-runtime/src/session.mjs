@@ -20,7 +20,14 @@ export class PiSession {
     this._emit = emit;
     this._history = (history || [])
       .slice(-LIMITS.MAX_HISTORY_MESSAGES)
-      .map((m) => ({ role: m.role, content: m.content, timestamp: nowTs() }));
+      .map((m) => ({
+        role: m.role,
+        // pi-agent-core message content is a block array; server-persisted
+        // history arrives as plain strings, so wrap them as text blocks (a raw
+        // string throws `content.map is not a function` on rehydration).
+        content: typeof m.content === "string" ? [{ type: "text", text: m.content }] : (m.content || []),
+        timestamp: nowTs(),
+      }));
     this._catalog = catalog || [];
     this._binding = null; // {models, model, dispose}
     this._agent = null;

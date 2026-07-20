@@ -17,7 +17,7 @@ from app.models.channel_message import ChannelMessage
 from app.models.database import async_session
 from app.models.project import Project
 from app.models.research_deployment import ResearchDeployment
-from app.core.pi_replacement import build_pi_channel_response
+from app.core.pi_runtime.seams import build_pi_channel_reply
 from app.services.adaptive_interview import get_next_action, update_conversation_metadata
 
 logger = logging.getLogger(__name__)
@@ -181,14 +181,33 @@ async def process_inbound_channel_message(
         instance.message_count += 1
 
         if deployment is None:
-            pi_response = await build_pi_channel_response(
+            pi_response = await build_pi_channel_reply(
                 message_channel=message.channel,
                 channel_id=message.channel_id,
                 instance_id=message.instance_id,
                 project_id=project_id,
                 inbound_message_id=inbound_msg.id,
+                inbound_text=message.text,
                 metadata=metadata,
             )
+            if pi_response is not None and pi_response.text:
+                # Persist the real Pi channel reply as an outbound message so the
+                # transcript matches what the router sends back.
+                db.add(
+                    ChannelMessage(
+                        id=str(uuid.uuid4()),
+                        channel_instance_id=message.instance_id,
+                        project_id=project_id,
+                        direction="outbound",
+                        sender_id="system",
+                        sender_name="Istara",
+                        content=pi_response.text,
+                        content_type="text",
+                        thread_id=conversation.id,
+                        metadata_json=json.dumps(pi_response.metadata or {}),
+                    )
+                )
+                instance.message_count += 1
             try:
                 from app.core.improvement_governance import improvement_governance
 

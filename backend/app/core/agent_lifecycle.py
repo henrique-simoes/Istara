@@ -596,6 +596,59 @@ class AgentLifecycleMixin:
                 return
             data = json.loads(content_str)
 
+            if data.get("type") == "pi_delegate":
+                # Governed Pi delegation: the A2A gate chain (auth, rate, size,
+                # replay, project scope, persist, audit) already ran in the route;
+                # this is where the admitted work actually executes. Only Pi-
+                # selected delegations run through the real Pi Agent.
+                from app.core.pi_replacement import pi_replacement_requested
+                from app.core.pi_runtime.seams import run_pi_delegation
+
+                metadata = data.get("metadata") or {}
+                if isinstance(metadata, str):
+                    try:
+                        metadata = json.loads(metadata) if metadata else {}
+                    except (json.JSONDecodeError, TypeError):
+                        metadata = {}
+                if not pi_replacement_requested(metadata=metadata):
+                    return
+                project_id = data.get("project_id") or metadata.get("project_id")
+                msg_project_id = msg.get("project_id", "") if isinstance(msg, dict) else ""
+                if not project_id or (msg_project_id and msg_project_id != project_id):
+                    return
+                task_text = data.get("task") or data.get("text") or data.get("message") or ""
+                delegation = await run_pi_delegation(
+                    project_id=project_id,
+                    task_text=str(task_text),
+                    agent_id=self._agent_id,
+                    metadata=metadata,
+                )
+                if delegation is None:
+                    return
+                from app.services.a2a import send_message as a2a_send
+
+                msg_from = (
+                    msg.get("from_agent_id", "")
+                    if isinstance(msg, dict)
+                    else getattr(msg, "from_agent_id", "")
+                )
+                await a2a_send(
+                    db=db,
+                    from_agent_id=self._agent_id,
+                    to_agent_id=msg_from,
+                    message_type="response",
+                    content=(delegation.get("text") or "Pi delegation completed.")[:4000],
+                    project_id=project_id,
+                    metadata={
+                        "project_id": project_id,
+                        "engine": "pi",
+                        "delegation_result": True,
+                        "turn_status": delegation.get("status"),
+                        "endpoint_id": delegation.get("endpoint_id"),
+                    },
+                )
+                return
+
             if data.get("type") == "mece_report_request":
                 from app.core.report_manager import report_manager
                 from app.models.project_report import ProjectReport

@@ -51,6 +51,7 @@ class PiRuntimeSupervisor:
 
         self._proc: asyncio.subprocess.Process | None = None
         self._sessions: dict[str, asyncio.Queue[dict[str, Any]]] = {}
+        self._session_runs: dict[str, str] = {}
         self._reader_task: asyncio.Task | None = None
         self._stderr_task: asyncio.Task | None = None
         self._ready = asyncio.Event()
@@ -204,34 +205,38 @@ class PiRuntimeSupervisor:
             raise PiWorkerError("unknown_session")
         self._run_counter += 1
         run_id = f"run-{self._run_counter}"
+        self._session_runs[session_key] = run_id
         await self._send(
             {"v": PROTOCOL_VERSION, "type": "turn.prompt", "session_key": session_key, "run_id": run_id, "text": text}
         )
-        while True:
-            frame = await asyncio.wait_for(queue.get(), timeout=self._run_timeout)
-            ftype = frame.get("type")
-            if ftype == "fatal":
-                yield {"type": "run.failed", "run_id": run_id, "error": frame.get("error", "fatal")}
-                return
-            if ftype == "tool.call":
-                outcome = await self._safe_tool_call(tool_handler, frame)
-                await self._send(
-                    {
-                        "v": PROTOCOL_VERSION,
-                        "type": "tool.result",
-                        "session_key": session_key,
-                        "run_id": run_id,
-                        "tool_call_id": frame.get("tool_call_id"),
-                        "ok": bool(outcome.get("ok")),
-                        "result": outcome.get("result"),
-                        "error": outcome.get("error"),
-                    }
-                )
+        try:
+            while True:
+                frame = await asyncio.wait_for(queue.get(), timeout=self._run_timeout)
+                ftype = frame.get("type")
+                if ftype == "fatal":
+                    yield {"type": "run.failed", "run_id": run_id, "error": frame.get("error", "fatal")}
+                    return
+                if ftype == "tool.call":
+                    outcome = await self._safe_tool_call(tool_handler, frame)
+                    await self._send(
+                        {
+                            "v": PROTOCOL_VERSION,
+                            "type": "tool.result",
+                            "session_key": session_key,
+                            "run_id": run_id,
+                            "tool_call_id": frame.get("tool_call_id"),
+                            "ok": bool(outcome.get("ok")),
+                            "result": outcome.get("result"),
+                            "error": outcome.get("error"),
+                        }
+                    )
+                    yield frame
+                    continue
                 yield frame
-                continue
-            yield frame
-            if ftype in TERMINAL_RUN_TYPES:
-                return
+                if ftype in TERMINAL_RUN_TYPES:
+                    return
+        finally:
+            self._session_runs.pop(session_key, None)
 
     async def _safe_tool_call(self, tool_handler: ToolHandler, frame: dict[str, Any]) -> dict[str, Any]:
         try:
@@ -240,15 +245,38 @@ class PiRuntimeSupervisor:
             logger.warning("pi-runtime: tool handler raised for %s", frame.get("name"))
             return {"ok": False, "error": f"tool_handler_error:{type(exc).__name__}"}
 
+    def active_run_id(self, session_key: str) -> str | None:
+        """Run id of the turn currently in flight for ``session_key`` (or None)."""
+        return self._session_runs.get(session_key)
+
     async def steer(self, session_key: str, text: str) -> None:
-        await self._send({"v": PROTOCOL_VERSION, "type": "turn.steer", "session_key": session_key, "text": text})
+        await self._send(
+            {
+                "v": PROTOCOL_VERSION,
+                "type": "turn.steer",
+                "session_key": session_key,
+                "run_id": self._session_runs.get(session_key),
+                "text": text,
+            }
+        )
 
     async def follow_up(self, session_key: str, text: str) -> None:
-        await self._send({"v": PROTOCOL_VERSION, "type": "turn.follow_up", "session_key": session_key, "text": text})
-
-    async def abort(self, session_key: str, run_id: str) -> None:
         await self._send(
-            {"v": PROTOCOL_VERSION, "type": "turn.abort", "session_key": session_key, "run_id": run_id}
+            {
+                "v": PROTOCOL_VERSION,
+                "type": "turn.follow_up",
+                "session_key": session_key,
+                "run_id": self._session_runs.get(session_key),
+                "text": text,
+            }
+        )
+
+    async def abort(self, session_key: str, run_id: str | None = None) -> None:
+        # A clean ``run.aborted`` requires the worker's current run id; look it
+        # up when the caller (e.g. the steering bridge) does not track it.
+        rid = run_id or self._session_runs.get(session_key)
+        await self._send(
+            {"v": PROTOCOL_VERSION, "type": "turn.abort", "session_key": session_key, "run_id": rid}
         )
 
     async def close_session(self, session_key: str) -> None:
@@ -283,6 +311,7 @@ class PiRuntimeSupervisor:
         finally:
             await self._cancel_tasks()
             self._sessions.clear()
+            self._session_runs.clear()
 
     async def _force_stop(self) -> None:
         if self._proc is None:
