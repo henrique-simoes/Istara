@@ -9,8 +9,8 @@ phase: "W1 — dispatcher, Pi model management, and accounting"
 stage: S4-remediate
 status: in-progress
 blocked_on: null
-last: { agent: gpt-5.6-sol, at: 2026-07-20T20:22:38Z, ledger: L-16 }
-next_action: "Remediate F-W1-1 through F-W1-4, then run one bounded delta re-review after all four fixer tasks are terminal."
+last: { agent: kimi-code/k3, at: 2026-07-20T20:51:44Z, ledger: L-17 }
+next_action: "Remediate F-W1-1, F-W1-2, and F-W1-4 (F-W1-3 fixed at L-17), then run one bounded delta re-review after all four fixer tasks are terminal."
 ```
 <!-- /STATUS BLOCK -->
 
@@ -337,6 +337,34 @@ Verified: `pytest -q tests/pi_production/test_w1_agentic_contract.py tests/pi_mi
 Next: Stage exit: fail verdict recorded; remediate all four finding tasks, then conductor
 creates one bounded delta re-review of the changed surfaces.
 
+### L-17 | 2026-07-20T20:51:44Z | S4-remediate | kimi-code/k3 | remediator | W1 <!-- bsc-ledger:FIX-pi-full-20260720-w1-REVIEW-r1-ledger -->
+Did: Closed F-W1-3. Added the durable `agentic_usage_rows` ledger table
+(`backend/app/models/agentic_usage.py`, migration `023_agentic_usage_ledger`, registered in
+`init_db`); rewrote `backend/app/core/agentic/usage_ledger.py` so every dispatch persists one
+queryable row — Pi exact from pi-ai, provider-reported legacy exact, only absent legacy usage
+estimated with `count_tokens` and flagged `estimate=1`, pre-dispatch failures zeroed exact
+rows with `error_type`; the trace span now carries a short identity-only `route_id`
+(`agentic:<engine>:<endpoint|node|unresolved>`, <=120 chars) instead of the packed JSON
+ledger; integrated exception-path rows, `task_id`/`spine_phase`, and estimation request text
+into all six verbs of the concurrent F-W1-1 dispatcher rewrite in
+`backend/app/core/agentic/dispatcher.py`; added
+`tests/pi_production/test_w1_usage_ledger.py` (7 persistence-level exact-vs-estimated and
+exception-path tests). Commits `a9006e32` (persistence) and `c5474069` (contract).
+Result: F-W1-3 open -> fixed; CF task FIX-pi-full-20260720-w1-REVIEW-r1-ledger. No product
+call sites changed (W1 migrates zero sites; the 87-site ratchet is untouched).
+Verified: `pytest -q tests/pi_production/test_w1_usage_ledger.py` = 7 passed; W1 ladder seams
+(w1_agentic_contract, seams_fail_closed, runtime_hardening, count_to_zero,
+same_model_donor_isolation) = 34 passed before the sibling fixers' concurrent edits, and
+runtime_hardening + same_model_donor_isolation re-verified 12/12 green after; `alembic
+upgrade head` = 022 -> 023 -> 024 applied (24 columns, 7 indexes); ruff clean on new files
+with zero new violations in shared files; `compass-forge gate after` = no new issues from
+F-W1-3 files (the one new secret_flow hit is in `backend/app/config.py`, the concurrent
+F-W1-1 fixer's uncommitted edit). Later combined-run failures all reproduce only inside
+sibling fixers' in-progress files, never in F-W1-3 scope.
+Next: sibling fixers complete F-W1-1/F-W1-2/F-W1-4, then the conductor's bounded delta
+re-review; that review must confirm no later `dispatcher.py` overwrite dropped the
+exception-path usage-row recording.
+
 ## W0 — hardening and evidence integrity
 
 **Frame/Plan:** Master plan §6 plus §12.2. Arm the deterministic inventory/ratchet before
@@ -393,10 +421,10 @@ structured-output protocol, one-row usage accounting, and retain the armed 87-si
 |---|---|---|---|---|---|---|
 | F-W1-1 | Blocker | Integration | `backend/app/core/agentic/dispatcher.py`; `backend/app/core/pi_runtime/{engine,model_manager}.py`; project/config seams | The dispatcher is not the required production choke point: `chat_turn`, `ensemble`, and `embed` are absent; the singleton has no real legacy executor; request/project precedence is not wired into calls or persisted on projects; PiModelManager is not used by the engine, lacks required catalog sources, and ignores capability filters; TurnParams are not forwarded. | FIX-pi-full-20260720-w1-REVIEW-r1-authority | open |
 | F-W1-2 | Blocker | Bugs | `backend/app/core/pi_runtime/{engine,protocol}.py`; `pi-runtime/src/{protocol,worker,session}.mjs` | The required forced-tool structured contract is absent: protocol remains v1, worker fields and both-side compatibility validation are missing, free-form JSON text is accepted, and a second invalid response returns an error-shaped value instead of raising typed fail-closed failure. | FIX-pi-full-20260720-w1-REVIEW-r1-structured | open |
-| F-W1-3 | Major | Data | `backend/app/core/agentic/usage_ledger.py`; telemetry persistence | The usage ledger is neither exact nor complete: provider-reported legacy usage defaults to `estimate=true`, absent usage is not estimated with the existing counter, exception paths record no row, required task/spine/node fields are absent, and the row is packed into the short identity-oriented `route_id` field. | FIX-pi-full-20260720-w1-REVIEW-r1-ledger | open |
+| F-W1-3 | Major | Data | `backend/app/core/agentic/usage_ledger.py`; telemetry persistence | The usage ledger is neither exact nor complete: provider-reported legacy usage defaults to `estimate=true`, absent usage is not estimated with the existing counter, exception paths record no row, required task/spine/node fields are absent, and the row is packed into the short identity-oriented `route_id` field. | FIX-pi-full-20260720-w1-REVIEW-r1-ledger | fixed |
 | F-W1-4 | Major | Docs | `tests/pi_production/test_w1_agentic_contract.py`; `docs/features/` | W1 coverage is self-consistent and misses the failing production contracts; no living feature page changed for this behavior, while only the generated manifest timestamp was refreshed. Contract-complete negative/non-faux verification and living feature documentation are required. | FIX-pi-full-20260720-w1-REVIEW-r1-docs-tests | open |
 
-**Remediation:** Pending all four finding tasks and one conductor-created delta re-review.
+**Remediation:** `FIX-pi-full-20260720-w1-REVIEW-r1-ledger` (L-17) closed F-W1-3. F-W1-1, F-W1-2, and F-W1-4 remain open under their own fixer tasks, followed by one conductor-created delta re-review.
 
 **Phase summary:** Pending.
 
