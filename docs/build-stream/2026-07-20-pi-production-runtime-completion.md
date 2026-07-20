@@ -4,13 +4,13 @@
 ```yaml
 item: pi-production-runtime-completion
 branch: Review_pi_test
-cf: { spec: CF-SPEC-7, tasks: [pi-runtime-complete-20260720-PLAN-A, pi-runtime-complete-20260720-PLAN-B, pi-runtime-complete-20260720-PLAN-C, pi-runtime-complete-20260720-IMPL, pi-runtime-complete-20260720-REVIEW, CF-120..CF-133] }
+cf: { spec: CF-SPEC-7, tasks: [pi-runtime-complete-20260720-PLAN-A, pi-runtime-complete-20260720-PLAN-B, pi-runtime-complete-20260720-PLAN-C, pi-runtime-complete-20260720-IMPL, pi-runtime-complete-20260720-REVIEW, FIX-pi-runtime-complete-20260720-REVIEW-r1, CF-120..CF-133] }
 phase: "Phase 1 — private endpoint and lifecycle foundations"
-stage: S2-execute
+stage: S4-remediate
 status: in-progress
 blocked_on: null
-last: { agent: gpt-5.6-terra, at: 2026-07-20T03:11:00Z, ledger: L-11 }
-next_action: "Continue P1 with the supervised real Pi Agent worker and Python authority bridge; do not treat the retired router registration as production-loop completion."
+last: { agent: gpt-5.6-sol, at: 2026-07-20T03:24:43Z, ledger: L-13 }
+next_action: "Remediate F-1 through F-3 in FIX-pi-runtime-complete-20260720-REVIEW-r1, then run the conductor-created delta re-review."
 ```
 <!-- /STATUS BLOCK -->
 
@@ -390,6 +390,20 @@ integration, rollback, and exact full-test campaign. Detailed instructions live 
 
 **Phase summary:** Pending.
 
+## Phase 1 — private endpoint and lifecycle foundations
+
+### Review (Phase 1) — Findings register
+
+| ID | Sev | Dim | Where | Finding | CF task | Status |
+|---|---|---|---|---|---|---|
+| F-1 | Blocker | Product / Integration | `backend/app/api/routes/chat.py`; production Pi seams | The implementation stops at endpoint/telemetry foundations: the real Pi Agent Core worker and authority bridge, Pi-owned turn/tool loop, required governed integrations, and all 15 production-adapter scenarios remain absent. | FIX-pi-runtime-complete-20260720-REVIEW-r1 | open |
+| F-2 | Blocker | Security / Integration | `backend/app/api/routes/chat.py:199-204`, `backend/app/core/compute_registry_routing.py:154-190` | Endpoint resolution is validation-only; Pi chat still invokes the shared registry by model alias with strict project routing, which prioritizes an authorized same-model relay/browser donor. | FIX-pi-runtime-complete-20260720-REVIEW-r1 | open |
+| F-3 | Major | Tests | implementation evidence 343-346 | Verification covers only the resolver/drain foundation and omits the required production scenario, aggregate compute isolation, impacted-suite, lab/relay/benchmark/simulation, docs, security, and gate acceptance matrix. | FIX-pi-runtime-complete-20260720-REVIEW-r1 | open |
+
+**Remediation:** Pending `FIX-pi-runtime-complete-20260720-REVIEW-r1` and a conductor-created delta re-review.
+
+**Phase summary:** Review failed; endpoint resolution is a useful foundation but is neither a production Pi invocation path nor proof of API-versus-donor isolation.
+
 ## Summary (S5 — whole plan)
 
 Pending implementation, independent review, remediation, final evidence, and local
@@ -442,3 +456,9 @@ Did: Reconciled the original blocked Plan C scaffold after its governed repair l
 Result: The original `PLAN-C` dependency is fulfilled by `REPLAN-C-r2`, which won cross-judging 2-1 and received explicit owner approval. The original task was marked done only to release its pre-existing `PLAN-C -> IMPL` pipeline edge; its failed attempt remains recorded as blocked/canceled in actor and task history.
 Verified: Compass Forge evidence row 339 records `superseded_by=pi-runtime-complete-20260720-REPLAN-C-r2` and `owner_approved=true`; the conductor `approve` action selected `REPLAN-C-r2` as the governing plan.
 Next: Dispatch the independent code reviewer after the implementation task completes.
+
+### L-13 | 2026-07-20T03:24:43Z | S3-review | gpt-5.6-sol | reviewer | Phase 1 — private endpoint and lifecycle foundations <!-- bsc-ledger:pi-runtime-complete-20260720-REVIEW -->
+Did: Independently reviewed commits `78f00556..5e65e62e`, the implementer evidence, endpoint/telemetry tests, production chat invocation seam, shared ComputeRegistry routing contract, docs, and lifecycle status. Files touched: this lifecycle file only.
+Result: Fail verdict recorded on `pi-runtime-complete-20260720-REVIEW`; raised F-1 and F-2 Blockers plus F-3 Major and created `FIX-pi-runtime-complete-20260720-REVIEW-r1`. The private resolver validates identity but is not used to invoke Pi; selected chat remains on the old Python/shared-registry loop and can prefer an authorized same-model donor.
+Verified: `python -m pytest tests/test_pi_runtime_endpoints.py tests/test_compute_route_evidence_lifecycle.py tests/test_compute_registry_hardening.py::test_strict_project_model_routing_prefers_authorized_relay_over_local_duplicate -q` -> 4 passed; `python -m pytest tests/test_pi_replacement_candidate.py -q` -> 12 passed in 33.41s; `git diff --check 22d1b956..HEAD` -> passed; `compass-forge gate after --task pi-runtime-complete-20260720-REVIEW --summary` -> no new failures, inherited large-file debt only.
+Next: stage exit: remediate F-1 through F-3 under `FIX-pi-runtime-complete-20260720-REVIEW-r1`, then delta re-review the changed surface.
