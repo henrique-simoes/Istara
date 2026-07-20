@@ -6,11 +6,11 @@ item: pi-full-replacement
 branch: Review_pi_test
 cf: { spec: CF-SPEC-8, tasks: [pi-full-20260720-w0-IMPL, pi-full-20260720-w0-REVIEW] }
 phase: "W1 — dispatcher, Pi model management, and accounting"
-stage: S2-execute
+stage: S4-remediate
 status: in-progress
 blocked_on: null
-last: { agent: gpt-5.6-terra, at: 2026-07-20T20:13:44Z, ledger: L-15 }
-next_action: "Conduct the independent W1 code review of the dispatcher, Pi-only catalog, structured-repair boundary, and telemetry ledger."
+last: { agent: gpt-5.6-sol, at: 2026-07-20T20:22:38Z, ledger: L-16 }
+next_action: "Remediate F-W1-1 through F-W1-4, then run one bounded delta re-review after all four fixer tasks are terminal."
 ```
 <!-- /STATUS BLOCK -->
 
@@ -326,6 +326,17 @@ Verified: `python -m pytest tests/pi_production/test_w1_agentic_contract.py test
 Next: Independent W1 review; verify the generic seam signatures, fail-closed behavior,
 telemetry-safe identity fields, and the no-migration 87-site ratchet.
 
+### L-16 | 2026-07-20T20:22:38Z | S3-review | gpt-5.6-sol | reviewer | W1 <!-- bsc-ledger:pi-full-20260720-w1-REVIEW -->
+Did: Independently reviewed W1 commits `98a6b16e` and `16693c58` plus their recipe,
+generated-manifest, lifecycle, spec, master-plan, protocol, telemetry, endpoint-isolation,
+ratchet, tests, gate, and commit-discipline seams. No implementation code was changed.
+Result: Fail; opened F-W1-1 through F-W1-4 and created four barriered fixer tasks. The
+five-file commit ceiling, 87-site ratchet, same-model donor isolation, security benchmark,
+and existing faux/loopback runtime suite pass, but the W1 production contract is incomplete.
+Verified: `pytest -q tests/pi_production/test_w1_agentic_contract.py tests/pi_migration/test_count_to_zero.py tests/pi_production/test_same_model_donor_isolation.py` = 7 passed; `npm --prefix pi-runtime test` = 26 passed; `python scripts/security_benchmark.py --fail-on-threshold` = 28/28; adversarial static/in-process probe = reproduced missing dispatcher verbs, unbound legacy engine, ignored model capabilities, error-shaped structured failure, exact legacy usage mislabeled estimated, protocol v1, and absent worker structured fields; W1 commits = at most 5 files each. No server, external request, or model load was started.
+Next: Stage exit: fail verdict recorded; remediate all four finding tasks, then conductor
+creates one bounded delta re-review of the changed surfaces.
+
 ## W0 — hardening and evidence integrity
 
 **Frame/Plan:** Master plan §6 plus §12.2. Arm the deterministic inventory/ratchet before
@@ -367,6 +378,25 @@ as fully configured even when a spent category remains zero-rated, and the
 built-in `deepseek-v4-pro` defaults do not match the current official v4-pro
 cache-hit/cache-miss/output schedule. `FIX-REREV-pi-full-20260720-w0-REVIEW-r4`
 closed both gaps, and the bounded L-14 delta re-review passed with no new findings.
+
+**Phase summary:** Pending.
+
+## W1 — dispatcher, Pi model management, and accounting
+
+**Frame/Plan:** Master plan sections 4, 5, 7, and 12. Add the complete five-verb
+dispatcher, isolated Pi endpoint authority, production-real Pi and legacy seams, forced
+structured-output protocol, one-row usage accounting, and retain the armed 87-site ratchet.
+
+### Review (W1) — Findings register
+
+| ID | Sev | Dim | Where | Finding | CF task | Status |
+|---|---|---|---|---|---|---|
+| F-W1-1 | Blocker | Integration | `backend/app/core/agentic/dispatcher.py`; `backend/app/core/pi_runtime/{engine,model_manager}.py`; project/config seams | The dispatcher is not the required production choke point: `chat_turn`, `ensemble`, and `embed` are absent; the singleton has no real legacy executor; request/project precedence is not wired into calls or persisted on projects; PiModelManager is not used by the engine, lacks required catalog sources, and ignores capability filters; TurnParams are not forwarded. | FIX-pi-full-20260720-w1-REVIEW-r1-authority | open |
+| F-W1-2 | Blocker | Bugs | `backend/app/core/pi_runtime/{engine,protocol}.py`; `pi-runtime/src/{protocol,worker,session}.mjs` | The required forced-tool structured contract is absent: protocol remains v1, worker fields and both-side compatibility validation are missing, free-form JSON text is accepted, and a second invalid response returns an error-shaped value instead of raising typed fail-closed failure. | FIX-pi-full-20260720-w1-REVIEW-r1-structured | open |
+| F-W1-3 | Major | Data | `backend/app/core/agentic/usage_ledger.py`; telemetry persistence | The usage ledger is neither exact nor complete: provider-reported legacy usage defaults to `estimate=true`, absent usage is not estimated with the existing counter, exception paths record no row, required task/spine/node fields are absent, and the row is packed into the short identity-oriented `route_id` field. | FIX-pi-full-20260720-w1-REVIEW-r1-ledger | open |
+| F-W1-4 | Major | Docs | `tests/pi_production/test_w1_agentic_contract.py`; `docs/features/` | W1 coverage is self-consistent and misses the failing production contracts; no living feature page changed for this behavior, while only the generated manifest timestamp was refreshed. Contract-complete negative/non-faux verification and living feature documentation are required. | FIX-pi-full-20260720-w1-REVIEW-r1-docs-tests | open |
+
+**Remediation:** Pending all four finding tasks and one conductor-created delta re-review.
 
 **Phase summary:** Pending.
 
