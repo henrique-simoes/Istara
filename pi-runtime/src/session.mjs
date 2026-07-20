@@ -129,7 +129,11 @@ export class PiSession {
       : null;
     const maxWallClockMs = Number.isFinite(this._limits.max_wall_clock_ms) && this._limits.max_wall_clock_ms > 0
       ? this._limits.max_wall_clock_ms : null;
-    this._run = { runId, terminated: false, aborted: false, turns: 0, maxTurns: effectiveMaxTurns, budgetExceeded: false, forcedError: null, timeout: null };
+    // Cost is enforced cumulatively over the whole run: record where this run's
+    // assistant messages begin so settlement sums every turn's usage, not just
+    // the final assistant message (a tool loop emits several).
+    const startMessageCount = (this._agent && this._agent.state.messages.length) || 0;
+    this._run = { runId, terminated: false, aborted: false, turns: 0, maxTurns: effectiveMaxTurns, budgetExceeded: false, forcedError: null, timeout: null, startMessageCount };
     if (maxWallClockMs !== null) {
       this._run.timeout = setTimeout(() => this.failActiveRun("wall_clock_budget_exceeded"), maxWallClockMs);
     }
@@ -207,25 +211,63 @@ export class PiSession {
       this._frame("run.failed", { run_id: runId, error: String(errorMessage || (err && err.message) || "run_failed") });
       return;
     }
-    const usage = (assistant && assistant.usage) || {};
-    // Real bindings report cost via the provider usage; faux test bindings can
-    // script a deterministic per-run cost (forcedCostUsd) so the cost ceiling
-    // has a behavioral regression. Production bindings never set forcedCostUsd.
+    // Cumulative per-run usage: sum every assistant message this run produced
+    // (input/output tokens and priced cost), not just the last turn.
+    const runUsage = this._runUsage();
+    // Real bindings price usage via the provider model rates; faux test bindings
+    // can script a deterministic per-run cost (forcedCostUsd) so the cost
+    // ceiling has a behavioral regression. Production bindings never set it.
     const scriptedCost = this._binding && Number.isFinite(this._binding.forcedCostUsd) ? this._binding.forcedCostUsd : null;
-    const costUsd = scriptedCost !== null ? scriptedCost : (usage.cost && usage.cost.total) || 0;
-    if (Number.isFinite(this._limits.max_cost_usd) && costUsd > this._limits.max_cost_usd) {
-      this._frame("run.failed", { run_id: runId, error: "cost_budget_exceeded" });
-      return;
+    const costUsd = scriptedCost !== null ? scriptedCost : runUsage.cost;
+    if (Number.isFinite(this._limits.max_cost_usd)) {
+      // Fail closed: a real binding that spent tokens but carries no pricing
+      // reports $0, which cannot prove the run stayed within budget. Completing
+      // it would be fail-open, so surface the misconfiguration as a terminal.
+      if (
+        scriptedCost === null &&
+        this._binding && this._binding.isReal && !this._binding.pricingConfigured &&
+        (runUsage.input > 0 || runUsage.output > 0)
+      ) {
+        this._frame("run.failed", { run_id: runId, error: "cost_budget_unpriced" });
+        return;
+      }
+      if (costUsd > this._limits.max_cost_usd) {
+        this._frame("run.failed", { run_id: runId, error: "cost_budget_exceeded" });
+        return;
+      }
     }
     this._frame("run.completed", {
       run_id: runId,
       usage: {
-        input_tokens: usage.input || 0,
-        output_tokens: usage.output || 0,
+        input_tokens: runUsage.input,
+        output_tokens: runUsage.output,
         cost_usd: costUsd,
       },
       stop_reason: (assistant && assistant.stopReason) || "stop",
     });
+  }
+
+  /**
+   * Sum the usage of every assistant message produced during the active run
+   * (from the message index captured at prompt start). A tool loop emits one
+   * assistant message per turn, each with its own usage, so the per-run cost
+   * ceiling must aggregate them rather than reading only the final turn.
+   */
+  _runUsage() {
+    const messages = (this._agent && this._agent.state.messages) || [];
+    const start = this._run && Number.isInteger(this._run.startMessageCount) ? this._run.startMessageCount : 0;
+    let input = 0;
+    let output = 0;
+    let cost = 0;
+    for (let i = start; i < messages.length; i++) {
+      const message = messages[i];
+      if (!message || message.role !== "assistant") continue;
+      const usage = message.usage || {};
+      input += usage.input || 0;
+      output += usage.output || 0;
+      cost += (usage.cost && usage.cost.total) || 0;
+    }
+    return { input, output, cost };
   }
 
   _lastAssistant() {
