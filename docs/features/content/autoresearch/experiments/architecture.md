@@ -9,7 +9,7 @@ related_glossary: ["triangulation"]
 code_references: ["frontend/src/components/autoresearch/AutoresearchView.tsx", "backend/app/core/autoresearch_engine.py", "backend/app/core/autoresearch_runners/__init__.py", "backend/app/core/autoresearch_runners/question_bank.py"]
 api_references: ["backend/app/api/routes/autoresearch.py"]
 test_references: ["tests/test_autoresearch.py", "tests/test_project_scope_contracts.py"]
-last_verified: 2026-05-19
+last_verified: 2026-07-19
 compass: CF-SPEC-60 / CF-754; CF-SPEC-68 / CF-870; CF-SPEC-96 / CF-1226
 ---
 
@@ -38,6 +38,7 @@ Experiments configure and inspect automated research runs across strategies or p
 - `backend/app/api/routes/autoresearch.py`
 - Experiment list, start, and stop routes require `project_id` and enforce project access. Autoresearch engine records and broadcasts the experiment project id, and experiment history filters by `AutoresearchExperiment.project_id`.
 - Starting an experiment requires the requested project to be active and unpaused before the runner is constructed or scheduled. The engine records the active project owner for the whole run, including baseline measurement, and repeats the active-project check before baseline and iteration work so a paused or missing project cannot keep processing in the background.
+- A start request with `dry_run: true` is non-mutating for every caller, including callers that do not select the Pi replacement engine: it returns a dry-run response and never schedules a background loop. Pi-selected dry runs additionally record the governed Pi telemetry span.
 - The engine binds the authorized project id into each loop runner before baseline measurement. Question-bank runners then load and update `ResearchDeployment` rows by both deployment id and that bound project id, so a stale deployment id from another project cannot be measured, mutated, reverted, or sent into LLM evaluation.
 
 ## Architecture Notes

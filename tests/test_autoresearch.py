@@ -248,6 +248,43 @@ async def test_start_autoresearch_calls_engine_with_runner_and_clamped_iteration
 
 
 @pytest.mark.asyncio
+async def test_start_autoresearch_dry_run_without_pi_does_not_start_background_loop(monkeypatch):
+    from fastapi import BackgroundTasks
+    from app.api.routes import autoresearch as autoresearch_route
+
+    added: list[object] = []
+    settings.autoresearch_enabled = True
+
+    async def fake_project_scope(*args, **kwargs):
+        return "dry-run-project"
+
+    class FakeEngine:
+        is_running = False
+
+    background_tasks = BackgroundTasks()
+    background_tasks.add_task = lambda fn, *args, **kwargs: added.append((fn, args, kwargs))
+    monkeypatch.setattr(autoresearch_route, "_require_active_project_scope", fake_project_scope)
+    monkeypatch.setattr(autoresearch_route, "_get_engine", lambda: FakeEngine())
+
+    result = await autoresearch_route.start_experiment(
+        autoresearch_route.StartExperimentRequest(
+            loop_type="model_temp",
+            target="dry-run-target",
+            project_id="dry-run-project",
+            dry_run=True,
+        ),
+        SimpleNamespace(headers={}),
+        background_tasks,
+        None,
+    )
+
+    assert result["status"] == "dry_run"
+    assert result["pi_replacement"] is False
+    assert result["background_task_started"] is False
+    assert added == []
+
+
+@pytest.mark.asyncio
 async def test_start_autoresearch_rejects_paused_project(monkeypatch):
     await init_db()
     settings.team_mode = False

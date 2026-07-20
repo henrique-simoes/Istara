@@ -1,0 +1,3 @@
+{
+  "scope-boundary": "Review and complete the existing Pi replacement candidate only in the isolated replacement worktree. The required behavior is credential-free production-test readiness: prove Pi selection through the real chat/SSE, A2A, channel, telemetry, autoresearch dry-run, steering, source/evidence, memory/research-spine, and benchmark-client boundaries while preserving existing default Istara behavior. Keep the candidate opt-in and reversible; do not claim deployment readiness without live DeepSeek/provider, external-channel credentials, and production-like database/runtime evidence. Do not mutate the original checkout's application code or commit changes."
+}

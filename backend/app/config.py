@@ -13,13 +13,17 @@ _BACKEND_ENV_FILES = (
 )
 
 
-def _read_macos_keychain_secret(service: str) -> str:
+def _read_macos_keychain_secret(service: str, account: str = "") -> str:
     """Read a local secret from macOS Keychain without logging its value."""
     if not service or not Path("/usr/bin/security").exists():
         return ""
+    command = ["/usr/bin/security", "find-generic-password"]
+    if account:
+        command.extend(["-a", account])
+    command.extend(["-s", service, "-w"])
     try:
         result = subprocess.run(
-            ["/usr/bin/security", "find-generic-password", "-s", service, "-w"],
+            command,
             capture_output=True,
             text=True,
             timeout=3,
@@ -200,6 +204,14 @@ class Settings(BaseSettings):
     self_evolution_auto_promote: bool = False  # Auto-promote (vs user approval)
     autonomous_quality_agents_enabled: bool = False  # Dev/Admin QA loops only when explicitly enabled
 
+    # Pi replacement candidate (off unless explicitly selected by env/header).
+    pi_replacement_enabled: bool = False
+    pi_replacement_request_header: str = "x-istara-agent-engine"
+    pi_replacement_deepseek_base_url: str = "https://api.deepseek.com"
+    pi_replacement_deepseek_model: str = "deepseek-v4-pro"
+    pi_replacement_deepseek_keychain_service: str = "istara-pi-deepseek"
+    pi_replacement_deepseek_keychain_account: str = "openclaw"
+
     # Meta-Hyperagent (optional layer that tunes subsystem parameters)
     meta_hyperagent_enabled: bool = False
     meta_hyperagent_observation_interval_hours: int = 6
@@ -234,6 +246,13 @@ class Settings(BaseSettings):
             return configured_key
         return _read_macos_keychain_secret(
             self.llm_fallback_api_key_keychain_service.strip()
+        )
+
+    def resolve_pi_replacement_deepseek_api_key(self) -> str:
+        """Return the Pi candidate DeepSeek key from the configured Keychain item."""
+        return _read_macos_keychain_secret(
+            self.pi_replacement_deepseek_keychain_service.strip(),
+            self.pi_replacement_deepseek_keychain_account.strip(),
         )
 
     def ensure_dirs(self) -> None:

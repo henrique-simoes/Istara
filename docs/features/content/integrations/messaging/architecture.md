@@ -58,6 +58,8 @@ Messaging connects external conversation channels such as team or participant me
 - `backend/app/services/channel_service.py` filters message and conversation rows by the same project, stamps new recorded messages with the owning channel instance project when a caller does not already provide one, and rejects explicit project-id claims that do not match the channel instance.
 - Inbound message routing resolves active deployments only within the receiving channel instance's project and only when the deployment explicitly lists that channel instance, so an active deployment from another project or an unbound deployment cannot receive participant content.
 - Inbound processors drop traffic for unscoped, missing, or paused projects before persistence, adaptive deployment routing, LLM calls, or improvement-governance evidence are created.
+- The Pi replacement benchmark path adds `pi_local`, a credential-free adapter that starts through the normal channel instance lifecycle and injects messages through `ChannelRouter` and `process_inbound_channel_message`. It is local-only: no provider is started and no external credentials or webhooks are used. Injection is dropped after the adapter stops, and project cleanup unregisters the adapter and clears its router callback. Pi responses are emitted only when candidate metadata or the opt-in flag is present, so live Telegram/WhatsApp/Google Chat behavior remains unchanged.
+- A `pi_local` instance derives the destination project exclusively from its owning channel instance; caller metadata cannot redirect an inbound message or candidate telemetry into another project.
 - Simulation and benchmark channel lifecycle calls must include the active project id on by-id detail, health, message, conversation, lifecycle, and cleanup URLs, matching the UI and API authorization path.
 - The frontmatter and manifest entries are the durable contract for agents updating this page after code changes.
 - When the referenced component, store, route, agent, skill, or test behavior changes, regenerate and validate the feature documentation.
@@ -69,6 +71,7 @@ Messaging connects external conversation channels such as team or participant me
 ## Tests And Verification
 
 - `tests/test_channels.py`
+- `tests/test_pi_replacement_candidate.py`
 - `tests/test_channel_inbound.py`
 - `tests/test_project_scope_contracts.py`
 - `tests/test_integration_simulation_scope.py`
@@ -84,7 +87,7 @@ Messaging connects external conversation channels such as team or participant me
 
 ## Compass Evidence
 
-- Spec/task: CF-SPEC-53 / CF-657; CF-SPEC-60 / CF-762; CF-SPEC-60 / CF-773; CF-SPEC-60 / CF-776; CF-SPEC-65 / CF-842; CF-SPEC-75 / CF-964; CF-SPEC-82 / CF-1061; CF-SPEC-93 / CF-1184
+- Spec/task: CF-SPEC-53 / CF-657; CF-SPEC-60 / CF-762; CF-SPEC-60 / CF-773; CF-SPEC-60 / CF-776; CF-SPEC-65 / CF-842; CF-SPEC-75 / CF-964; CF-SPEC-82 / CF-1061; CF-SPEC-93 / CF-1184; CF-SPEC-3 / CF-38
 - Inventory source: `docs/features/inventory.json`
 
 ## When To Update

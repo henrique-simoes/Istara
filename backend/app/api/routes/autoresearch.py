@@ -15,6 +15,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
+from app.core.pi_replacement import pi_replacement_requested, record_pi_span
 from app.core.permissions import (
     get_active_project_or_404,
     require_global_admin,
@@ -47,6 +48,7 @@ class StartExperimentRequest(BaseModel):
     target: str  # skill name, agent id, deployment id, or component path
     max_iterations: int = 20
     project_id: str = ""
+    dry_run: bool = False
 
 
 class ConfigUpdate(BaseModel):
@@ -607,8 +609,34 @@ async def start_experiment(
             detail="Autoresearch is disabled. Enable it first via /api/autoresearch/toggle.",
         )
 
-    runner = _get_runner(body.loop_type)
     max_iterations = _clamp_iterations(body.max_iterations)
+    if body.dry_run:
+        pi_replacement = pi_replacement_requested(request)
+        if pi_replacement:
+            await record_pi_span(
+                operation="pi_candidate_autoresearch_dry_run",
+                project_id=scoped_project_id,
+                agent_id="autoresearch",
+                event_kind="autoresearch_governance",
+                route_id=f"{body.loop_type}:{body.target}",
+            )
+        return {
+            "status": "dry_run",
+            "loop_type": body.loop_type,
+            "target": body.target,
+            "project_id": scoped_project_id,
+            "max_iterations": max_iterations,
+            "pi_replacement": pi_replacement,
+            "production_mutation_allowed": False,
+            "background_task_started": False,
+            "proposal": {
+                "hypothesis": "Measure Pi replacement candidate without mutating production autoresearch state.",
+                "governance_required": True,
+                "report_evidence": False,
+            },
+        }
+
+    runner = _get_runner(body.loop_type)
 
     async def _run_loop():
         try:

@@ -264,6 +264,7 @@
 <li><code>backend/app/api/routes/autoresearch.py</code></li>
 <li>Experiment list, start, and stop routes require <code>project_id</code> and enforce project access. Autoresearch engine records and broadcasts the experiment project id, and experiment history filters by <code>AutoresearchExperiment.project_id</code>.</li>
 <li>Starting an experiment requires the requested project to be active and unpaused before the runner is constructed or scheduled. The engine records the active project owner for the whole run, including baseline measurement, and repeats the active-project check before baseline and iteration work so a paused or missing project cannot keep processing in the background.</li>
+<li>A start request with <code>dry_run: true</code> is non-mutating for every caller, including callers that do not select the Pi replacement engine: it returns a dry-run response and never schedules a background loop. Pi-selected dry runs additionally record the governed Pi telemetry span.</li>
 <li>The engine binds the authorized project id into each loop runner before baseline measurement. Question-bank runners then load and update <code>ResearchDeployment</code> rows by both deployment id and that bound project id, so a stale deployment id from another project cannot be measured, mutated, reverted, or sent into LLM evaluation.</li>
 </ul>
 <h2 id="architecture-notes">Architecture Notes</h2>

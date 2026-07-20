@@ -1,0 +1,4 @@
+{
+  "rollback": "Keep Pi behavior explicitly opt-in via the existing header, metadata, and environment selection. If a Pi test or review fails, disable that selection; no default Istara route, database migration, external channel state, global routing registry, or origin branch is changed. Revert only the local Review_pi_test commits after evidence is preserved.",
+  "docs": "Update the living feature documentation for chat, A2A, compute/model routing, and messaging; regenerate and check the feature-doc site/manifest; add the fresh Build Stream lifecycle and local Review_pi_test review packet."
+}
