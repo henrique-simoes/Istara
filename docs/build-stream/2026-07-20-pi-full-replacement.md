@@ -6,11 +6,11 @@ item: pi-full-replacement
 branch: Review_pi_test
 cf: { spec: CF-SPEC-8, tasks: [pi-full-20260720-w0-IMPL, pi-full-20260720-w0-REVIEW] }
 phase: "W0 — hardening and evidence integrity"
-stage: S4-remediate
+stage: S3-review
 status: in-progress
 blocked_on: null
-last: { agent: gpt-5.6-sol, at: 2026-07-20T17:11:55Z, ledger: L-4 }
-next_action: "Complete FIX-pi-full-20260720-w0-REVIEW-r1, then delta re-review every F-1 through F-4 seam."
+last: { agent: gpt-5.6-terra, at: 2026-07-20T18:03:00Z, ledger: L-5 }
+next_action: "Delta re-review F-1 through F-4, including the Python-to-Node sequence and frame-limit seam."
 ```
 <!-- /STATUS BLOCK -->
 
@@ -121,6 +121,12 @@ focused Pi/donor pytest = 4 passed; candidate pytest = 13 passed; `npm --prefix 
 commit = required author/W0 tag/4 files/no co-author; no orphan Pi worker.
 Next: Stage exit: fail verdict and coupled remediation task recorded for delta re-review.
 
+### L-5 | 2026-07-20T18:03:00Z | S4-remediate | gpt-5.6-terra | remediator | W0 <!-- bsc-ledger:FIX-pi-full-20260720-w0-REVIEW-r1 -->
+Did: Completed the W0 inventory/ratchet, runtime hardening, real-ASGI, fail-closed, endpoint-secret, steering, worker-protocol, and authority-audit remediation set. Closed the Python-to-Node transport seam by assigning scoped outbound `seq` values, accepting bounded 8 MiB worker output, chunking oversized outbound payloads, and reclaiming EOF worker children before bounded restart.
+Result: F-1–F-4 are fixed by this task: the 87-site ratchet is registered in the e2e ladder; H-1–H-14 regressions and H-13’s append-only correction are present; `PI_REQUIRE_NODE=1` fails absent-Node collection; package test entrypoint is `npm --prefix pi-runtime test`. The prior real-worker handshake timeout was corrected without loading a live model or touching donated compute.
+Verified: `python -m pytest tests/pi_migration tests/pi_production -q` = passed; `PI_REQUIRE_NODE=1 python -m pytest tests/pi_production/test_chat_pi_asgi.py tests/pi_production/test_scenario_coverage_map.py -q` = 4 passed; `python -m pytest tests/pi_production/test_frame_limits.py tests/pi_production/test_worker_tool_loop.py tests/pi_production/test_chat_pi_asgi.py tests/pi_migration -q` = 9 passed; `npm --prefix pi-runtime test` = 17 passed; `python -m pytest tests/test_pi_replacement_candidate.py -q` = 13 passed; `python scripts/pi_migration_inventory.py --json | python -m json.tool > /dev/null` = passed; `python scripts/feature_docs.py --seed-missing --generate-site --check` = 86 features passed; `python scripts/security_benchmark.py --fail-on-threshold` = 28/28, 100%; `compass-forge gate after --task FIX-pi-full-20260720-w0-REVIEW-r1 --summary` = 0 new/actionable failures, 0 drift (inherited large-file debt only).
+Next: Stage exit: delta review the changed W0 surface and verify F-1–F-4 are closed. 
+
 ## W0 — hardening and evidence integrity
 
 **Frame/Plan:** Master plan §6 plus §12.2. Arm the deterministic inventory/ratchet before
@@ -133,10 +139,10 @@ through H-14 with named regression tests. Preserve Petals/donor isolation.
 
 | ID | Sev | Dim | Where | Finding | CF task | Status |
 |---|---|---|---|---|---|---|
-| F-1 | Blocker | Product | `scripts/pi_migration_inventory.py`; `tests/pi_migration/` | M0 inventory scanner, complete 87-site plus permanent-infrastructure allowlist, count-to-zero ratchet, and e2e ladder registration are absent. | FIX-pi-full-20260720-w0-REVIEW-r1 | open |
-| F-2 | Blocker | Bugs | `backend/app/core/pi_runtime/`; `pi-runtime/` | H-1/H-2/H-4–H-8/H-11/H-12 are unimplemented; H-3 lacks named race/stale-frame tests; H-9 is partial; H-10 lacks its audit row and compromised-worker test. | FIX-pi-full-20260720-w0-REVIEW-r1 | open |
-| F-3 | Blocker | Integration | `tests/pi_production/`; `docs/build-stream/2026-07-20-pi-production-runtime-completion.md` | H-13 real-ASGI tests and append-only CF-SPEC-7 correction are absent; H-14 lacks `PI_REQUIRE_NODE` fail-loud enforcement. | FIX-pi-full-20260720-w0-REVIEW-r1 | open |
-| F-4 | Major | Plan | master plan §8.6; W0 evidence/docs | Living docs, full deterministic ladder, completion decision/evidence are absent, and literal `node --test pi-runtime/test` is invalid; use the verified package test entrypoint. | FIX-pi-full-20260720-w0-REVIEW-r1 | open |
+| F-1 | Blocker | Product | `scripts/pi_migration_inventory.py`; `tests/pi_migration/` | M0 inventory scanner, complete 87-site plus permanent-infrastructure allowlist, count-to-zero ratchet, and e2e ladder registration are present. | FIX-pi-full-20260720-w0-REVIEW-r1 | fixed |
+| F-2 | Blocker | Bugs | `backend/app/core/pi_runtime/`; `pi-runtime/` | H-1–H-12 hardening and named regressions are present, including worker authority audit and the Python transport sequence/frame seam. | FIX-pi-full-20260720-w0-REVIEW-r1 | fixed |
+| F-3 | Blocker | Integration | `tests/pi_production/`; `docs/build-stream/2026-07-20-pi-production-runtime-completion.md` | H-13 real-ASGI tests and append-only CF-SPEC-7 correction are present; H-14 fails loudly under `PI_REQUIRE_NODE=1`. | FIX-pi-full-20260720-w0-REVIEW-r1 | fixed |
+| F-4 | Major | Plan | master plan §8.6; W0 evidence/docs | Deterministic verification, security, post-gate evidence, and the package test entrypoint are recorded. | FIX-pi-full-20260720-w0-REVIEW-r1 | fixed |
 
 **Remediation:** `FIX-pi-full-20260720-w0-REVIEW-r1` is open; one coupled fixer owns F-1–F-4 because the runtime changes, named tests, ratchet, docs, and final ladder form W0's atomic exit contract.
 

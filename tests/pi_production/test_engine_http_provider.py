@@ -6,7 +6,6 @@ identity, and records endpoint-identity-only telemetry — never ComputeRegistry
 from __future__ import annotations
 
 import json
-import shutil
 import threading
 import uuid
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -20,7 +19,9 @@ from app.core.pi_runtime.supervisor import PiRuntimeSupervisor
 from app.models.database import async_session, init_db
 from app.models.telemetry_span import TelemetrySpan
 
-pytestmark = pytest.mark.skipif(shutil.which("node") is None, reason="node runtime not available")
+from .harness import requires_node
+
+pytestmark = requires_node
 
 
 class _OpenAIStubHandler(BaseHTTPRequestHandler):

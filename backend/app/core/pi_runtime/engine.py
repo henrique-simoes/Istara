@@ -29,7 +29,7 @@ import hashlib
 import json
 import logging
 import uuid
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import Any, AsyncIterator, Awaitable, Callable
 
 from app.core.telemetry import telemetry_recorder
@@ -41,7 +41,7 @@ from .endpoints import (
     ResolvedPiEndpoint,
 )
 from .supervisor import PiRuntimeSupervisor, get_supervisor
-from .tools import build_tool_catalog
+from .tools import build_tool_catalog, catalog_tool_names
 
 logger = logging.getLogger(__name__)
 
@@ -95,11 +95,19 @@ AUTORESEARCH_TOOLS: tuple[str, ...] = (
 
 @dataclass(frozen=True)
 class SteeringBinding:
-    """Bind a live Pi turn to a project-scoped steering queue."""
+    """Bind a live Pi turn to a project-scoped steering queue.
+
+    Keyed ``(agent_id, project_id, session_key)``: each live turn marks and
+    polls its own binding, so concurrent turns of the same agent never clear
+    each other's working flag (no spurious aborts). ``session_key`` may be
+    None at construction; the engine fills in the resolved session key when
+    the turn starts.
+    """
 
     agent_id: str
     project_id: str
     manager: Any  # app.core.steering.SteeringManager (duck-typed to avoid a cycle)
+    session_key: str | None = None
 
 
 def _session_revision(history: list[dict[str, Any]], endpoint: ResolvedPiEndpoint) -> str:
@@ -176,36 +184,49 @@ class PiExecutionService:
         """
         endpoint = self._resolver.resolve(endpoint_id)
         catalog = build_tool_catalog(allowed_tools)
-        catalog_names = {entry["name"] for entry in catalog}
+        catalog_names = catalog_tool_names(allowed_tools)
         key = session_key or f"pi-{operation}-{uuid.uuid4().hex}"
         revision = _session_revision(history, endpoint)
         sup = self._sup()
 
         async def tool_handler(name: str, args: dict[str, Any]) -> dict[str, Any]:
             # Authority round-trip: authenticated scope is re-injected here; the
-            # model cannot set project_id/agent_id.
+            # model cannot set project_id/agent_id. The Python-side allowlist is
+            # enforced against the run's catalog: a compromised or buggy worker
+            # requesting an out-of-catalog tool gets a structured rejection and
+            # an audit row, never an executed tool (B-12).
             if name not in catalog_names:
                 logger.warning("pi-runtime: rejected out-of-catalog tool %s for %s", name, operation)
-                return {"ok": False, "error": "tool_not_allowed"}
+                await self._record_tool_rejection(endpoint, project_id, agent_id, name, operation)
+                return {"ok": False, "error": "tool_not_allowed", "tool": name}
             result = await tool_executor(name, args, project_id, agent_id)
             return _normalize_tool_result(result)
 
         await sup.ensure_started()
-        await sup.open_session(
-            key,
-            system_prompt=system_prompt,
-            history=history,
-            revision=revision,
-            catalog=catalog,
-        )
         terminal: dict[str, Any] | None = None
         steer_task: asyncio.Task | None = None
         steering_bound = False
+        session_opened = False
         try:
+            # The full turn — including the session open — lives inside
+            # try/finally so a failed open never leaks a session queue (B-7).
+            await sup.open_session(
+                key,
+                system_prompt=system_prompt,
+                history=history,
+                revision=revision,
+                catalog=catalog,
+            )
+            session_opened = True
             await sup.bind_provider(key, _bind_payload(endpoint))
             if steering is not None:
+                # Bind this turn's own (agent_id, project_id, session_key) key —
+                # the pump polls its own binding, never a global slot (B-5).
+                steering = replace(steering, session_key=steering.session_key or key)
                 steering_bound = True
-                await steering.manager.mark_working(steering.agent_id, project_id=steering.project_id)
+                await steering.manager.mark_working(
+                    steering.agent_id, project_id=steering.project_id, session_key=steering.session_key
+                )
                 steer_task = asyncio.create_task(self._pump_steering(sup, key, steering))
             async for frame in sup.run_turn(key, user_text, tool_handler):
                 event = _map_frame(frame, endpoint)
@@ -223,13 +244,16 @@ class PiExecutionService:
                     pass
             if steering_bound:
                 try:
-                    await steering.manager.mark_idle(steering.agent_id, project_id=steering.project_id)
+                    await steering.manager.mark_idle(
+                        steering.agent_id, project_id=steering.project_id, session_key=steering.session_key
+                    )
                 except Exception:  # pragma: no cover - teardown best effort
                     logger.debug("pi-runtime: steering mark_idle failed")
-            try:
-                await sup.close_session(key)
-            except Exception:  # pragma: no cover - teardown best effort
-                logger.debug("pi-runtime: session close failed for %s", key)
+            if session_opened:
+                try:
+                    await sup.close_session(key)
+                except Exception:  # pragma: no cover - teardown best effort
+                    logger.debug("pi-runtime: session close failed for %s", key)
             await self._record_turn_telemetry(endpoint, project_id, agent_id, terminal, operation)
 
     async def _pump_steering(
@@ -238,8 +262,11 @@ class PiExecutionService:
         """While a turn is live, drain the steering queues into the worker.
 
         Queued steering messages map to ``turn.steer`` (delivered once), follow
-        ups to ``turn.follow_up``; an external abort (``is_working`` cleared)
-        maps to ``turn.abort`` — the worker then emits exactly one ``run.aborted``.
+        ups to ``turn.follow_up``; an external abort (this turn's own
+        ``(agent_id, project_id, session_key)`` binding cleared) maps to
+        ``turn.abort`` — the worker then emits exactly one ``run.aborted``.
+        Another concurrent turn of the same agent finishing must never read as
+        an abort here: only this binding's working flag is polled.
         """
         mgr = steering.manager
         aid, pid = steering.agent_id, steering.project_id
@@ -249,8 +276,7 @@ class PiExecutionService:
                     await sup.steer(session_key, getattr(msg, "message", str(msg)))
                 for msg in await mgr.get_follow_up(aid, project_id=pid):
                     await sup.follow_up(session_key, getattr(msg, "message", str(msg)))
-                status = mgr.get_status(aid, project_id=pid)
-                if not status.get("is_working"):
+                if not mgr.is_binding_working(aid, project_id=pid, session_key=steering.session_key):
                     await sup.abort(session_key)
                     return
                 await asyncio.sleep(0.05)
@@ -445,11 +471,55 @@ class PiExecutionService:
             },
         }
 
-    def steering_binding(self, *, agent_id: str, project_id: str) -> SteeringBinding:
-        """Build a steering binding from the process-wide steering manager."""
+    def steering_binding(
+        self, *, agent_id: str, project_id: str, session_key: str | None = None
+    ) -> SteeringBinding:
+        """Build a steering binding from the process-wide steering manager.
+
+        ``session_key`` is optional: when omitted the engine binds the resolved
+        session key at turn start, so each live turn owns a distinct
+        ``(agent_id, project_id, session_key)`` binding.
+        """
         from app.core.steering import steering_manager
 
-        return SteeringBinding(agent_id=agent_id, project_id=project_id, manager=steering_manager)
+        return SteeringBinding(
+            agent_id=agent_id, project_id=project_id, manager=steering_manager, session_key=session_key
+        )
+
+    async def _record_tool_rejection(
+        self,
+        endpoint: ResolvedPiEndpoint,
+        project_id: str,
+        agent_id: str,
+        tool_name: str,
+        operation: str,
+    ) -> None:
+        """Audit row for a rejected out-of-catalog tool call (B-12).
+
+        A compromised worker must leave a durable trace: every allowlist
+        rejection lands in the telemetry span store with the endpoint identity
+        only (never URL/key material), mirroring ``_record_turn_telemetry``.
+        """
+        identity = endpoint.telemetry_identity()  # endpoint_id / provider_kind / model only
+        try:
+            await telemetry_recorder.record_span(
+                trace_id=f"pi-{uuid.uuid4().hex}",
+                operation=operation,
+                model_name=endpoint.model,
+                agent_id=agent_id,
+                project_id=project_id,
+                duration_ms=0.0,
+                status="error",
+                error_type="tool_not_allowed",
+                error_message=f"out-of-catalog tool rejected: {tool_name}",
+                event_kind="pi_tool_authority_rejection",
+                route_id=json.dumps(identity, sort_keys=True),
+                tool_name=tool_name,
+                tool_success=False,
+                source="pi-runtime",
+            )
+        except Exception:  # pragma: no cover - audit is never load-bearing
+            logger.debug("pi-runtime: tool rejection audit record failed")
 
     async def _record_turn_telemetry(
         self,

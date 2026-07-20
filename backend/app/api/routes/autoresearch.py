@@ -646,6 +646,7 @@ async def start_experiment(
             PiRuntimeTurnError,
         )
         from app.core.pi_runtime.seams import run_pi_governed_autoresearch
+        from app.core.pi_runtime.supervisor import PiWorkerError
 
         try:
             proposal = await run_pi_governed_autoresearch(
@@ -664,6 +665,13 @@ async def start_experiment(
             raise HTTPException(
                 status_code=503,
                 detail=f"Pi runtime turn failed: {exc}",
+            )
+        except (PiWorkerError, TimeoutError) as exc:
+            # Fail closed (H-9): a dead/busy worker or a turn timeout is a typed
+            # 503, never an uncaught 500.
+            raise HTTPException(
+                status_code=503,
+                detail=f"Pi runtime worker unavailable: {exc}",
             )
         proposal["max_iterations"] = max_iterations
         return proposal

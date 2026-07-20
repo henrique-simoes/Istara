@@ -6,14 +6,14 @@
 import { Agent } from "@earendil-works/pi-agent-core";
 import { buildProviderBinding } from "./provider.mjs";
 import { buildAgentTools } from "./tools.mjs";
-import { LIMITS } from "./protocol.mjs";
+import { LIMITS, PROTOCOL_VERSION } from "./protocol.mjs";
 
 function nowTs() {
   return Date.now();
 }
 
 export class PiSession {
-  constructor({ sessionKey, systemPrompt, history, revision, catalog, emit }) {
+  constructor({ sessionKey, systemPrompt, history, revision, catalog, limits, emit }) {
     this.sessionKey = sessionKey;
     this.systemPrompt = systemPrompt || "";
     this.revision = revision ?? null;
@@ -29,15 +29,16 @@ export class PiSession {
         timestamp: nowTs(),
       }));
     this._catalog = catalog || [];
-    this._binding = null; // {models, model, dispose}
+    this._limits = limits || {}; // {max_turns?} — session-level defaults
+    this._binding = null; // {models, model, params, stream, dispose}
     this._agent = null;
     this._pendingTools = new Map(); // tool_call_id -> resolve
-    this._run = null; // {runId, terminated, aborted}
+    this._run = null; // {runId, terminated, aborted, turns, maxTurns, budgetExceeded, forcedError}
     this._tools = buildAgentTools(this._catalog, (id, name, args) => this._requestToolCall(id, name, args));
   }
 
   _frame(type, extra) {
-    this._emit({ v: 1, type, session_key: this.sessionKey, ...extra });
+    this._emit({ v: PROTOCOL_VERSION, type, session_key: this.sessionKey, ...extra });
   }
 
   _requestToolCall(toolCallId, name, args) {
@@ -79,8 +80,10 @@ export class PiSession {
         tools: this._tools,
         messages: this._history,
       },
-      // Always resolve the current models collection so re-binds take effect.
-      streamFn: (model, context, options) => this._binding.models.streamSimple(model, context, options),
+      // Always resolve the current binding so re-binds take effect. The
+      // binding's stream applies endpoint params (temperature/maxTokens/
+      // reasoning/timeoutMs/maxRetries) and the guarded retry budget.
+      streamFn: (model, context, options) => this._binding.stream(model, context, options),
       sessionId: this.sessionKey,
       toolExecution: "sequential",
     });
@@ -91,6 +94,17 @@ export class PiSession {
   _onAgentEvent(event) {
     if (!this._run) return;
     const runId = this._run.runId;
+    if (event.type === "turn_start") {
+      // Worker-side turn budget: count turn starts within the run and abort
+      // once the budget is exceeded; settlement emits run.failed with
+      // turn_budget_exceeded.
+      this._run.turns += 1;
+      if (this._run.maxTurns !== null && this._run.turns > this._run.maxTurns) {
+        this._run.budgetExceeded = true;
+        if (this._agent) this._agent.abort();
+      }
+      return;
+    }
     if (event.type === "message_update") {
       const ame = event.assistantMessageEvent;
       if (ame && ame.type === "text_delta" && ame.delta) {
@@ -101,7 +115,7 @@ export class PiSession {
     }
   }
 
-  async prompt(runId, text) {
+  async prompt(runId, text, maxTurns) {
     if (!this._agent) {
       this._frame("run.failed", { run_id: runId, error: "no_provider_bound" });
       return;
@@ -110,7 +124,10 @@ export class PiSession {
       this._frame("run.failed", { run_id: runId, error: "session_busy" });
       return;
     }
-    this._run = { runId, terminated: false, aborted: false };
+    const effectiveMaxTurns = Number.isInteger(maxTurns) && maxTurns > 0 ? maxTurns
+      : Number.isInteger(this._limits.max_turns) && this._limits.max_turns > 0 ? this._limits.max_turns
+      : null;
+    this._run = { runId, terminated: false, aborted: false, turns: 0, maxTurns: effectiveMaxTurns, budgetExceeded: false, forcedError: null };
     this._frame("run.started", { run_id: runId });
     try {
       await this._agent.prompt(text);
@@ -137,6 +154,20 @@ export class PiSession {
     if (this._agent) this._agent.abort();
   }
 
+  /**
+   * Terminate the active run with a run-scoped failure (used for inbound
+   * protocol violations that cannot be attributed finer than the session).
+   * Returns true when a run was actually terminated.
+   */
+  failActiveRun(error) {
+    if (!this._run || this._run.terminated) return false;
+    const runId = this._run.runId;
+    this._run.forcedError = error;
+    if (this._agent) this._agent.abort();
+    this._settleRun(runId);
+    return true;
+  }
+
   _settleRun(runId, err) {
     if (!this._run || this._run.runId !== runId || this._run.terminated) return;
     this._run.terminated = true;
@@ -146,7 +177,16 @@ export class PiSession {
       this._pendingTools.delete(id);
     }
     const assistant = this._lastAssistant();
-    const errorMessage = this._agent.state.errorMessage;
+    // The agent may already be gone (concurrent session.close); never deref it blindly.
+    const errorMessage = this._agent ? this._agent.state.errorMessage : null;
+    if (this._run.budgetExceeded) {
+      this._frame("run.failed", { run_id: runId, error: "turn_budget_exceeded" });
+      return;
+    }
+    if (this._run.forcedError) {
+      this._frame("run.failed", { run_id: runId, error: this._run.forcedError });
+      return;
+    }
     if (this._run.aborted) {
       this._frame("run.aborted", { run_id: runId });
       return;

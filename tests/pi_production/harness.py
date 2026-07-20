@@ -10,6 +10,7 @@ no orphan process. (The real provider HTTP stack is proven separately in
 
 from __future__ import annotations
 
+import os
 import shutil
 
 import pytest
@@ -18,8 +19,20 @@ from app.core.pi_runtime.endpoints import ResolvedPiEndpoint
 from app.core.pi_runtime.engine import PiExecutionService
 from app.core.pi_runtime.supervisor import PiRuntimeSupervisor
 
+_NODE_AVAILABLE = shutil.which("node") is not None
+
+if not _NODE_AVAILABLE and os.environ.get("PI_REQUIRE_NODE") == "1":
+    # CI sets PI_REQUIRE_NODE=1 to guarantee the real node worker is exercised.
+    # A missing runtime then is a harness misconfiguration, not an optional
+    # skip — fail loudly at collection instead of silently green-washing.
+    pytest.fail(
+        "PI_REQUIRE_NODE=1 is set but the node runtime was not found on PATH; "
+        "tests/pi_production scenario tests must run the real node worker.",
+        pytrace=False,
+    )
+
 requires_node = pytest.mark.skipif(
-    shutil.which("node") is None, reason="node runtime not available"
+    not _NODE_AVAILABLE, reason="node runtime not available"
 )
 
 

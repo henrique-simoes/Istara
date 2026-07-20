@@ -12,7 +12,6 @@ facade.
 from __future__ import annotations
 
 import json
-import shutil
 import threading
 import uuid
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -23,7 +22,9 @@ from app.core.pi_runtime.endpoints import ResolvedPiEndpoint
 from app.core.pi_runtime.engine import PiExecutionService
 from app.core.pi_runtime.supervisor import PiRuntimeSupervisor
 
-pytestmark = pytest.mark.skipif(shutil.which("node") is None, reason="node runtime not available")
+from .harness import requires_node
+
+pytestmark = requires_node
 
 # The structured-output "schema contract": the assistant must emit a JSON object
 # carrying exactly these keys; anything else is rejected at the boundary.

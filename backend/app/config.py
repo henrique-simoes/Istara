@@ -1,6 +1,8 @@
 """Istara application configuration."""
 
+import os
 from pathlib import Path
+import re
 import subprocess
 from typing import Literal
 
@@ -61,6 +63,33 @@ def _read_macos_keychain_secret(service: str, account: str = "") -> str:
     if result.returncode != 0:
         return ""
     return result.stdout.strip()
+
+
+def _pi_endpoint_secret_env_name(endpoint_id: str) -> str:
+    """Return the env var that supplies a Pi endpoint secret without Keychain."""
+    slug = re.sub(r"[^A-Za-z0-9]+", "_", endpoint_id).strip("_").upper()
+    return f"ISTARA_PI_SECRET_{slug}"
+
+
+def _read_pi_endpoint_secret(
+    endpoint_id: str,
+    service: str,
+    account: str = "",
+    *,
+    keychain_reader=None,
+) -> str:
+    """Read a Pi endpoint secret: ``ISTARA_PI_SECRET_<ID>`` env first, then Keychain.
+
+    Parity with ``resolve_llm_fallback_api_key``: a configured environment value
+    wins, so non-macOS hosts (no ``/usr/bin/security``) can still bind endpoints.
+    *keychain_reader* lets the caller keep its own import seam; the secret value
+    is never logged.
+    """
+    env_value = os.environ.get(_pi_endpoint_secret_env_name(endpoint_id), "").strip()
+    if env_value:
+        return env_value
+    reader = keychain_reader or _read_macos_keychain_secret
+    return reader(service, account)
 
 
 class Settings(BaseSettings):
@@ -241,6 +270,8 @@ class Settings(BaseSettings):
     # JSON-compatible settings input.  Empty preserves the existing default
     # endpoint without registering it as donated/shared compute.
     pi_api_endpoints: list[PiApiEndpoint] = []
+    # Bounded Pi runtime worker pool size (round-robin by session_key hash).
+    pi_worker_pool_size: int = 2
 
     # Meta-Hyperagent (optional layer that tunes subsystem parameters)
     meta_hyperagent_enabled: bool = False
