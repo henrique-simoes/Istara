@@ -4,13 +4,13 @@
 ```yaml
 item: pi-production-runtime-completion
 branch: Review_pi_test
-cf: { spec: CF-SPEC-7, tasks: [pi-runtime-complete-20260720-PLAN-A, pi-runtime-complete-20260720-PLAN-B, pi-runtime-complete-20260720-PLAN-C, pi-runtime-complete-20260720-IMPL, pi-runtime-complete-20260720-REVIEW, FIX-pi-runtime-complete-20260720-REVIEW-r1, CF-120..CF-133] }
+cf: { spec: CF-SPEC-7, tasks: [pi-runtime-complete-20260720-PLAN-A, pi-runtime-complete-20260720-PLAN-B, pi-runtime-complete-20260720-PLAN-C, pi-runtime-complete-20260720-IMPL, pi-runtime-complete-20260720-REVIEW, FIX-pi-runtime-complete-20260720-REVIEW-r1, REREV-pi-runtime-complete-20260720-REVIEW-r1, FIX-REREV-pi-runtime-complete-20260720-REVIEW-r1-F1, FIX-REREV-pi-runtime-complete-20260720-REVIEW-r1-F2, FIX-REREV-pi-runtime-complete-20260720-REVIEW-r1-F3, CF-120..CF-133] }
 phase: "Phase 1 — private endpoint and lifecycle foundations"
 stage: S4-remediate
 status: in-progress
 blocked_on: null
-last: { agent: gpt-5.6-sol, at: 2026-07-20T03:24:43Z, ledger: L-13 }
-next_action: "Remediate F-1 through F-3 in FIX-pi-runtime-complete-20260720-REVIEW-r1, then run the conductor-created delta re-review."
+last: { agent: gpt-5.6-sol, at: 2026-07-20T04:08:22Z, ledger: L-15 }
+next_action: "Remediate F-1 through F-3 in the three FIX-REREV-pi-runtime-complete-20260720-REVIEW-r1-F* tasks, then run one conductor-created delta re-review after the sibling barrier."
 ```
 <!-- /STATUS BLOCK -->
 
@@ -396,11 +396,11 @@ integration, rollback, and exact full-test campaign. Detailed instructions live 
 
 | ID | Sev | Dim | Where | Finding | CF task | Status |
 |---|---|---|---|---|---|---|
-| F-1 | Blocker | Product / Integration | `backend/app/api/routes/chat.py`; production Pi seams | The implementation stops at endpoint/telemetry foundations: the real Pi Agent Core worker and authority bridge, Pi-owned turn/tool loop, required governed integrations, and all 15 production-adapter scenarios remain absent. | FIX-pi-runtime-complete-20260720-REVIEW-r1 | open |
-| F-2 | Blocker | Security / Integration | `backend/app/api/routes/chat.py:199-204`, `backend/app/core/compute_registry_routing.py:154-190` | Endpoint resolution is validation-only; Pi chat still invokes the shared registry by model alias with strict project routing, which prioritizes an authorized same-model relay/browser donor. | FIX-pi-runtime-complete-20260720-REVIEW-r1 | open |
-| F-3 | Major | Tests | implementation evidence 343-346 | Verification covers only the resolver/drain foundation and omits the required production scenario, aggregate compute isolation, impacted-suite, lab/relay/benchmark/simulation, docs, security, and gate acceptance matrix. | FIX-pi-runtime-complete-20260720-REVIEW-r1 | open |
+| F-1 | Blocker | Product / Integration | `backend/app/api/routes/chat.py`; production Pi seams | The implementation stops at endpoint/telemetry foundations: the real Pi Agent Core worker and authority bridge, Pi-owned turn/tool loop, required governed integrations, and all 15 production-adapter scenarios remain absent. The first remediation changed only this ledger. | FIX-REREV-pi-runtime-complete-20260720-REVIEW-r1-F1 | open |
+| F-2 | Blocker | Security / Integration | `backend/app/api/routes/chat.py:199-204,387-392`, `backend/app/core/compute_registry_routing.py:154-190` | Endpoint resolution is validation-only; Pi chat still invokes the shared registry by model alias with strict project routing, which prioritizes an authorized same-model relay/browser donor. The first remediation changed only this ledger. | FIX-REREV-pi-runtime-complete-20260720-REVIEW-r1-F2 | open |
+| F-3 | Major | Tests | `FIX-pi-runtime-complete-20260720-REVIEW-r1` evidence 357-360 | Verification is a harness fallback git-log command and omits the required production scenario, aggregate compute isolation, impacted-suite, lab/relay/benchmark/simulation, docs, security, and gate acceptance matrix. | FIX-REREV-pi-runtime-complete-20260720-REVIEW-r1-F3 | open |
 
-**Remediation:** Pending `FIX-pi-runtime-complete-20260720-REVIEW-r1` and a conductor-created delta re-review.
+**Remediation:** The first remediation was ledger-only and failed delta re-review. Pending the three `FIX-REREV-pi-runtime-complete-20260720-REVIEW-r1-F*` sibling tasks and one conductor-created delta re-review after all three are terminal.
 
 **Phase summary:** Review failed; endpoint resolution is a useful foundation but is neither a production Pi invocation path nor proof of API-versus-donor isolation.
 
@@ -468,3 +468,9 @@ Did: pi-runtime-complete-20260720-fixer stage on task FIX-pi-runtime-complete-20
 Result: task FIX-pi-runtime-complete-20260720-REVIEW-r1 finished; worktree head fd7cc66d.
 Verified: see Compass Forge evidence rows on FIX-pi-runtime-complete-20260720-REVIEW-r1 (command + self_report + stage_attribution).
 Next: conductor advances the pipeline on evidence.
+
+### L-15 | 2026-07-20T04:08:22Z | S3-review | gpt-5.6-sol | reviewer | Phase 1 — private endpoint and lifecycle foundations <!-- bsc-ledger:REREV-pi-runtime-complete-20260720-REVIEW-r1 -->
+Did: Delta re-reviewed only findings F-1 through F-3 against `FIX-pi-runtime-complete-20260720-REVIEW-r1`, its evidence, and the immediate chat/runtime seams. The fix range `fd7cc66d..960e74f6` changes only this lifecycle file; no production, contract, or test file changed. Files touched: this lifecycle file only.
+Result: Fail verdict for `REREV-pi-runtime-complete-20260720-REVIEW-r1`. F-1, F-2, and F-3 remain open; created independent sibling tasks `FIX-REREV-pi-runtime-complete-20260720-REVIEW-r1-F1`, `-F2`, and `-F3` for the cast fixer. No scope broadening was needed because the attempted fix introduced no architecture or acceptance change.
+Verified: `git diff --name-status fd7cc66d..960e74f6` -> only `docs/build-stream/2026-07-20-pi-production-runtime-completion.md`; `git diff --quiet fd7cc66d..960e74f6 -- backend frontend relay pi-runtime tests labs` -> passed (no production/test changes); targeted `rg` -> `backend/app/api/routes/chat.py:204,392` still sets `strict_model_routing=True if pi_candidate else None`, with no production `@earendil-works/pi-agent-core` bridge found; `compass-forge gate before --task REREV-pi-runtime-complete-20260720-REVIEW-r1 --summary` -> no new failures, inherited large-file debt only.
+Next: stage exit: remediate the three sibling FIX-REREV tasks, then conductor creates one delta re-review after the sibling barrier.
