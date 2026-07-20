@@ -270,6 +270,42 @@
 <p>mode; public <code>/api/settings/status</code> is redacted and passive, so it does not</p>
 <p>leak provider or model identifiers. Local mode keeps the same developer</p>
 <p>behavior through the shared permission helper.</p>
+<h3 id="isolated-pi-model-catalog-pi-replacement-w1">Isolated Pi Model Catalog (Pi Replacement W1)</h3>
+<ul>
+<li><code>backend/app/core/pi_runtime/model_manager.py</code> (<code>PiModelManager</code>) is the</li>
+</ul>
+<p>Pi-side model authority for agentic traffic. It never consults</p>
+<p><code>ComputeRegistry</code>, and <code>ComputeRegistry</code> never consults it; persisted</p>
+<p><code>LLMServer</code> rows keep registering into the live registry for the legacy</p>
+<p>engine exactly as before.</p>
+<ul>
+<li>The Pi catalog is built from exactly three sources: the static</li>
+</ul>
+<p><code>settings.pi_api_endpoints</code> entries plus the built-in</p>
+<p><code>pi-deepseek-default</code>; persisted <code>LLMServer</code> rows projected read-only into</p>
+<p>the catalog as <code>openai_compat</code>/<code>anthropic_compat</code> endpoints carrying the</p>
+<p>row&#x27;s encrypted key; and local serving at <code>settings.ollama_host + &quot;/v1&quot;</code> and</p>
+<p><code>settings.lmstudio_host + &quot;/v1&quot;</code> marked <code>kind=local</code>. Relay/browser donor</p>
+<p>capacity is never a catalog source.</p>
+<ul>
+<li>The <code>LLMServer</code>-row projection is one-directional (database row to Pi</li>
+</ul>
+<p>catalog entry): nothing Pi-side writes back to the row or registers the</p>
+<p>endpoint into the donor-schedulable registry, so a same-model donor can</p>
+<p>never be selected for Pi traffic.</p>
+<ul>
+<li>Each catalog entry carries the capability set used for exact-identity or</li>
+</ul>
+<p>capability-filtered selection: <code>model</code>, <code>context_window</code>, <code>max_tokens</code>,</p>
+<p><code>supports_tools</code>, <code>supports_vision</code>, <code>family</code>, <code>cost_per_mtok</code>,</p>
+<p><code>timeout_ms</code>, and <code>max_retries</code>. Selection is exact-identity or</p>
+<p>capability-filtered only — never donor-style capacity scoring.</p>
+<ul>
+<li><code>resolve(...)</code> raises a typed <code>PiEndpointResolutionError</code> on any miss, and</li>
+</ul>
+<p><code>resolve_distinct(n, ...)</code> fails closed when fewer than <code>n</code> distinct</p>
+<p>identities exist rather than silently reusing one endpoint as two.</p>
+<p><code>catalog()</code> feeds the settings model UI and benchmark comparison surfaces.</p>
 <h2 id="architecture-notes">Architecture Notes</h2>
 <ul>
 <li>The feature is mounted through <code>frontend/src/components/common/SettingsView.tsx</code> and the UI navigation path recorded in the inventory.</li>
@@ -297,7 +333,7 @@
 </ul>
 <h2 id="compass-evidence">Compass Evidence</h2>
 <ul>
-<li>Spec/task: CF-SPEC-94 / CF-1193</li>
+<li>Spec/task: CF-SPEC-94 / CF-1193; CF-SPEC-8 (Pi replacement W1 model catalog)</li>
 <li>Inventory source: <code>docs/features/inventory.json</code></li>
 </ul>
 <h2 id="when-to-update">When To Update</h2>
@@ -314,6 +350,7 @@
 <li class="toc-level-2"><a href="#state-api-and-backend-contracts">State, API, And Backend Contracts</a></li>
 <li class="toc-level-3"><a href="#stores">Stores</a></li>
 <li class="toc-level-3"><a href="#api-and-backend">API And Backend</a></li>
+<li class="toc-level-3"><a href="#isolated-pi-model-catalog-pi-replacement-w1">Isolated Pi Model Catalog (Pi Replacement W1)</a></li>
 <li class="toc-level-2"><a href="#architecture-notes">Architecture Notes</a></li>
 <li class="toc-level-2"><a href="#agents-skills-llm-mcp-and-permissions">Agents, Skills, LLM, MCP, And Permissions</a></li>
 <li class="toc-level-2"><a href="#tests-and-verification">Tests And Verification</a></li>
