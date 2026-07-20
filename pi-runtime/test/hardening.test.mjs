@@ -268,6 +268,74 @@ test("max_turns within budget completes normally", async (t) => {
   assert.equal(completed.stop_reason, "stop");
 });
 
+// --- H-6: whole-run wall-clock ceiling --------------------------------------
+
+// Open a session carrying explicit per-run limits (session.open `limits`),
+// which the harness openSession helper omits.
+async function openSessionWithLimits(h, key, limits, { catalog = CATALOG } = {}) {
+  h.send({ v: 1, type: "hello", protocol_version: 1 });
+  await h.waitFor((f) => f.type === "ready");
+  h.send({ v: 1, type: "session.open", session_key: key, system_prompt: "s", history: [], revision: "r1", catalog, limits });
+  await h.waitFor((f) => f.type === "session.opened" && f.session_key === key);
+}
+
+test("wall-clock budget fails a stalled run with wall_clock_budget_exceeded", async (t) => {
+  const h = new WorkerHarness();
+  t.after(() => h.close());
+  await openSessionWithLimits(h, "sess-wall", { max_wall_clock_ms: 250 });
+  // The faux turn issues a tool call; the test never answers it, so the run
+  // stays active with no visible progress until the wall-clock timer fires.
+  bindFaux(h, "sess-wall", [
+    { tool_calls: [{ name: "istara_create_task", arguments: { title: "x" } }], stop_reason: "toolUse" },
+  ]);
+  h.send({ v: 1, type: "turn.prompt", session_key: "sess-wall", run_id: "run-w", text: "go" });
+  // Deliberately withhold the tool.result the run is blocked on.
+  const failed = await h.waitFor((f) => f.type === "run.failed" && f.run_id === "run-w");
+  assert.equal(failed.error, "wall_clock_budget_exceeded");
+  assert.ok(!h.frames.some((f) => f.type === "run.completed" && f.run_id === "run-w"));
+
+  // Exactly one terminal, and the worker still serves the next session.
+  assert.equal(h.frames.filter((f) => f.type === "run.failed" && f.run_id === "run-w").length, 1);
+  h.send({ v: 1, type: "session.open", session_key: "sess-wall-2", system_prompt: "s", history: [], revision: "r1", catalog: [] });
+  await h.waitFor((f) => f.type === "session.opened" && f.session_key === "sess-wall-2");
+});
+
+// --- H-6: per-run cost ceiling ----------------------------------------------
+
+test("cost budget fails a completed run with cost_budget_exceeded", async (t) => {
+  const h = new WorkerHarness();
+  t.after(() => h.close());
+  await openSessionWithLimits(h, "sess-cost", { max_cost_usd: 0.5 }, { catalog: [] });
+  // The run completes normally but the binding reports a scripted $5 cost that
+  // exceeds the $0.5 ceiling: the terminal must flip to a cost failure.
+  h.send({
+    v: 1,
+    type: "provider.bind",
+    session_key: "sess-cost",
+    endpoint: { endpoint_id: "faux", provider_kind: "faux", faux_responses: [{ text: "done" }], faux_cost_usd: 5 },
+  });
+  h.send({ v: 1, type: "turn.prompt", session_key: "sess-cost", run_id: "run-cost", text: "go" });
+  const failed = await h.waitFor((f) => f.type === "run.failed" && f.run_id === "run-cost");
+  assert.equal(failed.error, "cost_budget_exceeded");
+  assert.ok(!h.frames.some((f) => f.type === "run.completed" && f.run_id === "run-cost"));
+});
+
+test("cost within budget completes and reports the run cost", async (t) => {
+  const h = new WorkerHarness();
+  t.after(() => h.close());
+  await openSessionWithLimits(h, "sess-cost-ok", { max_cost_usd: 10 }, { catalog: [] });
+  h.send({
+    v: 1,
+    type: "provider.bind",
+    session_key: "sess-cost-ok",
+    endpoint: { endpoint_id: "faux", provider_kind: "faux", faux_responses: [{ text: "done" }], faux_cost_usd: 1 },
+  });
+  h.send({ v: 1, type: "turn.prompt", session_key: "sess-cost-ok", run_id: "run-cost-ok", text: "go" });
+  const completed = await h.waitFor((f) => f.type === "run.completed" && f.run_id === "run-cost-ok");
+  assert.equal(completed.stop_reason, "stop");
+  assert.equal(completed.usage.cost_usd, 1);
+});
+
 // --- H-11: seq validation ---------------------------------------------------
 
 test("inbound seq violation is a run-scoped protocol_seq_violation", async (t) => {

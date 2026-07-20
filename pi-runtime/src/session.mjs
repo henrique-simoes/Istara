@@ -208,7 +208,11 @@ export class PiSession {
       return;
     }
     const usage = (assistant && assistant.usage) || {};
-    const costUsd = (usage.cost && usage.cost.total) || 0;
+    // Real bindings report cost via the provider usage; faux test bindings can
+    // script a deterministic per-run cost (forcedCostUsd) so the cost ceiling
+    // has a behavioral regression. Production bindings never set forcedCostUsd.
+    const scriptedCost = this._binding && Number.isFinite(this._binding.forcedCostUsd) ? this._binding.forcedCostUsd : null;
+    const costUsd = scriptedCost !== null ? scriptedCost : (usage.cost && usage.cost.total) || 0;
     if (Number.isFinite(this._limits.max_cost_usd) && costUsd > this._limits.max_cost_usd) {
       this._frame("run.failed", { run_id: runId, error: "cost_budget_exceeded" });
       return;
