@@ -289,39 +289,62 @@
 <li>Both engine seams are real: Pi selections execute through the isolated</li>
 </ul>
 <p><code>PiExecutionService</code> (<code>run_completion</code> / <code>run_structured</code> / <code>run_react</code>), and</p>
-<p>legacy selections execute through the byte-compatible legacy executor path</p>
-<p>(<code>ollama.chat_stream</code> ReAct / <code>llm_schema_adapter</code> structured) so Pi and</p>
-<p>legacy remain benchmarkable on the same axes.</p>
+<p>legacy selections execute through the byte-compatible legacy executor</p>
+<p>(<code>backend/app/core/agentic/legacy.py</code>), which drives the same</p>
+<p>ComputeRegistry-backed <code>app.core.ollama.ollama</code> plane the 87 inventory sites</p>
+<p>already use — <code>ollama.chat</code> for completion/structured/ReAct and</p>
+<p><code>ollama.embed_batch</code> for embed — with identical parameter names and message</p>
+<p>shapes, so Pi and legacy remain benchmarkable on the same axes. Neither seam</p>
+<p>ever falls back to the other: a selected engine executes or raises.</p>
 <ul>
 <li><code>TurnParams</code> (<code>model</code>, <code>temperature</code>, <code>max_tokens</code>, <code>thinking_mode</code>,</li>
 </ul>
-<p><code>min_context</code>, <code>timeout_s</code>, <code>max_turns</code>, <code>require_vision</code>) is forwarded on</p>
-<p>every verb. The Pi path maps them onto pi-ai options (<code>temperature</code>,</p>
-<p><code>maxTokens</code>, <code>thinkingLevel</code>, provider <code>timeoutMs</code>); <code>min_context</code> maps to</p>
-<p>endpoint admission in the Pi model catalog; <code>thinking_mode</code> maps to</p>
-<p><code>thinkingLevel</code> where the model supports it and to the existing</p>
-<p>prompt-directive injection where it does not.</p>
+<p><code>min_context</code>, <code>timeout_s</code>, <code>max_turns</code>, <code>require_vision</code>) is forwarded</p>
+<p>unchanged on every verb. The Pi path maps them onto pi-ai turn options</p>
+<p>(<code>temperature</code>, <code>max_tokens</code>, <code>thinking_level</code>, provider <code>timeout_ms</code>);</p>
+<p><code>min_context</code> and <code>require_vision</code> map to capability admission in the Pi</p>
+<p>model catalog, and <code>max_turns</code> bounds the ReAct tool loop.</p>
 <ul>
 <li>Structured output is a forced tool call, never free-form JSON text: the Pi</li>
 </ul>
-<p>worker registers an <code>emit_structured_output</code> tool whose parameters are a</p>
-<p>mechanical JSON-Schema translation (unsupported constructs are rejected at</p>
-<p>session open, not mid-turn) and forces that tool choice per provider family.</p>
-<p>Python revalidates the captured object against the original JSON Schema,</p>
-<p>allows exactly one bounded repair turn, and then raises a typed fail-closed</p>
-<p>failure instead of returning an error-shaped result. The legacy structured</p>
-<p>path keeps using <code>llm_schema_adapter</code>, whose Anthropic forced-tool trick is</p>
-<p>the same mechanism, so both engines remain methodologically comparable.</p>
+<p>worker registers an <code>emit_structured_output</code> capture tool</p>
+<p>(<code>pi-runtime/src/structured.mjs</code>) whose parameters are a mechanical</p>
+<p>JSON-Schema translation (unsupported constructs fail closed at session open</p>
+<p>with <code>structured_output_schema_unsupported</code>, never mid-turn) and forces that</p>
+<p>tool choice. A turn that answers with free-form text instead of the forced</p>
+<p>call raises <code>structured_output_missing</code>; Python then revalidates the captured</p>
+<p>object against the original JSON Schema, allows exactly one bounded repair</p>
+<p>turn, and raises a typed <code>structured_output_invalid</code> fail-closed failure</p>
+<p>instead of returning an error-shaped result. The legacy structured path keeps</p>
+<p>using <code>llm_schema_adapter</code>&#x27;s OpenAI-compatible JSON-schema <code>response_format</code></p>
+<p>plus <code>parse_json_object</code>, so both engines yield a schema-validated object and</p>
+<p>stay methodologically comparable.</p>
 <ul>
-<li>Every dispatcher call records exactly one usage-ledger row</li>
+<li>The Pi worker wire protocol is versioned (<code>PROTOCOL_VERSION = 2</code>, pinned in</li>
 </ul>
-<p>(<code>backend/app/core/agentic/usage_ledger.py</code>, telemetry</p>
-<p><code>event_kind=&quot;agentic_usage&quot;</code>) regardless of engine or outcome. Pi rows carry</p>
-<p>exact pi-ai usage including <code>cost.total</code>; legacy rows carry provider-reported</p>
-<p>usage where present and are otherwise estimated with the existing token</p>
-<p>counter and marked <code>estimate=true</code> — estimated and exact numbers are never</p>
-<p>mixed silently. Ledger identity fields carry <code>endpoint_id</code> only, never</p>
-<p>endpoint URLs, keys, prompts, or response content.</p>
+<p>both <code>backend/app/core/pi_runtime/protocol.py</code> and</p>
+<p><code>pi-runtime/src/protocol.mjs</code>); v2 is what carries the forced structured</p>
+<p>frames (<code>output_schema</code>, <code>tool_choice</code>, and the captured <code>structured</code></p>
+<p>object). Both sides validate the version at handshake and per frame, and a</p>
+<p>worker answering with a mismatched version is rejected</p>
+<p>(<code>protocol_version_mismatch</code>) and reclaimed rather than used.</p>
+<ul>
+<li>Every dispatcher call persists exactly one durable, queryable usage-ledger</li>
+</ul>
+<p>row (<code>backend/app/core/agentic/usage_ledger.py</code> writes <code>AgenticUsageRow</code> into</p>
+<p>the <code>agentic_usage_rows</code> table, migration <code>023_agentic_usage_ledger</code>)</p>
+<p>regardless of engine or outcome: success, error, abort, endpoint-resolution</p>
+<p>failure, and a raising legacy executor each record their one row, with</p>
+<p>pre-dispatch failures zeroed and stamped <code>error_type</code>. Pi rows carry exact</p>
+<p>pi-ai usage including <code>cost.total</code>; legacy rows carry provider-reported usage</p>
+<p>where present and otherwise estimate input/output with the existing</p>
+<p><code>count_tokens</code> counter and mark <code>estimate=true</code> — estimated and exact numbers</p>
+<p>are never mixed silently. A separate short identity-only trace span</p>
+<p>(<code>event_kind=&quot;agentic_usage&quot;</code>,</p>
+<p><code>route_id=&quot;agentic:&lt;engine&gt;:&lt;endpoint|node|unresolved&gt;&quot;</code>) is recorded for</p>
+<p>trace continuity; the accounting row never lives inside that 120-char</p>
+<p>identity field. Ledger identity fields carry <code>endpoint_id</code>/<code>node_id</code> only,</p>
+<p>never endpoint URLs, keys, prompts, or response content.</p>
 <h2 id="architecture-notes">Architecture Notes</h2>
 <ul>
 <li>The feature is mounted through <code>frontend/src/components/chat/ChatView.tsx</code> and the UI navigation path recorded in the inventory.</li>

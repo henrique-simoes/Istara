@@ -63,9 +63,20 @@ class FixedResolver:
     def resolve(self, endpoint_id: str, *, model=None) -> ResolvedPiEndpoint:
         return self._endpoint
 
+    def configured(self) -> list:
+        # Identity-only view used by PiModelManager: the faux/loopback endpoint
+        # is resolved exactly via resolve(), never listed as settings config.
+        return []
+
 
 def faux_service(responses, supervisor: PiRuntimeSupervisor) -> PiExecutionService:
-    return PiExecutionService(resolver=FixedResolver(faux_endpoint(responses)), supervisor=supervisor)
+    from app.core.pi_runtime.model_manager import PiModelManager
+
+    resolver = FixedResolver(faux_endpoint(responses))
+    # Empty, local-free catalog: resolution falls through to the resolver, so
+    # the faux endpoint (scripted responses, forced tool calls) is used intact.
+    manager = PiModelManager(resolver=resolver, include_local=False)
+    return PiExecutionService(resolver=resolver, supervisor=supervisor, model_manager=manager)
 
 
 def tool_call(name: str, arguments: dict) -> dict:

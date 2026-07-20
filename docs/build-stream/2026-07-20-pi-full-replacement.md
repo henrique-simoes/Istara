@@ -9,8 +9,8 @@ phase: "W1 — dispatcher, Pi model management, and accounting"
 stage: S4-remediate
 status: in-progress
 blocked_on: null
-last: { agent: kimi-code/k3, at: 2026-07-20T20:51:44Z, ledger: L-17 }
-next_action: "Remediate F-W1-1, F-W1-2, and F-W1-4 (F-W1-3 fixed at L-17), then run one bounded delta re-review after all four fixer tasks are terminal."
+last: { agent: claude-opus-4-8, at: 2026-07-20T21:08:57Z, ledger: L-18 }
+next_action: "Remediate F-W1-1 and F-W1-2 (F-W1-3 fixed at L-17, F-W1-4 fixed at L-18), then run one bounded delta re-review after all four fixer tasks are terminal."
 ```
 <!-- /STATUS BLOCK -->
 
@@ -365,6 +365,40 @@ Next: sibling fixers complete F-W1-1/F-W1-2/F-W1-4, then the conductor's bounded
 re-review; that review must confirm no later `dispatcher.py` overwrite dropped the
 exception-path usage-row recording.
 
+### L-18 | 2026-07-20T21:08:57Z | S4-remediate | claude-opus-4-8 | remediator | W1 <!-- bsc-ledger:FIX-pi-full-20260720-w1-REVIEW-r1-docs-tests -->
+Did: Closed F-W1-4. Made the W1 living feature docs code-accurate for all five behaviors
+and replaced the self-consistent W1 smoke coverage with contract-complete tests. Docs:
+`docs/features/content/chat/model-controls/architecture.md` (+ regenerated
+`site/features/chat/model-controls/architecture.html` and `site/manifest.json`) now
+describe the real legacy seam (`legacy.py` driving `ollama.chat`/`ollama.embed_batch`, not
+the earlier inaccurate `chat_stream`/Anthropic-forced-tool claims), the durable
+`agentic_usage_rows` ledger (`AgenticUsageRow`, migration `023`) with exact-vs-estimate and
+the identity-only trace span, the forced `emit_structured_output` contract with typed
+`structured_output_missing`/`_invalid` fail-closed, and the versioned `PROTOCOL_VERSION=2`
+handshake with `protocol_version_mismatch` rejection; the `settings/llm-servers` and
+`compute/pool` pages (committed at `df0c7579`) already cover the isolated Pi catalog
+sources/capabilities and bidirectional donor isolation. Tests:
+`tests/pi_production/test_w1_agentic_contract.py` proves all five verbs routing to both
+real engine seams, precedence (override>header>project>default incl. the persisted project
+`agentic_engine` column), unchanged `TurnParams` forwarding, catalog sources/capabilities,
+typed structured failure, one-row ledger persistence incl. the exception path, protocol
+mismatch rejection, the unchanged 87-site ratchet, and same-model donor isolation; the
+shared `tests/pi_production/harness.py` `faux_service` was wired to the new
+`PiModelManager` engine seam. All verification is faux/loopback/static — no live model
+activity or external traffic.
+Result: F-W1-4 open -> fixed; CF task FIX-pi-full-20260720-w1-REVIEW-r1-docs-tests. No
+product call site or `legacy_allowlist.yaml` entry changed (W1 migrates zero sites; the
+armed 87-site ratchet holds).
+Verified: `PI_REQUIRE_NODE=1 python -m pytest tests/pi_production/test_w1_agentic_contract.py -q`
+= 25 passed; full W1 ladder (`test_w1_agentic_contract`, `test_w1_dispatcher_authority`,
+`test_structured_fail_closed`, `test_w1_usage_ledger`, `test_count_to_zero`,
+`test_same_model_donor_isolation`) = 59 passed; `npm --prefix pi-runtime test` = 33 passed;
+`python scripts/feature_docs.py --seed-missing --generate-site --check` = 86 features, 224
+artifacts, check passed; `python scripts/security_benchmark.py --fail-on-threshold` = status
+pass.
+Next: sibling fixers F-W1-1/F-W1-2 complete, then the conductor's one bounded delta
+re-review of the changed W1 surface.
+
 ## W0 — hardening and evidence integrity
 
 **Frame/Plan:** Master plan §6 plus §12.2. Arm the deterministic inventory/ratchet before
@@ -422,9 +456,9 @@ structured-output protocol, one-row usage accounting, and retain the armed 87-si
 | F-W1-1 | Blocker | Integration | `backend/app/core/agentic/dispatcher.py`; `backend/app/core/pi_runtime/{engine,model_manager}.py`; project/config seams | The dispatcher is not the required production choke point: `chat_turn`, `ensemble`, and `embed` are absent; the singleton has no real legacy executor; request/project precedence is not wired into calls or persisted on projects; PiModelManager is not used by the engine, lacks required catalog sources, and ignores capability filters; TurnParams are not forwarded. | FIX-pi-full-20260720-w1-REVIEW-r1-authority | open |
 | F-W1-2 | Blocker | Bugs | `backend/app/core/pi_runtime/{engine,protocol}.py`; `pi-runtime/src/{protocol,worker,session}.mjs` | The required forced-tool structured contract is absent: protocol remains v1, worker fields and both-side compatibility validation are missing, free-form JSON text is accepted, and a second invalid response returns an error-shaped value instead of raising typed fail-closed failure. | FIX-pi-full-20260720-w1-REVIEW-r1-structured | open |
 | F-W1-3 | Major | Data | `backend/app/core/agentic/usage_ledger.py`; telemetry persistence | The usage ledger is neither exact nor complete: provider-reported legacy usage defaults to `estimate=true`, absent usage is not estimated with the existing counter, exception paths record no row, required task/spine/node fields are absent, and the row is packed into the short identity-oriented `route_id` field. | FIX-pi-full-20260720-w1-REVIEW-r1-ledger | fixed |
-| F-W1-4 | Major | Docs | `tests/pi_production/test_w1_agentic_contract.py`; `docs/features/` | W1 coverage is self-consistent and misses the failing production contracts; no living feature page changed for this behavior, while only the generated manifest timestamp was refreshed. Contract-complete negative/non-faux verification and living feature documentation are required. | FIX-pi-full-20260720-w1-REVIEW-r1-docs-tests | open |
+| F-W1-4 | Major | Docs | `tests/pi_production/test_w1_agentic_contract.py`; `docs/features/` | Closed by `FIX-pi-full-20260720-w1-REVIEW-r1-docs-tests` (L-18): the W1 living feature docs are code-accurate across all five behaviors — `chat/model-controls` covers the dispatcher/engine selection/precedence/`TurnParams`, the forced `emit_structured_output` structured contract, the `PROTOCOL_VERSION=2` handshake mismatch, and the durable `agentic_usage_rows` ledger; `settings/llm-servers` and `compute/pool` cover the isolated Pi catalog sources/capabilities and bidirectional donor isolation (site/manifests regenerated, `feature_docs --check` green for 86 features). The self-consistent smoke coverage is replaced by contract-complete `test_w1_agentic_contract.py` proving all five verbs on both real engine seams, precedence resolution, parameter forwarding, catalog sources/capabilities, typed structured failure, one-row ledger persistence (incl. the exception path), protocol mismatch, the unchanged 87-site ratchet, and same-model donor isolation — all faux/loopback/static. | FIX-pi-full-20260720-w1-REVIEW-r1-docs-tests | fixed |
 
-**Remediation:** `FIX-pi-full-20260720-w1-REVIEW-r1-ledger` (L-17) closed F-W1-3. F-W1-1, F-W1-2, and F-W1-4 remain open under their own fixer tasks, followed by one conductor-created delta re-review.
+**Remediation:** `FIX-pi-full-20260720-w1-REVIEW-r1-ledger` (L-17) closed F-W1-3 and `FIX-pi-full-20260720-w1-REVIEW-r1-docs-tests` (L-18) closed F-W1-4. F-W1-1 and F-W1-2 remain open under their own fixer tasks, followed by one conductor-created delta re-review.
 
 **Phase summary:** Pending.
 
