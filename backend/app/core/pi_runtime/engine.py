@@ -352,6 +352,63 @@ class PiExecutionService:
         ):
             yield event
 
+    # ── W1 generic execution API ────────────────────────────────────────
+    async def run_completion(
+        self, *, purpose: str, project_id: str, agent_id: str, system: str,
+        messages: list[dict[str, Any]], params: Any,
+    ) -> dict[str, Any]:
+        """Run one no-tool completion through the Pi worker.
+
+        The last message is the prompt; preceding messages remain server-owned
+        history.  A failed terminal remains an outcome rather than fabricated
+        output, allowing the dispatcher to preserve Pi's fail-closed rule.
+        """
+        history, text = _split_messages(messages)
+        return await self._collect_turn(
+            operation=f"pi_completion:{purpose}", project_id=project_id, agent_id=agent_id,
+            system_prompt=system, history=history, user_text=text,
+            tool_executor=_no_tools, session_key=None, endpoint_id=getattr(params, "endpoint_id", None) or DEFAULT_ENDPOINT_ID,
+            allowed_tools=[],
+        )
+
+    async def run_react(
+        self, *, purpose: str, project_id: str, agent_id: str, session_key: str | None,
+        system: str, messages: list[dict[str, Any]], user_text: str, tool_executor: ToolExecutor,
+        tool_names: list[str], params: Any, steering_binding: SteeringBinding | None = None,
+    ) -> dict[str, Any]:
+        """Bounded task-shaped ReAct seam; Python keeps the final tool allowlist."""
+        return await self._collect_turn(
+            operation=f"pi_react:{purpose}", project_id=project_id, agent_id=agent_id,
+            system_prompt=system, history=messages, user_text=user_text, tool_executor=tool_executor,
+            session_key=session_key, endpoint_id=getattr(params, "endpoint_id", None) or DEFAULT_ENDPOINT_ID,
+            allowed_tools=list(tool_names), steering=steering_binding,
+        )
+
+    async def run_structured(
+        self, *, purpose: str, project_id: str, agent_id: str, system: str,
+        messages: list[dict[str, Any]], schema: dict[str, Any], params: Any,
+    ) -> dict[str, Any]:
+        """Return a schema-validated object, with one bounded repair attempt.
+
+        The worker receives the schema/tool-choice protocol fields in the next
+        protocol compatibility increment; this Python validation remains the
+        authoritative boundary and therefore also protects older workers.
+        """
+        prompt = list(messages)
+        for attempt in range(2):
+            result = await self.run_completion(purpose=purpose, project_id=project_id, agent_id=agent_id,
+                                               system=system, messages=prompt, params=params)
+            try:
+                value = _validate_structured(result.get("text", ""), schema)
+                return {**result, "value": value}
+            except ValueError as exc:
+                if attempt:
+                    result["status"] = "error"
+                    result["error"] = f"structured_output_invalid:{exc}"
+                    return result
+                prompt = [*messages, {"role": "user", "content": "Repair the prior response. Return only JSON matching this schema: " + json.dumps(schema, sort_keys=True)}]
+        raise AssertionError("unreachable")
+
     # ── A2A delegation seam ──────────────────────────────────────────────
     async def run_delegation(
         self,
@@ -586,3 +643,34 @@ def _map_frame(frame: dict[str, Any], endpoint: ResolvedPiEndpoint) -> dict[str,
     if ftype == "run.aborted":
         return {"type": "aborted"}
     return None
+
+
+async def _no_tools(name: str, args: dict[str, Any], project_id: str, agent_id: str) -> dict[str, Any]:
+    return {"ok": False, "error": "tool_not_allowed"}
+
+
+def _split_messages(messages: list[dict[str, Any]]) -> tuple[list[dict[str, Any]], str]:
+    if not messages:
+        return [], ""
+    history = list(messages[:-1])
+    last = messages[-1]
+    return history, str(last.get("content") or "")
+
+
+def _validate_structured(text: str, schema: dict[str, Any]) -> dict[str, Any]:
+    try:
+        value = json.loads(text)
+    except json.JSONDecodeError as exc:
+        raise ValueError("invalid_json") from exc
+    if not isinstance(value, dict):
+        raise ValueError("not_object")
+    try:
+        import jsonschema
+        jsonschema.validate(value, schema)
+    except ImportError:
+        required = schema.get("required", [])
+        if any(key not in value for key in required):
+            raise ValueError("missing_required_property")
+    except Exception as exc:
+        raise ValueError("schema_validation_failed") from exc
+    return value
