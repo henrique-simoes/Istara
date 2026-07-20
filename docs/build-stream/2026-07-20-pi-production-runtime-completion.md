@@ -9,7 +9,7 @@ phase: "Phase 0 — architecture and production boundary"
 stage: S1-plan
 status: in-progress
 blocked_on: "planning-enabled conductor consensus and owner approval"
-last: { agent: claude-fable-5, at: 2026-07-20T01:52:01Z, ledger: L-3 }
+last: { agent: claude-fable-5, at: 2026-07-20T01:57:22Z, ledger: L-5 }
 next_action: "Cross-judge consensus plans A/B/C and pause for owner approval."
 ```
 <!-- /STATUS BLOCK -->
@@ -158,3 +158,9 @@ Did: pi-runtime-complete-20260720-architect-b stage on task pi-runtime-complete-
 Result: task pi-runtime-complete-20260720-PLAN-B finished; worktree head f86a4f51.
 Verified: see Compass Forge evidence rows on pi-runtime-complete-20260720-PLAN-B (command + self_report + stage_attribution).
 Next: conductor advances the pipeline on evidence.
+
+### L-5 | 2026-07-20T01:57:22Z | S1-plan | claude-fable-5 | architect | Phase 0 <!-- bsc-ledger:pi-runtime-complete-20260720-REPLAN-A-r1 -->
+Did: r1 repair of consensus Plan A (docs/build-stream/plans/pi-runtime-complete-20260720-plan-a.md). Root cause of the repair round: conductor validated the PLAN-A candidate before the harness stage_attribution row (evidence 305) landed — plan artifact itself was intact. Repair pass: audited every file/command the plan references; fixed two stale paths (tests/test_autoresearch.py, tests/benchmarks/test_orchestration.py + run_benchmarks.py) and added the lab paired:no-model deterministic matrix to the verification ladder; added r1 repair note to the plan header. Architecture, phases, acceptance, risks, rollback unchanged.
+Result: Plan A candidate valid and buildable; pi-runtime-complete-20260720-REPLAN-A-r1
+Verified: `python -m pytest tests/test_pi_replacement_candidate.py -q` -> 12 passed; path-existence audit of 25 plan-referenced files -> all exist post-fix; `python tests/benchmarks/run_benchmarks.py --help` -> valid CLI; npm script inventory confirmed validate/paired:no-model/collect:artifacts, relay test, real_user_benchmark check, simulation test:static.
+Next: cross-judging of plans A/B/C once architect C finishes; conductor consensus, then owner approval.

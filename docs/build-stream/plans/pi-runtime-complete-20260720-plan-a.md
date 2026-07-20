@@ -1,6 +1,8 @@
 # Plan A — Pi Agent Core owns the production loop through a supervised runtime bridge
 
-Architect A, task `pi-runtime-complete-20260720-PLAN-A`, CF-SPEC-7, branch `Review_pi_test` (local only).
+Architect A, task `pi-runtime-complete-20260720-PLAN-A` (r1 repair validated under `pi-runtime-complete-20260720-REPLAN-A-r1`), CF-SPEC-7, branch `Review_pi_test` (local only).
+
+*r1 repair note:* full path audit of every file/command named in this plan; corrected `tests/test_autoresearch.py` and `tests/benchmarks/test_orchestration.py` + `run_benchmarks.py` (previous names did not exist) and added the lab `paired:no-model` deterministic matrix to the ladder. Architecture, phases, acceptance, risks, rollback unchanged.
 
 ## 1. Architecture summary
 
@@ -97,13 +99,13 @@ node --test pi-runtime/test
 python -m pytest tests/test_pi_replacement_candidate.py -q
 python -m pytest tests/pi_production -q
 python -m pytest tests/test_chat.py tests/test_a2a_security.py tests/test_a2a_project_claims.py tests/test_channels.py tests/test_channel_inbound.py tests/test_channel_resilience.py -q
-python -m pytest tests/test_project_scope_contracts.py tests/test_research_validity_contract.py tests/test_research_integrity_validation.py tests/test_reasoning_bank.py tests/test_steering.py tests/test_autoresearch_api.py tests/test_sessions.py tests/test_model_provider_contract.py -q
+python -m pytest tests/test_project_scope_contracts.py tests/test_research_validity_contract.py tests/test_research_integrity_validation.py tests/test_reasoning_bank.py tests/test_steering.py tests/test_autoresearch.py tests/test_sessions.py tests/test_model_provider_contract.py -q
 python -m pytest tests/test_compute.py tests/test_compute_registry_hardening.py tests/test_compute_registry_model_loading.py tests/test_compute_vision_routing.py -q   # 3 consecutive runs (V-ISO isolation tests live here)
-npm --prefix labs/pi-replacement run validate && npm --prefix labs/pi-replacement run collect:artifacts
+npm --prefix labs/pi-replacement run validate && npm --prefix labs/pi-replacement run paired:no-model && npm --prefix labs/pi-replacement run collect:artifacts
 npm --prefix relay test
 npm --prefix tests/real_user_benchmark run check
 npm --prefix tests/simulation run test:static
-python -m pytest tests/test_orchestration_benchmark.py -q   # plus its runner per repo docs
+python -m pytest tests/benchmarks/test_orchestration.py -q && python tests/benchmarks/run_benchmarks.py   # orchestration benchmark tests + runner
 python scripts/feature_docs.py --seed-missing --generate-site --check
 python scripts/security_benchmark.py --fail-on-threshold
 ```
