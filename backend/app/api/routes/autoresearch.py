@@ -641,7 +641,10 @@ async def start_experiment(
     # and returns a candidate proposal only — no background loop, no promotion,
     # no filesystem mutation. Human governance gates are unchanged (AC-5).
     if pi_replacement_requested(request):
-        from app.core.pi_runtime.endpoints import PiEndpointResolutionError
+        from app.core.pi_runtime.endpoints import (
+            PiEndpointResolutionError,
+            PiRuntimeTurnError,
+        )
         from app.core.pi_runtime.seams import run_pi_governed_autoresearch
 
         try:
@@ -654,6 +657,13 @@ async def start_experiment(
             raise HTTPException(
                 status_code=503,
                 detail=f"Pi runtime endpoint unavailable: {exc}",
+            )
+        except PiRuntimeTurnError as exc:
+            # Fail closed: a failed/aborted governed turn returns a typed error,
+            # never a fabricated candidate proposal (RF3-2).
+            raise HTTPException(
+                status_code=503,
+                detail=f"Pi runtime turn failed: {exc}",
             )
         proposal["max_iterations"] = max_iterations
         return proposal

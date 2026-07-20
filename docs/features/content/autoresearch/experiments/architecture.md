@@ -39,6 +39,7 @@ Experiments configure and inspect automated research runs across strategies or p
 - Experiment list, start, and stop routes require `project_id` and enforce project access. Autoresearch engine records and broadcasts the experiment project id, and experiment history filters by `AutoresearchExperiment.project_id`.
 - Starting an experiment requires the requested project to be active and unpaused before the runner is constructed or scheduled. The engine records the active project owner for the whole run, including baseline measurement, and repeats the active-project check before baseline and iteration work so a paused or missing project cannot keep processing in the background.
 - A start request with `dry_run: true` is non-mutating for every caller, including callers that do not select the Pi replacement engine: it returns a dry-run response and never schedules a background loop. Pi-selected dry runs additionally record the governed Pi telemetry span.
+- A Pi-selected governed turn that reaches `error` or `aborted` fails closed with a typed 503 before any candidate proposal or fallback hypothesis is created; partial streamed output is not an experiment artifact.
 - The engine binds the authorized project id into each loop runner before baseline measurement. Question-bank runners then load and update `ResearchDeployment` rows by both deployment id and that bound project id, so a stale deployment id from another project cannot be measured, mutated, reverted, or sent into LLM evaluation.
 
 ## Architecture Notes
@@ -60,6 +61,7 @@ Experiments configure and inspect automated research runs across strategies or p
 
 - `tests/test_autoresearch.py` verifies start/stop routing, runner project binding, and project-scoped question-bank deployment behavior.
 - `tests/test_project_scope_contracts.py` verifies the frontend and backend keep experiment requests project-bound.
+- `tests/pi_production/test_seams_fail_closed.py` verifies error and abort terminals, including failures after partial output, cannot create Pi candidate proposals.
 
 ## Related Features
 

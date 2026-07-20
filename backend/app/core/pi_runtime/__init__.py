@@ -5,7 +5,12 @@ provider selection is exact by endpoint identity and is resolved only for a
 validated Pi request.
 """
 
-from .endpoints import PiEndpointResolutionError, PiEndpointResolver, ResolvedPiEndpoint
+from .endpoints import (
+    PiEndpointResolutionError,
+    PiEndpointResolver,
+    PiRuntimeTurnError,
+    ResolvedPiEndpoint,
+)
 from .engine import (
     AUTORESEARCH_TOOLS,
     CHANNEL_TOOLS,
@@ -19,6 +24,7 @@ from .tools import build_tool_catalog
 __all__ = [
     "PiEndpointResolutionError",
     "PiEndpointResolver",
+    "PiRuntimeTurnError",
     "ResolvedPiEndpoint",
     "PiExecutionService",
     "SteeringBinding",

@@ -34,7 +34,12 @@ from typing import Any, AsyncIterator, Awaitable, Callable
 
 from app.core.telemetry import telemetry_recorder
 
-from .endpoints import DEFAULT_ENDPOINT_ID, PiEndpointResolver, ResolvedPiEndpoint
+from .endpoints import (
+    DEFAULT_ENDPOINT_ID,
+    PiEndpointResolver,
+    PiRuntimeTurnError,
+    ResolvedPiEndpoint,
+)
 from .supervisor import PiRuntimeSupervisor, get_supervisor
 from .tools import build_tool_catalog
 
@@ -393,6 +398,10 @@ class PiExecutionService:
         Read-only/proposal-only tool subset, no background loop, no promotion,
         no filesystem mutation. The proposal is always ``governance_required``
         and never ``report_evidence`` — human gates are unchanged (AC-5).
+
+        Fails closed: a non-success terminal (``error``/``aborted``) raises
+        ``PiRuntimeTurnError`` instead of fabricating a candidate proposal from a
+        failed or partially-streamed turn (RF3-2).
         """
         result = await self._collect_turn(
             operation="pi_runtime_autoresearch",
@@ -406,6 +415,10 @@ class PiExecutionService:
             endpoint_id=endpoint_id,
             allowed_tools=list(AUTORESEARCH_TOOLS),
         )
+        if result["status"] != "success":
+            # Reject the terminal before any candidate artifact is built — a
+            # failed/aborted turn must never yield a governed proposal.
+            raise PiRuntimeTurnError(result["status"], result.get("error"))
         return {
             "status": "candidate_proposal",
             "loop_type": loop_type,
