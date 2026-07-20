@@ -5,12 +5,12 @@
 item: pi-production-runtime-completion
 branch: Review_pi_test
 cf: { spec: CF-SPEC-7, tasks: [pi-runtime-complete-20260720-PLAN-A, pi-runtime-complete-20260720-PLAN-B, pi-runtime-complete-20260720-PLAN-C, pi-runtime-complete-20260720-IMPL, pi-runtime-complete-20260720-REVIEW, CF-120..CF-133] }
-phase: "Phase 0 — architecture and production boundary"
-stage: S1-plan
+phase: "Phase 1 — private endpoint and lifecycle foundations"
+stage: S2-execute
 status: in-progress
-blocked_on: "planning-enabled conductor consensus and owner approval"
-last: { agent: kimi-code/k3, at: 2026-07-20T02:46:40Z, ledger: L-10 }
-next_action: "Collect the remaining cross-judge vote, record consensus_result, then pause for owner approval."
+blocked_on: null
+last: { agent: gpt-5.6-terra, at: 2026-07-20T03:11:00Z, ledger: L-11 }
+next_action: "Continue P1 with the supervised real Pi Agent worker and Python authority bridge; do not treat the retired router registration as production-loop completion."
 ```
 <!-- /STATUS BLOCK -->
 
@@ -367,6 +367,12 @@ Verified: `python -m pytest tests/test_pi_replacement_candidate.py -q` -> 12 pas
 (grounding baseline); code seams confirmed by direct inspection (chat.py L154/L501,
 pi_replacement.py L52-86/L144-174, compute_registry_routing.py L154-190, a2a.py L306-478).
 Next: Cross-judging of plans A/B/C, then owner approval of the consensus winner.
+
+### L-11 | 2026-07-20T03:11:00Z | S2-execute | gpt-5.6-terra | executor | Phase 1 — private endpoint and lifecycle foundations <!-- bsc-ledger:pi-runtime-complete-20260720-IMPL -->
+Did: Added `core/pi_runtime` endpoint resolver and typed Pi endpoint settings; removed Pi's transient LLM-router registration; added owned compute telemetry task draining, regression tests, and living compute-pool documentation.
+Result: Pi endpoint selection is exact by endpoint identity and cannot advertise into or be selected by donated compute. Async compute telemetry is now drained before test DB-engine disposal. The real Node Pi Agent worker and production loop seams remain outstanding.
+Verified: `python -m pytest tests/test_pi_runtime_endpoints.py tests/test_compute_route_evidence_lifecycle.py -q` (3 passed); `python scripts/feature_docs.py --seed-missing --generate-site --check` (passed); `git diff --check` (passed). Legacy Pi suite stalled at its eighth channel test during focused investigation, so it is not claimed as verification.
+Next: Continue P1 worker/supervisor/tool bridge, then replace the Python ReAct Pi path and re-run the full matrix; stage exit: partial foundation committed with explicit residual risks.
 
 ## Phase 0 — architecture and production boundary
 

@@ -19,7 +19,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
-from app.core.llm_router import LLMServerEntry, llm_router
+from app.core.pi_runtime.endpoints import DEFAULT_ENDPOINT_ID, PiEndpointResolutionError, PiEndpointResolver
 from app.core.telemetry import telemetry_recorder
 from app.core.token_counter import count_tokens
 
@@ -50,40 +50,17 @@ def pi_replacement_requested(
 
 
 def ensure_pi_deepseek_registered() -> tuple[bool, str]:
-    """Register DeepSeek as an OpenAI-compatible compute node for the Pi run.
+    """Validate the default Pi endpoint without touching donated compute.
 
-    The API key is read only at runtime from macOS Keychain and kept in memory
-    on the transient compute node. The value is never logged or persisted.
+    Kept under its historical name temporarily for fail-closed route callers.
+    It no longer registers an ``LLMServerEntry`` or makes a Pi endpoint
+    discoverable by ordinary model-alias routing.
     """
-    node_id = "pi-deepseek-candidate"
-    node = llm_router._nodes.get(node_id)  # Backward-compatible registry access.
-    if node and node.api_key:
-        return True, "registered"
-
-    api_key = settings.resolve_pi_replacement_deepseek_api_key()
-    if not api_key:
-        return False, "missing_keychain_secret"
-
-    entry = LLMServerEntry(
-        server_id=node_id,
-        name="Pi Replacement Candidate - DeepSeek",
-        host=settings.pi_replacement_deepseek_base_url.rstrip("/"),
-        provider_type="openai_compat",
-        api_key=api_key,
-        priority=0,
-        is_local=False,
-        is_healthy=True,
-        available_models=[settings.pi_replacement_deepseek_model],
-        model_capabilities={
-            settings.pi_replacement_deepseek_model: {
-                "tools": True,
-                "streaming": True,
-                "context_window": settings.max_context_tokens,
-            }
-        },
-    )
-    llm_router.register_server(entry)
-    return True, "registered"
+    try:
+        PiEndpointResolver().resolve(DEFAULT_ENDPOINT_ID)
+    except PiEndpointResolutionError as exc:
+        return False, str(exc)
+    return True, "resolved_private_endpoint"
 
 
 def pi_chat_model(default_model: str | None = None) -> str | None:
