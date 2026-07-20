@@ -5,6 +5,19 @@ provider selection is exact by endpoint identity and is resolved only for a
 validated Pi request.
 """
 
-from .endpoints import PiEndpointResolver, ResolvedPiEndpoint
+from .endpoints import PiEndpointResolutionError, PiEndpointResolver, ResolvedPiEndpoint
+from .engine import PiExecutionService
+from .supervisor import PiRuntimeSupervisor, PiWorkerError, get_supervisor, shutdown_supervisor
+from .tools import build_tool_catalog
 
-__all__ = ["PiEndpointResolver", "ResolvedPiEndpoint"]
+__all__ = [
+    "PiEndpointResolutionError",
+    "PiEndpointResolver",
+    "ResolvedPiEndpoint",
+    "PiExecutionService",
+    "PiRuntimeSupervisor",
+    "PiWorkerError",
+    "get_supervisor",
+    "shutdown_supervisor",
+    "build_tool_catalog",
+]

@@ -733,6 +733,16 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         except Exception as e:
             _sd_log.warning(f"Background task stopped with error during shutdown: {e}")
 
+    # Owned teardown of the supervised Pi runtime worker (Plan C D-C1): cancel
+    # runs, terminate, then kill only the child PID it created. No-op when a Pi
+    # request never started the worker; never blocks shutdown on a stuck child.
+    try:
+        from app.core.pi_runtime import shutdown_supervisor
+
+        await shutdown_supervisor()
+    except Exception as e:
+        _sd_log.warning(f"Pi runtime worker shutdown error: {e}")
+
     _sd_log.info("Shutdown complete.")
 
 

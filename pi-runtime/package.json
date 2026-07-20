@@ -1,0 +1,16 @@
+{
+  "name": "@istara/pi-runtime",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Istara Pi production runtime: supervised pi-agent-core worker speaking NDJSON over stdin/stdout (see PROTOCOL.md).",
+  "main": "src/worker.mjs",
+  "scripts": {
+    "test": "node --test test/*.test.mjs",
+    "start": "node src/worker.mjs"
+  },
+  "dependencies": {
+    "@earendil-works/pi-agent-core": "0.80.10",
+    "@earendil-works/pi-ai": "0.80.10"
+  }
+}
