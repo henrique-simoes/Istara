@@ -462,3 +462,9 @@ Did: Independently reviewed commits `78f00556..5e65e62e`, the implementer eviden
 Result: Fail verdict recorded on `pi-runtime-complete-20260720-REVIEW`; raised F-1 and F-2 Blockers plus F-3 Major and created `FIX-pi-runtime-complete-20260720-REVIEW-r1`. The private resolver validates identity but is not used to invoke Pi; selected chat remains on the old Python/shared-registry loop and can prefer an authorized same-model donor.
 Verified: `python -m pytest tests/test_pi_runtime_endpoints.py tests/test_compute_route_evidence_lifecycle.py tests/test_compute_registry_hardening.py::test_strict_project_model_routing_prefers_authorized_relay_over_local_duplicate -q` -> 4 passed; `python -m pytest tests/test_pi_replacement_candidate.py -q` -> 12 passed in 33.41s; `git diff --check 22d1b956..HEAD` -> passed; `compass-forge gate after --task pi-runtime-complete-20260720-REVIEW --summary` -> no new failures, inherited large-file debt only.
 Next: stage exit: remediate F-1 through F-3 under `FIX-pi-runtime-complete-20260720-REVIEW-r1`, then delta re-review the changed surface.
+
+### L-14 | 2026-07-20T04:03:56Z | S4-remediate | kimi-code/k3 | remediator | pi-runtime-complete-20260720-fixer <!-- bsc-ledger:FIX-pi-runtime-complete-20260720-REVIEW-r1 -->
+Did: pi-runtime-complete-20260720-fixer stage on task FIX-pi-runtime-complete-20260720-REVIEW-r1 (harness fallback entry; the model did not append one).
+Result: task FIX-pi-runtime-complete-20260720-REVIEW-r1 finished; worktree head fd7cc66d.
+Verified: see Compass Forge evidence rows on FIX-pi-runtime-complete-20260720-REVIEW-r1 (command + self_report + stage_attribution).
+Next: conductor advances the pipeline on evidence.
