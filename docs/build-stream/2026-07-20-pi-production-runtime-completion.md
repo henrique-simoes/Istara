@@ -320,6 +320,14 @@ Done means: the production package imports the real Pi Agent Core; selected chat
 
 ## Decision log
 
+<!-- consensus-winner-decision -->
+DEC-consensus-winner | 2026-07-20 | S1-plan | conductor
+Context: three architect cross-votes completed
+Decision: slot c selected from pi-runtime-complete-20260720-REPLAN-C-r1
+Why: votes={"a": {"task": "pi-runtime-complete-20260720-JUDGE-A", "vote": "c"}, "b": {"task": "pi-runtime-complete-20260720-JUDGE-B", "vote": "c"}, "c": {"task": "pi-runtime-complete-20260720-JUDGE-C", "vote": "a"}}; tiebreak_used=False; plan_file=docs/build-stream/plans/pi-runtime-complete-20260720-plan-c.md
+
+
+
 DEC-1 | 2026-07-20 | S0 | owner
 Context: The audit showed the candidate was suitable for continued experiments but was not
 a production Pi replacement and did not hard-isolate API routes from matching donors.
