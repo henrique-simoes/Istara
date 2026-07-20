@@ -9,7 +9,7 @@ phase: "Phase 0 — architecture and production boundary"
 stage: S1-plan
 status: in-progress
 blocked_on: "planning-enabled conductor consensus and owner approval"
-last: { agent: gpt-5.6-sol, at: 2026-07-20T02:36:52Z, ledger: L-8 }
+last: { agent: kimi-code/k3, at: 2026-07-20T02:45:53Z, ledger: L-9 }
 next_action: "Collect the remaining cross-judge vote, record consensus_result, then pause for owner approval."
 ```
 <!-- /STATUS BLOCK -->
@@ -182,3 +182,9 @@ Did: Compared the two supplied consensus candidates, `docs/build-stream/plans/pi
 Result: Voted for slot c. Plan C is stronger at the execution seams: it hooks A2A where delegated work actually runs, specifies server-owned revision-checked session identity and replay-safe protocol bounds, maps the lab's 30-tool contract to the real 17-tool plus route/service production surface, and investigates SQLite lock causality before choosing mitigation. Task pi-runtime-complete-20260720-JUDGE-B.
 Verified: `sed -n '1,220p' docs/build-stream/plans/pi-runtime-complete-20260720-plan-a.md` and `sed -n '1,280p' docs/build-stream/plans/pi-runtime-complete-20260720-plan-c.md` -> both candidates read completely; Compass Forge command evidence 321, plan_vote 322, self_report 323 recorded successfully. No tests run because this consensus-judge stage changes no code.
 Next: stage exit: plan_vote for judge slot b recorded; conductor may collect the remaining vote and compute consensus.
+
+### L-9 | 2026-07-20T02:45:53Z | S1-plan | kimi-code/k3 | reviewer | Phase 0 <!-- bsc-ledger:pi-runtime-complete-20260720-JUDGE-C -->
+Did: Consensus judge slot c for CF-SPEC-7 (assigned pair: Plan A vs Plan B). Read both candidate plans in full and independently verified the discriminating code claims by direct inspection: persisted LLMServer records register into the live router/compute plane (llm_servers.py:64-78 _register_and_probe_server), strict+project model sort prefers relay/browser donors (compute_registry_routing.py:179-190), untracked loop.create_task(_emit()) telemetry (compute_route_evidence.py:102), ensure_pi_deepseek_registered exists (pi_replacement.py:52). Existence-checked all 18 existing test files referenced across both plans' verification campaigns (18/18 present). Files touched: this lifecycle file only (no plan edits, per judge contract).
+Result: plan_vote recorded for slot a. Plan A wins on the load-bearing architectural decision: its ComputeRegistry-disjoint ApiEndpointRegistry makes the audited API/donor alias collision unrepresentable and it explicitly removes the audited ensure_pi_deepseek_registered transient node, whereas Plan B's LLMServer reuse (verified to live in the shared registry plane) never addresses that artifact. Plan B's superior protocol rigor (revision-digest sessions, phase-aware retry, terminal-event taxonomy) and failing-tests-first/sqlite-root-cause discipline are flagged for the implementer to absorb. pi-runtime-complete-20260720-JUDGE-C
+Verified: file-existence audit 18/18 OK; read inspection of llm_servers.py:40-99, compute_registry_routing.py:148-197, compute_route_evidence.py:40-102, pi_replacement.py:52 -> all cited claims confirmed. No tests run (judge stage; no code changed).
+Next: remaining cross-judge votes, conductor consensus_result, then owner approval of the winning plan.
