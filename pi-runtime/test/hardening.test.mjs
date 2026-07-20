@@ -496,6 +496,58 @@ test("cost ceiling is cumulative across a real multi-turn tool loop", async (t) 
   assert.ok(requests >= 2, `expected two provider turns, saw ${requests}`);
 });
 
+test("real run that spends cache-read tokens on an endpoint priced only for input/output fails closed (non-faux)", async (t) => {
+  const { server, port } = await startLoopback((req, res) => {
+    res.writeHead(200, { "content-type": "text/event-stream" });
+    res.write(sseChunk("Cached reply."));
+    res.write(sseChunk(null, "stop"));
+    // A fully cache-hit prompt: 1M cache-read tokens, zero cache-miss input.
+    // pi-ai prices cacheRead independently, so with no cache_read rate this turn
+    // would price to $0 and complete fail-open if the category were not checked.
+    res.write(sseUsageChunk({ prompt_tokens: 1_000_000, prompt_cache_hit_tokens: 1_000_000, completion_tokens: 0 }));
+    res.end("data: [DONE]\n\n");
+  });
+  t.after(() => server.close());
+
+  const h = new WorkerHarness();
+  t.after(() => h.close());
+  await openSessionWithLimits(h, "sess-cache-unpriced", { max_cost_usd: 0.5 }, { catalog: [] });
+  // Priced for input/output but NOT cache_read — the exact partial-pricing gap.
+  bindLoopbackPriced(h, "sess-cache-unpriced", port, {
+    params: { timeout_ms: 5000 },
+    pricing: { input_per_mtok: 1.0, output_per_mtok: 2.0 },
+  });
+  h.send({ v: 1, type: "turn.prompt", session_key: "sess-cache-unpriced", run_id: "run-cu", text: "go" });
+  const failed = await h.waitFor((f) => f.type === "run.failed" && f.run_id === "run-cu");
+  assert.equal(failed.error, "cost_budget_unpriced");
+  assert.ok(!h.frames.some((f) => f.type === "run.completed" && f.run_id === "run-cu"));
+});
+
+test("real run that prices its cache-read tokens is counted and completes within budget (non-faux)", async (t) => {
+  const { server, port } = await startLoopback((req, res) => {
+    res.writeHead(200, { "content-type": "text/event-stream" });
+    res.write(sseChunk("Cached reply."));
+    res.write(sseChunk(null, "stop"));
+    res.write(sseUsageChunk({ prompt_tokens: 1_000_000, prompt_cache_hit_tokens: 1_000_000, completion_tokens: 0 }));
+    res.end("data: [DONE]\n\n");
+  });
+  t.after(() => server.close());
+
+  const h = new WorkerHarness();
+  t.after(() => h.close());
+  await openSessionWithLimits(h, "sess-cache-ok", { max_cost_usd: 0.5 }, { catalog: [] });
+  // Cache reads ARE priced: 1M cache-read tokens at $0.40/Mtok = $0.40, within
+  // the $0.50 ceiling. Proves cache-read usage is priced nonzero and counted.
+  bindLoopbackPriced(h, "sess-cache-ok", port, {
+    params: { timeout_ms: 5000 },
+    pricing: { input_per_mtok: 1.0, output_per_mtok: 2.0, cache_read_per_mtok: 0.4 },
+  });
+  h.send({ v: 1, type: "turn.prompt", session_key: "sess-cache-ok", run_id: "run-co", text: "go" });
+  const completed = await h.waitFor((f) => f.type === "run.completed" && f.run_id === "run-co");
+  assert.equal(completed.stop_reason, "stop");
+  assert.ok(Math.abs(completed.usage.cost_usd - 0.4) < 1e-6, `expected ~$0.40, got ${completed.usage.cost_usd}`);
+});
+
 // --- H-11: seq validation ---------------------------------------------------
 
 test("inbound seq violation is a run-scoped protocol_seq_violation", async (t) => {

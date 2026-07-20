@@ -220,14 +220,14 @@ export class PiSession {
     const scriptedCost = this._binding && Number.isFinite(this._binding.forcedCostUsd) ? this._binding.forcedCostUsd : null;
     const costUsd = scriptedCost !== null ? scriptedCost : runUsage.cost;
     if (Number.isFinite(this._limits.max_cost_usd)) {
-      // Fail closed: a real binding that spent tokens but carries no pricing
-      // reports $0, which cannot prove the run stayed within budget. Completing
-      // it would be fail-open, so surface the misconfiguration as a terminal.
-      if (
-        scriptedCost === null &&
-        this._binding && this._binding.isReal && !this._binding.pricingConfigured &&
-        (runUsage.input > 0 || runUsage.output > 0)
-      ) {
+      // Fail closed: pi-ai prices each usage category (input/output/cacheRead/
+      // cacheWrite) independently, so a real binding must carry a trustworthy
+      // positive rate for every category it actually spent tokens in. A category
+      // spent at a $0 rate (e.g. cache reads on an endpoint priced only for
+      // input/output, or an entirely unpriced endpoint) prices that usage at $0,
+      // which cannot prove the run stayed within budget. Completing it would be
+      // fail-open, so surface the misconfiguration as a terminal.
+      if (scriptedCost === null && this._binding && this._binding.isReal && this._hasUnpricedSpend(runUsage)) {
         this._frame("run.failed", { run_id: runId, error: "cost_budget_unpriced" });
         return;
       }
@@ -258,6 +258,8 @@ export class PiSession {
     const start = this._run && Number.isInteger(this._run.startMessageCount) ? this._run.startMessageCount : 0;
     let input = 0;
     let output = 0;
+    let cacheRead = 0;
+    let cacheWrite = 0;
     let cost = 0;
     for (let i = start; i < messages.length; i++) {
       const message = messages[i];
@@ -265,9 +267,26 @@ export class PiSession {
       const usage = message.usage || {};
       input += usage.input || 0;
       output += usage.output || 0;
+      cacheRead += usage.cacheRead || 0;
+      cacheWrite += usage.cacheWrite || 0;
       cost += (usage.cost && usage.cost.total) || 0;
     }
-    return { input, output, cost };
+    return { input, output, cacheRead, cacheWrite, cost };
+  }
+
+  /**
+   * True when a real run spent tokens in a usage category whose per-million-token
+   * rate is not a trustworthy positive number. pi-ai prices input, output, cache
+   * reads, and cache writes independently, so any spent-but-$0-rated category
+   * (including an entirely unpriced binding) makes the computed cost an
+   * untrustworthy under-count that cannot prove the run stayed within budget.
+   */
+  _hasUnpricedSpend(runUsage) {
+    const rates = (this._binding && this._binding.pricing) || {};
+    for (const category of ["input", "output", "cacheRead", "cacheWrite"]) {
+      if ((runUsage[category] || 0) > 0 && !(rates[category] > 0)) return true;
+    }
+    return false;
   }
 
   _lastAssistant() {
