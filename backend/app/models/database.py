@@ -126,6 +126,7 @@ async def init_db() -> None:
         "app.core.agent_learning",
         "app.core.audit_middleware",
         "app.models.telemetry_span",
+        "app.models.agentic_usage",
         "app.models.project_report",
         "app.models.project_member",
         "app.models.permission_request",
