@@ -474,3 +474,9 @@ Did: Delta re-reviewed only findings F-1 through F-3 against `FIX-pi-runtime-com
 Result: Fail verdict for `REREV-pi-runtime-complete-20260720-REVIEW-r1`. F-1, F-2, and F-3 remain open; created independent sibling tasks `FIX-REREV-pi-runtime-complete-20260720-REVIEW-r1-F1`, `-F2`, and `-F3` for the cast fixer. No scope broadening was needed because the attempted fix introduced no architecture or acceptance change.
 Verified: `git diff --name-status fd7cc66d..960e74f6` -> only `docs/build-stream/2026-07-20-pi-production-runtime-completion.md`; `git diff --quiet fd7cc66d..960e74f6 -- backend frontend relay pi-runtime tests labs` -> passed (no production/test changes); targeted `rg` -> `backend/app/api/routes/chat.py:204,392` still sets `strict_model_routing=True if pi_candidate else None`, with no production `@earendil-works/pi-agent-core` bridge found; `compass-forge gate before --task REREV-pi-runtime-complete-20260720-REVIEW-r1 --summary` -> no new failures, inherited large-file debt only.
 Next: stage exit: remediate the three sibling FIX-REREV tasks, then conductor creates one delta re-review after the sibling barrier.
+
+### L-16 | 2026-07-20T04:16:29Z | S4-remediate | kimi-code/k3 | remediator | pi-runtime-complete-20260720-fixer <!-- bsc-ledger:FIX-REREV-pi-runtime-complete-20260720-REVIEW-r1-F2 -->
+Did: pi-runtime-complete-20260720-fixer stage on task FIX-REREV-pi-runtime-complete-20260720-REVIEW-r1-F2 (harness fallback entry; the model did not append one).
+Result: task FIX-REREV-pi-runtime-complete-20260720-REVIEW-r1-F2 finished; worktree head 72034df7.
+Verified: see Compass Forge evidence rows on FIX-REREV-pi-runtime-complete-20260720-REVIEW-r1-F2 (command + self_report + stage_attribution).
+Next: conductor advances the pipeline on evidence.
