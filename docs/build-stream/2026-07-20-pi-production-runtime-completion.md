@@ -9,8 +9,8 @@ phase: "Phase 0 — architecture and production boundary"
 stage: S1-plan
 status: in-progress
 blocked_on: "planning-enabled conductor consensus and owner approval"
-last: { agent: claude-fable-5, at: 2026-07-20T02:34:04Z, ledger: L-7 }
-next_action: "Collect remaining cross-judge votes, record consensus_result, pause for owner approval."
+last: { agent: gpt-5.6-sol, at: 2026-07-20T02:36:52Z, ledger: L-8 }
+next_action: "Collect the remaining cross-judge vote, record consensus_result, then pause for owner approval."
 ```
 <!-- /STATUS BLOCK -->
 
@@ -176,3 +176,9 @@ Did: Consensus judge slot a for CF-SPEC-7. Read both candidate plans (docs/build
 Result: plan_vote recorded for slot c. Plan C wins: it identifies and structurally avoids the LLMServer/ComputeRegistry donor-collision side effect that Plan B's endpoint reuse silently re-enters, hooks A2A at the orchestrator dispatch where delegated work executes, and carries a verified file:line seam map plus an auditable 30-vs-17 tool coverage mapping. pi-runtime-complete-20260720-JUDGE-A
 Verified: Read of both plan files; sed inspection of backend/app/api/routes/llm_servers.py:55-85, backend/app/core/compute_registry_routing.py:178-192, backend/app/core/compute_route_evidence.py:95-110 -> all three Plan C claims confirmed. No tests run (judge stage; no code changed).
 Next: remaining cross-judge votes, conductor consensus_result, then owner approval of the winning plan.
+
+### L-8 | 2026-07-20T02:36:52Z | S1-plan | gpt-5.6-sol | reviewer | Phase 0 <!-- bsc-ledger:pi-runtime-complete-20260720-JUDGE-B -->
+Did: Compared the two supplied consensus candidates, `docs/build-stream/plans/pi-runtime-complete-20260720-plan-a.md` and `docs/build-stream/plans/pi-runtime-complete-20260720-plan-c.md`; recorded the judge-b vote and self-report in Compass Forge. Files touched: this lifecycle file only; neither candidate plan was edited.
+Result: Voted for slot c. Plan C is stronger at the execution seams: it hooks A2A where delegated work actually runs, specifies server-owned revision-checked session identity and replay-safe protocol bounds, maps the lab's 30-tool contract to the real 17-tool plus route/service production surface, and investigates SQLite lock causality before choosing mitigation. Task pi-runtime-complete-20260720-JUDGE-B.
+Verified: `sed -n '1,220p' docs/build-stream/plans/pi-runtime-complete-20260720-plan-a.md` and `sed -n '1,280p' docs/build-stream/plans/pi-runtime-complete-20260720-plan-c.md` -> both candidates read completely; Compass Forge command evidence 321, plan_vote 322, self_report 323 recorded successfully. No tests run because this consensus-judge stage changes no code.
+Next: stage exit: plan_vote for judge slot b recorded; conductor may collect the remaining vote and compute consensus.
