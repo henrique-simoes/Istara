@@ -16,26 +16,54 @@ from app.channels.base import channel_router
 from app.channels.pi_local import PiLocalAdapter
 from app.config import settings
 from app.models.channel_message import ChannelMessage
-from app.models.code_application import CodeApplication
 from app.models.codebook import Codebook  # noqa: F401 - registers Project relationship.
-from app.models.document import Document
-from app.models.finding import Nugget
 from app.models.message import Message
-from app.models.model_skill_stats import ModelSkillStats
 from app.models.database import async_session, init_db
 from app.models.project import Project
 from app.models.agent import A2AMessage
-from app.models.reasoning_memory import ReasoningMemoryItem
-from app.models.research_validity import EvidenceUnit, ResearchEvidenceEdge
-from app.models.task import Task, TaskStatus
-from app.models.task_review import TaskReviewEvent
+from app.models.task import Task, TaskStatus  # noqa: F401 - registers Project relationship.
 from app.models.telemetry_span import TelemetrySpan
-from app.core.pi_replacement import (
-    exercise_pi_production_readiness,
-)
 from app.services import channel_service
-from app.services.research_validity_service import build_evidence_graph_traceability
 from app.services.inbound_processor import process_inbound_channel_message
+
+
+class _FakePiService:
+    """Lightweight stand-in for ``PiExecutionService`` used to prove seam wiring
+    (persistence, gating, governance) without spawning the real Node worker.
+
+    The real worker + provider HTTP stack are exercised end-to-end in
+    ``tests/pi_production`` instead.
+    """
+
+    def __init__(self, reply: str = "Pi handled the channel message via the real loop."):
+        self.reply = reply
+        self.channel_calls: list[dict] = []
+        self.autoresearch_calls: list[dict] = []
+
+    async def run_channel_turn(self, *, project_id, agent_id, system_prompt, inbound_text,
+                               tool_executor, session_key=None, **_kw):
+        self.channel_calls.append({"project_id": project_id, "inbound_text": inbound_text})
+        return {"text": self.reply, "endpoint_id": "pi-loopback", "status": "success", "tool_calls": []}
+
+    async def run_autoresearch_turn(self, *, project_id, agent_id, system_prompt, objective,
+                                    tool_executor, loop_type, target, **_kw):
+        self.autoresearch_calls.append({"project_id": project_id, "loop_type": loop_type})
+        return {
+            "status": "candidate_proposal",
+            "loop_type": loop_type,
+            "target": target,
+            "project_id": project_id,
+            "production_mutation_allowed": False,
+            "background_task_started": False,
+            "proposal": {
+                "hypothesis": "Governed Pi candidate hypothesis (fake).",
+                "governance_required": True,
+                "report_evidence": False,
+                "promotion": "blocked_pending_human_review",
+            },
+            "runtime": {"engine": "pi", "turn_status": "success", "tool_calls": [],
+                        "endpoint_id": "pi-loopback"},
+        }
 
 
 @pytest.mark.asyncio
@@ -292,13 +320,7 @@ async def test_pi_local_channel_adapter_routes_through_inbound_processor(monkeyp
     await init_db()
     project_id = f"pi-local-channel-{uuid.uuid4()}"
 
-    async def fake_record_span(*args, **kwargs):
-        return None
-
-    monkeypatch.setattr(
-        "app.core.pi_replacement.telemetry_recorder.record_span",
-        fake_record_span,
-    )
+    monkeypatch.setattr("app.core.pi_runtime.seams._service", _FakePiService())
 
     async with async_session() as db:
         db.add(Project(id=project_id, name="Pi Local Channel Project"))
@@ -341,13 +363,7 @@ async def test_pi_local_channel_drops_stopped_injection_and_unregisters_ownershi
     await init_db()
     project_id = f"pi-local-stop-{uuid.uuid4()}"
 
-    async def fake_record_span(*args, **kwargs):
-        return None
-
-    monkeypatch.setattr(
-        "app.core.pi_replacement.telemetry_recorder.record_span",
-        fake_record_span,
-    )
+    monkeypatch.setattr("app.core.pi_runtime.seams._service", _FakePiService())
 
     async with async_session() as db:
         db.add(Project(id=project_id, name="Pi Local Stop Project"))
@@ -385,6 +401,8 @@ async def test_pi_local_channel_inbound_cannot_cross_project_boundary(monkeypatc
     await init_db()
     project_a = f"pi-local-a-{uuid.uuid4()}"
     project_b = f"pi-local-b-{uuid.uuid4()}"
+
+    monkeypatch.setattr("app.core.pi_runtime.seams._service", _FakePiService())
 
     async with async_session() as db:
         db.add_all([
@@ -429,57 +447,76 @@ async def test_pi_local_channel_inbound_cannot_cross_project_boundary(monkeypatc
         )
         await channel_service.stop_project_channel_instances(db, project_a)
 
-    assert len(project_a_messages) == 1
+    # Project A holds exactly one inbound message plus the persisted Pi reply;
+    # project B (the spoofed metadata target) sees nothing — scope comes from the
+    # instance, never from model-supplied metadata.
+    inbound_a = [m for m in project_a_messages if m.direction == "inbound"]
+    outbound_a = [m for m in project_a_messages if m.direction == "outbound"]
+    assert len(inbound_a) == 1
+    assert len(outbound_a) == 1
     assert response_inbound is not None
-    assert response_inbound.id == project_a_messages[0].id
+    assert response_inbound.id == inbound_a[0].id
     assert response_inbound.project_id == project_a
     assert project_b_messages == []
     assert project_b_spans == []
 
 
 @pytest.mark.asyncio
-async def test_pi_production_readiness_exercises_real_spine_memory_and_steering(monkeypatch):
-    await init_db()
-    project_id = f"pi-production-ready-{uuid.uuid4()}"
+async def test_pi_exercisers_deleted_have_no_surviving_caller():
+    """Plan C D-C6: the credential-free research/memory/steering exercisers and
+    the canned channel response are deleted — no code path may call them."""
+    import app.core.pi_replacement as pr
 
-    async def fake_record_span(*args, **kwargs):
-        return None
+    for gone in (
+        "write_pi_source_evidence_chain",
+        "exercise_pi_done_report_gate",
+        "record_pi_memory_governance_fanout",
+        "exercise_pi_steering_interrupt_probe",
+        "exercise_pi_production_readiness",
+        "build_pi_channel_response",
+    ):
+        assert not hasattr(pr, gone), f"exerciser {gone} still present"
 
-    monkeypatch.setattr(
-        "app.core.pi_replacement.telemetry_recorder.record_span",
-        fake_record_span,
+
+@pytest.mark.asyncio
+async def test_pi_governed_autoresearch_returns_candidate_only_and_starts_no_loop(monkeypatch):
+    """The governed Pi autoresearch seam (non-dry-run) yields a candidate
+    proposal only: no background loop, no promotion, human governance required
+    (AC-5). Replaces the deleted readiness exerciser with a route-level proof."""
+    added: list[object] = []
+
+    async def fake_project_scope(*args, **kwargs):
+        return "pi-governed-autoresearch"
+
+    monkeypatch.setattr(settings, "autoresearch_enabled", True)
+    monkeypatch.setattr(autoresearch_route, "_require_active_project_scope", fake_project_scope)
+    monkeypatch.setattr(autoresearch_route, "_get_engine", lambda: SimpleNamespace(is_running=False))
+    monkeypatch.setattr("app.core.pi_runtime.seams._service", _FakePiService())
+
+    background_tasks = BackgroundTasks()
+    background_tasks.add_task = lambda fn, *args, **kwargs: added.append((fn, args, kwargs))
+    result = await autoresearch_route.start_experiment(
+        autoresearch_route.StartExperimentRequest(
+            loop_type="model_temp",
+            target="pi-governed-benchmark",
+            max_iterations=3,
+            project_id="pi-governed-autoresearch",
+            dry_run=False,
+        ),
+        SimpleNamespace(headers={"x-istara-agent-engine": "pi"}),
+        background_tasks,
+        None,
     )
 
-    async with async_session() as db:
-        db.add(Project(id=project_id, name="Pi Production Readiness Project"))
-        await db.commit()
-        result = await exercise_pi_production_readiness(db, project_id=project_id)
-
-    assert result["production_test_ready"] is False
+    assert result["status"] == "candidate_proposal"
     assert result["production_mutation_allowed"] is False
-    assert result["done_report_gate"]["report_finding_count"] == 0
-    assert result["done_report_gate"]["governance_source"] == "computed"
-    assert result["done_report_gate"]["governance_available"] is False
-    assert result["traceability_summary"]["evidence_graph_edge_count"] >= 1
-    assert result["steering_interrupt"]["before"]["is_working"] is True
-    assert result["steering_interrupt"]["after"]["is_working"] is False
-    assert result["steering_interrupt"]["cleared_steering_count"] == 1
-
-    async with async_session() as db:
-        task = await db.get(Task, result["task_id"])
-        assert task is not None
-        assert task.status == TaskStatus.IN_REVIEW
-        assert task.review_state == "in_review"
-        assert result["done_report_gate"]["review_event_id"] is None
-        assert await db.get(Document, result["done_report_gate"]["document_id"]) is not None
-        assert await db.get(Nugget, result["done_report_gate"]["nugget_id"]) is not None
-        assert await db.get(ReasoningMemoryItem, result["memory_governance"]["memory_id"]) is not None
-        assert await db.scalar(select(EvidenceUnit).where(EvidenceUnit.project_id == project_id)) is not None
-        assert await db.scalar(select(CodeApplication).where(CodeApplication.project_id == project_id)) is None
-        assert await db.scalar(select(ResearchEvidenceEdge).where(ResearchEvidenceEdge.project_id == project_id)) is not None
-        assert await db.scalar(select(ModelSkillStats).where(ModelSkillStats.project_id == project_id)) is None
-        trace = await build_evidence_graph_traceability(db, project_id=project_id, task_id=result["task_id"])
-        assert trace["summary"]["code_application_count"] == 0
+    assert result["background_task_started"] is False
+    assert result["proposal"]["governance_required"] is True
+    assert result["proposal"]["report_evidence"] is False
+    assert result["proposal"]["promotion"] == "blocked_pending_human_review"
+    assert result["max_iterations"] == 3
+    # The legacy runner loop was never scheduled — governed mode is turn-only.
+    assert added == []
 
 
 @pytest.mark.asyncio

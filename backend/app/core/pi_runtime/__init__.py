@@ -6,7 +6,13 @@ validated Pi request.
 """
 
 from .endpoints import PiEndpointResolutionError, PiEndpointResolver, ResolvedPiEndpoint
-from .engine import PiExecutionService
+from .engine import (
+    AUTORESEARCH_TOOLS,
+    CHANNEL_TOOLS,
+    DELEGATION_TOOLS,
+    PiExecutionService,
+    SteeringBinding,
+)
 from .supervisor import PiRuntimeSupervisor, PiWorkerError, get_supervisor, shutdown_supervisor
 from .tools import build_tool_catalog
 
@@ -15,6 +21,10 @@ __all__ = [
     "PiEndpointResolver",
     "ResolvedPiEndpoint",
     "PiExecutionService",
+    "SteeringBinding",
+    "AUTORESEARCH_TOOLS",
+    "CHANNEL_TOOLS",
+    "DELEGATION_TOOLS",
     "PiRuntimeSupervisor",
     "PiWorkerError",
     "get_supervisor",

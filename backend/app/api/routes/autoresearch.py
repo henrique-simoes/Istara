@@ -636,6 +636,28 @@ async def start_experiment(
             },
         }
 
+    # Governed Pi mode slots between the mutation-free dry-run and the legacy
+    # runners: it runs one bounded Pi turn with a read-only/proposal-only catalog
+    # and returns a candidate proposal only — no background loop, no promotion,
+    # no filesystem mutation. Human governance gates are unchanged (AC-5).
+    if pi_replacement_requested(request):
+        from app.core.pi_runtime.endpoints import PiEndpointResolutionError
+        from app.core.pi_runtime.seams import run_pi_governed_autoresearch
+
+        try:
+            proposal = await run_pi_governed_autoresearch(
+                project_id=scoped_project_id,
+                loop_type=body.loop_type,
+                target=body.target,
+            )
+        except PiEndpointResolutionError as exc:
+            raise HTTPException(
+                status_code=503,
+                detail=f"Pi runtime endpoint unavailable: {exc}",
+            )
+        proposal["max_iterations"] = max_iterations
+        return proposal
+
     runner = _get_runner(body.loop_type)
 
     async def _run_loop():
