@@ -20,6 +20,20 @@ class PiEndpointResolutionError(ValueError):
     """A selected Pi request has no usable, exact endpoint binding."""
 
 
+class PiRuntimeTurnError(RuntimeError):
+    """A governed Pi turn reached a non-success terminal (``error``/``aborted``).
+
+    Governed seams fail closed on this instead of returning a proposal, reply,
+    or delegation result built from a failed or partially-streamed turn — a
+    worker failure must never surface as a false-success artifact or reply.
+    """
+
+    def __init__(self, status: str, error: str | None = None) -> None:
+        self.status = status
+        self.error = error
+        super().__init__(f"pi_runtime_turn_{status}:{error or 'unknown'}")
+
+
 @dataclass(frozen=True)
 class ResolvedPiEndpoint:
     endpoint_id: str

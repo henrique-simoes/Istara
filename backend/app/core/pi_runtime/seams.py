@@ -115,6 +115,13 @@ async def build_pi_channel_reply(
         logger.warning("Pi channel turn failed (fail-closed)", exc_info=True)
         return None
 
+    # Reject a non-success terminal before sending: a turn that errored or was
+    # aborted must not produce a reply, even if it streamed partial text (RF3-2).
+    if (result or {}).get("status") != "success":
+        logger.warning(
+            "Pi channel turn non-success (fail-closed): %s", (result or {}).get("status")
+        )
+        return None
     text = (result or {}).get("text") or ""
     if not text.strip():
         return None
@@ -150,7 +157,7 @@ async def run_pi_delegation(
         return None
     service = get_pi_execution_service()
     try:
-        return await service.run_delegation(
+        result = await service.run_delegation(
             project_id=project_id,
             agent_id=agent_id or "istara-main",
             system_prompt=DELEGATION_SYSTEM_PROMPT,
@@ -164,6 +171,14 @@ async def run_pi_delegation(
     except Exception:  # pragma: no cover - defensive
         logger.warning("Pi delegation failed (fail-closed)", exc_info=True)
         return None
+    # Reject a non-success terminal before the caller persists/sends a reply: a
+    # turn that errored or was aborted must not surface partial text (RF3-2).
+    if (result or {}).get("status") != "success":
+        logger.warning(
+            "Pi delegation non-success (fail-closed): %s", (result or {}).get("status")
+        )
+        return None
+    return result
 
 
 async def run_pi_governed_autoresearch(
@@ -175,8 +190,10 @@ async def run_pi_governed_autoresearch(
 ) -> dict[str, Any]:
     """Run one governed Autoresearch turn → candidate proposal (never mutates).
 
-    Raises ``PiEndpointResolutionError`` (fail-closed) when the endpoint is
-    unavailable so the route returns a typed 4xx, never a silent success.
+    Fails closed with a typed error so the route never returns a silent success:
+    ``PiEndpointResolutionError`` when the endpoint is unavailable, and
+    ``PiRuntimeTurnError`` when the turn reaches a non-success terminal
+    (``error``/``aborted``) — a failed turn yields no candidate proposal (RF3-2).
     """
     service = get_pi_execution_service()
     objective = (

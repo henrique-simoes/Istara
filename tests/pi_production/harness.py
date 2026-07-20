@@ -58,3 +58,13 @@ def tool_call(name: str, arguments: dict) -> dict:
 
 def final_text(text: str) -> dict:
     return {"text": text, "stop_reason": "stop"}
+
+
+def error_after_partial(text: str) -> dict:
+    """A faux response that streams ``text`` then settles on a failed terminal.
+
+    The worker emits ``assistant.delta`` frames for ``text`` and then ``run.failed``
+    (``_settleRun`` sees ``stopReason == "error"``), so the collected turn has a
+    non-empty ``text`` with ``status == "error"`` — the "error after partial
+    output" case governed seams must fail closed on."""
+    return {"text": text, "stop_reason": "error"}
