@@ -12,6 +12,8 @@ proof, this test fails.
 from __future__ import annotations
 
 import importlib
+import re
+from pathlib import Path
 
 import pytest
 
@@ -50,9 +52,15 @@ COVERAGE: dict[str, tuple[str, str]] = {
 }
 
 
+def _catalog_ids() -> set[str]:
+    """Read the canonical lab catalog rather than maintaining a second id list."""
+    catalog = Path(__file__).resolve().parents[2] / "labs/pi-replacement/src/scenario-catalog.mjs"
+    return set(re.findall(r"^    id\s*:\s*['\"]([^'\"]+)['\"]", catalog.read_text(), re.MULTILINE))
+
+
 def test_scenario14_every_canonical_scenario_resolves_to_a_production_test():
-    # The full 15-scenario matrix is covered — no gaps, no lab-facade fallback.
-    assert len(COVERAGE) == 15
+    # The full catalog is covered — no gaps, no lab-facade fallback.
+    assert set(COVERAGE) == _catalog_ids()
 
     missing: list[str] = []
     for scenario_id, (module_name, func_name) in COVERAGE.items():

@@ -52,6 +52,7 @@ class PiRuntimeSupervisor:
         self._proc: asyncio.subprocess.Process | None = None
         self._sessions: dict[str, asyncio.Queue[dict[str, Any]]] = {}
         self._session_runs: dict[str, str] = {}
+        self._session_locks: dict[str, asyncio.Lock] = {}
         self._reader_task: asyncio.Task | None = None
         self._stderr_task: asyncio.Task | None = None
         self._ready = asyncio.Event()
@@ -162,22 +163,32 @@ class PiRuntimeSupervisor:
         revision: str | None,
         catalog: list[dict[str, Any]],
     ) -> None:
-        queue: asyncio.Queue[dict[str, Any]] = asyncio.Queue()
-        self._sessions[session_key] = queue
-        await self._send(
-            {
-                "v": PROTOCOL_VERSION,
-                "type": "session.open",
-                "session_key": session_key,
-                "system_prompt": system_prompt,
-                "history": (history or [])[-MAX_HISTORY_MESSAGES:],
-                "revision": revision,
-                "catalog": catalog,
-            }
-        )
-        frame = await asyncio.wait_for(queue.get(), timeout=self._handshake_timeout)
-        if frame.get("type") != "session.opened":
-            raise PiWorkerError(f"session_open_failed:{frame.get('error') or frame.get('type')}")
+        lock = self._session_locks.setdefault(session_key, asyncio.Lock())
+        async with lock:
+            # A caller must close a successful session before reusing its key.
+            # Reject instead of replacing its queue, which used to cross-wire runs.
+            if session_key in self._sessions:
+                raise PiWorkerError("session_busy")
+            queue: asyncio.Queue[dict[str, Any]] = asyncio.Queue()
+            self._sessions[session_key] = queue
+            try:
+                await self._send(
+                    {
+                        "v": PROTOCOL_VERSION,
+                        "type": "session.open",
+                        "session_key": session_key,
+                        "system_prompt": system_prompt,
+                        "history": (history or [])[-MAX_HISTORY_MESSAGES:],
+                        "revision": revision,
+                        "catalog": catalog,
+                    }
+                )
+                frame = await asyncio.wait_for(queue.get(), timeout=self._handshake_timeout)
+                if frame.get("type") != "session.opened":
+                    raise PiWorkerError(f"session_open_failed:{frame.get('error') or frame.get('type')}")
+            except Exception:
+                self._sessions.pop(session_key, None)
+                raise
 
     async def bind_provider(self, session_key: str, endpoint: dict[str, Any]) -> None:
         await self._send(
@@ -205,38 +216,47 @@ class PiRuntimeSupervisor:
             raise PiWorkerError("unknown_session")
         self._run_counter += 1
         run_id = f"run-{self._run_counter}"
-        self._session_runs[session_key] = run_id
-        await self._send(
-            {"v": PROTOCOL_VERSION, "type": "turn.prompt", "session_key": session_key, "run_id": run_id, "text": text}
-        )
-        try:
-            while True:
-                frame = await asyncio.wait_for(queue.get(), timeout=self._run_timeout)
-                ftype = frame.get("type")
-                if ftype == "fatal":
-                    yield {"type": "run.failed", "run_id": run_id, "error": frame.get("error", "fatal")}
-                    return
-                if ftype == "tool.call":
-                    outcome = await self._safe_tool_call(tool_handler, frame)
-                    await self._send(
-                        {
-                            "v": PROTOCOL_VERSION,
-                            "type": "tool.result",
-                            "session_key": session_key,
-                            "run_id": run_id,
-                            "tool_call_id": frame.get("tool_call_id"),
-                            "ok": bool(outcome.get("ok")),
-                            "result": outcome.get("result"),
-                            "error": outcome.get("error"),
-                        }
-                    )
+        lock = self._session_locks.setdefault(session_key, asyncio.Lock())
+        async with lock:
+            if session_key in self._session_runs:
+                raise PiWorkerError("session_busy")
+            self._session_runs[session_key] = run_id
+            await self._send(
+                {"v": PROTOCOL_VERSION, "type": "turn.prompt", "session_key": session_key, "run_id": run_id, "text": text}
+            )
+            try:
+                while True:
+                    frame = await asyncio.wait_for(queue.get(), timeout=self._run_timeout)
+                    # Session queues can contain delayed frames from a prior run.
+                    # They must never terminate or yield into this run.
+                    frame_run_id = frame.get("run_id")
+                    if frame_run_id is not None and frame_run_id != run_id:
+                        continue
+                    ftype = frame.get("type")
+                    if ftype == "fatal":
+                        yield {"type": "run.failed", "run_id": run_id, "error": frame.get("error", "fatal")}
+                        return
+                    if ftype == "tool.call":
+                        outcome = await self._safe_tool_call(tool_handler, frame)
+                        await self._send(
+                            {
+                                "v": PROTOCOL_VERSION,
+                                "type": "tool.result",
+                                "session_key": session_key,
+                                "run_id": run_id,
+                                "tool_call_id": frame.get("tool_call_id"),
+                                "ok": bool(outcome.get("ok")),
+                                "result": outcome.get("result"),
+                                "error": outcome.get("error"),
+                            }
+                        )
+                        yield frame
+                        continue
                     yield frame
-                    continue
-                yield frame
-                if ftype in TERMINAL_RUN_TYPES:
-                    return
-        finally:
-            self._session_runs.pop(session_key, None)
+                    if ftype in TERMINAL_RUN_TYPES:
+                        return
+            finally:
+                self._session_runs.pop(session_key, None)
 
     async def _safe_tool_call(self, tool_handler: ToolHandler, frame: dict[str, Any]) -> dict[str, Any]:
         try:
@@ -295,6 +315,7 @@ class PiRuntimeSupervisor:
                 pass
         finally:
             self._sessions.pop(session_key, None)
+            self._session_locks.pop(session_key, None)
 
     async def shutdown(self) -> None:
         if self._proc is None:
@@ -312,6 +333,7 @@ class PiRuntimeSupervisor:
             await self._cancel_tasks()
             self._sessions.clear()
             self._session_runs.clear()
+            self._session_locks.clear()
 
     async def _force_stop(self) -> None:
         if self._proc is None:

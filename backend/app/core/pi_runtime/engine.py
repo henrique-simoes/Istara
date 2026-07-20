@@ -176,6 +176,7 @@ class PiExecutionService:
         """
         endpoint = self._resolver.resolve(endpoint_id)
         catalog = build_tool_catalog(allowed_tools)
+        catalog_names = {entry["name"] for entry in catalog}
         key = session_key or f"pi-{operation}-{uuid.uuid4().hex}"
         revision = _session_revision(history, endpoint)
         sup = self._sup()
@@ -183,6 +184,9 @@ class PiExecutionService:
         async def tool_handler(name: str, args: dict[str, Any]) -> dict[str, Any]:
             # Authority round-trip: authenticated scope is re-injected here; the
             # model cannot set project_id/agent_id.
+            if name not in catalog_names:
+                logger.warning("pi-runtime: rejected out-of-catalog tool %s for %s", name, operation)
+                return {"ok": False, "error": "tool_not_allowed"}
             result = await tool_executor(name, args, project_id, agent_id)
             return _normalize_tool_result(result)
 
@@ -455,7 +459,9 @@ class PiExecutionService:
         terminal: dict[str, Any] | None,
         operation: str,
     ) -> None:
-        status = "success" if (terminal and terminal.get("type") == "done") else "error"
+        status = "success" if (terminal and terminal.get("type") == "done") else (
+            "aborted" if (terminal and terminal.get("type") == "aborted") else "error"
+        )
         usage = (terminal or {}).get("usage") or {}
         identity = endpoint.telemetry_identity()  # endpoint_id / provider_kind / model only
         try:
