@@ -164,3 +164,9 @@ Did: r1 repair of consensus Plan A (docs/build-stream/plans/pi-runtime-complete-
 Result: Plan A candidate valid and buildable; pi-runtime-complete-20260720-REPLAN-A-r1
 Verified: `python -m pytest tests/test_pi_replacement_candidate.py -q` -> 12 passed; path-existence audit of 25 plan-referenced files -> all exist post-fix; `python tests/benchmarks/run_benchmarks.py --help` -> valid CLI; npm script inventory confirmed validate/paired:no-model/collect:artifacts, relay test, real_user_benchmark check, simulation test:static.
 Next: cross-judging of plans A/B/C once architect C finishes; conductor consensus, then owner approval.
+
+### L-6 | 2026-07-20T02:30:24Z | S1-plan | kimi-code/k3 | planner | pi-runtime-complete-20260720-architect-c <!-- bsc-ledger:pi-runtime-complete-20260720-REPLAN-C-r1 -->
+Did: pi-runtime-complete-20260720-architect-c stage on task pi-runtime-complete-20260720-REPLAN-C-r1 (harness fallback entry; the model did not append one).
+Result: task pi-runtime-complete-20260720-REPLAN-C-r1 finished; worktree head b3c5d550.
+Verified: see Compass Forge evidence rows on pi-runtime-complete-20260720-REPLAN-C-r1 (command + self_report + stage_attribution).
+Next: conductor advances the pipeline on evidence.
