@@ -6,11 +6,11 @@ item: pi-full-replacement
 branch: Review_pi_test
 cf: { spec: CF-SPEC-8, tasks: [pi-full-20260720-w0-IMPL, pi-full-20260720-w0-REVIEW] }
 phase: "W0 — hardening and evidence integrity"
-stage: S2-execute
+stage: S4-remediate
 status: in-progress
 blocked_on: null
-last: { agent: gpt-5.6-terra, at: 2026-07-20T17:02:17Z, ledger: L-3 }
-next_action: "Complete W0 H-1/H-2/H-4 through H-13; do not hand off until the full exit ladder is green."
+last: { agent: gpt-5.6-sol, at: 2026-07-20T17:11:55Z, ledger: L-4 }
+next_action: "Complete FIX-pi-full-20260720-w0-REVIEW-r1, then delta re-review every F-1 through F-4 seam."
 ```
 <!-- /STATUS BLOCK -->
 
@@ -107,6 +107,20 @@ Verified: `python -m py_compile backend/app/core/pi_runtime/supervisor.py backen
 `python -m pytest tests/pi_production/test_scenario_coverage_map.py tests/pi_production/test_worker_tool_loop.py -q` = 3 passed.
 Next: Continue the remaining W0 hardening and ratchet implementation; stage exit is blocked on the full §6 contract.
 
+### L-4 | 2026-07-20T17:11:55Z | S3-review | gpt-5.6-sol | reviewer | W0 <!-- bsc-ledger:pi-full-20260720-w0-REVIEW -->
+Did: Independently reviewed commit `effe9496`, the W0 master-plan and conductor contracts,
+runtime/protocol seams, regression inventory, CF evidence, docs, gate, and commit discipline;
+created `FIX-pi-full-20260720-w0-REVIEW-r1` for the coupled remediation.
+Result: Fail; opened F-1 through F-4. The partial H-3/H-9/H-10/H-14 changes retain green
+focused regressions, but W0's inventory ratchet, most H items, ASGI proof, history correction,
+living docs, completion decision, and full exit evidence are absent.
+Verified: required-file audit = failed (5 missing plus no `PI_REQUIRE_NODE` enforcement);
+focused Pi/donor pytest = 4 passed; candidate pytest = 13 passed; `npm --prefix pi-runtime test`
+= 4 passed while literal `node --test pi-runtime/test` = `MODULE_NOT_FOUND`; feature docs =
+86 passed; security benchmark = 28/28; post-gate = 0 new/actionable/drift/security/cycles;
+commit = required author/W0 tag/4 files/no co-author; no orphan Pi worker.
+Next: Stage exit: fail verdict and coupled remediation task recorded for delta re-review.
+
 ## W0 — hardening and evidence integrity
 
 **Frame/Plan:** Master plan §6 plus §12.2. Arm the deterministic inventory/ratchet before
@@ -119,8 +133,12 @@ through H-14 with named regression tests. Preserve Petals/donor isolation.
 
 | ID | Sev | Dim | Where | Finding | CF task | Status |
 |---|---|---|---|---|---|---|
+| F-1 | Blocker | Product | `scripts/pi_migration_inventory.py`; `tests/pi_migration/` | M0 inventory scanner, complete 87-site plus permanent-infrastructure allowlist, count-to-zero ratchet, and e2e ladder registration are absent. | FIX-pi-full-20260720-w0-REVIEW-r1 | open |
+| F-2 | Blocker | Bugs | `backend/app/core/pi_runtime/`; `pi-runtime/` | H-1/H-2/H-4–H-8/H-11/H-12 are unimplemented; H-3 lacks named race/stale-frame tests; H-9 is partial; H-10 lacks its audit row and compromised-worker test. | FIX-pi-full-20260720-w0-REVIEW-r1 | open |
+| F-3 | Blocker | Integration | `tests/pi_production/`; `docs/build-stream/2026-07-20-pi-production-runtime-completion.md` | H-13 real-ASGI tests and append-only CF-SPEC-7 correction are absent; H-14 lacks `PI_REQUIRE_NODE` fail-loud enforcement. | FIX-pi-full-20260720-w0-REVIEW-r1 | open |
+| F-4 | Major | Plan | master plan §8.6; W0 evidence/docs | Living docs, full deterministic ladder, completion decision/evidence are absent, and literal `node --test pi-runtime/test` is invalid; use the verified package test entrypoint. | FIX-pi-full-20260720-w0-REVIEW-r1 | open |
 
-**Remediation:** Pending review findings.
+**Remediation:** `FIX-pi-full-20260720-w0-REVIEW-r1` is open; one coupled fixer owns F-1–F-4 because the runtime changes, named tests, ratchet, docs, and final ladder form W0's atomic exit contract.
 
 **Phase summary:** Pending.
 
