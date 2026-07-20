@@ -1,0 +1,71 @@
+[recipe]
+name = "istara-main-pi-replacement"
+root_hint = "/Users/user/Documents/Istara-main-pi-replacement"
+description = "Inferred Compass Forge recipe. Review and edit project-specific rules as the codebase teaches the tool."
+
+[commands]
+
+[context]
+always_include = ["README.md", "AGENTS.md"]
+candidate_globs = ["**/*.js", "**/*.jsx", "**/*.py", "**/*.rs", "**/*.ts", "**/*.tsx", "*.md", "Cargo.toml", "docs/**/*.md", "tests/**/*"]
+exclude_zones = ["backup", "build-output", "local-db", "runtime-data", "simulation-output", "tool-state", "vendor"]
+budget_bytes = 90000
+full_bytes = 35000
+
+[gates]
+large_file_bytes = 400000
+skip_dirs = [".compass-forge", ".git", ".next", ".pytest_cache", ".ruff_cache", ".venv", "Screenshots", "__pycache__", "artifacts", "backups", "build", "cache", "coverage", "data", "dist", "logs", "node_modules", "storage", "target", "tmp", "uploads", "vendor"]
+required_paths = ["README.md"]
+allowed_large_file_globs = []
+ignored_file_globs = ["*.db", "*.log", "*.sqlite3", ".DS_Store", "Screenshots/**", "coverage/**"]
+security_sensitive_paths = ["backend/alembic/versions/003_add_mfa_columns.py", "backend/alembic/versions/010_auth_sessions.py", "backend/alembic/versions/011_auth_factor_hardening.py", "backend/alembic/versions/013_recovery_code_audit_events.py", "backend/alembic/versions/014_chat_session_thinking_mode.py", "backend/alembic/versions/015_permission_requests.py", "backend/alembic/versions/017_mcp_audit_project_scope.py", "backend/app/agents/personas/istara-ui-audit/CORE.md", "backend/app/agents/personas/istara-ui-audit/MEMORY.md", "backend/app/agents/personas/istara-ui-audit/PROTOCOLS.md", "backend/app/agents/personas/istara-ui-audit/SKILLS.md", "backend/app/agents/ui_audit_agent.py", "backend/app/api/middleware/auth.py", "backend/app/api/routes/admin.py", "backend/app/api/routes/audit.py", "backend/app/api/routes/auth.py", "backend/app/api/routes/permission_requests.py", "backend/app/api/routes/sessions.py", "backend/app/api/routes/webauthn.py", "backend/app/core/audit_middleware.py", "backend/app/core/auth.py", "backend/app/core/auth_audit.py", "backend/app/core/auth_cookies.py", "backend/app/core/auth_origins.py", "backend/app/core/auth_sessions.py", "backend/app/core/permissions.py", "backend/app/core/token_counter.py", "backend/app/models/auth_session.py", "backend/app/models/mcp_audit_log.py", "backend/app/models/permission_request.py", "backend/app/models/session.py", "backend/app/models/webauthn_challenge.py", "backend/app/models/webauthn_credential.py", "backend/app/skills/definitions/accessibility-audit.json", "backend/app/skills/definitions/browser-ux-audit.json", "backend/app/skills/definitions/design-system-audit.json", "docs/features/content/admin/dashboard/architecture.md", "docs/features/content/admin/dashboard/researcher.md", "docs/features/content/auth/login/architecture.md", "docs/features/content/auth/login/researcher.md", "docs/features/content/chat/sessions/architecture.md", "docs/features/content/chat/sessions/researcher.md", "docs/features/content/settings/sessions/architecture.md", "docs/features/content/settings/sessions/researcher.md", "docs/features/glossary/webauthn.md", "docs/features/site/features/admin/dashboard/architecture.html", "docs/features/site/features/admin/dashboard/researcher.html", "docs/features/site/features/auth/login/architecture.html", "docs/features/site/features/auth/login/researcher.html", "docs/features/site/features/chat/sessions/architecture.html", "docs/features/site/features/chat/sessions/researcher.html", "docs/features/site/features/settings/sessions/architecture.html", "docs/features/site/features/settings/sessions/researcher.html", "docs/features/site/glossary/webauthn.html", "docs/scientific_audit/README.md", "docs/scientific_audit/bibliography-audit.md", "docs/scientific_audit/compute-donation-matrix.md", "docs/scientific_audit/ensemble-method-matrix.md", "docs/scientific_audit/readme-claim-truth-matrix.md", "frontend/src/components/admin/AdminDashboard.tsx", "frontend/src/components/auth/LoginScreen.tsx", "frontend/src/components/chat/ChatSessionsSidebar.tsx", "frontend/src/components/integrations/MCPAuditLog.tsx", "frontend/src/components/settings/SessionManager.tsx", "frontend/src/lib/sessionsApi.ts", "frontend/src/stores/authStore.ts", "frontend/src/stores/sessionStore.ts", "scripts/generate-secrets.sh", "scripts/public_repo_quality_audit.py", "security/PROJECT_ISOLATION_COMPLETION_AUDIT.md", "skills/deliver/design-system-audit/SKILL.md", "skills/discover/accessibility-audit/SKILL.md", "tests/simulation/scenarios/12-chat-sessions.mjs", "tests/simulation/scenarios/26-model-session-persistence.mjs", "tests/simulation/scenarios/30-event-wiring-audit.mjs", "tests/simulation/scenarios/32-auth-flow.mjs", "tests/simulation/scenarios/67-auth-enforcement.mjs", "tests/test_auth_security.py", "tests/test_project_rbac.py", "tests/test_sessions.py", "tests/test_webauthn.py"]
+
+[change_types.local_fix]
+blast_radius = "lite"
+keywords = ["fix", "bug", "typo", "small", "local", "targeted"]
+paths = []
+checks = ["targeted verification for touched surface"]
+steps = ["inspect local context", "make scoped change", "run targeted verification", "record evidence"]
+
+[change_types.standard_change]
+blast_radius = "standard"
+keywords = ["api", "model", "ui", "workflow", "feature", "test", "endpoint"]
+paths = []
+checks = ["tests for touched surface", "architecture gate if boundaries changed"]
+steps = ["inspect impact", "create/update tests", "implement", "run verification", "record evidence"]
+
+[change_types.security_or_architecture]
+blast_radius = "full"
+keywords = ["architecture", "refactor", "security", "auth", "rbac", "permission", "release"]
+paths = ["backend/alembic/versions/003_add_mfa_columns.py", "backend/alembic/versions/010_auth_sessions.py", "backend/alembic/versions/011_auth_factor_hardening.py", "backend/alembic/versions/013_recovery_code_audit_events.py", "backend/alembic/versions/014_chat_session_thinking_mode.py", "backend/alembic/versions/015_permission_requests.py", "backend/alembic/versions/017_mcp_audit_project_scope.py", "backend/app/agents/personas/istara-ui-audit/CORE.md", "backend/app/agents/personas/istara-ui-audit/MEMORY.md", "backend/app/agents/personas/istara-ui-audit/PROTOCOLS.md", "backend/app/agents/personas/istara-ui-audit/SKILLS.md", "backend/app/agents/ui_audit_agent.py", "backend/app/api/middleware/auth.py", "backend/app/api/routes/admin.py", "backend/app/api/routes/audit.py", "backend/app/api/routes/auth.py", "backend/app/api/routes/permission_requests.py", "backend/app/api/routes/sessions.py", "backend/app/api/routes/webauthn.py", "backend/app/core/audit_middleware.py"]
+checks = ["architecture gate", "security-sensitive surface review", "broad verification for touched layers"]
+steps = ["capture baseline", "plan task graph", "implement in scoped slices", "run post-change gate", "record decision"]
+
+[context.actor_roles]
+pi-complete-20260719-implementer = "Pipeline implementer. Make the smallest correct code change for the claimed task in the shared worktree, add/adjust tests, run them, and record command + self_report evidence."
+pi-complete-20260719-code-reviewer = "Independent code reviewer (different model than the implementer). Review the implementer's diff for correctness, tests, and scope. Record a review_verdict (pass/fail). On fail, create a follow-up fixer task and record findings."
+pi-complete-20260719-fixer = "Remediator. Address the cited review findings on the referenced task in the shared worktree, re-run verification, flip the findings to fixed, and record evidence."
+pi-complete-20260719-architect-a = "Consensus architect. Write an independent, buildable S1 plan to the assigned plan_file only. Include design, task breakdown, acceptance, verification, risks and rollback. Do NOT implement or edit the lifecycle plan."
+pi-complete-20260719-judge-a = "Consensus architect judge. Read exactly the two supplied candidate plans, then record one plan_vote for the stronger candidate. Never vote for your own slot, edit plans, or record a review_verdict."
+pi-complete-20260719-architect-b = "Consensus architect. Write an independent, buildable S1 plan to the assigned plan_file only. Include design, task breakdown, acceptance, verification, risks and rollback. Do NOT implement or edit the lifecycle plan."
+pi-complete-20260719-judge-b = "Consensus architect judge. Read exactly the two supplied candidate plans, then record one plan_vote for the stronger candidate. Never vote for your own slot, edit plans, or record a review_verdict."
+pi-complete-20260719-architect-c = "Consensus architect. Write an independent, buildable S1 plan to the assigned plan_file only. Include design, task breakdown, acceptance, verification, risks and rollback. Do NOT implement or edit the lifecycle plan."
+pi-complete-20260719-judge-c = "Consensus architect judge. Read exactly the two supplied candidate plans, then record one plan_vote for the stronger candidate. Never vote for your own slot, edit plans, or record a review_verdict."
+pi-prod-readiness-20260719t173836-implementer = "Pipeline implementer. Make the smallest correct code change for the claimed task in the shared worktree, add/adjust tests, run them, and record command + self_report evidence."
+pi-prod-readiness-20260719t173836-code-reviewer = "Independent code reviewer (different model than the implementer). Review the implementer's diff for correctness, tests, and scope. Record a review_verdict (pass/fail). On fail, create a follow-up fixer task and record findings."
+pi-prod-readiness-20260719t173836-fixer = "Remediator. Address the cited review findings on the referenced task in the shared worktree, re-run verification, flip the findings to fixed, and record evidence."
+pi-prod-readiness-20260719t173836-planner-a = "Consensus planner. Write an independent, buildable S1 plan to the assigned plan_file only. Include design, task breakdown, acceptance, verification, risks and rollback. Do NOT implement or edit the lifecycle plan."
+pi-prod-readiness-20260719t173836-judge-a = "Consensus plan judge. Read exactly the two supplied candidate plans, then record one plan_vote for the stronger candidate. Never vote for your own slot, edit plans, or record a review_verdict."
+pi-prod-readiness-20260719t173836-planner-b = "Consensus planner. Write an independent, buildable S1 plan to the assigned plan_file only. Include design, task breakdown, acceptance, verification, risks and rollback. Do NOT implement or edit the lifecycle plan."
+pi-prod-readiness-20260719t173836-judge-b = "Consensus plan judge. Read exactly the two supplied candidate plans, then record one plan_vote for the stronger candidate. Never vote for your own slot, edit plans, or record a review_verdict."
+pi-prod-readiness-20260719t173836-planner-c = "Consensus planner. Write an independent, buildable S1 plan to the assigned plan_file only. Include design, task breakdown, acceptance, verification, risks and rollback. Do NOT implement or edit the lifecycle plan."
+pi-prod-readiness-20260719t173836-judge-c = "Consensus plan judge. Read exactly the two supplied candidate plans, then record one plan_vote for the stronger candidate. Never vote for your own slot, edit plans, or record a review_verdict."
+pi-repl-20260719t133814-implementer = "Pipeline implementer. Make the smallest correct code change for the claimed task in the shared worktree, add/adjust tests, run them, and record command + self_report evidence."
+pi-repl-20260719t133814-code-reviewer = "Independent code reviewer (different model than the implementer). Review the implementer's diff for correctness, tests, and scope. Record a review_verdict (pass/fail). On fail, create a follow-up fixer task and record findings."
+pi-repl-20260719t133814-fixer = "Remediator. Address the cited review findings on the referenced task in the shared worktree, re-run verification, flip the findings to fixed, and record evidence."
+pi-repl-20260719t133814-planner-a = "Consensus planner. Write an independent, buildable S1 plan to the assigned plan_file only. Include design, task breakdown, acceptance, verification, risks and rollback. Do NOT implement or edit the lifecycle plan."
+pi-repl-20260719t133814-judge-a = "Consensus plan judge. Read exactly the two supplied candidate plans, then record one plan_vote for the stronger candidate. Never vote for your own slot, edit plans, or record a review_verdict."
+pi-repl-20260719t133814-planner-b = "Consensus planner. Write an independent, buildable S1 plan to the assigned plan_file only. Include design, task breakdown, acceptance, verification, risks and rollback. Do NOT implement or edit the lifecycle plan."
+pi-repl-20260719t133814-judge-b = "Consensus plan judge. Read exactly the two supplied candidate plans, then record one plan_vote for the stronger candidate. Never vote for your own slot, edit plans, or record a review_verdict."
+pi-repl-20260719t133814-planner-c = "Consensus planner. Write an independent, buildable S1 plan to the assigned plan_file only. Include design, task breakdown, acceptance, verification, risks and rollback. Do NOT implement or edit the lifecycle plan."
+pi-repl-20260719t133814-judge-c = "Consensus plan judge. Read exactly the two supplied candidate plans, then record one plan_vote for the stronger candidate. Never vote for your own slot, edit plans, or record a review_verdict."

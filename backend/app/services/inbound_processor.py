@@ -17,6 +17,7 @@ from app.models.channel_message import ChannelMessage
 from app.models.database import async_session
 from app.models.project import Project
 from app.models.research_deployment import ResearchDeployment
+from app.core.pi_replacement import build_pi_channel_response
 from app.services.adaptive_interview import get_next_action, update_conversation_metadata
 
 logger = logging.getLogger(__name__)
@@ -180,6 +181,14 @@ async def process_inbound_channel_message(
         instance.message_count += 1
 
         if deployment is None:
+            pi_response = await build_pi_channel_response(
+                message_channel=message.channel,
+                channel_id=message.channel_id,
+                instance_id=message.instance_id,
+                project_id=project_id,
+                inbound_message_id=inbound_msg.id,
+                metadata=metadata,
+            )
             try:
                 from app.core.improvement_governance import improvement_governance
 
@@ -209,7 +218,7 @@ async def process_inbound_channel_message(
                 "active",
                 f"Recorded message from {message.sender_id}",
             )
-            return None
+            return pi_response
 
         action = await get_next_action(conversation, deployment, message.text)
         action_state = _state_value(action.get("state"), conversation.state)

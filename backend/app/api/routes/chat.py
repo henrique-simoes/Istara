@@ -36,6 +36,13 @@ from app.core.context_summarizer import context_summarizer
 from app.core.llm_thinking import ThinkingMode, apply_thinking_control, normalize_thinking_mode
 from app.core.ollama import ollama
 from app.core.permissions import get_visible_project_or_404, require_project_access
+from app.core.pi_replacement import (
+    PiChatRunMetrics,
+    ensure_pi_deepseek_registered,
+    pi_chat_model,
+    pi_replacement_requested,
+    record_pi_span,
+)
 from app.core.rag import build_augmented_prompt, retrieve_context
 from app.core.research_validity import RESEARCH_VALIDITY_CONTRACT, protected_block
 from app.core.token_counter import context_guard
@@ -66,6 +73,30 @@ router = APIRouter()
 
 # Maximum tool-call iterations per message (prevents infinite loops)
 MAX_TOOL_ITERATIONS = 8
+
+
+async def _pi_registration_failure_events(
+    *, project_id: str, agent_id: str | None, registration_status: str
+):
+    """Emit a terminal, transport-free response for an unavailable Pi target."""
+    await record_pi_span(
+        operation="pi_candidate_chat_sse_tool_loop",
+        project_id=project_id,
+        agent_id=agent_id or "istara-main",
+        status="error",
+        error_message=registration_status,
+    )
+    yield "data: " + json.dumps(
+        {
+            "type": "error",
+            "code": "pi_registration_unavailable",
+            "error": "pi_transport_unavailable",
+            "detail": registration_status,
+        }
+    ) + "\n\n"
+    yield "data: " + json.dumps(
+        {"type": "done", "message_id": None, "sources": [], "tools_used": []}
+    ) + "\n\n"
 
 
 def _research_spine_chat_contract() -> str:
@@ -129,141 +160,188 @@ async def _generate_native_tools(
     llm_model: str | None,
     llm_temperature: float,
     llm_max_tokens: int | None,
+    *,
+    pi_candidate: bool = False,
 ):
     """Native tool-calling loop using the OpenAI `tools` parameter.
 
     Yields SSE event strings.  Modifies *conversation*, *all_text_parts*,
     and *tool_results* in place.
     """
-    for iteration in range(MAX_TOOL_ITERATIONS + 1):
-        # Collect the full response (text + possible tool_calls dict)
-        content_chunks: list[str] = []
-        tool_calls_payload: dict | None = None
+    pi_metrics = PiChatRunMetrics(
+        project_id=request.project_id,
+        agent_id=session_agent_id,
+    ) if pi_candidate else None
+    effective_model = llm_model
+    if pi_candidate:
+        registered, registration_status = ensure_pi_deepseek_registered()
+        effective_model = pi_chat_model(llm_model)
+        if pi_metrics:
+            pi_metrics.registration_status = registration_status
+            pi_metrics.observe_input(conversation)
+        if not registered:
+            async for event in _pi_registration_failure_events(
+                project_id=request.project_id,
+                agent_id=session_agent_id,
+                registration_status=registration_status,
+            ):
+                yield event
+            return
 
-        async for chunk in ollama.chat_stream(
-            messages=conversation,
-            model=llm_model,
-            temperature=llm_temperature,
-            max_tokens=llm_max_tokens,
-            tools=OPENAI_TOOLS,
-            project_id=request.project_id,
-        ):
-            if isinstance(chunk, dict) and chunk.get("tool_calls"):
-                tool_calls_payload = chunk
-            elif isinstance(chunk, str):
-                content_chunks.append(chunk)
+    try:
+        for iteration in range(MAX_TOOL_ITERATIONS + 1):
+            # Collect the full response (text + possible tool_calls dict)
+            content_chunks: list[str] = []
+            tool_calls_payload: dict | None = None
 
-        response_text = "".join(content_chunks)
+            async for chunk in ollama.chat_stream(
+                messages=conversation,
+                model=effective_model,
+                temperature=llm_temperature,
+                max_tokens=llm_max_tokens,
+                tools=OPENAI_TOOLS,
+                project_id=request.project_id,
+                strict_model_routing=True if pi_candidate else None,
+            ):
+                if isinstance(chunk, dict) and chunk.get("tool_calls"):
+                    tool_calls_payload = chunk
+                elif isinstance(chunk, str):
+                    content_chunks.append(chunk)
+                    if pi_metrics:
+                        pi_metrics.observe_chunk(chunk)
 
-        # If we got tool_calls AND we haven't exceeded iterations, execute them
-        if tool_calls_payload and iteration < MAX_TOOL_ITERATIONS:
-            raw_tool_calls = tool_calls_payload["tool_calls"]
+            response_text = "".join(content_chunks)
 
-            # Filter out hallucinated tool calls (model calls non-existent tools)
-            valid_tool_names = {t["function"]["name"] for t in OPENAI_TOOLS}
-            real_tool_calls = []
-            for tc in raw_tool_calls:
-                fn_name = tc.get("function", {}).get("name", "")
-                if fn_name in valid_tool_names:
-                    real_tool_calls.append(tc)
-                else:
-                    # Hallucinated tool — extract text from arguments as response
-                    _chat_log.info(
-                        "Hallucinated tool call '%s' — extracting text from arguments", fn_name
-                    )
+            # If we got tool_calls AND we haven't exceeded iterations, execute them
+            if tool_calls_payload and iteration < MAX_TOOL_ITERATIONS:
+                raw_tool_calls = tool_calls_payload["tool_calls"]
+
+                # Filter out hallucinated tool calls (model calls non-existent tools)
+                valid_tool_names = {t["function"]["name"] for t in OPENAI_TOOLS}
+                real_tool_calls = []
+                for tc in raw_tool_calls:
+                    fn_name = tc.get("function", {}).get("name", "")
+                    if fn_name in valid_tool_names:
+                        real_tool_calls.append(tc)
+                    else:
+                        # Hallucinated tool — extract text from arguments as response
+                        _chat_log.info(
+                            "Hallucinated tool call '%s' — extracting text from arguments", fn_name
+                        )
+                        try:
+                            args = json.loads(tc.get("function", {}).get("arguments", "{}"))
+                            # Common patterns: {"text": "..."}, {"content": "..."}, {"response": "..."}
+                            extracted = args.get("text", args.get("content", args.get("response", "")))
+                            if extracted:
+                                response_text += str(extracted)
+                        except (json.JSONDecodeError, TypeError):
+                            pass
+
+                if not real_tool_calls:
+                    # All tool calls were hallucinated — treat as final text response
+                    all_text_parts.append(response_text)
+                    event_data = json.dumps({"type": "chunk", "content": response_text})
+                    yield f"data: {event_data}\n\n"
+                    break
+
+                raw_tool_calls = real_tool_calls
+
+                # Stream any text the model produced before the tool calls
+                if response_text.strip():
+                    all_text_parts.append(response_text)
+                    event_data = json.dumps({"type": "chunk", "content": response_text + "\n\n"})
+                    yield f"data: {event_data}\n\n"
+
+                # Build the assistant message with tool_calls for the conversation
+                assistant_msg_for_conv: dict = {
+                    "role": "assistant",
+                    "content": response_text or "",
+                    "tool_calls": raw_tool_calls,
+                }
+                conversation.append(assistant_msg_for_conv)
+
+                # Execute each tool call and add role:"tool" result messages
+                for tc in raw_tool_calls:
+                    tc_id = tc.get("id", str(uuid.uuid4()))
+                    fn = tc.get("function", {})
+                    tool_name = fn.get("name", "")
                     try:
-                        args = json.loads(tc.get("function", {}).get("arguments", "{}"))
-                        # Common patterns: {"text": "..."}, {"content": "..."}, {"response": "..."}
-                        extracted = args.get("text", args.get("content", args.get("response", "")))
-                        if extracted:
-                            response_text += str(extracted)
+                        tool_params = json.loads(fn.get("arguments", "{}"))
                     except (json.JSONDecodeError, TypeError):
-                        pass
+                        tool_params = {}
 
-            if not real_tool_calls:
-                # All tool calls were hallucinated — treat as final text response
+                    _chat_log.info(
+                        "Native tool call [%d]: %s(%s)",
+                        iteration,
+                        tool_name,
+                        json.dumps(tool_params)[:200],
+                    )
+                    if pi_metrics:
+                        pi_metrics.observe_tool_call()
+
+                    # Notify client about tool execution
+                    tool_event = json.dumps(
+                        {
+                            "type": "tool_call",
+                            "tool": tool_name,
+                            "params": tool_params,
+                        }
+                    )
+                    yield f"data: {tool_event}\n\n"
+
+                    tool_started = datetime.now(timezone.utc)
+                    result = await execute_tool(
+                        tool_name,
+                        tool_params,
+                        request.project_id,
+                        agent_id=session_agent_id or "istara-main",
+                    )
+                    if pi_candidate:
+                        tool_duration_ms = (
+                            datetime.now(timezone.utc) - tool_started
+                        ).total_seconds() * 1000
+                        await record_pi_span(
+                            operation="pi_candidate_tool_call",
+                            project_id=request.project_id,
+                            agent_id=session_agent_id or "istara-main",
+                            tool_name=tool_name,
+                            tool_success="error" not in result,
+                            duration_ms=tool_duration_ms,
+                        )
+
+                    result_text = result.get("result", result.get("error", "Unknown result"))
+                    tool_results.append({"tool": tool_name, "result": result_text})
+
+                    # Stream tool result notification to client
+                    result_display = f"**{tool_name}**: {result_text}\n\n"
+                    all_text_parts.append(result_display)
+                    result_event = json.dumps({"type": "chunk", "content": result_display})
+                    yield f"data: {result_event}\n\n"
+
+                    # Append role:"tool" message for multi-turn tool use
+                    conversation.append(
+                        {
+                            "role": "tool",
+                            "tool_call_id": tc_id,
+                            "content": str(result_text),
+                        }
+                    )
+
+                # Loop back for the model's follow-up
+                continue
+            else:
+                # No tool calls -- final text response
                 all_text_parts.append(response_text)
                 event_data = json.dumps({"type": "chunk", "content": response_text})
                 yield f"data: {event_data}\n\n"
                 break
-
-            raw_tool_calls = real_tool_calls
-
-            # Stream any text the model produced before the tool calls
-            if response_text.strip():
-                all_text_parts.append(response_text)
-                event_data = json.dumps({"type": "chunk", "content": response_text + "\n\n"})
-                yield f"data: {event_data}\n\n"
-
-            # Build the assistant message with tool_calls for the conversation
-            assistant_msg_for_conv: dict = {
-                "role": "assistant",
-                "content": response_text or "",
-                "tool_calls": raw_tool_calls,
-            }
-            conversation.append(assistant_msg_for_conv)
-
-            # Execute each tool call and add role:"tool" result messages
-            for tc in raw_tool_calls:
-                tc_id = tc.get("id", str(uuid.uuid4()))
-                fn = tc.get("function", {})
-                tool_name = fn.get("name", "")
-                try:
-                    tool_params = json.loads(fn.get("arguments", "{}"))
-                except (json.JSONDecodeError, TypeError):
-                    tool_params = {}
-
-                _chat_log.info(
-                    "Native tool call [%d]: %s(%s)",
-                    iteration,
-                    tool_name,
-                    json.dumps(tool_params)[:200],
-                )
-
-                # Notify client about tool execution
-                tool_event = json.dumps(
-                    {
-                        "type": "tool_call",
-                        "tool": tool_name,
-                        "params": tool_params,
-                    }
-                )
-                yield f"data: {tool_event}\n\n"
-
-                # Execute the tool
-                result = await execute_tool(
-                    tool_name,
-                    tool_params,
-                    request.project_id,
-                    agent_id=session_agent_id or "istara-main",
-                )
-
-                result_text = result.get("result", result.get("error", "Unknown result"))
-                tool_results.append({"tool": tool_name, "result": result_text})
-
-                # Stream tool result notification to client
-                result_display = f"**{tool_name}**: {result_text}\n\n"
-                all_text_parts.append(result_display)
-                result_event = json.dumps({"type": "chunk", "content": result_display})
-                yield f"data: {result_event}\n\n"
-
-                # Append role:"tool" message for multi-turn tool use
-                conversation.append(
-                    {
-                        "role": "tool",
-                        "tool_call_id": tc_id,
-                        "content": str(result_text),
-                    }
-                )
-
-            # Loop back for the model's follow-up
-            continue
-        else:
-            # No tool calls -- final text response
-            all_text_parts.append(response_text)
-            event_data = json.dumps({"type": "chunk", "content": response_text})
-            yield f"data: {event_data}\n\n"
-            break
+    except Exception as exc:
+        if pi_metrics:
+            await pi_metrics.finish(status="error", error_message=str(exc))
+        raise
+    else:
+        if pi_metrics:
+            await pi_metrics.finish()
 
 
 async def _generate_text_fallback(
@@ -275,87 +353,121 @@ async def _generate_text_fallback(
     llm_model: str | None,
     llm_temperature: float,
     llm_max_tokens: int | None,
+    *,
+    pi_candidate: bool = False,
 ):
     """Legacy text-based tool parsing loop (regex fallback).
 
     Yields SSE event strings.  Used when native tool calling is not
     supported by the current model/provider.
     """
-    for iteration in range(MAX_TOOL_ITERATIONS + 1):
-        full_text: list[str] = []
-        async for chunk in ollama.chat_stream(
-            messages=conversation,
-            model=llm_model,
-            temperature=llm_temperature,
-            max_tokens=llm_max_tokens,
-            project_id=request.project_id,
-        ):
-            if isinstance(chunk, str):
-                full_text.append(chunk)
+    pi_metrics = PiChatRunMetrics(
+        project_id=request.project_id,
+        agent_id=session_agent_id,
+    ) if pi_candidate else None
+    if pi_candidate:
+        registered, registration_status = ensure_pi_deepseek_registered()
+        if pi_metrics:
+            pi_metrics.registration_status = registration_status
+            pi_metrics.observe_input(conversation)
+        if not registered:
+            async for event in _pi_registration_failure_events(
+                project_id=request.project_id,
+                agent_id=session_agent_id,
+                registration_status=registration_status,
+            ):
+                yield event
+            return
 
-        response_text = "".join(full_text)
-        tool_call, text_before, text_after = _extract_tool_call(response_text)
+    try:
+        for iteration in range(MAX_TOOL_ITERATIONS + 1):
+            full_text: list[str] = []
+            effective_model = pi_chat_model(llm_model) if pi_candidate else llm_model
+            async for chunk in ollama.chat_stream(
+                messages=conversation,
+                model=effective_model,
+                temperature=llm_temperature,
+                max_tokens=llm_max_tokens,
+                project_id=request.project_id,
+                strict_model_routing=True if pi_candidate else None,
+            ):
+                if isinstance(chunk, str):
+                    full_text.append(chunk)
+                    if pi_metrics:
+                        pi_metrics.observe_chunk(chunk)
 
-        if tool_call and iteration < MAX_TOOL_ITERATIONS:
-            tool_name = tool_call.get("tool", "")
-            tool_params = tool_call.get("params", {})
+            response_text = "".join(full_text)
+            tool_call, text_before, text_after = _extract_tool_call(response_text)
 
-            _chat_log.info(
-                "Text fallback tool call [%d]: %s(%s)",
-                iteration,
-                tool_name,
-                json.dumps(tool_params)[:200],
-            )
+            if tool_call and iteration < MAX_TOOL_ITERATIONS:
+                tool_name = tool_call.get("tool", "")
+                tool_params = tool_call.get("params", {})
 
-            if text_before:
-                all_text_parts.append(text_before)
-                event_data = json.dumps({"type": "chunk", "content": text_before + "\n\n"})
+                _chat_log.info(
+                    "Text fallback tool call [%d]: %s(%s)",
+                    iteration,
+                    tool_name,
+                    json.dumps(tool_params)[:200],
+                )
+                if pi_metrics:
+                    pi_metrics.observe_tool_call()
+
+                if text_before:
+                    all_text_parts.append(text_before)
+                    event_data = json.dumps({"type": "chunk", "content": text_before + "\n\n"})
+                    yield f"data: {event_data}\n\n"
+
+                tool_event = json.dumps(
+                    {
+                        "type": "tool_call",
+                        "tool": tool_name,
+                        "params": tool_params,
+                    }
+                )
+                yield f"data: {tool_event}\n\n"
+
+                result = await execute_tool(
+                    tool_name,
+                    tool_params,
+                    request.project_id,
+                    agent_id=session_agent_id or "istara-main",
+                )
+
+                result_text = result.get("result", result.get("error", "Unknown result"))
+                tool_results.append({"tool": tool_name, "result": result_text})
+
+                result_display = f"**{tool_name}**: {result_text}\n\n"
+                all_text_parts.append(result_display)
+                result_event = json.dumps({"type": "chunk", "content": result_display})
+                yield f"data: {result_event}\n\n"
+
+                assistant_turn = (
+                    text_before + f"\n\n[Tool: {tool_name}]" if text_before else f"[Tool: {tool_name}]"
+                )
+                conversation.append({"role": "assistant", "content": assistant_turn})
+                conversation.append(
+                    {
+                        "role": "user",
+                        "content": (
+                            f"[Tool result for {tool_name}]:\n{result_text}\n\n"
+                            "Now respond to the user based on this result. "
+                            "Do not call another tool unless necessary."
+                        ),
+                    }
+                )
+                continue
+            else:
+                all_text_parts.append(response_text)
+                event_data = json.dumps({"type": "chunk", "content": response_text})
                 yield f"data: {event_data}\n\n"
-
-            tool_event = json.dumps(
-                {
-                    "type": "tool_call",
-                    "tool": tool_name,
-                    "params": tool_params,
-                }
-            )
-            yield f"data: {tool_event}\n\n"
-
-            result = await execute_tool(
-                tool_name,
-                tool_params,
-                request.project_id,
-                agent_id=session_agent_id or "istara-main",
-            )
-
-            result_text = result.get("result", result.get("error", "Unknown result"))
-            tool_results.append({"tool": tool_name, "result": result_text})
-
-            result_display = f"**{tool_name}**: {result_text}\n\n"
-            all_text_parts.append(result_display)
-            result_event = json.dumps({"type": "chunk", "content": result_display})
-            yield f"data: {result_event}\n\n"
-
-            assistant_turn = (
-                text_before + f"\n\n[Tool: {tool_name}]" if text_before else f"[Tool: {tool_name}]"
-            )
-            conversation.append({"role": "assistant", "content": assistant_turn})
-            conversation.append(
-                {
-                    "role": "user",
-                    "content": (
-                        f"[Tool result for {tool_name}]:\n{result_text}\n\n"
-                        "Now respond to the user based on this result. "
-                        "Do not call another tool unless necessary."
-                    ),
-                }
-            )
-            continue
-        else:
-            all_text_parts.append(response_text)
-            event_data = json.dumps({"type": "chunk", "content": response_text})
-            yield f"data: {event_data}\n\n"
-            break
+                break
+    except Exception as exc:
+        if pi_metrics:
+            await pi_metrics.finish(status="error", error_message=str(exc))
+        raise
+    else:
+        if pi_metrics:
+            await pi_metrics.finish()
 
 
 class ChatRequest(BaseModel):
@@ -688,6 +800,20 @@ async def chat(request: ChatRequest, http_request: Request, db: AsyncSession = D
 
         try:
             # ── Attempt native tool calling ──────────────────────────
+            pi_candidate = pi_replacement_requested(http_request)
+            # Resolve the opt-in target before choosing either tool-loop transport.
+            # A missing Keychain registration is terminal: falling back would silently
+            # route a Pi-selected request through the default provider.
+            if pi_candidate:
+                registered, registration_status = ensure_pi_deepseek_registered()
+                if not registered:
+                    async for event in _pi_registration_failure_events(
+                        project_id=request.project_id,
+                        agent_id=session_agent_id,
+                        registration_status=registration_status,
+                    ):
+                        yield event
+                    return
             if use_native_tools:
                 try:
                     async for event in _generate_native_tools(
@@ -699,6 +825,7 @@ async def chat(request: ChatRequest, http_request: Request, db: AsyncSession = D
                         llm_model,
                         llm_temperature,
                         llm_max_tokens,
+                        pi_candidate=pi_candidate,
                     ):
                         yield event
                 except Exception as native_err:
@@ -756,6 +883,7 @@ async def chat(request: ChatRequest, http_request: Request, db: AsyncSession = D
                     llm_model,
                     llm_temperature,
                     llm_max_tokens,
+                    pi_candidate=pi_candidate,
                 ):
                     yield event
 

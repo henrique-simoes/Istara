@@ -11,6 +11,7 @@ from fastapi.responses import JSONResponse
 from app.config import settings as app_settings
 from app.core.client_identity import BoundedWindowRateLimiter, get_client_ip
 from app.core.permissions import require_project_access
+from app.core.pi_replacement import record_pi_a2a_event
 from app.core.replay_cache import BoundedReplayCache
 from app.core.version import read_istara_version
 from app.models.database import async_session
@@ -466,6 +467,14 @@ async def a2a_jsonrpc(request: Request):
                     "from_agent_id": from_agent_id or "external",
                     "to_agent_id": to_agent_id or "istara-main",
                 },
+            )
+            await record_pi_a2a_event(
+                request=request,
+                project_id=project_id,
+                metadata=metadata,
+                message_id=msg["id"],
+                from_agent_id=from_agent_id or "external",
+                to_agent_id=to_agent_id or "istara-main",
             )
             return {
                 "jsonrpc": "2.0",

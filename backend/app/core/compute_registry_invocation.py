@@ -554,6 +554,7 @@ class ComputeRegistryInvocationMixin:
         min_context: int = 0,
         thinking_mode: str | None = None,
         project_id: str | None = None,
+        strict_model_routing: bool | None = None,
     ) -> AsyncGenerator[str | dict, None]:
         """Streaming chat -- yields str chunks and dict for tool calls."""
         explicit_model_requested = bool(
@@ -576,8 +577,10 @@ class ComputeRegistryInvocationMixin:
             )
         ):
             model = None
-        strict_requested_model = (
-            settings.strict_auto_routing and explicit_model_requested
+        strict_requested_model = explicit_model_requested and (
+            settings.strict_auto_routing
+            if strict_model_routing is None
+            else strict_model_routing
         )
         if min_context <= 0:
             min_context = self._estimate_context_tokens(msgs, max_tokens, tools=tools)
