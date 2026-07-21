@@ -233,6 +233,7 @@ class PiExecutionService:
         min_context: int = 0,
         require_vision: bool = False,
         turn_params: Any = None,
+        extra_tools: list[dict[str, Any]] | None = None,
     ) -> AsyncIterator[dict[str, Any]]:
         """Drive one governed Pi turn, yielding normalized events.
 
@@ -248,8 +249,8 @@ class PiExecutionService:
             endpoint_id=endpoint_id, model=model,
             require_vision=require_vision, min_context=min_context,
         )
-        catalog = build_tool_catalog(allowed_tools)
-        catalog_names = catalog_tool_names(allowed_tools)
+        catalog = build_tool_catalog(allowed_tools, extra_tools=extra_tools)
+        catalog_names = catalog_tool_names(allowed_tools, extra_tools=extra_tools)
         key = session_key or f"pi-{operation}-{uuid.uuid4().hex}"
         revision = _session_revision(history, endpoint)
         sup = self._sup()
@@ -454,10 +455,14 @@ class PiExecutionService:
         self, *, purpose: str, project_id: str, agent_id: str, session_key: str | None,
         system: str, messages: list[dict[str, Any]], user_text: str, tool_executor: ToolExecutor,
         tool_names: list[str], params: Any, steering_binding: SteeringBinding | None = None,
+        extra_tools: list[dict[str, Any]] | None = None,
     ) -> dict[str, Any]:
         """Bounded task-shaped ReAct seam; Python keeps the final tool allowlist.
 
         Hard turn budget defaults to 8 (legacy MAX_TOOL_ITERATIONS parity).
+        ``extra_tools`` injects per-run dynamic tools (W3's ranked ``run_skill``)
+        into the session catalog; each must still be named in ``tool_names`` or
+        the allowlist filter drops it.
         """
         return await self._collect_turn(
             operation=f"pi_react:{purpose}", project_id=project_id, agent_id=agent_id,
@@ -469,6 +474,7 @@ class PiExecutionService:
             require_vision=bool(getattr(params, "require_vision", False)),
             turn_params=params,
             max_turns=getattr(params, "max_turns", None) or 8,
+            extra_tools=extra_tools,
         )
 
     async def run_structured(

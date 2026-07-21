@@ -225,7 +225,11 @@ class AgenticDispatcher:
 
     async def react(self, *, purpose: str, project_id: str, agent_id: str, session_key: str | None,
                     system: str, messages: list[dict[str, Any]], user_text: str, tool_executor: Any,
-                    tool_names: list[str], params: TurnParams, engine: EngineChoice | None = None,
+                    tool_names: list[str], params: TurnParams,
+                    tools: list[dict[str, Any]] | None = None,
+                    extra_tools: list[dict[str, Any]] | None = None,
+                    steering_binding: Any = None,
+                    engine: EngineChoice | None = None,
                     request: Any | None = None, task_id: str | None = None,
                     spine_phase: str | None = None) -> TurnResult:
         started = time.perf_counter()
@@ -234,11 +238,16 @@ class AgenticDispatcher:
             if selected != "pi":
                 outcome = await self._legacy_outcome("react", purpose=purpose, project_id=project_id, agent_id=agent_id,
                                                      system=system, messages=messages, user_text=user_text,
-                                                     tool_executor=tool_executor, tool_names=tool_names, params=params)
+                                                     tool_executor=tool_executor,
+                                                     tool_names=tool_names,
+                                                     tools=tools, params=params)
             else:
                 outcome = await self._pi.run_react(purpose=purpose, project_id=project_id, agent_id=agent_id,
                                                    session_key=session_key, system=system, messages=messages,
-                                                   user_text=user_text, tool_executor=tool_executor, tool_names=tool_names, params=params)
+                                                   user_text=user_text, tool_executor=tool_executor,
+                                                   tool_names=tool_names, params=params,
+                                                   steering_binding=steering_binding,
+                                                   extra_tools=extra_tools)
         except Exception as exc:
             await self._record_failure(engine=selected, purpose=purpose, project_id=project_id,
                                        agent_id=agent_id, params=params, started=started,
@@ -321,6 +330,16 @@ class AgenticDispatcher:
         return list(outcome.get("embeddings") or [])
 
     # ── internals ────────────────────────────────────────────────────────
+    def steering_binding(self, *, agent_id: str, project_id: str,
+                         session_key: str | None = None) -> Any:
+        """Build a Pi steering binding for one governed turn (W3 L10).
+
+        Engine-neutral: the legacy path ignores it, the Pi path wires the
+        turn's steer/follow-up/abort queues through it (H-5).
+        """
+        return self._pi.steering_binding(agent_id=agent_id, project_id=project_id,
+                                         session_key=session_key)
+
     async def _record_outcome(self, *, engine: str, purpose: str, project_id: str, agent_id: str,
                               params: TurnParams, started: float, outcome: dict[str, Any],
                               task_id: str | None, spine_phase: str | None,
