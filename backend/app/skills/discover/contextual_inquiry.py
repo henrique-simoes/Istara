@@ -1,8 +1,98 @@
 """Contextual Inquiry skill — observe users in their natural environment."""
 
 import json
+import logging
+
+from app.config import settings
 from app.core.ollama import ollama
 from app.skills.base import BaseSkill, SkillInput, SkillOutput, SkillPhase, SkillType
+
+logger = logging.getLogger(__name__)
+
+
+# W5: schema for the AgenticDispatcher structured path of ``execute``
+# (``skill.discover_analyze``); both engines validate against it. Formalized
+# from the analysis prompt's response shape — every key is read via ``.get``
+# downstream, so nothing is required.
+CONTEXTUAL_INQUIRY_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "activities": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "description": {"type": "string"},
+                    "frequency": {"type": "string"},
+                },
+            },
+        },
+        "environment_factors": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "factor": {"type": "string"},
+                    "impact": {"type": "string"},
+                },
+            },
+        },
+        "interactions": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "description": {"type": "string"},
+                    "with": {"type": "string"},
+                },
+            },
+        },
+        "pain_points": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "description": {"type": "string"},
+                    "severity": {"type": "number"},
+                    "workaround": {"type": "string"},
+                },
+            },
+        },
+        "workflow_patterns": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "pattern": {"type": "string"},
+                    "participants": {"type": "number"},
+                },
+            },
+        },
+        "nuggets": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "text": {"type": "string"},
+                    "context": {"type": "string"},
+                    "tags": {"type": "array", "items": {"type": "string"}},
+                },
+            },
+        },
+        "opportunities": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "description": {"type": "string"},
+                    "impact": {"type": "string"},
+                },
+            },
+        },
+        "summary": {"type": "string"},
+    },
+    "required": [],
+}
 
 
 class ContextualInquirySkill(BaseSkill):
@@ -33,8 +123,27 @@ Include:
 7. Ethical considerations and consent requirements
 
 Format as Markdown."""
-        response = await ollama.chat(messages=[{"role": "user", "content": prompt}], temperature=0.7)
-        return {"skill": self.name, "plan": response.get("message", {}).get("content", "")}
+        if settings.agentic_core:
+            # W5: observation plan generation goes through the
+            # AgenticDispatcher (``skill.discover_plan``); the legacy
+            # ``ollama.chat`` branch below is preserved verbatim for
+            # agentic_core=False.
+            from app.core.agentic import agentic
+            from app.core.agentic.types import TurnParams
+
+            outcome = await agentic.completion(
+                purpose="skill.discover_plan",
+                project_id=skill_input.project_id,
+                system=None,
+                messages=[{"role": "user", "content": prompt}],
+                params=TurnParams(temperature=0.7),
+                spine_phase="plan",
+            )
+            plan_text = outcome.text
+        else:
+            response = await ollama.chat(messages=[{"role": "user", "content": prompt}], temperature=0.7)
+            plan_text = response.get("message", {}).get("content", "")
+        return {"skill": self.name, "plan": plan_text}
 
     async def execute(self, skill_input: SkillInput) -> SkillOutput:
         from app.core.file_processor import process_file
@@ -80,13 +189,40 @@ Respond in JSON:
 "opportunities": [{{"description": "...", "impact": "low|medium|high"}}],
 "summary": "..."}}"""
 
-        response = await ollama.chat(messages=[{"role": "user", "content": prompt}], temperature=0.3)
-        text = response.get("message", {}).get("content", "")
+        if settings.agentic_core:
+            # W5: observation-notes analysis goes through the
+            # AgenticDispatcher (``skill.discover_analyze``) with
+            # CONTEXTUAL_INQUIRY_SCHEMA driving both engines; the legacy
+            # ``ollama.chat`` branch below is preserved verbatim for
+            # agentic_core=False.
+            from app.core.agentic import agentic
+            from app.core.agentic.types import TurnParams
 
-        try:
-            data = json.loads(text[text.find("{"):text.rfind("}") + 1])
-        except (json.JSONDecodeError, ValueError):
-            data = {}
+            try:
+                outcome = await agentic.structured(
+                    purpose="skill.discover_analyze",
+                    project_id=skill_input.project_id,
+                    system=None,
+                    messages=[{"role": "user", "content": prompt}],
+                    schema=CONTEXTUAL_INQUIRY_SCHEMA,
+                    params=TurnParams(temperature=0.3),
+                    spine_phase="synthesis",
+                )
+                data = outcome.value if outcome.status == "success" and outcome.value else {}
+            except Exception as e:
+                # F-W5-2: the Pi engine raises PiRuntimeTurnError on invalid
+                # structured output instead of returning status != "success";
+                # degrade to the same empty-result fallback.
+                logger.warning("Contextual inquiry raised; degrading to empty analysis: %s", e)
+                data = {}
+        else:
+            response = await ollama.chat(messages=[{"role": "user", "content": prompt}], temperature=0.3)
+            text = response.get("message", {}).get("content", "")
+
+            try:
+                data = json.loads(text[text.find("{"):text.rfind("}") + 1])
+            except (json.JSONDecodeError, ValueError):
+                data = {}
 
         nuggets = [{"text": n["text"], "source": "contextual-inquiry", "tags": n.get("tags", [])}
                    for n in data.get("nuggets", [])]

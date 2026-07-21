@@ -32,6 +32,14 @@ ratchet:
   # the `agentic_core` feature flag with the legacy ollama branch preserved
   # alongside it, so the sites stay allowlisted (line keys updated) and the
   # ratchet stays at 70 until the legacy branch is retired.
+  # W5 routed the 28 skills/reports/interview-services sites (skill_factory
+  # plan/execute + 3-stage repair chain, the 4 Discover skills, intercoder
+  # kappa pipeline, report_manager summaries/MECE/narratives, adaptive
+  # interview clarify/saturation, deployment follow-up) through the
+  # AgenticDispatcher behind the same `agentic_core` feature flag with the
+  # legacy ollama/llm_router branch preserved alongside it, so the sites stay
+  # allowlisted (line keys updated) and the ratchet stays at 70 until the
+  # legacy branch is retired.
   expected_product_sites: 70
 
 # ---------------------------------------------------------------------------
@@ -91,24 +99,24 @@ product:
   - keys: ["backend/app/core/autoresearch_runners/ui_sim.py:199"]
     kind: chat
     note: "UISimRunner._evaluate_component — WCAG-style component score"
-  - keys: ["backend/app/core/report_manager.py:498"]
+  - keys: ["backend/app/core/report_manager.py:517"]
     kind: chat
-    note: "ReportManager._generate_executive_summary — SCR executive summary"
-  - keys: ["backend/app/core/report_manager.py:555"]
+    note: "ReportManager._generate_executive_summary — SCR executive summary (W5: dispatcher path behind agentic_core; legacy branch preserved)"
+  - keys: ["backend/app/core/report_manager.py:616"]
     kind: chat
-    note: "ReportManager._generate_mece_categories — MECE categorization"
-  - keys: ["backend/app/core/report_manager.py:754"]
+    note: "ReportManager._generate_mece_categories — MECE categorization (W5: dispatcher path behind agentic_core; legacy branch preserved)"
+  - keys: ["backend/app/core/report_manager.py:850"]
     kind: chat
-    note: "ReportManager._compose_full_report — weakest-section scoring loop"
-  - keys: ["backend/app/core/report_manager.py:883"]
+    note: "ReportManager._compose_full_report — weakest-section scoring loop (W5: dispatcher path behind agentic_core; legacy branch preserved)"
+  - keys: ["backend/app/core/report_manager.py:997"]
     kind: chat
-    note: "ReportManager._compose_section — narrative section expansion"
-  - keys: ["backend/app/core/report_manager.py:937"]
+    note: "ReportManager._compose_section — narrative section expansion (W5: dispatcher path behind agentic_core; legacy branch preserved)"
+  - keys: ["backend/app/core/report_manager.py:1069"]
     kind: chat
-    note: "ReportManager._compose_section — recommendations expansion"
-  - keys: ["backend/app/core/report_manager.py:996"]
+    note: "ReportManager._compose_section — recommendations expansion (W5: dispatcher path behind agentic_core; legacy branch preserved)"
+  - keys: ["backend/app/core/report_manager.py:1145"]
     kind: chat
-    note: "ReportManager._compose_section — gaps/limitations section"
+    note: "ReportManager._compose_section — gaps/limitations section (W5: dispatcher path behind agentic_core; legacy branch preserved)"
   - keys: ["backend/app/core/validation.py:152"]
     kind: chat
     note: "dual_run — same prompt on 2 servers for consensus (direct server.chat)"
@@ -130,75 +138,75 @@ product:
   - keys: ["backend/app/core/validation_executor.py:64"]
     kind: chat
     note: "ValidationExecutor._adversarial_review — LLM-as-judge on coding output"
-  - keys: ["backend/app/services/adaptive_interview.py:308"]
+  - keys: ["backend/app/services/adaptive_interview.py:325"]
     kind: chat
-    note: "generate_clarification — probing follow-up question"
-  - keys: ["backend/app/services/adaptive_interview.py:363"]
+    note: "generate_clarification — probing follow-up question (W5: dispatcher path behind agentic_core; legacy branch preserved)"
+  - keys: ["backend/app/services/adaptive_interview.py:396"]
     kind: chat
-    note: "_is_saturated — LLM saturation judgment"
-  - keys: ["backend/app/services/deployment_service.py:323"]
+    note: "_is_saturated — LLM saturation judgment (W5: dispatcher path behind agentic_core; legacy branch preserved)"
+  - keys: ["backend/app/services/deployment_service.py:340"]
     kind: chat
-    note: "_generate_adaptive_followup — adaptive follow-up question"
+    note: "_generate_adaptive_followup — adaptive follow-up question (W5: dispatcher path behind agentic_core; legacy branch preserved)"
   - keys: ["backend/app/services/research_validity_service.py:556"]
     kind: chat
     note: "_default_coder_runner — independent multi-model coding (direct coder.node.chat)"
-  - keys: ["backend/app/skills/discover/channel_deployment.py:180"]
+  - keys: ["backend/app/skills/discover/channel_deployment.py:268"]
     kind: chat
-    note: "ChannelResearchDeploymentSkill.plan — deployment plan + questions"
-  - keys: ["backend/app/skills/discover/channel_deployment.py:261"]
+    note: "ChannelResearchDeploymentSkill.plan — deployment plan + questions (W5: dispatcher path behind agentic_core; legacy branch preserved)"
+  - keys: ["backend/app/skills/discover/channel_deployment.py:379"]
     kind: chat
-    note: "ChannelResearchDeploymentSkill._analyze — analyze deployment responses"
-  - keys: ["backend/app/skills/discover/contextual_inquiry.py:36"]
+    note: "ChannelResearchDeploymentSkill._analyze — analyze deployment responses (W5: dispatcher path behind agentic_core; legacy branch preserved)"
+  - keys: ["backend/app/skills/discover/contextual_inquiry.py:144"]
     kind: chat
-    note: "ContextualInquirySkill.plan — observation plan"
-  - keys: ["backend/app/skills/discover/contextual_inquiry.py:83"]
+    note: "ContextualInquirySkill.plan — observation plan (W5: dispatcher path behind agentic_core; legacy branch preserved)"
+  - keys: ["backend/app/skills/discover/contextual_inquiry.py:219"]
     kind: chat
-    note: "ContextualInquirySkill.execute — AEIOU analysis of notes"
-  - keys: ["backend/app/skills/discover/diary_studies.py:28"]
+    note: "ContextualInquirySkill.execute — AEIOU analysis of notes (W5: dispatcher path behind agentic_core; legacy branch preserved)"
+  - keys: ["backend/app/skills/discover/diary_studies.py:126"]
     kind: chat
-    note: "DiaryStudiesSkill.plan — diary study design"
-  - keys: ["backend/app/skills/discover/diary_studies.py:70"]
+    note: "DiaryStudiesSkill.plan — diary study design (W5: dispatcher path behind agentic_core; legacy branch preserved)"
+  - keys: ["backend/app/skills/discover/diary_studies.py:195"]
     kind: chat
-    note: "DiaryStudiesSkill.execute — diary entry analysis"
-  - keys: ["backend/app/skills/discover/user_interviews.py:201"]
+    note: "DiaryStudiesSkill.execute — diary entry analysis (W5: dispatcher path behind agentic_core; legacy branch preserved)"
+  - keys: ["backend/app/skills/discover/user_interviews.py:348"]
     kind: chat
-    note: "UserInterviewsSkill.plan — interview guide"
-  - keys: ["backend/app/skills/discover/user_interviews.py:297"]
+    note: "UserInterviewsSkill.plan — interview guide (W5: dispatcher path behind agentic_core; legacy branch preserved)"
+  - keys: ["backend/app/skills/discover/user_interviews.py:473"]
     kind: chat
-    note: "UserInterviewsSkill.execute — per-transcript analysis loop"
-  - keys: ["backend/app/skills/discover/user_interviews.py:337"]
+    note: "UserInterviewsSkill.execute — per-transcript analysis loop (W5: dispatcher path behind agentic_core; legacy branch preserved)"
+  - keys: ["backend/app/skills/discover/user_interviews.py:544"]
     kind: chat
-    note: "UserInterviewsSkill.execute — cross-transcript synthesis"
-  - keys: ["backend/app/skills/intercoder.py:390"]
+    note: "UserInterviewsSkill.execute — cross-transcript synthesis (W5: dispatcher path behind agentic_core; legacy branch preserved)"
+  - keys: ["backend/app/skills/intercoder.py:513"]
     kind: chat
-    note: "KappaIntercoderSkill.plan — analysis process plan"
-  - keys: ["backend/app/skills/intercoder.py:411"]
+    note: "KappaIntercoderSkill.plan — analysis process plan (W5: dispatcher path behind agentic_core; legacy branch preserved)"
+  - keys: ["backend/app/skills/intercoder.py:561"]
     kind: chat
-    note: "KappaIntercoderSkill.execute — coder A open coding"
-  - keys: ["backend/app/skills/intercoder.py:438"]
+    note: "KappaIntercoderSkill.execute — coder A open coding (W5: dispatcher path behind agentic_core; legacy branch preserved)"
+  - keys: ["backend/app/skills/intercoder.py:613"]
     kind: chat
-    note: "KappaIntercoderSkill.execute — coder B independent re-coding"
-  - keys: ["backend/app/skills/intercoder.py:496"]
+    note: "KappaIntercoderSkill.execute — coder B independent re-coding (W5: dispatcher path behind agentic_core; legacy branch preserved)"
+  - keys: ["backend/app/skills/intercoder.py:698"]
     kind: chat
-    note: "KappaIntercoderSkill.execute — disagreement reconciliation"
-  - keys: ["backend/app/skills/intercoder.py:520"]
+    note: "KappaIntercoderSkill.execute — disagreement reconciliation (W5: dispatcher path behind agentic_core; legacy branch preserved)"
+  - keys: ["backend/app/skills/intercoder.py:749"]
     kind: chat
-    note: "KappaIntercoderSkill.execute — theme extraction (full agreement)"
-  - keys: ["backend/app/skills/skill_factory.py:508"]
+    note: "KappaIntercoderSkill.execute — theme extraction (full agreement) (W5: dispatcher path behind agentic_core; legacy branch preserved)"
+  - keys: ["backend/app/skills/skill_factory.py:564"]
     kind: chat
-    note: "GeneratedSkill.plan — factory-generated skill plan"
-  - keys: ["backend/app/skills/skill_factory.py:717"]
+    note: "GeneratedSkill.plan — factory-generated skill plan (W5: dispatcher path behind agentic_core; legacy branch preserved)"
+  - keys: ["backend/app/skills/skill_factory.py:818"]
     kind: chat
-    note: "GeneratedSkill.execute — primary structured execution"
-  - keys: ["backend/app/skills/skill_factory.py:755"]
+    note: "GeneratedSkill.execute — primary structured execution (W5: dispatcher path behind agentic_core; legacy branch preserved)"
+  - keys: ["backend/app/skills/skill_factory.py:896"]
     kind: chat
-    note: "GeneratedSkill.execute — JSON repair #1 (native schema)"
-  - keys: ["backend/app/skills/skill_factory.py:794"]
+    note: "GeneratedSkill.execute — JSON repair #1 (native schema) (W5: dispatcher path behind agentic_core; legacy branch preserved)"
+  - keys: ["backend/app/skills/skill_factory.py:965"]
     kind: chat
-    note: "GeneratedSkill.execute — JSON repair #2 (plain prompt)"
-  - keys: ["backend/app/skills/skill_factory.py:863"]
+    note: "GeneratedSkill.execute — JSON repair #2 (plain prompt) (W5: dispatcher path behind agentic_core; legacy branch preserved)"
+  - keys: ["backend/app/skills/skill_factory.py:1064"]
     kind: chat
-    note: "GeneratedSkill.execute — empty-findings repair #3"
+    note: "GeneratedSkill.execute — empty-findings repair #3 (W5: dispatcher path behind agentic_core; legacy branch preserved)"
   # --- Embed sites (17): 3 direct alias/router calls + 14 wrapper sites ---
   # Wrapper sites call embed_text/embed_chunks (embeddings.py) and are not
   # detectable by the §4.1 regexes; they are tracked here so each wave's

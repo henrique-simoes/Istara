@@ -8,6 +8,7 @@ from datetime import datetime, timedelta, timezone
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.config import settings
 from app.models.channel_conversation import ChannelConversation
 from app.models.channel_instance import ChannelInstance
 from app.models.channel_message import ChannelMessage
@@ -308,8 +309,6 @@ async def _generate_adaptive_followup(
         return None
 
     try:
-        from app.core.llm_router import llm_router
-
         prompt = (
             f"You are a UX researcher conducting a {deployment.deployment_type}.\n"
             f'The participant just answered: "{last_response}"\n'
@@ -320,11 +319,29 @@ async def _generate_adaptive_followup(
             "Only output the question text, nothing else."
         )
 
-        result = await llm_router.chat(
-            [{"role": "user", "content": prompt}],
-            project_id=deployment.project_id,
-        )
-        followup = result.get("content", "").strip()
+        if settings.agentic_core:
+            # W5: the adaptive follow-up goes through the AgenticDispatcher
+            # (``channel.followup``); the legacy llm_router branch below is
+            # preserved for agentic_core=False.
+            from app.core.agentic import agentic
+            from app.core.agentic.types import TurnParams
+
+            outcome = await agentic.completion(
+                purpose="channel.followup",
+                project_id=deployment.project_id,
+                system=None,
+                messages=[{"role": "user", "content": prompt}],
+                params=TurnParams(),
+            )
+            followup = outcome.text.strip()
+        else:
+            from app.core.llm_router import llm_router
+
+            result = await llm_router.chat(
+                [{"role": "user", "content": prompt}],
+                project_id=deployment.project_id,
+            )
+            followup = result.get("content", "").strip()
         if followup and followup.upper() != "NONE":
             return followup
     except Exception as e:

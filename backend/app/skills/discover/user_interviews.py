@@ -8,12 +8,16 @@ Capabilities:
 """
 
 import json
+import logging
 from pathlib import Path
 
+from app.config import settings
 from app.core.ollama import ollama
 from app.core.file_processor import process_file
 from app.core.rag import retrieve_context
 from app.skills.base import BaseSkill, SkillInput, SkillOutput, SkillPhase, SkillType
+
+logger = logging.getLogger(__name__)
 
 
 INTERVIEW_GUIDE_PROMPT = """You are an expert UX Researcher creating an interview guide.
@@ -148,6 +152,131 @@ Respond in valid JSON with this structure:
 }}"""
 
 
+# W5: schemas for the AgenticDispatcher structured paths of ``execute``
+# (``skill.discover_analyze``); both engines validate against them.
+# Formalized from the TRANSCRIPT_ANALYSIS_PROMPT / SYNTHESIS_PROMPT response
+# shapes — every key is read via ``.get`` downstream, so nothing is required.
+TRANSCRIPT_ANALYSIS_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "nuggets": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "text": {"type": "string"},
+                    "location": {"type": "string"},
+                    "tags": {"type": "array", "items": {"type": "string"}},
+                    "tone": {"type": "string"},
+                },
+            },
+        },
+        "themes": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "name": {"type": "string"},
+                    "description": {"type": "string"},
+                    "strength": {"type": "number"},
+                },
+            },
+        },
+        "pain_points": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "description": {"type": "string"},
+                    "severity": {"type": "number"},
+                    "frequency": {"type": "string"},
+                },
+            },
+        },
+        "opportunities": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "description": {"type": "string"},
+                    "impact": {"type": "string"},
+                },
+            },
+        },
+        "follow_up_questions": {"type": "array", "items": {"type": "string"}},
+        "participant_summary": {"type": "string"},
+    },
+    "required": [],
+}
+
+
+SYNTHESIS_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "themes": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "name": {"type": "string"},
+                    "description": {"type": "string"},
+                    "participant_count": {"type": "number"},
+                    "quotes": {"type": "array", "items": {"type": "string"}},
+                    "confidence": {"type": "string"},
+                },
+            },
+        },
+        "facts": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "text": {"type": "string"},
+                    "evidence_count": {"type": "number"},
+                    "sources": {"type": "array", "items": {"type": "string"}},
+                },
+            },
+        },
+        "insights": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "text": {"type": "string"},
+                    "supporting_facts": {"type": "array", "items": {"type": "string"}},
+                    "confidence": {"type": "string"},
+                    "impact": {"type": "string"},
+                },
+            },
+        },
+        "recommendations": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "text": {"type": "string"},
+                    "supporting_insights": {"type": "array", "items": {"type": "string"}},
+                    "priority": {"type": "string"},
+                    "effort": {"type": "string"},
+                },
+            },
+        },
+        "research_gaps": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "description": {"type": "string"},
+                    "suggested_method": {"type": "string"},
+                    "priority": {"type": "string"},
+                },
+            },
+        },
+    },
+    "required": [],
+}
+
+
 class UserInterviewsSkill(BaseSkill):
     """Skill for planning, conducting, and analyzing user interviews."""
 
@@ -198,12 +327,30 @@ class UserInterviewsSkill(BaseSkill):
             research_questions=research_questions,
         )
 
-        response = await ollama.chat(
-            messages=[{"role": "user", "content": prompt}],
-            temperature=0.7,
-        )
+        if settings.agentic_core:
+            # W5: interview guide generation goes through the
+            # AgenticDispatcher (``skill.discover_plan``); the legacy
+            # ``ollama.chat`` branch below is preserved verbatim for
+            # agentic_core=False.
+            from app.core.agentic import agentic
+            from app.core.agentic.types import TurnParams
 
-        guide_content = response.get("message", {}).get("content", "")
+            outcome = await agentic.completion(
+                purpose="skill.discover_plan",
+                project_id=skill_input.project_id,
+                system=None,
+                messages=[{"role": "user", "content": prompt}],
+                params=TurnParams(temperature=0.7),
+                spine_phase="plan",
+            )
+            guide_content = outcome.text
+        else:
+            response = await ollama.chat(
+                messages=[{"role": "user", "content": prompt}],
+                temperature=0.7,
+            )
+
+            guide_content = response.get("message", {}).get("content", "")
 
         return {
             "skill": self.name,
@@ -294,24 +441,53 @@ class UserInterviewsSkill(BaseSkill):
                 transcript=transcript[:4000],  # Limit transcript length for context window
             )
 
-            response = await ollama.chat(
-                messages=[{"role": "user", "content": prompt}],
-                temperature=0.3,
-            )
+            if settings.agentic_core:
+                # W5: transcript analysis goes through the AgenticDispatcher
+                # (``skill.discover_analyze``) with TRANSCRIPT_ANALYSIS_SCHEMA
+                # driving both engines; the legacy ``ollama.chat`` branch
+                # below is preserved verbatim for agentic_core=False.
+                from app.core.agentic import agentic
+                from app.core.agentic.types import TurnParams
 
-            response_text = response.get("message", {}).get("content", "")
+                try:
+                    outcome = await agentic.structured(
+                        purpose="skill.discover_analyze",
+                        project_id=skill_input.project_id,
+                        system=None,
+                        messages=[{"role": "user", "content": prompt}],
+                        schema=TRANSCRIPT_ANALYSIS_SCHEMA,
+                        params=TurnParams(temperature=0.3),
+                        spine_phase="synthesis",
+                    )
+                    if outcome.status == "success" and outcome.value:
+                        analysis = outcome.value
+                    else:
+                        analysis = {"raw_analysis": outcome.text}
+                except Exception as e:
+                    # F-W5-2: the Pi engine raises PiRuntimeTurnError on
+                    # invalid structured output instead of returning
+                    # status != "success"; degrade to raw_analysis fallback.
+                    logger.warning("Transcript analysis raised; degrading to raw_analysis: %s", e)
+                    analysis = {"raw_analysis": ""}
+            else:
+                response = await ollama.chat(
+                    messages=[{"role": "user", "content": prompt}],
+                    temperature=0.3,
+                )
 
-            # Parse JSON response
-            try:
-                # Try to extract JSON from the response
-                json_start = response_text.find("{")
-                json_end = response_text.rfind("}") + 1
-                if json_start >= 0 and json_end > json_start:
-                    analysis = json.loads(response_text[json_start:json_end])
-                else:
+                response_text = response.get("message", {}).get("content", "")
+
+                # Parse JSON response
+                try:
+                    # Try to extract JSON from the response
+                    json_start = response_text.find("{")
+                    json_end = response_text.rfind("}") + 1
+                    if json_start >= 0 and json_end > json_start:
+                        analysis = json.loads(response_text[json_start:json_end])
+                    else:
+                        analysis = {"raw_analysis": response_text}
+                except json.JSONDecodeError:
                     analysis = {"raw_analysis": response_text}
-            except json.JSONDecodeError:
-                analysis = {"raw_analysis": response_text}
 
             analysis["source_file"] = source_name
             all_analyses.append(analysis)
@@ -334,19 +510,50 @@ class UserInterviewsSkill(BaseSkill):
                 analyses=analyses_text[:12000],
             )
 
-            synth_response = await ollama.chat(
-                messages=[{"role": "user", "content": synthesis_prompt}],
-                temperature=0.3,
-            )
+            if settings.agentic_core:
+                # W5: cross-interview synthesis goes through the
+                # AgenticDispatcher (``skill.discover_analyze``) — the result
+                # is JSON-parsed below, so it uses the structured verb with
+                # SYNTHESIS_SCHEMA driving both engines; the legacy
+                # ``ollama.chat`` branch is preserved verbatim for
+                # agentic_core=False.
+                from app.core.agentic import agentic
+                from app.core.agentic.types import TurnParams
 
-            synth_text = synth_response.get("message", {}).get("content", "")
-            try:
-                json_start = synth_text.find("{")
-                json_end = synth_text.rfind("}") + 1
-                if json_start >= 0 and json_end > json_start:
-                    synthesis = json.loads(synth_text[json_start:json_end])
-            except json.JSONDecodeError:
-                synthesis = {"raw_synthesis": synth_text}
+                try:
+                    outcome = await agentic.structured(
+                        purpose="skill.discover_analyze",
+                        project_id=skill_input.project_id,
+                        system=None,
+                        messages=[{"role": "user", "content": synthesis_prompt}],
+                        schema=SYNTHESIS_SCHEMA,
+                        params=TurnParams(temperature=0.3),
+                        spine_phase="synthesis",
+                    )
+                    if outcome.status == "success" and outcome.value:
+                        synthesis = outcome.value
+                    else:
+                        synthesis = {"raw_synthesis": outcome.text}
+                except Exception as e:
+                    # F-W5-2: the Pi engine raises PiRuntimeTurnError on
+                    # invalid structured output instead of returning
+                    # status != "success"; degrade to raw_synthesis fallback.
+                    logger.warning("Interview synthesis raised; degrading to raw_synthesis: %s", e)
+                    synthesis = {"raw_synthesis": ""}
+            else:
+                synth_response = await ollama.chat(
+                    messages=[{"role": "user", "content": synthesis_prompt}],
+                    temperature=0.3,
+                )
+
+                synth_text = synth_response.get("message", {}).get("content", "")
+                try:
+                    json_start = synth_text.find("{")
+                    json_end = synth_text.rfind("}") + 1
+                    if json_start >= 0 and json_end > json_start:
+                        synthesis = json.loads(synth_text[json_start:json_end])
+                except json.JSONDecodeError:
+                    synthesis = {"raw_synthesis": synth_text}
 
         # Build output
         facts = []
