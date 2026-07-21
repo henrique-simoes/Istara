@@ -40,6 +40,7 @@ from .endpoints import (
     PiRuntimeTurnError,
     ResolvedPiEndpoint,
 )
+from .model_manager import PiModelManager
 from .supervisor import PiRuntimeSupervisor, get_supervisor
 from .tools import build_tool_catalog, catalog_tool_names
 
@@ -118,7 +119,7 @@ def _session_revision(history: list[dict[str, Any]], endpoint: ResolvedPiEndpoin
     return digest.hexdigest()[:16]
 
 
-def _bind_payload(endpoint: ResolvedPiEndpoint) -> dict[str, Any]:
+def _bind_payload(endpoint: ResolvedPiEndpoint, params: Any = None) -> dict[str, Any]:
     payload = {
         "endpoint_id": endpoint.endpoint_id,
         "provider_kind": endpoint.provider_kind,
@@ -128,6 +129,11 @@ def _bind_payload(endpoint: ResolvedPiEndpoint) -> dict[str, Any]:
         "timeout_ms": endpoint.timeout_ms,
         "max_retries": endpoint.max_retries,
     }
+    bind_params = _turn_bind_params(params, endpoint)
+    if bind_params:
+        # Canonical generation/retry knobs (worker-validated keys only:
+        # temperature, max_tokens, thinking_level, timeout_ms, max_retries).
+        payload["params"] = bind_params
     if endpoint.provider_kind == "faux" and endpoint.faux_responses is not None:
         # Test-only deterministic provider: never set by the production resolver.
         payload["faux_responses"] = list(endpoint.faux_responses)
@@ -142,6 +148,30 @@ def _bind_payload(endpoint: ResolvedPiEndpoint) -> dict[str, Any]:
             "cache_write_per_mtok": endpoint.cost_cache_write_per_mtok,
         }
     return payload
+
+
+def _turn_bind_params(params: Any, endpoint: ResolvedPiEndpoint) -> dict[str, Any]:
+    """Map TurnParams onto the worker's provider params (master plan §5.3).
+
+    Only explicitly-set knobs are forwarded; everything else keeps the
+    endpoint/worker defaults so a bare turn behaves exactly as before.
+    """
+    if params is None:
+        return {}
+    mapped: dict[str, Any] = {}
+    temperature = getattr(params, "temperature", None)
+    if temperature is not None:
+        mapped["temperature"] = float(temperature)
+    max_tokens = getattr(params, "max_tokens", None)
+    if max_tokens:
+        mapped["max_tokens"] = int(max_tokens)
+    thinking_mode = getattr(params, "thinking_mode", None)
+    if thinking_mode:
+        mapped["thinking_level"] = str(thinking_mode)
+    timeout_s = getattr(params, "timeout_s", None)
+    if timeout_s:
+        mapped["timeout_ms"] = int(float(timeout_s) * 1000)
+    return mapped
 
 
 def _normalize_tool_result(result: Any) -> dict[str, Any]:
@@ -164,12 +194,22 @@ class PiExecutionService:
         *,
         resolver: PiEndpointResolver | None = None,
         supervisor: PiRuntimeSupervisor | None = None,
+        model_manager: PiModelManager | None = None,
     ) -> None:
         self._resolver = resolver or PiEndpointResolver()
         self._supervisor = supervisor
+        self._model_manager = model_manager
 
     def _sup(self) -> PiRuntimeSupervisor:
         return self._supervisor or get_supervisor()
+
+    def _manager(self) -> PiModelManager:
+        # The manager is the engine's endpoint authority (§5.2): static settings
+        # endpoints, local serving, and (on refresh) persisted LLMServer rows —
+        # never ComputeRegistry or donor capacity.
+        if self._model_manager is None:
+            self._model_manager = PiModelManager(resolver=self._resolver)
+        return self._model_manager
 
     # ── shared turn driver ───────────────────────────────────────────────
     async def _drive_turn(
@@ -183,16 +223,31 @@ class PiExecutionService:
         user_text: str,
         tool_executor: ToolExecutor,
         session_key: str | None,
-        endpoint_id: str,
+        endpoint_id: str | None,
         allowed_tools: list[str] | None,
         steering: SteeringBinding | None = None,
+        output_schema: dict[str, Any] | None = None,
+        tool_choice: Any = None,
+        max_turns: int | None = None,
+        model: str | None = None,
+        min_context: int = 0,
+        require_vision: bool = False,
+        turn_params: Any = None,
     ) -> AsyncIterator[dict[str, Any]]:
         """Drive one governed Pi turn, yielding normalized events.
 
-        Resolves the private endpoint first, so a resolver/Keychain miss raises
-        ``PiEndpointResolutionError`` before any worker/provider work.
+        Resolves the private endpoint through the PiModelManager first, so a
+        resolution/capability miss raises ``PiEndpointResolutionError`` before
+        any worker/provider work.
         """
-        endpoint = self._resolver.resolve(endpoint_id)
+        manager = self._manager()
+        await manager.ensure_db_projection()
+        if endpoint_id is None and model is None and min_context <= 0 and not require_vision:
+            endpoint_id = DEFAULT_ENDPOINT_ID
+        endpoint = manager.resolve(
+            endpoint_id=endpoint_id, model=model,
+            require_vision=require_vision, min_context=min_context,
+        )
         catalog = build_tool_catalog(allowed_tools)
         catalog_names = catalog_tool_names(allowed_tools)
         key = session_key or f"pi-{operation}-{uuid.uuid4().hex}"
@@ -228,7 +283,7 @@ class PiExecutionService:
                 catalog=catalog,
             )
             session_opened = True
-            await sup.bind_provider(key, _bind_payload(endpoint))
+            await sup.bind_provider(key, _bind_payload(endpoint, turn_params))
             if steering is not None:
                 # Bind this turn's own (agent_id, project_id, session_key) key —
                 # the pump polls its own binding, never a global slot (B-5).
@@ -238,7 +293,10 @@ class PiExecutionService:
                     steering.agent_id, project_id=steering.project_id, session_key=steering.session_key
                 )
                 steer_task = asyncio.create_task(self._pump_steering(sup, key, steering))
-            async for frame in sup.run_turn(key, user_text, tool_handler):
+            async for frame in sup.run_turn(
+                key, user_text, tool_handler,
+                output_schema=output_schema, tool_choice=tool_choice, max_turns=max_turns,
+            ):
                 event = _map_frame(frame, endpoint)
                 if event is None:
                     continue
@@ -318,6 +376,7 @@ class PiExecutionService:
             "usage": (terminal or {}).get("usage", {}),
             "stop_reason": (terminal or {}).get("stop_reason"),
             "endpoint_id": (terminal or {}).get("endpoint_id"),
+            "structured": (terminal or {}).get("structured"),
             "error": (terminal or {}).get("error") if status not in ("success", "aborted") else None,
         }
 
@@ -335,8 +394,16 @@ class PiExecutionService:
         endpoint_id: str = DEFAULT_ENDPOINT_ID,
         allowed_tools: list[str] | None = None,
         steering: SteeringBinding | None = None,
+        params: Any = None,
     ) -> AsyncIterator[dict[str, Any]]:
         """Drive one governed Pi chat turn, yielding normalized SSE events."""
+        effective_endpoint_id = getattr(params, "endpoint_id", None)
+        if effective_endpoint_id is None and not (
+            getattr(params, "model", None)
+            or getattr(params, "min_context", 0)
+            or getattr(params, "require_vision", False)
+        ):
+            effective_endpoint_id = endpoint_id
         async for event in self._drive_turn(
             operation="pi_runtime_chat_turn",
             project_id=project_id,
@@ -346,9 +413,14 @@ class PiExecutionService:
             user_text=user_text,
             tool_executor=tool_executor,
             session_key=session_key,
-            endpoint_id=endpoint_id,
+            endpoint_id=effective_endpoint_id,
             allowed_tools=allowed_tools,
             steering=steering,
+            model=getattr(params, "model", None),
+            min_context=getattr(params, "min_context", 0) or 0,
+            require_vision=bool(getattr(params, "require_vision", False)),
+            turn_params=params,
+            max_turns=getattr(params, "max_turns", None),
         ):
             yield event
 
@@ -362,13 +434,20 @@ class PiExecutionService:
         The last message is the prompt; preceding messages remain server-owned
         history.  A failed terminal remains an outcome rather than fabricated
         output, allowing the dispatcher to preserve Pi's fail-closed rule.
+        Every TurnParams knob is honored: endpoint/model/capability admission
+        via the PiModelManager, generation knobs via the bind params.
         """
         history, text = _split_messages(messages)
         return await self._collect_turn(
             operation=f"pi_completion:{purpose}", project_id=project_id, agent_id=agent_id,
             system_prompt=system, history=history, user_text=text,
-            tool_executor=_no_tools, session_key=None, endpoint_id=getattr(params, "endpoint_id", None) or DEFAULT_ENDPOINT_ID,
+            tool_executor=_no_tools, session_key=None, endpoint_id=getattr(params, "endpoint_id", None),
             allowed_tools=[],
+            model=getattr(params, "model", None),
+            min_context=getattr(params, "min_context", 0) or 0,
+            require_vision=bool(getattr(params, "require_vision", False)),
+            turn_params=params,
+            max_turns=getattr(params, "max_turns", None),
         )
 
     async def run_react(
@@ -376,38 +455,136 @@ class PiExecutionService:
         system: str, messages: list[dict[str, Any]], user_text: str, tool_executor: ToolExecutor,
         tool_names: list[str], params: Any, steering_binding: SteeringBinding | None = None,
     ) -> dict[str, Any]:
-        """Bounded task-shaped ReAct seam; Python keeps the final tool allowlist."""
+        """Bounded task-shaped ReAct seam; Python keeps the final tool allowlist.
+
+        Hard turn budget defaults to 8 (legacy MAX_TOOL_ITERATIONS parity).
+        """
         return await self._collect_turn(
             operation=f"pi_react:{purpose}", project_id=project_id, agent_id=agent_id,
             system_prompt=system, history=messages, user_text=user_text, tool_executor=tool_executor,
-            session_key=session_key, endpoint_id=getattr(params, "endpoint_id", None) or DEFAULT_ENDPOINT_ID,
+            session_key=session_key, endpoint_id=getattr(params, "endpoint_id", None),
             allowed_tools=list(tool_names), steering=steering_binding,
+            model=getattr(params, "model", None),
+            min_context=getattr(params, "min_context", 0) or 0,
+            require_vision=bool(getattr(params, "require_vision", False)),
+            turn_params=params,
+            max_turns=getattr(params, "max_turns", None) or 8,
         )
 
     async def run_structured(
         self, *, purpose: str, project_id: str, agent_id: str, system: str,
         messages: list[dict[str, Any]], schema: dict[str, Any], params: Any,
     ) -> dict[str, Any]:
-        """Return a schema-validated object, with one bounded repair attempt.
+        """Return a schema-validated object via the forced structured contract.
 
-        The worker receives the schema/tool-choice protocol fields in the next
-        protocol compatibility increment; this Python validation remains the
-        authoritative boundary and therefore also protects older workers.
+        Protocol v2: the worker mechanically translates ``schema`` for its
+        ``emit_structured_output`` capture tool, forces the provider to call
+        exactly that tool, and reports the captured (never executed, never
+        round-tripped) arguments on ``run.completed.structured``. This seam
+        then revalidates the captured object against the ORIGINAL schema — the
+        worker-side TypeBox translation is a model-side aid, Python
+        revalidation is the contract.
+
+        Fail-closed rules: free-form JSON text is never accepted as structured
+        output; a missing/incorrect forced call surfaces as the typed
+        ``structured_output_missing`` failure; an unsupported schema fails
+        before any model call; exactly one bounded repair is allowed, and a
+        second invalid result raises a typed ``PiRuntimeTurnError`` instead of
+        returning an error-shaped artifact as if it were a success.
         """
+        _assert_supported_output_schema(schema)
+        repair_instruction = (
+            "The previous response did not produce a valid structured object. "
+            "Call the emit_structured_output tool exactly once with an object matching this schema: "
+            + json.dumps(schema, sort_keys=True)
+        )
         prompt = list(messages)
         for attempt in range(2):
-            result = await self.run_completion(purpose=purpose, project_id=project_id, agent_id=agent_id,
-                                               system=system, messages=prompt, params=params)
+            history, text = _split_messages(prompt)
+            result = await self._collect_turn(
+                operation=f"pi_structured:{purpose}", project_id=project_id, agent_id=agent_id,
+                system_prompt=system, history=history, user_text=text,
+                tool_executor=_no_tools, session_key=None,
+                endpoint_id=getattr(params, "endpoint_id", None),
+                allowed_tools=[], output_schema=schema,
+                max_turns=getattr(params, "max_turns", None),
+                model=getattr(params, "model", None),
+                min_context=getattr(params, "min_context", 0) or 0,
+                require_vision=bool(getattr(params, "require_vision", False)),
+                turn_params=params,
+            )
+            if result["status"] != "success":
+                error = result.get("error") or "pi_runtime_error"
+                if attempt == 0 and error.startswith("structured_output_missing"):
+                    # A missing forced call is an invalid result: exactly one
+                    # bounded repair, then the typed failure below.
+                    prompt = [*messages, {"role": "user", "content": repair_instruction}]
+                    continue
+                raise PiRuntimeTurnError(result["status"], error)
             try:
-                value = _validate_structured(result.get("text", ""), schema)
-                return {**result, "value": value}
+                value = _validate_structured_value(result.get("structured"), schema)
             except ValueError as exc:
-                if attempt:
-                    result["status"] = "error"
-                    result["error"] = f"structured_output_invalid:{exc}"
-                    return result
-                prompt = [*messages, {"role": "user", "content": "Repair the prior response. Return only JSON matching this schema: " + json.dumps(schema, sort_keys=True)}]
+                if attempt == 0:
+                    prompt = [*messages, {"role": "user", "content": repair_instruction}]
+                    continue
+                raise PiRuntimeTurnError("error", f"structured_output_invalid:{exc}") from exc
+            return {**result, "value": value}
         raise AssertionError("unreachable")
+
+    async def run_ensemble(
+        self, *, purpose: str, project_id: str, agent_id: str, system: str,
+        messages: list[dict[str, Any]], n: int, distinct: bool = False,
+        temperatures: list[float] | None = None, params: Any = None,
+    ) -> dict[str, Any]:
+        """N sampled completions (master plan §5.1 ensemble, W7 consumer).
+
+        ``distinct=True`` draws n identity-distinct endpoints from the
+        PiModelManager (fail-closed when fewer than n exist — one endpoint is
+        never silently reused as "two"); ``distinct=False`` is self-MoA: n
+        samples on one admitted endpoint. Samples run sequentially, each as its
+        own governed turn, so per-sample usage stays exact.
+        """
+        manager = self._manager()
+        await manager.ensure_db_projection()
+        model = getattr(params, "model", None)
+        require_vision = bool(getattr(params, "require_vision", False))
+        min_context = getattr(params, "min_context", 0) or 0
+        if distinct:
+            endpoints = manager.resolve_distinct(
+                n, model=model, require_vision=require_vision, min_context=min_context
+            )
+        else:
+            endpoint = manager.resolve(
+                endpoint_id=getattr(params, "endpoint_id", None), model=model,
+                require_vision=require_vision, min_context=min_context,
+            )
+            endpoints = [endpoint] * n
+        samples: list[dict[str, Any]] = []
+        if params is None:
+            from app.core.agentic.types import TurnParams
+
+            params = TurnParams()
+        for index, endpoint in enumerate(endpoints):
+            sample_params = params
+            if temperatures and index < len(temperatures) and temperatures[index] is not None:
+                sample_params = replace(sample_params, temperature=float(temperatures[index]))
+            sample_params = replace(sample_params, endpoint_id=endpoint.endpoint_id)
+            samples.append(await self.run_completion(
+                purpose=f"{purpose}#{index}", project_id=project_id, agent_id=agent_id,
+                system=system, messages=messages, params=sample_params,
+            ))
+        usage = {
+            "input_tokens": sum((s.get("usage") or {}).get("input_tokens", (s.get("usage") or {}).get("input", 0)) or 0 for s in samples),
+            "output_tokens": sum((s.get("usage") or {}).get("output_tokens", (s.get("usage") or {}).get("output", 0)) or 0 for s in samples),
+            "turn_count": len(samples),
+        }
+        usage["total_tokens"] = usage["input_tokens"] + usage["output_tokens"]
+        return {
+            "samples": samples,
+            "endpoint_ids": [endpoint.endpoint_id for endpoint in endpoints],
+            "usage": usage,
+            "status": "success" if all(s.get("status") == "success" for s in samples) else "error",
+        }
 
     # ── A2A delegation seam ──────────────────────────────────────────────
     async def run_delegation(
@@ -637,6 +814,10 @@ def _map_frame(frame: dict[str, Any], endpoint: ResolvedPiEndpoint) -> dict[str,
             "usage": frame.get("usage") or {},
             "stop_reason": frame.get("stop_reason"),
             "endpoint_id": endpoint.endpoint_id,
+            # Present only on forced structured-output runs (protocol v2): the
+            # worker-captured emit_structured_output arguments. Never parsed
+            # from free-form text.
+            "structured": frame.get("structured"),
         }
     if ftype == "run.failed":
         return {"type": "error", "error": frame.get("error", "pi_runtime_error")}
@@ -657,11 +838,16 @@ def _split_messages(messages: list[dict[str, Any]]) -> tuple[list[dict[str, Any]
     return history, str(last.get("content") or "")
 
 
-def _validate_structured(text: str, schema: dict[str, Any]) -> dict[str, Any]:
-    try:
-        value = json.loads(text)
-    except json.JSONDecodeError as exc:
-        raise ValueError("invalid_json") from exc
+def _validate_structured_value(value: Any, schema: dict[str, Any]) -> dict[str, Any]:
+    """Validate the worker-captured structured object against the ORIGINAL schema.
+
+    ``value`` is never free-form text: it is the object the worker captured
+    from the forced ``emit_structured_output`` call. A missing capture or a
+    schema violation is a typed ``ValueError``; callers repair once, then fail
+    closed.
+    """
+    if value is None:
+        raise ValueError("structured_output_missing")
     if not isinstance(value, dict):
         raise ValueError("not_object")
     try:
@@ -674,3 +860,69 @@ def _validate_structured(text: str, schema: dict[str, Any]) -> dict[str, Any]:
     except Exception as exc:
         raise ValueError("schema_validation_failed") from exc
     return value
+
+
+# Keep in sync with SUPPORTED_NODE_KEYS / SUPPORTED_TYPES in
+# pi-runtime/src/structured.mjs — both sides reject the same constructs so an
+# unforceable schema fails closed no matter which side sees it first.
+_SCHEMA_NODE_KEYS = frozenset({
+    "type", "properties", "required", "additionalProperties", "items", "enum",
+    "const", "description", "title", "minimum", "maximum", "exclusiveMinimum",
+    "exclusiveMaximum", "multipleOf", "minLength", "maxLength", "pattern",
+    "minItems", "maxItems", "uniqueItems", "minProperties", "maxProperties",
+})
+_SCHEMA_TYPES = frozenset({"object", "string", "number", "integer", "boolean", "array", "null"})
+
+
+def _find_unsupported_schema_construct(node: Any, path: str = "$") -> str | None:
+    """Return a ``<path>:<detail>`` reason when ``node`` falls outside the
+    mechanically translatable JSON Schema subset, else None."""
+    if not isinstance(node, dict):
+        return f"{path}:not_a_schema_object"
+    for key in node:
+        if key not in _SCHEMA_NODE_KEYS:
+            return f"{path}:{key}"
+    if "const" in node or "enum" in node:
+        if "enum" in node and (not isinstance(node["enum"], list) or not node["enum"]):
+            return f"{path}:enum"
+        return None
+    raw = node.get("type")
+    types = [raw] if isinstance(raw, str) else list(raw) if isinstance(raw, list) else []
+    if not types:
+        return f"{path}:missing_type"
+    for t in types:
+        if not isinstance(t, str) or t not in _SCHEMA_TYPES:
+            return f"{path}:type:{t}"
+    if "object" in types:
+        props = node.get("properties", {})
+        if not isinstance(props, dict):
+            return f"{path}:properties"
+        required = node.get("required", [])
+        if not isinstance(required, list) or any(not isinstance(name, str) for name in required):
+            return f"{path}:required"
+        additional = node.get("additionalProperties")
+        if additional is not None and not isinstance(additional, bool):
+            return f"{path}:additionalProperties"
+        for name, sub in props.items():
+            bad = _find_unsupported_schema_construct(sub, f"{path}.properties.{name}")
+            if bad:
+                return bad
+    if "array" in types:
+        items = node.get("items")
+        if not isinstance(items, dict):
+            return f"{path}:items"
+        bad = _find_unsupported_schema_construct(items, f"{path}.items")
+        if bad:
+            return bad
+    return None
+
+
+def _assert_supported_output_schema(schema: dict[str, Any]) -> None:
+    """Fail closed BEFORE any model call when the schema cannot be forced."""
+    bad = _find_unsupported_schema_construct(schema)
+    if bad is not None:
+        raise PiRuntimeTurnError("error", f"structured_output_schema_unsupported:{bad}")
+    root_type = schema.get("type")
+    root_types = [root_type] if isinstance(root_type, str) else list(root_type or [])
+    if "enum" not in schema and "const" not in schema and "object" not in root_types:
+        raise PiRuntimeTurnError("error", "structured_output_schema_unsupported:$:root_not_object")

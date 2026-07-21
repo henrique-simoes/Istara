@@ -42,6 +42,13 @@ class PiApiEndpoint(BaseModel):
     cost_output_per_mtok: float = Field(default=0.0, ge=0.0)
     cost_cache_read_per_mtok: float = Field(default=0.0, ge=0.0)
     cost_cache_write_per_mtok: float = Field(default=0.0, ge=0.0)
+    # Static capability advertisement (the parity subset meaningful for exact
+    # endpoints). 0/False means "unknown" and fails capability admission closed
+    # when a caller explicitly requires that capability (min_context/vision).
+    context_window: int = Field(default=0, ge=0)
+    max_tokens: int = Field(default=0, ge=0)
+    supports_tools: bool = True
+    supports_vision: bool = False
 
     @field_validator("endpoint_id", "base_url", "model", "keychain_service")
     @classmethod
@@ -297,6 +304,11 @@ class Settings(BaseSettings):
     pi_api_endpoints: list[PiApiEndpoint] = []
     # Bounded Pi runtime worker pool size (round-robin by session_key hash).
     pi_worker_pool_size: int = 2
+
+    # AgenticDispatcher engine default (master plan §5.1): the last resort after
+    # per-call override, request header, and the project's `agentic_engine`
+    # setting. Stays "legacy" until the owner flips the rollout.
+    agentic_engine_default: str = "legacy"
 
     # Meta-Hyperagent (optional layer that tunes subsystem parameters)
     meta_hyperagent_enabled: bool = False

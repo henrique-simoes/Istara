@@ -6,7 +6,15 @@ the version and the bounds so both sides agree.
 
 from __future__ import annotations
 
-PROTOCOL_VERSION = 1
+# v2: turn.prompt gains output_schema / tool_choice / max_turns and
+# run.completed may carry the captured `structured` object (forced
+# emit_structured_output contract, see pi-runtime/src/structured.mjs). Both
+# sides validate the version at handshake and per-frame.
+PROTOCOL_VERSION = 2
+
+# Worker-internal forced capture tool (never a catalog tool, never round-trips
+# to the authority as a tool.call).
+STRUCTURED_TOOL_NAME = "emit_structured_output"
 
 # Must match pi-runtime/src/protocol.mjs.  The transport chunks before this
 # ceiling, while the subprocess reader is deliberately larger (H-1/H-2).

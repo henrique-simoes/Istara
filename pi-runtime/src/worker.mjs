@@ -101,12 +101,13 @@ function failActiveRuns(error) {
 
 /** Run-scoped failure for a frame we refuse to process. */
 function rejectFrame(frame, error) {
-  const session = typeof frame.session_key === "string" ? sessions.get(frame.session_key) : null;
+  const target = frame || {};
+  const session = typeof target.session_key === "string" ? sessions.get(target.session_key) : null;
   if (session && session.failActiveRun(error)) return;
-  if (typeof frame.session_key === "string") {
-    write({ v: PROTOCOL_VERSION, type: "run.failed", session_key: frame.session_key, run_id: frame.run_id, error });
+  if (typeof target.session_key === "string") {
+    write({ v: PROTOCOL_VERSION, type: "run.failed", session_key: target.session_key, run_id: target.run_id, error });
   } else {
-    diag(`rejected_frame:${error}:${frame && frame.type}`);
+    diag(`rejected_frame:${error}:${target.type}`);
   }
 }
 
@@ -114,6 +115,18 @@ async function handleFrame(frame) {
   const type = frame && frame.type;
   switch (type) {
     case "hello":
+      // Both-side version validation: a host speaking a different protocol
+      // version gets a typed fatal and never a `ready` — the worker must not
+      // serve frames it cannot interpret (v2 forced structured contract).
+      if (frame.v !== PROTOCOL_VERSION || frame.protocol_version !== PROTOCOL_VERSION) {
+        write({
+          v: PROTOCOL_VERSION,
+          type: "fatal",
+          error: "protocol_version_mismatch",
+          protocol_version: PROTOCOL_VERSION,
+        });
+        return;
+      }
       write({
         v: PROTOCOL_VERSION,
         type: "ready",
@@ -178,7 +191,11 @@ async function handleFrame(frame) {
         return;
       }
       // Do not await: the run streams events until its own terminal frame.
-      session.prompt(frame.run_id, frame.text, frame.max_turns);
+      session.prompt(frame.run_id, frame.text, {
+        maxTurns: frame.max_turns,
+        outputSchema: frame.output_schema,
+        toolChoice: frame.tool_choice,
+      });
       return;
     }
 
@@ -274,6 +291,15 @@ function main() {
       throw err;
     }
     for (const frame of frames) {
+      // Every inbound frame must speak this protocol version. Reject BEFORE
+      // consuming the seq so a single mismatched frame does not wedge the
+      // session's monotonic counter. `hello` is exempt here: its handler
+      // answers a mismatch with the typed connection-level `fatal` so the
+      // host learns the worker's version instead of seeing silence.
+      if (!frame || (frame.v !== PROTOCOL_VERSION && frame.type !== "hello")) {
+        rejectFrame(frame, "protocol_version_mismatch");
+        continue;
+      }
       if (!checkInboundSeq(frame)) {
         rejectFrame(frame, "protocol_seq_violation");
         continue;

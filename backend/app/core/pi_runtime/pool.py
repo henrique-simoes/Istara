@@ -74,8 +74,8 @@ class PiRuntimePool:
     async def bind_provider(self, session_key: str, endpoint: dict[str, Any]) -> None:
         await self._owner(session_key).bind_provider(session_key, endpoint)
 
-    async def run_turn(self, session_key: str, text: str, tool_handler: ToolHandler) -> AsyncIterator[dict[str, Any]]:
-        async for frame in self._owner(session_key).run_turn(session_key, text, tool_handler):
+    async def run_turn(self, session_key: str, text: str, tool_handler: ToolHandler, **kwargs: Any) -> AsyncIterator[dict[str, Any]]:
+        async for frame in self._owner(session_key).run_turn(session_key, text, tool_handler, **kwargs):
             yield frame
 
     def active_run_id(self, session_key: str) -> str | None:

@@ -18,6 +18,9 @@ class TurnParams:
     timeout_s: float | None = None
     max_turns: int | None = None
     require_vision: bool = False
+    # Exact Pi endpoint pin (benchmark/A2A envelopes). None leaves admission to
+    # the PiModelManager capability/model filters.
+    endpoint_id: str | None = None
 
 
 @dataclass(frozen=True)
@@ -33,6 +36,16 @@ class TurnResult:
 @dataclass(frozen=True)
 class StructuredResult(TurnResult):
     value: dict[str, Any] = field(default_factory=dict)
+
+
+@dataclass(frozen=True)
+class EnsembleResult:
+    """N sampled turns (distinct endpoints or self-MoA on one endpoint)."""
+
+    samples: list[TurnResult] = field(default_factory=list)
+    endpoint_ids: list[str] = field(default_factory=list)
+    usage: dict[str, Any] = field(default_factory=dict)
+    status: str = "success"
 
 
 class AgenticDispatchError(RuntimeError):
