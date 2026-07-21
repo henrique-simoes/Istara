@@ -5,12 +5,12 @@
 item: pi-full-replacement
 branch: Review_pi_test
 cf: { spec: CF-SPEC-8, tasks: [pi-full-20260720-w0-IMPL, pi-full-20260720-w0-REVIEW] }
-phase: "W2 — interactive-surface migration"
-stage: S3-review
+phase: "W3 — research spine + steering migration"
+stage: S2-execute
 status: in-progress
 blocked_on: none
-last: { agent: claude-opus-4-8, at: 2026-07-21T07:25:00Z, ledger: L-31 }
-next_action: "W2 delta re-review r2 PASSED: CF-190 closes F-W2-R1-1 — both chat.py _tool_exec closures now enqueue the tool-result display only (direct all_text_parts.append deleted), so the persisted transcript carries each display exactly once, in stream order; two new persist-once/in-order route tests pass and 137 pi_production/pi_migration + 43 candidate/contract/ASGI tests are green. W2 review lineage has no open findings; hand back to the conductor for W2 stage-exit acceptance (non-blocking: pre-existing chat.py/bridge.py ruff debt, not fix-induced)."
+last: { agent: kimi-code/k3, at: 2026-07-21T10:31:41Z, ledger: L-32 }
+next_action: "W3 implement complete (L-32): all 8 research-spine + steering sites route through the AgenticDispatcher with spine_phase ledger tagging, run_skill rides as a per-run dynamic tool, L10 steering reply wires a SteeringBinding (mid-turn steer + abort), ratchet 78→70 with count-to-zero green, 16 new W3 tests + full wave ladder green (only pre-existing env failures, byte-identical on clean HEAD). Hand to pi-full-20260720-w3-REVIEW for the comprehensive W3 code review."
 ```
 <!-- /STATUS BLOCK -->
 
@@ -37,7 +37,7 @@ external traffic, or API/judge spend.
 | W0 | Harden runtime and arm evidence integrity ratchet | W0 tests + existing Pi ladder + clean post-gate | in-progress |
 | W1 | Add dispatcher, model manager, complete engine APIs, and usage ledger | W1 tests + allowlist remains 87 + clean post-gate | planned |
 | W2 | Migrate nine interactive surfaces | allowlist 78 + B1 T0/T1 + wave ladder | in-progress |
-| W3 | Migrate eight research-spine and steering sites | allowlist 70 + wave ladder | planned |
+| W3 | Migrate eight research-spine and steering sites | allowlist 70 + wave ladder | in-progress |
 | W4 | Migrate three A2A handlers | allowlist 67 + wave ladder | planned |
 | W5 | Migrate 28 skills, reports, and interview services | allowlist 39 + B2 implementation artifacts | planned |
 | W6 | Migrate 14 autoresearch runner sites | allowlist 25 + wave ladder | planned |
@@ -709,6 +709,12 @@ passed correctly) and `bridge.py` has 1 `UP035` from the r1 migration; chat.py w
 at HEAD, so this is not a fix-induced acceptance change.
 Verified: `python -m pytest tests/test_pi_replacement_candidate.py::test_native_tools_persists_tool_result_display_once_in_stream_order tests/test_pi_replacement_candidate.py::test_text_fallback_persists_tool_result_display_once_in_stream_order -q` = 2 passed; `python -m pytest tests/pi_production tests/pi_migration -q` = 137 passed; `python -m pytest tests/test_pi_replacement_candidate.py tests/pi_production/test_w1_agentic_contract.py tests/pi_production/test_chat_pi_asgi.py -q` = 43 passed; `grep -n result_display/all_text_parts.append backend/app/api/routes/chat.py` = direct append absent, drains only in the main loop.
 Next: F-W2-R1-1 confirmed closed; the `pi-full-20260720-w2-REVIEW` lineage has no open findings. Hand back to the conductor for W2 stage-exit acceptance.
+
+### L-32 | 2026-07-21T10:31:41Z | S2-execute | kimi-code/k3 | executor | W3 <!-- bsc-ledger:pi-full-20260720-w3-IMPL -->
+Did: Migrated the eight W3 research-spine + steering sites through the AgenticDispatcher (master plan §8 W3): L1 `_execute_general_task` ReAct → `react`/`spine.react` (one Pi session per task, `session_key=task:{id}`, `max_turns=5`, ranked `run_skill` injected as a per-run dynamic tool via new `extra_tools` plumbing: `pi_runtime/tools.py` catalog merge, `engine.run_react`/`_drive_turn` pass-through, `dispatcher.react` `tools`/`extra_tools` params); L2 `_create_research_plan` → `structured`/`spine.plan` (same step schema on both engines, temperature/max_tokens/min_context/thinking_mode preserved); L3 `_execute_single_step` → `completion`/`spine.step_execute` (DAG-parallel fan-out unchanged); L5 `_self_verify_output` → `structured`/`spine.verify` (regex-JSON upgraded to a `{verified, confidence, reason}` schema both engines enforce — the plan's deliberate baseline improvement); L6 `self_check.verify_claim` → `structured`/`spine.self_check` (line-format parse upgraded to a schema; an unparsed legacy outcome degrades to UNVERIFIED exactly as garbage line-format did); L7 skill-improvement reflection → `completion`/`spine.skill_reflection`; L10 `_execute_steering_message` reply → `chat_turn`/`steering.reply` with a per-message session + `SteeringBinding` (queued steer/follow-up deliver mid-turn and /steering abort maps to turn.abort, H-5). Every call carries spine_phase (plan/execution/review/grounding/governance/intent) + task_id into the usage ledger. Allowlist ratchet 78→70 (8 product entries removed; W4 `agent_lifecycle` keys re-pinned after the line shift: 857→870, 942→955, 996→1009; `agent_execution` embed keys 824→833, 832→841). `test_agent_research_plan_parses_dag_dependencies` re-seamed to the legacy plane the dispatcher's legacy executor calls. New `tests/pi_production/test_w3_research_spine.py` (16 tests: static no-direct-legacy proofs, extra_tools catalog merge, dispatcher forwarding, L5/L6 behavior + fallbacks, spine_phase ledger persistence). Files: `backend/app/core/{agent_research,self_check,agent_execution,agent_lifecycle}.py`, `backend/app/core/agentic/dispatcher.py`, `backend/app/core/pi_runtime/{engine,tools}.py`, `tests/pi_migration/{legacy_allowlist.yaml,test_count_to_zero.py}`, `tests/pi_production/{test_w1_agentic_contract,test_w3_research_spine}.py`, `tests/test_agents.py`.
+Result: ratchet 70 with count-to-zero green; all eight W3 sites enter through the dispatcher on both engines with fail-closed behavior preserved (L2/L5/L7 fallbacks unchanged); no findings raised (review stage judges next). Note: `$CONDUCTOR_LIFECYCLE` named the master plan, but the initiative ledger lives here (W1/W2 precedent), so this entry lands in this file.
+Verified: `pytest tests/pi_migration/test_count_to_zero.py` = 3 passed; `pytest tests/pi_production/test_w3_research_spine.py` = 16 passed; `pytest tests/pi_production tests/pi_migration` = 138 passed + 12 pre-existing env failures (byte-identical set on clean HEAD tree, incl. node/DB-dependent scenario tests); `pytest tests/test_agents.py tests/test_validation_project_scope.py tests/test_research_validity_contract.py tests/test_research_integrity_code_applications.py tests/test_project_scope_contracts.py` = 83 passed + 11 pre-existing failures (identical on clean tree); steering suites (test_steering/manager/queue/project_scope_contracts) = 28 passed; ruff per-file error counts ≤ HEAD baseline on every touched file (dispatcher 51 vs 53; new test file clean); `python scripts/security_benchmark.py --fail-on-threshold` = pass (no triggered paths); `python scripts/feature_docs.py --seed-missing --generate-site --check` = 86 features passed; `compass-forge gate after` = 0 new failures, 0 drift.
+Next: W3 code review (`pi-full-20260720-w3-REVIEW`) — comprehensive pass over the diff, acceptance, and the L1/L5/L6 behavior-parity seams.
 
 ## W0 — hardening and evidence integrity
 
