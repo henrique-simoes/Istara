@@ -5,12 +5,12 @@
 item: pi-full-replacement
 branch: Review_pi_test
 cf: { spec: CF-SPEC-8, tasks: [pi-full-20260720-w0-IMPL, pi-full-20260720-w0-REVIEW] }
-phase: "W3 — research spine + steering migration"
+phase: "W4 — A2A handlers migration"
 stage: S3-review
 status: in-progress
 blocked_on: none
-last: { agent: claude-fable-5, at: 2026-07-21T10:44:00Z, ledger: L-33 }
-next_action: "W3 review PASSED (L-33): all 8 spine+steering sites verified against master plan §8 W3 (verbs/purposes, sessions, spine_phase taxonomy, extra_tools allowlist, ratchet 70); 281 tests green; zero Blocker/Major findings, 3 info observations logged in the W3 register. Hand back to the conductor for W3 stage-exit acceptance; W4 A2A migration is next."
+last: { agent: claude-fable-5, at: 2026-07-21T11:09:13Z, ledger: L-34 }
+next_action: "W4 review PASSED (L-34): all 3 A2A handler sites verified against master plan §8 W4 (flag-gated dispatcher paths, legacy branch preserved, ratchet held at 70); 178 tests green; zero Blocker/Major findings, 3 info observations in the W4 register. Hand back to the conductor for W4 stage-exit acceptance."
 ```
 <!-- /STATUS BLOCK -->
 
@@ -722,6 +722,13 @@ Result: **PASS** — no Blocker/Major findings; `pi-full-20260720-w3-REVIEW` ver
 Verified: `python -m pytest tests/pi_production/test_w3_research_spine.py tests/pi_migration/test_count_to_zero.py tests/pi_production/test_w1_agentic_contract.py -q` = 44 passed; `python -m pytest tests/pi_production tests/pi_migration -q` = 153 passed; `python -m pytest tests/test_agents.py -q` = 27 passed; `python -m pytest tests/test_steering.py tests/test_steering_api.py tests/test_integration_agent_work_cycle.py tests/test_research_validity_contract.py tests/test_pi_replacement_candidate.py -q` = 57 passed (all green in this environment; no failures to reconcile).
 Next: stage exit: W3 review passed with no open findings — hand back to the conductor for W3 stage-exit acceptance (W4 A2A migration next per the master plan).
 
+
+### L-34 | 2026-07-21T11:09:13Z | S3-review | claude-fable-5 | reviewer | W4 <!-- bsc-ledger:pi-full-20260720-w4-REVIEW -->
+Did: Comprehensive W4 code review of the implementer's working-tree diff (uncommitted on `Review_pi_test`): `backend/app/core/agent_lifecycle.py` (+85/-24), `tests/pi_migration/legacy_allowlist.yaml` (re-pinned keys + W4 note), new `tests/pi_production/test_w4_a2a_handlers.py` (6 tests); `recipe.toml` delta is the conductor's W4 cast roles, not implementer scope. Verified all three A2A sites against master plan §8 W4: `_handle_collaboration` → `agentic.chat_turn` (session `a2a-collab:{context_id}`, system/history/user_text split of the legacy `llm_messages` is byte-identical to the legacy list, `spine_phase=synthesis`, task_id threaded); `_initiate_debate` synthesis → `agentic.completion`/`a2a.debate_synthesis` (`spine_phase=synthesis`, task.id); `_handle_debate` critique → `agentic.completion`/`a2a.debate_critique` (`spine_phase=review`, task_id-or-None) — each gated on `settings.agentic_core` with the legacy `ollama.chat` branch preserved verbatim for flag-off. Checked every kwarg against `dispatcher.py` `chat_turn`/`completion` signatures, spine_phase taxonomy membership, project-scope threading into `send_message`, allowlist keys 870/955/1009→893/1004/1074 with ratchet correctly held at 70 (legacy branch preserved, not retired), and ruff via stash-compare (36 findings with diff vs 37 at baseline; none in the changed hunks; new test file clean).
+Result: **PASS** — no Blocker/Major findings; `pi-full-20260720-w4-REVIEW` verdict recorded; no fixer round required. Non-blocking observations logged in the verdict + W4 register: (a) with RAG context present, `user_text` becomes the RAG document and the current message rides in history (model input unchanged; implementer-declared residual risk confirmed accurate); (b) framing calls the collaboration path "a2a.collaboration" but `chat_turn` records `purpose=chat_turn` — the `a2a-collab:` session_key is the distinguishing tag; (c) process: the W4-IMPL ledger entry is absent from this file (implementer skipped step 5; its harness fallback has not landed) — conductor's bookkeeping, not a code defect.
+Verified: `pytest tests/pi_production/test_w4_a2a_handlers.py tests/pi_migration -q` = 9 passed; `pytest tests/pi_production -q` = 156 passed; `pytest tests/test_a2a_security.py tests/test_a2a_project_claims.py tests/test_a2a_service_scope.py -q` = 13 passed; `python scripts/pi_migration_inventory.py --json` = 56 rows, all allowlisted; `ruff check` = no new findings vs stashed baseline.
+Next: stage exit: W4 review passed with no open findings — hand back to the conductor for W4 stage-exit acceptance.
+
 ## W0 — hardening and evidence integrity
 
 **Frame/Plan:** Master plan §6 plus §12.2. Arm the deterministic inventory/ratchet before
@@ -814,6 +821,18 @@ structured-output protocol, one-row usage accounting, and retain the armed 87-si
 | F-W3-INFO-3 | Info | Docs | `tests/pi_migration/legacy_allowlist.yaml` | Section header comment still reads "Chat sites (69)" after the 8-entry removal — cosmetic. | — | accepted-risk |
 
 **Review outcome:** `pi-full-20260720-w3-REVIEW` (L-33, claude-fable-5) **passed** with zero Blocker/Major findings — no fixer round required. All 8 W3 sites verified against the master plan's §8 W3 loop map (verbs, purposes, session strategies, spine-phase taxonomy, extra_tools allowlist enforcement, ratchet 78→70); 281 tests across the W3 contract, ratchet, wave-ladder, agents, steering, and integration suites green.
+
+## W4 — A2A handlers migration
+
+### Review (W4) — Findings register
+
+| ID | Sev | Dim | Where | Finding | CF task | Status |
+|---|---|---|---|---|---|---|
+| F-W4-INFO-1 | Info | Behavior-parity | `backend/app/core/agent_lifecycle.py` `_handle_collaboration` | With RAG context present, the RAG message becomes `chat_turn` `user_text` and the current message rides in history; the assembled system+messages+user_text list is byte-identical to the legacy `llm_messages`, so model input is unchanged — only per-turn session bookkeeping labels differ. | — | accepted-risk |
+| F-W4-INFO-2 | Info | Docs | `tests/pi_production/test_w4_a2a_handlers.py` docstring; IMPL evidence | The collaboration path is framed as purpose "a2a.collaboration", but `chat_turn` has no purpose kwarg and records `purpose=chat_turn`; the `a2a-collab:{context_id}` session_key is the actual distinguishing tag. Cosmetic. | — | accepted-risk |
+| F-W4-INFO-3 | Info | Process | this file | The W4-IMPL ledger entry (step 5) was not appended by the implementer and the harness fallback has not landed (diff uncommitted at review time) — narrative gap for the conductor to reconcile, not a code defect. | — | accepted-risk |
+
+**Review outcome:** `pi-full-20260720-w4-REVIEW` (L-34, claude-fable-5) **passed** with zero Blocker/Major findings — no fixer round required. All 3 W4 A2A sites verified against master plan §8 W4 (flag-gated dispatcher paths with the legacy branch preserved, verbs/purposes/sessions/spine phases, ratchet held at 70); 178 tests across the W4 contract, ratchet, pi_production, and A2A security/scope suites green in this pass.
 
 ## Summary (S5 — whole plan)
 
