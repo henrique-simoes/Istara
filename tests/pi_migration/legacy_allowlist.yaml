@@ -27,6 +27,11 @@ ratchet:
   # executor (:667), L5 reflection verifier (:1062), self_check.py L6 claim
   # verification (:75), agent_execution.py L7 skill reflection (:472), and
   # agent_lifecycle.py L10 steering reply (:519). The ratchet drops by 8.
+  # W4 routed the 3 A2A handler sites (agent_lifecycle.py collaboration,
+  # debate synthesis, debate critique) through the AgenticDispatcher behind
+  # the `agentic_core` feature flag with the legacy ollama branch preserved
+  # alongside it, so the sites stay allowlisted (line keys updated) and the
+  # ratchet stays at 70 until the legacy branch is retired.
   expected_product_sites: 70
 
 # ---------------------------------------------------------------------------
@@ -35,15 +40,15 @@ ratchet:
 # ---------------------------------------------------------------------------
 product:
   # --- Chat sites (69) ---------------------------------------------------
-  - keys: ["backend/app/core/agent_lifecycle.py:870"]
+  - keys: ["backend/app/core/agent_lifecycle.py:893"]
     kind: chat
-    note: "AgentLifecycleMixin._handle_collaboration — A2A collaboration response"
-  - keys: ["backend/app/core/agent_lifecycle.py:955"]
+    note: "AgentLifecycleMixin._handle_collaboration — A2A collaboration response (W4: dispatcher path behind agentic_core; legacy branch preserved)"
+  - keys: ["backend/app/core/agent_lifecycle.py:1004"]
     kind: chat
-    note: "AgentLifecycleMixin._initiate_debate — synthesis of output + peer critique"
-  - keys: ["backend/app/core/agent_lifecycle.py:1009"]
+    note: "AgentLifecycleMixin._initiate_debate — synthesis of output + peer critique (W4: dispatcher path behind agentic_core; legacy branch preserved)"
+  - keys: ["backend/app/core/agent_lifecycle.py:1074"]
     kind: chat
-    note: "AgentLifecycleMixin._handle_debate — critique of peer output"
+    note: "AgentLifecycleMixin._handle_debate — critique of peer output (W4: dispatcher path behind agentic_core; legacy branch preserved)"
   - keys: ["backend/app/core/autoresearch_runners/model_temp.py:158"]
     kind: chat
     note: "ModelTempRunner._evaluate_skill — skill run under candidate model/temp"

@@ -867,8 +867,31 @@ class AgentLifecycleMixin:
                     {"role": "user", "content": f"[Relevant documents]\n{rag.context_text[:800]}"}
                 )
 
-            response = await ollama.chat(messages=llm_messages)
-            analysis = response.get("message", {}).get("content", "")
+            if settings.agentic_core:
+                # W4: the collaboration reply goes through the AgenticDispatcher
+                # (``a2a.collaboration``) — thread history maps to the turn
+                # history exactly like ``run_delegation(history=...)``. The
+                # dispatcher's engine resolution decides Pi vs. legacy; the
+                # legacy branch below is preserved for agentic_core=False.
+                from app.core.agentic import agentic
+                from app.core.agentic.types import TurnParams
+
+                outcome = await agentic.chat_turn(
+                    project_id=task.project_id,
+                    agent_id=self._agent_id,
+                    session_key=f"a2a-collab:{context_id}",
+                    system_prompt=llm_messages[0]["content"],
+                    messages=llm_messages[1:-1],
+                    user_text=llm_messages[-1]["content"],
+                    tool_names=[],
+                    params=TurnParams(timeout_s=120),
+                    task_id=task_id,
+                    spine_phase="synthesis",
+                )
+                analysis = outcome.text
+            else:
+                response = await ollama.chat(messages=llm_messages)
+                analysis = response.get("message", {}).get("content", "")
             if not analysis:
                 return
 
@@ -952,22 +975,41 @@ class AgentLifecycleMixin:
                     ):
                         critique = msg.get("content", "")
                         # Synthesize both perspectives
+                        synthesis_system = (
+                            "Synthesize two perspectives on the same research "
+                            "analysis into a single improved output."
+                        )
+                        synthesis_user = (
+                            f"Original analysis:\n{output.summary[:1000]}\n\n"
+                            f"Critique from {target}:\n{critique[:1000]}\n\n"
+                            "Produce a refined analysis that addresses the critique."
+                        )
+                        if settings.agentic_core:
+                            # W4: dispatcher completion (``a2a.debate_synthesis``);
+                            # the legacy ollama branch below is preserved for
+                            # agentic_core=False.
+                            from app.core.agentic import agentic
+                            from app.core.agentic.types import TurnParams
+
+                            outcome = await agentic.completion(
+                                purpose="a2a.debate_synthesis",
+                                project_id=task.project_id,
+                                system=synthesis_system,
+                                messages=[{"role": "user", "content": synthesis_user}],
+                                params=TurnParams(timeout_s=120),
+                                task_id=task.id,
+                                spine_phase="synthesis",
+                            )
+                            return outcome.text
                         synth = await ollama.chat(
                             messages=[
                                 {
                                     "role": "system",
-                                    "content": (
-                                        "Synthesize two perspectives on the same research "
-                                        "analysis into a single improved output."
-                                    ),
+                                    "content": synthesis_system,
                                 },
                                 {
                                     "role": "user",
-                                    "content": (
-                                        f"Original analysis:\n{output.summary[:1000]}\n\n"
-                                        f"Critique from {target}:\n{critique[:1000]}\n\n"
-                                        "Produce a refined analysis that addresses the critique."
-                                    ),
+                                    "content": synthesis_user,
                                 },
                             ]
                         )
@@ -1006,20 +1048,39 @@ class AgentLifecycleMixin:
             if not project_id:
                 return
 
-            response = await ollama.chat(
-                messages=[
-                    {
-                        "role": "system",
-                        "content": (
-                            f"You are {self._agent_id}, a critical reviewer. Identify gaps, "
-                            "unsupported claims, missing perspectives, and areas for "
-                            "improvement. Be constructive but rigorous."
-                        ),
-                    },
-                    {"role": "user", "content": content},
-                ]
+            critique_system = (
+                f"You are {self._agent_id}, a critical reviewer. Identify gaps, "
+                "unsupported claims, missing perspectives, and areas for "
+                "improvement. Be constructive but rigorous."
             )
-            critique = response.get("message", {}).get("content", "")
+            if settings.agentic_core:
+                # W4: dispatcher completion (``a2a.debate_critique``); the
+                # legacy ollama branch below is preserved for
+                # agentic_core=False.
+                from app.core.agentic import agentic
+                from app.core.agentic.types import TurnParams
+
+                outcome = await agentic.completion(
+                    purpose="a2a.debate_critique",
+                    project_id=project_id,
+                    system=critique_system,
+                    messages=[{"role": "user", "content": content}],
+                    params=TurnParams(timeout_s=120),
+                    task_id=task_id or None,
+                    spine_phase="review",
+                )
+                critique = outcome.text
+            else:
+                response = await ollama.chat(
+                    messages=[
+                        {
+                            "role": "system",
+                            "content": critique_system,
+                        },
+                        {"role": "user", "content": content},
+                    ]
+                )
+                critique = response.get("message", {}).get("content", "")
             if not critique:
                 return
 
