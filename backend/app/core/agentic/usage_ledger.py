@@ -70,6 +70,43 @@ def _usage_numbers(usage: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def _estimated_numbers(
+    outcome: dict[str, Any], *, request_text: str, response_text: str | None
+) -> dict[str, Any]:
+    """Estimate a complete legacy dispatch from ephemeral per-call provenance."""
+    trace = outcome.get("usage_estimation")
+    if isinstance(trace, dict):
+        request_texts = trace.get("request_texts")
+        response_texts = trace.get("response_texts")
+        if isinstance(request_texts, list) and isinstance(response_texts, list):
+            safe_requests = [text for text in request_texts if isinstance(text, str)]
+            safe_responses = [text for text in response_texts if isinstance(text, str)]
+            if safe_requests or safe_responses:
+                input_tokens = sum(count_tokens(text) for text in safe_requests)
+                output_tokens = sum(count_tokens(text) for text in safe_responses)
+                turns = int(trace.get("turns") or max(len(safe_requests), len(safe_responses), 1))
+                return {
+                    "input_tokens": input_tokens,
+                    "output_tokens": output_tokens,
+                    "cache_read": 0,
+                    "cache_write": 0,
+                    "total_tokens": input_tokens + output_tokens,
+                    "cost_usd": 0.0,
+                    "turns": turns,
+                }
+    input_tokens = count_tokens(request_text)
+    output_tokens = count_tokens(response_text or "")
+    return {
+        "input_tokens": input_tokens,
+        "output_tokens": output_tokens,
+        "cache_read": 0,
+        "cache_write": 0,
+        "total_tokens": input_tokens + output_tokens,
+        "cost_usd": 0.0,
+        "turns": 1,
+    }
+
+
 def build_usage_row(
     *, engine: str, purpose: str, project_id: str, agent_id: str,
     outcome: dict[str, Any], model: str | None = None, started_at: float | None = None,
@@ -90,17 +127,9 @@ def build_usage_row(
         # Only absent legacy provider usage is estimated with the existing
         # token counter; the row is flagged so benchmarks never mix it with
         # exact numbers silently.
-        input_tokens = count_tokens(request_text)
-        output_tokens = count_tokens(response_text or "")
-        numbers = {
-            "input_tokens": input_tokens,
-            "output_tokens": output_tokens,
-            "cache_read": 0,
-            "cache_write": 0,
-            "total_tokens": input_tokens + output_tokens,
-            "cost_usd": 0.0,
-            "turns": 1,
-        }
+        numbers = _estimated_numbers(
+            outcome, request_text=request_text, response_text=response_text
+        )
         estimate = True
     else:
         # Pre-dispatch failure (endpoint resolution, unbound/failed legacy
