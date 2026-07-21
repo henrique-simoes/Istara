@@ -166,13 +166,33 @@ class RAGParamsRunner(BaseLoopRunner):
         ]
 
         try:
-            response = await llm_router.chat(
-                messages,
-                temperature=0.7,
-                max_tokens=200,
-                project_id=self._project_id,
-            )
-            content = response.get("message", {}).get("content", "")
+            if settings.agentic_core:
+                # W6: the next-parameter suggestion goes through the
+                # AgenticDispatcher (``autoresearch.rag_params.hypothesize``);
+                # the legacy branch below is preserved for agentic_core=False.
+                # NOTE: only this chat call migrates in W6 — the retrieval-eval
+                # embedding in ``_score_single_query`` stays on the legacy plane
+                # until the W8 embeddings gateway (master plan §8 W6).
+                from app.core.agentic import agentic
+                from app.core.agentic.types import TurnParams
+
+                outcome = await agentic.completion(
+                    purpose="autoresearch.rag_params.hypothesize",
+                    project_id=self._project_id,
+                    system=messages[0]["content"],
+                    messages=messages[1:],
+                    params=TurnParams(temperature=0.7, max_tokens=200),
+                    spine_phase="plan",
+                )
+                content = outcome.text
+            else:
+                response = await llm_router.chat(
+                    messages,
+                    temperature=0.7,
+                    max_tokens=200,
+                    project_id=self._project_id,
+                )
+                content = response.get("message", {}).get("content", "")
             # Parse JSON from response
             import json
 
@@ -231,6 +251,10 @@ class RAGParamsRunner(BaseLoopRunner):
         from app.core.embeddings import embed_text
         from app.core.rag import hybrid_search
 
+        # W6 embedding-skip: retrieval-eval embeddings stay on the legacy plane
+        # (via ``embed_text``) until the W8 embeddings gateway; the count-to-zero
+        # allowlist tracks this embed site separately from the migrated chat call
+        # in ``_llm_hypothesis`` (master plan §8 W6).
         query_vector = await embed_text(query)
         results = await hybrid_search(project_id, query, query_vector)
 
