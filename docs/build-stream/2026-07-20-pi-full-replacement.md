@@ -6,11 +6,11 @@ item: pi-full-replacement
 branch: Review_pi_test
 cf: { spec: CF-SPEC-8, tasks: [pi-full-20260720-w0-IMPL, pi-full-20260720-w0-REVIEW] }
 phase: "W3 — research spine + steering migration"
-stage: S2-execute
+stage: S3-review
 status: in-progress
 blocked_on: none
-last: { agent: kimi-code/k3, at: 2026-07-21T10:31:41Z, ledger: L-32 }
-next_action: "W3 implement complete (L-32): all 8 research-spine + steering sites route through the AgenticDispatcher with spine_phase ledger tagging, run_skill rides as a per-run dynamic tool, L10 steering reply wires a SteeringBinding (mid-turn steer + abort), ratchet 78→70 with count-to-zero green, 16 new W3 tests + full wave ladder green (only pre-existing env failures, byte-identical on clean HEAD). Hand to pi-full-20260720-w3-REVIEW for the comprehensive W3 code review."
+last: { agent: claude-fable-5, at: 2026-07-21T10:44:00Z, ledger: L-33 }
+next_action: "W3 review PASSED (L-33): all 8 spine+steering sites verified against master plan §8 W3 (verbs/purposes, sessions, spine_phase taxonomy, extra_tools allowlist, ratchet 70); 281 tests green; zero Blocker/Major findings, 3 info observations logged in the W3 register. Hand back to the conductor for W3 stage-exit acceptance; W4 A2A migration is next."
 ```
 <!-- /STATUS BLOCK -->
 
@@ -716,6 +716,12 @@ Result: ratchet 70 with count-to-zero green; all eight W3 sites enter through th
 Verified: `pytest tests/pi_migration/test_count_to_zero.py` = 3 passed; `pytest tests/pi_production/test_w3_research_spine.py` = 16 passed; `pytest tests/pi_production tests/pi_migration` = 138 passed + 12 pre-existing env failures (byte-identical set on clean HEAD tree, incl. node/DB-dependent scenario tests); `pytest tests/test_agents.py tests/test_validation_project_scope.py tests/test_research_validity_contract.py tests/test_research_integrity_code_applications.py tests/test_project_scope_contracts.py` = 83 passed + 11 pre-existing failures (identical on clean tree); steering suites (test_steering/manager/queue/project_scope_contracts) = 28 passed; ruff per-file error counts ≤ HEAD baseline on every touched file (dispatcher 51 vs 53; new test file clean); `python scripts/security_benchmark.py --fail-on-threshold` = pass (no triggered paths); `python scripts/feature_docs.py --seed-missing --generate-site --check` = 86 features passed; `compass-forge gate after` = 0 new failures, 0 drift.
 Next: W3 code review (`pi-full-20260720-w3-REVIEW`) — comprehensive pass over the diff, acceptance, and the L1/L5/L6 behavior-parity seams.
 
+### L-33 | 2026-07-21T10:44:00Z | S3-review | claude-fable-5 | reviewer | W3 <!-- bsc-ledger:pi-full-20260720-w3-REVIEW -->
+Did: Comprehensive W3 code review of the implementer's diff (8c43f765..afb7343b: `eb8e152f` extra_tools plumbing, `6a93a9cf` spine+steering migration, `62eb9979` ratchet+tests, `afb7343b` ledger). Verified each of the 8 sites against master plan §8 W3: L1 `_execute_general_task` → `react`/`spine.react` (session_key `task:{id}`, `max_turns=5`, ranked `run_skill` as per-run `extra_tools`, tool_names allowlist authoritative on both engines — `pi_runtime/tools.py` drops any dynamic tool outside `allowed_tools`); L2 `_create_research_plan` → `structured`/`spine.plan` (same step schema, T=0.3/MT=900/min_context/TM=off preserved); L3 `_execute_single_step` → `completion`/`spine.step_execute` (DAG-parallel `asyncio.gather` fan-out untouched); L5 → `structured`/`spine.verify` with the planned `{verified,confidence,reason}` schema + heuristic fallbacks intact; L6 `verify_claim` → `structured`/`spine.self_check` (enum-schema upgrade; unparsed outcome degrades to UNVERIFIED; engine failure propagates as before); L7 → `completion`/`spine.skill_reflection` (T=0.3, exception fallback intact); L10 steering reply → `chat_turn`/`steering.reply` with per-message session + `SteeringBinding` (H-5). Checked seam signatures end-to-end (dispatcher.react tools/extra_tools/steering_binding, legacy `_react_loop` `{tool,params}` tool_calls shape, `StructuredResult.value` always a dict), spine_phase values all within the §8 taxonomy, allowlist ratchet edits (8 entries removed, W4/embed keys re-pinned after line shifts), and scope (no out-of-scope files; W4 sites `agent_lifecycle.py:870/955/1009` still legacy as the contract test pins).
+Result: **PASS** — no Blocker/Major findings; `pi-full-20260720-w3-REVIEW` verdict recorded. Non-blocking observations logged in the verdict + register: (a) L1 legacy-path outcome text aggregates intermediate turn text (dispatcher loop semantics, implementer-declared accepted risk, W2 precedent); (b) L1 failed-JSON-parse telemetry granularity lost (engine pre-parses args; behavior preserved); (c) stale "Chat sites (69)" comment in `legacy_allowlist.yaml`.
+Verified: `python -m pytest tests/pi_production/test_w3_research_spine.py tests/pi_migration/test_count_to_zero.py tests/pi_production/test_w1_agentic_contract.py -q` = 44 passed; `python -m pytest tests/pi_production tests/pi_migration -q` = 153 passed; `python -m pytest tests/test_agents.py -q` = 27 passed; `python -m pytest tests/test_steering.py tests/test_steering_api.py tests/test_integration_agent_work_cycle.py tests/test_research_validity_contract.py tests/test_pi_replacement_candidate.py -q` = 57 passed (all green in this environment; no failures to reconcile).
+Next: stage exit: W3 review passed with no open findings — hand back to the conductor for W3 stage-exit acceptance (W4 A2A migration next per the master plan).
+
 ## W0 — hardening and evidence integrity
 
 **Frame/Plan:** Master plan §6 plus §12.2. Arm the deterministic inventory/ratchet before
@@ -796,6 +802,18 @@ structured-output protocol, one-row usage accounting, and retain the armed 87-si
 | F-W2-INFO | Info | Observability | completion call sites | Real project ids should be threaded to the four previously migrated completion paths when those callers gain project scope. presentation.slides and the browse_website tool now thread a real project_id; context_dag/context_summarizer/ui_audit stay `""` where callers expose no project scope. | — | accepted-risk |
 
 **Remediation:** `FIX-pi-full-20260720-w2-REVIEW-r1` (L-29) completed F-W2-1/F-W2-1a/F-W2-1b and the bounded L-30 delta re-review re-verified all three (ratchet 78 with a reconciling scanner; the legacy streaming + queue-bridge seam preserves per-token SSE, hallucinated-tool filtering, and the pre-tool `turn_separator`; the browser endpoint is `PiModelManager`-governed with a `tool.browse_website` ledger row and a documented scanner exemption). L-30 **failed** the wave because that same fix introduced F-W2-R1-1: the chat.py streaming routes double-append (and mis-order) the tool-result display into the persisted assistant transcript. F-W2-R1-1 was owned by `pi-full-20260720-w2-fixer` (`FIX-REREV-pi-full-20260720-w2-REVIEW-r1`, dispatched as CF-190). `CF-190` (L-31 fixer, `opus.4.8-xhigh`) closed it by deleting the direct `all_text_parts.append(result_display)` in both `_tool_exec` closures so the display flows solely through the queued `content` event drained once, in stream order, and by adding two persist-once/in-order route regression tests. The bounded **L-31 delta re-review passed**: the fix is correct and regression-free (137 pi_production/pi_migration + 43 candidate/W1-contract/ASGI tests green; the two new tests fail pre-fix and pass post-fix), the finding's secondary `observe_chunk` double-count claim was a non-issue (already counted once), and the only residual is pre-existing, non-fix-induced chat.py/bridge.py ruff debt (no finding task). The W2 review lineage (`pi-full-20260720-w2-REVIEW`) now has no open findings; W2 is ready for stage-exit acceptance.
+
+## W3 — research spine + steering migration
+
+### Review (W3) — Findings register
+
+| ID | Sev | Dim | Where | Finding | CF task | Status |
+|---|---|---|---|---|---|---|
+| F-W3-INFO-1 | Info | Behavior-parity | `backend/app/core/agentic/legacy.py` `_react_loop` (L1 legacy path) | Legacy-path L1 outcome text aggregates intermediate assistant turn text where the old manual loop returned only the final turn content — dispatcher legacy-loop semantics, same as W2 chat; implementer-declared accepted risk. | — | accepted-risk |
+| F-W3-INFO-2 | Info | Observability | `backend/app/core/agent_research.py` `_react_tool_executor` | Failed-JSON-parse tool-arg telemetry granularity lost: args arrive pre-parsed from the engine (bad JSON silently → `{}` in `_tool_call_parts`), so `record_json_parse` always records success. Behavior preserved; candidate polish for a later wave. | — | accepted-risk |
+| F-W3-INFO-3 | Info | Docs | `tests/pi_migration/legacy_allowlist.yaml` | Section header comment still reads "Chat sites (69)" after the 8-entry removal — cosmetic. | — | accepted-risk |
+
+**Review outcome:** `pi-full-20260720-w3-REVIEW` (L-33, claude-fable-5) **passed** with zero Blocker/Major findings — no fixer round required. All 8 W3 sites verified against the master plan's §8 W3 loop map (verbs, purposes, session strategies, spine-phase taxonomy, extra_tools allowlist enforcement, ratchet 78→70); 281 tests across the W3 contract, ratchet, wave-ladder, agents, steering, and integration suites green.
 
 ## Summary (S5 — whole plan)
 
