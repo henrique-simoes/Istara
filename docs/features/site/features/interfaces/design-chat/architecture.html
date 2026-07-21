@@ -265,6 +265,7 @@
 <h2 id="architecture-notes">Architecture Notes</h2>
 <ul>
 <li>The feature is mounted through <code>frontend/src/components/interfaces/InterfacesView.tsx</code> and the UI navigation path recorded in the inventory.</li>
+<li>Native-tool and text-fallback design-chat loops enter through <code>AgenticDispatcher</code>. Its legacy executor keeps project scope and design-tool authorization intact while forwarding native provider content into the existing SSE envelope as it arrives.</li>
 <li>The frontmatter and manifest entries are the durable contract for agents updating this page after code changes.</li>
 <li>When the referenced component, store, route, agent, skill, or test behavior changes, regenerate and validate the feature documentation.</li>
 </ul>
@@ -274,7 +275,8 @@
 </ul>
 <h2 id="tests-and-verification">Tests And Verification</h2>
 <ul>
-<li>No focused test reference recorded yet.</li>
+<li><code>tests/test_pi_replacement_candidate.py</code></li>
+<li><code>tests/pi_production/test_w1_agentic_contract.py</code></li>
 </ul>
 <h2 id="related-features">Related Features</h2>
 <ul>
