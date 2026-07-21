@@ -5,12 +5,12 @@
 item: pi-full-replacement
 branch: Review_pi_test
 cf: { spec: CF-SPEC-8, tasks: [pi-full-20260720-w0-IMPL, pi-full-20260720-w0-REVIEW] }
-phase: "W1 — dispatcher, Pi model management, and accounting"
-stage: S3-review
+phase: "W2 — interactive-surface migration"
+stage: S4-remediate
 status: in-progress
 blocked_on: null
-last: { agent: claude-opus-4-8, at: 2026-07-21T04:55:57Z, ledger: L-28 }
-next_action: "F-W1-R3-1 confirmed closed by the L-28 delta re-review (pass); W1 accounting lineage has no open findings. Conductor takes W1 stage-exit acceptance."
+last: { agent: gpt-5.6-terra, at: 2026-07-21T06:44:50Z, ledger: L-29 }
+next_action: "Run the bounded W2 delta re-review of the dispatcher streaming, scanner-governance, route, and ratchet surfaces."
 ```
 <!-- /STATUS BLOCK -->
 
@@ -36,7 +36,7 @@ external traffic, or API/judge spend.
 |---|---|---|---|
 | W0 | Harden runtime and arm evidence integrity ratchet | W0 tests + existing Pi ladder + clean post-gate | in-progress |
 | W1 | Add dispatcher, model manager, complete engine APIs, and usage ledger | W1 tests + allowlist remains 87 + clean post-gate | planned |
-| W2 | Migrate nine interactive surfaces | allowlist 78 + B1 T0/T1 + wave ladder | planned |
+| W2 | Migrate nine interactive surfaces | allowlist 78 + B1 T0/T1 + wave ladder | in-progress |
 | W3 | Migrate eight research-spine and steering sites | allowlist 70 + wave ladder | planned |
 | W4 | Migrate three A2A handlers | allowlist 67 + wave ladder | planned |
 | W5 | Migrate 28 skills, reports, and interview services | allowlist 39 + B2 implementation artifacts | planned |
@@ -669,6 +669,12 @@ task created.
 Verified: `PYTHONPATH=backend python -m pytest -q tests/pi_production/test_w1_realpath_accounting.py` = 7 passed; `PYTHONPATH=backend python -m pytest -q tests/pi_production/test_w1_usage_ledger.py tests/pi_production/test_w1_dispatcher_authority.py` = 24 passed; `PYTHONPATH=backend python -m pytest -q tests/pi_production/test_w1_agentic_contract.py` = 25 passed; `ruff check backend/app/core/agentic/legacy.py backend/app/core/agentic/usage_ledger.py tests/pi_production/test_w1_realpath_accounting.py` = clean.
 Next: F-W1-R3-1 confirmed closed; W1 accounting lineage (`pi-full-20260720-w1-REVIEW`) has no open findings. Hand back to the conductor for W1 stage-exit acceptance.
 
+### L-29 | 2026-07-21T06:44:50Z | S4-remediate | gpt-5.6-terra | remediator | W2 <!-- bsc-ledger:FIX-pi-full-20260720-w2-REVIEW-r1 -->
+Did: Closed the W2 review remediation in the shared worktree: the four interactive ReAct routes now enter through `AgenticDispatcher` with the queue bridge, the legacy executor streams native provider chunks through `stream_cb`, the browser path resolves its endpoint through `PiModelManager`, and the inventory scanner exempts only the marked Pi-governed construction. Updated Chat and Interface Design Chat living docs and regenerated the site/manifest.
+Result: F-W2-1 and its streaming/scanner prerequisites F-W2-1a/F-W2-1b are fixed by `FIX-pi-full-20260720-w2-REVIEW-r1`: all nine W2 interactive surfaces leave the product allowlist and the ratchet is 78. F-W2-INFO remains a non-blocking follow-up because the prior four completion sites still use an empty `project_id` where their callers do not expose a project scope.
+Verified: `pytest -q tests/pi_migration/test_count_to_zero.py tests/pi_production/test_w1_agentic_contract.py` = 28 passed; `pytest -q tests/pi_migration tests/pi_production` = 113 passed; `pytest -q tests/test_pi_replacement_candidate.py` = 13 passed; `python scripts/security_benchmark.py --fail-on-threshold` = 28/28 pass; `python scripts/feature_docs.py --seed-missing --generate-site --check` = 86 features passed; `pytest -q tests/test_feature_docs.py` = 6 passed; `compass-forge gate after --task FIX-pi-full-20260720-w2-REVIEW-r1 --summary` = 0 new/actionable failures and 0 drift (inherited secret-flow/large-file failures remain); `git diff --check` = passed.
+Next: stage exit: bounded W2 delta re-review may verify F-W2-1/F-W2-1a/F-W2-1b and their immediate route/scanner seams.
+
 ## W0 — hardening and evidence integrity
 
 **Frame/Plan:** Master plan §6 plus §12.2. Arm the deterministic inventory/ratchet before
@@ -735,6 +741,17 @@ structured-output protocol, one-row usage accounting, and retain the armed 87-si
 **Remediation:** `FIX-pi-full-20260720-w1-REVIEW-r1-ledger` (L-17) closed F-W1-3, `FIX-pi-full-20260720-w1-REVIEW-r1-docs-tests` (L-18) closed F-W1-4, `FIX-pi-full-20260720-w1-REVIEW-r1-structured` (L-19) closed F-W1-2, and `FIX-pi-full-20260720-w1-REVIEW-r1-authority` (L-20) closed F-W1-1. The bounded L-21 delta re-review then opened F-W1-R1-1 and F-W1-R1-2 under two sibling fixer tasks. `FIX-REREV-pi-full-20260720-w1-REVIEW-r1-protocol` (L-22) closed F-W1-R1-1 by adding Python-side per-frame `frame.v` validation in `PiRuntimeSupervisor._dispatch` (reject before queueing; settle the active run `protocol_version_mismatch`, never process-fatal). `FIX-REREV-pi-full-20260720-w1-REVIEW-r1-accounting` (L-23) then closed F-W1-R1-2 by emitting the full cumulative Pi `run.completed` usage (cache/total/turns) and making the legacy normalizer/ReAct/ensemble paths accumulate cumulative provider usage while leaving absent usage to the estimator, proven by new real-worker and real-legacy-executor seam tests. Both F-W1-R1 sibling fixers became terminal, but the bounded L-24 delta re-review found the mixed reported+absent legacy case still persisted a partial aggregate as exact and opened F-W1-R2-1 under `FIX-REREV-pi-full-20260720-w1-REVIEW-r2-accounting-mixed`. L-25 closed that partial-exact symptom by making `_accumulate_usage` all-or-nothing. The bounded L-26 review showed the fallback estimate is still not complete and opened F-W1-R3-1 under `FIX-REREV-pi-full-20260720-w1-REVIEW-r3-accounting-complete`: ensemble outputs are absent from the ledger input, requests are not multiplied by sample count, and known multi-turn counts collapse to one. L-27 closed F-W1-R3-1 by carrying ephemeral complete-dispatch provenance in each legacy outcome (per-turn ReAct request-history/response, per-sample ensemble request/response) that the ledger estimates over on the absent/mixed path while leaving the all-reported exact aggregate intact. The bounded L-28 delta re-review verified that fix and **passed** with no new findings, closing the `pi-full-20260720-w1-REVIEW` accounting lineage.
 
 **Phase summary:** Pending.
+
+## W2 — interactive-surface migration
+
+### Review (W2) — Findings register
+
+| ID | Sev | Dim | Where | Finding | CF task | Status |
+|---|---|---|---|---|---|---|
+| F-W2-1 | Blocker | Integration | `backend/app/api/routes/{chat,interfaces}.py`; `backend/app/services/browser_service.py`; migration ratchet | Completed by `FIX-pi-full-20260720-w2-REVIEW-r1`: the five remaining product entries now use the dispatcher/governed endpoint path and the allowlist ratchet is 78. | FIX-pi-full-20260720-w2-REVIEW-r1 | fixed (L-29) |
+| F-W2-1a | Blocker-prerequisite | Bugs | `backend/app/core/agentic/{legacy,bridge,types}.py` | Completed by `FIX-pi-full-20260720-w2-REVIEW-r1`: the legacy executor forwards native provider chunks through the SSE bridge while retaining tool-call filtering and execution. | FIX-pi-full-20260720-w2-REVIEW-r1 | fixed (L-29) |
+| F-W2-1b | Blocker-prerequisite | Governance | `scripts/pi_migration_inventory.py`; `backend/app/services/browser_service.py` | Completed by `FIX-pi-full-20260720-w2-REVIEW-r1`: only an inline `pi-governed` ChatOpenAI construction whose endpoint comes from `PiModelManager` is exempt from the legacy inventory. | FIX-pi-full-20260720-w2-REVIEW-r1 | fixed (L-29) |
+| F-W2-INFO | Info | Observability | completion call sites | Real project ids should be threaded to the four previously migrated completion paths when those callers gain project scope. | — | accepted-risk |
 
 ## Summary (S5 — whole plan)
 
