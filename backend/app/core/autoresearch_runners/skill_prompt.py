@@ -19,6 +19,7 @@ import json
 import logging
 from typing import Awaitable, Callable
 
+from app.config import settings
 from app.core.autoresearch_runners import BaseLoopRunner
 
 logger = logging.getLogger(__name__)
@@ -153,10 +154,27 @@ class SkillPromptRunner(BaseLoopRunner):
         ]
 
         try:
-            response = await llm_router.chat(
-                messages, temperature=0.7, max_tokens=2000
-            )
-            new_prompt = response.get("message", {}).get("content", "").strip()
+            if settings.agentic_core:
+                # W6: the skill-prompt mutation goes through the AgenticDispatcher
+                # (``autoresearch.skill_prompt.hypothesize``); the legacy branch
+                # below is preserved for agentic_core=False.
+                from app.core.agentic import agentic
+                from app.core.agentic.types import TurnParams
+
+                outcome = await agentic.completion(
+                    purpose="autoresearch.skill_prompt.hypothesize",
+                    project_id=self.require_project_id(),
+                    system=messages[0]["content"],
+                    messages=messages[1:],
+                    params=TurnParams(temperature=0.7, max_tokens=2000),
+                    spine_phase="plan",
+                )
+                new_prompt = (outcome.text or "").strip()
+            else:
+                response = await llm_router.chat(
+                    messages, temperature=0.7, max_tokens=2000
+                )
+                new_prompt = response.get("message", {}).get("content", "").strip()
         except Exception as e:
             raise RuntimeError(f"LLM mutation failed: {e}") from e
 
@@ -249,8 +267,25 @@ class SkillPromptRunner(BaseLoopRunner):
         ]
 
         try:
-            response = await llm_router.chat(messages, temperature=0.5, max_tokens=1500)
-            content = response.get("message", {}).get("content", "")
+            if settings.agentic_core:
+                # W6: the sample skill run goes through the AgenticDispatcher
+                # (``autoresearch.skill_prompt.evaluate``); the legacy branch
+                # below is preserved for agentic_core=False.
+                from app.core.agentic import agentic
+                from app.core.agentic.types import TurnParams
+
+                outcome = await agentic.completion(
+                    purpose="autoresearch.skill_prompt.evaluate",
+                    project_id=self.require_project_id(),
+                    system=messages[0]["content"],
+                    messages=messages[1:],
+                    params=TurnParams(temperature=0.5, max_tokens=1500),
+                    spine_phase="execution",
+                )
+                content = outcome.text
+            else:
+                response = await llm_router.chat(messages, temperature=0.5, max_tokens=1500)
+                content = response.get("message", {}).get("content", "")
         except Exception:
             return 0.0
 
@@ -284,8 +319,25 @@ class SkillPromptRunner(BaseLoopRunner):
         ]
 
         try:
-            response = await llm_router.chat(messages, temperature=0.1, max_tokens=10)
-            score_text = response.get("message", {}).get("content", "").strip()
+            if settings.agentic_core:
+                # W6: the skill-output score goes through the AgenticDispatcher
+                # (``autoresearch.skill_prompt.score``); the legacy branch below
+                # is preserved for agentic_core=False.
+                from app.core.agentic import agentic
+                from app.core.agentic.types import TurnParams
+
+                outcome = await agentic.completion(
+                    purpose="autoresearch.skill_prompt.score",
+                    project_id=self.require_project_id(),
+                    system=messages[0]["content"],
+                    messages=messages[1:],
+                    params=TurnParams(temperature=0.1, max_tokens=10),
+                    spine_phase="review",
+                )
+                score_text = (outcome.text or "").strip()
+            else:
+                response = await llm_router.chat(messages, temperature=0.1, max_tokens=10)
+                score_text = response.get("message", {}).get("content", "").strip()
             for token in score_text.replace(",", ".").split():
                 try:
                     val = float(token)

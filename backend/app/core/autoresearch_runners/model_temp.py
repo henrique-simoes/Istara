@@ -15,6 +15,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Awaitable, Callable
 
+from app.config import settings
 from app.core.autoresearch_runners import BaseLoopRunner
 
 logger = logging.getLogger(__name__)
@@ -35,13 +36,43 @@ class ModelTempRunner(BaseLoopRunner):
         self._tested: set[tuple[str, float]] = set()
         self._grid: list[tuple[str, float]] = []
         self._grid_index = 0
+        # True when the Pi-engine sweep could not span at least two distinct
+        # endpoints (master plan §8 W6: fewer available endpoints than the
+        # requested width is recorded, never silently narrowed).
+        self._sweep_truncated: bool = False
 
     # ------------------------------------------------------------------
     # Grid construction
     # ------------------------------------------------------------------
 
     async def _build_grid(self) -> list[tuple[str, float]]:
-        """Build the (model, temperature) grid from available models."""
+        """Build the (model, temperature) grid from available models.
+
+        Under the ``agentic_core`` engine the sweep space is the PiModelManager
+        catalog (settings endpoints + projected LLMServer rows + local
+        Ollama/LM Studio entries), so the sweep is not degenerate with a single
+        endpoint; otherwise it is the legacy ``llm_router`` model list. When the
+        Pi catalog cannot span at least two distinct models the sweep is flagged
+        ``sweep_truncated`` rather than silently narrowed (master plan §8 W6).
+        """
+        self._sweep_truncated = False
+        if settings.agentic_core:
+            model_names = self._pi_sweep_models()
+        else:
+            model_names = await self._legacy_sweep_models()
+
+        if not model_names:
+            return []
+
+        grid: list[tuple[str, float]] = []
+        for model in model_names:
+            for temp in TEMPERATURES:
+                if (model, temp) not in self._tested:
+                    grid.append((model, temp))
+        return grid
+
+    async def _legacy_sweep_models(self) -> list[str]:
+        """Distinct non-embedding model names from the legacy llm_router pool."""
         from app.core.llm_router import llm_router
 
         models_raw = await llm_router.list_models()
@@ -56,14 +87,46 @@ class ModelTempRunner(BaseLoopRunner):
 
         if not model_names:
             logger.warning("ModelTempRunner: no models available from llm_router")
+        return model_names
+
+    def _pi_sweep_models(self) -> list[str]:
+        """Distinct non-embedding models from the PiModelManager catalog.
+
+        The catalog carries exact endpoint identities (settings + projected
+        LLMServer rows + local Ollama/LM Studio), which is the sweep space on
+        the Pi engine.  A sweep that cannot span at least two distinct models is
+        recorded as ``sweep_truncated`` so the narrower run is never silent.
+        """
+        from app.core.pi_runtime.model_manager import PiModelManager
+
+        model_names: list[str] = []
+        try:
+            catalog = PiModelManager().catalog()
+        except Exception as e:  # pragma: no cover - catalog construction guard
+            logger.warning("ModelTempRunner: PiModelManager catalog unavailable: %s", e)
+            self._sweep_truncated = True
             return []
 
-        grid: list[tuple[str, float]] = []
-        for model in model_names:
-            for temp in TEMPERATURES:
-                if (model, temp) not in self._tested:
-                    grid.append((model, temp))
-        return grid
+        for info in catalog:
+            name = (info.model or "").strip()
+            # Skip embedding models
+            if not name or "embed" in name.lower():
+                continue
+            if name not in model_names:
+                model_names.append(name)
+
+        if not model_names:
+            logger.warning("ModelTempRunner: no models available from PiModelManager catalog")
+            self._sweep_truncated = True
+        elif len(model_names) < 2:
+            # A one-endpoint sweep cannot compare models across the pool.
+            logger.warning(
+                "ModelTempRunner: sweep_truncated — Pi catalog spans only %d model(s); "
+                "the sweep is degenerate for cross-model comparison",
+                len(model_names),
+            )
+            self._sweep_truncated = True
+        return model_names
 
     # ------------------------------------------------------------------
     # BaseLoopRunner interface
@@ -155,10 +218,27 @@ class ModelTempRunner(BaseLoopRunner):
         ]
 
         try:
-            response = await llm_router.chat(
-                messages, model=model, temperature=temperature
-            )
-            content = response.get("message", {}).get("content", "")
+            if settings.agentic_core:
+                # W6: the candidate skill run goes through the AgenticDispatcher
+                # (``autoresearch.model_temp.evaluate``); the legacy branch below
+                # is preserved for agentic_core=False.
+                from app.core.agentic import agentic
+                from app.core.agentic.types import TurnParams
+
+                outcome = await agentic.completion(
+                    purpose="autoresearch.model_temp.evaluate",
+                    project_id=self.require_project_id(),
+                    system=messages[0]["content"],
+                    messages=messages[1:],
+                    params=TurnParams(model=model, temperature=temperature),
+                    spine_phase="execution",
+                )
+                content = outcome.text
+            else:
+                response = await llm_router.chat(
+                    messages, model=model, temperature=temperature
+                )
+                content = response.get("message", {}).get("content", "")
         except Exception as e:
             logger.warning(f"Skill evaluation failed: {e}")
             return 0.0
@@ -200,10 +280,27 @@ class ModelTempRunner(BaseLoopRunner):
         ]
 
         try:
-            response = await llm_router.chat(
-                scoring_messages, temperature=0.1, max_tokens=10
-            )
-            score_text = response.get("message", {}).get("content", "").strip()
+            if settings.agentic_core:
+                # W6: the LLM-as-judge score goes through the AgenticDispatcher
+                # (``autoresearch.model_temp.score``); the legacy branch below is
+                # preserved for agentic_core=False.
+                from app.core.agentic import agentic
+                from app.core.agentic.types import TurnParams
+
+                outcome = await agentic.completion(
+                    purpose="autoresearch.model_temp.score",
+                    project_id=self.require_project_id(),
+                    system=scoring_messages[0]["content"],
+                    messages=scoring_messages[1:],
+                    params=TurnParams(temperature=0.1, max_tokens=10),
+                    spine_phase="review",
+                )
+                score_text = (outcome.text or "").strip()
+            else:
+                response = await llm_router.chat(
+                    scoring_messages, temperature=0.1, max_tokens=10
+                )
+                score_text = response.get("message", {}).get("content", "").strip()
             # Parse the score — extract first float-like token
             for token in score_text.replace(",", ".").split():
                 try:

@@ -12,6 +12,7 @@ import json
 import logging
 from typing import Awaitable, Callable
 
+from app.config import settings
 from app.core.autoresearch_runners import BaseLoopRunner
 
 logger = logging.getLogger(__name__)
@@ -90,13 +91,30 @@ class QuestionBankRunner(BaseLoopRunner):
         ]
 
         try:
-            response = await llm_router.chat(
-                messages,
-                temperature=0.7,
-                max_tokens=1500,
-                project_id=self.require_project_id(),
-            )
-            content = response.get("message", {}).get("content", "").strip()
+            if settings.agentic_core:
+                # W6: the question-bank improvement goes through the
+                # AgenticDispatcher (``autoresearch.question_bank.hypothesize``);
+                # the legacy branch below is preserved for agentic_core=False.
+                from app.core.agentic import agentic
+                from app.core.agentic.types import TurnParams
+
+                outcome = await agentic.completion(
+                    purpose="autoresearch.question_bank.hypothesize",
+                    project_id=self.require_project_id(),
+                    system=messages[0]["content"],
+                    messages=messages[1:],
+                    params=TurnParams(temperature=0.7, max_tokens=1500),
+                    spine_phase="plan",
+                )
+                content = (outcome.text or "").strip()
+            else:
+                response = await llm_router.chat(
+                    messages,
+                    temperature=0.7,
+                    max_tokens=1500,
+                    project_id=self.require_project_id(),
+                )
+                content = response.get("message", {}).get("content", "").strip()
         except Exception as e:
             raise RuntimeError(f"LLM question hypothesis failed: {e}") from e
 
@@ -229,13 +247,30 @@ class QuestionBankRunner(BaseLoopRunner):
         ]
 
         try:
-            response = await llm_router.chat(
-                sim_messages,
-                temperature=0.8,
-                max_tokens=1500,
-                project_id=self.require_project_id(),
-            )
-            participant_response = response.get("message", {}).get("content", "")
+            if settings.agentic_core:
+                # W6: the simulated-participant run goes through the
+                # AgenticDispatcher (``autoresearch.question_bank.evaluate``);
+                # the legacy branch below is preserved for agentic_core=False.
+                from app.core.agentic import agentic
+                from app.core.agentic.types import TurnParams
+
+                outcome = await agentic.completion(
+                    purpose="autoresearch.question_bank.evaluate",
+                    project_id=self.require_project_id(),
+                    system=sim_messages[0]["content"],
+                    messages=sim_messages[1:],
+                    params=TurnParams(temperature=0.8, max_tokens=1500),
+                    spine_phase="execution",
+                )
+                participant_response = outcome.text
+            else:
+                response = await llm_router.chat(
+                    sim_messages,
+                    temperature=0.8,
+                    max_tokens=1500,
+                    project_id=self.require_project_id(),
+                )
+                participant_response = response.get("message", {}).get("content", "")
         except Exception as e:
             logger.warning(f"Participant simulation failed: {e}")
             return 0.0
@@ -277,13 +312,30 @@ class QuestionBankRunner(BaseLoopRunner):
         ]
 
         try:
-            response = await llm_router.chat(
-                messages,
-                temperature=0.1,
-                max_tokens=10,
-                project_id=self.require_project_id(),
-            )
-            score_text = response.get("message", {}).get("content", "").strip()
+            if settings.agentic_core:
+                # W6: the elicited-response score goes through the
+                # AgenticDispatcher (``autoresearch.question_bank.score``); the
+                # legacy branch below is preserved for agentic_core=False.
+                from app.core.agentic import agentic
+                from app.core.agentic.types import TurnParams
+
+                outcome = await agentic.completion(
+                    purpose="autoresearch.question_bank.score",
+                    project_id=self.require_project_id(),
+                    system=messages[0]["content"],
+                    messages=messages[1:],
+                    params=TurnParams(temperature=0.1, max_tokens=10),
+                    spine_phase="review",
+                )
+                score_text = (outcome.text or "").strip()
+            else:
+                response = await llm_router.chat(
+                    messages,
+                    temperature=0.1,
+                    max_tokens=10,
+                    project_id=self.require_project_id(),
+                )
+                score_text = response.get("message", {}).get("content", "").strip()
             for token in score_text.replace(",", ".").split():
                 try:
                     val = float(token)

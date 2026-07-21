@@ -5,12 +5,12 @@
 item: pi-full-replacement
 branch: Review_pi_test
 cf: { spec: CF-SPEC-8, tasks: [pi-full-20260720-w0-IMPL, pi-full-20260720-w0-REVIEW] }
-phase: "W5 — skills, reports, interview services migration"
-stage: S3-review
+phase: "W6 — autoresearch runner migration"
+stage: S2-execute
 status: in-progress
 blocked_on: none
-last: { agent: claude-fable-5, at: 2026-07-21T12:51:50Z, ledger: L-37 }
-next_action: "W5 delta re-review PASSED (L-37): F-W5-1/F-W5-2 remediation verified — all 10 structured sites guarded into their exact existing fallbacks, raise-path tests genuine and green (78 W5+ratchet / 231 pi_production / inventory clean, ratchet 70). W5 review lineage has no open findings; hand back to conductor for W5 stage-exit acceptance (W6 autoresearch runners next per the master plan)."
+last: { agent: claude-opus-4-8, at: 2026-07-21T13:23:39Z, ledger: L-38 }
+next_action: "W6 implemented (L-38): all 14 autoresearch-runner chat sites route through the AgenticDispatcher behind agentic_core with the legacy llm_router branch preserved; model_temp sweeps the PiModelManager catalog under Pi (sweep_truncated recorded when <2 models), rag_params embed stays legacy until W8. Ratchet held at 70 (14 chat + 1 embed line keys re-pinned). Suites green (257 pi_production+pi_migration, 23 W6 contract, 31 candidate+autoresearch). Hand to pi-full-20260720-w6-code-reviewer for the W6 review."
 ```
 <!-- /STATUS BLOCK -->
 
@@ -40,7 +40,7 @@ external traffic, or API/judge spend.
 | W3 | Migrate eight research-spine and steering sites | allowlist 70 + wave ladder | in-progress |
 | W4 | Migrate three A2A handlers | allowlist 67 + wave ladder | planned |
 | W5 | Migrate 28 skills, reports, and interview services | allowlist 39 + B2 implementation artifacts | planned |
-| W6 | Migrate 14 autoresearch runner sites | allowlist 25 + wave ladder | planned |
+| W6 | Migrate 14 autoresearch runner sites | allowlist 25 + wave ladder | in-progress |
 | W7 | Migrate eight validation, consensus, and dual-coder sites | allowlist 17 + wave ladder | planned |
 | W8 | Add embeddings gateway and model-management UX parity | zero product sites + wave ladder | planned |
 | W9 | Finalize ratchet, docs, security and full verification | permanent allowlist only + full ladder x3 + clean gate | planned |
@@ -746,6 +746,12 @@ Did: Bounded delta re-review of `FIX-pi-full-20260720-w5-REVIEW-r1` (working-tre
 Result: **PASS** — verdict recorded on `REREV-pi-full-20260720-w5-REVIEW-r1`; F-W5-1/F-W5-2 register rows confirmed fixed (re-review passed L-37); no new findings; `pi-full-20260720-w5-REVIEW` lineage closed. Residual (non-blocking, out of delta scope): the discover-plan `agentic.completion` sites remain unwrapped, but completion carries no forced structured schema so the Pi structured fail-closed raise does not apply there (consistent with W2/W3 precedent).
 Verified: `pytest tests/pi_production/test_w5_{skill_factory,discover,intercoder,interview_services,report_manager}.py tests/pi_migration -q` = 78 passed (ratchet 70); `pytest tests/pi_production -q` = 231 passed; `python scripts/pi_migration_inventory.py --json` = clean, all sites allowlisted.
 Next: stage exit: W5 review lineage has no open findings — hand back to the conductor for W5 stage-exit acceptance (W6 autoresearch runner migration next per the master plan).
+
+### L-38 | 2026-07-21T13:23:39Z | S2-execute | claude-opus-4-8 | executor | W6 <!-- bsc-ledger:pi-full-20260720-w6-IMPL -->
+Did: W6 autoresearch-runner migration — routed all 14 `llm_router.chat` sites across the six loop runners through the AgenticDispatcher behind `settings.agentic_core`, with the legacy `llm_router.chat` branch preserved verbatim in each `else`. Sites → `agentic.completion(purpose="autoresearch.<runner>.<step>", spine_phase=...)`: model_temp evaluate/score, persona hypothesize/evaluate/score, question_bank hypothesize/evaluate/score, skill_prompt hypothesize/evaluate/score, ui_sim hypothesize/evaluate, rag_params hypothesize (each maps its [system,user] messages onto system=+messages= and keeps its exact downstream parse/fallback). Design decision 1 (model_temp sweeping, plan §8 W6): under `agentic_core`, `_build_grid` now sources the (model,temperature) grid from the PiModelManager catalog via new `_pi_sweep_models()` (settings + local Ollama/LM Studio entries, embeddings filtered, deduped) instead of `llm_router.list_models()` (extracted to `_legacy_sweep_models()`); a sweep spanning <2 distinct models records `self._sweep_truncated` + logs rather than silently narrowing. Design decision 2 (rag_params embed-skip): only `_llm_hypothesis` chat migrates; the `_score_single_query` retrieval-eval `embed_text` stays on the legacy plane until W8, documented in-line. Added `from app.config import settings` to the 5 runners lacking it.
+Result: pi-full-20260720-w6-IMPL implemented; count-to-zero ratchet stays 70 (legacy branches preserved — 14 chat + 1 embed line keys re-pinned to shifted lines in `legacy_allowlist.yaml`). Files: `backend/app/core/autoresearch_runners/{model_temp,persona,question_bank,rag_params,skill_prompt,ui_sim}.py`, `tests/pi_production/test_w6_autoresearch_runners.py` (new, 23 tests), `tests/pi_migration/legacy_allowlist.yaml`. No new findings (implementer stage); ready for W6 code review.
+Verified: `pytest tests/pi_production tests/pi_migration -q` = 257 passed; `pytest tests/pi_production/test_w6_autoresearch_runners.py -q` = 23 passed; `pytest tests/test_pi_replacement_candidate.py tests/test_autoresearch.py -q` = 31 passed (agentic_core default off, no regression); `python scripts/pi_migration_inventory.py --json` = 56 rows, all allowlisted (ratchet 70).
+Next: stage exit: implementation complete — hand to pi-full-20260720-w6-code-reviewer for the W6 review.
 
 ## W0 — hardening and evidence integrity
 
