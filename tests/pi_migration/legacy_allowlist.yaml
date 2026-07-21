@@ -22,7 +22,12 @@ ratchet:
   # browser_service browse_website tool (endpoint identity now resolved via
   # PiModelManager; see the F-W2-1b governance decision in
   # scripts/pi_migration_inventory.py). The ratchet drops by 9.
-  expected_product_sites: 78
+  # W3 migrated the 8 research-spine + steering sites (master plan §8 W3):
+  # agent_research.py L1 ReAct (:129,:131), L2 planner (:478), L3 step
+  # executor (:667), L5 reflection verifier (:1062), self_check.py L6 claim
+  # verification (:75), agent_execution.py L7 skill reflection (:472), and
+  # agent_lifecycle.py L10 steering reply (:519). The ratchet drops by 8.
+  expected_product_sites: 70
 
 # ---------------------------------------------------------------------------
 # PRODUCT SITES — all migrate to the AgenticDispatcher. Removing a site from
@@ -30,36 +35,15 @@ ratchet:
 # ---------------------------------------------------------------------------
 product:
   # --- Chat sites (69) ---------------------------------------------------
-  - keys: ["backend/app/core/agent_execution.py:472"]
-    kind: chat
-    note: "AgentExecutionMixin._execute_task — skill underperformance reflection"
-  - keys: ["backend/app/core/agent_lifecycle.py:519"]
-    kind: chat
-    note: "AgentLifecycleMixin._execute_steering_message — general steering reply"
-  - keys: ["backend/app/core/agent_lifecycle.py:857"]
+  - keys: ["backend/app/core/agent_lifecycle.py:870"]
     kind: chat
     note: "AgentLifecycleMixin._handle_collaboration — A2A collaboration response"
-  - keys: ["backend/app/core/agent_lifecycle.py:942"]
+  - keys: ["backend/app/core/agent_lifecycle.py:955"]
     kind: chat
     note: "AgentLifecycleMixin._initiate_debate — synthesis of output + peer critique"
-  - keys: ["backend/app/core/agent_lifecycle.py:996"]
+  - keys: ["backend/app/core/agent_lifecycle.py:1009"]
     kind: chat
     note: "AgentLifecycleMixin._handle_debate — critique of peer output"
-  - keys: ["backend/app/core/agent_research.py:129"]
-    kind: chat
-    note: "AgentResearchMixin._execute_general_task — ReAct loop, tools branch"
-  - keys: ["backend/app/core/agent_research.py:131"]
-    kind: chat
-    note: "AgentResearchMixin._execute_general_task — final/no-tools branch"
-  - keys: ["backend/app/core/agent_research.py:478"]
-    kind: chat
-    note: "AgentResearchMixin._create_research_plan — 2-5 step plan decomposition"
-  - keys: ["backend/app/core/agent_research.py:667"]
-    kind: chat
-    note: "AgentResearchMixin._execute_single_step — skill-less plan step"
-  - keys: ["backend/app/core/agent_research.py:1062"]
-    kind: chat
-    note: "AgentResearchMixin._self_verify_output — LLM self-reflection gate"
   - keys: ["backend/app/core/autoresearch_runners/model_temp.py:158"]
     kind: chat
     note: "ModelTempRunner._evaluate_skill — skill run under candidate model/temp"
@@ -120,9 +104,6 @@ product:
   - keys: ["backend/app/core/report_manager.py:996"]
     kind: chat
     note: "ReportManager._compose_section — gaps/limitations section"
-  - keys: ["backend/app/core/self_check.py:75"]
-    kind: chat
-    note: "verify_claim — fact-check claim against RAG sources"
   - keys: ["backend/app/core/validation.py:152"]
     kind: chat
     note: "dual_run — same prompt on 2 servers for consensus (direct server.chat)"
@@ -228,10 +209,10 @@ product:
   - keys: ["backend/app/core/validation.py:522"]
     kind: embed
     note: "_get_embeddings — response-agreement embeddings (llm_router.embed_batch)"
-  - keys: ["backend/app/core/agent_execution.py:824"]
+  - keys: ["backend/app/core/agent_execution.py:833"]
     kind: embed
     note: "_semantic_skill_match — task-text vector (via embed_text)"
-  - keys: ["backend/app/core/agent_execution.py:832"]
+  - keys: ["backend/app/core/agent_execution.py:841"]
     kind: embed
     note: "_semantic_skill_match — skill-description vectors (via embed_text)"
   - keys: ["backend/app/core/agent_memory.py:64"]

@@ -614,12 +614,14 @@ def test_ratchet_is_consistent_and_only_ratchets_down():
     """W1 armed the ratchet at 87 and migrated zero sites. Each later wave may
     only lower it (never raise it) and must keep the count-to-zero contract
     internally consistent. W2 (complete) migrated all 9 interactive surfaces
-    (4 one-shot completions, 4 streaming ReAct loops, browser tool), so the
-    current floor is 78."""
+    (4 one-shot completions, 4 streaming ReAct loops, browser tool); W3
+    migrated the 8 research-spine + steering sites (agent_research L1/L2/L3/L5,
+    self_check L6, agent_execution L7, agent_lifecycle L10), so the current
+    floor is 70."""
     from tests.pi_migration.test_count_to_zero import EXPECTED_PRODUCT_SITES, check_count_to_zero
 
     assert EXPECTED_PRODUCT_SITES <= 87, "the ratchet must never migrate sites back onto the legacy plane"
-    assert EXPECTED_PRODUCT_SITES == 78, "W2 (complete) migrated 9 interactive surfaces: ratchet floor is 78"
+    assert EXPECTED_PRODUCT_SITES == 70, "W3 migrated 8 research-spine + steering sites: ratchet floor is 70"
     check_count_to_zero()  # raises RuntimeError naming every violation
 
 
