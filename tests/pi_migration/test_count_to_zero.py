@@ -30,8 +30,11 @@ SCANNER_PATH = REPO_ROOT / "scripts" / "pi_migration_inventory.py"
 # context_summarizer, presentation slides, UI-audit heuristics), the 4
 # streaming ReAct loops (chat.py native + text fallback, interfaces.py design
 # native + text fallback), and the browser_service browse_website tool
-# (PiModelManager-resolved endpoint identity) — so the ratchet is now 78.
-EXPECTED_PRODUCT_SITES = 78
+# (PiModelManager-resolved endpoint identity). W3 migrated the 8 research-spine
+# + steering sites (agent_research L1 ReAct/L2 planner/L3 step executor/L5
+# reflection, self_check L6 claim verification, agent_execution L7 skill
+# reflection, agent_lifecycle L10 steering reply) — so the ratchet is now 70.
+EXPECTED_PRODUCT_SITES = 70
 
 
 # ---------------------------------------------------------------------------
