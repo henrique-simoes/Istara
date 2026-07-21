@@ -480,6 +480,7 @@ class PiExecutionService:
     async def run_structured(
         self, *, purpose: str, project_id: str, agent_id: str, system: str,
         messages: list[dict[str, Any]], schema: dict[str, Any], params: Any,
+        repair: bool = True,
     ) -> dict[str, Any]:
         """Return a schema-validated object via the forced structured contract.
 
@@ -497,6 +498,11 @@ class PiExecutionService:
         before any model call; exactly one bounded repair is allowed, and a
         second invalid result raises a typed ``PiRuntimeTurnError`` instead of
         returning an error-shaped artifact as if it were a success.
+
+        ``repair=False`` disables the bounded repair retry (W5 skill factory:
+        the caller runs its own multi-stage repair fallback chain, so a
+        transport-level repair would double-repair). The first invalid or
+        missing result then raises immediately.
         """
         _assert_supported_output_schema(schema)
         repair_instruction = (
@@ -505,7 +511,7 @@ class PiExecutionService:
             + json.dumps(schema, sort_keys=True)
         )
         prompt = list(messages)
-        for attempt in range(2):
+        for attempt in range(2 if repair else 1):
             history, text = _split_messages(prompt)
             result = await self._collect_turn(
                 operation=f"pi_structured:{purpose}", project_id=project_id, agent_id=agent_id,
@@ -521,7 +527,7 @@ class PiExecutionService:
             )
             if result["status"] != "success":
                 error = result.get("error") or "pi_runtime_error"
-                if attempt == 0 and error.startswith("structured_output_missing"):
+                if repair and attempt == 0 and error.startswith("structured_output_missing"):
                     # A missing forced call is an invalid result: exactly one
                     # bounded repair, then the typed failure below.
                     prompt = [*messages, {"role": "user", "content": repair_instruction}]
@@ -530,7 +536,7 @@ class PiExecutionService:
             try:
                 value = _validate_structured_value(result.get("structured"), schema)
             except ValueError as exc:
-                if attempt == 0:
+                if repair and attempt == 0:
                     prompt = [*messages, {"role": "user", "content": repair_instruction}]
                     continue
                 raise PiRuntimeTurnError("error", f"structured_output_invalid:{exc}") from exc

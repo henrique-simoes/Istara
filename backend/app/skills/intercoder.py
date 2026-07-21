@@ -11,12 +11,16 @@ This replaces the single-prompt approach where the LLM was asked to
 """
 
 import json
+import logging
 import uuid
 from collections import Counter
 
+from app.config import settings
 from app.core.ollama import ollama
 from app.skills.base import BaseSkill, SkillInput, SkillOutput, SkillPhase, SkillType
 from app.skills.skill_factory import _extract_text_from_files, _parse_json_response
+
+logger = logging.getLogger(__name__)
 
 
 def cohen_kappa(coder_a: list[list[str]], coder_b: list[list[str]], all_codes: list[str]) -> dict:
@@ -337,6 +341,108 @@ Respond in JSON:
   ]
 }}"""
 
+# Structured-output schemas for the agentic_core dispatcher path (Pi
+# forced-tool subset). Each schema formalizes the keys the legacy
+# ``_parse_json_response`` path reads out of the parsed JSON below.
+
+_THEME_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "name": {"type": "string"},
+        "definition": {"type": "string"},
+        "codes": {"type": "array", "items": {"type": "string"}},
+        "prevalence": {"type": "string"},
+        "description": {"type": "string"},
+    },
+}
+
+_CODER_A_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "codebook": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "code": {"type": "string"},
+                    "definition": {"type": "string"},
+                    "inclusion_criteria": {"type": "string"},
+                    "exclusion_criteria": {"type": "string"},
+                    "examples": {"type": "array", "items": {"type": "string"}},
+                },
+            },
+        },
+        "coding_results": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "item_id": {"type": "string"},
+                    "text": {"type": "string"},
+                    "source": {"type": "string"},
+                    "codes": {"type": "array", "items": {"type": "string"}},
+                },
+            },
+        },
+    },
+    "required": ["codebook", "coding_results"],
+}
+
+_CODER_B_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "coding_results": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "item_id": {"type": "string"},
+                    "codes": {"type": "array", "items": {"type": "string"}},
+                },
+            },
+        },
+    },
+    "required": ["coding_results"],
+}
+
+_RECONCILIATION_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "reconciled": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "item_id": {"type": "string"},
+                    "final_codes": {"type": "array", "items": {"type": "string"}},
+                    "rationale": {"type": "string"},
+                },
+            },
+        },
+        "codebook_refinements": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "code": {"type": "string"},
+                    "issue": {"type": "string"},
+                    "refined_definition": {"type": "string"},
+                },
+            },
+        },
+        "themes": {"type": "array", "items": _THEME_SCHEMA},
+    },
+    "required": ["reconciled"],
+}
+
+_THEMES_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "themes": {"type": "array", "items": _THEME_SCHEMA},
+    },
+    "required": ["themes"],
+}
+
 
 class KappaIntercoderSkill(BaseSkill):
     """True dual-coding thematic analysis with Python-calculated Kappa.
@@ -387,8 +493,26 @@ class KappaIntercoderSkill(BaseSkill):
             "5. **Minimum thresholds** — Kappa >= 0.60 for exploratory, >= 0.80 for confirmatory\n"
             "Format as Markdown."
         )
-        resp = await ollama.chat(messages=[{"role": "user", "content": prompt}], temperature=0.7)
-        return {"skill": self.name, "plan": resp.get("message", {}).get("content", "")}
+        if settings.agentic_core:
+            # W5: the kappa plan prompt goes through the AgenticDispatcher
+            # (``skill.kappa_plan``); the legacy branch below is preserved
+            # for agentic_core=False.
+            from app.core.agentic import agentic
+            from app.core.agentic.types import TurnParams
+
+            outcome = await agentic.completion(
+                purpose="skill.kappa_plan",
+                project_id=skill_input.project_id,
+                system=None,
+                messages=[{"role": "user", "content": prompt}],
+                params=TurnParams(temperature=0.7),
+                spine_phase="plan",
+            )
+            text = outcome.text
+        else:
+            resp = await ollama.chat(messages=[{"role": "user", "content": prompt}], temperature=0.7)
+            text = resp.get("message", {}).get("content", "")
+        return {"skill": self.name, "plan": text}
 
     async def execute(self, skill_input: SkillInput) -> SkillOutput:
         content = _extract_text_from_files(skill_input.files) if skill_input.files else ""
@@ -408,11 +532,37 @@ class KappaIntercoderSkill(BaseSkill):
             context=ctx or "N/A",
             content=content or skill_input.user_context or "N/A",
         )
-        resp_a = await ollama.chat(
-            messages=[{"role": "user", "content": prompt_a}],
-            temperature=0.3,
-        )
-        data_a = _parse_json_response(resp_a.get("message", {}).get("content", ""))
+        if settings.agentic_core:
+            # W5: Coder A open coding goes through the AgenticDispatcher
+            # (``skill.kappa_code_a``) as a structured call; the legacy branch
+            # below is preserved for agentic_core=False.
+            from app.core.agentic import agentic
+            from app.core.agentic.types import TurnParams
+
+            try:
+                outcome_a = await agentic.structured(
+                    purpose="skill.kappa_code_a",
+                    project_id=skill_input.project_id,
+                    system=None,
+                    messages=[{"role": "user", "content": prompt_a}],
+                    schema=_CODER_A_SCHEMA,
+                    params=TurnParams(temperature=0.3),
+                    spine_phase="execution",
+                )
+                data_a = outcome_a.value if outcome_a.status == "success" else {}
+            except Exception as e:
+                # F-W5-2: the Pi engine raises PiRuntimeTurnError on invalid
+                # structured output instead of returning status != "success";
+                # degrade to the same empty-coding fallback (which returns a
+                # graceful SkillOutput failure below).
+                logger.warning("Intercoder Coder A raised; degrading to empty coding: %s", e)
+                data_a = {}
+        else:
+            resp_a = await ollama.chat(
+                messages=[{"role": "user", "content": prompt_a}],
+                temperature=0.3,
+            )
+            data_a = _parse_json_response(resp_a.get("message", {}).get("content", ""))
 
         codebook_entries = data_a.get("codebook", [])
         coding_a = data_a.get("coding_results", [])
@@ -435,11 +585,36 @@ class KappaIntercoderSkill(BaseSkill):
             context=ctx or "N/A",
             segments=segments_text,
         )
-        resp_b = await ollama.chat(
-            messages=[{"role": "user", "content": prompt_b}],
-            temperature=0.3,
-        )
-        data_b = _parse_json_response(resp_b.get("message", {}).get("content", ""))
+        if settings.agentic_core:
+            # W5: Coder B independent re-coding goes through the
+            # AgenticDispatcher (``skill.kappa_code_b``) as a structured call;
+            # the legacy branch below is preserved for agentic_core=False.
+            from app.core.agentic import agentic
+            from app.core.agentic.types import TurnParams
+
+            try:
+                outcome_b = await agentic.structured(
+                    purpose="skill.kappa_code_b",
+                    project_id=skill_input.project_id,
+                    system=None,
+                    messages=[{"role": "user", "content": prompt_b}],
+                    schema=_CODER_B_SCHEMA,
+                    params=TurnParams(temperature=0.3),
+                    spine_phase="execution",
+                )
+                data_b = outcome_b.value if outcome_b.status == "success" else {}
+            except Exception as e:
+                # F-W5-2: the Pi engine raises PiRuntimeTurnError on invalid
+                # structured output instead of returning status != "success";
+                # degrade to the same empty-coding fallback.
+                logger.warning("Intercoder Coder B raised; degrading to empty coding: %s", e)
+                data_b = {}
+        else:
+            resp_b = await ollama.chat(
+                messages=[{"role": "user", "content": prompt_b}],
+                temperature=0.3,
+            )
+            data_b = _parse_json_response(resp_b.get("message", {}).get("content", ""))
         coding_b = data_b.get("coding_results", [])
 
         # Build lookup for Coder B results
@@ -493,11 +668,38 @@ class KappaIntercoderSkill(BaseSkill):
                 codebook=codebook_text,
                 disagreements=disagree_text,
             )
-            resp_r = await ollama.chat(
-                messages=[{"role": "user", "content": prompt_r}],
-                temperature=0.3,
-            )
-            data_r = _parse_json_response(resp_r.get("message", {}).get("content", ""))
+            if settings.agentic_core:
+                # W5: disagreement reconciliation goes through the
+                # AgenticDispatcher (``skill.kappa_reconcile``) as a structured
+                # call; the legacy branch below is preserved for
+                # agentic_core=False.
+                from app.core.agentic import agentic
+                from app.core.agentic.types import TurnParams
+
+                try:
+                    outcome_r = await agentic.structured(
+                        purpose="skill.kappa_reconcile",
+                        project_id=skill_input.project_id,
+                        system=None,
+                        messages=[{"role": "user", "content": prompt_r}],
+                        schema=_RECONCILIATION_SCHEMA,
+                        params=TurnParams(temperature=0.3),
+                        spine_phase="synthesis",
+                    )
+                    data_r = outcome_r.value if outcome_r.status == "success" else {}
+                except Exception as e:
+                    # F-W5-2: the Pi engine raises PiRuntimeTurnError on
+                    # invalid structured output instead of returning
+                    # status != "success"; degrade to the same empty-result
+                    # fallback (unreconciled codes keep coder union).
+                    logger.warning("Intercoder reconcile raised; degrading to union codes: %s", e)
+                    data_r = {}
+            else:
+                resp_r = await ollama.chat(
+                    messages=[{"role": "user", "content": prompt_r}],
+                    temperature=0.3,
+                )
+                data_r = _parse_json_response(resp_r.get("message", {}).get("content", ""))
 
             # Apply reconciled codes
             reconciled_by_id = {r["item_id"]: r for r in data_r.get("reconciled", [])}
@@ -517,11 +719,38 @@ class KappaIntercoderSkill(BaseSkill):
                 f'{{"themes": [{{"name": "...", "definition": "...", "codes": ["..."], '
                 f'"prevalence": "dominant|common|minor", "description": "..."}}]}}'
             )
-            resp_t = await ollama.chat(
-                messages=[{"role": "user", "content": prompt_themes}],
-                temperature=0.3,
-            )
-            data_t = _parse_json_response(resp_t.get("message", {}).get("content", ""))
+            if settings.agentic_core:
+                # W5: theme extraction (all-agreed path) goes through the
+                # AgenticDispatcher (``skill.kappa_themes``) as a structured
+                # call; the legacy branch below is preserved for
+                # agentic_core=False.
+                from app.core.agentic import agentic
+                from app.core.agentic.types import TurnParams
+
+                try:
+                    outcome_t = await agentic.structured(
+                        purpose="skill.kappa_themes",
+                        project_id=skill_input.project_id,
+                        system=None,
+                        messages=[{"role": "user", "content": prompt_themes}],
+                        schema=_THEMES_SCHEMA,
+                        params=TurnParams(temperature=0.3),
+                        spine_phase="synthesis",
+                    )
+                    data_t = outcome_t.value if outcome_t.status == "success" else {}
+                except Exception as e:
+                    # F-W5-2: the Pi engine raises PiRuntimeTurnError on
+                    # invalid structured output instead of returning
+                    # status != "success"; degrade to the same no-themes
+                    # fallback.
+                    logger.warning("Intercoder themes raised; degrading to no themes: %s", e)
+                    data_t = {}
+            else:
+                resp_t = await ollama.chat(
+                    messages=[{"role": "user", "content": prompt_themes}],
+                    temperature=0.3,
+                )
+                data_t = _parse_json_response(resp_t.get("message", {}).get("content", ""))
             themes = data_t.get("themes", [])
 
         # --- Build output ---

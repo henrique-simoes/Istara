@@ -18,6 +18,7 @@ from app.core.ollama import ollama
 from app.core.file_processor import process_file
 from app.core.llm_schema_adapter import (
     SchemaBudgetResult,
+    extract_json_schema,
     openai_json_schema_response_format,
     parse_json_object,
     strip_thinking_markers,
@@ -135,6 +136,44 @@ def _make_schema_strict(schema: Any) -> dict:
         }
     
     return {"type": "string"}
+
+
+_PI_SCHEMA_KEYS = frozenset({
+    "type", "properties", "required", "items", "enum", "const",
+    "additionalProperties", "description",
+})
+
+
+def _pi_dispatch_schema(schema: Any) -> dict:
+    """Simplify a strict JSON schema into the Pi forced-tool subset.
+
+    ``_make_schema_strict`` can emit constructs the Pi engine rejects before
+    any model call (``anyOf`` null-unions for optional fields, ``null`` type
+    unions); collapse those and drop unsupported keys so a schema the legacy
+    ``response_format`` path accepts stays dispatchable. Root stays an object.
+    """
+    if not isinstance(schema, dict):
+        return {"type": "object", "properties": {}, "required": [], "additionalProperties": False}
+    node = dict(schema)
+    union = node.pop("anyOf", None)
+    if isinstance(union, list):
+        for branch in union:
+            if isinstance(branch, dict) and branch.get("type") != "null":
+                node.update(branch)
+                break
+    node_type = node.get("type")
+    if isinstance(node_type, list):
+        node["type"] = next((t for t in node_type if t != "null"), "string")
+    out = {k: v for k, v in node.items() if k in _PI_SCHEMA_KEYS}
+    if "additionalProperties" in out and not isinstance(out["additionalProperties"], bool):
+        del out["additionalProperties"]
+    if isinstance(out.get("properties"), dict):
+        out["properties"] = {k: _pi_dispatch_schema(v) for k, v in out["properties"].items()}
+    if isinstance(out.get("items"), dict):
+        out["items"] = _pi_dispatch_schema(out["items"])
+    if "type" not in out:
+        out["type"] = "object" if "properties" in out else "string"
+    return out
 
 
 def _normalized_skill_output_response_format(skill_name: str) -> dict:
@@ -505,12 +544,29 @@ def create_skill(
                 context=ctx,
             )
             try:
-                resp = await ollama.chat(
-                    messages=[{"role": "user", "content": prompt}],
-                    temperature=0.7,
-                    thinking_mode="off",
-                )
-                plan = (resp.get("message", {}).get("content", "") or "").strip()
+                if settings.agentic_core:
+                    # W5: the plan call goes through the AgenticDispatcher
+                    # (``skill.plan``); the legacy branch below is preserved
+                    # for agentic_core=False.
+                    from app.core.agentic import agentic
+                    from app.core.agentic.types import TurnParams
+
+                    outcome = await agentic.completion(
+                        purpose="skill.plan",
+                        project_id=skill_input.project_id,
+                        system=None,
+                        messages=[{"role": "user", "content": prompt}],
+                        params=TurnParams(temperature=0.7, thinking_mode="off"),
+                        spine_phase="plan",
+                    )
+                    plan = (outcome.text or "").strip()
+                else:
+                    resp = await ollama.chat(
+                        messages=[{"role": "user", "content": prompt}],
+                        temperature=0.7,
+                        thinking_mode="off",
+                    )
+                    plan = (resp.get("message", {}).get("content", "") or "").strip()
             except Exception as e:
                 logger.warning("Skill %s plan fell back after LLM failure: %s", self.name, e)
                 return {"skill": self.name, "plan": fallback, "fallback": True}
@@ -714,17 +770,63 @@ def create_skill(
                 + schema_tokens
             )
 
-            resp = await ollama.chat(
-                messages=[{"role": "user", "content": full_prompt}], 
-                temperature=0.2, # Lower temperature for analytical rigor
-                max_tokens=max_output_tokens,
-                response_format=schema_dict, # Enable native structured outputs
-                system=system_prompt,
-                min_context=estimated_context_tokens,
-                thinking_mode="off",
-            )
-            
-            raw_content = resp.get("message", {}).get("content", "")
+            if settings.agentic_core:
+                # W5: skill execution dispatches structured output through the
+                # AgenticDispatcher (``skill.execute``) — repair=False because
+                # the 4-stage fallback chain below is the resilience contract
+                # and the Pi engine must not double-repair inside it. The
+                # legacy branch is preserved for agentic_core=False.
+                from app.core.agentic import agentic
+                from app.core.agentic.types import TurnParams
+
+                try:
+                    outcome = await agentic.structured(
+                        purpose="skill.execute",
+                        project_id=skill_input.project_id,
+                        system=system_prompt,
+                        messages=[{"role": "user", "content": full_prompt}],
+                        schema=_pi_dispatch_schema(
+                            extract_json_schema(schema_dict)
+                            or extract_json_schema(repair_response_format)
+                        ),
+                        params=TurnParams(
+                            temperature=0.2,
+                            max_tokens=max_output_tokens,
+                            min_context=estimated_context_tokens,
+                            thinking_mode="off",
+                        ),
+                        repair=False,
+                        spine_phase="execution",
+                    )
+                    raw_content = outcome.text
+                    data = outcome.value if outcome.status == "success" else None
+                except Exception as e:
+                    # F-W5-1: on the Pi engine, run_structured(repair=False)
+                    # raises PiRuntimeTurnError on the first invalid/missing
+                    # structured output instead of returning status != "success".
+                    # Degrade into the 4-stage fallback chain below (the
+                    # product's resilience contract) with empty raw content;
+                    # the repair stages are already individually guarded.
+                    logger.warning(
+                        "Skill %s primary structured call raised; entering repair fallback chain: %s",
+                        self.name,
+                        e,
+                    )
+                    raw_content = ""
+                    data = None
+            else:
+                resp = await ollama.chat(
+                    messages=[{"role": "user", "content": full_prompt}], 
+                    temperature=0.2, # Lower temperature for analytical rigor
+                    max_tokens=max_output_tokens,
+                    response_format=schema_dict, # Enable native structured outputs
+                    system=system_prompt,
+                    min_context=estimated_context_tokens,
+                    thinking_mode="off",
+                )
+                
+                raw_content = resp.get("message", {}).get("content", "")
+                data = None
             
             # Remove thinking tags from JSON parsing if model included them outside JSON
             clean_content = strip_thinking_markers(raw_content)
@@ -733,7 +835,7 @@ def create_skill(
             repaired_from_non_json = False
             repaired_content = ""
             plain_repair_content = ""
-            data = _parse_json_response(clean_content)
+            data = data or _parse_json_response(clean_content)
             if data:
                 json_success = True
             else:
@@ -752,25 +854,65 @@ def create_skill(
                         f"Research data sample:\n{data_content[:3000]}"
                     )
                     try:
-                        repair_resp = await ollama.chat(
-                            messages=[{"role": "user", "content": repair_prompt}],
-                            temperature=0.0,
-                            max_tokens=max_output_tokens,
-                            response_format=repair_response_format,
-                            system=(
-                                "You are a strict JSON repair adapter. Your entire response must be "
-                                "one valid JSON object."
-                            ),
-                            min_context=(
-                                count_tokens(repair_prompt)
-                                + count_tokens("You are a strict JSON repair adapter. Your entire response must be one valid JSON object.")
-                                + max_output_tokens
-                            ),
-                            thinking_mode="off",
-                        )
-                        repaired_content = repair_resp.get("message", {}).get("content", "")
+                        if settings.agentic_core:
+                            # W5: native JSON repair dispatches through the
+                            # AgenticDispatcher (``skill.repair_native``) with
+                            # repair=False — this stage IS the repair, so the
+                            # Pi engine must not run its own bounded repair
+                            # inside the fallback chain. Legacy branch preserved.
+                            from app.core.agentic import agentic
+                            from app.core.agentic.types import TurnParams
+
+                            repair_system = (
+                                "You are a strict JSON repair adapter. "
+                                "Your entire response must be one valid JSON object."
+                            )
+                            repair_outcome = await agentic.structured(
+                                purpose="skill.repair_native",
+                                project_id=skill_input.project_id,
+                                system=repair_system,
+                                messages=[{"role": "user", "content": repair_prompt}],
+                                schema=_pi_dispatch_schema(extract_json_schema(repair_response_format)),
+                                params=TurnParams(
+                                    temperature=0.0,
+                                    max_tokens=max_output_tokens,
+                                    min_context=(
+                                        count_tokens(repair_prompt)
+                                        + count_tokens(repair_system)
+                                        + max_output_tokens
+                                    ),
+                                    thinking_mode="off",
+                                ),
+                                repair=False,
+                                spine_phase="recovery",
+                            )
+                            repaired_content = repair_outcome.text
+                            data = (
+                                repair_outcome.value
+                                if repair_outcome.status == "success"
+                                else None
+                            )
+                        else:
+                            repair_resp = await ollama.chat(
+                                messages=[{"role": "user", "content": repair_prompt}],
+                                temperature=0.0,
+                                max_tokens=max_output_tokens,
+                                response_format=repair_response_format,
+                                system=(
+                                    "You are a strict JSON repair adapter. Your entire response must be "
+                                    "one valid JSON object."
+                                ),
+                                min_context=(
+                                    count_tokens(repair_prompt)
+                                    + count_tokens("You are a strict JSON repair adapter. Your entire response must be one valid JSON object.")
+                                    + max_output_tokens
+                                ),
+                                thinking_mode="off",
+                            )
+                            repaired_content = repair_resp.get("message", {}).get("content", "")
+                            data = None
                         clean_repaired_content = strip_thinking_markers(repaired_content)
-                        data = _parse_json_response(clean_repaired_content)
+                        data = data or _parse_json_response(clean_repaired_content)
                         repaired_from_non_json = bool(data)
                         json_success = bool(data)
                         if repaired_from_non_json:
@@ -791,19 +933,48 @@ def create_skill(
                     f"Previous response:\n{(raw_content or repaired_content or '[empty response]')[:3500]}"
                 )
                 try:
-                    plain_repair_resp = await ollama.chat(
-                        messages=[{"role": "user", "content": plain_repair_prompt}],
-                        temperature=0.0,
-                        max_tokens=max_output_tokens,
-                        system="Return exactly one syntactically valid JSON object for Istara.",
-                        min_context=(
-                            count_tokens(plain_repair_prompt)
-                            + count_tokens("Return exactly one syntactically valid JSON object for Istara.")
-                            + max_output_tokens
-                        ),
-                        thinking_mode="off",
-                    )
-                    plain_repair_content = plain_repair_resp.get("message", {}).get("content", "")
+                    if settings.agentic_core:
+                        # W5: plain JSON repair (stage 2 of the fallback chain)
+                        # dispatches through the AgenticDispatcher
+                        # (``skill.repair_plain``); legacy branch preserved.
+                        from app.core.agentic import agentic
+                        from app.core.agentic.types import TurnParams
+
+                        plain_system = (
+                            "Return exactly one syntactically valid JSON object for Istara."
+                        )
+                        plain_outcome = await agentic.completion(
+                            purpose="skill.repair_plain",
+                            project_id=skill_input.project_id,
+                            system=plain_system,
+                            messages=[{"role": "user", "content": plain_repair_prompt}],
+                            params=TurnParams(
+                                temperature=0.0,
+                                max_tokens=max_output_tokens,
+                                min_context=(
+                                    count_tokens(plain_repair_prompt)
+                                    + count_tokens(plain_system)
+                                    + max_output_tokens
+                                ),
+                                thinking_mode="off",
+                            ),
+                            spine_phase="recovery",
+                        )
+                        plain_repair_content = plain_outcome.text
+                    else:
+                        plain_repair_resp = await ollama.chat(
+                            messages=[{"role": "user", "content": plain_repair_prompt}],
+                            temperature=0.0,
+                            max_tokens=max_output_tokens,
+                            system="Return exactly one syntactically valid JSON object for Istara.",
+                            min_context=(
+                                count_tokens(plain_repair_prompt)
+                                + count_tokens("Return exactly one syntactically valid JSON object for Istara.")
+                                + max_output_tokens
+                            ),
+                            thinking_mode="off",
+                        )
+                        plain_repair_content = plain_repair_resp.get("message", {}).get("content", "")
                     data = _parse_json_response(strip_thinking_markers(plain_repair_content))
                     repaired_from_non_json = bool(data)
                     json_success = bool(data)
@@ -860,19 +1031,49 @@ def create_skill(
                     f"Previous JSON:\n{json.dumps(data, ensure_ascii=False)[:2500]}"
                 )
                 try:
-                    empty_repair_resp = await ollama.chat(
-                        messages=[{"role": "user", "content": empty_findings_prompt}],
-                        temperature=0.0,
-                        max_tokens=max(512, min(max_output_tokens, 768)),
-                        system="Return exactly one valid JSON object with non-empty Istara findings.",
-                        min_context=(
-                            count_tokens(empty_findings_prompt)
-                            + count_tokens("Return exactly one valid JSON object with non-empty Istara findings.")
-                            + max(512, min(max_output_tokens, 768))
-                        ),
-                        thinking_mode="off",
-                    )
-                    empty_findings_repair_content = empty_repair_resp.get("message", {}).get("content", "")
+                    if settings.agentic_core:
+                        # W5: empty-findings repair (stage 3 of the fallback
+                        # chain) dispatches through the AgenticDispatcher
+                        # (``skill.repair_findings``); legacy branch preserved.
+                        from app.core.agentic import agentic
+                        from app.core.agentic.types import TurnParams
+
+                        findings_system = (
+                            "Return exactly one valid JSON object "
+                            "with non-empty Istara findings."
+                        )
+                        empty_outcome = await agentic.completion(
+                            purpose="skill.repair_findings",
+                            project_id=skill_input.project_id,
+                            system=findings_system,
+                            messages=[{"role": "user", "content": empty_findings_prompt}],
+                            params=TurnParams(
+                                temperature=0.0,
+                                max_tokens=max(512, min(max_output_tokens, 768)),
+                                min_context=(
+                                    count_tokens(empty_findings_prompt)
+                                    + count_tokens(findings_system)
+                                    + max(512, min(max_output_tokens, 768))
+                                ),
+                                thinking_mode="off",
+                            ),
+                            spine_phase="recovery",
+                        )
+                        empty_findings_repair_content = empty_outcome.text
+                    else:
+                        empty_repair_resp = await ollama.chat(
+                            messages=[{"role": "user", "content": empty_findings_prompt}],
+                            temperature=0.0,
+                            max_tokens=max(512, min(max_output_tokens, 768)),
+                            system="Return exactly one valid JSON object with non-empty Istara findings.",
+                            min_context=(
+                                count_tokens(empty_findings_prompt)
+                                + count_tokens("Return exactly one valid JSON object with non-empty Istara findings.")
+                                + max(512, min(max_output_tokens, 768))
+                            ),
+                            thinking_mode="off",
+                        )
+                        empty_findings_repair_content = empty_repair_resp.get("message", {}).get("content", "")
                     repaired_data = _parse_json_response(strip_thinking_markers(empty_findings_repair_content))
                     if repaired_data:
                         repaired = _normalize_generated_findings(
