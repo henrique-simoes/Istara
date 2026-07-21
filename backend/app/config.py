@@ -309,6 +309,7 @@ class Settings(BaseSettings):
     # per-call override, request header, and the project's `agentic_engine`
     # setting. Stays "legacy" until the owner flips the rollout.
     agentic_engine_default: str = "legacy"
+    agentic_core: bool = False
 
     # Meta-Hyperagent (optional layer that tunes subsystem parameters)
     meta_hyperagent_enabled: bool = False
