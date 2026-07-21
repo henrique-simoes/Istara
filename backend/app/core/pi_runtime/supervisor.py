@@ -84,7 +84,9 @@ class PiRuntimeSupervisor:
 
     async def ensure_started(self) -> None:
         async with self._start_lock:
-            if self.is_running and self._ready.is_set():
+            # A worker that emitted a fatal is poisoned even if the process is
+            # still alive; never treat it as ready.
+            if self.is_running and self._ready.is_set() and self._fatal is None:
                 return
             # EOF leaves a process handle behind.  Reclaim it before starting
             # again so a poisoned reader cannot strand a child (H-2).
@@ -121,6 +123,19 @@ class PiRuntimeSupervisor:
             except asyncio.TimeoutError as exc:
                 await self._force_stop()
                 raise PiWorkerError("handshake_timeout") from exc
+            if self._fatal is not None:
+                # The worker rejected the handshake (e.g. it speaks a different
+                # protocol version): surface the typed failure, not a ready worker.
+                fatal = self._fatal
+                await self._force_stop()
+                raise PiWorkerError(fatal)
+            if self._ready_info.get("protocol_version") != PROTOCOL_VERSION:
+                # Both-side version validation: a worker answering `ready` with
+                # a mismatched version is never used (protocol v2 forced
+                # structured contract).
+                got = self._ready_info.get("protocol_version")
+                await self._force_stop()
+                raise PiWorkerError(f"protocol_version_mismatch:{got}")
 
     async def _send(self, frame: dict[str, Any]) -> None:
         if self._proc is None or self._proc.stdin is None:
@@ -204,13 +219,59 @@ class PiRuntimeSupervisor:
             return
         if ftype == "fatal":
             self._fatal = frame.get("error", "fatal")
+            # A handshake-time fatal (e.g. protocol_version_mismatch) must
+            # unblock ensure_started's ready wait so it raises the typed
+            # failure instead of burning the full handshake timeout.
+            self._ready.set()
             for queue in self._sessions.values():
                 queue.put_nowait(frame)
+            return
+        # Both-side per-frame version validation (PROTOCOL.md "Versioning"):
+        # every inbound frame past the handshake must speak this protocol
+        # version. `ready`/`fatal` are the version-negotiation channel — they
+        # carry the worker's own version and are validated in ensure_started —
+        # so they are handled above and exempt here (mirroring the worker
+        # exempting inbound `hello`). Every other frame whose `v` mismatches is
+        # rejected BEFORE it is queued, so a v1 run.completed / tool.call on a
+        # v2 session never yields content, executes a tool, or settles the run
+        # with attacker-chosen terminal data. A version mismatch is never
+        # process-fatal.
+        if frame.get("v") != PROTOCOL_VERSION:
+            self._reject_frame(frame, "protocol_version_mismatch")
             return
         key = frame.get("session_key")
         queue = self._sessions.get(key)
         if queue is not None:
             queue.put_nowait(frame)
+
+    def _reject_frame(self, frame: dict[str, Any], error: str) -> None:
+        """Settle a refused inbound frame as a run-scoped failure without ever
+        processing its payload (mirrors the worker's ``rejectFrame``).
+
+        The session's active run settles ``run.failed{error}``; when no run is
+        active the failure is emitted for the offending frame's own run so a
+        stale rejection can never terminate an unrelated later run. A frame we
+        cannot attribute to a known session is logged and dropped — a protocol
+        violation is never process-fatal.
+        """
+        key = frame.get("session_key")
+        queue = self._sessions.get(key) if isinstance(key, str) else None
+        if queue is None:
+            logger.warning("pi-runtime: rejected %s frame (%s)", frame.get("type"), error)
+            return
+        # Prefer the session's active run id (settle the run in flight); fall
+        # back to the offending frame's run_id so a "no run active" rejection
+        # targets that frame's run, never a future one.
+        run_id = self._session_runs.get(key, frame.get("run_id"))
+        queue.put_nowait(
+            {
+                "v": PROTOCOL_VERSION,
+                "type": "run.failed",
+                "session_key": key,
+                "run_id": run_id,
+                "error": error,
+            }
+        )
 
     async def _drain_stderr(self) -> None:
         assert self._proc is not None and self._proc.stderr is not None
@@ -282,25 +343,44 @@ class PiRuntimeSupervisor:
         session_key: str,
         text: str,
         tool_handler: ToolHandler,
+        *,
+        max_turns: int | None = None,
+        output_schema: dict[str, Any] | None = None,
+        tool_choice: Any = None,
     ) -> AsyncIterator[dict[str, Any]]:
         """Drive one prompt run, yielding worker frames until a terminal frame.
 
         Authority tool calls are executed via ``tool_handler`` and the result is
-        sent back; every other frame is yielded to the caller.
+        sent back; every other frame is yielded to the caller. ``output_schema``
+        / ``tool_choice`` / ``max_turns`` are the protocol v2 turn fields: an
+        ``output_schema`` run is forced through the worker's
+        ``emit_structured_output`` capture tool and its ``run.completed``
+        carries the captured object under ``structured``.
         """
         queue = self._sessions.get(session_key)
         if queue is None:
             raise PiWorkerError("unknown_session")
         self._run_counter += 1
         run_id = f"run-{self._run_counter}"
+        prompt_frame: dict[str, Any] = {
+            "v": PROTOCOL_VERSION,
+            "type": "turn.prompt",
+            "session_key": session_key,
+            "run_id": run_id,
+            "text": text,
+        }
+        if max_turns is not None:
+            prompt_frame["max_turns"] = max_turns
+        if output_schema is not None:
+            prompt_frame["output_schema"] = output_schema
+        if tool_choice is not None:
+            prompt_frame["tool_choice"] = tool_choice
         lock = self._session_locks.setdefault(session_key, asyncio.Lock())
         async with lock:
             if session_key in self._session_runs:
                 raise PiWorkerError("session_busy")
             self._session_runs[session_key] = run_id
-            await self._send(
-                {"v": PROTOCOL_VERSION, "type": "turn.prompt", "session_key": session_key, "run_id": run_id, "text": text}
-            )
+            await self._send(prompt_frame)
             try:
                 while True:
                     frame = await asyncio.wait_for(queue.get(), timeout=self._run_timeout)

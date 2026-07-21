@@ -9,7 +9,11 @@
 // Malformed frames are terminal for the affected run, never silently for the
 // process.
 
-export const PROTOCOL_VERSION = 1;
+// v2: turn.prompt gains output_schema / tool_choice / max_turns and
+// run.completed may carry the captured `structured` object (forced
+// emit_structured_output contract, see structured.mjs). Both sides validate
+// the version at handshake and per-frame; a mismatch is a typed failure.
+export const PROTOCOL_VERSION = 2;
 
 function envMaxSessions() {
   const raw = Number.parseInt(process.env.PI_MAX_SESSIONS ?? "", 10);

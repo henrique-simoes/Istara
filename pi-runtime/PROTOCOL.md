@@ -1,8 +1,22 @@
-# Pi runtime wire protocol (v1)
+# Pi runtime wire protocol (v2)
 
 One JSON object per line on stdin/stdout. stdout is protocol-only; sanitized
-diagnostics go to stderr. Every frame carries `v: 1`, `type`, and `seq`; every
+diagnostics go to stderr. Every frame carries `v: 2`, `type`, and `seq`; every
 frame except `hello`/`ready`/`shutdown` also carries `session_key`.
+
+## Versioning
+
+Both sides validate the protocol version. A `hello` whose `v` or
+`protocol_version` does not match the worker's version is answered with a
+connection-scoped `fatal{error:"protocol_version_mismatch",
+protocol_version:<worker version>}` and never with `ready` — the backend
+surfaces it as a typed `PiWorkerError` instead of a handshake timeout. A
+backend receiving `ready` with a mismatched `protocol_version` likewise
+refuses the worker (`PiWorkerError("protocol_version_mismatch:<got>")`). Every
+other inbound frame whose `v` mismatches is rejected before its `seq` is
+consumed: the session's active run settles `run.failed{error:
+"protocol_version_mismatch"}` (or that frame is emitted directly when no run
+is active). A version mismatch is never process-fatal.
 
 ## Sequencing
 
@@ -49,8 +63,9 @@ backend uses a lazy, bounded two-worker pool (20 concurrent sessions total).
 
 ## Python → worker
 
-- `hello` — `{v, type:"hello", protocol_version:1, seq}` — first frame; the
-  worker answers `ready` within the handshake timeout.
+- `hello` — `{v, type:"hello", protocol_version:2, seq}` — first frame; the
+  worker answers `ready` within the handshake timeout, or
+  `fatal{error:"protocol_version_mismatch"}` on a version mismatch.
 - `session.open` — `{v, type, seq, session_key, system_prompt,
   history:[{role,content}], revision, catalog:[{name, description,
   parameters}], limits:{max_turns,max_wall_clock_ms,max_cost_usd}}`
@@ -84,9 +99,47 @@ backend uses a lazy, bounded two-worker pool (20 concurrent sessions total).
     budget (see Discipline)
   Unknown or malformed params fail the bind with
   `run.failed{error:"provider_bind_failed:invalid_provider_params:<key>"}`.
-- `turn.prompt` — `{v, type, seq, session_key, run_id, text, max_turns?}` —
-  start a run. `max_turns` overrides the session-level `limits.max_turns`
-  for this run.
+- `turn.prompt` — `{v, type, seq, session_key, run_id, text, max_turns?,
+  output_schema?, tool_choice?}` — start a run. `max_turns` overrides the
+  session-level `limits.max_turns` for this run. `output_schema` (JSON Schema)
+  engages the forced structured-output contract (below). `tool_choice`
+  (`"auto" | "required" | {"name": <catalog tool>}`) forces provider tool
+  selection for this run, mapped per provider family
+  (`openai-completions`: `"auto"`/`"required"`/`{type:"function",
+  function:{name}}`; `anthropic-messages`: `{type:"auto"}`/`{type:"any"}`/
+  `{type:"tool", name}`); an invalid shape settles
+  `run.failed{error:"invalid_tool_choice"}`, and a real binding whose provider
+  family cannot express the choice settles
+  `run.failed{error:"tool_choice_unsupported:<api>"}`.
+
+## Forced structured output (`output_schema`)
+
+pi-ai has no `response_format`, so a run carrying `output_schema` is forced
+through a worker-internal `emit_structured_output` tool:
+
+1. The schema is mechanically translated to the tool's TypeBox `parameters`.
+   Only a mechanical subset is supported — `type` (`object` root required),
+   `properties`, `required`, boolean `additionalProperties`, `items`, `enum`,
+   `const`, `description`/`title`, and the scalar/array/object constraint
+   keywords (`minimum`/`maximum`/`exclusiveMinimum`/`exclusiveMaximum`/
+   `multipleOf`, `minLength`/`maxLength`/`pattern`, `minItems`/`maxItems`/
+   `uniqueItems`, `minProperties`/`maxProperties`). Anything else (`$ref`,
+   combinators, schema-valued `additionalProperties`, `format`, ...) settles
+   `run.failed{error:"structured_output_schema_unsupported:<path:key>"}`
+   BEFORE any provider call, and the backend applies the same precheck.
+2. The provider is forced to call exactly that tool (per-family `toolChoice`
+   as above).
+3. The tool's `execute` CAPTURES the arguments: no `tool.call` round-trip to
+   the authority, no side effects. The captured object is reported on
+   `run.completed.structured`.
+4. A run that ends without the forced call — including one whose assistant
+   text contains perfectly valid JSON — settles
+   `run.failed{error:"structured_output_missing"}`. Free-form JSON text is
+   NEVER accepted as structured output.
+5. The backend revalidates the captured object against the ORIGINAL schema
+   (the TypeBox translation is a model-side aid; Python revalidation is the
+   contract), allows exactly one bounded repair turn, and raises a typed
+   failure after a second invalid result.
 - `turn.follow_up` — `{v, type, seq, session_key, run_id, text}` — queue a
   follow-up user message after the active run completes. Handler rejections
   are contained (logged to stderr); they never crash the worker.
@@ -101,7 +154,7 @@ backend uses a lazy, bounded two-worker pool (20 concurrent sessions total).
 
 ## Worker → Python
 
-- `ready` — `{v, type:"ready", seq, protocol_version:1, pi_agent_core, pi_ai}`
+- `ready` — `{v, type:"ready", seq, protocol_version:2, pi_agent_core, pi_ai}`
 - `session.opened` / `session.closed` — `{v, type, seq, session_key}`
 - `session.open_failed` — `{v, type, seq, session_key, error}` — currently
   only `session_capacity_exceeded`.
@@ -112,22 +165,33 @@ backend uses a lazy, bounded two-worker pool (20 concurrent sessions total).
   arguments}` — one outstanding call at a time per run (sequential tool
   execution); the run pauses until `tool.result` arrives.
 - `run.completed` — `{v, type, seq, session_key, run_id, usage:{input_tokens,
-  output_tokens, cost_usd}, stop_reason}` — terminal for the run.
+  output_tokens, cache_read, cache_write, total_tokens, cost_usd, turns},
+  stop_reason, structured?}` — terminal for the run. `usage` is the cumulative
+  per-run accounting summed over every assistant turn: input/output tokens, the
+  independently-reported cache-read/cache-write tokens, their `total_tokens`
+  sum, the priced `cost_usd`, and `turns` (the actual assistant-turn count, so a
+  multi-turn tool loop is never recorded as a single turn). `structured` is
+  present only on `output_schema` runs and carries the captured
+  `emit_structured_output` arguments.
 - `run.failed` — `{v, type, seq, session_key, run_id?, error}` — terminal.
   Protocol-scoped errors include `protocol_seq_violation`,
-  `turn_budget_exceeded`, `wall_clock_budget_exceeded`, `cost_budget_exceeded`,
+  `protocol_version_mismatch`, `turn_budget_exceeded`,
+  `wall_clock_budget_exceeded`, `cost_budget_exceeded`,
   `cost_budget_unpriced`, `malformed_frame_json`, `line_exceeds_max_bytes`,
   `malformed_chunk_frame`, `chunk_over_bound`, `chunk_reassembly_overflow`,
-  `no_provider_bound`, `unknown_session`, `session_busy`, and
-  `provider_bind_failed:<reason>`.
+  `no_provider_bound`, `unknown_session`, `session_busy`,
+  `structured_output_schema_unsupported:<detail>`,
+  `structured_output_missing`, `invalid_tool_choice`,
+  `tool_choice_unsupported:<api>`, and `provider_bind_failed:<reason>`.
 - `run.aborted` — `{v, type, seq, session_key, run_id}` — terminal ack to
   abort.
 - `payload.chunk` — `{v, type, seq, total, chunk_id, data}` — transport for
   any oversized frame above; symmetric in both directions.
 
-The worker never emits a process-wide `fatal` frame: every failure it can
-attribute to (or isolate from) a session is reported as a run-scoped
-`run.failed`, and anything else is logged to stderr.
+Apart from the handshake version-mismatch `fatal` (see Versioning), the worker
+never emits a process-wide `fatal` frame: every failure it can attribute to
+(or isolate from) a session is reported as a run-scoped `run.failed`, and
+anything else is logged to stderr.
 
 ## Discipline
 

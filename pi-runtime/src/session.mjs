@@ -7,6 +7,7 @@ import { Agent } from "@earendil-works/pi-agent-core";
 import { buildProviderBinding } from "./provider.mjs";
 import { buildAgentTools } from "./tools.mjs";
 import { LIMITS, PROTOCOL_VERSION } from "./protocol.mjs";
+import { STRUCTURED_TOOL_NAME, captureParameters, mapToolChoiceForApi, normalizeToolChoice, translateOutputSchema } from "./structured.mjs";
 
 function nowTs() {
   return Date.now();
@@ -83,7 +84,7 @@ export class PiSession {
       // Always resolve the current binding so re-binds take effect. The
       // binding's stream applies endpoint params (temperature/maxTokens/
       // reasoning/timeoutMs/maxRetries) and the guarded retry budget.
-      streamFn: (model, context, options) => this._binding.stream(model, context, options),
+      streamFn: (model, context, options) => this._stream(model, context, options),
       sessionId: this.sessionKey,
       toolExecution: "sequential",
     });
@@ -115,7 +116,84 @@ export class PiSession {
     }
   }
 
-  async prompt(runId, text, maxTurns) {
+  /**
+   * Stream one assistant turn through the current binding, injecting the
+   * run's forced `toolChoice` (structured-output runs force
+   * `emit_structured_output`; an explicit `tool_choice` frame value is mapped
+   * per provider family at prompt time).
+   */
+  _stream(model, context, options) {
+    const toolChoice = this._run && this._run.toolChoice;
+    const merged = toolChoice ? { ...options, toolChoice } : options;
+    return this._binding.stream(model, context, merged);
+  }
+
+  /**
+   * Resolve the structured-output / tool-choice setup for one run. Returns
+   * `{ structuredTool, toolChoice }` to install on the run, or emits a typed
+   * `run.failed` and returns null when the request cannot be forced
+   * (unsupported schema, invalid choice, unforceable provider family).
+   */
+  _prepareRunShape(runId, outputSchema, toolChoice) {
+    const wantsStructured = outputSchema !== undefined && outputSchema !== null;
+    let choice = null;
+    if (wantsStructured) {
+      choice = { kind: "tool", name: STRUCTURED_TOOL_NAME };
+    } else if (toolChoice !== undefined && toolChoice !== null) {
+      try {
+        choice = normalizeToolChoice(toolChoice);
+      } catch (err) {
+        this._frame("run.failed", { run_id: runId, error: err.message });
+        return null;
+      }
+    }
+    let structuredTool = null;
+    if (wantsStructured) {
+      let parameters;
+      try {
+        parameters = translateOutputSchema(outputSchema);
+      } catch (err) {
+        // Typed failure BEFORE any provider call: a schema the worker cannot
+        // force mechanically must never degrade into a prompt hint.
+        this._frame("run.failed", { run_id: runId, error: err.message });
+        return null;
+      }
+      structuredTool = {
+        name: STRUCTURED_TOOL_NAME,
+        label: "Emit structured output",
+        description: "Return the final answer as a single structured object matching the requested schema.",
+        // Guidance union: full schema first, catch-all second — the capture
+        // stays faithful and Python revalidation remains the contract.
+        parameters: captureParameters(parameters),
+        execute: async (_toolCallId, params) => {
+          // Captured, not executed: the arguments ARE the structured artifact.
+          // Nothing round-trips to the authority as a tool.call and no side
+          // effect runs; Python revalidates this object against the original
+          // schema on run.completed.
+          if (this._run) this._run.structuredValue = params;
+          return { content: [{ type: "text", text: "ok" }], details: {}, terminate: true };
+        },
+      };
+    }
+    let mapped = null;
+    if (choice) {
+      const api = (this._binding && this._binding.model && this._binding.model.api) || "";
+      mapped = mapToolChoiceForApi(api, choice);
+      if (mapped === null) {
+        if (this._binding && this._binding.isReal) {
+          // A real provider family we cannot force must fail closed — an
+          // unforced "structured" run would silently accept free-form text.
+          this._frame("run.failed", { run_id: runId, error: `tool_choice_unsupported:${api}` });
+          return null;
+        }
+        // Faux test bindings are scripted; forcing is a no-op.
+        mapped = null;
+      }
+    }
+    return { structuredTool, toolChoice: mapped, outputSchema: wantsStructured ? outputSchema : null };
+  }
+
+  async prompt(runId, text, options = {}) {
     if (!this._agent) {
       this._frame("run.failed", { run_id: runId, error: "no_provider_bound" });
       return;
@@ -124,6 +202,9 @@ export class PiSession {
       this._frame("run.failed", { run_id: runId, error: "session_busy" });
       return;
     }
+    const { maxTurns, outputSchema, toolChoice } = options || {};
+    const shape = this._prepareRunShape(runId, outputSchema, toolChoice);
+    if (shape === null) return; // typed run.failed already emitted
     const effectiveMaxTurns = Number.isInteger(maxTurns) && maxTurns > 0 ? maxTurns
       : Number.isInteger(this._limits.max_turns) && this._limits.max_turns > 0 ? this._limits.max_turns
       : null;
@@ -133,7 +214,29 @@ export class PiSession {
     // assistant messages begin so settlement sums every turn's usage, not just
     // the final assistant message (a tool loop emits several).
     const startMessageCount = (this._agent && this._agent.state.messages.length) || 0;
-    this._run = { runId, terminated: false, aborted: false, turns: 0, maxTurns: effectiveMaxTurns, budgetExceeded: false, forcedError: null, timeout: null, startMessageCount };
+    this._run = {
+      runId,
+      terminated: false,
+      aborted: false,
+      turns: 0,
+      maxTurns: effectiveMaxTurns,
+      budgetExceeded: false,
+      forcedError: null,
+      timeout: null,
+      startMessageCount,
+      outputSchema: shape.outputSchema,
+      structuredValue: undefined,
+      toolChoice: shape.toolChoice,
+    };
+    if (shape.structuredTool) {
+      // Install the forced capture tool ahead of the catalog for this run only
+      // (shadowing any catalog name collision); _settleRun restores the list.
+      this._agent.state.tools = [
+        shape.structuredTool,
+        ...this._tools.filter((tool) => tool.name !== STRUCTURED_TOOL_NAME),
+      ];
+      this._run.structuredToolInstalled = true;
+    }
     if (maxWallClockMs !== null) {
       this._run.timeout = setTimeout(() => this.failActiveRun("wall_clock_budget_exceeded"), maxWallClockMs);
     }
@@ -187,6 +290,10 @@ export class PiSession {
     if (!this._run || this._run.runId !== runId || this._run.terminated) return;
     this._run.terminated = true;
     if (this._run.timeout) clearTimeout(this._run.timeout);
+    if (this._run.structuredToolInstalled && this._agent) {
+      // The forced capture tool lives only for the structured run.
+      this._agent.state.tools = this._tools;
+    }
     // Clear any pending tool calls — the run is over.
     for (const [id, resolve] of this._pendingTools) {
       resolve({ ok: false, error: "run_terminated" });
@@ -236,15 +343,51 @@ export class PiSession {
         return;
       }
     }
+    if (this._run.outputSchema) {
+      // Forced structured contract: the run only succeeds when the model's
+      // emit_structured_output call was captured. Free-form JSON text (or a
+      // missing/incorrect tool call) is NEVER accepted as structured output —
+      // it settles as a typed failure and Python may schedule its one bounded
+      // repair.
+      if (this._run.structuredValue === undefined) {
+        this._frame("run.failed", { run_id: runId, error: "structured_output_missing" });
+        return;
+      }
+      this._frame("run.completed", {
+        run_id: runId,
+        usage: this._completedUsage(runUsage, costUsd),
+        stop_reason: (assistant && assistant.stopReason) || "stop",
+        structured: this._run.structuredValue,
+      });
+      return;
+    }
     this._frame("run.completed", {
       run_id: runId,
-      usage: {
-        input_tokens: runUsage.input,
-        output_tokens: runUsage.output,
-        cost_usd: costUsd,
-      },
+      usage: this._completedUsage(runUsage, costUsd),
       stop_reason: (assistant && assistant.stopReason) || "stop",
     });
+  }
+
+  /**
+   * Build the terminal usage block for run.completed. The ledger records exact
+   * per-run accounting, so this carries the full cumulative usage pi-ai reports
+   * across every assistant turn — input AND output tokens, the cache-read and
+   * cache-write tokens (which the ledger prices and audits separately), the
+   * summed total, the priced cost, and the actual turn count. Emitting only
+   * input/output/cost would silently drop cache usage and record every
+   * multi-turn tool loop as a single turn.
+   */
+  _completedUsage(runUsage, costUsd) {
+    const turns = this._run && Number.isInteger(this._run.turns) ? this._run.turns : 0;
+    return {
+      input_tokens: runUsage.input,
+      output_tokens: runUsage.output,
+      cache_read: runUsage.cacheRead,
+      cache_write: runUsage.cacheWrite,
+      total_tokens: runUsage.input + runUsage.output + runUsage.cacheRead + runUsage.cacheWrite,
+      cost_usd: costUsd,
+      turns,
+    };
   }
 
   /**

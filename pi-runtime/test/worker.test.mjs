@@ -61,7 +61,7 @@ class WorkerHarness {
 
   close() {
     try {
-      this.send({ v: 1, type: "shutdown" });
+      this.send({ v: 2, type: "shutdown" });
       this.child.stdin.end();
     } catch {
       /* ignore */
@@ -74,9 +74,9 @@ class WorkerHarness {
 test("handshake returns ready with package versions", async (t) => {
   const h = new WorkerHarness();
   t.after(() => h.close());
-  h.send({ v: 1, type: "hello", protocol_version: 1 });
+  h.send({ v: 2, type: "hello", protocol_version: 2 });
   const ready = await h.waitFor((f) => f.type === "ready");
-  assert.equal(ready.protocol_version, 1);
+  assert.equal(ready.protocol_version, 2);
   assert.match(ready.pi_agent_core, /^\d+\.\d+\.\d+/);
   assert.match(ready.pi_ai, /^\d+\.\d+\.\d+/);
 });
@@ -84,12 +84,12 @@ test("handshake returns ready with package versions", async (t) => {
 test("full prompt→tool.call→tool.result→run.completed round-trip", async (t) => {
   const h = new WorkerHarness();
   t.after(() => h.close());
-  h.send({ v: 1, type: "hello", protocol_version: 1 });
+  h.send({ v: 2, type: "hello", protocol_version: 2 });
   await h.waitFor((f) => f.type === "ready");
 
   const key = "sess-1";
   h.send({
-    v: 1,
+    v: 2,
     type: "session.open",
     session_key: key,
     system_prompt: "You are a test.",
@@ -111,7 +111,7 @@ test("full prompt→tool.call→tool.result→run.completed round-trip", async (
   await h.waitFor((f) => f.type === "session.opened" && f.session_key === key);
 
   h.send({
-    v: 1,
+    v: 2,
     type: "provider.bind",
     session_key: key,
     endpoint: {
@@ -124,7 +124,7 @@ test("full prompt→tool.call→tool.result→run.completed round-trip", async (
     },
   });
 
-  h.send({ v: 1, type: "turn.prompt", session_key: key, run_id: "run-1", text: "Create a task" });
+  h.send({ v: 2, type: "turn.prompt", session_key: key, run_id: "run-1", text: "Create a task" });
 
   await h.waitFor((f) => f.type === "run.started" && f.run_id === "run-1");
   const toolCall = await h.waitFor((f) => f.type === "tool.call" && f.run_id === "run-1");
@@ -133,7 +133,7 @@ test("full prompt→tool.call→tool.result→run.completed round-trip", async (
 
   // Authority responds with a successful tool result.
   h.send({
-    v: 1,
+    v: 2,
     type: "tool.result",
     session_key: key,
     run_id: "run-1",
@@ -152,11 +152,11 @@ test("full prompt→tool.call→tool.result→run.completed round-trip", async (
 test("structured tool error keeps the session alive and completes", async (t) => {
   const h = new WorkerHarness();
   t.after(() => h.close());
-  h.send({ v: 1, type: "hello", protocol_version: 1 });
+  h.send({ v: 2, type: "hello", protocol_version: 2 });
   await h.waitFor((f) => f.type === "ready");
   const key = "sess-err";
   h.send({
-    v: 1,
+    v: 2,
     type: "session.open",
     session_key: key,
     system_prompt: "s",
@@ -166,7 +166,7 @@ test("structured tool error keeps the session alive and completes", async (t) =>
   });
   await h.waitFor((f) => f.type === "session.opened");
   h.send({
-    v: 1,
+    v: 2,
     type: "provider.bind",
     session_key: key,
     endpoint: {
@@ -178,9 +178,9 @@ test("structured tool error keeps the session alive and completes", async (t) =>
       ],
     },
   });
-  h.send({ v: 1, type: "turn.prompt", session_key: key, run_id: "r", text: "go" });
+  h.send({ v: 2, type: "turn.prompt", session_key: key, run_id: "r", text: "go" });
   const toolCall = await h.waitFor((f) => f.type === "tool.call");
-  h.send({ v: 1, type: "tool.result", session_key: key, run_id: "r", tool_call_id: toolCall.tool_call_id, ok: false, error: "not_authorized" });
+  h.send({ v: 2, type: "tool.result", session_key: key, run_id: "r", tool_call_id: toolCall.tool_call_id, ok: false, error: "not_authorized" });
   const completed = await h.waitFor((f) => f.type === "run.completed" && f.run_id === "r");
   assert.ok(completed);
 });
@@ -188,12 +188,12 @@ test("structured tool error keeps the session alive and completes", async (t) =>
 test("prompt without provider binding fails closed", async (t) => {
   const h = new WorkerHarness();
   t.after(() => h.close());
-  h.send({ v: 1, type: "hello", protocol_version: 1 });
+  h.send({ v: 2, type: "hello", protocol_version: 2 });
   await h.waitFor((f) => f.type === "ready");
   const key = "sess-nobind";
-  h.send({ v: 1, type: "session.open", session_key: key, system_prompt: "s", history: [], revision: "r1", catalog: [] });
+  h.send({ v: 2, type: "session.open", session_key: key, system_prompt: "s", history: [], revision: "r1", catalog: [] });
   await h.waitFor((f) => f.type === "session.opened");
-  h.send({ v: 1, type: "turn.prompt", session_key: key, run_id: "r", text: "go" });
+  h.send({ v: 2, type: "turn.prompt", session_key: key, run_id: "r", text: "go" });
   const failed = await h.waitFor((f) => f.type === "run.failed" && f.run_id === "r");
   assert.equal(failed.error, "no_provider_bound");
 });

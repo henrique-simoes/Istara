@@ -198,6 +198,7 @@ class AgenticDispatcher:
     async def structured(self, *, purpose: str, project_id: str, system: str | None,
                          messages: list[dict[str, Any]], schema: dict[str, Any], params: TurnParams,
                          agent_id: str = "istara-main", engine: EngineChoice | None = None,
+                         request: Any | None = None,
                          task_id: str | None = None, spine_phase: str | None = None) -> StructuredResult:
         started = time.perf_counter()
         selected = await self._resolve(project_id=project_id, engine=engine, request=request)

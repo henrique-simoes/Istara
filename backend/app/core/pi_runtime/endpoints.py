@@ -82,6 +82,14 @@ class ResolvedPiEndpoint:
     # real provider HTTP stack is exercised in production paths.
     faux_responses: tuple[Any, ...] | None = None
     faux_forced_tool_calls: tuple[Any, ...] | None = None
+    # Static capability advertisement used by PiModelManager admission. 0/False
+    # means "unknown" and fails closed only when a caller explicitly requires
+    # the capability (min_context / require_vision).
+    context_window: int = 0
+    max_tokens: int = 0
+    supports_tools: bool = True
+    supports_vision: bool = False
+    kind: str = "remote"
 
     def telemetry_identity(self) -> dict[str, str]:
         """Safe fields permitted in telemetry; never return URL/key material."""
@@ -173,7 +181,15 @@ class PiEndpointResolver:
             cost_output_per_mtok=endpoint.cost_output_per_mtok,
             cost_cache_read_per_mtok=endpoint.cost_cache_read_per_mtok,
             cost_cache_write_per_mtok=endpoint.cost_cache_write_per_mtok,
+            context_window=endpoint.context_window,
+            max_tokens=endpoint.max_tokens,
+            supports_tools=endpoint.supports_tools,
+            supports_vision=endpoint.supports_vision,
         )
+
+    def configured(self) -> list[PiApiEndpoint]:
+        """Identity-only view of every configured endpoint (never secrets)."""
+        return list(self._endpoints.values())
 
     def resolve(self, endpoint_id: str, *, model: str | None = None) -> ResolvedPiEndpoint:
         endpoint = self._endpoint(endpoint_id, model)
