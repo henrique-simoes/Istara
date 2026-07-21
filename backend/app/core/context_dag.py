@@ -584,8 +584,6 @@ class ContextDAG:
 
         Falls back to a mechanical summary on failure.
         """
-        from app.core.ollama import ollama
-
         # Build a transcript
         lines: list[str] = []
         for m in messages:
@@ -608,12 +606,17 @@ class ContextDAG:
         )
 
         try:
-            result = await ollama.chat(
+            from app.core.agentic import agentic
+            from app.core.agentic.types import TurnParams
+
+            outcome = await agentic.completion(
+                purpose="dag_compaction",
+                project_id="",
+                system=None,
                 messages=[{"role": "user", "content": prompt}],
-                temperature=0.2,
-                max_tokens=settings.dag_summary_max_tokens,
+                params=TurnParams(temperature=0.2, max_tokens=settings.dag_summary_max_tokens),
             )
-            summary = result.get("message", {}).get("content", "")
+            summary = outcome.text
             if summary and summary.strip():
                 return summary.strip()
         except Exception as e:

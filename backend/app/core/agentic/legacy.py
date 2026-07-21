@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import json
 import logging
+import re
 from typing import Any
 
 from app.core.llm_schema_adapter import openai_json_schema_response_format, parse_json_object
@@ -195,8 +196,106 @@ async def _structured(kwargs: dict[str, Any]) -> dict[str, Any]:
     return outcome
 
 
+_DEFAULT_TEXT_FALLBACK_FOLLOWUP = (
+    "Now respond to the user based on this result. "
+    "Do not call another tool unless necessary."
+)
+
+# Text-fallback extraction (mirrors chat.py's baseline regex pair). Routes may
+# inject their own extractor via TurnParams.tool_call_extractor.
+_TOOL_CALL_BLOCK_RE = re.compile(
+    r'```(?:json)?\s*(\{\s*"tool"\s*:.+?\})\s*```',
+    re.DOTALL,
+)
+_TOOL_CALL_INLINE_RE = re.compile(
+    r'(\{\s*"tool"\s*:\s*"[a-z_]+".*?\})',
+    re.DOTALL,
+)
+
+
+def _default_extract_tool_call(text: str) -> tuple[dict[str, Any] | None, str, str]:
+    """Extract a ``{"tool": ..., "params": ...}`` call from raw LLM text."""
+    match = _TOOL_CALL_BLOCK_RE.search(text)
+    if not match:
+        match = _TOOL_CALL_INLINE_RE.search(text)
+    if not match:
+        return None, text, ""
+    try:
+        call = json.loads(match.group(1))
+        if "tool" not in call:
+            return None, text, ""
+        return call, text[: match.start()].strip(), text[match.end() :].strip()
+    except (json.JSONDecodeError, IndexError):
+        return None, text, ""
+
+
+async def _emit(stream_cb: Any, event: dict[str, Any]) -> None:
+    """Forward one stream event, tolerating sync and async callbacks."""
+    if stream_cb is None:
+        return
+    maybe = stream_cb(event)
+    if hasattr(maybe, "__await__"):
+        await maybe
+
+
+async def _stream_turn(
+    *,
+    history: list[dict[str, Any]],
+    system: str | None,
+    params: TurnParams,
+    tools: list[dict[str, Any]] | None,
+    project_id: str,
+    stream_cb: Any,
+    forward_tokens: bool,
+) -> dict[str, Any]:
+    """One legacy turn over ``ollama.chat_stream`` (W2 streaming surfaces).
+
+    Text chunks are forwarded per token as ``{"type": "content", ...}`` events
+    only when *forward_tokens* — the text-fallback loop must NOT stream raw
+    text because it may contain the machine-readable tool-call block. Tool-call
+    payloads arrive as a terminal dict chunk and are collected into the
+    assistant message. Streaming providers report no usage here, so accounting
+    falls to the dispatch-level estimation trace (all-or-nothing, like any
+    usage-absent legacy turn).
+    """
+    turn_parts: list[str] = []
+    tool_calls_payload: dict[str, Any] | None = None
+    async for chunk in _ollama().chat_stream(
+        messages=history,
+        model=params.model,
+        system=system,
+        temperature=params.temperature if params.temperature is not None else 0.7,
+        max_tokens=params.max_tokens,
+        tools=tools,
+        min_context=params.min_context,
+        thinking_mode=params.thinking_mode,
+        project_id=project_id,
+        strict_model_routing=params.strict_model_routing,
+    ):
+        if isinstance(chunk, dict) and chunk.get("tool_calls"):
+            tool_calls_payload = chunk
+        elif isinstance(chunk, str):
+            turn_parts.append(chunk)
+            if forward_tokens:
+                await _emit(stream_cb, {"type": "content", "text": chunk})
+    message: dict[str, Any] = {"role": "assistant", "content": "".join(turn_parts)}
+    if tool_calls_payload:
+        message["tool_calls"] = list(tool_calls_payload.get("tool_calls") or [])
+    return message
+
+
 async def _react_loop(kwargs: dict[str, Any]) -> dict[str, Any]:
-    """Legacy ReAct loop mirroring chat.py: chat -> tool_calls -> execute -> chat."""
+    """Legacy ReAct loop mirroring chat.py: chat -> tool_calls -> execute -> chat.
+
+    W2 streaming shape (``TurnParams.stream_tokens``): each turn runs over
+    ``ollama.chat_stream`` so per-token content reaches ``stream_cb`` as it
+    arrives; a ``turn_separator`` event marks the pre-tool text boundary (the
+    old SSE ``response_text + "\\n\\n"`` chunk); hallucinated tool calls (names
+    outside ``tool_names``) are filtered exactly like chat.py, optionally
+    mining user-visible text from their arguments. ``TurnParams.text_fallback``
+    selects the regex-parsed loop (no ``tools`` payload, ``[Tool: ...]``
+    conversation shaping) for models without native function calling.
+    """
     params = _params(kwargs)
     project_id = kwargs.get("project_id") or ""
     agent_id = kwargs.get("agent_id") or "istara-main"
@@ -208,6 +307,11 @@ async def _react_loop(kwargs: dict[str, Any]) -> dict[str, Any]:
         else LEGACY_MAX_TOOL_ITERATIONS
     )
     stream_cb = kwargs.get("stream_cb")
+    stream_tokens = bool(getattr(params, "stream_tokens", False)) and stream_cb is not None
+    text_fallback = bool(getattr(params, "text_fallback", False))
+    extractor = getattr(params, "tool_call_extractor", None) or _default_extract_tool_call
+    followup = getattr(params, "text_fallback_followup", None) or _DEFAULT_TEXT_FALLBACK_FOLLOWUP
+    allowed_names = set(kwargs.get("tool_names") or []) or None
 
     history = list(kwargs.get("messages") or [])
     user_text = kwargs.get("user_text")
@@ -225,61 +329,155 @@ async def _react_loop(kwargs: dict[str, Any]) -> dict[str, Any]:
     turn_usages: list[dict[str, Any]] = []
     estimation_requests: list[str] = []
     estimation_responses: list[str] = []
+
+    def _outcome(stop: str, *, extra: dict[str, Any] | None = None) -> dict[str, Any]:
+        outcome: dict[str, Any] = {
+            "text": "".join(text_parts).strip(),
+            "usage": _accumulate_usage(turn_usages, turns=len(turn_usages)),
+            "usage_estimation": {
+                "request_texts": estimation_requests,
+                "response_texts": estimation_responses,
+                "turns": len(turn_usages),
+            },
+            "stop_reason": stop,
+            "tool_calls": tool_calls_seen,
+            "status": "success",
+        }
+        if extra:
+            outcome.update(extra)
+        return outcome
+
     for iteration in range(budget + 1):
         estimation_requests.append(
             _estimation_trace(system=kwargs.get("system"), messages=history, response={})[
                 "request_texts"
             ][0]
         )
-        data = await _ollama().chat(
-            history,
-            model=params.model,
-            system=kwargs.get("system"),
-            temperature=params.temperature if params.temperature is not None else 0.7,
-            max_tokens=params.max_tokens,
-            tools=tools,
-            min_context=params.min_context,
-            thinking_mode=params.thinking_mode,
-            project_id=project_id,
-        )
-        outcome = _normalize_chat(data)
-        turn_usages.append(outcome["usage"])
-        message = data.get("message") or {}
+        if text_fallback:
+            # Never forward raw tokens here: the text may carry the tool block.
+            message = await _stream_turn(
+                history=history, system=kwargs.get("system"), params=params,
+                tools=None, project_id=project_id, stream_cb=stream_cb,
+                forward_tokens=False,
+            )
+            turn_usages.append({})
+        elif stream_tokens:
+            message = await _stream_turn(
+                history=history, system=kwargs.get("system"), params=params,
+                tools=tools, project_id=project_id, stream_cb=stream_cb,
+                forward_tokens=True,
+            )
+            turn_usages.append({})
+        else:
+            data = await _ollama().chat(
+                history,
+                model=params.model,
+                system=kwargs.get("system"),
+                temperature=params.temperature if params.temperature is not None else 0.7,
+                max_tokens=params.max_tokens,
+                tools=tools,
+                min_context=params.min_context,
+                thinking_mode=params.thinking_mode,
+                project_id=project_id,
+            )
+            outcome = _normalize_chat(data)
+            turn_usages.append(outcome["usage"])
+            message = data.get("message") or {}
         estimation_responses.append(json.dumps(message, sort_keys=True, default=str))
+        turn_text = str(message.get("content") or "")
         raw_calls = list(message.get("tool_calls") or [])
+
+        if text_fallback:
+            tool_call, text_before, _ = extractor(turn_text)
+            if tool_call and iteration < budget and tool_executor is not None:
+                if text_before:
+                    text_parts.append(text_before)
+                    await _emit(stream_cb, {"type": "content", "text": text_before + "\n\n"})
+                name = str(tool_call.get("tool") or "")
+                arguments = tool_call.get("params") or {}
+                if not isinstance(arguments, dict):
+                    arguments = {}
+                tool_calls_seen.append({"tool": name, "params": arguments})
+                await _emit(stream_cb, {"type": "tool_call", "tool": name, "params": arguments})
+                result = await tool_executor(name, arguments, project_id, agent_id)
+                if isinstance(result, dict):
+                    result_text = result.get("result", result.get("error", "Unknown result"))
+                else:
+                    result_text = str(result)
+                history.append(
+                    {
+                        "role": "assistant",
+                        "content": (
+                            text_before + f"\n\n[Tool: {name}]" if text_before else f"[Tool: {name}]"
+                        ),
+                    }
+                )
+                history.append(
+                    {
+                        "role": "user",
+                        "content": f"[Tool result for {name}]:\n{result_text}\n\n{followup}",
+                    }
+                )
+                continue
+            if tool_call and getattr(params, "suppress_budget_exhausted_text", False):
+                # The caller renders its own fallback answer for a budget-ended
+                # tool call; the raw tail (with the machine block) never streams.
+                return _outcome(
+                    "turn_budget_exceeded", extra={"budget_exhausted_tool_call": True}
+                )
+            final_text = turn_text.strip() if getattr(params, "final_text_strip", False) else turn_text
+            if final_text or not getattr(params, "final_text_strip", False):
+                text_parts.append(final_text)
+                await _emit(stream_cb, {"type": "content", "text": final_text})
+            stop = "turn_budget_exceeded" if tool_call else "stop"
+            return _outcome(stop)
+
+        # Hallucinated-tool filtering for the W2 streaming chat surfaces
+        # (chat.py semantics): names outside the advertised catalog never
+        # execute; their user-visible argument text is recovered when enabled.
+        extracted_text = ""
+        if stream_tokens and allowed_names is not None and raw_calls:
+            real_calls: list[dict[str, Any]] = []
+            for call in raw_calls:
+                name, arguments = _tool_call_parts(call)
+                if name in allowed_names:
+                    real_calls.append(call)
+                elif getattr(params, "hallucination_text_extract", True):
+                    logger.info(
+                        "Hallucinated tool call '%s' — extracting text from arguments", name
+                    )
+                    extracted = arguments.get(
+                        "text", arguments.get("content", arguments.get("response", ""))
+                    )
+                    if extracted:
+                        extracted_text += str(extracted)
+            raw_calls = real_calls
+
         if not raw_calls or iteration >= budget or tool_executor is None:
-            text_parts.append(outcome["text"])
-            if stream_cb is not None and outcome["text"]:
-                maybe = stream_cb({"type": "content", "text": outcome["text"]})
-                if hasattr(maybe, "__await__"):
-                    await maybe
+            text_parts.append(turn_text + extracted_text)
+            if stream_tokens:
+                # Tokens already streamed; only mined hallucination text remains.
+                if extracted_text:
+                    await _emit(stream_cb, {"type": "content", "text": extracted_text})
+            elif turn_text and stream_cb is not None:
+                await _emit(stream_cb, {"type": "content", "text": turn_text})
             stop = (
                 "turn_budget_exceeded"
                 if raw_calls and iteration >= budget
-                else outcome["stop_reason"]
+                else "stop"
             )
-            return {
-                "text": "".join(text_parts).strip(),
-                "usage": _accumulate_usage(turn_usages, turns=len(turn_usages)),
-                "usage_estimation": {
-                    "request_texts": estimation_requests,
-                    "response_texts": estimation_responses,
-                    "turns": len(turn_usages),
-                },
-                "stop_reason": stop,
-                "tool_calls": tool_calls_seen,
-                "status": "success",
-            }
-        if outcome["text"].strip():
-            text_parts.append(outcome["text"])
+            return _outcome(stop)
+
+        if turn_text.strip():
+            text_parts.append(turn_text)
+        if stream_tokens and turn_text.strip():
+            # Pre-tool text boundary: the old SSE chunk was response_text+"\n\n".
+            await _emit(stream_cb, {"type": "turn_separator", "text": "\n\n"})
         history.append(message)
         for call in raw_calls:
             name, arguments = _tool_call_parts(call)
             tool_calls_seen.append({"tool": name, "params": arguments})
-            if stream_cb is not None:
-                maybe = stream_cb({"type": "tool_call", "tool": name, "params": arguments})
-                if hasattr(maybe, "__await__"):
-                    await maybe
+            await _emit(stream_cb, {"type": "tool_call", "tool": name, "params": arguments})
             result = await tool_executor(name, arguments, project_id, agent_id)
             history.append({"role": "tool", "content": json.dumps(result, default=str)})
     raise AssertionError("unreachable")

@@ -6,11 +6,11 @@ item: pi-full-replacement
 branch: Review_pi_test
 cf: { spec: CF-SPEC-8, tasks: [pi-full-20260720-w0-IMPL, pi-full-20260720-w0-REVIEW] }
 phase: "W2 — interactive-surface migration"
-stage: S4-remediate
+stage: S3-review
 status: in-progress
-blocked_on: null
-last: { agent: gpt-5.6-terra, at: 2026-07-21T06:44:50Z, ledger: L-29 }
-next_action: "Run the bounded W2 delta re-review of the dispatcher streaming, scanner-governance, route, and ratchet surfaces."
+blocked_on: none
+last: { agent: claude-opus-4-8, at: 2026-07-21T07:25:00Z, ledger: L-31 }
+next_action: "W2 delta re-review r2 PASSED: CF-190 closes F-W2-R1-1 — both chat.py _tool_exec closures now enqueue the tool-result display only (direct all_text_parts.append deleted), so the persisted transcript carries each display exactly once, in stream order; two new persist-once/in-order route tests pass and 137 pi_production/pi_migration + 43 candidate/contract/ASGI tests are green. W2 review lineage has no open findings; hand back to the conductor for W2 stage-exit acceptance (non-blocking: pre-existing chat.py/bridge.py ruff debt, not fix-induced)."
 ```
 <!-- /STATUS BLOCK -->
 
@@ -675,6 +675,41 @@ Result: F-W2-1 and its streaming/scanner prerequisites F-W2-1a/F-W2-1b are fixed
 Verified: `pytest -q tests/pi_migration/test_count_to_zero.py tests/pi_production/test_w1_agentic_contract.py` = 28 passed; `pytest -q tests/pi_migration tests/pi_production` = 113 passed; `pytest -q tests/test_pi_replacement_candidate.py` = 13 passed; `python scripts/security_benchmark.py --fail-on-threshold` = 28/28 pass; `python scripts/feature_docs.py --seed-missing --generate-site --check` = 86 features passed; `pytest -q tests/test_feature_docs.py` = 6 passed; `compass-forge gate after --task FIX-pi-full-20260720-w2-REVIEW-r1 --summary` = 0 new/actionable failures and 0 drift (inherited secret-flow/large-file failures remain); `git diff --check` = passed.
 Next: stage exit: bounded W2 delta re-review may verify F-W2-1/F-W2-1a/F-W2-1b and their immediate route/scanner seams.
 
+### L-30 | 2026-07-21T07:06:00Z | S3-review | claude-opus-4-8 | reviewer | W2 <!-- bsc-ledger:REREV-pi-full-20260720-w2-REVIEW-r1 -->
+Did: Ran the bounded W2 delta re-review of `FIX-pi-full-20260720-w2-REVIEW-r1`. Verified the three cited fixes against code + command evidence and inspected only the changed route/legacy/scanner seams for regressions. Confirmed F-W2-1 (ratchet 78; all nine interactive surfaces off the product allowlist, scanner reconciles), F-W2-1a (the legacy executor now streams native provider chunks via `_stream_turn` over `ollama.chat_stream` and the new `bridge.py` queue-bridge, preserving per-token SSE, hallucinated-tool filtering, and the `turn_separator` pre-tool boundary; `compute_registry.chat_stream` accepts the forwarded `min_context/thinking_mode/project_id/strict_model_routing` kwargs — no TypeError), and F-W2-1b (browser_service resolves endpoint identity through `PiModelManager.resolve` and records a governed `tool.browse_website` ledger row; the inventory scanner exempts only the inline `# pi-governed` construction, a documented owner decision).
+Result: **FAIL** — the three fixes are correct and re-verified, but the migration INTRODUCED one Blocker regression in the immediate seam it changed. `backend/app/api/routes/chat.py` `_generate_native_tools` and `_generate_text_fallback` append the tool-result display to `all_text_parts` TWICE: the route-local `_tool_exec` closure appends `result_display` directly (chat.py:364 / :461) AND enqueues the same `{type:content}` event, which the main SSE loop re-appends when the bridge re-yields it (chat.py:394 / :490). Because the persisted assistant `Message` is `"".join(all_text_parts)` (chat.py:951), every tool-using non-Pi chat turn saves each `**<tool>**: <result>` block duplicated; the synchronous `_tool_exec` append also races AHEAD of the async-drained streamed tokens, so the persisted transcript is duplicated AND mis-ordered. The SSE wire copy is correct (once). The Pi path (chat.py:164-173) and interfaces.py design chat (interfaces.py:161-165) correctly do NOT append in `_tool_exec`, and HEAD appended the display exactly once — confirming the regression. Opened **F-W2-R1-1** (Blocker) under the w2-fixer.
+Verified: `python -m pytest -q tests/pi_migration/test_count_to_zero.py tests/pi_production/test_w1_agentic_contract.py` = 28 passed (ratchet=78, only-ratchets-down holds); `python -m pytest -q tests/pi_migration tests/pi_production` = 137 passed; `python -m pytest -q tests/test_pi_replacement_candidate.py` = 13 passed; focused proof driving `chat._generate_native_tools` with a single tool call → `all_text_parts == ['**list_tasks**: TOOLRESULT\n\n','thinking ','**list_tasks**: TOOLRESULT\n\n','final answer']` (display persisted 2×, expected 1; SSE wire copy 1×). The regression is uncovered by the suites because the candidate fail-closed tests return before any tool call.
+Next: `pi-full-20260720-w2-fixer` closes F-W2-R1-1 (delete the direct `all_text_parts.append(result_display)` in both chat.py `_tool_exec` closures; rely on the queued content event; drop the secondary `observe_chunk` double-count; add a route-level persist-once/in-order regression test), then the conductor creates the bounded delta re-review.
+
+### L-31 | 2026-07-21T07:25:00Z | S3-review | claude-opus-4-8 | reviewer | W2 <!-- bsc-ledger:REREV-pi-full-20260720-w2-REVIEW-r2 -->
+Did: Ran the bounded W2 delta re-review r2 of `CF-190` (`FIX-REREV-pi-full-20260720-w2-REVIEW-r1`)
+against F-W2-R1-1. Verified the cited fix against code + command evidence and inspected only the
+changed seam: `backend/app/api/routes/chat.py` `_generate_native_tools`/`_generate_text_fallback`
+`_tool_exec` closures and their main-loop drain, `backend/app/core/agentic/bridge.py`, and
+`backend/app/core/agentic/legacy.py` `_react_loop`/`_stream_turn`. No broadening warranted (no
+architecture/acceptance change; no adjacent defect beyond the non-blocking pre-existing lint below).
+Result: **pass**. F-W2-R1-1 (Blocker) is closed: both `_tool_exec` closures now ONLY enqueue the
+tool-result display (`queue.put({type:content,text:result_display})`); the direct
+`all_text_parts.append(result_display)` is deleted from both (grep confirms `result_display` is only
+`put` on the queue, and `all_text_parts.append(text)` appears only in the three main-loop drains —
+Pi:200, native:398, text-fallback:497). The shared FIFO queue interleaves engine tokens and tool
+displays in execution order, and `bridge.py` emits its terminal `_complete`/exc sentinel only after
+all prior queue events, so each display is persisted exactly once, in stream order, with no loss on a
+later-turn error; `turn_separator` is streamed to the wire but not appended, avoiding a double
+newline. Traced both loops end-to-end: native persisted == `"thinking "+display+"final answer"`,
+text-fallback == `"Before tool\n\n"+display+"final answer"`. The two new route regression tests
+assert persist-once, exact order, tool-executed, and SSE-wire-once for both loops (fail pre-fix
+`count==2`, pass post-fix). The finding's secondary `observe_chunk` double-count claim was inaccurate
+— `observe_chunk` only runs in the main-loop drains, so the display was already counted once; the
+fixer correctly made no `observe_chunk` change (its self-report notes the same). One non-blocking
+observation (no finding task, not fix-induced): chat.py carries 33 pre-existing ruff errors at HEAD
+(34 in working tree; the +2 are benign `F811` — the `agent` param shadows the module-level
+`from app.core.agent import agent`, mirroring HEAD's own Pi-path closure, and `agent_id=agent` is
+passed correctly) and `bridge.py` has 1 `UP035` from the r1 migration; chat.py was never ruff-clean
+at HEAD, so this is not a fix-induced acceptance change.
+Verified: `python -m pytest tests/test_pi_replacement_candidate.py::test_native_tools_persists_tool_result_display_once_in_stream_order tests/test_pi_replacement_candidate.py::test_text_fallback_persists_tool_result_display_once_in_stream_order -q` = 2 passed; `python -m pytest tests/pi_production tests/pi_migration -q` = 137 passed; `python -m pytest tests/test_pi_replacement_candidate.py tests/pi_production/test_w1_agentic_contract.py tests/pi_production/test_chat_pi_asgi.py -q` = 43 passed; `grep -n result_display/all_text_parts.append backend/app/api/routes/chat.py` = direct append absent, drains only in the main loop.
+Next: F-W2-R1-1 confirmed closed; the `pi-full-20260720-w2-REVIEW` lineage has no open findings. Hand back to the conductor for W2 stage-exit acceptance.
+
 ## W0 — hardening and evidence integrity
 
 **Frame/Plan:** Master plan §6 plus §12.2. Arm the deterministic inventory/ratchet before
@@ -748,10 +783,13 @@ structured-output protocol, one-row usage accounting, and retain the armed 87-si
 
 | ID | Sev | Dim | Where | Finding | CF task | Status |
 |---|---|---|---|---|---|---|
-| F-W2-1 | Blocker | Integration | `backend/app/api/routes/{chat,interfaces}.py`; `backend/app/services/browser_service.py`; migration ratchet | Completed by `FIX-pi-full-20260720-w2-REVIEW-r1`: the five remaining product entries now use the dispatcher/governed endpoint path and the allowlist ratchet is 78. | FIX-pi-full-20260720-w2-REVIEW-r1 | fixed (L-29) |
-| F-W2-1a | Blocker-prerequisite | Bugs | `backend/app/core/agentic/{legacy,bridge,types}.py` | Completed by `FIX-pi-full-20260720-w2-REVIEW-r1`: the legacy executor forwards native provider chunks through the SSE bridge while retaining tool-call filtering and execution. | FIX-pi-full-20260720-w2-REVIEW-r1 | fixed (L-29) |
-| F-W2-1b | Blocker-prerequisite | Governance | `scripts/pi_migration_inventory.py`; `backend/app/services/browser_service.py` | Completed by `FIX-pi-full-20260720-w2-REVIEW-r1`: only an inline `pi-governed` ChatOpenAI construction whose endpoint comes from `PiModelManager` is exempt from the legacy inventory. | FIX-pi-full-20260720-w2-REVIEW-r1 | fixed (L-29) |
-| F-W2-INFO | Info | Observability | completion call sites | Real project ids should be threaded to the four previously migrated completion paths when those callers gain project scope. | — | accepted-risk |
+| F-W2-1 | Blocker | Integration | `backend/app/api/routes/{chat,interfaces}.py`; `backend/app/services/browser_service.py`; migration ratchet | Completed by `FIX-pi-full-20260720-w2-REVIEW-r1`: the five remaining product entries now use the dispatcher/governed endpoint path and the allowlist ratchet is 78. | FIX-pi-full-20260720-w2-REVIEW-r1 | fixed (L-29); re-verified L-30 |
+| F-W2-1a | Blocker-prerequisite | Bugs | `backend/app/core/agentic/{legacy,bridge,types}.py` | Completed by `FIX-pi-full-20260720-w2-REVIEW-r1`: the legacy executor forwards native provider chunks through the SSE bridge while retaining tool-call filtering and execution. | FIX-pi-full-20260720-w2-REVIEW-r1 | fixed (L-29); re-verified L-30 (streaming/filtering seam correct; but see F-W2-R1-1 for a route persistence regression) |
+| F-W2-1b | Blocker-prerequisite | Governance | `scripts/pi_migration_inventory.py`; `backend/app/services/browser_service.py` | Completed by `FIX-pi-full-20260720-w2-REVIEW-r1`: only an inline `pi-governed` ChatOpenAI construction whose endpoint comes from `PiModelManager` is exempt from the legacy inventory. | FIX-pi-full-20260720-w2-REVIEW-r1 | fixed (L-29); re-verified L-30 (marker-based exemption is an accepted honor-system governance decision) |
+| F-W2-R1-1 | Blocker | Bugs | `backend/app/api/routes/chat.py:340-370,398,455-470,497,958` | Closed by `CF-190` (L-31): the migrated `_generate_native_tools`/`_generate_text_fallback` `_tool_exec` closures now ONLY enqueue the tool-result display (`queue.put({type:content,text:result_display})`); the direct `all_text_parts.append(result_display)` is deleted from both, so the shared FIFO queue drains each display to `all_text_parts` exactly once, in stream order (the bridge emits its terminal `_complete`/exc sentinel only after all prior queue events, so no display is lost or reordered even on a later-turn error). Two route-level regression tests assert persist-once, exact stream order, tool-executed, and SSE-wire-once for both loops (fail pre-fix `count==2`, pass post-fix). The finding's secondary `observe_chunk` double-count claim was inaccurate — `observe_chunk` only runs in the main-loop drains (never in the closures), so the display was already counted once; the fixer correctly made no `observe_chunk` change. | FIX-REREV-pi-full-20260720-w2-REVIEW-r1 (CF-190) | fixed (re-review passed L-31) |
+| F-W2-INFO | Info | Observability | completion call sites | Real project ids should be threaded to the four previously migrated completion paths when those callers gain project scope. presentation.slides and the browse_website tool now thread a real project_id; context_dag/context_summarizer/ui_audit stay `""` where callers expose no project scope. | — | accepted-risk |
+
+**Remediation:** `FIX-pi-full-20260720-w2-REVIEW-r1` (L-29) completed F-W2-1/F-W2-1a/F-W2-1b and the bounded L-30 delta re-review re-verified all three (ratchet 78 with a reconciling scanner; the legacy streaming + queue-bridge seam preserves per-token SSE, hallucinated-tool filtering, and the pre-tool `turn_separator`; the browser endpoint is `PiModelManager`-governed with a `tool.browse_website` ledger row and a documented scanner exemption). L-30 **failed** the wave because that same fix introduced F-W2-R1-1: the chat.py streaming routes double-append (and mis-order) the tool-result display into the persisted assistant transcript. F-W2-R1-1 was owned by `pi-full-20260720-w2-fixer` (`FIX-REREV-pi-full-20260720-w2-REVIEW-r1`, dispatched as CF-190). `CF-190` (L-31 fixer, `opus.4.8-xhigh`) closed it by deleting the direct `all_text_parts.append(result_display)` in both `_tool_exec` closures so the display flows solely through the queued `content` event drained once, in stream order, and by adding two persist-once/in-order route regression tests. The bounded **L-31 delta re-review passed**: the fix is correct and regression-free (137 pi_production/pi_migration + 43 candidate/W1-contract/ASGI tests green; the two new tests fail pre-fix and pass post-fix), the finding's secondary `observe_chunk` double-count claim was a non-issue (already counted once), and the only residual is pre-existing, non-fix-induced chat.py/bridge.py ruff debt (no finding task). The W2 review lineage (`pi-full-20260720-w2-REVIEW`) now has no open findings; W2 is ready for stage-exit acceptance.
 
 ## Summary (S5 — whole plan)
 

@@ -17,6 +17,7 @@ import logging
 import re
 import tempfile
 import uuid
+import asyncio
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -30,11 +31,14 @@ from app.api.agent_project_scope import require_agent_assignable_to_project
 from app.config import settings
 from app.core.agent import agent
 from app.core.agent_identity import load_agent_identity, get_agent_display_name
+from app.core.agentic import AgenticDispatcher
+from app.core.agentic.bridge import stream_chat_turn
+from app.core.agentic.types import TurnParams
 from app.core.content_guard import ContentGuard
 from app.core.prompt_rag import compose_dynamic_prompt, compose_keyword_prompt
 from app.core.context_summarizer import context_summarizer
 from app.core.llm_thinking import ThinkingMode, apply_thinking_control, normalize_thinking_mode
-from app.core.ollama import ollama
+from app.core.ollama import ollama  # noqa: F401 — W2: transport moved to the dispatcher; tests monkeypatch this handle
 from app.core.permissions import get_visible_project_or_404, require_project_access
 from app.core.pi_replacement import (
     PiChatRunMetrics,
@@ -44,7 +48,6 @@ from app.core.pi_replacement import (
     record_pi_span,
 )
 from app.core.pi_runtime import PiExecutionService
-from app.core.pi_runtime.endpoints import PiEndpointResolutionError
 from app.core.rag import build_augmented_prompt, retrieve_context
 from app.core.research_validity import RESEARCH_VALIDITY_CONTRACT, protected_block
 from app.core.token_counter import context_guard
@@ -111,6 +114,15 @@ def _get_pi_execution_service() -> PiExecutionService:
     return _pi_execution_service
 
 
+def _get_agentic_dispatcher() -> AgenticDispatcher:
+    """Dispatcher bound to THIS route's Pi service (W2 single entry point).
+
+    Built per call so tests rebinding ``_pi_execution_service`` (and any future
+    reconfiguration) always dispatch through the current service instance.
+    """
+    return AgenticDispatcher(pi_service=_get_pi_execution_service())
+
+
 async def _generate_pi_runtime(
     messages: list[dict],
     all_text_parts: list[str],
@@ -119,7 +131,7 @@ async def _generate_pi_runtime(
     session_agent_id: str | None,
     turn_status: dict | None = None,
 ):
-    """Drive one chat turn through the real Pi Agent Core worker (AC-1).
+    """Drive one chat turn through the AgenticDispatcher's Pi engine (AC-1).
 
     The already-composed system prompt (with protected research/promotion
     blocks) and prior turns are sent to the worker; the real pi-agent-core
@@ -168,15 +180,18 @@ async def _generate_pi_runtime(
     # mid-turn. Only Pi-selected turns reach here, so non-Pi chat is unchanged.
     steering = service.steering_binding(agent_id=agent_id, project_id=request.project_id)
     try:
-        async for event in service.run_chat_turn(
+        async for event in stream_chat_turn(
+            _get_agentic_dispatcher(),
             project_id=request.project_id,
             agent_id=agent_id,
+            session_key=session_key,
             system_prompt=system_prompt,
-            history=history,
+            messages=history,
             user_text=user_text,
             tool_executor=_tool_exec,
-            session_key=session_key,
-            steering=steering,
+            params=TurnParams(),
+            steering_binding=steering,
+            engine="pi",
         ):
             etype = event["type"]
             if etype == "content":
@@ -200,9 +215,14 @@ async def _generate_pi_runtime(
                         "detail": str(error_message),
                     }
                 ) + "\n\n"
-            elif etype == "done":
-                break
-    except (PiEndpointResolutionError, Exception) as exc:  # fail closed, never fall through
+            elif etype == "_complete":
+                result = event.get("result")
+                if result is not None and result.status != "success" and status == "success":
+                    # Terminal abort/error without a streamed error event still
+                    # fails closed (H-9): no assistant message is persisted.
+                    status = "error"
+                    error_message = error_message or f"pi_turn_{result.status}"
+    except Exception as exc:  # fail closed, never fall through
         status = "error"
         error_message = str(exc)
         _chat_log.warning("Pi runtime chat turn failed: %s", exc)
@@ -287,10 +307,13 @@ async def _generate_native_tools(
     *,
     pi_candidate: bool = False,
 ):
-    """Native tool-calling loop using the OpenAI `tools` parameter.
+    """Native tool-calling loop via the AgenticDispatcher (W2).
 
-    Yields SSE event strings.  Modifies *conversation*, *all_text_parts*,
-    and *tool_results* in place.
+    The legacy ReAct loop (streaming ``ollama.chat_stream`` turns, tool
+    execution, hallucinated-tool filtering) now lives in the dispatcher's
+    legacy executor; this generator translates its stream events into the
+    existing SSE envelope. Provider chunks stream per token, so the wire
+    content is unchanged while chunking is finer than the old per-turn chunk.
     """
     pi_metrics = PiChatRunMetrics(
         project_id=request.project_id,
@@ -312,153 +335,74 @@ async def _generate_native_tools(
                 yield event
             return
 
-    try:
-        for iteration in range(MAX_TOOL_ITERATIONS + 1):
-            # Collect the full response (text + possible tool_calls dict)
-            content_chunks: list[str] = []
-            tool_calls_payload: dict | None = None
+    queue: asyncio.Queue = asyncio.Queue()
 
-            async for chunk in ollama.chat_stream(
-                messages=conversation,
+    async def _tool_exec(name, params, project_id, agent):
+        tool_started = datetime.now(timezone.utc)
+        result = await execute_tool(name, params, project_id, agent_id=agent)
+        if pi_metrics:
+            pi_metrics.observe_tool_call()
+        if pi_candidate:
+            tool_duration_ms = (
+                datetime.now(timezone.utc) - tool_started
+            ).total_seconds() * 1000
+            await record_pi_span(
+                operation="pi_candidate_tool_call",
+                project_id=request.project_id,
+                agent_id=session_agent_id or "istara-main",
+                tool_name=name,
+                tool_success="error" not in result,
+                duration_ms=tool_duration_ms,
+            )
+        if isinstance(result, dict):
+            result_text = result.get("result", result.get("error", "Unknown result"))
+        else:
+            result_text = str(result)
+        tool_results.append({"tool": name, "result": result_text})
+        # Stream tool result notification to client (persisted, like before).
+        # NOTE (F-W2-R1-1): do NOT append to all_text_parts here. The queued
+        # content event below is drained by the main SSE loop, which appends it
+        # to all_text_parts once, in stream order. A direct append here would
+        # duplicate and (racing the async queue drain) misorder every
+        # tool-result block in the persisted assistant transcript.
+        result_display = f"**{name}**: {result_text}\n\n"
+        await queue.put({"type": "content", "text": result_display})
+        return result
+
+    try:
+        async for event in stream_chat_turn(
+            _get_agentic_dispatcher(),
+            queue=queue,
+            project_id=request.project_id,
+            agent_id=session_agent_id or "istara-main",
+            session_key=None,
+            system_prompt="",
+            messages=list(conversation),
+            user_text="",
+            tool_executor=_tool_exec,
+            tool_names=[t["function"]["name"] for t in OPENAI_TOOLS],
+            tools=OPENAI_TOOLS,
+            params=TurnParams(
                 model=effective_model,
                 temperature=llm_temperature,
                 max_tokens=llm_max_tokens,
-                tools=OPENAI_TOOLS,
-                project_id=request.project_id,
+                max_turns=MAX_TOOL_ITERATIONS,
+                stream_tokens=True,
                 strict_model_routing=True if pi_candidate else None,
-            ):
-                if isinstance(chunk, dict) and chunk.get("tool_calls"):
-                    tool_calls_payload = chunk
-                elif isinstance(chunk, str):
-                    content_chunks.append(chunk)
-                    if pi_metrics:
-                        pi_metrics.observe_chunk(chunk)
-
-            response_text = "".join(content_chunks)
-
-            # If we got tool_calls AND we haven't exceeded iterations, execute them
-            if tool_calls_payload and iteration < MAX_TOOL_ITERATIONS:
-                raw_tool_calls = tool_calls_payload["tool_calls"]
-
-                # Filter out hallucinated tool calls (model calls non-existent tools)
-                valid_tool_names = {t["function"]["name"] for t in OPENAI_TOOLS}
-                real_tool_calls = []
-                for tc in raw_tool_calls:
-                    fn_name = tc.get("function", {}).get("name", "")
-                    if fn_name in valid_tool_names:
-                        real_tool_calls.append(tc)
-                    else:
-                        # Hallucinated tool — extract text from arguments as response
-                        _chat_log.info(
-                            "Hallucinated tool call '%s' — extracting text from arguments", fn_name
-                        )
-                        try:
-                            args = json.loads(tc.get("function", {}).get("arguments", "{}"))
-                            # Common patterns: {"text": "..."}, {"content": "..."}, {"response": "..."}
-                            extracted = args.get("text", args.get("content", args.get("response", "")))
-                            if extracted:
-                                response_text += str(extracted)
-                        except (json.JSONDecodeError, TypeError):
-                            pass
-
-                if not real_tool_calls:
-                    # All tool calls were hallucinated — treat as final text response
-                    all_text_parts.append(response_text)
-                    event_data = json.dumps({"type": "chunk", "content": response_text})
-                    yield f"data: {event_data}\n\n"
-                    break
-
-                raw_tool_calls = real_tool_calls
-
-                # Stream any text the model produced before the tool calls
-                if response_text.strip():
-                    all_text_parts.append(response_text)
-                    event_data = json.dumps({"type": "chunk", "content": response_text + "\n\n"})
-                    yield f"data: {event_data}\n\n"
-
-                # Build the assistant message with tool_calls for the conversation
-                assistant_msg_for_conv: dict = {
-                    "role": "assistant",
-                    "content": response_text or "",
-                    "tool_calls": raw_tool_calls,
-                }
-                conversation.append(assistant_msg_for_conv)
-
-                # Execute each tool call and add role:"tool" result messages
-                for tc in raw_tool_calls:
-                    tc_id = tc.get("id", str(uuid.uuid4()))
-                    fn = tc.get("function", {})
-                    tool_name = fn.get("name", "")
-                    try:
-                        tool_params = json.loads(fn.get("arguments", "{}"))
-                    except (json.JSONDecodeError, TypeError):
-                        tool_params = {}
-
-                    _chat_log.info(
-                        "Native tool call [%d]: %s(%s)",
-                        iteration,
-                        tool_name,
-                        json.dumps(tool_params)[:200],
-                    )
-                    if pi_metrics:
-                        pi_metrics.observe_tool_call()
-
-                    # Notify client about tool execution
-                    tool_event = json.dumps(
-                        {
-                            "type": "tool_call",
-                            "tool": tool_name,
-                            "params": tool_params,
-                        }
-                    )
-                    yield f"data: {tool_event}\n\n"
-
-                    tool_started = datetime.now(timezone.utc)
-                    result = await execute_tool(
-                        tool_name,
-                        tool_params,
-                        request.project_id,
-                        agent_id=session_agent_id or "istara-main",
-                    )
-                    if pi_candidate:
-                        tool_duration_ms = (
-                            datetime.now(timezone.utc) - tool_started
-                        ).total_seconds() * 1000
-                        await record_pi_span(
-                            operation="pi_candidate_tool_call",
-                            project_id=request.project_id,
-                            agent_id=session_agent_id or "istara-main",
-                            tool_name=tool_name,
-                            tool_success="error" not in result,
-                            duration_ms=tool_duration_ms,
-                        )
-
-                    result_text = result.get("result", result.get("error", "Unknown result"))
-                    tool_results.append({"tool": tool_name, "result": result_text})
-
-                    # Stream tool result notification to client
-                    result_display = f"**{tool_name}**: {result_text}\n\n"
-                    all_text_parts.append(result_display)
-                    result_event = json.dumps({"type": "chunk", "content": result_display})
-                    yield f"data: {result_event}\n\n"
-
-                    # Append role:"tool" message for multi-turn tool use
-                    conversation.append(
-                        {
-                            "role": "tool",
-                            "tool_call_id": tc_id,
-                            "content": str(result_text),
-                        }
-                    )
-
-                # Loop back for the model's follow-up
-                continue
-            else:
-                # No tool calls -- final text response
-                all_text_parts.append(response_text)
-                event_data = json.dumps({"type": "chunk", "content": response_text})
-                yield f"data: {event_data}\n\n"
-                break
+            ),
+            engine="legacy",
+        ):
+            etype = event["type"]
+            if etype == "content":
+                text = event.get("text", "")
+                all_text_parts.append(text)
+                if pi_metrics:
+                    pi_metrics.observe_chunk(text)
+                yield f"data: {json.dumps({'type': 'chunk', 'content': text})}\n\n"
+            elif etype == "turn_separator":
+                yield f"data: {json.dumps({'type': 'chunk', 'content': event.get('text', '')})}\n\n"
+            elif etype == "tool_call":
+                yield f"data: {json.dumps({'type': 'tool_call', 'tool': event.get('tool'), 'params': event.get('params', {})})}\n\n"
     except Exception as exc:
         if pi_metrics:
             await pi_metrics.finish(status="error", error_message=str(exc))
@@ -480,10 +424,13 @@ async def _generate_text_fallback(
     *,
     pi_candidate: bool = False,
 ):
-    """Legacy text-based tool parsing loop (regex fallback).
+    """Legacy text-based tool parsing loop via the AgenticDispatcher (W2).
 
-    Yields SSE event strings.  Used when native tool calling is not
-    supported by the current model/provider.
+    The regex-parsed ReAct loop (chat.py's ``_extract_tool_call`` contract,
+    ``[Tool: ...]`` conversation shaping) runs inside the dispatcher's legacy
+    executor; this generator translates its stream events into the existing
+    SSE envelope. Raw tokens never stream per token here — a turn's text may
+    carry the machine-readable tool block, so text events arrive per turn.
     """
     pi_metrics = PiChatRunMetrics(
         project_id=request.project_id,
@@ -503,88 +450,56 @@ async def _generate_text_fallback(
                 yield event
             return
 
+    queue: asyncio.Queue = asyncio.Queue()
+
+    async def _tool_exec(name, params, project_id, agent):
+        result = await execute_tool(name, params, project_id, agent_id=agent)
+        if pi_metrics:
+            pi_metrics.observe_tool_call()
+        if isinstance(result, dict):
+            result_text = result.get("result", result.get("error", "Unknown result"))
+        else:
+            result_text = str(result)
+        tool_results.append({"tool": name, "result": result_text})
+        # NOTE (F-W2-R1-1): rely solely on the queued content event; the main
+        # SSE loop appends it to all_text_parts once, in stream order. A direct
+        # append here would duplicate and misorder the persisted tool-result
+        # block.
+        result_display = f"**{name}**: {result_text}\n\n"
+        await queue.put({"type": "content", "text": result_display})
+        return result
+
     try:
-        for iteration in range(MAX_TOOL_ITERATIONS + 1):
-            full_text: list[str] = []
-            effective_model = pi_chat_model(llm_model) if pi_candidate else llm_model
-            async for chunk in ollama.chat_stream(
-                messages=conversation,
-                model=effective_model,
+        async for event in stream_chat_turn(
+            _get_agentic_dispatcher(),
+            queue=queue,
+            project_id=request.project_id,
+            agent_id=session_agent_id or "istara-main",
+            session_key=None,
+            system_prompt="",
+            messages=list(conversation),
+            user_text="",
+            tool_executor=_tool_exec,
+            params=TurnParams(
+                model=pi_chat_model(llm_model) if pi_candidate else llm_model,
                 temperature=llm_temperature,
                 max_tokens=llm_max_tokens,
-                project_id=request.project_id,
+                max_turns=MAX_TOOL_ITERATIONS,
+                text_fallback=True,
                 strict_model_routing=True if pi_candidate else None,
-            ):
-                if isinstance(chunk, str):
-                    full_text.append(chunk)
-                    if pi_metrics:
-                        pi_metrics.observe_chunk(chunk)
-
-            response_text = "".join(full_text)
-            tool_call, text_before, text_after = _extract_tool_call(response_text)
-
-            if tool_call and iteration < MAX_TOOL_ITERATIONS:
-                tool_name = tool_call.get("tool", "")
-                tool_params = tool_call.get("params", {})
-
-                _chat_log.info(
-                    "Text fallback tool call [%d]: %s(%s)",
-                    iteration,
-                    tool_name,
-                    json.dumps(tool_params)[:200],
-                )
+                tool_call_extractor=_extract_tool_call,
+            ),
+            engine="legacy",
+        ):
+            etype = event["type"]
+            if etype == "content":
+                text = event.get("text", "")
+                all_text_parts.append(text)
                 if pi_metrics:
-                    pi_metrics.observe_tool_call()
-
-                if text_before:
-                    all_text_parts.append(text_before)
-                    event_data = json.dumps({"type": "chunk", "content": text_before + "\n\n"})
-                    yield f"data: {event_data}\n\n"
-
-                tool_event = json.dumps(
-                    {
-                        "type": "tool_call",
-                        "tool": tool_name,
-                        "params": tool_params,
-                    }
-                )
-                yield f"data: {tool_event}\n\n"
-
-                result = await execute_tool(
-                    tool_name,
-                    tool_params,
-                    request.project_id,
-                    agent_id=session_agent_id or "istara-main",
-                )
-
-                result_text = result.get("result", result.get("error", "Unknown result"))
-                tool_results.append({"tool": tool_name, "result": result_text})
-
-                result_display = f"**{tool_name}**: {result_text}\n\n"
-                all_text_parts.append(result_display)
-                result_event = json.dumps({"type": "chunk", "content": result_display})
-                yield f"data: {result_event}\n\n"
-
-                assistant_turn = (
-                    text_before + f"\n\n[Tool: {tool_name}]" if text_before else f"[Tool: {tool_name}]"
-                )
-                conversation.append({"role": "assistant", "content": assistant_turn})
-                conversation.append(
-                    {
-                        "role": "user",
-                        "content": (
-                            f"[Tool result for {tool_name}]:\n{result_text}\n\n"
-                            "Now respond to the user based on this result. "
-                            "Do not call another tool unless necessary."
-                        ),
-                    }
-                )
-                continue
-            else:
-                all_text_parts.append(response_text)
-                event_data = json.dumps({"type": "chunk", "content": response_text})
-                yield f"data: {event_data}\n\n"
-                break
+                    pi_metrics.observe_chunk(text)
+                yield f"data: {json.dumps({'type': 'chunk', 'content': text})}\n\n"
+            elif etype == "tool_call":
+                yield f"data: {json.dumps({'type': 'tool_call', 'tool': event.get('tool'), 'params': event.get('params', {})})}\n\n"
     except Exception as exc:
         if pi_metrics:
             await pi_metrics.finish(status="error", error_message=str(exc))
