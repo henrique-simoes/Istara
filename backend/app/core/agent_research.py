@@ -30,7 +30,6 @@ from app.core.checkpoint import complete_checkpoint, create_checkpoint, update_c
 from app.core.context_hierarchy import context_hierarchy
 from app.core.datetime_utils import ensure_utc
 from app.core.embeddings import TextChunk
-from app.core.ollama import ollama
 from app.core.rag import ingest_chunks, retrieve_context
 from app.core.resource_governor import governor
 from app.core.self_check import Confidence, verify_claim
@@ -102,14 +101,11 @@ class AgentResearchMixin:
             user_parts.append(f"Specific instructions: {task.instructions}")
         user_msg = "\n\n".join(user_parts)
 
-        # Tool-augmented ReAct loop — same tools available in chat
+        # Tool-augmented ReAct loop — same tools available in chat.
+        # W3 (L1): the loop transport migrated to the AgenticDispatcher
+        # (``spine.react``); prompt building, skill-candidate constraint, tool
+        # execution, and telemetry stay here. ONE Pi session per task.
         max_agent_tool_iterations = 5
-        messages = [
-            {"role": "system", "content": system_prompt},
-            {"role": "user", "content": user_msg},
-        ]
-        result = ""
-        tools_used = []
 
         try:
             from app.skills.system_actions import OPENAI_TOOLS, execute_tool
@@ -124,103 +120,88 @@ class AgentResearchMixin:
         available_tools = [*OPENAI_TOOLS, *skill_tools]
         candidate_by_name = {candidate.name: candidate for candidate in skill_candidates}
 
-        for iteration in range(max_agent_tool_iterations + 1):
-            if (use_tools or skill_tools) and iteration < max_agent_tool_iterations:
-                response = await ollama.chat(messages=messages, tools=available_tools)
-            else:
-                response = await ollama.chat(messages=messages)
+        tool_names = [t.get("function", {}).get("name", "") for t in available_tools]
+        tool_names = [name for name in tool_names if name]
+        # Per-run dynamic tools for the Pi path (master plan §5.3): the ranked
+        # run_skill schema is sent with the session catalog; the Python-side
+        # allowlist (tool_names) stays the authority on both engines.
+        extra_tools = [
+            {
+                "name": t.get("function", {}).get("name", ""),
+                "description": t.get("function", {}).get("description", ""),
+                "parameters": t.get("function", {}).get("parameters", {}),
+            }
+            for t in skill_tools
+        ]
 
-            msg = response.get("message", {})
-            content = msg.get("content", "")
-            tool_calls = msg.get("tool_calls", [])
-
-            if tool_calls and iteration < max_agent_tool_iterations and use_tools:
-                # Append assistant message with tool calls
-                messages.append(
-                    {"role": "assistant", "content": content or "", "tool_calls": tool_calls}
+        async def _react_tool_executor(tool_name, tool_args, _project_id, _agent_id):
+            # Tool-call arguments arrive pre-parsed from the engine; record the
+            # parse telemetry the manual loop recorded per call.
+            asyncio.create_task(
+                telemetry_recorder.record_json_parse(
+                    trace_id=trace_id,
+                    model_name="",  # Model name not available at this scope
+                    success=True,
+                    agent_id=self._agent_id,
+                    project_id=project.id,
                 )
-                for tc in tool_calls:
-                    fn = tc.get("function", {})
-                    tool_name = fn.get("name", "")
-                    try:
-                        tool_args = (
-                            json.loads(fn.get("arguments", "{}"))
-                            if isinstance(fn.get("arguments"), str)
-                            else fn.get("arguments", {})
-                        )
-                        # Record successful JSON parse for telemetry tracking
-                        asyncio.create_task(
-                            telemetry_recorder.record_json_parse(
-                                trace_id=trace_id,
-                                model_name="",  # Model name not available at this scope
-                                success=True,
-                                agent_id=self._agent_id,
-                                project_id=project.id,
-                            )
-                        )
-                    except (json.JSONDecodeError, TypeError) as e:
-                        tool_args = {}
-                        # Record failed JSON parse for telemetry tracking
-                        asyncio.create_task(
-                            telemetry_recorder.record_json_parse(
-                                trace_id=trace_id,
-                                model_name="",
-                                success=False,
-                                error_type="JSONDecodeError",
-                                error_message=str(e)[:200],
-                                agent_id=self._agent_id,
-                                project_id=project.id,
-                            )
-                        )
-                    tools_used.append(tool_name)
-                    logger.info(
-                        f"Agent tool call [{iteration}]: {tool_name}({list(tool_args.keys())})"
+            )
+            logger.info(f"Agent tool call: {tool_name}({list((tool_args or {}).keys())})")
+            if tool_name == "run_skill":
+                return await self._execute_react_skill_tool(
+                    db=db,
+                    task=task,
+                    project=project,
+                    params=tool_args,
+                    candidate_by_name=candidate_by_name,
+                    trace_id=trace_id,
+                    rag_context=context,
+                )
+            if execute_tool is not None:
+                started = datetime.now(UTC)
+                tool_result = await execute_tool(
+                    tool_name, tool_args, project.id, self._agent_id
+                )
+                duration_ms = (datetime.now(UTC) - started).total_seconds() * 1000
+                asyncio.create_task(
+                    telemetry_recorder.record_span(
+                        trace_id=trace_id,
+                        operation="tool_call",
+                        tool_name=tool_name,
+                        tool_success=bool(
+                            isinstance(tool_result, dict)
+                            and tool_result.get("success", True)
+                        ),
+                        tool_duration_ms=duration_ms,
+                        agent_id=self._agent_id,
+                        project_id=project.id,
+                        task_id=task.id,
                     )
-                    if tool_name == "run_skill":
-                        tool_result = await self._execute_react_skill_tool(
-                            db=db,
-                            task=task,
-                            project=project,
-                            params=tool_args,
-                            candidate_by_name=candidate_by_name,
-                            trace_id=trace_id,
-                            rag_context=context,
-                        )
-                    elif execute_tool is not None:
-                        started = datetime.now(UTC)
-                        tool_result = await execute_tool(
-                            tool_name, tool_args, project.id, self._agent_id
-                        )
-                        duration_ms = (datetime.now(UTC) - started).total_seconds() * 1000
-                        asyncio.create_task(
-                            telemetry_recorder.record_span(
-                                trace_id=trace_id,
-                                operation="tool_call",
-                                tool_name=tool_name,
-                                tool_success=bool(
-                                    isinstance(tool_result, dict)
-                                    and tool_result.get("success", True)
-                                ),
-                                tool_duration_ms=duration_ms,
-                                agent_id=self._agent_id,
-                                project_id=project.id,
-                                task_id=task.id,
-                            )
-                        )
-                    else:
-                        tool_result = {"success": False, "error": "Tool executor unavailable"}
-                    messages.append(
-                        {
-                            "role": "tool",
-                            "tool_call_id": tc.get("id", f"call_{iteration}"),
-                            "content": json.dumps(tool_result)
-                            if isinstance(tool_result, dict)
-                            else str(tool_result),
-                        }
-                    )
-            else:
-                result = content
-                break
+                )
+                return tool_result
+            return {"success": False, "error": "Tool executor unavailable"}
+
+        from app.core.agentic import agentic
+        from app.core.agentic.types import TurnParams
+
+        outcome = await agentic.react(
+            purpose="spine.react",
+            project_id=project.id,
+            agent_id=self._agent_id,
+            session_key=f"task:{task.id}",
+            system=system_prompt,
+            messages=[],
+            user_text=user_msg,
+            tool_executor=_react_tool_executor if (use_tools or skill_tools) else None,
+            tool_names=tool_names,
+            tools=available_tools or None,
+            extra_tools=extra_tools or None,
+            params=TurnParams(max_turns=max_agent_tool_iterations),
+            task_id=task.id,
+            spine_phase="execution",
+        )
+        result = outcome.text
+        tools_used = [tc.get("tool", "") for tc in outcome.tool_calls]
 
         # Log tool usage
         if tools_used:
@@ -401,10 +382,6 @@ class AgentResearchMixin:
                 format_candidate_skill_context,
                 rank_skill_candidates,
             )
-            from app.core.llm_schema_adapter import (
-                openai_json_schema_response_format,
-                parse_json_object,
-            )
 
             candidates = await rank_skill_candidates(
                 task=task,
@@ -453,11 +430,6 @@ class AgentResearchMixin:
                 "required": ["steps"],
                 "additionalProperties": False,
             }
-            response_format = openai_json_schema_response_format(
-                name="istara_research_plan",
-                schema=step_schema,
-                strict=True,
-            )
             plan_prompt = (
                 "You are a research planning agent. Decompose this task into 2-5 "
                 "concrete steps.\n\n"
@@ -475,21 +447,33 @@ class AgentResearchMixin:
                 "Respond only with the attached JSON schema. "
                 'If this is a simple task that doesn\'t need decomposition, respond: {"steps": []}'
             )
-            response = await ollama.chat(
+            # W3 (L2): structured plan call through the AgenticDispatcher
+            # (``spine.plan``); the same step schema drives both engines
+            # (forced-tool structured output on Pi, response_format on legacy).
+            from app.core.agentic import agentic
+            from app.core.agentic.types import TurnParams
+
+            outcome = await agentic.structured(
+                purpose="spine.plan",
+                project_id=project.id,
+                system=None,
                 messages=[{"role": "user", "content": plan_prompt}],
-                temperature=0.3,
-                response_format=response_format,
-                max_tokens=900,
-                min_context=(
-                    count_tokens(plan_prompt)
-                    + count_tokens(json.dumps(response_format, ensure_ascii=False))
-                    + 900
+                schema=step_schema,
+                params=TurnParams(
+                    temperature=0.3,
+                    max_tokens=900,
+                    min_context=(
+                        count_tokens(plan_prompt)
+                        + count_tokens(json.dumps(step_schema, ensure_ascii=False))
+                        + 900
+                    ),
+                    thinking_mode="off",
                 ),
-                thinking_mode="off",
+                task_id=task.id,
+                spine_phase="plan",
             )
-            content = response.get("message", {}).get("content", "")
-            logger.info(f"Research plan raw content: {content}")
-            data = parse_json_object(content)
+            data = outcome.value or None
+            logger.info(f"Research plan raw content: {outcome.text}")
             await telemetry_recorder.record_json_parse(
                 trace_id=uuid.uuid4().hex[:36],
                 model_name=getattr(self, "model_name", ""),
@@ -664,9 +648,17 @@ class AgentResearchMixin:
                 prev_context = "\n".join(
                     f"- {s.description}: {s.result[:200]}" for s in plan.past_steps if s.result
                 )
-                response = await ollama.chat(
+                # W3 (L3): skill-less plan step through the AgenticDispatcher
+                # (``spine.step_execute``); DAG-parallel callers fan out to
+                # parallel dispatcher calls exactly as before.
+                from app.core.agentic import agentic
+                from app.core.agentic.types import TurnParams
+
+                outcome = await agentic.completion(
+                    purpose="spine.step_execute",
+                    project_id=project.id,
+                    system=system_prompt,
                     messages=[
-                        {"role": "system", "content": system_prompt},
                         {
                             "role": "user",
                             "content": (
@@ -674,9 +666,12 @@ class AgentResearchMixin:
                                 f"Context from previous steps:\n{prev_context}"
                             ),
                         },
-                    ]
+                    ],
+                    params=TurnParams(),
+                    task_id=task.id,
+                    spine_phase="execution",
                 )
-                step.result = response.get("message", {}).get("content", "")
+                step.result = outcome.text
             step.status = "completed"
         except TimeoutError:
             step.status = "failed"
@@ -1059,19 +1054,37 @@ class AgentResearchMixin:
                 "Respond with EXACTLY one JSON object:\n"
                 '{"verified": true, "confidence": 0.85, "reason": "one sentence"}'
             )
-            response = await ollama.chat(
-                messages=[{"role": "user", "content": reflection_prompt}],
-                temperature=0.1,
-            )
-            content = response.get("message", {}).get("content", "")
-            # Extract JSON from response (model may wrap in markdown)
-            import re
+            # W3 (L5): reflection through the AgenticDispatcher (``spine.verify``)
+            # as a proper structured call — the regex-JSON extraction upgrades
+            # to a schema BOTH engines enforce (deliberate baseline improvement,
+            # master plan §8 W3).
+            from app.core.agentic import agentic
+            from app.core.agentic.types import TurnParams
 
-            json_match = re.search(r'\{[^{}]*"verified"[^{}]*\}', content)
-            if json_match:
-                result = json.loads(json_match.group())
-                verified = result.get("verified", True)
-                reason = result.get("reason", "LLM reflection passed")
+            reflection_schema = {
+                "type": "object",
+                "properties": {
+                    "verified": {"type": "boolean"},
+                    "confidence": {"type": "number"},
+                    "reason": {"type": "string"},
+                },
+                "required": ["verified", "confidence", "reason"],
+                "additionalProperties": False,
+            }
+            outcome = await agentic.structured(
+                purpose="spine.verify",
+                project_id=task.project_id,
+                system=None,
+                messages=[{"role": "user", "content": reflection_prompt}],
+                schema=reflection_schema,
+                params=TurnParams(temperature=0.1),
+                task_id=task.id,
+                spine_phase="review",
+            )
+            if outcome.status == "success" and outcome.value:
+                result = outcome.value
+                verified = bool(result.get("verified", True))
+                reason = str(result.get("reason") or "LLM reflection passed")
                 logger.info(
                     "LLM reflection: verified=%s, confidence=%s, reason=%s",
                     verified,
@@ -1079,7 +1092,7 @@ class AgentResearchMixin:
                     reason,
                 )
                 return verified, reason
-            # If no JSON found, trust heuristic result
+            # If no structured object came back, trust heuristic result
             return True, "LLM reflection returned non-JSON — heuristic passed"
         except Exception as e:
             logger.debug(f"LLM reflection failed ({e}), using heuristic")
