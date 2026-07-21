@@ -6,6 +6,13 @@ invocations of the legacy compute plane (``ollama.*`` / ``llm_router.*`` /
 ``compute_registry.*`` aliases, direct per-node dispatch, and the
 browser-service ``ChatOpenAI`` bypass).
 
+W2 governance decision (F-W2-1b, recorded with the owner via the W2 fix
+evidence): a ``ChatOpenAI(`` construction whose endpoint identity is resolved
+through ``PiModelManager`` — marked inline with ``# pi-governed`` — is no
+longer a legacy-plane bypass and is not flagged. Raw ``ChatOpenAI(``
+constructions without the marker remain flagged, so any NEW bypass still
+fails the count-to-zero ratchet.
+
 Output rows: ``{file, line, pattern, snippet}``. Deterministic sort order.
 Always exits 0 — the ratchet test (``tests/pi_migration/test_count_to_zero.py``)
 owns pass/fail semantics.
@@ -63,6 +70,12 @@ def scan(root: Path = SCAN_ROOT) -> list[dict]:
         for lineno, line in enumerate(lines, start=1):
             for pattern, compiled in zip(PATTERNS, _COMPILED):
                 if compiled.search(line):
+                    # F-W2-1b governance decision: a PiModelManager-resolved
+                    # ChatOpenAI construction carries the inline marker
+                    # ``# pi-governed`` and is exempt; unmarked constructions
+                    # stay flagged as bypass tripwires.
+                    if pattern == r"\bChatOpenAI\(" and "pi-governed" in line:
+                        continue
                     rows.append(
                         {
                             "file": rel,

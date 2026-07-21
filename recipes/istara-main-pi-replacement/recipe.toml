@@ -42,6 +42,9 @@ checks = ["architecture gate", "security-sensitive surface review", "broad verif
 steps = ["capture baseline", "plan task graph", "implement in scoped slices", "run post-change gate", "record decision"]
 
 [context.actor_roles]
+pi-full-20260720-w2-implementer = "Pipeline implementer. Make the smallest correct code change for the claimed task in the shared worktree, add/adjust tests, run them, and record command + self_report evidence."
+pi-full-20260720-w2-code-reviewer = "Independent code reviewer (different model than the implementer). Review the implementer's diff for correctness, tests, and scope. Record a review_verdict (pass/fail). On fail, create a follow-up fixer task and record findings."
+pi-full-20260720-w2-fixer = "Remediator. Address the cited review findings on the referenced task in the shared worktree, re-run verification, flip the findings to fixed, and record evidence."
 pi-full-20260720-w1-implementer = "Pipeline implementer. Make the smallest correct code change for the claimed task in the shared worktree, add/adjust tests, run them, and record command + self_report evidence."
 pi-full-20260720-w1-code-reviewer = "Independent code reviewer (different model than the implementer). Review the implementer's diff for correctness, tests, and scope. Record a review_verdict (pass/fail). On fail, create a follow-up fixer task and record findings."
 pi-full-20260720-w1-fixer = "Remediator. Address the cited review findings on the referenced task in the shared worktree, re-run verification, flip the findings to fixed, and record evidence."

@@ -253,6 +253,122 @@ async def test_pi_candidate_text_fallback_finishes_chat_metrics(monkeypatch):
     assert metrics[0].finished == [{}]
 
 
+def _sse_chunk_text(events: list[str]) -> str:
+    """Reassemble the ``content`` the SSE wire carried to the client."""
+    wire: list[str] = []
+    for event in events:
+        for line in event.splitlines():
+            if not line.startswith("data: "):
+                continue
+            payload = json.loads(line[len("data: "):])
+            if payload.get("type") == "chunk":
+                wire.append(payload.get("content", ""))
+    return "".join(wire)
+
+
+@pytest.mark.asyncio
+async def test_native_tools_persists_tool_result_display_once_in_stream_order(monkeypatch):
+    """Regression (F-W2-R1-1): a tool-using native turn must persist each
+    tool-result display line to ``all_text_parts`` EXACTLY ONCE and in stream
+    order. The migrated ``_tool_exec`` must rely solely on the queued ``content``
+    event that the main SSE loop drains — appending the display directly as well
+    duplicated (and, because the direct append races the async queue drain,
+    misordered) every tool-result block in the persisted assistant transcript
+    (``"".join(all_text_parts)``), while the SSE wire copy stayed correct."""
+    calls: list[dict] = []
+
+    async def fake_chat_stream(**kwargs):
+        calls.append(kwargs)
+        if len(calls) == 1:
+            yield "thinking "
+            yield {
+                "tool_calls": [
+                    {"id": "call-1", "function": {"name": "list_tasks", "arguments": "{}"}}
+                ]
+            }
+        else:
+            yield "final answer"
+
+    async def fake_execute_tool(tool_name, params, project_id, agent_id):
+        return {"result": "TOOLRESULT"}
+
+    monkeypatch.setattr(chat_route.ollama, "chat_stream", fake_chat_stream)
+    monkeypatch.setattr(chat_route, "execute_tool", fake_execute_tool)
+
+    parts: list[str] = []
+    tools: list[dict] = []
+    events = [
+        event
+        async for event in chat_route._generate_native_tools(
+            [{"role": "user", "content": "show tasks"}],
+            parts,
+            tools,
+            SimpleNamespace(project_id="native-order-project"),
+            "istara-main",
+            "llama-native",
+            0.1,
+            128,
+            pi_candidate=False,
+        )
+    ]
+
+    display = "**list_tasks**: TOOLRESULT\n\n"
+    persisted = "".join(parts)
+    # Persisted exactly once (was twice pre-fix) and in stream order: the
+    # streamed pre-tool text, then the tool result, then the final answer.
+    assert persisted.count(display) == 1
+    assert persisted == "thinking " + display + "final answer"
+    # The tool actually executed (guards against a mock that silently no-ops).
+    assert tools == [{"tool": "list_tasks", "result": "TOOLRESULT"}]
+    # The SSE wire copy was always correct — still exactly one display line.
+    assert _sse_chunk_text(events).count(display) == 1
+
+
+@pytest.mark.asyncio
+async def test_text_fallback_persists_tool_result_display_once_in_stream_order(monkeypatch):
+    """Regression (F-W2-R1-1): same contract for the text-fallback loop — its
+    ``_tool_exec`` must not append the tool-result display directly on top of the
+    queued ``content`` event, or the persisted transcript duplicates it."""
+    calls: list[dict] = []
+
+    async def fake_chat_stream(**kwargs):
+        calls.append(kwargs)
+        if len(calls) == 1:
+            yield 'Before tool ```json\n{"tool": "list_tasks", "params": {}}\n```'
+        else:
+            yield "final answer"
+
+    async def fake_execute_tool(tool_name, params, project_id, agent_id):
+        return {"result": "TOOLRESULT"}
+
+    monkeypatch.setattr(chat_route.ollama, "chat_stream", fake_chat_stream)
+    monkeypatch.setattr(chat_route, "execute_tool", fake_execute_tool)
+
+    parts: list[str] = []
+    tools: list[dict] = []
+    events = [
+        event
+        async for event in chat_route._generate_text_fallback(
+            [{"role": "user", "content": "show tasks"}],
+            parts,
+            tools,
+            SimpleNamespace(project_id="fallback-order-project"),
+            "istara-main",
+            "llama-fallback",
+            0.1,
+            128,
+            pi_candidate=False,
+        )
+    ]
+
+    display = "**list_tasks**: TOOLRESULT\n\n"
+    persisted = "".join(parts)
+    assert persisted.count(display) == 1
+    assert persisted == "Before tool\n\n" + display + "final answer"
+    assert tools == [{"tool": "list_tasks", "result": "TOOLRESULT"}]
+    assert _sse_chunk_text(events).count(display) == 1
+
+
 @pytest.mark.asyncio
 async def test_pi_candidate_chat_route_header_selects_pi_and_persists_done_sse(
     monkeypatch,

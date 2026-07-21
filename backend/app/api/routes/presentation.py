@@ -7,7 +7,8 @@ import json
 from app.core.permissions import require_project_access
 from app.models.database import get_db
 from app.models.project_report import ProjectReport
-from app.core.llm_router import llm_router
+from app.core.agentic import agentic
+from app.core.agentic.types import TurnParams
 
 router = APIRouter(prefix="/presentation")
 
@@ -68,8 +69,14 @@ async def get_slide_instructions(
     )
     
     try:
-        response = await llm_router.chat([{"role": "user", "content": prompt}], temperature=0.3)
-        instructions = response.get("message", {}).get("content", "Failed to generate instructions.")
+        outcome = await agentic.completion(
+            purpose="presentation.slides",
+            project_id=scoped_project_id,
+            system=None,
+            messages=[{"role": "user", "content": prompt}],
+            params=TurnParams(temperature=0.3),
+        )
+        instructions = outcome.text or "Failed to generate instructions."
     except Exception:
         instructions = _fallback_slide_instructions(report, full_text)
 

@@ -157,6 +157,13 @@ class _StubPiService:
 @pytest.fixture
 async def usage_db():
     await init_db()
+    # W2: route-level tests earlier in the suite legitimately persist ledger
+    # rows through the dispatcher (chat_turn via the chat/design-chat routes)
+    # without this fixture, so isolation must clean BEFORE the test as well,
+    # not only after it.
+    async with async_session() as session:
+        await session.execute(AgenticUsageRow.__table__.delete())
+        await session.commit()
     try:
         yield
     finally:
@@ -600,13 +607,19 @@ async def test_worker_handshake_fatal_is_rejected_typed(tmp_path):
     assert supervisor.is_running is False
 
 
-# ── unchanged 87-site ratchet ────────────────────────────────────────────
+# ── armed ratchet stays consistent and only ratchets downward ─────────────
 
 
-def test_w1_leaves_the_armed_87_site_ratchet_unchanged():
+def test_ratchet_is_consistent_and_only_ratchets_down():
+    """W1 armed the ratchet at 87 and migrated zero sites. Each later wave may
+    only lower it (never raise it) and must keep the count-to-zero contract
+    internally consistent. W2 (complete) migrated all 9 interactive surfaces
+    (4 one-shot completions, 4 streaming ReAct loops, browser tool), so the
+    current floor is 78."""
     from tests.pi_migration.test_count_to_zero import EXPECTED_PRODUCT_SITES, check_count_to_zero
 
-    assert EXPECTED_PRODUCT_SITES == 87, "W1 migrates zero product sites; the ratchet stays at 87"
+    assert EXPECTED_PRODUCT_SITES <= 87, "the ratchet must never migrate sites back onto the legacy plane"
+    assert EXPECTED_PRODUCT_SITES == 78, "W2 (complete) migrated 9 interactive surfaces: ratchet floor is 78"
     check_count_to_zero()  # raises RuntimeError naming every violation
 
 

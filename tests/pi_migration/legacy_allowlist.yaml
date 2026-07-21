@@ -13,9 +13,16 @@
 # be parsed without pyyaml; see tests/pi_migration/test_count_to_zero.py.
 
 ratchet:
-  # 69 chat + 17 embed + 1 browser bypass = 87 product sites (verified by
-  # scripts/pi_migration_inventory.py + research-callsites-core/rest.md).
-  expected_product_sites: 87
+  # W0 baseline: 69 chat + 17 embed + 1 browser bypass = 87 product sites.
+  # W2 (complete) migrated all 9 interactive surfaces to the AgenticDispatcher:
+  # the 4 one-shot completion surfaces (context_dag DAG compaction,
+  # context_summarizer, presentation slide-instruction, UI-audit heuristics),
+  # the 4 streaming ReAct loops (chat.py native tools + text fallback,
+  # interfaces.py design native tools + design text fallback), and the
+  # browser_service browse_website tool (endpoint identity now resolved via
+  # PiModelManager; see the F-W2-1b governance decision in
+  # scripts/pi_migration_inventory.py). The ratchet drops by 9.
+  expected_product_sites: 78
 
 # ---------------------------------------------------------------------------
 # PRODUCT SITES — all migrate to the AgenticDispatcher. Removing a site from
@@ -23,24 +30,6 @@ ratchet:
 # ---------------------------------------------------------------------------
 product:
   # --- Chat sites (69) ---------------------------------------------------
-  - keys: ["backend/app/agents/ui_audit_agent.py:499"]
-    kind: chat
-    note: "UIAuditAgent._evaluate_heuristics_with_data — LLM heuristic evaluation"
-  - keys: ["backend/app/api/routes/chat.py:321"]
-    kind: chat
-    note: "chat ReAct loop #1, native tools (_generate_native_tools)"
-  - keys: ["backend/app/api/routes/chat.py:510"]
-    kind: chat
-    note: "chat ReAct loop #1 fallback, text-parsed tools (_generate_text_fallback)"
-  - keys: ["backend/app/api/routes/interfaces.py:143"]
-    kind: chat
-    note: "design chat ReAct loop #2, native tools (_generate_native_design_tools)"
-  - keys: ["backend/app/api/routes/interfaces.py:588"]
-    kind: chat
-    note: "design chat ReAct loop #2 fallback, text-parsed tools"
-  - keys: ["backend/app/api/routes/presentation.py:71"]
-    kind: chat
-    note: "get_slide_instructions — slide-deck instruction package"
   - keys: ["backend/app/core/agent_execution.py:472"]
     kind: chat
     note: "AgentExecutionMixin._execute_task — skill underperformance reflection"
@@ -113,12 +102,6 @@ product:
   - keys: ["backend/app/core/autoresearch_runners/ui_sim.py:199"]
     kind: chat
     note: "UISimRunner._evaluate_component — WCAG-style component score"
-  - keys: ["backend/app/core/context_dag.py:611"]
-    kind: chat
-    note: "ContextDAG._summarize_batch — DAG context compression summary"
-  - keys: ["backend/app/core/context_summarizer.py:72"]
-    kind: chat
-    note: "ContextSummarizer.summarize_messages — context-window pressure summary"
   - keys: ["backend/app/core/report_manager.py:498"]
     kind: chat
     note: "ReportManager._generate_executive_summary — SCR executive summary"
@@ -287,10 +270,11 @@ product:
   - keys: ["backend/app/core/vector_health.py:19"]
     kind: embed
     note: "check_embedding_dimensions — dimension probe via product embed path"
-  # --- Browser bypass (1 logical site, 3 constructor lines) --------------
-  - keys: ["backend/app/services/browser_service.py:29", "backend/app/services/browser_service.py:36", "backend/app/services/browser_service.py:43"]
-    kind: browser_bypass
-    note: "browser_service._get_llm ChatOpenAI factory — browser-use Agent loop, bypasses registry"
+  # (W2 complete: the browser_service browse_website tool left this list —
+  # its ChatOpenAI construction now resolves endpoint identity through
+  # PiModelManager, recorded under tool.browse_website in the agentic usage
+  # ledger; see the F-W2-1b governance decision in
+  # scripts/pi_migration_inventory.py.)
 
 # ---------------------------------------------------------------------------
 # PERMANENT INFRASTRUCTURE — NEVER migrate (master plan §4.3). The scanner

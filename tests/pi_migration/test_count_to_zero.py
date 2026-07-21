@@ -23,9 +23,15 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 ALLOWLIST_PATH = Path(__file__).resolve().parent / "legacy_allowlist.yaml"
 SCANNER_PATH = REPO_ROOT / "scripts" / "pi_migration_inventory.py"
 
-# The ratchet literal for the current wave (W0 baseline: 69 chat + 17 embed
-# + 1 browser bypass). Each wave lowers this by exactly its migrated sites.
-EXPECTED_PRODUCT_SITES = 87
+# The ratchet literal for the current wave. W0 baseline was 87 (69 chat + 17
+# embed + 1 browser bypass); each wave lowers this by exactly its migrated
+# sites. W2 (complete) migrated all 9 interactive surfaces to the
+# AgenticDispatcher — the 4 one-shot completion surfaces (context_dag,
+# context_summarizer, presentation slides, UI-audit heuristics), the 4
+# streaming ReAct loops (chat.py native + text fallback, interfaces.py design
+# native + text fallback), and the browser_service browse_website tool
+# (PiModelManager-resolved endpoint identity) — so the ratchet is now 78.
+EXPECTED_PRODUCT_SITES = 78
 
 
 # ---------------------------------------------------------------------------
