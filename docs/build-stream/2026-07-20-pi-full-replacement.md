@@ -9,8 +9,8 @@ phase: "W1 — dispatcher, Pi model management, and accounting"
 stage: S4-remediate
 status: in-progress
 blocked_on: null
-last: { agent: claude-opus-4-8, at: 2026-07-20T21:08:57Z, ledger: L-18 }
-next_action: "Remediate F-W1-1 and F-W1-2 (F-W1-3 fixed at L-17, F-W1-4 fixed at L-18), then run one bounded delta re-review after all four fixer tasks are terminal."
+last: { agent: gpt-5.6-terra, at: 2026-07-21T04:48:39Z, ledger: L-27 }
+next_action: "Conduct one bounded delta re-review of F-W1-R3-1: verify mixed legacy ReAct and ensemble accounting estimates every dispatched turn/sample and preserves the actual turn count."
 ```
 <!-- /STATUS BLOCK -->
 
@@ -399,6 +399,253 @@ pass.
 Next: sibling fixers F-W1-1/F-W1-2 complete, then the conductor's one bounded delta
 re-review of the changed W1 surface.
 
+### L-19 | 2026-07-20T21:12:56Z | S4-remediate | claude-opus-4-8 | remediator | W1 <!-- bsc-ledger:FIX-pi-full-20260720-w1-REVIEW-r1-structured -->
+Did: Closed F-W1-2 — the forced structured-output protocol (v2) and typed fail-closed
+behavior. Independently re-verified the resumed structured surface end to end and recorded
+evidence (no new defects found; the contract was already fully implemented in the worktree):
+both sides pin `PROTOCOL_VERSION=2` and validate it (worker `hello`/per-frame + connection
+`fatal`; supervisor `ready`/handshake-`fatal` -> typed `PiWorkerError`); `turn.prompt` carries
+`output_schema`/`tool_choice`/`max_turns` and the supervisor `run_turn` forwards them;
+`structured.mjs` mechanically translates the supported JSON-Schema subset for
+`emit_structured_output` (both sides reject the same unsupported constructs BEFORE any provider
+call); `session.mjs` forces the tool per provider family, CAPTURES (never executes /
+round-trips to the authority) the arguments, and settles `structured_output_missing` when no
+capture occurs (free-form JSON text is never accepted); `engine.py` `run_structured`
+revalidates the captured object against the ORIGINAL schema, allows exactly one bounded repair,
+then raises a typed `PiRuntimeTurnError` (`structured_output_invalid`/`_missing`) with no
+partial or error-shaped artifact. Adversarial worker + Python/Node tests cover unsupported
+schema, missing/incorrect tool call, invalid repair, protocol mismatch, and no-partial-artifact.
+Files (F-W1-2 scope, in worktree): `pi-runtime/src/{protocol,worker,session,structured}.mjs`,
+`pi-runtime/PROTOCOL.md`, `pi-runtime/test/structured.test.mjs`,
+`backend/app/core/pi_runtime/{protocol,supervisor}.py`, `engine.py` `run_structured` (shared
+file with F-W1-1), `tests/pi_production/{test_structured_fail_closed.py,adversarial_worker_v1.mjs}`.
+Result: F-W1-2 open -> fixed; CF task FIX-pi-full-20260720-w1-REVIEW-r1-structured. No product
+call site or `legacy_allowlist.yaml` entry changed (W1 migrates zero sites; the armed 87-site
+ratchet holds). No manual commit taken: `engine.py` is entangled with the concurrent F-W1-1
+authority fixer and this worktree has no `repo_lock.completion_lock`, so the conductor ship
+stage owns the atomic commit of the code (harness backstops attribution/finish/ledger).
+Verified: `npm --prefix pi-runtime test` = 33 passed; `PI_REQUIRE_NODE=1 python -m pytest
+tests/pi_production/test_structured_fail_closed.py -q` = 6 passed; `PI_REQUIRE_NODE=1 python -m
+pytest tests/pi_production -q` = 120 passed (full suite green — the structured modules and
+`test_seams_fail_closed.py` coexist; the isolated-subset SQLAlchemy `Project`<->`Message`
+mapper-config artifact is a pre-existing test-ordering property also present in the committed
+W0 `test_scenario_structured_output.py`, never an F-W1-2 logic defect); `python
+scripts/security_benchmark.py --fail-on-threshold` = status pass. No live model activity or
+external traffic.
+Next: stage exit: F-W1-2 fixed; await the conductor's one bounded delta re-review of the
+changed structured-output surface once all W1 fixers are terminal.
+
+### L-20 | 2026-07-20T21:30:53Z | S4-remediate | claude-opus-4-8 | remediator | W1 <!-- bsc-ledger:FIX-pi-full-20260720-w1-REVIEW-r1-authority -->
+Did: Closed F-W1-1 — the five-verb `AgenticDispatcher` production choke point and the
+production-real legacy/Pi authority boundary. Resumed the surface left by the rate-limited
+prior fixer (kimi-code/k3-high, hard usage cap at 20:56Z) and independently re-verified it end
+to end (no new defects found; the contract was fully implemented in the worktree). All six
+verbs (`chat_turn`, `completion`, `structured`, `react`, `ensemble`, `embed`) resolve the
+engine through `_resolve` with override>header>project>default precedence; the persisted
+`projects.agentic_engine` column (`backend/app/models/project.py`, migration
+`024_project_agentic_engine`) drives level 3; and the module singleton binds the REAL
+`legacy.py` executor, verified byte-compatible with the live `app.core.ollama.ollama`
+ComputeRegistry `chat`/`embed_batch` signatures (`min_context`/`thinking_mode`/`project_id`/
+`tools`/`response_format` are real kwargs on the production plane, not stub-only). Every Pi
+turn resolves through the isolated `PiModelManager` (no ComputeRegistry import; catalog =
+static settings + `pi-deepseek-default` + local Ollama/LM Studio `/v1` + read-only
+`pi-llm-<id>` LLMServer projection that excludes relay/browser donors), with model/
+require_vision/min_context admission failing closed before any worker frame; all TurnParams are
+forwarded (temperature/max_tokens/thinking_mode/timeout_s via `_bind_payload`, model/
+require_vision/min_context via admission, max_turns via `turn.prompt` default 8). Pi-selected
+`embed` fails typed (`pi_embed_gateway_unavailable`) and never falls back to legacy or donated
+compute; distinct ensemble fails closed on insufficient identity-distinct endpoints; telemetry
+exposes id/kind/model only, never URL/key. F-W1-1 scope files (in worktree):
+`backend/app/core/agentic/{dispatcher,legacy,types}.py`,
+`backend/app/core/pi_runtime/{engine,model_manager,endpoints}.py` (`engine.py` shared with
+F-W1-2), `backend/app/{config.py,models/project.py}`, migration
+`024_project_agentic_engine.py`, `tests/pi_production/test_w1_dispatcher_authority.py`.
+Result: F-W1-1 open -> fixed; CF task FIX-pi-full-20260720-w1-REVIEW-r1-authority. No product
+call site or `legacy_allowlist.yaml` entry changed (W1 migrates zero sites; the armed 87-site
+ratchet holds). No manual code commit taken: `engine.py` is entangled with F-W1-2's
+ship-committed structured changes and this worktree has no `repo_lock.completion_lock`, so the
+conductor ship stage owns the atomic commit of the code (harness backstops
+attribution/finish/ledger).
+Verified: `python -m pytest tests/pi_production/test_w1_dispatcher_authority.py -q` = 17 passed;
+full W1 ladder (`test_w1_agentic_contract`, `test_w1_dispatcher_authority`,
+`test_w1_usage_ledger`, `test_structured_fail_closed`, `test_count_to_zero`,
+`test_same_model_donor_isolation`) = 59 passed; full `tests/pi_production` = 120 passed;
+`npm --prefix pi-runtime test` = 33 passed; 87-site ratchet (`test_count_to_zero`) = 3 passed;
+`python scripts/security_benchmark.py --fail-on-threshold` = status pass (100%, 0 triggered
+paths). No live model activity or external traffic.
+Next: stage exit: F-W1-1 fixed and all four W1 fixer tasks terminal; the conductor creates one
+bounded delta re-review of the changed W1 surface (confirming no later overwrite dropped the
+six-verb precedence wiring or the exception-path usage-row recording).
+
+### L-21 | 2026-07-20T21:39:32Z | S3-review | gpt-5.6-sol | reviewer | W1 <!-- bsc-ledger:REREV-pi-full-20260720-w1-REVIEW-r1 -->
+Did: Performed the bounded delta re-review of F-W1-1 through F-W1-4 against the four
+completed fixer tasks, their evidence, and only the changed W1 files/contracts/immediate
+seams. Inspected the combined committed-plus-uncommitted worktree because the authority and
+structured fixers explicitly left shared code uncommitted for atomic handoff. Created
+`FIX-REREV-pi-full-20260720-w1-REVIEW-r1-protocol` for F-W1-R1-1 and
+`FIX-REREV-pi-full-20260720-w1-REVIEW-r1-accounting` for F-W1-R1-2, both owned by
+`pi-full-20260720-w1-fixer` and preserving source task, review role, pipeline run, and
+self-contained findings.
+Result: Fail. F-W1-R1-1 (Blocker) proves the Python half of protocol v2 accepts a
+post-handshake `v:1` terminal frame because `PiRuntimeSupervisor._dispatch` does not validate
+`frame.v`, contradicting `pi-runtime/PROTOCOL.md` and the living-doc per-frame guarantee.
+F-W1-R1-2 (Major) proves real-path accounting remains inexact: Node settlement computes but
+does not emit cache-read/cache-write or actual turn count; the real legacy normalizer turns
+absent provider usage into a non-empty zero usage block, bypassing the token estimator, and
+the legacy tool loop retains only the final turn's usage. The green 59-test W1 ladder and
+33-test Node suite rely on rich stubs or cover only the worker's inbound validation, so they
+do not refute either immediate-seam defect. F-W1-1 and F-W1-4 otherwise remain closed; the
+forced capture/schema/one-repair portions of F-W1-2 remain green.
+Verified: `python -m pytest tests/pi_production/test_w1_agentic_contract.py tests/pi_production/test_w1_dispatcher_authority.py tests/pi_production/test_w1_usage_ledger.py tests/pi_production/test_structured_fail_closed.py tests/pi_migration/test_count_to_zero.py tests/pi_production/test_same_model_donor_isolation.py -q` = 59 passed; `npm --prefix pi-runtime test` = 33 passed; `python scripts/feature_docs.py --seed-missing --generate-site --check` = 86 features passed; wrong-version supervisor probe = `{'accepted_wrong_v': True, 'type': 'run.completed', 'usage': {'input_tokens': 9}}`; real legacy no-usage probe = `{'input_tokens': 0, 'output_tokens': 0, 'total_tokens': 0, 'estimate': True}`.
+Next: Remediate both sibling finding tasks; stage exit is blocked until both are terminal and
+one conductor-created bounded delta re-review passes.
+
+### L-22 | 2026-07-20T21:54:06Z | S4-remediate | claude-opus-4-8 | remediator | W1 <!-- bsc-ledger:FIX-REREV-pi-full-20260720-w1-REVIEW-r1-protocol -->
+Did: Closed F-W1-R1-1 (Blocker) — the Python half of protocol v2 now validates the version
+of every post-handshake frame, not just the handshake `ready.protocol_version`. Added
+per-frame version rejection to `PiRuntimeSupervisor._dispatch` and a `_reject_frame` helper
+(`backend/app/core/pi_runtime/supervisor.py`): `ready`/`fatal` stay exempt (the
+version-negotiation channel, mirroring the worker exempting inbound `hello`), but every other
+inbound frame whose `v != PROTOCOL_VERSION` is rejected BEFORE it is queued — the session's
+active run settles `run.failed{error:"protocol_version_mismatch"}` (or the offending frame's
+own run when none is active, so a stale rejection never kills a later run), and a frame for an
+unknown session is logged and dropped. A version mismatch is never process-fatal. This makes
+the code match the existing `pi-runtime/PROTOCOL.md` "Versioning" contract and the living
+feature-doc claim (no doc change needed — the docs already asserted both-side per-frame
+validation). Added `tests/pi_production/test_protocol_version_per_frame.py` (6 node-free
+`_dispatch` unit tests + 1 adversarial integration test) and the adversarial worker
+`tests/pi_production/adversarial_worker_v1_run.mjs` (valid v2 handshake, then v1 tool.call +
+v1 run.completed).
+Result: F-W1-R1-1 open -> fixed; CF task FIX-REREV-pi-full-20260720-w1-REVIEW-r1-protocol. The
+reviewer's wrong-version probe flips from `{'accepted_wrong_v': True, 'type': 'run.completed'}`
+to a v2 `run.failed{protocol_version_mismatch}`; a worker that handshakes v2 then emits a v1
+run frame executes no tool (authority `tool_handler` never called) and surfaces no
+artifact/usage. No product call site or `legacy_allowlist.yaml` entry changed (W1 migrates
+zero sites; the armed 87-site ratchet holds). No manual code commit taken: `supervisor.py` is
+entangled with the concurrent structured/authority fixers' uncommitted worktree state and this
+worktree has no `repo_lock.completion_lock` (absent `build-stream-conductor/scripts/repo_lock.py`),
+so the conductor ship stage owns the atomic commit (harness backstops attribution/finish/ledger),
+matching L-19/L-20.
+Verified: `PI_REQUIRE_NODE=1 python -m pytest tests/pi_production/test_protocol_version_per_frame.py -q`
+= 7 passed; `PI_REQUIRE_NODE=1 python -m pytest tests/pi_production/test_frame_limits.py
+tests/pi_production/test_runtime_hardening.py tests/pi_production/test_protocol_version_per_frame.py -q`
+= 19 passed; `test_structured_fail_closed.py` = 6 passed and `test_w1_dispatcher_authority.py`
+= 17 passed (each in isolation); `npm --prefix pi-runtime test` = 35 passed;
+`python scripts/security_benchmark.py --fail-on-threshold` = status pass, 0 triggered paths;
+`python scripts/feature_docs.py --seed-missing --generate-site --check` = 86 features passed.
+The only failing test in the wider W1 ladder is the inherited shared dev-DB drift
+(`sqlite3 no such column: tasks.agent_id`; alembic at head 024), which reproduces identically
+with this stage's `supervisor.py` change reverted (`git stash`) — pre-existing environmental
+drift outside the protocol seam, not introduced here. No live model activity or external traffic.
+Next: Stage exit: F-W1-R1-1 fixed; the accounting sibling (F-W1-R1-2) must also be terminal,
+then the conductor creates one bounded delta re-review of the changed protocol-validation surface.
+
+### L-23 | 2026-07-20T22:02:33Z | S4-remediate | claude-opus-4-8 | remediator | W1 <!-- bsc-ledger:FIX-REREV-pi-full-20260720-w1-REVIEW-r1-accounting -->
+Did: Closed F-W1-R1-2 — real-path usage-ledger exactness. `pi-runtime/src/session.mjs`
+`run.completed` now emits the full cumulative per-run usage via a new `_completedUsage`
+helper — `cache_read`/`cache_write`/`total_tokens` and the real `turns` count, not just
+input/output/cost — so Pi ledger rows keep cache tokens and never default a multi-turn run
+to turns=1; `pi-runtime/PROTOCOL.md` documents the expanded frame.
+`backend/app/core/agentic/legacy.py` `_normalize_chat` now leaves usage ABSENT when the
+provider reports none (so `usage_ledger` runs its `count_tokens` estimator instead of
+treating a fabricated zero block as provider-reported), and a new `_accumulate_usage` helper
+makes `_react_loop` and the ensemble `_sum_usage` report cumulative input/output/total plus
+the real turn count — provider-reported exact, absent-none estimated. Replaced the rich-stub
+coverage with real-seam tests: `pi-runtime/test/hardening.test.mjs` (+2 real openai_compat
+loopback proofs — run.completed carries cache/total/turns; usage is cumulative across a real
+multi-turn tool loop) and new `tests/pi_production/test_w1_realpath_accounting.py` (real
+legacy executor: cumulative multi-turn ReAct, exact provider usage, absent->estimated;
+full-stack real Pi worker: cache+turns survive run.completed -> engine -> dispatcher ->
+persisted ledger row).
+Result: F-W1-R1-2 open -> fixed; CF task FIX-REREV-pi-full-20260720-w1-REVIEW-r1-accounting.
+No product call site or `legacy_allowlist.yaml` entry changed (W1 migrates zero sites; the
+armed 87-site ratchet holds). No manual code commit taken: the W1 fix code (incl. the
+still-untracked `legacy.py`) is uncommitted shared work from the F-W1-1 authority fixer, so
+the conductor ship stage owns the atomic commit (harness backstops attribution/finish/ledger),
+matching L-19/L-20/L-22; the lifecycle append was serialized under
+`repo_lock.completion_lock` (found at the Skills toolchain path).
+Verified: `npm --prefix pi-runtime test` = 35 passed (was 33; +2 real-worker usage proofs);
+`PI_REQUIRE_NODE=1 python -m pytest tests/pi_production/test_w1_realpath_accounting.py -q` =
+4 passed; full W1 ladder + runtime hardening (`test_w1_agentic_contract`,
+`test_w1_dispatcher_authority`, `test_w1_usage_ledger`, `test_structured_fail_closed`,
+`test_w1_realpath_accounting`, `test_runtime_hardening`, `test_count_to_zero`,
+`test_same_model_donor_isolation`) = 74 passed; `PI_REQUIRE_NODE=1 python -m pytest
+tests/pi_production -q` = 131 passed; `ruff check` (legacy/usage_ledger/new test) = No issues
+found; `python scripts/feature_docs.py --seed-missing --generate-site --check` = 86 features
+passed; `python scripts/security_benchmark.py --fail-on-threshold` = status pass. No live
+model activity or external traffic.
+Next: stage exit: F-W1-R1-2 fixed and both F-W1-R1 sibling fixers terminal; the conductor
+creates one bounded delta re-review of the changed protocol-validation + real-path accounting
+surface.
+
+### L-24 | 2026-07-20T22:09:38Z | S3-review | gpt-5.6-sol | reviewer | W1 <!-- bsc-ledger:REREV-pi-full-20260720-w1-REVIEW-r2 -->
+Did: Performed only the requested delta re-review of F-W1-R1-1/F-W1-R1-2 against
+`FIX-REREV-pi-full-20260720-w1-REVIEW-r1-protocol` and
+`FIX-REREV-pi-full-20260720-w1-REVIEW-r1-accounting`. Inspected the changed protocol
+dispatch/rejection ordering, real-worker cumulative Pi usage, and the changed legacy
+`_normalize_chat`/`_accumulate_usage`/ReAct/ensemble seams. The protocol fix rejects
+wrong-version post-handshake run/tool frames before queueing, and its adversarial v2-handshake
+then v1-run proof executes no tool and accepts no artifact. In the immediate accounting seam,
+an adversarial real-legacy-executor probe exposed F-W1-R2-1: when one turn reports usage and a
+later turn omits it, `_accumulate_usage` drops the absent turn but returns the reported subset
+as `estimate=false` with the full `turns` count.
+Result: Fail. F-W1-R1-1 is closed and the fully-reported/fully-absent cases for F-W1-R1-2
+pass, but F-W1-R2-1 (Major) means the exact-vs-estimated contract is still violated for mixed
+reported+absent legacy ReAct and ensemble runs. Created
+`FIX-REREV-pi-full-20260720-w1-REVIEW-r2-accounting-mixed`, owned by
+`pi-full-20260720-w1-fixer`, preserving `source_task`, `review_role`, `pipeline_run`,
+`fixer_role`, and the self-contained finding. This was not a broad review: the new finding is
+inside the helper and two callers changed by the cited accounting fix.
+Verified: `PI_REQUIRE_NODE=1 python -m pytest tests/pi_production/test_protocol_version_per_frame.py tests/pi_production/test_w1_realpath_accounting.py -q` = 11 passed; `npm --prefix pi-runtime test` = 35 passed; real `legacy_executor("react")` mixed-usage probe via `PYTHONPATH=backend python` = two provider turns persisted as `input=100`, `output=10`, `turns=2`, `estimate=false` although the final turn reported no usage (finding confirmed). A first ledger-object form of the probe was blocked before its assertion by the inherited SQLAlchemy mapper error `Message` not located; the pure ledger normalization path then reproduced the defect without shared-DB mutation.
+Next: Remediate F-W1-R2-1 in `FIX-REREV-pi-full-20260720-w1-REVIEW-r2-accounting-mixed`; once terminal, the conductor creates one bounded delta re-review.
+
+### L-25 | 2026-07-20T22:21:45Z | S4-remediate | claude-opus-4-8 | remediator | W1 <!-- bsc-ledger:FIX-REREV-pi-full-20260720-w1-REVIEW-r2-accounting-mixed -->
+Did: Closed F-W1-R2-1 in `backend/app/core/agentic/legacy.py`. `_accumulate_usage` now treats
+exactness as all-or-nothing across the whole dispatch: it returns the exact cumulative aggregate
+(`estimate=false`, real turn count) ONLY when EVERY turn/sample reported provider usage, and returns
+an empty dict for both the fully-absent AND the *mixed* (some reported, at least one absent) cases —
+`if not reported or len(reported) < len(usages): return {}`. The empty aggregate makes the dispatcher
+ledger run its existing governed `count_tokens` estimator over the complete request/response text and
+flag the row `estimate=true`, instead of persisting the reported subset as an exact partial total with
+the full `turns` count. Extended the `_react_loop` and `_sum_usage` comments to state the all-or-nothing
+contract. No `usage_ledger.py` change was needed: its absent-usage estimation path already handles the
+now-empty mixed aggregate, and estimation stays owned by the ledger (legacy.py never re-implements it).
+Added real-seam regressions in `tests/pi_production/test_w1_realpath_accounting.py`: legacy ReAct mixed
+(reported first turn + absent final turn → estimated, not partial-exact 100/10), legacy ensemble
+all-reported (→ exact cumulative 300/30, turns=2), and legacy ensemble mixed (→ estimated, not the
+reported subset as exact).
+Result: F-W1-R2-1 (Major) fixed — mixed reported+absent legacy ReAct and ensemble runs are now
+estimated for the complete dispatch and never labeled exact; a mixed run is accounted exactly like a
+fully-absent one. Files: `backend/app/core/agentic/legacy.py`,
+`tests/pi_production/test_w1_realpath_accounting.py`. Task
+`FIX-REREV-pi-full-20260720-w1-REVIEW-r2-accounting-mixed`.
+Verified: `python -m pytest tests/pi_production/test_w1_realpath_accounting.py tests/pi_production/test_w1_usage_ledger.py -q` = 14 passed (11 prior + 3 new); `python -m pytest tests/pi_production/test_w1_agentic_contract.py tests/pi_production/test_w1_dispatcher_authority.py tests/pi_production/test_w1_realpath_accounting.py tests/pi_production/test_w1_usage_ledger.py -q` = 56 passed; `ruff check` on both changed files = No issues found; `python scripts/feature_docs.py --check` = 86 features passed; `python scripts/security_benchmark.py --fail-on-threshold` = status pass (100.0%, no triggered paths). No live model activity or external traffic.
+Next: stage exit: F-W1-R2-1 fixed; hand off for the conductor's bounded delta re-review of the changed `_accumulate_usage`/ReAct/ensemble accounting seam.
+
+### L-26 | 2026-07-20T22:30:03Z | S3-review | gpt-5.6-sol | reviewer | W1 <!-- bsc-ledger:REREV-pi-full-20260720-w1-REVIEW-r3 -->
+Did: Performed the bounded delta re-review for F-W1-R2-1 against
+`FIX-REREV-pi-full-20260720-w1-REVIEW-r2-accounting-mixed`. Inspected only the changed
+`_accumulate_usage`/ReAct/ensemble paths, their real-path regressions, and the immediate
+dispatcher-to-`usage_ledger` estimation seam. Broadened within that seam because the fix changed
+the acceptance path from provider totals to dispatcher text estimation and exposed a concrete
+adjacent defect: the estimator does not receive the complete multi-turn/multi-sample dispatch.
+Result: **fail**. The fix correctly prevents a reported subset from being labeled exact, but opened
+F-W1-R3-1 (Major): returning an empty aggregate causes the ledger to count only the original request
+and top-level `outcome.text`. A real mixed two-sample ensemble probe with two non-empty outputs
+persisted `input_tokens=3`, `output_tokens=0`, `total_tokens=3`, `turns=1`, `estimate=true`; the
+request was counted once despite two dispatches. Mixed ReAct likewise loses repeated prompt/history,
+tool-result consumption, and the known turn count. Created
+`FIX-REREV-pi-full-20260720-w1-REVIEW-r3-accounting-complete` for the cast fixer; no production code
+was changed by the reviewer.
+Verified: `PI_REQUIRE_NODE=1 python -m pytest tests/pi_production/test_w1_realpath_accounting.py tests/pi_production/test_w1_usage_ledger.py -q` = 14 passed; `ruff check backend/app/core/agentic/legacy.py tests/pi_production/test_w1_realpath_accounting.py` = clean; `PYTHONPATH=backend python /tmp/rerev_w1_r3_probe.py` = finding reproduced (`input=3`, `output=0`, `turns=1`, estimated for two non-empty samples).
+Next: Remediate F-W1-R3-1 in `FIX-REREV-pi-full-20260720-w1-REVIEW-r3-accounting-complete`; after it and any sibling fixes are terminal, the conductor creates one bounded delta re-review.
+
+### L-27 | 2026-07-21T04:48:39Z | S4-remediate | gpt-5.6-terra | remediator | W1 <!-- bsc-ledger:FIX-REREV-pi-full-20260720-w1-REVIEW-r3-accounting-complete -->
+Did: Closed F-W1-R3-1 in `backend/app/core/agentic/legacy.py`, `backend/app/core/agentic/usage_ledger.py`, and `tests/pi_production/test_w1_realpath_accounting.py`. Legacy outcomes now carry ephemeral complete-dispatch provenance: each ReAct provider turn records its serialized request history and response, and each ensemble sample contributes its own request/response. The ledger estimates those complete traces only when provider usage is absent or mixed; all-reported runs retain the existing exact aggregate.
+Result: F-W1-R3-1 (Major) fixed by `FIX-REREV-pi-full-20260720-w1-REVIEW-r3-accounting-complete`: mixed ReAct includes repeated prompt/history/tool-result consumption and retains its actual turn count; mixed ensembles include every sample request and non-empty output, with `estimate=true` and `turns=2` in the real-path regression.
+Verified: `PYTHONPATH=backend pytest -q tests/pi_production/test_w1_realpath_accounting.py` = 7 passed; `PYTHONPATH=backend pytest -q tests/pi_production/test_w1_realpath_accounting.py tests/pi_production/test_w1_dispatcher_authority.py` = 24 passed; `ruff check backend/app/core/agentic/legacy.py backend/app/core/agentic/usage_ledger.py tests/pi_production/test_w1_realpath_accounting.py` = clean; `python scripts/feature_docs.py --seed-missing --generate-site --check` = 86 features passed; Compass Forge post-gate = no new actionable failures (inherited secret-flow/large-file baseline remains).
+Next: stage exit: F-W1-R3-1 fixed; hand off for the conductor's bounded delta re-review of the changed legacy provenance and ledger-estimation seam.
+
 ## W0 — hardening and evidence integrity
 
 **Frame/Plan:** Master plan §6 plus §12.2. Arm the deterministic inventory/ratchet before
@@ -453,12 +700,16 @@ structured-output protocol, one-row usage accounting, and retain the armed 87-si
 
 | ID | Sev | Dim | Where | Finding | CF task | Status |
 |---|---|---|---|---|---|---|
-| F-W1-1 | Blocker | Integration | `backend/app/core/agentic/dispatcher.py`; `backend/app/core/pi_runtime/{engine,model_manager}.py`; project/config seams | The dispatcher is not the required production choke point: `chat_turn`, `ensemble`, and `embed` are absent; the singleton has no real legacy executor; request/project precedence is not wired into calls or persisted on projects; PiModelManager is not used by the engine, lacks required catalog sources, and ignores capability filters; TurnParams are not forwarded. | FIX-pi-full-20260720-w1-REVIEW-r1-authority | open |
-| F-W1-2 | Blocker | Bugs | `backend/app/core/pi_runtime/{engine,protocol}.py`; `pi-runtime/src/{protocol,worker,session}.mjs` | The required forced-tool structured contract is absent: protocol remains v1, worker fields and both-side compatibility validation are missing, free-form JSON text is accepted, and a second invalid response returns an error-shaped value instead of raising typed fail-closed failure. | FIX-pi-full-20260720-w1-REVIEW-r1-structured | open |
+| F-W1-1 | Blocker | Integration | `backend/app/core/agentic/{dispatcher,legacy,types}.py`; `backend/app/core/pi_runtime/{engine,model_manager,endpoints}.py`; `backend/app/{config,models/project}.py`; migration `024` | Closed by `FIX-pi-full-20260720-w1-REVIEW-r1-authority` (L-20): all five verbs plus `react` route through the dispatcher with override>header>project>default engine precedence wired into every verb and persisted via the `projects.agentic_engine` column (migration `024`); the module singleton binds the REAL `legacy.py` executor, byte-compatible with the live `app.core.ollama.ollama` ComputeRegistry `chat`/`embed_batch` signatures; `PiExecutionService` resolves every turn through the isolated `PiModelManager` (no ComputeRegistry import; static-settings + `pi-deepseek-default` + local `/v1` + read-only `pi-llm-<id>` LLMServer sources excluding relay/browser donors) with fail-closed model/require_vision/min_context admission; all TurnParams are forwarded (generation knobs via `_bind_payload`, capability filters via admission, `max_turns` via `turn.prompt`); Pi `embed` fails typed and never falls back; endpoint identity isolation (id/kind/model only) is preserved; negative and non-faux immediate-seam tests added. Verified: `test_w1_dispatcher_authority.py` = 17 passed; full W1 ladder = 59 passed; full `tests/pi_production` = 120 passed; `npm --prefix pi-runtime test` = 33 passed; 87-site ratchet = 3 passed; security benchmark = pass. | FIX-pi-full-20260720-w1-REVIEW-r1-authority | fixed |
+| F-W1-2 | Blocker | Bugs | `backend/app/core/pi_runtime/{engine,protocol,supervisor}.py`; `pi-runtime/src/{protocol,worker,session,structured}.mjs` | Closed by `FIX-pi-full-20260720-w1-REVIEW-r1-structured` (L-19): `PROTOCOL_VERSION=2` is pinned and validated on both sides (worker `hello`/per-frame `fatal`/rejection; supervisor `ready`/handshake-`fatal` -> typed `PiWorkerError`); `turn.prompt` carries `output_schema`/`tool_choice`/`max_turns` and the supervisor forwards them; `structured.mjs` mechanically translates the supported JSON-Schema subset for the forced `emit_structured_output` tool (both sides reject the same unsupported constructs before any provider call); the tool CAPTURES (never executes/round-trips) its arguments and a run with no capture settles `structured_output_missing` (free-form JSON text is never accepted); `engine.py` `run_structured` revalidates the captured object against the ORIGINAL schema, allows exactly one bounded repair, then raises a typed `PiRuntimeTurnError` (`structured_output_invalid`/`_missing`) with no partial/error-shaped artifact. Adversarial worker + Node/Python tests cover unsupported schema, missing/incorrect tool call, invalid repair, protocol mismatch, and no-partial-artifact. Verified: `npm --prefix pi-runtime test` = 33 passed; `test_structured_fail_closed.py` = 6 passed; full `tests/pi_production` = 120 passed; security benchmark = pass. | FIX-pi-full-20260720-w1-REVIEW-r1-structured | fixed |
 | F-W1-3 | Major | Data | `backend/app/core/agentic/usage_ledger.py`; telemetry persistence | The usage ledger is neither exact nor complete: provider-reported legacy usage defaults to `estimate=true`, absent usage is not estimated with the existing counter, exception paths record no row, required task/spine/node fields are absent, and the row is packed into the short identity-oriented `route_id` field. | FIX-pi-full-20260720-w1-REVIEW-r1-ledger | fixed |
 | F-W1-4 | Major | Docs | `tests/pi_production/test_w1_agentic_contract.py`; `docs/features/` | Closed by `FIX-pi-full-20260720-w1-REVIEW-r1-docs-tests` (L-18): the W1 living feature docs are code-accurate across all five behaviors — `chat/model-controls` covers the dispatcher/engine selection/precedence/`TurnParams`, the forced `emit_structured_output` structured contract, the `PROTOCOL_VERSION=2` handshake mismatch, and the durable `agentic_usage_rows` ledger; `settings/llm-servers` and `compute/pool` cover the isolated Pi catalog sources/capabilities and bidirectional donor isolation (site/manifests regenerated, `feature_docs --check` green for 86 features). The self-consistent smoke coverage is replaced by contract-complete `test_w1_agentic_contract.py` proving all five verbs on both real engine seams, precedence resolution, parameter forwarding, catalog sources/capabilities, typed structured failure, one-row ledger persistence (incl. the exception path), protocol mismatch, the unchanged 87-site ratchet, and same-model donor isolation — all faux/loopback/static. | FIX-pi-full-20260720-w1-REVIEW-r1-docs-tests | fixed |
+| F-W1-R1-1 | Blocker | Integration | `backend/app/core/pi_runtime/supervisor.py`; `pi-runtime/PROTOCOL.md`; protocol mismatch tests | Closed by `FIX-REREV-pi-full-20260720-w1-REVIEW-r1-protocol` (L-22): `PiRuntimeSupervisor._dispatch` now validates `frame.v` per-frame — `ready`/`fatal` stay exempt (the version-negotiation channel, validated in `ensure_started` via `protocol_version`), but every other post-handshake frame whose `v != PROTOCOL_VERSION` is rejected BEFORE it is queued via `_reject_frame`, settling the session's active run `run.failed{error:"protocol_version_mismatch"}` (or the offending frame's own run when none is active; a frame for an unknown session is logged and dropped). A version mismatch is never process-fatal, matching the existing `pi-runtime/PROTOCOL.md` "Versioning" contract and living-doc claim (no doc change needed). A v2-handshake-then-v1-run worker now executes no tool and surfaces no artifact/usage. Verified: `test_protocol_version_per_frame.py` (6 node-free `_dispatch` unit tests + 1 adversarial integration test) = 7 passed; supervisor/runtime-adjacent seams = 19 passed; `npm --prefix pi-runtime test` = 35 passed; security benchmark + feature docs green. | FIX-REREV-pi-full-20260720-w1-REVIEW-r1-protocol | fixed |
+| F-W1-R1-2 | Major | Data | `pi-runtime/src/session.mjs`; `backend/app/core/agentic/legacy.py`; real-path ledger tests | Closed by `FIX-REREV-pi-full-20260720-w1-REVIEW-r1-accounting` (L-23): `session.mjs` `run.completed` now emits the full cumulative per-run usage — `cache_read`/`cache_write`/`total_tokens` and the real `turns` count (via `_completedUsage`), not just input/output/cost — so Pi rows keep cache tokens and never record a multi-turn run as one turn; `legacy.py` `_normalize_chat` leaves usage absent when the provider reports none (the ledger's `count_tokens` estimator runs instead of persisting a fabricated exact-zero row), and `_accumulate_usage` makes `_react_loop`/`_sum_usage` report cumulative provider usage plus the real turn count. Real-worker (Node loopback) and real-legacy-executor + full-stack-Pi seam tests replace the rich stubs. Verified: `npm --prefix pi-runtime test` = 35 passed; `test_w1_realpath_accounting.py` = 4 passed; W1 ladder + hardening = 74 passed; full `tests/pi_production` = 131 passed; ruff clean; feature docs 86; security pass. | FIX-REREV-pi-full-20260720-w1-REVIEW-r1-accounting | fixed |
+| F-W1-R2-1 | Major | Data | `backend/app/core/agentic/legacy.py:77-99,156-267`; `backend/app/core/agentic/usage_ledger.py:37-88` | Closed by `FIX-REREV-pi-full-20260720-w1-REVIEW-r2-accounting-mixed` (L-25): `_accumulate_usage` now enforces all-or-nothing exactness across the dispatch — it returns the exact cumulative aggregate only when EVERY turn/sample reported provider usage, and returns an empty dict for the fully-absent AND the mixed (some reported, some absent) cases so the ledger produces one governed `count_tokens` estimate over the complete dispatch (`estimate=true`) instead of persisting the reported subset as an exact partial total; a mixed run is accounted exactly like a fully-absent one. No `usage_ledger.py` change was needed (its absent-usage estimator already handles the empty aggregate; estimation stays ledger-owned). Real ReAct-mixed, ensemble-all-reported-exact, and ensemble-mixed regressions added to `test_w1_realpath_accounting.py`. Verified: accounting+ledger seam = 14 passed (11 prior + 3 new); full W1 seam = 56 passed; ruff clean; feature docs 86; security pass. | FIX-REREV-pi-full-20260720-w1-REVIEW-r2-accounting-mixed | fixed |
+| F-W1-R3-1 | Major | Data | `backend/app/core/agentic/{legacy,dispatcher,usage_ledger}.py`; `tests/pi_production/test_w1_realpath_accounting.py` | Closed by `FIX-REREV-pi-full-20260720-w1-REVIEW-r3-accounting-complete` (L-27): mixed legacy ReAct carries each complete provider-turn request history and response, and ensembles carry every sample request/response, as ephemeral estimation provenance. `usage_ledger` estimates those complete traces only when usage is absent or mixed, preserving all-reported exact aggregates; real-path regressions require meaningful complete input/output and real turns. Verified: accounting test = 7 passed; accounting plus dispatcher authority = 24 passed; ruff + feature docs clean; CF delta gate found no new actionable drift. | FIX-REREV-pi-full-20260720-w1-REVIEW-r3-accounting-complete | fixed |
 
-**Remediation:** `FIX-pi-full-20260720-w1-REVIEW-r1-ledger` (L-17) closed F-W1-3 and `FIX-pi-full-20260720-w1-REVIEW-r1-docs-tests` (L-18) closed F-W1-4. F-W1-1 and F-W1-2 remain open under their own fixer tasks, followed by one conductor-created delta re-review.
+**Remediation:** `FIX-pi-full-20260720-w1-REVIEW-r1-ledger` (L-17) closed F-W1-3, `FIX-pi-full-20260720-w1-REVIEW-r1-docs-tests` (L-18) closed F-W1-4, `FIX-pi-full-20260720-w1-REVIEW-r1-structured` (L-19) closed F-W1-2, and `FIX-pi-full-20260720-w1-REVIEW-r1-authority` (L-20) closed F-W1-1. The bounded L-21 delta re-review then opened F-W1-R1-1 and F-W1-R1-2 under two sibling fixer tasks. `FIX-REREV-pi-full-20260720-w1-REVIEW-r1-protocol` (L-22) closed F-W1-R1-1 by adding Python-side per-frame `frame.v` validation in `PiRuntimeSupervisor._dispatch` (reject before queueing; settle the active run `protocol_version_mismatch`, never process-fatal). `FIX-REREV-pi-full-20260720-w1-REVIEW-r1-accounting` (L-23) then closed F-W1-R1-2 by emitting the full cumulative Pi `run.completed` usage (cache/total/turns) and making the legacy normalizer/ReAct/ensemble paths accumulate cumulative provider usage while leaving absent usage to the estimator, proven by new real-worker and real-legacy-executor seam tests. Both F-W1-R1 sibling fixers became terminal, but the bounded L-24 delta re-review found the mixed reported+absent legacy case still persisted a partial aggregate as exact and opened F-W1-R2-1 under `FIX-REREV-pi-full-20260720-w1-REVIEW-r2-accounting-mixed`. L-25 closed that partial-exact symptom by making `_accumulate_usage` all-or-nothing. The bounded L-26 review showed the fallback estimate is still not complete and opened F-W1-R3-1 under `FIX-REREV-pi-full-20260720-w1-REVIEW-r3-accounting-complete`: ensemble outputs are absent from the ledger input, requests are not multiplied by sample count, and known multi-turn counts collapse to one. The conductor creates the next bounded re-review only after that fixer and any siblings are terminal.
 
 **Phase summary:** Pending.
 
