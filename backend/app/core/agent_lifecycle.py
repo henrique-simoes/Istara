@@ -515,20 +515,33 @@ class AgentLifecycleMixin:
                     project_id=project.id,
                 )
             else:
-                # No matching skill — use the general LLM to respond
-                response = await ollama.chat(
-                    messages=[
-                        {
-                            "role": "system",
-                            "content": (
-                                "You are Istara's main agent. Respond helpfully to the "
-                                f"user's steering message for project {project.name}."
-                            ),
-                        },
-                        {"role": "user", "content": message_text},
-                    ]
+                # No matching skill — use the general LLM to respond.
+                # W3 (L10): the steering reply goes through the
+                # AgenticDispatcher (``steering.reply``) with a per-message Pi
+                # session and a SteeringBinding, so queued steer/follow-up
+                # messages deliver mid-turn and /steering abort maps to
+                # turn.abort (H-5). Keyword-skill routing above is unchanged.
+                from app.core.agentic import agentic
+                from app.core.agentic.types import TurnParams
+
+                outcome = await agentic.chat_turn(
+                    project_id=project.id,
+                    agent_id=self._agent_id,
+                    session_key=f"steering:{project.id}:{uuid.uuid4().hex[:12]}",
+                    system_prompt=(
+                        "You are Istara's main agent. Respond helpfully to the "
+                        f"user's steering message for project {project.name}."
+                    ),
+                    messages=[],
+                    user_text=message_text,
+                    tool_names=[],
+                    steering_binding=agentic.steering_binding(
+                        agent_id=self._agent_id, project_id=project.id
+                    ),
+                    params=TurnParams(timeout_s=120),
+                    spine_phase="intent",
                 )
-                reply = response.get("message", {}).get("content", "")
+                reply = outcome.text
                 await broadcast_agent_status(
                     "idle",
                     f"Steering response: {reply[:200]}...",

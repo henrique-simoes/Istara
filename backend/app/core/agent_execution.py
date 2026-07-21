@@ -30,7 +30,6 @@ from app.core.checkpoint import complete_checkpoint, create_checkpoint, update_c
 from app.core.context_hierarchy import context_hierarchy
 from app.core.datetime_utils import ensure_utc
 from app.core.embeddings import TextChunk
-from app.core.ollama import ollama
 from app.core.rag import ingest_chunks, retrieve_context
 from app.core.resource_governor import governor
 from app.core.self_check import Confidence, verify_claim
@@ -469,7 +468,15 @@ class AgentExecutionMixin:
                     execution_count = health["executions"]
                     output_preview = (output.summary or "")[:300]
                     try:
-                        reflection = await ollama.chat(
+                        # W3 (L7): skill-improvement reflection through the
+                        # AgenticDispatcher (``spine.skill_reflection``).
+                        from app.core.agentic import agentic
+                        from app.core.agentic.types import TurnParams
+
+                        reflection = await agentic.completion(
+                            purpose="spine.skill_reflection",
+                            project_id=project.id,
+                            system=None,
                             messages=[
                                 {
                                     "role": "user",
@@ -486,9 +493,11 @@ class AgentExecutionMixin:
                                     ),
                                 },
                             ],
-                            temperature=0.3,
+                            params=TurnParams(temperature=0.3),
+                            task_id=task.id,
+                            spine_phase="governance",
                         )
-                        improvement_text = reflection.get("message", {}).get("content", "")
+                        improvement_text = reflection.text
                     except Exception:
                         improvement_text = (
                             f"Low quality ({avg_quality:.0%}) after {execution_count} runs"

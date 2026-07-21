@@ -3,7 +3,6 @@
 from dataclasses import dataclass, field
 from enum import Enum
 
-from app.core.ollama import ollama
 from app.core.rag import VectorStore, retrieve_context
 
 
@@ -66,43 +65,63 @@ async def verify_claim(
 2. Rate confidence: HIGH (strong evidence from multiple sources), MEDIUM (some evidence), LOW (weak/indirect evidence), UNVERIFIED (no relevant evidence).
 3. List which specific sources support or contradict the claim.
 
-Respond in this exact format:
-CONFIDENCE: [HIGH/MEDIUM/LOW/UNVERIFIED]
-SUPPORTING: [comma-separated source names, or "none"]
-CONTRADICTING: [comma-separated source names, or "none"]
-NOTES: [brief explanation of your assessment]"""
+Respond with the structured object:
+- confidence: one of HIGH, MEDIUM, LOW, UNVERIFIED
+- supporting: source names supporting the claim ([] if none)
+- contradicting: source names contradicting the claim ([] if none)
+- notes: brief explanation of your assessment"""
 
-    response = await ollama.chat(
+    # W3 (L6): claim verification through the AgenticDispatcher
+    # (``spine.self_check``) as a proper schema-validated structured call —
+    # the line-format parse upgrades to a schema BOTH engines enforce
+    # (deliberate baseline improvement, master plan §8 W3).
+    from app.core.agentic import agentic
+    from app.core.agentic.types import TurnParams
+
+    verification_schema = {
+        "type": "object",
+        "properties": {
+            "confidence": {
+                "type": "string",
+                "enum": ["HIGH", "MEDIUM", "LOW", "UNVERIFIED"],
+            },
+            "supporting": {"type": "array", "items": {"type": "string"}},
+            "contradicting": {"type": "array", "items": {"type": "string"}},
+            "notes": {"type": "string"},
+        },
+        "required": ["confidence", "supporting", "contradicting", "notes"],
+        "additionalProperties": False,
+    }
+    outcome = await agentic.structured(
+        purpose="spine.self_check",
+        project_id=project_id,
+        system=None,
         messages=[{"role": "user", "content": verification_prompt}],
-        temperature=0.1,
+        schema=verification_schema,
+        params=TurnParams(temperature=0.1),
+        spine_phase="grounding",
     )
 
-    response_text = response.get("message", {}).get("content", "")
+    value = outcome.value if outcome.status == "success" else {}
 
-    # Parse the structured response
     confidence = Confidence.UNVERIFIED
-    supporting: list[str] = []
-    contradicting: list[str] = []
-    notes = ""
-
-    for line in response_text.split("\n"):
-        line = line.strip()
-        if line.startswith("CONFIDENCE:"):
-            level = line.split(":", 1)[1].strip().upper()
-            try:
-                confidence = Confidence(level.lower())
-            except ValueError:
-                confidence = Confidence.UNVERIFIED
-        elif line.startswith("SUPPORTING:"):
-            sources = line.split(":", 1)[1].strip()
-            if sources.lower() != "none":
-                supporting = [s.strip() for s in sources.split(",") if s.strip()]
-        elif line.startswith("CONTRADICTING:"):
-            sources = line.split(":", 1)[1].strip()
-            if sources.lower() != "none":
-                contradicting = [s.strip() for s in sources.split(",") if s.strip()]
-        elif line.startswith("NOTES:"):
-            notes = line.split(":", 1)[1].strip()
+    level = str(value.get("confidence") or "").strip().upper()
+    if level:
+        try:
+            confidence = Confidence(level.lower())
+        except ValueError:
+            confidence = Confidence.UNVERIFIED
+    supporting = [
+        s.strip()
+        for s in (value.get("supporting") or [])
+        if isinstance(s, str) and s.strip()
+    ]
+    contradicting = [
+        s.strip()
+        for s in (value.get("contradicting") or [])
+        if isinstance(s, str) and s.strip()
+    ]
+    notes = str(value.get("notes") or "")
 
     return VerificationResult(
         claim=claim,
