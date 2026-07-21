@@ -6,11 +6,11 @@ item: pi-full-replacement
 branch: Review_pi_test
 cf: { spec: CF-SPEC-8, tasks: [pi-full-20260720-w0-IMPL, pi-full-20260720-w0-REVIEW] }
 phase: "W5 — skills, reports, interview services migration"
-stage: S3-review
+stage: S4-remediate
 status: in-progress
 blocked_on: none
-last: { agent: claude-fable-5, at: 2026-07-21T12:12:11Z, ledger: L-35 }
-next_action: "W5 review FAILED (L-35): F-W5-1/F-W5-2 (Major) — unguarded Pi-engine PiRuntimeTurnError raises bypass the skill_factory 4-stage repair chain and the discover/intercoder graceful-degradation branches. Fixer task FIX-pi-full-20260720-w5-REVIEW-r1 created; conductor dispatches the fixer, then one delta re-review."
+last: { agent: claude-opus-4-8, at: 2026-07-21T12:43:50Z, ledger: L-36 }
+next_action: "W5 remediation complete (L-36): F-W5-1/F-W5-2 fixed — all 10 Pi structured-raise sites guarded into their existing fallbacks, raise-path tests added, allowlist re-pinned (ratchet 70). 78 W5+ratchet / 231 pi_production / 85 regression tests green. Hand back to conductor for the bounded delta re-review of FIX-pi-full-20260720-w5-REVIEW-r1."
 ```
 <!-- /STATUS BLOCK -->
 
@@ -735,6 +735,12 @@ Result: **FAIL** — 2 Major findings (F-W5-1, F-W5-2) recorded on `pi-full-2026
 Verified: `pytest tests/pi_production/test_w5_*.py -q` = 65 passed; `pytest tests/pi_production -q` = 221 passed; `pytest tests/pi_migration -q` = 3 passed (ratchet 70); `pytest tests/test_research_integrity_reports.py tests/test_integration_interview.py tests/test_research_integrity_code_applications.py tests/test_research_validity_contract.py tests/test_agents.py -q` = 85 passed. (Findings are behavioral on the Pi raise path, which no current test drives — everything green despite the fail.)
 Next: S4-remediate — `FIX-pi-full-20260720-w5-REVIEW-r1` guards the Pi raise path into the existing fallbacks + adds raise-path tests; conductor dispatches the delta re-review after the fixer is terminal.
 
+### L-36 | 2026-07-21T12:43:50Z | S4-remediate | claude-opus-4-8 | remediator | W5 <!-- bsc-ledger:FIX-pi-full-20260720-w5-REVIEW-r1 -->
+Did: Closed F-W5-1 and F-W5-2 — every Pi structured-raise site now degrades into its existing fallback instead of escaping. F-W5-1: wrapped the primary `skill.execute` `agentic.structured(repair=False)` call in `skill_factory.py:782` in try/except (→ `raw_content=""`, `data=None`) so a `PiRuntimeTurnError` on the first invalid/missing output falls into the 4-stage repair chain (`repair_native`→`repair_plain`→`repair_findings`, already individually guarded) — the master plan's "PRESERVED as-is" resilience contract is live on the Pi path again. F-W5-2: wrapped the 9 discover/intercoder structured sites (`channel_deployment._analyze`, `contextual_inquiry.execute`, `diary_studies.execute`, `user_interviews` per-transcript + synthesis, `intercoder` coder A/B/reconcile/themes) in the same try/except, each routing to its exact existing degraded output (`raw_analysis`/`raw_synthesis`/`{}` → empty-coding failure / union codes / no themes). `settings.agentic_core` gating and the legacy `ollama.chat` branches are byte-identical; the Pi engine fail-closed semantics and the dispatcher are untouched. Added the missing raise-path coverage: 4 tests in `test_w5_intercoder.py` (coder A raise → failure output; coder B/reconcile/themes raise → graceful degrade) and repaired a broken discover raise-path test (`raise_for={SYNTHESIS_SCHEMA}` put an unhashable dict in a set → list). Re-pinned 17 `legacy_allowlist.yaml` keys shifted down by the new try/except blocks (product-entry count held at 70); trimmed 4 guard log lines to keep the changed hunks E501-clean. (The source guards were already staged in the shared working tree by the prior fixer run `kimi-code/k3-high`, which hit a hard rate limit at 12:22:54Z before recording any command/self_report/ledger evidence; this stage verified them complete + correct and finished the test/ratchet/bookkeeping.)
+Result: **PASS** — F-W5-1 and F-W5-2 closed (register rows flipped open→fixed); `FIX-pi-full-20260720-w5-REVIEW-r1`. Files: `backend/app/skills/skill_factory.py`, `backend/app/skills/intercoder.py`, `backend/app/skills/discover/{channel_deployment,contextual_inquiry,diary_studies,user_interviews}.py`, `tests/pi_production/test_w5_intercoder.py`, `tests/pi_production/test_w5_discover.py`, `tests/pi_migration/legacy_allowlist.yaml`. All 10 structured sites now catch the typed raise; no unreachable degraded branch remains on the Pi path. Diff stays uncommitted on `Review_pi_test` for the delta re-review (this commit carries the lifecycle file only).
+Verified: `pytest tests/pi_production/test_w5_skill_factory.py tests/pi_production/test_w5_discover.py tests/pi_production/test_w5_intercoder.py tests/pi_production/test_w5_interview_services.py tests/pi_production/test_w5_report_manager.py tests/pi_migration -q` = 78 passed (ratchet held at 70); `pytest tests/pi_production -q` = 231 passed; `pytest tests/test_research_integrity_reports.py tests/test_integration_interview.py tests/test_research_integrity_code_applications.py tests/test_research_validity_contract.py tests/test_agents.py -q` = 85 passed; `python scripts/pi_migration_inventory.py --json` = 56 rows, all allowlisted; ruff on the changed guard hunks = 0 new E501.
+Next: stage exit: remediation complete — hand back to the conductor for the bounded delta re-review of `FIX-pi-full-20260720-w5-REVIEW-r1` (verify the 10 guarded sites + raise-path tests + re-pinned allowlist; the graceful branches are now Pi-reachable).
+
 ## W0 — hardening and evidence integrity
 
 **Frame/Plan:** Master plan §6 plus §12.2. Arm the deterministic inventory/ratchet before
@@ -846,10 +852,19 @@ structured-output protocol, one-row usage accounting, and retain the armed 87-si
 
 | ID | Sev | Dim | Where | Finding | CF task | Status |
 |---|---|---|---|---|---|---|
-| F-W5-1 | Major | Bugs | `backend/app/skills/skill_factory.py` execute (~:782) | Primary `skill.execute` `agentic.structured(repair=False)` call is unwrapped: on the Pi engine the first invalid/missing structured output raises `PiRuntimeTurnError` out of `GeneratedSkill.execute`, bypassing the 4-stage repair chain the master plan requires preserved as the product's resilience contract (repair stages themselves are correctly wrapped). | FIX-pi-full-20260720-w5-REVIEW-r1 | open |
-| F-W5-2 | Major | Bugs | `channel_deployment.py:372`, `contextual_inquiry.py:208`, `diary_studies.py:185`, `user_interviews.py:463,527`, `intercoder.py:550,595,672,715` | Nine discover/intercoder `agentic.structured` sites lack the W2/W3-precedent try/except; their `status != success → raw_analysis/{}` degraded branches are reachable only on legacy-engine dispatch (Pi raises, never returns non-success), so Pi-engine skill runs hard-fail where legacy degraded gracefully; no test covers the raise path. | FIX-pi-full-20260720-w5-REVIEW-r1 | open |
+| F-W5-1 | Major | Bugs | `backend/app/skills/skill_factory.py` execute (~:782) | Primary `skill.execute` `agentic.structured(repair=False)` call is unwrapped: on the Pi engine the first invalid/missing structured output raises `PiRuntimeTurnError` out of `GeneratedSkill.execute`, bypassing the 4-stage repair chain the master plan requires preserved as the product's resilience contract (repair stages themselves are correctly wrapped). | FIX-pi-full-20260720-w5-REVIEW-r1 | fixed |
+| F-W5-2 | Major | Bugs | `channel_deployment.py:372`, `contextual_inquiry.py:208`, `diary_studies.py:185`, `user_interviews.py:463,527`, `intercoder.py:550,595,672,715` | Nine discover/intercoder `agentic.structured` sites lack the W2/W3-precedent try/except; their `status != success → raw_analysis/{}` degraded branches are reachable only on legacy-engine dispatch (Pi raises, never returns non-success), so Pi-engine skill runs hard-fail where legacy degraded gracefully; no test covers the raise path. | FIX-pi-full-20260720-w5-REVIEW-r1 | fixed |
 
 **Review outcome:** `pi-full-20260720-w5-REVIEW` (L-35, claude-fable-5) **FAILED** with 2 Major findings sharing one fixer task. All 28 sites/purposes/schemas otherwise conform to §8 W5; ratchet held at 70; 374 tests green across the W5, pi_production, ratchet, and legacy-surface suites.
+
+**Remediation:** `FIX-pi-full-20260720-w5-REVIEW-r1` (L-36, claude-opus-4-8) closed F-W5-1 and F-W5-2:
+all 10 discover/intercoder/skill_factory `agentic.structured` sites now wrap the call in the
+W2/W3-precedent try/except and route a `PiRuntimeTurnError` into the exact existing degraded
+fallback (skill_factory's 4-stage repair chain; `raw_analysis`/`raw_synthesis`/`{}` for the
+discover/intercoder sites). Raise-path tests were added (4 new in `test_w5_intercoder.py`, and a
+broken discover synthesis raise-path test repaired); the 17 allowlist keys shifted by the guards
+were re-pinned (ratchet still 70). Green: 78 W5+ratchet, 231 pi_production, 85 research/interview
+regressions. Awaiting the conductor's bounded delta re-review before W5 advances.
 
 ## Summary (S5 — whole plan)
 
