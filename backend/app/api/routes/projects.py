@@ -30,6 +30,14 @@ from app.models.project import Project, ProjectPhase
 router = APIRouter()
 
 
+def _global_agentic_engine() -> str:
+    """Return the normalized global engine without an eager Pi import."""
+    from app.core.pi_replacement import PI_ENGINE_VALUES
+
+    value = str(getattr(settings, "agentic_engine_default", "legacy") or "").strip().lower()
+    return "pi" if value in PI_ENGINE_VALUES else "legacy"
+
+
 def _validate_watch_folder(folder_path: str) -> Path:
     folder = Path(folder_path).expanduser()
     try:
@@ -177,6 +185,7 @@ class ProjectResponse(BaseModel):
     owner_id: str = ""
     watch_folder_path: str | None = None
     agentic_engine: str | None = None
+    global_agentic_engine: str = "legacy"
     current_user_project_role: str | None = None
     created_at: datetime
     updated_at: datetime
@@ -203,6 +212,7 @@ async def _project_response(
         "owner_id": project.owner_id,
         "watch_folder_path": project.watch_folder_path,
         "agentic_engine": project.agentic_engine,
+        "global_agentic_engine": _global_agentic_engine(),
         "current_user_project_role": role,
         "created_at": project.created_at,
         "updated_at": project.updated_at,

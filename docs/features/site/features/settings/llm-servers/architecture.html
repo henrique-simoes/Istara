@@ -335,6 +335,13 @@
 <p><code>&quot;pi_catalog&quot;</code> key alongside the legacy model list in both online and</p>
 <p>offline responses. It is an identity/capability view only — endpoint ids,</p>
 <p>model names, and kinds — and never exposes endpoint URLs or API keys.</p>
+<ul>
+<li>The frontend consumes that side field through <code>mergeModelCatalogs()</code> so Pi</li>
+</ul>
+<p>identities are visible in the existing Available Models inventory without</p>
+<p>passing a Pi endpoint through the legacy provider-switch action. Duplicate</p>
+<p>Pi endpoint identities are collapsed, while distinct endpoint ids remain</p>
+<p>distinct for routing and auditability.</p>
 <h2 id="architecture-notes">Architecture Notes</h2>
 <ul>
 <li>The feature is mounted through <code>frontend/src/components/common/SettingsView.tsx</code> and the UI navigation path recorded in the inventory.</li>

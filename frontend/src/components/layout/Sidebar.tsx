@@ -286,16 +286,16 @@ export default function Sidebar({ activeView, onViewChange, onSearchOpen }: Side
                     <div className="text-xs text-slate-400 flex items-center gap-1">
                       <span className="truncate">{project.is_paused ? "⏸ Paused" : phaseLabel(project.phase)}</span>
                       <span
-                        aria-label={`Engine: ${agentEngineLabel(project.agentic_engine)}`}
-                        title={`Agent engine: ${agentEngineLabel(project.agentic_engine)}${project.agentic_engine ? "" : " (global default)"}`}
+                        aria-label={`Engine: ${agentEngineLabel(project.agentic_engine || project.global_agentic_engine)}`}
+                        title={`Agent engine: ${agentEngineLabel(project.agentic_engine || project.global_agentic_engine)}${project.agentic_engine ? "" : " (global default)"}`}
                         className={cn(
                           "shrink-0 px-1 rounded text-[9px] font-semibold uppercase tracking-wide",
-                          agentEngineLabel(project.agentic_engine) === "Pi"
+                          agentEngineLabel(project.agentic_engine || project.global_agentic_engine) === "Pi"
                             ? "bg-istara-100 text-istara-700 dark:bg-istara-900/40 dark:text-istara-400"
                             : "bg-slate-200 text-slate-500 dark:bg-slate-700 dark:text-slate-400"
                         )}
                       >
-                        {agentEngineLabel(project.agentic_engine)}
+                        {agentEngineLabel(project.agentic_engine || project.global_agentic_engine)}
                       </span>
                     </div>
                   </div>
