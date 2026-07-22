@@ -11,8 +11,8 @@ status: in-progress
 blocked_on: null
 authored_by: build-stream-conductor
 grounding: "Based on 2026-07-20-pi-full-replacement-master-plan.md Section 10"
-last: { agent: claude-fable-5, at: 2026-07-22T22:42:32Z, ledger: L-44 }
-next_action: "Retake consensus (PI-BENCH-RETAKE-20260722): remaining architects author plans; judges vote on slots a/b/c; conductor pins candidates and tallies."
+last: { agent: kimi-code/k3, at: 2026-07-22T22:54:53Z, ledger: L-46 }
+next_action: "Conductor: collect retake consensus plans (slots a/b/c) and run judge votes; seal consensus_result; G-R0 owner gate before any implementation."
 ```
 <!-- /STATUS BLOCK -->
 
@@ -729,3 +729,9 @@ Did: pi-bench-retake-20260722-architect-b stage on task PI-BENCH-RETAKE-20260722
 Result: task PI-BENCH-RETAKE-20260722-PLAN-B finished; worktree head 3c91b30c.
 Verified: see Compass Forge evidence rows on PI-BENCH-RETAKE-20260722-PLAN-B (command + self_report + stage_attribution).
 Next: conductor advances the pipeline on evidence.
+
+### L-46 | 2026-07-22T22:54:53Z | S1-plan | kimi-code/k3 | architect | Planning phase <!-- bsc-ledger:PI-BENCH-RETAKE-20260722-PLAN-C -->
+Did: authored independent consensus plan C at docs/build-stream/plans/pi-bench-retake-20260722-plan-c.md (387 lines): verified B0 apparatus inventory with exact paths+tests; validated suite (170 passed/2 failed — root cause pinned: post-F6 commit<=reservation invariant vs underestimated reservations, plus the wave-wedge path at live_driver.py:648; RT-1 fail-closed hardening designed); three-lane immutable manifest design (max_processes N=4 recorded, distinct from moa_n=3 and repeats=1; 132 units); USD0.73 worst-case arithmetic + RT-2 estimate gate; fresh G-R0..G-R3 owner gates superseding stale g1/g2 (USD0.50, judge gpt-5.6-luna); MoA downgrade truthfulness (full_ensemble expected-degraded, never an ensemble success); post-run artifact-only Kimi judging separation (zero judge rows on the DUT ledger); V0-V5 verification matrix; rollback; narrow changed-file scope. No code, no other architect's plan, no lifecycle plan content edited.
+Result: plan slot C ready for consensus judging; PI-BENCH-RETAKE-20260722-PLAN-C
+Verified: backend/.venv/bin/python -m pytest tests/pi_benchmark/ -q -> 170 passed 2 failed (stale pre-F6 provider tests, fix designed in RT-1); plan-only/idempotent/ManifestConflict/provider-reject/owner-gate CLI probes -> exit 0/0/2/argparse-error/3; pack census 15+4+3=22; approved endpoint pi-deepseek-default at backend/app/core/pi_runtime/endpoints.py:23; shared-venv 'import app' resolves to ROOT checkout (RT-0 attestation mitigation); CF evidence rows 1508-1512 (4x command, self_report)
+Next: consensus judges vote on plan slots a/b/c; conductor seals consensus_result; G-R0 owner gate before any implementation
