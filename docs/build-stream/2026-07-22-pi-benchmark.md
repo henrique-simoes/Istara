@@ -621,3 +621,9 @@ Did: repaired consensus plan A (revision r1) at docs/build-stream/plans/pi-bench
 Result: plan slot A ready for consensus judging (r1); PI-BENCH-ROLE-CORRECTION-20260722-REPLAN-A-r1
 Verified: git diff --check passed; grep re-audit over lifecycle + work-order + deepseek_judge.py (all citations hold at b13b238c); wc -l plan = 242; scope audit — only the plan file modified by this stage; CF evidence rows 1380-1383 (3x command, self_report)
 Next: consensus judges vote on plan slots a/b/c; winning plan's implementer executes RC-1..RC-6
+
+### L-28 | 2026-07-22T19:39:47Z | S1-plan | kimi-code/k3 | planner | pi-bench-role-correction-20260722-architect-c <!-- bsc-ledger:PI-BENCH-ROLE-CORRECTION-20260722-PLAN-C -->
+Did: pi-bench-role-correction-20260722-architect-c stage on task PI-BENCH-ROLE-CORRECTION-20260722-PLAN-C (harness fallback entry; the model did not append one).
+Result: task PI-BENCH-ROLE-CORRECTION-20260722-PLAN-C finished; worktree head e1f9d8a7.
+Verified: see Compass Forge evidence rows on PI-BENCH-ROLE-CORRECTION-20260722-PLAN-C (command + self_report + stage_attribution).
+Next: conductor advances the pipeline on evidence.
