@@ -38,3 +38,9 @@ Did: authored independent consensus plan A at docs/build-stream/plans/pi-eval-pl
 Result: plan slot A ready for consensus judging; key finding: S10.3 assets (tests/pi_benchmark/, metrics-schema.json, pi_benchmark_report.py, comparison-Istara-pi/, --engine plumbing) do not exist yet, so plan front-loads build wave E0; pi-eval-PLAN-A
 Verified: ls/grep gap audit (tests/pi_benchmark absent, --engine unplumbed in both run.mjs, header support present api-client.mjs:31,244); evidence rows 1222-1224 on CF task
 Next: consensus judges vote on plan slots a/b/c
+
+### L-3 | 2026-07-22T13:33:48Z | S1-plan | gpt-5.6-sol | planner | pi-eval-architect-b <!-- bsc-ledger:pi-eval-PLAN-B -->
+Did: pi-eval-architect-b stage on task pi-eval-PLAN-B (harness fallback entry; the model did not append one).
+Result: task pi-eval-PLAN-B finished; worktree head ccf1680e.
+Verified: see Compass Forge evidence rows on pi-eval-PLAN-B (command + self_report + stage_attribution).
+Next: conductor advances the pipeline on evidence.
