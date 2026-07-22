@@ -114,6 +114,7 @@ class UISimRunner(BaseLoopRunner):
                     messages=messages[1:],
                     params=TurnParams(temperature=0.5, max_tokens=3000),
                     spine_phase="plan",
+                    engine=self.engine,
                 )
                 new_code = (outcome.text or "").strip()
             else:
@@ -227,6 +228,7 @@ class UISimRunner(BaseLoopRunner):
                     messages=messages[1:],
                     params=TurnParams(temperature=0.1, max_tokens=10),
                     spine_phase="review",
+                    engine=self.engine,
                 )
                 score_text = (outcome.text or "").strip()
             else:

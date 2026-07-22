@@ -119,6 +119,7 @@ class PersonaRunner(BaseLoopRunner):
                     messages=messages[1:],
                     params=TurnParams(temperature=0.7, max_tokens=2000),
                     spine_phase="plan",
+                    engine=self.engine,
                 )
                 new_content = (outcome.text or "").strip()
             else:
@@ -232,6 +233,7 @@ class PersonaRunner(BaseLoopRunner):
                     messages=messages[1:],
                     params=TurnParams(temperature=0.5, max_tokens=1500),
                     spine_phase="execution",
+                    engine=self.engine,
                 )
                 content = outcome.text
             else:
@@ -281,6 +283,7 @@ class PersonaRunner(BaseLoopRunner):
                     messages=messages[1:],
                     params=TurnParams(temperature=0.1, max_tokens=10),
                     spine_phase="review",
+                    engine=self.engine,
                 )
                 score_text = (outcome.text or "").strip()
             else:
