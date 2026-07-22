@@ -9,7 +9,7 @@ phase: "W7 — validation/consensus/dual-coder migration"
 stage: S4-remediate
 status: in-progress
 blocked_on: null
-last: { agent: gpt-5.6-luna, at: 2026-07-22T05:02:10Z, ledger: L-54 }
+last: { agent: gpt-5.6-luna, at: 2026-07-22T05:03:44Z, ledger: L-56 }
 next_action: "Run one bounded W7 sibling-barrier delta re-review after all four remediation tasks are terminal."
 ```
 <!-- /STATUS BLOCK -->
@@ -1038,6 +1038,12 @@ Result: F-W7-2 open -> fixed; `FIX-pi-full-20260720-w7-REVIEW-r1-legacy-distinct
 Verified: `python -m pytest tests/pi_production/test_w1_dispatcher_authority.py tests/pi_production/test_w1_agentic_contract.py -k 'not ratchet' -q` = 42 passed; `python -m pytest tests/pi_production/test_w7_validation.py -k 'dual_run or full_ensemble or self_moa or not coding_run_pi_plane' -q` = 26 passed; `python -m pytest tests/pi_migration/test_count_to_zero.py -q` = 3 passed; `ruff check backend/app/core/agentic/legacy.py tests/pi_production/test_w1_dispatcher_authority.py` = passed; `python scripts/feature_docs.py --seed-missing --generate-site --check` = 86 features / 224 artifacts; `compass-forge gate before --task FIX-pi-full-20260720-w7-REVIEW-r1-legacy-distinct --summary` = 0 new failures, 0 actionable failures, 0 drift.
 Next: stage exit: F-W7-2 is remediated; await F-W7-4 terminal, then the conductor creates the bounded W7 delta re-review.
 
+### L-55 | 2026-07-22T05:03:44Z | S4-remediate | gpt-5.6-luna | remediator | W7 <!-- bsc-ledger:FIX-pi-full-20260720-w7-REVIEW-r1-docs -->
+Did: Corrected the append-order handoff after a concurrent sibling lifecycle append placed L-53 after the first L-54 docs entry. The W7 docs artifact remains unchanged; this entry makes the final ledger/status line and the docs task marker unambiguous for the conductor.
+Result: F-W7-4 remains fixed under `FIX-pi-full-20260720-w7-REVIEW-r1-docs`; no code, generated artifact, or sibling file changed in this correction.
+Verified: `git status --short` shows only the five sibling code/recipe paths and `w7_instructions.md`; owned-path `git diff --check` passed; prior feature-doc check = 86 features / 224 artifacts; prior focused suite = 61 passed; prior gate-after = 0 new failures, 0 actionable failures, 0 drift.
+Next: stage exit: docs finding is fixed; await the conductor's bounded W7 sibling-barrier delta re-review.
+
 ### L-54 | 2026-07-22T05:02:10Z | S4-remediate | gpt-5.6-luna | remediator | W7 <!-- bsc-ledger:FIX-pi-full-20260720-w7-REVIEW-r1-docs -->
 Did: Closed F-W7-4 by updating the living Ensemble Health and Findings Codebook architecture/researcher docs and the feature inventory. The docs now record the W7 AgenticDispatcher verb/purpose mapping (`ensemble`: `validation.dual_run`, `validation.full_ensemble`, `validation.self_moa`; `completion`: `validation.adversarial`, `validation.debate`; `structured`: `validation.judge`, `validity.coder`), engine-resolution and reversible legacy rollback, endpoint-identity reliability including same-model distinct endpoints, fail-closed/unavailable/blocked outcomes, and the explicit W8 embedding deferral. Generated HTML pages and `docs/features/site/manifest.json` were regenerated.
 Result: F-W7-4 open -> fixed; `FIX-pi-full-20260720-w7-REVIEW-r1-docs`. Files: `docs/features/inventory.json`, `docs/features/content/{ensemble/health,findings/codebook}/{architecture,researcher}.md`, `docs/features/site/features/{ensemble/health,findings/codebook}/{architecture,researcher}.html`, `docs/features/site/manifest.json`. No sibling code or untracked files were included.
@@ -1049,3 +1055,9 @@ Did: Corrected L-52's future timestamp; the remediation content and finding disp
 Result: F-W7-2 remains fixed under `FIX-pi-full-20260720-w7-REVIEW-r1-legacy-distinct`; sibling F-W7-4 remains open.
 Verified: Same command evidence as L-52; no code or test changes were made by this correction.
 Next: stage exit: F-W7-2 is remediated; await F-W7-4 terminal, then the conductor creates the bounded W7 delta re-review.
+
+### L-56 | 2026-07-22T05:03:44Z | S4-remediate | gpt-5.6-luna | remediator | W7 <!-- bsc-ledger:FIX-pi-full-20260720-w7-REVIEW-r1-docs -->
+Did: Finalized the append-only lifecycle handoff after concurrent sibling entries L-53, L-54, and L-55 were observed in the shared worktree. The original W7 docs remediation remains committed and unchanged; this correction is the authoritative final tail entry for the docs task.
+Result: F-W7-4 remains fixed under `FIX-pi-full-20260720-w7-REVIEW-r1-docs`; no code, generated artifact, or sibling file changed in this correction.
+Verified: `git status --short` shows only sibling code/recipe paths and `w7_instructions.md`; owned-path `git diff --check` passed; prior feature-doc check = 86 features / 224 artifacts; prior focused suite = 61 passed; prior gate-after = 0 new failures, 0 actionable failures, 0 drift.
+Next: stage exit: docs finding is fixed; await the conductor's bounded W7 sibling-barrier delta re-review.
