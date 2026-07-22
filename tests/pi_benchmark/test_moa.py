@@ -44,6 +44,7 @@ def test_self_moa_clean_pass_single_route_temperature_sweep():
     assert ev.temperatures == (0.3, 0.7, 1.0)
     assert ev.response_count == 3 and ev.coder_count == 3
     assert ev.consensus_score == pytest.approx(0.82)
+    assert ev.consensus_confidence == "high"
     assert ev.source_unit_ids == ("pi-deepseek-default",) * 3
     assert ev.downgrade is None and ev.degraded is False
     assert ev.reconciliation_status == "reconciled"
@@ -59,6 +60,43 @@ def test_full_ensemble_clean_three_distinct_routes():
     assert ev.downgrade is None and ev.degraded is False
     assert ev.reconciliation_status == "reconciled"
     assert moa.record_status_for(ev) == ("ok", None)
+
+
+def test_full_ensemble_partial_success_ignores_failed_endpoint_ids():
+    # The dispatcher can report all selected endpoints while only one response/route
+    # succeeded. Failed endpoint ids are provenance, never proof of served coders.
+    result = _Result(
+        "full_ensemble", ["r1"], ["ep-a", "ep-b", "ep-c"],
+        consensus=_Consensus(0.9, "high"),
+        route_evidence=[{"endpoint_id": "ep-a"}],
+    )
+    ev = assess_validation_result(
+        requested_mode="full_ensemble", requested_samples=3, result=result,
+    )
+    assert ev.response_count == 1 and ev.coder_count == 1
+    assert ev.served_route_ids == ("ep-a",)
+    assert ev.source_unit_ids == ("ep-a", "ep-b", "ep-c")
+    assert ev.consensus_score == pytest.approx(0.9)
+    assert ev.consensus_confidence == "high"
+    assert ev.downgrade == "partial_coder"
+    assert ev.reconciliation_status == "degraded"
+    assert moa.record_status_for(ev) == ("not_runnable", "other")
+
+
+def test_self_moa_partial_success_does_not_reconcile_from_selected_route_count():
+    result = _Result(
+        "self_moa", ["r1"], ["pi-deepseek-default"] * 3,
+        consensus=_Consensus(0.9, "high"),
+        route_evidence=[{"endpoint_id": "pi-deepseek-default"}],
+    )
+    ev = assess_validation_result(
+        requested_mode="self_moa", requested_samples=3, result=result,
+    )
+    assert ev.response_count == 1 and ev.coder_count == 1
+    assert ev.distinct_served_routes == 1
+    assert ev.downgrade == "partial_coder"
+    assert ev.reconciliation_status == "degraded"
+    assert moa.record_status_for(ev) == ("not_runnable", "other")
 
 
 def test_full_ensemble_downgrade_to_dual_run_is_degraded_and_blocks_the_record():

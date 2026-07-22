@@ -11,7 +11,7 @@ status: in-progress
 blocked_on: null
 authored_by: build-stream-conductor
 grounding: "Based on 2026-07-20-pi-full-replacement-master-plan.md Section 10"
-last: {agent: gpt-5.6-luna, at: 2026-07-22T19:24:49Z, ledger: L-20}
+last: {agent: gpt-5.6-luna, at: 2026-07-22T19:27:35Z, ledger: L-21}
 next_action: "Continue sibling remediation for F-4 through F-7, then run one delta re-review after all fixer tasks are terminal."
 ```
 <!-- /STATUS BLOCK -->
@@ -474,7 +474,7 @@ approvals (G1/G2) are recorded as CF evidence with the in-chat approval quoted.
 | F-1 | Major | comparison-Istara-pi/metrics-schema.json (`metrics.spine_phase`) | 10-phase spine taxonomy (intent, context, plan, tool_selection, execution, recovery, grounding, synthesis, review, governance) not pinned; master plan §5.5 citation of metrics-schema.json:39-50 dangles; typo'd phase keys validate | FIX-pi-eval-REVIEW-r1 | verified (REREV pass, L-13) |
 | F-2 | Minor | comparison-Istara-pi/metrics-schema.json (`metrics.additionalProperties`) | open axis-key set accepts typo'd axis names (e.g. tool_cal ling); inconsistent with strict top level + extensions escape hatch | FIX-pi-eval-REVIEW-r1 | verified (REREV pass, L-13) |
 | F-3 | Blocker | `scheduler.py:write_manifest` / `runner.py:run_wave` | Real manifests store shard entries as unit-id strings, but wave execution dereferences them as unit objects and crashes before dispatch. | FIX-PI-BENCH-MOA-20260722-REVIEW-r1-wave | fixed |
-| F-4 | Blocker | `moa.py:assess_validation_result` / `live_driver.py:_moa_evidence_from_capture` | Partial coder success can be labeled reconciled because selected endpoints count as served and requested response count is not enforced. | FIX-PI-BENCH-MOA-20260722-REVIEW-r1-moa | open |
+| F-4 | Blocker | `moa.py:assess_validation_result` / `live_driver.py:_moa_evidence_from_capture` | Partial coder success can be labeled reconciled because selected endpoints count as served and requested response count is not enforced. | FIX-PI-BENCH-MOA-20260722-REVIEW-r1-moa | fixed |
 | F-5 | Blocker | `live_driver.py:dispatch_unit` / `validation.py:_get_embeddings` | MoA omits the requested engine and approved route identity; embeddings escape the DeepSeek-only ledger; stamped provenance does not prove the served route. | FIX-PI-BENCH-MOA-20260722-REVIEW-r1-routing | open |
 | F-6 | Blocker | `live_driver.py:run_live_unit` / `budget_ledger.py` | The reserved output bound is not forwarded to dispatch, and duplicate/orphan/over-reservation ledger transitions can undercount or exceed the hard cap. | FIX-PI-BENCH-MOA-20260722-REVIEW-r1-budget | open |
 | F-7 | Major | Compass Forge post-change gate | New Python import cycles include `live_driver -> runner -> live_driver`; the task-scope architecture gate is not clean. | FIX-PI-BENCH-MOA-20260722-REVIEW-r1-gate | open |
@@ -579,3 +579,9 @@ Did: fixed F-3 in `tests/pi_benchmark/runner.py` and added direct scheduler-to-w
 Result: F-3 fixed under FIX-PI-BENCH-MOA-20260722-REVIEW-r1-wave; real B0 manifests no longer crash before dispatch.
 Verified: `python -m pytest tests/pi_benchmark -q` -> 155 passed; `python -m compileall -q tests/pi_benchmark/runner.py tests/pi_benchmark/test_runner.py` -> passed; `compass-forge gate after --task FIX-PI-BENCH-MOA-20260722-REVIEW-r1-wave --summary` -> gate status fail with 0 new failures and 0 actionable failures, inherited `python_import_cycles`/`secret_flow`/`unexpected_large_files` only.
 Next: sibling fixer tasks F-4 through F-7, then one delta re-review after all fixer tasks are terminal.
+
+### L-21 | 2026-07-22T19:27:35Z | S4-remediate | gpt-5.6-luna | remediator | Execution phase <!-- bsc-ledger:FIX-PI-BENCH-MOA-20260722-REVIEW-r1-moa -->
+Did: fixed F-4 in `tests/pi_benchmark/moa.py` and `tests/pi_benchmark/live_driver.py`; added partial self-MoA/full-ensemble contract and live-driver coverage in `tests/pi_benchmark/test_moa.py` and `tests/pi_benchmark/test_live_driver.py`. Successful `route_evidence` now determines served routes, requested coder/route width is required, and consensus score/confidence survive the live capture shim.
+Result: F-4 fixed under FIX-PI-BENCH-MOA-20260722-REVIEW-r1-moa; selected-but-failed endpoint ids remain provenance only, partial MoA records are `not_runnable`, and consensus evidence is retained.
+Verified: `backend/.venv/bin/python -m pytest tests/pi_benchmark/test_moa.py tests/pi_benchmark/test_live_driver.py -q` -> 34 passed; `backend/.venv/bin/python -m pytest tests/pi_benchmark/ -q` -> 159 passed; `python -m compileall -q tests/pi_benchmark/moa.py tests/pi_benchmark/live_driver.py` -> passed; `git diff --check` -> passed; `compass-forge gate after --task FIX-PI-BENCH-MOA-20260722-REVIEW-r1-moa --summary` -> fail with 0 new failures, inherited `python_import_cycles`/`secret_flow`/`unexpected_large_files`, route/type/contract/graphql/generated drift 0.
+Next: sibling fixer tasks F-5 through F-7, then one delta re-review after all fixer tasks are terminal.

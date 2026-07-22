@@ -17,8 +17,9 @@ fakes. The live driver (:mod:`tests.pi_benchmark.live_driver`) calls
 
 Downgrade-string convention (one convention, used everywhere): ``"<requested>-><served>"``
 when the served method differs from the requested one (e.g. ``"full_ensemble->dual_run"``),
-and the literal ``"single_coder"`` when a full_ensemble *was* served but over fewer
-distinct routes than the requested slots (diversity collapse without a method change).
+``"partial_coder"`` when fewer successful responses/routes than requested were served, and
+the literal ``"single_coder"`` when a full_ensemble *was* served but over fewer distinct
+routes than the requested slots (diversity collapse without a method change).
 """
 
 from __future__ import annotations
@@ -53,9 +54,10 @@ class MoaEvidence:
     distinct_served_routes: int
     coder_count: int               # successful responses actually used
     consensus_score: float | None  # consensus.agreement_score when exposed, else None
-    source_unit_ids: tuple[str, ...]       # route-evidence endpoint ids (provenance)
+    consensus_confidence: str      # consensus.confidence when exposed, else ""
+    source_unit_ids: tuple[str, ...]       # all dispatcher endpoint ids (attempt provenance)
     reconciliation_status: str     # "reconciled" | "degraded" | "blocked" | "not_run"
-    downgrade: str | None          # None | "<requested>-><served>" | "single_coder"
+    downgrade: str | None          # None | "<requested>-><served>" | "partial_coder" | "single_coder"
     degraded: bool
 
 
@@ -84,12 +86,19 @@ def requested_slots(requested_mode: str, moa_n: int) -> int:
 
 
 def _endpoint_ids_from(metadata: dict[str, Any]) -> tuple[str, ...]:
-    route_evidence = metadata.get("route_evidence") or []
+    """Return successful served ids separately from attempted/source ids.
+
+    ``endpoint_ids`` is the dispatcher-level list and can include failed samples.  Only
+    route evidence is emitted for successful samples by the backend validation path, so it
+    is the authoritative source for served-route counts.  Keep all endpoint ids separately
+    as provenance rather than allowing failed routes to make a partial MoA look complete.
+    """
+    route_evidence = tuple(metadata.get("route_evidence") or ())
     evidence_ids = tuple(
         str(route.get("endpoint_id")) for route in route_evidence if route.get("endpoint_id")
     )
     endpoint_ids = tuple(str(e) for e in (metadata.get("endpoint_ids") or ()))
-    return endpoint_ids or evidence_ids, evidence_ids or endpoint_ids
+    return evidence_ids, endpoint_ids or evidence_ids
 
 
 def assess_validation_result(
@@ -118,6 +127,7 @@ def assess_validation_result(
     served_route_ids, source_unit_ids = _endpoint_ids_from(metadata)
     distinct_served = len({route for route in served_route_ids if route})
     response_count = len(responses)
+    successful_route_count = len(served_route_ids)
 
     downgrade: str | None = None
     degraded = False
@@ -125,6 +135,11 @@ def assess_validation_result(
         if served_mode != requested_mode:
             # The fail-closed chain served a different method than requested.
             downgrade = f"{requested_mode}->{served_mode}"
+            degraded = True
+        elif response_count < requested_samples or successful_route_count < requested_samples:
+            # Dispatcher endpoint_ids may include failed samples; successful coders and
+            # successful route evidence must both cover the requested MoA width.
+            downgrade = "partial_coder"
             degraded = True
         elif requested_mode == "full_ensemble" and distinct_served < requested_samples:
             # Method held but diversity collapsed: fewer distinct routes than slots.
@@ -154,6 +169,7 @@ def assess_validation_result(
         distinct_served_routes=distinct_served,
         coder_count=response_count,
         consensus_score=float(consensus_score) if consensus_score is not None else None,
+        consensus_confidence=confidence,
         source_unit_ids=source_unit_ids,
         reconciliation_status=reconciliation_status,
         downgrade=downgrade,
@@ -175,6 +191,7 @@ def not_run_evidence(
         distinct_served_routes=0,
         coder_count=0,
         consensus_score=None,
+        consensus_confidence="",
         source_unit_ids=(),
         reconciliation_status=NOT_RUN,
         downgrade=None,

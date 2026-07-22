@@ -109,9 +109,12 @@ def _capture(**overrides):
 
 
 def _dispatch_returning(capture, calls=None):
-    async def _dispatch(*, unit, tier, prompt, system, moa_n):
+    async def _dispatch(*, unit, tier, prompt, system, moa_n, max_tokens):
         if calls is not None:
-            calls.append({"unit": unit, "tier": tier, "prompt": prompt, "moa_n": moa_n})
+            calls.append({
+                "unit": unit, "tier": tier, "prompt": prompt,
+                "moa_n": moa_n, "max_tokens": max_tokens,
+            })
         return capture
     return _dispatch
 
@@ -139,14 +142,17 @@ def test_dispatch_unit_plain_path_uses_estimator_when_outcome_has_no_usage():
         return outcome
 
     capture = asyncio.run(live_driver.dispatch_unit(
-        unit=_unit(), tier="T3", prompt="p" * 20, moa_n=3, ensemble_fn=ensemble_fn,
+        unit=_unit(), tier="T3", prompt="p" * 20, moa_n=3, max_tokens=37,
+        ensemble_fn=ensemble_fn,
     ))
     assert capture.estimate is True
     assert capture.usage["output_tokens"] == 10  # 40 chars / 4
     assert capture.usage["input_tokens"] == 5    # 20 chars / 4
     assert capture.raw_method is None
     # The fake received the pinned DeepSeek params as a plain dict (no backend types).
-    assert seen["params"] == {"endpoint_id": "pi-deepseek-default", "model": "deepseek-v4-pro"}
+    assert seen["params"] == {
+        "endpoint_id": "pi-deepseek-default", "model": "deepseek-v4-pro", "max_tokens": 37,
+    }
     assert seen["engine"] == "pi"
     assert seen["n"] == 1 and seen["distinct"] is False
 
@@ -155,8 +161,11 @@ def test_dispatch_unit_full_ensemble_requests_exactly_moa_n_slots():
     calls = {}
 
     class FakeValidation:
-        async def full_ensemble(self, prompt, system="", model=None, min_responses=3, project_id=None):
+        async def full_ensemble(
+            self, prompt, system="", model=None, min_responses=3, max_tokens=None, project_id=None
+        ):
             calls["min_responses"] = min_responses
+            calls["max_tokens"] = max_tokens
             return types.SimpleNamespace(
                 method="full_ensemble", responses=["a", "b", "c"], best_response="a",
                 consensus=types.SimpleNamespace(agreement_score=0.9, confidence="high"),
@@ -172,10 +181,49 @@ def test_dispatch_unit_full_ensemble_requests_exactly_moa_n_slots():
     ))
     # n = min_responses + 1 distinct endpoints -> min_responses = slots - 1 = 2 for 3 slots.
     assert calls["min_responses"] == 2
+    assert calls["max_tokens"] == 1024
     assert capture.raw_method == "full_ensemble"
     assert capture.endpoint_ids == ("ep-a", "ep-b", "ep-c")
+    assert capture.consensus_score == pytest.approx(0.9)
+    assert capture.consensus_confidence == "high"
     # ValidationResult exposes no usage: the driver marks the chars4 estimate.
     assert capture.estimate is True and capture.usage is not None
+
+
+def test_dispatch_unit_moa_uses_pinned_engine_and_never_embeddings():
+    calls = {}
+
+    class FakeAgentic:
+        async def ensemble(self, **kwargs):
+            calls.update(kwargs)
+            return types.SimpleNamespace(
+                samples=[
+                    types.SimpleNamespace(
+                        text="a", usage=None, endpoint_id="pi-deepseek-default", status="success",
+                    ),
+                    types.SimpleNamespace(
+                        text="b", usage=None, endpoint_id="pi-deepseek-default", status="success",
+                    ),
+                    types.SimpleNamespace(
+                        text="c", usage=None, endpoint_id="pi-deepseek-default", status="success",
+                    ),
+                ],
+                endpoint_ids=["pi-deepseek-default"] * 3,
+                usage={},
+                status="success",
+            )
+
+    capture = asyncio.run(live_driver.dispatch_unit(
+        unit=_unit(engine="legacy", moa_mode="self_moa"), tier="T3", prompt="hello",
+        moa_n=3, agentic_module=FakeAgentic(),
+    ))
+
+    assert calls["engine"] == "legacy"
+    assert calls["distinct"] is False and calls["n"] == 3
+    assert calls["params"].endpoint_id == "pi-deepseek-default"
+    assert calls["params"].model == "deepseek-v4-pro"
+    assert capture.raw_method == "self_moa"
+    assert all(route["provider"] == "deepseek" for route in capture.route_evidence)
 
 
 # ── run_live_unit end-to-end ────────────────────────────────────────────────
@@ -218,6 +266,15 @@ def test_ok_record_exact_usage_commit_and_atomic_write(tmp_path):
     schema.validate_record(on_disk)
     assert list(records_dir.glob("*.tmp")) == []
     assert calls and calls[0]["tier"] == "T3"
+
+
+def test_run_live_unit_forwards_the_reserved_output_bound(tmp_path):
+    calls = []
+    record = _run(
+        tmp_path, dispatch=_dispatch_returning(_capture(), calls), max_tokens=17,
+    )
+    assert record["status"] == "ok"
+    assert calls[0]["max_tokens"] == 17
 
 
 def test_estimate_path_names_the_estimator(tmp_path):
@@ -331,6 +388,49 @@ def test_moa_clean_self_moa_records_ok_with_evidence(tmp_path):
     assert evidence["reconciliation_status"] == "reconciled"
     assert evidence["distinct_served_routes"] == 1
     assert tuple(evidence["temperatures"]) == (0.3, 0.7, 1.0)
+    assert evidence["consensus_score"] is None  # the capture has no consensus object
+    assert schema.is_valid(record)
+
+
+def test_moa_partial_self_moa_fails_closed_even_when_endpoint_list_is_full(tmp_path):
+    capture = _capture(
+        endpoint_ids=("pi-deepseek-default",) * 3,
+        route_evidence=({"endpoint_id": "pi-deepseek-default"},),
+        raw_method="self_moa",
+        consensus_score=0.9,
+        consensus_confidence="high",
+    )
+    record = _run(
+        tmp_path, unit=_unit(moa_mode="self_moa"), dispatch=_dispatch_returning(capture),
+    )
+    evidence = record["extensions"]["moa"]
+    assert record["status"] == "not_runnable"
+    assert evidence["response_count"] == 1 and evidence["coder_count"] == 1
+    assert evidence["source_unit_ids"] == ("pi-deepseek-default",) * 3
+    assert evidence["consensus_score"] == pytest.approx(0.9)
+    assert evidence["consensus_confidence"] == "high"
+    assert evidence["downgrade"] == "partial_coder"
+    assert schema.is_valid(record)
+
+
+def test_moa_partial_full_ensemble_ignores_failed_selected_routes(tmp_path):
+    capture = _capture(
+        endpoint_ids=("ep-a", "ep-b", "ep-c"),
+        route_evidence=({"endpoint_id": "ep-a"},),
+        raw_method="full_ensemble",
+        consensus_score=0.9,
+        consensus_confidence="high",
+    )
+    record = _run(
+        tmp_path, unit=_unit(moa_mode="full_ensemble"), dispatch=_dispatch_returning(capture),
+    )
+    evidence = record["extensions"]["moa"]
+    assert record["status"] == "not_runnable"
+    assert evidence["served_route_ids"] == ("ep-a",)
+    assert evidence["distinct_served_routes"] == 1
+    assert evidence["response_count"] == 1 and evidence["coder_count"] == 1
+    assert evidence["downgrade"] == "partial_coder"
+    assert evidence["consensus_confidence"] == "high"
     assert schema.is_valid(record)
 
 
