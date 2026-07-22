@@ -11,7 +11,7 @@ status: in-progress
 blocked_on: null
 authored_by: build-stream-conductor
 grounding: "Based on 2026-07-20-pi-full-replacement-master-plan.md Section 10"
-last: {agent: claude-fable-5, at: 2026-07-22T20:09:14Z, ledger: L-37}
+last: {agent: claude-fable-5, at: 2026-07-22T20:11:15Z, ledger: L-39}
 next_action: "Recovery consensus: remaining architect slots finish, judges vote on recovery plans a/b/c, conductor seals consensus_result; G-R1 owner gate before any implementation."
 ```
 <!-- /STATUS BLOCK -->
@@ -687,3 +687,9 @@ Did: pi-bench-recovery-20260722-architect-c stage on task PI-BENCH-RECOVERY-2026
 Result: task PI-BENCH-RECOVERY-20260722-PLAN-C finished; worktree head 68dcd159.
 Verified: see Compass Forge evidence rows on PI-BENCH-RECOVERY-20260722-PLAN-C (command + self_report + stage_attribution).
 Next: conductor advances the pipeline on evidence.
+
+### L-39 | 2026-07-22T20:11:15Z | S1-plan | claude-fable-5 | judge | pi-bench-recovery-20260722-judge-a <!-- bsc-ledger:PI-BENCH-RECOVERY-20260722-JUDGE-A -->
+Did: Consensus judge slot a — read recovery candidate plans B (gpt-5.6-sol, plan-b.md) and C (kimi-code/k3, plan-c.md); spot-verified plan C's lifecycle stale-text line anchors (307/312/327/330/339/374-393/422/424/449/465-466/489 all match) and its six-of-seven-packs finding in pi-benchmark-deepseek-moa-execution.md. No plan edited.
+Result: plan_vote for slot c (CF evidence 1459): C is evidence-grounded and operational (void-tally proof, orphan-task cancellation, hygiene commit for untracked governing docs, fresh-anchor rule); B is sound but abstract and internally tense on untracked-path scope. PI-BENCH-RECOVERY-20260722-JUDGE-A
+Verified: grep -n -iE 'provider kimi|kimi[- ]only|kimi evaluation|configured-kimi-model|judge call through deepseek' docs/build-stream/2026-07-22-pi-benchmark.md (14 active-text regions confirmed); sed -n 68,85p docs/build-stream/conductor-instructions/pi-benchmark-deepseek-moa-execution.md (six packs listed, MoA route/downgrade only as judge dimension). No tests run — judging-only stage, no code touched.
+Next: remaining judges vote; conductor tallies and seals consensus_result; G-R1 owner gate before implementation.
