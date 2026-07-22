@@ -15,6 +15,7 @@ Import-safe at T0: touches no backend, DB, network, keychain, or model.
 from __future__ import annotations
 
 import argparse
+import math
 import sys
 from pathlib import Path
 
@@ -25,9 +26,6 @@ if __package__ in (None, ""):  # pragma: no cover - only hit in script mode
 
 from tests.pi_benchmark.budget_ledger import BudgetLedger
 
-_EPSILON_USD = 1e-9
-
-
 def verify_ledger(path: Path, *, cap_usd: float, close: bool = False) -> list[str]:
     """Replay ``path`` and return a list of violations (empty = consistent)."""
     violations: list[str] = []
@@ -35,15 +33,25 @@ def verify_ledger(path: Path, *, cap_usd: float, close: bool = False) -> list[st
     if close:
         ledger.close()
     rows = ledger._read_rows()
-    reserved: set[str] = set()
+    reserved: dict[str, float] = {}
     settled: set[str] = set()
+    closed = False
     for index, row in enumerate(rows, start=1):
         row_type = row.get("type")
         if row_type == "reserve":
-            if not row.get("call_id") or "max_cost_usd" not in row:
+            call_id = row.get("call_id")
+            if not isinstance(call_id, str) or not call_id or "max_cost_usd" not in row:
                 violations.append(f"row {index}: reserve missing call_id/max_cost_usd")
                 continue
-            reserved.add(row["call_id"])
+            if call_id in reserved:
+                violations.append(f"row {index}: duplicate reserve for call_id {call_id!r}")
+            try:
+                amount = float(row["max_cost_usd"])
+            except (TypeError, ValueError):
+                amount = float("nan")
+            if not math.isfinite(amount) or amount < 0:
+                violations.append(f"row {index}: reserve has invalid amount {row['max_cost_usd']!r}")
+            reserved.setdefault(call_id, amount)
         elif row_type in ("commit", "release"):
             call_id = row.get("call_id")
             if call_id not in reserved:
@@ -51,14 +59,31 @@ def verify_ledger(path: Path, *, cap_usd: float, close: bool = False) -> list[st
             elif call_id in settled:
                 violations.append(f"row {index}: {row_type} for already-settled call_id {call_id!r}")
             settled.add(call_id)
-            if row_type == "commit" and "actual_cost_usd" not in row:
-                violations.append(f"row {index}: commit missing actual_cost_usd")
+            if row_type == "commit":
+                if "actual_cost_usd" not in row:
+                    violations.append(f"row {index}: commit missing actual_cost_usd")
+                else:
+                    try:
+                        amount = float(row["actual_cost_usd"])
+                    except (TypeError, ValueError):
+                        amount = float("nan")
+                    if not math.isfinite(amount) or amount < 0:
+                        violations.append(
+                            f"row {index}: commit has invalid amount {row['actual_cost_usd']!r}"
+                        )
+                    elif call_id in reserved and amount > reserved[call_id]:
+                        violations.append(
+                            f"row {index}: commit ${amount:.6f} exceeds reservation "
+                            f"${reserved[call_id]:.6f} for call_id {call_id!r}"
+                        )
         elif row_type == "close":
-            pass
+            if closed:
+                violations.append(f"row {index}: duplicate close row")
+            closed = True
         else:
             violations.append(f"row {index}: unknown row type {row_type!r}")
     spent = ledger.spent_usd()
-    if spent > cap_usd + _EPSILON_USD:
+    if not math.isfinite(spent) or spent > cap_usd:
         violations.append(f"spent ${spent:.6f} exceeds cap ${cap_usd:.2f}")
     return violations
 

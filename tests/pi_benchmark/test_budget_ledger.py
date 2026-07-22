@@ -155,3 +155,41 @@ def test_secret_meta_refused_and_appends_nothing(tmp_path):
     with pytest.raises(ValueError, match="secret"):
         ledger.commit("a", 0.01, usage={}, meta={"access_token": "nope"})
     assert not path.exists()  # nothing was ever appended
+
+
+@pytest.mark.parametrize("amount", [-0.01, float("nan"), float("inf"), float("-inf")])
+def test_non_finite_or_negative_amounts_are_rejected_without_rows(tmp_path, amount):
+    path = tmp_path / "ledger.jsonl"
+    ledger = BudgetLedger(path, cap_usd=1.00)
+    with pytest.raises(ValueError):
+        ledger.reserve("bad", amount, kind="benchmark")
+    assert not path.exists()
+
+
+def test_call_lifecycle_is_idempotency_safe_and_bounded(tmp_path):
+    path = tmp_path / "ledger.jsonl"
+    ledger = BudgetLedger(path, cap_usd=1.00)
+    ledger.reserve("call", 0.40, kind="benchmark")
+
+    with pytest.raises(ValueError, match="already has a reservation"):
+        ledger.reserve("call", 0.40, kind="benchmark")
+    with pytest.raises(ValueError, match="exceeds its reservation"):
+        ledger.commit("call", 0.41, usage={})
+    assert _row_types(path) == ["reserve"]
+
+    ledger.commit("call", 0.20, usage={})
+    with pytest.raises(ValueError, match="no outstanding reservation"):
+        ledger.commit("call", 0.20, usage={})
+    with pytest.raises(ValueError, match="no outstanding reservation"):
+        ledger.release("call", reason="duplicate")
+    assert ledger.spent_usd() == pytest.approx(0.20)
+
+
+def test_orphan_transitions_are_rejected_without_rows(tmp_path):
+    path = tmp_path / "ledger.jsonl"
+    ledger = BudgetLedger(path, cap_usd=1.00)
+    with pytest.raises(ValueError, match="no outstanding reservation"):
+        ledger.commit("ghost", 0.01, usage={})
+    with pytest.raises(ValueError, match="no outstanding reservation"):
+        ledger.release("ghost", reason="missing")
+    assert not path.exists()

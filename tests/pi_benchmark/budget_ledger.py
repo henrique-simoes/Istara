@@ -28,15 +28,12 @@ from __future__ import annotations
 
 import contextlib
 import json
+import math
 import os
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Iterator
-
-# Cap comparison tolerance: bookings whose overshoot is below this are float noise,
-# not real overspend.
-_EPSILON_USD = 1e-9
 
 # Meta keys matching any of these markers (case-insensitive substring) are refused:
 # ledger rows must never persist API keys or other secrets.
@@ -49,6 +46,10 @@ class BudgetExceeded(RuntimeError):
 
 class LedgerClosed(RuntimeError):
     """Raised when mutating a ledger that already has a close row."""
+
+
+class LedgerStateError(ValueError):
+    """Raised when a call attempts an invalid reservation lifecycle transition."""
 
 
 @dataclass(frozen=True)
@@ -110,6 +111,8 @@ class BudgetLedger:
     def __init__(self, path: Path | str, cap_usd: float = 1.00) -> None:
         self._path = Path(path)
         self._cap_usd = float(cap_usd)
+        if not math.isfinite(self._cap_usd) or self._cap_usd < 0:
+            raise ValueError("cap_usd must be a finite, non-negative number")
 
     @property
     def path(self) -> Path:
@@ -161,9 +164,25 @@ class BudgetLedger:
         }
         return {
             "committed_usd": committed_usd,
+            "reserved_ids": set(reservations),
+            "committed_ids": committed_ids,
+            "released_ids": released_ids,
             "outstanding": outstanding,
             "closed": closed,
         }
+
+    @staticmethod
+    def _amount(value: float, *, field: str) -> float:
+        """Normalize and validate a monetary amount before it reaches JSONL."""
+        if isinstance(value, bool):
+            raise ValueError(f"{field} must be a finite, non-negative number")
+        try:
+            amount = float(value)
+        except (TypeError, ValueError) as exc:
+            raise ValueError(f"{field} must be a finite, non-negative number") from exc
+        if not math.isfinite(amount) or amount < 0:
+            raise ValueError(f"{field} must be a finite, non-negative number")
+        return amount
 
     def _append_row(self, row: dict[str, Any]) -> None:
         line = json.dumps(row, sort_keys=True) + "\n"
@@ -202,14 +221,19 @@ class BudgetLedger:
         Raises BudgetExceeded (appending nothing) when the booking would cross the
         cap, and LedgerClosed once the ledger is closed.
         """
+        if not isinstance(call_id, str) or not call_id:
+            raise ValueError("call_id must be a non-empty string")
+        max_cost_usd = self._amount(max_cost_usd, field="max_cost_usd")
         _check_meta(meta)
         with _locked(self._path):
             rows = self._read_rows()
             tally = self._tally(rows)
             if tally["closed"]:
                 raise LedgerClosed(f"ledger {self._path} is closed; no new reservations")
+            if call_id in tally["reserved_ids"]:
+                raise LedgerStateError(f"call_id {call_id!r} already has a reservation")
             booked = tally["committed_usd"] + sum(tally["outstanding"].values())
-            if booked + max_cost_usd > self._cap_usd + _EPSILON_USD:
+            if booked + max_cost_usd > self._cap_usd:
                 raise BudgetExceeded(
                     f"reserve {call_id!r} for {max_cost_usd:.6f} USD would cross the "
                     f"{self._cap_usd:.2f} USD cap (booked so far: {booked:.6f})"
@@ -234,10 +258,26 @@ class BudgetLedger:
         meta: dict | None = None,
     ) -> None:
         """Replace the ``call_id`` reservation with provider-reported actual cost."""
+        if not isinstance(call_id, str) or not call_id:
+            raise ValueError("call_id must be a non-empty string")
+        actual_cost_usd = self._amount(actual_cost_usd, field="actual_cost_usd")
+        if not isinstance(usage, dict):
+            raise ValueError("usage must be a dict")
         _check_meta(meta)
         with _locked(self._path):
-            if self._tally(self._read_rows())["closed"]:
+            tally = self._tally(self._read_rows())
+            if tally["closed"]:
                 raise LedgerClosed(f"ledger {self._path} is closed; refusing commit")
+            reservation = tally["outstanding"].get(call_id)
+            if reservation is None:
+                raise LedgerStateError(
+                    f"call_id {call_id!r} has no outstanding reservation to commit"
+                )
+            if actual_cost_usd > reservation:
+                raise LedgerStateError(
+                    f"commit {call_id!r} for {actual_cost_usd:.6f} USD exceeds its "
+                    f"reservation of {reservation:.6f} USD"
+                )
             row: dict[str, Any] = {
                 "type": "commit",
                 "call_id": call_id,
@@ -256,9 +296,16 @@ class BudgetLedger:
         exist. A dispatched call with unknown usage must NOT be released — its
         reservation stays booked as worst-case spend (fail closed).
         """
+        if not isinstance(call_id, str) or not call_id:
+            raise ValueError("call_id must be a non-empty string")
         with _locked(self._path):
-            if self._tally(self._read_rows())["closed"]:
+            tally = self._tally(self._read_rows())
+            if tally["closed"]:
                 raise LedgerClosed(f"ledger {self._path} is closed; refusing release")
+            if call_id not in tally["outstanding"]:
+                raise LedgerStateError(
+                    f"call_id {call_id!r} has no outstanding reservation to release"
+                )
             self._append_row(
                 {"type": "release", "call_id": call_id, "ts": _utc_now_iso(), "reason": reason}
             )

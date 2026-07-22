@@ -90,6 +90,7 @@ async def _dispatch_ensemble(
     model: str | None = None,
     minimum_n: int | None = None,
     project_id: str | None = None,
+    max_tokens: int | None = None,
 ) -> tuple[list[str], list[dict], list[str]]:
     """W7 AgenticDispatcher ensemble branch (master plan §8 W7).
 
@@ -111,7 +112,7 @@ async def _dispatch_ensemble(
         distinct=distinct,
         temperatures=temperatures,
         minimum_n=minimum_n,
-        params=TurnParams(model=model, temperature=0.7),
+        params=TurnParams(model=model, temperature=0.7, max_tokens=max_tokens),
         spine_phase="review",
     )
     responses: list[str] = []
@@ -139,6 +140,7 @@ async def dual_run(
     system: str = "",
     model: str | None = None,
     project_id: str | None = None,
+    max_tokens: int | None = None,
 ) -> ValidationResult:
     """Run the same prompt on two distinct endpoints and compare.
 
@@ -159,6 +161,7 @@ async def dual_run(
             system=system,
             model=model,
             project_id=project_id,
+            max_tokens=max_tokens,
         )
     except PiEndpointResolutionError:
         return await self_moa(
@@ -167,6 +170,7 @@ async def dual_run(
             model=model,
             n=2,
             project_id=project_id,
+            max_tokens=max_tokens,
         )
     except AgenticDispatchError as exc:
         if str(exc) != "insufficient_distinct_legacy_servers":
@@ -178,6 +182,7 @@ async def dual_run(
             model=model,
             n=2,
             project_id=project_id,
+            max_tokens=max_tokens,
         )
     except Exception as exc:
         logger.warning("Dual-run dispatch failed: %s", exc)
@@ -299,6 +304,7 @@ async def full_ensemble(
     model: str | None = None,
     min_responses: int = 3,
     project_id: str | None = None,
+    max_tokens: int | None = None,
 ) -> ValidationResult:
     """Run prompt across 3+ models/endpoints for full ensemble consensus.
 
@@ -321,6 +327,7 @@ async def full_ensemble(
             system=system,
             model=model,
             project_id=project_id,
+            max_tokens=max_tokens,
         )
     except PiEndpointResolutionError:
         return await dual_run(
@@ -328,6 +335,7 @@ async def full_ensemble(
             system=system,
             model=model,
             project_id=project_id,
+            max_tokens=max_tokens,
         )
     except AgenticDispatchError as exc:
         if str(exc) != "insufficient_distinct_legacy_servers":
@@ -338,6 +346,7 @@ async def full_ensemble(
             system=system,
             model=model,
             project_id=project_id,
+            max_tokens=max_tokens,
         )
     except Exception as exc:
         logger.warning("Full-ensemble dispatch failed: %s", exc)
@@ -366,6 +375,7 @@ async def self_moa(
     model: str | None = None,
     n: int = 3,
     project_id: str | None = None,
+    max_tokens: int | None = None,
 ) -> ValidationResult:
     """Self Mixture-of-Agents: same model, different temperatures.
 
@@ -388,6 +398,7 @@ async def self_moa(
             system=system,
             model=model,
             project_id=project_id,
+            max_tokens=max_tokens,
         )
     except Exception as exc:
         logger.warning("Self-MoA dispatch failed: %s", exc)

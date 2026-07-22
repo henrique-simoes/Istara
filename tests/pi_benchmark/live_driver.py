@@ -44,7 +44,7 @@ record makes :func:`run_live_unit` skip re-dispatch (resume/idempotency).
 
 Import-safe at T0: importing this module touches no backend, DB, network, keychain, or
 model. The backend is imported lazily inside :func:`dispatch_unit` at call time only;
-tests inject ``ensemble_fn``/``validation_module``/``dispatch`` fakes.
+tests inject ``ensemble_fn``/``agentic_module``/``dispatch`` fakes.
 """
 
 from __future__ import annotations
@@ -57,7 +57,9 @@ from dataclasses import asdict, dataclass, replace as dc_replace
 from pathlib import Path
 from typing import Any
 
-from tests.pi_benchmark import moa, recording, schema
+import tests.pi_benchmark.moa as moa
+import tests.pi_benchmark.recording as recording
+import tests.pi_benchmark.schema as schema
 
 try:  # Lane A module; fall back to a local twin until it lands.
     from tests.pi_benchmark.budget_ledger import BudgetExceeded
@@ -69,6 +71,11 @@ except ImportError:  # pragma: no cover - exercised only while Lane A is unmerge
 
 DEEPSEEK_MODEL = "deepseek-v4-pro"
 DEEPSEEK_ENDPOINT_ID = "pi-deepseek-default"
+DEEPSEEK_PROVIDER = "deepseek"
+# The benchmark has one explicitly approved DeepSeek route. Repeating this route is
+# valid for self-MoA; full ensembles remain visibly degraded instead of discovering
+# local or unrelated configured endpoints.
+APPROVED_DEEPSEEK_ENDPOINT_IDS = frozenset({DEEPSEEK_ENDPOINT_ID})
 PI_PROJECT_ID = "pi-benchmark"
 ESTIMATOR_CHARS4 = "chars4"
 
@@ -80,6 +87,10 @@ class PreDispatchError(RuntimeError):
     other dispatch failure retains it (fail closed — the request may have reached the
     provider).
     """
+
+
+class RouteAdmissionError(RuntimeError):
+    """Raised when a dispatched sample does not prove an approved benchmark route."""
 
 
 @dataclass(frozen=True)
@@ -173,14 +184,15 @@ def _capture_from_outcome(outcome: Any, *, prompt: str, system: str) -> LiveCapt
     endpoint_ids = tuple(str(e) for e in (getattr(outcome, "endpoint_ids", None) or ()))
     if not endpoint_ids:
         endpoint_ids = tuple(str(getattr(s, "endpoint_id", "") or "") for s in samples)
-    route_evidence = tuple(
-        {
-            "endpoint_id": endpoint_ids[i] if i < len(endpoint_ids) else str(getattr(s, "endpoint_id", "") or ""),
-            "route_kind": "agentic_ensemble",
-        }
-        for i, s in enumerate(samples)
-        if s in ok_samples
-    )
+    route_evidence = []
+    for index, sample in enumerate(samples):
+        if getattr(sample, "status", None) != "success" or not getattr(sample, "text", ""):
+            continue
+        endpoint_id = str(
+            getattr(sample, "endpoint_id", "")
+            or (endpoint_ids[index] if index < len(endpoint_ids) else "")
+        )
+        route_evidence.append({"endpoint_id": endpoint_id, "route_kind": "agentic_ensemble"})
     text = str(getattr(ok_samples[0], "text", "")) if ok_samples else ""
     usage = _normalize_usage(getattr(outcome, "usage", None)) or _sum_sample_usage(samples)
     estimate = False
@@ -192,32 +204,81 @@ def _capture_from_outcome(outcome: Any, *, prompt: str, system: str) -> LiveCapt
         usage=usage,
         estimate=estimate,
         endpoint_ids=endpoint_ids,
-        route_evidence=route_evidence,
+        route_evidence=tuple(route_evidence),
         raw_method=None,
     )
 
 
-def _capture_from_validation(result: Any, *, prompt: str, system: str) -> LiveCapture:
-    """Capture from a ValidationResult; it exposes no usage, so chars4 estimates it."""
-    responses = [str(r) for r in (getattr(result, "responses", None) or [])]
-    text = str(getattr(result, "best_response", "") or (responses[0] if responses else ""))
-    metadata = dict(getattr(result, "metadata", None) or {})
-    route_evidence = tuple(dict(r) for r in (metadata.get("route_evidence") or ()))
-    endpoint_ids = tuple(str(e) for e in (metadata.get("endpoint_ids") or ()))
+def _benchmark_route_evidence(
+    *, samples: list[Any], endpoint_ids: tuple[str, ...], engine: str,
+) -> tuple[dict, ...]:
+    """Validate and redact the route identity returned by the benchmark dispatcher."""
+    evidence: list[dict] = []
+    for index, sample in enumerate(samples):
+        endpoint_id = str(
+            getattr(sample, "endpoint_id", "")
+            or (endpoint_ids[index] if index < len(endpoint_ids) else "")
+        )
+        if not endpoint_id:
+            raise RouteAdmissionError("benchmark sample has no endpoint identity")
+        if endpoint_id not in APPROVED_DEEPSEEK_ENDPOINT_IDS:
+            raise RouteAdmissionError(f"benchmark route not approved: {endpoint_id!r}")
+        provider = str(getattr(sample, "provider", "") or DEEPSEEK_PROVIDER)
+        model = str(getattr(sample, "model", "") or DEEPSEEK_MODEL)
+        if provider != DEEPSEEK_PROVIDER or model != DEEPSEEK_MODEL:
+            raise RouteAdmissionError("benchmark sample provider/model is not DeepSeek-approved")
+        if getattr(sample, "status", None) != "success" or not getattr(sample, "text", ""):
+            continue
+        evidence.append({
+            "endpoint_id": endpoint_id,
+            "provider": provider,
+            "model": model,
+            "engine": engine,
+            "route_kind": "agentic_ensemble",
+        })
+    return tuple(evidence)
+
+
+def _benchmark_moa_capture(
+    outcome: Any, *, prompt: str, system: str, engine: str, served_method: str,
+) -> LiveCapture:
+    """Capture MoA directly from the dispatcher without validation/embedding side effects."""
+    samples = list(getattr(outcome, "samples", None) or [])
+    endpoint_ids = tuple(str(e) for e in (getattr(outcome, "endpoint_ids", None) or ()))
     if not endpoint_ids:
-        endpoint_ids = tuple(str(r.get("endpoint_id", "")) for r in route_evidence)
-    usage = _estimate_usage(prompt=prompt, system=system, output_texts=responses) if responses else None
-    consensus = getattr(result, "consensus", None)
-    consensus_score = getattr(consensus, "agreement_score", None) if consensus is not None else None
-    consensus_confidence = str(getattr(consensus, "confidence", "") or "") if consensus is not None else ""
+        endpoint_ids = tuple(str(getattr(s, "endpoint_id", "") or "") for s in samples)
+    route_evidence = _benchmark_route_evidence(
+        samples=samples, endpoint_ids=endpoint_ids, engine=engine,
+    )
+    responses = [
+        str(getattr(sample, "text", ""))
+        for sample in samples
+        if getattr(sample, "status", None) == "success" and getattr(sample, "text", "")
+    ]
+    usage = _normalize_usage(getattr(outcome, "usage", None)) or _sum_sample_usage(samples)
+    estimate = False
+    if usage is None and responses:
+        usage = _estimate_usage(prompt=prompt, system=system, output_texts=responses)
+        estimate = True
+    consensus_score = None
+    consensus_confidence = ""
+    if responses:
+        # Consensus is deterministic and local. Do not call validation._get_embeddings or
+        # agentic.embed: those calls sit outside the benchmark's shared budget ledger and
+        # may select a local embedding provider.
+        from app.core.consensus import compute_consensus
+
+        consensus = compute_consensus(responses, embeddings=None, method=served_method)
+        consensus_score = consensus.agreement_score
+        consensus_confidence = consensus.confidence
     return LiveCapture(
-        text=text,
+        text=responses[0] if responses else "",
         usage=usage,
-        estimate=usage is not None,
+        estimate=estimate,
         endpoint_ids=endpoint_ids,
         route_evidence=route_evidence,
-        raw_method=str(getattr(result, "method", "") or "") or None,
-        consensus_score=float(consensus_score) if consensus_score is not None else None,
+        raw_method=served_method,
+        consensus_score=consensus_score,
         consensus_confidence=consensus_confidence,
     )
 
@@ -231,35 +292,46 @@ async def dispatch_unit(
     moa_n: int = 3,
     max_tokens: int = 1024,
     ensemble_fn: Any = None,
-    validation_module: Any = None,
+    agentic_module: Any = None,
 ) -> LiveCapture:
     """Dispatch one unit through the backend dispatcher path and capture what came back.
 
-    ``ensemble_fn``/``validation_module`` inject fakes for tests; when both are None the
+    ``ensemble_fn``/``agentic_module`` inject fakes for tests; when both are None the
     backend is imported lazily here (and only here). Injected ``ensemble_fn`` receives the
     same kwargs as ``agentic.ensemble`` except ``params`` is a plain dict
-    (``{"endpoint_id", "model"}``) so tests never import backend types.
+    (``{"endpoint_id", "model", "max_tokens"}``) so tests never import backend types.
     """
     moa_mode = getattr(unit, "moa_mode", None)
     if moa_mode in moa.MOA_MODES:
-        validation = validation_module
-        if validation is None:
+        if getattr(unit, "engine", None) not in {"pi", "legacy"}:
+            raise PreDispatchError(f"unsupported benchmark engine: {getattr(unit, 'engine', None)!r}")
+        if agentic_module is None:
             await _init_db_best_effort()
-            from app.core import validation as backend_validation  # lazy (live path only)
+            from app.core.agentic import agentic as agentic_module  # lazy (live path only)
+        from app.core.agentic.types import TurnParams
 
-            validation = backend_validation
-        if moa_mode == "self_moa":
-            result = await validation.self_moa(
-                prompt, system=system, model=DEEPSEEK_MODEL, n=moa_n,
-                max_tokens=max_tokens, project_id=PI_PROJECT_ID,
-            )
-        else:  # full_ensemble: request exactly `slots` distinct routes (n=min_responses+1)
-            slots = moa.requested_slots("full_ensemble", moa_n)
-            result = await validation.full_ensemble(
-                prompt, system=system, model=DEEPSEEK_MODEL,
-                min_responses=slots - 1, max_tokens=max_tokens, project_id=PI_PROJECT_ID,
-            )
-        return _capture_from_validation(result, prompt=prompt, system=system)
+        slots = moa.requested_slots(moa_mode, moa_n)
+        params = TurnParams(
+            endpoint_id=DEEPSEEK_ENDPOINT_ID, model=DEEPSEEK_MODEL, max_tokens=max_tokens,
+        )
+        outcome = await agentic_module.ensemble(
+            purpose=f"pi_benchmark.{tier}",
+            project_id=PI_PROJECT_ID,
+            system=system or None,
+            messages=[{"role": "user", "content": prompt}],
+            n=slots,
+            distinct=False,
+            temperatures=list(moa.self_moa_temperatures(moa_n)) if moa_mode == "self_moa" else None,
+            params=params,
+            engine=unit.engine,
+            spine_phase="review",
+        )
+        # ``distinct=False`` is intentional: it forces every slot onto the one approved
+        # DeepSeek endpoint. A full ensemble is then explicitly degraded by MoA evidence
+        # instead of discovering local/other configured endpoints.
+        return _benchmark_moa_capture(
+            outcome, prompt=prompt, system=system, engine=unit.engine, served_method=moa_mode,
+        )
 
     params_payload = {
         "endpoint_id": DEEPSEEK_ENDPOINT_ID,
@@ -386,9 +458,41 @@ def _build_unit_record(
     return record
 
 
-def _stamp_live_provenance(record: dict[str, Any], provider: Any) -> dict[str, Any]:
-    record["provenance"]["model_id"] = DEEPSEEK_MODEL
-    record["provenance"]["endpoint_fingerprint"] = provider.endpoint_fingerprint()
+def _stamp_live_provenance(
+    record: dict[str, Any], provider: Any, capture: LiveCapture | None = None,
+) -> dict[str, Any]:
+    """Stamp only the route actually returned by the dispatcher.
+
+    The injected budget provider is a pricing/accounting dependency, not proof of the
+    dispatcher route. A fingerprint is therefore derived from redacted route evidence;
+    blocked-before-dispatch records carry null live identity instead of a guessed one.
+    """
+    route_evidence = tuple(capture.route_evidence) if capture is not None else ()
+    if route_evidence:
+        normalized_routes = []
+        for route in route_evidence:
+            normalized = dict(route)
+            if normalized.get("endpoint_id") in APPROVED_DEEPSEEK_ENDPOINT_IDS:
+                normalized.setdefault("provider", DEEPSEEK_PROVIDER)
+                normalized.setdefault("model", DEEPSEEK_MODEL)
+            normalized_routes.append(normalized)
+        safe_routes = [
+            {
+                key: str(route[key])
+                for key in ("endpoint_id", "provider", "model", "engine", "route_kind")
+                if route.get(key)
+            }
+            for route in normalized_routes
+        ]
+        encoded = json.dumps(safe_routes, sort_keys=True, separators=(",", ":"))
+        record["provenance"]["endpoint_fingerprint"] = (
+            f"deepseek-route:{hashlib.sha256(encoded.encode()).hexdigest()[:12]}"
+        )
+        models = {route.get("model") for route in normalized_routes if route.get("model")}
+        record["provenance"]["model_id"] = models.pop() if len(models) == 1 else None
+    else:
+        record["provenance"]["model_id"] = None
+        record["provenance"]["endpoint_fingerprint"] = None
     schema.validate_record(record)  # re-validate after the provenance override
     return record
 
@@ -494,14 +598,20 @@ async def run_live_unit(
     # 4. Successful-looking dispatch with neither usage nor text: fail closed.
     if capture.usage is None:
         extensions["detail"] = "unknown_usage_fail_closed"
+        if capture.route_evidence:
+            extensions["route_evidence"] = [dict(route) for route in capture.route_evidence]
         record = _build_unit_record(
             unit=unit, scenario=scenario, config=config, status="not_runnable",
             not_runnable_reason="other", extensions=extensions,
         )
-        recording.write_record_atomic(records_dir, unit.unit_id, _stamp_live_provenance(record, provider))
+        recording.write_record_atomic(
+            records_dir, unit.unit_id, _stamp_live_provenance(record, provider, capture)
+        )
         return record
 
     # 5. Commit actual cost from provider pricing over the captured tokens.
+    if capture.route_evidence:
+        extensions["route_evidence"] = [dict(route) for route in capture.route_evidence]
     usage = capture.usage
     actual_cost = round(provider.estimate_cost(
         input_tokens=usage["input_tokens"],
@@ -534,7 +644,9 @@ async def run_live_unit(
         unit=unit, scenario=scenario, config=config, status=status,
         not_runnable_reason=reason, usage=usage_block, extensions=extensions,
     )
-    recording.write_record_atomic(records_dir, unit.unit_id, _stamp_live_provenance(record, provider))
+    recording.write_record_atomic(
+        records_dir, unit.unit_id, _stamp_live_provenance(record, provider, capture)
+    )
     return record
 
 

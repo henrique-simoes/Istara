@@ -11,8 +11,8 @@ status: in-progress
 blocked_on: null
 authored_by: build-stream-conductor
 grounding: "Based on 2026-07-20-pi-full-replacement-master-plan.md Section 10"
-last: {agent: gpt-5.6-luna, at: 2026-07-22T19:27:35Z, ledger: L-21}
-next_action: "Continue sibling remediation for F-4 through F-7, then run one delta re-review after all fixer tasks are terminal."
+last: {agent: gpt-5.6-luna, at: 2026-07-22T19:29:52Z, ledger: L-22}
+next_action: "Complete sibling F-5 and F-7 work, then run one delta re-review after all fixer tasks are terminal."
 ```
 <!-- /STATUS BLOCK -->
 
@@ -476,7 +476,7 @@ approvals (G1/G2) are recorded as CF evidence with the in-chat approval quoted.
 | F-3 | Blocker | `scheduler.py:write_manifest` / `runner.py:run_wave` | Real manifests store shard entries as unit-id strings, but wave execution dereferences them as unit objects and crashes before dispatch. | FIX-PI-BENCH-MOA-20260722-REVIEW-r1-wave | fixed |
 | F-4 | Blocker | `moa.py:assess_validation_result` / `live_driver.py:_moa_evidence_from_capture` | Partial coder success can be labeled reconciled because selected endpoints count as served and requested response count is not enforced. | FIX-PI-BENCH-MOA-20260722-REVIEW-r1-moa | fixed |
 | F-5 | Blocker | `live_driver.py:dispatch_unit` / `validation.py:_get_embeddings` | MoA omits the requested engine and approved route identity; embeddings escape the DeepSeek-only ledger; stamped provenance does not prove the served route. | FIX-PI-BENCH-MOA-20260722-REVIEW-r1-routing | open |
-| F-6 | Blocker | `live_driver.py:run_live_unit` / `budget_ledger.py` | The reserved output bound is not forwarded to dispatch, and duplicate/orphan/over-reservation ledger transitions can undercount or exceed the hard cap. | FIX-PI-BENCH-MOA-20260722-REVIEW-r1-budget | open |
+| F-6 | Blocker | `live_driver.py:run_live_unit` / `budget_ledger.py` | The reserved output bound is not forwarded to dispatch, and duplicate/orphan/over-reservation ledger transitions can undercount or exceed the hard cap. | FIX-PI-BENCH-MOA-20260722-REVIEW-r1-budget | fixed (L-22) |
 | F-7 | Major | Compass Forge post-change gate | New Python import cycles include `live_driver -> runner -> live_driver`; the task-scope architecture gate is not clean. | FIX-PI-BENCH-MOA-20260722-REVIEW-r1-gate | open |
 
 ## Decision log
@@ -585,3 +585,9 @@ Did: fixed F-4 in `tests/pi_benchmark/moa.py` and `tests/pi_benchmark/live_drive
 Result: F-4 fixed under FIX-PI-BENCH-MOA-20260722-REVIEW-r1-moa; selected-but-failed endpoint ids remain provenance only, partial MoA records are `not_runnable`, and consensus evidence is retained.
 Verified: `backend/.venv/bin/python -m pytest tests/pi_benchmark/test_moa.py tests/pi_benchmark/test_live_driver.py -q` -> 34 passed; `backend/.venv/bin/python -m pytest tests/pi_benchmark/ -q` -> 159 passed; `python -m compileall -q tests/pi_benchmark/moa.py tests/pi_benchmark/live_driver.py` -> passed; `git diff --check` -> passed; `compass-forge gate after --task FIX-PI-BENCH-MOA-20260722-REVIEW-r1-moa --summary` -> fail with 0 new failures, inherited `python_import_cycles`/`secret_flow`/`unexpected_large_files`, route/type/contract/graphql/generated drift 0.
 Next: sibling fixer tasks F-5 through F-7, then one delta re-review after all fixer tasks are terminal.
+
+### L-22 | 2026-07-22T19:29:52Z | S4-remediate | gpt-5.6-luna | remediator | Execution phase <!-- bsc-ledger:FIX-PI-BENCH-MOA-20260722-REVIEW-r1-budget -->
+Did: fixed F-6 across `tests/pi_benchmark/budget_ledger.py`, `tests/pi_benchmark/verify_budget_ledger.py`, `tests/pi_benchmark/live_driver.py`, and the validation dispatch seam in `backend/app/core/validation.py`; added adversarial ledger/verifier tests and bound-forwarding coverage.
+Result: F-6 fixed under FIX-PI-BENCH-MOA-20260722-REVIEW-r1-budget. Reservations now use a hard finite non-negative cap with unique call ids; commits/releases require one outstanding reservation, commits cannot exceed the reservation, and malformed durable rows are rejected by the verifier. `run_live_unit` forwards the reserved `max_tokens` bound to plain and MoA dispatch paths, including validation fallback routes.
+Verified: `backend/.venv/bin/python -m pytest tests/pi_benchmark/test_budget_ledger.py tests/pi_benchmark/test_verify_budget_ledger.py -q` -> 25 passed; `backend/.venv/bin/python -m pytest tests/pi_production/test_w7_validation.py tests/test_validation_project_scope.py -q` -> 26 passed; direct dispatch probe with `max_tokens=23` -> passed; `git diff --check` -> passed; Python compile checks -> passed. Full `tests/pi_benchmark/` remains blocked by sibling F-7's in-progress `runner.py`/`recording.py` refactor (pre-existing missing helper import and injection API drift), not by this task's focused surface.
+Next: sibling F-5 and F-7, then delta re-review; stage exit: F-6 fixed with focused evidence and handoff ready.
