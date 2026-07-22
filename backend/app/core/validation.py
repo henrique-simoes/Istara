@@ -115,6 +115,59 @@ class ValidationResult:
     metadata: dict
 
 
+async def _dispatch_ensemble(
+    *,
+    purpose: str,
+    messages: list[dict],
+    n: int,
+    distinct: bool,
+    system: str = "",
+    temperatures: list[float] | None = None,
+    model: str | None = None,
+    project_id: str | None = None,
+) -> tuple[list[str], list[dict], list[str]]:
+    """W7 AgenticDispatcher ensemble branch (master plan §8 W7).
+
+    Returns ``(responses, route_evidence, endpoint_ids)`` with failed or empty
+    samples filtered out, mirroring the legacy per-server failure tolerance.
+    ``distinct=True`` fails closed inside the Pi engine
+    (``PiEndpointResolutionError``) when fewer than ``n`` distinct endpoints
+    exist — diversity is never fabricated from one endpoint.
+    """
+    from app.core.agentic import agentic
+    from app.core.agentic.types import TurnParams
+
+    outcome = await agentic.ensemble(
+        purpose=purpose,
+        project_id=project_id or "",
+        system=system or None,
+        messages=messages,
+        n=n,
+        distinct=distinct,
+        temperatures=temperatures,
+        params=TurnParams(model=model, temperature=0.7),
+        spine_phase="review",
+    )
+    responses: list[str] = []
+    route_evidence: list[dict] = []
+    for index, sample in enumerate(outcome.samples):
+        endpoint_id = (
+            outcome.endpoint_ids[index]
+            if index < len(outcome.endpoint_ids)
+            else sample.endpoint_id
+        ) or ""
+        if sample.status != "success" or not sample.text:
+            logger.warning(
+                "Ensemble %s: sample %d failed (status=%s)", purpose, index, sample.status
+            )
+            continue
+        responses.append(sample.text)
+        route_evidence.append(
+            {"endpoint_id": endpoint_id, "route_kind": "agentic_ensemble"}
+        )
+    return responses, route_evidence, list(outcome.endpoint_ids)
+
+
 async def dual_run(
     prompt: str,
     system: str = "",
@@ -125,6 +178,53 @@ async def dual_run(
 
     Uses the LLM Router to send to two different endpoints.
     """
+    from app.config import settings
+
+    if settings.agentic_core:
+        # W7: the dual-run goes through the AgenticDispatcher ensemble verb
+        # (``validation.dual_run``); the legacy branch below is preserved for
+        # agentic_core=False. distinct=True fails closed: fewer than 2
+        # distinct Pi endpoints degrades to the labeled single-model
+        # temperature variation, never fabricated diversity from one endpoint.
+        from app.core.pi_runtime.endpoints import PiEndpointResolutionError
+
+        try:
+            responses, route_evidence, endpoint_ids = await _dispatch_ensemble(
+                purpose="validation.dual_run",
+                messages=[{"role": "user", "content": prompt}],
+                n=2,
+                distinct=True,
+                system=system,
+                model=model,
+                project_id=project_id,
+            )
+        except PiEndpointResolutionError:
+            return await self_moa(
+                prompt,
+                system=system,
+                model=model,
+                n=2,
+                project_id=project_id,
+            )
+        except Exception as exc:
+            logger.warning("Dual-run dispatch failed: %s", exc)
+            return _empty_result("dual_run")
+        if not responses:
+            return _empty_result("dual_run")
+        embeddings = await _get_embeddings(responses, project_id=project_id)
+        consensus = compute_consensus(responses, embeddings, method="dual_run")
+        return ValidationResult(
+            method="dual_run",
+            consensus=consensus,
+            responses=responses,
+            best_response=responses[consensus.best_response_idx],
+            metadata={
+                "endpoint_ids": endpoint_ids,
+                "route_evidence": route_evidence,
+                "models_used": _models_used(route_evidence),
+            },
+        )
+
     from app.core.llm_router import llm_router
 
     messages = [{"role": "user", "content": prompt}]
@@ -194,7 +294,7 @@ async def adversarial_review(
     trace_id: str | None = None,
 ) -> ValidationResult:
     """Have a second model critique the first model's response."""
-    from app.core.llm_router import llm_router
+    from app.config import settings
 
     review_prompt = (
         f"You are a critical reviewer. Analyze this response for accuracy, "
@@ -205,35 +305,77 @@ async def adversarial_review(
         f"Rate agreement 1-5 and explain any disagreements."
     )
 
-    messages = [{"role": "user", "content": review_prompt}]
-    if system:
-        messages = [{"role": "system", "content": system}, *messages]
+    if settings.agentic_core:
+        # W7: the critique goes through the AgenticDispatcher completion verb
+        # (``validation.adversarial``); the legacy branch below is preserved
+        # for agentic_core=False.
+        from app.core.agentic import agentic
+        from app.core.agentic.types import TurnParams
 
-    try:
-        result = await llm_router.chat(
-            messages,
-            model=model,
-            temperature=0.3,
-            project_id=project_id,
-        )
-        review = result.get("message", {}).get("content", "")
-        route_evidence = [_route_evidence(result)]
-    except Exception as e:
-        logger.warning(f"Adversarial review failed: {e}")
-        await _record_review_telemetry(
-            operation="adversarial.review",
-            project_id=project_id,
-            trace_id=trace_id,
-            coding_run_id=coding_run_id,
-            evidence_unit_ids=evidence_unit_ids,
-            codebook_version_id=codebook_version_id,
-            route_evidence=[],
-            consensus_score=None,
-            status="error",
-            error_type="adversarial_review_failed",
-            error_message=str(e)[:160],
-        )
-        return _empty_result("adversarial_review")
+        try:
+            outcome = await agentic.completion(
+                purpose="validation.adversarial",
+                project_id=project_id or "",
+                system=system or None,
+                messages=[{"role": "user", "content": review_prompt}],
+                params=TurnParams(model=model, temperature=0.3),
+                spine_phase="review",
+            )
+            review = outcome.text or ""
+            route_evidence = [
+                {
+                    "endpoint_id": outcome.endpoint_id or "",
+                    "route_kind": "agentic_completion",
+                }
+            ]
+        except Exception as e:
+            logger.warning(f"Adversarial review failed: {e}")
+            await _record_review_telemetry(
+                operation="adversarial.review",
+                project_id=project_id,
+                trace_id=trace_id,
+                coding_run_id=coding_run_id,
+                evidence_unit_ids=evidence_unit_ids,
+                codebook_version_id=codebook_version_id,
+                route_evidence=[],
+                consensus_score=None,
+                status="error",
+                error_type="adversarial_review_failed",
+                error_message=str(e)[:160],
+            )
+            return _empty_result("adversarial_review")
+    else:
+        from app.core.llm_router import llm_router
+
+        messages = [{"role": "user", "content": review_prompt}]
+        if system:
+            messages = [{"role": "system", "content": system}, *messages]
+
+        try:
+            result = await llm_router.chat(
+                messages,
+                model=model,
+                temperature=0.3,
+                project_id=project_id,
+            )
+            review = result.get("message", {}).get("content", "")
+            route_evidence = [_route_evidence(result)]
+        except Exception as e:
+            logger.warning(f"Adversarial review failed: {e}")
+            await _record_review_telemetry(
+                operation="adversarial.review",
+                project_id=project_id,
+                trace_id=trace_id,
+                coding_run_id=coding_run_id,
+                evidence_unit_ids=evidence_unit_ids,
+                codebook_version_id=codebook_version_id,
+                route_evidence=[],
+                consensus_score=None,
+                status="error",
+                error_type="adversarial_review_failed",
+                error_message=str(e)[:160],
+            )
+            return _empty_result("adversarial_review")
 
     responses = [initial_response, review]
     embeddings = await _get_embeddings(responses, project_id=project_id)
@@ -276,6 +418,54 @@ async def full_ensemble(
     project_id: str | None = None,
 ) -> ValidationResult:
     """Run prompt across 3+ models/servers for full ensemble consensus."""
+    from app.config import settings
+
+    if settings.agentic_core:
+        # W7: the ensemble goes through the AgenticDispatcher ensemble verb
+        # (``validation.full_ensemble``, n=min_responses+1 distinct endpoints);
+        # the legacy branch below is preserved for agentic_core=False.
+        # distinct=True fails closed: fewer distinct Pi endpoints than
+        # requested degrades down the existing chain (dual_run -> self_moa),
+        # never fabricated diversity from fewer endpoints.
+        from app.core.pi_runtime.endpoints import PiEndpointResolutionError
+
+        try:
+            responses, route_evidence, endpoint_ids = await _dispatch_ensemble(
+                purpose="validation.full_ensemble",
+                messages=[{"role": "user", "content": prompt}],
+                n=min_responses + 1,
+                distinct=True,
+                system=system,
+                model=model,
+                project_id=project_id,
+            )
+        except PiEndpointResolutionError:
+            return await dual_run(
+                prompt,
+                system=system,
+                model=model,
+                project_id=project_id,
+            )
+        except Exception as exc:
+            logger.warning("Full-ensemble dispatch failed: %s", exc)
+            return _empty_result("full_ensemble")
+        if not responses:
+            return _empty_result("full_ensemble")
+        embeddings = await _get_embeddings(responses, project_id=project_id)
+        consensus = compute_consensus(responses, embeddings, method="full_ensemble")
+        return ValidationResult(
+            method="full_ensemble",
+            consensus=consensus,
+            responses=responses,
+            best_response=responses[consensus.best_response_idx],
+            metadata={
+                "endpoint_ids": endpoint_ids,
+                "n_responses": len(responses),
+                "route_evidence": route_evidence,
+                "models_used": _models_used(route_evidence),
+            },
+        )
+
     from app.core.llm_router import llm_router
 
     servers = _diverse_servers(
@@ -356,11 +546,49 @@ async def self_moa(
 
     Reference: Li et al. (2025). Self-MoA.
     """
-    from app.core.llm_router import llm_router
-
     temperatures = [0.3, 0.7, 1.0][:n]
     if n > 3:
         temperatures.extend([0.5, 0.9][: n - 3])
+
+    from app.config import settings
+
+    if settings.agentic_core:
+        # W7: the temperature sweep goes through the AgenticDispatcher
+        # ensemble verb (``validation.self_moa``, distinct=False — n samples
+        # on one admitted endpoint); the legacy branch below is preserved for
+        # agentic_core=False.
+        try:
+            responses, route_evidence, endpoint_ids = await _dispatch_ensemble(
+                purpose="validation.self_moa",
+                messages=[{"role": "user", "content": prompt}],
+                n=len(temperatures),
+                distinct=False,
+                temperatures=temperatures,
+                system=system,
+                model=model,
+                project_id=project_id,
+            )
+        except Exception as exc:
+            logger.warning("Self-MoA dispatch failed: %s", exc)
+            return _empty_result("self_moa")
+        if not responses:
+            return _empty_result("self_moa")
+        embeddings = await _get_embeddings(responses, project_id=project_id)
+        consensus = compute_consensus(responses, embeddings, method="self_moa")
+        return ValidationResult(
+            method="self_moa",
+            consensus=consensus,
+            responses=responses,
+            best_response=responses[consensus.best_response_idx],
+            metadata={
+                "temperatures": temperatures[: len(responses)],
+                "endpoint_ids": endpoint_ids,
+                "route_evidence": route_evidence,
+                "assurance": "single_model_temperature_variation",
+            },
+        )
+
+    from app.core.llm_router import llm_router
 
     responses = []
     route_evidence = []
@@ -417,6 +645,118 @@ async def debate_rounds(
 
     Reference: Du et al. (2024). Multi-Agent Debate. ICML 2024.
     """
+    from app.config import settings
+
+    if settings.agentic_core:
+        # W7: the initial response and each debate round go through the
+        # AgenticDispatcher completion verb (``validation.debate``); the
+        # legacy branch below is preserved for agentic_core=False.
+        from app.core.agentic import agentic
+        from app.core.agentic.types import TurnParams
+
+        messages = [{"role": "user", "content": prompt}]
+        all_responses = []
+        route_evidence = []
+
+        # Initial response
+        try:
+            outcome = await agentic.completion(
+                purpose="validation.debate",
+                project_id=project_id or "",
+                system=system or None,
+                messages=messages,
+                params=TurnParams(model=model, temperature=0.7),
+                spine_phase="review",
+            )
+            current = outcome.text or ""
+            all_responses.append(current)
+            route_evidence.append(
+                {
+                    "endpoint_id": outcome.endpoint_id or "",
+                    "route_kind": "agentic_completion",
+                }
+            )
+        except Exception as e:
+            logger.warning(f"Debate: initial response failed: {e}")
+            await _record_review_telemetry(
+                operation="debate.review",
+                project_id=project_id,
+                trace_id=trace_id,
+                coding_run_id=coding_run_id,
+                evidence_unit_ids=evidence_unit_ids,
+                codebook_version_id=codebook_version_id,
+                route_evidence=[],
+                consensus_score=None,
+                status="error",
+                error_type="debate_review_failed",
+                error_message=str(e)[:160],
+            )
+            return _empty_result("debate_rounds")
+
+        # Debate rounds
+        for round_num in range(rounds):
+            debate_prompt = (
+                f"Previous response:\n{current}\n\n"
+                f"Do you agree with this response? If not, provide a better answer. "
+                f"If you agree, confirm and add any missing points."
+            )
+            debate_messages = [
+                *messages,
+                {"role": "assistant", "content": current},
+                {"role": "user", "content": debate_prompt},
+            ]
+            try:
+                outcome = await agentic.completion(
+                    purpose="validation.debate",
+                    project_id=project_id or "",
+                    system=system or None,
+                    messages=debate_messages,
+                    params=TurnParams(model=model, temperature=0.5),
+                    spine_phase="review",
+                )
+                current = outcome.text or ""
+                all_responses.append(current)
+                route_evidence.append(
+                    {
+                        "endpoint_id": outcome.endpoint_id or "",
+                        "route_kind": "agentic_completion",
+                    }
+                )
+            except Exception as e:
+                logger.warning(f"Debate round {round_num + 1} failed: {e}")
+                break
+
+        embeddings = await _get_embeddings(all_responses, project_id=project_id)
+        consensus = compute_consensus(all_responses, embeddings, method="debate_rounds")
+        await _record_review_telemetry(
+            operation="debate.review",
+            project_id=project_id,
+            trace_id=trace_id,
+            coding_run_id=coding_run_id,
+            evidence_unit_ids=evidence_unit_ids,
+            codebook_version_id=codebook_version_id,
+            route_evidence=route_evidence,
+            consensus_score=consensus.agreement_score,
+            status="success",
+        )
+
+        return ValidationResult(
+            method="debate_rounds",
+            consensus=consensus,
+            responses=all_responses,
+            best_response=all_responses[-1],  # Last round is most refined
+            metadata={
+                "rounds_completed": len(all_responses) - 1,
+                "route_evidence": route_evidence,
+                "models_used": _models_used(route_evidence),
+                "validation_scope": _review_scope(coding_run_id),
+                "formal_reliability": False,
+                "coding_run_id": coding_run_id or "",
+                "evidence_unit_ids": evidence_unit_ids or [],
+                "codebook_version_id": codebook_version_id or "",
+            },
+        )
+
     from app.core.llm_router import llm_router
 
     messages = [{"role": "user", "content": prompt}]
