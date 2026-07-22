@@ -237,8 +237,8 @@
   <dl class="meta-grid">
     <div><dt>UI Path</dt><dd>Autoresearch &gt; Config</dd></div>
     <div><dt>Component</dt><dd><code>AutoresearchView</code></dd></div>
-    <div><dt>Source Refs</dt><dd>2</dd></div>
-    <div><dt>Tests</dt><dd>0</dd></div>
+    <div><dt>Source Refs</dt><dd>3</dd></div>
+    <div><dt>Tests</dt><dd>1</dd></div>
   </dl>
   <div class="link-cluster" aria-label="Related feature links"><a href="../experiments/researcher.html">Autoresearch Experiments</a>
 <a href="../../chat/model-controls/researcher.html">Chat Model Controls</a></div>
@@ -271,6 +271,14 @@
 <li>Global runtime configuration values that contain no project content.</li>
 <li>Project-scoped status refreshes shown from this tab, filtered to the active project before any operational metrics are rendered.</li>
 </ul>
+<h2 id="model-routing-and-engine-selection">Model Routing And Engine Selection</h2>
+<ul>
+<li>The RAG-parameter runner tunes retrieval settings by asking a model to suggest the next parameters to try, then scoring how well retrieval performs with them.</li>
+<li>Pi Replacement wave W6 sends that suggestion call through Istara&#x27;s shared agentic dispatcher when the <code>agentic_core</code> engine is enabled, so RAG tuning can run on either the Pi replacement engine or the legacy engine without changing what the tuning does. When the flag is off, the runner uses the legacy model plane exactly as before, so switching engines back is a safe rollback.</li>
+<li>Only the suggestion step moves onto the new engine. The embedding the runner uses to score retrieval quality stays on the legacy plane until a later wave (W8) adds the embeddings gateway, so retrieval scoring is unchanged for now.</li>
+<li>The runner stays bound to the project that authorized the experiment for engine choice, telemetry, and execution, and global configuration changes remain admin-only and carry no project content.</li>
+<li>The full engine-selection behavior for all six autoresearch runners is described on the <a href="../experiments/researcher.html">Autoresearch Experiments</a> page.</li>
+</ul>
 <h2 id="caveats">Caveats</h2>
 <ul>
 <li>Needs interactive verification for exact empty, loading, error, and permission-denied states.</li>
@@ -287,9 +295,9 @@
 </ul>
 <h2 id="evidence">Evidence</h2>
 <ul>
-<li>Source files: <code>frontend/src/components/autoresearch/AutoresearchView.tsx</code>, <code>backend/app/core/autoresearch_runners/rag_params.py</code></li>
+<li>Source files: <code>frontend/src/components/autoresearch/AutoresearchView.tsx</code>, <code>backend/app/core/autoresearch_runners/rag_params.py</code>, <code>backend/app/core/agentic/dispatcher.py</code></li>
 <li>API references: <code>backend/app/api/routes/autoresearch.py</code></li>
-<li>Tests: <code>tests/test_autoresearch.py</code>, <code>tests/test_project_scope_contracts.py</code></li>
+<li>Tests: <code>tests/test_autoresearch.py</code>, <code>tests/test_project_scope_contracts.py</code>, <code>tests/pi_production/test_w6_autoresearch_runners.py</code></li>
 </ul>
         </article>
         <aside class="toc-panel" aria-label="Page sections">
@@ -301,6 +309,7 @@
 <li class="toc-level-2"><a href="#how-ux-researchers-use-it">How UX Researchers Use It</a></li>
 <li class="toc-level-2"><a href="#supported-workflows">Supported Workflows</a></li>
 <li class="toc-level-2"><a href="#inputs-outputs-and-expected-outcomes">Inputs, Outputs, And Expected Outcomes</a></li>
+<li class="toc-level-2"><a href="#model-routing-and-engine-selection">Model Routing And Engine Selection</a></li>
 <li class="toc-level-2"><a href="#caveats">Caveats</a></li>
 <li class="toc-level-2"><a href="#related-features">Related Features</a></li>
 <li class="toc-level-2"><a href="#related-concepts">Related Concepts</a></li>
