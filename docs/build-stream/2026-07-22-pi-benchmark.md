@@ -627,3 +627,9 @@ Did: pi-bench-role-correction-20260722-architect-c stage on task PI-BENCH-ROLE-C
 Result: task PI-BENCH-ROLE-CORRECTION-20260722-PLAN-C finished; worktree head e1f9d8a7.
 Verified: see Compass Forge evidence rows on PI-BENCH-ROLE-CORRECTION-20260722-PLAN-C (command + self_report + stage_attribution).
 Next: conductor advances the pipeline on evidence.
+
+### L-29 | 2026-07-22T19:42:00Z | S1-plan | gpt-5.6-sol | planner | pi-bench-role-correction-20260722-architect-b <!-- bsc-ledger:PI-BENCH-ROLE-CORRECTION-20260722-REPLAN-B-r1 -->
+Did: pi-bench-role-correction-20260722-architect-b stage on task PI-BENCH-ROLE-CORRECTION-20260722-REPLAN-B-r1 (harness fallback entry; the model did not append one).
+Result: task PI-BENCH-ROLE-CORRECTION-20260722-REPLAN-B-r1 finished; worktree head 5b9b5d56.
+Verified: see Compass Forge evidence rows on PI-BENCH-ROLE-CORRECTION-20260722-REPLAN-B-r1 (command + self_report + stage_attribution).
+Next: conductor advances the pipeline on evidence.
