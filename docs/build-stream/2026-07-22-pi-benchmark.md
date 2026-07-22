@@ -1,0 +1,40 @@
+# Build Stream Lifecycle — Pi Benchmark Experimentation
+
+<!-- STATUS BLOCK -->
+```yaml
+item: pi-benchmark
+branch: Review_pi_test
+cf: { spec: CF-SPEC-8 }
+phase: "Planning phase"
+stage: S1-plan
+status: in-progress
+blocked_on: "none"
+authored_by: henrique-simoes
+grounding: "Based on 2026-07-20-pi-full-replacement-master-plan.md Section 10"
+last: {agent: claude-fable-5, at: 2026-07-22T13:33:17Z, ledger: L-2}
+next_action: "Consensus judges vote on architect plans a/b/c"
+```
+<!-- /STATUS BLOCK -->
+
+## Context
+We have completed all 9 waves of the Pi candidate replacement (W0 through W9). The next and final step is to conduct a professional, industry-class paired experiment (B1 through B4) evaluating the Pi candidate against the original Istara React and agentic loops.
+
+## Goals
+1. Execute the B1 contract tests.
+2. Execute the B2 breadth tier 2 tests.
+3. Execute the B3 depth tier 2 and tier 3 tests.
+4. Generate the final B4 report in comparison-Istara-pi/reports/.
+5. Ensure exact or estimated tokens are flagged properly.
+
+## Instructions
+Review Section 10 of docs/build-stream/plans/2026-07-20-pi-full-replacement-master-plan.md for the exact benchmark rules.
+Create a step-by-step plan for running all benchmarks, collecting the results, and generating the report.
+
+### L-1 | 2026-07-22T10:25:00Z | S1-plan | human | creator
+Did: created lifecycle file   Result: ok   Verified: N/A   Next: architects plan
+
+### L-2 | 2026-07-22T13:33:17Z | S1-plan | claude-fable-5 | architect | Planning phase <!-- bsc-ledger:pi-eval-PLAN-A -->
+Did: authored independent consensus plan A at docs/build-stream/plans/pi-eval-plan-a.md (design, E0 asset-build wave, E1-E4 = B1-B4 execution waves, acceptance A1-A5 + per-phase, exact verification commands, risks R1-R9, layered rollback)
+Result: plan slot A ready for consensus judging; key finding: S10.3 assets (tests/pi_benchmark/, metrics-schema.json, pi_benchmark_report.py, comparison-Istara-pi/, --engine plumbing) do not exist yet, so plan front-loads build wave E0; pi-eval-PLAN-A
+Verified: ls/grep gap audit (tests/pi_benchmark absent, --engine unplumbed in both run.mjs, header support present api-client.mjs:31,244); evidence rows 1222-1224 on CF task
+Next: consensus judges vote on plan slots a/b/c
