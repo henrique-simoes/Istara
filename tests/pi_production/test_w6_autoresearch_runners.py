@@ -1,32 +1,33 @@
 """W6 contract coverage — autoresearch-runner migration (master plan §8 W6).
 
-The 14 ``llm_router.chat`` call sites across the six autoresearch loop runners
+The 14 chat call sites across the six autoresearch loop runners
 (``model_temp``, ``persona``, ``question_bank``, ``rag_params``,
 ``skill_prompt``, ``ui_sim``) route through the AgenticDispatcher —
-``completion`` → ``autoresearch.<runner>.<step>`` — gated on the
-``agentic_core`` feature flag, with the legacy ``llm_router.chat`` branch
-preserved alongside for ``agentic_core=False``.
+``completion`` → ``autoresearch.<runner>.<step>``.  W9 retired the per-site
+``if self.use_pi_engine():`` gate and the preserved legacy ``llm_router.chat``
+fallthrough branch: the dispatcher path is now the ONLY path, executed
+unconditionally, and the bound engine string is forwarded (``engine=self.engine``)
+so the dispatcher itself routes a ``legacy``-bound run to its legacy executor.
 
 Two design decisions from the plan are covered explicitly:
 
 * ``model_temp`` sweeping — under the Pi engine the (model, temperature) grid
   is built from the PiModelManager catalog (not the legacy ``llm_router``
   model list), and a sweep that cannot span two distinct models records
-  ``sweep_truncated`` rather than silently narrowing;
-* ``rag_params`` embedding-skip — the ``_llm_hypothesis`` chat call migrates,
+  ``sweep_truncated`` rather than silently narrowing (the sweep-space model
+  listing is not an LLM chat call and keeps its engine gate);
+* ``rag_params`` embedding-skip — the ``_llm_hypothesis`` chat call dispatches,
   but the ``_score_single_query`` retrieval-eval embedding stays on the legacy
   plane (never routed through ``agentic.embed``) until the W8 gateway.
 
 Covered here (all stubbed/static — no live model activity):
 
-* static: each migrated function carries both the dispatcher path (flag on,
-  right purpose slug, valid spine phase) and the preserved legacy branch;
-* ratchet: the count-to-zero ratchet stays green at 70 (legacy branch
-  preserved, not retired);
-* behavior (flag off): the legacy plane is used exactly as before and the
-  dispatcher is never touched;
-* behavior (flag on): the dispatcher records the call (right verb, purpose,
-  project scope, spine phase) and the legacy plane is never touched.
+* static: each migrated function carries the dispatcher path (right purpose
+  slug, valid spine phase, bound-engine forwarding);
+* ratchet: the count-to-zero ratchet stays internally consistent after W9
+  retired the 14 W6 legacy branches;
+* behavior: the dispatcher records the call (right verb, purpose, project
+  scope, spine phase) and the legacy plane is never touched directly.
 """
 
 from __future__ import annotations
@@ -160,30 +161,26 @@ def _flag_off(monkeypatch):
     monkeypatch.setattr("app.config.settings.agentic_core", False)
 
 
-# ── static: both paths present, ratchet green ───────────────────────────
+# ── static: dispatcher path present, ratchet green ──────────────────────
 
 
-def test_w6_ratchet_stays_green_at_53():
-    """The legacy branch is preserved, so the 14 sites stay allowlisted.
-    (W8 later migrated the 17 embed sites: the floor moved 70 → 53.)"""
-    from tests.pi_migration.test_count_to_zero import EXPECTED_PRODUCT_SITES, check_count_to_zero
+def test_w6_ratchet_stays_green():
+    """The ratchet is internally consistent after W9 retired the 14 W6 legacy
+    branches (the literal itself lives in tests/pi_migration and is lowered by
+    the wave that owns the allowlist)."""
+    from tests.pi_migration.test_count_to_zero import check_count_to_zero
 
-    assert EXPECTED_PRODUCT_SITES == 53
     check_count_to_zero()
 
 
 @pytest.mark.parametrize("module,function,purpose", MIGRATED_SITES)
-def test_w6_site_carries_dispatcher_and_preserved_legacy_branch(module, function, purpose):
+def test_w6_site_routes_through_dispatcher(module, function, purpose):
     src = _function_source(module, function)
-    # The engine gate is either the global flag (``settings.agentic_core``) or
-    # the per-experiment binding helper (``self.use_pi_engine()``) — the latter
-    # resolves lazily from the same flag when the experiment did not bind one.
-    assert ("settings.agentic_core" in src) or ("use_pi_engine" in src), (
-        f"{module}.{function} missing engine gate (settings.agentic_core / use_pi_engine)"
-    )
     assert "agentic.completion" in src, f"{module}.{function} missing dispatcher path"
     assert purpose in src, f"{module}.{function} missing purpose slug {purpose!r}"
-    assert "llm_router.chat" in src, f"{module}.{function} must preserve the legacy branch"
+    assert "llm_router.chat" not in src, (
+        f"{module}.{function} must not keep a direct legacy-plane call after W9"
+    )
     assert any(f'spine_phase="{phase}"' in src for phase in SPINE_PHASES), (
         f"{module}.{function} must tag a valid spine phase"
     )
@@ -309,7 +306,7 @@ async def test_model_temp_legacy_sweep_uses_llm_router(_flag_off, monkeypatch):
     assert runner._sweep_truncated is False
 
 
-# ── behavior: score site dispatches / falls back to legacy ───────────────
+# ── behavior: score site dispatches ──────────────────────────────────────
 
 
 async def test_model_temp_score_dispatches_when_flag_on(_flag_on, monkeypatch):
@@ -330,20 +327,6 @@ async def test_model_temp_score_dispatches_when_flag_on(_flag_on, monkeypatch):
     assert kwargs["project_id"] == "proj-w6"
     assert kwargs["spine_phase"] in SPINE_PHASES
     assert not router.calls, "legacy plane must not be touched when the flag is on"
-
-
-async def test_model_temp_score_uses_legacy_when_flag_off(_flag_off, monkeypatch):
-    dispatcher = _StubAgentic()
-    router = _StubRouter(text="0.42")
-    monkeypatch.setattr("app.core.agentic.agentic", dispatcher)
-    monkeypatch.setattr("app.core.llm_router.llm_router", router)
-
-    runner = ModelTempRunner()  # no bind_project — legacy path never needs it
-    score = await runner._score_output("x" * 50, "skill-a")
-
-    assert score == pytest.approx(0.42)
-    assert len(router.calls) == 1
-    assert not dispatcher.calls, "dispatcher must not be touched when the flag is off"
 
 
 async def test_model_temp_evaluate_forwards_candidate_model_when_flag_on(_flag_on, monkeypatch):
@@ -482,7 +465,7 @@ def test_rag_params_hypothesis_migrates_but_embedding_stays_legacy():
     hypo = _function_source("rag_params", "_llm_hypothesis")
     assert "agentic.completion" in hypo
     assert "autoresearch.rag_params.hypothesize" in hypo
-    assert "llm_router.chat" in hypo  # legacy branch preserved
+    assert "llm_router.chat" not in hypo  # W9 retired the legacy fallthrough
 
     score_query = _function_source("rag_params", "_score_single_query")
     assert "embed_text" in score_query, "retrieval-eval embedding must stay on the legacy plane"
@@ -518,22 +501,6 @@ async def test_rag_params_hypothesis_dispatches_under_authorized_binding(_flag_o
     assert kwargs["project_id"] == "proj-authorized"
     assert kwargs["spine_phase"] in SPINE_PHASES
     assert not router.calls, "legacy plane must not be touched when the flag is on"
-
-
-async def test_rag_params_legacy_hypothesis_scopes_to_authorized_binding(_flag_off, monkeypatch):
-    """The preserved legacy branch is scoped to the authorized binding too."""
-    dispatcher = _StubAgentic()
-    router = _StubRouter(text='{"param": "rag_chunk_size", "value": 800}')
-    monkeypatch.setattr("app.core.agentic.agentic", dispatcher)
-    monkeypatch.setattr("app.core.llm_router.llm_router", router)
-
-    runner = RAGParamsRunner()
-    runner.bind_project("proj-authorized")
-    await runner._llm_hypothesis(0.5, [{"mutation_description": "d"}] * 3)
-
-    assert len(router.calls) == 1
-    assert router.calls[0]["project_id"] == "proj-authorized"
-    assert not dispatcher.calls, "dispatcher must not be touched when the flag is off"
 
 
 async def test_rag_params_mismatched_target_fails_closed_before_dispatch(_flag_on, monkeypatch):
@@ -594,9 +561,9 @@ async def test_rag_params_matched_target_binds_retrieval_to_authorized(_flag_on,
 
 # ── F-W6-R1-1: the bound engine must reach the REAL dispatcher ───────────
 #
-# Binding an experiment to an engine only selects the runner branch. The
-# migrated ``agentic.completion`` calls must ALSO forward that engine into the
-# dispatcher — otherwise the real ``AgenticDispatcher`` re-resolves from
+# Binding an experiment to an engine only selects the forwarded engine string.
+# The migrated ``agentic.completion`` calls must ALSO forward that engine into
+# the dispatcher — otherwise the real ``AgenticDispatcher`` re-resolves from
 # project/global configuration and a run bound & persisted as ``engine="pi"``
 # executes on the legacy backend (reviewer repro: ``pi_calls=0, legacy_calls=1``).
 # These tests exercise the runner against the REAL dispatcher over fake Pi/legacy
@@ -678,10 +645,10 @@ async def test_pi_bound_run_executes_on_pi_over_conflicting_legacy_default(monke
 
 async def test_legacy_bound_run_stays_on_legacy_over_conflicting_pi_default(monkeypatch):
     """A legacy-bound experiment never lands on Pi even when the project/global
-    configuration defaults to pi — the bound choice wins on the legacy plane."""
-    pi_service, _legacy_calls = _install_real_dispatcher(monkeypatch, pi_text="0.85")
-    router = _StubRouter(text="0.33")
-    monkeypatch.setattr("app.core.llm_router.llm_router", router)
+    configuration defaults to pi. W9: the runner always dispatches, forwarding
+    ``engine=self.engine``, so the bound choice wins INSIDE the real dispatcher
+    and its legacy executor runs instead of the Pi backend."""
+    pi_service, legacy_calls = _install_real_dispatcher(monkeypatch, pi_text="0.85")
     # Both the global default AND the feature flag say pi — maximal conflict.
     monkeypatch.setattr("app.config.settings.agentic_engine_default", "pi", raising=False)
     monkeypatch.setattr("app.config.settings.agentic_core", True, raising=False)
@@ -693,9 +660,11 @@ async def test_legacy_bound_run_stays_on_legacy_over_conflicting_pi_default(monk
 
     score = await runner._score_output("x" * 50, "skill-a")
 
-    assert score == pytest.approx(0.33)  # the legacy router's answer
+    # The score is parsed from the dispatcher's legacy executor answer (0.11),
+    # not the Pi backend's 0.85.
+    assert score == pytest.approx(0.11)
     assert not pi_service.calls, "the Pi backend must not run for a legacy-bound experiment"
-    assert len(router.calls) == 1
+    assert len(legacy_calls) == 1
 
 
 async def test_real_dispatcher_completion_forwards_engine_override_both_ways(monkeypatch):

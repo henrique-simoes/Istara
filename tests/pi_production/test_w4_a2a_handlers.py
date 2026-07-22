@@ -4,17 +4,13 @@ The three A2A LLM call sites in ``agent_lifecycle.py``
 (``_handle_collaboration``, ``_initiate_debate`` synthesis, ``_handle_debate``
 critique) route through the AgenticDispatcher — ``chat_turn`` →
 ``a2a.collaboration``, ``completion`` → ``a2a.debate_synthesis`` /
-``a2a.debate_critique`` — gated on the ``agentic_core`` feature flag, with the
-legacy ``ollama.chat`` branch preserved alongside for ``agentic_core=False``.
+``a2a.debate_critique``. W9 retired the legacy ``ollama.chat`` fallthrough
+branches: the dispatcher path is now the only path.
 
 Covered here (all stubbed/static — no live model activity):
 
-* static: each handler carries both the dispatcher path (flag on) and the
-  preserved legacy branch; the count-to-zero ratchet stays green at 70 with
-  the three sites still allowlisted (legacy branch preserved, not retired);
-* behavior (flag off): ``_handle_debate`` uses the legacy plane exactly as
-  before and never touches the dispatcher;
-* behavior (flag on): each handler dispatches with the planned verb, purpose,
+* static: each handler dispatches with the planned verb and purpose;
+* behavior: each handler dispatches with the planned verb, purpose,
   project scope, and spine-phase tag, and its reply content is what gets sent
   back over A2A.
 """
@@ -64,16 +60,6 @@ class _StubAgentic:
         return SimpleNamespace(text=self._text, status="success", usage={})
 
 
-class _StubOllama:
-    def __init__(self, *, text: str = "legacy reply") -> None:
-        self.calls: list[dict] = []
-        self._text = text
-
-    async def chat(self, messages=None, **kwargs):
-        self.calls.append({"messages": messages, **kwargs})
-        return {"message": {"content": self._text}}
-
-
 class _StubDB:
     def __init__(self, task=None) -> None:
         self._task = task
@@ -97,38 +83,29 @@ def _agentic_core_on(monkeypatch):
     monkeypatch.setattr("app.config.settings.agentic_core", True)
 
 
-@pytest.fixture
-def _agentic_core_off(monkeypatch):
-    monkeypatch.setattr("app.config.settings.agentic_core", False)
+# ── static: dispatcher path present, ratchet green ──────────────────────
 
 
-# ── static: both paths present, ratchet green ───────────────────────────
+def test_w4_ratchet_stays_green():
+    """W9 retired the legacy branches, so the three sites leave the allowlist;
+    the shared count-to-zero ratchet (owned by tests/pi_migration) stays green."""
+    from tests.pi_migration.test_count_to_zero import check_count_to_zero
 
-
-def test_w4_ratchet_stays_green_at_53():
-    """The legacy branch is preserved, so the three sites stay allowlisted.
-    (W8 later migrated the 17 embed sites: the floor moved 70 → 53.)"""
-    from tests.pi_migration.test_count_to_zero import EXPECTED_PRODUCT_SITES, check_count_to_zero
-
-    assert EXPECTED_PRODUCT_SITES == 53
     check_count_to_zero()
 
 
-def test_w4_handlers_carry_dispatcher_path_and_preserved_legacy_branch():
+def test_w4_handlers_carry_dispatcher_path():
     collab = _function_source("_handle_collaboration")
-    assert "agentic_core" in collab and "agentic.chat_turn" in collab
-    assert "ollama.chat" in collab, "legacy branch must be preserved alongside"
+    assert "agentic.chat_turn" in collab
     assert "a2a-collab:" in collab
 
     initiate = _function_source("_initiate_debate")
-    assert "agentic_core" in initiate and "agentic.completion" in initiate
+    assert "agentic.completion" in initiate
     assert "a2a.debate_synthesis" in initiate
-    assert "ollama.chat" in initiate
 
     handle = _function_source("_handle_debate")
-    assert "agentic_core" in handle and "agentic.completion" in handle
+    assert "agentic.completion" in handle
     assert "a2a.debate_critique" in handle
-    assert "ollama.chat" in handle
 
 
 # ── behavior: _handle_debate (critique) ──────────────────────────────────
@@ -146,46 +123,20 @@ def _debate_msg(**overrides):
     return msg
 
 
-async def test_handle_debate_flag_off_uses_legacy_plane(monkeypatch, _agentic_core_off):
-    import app.services.a2a as a2a_service
-
-    ollama_stub = _StubOllama(text="legacy critique")
-    dispatcher_stub = _StubAgentic()
-    sent: list[dict] = []
-
-    async def _send(**kwargs):
-        sent.append(kwargs)
-
-    monkeypatch.setattr("app.core.agent_lifecycle.ollama", ollama_stub)
-    monkeypatch.setattr("app.core.agentic.agentic", dispatcher_stub)
-    monkeypatch.setattr(a2a_service, "send_message", _send)
-
-    await _mixin()._handle_debate(_StubDB(), _debate_msg())
-
-    assert len(ollama_stub.calls) == 1, "flag off must use the legacy plane"
-    assert dispatcher_stub.calls == [], "flag off must not touch the dispatcher"
-    assert sent[0]["message_type"] == "debate_response"
-    assert sent[0]["content"] == "legacy critique"
-    assert sent[0]["project_id"] == "p1"
-
-
 async def test_handle_debate_flag_on_dispatches_a2a_debate_critique(monkeypatch, _agentic_core_on):
     import app.services.a2a as a2a_service
 
-    ollama_stub = _StubOllama()
     dispatcher_stub = _StubAgentic(text="dispatcher critique")
     sent: list[dict] = []
 
     async def _send(**kwargs):
         sent.append(kwargs)
 
-    monkeypatch.setattr("app.core.agent_lifecycle.ollama", ollama_stub)
     monkeypatch.setattr("app.core.agentic.agentic", dispatcher_stub)
     monkeypatch.setattr(a2a_service, "send_message", _send)
 
     await _mixin()._handle_debate(_StubDB(), _debate_msg())
 
-    assert ollama_stub.calls == [], "flag on must not call the legacy plane directly"
     method, kwargs = dispatcher_stub.calls[0]
     assert method == "completion"
     assert kwargs["purpose"] == "a2a.debate_critique"
@@ -202,7 +153,6 @@ async def test_handle_debate_flag_on_dispatches_a2a_debate_critique(monkeypatch,
 async def test_initiate_debate_flag_on_synthesizes_via_dispatcher(monkeypatch, _agentic_core_on):
     import app.services.a2a as a2a_service
 
-    ollama_stub = _StubOllama()
     dispatcher_stub = _StubAgentic(text="synthesized analysis")
     sent: list[dict] = []
 
@@ -220,7 +170,6 @@ async def test_initiate_debate_flag_on_synthesizes_via_dispatcher(monkeypatch, _
     async def _no_sleep(*args, **kwargs):
         return None
 
-    monkeypatch.setattr("app.core.agent_lifecycle.ollama", ollama_stub)
     monkeypatch.setattr("app.core.agentic.agentic", dispatcher_stub)
     monkeypatch.setattr(a2a_service, "send_message", _send)
     monkeypatch.setattr(a2a_service, "get_messages", _get_messages)
@@ -232,7 +181,6 @@ async def test_initiate_debate_flag_on_synthesizes_via_dispatcher(monkeypatch, _
     result = await _mixin()._initiate_debate(_StubDB(), task, output)
 
     assert result == "synthesized analysis"
-    assert ollama_stub.calls == []
     assert sent[0]["message_type"] == "debate_request"
     method, kwargs = dispatcher_stub.calls[0]
     assert method == "completion"
@@ -250,7 +198,6 @@ async def test_initiate_debate_flag_on_synthesizes_via_dispatcher(monkeypatch, _
 async def test_handle_collaboration_flag_on_dispatches_chat_turn(monkeypatch, _agentic_core_on):
     import app.services.a2a as a2a_service
 
-    ollama_stub = _StubOllama()
     dispatcher_stub = _StubAgentic(text="collaboration analysis")
     sent: list[dict] = []
 
@@ -263,7 +210,6 @@ async def test_handle_collaboration_flag_on_dispatches_chat_turn(monkeypatch, _a
     async def _rag(*args, **kwargs):
         return SimpleNamespace(has_context=False, context_text="")
 
-    monkeypatch.setattr("app.core.agent_lifecycle.ollama", ollama_stub)
     monkeypatch.setattr("app.core.agent_lifecycle.retrieve_context", _rag)
     monkeypatch.setattr("app.core.agentic.agentic", dispatcher_stub)
     monkeypatch.setattr(a2a_service, "send_message", _send)
@@ -287,7 +233,6 @@ async def test_handle_collaboration_flag_on_dispatches_chat_turn(monkeypatch, _a
 
     await _mixin()._handle_collaboration(db, msg)
 
-    assert ollama_stub.calls == []
     method, kwargs = dispatcher_stub.calls[0]
     assert method == "chat_turn"
     assert kwargs["project_id"] == "p1"

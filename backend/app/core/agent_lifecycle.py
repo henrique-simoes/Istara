@@ -24,13 +24,11 @@ from app.api.websocket import (
     broadcast_task_progress,
     broadcast_task_queue_update,
 )
-from app.config import settings
 from app.core.agent_hooks import agent_hooks
 from app.core.checkpoint import complete_checkpoint, create_checkpoint, update_checkpoint
 from app.core.context_hierarchy import context_hierarchy
 from app.core.datetime_utils import ensure_utc
 from app.core.embeddings import TextChunk
-from app.core.ollama import ollama
 from app.core.rag import ingest_chunks, retrieve_context
 from app.core.resource_governor import governor
 from app.core.self_check import Confidence, verify_claim
@@ -867,31 +865,26 @@ class AgentLifecycleMixin:
                     {"role": "user", "content": f"[Relevant documents]\n{rag.context_text[:800]}"}
                 )
 
-            if settings.agentic_core:
-                # W4: the collaboration reply goes through the AgenticDispatcher
-                # (``a2a.collaboration``) — thread history maps to the turn
-                # history exactly like ``run_delegation(history=...)``. The
-                # dispatcher's engine resolution decides Pi vs. legacy; the
-                # legacy branch below is preserved for agentic_core=False.
-                from app.core.agentic import agentic
-                from app.core.agentic.types import TurnParams
+            # W4: the collaboration reply goes through the AgenticDispatcher
+            # (``a2a.collaboration``) — thread history maps to the turn
+            # history exactly like ``run_delegation(history=...)``. The
+            # dispatcher's engine resolution decides Pi vs. legacy.
+            from app.core.agentic import agentic
+            from app.core.agentic.types import TurnParams
 
-                outcome = await agentic.chat_turn(
-                    project_id=task.project_id,
-                    agent_id=self._agent_id,
-                    session_key=f"a2a-collab:{context_id}",
-                    system_prompt=llm_messages[0]["content"],
-                    messages=llm_messages[1:-1],
-                    user_text=llm_messages[-1]["content"],
-                    tool_names=[],
-                    params=TurnParams(timeout_s=120),
-                    task_id=task_id,
-                    spine_phase="synthesis",
-                )
-                analysis = outcome.text
-            else:
-                response = await ollama.chat(messages=llm_messages)
-                analysis = response.get("message", {}).get("content", "")
+            outcome = await agentic.chat_turn(
+                project_id=task.project_id,
+                agent_id=self._agent_id,
+                session_key=f"a2a-collab:{context_id}",
+                system_prompt=llm_messages[0]["content"],
+                messages=llm_messages[1:-1],
+                user_text=llm_messages[-1]["content"],
+                tool_names=[],
+                params=TurnParams(timeout_s=120),
+                task_id=task_id,
+                spine_phase="synthesis",
+            )
+            analysis = outcome.text
             if not analysis:
                 return
 
@@ -984,36 +977,20 @@ class AgentLifecycleMixin:
                             f"Critique from {target}:\n{critique[:1000]}\n\n"
                             "Produce a refined analysis that addresses the critique."
                         )
-                        if settings.agentic_core:
-                            # W4: dispatcher completion (``a2a.debate_synthesis``);
-                            # the legacy ollama branch below is preserved for
-                            # agentic_core=False.
-                            from app.core.agentic import agentic
-                            from app.core.agentic.types import TurnParams
+                        # W4: dispatcher completion (``a2a.debate_synthesis``).
+                        from app.core.agentic import agentic
+                        from app.core.agentic.types import TurnParams
 
-                            outcome = await agentic.completion(
-                                purpose="a2a.debate_synthesis",
-                                project_id=task.project_id,
-                                system=synthesis_system,
-                                messages=[{"role": "user", "content": synthesis_user}],
-                                params=TurnParams(timeout_s=120),
-                                task_id=task.id,
-                                spine_phase="synthesis",
-                            )
-                            return outcome.text
-                        synth = await ollama.chat(
-                            messages=[
-                                {
-                                    "role": "system",
-                                    "content": synthesis_system,
-                                },
-                                {
-                                    "role": "user",
-                                    "content": synthesis_user,
-                                },
-                            ]
+                        outcome = await agentic.completion(
+                            purpose="a2a.debate_synthesis",
+                            project_id=task.project_id,
+                            system=synthesis_system,
+                            messages=[{"role": "user", "content": synthesis_user}],
+                            params=TurnParams(timeout_s=120),
+                            task_id=task.id,
+                            spine_phase="synthesis",
                         )
-                        return synth.get("message", {}).get("content", "")
+                        return outcome.text
 
             logger.debug(f"A2A debate timed out — no response from {target}")
         except Exception as e:
@@ -1053,34 +1030,20 @@ class AgentLifecycleMixin:
                 "unsupported claims, missing perspectives, and areas for "
                 "improvement. Be constructive but rigorous."
             )
-            if settings.agentic_core:
-                # W4: dispatcher completion (``a2a.debate_critique``); the
-                # legacy ollama branch below is preserved for
-                # agentic_core=False.
-                from app.core.agentic import agentic
-                from app.core.agentic.types import TurnParams
+            # W4: dispatcher completion (``a2a.debate_critique``).
+            from app.core.agentic import agentic
+            from app.core.agentic.types import TurnParams
 
-                outcome = await agentic.completion(
-                    purpose="a2a.debate_critique",
-                    project_id=project_id,
-                    system=critique_system,
-                    messages=[{"role": "user", "content": content}],
-                    params=TurnParams(timeout_s=120),
-                    task_id=task_id or None,
-                    spine_phase="review",
-                )
-                critique = outcome.text
-            else:
-                response = await ollama.chat(
-                    messages=[
-                        {
-                            "role": "system",
-                            "content": critique_system,
-                        },
-                        {"role": "user", "content": content},
-                    ]
-                )
-                critique = response.get("message", {}).get("content", "")
+            outcome = await agentic.completion(
+                purpose="a2a.debate_critique",
+                project_id=project_id,
+                system=critique_system,
+                messages=[{"role": "user", "content": content}],
+                params=TurnParams(timeout_s=120),
+                task_id=task_id or None,
+                spine_phase="review",
+            )
+            critique = outcome.text
             if not critique:
                 return
 

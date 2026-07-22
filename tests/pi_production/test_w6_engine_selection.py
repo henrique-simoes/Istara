@@ -14,8 +14,10 @@ Covered here (all stubbed/static — no live model activity):
 * resolver: an explicit value validates; an unset value defaults from the
   global flag (prior behavior preserved);
 * override: a bound engine overrides the global flag at the dispatch site — a
-  ``pi`` experiment dispatches with the flag OFF and a ``legacy`` experiment
-  stays on the legacy plane with the flag ON;
+  ``pi`` experiment dispatches with the flag OFF (a ``legacy`` experiment's
+  engine string is likewise forwarded into the dispatcher, whose own legacy
+  executor serves it; that seam is covered in
+  ``test_w6_autoresearch_runners.py`` with the real dispatcher);
 * persistence: the engine loop stamps and persists the engine, and the durable
   row round-trips it (incl. the config snapshot) and NULL for legacy rows.
 """
@@ -160,23 +162,6 @@ async def test_bound_pi_engine_routes_to_dispatcher_with_flag_off(monkeypatch):
     assert len(dispatcher.calls) == 1
     assert dispatcher.calls[0]["purpose"] == "autoresearch.persona.score"
     assert not router.calls, "legacy plane must not be touched for a pi experiment"
-
-
-async def test_bound_legacy_engine_routes_to_llm_router_with_flag_on(monkeypatch):
-    """The inverse: a legacy experiment stays on the legacy plane with flag ON."""
-    monkeypatch.setattr("app.config.settings.agentic_core", True)
-    dispatcher = _StubAgentic(text="0.9")
-    router = _StubRouter(text="0.2")
-    monkeypatch.setattr("app.core.agentic.agentic", dispatcher)
-    monkeypatch.setattr("app.core.llm_router.llm_router", router)
-
-    runner = PersonaRunner()
-    runner.bind_engine("legacy")
-    score = await runner._score_response("x" * 50)
-
-    assert score == pytest.approx(0.2)
-    assert len(router.calls) == 1
-    assert not dispatcher.calls, "dispatcher must not be touched for a legacy experiment"
 
 
 # ── run_loop threads + persists the engine ───────────────────────────────

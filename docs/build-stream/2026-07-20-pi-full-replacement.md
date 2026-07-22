@@ -5,12 +5,12 @@
 item: pi-full-replacement
 branch: Review_pi_test
 cf: { spec: CF-SPEC-8, tasks: [pi-full-20260720-w0-IMPL, pi-full-20260720-w0-REVIEW] }
-phase: "W8 — embeddings gateway + model-management UX parity"
-stage: S3-review
+phase: "W9 — final ratchet, dead-code retirement, architecture docs"
+stage: S2-execute
 status: in-progress
 blocked_on: null
-last: { agent: gpt-5.6-sol, at: 2026-07-22T08:00:31Z, ledger: L-70 }
-next_action: "Advance the conductor to W9 after the passing W8 delta re-review."
+last: { agent: kimi-code/k3, at: 2026-07-22T10:19:38Z, ledger: L-71 }
+next_action: "W9 code review (S3): verify the 53-site legacy-branch retirement, ratchet/integrity mechanics, and agentic_core.md accuracy."
 ```
 <!-- /STATUS BLOCK -->
 
@@ -43,7 +43,7 @@ external traffic, or API/judge spend.
 | W6 | Migrate 14 autoresearch runner sites | allowlist 25 + wave ladder | in-progress |
 | W7 | Migrate eight validation, consensus, and dual-coder sites | allowlist 17 + wave ladder | planned |
 | W8 | Add embeddings gateway and model-management UX parity | zero product sites + wave ladder | done |
-| W9 | Finalize ratchet, docs, security and full verification | permanent allowlist only + full ladder x3 + clean gate | planned |
+| W9 | Finalize ratchet, docs, security and full verification | permanent allowlist only + full ladder x3 + clean gate | in-progress |
 | B1 | Contract benchmark after W2 | T0/T1 canonical and W2 scenarios, both engines | planned |
 | B2 | Breadth benchmark after W5 | implementation complete; live T2 execution requires explicit permission | planned |
 | B3 | Depth benchmark after W9 | T2/T3 dry-run estimate and explicit owner gates before model load/spend | planned |
@@ -1172,3 +1172,9 @@ Did: Performed only the authorized delta re-review of F-W8-R1-1 against fixer co
 Result: verdict PASS; corrections_made=0; no new findings. Requested-model propagation, active-provider anchoring, configured remote exact-model selection, LM Studio JIT loading, and typed provisioning failure are all present and independently verified. W8 review lineage is converged.
 Verified: `pytest -q tests/pi_production/test_w8_embeddings_gateway.py` = 40 passed; `pytest -q tests/pi_production/test_w1_agentic_contract.py tests/test_pi_runtime_endpoints.py tests/test_compute_vision_routing.py tests/test_compute_registry_hardening.py` = 64 passed; network-free production-catalog probe = `{'remote': 'review-remote-embed', 'lmstudio': 'pi-local-lmstudio'}`; `python -m compileall -q backend/app/core/pi_runtime/model_manager.py backend/app/core/pi_runtime/model_manager_provisioning.py backend/app/core/pi_runtime/embeddings_gateway.py backend/app/core/embeddings.py` = passed; `git diff --check` = passed.
 Next: stage exit: W8 delta review passed; conductor may advance to W9.
+
+### L-71 | 2026-07-22T10:19:38Z | S2-execute | kimi-code/k3 | executor | W9 <!-- bsc-ledger:pi-full-20260720-w9-IMPL -->
+Did: Completed the W9 final ratchet + dead-code retirement + architecture docs (a prior interrupted attempt had left the implementation uncommitted in the worktree; verified, repaired, and finished it here). `tests/pi_migration/legacy_allowlist.yaml` reduced to permanent entries only (`product: []`, `ratchet.expected_product_sites: 0`); ratchet literal pinned to 0 in `tests/pi_migration/test_count_to_zero.py` and `tests/pi_production/test_w1_agentic_contract.py`; `scripts/check_integrity.py` now runs the count-to-zero ratchet (`check_pi_migration_count_to_zero`) inside release integrity. Retired the 53 preserved per-site legacy flag branches (W4 A2A ×3 in `agent_lifecycle.py`; W5 skills/reports/interview services ×28 across `skill_factory.py`, the 4 Discover skills, `intercoder.py`, `report_manager.py`, `adaptive_interview.py`, `deployment_service.py`; W6 autoresearch runners ×14; W7 `validation.py`/`validation_executor.py`/`research_validity_service.py` ×8) — the `AgenticDispatcher` is now the only model-invocation path in product code; the legacy engine is reached exclusively through the dispatcher's permanent legacy executor (`agentic/legacy.py`, unchanged). Dead now-unused `ollama`/`llm_router` imports removed with the branches; the registry/transports remain for the legacy engine, donors, and benchmarks. Fixed one stale test the prior attempt missed: `tests/test_research_integrity_reports.py` exec-summary fake now accepts the kwargs the legacy executor forwards (`model=`, etc.). Wrote `docs/architecture/agentic_core.md` (dispatcher, five verbs, engine resolution, accounting, count-to-zero contract); updated living feature docs (autoresearch config/experiments, ensemble health, findings codebook, memory health) and regenerated the site.
+Result: `pi-full-20260720-w9-IMPL` implementation complete; the product legacy-call ratchet is 0 and mechanically enforced (inventory scan + count-to-zero test + release-integrity check). `product: []`; any new direct legacy-plane call in `backend/app/` fails CI.
+Verified: `pytest tests/pi_migration tests/pi_production -q` = 349 passed; `pytest tests/test_deployments.py tests/test_research_spine_donor_routing.py tests/test_research_validity_contract.py tests/test_skill_factory.py tests/test_validation_project_scope.py -q` = 62 passed; `pytest tests/test_research_integrity_reports.py -q` = 24 passed; `pytest tests/test_adaptive_validation.py tests/test_agents.py -q` = 30 passed; `pytest tests/test_reports.py tests/test_research_integrity_reports.py tests/test_integration_interview.py tests/test_compute_route_evidence_lifecycle.py -q` = 26 passed + 1 pre-existing failure (`test_slide_instructions_fallback_when_llm_unavailable` — stale `presentation.llm_router` patch target since the W2 migration, file untouched by W9); `python scripts/pi_migration_inventory.py` = 1 site, the allowlisted permanent legacy-executor line; `python scripts/check_integrity.py` = governance docs coherent (incl. the new ratchet leg); `python scripts/feature_docs.py --seed-missing --generate-site --check` = 86 features / 224 artifacts; `python scripts/security_benchmark.py --fail-on-threshold` = pass; ruff worktree-vs-HEAD on changed files = 313 → 198 findings (no new lint debt); `compass-forge intelligence dead-code` = no actionable candidates in W9-changed files (3 medium static-graph false positives: dynamically-loaded autoresearch runners + the integrity entry-point script); `compass-forge gate after --task pi-full-20260720-w9-IMPL --summary` = 0 new failures, 0 actionable failures, 0 route/type/contract/generated drift, 0 cycles (inherited baseline failures remain).
+Next: W9 code review (S3) — verify the 53-site branch retirement is behavior-preserving, the ratchet/integrity mechanics, and the accuracy of `docs/architecture/agentic_core.md`; then the conductor advances toward ship.

@@ -13,7 +13,6 @@ from typing import Any, Awaitable, Callable
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.llm_schema_adapter import openai_json_schema_response_format
 from app.core.llm_router import llm_router
 from app.core.research_validity import (
     DEFAULT_RELIABILITY_THRESHOLD,
@@ -549,37 +548,13 @@ def _usable_coding_applications(
     return usable
 
 
-async def _default_coder_runner(
-    coder: CoderSpec,
-    messages: list[dict],
-    model_name: str | None,
-    project_id: str,
-) -> dict:
-    return await coder.node.chat(
-        messages,
-        model=model_name or None,
-        temperature=0.2,
-        response_format=openai_json_schema_response_format(
-            name="qualitative_code_applications",
-            schema=CODING_RESPONSE_SCHEMA,
-            strict=False,
-        ),
-        project_id=project_id,
-    )
-
-
 async def _use_pi_coding_plane(db: AsyncSession, project_id: str) -> bool:
     """True when the dual-coder run routes through the Pi dispatcher plane.
 
-    Gated on ``agentic_core`` (W7) AND the engine that would actually serve
-    the dispatch resolving to Pi — selecting Pi-catalog coders for a run the
-    legacy engine would serve would pin endpoint identities the legacy plane
-    cannot honor.
+    Gated on the engine that would actually serve the dispatch resolving to
+    Pi — selecting Pi-catalog coders for a run the legacy engine would serve
+    would pin endpoint identities the legacy plane cannot honor.
     """
-    from app.config import settings
-
-    if not settings.agentic_core:
-        return False
     from app.core.agentic import agentic
     from app.models.project import Project
 
@@ -1218,13 +1193,11 @@ async def run_independent_coding_run(
         await db.commit()
         return coding_run.to_dict()
 
-    runner = coder_runner or _default_coder_runner
+    runner = coder_runner or _pi_coder_runner
     pi_selection_error: str | None = None
     if coder_runner is None and await _use_pi_coding_plane(db, project_id):
         # W7: coders are distinct Pi endpoint identities coded through the
-        # AgenticDispatcher structured verb (``validity.coder``); the legacy
-        # selection/runner below is preserved for the legacy engine.
-        runner = _pi_coder_runner
+        # AgenticDispatcher structured verb (``validity.coder``).
         try:
             coders = await _select_pi_coders(max_coders=max_coders)
         except Exception as exc:

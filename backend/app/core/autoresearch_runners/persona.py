@@ -50,8 +50,6 @@ class PersonaRunner(BaseLoopRunner):
         self, target: str, current_score: float, history: list[dict]
     ) -> tuple[str, dict]:
         """LLM analyzes current persona + history, suggests a file edit."""
-        from app.core.llm_router import llm_router
-
         # Cycle through mutable files
         filename = MUTABLE_FILES[self._file_index % len(MUTABLE_FILES)]
         self._file_index += 1
@@ -105,28 +103,21 @@ class PersonaRunner(BaseLoopRunner):
         ]
 
         try:
-            if self.use_pi_engine():
-                # W6: the persona-file mutation goes through the AgenticDispatcher
-                # (``autoresearch.persona.hypothesize``); the legacy branch below
-                # is preserved for the legacy engine selection.
-                from app.core.agentic import agentic
-                from app.core.agentic.types import TurnParams
+            # W6/W9: the persona-file mutation goes through the
+            # AgenticDispatcher (``autoresearch.persona.hypothesize``).
+            from app.core.agentic import agentic
+            from app.core.agentic.types import TurnParams
 
-                outcome = await agentic.completion(
-                    purpose="autoresearch.persona.hypothesize",
-                    project_id=self.require_project_id(),
-                    system=messages[0]["content"],
-                    messages=messages[1:],
-                    params=TurnParams(temperature=0.7, max_tokens=2000),
-                    spine_phase="plan",
-                    engine=self.engine,
-                )
-                new_content = (outcome.text or "").strip()
-            else:
-                response = await llm_router.chat(
-                    messages, temperature=0.7, max_tokens=2000
-                )
-                new_content = response.get("message", {}).get("content", "").strip()
+            outcome = await agentic.completion(
+                purpose="autoresearch.persona.hypothesize",
+                project_id=self.require_project_id(),
+                system=messages[0]["content"],
+                messages=messages[1:],
+                params=TurnParams(temperature=0.7, max_tokens=2000),
+                spine_phase="plan",
+                engine=self.engine,
+            )
+            new_content = (outcome.text or "").strip()
         except Exception as e:
             raise RuntimeError(f"LLM persona mutation failed: {e}") from e
 
@@ -194,7 +185,6 @@ class PersonaRunner(BaseLoopRunner):
     async def _evaluate_agent(self, agent_id: str) -> float:
         """Evaluate agent quality by running a simulated UX research task."""
         from app.core.agent_identity import load_agent_identity
-        from app.core.llm_router import llm_router
 
         identity = load_agent_identity(agent_id)
         if not identity:
@@ -219,26 +209,21 @@ class PersonaRunner(BaseLoopRunner):
         ]
 
         try:
-            if self.use_pi_engine():
-                # W6: the simulated-task run goes through the AgenticDispatcher
-                # (``autoresearch.persona.evaluate``); the legacy branch below is
-                # preserved for the legacy engine selection.
-                from app.core.agentic import agentic
-                from app.core.agentic.types import TurnParams
+            # W6/W9: the simulated-task run goes through the AgenticDispatcher
+            # (``autoresearch.persona.evaluate``).
+            from app.core.agentic import agentic
+            from app.core.agentic.types import TurnParams
 
-                outcome = await agentic.completion(
-                    purpose="autoresearch.persona.evaluate",
-                    project_id=self.require_project_id(),
-                    system=messages[0]["content"],
-                    messages=messages[1:],
-                    params=TurnParams(temperature=0.5, max_tokens=1500),
-                    spine_phase="execution",
-                    engine=self.engine,
-                )
-                content = outcome.text
-            else:
-                response = await llm_router.chat(messages, temperature=0.5, max_tokens=1500)
-                content = response.get("message", {}).get("content", "")
+            outcome = await agentic.completion(
+                purpose="autoresearch.persona.evaluate",
+                project_id=self.require_project_id(),
+                system=messages[0]["content"],
+                messages=messages[1:],
+                params=TurnParams(temperature=0.5, max_tokens=1500),
+                spine_phase="execution",
+                engine=self.engine,
+            )
+            content = outcome.text
         except Exception as e:
             logger.warning(f"Agent evaluation failed: {e}")
             return 0.0
@@ -247,8 +232,6 @@ class PersonaRunner(BaseLoopRunner):
 
     async def _score_response(self, output: str) -> float:
         """Score the agent response quality."""
-        from app.core.llm_router import llm_router
-
         if not output or len(output.strip()) < 30:
             return 0.1
 
@@ -269,26 +252,21 @@ class PersonaRunner(BaseLoopRunner):
         ]
 
         try:
-            if self.use_pi_engine():
-                # W6: the response-quality score goes through the
-                # AgenticDispatcher (``autoresearch.persona.score``); the legacy
-                # branch below is preserved for the legacy engine selection.
-                from app.core.agentic import agentic
-                from app.core.agentic.types import TurnParams
+            # W6/W9: the response-quality score goes through the
+            # AgenticDispatcher (``autoresearch.persona.score``).
+            from app.core.agentic import agentic
+            from app.core.agentic.types import TurnParams
 
-                outcome = await agentic.completion(
-                    purpose="autoresearch.persona.score",
-                    project_id=self.require_project_id(),
-                    system=messages[0]["content"],
-                    messages=messages[1:],
-                    params=TurnParams(temperature=0.1, max_tokens=10),
-                    spine_phase="review",
-                    engine=self.engine,
-                )
-                score_text = (outcome.text or "").strip()
-            else:
-                response = await llm_router.chat(messages, temperature=0.1, max_tokens=10)
-                score_text = response.get("message", {}).get("content", "").strip()
+            outcome = await agentic.completion(
+                purpose="autoresearch.persona.score",
+                project_id=self.require_project_id(),
+                system=messages[0]["content"],
+                messages=messages[1:],
+                params=TurnParams(temperature=0.1, max_tokens=10),
+                spine_phase="review",
+                engine=self.engine,
+            )
+            score_text = (outcome.text or "").strip()
             for token in score_text.replace(",", ".").split():
                 try:
                     val = float(token)

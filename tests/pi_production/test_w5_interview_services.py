@@ -5,19 +5,17 @@ The three ``llm_router.chat`` call sites in the interview/deployment services
 ``adaptive_interview._is_saturated``,
 ``deployment_service._generate_adaptive_followup``) route through the
 AgenticDispatcher — ``completion`` → ``channel.clarify`` /
-``channel.saturation`` / ``channel.followup`` — gated on the ``agentic_core``
-feature flag, with the legacy ``llm_router.chat`` branch preserved alongside
-for ``agentic_core=False``.
+``channel.saturation`` / ``channel.followup``. W9 retired the
+``agentic_core`` feature-flag gate and the preserved legacy
+``llm_router.chat`` branch: the dispatcher path is now the only path.
 
 Covered here (all stubbed/static — no live model activity):
 
-* static: each migrated function carries the dispatcher path (flag on, right
-  purpose slug) and the preserved legacy branch;
-* behavior (flag off): the legacy plane is used exactly as before and the
-  dispatcher is never touched;
-* behavior (flag on): the dispatcher records the call (verb, purpose, project
-  scope, messages), the legacy plane is never called, and the NONE/SATURATED
-  sentinel handling downstream is unchanged.
+* static: each migrated function carries the dispatcher path with the right
+  purpose slug;
+* behavior: the dispatcher records the call (verb, purpose, project scope,
+  messages) and the NONE/SATURATED sentinel handling downstream is
+  unchanged.
 """
 
 from __future__ import annotations
@@ -29,9 +27,6 @@ from types import SimpleNamespace
 
 import pytest
 
-# Import the service modules (and their app.core.ollama / llm_router dependency
-# chain) before any test monkeypatches ``app.core.llm_router.llm_router`` —
-# ollama.py registers a server on that singleton at import time.
 from app.services import adaptive_interview, deployment_service
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -63,26 +58,9 @@ class _StubAgentic:
         return SimpleNamespace(text=self._text, status="success", usage={})
 
 
-class _StubLLMRouter:
-    """Recording stand-in for the legacy ``llm_router`` client."""
-
-    def __init__(self, *, text: str = "legacy reply") -> None:
-        self.calls: list[dict] = []
-        self._text = text
-
-    async def chat(self, messages=None, **kwargs):
-        self.calls.append({"messages": messages, **kwargs})
-        return {"content": self._text}
-
-
 @pytest.fixture
 def _agentic_core_on(monkeypatch):
     monkeypatch.setattr("app.config.settings.agentic_core", True)
-
-
-@pytest.fixture
-def _agentic_core_off(monkeypatch):
-    monkeypatch.setattr("app.config.settings.agentic_core", False)
 
 
 def _deployment(**overrides) -> SimpleNamespace:
@@ -97,63 +75,30 @@ def _deployment(**overrides) -> SimpleNamespace:
     return deployment
 
 
-# ── static: both paths present ───────────────────────────────────────────
+# ── static: dispatcher path present ──────────────────────────────────────
 
 
-def test_w5_interview_functions_carry_dispatcher_path_and_preserved_legacy_branch():
+def test_w5_interview_functions_carry_dispatcher_path():
     clarify = _function_source(ADAPTIVE_INTERVIEW, "generate_clarification")
-    assert "agentic_core" in clarify and "agentic.completion" in clarify
+    assert "agentic.completion" in clarify
     assert '"channel.clarify"' in clarify
-    assert "llm_router.chat" in clarify, "legacy branch must be preserved alongside"
 
     saturation = _function_source(ADAPTIVE_INTERVIEW, "_is_saturated")
-    assert "agentic_core" in saturation and "agentic.completion" in saturation
+    assert "agentic.completion" in saturation
     assert '"channel.saturation"' in saturation
-    assert "llm_router.chat" in saturation
 
     followup = _function_source(DEPLOYMENT_SERVICE, "_generate_adaptive_followup")
-    assert "agentic_core" in followup and "agentic.completion" in followup
+    assert "agentic.completion" in followup
     assert '"channel.followup"' in followup
-    assert "llm_router.chat" in followup
 
 
 # ── behavior: generate_clarification (channel.clarify) ───────────────────
 
 
-async def test_generate_clarification_flag_off_uses_legacy_plane(monkeypatch, _agentic_core_off):
-    router_stub = _StubLLMRouter(text="Can you tell me more about that?")
-    dispatcher_stub = _StubAgentic()
-    monkeypatch.setattr("app.core.llm_router.llm_router", router_stub)
-    monkeypatch.setattr("app.core.agentic.agentic", dispatcher_stub)
-
-    result = await adaptive_interview.generate_clarification(
-        SimpleNamespace(), "it was confusing", project_id="p1"
-    )
-
-    assert result == "Can you tell me more about that?"
-    assert len(router_stub.calls) == 1, "flag off must use the legacy plane"
-    assert router_stub.calls[0]["project_id"] == "p1"
-    assert dispatcher_stub.calls == [], "flag off must not touch the dispatcher"
-
-
-async def test_generate_clarification_flag_off_none_sentinel(monkeypatch, _agentic_core_off):
-    router_stub = _StubLLMRouter(text="NONE")
-    monkeypatch.setattr("app.core.llm_router.llm_router", router_stub)
-    monkeypatch.setattr("app.core.agentic.agentic", _StubAgentic())
-
-    result = await adaptive_interview.generate_clarification(
-        SimpleNamespace(), "all clear", project_id="p1"
-    )
-
-    assert result is None, "NONE sentinel must stop clarification"
-
-
 async def test_generate_clarification_flag_on_dispatches_channel_clarify(
     monkeypatch, _agentic_core_on
 ):
-    router_stub = _StubLLMRouter()
     dispatcher_stub = _StubAgentic(text="What part was confusing?")
-    monkeypatch.setattr("app.core.llm_router.llm_router", router_stub)
     monkeypatch.setattr("app.core.agentic.agentic", dispatcher_stub)
 
     result = await adaptive_interview.generate_clarification(
@@ -161,7 +106,6 @@ async def test_generate_clarification_flag_on_dispatches_channel_clarify(
     )
 
     assert result == "What part was confusing?"
-    assert router_stub.calls == [], "flag on must not call the legacy plane directly"
     method, kwargs = dispatcher_stub.calls[0]
     assert method == "completion"
     assert kwargs["purpose"] == "channel.clarify"
@@ -174,9 +118,7 @@ async def test_generate_clarification_flag_on_dispatches_channel_clarify(
 async def test_generate_clarification_flag_on_none_sentinel_unchanged(
     monkeypatch, _agentic_core_on
 ):
-    router_stub = _StubLLMRouter()
     dispatcher_stub = _StubAgentic(text="NONE")
-    monkeypatch.setattr("app.core.llm_router.llm_router", router_stub)
     monkeypatch.setattr("app.core.agentic.agentic", dispatcher_stub)
 
     result = await adaptive_interview.generate_clarification(
@@ -184,12 +126,10 @@ async def test_generate_clarification_flag_on_none_sentinel_unchanged(
     )
 
     assert result is None, "dispatcher NONE reply must hit the same sentinel check"
-    assert router_stub.calls == []
 
 
 async def test_generate_clarification_flag_on_empty_project_scope(monkeypatch, _agentic_core_on):
     dispatcher_stub = _StubAgentic(text="follow-up?")
-    monkeypatch.setattr("app.core.llm_router.llm_router", _StubLLMRouter())
     monkeypatch.setattr("app.core.agentic.agentic", dispatcher_stub)
 
     await adaptive_interview.generate_clarification(SimpleNamespace(), "vague answer")
@@ -201,35 +141,17 @@ async def test_generate_clarification_flag_on_empty_project_scope(monkeypatch, _
 # ── behavior: _is_saturated (channel.saturation) ─────────────────────────
 
 
-async def test_is_saturated_flag_off_uses_legacy_plane(monkeypatch, _agentic_core_off):
-    router_stub = _StubLLMRouter(text="SATURATED")
-    dispatcher_stub = _StubAgentic()
-    monkeypatch.setattr("app.core.llm_router.llm_router", router_stub)
-    monkeypatch.setattr("app.core.agentic.agentic", dispatcher_stub)
-
-    config = {"saturation_check_llm": True}
-    result = await adaptive_interview._is_saturated("same again", config, project_id="p1")
-
-    assert result is True
-    assert len(router_stub.calls) == 1, "flag off must use the legacy plane"
-    assert router_stub.calls[0]["project_id"] == "p1"
-    assert dispatcher_stub.calls == [], "flag off must not touch the dispatcher"
-
-
 async def test_is_saturated_flag_on_dispatches_channel_saturation(monkeypatch, _agentic_core_on):
-    router_stub = _StubLLMRouter()
-    # NB: the legacy check is the substring test ``"SATURATED" in content``,
+    # NB: the check is the substring test ``"SATURATED" in content``,
     # which also matches "NOT_SATURATED" — use a reply without the substring
     # to exercise the not-saturated path.
     dispatcher_stub = _StubAgentic(text="still adding new information")
-    monkeypatch.setattr("app.core.llm_router.llm_router", router_stub)
     monkeypatch.setattr("app.core.agentic.agentic", dispatcher_stub)
 
     config = {"saturation_check_llm": True}
     result = await adaptive_interview._is_saturated("new detail here", config, project_id="p1")
 
     assert result is False, "a reply without the SATURATED substring is not saturated"
-    assert router_stub.calls == [], "flag on must not call the legacy plane directly"
     method, kwargs = dispatcher_stub.calls[0]
     assert method == "completion"
     assert kwargs["purpose"] == "channel.saturation"
@@ -239,7 +161,6 @@ async def test_is_saturated_flag_on_dispatches_channel_saturation(monkeypatch, _
 
 async def test_is_saturated_flag_on_saturated_sentinel_unchanged(monkeypatch, _agentic_core_on):
     dispatcher_stub = _StubAgentic(text="SATURATED")
-    monkeypatch.setattr("app.core.llm_router.llm_router", _StubLLMRouter())
     monkeypatch.setattr("app.core.agentic.agentic", dispatcher_stub)
 
     config = {"saturation_check_llm": True}
@@ -251,29 +172,10 @@ async def test_is_saturated_flag_on_saturated_sentinel_unchanged(monkeypatch, _a
 # ── behavior: _generate_adaptive_followup (channel.followup) ─────────────
 
 
-async def test_adaptive_followup_flag_off_uses_legacy_plane(monkeypatch, _agentic_core_off):
-    router_stub = _StubLLMRouter(text="What made it confusing?")
-    dispatcher_stub = _StubAgentic()
-    monkeypatch.setattr("app.core.llm_router.llm_router", router_stub)
-    monkeypatch.setattr("app.core.agentic.agentic", dispatcher_stub)
-
-    conversation = SimpleNamespace(current_question_index=1)
-    result = await deployment_service._generate_adaptive_followup(
-        None, _deployment(), conversation, "it was confusing"
-    )
-
-    assert result == "What made it confusing?"
-    assert len(router_stub.calls) == 1, "flag off must use the legacy plane"
-    assert router_stub.calls[0]["project_id"] == "p1"
-    assert dispatcher_stub.calls == [], "flag off must not touch the dispatcher"
-
-
 async def test_adaptive_followup_flag_on_dispatches_channel_followup(
     monkeypatch, _agentic_core_on
 ):
-    router_stub = _StubLLMRouter()
     dispatcher_stub = _StubAgentic(text="Which step confused you?")
-    monkeypatch.setattr("app.core.llm_router.llm_router", router_stub)
     monkeypatch.setattr("app.core.agentic.agentic", dispatcher_stub)
 
     conversation = SimpleNamespace(current_question_index=1)
@@ -282,7 +184,6 @@ async def test_adaptive_followup_flag_on_dispatches_channel_followup(
     )
 
     assert result == "Which step confused you?"
-    assert router_stub.calls == [], "flag on must not call the legacy plane directly"
     method, kwargs = dispatcher_stub.calls[0]
     assert method == "completion"
     assert kwargs["purpose"] == "channel.followup"
@@ -292,9 +193,7 @@ async def test_adaptive_followup_flag_on_dispatches_channel_followup(
 
 
 async def test_adaptive_followup_flag_on_none_sentinel_unchanged(monkeypatch, _agentic_core_on):
-    router_stub = _StubLLMRouter()
     dispatcher_stub = _StubAgentic(text="NONE")
-    monkeypatch.setattr("app.core.llm_router.llm_router", router_stub)
     monkeypatch.setattr("app.core.agentic.agentic", dispatcher_stub)
 
     conversation = SimpleNamespace(current_question_index=1)
@@ -303,13 +202,10 @@ async def test_adaptive_followup_flag_on_none_sentinel_unchanged(monkeypatch, _a
     )
 
     assert result is None, "dispatcher NONE reply must hit the same sentinel check"
-    assert router_stub.calls == []
 
 
 async def test_adaptive_followup_max_followups_cap_precedes_llm(monkeypatch, _agentic_core_on):
-    router_stub = _StubLLMRouter()
     dispatcher_stub = _StubAgentic()
-    monkeypatch.setattr("app.core.llm_router.llm_router", router_stub)
     monkeypatch.setattr("app.core.agentic.agentic", dispatcher_stub)
 
     # 1 scripted question + 3 follow-ups already asked == max_followups cap hit.
@@ -319,6 +215,6 @@ async def test_adaptive_followup_max_followups_cap_precedes_llm(monkeypatch, _ag
     )
 
     assert result is None
-    assert dispatcher_stub.calls == [] and router_stub.calls == [], (
+    assert dispatcher_stub.calls == [], (
         "the follow-up cap must short-circuit before any LLM call"
     )

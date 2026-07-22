@@ -41,7 +41,7 @@ The Codebook tab surfaces qualitative coding structures and codebook versions as
 
 - The feature is mounted through `frontend/src/components/findings/FindingsView.tsx` and the UI navigation path recorded in the inventory.
 - Creating the first project codebook version records a content-free `codebook.freeze` telemetry event; later versions record `codebook.revise`. The span carries project and codebook-version handles only, so governed codebook lifecycle audits do not store code definitions, examples, prompts, or source quotes in telemetry.
-- W7's governed dual-coder path is selected only when `agentic_core` is enabled and the dispatcher resolves the project to the Pi engine. It reads the persisted endpoint catalog through `PiModelManager` without loading a model, requests distinct endpoint identities, and dispatches each coder with `structured(purpose="validity.coder")` pinned to that coder's exact `endpoint_id`. The coding schema stays inside the Pi forced-tool subset.
+- W7's governed dual-coder path is selected when the dispatcher resolves the project to the Pi engine. It reads the persisted endpoint catalog through `PiModelManager` without loading a model, requests distinct endpoint identities, and dispatches each coder with `structured(purpose="validity.coder")` pinned to that coder's exact `endpoint_id`. The coding schema stays inside the Pi forced-tool subset.
 - Reliability preserves endpoint identity as the rater identity. Same-model endpoints remain distinct coders when their endpoint identities differ; model-name deduplication is not a substitute for endpoint identity. If the catalog cannot provide the requested distinct coders, selection fails closed, no coder dispatch occurs, route evidence records the failure, and the coding run remains `blocked` rather than switching engines or fabricating agreement.
 - The resulting code applications remain provisional until reliability, reconciliation, and human review gates accept them. A blocked or insufficient coding run cannot promote findings into reportable evidence.
 - Embedding dispatch remains a legacy-plane responsibility until W8. This W7 structured-coder migration does not authorize an embedding migration.
@@ -51,7 +51,7 @@ The Codebook tab surfaces qualitative coding structures and codebook versions as
 ## Agents, Skills, LLM, MCP, And Permissions
 
 - Codebook and code reads/mutations are project-content surfaces. They must reject stale ids from any other project with `404`, even when the same authenticated user can access both projects through another surface.
-- Rollback is reversible: disable `agentic_core` or select the legacy project engine to use the preserved project-authorized `coder.node` runner. The legacy branch remains available alongside the Pi path.
+- Rollback is reversible: select the legacy project engine and the coders are served by the dispatcher's permanent legacy executor over the project-authorized registry servers. W9 retired the preserved per-site `coder.node` runner, so the dispatcher path is the only path; engine choice no longer changes the code path.
 
 ## Tests And Verification
 

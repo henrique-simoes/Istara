@@ -7,22 +7,19 @@ The seven chat call sites in ``app/core/validation.py`` (``dual_run``,
 (dual-coder) route through the AgenticDispatcher — ``ensemble`` →
 ``validation.dual_run`` / ``validation.full_ensemble`` / ``validation.self_moa``,
 ``completion`` → ``validation.adversarial`` / ``validation.debate``,
-``structured`` → ``validation.judge`` / ``validity.coder`` — gated on the
-``agentic_core`` feature flag, with the legacy ``llm_router`` / ``server`` /
-``compute_registry`` / ``coder.node`` branches preserved alongside for
-``agentic_core=False``. ``validation.py:_get_embeddings`` stays legacy until
-W8 and is not covered here.
+``structured`` → ``validation.judge`` / ``validity.coder``. W9 retired the
+per-site legacy ``llm_router`` / ``server`` / ``compute_registry`` /
+``coder.node`` fallthrough branches: the dispatcher path is the only path
+(the dispatcher's own legacy engine preserves the pre-dispatcher behavior
+for legacy-engine projects).
 
 Covered here (all stubbed/static — no live model activity):
 
-* static: each migrated function carries both the dispatcher path (flag on)
-  and the preserved legacy branch, with the planned purpose slugs; the judge
-  schema and the coding schema stay inside the Pi forced-tool subset;
-* behavior (flag off): the legacy stubs drive every site and the dispatcher
-  stub is never touched — including the validation_executor judge, whose
-  ``message.content`` bug fix is proven by the legacy branch now scoring;
-* behavior (flag on): the dispatcher stub records each call (verb, purpose,
-  params, endpoint pinning), the legacy stubs are never called, and the
+* static: each migrated function dispatches through the planned verb with
+  the planned purpose slugs; the judge schema and the coding schema stay
+  inside the Pi forced-tool subset;
+* behavior: the dispatcher stub records each call (verb, purpose, params,
+  endpoint pinning), the legacy plane stubs are never called, and the
   fail-closed ``distinct=True`` rule degrades down the existing chain
   (dual_run → self_moa; full_ensemble → dual_run; dual-coder → blocked
   coding run) instead of fabricating diversity from fewer endpoints.
@@ -36,6 +33,16 @@ from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
+
+# Import-order guard: this suite imports app.services.research_validity_service
+# inside test bodies. That module pulls app.core.research_validity, which sits
+# on a latent module-level import cycle (research_validity -> skills.intercoder
+# -> skill_factory -> file_processor -> embeddings -> pi_runtime.engine ->
+# telemetry -> research_validity) that only resolves when the dispatcher plane
+# (app.core.agentic) has been initialized first in the process. The cycle is
+# pre-existing architecture debt outside this wave's files; initializing the
+# plane here keeps a standalone run of this file green.
+import app.core.agentic  # noqa: F401
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 VALIDATION = REPO_ROOT / "backend/app/core/validation.py"
@@ -151,29 +158,9 @@ class _StubLlmRouter:
         return {"message": {"content": content}}
 
 
-class _StubServer:
-    """Legacy stand-in for one healthy routed server."""
-
-    def __init__(self, name: str, text: str) -> None:
-        self.name = name
-        self.is_healthy = True
-        self.loaded_models = [f"model-{name}"]
-        self._text = text
-        self.calls: list[dict] = []
-
-    async def chat(self, messages=None, **kwargs):
-        self.calls.append({"messages": messages, **kwargs})
-        return {"message": {"content": self._text}}
-
-
 @pytest.fixture
 def _agentic_core_on(monkeypatch):
     monkeypatch.setattr("app.config.settings.agentic_core", True)
-
-
-@pytest.fixture
-def _agentic_core_off(monkeypatch):
-    monkeypatch.setattr("app.config.settings.agentic_core", False)
 
 
 @pytest.fixture
@@ -184,48 +171,48 @@ def _no_embeddings(monkeypatch):
     monkeypatch.setattr("app.core.validation._get_embeddings", _embed)
 
 
-# ── static: both paths present with planned purpose slugs ────────────────
+# ── static: dispatcher verbs with planned purpose slugs ──────────────────
 
 
-def test_w7_validation_functions_carry_dispatcher_path_and_preserved_legacy_branch():
+def test_w7_validation_functions_dispatch_through_agentic_verbs():
     expected = {
-        "dual_run": ("_dispatch_ensemble", 'purpose="validation.dual_run"', "server.chat"),
-        "full_ensemble": ("_dispatch_ensemble", 'purpose="validation.full_ensemble"', "server.chat"),
-        "self_moa": ("_dispatch_ensemble", 'purpose="validation.self_moa"', "llm_router.chat"),
-        "adversarial_review": ("agentic.completion", 'purpose="validation.adversarial"', "llm_router.chat"),
-        "debate_rounds": ("agentic.completion", 'purpose="validation.debate"', "llm_router.chat"),
+        "dual_run": ("_dispatch_ensemble", 'purpose="validation.dual_run"'),
+        "full_ensemble": ("_dispatch_ensemble", 'purpose="validation.full_ensemble"'),
+        "self_moa": ("_dispatch_ensemble", 'purpose="validation.self_moa"'),
+        "adversarial_review": ("agentic.completion", 'purpose="validation.adversarial"'),
+        "debate_rounds": ("agentic.completion", 'purpose="validation.debate"'),
     }
-    for function_name, (verb, purpose, legacy_call) in expected.items():
+    for function_name, (verb, purpose) in expected.items():
         source = _function_source(VALIDATION, function_name)
-        assert "agentic_core" in source, f"{function_name}: missing flag gate"
+        assert "agentic_core" not in source, f"{function_name}: the W9 dispatcher path must be unconditional"
         assert verb in source, f"{function_name}: missing {verb}"
         assert purpose in source, f"{function_name}: missing {purpose}"
-        assert legacy_call in source, f"{function_name}: legacy branch must be preserved alongside"
+        for legacy_call in ("server.chat", "llm_router.chat"):
+            assert legacy_call not in source, f"{function_name}: the legacy branch must be retired"
     helper = _function_source(VALIDATION, "_dispatch_ensemble")
     assert "agentic.ensemble" in helper, "the ensemble sites must dispatch via agentic.ensemble"
 
 
-def test_w7_executor_judge_carries_structured_path_legacy_branch_and_bug_fix():
+def test_w7_executor_judge_dispatches_structured():
     source = _function_source(VALIDATION_EXECUTOR, "_adversarial_review")
-    assert "agentic_core" in source and "agentic.structured" in source
+    assert "agentic_core" not in source
+    assert "agentic.structured" in source
     assert 'purpose="validation.judge"' in source
-    assert "compute_registry.chat" in source, "legacy branch must be preserved alongside"
-    assert 'result.get("message", {}).get("content", "")' in source, (
-        "the message.content bug fix must be present (registry never returns top-level content)"
-    )
+    assert "compute_registry.chat" not in source, "the legacy branch must be retired"
 
 
-def test_w7_validity_dual_coder_carries_pi_paths_and_preserved_legacy_branch():
+def test_w7_validity_dual_coder_dispatches_through_pi_runner():
     runner = _function_source(VALIDITY_SERVICE, "_pi_coder_runner")
     assert "agentic.structured" in runner and 'purpose="validity.coder"' in runner
     assert "endpoint_id" in runner, "the coder's exact Pi endpoint identity must be pinned"
     selection = _function_source(VALIDITY_SERVICE, "_select_pi_coders")
     assert "resolve_distinct" in selection
-    legacy = _function_source(VALIDITY_SERVICE, "_default_coder_runner")
-    assert "coder.node.chat" in legacy, "legacy runner must be preserved alongside"
     orchestration = _function_source(VALIDITY_SERVICE, "run_independent_coding_run")
     assert "_use_pi_coding_plane" in orchestration and "_select_pi_coders" in orchestration
-    assert "_select_project_coders" in orchestration, "legacy selection must be preserved alongside"
+    assert "_select_project_coders" in orchestration, (
+        "project-coder selection still serves injected runners and legacy-engine projects"
+    )
+    assert "coder.node.chat" not in orchestration, "the direct per-node dispatch must be retired"
 
 
 def test_w7_schemas_stay_inside_pi_forced_tool_subset():
@@ -296,25 +283,6 @@ async def test_dual_run_flag_on_insufficient_distinct_endpoints_falls_back_to_se
     )
     assert result.method == "self_moa"
     assert result.metadata["assurance"] == "single_model_temperature_variation"
-
-
-async def test_dual_run_flag_off_uses_legacy_servers(
-    monkeypatch, _agentic_core_off, _no_embeddings
-):
-    servers = [_StubServer("a", "legacy-a"), _StubServer("b", "legacy-b")]
-    router_stub = _StubLlmRouter(servers=servers)
-    dispatcher_stub = _StubAgentic()
-    monkeypatch.setattr("app.core.llm_router.llm_router", router_stub)
-    monkeypatch.setattr("app.core.agentic.agentic", dispatcher_stub)
-
-    from app.core.validation import dual_run
-
-    result = await dual_run("prompt", project_id="p1")
-
-    assert dispatcher_stub.calls == [], "flag off must not touch the dispatcher"
-    assert len(servers[0].calls) == 1 and len(servers[1].calls) == 1
-    assert result.responses == ["legacy-a", "legacy-b"]
-    assert result.metadata["servers_used"] == ["a", "b"]
 
 
 # ── behavior: full_ensemble / self_moa ───────────────────────────────────
@@ -389,23 +357,6 @@ async def test_self_moa_flag_on_dispatches_temperature_sweep_single_endpoint(
     assert result.metadata["temperatures"] == [0.3, 0.7, 1.0]
 
 
-async def test_self_moa_flag_off_uses_legacy_temperature_sweep(
-    monkeypatch, _agentic_core_off, _no_embeddings
-):
-    router_stub = _StubLlmRouter(texts=["l1", "l2", "l3"])
-    dispatcher_stub = _StubAgentic()
-    monkeypatch.setattr("app.core.llm_router.llm_router", router_stub)
-    monkeypatch.setattr("app.core.agentic.agentic", dispatcher_stub)
-
-    from app.core.validation import self_moa
-
-    result = await self_moa("prompt", n=3, project_id="p1")
-
-    assert dispatcher_stub.calls == []
-    assert [call["temperature"] for call in router_stub.calls] == [0.3, 0.7, 1.0]
-    assert result.responses == ["l1", "l2", "l3"]
-
-
 # ── behavior: adversarial_review / debate_rounds ────────────────────────
 
 
@@ -446,23 +397,6 @@ async def test_adversarial_review_flag_on_dispatch_failure_returns_empty_result(
     assert result.consensus.confidence == "insufficient", (
         "dispatch failure must degrade to the existing validation-unavailable result"
     )
-
-
-async def test_adversarial_review_flag_off_uses_legacy_router(
-    monkeypatch, _agentic_core_off, _no_embeddings
-):
-    router_stub = _StubLlmRouter(texts=["legacy critique"])
-    dispatcher_stub = _StubAgentic()
-    monkeypatch.setattr("app.core.llm_router.llm_router", router_stub)
-    monkeypatch.setattr("app.core.agentic.agentic", dispatcher_stub)
-
-    from app.core.validation import adversarial_review
-
-    result = await adversarial_review("q", "initial", project_id="p1")
-
-    assert dispatcher_stub.calls == []
-    assert router_stub.calls[0]["temperature"] == 0.3
-    assert result.metadata["review_text"] == "legacy critique"
 
 
 async def test_debate_rounds_flag_on_dispatches_initial_plus_rounds(
@@ -510,25 +444,6 @@ async def test_debate_rounds_flag_on_round_failure_breaks_like_legacy(
     assert result.responses == ["r0"]
     assert result.metadata["rounds_completed"] == 0
     assert result.best_response == "r0"
-
-
-async def test_debate_rounds_flag_off_uses_legacy_router(
-    monkeypatch, _agentic_core_off, _no_embeddings
-):
-    router_stub = _StubLlmRouter(texts=["l0", "l1", "l2"])
-    dispatcher_stub = _StubAgentic()
-    monkeypatch.setattr("app.core.llm_router.llm_router", router_stub)
-    monkeypatch.setattr("app.core.agentic.agentic", dispatcher_stub)
-
-    from app.core.validation import debate_rounds
-
-    result = await debate_rounds("prompt", rounds=2, project_id="p1")
-
-    assert dispatcher_stub.calls == []
-    assert len(router_stub.calls) == 3
-    assert router_stub.calls[0]["temperature"] == 0.7
-    assert [call["temperature"] for call in router_stub.calls[1:]] == [0.5, 0.5]
-    assert result.best_response == "l2"
 
 
 # ── behavior: validation_executor judge ──────────────────────────────────
@@ -607,40 +522,6 @@ async def test_judge_flag_on_missing_verdict_fails_closed(monkeypatch, _agentic_
         "status": "unavailable",
         "reason": "judge_verdict_missing",
     }
-
-
-async def test_judge_flag_off_reads_message_content_bug_fix(monkeypatch, _agentic_core_off):
-    scores = {"code_quality": 5, "evidence": 5, "chain": 5,
-              "hallucination_free": 5, "depth": 5, "overall": 5}
-    registry_stub = _StubLlmRouter(texts=[json.dumps(scores)])
-    dispatcher_stub = _StubAgentic()
-    monkeypatch.setattr("app.core.compute_registry.compute_registry", registry_stub)
-    monkeypatch.setattr("app.core.agentic.agentic", dispatcher_stub)
-
-    from app.core.validation_executor import ValidationExecutor
-
-    output, input_data = _executor_io()
-    result = await ValidationExecutor()._adversarial_review(output, input_data)
-
-    assert dispatcher_stub.calls == [], "flag off must not touch the dispatcher"
-    assert result.details == scores and result.confidence == 1.0, (
-        "bug fix: the registry's message.content must actually be scored — "
-        "the old top-level content read always missed and silently degraded"
-    )
-
-
-async def test_judge_flag_off_low_score_fails(monkeypatch, _agentic_core_off):
-    scores = {"overall": 1}
-    registry_stub = _StubLlmRouter(texts=[json.dumps(scores)])
-    monkeypatch.setattr("app.core.compute_registry.compute_registry", registry_stub)
-    monkeypatch.setattr("app.core.agentic.agentic", _StubAgentic())
-
-    from app.core.validation_executor import ValidationExecutor
-
-    output, input_data = _executor_io()
-    result = await ValidationExecutor()._adversarial_review(output, input_data)
-
-    assert not result.passed and result.confidence == 0.2
 
 
 # ── behavior: research_validity_service dual-coder ──────────────────────
@@ -749,17 +630,12 @@ class _RaisingDb:
         raise RuntimeError("no project row")
 
 
-async def test_use_pi_coding_plane_requires_flag_and_pi_engine(monkeypatch):
+async def test_use_pi_coding_plane_requires_pi_engine(monkeypatch):
     from app.services.research_validity_service import _use_pi_coding_plane
 
-    monkeypatch.setattr("app.config.settings.agentic_core", False)
-    monkeypatch.setattr("app.config.settings.agentic_engine_default", "pi")
-    assert await _use_pi_coding_plane(_RaisingDb(), "p1") is False
-
-    monkeypatch.setattr("app.config.settings.agentic_core", True)
     monkeypatch.setattr("app.config.settings.agentic_engine_default", "legacy")
     assert await _use_pi_coding_plane(_RaisingDb(), "p1") is False, (
-        "a legacy-resolved engine must keep the legacy coder selection"
+        "a legacy-resolved engine must keep the project coder selection"
     )
 
     monkeypatch.setattr("app.config.settings.agentic_engine_default", "pi")
