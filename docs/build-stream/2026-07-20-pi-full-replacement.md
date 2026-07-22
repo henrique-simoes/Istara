@@ -6,11 +6,11 @@ item: pi-full-replacement
 branch: Review_pi_test
 cf: { spec: CF-SPEC-8, tasks: [pi-full-20260720-w0-IMPL, pi-full-20260720-w0-REVIEW] }
 phase: "W8 — embeddings gateway + model-management UX parity"
-stage: S2-execute
+stage: S4-remediate
 status: in-progress
 blocked_on: null
-last: { agent: kimi-code/k3, at: 2026-07-22T07:01:29Z, ledger: L-62 }
-next_action: "W8 review (S3): verify gateway resolution/fail-closed accounting, the zero-edit wrapper migration, the vector-space invariant, and the UX-parity surfaces; then advance the conductor pipeline."
+last: { agent: gpt-5.6-sol, at: 2026-07-22T07:13:44Z, ledger: L-63 }
+next_action: "Remediate F-W8-1 through F-W8-4 in their four sibling fixer tasks, then run one conductor-created delta re-review after the barrier."
 ```
 <!-- /STATUS BLOCK -->
 
@@ -932,6 +932,19 @@ review lineage has no open findings; W5 is ready for stage-exit acceptance.
 
 **Delta re-review outcome:** `REREV-pi-full-20260720-w7-REVIEW-r3` (L-61, gpt-5.6-sol) **PASSED** with no new findings. F-W7-R2-1 is verified closed: the real dispatcher returns aggregate `success` after an optional spare restores the required three-response width, retains the failed sample as `error` for diagnostics, and forwards the successful aggregate outcome to usage/telemetry recording. The bounded 56-test dispatcher/ledger/W7 suite, lint, diff check, and living feature-doc generation all pass; the W7 review lineage is converged.
 
+## W8 — embeddings gateway + model-management UX parity
+
+### Review (W8) — Findings register
+
+| ID | Sev | Dim | Where | Finding | CF task | Status |
+|---|---|---|---|---|---|---|
+| F-W8-1 | Major | Integration | `backend/app/core/pi_runtime/model_manager.py:344`; `backend/app/core/pi_runtime/model_manager_provisioning.py:32`; `backend/app/core/embeddings.py:116` | `resolve_embed` ignores the requested embedding model and configured legacy provider; production catalogs always include both local entries and rank `pi-local-ollama` first, so LM Studio mode sends its embedding model to Ollama and configured remote endpoints cannot win while local entries exist. The provisioner calls `LMStudioClient.ensure_model`, which only checks availability and returns `False`, rather than the required existing JIT-load helper; `ensure_embed_model` ignores that false result. | FIX-pi-full-20260720-w8-REVIEW-r1-routing | open |
+| F-W8-2 | Major | Data Integrity | `backend/app/core/pi_runtime/embeddings_gateway.py:56-72,123-154`; `backend/app/main.py:589-600` | The vector-space assertion compares two values derived from the same settings rule, never reuses the `vector_health` dimension probe, and lifespan catches every violation as a warning, so startup does not enforce the W8 invariant. Cardinality-matching empty/malformed vectors are also accepted as success and may enter `embedding_cache` and stored indexes. | FIX-pi-full-20260720-w8-REVIEW-r1-vector | open |
+| F-W8-3 | Major | Telemetry | `backend/app/core/pi_runtime/embeddings_gateway.py:105-154`; `backend/app/core/agentic/usage_ledger.py:117-139` | The gateway discards provider embedding usage and unconditionally emits `estimate=False` with no token or cost fields. Remote OpenAI-compatible embedding responses are therefore persisted as fabricated exact-zero consumption, breaking cost reporting and enforcement. | FIX-pi-full-20260720-w8-REVIEW-r1-accounting | open |
+| F-W8-4 | Major | Product/UX | `backend/app/api/routes/settings.py:53-74,212-291`; `frontend/src/components/common/SettingsView.tsx:35-64,249-281`; `frontend/src/lib/utils.ts:34-40`; `frontend/src/components/settings/ProjectSettingsView.tsx:365-383` | `GET /settings/models` adds `pi_catalog` as a side field, but frontend model pickers consume only `models.models` and no frontend code reads `pi_catalog`, so Pi entries are neither merged nor visible in the existing picker UX. Inherited project engine badges/options also hard-code `Legacy`, even when the effective global default is Pi. | FIX-pi-full-20260720-w8-REVIEW-r1-ux | open |
+
+**Review outcome:** `pi-full-20260720-w8-REVIEW` (L-63, gpt-5.6-sol) **FAILED** with four Major findings and four independent fixer tasks. The committed focused suite is green (73 tests), security is 28/28, feature-doc generation covers 86 features, inventory and simulation static checks pass, and the architecture comparison has zero new/actionable failures. Network-free adversarial probes nevertheless reproduce endpoint misrouting, ignored provisioning failure, empty-vector success, and exact-zero provider accounting; source audit confirms the Pi catalog has no frontend consumer and inherited engine labels are hard-coded.
+
 ## Summary (S5 — whole plan)
 
 Pending completion of W0–W9 and B1–B4.
@@ -1106,3 +1119,8 @@ Result: pi-full-20260720-w8-IMPL implementation complete; every verification leg
 Verified: `pytest tests/pi_production tests/pi_migration -q` = 365 passed (incl. new `test_w8_embeddings_gateway.py` 25); adjacent routes/validation set = 56 passed; W8+memory+documents = 46 passed; chat/projects/spine/findings/reports/tasks/metrics = 133 passed (1 pre-existing); autoresearch/sessions/reasoning-bank = 36; steering = 43; `python scripts/feature_docs.py --seed-missing --generate-site --check` = 86 features / 224 artifacts passed; `python scripts/security_benchmark.py --fail-on-threshold` = pass 100%; inventory scanner OK; ruff clean on new files, no new lint debt on edited files; simulation `test:static` 6 passed + `node --check` scenario/registry; `compass-forge gate after` = 0 new failures, 0 actionable, 0 route/type/contract/generated drift (inherited `secret_flow`/`unexpected_large_files` remain; 2 warn-only complexity notes on W8 test files).
 Next: W8 review (S3) — gateway resolution/fail-closed accounting, wrapper migration zero-edit claim, vector-space invariant, UX parity surfaces; then the conductor advances.
 
+### L-63 | 2026-07-22T07:13:44Z | S3-review | gpt-5.6-sol | reviewer | W8 <!-- bsc-ledger:pi-full-20260720-w8-REVIEW -->
+Did: Independently reviewed implementer commit `6a08f810` against the W8 instructions/master-plan acceptance, code/tests/docs, endpoint and provisioning seams, vector/data integrity, usage accounting, and UX behavior. No implementation code was changed. Opened F-W8-1 through F-W8-4 and created four sibling fixer tasks: `FIX-pi-full-20260720-w8-REVIEW-r1-{routing,vector,accounting,ux}`.
+Result: verdict FAIL; corrections_made=0. Focused committed tests are green, but network-free adversarial probes reproduce LM Studio-to-Ollama endpoint misrouting, ignored unavailable provisioning, empty-vector success, and provider usage discarded as exact zero; source audit shows the Pi catalog is not consumed by frontend model pickers and inherited engine state is hard-coded Legacy.
+Verified: `pytest -q tests/pi_production/test_w8_embeddings_gateway.py tests/pi_production/test_w1_agentic_contract.py tests/pi_production/test_w1_dispatcher_authority.py tests/test_validation_project_scope.py` = 73 passed; `PYTHONPATH=backend python /tmp/w8_review_repro.py` = all four defect probes reproduced; `python scripts/security_benchmark.py --fail-on-threshold` = 28/28; `python scripts/feature_docs.py --seed-missing --generate-site --check` = 86 features / 224 artifacts; inventory JSON valid; simulation static = 6 passed; new W8 files lint + commit diff check passed; `compass-forge gate after --task pi-full-20260720-w8-REVIEW --summary` = 0 new failures, 0 actionable failures, no route/type/contract/generated drift (inherited `secret_flow`/large-file failures; two complexity warnings).
+Next: stage exit: remediate F-W8-1 through F-W8-4; the conductor barriers all four sibling tasks before one bounded delta re-review.
