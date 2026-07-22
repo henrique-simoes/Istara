@@ -6,11 +6,11 @@ item: pi-full-replacement
 branch: Review_pi_test
 cf: { spec: CF-SPEC-8, tasks: [pi-full-20260720-w0-IMPL, pi-full-20260720-w0-REVIEW] }
 phase: "W9 — final ratchet, dead-code retirement, architecture docs"
-stage: S4-remediate
+stage: S3-review
 status: in-progress
 blocked_on: null
-last: { agent: gpt-5.6-luna, at: 2026-07-22T10:42:43Z, ledger: L-73 }
-next_action: "Run the conductor-created bounded W9 delta re-review for F-W9-1, then advance toward ship if no new findings remain."
+last: { agent: gpt-5.6-sol, at: 2026-07-22T10:47:31Z, ledger: L-74 }
+next_action: "Advance the conductor beyond the passed W9 delta review toward the remaining ship and benchmark stages."
 ```
 <!-- /STATUS BLOCK -->
 
@@ -960,6 +960,8 @@ review lineage has no open findings; W5 is ready for stage-exit acceptance.
 
 **Review outcome:** `pi-full-20260720-w9-REVIEW` (L-72, gpt-5.6-sol) **FAILED** with one Major documentation finding. The 53-site source retirement, terminal ratchet (`product: []`, expected 0, only permanent inventory site), release-integrity wiring, canonical migration/production suite, security benchmark, diff check, feature-doc generation, and CF comparison gate are green. Remediation is documentation-only; no runtime rework is requested.
 
+**Delta re-review outcome:** `REREV-pi-full-20260720-w9-REVIEW-r1` (L-74, gpt-5.6-sol) **PASSED** with no new findings. F-W9-1 is verified closed: the living Markdown and generated feature site now match unconditional dispatcher routing, W8 embedding dispatch, ratchet 0, per-experiment autoresearch engine binding, and result-versus-ledger route-evidence semantics. The bounded 98-test documentation/runtime-contract suite and regeneration check pass; no architecture or acceptance change required broader review.
+
 ## Summary (S5 — whole plan)
 
 Pending completion of W0–W9 and B1–B4.
@@ -1200,3 +1202,9 @@ Did: Closed F-W9-1 by correcting the W9/W8 living Markdown for findings codebook
 Result: F-W9-1 open → fixed under `FIX-pi-full-20260720-w9-REVIEW-r1-docs`. The docs now describe unconditional dispatcher routing, per-experiment `pi|legacy` binding with the `settings.agentic_core` default, W8 embedding dispatch, ratchet 0, and result-versus-ledger route evidence accurately.
 Verified: `python scripts/feature_docs.py --seed-missing --generate-site --check` = seeded 0, generated 224, checked 86 passed; focused pytest = 98 passed; scoped stale-phrase check = absent; `git diff --check` = passed; `compass-forge gate after --task FIX-pi-full-20260720-w9-REVIEW-r1-docs --summary` = 0 new failures, 0 new warnings, 0 actionable failures, 0 route/type/contract/generated drift (inherited secret-flow/large-file failures remain).
 Next: stage exit: F-W9-1 is fixed and ready for the conductor-created bounded W9 delta re-review.
+
+### L-74 | 2026-07-22T10:47:31Z | S3-review | gpt-5.6-sol | reviewer | W9 <!-- bsc-ledger:REREV-pi-full-20260720-w9-REVIEW-r1 -->
+Did: Delta re-reviewed fixer commit `37904ce2` against F-W9-1, `source_fixes[]`, and the recorded verification evidence. Inspected only the corrected living Markdown, generated feature pages/manifest, and the immediate engine-binding, embedding, typed-result, usage-ledger, and route-telemetry seams. No implementation code was changed.
+Result: verdict PASS; corrections_made=0; no new findings. The fix accurately documents unconditional product call-site dispatch, autoresearch's bound `pi|legacy` override and `settings.agentic_core` default, W8 embedding routing, ratchet 0, and endpoint/status results versus durable ledger/telemetry route evidence. No fix-induced architecture or acceptance change justified broader review. One initial stale-phrase probe was overbroad and matched correct retired-branch wording; the corrected exact probe passed.
+Verified: `python scripts/feature_docs.py --seed-missing --generate-site --check` = seeded 0, generated 224, checked 86; `pytest -q tests/test_feature_docs.py tests/pi_migration/test_count_to_zero.py tests/pi_production/test_w6_autoresearch_runners.py tests/pi_production/test_w8_embeddings_gateway.py` = 98 passed; `git diff --check c8aa112d..37904ce2` = passed; corrected scoped stale-phrase `rg` probe = absent; source fixer gate evidence reports 0 new failures/warnings, 0 actionable failures, and 0 route/type/contract/generated drift; final `git status --short` and `git diff --check` = clean.
+Next: stage exit: W9 delta re-review passed; conductor may advance toward the remaining ship and benchmark stages.
