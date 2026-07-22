@@ -6,11 +6,11 @@ item: pi-full-replacement
 branch: Review_pi_test
 cf: { spec: CF-SPEC-8, tasks: [pi-full-20260720-w0-IMPL, pi-full-20260720-w0-REVIEW] }
 phase: "W6 — autoresearch runner migration"
-stage: S2-execute
+stage: S4-remediate
 status: in-progress
 blocked_on: none
-last: { agent: claude-opus-4-8, at: 2026-07-21T13:23:39Z, ledger: L-38 }
-next_action: "W6 implemented (L-38): all 14 autoresearch-runner chat sites route through the AgenticDispatcher behind agentic_core with the legacy llm_router branch preserved; model_temp sweeps the PiModelManager catalog under Pi (sweep_truncated recorded when <2 models), rag_params embed stays legacy until W8. Ratchet held at 70 (14 chat + 1 embed line keys re-pinned). Suites green (257 pi_production+pi_migration, 23 W6 contract, 31 candidate+autoresearch). Hand to pi-full-20260720-w6-code-reviewer for the W6 review."
+last: { agent: gpt-5.6-sol, at: 2026-07-22T02:16:38Z, ledger: L-39 }
+next_action: "Remediate F-W6-1 through F-W6-4 via the four FIX-pi-full-20260720-w6-REVIEW-r1-* tasks, then run one delta re-review after all sibling fixes are terminal."
 ```
 <!-- /STATUS BLOCK -->
 
@@ -753,6 +753,12 @@ Result: pi-full-20260720-w6-IMPL implemented; count-to-zero ratchet stays 70 (le
 Verified: `pytest tests/pi_production tests/pi_migration -q` = 257 passed; `pytest tests/pi_production/test_w6_autoresearch_runners.py -q` = 23 passed; `pytest tests/test_pi_replacement_candidate.py tests/test_autoresearch.py -q` = 31 passed (agentic_core default off, no regression); `python scripts/pi_migration_inventory.py --json` = 56 rows, all allowlisted (ratchet 70).
 Next: stage exit: implementation complete — hand to pi-full-20260720-w6-code-reviewer for the W6 review.
 
+### L-39 | 2026-07-22T02:16:38Z | S3-review | gpt-5.6-sol | reviewer | W6 <!-- bsc-ledger:pi-full-20260720-w6-REVIEW -->
+Did: Comprehensive independent review of commit `06ea9aa2` against master plan §8 W6, AGENTS.md governance/docs requirements, all six runner diffs, the migration allowlist, and the 23-test W6 contract suite. No implementation code changed. Raised F-W6-1 (catalog endpoint identity/projection), F-W6-2 (missing per-experiment engine definition/persistence), F-W6-3 (RAG dispatcher uses target-derived rather than authorized project scope), and F-W6-4 (living feature docs absent). Created one fixer task per independent Major: `FIX-pi-full-20260720-w6-REVIEW-r1-{sweep,engine,scope,docs}`.
+Result: **FAIL** — `pi-full-20260720-w6-REVIEW`; four Major findings remain open. The changed surface otherwise preserves all 14 legacy branches/purpose slugs and the W8 RAG-embedding deferral; 57 focused tests pass. Same-model adversarial repro proved two endpoint identities collapse to one grid row. Architecture comparison has zero new failures; inherited `secret_flow`/large-file gate debt remains.
+Verified: `pytest tests/pi_production/test_w6_autoresearch_runners.py tests/pi_migration/test_count_to_zero.py tests/test_autoresearch.py tests/test_pi_replacement_candidate.py -q` = 57 passed; inline same-model endpoint repro = defect reproduced; inline request/model engine-schema audit = field absent; `python scripts/feature_docs.py --seed-missing --generate-site --check` = passed mechanically (86 features, missing W6 semantics still a review finding); `python scripts/security_benchmark.py --fail-on-threshold` = 100% (28/28); `compass-forge gate before/after --task pi-full-20260720-w6-REVIEW` = zero new failures; `git diff --check 7b972863..06ea9aa2` = passed.
+Next: stage exit: fail verdict and four sibling fixer tasks recorded; conductor must barrier all four fixes, then dispatch one delta re-review.
+
 ## W0 — hardening and evidence integrity
 
 **Frame/Plan:** Master plan §6 plus §12.2. Arm the deterministic inventory/ratchet before
@@ -881,6 +887,19 @@ claude-fable-5) **passed**: both fixes verified at every cited site, the raise-p
 genuinely drive `PiRuntimeTurnError` and assert the exact degraded fallbacks / full repair-chain
 walk, and the suites re-ran green (78 W5+ratchet, 231 pi_production, inventory clean). The W5
 review lineage has no open findings; W5 is ready for stage-exit acceptance.
+
+## W6 — autoresearch runner migration
+
+### Review (W6) — Findings register
+
+| ID | Sev | Dim | Where | Finding | CF task | Status |
+|---|---|---|---|---|---|---|
+| F-W6-1 | Major | Integration | `backend/app/core/autoresearch_runners/model_temp.py:44-119,228-235`; `backend/app/core/pi_runtime/model_manager.py:313-336` | The Pi sweep converts exact catalog entries to deduplicated model strings, never awaits persisted LLMServer projection, and dispatches without `endpoint_id`; same-model endpoints collapse and candidates are not resolved/pinned per catalog identity as §8 W6 requires. | FIX-pi-full-20260720-w6-REVIEW-r1-sweep | open |
+| F-W6-2 | Major | Product/Integration | `backend/app/api/routes/autoresearch.py:46-52`; `backend/app/core/autoresearch_engine.py:65-133,378-414`; `backend/app/models/autoresearch_experiment.py:13-67` | The master-plan-required experiment `engine` field is absent from the request, execution record/config snapshot, persistence, and response, so Pi versus legacy is not explicit or auditable per experiment. | FIX-pi-full-20260720-w6-REVIEW-r1-engine | open |
+| F-W6-3 | Major | Security/Governance | `backend/app/core/autoresearch_runners/rag_params.py:44-56,179-186`; `backend/app/api/routes/autoresearch.py` start route | `RAGParamsRunner` passes `_project_id` copied from caller-controlled `target` into `agentic.completion`, not the authorized bound project id; the route authorizes `body.project_id` without enforcing target equality, allowing engine lookup, telemetry, and execution scope to use another project id. | FIX-pi-full-20260720-w6-REVIEW-r1-scope | open |
+| F-W6-4 | Major | Docs | `docs/features/content/autoresearch/{experiments,config}/{architecture,researcher}.md` | W6 changes autoresearch agent/model/test behavior but updates no living feature documentation, contrary to AGENTS.md; generator success only proves existing docs are structurally valid, not that W6 semantics are documented. | FIX-pi-full-20260720-w6-REVIEW-r1-docs | open |
+
+**Review outcome:** `pi-full-20260720-w6-REVIEW` (L-39, gpt-5.6-sol) **FAILED** with four Major findings and four independent fixer tasks. The focused regression suite is green (57 tests), the security benchmark is 100%, and the gate comparison has zero new failures; remediation must close endpoint identity, experiment engine auditability, RAG project scope, and living docs before delta re-review.
 
 ## Summary (S5 — whole plan)
 
