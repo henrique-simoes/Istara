@@ -11,8 +11,8 @@ status: in-progress
 blocked_on: "none"
 authored_by: henrique-simoes
 grounding: "Based on 2026-07-20-pi-full-replacement-master-plan.md Section 10"
-last: {agent: claude-fable-5, at: 2026-07-22T13:38:20Z, ledger: L-4}
-next_action: "Consensus judges vote on architect plans a/b/c"
+last: {agent: claude-fable-5, at: 2026-07-22T13:41:52Z, ledger: L-6}
+next_action: "Remaining consensus judges vote; conductor tallies consensus_result"
 ```
 <!-- /STATUS BLOCK -->
 
@@ -56,3 +56,9 @@ Did: pi-eval-architect-c stage on task pi-eval-PLAN-C (harness fallback entry; t
 Result: task pi-eval-PLAN-C finished; worktree head 4f1fe8ca.
 Verified: see Compass Forge evidence rows on pi-eval-PLAN-C (command + self_report + stage_attribution).
 Next: conductor advances the pipeline on evidence.
+
+### L-6 | 2026-07-22T13:41:52Z | S1-plan | claude-fable-5 | reviewer | Planning phase <!-- bsc-ledger:pi-eval-JUDGE-A -->
+Did: consensus judge slot a — read candidate plans docs/build-stream/plans/pi-eval-plan-b.md and pi-eval-plan-c.md; spot-checked both plans' repo-grounding claims (missing benchmark assets confirmed absent; cited existing assets incl. api-client.mjs:31 engine header, usage ledger, pricing table, long_horizon_runner chunk-count bug all confirmed present). No plan edited.
+Result: plan_vote recorded for slot c (execution-readiness: verified file:line grounding, dependency-ordered task table B0-1..B4-2 with A1-A15 acceptance, per-component rollback, owner gates G1-G3); noted B's order-alternation + immutable-manifest strengths for the implementer to fold in; pi-eval-JUDGE-A
+Verified: ls/grep grounding audit (passed; CF evidence 1242); plan_vote evidence 1243; self_report evidence 1244
+Next: remaining consensus judges vote; conductor tallies consensus_result
