@@ -278,6 +278,11 @@ async def init_db() -> None:
             "ALTER TABLE model_skill_stats ADD COLUMN project_id VARCHAR(36) NOT NULL DEFAULT ''",
             "CREATE INDEX IF NOT EXISTS ix_model_skill_stats_project_id "
             "ON model_skill_stats(project_id)",
+            # Per-experiment autoresearch engine selection (W6). Nullable so
+            # pre-W6 rows keep an honest "unknown engine" (NULL).
+            "ALTER TABLE autoresearch_experiments ADD COLUMN engine VARCHAR(16)",
+            "CREATE INDEX IF NOT EXISTS ix_autoresearch_experiments_engine "
+            "ON autoresearch_experiments(engine)",
         ]
         for ddl in migrations:
             try:

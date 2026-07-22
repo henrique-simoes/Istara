@@ -13,7 +13,6 @@ import logging
 from pathlib import Path
 from typing import Awaitable, Callable
 
-from app.config import settings
 from app.core.agent_identity import persona_file_path, writeable_persona_path
 from app.core.autoresearch_runners import BaseLoopRunner
 
@@ -106,10 +105,10 @@ class PersonaRunner(BaseLoopRunner):
         ]
 
         try:
-            if settings.agentic_core:
+            if self.use_pi_engine():
                 # W6: the persona-file mutation goes through the AgenticDispatcher
                 # (``autoresearch.persona.hypothesize``); the legacy branch below
-                # is preserved for agentic_core=False.
+                # is preserved for the legacy engine selection.
                 from app.core.agentic import agentic
                 from app.core.agentic.types import TurnParams
 
@@ -219,10 +218,10 @@ class PersonaRunner(BaseLoopRunner):
         ]
 
         try:
-            if settings.agentic_core:
+            if self.use_pi_engine():
                 # W6: the simulated-task run goes through the AgenticDispatcher
                 # (``autoresearch.persona.evaluate``); the legacy branch below is
-                # preserved for agentic_core=False.
+                # preserved for the legacy engine selection.
                 from app.core.agentic import agentic
                 from app.core.agentic.types import TurnParams
 
@@ -268,10 +267,10 @@ class PersonaRunner(BaseLoopRunner):
         ]
 
         try:
-            if settings.agentic_core:
+            if self.use_pi_engine():
                 # W6: the response-quality score goes through the
                 # AgenticDispatcher (``autoresearch.persona.score``); the legacy
-                # branch below is preserved for agentic_core=False.
+                # branch below is preserved for the legacy engine selection.
                 from app.core.agentic import agentic
                 from app.core.agentic.types import TurnParams
 

@@ -13,7 +13,6 @@ import subprocess
 from pathlib import Path
 from typing import Awaitable, Callable
 
-from app.config import settings
 from app.core.autoresearch_runners import BaseLoopRunner
 
 logger = logging.getLogger(__name__)
@@ -101,10 +100,10 @@ class UISimRunner(BaseLoopRunner):
         ]
 
         try:
-            if settings.agentic_core:
+            if self.use_pi_engine():
                 # W6: the component a11y/UX mutation goes through the
                 # AgenticDispatcher (``autoresearch.ui_sim.hypothesize``); the
-                # legacy branch below is preserved for agentic_core=False.
+                # legacy branch below is preserved for the legacy engine selection.
                 from app.core.agentic import agentic
                 from app.core.agentic.types import TurnParams
 
@@ -214,10 +213,10 @@ class UISimRunner(BaseLoopRunner):
         ]
 
         try:
-            if settings.agentic_core:
+            if self.use_pi_engine():
                 # W6: the WCAG-style component score goes through the
                 # AgenticDispatcher (``autoresearch.ui_sim.evaluate``); the
-                # legacy branch below is preserved for agentic_core=False.
+                # legacy branch below is preserved for the legacy engine selection.
                 from app.core.agentic import agentic
                 from app.core.agentic.types import TurnParams
 

@@ -19,7 +19,6 @@ import json
 import logging
 from typing import Awaitable, Callable
 
-from app.config import settings
 from app.core.autoresearch_runners import BaseLoopRunner
 
 logger = logging.getLogger(__name__)
@@ -154,10 +153,10 @@ class SkillPromptRunner(BaseLoopRunner):
         ]
 
         try:
-            if settings.agentic_core:
+            if self.use_pi_engine():
                 # W6: the skill-prompt mutation goes through the AgenticDispatcher
                 # (``autoresearch.skill_prompt.hypothesize``); the legacy branch
-                # below is preserved for agentic_core=False.
+                # below is preserved for the legacy engine selection.
                 from app.core.agentic import agentic
                 from app.core.agentic.types import TurnParams
 
@@ -267,10 +266,10 @@ class SkillPromptRunner(BaseLoopRunner):
         ]
 
         try:
-            if settings.agentic_core:
+            if self.use_pi_engine():
                 # W6: the sample skill run goes through the AgenticDispatcher
                 # (``autoresearch.skill_prompt.evaluate``); the legacy branch
-                # below is preserved for agentic_core=False.
+                # below is preserved for the legacy engine selection.
                 from app.core.agentic import agentic
                 from app.core.agentic.types import TurnParams
 
@@ -319,10 +318,10 @@ class SkillPromptRunner(BaseLoopRunner):
         ]
 
         try:
-            if settings.agentic_core:
+            if self.use_pi_engine():
                 # W6: the skill-output score goes through the AgenticDispatcher
                 # (``autoresearch.skill_prompt.score``); the legacy branch below
-                # is preserved for agentic_core=False.
+                # is preserved for the legacy engine selection.
                 from app.core.agentic import agentic
                 from app.core.agentic.types import TurnParams
 
