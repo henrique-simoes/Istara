@@ -40,6 +40,25 @@ def load_admin_password() -> str:
     )
 
 
+def extract_total_tokens(events: list[dict]) -> int | None:
+    """Return provider-reported total tokens from a chat SSE stream, or None if absent.
+
+    The authoritative source of token accounting is the agentic usage ledger
+    (``agentic_usage_rows``, master plan §5.5); the SSE stream is not a token meter. This
+    reader takes provider-reported ``usage`` when the stream carries it and otherwise
+    returns None — it never counts streamed content chunks as tokens (benchmark task B0-3:
+    the prior ``total_tokens += 1`` per-chunk bug fabricated a nonsense token figure).
+    """
+    total: int | None = None
+    for event in events:
+        usage = event.get("usage") if isinstance(event, dict) else None
+        if isinstance(usage, dict):
+            value = usage.get("total_tokens", usage.get("totalTokens"))
+            if value is not None:
+                total = int(value)
+    return total
+
+
 async def main():
     print("🚀 Starting Long-Horizon Orchestration Benchmark...")
     
@@ -109,8 +128,8 @@ async def main():
         
         start_time = time.time()
         tool_calls = 0
-        total_tokens = 0
-        
+        stream_events: list[dict] = []
+
         async with client.stream("POST", f"{API_BASE}/api/chat", json=chat_req, headers=headers) as response:
             if response.status_code != 200:
                 body = await response.aread()
@@ -123,6 +142,7 @@ async def main():
                             break
                         try:
                             data = json.loads(data_str)
+                            stream_events.append(data)
                             if "tool_calls" in data:
                                 for tc in data["tool_calls"]:
                                     fn = tc.get("function", {})
@@ -135,13 +155,16 @@ async def main():
                                 print(content, end="", flush=True)
                                 if "[Tool:" in content:
                                     tool_calls += 1
-                                total_tokens += 1
                         except json.JSONDecodeError:
                             pass
-        
+
         elapsed = time.time() - start_time
+        # Token accounting comes from provider-reported usage (or the usage ledger),
+        # never from a streamed-chunk count (benchmark task B0-3).
+        total_tokens = extract_total_tokens(stream_events)
+        tokens_label = total_tokens if total_tokens is not None else "n/a (see agentic usage ledger)"
         print("\n" + "-" * 50)
-        print(f"✅ Chat completed in {elapsed:.2f}s. Tool calls: {tool_calls}")
+        print(f"✅ Chat completed in {elapsed:.2f}s. Tool calls: {tool_calls}. Provider tokens: {tokens_label}")
         
         # 5. Check Orchestrator State (Tasks spawned)
         print("\n📋 Checking Task Queue (DeepPlanning Validation)...")

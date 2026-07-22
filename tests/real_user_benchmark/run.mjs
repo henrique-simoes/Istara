@@ -483,8 +483,33 @@ function modelFamilyFromId(model) {
 
 const startSandbox = hasFlag("start-sandbox") || ["1", "true", "yes"].includes(String(process.env.ISTARA_BENCHMARK_START_SANDBOX || "").toLowerCase());
 const skipSandbox = ["1", "true", "yes"].includes(String(process.env.ISTARA_BENCHMARK_SKIP_SANDBOX || "").toLowerCase());
-const mode = arg("mode", process.env.ISTARA_BENCHMARK_MODE || "probe");
+// `--plan-only` is an ergonomic flag alias for `--mode plan-only` (benchmark
+// task B0-2): it resolves the engine plan without attempting live services.
+const mode = hasFlag("plan-only")
+  ? "plan-only"
+  : arg("mode", process.env.ISTARA_BENCHMARK_MODE || "probe");
 const runId = arg("run-id", makeRunId());
+
+// ── Benchmark engine plumbing (benchmark task B0-2) ────────────────────────
+// `--engine pi|legacy|both` selects the AgenticDispatcher engine per request via
+// the `x-istara-agent-engine` header, threaded into every IstaraApiClient below.
+// `both` is a planning concept (the paired Python runner drives real pairing);
+// a single live client carries exactly one engine.
+const AGENT_ENGINE_HEADER = "x-istara-agent-engine";
+function resolveBenchmarkEngines(raw) {
+  const value = String(raw || "").trim().toLowerCase();
+  if (!value) return [];
+  if (value === "both") return ["legacy", "pi"];
+  if (value === "pi" || value === "legacy") return [value];
+  console.error(`Invalid --engine=${raw}; expected one of pi|legacy|both.`);
+  process.exit(2);
+}
+const benchmarkEngines = resolveBenchmarkEngines(
+  arg("engine", process.env.ISTARA_BENCHMARK_ENGINE || ""),
+);
+// One live client carries a single engine header; `both` defers pairing to the
+// Python runner, so live mode leaves the header unset (dispatcher default).
+const benchmarkAgentEngine = benchmarkEngines.length === 1 ? benchmarkEngines[0] : "";
 const donorTopology = String(arg("donor-topology", process.env.ISTARA_BENCHMARK_DONOR_TOPOLOGY || "") || "").trim().toLowerCase();
 const useLocalThreeModelDonorTopology = THREE_MODEL_DONOR_TOPOLOGY_ALIASES.has(donorTopology);
 const resultsRoot = resolve(arg("results-dir", process.env.ISTARA_BENCHMARK_RESULTS_DIR || join(__dirname, ".results")));
@@ -3183,6 +3208,7 @@ async function authenticateResearcherActors(inviteResults) {
       networkAccessToken: benchmarkNetworkToken,
       adminUsername: inviteResult.username,
       adminPassword: inviteResult.password,
+      agentEngine: benchmarkAgentEngine,
     });
     const researcherAuth = await researcherApi.authenticate();
     logger.action("researcher.auth.result", {
@@ -4266,6 +4292,15 @@ async function main() {
   writePlanSnapshot(corpus);
 
   if (mode === "plan-only") {
+    const enginePlan = benchmarkEngines.length ? benchmarkEngines : ["(default)"];
+    console.log("[plan-only] real-user benchmark — no live services attempted.");
+    for (const engine of enginePlan) {
+      const header =
+        engine === "(default)"
+          ? "(engine header unset — dispatcher default)"
+          : `${AGENT_ENGINE_HEADER}: ${engine}`;
+      console.log(`[plan-only] engine=${engine} -> ${header}`);
+    }
     blockers.push("Plan-only mode did not attempt live services.");
     const scorecard = scoreRun({
       mode,
@@ -4295,6 +4330,7 @@ async function main() {
     networkAccessToken: benchmarkNetworkToken,
     adminUsername: benchmarkAdminUsername,
     adminPassword: benchmarkAdminPassword,
+    agentEngine: benchmarkAgentEngine,
   });
   const health = await waitForHealth(api, startSandbox && !skipSandbox && sandbox.serverStarted ? 240000 : 15000);
   if (!health.ok) {
