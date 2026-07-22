@@ -2,12 +2,23 @@
 
 ```yaml
 plan_slot: a
-task: pi-eval-PLAN-A
+task: pi-eval-REPLAN-A-r1   # revision r1 of pi-eval-PLAN-A
 author_model: claude-fable-5
 grounding: docs/build-stream/plans/2026-07-20-pi-full-replacement-master-plan.md §10
 lifecycle: docs/build-stream/2026-07-22-pi-benchmark.md
 date: 2026-07-22
+revision: r1
 ```
+
+**r1 repair note.** The r0 self-report carried three residual risks; all are now closed with
+verified evidence: (1) `metrics-schema.json` is confirmed absent **repo-wide** (searched the
+whole tree, not just `tests/pi_benchmark/`), so E0.1 is definitively an authoring task, not an
+adoption task; (2) the §10.6 pricing table the master plan cites pathlessly is
+`labs/pi-replacement/src/raw-llm-capture.mjs:5-10` (`DEEPSEEK_ESTIMATE_USD_PER_MILLION`) —
+E3.2 now cites it exactly; (3) the long-horizon "tokens" bug §10.3 assigns to E0.8 is verified
+at `tests/benchmarks/long_horizon_runner.py:138` (`total_tokens += 1` per SSE chunk). Axis-1
+metric vocabulary confirmed present at `tests/agentic_eval_contract.json` (`tool_name_accuracy`,
+`argument_schema_validity`, `multi_turn_recovery`, `evidence_chain_completeness`).
 
 ## 0. Ground truth this plan is built on (verified 2026-07-22 in this worktree)
 
@@ -18,7 +29,10 @@ date: 2026-07-22
 | Engine header supported client-side | ✅ exists | `tests/real_user_benchmark/lib/api-client.mjs:31,244` (`x-istara-agent-engine`) |
 | `--engine` flag in the two `run.mjs` harnesses | ❌ missing | grep of `tests/simulation/run.mjs`, `tests/real_user_benchmark/run.mjs` — no engine plumbing |
 | `tests/pi_benchmark/` (runner, scenarios, judge, probes, feature_criteria) | ❌ missing | dir does not exist |
-| `metrics-schema.json` | ❌ missing | referenced by §10 with line numbers, but absent from the tree — must be authored first |
+| `metrics-schema.json` | ❌ missing | referenced by §10 with line numbers, but absent repo-wide (full-tree name search, r1) — must be authored first |
+| Axis-1 metric vocabulary | ✅ exists | `tests/agentic_eval_contract.json` (`eval_metrics`: tool_name_accuracy, argument_schema_validity, multi_turn_recovery, evidence_chain_completeness) |
+| T3 pricing table for dry-run estimates | ✅ exists | `labs/pi-replacement/src/raw-llm-capture.mjs:5-10` (`DEEPSEEK_ESTIMATE_USD_PER_MILLION`) |
+| Long-horizon chunk-count "tokens" bug | ✅ located | `tests/benchmarks/long_horizon_runner.py:138` (`total_tokens += 1` per SSE chunk) — E0.8 fixes it to read the ledger |
 | `scripts/pi_benchmark_report.py` | ❌ missing | not in `scripts/` |
 | `comparison-Istara-pi/` (reports + article home) | ❌ missing | dir does not exist |
 | Deterministic eval harness to reuse | ✅ exists | `scripts/run_istara_evals.py`, `tests/evals/` (registry + `.results/` conventions) |
@@ -109,7 +123,7 @@ CF task sized for a single worker.
 | E0.5 ∥ | `judge.py` JudgeLayer: blind A/B+B/A, rubric bank per axis, sha256 logging, (scenario, run, rubric_version) cache | judge + tests with stub judge model | E0.1 |
 | E0.6 ∥ | `probes/` — adherence + injection suite (protected-block survival incl. spine contract block near `backend/app/api/chat.py`, persona constraints, thinking-leak rate) | probe pack + T1 smoke | E0.2 |
 | E0.7 ∥ | Engine-flag plumbing: `--engine pi\|legacy\|both` in `tests/simulation/run.mjs` and `tests/real_user_benchmark/run.mjs` (client already supports it) | flag + one smoke run per harness | — |
-| E0.8 ∥ | Legacy per-step usage capture (telemetry-additive registry edit ONLY, per §10.3; fix the long-horizon runner chunk-count bug to read the ledger) | edit + regression test proving donor paths untouched (`tests/pi_migration/test_count_to_zero.py` still green, allowlist unchanged) | — |
+| E0.8 ∥ | Legacy per-step usage capture (telemetry-additive registry edit ONLY, per §10.3; fix the chunk-count bug at `tests/benchmarks/long_horizon_runner.py:138` to read the ledger) | edit + regression test proving donor paths untouched (`tests/pi_migration/test_count_to_zero.py` still green, allowlist unchanged) | — |
 | E0.9 | `scenarios/spine/` + `scenarios/a2a/` packs on seeded corpus | packs + T1 dry-run | E0.2 |
 | E0.10 | `scripts/pi_benchmark_report.py` + `comparison-Istara-pi/` scaffold (README, reports/, gitignore for raw) — all numbers from JSON, tier-mix hard-fail, estimated-token flagging | generator + golden-file test on synthetic records | E0.1 |
 
@@ -134,7 +148,7 @@ CF task sized for a single worker.
 | ID | Task |
 |---|---|
 | E3.1 | Spine pack end-to-end + A2A pack + memory-load runs (psutil RSS sampler; retrieval precision@1/recall@3 on seeded gold) at T2 high-N (N≥10 where wall-clock permits; actual N recorded, shortfalls logged, never silent) |
-| E3.2 | **T3 gate (hard stop):** T2-rehearsal-derived dry-run cost estimate using the pricing table in `raw-llm-capture.mjs`; present to owner; obtain explicit owner-approved envelope **in chat**, recorded as CF evidence on the benchmark task. $0.409 remaining is presumed insufficient — no T3 run before a new envelope. If owner declines: B3 completes at T2-only, and the report's threats-to-validity section states the missing API-model tier |
+| E3.2 | **T3 gate (hard stop):** T2-rehearsal-derived dry-run cost estimate using the pricing table at `labs/pi-replacement/src/raw-llm-capture.mjs:5-10`; present to owner; obtain explicit owner-approved envelope **in chat**, recorded as CF evidence on the benchmark task. $0.409 remaining is presumed insufficient — no T3 run before a new envelope. If owner declines: B3 completes at T2-only, and the report's threats-to-validity section states the missing API-model tier |
 | E3.3 | T3 runs within the envelope (per-run cost ceilings enforced by the ledger; judge spend counted inside the same envelope) |
 | E3.4 | Final paired statistics: bootstrap CIs, effect sizes, dominance analysis (A2A), Fleiss kappa on multi-coder agreement |
 
@@ -209,7 +223,7 @@ them, the verification list in the lifecycle file is updated in the same commit.
 
 | # | Risk | Likelihood | Mitigation |
 |---|---|---|---|
-| R1 | §10 references assets with line numbers (`metrics-schema.json:121-126`) that don't exist in-tree — spec drift between plan and repo | certain (verified) | E0.1 authors the schema first and reserves the paired-stat fields; treat §10's line refs as design intent, not ground truth |
+| R1 | §10 references assets with line numbers (`metrics-schema.json:121-126`) that don't exist in-tree — spec drift between plan and repo | certain (verified repo-wide, r1) | E0.1 authors the schema first and reserves the paired-stat fields; treat §10's line refs as design intent, not ground truth |
 | R2 | T3 budget ($0.409) insufficient; owner may not approve more | high | E3.2 hard gate with dry-run estimate; T2-only fallback path is a first-class outcome with a threats-to-validity note — the pipeline never blocks on T3 |
 | R3 | Local T2 engine (Ollama/LM Studio) unavailable or model drift between B2 and B3 | medium | E2.1 preflight; pin model tag + digest in the manifest; B3 refuses to run if digest differs from B2's without an explicit `--allow-model-change` note in the manifest |
 | R4 | Judge validity (self-preference, position bias) | medium | judge ≠ DUT model, blind + position-swapped, deterministic checks always alongside; Fleiss kappa reported |
