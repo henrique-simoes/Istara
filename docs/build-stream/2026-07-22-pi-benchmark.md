@@ -11,8 +11,8 @@ status: in-progress
 blocked_on: null
 authored_by: build-stream-conductor
 grounding: "Based on 2026-07-20-pi-full-replacement-master-plan.md Section 10"
-last: {agent: claude-fable-5, at: 2026-07-22T20:11:15Z, ledger: L-39}
-next_action: "Recovery consensus: remaining architect slots finish, judges vote on recovery plans a/b/c, conductor seals consensus_result; G-R1 owner gate before any implementation."
+last: { agent: gpt-5.6-sol, at: 2026-07-22T20:12:43Z, ledger: L-40 }
+next_action: "Conductor: tally the recovery consensus after all judge votes are recorded."
 ```
 <!-- /STATUS BLOCK -->
 
@@ -693,3 +693,9 @@ Did: Consensus judge slot a — read recovery candidate plans B (gpt-5.6-sol, pl
 Result: plan_vote for slot c (CF evidence 1459): C is evidence-grounded and operational (void-tally proof, orphan-task cancellation, hygiene commit for untracked governing docs, fresh-anchor rule); B is sound but abstract and internally tense on untracked-path scope. PI-BENCH-RECOVERY-20260722-JUDGE-A
 Verified: grep -n -iE 'provider kimi|kimi[- ]only|kimi evaluation|configured-kimi-model|judge call through deepseek' docs/build-stream/2026-07-22-pi-benchmark.md (14 active-text regions confirmed); sed -n 68,85p docs/build-stream/conductor-instructions/pi-benchmark-deepseek-moa-execution.md (six packs listed, MoA route/downgrade only as judge dimension). No tests run — judging-only stage, no code touched.
 Next: remaining judges vote; conductor tallies and seals consensus_result; G-R1 owner gate before implementation.
+
+### L-40 | 2026-07-22T20:12:43Z | S3-review | gpt-5.6-sol | reviewer | Recovery consensus <!-- bsc-ledger:PI-BENCH-RECOVERY-20260722-JUDGE-B -->
+Did: Read candidate plans A and C exactly as assigned; recorded judge-b plan_vote for slot a; no plan or code files changed.
+Result: Slot a selected for its newer-state grounding, exact RECOVERY-task exclusion, and plan-freeze safeguard; PI-BENCH-RECOVERY-20260722-JUDGE-B.
+Verified: `shasum -a 256 docs/build-stream/plans/pi-bench-recovery-20260722-plan-a.md docs/build-stream/plans/pi-bench-recovery-20260722-plan-c.md` passed (A d221d818..., C 8a014ff5...); CF evidence IDs 1463 command, 1464 plan_vote, 1465 self_report.
+Next: stage exit: vote, self-report, command evidence, and durable lifecycle handoff recorded.
