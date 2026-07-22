@@ -433,13 +433,21 @@ def _run_live_benchmark(config: RunConfig, dispatch: Any = None) -> RunSummary:
     return RunSummary(config=config, records=records, manifest=manifest)
 
 
-def _coerce_unit(raw: Any) -> Any:
+def _coerce_unit(raw: Any, *, manifest: dict[str, Any] | None = None) -> Any:
     """Coerce a manifest shard entry (RunUnit-shaped dict or object) into a unit.
 
-    Lane A's ``write_manifest`` serializes shards of ``RunUnit``; the runner accepts the
-    dataclasses.asdict shape (keys matching RunUnit fields) or any object carrying those
-    attributes.
+    Lane A's ``write_manifest`` serializes shards as unit-id strings and stores the
+    RunUnit-shaped fields in the manifest's ``units`` table. The runner resolves that
+    on-disk representation before accepting the dataclasses.asdict shape or an object
+    carrying those attributes.
     """
+    if isinstance(raw, str):
+        if manifest is None:
+            raise TypeError("string manifest entries require the loaded manifest")
+        details = manifest.get("units", {}).get(raw)
+        if not isinstance(details, dict):
+            raise ValueError(f"manifest shard references unknown unit {raw!r}")
+        raw = {**details, "unit_id": raw}
     if isinstance(raw, dict):
         return _LiveUnit(
             unit_id=str(raw["unit_id"]), pack=str(raw["pack"]),
@@ -486,7 +494,7 @@ def run_wave(config: RunConfig, dispatch: Any = None) -> tuple[int, list[dict[st
 
     pending: list[tuple[Any, Scenario | None]] = []
     for raw in shards[config.wave - 1]:
-        unit = _coerce_unit(raw)
+        unit = _coerce_unit(raw, manifest=manifest)
         if unit.unit_id in completed:
             continue
         pending.append((unit, _scenario_for_unit(unit)))
