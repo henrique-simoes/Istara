@@ -38,3 +38,9 @@ in the lifecycle file. No report bundle exists yet.
 <!-- reports-index:start -->
 _No report bundles generated yet._
 <!-- reports-index:end -->
+
+## Latest Benchmark Reports
+- [20260722T174500Z Benchmark Report](reports/20260722T174500Z/report.md)
+
+## Latest Benchmark Reports
+- [pi-rerun Benchmark Report](reports/pi-rerun/report.md)
