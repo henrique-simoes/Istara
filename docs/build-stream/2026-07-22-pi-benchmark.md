@@ -74,15 +74,28 @@ Did: consensus judge slot c - read both candidate plans (pi-eval-plan-a.md r1, p
 Result: vote a recorded (CF evidence rows 1250 command, 1251 plan_vote, 1252 self_report); pi-eval-JUDGE-C
 Verified: ls/grep/sed grounding audit all pass - benchmark assets absent; long_horizon_runner.py:138 total_tokens += 1 per chunk; api-client.mjs:31,244 engine header; run.mjs harnesses unplumbed; raw-llm-capture.mjs:5-10 pricing table
 Next: conductor tallies judge plan_votes (a/b/c) and advances the pipeline
+
+
 <!-- consensus-winning-plan -->
 ## Winning consensus plan
 
 # Plan C — Execution plan: Pi vs Legacy benchmark program (B1–B4)
 
-- **Task:** `pi-eval-PLAN-C` (consensus architect slot C, pipeline `pi-eval`)
+- **Task:** `pi-eval-REPLAN-C-r1` (consensus architect slot C, revision r1 — supersedes r0
+  authored under `pi-eval-PLAN-C`; pipeline `pi-eval`)
 - **Spec:** CF-SPEC-8 · **Lifecycle:** `docs/build-stream/2026-07-22-pi-benchmark.md`
 - **Grounding:** master plan §10 (`docs/build-stream/plans/2026-07-20-pi-full-replacement-master-plan.md:685-797`), §5.5, §10.6, §13
-- **Authored:** 2026-07-22, against branch `Review_pi_test` @ `1f843f31`
+- **Authored:** 2026-07-22 (r1), against branch `Review_pi_test` @ `e1c9c994`
+
+> **r1 revision note.** Every §1 citation was re-verified at file:line on @ `e1c9c994`
+> (command evidence on the CF task); no r0 factual errors found. Closed r0 residual risk:
+> the master plan cites `metrics-schema.json:51-63,121-126` as if the file exists — a
+> repo-wide `find` confirms no copy exists anywhere, so B0-1 is definitively an authoring
+> task, not a discovery task. Remaining r0 residual risks stand unchanged: they are
+> design-latitude disclosures (B0 phased explicitly vs folded into B1–B4; T2 wall-clock
+> unknown until first runs; runner CLI / judge-config shape within §10.3 latitude; B1–B4
+> sequenced as one post-W9 program per the lifecycle file's instruction), not defects.
+
 - **Mission:** run the paired, industry-class B1–B4 benchmark of the Pi candidate engine
   against the legacy agentic engine, on the 10 owner axes, ending in the generated
   `comparison-Istara-pi/reports/<ts>/` deliverable set and the owner rollout review.
@@ -97,19 +110,28 @@ Verified by direct inspection on 2026-07-22 — these facts drive the design:
 - W0–W9 complete: `AgenticDispatcher` is the only product path; the legacy engine runs
   through the dispatcher's permanent legacy executor (`backend/app/core/agentic/legacy.py`),
   so `engine=legacy` behavior is preserved by construction. Ratchet is 0 product sites
-  (`tests/pi_migration/legacy_allowlist.yaml`, `expected_product_sites: 0`).
+  (`tests/pi_migration/legacy_allowlist.yaml:80`, `expected_product_sites: 0`).
 - Engine selection works per-call, per-header, per-project, per-default
   (`backend/app/core/agentic/dispatcher.py:91-101`); the benchmark client header
   `x-istara-agent-engine` is already honored by
   `tests/real_user_benchmark/lib/api-client.mjs:31,244`.
 - Usage ledger `backend/app/core/agentic/usage_ledger.py` exists (§5.5) with the
   `estimate` flag discipline for legacy provider-reported vs estimated tokens.
-- The 15 canonical Pi scenario ids are cataloged in
-  `labs/pi-replacement/src/scenario-catalog.mjs` and every id is contract-mapped to a
-  production test by `tests/pi_production/test_scenario_coverage_map.py` (COVERAGE dict).
+- Exactly 15 canonical Pi scenario ids are cataloged in
+  `labs/pi-replacement/src/scenario-catalog.mjs` (top-level `id:` entries, verified count)
+  and every id is contract-mapped to a production test by
+  `tests/pi_production/test_scenario_coverage_map.py` (`COVERAGE` dict at `:21`;
+  set-equality with the catalog asserted at `:63`).
 - Deterministic output checks (`scripts/run_istara_evals.py:308-377`) and RAG gold
   precision@1/recall@3 (`scripts/run_istara_evals.py:538-558`) are reusable for axes 3/5.
-- Tool vocabulary + eval metric ids exist in `tests/agentic_eval_contract.json` (axis 1).
+- Tool vocabulary + eval metric ids exist in `tests/agentic_eval_contract.json:108-123`
+  (`tool_calling_react` block: tool_name_accuracy, argument_schema_validity,
+  multi_turn_recovery, evidence_chain_completeness) (axis 1).
+- Skill phase enum (Double Diamond: discover/define/develop/deliver) at
+  `backend/app/skills/base.py:10-16` (axis 8); protected-block machinery at
+  `backend/app/api/routes/chat.py:52,248` with protected-compression telemetry at
+  `:690-716` (axis 9); production Fleiss kappa at `backend/app/core/consensus.py:36`
+  (axis 10).
 - T3 pricing table for dry-run estimates: `labs/pi-replacement/src/raw-llm-capture.mjs:5-10`.
 - `docs/features/inventory.json` (86 features) is present for the axis-2 feature matrix.
 
@@ -117,12 +139,15 @@ Verified by direct inspection on 2026-07-22 — these facts drive the design:
 - `tests/pi_benchmark/` — does not exist (runner, scenario packs, feature compiler,
   judge, probes are all §10.3 assets still to create).
 - `comparison-Istara-pi/` — does not exist, including `metrics-schema.json`, which the
-  master plan already cites as the contract (`metrics-schema.json:51-63,121-126`).
+  master plan already cites as the contract (`metrics-schema.json:51-63,121-126`); a
+  repo-wide `find` (2026-07-22, excluding `node_modules`/`.venv`/`.git`) confirms no copy
+  exists anywhere, so this is an authoring task, not a discovery task.
 - `scripts/pi_benchmark_report.py` — does not exist.
 - `--engine` plumbing in `tests/simulation/run.mjs` and `tests/real_user_benchmark/run.mjs`
   — both parse args by hand and ignore the engine flag (the §10.1 "verified gap").
 - Legacy per-step usage capture in the registry `chat/chat_stream` path, and the
-  `tests/benchmarks/long_horizon_runner.py:138` chunk-count-as-tokens bug.
+  `tests/benchmarks/long_horizon_runner.py:138` chunk-count-as-tokens bug (verified:
+  `total_tokens += 1` per streamed SSE chunk at exactly `:138`).
 
 **Hard gates that shape sequencing:**
 - AGENTS.md live-LLM rule + master plan §13.2: no live model loading (T2 local, T3 API)
@@ -211,8 +236,9 @@ B0 assets are correct before any owner-gated spend is requested.
   (≠ any DUT model), blind + position-swapped protocol, rubric bank per axis,
   sha256-logged prompts/rubrics, cache by `(scenario, run, rubric_version, judge_model)`.
 - **`tests/pi_benchmark/probes/`** — system-prompt adherence + injection suite: protected
-  spine-contract block survival (chat.py protected region), persona-constraint compliance,
-  adversarial injection (reusing security_benchmark patterns), thinking-leak rate.
+  spine-contract block survival (`backend/app/api/routes/chat.py:52,248` protected-block
+  region), persona-constraint compliance, adversarial injection (reusing
+  security_benchmark patterns), thinking-leak rate.
 - **Engine-flag plumbing** — `--engine pi|legacy|both` in `tests/simulation/run.mjs` and
   `tests/real_user_benchmark/run.mjs`, threaded to the existing api-client header support;
   plus a `--dry-run`/plan-only mode so plumbing is verifiable without starting services.
@@ -403,9 +429,4 @@ approvals (G1/G2) are recorded as CF evidence with the in-chat approval quoted.
 - No new product features; benchmark findings become new CF tasks, not in-scope fixes.
 - No live model loading or external spend before the corresponding owner gate.
 
-
-### L-9 | 2026-07-22T13:50:34Z | S1-plan | kimi-code/k3 | architect | Planning phase <!-- bsc-ledger:pi-eval-REPLAN-C-r1 -->
-Did: repaired consensus plan C (revision r1) at docs/build-stream/plans/pi-eval-plan-c.md — re-verified every §1 citation at file:line on e1c9c994; tightened grounding (allowlist :80; exactly 15 catalog top-level ids + COVERAGE :21 / set-equality assert :63; eval-contract vocab :108-123; SkillPhase Double Diamond base.py:10-16; protected-block chat.py:52,248 + telemetry :690-716; fleiss_kappa consensus.py:36; chunk-count bug `total_tokens += 1` confirmed at long_horizon_runner.py:138); closed r0 residual risk: metrics-schema.json confirmed absent repo-wide by find, so B0-1 is definitively an authoring task
-Result: plan slot C ready for consensus judging (r1); no r0 factual errors found; remaining residual risks are design-latitude disclosures (B0 phasing vs folded, T2 wall-clock unknown, CLI/judge-config shape, one-program sequencing); pi-eval-REPLAN-C-r1
-Verified: ls/find/grep/sed grounding audit — absent: tests/pi_benchmark, comparison-Istara-pi, scripts/pi_benchmark_report.py, metrics-schema.json (zero repo-wide hits); present+cited: all §1 files; inventory.json features=86; CF command evidence rows + self_report recorded on pi-eval-REPLAN-C-r1
-Next: consensus judges vote on plan slots a/b/c
+## Decision log
