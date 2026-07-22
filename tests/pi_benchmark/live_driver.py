@@ -52,13 +52,12 @@ from __future__ import annotations
 import asyncio
 import hashlib
 import json
-import os
 import types
 from dataclasses import asdict, dataclass, replace as dc_replace
 from pathlib import Path
 from typing import Any
 
-from tests.pi_benchmark import moa, schema
+from tests.pi_benchmark import moa, recording, schema
 
 try:  # Lane A module; fall back to a local twin until it lands.
     from tests.pi_benchmark.budget_ledger import BudgetExceeded
@@ -93,6 +92,8 @@ class LiveCapture:
     endpoint_ids: tuple[str, ...]
     route_evidence: tuple[dict, ...]
     raw_method: str | None        # validation method served, for MoA units
+    consensus_score: float | None = None
+    consensus_confidence: str = ""
 
 
 # ── token estimation / usage normalisation ──────────────────────────────────
@@ -206,6 +207,9 @@ def _capture_from_validation(result: Any, *, prompt: str, system: str) -> LiveCa
     if not endpoint_ids:
         endpoint_ids = tuple(str(r.get("endpoint_id", "")) for r in route_evidence)
     usage = _estimate_usage(prompt=prompt, system=system, output_texts=responses) if responses else None
+    consensus = getattr(result, "consensus", None)
+    consensus_score = getattr(consensus, "agreement_score", None) if consensus is not None else None
+    consensus_confidence = str(getattr(consensus, "confidence", "") or "") if consensus is not None else ""
     return LiveCapture(
         text=text,
         usage=usage,
@@ -213,6 +217,8 @@ def _capture_from_validation(result: Any, *, prompt: str, system: str) -> LiveCa
         endpoint_ids=endpoint_ids,
         route_evidence=route_evidence,
         raw_method=str(getattr(result, "method", "") or "") or None,
+        consensus_score=float(consensus_score) if consensus_score is not None else None,
+        consensus_confidence=consensus_confidence,
     )
 
 
@@ -223,6 +229,7 @@ async def dispatch_unit(
     prompt: str,
     system: str = "",
     moa_n: int = 3,
+    max_tokens: int = 1024,
     ensemble_fn: Any = None,
     validation_module: Any = None,
 ) -> LiveCapture:
@@ -243,17 +250,22 @@ async def dispatch_unit(
             validation = backend_validation
         if moa_mode == "self_moa":
             result = await validation.self_moa(
-                prompt, system=system, model=DEEPSEEK_MODEL, n=moa_n, project_id=PI_PROJECT_ID
+                prompt, system=system, model=DEEPSEEK_MODEL, n=moa_n,
+                max_tokens=max_tokens, project_id=PI_PROJECT_ID,
             )
         else:  # full_ensemble: request exactly `slots` distinct routes (n=min_responses+1)
             slots = moa.requested_slots("full_ensemble", moa_n)
             result = await validation.full_ensemble(
                 prompt, system=system, model=DEEPSEEK_MODEL,
-                min_responses=slots - 1, project_id=PI_PROJECT_ID,
+                min_responses=slots - 1, max_tokens=max_tokens, project_id=PI_PROJECT_ID,
             )
         return _capture_from_validation(result, prompt=prompt, system=system)
 
-    params_payload = {"endpoint_id": DEEPSEEK_ENDPOINT_ID, "model": DEEPSEEK_MODEL}
+    params_payload = {
+        "endpoint_id": DEEPSEEK_ENDPOINT_ID,
+        "model": DEEPSEEK_MODEL,
+        "max_tokens": max_tokens,
+    }
     call_kwargs = dict(
         purpose=f"pi_benchmark.{unit.phase}",
         project_id=PI_PROJECT_ID,
@@ -307,29 +319,20 @@ def _is_budget_exceeded(exc: BaseException) -> bool:
     return isinstance(exc, BudgetExceeded) or type(exc).__name__ == "BudgetExceeded"
 
 
-def _write_record_atomic(records_dir: Path, unit_id: str, record: dict[str, Any]) -> Path:
-    """Write ``<unit_id>.json`` crash-safe: tmp file + os.replace (never a partial record)."""
-    records_dir = Path(records_dir)
-    records_dir.mkdir(parents=True, exist_ok=True)
-    tmp_path = records_dir / f"{unit_id}.json.tmp"
-    final_path = records_dir / f"{unit_id}.json"
-    tmp_path.write_text(json.dumps(record, indent=2, sort_keys=True) + "\n", encoding="utf-8")
-    os.replace(tmp_path, final_path)
-    return final_path
-
-
 def _moa_evidence_from_capture(*, moa_mode: str, moa_n: int, capture: LiveCapture) -> moa.MoaEvidence:
     """Assess a MoA unit from its LiveCapture via a ValidationResult-shaped shim.
 
-    The dispatcher's route evidence carries one entry per successful response, so
-    response/coder counts survive the LiveCapture boundary; the consensus score does not
-    (``consensus_score=None``) — downgrade detection, the signal the spine gates on, leans
-    on the served method and route diversity, which DO survive.
+    The dispatcher’s route evidence carries one entry per successful response, while the
+    endpoint list may also contain failed samples.  Consensus evidence is copied through
+    the capture boundary so the resulting record retains the backend's score/confidence.
     """
     shim = types.SimpleNamespace(
         method=capture.raw_method or "",
         responses=list(capture.route_evidence),
-        consensus=types.SimpleNamespace(agreement_score=None, confidence=""),
+        consensus=types.SimpleNamespace(
+            agreement_score=capture.consensus_score,
+            confidence=capture.consensus_confidence,
+        ),
         metadata={
             "endpoint_ids": list(capture.endpoint_ids),
             "route_evidence": [dict(r) for r in capture.route_evidence],
@@ -350,8 +353,7 @@ def _build_unit_record(
     not_runnable_reason: str | None = None, usage: dict[str, Any] | None = None,
     extensions: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
-    """Assemble + validate one record for a live unit via runner.build_record."""
-    from tests.pi_benchmark import runner  # lazy: keeps this module import-light
+    """Assemble + validate one record via the shared recording helpers."""
 
     # The unit's own phase (from the manifest) is the identity — a wave's CLI --phase
     # is only a default and must not rewrite a unit's record identity.
@@ -359,7 +361,7 @@ def _build_unit_record(
     unit_phase = str(getattr(unit, "phase", "") or "")
     if unit_phase and unit_phase != getattr(config, "phase", None):
         unit_config = dc_replace(config, phase=unit_phase)
-    record = runner.build_record(
+    record = recording.build_record(
         config=unit_config,
         scenario=scenario,
         engine=unit.engine,
@@ -367,9 +369,9 @@ def _build_unit_record(
         repeat=unit.repeat,
         # Deterministic per-unit order assignment (stable across resume/waves).
         pair_index=int(hashlib.sha256(unit.unit_id.encode()).hexdigest()[:8], 16),
-        git_sha=runner.git_provenance()[0],
-        git_dirty=runner.git_provenance()[1],
-        ts=runner._utc_now_iso(),
+        git_sha=recording.git_provenance()[0],
+        git_dirty=recording.git_provenance()[1],
+        ts=recording._utc_now_iso(),
         status=status,
         not_runnable_reason=not_runnable_reason,
         metrics=None,  # live quality metrics need judge/probe scoring — never fabricated
@@ -410,6 +412,8 @@ async def run_live_unit(
     is silently dropped and no exception for an expected failure mode escapes.
     """
     records_dir = Path(records_dir)
+    if isinstance(max_tokens, bool) or not isinstance(max_tokens, int) or max_tokens <= 0:
+        raise ValueError("max_tokens must be a positive integer")
     final_path = records_dir / f"{unit.unit_id}.json"
     if final_path.is_file():
         try:  # crash-safe resume: a complete record means this unit is already done
@@ -451,12 +455,15 @@ async def run_live_unit(
             unit=unit, scenario=scenario, config=config, status="not_runnable",
             not_runnable_reason="budget_exceeded", extensions=extensions,
         )
-        _write_record_atomic(records_dir, unit.unit_id, _stamp_live_provenance(record, provider))
+        recording.write_record_atomic(records_dir, unit.unit_id, _stamp_live_provenance(record, provider))
         return record
 
     # 3. Dispatch; map failures onto typed not_runnable records.
     try:
-        capture = await dispatch(unit=unit, tier=config.tier, prompt=prompt, system=system, moa_n=moa_n)
+        capture = await dispatch(
+            unit=unit, tier=config.tier, prompt=prompt, system=system,
+            moa_n=moa_n, max_tokens=max_tokens,
+        )
     except PreDispatchError as exc:
         ledger.release(unit.unit_id, reason=f"pre_dispatch:{exc}")
         extensions["detail"] = {"reason": f"pre-dispatch failure: {exc}"}
@@ -464,7 +471,7 @@ async def run_live_unit(
             unit=unit, scenario=scenario, config=config, status="not_runnable",
             not_runnable_reason="startup_failure", extensions=extensions,
         )
-        _write_record_atomic(records_dir, unit.unit_id, _stamp_live_provenance(record, provider))
+        recording.write_record_atomic(records_dir, unit.unit_id, _stamp_live_provenance(record, provider))
         return record
     except (TimeoutError, asyncio.TimeoutError) as exc:
         # Retain the reservation: the request may still be in flight and billable.
@@ -473,7 +480,7 @@ async def run_live_unit(
             unit=unit, scenario=scenario, config=config, status="not_runnable",
             not_runnable_reason="timeout", extensions=extensions,
         )
-        _write_record_atomic(records_dir, unit.unit_id, _stamp_live_provenance(record, provider))
+        recording.write_record_atomic(records_dir, unit.unit_id, _stamp_live_provenance(record, provider))
         return record
     except Exception as exc:
         extensions["detail"] = {"reason": f"dispatch failure (reservation retained): {exc}"}
@@ -481,7 +488,7 @@ async def run_live_unit(
             unit=unit, scenario=scenario, config=config, status="not_runnable",
             not_runnable_reason="startup_failure", extensions=extensions,
         )
-        _write_record_atomic(records_dir, unit.unit_id, _stamp_live_provenance(record, provider))
+        recording.write_record_atomic(records_dir, unit.unit_id, _stamp_live_provenance(record, provider))
         return record
 
     # 4. Successful-looking dispatch with neither usage nor text: fail closed.
@@ -491,7 +498,7 @@ async def run_live_unit(
             unit=unit, scenario=scenario, config=config, status="not_runnable",
             not_runnable_reason="other", extensions=extensions,
         )
-        _write_record_atomic(records_dir, unit.unit_id, _stamp_live_provenance(record, provider))
+        recording.write_record_atomic(records_dir, unit.unit_id, _stamp_live_provenance(record, provider))
         return record
 
     # 5. Commit actual cost from provider pricing over the captured tokens.
@@ -527,7 +534,7 @@ async def run_live_unit(
         unit=unit, scenario=scenario, config=config, status=status,
         not_runnable_reason=reason, usage=usage_block, extensions=extensions,
     )
-    _write_record_atomic(records_dir, unit.unit_id, _stamp_live_provenance(record, provider))
+    recording.write_record_atomic(records_dir, unit.unit_id, _stamp_live_provenance(record, provider))
     return record
 
 
