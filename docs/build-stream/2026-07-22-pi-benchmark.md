@@ -6,13 +6,13 @@ item: pi-benchmark
 branch: Review_pi_test
 cf: { spec: CF-SPEC-8 }
 phase: "Replanned execution — B0 through B_N process waves"
-stage: S2-execute
+stage: S4-remediate
 status: in-progress
 blocked_on: null
 authored_by: build-stream-conductor
 grounding: "Based on 2026-07-20-pi-full-replacement-master-plan.md Section 10"
-last: {agent: kimi-code/k3, at: 2026-07-22T19:10:16Z, ledger: L-18}
-next_action: "Independent code review of PI-BENCH-MOA-20260722-IMPL (pi-bench-moa-20260722-code-reviewer); live B1..B_N waves remain owner-gated behind G1/G2."
+last: {agent: gpt-5.6-sol, at: 2026-07-22T19:19:41Z, ledger: L-19}
+next_action: "Remediate F-3 through F-7 in the five FIX-PI-BENCH-MOA-20260722-REVIEW-r1-* tasks, then run one delta re-review after all sibling fixes are terminal."
 ```
 <!-- /STATUS BLOCK -->
 
@@ -467,6 +467,11 @@ approvals (G1/G2) are recorded as CF evidence with the in-chat approval quoted.
 |----|----------|-------|---------|---------|--------|
 | F-1 | Major | comparison-Istara-pi/metrics-schema.json (`metrics.spine_phase`) | 10-phase spine taxonomy (intent, context, plan, tool_selection, execution, recovery, grounding, synthesis, review, governance) not pinned; master plan §5.5 citation of metrics-schema.json:39-50 dangles; typo'd phase keys validate | FIX-pi-eval-REVIEW-r1 | verified (REREV pass, L-13) |
 | F-2 | Minor | comparison-Istara-pi/metrics-schema.json (`metrics.additionalProperties`) | open axis-key set accepts typo'd axis names (e.g. tool_cal ling); inconsistent with strict top level + extensions escape hatch | FIX-pi-eval-REVIEW-r1 | verified (REREV pass, L-13) |
+| F-3 | Blocker | `scheduler.py:write_manifest` / `runner.py:run_wave` | Real manifests store shard entries as unit-id strings, but wave execution dereferences them as unit objects and crashes before dispatch. | FIX-PI-BENCH-MOA-20260722-REVIEW-r1-wave | open |
+| F-4 | Blocker | `moa.py:assess_validation_result` / `live_driver.py:_moa_evidence_from_capture` | Partial coder success can be labeled reconciled because selected endpoints count as served and requested response count is not enforced. | FIX-PI-BENCH-MOA-20260722-REVIEW-r1-moa | open |
+| F-5 | Blocker | `live_driver.py:dispatch_unit` / `validation.py:_get_embeddings` | MoA omits the requested engine and approved route identity; embeddings escape the DeepSeek-only ledger; stamped provenance does not prove the served route. | FIX-PI-BENCH-MOA-20260722-REVIEW-r1-routing | open |
+| F-6 | Blocker | `live_driver.py:run_live_unit` / `budget_ledger.py` | The reserved output bound is not forwarded to dispatch, and duplicate/orphan/over-reservation ledger transitions can undercount or exceed the hard cap. | FIX-PI-BENCH-MOA-20260722-REVIEW-r1-budget | open |
+| F-7 | Major | Compass Forge post-change gate | New Python import cycles include `live_driver -> runner -> live_driver`; the task-scope architecture gate is not clean. | FIX-PI-BENCH-MOA-20260722-REVIEW-r1-gate | open |
 
 ## Decision log
 
@@ -546,3 +551,9 @@ Did: completed the DeepSeek-only remaining-wave apparatus, building on the inher
 Result: PI-BENCH-MOA-20260722-IMPL offline apparatus complete: B0 scheduling + immutable shard manifest + crash-safe $1.00 ledger, resumable wave mode, real dispatcher-path live driver (DeepSeek deepseek-v4-pro only), MoA self_moa/full_ensemble downgrade detection (downgrade => not_runnable, never success), role-separated DeepSeek judge on the shared ledger, and report generation from durable artifacts. NO live dispatch was performed and live completion is NOT claimed (owner gates G1/G2; AGENTS.md live-model rule). Security benchmark gate not triggered: the diff touches only tests/ benchmark apparatus, no product provider/registry/telemetry code. Reverted accidental comparison-Istara-pi/README.md + results_summary.md mutations from a report smoke run (they had been regenerated from the old synthetic records).
 Verified: `backend/.venv/bin/python -m pytest tests/pi_benchmark/ -q` -> 154 passed; `... tests/pi_migration/test_count_to_zero.py -q` -> 3 passed (ratchet 0); `... tests/pi_production/ -q` -> 346 passed; `... tests/pi_production/test_w7_validation.py tests/test_validation_project_scope.py tests/pi_production/test_scenario_coverage_map.py tests/pi_production/test_scenario_research_spine.py -q` -> 28 passed (Research Spine route/coverage); `git diff --check` clean; CLI smoke: `--plan-only` wrote an immutable 15-unit/2-shard manifest and resumed it unchanged on re-run; `--wave 1` without an owner gate refused exit 3; `verify_budget_ledger.py --runs ... --close` sealed and passed (spent=$0.0042 <= $1.00); `scripts/pi_benchmark_report.py` generated scorecard/report.md/report.html from durable run records.
 Next: stage exit — ready for independent code review (pi-bench-moa-20260722-code-reviewer). Live B1...B_N wave execution and the G0/G1 owner approvals remain owner-gated.
+
+### L-19 | 2026-07-22T19:19:41Z | S3-review | gpt-5.6-sol | reviewer | Execution phase <!-- bsc-ledger:PI-BENCH-MOA-20260722-REVIEW -->
+Did: independently reviewed commit 4850b035 and the implementer evidence; inspected the scheduler, ledger, provider, dispatcher, MoA, judge, runner, tests, and Research Spine seams; created five fixer tasks for F-3 through F-7. No production or benchmark code was changed.
+Result: verdict FAIL on PI-BENCH-MOA-20260722-REVIEW. F-3 through F-6 are Blockers: real B0 manifests cannot enter wave execution; partial MoA coder success is reported reconciled; MoA does not preserve paired-engine/DeepSeek-only route identity and performs unbudgeted embedding work; and the external ledger is not a hard pre-dispatch one-dollar cap. F-7 is Major: new task-scope Python import cycles fail the architecture gate.
+Verified: `backend/.venv/bin/python -m pytest tests/pi_benchmark/ -q` -> 154 passed; adversarial scheduler->wave probe -> `AttributeError: str has no attribute unit_id`; partial full_ensemble probe -> `degraded=False,status=reconciled,coders=1,routes=3`; focused migration/Research Spine suite -> 27 passed; `git diff --check` -> passed; `python scripts/security_benchmark.py --fail-on-threshold` -> 28/28; CF gate after -> failed with new import cycles and zero route/type/contract/graphql/generated drift.
+Next: remediate F-3 through F-7 in the five linked FIX tasks; stage exit: fail verdict, evidence, findings, and fixer tasks recorded for conductor barrier + delta re-review.
