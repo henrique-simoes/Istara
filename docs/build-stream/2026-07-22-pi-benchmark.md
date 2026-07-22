@@ -11,7 +11,7 @@ status: in-progress
 blocked_on: null
 authored_by: build-stream-conductor
 grounding: "Based on 2026-07-20-pi-full-replacement-master-plan.md Section 10"
-last: {agent: gpt-5.6-luna, at: 2026-07-22T19:29:52Z, ledger: L-22}
+last: {agent: claude-fable-5, at: 2026-07-22T19:32:42Z, ledger: L-23}
 next_action: "Complete sibling F-5 and F-7 work, then run one delta re-review after all fixer tasks are terminal."
 ```
 <!-- /STATUS BLOCK -->
@@ -591,3 +591,9 @@ Did: fixed F-6 across `tests/pi_benchmark/budget_ledger.py`, `tests/pi_benchmark
 Result: F-6 fixed under FIX-PI-BENCH-MOA-20260722-REVIEW-r1-budget. Reservations now use a hard finite non-negative cap with unique call ids; commits/releases require one outstanding reservation, commits cannot exceed the reservation, and malformed durable rows are rejected by the verifier. `run_live_unit` forwards the reserved `max_tokens` bound to plain and MoA dispatch paths, including validation fallback routes.
 Verified: `backend/.venv/bin/python -m pytest tests/pi_benchmark/test_budget_ledger.py tests/pi_benchmark/test_verify_budget_ledger.py -q` -> 25 passed; `backend/.venv/bin/python -m pytest tests/pi_production/test_w7_validation.py tests/test_validation_project_scope.py -q` -> 26 passed; direct dispatch probe with `max_tokens=23` -> passed; `git diff --check` -> passed; Python compile checks -> passed. Full `tests/pi_benchmark/` remains blocked by sibling F-7's in-progress `runner.py`/`recording.py` refactor (pre-existing missing helper import and injection API drift), not by this task's focused surface.
 Next: sibling F-5 and F-7, then delta re-review; stage exit: F-6 fixed with focused evidence and handoff ready.
+
+### L-23 | 2026-07-22T19:32:42Z | S1-plan | claude-fable-5 | architect | Role-correction planning <!-- bsc-ledger:PI-BENCH-ROLE-CORRECTION-20260722-PLAN-A -->
+Did: authored independent consensus plan A at docs/build-stream/plans/pi-bench-role-correction-20260722-plan-a.md (209 lines: verified role-ambiguity audit, five-role model, correction design for the lifecycle winning-plan section + DEC-7 supersession + work-order tighten, RC-1..RC-6 task table, AC-1..AC-7 acceptance, exact grep/diff verification battery, risks incl. the deepseek_judge.py code/doc mismatch follow-up, rollback). No lifecycle plan content or code edited.
+Result: plan slot A ready for consensus judging; key audit: 14 Kimi-as-evaluation occurrences in the embedded winning plan (task table, A3/A4/A7, section-5 commands, risks, G0/G1, non-goals, DEC-6) plus DEC-5's "and judge call through DeepSeek" clause; execution work-order pi-benchmark-deepseek-moa-execution.md confirmed already role-correct, needing only pack-list/pointer tightening; PI-BENCH-ROLE-CORRECTION-20260722-PLAN-A
+Verified: git diff --check passed; grep -iE role-ambiguity audit over lifecycle + work-order (14 kimi-eval hits at lines 202-500, deepseek-judge clause at :489); wc -l plan = 209; CF evidence rows 1361-1364 (3x command, self_report)
+Next: consensus judges vote on plan slots a/b/c; winning plan's implementer executes RC-1..RC-6
