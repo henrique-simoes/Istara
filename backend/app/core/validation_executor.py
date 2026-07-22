@@ -78,14 +78,23 @@ class ValidationExecutor:
         project_id = getattr(input_data, "project_id", None)
         from app.config import settings
 
-        try:
-            if settings.agentic_core:
-                # W7: the judge call goes through the AgenticDispatcher
-                # structured verb (``validation.judge``); the legacy branch
-                # below is preserved for agentic_core=False.
-                from app.core.agentic import agentic
-                from app.core.agentic.types import TurnParams
+        if settings.agentic_core:
+            # W7: the judge call goes through the AgenticDispatcher structured
+            # verb (``validation.judge``); the legacy branch below is preserved
+            # for agentic_core=False.
+            #
+            # F-W7-3 fail-closed: the selected Pi path must NOT convert an
+            # unavailable judge into a pass. A raised governed-turn error
+            # (``PiRuntimeTurnError``) or a structured value that carries no
+            # usable verdict surfaces as an explicitly failed/unavailable
+            # result — recording unavailable validation as passed=True would
+            # violate the Research Spine fail-closed contract. (The legacy
+            # branch keeps its historical default-pass degradation only for
+            # agentic_core=False back-compat.)
+            from app.core.agentic import agentic
+            from app.core.agentic.types import TurnParams
 
+            try:
                 outcome = await agentic.structured(
                     purpose="validation.judge",
                     project_id=project_id or "",
@@ -95,14 +104,50 @@ class ValidationExecutor:
                     params=TurnParams(temperature=0.3),
                     spine_phase="review",
                 )
-                scores = outcome.value or {}
-                overall = scores.get("overall", 3)
-                return ValidationResult(
-                    passed=overall >= 3,
-                    method="adversarial_review",
-                    confidence=overall / 5,
-                    details=scores,
+            except Exception as e:
+                logger.warning(
+                    "Adversarial review judge unavailable, failing closed: %s", e
                 )
+                return ValidationResult(
+                    passed=False,
+                    method="adversarial_review",
+                    confidence=0.0,
+                    details={
+                        "status": "unavailable",
+                        "reason": "judge_dispatch_failed",
+                        "error": str(e),
+                    },
+                )
+            scores = getattr(outcome, "value", None)
+            if (
+                getattr(outcome, "status", "success") != "success"
+                or not isinstance(scores, dict)
+                or "overall" not in scores
+            ):
+                logger.warning(
+                    "Adversarial review judge returned no usable verdict, "
+                    "failing closed: %r",
+                    scores,
+                )
+                return ValidationResult(
+                    passed=False,
+                    method="adversarial_review",
+                    confidence=0.0,
+                    details={
+                        "status": "unavailable",
+                        "reason": "judge_verdict_missing",
+                    },
+                )
+            overall = scores.get("overall", 3)
+            return ValidationResult(
+                passed=overall >= 3,
+                method="adversarial_review",
+                confidence=overall / 5,
+                details=scores,
+            )
+
+        # Legacy branch (agentic_core=False): preserved compute_registry path.
+        try:
             result = await compute_registry.chat(
                 [{"role": "user", "content": prompt}],
                 temperature=0.3,
