@@ -10,7 +10,9 @@
  *   node run.mjs --scenario-timeout-ms 7200000 # Override per-scenario timeout
  */
 
-import { chromium } from "playwright";
+// playwright is imported lazily inside main() so that `--dry-run` engine-plan
+// resolution (benchmark task B0-2) works in environments without the browser
+// dependency installed. A live run imports it on demand right before launch.
 import { mkdirSync, writeFileSync, readFileSync, existsSync, symlinkSync, unlinkSync } from "fs";
 import { join, dirname } from "path";
 import { fileURLToPath } from "url";
@@ -34,6 +36,43 @@ const singleScenario = args.includes("--scenario") ? args[args.indexOf("--scenar
 const skipEval = args.includes("--skip-eval");
 const skipSkills = args.includes("--skip-skills");
 const scenarioTimeoutArgIndex = args.indexOf("--scenario-timeout-ms");
+
+// ── Benchmark engine plumbing (benchmark task B0-2) ────────────────────────
+// `--engine pi|legacy|both` selects the AgenticDispatcher engine per request via
+// the `x-istara-agent-engine` header (honored by the dispatcher; see
+// backend/app/core/agentic/dispatcher.py). `--dry-run` resolves and prints the
+// engine plan and exits WITHOUT launching a browser or any services, so the
+// plumbing is verifiable in CI/T0 (plan acceptance A2).
+const AGENT_ENGINE_HEADER = "x-istara-agent-engine";
+const rawEngine = args.includes("--engine") ? args[args.indexOf("--engine") + 1] : null;
+const dryRun = args.includes("--dry-run");
+
+function resolveEngines(raw) {
+  const value = String(raw || "").trim().toLowerCase();
+  if (value === "both") return ["legacy", "pi"];
+  if (value === "pi" || value === "legacy") return [value];
+  console.error(`Invalid --engine=${raw}; expected one of pi|legacy|both.`);
+  process.exit(2);
+}
+const selectedEngines = rawEngine !== null ? resolveEngines(rawEngine) : [];
+// A single browser context carries one engine; `both` is a planning-only concept
+// here (the paired Python runner drives real pairing). Live runs use the first
+// concrete engine when exactly one is selected.
+const liveEngineHeader = selectedEngines.length === 1 ? selectedEngines[0] : null;
+
+if (dryRun) {
+  const plan = selectedEngines.length ? selectedEngines : ["(default)"];
+  console.log("[dry-run] Istara simulation harness — no browser or services launched.");
+  console.log(`[dry-run] scenario: ${singleScenario || "all"}`);
+  for (const engine of plan) {
+    const header =
+      engine === "(default)"
+        ? "(engine header unset — dispatcher default)"
+        : `${AGENT_ENGINE_HEADER}: ${engine}`;
+    console.log(`[dry-run] engine=${engine} -> ${header}`);
+  }
+  process.exit(0);
+}
 
 function parsePositiveInteger(value, fallback, label) {
   if (value === undefined || value === null || value === "") return fallback;
@@ -774,6 +813,7 @@ async function main() {
   startCaffeinate();
 
   // Launch browser with generous timeouts so nothing times out prematurely
+  const { chromium } = await import("playwright");
   const browser = await chromium.launch({
     headless,
     args: [
@@ -786,7 +826,15 @@ async function main() {
   const context = await browser.newContext({
     viewport: DESKTOP_VIEWPORT,
     colorScheme: "dark",
+    // Thread the selected benchmark engine onto every frontend-originated API
+    // request (benchmark task B0-2); unset means the dispatcher default engine.
+    ...(liveEngineHeader
+      ? { extraHTTPHeaders: { [AGENT_ENGINE_HEADER]: liveEngineHeader } }
+      : {}),
   });
+  if (liveEngineHeader) {
+    console.log(`Simulation engine: ${AGENT_ENGINE_HEADER}=${liveEngineHeader}`);
+  }
   await context.grantPermissions(["microphone"], { origin: new URL(FRONTEND).origin }).catch(() => {});
   context.setDefaultTimeout(PLAYWRIGHT_ACTION_TIMEOUT_MS);
   context.setDefaultNavigationTimeout(PLAYWRIGHT_NAV_TIMEOUT_MS);

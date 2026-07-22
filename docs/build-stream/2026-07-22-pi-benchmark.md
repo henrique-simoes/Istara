@@ -6,13 +6,13 @@ item: pi-benchmark
 branch: Review_pi_test
 cf: { spec: CF-SPEC-8 }
 phase: "Execution phase"
-stage: S4-remediate
+stage: S2-execute
 status: in-progress
-blocked_on: "one delta re-review of FIX-pi-eval-REVIEW-r1"
+blocked_on: null
 authored_by: henrique-simoes
 grounding: "Based on 2026-07-20-pi-full-replacement-master-plan.md Section 10"
-last: {agent: gpt-5.6-luna, at: 2026-07-22T15:37:11Z, ledger: L-12}
-next_action: "conductor spawns the delta re-review for FIX-pi-eval-REVIEW-r1, then B0-2..B0-8 follow-ups"
+last: {agent: claude-opus-4-8, at: 2026-07-22T17:03:04Z, ledger: L-14}
+next_action: "B0-2..B0-8 + B1-1 offline asset layer implemented; ready for code review. B2+ (live T2/T3) owner-gated behind G1/G2."
 ```
 <!-- /STATUS BLOCK -->
 
@@ -433,8 +433,8 @@ approvals (G1/G2) are recorded as CF evidence with the in-chat approval quoted.
 
 | ID | Severity | Where | Finding | CF task | Status |
 |----|----------|-------|---------|---------|--------|
-| F-1 | Major | comparison-Istara-pi/metrics-schema.json (`metrics.spine_phase`) | 10-phase spine taxonomy (intent, context, plan, tool_selection, execution, recovery, grounding, synthesis, review, governance) not pinned; master plan §5.5 citation of metrics-schema.json:39-50 dangles; typo'd phase keys validate | FIX-pi-eval-REVIEW-r1 | fixed |
-| F-2 | Minor | comparison-Istara-pi/metrics-schema.json (`metrics.additionalProperties`) | open axis-key set accepts typo'd axis names (e.g. tool_cal ling); inconsistent with strict top level + extensions escape hatch | FIX-pi-eval-REVIEW-r1 | fixed |
+| F-1 | Major | comparison-Istara-pi/metrics-schema.json (`metrics.spine_phase`) | 10-phase spine taxonomy (intent, context, plan, tool_selection, execution, recovery, grounding, synthesis, review, governance) not pinned; master plan §5.5 citation of metrics-schema.json:39-50 dangles; typo'd phase keys validate | FIX-pi-eval-REVIEW-r1 | verified (REREV pass, L-13) |
+| F-2 | Minor | comparison-Istara-pi/metrics-schema.json (`metrics.additionalProperties`) | open axis-key set accepts typo'd axis names (e.g. tool_cal ling); inconsistent with strict top level + extensions escape hatch | FIX-pi-eval-REVIEW-r1 | verified (REREV pass, L-13) |
 
 ## Decision log
 
@@ -464,3 +464,15 @@ Did: remediated F-1 and F-2 in comparison-Istara-pi/metrics-schema.json and test
 Result: F-1 and F-2 fixed under FIX-pi-eval-REVIEW-r1; optional axis blocks remain compatible while unknown phase and axis keys are rejected.
 Verified: `git diff --check` passed; `python -m json.tool comparison-Istara-pi/metrics-schema.json` passed; `backend/.venv/bin/python -m pytest tests/pi_benchmark/ -q` → 23 passed; `backend/.venv/bin/python -m pytest tests/pi_migration/test_count_to_zero.py -q` → 3 passed; post-change gate recorded inherited `secret_flow`/`unexpected_large_files` failures and no task-scope contract/import/dependency drift.
 Next: conductor spawns the delta re-review for FIX-pi-eval-REVIEW-r1.
+
+### L-13 | 2026-07-22T16:01:00Z | S3-review | kimi-code/k3 | reviewer | Execution phase <!-- bsc-ledger:REREV-pi-eval-REVIEW-r1 -->
+Did: delta re-review of FIX-pi-eval-REVIEW-r1 (commit df45b8a1) against findings F-1/F-2 only — no full-review repeat. Verified the schema diff (metrics.additionalProperties true→false; spine_phase now enumerates the 10 phases intent/context/plan/tool_selection/execution/recovery/grounding/synthesis/review/governance, each number|null, additionalProperties:false), the three new contract tests (full-taxonomy positive, typo-phase negative `syntesis`, typo-axis negative `tool_cal ling`), and the immediate seams (golden fixture uses only valid axis keys; `tests/pi_benchmark/schema.py` validator covered by the suite; README references intact). Re-ran the fixer's verification and added a direct probe re-running the original finding's typo payloads.
+Result: verdict **PASS** — both findings closed, 0 corrections. F-1: typo spine_phase keys now rejected, full 10-phase block validates; the schema is now the executable source of truth for the taxonomy. F-2: unknown axis keys rejected; forward-compat preserved via top-level `extensions`. Non-blocking observation: master plan §5.5 (:549) still cites `metrics-schema.json:39-50`; phases now live at :176-192 — pre-existing doc line-nit, not fix-induced, recommend a one-line touch-up in a future B0-x task. Untracked worktree files (debug_rereview.py, fix_payload.py, pi-eval-plan-b.md, recipe.toml mod) are outside the fix commit and were left untouched. REREV-pi-eval-REVIEW-r1
+Verified: `git diff --check && python -m json.tool comparison-Istara-pi/metrics-schema.json && backend/.venv/bin/python -m pytest tests/pi_benchmark/ -q` → 23 passed; `backend/.venv/bin/python -m pytest tests/pi_migration/test_count_to_zero.py -q` → 3 passed; probe → typo spine_phase False / typo axis False / full 10-phase True. CF evidence rows 1289-1292 (2×command, review_verdict=pass, self_report).
+Next: no finding tasks created (pass); conductor proceeds with B0-2..B0-8 follow-ups per the winning plan.
+
+### L-14 | 2026-07-22T17:03:04Z | S2-execute | claude-opus-4-8 | executor | Execution phase <!-- bsc-ledger:pi-eval-B0-2-B1-final2 -->
+Did: implemented the winning-plan **B0-2 … B0-8 offline asset layer + B1-1 contract execution** as strictly additive, tier-T0-safe apparatus (no product/security-sensitive source touched). New under `tests/pi_benchmark/`: `runner.py` (B0-4 paired runner — one record per `scenario×seed×engine`, mandatory `--tier`, offline model-free T0/T1 driver, **fail-closed owner gate for T2/T3**, per-record schema validation, manifest, RSS sampler, order-alternation); `scenarios/` (B0-5 — `canonical` re-hosts the 15 production-contract ids via an AST literal read of `test_scenario_coverage_map.COVERAGE`, `spine`/`a2a` behavioural packs `min_tier=T2`); `feature_criteria.py` (B0-6 — compiles all 86 `docs/features/inventory.json` features into axis-2 auto/manual criteria, none skipped); `judge.py` (B0-7 — judge≠DUT, blind + deterministic position-swap, rubric bank, `(scenario,run,rubric_version,judge_model)` cache, sha256-logged prompts, injected `judge_fn`); `probes/` (B0-8 — pure axis-9 scorers: protected-block survival, persona compliance, thinking-leak, injection resistance); 7 new test modules. B0-2: verified the pre-existing `--engine/--dry-run/--plan-only` plumbing in both node harnesses. B0-3: fixed `tests/benchmarks/long_horizon_runner.py` chunk-count-as-tokens bug (`:138 total_tokens += 1`) with a pure, tested `extract_total_tokens()` reading provider-reported usage (legacy per-dispatch capture already exists via `AgenticDispatcher`/`usage_ledger.build_usage_row`, W1). B1-1: canonical × both engines × T0/T1 baseline materialised to `.results/runs/b1-{t0,t1}` (gitignored). Updated `tests/pi_benchmark/README.md`.
+Result: acceptance A1/A2/A3/A4/A5/A6 met at tier T0/T1; A2 (dry-run engine plumbing) and A5 (15 canonical × both × T0/T1 schema-valid, 0 unfiled not_runnable, stable outcome classes across seed repeats) verified. B2-B4 + live T2/T3 driver/judge-wiring/report generator remain **owner-gated behind G1/G2** and are explicit non-goals here (AGENTS.md live-model rule). Security benchmark gate NOT triggered — the diff touches no LLM-provider/registry/telemetry product code (the plan's §5 gate was tied to a registry telemetry edit that was deliberately not made). pi-eval-B0-2-B1-final2
+Verified: `backend/.venv/bin/python -m pytest tests/pi_benchmark/ -q` → 64 passed; `... tests/pi_migration/test_count_to_zero.py -q` → 3 passed (ratchet 0, A4); `... tests/pi_production/test_scenario_coverage_map.py -q` → 1 passed (canonical-pack contract source); `node tests/simulation/run.mjs --engine pi|legacy --scenario 05-chat-interaction --dry-run` → exit 0, resolved `x-istara-agent-engine` header; `node tests/real_user_benchmark/run.mjs --engine both --plan-only` → exit 0, both engine plans; runner CLI T0+T1 → 90+90 schema-valid records; T2 without gate → refused (exit 3); `git diff --check` clean.
+Next: stage exit — ready for independent code review of the B0-2..B0-8 + B1-1 diff; conductor spawns the reviewer, then owner gate G1 before any B2 (T2) run.
