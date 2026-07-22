@@ -10,7 +10,6 @@ from __future__ import annotations
 import asyncio
 import json
 import types
-from pathlib import Path
 
 import pytest
 
@@ -238,6 +237,27 @@ def test_dispatch_unit_moa_rejects_an_unapproved_served_route():
             unit=_unit(moa_mode="self_moa"), tier="T3", prompt="hello", moa_n=1,
             agentic_module=FakeAgentic(),
         ))
+
+
+def test_unapproved_route_is_recorded_without_live_provenance(tmp_path):
+    route_error = live_driver.RouteAdmissionError(
+        "benchmark route not approved: 'pi-local-ollama'",
+        route={
+            "endpoint_id": "pi-local-ollama",
+            "route_kind": "agentic_ensemble",
+            "admission": "rejected",
+        },
+    )
+
+    async def dispatch(**kwargs):
+        raise route_error
+
+    record = _run(tmp_path, dispatch=dispatch)
+    assert record["status"] == "not_runnable"
+    assert record["provenance"]["model_id"] is None
+    assert record["provenance"]["endpoint_fingerprint"] is None
+    assert record["extensions"]["detail"] == {"reason": "route_admission_failed"}
+    assert record["extensions"]["route_evidence"][0]["admission"] == "rejected"
 
 
 # ── run_live_unit end-to-end ────────────────────────────────────────────────
