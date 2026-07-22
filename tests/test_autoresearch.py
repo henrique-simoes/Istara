@@ -208,13 +208,14 @@ async def test_start_autoresearch_calls_engine_with_runner_and_clamped_iteration
         def __init__(self):
             self.calls = []
 
-        async def run_loop(self, *, runner, target, max_iterations, project_id):
+        async def run_loop(self, *, runner, target, max_iterations, project_id, engine):
             self.calls.append(
                 {
                     "runner": runner,
                     "target": target,
                     "max_iterations": max_iterations,
                     "project_id": project_id,
+                    "engine": engine,
                 }
             )
 
@@ -232,17 +233,20 @@ async def test_start_autoresearch_calls_engine_with_runner_and_clamped_iteration
                 "target": "analysis",
                 "max_iterations": 10,
                 "project_id": project_id,
+                "engine": "legacy",
             },
         )
 
     assert response.status_code == 200
     assert response.json()["max_iterations"] == 3
+    assert response.json()["engine"] == "legacy"
     assert fake_engine.calls == [
         {
             "runner": fake_runner,
             "target": "analysis",
             "max_iterations": 3,
             "project_id": project_id,
+            "engine": "legacy",
         }
     ]
 

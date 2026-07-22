@@ -2,20 +2,30 @@
 """Loop 6: Model/Temperature Grid Search.
 
 The simplest loop — no code mutation, just point evaluation.  Systematically
-tests (model, temperature) combinations for each skill and records quality
+tests (endpoint, temperature) combinations for each skill and records quality
 metrics to the model_skill_stats table.  The best combo is persisted to
 ``data/_skill_model_config.json``.
+
+Under the ``agentic_core`` engine the sweep space is the **PiModelManager
+catalog** (master plan §8 W6): each catalog row is a distinct endpoint identity,
+so two rows that serve the same model stay separate and every candidate is
+resolved/pinned by exact ``endpoint_id`` through grid, mutation, dispatch, and
+the recorded stat evidence — never collapsed to a unique model name.  Projected
+``LLMServer`` rows are included (read-only, no live model loading) and a catalog
+that spans fewer distinct endpoints than the requested sweep width is recorded
+``sweep_truncated`` rather than silently narrowed.  The legacy ``llm_router``
+engine keeps its model-name sweep unchanged (``endpoint_id`` is ``None``).
 """
 
 from __future__ import annotations
 
 import json
 import logging
+from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Awaitable, Callable
 
-from app.config import settings
 from app.core.autoresearch_runners import BaseLoopRunner
 
 logger = logging.getLogger(__name__)
@@ -23,110 +33,174 @@ logger = logging.getLogger(__name__)
 TEMPERATURES = [0.1, 0.3, 0.5, 0.7, 0.9]
 CONFIG_PATH = Path("data/_skill_model_config.json")
 
+# A cross-endpoint sweep needs at least this many distinct catalog identities to
+# be non-degenerate; a catalog narrower than this is recorded ``sweep_truncated``
+# against the requested endpoint width (master plan §8 W6).
+DEFAULT_REQUESTED_ENDPOINT_WIDTH = 2
+
+
+@dataclass(frozen=True)
+class SweepEndpoint:
+    """One distinct sweep identity: an exact Pi endpoint (``endpoint_id``) plus
+    the model it serves.  On the legacy engine ``endpoint_id`` is ``None`` and
+    only ``model`` is meaningful."""
+
+    endpoint_id: str | None
+    model: str
+
+
+@dataclass(frozen=True)
+class SweepCandidate:
+    """One point in the (endpoint, temperature) grid.
+
+    ``endpoint_id`` pins the exact PiModelManager catalog identity on the Pi
+    engine so same-model endpoints never collapse; it is ``None`` on the legacy
+    engine, where dispatch resolves by model name only."""
+
+    endpoint_id: str | None
+    model: str | None
+    temperature: float
+
 
 class ModelTempRunner(BaseLoopRunner):
-    """Grid-search over (model, temperature) for a given skill."""
+    """Grid-search over (endpoint, temperature) for a given skill."""
 
     loop_type = "model_temp"
     needs_persona_lock = False
 
     def __init__(self) -> None:
-        self._current_model: str | None = None
-        self._current_temp: float = 0.7
-        self._tested: set[tuple[str, float]] = set()
-        self._grid: list[tuple[str, float]] = []
+        self._current: SweepCandidate | None = None
+        # Key already-tested cells by exact identity so same-model endpoints are
+        # tracked independently: (endpoint_id, model, temperature).
+        self._tested: set[tuple[str | None, str | None, float]] = set()
+        self._grid: list[SweepCandidate] = []
         self._grid_index = 0
-        # True when the Pi-engine sweep could not span at least two distinct
-        # endpoints (master plan §8 W6: fewer available endpoints than the
-        # requested width is recorded, never silently narrowed).
+        # The requested endpoint width the sweep wants to span; a catalog with
+        # fewer distinct endpoints is recorded truncated (master plan §8 W6).
+        self._requested_endpoint_width: int = DEFAULT_REQUESTED_ENDPOINT_WIDTH
+        # True when the Pi-engine sweep could not span the requested number of
+        # distinct endpoints (recorded, never silently narrowed).
         self._sweep_truncated: bool = False
 
     # ------------------------------------------------------------------
     # Grid construction
     # ------------------------------------------------------------------
 
-    async def _build_grid(self) -> list[tuple[str, float]]:
-        """Build the (model, temperature) grid from available models.
+    async def _build_grid(self) -> list[SweepCandidate]:
+        """Build the (endpoint, temperature) grid from available endpoints.
 
         Under the ``agentic_core`` engine the sweep space is the PiModelManager
         catalog (settings endpoints + projected LLMServer rows + local
-        Ollama/LM Studio entries), so the sweep is not degenerate with a single
-        endpoint; otherwise it is the legacy ``llm_router`` model list. When the
-        Pi catalog cannot span at least two distinct models the sweep is flagged
-        ``sweep_truncated`` rather than silently narrowed (master plan §8 W6).
+        Ollama/LM Studio entries) with exact endpoint identities preserved, so
+        the sweep is not degenerate with a single endpoint and same-model
+        endpoints stay distinct; otherwise it is the legacy ``llm_router`` model
+        list.  When the Pi catalog cannot span the requested endpoint width the
+        sweep is flagged ``sweep_truncated`` rather than silently narrowed
+        (master plan §8 W6).
         """
         self._sweep_truncated = False
-        if settings.agentic_core:
-            model_names = self._pi_sweep_models()
+        if self.use_pi_engine():
+            endpoints = await self._pi_sweep_endpoints()
         else:
-            model_names = await self._legacy_sweep_models()
+            endpoints = await self._legacy_sweep_endpoints()
 
-        if not model_names:
+        if not endpoints:
             return []
 
-        grid: list[tuple[str, float]] = []
-        for model in model_names:
+        grid: list[SweepCandidate] = []
+        for ep in endpoints:
             for temp in TEMPERATURES:
-                if (model, temp) not in self._tested:
-                    grid.append((model, temp))
+                if (ep.endpoint_id, ep.model, temp) not in self._tested:
+                    grid.append(SweepCandidate(ep.endpoint_id, ep.model, temp))
         return grid
 
-    async def _legacy_sweep_models(self) -> list[str]:
-        """Distinct non-embedding model names from the legacy llm_router pool."""
+    async def _legacy_sweep_endpoints(self) -> list[SweepEndpoint]:
+        """Distinct non-embedding model names from the legacy llm_router pool.
+
+        The legacy engine has no endpoint identity, so each candidate carries
+        ``endpoint_id=None`` and dispatches by model name only (behavior
+        unchanged from before the Pi migration).
+        """
         from app.core.llm_router import llm_router
 
         models_raw = await llm_router.list_models()
-        model_names: list[str] = []
+        endpoints: list[SweepEndpoint] = []
+        seen: set[str] = set()
         for m in models_raw:
             name = m.get("name", "")
             # Skip embedding models
             if "embed" in name.lower():
                 continue
-            if name and name not in model_names:
-                model_names.append(name)
+            if name and name not in seen:
+                seen.add(name)
+                endpoints.append(SweepEndpoint(endpoint_id=None, model=name))
 
-        if not model_names:
+        if not endpoints:
             logger.warning("ModelTempRunner: no models available from llm_router")
-        return model_names
+        return endpoints
 
-    def _pi_sweep_models(self) -> list[str]:
-        """Distinct non-embedding models from the PiModelManager catalog.
+    async def _pi_sweep_endpoints(self) -> list[SweepEndpoint]:
+        """Distinct non-embedding endpoint identities from the PiModelManager catalog.
 
-        The catalog carries exact endpoint identities (settings + projected
-        LLMServer rows + local Ollama/LM Studio), which is the sweep space on
-        the Pi engine.  A sweep that cannot span at least two distinct models is
-        recorded as ``sweep_truncated`` so the narrower run is never silent.
+        Each catalog row is one exact-identity endpoint (settings + projected
+        ``LLMServer`` rows + local Ollama/LM Studio).  Identities are preserved,
+        never collapsed to unique model names, so two endpoints that serve the
+        same model stay separate and are resolved/pinned by exact
+        ``endpoint_id`` at dispatch.  Persisted ``LLMServer`` rows are projected
+        read-only via ``ensure_db_projection`` (identity only — never a live
+        model load).  A catalog spanning fewer distinct endpoints than the
+        requested sweep width is recorded ``sweep_truncated``.
         """
         from app.core.pi_runtime.model_manager import PiModelManager
 
-        model_names: list[str] = []
         try:
-            catalog = PiModelManager().catalog()
+            manager = PiModelManager()
+            # Project persisted LLMServer rows into the catalog before sweeping.
+            # This is a read-only DB projection of endpoint identities; it never
+            # connects to a server or loads a model.
+            projection = getattr(manager, "ensure_db_projection", None)
+            if callable(projection):
+                await projection()
+            catalog = manager.catalog()
         except Exception as e:  # pragma: no cover - catalog construction guard
             logger.warning("ModelTempRunner: PiModelManager catalog unavailable: %s", e)
             self._sweep_truncated = True
             return []
 
+        endpoints: list[SweepEndpoint] = []
+        seen_ids: set[str] = set()
         for info in catalog:
-            name = (info.model or "").strip()
-            # Skip embedding models
-            if not name or "embed" in name.lower():
+            endpoint_id = (getattr(info, "endpoint_id", "") or "").strip()
+            model = (getattr(info, "model", "") or "").strip()
+            # Skip embedding endpoints (never a chat-sweep candidate).
+            if not model or "embed" in model.lower():
                 continue
-            if name not in model_names:
-                model_names.append(name)
+            # Preserve exact identity; only guard against a missing/duplicate id.
+            if not endpoint_id or endpoint_id in seen_ids:
+                continue
+            seen_ids.add(endpoint_id)
+            endpoints.append(SweepEndpoint(endpoint_id=endpoint_id, model=model))
 
-        if not model_names:
-            logger.warning("ModelTempRunner: no models available from PiModelManager catalog")
-            self._sweep_truncated = True
-        elif len(model_names) < 2:
-            # A one-endpoint sweep cannot compare models across the pool.
+        self._record_endpoint_width(len(endpoints))
+        return endpoints
+
+    def _record_endpoint_width(self, available: int) -> None:
+        """Flag ``sweep_truncated`` when the catalog spans fewer distinct
+        endpoints than the requested sweep width (never silently narrowed)."""
+        if available == 0:
             logger.warning(
-                "ModelTempRunner: sweep_truncated — Pi catalog spans only %d model(s); "
-                "the sweep is degenerate for cross-model comparison",
-                len(model_names),
+                "ModelTempRunner: no models available from PiModelManager catalog"
             )
             self._sweep_truncated = True
-        return model_names
+        elif available < self._requested_endpoint_width:
+            logger.warning(
+                "ModelTempRunner: sweep_truncated — Pi catalog spans %d distinct "
+                "endpoint(s), fewer than the requested sweep width %d; the sweep "
+                "cannot compare across the requested endpoint pool",
+                available,
+                self._requested_endpoint_width,
+            )
+            self._sweep_truncated = True
 
     # ------------------------------------------------------------------
     # BaseLoopRunner interface
@@ -137,18 +211,28 @@ class ModelTempRunner(BaseLoopRunner):
         self._tested.clear()
         self._grid = await self._build_grid()
         self._grid_index = 0
-        return await self._evaluate_skill(target, model=None, temperature=0.7)
+        return await self._evaluate_skill(
+            target, endpoint_id=None, model=None, temperature=0.7
+        )
 
     async def measure(self, target: str) -> float:
-        """Execute skill with the current test model/temp."""
+        """Execute skill with the current test endpoint/temp."""
+        candidate = self._current
+        if candidate is None:
+            return await self._evaluate_skill(
+                target, endpoint_id=None, model=None, temperature=0.7
+            )
         return await self._evaluate_skill(
-            target, model=self._current_model, temperature=self._current_temp
+            target,
+            endpoint_id=candidate.endpoint_id,
+            model=candidate.model,
+            temperature=candidate.temperature,
         )
 
     async def hypothesize(
         self, target: str, current_score: float, history: list[dict]
     ) -> tuple[str, dict]:
-        """Pick next (model, temperature) from grid, skipping already-tested combos."""
+        """Pick next (endpoint, temperature) from grid, skipping tested combos."""
         # Rebuild grid if exhausted (shouldn't happen in normal flow)
         if self._grid_index >= len(self._grid):
             self._grid = await self._build_grid()
@@ -156,24 +240,37 @@ class ModelTempRunner(BaseLoopRunner):
             if not self._grid:
                 raise RuntimeError("All model/temperature combos exhausted")
 
-        model, temp = self._grid[self._grid_index]
+        candidate = self._grid[self._grid_index]
         self._grid_index += 1
 
-        hypothesis = f"Test model={model} temperature={temp} on skill '{target}'"
+        identity = candidate.endpoint_id or candidate.model or "default"
+        hypothesis = (
+            f"Test endpoint={identity} model={candidate.model} "
+            f"temperature={candidate.temperature} on skill '{target}'"
+        )
         mutation = {
-            "description": f"model={model}, temp={temp}",
-            "model": model,
-            "temperature": temp,
+            "description": (
+                f"endpoint={identity}, model={candidate.model}, "
+                f"temp={candidate.temperature}"
+            ),
+            "endpoint_id": candidate.endpoint_id,
+            "model": candidate.model,
+            "temperature": candidate.temperature,
         }
         return hypothesis, mutation
 
     async def apply_mutation(
         self, target: str, mutation: dict
     ) -> Callable[[], Awaitable[None]]:
-        """Set current model/temp for evaluation. Revert is a no-op for point evals."""
-        self._current_model = mutation["model"]
-        self._current_temp = mutation["temperature"]
-        self._tested.add((self._current_model, self._current_temp))
+        """Set current endpoint/temp for evaluation. Revert is a no-op for point evals."""
+        self._current = SweepCandidate(
+            endpoint_id=mutation.get("endpoint_id"),
+            model=mutation["model"],
+            temperature=mutation["temperature"],
+        )
+        self._tested.add(
+            (self._current.endpoint_id, self._current.model, self._current.temperature)
+        )
 
         async def _noop_revert() -> None:
             pass
@@ -187,10 +284,17 @@ class ModelTempRunner(BaseLoopRunner):
     async def _evaluate_skill(
         self,
         skill_name: str,
-        model: str | None,
-        temperature: float,
+        *,
+        endpoint_id: str | None = None,
+        model: str | None = None,
+        temperature: float = 0.7,
     ) -> float:
-        """Execute a skill once and return a quality score in [0, 1]."""
+        """Execute a skill once and return a quality score in [0, 1].
+
+        On the Pi engine the swept candidate is pinned by exact ``endpoint_id``
+        (``TurnParams.endpoint_id``) so the dispatcher resolves the precise
+        catalog identity rather than the first model match.
+        """
         from app.core.llm_router import llm_router
         from app.skills.skill_manager import skill_manager
 
@@ -218,10 +322,12 @@ class ModelTempRunner(BaseLoopRunner):
         ]
 
         try:
-            if settings.agentic_core:
+            if self.use_pi_engine():
                 # W6: the candidate skill run goes through the AgenticDispatcher
-                # (``autoresearch.model_temp.evaluate``); the legacy branch below
-                # is preserved for agentic_core=False.
+                # (``autoresearch.model_temp.evaluate``); the swept candidate is
+                # pinned by exact ``endpoint_id`` so same-model endpoints are
+                # resolved distinctly. The legacy branch below is preserved for
+                # agentic_core=False.
                 from app.core.agentic import agentic
                 from app.core.agentic.types import TurnParams
 
@@ -230,7 +336,11 @@ class ModelTempRunner(BaseLoopRunner):
                     project_id=self.require_project_id(),
                     system=messages[0]["content"],
                     messages=messages[1:],
-                    params=TurnParams(model=model, temperature=temperature),
+                    params=TurnParams(
+                        endpoint_id=endpoint_id,
+                        model=model,
+                        temperature=temperature,
+                    ),
                     spine_phase="execution",
                 )
                 content = outcome.text
@@ -246,12 +356,29 @@ class ModelTempRunner(BaseLoopRunner):
         # Score the output quality via LLM self-evaluation
         score = await self._score_output(content, skill_name)
 
-        # Record to model_skill_stats
+        # Record to model_skill_stats under the exact swept identity so
+        # same-model endpoints do not collapse in the stat evidence.
         await self._record_stats(
-            skill_name, model or "default", temperature, score
+            skill_name,
+            self._stat_identity(model, endpoint_id),
+            temperature,
+            score,
         )
 
         return score
+
+    @staticmethod
+    def _stat_identity(model: str | None, endpoint_id: str | None) -> str:
+        """The model_skill_stats key that preserves endpoint identity.
+
+        On the Pi engine two endpoints serving the same model stay distinct
+        (``<model>@<endpoint_id>``); the legacy/baseline path keeps the bare
+        model name so its stat rows are unchanged.
+        """
+        base = model or "default"
+        if endpoint_id:
+            return f"{base}@{endpoint_id}"
+        return base
 
     async def _score_output(self, output: str, skill_name: str) -> float:
         """Use LLM to score skill output quality on a 0-1 scale."""
@@ -280,7 +407,7 @@ class ModelTempRunner(BaseLoopRunner):
         ]
 
         try:
-            if settings.agentic_core:
+            if self.use_pi_engine():
                 # W6: the LLM-as-judge score goes through the AgenticDispatcher
                 # (``autoresearch.model_temp.score``); the legacy branch below is
                 # preserved for agentic_core=False.

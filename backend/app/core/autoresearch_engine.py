@@ -72,18 +72,32 @@ class AutoresearchEngine:
         target: str,
         max_iterations: int = 20,
         project_id: str = "",
+        engine: str | None = None,
     ) -> list[dict]:
         """Run the autoresearch optimization loop.
 
+        ``engine`` is the per-experiment ``pi``|``legacy`` selection resolved at
+        the ``/start`` boundary; it is bound into the runner so every migrated
+        model call routes on this selection rather than re-reading the global
+        feature flag, and it is persisted with each experiment for audit. An
+        unset value resolves from ``settings.agentic_core`` (prior behavior).
+
         Returns list of experiment results.
         """
+        from app.core.autoresearch_runners import resolve_engine
+
         project_id = await self._require_active_project_id(project_id)
         if self._running:
             raise RuntimeError("Engine already running")
 
+        resolved_engine = resolve_engine(engine)
+
         bind_project = getattr(runner, "bind_project", None)
         if callable(bind_project):
             bind_project(project_id)
+        bind_engine = getattr(runner, "bind_engine", None)
+        if callable(bind_engine):
+            bind_engine(resolved_engine)
 
         self._running = True
         self._active_project_id = project_id
@@ -151,6 +165,7 @@ class AutoresearchEngine:
                         "loop_type": runner.loop_type,
                         "target_name": target,
                         "project_id": project_id,
+                        "engine": resolved_engine,
                         "iteration": i + 1,
                         "baseline_score": best_score,
                         "research_spine_policy": dict(AUTORESEARCH_SPINE_POLICY),
@@ -387,8 +402,10 @@ class AutoresearchEngine:
                 delta=experiment.get("delta", 0),
                 kept=experiment.get("kept", False),
                 status=experiment.get("status", "failed"),
+                engine=experiment.get("engine"),
                 config_snapshot=json.dumps(
                     {
+                        "engine": experiment.get("engine"),
                         "measurement_repeats": experiment.get("measurement_repeats"),
                         "score_samples": experiment.get("score_samples"),
                         "score_stddev": experiment.get("score_stddev"),

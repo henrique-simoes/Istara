@@ -10,7 +10,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Optional
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, Request
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -49,6 +49,20 @@ class StartExperimentRequest(BaseModel):
     max_iterations: int = 20
     project_id: str = ""
     dry_run: bool = False
+    # Per-experiment engine selection threaded into the runner loop; None
+    # defaults from settings.agentic_core (W6, master plan §8).
+    engine: Optional[str] = None  # "pi" | "legacy"
+
+    @field_validator("engine")
+    @classmethod
+    def _validate_engine(cls, value: Optional[str]) -> Optional[str]:
+        """Reject any engine other than pi|legacy at the experiment boundary."""
+        if value is None:
+            return None
+        normalized = str(value).strip().lower()
+        if normalized not in ("pi", "legacy"):
+            raise ValueError("engine must be 'pi' or 'legacy'")
+        return normalized
 
 
 class ConfigUpdate(BaseModel):
@@ -610,6 +624,11 @@ async def start_experiment(
         )
 
     max_iterations = _clamp_iterations(body.max_iterations)
+    # Resolve the per-experiment engine once at the boundary (validated pi|legacy,
+    # or defaulted from settings.agentic_core) and thread it into the runner loop.
+    from app.core.autoresearch_runners import resolve_engine
+
+    resolved_engine = resolve_engine(body.engine)
     if body.dry_run:
         pi_replacement = pi_replacement_requested(request)
         if pi_replacement:
@@ -626,6 +645,7 @@ async def start_experiment(
             "target": body.target,
             "project_id": scoped_project_id,
             "max_iterations": max_iterations,
+            "engine": resolved_engine,
             "pi_replacement": pi_replacement,
             "production_mutation_allowed": False,
             "background_task_started": False,
@@ -685,6 +705,7 @@ async def start_experiment(
                 target=body.target,
                 max_iterations=max_iterations,
                 project_id=scoped_project_id,
+                engine=resolved_engine,
             )
         except Exception as exc:
             logger.error(f"Autoresearch loop failed: {exc}", exc_info=True)
@@ -697,6 +718,7 @@ async def start_experiment(
         "target": body.target,
         "project_id": scoped_project_id,
         "max_iterations": max_iterations,
+        "engine": resolved_engine,
     }
 
 

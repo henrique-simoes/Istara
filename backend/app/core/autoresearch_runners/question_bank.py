@@ -12,7 +12,6 @@ import json
 import logging
 from typing import Awaitable, Callable
 
-from app.config import settings
 from app.core.autoresearch_runners import BaseLoopRunner
 
 logger = logging.getLogger(__name__)
@@ -91,10 +90,10 @@ class QuestionBankRunner(BaseLoopRunner):
         ]
 
         try:
-            if settings.agentic_core:
+            if self.use_pi_engine():
                 # W6: the question-bank improvement goes through the
                 # AgenticDispatcher (``autoresearch.question_bank.hypothesize``);
-                # the legacy branch below is preserved for agentic_core=False.
+                # the legacy branch below is preserved for the legacy engine selection.
                 from app.core.agentic import agentic
                 from app.core.agentic.types import TurnParams
 
@@ -247,10 +246,10 @@ class QuestionBankRunner(BaseLoopRunner):
         ]
 
         try:
-            if settings.agentic_core:
+            if self.use_pi_engine():
                 # W6: the simulated-participant run goes through the
                 # AgenticDispatcher (``autoresearch.question_bank.evaluate``);
-                # the legacy branch below is preserved for agentic_core=False.
+                # the legacy branch below is preserved for the legacy engine selection.
                 from app.core.agentic import agentic
                 from app.core.agentic.types import TurnParams
 
@@ -312,10 +311,10 @@ class QuestionBankRunner(BaseLoopRunner):
         ]
 
         try:
-            if settings.agentic_core:
+            if self.use_pi_engine():
                 # W6: the elicited-response score goes through the
                 # AgenticDispatcher (``autoresearch.question_bank.score``); the
-                # legacy branch below is preserved for agentic_core=False.
+                # legacy branch below is preserved for the legacy engine selection.
                 from app.core.agentic import agentic
                 from app.core.agentic.types import TurnParams
 

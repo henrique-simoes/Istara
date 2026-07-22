@@ -72,40 +72,40 @@ product:
   - keys: ["backend/app/core/autoresearch_runners/model_temp.py:427"]
     kind: chat
     note: "ModelTempRunner._score_output — LLM-as-judge 0-1 score (W6: dispatcher path behind use_pi_engine; legacy branch preserved)"
-  - keys: ["backend/app/core/autoresearch_runners/persona.py:126"]
+  - keys: ["backend/app/core/autoresearch_runners/persona.py:125"]
     kind: chat
     note: "PersonaRunner.hypothesize — persona file mutation (W6: dispatcher path behind agentic_core; legacy branch preserved)"
-  - keys: ["backend/app/core/autoresearch_runners/persona.py:239"]
+  - keys: ["backend/app/core/autoresearch_runners/persona.py:238"]
     kind: chat
     note: "PersonaRunner._evaluate_agent — simulated UX task run (W6: dispatcher path behind agentic_core; legacy branch preserved)"
-  - keys: ["backend/app/core/autoresearch_runners/persona.py:288"]
+  - keys: ["backend/app/core/autoresearch_runners/persona.py:287"]
     kind: chat
     note: "PersonaRunner._score_response — score simulated response (W6: dispatcher path behind agentic_core; legacy branch preserved)"
-  - keys: ["backend/app/core/autoresearch_runners/question_bank.py:111"]
+  - keys: ["backend/app/core/autoresearch_runners/question_bank.py:110"]
     kind: chat
     note: "QuestionBankRunner.hypothesize — question-bank improvement (W6: dispatcher path behind agentic_core; legacy branch preserved)"
-  - keys: ["backend/app/core/autoresearch_runners/question_bank.py:267"]
+  - keys: ["backend/app/core/autoresearch_runners/question_bank.py:266"]
     kind: chat
     note: "QuestionBankRunner._evaluate_questions — simulated participant (W6: dispatcher path behind agentic_core; legacy branch preserved)"
-  - keys: ["backend/app/core/autoresearch_runners/question_bank.py:332"]
+  - keys: ["backend/app/core/autoresearch_runners/question_bank.py:331"]
     kind: chat
     note: "QuestionBankRunner._score_responses — score elicited responses (W6: dispatcher path behind agentic_core; legacy branch preserved)"
   - keys: ["backend/app/core/autoresearch_runners/rag_params.py:218"]
     kind: chat
     note: "RAGParamsRunner._llm_hypothesis — next RAG parameter change (W6: dispatcher path behind agentic_core; legacy branch preserved; embed stays legacy until W8)"
-  - keys: ["backend/app/core/autoresearch_runners/skill_prompt.py:174"]
+  - keys: ["backend/app/core/autoresearch_runners/skill_prompt.py:173"]
     kind: chat
     note: "SkillPromptRunner.hypothesize — skill prompt mutation (W6: dispatcher path behind agentic_core; legacy branch preserved)"
-  - keys: ["backend/app/core/autoresearch_runners/skill_prompt.py:287"]
+  - keys: ["backend/app/core/autoresearch_runners/skill_prompt.py:286"]
     kind: chat
     note: "SkillPromptRunner._single_eval — skill prompt on sample context (W6: dispatcher path behind agentic_core; legacy branch preserved)"
-  - keys: ["backend/app/core/autoresearch_runners/skill_prompt.py:339"]
+  - keys: ["backend/app/core/autoresearch_runners/skill_prompt.py:338"]
     kind: chat
     note: "SkillPromptRunner._score_output — score skill output (W6: dispatcher path behind agentic_core; legacy branch preserved)"
-  - keys: ["backend/app/core/autoresearch_runners/ui_sim.py:121"]
+  - keys: ["backend/app/core/autoresearch_runners/ui_sim.py:120"]
     kind: chat
     note: "UISimRunner.hypothesize — UI component a11y/UX mutation (W6: dispatcher path behind agentic_core; legacy branch preserved)"
-  - keys: ["backend/app/core/autoresearch_runners/ui_sim.py:234"]
+  - keys: ["backend/app/core/autoresearch_runners/ui_sim.py:233"]
     kind: chat
     note: "UISimRunner._evaluate_component — WCAG-style component score (W6: dispatcher path behind agentic_core; legacy branch preserved)"
   - keys: ["backend/app/core/report_manager.py:517"]
