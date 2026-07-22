@@ -723,3 +723,9 @@ Did: authored independent retake consensus plan A at docs/build-stream/plans/pi-
 Result: plan slot A ready for retake consensus judging; key audit at 3a226139: apparatus largely complete but suite is 170 passed/2 FAILED (deepseek_provider commit-exceeds-reservation seam at budget_ledger.py:277, plan gap G-1/RT-1); owner-gate check is existence-only with stale prior-lineage G1/G2 artifacts (runner.py:472-478, gap G-2/RT-2); referenced work order pi-benchmark-deepseek-moa-execution.md absent on this branch (G-3); stale Kimi-as-evaluation text remains in embedded winning plan (G-4); PI-BENCH-RETAKE-20260722-PLAN-A
 Verified: python3 -m pytest tests/pi_benchmark/ -q -> 170 passed 2 failed (documented defect); focused test_scheduler+test_budget_ledger+test_moa -> 43 passed; git diff --check clean; CF evidence rows 1489-1492 (3x command, self_report)
 Next: architects B/C finish; consensus judges vote on retake slots a/b/c; conductor pins immutable candidates and tallies
+
+### L-45 | 2026-07-22T22:45:08Z | S1-plan | gpt-5.6-sol | planner | pi-bench-retake-20260722-architect-b <!-- bsc-ledger:PI-BENCH-RETAKE-20260722-PLAN-B -->
+Did: pi-bench-retake-20260722-architect-b stage on task PI-BENCH-RETAKE-20260722-PLAN-B (harness fallback entry; the model did not append one).
+Result: task PI-BENCH-RETAKE-20260722-PLAN-B finished; worktree head 3c91b30c.
+Verified: see Compass Forge evidence rows on PI-BENCH-RETAKE-20260722-PLAN-B (command + self_report + stage_attribution).
+Next: conductor advances the pipeline on evidence.
