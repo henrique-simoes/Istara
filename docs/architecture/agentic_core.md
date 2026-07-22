@@ -63,9 +63,13 @@ Every verb records exactly one row per dispatch in the agentic usage ledger
 (`agentic/usage_ledger.py`) — success, error, abort, endpoint-resolution
 failure, and legacy-executor failure alike. The embeddings gateway never
 writes its own rows; the dispatcher's `purpose="embed"` row is the single
-accounting record. Route evidence (`endpoint_id`, route kind, outcome)
-travels with every result so the Research Spine's traceability gates can
-audit which endpoint produced which artifact.
+accounting record. Result-returning verbs expose the endpoint identity and
+status fields their typed result supports (`endpoint_id` or `endpoint_ids`);
+the `embed` verb returns vectors only. Durable route evidence lives in the
+usage row (`endpoint_id`, `node_id`, outcome) and its identity-only telemetry
+span (`route_id`), not in a presumed result envelope, so traceability can audit
+which endpoint produced a dispatch without storing prompts, responses, URLs,
+or keys.
 
 ## The count-to-zero contract (W9 final state)
 
@@ -101,10 +105,12 @@ now the only path in the 53 affected sites (A2A handlers, skills, reports,
 interview services, autoresearch runners, validation/consensus/dual-coder).
 Behavior under `engine="legacy"` is preserved by construction, because the
 legacy plane is still reached — exclusively through the dispatcher's
-permanent legacy executor. The `agentic_core` setting survives only as an
+permanent legacy executor. The `agentic_core` setting survives only as the
 engine-string default for the autoresearch subsystem
 (`autoresearch_runners/__init__.py: resolve_engine`); it no longer gates
-any code path.
+product call-site branches. Autoresearch binds an explicit `pi` or `legacy`
+choice once at experiment start, while other dispatcher callers use the
+precedence documented above.
 
 ## What the agentic core is not
 

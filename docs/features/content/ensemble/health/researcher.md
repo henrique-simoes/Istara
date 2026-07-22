@@ -43,15 +43,15 @@ Ensemble Health exists so the work represented by Ensemble Health has a stable, 
 
 ## How Validation Confidence Is Established
 
-- W7 uses the shared dispatcher for dual-run, full-ensemble, Self-MoA, adversarial review, debate, and the structured judge when the Pi feature flag is enabled. The system keeps the legacy validation path available for rollback or legacy engine selection.
+- W7's dual-run, full-ensemble, Self-MoA, adversarial review, debate, and structured-judge call sites now use the shared dispatcher unconditionally. The dispatcher resolves the selected engine; a legacy selection remains available for rollback through its permanent legacy executor.
 - Full ensemble requests carry the minimum response width plus one optional spare. The legacy route accepts exactly the minimum number of healthy distinct servers and consults the spare only when an earlier server fails; three healthy servers therefore remain a full three-response ensemble rather than degrading to dual-run. If the spare restores the minimum width, the aggregate result and usage/telemetry outcome are successful while the failed sample remains available for diagnostics.
 - “Different models” means different serving endpoint identities for independent validation. Two endpoints may serve the same model and still count as separate route identities when both are explicitly preserved; the system does not invent diversity when the required endpoints are unavailable.
 - When distinct endpoints cannot be selected, validation degrades to the documented lower-assurance path or reports unavailable/blocked. A failed judge is not a pass. These outcomes keep unvalidated work out of accepted research evidence and reports.
-- Embedding-based comparison remains on the legacy path until W8; that is an explicit migration boundary, not a missing user action.
+- W8 now routes embedding-based comparison through `agentic.embed`: Pi uses the `EmbeddingsGateway`, while legacy keeps the unchanged `ollama.embed*` plane. This preserves the vector-space and fail-closed boundaries for both engines.
 
 ## Rollback
 
-Disable the Pi feature flag or choose the legacy engine for the project to return validation calls to the preserved legacy route.
+Choose the `legacy` engine for the project (or keep the legacy global default) to return validation calls to the dispatcher's preserved legacy route. Engine selection changes the executor, not the product call-site path.
 
 ## Inputs, Outputs, And Expected Outcomes
 
