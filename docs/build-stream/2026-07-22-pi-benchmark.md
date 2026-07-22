@@ -6,13 +6,13 @@ item: pi-benchmark
 branch: Review_pi_test
 cf: { spec: CF-SPEC-8 }
 phase: "Execution phase"
-stage: S2-execute
+stage: S4-remediate
 status: in-progress
-blocked_on: "none"
+blocked_on: "FIX-pi-eval-REVIEW-r1 (F-1/F-2 schema vocabulary fixes), then one delta re-review"
 authored_by: henrique-simoes
 grounding: "Based on 2026-07-20-pi-full-replacement-master-plan.md Section 10"
-last: {agent: claude-opus-4-8, at: 2026-07-22T15:22:53Z, ledger: L-10}
-next_action: "Independent code review of pi-eval-IMPL (B0-1 schema foundation); then follow-up implementer tasks for B0-2..B0-8 and owner-gated B1-B4 execution"
+last: {agent: kimi-code/k3, at: 2026-07-22T15:33:47Z, ledger: L-11}
+next_action: "pi-eval-fixer resolves FIX-pi-eval-REVIEW-r1 (pin 10-phase spine taxonomy + close metrics axis keys); conductor spawns delta re-review, then B0-2..B0-8 follow-ups"
 ```
 <!-- /STATUS BLOCK -->
 
@@ -429,6 +429,13 @@ approvals (G1/G2) are recorded as CF evidence with the in-chat approval quoted.
 - No new product features; benchmark findings become new CF tasks, not in-scope fixes.
 - No live model loading or external spend before the corresponding owner gate.
 
+## Findings register
+
+| ID | Severity | Where | Finding | CF task | Status |
+|----|----------|-------|---------|---------|--------|
+| F-1 | Major | comparison-Istara-pi/metrics-schema.json (`metrics.spine_phase`) | 10-phase spine taxonomy (intent, context, plan, tool_selection, execution, recovery, grounding, synthesis, review, governance) not pinned; master plan §5.5 citation of metrics-schema.json:39-50 dangles; typo'd phase keys validate | FIX-pi-eval-REVIEW-r1 | open |
+| F-2 | Minor | comparison-Istara-pi/metrics-schema.json (`metrics.additionalProperties`) | open axis-key set accepts typo'd axis names (e.g. tool_cal ling); inconsistent with strict top level + extensions escape hatch | FIX-pi-eval-REVIEW-r1 | open |
+
 ## Decision log
 
 
@@ -444,3 +451,8 @@ Result: 20/20 unit tests pass; schema is a valid JSON Schema; acceptance A1 (val
 Verified: `python -m pytest tests/pi_benchmark/ -q` → 20 passed; `python -m json.tool comparison-Istara-pi/metrics-schema.json` → parses OK; `python -m pytest tests/pi_migration/test_count_to_zero.py -q` → 3 passed (ratchet 0, acceptance A4, no product-code regression). CF command+self_report evidence on pi-eval-IMPL.
 Next: stage exit — B0-1 ready for independent code review; conductor spawns follow-up implementer tasks for B0-2 (engine plumbing), B0-3 (legacy usage capture + long_horizon_runner.py:138 fix, +security gate), B0-4..B0-8, then owner-gated B1-B4.
 
+### L-11 | 2026-07-22T15:33:47Z | S3-review | kimi-code/k3 | reviewer | Execution phase <!-- bsc-ledger:pi-eval-REVIEW -->
+Did: independent code review of pi-eval-IMPL (B0-1 schema-first foundation, commit 349af3e0, 10 additive files). Reproduced the implementer's verification; probed the schema against the three master-plan citations (§5.5 :39-50 spine taxonomy, §10.2 :51-63 feature criteria_scores, §10.1.5 :121-126 paired stats). Added Findings register (F-1, F-2); created fixer task FIX-pi-eval-REVIEW-r1 (owner_role pi-eval-fixer, pipeline_run pi-eval).
+Result: verdict FAIL — F-1 Major: `metrics.spine_phase` is an open object; the 10-phase research-validity taxonomy (intent, context, plan, tool_selection, execution, recovery, grounding, synthesis, review, governance) is enumerated nowhere, so the §5.5 "already defined in metrics-schema.json:39-50" citation dangles and typo'd phase keys validate (probe: {intnet:1.0, syntesis:0.5} → is_valid True). F-2 Minor: `metrics.additionalProperties:true` accepts typo'd axis keys. Everything else passes: 20/20 unit tests reproduced, ratchet 3/3 (A4), valid Draft 2020-12 schema, axis-1 vocabulary + axis-2 criteria + paired_stats match citations, diff strictly additive, no product code touched. pi-eval-REVIEW
+Verified: `backend/.venv/bin/python -m pytest tests/pi_benchmark/ -q` → 20 passed; `python -m json.tool comparison-Istara-pi/metrics-schema.json` → parses OK; spine_phase typo-key probe → validates (the defect); `backend/.venv/bin/python -m pytest tests/pi_migration/test_count_to_zero.py -q` → 3 passed. CF evidence rows 1272-1276 (3×command, review_verdict, self_report).
+Next: pi-eval-fixer resolves F-1/F-2 on FIX-pi-eval-REVIEW-r1 (schema + test_metrics_schema.py only); conductor spawns one delta re-review after all sibling fixes are terminal, then B0-2..B0-8 follow-ups.
