@@ -66,12 +66,12 @@ product:
   - keys: ["backend/app/core/agent_lifecycle.py:1074"]
     kind: chat
     note: "AgentLifecycleMixin._handle_debate — critique of peer output (W4: dispatcher path behind agentic_core; legacy branch preserved)"
-  - keys: ["backend/app/core/autoresearch_runners/model_temp.py:238"]
+  - keys: ["backend/app/core/autoresearch_runners/model_temp.py:348"]
     kind: chat
-    note: "ModelTempRunner._evaluate_skill — skill run under candidate model/temp (W6: dispatcher path behind agentic_core; legacy branch preserved; Pi sweep space = PiModelManager catalog)"
-  - keys: ["backend/app/core/autoresearch_runners/model_temp.py:300"]
+    note: "ModelTempRunner._evaluate_skill — skill run under candidate endpoint/temp (W6: dispatcher path behind use_pi_engine; legacy branch preserved; Pi sweep space = PiModelManager catalog entries pinned by endpoint_id)"
+  - keys: ["backend/app/core/autoresearch_runners/model_temp.py:427"]
     kind: chat
-    note: "ModelTempRunner._score_output — LLM-as-judge 0-1 score (W6: dispatcher path behind agentic_core; legacy branch preserved)"
+    note: "ModelTempRunner._score_output — LLM-as-judge 0-1 score (W6: dispatcher path behind use_pi_engine; legacy branch preserved)"
   - keys: ["backend/app/core/autoresearch_runners/persona.py:126"]
     kind: chat
     note: "PersonaRunner.hypothesize — persona file mutation (W6: dispatcher path behind agentic_core; legacy branch preserved)"
@@ -90,7 +90,7 @@ product:
   - keys: ["backend/app/core/autoresearch_runners/question_bank.py:332"]
     kind: chat
     note: "QuestionBankRunner._score_responses — score elicited responses (W6: dispatcher path behind agentic_core; legacy branch preserved)"
-  - keys: ["backend/app/core/autoresearch_runners/rag_params.py:189"]
+  - keys: ["backend/app/core/autoresearch_runners/rag_params.py:218"]
     kind: chat
     note: "RAGParamsRunner._llm_hypothesis — next RAG parameter change (W6: dispatcher path behind agentic_core; legacy branch preserved; embed stays legacy until W8)"
   - keys: ["backend/app/core/autoresearch_runners/skill_prompt.py:174"]
@@ -249,7 +249,7 @@ product:
   - keys: ["backend/app/core/agent_skill_tools.py:341"]
     kind: embed
     note: "rank_skill_candidates — skill-description vectors (via embed_text)"
-  - keys: ["backend/app/core/autoresearch_runners/rag_params.py:258"]
+  - keys: ["backend/app/core/autoresearch_runners/rag_params.py:287"]
     kind: embed
     note: "RAGParamsRunner._score_single_query — retrieval eval query (via embed_text; W6: chat migrated, embed stays legacy until W8)"
   - keys: ["backend/app/core/prompt_rag.py:316"]
