@@ -6,13 +6,13 @@ item: pi-benchmark
 branch: Review_pi_test
 cf: { spec: CF-SPEC-8 }
 phase: "Replanned execution — B0 through B_N process waves"
-stage: S4-remediate
+stage: S1-plan
 status: in-progress
 blocked_on: null
 authored_by: build-stream-conductor
 grounding: "Based on 2026-07-20-pi-full-replacement-master-plan.md Section 10"
-last: {agent: claude-fable-5, at: 2026-07-22T19:42:46Z, ledger: L-30}
-next_action: "F-5 fixed; complete the sibling barrier, then run one delta re-review."
+last: {agent: gpt-5.6-sol, at: 2026-07-22T19:43:35Z, ledger: L-31}
+next_action: "Conductor tallies judge votes and advances the winning role-correction plan to implementation."
 ```
 <!-- /STATUS BLOCK -->
 
@@ -639,3 +639,9 @@ Did: consensus judge slot a — read both candidate plans (pi-bench-role-correct
 Result: plan_vote for slot c recorded (CF evidence 1405) — Plan C's line-anchored stale-Kimi audit fully verified against the file, DEC-7 content pre-specified, tests/pi_benchmark/README.md pointer in scope, explicit F-5/F-7 collision avoidance; Plan B strong on MoA requested-vs-served spec and judging barrier but unanchored audit and no README annotation; PI-BENCH-ROLE-CORRECTION-20260722-JUDGE-A
 Verified: grep -n -i kimi docs/build-stream/2026-07-22-pi-benchmark.md (all Plan C cited instances at :202,:307-312,:327-339,:357-395,:422-424,:449-452,:465-466 present); sed DEC-5/DEC-6 (judge-on-ledger and Kimi-eval contradictions confirmed); runner.py ONLY_PROVIDER/ONLY_MODEL parser.error enforcement confirmed; CF evidence rows 1404-1406 (command, plan_vote, self_report)
 Next: conductor tallies judge votes a/b/c and advances the winning plan to implementation
+
+### L-31 | 2026-07-22T19:43:35Z | S1-plan | gpt-5.6-sol | judge | pi-bench-role-correction-20260722-judge-b <!-- bsc-ledger:PI-BENCH-ROLE-CORRECTION-20260722-JUDGE-B -->
+Did: consensus judge slot b read exactly candidate plan A r1 by claude-fable-5 and candidate plan C by kimi-code/k3; compared currency, scope discipline, role reconciliation, verification, concurrency safety, and residual-debt handling. Edited only this lifecycle file for the required append and status projection.
+Result: voted for slot a on PI-BENCH-ROLE-CORRECTION-20260722-JUDGE-B (CF plan_vote evidence 1410). Plan A is newer, limits the primary correction to the lifecycle and authoritative work-order, reconciles the seven packs precisely, preserves append-only history, and explicitly isolates the DeepSeek-judge/shared-ledger code contradiction as follow-up debt; Plan C is coherent but uses an older snapshot and expands the main diff into tests/pi_benchmark/README.md.
+Verified: full reads of docs/build-stream/plans/pi-bench-role-correction-20260722-plan-a.md and docs/build-stream/plans/pi-bench-role-correction-20260722-plan-c.md passed; CF evidence rows 1408, 1410, and 1411 (command, plan_vote, self_report).
+Next: stage exit: judge-b vote and required evidence recorded; conductor tallies votes and advances the winning plan.
