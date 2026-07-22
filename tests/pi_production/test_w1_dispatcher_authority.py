@@ -311,7 +311,7 @@ async def test_real_dispatcher_legacy_full_ensemble_accepts_minimum_width(monkey
 
 @pytest.mark.asyncio
 async def test_real_dispatcher_legacy_full_ensemble_uses_optional_spare(monkeypatch):
-    """A fourth healthy server replaces a failed sample without widening the minimum."""
+    """A spare restores aggregate success while retaining the failed sample detail."""
     failed = _DistinctLegacyServer("legacy-failed", "model-failed", "", fail=True)
     servers = [
         failed,
@@ -324,24 +324,40 @@ async def test_real_dispatcher_legacy_full_ensemble_uses_optional_spare(monkeypa
         def _sorted_servers(self, **kwargs):
             return servers
 
-    async def no_op_record(**kwargs):
-        return None
+    recorded = []
+
+    async def capture_record(**kwargs):
+        recorded.append(kwargs)
 
     async def no_embeddings(texts, project_id=None):
         return []
 
     monkeypatch.setattr("app.core.llm_router.llm_router", _Router())
-    monkeypatch.setattr("app.core.agentic.dispatcher.record_agentic_usage", no_op_record)
-    monkeypatch.setattr("app.core.validation._get_embeddings", no_embeddings)
-    monkeypatch.setattr(settings, "agentic_core", True)
-    monkeypatch.setattr(settings, "agentic_engine_default", "legacy")
+    monkeypatch.setattr("app.core.agentic.dispatcher.record_agentic_usage", capture_record)
 
-    from app.core.validation import full_ensemble
+    result = await AgenticDispatcher().ensemble(
+        purpose="validation.full_ensemble",
+        project_id="p1",
+        messages=[{"role": "user", "content": "prompt"}],
+        n=4,
+        minimum_n=3,
+        distinct=True,
+        engine="legacy",
+        params=TurnParams(model="requested-model"),
+    )
 
-    result = await full_ensemble("prompt", min_responses=3, project_id="p1")
-
-    assert result.method == "full_ensemble"
-    assert result.responses == ["answer-a", "answer-b", "answer-spare"]
+    assert result.status == "success"
+    assert [sample.status for sample in result.samples] == [
+        "error", "success", "success", "success"
+    ]
+    assert [sample.text for sample in result.samples] == [
+        "", "answer-a", "answer-b", "answer-spare"
+    ]
+    assert [sample.text for sample in result.samples if sample.status == "success"] == [
+        "answer-a", "answer-b", "answer-spare"
+    ]
+    assert len(recorded) == 1
+    assert recorded[0]["outcome"]["status"] == "success"
     assert [len(server.calls) for server in servers] == [1, 1, 1, 1]
 
 

@@ -630,6 +630,18 @@ async def _ensemble(kwargs: dict[str, Any]) -> dict[str, Any]:
                     _params(kwargs), float(temperatures[index])
                 )
             samples.append(await _completion(call_kwargs))
+    # A distinct ensemble may use an optional spare: a failed early sample is
+    # preserved in ``samples`` for diagnostics, but does not make the dispatch
+    # an error once the requested minimum width has been satisfied.
+    successful = sum(
+        sample.get("status") == "success" and bool(sample.get("text"))
+        for sample in samples
+    )
+    aggregate_success = (
+        successful >= minimum_n
+        if kwargs.get("distinct")
+        else all(sample.get("status") == "success" for sample in samples)
+    )
     return {
         "samples": samples,
         "endpoint_ids": [sample.get("endpoint_id") or "legacy" for sample in samples],
@@ -647,7 +659,7 @@ async def _ensemble(kwargs: dict[str, Any]) -> dict[str, Any]:
             ],
             "turns": len(samples),
         },
-        "status": "success" if all(s.get("status") == "success" for s in samples) else "error",
+        "status": "success" if aggregate_success else "error",
     }
 
 
