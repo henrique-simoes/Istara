@@ -6,11 +6,11 @@ item: pi-full-replacement
 branch: Review_pi_test
 cf: { spec: CF-SPEC-8, tasks: [pi-full-20260720-w0-IMPL, pi-full-20260720-w0-REVIEW] }
 phase: "W7 — validation/consensus/dual-coder migration"
-stage: S4-remediate
+stage: S3-review
 status: in-progress
 blocked_on: null
-last: { agent: gpt-5.6-luna, at: 2026-07-22T05:31:54Z, ledger: L-60 }
-next_action: "Await the conductor's bounded delta re-review of fixed F-W7-R2-1."
+last: { agent: gpt-5.6-sol, at: 2026-07-22T05:36:33Z, ledger: L-61 }
+next_action: "Treat the W7 review/remediation loop as converged and advance the conductor pipeline."
 ```
 <!-- /STATUS BLOCK -->
 
@@ -930,6 +930,8 @@ review lineage has no open findings; W5 is ready for stage-exit acceptance.
 
 **Delta re-review outcome:** `REREV-pi-full-20260720-w7-REVIEW-r2` (L-59, gpt-5.6-sol) **FAILED** with one Major finding. F-W7-R1-1's exact-three acceptance is fixed and its real-dispatcher regression passes. The review broadened only to the fix's optional-spare branch because that branch is part of the cited finding: after one failed attempt and three successful responses, the dispatcher and persisted usage outcome still report `error`. W7 remains in remediation under `FIX-REREV-pi-full-20260720-w7-REVIEW-r2-optional-spare-status`.
 
+**Delta re-review outcome:** `REREV-pi-full-20260720-w7-REVIEW-r3` (L-61, gpt-5.6-sol) **PASSED** with no new findings. F-W7-R2-1 is verified closed: the real dispatcher returns aggregate `success` after an optional spare restores the required three-response width, retains the failed sample as `error` for diagnostics, and forwards the successful aggregate outcome to usage/telemetry recording. The bounded 56-test dispatcher/ledger/W7 suite, lint, diff check, and living feature-doc generation all pass; the W7 review lineage is converged.
+
 ## Summary (S5 — whole plan)
 
 Pending completion of W0–W9 and B1–B4.
@@ -1092,3 +1094,9 @@ Did: Fixed F-W7-R2-1 in `backend/app/core/agentic/legacy.py` and added the real-
 Result: F-W7-R2-1 open -> fixed under `FIX-REREV-pi-full-20260720-w7-REVIEW-r2-optional-spare-status`. Legacy distinct ensembles now define aggregate success from the required minimum width; `AgenticDispatcher` returns `status=success` and records a successful usage/telemetry outcome when the spare completes the required ensemble.
 Verified: `PYTHONPATH=backend pytest -q tests/pi_production/test_w1_dispatcher_authority.py tests/pi_production/test_w1_usage_ledger.py tests/pi_production/test_w7_validation.py` = 56 passed; `ruff check backend/app/core/agentic/legacy.py tests/pi_production/test_w1_dispatcher_authority.py` = passed; `python scripts/feature_docs.py --seed-missing --generate-site --check` = 86 features / 224 site artifacts; `git diff --check` = passed; `compass-forge gate after --task FIX-REREV-pi-full-20260720-w7-REVIEW-r2-optional-spare-status --summary` = 0 new failures, 0 actionable failures, 0 route/type/contract/generated drift (29 inherited failures remain).
 Next: stage exit: F-W7-R2-1 is fixed; await the conductor's bounded delta re-review.
+
+### L-61 | 2026-07-22T05:36:33Z | S3-review | gpt-5.6-sol | reviewer | W7 <!-- bsc-ledger:REREV-pi-full-20260720-w7-REVIEW-r3 -->
+Did: Performed only the authorized delta re-review of F-W7-R2-1 against source fix commit `9bf3efd9`, its Compass Forge evidence, and the immediately changed legacy aggregate-status, dispatcher-recording, regression-test, and Ensemble Health documentation seams. No implementation code was changed and no scope broadening was required.
+Result: verdict PASS; corrections_made=0; no new findings. The distinct legacy ensemble now declares aggregate success when non-empty successful samples satisfy `minimum_n`, while preserving the failed sample in `samples`; `AgenticDispatcher` returns that success and forwards it unchanged to usage/telemetry recording. F-W7-R2-1 remains fixed and the W7 review/remediation lineage is converged.
+Verified: `PYTHONPATH=backend pytest -q tests/pi_production/test_w1_dispatcher_authority.py tests/pi_production/test_w1_usage_ledger.py tests/pi_production/test_w7_validation.py` = 56 passed; focused real-dispatcher exact-width/optional-spare/distinct-route tests = 3 passed; `ruff check backend/app/core/agentic/legacy.py tests/pi_production/test_w1_dispatcher_authority.py` = passed; `python scripts/feature_docs.py --seed-missing --generate-site --check` = 86 features / 224 site artifacts; `git diff --check 9bf3efd9^..9bf3efd9` and current `git diff --check` = passed.
+Next: stage exit: W7 delta re-review passed with no open findings; the conductor may advance the pipeline.
