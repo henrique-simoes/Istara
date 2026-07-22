@@ -265,6 +265,7 @@ class AgenticDispatcher:
     async def ensemble(self, *, purpose: str, project_id: str, messages: list[dict[str, Any]],
                        n: int, distinct: bool = False, system: str | None = None,
                        temperatures: list[float] | None = None, params: TurnParams | None = None,
+                       minimum_n: int | None = None,
                        agent_id: str = "istara-main", engine: EngineChoice | None = None,
                        request: Any | None = None, task_id: str | None = None,
                        spine_phase: str | None = None) -> EnsembleResult:
@@ -280,7 +281,8 @@ class AgenticDispatcher:
             else:
                 outcome = await self._legacy_outcome("ensemble", purpose=purpose, project_id=project_id,
                                                      agent_id=agent_id, system=system, messages=messages,
-                                                     n=n, distinct=distinct, temperatures=temperatures, params=params)
+                                                     n=n, distinct=distinct, temperatures=temperatures,
+                                                     params=params, minimum_n=minimum_n)
         except Exception as exc:
             await self._record_failure(engine=selected, purpose=purpose, project_id=project_id,
                                        agent_id=agent_id, params=params, started=started,

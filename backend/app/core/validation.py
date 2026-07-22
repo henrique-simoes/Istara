@@ -124,6 +124,7 @@ async def _dispatch_ensemble(
     system: str = "",
     temperatures: list[float] | None = None,
     model: str | None = None,
+    minimum_n: int | None = None,
     project_id: str | None = None,
 ) -> tuple[list[str], list[dict], list[str]]:
     """W7 AgenticDispatcher ensemble branch (master plan §8 W7).
@@ -145,6 +146,7 @@ async def _dispatch_ensemble(
         n=n,
         distinct=distinct,
         temperatures=temperatures,
+        minimum_n=minimum_n,
         params=TurnParams(model=model, temperature=0.7),
         spine_phase="review",
     )
@@ -187,6 +189,7 @@ async def dual_run(
         # distinct Pi endpoints degrades to the labeled single-model
         # temperature variation, never fabricated diversity from one endpoint.
         from app.core.pi_runtime.endpoints import PiEndpointResolutionError
+        from app.core.agentic.types import AgenticDispatchError
 
         try:
             responses, route_evidence, endpoint_ids = await _dispatch_ensemble(
@@ -199,6 +202,17 @@ async def dual_run(
                 project_id=project_id,
             )
         except PiEndpointResolutionError:
+            return await self_moa(
+                prompt,
+                system=system,
+                model=model,
+                n=2,
+                project_id=project_id,
+            )
+        except AgenticDispatchError as exc:
+            if str(exc) != "insufficient_distinct_legacy_servers":
+                logger.warning("Dual-run dispatch failed: %s", exc)
+                return _empty_result("dual_run")
             return await self_moa(
                 prompt,
                 system=system,
@@ -428,6 +442,7 @@ async def full_ensemble(
         # requested degrades down the existing chain (dual_run -> self_moa),
         # never fabricated diversity from fewer endpoints.
         from app.core.pi_runtime.endpoints import PiEndpointResolutionError
+        from app.core.agentic.types import AgenticDispatchError
 
         try:
             responses, route_evidence, endpoint_ids = await _dispatch_ensemble(
@@ -435,11 +450,22 @@ async def full_ensemble(
                 messages=[{"role": "user", "content": prompt}],
                 n=min_responses + 1,
                 distinct=True,
+                minimum_n=min_responses,
                 system=system,
                 model=model,
                 project_id=project_id,
             )
         except PiEndpointResolutionError:
+            return await dual_run(
+                prompt,
+                system=system,
+                model=model,
+                project_id=project_id,
+            )
+        except AgenticDispatchError as exc:
+            if str(exc) != "insufficient_distinct_legacy_servers":
+                logger.warning("Full-ensemble dispatch failed: %s", exc)
+                return _empty_result("full_ensemble")
             return await dual_run(
                 prompt,
                 system=system,

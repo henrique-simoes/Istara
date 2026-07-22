@@ -137,25 +137,25 @@ product:
   - keys: ["backend/app/core/report_manager.py:1145"]
     kind: chat
     note: "ReportManager._compose_section — gaps/limitations section (W5: dispatcher path behind agentic_core; legacy branch preserved)"
-  - keys: ["backend/app/core/validation.py:252"]
+  - keys: ["backend/app/core/validation.py:266"]
     kind: chat
     note: "dual_run — same prompt on 2 servers for consensus (direct server.chat) (W7: dispatcher ensemble path behind agentic_core; legacy branch preserved)"
-  - keys: ["backend/app/core/validation.py:355"]
+  - keys: ["backend/app/core/validation.py:369"]
     kind: chat
     note: "adversarial_review — second model critiques first response (W7: dispatcher completion path behind agentic_core; legacy branch preserved)"
-  - keys: ["backend/app/core/validation.py:504"]
+  - keys: ["backend/app/core/validation.py:530"]
     kind: chat
     note: "full_ensemble — 3+ server ensemble consensus (direct server.chat) (W7: dispatcher ensemble path behind agentic_core; legacy branch preserved)"
-  - keys: ["backend/app/core/validation.py:601"]
+  - keys: ["backend/app/core/validation.py:627"]
     kind: chat
     note: "self_moa — temperature-variation ensemble (W7: dispatcher ensemble path behind agentic_core; legacy branch preserved)"
-  - keys: ["backend/app/core/validation.py:771"]
+  - keys: ["backend/app/core/validation.py:797"]
     kind: chat
     note: "debate_rounds — initial debate response (W7: dispatcher completion path behind agentic_core; legacy branch preserved)"
-  - keys: ["backend/app/core/validation.py:810"]
+  - keys: ["backend/app/core/validation.py:836"]
     kind: chat
     note: "debate_rounds — multi-round debate refinement (W7: dispatcher completion path behind agentic_core; legacy branch preserved)"
-  - keys: ["backend/app/core/validation_executor.py:106"]
+  - keys: ["backend/app/core/validation_executor.py:151"]
     kind: chat
     note: "ValidationExecutor._adversarial_review — LLM-as-judge on coding output (W7: dispatcher structured path behind agentic_core; legacy branch preserved + message.content bug fixed)"
   - keys: ["backend/app/services/adaptive_interview.py:325"]
@@ -239,7 +239,7 @@ product:
   - keys: ["backend/app/core/embeddings.py:90"]
     kind: embed
     note: "embed_chunks — canonical batch embed wrapper (ollama.embed_batch)"
-  - keys: ["backend/app/core/validation.py:862"]
+  - keys: ["backend/app/core/validation.py:888"]
     kind: embed
     note: "_get_embeddings — response-agreement embeddings (llm_router.embed_batch; stays legacy until W8)"
   - keys: ["backend/app/core/agent_execution.py:833"]
@@ -297,6 +297,9 @@ product:
 # count-to-zero contract names the permanent exceptions explicitly.
 # ---------------------------------------------------------------------------
 permanent:
+  - keys: ["backend/app/core/agentic/legacy.py:586"]
+    category: "legacy-engine internals"
+    note: "AgenticDispatcher legacy distinct ensemble — direct calls to each selected healthy ComputeRegistry server preserve the pre-dispatcher validation baseline"
   - keys: ["backend/app/core/compute_node_transport.py:298-333"]
     category: "donated-compute transport"
     note: "websocket request/response transport for relay/browser donors"
