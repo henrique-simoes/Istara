@@ -1,0 +1,369 @@
+"""Contract tests for the live dispatcher-path driver (Lane B).
+
+All offline: fakes for the ledger, provider, dispatch, and backend validation module —
+no backend import, no network, no keychain. Async driver entry points are exercised via
+``asyncio.run`` (no pytest-asyncio dependency).
+"""
+
+from __future__ import annotations
+
+import asyncio
+import json
+import types
+from pathlib import Path
+
+import pytest
+
+from tests.pi_benchmark import live_driver, schema
+from tests.pi_benchmark.live_driver import LiveCapture
+from tests.pi_benchmark.runner import RunConfig
+from tests.pi_benchmark.scenarios.base import Scenario
+
+pytestmark = pytest.mark.benchmark
+
+
+# ── fakes ───────────────────────────────────────────────────────────────────
+
+
+class FakeLedger:
+    """In-memory stand-in for Lane A's BudgetLedger (same call surface)."""
+
+    def __init__(self, *, fail_reserve: bool = False):
+        self._fail_reserve = fail_reserve
+        self.reserved: dict[str, float] = {}
+        self.committed: dict[str, tuple] = {}
+        self.released: dict[str, str] = {}
+
+    def reserve(self, call_id, max_cost_usd, *, kind, meta=None):
+        if self._fail_reserve:
+            raise live_driver.BudgetExceeded("cap reached")
+        self.reserved[call_id] = max_cost_usd
+
+    def commit(self, call_id, actual_cost_usd, *, usage, meta=None):
+        self.committed[call_id] = (actual_cost_usd, usage, meta)
+
+    def release(self, call_id, *, reason):
+        self.released[call_id] = reason
+        self.reserved.pop(call_id, None)
+
+    def spent_usd(self):
+        return sum(v[0] for v in self.committed.values())
+
+    def outstanding(self):
+        return {k: v for k, v in self.reserved.items() if k not in self.committed}
+
+
+class FakeProvider:
+    """DeepSeek-priced stand-in for Lane A's DeepSeekProvider."""
+
+    model = "deepseek-v4-pro"
+
+    def estimate_cost(self, input_tokens, output_tokens, cache_read_tokens=0, cache_write_tokens=0):
+        return (
+            input_tokens * 0.55 + output_tokens * 2.19
+            + cache_read_tokens * 0.14 + cache_write_tokens * 0.55
+        ) / 1e6
+
+    def endpoint_fingerprint(self):
+        return "deepseek:0123456789ab"
+
+
+def _unit(**overrides):
+    base = dict(
+        unit_id="u-1", pack="canonical", scenario_id="s1", seed=0, repeat=1,
+        engine="pi", phase="B2", moa_mode=None,
+    )
+    base.update(overrides)
+    return types.SimpleNamespace(**base)
+
+
+def _scenario():
+    return Scenario(id="s1", title="Smoke scenario", pack="canonical")
+
+
+def _config(tmp_path, **overrides):
+    base = dict(
+        packs=("canonical",), tier="T3", engines=("pi",), seeds=(0,), repeats=1,
+        phase="B2", out_dir=tmp_path,
+    )
+    base.update(overrides)
+    return RunConfig(**base)
+
+
+def _usage(inp=100, out=50, cr=10, cw=5, total=150):
+    return {
+        "input_tokens": inp, "output_tokens": out, "cache_read_tokens": cr,
+        "cache_write_tokens": cw, "total_tokens": total,
+    }
+
+
+def _capture(**overrides):
+    base = dict(
+        text="hello live world", usage=_usage(), estimate=False,
+        endpoint_ids=("pi-deepseek-default",),
+        route_evidence=({"endpoint_id": "pi-deepseek-default", "route_kind": "agentic_ensemble"},),
+        raw_method=None,
+    )
+    base.update(overrides)
+    return LiveCapture(**base)
+
+
+def _dispatch_returning(capture, calls=None):
+    async def _dispatch(*, unit, tier, prompt, system, moa_n):
+        if calls is not None:
+            calls.append({"unit": unit, "tier": tier, "prompt": prompt, "moa_n": moa_n})
+        return capture
+    return _dispatch
+
+
+def _run(tmp_path, *, unit=None, ledger=None, dispatch, config=None, **kwargs):
+    return live_driver.run_live_unit_sync(
+        unit=unit or _unit(), scenario=_scenario(), config=config or _config(tmp_path),
+        ledger=ledger or FakeLedger(), provider=FakeProvider(),
+        records_dir=tmp_path / "records", dispatch=dispatch, **kwargs,
+    )
+
+
+# ── dispatch_unit capture behaviour (injected fakes, no backend import) ─────
+
+
+def test_dispatch_unit_plain_path_uses_estimator_when_outcome_has_no_usage():
+    outcome = types.SimpleNamespace(
+        samples=[types.SimpleNamespace(text="x" * 40, usage=None, endpoint_id="ep", status="success")],
+        endpoint_ids=["ep"], usage=None,
+    )
+    seen = {}
+
+    async def ensemble_fn(**kwargs):
+        seen.update(kwargs)
+        return outcome
+
+    capture = asyncio.run(live_driver.dispatch_unit(
+        unit=_unit(), tier="T3", prompt="p" * 20, moa_n=3, ensemble_fn=ensemble_fn,
+    ))
+    assert capture.estimate is True
+    assert capture.usage["output_tokens"] == 10  # 40 chars / 4
+    assert capture.usage["input_tokens"] == 5    # 20 chars / 4
+    assert capture.raw_method is None
+    # The fake received the pinned DeepSeek params as a plain dict (no backend types).
+    assert seen["params"] == {"endpoint_id": "pi-deepseek-default", "model": "deepseek-v4-pro"}
+    assert seen["engine"] == "pi"
+    assert seen["n"] == 1 and seen["distinct"] is False
+
+
+def test_dispatch_unit_full_ensemble_requests_exactly_moa_n_slots():
+    calls = {}
+
+    class FakeValidation:
+        async def full_ensemble(self, prompt, system="", model=None, min_responses=3, project_id=None):
+            calls["min_responses"] = min_responses
+            return types.SimpleNamespace(
+                method="full_ensemble", responses=["a", "b", "c"], best_response="a",
+                consensus=types.SimpleNamespace(agreement_score=0.9, confidence="high"),
+                metadata={
+                    "endpoint_ids": ["ep-a", "ep-b", "ep-c"],
+                    "route_evidence": [{"endpoint_id": e} for e in ("ep-a", "ep-b", "ep-c")],
+                },
+            )
+
+    capture = asyncio.run(live_driver.dispatch_unit(
+        unit=_unit(moa_mode="full_ensemble"), tier="T3", prompt="hello",
+        moa_n=3, validation_module=FakeValidation(),
+    ))
+    # n = min_responses + 1 distinct endpoints -> min_responses = slots - 1 = 2 for 3 slots.
+    assert calls["min_responses"] == 2
+    assert capture.raw_method == "full_ensemble"
+    assert capture.endpoint_ids == ("ep-a", "ep-b", "ep-c")
+    # ValidationResult exposes no usage: the driver marks the chars4 estimate.
+    assert capture.estimate is True and capture.usage is not None
+
+
+# ── run_live_unit end-to-end ────────────────────────────────────────────────
+
+
+def test_ok_record_exact_usage_commit_and_atomic_write(tmp_path):
+    ledger = FakeLedger()
+    calls = []
+    record = _run(tmp_path, ledger=ledger, dispatch=_dispatch_returning(_capture(), calls))
+
+    assert record["status"] == "ok"
+    assert schema.is_valid(record)
+    usage = record["usage"]
+    assert usage["input_tokens"] == 100 and usage["output_tokens"] == 50
+    assert usage["cache_tokens"] == 15  # read + write
+    assert usage["total_tokens"] == 150
+    assert usage["estimate"] is False and usage["estimator"] is None
+    expected_cost = round(FakeProvider().estimate_cost(100, 50, 10, 5), 7)
+    assert usage["cost_usd"] == pytest.approx(expected_cost)
+
+    # Provenance: DeepSeek model id + redacted fingerprint (never a raw URL).
+    assert record["provenance"]["model_id"] == "deepseek-v4-pro"
+    fingerprint = record["provenance"]["endpoint_fingerprint"]
+    assert fingerprint.startswith("deepseek:") and "api.deepseek.com" not in fingerprint
+
+    # Ledger: reserved worst-case, committed actual, nothing outstanding.
+    assert "u-1" in ledger.reserved
+    prompt = live_driver.default_prompt_builder(_unit(), _scenario())
+    worst_case = FakeProvider().estimate_cost(live_driver._chars4(prompt), 1024)
+    assert ledger.reserved["u-1"] == pytest.approx(worst_case)
+    actual, committed_usage, meta = ledger.committed["u-1"]
+    assert actual == pytest.approx(expected_cost)
+    assert committed_usage["total_tokens"] == 150
+    assert meta == {"estimate": False}
+    assert ledger.outstanding() == {}
+
+    # Crash-safe write: final record exists, no tmp left, disk copy validates.
+    records_dir = tmp_path / "records"
+    on_disk = json.loads((records_dir / "u-1.json").read_text())
+    schema.validate_record(on_disk)
+    assert list(records_dir.glob("*.tmp")) == []
+    assert calls and calls[0]["tier"] == "T3"
+
+
+def test_estimate_path_names_the_estimator(tmp_path):
+    capture = _capture(usage=_usage(25, 10, 0, 0, 35), estimate=True)
+    record = _run(tmp_path, dispatch=_dispatch_returning(capture))
+    assert record["status"] == "ok"
+    assert record["usage"]["estimate"] is True
+    assert record["usage"]["estimator"] == "chars4"
+    assert schema.is_valid(record)
+
+
+def test_unknown_usage_after_dispatch_fails_closed_and_retains_reservation(tmp_path):
+    ledger = FakeLedger()
+    capture = _capture(text="", usage=None, estimate=False, endpoint_ids=(), route_evidence=())
+    record = _run(tmp_path, ledger=ledger, dispatch=_dispatch_returning(capture))
+    assert record["status"] == "not_runnable"
+    assert record["not_runnable_reason"] == "other"
+    assert record["extensions"]["detail"] == "unknown_usage_fail_closed"
+    assert ledger.outstanding() == {"u-1": ledger.reserved["u-1"]}  # retained
+    assert "u-1" not in ledger.committed and "u-1" not in ledger.released
+    assert schema.is_valid(record)
+
+
+def test_budget_exceeded_records_the_block_and_never_dispatches(tmp_path):
+    ledger = FakeLedger(fail_reserve=True)
+    dispatched = []
+
+    async def dispatch(**kwargs):
+        dispatched.append(kwargs)
+        return _capture()
+
+    record = _run(tmp_path, ledger=ledger, dispatch=dispatch)
+    assert record["status"] == "not_runnable"
+    assert record["not_runnable_reason"] == "budget_exceeded"
+    assert dispatched == []
+    assert schema.is_valid(record)
+
+
+def test_pre_dispatch_failure_releases_the_reservation(tmp_path):
+    ledger = FakeLedger()
+
+    async def dispatch(**kwargs):
+        raise live_driver.PreDispatchError("endpoint not admitted")
+
+    record = _run(tmp_path, ledger=ledger, dispatch=dispatch)
+    assert record["status"] == "not_runnable"
+    assert record["not_runnable_reason"] == "startup_failure"
+    assert "u-1" in ledger.released
+    assert ledger.outstanding() == {}
+
+
+def test_post_dispatch_failure_retains_the_reservation(tmp_path):
+    ledger = FakeLedger()
+
+    async def dispatch(**kwargs):
+        raise RuntimeError("provider exploded mid-flight")
+
+    record = _run(tmp_path, ledger=ledger, dispatch=dispatch)
+    assert record["status"] == "not_runnable"
+    assert record["not_runnable_reason"] == "startup_failure"
+    assert ledger.outstanding() == {"u-1": ledger.reserved["u-1"]}  # fail closed
+    assert "u-1" not in ledger.released
+
+
+def test_timeout_maps_to_the_timeout_reason_and_retains(tmp_path):
+    ledger = FakeLedger()
+
+    async def dispatch(**kwargs):
+        raise TimeoutError("slow provider")
+
+    record = _run(tmp_path, ledger=ledger, dispatch=dispatch)
+    assert record["status"] == "not_runnable"
+    assert record["not_runnable_reason"] == "timeout"
+    assert ledger.outstanding() != {}
+
+
+def test_moa_downgrade_is_recorded_not_runnable_with_evidence(tmp_path):
+    ledger = FakeLedger()
+    capture = _capture(
+        endpoint_ids=("ep-a", "ep-b"),
+        route_evidence=({"endpoint_id": "ep-a"}, {"endpoint_id": "ep-b"}),
+        raw_method="dual_run",
+    )
+    record = _run(
+        tmp_path, unit=_unit(moa_mode="full_ensemble"), ledger=ledger,
+        dispatch=_dispatch_returning(capture),
+    )
+    assert record["status"] == "not_runnable"
+    assert record["not_runnable_reason"] == "other"
+    evidence = record["extensions"]["moa"]
+    assert evidence["downgrade"] == "full_ensemble->dual_run"
+    assert evidence["degraded"] is True
+    assert evidence["requested_mode"] == "full_ensemble"
+    assert evidence["served_mode"] == "dual_run"
+    # The spend was real, so the cost is still committed.
+    assert "u-1" in ledger.committed
+    assert schema.is_valid(record)
+
+
+def test_moa_clean_self_moa_records_ok_with_evidence(tmp_path):
+    capture = _capture(
+        endpoint_ids=("pi-deepseek-default",) * 3,
+        route_evidence=tuple({"endpoint_id": "pi-deepseek-default"} for _ in range(3)),
+        raw_method="self_moa",
+    )
+    record = _run(
+        tmp_path, unit=_unit(moa_mode="self_moa"), dispatch=_dispatch_returning(capture),
+    )
+    assert record["status"] == "ok"
+    evidence = record["extensions"]["moa"]
+    assert evidence["reconciliation_status"] == "reconciled"
+    assert evidence["distinct_served_routes"] == 1
+    assert tuple(evidence["temperatures"]) == (0.3, 0.7, 1.0)
+    assert schema.is_valid(record)
+
+
+def test_resume_skips_re_dispatch_for_an_existing_record(tmp_path):
+    first = _run(tmp_path, dispatch=_dispatch_returning(_capture()))
+    assert first["status"] == "ok"
+
+    async def exploding_dispatch(**kwargs):  # pragma: no cover - must never run
+        raise AssertionError("completed unit must not re-dispatch")
+
+    second = _run(tmp_path, dispatch=exploding_dispatch)
+    assert second == first
+    assert len(list((tmp_path / "records").glob("*.json"))) == 1
+
+
+def test_record_identity_follows_the_unit_not_the_cli_phase(tmp_path):
+    # A wave's CLI --phase is only a default: a manifest unit carries its own phase,
+    # and the record identity (phase + record_id) must follow the unit so the file
+    # name, ledger call id, and record_id all agree (resume keys on the file stem).
+    unit = _unit(
+        unit_id="B1-T3-canonical-s1-seed0-r0-pi-self_moa", phase="B1",
+        repeat=0, moa_mode="self_moa",
+    )
+    capture = _capture(
+        endpoint_ids=("pi-deepseek-default",) * 3,
+        route_evidence=tuple({"endpoint_id": "pi-deepseek-default"} for _ in range(3)),
+        raw_method="self_moa",
+    )
+    record = _run(
+        tmp_path, unit=unit, dispatch=_dispatch_returning(capture),
+        config=_config(tmp_path, phase="B2"),  # CLI phase disagrees with the unit
+    )
+    assert record["phase"] == "B1"
+    assert record["record_id"] == unit.unit_id
+    assert schema.is_valid(record)
+    assert (tmp_path / "records" / f"{unit.unit_id}.json").is_file()

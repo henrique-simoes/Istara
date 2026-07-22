@@ -32,19 +32,29 @@ class JudgeIsDutError(ValueError):
 
 @dataclass(frozen=True)
 class JudgeConfig:
-    """Owner-set judge configuration (loaded from a JSON file)."""
+    """Owner-set judge configuration (loaded from a JSON file).
+
+    ``allow_dut_model`` (default False, the safe posture) permits the judge model to also
+    be a DUT model. It exists for the DeepSeek-only policy, where ``deepseek-v4-pro`` is
+    the sole approved model for BOTH roles: separation is then enforced by role, not by
+    model — judge calls run under a separate purpose (``kind="judge"``), over blind A/B
+    arms with deterministic position swap, and draw from the same budget ledger as the
+    benchmark calls. Keep the default unless that policy is in force.
+    """
 
     judge_model: str
     dut_models: frozenset[str]
     rubric_versions: dict[str, str] = field(default_factory=dict)
+    allow_dut_model: bool = False
 
     def __post_init__(self) -> None:
         if not self.judge_model:
             raise ValueError("judge_model must be set")
-        if self.judge_model in self.dut_models:
+        if self.judge_model in self.dut_models and not self.allow_dut_model:
             raise JudgeIsDutError(
                 f"judge_model {self.judge_model!r} is also a DUT model; the judge must "
-                "differ from every engine under test"
+                "differ from every engine under test (or set allow_dut_model under the "
+                "DeepSeek-only role-separation policy)"
             )
 
     @classmethod
@@ -53,6 +63,7 @@ class JudgeConfig:
             judge_model=str(data["judge_model"]),
             dut_models=frozenset(str(m) for m in data.get("dut_models", [])),
             rubric_versions=dict(data.get("rubric_versions", {})),
+            allow_dut_model=bool(data.get("allow_dut_model", False)),
         )
 
     @classmethod
