@@ -8,11 +8,11 @@ cf: { spec: CF-SPEC-8 }
 phase: "Execution phase"
 stage: S4-remediate
 status: in-progress
-blocked_on: "FIX-pi-eval-REVIEW-r1 (F-1/F-2 schema vocabulary fixes), then one delta re-review"
+blocked_on: "one delta re-review of FIX-pi-eval-REVIEW-r1"
 authored_by: henrique-simoes
 grounding: "Based on 2026-07-20-pi-full-replacement-master-plan.md Section 10"
-last: {agent: kimi-code/k3, at: 2026-07-22T15:33:47Z, ledger: L-11}
-next_action: "pi-eval-fixer resolves FIX-pi-eval-REVIEW-r1 (pin 10-phase spine taxonomy + close metrics axis keys); conductor spawns delta re-review, then B0-2..B0-8 follow-ups"
+last: {agent: gpt-5.6-luna, at: 2026-07-22T15:37:11Z, ledger: L-12}
+next_action: "conductor spawns the delta re-review for FIX-pi-eval-REVIEW-r1, then B0-2..B0-8 follow-ups"
 ```
 <!-- /STATUS BLOCK -->
 
@@ -433,8 +433,8 @@ approvals (G1/G2) are recorded as CF evidence with the in-chat approval quoted.
 
 | ID | Severity | Where | Finding | CF task | Status |
 |----|----------|-------|---------|---------|--------|
-| F-1 | Major | comparison-Istara-pi/metrics-schema.json (`metrics.spine_phase`) | 10-phase spine taxonomy (intent, context, plan, tool_selection, execution, recovery, grounding, synthesis, review, governance) not pinned; master plan §5.5 citation of metrics-schema.json:39-50 dangles; typo'd phase keys validate | FIX-pi-eval-REVIEW-r1 | open |
-| F-2 | Minor | comparison-Istara-pi/metrics-schema.json (`metrics.additionalProperties`) | open axis-key set accepts typo'd axis names (e.g. tool_cal ling); inconsistent with strict top level + extensions escape hatch | FIX-pi-eval-REVIEW-r1 | open |
+| F-1 | Major | comparison-Istara-pi/metrics-schema.json (`metrics.spine_phase`) | 10-phase spine taxonomy (intent, context, plan, tool_selection, execution, recovery, grounding, synthesis, review, governance) not pinned; master plan §5.5 citation of metrics-schema.json:39-50 dangles; typo'd phase keys validate | FIX-pi-eval-REVIEW-r1 | fixed |
+| F-2 | Minor | comparison-Istara-pi/metrics-schema.json (`metrics.additionalProperties`) | open axis-key set accepts typo'd axis names (e.g. tool_cal ling); inconsistent with strict top level + extensions escape hatch | FIX-pi-eval-REVIEW-r1 | fixed |
 
 ## Decision log
 
@@ -456,3 +456,11 @@ Did: independent code review of pi-eval-IMPL (B0-1 schema-first foundation, comm
 Result: verdict FAIL — F-1 Major: `metrics.spine_phase` is an open object; the 10-phase research-validity taxonomy (intent, context, plan, tool_selection, execution, recovery, grounding, synthesis, review, governance) is enumerated nowhere, so the §5.5 "already defined in metrics-schema.json:39-50" citation dangles and typo'd phase keys validate (probe: {intnet:1.0, syntesis:0.5} → is_valid True). F-2 Minor: `metrics.additionalProperties:true` accepts typo'd axis keys. Everything else passes: 20/20 unit tests reproduced, ratchet 3/3 (A4), valid Draft 2020-12 schema, axis-1 vocabulary + axis-2 criteria + paired_stats match citations, diff strictly additive, no product code touched. pi-eval-REVIEW
 Verified: `backend/.venv/bin/python -m pytest tests/pi_benchmark/ -q` → 20 passed; `python -m json.tool comparison-Istara-pi/metrics-schema.json` → parses OK; spine_phase typo-key probe → validates (the defect); `backend/.venv/bin/python -m pytest tests/pi_migration/test_count_to_zero.py -q` → 3 passed. CF evidence rows 1272-1276 (3×command, review_verdict, self_report).
 Next: pi-eval-fixer resolves F-1/F-2 on FIX-pi-eval-REVIEW-r1 (schema + test_metrics_schema.py only); conductor spawns one delta re-review after all sibling fixes are terminal, then B0-2..B0-8 follow-ups.
+
+## Ledger
+
+### L-12 | 2026-07-22T15:37:11Z | S4-remediate | gpt-5.6-luna | remediator | Execution phase <!-- bsc-ledger:FIX-pi-eval-REVIEW-r1 -->
+Did: remediated F-1 and F-2 in comparison-Istara-pi/metrics-schema.json and tests/pi_benchmark/test_metrics_schema.py; pinned all ten spine phases and made the metrics axis container strict.
+Result: F-1 and F-2 fixed under FIX-pi-eval-REVIEW-r1; optional axis blocks remain compatible while unknown phase and axis keys are rejected.
+Verified: `git diff --check` passed; `python -m json.tool comparison-Istara-pi/metrics-schema.json` passed; `backend/.venv/bin/python -m pytest tests/pi_benchmark/ -q` → 23 passed; `backend/.venv/bin/python -m pytest tests/pi_migration/test_count_to_zero.py -q` → 3 passed; post-change gate recorded inherited `secret_flow`/`unexpected_large_files` failures and no task-scope contract/import/dependency drift.
+Next: conductor spawns the delta re-review for FIX-pi-eval-REVIEW-r1.

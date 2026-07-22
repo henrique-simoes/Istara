@@ -138,7 +138,7 @@
     "metrics": {
       "description": "The ten owner axes (master plan §10.2). Each axis block is optional per-record (only packs that exercise an axis populate it) but its shape is defined here so downstream assets extend a shared contract. Axis 6 (tokens/cost) lives in the top-level `usage` block.",
       "type": "object",
-      "additionalProperties": true,
+      "additionalProperties": false,
       "properties": {
         "tool_calling": {
           "description": "Axis 1. Vocabulary from tests/agentic_eval_contract.json.",
@@ -176,7 +176,19 @@
         "spine_phase": {
           "description": "Axis 4. Per-phase scores over the 10-phase research-validity taxonomy.",
           "type": "object",
-          "additionalProperties": true
+          "additionalProperties": false,
+          "properties": {
+            "intent": { "type": ["number", "null"] },
+            "context": { "type": ["number", "null"] },
+            "plan": { "type": ["number", "null"] },
+            "tool_selection": { "type": ["number", "null"] },
+            "execution": { "type": ["number", "null"] },
+            "recovery": { "type": ["number", "null"] },
+            "grounding": { "type": ["number", "null"] },
+            "synthesis": { "type": ["number", "null"] },
+            "review": { "type": ["number", "null"] },
+            "governance": { "type": ["number", "null"] }
+          }
         },
         "memory_load": {
           "description": "Axis 5. Memory items/tokens per step, retrieval precision@1/recall@3, cross-session recall, worker/backend RSS.",

@@ -113,6 +113,35 @@ def test_unknown_top_level_field_is_rejected():
     assert not schema.is_valid(record)
 
 
+def test_full_spine_phase_taxonomy_validates():
+    record = _golden()
+    record["metrics"]["spine_phase"] = {
+        "intent": 1.0,
+        "context": 0.9,
+        "plan": 0.8,
+        "tool_selection": 0.7,
+        "execution": 0.6,
+        "recovery": 0.5,
+        "grounding": 0.4,
+        "synthesis": 0.3,
+        "review": 0.2,
+        "governance": None,
+    }
+    assert schema.is_valid(record)
+
+
+def test_unknown_spine_phase_is_rejected():
+    record = _golden()
+    record["metrics"]["spine_phase"] = {"syntesis": 0.5}
+    assert not schema.is_valid(record)
+
+
+def test_unknown_metrics_axis_is_rejected():
+    record = _golden()
+    record["metrics"]["tool_cal ling"] = {"tool_name_accuracy": 1.0}
+    assert not schema.is_valid(record)
+
+
 def test_negative_token_count_is_rejected():
     record = _golden()
     record["usage"]["total_tokens"] = -1
