@@ -268,14 +268,14 @@
 </ul>
 <h2 id="how-validation-confidence-is-established">How Validation Confidence Is Established</h2>
 <ul>
-<li>W7 uses the shared dispatcher for dual-run, full-ensemble, Self-MoA, adversarial review, debate, and the structured judge when the Pi feature flag is enabled. The system keeps the legacy validation path available for rollback or legacy engine selection.</li>
+<li>W7&#x27;s dual-run, full-ensemble, Self-MoA, adversarial review, debate, and structured-judge call sites now use the shared dispatcher unconditionally. The dispatcher resolves the selected engine; a legacy selection remains available for rollback through its permanent legacy executor.</li>
 <li>Full ensemble requests carry the minimum response width plus one optional spare. The legacy route accepts exactly the minimum number of healthy distinct servers and consults the spare only when an earlier server fails; three healthy servers therefore remain a full three-response ensemble rather than degrading to dual-run. If the spare restores the minimum width, the aggregate result and usage/telemetry outcome are successful while the failed sample remains available for diagnostics.</li>
 <li>“Different models” means different serving endpoint identities for independent validation. Two endpoints may serve the same model and still count as separate route identities when both are explicitly preserved; the system does not invent diversity when the required endpoints are unavailable.</li>
 <li>When distinct endpoints cannot be selected, validation degrades to the documented lower-assurance path or reports unavailable/blocked. A failed judge is not a pass. These outcomes keep unvalidated work out of accepted research evidence and reports.</li>
-<li>Embedding-based comparison remains on the legacy path until W8; that is an explicit migration boundary, not a missing user action.</li>
+<li>W8 now routes embedding-based comparison through <code>agentic.embed</code>: Pi uses the <code>EmbeddingsGateway</code>, while legacy keeps the unchanged <code>ollama.embed*</code> plane. This preserves the vector-space and fail-closed boundaries for both engines.</li>
 </ul>
 <h2 id="rollback">Rollback</h2>
-<p>Disable the Pi feature flag or choose the legacy engine for the project to return validation calls to the preserved legacy route.</p>
+<p>Choose the <code>legacy</code> engine for the project (or keep the legacy global default) to return validation calls to the dispatcher&#x27;s preserved legacy route. Engine selection changes the executor, not the product call-site path.</p>
 <h2 id="inputs-outputs-and-expected-outcomes">Inputs, Outputs, And Expected Outcomes</h2>
 <ul>
 <li>Project-scoped state or artifact updates associated with ensemble health.</li>

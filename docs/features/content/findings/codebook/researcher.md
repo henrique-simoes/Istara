@@ -56,7 +56,7 @@ Findings Codebook exists so the work represented by Findings > Codebook has a st
 
 ## Rollback And Migration Boundary
 
-Disable the Pi feature flag or select the legacy project engine to return to the preserved project-authorized coder route. Embedding dispatch remains on the legacy path until W8.
+Select the `legacy` engine for the project (or keep the legacy global default) to return coder calls to the dispatcher's permanent project-authorized legacy executor. W8 now routes embedding consumers through `agentic.embed`: legacy keeps the unchanged `ollama.embed*` plane, while Pi uses the `EmbeddingsGateway`; the codebook's structured-coder route does not change that embedding boundary.
 
 ## Caveats
 

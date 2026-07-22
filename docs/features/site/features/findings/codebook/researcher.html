@@ -280,7 +280,7 @@
 <li>Codes remain provisional until source-grounded reliability, reconciliation, and human review gates are complete. Only then may findings proceed toward accepted research evidence and reports.</li>
 </ul>
 <h2 id="rollback-and-migration-boundary">Rollback And Migration Boundary</h2>
-<p>Disable the Pi feature flag or select the legacy project engine to return to the preserved project-authorized coder route. Embedding dispatch remains on the legacy path until W8.</p>
+<p>Select the <code>legacy</code> engine for the project (or keep the legacy global default) to return coder calls to the dispatcher&#x27;s permanent project-authorized legacy executor. W8 now routes embedding consumers through <code>agentic.embed</code>: legacy keeps the unchanged <code>ollama.embed*</code> plane, while Pi uses the <code>EmbeddingsGateway</code>; the codebook&#x27;s structured-coder route does not change that embedding boundary.</p>
 <h2 id="caveats">Caveats</h2>
 <ul>
 <li>Needs interactive verification for exact empty, loading, error, and permission-denied states.</li>
