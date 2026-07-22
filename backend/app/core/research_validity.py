@@ -502,21 +502,39 @@ def normalize_coder_applications(applications: list[dict]) -> dict[str, dict[str
 
 
 def distinct_model_identities(applications: list[dict]) -> set[str]:
-    """Return model identities that count as independent model coders."""
+    """Return model identities that count as independent model coders.
+
+    A distinct *configured endpoint identity* is a distinct independent coder,
+    even when several endpoints advertise the same model name. W7: Pi catalog
+    rows are endpoint identities, so three endpoints serving one model are three
+    raters and must not collapse to one — the exact endpoint identity is
+    preserved through the reliability gate. The ephemeral route/call id is never
+    a distinctness axis on its own, so the same model on the same endpoint
+    invoked twice stays a single rater and fabricated diversity stays blocked.
+    """
     identities: set[str] = set()
     for app in applications:
         model_name = str(app.get("model_name") or app.get("model") or "").strip()
-        donor_id = str(app.get("donor_id") or app.get("node_id") or "").strip()
+        endpoint_id = str(
+            app.get("endpoint_id")
+            or app.get("donor_id")
+            or app.get("node_id")
+            or ""
+        ).strip()
         route_id = str(app.get("route_id") or app.get("route") or "").strip()
         coder_id = str(app.get("coder_id") or app.get("coder") or "").strip()
         identity = model_name or coder_id
-        if not identity:
+        if not identity and not endpoint_id:
             continue
-        # Route/donor evidence is retained, but the same model name should not
-        # become multiple independent raters just because it was called twice.
-        if donor_id and not model_name:
-            identity = f"{identity}@{donor_id}"
-        if route_id and not model_name and not donor_id:
+        # A distinct configured endpoint identity keeps same-model Pi endpoints
+        # as separate raters; a bare repeated model name (no endpoint) still
+        # collapses to one identity.
+        if endpoint_id:
+            identity = f"{identity}@{endpoint_id}" if identity else endpoint_id
+        elif route_id and not model_name:
+            # Only when there is no endpoint identity to key on does a route id
+            # disambiguate, and never for an otherwise-identical model — a call
+            # counter must not manufacture independent raters.
             identity = f"{identity}@{route_id}"
         identities.add(identity)
     return identities

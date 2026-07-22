@@ -568,7 +568,7 @@ async def test_judge_flag_on_dispatches_structured(monkeypatch, _agentic_core_on
     assert result.details == scores
 
 
-async def test_judge_flag_on_raise_degrades_to_default_pass(monkeypatch, _agentic_core_on):
+async def test_judge_flag_on_raise_fails_closed_as_unavailable(monkeypatch, _agentic_core_on):
     from app.core.pi_runtime.endpoints import PiRuntimeTurnError
 
     dispatcher_stub = _StubAgentic(
@@ -582,9 +582,31 @@ async def test_judge_flag_on_raise_degrades_to_default_pass(monkeypatch, _agenti
     output, input_data = _executor_io()
     result = await ValidationExecutor()._adversarial_review(output, input_data)
 
-    assert result.passed and result.confidence == 0.5, (
-        "Pi fail-closed raises must degrade to the existing default, never escape"
-    )
+    assert not result.passed and result.confidence == 0.0
+    assert result.details == {
+        "status": "unavailable",
+        "reason": "judge_dispatch_failed",
+        "error": "pi_runtime_turn_error:structured_output_missing",
+    }
+
+
+async def test_judge_flag_on_missing_verdict_fails_closed(monkeypatch, _agentic_core_on):
+    dispatcher_stub = _StubAgentic(value={})
+    registry_stub = _StubLlmRouter()
+    monkeypatch.setattr("app.core.agentic.agentic", dispatcher_stub)
+    monkeypatch.setattr("app.core.compute_registry.compute_registry", registry_stub)
+
+    from app.core.validation_executor import ValidationExecutor
+
+    output, input_data = _executor_io()
+    result = await ValidationExecutor()._adversarial_review(output, input_data)
+
+    assert registry_stub.calls == []
+    assert not result.passed and result.confidence == 0.0
+    assert result.details == {
+        "status": "unavailable",
+        "reason": "judge_verdict_missing",
+    }
 
 
 async def test_judge_flag_off_reads_message_content_bug_fix(monkeypatch, _agentic_core_off):
@@ -744,8 +766,12 @@ async def test_use_pi_coding_plane_requires_flag_and_pi_engine(monkeypatch):
     assert await _use_pi_coding_plane(_RaisingDb(), "p1") is True
 
 
-async def _run_pi_coding_run(monkeypatch, tmp_path, *, selection_error=None):
-    """Shared driver: full coding run on the Pi plane with stubbed selection/dispatch."""
+async def _run_pi_coding_run(monkeypatch, tmp_path, *, selection_error=None, shared_model=None):
+    """Shared driver: full coding run on the Pi plane with stubbed selection/dispatch.
+
+    ``shared_model`` makes all three endpoints advertise the *same* model name
+    while keeping distinct endpoint identities (W7 endpoint-identity contract).
+    """
     import uuid
 
     from app.models.database import async_session, init_db
@@ -776,7 +802,7 @@ async def _run_pi_coding_run(monkeypatch, tmp_path, *, selection_error=None):
                     provider_type="openai_compat", endpoint_id=f"ep-{name}",
                 ),
                 coder_id=f"model-coder:ep-{name}",
-                model_name=f"model-{name}",
+                model_name=shared_model or f"model-{name}",
             )
             for name in ("a", "b", "c")
         ]
@@ -859,6 +885,26 @@ async def test_coding_run_pi_plane_distinct_endpoint_coders_accept(monkeypatch, 
     assert {route["model"] for route in result["route_evidence"]} == {
         "model-a", "model-b", "model-c",
     }
+
+
+async def test_coding_run_pi_plane_same_model_distinct_endpoints_accept(
+    monkeypatch, tmp_path, _agentic_core_on
+):
+    """Three Pi endpoints serving one model remain three reliability raters."""
+    result, dispatcher_stub = await _run_pi_coding_run(
+        monkeypatch, tmp_path, shared_model="same-model"
+    )
+
+    assert result["promotion_status"] == "accepted"
+    assert result["rater_count"] == 3
+    assert result["distinct_model_count"] == 3
+    assert {route["endpoint_id"] for route in result["route_evidence"]} == {
+        "ep-a", "ep-b", "ep-c",
+    }
+    assert {route["model"] for route in result["route_evidence"]} == {"same-model"}
+    assert [kwargs["params"].endpoint_id for _, kwargs in dispatcher_stub.calls] == [
+        "ep-a", "ep-b", "ep-c",
+    ]
 
 
 async def test_coding_run_pi_plane_insufficient_distinct_blocks_fail_closed(

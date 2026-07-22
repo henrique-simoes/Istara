@@ -1367,6 +1367,14 @@ async def run_independent_coding_run(
                     "model_name": route.get("model") or coder.model_name,
                     "donor_id": served_donor_id,
                     "route_id": served_route_id,
+                    # Preserve the exact served endpoint identity so same-model
+                    # Pi endpoints stay distinct raters at the reliability gate
+                    # (W7 endpoint-identity contract).
+                    "endpoint_id": (
+                        route.get("endpoint_id")
+                        or getattr(coder.node, "endpoint_id", "")
+                        or served_donor_id
+                    ),
                     "evidence_unit_id": unit.id,
                     "codes": codes,
                 }
