@@ -26,8 +26,10 @@
 > benchmark spend draw from the same envelope") and `:84-89` (`make_deepseek_judge_fn`
 > passes the shared `ledger`, `kind="judge"`), plus `tests/pi_benchmark/judge_config.json`
 > — directly contradicting the corrected role model AND the work-order's own :38;
-> (d) findings-register drift since r0: F-3, F-4, F-6 are now `fixed` — only **F-5 and
-> F-7 remain open**, which shrinks the shared-worktree race surface in §7.
+> (d) findings-register drift since r0: **all of F-3…F-7 are now `fixed`** (F-7 at
+> L-25, F-5 at L-26, landing while this revision was in flight); the remaining sibling
+> activity is the one delta re-review, which still shares the worktree — §7's race
+> mitigation (completion lock + path-scoped commits) stays in force.
 
 ---
 
@@ -217,7 +219,7 @@ backend/.venv/bin/python -m pytest tests/pi_benchmark/ -q   # expected: unchange
 | Risk | Likelihood | Mitigation |
 |---|---|---|
 | Accidental edit of append-only ledger entries (L-2…L-21) while rewriting the winning-plan section | Medium | RC-1 edits are bounded to the winning-plan region and decision log; reviewer diffs against `### L-` headings — any hunk inside a historical ledger entry is a finding. |
-| Shared-worktree race with in-flight fixers — at r1 only F-5 (routing) and F-7 (import-cycle gate) remain open (F-3/F-4/F-6 fixed per L-20/L-21/L-22); both edit tests/ and the lifecycle ledger | Medium | Acquire `repo_lock.completion_lock` for the read-append-commit critical section; commit only the two doc paths via `repo_lock.commit_paths`; never `git add -A`. |
+| Shared-worktree race with sibling MoA-pipeline workers — all findings F-3…F-7 are `fixed` as of L-20…L-26, but the pending delta re-review (and any resulting fixers) still edits tests/ and appends lifecycle ledger entries | Medium | Acquire `repo_lock.completion_lock` for the read-append-commit critical section; commit only the two doc paths via `repo_lock.commit_paths`; never `git add -A`. |
 | Over-correction: rewriting text that is already correct (Goals, wave contract, §2.2 p5) creates review churn and merge conflicts | Low | §1 "already correct" list is explicit; RC-1 touches only the audited line regions. |
 | grep audit false positives from historical ledger text (e.g. L-18 "DeepSeek judge") | Medium | AC-2 command (b) is scoped to non-`### L-` regions by manual hunk inspection; the plan explicitly declares history exempt. |
 | Semantic drift: changing budget/gate/wave wording while swapping provider names | Low | AC-5 grep battery pins the invariants; reviewer checks the diff is identity-swap only. |
