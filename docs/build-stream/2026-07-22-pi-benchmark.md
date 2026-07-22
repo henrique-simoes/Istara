@@ -430,3 +430,11 @@ approvals (G1/G2) are recorded as CF evidence with the in-chat approval quoted.
 - No live model loading or external spend before the corresponding owner gate.
 
 ## Decision log
+
+<!-- consensus-winner-decision -->
+DEC-consensus-winner | 2026-07-22 | S1-plan | conductor
+Context: three architect cross-votes completed
+Decision: slot c selected from pi-eval-REPLAN-C-r1
+Why: votes={"a": {"task": "pi-eval-JUDGE-A", "vote": "c"}, "b": {"task": "pi-eval-JUDGE-B", "vote": "c"}, "c": {"task": "pi-eval-JUDGE-C", "vote": "a"}}; tiebreak_used=False; plan_file=docs/build-stream/plans/pi-eval-plan-c.md
+
+
