@@ -17,9 +17,10 @@
 > route/MoA judge-scoring dimension) all hold unchanged at HEAD. Drift folded in at r2:
 > (a) ledger has advanced to **L-29** (L-27 = this plan's r1; L-28/L-29 are harness
 > fallback entries for sibling architect slots C and B), and the committed Status Block
-> carries a dangling `ledger: L-30` reference — the next real appended entry becomes
-> L-30, so implementers must re-read the last `### L-<n>` under the completion lock and
-> never trust the Status Block for numbering; (b) `tests/pi_benchmark/deepseek_judge.py`'s
+> carried a dangling `ledger: L-30` reference at audit time — and during this very r2
+> stage two sibling entries landed concurrently (this plan's own ledger entry took L-32,
+> not the predicted L-30), so implementers must re-read the last `### L-<n>` under the
+> completion lock and never trust the Status Block or a stale read for numbering; (b) `tests/pi_benchmark/deepseek_judge.py`'s
 > module docstring was **rewritten** since r1 and now *explicitly declares* the policy the
 > correction supersedes — ":3-8: 'the judge IS the DUT model (`deepseek-v4-pro`) but never
 > the DUT *role*' … 'a shared budget ledger so judge spend and benchmark spend draw from
