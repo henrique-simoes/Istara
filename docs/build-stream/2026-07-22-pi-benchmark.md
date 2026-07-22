@@ -50,3 +50,9 @@ Did: repaired consensus plan A (revision r1) at docs/build-stream/plans/pi-eval-
 Result: plan slot A ready for consensus judging (r1); metrics-schema.json confirmed absent repo-wide so E0.1 is definitively an authoring task; pi-eval-REPLAN-A-r1
 Verified: ls/find/grep grounding audit (assets absent, vocab present, bug located at :138, engine header intact api-client.mjs:31,244); wc -l plan = 253 lines; CF evidence rows 1233,1235,1236
 Next: consensus judges vote on plan slots a/b/c
+
+### L-5 | 2026-07-22T13:39:18Z | S1-plan | kimi-code/k3 | planner | pi-eval-architect-c <!-- bsc-ledger:pi-eval-PLAN-C -->
+Did: pi-eval-architect-c stage on task pi-eval-PLAN-C (harness fallback entry; the model did not append one).
+Result: task pi-eval-PLAN-C finished; worktree head 4f1fe8ca.
+Verified: see Compass Forge evidence rows on pi-eval-PLAN-C (command + self_report + stage_attribution).
+Next: conductor advances the pipeline on evidence.
