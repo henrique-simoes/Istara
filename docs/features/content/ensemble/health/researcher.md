@@ -6,11 +6,11 @@ audience: researcher
 status: needs-verification
 related_features: ["quality.dashboard", "compute.pool"]
 related_glossary: ["fleiss-kappa"]
-code_references: ["frontend/src/components/common/EnsembleHealthView.tsx", "backend/app/core/consensus.py"]
+code_references: ["frontend/src/components/common/EnsembleHealthView.tsx", "backend/app/core/consensus.py", "backend/app/core/validation.py", "backend/app/core/validation_executor.py", "backend/app/services/research_validity_service.py", "backend/app/core/agentic/dispatcher.py"]
 api_references: ["backend/app/api/routes/metrics.py"]
-test_references: []
-last_verified: 2026-05-15
-compass: CF-SPEC-53 / CF-657
+test_references: ["tests/pi_production/test_w7_validation.py", "tests/test_validation_project_scope.py", "tests/test_research_validity_contract.py", "tests/test_metrics.py"]
+last_verified: 2026-07-22
+compass: CF-SPEC-8 / FIX-pi-full-20260720-w7-REVIEW-r1-docs; CF-SPEC-53 / CF-657
 ---
 
 # Ensemble Health
@@ -41,6 +41,17 @@ Ensemble Health exists so the work represented by Ensemble Health has a stable, 
 - Use the visible controls to create, inspect, refine, or route project work without leaving the active Istara context.
 - Move to related surfaces when needed: quality.dashboard, compute.pool.
 
+## How Validation Confidence Is Established
+
+- W7 uses the shared dispatcher for dual-run, full-ensemble, Self-MoA, adversarial review, debate, and the structured judge when the Pi feature flag is enabled. The system keeps the legacy validation path available for rollback or legacy engine selection.
+- “Different models” means different serving endpoint identities for independent validation. Two endpoints may serve the same model and still count as separate route identities when both are explicitly preserved; the system does not invent diversity when the required endpoints are unavailable.
+- When distinct endpoints cannot be selected, validation degrades to the documented lower-assurance path or reports unavailable/blocked. A failed judge is not a pass. These outcomes keep unvalidated work out of accepted research evidence and reports.
+- Embedding-based comparison remains on the legacy path until W8; that is an explicit migration boundary, not a missing user action.
+
+## Rollback
+
+Disable the Pi feature flag or choose the legacy engine for the project to return validation calls to the preserved legacy route.
+
 ## Inputs, Outputs, And Expected Outcomes
 
 - Project-scoped state or artifact updates associated with ensemble health.
@@ -62,6 +73,6 @@ Ensemble Health exists so the work represented by Ensemble Health has a stable, 
 
 ## Evidence
 
-- Source files: `frontend/src/components/common/EnsembleHealthView.tsx`, `backend/app/core/consensus.py`
+- Source files: `frontend/src/components/common/EnsembleHealthView.tsx`, `backend/app/core/consensus.py`, `backend/app/core/validation.py`, `backend/app/core/validation_executor.py`, `backend/app/services/research_validity_service.py`, `backend/app/core/agentic/dispatcher.py`
 - API references: `backend/app/api/routes/metrics.py`
-- Tests: none recorded
+- Tests: `tests/pi_production/test_w7_validation.py`, `tests/test_validation_project_scope.py`, `tests/test_research_validity_contract.py`, `tests/test_metrics.py`

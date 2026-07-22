@@ -228,7 +228,7 @@
       <h1>Ensemble Health</h1>
       <p class="lede">Ensemble Health surfaces health and consensus signals for Istara&#x27;s multi-model or multi-agent ensemble behavior.</p>
     </div>
-    <span class="status-chip">needs-verification</span>
+    <span class="status-chip">documented</span>
   </div>
   <nav class="audience-tabs" aria-label="Documentation audience">
     <a href="researcher.html" aria-current="page">Researcher</a>
@@ -237,8 +237,8 @@
   <dl class="meta-grid">
     <div><dt>UI Path</dt><dd>Ensemble Health</dd></div>
     <div><dt>Component</dt><dd><code>EnsembleHealthView</code></dd></div>
-    <div><dt>Source Refs</dt><dd>2</dd></div>
-    <div><dt>Tests</dt><dd>0</dd></div>
+    <div><dt>Source Refs</dt><dd>6</dd></div>
+    <div><dt>Tests</dt><dd>4</dd></div>
   </dl>
   <div class="link-cluster" aria-label="Related feature links"><a href="../../quality/dashboard/researcher.html">Quality Dashboard</a>
 <a href="../../compute/pool/researcher.html">Compute Pool</a></div>
@@ -266,6 +266,15 @@
 <li>Use the visible controls to create, inspect, refine, or route project work without leaving the active Istara context.</li>
 <li>Move to related surfaces when needed: quality.dashboard, compute.pool.</li>
 </ul>
+<h2 id="how-validation-confidence-is-established">How Validation Confidence Is Established</h2>
+<ul>
+<li>W7 uses the shared dispatcher for dual-run, full-ensemble, Self-MoA, adversarial review, debate, and the structured judge when the Pi feature flag is enabled. The system keeps the legacy validation path available for rollback or legacy engine selection.</li>
+<li>“Different models” means different serving endpoint identities for independent validation. Two endpoints may serve the same model and still count as separate route identities when both are explicitly preserved; the system does not invent diversity when the required endpoints are unavailable.</li>
+<li>When distinct endpoints cannot be selected, validation degrades to the documented lower-assurance path or reports unavailable/blocked. A failed judge is not a pass. These outcomes keep unvalidated work out of accepted research evidence and reports.</li>
+<li>Embedding-based comparison remains on the legacy path until W8; that is an explicit migration boundary, not a missing user action.</li>
+</ul>
+<h2 id="rollback">Rollback</h2>
+<p>Disable the Pi feature flag or choose the legacy engine for the project to return validation calls to the preserved legacy route.</p>
 <h2 id="inputs-outputs-and-expected-outcomes">Inputs, Outputs, And Expected Outcomes</h2>
 <ul>
 <li>Project-scoped state or artifact updates associated with ensemble health.</li>
@@ -287,9 +296,9 @@
 </ul>
 <h2 id="evidence">Evidence</h2>
 <ul>
-<li>Source files: <code>frontend/src/components/common/EnsembleHealthView.tsx</code>, <code>backend/app/core/consensus.py</code></li>
+<li>Source files: <code>frontend/src/components/common/EnsembleHealthView.tsx</code>, <code>backend/app/core/consensus.py</code>, <code>backend/app/core/validation.py</code>, <code>backend/app/core/validation_executor.py</code>, <code>backend/app/services/research_validity_service.py</code>, <code>backend/app/core/agentic/dispatcher.py</code></li>
 <li>API references: <code>backend/app/api/routes/metrics.py</code></li>
-<li>Tests: none recorded</li>
+<li>Tests: <code>tests/pi_production/test_w7_validation.py</code>, <code>tests/test_validation_project_scope.py</code>, <code>tests/test_research_validity_contract.py</code>, <code>tests/test_metrics.py</code></li>
 </ul>
         </article>
         <aside class="toc-panel" aria-label="Page sections">
@@ -300,6 +309,8 @@
 <li class="toc-level-2"><a href="#where-it-lives">Where It Lives</a></li>
 <li class="toc-level-2"><a href="#how-ux-researchers-use-it">How UX Researchers Use It</a></li>
 <li class="toc-level-2"><a href="#supported-workflows">Supported Workflows</a></li>
+<li class="toc-level-2"><a href="#how-validation-confidence-is-established">How Validation Confidence Is Established</a></li>
+<li class="toc-level-2"><a href="#rollback">Rollback</a></li>
 <li class="toc-level-2"><a href="#inputs-outputs-and-expected-outcomes">Inputs, Outputs, And Expected Outcomes</a></li>
 <li class="toc-level-2"><a href="#caveats">Caveats</a></li>
 <li class="toc-level-2"><a href="#related-features">Related Features</a></li>

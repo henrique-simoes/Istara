@@ -255,13 +255,15 @@
       "nav_group": "Findings",
       "order": 220,
       "component": "CodebookViewer",
-      "code_refs": ["frontend/src/components/findings/FindingsView.tsx", "frontend/src/components/findings/CodebookViewer.tsx", "backend/app/api/routes/codebooks.py", "backend/app/api/routes/codebook_versions.py"],
+      "code_refs": ["frontend/src/components/findings/FindingsView.tsx", "frontend/src/components/findings/CodebookViewer.tsx", "backend/app/api/routes/codebooks.py", "backend/app/api/routes/codebook_versions.py", "backend/app/services/research_validity_service.py", "backend/app/core/agentic/dispatcher.py"],
       "store_refs": [],
       "api_refs": ["backend/app/api/routes/codebooks.py", "backend/app/api/routes/codebook_versions.py"],
-      "test_refs": ["tests/test_codebooks.py", "tests/test_project_scope_contracts.py"],
+      "test_refs": ["tests/test_codebooks.py", "tests/test_project_scope_contracts.py", "tests/test_research_validity_contract.py", "tests/pi_production/test_w7_validation.py"],
       "related_features": ["findings.evidence", "findings.review"],
       "glossary_terms": ["atomic-research"],
-      "status": "documented"
+      "status": "documented",
+      "last_verified": "2026-07-22",
+      "compass": "CF-SPEC-8 / FIX-pi-full-20260720-w7-REVIEW-r1-docs"
     },
     {
       "id": "findings.review",
@@ -1263,13 +1265,15 @@
       "nav_group": "Secondary",
       "order": 1710,
       "component": "EnsembleHealthView",
-      "code_refs": ["frontend/src/components/common/EnsembleHealthView.tsx", "backend/app/core/consensus.py"],
+      "code_refs": ["frontend/src/components/common/EnsembleHealthView.tsx", "backend/app/core/consensus.py", "backend/app/core/validation.py", "backend/app/core/validation_executor.py", "backend/app/services/research_validity_service.py", "backend/app/core/agentic/dispatcher.py"],
       "store_refs": [],
       "api_refs": ["backend/app/api/routes/metrics.py"],
-      "test_refs": [],
+      "test_refs": ["tests/pi_production/test_w7_validation.py", "tests/test_validation_project_scope.py", "tests/test_research_validity_contract.py", "tests/test_metrics.py"],
       "related_features": ["quality.dashboard", "compute.pool"],
       "glossary_terms": ["fleiss-kappa"],
-      "status": "needs-verification"
+      "status": "documented",
+      "last_verified": "2026-07-22",
+      "compass": "CF-SPEC-8 / FIX-pi-full-20260720-w7-REVIEW-r1-docs"
     },
     {
       "id": "quality.dashboard",
