@@ -78,10 +78,14 @@ class AgenticDispatcher:
     """Single entry point for every agentic-loop / model invocation in Istara."""
 
     def __init__(self, *, pi_service: PiExecutionService | None = None,
-                 legacy_executor: LegacyExecutor | None = None) -> None:
+                 legacy_executor: LegacyExecutor | None = None,
+                 embeddings_gateway: Any | None = None) -> None:
         self._pi = pi_service or PiExecutionService()
         # The production default binds the REAL legacy plane; tests inject a stub.
         self._legacy = legacy_executor if legacy_executor is not None else _real_legacy_executor
+        # W8: Pi embeds go through the EmbeddingsGateway sharing the engine's
+        # own PiModelManager (one identity plane); tests inject a stub.
+        self._embeddings_gateway = embeddings_gateway
 
     # ── engine resolution ────────────────────────────────────────────────
     def resolve_engine(self, *, engine: EngineChoice | None = None, request: Any | None = None,
@@ -305,20 +309,26 @@ class AgenticDispatcher:
                     params: TurnParams | None = None, agent_id: str = "istara-main",
                     engine: EngineChoice | None = None, request: Any | None = None,
                     task_id: str | None = None, spine_phase: str | None = None) -> list[list[float]]:
-        """Legacy: the registry embed path. Pi: W8 gateway — fail closed until then."""
+        """Legacy: the registry embed path. Pi: the W8 EmbeddingsGateway."""
         params = params or TurnParams()
         started = time.perf_counter()
         selected = await self._resolve(project_id=project_id, engine=engine, request=request)
         if selected == "pi":
-            # Never silently switch engines: the Pi embeddings gateway is W8
-            # scope, so a Pi-selected embed fails typed instead of leaking to
-            # the legacy plane or to donated compute.
-            outcome = {"status": "error", "error": "pi_embed_gateway_unavailable", "usage": {}}
-            await record_agentic_usage(engine=selected, purpose="embed", project_id=project_id or "",
-                                       agent_id=agent_id, outcome=outcome, model=params.model,
-                                       started_at=started, task_id=task_id, spine_phase=spine_phase,
-                                       error_type="AgenticDispatchError")
-            raise AgenticDispatchError("pi_embed_gateway_unavailable")
+            # Pi embeds run through the gateway under Pi identity management.
+            # A gateway failure raises and records its one error row — the
+            # dispatch never leaks onto the legacy plane or donated compute.
+            try:
+                outcome = await self._embed_gateway().embed(list(texts), model=params.model)
+            except Exception as exc:
+                await self._record_failure(engine=selected, purpose="embed", project_id=project_id or "",
+                                           agent_id=agent_id, params=params, started=started,
+                                           task_id=task_id, spine_phase=spine_phase, exc=exc)
+                raise
+            await self._record_outcome(engine=selected, purpose="embed", project_id=project_id or "",
+                                       agent_id=agent_id, params=params, started=started, outcome=outcome,
+                                       task_id=task_id, spine_phase=spine_phase,
+                                       request_text="\n".join(_content_text(t) for t in texts))
+            return list(outcome.get("embeddings") or [])
         try:
             outcome = await self._legacy_outcome("embed", texts=texts, project_id=project_id, params=params)
         except Exception as exc:
@@ -333,6 +343,14 @@ class AgenticDispatcher:
         return list(outcome.get("embeddings") or [])
 
     # ── internals ────────────────────────────────────────────────────────
+    def _embed_gateway(self) -> Any:
+        """Lazy W8 gateway bound to the engine's own PiModelManager."""
+        if self._embeddings_gateway is None:
+            from app.core.pi_runtime.embeddings_gateway import EmbeddingsGateway
+
+            self._embeddings_gateway = EmbeddingsGateway(manager=self._pi.model_manager())
+        return self._embeddings_gateway
+
     def steering_binding(self, *, agent_id: str, project_id: str,
                          session_key: str | None = None) -> Any:
         """Build a Pi steering binding for one governed turn (W3 L10).

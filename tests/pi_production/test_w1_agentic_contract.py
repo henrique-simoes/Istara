@@ -282,18 +282,39 @@ async def test_every_verb_routes_to_the_legacy_seam_and_records_one_row(usage_db
         assert len(await _ledger_rows(purpose=purpose)) == 1
 
 
-async def test_pi_embed_fails_typed_instead_of_silently_switching_engines(usage_db):
-    """The Pi embeddings gateway is W8 scope: a Pi-selected embed fails closed
-    with a typed error and still records its one ledger row."""
+async def test_pi_embed_routes_through_the_w8_gateway(usage_db):
+    """W8: a Pi-selected embed dispatches through the EmbeddingsGateway and
+    records its one ledger row; a gateway failure propagates typed and never
+    leaks onto the legacy plane."""
     legacy = _RecordingLegacyExecutor()
-    dispatcher = AgenticDispatcher(pi_service=_StubPiService(), legacy_executor=legacy)
-    with pytest.raises(AgenticDispatchError, match="pi_embed_gateway_unavailable"):
-        await dispatcher.embed(texts=["hello"], project_id="p1", engine="pi")
-    assert legacy.calls == [], "a failed Pi selection must never leak onto the legacy plane"
+
+    class _StubGateway:
+        def __init__(self) -> None:
+            self.calls: list[tuple[list[str], str | None]] = []
+
+        async def embed(self, texts, *, model=None):
+            self.calls.append((list(texts), model))
+            return {
+                "embeddings": [[0.3, 0.4]],
+                "endpoint_id": "pi-local-ollama",
+                "model": model or "nomic-embed-text",
+                "usage": {"estimate": False},
+                "status": "success",
+            }
+
+    gateway = _StubGateway()
+    dispatcher = AgenticDispatcher(
+        pi_service=_StubPiService(), legacy_executor=legacy, embeddings_gateway=gateway
+    )
+    vectors = await dispatcher.embed(texts=["hello"], project_id="p1", engine="pi")
+    assert vectors == [[0.3, 0.4]]
+    assert gateway.calls == [(["hello"], None)]
+    assert legacy.calls == [], "a Pi embed must never execute on the legacy plane"
     rows = await _ledger_rows(purpose="embed")
     assert len(rows) == 1
     assert rows[0].engine == "pi"
-    assert rows[0].outcome == "error"
+    assert rows[0].outcome == "success"
+    assert rows[0].endpoint_id == "pi-local-ollama"
 
 
 @requires_node
@@ -616,12 +637,13 @@ def test_ratchet_is_consistent_and_only_ratchets_down():
     internally consistent. W2 (complete) migrated all 9 interactive surfaces
     (4 one-shot completions, 4 streaming ReAct loops, browser tool); W3
     migrated the 8 research-spine + steering sites (agent_research L1/L2/L3/L5,
-    self_check L6, agent_execution L7, agent_lifecycle L10), so the current
-    floor is 70."""
+    self_check L6, agent_execution L7, agent_lifecycle L10); W8 migrated all
+    17 embed sites (embeddings.py/validation.py wrappers now route through
+    agentic.embed), so the current floor is 53."""
     from tests.pi_migration.test_count_to_zero import EXPECTED_PRODUCT_SITES, check_count_to_zero
 
     assert EXPECTED_PRODUCT_SITES <= 87, "the ratchet must never migrate sites back onto the legacy plane"
-    assert EXPECTED_PRODUCT_SITES == 70, "W3 migrated 8 research-spine + steering sites: ratchet floor is 70"
+    assert EXPECTED_PRODUCT_SITES == 53, "W8 migrated the 17 embed sites: ratchet floor is 53"
     check_count_to_zero()  # raises RuntimeError naming every violation
 
 

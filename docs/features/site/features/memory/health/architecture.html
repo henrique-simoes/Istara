@@ -237,8 +237,8 @@
   <dl class="meta-grid">
     <div><dt>UI Path</dt><dd>Memory &gt; Health</dd></div>
     <div><dt>Component</dt><dd><code>MemoryView</code></dd></div>
-    <div><dt>Source Refs</dt><dd>2</dd></div>
-    <div><dt>Tests</dt><dd>0</dd></div>
+    <div><dt>Source Refs</dt><dd>11</dd></div>
+    <div><dt>Tests</dt><dd>5</dd></div>
   </dl>
   <div class="link-cluster" aria-label="Related feature links"><a href="../knowledge/architecture.html">Knowledge Memory</a>
 <a href="../../quality/dashboard/architecture.html">Quality Dashboard</a></div>
@@ -260,6 +260,16 @@
 <ul>
 <li><code>backend/app/api/routes/memory.py</code></li>
 </ul>
+<h3 id="embeddings-gateway-migration-pi-replacement-w8">Embeddings Gateway Migration (Pi Replacement W8)</h3>
+<ul>
+<li>Pi Replacement wave W8 (master plan <code>docs/build-stream/plans/2026-07-20-pi-full-replacement-master-plan.md</code> §5.2.3/§5.5, spec CF-SPEC-8) gives the Pi engine its own embeddings plane. pi-ai cannot execute embeddings, so the new <code>backend/app/core/pi_runtime/embeddings_gateway.py</code> calls the embedding endpoint directly over HTTP (<code>httpx</code>) while staying under Pi identity management: the endpoint is resolved by <code>PiModelManager.resolve_embed()</code>, which prefers the well-known <code>pi-local-ollama</code> entry (native Ollama <code>/api/embed</code> with the <code>/v1</code> suffix stripped), then other <code>kind=local</code> entries, then any remote <code>openai_compat</code> <code>/v1/embeddings</code>-compatible entry. An anthropic-only catalog fails closed with <code>PiEndpointResolutionError(&quot;no_matching_pi_embed_endpoint&quot;)</code> rather than silently falling back to the legacy plane, and response cardinality is validated (<code>PiEmbeddingError</code>) so a malformed endpoint response cannot poison the vector store.</li>
+<li>The dispatcher&#x27;s <code>embed</code> verb (<code>backend/app/core/agentic/dispatcher.py</code>) routes by resolved engine: Pi goes to the gateway — constructed lazily from the new public <code>PiExecutionService.model_manager()</code> accessor and injectable via the dispatcher&#x27;s <code>embeddings_gateway=</code> constructor kwarg — while legacy keeps the unchanged <code>ollama.embed*</code> plane in <code>backend/app/core/agentic/legacy.py</code>. Gateway failures raise typed errors and never fall back to legacy; the W1 fail-closed stub <code>pi_embed_gateway_unavailable</code> is retired. W8 also fixed a latent W1 bug where <code>legacy._embed</code> passed <code>project_id=</code> to <code>OllamaClient.embed_batch</code>, which takes no such kwarg and would have raised <code>TypeError</code> on the real client.</li>
+<li>Usage-ledger accounting keeps the dispatcher&#x27;s one-row-per-dispatch contract (master plan §5.5): <code>AgenticDispatcher.embed</code> records the single <code>purpose=&quot;embed&quot;</code> accounting row and the gateway never writes rows itself, so a cache-miss embed is counted exactly once regardless of engine.</li>
+<li>The shared embedding wrappers in <code>backend/app/core/embeddings.py</code> migrated with all 14 downstream consumers untouched: <code>embed_text</code> and <code>embed_chunks</code> keep <code>embedding_cache</code> in front and route only cache misses through <code>agentic.embed</code> (<code>TurnParams(model=_embed_model_name())</code>), while <code>ensure_embed_model</code> dispatches on engine — legacy keeps <code>ollama.ensure_model(&quot;nomic-embed-text&quot;)</code> and Pi uses the new provisioner. <code>backend/app/core/validation.py</code> <code>_get_embeddings</code> now calls <code>agentic.embed(texts=texts, project_id=project_id)</code> with project-scoped engine resolution, still degrading to <code>[]</code> on failure. The consumers (<code>rag.py</code>, <code>prompt_rag.py</code>, <code>agent_memory.py</code>, <code>agent_skill_tools.py</code>, <code>agent_execution.py</code>, <code>rag_params.py</code>, <code>file_watcher.py</code>, <code>vector_health.py</code>) needed zero edits, and the count-to-zero legacy allowlist ratchet (<code>tests/pi_migration/legacy_allowlist.yaml</code>, <code>tests/pi_migration/test_count_to_zero.py</code>) dropped 70 → 53 as the 17 embed sites retired.</li>
+<li>The new provisioner <code>backend/app/core/pi_runtime/model_manager_provisioning.py</code> (master plan §5.2.3) exposes <code>ensure_endpoint_model(endpoint, model)</code>: remote endpoints are a no-op (<code>False</code>), <code>kind=local</code> Ollama entries go through <code>OllamaClient.ensure_model</code> (list + pull), LM Studio entries through <code>LMStudioClient.ensure_model</code> (loaded-model check), and unknown local planes fail typed (<code>provision_unsupported_local_endpoint:&lt;id&gt;</code>).</li>
+<li>Vector-space invariant: <code>embeddings_gateway.default_embed_model()</code> mirrors <code>embeddings._embed_model_name()</code> exactly, so both engines embed with the same model; <code>assert_vector_space_invariant()</code> raises <code>VectorSpaceInvariantError</code> on divergence and runs at startup in <code>backend/app/main.py</code> immediately after the existing <code>vector_health.check_embedding_dimensions</code> probe. An engine switch must never silently change the embedding space of a project&#x27;s stored vectors.</li>
+<li>Rollback: disable <code>settings.agentic_core</code> (or select the <code>legacy</code> engine for the project) and every embed call returns to the preserved <code>ollama.embed*</code> plane; because both engines embed with the same model, rollback does not alter the vector space.</li>
+</ul>
 <h2 id="architecture-notes">Architecture Notes</h2>
 <ul>
 <li>The feature is mounted through <code>frontend/src/components/memory/MemoryView.tsx</code> and the UI navigation path recorded in the inventory.</li>
@@ -275,6 +285,11 @@
 <h2 id="tests-and-verification">Tests And Verification</h2>
 <ul>
 <li><code>tests/test_memory.py</code></li>
+<li><code>tests/pi_production/test_w8_embeddings_gateway.py</code> verifies the W8 embeddings plane: MockTransport gateway HTTP behavior, <code>resolve_embed</code> ordering and anthropic-only fail-closed resolution, the vector-space invariant assertion, wrapper cache-in-front dispatch through <code>agentic.embed</code>, project-scoped validation embedding, provisioner behavior per endpoint kind, DB-projection reset, the merged settings model catalog, <code>ProjectUpdate.agentic_engine</code> validation, and static wiring checks.</li>
+<li><code>tests/pi_production/test_w1_dispatcher_authority.py</code> and <code>tests/pi_production/test_w1_agentic_contract.py</code> assert embed dispatch now reaches the gateway on the Pi engine instead of the retired <code>pi_embed_gateway_unavailable</code> stub.</li>
+<li><code>tests/test_validation_project_scope.py</code> asserts validation embedding project scope through the <code>agentic.embed</code> spy.</li>
+<li><code>tests/pi_migration/test_count_to_zero.py</code> keeps the legacy allowlist ratchet green at 53 after the 17 embed sites retired.</li>
+<li>Regenerate and validate the machine manifests and static site with <code>python scripts/feature_docs.py --seed-missing --generate-site --check</code>.</li>
 </ul>
 <h2 id="related-features">Related Features</h2>
 <ul>
@@ -287,7 +302,7 @@
 </ul>
 <h2 id="compass-evidence">Compass Evidence</h2>
 <ul>
-<li>Spec/task: CF-SPEC-60 / CF-757</li>
+<li>Spec/task: CF-SPEC-60 / CF-757; CF-SPEC-8 (Pi replacement W8 embeddings gateway + vector-space invariant)</li>
 <li>Inventory source: <code>docs/features/inventory.json</code></li>
 </ul>
 <h2 id="when-to-update">When To Update</h2>
@@ -304,6 +319,7 @@
 <li class="toc-level-2"><a href="#state-api-and-backend-contracts">State, API, And Backend Contracts</a></li>
 <li class="toc-level-3"><a href="#stores">Stores</a></li>
 <li class="toc-level-3"><a href="#api-and-backend">API And Backend</a></li>
+<li class="toc-level-3"><a href="#embeddings-gateway-migration-pi-replacement-w8">Embeddings Gateway Migration (Pi Replacement W8)</a></li>
 <li class="toc-level-2"><a href="#architecture-notes">Architecture Notes</a></li>
 <li class="toc-level-2"><a href="#agents-skills-llm-mcp-and-permissions">Agents, Skills, LLM, MCP, And Permissions</a></li>
 <li class="toc-level-2"><a href="#tests-and-verification">Tests And Verification</a></li>

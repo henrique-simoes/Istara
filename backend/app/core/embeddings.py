@@ -1,4 +1,11 @@
-"""Local embedding engine using Ollama / LM Studio with caching."""
+"""Local embedding engine with caching (W8: dispatcher-routed).
+
+``embed_text`` / ``embed_chunks`` keep the ``embedding_cache`` in front and
+route cache misses through ``agentic.embed`` — legacy engine: the unchanged
+``ollama.embed*`` plane; Pi engine: the W8 EmbeddingsGateway. Every downstream
+consumer (rag, prompt_rag, agent_memory, skill tools, execution, file
+watcher, vector_health) inherits the engine dispatch with zero edits.
+"""
 
 from __future__ import annotations
 
@@ -39,6 +46,16 @@ def _embed_model_name() -> str:
     return settings.ollama_embed_model
 
 
+async def _dispatch_embed(texts: list[str], *, project_id: str | None = None) -> list[list[float]]:
+    """Route cache-miss embeddings through the AgenticDispatcher (W8)."""
+    from app.core.agentic import agentic
+    from app.core.agentic.types import TurnParams
+
+    return await agentic.embed(
+        texts=texts, project_id=project_id, params=TurnParams(model=_embed_model_name())
+    )
+
+
 async def embed_text(text: str) -> list[float]:
     """Embed a single text string, checking the cache first."""
     model = _embed_model_name()
@@ -47,7 +64,8 @@ async def embed_text(text: str) -> list[float]:
     if cached is not None:
         return cached
 
-    vector = await ollama.embed(text)
+    vectors = await _dispatch_embed([text])
+    vector = vectors[0] if vectors else []
     await embedding_cache.put(model, text, vector)
     return vector
 
@@ -87,7 +105,7 @@ async def embed_chunks(chunks: list[TextChunk], batch_size: int = 32) -> list[Em
         batch_chunks = [chunks[i] for i in batch_indices]
         texts = [c.text for c in batch_chunks]
 
-        vectors = await ollama.embed_batch(texts)
+        vectors = await _dispatch_embed(texts)
 
         for i, (chunk, vector) in enumerate(zip(batch_chunks, vectors)):
             original_idx = batch_indices[i]
@@ -98,5 +116,21 @@ async def embed_chunks(chunks: list[TextChunk], batch_size: int = 32) -> list[Em
 
 
 async def ensure_embed_model() -> None:
-    """Ensure the embedding model is available locally."""
+    """Ensure the embedding model is available on the selected engine's plane.
+
+    Legacy: the unchanged Ollama ensure path. Pi: the §5.2.3 provisioner
+    against the gateway-resolved local endpoint (JIT ensure, fail-closed).
+    """
+    from app.core.agentic import agentic
+
+    if agentic.resolve_engine() == "pi":
+        from app.core.pi_runtime.embeddings_gateway import EmbeddingsGateway, default_embed_model
+        from app.core.pi_runtime.model_manager_provisioning import ensure_endpoint_model
+
+        gateway = EmbeddingsGateway()
+        manager = gateway.manager()
+        await manager.ensure_db_projection()
+        endpoint = manager.resolve_embed()
+        await ensure_endpoint_model(endpoint, default_embed_model())
+        return
     await ollama.ensure_model("nomic-embed-text")

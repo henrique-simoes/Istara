@@ -290,4 +290,13 @@ async def discover_and_register() -> list[dict]:
         except Exception as e:
             logger.warning(f"Failed to persist discovered servers: {e}")
 
+        # W8 UX parity: discovered servers feed BOTH planes — the LLMServer
+        # rows above re-project into the Pi catalog on the next resolution.
+        try:
+            from app.core.pi_runtime.model_manager import reset_live_db_projections
+
+            reset_live_db_projections()
+        except Exception:
+            logger.debug("pi catalog projection refresh after discovery skipped")
+
     return newly_registered

@@ -33,8 +33,11 @@ SCANNER_PATH = REPO_ROOT / "scripts" / "pi_migration_inventory.py"
 # (PiModelManager-resolved endpoint identity). W3 migrated the 8 research-spine
 # + steering sites (agent_research L1 ReAct/L2 planner/L3 step executor/L5
 # reflection, self_check L6 claim verification, agent_execution L7 skill
-# reflection, agent_lifecycle L10 steering reply) — so the ratchet is now 70.
-EXPECTED_PRODUCT_SITES = 70
+# reflection, agent_lifecycle L10 steering reply). W8 migrated all 17 embed
+# sites (the embeddings.py/validation.py wrappers now route through
+# agentic.embed; the 14 wrapper consumers inherit the dispatch with zero
+# edits) — so the ratchet is now 53.
+EXPECTED_PRODUCT_SITES = 53
 
 
 # ---------------------------------------------------------------------------

@@ -6,11 +6,11 @@ audience: researcher
 status: documented
 related_features: ["shell.projects", "settings.general"]
 related_glossary: ["compass-forge"]
-code_references: ["frontend/src/components/settings/ProjectSettingsView.tsx", "backend/app/api/routes/projects.py", "backend/app/api/routes/permission_requests.py"]
+code_references: ["frontend/src/components/settings/ProjectSettingsView.tsx", "frontend/src/components/layout/Sidebar.tsx", "frontend/src/lib/types.ts", "frontend/src/lib/utils.ts", "backend/app/api/routes/projects.py", "backend/app/api/routes/permission_requests.py", "backend/app/core/agentic/dispatcher.py"]
 api_references: ["backend/app/api/routes/projects.py", "backend/app/api/routes/permission_requests.py"]
-test_references: ["tests/test_project_rbac.py", "tests/test_project_scope_contracts.py"]
-last_verified: 2026-05-19
-compass: CF-SPEC-53 / CF-657; CF-SPEC-72 / CF-927
+test_references: ["tests/test_project_rbac.py", "tests/test_project_scope_contracts.py", "tests/pi_production/test_w8_embeddings_gateway.py", "tests/simulation/scenarios/79-engine-selector.mjs"]
+last_verified: 2026-07-22
+compass: CF-SPEC-53 / CF-657; CF-SPEC-72 / CF-927; CF-SPEC-8
 ---
 
 # Project Settings
@@ -47,6 +47,13 @@ Project Settings exists so the work represented by Project Settings has a stable
 - Project-scoped state or artifact updates associated with project settings.
 - Visible status, lists, forms, generated artifacts, or review results shown by the referenced component and routes.
 
+## Choosing The Agent Engine Per Project
+
+- Istara can run its agentic work on a legacy engine or the newer Pi replacement engine. Pi Replacement wave W8 lets each project choose its own engine instead of only following the global default.
+- Project admins see an "Agent Engine" section in Project Settings with three options: Inherit global default, Legacy, or Pi. Non-admins see a read-only badge showing the engine in effect. Choosing an unrecognized engine value is rejected by the server, so a project can never end up with a broken setting.
+- The current engine is always visible while you work: the sidebar shows a small "Pi" or "Legacy" badge next to each project's phase label, so it is clear which engine serves that project's chat, agents, and validation before you run anything.
+- The project choice sits between per-call overrides and the global default: an explicit request or header still wins, the project setting applies next, and projects left on "Inherit" follow whatever the global default says. Switching a project back to Legacy is a safe rollback.
+
 ## Caveats
 
 - Needs interactive verification for exact empty, loading, error, and permission-denied states.
@@ -63,6 +70,6 @@ Project Settings exists so the work represented by Project Settings has a stable
 
 ## Evidence
 
-- Source files: `frontend/src/components/settings/ProjectSettingsView.tsx`, `backend/app/api/routes/projects.py`
+- Source files: `frontend/src/components/settings/ProjectSettingsView.tsx`, `frontend/src/components/layout/Sidebar.tsx`, `frontend/src/lib/types.ts`, `frontend/src/lib/utils.ts`, `backend/app/api/routes/projects.py`
 - API references: `backend/app/api/routes/projects.py`
-- Tests: `tests/test_project_rbac.py`, `tests/test_project_scope_contracts.py`
+- Tests: `tests/test_project_rbac.py`, `tests/test_project_scope_contracts.py`, `tests/pi_production/test_w8_embeddings_gateway.py`, `tests/simulation/scenarios/79-engine-selector.mjs`

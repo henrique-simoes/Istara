@@ -53,6 +53,26 @@ def _embed_model() -> str:
     return settings.ollama_embed_model
 
 
+async def _pi_catalog_info() -> list[dict]:
+    """W8 UX parity: the Pi identity catalog merged into model pickers.
+
+    Read-only identity/capability view (endpoint ids and model names only —
+    never URLs or keys). A fresh manager per call keeps the LLMServer
+    projection current; any failure degrades to the legacy-only response.
+    """
+    try:
+        from dataclasses import asdict
+
+        from app.core.pi_runtime.model_manager import PiModelManager
+
+        manager = PiModelManager()
+        await manager.ensure_db_projection()
+        return [asdict(info) for info in manager.catalog()]
+    except Exception:
+        logger.debug("pi catalog merge skipped", exc_info=True)
+        return []
+
+
 def _cached_llm_readiness() -> tuple[bool, bool]:
     """Return cached reachability/readiness without probing provider endpoints."""
     nodes = getattr(ollama, "_nodes", None)
@@ -208,6 +228,7 @@ async def get_models(request: Request):
             "models": [],
             "active_model": _active_model(),
             "embed_model": _embed_model(),
+            "pi_catalog": await _pi_catalog_info(),
         }
 
     models = registry_models or await ollama.list_models()
@@ -266,6 +287,7 @@ async def get_models(request: Request):
         "models": enriched,
         "active_model": active,
         "embed_model": _embed_model(),
+        "pi_catalog": await _pi_catalog_info(),
     }
 
 

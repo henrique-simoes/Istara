@@ -47,20 +47,28 @@ ratchet:
   # AgenticDispatcher behind the same `agentic_core` feature flag with the
   # legacy llm_router branch preserved alongside it, so the sites stay
   # allowlisted (line keys updated) and the ratchet stays at 70 until the
-  # legacy branch is retired. The rag_params retrieval-eval embed stays on the
-  # legacy plane until W8 (tracked separately in the embed section).
+  # legacy branch is retired. The rag_params retrieval-eval embed migrated
+  # with the other embed sites in W8 (see the W8 note below).
   # W7 routed the 7 validation/consensus/dual-coder chat sites (validation.py
   # dual_run/full_ensemble/self_moa ensembles, adversarial_review + debate
   # completions, validation_executor LLM-as-judge, research_validity_service
   # dual-coder) through the AgenticDispatcher behind the same `agentic_core`
   # feature flag with the legacy llm_router/server/node branch preserved
   # alongside it, so the sites stay allowlisted (line keys updated) and the
-  # ratchet stays at 70 until the legacy branch is retired. The validation.py
-  # consensus-embedding call stays legacy until W8. The W7 migration also
+  # ratchet stays at 70 until the legacy branch is retired. The W7 migration also
   # fixed the latent validation_executor judge bug (registry returns
   # message.content; the old code read a top-level "content" key and silently
   # degraded to the default pass).
-  expected_product_sites: 70
+  # W8 migrated all 17 embed sites: the wrappers (embeddings.py embed_text /
+  # embed_chunks / ensure_embed_model, validation.py _get_embeddings) now route
+  # through agentic.embed — legacy engine: the unchanged ollama.embed* plane
+  # via the dispatcher's permanent legacy executor; Pi engine: the W8
+  # EmbeddingsGateway (pi_runtime/embeddings_gateway.py). The 14 wrapper
+  # consumers inherit the dispatch with zero edits. The W8 migration also
+  # fixed the latent W1 legacy-executor embed bug (OllamaClient.embed_batch
+  # takes no project_id kwarg; passing it raised TypeError on the real
+  # client). The ratchet drops by 17.
+  expected_product_sites: 53
 
 # ---------------------------------------------------------------------------
 # PRODUCT SITES — all migrate to the AgenticDispatcher. Removing a site from
@@ -103,7 +111,7 @@ product:
     note: "QuestionBankRunner._score_responses — score elicited responses (W6: dispatcher path behind agentic_core; legacy branch preserved)"
   - keys: ["backend/app/core/autoresearch_runners/rag_params.py:219"]
     kind: chat
-    note: "RAGParamsRunner._llm_hypothesis — next RAG parameter change (W6: dispatcher path behind agentic_core; legacy branch preserved; embed stays legacy until W8)"
+    note: "RAGParamsRunner._llm_hypothesis — next RAG parameter change (W6: dispatcher path behind agentic_core; legacy branch preserved; retrieval-eval embed migrated in W8)"
   - keys: ["backend/app/core/autoresearch_runners/skill_prompt.py:174"]
     kind: chat
     note: "SkillPromptRunner.hypothesize — skill prompt mutation (W6: dispatcher path behind agentic_core; legacy branch preserved)"
@@ -227,63 +235,16 @@ product:
   - keys: ["backend/app/skills/skill_factory.py:1064"]
     kind: chat
     note: "GeneratedSkill.execute — empty-findings repair #3 (W5: dispatcher path behind agentic_core; legacy branch preserved)"
-  # --- Embed sites (17): 3 direct alias/router calls + 14 wrapper sites ---
-  # Wrapper sites call embed_text/embed_chunks (embeddings.py) and are not
-  # detectable by the §4.1 regexes; they are tracked here so each wave's
-  # removal is ratcheted. vector_health.py:19 is counted here per §4.2's
-  # "17 embed sites" and research Table 2; §4.3 also names it as a probe —
-  # see discrepancy note in the W0 report.
-  - keys: ["backend/app/core/embeddings.py:50"]
-    kind: embed
-    note: "embed_text — canonical single-text embed wrapper (ollama.embed)"
-  - keys: ["backend/app/core/embeddings.py:90"]
-    kind: embed
-    note: "embed_chunks — canonical batch embed wrapper (ollama.embed_batch)"
-  - keys: ["backend/app/core/validation.py:888"]
-    kind: embed
-    note: "_get_embeddings — response-agreement embeddings (llm_router.embed_batch; stays legacy until W8)"
-  - keys: ["backend/app/core/agent_execution.py:833"]
-    kind: embed
-    note: "_semantic_skill_match — task-text vector (via embed_text)"
-  - keys: ["backend/app/core/agent_execution.py:841"]
-    kind: embed
-    note: "_semantic_skill_match — skill-description vectors (via embed_text)"
-  - keys: ["backend/app/core/agent_memory.py:64"]
-    kind: embed
-    note: "AgentMemoryManager.read_notes — note search query vector (via embed_text)"
-  - keys: ["backend/app/core/agent_memory.py:74"]
-    kind: embed
-    note: "AgentMemoryManager.read_notes — recent-notes fallback query (via embed_text)"
-  - keys: ["backend/app/core/agent_skill_tools.py:338"]
-    kind: embed
-    note: "rank_skill_candidates — query vector (via embed_text)"
-  - keys: ["backend/app/core/agent_skill_tools.py:341"]
-    kind: embed
-    note: "rank_skill_candidates — skill-description vectors (via embed_text)"
-  - keys: ["backend/app/core/autoresearch_runners/rag_params.py:288"]
-    kind: embed
-    note: "RAGParamsRunner._score_single_query — retrieval eval query (via embed_text; W6: chat migrated, embed stays legacy until W8)"
-  - keys: ["backend/app/core/prompt_rag.py:316"]
-    kind: embed
-    note: "_embedding_similarity — query vector (via embed_text)"
-  - keys: ["backend/app/core/prompt_rag.py:319"]
-    kind: embed
-    note: "_embedding_similarity — persona-section vector (via embed_text)"
-  - keys: ["backend/app/core/prompt_rag.py:494"]
-    kind: embed
-    note: "compose_dynamic_prompt — precomputed query vector (via embed_text)"
-  - keys: ["backend/app/core/rag.py:604"]
-    kind: embed
-    note: "ingest_chunks — document ingestion embedding (via embed_chunks)"
-  - keys: ["backend/app/core/rag.py:639"]
-    kind: embed
-    note: "retrieve_context — RAG retrieval query embedding (via embed_text)"
-  - keys: ["backend/app/core/file_watcher.py:398"]
-    kind: embed
-    note: "FileWatcher._process_file — watched-file indexing (via embed_chunks)"
-  - keys: ["backend/app/core/vector_health.py:19"]
-    kind: embed
-    note: "check_embedding_dimensions — dimension probe via product embed path"
+  # (W8 complete: all 17 embed sites left this list — the wrappers
+  # embeddings.py embed_text/embed_chunks/ensure_embed_model and
+  # validation.py _get_embeddings now route through agentic.embed (legacy:
+  # the unchanged ollama.embed* plane via the permanent legacy executor; Pi:
+  # the W8 EmbeddingsGateway), so the 14 wrapper consumers — agent_execution
+  # _semantic_skill_match, agent_memory read_notes, agent_skill_tools
+  # rank_skill_candidates, rag_params _score_single_query, prompt_rag
+  # _embedding_similarity/compose_dynamic_prompt, rag ingest/retrieve,
+  # file_watcher _process_file, and the vector_health dimension probe —
+  # inherit the dispatch with zero edits. See the W8 ratchet note above.)
   # (W2 complete: the browser_service browse_website tool left this list —
   # its ChatOpenAI construction now resolves endpoint identity through
   # PiModelManager, recorded under tool.browse_website in the agentic usage
@@ -297,9 +258,9 @@ product:
 # count-to-zero contract names the permanent exceptions explicitly.
 # ---------------------------------------------------------------------------
 permanent:
-  - keys: ["backend/app/core/agentic/legacy.py:586"]
+  - keys: ["backend/app/core/agentic/legacy.py:590"]
     category: "legacy-engine internals"
-    note: "AgenticDispatcher legacy distinct ensemble — direct calls to each selected healthy ComputeRegistry server preserve the pre-dispatcher validation baseline"
+    note: "AgenticDispatcher legacy distinct ensemble — direct calls to each selected healthy ComputeRegistry server preserve the pre-dispatcher validation baseline (line key re-pinned in W8 after the _embed project_id fix)"
   - keys: ["backend/app/core/compute_node_transport.py:298-333"]
     category: "donated-compute transport"
     note: "websocket request/response transport for relay/browser donors"

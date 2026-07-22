@@ -237,8 +237,8 @@
   <dl class="meta-grid">
     <div><dt>UI Path</dt><dd>Project Settings</dd></div>
     <div><dt>Component</dt><dd><code>ProjectSettingsView</code></dd></div>
-    <div><dt>Source Refs</dt><dd>2</dd></div>
-    <div><dt>Tests</dt><dd>0</dd></div>
+    <div><dt>Source Refs</dt><dd>6</dd></div>
+    <div><dt>Tests</dt><dd>2</dd></div>
   </dl>
   <div class="link-cluster" aria-label="Related feature links"><a href="../../shell/projects/researcher.html">Project Switcher</a>
 <a href="../general/researcher.html">System Status And Models</a></div>
@@ -272,6 +272,13 @@
 <li>Project-scoped state or artifact updates associated with project settings.</li>
 <li>Visible status, lists, forms, generated artifacts, or review results shown by the referenced component and routes.</li>
 </ul>
+<h2 id="choosing-the-agent-engine-per-project">Choosing The Agent Engine Per Project</h2>
+<ul>
+<li>Istara can run its agentic work on a legacy engine or the newer Pi replacement engine. Pi Replacement wave W8 lets each project choose its own engine instead of only following the global default.</li>
+<li>Project admins see an &quot;Agent Engine&quot; section in Project Settings with three options: Inherit global default, Legacy, or Pi. Non-admins see a read-only badge showing the engine in effect. Choosing an unrecognized engine value is rejected by the server, so a project can never end up with a broken setting.</li>
+<li>The current engine is always visible while you work: the sidebar shows a small &quot;Pi&quot; or &quot;Legacy&quot; badge next to each project&#x27;s phase label, so it is clear which engine serves that project&#x27;s chat, agents, and validation before you run anything.</li>
+<li>The project choice sits between per-call overrides and the global default: an explicit request or header still wins, the project setting applies next, and projects left on &quot;Inherit&quot; follow whatever the global default says. Switching a project back to Legacy is a safe rollback.</li>
+</ul>
 <h2 id="caveats">Caveats</h2>
 <ul>
 <li>Needs interactive verification for exact empty, loading, error, and permission-denied states.</li>
@@ -288,9 +295,9 @@
 </ul>
 <h2 id="evidence">Evidence</h2>
 <ul>
-<li>Source files: <code>frontend/src/components/settings/ProjectSettingsView.tsx</code>, <code>backend/app/api/routes/projects.py</code></li>
+<li>Source files: <code>frontend/src/components/settings/ProjectSettingsView.tsx</code>, <code>frontend/src/components/layout/Sidebar.tsx</code>, <code>frontend/src/lib/types.ts</code>, <code>frontend/src/lib/utils.ts</code>, <code>backend/app/api/routes/projects.py</code></li>
 <li>API references: <code>backend/app/api/routes/projects.py</code></li>
-<li>Tests: <code>tests/test_project_rbac.py</code>, <code>tests/test_project_scope_contracts.py</code></li>
+<li>Tests: <code>tests/test_project_rbac.py</code>, <code>tests/test_project_scope_contracts.py</code>, <code>tests/pi_production/test_w8_embeddings_gateway.py</code>, <code>tests/simulation/scenarios/79-engine-selector.mjs</code></li>
 </ul>
         </article>
         <aside class="toc-panel" aria-label="Page sections">
@@ -302,6 +309,7 @@
 <li class="toc-level-2"><a href="#how-ux-researchers-use-it">How UX Researchers Use It</a></li>
 <li class="toc-level-2"><a href="#supported-workflows">Supported Workflows</a></li>
 <li class="toc-level-2"><a href="#inputs-outputs-and-expected-outcomes">Inputs, Outputs, And Expected Outcomes</a></li>
+<li class="toc-level-2"><a href="#choosing-the-agent-engine-per-project">Choosing The Agent Engine Per Project</a></li>
 <li class="toc-level-2"><a href="#caveats">Caveats</a></li>
 <li class="toc-level-2"><a href="#related-features">Related Features</a></li>
 <li class="toc-level-2"><a href="#related-concepts">Related Concepts</a></li>

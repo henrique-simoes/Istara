@@ -22,7 +22,7 @@ import { useAuthStore } from "@/stores/authStore";
 import { useRoleCapabilities } from "@/hooks/useRoleCapabilities";
 import { permissionRequests, users as usersApi } from "@/lib/api";
 import type { PermissionRequestItem } from "@/lib/types";
-import { cn } from "@/lib/utils";
+import { cn, agentEngineLabel } from "@/lib/utils";
 import ViewOnboarding from "@/components/common/ViewOnboarding";
 
 import { API_BASE } from "@/lib/runtimeConfig";
@@ -350,6 +350,39 @@ export default function ProjectSettingsView() {
           </div>
           {project.description && (
             <p className="text-sm text-slate-500 mt-2 ml-8">{project.description}</p>
+          )}
+        </div>
+
+        {/* W8: per-project agent engine selector (legacy plane / Pi engine) */}
+        <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-5">
+          <h3 className="font-medium text-slate-900 dark:text-white flex items-center gap-2 mb-2">
+            <Settings2 size={16} /> Agent Engine
+          </h3>
+          <p className="text-sm text-slate-500 dark:text-slate-400 mb-3">
+            Choose which engine powers this project&apos;s agentic calls. Switching engines never changes the embedding space — both engines use the same embed model.
+          </p>
+          {canManageProject ? (
+            <select
+              aria-label="Agent engine"
+              value={project.agentic_engine || ""}
+              onChange={async (e) => {
+                if (!activeProjectId) return;
+                await updateProject(activeProjectId, { agentic_engine: e.target.value });
+              }}
+              className="px-3 py-2 text-sm rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-istara-500"
+            >
+              <option value="">Inherit global default (Legacy)</option>
+              <option value="legacy">Legacy</option>
+              <option value="pi">Pi</option>
+            </select>
+          ) : (
+            <span
+              aria-label="Agent engine"
+              className="inline-block px-2 py-1 rounded text-xs font-medium bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300"
+            >
+              {agentEngineLabel(project.agentic_engine)}
+              {project.agentic_engine ? "" : " (global default)"}
+            </span>
           )}
         </div>
 

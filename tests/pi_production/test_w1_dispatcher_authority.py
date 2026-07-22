@@ -389,7 +389,7 @@ async def test_chat_turn_pi_streams_and_records_one_row(monkeypatch):
 
 
 @pytest.mark.asyncio
-async def test_embed_pi_fails_closed_and_never_falls_back(monkeypatch):
+async def test_embed_pi_routes_through_gateway_and_never_falls_back(monkeypatch):
     legacy_calls = []
 
     async def legacy_spy(verb, **kwargs):
@@ -400,9 +400,22 @@ async def test_embed_pi_fails_closed_and_never_falls_back(monkeypatch):
         return None
 
     monkeypatch.setattr("app.core.agentic.dispatcher.record_agentic_usage", no_op)
-    dispatcher = AgenticDispatcher(legacy_executor=legacy_spy)
-    with pytest.raises(AgenticDispatchError, match="pi_embed_gateway_unavailable"):
-        await dispatcher.embed(texts=["x"], project_id="p1", engine="pi")
+    gateway_calls = []
+
+    class _StubGateway:
+        async def embed(self, texts, *, model=None):
+            gateway_calls.append(list(texts))
+            return {
+                "embeddings": [[2.0]],
+                "endpoint_id": "pi-local-ollama",
+                "usage": {"estimate": False},
+                "status": "success",
+            }
+
+    dispatcher = AgenticDispatcher(legacy_executor=legacy_spy, embeddings_gateway=_StubGateway())
+    # W8: Pi embeds dispatch through the EmbeddingsGateway — never the legacy plane.
+    vectors = await dispatcher.embed(texts=["x"], project_id="p1", engine="pi")
+    assert vectors == [[2.0]] and gateway_calls == [["x"]]
     assert legacy_calls == []  # no silent engine switch
     # The legacy engine embeds through the real bound executor path.
     vectors = await dispatcher.embed(texts=["x"], project_id="p1", engine="legacy")

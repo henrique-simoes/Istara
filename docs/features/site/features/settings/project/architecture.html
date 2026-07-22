@@ -237,8 +237,8 @@
   <dl class="meta-grid">
     <div><dt>UI Path</dt><dd>Project Settings</dd></div>
     <div><dt>Component</dt><dd><code>ProjectSettingsView</code></dd></div>
-    <div><dt>Source Refs</dt><dd>2</dd></div>
-    <div><dt>Tests</dt><dd>0</dd></div>
+    <div><dt>Source Refs</dt><dd>6</dd></div>
+    <div><dt>Tests</dt><dd>2</dd></div>
   </dl>
   <div class="link-cluster" aria-label="Related feature links"><a href="../../shell/projects/architecture.html">Project Switcher</a>
 <a href="../general/architecture.html">System Status And Models</a></div>
@@ -260,6 +260,40 @@
 <ul>
 <li><code>backend/app/api/routes/projects.py</code></li>
 </ul>
+<h3 id="per-project-agent-engine-selector-pi-replacement-w8">Per-Project Agent Engine Selector (Pi Replacement W8)</h3>
+<ul>
+<li><code>ProjectUpdate.agentic_engine</code> (<code>backend/app/api/routes/projects.py</code>) accepts</li>
+</ul>
+<p><code>legacy</code> or any <code>PI_ENGINE_VALUES</code> member; <code>&quot;&quot;</code>/<code>null</code> means the project</p>
+<p>inherits the global default engine, and any other value is rejected with</p>
+<p>422. <code>_project_response</code>/<code>ProjectResponse</code> expose the stored</p>
+<p><code>agentic_engine</code> so the frontend can render the current selection.</p>
+<ul>
+<li>This is the project-level engine pin the W1 dispatcher already reads at</li>
+</ul>
+<p>level-3 resolution (<code>backend/app/core/agentic/dispatcher.py</code>): per-call</p>
+<p>override first, then the <code>x-istara-agent-engine</code> header, then the project</p>
+<p><code>agentic_engine</code> setting, then <code>settings.agentic_engine_default</code> (see</p>
+<p><a href="../../chat/model-controls/architecture.html">chat.model-controls</a> for the</p>
+<p>full precedence).</p>
+<ul>
+<li>On the frontend, <code>frontend/src/lib/types.ts</code> adds</li>
+</ul>
+<p><code>Project.agentic_engine?: string | null</code> and <code>frontend/src/lib/utils.ts</code></p>
+<p>adds <code>agentEngineLabel()</code> (Pi for <code>pi</code>, <code>pi-candidate</code>, <code>pi-replacement</code>,</p>
+<p>and <code>deepseek-pi</code>; Legacy otherwise).</p>
+<p><code>frontend/src/components/layout/Sidebar.tsx</code> shows a per-project engine</p>
+<p>indicator badge (<code>aria-label=&quot;Engine: Pi|Legacy&quot;</code>) next to the phase</p>
+<p>subtitle, and <code>frontend/src/components/settings/ProjectSettingsView.tsx</code></p>
+<p>adds an &quot;Agent Engine&quot; section with a <code>select[aria-label=&quot;Agent engine&quot;]</code></p>
+<p>(Inherit global default / Legacy / Pi) for project admins — saved through</p>
+<p><code>updateProject(id, { agentic_engine })</code> — and a read-only badge for</p>
+<p>non-admins.</p>
+<ul>
+<li>Simulation scenario <code>tests/simulation/scenarios/79-engine-selector.mjs</code></li>
+</ul>
+<p>(registered in <code>tests/simulation/lib/scenario-registry.mjs</code>) walks the</p>
+<p>selector and badge end to end.</p>
 <h2 id="architecture-notes">Architecture Notes</h2>
 <ul>
 <li>The feature is mounted through <code>frontend/src/components/settings/ProjectSettingsView.tsx</code> and the UI navigation path recorded in the inventory.</li>
@@ -285,6 +319,9 @@
 <li><code>tests/test_file_watcher_config.py</code></li>
 <li><code>tests/test_project_rbac.py</code></li>
 <li><code>tests/test_project_scope_contracts.py</code></li>
+<li><code>tests/pi_production/test_w8_embeddings_gateway.py</code> verifies <code>ProjectUpdate.agentic_engine</code> validation (accepted engine values, inherit-default semantics, 422 on unknown values).</li>
+<li><code>tests/simulation/scenarios/79-engine-selector.mjs</code> walks the per-project engine selector and the Sidebar engine badge.</li>
+<li>Regenerate and validate the machine manifests and static site with <code>python scripts/feature_docs.py --seed-missing --generate-site --check</code>.</li>
 </ul>
 <h2 id="related-features">Related Features</h2>
 <ul>
@@ -297,7 +334,7 @@
 </ul>
 <h2 id="compass-evidence">Compass Evidence</h2>
 <ul>
-<li>Spec/task: CF-SPEC-55 / CF-684; CF-SPEC-72 / CF-927</li>
+<li>Spec/task: CF-SPEC-55 / CF-684; CF-SPEC-72 / CF-927; CF-SPEC-8 (Pi replacement W8 per-project agent engine selector)</li>
 <li>Inventory source: <code>docs/features/inventory.json</code></li>
 </ul>
 <h2 id="when-to-update">When To Update</h2>
@@ -314,6 +351,7 @@
 <li class="toc-level-2"><a href="#state-api-and-backend-contracts">State, API, And Backend Contracts</a></li>
 <li class="toc-level-3"><a href="#stores">Stores</a></li>
 <li class="toc-level-3"><a href="#api-and-backend">API And Backend</a></li>
+<li class="toc-level-3"><a href="#per-project-agent-engine-selector-pi-replacement-w8">Per-Project Agent Engine Selector (Pi Replacement W8)</a></li>
 <li class="toc-level-2"><a href="#architecture-notes">Architecture Notes</a></li>
 <li class="toc-level-2"><a href="#agents-skills-llm-mcp-and-permissions">Agents, Skills, LLM, MCP, And Permissions</a></li>
 <li class="toc-level-2"><a href="#tests-and-verification">Tests And Verification</a></li>

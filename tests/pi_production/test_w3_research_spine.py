@@ -122,10 +122,10 @@ def _direct_legacy_calls(source: str) -> list[str]:
 # ── static: the 8 sites left the legacy plane ───────────────────────────
 
 
-def test_w3_ratchet_floor_is_70():
+def test_w3_ratchet_floor_is_53():
     from tests.pi_migration.test_count_to_zero import EXPECTED_PRODUCT_SITES, check_count_to_zero
 
-    assert EXPECTED_PRODUCT_SITES == 70, "W3 migrated 8 spine sites: 78 − 8 = 70"
+    assert EXPECTED_PRODUCT_SITES == 53, "W3: 78 − 8 = 70; W8 migrated the 17 embed sites: 70 − 17 = 53"
     check_count_to_zero()
 
 

@@ -211,6 +211,15 @@ class PiExecutionService:
             self._model_manager = PiModelManager(resolver=self._resolver)
         return self._model_manager
 
+    def model_manager(self) -> PiModelManager:
+        """Public accessor for the engine's endpoint authority (W8).
+
+        The embeddings gateway and the UX-parity surfaces share the exact
+        manager the engine resolves through, so catalog/projection state is
+        one identity plane rather than parallel instances.
+        """
+        return self._manager()
+
     # ── shared turn driver ───────────────────────────────────────────────
     async def _drive_turn(
         self,

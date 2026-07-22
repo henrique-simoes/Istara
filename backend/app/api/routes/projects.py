@@ -129,6 +129,8 @@ class ProjectUpdate(BaseModel):
     company_context: str | None = Field(default=None, max_length=50000)
     project_context: str | None = Field(default=None, max_length=50000)
     guardrails: str | None = Field(default=None, max_length=50000)
+    # W8 UX parity: per-project engine selector (None/"" = inherit global default).
+    agentic_engine: str | None = Field(default=None, max_length=32)
 
     @field_validator("name", "description", "company_context", "project_context", "guardrails", mode="before")
     @classmethod
@@ -136,6 +138,20 @@ class ProjectUpdate(BaseModel):
         if value is None:
             return None
         return str(value).strip()
+
+    @field_validator("agentic_engine", mode="before")
+    @classmethod
+    def _validate_engine(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        engine = str(value).strip().lower()
+        if not engine:
+            return None  # inherit the global default
+        from app.core.pi_replacement import PI_ENGINE_VALUES
+
+        if engine != "legacy" and engine not in PI_ENGINE_VALUES:
+            raise ValueError(f"unknown agentic engine: {engine}")
+        return engine
 
 
 class LinkFolderRequest(BaseModel):
@@ -160,6 +176,7 @@ class ProjectResponse(BaseModel):
     is_paused: bool = False
     owner_id: str = ""
     watch_folder_path: str | None = None
+    agentic_engine: str | None = None
     current_user_project_role: str | None = None
     created_at: datetime
     updated_at: datetime
@@ -185,6 +202,7 @@ async def _project_response(
         "is_paused": project.is_paused,
         "owner_id": project.owner_id,
         "watch_folder_path": project.watch_folder_path,
+        "agentic_engine": project.agentic_engine,
         "current_user_project_role": role,
         "created_at": project.created_at,
         "updated_at": project.updated_at,

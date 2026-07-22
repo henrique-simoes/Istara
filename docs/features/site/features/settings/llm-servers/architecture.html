@@ -237,8 +237,8 @@
   <dl class="meta-grid">
     <div><dt>UI Path</dt><dd>Settings &gt; LLM Servers</dd></div>
     <div><dt>Component</dt><dd><code>SettingsView</code></dd></div>
-    <div><dt>Source Refs</dt><dd>3</dd></div>
-    <div><dt>Tests</dt><dd>2</dd></div>
+    <div><dt>Source Refs</dt><dd>7</dd></div>
+    <div><dt>Tests</dt><dd>3</dd></div>
   </dl>
   <div class="link-cluster" aria-label="Related feature links"><a href="../../chat/model-controls/architecture.html">Chat Model Controls</a>
 <a href="../connection-strings/architecture.html">Connection Strings</a></div>
@@ -306,6 +306,35 @@
 <p><code>resolve_distinct(n, ...)</code> fails closed when fewer than <code>n</code> distinct</p>
 <p>identities exist rather than silently reusing one endpoint as two.</p>
 <p><code>catalog()</code> feeds the settings model UI and benchmark comparison surfaces.</p>
+<h3 id="catalog-projection-refresh-and-merged-model-view-pi-replacement-w8">Catalog Projection Refresh And Merged Model View (Pi Replacement W8)</h3>
+<ul>
+<li>W8 keeps the Pi catalog projection in sync with LLM server changes so both</li>
+</ul>
+<p>engine planes see the same registered servers.</p>
+<p><code>PiModelManager.reset_db_projection()</code> drops the <code>llm_server</code>-sourced catalog entries so the</p>
+<p>next <code>ensure_db_projection</code> re-reads the database, and the module-level</p>
+<p><code>reset_live_db_projections()</code> applies that reset to every live manager</p>
+<p>through a weakref registry — the projection stays one-directional (database</p>
+<p>row to Pi catalog entry) and nothing Pi-side writes back to the row.</p>
+<ul>
+<li><code>backend/app/api/routes/llm_servers.py</code> calls</li>
+</ul>
+<p><code>_refresh_pi_catalog_projection()</code> after add, update, and delete commits, so</p>
+<p>a server registered, edited, or removed in Settings is reflected in the Pi</p>
+<p>catalog on the next resolution. Legacy CRUD behavior is unchanged: rows</p>
+<p>still register into the live <code>llm_router</code> exactly as before, and relay rows</p>
+<p>are still never projected.</p>
+<ul>
+<li><code>backend/app/core/network_discovery.py</code> <code>discover_and_register</code> runs the same</li>
+</ul>
+<p>refresh after persisting discovered rows, so a discovered server becomes an</p>
+<p><code>LLMServer</code> row and then a Pi catalog entry without a restart.</p>
+<ul>
+<li><code>backend/app/api/routes/settings.py</code> <code>GET /settings/models</code> now includes a</li>
+</ul>
+<p><code>&quot;pi_catalog&quot;</code> key alongside the legacy model list in both online and</p>
+<p>offline responses. It is an identity/capability view only — endpoint ids,</p>
+<p>model names, and kinds — and never exposes endpoint URLs or API keys.</p>
 <h2 id="architecture-notes">Architecture Notes</h2>
 <ul>
 <li>The feature is mounted through <code>frontend/src/components/common/SettingsView.tsx</code> and the UI navigation path recorded in the inventory.</li>
@@ -321,6 +350,8 @@
 <li><code>frontend/src/lib/modelProviders.test.ts</code></li>
 <li><code>tests/test_llm_servers.py</code></li>
 <li><code>tests/test_project_scope_contracts.py</code></li>
+<li><code>tests/pi_production/test_w8_embeddings_gateway.py</code> verifies the W8 projection-reset hooks and the merged <code>pi_catalog</code> view in <code>GET /settings/models</code>.</li>
+<li>Regenerate and validate the machine manifests and static site with <code>python scripts/feature_docs.py --seed-missing --generate-site --check</code>.</li>
 </ul>
 <h2 id="related-features">Related Features</h2>
 <ul>
@@ -333,7 +364,7 @@
 </ul>
 <h2 id="compass-evidence">Compass Evidence</h2>
 <ul>
-<li>Spec/task: CF-SPEC-94 / CF-1193; CF-SPEC-8 (Pi replacement W1 model catalog)</li>
+<li>Spec/task: CF-SPEC-94 / CF-1193; CF-SPEC-8 (Pi replacement W1 model catalog; W8 projection refresh and merged settings catalog)</li>
 <li>Inventory source: <code>docs/features/inventory.json</code></li>
 </ul>
 <h2 id="when-to-update">When To Update</h2>
@@ -351,6 +382,7 @@
 <li class="toc-level-3"><a href="#stores">Stores</a></li>
 <li class="toc-level-3"><a href="#api-and-backend">API And Backend</a></li>
 <li class="toc-level-3"><a href="#isolated-pi-model-catalog-pi-replacement-w1">Isolated Pi Model Catalog (Pi Replacement W1)</a></li>
+<li class="toc-level-3"><a href="#catalog-projection-refresh-and-merged-model-view-pi-replacement-w8">Catalog Projection Refresh And Merged Model View (Pi Replacement W8)</a></li>
 <li class="toc-level-2"><a href="#architecture-notes">Architecture Notes</a></li>
 <li class="toc-level-2"><a href="#agents-skills-llm-mcp-and-permissions">Agents, Skills, LLM, MCP, And Permissions</a></li>
 <li class="toc-level-2"><a href="#tests-and-verification">Tests And Verification</a></li>

@@ -588,6 +588,17 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     except Exception as e:
         _log.warning(f"Dimension check skipped: {e}")
 
+    # W8 vector-space invariant: both engines must embed with the SAME model —
+    # an engine switch must never silently change the embedding space, or
+    # every stored vector is invalidated.
+    try:
+        from app.core.pi_runtime.embeddings_gateway import assert_vector_space_invariant
+
+        shared_embed_model = assert_vector_space_invariant()
+        _log.info(f"Vector-space invariant OK (embed model: {shared_embed_model})")
+    except Exception as e:
+        _log.warning(f"Vector-space invariant check failed: {e}")
+
     # ── Data integrity check ──
     try:
         from app.core.data_integrity import run_integrity_check

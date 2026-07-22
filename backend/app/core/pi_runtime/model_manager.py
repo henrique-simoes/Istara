@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import json
 import logging
+import weakref
 from dataclasses import dataclass
 from typing import Iterable
 
@@ -32,6 +33,11 @@ from .endpoints import (
 )
 
 logger = logging.getLogger(__name__)
+
+# Live managers, so LLMServer CRUD / network discovery can invalidate the
+# DB projection on every in-process manager (W8 UX parity) without changing
+# how managers are constructed or shared.
+_LIVE_MANAGERS: "weakref.WeakSet[PiModelManager]" = weakref.WeakSet()
 
 
 @dataclass(frozen=True)
@@ -90,6 +96,7 @@ class PiModelManager:
             entries = [self._coerce(endpoint) for endpoint in endpoints]
         self._entries = {entry.endpoint_id: entry for entry in entries}
         self._db_projected = False
+        _LIVE_MANAGERS.add(self)
 
     # ── catalog sources ──────────────────────────────────────────────────
     @staticmethod
@@ -237,6 +244,20 @@ class PiModelManager:
             kind="local" if is_local else "remote",
         )
 
+    def reset_db_projection(self) -> None:
+        """Drop projected LLMServer rows so the next projection re-reads the DB.
+
+        Called when the legacy model-management plane mutates ``LLMServer``
+        rows (CRUD or network discovery, W8 UX parity): the static settings /
+        local catalog is authoritative and untouched, only ``llm_server``-
+        sourced entries are invalidated. The projection stays one-directional
+        and lazy — it re-materializes on the next ``ensure_db_projection``.
+        """
+        self._db_projected = False
+        stale = [key for key, entry in self._entries.items() if entry.source == "llm_server"]
+        for key in stale:
+            del self._entries[key]
+
     # ── selection (exact identity or capability-filtered, never scored) ──
     @staticmethod
     def _matches(entry: _CatalogEntry, *, model: str | None, require_vision: bool, min_context: int) -> bool:
@@ -323,6 +344,32 @@ class PiModelManager:
             raise PiEndpointResolutionError("insufficient_distinct_pi_endpoints")
         return [self._materialize(entry) for entry in matches[:n]]
 
+    def resolve_embed(self) -> ResolvedPiEndpoint:
+        """W8: pick the embeddings endpoint — identity-managed, never scored.
+
+        Only OpenAI-compatible entries qualify (Anthropic has no embeddings
+        API). Preference order keeps the embedding space anchored to the local
+        serving plane the legacy engine uses: the well-known local Ollama
+        entry first (native ``/api/embed``), then other local entries, then
+        any remote ``/v1/embeddings``-compatible entry. Fail-closed when the
+        catalog has no compatible entry.
+        """
+        candidates = [
+            entry for entry in self._entries.values()
+            if entry.provider_kind == "openai_compat"
+        ]
+        if not candidates:
+            raise PiEndpointResolutionError("no_matching_pi_embed_endpoint")
+
+        def _rank(entry: _CatalogEntry) -> int:
+            if entry.endpoint_id == "pi-local-ollama":
+                return 0
+            if entry.kind == "local":
+                return 1
+            return 2
+
+        return self._materialize(sorted(candidates, key=_rank)[0])
+
     def catalog(self) -> list[PiEndpointInfo]:
         """Identity/capability view for the settings UI and benchmarks."""
         return [
@@ -334,3 +381,18 @@ class PiModelManager:
             )
             for entry in self._entries.values()
         ]
+
+
+def reset_live_db_projections() -> None:
+    """Invalidate the LLMServer projection on every live manager (W8).
+
+    Called by the legacy model-management plane (``llm_servers`` CRUD,
+    network discovery) after it commits row changes, so the next Pi-side
+    resolution re-projects the updated rows. Never raises: projection
+    invalidation must not break the legacy plane that triggered it.
+    """
+    for manager in list(_LIVE_MANAGERS):
+        try:
+            manager.reset_db_projection()
+        except Exception:  # pragma: no cover - defensive; never break the caller
+            logger.debug("pi model manager: projection reset skipped for one manager")

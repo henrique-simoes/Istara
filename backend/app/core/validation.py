@@ -882,10 +882,16 @@ async def _get_embeddings(
     texts: list[str],
     project_id: str | None = None,
 ) -> list[list[float]]:
-    """Get embeddings for texts using the LLM router."""
+    """Get embeddings for texts through the AgenticDispatcher (W8).
+
+    Project-scoped: the dispatcher resolves the engine per the project's
+    ``agentic_engine`` setting — legacy: the unchanged ``ollama.embed*``
+    plane; Pi: the W8 EmbeddingsGateway. Consensus similarity degrades to
+    the existing empty-embedding handling on any failure.
+    """
     try:
-        from app.core.llm_router import llm_router
-        return await llm_router.embed_batch(texts, project_id=project_id)
+        from app.core.agentic import agentic
+        return await agentic.embed(texts=texts, project_id=project_id)
     except Exception:
         return []
 
