@@ -237,7 +237,7 @@ async def test_dual_run_flag_on_dispatches_distinct_ensemble(
 
     from app.core.validation import dual_run
 
-    result = await dual_run("prompt", system="sys", project_id="p1")
+    result = await dual_run("prompt", system="sys", project_id="p1", max_tokens=37)
 
     assert router_stub.calls == [], "flag on must not call the legacy plane directly"
     method, kwargs = dispatcher_stub.calls[0]
@@ -245,6 +245,7 @@ async def test_dual_run_flag_on_dispatches_distinct_ensemble(
     assert kwargs["purpose"] == "validation.dual_run"
     assert kwargs["n"] == 2 and kwargs["distinct"] is True
     assert kwargs["project_id"] == "p1"
+    assert kwargs["params"].max_tokens == 37
     assert kwargs["spine_phase"] in SPINE_PHASES
     assert result.method == "dual_run"
     assert result.responses == ["resp-a", "resp-b"]

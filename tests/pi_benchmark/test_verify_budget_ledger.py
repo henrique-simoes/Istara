@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import json
+
 import pytest
 
 from tests.pi_benchmark import verify_budget_ledger
@@ -43,6 +45,22 @@ def test_orphan_commit_is_a_violation(tmp_path):
         '{"type": "commit", "call_id": "ghost", "ts": "t", "actual_cost_usd": 0.01, "usage": {}}\n',
         encoding="utf-8",
     )
+    assert verify_budget_ledger.main(["--ledger", str(path)]) == 1
+
+
+@pytest.mark.parametrize(
+    ("row", "needle"),
+    [
+        ({"type": "reserve", "call_id": "a", "max_cost_usd": 0.4}, "duplicate reserve"),
+        ({"type": "commit", "call_id": "a", "actual_cost_usd": 0.41, "usage": {}}, "exceeds reservation"),
+        ({"type": "reserve", "call_id": "a", "max_cost_usd": -0.1}, "invalid amount"),
+    ],
+)
+def test_invalid_state_machine_rows_are_violations(tmp_path, row, needle):
+    path = tmp_path / "ledger.json"
+    rows = [{"type": "reserve", "call_id": "a", "max_cost_usd": 0.4, "ts": "t"}]
+    rows.append({**row, "ts": "t"})
+    path.write_text("\n".join(json.dumps(item) for item in rows) + "\n")
     assert verify_budget_ledger.main(["--ledger", str(path)]) == 1
 
 
