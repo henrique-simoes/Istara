@@ -11,8 +11,8 @@ status: in-progress
 blocked_on: "none"
 authored_by: henrique-simoes
 grounding: "Based on 2026-07-20-pi-full-replacement-master-plan.md Section 10"
-last: {agent: gpt-5.6-sol, at: 2026-07-22T13:43:30Z, ledger: L-7}
-next_action: "Conductor tallies consensus_result after the remaining consensus judges vote"
+last: {agent: kimi-code/k3, at: 2026-07-22T13:45:25Z, ledger: L-8}
+next_action: "Conductor tallies judge plan_votes and advances the pipeline"
 ```
 <!-- /STATUS BLOCK -->
 
@@ -68,3 +68,9 @@ Did: Compared exactly candidate plans A (`claude-fable-5`) and C (`kimi-code/k3`
 Result: Voted for slot `c` on `pi-eval-JUDGE-B`; C has the stronger schema placement, explicit T2 live-model owner gate, and mandated security benchmark. Recorded residual risk that a T2-only B4 path is needed if T3 spend is declined.
 Verified: `sha256sum docs/build-stream/plans/pi-eval-plan-a.md docs/build-stream/plans/pi-eval-plan-c.md` passed (A `8932b5ed16c6062551587e6045df1f4279d74f3945857bf6568ca682aaa17b50`; C `90c7b0c2fb68b5c2474aec386565de7f0bcef8f270b5991aedb82c0245816c5f`); CF command evidence `1247`, plan vote `1248`, self-report `1249` recorded.
 Next: stage exit: consensus judge B vote recorded; conductor should tally after remaining judges vote.
+
+### L-8 | 2026-07-22T13:45:25Z | S1-plan | kimi-code/k3 | judge | Planning phase <!-- bsc-ledger:pi-eval-JUDGE-C -->
+Did: consensus judge slot c - read both candidate plans (pi-eval-plan-a.md r1, pi-eval-plan-b.md), spot-verified plan A grounding claims in-tree, recorded plan_vote for slot a
+Result: vote a recorded (CF evidence rows 1250 command, 1251 plan_vote, 1252 self_report); pi-eval-JUDGE-C
+Verified: ls/grep/sed grounding audit all pass - benchmark assets absent; long_horizon_runner.py:138 total_tokens += 1 per chunk; api-client.mjs:31,244 engine header; run.mjs harnesses unplumbed; raw-llm-capture.mjs:5-10 pricing table
+Next: conductor tallies judge plan_votes (a/b/c) and advances the pipeline
