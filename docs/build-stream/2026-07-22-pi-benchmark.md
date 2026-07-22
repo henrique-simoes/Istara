@@ -681,3 +681,9 @@ Did: repaired recovery consensus plan A (revision r1) at docs/build-stream/plans
 Result: plan slot A ready for recovery consensus judging (r1); reuse verdict unchanged — prior correction artifacts reusable as content not state; DUT/DeepSeek/MoA/post-run-Kimi roles retained verbatim in plan section 0; PI-BENCH-RECOVERY-20260722-REPLAN-A-r1
 Verified: grep kimi-eval + DEC-5/6/7 anchor re-audit at 9c45a42a (regions :202-466 hold, DEC-5 clause :489, no DEC-7); sqlite consensus_result full listing (0 for role-correction) + stale-row recheck (IMPL/REVIEW open, REPLAN-C-r1 claimed); conductor pid/marker audit (91892 alive, stale (1)/(2) markers present); git diff --check clean; wc -l plan = 341; scope audit — only the plan file modified by this stage; CF evidence rows 1446-1449 (3x command, self_report)
 Next: recovery consensus judges vote on plan slots a/b/c; conductor seals consensus_result; G-R1 owner gate before any implementation
+
+### L-38 | 2026-07-22T20:09:18Z | S1-plan | kimi-code/k3 | planner | pi-bench-recovery-20260722-architect-c <!-- bsc-ledger:PI-BENCH-RECOVERY-20260722-PLAN-C -->
+Did: pi-bench-recovery-20260722-architect-c stage on task PI-BENCH-RECOVERY-20260722-PLAN-C (harness fallback entry; the model did not append one).
+Result: task PI-BENCH-RECOVERY-20260722-PLAN-C finished; worktree head 68dcd159.
+Verified: see Compass Forge evidence rows on PI-BENCH-RECOVERY-20260722-PLAN-C (command + self_report + stage_attribution).
+Next: conductor advances the pipeline on evidence.
