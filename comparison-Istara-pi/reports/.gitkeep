@@ -1,0 +1,3 @@
+# Generated report bundles (report.md / report.html / scorecard.json) land here, one
+# dated subdirectory per invocation of scripts/pi_benchmark_report.py. This placeholder
+# keeps the directory tracked before the first bundle exists.
