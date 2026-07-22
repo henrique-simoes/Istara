@@ -19,22 +19,28 @@ checks; no live model activity and no external traffic.
 from __future__ import annotations
 
 import ast
+import uuid
 from pathlib import Path
 
 import httpx
 import pytest
+from sqlalchemy import select
 
 from app.config import settings
+from app.core.agentic.dispatcher import AgenticDispatcher
 from app.core.pi_runtime.embeddings_gateway import (
     EmbeddingsGateway,
     PiEmbeddingError,
     VectorSpaceInvariantError,
     assert_vector_space_invariant,
     default_embed_model,
+    validate_embedding_vectors,
 )
 from app.core.pi_runtime.endpoints import PiEndpointResolutionError, ResolvedPiEndpoint
 from app.core.pi_runtime.model_manager import PiModelManager, reset_live_db_projections
 from app.core.pi_runtime.model_manager_provisioning import ensure_endpoint_model
+from app.models.agentic_usage import AgenticUsageRow
+from app.models.database import async_session, init_db
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 
@@ -129,6 +135,103 @@ async def test_gateway_openai_compatible_v1_embeddings():
     assert request.headers["Authorization"] == "Bearer sekret"
 
 
+async def test_gateway_openai_usage_reaches_accounting_shape():
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, json={
+            "data": [{"index": 0, "embedding": [0.8]}],
+            "usage": {"prompt_tokens": 123, "total_tokens": 123},
+        })
+
+    manager = _isolated(PiModelManager(endpoints=[_endpoint(
+        endpoint_id="pi-llm-priced", base_url="http://gpu.local:8000/v1",
+        api_key="sekret", kind="remote", cost_input_per_mtok=2.0,
+    )]))
+    gateway = EmbeddingsGateway(manager=manager, client=_mock_client(handler))
+
+    outcome = await gateway.embed(["a"])
+
+    assert outcome["usage"] == {
+        "input_tokens": 123,
+        "output_tokens": 0,
+        "cache_read": 0,
+        "cache_write": 0,
+        "total_tokens": 123,
+        "cost_usd": pytest.approx(0.000246),
+        "estimate": False,
+    }
+
+
+async def test_gateway_local_missing_usage_is_explicitly_estimated():
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, json={"embeddings": [[0.8]]})
+
+    manager = _isolated(PiModelManager(endpoints=[_endpoint(cost_input_per_mtok=1.0)]))
+    gateway = EmbeddingsGateway(manager=manager, client=_mock_client(handler))
+
+    outcome = await gateway.embed(["local text"])
+
+    assert outcome["usage"]["estimate"] is True
+    assert outcome["usage"]["input_tokens"] > 0
+    assert outcome["usage"]["total_tokens"] == outcome["usage"]["input_tokens"]
+    assert outcome["usage"]["cost_usd"] > 0
+
+
+async def test_remote_embedding_usage_is_persisted_exactly_in_ledger():
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, json={
+            "data": [{"index": 0, "embedding": [0.8]}],
+            "usage": {"prompt_tokens": 123, "total_tokens": 123},
+        })
+
+    await init_db()
+    project_id = f"w8-remote-{uuid.uuid4().hex[:12]}"
+    manager = _isolated(PiModelManager(endpoints=[_endpoint(
+        endpoint_id="pi-llm-priced", base_url="http://gpu.local:8000/v1",
+        api_key="sekret", kind="remote", cost_input_per_mtok=2.0,
+    )]))
+    dispatcher = AgenticDispatcher(
+        embeddings_gateway=EmbeddingsGateway(manager=manager, client=_mock_client(handler))
+    )
+
+    await dispatcher.embed(texts=["a"], project_id=project_id, engine="pi")
+
+    async with async_session() as session:
+        row = await session.scalar(select(AgenticUsageRow).where(
+            AgenticUsageRow.project_id == project_id,
+            AgenticUsageRow.purpose == "embed",
+        ))
+    assert row is not None
+    assert row.input_tokens == 123
+    assert row.total_tokens == 123
+    assert row.cost_usd == pytest.approx(0.000246)
+    assert row.estimate == 0
+
+
+async def test_local_missing_embedding_usage_is_flagged_in_ledger():
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, json={"embeddings": [[0.8]]})
+
+    await init_db()
+    project_id = f"w8-local-{uuid.uuid4().hex[:12]}"
+    manager = _isolated(PiModelManager(endpoints=[_endpoint(cost_input_per_mtok=1.0)]))
+    dispatcher = AgenticDispatcher(
+        embeddings_gateway=EmbeddingsGateway(manager=manager, client=_mock_client(handler))
+    )
+
+    await dispatcher.embed(texts=["local text"], project_id=project_id, engine="pi")
+
+    async with async_session() as session:
+        row = await session.scalar(select(AgenticUsageRow).where(
+            AgenticUsageRow.project_id == project_id,
+            AgenticUsageRow.purpose == "embed",
+        ))
+    assert row is not None
+    assert row.estimate == 1
+    assert row.input_tokens > 0
+    assert row.total_tokens == row.input_tokens
+    assert row.cost_usd > 0
+
+
 async def test_gateway_response_cardinality_fails_typed():
     def handler(request: httpx.Request) -> httpx.Response:
         return httpx.Response(200, json={"embeddings": [[0.1]]})
@@ -185,20 +288,66 @@ def test_resolve_embed_fail_closed_without_compatible_entries():
 # ── vector-space invariant ──────────────────────────────────────────────
 
 
-def test_vector_space_invariant_holds_for_both_providers(monkeypatch):
+@pytest.mark.asyncio
+async def test_vector_space_invariant_probes_both_engines(monkeypatch):
     monkeypatch.setattr(settings, "llm_provider", "ollama")
-    assert assert_vector_space_invariant() == settings.ollama_embed_model
-    monkeypatch.setattr(settings, "llm_provider", "lmstudio")
-    assert assert_vector_space_invariant() == settings.lmstudio_embed_model
+    calls = []
 
+    async def probe(*, engine, model, check_stored):
+        calls.append((engine, model, check_stored))
+        return {"status": "ok", "model": model, "model_dim": 2}
 
-def test_vector_space_invariant_raises_on_divergence(monkeypatch):
-    monkeypatch.setattr(settings, "llm_provider", "ollama")
-    monkeypatch.setattr(
-        "app.core.pi_runtime.embeddings_gateway.default_embed_model", lambda: "other-model"
+    assert (
+        await assert_vector_space_invariant(dimension_probe=probe)
+        == settings.ollama_embed_model
     )
+    assert calls == [
+        ("legacy", settings.ollama_embed_model, False),
+        ("pi", settings.ollama_embed_model, False),
+    ]
+
+
+@pytest.mark.asyncio
+async def test_vector_space_invariant_raises_on_dimension_divergence(monkeypatch):
+    monkeypatch.setattr(settings, "llm_provider", "ollama")
+    async def probe(*, engine, model, check_stored):
+        return {"status": "ok", "model": model, "model_dim": 2 if engine == "legacy" else 3}
+
     with pytest.raises(VectorSpaceInvariantError, match="vector_space_invariant_violation"):
-        assert_vector_space_invariant()
+        await assert_vector_space_invariant(dimension_probe=probe)
+
+
+@pytest.mark.asyncio
+async def test_vector_space_invariant_probe_failure_is_typed(monkeypatch):
+    async def probe(*, engine, model, check_stored):
+        return {"status": "error", "message": f"{engine} unavailable"}
+
+    with pytest.raises(VectorSpaceInvariantError, match="vector_space_invariant_probe_failed"):
+        await assert_vector_space_invariant(dimension_probe=probe)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "payload",
+    [
+        {"embeddings": [[]]},
+        {"embeddings": [["not-a-number"]]},
+        {"embeddings": [[None]]},
+    ],
+)
+async def test_gateway_malformed_vector_fails_before_success(payload):
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, json=payload)
+
+    manager = _isolated(PiModelManager(endpoints=[_endpoint()]))
+    gateway = EmbeddingsGateway(manager=manager, client=_mock_client(handler))
+    with pytest.raises(PiEmbeddingError, match="embed_response_"):
+        await gateway.embed(["one"])
+
+
+def test_embedding_vector_validation_rejects_non_finite_values():
+    with pytest.raises(PiEmbeddingError, match="embed_response_non_finite"):
+        validate_embedding_vectors([[float("nan")]], expected_count=1)
 
 
 def test_default_embed_model_matches_legacy_rule(monkeypatch):
@@ -261,6 +410,20 @@ async def test_embed_text_routes_through_agentic_embed_with_cache_in_front(monke
     cached = await embeddings_module.embed_text("hello")
     assert cached == [0.5, 0.6]
     assert len(spy.calls) == 1
+
+
+@pytest.mark.asyncio
+async def test_embed_text_malformed_dispatch_result_never_reaches_cache(monkeypatch):
+    from app.core import embeddings as embeddings_module
+    from app.core.agentic import agentic
+
+    cache = _FakeCache()
+    monkeypatch.setattr(embeddings_module, "embedding_cache", cache)
+    monkeypatch.setattr(agentic, "embed", _EmbedSpy(vectors=[[]]))
+
+    with pytest.raises(PiEmbeddingError, match="embed_response_invalid_vector"):
+        await embeddings_module.embed_text("malformed")
+    assert cache.puts == 0
 
 
 async def test_embed_chunks_batches_through_agentic_embed(monkeypatch):
@@ -545,6 +708,9 @@ def test_static_ux_parity_hooks():
     assert "agentic_engine" in projects
     main = (REPO_ROOT / "backend/app/main.py").read_text(encoding="utf-8")
     assert "assert_vector_space_invariant" in main
+    assert "shared_embed_model = await assert_vector_space_invariant(" in main
+    assert "dimension_probe=check_embedding_dimensions" in main
+    assert 'raise RuntimeError("vector_space_invariant_violation")' in main
 
 
 def test_static_legacy_embed_executor_has_no_project_id_kwarg():

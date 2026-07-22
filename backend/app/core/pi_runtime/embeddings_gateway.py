@@ -22,10 +22,15 @@ embedding space — every stored vector and cache entry would be invalidated.
 from __future__ import annotations
 
 import logging
+from typing import Any
 
 import httpx
 
 from app.config import settings
+from app.core.embedding_validation import (
+    validate_embedding_vectors as _validate_embedding_vectors,
+)
+from app.core.token_counter import count_tokens
 
 from .endpoints import ResolvedPiEndpoint
 from .model_manager import PiModelManager
@@ -38,7 +43,7 @@ class PiEmbeddingError(RuntimeError):
 
 
 class VectorSpaceInvariantError(RuntimeError):
-    """The two engines would embed with different models — never allowed."""
+    """The two engines cannot be proven to share one safe vector space."""
 
 
 def default_embed_model() -> str:
@@ -52,24 +57,38 @@ def default_embed_model() -> str:
     return settings.ollama_embed_model
 
 
-def assert_vector_space_invariant() -> str:
-    """Assert the Pi gateway and the legacy plane embed with the same model.
+def validate_embedding_vectors(vectors: Any, **kwargs: Any) -> list[list[float]]:
+    """Validate provider vectors with the gateway's typed error contract."""
+    return _validate_embedding_vectors(vectors, error_type=PiEmbeddingError, **kwargs)
 
-    Returns the shared model name. Raises ``VectorSpaceInvariantError`` on any
-    divergence so an engine switch can never silently change the embedding
-    space (which would invalidate every stored vector).
+
+async def assert_vector_space_invariant(*, dimension_probe: Any) -> str:
+    """Probe both engines and require one model/dimension vector space.
+
+    The configured model name is passed to both real engine paths, but the
+    dimensions are established from independent provider responses through
+    ``vector_health``. The caller supplies that probe so this gateway remains
+    independent from the legacy embedding wrapper and cannot form an import
+    cycle. A mismatch or failed probe raises instead of allowing startup to
+    continue with unsafe engine switching.
     """
-    if settings.llm_provider == "lmstudio":
-        legacy = settings.lmstudio_embed_model
-    else:
-        legacy = settings.ollama_embed_model
-    pi = default_embed_model()
-    if pi != legacy:
+    model = default_embed_model()
+    legacy = await dimension_probe(
+        engine="legacy", model=model, check_stored=False
+    )
+    pi = await dimension_probe(engine="pi", model=model, check_stored=False)
+    for engine, result in (("legacy", legacy), ("pi", pi)):
+        if result.get("status") != "ok":
+            raise VectorSpaceInvariantError(
+                f"vector_space_invariant_probe_failed: {engine}: {result.get('message', 'unknown')}"
+            )
+    if legacy.get("model") != pi.get("model") or legacy.get("model_dim") != pi.get("model_dim"):
         raise VectorSpaceInvariantError(
             "vector_space_invariant_violation: "
-            f"pi embed model {pi!r} != legacy embed model {legacy!r}"
+            f"legacy model/dim={legacy.get('model')!r}/{legacy.get('model_dim')!r}, "
+            f"pi model/dim={pi.get('model')!r}/{pi.get('model_dim')!r}"
         )
-    return pi
+    return model
 
 
 class EmbeddingsGateway:
@@ -100,33 +119,98 @@ class EmbeddingsGateway:
         # (Ollama also serves the OpenAI-compatible shape under /v1).
         return endpoint.endpoint_id == "pi-local-ollama"
 
+    @staticmethod
+    def _normalize_usage(
+        raw_usage: Any, endpoint: ResolvedPiEndpoint, texts: list[str]
+    ) -> dict[str, Any]:
+        """Normalize provider usage, explicitly estimating when it is absent."""
+        usage = raw_usage if isinstance(raw_usage, dict) and raw_usage else None
+        if usage is None:
+            input_tokens = count_tokens("\n".join(texts))
+            estimate = True
+        else:
+            input_tokens = int(usage.get(
+                "input_tokens", usage.get("prompt_tokens", usage.get("input", 0))
+            ) or 0)
+            estimate = bool(usage.get("estimate", False))
+        output_tokens = int((usage or {}).get(
+            "output_tokens", (usage or {}).get("completion_tokens", (usage or {}).get("output", 0))
+        ) or 0)
+        cache_read = int((usage or {}).get("cache_read", (usage or {}).get("cacheRead", 0)) or 0)
+        cache_write = int((usage or {}).get("cache_write", (usage or {}).get("cacheWrite", 0)) or 0)
+        total_tokens = int((usage or {}).get(
+            "total_tokens", (usage or {}).get(
+                "total", input_tokens + output_tokens + cache_read + cache_write
+            )
+        ) or 0)
+
+        cost_raw = (usage or {}).get("cost")
+        if isinstance(cost_raw, dict):
+            cost_usd = float(cost_raw.get("total", 0) or 0)
+        elif cost_raw is not None:
+            cost_usd = float(cost_raw or 0)
+        elif "cost_usd" in (usage or {}):
+            cost_usd = float((usage or {}).get("cost_usd") or 0)
+        else:
+            cost_usd = (
+                input_tokens * endpoint.cost_input_per_mtok
+                + output_tokens * endpoint.cost_output_per_mtok
+                + cache_read * endpoint.cost_cache_read_per_mtok
+                + cache_write * endpoint.cost_cache_write_per_mtok
+            ) / 1_000_000
+        return {
+            "input_tokens": input_tokens,
+            "output_tokens": output_tokens,
+            "cache_read": cache_read,
+            "cache_write": cache_write,
+            "total_tokens": total_tokens,
+            "cost_usd": cost_usd,
+            "estimate": estimate,
+        }
+
     async def _call_native_ollama(self, endpoint: ResolvedPiEndpoint, model: str,
-                                  texts: list[str]) -> list[list[float]]:
+                                  texts: list[str]) -> tuple[list[list[float]], dict[str, Any]]:
         base = endpoint.base_url.rstrip("/")
         host = base[:-3] if base.endswith("/v1") else base
         client = await self._get_client(endpoint.timeout_ms)
         resp = await client.post(f"{host}/api/embed", json={"model": model, "input": texts})
         resp.raise_for_status()
-        embeddings = resp.json().get("embeddings") or []
-        return [list(vector) for vector in embeddings]
+        payload = resp.json()
+        embeddings = payload.get("embeddings") if isinstance(payload, dict) else None
+        return list(embeddings or []), self._normalize_usage(
+            payload.get("usage") if isinstance(payload, dict) else None,
+            endpoint,
+            texts,
+        )
 
     async def _call_openai_compatible(self, endpoint: ResolvedPiEndpoint, model: str,
-                                      texts: list[str]) -> list[list[float]]:
+                                      texts: list[str]) -> tuple[list[list[float]], dict[str, Any]]:
         base = endpoint.base_url.rstrip("/")
         headers = {"Authorization": f"Bearer {endpoint.api_key}"} if endpoint.api_key else {}
         client = await self._get_client(endpoint.timeout_ms)
         resp = await client.post(f"{base}/embeddings", json={"model": model, "input": texts},
                                  headers=headers)
         resp.raise_for_status()
-        data = resp.json().get("data") or []
-        ordered = sorted(data, key=lambda item: item.get("index", 0))
-        return [list(item.get("embedding") or []) for item in ordered]
+        payload = resp.json()
+        data = payload.get("data") if isinstance(payload, dict) else None
+        if not isinstance(data, list):
+            data = []
+        ordered = sorted(
+            data,
+            key=lambda item: item.get("index", 0) if isinstance(item, dict) else 0,
+        )
+        vectors = [item.get("embedding") if isinstance(item, dict) else item for item in ordered]
+        return vectors, self._normalize_usage(
+            payload.get("usage") if isinstance(payload, dict) else None,
+            endpoint,
+            texts,
+        )
 
     async def embed(self, texts: list[str], *, model: str | None = None) -> dict:
         """Embed ``texts`` through the Pi-managed endpoint; fail closed.
 
         Returns the dispatcher outcome shape (``embeddings`` plus endpoint /
-        model identity and exact-zero usage) — the dispatcher records the one
+        model identity and normalized usage) — the dispatcher records the one
         ledger row for the dispatch. Resolution and HTTP failures raise
         (``PiEndpointResolutionError``, ``httpx`` errors, ``PiEmbeddingError``)
         so the dispatch can never leak onto the legacy plane or donors.
@@ -137,18 +221,14 @@ class EmbeddingsGateway:
         await manager.ensure_db_projection()
         endpoint = manager.resolve_embed()
         if self._is_native_ollama(endpoint):
-            vectors = await self._call_native_ollama(endpoint, model, texts)
+            vectors, usage = await self._call_native_ollama(endpoint, model, texts)
         else:
-            vectors = await self._call_openai_compatible(endpoint, model, texts)
-        if len(vectors) != len(texts):
-            raise PiEmbeddingError(
-                f"embed_response_cardinality: {len(vectors)} vectors for {len(texts)} texts"
-            )
+            vectors, usage = await self._call_openai_compatible(endpoint, model, texts)
+        vectors = validate_embedding_vectors(vectors, expected_count=len(texts))
         return {
             "embeddings": vectors,
             "endpoint_id": endpoint.endpoint_id,
             "model": model,
-            # Embeddings consume no billable tokens; exact-zero accounting.
-            "usage": {"estimate": False},
+            "usage": usage,
             "status": "success",
         }

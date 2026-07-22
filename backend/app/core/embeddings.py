@@ -15,6 +15,7 @@ from dataclasses import dataclass
 from app.config import settings
 from app.core.embedding_cache import embedding_cache
 from app.core.ollama import ollama
+from app.core.pi_runtime.embeddings_gateway import validate_embedding_vectors
 
 logger = logging.getLogger(__name__)
 
@@ -62,10 +63,13 @@ async def embed_text(text: str) -> list[float]:
 
     cached = await embedding_cache.get(model, text)
     if cached is not None:
-        return cached
+        try:
+            return validate_embedding_vectors([cached], expected_count=1)[0]
+        except Exception:
+            logger.warning("Ignoring malformed embedding cache entry for model %s", model)
 
-    vectors = await _dispatch_embed([text])
-    vector = vectors[0] if vectors else []
+    vectors = validate_embedding_vectors(await _dispatch_embed([text]), expected_count=1)
+    vector = vectors[0]
     await embedding_cache.put(model, text, vector)
     return vector
 
@@ -105,7 +109,9 @@ async def embed_chunks(chunks: list[TextChunk], batch_size: int = 32) -> list[Em
         batch_chunks = [chunks[i] for i in batch_indices]
         texts = [c.text for c in batch_chunks]
 
-        vectors = await _dispatch_embed(texts)
+        vectors = validate_embedding_vectors(
+            await _dispatch_embed(texts), expected_count=len(texts)
+        )
 
         for i, (chunk, vector) in enumerate(zip(batch_chunks, vectors)):
             original_idx = batch_indices[i]
