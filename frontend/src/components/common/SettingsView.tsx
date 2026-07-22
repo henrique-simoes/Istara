@@ -18,6 +18,8 @@ import SessionManager from "@/components/settings/SessionManager";
 import ViewOnboarding from "@/components/common/ViewOnboarding";
 import { resetAllOnboarding } from "@/hooks/useViewOnboarding";
 import { useRoleCapabilities } from "@/hooks/useRoleCapabilities";
+import { mergeModelCatalogs } from "@/lib/modelCatalog";
+import { agentEngineLabel } from "@/lib/utils";
 import {
   MODEL_PROVIDER_OPTIONS,
   defaultHostForProvider,
@@ -38,6 +40,7 @@ export default function SettingsView() {
   const [models, setModels] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const canManageInfrastructure = capabilities.canManageLlmInfrastructure;
+  const mergedModels = mergeModelCatalogs(models?.models, models?.pi_catalog);
 
   const fetchAll = useCallback(async () => {
     setLoading(true);
@@ -151,6 +154,17 @@ export default function SettingsView() {
               </span>
             )}
           </div>
+          {canManageInfrastructure && models?.agentic_engine_default && (
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-slate-500">Agent Engine:</span>
+              <span
+                aria-label={`Global agent engine: ${agentEngineLabel(models.agentic_engine_default)}`}
+                className="text-sm font-medium"
+              >
+                {agentEngineLabel(models.agentic_engine_default)}
+              </span>
+            </div>
+          )}
           {canManageInfrastructure && (
             <>
               <div className="flex items-center gap-2">
@@ -246,15 +260,15 @@ export default function SettingsView() {
       )}
 
       {/* Available Models */}
-      {canManageInfrastructure && models?.models && models.models.length > 0 && (
+      {canManageInfrastructure && mergedModels.length > 0 && (
         <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-5">
           <h3 className="font-medium text-slate-900 dark:text-white mb-3">Available Models</h3>
           <div className="space-y-2">
-            {models.models.map((model: any) => {
-              const label = providerLabel(model.provider_type);
+            {mergedModels.map((model) => {
+              const label = providerLabel(typeof model.provider_type === "string" ? model.provider_type : null);
               return (
                 <div
-                  key={`${model.name}-${model.server_name || ""}`}
+                  key={`${model.engine}-${model.endpoint_id || model.name}-${model.server_name || ""}`}
                   className="flex items-center justify-between py-2 px-3 rounded-lg bg-slate-50 dark:bg-slate-900"
                 >
                   <div className="min-w-0 flex-1">
@@ -278,11 +292,18 @@ export default function SettingsView() {
                       </span>
                     </div>
                   </div>
-                  {model.name === models.active_model ? (
+                  {model.engine === "pi" ? (
+                    <span
+                      aria-label="Pi catalog model"
+                      className="text-xs bg-istara-100 dark:bg-istara-900/30 text-istara-700 dark:text-istara-400 rounded-full px-2 py-0.5 ml-2 shrink-0"
+                    >
+                      Available to Pi
+                    </span>
+                  ) : model.name === models.active_model ? (
                     <span className="text-xs bg-istara-100 dark:bg-istara-900/30 text-istara-700 dark:text-istara-400 rounded-full px-2 py-0.5 ml-2 shrink-0">
                       Active
                     </span>
-                  ) : (
+                  ) : model.switchable ? (
                     <button
                       onClick={async () => {
                         try {
@@ -296,7 +317,7 @@ export default function SettingsView() {
                     >
                       Switch
                     </button>
-                  )}
+                  ) : null}
                 </div>
               );
             })}

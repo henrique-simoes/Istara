@@ -53,6 +53,14 @@ def _embed_model() -> str:
     return settings.ollama_embed_model
 
 
+def _global_agentic_engine() -> str:
+    """Return the public, normalized global agent engine choice."""
+    from app.core.pi_replacement import PI_ENGINE_VALUES
+
+    value = str(getattr(settings, "agentic_engine_default", "legacy") or "").strip().lower()
+    return "pi" if value in PI_ENGINE_VALUES else "legacy"
+
+
 async def _pi_catalog_info() -> list[dict]:
     """W8 UX parity: the Pi identity catalog merged into model pickers.
 
@@ -228,6 +236,7 @@ async def get_models(request: Request):
             "models": [],
             "active_model": _active_model(),
             "embed_model": _embed_model(),
+            "agentic_engine_default": _global_agentic_engine(),
             "pi_catalog": await _pi_catalog_info(),
         }
 
@@ -287,6 +296,7 @@ async def get_models(request: Request):
         "models": enriched,
         "active_model": active,
         "embed_model": _embed_model(),
+        "agentic_engine_default": _global_agentic_engine(),
         "pi_catalog": await _pi_catalog_info(),
     }
 

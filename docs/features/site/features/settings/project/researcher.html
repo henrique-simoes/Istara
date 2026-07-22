@@ -275,7 +275,7 @@
 <h2 id="choosing-the-agent-engine-per-project">Choosing The Agent Engine Per Project</h2>
 <ul>
 <li>Istara can run its agentic work on a legacy engine or the newer Pi replacement engine. Pi Replacement wave W8 lets each project choose its own engine instead of only following the global default.</li>
-<li>Project admins see an &quot;Agent Engine&quot; section in Project Settings with three options: Inherit global default, Legacy, or Pi. Non-admins see a read-only badge showing the engine in effect. Choosing an unrecognized engine value is rejected by the server, so a project can never end up with a broken setting.</li>
+<li>Project admins see an &quot;Agent Engine&quot; section in Project Settings with three options: Inherit global default, Legacy, or Pi. The inherit label and read-only badge use the server&#x27;s current normalized global default, so they stay accurate when the default is Pi. Choosing an unrecognized engine value is rejected by the server, so a project can never end up with a broken setting.</li>
 <li>The current engine is always visible while you work: the sidebar shows a small &quot;Pi&quot; or &quot;Legacy&quot; badge next to each project&#x27;s phase label, so it is clear which engine serves that project&#x27;s chat, agents, and validation before you run anything.</li>
 <li>The project choice sits between per-call overrides and the global default: an explicit request or header still wins, the project setting applies next, and projects left on &quot;Inherit&quot; follow whatever the global default says. Switching a project back to Legacy is a safe rollback.</li>
 </ul>

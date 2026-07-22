@@ -36,7 +36,7 @@ export function phaseLabel(phase: string): string {
 const PI_ENGINE_VALUES = new Set(["pi", "pi-candidate", "pi-replacement", "deepseek-pi"]);
 
 export function agentEngineLabel(engine: string | null | undefined): string {
-  return engine && PI_ENGINE_VALUES.has(engine) ? "Pi" : "Legacy";
+  return engine && PI_ENGINE_VALUES.has(engine.trim().toLowerCase()) ? "Pi" : "Legacy";
 }
 
 export function statusLabel(status: string): string {

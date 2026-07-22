@@ -47,6 +47,10 @@ Project Settings configure project-specific metadata and operational preferences
   `agentic_engine` setting, then `settings.agentic_engine_default` (see
   [chat.model-controls](../../chat/model-controls/architecture.md) for the
   full precedence).
+- Project list/detail responses also expose `global_agentic_engine`, a
+  normalized `pi`/`legacy` view of the current global default. The frontend
+  uses it for inherited project badges and labels, so an inherited project
+  reflects the real default instead of a hard-coded Legacy label.
 - On the frontend, `frontend/src/lib/types.ts` adds
   `Project.agentic_engine?: string | null` and `frontend/src/lib/utils.ts`
   adds `agentEngineLabel()` (Pi for `pi`, `pi-candidate`, `pi-replacement`,

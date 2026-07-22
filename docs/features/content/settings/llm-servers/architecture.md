@@ -95,6 +95,11 @@ behavior through the shared permission helper.
   `"pi_catalog"` key alongside the legacy model list in both online and
   offline responses. It is an identity/capability view only — endpoint ids,
   model names, and kinds — and never exposes endpoint URLs or API keys.
+- The frontend consumes that side field through `mergeModelCatalogs()` so Pi
+  identities are visible in the existing Available Models inventory without
+  passing a Pi endpoint through the legacy provider-switch action. Duplicate
+  Pi endpoint identities are collapsed, while distinct endpoint ids remain
+  distinct for routing and auditability.
 
 ## Architecture Notes
 

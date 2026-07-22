@@ -277,6 +277,12 @@
 <p><a href="../../chat/model-controls/architecture.html">chat.model-controls</a> for the</p>
 <p>full precedence).</p>
 <ul>
+<li>Project list/detail responses also expose <code>global_agentic_engine</code>, a</li>
+</ul>
+<p>normalized <code>pi</code>/<code>legacy</code> view of the current global default. The frontend</p>
+<p>uses it for inherited project badges and labels, so an inherited project</p>
+<p>reflects the real default instead of a hard-coded Legacy label.</p>
+<ul>
 <li>On the frontend, <code>frontend/src/lib/types.ts</code> adds</li>
 </ul>
 <p><code>Project.agentic_engine?: string | null</code> and <code>frontend/src/lib/utils.ts</code></p>
