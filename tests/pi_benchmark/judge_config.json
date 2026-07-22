@@ -1,10 +1,10 @@
 {
-  "judge_model": "gpt-5.6-luna",
+  "judge_model": "deepseek-v4-pro",
   "dut_models": [
-    "deepseek-v4-pro",
-    "legacy-executor",
-    "pi-candidate-engine"
+    "deepseek-v4-pro"
   ],
+  "allow_dut_model": true,
+  "separation_note": "DeepSeek-only policy (DEC-5): deepseek-v4-pro is the sole approved model for both DUT and judge. Separation is by role, not model: judge calls run under a separate purpose (kind='judge'), over blind A/B arms with deterministic position swap, and draw from the same crash-safe budget ledger and owner-approved cap as benchmark calls. A malformed judge verdict fails the judgment (ProviderCallFailed), never a silent tie.",
   "rubric_versions": {
     "output_quality": "1.0.0",
     "a2a": "1.0.0",

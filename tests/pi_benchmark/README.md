@@ -45,10 +45,48 @@ Implements the benchmark assets in master plan §10.3. Execution plan:
 - **B1-1** — `test_b1_contract.py` runs the canonical pack × both engines at T0 and T1 and
   asserts acceptance A5/A6. Baseline records materialise under `.results/runs/b1-*`.
 
+## Delivered (B0/B1…B_N replan — DeepSeek-only live apparatus, PI-BENCH-MOA-20260722)
+
+- **`scheduler.py`** — B0 offline scheduling: deterministic run-unit compilation
+  (scenario × seed × repeat × engine × MoA mode), disjoint round-robin sharding, and the
+  immutable, content-hashed wave manifest. Re-running B0 with identical arguments resumes
+  the manifest unchanged; differing arguments refuse (`ManifestConflict`).
+  `completed_unit_ids` drives crash-safe resume (only parseable, schema-valid records
+  count as done).
+- **`budget_ledger.py`** — crash-safe cumulative budget ledger (hard `$1.00` cap):
+  append-only JSONL, exclusive `flock` around every read-modify-append, fsync per row,
+  reserve-before-dispatch / commit-actual / release-only-pre-dispatch, `close()` seals.
+- **`deepseek_provider.py`** — the provider-isolation gate: only `deepseek` /
+  `deepseek-v4-pro` constructs; the key is read at runtime from env or macOS Keychain
+  (`istara-pi-deepseek`/`openclaw`), held in memory only; unknown usage after dispatch
+  fails closed with the reservation retained.
+- **`live_driver.py`** — real T2/T3 execution through the Istara dispatcher path
+  (`agentic.ensemble` / `validation.self_moa` / `validation.full_ensemble`), replacing
+  the old synthetic T2/T3 records. Worst-case reservation before dispatch; actual cost
+  committed after; provider-reported usage (`estimate=False`) or the documented
+  `chars4` estimator (`estimate=True`); record identity follows the manifest unit.
+- **`moa.py`** — Research Spine MoA routing validation: records requested mode/samples/
+  temperatures, served routes, coder count, consensus, and reconciliation status; any
+  downgrade (`full_ensemble→dual_run/self_moa`, diversity collapse `single_coder`,
+  blocked) is `not_runnable`, never a success. `validate_topology` is a spend-free
+  dry-run probe of the fail-closed chain.
+- **`deepseek_judge.py`** — DeepSeek-backed `judge_fn` for the JudgeLayer. Under the
+  DeepSeek-only policy the judge model equals the DUT model; separation is by role
+  (`kind="judge"` calls, blind A/B, position swap, shared ledger — see
+  `judge_config.json`'s `separation_note`). A malformed verdict fails, never a silent tie.
+- **`verify_budget_ledger.py`** — B0-gate ledger verifier: replays the durable rows and
+  proves known row types, no orphan commits, spend ≤ cap; `--close` seals the ledger.
+- **runner additions** — `--plan-only` (B0: build units, shard into `--max-processes`
+  shards, write the immutable manifest, print, exit; no dispatch), `--wave i`
+  (execute one shard of the manifest with crash-safe resume), `--live` (explicit spend
+  consent; without it T2/T3 print the plan and exit 0), provider/model rejection.
+
 ## To follow (owner-gated, tracked in the lifecycle file)
 
-The B2/B3/B4 execution phases and the live T2/T3 driver, JudgeLayer wiring, and the report
-generator are blocked behind owner gates G1/G2 (live-model permission and budget approval).
+The report generator lives at `scripts/pi_benchmark_report.py`. Live B1…B_N wave
+execution (real DeepSeek spend under the `$1.00` cap) is blocked behind owner gates
+G1/G2 (live-model permission and budget approval) — the apparatus above is the
+fail-closed path those waves run through.
 
 ## Verify
 

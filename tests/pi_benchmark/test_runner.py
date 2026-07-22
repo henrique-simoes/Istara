@@ -3,19 +3,24 @@
 from __future__ import annotations
 
 import json
+import sys
+import types
 from pathlib import Path
 
 import pytest
 
 from tests.pi_benchmark import schema
 from tests.pi_benchmark import runner
+from tests.pi_benchmark.live_driver import LiveCapture
 from tests.pi_benchmark.runner import (
+    LiveConsentRequired,
     OwnerGateRequired,
     RunConfig,
     build_config_from_args,
     run_benchmark,
     write_run,
 )
+from tests.pi_benchmark.scenarios import load_pack
 
 pytestmark = pytest.mark.benchmark
 
@@ -81,14 +86,181 @@ def test_t2_without_owner_gate_is_refused():
         run_benchmark(_canonical_t0(tier="T2", phase="B2"))
 
 
-def test_t2_with_gate_artifact_runs_successfully(tmp_path):
+def test_t2_with_gate_but_without_live_consent_is_refused(tmp_path):
+    # The synthetic T2/T3 path is gone: live tiers need BOTH the owner gate and the
+    # explicit --live consent flag before any dispatch or spend can happen.
     gate = tmp_path / "gate.json"
     gate.write_text("{}", encoding="utf-8")
-    summary = run_benchmark(_canonical_t0(tier="T2", phase="B2", owner_gate=gate))
-    assert len(summary.records) > 0
-    for record in summary.records:
-        assert schema.is_valid(record)
-        assert record["tier"] == "T2"
+    with pytest.raises(LiveConsentRequired):
+        run_benchmark(_canonical_t0(tier="T2", phase="B2", owner_gate=gate))
+
+
+def test_cli_t2_without_gate_exits_3(tmp_path):
+    code = runner.main([
+        "--pack", "canonical", "--tier", "T2", "--engine", "pi",
+        "--out", str(tmp_path / "out"),
+    ])
+    assert code == 3
+
+
+def test_cli_t2_with_gate_but_no_live_prints_plan_and_exits_0(tmp_path, capsys):
+    gate = tmp_path / "gate.json"
+    gate.write_text("{}", encoding="utf-8")
+    code = runner.main([
+        "--pack", "canonical", "--tier", "T2", "--engine", "pi",
+        "--out", str(tmp_path / "out"), "--owner-gate", str(gate),
+    ])
+    assert code == 0
+    out = capsys.readouterr().out
+    assert "[plan]" in out and "no --live" in out
+    assert not (tmp_path / "out" / "records").exists()  # no dispatch, no spend
+
+
+def test_cli_rejects_non_deepseek_provider(tmp_path):
+    with pytest.raises(SystemExit) as excinfo:
+        build_config_from_args([
+            "--pack", "canonical", "--tier", "T3", "--engine", "pi",
+            "--out", str(tmp_path), "--provider", "claude",
+        ])
+    assert excinfo.value.code == 2
+
+
+def test_cli_rejects_non_deepseek_model(tmp_path):
+    with pytest.raises(SystemExit) as excinfo:
+        build_config_from_args([
+            "--pack", "canonical", "--tier", "T3", "--engine", "pi",
+            "--out", str(tmp_path), "--model", "gpt-5.6-luna",
+        ])
+    assert excinfo.value.code == 2
+
+
+# ── wave mode (fake Lane A modules injected via sys.modules) ────────────────
+
+
+def _fake_lane_a_modules():
+    """Fake Lane A scheduler/budget_ledger/deepseek_provider (exact quoted surfaces)."""
+    scheduler = types.ModuleType("tests.pi_benchmark.scheduler")
+    scheduler.load_manifest = lambda path: _FAKE_MANIFEST
+    scheduler.completed_unit_ids = lambda records_dir: {
+        p.stem for p in Path(records_dir).glob("*.json") if not p.name.endswith(".tmp")
+    }
+
+    ledger_mod = types.ModuleType("tests.pi_benchmark.budget_ledger")
+
+    class BudgetExceeded(RuntimeError):
+        pass
+
+    class BudgetLedger:
+        def __init__(self, path, cap_usd=1.00):
+            self.path, self.cap_usd, self._spent = path, cap_usd, 0.0
+
+        def reserve(self, call_id, max_cost_usd, *, kind, meta=None):
+            pass
+
+        def commit(self, call_id, actual_cost_usd, *, usage, meta=None):
+            self._spent += actual_cost_usd
+
+        def release(self, call_id, *, reason):
+            pass
+
+        def spent_usd(self):
+            return self._spent
+
+        def outstanding(self):
+            return {}
+
+        def close(self):
+            return {"spent_usd": self._spent}
+
+        @property
+        def closed(self):
+            return False
+
+    ledger_mod.BudgetExceeded = BudgetExceeded
+    ledger_mod.BudgetLedger = BudgetLedger
+
+    provider_mod = types.ModuleType("tests.pi_benchmark.deepseek_provider")
+
+    class DeepSeekProvider:
+        def __init__(self, *, provider, model, **kwargs):
+            self.provider, self.model = provider, model
+
+        def estimate_cost(self, input_tokens, output_tokens, cache_read_tokens=0, cache_write_tokens=0):
+            return (input_tokens * 0.55 + output_tokens * 2.19) / 1e6
+
+        def endpoint_fingerprint(self):
+            return "deepseek:fedcba098765"
+
+    provider_mod.DeepSeekProvider = DeepSeekProvider
+    return scheduler, ledger_mod, provider_mod
+
+
+_FAKE_MANIFEST: dict = {}
+
+
+def _wave_config(tmp_path, wave=1):
+    gate = tmp_path / "gate.json"
+    gate.write_text("{}", encoding="utf-8")
+    return RunConfig(
+        packs=("canonical",), tier="T3", engines=("pi",), seeds=(0,), repeats=1,
+        phase="B2", out_dir=tmp_path / "out", owner_gate=gate, live=True,
+        wave=wave, max_processes=1, manifest=tmp_path / "manifest.json",
+        budget_ledger=tmp_path / "ledger.json",
+    )
+
+
+def test_wave_mode_executes_shard_then_resume_skips_completed(monkeypatch, tmp_path):
+    global _FAKE_MANIFEST
+    scenario_id = load_pack("canonical")[0].id
+    unit = {
+        "unit_id": f"B2-T3-canonical-{scenario_id}-seed0-r1-pi", "pack": "canonical",
+        "scenario_id": scenario_id, "seed": 0, "repeat": 1, "engine": "pi",
+        "phase": "B2", "moa_mode": None,
+    }
+    _FAKE_MANIFEST = {"shards": [[unit]], "budget_cap_usd": 1.0, "moa_n": 3, "repeats": 1}
+    scheduler, ledger_mod, provider_mod = _fake_lane_a_modules()
+    monkeypatch.setitem(sys.modules, "tests.pi_benchmark.scheduler", scheduler)
+    monkeypatch.setitem(sys.modules, "tests.pi_benchmark.budget_ledger", ledger_mod)
+    monkeypatch.setitem(sys.modules, "tests.pi_benchmark.deepseek_provider", provider_mod)
+
+    capture = LiveCapture(
+        text="wave output", usage={
+            "input_tokens": 40, "output_tokens": 12, "cache_read_tokens": 0,
+            "cache_write_tokens": 0, "total_tokens": 52,
+        },
+        estimate=False, endpoint_ids=("pi-deepseek-default",),
+        route_evidence=({"endpoint_id": "pi-deepseek-default"},), raw_method=None,
+    )
+
+    async def dispatch(**kwargs):
+        return capture
+
+    code, records = runner.run_wave(_wave_config(tmp_path), dispatch=dispatch)
+    assert code == 0 and len(records) == 1
+    record = records[0]
+    assert record["status"] == "ok"
+    assert schema.is_valid(record)
+    assert record["extensions"]["wave"] == {"index": 1}
+    record_path = tmp_path / "out" / "records" / f"{unit['unit_id']}.json"
+    assert record_path.is_file()
+
+    # Resume: a repeated wave command produces no duplicate work.
+    async def exploding_dispatch(**kwargs):  # pragma: no cover - must never run
+        raise AssertionError("completed unit must not re-dispatch")
+
+    code, records = runner.run_wave(_wave_config(tmp_path), dispatch=exploding_dispatch)
+    assert code == 0 and records == []
+
+
+def test_wave_out_of_range_exits_2(monkeypatch, tmp_path):
+    global _FAKE_MANIFEST
+    _FAKE_MANIFEST = {"shards": [[]], "budget_cap_usd": 1.0, "moa_n": 3}
+    scheduler, ledger_mod, provider_mod = _fake_lane_a_modules()
+    monkeypatch.setitem(sys.modules, "tests.pi_benchmark.scheduler", scheduler)
+    monkeypatch.setitem(sys.modules, "tests.pi_benchmark.budget_ledger", ledger_mod)
+    monkeypatch.setitem(sys.modules, "tests.pi_benchmark.deepseek_provider", provider_mod)
+    code, records = runner.run_wave(_wave_config(tmp_path, wave=2))
+    assert code == 2 and records == []
 
 
 def test_write_run_round_trips_and_revalidates(tmp_path):
@@ -118,3 +290,64 @@ def test_cli_arg_parsing():
 def test_cli_rejects_unknown_pack():
     with pytest.raises(SystemExit):
         build_config_from_args(["--pack", "bogus", "--tier", "T0", "--engine", "pi", "--out", "/tmp/x"])
+
+
+# ── B0 plan-only scheduling (offline manifest gate) ─────────────────────────
+
+
+def _plan_only_args(tmp_path, *extra):
+    return [
+        "--pack", "canonical", "--tier", "T3", "--engine", "pi",
+        "--out", str(tmp_path / "b0"), "--max-processes", "2",
+        "--plan-only", *extra,
+    ]
+
+
+def test_plan_only_requires_max_processes(tmp_path):
+    with pytest.raises(SystemExit) as excinfo:
+        build_config_from_args([
+            "--pack", "canonical", "--tier", "T3", "--engine", "pi",
+            "--out", str(tmp_path), "--plan-only",
+        ])
+    assert excinfo.value.code == 2
+
+
+def test_plan_only_writes_immutable_manifest_and_is_idempotent(tmp_path, capsys):
+    code = runner.main(_plan_only_args(tmp_path))
+    assert code == 0
+    out = capsys.readouterr().out
+    assert "[plan] B0 schedule:" in out and "no dispatch, no spend" in out
+    manifest_path = tmp_path / "b0" / "manifest.json"
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    assert manifest["max_processes"] == 2
+    assert manifest["provider"] == "deepseek"
+    assert manifest["model"] == "deepseek-v4-pro"
+    assert manifest["budget_cap_usd"] == 1.0
+    assert manifest["shard_count"] == 2 and len(manifest["shards"]) == 2
+    # Disjoint + complete shard map.
+    flat = [u for shard in manifest["shards"] for u in shard]
+    assert len(flat) == len(set(flat)) == len(manifest["units"])
+    first_bytes = manifest_path.read_bytes()
+
+    # Identical re-run resumes the same manifest without rewriting it.
+    code = runner.main(_plan_only_args(tmp_path))
+    assert code == 0
+    assert manifest_path.read_bytes() == first_bytes
+
+
+def test_plan_only_refuses_a_conflicting_manifest(tmp_path):
+    assert runner.main(_plan_only_args(tmp_path)) == 0
+    # Same path, different schedule arguments -> the immutable manifest refuses.
+    code = runner.main(_plan_only_args(tmp_path, "--budget-usd", "0.50"))
+    assert code == 2
+
+
+def test_plan_only_moa_mode_is_baked_into_units(tmp_path):
+    code = runner.main(_plan_only_args(tmp_path, "--moa-mode", "self_moa"))
+    assert code == 0
+    manifest = json.loads((tmp_path / "b0" / "manifest.json").read_text(encoding="utf-8"))
+    modes = {unit["moa_mode"] for unit in manifest["units"].values()}
+    assert modes == {"self_moa"}
+    assert manifest["moa_n"] == 3
+    # moa_n (samples), repeats, and max_processes stay separate manifest fields.
+    assert manifest["repeats"] == 1 and manifest["max_processes"] == 2

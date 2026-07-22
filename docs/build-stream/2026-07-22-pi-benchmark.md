@@ -5,30 +5,58 @@
 item: pi-benchmark
 branch: Review_pi_test
 cf: { spec: CF-SPEC-8 }
-phase: "Execution phase"
+phase: "Replanned execution — B0 through B_N process waves"
 stage: S2-execute
 status: in-progress
 blocked_on: null
-authored_by: henrique-simoes
+authored_by: build-stream-conductor
 grounding: "Based on 2026-07-20-pi-full-replacement-master-plan.md Section 10"
-last: {agent: claude-opus-4-8, at: 2026-07-22T17:11:00Z, ledger: L-15}
-next_action: "B0-2..B0-8 + B1-1 offline asset layer implemented; ready for code review. B2+ (live T2/T3) owner-gated behind G1/G2."
+last: {agent: kimi-code/k3, at: 2026-07-22T19:10:16Z, ledger: L-18}
+next_action: "Independent code review of PI-BENCH-MOA-20260722-IMPL (pi-bench-moa-20260722-code-reviewer); live B1..B_N waves remain owner-gated behind G1/G2."
 ```
 <!-- /STATUS BLOCK -->
 
 ## Context
-We have completed all 9 waves of the Pi candidate replacement (W0 through W9). The next and final step is to conduct a professional, industry-class paired experiment (B1 through B4) evaluating the Pi candidate against the original Istara React and agentic loops.
+We have completed all 9 waves of the Pi candidate replacement (W0 through W9). The next
+and final step is to conduct a professional, industry-class paired experiment using B0
+plus process-bounded B1…B_N waves, evaluating the Pi candidate against the original Istara
+React and agentic loops.
 
 ## Goals
-1. Execute the B1 contract tests.
-2. Execute the B2 breadth tier 2 tests.
-3. Execute the B3 depth tier 2 and tier 3 tests.
-4. Generate the final B4 report in comparison-Istara-pi/reports/.
-5. Ensure exact or estimated tokens are flagged properly.
+1. Build and verify the B0 scheduler, budget ledger, DeepSeek adapter, and resumable manifest without loading a model.
+2. Execute process-bounded benchmark waves B1 through B_N, where `N` is the explicit maximum number of benchmark worker processes for this machine/run.
+3. Route every live benchmark-evaluation and judge call through the DeepSeek API; do not dispatch to local/open-source model servers or other hosted models.
+4. Enforce a hard cumulative spend ceiling of `$1.00` across all waves, retries, and judge calls; stop before a call that could exceed the remaining envelope.
+5. Aggregate the completed wave artifacts and generate the final report only after B_N is terminal.
 
 ## Instructions
-Review Section 10 of docs/build-stream/plans/2026-07-20-pi-full-replacement-master-plan.md for the exact benchmark rules.
-Create a step-by-step plan for running all benchmarks, collecting the results, and generating the report.
+Review Section 10 of docs/build-stream/plans/2026-07-20-pi-full-replacement-master-plan.md for benchmark semantics, but treat this file as the execution authority for this wave.
+
+### Wave and provider contract (this lifecycle file is authoritative)
+
+- `B0` is the offline preparation and gate. It must discover and record an explicit
+  `max_processes=N` value, create the immutable run manifest, validate the scheduler,
+  and verify Keychain/provider configuration. Any bounded DeepSeek reachability preflight
+  is charged to the same cumulative ledger and is not a benchmark scenario call.
+- `B1` through `B_N` are process-indexed execution waves, not the old fixed B1/B2/B3
+  semantic labels. Each wave owns a disjoint, resumable slice of the canonical,
+  breadth, depth, feature, spine, A2A, and probe work. At most `N` worker processes may
+  exist at once; a wave may use fewer when its slice or remaining budget requires it.
+- The former B1 contract, B2 breadth, B3 depth, and B4 report work packages are mapped
+  into these waves by the B0 scheduler. No work package is silently skipped: its manifest
+  row is `completed`, `not_runnable`, or `budget_blocked` with a reason.
+- `B_N` is the final execution wave. Report aggregation is a coordinator step after all
+  B1…B_N worker processes are terminal; it is not an additional unbounded process wave.
+- All live model calls, including judge calls, use the existing DeepSeek provider path
+  and `deepseek-v4-pro`. Local/open-source routes, Claude, Codex, Kimi, and any other
+  provider are disabled for this run. Deterministic and T0/T1 model-free checks remain
+  allowed and must be marked `model_free` in the manifest.
+- The budget is one cumulative envelope: `budget_cap_usd=1.00`. Every call reserves its
+  worst-case estimated cost before dispatch, records actual provider usage afterward, and
+  is rejected with `budget_exceeded` if reservation plus committed spend would exceed the
+  cap. Retries and judges consume the same envelope; there is no per-wave reset.
+- The DeepSeek key is read at runtime from macOS Keychain service `istara-pi-deepseek`,
+  account `openclaw`; it must never appear in prompts, logs, manifests, or report output.
 
 ### L-1 | 2026-07-22T10:25:00Z | S1-plan | human | creator
 Did: created lifecycle file   Result: ok   Verified: N/A   Next: architects plan
@@ -162,17 +190,22 @@ Verified by direct inspection on 2026-07-22 — these facts drive the design:
 
 ### 2.1 Program shape
 
-Five phases, strictly sequential, each fail-closed before the next starts:
+`B0` is offline preparation. `B1` through `B_N` are process-indexed execution waves,
+where `N` is the explicit maximum number of benchmark worker processes for this run.
+The coordinator aggregates results after `B_N`; it is not an additional unbounded wave.
 
 ```
-B0 assets ──► B1 contract (T0/T1) ──► B2 breadth (T2) ──► B3 depth (T2 high-N + T3) ──► B4 report
-   build        both engines,          N≥5, full packs,     spine+A2A+memory,            generated
-   §10.3        deterministic          feature matrix       owner-gated spend            report set
+B0 gate ──► B1 ──► B2 ──► … ──► B_N ──► coordinator aggregation/report
+ scheduler       disjoint, resumable DeepSeek-only slices under one $1.00 cap
 ```
 
 The master plan's phase table gated B1 "after W2" etc. as wave regression gates; with all
-waves done, B1–B4 run as one program and B1 additionally serves as the smoke gate that the
-B0 assets are correct before any owner-gated spend is requested.
+waves done, the former B1 contract, B2 breadth, B3 depth, and B4 report work packages are
+mapped into the B1…B_N slices by the B0 scheduler. They no longer define the process
+topology.
+
+`N` must be recorded in the immutable run manifest. The scheduler fails closed if it is
+missing, less than 1, or would exceed the process or budget bounds.
 
 ### 2.2 Design principles (chosen to make bias structurally hard)
 
@@ -193,10 +226,10 @@ B0 assets are correct before any owner-gated spend is requested.
    catalog ids at route level; `test_scenario_coverage_map.py` already guarantees each id
    resolves to a real production test, so B1 measures the shipped behavior, not a parallel
    lab fiction.
-5. **Judges are never the DUT and never re-spend.** JudgeLayer config (owner-set model,
-   rubric versions) lives in one file; every judgment logs sha256(prompt+rubric); blind
-   engine labels, position-swapped A/B; cache keyed by
-   `(scenario, run, rubric_version, judge_model)` so B4 re-reports cost nothing (§10.1.3).
+5. **Judges are never the DUT and never re-spend.** JudgeLayer uses the same DeepSeek-only
+   provider route and charges the same cumulative `$1.00` envelope. Every judgment logs
+   sha256(prompt+rubric); blind engine labels, position-swapped A/B; cache keyed by
+   `(scenario, run, rubric_version, judge_model)` prevents duplicate spend.
 6. **Exact-or-estimated tokens, always flagged.** Pi rows come exact from the ledger;
    legacy rows come provider-reported where available, else `estimate=true`. The report
    renders exact and estimated numbers in separate columns (§10.1.4, §5.5).
@@ -205,7 +238,11 @@ B0 assets are correct before any owner-gated spend is requested.
    (§10.1.6). Every run dir carries a manifest (git sha, input sha256, redacted endpoint
    fingerprints); results dirs are gitignored; a secret scan precedes any README link
    (§10.6).
-8. **Minimal backend footprint.** Exactly two backend edits in the whole program, both
+8. **Provider isolation and budget safety.** The runner rejects every non-DeepSeek
+   provider/model before dispatch. The budget ledger is append-only and shared by every
+   wave and judge. A missing key, unavailable model, malformed usage response, or
+   uncertain cost blocks the call instead of falling back.
+9. **Minimal backend footprint.** Exactly two backend edits in the whole program, both
    telemetry-additive: legacy usage capture in registry `chat/chat_stream`, and the
    `long_horizon_runner.py:138` fix. No behavior change, no allowlist change, donor plane
    untouched.
@@ -261,74 +298,59 @@ Estimates: S < half day, M ≈ 1 day, L ≈ 2–3 days (agent execution, T2/T3 w
 
 | # | Task | Files (primary) | Depends on | Est |
 |---|------|-----------------|-----------|-----|
-| B0-1 | metrics-schema.json + `comparison-Istara-pi/` skeleton (README, `reports/`, gitignore rules) | `comparison-Istara-pi/metrics-schema.json` | — | S |
-| B0-2 | `--engine` + `--dry-run` plumbing in both node harnesses | `tests/simulation/run.mjs`, `tests/real_user_benchmark/run.mjs` | — | S |
-| B0-3 | Legacy usage capture + long-horizon token fix | `backend/app/core/compute_registry_invocation.py` (telemetry only), `tests/benchmarks/long_horizon_runner.py` | — | S |
-| B0-4 | Paired runner core (CLI, ASGI driver, seed/repeat orchestration, manifest, RSS sampler, schema validation) | `tests/pi_benchmark/runner.py` | B0-1 | L |
-| B0-5 | Canonical + spine + A2A scenario packs | `tests/pi_benchmark/scenarios/` | B0-4 | L |
-| B0-6 | Feature-criteria compiler over inventory.json | `tests/pi_benchmark/feature_criteria.py` | B0-1, B0-4 | M |
-| B0-7 | JudgeLayer (config, blind A/B, rubric bank, cache, sha256 logging) | `tests/pi_benchmark/judge.py` | B0-1 | M |
-| B0-8 | System-prompt adherence + injection probes | `tests/pi_benchmark/probes/` | B0-4 | M |
-| B1-1 | Run B1 contract: canonical pack + W2-surface checks, T0 and T1, both engines; publish regression baseline | `.results/runs/b1-*` | B0-2..B0-5 | S |
-| B2-1 | **Owner gate G1** (judge + T2 model policy, live-model permission); then B2 T2 runs: all packs + feature matrix + probes, N≥5, both engines | `.results/runs/b2-*` | B1-1, G1 | M |
-| B2-2 | First full report generation on B2 data (exercises B4 pipeline early) | `comparison-Istara-pi/reports/<ts>/` | B2-1, B0-7 | S |
-| B3-1 | B3 T2 high-N: spine pack end-to-end, A2A pack, memory-load runs (incl. cross-session recall probe) | `.results/runs/b3-t2-*` | B2-1 | M |
-| B3-2 | **Owner gate G2**: T3 dry-run cost estimate (T2 rehearsal token counts × `raw-llm-capture.mjs:5-10` pricing), presented in chat, explicit approval recorded as CF evidence | CF evidence row | B3-1 | S |
-| B3-3 | B3 T3 low-N paired runs within the approved envelope; per-run cost ceilings enforced by ledger | `.results/runs/b3-t3-*` | B3-2 | M |
-| B4-1 | Final report: all runs → `report.md`/`report.html`/`scorecard.json`, secret scan, dated copy linked from `comparison-Istara-pi/README.md` | `scripts/pi_benchmark_report.py`, `comparison-Istara-pi/` | B3-3 | M |
-| B4-2 | Article results sections auto-generated into `comparison-Istara-pi/article/`; owner rollout review packet (§13.4 gate G3, decision itself is out of scope) | `comparison-Istara-pi/article/` | B4-1 | S |
+| B0-1 | Schema and result skeleton | `comparison-Istara-pi/metrics-schema.json`, `comparison-Istara-pi/` | — | S |
+| B0-2 | Offline scheduler with explicit `N=max_processes`, disjoint shard manifest, resume markers, and process watchdog | `tests/pi_benchmark/runner.py`, manifest schema | B0-1 | M |
+| B0-3 | DeepSeek-only adapter/preflight and append-only cumulative budget ledger (`budget_cap_usd=1.00`) | `tests/pi_benchmark/judge.py`, provider adapter, run metadata | B0-1 | M |
+| B0-4 | Existing dry-run/plan-only engine plumbing and model-free contract checks | node harnesses, `tests/pi_benchmark/` | B0-1 | S |
+| B0-5 | Canonical/spine/A2A packs, feature compiler, and injection probes | `tests/pi_benchmark/` | B0-2 | L |
+| B0-6 | Legacy usage capture and long-horizon token correction, only if the current tree still lacks them | backend telemetry path, `tests/benchmarks/long_horizon_runner.py` | B0-1 | M |
+| B0-7 | B0 gate: schema/tests, DeepSeek key/model preflight, `N` recorded, zero provider fallback, dry-run cost estimate ≤ `$1.00` | `.results/runs/b0-gate/` | B0-2..B0-6 | S |
+| B1…B_N | Process-indexed benchmark waves. Each wave claims a disjoint shard and runs mapped contract/breadth/depth work packages with `--provider deepseek --model deepseek-v4-pro --budget-usd 1.00 --max-processes N` | `tests/pi_benchmark/.results/runs/b{i}-*` | prior wave + B0-7 | M/L |
+| POST-N | Coordinator-only aggregation, reproducible report, secret scan, and rollout packet; no new unbounded worker process | `scripts/pi_benchmark_report.py`, `comparison-Istara-pi/reports/`, `comparison-Istara-pi/article/` | B_N terminal, budget ledger closed | M |
 
-Suggested CF roles: one implementer role for B0 (`pi-eval-implementer`), reviewer per wave,
-owner gates executed by the conductor pausing the pipeline.
+Suggested CF roles: one implementer role for B0 (`pi-eval-implementer`), one independent
+reviewer for the scheduler/provider contract, and one executor lane per B wave. The
+conductor preserves the same `N` and budget ledger across all waves; owner gates are
+blocking evidence gates, not provider-selection opportunities.
 
 ## 4. Acceptance criteria
 
-**B0 (assets):**
-- A1 `metrics-schema.json` validates; runner/judge/feature-compiler unit tests pass and
-  reject a schema-violating record (negative test).
-- A2 `node tests/simulation/run.mjs --engine pi --scenario 05-chat-interaction --dry-run`
-  and the legacy/both variants exit 0 and print the resolved engine header; same for
-  `tests/real_user_benchmark/run.mjs --engine both --plan-only`.
-- A3 Legacy registry capture: a unit test shows a `chat_stream` call writes a usage-ledger
-  row with provider-reported tokens and `estimate=false`; long_horizon_runner reads the
-  ledger (test fails on the old chunk-count behavior).
-- A4 No product-code behavior change: `python -m pytest tests/pi_migration/test_count_to_zero.py -q`
-  stays green (ratchet 0); `python -m pytest tests/pi_production/ -q` stays green.
+**B0 (offline gate):**
+- A1 `metrics-schema.json` validates; all scheduler, adapter, ledger, and fixture tests
+  pass and reject schema-violating records.
+- A2 B0 records one explicit integer `N=max_processes`, process watchdog settings, and a
+  deterministic shard map; resuming B0 does not duplicate shards or budget rows.
+- A3 Provider preflight proves the DeepSeek key is available from Keychain and the exact
+  configured model is reachable; any preflight usage is ledgered and no key material is
+  written to artifacts.
+- A4 The manifest contains `provider=deepseek`, `model=deepseek-v4-pro`,
+  `budget_cap_usd=1.00`, an explicit starting spend row, and rejects every alternate
+  provider/model.
+- A5 The dry-run worst-case estimate for the complete B1…B_N schedule is ≤ `$1.00`, with
+  retries and judges included; otherwise B0 blocks without a live call.
 
-**B1 (contract):**
-- A5 All 15 canonical scenarios × both engines × T0 and T1 produce schema-valid records;
-  0 `not_runnable` without a filed reason; deterministic outcome classes match across
-  repeats of the same seed.
-- A6 B1 results are published as the regression baseline manifest referenced by B2/B3.
+**Each B_i wave, for `1 ≤ i ≤ N`:**
+- A6 The wave has a disjoint shard, ≤ `N` total worker processes, and resumable per-run
+  records; no scenario is silently dropped.
+- A7 Every live model or judge call uses DeepSeek only and reserves cost before dispatch;
+  any uncertain or over-cap call becomes `budget_exceeded`/`budget_blocked`.
+- A8 Each result is schema-valid, records exact or estimated usage explicitly, includes
+  redacted provenance, and records `not_runnable` with a machine-readable reason when
+  needed.
+- A9 A wave cannot advance until its process sessions are terminal and its budget ledger
+  reconciliation passes.
 
-**B2 (breadth):**
-- A7 G1 owner approval recorded as CF evidence *before* the first T2 run.
-- A8 Full packs + 86-feature matrix + probes ran at N≥5 per scenario per engine at T2;
-  every feature is either auto-scored or counted `criteria: manual`.
-- A9 First full report generates from B2 data with zero hand-written numbers (test:
-  every numeric cell in `report.md` traces to `scorecard.json`).
-
-**B3 (depth):**
-- A10 Spine pack end-to-end, A2A pack, and memory-load runs complete at T2 high-N with
-  paired bootstrap CIs computed per scenario.
-- A11 G2: dry-run T3 estimate presented in chat and explicit owner approval recorded as CF
-  evidence *before* any T3 call; judge spend counted in the same envelope; per-run cost
-  ceilings enforced (a run that would exceed the ceiling aborts `budget_exceeded`, not
-  silently overruns).
-- A12 T3 tier records never mix into T2 tables (report-level assert).
-
-**B4 (report):**
-- A13 `comparison-Istara-pi/reports/<ts>/` contains `report.md`, `report.html`
-  (self-contained: zero external asset references — tested), `scorecard.json`; a dated
-  `report.md` copy is linked from `comparison-Istara-pi/README.md` only after the secret
-  scan passes.
-- A14 Report is reproducible: two invocations over the same runs dir produce byte-identical
-  `scorecard.json` and identical `report.md` modulo the timestamp header.
-- A15 Exact vs estimated tokens are never summed in one column anywhere in the report.
+**POST-N coordinator:**
+- A10 All mapped contract, breadth, depth, feature, spine, A2A, and probe work packages
+  are accounted for across B1…B_N; the final report contains no unaccounted shard.
+- A11 `comparison-Istara-pi/reports/<ts>/` contains reproducible `report.md`,
+  self-contained `report.html`, and `scorecard.json`; numeric values trace to run data.
+- A12 Exact and estimated tokens/costs remain separate, and cumulative spend is proven
+  `≤ $1.00` by the closed ledger.
 
 ## 5. Verification (exact commands)
 
-Asset/wave gates (T0/T1, no live models — safe at will):
+Asset and B0 gates (no live benchmark calls until the DeepSeek preflight and owner gate):
 
 ```bash
 # schema + unit suites for new assets (created in B0, extended per wave)
@@ -336,7 +358,7 @@ python -m pytest tests/pi_benchmark/ -q
 # ratchet + existing production ladder must stay green after B0-3 backend edits
 python -m pytest tests/pi_migration/test_count_to_zero.py -q
 python -m pytest tests/pi_production/ -q
-# deterministic eval reuse for axes 3/5 (no --require-live-llm)
+# deterministic eval reuse for axes 3/5 (no live model)
 python scripts/run_istara_evals.py --output-dir tests/pi_benchmark/.results/evals
 # engine plumbing (dry-run, starts nothing)
 node tests/simulation/run.mjs --engine pi --scenario 05-chat-interaction --dry-run
@@ -344,29 +366,31 @@ node tests/simulation/run.mjs --engine legacy --scenario 05-chat-interaction --d
 node tests/real_user_benchmark/run.mjs --engine both --plan-only
 # security gate for the registry telemetry edit (AGENTS.md)
 python scripts/security_benchmark.py --fail-on-threshold
+# B0 scheduler/provider/budget checks (must prove no alternate route)
+python tests/pi_benchmark/runner.py --plan-only --provider deepseek --model deepseek-v4-pro \
+  --budget-usd 1.00 --max-processes <N> --out tests/pi_benchmark/.results/runs/b0-gate
+python tests/pi_benchmark/verify_budget_ledger.py \
+  --runs tests/pi_benchmark/.results/runs/b0-gate --cap-usd 1.00 --provider deepseek
 ```
 
-B1 execution:
+DeepSeek preflight (credential presence only; no benchmark spend):
 
 ```bash
-python tests/pi_benchmark/runner.py --pack canonical --tier T0 --engine both --repeats 3 \
-  --out tests/pi_benchmark/.results/runs/b1-t0
-python tests/pi_benchmark/runner.py --pack canonical --tier T1 --engine both --repeats 3 \
-  --out tests/pi_benchmark/.results/runs/b1-t1
+security find-generic-password -a openclaw -s istara-pi-deepseek -w >/dev/null
+DEEPSEEK_API_KEY="$(security find-generic-password -a openclaw -s istara-pi-deepseek -w)" \
+  node labs/pi-replacement/scenarios/chat-tool-loop.mjs --mode deepseek --preflight-only
 ```
 
-B2/B3 execution (each only after its owner gate):
+Process waves (repeat for `i=1…N`; the scheduler supplies the disjoint shard):
 
 ```bash
-python tests/pi_benchmark/runner.py --pack all --tier T2 --engine both --repeats 5 \
-  --judge-config tests/pi_benchmark/judge_config.json --out tests/pi_benchmark/.results/runs/b2-t2
-python tests/pi_benchmark/runner.py --pack spine,a2a --tier T2 --engine both --repeats 10 \
-  --memory-load --out tests/pi_benchmark/.results/runs/b3-t2
-python tests/pi_benchmark/runner.py --pack canonical,spine --tier T3 --engine both --repeats 3 \
-  --budget-usd <approved-envelope> --out tests/pi_benchmark/.results/runs/b3-t3
+python tests/pi_benchmark/runner.py --wave <i> --max-processes <N> \
+  --provider deepseek --model deepseek-v4-pro --budget-usd 1.00 \
+  --budget-ledger tests/pi_benchmark/.results/runs/budget-ledger.jsonl \
+  --manifest tests/pi_benchmark/.results/runs/manifest.json
 ```
 
-B4 + reproducibility + hygiene:
+Coordinator aggregation after B_N + reproducibility + hygiene:
 
 ```bash
 python scripts/pi_benchmark_report.py --runs tests/pi_benchmark/.results/runs \
@@ -386,11 +410,13 @@ approvals (G1/G2) are recorded as CF evidence with the in-chat approval quoted.
 | Scope creep: "run benchmarks" read as "skip missing assets" | High | This plan makes B0 explicit; B1 acceptance (A5) is impossible without the runner+packs, so the gap cannot be silently skipped. |
 | Legacy/engine behavioral drift during B0-3 edit | Low | Telemetry-additive only; ratchet test + full pi_production suite green (A4); security benchmark gate. |
 | Tier mixing contaminates tables | Medium | Tier is a mandatory runner arg recorded per record; report asserts single-tier tables (A12); schema rejects missing tier. |
-| Judge = DUT or judge bias | Medium | Judge config owner-set (G1), must differ from DUT models; blind labels, position swap, sha256-logged rubrics, deterministic checks always computed alongside (§10.1.3). |
-| Unapproved live-model load or spend | Medium | T2/T3 unreachable without G1/G2 CF evidence rows; runner refuses `--tier T2/T3` without the gate artifact; budget ceiling enforced per run (A11). |
+| Judge = DUT or judge bias | Medium | DeepSeek judge calls use blind labels, position swap, sha256-logged rubrics, and deterministic checks; cached judgments cannot re-spend. |
+| Unapproved live-model load or spend | Medium | B0/G0/G1 evidence is required before live calls; the runner refuses calls without the gate artifact and enforces the shared ledger cap. |
 | Estimated vs exact tokens silently mixed | Medium | `estimate` flag in schema; report renders separate columns; A15 test scans generated tables. |
 | Non-determinism leaks (timestamps, git sha) breaking reproducibility | Medium | A14 byte-identity check on scorecard.json; report normalizes volatile fields. |
-| T2 local-model throughput makes N≥5 slow | Medium | T2 runs are free and resumable: runner writes per-run records incrementally, so interrupted runs resume without re-spending completed runs. |
+| DeepSeek API quota/latency makes a wave slow | Medium | Waves are resumable and bounded by `N`; completed records and reservations are durable, and a transient failure never triggers an alternate-provider fallback. |
+| Parallel workers race the $1.00 envelope | High | One append-only budget ledger is locked before every call; reservation failure blocks the call and the coordinator reports `budget_blocked`. |
+| Local/open-source route is accidentally selected | High | B0 validates provider/model identity; runner and judge reject non-DeepSeek configuration before any dispatch; no fallback route is configured. |
 | Feature inventory drift (86 → N) between plan and B2 | Low | feature_criteria compiles from `inventory.json` at run time; manual-criteria count is reported, so drift is visible, never silent. |
 | Corpus/fixture drift between engines | Low | Runner hashes inputs into the manifest (input sha256); a pair with mismatched hashes is `invalid_pair`, not compared. |
 | Flaky ASGI startup in runner | Low | Runner reuses the existing harness service-boot discipline from real_user_benchmark; startup failure is `not_runnable` with logs, retried once, then counted. |
@@ -415,11 +441,15 @@ approvals (G1/G2) are recorded as CF evidence with the in-chat approval quoted.
 
 ## 8. Owner gates summary (blocking, in order)
 
-- **G1 (before B2):** judge model + T2 local model policy + explicit live-model-load
-  permission (master plan §13.2; AGENTS.md live-LLM rule).
-- **G2 (before B3 T3):** dry-run T3 cost estimate presented in chat; explicit approved
-  envelope recorded as CF evidence; judge spend inside the same envelope (§10.6, §13.3).
-- **G3 (after B4):** rollout decision review — presented with the report packet; the
+- **G0 (before B0 live preflight):** this owner instruction authorizes DeepSeek-only
+  benchmark evaluation with a hard cumulative cap of `$1.00`; record the approval as CF
+  evidence, without recording the secret or inventing spend.
+- **G1 (before B1):** B0 proves the exact `N`, DeepSeek provider/model identity, Keychain
+  credential presence, immutable shard manifest, and dry-run worst-case estimate ≤ `$1.00`.
+- **G2 (before each live wave):** the conductor verifies remaining budget and process slots;
+  if either is insufficient, the wave is `budget_blocked`/`process_blocked` and no call is
+  made. There is no local-model or other-provider fallback gate.
+- **G3 (after POST-N):** rollout decision review — presented with the report packet; the
   decision and any `agentic_engine_default` flip are out of scope here.
 
 ## 9. Explicit non-goals
@@ -427,7 +457,9 @@ approvals (G1/G2) are recorded as CF evidence with the in-chat approval quoted.
 - No rollout/engine-default flip, no legacy deletion (§13.4: a NEW spec if Pi wins).
 - No changes to the donor/Petals permanent allowlist plane.
 - No new product features; benchmark findings become new CF tasks, not in-scope fixes.
-- No live model loading or external spend before the corresponding owner gate.
+- No local/open-source model routing, no Claude/Codex/Kimi/other hosted provider routing,
+  and no external spend above the single DeepSeek `$1.00` envelope.
+- No benchmark worker may bypass the shared process scheduler or budget ledger.
 
 ## Findings register
 
@@ -437,6 +469,17 @@ approvals (G1/G2) are recorded as CF evidence with the in-chat approval quoted.
 | F-2 | Minor | comparison-Istara-pi/metrics-schema.json (`metrics.additionalProperties`) | open axis-key set accepts typo'd axis names (e.g. tool_cal ling); inconsistent with strict top level + extensions escape hatch | FIX-pi-eval-REVIEW-r1 | verified (REREV pass, L-13) |
 
 ## Decision log
+
+DEC-5 | 2026-07-22 | S1-plan | owner + build-stream-conductor
+Context: The machine has no working local/open-source model route for benchmark evaluation;
+the next wave must remain resumable and must not exceed a one-dollar external spend cap.
+Decision: Replan this lifecycle file only around B0 plus process-indexed waves B1…B_N,
+where `N=max_processes` is discovered and recorded in B0. Route every live evaluation and
+judge call through DeepSeek `deepseek-v4-pro`, disable all provider fallbacks, and enforce
+one cumulative `budget_cap_usd=1.00` ledger across all waves, retries, and judges.
+Why: This preserves the benchmark work packages while matching the machine's actual
+provider availability, bounds concurrency, and makes an over-cap or uncertain-cost call
+fail closed instead of silently switching models or overspending.
 
 
 ### L-9 | 2026-07-22T13:50:34Z | S1-plan | kimi-code/k3 | architect | Planning phase <!-- bsc-ledger:pi-eval-REPLAN-C-r1 -->
@@ -482,3 +525,24 @@ Did: CONVERGENCE entry. This task ran concurrently with sibling task pi-eval-B0-
 Result: converged — independent verification agrees with L-14 (64 pi_benchmark tests pass, ratchet 0, runner emits schema-valid paired records, spine/a2a counted not_runnable at T0, T2/T3 fail-closed without an owner-gate). Two honest residual nuances for the reviewer: (1) B0-3 registry-side capture — the dispatch-level ledger (usage_ledger.build_usage_row, W1) exists, but the *streaming* legacy arm (agentic/legacy.py `_stream_turn`) still appends empty usage so its tokens are estimated, not exact; surfacing provider usage from compute_registry_invocation.chat_stream (A3 estimate=false) needs a live provider response and is owner-gated follow-up. (2) Security benchmark gate not triggered — the committed diff touches no product LLM-provider/registry/auth surface. pi-eval-B0-2-B1
 Verified: `backend/.venv/bin/python -m pytest tests/pi_benchmark/ -q` -> 64 passed; `... tests/pi_migration/test_count_to_zero.py -q` -> 3 passed (A4, ratchet 0); `python tests/pi_benchmark/runner.py --pack canonical --tier T0 --engine both --repeats 3` -> 90 ok records; spine,a2a@T0 -> 14 not_runnable; T2 refused exit 3; node dry-run/plan-only print the resolved engine plan (A2). CF 4×command + self_report evidence on pi-eval-B0-2-B1.
 Next: stage exit — B0 assets committed and ready for independent code review (S3-review); reviewer verifies commit ff2721d7 + the two residual nuances above; conductor schedules the registry-side B0-3 follow-up and owner-gated B2/B3 (G1/G2).
+
+### L-17 | 2026-07-22T17:47:49Z | S1-plan | gpt-5-codex | planner | Replanned execution
+Did: Updated this lifecycle plan only (not the master plan) to replace the fixed B1–B4
+process topology with B0 offline gating plus B1…B_N process-indexed waves. Added explicit
+`N=max_processes` discovery, disjoint resumable shards, DeepSeek-only routing, Keychain
+secret handling, and one cumulative `$1.00` budget ledger covering evaluations, judges,
+retries, and reservations.
+Result: The next run is fail-closed for missing/alternate providers, uncertain costs,
+insufficient process slots, and budget exhaustion. The former contract/breadth/depth/report
+work packages remain accounted for by the scheduler and are not silently removed.
+Verified: `git diff --check` passed; lifecycle status, wave topology, task table, acceptance
+criteria, verification commands, risks, gates, non-goals, DEC-5, and this ledger entry are
+present in `docs/build-stream/2026-07-22-pi-benchmark.md`.
+Next: Independent review of this plan update; then execute B0 with the owner-approved
+DeepSeek-only `$1.00` envelope and an explicit recorded `N`.
+
+### L-18 | 2026-07-22T19:10:16Z | S2-execute | kimi-code/k3 | executor | Execution phase <!-- bsc-ledger:PI-BENCH-MOA-20260722-IMPL -->
+Did: completed the DeepSeek-only remaining-wave apparatus, building on the inherited uncommitted lane-A/lane-B worktree state (a prior attempt's partial implementation). Fixed the 3 failing tests: moa topology sentinel dedupe (test used 3 distinct sentinel instances while asserting identity-dedupe semantics — now one shared sentinel), and runner wave-mode Lane A imports moved to importlib so sys.modules-injected fakes are honored even when the real submodules are already bound on the package. Fixed a real seam bug: deepseek_judge now unpacks DeepSeekProvider.chat's (content, usage) tuple (+regression test) — against the real provider the judge would previously have stringified the tuple and failed every verdict. Fixed record identity: live records now follow the manifest unit's own phase and record_id (not the wave's CLI --phase), so file name, ledger call id, and record_id agree (resume keys on the file stem). Added the B0 `--plan-only` scheduling gate to runner.py (build run units, shard into --max-processes disjoint shards, write the immutable content-hashed manifest, idempotent resume, conflict refusal, exit without dispatch; fails closed when --max-processes is missing) and tests/pi_benchmark/verify_budget_ledger.py (replays the durable ledger: known row types, no orphan commits, spend <= cap, --close seals) with 14 new tests. Updated tests/pi_benchmark/README.md and the runner docstring.
+Result: PI-BENCH-MOA-20260722-IMPL offline apparatus complete: B0 scheduling + immutable shard manifest + crash-safe $1.00 ledger, resumable wave mode, real dispatcher-path live driver (DeepSeek deepseek-v4-pro only), MoA self_moa/full_ensemble downgrade detection (downgrade => not_runnable, never success), role-separated DeepSeek judge on the shared ledger, and report generation from durable artifacts. NO live dispatch was performed and live completion is NOT claimed (owner gates G1/G2; AGENTS.md live-model rule). Security benchmark gate not triggered: the diff touches only tests/ benchmark apparatus, no product provider/registry/telemetry code. Reverted accidental comparison-Istara-pi/README.md + results_summary.md mutations from a report smoke run (they had been regenerated from the old synthetic records).
+Verified: `backend/.venv/bin/python -m pytest tests/pi_benchmark/ -q` -> 154 passed; `... tests/pi_migration/test_count_to_zero.py -q` -> 3 passed (ratchet 0); `... tests/pi_production/ -q` -> 346 passed; `... tests/pi_production/test_w7_validation.py tests/test_validation_project_scope.py tests/pi_production/test_scenario_coverage_map.py tests/pi_production/test_scenario_research_spine.py -q` -> 28 passed (Research Spine route/coverage); `git diff --check` clean; CLI smoke: `--plan-only` wrote an immutable 15-unit/2-shard manifest and resumed it unchanged on re-run; `--wave 1` without an owner gate refused exit 3; `verify_budget_ledger.py --runs ... --close` sealed and passed (spent=$0.0042 <= $1.00); `scripts/pi_benchmark_report.py` generated scorecard/report.md/report.html from durable run records.
+Next: stage exit — ready for independent code review (pi-bench-moa-20260722-code-reviewer). Live B1...B_N wave execution and the G0/G1 owner approvals remain owner-gated.
