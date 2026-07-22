@@ -61,6 +61,7 @@ class _CatalogEntry:
     base_url: str
     model: str
     source: str  # "settings" | "local" | "llm_server"
+    embedding_model: str = ""
     api_key: str = ""
     timeout_ms: int = 30_000
     max_retries: int = 0
@@ -126,6 +127,7 @@ class PiModelManager:
             provider_kind=endpoint.provider_kind,
             base_url=endpoint.base_url,
             model=endpoint.model,
+            embedding_model=endpoint.model,
             source="local" if endpoint.kind == "local" else "explicit",
             api_key=endpoint.api_key,
             timeout_ms=endpoint.timeout_ms,
@@ -151,6 +153,7 @@ class PiModelManager:
                 provider_kind="openai_compat",
                 base_url=settings.ollama_host.rstrip("/") + "/v1",
                 model=settings.ollama_model,
+                embedding_model=settings.ollama_embed_model,
                 source="local",
                 api_key="ollama",
                 kind="local",
@@ -160,6 +163,7 @@ class PiModelManager:
                 provider_kind="openai_compat",
                 base_url=settings.lmstudio_host.rstrip("/") + "/v1",
                 model=settings.lmstudio_model,
+                embedding_model=settings.lmstudio_embed_model,
                 source="local",
                 api_key=settings.lmstudio_api_key or "lm-studio",
                 kind="local",
@@ -237,6 +241,13 @@ class PiModelManager:
             provider_kind=provider_kind,
             base_url=host,
             model=model,
+            embedding_model=(
+                settings.lmstudio_embed_model
+                if provider_type == "lmstudio"
+                else settings.ollama_embed_model
+                if provider_type == "ollama"
+                else ""
+            ),
             source="llm_server",
             api_key=api_key,
             context_window=int(capabilities.get("context_window", 0) or 0) if isinstance(capabilities, dict) else 0,
@@ -344,15 +355,48 @@ class PiModelManager:
             raise PiEndpointResolutionError("insufficient_distinct_pi_endpoints")
         return [self._materialize(entry) for entry in matches[:n]]
 
-    def resolve_embed(self) -> ResolvedPiEndpoint:
-        """W8: pick the embeddings endpoint — identity-managed, never scored.
+    @staticmethod
+    def _active_embed_model(provider: str | None = None) -> str:
+        active_provider = (provider or settings.llm_provider or "").strip().lower()
+        if active_provider == "lmstudio":
+            return settings.lmstudio_embed_model
+        return settings.ollama_embed_model
 
-        Only OpenAI-compatible entries qualify (Anthropic has no embeddings
-        API). Preference order keeps the embedding space anchored to the local
-        serving plane the legacy engine uses: the well-known local Ollama
-        entry first (native ``/api/embed``), then other local entries, then
-        any remote ``/v1/embeddings``-compatible entry. Fail-closed when the
-        catalog has no compatible entry.
+    @staticmethod
+    def _embedding_model(entry: _CatalogEntry) -> str:
+        """Return the model used for this entry's embedding request."""
+        if entry.endpoint_id == "pi-local-ollama":
+            return settings.ollama_embed_model
+        if entry.endpoint_id == "pi-local-lmstudio":
+            return settings.lmstudio_embed_model
+        if entry.embedding_model:
+            return entry.embedding_model
+        return entry.model
+
+    @staticmethod
+    def _is_active_local(entry: _CatalogEntry, provider: str) -> bool:
+        if entry.kind != "local":
+            return False
+        active_provider = provider.strip().lower()
+        if active_provider == "lmstudio":
+            return entry.endpoint_id == "pi-local-lmstudio" or (
+                entry.base_url.rstrip("/").removesuffix("/v1")
+                == settings.lmstudio_host.rstrip("/").removesuffix("/v1")
+            )
+        return entry.endpoint_id == "pi-local-ollama" or (
+            entry.base_url.rstrip("/").removesuffix("/v1")
+            == settings.ollama_host.rstrip("/").removesuffix("/v1")
+        )
+
+    def resolve_embed(
+        self, model: str | None = None, *, provider: str | None = None
+    ) -> ResolvedPiEndpoint:
+        """Resolve the identity-pinned endpoint for one embedding model.
+
+        Only OpenAI-compatible entries qualify. A concrete requested model is
+        an exact capability requirement, so a configured remote endpoint with
+        that model beats unrelated local entries. When the model is omitted or
+        ``default``, the active local provider anchors the vector space.
         """
         candidates = [
             entry for entry in self._entries.values()
@@ -360,15 +404,39 @@ class PiModelManager:
         ]
         if not candidates:
             raise PiEndpointResolutionError("no_matching_pi_embed_endpoint")
+        active_provider = (provider or settings.llm_provider or "ollama").strip().lower()
+        requested_model = (model or self._active_embed_model(active_provider) or "").strip()
 
-        def _rank(entry: _CatalogEntry) -> int:
-            if entry.endpoint_id == "pi-local-ollama":
-                return 0
-            if entry.kind == "local":
-                return 1
-            return 2
+        if requested_model and requested_model != "default":
+            exact = [
+                entry for entry in candidates
+                if self._embedding_model(entry) == requested_model
+            ]
+            if exact:
+                active_local = [
+                    entry for entry in exact
+                    if self._is_active_local(entry, active_provider)
+                ]
+                return self._materialize((active_local or exact)[0])
+            raise PiEndpointResolutionError("no_matching_pi_embed_endpoint_model")
 
-        return self._materialize(sorted(candidates, key=_rank)[0])
+        active_local = [
+            entry for entry in candidates
+            if self._is_active_local(entry, active_provider)
+        ]
+        if active_local:
+            return self._materialize(active_local[0])
+        default_model = [
+            entry for entry in candidates
+            if self._embedding_model(entry) == "default"
+        ]
+        if default_model:
+            return self._materialize(default_model[0])
+        if len(candidates) == 1:
+            # ``default`` is intentionally provider-neutral. An explicit
+            # single endpoint is therefore the only safe identity to use.
+            return self._materialize(candidates[0])
+        raise PiEndpointResolutionError("no_matching_pi_embed_endpoint")
 
     def catalog(self) -> list[PiEndpointInfo]:
         """Identity/capability view for the settings UI and benchmarks."""

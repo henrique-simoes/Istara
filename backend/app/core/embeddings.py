@@ -16,6 +16,7 @@ from app.config import settings
 from app.core.embedding_cache import embedding_cache
 from app.core.ollama import ollama
 from app.core.pi_runtime.embeddings_gateway import validate_embedding_vectors
+from app.core.pi_runtime.endpoints import PiEndpointResolutionError
 
 logger = logging.getLogger(__name__)
 
@@ -136,7 +137,12 @@ async def ensure_embed_model() -> None:
         gateway = EmbeddingsGateway()
         manager = gateway.manager()
         await manager.ensure_db_projection()
-        endpoint = manager.resolve_embed()
-        await ensure_endpoint_model(endpoint, default_embed_model())
+        model = default_embed_model()
+        endpoint = manager.resolve_embed(model)
+        provisioned = await ensure_endpoint_model(endpoint, model)
+        if endpoint.kind == "local" and not provisioned:
+            raise PiEndpointResolutionError(
+                f"embedding_model_provision_failed:{endpoint.endpoint_id}"
+            )
         return
     await ollama.ensure_model("nomic-embed-text")
