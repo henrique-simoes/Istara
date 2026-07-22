@@ -6,11 +6,11 @@ audience: architecture
 status: documented
 related_features: ["quality.dashboard", "compute.pool"]
 related_glossary: ["fleiss-kappa"]
-code_references: ["frontend/src/components/common/EnsembleHealthView.tsx", "backend/app/core/consensus.py", "backend/app/core/validation.py", "backend/app/core/agent_execution.py", "backend/app/core/compute_route_evidence.py", "backend/app/services/research_validity_service.py", "backend/app/core/research_validity.py", "backend/app/models/research_validity.py"]
+code_references: ["frontend/src/components/common/EnsembleHealthView.tsx", "backend/app/core/consensus.py", "backend/app/core/validation.py", "backend/app/core/validation_executor.py", "backend/app/core/agent_execution.py", "backend/app/core/compute_route_evidence.py", "backend/app/services/research_validity_service.py", "backend/app/core/research_validity.py", "backend/app/models/research_validity.py", "backend/app/core/agentic/dispatcher.py"]
 api_references: ["backend/app/api/routes/metrics.py", "backend/app/api/routes/research_validity.py"]
-test_references: ["tests/test_validation_project_scope.py", "tests/test_evaluation_skill.py", "tests/test_research_validity_contract.py"]
-last_verified: 2026-05-21
-compass: CF-SPEC-53 / CF-657; CF-SPEC-92 / CF-1170; CF-SPEC-122; CF-SPEC-123 / CF-1581; CF-SPEC-124 / CF-1590
+test_references: ["tests/test_validation_project_scope.py", "tests/test_evaluation_skill.py", "tests/test_research_validity_contract.py", "tests/test_metrics.py", "tests/pi_production/test_w7_validation.py"]
+last_verified: 2026-07-22
+compass: CF-SPEC-8 / FIX-pi-full-20260720-w7-REVIEW-r1-docs; CF-SPEC-53 / CF-657; CF-SPEC-92 / CF-1170; CF-SPEC-122; CF-SPEC-123 / CF-1581; CF-SPEC-124 / CF-1590
 ---
 
 # Ensemble Health Architecture
@@ -47,6 +47,9 @@ Ensemble Health surfaces health and consensus signals for Istara's multi-model o
 - Debate and adversarial helpers now label their scope explicitly. Calls without `coding_run_id` are response-level quality signals and are not formal reliability; calls with coding-run/evidence-unit/codebook handles emit `debate.review` or `adversarial.review` telemetry for coded-evidence reconciliation.
 - Qualitative coding prompts must include protected methodology, codebook, evidence-unit schema, reliability policy, and promotion gate blocks before any model codes evidence.
 - Governed coding runs use Compute Manager to select distinct healthy project-authorized model identities, execute independent coding passes, persist route evidence, and compute Fleiss/Cohen/Krippendorff-style reliability on evidence-unit matrices. This is the formal reliability path; response-level validation remains an operational quality signal.
+- W7 routes the validation call sites through the shared `AgenticDispatcher` when `agentic_core` is enabled: `agentic.ensemble` uses purposes `validation.dual_run` (two distinct endpoints), `validation.full_ensemble` (the requested ensemble width plus one), and `validation.self_moa` (temperature samples with `distinct=False`); `agentic.completion` uses `validation.adversarial` and `validation.debate`; the structured judge uses `validation.judge`. The dispatcher remains the engine-resolution boundary, while the preserved router/server/compute-registry branches remain available when the flag is off or the resolved engine is legacy.
+- `distinct=True` is an endpoint-identity contract, not a model-name contract. Multiple endpoints serving the same model remain independent route identities; if the Pi catalog cannot satisfy the requested distinct width, validation fails closed rather than fabricating diversity. Dual-run degrades to the labeled Self-MoA path and full ensemble degrades through dual-run; dispatch failures produce an empty/unavailable validation result. The structured judge returns `passed=False` with an unavailable reason when dispatch or a usable verdict is missing, so unavailable validation cannot become report evidence.
+- W7 deliberately leaves `validation.py:_get_embeddings` on the legacy plane. Embedding dispatch is deferred to W8 and must not be treated as a missing W7 migration.
 - Real-user and Colima/Docker benchmarks must not enable strict single-model routing as their default architecture test. Strict routing is a technical isolation probe; the product-faithful benchmark observes the normal compute/model manager selecting and serving work across registered donors.
 - Validation calls without project context remain server-owned/local only; cross-project compute aggregation is reserved for explicit admin-only surfaces.
 - The frontmatter and manifest entries are the durable contract for agents updating this page after code changes.
@@ -55,13 +58,16 @@ Ensemble Health surfaces health and consensus signals for Istara's multi-model o
 ## Agents, Skills, LLM, MCP, And Permissions
 
 - Ensemble LLM calls must preserve project scope when validating task output or skill artifacts.
-- Full ensemble reliability requires distinct model identities. Reusing the same model as if it were multiple independent raters is rejected as lower assurance.
+- Full ensemble reliability requires distinct serving endpoint identities. Reusing one endpoint as if it were multiple independent raters is rejected as lower assurance.
+- For W7, the concrete independence unit is the serving endpoint identity. Same-model endpoints are valid independent raters only when their endpoint identities are distinct and preserved in route evidence; a missing or insufficient endpoint set is lower assurance and remains unavailable/blocked.
+- Rollback is reversible: disable `settings.agentic_core` or select the legacy engine for the project. The preserved legacy branches then serve validation without changing the legacy schemas or behavior.
 
 ## Tests And Verification
 
 - `tests/test_validation_project_scope.py`
 - `tests/test_evaluation_skill.py`
 - `tests/test_research_validity_contract.py`
+- `tests/pi_production/test_w7_validation.py` — dispatcher purpose/verb mapping, legacy parity, endpoint-pinned distinctness, fail-closed degradation, judge unavailability, and W8 embedding deferral.
 
 ## Related Features
 

@@ -237,8 +237,8 @@
   <dl class="meta-grid">
     <div><dt>UI Path</dt><dd>Findings &gt; Codebook</dd></div>
     <div><dt>Component</dt><dd><code>CodebookViewer</code></dd></div>
-    <div><dt>Source Refs</dt><dd>4</dd></div>
-    <div><dt>Tests</dt><dd>2</dd></div>
+    <div><dt>Source Refs</dt><dd>6</dd></div>
+    <div><dt>Tests</dt><dd>4</dd></div>
   </dl>
   <div class="link-cluster" aria-label="Related feature links"><a href="../evidence/architecture.html">Findings Evidence</a>
 <a href="../review/architecture.html">Findings Code Review</a></div>
@@ -267,17 +267,23 @@
 <ul>
 <li>The feature is mounted through <code>frontend/src/components/findings/FindingsView.tsx</code> and the UI navigation path recorded in the inventory.</li>
 <li>Creating the first project codebook version records a content-free <code>codebook.freeze</code> telemetry event; later versions record <code>codebook.revise</code>. The span carries project and codebook-version handles only, so governed codebook lifecycle audits do not store code definitions, examples, prompts, or source quotes in telemetry.</li>
+<li>W7&#x27;s governed dual-coder path is selected only when <code>agentic_core</code> is enabled and the dispatcher resolves the project to the Pi engine. It reads the persisted endpoint catalog through <code>PiModelManager</code> without loading a model, requests distinct endpoint identities, and dispatches each coder with <code>structured(purpose=&quot;validity.coder&quot;)</code> pinned to that coder&#x27;s exact <code>endpoint_id</code>. The coding schema stays inside the Pi forced-tool subset.</li>
+<li>Reliability preserves endpoint identity as the rater identity. Same-model endpoints remain distinct coders when their endpoint identities differ; model-name deduplication is not a substitute for endpoint identity. If the catalog cannot provide the requested distinct coders, selection fails closed, no coder dispatch occurs, route evidence records the failure, and the coding run remains <code>blocked</code> rather than switching engines or fabricating agreement.</li>
+<li>The resulting code applications remain provisional until reliability, reconciliation, and human review gates accept them. A blocked or insufficient coding run cannot promote findings into reportable evidence.</li>
+<li>Embedding dispatch remains a legacy-plane responsibility until W8. This W7 structured-coder migration does not authorize an embedding migration.</li>
 <li>The frontmatter and manifest entries are the durable contract for agents updating this page after code changes.</li>
 <li>When the referenced component, store, route, agent, skill, or test behavior changes, regenerate and validate the feature documentation.</li>
 </ul>
 <h2 id="agents-skills-llm-mcp-and-permissions">Agents, Skills, LLM, MCP, And Permissions</h2>
 <ul>
 <li>Codebook and code reads/mutations are project-content surfaces. They must reject stale ids from any other project with <code>404</code>, even when the same authenticated user can access both projects through another surface.</li>
+<li>Rollback is reversible: disable <code>agentic_core</code> or select the legacy project engine to use the preserved project-authorized <code>coder.node</code> runner. The legacy branch remains available alongside the Pi path.</li>
 </ul>
 <h2 id="tests-and-verification">Tests And Verification</h2>
 <ul>
 <li><code>tests/test_codebooks.py</code></li>
 <li><code>tests/test_project_scope_contracts.py</code></li>
+<li><code>tests/pi_production/test_w7_validation.py</code> — Pi/legacy selection, exact endpoint pinning, same-model distinct endpoint reliability, schema constraints, and fail-closed blocked coding runs.</li>
 </ul>
 <h2 id="related-features">Related Features</h2>
 <ul>
