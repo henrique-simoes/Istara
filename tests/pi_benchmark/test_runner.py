@@ -5,12 +5,14 @@ from __future__ import annotations
 import json
 import sys
 import types
+from dataclasses import replace
 from pathlib import Path
 
 import pytest
 
 from tests.pi_benchmark import schema
 from tests.pi_benchmark import runner
+from tests.pi_benchmark import scheduler
 from tests.pi_benchmark.live_driver import LiveCapture
 from tests.pi_benchmark.runner import (
     LiveConsentRequired,
@@ -250,6 +252,44 @@ def test_wave_mode_executes_shard_then_resume_skips_completed(monkeypatch, tmp_p
 
     code, records = runner.run_wave(_wave_config(tmp_path), dispatch=exploding_dispatch)
     assert code == 0 and records == []
+
+
+def test_wave_mode_executes_manifest_written_by_scheduler(monkeypatch, tmp_path):
+    """The real B0 manifest can be consumed directly by a B1 wave."""
+    scenario_id = load_pack("canonical")[0].id
+    unit = scheduler.RunUnit(
+        unit_id=f"B1-T3-canonical-{scenario_id}-seed0-r0-pi",
+        pack="canonical", scenario_id=scenario_id, seed=0, repeat=0,
+        engine="pi", phase="B1", moa_mode=None,
+    )
+    manifest_path = tmp_path / "manifest.json"
+    scheduler.write_manifest(
+        manifest_path, max_processes=1, provider="deepseek", model="deepseek-v4-pro",
+        budget_cap_usd=1.0, moa_n=3, repeats=1, tier="T3", shards=[[unit]],
+    )
+
+    _, ledger_mod, provider_mod = _fake_lane_a_modules()
+    monkeypatch.setitem(sys.modules, "tests.pi_benchmark.scheduler", scheduler)
+    monkeypatch.setitem(sys.modules, "tests.pi_benchmark.budget_ledger", ledger_mod)
+    monkeypatch.setitem(sys.modules, "tests.pi_benchmark.deepseek_provider", provider_mod)
+
+    capture = LiveCapture(
+        text="manifest output", usage={
+            "input_tokens": 40, "output_tokens": 12, "cache_read_tokens": 0,
+            "cache_write_tokens": 0, "total_tokens": 52,
+        },
+        estimate=False, endpoint_ids=("pi-deepseek-default",),
+        route_evidence=({"endpoint_id": "pi-deepseek-default"},), raw_method=None,
+    )
+
+    async def dispatch(**kwargs):
+        return capture
+
+    config = replace(_wave_config(tmp_path, wave=1), phase="B1", manifest=manifest_path)
+    code, records = runner.run_wave(config, dispatch=dispatch)
+    assert code == 0 and len(records) == 1
+    assert records[0]["extensions"]["unit_id"] == unit.unit_id
+    assert (tmp_path / "out" / "records" / f"{unit.unit_id}.json").is_file()
 
 
 def test_wave_out_of_range_exits_2(monkeypatch, tmp_path):
