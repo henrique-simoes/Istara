@@ -11,7 +11,7 @@ status: in-progress
 blocked_on: null
 authored_by: build-stream-conductor
 grounding: "Based on 2026-07-20-pi-full-replacement-master-plan.md Section 10"
-last: { agent: gpt-5.6-sol, at: 2026-07-22T20:12:43Z, ledger: L-40 }
+last: { agent: claude-fable-5, at: 2026-07-22T20:15:02Z, ledger: L-41 }
 next_action: "Conductor: tally the recovery consensus after all judge votes are recorded."
 ```
 <!-- /STATUS BLOCK -->
@@ -699,3 +699,9 @@ Did: Read candidate plans A and C exactly as assigned; recorded judge-b plan_vot
 Result: Slot a selected for its newer-state grounding, exact RECOVERY-task exclusion, and plan-freeze safeguard; PI-BENCH-RECOVERY-20260722-JUDGE-B.
 Verified: `shasum -a 256 docs/build-stream/plans/pi-bench-recovery-20260722-plan-a.md docs/build-stream/plans/pi-bench-recovery-20260722-plan-c.md` passed (A d221d818..., C 8a014ff5...); CF evidence IDs 1463 command, 1464 plan_vote, 1465 self_report.
 Next: stage exit: vote, self-report, command evidence, and durable lifecycle handoff recorded.
+
+### L-41 | 2026-07-22T20:15:02Z | S1-plan | claude-fable-5 | architect | Recovery planning <!-- bsc-ledger:PI-BENCH-RECOVERY-20260722-REPLAN-A-r2 -->
+Did: repaired recovery consensus plan A (revision r2) at docs/build-stream/plans/pi-bench-recovery-20260722-plan-a.md (361 lines) — re-verified every r1 grounding claim by fresh commands at HEAD c53e0d01 (no r1 factual errors) and folded in post-r1 drift: all three recovery candidates now committed (plan C at 02595094, task done, fallback ledger L-38; uncommitted-candidate risk retired); recovery judging started mid-repair (plan_vote rows 1459 judge-a->slot c read B+C, 1464 judge-b->slot a read A r1 + C; judge-c in flight) so the r1 "zero plan_vote" claim is historical and the consensus-recurrence risk row now mandates revision-sha-explicit tallying; AC-2 protected range redefined as every-entry-at-IMPL-dispatch (L-1..L-39 at authoring); plan C's six-of-seven-packs work-order gap independently confirmed (pi-benchmark-deepseek-moa-execution.md :71-77 lists six packs, MoA route/downgrade only a judge dimension at :81) and anchored into R3 step 3; stale ROLE-CORRECTION rows (IMPL/REVIEW open, REPLAN-C-r1 claimed), stale (1)/(2) conductor markers, and 6-repo-wide/0-role-correction consensus_result counts unchanged; conductor pid 91892 alive, heartbeat 20:10:12Z, prefix PI-BENCH-RECOVERY-20260722. No lifecycle plan content, code, or prior ledger entry edited.
+Result: plan slot A ready for recovery consensus judging (r2); reuse verdict unchanged — prior correction artifacts reusable as content not state; DUT=Istara arms / DeepSeek-via-dispatcher under $1.00 / MoA measured / Kimi post-run judge retained verbatim in plan section 0; PI-BENCH-RECOVERY-20260722-REPLAN-A-r2
+Verified: conductor pid/marker audit (ps -p 91892 alive, active-run.json prefix+heartbeat, stale (1)/(2) markers listed); sqlite CF audit (stale ROLE-CORRECTION rows, 6 consensus_result rows all pre-recovery, recovery plan_vote rows 1459/1464); grep kimi-anchor battery at c53e0d01 (:307-:466 regions hold, DEC-5 clause :489, DEC-6 :497, no DEC-7); work-order pack-list read :71-83 (six packs confirmed); git diff --check clean; wc -l plan = 361; scope audit — only the plan file modified by this stage
+Next: judge-c votes; conductor seals consensus_result with per-vote plan-revision blob shas; G-R1 owner gate before any implementation

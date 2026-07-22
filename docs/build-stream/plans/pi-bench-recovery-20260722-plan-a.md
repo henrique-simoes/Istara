@@ -1,30 +1,42 @@
 # Plan A — Pi benchmark recovery after invalid role-correction consensus
 
-- **Task:** `PI-BENCH-RECOVERY-20260722-REPLAN-A-r1` (consensus architect slot A,
-  revision r1 — supersedes r0 authored under `PI-BENCH-RECOVERY-20260722-PLAN-A`;
+- **Task:** `PI-BENCH-RECOVERY-20260722-REPLAN-A-r2` (consensus architect slot A,
+  revision r2 — supersedes r1 (`…-REPLAN-A-r1`) and r0 (`…-PLAN-A`);
   pipeline `PI-BENCH-RECOVERY-20260722`)
 - **Spec:** CF-SPEC-8 · **Lifecycle:** `docs/build-stream/2026-07-22-pi-benchmark.md`
 - **Brief (verbatim source):** `docs/build-stream/conductor-instructions/pi-benchmark-recovery-planning.md`
-- **Authored:** 2026-07-22 (r1), against branch `Review_pi_test` @ `9c45a42a`
-  (r0 was audited at `75db26f5`; every r0 grounding claim re-verified at `9c45a42a`)
+- **Authored:** 2026-07-22 (r2), against branch `Review_pi_test` @ `c53e0d01`
+  (r0 audited at `75db26f5`, r1 at `9c45a42a`; every prior grounding claim
+  re-verified at `c53e0d01`)
 - **Scope:** planning only. This plan proposes; it edits nothing besides this file.
   The implementation it proposes is documentation + orchestration-state hygiene only —
   no backend, frontend, benchmark Python, tests, recipes, manifests, or reports.
 
-> **r1 revision note.** Every §1 claim was re-verified by fresh commands at `9c45a42a`
-> (CF command evidence on this task); no r0 factual errors found. Drift folded in:
-> (1) recovery plans A (r0, commit `9c45a42a`, ledger L-36) and B (commit `9cfe3304`,
-> fallback ledger L-35) are now **committed**, so the "judges read uncommitted plan
-> files" risk now applies only to recovery slot C (task `…-PLAN-C` still `claimed`;
-> its plan file appeared as an untracked worktree file mid-r1, not yet committed). (2) The lifecycle append-only protection range
-> is now **L-1..L-36** (was L-1..L-34 in r0) — AC-2 updated. (3) The recovery pipeline's
-> own `…-RECOVERY-…-IMPL`/`…-REVIEW` rows exist as pre-created `open` CF rows; they are
-> THIS pipeline's rows, not stale residue — the RV-3 hygiene list is unchanged and must
-> not sweep them. (4) The consensus-invalidity proof is now stronger: a full
-> `task_evidence` scan finds exactly 6 `consensus_result` rows repo-wide, all belonging
-> to earlier pipelines (pi-prod-readiness, pi-complete, pi-runtime-complete, pi-eval);
-> **zero** for `PI-BENCH-ROLE-CORRECTION-20260722`. (5) `active-run.json` heartbeat
-> refreshed to 2026-07-22T20:03:18Z, same prefix, same live pid 91892.
+> **r2 revision note (conductor-created repair round).** Every §1 claim was re-verified
+> by fresh commands at `c53e0d01` (CF command evidence on this task); no r1 factual
+> errors found. Post-r1 drift folded in:
+> (1) **All three recovery candidates are now committed** — plan C landed at `02595094`
+> (task `…-PLAN-C` `done`, harness fallback ledger L-38 at `ac6ec4bd`), joining A
+> (`9c45a42a`/`68dcd159`) and B (`9cfe3304`). The "judges read uncommitted plan files"
+> risk is fully retired for this pipeline; only AC-1's blob-sha discipline remains
+> load-bearing. (2) The lifecycle append-only protection range is now **L-1..L-39+**
+> (judge-a's L-39 at `c53e0d01`; judge-b's L-40 landed while this r2 was being
+> authored) — AC-2 now defines the protected range as *every ledger entry existing at
+> IMPL dispatch time*, not a frozen number. (3) **Recovery judging has started**: CF
+> `plan_vote` rows now exist — judge-a → slot c (row 1459, 20:10:36Z, read B+C only)
+> and judge-b → slot a (row 1464, 20:11:54Z, read A r1 + C); judge-c is in flight.
+> r1's "zero recovery plan_vote rows" claim is historical. This r2 is itself the
+> conductor-created replan round the §6 mitigation prescribes; the conductor must
+> apply AC-1 sha-validation so the sealed tally names which plan-A revision each
+> judge read. (4) Plan C's **six-of-seven-packs finding is independently confirmed**
+> at `c53e0d01`: the execution work-order (`pi-benchmark-deepseek-moa-execution.md`
+> :71-77) lists six evaluation packs and carries MoA route/downgrade evidence only as
+> a judge-scoring dimension (:81), not as an evaluation pack — R3 step 3's seven-pack
+> reconciliation now has an exact anchor. (5) Stale state unchanged: ROLE-CORRECTION
+> `IMPL`/`REVIEW` still `open`, `REPLAN-C-r1` still `claimed`; `active-run (1).json` /
+> `escalation (1|2).json` markers still present; `consensus_result` count still 6
+> repo-wide, zero for ROLE-CORRECTION. (6) `active-run.json` heartbeat refreshed to
+> 2026-07-22T20:10:12Z, same prefix `PI-BENCH-RECOVERY-20260722`, same live pid 91892.
 
 **Mission:** turn the halted `PI-BENCH-ROLE-CORRECTION-20260722` run
 (`HALTED-CONSENSUS-INVALID-PLAN`) into a clean, single-conductor, evidence-gated path
@@ -50,7 +62,7 @@ preserving append-only history and the user-authoritative role contract.
 Every corrective edit proposed below is checked against these four roles; any edit that
 would weaken them is out of scope by definition.
 
-## 1. Verified current state (evidence, re-inspected 2026-07-22 at `9c45a42a`)
+## 1. Verified current state (evidence, re-inspected 2026-07-22 at `c53e0d01`)
 
 ### 1.1 Why the prior consensus is invalid (root cause, not just the symptom)
 
@@ -185,11 +197,17 @@ Re-apply the plan-A-r2 RC edit set as a NEW correction under this recovery pipel
    to the same role language, including the seven evaluation packs (canonical 15,
    feature breadth, Research Spine, A2A, prompt/injection probes, usage/cost, MoA
    route/downgrade evidence) and the judge-must-not-rerun-DUT / no-ledger-draw rules.
+   Confirmed at r2 (`c53e0d01`): the work-order's pack list (:71-77) names only six
+   packs — MoA route/downgrade evidence appears solely as a judge-scoring dimension
+   (:81) and must be promoted to an evaluation pack measured during B1…B_N.
 4. Append one ledger entry + Status Block refresh under `repo_lock.completion_lock`.
    All prior ledger entries and the master plan remain byte-identical.
-**Anchor discipline:** plan A r2's line anchors were verified at `1777753c`; this r1
-re-verified the lifecycle anchors at `9c45a42a` (they currently hold: `:202-466` Kimi
-regions, DEC-5 clause `:489`, DEC-6 `:495-503`), but R1's quarantine commit and any
+**Anchor discipline:** role-correction plan A r2's line anchors were verified at
+`1777753c`; this recovery r2 re-verified the lifecycle anchors at `c53e0d01` (they
+currently hold: `:202-466` Kimi regions — B0-3 `:307`, `--provider kimi` wave row
+`:312`, A3/A4/A7 `:327/:330/:339`, §5 commands `:357-393`, risks `:422/:424`, G0
+`:449`, non-goals `:465-466` — DEC-5 clause `:489`, DEC-6 `:497`, no DEC-7
+decision heading), but R1's quarantine commit and any
 intervening ledger appends will move them again. The implementer MUST re-run the anchor
 greps at its own HEAD under the completion lock and edit by match, not by stale line
 number.
@@ -203,11 +221,11 @@ number.
 
 ### Single-conductor invariant (verified now, enforced going forward)
 
-Re-verified at r1 planning time: exactly one conductor (`conductor.pid` 91892, alive,
-bound to `active-run.json` prefix `PI-BENCH-RECOVERY-20260722`, heartbeat 20:03:18Z);
+Re-verified at r2 planning time: exactly one conductor (`conductor.pid` 91892, alive,
+bound to `active-run.json` prefix `PI-BENCH-RECOVERY-20260722`, heartbeat 20:10:12Z);
 no other `worker.sh`/conductor processes; the only worktree writers are this pipeline's
-architect slots, each confined to its own `plan_file` plus lock-serialized lifecycle
-appends. Enforcement in R1–R3: one implementer task at a time (the recovery cast must
+architect and judge slots, each confined to its own `plan_file` (architects) or
+read-only judging (judges) plus lock-serialized lifecycle appends. Enforcement in R1–R3: one implementer task at a time (the recovery cast must
 not dispatch IMPL concurrently with any other writer role); every lifecycle
 read-append-commit happens inside `repo_lock.completion_lock` with `commit_paths`
 (explicit paths, never `-A`); R2's stale-marker archive removes the only artifacts a
@@ -236,7 +254,9 @@ B-wave, or spends evaluation budget.
   the exact plan-file blob sha it read (conductor validates the files did not change
   between vote and tally).
 - **AC-2 (history preserved):** after RV-2..RV-4, `git log` shows only additive doc
-  commits; no existing ledger entry L-1..L-36, no DEC-1..DEC-6 text, and no master-plan
+  commits; no ledger entry existing at IMPL dispatch time (L-1..L-39 at r2 authoring;
+  the implementer pins the exact range under the completion lock before editing),
+  no DEC-1..DEC-6 text, and no master-plan
   byte changes (`git diff <pre-recovery-sha>..HEAD -- docs/build-stream/plans/2026-07-20-pi-full-replacement-master-plan.md` is empty).
 - **AC-3 (role contract):** post-RV-4, the lifecycle + work-order contain zero
   Kimi-as-evaluation statements: every `kimi` match (case-insensitive) in both files sits
@@ -305,14 +325,14 @@ Every executed command is recorded as CF `command` evidence on the owning task.
 
 | Risk | Likelihood | Mitigation |
 |------|-----------|------------|
-| Consensus invalidation recurs: a plan slot is rewritten while judges vote | High (it just happened) | AC-1: votes carry the plan-file blob sha; conductor refuses to tally if any sha changed after the earliest vote; architects may not revise after finishing (revisions = a new conductor-created replan round *before* judging reopens). Note: this r1 revision itself lands **before** any recovery judge has voted — verified zero `plan_vote` rows exist for the recovery pipeline at authoring time. |
+| Consensus invalidation recurs: a plan slot is rewritten while judges vote | High (it just happened) | AC-1: votes carry the plan-file blob sha; conductor refuses to tally if any sha changed after the earliest vote; architects may not revise after finishing (revisions = a new conductor-created replan round). Note: this r2 IS such a conductor-created round and lands **mid-window** — judge-a (read B+C only; A-revision-neutral) and judge-b (read A r1) have voted, judge-c is in flight. The conductor's tally must therefore record which plan-A revision each vote addressed and either have judge-c read r2 with its blob sha, or seal against the r1 sha judge-b read. No silent mixing. |
 | Ledger-numbering race in shared worktree (observed at L-32) | Medium | All lifecycle appends inside `repo_lock.completion_lock` (read last L-n under the lock), `commit_paths` with explicit paths; never `git add -A`. |
 | Stale kimi claim on REPLAN-C-r1 can't be released by a worker | Medium | RV-3 is conductor-assisted; if CF lacks a cancel verb for a claimed task, the conductor releases it; worker records the blocked state as evidence instead of forcing. |
 | Quarantine commit accidentally sweeps `recipe.toml` or other non-doc state | Low | Explicit-path `commit_paths` only; RV-2 audit command asserts the post-commit porcelain shows exactly `M recipe.toml`. |
 | Fresh-anchor drift: RC edit set applied at stale line numbers | Medium | R3 mandates re-grep at implementation HEAD under the lock; AC-3 grep battery is content-based, not line-based. |
 | A second conductor/actor resumes from leftover markers mid-recovery | Low after RV-3 | RV-3 archives ` (1)` markers first; pre-IMPL collision audit is a blocking precondition; single-writer cast discipline. |
 | `deepseek_judge.py` code/doc still contradicts §0.4 after this recovery | Certain (deferred) | Explicitly registered follow-up CF task, owner-gated, required before any live wave — G-R2 checklist item. |
-| Judges read uncommitted worktree plan files that later differ from committed history | Low (was Medium) | Recovery plans A and B are already committed (`9c45a42a`, `9cfe3304`); slot C must be committed by its author or quarantined by RV-2 before judging concludes; AC-1 sha discipline covers the rest. |
+| Judges read uncommitted worktree plan files that later differ from committed history | Retired (was Low) | All three recovery candidates are committed (A `9c45a42a`/`68dcd159`, B `9cfe3304`, C `02595094`); AC-1 sha discipline covers revision identity from here. |
 | RV-3 accidentally cancels the recovery pipeline's own pre-created IMPL/REVIEW rows | Low | RV-3's cancel list is prefix-exact (`PI-BENCH-ROLE-CORRECTION-20260722-*` only); AC-5 explicitly exempts RECOVERY-prefixed rows; the audit grep in §5 filters on `ROLE-CORRECTION`. |
 
 ## 7. Rollback
