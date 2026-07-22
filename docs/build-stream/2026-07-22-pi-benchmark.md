@@ -11,7 +11,7 @@ status: in-progress
 blocked_on: null
 authored_by: build-stream-conductor
 grounding: "Based on 2026-07-20-pi-full-replacement-master-plan.md Section 10"
-last: {agent: claude-fable-5, at: 2026-07-22T20:02:09Z, ledger: L-36}
+last: {agent: claude-fable-5, at: 2026-07-22T20:09:14Z, ledger: L-37}
 next_action: "Recovery consensus: remaining architect slots finish, judges vote on recovery plans a/b/c, conductor seals consensus_result; G-R1 owner gate before any implementation."
 ```
 <!-- /STATUS BLOCK -->
@@ -675,3 +675,9 @@ Did: authored independent recovery consensus plan A at docs/build-stream/plans/p
 Result: plan slot A ready for recovery consensus judging; key audit: no consensus_result row exists for PI-BENCH-ROLE-CORRECTION-20260722 (only plan_vote rows 1405/1410/1428 against mixed plan revisions — A moved r1->r2 mid-vote at L-32, B r2 landed post-vote and is still uncommitted); stale CF rows IMPL/REVIEW open + REPLAN-C-r1 claimed by stopped actor; stale conductor markers "active-run (1).json"/"escalation (1|2).json" identified; single live conductor pid 91892 on the recovery prefix confirmed; DUT=Istara arms, DeepSeek=evaluation backend via dispatcher under $1.00, MoA=measured, Kimi=post-run judge retained verbatim in plan section 0; PI-BENCH-RECOVERY-20260722-PLAN-A
 Verified: git status/diff residue audit; sqlite task_evidence query (zero consensus_result rows); conductor pid/marker audit (pid 91892 alive, prefix PI-BENCH-RECOVERY-20260722); git diff --check clean; wc -l plan = 293; CF evidence rows recorded 20:01:11-20:01:41Z (4x command, self_report)
 Next: recovery consensus judges vote on plan slots a/b/c; G-R1 owner gate before any implementation
+
+### L-37 | 2026-07-22T20:09:14Z | S1-plan | claude-fable-5 | architect | Recovery planning <!-- bsc-ledger:PI-BENCH-RECOVERY-20260722-REPLAN-A-r1 -->
+Did: repaired recovery consensus plan A (revision r1) at docs/build-stream/plans/pi-bench-recovery-20260722-plan-a.md (341 lines) — re-verified every r0 grounding claim by fresh commands at HEAD 9c45a42a (no r0 factual errors) and folded in post-r0 drift: recovery plans A/B now committed (9c45a42a L-36, 9cfe3304 + fallback L-35) so the uncommitted-candidate risk narrows to slot C (claimed, in-flight; its plan file appeared untracked mid-stage); AC-2 append-only range widened L-1..L-34 -> L-1..L-36; recovery pipeline's own pre-created IMPL/REVIEW open rows explicitly exempted from RV-3 cancels and AC-5; consensus-invalidity proof strengthened (full task_evidence scan: 6 consensus_result rows repo-wide, all earlier pipelines, 0 for ROLE-CORRECTION; recovery plan_vote count 0 at authoring); conductor heartbeat refreshed 20:03:18Z, pid 91892, same prefix. No lifecycle plan content, code, or prior ledger entry edited.
+Result: plan slot A ready for recovery consensus judging (r1); reuse verdict unchanged — prior correction artifacts reusable as content not state; DUT/DeepSeek/MoA/post-run-Kimi roles retained verbatim in plan section 0; PI-BENCH-RECOVERY-20260722-REPLAN-A-r1
+Verified: grep kimi-eval + DEC-5/6/7 anchor re-audit at 9c45a42a (regions :202-466 hold, DEC-5 clause :489, no DEC-7); sqlite consensus_result full listing (0 for role-correction) + stale-row recheck (IMPL/REVIEW open, REPLAN-C-r1 claimed); conductor pid/marker audit (91892 alive, stale (1)/(2) markers present); git diff --check clean; wc -l plan = 341; scope audit — only the plan file modified by this stage; CF evidence rows 1446-1449 (3x command, self_report)
+Next: recovery consensus judges vote on plan slots a/b/c; conductor seals consensus_result; G-R1 owner gate before any implementation
