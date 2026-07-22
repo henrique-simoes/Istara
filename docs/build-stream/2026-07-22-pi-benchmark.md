@@ -11,8 +11,8 @@ status: in-progress
 blocked_on: null
 authored_by: build-stream-conductor
 grounding: "Based on 2026-07-20-pi-full-replacement-master-plan.md Section 10"
-last: {agent: gpt-5.6-luna, at: 2026-07-22T19:36:36Z, ledger: L-25}
-next_action: "Complete sibling F-5, then run one delta re-review after all fixer tasks are terminal."
+last: {agent: gpt-5.6-luna, at: 2026-07-22T19:38:20Z, ledger: L-26}
+next_action: "F-5 fixed; complete the sibling barrier, then run one delta re-review."
 ```
 <!-- /STATUS BLOCK -->
 
@@ -475,7 +475,7 @@ approvals (G1/G2) are recorded as CF evidence with the in-chat approval quoted.
 | F-2 | Minor | comparison-Istara-pi/metrics-schema.json (`metrics.additionalProperties`) | open axis-key set accepts typo'd axis names (e.g. tool_cal ling); inconsistent with strict top level + extensions escape hatch | FIX-pi-eval-REVIEW-r1 | verified (REREV pass, L-13) |
 | F-3 | Blocker | `scheduler.py:write_manifest` / `runner.py:run_wave` | Real manifests store shard entries as unit-id strings, but wave execution dereferences them as unit objects and crashes before dispatch. | FIX-PI-BENCH-MOA-20260722-REVIEW-r1-wave | fixed |
 | F-4 | Blocker | `moa.py:assess_validation_result` / `live_driver.py:_moa_evidence_from_capture` | Partial coder success can be labeled reconciled because selected endpoints count as served and requested response count is not enforced. | FIX-PI-BENCH-MOA-20260722-REVIEW-r1-moa | fixed |
-| F-5 | Blocker | `live_driver.py:dispatch_unit` / `validation.py:_get_embeddings` | MoA omits the requested engine and approved route identity; embeddings escape the DeepSeek-only ledger; stamped provenance does not prove the served route. | FIX-PI-BENCH-MOA-20260722-REVIEW-r1-routing | open |
+| F-5 | Blocker | `live_driver.py:dispatch_unit` / `validation.py:_get_embeddings` | MoA omits the requested engine and approved route identity; embeddings escape the DeepSeek-only ledger; stamped provenance does not prove the served route. | FIX-PI-BENCH-MOA-20260722-REVIEW-r1-routing | fixed (L-26) |
 | F-6 | Blocker | `live_driver.py:run_live_unit` / `budget_ledger.py` | The reserved output bound is not forwarded to dispatch, and duplicate/orphan/over-reservation ledger transitions can undercount or exceed the hard cap. | FIX-PI-BENCH-MOA-20260722-REVIEW-r1-budget | fixed (L-22) |
 | F-7 | Major | Compass Forge post-change gate | New Python import cycles include `live_driver -> runner -> live_driver`; the task-scope architecture gate is not clean. | FIX-PI-BENCH-MOA-20260722-REVIEW-r1-gate | fixed (L-25) |
 
@@ -609,3 +609,9 @@ Did: fixed F-7 by moving shared benchmark record/provenance/atomic-write helpers
 Result: F-7 fixed under FIX-PI-BENCH-MOA-20260722-REVIEW-r1-gate; the task-scope post-change architecture comparison reports zero new failures and zero actionable failures. The unrelated live-driver injection-API failure remains outside this cycle-only task.
 Verified: `python -m pytest tests/pi_benchmark/test_runner.py tests/pi_benchmark/test_moa.py tests/pi_benchmark/test_live_driver.py -q -k 'not dispatch_unit_moa_uses_pinned_engine_and_never_embeddings'` -> 57 passed, 1 deselected; `python -m pytest tests/pi_benchmark/test_b1_contract.py -q` -> 5 passed; `python -m compileall -q tests/pi_benchmark/schema.py tests/pi_benchmark/live_driver.py tests/pi_benchmark/runner.py` -> passed; `git diff --check` -> passed; `compass-forge gate after --task FIX-PI-BENCH-MOA-20260722-REVIEW-r1-gate --summary` -> fail with 0 new failures, 0 actionable failures, inherited cycle/secret/large-file debt only.
 Next: complete sibling F-5, then delta re-review; stage exit: F-7 fixed with focused evidence and handoff ready.
+
+### L-26 | 2026-07-22T19:38:20Z | S4-remediate | gpt-5.6-luna | remediator | Execution phase <!-- bsc-ledger:FIX-PI-BENCH-MOA-20260722-REVIEW-r1-routing -->
+Did: fixed F-5 in `tests/pi_benchmark/live_driver.py` and `tests/pi_benchmark/test_live_driver.py`; MoA now uses the benchmark-safe dispatcher path with `engine=unit.engine`, a pinned approved DeepSeek endpoint/model, deterministic local consensus without embedding dispatch, rejected-route evidence, and provenance fingerprints derived from the served redacted route. Added regression coverage for paired-engine forwarding, embedding avoidance, unapproved-route rejection, and null provenance on rejected routes.
+Result: F-5 open -> fixed under FIX-PI-BENCH-MOA-20260722-REVIEW-r1-routing. Full ensembles remain explicitly degraded on the single approved route instead of discovering local or unrelated endpoints; no live model or network call was made.
+Verified: `python -m pytest tests/pi_benchmark/test_live_driver.py tests/pi_benchmark/test_moa.py -q` -> 38 passed; `python -m ruff check tests/pi_benchmark/live_driver.py tests/pi_benchmark/test_live_driver.py tests/pi_benchmark/moa.py tests/pi_benchmark/test_moa.py` -> passed; `python -m compileall -q tests/pi_benchmark/live_driver.py tests/pi_benchmark/test_live_driver.py` -> passed; `git diff --check` -> passed; `compass-forge gate after --task FIX-PI-BENCH-MOA-20260722-REVIEW-r1-routing --summary` -> no new/actionable routing-scope failures, with inherited debt and the sibling ledger-suite failures recorded in CF evidence. The full `tests/pi_benchmark` suite remains 170 passed/2 failed in sibling F-6 provider reservation tests.
+Next: stage exit: F-5 fixed; sibling barrier and one delta re-review remain.
