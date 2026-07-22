@@ -11,8 +11,8 @@ status: in-progress
 blocked_on: null
 authored_by: build-stream-conductor
 grounding: "Based on 2026-07-20-pi-full-replacement-master-plan.md Section 10"
-last: {agent: claude-fable-5, at: 2026-07-22T19:44:58Z, ledger: L-32}
-next_action: "r2 consensus judging over plan slots a/b/c; then implement winning plan RC-1..RC-6; delta re-review still pending."
+last: {agent: kimi-code/k3, at: 2026-07-22T19:50:29Z, ledger: L-34}
+next_action: "Conductor tallies judge votes (judge-a: slot c, judge-b: slot a, judge-c: slot a) and advances the winning role-correction plan to implementation."
 ```
 <!-- /STATUS BLOCK -->
 
@@ -657,3 +657,9 @@ Did: pi-bench-role-correction-20260722-architect-b stage on task PI-BENCH-ROLE-C
 Result: task PI-BENCH-ROLE-CORRECTION-20260722-REPLAN-B-r2 finished; worktree head 1ff29c48.
 Verified: see Compass Forge evidence rows on PI-BENCH-ROLE-CORRECTION-20260722-REPLAN-B-r2 (command + self_report + stage_attribution).
 Next: conductor advances the pipeline on evidence.
+
+### L-34 | 2026-07-22T19:50:29Z | S1-plan | kimi-code/k3 | judge | pi-bench-role-correction-20260722-judge-c <!-- bsc-ledger:PI-BENCH-ROLE-CORRECTION-20260722-JUDGE-C -->
+Did: consensus judge slot c — read exactly the two assigned candidate files (plan A by claude-fable-5, read at r1 then re-read at r2 after L-32 landed mid-stage; plan B r1 by gpt-5.6-sol); spot-verified their load-bearing claims against this lifecycle (:488-489 DEC-5 judge clause, 11 Kimi-as-evaluation residuals), tests/pi_benchmark/deepseek_judge.py (:3-8 shared-ledger judge now declared as explicit policy, make_deepseek_judge_fn :84-90 sharing the evaluation ledger), and the conductor-instructions docs (role-correction brief + execution work-order both exist). Edited only this lifecycle file (this append + Status Block).
+Result: plan_vote for slot a recorded on PI-BENCH-ROLE-CORRECTION-20260722-JUDGE-C. Plan A r2 wins on audit precision/currency (triple-re-verified line anchors; r2 tracks live drift incl. the deepseek_judge.py docstring hardening and observed ledger-numbering races with a re-read-under-lock mandate) and surgical scope (identity-swap + DEC-7 supersession + work-order tighten + exact seven-pack arithmetic). Plan B's normative role table, terminal judging barrier, and requested-vs-served MoA provenance are stronger contract machinery but its audit is unanchored and one revision staler, and its extras exceed the role-correction brief. Vote tally now: judge-a -> slot c, judge-b -> slot a, judge-c -> slot a.
+Verified: grep DEC-5 pin -> :488-489 confirmed; Kimi-eval residual grep -> 11 matches; sed deepseek_judge.py :1-10/:84-92 -> shared-ledger policy + ledger-sharing judge_fn confirmed at HEAD 070f9dd2; ls conductor-instructions -> both docs present; CF evidence rows 1427 (command), 1428 (plan_vote), 1429 (self_report).
+Next: conductor tallies judge votes (slot a leads 2-1) and advances the winning role-correction plan to implementation; stage exit: plan_vote + self_report + command evidence recorded.
