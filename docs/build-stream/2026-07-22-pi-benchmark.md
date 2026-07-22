@@ -5,14 +5,14 @@
 item: pi-benchmark
 branch: Review_pi_test
 cf: { spec: CF-SPEC-8 }
-phase: "Planning phase"
-stage: S1-plan
+phase: "Execution phase"
+stage: S2-execute
 status: in-progress
 blocked_on: "none"
 authored_by: henrique-simoes
 grounding: "Based on 2026-07-20-pi-full-replacement-master-plan.md Section 10"
-last: {agent: kimi-code/k3, at: 2026-07-22T13:50:34Z, ledger: L-9}
-next_action: "Conductor tallies judge plan_votes and advances the pipeline"
+last: {agent: claude-opus-4-8, at: 2026-07-22T15:22:53Z, ledger: L-10}
+next_action: "Independent code review of pi-eval-IMPL (B0-1 schema foundation); then follow-up implementer tasks for B0-2..B0-8 and owner-gated B1-B4 execution"
 ```
 <!-- /STATUS BLOCK -->
 
@@ -430,4 +430,17 @@ approvals (G1/G2) are recorded as CF evidence with the in-chat approval quoted.
 - No live model loading or external spend before the corresponding owner gate.
 
 ## Decision log
+
+
+### L-9 | 2026-07-22T13:50:34Z | S1-plan | kimi-code/k3 | architect | Planning phase <!-- bsc-ledger:pi-eval-REPLAN-C-r1 -->
+Did: repaired consensus plan C (revision r1)
+Result: plan slot C ready for consensus judging (r1)
+Verified: ls/find/grep/sed grounding audit
+Next: consensus judges vote on plan slots a/b/c
+
+### L-10 | 2026-07-22T15:22:53Z | S2-execute | claude-opus-4-8 | executor | Execution phase <!-- bsc-ledger:pi-eval-IMPL -->
+Did: implemented winning-plan task **B0-1 (schema-first foundation)** — the keystone every downstream benchmark asset validates against. Added `comparison-Istara-pi/metrics-schema.json` (Draft-2020-12 run-record contract: identity, tier/engine/pack/phase, provenance with redacted fingerprint + sha256, `usage` with mandatory `estimate` flag, the 10 owner-axis metric blocks, `$defs.feature_criteria_scores` and `$defs.paired_stats`, `not_runnable_reason` enum, `if/then` requiring a reason when `status=not_runnable`), `comparison-Istara-pi/README.md` + `reports/.gitkeep` skeleton, and `tests/pi_benchmark/` package (`schema.py` loader/validator — T0-safe, no backend/DB/net/model; golden `fixtures/example_run_record.json`; `test_metrics_schema.py` with the acceptance-A1 negative battery; `.gitignore` for `.results/`; README). No product-code touched — purely additive.
+Result: 20/20 unit tests pass; schema is a valid JSON Schema; acceptance A1 (validates conformant record, rejects schema-violating records) foundation met for B0. Delivered B0-1 only; B0-2..B0-8 and B1-B4 remain follow-ups (B0-3 security-sensitive; B2/B3 owner-gated G1/G2). pi-eval-IMPL
+Verified: `python -m pytest tests/pi_benchmark/ -q` → 20 passed; `python -m json.tool comparison-Istara-pi/metrics-schema.json` → parses OK; `python -m pytest tests/pi_migration/test_count_to_zero.py -q` → 3 passed (ratchet 0, acceptance A4, no product-code regression). CF command+self_report evidence on pi-eval-IMPL.
+Next: stage exit — B0-1 ready for independent code review; conductor spawns follow-up implementer tasks for B0-2 (engine plumbing), B0-3 (legacy usage capture + long_horizon_runner.py:138 fix, +security gate), B0-4..B0-8, then owner-gated B1-B4.
 
