@@ -237,8 +237,8 @@
   <dl class="meta-grid">
     <div><dt>UI Path</dt><dd>Autoresearch &gt; Experiments</dd></div>
     <div><dt>Component</dt><dd><code>AutoresearchView</code></dd></div>
-    <div><dt>Source Refs</dt><dd>2</dd></div>
-    <div><dt>Tests</dt><dd>0</dd></div>
+    <div><dt>Source Refs</dt><dd>9</dd></div>
+    <div><dt>Tests</dt><dd>1</dd></div>
   </dl>
   <div class="link-cluster" aria-label="Related feature links"><a href="../dashboard/researcher.html">Autoresearch Dashboard</a>
 <a href="../config/researcher.html">Autoresearch Configuration</a></div>
@@ -272,6 +272,15 @@
 <li>Generated experiment records, reasoning memories, and improvement proposals keep the project id that authorized the run.</li>
 <li>Question-bank experiments can only evaluate or rewrite deployments that belong to the active project; stale deployment ids from another project are treated as not found before LLM evaluation or mutation.</li>
 </ul>
+<h2 id="model-routing-and-engine-selection">Model Routing And Engine Selection</h2>
+<ul>
+<li>Autoresearch experiments run through six loop runners — model-and-temperature sweeps, persona tuning, question-bank improvement, RAG-parameter tuning, skill-prompt tuning, and UI-simulation tuning. Each runner makes its own model calls to hypothesize a change, evaluate it, and score the result.</li>
+<li>Pi Replacement wave W6 sends those runner calls through Istara&#x27;s shared agentic dispatcher when the <code>agentic_core</code> engine is enabled, so the same experiment can run on either the Pi replacement engine or the legacy engine without changing what the experiment does. When the flag is off, the runners use the legacy model plane exactly as before, so switching engines is a safe rollback.</li>
+<li>Which engine ran an experiment is recorded in the run&#x27;s usage accounting, so Pi and legacy runs of the same experiment stay distinguishable and auditable; no prompts, hypotheses, or responses are added to that accounting.</li>
+<li>Model-and-temperature sweeps on the Pi engine explore the configured Pi model catalog (settings endpoints, registered LLM servers, and local Ollama or LM Studio models) across temperatures, skipping embedding-only models. If the catalog cannot offer at least two distinct models the run is marked as a truncated sweep rather than quietly shrinking, so a narrow comparison stays visible instead of hidden.</li>
+<li>RAG-parameter tuning moves only its suggestion step onto the new engine; the retrieval-quality embedding it uses to score results stays on the legacy plane until a later wave (W8) adds the embeddings gateway.</li>
+<li>Every runner stays bound to the project that authorized the experiment: engine choice, telemetry, and execution all use that authorized project, and the governed proposal-only path for autoresearch is unchanged, so a run cannot act on or account against another project.</li>
+</ul>
 <h2 id="caveats">Caveats</h2>
 <ul>
 <li>Needs interactive verification for exact empty, loading, error, and permission-denied states.</li>
@@ -288,9 +297,9 @@
 </ul>
 <h2 id="evidence">Evidence</h2>
 <ul>
-<li>Source files: <code>frontend/src/components/autoresearch/AutoresearchView.tsx</code>, <code>backend/app/core/autoresearch_engine.py</code>, <code>backend/app/core/autoresearch_runners/question_bank.py</code></li>
+<li>Source files: <code>frontend/src/components/autoresearch/AutoresearchView.tsx</code>, <code>backend/app/core/autoresearch_engine.py</code>, <code>backend/app/core/autoresearch_runners/model_temp.py</code>, <code>backend/app/core/autoresearch_runners/question_bank.py</code>, <code>backend/app/core/agentic/dispatcher.py</code></li>
 <li>API references: <code>backend/app/api/routes/autoresearch.py</code></li>
-<li>Tests: <code>tests/test_autoresearch.py</code>, <code>tests/test_project_scope_contracts.py</code></li>
+<li>Tests: <code>tests/test_autoresearch.py</code>, <code>tests/test_project_scope_contracts.py</code>, <code>tests/pi_production/test_w6_autoresearch_runners.py</code></li>
 </ul>
         </article>
         <aside class="toc-panel" aria-label="Page sections">
@@ -302,6 +311,7 @@
 <li class="toc-level-2"><a href="#how-ux-researchers-use-it">How UX Researchers Use It</a></li>
 <li class="toc-level-2"><a href="#supported-workflows">Supported Workflows</a></li>
 <li class="toc-level-2"><a href="#inputs-outputs-and-expected-outcomes">Inputs, Outputs, And Expected Outcomes</a></li>
+<li class="toc-level-2"><a href="#model-routing-and-engine-selection">Model Routing And Engine Selection</a></li>
 <li class="toc-level-2"><a href="#caveats">Caveats</a></li>
 <li class="toc-level-2"><a href="#related-features">Related Features</a></li>
 <li class="toc-level-2"><a href="#related-concepts">Related Concepts</a></li>

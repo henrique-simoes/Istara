@@ -237,8 +237,8 @@
   <dl class="meta-grid">
     <div><dt>UI Path</dt><dd>Autoresearch &gt; Experiments</dd></div>
     <div><dt>Component</dt><dd><code>AutoresearchView</code></dd></div>
-    <div><dt>Source Refs</dt><dd>2</dd></div>
-    <div><dt>Tests</dt><dd>0</dd></div>
+    <div><dt>Source Refs</dt><dd>9</dd></div>
+    <div><dt>Tests</dt><dd>1</dd></div>
   </dl>
   <div class="link-cluster" aria-label="Related feature links"><a href="../dashboard/architecture.html">Autoresearch Dashboard</a>
 <a href="../config/architecture.html">Autoresearch Configuration</a></div>
@@ -268,6 +268,33 @@
 <li>A Pi-selected governed turn that reaches <code>error</code> or <code>aborted</code> fails closed with a typed 503 before any candidate proposal or fallback hypothesis is created; partial streamed output is not an experiment artifact.</li>
 <li>The engine binds the authorized project id into each loop runner before baseline measurement. Question-bank runners then load and update <code>ResearchDeployment</code> rows by both deployment id and that bound project id, so a stale deployment id from another project cannot be measured, mutated, reverted, or sent into LLM evaluation.</li>
 </ul>
+<h3 id="agentic-dispatcher-migration-pi-replacement-w6">Agentic Dispatcher Migration (Pi Replacement W6)</h3>
+<ul>
+<li>Pi Replacement wave W6 (master plan <code>docs/build-stream/plans/2026-07-20-pi-full-replacement-master-plan.md</code> §8 W6, spec CF-SPEC-8) routes the autoresearch loop runners&#x27; own internal LLM calls through the shared <code>AgenticDispatcher</code> (<code>backend/app/core/agentic/dispatcher.py</code>, module singleton <code>agentic</code>) instead of calling <code>app.core.llm_router.llm_router.chat</code> directly. It migrates the 14 runner call sites across the six loop runners (<code>model_temp</code>, <code>persona</code>, <code>question_bank</code>, <code>rag_params</code>, <code>skill_prompt</code>, <code>ui_sim</code>) while experiment orchestration, persistence, governance, and project scope stay unchanged.</li>
+<li>Engine selection is per experiment. Each runner resolves Pi or legacy for the run, defaulting to the global <code>settings.agentic_core</code> flag (<code>pi</code> when enabled, otherwise <code>legacy</code>) when the experiment does not pin an engine of its own. On the Pi engine a runner call is issued through the shared dispatcher as <code>agentic.completion(purpose=&quot;autoresearch.&lt;runner&gt;.&lt;step&gt;&quot;, project_id=..., spine_phase=...)</code>; the dispatcher is the single choke point that resolves the concrete engine and endpoint and fails closed on a selected engine that cannot execute, never silently falling back to the other engine (see <a href="../../chat/model-controls/architecture.html">chat.model-controls</a> for the full engine-selection precedence — per-call override, then the <code>x-istara-agent-engine</code> header, then the project <code>agentic_engine</code> setting, then <code>settings.agentic_engine_default</code>). On the legacy engine the preserved <code>llm_router.chat</code> branch in every site runs verbatim, byte-for-byte as before the wave.</li>
+<li>Which engine actually executed each runner turn stays auditable per run through the durable usage ledger (<code>backend/app/core/agentic/usage_ledger.py</code>): every dispatcher call records one content-free accounting row plus a short identity-only trace span <code>route_id=&quot;agentic:&lt;engine&gt;:&lt;endpoint|node|unresolved&gt;&quot;</code>, so a Pi run and a legacy run of the same experiment are distinguishable in the accounting plane without exposing prompts, responses, or endpoint secrets.</li>
+<li>All 14 sites use the <code>completion</code> verb; the purpose slug and Research Spine phase per site are:</li>
+</ul>
+<p>- <code>model_temp._evaluate_skill</code> — candidate skill run → <code>autoresearch.model_temp.evaluate</code> (spine phase <code>execution</code>).</p>
+<p>- <code>model_temp._score_output</code> — LLM-as-judge score → <code>autoresearch.model_temp.score</code> (spine phase <code>review</code>).</p>
+<p>- <code>persona.hypothesize</code> — persona-file mutation → <code>autoresearch.persona.hypothesize</code> (spine phase <code>plan</code>).</p>
+<p>- <code>persona._evaluate_agent</code> — simulated-task run → <code>autoresearch.persona.evaluate</code> (spine phase <code>execution</code>).</p>
+<p>- <code>persona._score_response</code> — response-quality score → <code>autoresearch.persona.score</code> (spine phase <code>review</code>).</p>
+<p>- <code>question_bank.hypothesize</code> — question-bank improvement → <code>autoresearch.question_bank.hypothesize</code> (spine phase <code>plan</code>).</p>
+<p>- <code>question_bank._evaluate_questions</code> — simulated participant → <code>autoresearch.question_bank.evaluate</code> (spine phase <code>execution</code>).</p>
+<p>- <code>question_bank._score_responses</code> — elicited-response score → <code>autoresearch.question_bank.score</code> (spine phase <code>review</code>).</p>
+<p>- <code>rag_params._llm_hypothesis</code> — next-parameter suggestion → <code>autoresearch.rag_params.hypothesize</code> (spine phase <code>plan</code>).</p>
+<p>- <code>skill_prompt.hypothesize</code> — skill-prompt mutation → <code>autoresearch.skill_prompt.hypothesize</code> (spine phase <code>plan</code>).</p>
+<p>- <code>skill_prompt._single_eval</code> — sample skill run → <code>autoresearch.skill_prompt.evaluate</code> (spine phase <code>execution</code>).</p>
+<p>- <code>skill_prompt._score_output</code> — skill-output score → <code>autoresearch.skill_prompt.score</code> (spine phase <code>review</code>).</p>
+<p>- <code>ui_sim.hypothesize</code> — component accessibility/UX mutation → <code>autoresearch.ui_sim.hypothesize</code> (spine phase <code>plan</code>).</p>
+<p>- <code>ui_sim._evaluate_component</code> — WCAG-style component score → <code>autoresearch.ui_sim.evaluate</code> (spine phase <code>review</code>).</p>
+<ul>
+<li>Model/temperature sweep semantics (<code>model_temp.py</code>, master plan §8 W6 design decision 1): on the Pi engine <code>_build_grid</code> sources the <code>(model, temperature)</code> grid from the <code>PiModelManager</code> catalog (<code>backend/app/core/pi_runtime/model_manager.py</code> — settings endpoints, projected <code>LLMServer</code> rows, and local Ollama/LM Studio entries) rather than <code>llm_router.list_models()</code>, so the sweep space is the Pi plane&#x27;s catalog identities and is not degenerate with a single endpoint. Each swept candidate is pinned by its exact catalog endpoint identity so two endpoints serving the same model stay distinct sweep cells instead of collapsing to one, and the dispatcher resolves the precise endpoint rather than a bare model name; embedding models are excluded from the sweep. A sweep that cannot span at least two distinct models is recorded as <code>sweep_truncated</code> (logged) instead of being silently narrowed, and an empty catalog yields an empty grid with <code>sweep_truncated</code> set; the legacy engine keeps sweeping the <code>llm_router</code> model list unchanged (no endpoint identity).</li>
+<li>RAG retrieval-eval embedding stays legacy until W8 (<code>rag_params.py</code>, master plan §8 W6 design decision 2): only the <code>_llm_hypothesis</code> chat call migrates to <code>agentic.completion</code>. The retrieval-eval embedding in <code>_score_single_query</code> (<code>embed_text</code>) is deliberately left on the legacy plane and is never routed through <code>agentic.embed</code> until the W8 embeddings gateway lands; the count-to-zero migration allowlist tracks that chat site and that embed site separately so the deferral is an explicit, tracked decision rather than a missed site.</li>
+<li>Governance and project scope are unchanged. The governed <code>pi_governed</code> autoresearch mode remains the only path by which a Pi turn can *propose* experiments; W6 only changes the transport of the runners&#x27; internal calls once a human has already started an experiment, and the <code>governance_required</code> / no-promotion gates are untouched. The authorized project id the engine binds into each runner before baseline measurement is the id carried into every migrated <code>agentic.completion</code> call (engine resolution, telemetry, and execution scope), never a caller-supplied target, so a Pi runner turn cannot execute or account against a different project than the one that authorized the experiment.</li>
+<li>Rollback: set <code>settings.agentic_core</code> to <code>False</code> (or select the <code>legacy</code> engine for the project) and every runner falls back to its preserved <code>llm_router.chat</code> branch with no schema or behavior change; the count-to-zero ratchet stays at 70 because the legacy branches are preserved rather than retired.</li>
+</ul>
 <h2 id="architecture-notes">Architecture Notes</h2>
 <ul>
 <li>The feature is mounted through <code>frontend/src/components/autoresearch/AutoresearchView.tsx</code> and the UI navigation path recorded in the inventory.</li>
@@ -288,11 +315,14 @@
 <li><code>tests/test_autoresearch.py</code> verifies start/stop routing, runner project binding, and project-scoped question-bank deployment behavior.</li>
 <li><code>tests/test_project_scope_contracts.py</code> verifies the frontend and backend keep experiment requests project-bound.</li>
 <li><code>tests/pi_production/test_seams_fail_closed.py</code> verifies error and abort terminals, including failures after partial output, cannot create Pi candidate proposals.</li>
+<li><code>tests/pi_production/test_w6_autoresearch_runners.py</code> verifies the W6 migration: every one of the 14 runner sites carries both the flag-gated <code>agentic.completion</code> dispatcher path (correct purpose slug and valid spine phase) and the preserved legacy <code>llm_router.chat</code> branch; the flag-off path uses the legacy plane exactly as before and never touches the dispatcher; the flag-on path records the call (verb, purpose, bound project scope, spine phase) and never touches the legacy plane; the <code>model_temp</code> Pi sweep builds its grid from the <code>PiModelManager</code> catalog with embeddings filtered and records <code>sweep_truncated</code> for degenerate/empty catalogs; the <code>rag_params</code> retrieval-eval embedding stays off the dispatcher; and the count-to-zero ratchet stays green at 70.</li>
+<li>Regenerate and validate the machine manifests and static site with <code>python scripts/feature_docs.py --seed-missing --generate-site --check</code>.</li>
 </ul>
 <h2 id="related-features">Related Features</h2>
 <ul>
 <li><a href="../dashboard/architecture.html">autoresearch.dashboard</a></li>
 <li><a href="../config/architecture.html">autoresearch.config</a></li>
+<li><a href="../../chat/model-controls/architecture.html">chat.model-controls</a></li>
 </ul>
 <h2 id="related-concepts">Related Concepts</h2>
 <ul>
@@ -300,7 +330,7 @@
 </ul>
 <h2 id="compass-evidence">Compass Evidence</h2>
 <ul>
-<li>Spec/task: CF-SPEC-60 / CF-754; CF-SPEC-68 / CF-870; CF-SPEC-96 / CF-1226</li>
+<li>Spec/task: CF-SPEC-60 / CF-754; CF-SPEC-68 / CF-870; CF-SPEC-96 / CF-1226; CF-SPEC-8 (Pi replacement W6 autoresearch-runner dispatcher migration)</li>
 <li>Inventory source: <code>docs/features/inventory.json</code></li>
 </ul>
 <h2 id="when-to-update">When To Update</h2>
@@ -317,6 +347,7 @@
 <li class="toc-level-2"><a href="#state-api-and-backend-contracts">State, API, And Backend Contracts</a></li>
 <li class="toc-level-3"><a href="#stores">Stores</a></li>
 <li class="toc-level-3"><a href="#api-and-backend">API And Backend</a></li>
+<li class="toc-level-3"><a href="#agentic-dispatcher-migration-pi-replacement-w6">Agentic Dispatcher Migration (Pi Replacement W6)</a></li>
 <li class="toc-level-2"><a href="#architecture-notes">Architecture Notes</a></li>
 <li class="toc-level-2"><a href="#agents-skills-llm-mcp-and-permissions">Agents, Skills, LLM, MCP, And Permissions</a></li>
 <li class="toc-level-2"><a href="#tests-and-verification">Tests And Verification</a></li>
