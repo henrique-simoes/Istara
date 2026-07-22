@@ -219,7 +219,7 @@ class EmbeddingsGateway:
         model = model or default_embed_model()
         manager = self.manager()
         await manager.ensure_db_projection()
-        endpoint = manager.resolve_embed()
+        endpoint = manager.resolve_embed(model)
         if self._is_native_ollama(endpoint):
             vectors, usage = await self._call_native_ollama(endpoint, model, texts)
         else:

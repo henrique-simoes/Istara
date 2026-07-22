@@ -123,7 +123,8 @@ async def test_gateway_openai_compatible_v1_embeddings():
 
     manager = _isolated(PiModelManager(endpoints=[
         _endpoint(endpoint_id="pi-llm-7", base_url="http://gpu.local:8000/v1",
-                  api_key="sekret", kind="remote"),
+                  api_key="sekret", kind="remote",
+                  model=settings.ollama_embed_model),
     ]))
     gateway = EmbeddingsGateway(manager=manager, client=_mock_client(handler))
     outcome = await gateway.embed(["a", "b"], model="nomic-embed-text")
@@ -255,7 +256,8 @@ async def test_gateway_http_error_propagates():
 # ── catalog: embed endpoint resolution ──────────────────────────────────
 
 
-def test_resolve_embed_prefers_local_ollama_then_local_then_remote():
+def test_resolve_embed_anchors_to_active_local_provider(monkeypatch):
+    monkeypatch.setattr(settings, "llm_provider", "ollama")
     manager = PiModelManager(endpoints=[
         _endpoint(endpoint_id="pi-llm-remote", kind="remote", base_url="http://r:8000/v1"),
         _endpoint(endpoint_id="pi-local-lmstudio", base_url="http://127.0.0.1:1234/v1"),
@@ -263,6 +265,7 @@ def test_resolve_embed_prefers_local_ollama_then_local_then_remote():
     ])
     assert manager.resolve_embed().endpoint_id == "pi-local-ollama"
 
+    monkeypatch.setattr(settings, "llm_provider", "lmstudio")
     no_ollama = PiModelManager(endpoints=[
         _endpoint(endpoint_id="pi-llm-remote", kind="remote", base_url="http://r:8000/v1"),
         _endpoint(endpoint_id="pi-local-lmstudio", base_url="http://127.0.0.1:1234/v1"),
@@ -273,6 +276,31 @@ def test_resolve_embed_prefers_local_ollama_then_local_then_remote():
         _endpoint(endpoint_id="pi-llm-remote", kind="remote", base_url="http://r:8000/v1"),
     ])
     assert remote_only.resolve_embed().endpoint_id == "pi-llm-remote"
+
+
+def test_production_manager_routes_requested_remote_embedding_model(monkeypatch):
+    monkeypatch.setattr(settings, "llm_provider", "ollama")
+    monkeypatch.setattr(settings, "ollama_embed_model", "local-embed")
+    remote = _endpoint(
+        endpoint_id="pi-llm-remote-embed",
+        kind="remote",
+        base_url="http://gpu.local:8000/v1",
+        model="remote-embed",
+        api_key="sekret",
+    )
+    manager = PiModelManager(endpoints=[remote, _endpoint()])
+
+    assert manager.resolve_embed("remote-embed").endpoint_id == "pi-llm-remote-embed"
+
+
+def test_production_manager_routes_lmstudio_embedding_configuration(monkeypatch):
+    monkeypatch.setattr(settings, "llm_provider", "lmstudio")
+    monkeypatch.setattr(settings, "lmstudio_embed_model", "lmstudio-embed")
+    monkeypatch.setattr(settings, "ollama_embed_model", "ollama-embed")
+
+    endpoint = PiModelManager().resolve_embed("lmstudio-embed")
+
+    assert endpoint.endpoint_id == "pi-local-lmstudio"
 
 
 def test_resolve_embed_fail_closed_without_compatible_entries():
@@ -489,7 +517,7 @@ async def test_ensure_embed_model_pi_uses_the_provisioner(monkeypatch):
     async def ensure_db_projection(self):
         return None
 
-    def resolve_embed(self):
+    def resolve_embed(self, model=None):
         return endpoint
 
     async def ensure_model(ep, model):
@@ -514,6 +542,33 @@ async def test_ensure_embed_model_pi_uses_the_provisioner(monkeypatch):
     assert legacy_calls == []
 
 
+@pytest.mark.asyncio
+async def test_ensure_embed_model_rejects_local_provisioning_failure(monkeypatch):
+    from app.core import embeddings as embeddings_module
+
+    monkeypatch.setattr(settings, "llm_provider", "ollama")
+    monkeypatch.setattr(settings, "agentic_engine_default", "pi")
+    endpoint = _endpoint()
+
+    async def ensure_db_projection(self):
+        return None
+
+    def resolve_embed(self, model=None):
+        return endpoint
+
+    async def ensure_model(ep, model):
+        return False
+
+    monkeypatch.setattr(PiModelManager, "ensure_db_projection", ensure_db_projection)
+    monkeypatch.setattr(PiModelManager, "resolve_embed", resolve_embed)
+    monkeypatch.setattr(
+        "app.core.pi_runtime.model_manager_provisioning.ensure_endpoint_model", ensure_model
+    )
+
+    with pytest.raises(PiEndpointResolutionError, match="embedding_model_provision_failed"):
+        await embeddings_module.ensure_embed_model()
+
+
 async def test_provisioner_remote_is_noop_and_local_ollama_ensures(monkeypatch):
     remote = _endpoint(endpoint_id="pi-llm-9", kind="remote", base_url="http://r:8000/v1")
     assert await ensure_endpoint_model(remote, "m") is False
@@ -533,6 +588,54 @@ async def test_provisioner_remote_is_noop_and_local_ollama_ensures(monkeypatch):
     assert await ensure_endpoint_model(local, "nomic-embed-text") is True
     # The /v1 suffix is stripped back to the native Ollama host.
     assert ensured == [("http://127.0.0.1:11434", "nomic-embed-text")]
+
+
+@pytest.mark.asyncio
+async def test_provisioner_lmstudio_uses_compute_node_load_helper(monkeypatch):
+    monkeypatch.setattr(settings, "lmstudio_auto_load_enabled", True)
+    calls = []
+
+    class _FakeComputeNode:
+        def __init__(self, **kwargs):
+            calls.append(("init", kwargs))
+
+        async def load_model(self, model, *, force):
+            calls.append(("load", model, force))
+            return True
+
+    monkeypatch.setattr("app.core.compute_node.ComputeNode", _FakeComputeNode)
+    endpoint = _endpoint(
+        endpoint_id="pi-local-lmstudio",
+        base_url="http://127.0.0.1:1234/v1",
+        kind="local",
+    )
+
+    assert await ensure_endpoint_model(endpoint, "lmstudio-embed") is True
+    assert calls[0][1]["provider_type"] == "lmstudio"
+    assert calls[0][1]["host"] == "http://127.0.0.1:1234"
+    assert calls[1] == ("load", "lmstudio-embed", False)
+
+
+@pytest.mark.asyncio
+async def test_provisioner_lmstudio_load_false_fails_typed(monkeypatch):
+    monkeypatch.setattr(settings, "lmstudio_auto_load_enabled", True)
+
+    class _UnavailableComputeNode:
+        def __init__(self, **kwargs):
+            pass
+
+        async def load_model(self, model, *, force):
+            return False
+
+    monkeypatch.setattr("app.core.compute_node.ComputeNode", _UnavailableComputeNode)
+    endpoint = _endpoint(
+        endpoint_id="pi-local-lmstudio",
+        base_url="http://127.0.0.1:1234/v1",
+        kind="local",
+    )
+
+    with pytest.raises(PiEndpointResolutionError, match="provision_lmstudio_failed"):
+        await ensure_endpoint_model(endpoint, "lmstudio-embed")
 
 
 async def test_provisioner_unknown_local_plane_fails_typed():
