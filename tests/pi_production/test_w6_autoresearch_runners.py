@@ -42,6 +42,7 @@ import pytest
 # That must happen before any test stubs ``app.core.llm_router.llm_router``.
 import app.core.agentic  # noqa: F401
 from app.core.autoresearch_runners.model_temp import TEMPERATURES, ModelTempRunner
+from app.core.autoresearch_runners.rag_params import RAGParamsRunner
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 RUNNERS = REPO_ROOT / "backend/app/core/autoresearch_runners"
@@ -117,13 +118,36 @@ class _StubRouter:
 
 
 class _FakeManager:
-    """Stand-in for PiModelManager exposing only ``catalog()``."""
+    """Stand-in for PiModelManager exposing ``catalog()`` + ``ensure_db_projection()``.
 
-    def __init__(self, models: list[str]) -> None:
-        self._models = models
+    Accepts either a list of model-name strings (one synthetic endpoint per
+    model) or a list of explicit ``(endpoint_id, model)`` pairs so tests can
+    build same-model distinct-endpoint catalogs.  ``ensure_db_projection`` is an
+    async no-op unless ``projected`` pairs are supplied, in which case they are
+    appended to the catalog on projection (mirroring read-only LLMServer rows).
+    """
+
+    def __init__(self, models, *, projected=None) -> None:
+        self._entries: list[tuple[str, str]] = []
+        for m in models:
+            if isinstance(m, tuple):
+                self._entries.append(m)
+            else:
+                self._entries.append((f"ep-{m}", m))
+        self._projected: list[tuple[str, str]] = list(projected or [])
+        self.projection_calls = 0
+
+    async def ensure_db_projection(self) -> None:
+        self.projection_calls += 1
+        for endpoint_id, model in self._projected:
+            if all(existing_id != endpoint_id for existing_id, _ in self._entries):
+                self._entries.append((endpoint_id, model))
 
     def catalog(self):
-        return [SimpleNamespace(model=m, endpoint_id=f"ep-{m}") for m in self._models]
+        return [
+            SimpleNamespace(model=model, endpoint_id=endpoint_id)
+            for endpoint_id, model in self._entries
+        ]
 
 
 @pytest.fixture
@@ -150,7 +174,12 @@ def test_w6_ratchet_stays_green_at_70():
 @pytest.mark.parametrize("module,function,purpose", MIGRATED_SITES)
 def test_w6_site_carries_dispatcher_and_preserved_legacy_branch(module, function, purpose):
     src = _function_source(module, function)
-    assert "settings.agentic_core" in src, f"{module}.{function} missing feature-flag gate"
+    # The engine gate is either the global flag (``settings.agentic_core``) or
+    # the per-experiment binding helper (``self.use_pi_engine()``) — the latter
+    # resolves lazily from the same flag when the experiment did not bind one.
+    assert ("settings.agentic_core" in src) or ("use_pi_engine" in src), (
+        f"{module}.{function} missing engine gate (settings.agentic_core / use_pi_engine)"
+    )
     assert "agentic.completion" in src, f"{module}.{function} missing dispatcher path"
     assert purpose in src, f"{module}.{function} missing purpose slug {purpose!r}"
     assert "llm_router.chat" in src, f"{module}.{function} must preserve the legacy branch"
@@ -163,27 +192,91 @@ def test_w6_site_carries_dispatcher_and_preserved_legacy_branch(module, function
 
 
 async def test_model_temp_pi_sweep_uses_catalog_and_filters_embeddings(_flag_on, monkeypatch):
+    manager = _FakeManager(["m-alpha", "m-beta", "nomic-embed-text"])
     monkeypatch.setattr(
         "app.core.pi_runtime.model_manager.PiModelManager",
-        lambda *a, **k: _FakeManager(["m-alpha", "m-beta", "nomic-embed-text"]),
+        lambda *a, **k: manager,
     )
     runner = ModelTempRunner()
     grid = await runner._build_grid()
 
-    assert {model for model, _ in grid} == {"m-alpha", "m-beta"}  # embed filtered out
+    assert {c.model for c in grid} == {"m-alpha", "m-beta"}  # embed filtered out
+    # Exact endpoint identities are preserved onto every grid cell.
+    assert {c.endpoint_id for c in grid} == {"ep-m-alpha", "ep-m-beta"}
     assert len(grid) == 2 * len(TEMPERATURES)
+    assert runner._sweep_truncated is False
+    assert manager.projection_calls == 1  # LLMServer projection was awaited
+
+
+async def test_model_temp_pi_sweep_same_model_distinct_endpoints_do_not_collapse(
+    _flag_on, monkeypatch
+):
+    """Two endpoints serving the SAME model stay distinct in the grid."""
+    manager = _FakeManager([("ep-a", "shared-model"), ("ep-b", "shared-model")])
+    monkeypatch.setattr(
+        "app.core.pi_runtime.model_manager.PiModelManager",
+        lambda *a, **k: manager,
+    )
+    runner = ModelTempRunner()
+    grid = await runner._build_grid()
+
+    # Model name collapses to one, but endpoint identity does not.
+    assert {c.model for c in grid} == {"shared-model"}
+    assert {c.endpoint_id for c in grid} == {"ep-a", "ep-b"}
+    assert len(grid) == 2 * len(TEMPERATURES)  # 2 endpoints × temps, never 1
     assert runner._sweep_truncated is False
 
 
-async def test_model_temp_pi_sweep_degenerate_records_truncated(_flag_on, monkeypatch):
+async def test_model_temp_pi_sweep_includes_projected_llm_server_endpoints(
+    _flag_on, monkeypatch
+):
+    """Projected LLMServer rows join the sweep space (read-only, no model load)."""
+    manager = _FakeManager(
+        [("ep-settings", "m-alpha")],
+        projected=[("pi-llm-7", "m-beta")],
+    )
     monkeypatch.setattr(
         "app.core.pi_runtime.model_manager.PiModelManager",
-        lambda *a, **k: _FakeManager(["only-one"]),
+        lambda *a, **k: manager,
     )
     runner = ModelTempRunner()
     grid = await runner._build_grid()
 
-    assert {model for model, _ in grid} == {"only-one"}
+    assert manager.projection_calls == 1
+    assert {c.endpoint_id for c in grid} == {"ep-settings", "pi-llm-7"}
+    assert runner._sweep_truncated is False  # 2 distinct endpoints ≥ requested width
+
+
+async def test_model_temp_pi_sweep_degenerate_records_truncated(_flag_on, monkeypatch):
+    manager = _FakeManager(["only-one"])
+    monkeypatch.setattr(
+        "app.core.pi_runtime.model_manager.PiModelManager",
+        lambda *a, **k: manager,
+    )
+    runner = ModelTempRunner()
+    grid = await runner._build_grid()
+
+    assert {c.model for c in grid} == {"only-one"}
+    assert {c.endpoint_id for c in grid} == {"ep-only-one"}
+    assert runner._sweep_truncated is True
+
+
+async def test_model_temp_pi_sweep_truncated_against_requested_endpoint_width(
+    _flag_on, monkeypatch
+):
+    """sweep_truncated is measured against the REQUESTED endpoint width."""
+    manager = _FakeManager([("ep-a", "m-alpha"), ("ep-b", "m-beta")])
+    monkeypatch.setattr(
+        "app.core.pi_runtime.model_manager.PiModelManager",
+        lambda *a, **k: manager,
+    )
+    runner = ModelTempRunner()
+    # Two distinct endpoints satisfy the default width (2)…
+    assert await runner._build_grid() and runner._sweep_truncated is False
+    # …but not a requested width of 3.
+    runner._requested_endpoint_width = 3
+    grid = await runner._build_grid()
+    assert {c.endpoint_id for c in grid} == {"ep-a", "ep-b"}  # never silently narrowed
     assert runner._sweep_truncated is True
 
 
@@ -210,7 +303,8 @@ async def test_model_temp_legacy_sweep_uses_llm_router(_flag_off, monkeypatch):
     runner = ModelTempRunner()
     grid = await runner._build_grid()
 
-    assert {model for model, _ in grid} == {"a", "b"}  # embed filtered
+    assert {c.model for c in grid} == {"a", "b"}  # embed filtered
+    assert {c.endpoint_id for c in grid} == {None}  # legacy has no endpoint identity
     assert runner._sweep_truncated is False
 
 
@@ -283,6 +377,103 @@ async def test_model_temp_evaluate_forwards_candidate_model_when_flag_on(_flag_o
     assert params.temperature == 0.9
 
 
+async def test_model_temp_evaluate_pins_exact_endpoint_id_when_flag_on(_flag_on, monkeypatch):
+    """The Pi dispatch pins the exact swept endpoint via TurnParams.endpoint_id."""
+    dispatcher = _StubAgentic(text="sample output text")
+    monkeypatch.setattr("app.core.agentic.agentic", dispatcher)
+
+    class _Defn:
+        data = {"execute_prompt": "You are a UX skill."}
+
+    monkeypatch.setattr(
+        "app.skills.skill_manager.skill_manager", SimpleNamespace(get=lambda name: _Defn())
+    )
+
+    async def _fixed_score(self, output, skill_name):
+        return 0.5
+
+    monkeypatch.setattr(ModelTempRunner, "_score_output", _fixed_score)
+
+    recorded: list[tuple] = []
+
+    async def _capture_record(self, skill_name, model_name, temperature, score):
+        recorded.append((skill_name, model_name, temperature, score))
+
+    monkeypatch.setattr(ModelTempRunner, "_record_stats", _capture_record)
+
+    runner = ModelTempRunner()
+    runner.bind_project("proj-w6")
+    await runner._evaluate_skill(
+        "skill-a", endpoint_id="pi-llm-42", model="shared-model", temperature=0.5
+    )
+
+    evaluate_calls = [
+        c for c in dispatcher.calls if c[1]["purpose"] == "autoresearch.model_temp.evaluate"
+    ]
+    assert len(evaluate_calls) == 1
+    params = evaluate_calls[0][1]["params"]
+    assert params.endpoint_id == "pi-llm-42"  # exact identity pinned, not model-only
+    assert params.model == "shared-model"
+    # Stat evidence preserves endpoint identity so same-model endpoints stay distinct.
+    assert recorded == [("skill-a", "shared-model@pi-llm-42", 0.5, 0.5)]
+
+
+async def test_model_temp_hypothesize_to_measure_preserves_endpoint_identity(
+    _flag_on, monkeypatch
+):
+    """Endpoint identity survives grid → mutation → dispatch end to end."""
+    manager = _FakeManager([("ep-a", "shared-model"), ("ep-b", "shared-model")])
+    monkeypatch.setattr(
+        "app.core.pi_runtime.model_manager.PiModelManager",
+        lambda *a, **k: manager,
+    )
+    dispatcher = _StubAgentic(text="sample output text")
+    monkeypatch.setattr("app.core.agentic.agentic", dispatcher)
+
+    class _Defn:
+        data = {"execute_prompt": "You are a UX skill."}
+
+    monkeypatch.setattr(
+        "app.skills.skill_manager.skill_manager", SimpleNamespace(get=lambda name: _Defn())
+    )
+
+    async def _fixed_score(self, output, skill_name):
+        return 0.5
+
+    async def _noop_record(self, *a, **k):
+        return None
+
+    monkeypatch.setattr(ModelTempRunner, "_score_output", _fixed_score)
+    monkeypatch.setattr(ModelTempRunner, "_record_stats", _noop_record)
+
+    runner = ModelTempRunner()
+    runner.bind_project("proj-w6")
+    await runner.measure_baseline("skill-a")  # builds the grid
+    # Walk both same-model endpoints through hypothesize → apply → measure.
+    dispatched_endpoints: set = set()
+    for _ in range(len(runner._grid)):
+        _, mutation = await runner.hypothesize("skill-a", 0.0, [])
+        assert mutation["endpoint_id"] in {"ep-a", "ep-b"}
+        await runner.apply_mutation("skill-a", mutation)
+        await runner.measure("skill-a")
+
+    for verb, kwargs in dispatcher.calls:
+        if kwargs.get("purpose") == "autoresearch.model_temp.evaluate":
+            ep = kwargs["params"].endpoint_id
+            if ep is not None:
+                dispatched_endpoints.add(ep)
+    # Both distinct same-model endpoints were pinned at dispatch, never collapsed.
+    assert dispatched_endpoints == {"ep-a", "ep-b"}
+
+
+def test_model_temp_stat_identity_keeps_same_model_endpoints_distinct():
+    assert ModelTempRunner._stat_identity("m", "ep-a") == "m@ep-a"
+    assert ModelTempRunner._stat_identity("m", "ep-b") == "m@ep-b"
+    # Legacy / baseline (no endpoint) keeps the bare model name unchanged.
+    assert ModelTempRunner._stat_identity("m", None) == "m"
+    assert ModelTempRunner._stat_identity(None, None) == "default"
+
+
 # ── rag_params embedding-skip decision (master plan §8 W6) ───────────────
 
 
@@ -296,3 +487,105 @@ def test_rag_params_hypothesis_migrates_but_embedding_stays_legacy():
     assert "embed_text" in score_query, "retrieval-eval embedding must stay on the legacy plane"
     assert "agentic.embed" not in score_query, "W6 must not route embeddings through the dispatcher"
     assert "W8" in score_query, "the deliberate embed-skip must be documented in-line"
+
+
+# ── rag_params project-scope authority (F-W6-3) ──────────────────────────
+#
+# The /start route authorizes ``body.project_id`` but does not require
+# ``target == project_id``; the engine binds the authorized id via
+# ``bind_project``. These tests prove the RAG runner scopes both the dispatcher
+# and retrieval to that authorized binding (never the caller-controlled target),
+# and fails closed on a divergent target so no turn resolves engine, telemetry,
+# or execution under an unauthorized project id.
+
+
+async def test_rag_params_hypothesis_dispatches_under_authorized_binding(_flag_on, monkeypatch):
+    """The dispatch scopes to the authorized binding, not the caller target."""
+    dispatcher = _StubAgentic(text='{"param": "rag_chunk_size", "value": 800, "reason": "r"}')
+    router = _StubRouter()
+    monkeypatch.setattr("app.core.agentic.agentic", dispatcher)
+    monkeypatch.setattr("app.core.llm_router.llm_router", router)
+
+    runner = RAGParamsRunner()
+    runner.bind_project("proj-authorized")
+    await runner._llm_hypothesis(0.5, [{"mutation_description": "d"}] * 3)
+
+    assert len(dispatcher.calls) == 1
+    verb, kwargs = dispatcher.calls[0]
+    assert verb == "completion"
+    assert kwargs["purpose"] == "autoresearch.rag_params.hypothesize"
+    assert kwargs["project_id"] == "proj-authorized"
+    assert kwargs["spine_phase"] in SPINE_PHASES
+    assert not router.calls, "legacy plane must not be touched when the flag is on"
+
+
+async def test_rag_params_legacy_hypothesis_scopes_to_authorized_binding(_flag_off, monkeypatch):
+    """The preserved legacy branch is scoped to the authorized binding too."""
+    dispatcher = _StubAgentic()
+    router = _StubRouter(text='{"param": "rag_chunk_size", "value": 800}')
+    monkeypatch.setattr("app.core.agentic.agentic", dispatcher)
+    monkeypatch.setattr("app.core.llm_router.llm_router", router)
+
+    runner = RAGParamsRunner()
+    runner.bind_project("proj-authorized")
+    await runner._llm_hypothesis(0.5, [{"mutation_description": "d"}] * 3)
+
+    assert len(router.calls) == 1
+    assert router.calls[0]["project_id"] == "proj-authorized"
+    assert not dispatcher.calls, "dispatcher must not be touched when the flag is off"
+
+
+async def test_rag_params_mismatched_target_fails_closed_before_dispatch(_flag_on, monkeypatch):
+    """A target that diverges from the authorized project id fails closed: no
+    retrieval, dispatcher, or legacy call runs under the unauthorized id."""
+    dispatcher = _StubAgentic()
+    router = _StubRouter()
+    monkeypatch.setattr("app.core.agentic.agentic", dispatcher)
+    monkeypatch.setattr("app.core.llm_router.llm_router", router)
+
+    async def _boom(self, project_id):  # pragma: no cover - must never be reached
+        raise AssertionError("retrieval must not run under a mismatched target")
+
+    monkeypatch.setattr(RAGParamsRunner, "_evaluate_retrieval", _boom)
+
+    runner = RAGParamsRunner()
+    runner.bind_project("proj-authorized")
+
+    with pytest.raises(RuntimeError, match="target scope mismatch"):
+        await runner.measure_baseline("proj-victim")
+
+    assert not dispatcher.calls
+    assert not router.calls
+
+
+async def test_rag_params_hypothesis_requires_binding(_flag_on, monkeypatch):
+    """Without an engine binding the hypothesis fails closed and never dispatches."""
+    dispatcher = _StubAgentic()
+    router = _StubRouter()
+    monkeypatch.setattr("app.core.agentic.agentic", dispatcher)
+    monkeypatch.setattr("app.core.llm_router.llm_router", router)
+
+    runner = RAGParamsRunner()  # no bind_project
+    with pytest.raises(RuntimeError, match="project_id is required"):
+        await runner._llm_hypothesis(0.5, [{"mutation_description": "d"}] * 3)
+
+    assert not dispatcher.calls
+    assert not router.calls
+
+
+async def test_rag_params_matched_target_binds_retrieval_to_authorized(_flag_on, monkeypatch):
+    """A matching target resolves retrieval under the authorized binding."""
+    seen: list[str] = []
+
+    async def _capture(self, project_id):
+        seen.append(project_id)
+        return 0.0
+
+    monkeypatch.setattr(RAGParamsRunner, "_evaluate_retrieval", _capture)
+
+    runner = RAGParamsRunner()
+    runner.bind_project("proj-authorized")
+    await runner.measure_baseline("proj-authorized")
+    await runner.measure("proj-authorized")
+
+    assert seen == ["proj-authorized", "proj-authorized"]

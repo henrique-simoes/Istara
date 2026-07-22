@@ -51,13 +51,13 @@ class RAGParamsRunner(BaseLoopRunner):
 
     async def measure_baseline(self, target: str) -> float:
         """Measure current retrieval quality.  *target* is a project_id."""
-        self._project_id = target
+        project_id = self._bind_target_scope(target)
         self._snapshot_current_params()
-        return await self._evaluate_retrieval(target)
+        return await self._evaluate_retrieval(project_id)
 
     async def measure(self, target: str) -> float:
         """Measure retrieval quality after a parameter mutation."""
-        return await self._evaluate_retrieval(target)
+        return await self._evaluate_retrieval(self._bind_target_scope(target))
 
     async def hypothesize(
         self, target: str, current_score: float, history: list[dict]
@@ -94,6 +94,29 @@ class RAGParamsRunner(BaseLoopRunner):
     # ------------------------------------------------------------------
     # Internal helpers
     # ------------------------------------------------------------------
+
+    def _bind_target_scope(self, target: str) -> str:
+        """Resolve the RAG *target* to the authorized project binding, fail-closed.
+
+        The engine binds ``_active_project_id`` from the route-authorized
+        ``project_id`` (``bind_project`` / ``require_project_id``).  ``target``
+        is caller-controlled and the ``/start`` route authorizes
+        ``body.project_id`` without requiring ``target == project_id``.  Trusting
+        the raw ``target`` for scope would let a turn resolve retrieval, the
+        dispatcher, telemetry, and execution under an unauthorized project id, so
+        we bind every measurement to the authorized id and reject a divergent
+        target before any retrieval or dispatcher call runs.
+        """
+        authorized = self.require_project_id()
+        requested = str(target or "").strip()
+        if requested and requested != authorized:
+            raise RuntimeError(
+                "rag_params target scope mismatch: refusing to tune retrieval "
+                f"for target project '{requested}' under project '{authorized}' "
+                "authorization"
+            )
+        self._project_id = authorized
+        return authorized
 
     def _snapshot_current_params(self) -> None:
         """Capture current RAG settings for reference."""
@@ -136,6 +159,12 @@ class RAGParamsRunner(BaseLoopRunner):
         """Ask the LLM to suggest parameter changes based on experiment history."""
         from app.core.llm_router import llm_router
 
+        # Scope the dispatch/telemetry to the authorized BaseLoopRunner binding,
+        # never the caller-controlled target. Resolving it before the try block
+        # fails closed loudly on a missing binding instead of silently degrading
+        # to a random perturbation.
+        project_id = self.require_project_id()
+
         # Summarize history for context
         history_summary = "\n".join(
             f"  - {h.get('mutation_description', '?')}: "
@@ -166,10 +195,10 @@ class RAGParamsRunner(BaseLoopRunner):
         ]
 
         try:
-            if settings.agentic_core:
+            if self.use_pi_engine():
                 # W6: the next-parameter suggestion goes through the
                 # AgenticDispatcher (``autoresearch.rag_params.hypothesize``);
-                # the legacy branch below is preserved for agentic_core=False.
+                # the legacy branch below is preserved for the legacy engine.
                 # NOTE: only this chat call migrates in W6 — the retrieval-eval
                 # embedding in ``_score_single_query`` stays on the legacy plane
                 # until the W8 embeddings gateway (master plan §8 W6).
@@ -178,7 +207,7 @@ class RAGParamsRunner(BaseLoopRunner):
 
                 outcome = await agentic.completion(
                     purpose="autoresearch.rag_params.hypothesize",
-                    project_id=self._project_id,
+                    project_id=project_id,
                     system=messages[0]["content"],
                     messages=messages[1:],
                     params=TurnParams(temperature=0.7, max_tokens=200),
@@ -190,7 +219,7 @@ class RAGParamsRunner(BaseLoopRunner):
                     messages,
                     temperature=0.7,
                     max_tokens=200,
-                    project_id=self._project_id,
+                    project_id=project_id,
                 )
                 content = response.get("message", {}).get("content", "")
             # Parse JSON from response
