@@ -76,6 +76,8 @@ Verified: ls/grep/sed grounding audit all pass - benchmark assets absent; long_h
 Next: conductor tallies judge plan_votes (a/b/c) and advances the pipeline
 
 
+## Decision log
+
 <!-- consensus-winning-plan -->
 ## Winning consensus plan
 
