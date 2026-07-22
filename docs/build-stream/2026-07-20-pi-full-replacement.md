@@ -6,11 +6,11 @@ item: pi-full-replacement
 branch: Review_pi_test
 cf: { spec: CF-SPEC-8, tasks: [pi-full-20260720-w0-IMPL, pi-full-20260720-w0-REVIEW] }
 phase: "W9 — final ratchet, dead-code retirement, architecture docs"
-stage: S2-execute
+stage: S4-remediate
 status: in-progress
 blocked_on: null
-last: { agent: kimi-code/k3, at: 2026-07-22T10:19:38Z, ledger: L-71 }
-next_action: "W9 code review (S3): verify the 53-site legacy-branch retirement, ratchet/integrity mechanics, and agentic_core.md accuracy."
+last: { agent: gpt-5.6-sol, at: 2026-07-22T10:33:16Z, ledger: L-72 }
+next_action: "Remediate F-W9-1 in FIX-pi-full-20260720-w9-REVIEW-r1-docs, regenerate the feature site, then run the conductor-created delta re-review."
 ```
 <!-- /STATUS BLOCK -->
 
@@ -950,6 +950,16 @@ review lineage has no open findings; W5 is ready for stage-exit acceptance.
 
 **Delta re-review outcome:** `REREV-pi-full-20260720-w8-REVIEW-r2` (L-70, gpt-5.6-sol) **PASSED** with no new findings. F-W8-1 and F-W8-R1-1 are verified closed: the requested embedding model now reaches endpoint selection, the active local provider anchors matching vector-space requests, configured compatible remote endpoints can win exact-model resolution, and LM Studio provisioning reuses `ComputeNode.load_model` with typed failure propagation. The bounded 40-test W8 suite, 64-test adjacent routing suite, production-catalog endpoint probe, compile check, and diff check pass; no live model load or external request was triggered.
 
+## W9 — final ratchet, dead-code retirement, architecture docs
+
+### Review (W9) — Findings register
+
+| ID | Sev | Dim | Where | Finding | CF task | Status |
+|---|---|---|---|---|---|---|
+| F-W9-1 | Major | Docs | `docs/features/content/findings/codebook/researcher.md:59`; `docs/features/content/ensemble/health/researcher.md:46-54`; `docs/features/content/autoresearch/experiments/architecture.md:90`; `docs/features/content/autoresearch/experiments/researcher.md:56`; `docs/features/content/autoresearch/config/researcher.md:53`; `docs/architecture/agentic_core.md:66-68,104-107` | Living docs contradict W9/W8 runtime truth: current researcher pages still direct users to disable retired per-site feature-flag branches and describe embeddings as deferred until W8, while the autoresearch verification section still claims 14 flag-gated dispatcher paths, preserved direct legacy branches, ratchet 70, and embeddings off the dispatcher. The new architecture guide also says route kind travels with every result although result types carry endpoint/status but no route-kind field, and says `agentic_core` gates no code path although it still selects the default autoresearch engine. Update the Markdown, regenerate the feature site, and verify the stale claims are absent. | FIX-pi-full-20260720-w9-REVIEW-r1-docs | open |
+
+**Review outcome:** `pi-full-20260720-w9-REVIEW` (L-72, gpt-5.6-sol) **FAILED** with one Major documentation finding. The 53-site source retirement, terminal ratchet (`product: []`, expected 0, only permanent inventory site), release-integrity wiring, canonical migration/production suite, security benchmark, diff check, feature-doc generation, and CF comparison gate are green. Remediation is documentation-only; no runtime rework is requested.
+
 ## Summary (S5 — whole plan)
 
 Pending completion of W0–W9 and B1–B4.
@@ -1178,3 +1188,9 @@ Did: Completed the W9 final ratchet + dead-code retirement + architecture docs (
 Result: `pi-full-20260720-w9-IMPL` implementation complete; the product legacy-call ratchet is 0 and mechanically enforced (inventory scan + count-to-zero test + release-integrity check). `product: []`; any new direct legacy-plane call in `backend/app/` fails CI.
 Verified: `pytest tests/pi_migration tests/pi_production -q` = 349 passed; `pytest tests/test_deployments.py tests/test_research_spine_donor_routing.py tests/test_research_validity_contract.py tests/test_skill_factory.py tests/test_validation_project_scope.py -q` = 62 passed; `pytest tests/test_research_integrity_reports.py -q` = 24 passed; `pytest tests/test_adaptive_validation.py tests/test_agents.py -q` = 30 passed; `pytest tests/test_reports.py tests/test_research_integrity_reports.py tests/test_integration_interview.py tests/test_compute_route_evidence_lifecycle.py -q` = 26 passed + 1 pre-existing failure (`test_slide_instructions_fallback_when_llm_unavailable` — stale `presentation.llm_router` patch target since the W2 migration, file untouched by W9); `python scripts/pi_migration_inventory.py` = 1 site, the allowlisted permanent legacy-executor line; `python scripts/check_integrity.py` = governance docs coherent (incl. the new ratchet leg); `python scripts/feature_docs.py --seed-missing --generate-site --check` = 86 features / 224 artifacts; `python scripts/security_benchmark.py --fail-on-threshold` = pass; ruff worktree-vs-HEAD on changed files = 313 → 198 findings (no new lint debt); `compass-forge intelligence dead-code` = no actionable candidates in W9-changed files (3 medium static-graph false positives: dynamically-loaded autoresearch runners + the integrity entry-point script); `compass-forge gate after --task pi-full-20260720-w9-IMPL --summary` = 0 new failures, 0 actionable failures, 0 route/type/contract/generated drift, 0 cycles (inherited baseline failures remain).
 Next: W9 code review (S3) — verify the 53-site branch retirement is behavior-preserving, the ratchet/integrity mechanics, and the accuracy of `docs/architecture/agentic_core.md`; then the conductor advances toward ship.
+
+### L-72 | 2026-07-22T10:33:16Z | S3-review | gpt-5.6-sol | reviewer | W9 <!-- bsc-ledger:pi-full-20260720-w9-REVIEW -->
+Did: Independently reviewed implementer commit `c8aa112d` across all 59 changed files against the W9 ratchet, dead-code retirement, test, security, Research Spine, and documentation contracts. No implementation code was changed. Opened F-W9-1 and created docs-only fixer task `FIX-pi-full-20260720-w9-REVIEW-r1-docs`.
+Result: verdict FAIL; corrections_made=0. Runtime code and mechanical ratchet are ready, but W9 living documentation remains internally contradictory and materially stale, so the artifact is not ready for the next stage as-is.
+Verified: `PYTHONPATH=backend pytest tests/pi_migration tests/pi_production -q` = passed; `python scripts/check_integrity.py` = passed; terminal-state probe = `product=0`, `expected=0`, inventory only `backend/app/core/agentic/legacy.py:590`; `python scripts/feature_docs.py --seed-missing --generate-site --check` = 86 features / 224 artifacts; `python scripts/security_benchmark.py --fail-on-threshold` = 28/28, 100%; `git diff --check c3246fe8..c8aa112d` = passed; `compass-forge gate after --task pi-full-20260720-w9-REVIEW --summary` = 0 new/actionable failures, 0 route/type/contract/generated drift, 0 cycles (inherited repository failures remain). Initial over-narrow test selection produced 9 SQLAlchemy mapper import-order failures and was corrected by the canonical full suite.
+Next: remediate F-W9-1 in `FIX-pi-full-20260720-w9-REVIEW-r1-docs`; stage exit: fail verdict, finding task, evidence, and handoff are recorded.
