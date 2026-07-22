@@ -11,7 +11,7 @@ status: in-progress
 blocked_on: "none"
 authored_by: henrique-simoes
 grounding: "Based on 2026-07-20-pi-full-replacement-master-plan.md Section 10"
-last: {agent: claude-fable-5, at: 2026-07-22T13:33:17Z, ledger: L-2}
+last: {agent: claude-fable-5, at: 2026-07-22T13:38:20Z, ledger: L-4}
 next_action: "Consensus judges vote on architect plans a/b/c"
 ```
 <!-- /STATUS BLOCK -->
@@ -44,3 +44,9 @@ Did: pi-eval-architect-b stage on task pi-eval-PLAN-B (harness fallback entry; t
 Result: task pi-eval-PLAN-B finished; worktree head ccf1680e.
 Verified: see Compass Forge evidence rows on pi-eval-PLAN-B (command + self_report + stage_attribution).
 Next: conductor advances the pipeline on evidence.
+
+### L-4 | 2026-07-22T13:38:20Z | S1-plan | claude-fable-5 | architect | Planning phase <!-- bsc-ledger:pi-eval-REPLAN-A-r1 -->
+Did: repaired consensus plan A (revision r1) at docs/build-stream/plans/pi-eval-plan-a.md — closed all three r0 residual risks with verified evidence; extended ground-truth table (axis-1 vocab in tests/agentic_eval_contract.json; pricing table labs/pi-replacement/src/raw-llm-capture.mjs:5-10; chunk-count tokens bug tests/benchmarks/long_horizon_runner.py:138); E0.8/E3.2 now cite exact file:line
+Result: plan slot A ready for consensus judging (r1); metrics-schema.json confirmed absent repo-wide so E0.1 is definitively an authoring task; pi-eval-REPLAN-A-r1
+Verified: ls/find/grep grounding audit (assets absent, vocab present, bug located at :138, engine header intact api-client.mjs:31,244); wc -l plan = 253 lines; CF evidence rows 1233,1235,1236
+Next: consensus judges vote on plan slots a/b/c
