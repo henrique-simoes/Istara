@@ -6,11 +6,11 @@ item: pi-full-replacement
 branch: Review_pi_test
 cf: { spec: CF-SPEC-8, tasks: [pi-full-20260720-w0-IMPL, pi-full-20260720-w0-REVIEW] }
 phase: "W8 — embeddings gateway + model-management UX parity"
-stage: S4-remediate
+stage: S3-review
 status: in-progress
 blocked_on: null
-last: { agent: gpt-5.6-luna, at: 2026-07-22T07:53:02Z, ledger: L-69 }
-next_action: "Run the bounded delta re-review for the fixed W8 routing and provisioning seams."
+last: { agent: gpt-5.6-sol, at: 2026-07-22T08:00:31Z, ledger: L-70 }
+next_action: "Advance the conductor to W9 after the passing W8 delta re-review."
 ```
 <!-- /STATUS BLOCK -->
 
@@ -42,7 +42,7 @@ external traffic, or API/judge spend.
 | W5 | Migrate 28 skills, reports, and interview services | allowlist 39 + B2 implementation artifacts | planned |
 | W6 | Migrate 14 autoresearch runner sites | allowlist 25 + wave ladder | in-progress |
 | W7 | Migrate eight validation, consensus, and dual-coder sites | allowlist 17 + wave ladder | planned |
-| W8 | Add embeddings gateway and model-management UX parity | zero product sites + wave ladder | planned |
+| W8 | Add embeddings gateway and model-management UX parity | zero product sites + wave ladder | done |
 | W9 | Finalize ratchet, docs, security and full verification | permanent allowlist only + full ladder x3 + clean gate | planned |
 | B1 | Contract benchmark after W2 | T0/T1 canonical and W2 scenarios, both engines | planned |
 | B2 | Breadth benchmark after W5 | implementation complete; live T2 execution requires explicit permission | planned |
@@ -948,6 +948,8 @@ review lineage has no open findings; W5 is ready for stage-exit acceptance.
 
 **Delta re-review outcome:** `REREV-pi-full-20260720-w8-REVIEW-r1` (L-68, gpt-5.6-sol) **FAILED** with one Major finding. F-W8-2, F-W8-3, and F-W8-4 are verified closed by the bounded 37-test backend W8 suite and 3-test frontend catalog suite. F-W8-1 was not remediated: its fixer recorded only a worktree-head command and fallback self-report, no routing code changed after `6a08f810`, and a network-free production-manager reproduction under LM Studio still resolves `pi-local-ollama` with the Ollama model. W8 remains in remediation under `FIX-REREV-pi-full-20260720-w8-REVIEW-r1-routing`.
 
+**Delta re-review outcome:** `REREV-pi-full-20260720-w8-REVIEW-r2` (L-70, gpt-5.6-sol) **PASSED** with no new findings. F-W8-1 and F-W8-R1-1 are verified closed: the requested embedding model now reaches endpoint selection, the active local provider anchors matching vector-space requests, configured compatible remote endpoints can win exact-model resolution, and LM Studio provisioning reuses `ComputeNode.load_model` with typed failure propagation. The bounded 40-test W8 suite, 64-test adjacent routing suite, production-catalog endpoint probe, compile check, and diff check pass; no live model load or external request was triggered.
+
 ## Summary (S5 — whole plan)
 
 Pending completion of W0–W9 and B1–B4.
@@ -1163,3 +1165,10 @@ Did: Closed F-W8-1 and F-W8-R1-1 in `backend/app/core/pi_runtime/model_manager.p
 Result: `resolve_embed(model)` now uses exact embedding-model capability matching and active-provider anchoring, so LM Studio cannot fall through to Ollama and an explicitly requested compatible remote endpoint can win. The gateway and bootstrap pass the requested model; LM Studio provisioning reuses `ComputeNode.load_model` and fails typed on disabled, unavailable, or false loads. F-W8-1 and F-W8-R1-1 open -> fixed under `FIX-REREV-pi-full-20260720-w8-REVIEW-r1-routing`.
 Verified: `pytest -q tests/pi_production/test_w8_embeddings_gateway.py` = 40 passed; `pytest -q tests/pi_production/test_w1_agentic_contract.py tests/test_pi_runtime_endpoints.py tests/test_compute_vision_routing.py tests/test_compute_registry_hardening.py` = 64 passed; `python scripts/feature_docs.py --seed-missing --generate-site --check` = 86 features / 224 site artifacts passed; `compass-forge gate after --task FIX-REREV-pi-full-20260720-w8-REVIEW-r1-routing --summary` = 0 new failures, 0 actionable failures, 0 route/type/contract/generated drift (1 warn-only W8 test complexity note; inherited secret-flow/large-file failures remain); `git diff --check` = passed; compileall = passed.
 Next: stage exit: routing and provisioning remediation is ready for the bounded delta re-review.
+
+### L-70 | 2026-07-22T08:00:31Z | S3-review | gpt-5.6-sol | reviewer | W8
+<!-- bsc-ledger:REREV-pi-full-20260720-w8-REVIEW-r2 -->
+Did: Performed only the authorized delta re-review of F-W8-R1-1 against fixer commit `59494d1f`, its source evidence, the four changed runtime files, focused regressions, and the immediate `ComputeNode.load_model` seam. No implementation code was changed.
+Result: verdict PASS; corrections_made=0; no new findings. Requested-model propagation, active-provider anchoring, configured remote exact-model selection, LM Studio JIT loading, and typed provisioning failure are all present and independently verified. W8 review lineage is converged.
+Verified: `pytest -q tests/pi_production/test_w8_embeddings_gateway.py` = 40 passed; `pytest -q tests/pi_production/test_w1_agentic_contract.py tests/test_pi_runtime_endpoints.py tests/test_compute_vision_routing.py tests/test_compute_registry_hardening.py` = 64 passed; network-free production-catalog probe = `{'remote': 'review-remote-embed', 'lmstudio': 'pi-local-lmstudio'}`; `python -m compileall -q backend/app/core/pi_runtime/model_manager.py backend/app/core/pi_runtime/model_manager_provisioning.py backend/app/core/pi_runtime/embeddings_gateway.py backend/app/core/embeddings.py` = passed; `git diff --check` = passed.
+Next: stage exit: W8 delta review passed; conductor may advance to W9.
