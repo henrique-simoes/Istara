@@ -14,7 +14,6 @@ from enum import Enum
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.config import settings
 from app.models.channel_conversation import ChannelConversation
 from app.models.research_deployment import ResearchDeployment
 
@@ -304,29 +303,19 @@ async def generate_clarification(
             "Only output the question text, nothing else."
         )
 
-        if settings.agentic_core:
-            # W5: the clarification probe goes through the AgenticDispatcher
-            # (``channel.clarify``); the legacy llm_router branch below is
-            # preserved for agentic_core=False.
-            from app.core.agentic import agentic
-            from app.core.agentic.types import TurnParams
+        # W5: the clarification probe goes through the AgenticDispatcher
+        # (``channel.clarify``).
+        from app.core.agentic import agentic
+        from app.core.agentic.types import TurnParams
 
-            outcome = await agentic.completion(
-                purpose="channel.clarify",
-                project_id=project_id or "",
-                system=None,
-                messages=[{"role": "user", "content": prompt}],
-                params=TurnParams(),
-            )
-            content = outcome.text.strip()
-        else:
-            from app.core.llm_router import llm_router
-
-            result = await llm_router.chat(
-                [{"role": "user", "content": prompt}],
-                project_id=project_id,
-            )
-            content = result.get("content", "").strip()
+        outcome = await agentic.completion(
+            purpose="channel.clarify",
+            project_id=project_id or "",
+            system=None,
+            messages=[{"role": "user", "content": prompt}],
+            params=TurnParams(),
+        )
+        content = outcome.text.strip()
         if content and content.upper() != "NONE":
             return content
     except Exception as e:
@@ -375,29 +364,19 @@ async def _is_saturated(
                 "participant repeating themselves / giving minimal answers?\n"
                 'Respond with exactly "SATURATED" or "NOT_SATURATED".'
             )
-            if settings.agentic_core:
-                # W5: the saturation judgment goes through the AgenticDispatcher
-                # (``channel.saturation``); the legacy llm_router branch below is
-                # preserved for agentic_core=False.
-                from app.core.agentic import agentic
-                from app.core.agentic.types import TurnParams
+            # W5: the saturation judgment goes through the AgenticDispatcher
+            # (``channel.saturation``).
+            from app.core.agentic import agentic
+            from app.core.agentic.types import TurnParams
 
-                outcome = await agentic.completion(
-                    purpose="channel.saturation",
-                    project_id=project_id or "",
-                    system=None,
-                    messages=[{"role": "user", "content": prompt}],
-                    params=TurnParams(),
-                )
-                content = outcome.text.strip().upper()
-            else:
-                from app.core.llm_router import llm_router
-
-                result = await llm_router.chat(
-                    [{"role": "user", "content": prompt}],
-                    project_id=project_id,
-                )
-                content = result.get("content", "").strip().upper()
+            outcome = await agentic.completion(
+                purpose="channel.saturation",
+                project_id=project_id or "",
+                system=None,
+                messages=[{"role": "user", "content": prompt}],
+                params=TurnParams(),
+            )
+            content = outcome.text.strip().upper()
             return "SATURATED" in content
         except Exception:
             pass

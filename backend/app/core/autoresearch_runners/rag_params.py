@@ -157,8 +157,6 @@ class RAGParamsRunner(BaseLoopRunner):
         self, current_score: float, history: list[dict]
     ) -> tuple[str, dict]:
         """Ask the LLM to suggest parameter changes based on experiment history."""
-        from app.core.llm_router import llm_router
-
         # Scope the dispatch/telemetry to the authorized BaseLoopRunner binding,
         # never the caller-controlled target. Resolving it before the try block
         # fails closed loudly on a missing binding instead of silently degrading
@@ -195,34 +193,21 @@ class RAGParamsRunner(BaseLoopRunner):
         ]
 
         try:
-            if self.use_pi_engine():
-                # W6: the next-parameter suggestion goes through the
-                # AgenticDispatcher (``autoresearch.rag_params.hypothesize``);
-                # the legacy branch below is preserved for the legacy engine.
-                # NOTE: only this chat call migrates in W6 — the retrieval-eval
-                # embedding in ``_score_single_query`` stays on the legacy plane
-                # until the W8 embeddings gateway (master plan §8 W6).
-                from app.core.agentic import agentic
-                from app.core.agentic.types import TurnParams
+            # W6/W9: the next-parameter suggestion goes through the
+            # AgenticDispatcher (``autoresearch.rag_params.hypothesize``).
+            from app.core.agentic import agentic
+            from app.core.agentic.types import TurnParams
 
-                outcome = await agentic.completion(
-                    purpose="autoresearch.rag_params.hypothesize",
-                    project_id=project_id,
-                    system=messages[0]["content"],
-                    messages=messages[1:],
-                    params=TurnParams(temperature=0.7, max_tokens=200),
-                    spine_phase="plan",
-                    engine=self.engine,
-                )
-                content = outcome.text
-            else:
-                response = await llm_router.chat(
-                    messages,
-                    temperature=0.7,
-                    max_tokens=200,
-                    project_id=project_id,
-                )
-                content = response.get("message", {}).get("content", "")
+            outcome = await agentic.completion(
+                purpose="autoresearch.rag_params.hypothesize",
+                project_id=project_id,
+                system=messages[0]["content"],
+                messages=messages[1:],
+                params=TurnParams(temperature=0.7, max_tokens=200),
+                spine_phase="plan",
+                engine=self.engine,
+            )
+            content = outcome.text
             # Parse JSON from response
             import json
 

@@ -36,8 +36,10 @@ SCANNER_PATH = REPO_ROOT / "scripts" / "pi_migration_inventory.py"
 # reflection, agent_lifecycle L10 steering reply). W8 migrated all 17 embed
 # sites (the embeddings.py/validation.py wrappers now route through
 # agentic.embed; the 14 wrapper consumers inherit the dispatch with zero
-# edits) — so the ratchet is now 53.
-EXPECTED_PRODUCT_SITES = 53
+# edits). W9 (final) retired the 53 preserved per-site legacy branches (W4–W7
+# flag fallthroughs) — the dispatcher is now the only path in product code,
+# so the ratchet is 0 and the allowlist holds permanent entries only.
+EXPECTED_PRODUCT_SITES = 0
 
 
 # ---------------------------------------------------------------------------

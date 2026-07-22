@@ -1,5 +1,15 @@
 """Research Spine donor routing tests for project-scoped benchmark orchestration."""
 
+# Import-order guard: this suite imports app.services.research_validity_service
+# at module level. That module sits on a latent module-level import cycle
+# (research_validity -> skills.intercoder -> skill_factory -> file_processor
+# -> embeddings -> pi_runtime.engine -> telemetry -> research_validity) that
+# only resolves when the dispatcher plane (app.core.agentic) has been
+# initialized first in the process. The cycle is pre-existing architecture
+# debt outside this file; initializing the plane here keeps a standalone run
+# of this file green.
+import app.core.agentic  # noqa: F401
+
 from types import SimpleNamespace
 
 import pytest
@@ -250,28 +260,47 @@ def test_research_validity_coding_prompt_compacts_long_source_units():
 
 
 @pytest.mark.asyncio
-async def test_default_coder_runner_uses_openai_json_schema_response_format():
+async def test_pi_coder_runner_dispatches_structured_with_coding_schema(monkeypatch):
+    """W9: ``_default_coder_runner`` was retired with the legacy plane; the
+    dual-coder path runs through ``_pi_coder_runner`` → ``agentic.structured``
+    with the coding schema, pinned to the coder's endpoint."""
     captured: dict[str, object] = {}
 
-    class FakeNode:
-        async def chat(self, messages, **kwargs):  # noqa: ANN001
+    class _StubAgentic:
+        async def structured(self, **kwargs):  # noqa: ANN001
             captured.update(kwargs)
-            return {"message": {"content": '{"applications": []}'}}
+            return SimpleNamespace(
+                text='{"applications": []}',
+                value={"applications": []},
+                status="success",
+                usage={},
+                stop_reason="stop",
+                endpoint_id="ep-coder",
+                tool_calls=[],
+            )
+
+    monkeypatch.setattr("app.core.agentic.agentic", _StubAgentic())
 
     coder = research_validity_service.CoderSpec(
-        node=FakeNode(),
+        node=SimpleNamespace(
+            node_id="donor-a",
+            provider_type="ollama",
+            endpoint_id="endpoint-a",
+        ),
         coder_id="model-coder:model-a",
         model_name="model-a",
     )
 
-    await research_validity_service._default_coder_runner(
+    result = await research_validity_service._pi_coder_runner(
         coder,
         [{"role": "user", "content": "code these evidence units"}],
         "model-a",
         "project-a",
     )
 
-    response_format = captured["response_format"]
-    assert response_format["type"] == "json_schema"
-    assert response_format["json_schema"]["name"] == "qualitative_code_applications"
+    assert captured["purpose"] == "validity.coder"
+    assert captured["schema"] is research_validity_service.CODING_RESPONSE_SCHEMA
+    assert "applications" in captured["schema"]["properties"]
     assert captured["project_id"] == "project-a"
+    assert captured["params"].endpoint_id == "endpoint-a"
+    assert result["_istara_route"]["endpoint_id"] == "ep-coder"

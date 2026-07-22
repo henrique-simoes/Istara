@@ -49,7 +49,7 @@ Autoresearch Configuration exists so the work represented by Autoresearch > Conf
 ## Model Routing And Engine Selection
 
 - The RAG-parameter runner tunes retrieval settings by asking a model to suggest the next parameters to try, then scoring how well retrieval performs with them.
-- Pi Replacement wave W6 sends that suggestion call through Istara's shared agentic dispatcher when the `agentic_core` engine is enabled, so RAG tuning can run on either the Pi replacement engine or the legacy engine without changing what the tuning does. When the flag is off, the runner uses the legacy model plane exactly as before, so switching engines back is a safe rollback.
+- Pi Replacement wave W6 sends that suggestion call through Istara's shared agentic dispatcher, so RAG tuning can run on either the Pi replacement engine or the legacy engine without changing what the tuning does. W9 removed the old per-site legacy fallback: the dispatcher is the only path, and selecting the legacy engine is still a safe rollback because the dispatcher serves it through its own legacy executor.
 - Only the suggestion step moves onto the new engine. The embedding the runner uses to score retrieval quality stays on the legacy plane until a later wave (W8) adds the embeddings gateway, so retrieval scoring is unchanged for now.
 - The runner stays bound to the project that authorized the experiment for engine choice, telemetry, and execution, and global configuration changes remain admin-only and carry no project content.
 - The full engine-selection behavior for all six autoresearch runners is described on the [Autoresearch Experiments](../../autoresearch/experiments/researcher.md) page.

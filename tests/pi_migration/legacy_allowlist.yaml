@@ -5,9 +5,9 @@
 # dispatch, ChatOpenAI browser bypass) in backend/app/.
 #
 # Each wave removes the product sites it migrated and lowers
-# ratchet.expected_product_sites by exactly that many. Final state (W9):
-# `product` is empty, expected_product_sites is 0, and only `permanent`
-# remains. Any new direct call added later fails CI.
+# ratchet.expected_product_sites by exactly that many. Final state (W9,
+# reached): `product` is empty, expected_product_sites is 0, and only
+# `permanent` remains. Any new direct call added later fails CI.
 #
 # Written in a tiny YAML subset (flow lists + quoted scalars only) so it can
 # be parsed without pyyaml; see tests/pi_migration/test_count_to_zero.py.
@@ -30,35 +30,35 @@ ratchet:
   # W4 routed the 3 A2A handler sites (agent_lifecycle.py collaboration,
   # debate synthesis, debate critique) through the AgenticDispatcher behind
   # the `agentic_core` feature flag with the legacy ollama branch preserved
-  # alongside it, so the sites stay allowlisted (line keys updated) and the
-  # ratchet stays at 70 until the legacy branch is retired.
+  # alongside it, so the sites stayed allowlisted and the ratchet stayed at
+  # 70 until the legacy branch was retired.
   # W5 routed the 28 skills/reports/interview-services sites (skill_factory
   # plan/execute + 3-stage repair chain, the 4 Discover skills, intercoder
   # kappa pipeline, report_manager summaries/MECE/narratives, adaptive
   # interview clarify/saturation, deployment follow-up) through the
   # AgenticDispatcher behind the same `agentic_core` feature flag with the
-  # legacy ollama/llm_router branch preserved alongside it, so the sites stay
-  # allowlisted (line keys updated) and the ratchet stays at 70 until the
-  # legacy branch is retired.
+  # legacy ollama/llm_router branch preserved alongside it, so the sites
+  # stayed allowlisted and the ratchet stayed at 70 until the legacy branch
+  # was retired.
   # W6 routed the 14 autoresearch-runner chat sites (model_temp
   # evaluate/score, persona hypothesize/evaluate/score, question_bank
   # hypothesize/evaluate/score, rag_params hypothesize, skill_prompt
   # hypothesize/evaluate/score, ui_sim hypothesize/evaluate) through the
   # AgenticDispatcher behind the same `agentic_core` feature flag with the
-  # legacy llm_router branch preserved alongside it, so the sites stay
-  # allowlisted (line keys updated) and the ratchet stays at 70 until the
-  # legacy branch is retired. The rag_params retrieval-eval embed migrated
-  # with the other embed sites in W8 (see the W8 note below).
+  # legacy llm_router branch preserved alongside it, so the sites stayed
+  # allowlisted and the ratchet stayed at 70 until the legacy branch was
+  # retired. The rag_params retrieval-eval embed migrated with the other
+  # embed sites in W8 (see the W8 note below).
   # W7 routed the 7 validation/consensus/dual-coder chat sites (validation.py
   # dual_run/full_ensemble/self_moa ensembles, adversarial_review + debate
   # completions, validation_executor LLM-as-judge, research_validity_service
   # dual-coder) through the AgenticDispatcher behind the same `agentic_core`
   # feature flag with the legacy llm_router/server/node branch preserved
-  # alongside it, so the sites stay allowlisted (line keys updated) and the
-  # ratchet stays at 70 until the legacy branch is retired. The W7 migration also
-  # fixed the latent validation_executor judge bug (registry returns
-  # message.content; the old code read a top-level "content" key and silently
-  # degraded to the default pass).
+  # alongside it, so the sites stayed allowlisted and the ratchet stayed at
+  # 70 until the legacy branch was retired. The W7 migration also fixed the
+  # latent validation_executor judge bug (registry returns message.content;
+  # the old code read a top-level "content" key and silently degraded to the
+  # default pass).
   # W8 migrated all 17 embed sites: the wrappers (embeddings.py embed_text /
   # embed_chunks / ensure_embed_model, validation.py _get_embeddings) now route
   # through agentic.embed — legacy engine: the unchanged ollama.embed* plane
@@ -68,188 +68,23 @@ ratchet:
   # fixed the latent W1 legacy-executor embed bug (OllamaClient.embed_batch
   # takes no project_id kwarg; passing it raised TypeError on the real
   # client). The ratchet drops by 17.
-  expected_product_sites: 53
+  # W9 (final): retired the preserved per-site legacy branches in the 53
+  # remaining product sites (W4 A2A ×3, W5 skills/reports/interviews ×28,
+  # W6 autoresearch runners ×14, W7 validation/consensus/dual-coder ×7 +
+  # the validation_executor judge). The dispatcher path is now the ONLY
+  # path in product code; the legacy engine is reached exclusively through
+  # the dispatcher's permanent legacy executor (agentic/legacy.py, see
+  # `permanent` below), so behavior under engine="legacy" is preserved by
+  # construction. `product` is empty and the ratchet is 0 — any NEW direct
+  # legacy-plane call in backend/app/ fails CI from here on.
+  expected_product_sites: 0
 
 # ---------------------------------------------------------------------------
-# PRODUCT SITES — all migrate to the AgenticDispatcher. Removing a site from
-# this section without migrating it breaks the ratchet.
+# PRODUCT SITES — NONE REMAIN (W9 final state). All 87 W0 product sites route
+# through the AgenticDispatcher. Adding an entry here requires a governed
+# exception; prefer deleting the direct call instead.
 # ---------------------------------------------------------------------------
-product:
-  # --- Chat sites (69) ---------------------------------------------------
-  - keys: ["backend/app/core/agent_lifecycle.py:893"]
-    kind: chat
-    note: "AgentLifecycleMixin._handle_collaboration — A2A collaboration response (W4: dispatcher path behind agentic_core; legacy branch preserved)"
-  - keys: ["backend/app/core/agent_lifecycle.py:1004"]
-    kind: chat
-    note: "AgentLifecycleMixin._initiate_debate — synthesis of output + peer critique (W4: dispatcher path behind agentic_core; legacy branch preserved)"
-  - keys: ["backend/app/core/agent_lifecycle.py:1074"]
-    kind: chat
-    note: "AgentLifecycleMixin._handle_debate — critique of peer output (W4: dispatcher path behind agentic_core; legacy branch preserved)"
-  - keys: ["backend/app/core/autoresearch_runners/model_temp.py:349"]
-    kind: chat
-    note: "ModelTempRunner._evaluate_skill — skill run under candidate endpoint/temp (W6: dispatcher path behind use_pi_engine; legacy branch preserved; Pi sweep space = PiModelManager catalog entries pinned by endpoint_id)"
-  - keys: ["backend/app/core/autoresearch_runners/model_temp.py:429"]
-    kind: chat
-    note: "ModelTempRunner._score_output — LLM-as-judge 0-1 score (W6: dispatcher path behind use_pi_engine; legacy branch preserved)"
-  - keys: ["backend/app/core/autoresearch_runners/persona.py:126"]
-    kind: chat
-    note: "PersonaRunner.hypothesize — persona file mutation (W6: dispatcher path behind agentic_core; legacy branch preserved)"
-  - keys: ["backend/app/core/autoresearch_runners/persona.py:240"]
-    kind: chat
-    note: "PersonaRunner._evaluate_agent — simulated UX task run (W6: dispatcher path behind agentic_core; legacy branch preserved)"
-  - keys: ["backend/app/core/autoresearch_runners/persona.py:290"]
-    kind: chat
-    note: "PersonaRunner._score_response — score simulated response (W6: dispatcher path behind agentic_core; legacy branch preserved)"
-  - keys: ["backend/app/core/autoresearch_runners/question_bank.py:111"]
-    kind: chat
-    note: "QuestionBankRunner.hypothesize — question-bank improvement (W6: dispatcher path behind agentic_core; legacy branch preserved)"
-  - keys: ["backend/app/core/autoresearch_runners/question_bank.py:268"]
-    kind: chat
-    note: "QuestionBankRunner._evaluate_questions — simulated participant (W6: dispatcher path behind agentic_core; legacy branch preserved)"
-  - keys: ["backend/app/core/autoresearch_runners/question_bank.py:334"]
-    kind: chat
-    note: "QuestionBankRunner._score_responses — score elicited responses (W6: dispatcher path behind agentic_core; legacy branch preserved)"
-  - keys: ["backend/app/core/autoresearch_runners/rag_params.py:219"]
-    kind: chat
-    note: "RAGParamsRunner._llm_hypothesis — next RAG parameter change (W6: dispatcher path behind agentic_core; legacy branch preserved; retrieval-eval embed migrated in W8)"
-  - keys: ["backend/app/core/autoresearch_runners/skill_prompt.py:174"]
-    kind: chat
-    note: "SkillPromptRunner.hypothesize — skill prompt mutation (W6: dispatcher path behind agentic_core; legacy branch preserved)"
-  - keys: ["backend/app/core/autoresearch_runners/skill_prompt.py:288"]
-    kind: chat
-    note: "SkillPromptRunner._single_eval — skill prompt on sample context (W6: dispatcher path behind agentic_core; legacy branch preserved)"
-  - keys: ["backend/app/core/autoresearch_runners/skill_prompt.py:341"]
-    kind: chat
-    note: "SkillPromptRunner._score_output — score skill output (W6: dispatcher path behind agentic_core; legacy branch preserved)"
-  - keys: ["backend/app/core/autoresearch_runners/ui_sim.py:121"]
-    kind: chat
-    note: "UISimRunner.hypothesize — UI component a11y/UX mutation (W6: dispatcher path behind agentic_core; legacy branch preserved)"
-  - keys: ["backend/app/core/autoresearch_runners/ui_sim.py:235"]
-    kind: chat
-    note: "UISimRunner._evaluate_component — WCAG-style component score (W6: dispatcher path behind agentic_core; legacy branch preserved)"
-  - keys: ["backend/app/core/report_manager.py:517"]
-    kind: chat
-    note: "ReportManager._generate_executive_summary — SCR executive summary (W5: dispatcher path behind agentic_core; legacy branch preserved)"
-  - keys: ["backend/app/core/report_manager.py:616"]
-    kind: chat
-    note: "ReportManager._generate_mece_categories — MECE categorization (W5: dispatcher path behind agentic_core; legacy branch preserved)"
-  - keys: ["backend/app/core/report_manager.py:850"]
-    kind: chat
-    note: "ReportManager._compose_full_report — weakest-section scoring loop (W5: dispatcher path behind agentic_core; legacy branch preserved)"
-  - keys: ["backend/app/core/report_manager.py:997"]
-    kind: chat
-    note: "ReportManager._compose_section — narrative section expansion (W5: dispatcher path behind agentic_core; legacy branch preserved)"
-  - keys: ["backend/app/core/report_manager.py:1069"]
-    kind: chat
-    note: "ReportManager._compose_section — recommendations expansion (W5: dispatcher path behind agentic_core; legacy branch preserved)"
-  - keys: ["backend/app/core/report_manager.py:1145"]
-    kind: chat
-    note: "ReportManager._compose_section — gaps/limitations section (W5: dispatcher path behind agentic_core; legacy branch preserved)"
-  - keys: ["backend/app/core/validation.py:266"]
-    kind: chat
-    note: "dual_run — same prompt on 2 servers for consensus (direct server.chat) (W7: dispatcher ensemble path behind agentic_core; legacy branch preserved)"
-  - keys: ["backend/app/core/validation.py:369"]
-    kind: chat
-    note: "adversarial_review — second model critiques first response (W7: dispatcher completion path behind agentic_core; legacy branch preserved)"
-  - keys: ["backend/app/core/validation.py:530"]
-    kind: chat
-    note: "full_ensemble — 3+ server ensemble consensus (direct server.chat) (W7: dispatcher ensemble path behind agentic_core; legacy branch preserved)"
-  - keys: ["backend/app/core/validation.py:627"]
-    kind: chat
-    note: "self_moa — temperature-variation ensemble (W7: dispatcher ensemble path behind agentic_core; legacy branch preserved)"
-  - keys: ["backend/app/core/validation.py:797"]
-    kind: chat
-    note: "debate_rounds — initial debate response (W7: dispatcher completion path behind agentic_core; legacy branch preserved)"
-  - keys: ["backend/app/core/validation.py:836"]
-    kind: chat
-    note: "debate_rounds — multi-round debate refinement (W7: dispatcher completion path behind agentic_core; legacy branch preserved)"
-  - keys: ["backend/app/core/validation_executor.py:151"]
-    kind: chat
-    note: "ValidationExecutor._adversarial_review — LLM-as-judge on coding output (W7: dispatcher structured path behind agentic_core; legacy branch preserved + message.content bug fixed)"
-  - keys: ["backend/app/services/adaptive_interview.py:325"]
-    kind: chat
-    note: "generate_clarification — probing follow-up question (W5: dispatcher path behind agentic_core; legacy branch preserved)"
-  - keys: ["backend/app/services/adaptive_interview.py:396"]
-    kind: chat
-    note: "_is_saturated — LLM saturation judgment (W5: dispatcher path behind agentic_core; legacy branch preserved)"
-  - keys: ["backend/app/services/deployment_service.py:340"]
-    kind: chat
-    note: "_generate_adaptive_followup — adaptive follow-up question (W5: dispatcher path behind agentic_core; legacy branch preserved)"
-  - keys: ["backend/app/services/research_validity_service.py:558"]
-    kind: chat
-    note: "_default_coder_runner — independent multi-model coding (direct coder.node.chat) (W7: dispatcher structured path over resolve_distinct behind agentic_core+pi engine; legacy branch preserved)"
-  - keys: ["backend/app/skills/discover/channel_deployment.py:268"]
-    kind: chat
-    note: "ChannelResearchDeploymentSkill.plan — deployment plan + questions (W5: dispatcher path behind agentic_core; legacy branch preserved)"
-  - keys: ["backend/app/skills/discover/channel_deployment.py:379"]
-    kind: chat
-    note: "ChannelResearchDeploymentSkill._analyze — analyze deployment responses (W5: dispatcher path behind agentic_core; legacy branch preserved)"
-  - keys: ["backend/app/skills/discover/contextual_inquiry.py:144"]
-    kind: chat
-    note: "ContextualInquirySkill.plan — observation plan (W5: dispatcher path behind agentic_core; legacy branch preserved)"
-  - keys: ["backend/app/skills/discover/contextual_inquiry.py:219"]
-    kind: chat
-    note: "ContextualInquirySkill.execute — AEIOU analysis of notes (W5: dispatcher path behind agentic_core; legacy branch preserved)"
-  - keys: ["backend/app/skills/discover/diary_studies.py:126"]
-    kind: chat
-    note: "DiaryStudiesSkill.plan — diary study design (W5: dispatcher path behind agentic_core; legacy branch preserved)"
-  - keys: ["backend/app/skills/discover/diary_studies.py:195"]
-    kind: chat
-    note: "DiaryStudiesSkill.execute — diary entry analysis (W5: dispatcher path behind agentic_core; legacy branch preserved)"
-  - keys: ["backend/app/skills/discover/user_interviews.py:348"]
-    kind: chat
-    note: "UserInterviewsSkill.plan — interview guide (W5: dispatcher path behind agentic_core; legacy branch preserved)"
-  - keys: ["backend/app/skills/discover/user_interviews.py:473"]
-    kind: chat
-    note: "UserInterviewsSkill.execute — per-transcript analysis loop (W5: dispatcher path behind agentic_core; legacy branch preserved)"
-  - keys: ["backend/app/skills/discover/user_interviews.py:544"]
-    kind: chat
-    note: "UserInterviewsSkill.execute — cross-transcript synthesis (W5: dispatcher path behind agentic_core; legacy branch preserved)"
-  - keys: ["backend/app/skills/intercoder.py:513"]
-    kind: chat
-    note: "KappaIntercoderSkill.plan — analysis process plan (W5: dispatcher path behind agentic_core; legacy branch preserved)"
-  - keys: ["backend/app/skills/intercoder.py:561"]
-    kind: chat
-    note: "KappaIntercoderSkill.execute — coder A open coding (W5: dispatcher path behind agentic_core; legacy branch preserved)"
-  - keys: ["backend/app/skills/intercoder.py:613"]
-    kind: chat
-    note: "KappaIntercoderSkill.execute — coder B independent re-coding (W5: dispatcher path behind agentic_core; legacy branch preserved)"
-  - keys: ["backend/app/skills/intercoder.py:698"]
-    kind: chat
-    note: "KappaIntercoderSkill.execute — disagreement reconciliation (W5: dispatcher path behind agentic_core; legacy branch preserved)"
-  - keys: ["backend/app/skills/intercoder.py:749"]
-    kind: chat
-    note: "KappaIntercoderSkill.execute — theme extraction (full agreement) (W5: dispatcher path behind agentic_core; legacy branch preserved)"
-  - keys: ["backend/app/skills/skill_factory.py:564"]
-    kind: chat
-    note: "GeneratedSkill.plan — factory-generated skill plan (W5: dispatcher path behind agentic_core; legacy branch preserved)"
-  - keys: ["backend/app/skills/skill_factory.py:818"]
-    kind: chat
-    note: "GeneratedSkill.execute — primary structured execution (W5: dispatcher path behind agentic_core; legacy branch preserved)"
-  - keys: ["backend/app/skills/skill_factory.py:896"]
-    kind: chat
-    note: "GeneratedSkill.execute — JSON repair #1 (native schema) (W5: dispatcher path behind agentic_core; legacy branch preserved)"
-  - keys: ["backend/app/skills/skill_factory.py:965"]
-    kind: chat
-    note: "GeneratedSkill.execute — JSON repair #2 (plain prompt) (W5: dispatcher path behind agentic_core; legacy branch preserved)"
-  - keys: ["backend/app/skills/skill_factory.py:1064"]
-    kind: chat
-    note: "GeneratedSkill.execute — empty-findings repair #3 (W5: dispatcher path behind agentic_core; legacy branch preserved)"
-  # (W8 complete: all 17 embed sites left this list — the wrappers
-  # embeddings.py embed_text/embed_chunks/ensure_embed_model and
-  # validation.py _get_embeddings now route through agentic.embed (legacy:
-  # the unchanged ollama.embed* plane via the permanent legacy executor; Pi:
-  # the W8 EmbeddingsGateway), so the 14 wrapper consumers — agent_execution
-  # _semantic_skill_match, agent_memory read_notes, agent_skill_tools
-  # rank_skill_candidates, rag_params _score_single_query, prompt_rag
-  # _embedding_similarity/compose_dynamic_prompt, rag ingest/retrieve,
-  # file_watcher _process_file, and the vector_health dimension probe —
-  # inherit the dispatch with zero edits. See the W8 ratchet note above.)
-  # (W2 complete: the browser_service browse_website tool left this list —
-  # its ChatOpenAI construction now resolves endpoint identity through
-  # PiModelManager, recorded under tool.browse_website in the agentic usage
-  # ledger; see the F-W2-1b governance decision in
-  # scripts/pi_migration_inventory.py.)
+product: []
 
 # ---------------------------------------------------------------------------
 # PERMANENT INFRASTRUCTURE — NEVER migrate (master plan §4.3). The scanner

@@ -43,8 +43,6 @@ class UISimRunner(BaseLoopRunner):
         self, target: str, current_score: float, history: list[dict]
     ) -> tuple[str, dict]:
         """LLM analyzes component code and proposes an accessibility/UX improvement."""
-        from app.core.llm_router import llm_router
-
         filepath = Path(target)
         if not filepath.exists():
             raise RuntimeError(f"Component file not found: {target}")
@@ -100,28 +98,21 @@ class UISimRunner(BaseLoopRunner):
         ]
 
         try:
-            if self.use_pi_engine():
-                # W6: the component a11y/UX mutation goes through the
-                # AgenticDispatcher (``autoresearch.ui_sim.hypothesize``); the
-                # legacy branch below is preserved for the legacy engine selection.
-                from app.core.agentic import agentic
-                from app.core.agentic.types import TurnParams
+            # W6/W9: the component a11y/UX mutation goes through the
+            # AgenticDispatcher (``autoresearch.ui_sim.hypothesize``).
+            from app.core.agentic import agentic
+            from app.core.agentic.types import TurnParams
 
-                outcome = await agentic.completion(
-                    purpose="autoresearch.ui_sim.hypothesize",
-                    project_id=self.require_project_id(),
-                    system=messages[0]["content"],
-                    messages=messages[1:],
-                    params=TurnParams(temperature=0.5, max_tokens=3000),
-                    spine_phase="plan",
-                    engine=self.engine,
-                )
-                new_code = (outcome.text or "").strip()
-            else:
-                response = await llm_router.chat(
-                    messages, temperature=0.5, max_tokens=3000
-                )
-                new_code = response.get("message", {}).get("content", "").strip()
+            outcome = await agentic.completion(
+                purpose="autoresearch.ui_sim.hypothesize",
+                project_id=self.require_project_id(),
+                system=messages[0]["content"],
+                messages=messages[1:],
+                params=TurnParams(temperature=0.5, max_tokens=3000),
+                spine_phase="plan",
+                engine=self.engine,
+            )
+            new_code = (outcome.text or "").strip()
         except Exception as e:
             raise RuntimeError(f"LLM UI mutation failed: {e}") from e
 
@@ -174,8 +165,6 @@ class UISimRunner(BaseLoopRunner):
 
     async def _evaluate_component(self, target: str) -> float:
         """Evaluate component accessibility and UX quality via LLM analysis."""
-        from app.core.llm_router import llm_router
-
         filepath = Path(target)
         if not filepath.exists():
             logger.warning(f"UISimRunner: component not found: {target}")
@@ -214,26 +203,21 @@ class UISimRunner(BaseLoopRunner):
         ]
 
         try:
-            if self.use_pi_engine():
-                # W6: the WCAG-style component score goes through the
-                # AgenticDispatcher (``autoresearch.ui_sim.evaluate``); the
-                # legacy branch below is preserved for the legacy engine selection.
-                from app.core.agentic import agentic
-                from app.core.agentic.types import TurnParams
+            # W6/W9: the WCAG-style component score goes through the
+            # AgenticDispatcher (``autoresearch.ui_sim.evaluate``).
+            from app.core.agentic import agentic
+            from app.core.agentic.types import TurnParams
 
-                outcome = await agentic.completion(
-                    purpose="autoresearch.ui_sim.evaluate",
-                    project_id=self.require_project_id(),
-                    system=messages[0]["content"],
-                    messages=messages[1:],
-                    params=TurnParams(temperature=0.1, max_tokens=10),
-                    spine_phase="review",
-                    engine=self.engine,
-                )
-                score_text = (outcome.text or "").strip()
-            else:
-                response = await llm_router.chat(messages, temperature=0.1, max_tokens=10)
-                score_text = response.get("message", {}).get("content", "").strip()
+            outcome = await agentic.completion(
+                purpose="autoresearch.ui_sim.evaluate",
+                project_id=self.require_project_id(),
+                system=messages[0]["content"],
+                messages=messages[1:],
+                params=TurnParams(temperature=0.1, max_tokens=10),
+                spine_phase="review",
+                engine=self.engine,
+            )
+            score_text = (outcome.text or "").strip()
             for token in score_text.replace(",", ".").split():
                 try:
                     val = float(token)

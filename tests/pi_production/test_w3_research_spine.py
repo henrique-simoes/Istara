@@ -125,7 +125,10 @@ def _direct_legacy_calls(source: str) -> list[str]:
 def test_w3_ratchet_floor_is_53():
     from tests.pi_migration.test_count_to_zero import EXPECTED_PRODUCT_SITES, check_count_to_zero
 
-    assert EXPECTED_PRODUCT_SITES == 53, "W3: 78 − 8 = 70; W8 migrated the 17 embed sites: 70 − 17 = 53"
+    assert EXPECTED_PRODUCT_SITES == 0, (
+        "W3: 78 − 8 = 70; W8 migrated the 17 embed sites: 70 − 17 = 53; "
+        "W9 retired the 53 preserved legacy branches: ratchet floor is 0"
+    )
     check_count_to_zero()
 
 
@@ -156,9 +159,13 @@ def test_steering_reply_migrates_but_w4_a2a_sites_stay_allowlisted():
         f"L10 steering reply still calls the legacy plane: {_direct_legacy_calls(steering)}"
     )
     assert "steering_binding" in steering, "L10 must wire a SteeringBinding (H-5)"
-    # W4 scope stays on the legacy plane until its own wave migrates it.
+    # W4 migrated the A2A sites behind a preserved legacy branch; W9 retired
+    # that branch, so they too must be dispatcher-only now.
     for fn in ("_handle_collaboration", "_initiate_debate", "_handle_debate"):
-        assert "ollama.chat" in _function_source(path, fn), f"{fn} is W4 scope — do not touch in W3"
+        source = _function_source(path, fn)
+        assert not _direct_legacy_calls(source), (
+            f"{fn} still calls the legacy plane directly after W9: {_direct_legacy_calls(source)}"
+        )
 
 
 # ── plumbing: dynamic tools + dispatcher forwarding ─────────────────────

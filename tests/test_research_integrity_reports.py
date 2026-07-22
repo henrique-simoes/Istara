@@ -628,9 +628,13 @@ class TestReportManager:
         db_session.add_all([rec, report])
         await db_session.commit()
 
-        async def fake_chat(messages, temperature=0.3, project_id=None):
+        # W9: the summary call now reaches the legacy plane exclusively
+        # through the AgenticDispatcher's legacy executor, which forwards
+        # model/system/max_tokens kwargs — accept them and assert on the
+        # project scope that must survive the dispatch.
+        async def fake_chat(messages, *args, **kwargs):
             assert "Replace buried exports" in messages[0]["content"]
-            assert project_id == "proj-summary-rec"
+            assert kwargs.get("project_id") == "proj-summary-rec"
             return {"message": {"content": "SITUATION\nA summary with recommendations."}}
 
         with patch("app.core.llm_router.llm_router.chat", new=fake_chat):

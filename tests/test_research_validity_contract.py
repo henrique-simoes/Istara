@@ -460,45 +460,55 @@ async def test_deployment_response_enters_spine_as_source_evidence_unit():
 
 @pytest.mark.asyncio
 async def test_channel_deployment_skill_outputs_candidate_artifacts(monkeypatch):
-    from app.core.ollama import ollama
+    from types import SimpleNamespace
+
     from app.skills.base import SkillInput
     from app.skills.discover.channel_deployment import ChannelResearchDeploymentSkill
 
-    async def fake_chat(**_kwargs):
-        return {
-            "message": {
-                "content": json.dumps(
-                    {
-                        "themes": [{"name": "permission anxiety", "frequency": 1}],
-                        "nuggets": [
-                            {
-                                "text": "Participant hesitated at the export permission prompt.",
-                                "source": "deployment:onboarding:response:1",
-                                "source_quote": "I am not sure what this export permission does.",
-                                "tags": ["trust", "permissions"],
-                            }
-                        ],
-                        "insights": [
-                            {
-                                "text": "Export permissions create trust friction.",
-                                "confidence": "medium",
-                                "impact": "high",
-                            }
-                        ],
-                        "recommendations": [
-                            {
-                                "text": "Clarify export permission scope before granting access.",
-                                "priority": "high",
-                                "effort": "medium",
-                            }
-                        ],
-                        "data_quality": {"overall_quality": "medium"},
-                    }
-                )
+    analysis_payload = {
+        "themes": [{"name": "permission anxiety", "frequency": 1}],
+        "nuggets": [
+            {
+                "text": "Participant hesitated at the export permission prompt.",
+                "source": "deployment:onboarding:response:1",
+                "source_quote": "I am not sure what this export permission does.",
+                "tags": ["trust", "permissions"],
             }
-        }
+        ],
+        "insights": [
+            {
+                "text": "Export permissions create trust friction.",
+                "confidence": "medium",
+                "impact": "high",
+            }
+        ],
+        "recommendations": [
+            {
+                "text": "Clarify export permission scope before granting access.",
+                "priority": "high",
+                "effort": "medium",
+            }
+        ],
+        "data_quality": {"overall_quality": "medium"},
+    }
 
-    monkeypatch.setattr(ollama, "chat", fake_chat)
+    class _StubAgentic:
+        """W9: the skill analyzes through the dispatcher's structured verb."""
+
+        async def structured(self, **kwargs):  # noqa: ANN001
+            assert kwargs.get("purpose") == "skill.discover_analyze"
+            assert kwargs.get("project_id") == "proj-channel-skill"
+            return SimpleNamespace(
+                text=json.dumps(analysis_payload),
+                value=analysis_payload,
+                status="success",
+                usage={},
+                stop_reason="stop",
+                endpoint_id="ep-stub",
+                tool_calls=[],
+            )
+
+    monkeypatch.setattr("app.core.agentic.agentic", _StubAgentic())
 
     output = await ChannelResearchDeploymentSkill().execute(
         SkillInput(
@@ -801,6 +811,10 @@ async def test_independent_coding_run_persists_model_codes_and_reliability(monke
     unit_ids = [f"eu-coding-1-{suffix}", f"eu-coding-2-{suffix}"]
 
     class FakeCoderNode:
+        """Selection-only coder node: W9 runs the coding through the
+        dispatcher (``_pi_coder_runner``), so the node only carries the
+        attributes ``_select_project_coders`` reads."""
+
         def __init__(self, node_id: str, model_name: str) -> None:
             self.node_id = node_id
             self.name = node_id
@@ -809,12 +823,18 @@ async def test_independent_coding_run_persists_model_codes_and_reliability(monke
             self.is_healthy = True
             self.loaded_models = [model_name]
             self.model_capabilities = {}
-            self.served_request_count = 0
 
-        async def chat(self, messages, **kwargs):  # noqa: ANN001
+    class _StubAgentic:
+        def __init__(self) -> None:
+            self.calls = 0
+
+        async def structured(self, **kwargs):  # noqa: ANN001
+            from types import SimpleNamespace
+
+            assert kwargs["purpose"] == "validity.coder"
             assert kwargs["project_id"] == project_id
-            assert "<qualitative_coding_protocol>" in messages[-1]["content"]
-            self.served_request_count += 1
+            assert "<qualitative_coding_protocol>" in kwargs["messages"][-1]["content"]
+            self.calls += 1
             applications = [
                 {
                     "evidence_unit_id": unit_id,
@@ -826,19 +846,15 @@ async def test_independent_coding_run_persists_model_codes_and_reliability(monke
                 }
                 for unit_id in unit_ids
             ]
-            return {
-                "message": {"content": json.dumps({"applications": applications})},
-                "_istara_route": {
-                    "node_id": self.node_id,
-                    "node_source": self.source,
-                    "provider_type": self.provider_type,
-                    "route_kind": "chat",
-                    "project_id": kwargs["project_id"],
-                    "model": self.loaded_models[0],
-                    "outcome": "served",
-                    "served_request_count": self.served_request_count,
-                },
-            }
+            return SimpleNamespace(
+                text=json.dumps({"applications": applications}),
+                value={"applications": applications},
+                status="success",
+                usage={},
+                stop_reason="stop",
+                endpoint_id="ep-stub",
+                tool_calls=[],
+            )
 
     class FakeRouter:
         def __init__(self) -> None:
@@ -854,6 +870,15 @@ async def test_independent_coding_run_persists_model_codes_and_reliability(monke
 
     await init_db()
     monkeypatch.setattr(research_validity_service, "llm_router", FakeRouter())
+    stub = _StubAgentic()
+    monkeypatch.setattr("app.core.agentic.agentic", stub)
+    # Isolate from the engine-plane lookup (covered by the W7 suite): this
+    # test exercises the legacy-engine coder-selection path.
+    from unittest.mock import AsyncMock
+
+    monkeypatch.setattr(
+        research_validity_service, "_use_pi_coding_plane", AsyncMock(return_value=False)
+    )
 
     async with async_session() as db:
         for index, unit_id in enumerate(unit_ids, 1):
@@ -939,6 +964,8 @@ async def test_independent_coding_run_repairs_empty_model_application_response(
     unit_id = f"eu-coding-repair-{suffix}"
 
     class RepairableCoderNode:
+        """Selection-only coder node (see the dispatcher note above)."""
+
         node_id = "node-repair"
         name = "node-repair"
         source = "local"
@@ -947,51 +974,55 @@ async def test_independent_coding_run_repairs_empty_model_application_response(
         loaded_models = ["model-repair"]
         model_capabilities = {}
 
+    class _StubAgentic:
         def __init__(self) -> None:
             self.calls = 0
 
-        async def chat(self, messages, **kwargs):  # noqa: ANN001
+        async def structured(self, **kwargs):  # noqa: ANN001
+            from types import SimpleNamespace
+
+            assert kwargs["project_id"] == project_id
             self.calls += 1
             if self.calls == 1:
-                content = json.dumps({"items": []})
+                value = {"items": []}
             else:
-                content = json.dumps(
-                    {
-                        "code_applications": [
-                            {
-                                "stable_id": "repair-source#EU-0001",
-                                "unit_index": 1,
-                                "codes": ["repairable_coding_output"],
-                                "quote": "Participant needs clearer prep guidance.",
-                                "confidence": 0.72,
-                                "rationale": "The evidence unit describes a guidance gap.",
-                            }
-                        ]
-                    }
-                )
-            return {
-                "message": {"content": content},
-                "_istara_route": {
-                    "node_id": self.node_id,
-                    "node_source": self.source,
-                    "provider_type": self.provider_type,
-                    "route_kind": "chat",
-                    "project_id": kwargs["project_id"],
-                    "model": self.loaded_models[0],
-                    "outcome": "served",
-                    "served_request_count": self.calls,
-                },
-            }
+                value = {
+                    "code_applications": [
+                        {
+                            "stable_id": "repair-source#EU-0001",
+                            "unit_index": 1,
+                            "codes": ["repairable_coding_output"],
+                            "quote": "Participant needs clearer prep guidance.",
+                            "confidence": 0.72,
+                            "rationale": "The evidence unit describes a guidance gap.",
+                        }
+                    ]
+                }
+            return SimpleNamespace(
+                text=json.dumps(value),
+                value=value,
+                status="success",
+                usage={},
+                stop_reason="stop",
+                endpoint_id="ep-stub",
+                tool_calls=[],
+            )
 
-    node = RepairableCoderNode()
+    stub = _StubAgentic()
 
     class FakeRouter:
         def _sorted_servers(self, **kwargs):  # noqa: ANN001
             assert kwargs["project_id"] == project_id
-            return [node]
+            return [RepairableCoderNode()]
 
     await init_db()
     monkeypatch.setattr(research_validity_service, "llm_router", FakeRouter())
+    monkeypatch.setattr("app.core.agentic.agentic", stub)
+    from unittest.mock import AsyncMock
+
+    monkeypatch.setattr(
+        research_validity_service, "_use_pi_coding_plane", AsyncMock(return_value=False)
+    )
 
     async with async_session() as db:
         db.add(
@@ -1026,7 +1057,7 @@ async def test_independent_coding_run_repairs_empty_model_application_response(
             .all()
         )
 
-    assert node.calls == 2
+    assert stub.calls == 2
     assert result["code_application_count"] == 1
     assert len(app_rows) == 1
     assert app_rows[0].code_id == "repairable_coding_output"

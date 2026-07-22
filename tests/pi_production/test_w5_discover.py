@@ -1,9 +1,9 @@
 """W5 contract coverage — Discover-skill migration (master plan §8 W5).
 
 The nine legacy ``ollama.chat`` call sites across the Discover skills route
-through the AgenticDispatcher, gated on the ``agentic_core`` feature flag,
-with the legacy branch preserved verbatim alongside for
-``agentic_core=False``:
+through the AgenticDispatcher. W9 retired the ``agentic_core`` feature-flag
+gate and the preserved legacy ``ollama.chat`` branch: the dispatcher path is
+now the only path.
 
 * ``channel_deployment.py`` — ``plan`` (completion → ``skill.discover_plan``),
   ``_analyze`` (structured → ``skill.discover_analyze``,
@@ -18,14 +18,11 @@ with the legacy branch preserved verbatim alongside for
 
 Covered here (all stubbed/static — no live model activity):
 
-* static: each migrated function carries the dispatcher path (flag on) with
-  the planned purpose slug AND the preserved legacy ``ollama.chat`` branch;
-* behavior (flag off): the legacy plane is used exactly as before and the
-  dispatcher is never touched;
-* behavior (flag on): the dispatcher stub records the right verb, purpose,
-  project scope, params, and schema; the legacy stub is never called; the
-  downstream behavior (return shape, candidate marking, fallback on
-  structured failure) is unchanged.
+* static: each migrated function carries the dispatcher path with the
+  planned purpose slug;
+* behavior: the dispatcher stub records the right verb, purpose, project
+  scope, params, and schema; the downstream behavior (return shape,
+  candidate marking, fallback on structured failure) is unchanged.
 """
 
 from __future__ import annotations
@@ -79,24 +76,9 @@ class _StubAgentic:
         )
 
 
-class _StubOllama:
-    def __init__(self, *, text: str = "legacy text") -> None:
-        self.calls: list[dict] = []
-        self._text = text
-
-    async def chat(self, messages=None, **kwargs):
-        self.calls.append({"messages": messages, **kwargs})
-        return {"message": {"content": self._text}}
-
-
 @pytest.fixture
 def _agentic_core_on(monkeypatch):
     monkeypatch.setattr("app.config.settings.agentic_core", True)
-
-
-@pytest.fixture
-def _agentic_core_off(monkeypatch):
-    monkeypatch.setattr("app.config.settings.agentic_core", False)
 
 
 def _skill_input(**overrides):
@@ -108,48 +90,42 @@ def _skill_input(**overrides):
     return SkillInput(**kwargs)
 
 
-# ── static: both paths present with the planned purpose slugs ────────────
+# ── static: dispatcher paths present with the planned purpose slugs ──────
 
 
-def test_w5_discover_sites_carry_dispatcher_path_and_preserved_legacy_branch():
+def test_w5_discover_sites_carry_dispatcher_path():
     plan = _function_source("channel_deployment.py", "plan")
-    assert "agentic_core" in plan and "agentic.completion" in plan
+    assert "agentic.completion" in plan
     assert "skill.discover_plan" in plan
-    assert "ollama.chat" in plan, "legacy branch must be preserved alongside"
 
     analyze = _function_source("channel_deployment.py", "_analyze")
-    assert "agentic_core" in analyze and "agentic.structured" in analyze
+    assert "agentic.structured" in analyze
     assert "skill.discover_analyze" in analyze and "DEPLOYMENT_ANALYSIS_SCHEMA" in analyze
-    assert "ollama.chat" in analyze
 
     ci_plan = _function_source("contextual_inquiry.py", "plan")
-    assert "agentic_core" in ci_plan and "agentic.completion" in ci_plan
-    assert "skill.discover_plan" in ci_plan and "ollama.chat" in ci_plan
+    assert "agentic.completion" in ci_plan
+    assert "skill.discover_plan" in ci_plan
 
     ci_exec = _function_source("contextual_inquiry.py", "execute")
-    assert "agentic_core" in ci_exec and "agentic.structured" in ci_exec
+    assert "agentic.structured" in ci_exec
     assert "skill.discover_analyze" in ci_exec and "CONTEXTUAL_INQUIRY_SCHEMA" in ci_exec
-    assert "ollama.chat" in ci_exec
 
     diary_plan = _function_source("diary_studies.py", "plan")
-    assert "agentic_core" in diary_plan and "agentic.completion" in diary_plan
-    assert "skill.discover_plan" in diary_plan and "ollama.chat" in diary_plan
+    assert "agentic.completion" in diary_plan
+    assert "skill.discover_plan" in diary_plan
 
     diary_exec = _function_source("diary_studies.py", "execute")
-    assert "agentic_core" in diary_exec and "agentic.structured" in diary_exec
+    assert "agentic.structured" in diary_exec
     assert "skill.discover_analyze" in diary_exec and "DIARY_ANALYSIS_SCHEMA" in diary_exec
-    assert "ollama.chat" in diary_exec
 
     ui_plan = _function_source("user_interviews.py", "plan")
-    assert "agentic_core" in ui_plan and "agentic.completion" in ui_plan
-    assert "skill.discover_plan" in ui_plan and "ollama.chat" in ui_plan
+    assert "agentic.completion" in ui_plan
+    assert "skill.discover_plan" in ui_plan
 
     ui_exec = _function_source("user_interviews.py", "execute")
-    assert "agentic_core" in ui_exec
     assert ui_exec.count("agentic.structured") == 2, "analysis + synthesis sites"
     assert ui_exec.count('purpose="skill.discover_analyze"') == 2
     assert "TRANSCRIPT_ANALYSIS_SCHEMA" in ui_exec and "SYNTHESIS_SCHEMA" in ui_exec
-    assert ui_exec.count("await ollama.chat(") == 2, "both legacy branches preserved"
 
 
 # ── channel_deployment ────────────────────────────────────────────────────
@@ -161,34 +137,13 @@ def _channel_skill():
     return ChannelResearchDeploymentSkill()
 
 
-async def test_channel_plan_flag_off_uses_legacy_plane(monkeypatch, _agentic_core_off):
-    ollama_stub = _StubOllama(text='{"study_design": {"type": "interview"}}')
-    dispatcher_stub = _StubAgentic()
-
-    # channel_deployment imports ``ollama`` inside the function, so the stub
-    # must land on the source module symbol.
-    monkeypatch.setattr("app.core.ollama.ollama", ollama_stub)
-    monkeypatch.setattr("app.core.agentic.agentic", dispatcher_stub)
-
-    result = await _channel_skill().plan(_skill_input())
-
-    assert len(ollama_stub.calls) == 1, "flag off must use the legacy plane"
-    assert ollama_stub.calls[0]["temperature"] == 0.7
-    assert dispatcher_stub.calls == [], "flag off must not touch the dispatcher"
-    assert result["plan_type"] == "channel_deployment"
-    assert result["study_design"] == {"type": "interview"}
-
-
 async def test_channel_plan_flag_on_dispatches_completion(monkeypatch, _agentic_core_on):
-    ollama_stub = _StubOllama()
     dispatcher_stub = _StubAgentic(text='{"channel_strategy": "telegram"}')
 
-    monkeypatch.setattr("app.core.ollama.ollama", ollama_stub)
     monkeypatch.setattr("app.core.agentic.agentic", dispatcher_stub)
 
     result = await _channel_skill().plan(_skill_input())
 
-    assert ollama_stub.calls == [], "flag on must not call the legacy plane directly"
     method, kwargs = dispatcher_stub.calls[0]
     assert method == "completion"
     assert kwargs["purpose"] == "skill.discover_plan"
@@ -198,39 +153,15 @@ async def test_channel_plan_flag_on_dispatches_completion(monkeypatch, _agentic_
     assert result["channel_strategy"] == "telegram"
 
 
-async def test_channel_analyze_flag_off_uses_legacy_plane(monkeypatch, _agentic_core_off):
-    ollama_stub = _StubOllama(text=json.dumps({
-        "candidate_nuggets": [{"text": "legacy nugget", "confidence": "high"}],
-    }))
-    dispatcher_stub = _StubAgentic()
-
-    monkeypatch.setattr("app.core.ollama.ollama", ollama_stub)
-    monkeypatch.setattr("app.core.agentic.agentic", dispatcher_stub)
-
-    output = await _channel_skill().execute(_skill_input(
-        parameters={"mode": "analyze", "deployment_name": "onboarding",
-                    "deployment_type": "interview", "responses": [{"answer": "a"}]},
-    ))
-
-    assert len(ollama_stub.calls) == 1
-    assert ollama_stub.calls[0]["temperature"] == 0.3
-    assert dispatcher_stub.calls == []
-    assert output.success is True
-    assert output.nuggets[0]["text"] == "legacy nugget"
-    assert output.nuggets[0]["artifact_state"] == "candidate_atom"
-
-
 async def test_channel_analyze_flag_on_dispatches_structured(monkeypatch, _agentic_core_on):
     from app.skills.discover.channel_deployment import DEPLOYMENT_ANALYSIS_SCHEMA
 
-    ollama_stub = _StubOllama()
     dispatcher_stub = _StubAgentic(value={
         "candidate_nuggets": [{"text": "dispatcher nugget", "confidence": "high"}],
         "candidate_insights": [{"text": "insight", "confidence": "medium", "impact": "high"}],
         "candidate_recommendations": [{"text": "rec", "priority": "high", "effort": "low"}],
     })
 
-    monkeypatch.setattr("app.core.ollama.ollama", ollama_stub)
     monkeypatch.setattr("app.core.agentic.agentic", dispatcher_stub)
 
     output = await _channel_skill().execute(_skill_input(
@@ -238,7 +169,6 @@ async def test_channel_analyze_flag_on_dispatches_structured(monkeypatch, _agent
                     "deployment_type": "survey", "responses": [{"answer": "a"}]},
     ))
 
-    assert ollama_stub.calls == []
     method, kwargs = dispatcher_stub.calls[0]
     assert method == "structured"
     assert kwargs["purpose"] == "skill.discover_analyze"
@@ -255,10 +185,8 @@ async def test_channel_analyze_flag_on_dispatches_structured(monkeypatch, _agent
 async def test_channel_analyze_flag_on_structured_failure_keeps_raw_fallback(
     monkeypatch, _agentic_core_on
 ):
-    ollama_stub = _StubOllama()
     dispatcher_stub = _StubAgentic(text="not json at all", value=None, status="error")
 
-    monkeypatch.setattr("app.core.ollama.ollama", ollama_stub)
     monkeypatch.setattr("app.core.agentic.agentic", dispatcher_stub)
 
     output = await _channel_skill().execute(_skill_input(
@@ -266,7 +194,6 @@ async def test_channel_analyze_flag_on_structured_failure_keeps_raw_fallback(
                     "deployment_type": "interview", "responses": [{"answer": "a"}]},
     ))
 
-    assert ollama_stub.calls == []
     artifact = json.loads(output.artifacts["deployment_analysis.json"])
     assert artifact["raw_analysis"] == "not json at all", "parse-failure path preserved"
     assert output.nuggets == []
@@ -281,31 +208,13 @@ def _ci_skill():
     return ContextualInquirySkill()
 
 
-async def test_contextual_inquiry_plan_flag_off_uses_legacy_plane(monkeypatch, _agentic_core_off):
-    ollama_stub = _StubOllama(text="legacy markdown plan")
-    dispatcher_stub = _StubAgentic()
-
-    monkeypatch.setattr("app.skills.discover.contextual_inquiry.ollama", ollama_stub)
-    monkeypatch.setattr("app.core.agentic.agentic", dispatcher_stub)
-
-    result = await _ci_skill().plan(_skill_input())
-
-    assert len(ollama_stub.calls) == 1
-    assert ollama_stub.calls[0]["temperature"] == 0.7
-    assert dispatcher_stub.calls == []
-    assert result == {"skill": "contextual-inquiry", "plan": "legacy markdown plan"}
-
-
 async def test_contextual_inquiry_plan_flag_on_dispatches_completion(monkeypatch, _agentic_core_on):
-    ollama_stub = _StubOllama()
     dispatcher_stub = _StubAgentic(text="dispatcher markdown plan")
 
-    monkeypatch.setattr("app.skills.discover.contextual_inquiry.ollama", ollama_stub)
     monkeypatch.setattr("app.core.agentic.agentic", dispatcher_stub)
 
     result = await _ci_skill().plan(_skill_input())
 
-    assert ollama_stub.calls == []
     method, kwargs = dispatcher_stub.calls[0]
     assert method == "completion"
     assert kwargs["purpose"] == "skill.discover_plan"
@@ -314,44 +223,20 @@ async def test_contextual_inquiry_plan_flag_on_dispatches_completion(monkeypatch
     assert result["plan"] == "dispatcher markdown plan"
 
 
-async def test_contextual_inquiry_execute_flag_off_uses_legacy_plane(monkeypatch, _agentic_core_off):
-    ollama_stub = _StubOllama(text=json.dumps({
-        "nuggets": [{"text": "legacy observation", "tags": ["workflow"]}],
-        "summary": "legacy summary",
-    }))
-    dispatcher_stub = _StubAgentic()
-
-    monkeypatch.setattr("app.skills.discover.contextual_inquiry.ollama", ollama_stub)
-    monkeypatch.setattr("app.core.agentic.agentic", dispatcher_stub)
-
-    output = await _ci_skill().execute(_skill_input(user_context="observation notes"))
-
-    assert len(ollama_stub.calls) == 1
-    assert ollama_stub.calls[0]["temperature"] == 0.3
-    assert dispatcher_stub.calls == []
-    assert output.success is True
-    assert output.summary == "legacy summary"
-    assert output.nuggets[0]["text"] == "legacy observation"
-    assert output.nuggets[0]["source"] == "contextual-inquiry"
-
-
 async def test_contextual_inquiry_execute_flag_on_dispatches_structured(
     monkeypatch, _agentic_core_on
 ):
     from app.skills.discover.contextual_inquiry import CONTEXTUAL_INQUIRY_SCHEMA
 
-    ollama_stub = _StubOllama()
     dispatcher_stub = _StubAgentic(value={
         "nuggets": [{"text": "dispatcher observation", "tags": ["workflow"]}],
         "summary": "dispatcher summary",
     })
 
-    monkeypatch.setattr("app.skills.discover.contextual_inquiry.ollama", ollama_stub)
     monkeypatch.setattr("app.core.agentic.agentic", dispatcher_stub)
 
     output = await _ci_skill().execute(_skill_input(user_context="observation notes"))
 
-    assert ollama_stub.calls == []
     method, kwargs = dispatcher_stub.calls[0]
     assert method == "structured"
     assert kwargs["purpose"] == "skill.discover_analyze"
@@ -365,15 +250,12 @@ async def test_contextual_inquiry_execute_flag_on_dispatches_structured(
 async def test_contextual_inquiry_execute_flag_on_structured_failure_keeps_empty_fallback(
     monkeypatch, _agentic_core_on
 ):
-    ollama_stub = _StubOllama()
     dispatcher_stub = _StubAgentic(value=None, status="error")
 
-    monkeypatch.setattr("app.skills.discover.contextual_inquiry.ollama", ollama_stub)
     monkeypatch.setattr("app.core.agentic.agentic", dispatcher_stub)
 
     output = await _ci_skill().execute(_skill_input(user_context="observation notes"))
 
-    assert ollama_stub.calls == []
     assert output.nuggets == [], "parse-failure path yields no nuggets"
     assert "Found 0 nuggets" in output.summary
 
@@ -387,31 +269,13 @@ def _diary_skill():
     return DiaryStudiesSkill()
 
 
-async def test_diary_plan_flag_off_uses_legacy_plane(monkeypatch, _agentic_core_off):
-    ollama_stub = _StubOllama(text="legacy diary plan")
-    dispatcher_stub = _StubAgentic()
-
-    monkeypatch.setattr("app.skills.discover.diary_studies.ollama", ollama_stub)
-    monkeypatch.setattr("app.core.agentic.agentic", dispatcher_stub)
-
-    result = await _diary_skill().plan(_skill_input())
-
-    assert len(ollama_stub.calls) == 1
-    assert ollama_stub.calls[0]["temperature"] == 0.7
-    assert dispatcher_stub.calls == []
-    assert result == {"skill": "diary-studies", "plan": "legacy diary plan"}
-
-
 async def test_diary_plan_flag_on_dispatches_completion(monkeypatch, _agentic_core_on):
-    ollama_stub = _StubOllama()
     dispatcher_stub = _StubAgentic(text="dispatcher diary plan")
 
-    monkeypatch.setattr("app.skills.discover.diary_studies.ollama", ollama_stub)
     monkeypatch.setattr("app.core.agentic.agentic", dispatcher_stub)
 
     result = await _diary_skill().plan(_skill_input())
 
-    assert ollama_stub.calls == []
     method, kwargs = dispatcher_stub.calls[0]
     assert method == "completion"
     assert kwargs["purpose"] == "skill.discover_plan"
@@ -420,42 +284,18 @@ async def test_diary_plan_flag_on_dispatches_completion(monkeypatch, _agentic_co
     assert result["plan"] == "dispatcher diary plan"
 
 
-async def test_diary_execute_flag_off_uses_legacy_plane(monkeypatch, _agentic_core_off):
-    ollama_stub = _StubOllama(text=json.dumps({
-        "nuggets": [{"text": "legacy diary nugget", "day": "3", "tags": ["habit"]}],
-        "summary": "legacy diary summary",
-    }))
-    dispatcher_stub = _StubAgentic()
-
-    monkeypatch.setattr("app.skills.discover.diary_studies.ollama", ollama_stub)
-    monkeypatch.setattr("app.core.agentic.agentic", dispatcher_stub)
-
-    output = await _diary_skill().execute(_skill_input(user_context="day 1: ..."))
-
-    assert len(ollama_stub.calls) == 1
-    assert ollama_stub.calls[0]["temperature"] == 0.3
-    assert dispatcher_stub.calls == []
-    assert output.success is True
-    assert output.summary == "legacy diary summary"
-    assert output.nuggets[0]["text"] == "legacy diary nugget"
-    assert output.nuggets[0]["source"] == "diary-study"
-
-
 async def test_diary_execute_flag_on_dispatches_structured(monkeypatch, _agentic_core_on):
     from app.skills.discover.diary_studies import DIARY_ANALYSIS_SCHEMA
 
-    ollama_stub = _StubOllama()
     dispatcher_stub = _StubAgentic(value={
         "nuggets": [{"text": "dispatcher diary nugget", "day": "3", "tags": ["habit"]}],
         "summary": "dispatcher diary summary",
     })
 
-    monkeypatch.setattr("app.skills.discover.diary_studies.ollama", ollama_stub)
     monkeypatch.setattr("app.core.agentic.agentic", dispatcher_stub)
 
     output = await _diary_skill().execute(_skill_input(user_context="day 1: ..."))
 
-    assert ollama_stub.calls == []
     method, kwargs = dispatcher_stub.calls[0]
     assert method == "structured"
     assert kwargs["purpose"] == "skill.discover_analyze"
@@ -475,32 +315,13 @@ def _ui_skill():
     return UserInterviewsSkill()
 
 
-async def test_interviews_plan_flag_off_uses_legacy_plane(monkeypatch, _agentic_core_off):
-    ollama_stub = _StubOllama(text="legacy interview guide")
-    dispatcher_stub = _StubAgentic()
-
-    monkeypatch.setattr("app.skills.discover.user_interviews.ollama", ollama_stub)
-    monkeypatch.setattr("app.core.agentic.agentic", dispatcher_stub)
-
-    result = await _ui_skill().plan(_skill_input())
-
-    assert len(ollama_stub.calls) == 1
-    assert ollama_stub.calls[0]["temperature"] == 0.7
-    assert dispatcher_stub.calls == []
-    assert result["plan_type"] == "interview_guide"
-    assert result["guide"] == "legacy interview guide"
-
-
 async def test_interviews_plan_flag_on_dispatches_completion(monkeypatch, _agentic_core_on):
-    ollama_stub = _StubOllama()
     dispatcher_stub = _StubAgentic(text="dispatcher interview guide")
 
-    monkeypatch.setattr("app.skills.discover.user_interviews.ollama", ollama_stub)
     monkeypatch.setattr("app.core.agentic.agentic", dispatcher_stub)
 
     result = await _ui_skill().plan(_skill_input())
 
-    assert ollama_stub.calls == []
     method, kwargs = dispatcher_stub.calls[0]
     assert method == "completion"
     assert kwargs["purpose"] == "skill.discover_plan"
@@ -509,44 +330,19 @@ async def test_interviews_plan_flag_on_dispatches_completion(monkeypatch, _agent
     assert result["guide"] == "dispatcher interview guide"
 
 
-async def test_interviews_execute_single_transcript_flag_off_uses_legacy_plane(
-    monkeypatch, _agentic_core_off
-):
-    ollama_stub = _StubOllama(text=json.dumps({
-        "nuggets": [{"text": "legacy quote", "location": "00:12", "tags": ["trust"]}],
-    }))
-    dispatcher_stub = _StubAgentic()
-
-    monkeypatch.setattr("app.skills.discover.user_interviews.ollama", ollama_stub)
-    monkeypatch.setattr("app.core.agentic.agentic", dispatcher_stub)
-
-    output = await _ui_skill().execute(_skill_input(user_context="interview transcript"))
-
-    assert len(ollama_stub.calls) == 1, "single transcript — analysis only, no synthesis"
-    assert ollama_stub.calls[0]["temperature"] == 0.3
-    assert dispatcher_stub.calls == []
-    assert output.success is True
-    assert output.nuggets[0]["text"] == "legacy quote"
-    assert output.nuggets[0]["source_location"] == "00:12"
-    assert "synthesis.json" not in output.artifacts
-
-
 async def test_interviews_execute_single_transcript_flag_on_dispatches_structured(
     monkeypatch, _agentic_core_on
 ):
     from app.skills.discover.user_interviews import TRANSCRIPT_ANALYSIS_SCHEMA
 
-    ollama_stub = _StubOllama()
     dispatcher_stub = _StubAgentic(value={
         "nuggets": [{"text": "dispatcher quote", "location": "00:12", "tags": ["trust"]}],
     })
 
-    monkeypatch.setattr("app.skills.discover.user_interviews.ollama", ollama_stub)
     monkeypatch.setattr("app.core.agentic.agentic", dispatcher_stub)
 
     output = await _ui_skill().execute(_skill_input(user_context="interview transcript"))
 
-    assert ollama_stub.calls == []
     assert len(dispatcher_stub.calls) == 1, "single transcript — no synthesis call"
     method, kwargs = dispatcher_stub.calls[0]
     assert method == "structured"
@@ -571,52 +367,11 @@ def _fake_process_file(path):
     return SimpleNamespace(error=None, chunks=[SimpleNamespace(text=f"text of {path}")])
 
 
-class _ScriptedOllama:
-    """Legacy stub returning a different body per call (analyses, then synthesis)."""
-
-    def __init__(self, bodies: list[str]) -> None:
-        self.calls: list[dict] = []
-        self._bodies = bodies
-
-    async def chat(self, messages=None, **kwargs):
-        self.calls.append({"messages": messages, **kwargs})
-        index = min(len(self.calls) - 1, len(self._bodies) - 1)
-        return {"message": {"content": self._bodies[index]}}
-
-
-async def test_interviews_synthesis_flag_off_uses_legacy_plane(
-    monkeypatch, _agentic_core_off, tmp_path
-):
-    analysis = json.dumps({"nuggets": [{"text": "q", "location": "", "tags": []}]})
-    synthesis = json.dumps({
-        "facts": [{"text": "legacy fact", "evidence_count": 2, "sources": ["t1", "t2"]}],
-        "insights": [{"text": "legacy insight", "confidence": "high"}],
-        "recommendations": [{"text": "legacy rec", "priority": "high", "effort": "low"}],
-        "research_gaps": [{"description": "legacy gap", "suggested_method": "more interviews"}],
-    })
-    ollama_stub = _ScriptedOllama([analysis, analysis, synthesis])
-    dispatcher_stub = _StubAgentic()
-
-    monkeypatch.setattr("app.skills.discover.user_interviews.ollama", ollama_stub)
-    monkeypatch.setattr("app.core.agentic.agentic", dispatcher_stub)
-    monkeypatch.setattr("app.skills.discover.user_interviews.process_file", _fake_process_file)
-
-    output = await _ui_skill().execute(_skill_input(files=_two_transcripts(tmp_path)))
-
-    assert len(ollama_stub.calls) == 3, "two transcript analyses + one synthesis"
-    assert dispatcher_stub.calls == []
-    assert output.facts[0]["text"] == "legacy fact"
-    assert output.insights[0]["text"] == "legacy insight"
-    assert output.recommendations[0]["priority"] == "high"
-    assert any("legacy gap" in s for s in output.suggestions)
-
-
 async def test_interviews_synthesis_flag_on_dispatches_structured(
     monkeypatch, _agentic_core_on, tmp_path
 ):
     from app.skills.discover.user_interviews import SYNTHESIS_SCHEMA, TRANSCRIPT_ANALYSIS_SCHEMA
 
-    ollama_stub = _StubOllama()
     dispatcher_stub = _StubAgentic()
 
     async def _structured(**kwargs):
@@ -634,13 +389,11 @@ async def test_interviews_synthesis_flag_on_dispatches_structured(
 
     dispatcher_stub.structured = _structured
 
-    monkeypatch.setattr("app.skills.discover.user_interviews.ollama", ollama_stub)
     monkeypatch.setattr("app.core.agentic.agentic", dispatcher_stub)
     monkeypatch.setattr("app.skills.discover.user_interviews.process_file", _fake_process_file)
 
     output = await _ui_skill().execute(_skill_input(files=_two_transcripts(tmp_path)))
 
-    assert ollama_stub.calls == [], "flag on must not call the legacy plane directly"
     assert len(dispatcher_stub.calls) == 3, "two transcript analyses + one synthesis"
     schemas = [kwargs["schema"] for _, kwargs in dispatcher_stub.calls]
     assert schemas[:2] == [TRANSCRIPT_ANALYSIS_SCHEMA, TRANSCRIPT_ANALYSIS_SCHEMA]
@@ -663,7 +416,6 @@ async def test_interviews_synthesis_flag_on_structured_failure_keeps_raw_fallbac
 ):
     from app.skills.discover.user_interviews import SYNTHESIS_SCHEMA
 
-    ollama_stub = _StubOllama()
     dispatcher_stub = _StubAgentic()
 
     async def _structured(**kwargs):
@@ -677,13 +429,11 @@ async def test_interviews_synthesis_flag_on_structured_failure_keeps_raw_fallbac
 
     dispatcher_stub.structured = _structured
 
-    monkeypatch.setattr("app.skills.discover.user_interviews.ollama", ollama_stub)
     monkeypatch.setattr("app.core.agentic.agentic", dispatcher_stub)
     monkeypatch.setattr("app.skills.discover.user_interviews.process_file", _fake_process_file)
 
     output = await _ui_skill().execute(_skill_input(files=_two_transcripts(tmp_path)))
 
-    assert ollama_stub.calls == []
     synthesis_artifact = json.loads(output.artifacts["synthesis.json"])
     assert synthesis_artifact == {"raw_synthesis": "not json"}, "parse-failure path preserved"
     assert output.facts == [] and output.insights == [] and output.recommendations == []
@@ -718,10 +468,8 @@ def _raising_dispatcher(dispatcher_stub, *, raise_for=None):
 async def test_channel_analyze_flag_on_structured_raise_keeps_raw_fallback(
     monkeypatch, _agentic_core_on
 ):
-    ollama_stub = _StubOllama()
     dispatcher_stub = _raising_dispatcher(_StubAgentic())
 
-    monkeypatch.setattr("app.core.ollama.ollama", ollama_stub)
     monkeypatch.setattr("app.core.agentic.agentic", dispatcher_stub)
 
     output = await _channel_skill().execute(_skill_input(
@@ -729,7 +477,6 @@ async def test_channel_analyze_flag_on_structured_raise_keeps_raw_fallback(
                     "deployment_type": "interview", "responses": [{"answer": "a"}]},
     ))
 
-    assert ollama_stub.calls == []
     assert len(dispatcher_stub.calls) == 1
     artifact = json.loads(output.artifacts["deployment_analysis.json"])
     assert artifact["raw_analysis"] == "", "raised structured call must degrade to raw_analysis"
@@ -739,15 +486,12 @@ async def test_channel_analyze_flag_on_structured_raise_keeps_raw_fallback(
 async def test_contextual_inquiry_execute_flag_on_structured_raise_keeps_empty_fallback(
     monkeypatch, _agentic_core_on
 ):
-    ollama_stub = _StubOllama()
     dispatcher_stub = _raising_dispatcher(_StubAgentic())
 
-    monkeypatch.setattr("app.skills.discover.contextual_inquiry.ollama", ollama_stub)
     monkeypatch.setattr("app.core.agentic.agentic", dispatcher_stub)
 
     output = await _ci_skill().execute(_skill_input(user_context="observation notes"))
 
-    assert ollama_stub.calls == []
     assert len(dispatcher_stub.calls) == 1
     assert output.nuggets == [], "raised structured call must degrade to empty analysis"
     assert "Found 0 nuggets" in output.summary
@@ -756,15 +500,12 @@ async def test_contextual_inquiry_execute_flag_on_structured_raise_keeps_empty_f
 async def test_diary_execute_flag_on_structured_raise_keeps_empty_fallback(
     monkeypatch, _agentic_core_on
 ):
-    ollama_stub = _StubOllama()
     dispatcher_stub = _raising_dispatcher(_StubAgentic())
 
-    monkeypatch.setattr("app.skills.discover.diary_studies.ollama", ollama_stub)
     monkeypatch.setattr("app.core.agentic.agentic", dispatcher_stub)
 
     output = await _diary_skill().execute(_skill_input(user_context="day 1: ..."))
 
-    assert ollama_stub.calls == []
     assert len(dispatcher_stub.calls) == 1
     assert output.success is True
     assert output.nuggets == [], "raised structured call must degrade to empty analysis"
@@ -773,15 +514,12 @@ async def test_diary_execute_flag_on_structured_raise_keeps_empty_fallback(
 async def test_interviews_execute_flag_on_structured_raise_keeps_raw_analysis(
     monkeypatch, _agentic_core_on
 ):
-    ollama_stub = _StubOllama()
     dispatcher_stub = _raising_dispatcher(_StubAgentic())
 
-    monkeypatch.setattr("app.skills.discover.user_interviews.ollama", ollama_stub)
     monkeypatch.setattr("app.core.agentic.agentic", dispatcher_stub)
 
     output = await _ui_skill().execute(_skill_input(user_context="interview transcript"))
 
-    assert ollama_stub.calls == []
     assert len(dispatcher_stub.calls) == 1, "single transcript — no synthesis call"
     assert output.success is True
     assert output.nuggets == [], "raised structured call must degrade to raw_analysis"
@@ -794,7 +532,6 @@ async def test_interviews_synthesis_flag_on_structured_raise_keeps_raw_fallback(
 ):
     from app.skills.discover.user_interviews import SYNTHESIS_SCHEMA
 
-    ollama_stub = _StubOllama()
     dispatcher_stub = _StubAgentic(
         value={"nuggets": [{"text": "quote", "location": "", "tags": []}]}
     )
@@ -803,13 +540,11 @@ async def test_interviews_synthesis_flag_on_structured_raise_keeps_raw_fallback(
     # ``schema in raise_for`` membership check matches by equality.
     _raising_dispatcher(dispatcher_stub, raise_for=[SYNTHESIS_SCHEMA])
 
-    monkeypatch.setattr("app.skills.discover.user_interviews.ollama", ollama_stub)
     monkeypatch.setattr("app.core.agentic.agentic", dispatcher_stub)
     monkeypatch.setattr("app.skills.discover.user_interviews.process_file", _fake_process_file)
 
     output = await _ui_skill().execute(_skill_input(files=_two_transcripts(tmp_path)))
 
-    assert ollama_stub.calls == []
     assert len(dispatcher_stub.calls) == 3, "two transcript analyses + one synthesis"
     synthesis_artifact = json.loads(output.artifacts["synthesis.json"])
     assert synthesis_artifact == {"raw_synthesis": ""}, "raised synthesis must degrade"

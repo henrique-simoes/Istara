@@ -15,10 +15,22 @@ from dataclasses import dataclass
 from app.config import settings
 from app.core.embedding_cache import embedding_cache
 from app.core.ollama import ollama
-from app.core.pi_runtime.embeddings_gateway import validate_embedding_vectors
-from app.core.pi_runtime.endpoints import PiEndpointResolutionError
 
 logger = logging.getLogger(__name__)
+
+
+def _validate_embedding_vectors(vectors, **kwargs):  # noqa: ANN001, ANN201
+    """Lazy wrapper around the gateway validator.
+
+    Imported function-locally so this low-level module does not pull
+    ``app.core.pi_runtime`` at module import time — that eager edge closed a
+    module-level import cycle (embeddings → pi_runtime.engine → telemetry →
+    research_validity → skills.intercoder → skill_factory → file_processor →
+    embeddings). Same pattern as the gateway import in ``_dispatch_embed``.
+    """
+    from app.core.pi_runtime.embeddings_gateway import validate_embedding_vectors
+
+    return validate_embedding_vectors(vectors, **kwargs)
 
 
 @dataclass
@@ -65,11 +77,11 @@ async def embed_text(text: str) -> list[float]:
     cached = await embedding_cache.get(model, text)
     if cached is not None:
         try:
-            return validate_embedding_vectors([cached], expected_count=1)[0]
+            return _validate_embedding_vectors([cached], expected_count=1)[0]
         except Exception:
             logger.warning("Ignoring malformed embedding cache entry for model %s", model)
 
-    vectors = validate_embedding_vectors(await _dispatch_embed([text]), expected_count=1)
+    vectors = _validate_embedding_vectors(await _dispatch_embed([text]), expected_count=1)
     vector = vectors[0]
     await embedding_cache.put(model, text, vector)
     return vector
@@ -110,7 +122,7 @@ async def embed_chunks(chunks: list[TextChunk], batch_size: int = 32) -> list[Em
         batch_chunks = [chunks[i] for i in batch_indices]
         texts = [c.text for c in batch_chunks]
 
-        vectors = validate_embedding_vectors(
+        vectors = _validate_embedding_vectors(
             await _dispatch_embed(texts), expected_count=len(texts)
         )
 
@@ -141,6 +153,8 @@ async def ensure_embed_model() -> None:
         endpoint = manager.resolve_embed(model)
         provisioned = await ensure_endpoint_model(endpoint, model)
         if endpoint.kind == "local" and not provisioned:
+            from app.core.pi_runtime.endpoints import PiEndpointResolutionError
+
             raise PiEndpointResolutionError(
                 f"embedding_model_provision_failed:{endpoint.endpoint_id}"
             )

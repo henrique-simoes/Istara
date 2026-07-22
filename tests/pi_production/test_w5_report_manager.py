@@ -1,25 +1,22 @@
 """W5 contract coverage — report_manager migration (master plan §8 W5).
 
-The six ``llm_router.chat`` call sites in ``report_manager.py``
+The six LLM call sites in ``report_manager.py``
 (``_generate_executive_summary``, ``_generate_mece_categories``,
 ``_compose_full_report`` weakest-section scoring, and the three
 ``_compose_section`` narrative sites) route through the AgenticDispatcher —
 ``completion`` → ``report.exec_summary`` / ``report.insights_narrative`` /
 ``report.recommendations_narrative`` / ``report.gaps_analysis``,
-``structured`` → ``report.mece`` / ``report.weakest_section`` — gated on the
-``agentic_core`` feature flag, with the legacy ``llm_router.chat`` branch
-preserved alongside for ``agentic_core=False``.
+``structured`` → ``report.mece`` / ``report.weakest_section``. The W9
+ratchet retired the ``agentic_core`` feature-flag gate and the legacy
+``llm_router.chat`` fallthrough branches: the dispatcher is the only path.
 
 Covered here (all stubbed/static — no live model activity):
 
-* static: each migrated function carries both the dispatcher path (flag on,
-  right purpose slug) and the preserved legacy branch;
-* behavior (flag off): the legacy stub is called exactly as before and the
-  dispatcher is never touched;
-* behavior (flag on): the dispatcher stub records the call (right verb,
-  purpose, project scope) and the legacy stub is never called; downstream
-  behavior (report writes, convergence break, fallback sentinels) is
-  unchanged.
+* static: each migrated function carries the dispatcher path (right verb,
+  right purpose slug) and no legacy branch remains;
+* behavior: the dispatcher stub records the call (right verb, purpose,
+  project scope) and the legacy plane is never called; downstream behavior
+  (report writes, convergence break, fallback sentinels) is unchanged.
 """
 
 from __future__ import annotations
@@ -145,11 +142,6 @@ def _agentic_core_on(monkeypatch):
     monkeypatch.setattr("app.config.settings.agentic_core", True)
 
 
-@pytest.fixture
-def _agentic_core_off(monkeypatch):
-    monkeypatch.setattr("app.config.settings.agentic_core", False)
-
-
 def _report(**overrides):
     report = SimpleNamespace(
         id="r1",
@@ -168,57 +160,39 @@ def _report(**overrides):
     return report
 
 
-# ── static: both paths present ──────────────────────────────────────────
+# ── static: dispatcher path present, legacy branch retired ─────────────
 
 
-def test_w5_report_manager_sites_carry_dispatcher_path_and_preserved_legacy_branch():
+def test_w5_report_manager_sites_carry_dispatcher_path_and_no_legacy_branch():
     exec_summary = _function_source("_generate_executive_summary")
-    assert "agentic_core" in exec_summary and "agentic.completion" in exec_summary
+    assert "agentic_core" not in exec_summary, "W9 retired the feature-flag gate"
+    assert "agentic.completion" in exec_summary
     assert 'purpose="report.exec_summary"' in exec_summary
-    assert "llm_router.chat" in exec_summary, "legacy branch must be preserved alongside"
+    assert "llm_router.chat" not in exec_summary, "legacy branch must be gone"
 
     mece = _function_source("_generate_mece_categories")
-    assert "agentic_core" in mece and "agentic.structured" in mece
+    assert "agentic_core" not in mece
+    assert "agentic.structured" in mece
     assert 'purpose="report.mece"' in mece
     assert '"categories"' in mece, "structured root object wraps the category array"
-    assert "llm_router.chat" in mece
+    assert "llm_router.chat" not in mece
 
     compose_full = _function_source("_compose_full_report")
-    assert "agentic_core" in compose_full and "agentic.structured" in compose_full
+    assert "agentic_core" not in compose_full
+    assert "agentic.structured" in compose_full
     assert 'purpose="report.weakest_section"' in compose_full
-    assert "llm_router.chat" in compose_full
+    assert "llm_router.chat" not in compose_full
 
     section = _function_source("_compose_section")
-    assert section.count("settings.agentic_core") == 3
+    assert section.count("settings.agentic_core") == 0, "W9 retired all three flag gates"
     assert section.count("agentic.completion") == 3
     assert 'purpose="report.insights_narrative"' in section
     assert 'purpose="report.recommendations_narrative"' in section
     assert 'purpose="report.gaps_analysis"' in section
-    assert section.count("llm_router.chat") == 3, "all three legacy branches preserved"
+    assert section.count("llm_router.chat") == 0, "all three legacy branches retired"
 
 
 # ── behavior: _generate_executive_summary (report.exec_summary) ─────────
-
-
-async def test_exec_summary_flag_off_uses_legacy_plane(monkeypatch, _agentic_core_off):
-    router_stub = _StubRouter(text="SITUATION\nA legacy executive summary.")
-    dispatcher_stub = _StubAgentic()
-    monkeypatch.setattr("app.core.llm_router.llm_router", router_stub)
-    monkeypatch.setattr("app.core.agentic.agentic", dispatcher_stub)
-
-    fresh = SimpleNamespace(executive_summary=None)
-    db = _StubDB(execute_results=[[SimpleNamespace(text="finding text one")]], fresh=fresh)
-
-    await _manager()._generate_executive_summary(_report(), db)
-
-    assert len(router_stub.calls) == 1, "flag off must use the legacy plane"
-    assert dispatcher_stub.calls == [], "flag off must not touch the dispatcher"
-    call = router_stub.calls[0]
-    assert call["temperature"] == 0.3
-    assert call["project_id"] == "p1"
-    assert "SCR" in call["messages"][0]["content"]
-    assert fresh.executive_summary == "SITUATION\nA legacy executive summary."
-    assert db.commits == 1
 
 
 async def test_exec_summary_flag_on_dispatches_report_exec_summary(monkeypatch, _agentic_core_on):
@@ -259,36 +233,6 @@ def _mece_report():
 def _mece_db(fresh):
     findings = [SimpleNamespace(id=f"f{i}", text=f"finding text {i}") for i in range(3)]
     return _StubDB(execute_results=[findings], fresh=fresh)
-
-
-async def test_mece_flag_off_uses_legacy_plane(monkeypatch, _agentic_core_off):
-    router_stub = _StubRouter(text=f'prefix {json.dumps(_MECE_CATEGORIES)} suffix')
-    dispatcher_stub = _StubAgentic()
-    monkeypatch.setattr("app.core.llm_router.llm_router", router_stub)
-    monkeypatch.setattr("app.core.agentic.agentic", dispatcher_stub)
-
-    fresh = SimpleNamespace(mece_categories_json=None)
-    await _manager()._generate_mece_categories(_mece_report(), _mece_db(fresh))
-
-    assert len(router_stub.calls) == 1
-    assert dispatcher_stub.calls == []
-    assert router_stub.calls[0]["temperature"] == 0.3
-    assert router_stub.calls[0]["project_id"] == "p1"
-    assert json.loads(fresh.mece_categories_json) == _MECE_CATEGORIES
-
-
-async def test_mece_flag_off_no_json_writes_nothing(monkeypatch, _agentic_core_off):
-    router_stub = _StubRouter(text="no json here")
-    monkeypatch.setattr("app.core.llm_router.llm_router", router_stub)
-    monkeypatch.setattr("app.core.agentic.agentic", _StubAgentic())
-
-    fresh = SimpleNamespace(mece_categories_json=None)
-    db = _mece_db(fresh)
-    await _manager()._generate_mece_categories(_mece_report(), db)
-
-    assert len(router_stub.calls) == 1
-    assert fresh.mece_categories_json is None, "parse failure path preserved"
-    assert db.commits == 0
 
 
 async def test_mece_flag_on_dispatches_report_mece(monkeypatch, _agentic_core_on):
@@ -346,26 +290,6 @@ def _compose_db(fresh):
     return _StubDB(execute_results=[[], [], [], [], []], fresh=fresh)
 
 
-async def test_compose_full_report_flag_off_scores_via_legacy(monkeypatch, _agentic_core_off):
-    router_stub = _StubRouter(text=json.dumps(_SCORES_CONVERGED))
-    dispatcher_stub = _StubAgentic()
-    monkeypatch.setattr("app.core.llm_router.llm_router", router_stub)
-    monkeypatch.setattr("app.core.agentic.agentic", dispatcher_stub)
-
-    fresh = SimpleNamespace(content_json=None, status="draft", version=1)
-    db = _compose_db(fresh)
-    await _manager()._compose_full_report(_report(), "p1", db)
-
-    assert len(router_stub.calls) == 1, "scoring loop uses the legacy plane"
-    assert dispatcher_stub.calls == []
-    call = router_stub.calls[0]
-    assert call["temperature"] == 0.2
-    assert call["project_id"] == "p1"
-    content = json.loads(fresh.content_json)
-    assert "full_document" in content
-    assert fresh.status == "review"
-
-
 async def test_compose_full_report_flag_on_dispatches_report_weakest_section(
     monkeypatch, _agentic_core_on
 ):
@@ -408,23 +332,6 @@ def _section_args(source, fmt):
     return template, findings, report
 
 
-async def test_compose_section_insights_flag_off_uses_legacy_plane(_agentic_core_off, monkeypatch):
-    router_stub = _StubRouter(text="legacy detailed narrative")
-    dispatcher_stub = _StubAgentic()
-    monkeypatch.setattr("app.core.agentic.agentic", dispatcher_stub)
-    template, findings, report = _section_args("insights", "detailed_narrative")
-
-    result = await _manager()._compose_section(
-        template, findings, report, [], router_stub, project_id="p1"
-    )
-
-    assert result == "legacy detailed narrative"
-    assert len(router_stub.calls) == 1
-    assert dispatcher_stub.calls == []
-    assert router_stub.calls[0]["temperature"] == 0.3
-    assert router_stub.calls[0]["project_id"] == "p1"
-
-
 async def test_compose_section_insights_flag_on_dispatches_report_insights_narrative(
     monkeypatch, _agentic_core_on
 ):
@@ -434,7 +341,7 @@ async def test_compose_section_insights_flag_on_dispatches_report_insights_narra
     template, findings, report = _section_args("insights", "detailed_narrative")
 
     result = await _manager()._compose_section(
-        template, findings, report, [], router_stub, project_id="p1"
+        template, findings, report, [], project_id="p1"
     )
 
     assert result == "dispatcher detailed narrative"
@@ -456,7 +363,7 @@ async def test_compose_section_recommendations_flag_on_dispatches(
     template, findings, report = _section_args("recommendations", "priority_table")
 
     result = await _manager()._compose_section(
-        template, findings, report, [], router_stub, project_id="p1"
+        template, findings, report, [], project_id="p1"
     )
 
     assert result == "dispatcher recommendation detail"
@@ -474,7 +381,7 @@ async def test_compose_section_gaps_flag_on_dispatches(monkeypatch, _agentic_cor
     template, findings, report = _section_args("gaps", "narrative")
 
     result = await _manager()._compose_section(
-        template, findings, report, [], router_stub, project_id="p1"
+        template, findings, report, [], project_id="p1"
     )
 
     assert result == "dispatcher gaps analysis"
@@ -495,7 +402,7 @@ async def test_compose_section_empty_dispatcher_text_falls_back_to_sentinel(
     template, findings, report = _section_args("insights", "detailed_narrative")
 
     result = await _manager()._compose_section(
-        template, findings, report, [], router_stub, project_id="p1"
+        template, findings, report, [], project_id="p1"
     )
 
     assert result == "Detailed narrative generation failed.", (

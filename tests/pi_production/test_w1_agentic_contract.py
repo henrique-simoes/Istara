@@ -639,11 +639,12 @@ def test_ratchet_is_consistent_and_only_ratchets_down():
     migrated the 8 research-spine + steering sites (agent_research L1/L2/L3/L5,
     self_check L6, agent_execution L7, agent_lifecycle L10); W8 migrated all
     17 embed sites (embeddings.py/validation.py wrappers now route through
-    agentic.embed), so the current floor is 53."""
+    agentic.embed); W9 (final) retired the 53 preserved per-site legacy
+    branches, so the ratchet reached its floor of 0."""
     from tests.pi_migration.test_count_to_zero import EXPECTED_PRODUCT_SITES, check_count_to_zero
 
     assert EXPECTED_PRODUCT_SITES <= 87, "the ratchet must never migrate sites back onto the legacy plane"
-    assert EXPECTED_PRODUCT_SITES == 53, "W8 migrated the 17 embed sites: ratchet floor is 53"
+    assert EXPECTED_PRODUCT_SITES == 0, "W9 retired the 53 preserved legacy branches: ratchet floor is 0"
     check_count_to_zero()  # raises RuntimeError naming every violation
 
 

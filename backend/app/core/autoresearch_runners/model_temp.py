@@ -291,11 +291,10 @@ class ModelTempRunner(BaseLoopRunner):
     ) -> float:
         """Execute a skill once and return a quality score in [0, 1].
 
-        On the Pi engine the swept candidate is pinned by exact ``endpoint_id``
+        The swept candidate is pinned by exact ``endpoint_id``
         (``TurnParams.endpoint_id``) so the dispatcher resolves the precise
         catalog identity rather than the first model match.
         """
-        from app.core.llm_router import llm_router
         from app.skills.skill_manager import skill_manager
 
         defn = skill_manager.get(skill_name)
@@ -322,34 +321,27 @@ class ModelTempRunner(BaseLoopRunner):
         ]
 
         try:
-            if self.use_pi_engine():
-                # W6: the candidate skill run goes through the AgenticDispatcher
-                # (``autoresearch.model_temp.evaluate``); the swept candidate is
-                # pinned by exact ``endpoint_id`` so same-model endpoints are
-                # resolved distinctly. The legacy branch below is preserved for
-                # agentic_core=False.
-                from app.core.agentic import agentic
-                from app.core.agentic.types import TurnParams
+            # W6/W9: the candidate skill run goes through the AgenticDispatcher
+            # (``autoresearch.model_temp.evaluate``); the swept candidate is
+            # pinned by exact ``endpoint_id`` so same-model endpoints are
+            # resolved distinctly.
+            from app.core.agentic import agentic
+            from app.core.agentic.types import TurnParams
 
-                outcome = await agentic.completion(
-                    purpose="autoresearch.model_temp.evaluate",
-                    project_id=self.require_project_id(),
-                    system=messages[0]["content"],
-                    messages=messages[1:],
-                    params=TurnParams(
-                        endpoint_id=endpoint_id,
-                        model=model,
-                        temperature=temperature,
-                    ),
-                    spine_phase="execution",
-                    engine=self.engine,
-                )
-                content = outcome.text
-            else:
-                response = await llm_router.chat(
-                    messages, model=model, temperature=temperature
-                )
-                content = response.get("message", {}).get("content", "")
+            outcome = await agentic.completion(
+                purpose="autoresearch.model_temp.evaluate",
+                project_id=self.require_project_id(),
+                system=messages[0]["content"],
+                messages=messages[1:],
+                params=TurnParams(
+                    endpoint_id=endpoint_id,
+                    model=model,
+                    temperature=temperature,
+                ),
+                spine_phase="execution",
+                engine=self.engine,
+            )
+            content = outcome.text
         except Exception as e:
             logger.warning(f"Skill evaluation failed: {e}")
             return 0.0
@@ -383,8 +375,6 @@ class ModelTempRunner(BaseLoopRunner):
 
     async def _score_output(self, output: str, skill_name: str) -> float:
         """Use LLM to score skill output quality on a 0-1 scale."""
-        from app.core.llm_router import llm_router
-
         if not output or len(output.strip()) < 20:
             return 0.1
 
@@ -408,28 +398,21 @@ class ModelTempRunner(BaseLoopRunner):
         ]
 
         try:
-            if self.use_pi_engine():
-                # W6: the LLM-as-judge score goes through the AgenticDispatcher
-                # (``autoresearch.model_temp.score``); the legacy branch below is
-                # preserved for agentic_core=False.
-                from app.core.agentic import agentic
-                from app.core.agentic.types import TurnParams
+            # W6/W9: the LLM-as-judge score goes through the AgenticDispatcher
+            # (``autoresearch.model_temp.score``).
+            from app.core.agentic import agentic
+            from app.core.agentic.types import TurnParams
 
-                outcome = await agentic.completion(
-                    purpose="autoresearch.model_temp.score",
-                    project_id=self.require_project_id(),
-                    system=scoring_messages[0]["content"],
-                    messages=scoring_messages[1:],
-                    params=TurnParams(temperature=0.1, max_tokens=10),
-                    spine_phase="review",
-                    engine=self.engine,
-                )
-                score_text = (outcome.text or "").strip()
-            else:
-                response = await llm_router.chat(
-                    scoring_messages, temperature=0.1, max_tokens=10
-                )
-                score_text = response.get("message", {}).get("content", "").strip()
+            outcome = await agentic.completion(
+                purpose="autoresearch.model_temp.score",
+                project_id=self.require_project_id(),
+                system=scoring_messages[0]["content"],
+                messages=scoring_messages[1:],
+                params=TurnParams(temperature=0.1, max_tokens=10),
+                spine_phase="review",
+                engine=self.engine,
+            )
+            score_text = (outcome.text or "").strip()
             # Parse the score — extract first float-like token
             for token in score_text.replace(",", ".").split():
                 try:

@@ -11,8 +11,6 @@ import json
 import logging
 from pathlib import Path
 
-from app.config import settings
-from app.core.ollama import ollama
 from app.core.file_processor import process_file
 from app.core.rag import retrieve_context
 from app.skills.base import BaseSkill, SkillInput, SkillOutput, SkillPhase, SkillType
@@ -153,7 +151,7 @@ Respond in valid JSON with this structure:
 
 
 # W5: schemas for the AgenticDispatcher structured paths of ``execute``
-# (``skill.discover_analyze``); both engines validate against them.
+# (``skill.discover_analyze``); the dispatcher validates against them.
 # Formalized from the TRANSCRIPT_ANALYSIS_PROMPT / SYNTHESIS_PROMPT response
 # shapes — every key is read via ``.get`` downstream, so nothing is required.
 TRANSCRIPT_ANALYSIS_SCHEMA = {
@@ -327,30 +325,20 @@ class UserInterviewsSkill(BaseSkill):
             research_questions=research_questions,
         )
 
-        if settings.agentic_core:
-            # W5: interview guide generation goes through the
-            # AgenticDispatcher (``skill.discover_plan``); the legacy
-            # ``ollama.chat`` branch below is preserved verbatim for
-            # agentic_core=False.
-            from app.core.agentic import agentic
-            from app.core.agentic.types import TurnParams
+        # W5: interview guide generation goes through the
+        # AgenticDispatcher (``skill.discover_plan``).
+        from app.core.agentic import agentic
+        from app.core.agentic.types import TurnParams
 
-            outcome = await agentic.completion(
-                purpose="skill.discover_plan",
-                project_id=skill_input.project_id,
-                system=None,
-                messages=[{"role": "user", "content": prompt}],
-                params=TurnParams(temperature=0.7),
-                spine_phase="plan",
-            )
-            guide_content = outcome.text
-        else:
-            response = await ollama.chat(
-                messages=[{"role": "user", "content": prompt}],
-                temperature=0.7,
-            )
-
-            guide_content = response.get("message", {}).get("content", "")
+        outcome = await agentic.completion(
+            purpose="skill.discover_plan",
+            project_id=skill_input.project_id,
+            system=None,
+            messages=[{"role": "user", "content": prompt}],
+            params=TurnParams(temperature=0.7),
+            spine_phase="plan",
+        )
+        guide_content = outcome.text
 
         return {
             "skill": self.name,
@@ -441,53 +429,32 @@ class UserInterviewsSkill(BaseSkill):
                 transcript=transcript[:4000],  # Limit transcript length for context window
             )
 
-            if settings.agentic_core:
-                # W5: transcript analysis goes through the AgenticDispatcher
-                # (``skill.discover_analyze``) with TRANSCRIPT_ANALYSIS_SCHEMA
-                # driving both engines; the legacy ``ollama.chat`` branch
-                # below is preserved verbatim for agentic_core=False.
-                from app.core.agentic import agentic
-                from app.core.agentic.types import TurnParams
+            # W5: transcript analysis goes through the AgenticDispatcher
+            # (``skill.discover_analyze``) with TRANSCRIPT_ANALYSIS_SCHEMA
+            # driving the engine.
+            from app.core.agentic import agentic
+            from app.core.agentic.types import TurnParams
 
-                try:
-                    outcome = await agentic.structured(
-                        purpose="skill.discover_analyze",
-                        project_id=skill_input.project_id,
-                        system=None,
-                        messages=[{"role": "user", "content": prompt}],
-                        schema=TRANSCRIPT_ANALYSIS_SCHEMA,
-                        params=TurnParams(temperature=0.3),
-                        spine_phase="synthesis",
-                    )
-                    if outcome.status == "success" and outcome.value:
-                        analysis = outcome.value
-                    else:
-                        analysis = {"raw_analysis": outcome.text}
-                except Exception as e:
-                    # F-W5-2: the Pi engine raises PiRuntimeTurnError on
-                    # invalid structured output instead of returning
-                    # status != "success"; degrade to raw_analysis fallback.
-                    logger.warning("Transcript analysis raised; degrading to raw_analysis: %s", e)
-                    analysis = {"raw_analysis": ""}
-            else:
-                response = await ollama.chat(
+            try:
+                outcome = await agentic.structured(
+                    purpose="skill.discover_analyze",
+                    project_id=skill_input.project_id,
+                    system=None,
                     messages=[{"role": "user", "content": prompt}],
-                    temperature=0.3,
+                    schema=TRANSCRIPT_ANALYSIS_SCHEMA,
+                    params=TurnParams(temperature=0.3),
+                    spine_phase="synthesis",
                 )
-
-                response_text = response.get("message", {}).get("content", "")
-
-                # Parse JSON response
-                try:
-                    # Try to extract JSON from the response
-                    json_start = response_text.find("{")
-                    json_end = response_text.rfind("}") + 1
-                    if json_start >= 0 and json_end > json_start:
-                        analysis = json.loads(response_text[json_start:json_end])
-                    else:
-                        analysis = {"raw_analysis": response_text}
-                except json.JSONDecodeError:
-                    analysis = {"raw_analysis": response_text}
+                if outcome.status == "success" and outcome.value:
+                    analysis = outcome.value
+                else:
+                    analysis = {"raw_analysis": outcome.text}
+            except Exception as e:
+                # F-W5-2: the Pi engine raises PiRuntimeTurnError on
+                # invalid structured output instead of returning
+                # status != "success"; degrade to raw_analysis fallback.
+                logger.warning("Transcript analysis raised; degrading to raw_analysis: %s", e)
+                analysis = {"raw_analysis": ""}
 
             analysis["source_file"] = source_name
             all_analyses.append(analysis)
@@ -510,50 +477,33 @@ class UserInterviewsSkill(BaseSkill):
                 analyses=analyses_text[:12000],
             )
 
-            if settings.agentic_core:
-                # W5: cross-interview synthesis goes through the
-                # AgenticDispatcher (``skill.discover_analyze``) — the result
-                # is JSON-parsed below, so it uses the structured verb with
-                # SYNTHESIS_SCHEMA driving both engines; the legacy
-                # ``ollama.chat`` branch is preserved verbatim for
-                # agentic_core=False.
-                from app.core.agentic import agentic
-                from app.core.agentic.types import TurnParams
+            # W5: cross-interview synthesis goes through the
+            # AgenticDispatcher (``skill.discover_analyze``) — the result
+            # is JSON-parsed below, so it uses the structured verb with
+            # SYNTHESIS_SCHEMA driving the engine.
+            from app.core.agentic import agentic
+            from app.core.agentic.types import TurnParams
 
-                try:
-                    outcome = await agentic.structured(
-                        purpose="skill.discover_analyze",
-                        project_id=skill_input.project_id,
-                        system=None,
-                        messages=[{"role": "user", "content": synthesis_prompt}],
-                        schema=SYNTHESIS_SCHEMA,
-                        params=TurnParams(temperature=0.3),
-                        spine_phase="synthesis",
-                    )
-                    if outcome.status == "success" and outcome.value:
-                        synthesis = outcome.value
-                    else:
-                        synthesis = {"raw_synthesis": outcome.text}
-                except Exception as e:
-                    # F-W5-2: the Pi engine raises PiRuntimeTurnError on
-                    # invalid structured output instead of returning
-                    # status != "success"; degrade to raw_synthesis fallback.
-                    logger.warning("Interview synthesis raised; degrading to raw_synthesis: %s", e)
-                    synthesis = {"raw_synthesis": ""}
-            else:
-                synth_response = await ollama.chat(
+            try:
+                outcome = await agentic.structured(
+                    purpose="skill.discover_analyze",
+                    project_id=skill_input.project_id,
+                    system=None,
                     messages=[{"role": "user", "content": synthesis_prompt}],
-                    temperature=0.3,
+                    schema=SYNTHESIS_SCHEMA,
+                    params=TurnParams(temperature=0.3),
+                    spine_phase="synthesis",
                 )
-
-                synth_text = synth_response.get("message", {}).get("content", "")
-                try:
-                    json_start = synth_text.find("{")
-                    json_end = synth_text.rfind("}") + 1
-                    if json_start >= 0 and json_end > json_start:
-                        synthesis = json.loads(synth_text[json_start:json_end])
-                except json.JSONDecodeError:
-                    synthesis = {"raw_synthesis": synth_text}
+                if outcome.status == "success" and outcome.value:
+                    synthesis = outcome.value
+                else:
+                    synthesis = {"raw_synthesis": outcome.text}
+            except Exception as e:
+                # F-W5-2: the Pi engine raises PiRuntimeTurnError on
+                # invalid structured output instead of returning
+                # status != "success"; degrade to raw_synthesis fallback.
+                logger.warning("Interview synthesis raised; degrading to raw_synthesis: %s", e)
+                synthesis = {"raw_synthesis": ""}
 
         # Build output
         facts = []

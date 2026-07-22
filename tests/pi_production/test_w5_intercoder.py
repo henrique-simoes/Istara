@@ -5,29 +5,36 @@ The five LLM call sites in ``app/skills/intercoder.py``
 Coder A, Coder B, reconciliation, theme extraction) route through the
 AgenticDispatcher — ``completion`` → ``skill.kappa_plan``, ``structured`` →
 ``skill.kappa_code_a`` / ``skill.kappa_code_b`` / ``skill.kappa_reconcile`` /
-``skill.kappa_themes`` — gated on the ``agentic_core`` feature flag, with the
-legacy ``ollama.chat`` branch preserved alongside for ``agentic_core=False``.
+``skill.kappa_themes``. W9 removed the ``agentic_core`` feature-flag gate and
+the legacy ``ollama.chat`` fallthrough branches: the dispatcher path is now
+the only path.
 
 Covered here (all stubbed/static — no live model activity):
 
-* static: each migrated function carries both the dispatcher path (flag on)
-  and the preserved legacy branch, with the planned purpose slugs;
-* behavior (flag off): the legacy ``ollama`` stub drives every step and the
-  dispatcher stub is never touched; the pipeline output is unchanged;
-* behavior (flag on): the dispatcher stub records each call (verb, purpose,
-  project scope), the legacy stub is never called, and downstream behavior
-  (kappa math, reconciliation application, parse-failure fallback) is
-  unchanged.
+* static: each migrated function carries the dispatcher path with the
+  planned purpose slugs, and no legacy ``ollama.chat`` branch remains;
+* behavior: the dispatcher stub records each call (verb, purpose,
+  project scope) and downstream behavior (kappa math, reconciliation
+  application, parse-failure fallback) is unchanged.
 """
 
 from __future__ import annotations
 
 import ast
-import json
 from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
+
+# Import-order guard: this suite imports app.skills.intercoder inside test
+# bodies. That module sits on a latent module-level import cycle
+# (research_validity -> skills.intercoder -> skill_factory -> file_processor
+# -> embeddings -> pi_runtime.engine -> telemetry -> research_validity) that
+# only resolves when the dispatcher plane (app.core.agentic) has been
+# initialized first in the process. The cycle is pre-existing architecture
+# debt outside this wave's files; initializing the plane here keeps a
+# standalone run of this file green.
+import app.core.agentic  # noqa: F401
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 INTERCODER = REPO_ROOT / "backend/app/skills/intercoder.py"
@@ -94,28 +101,9 @@ class _StubAgentic:
         )
 
 
-class _StubOllama:
-    """Legacy stand-in returning queued raw response texts."""
-
-    def __init__(self, texts: list[str] | None = None, text: str = "legacy text") -> None:
-        self.calls: list[dict] = []
-        self._texts = list(texts) if texts is not None else None
-        self._text = text
-
-    async def chat(self, messages=None, **kwargs):
-        self.calls.append({"messages": messages, **kwargs})
-        content = self._texts.pop(0) if self._texts else self._text
-        return {"message": {"content": content}}
-
-
 @pytest.fixture
 def _agentic_core_on(monkeypatch):
     monkeypatch.setattr("app.config.settings.agentic_core", True)
-
-
-@pytest.fixture
-def _agentic_core_off(monkeypatch):
-    monkeypatch.setattr("app.config.settings.agentic_core", False)
 
 
 def _skill():
@@ -177,26 +165,27 @@ THEMES_DATA = {
 }
 
 
-# ── static: both paths present with planned purpose slugs ───────────────
+# ── static: dispatcher paths present, legacy branches removed (W9) ──────
 
 
-def test_w5_plan_carries_dispatcher_path_and_preserved_legacy_branch():
+def test_w5_plan_carries_dispatcher_path():
     plan = _function_source("plan")
-    assert "agentic_core" in plan and "agentic.completion" in plan
+    assert "agentic.completion" in plan
     assert 'purpose="skill.kappa_plan"' in plan
-    assert "ollama.chat" in plan, "legacy branch must be preserved alongside"
+    assert "agentic_core" not in plan, "W9 removed the feature-flag gate"
+    assert "ollama.chat" not in plan, "W9 removed the legacy branch"
 
 
-def test_w5_execute_carries_structured_paths_and_preserved_legacy_branches():
+def test_w5_execute_carries_structured_paths():
     execute = _function_source("execute")
-    assert execute.count("agentic_core") >= 4
     assert execute.count("agentic.structured") == 4
     for purpose in (
         "skill.kappa_code_a", "skill.kappa_code_b",
         "skill.kappa_reconcile", "skill.kappa_themes",
     ):
         assert f'purpose="{purpose}"' in execute
-    assert execute.count("ollama.chat") == 4, "legacy branches must be preserved alongside"
+    assert "agentic_core" not in execute, "W9 removed the feature-flag gate"
+    assert "ollama.chat" not in execute, "W9 removed the legacy branches"
 
 
 def test_w5_schemas_stay_inside_pi_forced_tool_subset():
@@ -213,31 +202,13 @@ def test_w5_schemas_stay_inside_pi_forced_tool_subset():
 # ── behavior: plan ───────────────────────────────────────────────────────
 
 
-async def test_plan_flag_off_uses_legacy_plane(monkeypatch, _agentic_core_off):
-    ollama_stub = _StubOllama(text="legacy plan")
-    dispatcher_stub = _StubAgentic()
-
-    monkeypatch.setattr("app.skills.intercoder.ollama", ollama_stub)
-    monkeypatch.setattr("app.core.agentic.agentic", dispatcher_stub)
-
-    result = await _skill().plan(_skill_input())
-
-    assert len(ollama_stub.calls) == 1, "flag off must use the legacy plane"
-    assert ollama_stub.calls[0]["temperature"] == 0.7
-    assert dispatcher_stub.calls == [], "flag off must not touch the dispatcher"
-    assert result == {"skill": "kappa-thematic-analysis", "plan": "legacy plan"}
-
-
 async def test_plan_flag_on_dispatches_skill_kappa_plan(monkeypatch, _agentic_core_on):
-    ollama_stub = _StubOllama()
     dispatcher_stub = _StubAgentic(text="dispatcher plan")
 
-    monkeypatch.setattr("app.skills.intercoder.ollama", ollama_stub)
     monkeypatch.setattr("app.core.agentic.agentic", dispatcher_stub)
 
     result = await _skill().plan(_skill_input())
 
-    assert ollama_stub.calls == [], "flag on must not call the legacy plane directly"
     method, kwargs = dispatcher_stub.calls[0]
     assert method == "completion"
     assert kwargs["purpose"] == "skill.kappa_plan"
@@ -250,44 +221,17 @@ async def test_plan_flag_on_dispatches_skill_kappa_plan(monkeypatch, _agentic_co
 # ── behavior: execute — disagreement path (reconcile) ───────────────────
 
 
-async def test_execute_flag_off_runs_full_pipeline_on_legacy_plane(monkeypatch, _agentic_core_off):
-    ollama_stub = _StubOllama(texts=[
-        json.dumps(CODER_A_DATA),
-        json.dumps(CODER_B_DATA_DISAGREE),
-        json.dumps(RECONCILE_DATA),
-    ])
-    dispatcher_stub = _StubAgentic()
-
-    monkeypatch.setattr("app.skills.intercoder.ollama", ollama_stub)
-    monkeypatch.setattr("app.core.agentic.agentic", dispatcher_stub)
-
-    output = await _skill().execute(_skill_input())
-
-    assert len(ollama_stub.calls) == 3, "flag off: Coder A, Coder B, reconciliation"
-    assert all(call["temperature"] == 0.3 for call in ollama_stub.calls)
-    assert dispatcher_stub.calls == [], "flag off must not touch the dispatcher"
-    assert output.success
-    assert len(output.nuggets) == 2
-    seg_2 = next(n for n in output.nuggets if "export" in n["text"])
-    assert seg_2["tags"] == ["perf"], "reconciled codes must replace the union"
-    assert "Cohen's Kappa" in output.insights[0]["text"]
-    assert "kappa_analysis.json" in output.artifacts
-
-
 async def test_execute_flag_on_dispatches_structured_calls_and_reconciles(monkeypatch, _agentic_core_on):
-    ollama_stub = _StubOllama()
     dispatcher_stub = _StubAgentic(values={
         "skill.kappa_code_a": CODER_A_DATA,
         "skill.kappa_code_b": CODER_B_DATA_DISAGREE,
         "skill.kappa_reconcile": RECONCILE_DATA,
     })
 
-    monkeypatch.setattr("app.skills.intercoder.ollama", ollama_stub)
     monkeypatch.setattr("app.core.agentic.agentic", dispatcher_stub)
 
     output = await _skill().execute(_skill_input())
 
-    assert ollama_stub.calls == [], "flag on must not call the legacy plane directly"
     assert [method for method, _ in dispatcher_stub.calls] == ["structured"] * 3
     purposes = [kwargs["purpose"] for _, kwargs in dispatcher_stub.calls]
     assert purposes == ["skill.kappa_code_a", "skill.kappa_code_b", "skill.kappa_reconcile"]
@@ -311,19 +255,16 @@ async def test_execute_flag_on_dispatches_structured_calls_and_reconciles(monkey
 
 
 async def test_execute_flag_on_all_agreed_dispatches_kappa_themes(monkeypatch, _agentic_core_on):
-    ollama_stub = _StubOllama()
     dispatcher_stub = _StubAgentic(values={
         "skill.kappa_code_a": CODER_A_DATA,
         "skill.kappa_code_b": CODER_B_DATA_AGREE,
         "skill.kappa_themes": THEMES_DATA,
     })
 
-    monkeypatch.setattr("app.skills.intercoder.ollama", ollama_stub)
     monkeypatch.setattr("app.core.agentic.agentic", dispatcher_stub)
 
     output = await _skill().execute(_skill_input())
 
-    assert ollama_stub.calls == []
     purposes = [kwargs["purpose"] for _, kwargs in dispatcher_stub.calls]
     assert purposes == ["skill.kappa_code_a", "skill.kappa_code_b", "skill.kappa_themes"]
     assert output.success
@@ -335,13 +276,11 @@ async def test_execute_flag_on_all_agreed_dispatches_kappa_themes(monkeypatch, _
 
 
 async def test_execute_flag_on_failed_coder_a_returns_failure_output(monkeypatch, _agentic_core_on):
-    ollama_stub = _StubOllama()
     dispatcher_stub = _StubAgentic(
         values={"skill.kappa_code_a": {}},
         statuses={"skill.kappa_code_a": "error"},
     )
 
-    monkeypatch.setattr("app.skills.intercoder.ollama", ollama_stub)
     monkeypatch.setattr("app.core.agentic.agentic", dispatcher_stub)
 
     output = await _skill().execute(_skill_input())
@@ -349,22 +288,6 @@ async def test_execute_flag_on_failed_coder_a_returns_failure_output(monkeypatch
     assert not output.success, "empty Coder A value must mirror the legacy parse-failure path"
     assert output.summary == "Coder A produced no coding results."
     assert len(dispatcher_stub.calls) == 1, "pipeline must stop after the failed first pass"
-    assert ollama_stub.calls == []
-
-
-async def test_execute_flag_off_garbage_coder_a_returns_failure_output(monkeypatch, _agentic_core_off):
-    ollama_stub = _StubOllama(text="not json at all")
-    dispatcher_stub = _StubAgentic()
-
-    monkeypatch.setattr("app.skills.intercoder.ollama", ollama_stub)
-    monkeypatch.setattr("app.core.agentic.agentic", dispatcher_stub)
-
-    output = await _skill().execute(_skill_input())
-
-    assert not output.success
-    assert output.summary == "Coder A produced no coding results."
-    assert len(ollama_stub.calls) == 1
-    assert dispatcher_stub.calls == []
 
 
 # ── raise-path: Pi engine fail-closed errors degrade, never escape ──────
@@ -395,10 +318,8 @@ def _raising_dispatcher(dispatcher_stub, *, raise_for):
 
 
 async def test_execute_flag_on_coder_a_raise_returns_failure_output(monkeypatch, _agentic_core_on):
-    ollama_stub = _StubOllama()
     dispatcher_stub = _raising_dispatcher(_StubAgentic(), raise_for={"skill.kappa_code_a"})
 
-    monkeypatch.setattr("app.skills.intercoder.ollama", ollama_stub)
     monkeypatch.setattr("app.core.agentic.agentic", dispatcher_stub)
 
     output = await _skill().execute(_skill_input())
@@ -406,17 +327,14 @@ async def test_execute_flag_on_coder_a_raise_returns_failure_output(monkeypatch,
     assert not output.success, "raised Coder A must mirror the empty-coding path, not escape"
     assert output.summary == "Coder A produced no coding results."
     assert len(dispatcher_stub.calls) == 1, "pipeline must stop after the raised first pass"
-    assert ollama_stub.calls == []
 
 
 async def test_execute_flag_on_coder_b_raise_degrades_to_union_coding(monkeypatch, _agentic_core_on):
-    ollama_stub = _StubOllama()
     dispatcher_stub = _raising_dispatcher(
         _StubAgentic(values={"skill.kappa_code_a": CODER_A_DATA}),
         raise_for={"skill.kappa_code_b"},
     )
 
-    monkeypatch.setattr("app.skills.intercoder.ollama", ollama_stub)
     monkeypatch.setattr("app.core.agentic.agentic", dispatcher_stub)
 
     output = await _skill().execute(_skill_input())
@@ -429,11 +347,9 @@ async def test_execute_flag_on_coder_b_raise_degrades_to_union_coding(monkeypatc
     assert seg_2["tags"] == ["perf"], "empty Coder B leaves Coder A's union codes"
     purposes = [kwargs["purpose"] for _, kwargs in dispatcher_stub.calls]
     assert purposes == ["skill.kappa_code_a", "skill.kappa_code_b", "skill.kappa_reconcile"]
-    assert ollama_stub.calls == []
 
 
 async def test_execute_flag_on_reconcile_raise_keeps_union_codes(monkeypatch, _agentic_core_on):
-    ollama_stub = _StubOllama()
     dispatcher_stub = _raising_dispatcher(
         _StubAgentic(values={
             "skill.kappa_code_a": CODER_A_DATA,
@@ -442,7 +358,6 @@ async def test_execute_flag_on_reconcile_raise_keeps_union_codes(monkeypatch, _a
         raise_for={"skill.kappa_reconcile"},
     )
 
-    monkeypatch.setattr("app.skills.intercoder.ollama", ollama_stub)
     monkeypatch.setattr("app.core.agentic.agentic", dispatcher_stub)
 
     output = await _skill().execute(_skill_input())
@@ -455,11 +370,9 @@ async def test_execute_flag_on_reconcile_raise_keeps_union_codes(monkeypatch, _a
     assert not any(i["text"].startswith("Theme:") for i in output.insights)
     purposes = [kwargs["purpose"] for _, kwargs in dispatcher_stub.calls]
     assert purposes == ["skill.kappa_code_a", "skill.kappa_code_b", "skill.kappa_reconcile"]
-    assert ollama_stub.calls == []
 
 
 async def test_execute_flag_on_all_agreed_themes_raise_keeps_no_themes(monkeypatch, _agentic_core_on):
-    ollama_stub = _StubOllama()
     dispatcher_stub = _raising_dispatcher(
         _StubAgentic(values={
             "skill.kappa_code_a": CODER_A_DATA,
@@ -468,7 +381,6 @@ async def test_execute_flag_on_all_agreed_themes_raise_keeps_no_themes(monkeypat
         raise_for={"skill.kappa_themes"},
     )
 
-    monkeypatch.setattr("app.skills.intercoder.ollama", ollama_stub)
     monkeypatch.setattr("app.core.agentic.agentic", dispatcher_stub)
 
     output = await _skill().execute(_skill_input())
@@ -479,4 +391,3 @@ async def test_execute_flag_on_all_agreed_themes_raise_keeps_no_themes(monkeypat
     assert not any(i["text"].startswith("Theme:") for i in output.insights)
     purposes = [kwargs["purpose"] for _, kwargs in dispatcher_stub.calls]
     assert purposes == ["skill.kappa_code_a", "skill.kappa_code_b", "skill.kappa_themes"]
-    assert ollama_stub.calls == []

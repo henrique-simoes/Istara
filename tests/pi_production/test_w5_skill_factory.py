@@ -4,22 +4,20 @@ The five LLM call sites in ``skills/skill_factory.py`` (``plan`` plus the
 4-stage execute chain: native structured → native repair → plain repair →
 empty-findings repair) route through the AgenticDispatcher — ``completion`` →
 ``skill.plan`` / ``skill.repair_plain`` / ``skill.repair_findings``,
-``structured`` (``repair=False``) → ``skill.execute`` / ``skill.repair_native``
-— gated on the ``agentic_core`` feature flag, with the legacy ``ollama.chat``
-branches preserved alongside for ``agentic_core=False``. The 4-stage fallback
-chain is the product's resilience contract and must survive unchanged; only
-the transport under each stage changes.
+``structured`` (``repair=False``) → ``skill.execute`` / ``skill.repair_native``.
+W9 removed the ``agentic_core`` feature-flag gate and the legacy
+``ollama.chat`` fallthrough branches: the dispatcher path is now the only
+path. The 4-stage fallback chain is the product's resilience contract and
+must survive unchanged; only the transport under each stage changed.
 
 Covered here (all stubbed/static — no live model activity):
 
 * static: ``plan``/``execute`` carry the dispatcher paths with the planned
-  purpose slugs AND the four preserved legacy ``ollama.chat`` calls;
-* behavior (flag off): the legacy plane is used exactly as before and the
-  dispatcher is never touched;
-* behavior (flag on): each stage dispatches with the planned verb, purpose,
-  and project scope; the legacy plane is never called; and the fallback chain
-  (execute → repair_native → repair_plain → repair_findings) still runs in
-  order with downstream normalization unchanged.
+  purpose slugs and no legacy ``ollama.chat`` calls remain;
+* behavior: each stage dispatches with the planned verb, purpose, and
+  project scope; and the fallback chain (execute → repair_native →
+  repair_plain → repair_findings) still runs in order with downstream
+  normalization unchanged.
 """
 
 from __future__ import annotations
@@ -30,6 +28,16 @@ from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
+
+# Import-order guard: this suite imports app.skills.skill_factory inside test
+# bodies. That module sits on a latent module-level import cycle
+# (research_validity -> skills.intercoder -> skill_factory -> file_processor
+# -> embeddings -> pi_runtime.engine -> telemetry -> research_validity) that
+# only resolves when the dispatcher plane (app.core.agentic) has been
+# initialized first in the process. The cycle is pre-existing architecture
+# debt outside this wave's files; initializing the plane here keeps a
+# standalone run of this file green.
+import app.core.agentic  # noqa: F401
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 SKILL_FACTORY = REPO_ROOT / "backend/app/skills/skill_factory.py"
@@ -97,16 +105,6 @@ class _StubAgentic:
         return SimpleNamespace(usage={}, **result)
 
 
-class _StubOllama:
-    def __init__(self, *, text: str = "legacy text") -> None:
-        self.calls: list[dict] = []
-        self._text = text
-
-    async def chat(self, **kwargs):
-        self.calls.append(kwargs)
-        return {"message": {"content": self._text}}
-
-
 def _make_skill():
     from app.skills.base import SkillPhase, SkillType
     from app.skills.skill_factory import create_skill
@@ -134,22 +132,16 @@ def _agentic_core_on(monkeypatch):
     monkeypatch.setattr("app.config.settings.agentic_core", True)
 
 
-@pytest.fixture
-def _agentic_core_off(monkeypatch):
-    monkeypatch.setattr("app.config.settings.agentic_core", False)
+# ── static: dispatcher paths present, legacy branches removed (W9) ──────
 
 
-# ── static: dispatcher paths present, legacy branches preserved ─────────
-
-
-def test_w5_skill_factory_carries_dispatcher_paths_and_preserved_legacy_branches():
+def test_w5_skill_factory_carries_dispatcher_paths():
     plan_src = _function_source("plan")
-    assert "agentic_core" in plan_src
     assert "agentic.completion" in plan_src and '"skill.plan"' in plan_src
-    assert "ollama.chat" in plan_src, "legacy plan branch must be preserved"
+    assert "agentic_core" not in plan_src, "W9 removed the feature-flag gate"
+    assert "ollama.chat" not in plan_src, "W9 removed the legacy plan branch"
 
     exec_src = _function_source("execute")
-    assert "agentic_core" in exec_src
     assert "agentic.structured" in exec_src
     assert '"skill.execute"' in exec_src
     assert '"skill.repair_native"' in exec_src
@@ -157,40 +149,23 @@ def test_w5_skill_factory_carries_dispatcher_paths_and_preserved_legacy_branches
     assert '"skill.repair_plain"' in exec_src
     assert '"skill.repair_findings"' in exec_src
     assert "repair=False" in exec_src, "structured stages must not double-repair"
-    assert exec_src.count("ollama.chat") == 4, "all four legacy calls must be preserved"
+    assert "agentic_core" not in exec_src, "W9 removed the feature-flag gate"
+    assert "ollama.chat" not in exec_src, "W9 removed all four legacy calls"
 
 
 # ── behavior: plan ───────────────────────────────────────────────────────
 
 
-async def test_plan_flag_off_uses_legacy_plane(monkeypatch, _agentic_core_off):
-    ollama_stub = _StubOllama(text="legacy plan")
-    dispatcher_stub = _StubAgentic()
-    monkeypatch.setattr("app.skills.skill_factory.ollama", ollama_stub)
-    monkeypatch.setattr("app.core.agentic.agentic", dispatcher_stub)
-
-    result = await _make_skill()().plan(_skill_input())
-
-    assert result == {"skill": "w5-test-skill", "plan": "legacy plan"}
-    assert len(ollama_stub.calls) == 1, "flag off must use the legacy plane"
-    assert ollama_stub.calls[0]["temperature"] == 0.7
-    assert ollama_stub.calls[0]["thinking_mode"] == "off"
-    assert dispatcher_stub.calls == [], "flag off must not touch the dispatcher"
-
-
 async def test_plan_flag_on_dispatches_skill_plan(monkeypatch, _agentic_core_on):
-    ollama_stub = _StubOllama()
     dispatcher_stub = _StubAgentic(
         completion_results=[{"text": "dispatched plan", "status": "success"}]
     )
-    monkeypatch.setattr("app.skills.skill_factory.ollama", ollama_stub)
     monkeypatch.setattr("app.core.agentic.agentic", dispatcher_stub)
 
     result = await _make_skill()().plan(_skill_input())
 
     assert result["plan"] == "dispatched plan"
     assert "fallback" not in result
-    assert ollama_stub.calls == [], "flag on must not call the legacy plane directly"
     method, kwargs = dispatcher_stub.calls[0]
     assert method == "completion"
     assert kwargs["purpose"] == "skill.plan"
@@ -205,30 +180,12 @@ async def test_plan_flag_on_dispatches_skill_plan(monkeypatch, _agentic_core_on)
 # ── behavior: execute ────────────────────────────────────────────────────
 
 
-async def test_execute_flag_off_uses_legacy_plane(monkeypatch, _agentic_core_off):
-    ollama_stub = _StubOllama(text=json.dumps(FINDINGS))
-    dispatcher_stub = _StubAgentic()
-    monkeypatch.setattr("app.skills.skill_factory.ollama", ollama_stub)
-    monkeypatch.setattr("app.core.agentic.agentic", dispatcher_stub)
-
-    output = await _make_skill()().execute(_skill_input())
-
-    assert output.success is True
-    assert output.summary == FINDINGS["summary"]
-    assert len(ollama_stub.calls) == 1, "flag off must use the legacy plane"
-    assert ollama_stub.calls[0]["temperature"] == 0.2
-    assert "response_format" in ollama_stub.calls[0]
-    assert dispatcher_stub.calls == [], "flag off must not touch the dispatcher"
-
-
 async def test_execute_flag_on_dispatches_skill_execute(monkeypatch, _agentic_core_on):
-    ollama_stub = _StubOllama()
     dispatcher_stub = _StubAgentic(
         structured_results=[
             {"text": json.dumps(FINDINGS), "value": FINDINGS, "status": "success"}
         ]
     )
-    monkeypatch.setattr("app.skills.skill_factory.ollama", ollama_stub)
     monkeypatch.setattr("app.core.agentic.agentic", dispatcher_stub)
 
     output = await _make_skill()().execute(_skill_input())
@@ -236,7 +193,6 @@ async def test_execute_flag_on_dispatches_skill_execute(monkeypatch, _agentic_co
     assert output.success is True
     assert output.summary == FINDINGS["summary"]
     assert output.facts[0]["text"] == FINDINGS["facts"][0]["text"]
-    assert ollama_stub.calls == [], "flag on must not call the legacy plane directly"
     assert len(dispatcher_stub.calls) == 1, "valid structured output needs no repair stage"
     method, kwargs = dispatcher_stub.calls[0]
     assert method == "structured"
@@ -257,7 +213,6 @@ async def test_execute_flag_on_dispatches_skill_execute(monkeypatch, _agentic_co
 
 async def test_execute_flag_on_preserves_four_stage_fallback_chain(monkeypatch, _agentic_core_on):
     monkeypatch.setattr("app.config.settings.llm_provider", "ollama")
-    ollama_stub = _StubOllama()
     dispatcher_stub = _StubAgentic(
         structured_results=[
             # skill.execute: no parsed value and non-JSON text → repair stage 1
@@ -272,7 +227,6 @@ async def test_execute_flag_on_preserves_four_stage_fallback_chain(monkeypatch, 
             {"text": json.dumps(FINDINGS), "status": "success"},
         ],
     )
-    monkeypatch.setattr("app.skills.skill_factory.ollama", ollama_stub)
     monkeypatch.setattr("app.core.agentic.agentic", dispatcher_stub)
 
     output = await _make_skill()().execute(_skill_input())
@@ -281,7 +235,6 @@ async def test_execute_flag_on_preserves_four_stage_fallback_chain(monkeypatch, 
     assert output.json_success is True
     assert output.summary == FINDINGS["summary"]
     assert output.facts[0]["text"] == FINDINGS["facts"][0]["text"]
-    assert ollama_stub.calls == [], "flag on must not call the legacy plane directly"
     assert [method for method, _ in dispatcher_stub.calls] == [
         "structured",
         "structured",
@@ -311,7 +264,6 @@ async def test_execute_flag_on_primary_structured_raise_still_walks_fallback_cha
     from app.core.pi_runtime.endpoints import PiRuntimeTurnError
 
     monkeypatch.setattr("app.config.settings.llm_provider", "ollama")
-    ollama_stub = _StubOllama()
     dispatcher_stub = _StubAgentic(
         structured_results=[
             # skill.repair_native: still unusable → repair stage 2
@@ -332,7 +284,6 @@ async def test_execute_flag_on_primary_structured_raise_still_walks_fallback_cha
         return await real_structured(**kwargs)
 
     dispatcher_stub.structured = _raising_structured
-    monkeypatch.setattr("app.skills.skill_factory.ollama", ollama_stub)
     monkeypatch.setattr("app.core.agentic.agentic", dispatcher_stub)
 
     output = await _make_skill()().execute(_skill_input())
@@ -341,7 +292,6 @@ async def test_execute_flag_on_primary_structured_raise_still_walks_fallback_cha
     assert output.json_success is True
     assert output.summary == FINDINGS["summary"]
     assert output.facts[0]["text"] == FINDINGS["facts"][0]["text"]
-    assert ollama_stub.calls == [], "flag on must not call the legacy plane directly"
     assert [method for method, _ in dispatcher_stub.calls] == [
         "structured",
         "structured",
