@@ -11,8 +11,8 @@ status: in-progress
 blocked_on: null
 authored_by: build-stream-conductor
 grounding: "Based on 2026-07-20-pi-full-replacement-master-plan.md Section 10"
-last: { agent: claude-fable-5, at: 2026-07-22T20:15:02Z, ledger: L-41 }
-next_action: "Conductor: tally the recovery consensus after all judge votes are recorded."
+last: { agent: kimi-code/k3, at: 2026-07-22T20:17:35Z, ledger: L-42 }
+next_action: "Conductor: tally the three judge votes and seal consensus_result for the recovery pipeline (slot a leads 2-1); G-R1 owner gate before any implementation."
 ```
 <!-- /STATUS BLOCK -->
 
@@ -705,3 +705,9 @@ Did: repaired recovery consensus plan A (revision r2) at docs/build-stream/plans
 Result: plan slot A ready for recovery consensus judging (r2); reuse verdict unchanged — prior correction artifacts reusable as content not state; DUT=Istara arms / DeepSeek-via-dispatcher under $1.00 / MoA measured / Kimi post-run judge retained verbatim in plan section 0; PI-BENCH-RECOVERY-20260722-REPLAN-A-r2
 Verified: conductor pid/marker audit (ps -p 91892 alive, active-run.json prefix+heartbeat, stale (1)/(2) markers listed); sqlite CF audit (stale ROLE-CORRECTION rows, 6 consensus_result rows all pre-recovery, recovery plan_vote rows 1459/1464); grep kimi-anchor battery at c53e0d01 (:307-:466 regions hold, DEC-5 clause :489, DEC-6 :497, no DEC-7); work-order pack-list read :71-83 (six packs confirmed); git diff --check clean; wc -l plan = 361; scope audit — only the plan file modified by this stage
 Next: judge-c votes; conductor seals consensus_result with per-vote plan-revision blob shas; G-R1 owner gate before any implementation
+
+### L-42 | 2026-07-22T20:17:35Z | S1-plan | kimi-code/k3 | judge | pi-bench-recovery-20260722-judge-c <!-- bsc-ledger:PI-BENCH-RECOVERY-20260722-JUDGE-C -->
+Did: consensus judge slot c — read exactly the two assigned candidates (slot a plan-a.md r1 by claude-fable-5 @68dcd159; slot b plan-b.md by gpt-5.6-sol @9cfe3304; both committed and drift-free at HEAD c53e0d01) plus the recovery brief; spot-verified load-bearing claims in the CF store and worktree. Edited only this lifecycle file (this append + Status Block); no plan, code, or prior entry touched.
+Result: plan_vote for slot a recorded on PI-BENCH-RECOVERY-20260722-JUDGE-C (CF evidence 1477). Plan A wins: AC-1 blob-sha vote discipline mechanically prevents the moving-target failure that invalidated the prior consensus (verified: zero consensus_result rows for ROLE-CORRECTION; 6 repo-wide, all earlier pipelines); plan A R1-R3 actually clears the verified hazards (3 stale ROLE-CORRECTION rows open/claimed, (1)/(2) conductor markers present, orphan plan docs) with prefix-exact scoping that exempts the live pipeline rows, while plan B names the same hazards but non-goals their cleanup; plan A owner-gate-as-blocking-task plus pre-IMPL collision audit keeps single-conductor continuity versus plan B under-specified conductor-stop; plan A grounding is re-verified at named HEADs while plan B stale-session list is incomplete (the non-terminal set is larger than 173-183). Plan B strengths noted: five-role canon, term-presence loops, honest-debt AC-8, barrier conservatism. Tally: judge-a -> slot c, judge-b -> slot a, judge-c -> slot a (slot a leads 2-1).
+Verified: git log/status per candidate (frozen, committed); sqlite consensus_result + stale-row + session scans; ls .compass-forge/conductor markers ((1)/(2) present); grep kimi-as-evaluation battery (20 residuals, no DEC-7 — defect real, correction still needed); CF evidence rows 1473/1475 (command), 1477 (plan_vote), 1478 (self_report).
+Next: conductor tallies the three judge votes and seals consensus_result (slot a, 2-1); G-R1 owner gate before any implementation.
