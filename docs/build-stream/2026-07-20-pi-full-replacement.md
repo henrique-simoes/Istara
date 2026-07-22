@@ -5,12 +5,12 @@
 item: pi-full-replacement
 branch: Review_pi_test
 cf: { spec: CF-SPEC-8, tasks: [pi-full-20260720-w0-IMPL, pi-full-20260720-w0-REVIEW] }
-phase: "W6 — autoresearch runner migration"
-stage: S3-review
+phase: "W7 — validation/consensus/dual-coder migration"
+stage: S2-execute
 status: in-progress
 blocked_on: none
-last: { agent: gpt-5.6-sol, at: 2026-07-22T03:26:23Z, ledger: L-47 }
-next_action: "Stage exit: W6 delta re-review passed; the conductor may advance the lifecycle to W7 implementation."
+last: { agent: kimi-code/k3, at: 2026-07-22T04:13:43Z, ledger: L-48 }
+next_action: "W7 implementation committed (b9c6149b) and verified; the conductor may dispatch the W7 review (pi-full-20260720-w7-REVIEW)."
 ```
 <!-- /STATUS BLOCK -->
 
@@ -956,3 +956,47 @@ Did: Ran the authoritative bounded delta re-review of CF-207 and CF-208 only. In
 Result: verdict PASS; corrections_made=0. F-W6-R1-1 and F-W6-R1-2 remain fixed. Recorded F-W6-R2-1 as a non-blocking Minor accepted-risk: the test module's introductory prose still says “two distinct models,” while its executable assertions and the living docs correctly enforce endpoint-width semantics. No Blocker/Major was found, so no fixer task was created. Files touched by reviewer: this lifecycle file only; the unrelated pre-existing `recipes/istara-main-pi-replacement/recipe.toml` edit was preserved.
 Verified: `pytest tests/pi_production/test_w6_autoresearch_runners.py -q -k 'forwards_bound_engine or bound_run or real_dispatcher_completion'` = 17 passed; `pytest tests/pi_production/test_w6_autoresearch_runners.py -q -k sweep` = 7 passed; `python scripts/feature_docs.py --seed-missing --generate-site --check` = 86 features passed (224 artifacts generated; timestamp-only manifest churn restored); `git diff --check 327cab84^..0e1aaa99` = passed; targeted semantic search = living feature docs clean, one stale test-module narrative at lines 11-15.
 Next: stage exit: W6 delta re-review passed; the conductor may advance the lifecycle to W7 implementation.
+### L-48 | 2026-07-22T04:13:43Z | S2-execute | kimi-code/k3 | executor | W7 <!-- bsc-ledger:pi-full-20260720-w7-IMPL -->
+Did: Migrated the 7 W7 validation/consensus/dual-coder chat sites to the AgenticDispatcher behind
+`agentic_core` with the legacy branches preserved alongside (commit b9c6149b). `validation.py`:
+`dual_run`/`full_ensemble`/`self_moa` route through the `ensemble` verb (purposes
+`validation.dual_run`/`validation.full_ensemble`/`validation.self_moa`; `distinct=True` for the
+first two, per-temperature sweep `distinct=False` for self-MoA) via the shared `_dispatch_ensemble`
+helper; `adversarial_review` and `debate_rounds` (initial + rounds) route through `completion`
+(`validation.adversarial`/`validation.debate`). Fail-closed `distinct=True` rule honored:
+`PiEndpointResolutionError` degrades `dual_run` to the labeled single-model self-MoA and
+`full_ensemble` down the existing chain to `dual_run` — diversity is never fabricated from fewer
+endpoints. `_get_embeddings` stays legacy until W8 (allowlist embed key re-pinned).
+`validation_executor.py`: the judge call routes through `structured` (`validation.judge`,
+`_JUDGE_SCHEMA` in the forced-tool subset) and the latent bug is FIXED in the same commit — the
+registry returns `{"message": {"content": ...}}` while the old code read a top-level
+`content` key, so legacy adversarial scoring always missed the JSON and silently degraded to the
+default pass (flagged for the benchmark notes). `research_validity_service.py`: the dual-coder
+migrates to `structured` over `resolve_distinct(n=max_coders)` (`validity.coder`,
+`CODING_RESPONSE_SCHEMA`, temperature 0.2) via `_select_pi_coders` (read-only LLMServer DB
+projection, never a live model load) and `_pi_coder_runner` (each coder pinned to its exact
+`endpoint_id`); gating requires `agentic_core` AND the engine that would actually serve the
+dispatch resolving to Pi, so a legacy-resolved engine keeps the legacy coder selection.
+Insufficient distinct Pi endpoints fail closed to zero coders plus a failed route-evidence row,
+flowing into the existing reliability-gate "blocked" validation-unavailable handling.
+Result: W7 implementation complete; 27 new contract tests in
+`tests/pi_production/test_w7_validation.py` (static both-paths/schema-subset, flag-off legacy
+parity incl. the judge bug-fix proof, flag-on dispatch recording, raise-path degradation,
+fail-closed chains, full Pi-plane coding run accepted/blocked); legacy behavior unchanged for
+`agentic_core=False`. Count-to-zero ratchet holds at 70 (W7 line keys re-pinned, notes updated).
+Files: `backend/app/core/validation.py`, `backend/app/core/validation_executor.py`,
+`backend/app/services/research_validity_service.py`, `tests/pi_production/test_w7_validation.py`,
+`tests/pi_migration/legacy_allowlist.yaml`.
+Verified: `pytest tests/pi_production/test_w7_validation.py -q` = 27 passed;
+`pytest tests/pi_production tests/pi_migration -q` = 335 passed (ratchet 70);
+`pytest tests/test_adaptive_validation.py tests/test_validation_project_scope.py tests/test_research_integrity_validation.py tests/test_research_validity_contract.py tests/test_metrics.py -q` = 45 passed;
+`pytest tests/test_pi_replacement_candidate.py tests/test_research_integrity_code_applications.py -q` = 20 passed;
+`python scripts/pi_migration_inventory.py --json` = scanner OK, all sites allowlisted;
+ruff worktree-vs-HEAD on changed files = zero net-new findings;
+`python scripts/security_benchmark.py --fail-on-threshold` = 100% (28/28);
+`python scripts/feature_docs.py --seed-missing --generate-site --check` = 86 features passed (timestamp-only manifest churn restored);
+`compass-forge gate after --task pi-full-20260720-w7-IMPL --summary` = 0 new failures, 0 actionable, 0 drift, 0 cycles.
+Next: stage exit: W7 implementation verified — hand to the W7 reviewer
+(`pi-full-20260720-w7-REVIEW`): review commit b9c6149b, the fail-closed distinct chains, the
+judge bug fix, and the Pi-plane dual-coder gate mapping. Residual: W7 living feature docs for
+validation/consensus semantics not yet updated (same shape as prior waves' docs findings).
