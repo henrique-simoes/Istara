@@ -49,6 +49,17 @@ ratchet:
   # allowlisted (line keys updated) and the ratchet stays at 70 until the
   # legacy branch is retired. The rag_params retrieval-eval embed stays on the
   # legacy plane until W8 (tracked separately in the embed section).
+  # W7 routed the 7 validation/consensus/dual-coder chat sites (validation.py
+  # dual_run/full_ensemble/self_moa ensembles, adversarial_review + debate
+  # completions, validation_executor LLM-as-judge, research_validity_service
+  # dual-coder) through the AgenticDispatcher behind the same `agentic_core`
+  # feature flag with the legacy llm_router/server/node branch preserved
+  # alongside it, so the sites stay allowlisted (line keys updated) and the
+  # ratchet stays at 70 until the legacy branch is retired. The validation.py
+  # consensus-embedding call stays legacy until W8. The W7 migration also
+  # fixed the latent validation_executor judge bug (registry returns
+  # message.content; the old code read a top-level "content" key and silently
+  # degraded to the default pass).
   expected_product_sites: 70
 
 # ---------------------------------------------------------------------------
@@ -126,27 +137,27 @@ product:
   - keys: ["backend/app/core/report_manager.py:1145"]
     kind: chat
     note: "ReportManager._compose_section — gaps/limitations section (W5: dispatcher path behind agentic_core; legacy branch preserved)"
-  - keys: ["backend/app/core/validation.py:152"]
+  - keys: ["backend/app/core/validation.py:252"]
     kind: chat
-    note: "dual_run — same prompt on 2 servers for consensus (direct server.chat)"
-  - keys: ["backend/app/core/validation.py:213"]
+    note: "dual_run — same prompt on 2 servers for consensus (direct server.chat) (W7: dispatcher ensemble path behind agentic_core; legacy branch preserved)"
+  - keys: ["backend/app/core/validation.py:355"]
     kind: chat
-    note: "adversarial_review — second model critiques first response"
-  - keys: ["backend/app/core/validation.py:314"]
+    note: "adversarial_review — second model critiques first response (W7: dispatcher completion path behind agentic_core; legacy branch preserved)"
+  - keys: ["backend/app/core/validation.py:504"]
     kind: chat
-    note: "full_ensemble — 3+ server ensemble consensus (direct server.chat)"
-  - keys: ["backend/app/core/validation.py:373"]
+    note: "full_ensemble — 3+ server ensemble consensus (direct server.chat) (W7: dispatcher ensemble path behind agentic_core; legacy branch preserved)"
+  - keys: ["backend/app/core/validation.py:601"]
     kind: chat
-    note: "self_moa — temperature-variation ensemble"
-  - keys: ["backend/app/core/validation.py:431"]
+    note: "self_moa — temperature-variation ensemble (W7: dispatcher ensemble path behind agentic_core; legacy branch preserved)"
+  - keys: ["backend/app/core/validation.py:771"]
     kind: chat
-    note: "debate_rounds — initial debate response"
-  - keys: ["backend/app/core/validation.py:470"]
+    note: "debate_rounds — initial debate response (W7: dispatcher completion path behind agentic_core; legacy branch preserved)"
+  - keys: ["backend/app/core/validation.py:810"]
     kind: chat
-    note: "debate_rounds — multi-round debate refinement"
-  - keys: ["backend/app/core/validation_executor.py:64"]
+    note: "debate_rounds — multi-round debate refinement (W7: dispatcher completion path behind agentic_core; legacy branch preserved)"
+  - keys: ["backend/app/core/validation_executor.py:106"]
     kind: chat
-    note: "ValidationExecutor._adversarial_review — LLM-as-judge on coding output"
+    note: "ValidationExecutor._adversarial_review — LLM-as-judge on coding output (W7: dispatcher structured path behind agentic_core; legacy branch preserved + message.content bug fixed)"
   - keys: ["backend/app/services/adaptive_interview.py:325"]
     kind: chat
     note: "generate_clarification — probing follow-up question (W5: dispatcher path behind agentic_core; legacy branch preserved)"
@@ -156,9 +167,9 @@ product:
   - keys: ["backend/app/services/deployment_service.py:340"]
     kind: chat
     note: "_generate_adaptive_followup — adaptive follow-up question (W5: dispatcher path behind agentic_core; legacy branch preserved)"
-  - keys: ["backend/app/services/research_validity_service.py:556"]
+  - keys: ["backend/app/services/research_validity_service.py:558"]
     kind: chat
-    note: "_default_coder_runner — independent multi-model coding (direct coder.node.chat)"
+    note: "_default_coder_runner — independent multi-model coding (direct coder.node.chat) (W7: dispatcher structured path over resolve_distinct behind agentic_core+pi engine; legacy branch preserved)"
   - keys: ["backend/app/skills/discover/channel_deployment.py:268"]
     kind: chat
     note: "ChannelResearchDeploymentSkill.plan — deployment plan + questions (W5: dispatcher path behind agentic_core; legacy branch preserved)"
@@ -228,9 +239,9 @@ product:
   - keys: ["backend/app/core/embeddings.py:90"]
     kind: embed
     note: "embed_chunks — canonical batch embed wrapper (ollama.embed_batch)"
-  - keys: ["backend/app/core/validation.py:522"]
+  - keys: ["backend/app/core/validation.py:862"]
     kind: embed
-    note: "_get_embeddings — response-agreement embeddings (llm_router.embed_batch)"
+    note: "_get_embeddings — response-agreement embeddings (llm_router.embed_batch; stays legacy until W8)"
   - keys: ["backend/app/core/agent_execution.py:833"]
     kind: embed
     note: "_semantic_skill_match — task-text vector (via embed_text)"

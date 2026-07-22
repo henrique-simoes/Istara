@@ -14,6 +14,22 @@ from dataclasses import dataclass, field
 logger = logging.getLogger(__name__)
 
 
+# W7 judge schema for the AgenticDispatcher structured verb (Pi forced-tool
+# subset). It formalizes the keys the legacy regex/JSON parse reads below.
+_JUDGE_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "code_quality": {"type": "integer"},
+        "evidence": {"type": "integer"},
+        "chain": {"type": "integer"},
+        "hallucination_free": {"type": "integer"},
+        "depth": {"type": "integer"},
+        "overall": {"type": "integer"},
+    },
+    "required": ["overall"],
+}
+
+
 @dataclass
 class ValidationResult:
     passed: bool
@@ -60,13 +76,44 @@ class ValidationExecutor:
         )
 
         project_id = getattr(input_data, "project_id", None)
+        from app.config import settings
+
         try:
+            if settings.agentic_core:
+                # W7: the judge call goes through the AgenticDispatcher
+                # structured verb (``validation.judge``); the legacy branch
+                # below is preserved for agentic_core=False.
+                from app.core.agentic import agentic
+                from app.core.agentic.types import TurnParams
+
+                outcome = await agentic.structured(
+                    purpose="validation.judge",
+                    project_id=project_id or "",
+                    system=None,
+                    messages=[{"role": "user", "content": prompt}],
+                    schema=_JUDGE_SCHEMA,
+                    params=TurnParams(temperature=0.3),
+                    spine_phase="review",
+                )
+                scores = outcome.value or {}
+                overall = scores.get("overall", 3)
+                return ValidationResult(
+                    passed=overall >= 3,
+                    method="adversarial_review",
+                    confidence=overall / 5,
+                    details=scores,
+                )
             result = await compute_registry.chat(
                 [{"role": "user", "content": prompt}],
                 temperature=0.3,
                 project_id=project_id,
             )
-            content = result.get("content", "")
+            # W7 latent-bug fix (master plan §8 W7): the registry returns the
+            # Ollama-shaped {"message": {"content": ...}}, so the old
+            # result.get("content") always read "" — no JSON match — and the
+            # judge silently degraded to the default pass. Flagged for the
+            # benchmark notes: legacy adversarial scoring was inert.
+            content = result.get("message", {}).get("content", "")
             import re
             match = re.search(r"\{[^{}]+\}", content, re.DOTALL)
             if match:
