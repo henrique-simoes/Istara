@@ -105,11 +105,12 @@ def _agentic_core_off(monkeypatch):
 # ── static: both paths present, ratchet green ───────────────────────────
 
 
-def test_w4_ratchet_stays_green_at_70():
-    """The legacy branch is preserved, so the three sites stay allowlisted."""
+def test_w4_ratchet_stays_green_at_53():
+    """The legacy branch is preserved, so the three sites stay allowlisted.
+    (W8 later migrated the 17 embed sites: the floor moved 70 → 53.)"""
     from tests.pi_migration.test_count_to_zero import EXPECTED_PRODUCT_SITES, check_count_to_zero
 
-    assert EXPECTED_PRODUCT_SITES == 70
+    assert EXPECTED_PRODUCT_SITES == 53
     check_count_to_zero()
 
 

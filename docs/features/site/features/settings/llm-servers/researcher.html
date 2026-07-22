@@ -237,8 +237,8 @@
   <dl class="meta-grid">
     <div><dt>UI Path</dt><dd>Settings &gt; LLM Servers</dd></div>
     <div><dt>Component</dt><dd><code>SettingsView</code></dd></div>
-    <div><dt>Source Refs</dt><dd>3</dd></div>
-    <div><dt>Tests</dt><dd>2</dd></div>
+    <div><dt>Source Refs</dt><dd>7</dd></div>
+    <div><dt>Tests</dt><dd>3</dd></div>
   </dl>
   <div class="link-cluster" aria-label="Related feature links"><a href="../../chat/model-controls/researcher.html">Chat Model Controls</a>
 <a href="../connection-strings/researcher.html">Connection Strings</a></div>
@@ -271,6 +271,12 @@
 <li>Admin-only shared provider endpoint inventory, status, forms, and health-check results shown by the referenced component and routes.</li>
 <li>Non-admin users receive a permission-gated state with no endpoint inventory or probe controls.</li>
 </ul>
+<h2 id="engine-catalog-parity">Engine Catalog Parity</h2>
+<ul>
+<li>Istara can run on a legacy engine or the newer Pi replacement engine, and each engine keeps its own view of the available model servers. Pi Replacement wave W8 keeps those views in sync: adding, editing, deleting, or auto-discovering an LLM server in Settings now refreshes the Pi engine&#x27;s model catalog as well as the legacy one, so a server you register once is available to both engines without a restart.</li>
+<li>The sync is one-directional — registered servers flow into the Pi catalog, but Pi never writes back or changes how the legacy engine schedules work, and shared relay/donor capacity is still never offered to Pi traffic.</li>
+<li>The settings model list also reports the Pi catalog alongside the legacy list. It shows only identity information — which endpoints and model names exist and what kind they are — never server addresses or API keys, and it is available whether the servers are currently reachable or offline.</li>
+</ul>
 <h2 id="caveats">Caveats</h2>
 <ul>
 <li>Needs interactive verification for exact empty, loading, error, and permission-denied states.</li>
@@ -287,9 +293,9 @@
 </ul>
 <h2 id="evidence">Evidence</h2>
 <ul>
-<li>Source files: <code>frontend/src/components/common/SettingsView.tsx</code>, <code>frontend/src/lib/modelProviders.ts</code>, <code>backend/app/api/routes/llm_servers.py</code></li>
-<li>API references: <code>backend/app/api/routes/llm_servers.py</code></li>
-<li>Tests: <code>frontend/src/lib/modelProviders.test.ts</code></li>
+<li>Source files: <code>frontend/src/components/common/SettingsView.tsx</code>, <code>frontend/src/lib/modelProviders.ts</code>, <code>backend/app/api/routes/llm_servers.py</code>, <code>backend/app/api/routes/settings.py</code>, <code>backend/app/core/network_discovery.py</code></li>
+<li>API references: <code>backend/app/api/routes/llm_servers.py</code>, <code>backend/app/api/routes/settings.py</code></li>
+<li>Tests: <code>frontend/src/lib/modelProviders.test.ts</code>, <code>tests/test_llm_servers.py</code>, <code>tests/pi_production/test_w8_embeddings_gateway.py</code></li>
 </ul>
         </article>
         <aside class="toc-panel" aria-label="Page sections">
@@ -301,6 +307,7 @@
 <li class="toc-level-2"><a href="#how-ux-researchers-use-it">How UX Researchers Use It</a></li>
 <li class="toc-level-2"><a href="#supported-workflows">Supported Workflows</a></li>
 <li class="toc-level-2"><a href="#inputs-outputs-and-expected-outcomes">Inputs, Outputs, And Expected Outcomes</a></li>
+<li class="toc-level-2"><a href="#engine-catalog-parity">Engine Catalog Parity</a></li>
 <li class="toc-level-2"><a href="#caveats">Caveats</a></li>
 <li class="toc-level-2"><a href="#related-features">Related Features</a></li>
 <li class="toc-level-2"><a href="#related-concepts">Related Concepts</a></li>

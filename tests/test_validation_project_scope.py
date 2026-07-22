@@ -77,9 +77,19 @@ class _FakeValidationRouter:
 async def test_validation_helpers_forward_project_id_to_llm_and_embeddings(monkeypatch):
     from app.core import llm_router as llm_router_module
     from app.core import validation
+    from app.core.agentic import agentic
 
     fake_router = _FakeValidationRouter()
     monkeypatch.setattr(llm_router_module, "llm_router", fake_router)
+    # W8: consensus embeddings are dispatcher-routed; the project scope enters
+    # through agentic.embed's engine resolution.
+    embed_project_calls: list[str | None] = []
+
+    async def embed_spy(**kwargs):  # noqa: ANN001
+        embed_project_calls.append(kwargs.get("project_id"))
+        return [[1.0, 0.0] for _ in (kwargs.get("texts") or [])]
+
+    monkeypatch.setattr(agentic, "embed", embed_spy)
 
     adversarial = await validation.adversarial_review(
         "Review this",
@@ -98,7 +108,7 @@ async def test_validation_helpers_forward_project_id_to_llm_and_embeddings(monke
         "project-a",
         "project-a",
     ]
-    assert fake_router.embed_project_calls == [
+    assert embed_project_calls == [
         "project-a",
         "project-a",
         "project-a",
@@ -178,4 +188,5 @@ def test_task_ensemble_validation_passes_active_project_scope() -> None:
     assert "project_id: str | None = None" in validation_module
     assert "llm_router._sorted_servers(project_id=project_id)" in validation_module
     assert "project_id=project_id" in validation_module
-    assert "llm_router.embed_batch(texts, project_id=project_id)" in validation_module
+    # W8: consensus embeddings are dispatcher-routed, project scope intact.
+    assert "agentic.embed(texts=texts, project_id=project_id)" in validation_module

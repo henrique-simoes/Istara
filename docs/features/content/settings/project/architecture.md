@@ -6,11 +6,11 @@ audience: architecture
 status: documented
 related_features: ["shell.projects", "settings.general"]
 related_glossary: ["compass-forge"]
-code_references: ["frontend/src/components/settings/ProjectSettingsView.tsx", "backend/app/api/routes/projects.py", "backend/app/api/routes/permission_requests.py", "backend/app/api/routes/autoresearch.py", "backend/app/api/routes/loops.py", "backend/app/api/routes/meta_hyperagent.py", "backend/app/api/routes/skills.py", "backend/app/core/agent_lifecycle.py", "backend/app/core/agent_execution.py", "backend/app/core/autoresearch_engine.py", "backend/app/core/self_evolution.py", "backend/app/core/sub_agent_worker.py", "backend/app/core/scheduler.py", "backend/app/core/file_watcher.py"]
+code_references: ["frontend/src/components/settings/ProjectSettingsView.tsx", "frontend/src/components/layout/Sidebar.tsx", "frontend/src/lib/types.ts", "frontend/src/lib/utils.ts", "backend/app/api/routes/projects.py", "backend/app/api/routes/permission_requests.py", "backend/app/api/routes/autoresearch.py", "backend/app/api/routes/loops.py", "backend/app/api/routes/meta_hyperagent.py", "backend/app/api/routes/skills.py", "backend/app/core/agent_lifecycle.py", "backend/app/core/agent_execution.py", "backend/app/core/agentic/dispatcher.py", "backend/app/core/autoresearch_engine.py", "backend/app/core/self_evolution.py", "backend/app/core/sub_agent_worker.py", "backend/app/core/scheduler.py", "backend/app/core/file_watcher.py"]
 api_references: ["backend/app/api/routes/projects.py", "backend/app/api/routes/permission_requests.py"]
-test_references: ["tests/test_tasks.py", "tests/test_loops.py", "tests/test_autoresearch.py", "tests/test_agent_learning_scope.py", "tests/test_meta_hyperagent.py", "tests/test_skills.py", "tests/test_file_watcher_config.py", "tests/test_project_rbac.py", "tests/test_project_scope_contracts.py"]
-last_verified: 2026-05-19
-compass: CF-SPEC-55 / CF-684; CF-SPEC-72 / CF-927
+test_references: ["tests/test_tasks.py", "tests/test_loops.py", "tests/test_autoresearch.py", "tests/test_agent_learning_scope.py", "tests/test_meta_hyperagent.py", "tests/test_skills.py", "tests/test_file_watcher_config.py", "tests/test_project_rbac.py", "tests/test_project_scope_contracts.py", "tests/pi_production/test_w8_embeddings_gateway.py", "tests/simulation/scenarios/79-engine-selector.mjs"]
+last_verified: 2026-07-22
+compass: CF-SPEC-55 / CF-684; CF-SPEC-72 / CF-927; CF-SPEC-8 (Pi replacement W8 engine selector)
 ---
 
 # Project Settings Architecture
@@ -33,6 +33,34 @@ Project Settings configure project-specific metadata and operational preferences
 ### API And Backend
 
 - `backend/app/api/routes/projects.py`
+
+### Per-Project Agent Engine Selector (Pi Replacement W8)
+
+- `ProjectUpdate.agentic_engine` (`backend/app/api/routes/projects.py`) accepts
+  `legacy` or any `PI_ENGINE_VALUES` member; `""`/`null` means the project
+  inherits the global default engine, and any other value is rejected with
+  422. `_project_response`/`ProjectResponse` expose the stored
+  `agentic_engine` so the frontend can render the current selection.
+- This is the project-level engine pin the W1 dispatcher already reads at
+  level-3 resolution (`backend/app/core/agentic/dispatcher.py`): per-call
+  override first, then the `x-istara-agent-engine` header, then the project
+  `agentic_engine` setting, then `settings.agentic_engine_default` (see
+  [chat.model-controls](../../chat/model-controls/architecture.md) for the
+  full precedence).
+- On the frontend, `frontend/src/lib/types.ts` adds
+  `Project.agentic_engine?: string | null` and `frontend/src/lib/utils.ts`
+  adds `agentEngineLabel()` (Pi for `pi`, `pi-candidate`, `pi-replacement`,
+  and `deepseek-pi`; Legacy otherwise).
+  `frontend/src/components/layout/Sidebar.tsx` shows a per-project engine
+  indicator badge (`aria-label="Engine: Pi|Legacy"`) next to the phase
+  subtitle, and `frontend/src/components/settings/ProjectSettingsView.tsx`
+  adds an "Agent Engine" section with a `select[aria-label="Agent engine"]`
+  (Inherit global default / Legacy / Pi) for project admins — saved through
+  `updateProject(id, { agentic_engine })` — and a read-only badge for
+  non-admins.
+- Simulation scenario `tests/simulation/scenarios/79-engine-selector.mjs`
+  (registered in `tests/simulation/lib/scenario-registry.mjs`) walks the
+  selector and badge end to end.
 
 ## Architecture Notes
 
@@ -59,6 +87,9 @@ Project Settings configure project-specific metadata and operational preferences
 - `tests/test_file_watcher_config.py`
 - `tests/test_project_rbac.py`
 - `tests/test_project_scope_contracts.py`
+- `tests/pi_production/test_w8_embeddings_gateway.py` verifies `ProjectUpdate.agentic_engine` validation (accepted engine values, inherit-default semantics, 422 on unknown values).
+- `tests/simulation/scenarios/79-engine-selector.mjs` walks the per-project engine selector and the Sidebar engine badge.
+- Regenerate and validate the machine manifests and static site with `python scripts/feature_docs.py --seed-missing --generate-site --check`.
 
 ## Related Features
 
@@ -71,7 +102,7 @@ Project Settings configure project-specific metadata and operational preferences
 
 ## Compass Evidence
 
-- Spec/task: CF-SPEC-55 / CF-684; CF-SPEC-72 / CF-927
+- Spec/task: CF-SPEC-55 / CF-684; CF-SPEC-72 / CF-927; CF-SPEC-8 (Pi replacement W8 per-project agent engine selector)
 - Inventory source: `docs/features/inventory.json`
 
 ## When To Update

@@ -6,11 +6,11 @@ audience: researcher
 status: needs-verification
 related_features: ["memory.knowledge", "quality.dashboard"]
 related_glossary: ["rag"]
-code_references: ["frontend/src/components/memory/MemoryView.tsx", "backend/app/core/vector_health.py"]
+code_references: ["frontend/src/components/memory/MemoryView.tsx", "backend/app/core/vector_health.py", "backend/app/core/embeddings.py", "backend/app/core/pi_runtime/embeddings_gateway.py", "backend/app/core/pi_runtime/model_manager_provisioning.py", "backend/app/core/agentic/dispatcher.py"]
 api_references: ["backend/app/api/routes/memory.py"]
-test_references: ["tests/test_memory.py"]
-last_verified: 2026-05-19
-compass: CF-SPEC-60 / CF-757
+test_references: ["tests/test_memory.py", "tests/pi_production/test_w8_embeddings_gateway.py", "tests/pi_migration/test_count_to_zero.py"]
+last_verified: 2026-07-22
+compass: CF-SPEC-60 / CF-757; CF-SPEC-8
 ---
 
 # Memory Health
@@ -47,6 +47,13 @@ Memory Health exists so the work represented by Memory > Health has a stable, di
 - Project-scoped state or artifact updates associated with memory health.
 - Visible status, lists, forms, generated artifacts, or review results shown by the referenced component and routes.
 
+## Embeddings And Engine Selection
+
+- Retrieval and memory features embed text into vectors. Pi Replacement wave W8 gives the Pi replacement engine its own embeddings path: because the Pi runtime cannot execute embeddings itself, a small gateway calls the configured embedding endpoint directly over HTTP, choosing a local Ollama or LM Studio model when one is available and otherwise a compatible remote endpoint. If no compatible endpoint exists it fails visibly instead of quietly using the legacy engine.
+- Both engines embed with the same model, so switching engines never changes the meaning of a project's stored vectors. Istara checks this invariant at startup — together with the existing embedding-dimension health probe — and refuses to start with a mismatched configuration rather than silently mixing vector spaces.
+- Embedding results are still cached first, so repeated lookups do not call the model again; only cache misses go through the new dispatch path, and each one is counted once in usage accounting regardless of engine. All fourteen retrieval, memory, and agent features that embed text keep working unchanged.
+- Rolling back to the legacy engine is safe: embeddings return to the previous Ollama-based path and, because the model is the same on both engines, existing project vectors remain valid.
+
 ## Caveats
 
 - Needs interactive verification for exact empty, loading, error, and permission-denied states.
@@ -63,6 +70,6 @@ Memory Health exists so the work represented by Memory > Health has a stable, di
 
 ## Evidence
 
-- Source files: `frontend/src/components/memory/MemoryView.tsx`, `backend/app/core/vector_health.py`
+- Source files: `frontend/src/components/memory/MemoryView.tsx`, `backend/app/core/vector_health.py`, `backend/app/core/embeddings.py`, `backend/app/core/pi_runtime/embeddings_gateway.py`, `backend/app/core/agentic/dispatcher.py`
 - API references: `backend/app/api/routes/memory.py`
-- Tests: `tests/test_memory.py`
+- Tests: `tests/test_memory.py`, `tests/pi_production/test_w8_embeddings_gateway.py`, `tests/pi_migration/test_count_to_zero.py`

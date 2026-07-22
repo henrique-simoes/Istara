@@ -535,8 +535,12 @@ async def _react_loop(kwargs: dict[str, Any]) -> dict[str, Any]:
 
 async def _embed(kwargs: dict[str, Any]) -> dict[str, Any]:
     params = _params(kwargs)
+    # OllamaClient.embed_batch has no project_id kwarg (latent W1 bug: passing
+    # it raised TypeError on the real client, degrading every caller to its
+    # empty-embedding fallback). Project scoping enters through the
+    # dispatcher's engine resolution, not the client call.
     vectors = await _ollama().embed_batch(
-        list(kwargs.get("texts") or []), model=params.model, project_id=kwargs.get("project_id")
+        list(kwargs.get("texts") or []), model=params.model
     )
     return {"embeddings": vectors, "usage": {"estimate": False}, "status": "success"}
 

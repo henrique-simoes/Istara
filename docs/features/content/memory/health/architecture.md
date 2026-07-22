@@ -6,11 +6,11 @@ audience: architecture
 status: needs-verification
 related_features: ["memory.knowledge", "quality.dashboard"]
 related_glossary: ["rag"]
-code_references: ["frontend/src/components/memory/MemoryView.tsx", "backend/app/core/vector_health.py"]
+code_references: ["frontend/src/components/memory/MemoryView.tsx", "backend/app/core/vector_health.py", "backend/app/core/embeddings.py", "backend/app/core/validation.py", "backend/app/core/agentic/dispatcher.py", "backend/app/core/agentic/legacy.py", "backend/app/core/pi_runtime/embeddings_gateway.py", "backend/app/core/pi_runtime/model_manager.py", "backend/app/core/pi_runtime/model_manager_provisioning.py", "backend/app/core/pi_runtime/engine.py", "backend/app/main.py"]
 api_references: ["backend/app/api/routes/memory.py"]
-test_references: ["tests/test_memory.py"]
-last_verified: 2026-05-19
-compass: CF-SPEC-60 / CF-757
+test_references: ["tests/test_memory.py", "tests/pi_production/test_w8_embeddings_gateway.py", "tests/pi_production/test_w1_dispatcher_authority.py", "tests/test_validation_project_scope.py", "tests/pi_migration/test_count_to_zero.py"]
+last_verified: 2026-07-22
+compass: CF-SPEC-60 / CF-757; CF-SPEC-8 (Pi replacement W8)
 ---
 
 # Memory Health Architecture
@@ -34,6 +34,16 @@ Memory health surfaces status and quality signals for memory or retrieval infras
 
 - `backend/app/api/routes/memory.py`
 
+### Embeddings Gateway Migration (Pi Replacement W8)
+
+- Pi Replacement wave W8 (master plan `docs/build-stream/plans/2026-07-20-pi-full-replacement-master-plan.md` §5.2.3/§5.5, spec CF-SPEC-8) gives the Pi engine its own embeddings plane. pi-ai cannot execute embeddings, so the new `backend/app/core/pi_runtime/embeddings_gateway.py` calls the embedding endpoint directly over HTTP (`httpx`) while staying under Pi identity management: the endpoint is resolved by `PiModelManager.resolve_embed()`, which prefers the well-known `pi-local-ollama` entry (native Ollama `/api/embed` with the `/v1` suffix stripped), then other `kind=local` entries, then any remote `openai_compat` `/v1/embeddings`-compatible entry. An anthropic-only catalog fails closed with `PiEndpointResolutionError("no_matching_pi_embed_endpoint")` rather than silently falling back to the legacy plane, and response cardinality is validated (`PiEmbeddingError`) so a malformed endpoint response cannot poison the vector store.
+- The dispatcher's `embed` verb (`backend/app/core/agentic/dispatcher.py`) routes by resolved engine: Pi goes to the gateway — constructed lazily from the new public `PiExecutionService.model_manager()` accessor and injectable via the dispatcher's `embeddings_gateway=` constructor kwarg — while legacy keeps the unchanged `ollama.embed*` plane in `backend/app/core/agentic/legacy.py`. Gateway failures raise typed errors and never fall back to legacy; the W1 fail-closed stub `pi_embed_gateway_unavailable` is retired. W8 also fixed a latent W1 bug where `legacy._embed` passed `project_id=` to `OllamaClient.embed_batch`, which takes no such kwarg and would have raised `TypeError` on the real client.
+- Usage-ledger accounting keeps the dispatcher's one-row-per-dispatch contract (master plan §5.5): `AgenticDispatcher.embed` records the single `purpose="embed"` accounting row and the gateway never writes rows itself, so a cache-miss embed is counted exactly once regardless of engine.
+- The shared embedding wrappers in `backend/app/core/embeddings.py` migrated with all 14 downstream consumers untouched: `embed_text` and `embed_chunks` keep `embedding_cache` in front and route only cache misses through `agentic.embed` (`TurnParams(model=_embed_model_name())`), while `ensure_embed_model` dispatches on engine — legacy keeps `ollama.ensure_model("nomic-embed-text")` and Pi uses the new provisioner. `backend/app/core/validation.py` `_get_embeddings` now calls `agentic.embed(texts=texts, project_id=project_id)` with project-scoped engine resolution, still degrading to `[]` on failure. The consumers (`rag.py`, `prompt_rag.py`, `agent_memory.py`, `agent_skill_tools.py`, `agent_execution.py`, `rag_params.py`, `file_watcher.py`, `vector_health.py`) needed zero edits, and the count-to-zero legacy allowlist ratchet (`tests/pi_migration/legacy_allowlist.yaml`, `tests/pi_migration/test_count_to_zero.py`) dropped 70 → 53 as the 17 embed sites retired.
+- The new provisioner `backend/app/core/pi_runtime/model_manager_provisioning.py` (master plan §5.2.3) exposes `ensure_endpoint_model(endpoint, model)`: remote endpoints are a no-op (`False`), `kind=local` Ollama entries go through `OllamaClient.ensure_model` (list + pull), LM Studio entries through `LMStudioClient.ensure_model` (loaded-model check), and unknown local planes fail typed (`provision_unsupported_local_endpoint:<id>`).
+- Vector-space invariant: `embeddings_gateway.default_embed_model()` mirrors `embeddings._embed_model_name()` exactly, so both engines embed with the same model; `assert_vector_space_invariant()` raises `VectorSpaceInvariantError` on divergence and runs at startup in `backend/app/main.py` immediately after the existing `vector_health.check_embedding_dimensions` probe. An engine switch must never silently change the embedding space of a project's stored vectors.
+- Rollback: disable `settings.agentic_core` (or select the `legacy` engine for the project) and every embed call returns to the preserved `ollama.embed*` plane; because both engines embed with the same model, rollback does not alter the vector space.
+
 ## Architecture Notes
 
 - The feature is mounted through `frontend/src/components/memory/MemoryView.tsx` and the UI navigation path recorded in the inventory.
@@ -49,6 +59,11 @@ Memory health surfaces status and quality signals for memory or retrieval infras
 ## Tests And Verification
 
 - `tests/test_memory.py`
+- `tests/pi_production/test_w8_embeddings_gateway.py` verifies the W8 embeddings plane: MockTransport gateway HTTP behavior, `resolve_embed` ordering and anthropic-only fail-closed resolution, the vector-space invariant assertion, wrapper cache-in-front dispatch through `agentic.embed`, project-scoped validation embedding, provisioner behavior per endpoint kind, DB-projection reset, the merged settings model catalog, `ProjectUpdate.agentic_engine` validation, and static wiring checks.
+- `tests/pi_production/test_w1_dispatcher_authority.py` and `tests/pi_production/test_w1_agentic_contract.py` assert embed dispatch now reaches the gateway on the Pi engine instead of the retired `pi_embed_gateway_unavailable` stub.
+- `tests/test_validation_project_scope.py` asserts validation embedding project scope through the `agentic.embed` spy.
+- `tests/pi_migration/test_count_to_zero.py` keeps the legacy allowlist ratchet green at 53 after the 17 embed sites retired.
+- Regenerate and validate the machine manifests and static site with `python scripts/feature_docs.py --seed-missing --generate-site --check`.
 
 ## Related Features
 
@@ -61,7 +76,7 @@ Memory health surfaces status and quality signals for memory or retrieval infras
 
 ## Compass Evidence
 
-- Spec/task: CF-SPEC-60 / CF-757
+- Spec/task: CF-SPEC-60 / CF-757; CF-SPEC-8 (Pi replacement W8 embeddings gateway + vector-space invariant)
 - Inventory source: `docs/features/inventory.json`
 
 ## When To Update
