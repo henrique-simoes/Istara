@@ -36,10 +36,8 @@ import dataclasses
 import hashlib
 import importlib
 import json
-import subprocess
 import sys
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Iterable
 
@@ -51,10 +49,17 @@ if __package__ in (None, ""):  # pragma: no cover - only hit in script mode
     sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 from tests.pi_benchmark import schema
+from tests.pi_benchmark.schema import (
+    SCHEMA_VERSION,
+    _utc_now_iso,
+    build_record,
+    git_provenance,
+    input_sha256,
+    write_record_atomic,
+)
 from tests.pi_benchmark.scenarios import PACK_NAMES, Scenario, load_pack
 from tests.pi_benchmark.scenarios.base import tier_at_least
 
-SCHEMA_VERSION = "1.0.0"
 ENGINES = ("pi", "legacy")
 TIERS = ("T0", "T1", "T2", "T3")
 OFFLINE_TIERS = ("T0", "T1")
@@ -133,44 +138,6 @@ class RunSummary:
         return out
 
 
-# ── provenance helpers ──────────────────────────────────────────────────────
-
-
-def _git(*args: str) -> str:
-    try:
-        return subprocess.check_output(
-            ["git", *args], cwd=str(_repo_root()), stderr=subprocess.DEVNULL
-        ).decode().strip()
-    except Exception:  # pragma: no cover - git absent / not a repo
-        return ""
-
-
-def _repo_root() -> Path:
-    return Path(__file__).resolve().parents[2]
-
-
-def git_provenance() -> tuple[str, bool]:
-    """Return ``(git_sha, git_dirty)``; sha falls back to a padded stub if git is absent."""
-    sha = _git("rev-parse", "HEAD") or "0000000"
-    dirty = bool(_git("status", "--porcelain"))
-    return sha[: max(7, len(sha))] if len(sha) >= 7 else (sha + "0000000")[:7], dirty
-
-
-def input_sha256(scenario_id: str, seed: int) -> str:
-    """Deterministic 64-hex hash of the byte-identical input shared by both arms.
-
-    Both engine arms of a pair pass the identical ``(scenario_id, seed)`` here, so the
-    pair shares one ``input_sha256`` — a pair whose arms disagree is an ``invalid_pair``
-    downstream, never compared (winning plan risk table).
-    """
-    payload = json.dumps({"scenario": scenario_id, "seed": seed}, sort_keys=True).encode()
-    return hashlib.sha256(payload).hexdigest()
-
-
-def _utc_now_iso() -> str:
-    return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
-
-
 def sample_rss_bytes() -> int | None:
     """Sample this process's RSS in bytes (T2 live memory-load axis). None if psutil absent."""
     try:
@@ -178,73 +145,6 @@ def sample_rss_bytes() -> int | None:
     except Exception:  # pragma: no cover - psutil optional
         return None
     return int(psutil.Process().memory_info().rss)
-
-
-# ── record construction ─────────────────────────────────────────────────────
-
-
-def _order_for_pair(pair_index: int) -> str:
-    """Alternate which arm ran first, per pair, to expose and control order bias."""
-    return "legacy_first" if pair_index % 2 == 0 else "pi_first"
-
-
-def build_record(
-    *,
-    config: RunConfig,
-    scenario: Scenario,
-    engine: str,
-    seed: int,
-    repeat: int,
-    pair_index: int,
-    git_sha: str,
-    git_dirty: bool,
-    ts: str,
-    status: str,
-    not_runnable_reason: str | None = None,
-    metrics: dict[str, Any] | None = None,
-    usage: dict[str, Any] | None = None,
-    extensions: dict[str, Any] | None = None,
-) -> dict[str, Any]:
-    """Assemble one schema-conformant run record. Validates before returning."""
-    record_id = f"{config.phase}-{config.tier}-{scenario.pack}-{scenario.id}-seed{seed}-r{repeat}-{engine}"
-    pair_id = f"{config.phase}-{config.tier}-{scenario.pack}-{scenario.id}-seed{seed}-r{repeat}"
-    record: dict[str, Any] = {
-        "schema_version": SCHEMA_VERSION,
-        "record_id": record_id,
-        "pair_id": pair_id,
-        "phase": config.phase,
-        "tier": config.tier,
-        "engine": engine,
-        "pack": scenario.pack,
-        "scenario": {
-            "id": scenario.id,
-            "title": scenario.title,
-            "seed": seed,
-            "order": _order_for_pair(pair_index),
-        },
-        "provenance": {
-            "git_sha": git_sha,
-            "git_dirty": git_dirty,
-            "input_sha256": input_sha256(scenario.id, seed),
-            "model_id": None,  # no model at T0/T1; T2/T3 live driver would fill this in
-            "endpoint_fingerprint": "offline-contract",
-            "ts": ts,
-        },
-        "status": status,
-        "usage": usage if usage is not None else {
-            # An offline contract run consumes no model tokens — a true, exact zero.
-            "input_tokens": 0, "output_tokens": 0, "cache_tokens": 0,
-            "total_tokens": 0, "cost_usd": 0, "estimate": False, "estimator": None,
-        },
-    }
-    if not_runnable_reason is not None:
-        record["not_runnable_reason"] = not_runnable_reason
-    if metrics is not None:
-        record["metrics"] = metrics
-    if extensions is not None:
-        record["extensions"] = extensions
-    schema.validate_record(record)
-    return record
 
 
 # ── offline (T0/T1) execution ───────────────────────────────────────────────
@@ -338,8 +238,6 @@ def _scenario_for_unit(unit: Any) -> Scenario | None:
 
 def _record_unknown_scenario(unit: Any, config: RunConfig, records_dir: Path) -> dict[str, Any]:
     """A unit whose scenario/pack doesn't resolve still gets a record (never dropped)."""
-    from tests.pi_benchmark import live_driver
-
     known_packs = ("canonical", "spine", "a2a", "features", "probes")  # schema enum
     pack = unit.pack if unit.pack in known_packs else "canonical"
     scenario = Scenario(id=unit.scenario_id, title=unit.scenario_id, pack=pack)
@@ -360,7 +258,7 @@ def _record_unknown_scenario(unit: Any, config: RunConfig, records_dir: Path) ->
             "detail": {"reason": f"unknown scenario {unit.scenario_id!r} in pack {unit.pack!r}"},
         },
     )
-    live_driver._write_record_atomic(records_dir, unit.unit_id, record)
+    write_record_atomic(records_dir, unit.unit_id, record)
     return record
 
 

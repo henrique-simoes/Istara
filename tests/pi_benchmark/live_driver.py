@@ -10,14 +10,12 @@ Routing per unit:
 * ``moa_mode is None`` — one ``agentic.ensemble`` sample (``n=1, distinct=False``) pinned
   to the auto-registered ``pi-deepseek-default`` endpoint via ``TurnParams``; the engine
   (``pi`` | ``legacy``) comes from the unit.
-* ``moa_mode == "self_moa"`` — ``validation.self_moa(n=moa_n)``: a temperature sweep on
-  ONE endpoint (``distinct=False``).
-* ``moa_mode == "full_ensemble"`` — ``validation.full_ensemble(min_responses=slots-1)``
-  where ``slots = max(3, moa_n)``: the backend requests ``min_responses + 1`` distinct
-  endpoints, so this asks for exactly ``slots`` distinct routes. The backend fails closed
-  on insufficient topology (full_ensemble -> dual_run -> self_moa) and reports the served
-  method in ``result.method``; :mod:`tests.pi_benchmark.moa` turns that into evidence and
-  a downgraded ensemble is recorded ``not_runnable``, never ``ok``.
+* ``moa_mode in {"self_moa", "full_ensemble"}`` — the benchmark-safe
+  ``agentic.ensemble`` path with the unit's ``engine``, DeepSeek model, and approved
+  endpoint pinned. All slots use the approved endpoint (``distinct=False``); a requested
+  full ensemble therefore records route collapse as degraded rather than discovering
+  local/other configured endpoints. :mod:`tests.pi_benchmark.moa` turns that into evidence
+  and a downgraded ensemble is recorded ``not_runnable``, never ``ok``.
 
 Spend discipline (fail closed everywhere):
 
@@ -57,9 +55,7 @@ from dataclasses import asdict, dataclass, replace as dc_replace
 from pathlib import Path
 from typing import Any
 
-import tests.pi_benchmark.moa as moa
-import tests.pi_benchmark.recording as recording
-import tests.pi_benchmark.schema as schema
+from tests.pi_benchmark import moa, schema
 
 try:  # Lane A module; fall back to a local twin until it lands.
     from tests.pi_benchmark.budget_ledger import BudgetExceeded
@@ -91,6 +87,10 @@ class PreDispatchError(RuntimeError):
 
 class RouteAdmissionError(RuntimeError):
     """Raised when a dispatched sample does not prove an approved benchmark route."""
+
+    def __init__(self, message: str, *, route: dict[str, Any] | None = None) -> None:
+        self.route = dict(route or {})
+        super().__init__(message)
 
 
 @dataclass(frozen=True)
@@ -220,13 +220,32 @@ def _benchmark_route_evidence(
             or (endpoint_ids[index] if index < len(endpoint_ids) else "")
         )
         if not endpoint_id:
-            raise RouteAdmissionError("benchmark sample has no endpoint identity")
+            raise RouteAdmissionError(
+                "benchmark sample has no endpoint identity",
+                route={"route_kind": "agentic_ensemble", "admission": "rejected"},
+            )
         if endpoint_id not in APPROVED_DEEPSEEK_ENDPOINT_IDS:
-            raise RouteAdmissionError(f"benchmark route not approved: {endpoint_id!r}")
+            raise RouteAdmissionError(
+                f"benchmark route not approved: {endpoint_id!r}",
+                route={
+                    "endpoint_id": endpoint_id,
+                    "route_kind": "agentic_ensemble",
+                    "admission": "rejected",
+                },
+            )
         provider = str(getattr(sample, "provider", "") or DEEPSEEK_PROVIDER)
         model = str(getattr(sample, "model", "") or DEEPSEEK_MODEL)
         if provider != DEEPSEEK_PROVIDER or model != DEEPSEEK_MODEL:
-            raise RouteAdmissionError("benchmark sample provider/model is not DeepSeek-approved")
+            raise RouteAdmissionError(
+                "benchmark sample provider/model is not DeepSeek-approved",
+                route={
+                    "endpoint_id": endpoint_id,
+                    "provider": provider,
+                    "model": model,
+                    "route_kind": "agentic_ensemble",
+                    "admission": "rejected",
+                },
+            )
         if getattr(sample, "status", None) != "success" or not getattr(sample, "text", ""):
             continue
         evidence.append({
@@ -263,9 +282,9 @@ def _benchmark_moa_capture(
     consensus_score = None
     consensus_confidence = ""
     if responses:
-        # Consensus is deterministic and local. Do not call validation._get_embeddings or
-        # agentic.embed: those calls sit outside the benchmark's shared budget ledger and
-        # may select a local embedding provider.
+        # Consensus is deterministic and local. Do not call the validation embedding
+        # helper: that work sits outside the benchmark's shared budget ledger and may
+        # select a local embedding provider.
         from app.core.consensus import compute_consensus
 
         consensus = compute_consensus(responses, embeddings=None, method=served_method)
@@ -425,7 +444,7 @@ def _build_unit_record(
     not_runnable_reason: str | None = None, usage: dict[str, Any] | None = None,
     extensions: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
-    """Assemble + validate one record via the shared recording helpers."""
+    """Assemble + validate one record via the shared schema helpers."""
 
     # The unit's own phase (from the manifest) is the identity — a wave's CLI --phase
     # is only a default and must not rewrite a unit's record identity.
@@ -433,7 +452,7 @@ def _build_unit_record(
     unit_phase = str(getattr(unit, "phase", "") or "")
     if unit_phase and unit_phase != getattr(config, "phase", None):
         unit_config = dc_replace(config, phase=unit_phase)
-    record = recording.build_record(
+    record = schema.build_record(
         config=unit_config,
         scenario=scenario,
         engine=unit.engine,
@@ -441,9 +460,9 @@ def _build_unit_record(
         repeat=unit.repeat,
         # Deterministic per-unit order assignment (stable across resume/waves).
         pair_index=int(hashlib.sha256(unit.unit_id.encode()).hexdigest()[:8], 16),
-        git_sha=recording.git_provenance()[0],
-        git_dirty=recording.git_provenance()[1],
-        ts=recording._utc_now_iso(),
+        git_sha=schema.git_provenance()[0],
+        git_dirty=schema.git_provenance()[1],
+        ts=schema._utc_now_iso(),
         status=status,
         not_runnable_reason=not_runnable_reason,
         metrics=None,  # live quality metrics need judge/probe scoring — never fabricated
@@ -559,7 +578,7 @@ async def run_live_unit(
             unit=unit, scenario=scenario, config=config, status="not_runnable",
             not_runnable_reason="budget_exceeded", extensions=extensions,
         )
-        recording.write_record_atomic(records_dir, unit.unit_id, _stamp_live_provenance(record, provider))
+        schema.write_record_atomic(records_dir, unit.unit_id, _stamp_live_provenance(record, provider))
         return record
 
     # 3. Dispatch; map failures onto typed not_runnable records.
@@ -575,7 +594,7 @@ async def run_live_unit(
             unit=unit, scenario=scenario, config=config, status="not_runnable",
             not_runnable_reason="startup_failure", extensions=extensions,
         )
-        recording.write_record_atomic(records_dir, unit.unit_id, _stamp_live_provenance(record, provider))
+        schema.write_record_atomic(records_dir, unit.unit_id, _stamp_live_provenance(record, provider))
         return record
     except (TimeoutError, asyncio.TimeoutError) as exc:
         # Retain the reservation: the request may still be in flight and billable.
@@ -584,15 +603,22 @@ async def run_live_unit(
             unit=unit, scenario=scenario, config=config, status="not_runnable",
             not_runnable_reason="timeout", extensions=extensions,
         )
-        recording.write_record_atomic(records_dir, unit.unit_id, _stamp_live_provenance(record, provider))
+        schema.write_record_atomic(records_dir, unit.unit_id, _stamp_live_provenance(record, provider))
         return record
     except Exception as exc:
-        extensions["detail"] = {"reason": f"dispatch failure (reservation retained): {exc}"}
+        if isinstance(exc, RouteAdmissionError):
+            extensions["detail"] = {"reason": "route_admission_failed"}
+            if exc.route:
+                extensions["route_evidence"] = [
+                    {key: str(value) for key, value in exc.route.items() if value is not None}
+                ]
+        else:
+            extensions["detail"] = {"reason": f"dispatch failure (reservation retained): {exc}"}
         record = _build_unit_record(
             unit=unit, scenario=scenario, config=config, status="not_runnable",
             not_runnable_reason="startup_failure", extensions=extensions,
         )
-        recording.write_record_atomic(records_dir, unit.unit_id, _stamp_live_provenance(record, provider))
+        schema.write_record_atomic(records_dir, unit.unit_id, _stamp_live_provenance(record, provider))
         return record
 
     # 4. Successful-looking dispatch with neither usage nor text: fail closed.
@@ -604,7 +630,7 @@ async def run_live_unit(
             unit=unit, scenario=scenario, config=config, status="not_runnable",
             not_runnable_reason="other", extensions=extensions,
         )
-        recording.write_record_atomic(
+        schema.write_record_atomic(
             records_dir, unit.unit_id, _stamp_live_provenance(record, provider, capture)
         )
         return record
@@ -644,7 +670,7 @@ async def run_live_unit(
         unit=unit, scenario=scenario, config=config, status=status,
         not_runnable_reason=reason, usage=usage_block, extensions=extensions,
     )
-    recording.write_record_atomic(
+    schema.write_record_atomic(
         records_dir, unit.unit_id, _stamp_live_provenance(record, provider, capture)
     )
     return record

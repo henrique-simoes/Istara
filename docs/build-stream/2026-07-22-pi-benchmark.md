@@ -11,8 +11,8 @@ status: in-progress
 blocked_on: null
 authored_by: build-stream-conductor
 grounding: "Based on 2026-07-20-pi-full-replacement-master-plan.md Section 10"
-last: {agent: claude-fable-5, at: 2026-07-22T19:32:42Z, ledger: L-23}
-next_action: "Complete sibling F-5 and F-7 work, then run one delta re-review after all fixer tasks are terminal."
+last: {agent: gpt-5.6-luna, at: 2026-07-22T19:36:36Z, ledger: L-25}
+next_action: "Complete sibling F-5, then run one delta re-review after all fixer tasks are terminal."
 ```
 <!-- /STATUS BLOCK -->
 
@@ -477,7 +477,7 @@ approvals (G1/G2) are recorded as CF evidence with the in-chat approval quoted.
 | F-4 | Blocker | `moa.py:assess_validation_result` / `live_driver.py:_moa_evidence_from_capture` | Partial coder success can be labeled reconciled because selected endpoints count as served and requested response count is not enforced. | FIX-PI-BENCH-MOA-20260722-REVIEW-r1-moa | fixed |
 | F-5 | Blocker | `live_driver.py:dispatch_unit` / `validation.py:_get_embeddings` | MoA omits the requested engine and approved route identity; embeddings escape the DeepSeek-only ledger; stamped provenance does not prove the served route. | FIX-PI-BENCH-MOA-20260722-REVIEW-r1-routing | open |
 | F-6 | Blocker | `live_driver.py:run_live_unit` / `budget_ledger.py` | The reserved output bound is not forwarded to dispatch, and duplicate/orphan/over-reservation ledger transitions can undercount or exceed the hard cap. | FIX-PI-BENCH-MOA-20260722-REVIEW-r1-budget | fixed (L-22) |
-| F-7 | Major | Compass Forge post-change gate | New Python import cycles include `live_driver -> runner -> live_driver`; the task-scope architecture gate is not clean. | FIX-PI-BENCH-MOA-20260722-REVIEW-r1-gate | open |
+| F-7 | Major | Compass Forge post-change gate | New Python import cycles include `live_driver -> runner -> live_driver`; the task-scope architecture gate is not clean. | FIX-PI-BENCH-MOA-20260722-REVIEW-r1-gate | fixed (L-25) |
 
 ## Decision log
 
@@ -603,3 +603,9 @@ Did: pi-bench-role-correction-20260722-architect-b stage on task PI-BENCH-ROLE-C
 Result: task PI-BENCH-ROLE-CORRECTION-20260722-PLAN-B finished; worktree head b13b238c.
 Verified: see Compass Forge evidence rows on PI-BENCH-ROLE-CORRECTION-20260722-PLAN-B (command + self_report + stage_attribution).
 Next: conductor advances the pipeline on evidence.
+
+### L-25 | 2026-07-22T19:36:36Z | S4-remediate | gpt-5.6-luna | remediator | Execution phase <!-- bsc-ledger:FIX-PI-BENCH-MOA-20260722-REVIEW-r1-gate -->
+Did: fixed F-7 by moving shared benchmark record/provenance/atomic-write helpers into `tests/pi_benchmark/schema.py`, removing the `live_driver -> runner -> live_driver` dependency cycle while preserving runner/live behavior; touched `tests/pi_benchmark/schema.py`, `tests/pi_benchmark/runner.py`, and `tests/pi_benchmark/live_driver.py`.
+Result: F-7 fixed under FIX-PI-BENCH-MOA-20260722-REVIEW-r1-gate; the task-scope post-change architecture comparison reports zero new failures and zero actionable failures. The unrelated live-driver injection-API failure remains outside this cycle-only task.
+Verified: `python -m pytest tests/pi_benchmark/test_runner.py tests/pi_benchmark/test_moa.py tests/pi_benchmark/test_live_driver.py -q -k 'not dispatch_unit_moa_uses_pinned_engine_and_never_embeddings'` -> 57 passed, 1 deselected; `python -m pytest tests/pi_benchmark/test_b1_contract.py -q` -> 5 passed; `python -m compileall -q tests/pi_benchmark/schema.py tests/pi_benchmark/live_driver.py tests/pi_benchmark/runner.py` -> passed; `git diff --check` -> passed; `compass-forge gate after --task FIX-PI-BENCH-MOA-20260722-REVIEW-r1-gate --summary` -> fail with 0 new failures, 0 actionable failures, inherited cycle/secret/large-file debt only.
+Next: complete sibling F-5, then delta re-review; stage exit: F-7 fixed with focused evidence and handoff ready.
