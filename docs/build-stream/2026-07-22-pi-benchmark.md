@@ -11,8 +11,8 @@ status: in-progress
 blocked_on: null
 authored_by: build-stream-conductor
 grounding: "Based on 2026-07-20-pi-full-replacement-master-plan.md Section 10"
-last: {agent: gpt-5.6-sol, at: 2026-07-22T19:43:35Z, ledger: L-31}
-next_action: "Conductor tallies judge votes and advances the winning role-correction plan to implementation."
+last: {agent: claude-fable-5, at: 2026-07-22T19:44:58Z, ledger: L-32}
+next_action: "r2 consensus judging over plan slots a/b/c; then implement winning plan RC-1..RC-6; delta re-review still pending."
 ```
 <!-- /STATUS BLOCK -->
 
@@ -645,3 +645,9 @@ Did: consensus judge slot b read exactly candidate plan A r1 by claude-fable-5 a
 Result: voted for slot a on PI-BENCH-ROLE-CORRECTION-20260722-JUDGE-B (CF plan_vote evidence 1410). Plan A is newer, limits the primary correction to the lifecycle and authoritative work-order, reconciles the seven packs precisely, preserves append-only history, and explicitly isolates the DeepSeek-judge/shared-ledger code contradiction as follow-up debt; Plan C is coherent but uses an older snapshot and expands the main diff into tests/pi_benchmark/README.md.
 Verified: full reads of docs/build-stream/plans/pi-bench-role-correction-20260722-plan-a.md and docs/build-stream/plans/pi-bench-role-correction-20260722-plan-c.md passed; CF evidence rows 1408, 1410, and 1411 (command, plan_vote, self_report).
 Next: stage exit: judge-b vote and required evidence recorded; conductor tallies votes and advances the winning plan.
+
+### L-32 | 2026-07-22T19:44:58Z | S1-plan | claude-fable-5 | architect | Role-correction planning <!-- bsc-ledger:PI-BENCH-ROLE-CORRECTION-20260722-REPLAN-A-r2 -->
+Did: repaired consensus plan A (revision r2) at docs/build-stream/plans/pi-bench-role-correction-20260722-plan-a.md (268 lines) — re-verified every r1 grounding citation by fresh grep at HEAD 1777753c (all Kimi-as-evaluation regions :202-500, DEC-5 judge clause :488-489, DEC-6 :497-500, wave-contract slice list :42-43, work-order roles/packs :24-31/:36-38/:71-83) and folded in post-r1 drift: ledger advanced to L-29 with harness fallback entries L-28/L-29 and a dangling Status Block ledger: L-30 reference; deepseek_judge.py docstring rewritten to explicitly declare the judge-IS-DUT-model shared-ledger policy (:3-8, make_deepseek_judge_fn :84-90), so the plan's code/doc-mismatch risk row and its follow-up CF task now also cover superseding that docstring/separation_note policy text; F-3..F-7 all read fixed in the register. No lifecycle plan content or code edited.
+Result: plan slot A ready for r2 consensus judging; PI-BENCH-ROLE-CORRECTION-20260722-REPLAN-A-r2
+Verified: git diff --check passed; grep re-audit over lifecycle + work-order + deepseek_judge.py (all citations hold at 1777753c); wc -l plan = 268; scope audit — only the plan file modified by this stage; CF evidence rows 1414-1416 (2x command, self_report)
+Next: consensus judges a/b/c vote on plan slots; winning plan's implementer executes RC-1..RC-6

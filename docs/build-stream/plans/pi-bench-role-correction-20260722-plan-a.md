@@ -1,15 +1,39 @@
 # Plan A — Pi benchmark role correction (DUT / evaluation backend / post-run judge)
 
-- **Task:** `PI-BENCH-ROLE-CORRECTION-20260722-REPLAN-A-r1` (consensus architect slot A,
-  revision r1 — supersedes r0 authored under `PI-BENCH-ROLE-CORRECTION-20260722-PLAN-A`;
+- **Task:** `PI-BENCH-ROLE-CORRECTION-20260722-REPLAN-A-r2` (consensus architect slot A,
+  revision r2 — supersedes r1 (`…-REPLAN-A-r1`) and r0 (`…-PLAN-A`);
   pipeline `PI-BENCH-ROLE-CORRECTION-20260722`)
 - **Spec:** CF-SPEC-8 · **Lifecycle:** `docs/build-stream/2026-07-22-pi-benchmark.md`
-- **Authored:** 2026-07-22, against branch `Review_pi_test` @ `b13b238c` (post-L-23 state)
+- **Authored:** 2026-07-22, against branch `Review_pi_test` @ `1777753c` (post-L-29 state)
 - **Scope:** documentation-only correction of the Pi benchmark lifecycle file and the
   Pi benchmark Conductor work-order. No backend/frontend production file, no
   `tests/pi_benchmark/` code, no master-plan edit, no production routing change.
 
-> **r1 revision note.** Every §1 citation was re-verified by fresh grep on
+> **r2 revision note.** Every §1/§3 citation was re-verified by fresh grep on
+> @ `1777753c` (command evidence on the CF task `…-REPLAN-A-r2`): all lifecycle
+> Kimi-as-evaluation regions, DEC-5's judge clause (:488-489), DEC-6 (:497-500), the
+> wave-contract slice list (:42-43), and the work-order role text (:24-31, :36-38 no
+> ledger draw, :71-73 pack list, :76-77 Kimi judge, :79 must-not-rerun-DUT, :82
+> route/MoA judge-scoring dimension) all hold unchanged at HEAD. Drift folded in at r2:
+> (a) ledger has advanced to **L-29** (L-27 = this plan's r1; L-28/L-29 are harness
+> fallback entries for sibling architect slots C and B), and the committed Status Block
+> carries a dangling `ledger: L-30` reference — the next real appended entry becomes
+> L-30, so implementers must re-read the last `### L-<n>` under the completion lock and
+> never trust the Status Block for numbering; (b) `tests/pi_benchmark/deepseek_judge.py`'s
+> module docstring was **rewritten** since r1 and now *explicitly declares* the policy the
+> correction supersedes — ":3-8: 'the judge IS the DUT model (`deepseek-v4-pro`) but never
+> the DUT *role*' … 'a shared budget ledger so judge spend and benchmark spend draw from
+> the same owner-approved cap', citing `judge_config.json`'s `separation_note`" — with
+> `make_deepseek_judge_fn` (:84-90) still sharing the evaluation `ledger` via
+> `kind="judge"` calls; the §7 code/doc-mismatch row is upgraded accordingly (the code
+> now asserts a *decided policy*, not just an implementation detail, so the follow-up CF
+> task must also supersede that docstring/`separation_note` text); (c) findings F-3…F-7
+> all read `fixed` in the lifecycle register (F-5 at L-26, F-7 at L-25); the pending
+> sibling work sharing this worktree is now the delta re-review plus the r2 consensus
+> round itself (replan-b-r2 and judges a/b/c active), keeping §7's race mitigation
+> (completion lock + path-scoped commits) load-bearing.
+>
+> **r1 revision note (retained).** Every §1 citation was re-verified by fresh grep on
 > @ `b13b238c` (command evidence on the CF task): all 14 Kimi-as-evaluation regions,
 > DEC-5's "and judge call through DeepSeek" clause (:488-489), and DEC-6's Kimi
 > evaluation route + open judge cast (:497-500) sit at the cited lines; the execution
@@ -36,8 +60,8 @@
 ## 1. Problem statement (verified audit)
 
 The lifecycle file contains two mutually contradictory role assignments, verified by
-direct grep on 2026-07-22 and **re-verified at r1 on @ `b13b238c`** (all line numbers
-below re-checked):
+direct grep on 2026-07-22, re-verified at r1 on @ `b13b238c`, and **re-verified at r2 on
+@ `1777753c`** (all line numbers below re-checked at HEAD):
 
 **Defect class 1 — Kimi mislabeled as the evaluation (DUT-serving) provider.**
 The embedded "Winning consensus plan" (Plan C, lifecycle lines ~110–505) was authored
@@ -219,11 +243,11 @@ backend/.venv/bin/python -m pytest tests/pi_benchmark/ -q   # expected: unchange
 | Risk | Likelihood | Mitigation |
 |---|---|---|
 | Accidental edit of append-only ledger entries (L-2…L-21) while rewriting the winning-plan section | Medium | RC-1 edits are bounded to the winning-plan region and decision log; reviewer diffs against `### L-` headings — any hunk inside a historical ledger entry is a finding. |
-| Shared-worktree race with sibling MoA-pipeline workers — all findings F-3…F-7 are `fixed` as of L-20…L-26, but the pending delta re-review (and any resulting fixers) still edits tests/ and appends lifecycle ledger entries | Medium | Acquire `repo_lock.completion_lock` for the read-append-commit critical section; commit only the two doc paths via `repo_lock.commit_paths`; never `git add -A`. |
+| Shared-worktree race with sibling workers — all findings F-3…F-7 are `fixed` as of L-20…L-26, but the pending delta re-review (and any resulting fixers) still edits tests/ and appends lifecycle ledger entries, and the r2 consensus round itself (replan-b-r2, judges a/b/c) runs concurrently in this worktree; harness fallback entries (L-28, L-29) and a dangling Status Block `ledger: L-30` reference show numbering races are real, not theoretical | Medium | Acquire `repo_lock.completion_lock` for the read-append-commit critical section; re-read the last `### L-<n>` heading (never the Status Block) for numbering; commit only the two doc paths via `repo_lock.commit_paths`; never `git add -A`. |
 | Over-correction: rewriting text that is already correct (Goals, wave contract, §2.2 p5) creates review churn and merge conflicts | Low | §1 "already correct" list is explicit; RC-1 touches only the audited line regions. |
 | grep audit false positives from historical ledger text (e.g. L-18 "DeepSeek judge") | Medium | AC-2 command (b) is scoped to non-`### L-` regions by manual hunk inspection; the plan explicitly declares history exempt. |
 | Semantic drift: changing budget/gate/wave wording while swapping provider names | Low | AC-5 grep battery pins the invariants; reviewer checks the diff is identity-swap only. |
-| Code/doc mismatch remains: `tests/pi_benchmark/deepseek_judge.py` + `judge_config.json` implement a DeepSeek judge on the shared ledger — verified at r1: `:6` ("shared budget ledger so judge spend and benchmark spend draw from the same … envelope") and `:84-89` (`make_deepseek_judge_fn` shares `ledger`, `kind="judge"`) — contradicting the corrected roles (Kimi judge, artifact-only, no ledger draw) AND the work-order's own :38 | High | Out of scope here (no code edits). Record as an explicit residual risk in the ledger entry and raise a NEW CF task for the follow-up (rename/re-scope the judge preflight apparatus or gate it out of the judging path) — do not silently leave the contradiction unlisted. |
+| Code/doc mismatch remains — and hardened at r2: `tests/pi_benchmark/deepseek_judge.py`'s docstring now *explicitly declares* "the judge IS the DUT model (`deepseek-v4-pro`) but never the DUT *role*" with "a shared budget ledger so judge spend and benchmark spend draw from the same owner-approved cap" (`:3-8`, referencing `judge_config.json`'s `separation_note`), and `make_deepseek_judge_fn` (`:84-90`) shares the evaluation `ledger` via `kind="judge"` — contradicting the corrected roles (Kimi judge, artifact-only, no evaluation-ledger draw) AND the work-order's own :36-38 | High | Out of scope here (no code edits). Record as an explicit residual risk in the ledger entry and raise a NEW CF task for the follow-up (rename/re-scope the judge preflight apparatus or gate it out of the judging path, AND supersede the docstring/`separation_note` policy text) — do not silently leave the contradiction unlisted. |
 
 ## 8. Rollback
 
