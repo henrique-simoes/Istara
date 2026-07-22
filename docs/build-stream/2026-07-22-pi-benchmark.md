@@ -597,3 +597,9 @@ Did: authored independent consensus plan A at docs/build-stream/plans/pi-bench-r
 Result: plan slot A ready for consensus judging; key audit: 14 Kimi-as-evaluation occurrences in the embedded winning plan (task table, A3/A4/A7, section-5 commands, risks, G0/G1, non-goals, DEC-6) plus DEC-5's "and judge call through DeepSeek" clause; execution work-order pi-benchmark-deepseek-moa-execution.md confirmed already role-correct, needing only pack-list/pointer tightening; PI-BENCH-ROLE-CORRECTION-20260722-PLAN-A
 Verified: git diff --check passed; grep -iE role-ambiguity audit over lifecycle + work-order (14 kimi-eval hits at lines 202-500, deepseek-judge clause at :489); wc -l plan = 209; CF evidence rows 1361-1364 (3x command, self_report)
 Next: consensus judges vote on plan slots a/b/c; winning plan's implementer executes RC-1..RC-6
+
+### L-24 | 2026-07-22T19:35:04Z | S1-plan | gpt-5.6-sol | planner | pi-bench-role-correction-20260722-architect-b <!-- bsc-ledger:PI-BENCH-ROLE-CORRECTION-20260722-PLAN-B -->
+Did: pi-bench-role-correction-20260722-architect-b stage on task PI-BENCH-ROLE-CORRECTION-20260722-PLAN-B (harness fallback entry; the model did not append one).
+Result: task PI-BENCH-ROLE-CORRECTION-20260722-PLAN-B finished; worktree head b13b238c.
+Verified: see Compass Forge evidence rows on PI-BENCH-ROLE-CORRECTION-20260722-PLAN-B (command + self_report + stage_attribution).
+Next: conductor advances the pipeline on evidence.
