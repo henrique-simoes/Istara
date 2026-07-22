@@ -5,14 +5,14 @@
 item: pi-benchmark
 branch: Review_pi_test
 cf: { spec: CF-SPEC-8 }
-phase: "Replanned execution — B0 through B_N process waves"
+phase: "Retake planning - fresh B0/B1..B_N consensus (PI-BENCH-RETAKE-20260722)"
 stage: S1-plan
 status: in-progress
 blocked_on: null
 authored_by: build-stream-conductor
 grounding: "Based on 2026-07-20-pi-full-replacement-master-plan.md Section 10"
-last: { agent: kimi-code/k3, at: 2026-07-22T20:17:35Z, ledger: L-42 }
-next_action: "Conductor: tally the three judge votes and seal consensus_result for the recovery pipeline (slot a leads 2-1); G-R1 owner gate before any implementation."
+last: { agent: claude-fable-5, at: 2026-07-22T22:42:32Z, ledger: L-44 }
+next_action: "Retake consensus (PI-BENCH-RETAKE-20260722): remaining architects author plans; judges vote on slots a/b/c; conductor pins candidates and tallies."
 ```
 <!-- /STATUS BLOCK -->
 
@@ -717,3 +717,9 @@ Did: pi-bench-recovery-20260722-architect-c stage on task PI-BENCH-RECOVERY-2026
 Result: task PI-BENCH-RECOVERY-20260722-REPLAN-C-r1 finished; worktree head 4fcfc4ec.
 Verified: see Compass Forge evidence rows on PI-BENCH-RECOVERY-20260722-REPLAN-C-r1 (command + self_report + stage_attribution).
 Next: conductor advances the pipeline on evidence.
+
+### L-44 | 2026-07-22T22:42:32Z | S1-plan | claude-fable-5 | architect | Retake planning <!-- bsc-ledger:PI-BENCH-RETAKE-20260722-PLAN-A -->
+Did: authored independent retake consensus plan A at docs/build-stream/plans/pi-bench-retake-20260722-plan-a.md (283 lines: verified B0 apparatus inventory with exact paths+tests, wave-manifest design with max_processes N distinct from moa_n/repeats, owner gates G-RT1/G-RT2 with gate-to-manifest-hash binding, MoA downgrade-is-never-success acceptance, post-run artifact-only Kimi judging separation, RT-1..RT-8 task table, A1-A8 acceptance, verification matrix, risks R1-R6, rollback, narrow changed-file scope). No code, no other plan, no prior ledger entry edited.
+Result: plan slot A ready for retake consensus judging; key audit at 3a226139: apparatus largely complete but suite is 170 passed/2 FAILED (deepseek_provider commit-exceeds-reservation seam at budget_ledger.py:277, plan gap G-1/RT-1); owner-gate check is existence-only with stale prior-lineage G1/G2 artifacts (runner.py:472-478, gap G-2/RT-2); referenced work order pi-benchmark-deepseek-moa-execution.md absent on this branch (G-3); stale Kimi-as-evaluation text remains in embedded winning plan (G-4); PI-BENCH-RETAKE-20260722-PLAN-A
+Verified: python3 -m pytest tests/pi_benchmark/ -q -> 170 passed 2 failed (documented defect); focused test_scheduler+test_budget_ledger+test_moa -> 43 passed; git diff --check clean; CF evidence rows 1489-1492 (3x command, self_report)
+Next: architects B/C finish; consensus judges vote on retake slots a/b/c; conductor pins immutable candidates and tallies
