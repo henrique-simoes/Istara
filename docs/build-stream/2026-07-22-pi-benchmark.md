@@ -11,7 +11,7 @@ status: in-progress
 blocked_on: null
 authored_by: build-stream-conductor
 grounding: "Based on 2026-07-20-pi-full-replacement-master-plan.md Section 10"
-last: {agent: claude-fable-5, at: 2026-07-22T19:38:59Z, ledger: L-27}
+last: {agent: claude-fable-5, at: 2026-07-22T19:42:46Z, ledger: L-30}
 next_action: "F-5 fixed; complete the sibling barrier, then run one delta re-review."
 ```
 <!-- /STATUS BLOCK -->
@@ -633,3 +633,9 @@ Did: pi-bench-role-correction-20260722-architect-b stage on task PI-BENCH-ROLE-C
 Result: task PI-BENCH-ROLE-CORRECTION-20260722-REPLAN-B-r1 finished; worktree head 5b9b5d56.
 Verified: see Compass Forge evidence rows on PI-BENCH-ROLE-CORRECTION-20260722-REPLAN-B-r1 (command + self_report + stage_attribution).
 Next: conductor advances the pipeline on evidence.
+
+### L-30 | 2026-07-22T19:42:46Z | S1-plan | claude-fable-5 | judge | pi-bench-role-correction-20260722-judge-a <!-- bsc-ledger:PI-BENCH-ROLE-CORRECTION-20260722-JUDGE-A -->
+Did: consensus judge slot a — read both candidate plans (pi-bench-role-correction-20260722-plan-b.md r1 by gpt-5.6-sol, plan-c.md by kimi-code/k3) and spot-verified their factual claims against this lifecycle and tests/pi_benchmark/runner.py; edited only this lifecycle file (this append).
+Result: plan_vote for slot c recorded (CF evidence 1405) — Plan C's line-anchored stale-Kimi audit fully verified against the file, DEC-7 content pre-specified, tests/pi_benchmark/README.md pointer in scope, explicit F-5/F-7 collision avoidance; Plan B strong on MoA requested-vs-served spec and judging barrier but unanchored audit and no README annotation; PI-BENCH-ROLE-CORRECTION-20260722-JUDGE-A
+Verified: grep -n -i kimi docs/build-stream/2026-07-22-pi-benchmark.md (all Plan C cited instances at :202,:307-312,:327-339,:357-395,:422-424,:449-452,:465-466 present); sed DEC-5/DEC-6 (judge-on-ledger and Kimi-eval contradictions confirmed); runner.py ONLY_PROVIDER/ONLY_MODEL parser.error enforcement confirmed; CF evidence rows 1404-1406 (command, plan_vote, self_report)
+Next: conductor tallies judge votes a/b/c and advances the winning plan to implementation
