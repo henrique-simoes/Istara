@@ -9,8 +9,8 @@ phase: "W8 — embeddings gateway + model-management UX parity"
 stage: S4-remediate
 status: in-progress
 blocked_on: null
-last: { agent: gpt-5.6-luna, at: 2026-07-22T07:28:58Z, ledger: L-65 }
-next_action: "Run the conductor-created bounded delta re-review for F-W8-4 after the sibling fixer barrier."
+last: { agent: gpt-5.6-luna, at: 2026-07-22T07:29:25Z, ledger: L-66 }
+next_action: "Barrier sibling F-W8-1, F-W8-3, and F-W8-4, then run the conductor-created bounded delta re-review."
 ```
 <!-- /STATUS BLOCK -->
 
@@ -1136,3 +1136,8 @@ Did: Fixed F-W8-4 in `backend/app/api/routes/settings.py`, `backend/app/api/rout
 Result: F-W8-4 open -> fixed under `FIX-pi-full-20260720-w8-REVIEW-r1-ux`. `/api/settings/models` now exposes normalized `agentic_engine_default`; project responses expose `global_agentic_engine`; the Settings inventory consumes and deduplicates Pi identities, marks them Available to Pi without invoking the legacy switch route, and inherited project badges/options reflect the returned default.
 Verified: `PYTHONPATH=backend pytest -q tests/pi_production/test_w8_ux_parity.py` = 2 passed; `PYTHONPATH=backend pytest -q tests/test_project_scope_contracts.py` = 31 passed; `npm run test:unit -- --run src/lib/modelCatalog.test.ts` = 3 passed; `npx tsc --noEmit` = passed; `npm run lint -- --no-cache` = passed; `python scripts/feature_docs.py --seed-missing --generate-site --check` = 86 features / 224 artifacts; `python scripts/security_benchmark.py --fail-on-threshold` = 28/28, 100%; `compass-forge gate after --task FIX-pi-full-20260720-w8-REVIEW-r1-ux --summary` = no route/type/contract/generated drift, with inherited W8 embedding-cycle and repository-debt failures remaining.
 Next: stage exit: F-W8-4 is fixed; await the conductor-created bounded delta re-review.
+### L-66 | 2026-07-22T07:29:25Z | S4-remediate | gpt-5.6-luna | remediator | W8 <!-- bsc-ledger:FIX-pi-full-20260720-w8-REVIEW-r1-vector -->
+Did: Fixed F-W8-2 across `backend/app/core/pi_runtime/embeddings_gateway.py`, new `backend/app/core/embedding_validation.py`, `backend/app/core/vector_health.py`, `backend/app/core/embeddings.py`, `backend/app/core/embedding_cache.py`, `backend/app/main.py`, `tests/pi_production/test_w8_embeddings_gateway.py`, and the Memory Health living docs/site artifacts.
+Result: F-W8-2 open -> fixed under `FIX-pi-full-20260720-w8-REVIEW-r1-vector`. Independent legacy/Pi embedding-dimension probes now gate the startup invariant; startup refuses unsafe engine switching on probe failure or dimension/model divergence. Gateway, wrapper, and cache boundaries reject empty, ragged, non-numeric, and non-finite vectors before success or cache/index writes. The validator was moved to a dependency-neutral module after the post-gate cycle check, leaving zero new actionable gate failures.
+Verified: `PYTHONPATH=backend pytest -q tests/pi_production/test_w8_embeddings_gateway.py -k 'not usage'` = 31 passed, 4 deselected; adjacent dispatcher/validation regressions = 48 passed; `ruff check` on the vector surface = passed; `python scripts/feature_docs.py --seed-missing --generate-site --check` = 86 features / 224 artifacts; `git diff --check` = passed; `compass-forge gate after --task FIX-pi-full-20260720-w8-REVIEW-r1-vector --summary` = 0 new failures, 0 actionable failures, 0 dependency cycles (29 inherited failures remain).
+Next: stage exit: F-W8-2 is fixed; conductor barriers the sibling W8 fixers before the bounded delta re-review.
