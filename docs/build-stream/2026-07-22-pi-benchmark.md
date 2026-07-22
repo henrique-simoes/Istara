@@ -663,3 +663,9 @@ Did: consensus judge slot c — read exactly the two assigned candidate files (p
 Result: plan_vote for slot a recorded on PI-BENCH-ROLE-CORRECTION-20260722-JUDGE-C. Plan A r2 wins on audit precision/currency (triple-re-verified line anchors; r2 tracks live drift incl. the deepseek_judge.py docstring hardening and observed ledger-numbering races with a re-read-under-lock mandate) and surgical scope (identity-swap + DEC-7 supersession + work-order tighten + exact seven-pack arithmetic). Plan B's normative role table, terminal judging barrier, and requested-vs-served MoA provenance are stronger contract machinery but its audit is unanchored and one revision staler, and its extras exceed the role-correction brief. Vote tally now: judge-a -> slot c, judge-b -> slot a, judge-c -> slot a.
 Verified: grep DEC-5 pin -> :488-489 confirmed; Kimi-eval residual grep -> 11 matches; sed deepseek_judge.py :1-10/:84-92 -> shared-ledger policy + ledger-sharing judge_fn confirmed at HEAD 070f9dd2; ls conductor-instructions -> both docs present; CF evidence rows 1427 (command), 1428 (plan_vote), 1429 (self_report).
 Next: conductor tallies judge votes (slot a leads 2-1) and advances the winning role-correction plan to implementation; stage exit: plan_vote + self_report + command evidence recorded.
+
+### L-35 | 2026-07-22T20:01:52Z | S1-plan | gpt-5.6-sol | planner | pi-bench-recovery-20260722-architect-b <!-- bsc-ledger:PI-BENCH-RECOVERY-20260722-PLAN-B -->
+Did: pi-bench-recovery-20260722-architect-b stage on task PI-BENCH-RECOVERY-20260722-PLAN-B (harness fallback entry; the model did not append one).
+Result: task PI-BENCH-RECOVERY-20260722-PLAN-B finished; worktree head 9cfe3304.
+Verified: see Compass Forge evidence rows on PI-BENCH-RECOVERY-20260722-PLAN-B (command + self_report + stage_attribution).
+Next: conductor advances the pipeline on evidence.
