@@ -11,7 +11,7 @@ status: in-progress
 blocked_on: null
 authored_by: build-stream-conductor
 grounding: "Based on 2026-07-20-pi-full-replacement-master-plan.md Section 10"
-last: {agent: gpt-5.6-luna, at: 2026-07-22T19:38:20Z, ledger: L-26}
+last: {agent: claude-fable-5, at: 2026-07-22T19:38:59Z, ledger: L-27}
 next_action: "F-5 fixed; complete the sibling barrier, then run one delta re-review."
 ```
 <!-- /STATUS BLOCK -->
@@ -615,3 +615,9 @@ Did: fixed F-5 in `tests/pi_benchmark/live_driver.py` and `tests/pi_benchmark/te
 Result: F-5 open -> fixed under FIX-PI-BENCH-MOA-20260722-REVIEW-r1-routing. Full ensembles remain explicitly degraded on the single approved route instead of discovering local or unrelated endpoints; no live model or network call was made.
 Verified: `python -m pytest tests/pi_benchmark/test_live_driver.py tests/pi_benchmark/test_moa.py -q` -> 38 passed; `python -m ruff check tests/pi_benchmark/live_driver.py tests/pi_benchmark/test_live_driver.py tests/pi_benchmark/moa.py tests/pi_benchmark/test_moa.py` -> passed; `python -m compileall -q tests/pi_benchmark/live_driver.py tests/pi_benchmark/test_live_driver.py` -> passed; `git diff --check` -> passed; `compass-forge gate after --task FIX-PI-BENCH-MOA-20260722-REVIEW-r1-routing --summary` -> no new/actionable routing-scope failures, with inherited debt and the sibling ledger-suite failures recorded in CF evidence. The full `tests/pi_benchmark` suite remains 170 passed/2 failed in sibling F-6 provider reservation tests.
 Next: stage exit: F-5 fixed; sibling barrier and one delta re-review remain.
+
+### L-27 | 2026-07-22T19:38:59Z | S1-plan | claude-fable-5 | architect | Role-correction planning <!-- bsc-ledger:PI-BENCH-ROLE-CORRECTION-20260722-REPLAN-A-r1 -->
+Did: repaired consensus plan A (revision r1) at docs/build-stream/plans/pi-bench-role-correction-20260722-plan-a.md (242 lines) — re-verified every r0 grounding citation by fresh grep on @ b13b238c (14 Kimi-as-evaluation regions at :202-500, DEC-5 judge-through-DeepSeek at :488-489, DEC-6 at :497-500, work-order role text at :26-31/:38/:76-79) and closed the r0 residual imprecisions: exact pack arithmetic (work-order :71-73 has 6/7 brief packs, lifecycle :42-43 slice list keeps depth as a mapped legacy label), work-order :38 no-ledger-draw rule is explicit not implied, deepseek_judge.py code/doc mismatch pinned to :6 and :84-89, findings drift refreshed (F-3/F-4/F-6 fixed; F-5/F-7 open). No lifecycle plan content or code edited.
+Result: plan slot A ready for consensus judging (r1); PI-BENCH-ROLE-CORRECTION-20260722-REPLAN-A-r1
+Verified: git diff --check passed; grep re-audit over lifecycle + work-order + deepseek_judge.py (all citations hold at b13b238c); wc -l plan = 242; scope audit — only the plan file modified by this stage; CF evidence rows 1380-1383 (3x command, self_report)
+Next: consensus judges vote on plan slots a/b/c; winning plan's implementer executes RC-1..RC-6
