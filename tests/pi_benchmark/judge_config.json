@@ -1,0 +1,13 @@
+{
+  "judge_model": "gpt-5.6-luna",
+  "dut_models": [
+    "deepseek-v4-pro",
+    "legacy-executor",
+    "pi-candidate-engine"
+  ],
+  "rubric_versions": {
+    "output_quality": "1.0.0",
+    "a2a": "1.0.0",
+    "spine_phase": "1.0.0"
+  }
+}

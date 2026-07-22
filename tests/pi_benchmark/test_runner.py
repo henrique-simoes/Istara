@@ -81,13 +81,14 @@ def test_t2_without_owner_gate_is_refused():
         run_benchmark(_canonical_t0(tier="T2", phase="B2"))
 
 
-def test_t2_with_gate_artifact_is_not_yet_implemented(tmp_path):
+def test_t2_with_gate_artifact_runs_successfully(tmp_path):
     gate = tmp_path / "gate.json"
     gate.write_text("{}", encoding="utf-8")
-    # A gate artifact clears the fail-closed refusal, but live execution (which would load
-    # a model) is deliberately owner-gated future work — never a silent empty result.
-    with pytest.raises(NotImplementedError):
-        run_benchmark(_canonical_t0(tier="T2", phase="B2", owner_gate=gate))
+    summary = run_benchmark(_canonical_t0(tier="T2", phase="B2", owner_gate=gate))
+    assert len(summary.records) > 0
+    for record in summary.records:
+        assert schema.is_valid(record)
+        assert record["tier"] == "T2"
 
 
 def test_write_run_round_trips_and_revalidates(tmp_path):
