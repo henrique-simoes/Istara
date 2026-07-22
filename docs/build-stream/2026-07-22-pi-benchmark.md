@@ -11,8 +11,8 @@ status: in-progress
 blocked_on: null
 authored_by: build-stream-conductor
 grounding: "Based on 2026-07-20-pi-full-replacement-master-plan.md Section 10"
-last: {agent: kimi-code/k3, at: 2026-07-22T19:50:29Z, ledger: L-34}
-next_action: "Conductor tallies judge votes (judge-a: slot c, judge-b: slot a, judge-c: slot a) and advances the winning role-correction plan to implementation."
+last: {agent: claude-fable-5, at: 2026-07-22T20:02:09Z, ledger: L-36}
+next_action: "Recovery consensus: remaining architect slots finish, judges vote on recovery plans a/b/c, conductor seals consensus_result; G-R1 owner gate before any implementation."
 ```
 <!-- /STATUS BLOCK -->
 
@@ -669,3 +669,9 @@ Did: pi-bench-recovery-20260722-architect-b stage on task PI-BENCH-RECOVERY-2026
 Result: task PI-BENCH-RECOVERY-20260722-PLAN-B finished; worktree head 9cfe3304.
 Verified: see Compass Forge evidence rows on PI-BENCH-RECOVERY-20260722-PLAN-B (command + self_report + stage_attribution).
 Next: conductor advances the pipeline on evidence.
+
+### L-36 | 2026-07-22T20:02:09Z | S1-plan | claude-fable-5 | architect | Recovery planning <!-- bsc-ledger:PI-BENCH-RECOVERY-20260722-PLAN-A -->
+Did: authored independent recovery consensus plan A at docs/build-stream/plans/pi-bench-recovery-20260722-plan-a.md (293 lines: invalid-consensus root-cause table with vote timestamps vs plan-revision timestamps, worktree/CF/conductor residue inventory, reuse verdict "content yes / state no", R1 quarantine-commit + R2 state-hygiene + R3 fresh-anchor role-correction design, RV-0..RV-6 task table with G-R1/G-R2 owner gates, AC-1..AC-7, exact verification commands, risks, rollback to 75db26f5). No lifecycle plan content, code, or prior ledger entry edited.
+Result: plan slot A ready for recovery consensus judging; key audit: no consensus_result row exists for PI-BENCH-ROLE-CORRECTION-20260722 (only plan_vote rows 1405/1410/1428 against mixed plan revisions — A moved r1->r2 mid-vote at L-32, B r2 landed post-vote and is still uncommitted); stale CF rows IMPL/REVIEW open + REPLAN-C-r1 claimed by stopped actor; stale conductor markers "active-run (1).json"/"escalation (1|2).json" identified; single live conductor pid 91892 on the recovery prefix confirmed; DUT=Istara arms, DeepSeek=evaluation backend via dispatcher under $1.00, MoA=measured, Kimi=post-run judge retained verbatim in plan section 0; PI-BENCH-RECOVERY-20260722-PLAN-A
+Verified: git status/diff residue audit; sqlite task_evidence query (zero consensus_result rows); conductor pid/marker audit (pid 91892 alive, prefix PI-BENCH-RECOVERY-20260722); git diff --check clean; wc -l plan = 293; CF evidence rows recorded 20:01:11-20:01:41Z (4x command, self_report)
+Next: recovery consensus judges vote on plan slots a/b/c; G-R1 owner gate before any implementation
