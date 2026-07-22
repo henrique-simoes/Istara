@@ -212,6 +212,7 @@ class RAGParamsRunner(BaseLoopRunner):
                     messages=messages[1:],
                     params=TurnParams(temperature=0.7, max_tokens=200),
                     spine_phase="plan",
+                    engine=self.engine,
                 )
                 content = outcome.text
             else:

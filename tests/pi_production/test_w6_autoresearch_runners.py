@@ -589,3 +589,152 @@ async def test_rag_params_matched_target_binds_retrieval_to_authorized(_flag_on,
     await runner.measure("proj-authorized")
 
     assert seen == ["proj-authorized", "proj-authorized"]
+
+
+# ── F-W6-R1-1: the bound engine must reach the REAL dispatcher ───────────
+#
+# Binding an experiment to an engine only selects the runner branch. The
+# migrated ``agentic.completion`` calls must ALSO forward that engine into the
+# dispatcher — otherwise the real ``AgenticDispatcher`` re-resolves from
+# project/global configuration and a run bound & persisted as ``engine="pi"``
+# executes on the legacy backend (reviewer repro: ``pi_calls=0, legacy_calls=1``).
+# These tests exercise the runner against the REAL dispatcher over fake Pi/legacy
+# backends and prove the bound choice wins over a conflicting global default at
+# the actual runner→dispatcher seam.
+
+
+@pytest.mark.parametrize("module,function,purpose", MIGRATED_SITES)
+def test_w6_site_forwards_bound_engine_into_dispatcher(module, function, purpose):
+    """Every migrated dispatcher call forwards the bound per-experiment engine so
+    the real dispatcher cannot silently re-resolve to a conflicting default."""
+    src = _function_source(module, function)
+    assert "engine=self.engine" in src, (
+        f"{module}.{function} must forward engine=self.engine into agentic.completion "
+        "so the bound per-experiment engine is honored at the dispatcher (F-W6-R1-1)"
+    )
+
+
+class _RecordingPiService:
+    """Fake ``PiExecutionService`` counting the Pi backend calls the real
+    ``AgenticDispatcher`` makes for the ``completion`` verb."""
+
+    def __init__(self, *, text: str) -> None:
+        self.calls: list[dict] = []
+        self._text = text
+
+    async def run_completion(self, *, purpose, project_id, agent_id, system, messages, params):
+        self.calls.append({"purpose": purpose, "project_id": project_id, "params": params})
+        return {"text": self._text, "status": "success", "usage": {}, "endpoint_id": "pi-endpoint"}
+
+
+def _install_real_dispatcher(monkeypatch, *, pi_text: str):
+    """Install the REAL ``AgenticDispatcher`` (over fake Pi/legacy backends) as
+    the module singleton the runners import, returning the fake backends so the
+    test can assert which one actually ran. The usage ledger is not under test,
+    so its DB write is stubbed to keep the engine-selection seam hermetic."""
+    from app.core.agentic.dispatcher import AgenticDispatcher
+
+    pi_service = _RecordingPiService(text=pi_text)
+    legacy_calls: list[dict] = []
+
+    async def _fake_legacy(**kwargs):
+        legacy_calls.append(kwargs)
+        return {"text": "0.11", "status": "success",
+                "usage": {"input_tokens": 1, "output_tokens": 1}}
+
+    dispatcher = AgenticDispatcher(pi_service=pi_service, legacy_executor=_fake_legacy)
+    monkeypatch.setattr("app.core.agentic.agentic", dispatcher)
+
+    async def _noop_usage(**kwargs):
+        return None
+
+    monkeypatch.setattr("app.core.agentic.dispatcher.record_agentic_usage", _noop_usage)
+    return pi_service, legacy_calls
+
+
+async def test_pi_bound_run_executes_on_pi_over_conflicting_legacy_default(monkeypatch):
+    """A pi-bound experiment reaches the Pi backend even when the project/global
+    configuration defaults to legacy. The reviewer's ``pi_calls=0, legacy_calls=1``
+    repro must now be ``pi_calls=1, legacy_calls=0``."""
+    pi_service, legacy_calls = _install_real_dispatcher(monkeypatch, pi_text="0.85")
+    # Both the global default AND the feature flag say legacy — maximal conflict.
+    monkeypatch.setattr("app.config.settings.agentic_engine_default", "legacy", raising=False)
+    monkeypatch.setattr("app.config.settings.agentic_core", False, raising=False)
+
+    runner = ModelTempRunner()
+    runner.bind_project("proj-w6")
+    runner.bind_engine("pi")
+    assert runner.use_pi_engine() is True
+
+    score = await runner._score_output("x" * 50, "skill-a")
+
+    # The score is parsed from the backend's text, so it names the engine that ran.
+    assert score == pytest.approx(0.85)  # the Pi backend's answer, not legacy 0.11
+    assert len(pi_service.calls) == 1
+    assert pi_service.calls[0]["purpose"] == "autoresearch.model_temp.score"
+    assert not legacy_calls, "the legacy backend must not run for a pi-bound experiment"
+
+
+async def test_legacy_bound_run_stays_on_legacy_over_conflicting_pi_default(monkeypatch):
+    """A legacy-bound experiment never lands on Pi even when the project/global
+    configuration defaults to pi — the bound choice wins on the legacy plane."""
+    pi_service, _legacy_calls = _install_real_dispatcher(monkeypatch, pi_text="0.85")
+    router = _StubRouter(text="0.33")
+    monkeypatch.setattr("app.core.llm_router.llm_router", router)
+    # Both the global default AND the feature flag say pi — maximal conflict.
+    monkeypatch.setattr("app.config.settings.agentic_engine_default", "pi", raising=False)
+    monkeypatch.setattr("app.config.settings.agentic_core", True, raising=False)
+
+    runner = ModelTempRunner()
+    runner.bind_project("proj-w6")
+    runner.bind_engine("legacy")
+    assert runner.use_pi_engine() is False
+
+    score = await runner._score_output("x" * 50, "skill-a")
+
+    assert score == pytest.approx(0.33)  # the legacy router's answer
+    assert not pi_service.calls, "the Pi backend must not run for a legacy-bound experiment"
+    assert len(router.calls) == 1
+
+
+async def test_real_dispatcher_completion_forwards_engine_override_both_ways(monkeypatch):
+    """The explicit ``engine=`` override the runners now pass wins over a
+    conflicting global default in BOTH directions at the dispatcher itself —
+    isolating the resolution seam the runner fix depends on."""
+    from app.core.agentic.dispatcher import AgenticDispatcher
+    from app.core.agentic.types import TurnParams
+
+    pi_service = _RecordingPiService(text="pi-answer")
+    legacy_calls: list[dict] = []
+
+    async def _fake_legacy(**kwargs):
+        legacy_calls.append(kwargs)
+        return {"text": "legacy-answer", "status": "success",
+                "usage": {"input_tokens": 1, "output_tokens": 1}}
+
+    dispatcher = AgenticDispatcher(pi_service=pi_service, legacy_executor=_fake_legacy)
+
+    async def _noop_usage(**kwargs):
+        return None
+
+    monkeypatch.setattr("app.core.agentic.dispatcher.record_agentic_usage", _noop_usage)
+    messages = [{"role": "user", "content": "hi"}]
+
+    # Global default legacy, explicit engine="pi" → Pi wins.
+    monkeypatch.setattr("app.config.settings.agentic_engine_default", "legacy", raising=False)
+    pi_res = await dispatcher.completion(
+        purpose="autoresearch.model_temp.score", project_id="p",
+        system="s", messages=messages, params=TurnParams(), engine="pi",
+    )
+    assert pi_res.text == "pi-answer"
+    assert len(pi_service.calls) == 1 and not legacy_calls
+
+    # Global default pi, explicit engine="legacy" → legacy wins.
+    monkeypatch.setattr("app.config.settings.agentic_engine_default", "pi", raising=False)
+    legacy_res = await dispatcher.completion(
+        purpose="autoresearch.model_temp.score", project_id="p",
+        system="s", messages=messages, params=TurnParams(), engine="legacy",
+    )
+    assert legacy_res.text == "legacy-answer"
+    assert len(legacy_calls) == 1
+    assert len(pi_service.calls) == 1, "the Pi backend must not run for the legacy override"

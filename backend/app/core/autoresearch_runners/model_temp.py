@@ -342,6 +342,7 @@ class ModelTempRunner(BaseLoopRunner):
                         temperature=temperature,
                     ),
                     spine_phase="execution",
+                    engine=self.engine,
                 )
                 content = outcome.text
             else:
@@ -421,6 +422,7 @@ class ModelTempRunner(BaseLoopRunner):
                     messages=scoring_messages[1:],
                     params=TurnParams(temperature=0.1, max_tokens=10),
                     spine_phase="review",
+                    engine=self.engine,
                 )
                 score_text = (outcome.text or "").strip()
             else:

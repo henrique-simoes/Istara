@@ -104,6 +104,7 @@ class QuestionBankRunner(BaseLoopRunner):
                     messages=messages[1:],
                     params=TurnParams(temperature=0.7, max_tokens=1500),
                     spine_phase="plan",
+                    engine=self.engine,
                 )
                 content = (outcome.text or "").strip()
             else:
@@ -260,6 +261,7 @@ class QuestionBankRunner(BaseLoopRunner):
                     messages=sim_messages[1:],
                     params=TurnParams(temperature=0.8, max_tokens=1500),
                     spine_phase="execution",
+                    engine=self.engine,
                 )
                 participant_response = outcome.text
             else:
@@ -325,6 +327,7 @@ class QuestionBankRunner(BaseLoopRunner):
                     messages=messages[1:],
                     params=TurnParams(temperature=0.1, max_tokens=10),
                     spine_phase="review",
+                    engine=self.engine,
                 )
                 score_text = (outcome.text or "").strip()
             else:
