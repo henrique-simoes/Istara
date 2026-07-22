@@ -6,11 +6,11 @@ item: pi-full-replacement
 branch: Review_pi_test
 cf: { spec: CF-SPEC-8, tasks: [pi-full-20260720-w0-IMPL, pi-full-20260720-w0-REVIEW] }
 phase: "W7 — validation/consensus/dual-coder migration"
-stage: S2-execute
+stage: S4-remediate
 status: in-progress
 blocked_on: none
-last: { agent: kimi-code/k3, at: 2026-07-22T04:13:43Z, ledger: L-48 }
-next_action: "W7 implementation committed (b9c6149b) and verified; the conductor may dispatch the W7 review (pi-full-20260720-w7-REVIEW)."
+last: { agent: gpt-5.6-sol, at: 2026-07-22T04:23:29Z, ledger: L-49 }
+next_action: "Remediate F-W7-1 through F-W7-4 via the four linked fixer tasks, then run one sibling-barrier delta re-review."
 ```
 <!-- /STATUS BLOCK -->
 
@@ -911,6 +911,19 @@ review lineage has no open findings; W5 is ready for stage-exit acceptance.
 
 **Delta re-review outcome:** `REREV-pi-full-20260720-w6-REVIEW-r2` (L-47, gpt-5.6-sol) **PASSED**. CF-207 closes the runner-to-dispatcher engine-authority defect at all 14 sites and proves both conflicting-default directions at the real dispatcher seam; CF-208 closes the endpoint-width living-doc defect and regenerated artifacts verify cleanly. F-W6-R2-1 is a non-blocking stale test-module narrative accepted as Minor residue.
 
+## W7 — validation/consensus/dual-coder migration
+
+### Review (W7) — Findings register
+
+| ID | Sev | Dim | Where | Finding | CF task | Status |
+|---|---|---|---|---|---|---|
+| F-W7-1 | Major | Integration/Research validity | `backend/app/core/research_validity.py:504-522`; `backend/app/services/research_validity_service.py:1364-1372`; `tests/pi_production/test_w7_validation.py:845-861` | W7 declares endpoint identity as the Pi independence unit, but `distinct_model_identities` still prefers `model_name`. Three identity-distinct endpoints serving the same model therefore collapse to `distinct_model_count=1` and `needs_reconciliation`; the new acceptance test only uses three different model names and misses the required same-model endpoint case. | FIX-pi-full-20260720-w7-REVIEW-r1-endpoint-identity | open |
+| F-W7-2 | Major | Integration/Back-compat | `backend/app/core/agentic/legacy.py:494-522`; `backend/app/core/validation.py:178-227,418-468`; `tests/pi_production/test_w7_validation.py:243-389` | With `agentic_core=true` and the dispatcher resolving `engine=legacy`, `_ensemble` ignores `distinct=True` and sequentially invokes generic completion; dual/full ensemble can reuse one route instead of preserving the baseline distinct healthy-server selection. The tests stub the dispatcher or turn the feature flag off, so no real-dispatcher legacy-resolved parity test catches this. | FIX-pi-full-20260720-w7-REVIEW-r1-legacy-distinct | open |
+| F-W7-3 | Major | Governance/Research validity | `backend/app/core/validation_executor.py:81-131`; `tests/pi_production/test_w7_validation.py:565-585` | A selected Pi structured-judge failure is caught and converted into `passed=True, confidence=0.5`. That records unavailable validation as successful instead of failing closed; the new negative test explicitly locks in the fail-open result. | FIX-pi-full-20260720-w7-REVIEW-r1-judge-failclosed | open |
+| F-W7-4 | Major | Docs | `docs/features/content/ensemble/health/{architecture,researcher}.md`; `docs/features/content/findings/codebook/{architecture,researcher}.md` | The W7 agent/model/test behavior change has no living feature-documentation update. The pages do not document dispatcher purpose slugs, engine/rollback behavior, endpoint-identity reliability semantics, fail-closed outcomes, or the W8 embedding deferral; the mechanical generator passes because it does not validate semantic completeness. | FIX-pi-full-20260720-w7-REVIEW-r1-docs | open |
+
+**Review outcome:** `pi-full-20260720-w7-REVIEW` (L-49, gpt-5.6-sol) **FAILED** with four Major findings and four independent fixer tasks. The committed W7 tests and adjacent suites are green, security remains 28/28, feature-doc generation is mechanically green, and the gate comparison has no new failures; remediation must close the endpoint-identity gate mismatch, legacy-resolved distinct-ensemble regression, fail-open Pi judge result, and living-doc gap before delta re-review.
+
 ## Summary (S5 — whole plan)
 
 Pending completion of W0–W9 and B1–B4.
@@ -1000,3 +1013,9 @@ Next: stage exit: W7 implementation verified — hand to the W7 reviewer
 (`pi-full-20260720-w7-REVIEW`): review commit b9c6149b, the fail-closed distinct chains, the
 judge bug fix, and the Pi-plane dual-coder gate mapping. Residual: W7 living feature docs for
 validation/consensus semantics not yet updated (same shape as prior waves' docs findings).
+
+### L-49 | 2026-07-22T04:23:29Z | S3-review | gpt-5.6-sol | reviewer | W7 <!-- bsc-ledger:pi-full-20260720-w7-REVIEW -->
+Did: Independently reviewed implementer commit `b9c6149b` across all five changed files, the W7 master-plan contract, the real AgenticDispatcher/legacy/Pi ensemble seams, the research reliability gate, focused tests, adjacent validation suites, security benchmark, generated feature docs, and scope. No implementation code was changed. Raised F-W7-1 (Pi endpoint identities collapse by model name), F-W7-2 (legacy-resolved dispatcher ensemble ignores distinct-server semantics), F-W7-3 (Pi judge failure returns passed), and F-W7-4 (missing living feature docs); created one fixer task per independent Major.
+Result: verdict FAIL; corrections_made=0; four open Major findings owned by `FIX-pi-full-20260720-w7-REVIEW-r1-{endpoint-identity,legacy-distinct,judge-failclosed,docs}`. The implementer's unrelated pre-existing recipe role registrations and `w7_instructions.md` were preserved, and the feature-doc generator's timestamp-only manifest churn was restored before commit.
+Verified: `python -m pytest tests/pi_production/test_w7_validation.py -q` = 27 passed; `python -m pytest tests/pi_production tests/pi_migration -q` = passed (implementer baseline 335); `python -m pytest tests/test_adaptive_validation.py tests/test_validation_project_scope.py tests/test_research_integrity_validation.py tests/test_research_validity_contract.py tests/test_metrics.py -q` = passed (implementer baseline 45); same-model endpoint reliability repro = `{rater_count: 3, distinct_model_count: 1, method: invalid_independence, promotion_status: needs_reconciliation}`; real legacy `_ensemble(distinct=True)` seam repro = three calls and `['same-route', 'same-route', 'same-route']`; `python scripts/security_benchmark.py --fail-on-threshold` = 28/28, 100%; `python scripts/feature_docs.py --seed-missing --generate-site --check` = 86 features / 224 artifacts, but semantic W7 search returned no matching living-doc text; `git diff --check b9c6149b^..b9c6149b` = passed; `compass-forge gate before --task pi-full-20260720-w7-REVIEW --summary` = 0 new failures, 0 actionable failures, 0 drift, 0 cycles.
+Next: remediate all four sibling fixer tasks, then let the conductor create one bounded W7 delta re-review; stage exit: fail verdict, findings, tasks, and evidence ready.
