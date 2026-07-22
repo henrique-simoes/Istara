@@ -65,7 +65,7 @@ def _normalize_chat(data: dict[str, Any]) -> dict[str, Any]:
     else:
         # Absent provider usage: leave it out so the ledger estimates from text.
         usage = {}
-    return {
+    outcome = {
         "text": message.get("content", "") or "",
         "usage": usage,
         "stop_reason": data.get("done_reason")
@@ -73,6 +73,10 @@ def _normalize_chat(data: dict[str, Any]) -> dict[str, Any]:
         "tool_calls": list(message.get("tool_calls") or []),
         "status": "success",
     }
+    route = data.get("_istara_route")
+    if isinstance(route, dict):
+        outcome["route_evidence"] = route
+    return outcome
 
 
 def _estimation_trace(
@@ -144,6 +148,46 @@ def _tool_call_parts(call: dict[str, Any]) -> tuple[str, dict[str, Any]]:
         except json.JSONDecodeError:
             raw_args = {}
     return name, raw_args if isinstance(raw_args, dict) else {}
+
+
+def _server_model_names(server: Any) -> set[str]:
+    """Return the model identities advertised by one legacy compute server."""
+    names: set[str] = set()
+    for attr in ("loaded_models", "models", "model_names"):
+        raw = getattr(server, attr, None)
+        if isinstance(raw, (list, tuple, set)):
+            names.update(str(item).strip() for item in raw if str(item).strip())
+    capabilities = getattr(server, "model_capabilities", None)
+    if isinstance(capabilities, dict):
+        names.update(str(name).strip() for name in capabilities if str(name).strip())
+    default_model = getattr(server, "default_model", None) or getattr(server, "model", None)
+    if default_model:
+        names.add(str(default_model).strip())
+    return names
+
+
+def _diverse_legacy_servers(servers: list[Any]) -> list[Any]:
+    """Match validation.py's baseline server ordering for distinct ensembles."""
+    selected: list[Any] = []
+    seen_models: set[str] = set()
+    for server in servers:
+        models = _server_model_names(server) or {getattr(server, "name", "")}
+        if models.isdisjoint(seen_models):
+            selected.append(server)
+            seen_models.update(models)
+    for server in servers:
+        if server not in selected:
+            selected.append(server)
+    return selected
+
+
+def _legacy_endpoint_id(server: Any, data: dict[str, Any]) -> str:
+    route = data.get("_istara_route") if isinstance(data, dict) else None
+    if isinstance(route, dict):
+        identity = route.get("node_id") or route.get("server_id") or route.get("route_id")
+        if identity:
+            return str(identity)
+    return str(getattr(server, "node_id", None) or getattr(server, "name", None) or "legacy")
 
 
 async def _completion(kwargs: dict[str, Any]) -> dict[str, Any]:
@@ -408,7 +452,9 @@ async def _react_loop(kwargs: dict[str, Any]) -> dict[str, Any]:
                     {
                         "role": "assistant",
                         "content": (
-                            text_before + f"\n\n[Tool: {name}]" if text_before else f"[Tool: {name}]"
+                            text_before + f"\n\n[Tool: {name}]"
+                            if text_before
+                            else f"[Tool: {name}]"
                         ),
                     }
                 )
@@ -425,7 +471,11 @@ async def _react_loop(kwargs: dict[str, Any]) -> dict[str, Any]:
                 return _outcome(
                     "turn_budget_exceeded", extra={"budget_exhausted_tool_call": True}
                 )
-            final_text = turn_text.strip() if getattr(params, "final_text_strip", False) else turn_text
+            final_text = (
+                turn_text.strip()
+                if getattr(params, "final_text_strip", False)
+                else turn_text
+            )
             if final_text or not getattr(params, "final_text_strip", False):
                 text_parts.append(final_text)
                 await _emit(stream_cb, {"type": "content", "text": final_text})
@@ -492,15 +542,94 @@ async def _embed(kwargs: dict[str, Any]) -> dict[str, Any]:
 
 
 async def _ensemble(kwargs: dict[str, Any]) -> dict[str, Any]:
-    """Legacy ensemble: n sequential samples on the legacy plane (validation.py behavior)."""
+    """Run legacy samples, preserving baseline distinct-server semantics.
+
+    ``distinct=True`` is the W7 dual/full-ensemble contract. The old validation
+    path selected healthy, diverse servers and called each server directly; it
+    did not make repeated calls through the registry's generic selection route.
+    Keep that behavior here when the dispatcher resolves to legacy, otherwise a
+    default/overridden legacy engine silently collapses the ensemble onto one
+    route.
+    """
     n = int(kwargs.get("n") or 1)
     temperatures = kwargs.get("temperatures") or []
     samples: list[dict[str, Any]] = []
-    for index in range(n):
-        call_kwargs = dict(kwargs)
-        if index < len(temperatures) and temperatures[index] is not None:
-            call_kwargs["params"] = _with_temperature(_params(kwargs), float(temperatures[index]))
-        samples.append(await _completion(call_kwargs))
+
+    if kwargs.get("distinct"):
+        from app.core.llm_router import llm_router
+
+        # Full ensemble dispatch asks for one optional spare (n = minimum + 1),
+        # but the legacy contract only requires the minimum number of healthy
+        # distinct servers.  Pi still treats n as its exact distinct width.
+        minimum_n = int(kwargs.get("minimum_n") or n)
+        minimum_n = max(1, min(minimum_n, n))
+        servers = _diverse_legacy_servers(
+            [
+                server
+                for server in llm_router._sorted_servers(project_id=kwargs.get("project_id"))
+                if getattr(server, "is_healthy", False)
+            ]
+        )
+        if len(servers) < minimum_n:
+            raise AgenticDispatchError("insufficient_distinct_legacy_servers")
+
+        params = _params(kwargs)
+        messages = list(kwargs.get("messages") or [])
+        system = kwargs.get("system")
+        if system:
+            messages = [{"role": "system", "content": system}, *messages]
+        for index, server in enumerate(servers[:n]):
+            temperature = params.temperature if params.temperature is not None else 0.7
+            if index < len(temperatures) and temperatures[index] is not None:
+                temperature = float(temperatures[index])
+            try:
+                data = await server.chat(
+                    messages,
+                    model=params.model,
+                    temperature=temperature,
+                    max_tokens=params.max_tokens,
+                    min_context=params.min_context,
+                    thinking_mode=params.thinking_mode,
+                    project_id=kwargs.get("project_id"),
+                )
+                outcome = _normalize_chat(data)
+                outcome["endpoint_id"] = _legacy_endpoint_id(server, data)
+                outcome["usage_estimation"] = _estimation_trace(
+                    system=system, messages=messages, response=data.get("message") or {}
+                )
+            except Exception as exc:
+                logger.warning(
+                    "Legacy distinct ensemble server %s failed: %s",
+                    getattr(server, "name", ""),
+                    exc,
+                )
+                outcome = {
+                    "text": "",
+                    "usage": {},
+                    "usage_estimation": _estimation_trace(
+                        system=system, messages=messages, response={}
+                    ),
+                    "stop_reason": "error",
+                    "tool_calls": [],
+                    "status": "error",
+                    "error": str(exc),
+                    "endpoint_id": _legacy_endpoint_id(server, {}),
+                }
+            samples.append(outcome)
+            successful = sum(
+                sample.get("status") == "success" and bool(sample.get("text"))
+                for sample in samples
+            )
+            if successful >= minimum_n:
+                break
+    else:
+        for index in range(n):
+            call_kwargs = dict(kwargs)
+            if index < len(temperatures) and temperatures[index] is not None:
+                call_kwargs["params"] = _with_temperature(
+                    _params(kwargs), float(temperatures[index])
+                )
+            samples.append(await _completion(call_kwargs))
     return {
         "samples": samples,
         "endpoint_ids": [sample.get("endpoint_id") or "legacy" for sample in samples],

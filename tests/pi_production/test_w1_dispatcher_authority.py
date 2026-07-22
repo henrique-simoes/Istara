@@ -138,6 +138,30 @@ class _LegacyPlaneStub:
         return [[0.1, 0.2]] * len(texts)
 
 
+class _DistinctLegacyServer:
+    def __init__(
+        self, node_id: str, model: str, text: str, *, healthy: bool = True, fail: bool = False
+    ) -> None:
+        self.node_id = node_id
+        self.name = node_id
+        self.loaded_models = [model]
+        self.is_healthy = healthy
+        self.fail = fail
+        self.calls: list[dict] = []
+        self._text = text
+
+    async def chat(self, messages, **kwargs):
+        self.calls.append({"messages": messages, **kwargs})
+        if self.fail:
+            raise RuntimeError("legacy test server failed")
+        return {
+            "message": {"content": self._text},
+            "prompt_eval_count": 2,
+            "eval_count": 1,
+            "_istara_route": {"node_id": self.node_id, "model": self.loaded_models[0]},
+        }
+
+
 @pytest.mark.asyncio
 async def test_legacy_completion_forwards_all_turn_params_byte_compatibly(monkeypatch):
     stub = _LegacyPlaneStub()
@@ -196,6 +220,129 @@ async def test_legacy_embed_uses_legacy_embed_path(monkeypatch):
 async def test_legacy_unknown_verb_fails_closed():
     with pytest.raises(AgenticDispatchError, match="legacy_verb_unknown"):
         await legacy_executor("summarize", params=TurnParams())
+
+
+@pytest.mark.asyncio
+async def test_real_dispatcher_legacy_distinct_ensemble_routes_each_healthy_server(
+    monkeypatch,
+):
+    """A legacy resolution must retain W7's distinct healthy-server routing."""
+    server_a = _DistinctLegacyServer("legacy-a", "model-a", "answer-a")
+    server_b = _DistinctLegacyServer("legacy-b", "model-b", "answer-b")
+    unhealthy = _DistinctLegacyServer(
+        "legacy-unhealthy", "model-c", "should-not-run", healthy=False
+    )
+
+    class _Router:
+        def _sorted_servers(self, **kwargs):
+            return [server_a, server_b, unhealthy]
+
+    monkeypatch.setattr("app.core.llm_router.llm_router", _Router())
+    monkeypatch.setattr(settings, "agentic_core", True)
+    # The conflicting header must select legacy even while the global default
+    # points at Pi; the second call proves the default legacy path as well.
+    monkeypatch.setattr(settings, "agentic_engine_default", "pi")
+    dispatcher = AgenticDispatcher()
+    async def no_op_record(**kwargs):
+        return None
+
+    monkeypatch.setattr(dispatcher, "_record_outcome", no_op_record)
+    request = _Request({settings.pi_replacement_request_header: "legacy"})
+
+    for request_override in (request, None):
+        if request_override is None:
+            monkeypatch.setattr(settings, "agentic_engine_default", "legacy")
+        result = await dispatcher.ensemble(
+            purpose="w7.legacy.distinct",
+            project_id="p1",
+            messages=[{"role": "user", "content": "go"}],
+            n=2,
+            distinct=True,
+            system="sys",
+            params=TurnParams(model="requested-model"),
+            request=request_override,
+        )
+        assert result.endpoint_ids == ["legacy-a", "legacy-b"]
+        assert [sample.text for sample in result.samples] == ["answer-a", "answer-b"]
+
+    assert len(server_a.calls) == 2 and len(server_b.calls) == 2
+    assert unhealthy.calls == []
+    assert all(call["project_id"] == "p1" for call in server_a.calls + server_b.calls)
+    assert all(
+        call["messages"][0] == {"role": "system", "content": "sys"}
+        for call in server_a.calls + server_b.calls
+    )
+
+
+@pytest.mark.asyncio
+async def test_real_dispatcher_legacy_full_ensemble_accepts_minimum_width(monkeypatch):
+    """Three healthy legacy servers satisfy a three-response full ensemble."""
+    servers = [
+        _DistinctLegacyServer(f"legacy-{name}", f"model-{name}", f"answer-{name}")
+        for name in ("a", "b", "c")
+    ]
+
+    class _Router:
+        def _sorted_servers(self, **kwargs):
+            return servers
+
+    async def no_op_record(**kwargs):
+        return None
+
+    async def no_embeddings(texts, project_id=None):
+        return []
+
+    monkeypatch.setattr("app.core.llm_router.llm_router", _Router())
+    monkeypatch.setattr("app.core.agentic.dispatcher.record_agentic_usage", no_op_record)
+    monkeypatch.setattr("app.core.validation._get_embeddings", no_embeddings)
+    monkeypatch.setattr(settings, "agentic_core", True)
+    monkeypatch.setattr(settings, "agentic_engine_default", "legacy")
+
+    from app.core.validation import full_ensemble
+
+    result = await full_ensemble("prompt", min_responses=3, project_id="p1")
+
+    assert result.method == "full_ensemble"
+    assert len(result.responses) == 3
+    assert result.metadata["n_responses"] == 3
+    assert result.metadata["endpoint_ids"] == ["legacy-a", "legacy-b", "legacy-c"]
+    assert [len(server.calls) for server in servers] == [1, 1, 1]
+
+
+@pytest.mark.asyncio
+async def test_real_dispatcher_legacy_full_ensemble_uses_optional_spare(monkeypatch):
+    """A fourth healthy server replaces a failed sample without widening the minimum."""
+    failed = _DistinctLegacyServer("legacy-failed", "model-failed", "", fail=True)
+    servers = [
+        failed,
+        _DistinctLegacyServer("legacy-a", "model-a", "answer-a"),
+        _DistinctLegacyServer("legacy-b", "model-b", "answer-b"),
+        _DistinctLegacyServer("legacy-spare", "model-spare", "answer-spare"),
+    ]
+
+    class _Router:
+        def _sorted_servers(self, **kwargs):
+            return servers
+
+    async def no_op_record(**kwargs):
+        return None
+
+    async def no_embeddings(texts, project_id=None):
+        return []
+
+    monkeypatch.setattr("app.core.llm_router.llm_router", _Router())
+    monkeypatch.setattr("app.core.agentic.dispatcher.record_agentic_usage", no_op_record)
+    monkeypatch.setattr("app.core.validation._get_embeddings", no_embeddings)
+    monkeypatch.setattr(settings, "agentic_core", True)
+    monkeypatch.setattr(settings, "agentic_engine_default", "legacy")
+
+    from app.core.validation import full_ensemble
+
+    result = await full_ensemble("prompt", min_responses=3, project_id="p1")
+
+    assert result.method == "full_ensemble"
+    assert result.responses == ["answer-a", "answer-b", "answer-spare"]
+    assert [len(server.calls) for server in servers] == [1, 1, 1, 1]
 
 
 # ── dispatcher verbs ─────────────────────────────────────────────────────
