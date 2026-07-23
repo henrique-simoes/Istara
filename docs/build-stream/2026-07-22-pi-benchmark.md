@@ -11,8 +11,8 @@ status: in-progress
 blocked_on: null
 authored_by: build-stream-conductor
 grounding: "Based on 2026-07-20-pi-full-replacement-master-plan.md Section 10"
-last: { agent: gpt-5.6-sol, at: 2026-07-23T00:05:28Z, ledger: L-48 }
-next_action: "Conductor: collect judge c vote, tally, and seal consensus_result; G-R0 owner gate before any implementation."
+last: { agent: kimi-code/k3, at: 2026-07-23T00:11:57Z, ledger: L-49 }
+next_action: "Conductor: tally judge a/b/c votes and seal consensus_result; G-R0 owner gate before any implementation."
 ```
 <!-- /STATUS BLOCK -->
 
@@ -747,3 +747,9 @@ Did: consensus judge slot b for round fcf29273d0f8bddbc66e — read exactly cand
 Result: `plan_vote = slot C` (`candidate_id db2ac00d…`) on `PI-BENCH-RETAKE-20260722-JUDGE-B`. C is stronger because it models the current single-`moa_mode` CLI as three manifests and closes the proven `live_driver.py` post-dispatch accounting/resume wedge plus checkout-import hazard. A's manifest-bound stale-gate rejection is stronger than C's fresh-artifact-only gate design and remains an explicit implementation residual risk.
 Verified: `shasum -a 256 docs/build-stream/plans/pi-bench-retake-20260722-plan-a.md docs/build-stream/plans/pi-bench-retake-20260722-plan-c.md` matched both pinned hashes; both files read in full; CF evidence IDs 1529 command, 1530 plan_vote, 1531 self_report.
 Next: stage exit: judge c votes, then the conductor tallies and seals `consensus_result`; G-R0 owner gate precedes implementation.
+
+### L-49 | 2026-07-23T00:11:57Z | S1-plan | kimi-code/k3 | judge | Retake planning <!-- bsc-ledger:PI-BENCH-RETAKE-20260722-JUDGE-C -->
+Did: consensus judge slot c for round fcf29273d0f8bddbc66e — read exactly candidates A (`docs/build-stream/plans/pi-bench-retake-20260722-plan-a.md`, sha256 `5abf12ff…`) and B (`docs/build-stream/plans/pi-bench-retake-20260722-plan-b.md`, sha256 `f39e3f52…`) plus their supplied author identities; both hashes matched the work-order payload. No plan or code edited; no `review_verdict` recorded (judge contract).
+Result: `plan_vote = slot B` (`candidate_id 80d2db45…`) on `PI-BENCH-RETAKE-20260722-JUDGE-C`. B found the decisive apparatus-validity gap A missed: waves dispatch `default_prompt_builder`'s route smoke prompt ("not the full scenario corpus", `live_driver.py:384-397`, default-wired at `:549-550` with no runner override), so A's unchanged reuse would run B1..B_N without measuring scenario quality; B's T4 grounds the fix in the verified ASGI seam (`test_chat_pi_asgi.py` + `x-istara-agent-engine` in `dispatcher.py`). B's Kimi-only artifact judging with structural no-DUT enforcement fits the spec's reserved separate judging session better than A's in-run DeepSeek judge on the DUT ledger (same-provider self-judging + redundant spend). A's audit is sharper on citations (correctly flagged the missing `pi-benchmark-deepseek-moa-execution.md` that B's header cites — verified absent) and its interpreter pin + append-only lifecycle DEC should be grafted onto B at implementation. Both A and B miss the bare `ledger.commit` wave-wedge (`live_driver.py:648`, verified: commit refusal escapes record-less and wedges the unit) — implementation must close it regardless of winner.
+Verified: `shasum -a 256` of both plans -> match payload; `ls docs/build-stream/conductor-instructions/` -> moa-execution file absent (A G-3 true, B header slip); `sed`/`grep` on `live_driver.py` -> smoke-prompt default wired at :549-550, bare commit at :648; `sed runner.py 472-478` + `cat tests/pi_benchmark/gates/g1_owner_gate.json` -> existence-only gate + stale `gpt-5.6-luna` approval; `ls tests/pi_production/test_chat_pi_asgi.py` + `grep x-istara-agent-engine backend/app` -> B's seam real; CF evidence IDs 1542, 1543 (command), 1544 (plan_vote), 1545 (self_report)
+Next: stage exit: conductor tallies judge a/b/c votes and seals `consensus_result`; G-R0 owner gate precedes implementation.
