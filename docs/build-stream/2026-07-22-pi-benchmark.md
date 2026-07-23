@@ -5,14 +5,14 @@
 item: pi-benchmark
 branch: conductor/pi-bench-retake-20260722
 cf: { spec: CF-SPEC-9 }
-phase: "Retake execution - RT-4 preflight complete (PI-BENCH-RETAKE-EXEC-20260723)"
-stage: S2-execute
+phase: "Retake execution - RT-4 preflight review passed (PI-BENCH-RETAKE-EXEC-20260723)"
+stage: S3-review
 status: in-progress
 blocked_on: null
 authored_by: build-stream-conductor
 grounding: "Based on 2026-07-20-pi-full-replacement-master-plan.md Section 10"
-last: { agent: kimi-code/k3, at: 2026-07-23T13:23:10Z, ledger: L-56 }
-next_action: "RT-4 preflight complete; RT-5 waves remain blocked behind the G-R2 owner gate — assemble the B0 evidence pack and request owner approval."
+last: { agent: gpt-5.6-sol, at: 2026-07-23T13:32:00Z, ledger: L-57 }
+next_action: "RT-4 review passed; assemble the B0 evidence pack and obtain G-R2 owner approval before dispatching any RT-5 wave."
 ```
 <!-- /STATUS BLOCK -->
 
@@ -1220,3 +1220,9 @@ Did: executed approved Plan C RT-4 in the shared worktree. Recorded the owner's 
 Result: preflight succeeded — provider-reported usage (estimate=False): 5 input / 1 output / 5 cache-write tokens, actual cost 7.7e-06 USD; ledger reserve 0.000143 -> commit 7.7e-06, rows=2, closed=False; verify_budget_ledger exit 0 (spent=$0.000008 <= cap=$1.00). No server started, no other provider/model used, no credential read or printed by this agent, no fallback. First live spend of the retake program: 0.0008% of the $1.00 envelope. PI-BENCH-RETAKE-EXEC-20260723-WAVE-rt4-preflight-IMPL
 Verified: PYTHONPATH=$PWD/backend pin assertion -> pin ok (app resolves to worktree backend/app/__init__.py); preflight heredoc (Plan C section 5 V2) -> preflight ok: 7.7e-06 estimate: False; $PY tests/pi_benchmark/verify_budget_ledger.py --ledger tests/pi_benchmark/.results/runs/retake/budget-ledger.json --cap-usd 1.00 -> [ok] exit 0; git status -> scope = gate artifact + this lifecycle file only (.results gitignored). CF evidence rows 1622 (owner_approval), 1623-1624 (command), self_report follows.
 Next: stage exit: preflight complete, stopping here per manifest — later waves are separate manifest entries and remain blocked behind the G-R2 owner gate (B0 evidence pack: green suite, three immutable manifests, estimate <= cap, preflight ledgered, attestation, route-isolation probes).
+
+### L-57 | 2026-07-23T13:32:00Z | S3-review | gpt-5.6-sol | reviewer | Retake execution (RT-4 DeepSeek-only budgeted preflight review) <!-- bsc-ledger:PI-BENCH-RETAKE-EXEC-20260723-WAVE-rt4-preflight-REVIEW -->
+Did: independently reviewed Plan C RT-4, implementer commit `26c13b42`, fresh `tests/pi_benchmark/gates/retake_g1_owner_gate.json`, the ignored shared retake ledger, CF evidence 1622-1630, and authoritative actor session 212. Confirmed the complete-plan approval quote, DeepSeek `deepseek-v4-pro` through `pi-deepseek-default` only, cumulative USD 1.00 cap, no fallback, configured env/Keychain-only credential policy, pinned worktree import, and exactly one ledgered preflight. No code, run artifact, prior ledger entry, historical decision, or stale owner gate was changed by this review.
+Result: verdict **PASS** with zero findings (CF evidence 1635). The shared ledger contains exactly one `preflight` reserve and one matching commit, provider-reported spend USD 0.0000077, no credential-shaped keys or secret values, and no other provider/model row. Session 212 records one pinned preflight execution marker and no server or fallback action. Stale `g1_owner_gate.json` and `g2_owner_gate.json` remain byte-identical to their pre-RT-4 Git blobs. RT-5 remains correctly blocked behind G-R2.
+Verified: `verify_budget_ledger.py --ledger tests/pi_benchmark/.results/runs/retake/budget-ledger.json --cap-usd 1.00` -> passed, rows=2 and spend USD 0.0000077; exact `jq` artifact/ledger assertions and session secret-value scan -> passed; `PYTHONPATH=$PWD/backend backend/.venv/bin/python -m pytest tests/pi_benchmark/test_deepseek_provider.py::test_preflight_is_a_minimal_ledgered_call tests/pi_benchmark/test_verify_budget_ledger.py -q` -> 13 passed; stale-gate `git hash-object --no-filters` values matched `HEAD^` blobs; `git diff --check HEAD^ HEAD` passed. CF command evidence 1631-1634 and self-report 1636.
+Next: stage exit: RT-4 independent review passed; conductor may advance to B0 evidence-pack assembly and G-R2 owner approval, but must not dispatch RT-5 before G-R2.
