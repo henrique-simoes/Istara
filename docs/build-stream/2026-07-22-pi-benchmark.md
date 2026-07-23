@@ -11,8 +11,8 @@ status: in-progress
 blocked_on: null
 authored_by: build-stream-conductor
 grounding: "Based on 2026-07-20-pi-full-replacement-master-plan.md Section 10"
-last: { agent: gpt-5.6-sol, at: 2026-07-23T02:24:17Z, ledger: L-53 }
-next_action: "Fix F-8 on FIX-PI-BENCH-RETAKE-B0-20260723-WAVE-b0-REVIEW-r1-lifecycle, then run the conductor-created delta re-review; keep RT-4/RT-5 blocked behind G-R1/G-R2."
+last: { agent: gpt-5.6-luna, at: 2026-07-23T02:31:28Z, ledger: L-54 }
+next_action: "Run the conductor-created delta re-review for F-8; keep RT-4/RT-5 blocked behind G-R1/G-R2."
 ```
 <!-- /STATUS BLOCK -->
 
@@ -478,7 +478,7 @@ approvals (G1/G2) are recorded as CF evidence with the in-chat approval quoted.
 | F-5 | Blocker | `live_driver.py:dispatch_unit` / `validation.py:_get_embeddings` | MoA omits the requested engine and approved route identity; embeddings escape the DeepSeek-only ledger; stamped provenance does not prove the served route. | FIX-PI-BENCH-MOA-20260722-REVIEW-r1-routing | fixed (L-26) |
 | F-6 | Blocker | `live_driver.py:run_live_unit` / `budget_ledger.py` | The reserved output bound is not forwarded to dispatch, and duplicate/orphan/over-reservation ledger transitions can undercount or exceed the hard cap. | FIX-PI-BENCH-MOA-20260722-REVIEW-r1-budget | fixed (L-22) |
 | F-7 | Major | Compass Forge post-change gate | New Python import cycles include `live_driver -> runner -> live_driver`; the task-scope architecture gate is not clean. | FIX-PI-BENCH-MOA-20260722-REVIEW-r1-gate | fixed (L-25) |
-| F-8 | Major | `docs/build-stream/2026-07-22-pi-benchmark.md` Status Block | The B0 update left the resume contract on stale branch `Review_pi_test` and stale spec `CF-SPEC-8` instead of the active retake branch and `CF-SPEC-9`. | FIX-PI-BENCH-RETAKE-B0-20260723-WAVE-b0-REVIEW-r1-lifecycle | open |
+| F-8 | Major | `docs/build-stream/2026-07-22-pi-benchmark.md` Status Block | The B0 update left the resume contract on stale branch `Review_pi_test` and stale spec `CF-SPEC-8` instead of the active retake branch and `CF-SPEC-9`. | FIX-PI-BENCH-RETAKE-B0-20260723-WAVE-b0-REVIEW-r1-lifecycle | fixed (L-54) |
 
 
 <!-- consensus-winning-plan:PI-BENCH-RETAKE-20260722 -->
@@ -1202,3 +1202,9 @@ Did: independently reviewed Plan C RT-0/RT-3 against implementer commit `81557fa
 Result: verdict **FAIL** with one Major lifecycle-integrity finding. The B0 evidence itself passes: checkout pin and N=4 are attested; none/self_moa/full_ensemble manifests each contain 44 unique units in four disjoint shards of 11, are content-hash-bound, and preserve the required provider/model/cap/moa_n/repeats/tier fields; resume exits 0 unchanged and differing max_processes exits 2 unchanged. Session 208 shows plan-only commands, zero live/provider/credential/server operations, no budget ledger, and no fresh retake gate artifact. F-8: the refreshed Status Block still named stale branch `Review_pi_test` and `CF-SPEC-8`, violating the resume identity contract; the fixer must correct those identity fields and preserve append-only history.
 Verified: `PYTHONPATH=/Users/user/Documents/Istara-main-pi-benchmark-retake/backend /Users/user/Documents/Istara-main-pi-replacement/backend/.venv/bin/python -m pytest tests/pi_benchmark/ -q` -> 178 passed; `tests.pi_benchmark.scheduler.load_manifest` + invariant audit -> three hashes valid, 44 unique units/lane, shard sizes `[11,11,11,11]`, lane modes `{None}`/`{self_moa}`/`{full_ensemble}`, N=4/moa_n=3/repeats=1; identical lane-none `runner.py --plan-only --max-processes 4` -> exit 0 and file sha256 `71130343...` unchanged; differing `--max-processes 3` -> expected exit 2 `ManifestConflict` and same sha256; `rg --files --hidden tests/pi_benchmark/.results/runs/retake` -> only attestation + three manifests; `rg --files tests/pi_benchmark/gates` -> only stale g1/g2 files; actor session 208 log audit -> no `--live` execution/provider call/credential read/server start.
 Next: stage exit — fixer resolves F-8, then the conductor creates one delta re-review; RT-4/RT-5 remain owner-gated.
+
+### L-54 | 2026-07-23T02:31:28Z | S4-remediate | gpt-5.6-luna | remediator | Retake execution (B0 lifecycle identity remediation) <!-- bsc-ledger:FIX-PI-BENCH-RETAKE-B0-20260723-WAVE-b0-REVIEW-r1-lifecycle -->
+Did: resolved F-8 in `docs/build-stream/2026-07-22-pi-benchmark.md` by preserving the corrected active resume identity (`conductor/pi-bench-retake-20260722`, `CF-SPEC-9`), marking the finding fixed, and refreshing the Status Block handoff; no code or historical ledger entries changed.
+Result: F-8 Major closed (`open` -> `fixed (L-54)`); lifecycle resume identity and append-only history are coherent for the delta re-review.
+Verified: focused Status Block/ledger integrity check, `git diff --check`, and scoped diff audit passed; pre-change `compass-forge gate before` reported 0 new failures/warnings (80 inherited failures, actionable_failures=[]).
+Next: stage exit: F-8 fixed and ready for the conductor-created delta re-review; RT-4/RT-5 remain owner-gated.
