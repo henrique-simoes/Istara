@@ -5,14 +5,14 @@
 item: pi-benchmark
 branch: conductor/pi-bench-retake-20260722
 cf: { spec: CF-SPEC-9 }
-phase: "Retake execution - RT-4 preflight review passed (PI-BENCH-RETAKE-EXEC-20260723)"
-stage: S3-review
+phase: "Retake execution - RT-5 lane none B1 run (1 ok / 10 not_runnable; F-9 triaged to fixer)"
+stage: S2-execute
 status: in-progress
 blocked_on: null
 authored_by: build-stream-conductor
 grounding: "Based on 2026-07-20-pi-full-replacement-master-plan.md Section 10"
-last: { agent: gpt-5.6-sol, at: 2026-07-23T13:32:00Z, ledger: L-57 }
-next_action: "RT-4 review passed; assemble the B0 evidence pack and obtain G-R2 owner approval before dispatching any RT-5 wave."
+last: { agent: kimi-code/k3, at: 2026-07-23T13:55:40Z, ledger: L-58 }
+next_action: "F-9 cross-loop supervisor defect triaged to FIX-PI-BENCH-RETAKE-EXEC-20260723-WAVE-none-b1-eventloop; conductor routes the fixer before any further RT-5 wave and the reviewer judges WAVE-none-b1-IMPL."
 ```
 <!-- /STATUS BLOCK -->
 
@@ -479,6 +479,7 @@ approvals (G1/G2) are recorded as CF evidence with the in-chat approval quoted.
 | F-6 | Blocker | `live_driver.py:run_live_unit` / `budget_ledger.py` | The reserved output bound is not forwarded to dispatch, and duplicate/orphan/over-reservation ledger transitions can undercount or exceed the hard cap. | FIX-PI-BENCH-MOA-20260722-REVIEW-r1-budget | fixed (L-22) |
 | F-7 | Major | Compass Forge post-change gate | New Python import cycles include `live_driver -> runner -> live_driver`; the task-scope architecture gate is not clean. | FIX-PI-BENCH-MOA-20260722-REVIEW-r1-gate | fixed (L-25) |
 | F-8 | Major | `docs/build-stream/2026-07-22-pi-benchmark.md` Status Block | The B0 update left the resume contract on stale branch `Review_pi_test` and stale spec `CF-SPEC-8` instead of the active retake branch and `CF-SPEC-9`. | FIX-PI-BENCH-RETAKE-B0-20260723-WAVE-b0-REVIEW-r1-lifecycle | verified (REREV pass, L-55) |
+| F-9 | Critical | `live_driver.py:740 run_live_unit_sync` / `pi_runtime/supervisor.py:526 get_supervisor` | Wave mode runs each unit in a fresh `asyncio.run` loop while the pi-runtime supervisor is a process-wide loop-bound singleton; units 2..N of a wave fail at dispatch ("Future attached to a different loop"): lane none B1 = 1 ok + 10 not_runnable/startup_failure with retained reservations ($0.0238 worst-case booked, not billed). | FIX-PI-BENCH-RETAKE-EXEC-20260723-WAVE-none-b1-eventloop | open |
 
 
 <!-- consensus-winning-plan:PI-BENCH-RETAKE-20260722 -->
@@ -1226,3 +1227,9 @@ Did: independently reviewed Plan C RT-4, implementer commit `26c13b42`, fresh `t
 Result: verdict **PASS** with zero findings (CF evidence 1635). The shared ledger contains exactly one `preflight` reserve and one matching commit, provider-reported spend USD 0.0000077, no credential-shaped keys or secret values, and no other provider/model row. Session 212 records one pinned preflight execution marker and no server or fallback action. Stale `g1_owner_gate.json` and `g2_owner_gate.json` remain byte-identical to their pre-RT-4 Git blobs. RT-5 remains correctly blocked behind G-R2.
 Verified: `verify_budget_ledger.py --ledger tests/pi_benchmark/.results/runs/retake/budget-ledger.json --cap-usd 1.00` -> passed, rows=2 and spend USD 0.0000077; exact `jq` artifact/ledger assertions and session secret-value scan -> passed; `PYTHONPATH=$PWD/backend backend/.venv/bin/python -m pytest tests/pi_benchmark/test_deepseek_provider.py::test_preflight_is_a_minimal_ledgered_call tests/pi_benchmark/test_verify_budget_ledger.py -q` -> 13 passed; stale-gate `git hash-object --no-filters` values matched `HEAD^` blobs; `git diff --check HEAD^ HEAD` passed. CF command evidence 1631-1634 and self-report 1636.
 Next: stage exit: RT-4 independent review passed; conductor may advance to B0 evidence-pack assembly and G-R2 owner approval, but must not dispatch RT-5 before G-R2.
+
+### L-58 | 2026-07-23T13:55:40Z | S2-execute | kimi-code/k3 | executor | Retake execution (RT-5 lane none B1) <!-- bsc-ledger:PI-BENCH-RETAKE-EXEC-20260723-WAVE-none-b1-IMPL -->
+Did: executed approved Plan C RT-5 lane=none wave=1 in the shared worktree. Recorded the owner's complete-plan approval as CF evidence (row 1643; quote "The wave is supposed to have continue everything. Approved, the whole plan is approved, use the wave to execute it all") and created the fresh G-R2 artifact `tests/pi_benchmark/gates/retake_g2_owner_gate.json` binding the B0 evidence pack (attestation sha b9fee3ed…, three manifest file/content hashes, green suite, $0.7342 estimate ≤ $1.00, successful preflight ledgered, route-isolation probes), N=4, DeepSeek-only `pi-deepseek-default`/`deepseek-v4-pro`, $1.00 cumulative cap, no fallback; stale g1/g2 left byte-identical. Asserted `PYTHONPATH=$PWD/backend` with `app.__file__` inside this worktree, then ran `runner.py --wave 1 --max-processes 4 --live` with the immutable none manifest and shared ledger. No server, no non-DeepSeek provider/model, no credential read or printed by this agent.
+Result: wave exit 0; 11 records == shard 1 units exactly, no duplicates, manifest file sha256 unchanged, ledger verify [ok] spent=$0.024960 ≤ $1.00 (rows=14, closed=False, provider=deepseek). Outcome: 1 ok (`a2a.debate_report.slice`, engine=pi, actual $0.0011187) + 10 not_runnable/startup_failure — the wave path runs each unit in a fresh `asyncio.run` loop (`live_driver.py:740`) while the pi-runtime supervisor is a process-wide loop-bound singleton (`supervisor.py:526`), so units 2–11 failed at dispatch with "Future attached to a different loop"; their reservations are retained as worst-case spend per fail-closed accounting (they are not billed usage). Triaged as F-9 (Critical) to fixer task `FIX-PI-BENCH-RETAKE-EXEC-20260723-WAVE-none-b1-eventloop`; no code edited in this stage per scope rules. PI-BENCH-RETAKE-EXEC-20260723-WAVE-none-b1-IMPL
+Verified: wave run exit 0 (`[ok] wave 1/4: 11 records (0 already complete), spend=$0.0250`); completeness script (record_ids == manifest.shards[0], all unique, wave.index==1) -> passed; route/model assertions (`pi-deepseek-default`/`deepseek-v4-pro`, estimate=False) -> passed; manifest sha256 71130343bc41… unchanged; `verify_budget_ledger.py --cap-usd 1.00` -> [ok] spent=$0.024960, exit 0; G-R2 gate JSON parsed and pin assertion passed. CF evidence rows 1643-1648 (owner_approval, 4x command, self_report).
+Next: conductor routes F-9 to the fixer lane; RT-5 waves none B2..B4 and both MoA lanes must wait for the cross-loop fix (the same defect will recur on every wave); review of PI-BENCH-RETAKE-EXEC-20260723-WAVE-none-b1-IMPL decides whether B1 stands complete-with-finding or the 10 startup_failure units are re-dispatched after the fix.
