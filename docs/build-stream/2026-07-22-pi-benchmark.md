@@ -5,14 +5,14 @@
 item: pi-benchmark
 branch: Review_pi_test
 cf: { spec: CF-SPEC-8 }
-phase: "Retake planning - fresh B0/B1..B_N consensus (PI-BENCH-RETAKE-20260722)"
-stage: S1-plan
+phase: "Retake execution - RT-1/RT-2 apparatus hardening + estimate gate (PI-BENCH-RETAKE-20260722)"
+stage: S2-execute
 status: in-progress
 blocked_on: null
 authored_by: build-stream-conductor
 grounding: "Based on 2026-07-20-pi-full-replacement-master-plan.md Section 10"
-last: { agent: kimi-code/k3, at: 2026-07-23T00:11:57Z, ledger: L-49 }
-next_action: "Conductor: tally judge a/b/c votes and seal consensus_result; G-R0 owner gate before any implementation."
+last: { agent: claude-opus-4-8, at: 2026-07-23T00:59:02Z, ledger: L-50 }
+next_action: "Independent review of RT-1/RT-2 (PI-BENCH-RETAKE-20260722-IMPL); then executor lane RT-0 attestation and, behind G-R1/G-R2, RT-3 B0 scheduling + RT-4 preflight + RT-5 waves + RT-6 POST-N."
 ```
 <!-- /STATUS BLOCK -->
 
@@ -904,6 +904,28 @@ the HTML, Markdown, JSON, and per-judgment outputs. Production Istara routing is
 Why: evaluation measures the requested model-routing behavior, while judging/reporting is
 post-run analysis and should not be conflated with the evaluated provider or spend ledger.
 
+DEC-7 | 2026-07-23 | S2-execute | build-stream-conductor + implementer (RT-0)
+Context: The PI-BENCH-RETAKE-20260722 consensus winner (Plan C, §1.4) is a fresh, isolated
+run. DEC-5/DEC-6 above still carry the prior lineage's Kimi-as-evaluation and judge-on-the-
+DUT-ledger language, which contradicts the retake canon.
+Decision: This DEC restates and pins the authoritative role canon for the retake, superseding
+the conflicting Kimi-evaluation clauses in DEC-5/DEC-6 (which stay byte-identical as history):
+  - DUT = Istara's two agentic arms (`engine=pi` and `engine=legacy`) through the API/
+    dispatcher path (`AgenticDispatcher.ensemble`).
+  - Evaluation provider = DeepSeek `deepseek-v4-pro` ONLY, via the one approved endpoint
+    `pi-deepseek-default`. Local routes, Claude, Codex, Kimi, and every other provider are
+    disabled for DUT traffic; there is no fallback route.
+  - Budget = one cumulative crash-safe ledger, `budget_cap_usd=1.00`, shared by preflight,
+    all waves, all MoA lanes, and all retries; no per-wave reset; closed at POST-N.
+  - Kimi is NOT a benchmark/evaluation provider and makes NO in-run judge calls. Kimi is
+    reserved for a separate, artifact-only post-run judging/report BSC session.
+  - `deepseek_judge.py` / `judge_config.json` (judge = DUT model on the shared ledger) are
+    superseded for this retake: no judge calls occur inside the B waves. Judging happens
+    post-run, over frozen artifacts, off the DUT ledger.
+Why: the stale Kimi-evaluation text would mis-route DUT spend and conflate the evaluation
+provider with the post-run judge; pinning the canon keeps the money path DeepSeek-only and
+the judging session cleanly separated.
+
 
 ### L-9 | 2026-07-22T13:50:34Z | S1-plan | kimi-code/k3 | architect | Planning phase <!-- bsc-ledger:pi-eval-REPLAN-C-r1 -->
 Did: repaired consensus plan C (revision r1)
@@ -1155,3 +1177,9 @@ Did: consensus judge slot c for round fcf29273d0f8bddbc66e — read exactly cand
 Result: `plan_vote = slot B` (`candidate_id 80d2db45…`) on `PI-BENCH-RETAKE-20260722-JUDGE-C`. B found the decisive apparatus-validity gap A missed: waves dispatch `default_prompt_builder`'s route smoke prompt ("not the full scenario corpus", `live_driver.py:384-397`, default-wired at `:549-550` with no runner override), so A's unchanged reuse would run B1..B_N without measuring scenario quality; B's T4 grounds the fix in the verified ASGI seam (`test_chat_pi_asgi.py` + `x-istara-agent-engine` in `dispatcher.py`). B's Kimi-only artifact judging with structural no-DUT enforcement fits the spec's reserved separate judging session better than A's in-run DeepSeek judge on the DUT ledger (same-provider self-judging + redundant spend). A's audit is sharper on citations (correctly flagged the missing `pi-benchmark-deepseek-moa-execution.md` that B's header cites — verified absent) and its interpreter pin + append-only lifecycle DEC should be grafted onto B at implementation. Both A and B miss the bare `ledger.commit` wave-wedge (`live_driver.py:648`, verified: commit refusal escapes record-less and wedges the unit) — implementation must close it regardless of winner.
 Verified: `shasum -a 256` of both plans -> match payload; `ls docs/build-stream/conductor-instructions/` -> moa-execution file absent (A G-3 true, B header slip); `sed`/`grep` on `live_driver.py` -> smoke-prompt default wired at :549-550, bare commit at :648; `sed runner.py 472-478` + `cat tests/pi_benchmark/gates/g1_owner_gate.json` -> existence-only gate + stale `gpt-5.6-luna` approval; `ls tests/pi_production/test_chat_pi_asgi.py` + `grep x-istara-agent-engine backend/app` -> B's seam real; CF evidence IDs 1542, 1543 (command), 1544 (plan_vote), 1545 (self_report)
 Next: stage exit: conductor tallies judge a/b/c votes and seals `consensus_result`; G-R0 owner gate precedes implementation.
+
+### L-50 | 2026-07-23T00:59:02Z | S2-execute | claude-opus-4-8 | executor | Retake execution (RT-0/RT-1/RT-2) <!-- bsc-ledger:PI-BENCH-RETAKE-20260722-IMPL -->
+Did: implemented the winning Plan C implementer scope RT-1 (apparatus hardening, red→green + wedge-proof accounting) and RT-2 (dry-run estimate gate), plus RT-0's DEC-7 role-canon supersession. Files: `tests/pi_benchmark/deepseek_provider.py` (reserve `max(2×est_input, MIN_RESERVE_INPUT_TOKENS=256)` input-priced + `max_tokens` output-priced; catch commit `LedgerStateError` → `ProviderCallFailed("over_reservation_fail_closed")`, reservation retained), `tests/pi_benchmark/live_driver.py` (same reserve margin + `DEFAULT_MAX_TOKENS=1024`; on resume `reserve`→`LedgerStateError` write `not_runnable/other` `interrupted_unknown_usage` retaining the reservation instead of re-raising; wrap the bare `commit` (old :648) → on `LedgerStateError` write `not_runnable/other` `accounting_fail_closed`, reservation retained, wave never crashes), `tests/pi_benchmark/runner.py` (`_worst_case_program_cost_usd` + estimate gate in `_run_b0_plan_only`: prints the deterministic whole-program worst case and exits 2 before any manifest write when it exceeds `--budget-usd`). Reconciled the 2 stale provider tests to realistic in-margin usage; added over-reservation (provider+driver), resume-with-outstanding-reservation, and estimate-gate tests. Appended DEC-7 pinning the DeepSeek-only DUT / Kimi-post-run-only canon (supersedes DEC-5/DEC-6 Kimi-eval clauses). RT-0 attestation artifacts and RT-3+ live scheduling/waves are the executor lane's, behind G-R1/G-R2 — not done here.
+Result: apparatus is green and the F-6-class latent wedge is closed fail-closed. AC-1 met (178 passed / 0 failed; was 170/2). AC-3 estimate gate verified ($0.7342 ≤ $1.00 → exit 0 with manifest; `--repeats 2` → $1.4683 > cap → exit 2, no manifest, no live call). AC-5/AC-6 fail-closed reserve/commit/resume paths unit-proven. No product/backend/security file touched; changed-file scope = the 6 RT-1/RT-2 files under `tests/pi_benchmark/` + this lifecycle file (DEC-7, L-50, Status Block). No live dispatch, no spend, no models loaded. PI-BENCH-RETAKE-20260722-IMPL
+Verified: `PYTHONPATH=$PWD/backend backend/.venv/bin/python -m pytest tests/pi_benchmark/ -q` → 178 passed; `... tests/pi_migration/test_count_to_zero.py -q` → 3 passed (ratchet 0); `scripts/security_benchmark.py --fail-on-threshold` → pass, 100.0%, 28/0, triggered_paths=[]; CLI probes: lane-none `--plan-only` exit 0 (estimate $0.7342, 44 units/4 shards), `--repeats 2` exit 2 no manifest, identical rerun exit 0, `--max-processes 3` `ManifestConflict` exit 2, offline `validate_topology` → `full_ensemble->self_moa` degraded; `git status` → only the 6 tests/pi_benchmark files + this lifecycle file. CF evidence: 4×command + self_report on PI-BENCH-RETAKE-20260722-IMPL.
+Next: stage exit — RT-1/RT-2 ready for independent code review (pi-bench-retake-20260722-fixer/reviewer lane); executor lane then does RT-0 attestation (`app.__file__` pin, `b0-attestation.json`) and, behind G-R1/G-R2, RT-3 B0 scheduling + RT-4 preflight + RT-5 waves + RT-6 POST-N.

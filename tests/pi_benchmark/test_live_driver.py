@@ -27,8 +27,16 @@ pytestmark = pytest.mark.benchmark
 class FakeLedger:
     """In-memory stand-in for Lane A's BudgetLedger (same call surface)."""
 
-    def __init__(self, *, fail_reserve: bool = False):
+    def __init__(
+        self,
+        *,
+        fail_reserve: bool = False,
+        reserve_state_error: bool = False,
+        commit_over_reservation: bool = False,
+    ):
         self._fail_reserve = fail_reserve
+        self._reserve_state_error = reserve_state_error
+        self._commit_over_reservation = commit_over_reservation
         self.reserved: dict[str, float] = {}
         self.committed: dict[str, tuple] = {}
         self.released: dict[str, str] = {}
@@ -36,9 +44,17 @@ class FakeLedger:
     def reserve(self, call_id, max_cost_usd, *, kind, meta=None):
         if self._fail_reserve:
             raise live_driver.BudgetExceeded("cap reached")
+        if self._reserve_state_error:
+            # Resume after a crash: this unit already has an outstanding reservation, so
+            # a fresh reserve is refused. The booking stays (retained worst-case spend).
+            self.reserved[call_id] = max_cost_usd
+            raise live_driver.LedgerStateError(f"call_id {call_id!r} already has a reservation")
         self.reserved[call_id] = max_cost_usd
 
     def commit(self, call_id, actual_cost_usd, *, usage, meta=None):
+        if self._commit_over_reservation:
+            # Actual cost exceeded the worst-case reservation: the real ledger refuses this.
+            raise live_driver.LedgerStateError(f"commit {call_id!r} exceeds its reservation")
         self.committed[call_id] = (actual_cost_usd, usage, meta)
 
     def release(self, call_id, *, reason):
@@ -287,7 +303,8 @@ def test_ok_record_exact_usage_commit_and_atomic_write(tmp_path):
     # Ledger: reserved worst-case, committed actual, nothing outstanding.
     assert "u-1" in ledger.reserved
     prompt = live_driver.default_prompt_builder(_unit(), _scenario())
-    worst_case = FakeProvider().estimate_cost(live_driver._chars4(prompt), 1024)
+    reserve_input = max(2 * live_driver._chars4(prompt), live_driver.MIN_RESERVE_INPUT_TOKENS)
+    worst_case = FakeProvider().estimate_cost(reserve_input, live_driver.DEFAULT_MAX_TOKENS)
     assert ledger.reserved["u-1"] == pytest.approx(worst_case)
     actual, committed_usage, meta = ledger.committed["u-1"]
     assert actual == pytest.approx(expected_cost)
@@ -331,6 +348,43 @@ def test_unknown_usage_after_dispatch_fails_closed_and_retains_reservation(tmp_p
     assert ledger.outstanding() == {"u-1": ledger.reserved["u-1"]}  # retained
     assert "u-1" not in ledger.committed and "u-1" not in ledger.released
     assert schema.is_valid(record)
+
+
+def test_over_reservation_commit_fails_closed_and_retains_reservation(tmp_path):
+    # A real call whose actual cost exceeds the worst-case reservation: the ledger refuses
+    # the commit. The driver must fail closed — write a terminal record, retain the
+    # reservation, and never crash the wave (a crash here would leave no record and wedge
+    # the resume on the outstanding reservation).
+    ledger = FakeLedger(commit_over_reservation=True)
+    record = _run(tmp_path, ledger=ledger, dispatch=_dispatch_returning(_capture()))
+    assert record["status"] == "not_runnable"
+    assert record["not_runnable_reason"] == "other"
+    assert record["extensions"]["detail"] == "accounting_fail_closed"
+    assert ledger.outstanding() == {"u-1": ledger.reserved["u-1"]}  # retained
+    assert "u-1" not in ledger.committed and "u-1" not in ledger.released
+    assert schema.is_valid(record)
+    # A terminal record exists so a resume sees this unit as done (no wedge).
+    assert (tmp_path / "records" / "u-1.json").is_file()
+
+
+def test_resume_with_outstanding_reservation_records_interrupted_and_retains(tmp_path):
+    # Simulate resume after a crash that reserved this unit but never wrote its record:
+    # re-reserving raises LedgerStateError. The driver must record the interruption and
+    # retain the reservation instead of re-raising (which would permanently wedge the wave),
+    # and must not re-dispatch.
+    ledger = FakeLedger(reserve_state_error=True)
+
+    async def exploding_dispatch(**kwargs):  # pragma: no cover - must never run
+        raise AssertionError("interrupted resume must not re-dispatch")
+
+    record = _run(tmp_path, ledger=ledger, dispatch=exploding_dispatch)
+    assert record["status"] == "not_runnable"
+    assert record["not_runnable_reason"] == "other"
+    assert record["extensions"]["detail"] == "interrupted_unknown_usage"
+    assert ledger.outstanding() == {"u-1": ledger.reserved["u-1"]}  # retained
+    assert "u-1" not in ledger.committed and "u-1" not in ledger.released
+    assert schema.is_valid(record)
+    assert (tmp_path / "records" / "u-1.json").is_file()
 
 
 def test_budget_exceeded_records_the_block_and_never_dispatches(tmp_path):
