@@ -73,6 +73,9 @@ class FakeProvider:
 
     model = "deepseek-v4-pro"
 
+    def __init__(self):
+        self.calls = []
+
     def estimate_cost(self, input_tokens, output_tokens, cache_read_tokens=0, cache_write_tokens=0):
         return (
             input_tokens * 0.55 + output_tokens * 2.19
@@ -81,6 +84,13 @@ class FakeProvider:
 
     def endpoint_fingerprint(self):
         return "deepseek:0123456789ab"
+
+    def chat(self, **kwargs):
+        self.calls.append(kwargs)
+        return "legacy provider response", types.SimpleNamespace(
+            input_tokens=11, output_tokens=7, cache_read_tokens=0,
+            cache_write_tokens=0, total_tokens=18, estimate=False,
+        )
 
 
 def _unit(**overrides):
@@ -202,40 +212,57 @@ def test_dispatch_unit_full_ensemble_requests_exactly_moa_n_slots():
     assert capture.estimate is True and capture.usage is not None
 
 
-def test_dispatch_unit_moa_uses_pinned_engine_and_never_embeddings():
-    calls = {}
+def test_dispatch_unit_legacy_uses_approved_provider_not_compute_registry():
+    provider = FakeProvider()
 
-    class FakeAgentic:
-        async def ensemble(self, **kwargs):
-            calls.update(kwargs)
-            return types.SimpleNamespace(
-                samples=[
-                    types.SimpleNamespace(
-                        text="a", usage=None, endpoint_id="pi-deepseek-default", status="success",
-                    ),
-                    types.SimpleNamespace(
-                        text="b", usage=None, endpoint_id="pi-deepseek-default", status="success",
-                    ),
-                    types.SimpleNamespace(
-                        text="c", usage=None, endpoint_id="pi-deepseek-default", status="success",
-                    ),
-                ],
-                endpoint_ids=["pi-deepseek-default"] * 3,
-                usage={},
-                status="success",
-            )
+    class ForbiddenAgentic:
+        async def ensemble(self, **kwargs):  # pragma: no cover - must never run
+            raise AssertionError("legacy benchmark dispatch must not enter agentic registry path")
 
     capture = asyncio.run(live_driver.dispatch_unit(
-        unit=_unit(engine="legacy", moa_mode="self_moa"), tier="T3", prompt="hello",
-        moa_n=3, agentic_module=FakeAgentic(),
+        unit=_unit(engine="legacy"), tier="T3", prompt="hello",
+        provider=provider, agentic_module=ForbiddenAgentic(),
     ))
 
-    assert calls["engine"] == "legacy"
-    assert calls["distinct"] is False and calls["n"] == 3
-    assert calls["params"].endpoint_id == "pi-deepseek-default"
-    assert calls["params"].model == "deepseek-v4-pro"
+    assert len(provider.calls) == 1
+    assert provider.calls[0]["ledger"] is None
+    assert provider.calls[0]["call_id"] == "u-1:legacy:1"
+    assert capture.text == "legacy provider response"
+    assert capture.endpoint_ids == ("pi-deepseek-default",)
+    assert capture.route_evidence[0] == {
+        "endpoint_id": "pi-deepseek-default",
+        "provider": "deepseek",
+        "model": "deepseek-v4-pro",
+        "engine": "legacy",
+        "route_kind": "deepseek_provider",
+    }
+
+
+def test_dispatch_unit_legacy_moa_repeats_approved_provider_route():
+    provider = FakeProvider()
+    capture = asyncio.run(live_driver.dispatch_unit(
+        unit=_unit(engine="legacy", moa_mode="self_moa"), tier="T3", prompt="hello",
+        moa_n=3, provider=provider,
+    ))
+
+    assert len(provider.calls) == 3
+    assert [call["temperature"] for call in provider.calls] == [0.3, 0.7, 1.0]
     assert capture.raw_method == "self_moa"
+    assert capture.endpoint_ids == ("pi-deepseek-default",) * 3
     assert all(route["provider"] == "deepseek" for route in capture.route_evidence)
+
+
+def test_run_live_unit_default_dispatch_forwards_provider_to_legacy(tmp_path):
+    provider = FakeProvider()
+    record = live_driver.run_live_unit_sync(
+        unit=_unit(engine="legacy"), scenario=_scenario(), config=_config(tmp_path),
+        ledger=FakeLedger(), provider=provider, records_dir=tmp_path / "records",
+    )
+
+    assert record["status"] == "ok"
+    assert len(provider.calls) == 1
+    assert record["extensions"]["route_evidence"][0]["engine"] == "legacy"
+    assert schema.is_valid(record)
 
 
 def test_dispatch_unit_moa_rejects_an_unapproved_served_route():

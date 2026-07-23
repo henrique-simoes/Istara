@@ -1,9 +1,11 @@
 """Live T2/T3 execution through the Istara dispatcher path (Lane B).
 
 This driver replaces the old synthetic T2/T3 path: every live unit is dispatched for
-real through Istara's AgenticDispatcher ensemble verb with DeepSeek ``deepseek-v4-pro``
-as the ONLY provider (DEC-5: local routes are disabled — there is no local-model path),
-under a shared crash-safe budget ledger (Lane A's :class:`BudgetLedger`).
+real through the approved DeepSeek ``deepseek-v4-pro`` route as the ONLY provider
+(DEC-5: local routes are disabled — there is no local-model path), under a shared
+crash-safe budget ledger (Lane A's :class:`BudgetLedger`). Pi units use Istara's
+AgenticDispatcher ensemble verb; legacy benchmark units use the same approved provider
+adapter directly so they do not depend on an unavailable local ComputeRegistry node.
 
 Routing per unit:
 
@@ -314,6 +316,128 @@ def _benchmark_moa_capture(
     )
 
 
+def _provider_usage_block(raw: Any) -> tuple[dict[str, int], bool] | None:
+    """Normalize one ``DeepSeekProvider`` usage object without inventing counts."""
+    if raw is None:
+        return None
+    getter = raw.get if isinstance(raw, dict) else lambda key, default=None: getattr(raw, key, default)
+    input_tokens = getter("input_tokens")
+    output_tokens = getter("output_tokens")
+    if input_tokens is None or output_tokens is None:
+        return None
+    usage = {
+        "input_tokens": int(input_tokens),
+        "output_tokens": int(output_tokens),
+        "cache_read_tokens": int(getter("cache_read_tokens", 0) or 0),
+        "cache_write_tokens": int(getter("cache_write_tokens", 0) or 0),
+    }
+    usage["total_tokens"] = int(
+        getter("total_tokens", usage["input_tokens"] + usage["output_tokens"])
+    )
+    return usage, bool(getter("estimate", False))
+
+
+async def _dispatch_legacy_via_approved_provider(
+    *, unit: Any, prompt: str, system: str, moa_n: int, max_tokens: int, provider: Any,
+) -> LiveCapture:
+    """Dispatch benchmark legacy units through the approved DeepSeek provider.
+
+    The normal legacy engine intentionally remains ComputeRegistry-backed. The
+    benchmark cannot assume a local server exists, so its legacy arm uses the
+    already-created, provider-isolated DeepSeek client instead. ``run_live_unit``
+    owns the reservation and final commit; provider calls therefore pass
+    ``ledger=None`` to avoid double accounting while retaining fail-closed handling
+    in the outer benchmark driver.
+    """
+    if provider is None:
+        raise PreDispatchError("approved DeepSeek provider is required for legacy benchmark dispatch")
+    provider_name = str(getattr(provider, "provider", DEEPSEEK_PROVIDER))
+    model = str(getattr(provider, "model", DEEPSEEK_MODEL))
+    endpoint_id = str(getattr(provider, "endpoint_id", DEEPSEEK_ENDPOINT_ID))
+    if (provider_name, model, endpoint_id) != (
+        DEEPSEEK_PROVIDER, DEEPSEEK_MODEL, DEEPSEEK_ENDPOINT_ID
+    ):
+        raise RouteAdmissionError(
+            "legacy benchmark provider is not the approved DeepSeek route",
+            route={
+                "endpoint_id": endpoint_id,
+                "provider": provider_name,
+                "model": model,
+                "engine": "legacy",
+                "route_kind": "deepseek_provider",
+                "admission": "rejected",
+            },
+        )
+
+    moa_mode = getattr(unit, "moa_mode", None)
+    calls = moa.requested_slots(moa_mode, moa_n) if moa_mode in moa.MOA_MODES else 1
+    temperatures = list(moa.self_moa_temperatures(moa_n)) if moa_mode == "self_moa" else []
+    responses: list[str] = []
+    usage_blocks: list[dict[str, int]] = []
+    estimates: list[bool] = []
+    messages = []
+    if system:
+        messages.append({"role": "system", "content": system})
+    messages.append({"role": "user", "content": prompt})
+    for index in range(calls):
+        result = await asyncio.to_thread(
+            provider.chat,
+            messages=messages,
+            temperature=temperatures[index] if index < len(temperatures) else 0.0,
+            max_tokens=max_tokens,
+            ledger=None,
+            call_id=f"{unit.unit_id}:legacy:{index + 1}",
+            kind="benchmark-legacy",
+        )
+        try:
+            text, raw_usage = result
+        except (TypeError, ValueError) as exc:
+            raise RuntimeError("approved DeepSeek provider returned an invalid result") from exc
+        normalized = _provider_usage_block(raw_usage)
+        if normalized is None:
+            # Let the caller write its normal unknown-usage fail-closed record.
+            return LiveCapture(
+                text=str(text or ""), usage=None, estimate=False,
+                endpoint_ids=(DEEPSEEK_ENDPOINT_ID,) * calls,
+                route_evidence=(), raw_method=moa_mode,
+            )
+        responses.append(str(text or ""))
+        block, estimate = normalized
+        usage_blocks.append(block)
+        estimates.append(estimate)
+
+    usage = {
+        key: sum(block[key] for block in usage_blocks)
+        for key in _USAGE_KEYS
+    }
+    route = {
+        "endpoint_id": DEEPSEEK_ENDPOINT_ID,
+        "provider": DEEPSEEK_PROVIDER,
+        "model": DEEPSEEK_MODEL,
+        "engine": "legacy",
+        "route_kind": "deepseek_provider",
+    }
+    route_evidence = tuple(dict(route) for _ in range(calls))
+    consensus_score = None
+    consensus_confidence = ""
+    if moa_mode in moa.MOA_MODES and responses:
+        from app.core.consensus import compute_consensus
+
+        consensus = compute_consensus(responses, embeddings=None, method=moa_mode)
+        consensus_score = consensus.agreement_score
+        consensus_confidence = consensus.confidence
+    return LiveCapture(
+        text=responses[0] if responses else "",
+        usage=usage,
+        estimate=any(estimates),
+        endpoint_ids=(DEEPSEEK_ENDPOINT_ID,) * calls,
+        route_evidence=route_evidence,
+        raw_method=moa_mode,
+        consensus_score=consensus_score,
+        consensus_confidence=consensus_confidence,
+    )
+
+
 async def dispatch_unit(
     *,
     unit: Any,
@@ -324,6 +448,7 @@ async def dispatch_unit(
     max_tokens: int = DEFAULT_MAX_TOKENS,
     ensemble_fn: Any = None,
     agentic_module: Any = None,
+    provider: Any = None,
 ) -> LiveCapture:
     """Dispatch one unit through the backend dispatcher path and capture what came back.
 
@@ -331,11 +456,22 @@ async def dispatch_unit(
     backend is imported lazily here (and only here). Injected ``ensemble_fn`` receives the
     same kwargs as ``agentic.ensemble`` except ``params`` is a plain dict
     (``{"endpoint_id", "model", "max_tokens"}``) so tests never import backend types.
+    Legacy units require the already-opened benchmark ``DeepSeekProvider`` and use it
+    directly; this is deliberately distinct from ordinary Istara legacy routing.
     """
+    if getattr(unit, "engine", None) == "legacy":
+        return await _dispatch_legacy_via_approved_provider(
+            unit=unit,
+            prompt=prompt,
+            system=system,
+            moa_n=moa_n,
+            max_tokens=max_tokens,
+            provider=provider,
+        )
+    if getattr(unit, "engine", None) != "pi":
+        raise PreDispatchError(f"unsupported benchmark engine: {getattr(unit, 'engine', None)!r}")
     moa_mode = getattr(unit, "moa_mode", None)
     if moa_mode in moa.MOA_MODES:
-        if getattr(unit, "engine", None) not in {"pi", "legacy"}:
-            raise PreDispatchError(f"unsupported benchmark engine: {getattr(unit, 'engine', None)!r}")
         if agentic_module is None:
             await _init_db_best_effort()
             from app.core.agentic import agentic as agentic_module  # lazy (live path only)
@@ -625,10 +761,15 @@ async def run_live_unit(
 
     # 3. Dispatch; map failures onto typed not_runnable records.
     try:
-        capture = await dispatch(
+        dispatch_kwargs = dict(
             unit=unit, tier=config.tier, prompt=prompt, system=system,
             moa_n=moa_n, max_tokens=max_tokens,
         )
+        # The default benchmark dispatcher uses the provider opened by the runner.
+        # Custom test/integration dispatchers retain their existing narrow contract.
+        if dispatch is dispatch_unit:
+            dispatch_kwargs["provider"] = provider
+        capture = await dispatch(**dispatch_kwargs)
     except PreDispatchError as exc:
         ledger.release(unit.unit_id, reason=f"pre_dispatch:{exc}")
         extensions["detail"] = {"reason": f"pre-dispatch failure: {exc}"}
