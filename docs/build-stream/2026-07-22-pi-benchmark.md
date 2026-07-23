@@ -11,8 +11,8 @@ status: in-progress
 blocked_on: null
 authored_by: build-stream-conductor
 grounding: "Based on 2026-07-20-pi-full-replacement-master-plan.md Section 10"
-last: { agent: claude-fable-5, at: 2026-07-22T22:59:43Z, ledger: L-47 }
-next_action: "Conductor: collect remaining judge votes (b/c), tally, seal consensus_result; G-R0 owner gate before any implementation."
+last: { agent: gpt-5.6-sol, at: 2026-07-23T00:05:28Z, ledger: L-48 }
+next_action: "Conductor: collect judge c vote, tally, and seal consensus_result; G-R0 owner gate before any implementation."
 ```
 <!-- /STATUS BLOCK -->
 
@@ -741,3 +741,9 @@ Did: consensus judge slot a for round fcf29273d0f8bddbc66e — read exactly cand
 Result: plan_vote = slot C (candidate_id db2ac00d…). C wins on verified grounding + execution risk: it pinned the red-baseline root cause, independently found the latent wave-wedge defect (ledger.commit outside try/except in live_driver.run_live_unit — verified) and the shared-venv backend import hazard, proved budget fit (~$0.73 <= $1.00), and correctly flagged that B's cited authority file pi-benchmark-deepseek-moa-execution.md does not exist (verified). B is stronger on gate-digest binding + ASGI DUT fidelity but is a heavier 11-task redesign resting on a dangling authority pointer; recommend grafting B's run-bound gate-digest verification onto C at implementation. PI-BENCH-RETAKE-20260722-JUDGE-A
 Verified: shasum -a 256 of both plans + git rev-parse HEAD -> match payload; backend/.venv/bin/python -m pytest tests/pi_benchmark/ -q -> 2 failed, 170 passed (exactly the two test_deepseek_provider.py tests both plans reported); ls conductor-instructions/ -> pi-benchmark-deepseek-moa-execution.md absent; sed live_driver.py 550-660 -> commit outside dispatch try/except confirmed; CF evidence rows 1518-1522 (3x command, plan_vote, self_report)
 Next: judges b/c vote; conductor tallies and seals consensus_result; G-R0 owner gate before any implementation
+
+### L-48 | 2026-07-23T00:05:28Z | S1-plan | gpt-5.6-sol | judge | Retake planning <!-- bsc-ledger:PI-BENCH-RETAKE-20260722-JUDGE-B -->
+Did: consensus judge slot b for round fcf29273d0f8bddbc66e — read exactly candidates A (`docs/build-stream/plans/pi-bench-retake-20260722-plan-a.md`, sha256 `5abf12ff…`) and C (`docs/build-stream/plans/pi-bench-retake-20260722-plan-c.md`, sha256 `e090b229…`) plus their supplied author identities; both hashes matched the work-order payload. No plan or code edited and no `review_verdict` recorded.
+Result: `plan_vote = slot C` (`candidate_id db2ac00d…`) on `PI-BENCH-RETAKE-20260722-JUDGE-B`. C is stronger because it models the current single-`moa_mode` CLI as three manifests and closes the proven `live_driver.py` post-dispatch accounting/resume wedge plus checkout-import hazard. A's manifest-bound stale-gate rejection is stronger than C's fresh-artifact-only gate design and remains an explicit implementation residual risk.
+Verified: `shasum -a 256 docs/build-stream/plans/pi-bench-retake-20260722-plan-a.md docs/build-stream/plans/pi-bench-retake-20260722-plan-c.md` matched both pinned hashes; both files read in full; CF evidence IDs 1529 command, 1530 plan_vote, 1531 self_report.
+Next: stage exit: judge c votes, then the conductor tallies and seals `consensus_result`; G-R0 owner gate precedes implementation.
