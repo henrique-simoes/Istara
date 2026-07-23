@@ -1,11 +1,12 @@
-"""DeepSeek-only provider adapter for judge/preflight calls (B0 scheduling).
+"""DeepSeek-only provider adapter for benchmark calls (B0 scheduling).
 
 The "B0 offline scheduling + B1..B_N process waves" plan permits exactly one live
 provider: DeepSeek ``deepseek-v4-pro``, under the $1.00 cumulative cap enforced by
 :mod:`tests.pi_benchmark.budget_ledger`. This adapter is the provider-isolation
 gate: any other provider or model string is rejected at construction, before any
-dispatch is possible. The DUT path lives elsewhere — this adapter serves judge and
-preflight calls only.
+dispatch is possible. Pi benchmark units still use Istara's dispatcher; benchmark
+legacy units use this adapter because the production legacy executor is intentionally
+ComputeRegistry-backed and cannot assume a local compute node is available.
 
 Budget discipline: ``chat`` reserves worst-case cost in the ledger *before*
 dispatch, commits provider-reported actual cost on success, releases the
