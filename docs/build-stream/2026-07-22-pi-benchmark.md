@@ -5,14 +5,14 @@
 item: pi-benchmark
 branch: conductor/pi-bench-retake-20260722
 cf: { spec: CF-SPEC-9 }
-phase: "Retake execution - F-9 cross-event-loop remediation"
-stage: S4-remediate
+phase: "Retake execution - RT-5 lane none B1 independently reviewed"
+stage: S3-review
 status: in-progress
 blocked_on: null
 authored_by: build-stream-conductor
 grounding: "Based on 2026-07-20-pi-full-replacement-master-plan.md Section 10"
-last: { agent: gpt-5.6-luna, at: 2026-07-23T13:57:38Z, ledger: L-59 }
-next_action: "F-9 fixed; run the conductor-created delta re-review before deciding whether to re-dispatch the ten startup_failure records."
+last: { agent: gpt-5.6-sol, at: 2026-07-23T14:06:30Z, ledger: L-60 }
+next_action: "Conductor may advance to RT-5 lane none B2; preserve B1's ten truthful terminal startup_failure records unless a separate governed retry decision explicitly authorizes replacement."
 ```
 <!-- /STATUS BLOCK -->
 
@@ -1239,3 +1239,9 @@ Did: fixed F-9 in `tests/pi_benchmark/runner.py` by executing each live batch, i
 Result: the process-wide Pi runtime supervisor is no longer reused across per-unit event loops in runner-managed batches. Existing resume filtering and the public single-unit sync wrapper remain unchanged; the ten prior startup_failure records were not mutated or re-dispatched by this fixer.
 Verified: `PYTHONPATH=$PWD/backend /Users/user/Documents/Istara-main-pi-replacement/backend/.venv/bin/python -m pytest tests/pi_benchmark/test_runner.py -q` -> 24 passed; `... -m pytest tests/pi_benchmark/test_live_driver.py -q` -> 21 passed; `... -m pytest tests/pi_benchmark/ -q` -> 179 passed; `... -m compileall -q tests/pi_benchmark/runner.py tests/pi_benchmark/test_runner.py` -> passed; `python scripts/feature_docs.py --seed-missing --generate-site --check` -> 86 features passed; `compass-forge gate after --task FIX-PI-BENCH-RETAKE-EXEC-20260723-WAVE-none-b1-eventloop --summary` -> inherited 80 failures, `new_failures: 0`, `actionable_failures: []`; `git diff --check` -> passed.
 Next: stage exit: F-9 is fixed and ready for the conductor-created delta re-review; the reviewer must verify the changed batch seam before any live retry decision.
+
+### L-60 | 2026-07-23T14:06:30Z | S3-review | gpt-5.6-sol | reviewer | Retake execution (RT-5 lane none B1) <!-- bsc-ledger:PI-BENCH-RETAKE-EXEC-20260723-WAVE-none-b1-REVIEW -->
+Did: independently reviewed lane `none` B1, the implementer evidence, fresh G-R2 artifact, immutable B0/manifest bindings, all 11 shard records, the cumulative budget ledger, provider/fallback isolation, and the F-9 remediation seam in `tests/pi_benchmark/runner.py` plus its regression test. Updated only this lifecycle Status Block and appended this reviewer ledger entry; raised no new finding.
+Result: verdict **PASS** with zero new findings (CF evidence 1670). G-R2's bound attestation, three manifest, and preflight-ledger hashes match current bytes; lane B1 has exactly 11 unique schema-valid records matching shard 1 (1 `ok`, 10 typed `not_runnable/startup_failure` with null live identity); the successful record proves `pi-deepseek-default` / `deepseek-v4-pro` with provider-reported usage; ledger spend is `$0.024960 <= $1.00`; no credential-shaped field, alternate-provider name, URL, or fallback endpoint appears in the run artifacts. AC-6 permits typed terminal `not_runnable` records, so the ten truthful failures remain historical results rather than being silently rewritten.
+Verified: direct SHA-256/binding/record/route audit -> passed; `verify_budget_ledger.py --cap-usd 1.00` -> `[ok]` (14 rows, provider `deepseek`); focused benchmark tests -> 80 passed; `pytest tests/pi_benchmark/ -q` -> 179 passed; secret/provider-leak scans -> clean; `git diff --check` -> passed; `compass-forge gate after --task PI-BENCH-RETAKE-EXEC-20260723-WAVE-none-b1-REVIEW --summary` -> inherited failures only, `new_failures: 0`, `actionable_failures: []`.
+Next: stage exit: review passed; conductor may advance to lane `none` B2 without mutating the truthful B1 records.
