@@ -5,14 +5,14 @@
 item: pi-benchmark
 branch: conductor/pi-bench-retake-20260722
 cf: { spec: CF-SPEC-9 }
-phase: "Retake execution - B0 review remediation (PI-BENCH-RETAKE-B0-20260723)"
-stage: S4-remediate
+phase: "Retake execution - RT-4 preflight complete (PI-BENCH-RETAKE-EXEC-20260723)"
+stage: S2-execute
 status: in-progress
 blocked_on: null
 authored_by: build-stream-conductor
 grounding: "Based on 2026-07-20-pi-full-replacement-master-plan.md Section 10"
-last: { agent: gpt-5.6-luna, at: 2026-07-23T02:31:28Z, ledger: L-54 }
-next_action: "Run the conductor-created delta re-review for F-8; keep RT-4/RT-5 blocked behind G-R1/G-R2."
+last: { agent: kimi-code/k3, at: 2026-07-23T13:23:10Z, ledger: L-56 }
+next_action: "RT-4 preflight complete; RT-5 waves remain blocked behind the G-R2 owner gate — assemble the B0 evidence pack and request owner approval."
 ```
 <!-- /STATUS BLOCK -->
 
@@ -478,7 +478,7 @@ approvals (G1/G2) are recorded as CF evidence with the in-chat approval quoted.
 | F-5 | Blocker | `live_driver.py:dispatch_unit` / `validation.py:_get_embeddings` | MoA omits the requested engine and approved route identity; embeddings escape the DeepSeek-only ledger; stamped provenance does not prove the served route. | FIX-PI-BENCH-MOA-20260722-REVIEW-r1-routing | fixed (L-26) |
 | F-6 | Blocker | `live_driver.py:run_live_unit` / `budget_ledger.py` | The reserved output bound is not forwarded to dispatch, and duplicate/orphan/over-reservation ledger transitions can undercount or exceed the hard cap. | FIX-PI-BENCH-MOA-20260722-REVIEW-r1-budget | fixed (L-22) |
 | F-7 | Major | Compass Forge post-change gate | New Python import cycles include `live_driver -> runner -> live_driver`; the task-scope architecture gate is not clean. | FIX-PI-BENCH-MOA-20260722-REVIEW-r1-gate | fixed (L-25) |
-| F-8 | Major | `docs/build-stream/2026-07-22-pi-benchmark.md` Status Block | The B0 update left the resume contract on stale branch `Review_pi_test` and stale spec `CF-SPEC-8` instead of the active retake branch and `CF-SPEC-9`. | FIX-PI-BENCH-RETAKE-B0-20260723-WAVE-b0-REVIEW-r1-lifecycle | fixed (L-54) |
+| F-8 | Major | `docs/build-stream/2026-07-22-pi-benchmark.md` Status Block | The B0 update left the resume contract on stale branch `Review_pi_test` and stale spec `CF-SPEC-8` instead of the active retake branch and `CF-SPEC-9`. | FIX-PI-BENCH-RETAKE-B0-20260723-WAVE-b0-REVIEW-r1-lifecycle | verified (REREV pass, L-55) |
 
 
 <!-- consensus-winning-plan:PI-BENCH-RETAKE-20260722 -->
@@ -1208,3 +1208,15 @@ Did: resolved F-8 in `docs/build-stream/2026-07-22-pi-benchmark.md` by preservin
 Result: F-8 Major closed (`open` -> `fixed (L-54)`); lifecycle resume identity and append-only history are coherent for the delta re-review.
 Verified: focused Status Block/ledger integrity check, `git diff --check`, and scoped diff audit passed; pre-change `compass-forge gate before` reported 0 new failures/warnings (80 inherited failures, actionable_failures=[]).
 Next: stage exit: F-8 fixed and ready for the conductor-created delta re-review; RT-4/RT-5 remain owner-gated.
+
+### L-55 | 2026-07-23T02:38:26Z | S3-review | gpt-5.6-sol | reviewer | Retake execution (B0 lifecycle delta re-review) <!-- bsc-ledger:REREV-PI-BENCH-RETAKE-B0-20260723-WAVE-b0-REVIEW-r1 -->
+Did: delta re-reviewed F-8 only against fixer commit `d91a170` and its cited verification evidence; inspected the lifecycle diff, live Status Block, F-8 register row, L-54, and the immediate historical-identity seam. No benchmark code, runtime artifacts, historical decisions, or earlier ledger entries were changed.
+Result: verdict **PASS** with zero findings. The live resume identity is uniquely `conductor/pi-bench-retake-20260722` plus `CF-SPEC-9`; F-8 is verified closed. The remaining `Review_pi_test` / `CF-SPEC-8` mentions are correctly preserved inside the superseded historical pi-eval plan, not the live Status Block.
+Verified: `git diff d91a170^ d91a170 --check` passed; commit `d91a170` changes only `docs/build-stream/2026-07-22-pi-benchmark.md`; exact assertions passed for one live branch/spec pair, one L-54 fixer marker, and the F-8 fixed marker; Compass Forge command evidence 1612 recorded on the re-review task.
+Next: stage exit: F-8 delta re-review passed; conductor may advance, while RT-4/RT-5 remain blocked behind G-R1/G-R2.
+
+### L-56 | 2026-07-23T13:23:10Z | S2-execute | kimi-code/k3 | executor | Retake execution (RT-4 DeepSeek-only budgeted preflight) <!-- bsc-ledger:PI-BENCH-RETAKE-EXEC-20260723-WAVE-rt4-preflight-IMPL -->
+Did: executed approved Plan C RT-4 in the shared worktree. Recorded the owner's whole-plan approval ("The wave is supposed to have continue everything. Approved, the whole plan is approved, use the wave to execute it all") as CF evidence (row 1622) and created the fresh retake-scoped G-R1 artifact tests/pi_benchmark/gates/retake_g1_owner_gate.json stating exactly: DeepSeek deepseek-v4-pro via endpoint pi-deepseek-default only; USD 1.00 cumulative ledger cap across preflight, all waves, all lanes, and all retries; no fallback; credentials only via env ISTARA_PI_SECRET_PI_DEEPSEEK_DEFAULT / Keychain istara-pi-deepseek/openclaw, memory-only, never logged. Stale prior-lineage gates g1/g2 left byte-identical. Asserted PYTHONPATH=$PWD/backend resolves app inside this worktree, then made exactly ONE DeepSeekProvider.preflight() call against the shared retake ledger tests/pi_benchmark/.results/runs/retake/budget-ledger.json (cap_usd=1.00).
+Result: preflight succeeded — provider-reported usage (estimate=False): 5 input / 1 output / 5 cache-write tokens, actual cost 7.7e-06 USD; ledger reserve 0.000143 -> commit 7.7e-06, rows=2, closed=False; verify_budget_ledger exit 0 (spent=$0.000008 <= cap=$1.00). No server started, no other provider/model used, no credential read or printed by this agent, no fallback. First live spend of the retake program: 0.0008% of the $1.00 envelope. PI-BENCH-RETAKE-EXEC-20260723-WAVE-rt4-preflight-IMPL
+Verified: PYTHONPATH=$PWD/backend pin assertion -> pin ok (app resolves to worktree backend/app/__init__.py); preflight heredoc (Plan C section 5 V2) -> preflight ok: 7.7e-06 estimate: False; $PY tests/pi_benchmark/verify_budget_ledger.py --ledger tests/pi_benchmark/.results/runs/retake/budget-ledger.json --cap-usd 1.00 -> [ok] exit 0; git status -> scope = gate artifact + this lifecycle file only (.results gitignored). CF evidence rows 1622 (owner_approval), 1623-1624 (command), self_report follows.
+Next: stage exit: preflight complete, stopping here per manifest — later waves are separate manifest entries and remain blocked behind the G-R2 owner gate (B0 evidence pack: green suite, three immutable manifests, estimate <= cap, preflight ledgered, attestation, route-isolation probes).
