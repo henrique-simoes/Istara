@@ -58,11 +58,14 @@ from typing import Any
 from tests.pi_benchmark import moa, schema
 
 try:  # Lane A module; fall back to a local twin until it lands.
-    from tests.pi_benchmark.budget_ledger import BudgetExceeded
+    from tests.pi_benchmark.budget_ledger import BudgetExceeded, LedgerStateError
 except ImportError:  # pragma: no cover - exercised only while Lane A is unmerged
 
     class BudgetExceeded(RuntimeError):  # type: ignore[no-redef]
         """Fallback twin of Lane A's BudgetExceeded (same name, same semantics)."""
+
+    class LedgerStateError(ValueError):  # type: ignore[no-redef]
+        """Fallback twin of Lane A's LedgerStateError (same name, same semantics)."""
 
 
 DEEPSEEK_MODEL = "deepseek-v4-pro"
@@ -74,6 +77,15 @@ DEEPSEEK_PROVIDER = "deepseek"
 APPROVED_DEEPSEEK_ENDPOINT_IDS = frozenset({DEEPSEEK_ENDPOINT_ID})
 PI_PROJECT_ID = "pi-benchmark"
 ESTIMATOR_CHARS4 = "chars4"
+
+# Reservation sizing (same discipline as the provider adapter). Per model call, reserve a
+# margin of input-priced tokens — 2x the chars4 estimate, floored at MIN_RESERVE_INPUT_TOKENS
+# — plus the full DEFAULT_MAX_TOKENS output bound. Under-reserving is unsafe: the ledger
+# refuses a commit whose actual cost exceeds its reservation, so a too-tight reservation
+# turns a normal call into a post-dispatch LedgerStateError that would otherwise wedge the
+# wave. The B0 estimate gate (runner --plan-only) reads both constants.
+MIN_RESERVE_INPUT_TOKENS = 256
+DEFAULT_MAX_TOKENS = 1024
 
 
 class PreDispatchError(RuntimeError):
@@ -309,7 +321,7 @@ async def dispatch_unit(
     prompt: str,
     system: str = "",
     moa_n: int = 3,
-    max_tokens: int = 1024,
+    max_tokens: int = DEFAULT_MAX_TOKENS,
     ensemble_fn: Any = None,
     agentic_module: Any = None,
 ) -> LiveCapture:
@@ -408,6 +420,12 @@ def _is_budget_exceeded(exc: BaseException) -> bool:
     # Name-based fallback keeps the two lanes decoupled: a Lane A BudgetExceeded raised
     # through a sys.modules-injected fake is still recognised before the modules merge.
     return isinstance(exc, BudgetExceeded) or type(exc).__name__ == "BudgetExceeded"
+
+
+def _is_ledger_state_error(exc: BaseException) -> bool:
+    # Same name-based fallback as _is_budget_exceeded: recognise Lane A's LedgerStateError
+    # even when it is raised through a sys.modules-injected fake ledger.
+    return isinstance(exc, LedgerStateError) or type(exc).__name__ == "LedgerStateError"
 
 
 def _moa_evidence_from_capture(*, moa_mode: str, moa_n: int, capture: LiveCapture) -> moa.MoaEvidence:
@@ -526,7 +544,7 @@ async def run_live_unit(
     records_dir: Path,
     dispatch: Any = dispatch_unit,
     prompt_builder: Any = None,
-    max_tokens: int = 1024,
+    max_tokens: int = DEFAULT_MAX_TOKENS,
     moa_n: int = 3,
     wave: int | None = None,
 ) -> dict[str, Any]:
@@ -554,10 +572,15 @@ async def run_live_unit(
     if wave is not None:
         extensions["wave"] = {"index": wave}
 
-    # 1-2. Worst-case reservation BEFORE any dispatch.
+    # 1-2. Worst-case reservation BEFORE any dispatch. Reserve a margin of input-priced
+    # tokens (2x the chars4 estimate, floored at MIN_RESERVE_INPUT_TOKENS) plus the full
+    # max_tokens output bound, per model call. See the module header: under-reserving would
+    # let a real call's actual cost exceed its reservation, which the ledger refuses at
+    # commit — crashing (and, without the guards below, permanently wedging) the wave.
     prompt_tokens = _chars4(system + prompt)
+    reserve_input_tokens = max(2 * prompt_tokens, MIN_RESERVE_INPUT_TOKENS)
     worst_case = provider.estimate_cost(
-        input_tokens=prompt_tokens, output_tokens=max_tokens
+        input_tokens=reserve_input_tokens, output_tokens=max_tokens
     ) * _model_calls(unit, moa_n)
     try:
         ledger.reserve(
@@ -565,21 +588,40 @@ async def run_live_unit(
             meta={"tier": config.tier, "phase": config.phase, "moa_mode": moa_mode},
         )
     except Exception as exc:
-        if not _is_budget_exceeded(exc):
-            raise  # config/programming failure (e.g. LedgerClosed): stop the wave loudly
-        extensions["detail"] = {"reason": f"reservation refused: {exc}"}
-        if moa_mode in moa.MOA_MODES:
-            extensions["moa"] = asdict(moa.not_run_evidence(
-                requested_mode=moa_mode,
-                requested_samples=moa.requested_slots(moa_mode, moa_n),
-                temperatures=moa.self_moa_temperatures(moa_n) if moa_mode == "self_moa" else (),
-            ))
-        record = _build_unit_record(
-            unit=unit, scenario=scenario, config=config, status="not_runnable",
-            not_runnable_reason="budget_exceeded", extensions=extensions,
-        )
-        schema.write_record_atomic(records_dir, unit.unit_id, _stamp_live_provenance(record, provider))
-        return record
+        if _is_budget_exceeded(exc):
+            extensions["detail"] = {"reason": f"reservation refused: {exc}"}
+            if moa_mode in moa.MOA_MODES:
+                extensions["moa"] = asdict(moa.not_run_evidence(
+                    requested_mode=moa_mode,
+                    requested_samples=moa.requested_slots(moa_mode, moa_n),
+                    temperatures=moa.self_moa_temperatures(moa_n) if moa_mode == "self_moa" else (),
+                ))
+            record = _build_unit_record(
+                unit=unit, scenario=scenario, config=config, status="not_runnable",
+                not_runnable_reason="budget_exceeded", extensions=extensions,
+            )
+            schema.write_record_atomic(records_dir, unit.unit_id, _stamp_live_provenance(record, provider))
+            return record
+        if _is_ledger_state_error(exc):
+            # Resume after a crash that reserved this unit but never wrote its record: the
+            # reservation is already outstanding and cannot be re-booked. Retain it as
+            # worst-case spend and record the interruption. Re-raising here (the old
+            # behaviour) would permanently wedge the wave — every resume would hit the same
+            # outstanding reservation and crash again.
+            extensions["detail"] = "interrupted_unknown_usage"
+            if moa_mode in moa.MOA_MODES:
+                extensions["moa"] = asdict(moa.not_run_evidence(
+                    requested_mode=moa_mode,
+                    requested_samples=moa.requested_slots(moa_mode, moa_n),
+                    temperatures=moa.self_moa_temperatures(moa_n) if moa_mode == "self_moa" else (),
+                ))
+            record = _build_unit_record(
+                unit=unit, scenario=scenario, config=config, status="not_runnable",
+                not_runnable_reason="other", extensions=extensions,
+            )
+            schema.write_record_atomic(records_dir, unit.unit_id, _stamp_live_provenance(record, provider))
+            return record
+        raise  # config/programming failure (e.g. LedgerClosed): stop the wave loudly
 
     # 3. Dispatch; map failures onto typed not_runnable records.
     try:
@@ -645,7 +687,24 @@ async def run_live_unit(
         cache_read_tokens=usage.get("cache_read_tokens", 0),
         cache_write_tokens=usage.get("cache_write_tokens", 0),
     ), 7)
-    ledger.commit(unit.unit_id, actual_cost, usage=dict(usage), meta={"estimate": capture.estimate})
+    try:
+        ledger.commit(unit.unit_id, actual_cost, usage=dict(usage), meta={"estimate": capture.estimate})
+    except Exception as exc:
+        if not _is_ledger_state_error(exc):
+            raise  # config/programming failure (e.g. LedgerClosed): stop the wave loudly
+        # Actual cost exceeded the worst-case reservation (or the reservation lifecycle is
+        # otherwise inconsistent). Fail closed: the commit appended nothing, so the
+        # reservation stays booked as worst-case spend; record the accounting failure and
+        # return. Never crash the wave here — a crash would leave no record and wedge resume.
+        extensions["detail"] = "accounting_fail_closed"
+        record = _build_unit_record(
+            unit=unit, scenario=scenario, config=config, status="not_runnable",
+            not_runnable_reason="other", extensions=extensions,
+        )
+        schema.write_record_atomic(
+            records_dir, unit.unit_id, _stamp_live_provenance(record, provider, capture)
+        )
+        return record
 
     # 6. Build the ok / moa-degraded record.
     moa_mode = getattr(unit, "moa_mode", None)

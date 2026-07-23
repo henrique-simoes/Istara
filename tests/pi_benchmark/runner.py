@@ -589,12 +589,68 @@ def build_config_from_args(argv: list[str]) -> RunConfig:
     )
 
 
+def _worst_case_program_cost_usd(
+    config: RunConfig, scenarios: list[Scenario]
+) -> tuple[float, dict[str, Any]]:
+    """Deterministic worst-case USD for the whole retake program (RT-2 estimate gate).
+
+    The three MoA lanes (``none``, ``self_moa``, ``full_ensemble``) share ONE budget
+    ledger, so the gate estimates the entire program regardless of which lane's
+    ``--plan-only`` is running: it is deterministic in
+    ``(scenarios, seeds, repeats, engines, moa_n)`` and independent of ``--moa-mode``.
+
+    Per unit the live driver reserves ``estimate_cost(max(2*chars4(prompt),
+    MIN_RESERVE_INPUT_TOKENS), DEFAULT_MAX_TOKENS)`` per model call; this bounds every unit
+    by the largest scheduled smoke prompt so the estimate never understates the
+    reservations the waves will make. One cheapest preflight ping is added on the same
+    envelope.
+    """
+    from tests.pi_benchmark import live_driver, moa
+    from tests.pi_benchmark.deepseek_provider import DeepSeekProvider
+
+    provider = DeepSeekProvider(provider=config.provider, model=config.model)
+    # Largest chars4 estimate across the scheduled smoke prompts (deterministic).
+    max_prompt_tokens = 0
+    for scenario in scenarios:
+        for seed in config.seeds:
+            probe = _LiveUnit(
+                unit_id="estimate", pack=scenario.pack, scenario_id=scenario.id,
+                seed=seed, repeat=1, engine=config.engines[0], phase=config.phase,
+            )
+            max_prompt_tokens = max(
+                max_prompt_tokens,
+                live_driver._chars4(live_driver.default_prompt_builder(probe, scenario)),
+            )
+    reserve_input = max(2 * max_prompt_tokens, live_driver.MIN_RESERVE_INPUT_TOKENS)
+    per_call = provider.estimate_cost(reserve_input, live_driver.DEFAULT_MAX_TOKENS)
+    units_per_lane = len(scenarios) * len(config.seeds) * config.repeats * len(config.engines)
+    # Model calls per unit summed across the three shared-ledger lanes.
+    lane_model_calls = (
+        1  # 'none' lane: one dispatch per unit
+        + moa.requested_slots("self_moa", config.moa_n)
+        + moa.requested_slots("full_ensemble", config.moa_n)
+    )
+    preflight = provider.estimate_cost(live_driver.MIN_RESERVE_INPUT_TOKENS, 1)
+    total = units_per_lane * lane_model_calls * per_call + preflight
+    breakdown = {
+        "units_per_lane": units_per_lane,
+        "lane_model_calls": lane_model_calls,
+        "per_call_usd": per_call,
+        "preflight_usd": preflight,
+        "reserve_input_tokens": reserve_input,
+        "max_tokens": live_driver.DEFAULT_MAX_TOKENS,
+    }
+    return round(total, 7), breakdown
+
+
 def _run_b0_plan_only(config: RunConfig) -> int:
     """B0 offline scheduling gate: build units, shard, write the immutable manifest.
 
     Purely offline — no dispatch, no spend, no backend import. Re-running with
     identical arguments resumes the existing manifest unchanged; differing
-    arguments refuse (the B0 schedule is immutable once written).
+    arguments refuse (the B0 schedule is immutable once written). Before writing the
+    manifest, a deterministic worst-case cost gate refuses (exit 2, nothing written) when
+    the whole-program estimate exceeds ``--budget-usd``.
     """
     try:
         scheduler = importlib.import_module("tests.pi_benchmark.scheduler")
@@ -607,6 +663,22 @@ def _run_b0_plan_only(config: RunConfig) -> int:
         scenarios=scenarios, tier=config.tier, engines=config.engines,
         seeds=config.seeds, repeats=config.repeats, moa_modes=moa_modes,
     )
+    # RT-2 estimate gate: print the deterministic whole-program worst case and refuse
+    # (before any manifest write or live call) when it exceeds the approved budget.
+    estimate_usd, breakdown = _worst_case_program_cost_usd(config, scenarios)
+    print(
+        f"[plan] worst-case program estimate: ${estimate_usd:.4f} "
+        f"(cap ${config.budget_usd:.2f}; {breakdown['units_per_lane']} units/lane × "
+        f"{breakdown['lane_model_calls']} model-calls × ${breakdown['per_call_usd']:.5f}/call "
+        f"+ ${breakdown['preflight_usd']:.5f} preflight)"
+    )
+    if estimate_usd > config.budget_usd:
+        print(
+            f"[refused] worst-case estimate ${estimate_usd:.4f} exceeds budget "
+            f"${config.budget_usd:.2f}; no manifest written, no live call",
+            file=sys.stderr,
+        )
+        return 2
     try:
         shards = scheduler.shard_units(units, config.max_processes)
         manifest_path = config.manifest or (config.out_dir / "manifest.json")
