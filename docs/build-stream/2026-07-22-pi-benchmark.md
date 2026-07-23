@@ -875,6 +875,14 @@ from this pipeline; engine-default flips or rollout decisions.
 
 ## Decision log
 
+<!-- consensus-winner-decision:PI-BENCH-RETAKE-20260722 -->
+DEC-consensus-winner | 2026-07-23 | S1-plan | conductor
+Context: three architect cross-votes completed
+Decision: slot c selected from PI-BENCH-RETAKE-20260722-PLAN-C
+Why: votes={"a": {"candidate_id": "db2ac00d234d86ff298074d9727a350342b4728c1eb73b1ed11db6250064385d", "task": "PI-BENCH-RETAKE-20260722-JUDGE-A", "vote": "c"}, "b": {"candidate_id": "db2ac00d234d86ff298074d9727a350342b4728c1eb73b1ed11db6250064385d", "task": "PI-BENCH-RETAKE-20260722-JUDGE-B", "vote": "c"}, "c": {"candidate_id": "80d2db4550151c9e45205e9cc44d4f5bfa2015d20954fbcd24b610f2c969ead6", "task": "PI-BENCH-RETAKE-20260722-JUDGE-C", "vote": "b"}}; tiebreak_used=False; plan_file=docs/build-stream/plans/pi-bench-retake-20260722-plan-c.md
+
+
+
 DEC-5 | 2026-07-22 | S1-plan | owner + build-stream-conductor
 Context: The machine has no working local/open-source model route for benchmark evaluation;
 the next wave must remain resumable and must not exceed a one-dollar external spend cap.
