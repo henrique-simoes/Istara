@@ -5,14 +5,14 @@
 item: pi-benchmark
 branch: conductor/pi-bench-retake-20260722
 cf: { spec: CF-SPEC-9 }
-phase: "Retake execution - RT-5 lane none B2 executed; F-10 triaged"
-stage: S2-execute
+phase: "Retake execution - F-10 legacy-engine dispatch remediation"
+stage: S4-remediate
 status: in-progress
 blocked_on: null
 authored_by: build-stream-conductor
 grounding: "Based on 2026-07-20-pi-full-replacement-master-plan.md Section 10"
-last: { agent: kimi-code/k3, at: 2026-07-23T14:29:25Z, ledger: L-62 }
-next_action: "Conductor routes F-10 to the fixer lane and sends B2 to review; lane none B3 (pi engine) may proceed, while B4 and the MoA lanes' legacy halves wait on the F-10 fix. Preserve all truthful terminal startup_failure records unless a separate governed retry decision explicitly authorizes replacement."
+last: { agent: gpt-5.6-luna, at: 2026-07-23T14:38:00Z, ledger: L-63 }
+next_action: "Delta reviewer verifies F-10's changed benchmark dispatch surface before any governed retry; existing B2 startup_failure records remain immutable terminal history."
 ```
 <!-- /STATUS BLOCK -->
 
@@ -480,7 +480,7 @@ approvals (G1/G2) are recorded as CF evidence with the in-chat approval quoted.
 | F-7 | Major | Compass Forge post-change gate | New Python import cycles include `live_driver -> runner -> live_driver`; the task-scope architecture gate is not clean. | FIX-PI-BENCH-MOA-20260722-REVIEW-r1-gate | fixed (L-25) |
 | F-8 | Major | `docs/build-stream/2026-07-22-pi-benchmark.md` Status Block | The B0 update left the resume contract on stale branch `Review_pi_test` and stale spec `CF-SPEC-8` instead of the active retake branch and `CF-SPEC-9`. | FIX-PI-BENCH-RETAKE-B0-20260723-WAVE-b0-REVIEW-r1-lifecycle | verified (REREV pass, L-55) |
 | F-9 | Critical | `live_driver.py:740 run_live_unit_sync` / `pi_runtime/supervisor.py:526 get_supervisor` | Wave mode runs each unit in a fresh `asyncio.run` loop while the pi-runtime supervisor is a process-wide loop-bound singleton; units 2..N of a wave fail at dispatch ("Future attached to a different loop"): lane none B1 = 1 ok + 10 not_runnable/startup_failure with retained reservations ($0.0238 worst-case booked, not billed). | FIX-PI-BENCH-RETAKE-EXEC-20260723-WAVE-none-b1-eventloop | verified (REREV pass, L-61) |
-| F-10 | Critical | `backend/app/core/compute_registry_invocation.py:544` / legacy-engine dispatch path | Legacy-engine wave units fail with "No compute nodes available for chat": the ComputeRegistry has no approved-route node (only unreachable local LM Studio/Ollama labels), so all 11 lane none B2 units are not_runnable/startup_failure with retained reservations (~$0.0262 worst-case booked, not billed). Blocks lane none B4 and the legacy halves of both MoA lanes. | FIX-PI-BENCH-RETAKE-EXEC-20260723-WAVE-none-b2-compute | open |
+| F-10 | Critical | `backend/app/core/compute_registry_invocation.py:544` / legacy-engine dispatch path | Legacy-engine wave units fail with "No compute nodes available for chat": the ComputeRegistry has no approved-route node (only unreachable local LM Studio/Ollama labels), so all 11 lane none B2 units are not_runnable/startup_failure with retained reservations (~$0.0262 worst-case booked, not billed). Blocks lane none B4 and the legacy halves of both MoA lanes. | FIX-PI-BENCH-RETAKE-EXEC-20260723-WAVE-none-b2-compute | fixed (L-63) |
 
 
 <!-- consensus-winning-plan:PI-BENCH-RETAKE-20260722 -->
@@ -1258,3 +1258,9 @@ Did: executed approved Plan C RT-5 lane=none wave=2 in the shared worktree with 
 Result: wave exit 0; 11 records == manifest.shards[1] exactly (all unique, wave.index=2), manifest file sha256 unchanged, ledger verify [ok] spent=$0.051178 <= $1.00 (rows=25, closed=False, provider=deepseek). Outcome: 11/11 not_runnable/startup_failure with "No compute nodes available for chat" — legacy-engine units dispatch through `backend/app/core/compute_registry_invocation.py:544` and the registry has no usable chat node (only unreachable local LM Studio/Ollama node labels; nothing served, zero live model calls, zero billed usage); the 11 reservations are retained as worst-case spend per fail-closed accounting (~$0.0262, not billed). The F-9 cross-loop fix held: no loop-binding errors recurred (different failure reason). PI-BENCH-RETAKE-EXEC-20260723-WAVE-none-b2-IMPL
 Verified: wave run exit 0 (`[ok] wave 2/4: 11 records (0 already complete), spend=$0.0512`); completeness script (record_ids == manifest.shards[1], all unique, wave.index==2) -> passed; manifest sha256 `71130343bc41...` unchanged == G-R2 binding; `verify_budget_ledger.py --cap-usd 1.00` -> [ok] spent=$0.051178, rows=25, exit 0; pin assertion -> pin ok. CF evidence rows 1685-1688 (4x command), 1689 (self_report).
 Next: conductor routes F-10 to the fixer lane; review of PI-BENCH-RETAKE-EXEC-20260723-WAVE-none-b2-IMPL decides whether B2 stands complete-with-finding or its 11 units are re-dispatched after the fix. Lane none B3 (pi engine) is unaffected by F-10; B4 and both MoA lanes' legacy halves will hit the same defect until F-10 is fixed.
+
+### L-63 | 2026-07-23T14:38:00Z | S4-remediate | gpt-5.6-luna | remediator | Retake execution (F-10 legacy-engine dispatch remediation) <!-- bsc-ledger:FIX-PI-BENCH-RETAKE-EXEC-20260723-WAVE-none-b2-compute -->
+Did: fixed F-10 in `tests/pi_benchmark/live_driver.py` and `tests/pi_benchmark/test_live_driver.py`; benchmark legacy units now use the runner's approved DeepSeek provider directly, with explicit `pi-deepseek-default` route evidence, while ordinary production legacy routing remains ComputeRegistry-backed. Added plain and self-MoA regression coverage, regenerated `docs/features/site/manifest.json`, and left all existing B2 records and budget-ledger history unchanged.
+Result: F-10 Critical closed (`open -> fixed (L-63)`) under `FIX-PI-BENCH-RETAKE-EXEC-20260723-WAVE-none-b2-compute`. Legacy benchmark dispatch no longer fails solely because local compute nodes are unavailable; provider calls remain under the outer reservation/commit path and fail closed on invalid or unknown usage. No live call, server start, fallback route, or record mutation occurred in this stage.
+Verified: focused `test_live_driver.py` + `test_runner.py` -> 47 passed; full `pytest tests/pi_benchmark/ -q` -> 181 passed; `pytest tests/pi_migration/test_count_to_zero.py -q` -> 3 passed; `python scripts/feature_docs.py --seed-missing --generate-site --check` -> 86 features passed; `python scripts/security_benchmark.py --fail-on-threshold` -> 28/28, 100%; `verify_budget_ledger.py --cap-usd 1.00` -> spent `$0.051178 <= $1.00`, rows=25; `compass-forge gate after --summary` -> inherited failures only, `new_failures=0`, `new_warnings=0`, `actionable_failures=[]`; `git diff --check` -> passed.
+Next: stage exit: F-10 fixed and ready for bounded delta review; reviewer verifies the benchmark dispatch seam before any separate governed retry decision for the 11 historical B2 startup_failure records.
