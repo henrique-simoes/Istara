@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import json
 import sys
 import types
@@ -252,6 +253,44 @@ def test_wave_mode_executes_shard_then_resume_skips_completed(monkeypatch, tmp_p
 
     code, records = runner.run_wave(_wave_config(tmp_path), dispatch=exploding_dispatch)
     assert code == 0 and records == []
+
+
+def test_wave_mode_dispatches_all_pending_units_on_one_event_loop(monkeypatch, tmp_path):
+    """A wave must not bind the singleton Pi supervisor to one loop per unit."""
+    global _FAKE_MANIFEST
+    scenario_id = load_pack("canonical")[0].id
+    units = [
+        {
+            "unit_id": f"B1-T3-canonical-{scenario_id}-seed0-r{repeat}-pi",
+            "pack": "canonical", "scenario_id": scenario_id, "seed": 0,
+            "repeat": repeat, "engine": "pi", "phase": "B1", "moa_mode": None,
+        }
+        for repeat in (1, 2)
+    ]
+    _FAKE_MANIFEST = {"shards": [units], "budget_cap_usd": 1.0, "moa_n": 3}
+    scheduler, ledger_mod, provider_mod = _fake_lane_a_modules()
+    monkeypatch.setitem(sys.modules, "tests.pi_benchmark.scheduler", scheduler)
+    monkeypatch.setitem(sys.modules, "tests.pi_benchmark.budget_ledger", ledger_mod)
+    monkeypatch.setitem(sys.modules, "tests.pi_benchmark.deepseek_provider", provider_mod)
+
+    capture = LiveCapture(
+        text="wave output", usage={
+            "input_tokens": 40, "output_tokens": 12, "cache_read_tokens": 0,
+            "cache_write_tokens": 0, "total_tokens": 52,
+        }, estimate=False, endpoint_ids=("pi-deepseek-default",),
+        route_evidence=({"endpoint_id": "pi-deepseek-default"},), raw_method=None,
+    )
+    loops = []
+
+    async def dispatch(**kwargs):
+        loops.append(asyncio.get_running_loop())
+        return capture
+
+    code, records = runner.run_wave(_wave_config(tmp_path), dispatch=dispatch)
+
+    assert code == 0 and len(records) == len(units)
+    assert len(loops) == len(units)
+    assert loops[0] is loops[1]
 
 
 def test_wave_mode_executes_manifest_written_by_scheduler(monkeypatch, tmp_path):
