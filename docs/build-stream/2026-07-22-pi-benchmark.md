@@ -11,7 +11,7 @@ status: in-progress
 blocked_on: null
 authored_by: build-stream-conductor
 grounding: "Based on 2026-07-20-pi-full-replacement-master-plan.md Section 10"
-last: { agent: gpt-5.6-luna, at: 2026-07-23T14:38:00Z, ledger: L-63 }
+last: { agent: gpt-5.6-luna, at: 2026-07-23T14:40:28Z, ledger: L-64 }
 next_action: "Delta reviewer verifies F-10's changed benchmark dispatch surface before any governed retry; existing B2 startup_failure records remain immutable terminal history."
 ```
 <!-- /STATUS BLOCK -->
@@ -1264,3 +1264,9 @@ Did: fixed F-10 in `tests/pi_benchmark/live_driver.py` and `tests/pi_benchmark/t
 Result: F-10 Critical closed (`open -> fixed (L-63)`) under `FIX-PI-BENCH-RETAKE-EXEC-20260723-WAVE-none-b2-compute`. Legacy benchmark dispatch no longer fails solely because local compute nodes are unavailable; provider calls remain under the outer reservation/commit path and fail closed on invalid or unknown usage. No live call, server start, fallback route, or record mutation occurred in this stage.
 Verified: focused `test_live_driver.py` + `test_runner.py` -> 47 passed; full `pytest tests/pi_benchmark/ -q` -> 181 passed; `pytest tests/pi_migration/test_count_to_zero.py -q` -> 3 passed; `python scripts/feature_docs.py --seed-missing --generate-site --check` -> 86 features passed; `python scripts/security_benchmark.py --fail-on-threshold` -> 28/28, 100%; `verify_budget_ledger.py --cap-usd 1.00` -> spent `$0.051178 <= $1.00`, rows=25; `compass-forge gate after --summary` -> inherited failures only, `new_failures=0`, `new_warnings=0`, `actionable_failures=[]`; `git diff --check` -> passed.
 Next: stage exit: F-10 fixed and ready for bounded delta review; reviewer verifies the benchmark dispatch seam before any separate governed retry decision for the 11 historical B2 startup_failure records.
+
+### L-64 | 2026-07-23T14:40:28Z | S4-remediate | gpt-5.6-luna | remediator | Retake execution (F-10 provider contract correction) <!-- bsc-ledger:FIX-PI-BENCH-RETAKE-EXEC-20260723-WAVE-none-b2-compute -->
+Did: aligned `tests/pi_benchmark/deepseek_provider.py` module documentation with the F-10 implementation: the provider remains benchmark-isolated and now explicitly covers legacy benchmark calls in addition to preflight/judging, while Pi units continue through Istara's dispatcher.
+Result: no behavior or benchmark artifacts changed; F-10 remains fixed and the contract text no longer contradicts the approved legacy-provider route.
+Verified: provider/live-driver compileall, `pytest tests/pi_benchmark/test_live_driver.py -q` -> 23 passed, and `git diff --check` -> passed.
+Next: stage exit: bounded delta review of the F-10 dispatch seam.
