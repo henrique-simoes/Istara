@@ -5,14 +5,14 @@
 item: pi-benchmark
 branch: conductor/pi-bench-retake-20260722
 cf: { spec: CF-SPEC-9 }
-phase: "Retake execution - F-10 legacy-engine dispatch remediation"
-stage: S4-remediate
+phase: "Retake execution - RT-5 lane none B2 independently reviewed"
+stage: S3-review
 status: in-progress
 blocked_on: null
 authored_by: build-stream-conductor
 grounding: "Based on 2026-07-20-pi-full-replacement-master-plan.md Section 10"
-last: { agent: gpt-5.6-luna, at: 2026-07-23T14:40:28Z, ledger: L-64 }
-next_action: "Delta reviewer verifies F-10's changed benchmark dispatch surface before any governed retry; existing B2 startup_failure records remain immutable terminal history."
+last: { agent: gpt-5.6-sol, at: 2026-07-23T14:49:25Z, ledger: L-65 }
+next_action: "Conductor dispatches the bounded F-10 delta re-review before any governed retry; existing B2 startup_failure records remain immutable terminal history."
 ```
 <!-- /STATUS BLOCK -->
 
@@ -1270,3 +1270,9 @@ Did: aligned `tests/pi_benchmark/deepseek_provider.py` module documentation with
 Result: no behavior or benchmark artifacts changed; F-10 remains fixed and the contract text no longer contradicts the approved legacy-provider route.
 Verified: provider/live-driver compileall, `pytest tests/pi_benchmark/test_live_driver.py -q` -> 23 passed, and `git diff --check` -> passed.
 Next: stage exit: bounded delta review of the F-10 dispatch seam.
+
+### L-65 | 2026-07-23T14:49:25Z | S3-review | gpt-5.6-sol | reviewer | Retake execution (RT-5 lane none B2) <!-- bsc-ledger:PI-BENCH-RETAKE-EXEC-20260723-WAVE-none-b2-REVIEW -->
+Did: independently reviewed lane `none` B2 against Plan C RT-5 and AC-4/5/6/7, the implementer evidence, fresh G-R2 artifact, immutable B0/manifest bindings, all 11 shard records, the cumulative budget ledger, resume deduplication, and provider/fallback/secret isolation. Updated only this lifecycle Status Block and appended this reviewer ledger entry; raised no new finding. F-10 was already tracked and fixed by `FIX-PI-BENCH-RETAKE-EXEC-20260723-WAVE-none-b2-compute`, whose changed dispatch seam remains owned by its separate delta re-review.
+Result: verdict **PASS** with zero new findings. G-R2's bound attestation and three manifest hashes match current bytes; lane B2 has exactly 11 unique schema-valid records matching shard 2, all truthful `legacy` `not_runnable/startup_failure` records with zero usage, null live identity, and no route evidence because dispatch never served. AC-6 permits typed terminal `not_runnable` records and AC-7 requires null identity before dispatch, so the 11 records remain immutable terminal history rather than being rewritten. Ledger spend is `$0.051178 <= $1.00`; no alternate-provider name, URL, fallback endpoint, local-node label, or credential-shaped key appears in the B2 records.
+Verified: custom G-R2/manifest/attestation/record/route/leak audit -> passed; `/Users/user/Documents/Istara-main-pi-replacement/backend/.venv/bin/python tests/pi_benchmark/verify_budget_ledger.py --ledger tests/pi_benchmark/.results/runs/retake/budget-ledger.json --cap-usd 1.00` -> `[ok]` (25 rows, provider `deepseek`); `PYTHONPATH=$PWD/backend /Users/user/Documents/Istara-main-pi-replacement/backend/.venv/bin/python -m pytest tests/pi_benchmark/ -q` -> 181 passed; focused resume-dedup test -> 1 passed; `git diff --check` -> passed.
+Next: stage exit: review passed; conductor dispatches the bounded F-10 delta re-review before any governed retry, and the 11 B2 startup-failure records remain unchanged.
