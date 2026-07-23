@@ -3,16 +3,16 @@
 <!-- STATUS BLOCK -->
 ```yaml
 item: pi-benchmark
-branch: Review_pi_test
-cf: { spec: CF-SPEC-8 }
-phase: "Retake execution - B0 complete: RT-0 attestation + RT-3 scheduling (PI-BENCH-RETAKE-B0-20260723)"
-stage: S2-execute
+branch: conductor/pi-bench-retake-20260722
+cf: { spec: CF-SPEC-9 }
+phase: "Retake execution - B0 review remediation (PI-BENCH-RETAKE-B0-20260723)"
+stage: S4-remediate
 status: in-progress
 blocked_on: null
 authored_by: build-stream-conductor
 grounding: "Based on 2026-07-20-pi-full-replacement-master-plan.md Section 10"
-last: { agent: kimi-code/k3, at: 2026-07-23T02:12:48Z, ledger: L-52 }
-next_action: "B0 offline evidence complete (b0-attestation.json + three immutable manifests N=4, estimate $0.7342 <= $1.00, topology probe recorded). Owner gates next: G-R1 before RT-4 preflight (first live call), G-R2 before RT-5 waves. No live calls until owner approval."
+last: { agent: gpt-5.6-sol, at: 2026-07-23T02:24:17Z, ledger: L-53 }
+next_action: "Fix F-8 on FIX-PI-BENCH-RETAKE-B0-20260723-WAVE-b0-REVIEW-r1-lifecycle, then run the conductor-created delta re-review; keep RT-4/RT-5 blocked behind G-R1/G-R2."
 ```
 <!-- /STATUS BLOCK -->
 
@@ -478,6 +478,7 @@ approvals (G1/G2) are recorded as CF evidence with the in-chat approval quoted.
 | F-5 | Blocker | `live_driver.py:dispatch_unit` / `validation.py:_get_embeddings` | MoA omits the requested engine and approved route identity; embeddings escape the DeepSeek-only ledger; stamped provenance does not prove the served route. | FIX-PI-BENCH-MOA-20260722-REVIEW-r1-routing | fixed (L-26) |
 | F-6 | Blocker | `live_driver.py:run_live_unit` / `budget_ledger.py` | The reserved output bound is not forwarded to dispatch, and duplicate/orphan/over-reservation ledger transitions can undercount or exceed the hard cap. | FIX-PI-BENCH-MOA-20260722-REVIEW-r1-budget | fixed (L-22) |
 | F-7 | Major | Compass Forge post-change gate | New Python import cycles include `live_driver -> runner -> live_driver`; the task-scope architecture gate is not clean. | FIX-PI-BENCH-MOA-20260722-REVIEW-r1-gate | fixed (L-25) |
+| F-8 | Major | `docs/build-stream/2026-07-22-pi-benchmark.md` Status Block | The B0 update left the resume contract on stale branch `Review_pi_test` and stale spec `CF-SPEC-8` instead of the active retake branch and `CF-SPEC-9`. | FIX-PI-BENCH-RETAKE-B0-20260723-WAVE-b0-REVIEW-r1-lifecycle | open |
 
 
 <!-- consensus-winning-plan:PI-BENCH-RETAKE-20260722 -->
@@ -1195,3 +1196,9 @@ Did: executed the remaining offline Plan C work in the shared worktree (wave b0)
 Result: B0 offline evidence complete — 0 live calls, 0 spend, no credentials read, no ledger file created, no G-R1/G-R2/G-R3 artifacts, stale g1/g2 gates byte-identical. AC-2 met: three manifests each recording max_processes=4, provider=deepseek, model=deepseek-v4-pro, budget_cap_usd=1.0, moa_n=3, repeats=1, tier=T3, shards covering 44 units exactly once (22 scenarios x engines pi/legacy). AC-3 met: deterministic worst-case estimate $0.7342 <= $1.00 printed at B0 with exit 0; repeats=2 probe ($1.4683) exit 2 with no manifest mutation and no live call. content_sha256: none=e22c796a05af3235..., self_moa=ea2288e3c172c880..., full_ensemble=0d65a54e4ac57466.... Spend-free topology probe: requested_slots=3 on available=[pi-deepseek-default] -> would_serve_mode=self_moa, would_degrade=true, downgrade=full_ensemble->self_moa (AC-8 expectation for the full_ensemble lane). PI-BENCH-RETAKE-B0-20260723-WAVE-b0-IMPL
 Verified: pytest tests/pi_benchmark -q -> 178 passed, 0 failed (AC-1); pytest tests/pi_migration/test_count_to_zero.py -q -> 3 passed (ratchet 0); npm ci (pi-runtime) then pytest tests/pi_production -q -> 346 passed in 64.36s (was 47 failed / 299 passed without node_modules); python3 scripts/security_benchmark.py --fail-on-threshold -> status pass, triggered_paths=[]; runner --plan-only x3 lanes -> exit 0 each (estimate $0.7342); identical rerun lane none -> exit 0, manifest file_sha256 unchanged; --max-processes 3 -> exit 2 ManifestConflict, unchanged; --repeats 2 -> exit 2, unchanged; all three manifest file hashes byte-identical before/after every probe; validate_topology -> spend-free JSON as above. CF evidence: 7x command + self_report on PI-BENCH-RETAKE-B0-20260723-WAVE-b0-IMPL.
 Next: stage exit — B0 offline evidence complete. RT-4 preflight (first live call) requires the G-R1 owner gate; RT-5 waves require G-R2; both remain owner-gated and untouched.
+
+### L-53 | 2026-07-23T02:24:17Z | S3-review | gpt-5.6-sol | reviewer | Retake execution (RT-0/RT-3 B0 review) <!-- bsc-ledger:PI-BENCH-RETAKE-B0-20260723-WAVE-b0-REVIEW -->
+Did: independently reviewed Plan C RT-0/RT-3 against implementer commit `81557fa0`, CF evidence 1576-1583/1588, ignored runtime artifacts, and actor session 208 logs. Recomputed attestation/file hashes; hash-verified all three manifests; reran the offline suite and focused idempotent-resume/`ManifestConflict` probes. Added F-8 and created `FIX-PI-BENCH-RETAKE-B0-20260723-WAVE-b0-REVIEW-r1-lifecycle`; no benchmark code or runtime artifact was edited.
+Result: verdict **FAIL** with one Major lifecycle-integrity finding. The B0 evidence itself passes: checkout pin and N=4 are attested; none/self_moa/full_ensemble manifests each contain 44 unique units in four disjoint shards of 11, are content-hash-bound, and preserve the required provider/model/cap/moa_n/repeats/tier fields; resume exits 0 unchanged and differing max_processes exits 2 unchanged. Session 208 shows plan-only commands, zero live/provider/credential/server operations, no budget ledger, and no fresh retake gate artifact. F-8: the refreshed Status Block still named stale branch `Review_pi_test` and `CF-SPEC-8`, violating the resume identity contract; the fixer must correct those identity fields and preserve append-only history.
+Verified: `PYTHONPATH=/Users/user/Documents/Istara-main-pi-benchmark-retake/backend /Users/user/Documents/Istara-main-pi-replacement/backend/.venv/bin/python -m pytest tests/pi_benchmark/ -q` -> 178 passed; `tests.pi_benchmark.scheduler.load_manifest` + invariant audit -> three hashes valid, 44 unique units/lane, shard sizes `[11,11,11,11]`, lane modes `{None}`/`{self_moa}`/`{full_ensemble}`, N=4/moa_n=3/repeats=1; identical lane-none `runner.py --plan-only --max-processes 4` -> exit 0 and file sha256 `71130343...` unchanged; differing `--max-processes 3` -> expected exit 2 `ManifestConflict` and same sha256; `rg --files --hidden tests/pi_benchmark/.results/runs/retake` -> only attestation + three manifests; `rg --files tests/pi_benchmark/gates` -> only stale g1/g2 files; actor session 208 log audit -> no `--live` execution/provider call/credential read/server start.
+Next: stage exit — fixer resolves F-8, then the conductor creates one delta re-review; RT-4/RT-5 remain owner-gated.
