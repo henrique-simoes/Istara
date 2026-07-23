@@ -32,6 +32,7 @@ Import-safe at T0: importing this module touches no backend, DB, network, or mod
 from __future__ import annotations
 
 import argparse
+import asyncio
 import dataclasses
 import hashlib
 import importlib
@@ -271,23 +272,33 @@ def _execute_live_units(
     dispatch: Any = None,
     wave: int | None = None,
 ) -> list[dict[str, Any]]:
-    """Run units through the live driver; every unit yields exactly one record."""
+    """Run units through the live driver on one event loop; every unit yields one record.
+
+    The Pi runtime supervisor is process-wide and owns asyncio primitives, so wave units
+    must share the loop that created those primitives.  Keeping the loop at the batch
+    boundary also preserves the runner's synchronous API while avoiding one
+    ``asyncio.run`` loop per unit.
+    """
     from tests.pi_benchmark import live_driver
 
     records_dir = config.out_dir / "records"
     kwargs: dict[str, Any] = {}
     if dispatch is not None:
         kwargs["dispatch"] = dispatch
-    records: list[dict[str, Any]] = []
-    for unit, scenario in units:
-        if scenario is None:
-            records.append(_record_unknown_scenario(unit, config, records_dir))
-            continue
-        records.append(live_driver.run_live_unit_sync(
-            unit=unit, scenario=scenario, config=config, ledger=ledger, provider=provider,
-            records_dir=records_dir, moa_n=config.moa_n, wave=wave, **kwargs,
-        ))
-    return records
+
+    async def execute_batch() -> list[dict[str, Any]]:
+        records: list[dict[str, Any]] = []
+        for unit, scenario in units:
+            if scenario is None:
+                records.append(_record_unknown_scenario(unit, config, records_dir))
+                continue
+            records.append(await live_driver.run_live_unit(
+                unit=unit, scenario=scenario, config=config, ledger=ledger, provider=provider,
+                records_dir=records_dir, moa_n=config.moa_n, wave=wave, **kwargs,
+            ))
+        return records
+
+    return asyncio.run(execute_batch())
 
 
 def _run_live_benchmark(config: RunConfig, dispatch: Any = None) -> RunSummary:
