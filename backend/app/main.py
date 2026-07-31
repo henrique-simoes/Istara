@@ -38,6 +38,7 @@ from app.api.routes import (
     llm_servers,
     memory,
     metrics,
+    petals_bridge as petals_bridge_routes,
     projects,
     sessions,
     settings,
@@ -881,6 +882,13 @@ app.include_router(connection_routes.router, prefix="/api", tags=["Connections"]
 app.include_router(update_routes.router, prefix="/api", tags=["Updates"])
 app.include_router(ws_router)
 app.include_router(a2a_routes.router, tags=["A2A"])
+from app.config import settings as _app_settings
+
+app.include_router(
+    petals_bridge_routes.router,
+    prefix=_app_settings.petals_bridge_base_path,
+    tags=["PetalsBridge"],
+)
 
 
 @app.get("/api/health")
