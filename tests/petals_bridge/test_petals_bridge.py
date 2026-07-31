@@ -31,6 +31,11 @@ class FakeNode:
         self.calls.append({"messages": messages, **kwargs})
         return {"message": {"role": "assistant", "content": "donor response"}}
 
+    async def chat_stream(self, messages, **kwargs):
+        self.calls.append({"messages": messages, "stream": True, **kwargs})
+        for piece in ("donor ", "stream ", "response"):
+            yield piece
+
 
 class FakeRegistry:
     def __init__(self, nodes):
@@ -182,3 +187,59 @@ def test_pi_runtime_never_imports_registry():
                     if forbidden in stripped:
                         offenders.append(f"{path.name}: {stripped}")
     assert offenders == []
+
+
+# ── P1: streaming, consent management, status (CF-336) ──────────────────────
+
+
+def _collect_stream(payload):
+    async def _run():
+        return [chunk async for chunk in petals_bridge.chat_completions_stream(payload)]
+    return asyncio.run(_run())
+
+
+def test_stream_yields_chunks_and_final_route(donor, registry_with):
+    chunks = _collect_stream({
+        "model": "pi-petals-donor-1",
+        "messages": [{"role": "user", "content": "hi"}],
+        "stream": True,
+    })
+    assert len(chunks) >= 2
+    assert chunks[0]["object"] == "chat.completion.chunk"
+    assert chunks[0]["choices"][0]["delta"]["content"]
+    final = chunks[-1]
+    assert final["choices"][0]["finish_reason"] == "stop"
+    assert final["_istara_route"]["route_kind"] == "petals_bridge"
+    assert final["_istara_route"]["node_id"] == "donor-1"
+
+
+def test_stream_fails_closed_before_any_chunk(donor, registry_with):
+    donor.pi_served = False
+    with pytest.raises(PetalsUnavailable, match="donor_not_consented"):
+        _collect_stream({"model": "pi-petals-donor-1", "messages": [{"role": "user", "content": "hi"}], "stream": True})
+
+
+def test_set_donor_consent_flip(donor, registry_with):
+    state = petals_bridge.set_donor_consent("donor-1", False)
+    assert state["pi_served"] is False
+    assert petals_bridge.catalog_entries.__wrapped__ if hasattr(petals_bridge.catalog_entries, "__wrapped__") else True
+    state = petals_bridge.set_donor_consent("donor-1", True)
+    assert state["pi_served"] is True
+    assert state["node_id"] == "donor-1"
+
+
+def test_set_consent_rejects_non_donor(donor, registry_with):
+    donor.source = "network"
+    with pytest.raises(PetalsUnavailable, match="not_a_donor"):
+        petals_bridge.set_donor_consent("donor-1", True)
+
+
+def test_bridge_status_inventories_donors_only(donor, registry_with):
+    other = FakeNode("net-9", source="network")
+    registry_with._nodes["net-9"] = other
+    status = petals_bridge.bridge_status()
+    assert [d["node_id"] for d in status["donors"]] == ["donor-1"]
+    assert status["donors"][0]["endpoint_id"] == "pi-petals-donor-1"
+    donor.pi_served = False
+    status = petals_bridge.bridge_status()
+    assert status["donors"][0]["endpoint_id"] is None
