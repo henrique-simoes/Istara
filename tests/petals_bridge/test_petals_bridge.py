@@ -318,3 +318,47 @@ def test_petals_capabilities_content_free(donor, registry_with, monkeypatch):
 
 def test_petals_capabilities_empty_when_disabled(donor, registry_with):
     assert petals_bridge.build_petals_capabilities() == {}
+
+
+# ── P3: distinct ensembles over petals (CF-338) ─────────────────────────────
+
+
+def test_resolve_distinct_over_petals_endpoints(monkeypatch, donor, registry_with):
+    monkeypatch.setattr(settings, "petals_bridge_enabled", True)
+    donor2 = FakeNode("donor-2")
+    registry_with._nodes["donor-2"] = donor2
+    from app.core.pi_runtime.model_manager import PiModelManager
+
+    manager = PiModelManager(endpoints=[])
+    manager._project_petals()
+    resolved = manager.resolve_distinct(2)
+    ids = {e.endpoint_id for e in resolved}
+    assert ids == {"pi-petals-donor-1", "pi-petals-donor-2"}
+
+
+def test_mixed_ensemble_resolution_api_plus_petals(monkeypatch, donor, registry_with):
+    monkeypatch.setattr(settings, "petals_bridge_enabled", True)
+    from app.core.pi_runtime.endpoints import ResolvedPiEndpoint
+    from app.core.pi_runtime.model_manager import PiModelManager
+
+    api_ep = ResolvedPiEndpoint(
+        endpoint_id="pi-deepseek-default", provider_kind="openai_compat",
+        base_url="https://api.deepseek.com", model="deepseek-v4-pro",
+        api_key="", timeout_ms=30000, max_retries=0,
+    )
+    manager = PiModelManager(endpoints=[api_ep])
+    manager._project_petals()
+    resolved = manager.resolve_distinct(2)
+    ids = {e.endpoint_id for e in resolved}
+    assert ids == {"pi-deepseek-default", "pi-petals-donor-1"}  # DEC-11: mixed allowed
+
+
+def test_distinct_fails_closed_without_enough_consented_donors(monkeypatch, donor, registry_with):
+    monkeypatch.setattr(settings, "petals_bridge_enabled", True)
+    from app.core.pi_runtime.model_manager import PiModelManager
+    from app.core.pi_runtime.endpoints import PiEndpointResolutionError
+
+    manager = PiModelManager(endpoints=[])
+    manager._project_petals()
+    with pytest.raises(PiEndpointResolutionError, match="insufficient_distinct"):
+        manager.resolve_distinct(2)  # only one consented donor
