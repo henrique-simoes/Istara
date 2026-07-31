@@ -105,14 +105,8 @@ def catalog_entries() -> list[dict[str, Any]]:
     return entries
 
 
-async def chat_completions(payload: dict[str, Any]) -> dict[str, Any]:
-    """Serve one OpenAI-shaped chat completion through a pinned donor node.
-
-    The ``model`` field carries the petals endpoint identity (``pi-petals-<node>``
-    or a bare node id); the route is pinned to exactly that node — never
-    re-scheduled through registry capacity scoring.
-    """
-    started = time.perf_counter()
+def _admit(payload: dict[str, Any]) -> tuple[Any, str, list[dict], str]:
+    """Shared admission: resolve the pinned node and enforce the fail-closed rules."""
     requested = str(payload.get("model") or "")
     node_id = node_id_for(requested) if requested.startswith("pi-petals-") else requested
     registry = _registry()
@@ -125,13 +119,25 @@ async def chat_completions(payload: dict[str, Any]) -> dict[str, Any]:
         raise PetalsUnavailable(f"donor_not_consented:{node_id}")
     if not bool(getattr(node, "is_healthy", False)):
         raise PetalsUnavailable(f"donor_unhealthy:{node_id}")
-
     messages = list(payload.get("messages") or [])
     if not messages:
         raise PetalsUnavailable("empty_messages")
     served_model = payload.get("served_model") or (
         list(getattr(node, "loaded_models", []) or ["default"])[0]
     )
+    return node, node_id, messages, served_model
+
+
+async def chat_completions(payload: dict[str, Any]) -> dict[str, Any]:
+    """Serve one OpenAI-shaped chat completion through a pinned donor node.
+
+    The ``model`` field carries the petals endpoint identity (``pi-petals-<node>``
+    or a bare node id); the route is pinned to exactly that node — never
+    re-scheduled through registry capacity scoring.
+    """
+    started = time.perf_counter()
+    requested = str(payload.get("model") or "")
+    node, node_id, messages, served_model = _admit(payload)
     data = await node.chat(
         messages,
         model=served_model,
@@ -179,3 +185,86 @@ async def chat_completions(payload: dict[str, Any]) -> dict[str, Any]:
             "usage_estimate": bool(usage.get("estimate")),
         },
     }
+
+
+async def chat_completions_stream(payload: dict[str, Any]):
+    """Stream one chat completion as OpenAI-shaped chunk dicts (CF-336 P1).
+
+    Same admission as the non-streaming path. Relay/browser donors currently
+    yield a single aggregated chunk (the node falls back to non-streaming
+    internally); the SSE shape stays correct regardless, so pi-ai streaming
+    clients work unchanged when donors gain true streaming later.
+    """
+    started = time.perf_counter()
+    requested = str(payload.get("model") or "")
+    node, node_id, messages, served_model = _admit(payload)
+    chunk_id = f"chatcmpl-petals-{uuid.uuid4().hex[:24]}"
+    total_chars = 0
+    async for piece in node.chat_stream(
+        messages,
+        model=served_model,
+        temperature=float(payload.get("temperature", 0.7)),
+        max_tokens=payload.get("max_tokens"),
+        project_id=payload.get("project_id"),
+    ):
+        text = piece if isinstance(piece, str) else str((piece or {}).get("content", ""))
+        if not text:
+            continue
+        total_chars += len(text)
+        yield {
+            "id": chunk_id,
+            "object": "chat.completion.chunk",
+            "created": int(time.time()),
+            "model": requested or endpoint_id_for(node_id),
+            "choices": [{"index": 0, "delta": {"content": text}, "finish_reason": None}],
+        }
+    yield {
+        "id": chunk_id,
+        "object": "chat.completion.chunk",
+        "created": int(time.time()),
+        "model": requested or endpoint_id_for(node_id),
+        "choices": [{"index": 0, "delta": {}, "finish_reason": "stop"}],
+        "_istara_route": {
+            "node_id": node_id,
+            "node_source": getattr(node, "source", ""),
+            "route_kind": PETALS_ROUTE_KIND,
+            "model": served_model,
+            "latency_ms": round((time.perf_counter() - started) * 1000, 1),
+            "streamed_chars": total_chars,
+        },
+    }
+
+
+def set_donor_consent(node_id: str, pi_served: bool) -> dict[str, Any]:
+    """Admin-managed consent flip (CF-336 P1). Returns the resulting state."""
+    registry = _registry()
+    node = getattr(registry, "_nodes", {}).get(node_id)
+    if node is None:
+        raise PetalsUnavailable(f"unknown_node:{node_id}")
+    if getattr(node, "source", None) not in DONOR_SOURCES:
+        raise PetalsUnavailable(f"not_a_donor:{node_id}")
+    node.pi_served = bool(pi_served)
+    return {
+        "node_id": node_id,
+        "source": getattr(node, "source", ""),
+        "pi_served": node.pi_served,
+        "is_healthy": bool(getattr(node, "is_healthy", False)),
+    }
+
+
+def bridge_status() -> dict[str, Any]:
+    """Bridge-visible donor inventory (consent + serve state)."""
+    registry = _registry()
+    donors = []
+    for node in sorted(getattr(registry, "_nodes", {}).values(), key=lambda n: n.node_id):
+        if getattr(node, "source", None) not in DONOR_SOURCES:
+            continue
+        donors.append({
+            "node_id": node.node_id,
+            "source": getattr(node, "source", ""),
+            "pi_served": bool(getattr(node, "pi_served", False)),
+            "is_healthy": bool(getattr(node, "is_healthy", False)),
+            "models": list(getattr(node, "loaded_models", []) or []),
+            "endpoint_id": endpoint_id_for(node.node_id) if _is_servable(node) else None,
+        })
+    return {"enabled": settings.petals_bridge_enabled, "donors": donors}
