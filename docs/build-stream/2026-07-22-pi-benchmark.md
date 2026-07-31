@@ -1429,3 +1429,9 @@ Did: petals bridge P1 in the replacement worktree. Streaming: chat_completions_s
 Result: CF-336 finished with command evidence.
 Verified: pytest tests/petals_bridge/ -> 18 passed; security_benchmark -> 100%; feature_docs -> 86 ok; gate after -> new_failures=0.
 Next: CF-337 P2 — A2A agent-card capabilities (compute.petals.<node>), bridge usage-ledger rows (one per dispatch, estimate-flagged), record_pi_a2a_event telemetry.
+
+### L-78 | 2026-08-01T01:35:00Z | S2-execute | kimi-code/k3 | implementer | CF-337 petals bridge P2 <!-- bsc-ledger:CF-337-PETALS-P2 -->
+Did: petals bridge P2 (A2A control plane) in the replacement worktree. Usage-ledger integration: every bridge dispatch (sync + streaming) writes exactly one agentic usage row (engine=pi — DEC-11 donor engine visibility; node_id pinned; estimate flag propagated from the bridge's honesty rules; cost 0 donated; fail-soft) via record_agentic_usage, satisfying the dispatcher §5.5 one-row-per-dispatch contract for petals traffic. A2A agent card: new build_petals_capabilities() projects content-free compute.petals.<node_id> capabilities (endpoint identity, models, cost_class=donated, consent state, health, engine_visibility) into the card's capabilities when petals_bridge_enabled — no hosts, prompts, or secrets. Fixed a FastAPI response_model union error on the SSE route (response_model=None).
+Result: CF-337 finished with command evidence.
+Verified: pytest tests/petals_bridge/ -> 24 passed (5 new P2 tests: row-per-dispatch, stream row, no-row-on-failure, capability shape, disabled-empty); pytest -k a2a -> 25 passed; feature_docs -> 86 ok; security_benchmark -> pass; gate after -> new_failures=0.
+Next: CF-338 P3 — distinct=True ensembles over pi-petals-* endpoints + full_ensemble lane re-run with real diversity (bounded, owner-gated; note: zero live donors on this machine — ensemble validation is code+fake-node level until a consented donor connects).
