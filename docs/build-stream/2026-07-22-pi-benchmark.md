@@ -1010,6 +1010,22 @@ single-lane phases estimate honestly instead of being priced for all three lanes
 Why: the owner cap is a hard stop; lane-scoped industry keeps the full BFCL/tau-bench
 subset inside the envelope without weakening the estimate gate for the original program.
 
+DEC-13 | 2026-08-01 | S2-execute | kimi-code/k3
+Context: CF-338 P3 scope. The full_ensemble benchmark lane can now execute true
+distinct resolution (petals-ready), but ZERO live consented donors exist on this
+machine, so a real multi-node full_ensemble re-run cannot produce live evidence yet.
+Decision: (1) full_ensemble units dispatch with distinct=True + minimum_n through real
+resolution (pi catalog incl. pi-petals-* when projected; legacy registry incl. any
+consented donors); insufficient distinct identities fail closed into truthful degraded
+records — same count as the old forced collapse, now produced by real resolution.
+(2) Route admission accepts pi-petals-* identities (projection enforces consent); the
+provenance stamp never marks petals slots as DeepSeek (provider=petals, mixed-route
+fingerprint). (3) The LIVE full_ensemble re-run with real donor diversity is BLOCKED ON
+donor availability — it executes the moment a consented donor connects (bridge enable
++ pi_served + a wave command, documented in the L-79 entry), not a new spec.
+Why: code-complete beats waiting on infrastructure; the honest blocked state is
+recorded instead of fabricating donor evidence.
+
 
 ### L-9 | 2026-07-22T13:50:34Z | S1-plan | kimi-code/k3 | architect | Planning phase <!-- bsc-ledger:pi-eval-REPLAN-C-r1 -->
 Did: repaired consensus plan C (revision r1)

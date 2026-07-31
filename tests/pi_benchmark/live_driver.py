@@ -263,18 +263,20 @@ def _capture_from_outcome(outcome: Any, *, prompt: str, system: str) -> LiveCapt
     )
 
 
-def _approved_endpoint_ids(engine: str) -> frozenset:
-    """Approved endpoint identities per arm (AC-7 route truth).
+def _is_approved_route(engine: str, endpoint_id: str) -> bool:
+    """Approved route identity per arm (AC-7 route truth).
 
-    Pi units must serve from the pinned PiModelManager endpoint; legacy units must
-    serve from the benchmark-seeded registry node (F-11). Anything else is a
-    rejected route, never a silently accepted one.
+    Pi units must serve from the pinned PiModelManager endpoint or — in the petals
+    era (CF-338) — from bridge-projected ``pi-petals-*`` endpoints (projection
+    itself enforces donor consent + health; the prefix is identity, not a bypass).
+    Legacy units must serve from the benchmark-seeded registry node (F-11).
+    Anything else is a rejected route, never a silently accepted one.
     """
     import tests.pi_benchmark.registry_seed as registry_seed
 
     if engine == "legacy":
-        return frozenset({registry_seed.BENCHMARK_NODE_ID})
-    return APPROVED_DEEPSEEK_ENDPOINT_IDS
+        return endpoint_id == registry_seed.BENCHMARK_NODE_ID
+    return endpoint_id in APPROVED_DEEPSEEK_ENDPOINT_IDS or endpoint_id.startswith("pi-petals-")
 
 
 def _benchmark_route_evidence(
@@ -282,7 +284,6 @@ def _benchmark_route_evidence(
 ) -> tuple[dict, ...]:
     """Validate and redact the route identity returned by the benchmark dispatcher."""
     evidence: list[dict] = []
-    approved = _approved_endpoint_ids(engine)
     for index, sample in enumerate(samples):
         endpoint_id = (
             _sample_route_node_id(sample)
@@ -293,7 +294,7 @@ def _benchmark_route_evidence(
                 "benchmark sample has no endpoint identity",
                 route={"route_kind": "agentic_ensemble", "admission": "rejected"},
             )
-        if endpoint_id not in approved:
+        if not _is_approved_route(engine, endpoint_id):
             raise RouteAdmissionError(
                 f"benchmark route not approved: {endpoint_id!r}",
                 route={
@@ -519,13 +520,21 @@ async def dispatch_unit(
         )
         _record_prompts(slots, temperatures)
         started = time.perf_counter()
+        # CF-338 (petals P3): full_ensemble requests TRUE distinct slots. Without
+        # petals donors the pi catalog has only pi-deepseek-default (and the legacy
+        # registry only the seeded node), so resolution fails closed and the unit is
+        # recorded degraded — the same truthful result as the old forced-collapse,
+        # now produced by real distinct-resolution instead of a hardcoded one. With
+        # consented pi-petals-* endpoints projected, full_ensemble gets genuine
+        # multi-node diversity with per-slot route evidence.
         outcome = await agentic_module.ensemble(
             purpose=f"pi_benchmark.{tier}",
             project_id=PI_PROJECT_ID,
             system=system or None,
             messages=[{"role": "user", "content": prompt}],
             n=slots,
-            distinct=False,
+            distinct=moa_mode == "full_ensemble",
+            minimum_n=slots if moa_mode == "full_ensemble" else None,
             temperatures=temperatures or None,
             params=params,
             engine=unit.engine,
@@ -702,9 +711,14 @@ def _stamp_live_provenance(
         normalized_routes = []
         for route in route_evidence:
             normalized = dict(route)
-            if normalized.get("endpoint_id") in approved_all:
+            endpoint_id = str(normalized.get("endpoint_id") or "")
+            if endpoint_id in approved_all:
                 normalized.setdefault("provider", DEEPSEEK_PROVIDER)
                 normalized.setdefault("model", DEEPSEEK_MODEL)
+            elif endpoint_id.startswith("pi-petals-"):
+                # Petals slots are donated compute, NOT DeepSeek — never stamp the
+                # DeepSeek identity on them (CF-338 route truth).
+                normalized.setdefault("provider", "petals")
             normalized_routes.append(normalized)
         safe_routes = [
             {
@@ -715,8 +729,10 @@ def _stamp_live_provenance(
             for route in normalized_routes
         ]
         encoded = json.dumps(safe_routes, sort_keys=True, separators=(",", ":"))
+        providers = {route.get("provider") for route in normalized_routes if route.get("provider")}
+        label = "deepseek-route" if providers <= {DEEPSEEK_PROVIDER} else "mixed-route"
         record["provenance"]["endpoint_fingerprint"] = (
-            f"deepseek-route:{hashlib.sha256(encoded.encode()).hexdigest()[:12]}"
+            f"{label}:{hashlib.sha256(encoded.encode()).hexdigest()[:12]}"
         )
         models = {route.get("model") for route in normalized_routes if route.get("model")}
         record["provenance"]["model_id"] = models.pop() if len(models) == 1 else None
