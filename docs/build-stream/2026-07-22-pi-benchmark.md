@@ -4,14 +4,14 @@
 ```yaml
 item: pi-benchmark
 branch: conductor/pi-bench-retake-20260722
-cf: { spec: CF-SPEC-10, tasks: [CF-320, CF-321, CF-322, CF-323, CF-324, CF-325] }
-phase: "Phase RT-6b — quality-benchmark completion (F-11 + raw capture + industry pack + judging)"
+cf: { spec: CF-SPEC-10, tasks: [CF-320, CF-321, CF-322, CF-323, CF-324, CF-325, CF-335, CF-336, CF-337, CF-338] }
+phase: "Phase RT-6b — quality-benchmark completion (F-11 + raw capture + industry pack + judging) + petals bridge P0-P3"
 stage: S1-plan
 status: in-progress
 blocked_on: null
 authored_by: build-stream-conductor
-grounding: "Based on 2026-07-20-pi-full-replacement-master-plan.md Section 10 + CF-SPEC-10"
-last: { agent: kimi-code/k3, at: 2026-07-31T20:30:00Z, ledger: L-68 }
+grounding: "Based on 2026-07-20-pi-full-replacement-master-plan.md Section 10 + CF-SPEC-10 + 2026-07-31-pi-petals-a2a-bridge-design.md"
+last: { agent: kimi-code/k3, at: 2026-07-31T20:55:00Z, ledger: L-69 }
 next_action: "Pull work-order for CF-320 (F-11 legacy DUT identity), gate before, implement the benchmark-seeded registry endpoint so legacy units dispatch through AgenticDispatcher.ensemble."
 ```
 <!-- /STATUS BLOCK -->
@@ -967,6 +967,24 @@ Why: external comparability (published-benchmark numbers) complements the intern
 replacement verdict; reusing the same apparatus keeps provider parity, pairing, and
 budget discipline identical across internal and industry evidence.
 
+DEC-10 | 2026-07-31 | S1-plan | owner + kimi-code/k3
+Context: The owner directed that the Pi-petals A2A bridge design
+(comparison-Istara-pi/2026-07-31-pi-petals-a2a-bridge-design.md) execute as part of the
+same comprehensive work package: "Append to this work the ... bridge-design plan also,
+so it all executes comprehensively."
+Decision: CF-SPEC-10 revised (status revised -> tasked) to include the bridge rollout
+waves P0-P3 as work items ITEM-007..010 -> tasks CF-335..CF-338: P0 loopback shim +
+catalog projection; P1 streaming/multi-node/consent/fail-closed; P2 A2A control plane +
+usage-ledger telemetry; P3 distinct=True ensembles over pi-petals-* + full_ensemble lane
+re-run with real donor diversity (owner-gated, bounded, under the DEC-8 envelope).
+P4 (donor-facing UI) is deferred to a follow-up spec. Bridge code lives in the
+replacement worktree (backend); benchmark work stays in this worktree. Isolation
+invariants restated as spec non-goals: no pi-ai fork, pi_runtime never imports/mutates
+ComputeRegistry.
+Why: one owner-approved package is cheaper to govern than two; the bridge is the
+production answer to the same replacement question the benchmark measures, and P3 feeds
+the benchmark's full_ensemble lane the multi-node diversity it currently lacks.
+
 
 ### L-9 | 2026-07-22T13:50:34Z | S1-plan | kimi-code/k3 | architect | Planning phase <!-- bsc-ledger:pi-eval-REPLAN-C-r1 -->
 Did: repaired consensus plan C (revision r1)
@@ -1332,3 +1350,9 @@ Did: framed Phase RT-6b with the owner (S0 approval logged as DEC-8, industry pa
 Result: CF-SPEC-10 status planned with a 6-task graph + validation tasks; spend envelope $3.00 fresh ledger (DEC-8); scope boundary and invariants recorded (pi_runtime isolation, closed-ledger immutability, no record rewrites).
 Verified: compass-forge spec show CF-SPEC-10 -> status planned; spec list -> CF-SPEC-1..10 present; CF index status both trees -> counts above; no code changed, no spend.
 Next: CF-320 work-order + gate before; implement benchmark-seeded registry endpoint for the legacy DUT arm (design: register approved DeepSeek as a benchmark-scoped LLMServer/registry entry so AgenticDispatcher.ensemble engine=legacy routes through production legacy path; usage must still flow to run_live_unit reserve/commit; pi_runtime isolation invariant untouched).
+
+### L-69 | 2026-07-31T20:55:00Z | S1-plan | kimi-code/k3 | planner | Phase RT-6b scope extension <!-- bsc-ledger:PI-BENCH-RT6B-PETALS-20260731 -->
+Did: appended the Pi-petals A2A bridge (comparison-Istara-pi/2026-07-31-pi-petals-a2a-bridge-design.md) to CF-SPEC-10 per owner direction. spec revise (goals/non-goals/work_items ITEM-007..010: P0 shim+projection, P1 streaming/consent/fail-closed, P2 A2A control plane+ledger telemetry, P3 petals ensembles + full_ensemble re-run; P4 UI deferred) -> spec tasks (plan_key dedup reused CF-320..325; new CF-335/336/337/338 created and linked implements). DEC-10 logged; Status Block task list refreshed. Verified create_structured_spec_tasks idempotency by plan_key before re-running spec tasks.
+Result: CF-SPEC-10 status tasked; task_refs CF-320..325 + CF-335..338 (+ validation tasks CF-326..334). No code changed, no spend.
+Verified: compass-forge spec show CF-SPEC-10 -> status tasked, 10 work items; task list -> CF-335..338 open with petals P0-P3 titles; DEC-9 Why line restored after an edit collision (re-verified by grep).
+Next: CF-320 work-order + gate before; implement the benchmark-seeded registry endpoint for the legacy DUT arm (petals tasks CF-335+ run in the replacement worktree after the benchmark chain CF-320..325, since P3 feeds the full_ensemble lane).
