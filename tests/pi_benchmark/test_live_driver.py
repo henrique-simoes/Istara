@@ -208,7 +208,8 @@ def test_dispatch_unit_full_ensemble_requests_exactly_moa_n_slots():
         unit=_unit(moa_mode="full_ensemble"), tier="T3", prompt="hello",
         moa_n=3, agentic_module=FakeAgentic(),
     ))
-    assert calls["n"] == 3 and calls["distinct"] is False
+    assert calls["n"] == 3 and calls["distinct"] is True  # CF-338: real distinct resolution
+    assert calls["minimum_n"] == 3
     assert calls["engine"] == "pi"
     assert capture.raw_method == "full_ensemble"
     assert capture.endpoint_ids == ("pi-deepseek-default",) * 3
@@ -655,3 +656,40 @@ def test_record_identity_follows_the_unit_not_the_cli_phase(tmp_path):
     assert record["record_id"] == unit.unit_id
     assert schema.is_valid(record)
     assert (tmp_path / "records" / f"{unit.unit_id}.json").is_file()
+
+
+def test_dispatch_unit_full_ensemble_requests_distinct_slots(monkeypatch):
+    """CF-338: full_ensemble goes through real distinct resolution (petals-ready),
+    not a hardcoded single-route collapse."""
+    class FakeAgentic:
+        def __init__(self):
+            self.kwargs = None
+
+        async def ensemble(self, **kwargs):
+            self.kwargs = kwargs
+            samples = [
+                types.SimpleNamespace(
+                    text=f"slot {i} response",
+                    usage={"input_tokens": 4, "output_tokens": 2, "total_tokens": 6},
+                    endpoint_id=endpoint,
+                    route_evidence=None,
+                    status="success",
+                )
+                for i, endpoint in enumerate(
+                    ["pi-deepseek-default", "pi-petals-donor-1", "pi-petals-donor-2"]
+                )
+            ]
+            return types.SimpleNamespace(
+                samples=samples, endpoint_ids=[], usage=None, status="success",
+                method="full_ensemble",
+            )
+
+    agentic = FakeAgentic()
+    capture = asyncio.run(live_driver.dispatch_unit(
+        unit=_unit(moa_mode="full_ensemble"), tier="T3", prompt="hello", moa_n=3,
+        provider=FakeProvider(), agentic_module=agentic,
+    ))
+    assert agentic.kwargs["distinct"] is True
+    assert agentic.kwargs["minimum_n"] == 3
+    assert capture.raw_method == "full_ensemble"
+    assert len(capture.samples) == 3
