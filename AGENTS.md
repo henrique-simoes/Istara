@@ -15,6 +15,43 @@ Run `compass-forge gate before` and `compass-forge gate after` for meaningful ch
 Attach command, gate, and review evidence before marking tasks done.
 UI/menu/route/store/agent/skill/model/test behavior changes must update Istara's living feature documentation under `docs/features/`, regenerate the site/manifests with `python scripts/feature_docs.py --seed-missing --generate-site --check`, and attach that output as Compass Forge evidence.
 Do not silently mutate external repos, global agent config, or generated integration files.
+
+### Required Compass Forge repo-intelligence usage
+
+Understand dependencies, relationships, and structure through Compass Forge's graph —
+never by grep-and-guess alone. This is mandatory, not optional:
+
+1. **Orient first, every session:** `compass-forge status` → `compass-forge next`. If
+   staleness is flagged, run `compass-forge refresh` and `compass-forge index refresh`
+   BEFORE trusting any graph answer — stale graphs lie.
+2. **Before editing any non-trivial file, run BOTH:**
+   - `compass-forge intelligence impact --path <path> --request "<the request>"` —
+     must/should-inspect ranking, affected tests/contracts/routes, ownership/hotspot risk.
+   - `compass-forge intelligence why <path>` — why the file exists: importers, graph
+     links, routes, models, decisions, docs, recent git. If you cannot explain a file's
+     role after `why`, you are not ready to edit it.
+3. **Map relationships structurally:** use `compass-forge intelligence related
+   --path <p>` (or `--symbol <s>`) for grounded dependency lists,
+   `compass-forge intelligence code-graph` for the full file/symbol/edge graph,
+   `compass-forge intelligence report` for repo-level structure,
+   `compass-forge intelligence ownership`, `intelligence dead-code`,
+   `intelligence git-history <path>`, and `intelligence trends` as the question demands.
+4. **Context packs before raw file dumps:** `compass-forge context "<request>"
+   --pack-type standard` (BM25 + graph, byte-budgeted; prefer `signature`/`summary`
+   resolutions; escalate to `--pack-type full`/`review` only when needed). Do not read
+   dozens of files raw when a pack answers the question.
+5. **Pick verification from the graph:** `compass-forge intelligence test-impact
+   --path <p>` and `compass-forge suggest-tests "<request>"` choose the tests that
+   actually cover a change; run them and attach as command evidence.
+6. **Unsure which CF tool fits:** `compass-forge classify "<request>"` for process
+   level; `forge.suggest_tools {request}` (MCP) for the ranked tool. An empty
+   `suggest_tools` result means off-topic — do not pad and retry.
+7. **Cost ladder — cheapest tool that answers the question:** `status`/`next` →
+   `intelligence impact`/`why`/`related` → `context` packs → `agent-brief` (once per
+   session, `--compact` when possible) → `code-graph`/`report` (targeted queries only).
+8. **Durable choices:** record architecture/process decisions with
+   `compass-forge decision record --title "…" --body "…"` on Full-scope work so the
+   next agent inherits the reasoning.
 <!-- compass-forge:end -->
 
 ## Istara Research Spine Contract

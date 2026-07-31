@@ -4,15 +4,15 @@
 ```yaml
 item: pi-benchmark
 branch: conductor/pi-bench-retake-20260722
-cf: { spec: CF-SPEC-9 }
-phase: "Retake execution - F-10 delta re-review failed"
-stage: S4-remediate
+cf: { spec: CF-SPEC-10, tasks: [CF-320, CF-321, CF-322, CF-323, CF-324, CF-325] }
+phase: "Phase RT-6b — quality-benchmark completion (F-11 + raw capture + industry pack + judging)"
+stage: S1-plan
 status: in-progress
 blocked_on: null
 authored_by: build-stream-conductor
-grounding: "Based on 2026-07-20-pi-full-replacement-master-plan.md Section 10"
-last: { agent: gpt-5.6-sol, at: 2026-07-23T14:57:11Z, ledger: L-66 }
-next_action: "Conductor dispatches FIX-REREV-PI-BENCH-RETAKE-EXEC-20260723-WAVE-none-b2-REVIEW-r1-dut-identity to the cast fixer; do not retry or mutate the 11 historical B2 records."
+grounding: "Based on 2026-07-20-pi-full-replacement-master-plan.md Section 10 + CF-SPEC-10"
+last: { agent: kimi-code/k3, at: 2026-07-31T20:30:00Z, ledger: L-68 }
+next_action: "Pull work-order for CF-320 (F-11 legacy DUT identity), gate before, implement the benchmark-seeded registry endpoint so legacy units dispatch through AgenticDispatcher.ensemble."
 ```
 <!-- /STATUS BLOCK -->
 
@@ -930,6 +930,43 @@ Why: the stale Kimi-evaluation text would mis-route DUT spend and conflate the e
 provider with the post-run judge; pinning the canon keeps the money path DeepSeek-only and
 the judging session cleanly separated.
 
+DEC-8 | 2026-07-31 | S0-frame | owner + kimi-code/k3
+Context: Retake waves completed under L-67 (157 records; ledger closed at $0.408928).
+F-11 (legacy DUT identity) is an OPEN Blocker: legacy-arm records are raw single
+completions, not the production legacy ReAct loop through AgenticDispatcher.ensemble.
+Quality axes are pending_judging, and run records carry no response text, so the frozen
+packet is unjudgeable. The owner reviewed the 20260731T191743Z bundle (G-R3 equivalent),
+approved the full corrective scope, and approved raising the spend cap: "I agree with
+your points and with the spend cap raise to run the tests CORRECTLY."
+Decision: Run Phase RT-6b as CF-SPEC-10 (tasks CF-320…CF-325): (1) F-11 fix — benchmark
+legacy units dispatch through AgenticDispatcher.ensemble engine=legacy onto a
+benchmark-seeded registry endpoint (approved DeepSeek only); (2) raw prompt/output
+capture per comparison-Istara-pi/raw-llm-output-capture-requirements.md; (3) re-dispatch
+none + self_moa units for BOTH engines with capture on; (4) industry pack (see DEC-9);
+(5) Kimi blind judging per plan §2.6; (6) report regeneration with judged axes.
+Budget: the L-67 ledger stays CLOSED and immutable. Phase RT-6b runs on a FRESH
+crash-safe ledger with budget_cap_usd=$3.00 (owner-approved), same reserve-before-
+dispatch discipline; DEC-7's $1.00 clause is superseded for this phase only (all other
+DEC-7 canon stands: DeepSeek-only DUT, Kimi post-run-only, no fallback route).
+Why: F-11 voids the legacy arm as an agentic-loop measurement; without raw capture the
+judging session has nothing to score; both fixes require bounded re-dispatch, which the
+closed $1.00 envelope cannot fund.
+
+DEC-9 | 2026-07-31 | S0-frame | owner + kimi-code/k3
+Context: The retake's scenario content is 100% Istara-internal (15 production-contract
+ids + spine/a2a behavioral packs). The owner requires industry-standard measurement:
+"these istara's tests are they based on real benchmarks used by industry? That's what I
+want and what I asked."
+Decision: Add an industry scenario pack executed through the SAME paired runner, both
+engines, same ledger/judge protocol: BFCL v4 subset (tool calling — the most direct
+agentic-loop measure), τ-bench subset (multi-turn tool-agent-user interaction), GAIA
+subset (general assistant tasks). Subsets sized at B0-style estimate gate against the
+DEC-8 envelope before any spend; datasets fetched into comparison-Istara-pi/industry/
+with licenses/attribution recorded; no dataset content committed to git.
+Why: external comparability (published-benchmark numbers) complements the internal
+replacement verdict; reusing the same apparatus keeps provider parity, pairing, and
+budget discipline identical across internal and industry evidence.
+
 
 ### L-9 | 2026-07-22T13:50:34Z | S1-plan | kimi-code/k3 | architect | Planning phase <!-- bsc-ledger:pi-eval-REPLAN-C-r1 -->
 Did: repaired consensus plan C (revision r1)
@@ -1289,3 +1326,9 @@ Did: resumed the frozen retake under explicit owner direction ("We also need to 
 Result: 157 records total; every runnable unit now has live paired evidence: none lane 44/44 ok (23 original + 21 retry), self_moa 44/44 ok (40 + 4 retry; consensus mostly insufficient -> degraded, mean 0.11), full_ensemble 44 degraded-by-design. Exact spend: pi $0.087706 (44 ok), legacy $0.091133 (44 ok); mean/ok pi $0.001993 vs legacy $0.002071. F-11 (legacy DUT identity) remains OPEN: legacy records are raw single completions, not the production legacy ReAct loop via AgenticDispatcher.ensemble; no engine winner declared anywhere.
 Verified: pytest tests/pi_benchmark/ -q -> 181 passed; verify_budget_ledger --close -> [ok] spent=$0.408928 rows=288 closed=True provider=deepseek; reproducibility diff -> True; bundle secret scan -> 0 hits; git diff --check -> passed.
 Next: G-R3 owner review of the bundle; F-11 fix (benchmark-seeded registry endpoint so the legacy arm dispatches through AgenticDispatcher.ensemble) + legacy-unit re-dispatch; then the Kimi blind judging session over the frozen artifact packet (quality axes 1-5, 7-10).
+
+### L-68 | 2026-07-31T20:30:00Z | S0/S1 | kimi-code/k3 | framer+planner | Phase RT-6b <!-- bsc-ledger:PI-BENCH-RT6B-FRAME-20260731 -->
+Did: framed Phase RT-6b with the owner (S0 approval logged as DEC-8, industry pack as DEC-9) and planned it through Compass Forge: CF-SPEC-10 created -> clarified (answers file docs/build-stream/cf-spec-10-answers.json) -> constitution check (v3, no warnings) -> spec plan -> spec tasks (CF-320 F-11 fix; CF-321 raw capture; CF-322 industry pack; CF-323 re-dispatch with capture; CF-324 Kimi blind judging; CF-325 report regeneration). Per build-stream, this phase appends to THIS lifecycle file (same initiative), not a new stream. Status Block refreshed (was stale at L-66). Loaded skills: compass-forge (CF mechanics) + build-stream (lifecycle). AGENTS.md in main repo + this worktree now mandates CF repo-intelligence usage (impact/why/related/code-graph/context packs); CF indexes built and verified in both trees (main 1027 files/139629 edges; retake 1209 files/192383 edges; retake CF config.json repaired).
+Result: CF-SPEC-10 status planned with a 6-task graph + validation tasks; spend envelope $3.00 fresh ledger (DEC-8); scope boundary and invariants recorded (pi_runtime isolation, closed-ledger immutability, no record rewrites).
+Verified: compass-forge spec show CF-SPEC-10 -> status planned; spec list -> CF-SPEC-1..10 present; CF index status both trees -> counts above; no code changed, no spend.
+Next: CF-320 work-order + gate before; implement benchmark-seeded registry endpoint for the legacy DUT arm (design: register approved DeepSeek as a benchmark-scoped LLMServer/registry entry so AgenticDispatcher.ensemble engine=legacy routes through production legacy path; usage must still flow to run_live_unit reserve/commit; pi_runtime isolation invariant untouched).
