@@ -1423,3 +1423,9 @@ Did: implemented the petals bridge P0 in the replacement worktree (backend). New
 Result: CF-335 finished with command evidence. No live donors exist on this machine — P0 is code+test verified with fake nodes; first live donor validation happens when a consented donor connects (noted for P3).
 Verified: pytest tests/petals_bridge/ -> 13 passed; test_same_model_donor_isolation.py -> passed; tests/pi_production/ -> 346 passed; feature_docs -> 86 ok; security_benchmark -> 100%; gate after -> new_failures=0.
 Next: CF-336 P1 — streaming chat completions through the shim, consent-management API surface for donors (non-UI), relay WS streaming branch coverage, security gate re-run.
+
+### L-77 | 2026-08-01T01:05:00Z | S2-execute | kimi-code/k3 | implementer | CF-336 petals bridge P1 <!-- bsc-ledger:CF-336-PETALS-P1 -->
+Did: petals bridge P1 in the replacement worktree. Streaming: chat_completions_stream yields OpenAI chat.completion.chunk dicts through the SAME fail-closed admission (errors raise before the first chunk) with a final chunk carrying finish_reason + _istara_route (route_kind=petals_bridge, latency, streamed chars); route honors stream:true via SSE (error frames instead of HTTP mid-stream, [DONE] terminator). Admin surface: POST /api/petals/v1/consent (node_id + pi_served, require_global_role admin; rejects non-donors/unknown) and GET /api/petals/v1/status (donor-only inventory with endpoint projection state). Shared _admit() factors admission across both paths.
+Result: CF-336 finished with command evidence.
+Verified: pytest tests/petals_bridge/ -> 18 passed; security_benchmark -> 100%; feature_docs -> 86 ok; gate after -> new_failures=0.
+Next: CF-337 P2 — A2A agent-card capabilities (compute.petals.<node>), bridge usage-ledger rows (one per dispatch, estimate-flagged), record_pi_a2a_event telemetry.
