@@ -407,6 +407,11 @@ class ComputeRegistryInvocationMixin:
                                 "content": visible_assistant_content(message),
                             }
                         }
+                        if isinstance(data.get("usage"), dict):
+                            # Propagate provider-reported usage so exact accounting
+                            # (dispatcher ledger, benchmark capture) works instead of
+                            # falling back to text estimation.
+                            result["usage"] = data["usage"]
                         if message.get("tool_calls"):
                             result["message"]["tool_calls"] = message["tool_calls"]
                             result["finish_reason"] = choice.get(

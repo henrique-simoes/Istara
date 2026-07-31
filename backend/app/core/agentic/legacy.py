@@ -76,6 +76,11 @@ def _normalize_chat(data: dict[str, Any]) -> dict[str, Any]:
     route = data.get("_istara_route")
     if isinstance(route, dict):
         outcome["route_evidence"] = route
+        if route.get("node_id"):
+            # The serving registry node IS the legacy endpoint identity; without it
+            # downstream ensemble/dispatcher layers fall back to a "legacy" placeholder
+            # that hides the real route (F-11 route truth).
+            outcome["endpoint_id"] = str(route["node_id"])
     return outcome
 
 
