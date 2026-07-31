@@ -106,6 +106,9 @@ class RunConfig:
     moa_mode: str = "none"
     moa_n: int = 3
     plan_only: bool = False
+    # Estimate-gate scope: "program" (all three MoA lanes, original AC-3 semantics)
+    # or "lane" (only the requested --moa-mode lane, for single-lane phases).
+    estimate_scope: str = "program"
 
     def __post_init__(self) -> None:
         if self.tier not in TIERS:
@@ -239,7 +242,7 @@ def _scenario_for_unit(unit: Any) -> Scenario | None:
 
 def _record_unknown_scenario(unit: Any, config: RunConfig, records_dir: Path) -> dict[str, Any]:
     """A unit whose scenario/pack doesn't resolve still gets a record (never dropped)."""
-    known_packs = ("canonical", "spine", "a2a", "features", "probes")  # schema enum
+    known_packs = ("canonical", "spine", "a2a", "features", "probes", "industry")  # schema enum
     pack = unit.pack if unit.pack in known_packs else "canonical"
     scenario = Scenario(id=unit.scenario_id, title=unit.scenario_id, pack=pack)
     git_sha, git_dirty = git_provenance()
@@ -554,6 +557,8 @@ def build_config_from_args(argv: list[str]) -> RunConfig:
     parser.add_argument("--moa-mode", default="none", choices=MOA_MODE_CHOICES,
                         help="MoA routing mode for live units (default none)")
     parser.add_argument("--moa-n", type=int, default=3, help="MoA samples (self_moa) / requested slots (full_ensemble)")
+    parser.add_argument("--estimate-scope", default="program", choices=["program", "lane"],
+                        help="estimate gate scope: whole 3-lane program (default) or only the requested lane")
     parser.add_argument("--plan-only", action="store_true",
                         help="B0 offline scheduling: build run units, shard into --max-processes disjoint "
                              "shards, write the immutable manifest, print the plan, exit (no dispatch, no spend)")
@@ -597,6 +602,7 @@ def build_config_from_args(argv: list[str]) -> RunConfig:
         moa_mode=ns.moa_mode,
         moa_n=ns.moa_n,
         plan_only=ns.plan_only,
+        estimate_scope=ns.estimate_scope,
     )
 
 
@@ -642,10 +648,21 @@ def _worst_case_program_cost_usd(
         + moa.requested_slots("full_ensemble", config.moa_n)
     )
     preflight = provider.estimate_cost(live_driver.MIN_RESERVE_INPUT_TOKENS, 1)
+    scope = getattr(config, "estimate_scope", "program")
+    if scope == "lane":
+        # New phases (e.g. CF-322 industry) may run a single lane on its own
+        # manifest/ledger: estimate only the requested --moa-mode lane. The
+        # default "program" scope keeps the original AC-3 three-lane semantics.
+        lane_model_calls = (
+            1
+            if config.moa_mode == "none"
+            else moa.requested_slots(config.moa_mode, config.moa_n)
+        )
     total = units_per_lane * lane_model_calls * per_call + preflight
     breakdown = {
         "units_per_lane": units_per_lane,
         "lane_model_calls": lane_model_calls,
+        "estimate_scope": scope,
         "per_call_usd": per_call,
         "preflight_usd": preflight,
         "reserve_input_tokens": reserve_input,

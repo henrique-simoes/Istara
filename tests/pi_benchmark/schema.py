@@ -26,7 +26,7 @@ from jsonschema.validators import Draft202012Validator
 # tests/pi_benchmark/schema.py -> parents[2] is the repository root.
 _REPO_ROOT = Path(__file__).resolve().parents[2]
 SCHEMA_PATH = _REPO_ROOT / "comparison-Istara-pi" / "metrics-schema.json"
-SCHEMA_VERSION = "1.0.0"
+SCHEMA_VERSION = "1.1.0"
 
 
 @lru_cache(maxsize=1)
