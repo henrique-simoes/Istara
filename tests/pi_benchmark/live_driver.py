@@ -58,6 +58,7 @@ from __future__ import annotations
 import asyncio
 import hashlib
 import json
+import time
 import types
 from dataclasses import asdict, dataclass, replace as dc_replace
 from pathlib import Path
@@ -84,6 +85,9 @@ DEEPSEEK_PROVIDER = "deepseek"
 # local or unrelated configured endpoints.
 APPROVED_DEEPSEEK_ENDPOINT_IDS = frozenset({DEEPSEEK_ENDPOINT_ID})
 PI_PROJECT_ID = "pi-benchmark"
+
+# CF-321 engine_path vocabulary from the owner raw-capture requirements doc.
+ENGINE_PATHS = {"pi": "pi_candidate", "legacy": "baseline_istara"}
 ESTIMATOR_CHARS4 = "chars4"
 
 # Reservation sizing (same discipline as the provider adapter). Per model call, reserve a
@@ -125,6 +129,8 @@ class LiveCapture:
     raw_method: str | None        # validation method served, for MoA units
     consensus_score: float | None = None
     consensus_confidence: str = ""
+    samples: tuple[dict, ...] = ()   # per-sample {text, usage, stop_reason, tool_calls} for raw capture
+    capture_errors: tuple[str, ...] = ()  # raw-capture write failures (fail-soft, surfaced in extensions)
 
 
 # ── token estimation / usage normalisation ──────────────────────────────────
@@ -236,6 +242,16 @@ def _capture_from_outcome(outcome: Any, *, prompt: str, system: str) -> LiveCapt
     if usage is None and text:
         usage = _estimate_usage(prompt=prompt, system=system, output_texts=[text])
         estimate = True
+    sample_dicts = tuple(
+        {
+            "text": str(getattr(sample, "text", "") or ""),
+            "usage": _normalize_usage(getattr(sample, "usage", None)),
+            "stop_reason": getattr(sample, "stop_reason", None),
+            "tool_calls": list(getattr(sample, "tool_calls", None) or []),
+            "status": getattr(sample, "status", None),
+        }
+        for sample in samples
+    )
     return LiveCapture(
         text=text,
         usage=usage,
@@ -243,6 +259,7 @@ def _capture_from_outcome(outcome: Any, *, prompt: str, system: str) -> LiveCapt
         endpoint_ids=endpoint_ids,
         route_evidence=tuple(route_evidence),
         raw_method=None,
+        samples=sample_dicts,
     )
 
 
@@ -342,6 +359,16 @@ def _benchmark_moa_capture(
         consensus = compute_consensus(responses, embeddings=None, method=served_method)
         consensus_score = consensus.agreement_score
         consensus_confidence = consensus.confidence
+    sample_dicts = tuple(
+        {
+            "text": str(getattr(sample, "text", "") or ""),
+            "usage": _normalize_usage(getattr(sample, "usage", None)),
+            "stop_reason": getattr(sample, "stop_reason", None),
+            "tool_calls": list(getattr(sample, "tool_calls", None) or []),
+            "status": getattr(sample, "status", None),
+        }
+        for sample in samples
+    )
     return LiveCapture(
         text=responses[0] if responses else "",
         usage=usage,
@@ -351,6 +378,7 @@ def _benchmark_moa_capture(
         raw_method=served_method,
         consensus_score=consensus_score,
         consensus_confidence=consensus_confidence,
+        samples=sample_dicts,
     )
 
 
@@ -366,6 +394,7 @@ async def dispatch_unit(
     ensemble_fn: Any = None,
     agentic_module: Any = None,
     provider: Any = None,
+    capture: Any = None,
 ) -> LiveCapture:
     """Dispatch one unit through the backend dispatcher path and capture what came back.
 
@@ -379,10 +408,16 @@ async def dispatch_unit(
     production registry path onto the benchmark-seeded node
     (:mod:`tests.pi_benchmark.registry_seed`). The seeded node is registered before the
     first legacy dispatch using the provider's runtime-resolved key.
+
+    CF-321: when ``capture`` (a :class:`tests.pi_benchmark.raw_capture.RawCaptureWriter`)
+    is provided, every prompt and output is retained as gzipped JSONL per the owner
+    raw-capture requirements. Capture writes are fail-soft: failures never lose a paid
+    dispatch result; they are returned in ``LiveCapture.capture_errors``.
     """
     engine = getattr(unit, "engine", None)
     if engine not in {"pi", "legacy"}:
         raise PreDispatchError(f"unsupported benchmark engine: {engine!r}")
+    api_key: str | None = None
     if engine == "legacy":
         if provider is None:
             raise PreDispatchError("approved DeepSeek provider is required to seed the legacy registry node")
@@ -397,6 +432,79 @@ async def dispatch_unit(
         except Exception as exc:
             raise PreDispatchError(f"legacy registry seed failed: {exc}") from exc
     moa_mode = getattr(unit, "moa_mode", None)
+    secret_values = (api_key,) if api_key else ()
+    capture_errors: list[str] = []
+
+    def _record_prompts(slots: int, temperatures: list[float]) -> None:
+        if capture is None:
+            return
+        engine_path = ENGINE_PATHS[engine]
+        messages = ([{"role": "system", "content": system}] if system else []) + [
+            {"role": "user", "content": prompt}
+        ]
+        for index in range(slots):
+            settings = {
+                "max_tokens": max_tokens,
+                "temperature": temperatures[index] if index < len(temperatures) else None,
+                "thinking": "off",
+                "timeout_s": 60,
+                "retry_policy": "transient_registry_retry",
+                "deepseek_key_present": True,
+            }
+            try:
+                capture.record_prompt(
+                    call_id=f"{unit.unit_id}:{engine}:{index + 1}",
+                    scenario_id=getattr(unit, "scenario_id", ""),
+                    engine_path=engine_path,
+                    provider=DEEPSEEK_PROVIDER,
+                    model=DEEPSEEK_MODEL,
+                    adapter_mode="agentic_dispatcher",
+                    settings=settings,
+                    messages=messages,
+                    secret_values=secret_values,
+                )
+            except Exception as exc:  # fail-soft: never lose a paid dispatch
+                capture_errors.append(f"prompt_capture:{index + 1}:{exc}")
+
+    def _record_outputs(cap: LiveCapture, latency_s: float) -> None:
+        if capture is None:
+            return
+        engine_path = ENGINE_PATHS[engine]
+        samples = cap.samples or (
+            {"text": cap.text, "usage": cap.usage, "stop_reason": None, "tool_calls": [], "status": "success"},
+        )
+        for index, sample in enumerate(samples):
+            usage = sample.get("usage")
+            cost = None
+            if usage and provider is not None:
+                try:
+                    cost = provider.estimate_cost(
+                        input_tokens=int(usage.get("input_tokens", 0) or 0),
+                        output_tokens=int(usage.get("output_tokens", 0) or 0),
+                        cache_read_tokens=int(usage.get("cache_read_tokens", 0) or 0),
+                        cache_write_tokens=int(usage.get("cache_write_tokens", 0) or 0),
+                    )
+                except Exception:
+                    cost = None
+            try:
+                capture.record_output(
+                    call_id=f"{unit.unit_id}:{engine}:{index + 1}",
+                    scenario_id=getattr(unit, "scenario_id", ""),
+                    engine_path=engine_path,
+                    provider=DEEPSEEK_PROVIDER,
+                    model=DEEPSEEK_MODEL,
+                    content=str(sample.get("text") or ""),
+                    tool_calls=list(sample.get("tool_calls") or []),
+                    stop_reason=sample.get("stop_reason"),
+                    error=None if sample.get("status") == "success" else str(sample.get("status") or "error"),
+                    latency_s=round(latency_s, 4),
+                    usage=usage,
+                    cost_usd=cost,
+                    secret_values=secret_values,
+                )
+            except Exception as exc:  # fail-soft
+                capture_errors.append(f"output_capture:{index + 1}:{exc}")
+
     if moa_mode in moa.MOA_MODES:
         if agentic_module is None:
             await _init_db_best_effort()
@@ -404,10 +512,13 @@ async def dispatch_unit(
         from app.core.agentic.types import TurnParams
 
         slots = moa.requested_slots(moa_mode, moa_n)
+        temperatures = list(moa.self_moa_temperatures(moa_n)) if moa_mode == "self_moa" else []
         params = TurnParams(
             endpoint_id=DEEPSEEK_ENDPOINT_ID if engine == "pi" else None,
             model=DEEPSEEK_MODEL, max_tokens=max_tokens,
         )
+        _record_prompts(slots, temperatures)
+        started = time.perf_counter()
         outcome = await agentic_module.ensemble(
             purpose=f"pi_benchmark.{tier}",
             project_id=PI_PROJECT_ID,
@@ -415,17 +526,20 @@ async def dispatch_unit(
             messages=[{"role": "user", "content": prompt}],
             n=slots,
             distinct=False,
-            temperatures=list(moa.self_moa_temperatures(moa_n)) if moa_mode == "self_moa" else None,
+            temperatures=temperatures or None,
             params=params,
             engine=unit.engine,
             spine_phase="review",
         )
+        elapsed = time.perf_counter() - started
         # ``distinct=False`` is intentional: it forces every slot onto the one approved
         # DeepSeek endpoint. A full ensemble is then explicitly degraded by MoA evidence
         # instead of discovering local/other configured endpoints.
-        return _benchmark_moa_capture(
+        cap = _benchmark_moa_capture(
             outcome, prompt=prompt, system=system, engine=unit.engine, served_method=moa_mode,
         )
+        _record_outputs(cap, elapsed)
+        return dc_replace(cap, capture_errors=tuple(capture_errors))
 
     # The pi arm pins the approved PiModelManager endpoint; the legacy arm leaves
     # endpoint_id unset so the production registry selection routes to the seeded
@@ -444,6 +558,8 @@ async def dispatch_unit(
         distinct=False,
         engine=unit.engine,
     )
+    _record_prompts(1, [])
+    started = time.perf_counter()
     if ensemble_fn is not None:
         outcome = await ensemble_fn(params=params_payload, **call_kwargs)
     else:
@@ -452,7 +568,10 @@ async def dispatch_unit(
         from app.core.agentic.types import TurnParams
 
         outcome = await agentic.ensemble(params=TurnParams(**params_payload), **call_kwargs)
-    return _capture_from_outcome(outcome, prompt=prompt, system=system)
+    elapsed = time.perf_counter() - started
+    cap = _capture_from_outcome(outcome, prompt=prompt, system=system)
+    _record_outputs(cap, elapsed)
+    return dc_replace(cap, capture_errors=tuple(capture_errors))
 
 
 # ── unit orchestration ──────────────────────────────────────────────────────
@@ -702,7 +821,16 @@ async def run_live_unit(
         # Custom test/integration dispatchers retain their existing narrow contract.
         if dispatch is dispatch_unit:
             dispatch_kwargs["provider"] = provider
+            import tests.pi_benchmark.raw_capture as raw_capture
+
+            dispatch_kwargs["capture"] = raw_capture.RawCaptureWriter(
+                records_dir.parent / "raw-llm-calls"
+            )
         capture = await dispatch(**dispatch_kwargs)
+        if getattr(capture, "capture_errors", None):
+            extensions.setdefault("detail", {})
+            if isinstance(extensions["detail"], dict):
+                extensions["detail"]["capture_errors"] = list(capture.capture_errors)
     except PreDispatchError as exc:
         ledger.release(unit.unit_id, reason=f"pre_dispatch:{exc}")
         extensions["detail"] = {"reason": f"pre-dispatch failure: {exc}"}
