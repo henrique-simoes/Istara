@@ -985,6 +985,18 @@ Why: one owner-approved package is cheaper to govern than two; the bridge is the
 production answer to the same replacement question the benchmark measures, and P3 feeds
 the benchmark's full_ensemble lane the multi-node diversity it currently lacks.
 
+DEC-11 | 2026-07-31 | S1-plan | owner + kimi-code/k3
+Context: The petals bridge design (section 7) had three owner open questions. The owner
+resolved all three: "yes for all 3 to implement now".
+Decision: (1) Petals-served Pi traffic is ALLOWED for production research-spine runs by
+default (supersedes the eval-only recommendation; P3 evidence still gathered, not
+gating). (2) Donors DO see the serving engine identity (pi vs legacy) in the donor
+dashboard - transparency requirement, lands with CF-337 P2 telemetry. (3) Mixed-cost-class
+ensembles (API + petals slots in one MoA) are ALLOWED with per-slot route_kind
+provenance so reports can separate donated vs API traffic.
+Why: owner decision unblocks CF-335..338 acceptance criteria; recorded here and in the
+design doc (section 7 marked RESOLVED) so P0-P3 implementers build to the final policy.
+
 
 ### L-9 | 2026-07-22T13:50:34Z | S1-plan | kimi-code/k3 | architect | Planning phase <!-- bsc-ledger:pi-eval-REPLAN-C-r1 -->
 Did: repaired consensus plan C (revision r1)
