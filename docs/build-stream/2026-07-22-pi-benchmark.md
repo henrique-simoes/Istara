@@ -997,6 +997,19 @@ provenance so reports can separate donated vs API traffic.
 Why: owner decision unblocks CF-335..338 acceptance criteria; recorded here and in the
 design doc (section 7 marked RESOLVED) so P0-P3 implementers build to the final policy.
 
+DEC-12 | 2026-07-31 | S2-execute | kimi-code/k3
+Context: CF-322 scope sizing. GAIA is gated on Hugging Face (401 without an
+accepted-terms token). The AC-3 estimate gate prices the full 3-lane program;
+running industry on all three lanes would cost ~$3.16, over the DEC-8 $3.00 cap.
+Decision: (1) GAIA is excluded from CF-322 and tracked as a follow-up needing an owner
+HF credential (recorded in industry/ATTRIBUTION.md). (2) The industry pack runs the
+none lane first (152 units ~ $0.45); a self_moa industry lane is added only if
+headroom remains after CF-323, as a separate governed decision. (3) The runner gains
+--estimate-scope {program,lane} (default program, preserving AC-3 semantics) so
+single-lane phases estimate honestly instead of being priced for all three lanes.
+Why: the owner cap is a hard stop; lane-scoped industry keeps the full BFCL/tau-bench
+subset inside the envelope without weakening the estimate gate for the original program.
+
 
 ### L-9 | 2026-07-22T13:50:34Z | S1-plan | kimi-code/k3 | architect | Planning phase <!-- bsc-ledger:pi-eval-REPLAN-C-r1 -->
 Did: repaired consensus plan C (revision r1)

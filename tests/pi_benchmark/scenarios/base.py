@@ -56,6 +56,12 @@ class Scenario:
     # (it only yields records once a live engine runs it, gated behind G1).
     contract_check: ContractCheck | None = None
     tags: tuple[str, ...] = ()
+    # Rich prompt content (industry pack): when non-empty, the live driver's prompt
+    # builder uses it verbatim instead of the generic smoke prompt.
+    prompt: str = ""
+    # Expected-answer metadata for post-run deterministic scoring (e.g. BFCL ground
+    # truth). Never sent to the model; analysis assets consume it from the scenario.
+    expected: dict[str, Any] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
         if self.min_tier not in TIER_ORDER:

@@ -580,10 +580,15 @@ async def dispatch_unit(
 def default_prompt_builder(unit: Any, scenario: Any) -> str:
     """Deterministic smoke prompt for one unit.
 
-    These prompts exist to validate the live ROUTE (dispatcher -> DeepSeek -> capture ->
-    ledger), not to measure scenario quality — the full scenario corpus is a later phase.
-    The task line derives deterministically from (scenario id, seed) so reruns are stable.
+    Scenarios that carry rich prompt content (industry pack: real BFCL/τ-bench
+    tasks) are used verbatim — these prompts exist to measure scenario quality.
+    Otherwise the generic smoke prompt validates the live ROUTE (dispatcher ->
+    DeepSeek -> capture -> ledger), with a task line derived deterministically from
+    (scenario id, seed) so reruns are stable.
     """
+    rich = str(getattr(scenario, "prompt", "") or "")
+    if rich:
+        return rich
     digest = hashlib.sha256(f"{scenario.id}|{unit.seed}".encode()).hexdigest()[:8]
     return (
         "[pi-benchmark smoke prompt — route validation, not the full scenario corpus]\n"
