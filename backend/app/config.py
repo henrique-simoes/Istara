@@ -304,6 +304,10 @@ class Settings(BaseSettings):
     pi_api_endpoints: list[PiApiEndpoint] = []
     # Bounded Pi runtime worker pool size (round-robin by session_key hash).
     pi_worker_pool_size: int = 2
+    # Petals bridge (CF-335..338): expose consented donors as identity-pinned,
+    # OpenAI-compatible loopback endpoints for the Pi engine. Disabled by default.
+    petals_bridge_enabled: bool = False
+    petals_bridge_base_path: str = "/api/petals/v1"
 
     # AgenticDispatcher engine default (master plan §5.1): the last resort after
     # per-call override, request header, and the project's `agentic_engine`

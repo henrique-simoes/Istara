@@ -58,6 +58,11 @@ class ComputeNode(ComputeNodeTransportMixin, ComputeNodeModelMixin, ComputeNodeI
     priority: int = 10
     latency_ms: float = 0
     active_requests: int = 0
+
+    # Petals bridge (DEC-11): donor consent to serve Pi-engine traffic through the
+    # A2A-bridged loopback shim. Default OFF — a donor never serves Pi traffic
+    # unless explicitly opted in.
+    pi_served: bool = False
     max_active_requests: int = 4
     is_local: bool = False
     is_relay: bool = False

@@ -196,6 +196,32 @@ class PiModelManager:
             entry = self._project_llm_server(row)
             if entry is not None:
                 self._entries.setdefault(entry.endpoint_id, entry)
+        self._project_petals()
+
+    def _project_petals(self) -> None:
+        """One-directional projection of consented donors through the petals bridge.
+
+        The bridge module (``app.core.petals_bridge``, outside pi_runtime) is the
+        only sanctioned boundary to donated compute — this manager never imports
+        the registry itself, never mutates anything, and a disabled bridge or any
+        bridge failure simply leaves the static catalog authoritative.
+        """
+        try:
+            from app.core import petals_bridge
+
+            entries = petals_bridge.catalog_entries()
+        except Exception:  # pragma: no cover - bridge unavailable/disabled
+            logger.debug("pi model manager: petals projection skipped")
+            return
+        for entry_dict in entries:
+            self._entries.setdefault(entry_dict["endpoint_id"], _CatalogEntry(
+                endpoint_id=entry_dict["endpoint_id"],
+                provider_kind=str(entry_dict.get("provider_kind", "openai_compat")),
+                base_url=str(entry_dict["base_url"]).rstrip("/"),
+                model=str(entry_dict.get("model") or "default"),
+                source="petals",
+                kind="petals",
+            ))
 
     @staticmethod
     def _project_llm_server(row: object) -> _CatalogEntry | None:
