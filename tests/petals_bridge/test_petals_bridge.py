@@ -243,3 +243,78 @@ def test_bridge_status_inventories_donors_only(donor, registry_with):
     donor.pi_served = False
     status = petals_bridge.bridge_status()
     assert status["donors"][0]["endpoint_id"] is None
+
+
+# ── P2: usage ledger + A2A capabilities (CF-337) ────────────────────────────
+
+
+def test_dispatch_records_one_usage_row(donor, registry_with, monkeypatch):
+    rows = []
+
+    async def fake_record(**kwargs):
+        rows.append(kwargs)
+
+    monkeypatch.setattr(
+        "app.core.agentic.usage_ledger.record_agentic_usage", fake_record
+    )
+    asyncio.run(petals_bridge.chat_completions({
+        "model": "pi-petals-donor-1",
+        "messages": [{"role": "user", "content": "hello"}],
+        "project_id": "proj-1",
+        "purpose": "research.spine",
+    }))
+    assert len(rows) == 1
+    row = rows[0]
+    assert row["engine"] == "pi"          # DEC-11: donors see the serving engine
+    assert row["node_id"] == "donor-1"
+    assert row["project_id"] == "proj-1"
+    assert row["purpose"] == "research.spine"
+    assert row["outcome"]["usage"]["estimate"] is True
+
+
+def test_stream_records_one_usage_row(donor, registry_with, monkeypatch):
+    rows = []
+
+    async def fake_record(**kwargs):
+        rows.append(kwargs)
+
+    monkeypatch.setattr(
+        "app.core.agentic.usage_ledger.record_agentic_usage", fake_record
+    )
+    _collect_stream({"model": "pi-petals-donor-1", "messages": [{"role": "user", "content": "hi"}]})
+    assert len(rows) == 1
+    assert rows[0]["outcome"]["usage"]["total_tokens"] > 0
+
+
+def test_failed_dispatch_records_no_row(donor, registry_with, monkeypatch):
+    rows = []
+
+    async def fake_record(**kwargs):
+        rows.append(kwargs)
+
+    monkeypatch.setattr(
+        "app.core.agentic.usage_ledger.record_agentic_usage", fake_record
+    )
+    donor.pi_served = False
+    with pytest.raises(PetalsUnavailable):
+        asyncio.run(petals_bridge.chat_completions({
+            "model": "pi-petals-donor-1", "messages": [{"role": "user", "content": "hi"}],
+        }))
+    assert rows == []
+
+
+def test_petals_capabilities_content_free(donor, registry_with, monkeypatch):
+    monkeypatch.setattr(settings, "petals_bridge_enabled", True)
+    caps = petals_bridge.build_petals_capabilities()
+    assert "petals" in caps
+    entry = caps["petals"][0]
+    assert entry["id"] == "compute.petals.donor-1"
+    assert entry["endpoint_id"] == "pi-petals-donor-1"
+    assert entry["cost_class"] == "donated"
+    assert entry["consent"] == "pi_served"
+    assert entry["engine_visibility"] is True
+    assert "ws://" not in str(caps) and "http" not in str(caps)
+
+
+def test_petals_capabilities_empty_when_disabled(donor, registry_with):
+    assert petals_bridge.build_petals_capabilities() == {}

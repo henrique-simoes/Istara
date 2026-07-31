@@ -161,6 +161,10 @@ async def chat_completions(payload: dict[str, Any]) -> dict[str, Any]:
         usage = dict(usage)
         usage.setdefault("estimate", False)
 
+    await _record_usage_row(
+        payload, node_id=node_id, served_model=served_model, usage=usage, started=started,
+    )
+
     return {
         "id": f"chatcmpl-petals-{uuid.uuid4().hex[:24]}",
         "object": "chat.completion",
@@ -218,6 +222,16 @@ async def chat_completions_stream(payload: dict[str, Any]):
             "model": requested or endpoint_id_for(node_id),
             "choices": [{"index": 0, "delta": {"content": text}, "finish_reason": None}],
         }
+    usage = {
+        "prompt_tokens": max(1, sum(len(str(m.get("content", ""))) for m in messages) // 4),
+        "completion_tokens": max(1, total_chars // 4),
+        "total_tokens": 0,
+        "estimate": True,
+    }
+    usage["total_tokens"] = usage["prompt_tokens"] + usage["completion_tokens"]
+    await _record_usage_row(
+        payload, node_id=node_id, served_model=served_model, usage=usage, started=started,
+    )
     yield {
         "id": chunk_id,
         "object": "chat.completion.chunk",
@@ -268,3 +282,55 @@ def bridge_status() -> dict[str, Any]:
             "endpoint_id": endpoint_id_for(node.node_id) if _is_servable(node) else None,
         })
     return {"enabled": settings.petals_bridge_enabled, "donors": donors}
+
+
+async def _record_usage_row(payload: dict[str, Any], *, node_id: str, served_model: str,
+                            usage: dict[str, Any], started: float, error_type: str | None = None) -> None:
+    """One usage-ledger row per bridge dispatch (CF-337 P2, dispatcher §5.5 contract).
+
+    engine="pi" because all bridge traffic is Pi-engine traffic (DEC-11: donors can
+    see the serving engine through these rows); estimate flag propagates from the
+    bridge's usage honesty rules; cost stays 0 (donated) — rows are accounting
+    evidence, never billing. Fail-soft inside record_agentic_usage.
+    """
+    try:
+        from app.core.agentic.usage_ledger import record_agentic_usage
+
+        await record_agentic_usage(
+            engine="pi",
+            purpose=str(payload.get("purpose") or "petals_bridge"),
+            project_id=str(payload.get("project_id") or ""),
+            agent_id=str(payload.get("agent_id") or "pi-petals"),
+            outcome={"usage": usage},
+            model=served_model,
+            started_at=started,
+            node_id=node_id,
+            error_type=error_type,
+        )
+    except Exception:  # pragma: no cover - telemetry is never load-bearing
+        pass
+
+
+def build_petals_capabilities() -> dict[str, Any]:
+    """A2A agent-card capability section for consented donors (CF-337 P2).
+
+    Content-free: node ids, endpoint identities, models, cost class, consent and
+    health — never hosts, prompts, or secrets.
+    """
+    if not settings.petals_bridge_enabled:
+        return {}
+    donors = bridge_status()["donors"]
+    return {
+        "petals": [
+            {
+                "id": f"compute.petals.{d['node_id']}",
+                "endpoint_id": d["endpoint_id"],
+                "models": d["models"],
+                "cost_class": "donated",
+                "consent": "pi_served" if d["pi_served"] else "none",
+                "healthy": d["is_healthy"],
+                "engine_visibility": True,  # DEC-11: donors see the serving engine
+            }
+            for d in donors
+        ]
+    }

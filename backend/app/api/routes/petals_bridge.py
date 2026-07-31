@@ -34,8 +34,8 @@ def _unavailable(exc: PetalsUnavailable) -> JSONResponse:
     )
 
 
-@router.post("/chat/completions")
-async def petals_chat_completions(payload: dict) -> JSONResponse | StreamingResponse:
+@router.post("/chat/completions", response_model=None)
+async def petals_chat_completions(payload: dict):
     if not settings.petals_bridge_enabled:
         return JSONResponse(
             status_code=503,

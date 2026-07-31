@@ -268,6 +268,14 @@ async def agent_card(request: Request):
         authorized = await _authorize_agent_card_request(request)
         if isinstance(authorized, JSONResponse):
             return authorized
+    petals_capabilities: dict = {}
+    if app_settings.petals_bridge_enabled:
+        try:
+            from app.core.petals_bridge import build_petals_capabilities
+
+            petals_capabilities = build_petals_capabilities()
+        except Exception:  # bridge unavailable — card stays valid without it
+            petals_capabilities = {}
     return {
         "name": "Istara",
         "description": (
@@ -281,6 +289,7 @@ async def agent_card(request: Request):
             "streaming": False,
             "push_notifications": False,
             "state_transition_history": True,
+            **petals_capabilities,
         },
         "skills": [
             {
