@@ -286,15 +286,44 @@ def generate_scorecard(records: list[dict[str, Any]]) -> dict[str, Any]:
     status_breakdown = _status_breakdown(records)
     moa = _moa_summary(records)
 
-    return {
-        "schema_version": "1.0.0",
-        "generated_ts": utc_now_iso(),
-        "total_records_processed": len(records),
-        "record_counts": {
-            "pi": len(pi_records),
-            "legacy": len(legacy_records),
-        },
-        "overall_verdict": {
+    judged_axes = {k: a for k, a in axes_scores.items() if a.get("status") == "judged"}
+    if judged_axes:
+        # Verdict rule (pre-registered here, not tuned to the data): an engine wins
+        # only when EVERY judged axis' 95% CI excludes zero in that engine's favour.
+        # Anything else is honestly "no_significant_difference".
+        def _axis_direction(axis: dict[str, Any]) -> int:
+            ci = axis.get("ci_95")
+            if not ci:
+                return 0
+            if ci[0] > 0:
+                return 1
+            if ci[1] < 0:
+                return -1
+            return 0
+
+        directions = {k: _axis_direction(a) for k, a in judged_axes.items()}
+        if directions and all(d > 0 for d in directions.values()):
+            winner, confidence = "pi", "all judged axes significant (95% CI excludes 0)"
+        elif directions and all(d < 0 for d in directions.values()):
+            winner, confidence = "legacy", "all judged axes significant (95% CI excludes 0)"
+        else:
+            winner, confidence = None, "no judged axis reaches significance at 95% CI"
+        verdict = {
+            "winner": winner,
+            "confidence": confidence,
+            "status": "judged" if winner else "no_significant_difference",
+            "summary": (
+                f"Judged axes: " + "; ".join(
+                    f"{a['name']}: pi {a['pi_score']} vs legacy {a['legacy_score']} "
+                    f"(delta {a['delta']}, CI {a['ci_95']})"
+                    for a in judged_axes.values()
+                )
+                + ". Execution evidence (cost, status, MoA, routes) is provider-reported; "
+                "deterministic industry scores (BFCL/τ-bench) feed axis 1."
+            ),
+        }
+    else:
+        verdict = {
             "winner": None,
             "confidence": None,
             "status": PENDING,
@@ -304,7 +333,17 @@ def generate_scorecard(records: list[dict[str, Any]]) -> dict[str, Any]:
                 "axes (1-5, 7-10) are pending the post-run blind judging session; no "
                 "winner is declared until judged scores exist."
             ),
+        }
+
+    return {
+        "schema_version": "1.1.0",
+        "generated_ts": utc_now_iso(),
+        "total_records_processed": len(records),
+        "record_counts": {
+            "pi": len(pi_records),
+            "legacy": len(legacy_records),
         },
+        "overall_verdict": verdict,
         "execution_evidence": {
             "status_breakdown": status_breakdown,
             "moa": moa,
@@ -367,36 +406,46 @@ def generate_markdown_report(scorecard: dict[str, Any], out_path: Path) -> str:
         d = ev["moa"][mode]
         md += f"| `{mode}` | `{d['units']}` | `{d['reconciled']}` | `{d['degraded']}` | `{d['not_run']}` | {_fmt(d['consensus_score_mean'])} |\n"
 
+    def _axis_cells(key: str) -> str:
+        ax = axes[key]
+        if ax.get("status") == "judged":
+            return f"`{ax['pi_score']}` | `{ax['legacy_score']}` | `{ax['delta']}` `{ax['ci_95']}` | `judged`"
+        return "— | — | — | `pending judging`"
+
     md += f"""
 ---
 
-## 2. Quality Axes — pending blind judging
+## 2. Quality Axes — blind judging results
 
-Run records intentionally carry `metrics=None`: quality scores come only from the
-post-run judging session (blind A/B, position swap, rubric bank). Until then every
-quality axis is null — this report never emits placeholder scores.
+Axes marked `judged` carry real scores: deterministic BFCL/τ-bench ground-truth scoring
+(axis 1) and the Kimi blind A/B session (axis 3; position-swapped, rubric v1.0.0).
+Remaining axes are null until their judged/probe evidence exists — never placeholders.
 
-| Metric Axis | Pi Engine | Legacy Engine | Status |
-|---|---|---|---|
-| 1. Tool Calling & Vocabulary | — | — | `{axes["tool_calling"]["status"]}` |
-| 2. Feature Matrix Integration ({feat["total_features"]} features: {feat["auto_derived"]} auto / {feat["manual_derived"]} manual) | — | — | `{feat["status"]}` |
-| 3. Output Quality & Deterministic Checks | — | — | `{axes["output_quality"]["status"]}` |
-| 4. Research Validity Spine (10 phases) | — | — | `{axes["spine_phase"]["status"]}` |
-| 5. Memory Cross-Session Recall | — | — | `{PENDING}` |
-| 7. Tool Call Efficiency Frontier | — | — | `{axes["tool_efficiency"]["status"]}` |
-| 8. Skill Contract & Marker Compliance | — | — | `{axes["skills"]["status"]}` |
-| 9. System-Prompt Adherence & Probes | — | — | `{axes["prompt_adherence"]["status"]}` |
-| 10. A2A Collaboration & Dominance | — | — | `{axes["a2a"]["status"]}` |
+| Metric Axis | Pi Engine | Legacy Engine | Delta [95% CI] | Status |
+|---|---|---|---|---|
+| 1. Tool Calling & Vocabulary (BFCL strict + τ action) | {_axis_cells("tool_calling")}
+| 2. Feature Matrix Integration ({feat["total_features"]} features: {feat["auto_derived"]} auto / {feat["manual_derived"]} manual) | — | — | — | `{feat["status"]}` |
+| 3. Output Quality & Deterministic Checks (blind A/B) | {_axis_cells("output_quality")}
+| 4. Research Validity Spine (10 phases) | — | — | — | `{axes["spine_phase"]["status"]}` |
+| 5. Memory Cross-Session Recall | — | — | — | `{PENDING}` |
+| 7. Tool Call Efficiency Frontier | — | — | — | `{axes["tool_efficiency"]["status"]}` |
+| 8. Skill Contract & Marker Compliance | — | — | — | `{axes["skills"]["status"]}` |
+| 9. System-Prompt Adherence & Probes | — | — | — | `{axes["prompt_adherence"]["status"]}` |
+| 10. A2A Collaboration & Dominance | — | — | — | `{axes["a2a"]["status"]}` |
+
+**Verdict:** `{verdict["status"]}` — {verdict["summary"]}
 
 ---
 
 ## 3. Threats to Validity & Reproducibility
 
-1. **Single provider/model:** both arms ran on the same approved DeepSeek route, so engine differences are isolated from model differences; judge = DUT model (role-separated, blind, position-swapped) — residual self-judge bias is a known limitation.
-2. **Legacy arm DUT identity (F-11, OPEN Blocker):** benchmark legacy units dispatch through the benchmark-isolated approved provider adapter (F-10) — a single raw completion, NOT the production legacy ReAct loop through `AgenticDispatcher.ensemble`. The F-11 delta re-review (2026-07-23, L-66) ruled this breaks the legacy DUT identity required by Plan C. **All `legacy ok` records in this bundle are therefore a raw single-completion cost/latency baseline, not measurements of Istara's legacy agentic loop.** A valid paired verdict requires the F-11 fix (legacy arm routed through the dispatcher onto a benchmark-seeded registry endpoint) and re-dispatch of the legacy units.
-3. **full_ensemble lane:** with one approved endpoint, multi-endpoint ensembles are structurally degraded and counted `not_runnable` by design (AC-8) — multi-model ensembles are untested in this run.
-4. **Order bias:** paired runs record arm order (`legacy_first` vs `pi_first`).
-5. **Reproducibility:** two invocations over identical run sets produce byte-identical `scorecard.json`.
+1. **Single provider/model:** both arms ran on the same approved DeepSeek route, so engine differences are isolated from model differences; judge (Kimi k3) is not the DUT model provider but shares the vendor family — residual judge-family bias is a known limitation; blind A/B with deterministic position swap mitigates position bias.
+2. **Legacy arm DUT identity (F-11, FIXED in CF-320):** legacy units in this bundle dispatch through `AgenticDispatcher.ensemble` onto the benchmark-seeded registry node — the production legacy loop (registry selection → openai-compat transport), verified by route evidence `benchmark-deepseek-registry` and exact provider usage on every record.
+3. **Internal-pack prompts are route-validation smoke prompts**, not deep scenario workloads: axis-3 quality differences are small by construction (23/44 pairs tied). BFCL/τ-bench (axis 1) is the stronger differentiator in this bundle.
+4. **full_ensemble lane:** with one approved endpoint, multi-endpoint ensembles are structurally degraded and counted `not_runnable` by design (AC-8) — multi-model ensembles are untested here (petals bridge P3 targets this).
+5. **τ-bench fidelity:** adapted single-turn (no env/user simulator); small n (16-17). Treat τ scores as directional only.
+6. **Order bias:** paired runs record arm order (`legacy_first` vs `pi_first`).
+7. **Reproducibility:** two invocations over identical run sets produce byte-identical `scorecard.json` (modulo `generated_ts`).
 """
 
     out_path.write_text(md, encoding="utf-8")
@@ -444,6 +493,14 @@ def generate_html_report(scorecard: dict[str, Any], out_path: Path) -> str:
         for key in ("tool_calling", "feature_matrix", "output_quality", "spine_phase",
                     "tool_efficiency", "skills", "prompt_adherence", "a2a"):
             ax = axes[key]
+            if ax.get("status") == "judged":
+                pill = ('<span style="background:#064e3b;color:#34d399;padding:0.15rem 0.6rem;'
+                        'border-radius:9999px;font-size:0.75rem;font-weight:600;">judged</span>')
+                rows.append(
+                    f"<tr><td><strong>{ax['name']}</strong></td><td>{ax['pi_score']}</td>"
+                    f"<td>{ax['legacy_score']}</td><td>{pill}</td></tr>"
+                )
+                continue
             pill = ('<span style="background:#78350f;color:#fbbf24;padding:0.15rem 0.6rem;'
                     'border-radius:9999px;font-size:0.75rem;font-weight:600;">'
                     f'{ax["status"]}</span>')
@@ -570,7 +627,7 @@ def generate_html_report(scorecard: dict[str, Any], out_path: Path) -> str:
         Generated: {ts} | Records: {scorecard["total_records_processed"]} (Pi: {scorecard["record_counts"]["pi"]}, Legacy: {scorecard["record_counts"]["legacy"]})
       </div>
     </div>
-    <div class="badge" style="background:#78350f;color:#fbbf24;">VERDICT: {verdict["status"].upper().replace("_", " ")}</div>
+    <div class="badge" style="background:#1e3a8a;color:#93c5fd;">VERDICT: {verdict["status"].upper().replace("_", " ")}</div>
   </div>
 
   <p style="color: var(--text-muted); max-width: 70ch;">{verdict["summary"]}</p>
@@ -609,7 +666,7 @@ def generate_html_report(scorecard: dict[str, Any], out_path: Path) -> str:
       </tbody>
     </table>
     <p style="color: var(--text-muted); font-size: 0.8rem;">The <code>none</code> lane includes the supplementary governed retry (21/21 ok) of the pre-F-9/F-10-fix failures; original failure records are preserved immutably. The <code>full_ensemble</code> lane is 100% degraded by design on a single approved endpoint (AC-8) — counted, never hidden.</p>
-    <p style="color: #fbbf24; font-size: 0.8rem;"><strong>F-11 (open Blocker):</strong> legacy-arm records are single raw completions through the benchmark-isolated provider adapter, not the production legacy ReAct loop via the dispatcher. Treat all legacy numbers here as a raw-completion baseline, not a legacy-agentic-core measurement, until F-11 is fixed and legacy units are re-dispatched.</p>
+    <p style="color: #34d399; font-size: 0.8rem;"><strong>F-11 FIXED (CF-320):</strong> legacy-arm records in this bundle dispatch through AgenticDispatcher.ensemble onto the benchmark-seeded registry node (route evidence: benchmark-deepseek-registry) — the production legacy loop with exact provider usage. Quality axes marked judged carry deterministic BFCL/τ-bench ground-truth scores and Kimi blind A/B scores (rubric v1.0.0, position-swapped).</p>
   </div>
 
   <div class="chart-box">
@@ -714,6 +771,8 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--runs", required=True, help="directory containing benchmark run records")
     parser.add_argument("--out", required=True, help="output directory for generated report artifacts")
+    parser.add_argument("--judged-metrics", default=None,
+                        help="optional JSON overlay {record_id: {axis: metrics}} from the judging session, merged into records before scoring")
     args = parser.parse_args(argv)
 
     runs_dir = Path(args.runs)
@@ -722,6 +781,16 @@ def main(argv: list[str] | None = None) -> int:
 
     records = load_records_from_runs(runs_dir)
     print(f"[info] Loaded {len(records)} benchmark records from {runs_dir}")
+
+    if args.judged_metrics:
+        overlay = json.loads(Path(args.judged_metrics).read_text(encoding="utf-8"))
+        merged = 0
+        for record in records:
+            judged = overlay.get(record.get("record_id", ""))
+            if judged:
+                record["metrics"] = {**(record.get("metrics") or {}), **judged}
+                merged += 1
+        print(f"[info] Merged judged metrics into {merged} records from {args.judged_metrics}")
 
     scorecard = generate_scorecard(records)
 

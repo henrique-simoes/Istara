@@ -1,0 +1,178 @@
+{
+ "none:B1-T3-canonical-a2a.debate_report.slice-seed0-r0": {
+  "A": "legacy",
+  "B": "pi"
+ },
+ "none:B1-T3-canonical-autoresearch.governed_experiment.slice-seed0-r0": {
+  "A": "legacy",
+  "B": "pi"
+ },
+ "none:B1-T3-canonical-benchmarks.evals.real_user.contract-seed0-r0": {
+  "A": "pi",
+  "B": "legacy"
+ },
+ "none:B1-T3-canonical-channel.lifecycle.simulated_slice-seed0-r0": {
+  "A": "pi",
+  "B": "legacy"
+ },
+ "none:B1-T3-canonical-channels.webhook.telegram.lifecycle-seed0-r0": {
+  "A": "legacy",
+  "B": "pi"
+ },
+ "none:B1-T3-canonical-chat.tool_loop.task_and_finding-seed0-r0": {
+  "A": "pi",
+  "B": "legacy"
+ },
+ "none:B1-T3-canonical-documents.tools.slice-seed0-r0": {
+  "A": "legacy",
+  "B": "pi"
+ },
+ "none:B1-T3-canonical-memory.rag.slice-seed0-r0": {
+  "A": "pi",
+  "B": "legacy"
+ },
+ "none:B1-T3-canonical-memory.reasoningbank.memento.slice-seed0-r0": {
+  "A": "pi",
+  "B": "legacy"
+ },
+ "none:B1-T3-canonical-model.routing.telemetry.slice-seed0-r0": {
+  "A": "pi",
+  "B": "legacy"
+ },
+ "none:B1-T3-canonical-research.spine.step_tracker-seed0-r0": {
+  "A": "legacy",
+  "B": "pi"
+ },
+ "none:B1-T3-canonical-skills.three_skill_slice-seed0-r0": {
+  "A": "legacy",
+  "B": "pi"
+ },
+ "none:B1-T3-canonical-steering.system_prompt.loop.slice-seed0-r0": {
+  "A": "pi",
+  "B": "legacy"
+ },
+ "none:B1-T3-canonical-structured_outputs.core_eval-seed0-r0": {
+  "A": "legacy",
+  "B": "pi"
+ },
+ "none:B1-T3-canonical-task.plan_execute.lifecycle-seed0-r0": {
+  "A": "pi",
+  "B": "legacy"
+ },
+ "none:B2-T3-a2a-a2a.collaboration_handoff-seed0-r0": {
+  "A": "legacy",
+  "B": "pi"
+ },
+ "none:B2-T3-a2a-a2a.debate_report-seed0-r0": {
+  "A": "pi",
+  "B": "legacy"
+ },
+ "none:B2-T3-a2a-a2a.delegation_chain-seed0-r0": {
+  "A": "legacy",
+  "B": "pi"
+ },
+ "none:B3-T3-spine-spine.backlog_to_review-seed0-r0": {
+  "A": "legacy",
+  "B": "pi"
+ },
+ "none:B3-T3-spine-spine.evidence_grounding-seed0-r0": {
+  "A": "legacy",
+  "B": "pi"
+ },
+ "none:B3-T3-spine-spine.provisional_gate-seed0-r0": {
+  "A": "legacy",
+  "B": "pi"
+ },
+ "none:B3-T3-spine-spine.report_generation-seed0-r0": {
+  "A": "legacy",
+  "B": "pi"
+ },
+ "self_moa:B1-T3-canonical-a2a.debate_report.slice-seed0-r0": {
+  "A": "legacy",
+  "B": "pi"
+ },
+ "self_moa:B1-T3-canonical-autoresearch.governed_experiment.slice-seed0-r0": {
+  "A": "legacy",
+  "B": "pi"
+ },
+ "self_moa:B1-T3-canonical-benchmarks.evals.real_user.contract-seed0-r0": {
+  "A": "legacy",
+  "B": "pi"
+ },
+ "self_moa:B1-T3-canonical-channel.lifecycle.simulated_slice-seed0-r0": {
+  "A": "pi",
+  "B": "legacy"
+ },
+ "self_moa:B1-T3-canonical-channels.webhook.telegram.lifecycle-seed0-r0": {
+  "A": "pi",
+  "B": "legacy"
+ },
+ "self_moa:B1-T3-canonical-chat.tool_loop.task_and_finding-seed0-r0": {
+  "A": "pi",
+  "B": "legacy"
+ },
+ "self_moa:B1-T3-canonical-documents.tools.slice-seed0-r0": {
+  "A": "legacy",
+  "B": "pi"
+ },
+ "self_moa:B1-T3-canonical-memory.rag.slice-seed0-r0": {
+  "A": "legacy",
+  "B": "pi"
+ },
+ "self_moa:B1-T3-canonical-memory.reasoningbank.memento.slice-seed0-r0": {
+  "A": "pi",
+  "B": "legacy"
+ },
+ "self_moa:B1-T3-canonical-model.routing.telemetry.slice-seed0-r0": {
+  "A": "pi",
+  "B": "legacy"
+ },
+ "self_moa:B1-T3-canonical-research.spine.step_tracker-seed0-r0": {
+  "A": "legacy",
+  "B": "pi"
+ },
+ "self_moa:B1-T3-canonical-skills.three_skill_slice-seed0-r0": {
+  "A": "pi",
+  "B": "legacy"
+ },
+ "self_moa:B1-T3-canonical-steering.system_prompt.loop.slice-seed0-r0": {
+  "A": "pi",
+  "B": "legacy"
+ },
+ "self_moa:B1-T3-canonical-structured_outputs.core_eval-seed0-r0": {
+  "A": "legacy",
+  "B": "pi"
+ },
+ "self_moa:B1-T3-canonical-task.plan_execute.lifecycle-seed0-r0": {
+  "A": "legacy",
+  "B": "pi"
+ },
+ "self_moa:B2-T3-a2a-a2a.collaboration_handoff-seed0-r0": {
+  "A": "legacy",
+  "B": "pi"
+ },
+ "self_moa:B2-T3-a2a-a2a.debate_report-seed0-r0": {
+  "A": "pi",
+  "B": "legacy"
+ },
+ "self_moa:B2-T3-a2a-a2a.delegation_chain-seed0-r0": {
+  "A": "legacy",
+  "B": "pi"
+ },
+ "self_moa:B3-T3-spine-spine.backlog_to_review-seed0-r0": {
+  "A": "legacy",
+  "B": "pi"
+ },
+ "self_moa:B3-T3-spine-spine.evidence_grounding-seed0-r0": {
+  "A": "pi",
+  "B": "legacy"
+ },
+ "self_moa:B3-T3-spine-spine.provisional_gate-seed0-r0": {
+  "A": "pi",
+  "B": "legacy"
+ },
+ "self_moa:B3-T3-spine-spine.report_generation-seed0-r0": {
+  "A": "legacy",
+  "B": "pi"
+ }
+}

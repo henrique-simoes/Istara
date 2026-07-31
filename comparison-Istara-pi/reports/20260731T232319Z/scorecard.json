@@ -1,0 +1,211 @@
+{
+  "axes": {
+    "a2a": {
+      "ci_95": null,
+      "delta": null,
+      "effect_size": null,
+      "legacy_score": null,
+      "name": "A2A Collaboration & Dominance",
+      "pi_score": null,
+      "status": "pending_judging"
+    },
+    "feature_matrix": {
+      "auto_derived": 16,
+      "ci_95": null,
+      "delta": null,
+      "effect_size": null,
+      "legacy_coverage_pct": null,
+      "legacy_score": null,
+      "manual_derived": 70,
+      "name": "Feature Matrix Integration (86 Features)",
+      "pi_coverage_pct": null,
+      "pi_score": null,
+      "status": "pending_judging",
+      "total_features": 86
+    },
+    "output_quality": {
+      "ci_95": [
+        -0.1591,
+        0.3636
+      ],
+      "delta": 0.1136,
+      "effect_size": 0.1746,
+      "legacy_score": 6.6364,
+      "name": "Output Quality & Deterministic Checks",
+      "pi_score": 6.75,
+      "status": "judged"
+    },
+    "prompt_adherence": {
+      "ci_95": null,
+      "delta": null,
+      "effect_size": null,
+      "legacy_score": null,
+      "name": "System-Prompt Adherence & Probes",
+      "pi_score": null,
+      "status": "pending_judging"
+    },
+    "skills": {
+      "ci_95": null,
+      "delta": null,
+      "effect_size": null,
+      "legacy_score": null,
+      "name": "Skill Contract & Marker Compliance",
+      "pi_score": null,
+      "status": "pending_judging"
+    },
+    "spine_phase": {
+      "legacy_avg": null,
+      "name": "Research Validity Spine (10 Phases)",
+      "phases": {
+        "context": {
+          "legacy": null,
+          "pi": null
+        },
+        "execution": {
+          "legacy": null,
+          "pi": null
+        },
+        "governance": {
+          "legacy": null,
+          "pi": null
+        },
+        "grounding": {
+          "legacy": null,
+          "pi": null
+        },
+        "intent": {
+          "legacy": null,
+          "pi": null
+        },
+        "plan": {
+          "legacy": null,
+          "pi": null
+        },
+        "recovery": {
+          "legacy": null,
+          "pi": null
+        },
+        "review": {
+          "legacy": null,
+          "pi": null
+        },
+        "synthesis": {
+          "legacy": null,
+          "pi": null
+        },
+        "tool_selection": {
+          "legacy": null,
+          "pi": null
+        }
+      },
+      "pi_avg": null,
+      "status": "pending_judging"
+    },
+    "token_cost_efficiency": {
+      "legacy": {
+        "estimated_cost_usd": 0.000307,
+        "exact_cost_usd": 0.151445,
+        "exact_tokens": 91545,
+        "mean_cost_usd_per_ok": 0.001241,
+        "mean_tokens_per_ok": 750.4,
+        "ok_records_estimated": 1,
+        "ok_records_exact": 122
+      },
+      "name": "Token & Cost Efficiency",
+      "note": "Same provider/model/endpoint for both arms; per-record means are the comparable unit, not lane totals (lanes have equal unit counts).",
+      "pi": {
+        "estimated_cost_usd": 0,
+        "exact_cost_usd": 0.146747,
+        "exact_tokens": 87526,
+        "mean_cost_usd_per_ok": 0.001213,
+        "mean_tokens_per_ok": 723.4,
+        "ok_records_estimated": 0,
+        "ok_records_exact": 121
+      },
+      "status": "measured"
+    },
+    "tool_calling": {
+      "ci_95": [
+        -0.1447,
+        0.0921
+      ],
+      "delta": -0.0263,
+      "effect_size": -0.0611,
+      "legacy_score": 0.8289,
+      "name": "Tool Calling & Vocabulary",
+      "pi_score": 0.8052,
+      "status": "judged"
+    },
+    "tool_efficiency": {
+      "ci_95": null,
+      "delta": null,
+      "effect_size": null,
+      "legacy_score": null,
+      "name": "Tool Call Efficiency Frontier",
+      "pi_score": null,
+      "status": "pending_judging"
+    }
+  },
+  "execution_evidence": {
+    "moa": {
+      "self_moa": {
+        "blocked": 0,
+        "consensus_score_mean": 0.0307,
+        "degraded": 43,
+        "downgrades": {},
+        "not_run": 0,
+        "reconciled": 1,
+        "units": 44
+      }
+    },
+    "status_breakdown": {
+      "none": {
+        "legacy": {
+          "budget_blocked": 0,
+          "not_runnable": 0,
+          "ok": 101,
+          "reasons": {},
+          "total": 101
+        },
+        "pi": {
+          "budget_blocked": 0,
+          "not_runnable": 1,
+          "ok": 99,
+          "reasons": {
+            "other": 1
+          },
+          "total": 100
+        }
+      },
+      "self_moa": {
+        "legacy": {
+          "budget_blocked": 0,
+          "not_runnable": 0,
+          "ok": 22,
+          "reasons": {},
+          "total": 22
+        },
+        "pi": {
+          "budget_blocked": 0,
+          "not_runnable": 0,
+          "ok": 22,
+          "reasons": {},
+          "total": 22
+        }
+      }
+    }
+  },
+  "generated_ts": "2026-07-31T23:23:19Z",
+  "overall_verdict": {
+    "confidence": null,
+    "status": "pending_judging",
+    "summary": "Execution evidence is complete: status, cost/token usage, route truth, and MoA reconciliation below are real provider-reported data. Quality axes (1-5, 7-10) are pending the post-run blind judging session; no winner is declared until judged scores exist.",
+    "winner": null
+  },
+  "record_counts": {
+    "legacy": 123,
+    "pi": 122
+  },
+  "schema_version": "1.0.0",
+  "total_records_processed": 245
+}
