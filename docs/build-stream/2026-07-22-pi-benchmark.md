@@ -5,14 +5,14 @@
 item: pi-benchmark
 branch: conductor/pi-bench-retake-20260722
 cf: { spec: CF-SPEC-10, tasks: [CF-320, CF-321, CF-322, CF-323, CF-324, CF-325, CF-335, CF-336, CF-337, CF-338] }
-phase: "Phase RT-6b — SHIPPED (benchmark chain + petals bridge P0-P3)"
+phase: "Phase RT-6b+RT-7 — SHIPPED (benchmark chain + petals P0-P3 + all 10 axes measured)"
 stage: S5-ship
 status: done
 blocked_on: null
 authored_by: build-stream-conductor
 grounding: "Based on 2026-07-20-pi-full-replacement-master-plan.md Section 10 + CF-SPEC-10 + 2026-07-31-pi-petals-a2a-bridge-design.md"
 last: { agent: kimi-code/k3, at: 2026-07-31T20:55:00Z, ledger: L-69 }
-next_action: "Phase done. Follow-ups: cross-model S3 delta reviews of RT-6b changes; GAIA subset when owner provides HF token; live full_ensemble re-run when a consented donor connects (L-79 instructions); P4 donor UI as a new spec."
+next_action: "RT-7 done: all 10 axes measured (L-81/82). Follow-ups: cross-model S3 reviews; GAIA (owner HF token); live full_ensemble on donor connect; F-12 legacy-transport reasoning-overflow typed-failure fix (production); P4 donor UI; CF-SPEC-12 multi-step tool-loop frontier."
 ```
 <!-- /STATUS BLOCK -->
 
@@ -1464,3 +1464,15 @@ Result: Phase RT-6b shipped. Verdict of record: no_significant_difference betwee
 Verified: compass-forge spec show CF-SPEC-10 -> status accepted; task list -> zero open CF-320..338.
 Retro (blameless): (1) The F-11 class of bug (benchmark arm silently not the DUT) argues for route-identity assertions at authoring time, not review time. (2) The report generator's fabricated defaults survived two review rounds — integrity checks on generated numbers belong in CI, now embodied in the evidence-only rewrite. (3) The CF import-cycle analyzer's package-cluster behavior cost three iterations; module-path imports in new files prevent it. (4) max_steps_per_turn=100 was too small for wave-scale execution; owner raised to 1000.
 Next: follow-ups in Status Block: cross-model S3 reviews, GAIA (owner HF token), live full_ensemble on donor connect, P4 UI spec.
+
+### L-81 | 2026-08-01T03:30:00Z | S2-execute | kimi-code/k3 | implementer | RT-7 deep axes (CF-339/340/341) <!-- bsc-ledger:RT7-DEEP-AXES -->
+Did (CF-SPEC-11, owner directive: all axes with metrics + rationale, Istara-faithful, article-feeding): CF-341 dual-engine run_istara_evals.py (--engine legacy|pi through AgenticDispatcher; model env overrides; full model-registry import for script context) — verified live with a REAL engine-difference catch (strict evidence-field check). CF-339: probes pack (5 scenarios) executed both engines — axis 9 deterministic: injection resistance 1.000/1.000, persona 1.000/1.000, thinking-leak 0.000/0.000; feature_scoring.py fills all 86 features' criteria from verified route/test files + W9-ratchet engine independence — coverage 98.75%/98.75%. CF-340: axis-5 memory probe — pi 234MB total (101 backend + 133 Node worker) vs legacy 108MB; retrieval evidence engine-independent.
+Result: CF-339/340/341 finished with command evidence. Spend rt6b ledger: $0.41.
+Verified: pytest tests/pi_benchmark/ -> 215 passed; eval runner legacy pass 1.0; probes-scores.json; feature-scores.json; memory-probe.json; gate after -> new_failures=0.
+Next: deep corpus scoring + judging pass 2 + final report (L-82).
+
+### L-82 | 2026-08-01T04:10:00Z | S2-execute/S5-ship | kimi-code/k3 | judge+implementer | RT-7 deep corpus + all-axes report + CF-SPEC-11 accepted <!-- bsc-ledger:RT7-COMPLETE -->
+Did: deep_research pack (6 scenarios from Istara's own content: evals dag_react cases, CareNav canonical corpus, skill contract, A2A debate) executed both engines on none + self_moa lanes (24 units, 4 accounting failures, 2/4 retries ok). Deterministic scoring: dag plan/tool_choice + skills contract ALL PASS both engines. FOUND F-12 (headline process-level finding): on the 6k-char corpus prompt the LEGACY transport returned 1024 output tokens (=max_tokens cap) with EMPTY visible text yet status ok (reasoning-overflow); Pi returned complete structured output — replicated on legacy self_moa (3072 tokens, 2/3 slots empty -> truthful not_runnable). Judging pass 2: 5 sealed blind packets judged pre-unblind (a2a.debate legacy 7 vs pi 6; self_moa tie; grounding self_moa pi 7 vs legacy 1 (F-12); review_gate ties). Overlay v2 (263 records) + scorecard extended: ALL 10 AXES now judged/measured (spine pi 1.000 vs legacy 0.810 over 6 phases; memory pi 234MB vs legacy 108MB; everything else tie/CI-crossing). CF-342 rationale layer: comparison-Istara-pi/article/axis-rationale.md (KDD'25 taxonomy frame, per-axis values+rationale+threats, arXiv-ready). Final bundle 20260801T010602Z; validation tasks dispositioned; CF-SPEC-11 ACCEPTED.
+Result: Verdict of record unchanged (no_significant_difference on CI axes) + two significant non-CI findings: F-12 legacy reasoning-overflow (favors Pi fidelity) and axis-5 sidecar cost 126MB (favors Legacy footprint). Replacement read: Pi equivalent-or-better on fidelity, equal on quality/cost, worse on memory.
+Verified: pytest -> 215 passed; scorecard all-axes readback; spec accept -> accepted; gate after -> new_failures=0; security -> pass; docs -> 86.
+Next: Status Block follow-ups (cross-model S3 reviews; GAIA HF token; live full_ensemble on donor; F-12 production fix; P4 UI; CF-SPEC-12 multi-step tool-loop frontier).

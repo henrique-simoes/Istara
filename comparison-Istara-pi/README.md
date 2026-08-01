@@ -59,3 +59,6 @@ _No report bundles generated yet._
 
 ## Latest Benchmark Reports
 - [20260731T232605Z Benchmark Report](reports/20260731T232605Z/report.md)
+
+## Latest Benchmark Reports
+- [20260801T010602Z Benchmark Report](reports/20260801T010602Z/report.md)
