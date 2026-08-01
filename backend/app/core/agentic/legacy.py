@@ -69,10 +69,14 @@ def _normalize_chat(data: dict[str, Any]) -> dict[str, Any]:
         "text": message.get("content", "") or "",
         "usage": usage,
         "stop_reason": data.get("done_reason")
+        or data.get("finish_reason")
         or ("tool_calls" if message.get("tool_calls") else "stop"),
         "tool_calls": list(message.get("tool_calls") or []),
         "status": "success",
     }
+    if data.get("truncated"):
+        # F-12: partial answer after budget exhaustion — explicit, never silent.
+        outcome["truncated"] = True
     route = data.get("_istara_route")
     if isinstance(route, dict):
         outcome["route_evidence"] = route
