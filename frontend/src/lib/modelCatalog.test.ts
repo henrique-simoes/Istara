@@ -31,6 +31,6 @@ describe("merged model catalog", () => {
 
   it("normalizes the global engine value used by inherited badges", () => {
     expect(agentEngineLabel(" PI-REPLACEMENT ")).toBe("Pi");
-    expect(agentEngineLabel("legacy")).toBe("Legacy");
+    expect(agentEngineLabel("legacy")).toBe("Istara");
   });
 });
