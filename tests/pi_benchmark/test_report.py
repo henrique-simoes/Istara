@@ -31,7 +31,7 @@ def test_scorecard_generation_and_schema_traceability(tmp_path):
     assert len(records) == 30
 
     scorecard = report_mod.generate_scorecard(records)
-    assert scorecard["schema_version"] == "1.0.0"
+    assert scorecard["schema_version"] == "1.1.0"
     assert scorecard["total_records_processed"] == 30
     assert "axes" in scorecard
     assert "tool_calling" in scorecard["axes"]

@@ -1,0 +1,160 @@
+[
+ {
+  "scenario_id": "deep.dag.plan_json",
+  "engine": "pi",
+  "kind": "dag",
+  "passed": true,
+  "score": 1.0,
+  "checks": [
+   {
+    "name": "json_object",
+    "passed": true,
+    "detail": "valid"
+   },
+   {
+    "name": "json_keys",
+    "passed": true,
+    "detail": "2/2 keys present"
+   },
+   {
+    "name": "dag",
+    "passed": true,
+    "detail": "acyclic"
+   },
+   {
+    "name": "contains_any",
+    "passed": true,
+    "detail": "retrieve, theme"
+   }
+  ]
+ },
+ {
+  "scenario_id": "deep.dag.plan_json",
+  "engine": "legacy",
+  "kind": "dag",
+  "passed": true,
+  "score": 1.0,
+  "checks": [
+   {
+    "name": "json_object",
+    "passed": true,
+    "detail": "valid"
+   },
+   {
+    "name": "json_keys",
+    "passed": true,
+    "detail": "2/2 keys present"
+   },
+   {
+    "name": "dag",
+    "passed": true,
+    "detail": "acyclic"
+   },
+   {
+    "name": "contains_any",
+    "passed": true,
+    "detail": "retrieve, theme"
+   }
+  ]
+ },
+ {
+  "scenario_id": "deep.dag.tool_choice",
+  "engine": "pi",
+  "kind": "dag",
+  "passed": true,
+  "score": 1.0,
+  "checks": [
+   {
+    "name": "json_object",
+    "passed": true,
+    "detail": "valid"
+   },
+   {
+    "name": "json_keys",
+    "passed": true,
+    "detail": "2/2 keys present"
+   },
+   {
+    "name": "field_equals:tool_name",
+    "passed": true,
+    "detail": "expected 'search_memory', got 'search_memory'"
+   },
+   {
+    "name": "nested_contains:arguments.query",
+    "passed": true,
+    "detail": "expected substring 'checkout'"
+   }
+  ]
+ },
+ {
+  "scenario_id": "deep.dag.tool_choice",
+  "engine": "legacy",
+  "kind": "dag",
+  "passed": true,
+  "score": 1.0,
+  "checks": [
+   {
+    "name": "json_object",
+    "passed": true,
+    "detail": "valid"
+   },
+   {
+    "name": "json_keys",
+    "passed": true,
+    "detail": "2/2 keys present"
+   },
+   {
+    "name": "field_equals:tool_name",
+    "passed": true,
+    "detail": "expected 'search_memory', got 'search_memory'"
+   },
+   {
+    "name": "nested_contains:arguments.query",
+    "passed": true,
+    "detail": "expected substring 'checkout'"
+   }
+  ]
+ },
+ {
+  "scenario_id": "deep.skills.contract",
+  "engine": "pi",
+  "kind": "skills",
+  "passed": true,
+  "score": 1.0,
+  "checks": [
+   {
+    "name": "marker_prefix",
+    "passed": true
+   },
+   {
+    "name": "sections_present",
+    "passed": true
+   },
+   {
+    "name": "sections_ordered",
+    "passed": true
+   }
+  ]
+ },
+ {
+  "scenario_id": "deep.skills.contract",
+  "engine": "legacy",
+  "kind": "skills",
+  "passed": true,
+  "score": 1.0,
+  "checks": [
+   {
+    "name": "marker_prefix",
+    "passed": true
+   },
+   {
+    "name": "sections_present",
+    "passed": true
+   },
+   {
+    "name": "sections_ordered",
+    "passed": true
+   }
+  ]
+ }
+]

@@ -1,0 +1,257 @@
+{
+  "axes": {
+    "a2a": {
+      "ci_95": null,
+      "delta": 0.0,
+      "effect_size": null,
+      "legacy_goal_completion": 1.0,
+      "legacy_score": 1.0,
+      "name": "A2A Collaboration & Dominance",
+      "pi_goal_completion": 1.0,
+      "pi_score": 1.0,
+      "status": "judged"
+    },
+    "feature_matrix": {
+      "auto_derived": 16,
+      "ci_95": null,
+      "criteria_pass_rates": {
+        "engine_behavior": null,
+        "evidence_emitted": 1.0,
+        "expected_action": 1.0,
+        "graceful_failure": 1.0,
+        "project_scoped": 1.0,
+        "reachable": 1.0
+      },
+      "delta": null,
+      "effect_size": null,
+      "legacy_coverage_pct": 98.75,
+      "legacy_score": null,
+      "manual_derived": 70,
+      "name": "Feature Matrix Integration (86 Features)",
+      "note": "Coverage over derivable criteria; 70/86 features have >=1 manual criterion (counted, never fabricated); engine independence for non-LLM features via the W9 count-to-zero ratchet.",
+      "pi_coverage_pct": 98.75,
+      "pi_score": null,
+      "status": "measured",
+      "total_features": 86
+    },
+    "memory_load": {
+      "legacy": {
+        "backend_rss_bytes": 107839488,
+        "pi_worker_rss_bytes": null,
+        "total_rss_bytes": 107839488
+      },
+      "name": "Memory Load & Cross-Session Recall",
+      "note": "Pi runs a supervised Node worker sidecar (its RSS is separate); legacy is in-process. Cross-session recall and retrieval precision: retrieval evidence is engine-independent (tests/evals rag suite).",
+      "pi": {
+        "backend_rss_bytes": 101040128,
+        "pi_worker_rss_bytes": 132972544,
+        "total_rss_bytes": 234012672
+      },
+      "status": "measured"
+    },
+    "output_quality": {
+      "ci_95": [
+        -0.1591,
+        0.3636
+      ],
+      "delta": 0.1136,
+      "effect_size": 0.1746,
+      "legacy_score": 6.6364,
+      "name": "Output Quality & Deterministic Checks",
+      "pi_score": 6.75,
+      "status": "judged"
+    },
+    "prompt_adherence": {
+      "injection_resistance": {
+        "legacy": 1.0,
+        "pi": 1.0
+      },
+      "name": "System-Prompt Adherence & Probes",
+      "persona_compliance": {
+        "legacy": 1.0,
+        "pi": 1.0
+      },
+      "status": "measured",
+      "thinking_leak_rate": {
+        "legacy": 0.0,
+        "pi": 0.0
+      }
+    },
+    "skills": {
+      "ci_95": null,
+      "delta": 0.0,
+      "effect_size": null,
+      "legacy_pass_rate": 1.0,
+      "legacy_score": 1.0,
+      "n": {
+        "legacy": 1,
+        "pi": 1
+      },
+      "name": "Skill Contract & Marker Compliance",
+      "pi_pass_rate": 1.0,
+      "pi_score": 1.0,
+      "status": "judged"
+    },
+    "spine_phase": {
+      "legacy_avg": 0.8095,
+      "measured_phases": 6,
+      "name": "Research Validity Spine (10 Phases)",
+      "phases": {
+        "context": {
+          "legacy": null,
+          "pi": null
+        },
+        "execution": {
+          "legacy": 1.0,
+          "pi": 1.0
+        },
+        "governance": {
+          "legacy": null,
+          "pi": null
+        },
+        "grounding": {
+          "legacy": 0.0,
+          "pi": 1.0
+        },
+        "intent": {
+          "legacy": null,
+          "pi": null
+        },
+        "plan": {
+          "legacy": 1.0,
+          "pi": 1.0
+        },
+        "recovery": {
+          "legacy": null,
+          "pi": null
+        },
+        "review": {
+          "legacy": 0.8571,
+          "pi": 1.0
+        },
+        "synthesis": {
+          "legacy": 1.0,
+          "pi": 1.0
+        },
+        "tool_selection": {
+          "legacy": 1.0,
+          "pi": 1.0
+        }
+      },
+      "pi_avg": 1.0,
+      "status": "judged"
+    },
+    "token_cost_efficiency": {
+      "legacy": {
+        "estimated_cost_usd": 0.000307,
+        "exact_cost_usd": 0.184309,
+        "exact_tokens": 112400,
+        "mean_cost_usd_per_ok": 0.001336,
+        "mean_tokens_per_ok": 814.5,
+        "ok_records_estimated": 1,
+        "ok_records_exact": 138
+      },
+      "name": "Token & Cost Efficiency",
+      "note": "Same provider/model/endpoint for both arms; per-record means are the comparable unit, not lane totals (lanes have equal unit counts).",
+      "pi": {
+        "estimated_cost_usd": 0,
+        "exact_cost_usd": 0.180548,
+        "exact_tokens": 105367,
+        "mean_cost_usd_per_ok": 0.001318,
+        "mean_tokens_per_ok": 769.1,
+        "ok_records_estimated": 0,
+        "ok_records_exact": 137
+      },
+      "status": "measured"
+    },
+    "tool_calling": {
+      "ci_95": [
+        -0.1429,
+        0.0909
+      ],
+      "delta": -0.026,
+      "effect_size": -0.0607,
+      "legacy_score": 0.8312,
+      "name": "Tool Calling & Vocabulary",
+      "pi_score": 0.8077,
+      "status": "judged"
+    },
+    "tool_efficiency": {
+      "legacy_avg_tool_calls_per_task": 1.0,
+      "legacy_tool_selection_accuracy": 0.8312,
+      "name": "Tool Call Efficiency Frontier",
+      "note": "Single-call workloads in this phase (BFCL/dag): both engines average 1 model call per task; selection accuracy from axis-1 evidence. Multi-step tool-loop workloads are a follow-up.",
+      "pi_avg_tool_calls_per_task": 1.0,
+      "pi_tool_selection_accuracy": 0.8077,
+      "status": "measured"
+    }
+  },
+  "execution_evidence": {
+    "moa": {
+      "self_moa": {
+        "blocked": 1,
+        "consensus_score_mean": 0.1245,
+        "degraded": 50,
+        "downgrades": {
+          "partial_coder": 1
+        },
+        "not_run": 1,
+        "reconciled": 5,
+        "units": 57
+      }
+    },
+    "status_breakdown": {
+      "none": {
+        "legacy": {
+          "budget_blocked": 0,
+          "not_runnable": 0,
+          "ok": 112,
+          "reasons": {},
+          "total": 112
+        },
+        "pi": {
+          "budget_blocked": 0,
+          "not_runnable": 4,
+          "ok": 110,
+          "reasons": {
+            "other": 4
+          },
+          "total": 114
+        }
+      },
+      "self_moa": {
+        "legacy": {
+          "budget_blocked": 0,
+          "not_runnable": 2,
+          "ok": 27,
+          "reasons": {
+            "other": 2
+          },
+          "total": 29
+        },
+        "pi": {
+          "budget_blocked": 0,
+          "not_runnable": 1,
+          "ok": 27,
+          "reasons": {
+            "other": 1
+          },
+          "total": 28
+        }
+      }
+    }
+  },
+  "generated_ts": "2026-08-01T01:07:38Z",
+  "overall_verdict": {
+    "confidence": "no judged axis reaches significance at 95% CI",
+    "status": "no_significant_difference",
+    "summary": "Judged axes: Tool Calling & Vocabulary: pi 0.8077 vs legacy 0.8312 (delta -0.026, CI [-0.1429, 0.0909]); Output Quality & Deterministic Checks: pi 6.75 vs legacy 6.6364 (delta 0.1136, CI [-0.1591, 0.3636]); Research Validity Spine (10 Phases): pi 1.0 vs legacy 0.8095 (delta None, CI None); Skill Contract & Marker Compliance: pi 1.0 vs legacy 1.0 (delta 0.0, CI None); A2A Collaboration & Dominance: pi 1.0 vs legacy 1.0 (delta 0.0, CI None). Execution evidence (cost, status, MoA, routes) is provider-reported; deterministic industry scores (BFCL/\u03c4-bench) feed axis 1.",
+    "winner": null
+  },
+  "record_counts": {
+    "legacy": 141,
+    "pi": 142
+  },
+  "schema_version": "1.1.0",
+  "total_records_processed": 283
+}

@@ -87,7 +87,7 @@ PRIMARY_OPENAI_BASE_URL = os.getenv(
     "ISTARA_LIVE_LLM_BASE_URL",
     os.getenv("ISTARA_PRIMARY_LLM_TEST_BASE_URL", os.getenv("LMSTUDIO_HOST", "")),
 ).strip()
-PRIMARY_TEST_MODEL = "google/gemma-4-e4b"
+PRIMARY_TEST_MODEL = os.getenv("ISTARA_LIVE_LLM_MODEL", "google/gemma-4-e4b")
 KEYCHAIN_SERVICE = os.getenv(
     "ISTARA_LIVE_LLM_KEYCHAIN_SERVICE",
     "istara-live-openai-compatible-tests",

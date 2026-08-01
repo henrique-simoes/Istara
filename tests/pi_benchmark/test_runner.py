@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import json
 import sys
 import types
@@ -254,6 +255,44 @@ def test_wave_mode_executes_shard_then_resume_skips_completed(monkeypatch, tmp_p
     assert code == 0 and records == []
 
 
+def test_wave_mode_dispatches_all_pending_units_on_one_event_loop(monkeypatch, tmp_path):
+    """A wave must not bind the singleton Pi supervisor to one loop per unit."""
+    global _FAKE_MANIFEST
+    scenario_id = load_pack("canonical")[0].id
+    units = [
+        {
+            "unit_id": f"B1-T3-canonical-{scenario_id}-seed0-r{repeat}-pi",
+            "pack": "canonical", "scenario_id": scenario_id, "seed": 0,
+            "repeat": repeat, "engine": "pi", "phase": "B1", "moa_mode": None,
+        }
+        for repeat in (1, 2)
+    ]
+    _FAKE_MANIFEST = {"shards": [units], "budget_cap_usd": 1.0, "moa_n": 3}
+    scheduler, ledger_mod, provider_mod = _fake_lane_a_modules()
+    monkeypatch.setitem(sys.modules, "tests.pi_benchmark.scheduler", scheduler)
+    monkeypatch.setitem(sys.modules, "tests.pi_benchmark.budget_ledger", ledger_mod)
+    monkeypatch.setitem(sys.modules, "tests.pi_benchmark.deepseek_provider", provider_mod)
+
+    capture = LiveCapture(
+        text="wave output", usage={
+            "input_tokens": 40, "output_tokens": 12, "cache_read_tokens": 0,
+            "cache_write_tokens": 0, "total_tokens": 52,
+        }, estimate=False, endpoint_ids=("pi-deepseek-default",),
+        route_evidence=({"endpoint_id": "pi-deepseek-default"},), raw_method=None,
+    )
+    loops = []
+
+    async def dispatch(**kwargs):
+        loops.append(asyncio.get_running_loop())
+        return capture
+
+    code, records = runner.run_wave(_wave_config(tmp_path), dispatch=dispatch)
+
+    assert code == 0 and len(records) == len(units)
+    assert len(loops) == len(units)
+    assert loops[0] is loops[1]
+
+
 def test_wave_mode_executes_manifest_written_by_scheduler(monkeypatch, tmp_path):
     """The real B0 manifest can be consumed directly by a B1 wave."""
     scenario_id = load_pack("canonical")[0].id
@@ -391,3 +430,56 @@ def test_plan_only_moa_mode_is_baked_into_units(tmp_path):
     assert manifest["moa_n"] == 3
     # moa_n (samples), repeats, and max_processes stay separate manifest fields.
     assert manifest["repeats"] == 1 and manifest["max_processes"] == 2
+
+
+# ── RT-2: dry-run worst-case estimate gate ──────────────────────────────────
+
+
+def _full_retake_plan_args(tmp_path, *extra):
+    return [
+        "--pack", "canonical,spine,a2a", "--tier", "T3", "--engine", "both",
+        "--seeds", "0", "--repeats", "1", "--out", str(tmp_path / "b0"),
+        "--max-processes", "4", "--plan-only", *extra,
+    ]
+
+
+def test_plan_only_prints_estimate_and_writes_manifest_within_cap(tmp_path, capsys):
+    # The default retake schedule (22 scenarios × both engines × 3 shared-ledger MoA lanes)
+    # is comfortably under the $1.00 cap (~$0.73), so the estimate prints and the manifest
+    # is written (acceptance AC-3).
+    code = runner.main(_full_retake_plan_args(tmp_path))
+    assert code == 0
+    out = capsys.readouterr().out
+    assert "worst-case program estimate:" in out
+    manifest = json.loads((tmp_path / "b0" / "manifest.json").read_text(encoding="utf-8"))
+    assert manifest["max_processes"] == 4
+
+
+def test_plan_only_over_budget_estimate_exits_2_without_manifest(tmp_path, capsys):
+    # repeats=2 roughly doubles the schedule to ~$1.47 > $1.00; the gate must refuse before
+    # any manifest write or live call, leaving nothing behind (acceptance AC-3).
+    code = runner.main(_full_retake_plan_args(tmp_path, "--repeats", "2"))
+    assert code == 2
+    err = capsys.readouterr().err
+    assert "exceeds budget" in err
+    assert not (tmp_path / "b0" / "manifest.json").exists()
+
+
+def test_worst_case_estimate_arithmetic_is_deterministic():
+    from tests.pi_benchmark import live_driver
+    from tests.pi_benchmark.deepseek_provider import DeepSeekProvider
+
+    config = _canonical_t0(tier="T3", phase="B1", engines=("pi", "legacy"), moa_n=3)
+    scenarios = load_pack("canonical")
+    total, breakdown = runner._worst_case_program_cost_usd(config, scenarios)
+    # none(1) + self_moa(moa_n=3) + full_ensemble(max(3, moa_n)=3) = 7 model-calls/unit.
+    assert breakdown["lane_model_calls"] == 7
+    assert breakdown["units_per_lane"] == len(scenarios) * 2  # 1 seed × 1 repeat × 2 engines
+    # Smoke prompts are tiny, so the reservation floors at MIN_RESERVE_INPUT_TOKENS.
+    assert breakdown["reserve_input_tokens"] == live_driver.MIN_RESERVE_INPUT_TOKENS
+    provider = DeepSeekProvider(provider="deepseek", model="deepseek-v4-pro")
+    per_call = provider.estimate_cost(live_driver.MIN_RESERVE_INPUT_TOKENS, live_driver.DEFAULT_MAX_TOKENS)
+    preflight = provider.estimate_cost(live_driver.MIN_RESERVE_INPUT_TOKENS, 1)
+    expected = round(breakdown["units_per_lane"] * 7 * per_call + preflight, 7)
+    assert total == pytest.approx(expected)
+    assert total < 1.00  # the default program fits the cumulative $1.00 envelope

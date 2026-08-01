@@ -2,18 +2,21 @@
 
 from __future__ import annotations
 
-from . import a2a, canonical, spine
+from . import a2a, canonical, deep_research, industry, probes_pack, spine
 from .base import Scenario
 
 # The `features` and `probes` packs are produced by their own compilers (B0-6, B0-8)
 # rather than by static scenario lists, so they are not loadable here; the runner routes
 # them to their dedicated builders.
-PACK_NAMES: tuple[str, ...] = ("canonical", "spine", "a2a")
+PACK_NAMES: tuple[str, ...] = ("canonical", "spine", "a2a", "industry", "probes", "deep_research")
 
 _LOADERS = {
     "canonical": canonical.scenarios,
     "spine": spine.scenarios,
     "a2a": a2a.scenarios,
+    "industry": industry.scenarios,
+    "probes": probes_pack.scenarios,
+    "deep_research": deep_research.scenarios,
 }
 
 

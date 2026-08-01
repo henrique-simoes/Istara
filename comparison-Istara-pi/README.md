@@ -44,3 +44,21 @@ _No report bundles generated yet._
 
 ## Latest Benchmark Reports
 - [pi-rerun Benchmark Report](reports/pi-rerun/report.md)
+
+## Latest Benchmark Reports
+- [20260731T191444Z Benchmark Report](reports/20260731T191444Z/report.md)
+
+## Latest Benchmark Reports
+- [pi-retake-rerun Benchmark Report](reports/pi-retake-rerun/report.md)
+
+## Latest Benchmark Reports
+- [20260731T191743Z Benchmark Report](reports/20260731T191743Z/report.md)
+
+## Latest Benchmark Reports
+- [20260731T232319Z Benchmark Report](reports/20260731T232319Z/report.md)
+
+## Latest Benchmark Reports
+- [20260731T232605Z Benchmark Report](reports/20260731T232605Z/report.md)
+
+## Latest Benchmark Reports
+- [20260801T010602Z Benchmark Report](reports/20260801T010602Z/report.md)

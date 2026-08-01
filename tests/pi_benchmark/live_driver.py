@@ -1,15 +1,23 @@
 """Live T2/T3 execution through the Istara dispatcher path (Lane B).
 
 This driver replaces the old synthetic T2/T3 path: every live unit is dispatched for
-real through Istara's AgenticDispatcher ensemble verb with DeepSeek ``deepseek-v4-pro``
-as the ONLY provider (DEC-5: local routes are disabled — there is no local-model path),
-under a shared crash-safe budget ledger (Lane A's :class:`BudgetLedger`).
+real through the approved DeepSeek ``deepseek-v4-pro`` route as the ONLY provider
+(DEC-5: local routes are disabled — there is no local-model path), under a shared
+crash-safe budget ledger (Lane A's :class:`BudgetLedger`). F-11 (CF-320): BOTH engines
+dispatch through ``AgenticDispatcher.ensemble`` — the pi arm pinned to the
+``pi-deepseek-default`` PiModelManager endpoint, the legacy arm through the production
+ComputeRegistry path onto the benchmark-seeded node
+(:mod:`tests.pi_benchmark.registry_seed`), so the legacy DUT is the real production
+legacy loop (registry selection → openai-compat transport → ``attach_route_evidence``),
+not a benchmark-only side path.
 
 Routing per unit:
 
-* ``moa_mode is None`` — one ``agentic.ensemble`` sample (``n=1, distinct=False``) pinned
-  to the auto-registered ``pi-deepseek-default`` endpoint via ``TurnParams``; the engine
-  (``pi`` | ``legacy``) comes from the unit.
+* ``moa_mode is None`` — one ``agentic.ensemble`` sample (``n=1, distinct=False``); the
+  engine (``pi`` | ``legacy``) comes from the unit. Pi units pin
+  ``pi-deepseek-default`` via ``TurnParams.endpoint_id``; legacy units leave it unset so
+  production registry selection routes to the seeded ``benchmark-deepseek-registry``
+  node (registered before the first legacy dispatch via the provider's runtime key).
 * ``moa_mode in {"self_moa", "full_ensemble"}`` — the benchmark-safe
   ``agentic.ensemble`` path with the unit's ``engine``, DeepSeek model, and approved
   endpoint pinned. All slots use the approved endpoint (``distinct=False``); a requested
@@ -50,6 +58,7 @@ from __future__ import annotations
 import asyncio
 import hashlib
 import json
+import time
 import types
 from dataclasses import asdict, dataclass, replace as dc_replace
 from pathlib import Path
@@ -58,11 +67,14 @@ from typing import Any
 from tests.pi_benchmark import moa, schema
 
 try:  # Lane A module; fall back to a local twin until it lands.
-    from tests.pi_benchmark.budget_ledger import BudgetExceeded
+    from tests.pi_benchmark.budget_ledger import BudgetExceeded, LedgerStateError
 except ImportError:  # pragma: no cover - exercised only while Lane A is unmerged
 
     class BudgetExceeded(RuntimeError):  # type: ignore[no-redef]
         """Fallback twin of Lane A's BudgetExceeded (same name, same semantics)."""
+
+    class LedgerStateError(ValueError):  # type: ignore[no-redef]
+        """Fallback twin of Lane A's LedgerStateError (same name, same semantics)."""
 
 
 DEEPSEEK_MODEL = "deepseek-v4-pro"
@@ -73,7 +85,19 @@ DEEPSEEK_PROVIDER = "deepseek"
 # local or unrelated configured endpoints.
 APPROVED_DEEPSEEK_ENDPOINT_IDS = frozenset({DEEPSEEK_ENDPOINT_ID})
 PI_PROJECT_ID = "pi-benchmark"
+
+# CF-321 engine_path vocabulary from the owner raw-capture requirements doc.
+ENGINE_PATHS = {"pi": "pi_candidate", "legacy": "baseline_istara"}
 ESTIMATOR_CHARS4 = "chars4"
+
+# Reservation sizing (same discipline as the provider adapter). Per model call, reserve a
+# margin of input-priced tokens — 2x the chars4 estimate, floored at MIN_RESERVE_INPUT_TOKENS
+# — plus the full DEFAULT_MAX_TOKENS output bound. Under-reserving is unsafe: the ledger
+# refuses a commit whose actual cost exceeds its reservation, so a too-tight reservation
+# turns a normal call into a post-dispatch LedgerStateError that would otherwise wedge the
+# wave. The B0 estimate gate (runner --plan-only) reads both constants.
+MIN_RESERVE_INPUT_TOKENS = 256
+DEFAULT_MAX_TOKENS = 1024
 
 
 class PreDispatchError(RuntimeError):
@@ -105,6 +129,8 @@ class LiveCapture:
     raw_method: str | None        # validation method served, for MoA units
     consensus_score: float | None = None
     consensus_confidence: str = ""
+    samples: tuple[dict, ...] = ()   # per-sample {text, usage, stop_reason, tool_calls} for raw capture
+    capture_errors: tuple[str, ...] = ()  # raw-capture write failures (fail-soft, surfaced in extensions)
 
 
 # ── token estimation / usage normalisation ──────────────────────────────────
@@ -178,18 +204,35 @@ async def _init_db_best_effort() -> None:
         pass
 
 
+def _sample_route_node_id(sample: Any) -> str:
+    """Endpoint identity for one sample, tolerating both arm shapes.
+
+    Pi samples carry ``endpoint_id`` directly (PiModelManager identity). Legacy
+    samples carry the registry's ``route_evidence`` dict (``node_id``) propagated
+    by ``agentic/legacy.py::_normalize_chat`` — that IS the legacy endpoint
+    identity (F-11/AC-7 route truth for the legacy arm).
+    """
+    direct = str(getattr(sample, "endpoint_id", "") or "")
+    if direct:
+        return direct
+    route = getattr(sample, "route_evidence", None)
+    if isinstance(route, dict):
+        return str(route.get("node_id") or "")
+    return ""
+
+
 def _capture_from_outcome(outcome: Any, *, prompt: str, system: str) -> LiveCapture:
     samples = list(getattr(outcome, "samples", None) or [])
     ok_samples = [s for s in samples if getattr(s, "status", None) == "success" and getattr(s, "text", "")]
     endpoint_ids = tuple(str(e) for e in (getattr(outcome, "endpoint_ids", None) or ()))
     if not endpoint_ids:
-        endpoint_ids = tuple(str(getattr(s, "endpoint_id", "") or "") for s in samples)
+        endpoint_ids = tuple(_sample_route_node_id(s) for s in samples)
     route_evidence = []
     for index, sample in enumerate(samples):
         if getattr(sample, "status", None) != "success" or not getattr(sample, "text", ""):
             continue
-        endpoint_id = str(
-            getattr(sample, "endpoint_id", "")
+        endpoint_id = (
+            _sample_route_node_id(sample)
             or (endpoint_ids[index] if index < len(endpoint_ids) else "")
         )
         route_evidence.append({"endpoint_id": endpoint_id, "route_kind": "agentic_ensemble"})
@@ -199,6 +242,16 @@ def _capture_from_outcome(outcome: Any, *, prompt: str, system: str) -> LiveCapt
     if usage is None and text:
         usage = _estimate_usage(prompt=prompt, system=system, output_texts=[text])
         estimate = True
+    sample_dicts = tuple(
+        {
+            "text": str(getattr(sample, "text", "") or ""),
+            "usage": _normalize_usage(getattr(sample, "usage", None)),
+            "stop_reason": getattr(sample, "stop_reason", None),
+            "tool_calls": list(getattr(sample, "tool_calls", None) or []),
+            "status": getattr(sample, "status", None),
+        }
+        for sample in samples
+    )
     return LiveCapture(
         text=text,
         usage=usage,
@@ -206,7 +259,24 @@ def _capture_from_outcome(outcome: Any, *, prompt: str, system: str) -> LiveCapt
         endpoint_ids=endpoint_ids,
         route_evidence=tuple(route_evidence),
         raw_method=None,
+        samples=sample_dicts,
     )
+
+
+def _is_approved_route(engine: str, endpoint_id: str) -> bool:
+    """Approved route identity per arm (AC-7 route truth).
+
+    Pi units must serve from the pinned PiModelManager endpoint or — in the petals
+    era (CF-338) — from bridge-projected ``pi-petals-*`` endpoints (projection
+    itself enforces donor consent + health; the prefix is identity, not a bypass).
+    Legacy units must serve from the benchmark-seeded registry node (F-11).
+    Anything else is a rejected route, never a silently accepted one.
+    """
+    import tests.pi_benchmark.registry_seed as registry_seed
+
+    if engine == "legacy":
+        return endpoint_id == registry_seed.BENCHMARK_NODE_ID
+    return endpoint_id in APPROVED_DEEPSEEK_ENDPOINT_IDS or endpoint_id.startswith("pi-petals-")
 
 
 def _benchmark_route_evidence(
@@ -215,8 +285,8 @@ def _benchmark_route_evidence(
     """Validate and redact the route identity returned by the benchmark dispatcher."""
     evidence: list[dict] = []
     for index, sample in enumerate(samples):
-        endpoint_id = str(
-            getattr(sample, "endpoint_id", "")
+        endpoint_id = (
+            _sample_route_node_id(sample)
             or (endpoint_ids[index] if index < len(endpoint_ids) else "")
         )
         if not endpoint_id:
@@ -224,7 +294,7 @@ def _benchmark_route_evidence(
                 "benchmark sample has no endpoint identity",
                 route={"route_kind": "agentic_ensemble", "admission": "rejected"},
             )
-        if endpoint_id not in APPROVED_DEEPSEEK_ENDPOINT_IDS:
+        if not _is_approved_route(engine, endpoint_id):
             raise RouteAdmissionError(
                 f"benchmark route not approved: {endpoint_id!r}",
                 route={
@@ -265,7 +335,7 @@ def _benchmark_moa_capture(
     samples = list(getattr(outcome, "samples", None) or [])
     endpoint_ids = tuple(str(e) for e in (getattr(outcome, "endpoint_ids", None) or ()))
     if not endpoint_ids:
-        endpoint_ids = tuple(str(getattr(s, "endpoint_id", "") or "") for s in samples)
+        endpoint_ids = tuple(_sample_route_node_id(s) for s in samples)
     route_evidence = _benchmark_route_evidence(
         samples=samples, endpoint_ids=endpoint_ids, engine=engine,
     )
@@ -290,6 +360,16 @@ def _benchmark_moa_capture(
         consensus = compute_consensus(responses, embeddings=None, method=served_method)
         consensus_score = consensus.agreement_score
         consensus_confidence = consensus.confidence
+    sample_dicts = tuple(
+        {
+            "text": str(getattr(sample, "text", "") or ""),
+            "usage": _normalize_usage(getattr(sample, "usage", None)),
+            "stop_reason": getattr(sample, "stop_reason", None),
+            "tool_calls": list(getattr(sample, "tool_calls", None) or []),
+            "status": getattr(sample, "status", None),
+        }
+        for sample in samples
+    )
     return LiveCapture(
         text=responses[0] if responses else "",
         usage=usage,
@@ -299,7 +379,9 @@ def _benchmark_moa_capture(
         raw_method=served_method,
         consensus_score=consensus_score,
         consensus_confidence=consensus_confidence,
+        samples=sample_dicts,
     )
+
 
 
 async def dispatch_unit(
@@ -309,9 +391,11 @@ async def dispatch_unit(
     prompt: str,
     system: str = "",
     moa_n: int = 3,
-    max_tokens: int = 1024,
+    max_tokens: int = DEFAULT_MAX_TOKENS,
     ensemble_fn: Any = None,
     agentic_module: Any = None,
+    provider: Any = None,
+    capture: Any = None,
 ) -> LiveCapture:
     """Dispatch one unit through the backend dispatcher path and capture what came back.
 
@@ -319,41 +403,158 @@ async def dispatch_unit(
     backend is imported lazily here (and only here). Injected ``ensemble_fn`` receives the
     same kwargs as ``agentic.ensemble`` except ``params`` is a plain dict
     (``{"endpoint_id", "model", "max_tokens"}``) so tests never import backend types.
+
+    F-11 (CF-320): BOTH engines dispatch through ``AgenticDispatcher.ensemble`` — the
+    pi arm onto the pinned ``pi-deepseek-default`` endpoint, the legacy arm through the
+    production registry path onto the benchmark-seeded node
+    (:mod:`tests.pi_benchmark.registry_seed`). The seeded node is registered before the
+    first legacy dispatch using the provider's runtime-resolved key.
+
+    CF-321: when ``capture`` (a :class:`tests.pi_benchmark.raw_capture.RawCaptureWriter`)
+    is provided, every prompt and output is retained as gzipped JSONL per the owner
+    raw-capture requirements. Capture writes are fail-soft: failures never lose a paid
+    dispatch result; they are returned in ``LiveCapture.capture_errors``.
     """
+    engine = getattr(unit, "engine", None)
+    if engine not in {"pi", "legacy"}:
+        raise PreDispatchError(f"unsupported benchmark engine: {engine!r}")
+    api_key: str | None = None
+    if engine == "legacy":
+        if provider is None:
+            raise PreDispatchError("approved DeepSeek provider is required to seed the legacy registry node")
+        try:
+            api_key = provider.load_api_key()
+        except Exception as exc:
+            raise PreDispatchError(f"legacy registry seed failed: {exc}") from exc
+        import tests.pi_benchmark.registry_seed as registry_seed
+
+        try:
+            registry_seed.ensure_benchmark_legacy_node(api_key=api_key)
+        except Exception as exc:
+            raise PreDispatchError(f"legacy registry seed failed: {exc}") from exc
     moa_mode = getattr(unit, "moa_mode", None)
+    secret_values = (api_key,) if api_key else ()
+    capture_errors: list[str] = []
+
+    def _record_prompts(slots: int, temperatures: list[float]) -> None:
+        if capture is None:
+            return
+        engine_path = ENGINE_PATHS[engine]
+        messages = ([{"role": "system", "content": system}] if system else []) + [
+            {"role": "user", "content": prompt}
+        ]
+        for index in range(slots):
+            settings = {
+                "max_tokens": max_tokens,
+                "temperature": temperatures[index] if index < len(temperatures) else None,
+                "thinking": "off",
+                "timeout_s": 60,
+                "retry_policy": "transient_registry_retry",
+                "deepseek_key_present": True,
+            }
+            try:
+                capture.record_prompt(
+                    call_id=f"{unit.unit_id}:{engine}:{index + 1}",
+                    scenario_id=getattr(unit, "scenario_id", ""),
+                    engine_path=engine_path,
+                    provider=DEEPSEEK_PROVIDER,
+                    model=DEEPSEEK_MODEL,
+                    adapter_mode="agentic_dispatcher",
+                    settings=settings,
+                    messages=messages,
+                    secret_values=secret_values,
+                )
+            except Exception as exc:  # fail-soft: never lose a paid dispatch
+                capture_errors.append(f"prompt_capture:{index + 1}:{exc}")
+
+    def _record_outputs(cap: LiveCapture, latency_s: float) -> None:
+        if capture is None:
+            return
+        engine_path = ENGINE_PATHS[engine]
+        samples = cap.samples or (
+            {"text": cap.text, "usage": cap.usage, "stop_reason": None, "tool_calls": [], "status": "success"},
+        )
+        for index, sample in enumerate(samples):
+            usage = sample.get("usage")
+            cost = None
+            if usage and provider is not None:
+                try:
+                    cost = provider.estimate_cost(
+                        input_tokens=int(usage.get("input_tokens", 0) or 0),
+                        output_tokens=int(usage.get("output_tokens", 0) or 0),
+                        cache_read_tokens=int(usage.get("cache_read_tokens", 0) or 0),
+                        cache_write_tokens=int(usage.get("cache_write_tokens", 0) or 0),
+                    )
+                except Exception:
+                    cost = None
+            try:
+                capture.record_output(
+                    call_id=f"{unit.unit_id}:{engine}:{index + 1}",
+                    scenario_id=getattr(unit, "scenario_id", ""),
+                    engine_path=engine_path,
+                    provider=DEEPSEEK_PROVIDER,
+                    model=DEEPSEEK_MODEL,
+                    content=str(sample.get("text") or ""),
+                    tool_calls=list(sample.get("tool_calls") or []),
+                    stop_reason=sample.get("stop_reason"),
+                    error=None if sample.get("status") == "success" else str(sample.get("status") or "error"),
+                    latency_s=round(latency_s, 4),
+                    usage=usage,
+                    cost_usd=cost,
+                    secret_values=secret_values,
+                )
+            except Exception as exc:  # fail-soft
+                capture_errors.append(f"output_capture:{index + 1}:{exc}")
+
     if moa_mode in moa.MOA_MODES:
-        if getattr(unit, "engine", None) not in {"pi", "legacy"}:
-            raise PreDispatchError(f"unsupported benchmark engine: {getattr(unit, 'engine', None)!r}")
         if agentic_module is None:
             await _init_db_best_effort()
             from app.core.agentic import agentic as agentic_module  # lazy (live path only)
         from app.core.agentic.types import TurnParams
 
         slots = moa.requested_slots(moa_mode, moa_n)
+        temperatures = list(moa.self_moa_temperatures(moa_n)) if moa_mode == "self_moa" else []
         params = TurnParams(
-            endpoint_id=DEEPSEEK_ENDPOINT_ID, model=DEEPSEEK_MODEL, max_tokens=max_tokens,
+            endpoint_id=DEEPSEEK_ENDPOINT_ID if engine == "pi" else None,
+            model=DEEPSEEK_MODEL, max_tokens=max_tokens,
         )
+        _record_prompts(slots, temperatures)
+        started = time.perf_counter()
+        # CF-338 (petals P3): full_ensemble requests TRUE distinct slots. Without
+        # petals donors the pi catalog has only pi-deepseek-default (and the legacy
+        # registry only the seeded node), so resolution fails closed and the unit is
+        # recorded degraded — the same truthful result as the old forced-collapse,
+        # now produced by real distinct-resolution instead of a hardcoded one. With
+        # consented pi-petals-* endpoints projected, full_ensemble gets genuine
+        # multi-node diversity with per-slot route evidence.
         outcome = await agentic_module.ensemble(
             purpose=f"pi_benchmark.{tier}",
             project_id=PI_PROJECT_ID,
             system=system or None,
             messages=[{"role": "user", "content": prompt}],
             n=slots,
-            distinct=False,
-            temperatures=list(moa.self_moa_temperatures(moa_n)) if moa_mode == "self_moa" else None,
+            distinct=moa_mode == "full_ensemble",
+            minimum_n=slots if moa_mode == "full_ensemble" else None,
+            temperatures=temperatures or None,
             params=params,
             engine=unit.engine,
             spine_phase="review",
         )
+        elapsed = time.perf_counter() - started
         # ``distinct=False`` is intentional: it forces every slot onto the one approved
         # DeepSeek endpoint. A full ensemble is then explicitly degraded by MoA evidence
         # instead of discovering local/other configured endpoints.
-        return _benchmark_moa_capture(
+        cap = _benchmark_moa_capture(
             outcome, prompt=prompt, system=system, engine=unit.engine, served_method=moa_mode,
         )
+        _record_outputs(cap, elapsed)
+        return dc_replace(cap, capture_errors=tuple(capture_errors))
 
+    # The pi arm pins the approved PiModelManager endpoint; the legacy arm leaves
+    # endpoint_id unset so the production registry selection routes to the seeded
+    # benchmark node (F-11: registry routing IS the legacy DUT behavior).
     params_payload = {
-        "endpoint_id": DEEPSEEK_ENDPOINT_ID,
+        "endpoint_id": DEEPSEEK_ENDPOINT_ID if engine == "pi" else None,
         "model": DEEPSEEK_MODEL,
         "max_tokens": max_tokens,
     }
@@ -366,6 +567,8 @@ async def dispatch_unit(
         distinct=False,
         engine=unit.engine,
     )
+    _record_prompts(1, [])
+    started = time.perf_counter()
     if ensemble_fn is not None:
         outcome = await ensemble_fn(params=params_payload, **call_kwargs)
     else:
@@ -374,7 +577,10 @@ async def dispatch_unit(
         from app.core.agentic.types import TurnParams
 
         outcome = await agentic.ensemble(params=TurnParams(**params_payload), **call_kwargs)
-    return _capture_from_outcome(outcome, prompt=prompt, system=system)
+    elapsed = time.perf_counter() - started
+    cap = _capture_from_outcome(outcome, prompt=prompt, system=system)
+    _record_outputs(cap, elapsed)
+    return dc_replace(cap, capture_errors=tuple(capture_errors))
 
 
 # ── unit orchestration ──────────────────────────────────────────────────────
@@ -383,10 +589,15 @@ async def dispatch_unit(
 def default_prompt_builder(unit: Any, scenario: Any) -> str:
     """Deterministic smoke prompt for one unit.
 
-    These prompts exist to validate the live ROUTE (dispatcher -> DeepSeek -> capture ->
-    ledger), not to measure scenario quality — the full scenario corpus is a later phase.
-    The task line derives deterministically from (scenario id, seed) so reruns are stable.
+    Scenarios that carry rich prompt content (industry pack: real BFCL/τ-bench
+    tasks) are used verbatim — these prompts exist to measure scenario quality.
+    Otherwise the generic smoke prompt validates the live ROUTE (dispatcher ->
+    DeepSeek -> capture -> ledger), with a task line derived deterministically from
+    (scenario id, seed) so reruns are stable.
     """
+    rich = str(getattr(scenario, "prompt", "") or "")
+    if rich:
+        return rich
     digest = hashlib.sha256(f"{scenario.id}|{unit.seed}".encode()).hexdigest()[:8]
     return (
         "[pi-benchmark smoke prompt — route validation, not the full scenario corpus]\n"
@@ -408,6 +619,12 @@ def _is_budget_exceeded(exc: BaseException) -> bool:
     # Name-based fallback keeps the two lanes decoupled: a Lane A BudgetExceeded raised
     # through a sys.modules-injected fake is still recognised before the modules merge.
     return isinstance(exc, BudgetExceeded) or type(exc).__name__ == "BudgetExceeded"
+
+
+def _is_ledger_state_error(exc: BaseException) -> bool:
+    # Same name-based fallback as _is_budget_exceeded: recognise Lane A's LedgerStateError
+    # even when it is raised through a sys.modules-injected fake ledger.
+    return isinstance(exc, LedgerStateError) or type(exc).__name__ == "LedgerStateError"
 
 
 def _moa_evidence_from_capture(*, moa_mode: str, moa_n: int, capture: LiveCapture) -> moa.MoaEvidence:
@@ -488,12 +705,20 @@ def _stamp_live_provenance(
     """
     route_evidence = tuple(capture.route_evidence) if capture is not None else ()
     if route_evidence:
+        import tests.pi_benchmark.registry_seed as registry_seed
+
+        approved_all = APPROVED_DEEPSEEK_ENDPOINT_IDS | {registry_seed.BENCHMARK_NODE_ID}
         normalized_routes = []
         for route in route_evidence:
             normalized = dict(route)
-            if normalized.get("endpoint_id") in APPROVED_DEEPSEEK_ENDPOINT_IDS:
+            endpoint_id = str(normalized.get("endpoint_id") or "")
+            if endpoint_id in approved_all:
                 normalized.setdefault("provider", DEEPSEEK_PROVIDER)
                 normalized.setdefault("model", DEEPSEEK_MODEL)
+            elif endpoint_id.startswith("pi-petals-"):
+                # Petals slots are donated compute, NOT DeepSeek — never stamp the
+                # DeepSeek identity on them (CF-338 route truth).
+                normalized.setdefault("provider", "petals")
             normalized_routes.append(normalized)
         safe_routes = [
             {
@@ -504,8 +729,10 @@ def _stamp_live_provenance(
             for route in normalized_routes
         ]
         encoded = json.dumps(safe_routes, sort_keys=True, separators=(",", ":"))
+        providers = {route.get("provider") for route in normalized_routes if route.get("provider")}
+        label = "deepseek-route" if providers <= {DEEPSEEK_PROVIDER} else "mixed-route"
         record["provenance"]["endpoint_fingerprint"] = (
-            f"deepseek-route:{hashlib.sha256(encoded.encode()).hexdigest()[:12]}"
+            f"{label}:{hashlib.sha256(encoded.encode()).hexdigest()[:12]}"
         )
         models = {route.get("model") for route in normalized_routes if route.get("model")}
         record["provenance"]["model_id"] = models.pop() if len(models) == 1 else None
@@ -526,7 +753,7 @@ async def run_live_unit(
     records_dir: Path,
     dispatch: Any = dispatch_unit,
     prompt_builder: Any = None,
-    max_tokens: int = 1024,
+    max_tokens: int = DEFAULT_MAX_TOKENS,
     moa_n: int = 3,
     wave: int | None = None,
 ) -> dict[str, Any]:
@@ -554,10 +781,15 @@ async def run_live_unit(
     if wave is not None:
         extensions["wave"] = {"index": wave}
 
-    # 1-2. Worst-case reservation BEFORE any dispatch.
+    # 1-2. Worst-case reservation BEFORE any dispatch. Reserve a margin of input-priced
+    # tokens (2x the chars4 estimate, floored at MIN_RESERVE_INPUT_TOKENS) plus the full
+    # max_tokens output bound, per model call. See the module header: under-reserving would
+    # let a real call's actual cost exceed its reservation, which the ledger refuses at
+    # commit — crashing (and, without the guards below, permanently wedging) the wave.
     prompt_tokens = _chars4(system + prompt)
+    reserve_input_tokens = max(2 * prompt_tokens, MIN_RESERVE_INPUT_TOKENS)
     worst_case = provider.estimate_cost(
-        input_tokens=prompt_tokens, output_tokens=max_tokens
+        input_tokens=reserve_input_tokens, output_tokens=max_tokens
     ) * _model_calls(unit, moa_n)
     try:
         ledger.reserve(
@@ -565,28 +797,61 @@ async def run_live_unit(
             meta={"tier": config.tier, "phase": config.phase, "moa_mode": moa_mode},
         )
     except Exception as exc:
-        if not _is_budget_exceeded(exc):
-            raise  # config/programming failure (e.g. LedgerClosed): stop the wave loudly
-        extensions["detail"] = {"reason": f"reservation refused: {exc}"}
-        if moa_mode in moa.MOA_MODES:
-            extensions["moa"] = asdict(moa.not_run_evidence(
-                requested_mode=moa_mode,
-                requested_samples=moa.requested_slots(moa_mode, moa_n),
-                temperatures=moa.self_moa_temperatures(moa_n) if moa_mode == "self_moa" else (),
-            ))
-        record = _build_unit_record(
-            unit=unit, scenario=scenario, config=config, status="not_runnable",
-            not_runnable_reason="budget_exceeded", extensions=extensions,
-        )
-        schema.write_record_atomic(records_dir, unit.unit_id, _stamp_live_provenance(record, provider))
-        return record
+        if _is_budget_exceeded(exc):
+            extensions["detail"] = {"reason": f"reservation refused: {exc}"}
+            if moa_mode in moa.MOA_MODES:
+                extensions["moa"] = asdict(moa.not_run_evidence(
+                    requested_mode=moa_mode,
+                    requested_samples=moa.requested_slots(moa_mode, moa_n),
+                    temperatures=moa.self_moa_temperatures(moa_n) if moa_mode == "self_moa" else (),
+                ))
+            record = _build_unit_record(
+                unit=unit, scenario=scenario, config=config, status="not_runnable",
+                not_runnable_reason="budget_exceeded", extensions=extensions,
+            )
+            schema.write_record_atomic(records_dir, unit.unit_id, _stamp_live_provenance(record, provider))
+            return record
+        if _is_ledger_state_error(exc):
+            # Resume after a crash that reserved this unit but never wrote its record: the
+            # reservation is already outstanding and cannot be re-booked. Retain it as
+            # worst-case spend and record the interruption. Re-raising here (the old
+            # behaviour) would permanently wedge the wave — every resume would hit the same
+            # outstanding reservation and crash again.
+            extensions["detail"] = "interrupted_unknown_usage"
+            if moa_mode in moa.MOA_MODES:
+                extensions["moa"] = asdict(moa.not_run_evidence(
+                    requested_mode=moa_mode,
+                    requested_samples=moa.requested_slots(moa_mode, moa_n),
+                    temperatures=moa.self_moa_temperatures(moa_n) if moa_mode == "self_moa" else (),
+                ))
+            record = _build_unit_record(
+                unit=unit, scenario=scenario, config=config, status="not_runnable",
+                not_runnable_reason="other", extensions=extensions,
+            )
+            schema.write_record_atomic(records_dir, unit.unit_id, _stamp_live_provenance(record, provider))
+            return record
+        raise  # config/programming failure (e.g. LedgerClosed): stop the wave loudly
 
     # 3. Dispatch; map failures onto typed not_runnable records.
     try:
-        capture = await dispatch(
+        dispatch_kwargs = dict(
             unit=unit, tier=config.tier, prompt=prompt, system=system,
             moa_n=moa_n, max_tokens=max_tokens,
         )
+        # The default benchmark dispatcher uses the provider opened by the runner.
+        # Custom test/integration dispatchers retain their existing narrow contract.
+        if dispatch is dispatch_unit:
+            dispatch_kwargs["provider"] = provider
+            import tests.pi_benchmark.raw_capture as raw_capture
+
+            dispatch_kwargs["capture"] = raw_capture.RawCaptureWriter(
+                records_dir.parent / "raw-llm-calls"
+            )
+        capture = await dispatch(**dispatch_kwargs)
+        if getattr(capture, "capture_errors", None):
+            extensions.setdefault("detail", {})
+            if isinstance(extensions["detail"], dict):
+                extensions["detail"]["capture_errors"] = list(capture.capture_errors)
     except PreDispatchError as exc:
         ledger.release(unit.unit_id, reason=f"pre_dispatch:{exc}")
         extensions["detail"] = {"reason": f"pre-dispatch failure: {exc}"}
@@ -645,7 +910,24 @@ async def run_live_unit(
         cache_read_tokens=usage.get("cache_read_tokens", 0),
         cache_write_tokens=usage.get("cache_write_tokens", 0),
     ), 7)
-    ledger.commit(unit.unit_id, actual_cost, usage=dict(usage), meta={"estimate": capture.estimate})
+    try:
+        ledger.commit(unit.unit_id, actual_cost, usage=dict(usage), meta={"estimate": capture.estimate})
+    except Exception as exc:
+        if not _is_ledger_state_error(exc):
+            raise  # config/programming failure (e.g. LedgerClosed): stop the wave loudly
+        # Actual cost exceeded the worst-case reservation (or the reservation lifecycle is
+        # otherwise inconsistent). Fail closed: the commit appended nothing, so the
+        # reservation stays booked as worst-case spend; record the accounting failure and
+        # return. Never crash the wave here — a crash would leave no record and wedge resume.
+        extensions["detail"] = "accounting_fail_closed"
+        record = _build_unit_record(
+            unit=unit, scenario=scenario, config=config, status="not_runnable",
+            not_runnable_reason="other", extensions=extensions,
+        )
+        schema.write_record_atomic(
+            records_dir, unit.unit_id, _stamp_live_provenance(record, provider, capture)
+        )
+        return record
 
     # 6. Build the ok / moa-degraded record.
     moa_mode = getattr(unit, "moa_mode", None)
