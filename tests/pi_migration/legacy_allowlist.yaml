@@ -93,9 +93,9 @@ product: []
 # count-to-zero contract names the permanent exceptions explicitly.
 # ---------------------------------------------------------------------------
 permanent:
-  - keys: ["backend/app/core/agentic/legacy.py:595"]
+  - keys: ["backend/app/core/agentic/legacy.py:599"]
     category: "legacy-engine internals"
-    note: "AgenticDispatcher legacy distinct ensemble — direct calls to each selected healthy ComputeRegistry server preserve the pre-dispatcher validation baseline (line key re-pinned in W8 after the _embed project_id fix; re-pinned again at CF-320 after the F-11 endpoint-identity addition in _normalize_chat)"
+    note: "AgenticDispatcher legacy distinct ensemble — direct calls to each selected healthy ComputeRegistry server preserve the pre-dispatcher validation baseline (line key re-pinned in W8 after the _embed project_id fix; re-pinned again at CF-320 after the F-11 endpoint-identity addition; re-pinned at F-12 stop_reason/truncated surfacing)"
   - keys: ["backend/app/core/compute_node_transport.py:298-333"]
     category: "donated-compute transport"
     note: "websocket request/response transport for relay/browser donors"
