@@ -1,0 +1,27 @@
+{
+  "gate_id": "G-R1",
+  "name": "Retake Owner Gate G-R1 — DeepSeek-only route, budget cap, credential policy",
+  "status": "APPROVED",
+  "authorized_by": "user",
+  "authorized_at": "2026-07-23T13:20:27Z",
+  "approval_quote": "The wave is supposed to have continue everything. Approved, the whole plan is approved, use the wave to execute it all",
+  "plan": "docs/build-stream/plans/pi-bench-retake-20260722-plan-c.md",
+  "spec": "CF-SPEC-9",
+  "task": "PI-BENCH-RETAKE-EXEC-20260723-WAVE-rt4-preflight-IMPL",
+  "pipeline_run": "PI-BENCH-RETAKE-EXEC-20260723",
+  "provider": "deepseek",
+  "model": "deepseek-v4-pro",
+  "endpoint": "pi-deepseek-default",
+  "no_fallback": true,
+  "budget": {
+    "cap_usd": 1.00,
+    "scope": "cumulative across preflight, all waves, all lanes, and all retries; no per-wave reset; enforced by the shared crash-safe ledger at tests/pi_benchmark/.results/runs/retake/budget-ledger.json"
+  },
+  "credentials": {
+    "env_var": "ISTARA_PI_SECRET_PI_DEEPSEEK_DEFAULT",
+    "keychain_service": "istara-pi-deepseek",
+    "keychain_account": "openclaw",
+    "policy": "credentials resolve only through the configured env/Keychain path, are held in memory only, and are never written to files, logs, ledger rows, or exception messages"
+  },
+  "notes": "Fresh retake-scoped gate per Plan C section 2.7. Authorizes the RT-4 preflight (one ledgered ping) as the first live call. The stale prior-lineage gates g1_owner_gate.json/g2_owner_gate.json remain byte-identical and do NOT authorize this retake. Waves remain blocked behind G-R2."
+}

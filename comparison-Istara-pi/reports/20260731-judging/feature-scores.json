@@ -1,0 +1,1226 @@
+{
+ "features": {
+  "shell.navigation": {
+   "feature_id": "shell.navigation",
+   "criteria": "manual",
+   "criteria_scores": {
+    "reachable": null,
+    "project_scoped": null,
+    "expected_action": null,
+    "engine_behavior": null,
+    "evidence_emitted": null,
+    "graceful_failure": null
+   },
+   "llm_touching": false,
+   "basis": "routes+tests verified statically; engine independence via W9 ratchet"
+  },
+  "shell.projects": {
+   "feature_id": "shell.projects",
+   "criteria": "manual",
+   "criteria_scores": {
+    "reachable": 1.0,
+    "project_scoped": 1.0,
+    "expected_action": 1.0,
+    "engine_behavior": 1.0,
+    "evidence_emitted": null,
+    "graceful_failure": 1.0
+   },
+   "llm_touching": false,
+   "basis": "routes+tests verified statically; engine independence via W9 ratchet"
+  },
+  "shell.search": {
+   "feature_id": "shell.search",
+   "criteria": "manual",
+   "criteria_scores": {
+    "reachable": null,
+    "project_scoped": null,
+    "expected_action": null,
+    "engine_behavior": null,
+    "evidence_emitted": null,
+    "graceful_failure": null
+   },
+   "llm_touching": false,
+   "basis": "routes+tests verified statically; engine independence via W9 ratchet"
+  },
+  "shell.notifications-bell": {
+   "feature_id": "shell.notifications-bell",
+   "criteria": "manual",
+   "criteria_scores": {
+    "reachable": 1.0,
+    "project_scoped": 1.0,
+    "expected_action": 1.0,
+    "engine_behavior": 1.0,
+    "evidence_emitted": null,
+    "graceful_failure": 1.0
+   },
+   "llm_touching": false,
+   "basis": "routes+tests verified statically; engine independence via W9 ratchet"
+  },
+  "shell.keyboard-shortcuts": {
+   "feature_id": "shell.keyboard-shortcuts",
+   "criteria": "manual",
+   "criteria_scores": {
+    "reachable": null,
+    "project_scoped": null,
+    "expected_action": null,
+    "engine_behavior": null,
+    "evidence_emitted": null,
+    "graceful_failure": null
+   },
+   "llm_touching": false,
+   "basis": "routes+tests verified statically; engine independence via W9 ratchet"
+  },
+  "shell.onboarding": {
+   "feature_id": "shell.onboarding",
+   "criteria": "manual",
+   "criteria_scores": {
+    "reachable": null,
+    "project_scoped": null,
+    "expected_action": null,
+    "engine_behavior": null,
+    "evidence_emitted": null,
+    "graceful_failure": null
+   },
+   "llm_touching": true,
+   "basis": "routes+tests verified statically; engine_behavior from measured paired axes"
+  },
+  "auth.login": {
+   "feature_id": "auth.login",
+   "criteria": "manual",
+   "criteria_scores": {
+    "reachable": 1.0,
+    "project_scoped": 1.0,
+    "expected_action": 1.0,
+    "engine_behavior": 1.0,
+    "evidence_emitted": null,
+    "graceful_failure": 1.0
+   },
+   "llm_touching": false,
+   "basis": "routes+tests verified statically; engine independence via W9 ratchet"
+  },
+  "chat.overview": {
+   "feature_id": "chat.overview",
+   "criteria": "manual",
+   "criteria_scores": {
+    "reachable": 1.0,
+    "project_scoped": 1.0,
+    "expected_action": 1.0,
+    "engine_behavior": null,
+    "evidence_emitted": null,
+    "graceful_failure": 1.0
+   },
+   "llm_touching": true,
+   "basis": "routes+tests verified statically; engine_behavior from measured paired axes"
+  },
+  "chat.sessions": {
+   "feature_id": "chat.sessions",
+   "criteria": "manual",
+   "criteria_scores": {
+    "reachable": 1.0,
+    "project_scoped": 1.0,
+    "expected_action": 1.0,
+    "engine_behavior": null,
+    "evidence_emitted": null,
+    "graceful_failure": 1.0
+   },
+   "llm_touching": true,
+   "basis": "routes+tests verified statically; engine_behavior from measured paired axes"
+  },
+  "chat.model-controls": {
+   "feature_id": "chat.model-controls",
+   "criteria": "auto",
+   "criteria_scores": {
+    "reachable": 1.0,
+    "project_scoped": 1.0,
+    "expected_action": 1.0,
+    "engine_behavior": null,
+    "evidence_emitted": 1.0,
+    "graceful_failure": 1.0
+   },
+   "llm_touching": true,
+   "basis": "routes+tests verified statically; engine_behavior from measured paired axes"
+  },
+  "chat.files": {
+   "feature_id": "chat.files",
+   "criteria": "manual",
+   "criteria_scores": {
+    "reachable": 1.0,
+    "project_scoped": 1.0,
+    "expected_action": 1.0,
+    "engine_behavior": null,
+    "evidence_emitted": null,
+    "graceful_failure": 1.0
+   },
+   "llm_touching": true,
+   "basis": "routes+tests verified statically; engine_behavior from measured paired axes"
+  },
+  "chat.audio": {
+   "feature_id": "chat.audio",
+   "criteria": "manual",
+   "criteria_scores": {
+    "reachable": 1.0,
+    "project_scoped": 1.0,
+    "expected_action": 1.0,
+    "engine_behavior": null,
+    "evidence_emitted": null,
+    "graceful_failure": 1.0
+   },
+   "llm_touching": true,
+   "basis": "routes+tests verified statically; engine_behavior from measured paired axes"
+  },
+  "chat.steering": {
+   "feature_id": "chat.steering",
+   "criteria": "auto",
+   "criteria_scores": {
+    "reachable": 1.0,
+    "project_scoped": 1.0,
+    "expected_action": 1.0,
+    "engine_behavior": null,
+    "evidence_emitted": 1.0,
+    "graceful_failure": 1.0
+   },
+   "llm_touching": true,
+   "basis": "routes+tests verified statically; engine_behavior from measured paired axes"
+  },
+  "findings.evidence": {
+   "feature_id": "findings.evidence",
+   "criteria": "manual",
+   "criteria_scores": {
+    "reachable": 1.0,
+    "project_scoped": 1.0,
+    "expected_action": 1.0,
+    "engine_behavior": 1.0,
+    "evidence_emitted": null,
+    "graceful_failure": 1.0
+   },
+   "llm_touching": false,
+   "basis": "routes+tests verified statically; engine independence via W9 ratchet"
+  },
+  "findings.phase-tabs": {
+   "feature_id": "findings.phase-tabs",
+   "criteria": "manual",
+   "criteria_scores": {
+    "reachable": 1.0,
+    "project_scoped": 1.0,
+    "expected_action": 1.0,
+    "engine_behavior": 1.0,
+    "evidence_emitted": null,
+    "graceful_failure": 1.0
+   },
+   "llm_touching": false,
+   "basis": "routes+tests verified statically; engine independence via W9 ratchet"
+  },
+  "findings.codebook": {
+   "feature_id": "findings.codebook",
+   "criteria": "auto",
+   "criteria_scores": {
+    "reachable": 1.0,
+    "project_scoped": 1.0,
+    "expected_action": 1.0,
+    "engine_behavior": null,
+    "evidence_emitted": 1.0,
+    "graceful_failure": 1.0
+   },
+   "llm_touching": true,
+   "basis": "routes+tests verified statically; engine_behavior from measured paired axes"
+  },
+  "findings.review": {
+   "feature_id": "findings.review",
+   "criteria": "auto",
+   "criteria_scores": {
+    "reachable": 1.0,
+    "project_scoped": 1.0,
+    "expected_action": 1.0,
+    "engine_behavior": 1.0,
+    "evidence_emitted": 1.0,
+    "graceful_failure": 1.0
+   },
+   "llm_touching": false,
+   "basis": "routes+tests verified statically; engine independence via W9 ratchet"
+  },
+  "findings.reports": {
+   "feature_id": "findings.reports",
+   "criteria": "manual",
+   "criteria_scores": {
+    "reachable": 1.0,
+    "project_scoped": 1.0,
+    "expected_action": 1.0,
+    "engine_behavior": 1.0,
+    "evidence_emitted": null,
+    "graceful_failure": 1.0
+   },
+   "llm_touching": false,
+   "basis": "routes+tests verified statically; engine independence via W9 ratchet"
+  },
+  "findings.slide-instructions": {
+   "feature_id": "findings.slide-instructions",
+   "criteria": "manual",
+   "criteria_scores": {
+    "reachable": 1.0,
+    "project_scoped": 1.0,
+    "expected_action": 1.0,
+    "engine_behavior": 1.0,
+    "evidence_emitted": null,
+    "graceful_failure": 1.0
+   },
+   "llm_touching": false,
+   "basis": "routes+tests verified statically; engine independence via W9 ratchet"
+  },
+  "laws.catalog": {
+   "feature_id": "laws.catalog",
+   "criteria": "manual",
+   "criteria_scores": {
+    "reachable": 1.0,
+    "project_scoped": 1.0,
+    "expected_action": 1.0,
+    "engine_behavior": 1.0,
+    "evidence_emitted": null,
+    "graceful_failure": 1.0
+   },
+   "llm_touching": false,
+   "basis": "routes+tests verified statically; engine independence via W9 ratchet"
+  },
+  "laws.compliance": {
+   "feature_id": "laws.compliance",
+   "criteria": "manual",
+   "criteria_scores": {
+    "reachable": 1.0,
+    "project_scoped": 1.0,
+    "expected_action": 1.0,
+    "engine_behavior": 1.0,
+    "evidence_emitted": null,
+    "graceful_failure": 1.0
+   },
+   "llm_touching": false,
+   "basis": "routes+tests verified statically; engine independence via W9 ratchet"
+  },
+  "tasks.kanban": {
+   "feature_id": "tasks.kanban",
+   "criteria": "auto",
+   "criteria_scores": {
+    "reachable": 1.0,
+    "project_scoped": 1.0,
+    "expected_action": 1.0,
+    "engine_behavior": 1.0,
+    "evidence_emitted": 1.0,
+    "graceful_failure": 1.0
+   },
+   "llm_touching": false,
+   "basis": "routes+tests verified statically; engine independence via W9 ratchet"
+  },
+  "tasks.editor": {
+   "feature_id": "tasks.editor",
+   "criteria": "auto",
+   "criteria_scores": {
+    "reachable": 1.0,
+    "project_scoped": 1.0,
+    "expected_action": 1.0,
+    "engine_behavior": 1.0,
+    "evidence_emitted": 1.0,
+    "graceful_failure": 1.0
+   },
+   "llm_touching": false,
+   "basis": "routes+tests verified statically; engine independence via W9 ratchet"
+  },
+  "tasks.review": {
+   "feature_id": "tasks.review",
+   "criteria": "auto",
+   "criteria_scores": {
+    "reachable": 1.0,
+    "project_scoped": 1.0,
+    "expected_action": 1.0,
+    "engine_behavior": 1.0,
+    "evidence_emitted": 1.0,
+    "graceful_failure": 1.0
+   },
+   "llm_touching": false,
+   "basis": "routes+tests verified statically; engine independence via W9 ratchet"
+  },
+  "tasks.attachments": {
+   "feature_id": "tasks.attachments",
+   "criteria": "auto",
+   "criteria_scores": {
+    "reachable": 1.0,
+    "project_scoped": 1.0,
+    "expected_action": 1.0,
+    "engine_behavior": 1.0,
+    "evidence_emitted": 1.0,
+    "graceful_failure": 1.0
+   },
+   "llm_touching": false,
+   "basis": "routes+tests verified statically; engine independence via W9 ratchet"
+  },
+  "tasks.send-report": {
+   "feature_id": "tasks.send-report",
+   "criteria": "auto",
+   "criteria_scores": {
+    "reachable": 1.0,
+    "project_scoped": 1.0,
+    "expected_action": 1.0,
+    "engine_behavior": 1.0,
+    "evidence_emitted": 1.0,
+    "graceful_failure": 1.0
+   },
+   "llm_touching": false,
+   "basis": "routes+tests verified statically; engine independence via W9 ratchet"
+  },
+  "interviews.files": {
+   "feature_id": "interviews.files",
+   "criteria": "manual",
+   "criteria_scores": {
+    "reachable": 1.0,
+    "project_scoped": 1.0,
+    "expected_action": 1.0,
+    "engine_behavior": 1.0,
+    "evidence_emitted": null,
+    "graceful_failure": 1.0
+   },
+   "llm_touching": false,
+   "basis": "routes+tests verified statically; engine independence via W9 ratchet"
+  },
+  "interviews.transcription": {
+   "feature_id": "interviews.transcription",
+   "criteria": "manual",
+   "criteria_scores": {
+    "reachable": 1.0,
+    "project_scoped": 1.0,
+    "expected_action": 1.0,
+    "engine_behavior": 1.0,
+    "evidence_emitted": null,
+    "graceful_failure": 1.0
+   },
+   "llm_touching": false,
+   "basis": "routes+tests verified statically; engine independence via W9 ratchet"
+  },
+  "interviews.preview-tags": {
+   "feature_id": "interviews.preview-tags",
+   "criteria": "manual",
+   "criteria_scores": {
+    "reachable": 1.0,
+    "project_scoped": 1.0,
+    "expected_action": 1.0,
+    "engine_behavior": 1.0,
+    "evidence_emitted": null,
+    "graceful_failure": 1.0
+   },
+   "llm_touching": false,
+   "basis": "routes+tests verified statically; engine independence via W9 ratchet"
+  },
+  "documents.library": {
+   "feature_id": "documents.library",
+   "criteria": "manual",
+   "criteria_scores": {
+    "reachable": 1.0,
+    "project_scoped": 1.0,
+    "expected_action": 1.0,
+    "engine_behavior": null,
+    "evidence_emitted": null,
+    "graceful_failure": 1.0
+   },
+   "llm_touching": true,
+   "basis": "routes+tests verified statically; engine_behavior from measured paired axes"
+  },
+  "documents.upload": {
+   "feature_id": "documents.upload",
+   "criteria": "manual",
+   "criteria_scores": {
+    "reachable": 1.0,
+    "project_scoped": 1.0,
+    "expected_action": 1.0,
+    "engine_behavior": null,
+    "evidence_emitted": null,
+    "graceful_failure": 1.0
+   },
+   "llm_touching": true,
+   "basis": "routes+tests verified statically; engine_behavior from measured paired axes"
+  },
+  "documents.preview": {
+   "feature_id": "documents.preview",
+   "criteria": "manual",
+   "criteria_scores": {
+    "reachable": 1.0,
+    "project_scoped": 1.0,
+    "expected_action": 1.0,
+    "engine_behavior": null,
+    "evidence_emitted": null,
+    "graceful_failure": 1.0
+   },
+   "llm_touching": true,
+   "basis": "routes+tests verified statically; engine_behavior from measured paired axes"
+  },
+  "documents.suggestions": {
+   "feature_id": "documents.suggestions",
+   "criteria": "manual",
+   "criteria_scores": {
+    "reachable": 1.0,
+    "project_scoped": 1.0,
+    "expected_action": 1.0,
+    "engine_behavior": 1.0,
+    "evidence_emitted": null,
+    "graceful_failure": 1.0
+   },
+   "llm_touching": false,
+   "basis": "routes+tests verified statically; engine independence via W9 ratchet"
+  },
+  "context.editor": {
+   "feature_id": "context.editor",
+   "criteria": "manual",
+   "criteria_scores": {
+    "reachable": 1.0,
+    "project_scoped": 1.0,
+    "expected_action": 1.0,
+    "engine_behavior": 1.0,
+    "evidence_emitted": null,
+    "graceful_failure": 1.0
+   },
+   "llm_touching": false,
+   "basis": "routes+tests verified statically; engine independence via W9 ratchet"
+  },
+  "skills.catalog": {
+   "feature_id": "skills.catalog",
+   "criteria": "manual",
+   "criteria_scores": {
+    "reachable": 1.0,
+    "project_scoped": 1.0,
+    "expected_action": 1.0,
+    "engine_behavior": 1.0,
+    "evidence_emitted": null,
+    "graceful_failure": 1.0
+   },
+   "llm_touching": false,
+   "basis": "routes+tests verified statically; engine independence via W9 ratchet"
+  },
+  "skills.proposals": {
+   "feature_id": "skills.proposals",
+   "criteria": "manual",
+   "criteria_scores": {
+    "reachable": 1.0,
+    "project_scoped": 1.0,
+    "expected_action": 1.0,
+    "engine_behavior": 1.0,
+    "evidence_emitted": null,
+    "graceful_failure": 1.0
+   },
+   "llm_touching": false,
+   "basis": "routes+tests verified statically; engine independence via W9 ratchet"
+  },
+  "skills.create": {
+   "feature_id": "skills.create",
+   "criteria": "manual",
+   "criteria_scores": {
+    "reachable": 1.0,
+    "project_scoped": 1.0,
+    "expected_action": 1.0,
+    "engine_behavior": 1.0,
+    "evidence_emitted": null,
+    "graceful_failure": 1.0
+   },
+   "llm_touching": false,
+   "basis": "routes+tests verified statically; engine independence via W9 ratchet"
+  },
+  "agents.registry": {
+   "feature_id": "agents.registry",
+   "criteria": "manual",
+   "criteria_scores": {
+    "reachable": 1.0,
+    "project_scoped": 1.0,
+    "expected_action": 1.0,
+    "engine_behavior": 1.0,
+    "evidence_emitted": null,
+    "graceful_failure": 1.0
+   },
+   "llm_touching": false,
+   "basis": "routes+tests verified statically; engine independence via W9 ratchet"
+  },
+  "agents.detail": {
+   "feature_id": "agents.detail",
+   "criteria": "manual",
+   "criteria_scores": {
+    "reachable": 1.0,
+    "project_scoped": 1.0,
+    "expected_action": 1.0,
+    "engine_behavior": 1.0,
+    "evidence_emitted": null,
+    "graceful_failure": 1.0
+   },
+   "llm_touching": false,
+   "basis": "routes+tests verified statically; engine independence via W9 ratchet"
+  },
+  "agents.a2a": {
+   "feature_id": "agents.a2a",
+   "criteria": "manual",
+   "criteria_scores": {
+    "reachable": 1.0,
+    "project_scoped": 1.0,
+    "expected_action": 1.0,
+    "engine_behavior": 1.0,
+    "evidence_emitted": null,
+    "graceful_failure": 1.0
+   },
+   "llm_touching": false,
+   "basis": "routes+tests verified statically; engine independence via W9 ratchet"
+  },
+  "agents.proposals": {
+   "feature_id": "agents.proposals",
+   "criteria": "manual",
+   "criteria_scores": {
+    "reachable": 1.0,
+    "project_scoped": 1.0,
+    "expected_action": 1.0,
+    "engine_behavior": 1.0,
+    "evidence_emitted": null,
+    "graceful_failure": 1.0
+   },
+   "llm_touching": false,
+   "basis": "routes+tests verified statically; engine independence via W9 ratchet"
+  },
+  "agents.create": {
+   "feature_id": "agents.create",
+   "criteria": "manual",
+   "criteria_scores": {
+    "reachable": 1.0,
+    "project_scoped": 1.0,
+    "expected_action": 1.0,
+    "engine_behavior": 1.0,
+    "evidence_emitted": null,
+    "graceful_failure": 1.0
+   },
+   "llm_touching": false,
+   "basis": "routes+tests verified statically; engine independence via W9 ratchet"
+  },
+  "memory.knowledge": {
+   "feature_id": "memory.knowledge",
+   "criteria": "manual",
+   "criteria_scores": {
+    "reachable": 1.0,
+    "project_scoped": 1.0,
+    "expected_action": 1.0,
+    "engine_behavior": 1.0,
+    "evidence_emitted": null,
+    "graceful_failure": 1.0
+   },
+   "llm_touching": false,
+   "basis": "routes+tests verified statically; engine independence via W9 ratchet"
+  },
+  "memory.agent": {
+   "feature_id": "memory.agent",
+   "criteria": "manual",
+   "criteria_scores": {
+    "reachable": 1.0,
+    "project_scoped": 1.0,
+    "expected_action": 1.0,
+    "engine_behavior": 1.0,
+    "evidence_emitted": null,
+    "graceful_failure": 1.0
+   },
+   "llm_touching": false,
+   "basis": "routes+tests verified statically; engine independence via W9 ratchet"
+  },
+  "memory.health": {
+   "feature_id": "memory.health",
+   "criteria": "auto",
+   "criteria_scores": {
+    "reachable": 1.0,
+    "project_scoped": 1.0,
+    "expected_action": 1.0,
+    "engine_behavior": null,
+    "evidence_emitted": 1.0,
+    "graceful_failure": 1.0
+   },
+   "llm_touching": true,
+   "basis": "routes+tests verified statically; engine_behavior from measured paired axes"
+  },
+  "memory.context-dag": {
+   "feature_id": "memory.context-dag",
+   "criteria": "manual",
+   "criteria_scores": {
+    "reachable": 1.0,
+    "project_scoped": 1.0,
+    "expected_action": 1.0,
+    "engine_behavior": 1.0,
+    "evidence_emitted": null,
+    "graceful_failure": 1.0
+   },
+   "llm_touching": false,
+   "basis": "routes+tests verified statically; engine independence via W9 ratchet"
+  },
+  "interfaces.design-chat": {
+   "feature_id": "interfaces.design-chat",
+   "criteria": "manual",
+   "criteria_scores": {
+    "reachable": 1.0,
+    "project_scoped": 1.0,
+    "expected_action": 1.0,
+    "engine_behavior": null,
+    "evidence_emitted": null,
+    "graceful_failure": 1.0
+   },
+   "llm_touching": true,
+   "basis": "routes+tests verified statically; engine_behavior from measured paired axes"
+  },
+  "interfaces.generate": {
+   "feature_id": "interfaces.generate",
+   "criteria": "manual",
+   "criteria_scores": {
+    "reachable": 1.0,
+    "project_scoped": 1.0,
+    "expected_action": 1.0,
+    "engine_behavior": 1.0,
+    "evidence_emitted": null,
+    "graceful_failure": 1.0
+   },
+   "llm_touching": false,
+   "basis": "routes+tests verified statically; engine independence via W9 ratchet"
+  },
+  "interfaces.screens": {
+   "feature_id": "interfaces.screens",
+   "criteria": "manual",
+   "criteria_scores": {
+    "reachable": 1.0,
+    "project_scoped": 1.0,
+    "expected_action": 1.0,
+    "engine_behavior": 1.0,
+    "evidence_emitted": null,
+    "graceful_failure": 1.0
+   },
+   "llm_touching": false,
+   "basis": "routes+tests verified statically; engine independence via W9 ratchet"
+  },
+  "interfaces.figma": {
+   "feature_id": "interfaces.figma",
+   "criteria": "manual",
+   "criteria_scores": {
+    "reachable": 1.0,
+    "project_scoped": 1.0,
+    "expected_action": 1.0,
+    "engine_behavior": 1.0,
+    "evidence_emitted": null,
+    "graceful_failure": 1.0
+   },
+   "llm_touching": false,
+   "basis": "routes+tests verified statically; engine independence via W9 ratchet"
+  },
+  "interfaces.handoff": {
+   "feature_id": "interfaces.handoff",
+   "criteria": "manual",
+   "criteria_scores": {
+    "reachable": 1.0,
+    "project_scoped": 1.0,
+    "expected_action": 1.0,
+    "engine_behavior": 1.0,
+    "evidence_emitted": null,
+    "graceful_failure": 1.0
+   },
+   "llm_touching": false,
+   "basis": "routes+tests verified statically; engine independence via W9 ratchet"
+  },
+  "interfaces.findings-picker": {
+   "feature_id": "interfaces.findings-picker",
+   "criteria": "manual",
+   "criteria_scores": {
+    "reachable": 1.0,
+    "project_scoped": 1.0,
+    "expected_action": 1.0,
+    "engine_behavior": 1.0,
+    "evidence_emitted": null,
+    "graceful_failure": 1.0
+   },
+   "llm_touching": false,
+   "basis": "routes+tests verified statically; engine independence via W9 ratchet"
+  },
+  "integrations.overview": {
+   "feature_id": "integrations.overview",
+   "criteria": "manual",
+   "criteria_scores": {
+    "reachable": 1.0,
+    "project_scoped": 1.0,
+    "expected_action": 1.0,
+    "engine_behavior": 1.0,
+    "evidence_emitted": null,
+    "graceful_failure": 1.0
+   },
+   "llm_touching": false,
+   "basis": "routes+tests verified statically; engine independence via W9 ratchet"
+  },
+  "integrations.messaging": {
+   "feature_id": "integrations.messaging",
+   "criteria": "manual",
+   "criteria_scores": {
+    "reachable": 1.0,
+    "project_scoped": 1.0,
+    "expected_action": 1.0,
+    "engine_behavior": 1.0,
+    "evidence_emitted": null,
+    "graceful_failure": 1.0
+   },
+   "llm_touching": false,
+   "basis": "routes+tests verified statically; engine independence via W9 ratchet"
+  },
+  "integrations.surveys": {
+   "feature_id": "integrations.surveys",
+   "criteria": "manual",
+   "criteria_scores": {
+    "reachable": 1.0,
+    "project_scoped": 1.0,
+    "expected_action": 1.0,
+    "engine_behavior": 1.0,
+    "evidence_emitted": null,
+    "graceful_failure": 1.0
+   },
+   "llm_touching": false,
+   "basis": "routes+tests verified statically; engine independence via W9 ratchet"
+  },
+  "integrations.mcp": {
+   "feature_id": "integrations.mcp",
+   "criteria": "manual",
+   "criteria_scores": {
+    "reachable": 1.0,
+    "project_scoped": 1.0,
+    "expected_action": 1.0,
+    "engine_behavior": 1.0,
+    "evidence_emitted": null,
+    "graceful_failure": 1.0
+   },
+   "llm_touching": false,
+   "basis": "routes+tests verified statically; engine independence via W9 ratchet"
+  },
+  "integrations.deployments": {
+   "feature_id": "integrations.deployments",
+   "criteria": "manual",
+   "criteria_scores": {
+    "reachable": 1.0,
+    "project_scoped": 1.0,
+    "expected_action": 1.0,
+    "engine_behavior": 1.0,
+    "evidence_emitted": null,
+    "graceful_failure": 1.0
+   },
+   "llm_touching": false,
+   "basis": "routes+tests verified statically; engine independence via W9 ratchet"
+  },
+  "integrations.deployment-dashboard": {
+   "feature_id": "integrations.deployment-dashboard",
+   "criteria": "manual",
+   "criteria_scores": {
+    "reachable": 1.0,
+    "project_scoped": 1.0,
+    "expected_action": 1.0,
+    "engine_behavior": 1.0,
+    "evidence_emitted": null,
+    "graceful_failure": 1.0
+   },
+   "llm_touching": false,
+   "basis": "routes+tests verified statically; engine independence via W9 ratchet"
+  },
+  "loops.overview": {
+   "feature_id": "loops.overview",
+   "criteria": "manual",
+   "criteria_scores": {
+    "reachable": 1.0,
+    "project_scoped": 1.0,
+    "expected_action": 1.0,
+    "engine_behavior": 1.0,
+    "evidence_emitted": null,
+    "graceful_failure": 1.0
+   },
+   "llm_touching": false,
+   "basis": "routes+tests verified statically; engine independence via W9 ratchet"
+  },
+  "loops.schedules": {
+   "feature_id": "loops.schedules",
+   "criteria": "manual",
+   "criteria_scores": {
+    "reachable": 1.0,
+    "project_scoped": 1.0,
+    "expected_action": 1.0,
+    "engine_behavior": 1.0,
+    "evidence_emitted": null,
+    "graceful_failure": 1.0
+   },
+   "llm_touching": false,
+   "basis": "routes+tests verified statically; engine independence via W9 ratchet"
+  },
+  "loops.agent-loops": {
+   "feature_id": "loops.agent-loops",
+   "criteria": "manual",
+   "criteria_scores": {
+    "reachable": 1.0,
+    "project_scoped": 1.0,
+    "expected_action": 1.0,
+    "engine_behavior": 1.0,
+    "evidence_emitted": null,
+    "graceful_failure": 1.0
+   },
+   "llm_touching": false,
+   "basis": "routes+tests verified statically; engine independence via W9 ratchet"
+  },
+  "loops.custom": {
+   "feature_id": "loops.custom",
+   "criteria": "manual",
+   "criteria_scores": {
+    "reachable": 1.0,
+    "project_scoped": 1.0,
+    "expected_action": 1.0,
+    "engine_behavior": 1.0,
+    "evidence_emitted": null,
+    "graceful_failure": 1.0
+   },
+   "llm_touching": false,
+   "basis": "routes+tests verified statically; engine independence via W9 ratchet"
+  },
+  "loops.history": {
+   "feature_id": "loops.history",
+   "criteria": "manual",
+   "criteria_scores": {
+    "reachable": 1.0,
+    "project_scoped": 1.0,
+    "expected_action": 1.0,
+    "engine_behavior": 1.0,
+    "evidence_emitted": null,
+    "graceful_failure": 1.0
+   },
+   "llm_touching": false,
+   "basis": "routes+tests verified statically; engine independence via W9 ratchet"
+  },
+  "settings.general": {
+   "feature_id": "settings.general",
+   "criteria": "manual",
+   "criteria_scores": {
+    "reachable": 1.0,
+    "project_scoped": 1.0,
+    "expected_action": 1.0,
+    "engine_behavior": null,
+    "evidence_emitted": null,
+    "graceful_failure": 1.0
+   },
+   "llm_touching": true,
+   "basis": "routes+tests verified statically; engine_behavior from measured paired axes"
+  },
+  "settings.llm-servers": {
+   "feature_id": "settings.llm-servers",
+   "criteria": "auto",
+   "criteria_scores": {
+    "reachable": 1.0,
+    "project_scoped": 1.0,
+    "expected_action": 1.0,
+    "engine_behavior": null,
+    "evidence_emitted": 1.0,
+    "graceful_failure": 1.0
+   },
+   "llm_touching": true,
+   "basis": "routes+tests verified statically; engine_behavior from measured paired axes"
+  },
+  "settings.users": {
+   "feature_id": "settings.users",
+   "criteria": "manual",
+   "criteria_scores": {
+    "reachable": 1.0,
+    "project_scoped": 1.0,
+    "expected_action": 1.0,
+    "engine_behavior": 1.0,
+    "evidence_emitted": null,
+    "graceful_failure": 1.0
+   },
+   "llm_touching": false,
+   "basis": "routes+tests verified statically; engine independence via W9 ratchet"
+  },
+  "settings.connection-strings": {
+   "feature_id": "settings.connection-strings",
+   "criteria": "manual",
+   "criteria_scores": {
+    "reachable": 1.0,
+    "project_scoped": 1.0,
+    "expected_action": 1.0,
+    "engine_behavior": 1.0,
+    "evidence_emitted": null,
+    "graceful_failure": 1.0
+   },
+   "llm_touching": false,
+   "basis": "routes+tests verified statically; engine independence via W9 ratchet"
+  },
+  "settings.security-factors": {
+   "feature_id": "settings.security-factors",
+   "criteria": "manual",
+   "criteria_scores": {
+    "reachable": 1.0,
+    "project_scoped": 1.0,
+    "expected_action": 1.0,
+    "engine_behavior": 1.0,
+    "evidence_emitted": null,
+    "graceful_failure": 1.0
+   },
+   "llm_touching": false,
+   "basis": "routes+tests verified statically; engine independence via W9 ratchet"
+  },
+  "settings.sessions": {
+   "feature_id": "settings.sessions",
+   "criteria": "manual",
+   "criteria_scores": {
+    "reachable": 1.0,
+    "project_scoped": 1.0,
+    "expected_action": 1.0,
+    "engine_behavior": 1.0,
+    "evidence_emitted": null,
+    "graceful_failure": 1.0
+   },
+   "llm_touching": false,
+   "basis": "routes+tests verified statically; engine independence via W9 ratchet"
+  },
+  "settings.updates": {
+   "feature_id": "settings.updates",
+   "criteria": "manual",
+   "criteria_scores": {
+    "reachable": 1.0,
+    "project_scoped": 1.0,
+    "expected_action": 1.0,
+    "engine_behavior": 1.0,
+    "evidence_emitted": null,
+    "graceful_failure": 1.0
+   },
+   "llm_touching": false,
+   "basis": "routes+tests verified statically; engine independence via W9 ratchet"
+  },
+  "settings.governed-evolution": {
+   "feature_id": "settings.governed-evolution",
+   "criteria": "manual",
+   "criteria_scores": {
+    "reachable": 1.0,
+    "project_scoped": 1.0,
+    "expected_action": 1.0,
+    "engine_behavior": 1.0,
+    "evidence_emitted": null,
+    "graceful_failure": 1.0
+   },
+   "llm_touching": false,
+   "basis": "routes+tests verified statically; engine independence via W9 ratchet"
+  },
+  "settings.compute-donation": {
+   "feature_id": "settings.compute-donation",
+   "criteria": "manual",
+   "criteria_scores": {
+    "reachable": 1.0,
+    "project_scoped": 1.0,
+    "expected_action": 1.0,
+    "engine_behavior": 1.0,
+    "evidence_emitted": null,
+    "graceful_failure": 1.0
+   },
+   "llm_touching": false,
+   "basis": "routes+tests verified statically; engine independence via W9 ratchet"
+  },
+  "settings.project": {
+   "feature_id": "settings.project",
+   "criteria": "auto",
+   "criteria_scores": {
+    "reachable": 1.0,
+    "project_scoped": 1.0,
+    "expected_action": 1.0,
+    "engine_behavior": null,
+    "evidence_emitted": 1.0,
+    "graceful_failure": 1.0
+   },
+   "llm_touching": true,
+   "basis": "routes+tests verified statically; engine_behavior from measured paired axes"
+  },
+  "autoresearch.dashboard": {
+   "feature_id": "autoresearch.dashboard",
+   "criteria": "manual",
+   "criteria_scores": {
+    "reachable": 1.0,
+    "project_scoped": 1.0,
+    "expected_action": 1.0,
+    "engine_behavior": null,
+    "evidence_emitted": null,
+    "graceful_failure": 1.0
+   },
+   "llm_touching": true,
+   "basis": "routes+tests verified statically; engine_behavior from measured paired axes"
+  },
+  "autoresearch.experiments": {
+   "feature_id": "autoresearch.experiments",
+   "criteria": "auto",
+   "criteria_scores": {
+    "reachable": 1.0,
+    "project_scoped": 1.0,
+    "expected_action": 1.0,
+    "engine_behavior": null,
+    "evidence_emitted": 1.0,
+    "graceful_failure": 1.0
+   },
+   "llm_touching": true,
+   "basis": "routes+tests verified statically; engine_behavior from measured paired axes"
+  },
+  "autoresearch.leaderboard": {
+   "feature_id": "autoresearch.leaderboard",
+   "criteria": "manual",
+   "criteria_scores": {
+    "reachable": 1.0,
+    "project_scoped": 1.0,
+    "expected_action": 1.0,
+    "engine_behavior": null,
+    "evidence_emitted": null,
+    "graceful_failure": 1.0
+   },
+   "llm_touching": true,
+   "basis": "routes+tests verified statically; engine_behavior from measured paired axes"
+  },
+  "autoresearch.config": {
+   "feature_id": "autoresearch.config",
+   "criteria": "auto",
+   "criteria_scores": {
+    "reachable": 1.0,
+    "project_scoped": 1.0,
+    "expected_action": 1.0,
+    "engine_behavior": null,
+    "evidence_emitted": 1.0,
+    "graceful_failure": 1.0
+   },
+   "llm_touching": true,
+   "basis": "routes+tests verified statically; engine_behavior from measured paired axes"
+  },
+  "compute.pool": {
+   "feature_id": "compute.pool",
+   "criteria": "auto",
+   "criteria_scores": {
+    "reachable": 1.0,
+    "project_scoped": 1.0,
+    "expected_action": 1.0,
+    "engine_behavior": 1.0,
+    "evidence_emitted": 1.0,
+    "graceful_failure": 1.0
+   },
+   "llm_touching": false,
+   "basis": "routes+tests verified statically; engine independence via W9 ratchet"
+  },
+  "ensemble.health": {
+   "feature_id": "ensemble.health",
+   "criteria": "auto",
+   "criteria_scores": {
+    "reachable": 1.0,
+    "project_scoped": 1.0,
+    "expected_action": 1.0,
+    "engine_behavior": null,
+    "evidence_emitted": 1.0,
+    "graceful_failure": 1.0
+   },
+   "llm_touching": true,
+   "basis": "routes+tests verified statically; engine_behavior from measured paired axes"
+  },
+  "quality.dashboard": {
+   "feature_id": "quality.dashboard",
+   "criteria": "manual",
+   "criteria_scores": {
+    "reachable": 1.0,
+    "project_scoped": 1.0,
+    "expected_action": 1.0,
+    "engine_behavior": 1.0,
+    "evidence_emitted": null,
+    "graceful_failure": 1.0
+   },
+   "llm_touching": false,
+   "basis": "routes+tests verified statically; engine independence via W9 ratchet"
+  },
+  "backup.view": {
+   "feature_id": "backup.view",
+   "criteria": "manual",
+   "criteria_scores": {
+    "reachable": 1.0,
+    "project_scoped": 1.0,
+    "expected_action": 1.0,
+    "engine_behavior": 1.0,
+    "evidence_emitted": null,
+    "graceful_failure": 1.0
+   },
+   "llm_touching": false,
+   "basis": "routes+tests verified statically; engine independence via W9 ratchet"
+  },
+  "meta.hyperagent": {
+   "feature_id": "meta.hyperagent",
+   "criteria": "manual",
+   "criteria_scores": {
+    "reachable": 1.0,
+    "project_scoped": 1.0,
+    "expected_action": 1.0,
+    "engine_behavior": null,
+    "evidence_emitted": null,
+    "graceful_failure": 1.0
+   },
+   "llm_touching": true,
+   "basis": "routes+tests verified statically; engine_behavior from measured paired axes"
+  },
+  "admin.dashboard": {
+   "feature_id": "admin.dashboard",
+   "criteria": "manual",
+   "criteria_scores": {
+    "reachable": 1.0,
+    "project_scoped": 1.0,
+    "expected_action": 1.0,
+    "engine_behavior": 1.0,
+    "evidence_emitted": null,
+    "graceful_failure": 1.0
+   },
+   "llm_touching": false,
+   "basis": "routes+tests verified statically; engine independence via W9 ratchet"
+  },
+  "history.version": {
+   "feature_id": "history.version",
+   "criteria": "manual",
+   "criteria_scores": {
+    "reachable": 1.0,
+    "project_scoped": 1.0,
+    "expected_action": 1.0,
+    "engine_behavior": 1.0,
+    "evidence_emitted": null,
+    "graceful_failure": 1.0
+   },
+   "llm_touching": false,
+   "basis": "routes+tests verified statically; engine independence via W9 ratchet"
+  },
+  "notifications.list": {
+   "feature_id": "notifications.list",
+   "criteria": "manual",
+   "criteria_scores": {
+    "reachable": 1.0,
+    "project_scoped": 1.0,
+    "expected_action": 1.0,
+    "engine_behavior": 1.0,
+    "evidence_emitted": null,
+    "graceful_failure": 1.0
+   },
+   "llm_touching": false,
+   "basis": "routes+tests verified statically; engine independence via W9 ratchet"
+  },
+  "notifications.preferences": {
+   "feature_id": "notifications.preferences",
+   "criteria": "manual",
+   "criteria_scores": {
+    "reachable": 1.0,
+    "project_scoped": 1.0,
+    "expected_action": 1.0,
+    "engine_behavior": 1.0,
+    "evidence_emitted": null,
+    "graceful_failure": 1.0
+   },
+   "llm_touching": false,
+   "basis": "routes+tests verified statically; engine independence via W9 ratchet"
+  }
+ },
+ "summary": {
+  "total": 86,
+  "auto": 16,
+  "manual": 70,
+  "llm_touching": 22,
+  "criteria_pass_rates": {
+   "reachable": 1.0,
+   "project_scoped": 1.0,
+   "expected_action": 1.0,
+   "engine_behavior": null,
+   "evidence_emitted": 1.0,
+   "graceful_failure": 1.0
+  }
+ },
+ "coverage_pct": {
+  "pi": 98.75,
+  "legacy": 98.75
+ }
+}

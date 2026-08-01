@@ -1,11 +1,12 @@
-"""DeepSeek-only provider adapter for judge/preflight calls (B0 scheduling).
+"""DeepSeek-only provider adapter for benchmark calls (B0 scheduling).
 
 The "B0 offline scheduling + B1..B_N process waves" plan permits exactly one live
 provider: DeepSeek ``deepseek-v4-pro``, under the $1.00 cumulative cap enforced by
 :mod:`tests.pi_benchmark.budget_ledger`. This adapter is the provider-isolation
 gate: any other provider or model string is rejected at construction, before any
-dispatch is possible. The DUT path lives elsewhere — this adapter serves judge and
-preflight calls only.
+dispatch is possible. Pi benchmark units still use Istara's dispatcher; benchmark
+legacy units use this adapter because the production legacy executor is intentionally
+ComputeRegistry-backed and cannot assume a local compute node is available.
 
 Budget discipline: ``chat`` reserves worst-case cost in the ledger *before*
 dispatch, commits provider-reported actual cost on success, releases the
@@ -33,6 +34,7 @@ from typing import Callable
 from tests.pi_benchmark.budget_ledger import (
     DEEPSEEK_PRICING,
     BudgetLedger,
+    LedgerStateError,
     Pricing,
 )
 
@@ -43,6 +45,12 @@ KEYCHAIN_ACCOUNT = "openclaw"
 ENV_SECRET_NAME = "ISTARA_PI_SECRET_PI_DEEPSEEK_DEFAULT"
 
 _REQUEST_TIMEOUT_S = 60.0
+
+# Worst-case input-token floor for a reservation. Even a tiny prompt books at least this
+# many input-priced tokens so a real call's provider-reported usage — which can exceed a
+# naive chars/4 estimate, including cache-class tokens — stays within the reservation the
+# ledger will accept at commit time. See ``chat`` for the full formula.
+MIN_RESERVE_INPUT_TOKENS = 256
 
 
 class ProviderRejected(ValueError):
@@ -202,7 +210,14 @@ class DeepSeekProvider:
         """
         if estimated_input_tokens is None:
             estimated_input_tokens = math.ceil(len(json.dumps(messages)) / 4)
-        worst_case = self.estimate_cost(estimated_input_tokens, max_tokens)
+        # Reserve a margin of input-priced tokens — 2x the estimate, floored at
+        # MIN_RESERVE_INPUT_TOKENS — plus the full max_tokens output bound. The 2x covers
+        # tokenizer variance and the worst-case cache-miss token double-count; the floor
+        # covers tiny prompts. Under-reserving is unsafe: the ledger refuses a commit whose
+        # actual cost exceeds its reservation, so a too-tight reservation would turn a
+        # normal call into a post-dispatch LedgerStateError.
+        reserve_input_tokens = max(2 * estimated_input_tokens, MIN_RESERVE_INPUT_TOKENS)
+        worst_case = self.estimate_cost(reserve_input_tokens, max_tokens)
         if ledger is not None:
             ledger.reserve(call_id, worst_case, kind=kind)
 
@@ -260,17 +275,24 @@ class DeepSeekProvider:
             estimate=False,
         )
         if ledger is not None:
-            ledger.commit(
-                call_id,
-                actual_cost,
-                usage={
-                    "input_tokens": input_tokens,
-                    "output_tokens": output_tokens,
-                    "cache_read_tokens": cache_read_tokens,
-                    "cache_write_tokens": cache_write_tokens,
-                    "total_tokens": usage.total_tokens,
-                },
-            )
+            try:
+                ledger.commit(
+                    call_id,
+                    actual_cost,
+                    usage={
+                        "input_tokens": input_tokens,
+                        "output_tokens": output_tokens,
+                        "cache_read_tokens": cache_read_tokens,
+                        "cache_write_tokens": cache_write_tokens,
+                        "total_tokens": usage.total_tokens,
+                    },
+                )
+            except LedgerStateError as exc:
+                # Actual provider cost exceeded the worst-case reservation. The commit
+                # appended nothing, so the reservation stays booked as worst-case spend
+                # (fail closed); surface a typed failure rather than letting the ledger
+                # state error escape uncaught.
+                raise ProviderCallFailed("over_reservation_fail_closed") from exc
         return content, usage
 
     def preflight(

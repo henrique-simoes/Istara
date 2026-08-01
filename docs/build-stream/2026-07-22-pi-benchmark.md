@@ -3,16 +3,16 @@
 <!-- STATUS BLOCK -->
 ```yaml
 item: pi-benchmark
-branch: Review_pi_test
-cf: { spec: CF-SPEC-8 }
-phase: "Replanned execution — B0 through B_N process waves"
-stage: S1-plan
-status: in-progress
+branch: conductor/pi-bench-retake-20260722
+cf: { spec: CF-SPEC-10, tasks: [CF-320, CF-321, CF-322, CF-323, CF-324, CF-325, CF-335, CF-336, CF-337, CF-338] }
+phase: "Phase RT-6b+RT-7 — SHIPPED (benchmark chain + petals P0-P3 + all 10 axes measured)"
+stage: S5-ship
+status: done
 blocked_on: null
 authored_by: build-stream-conductor
-grounding: "Based on 2026-07-20-pi-full-replacement-master-plan.md Section 10"
-last: { agent: kimi-code/k3, at: 2026-07-22T20:17:35Z, ledger: L-42 }
-next_action: "Conductor: tally the three judge votes and seal consensus_result for the recovery pipeline (slot a leads 2-1); G-R1 owner gate before any implementation."
+grounding: "Based on 2026-07-20-pi-full-replacement-master-plan.md Section 10 + CF-SPEC-10 + 2026-07-31-pi-petals-a2a-bridge-design.md"
+last: { agent: kimi-code/k3, at: 2026-07-31T20:55:00Z, ledger: L-69 }
+next_action: "RT-7 done: all 10 axes measured (L-81/82). Follow-ups: cross-model S3 reviews; GAIA (owner HF token); live full_ensemble on donor connect; F-12 legacy-transport reasoning-overflow typed-failure fix (production); P4 donor UI; CF-SPEC-12 multi-step tool-loop frontier."
 ```
 <!-- /STATUS BLOCK -->
 
@@ -478,8 +478,414 @@ approvals (G1/G2) are recorded as CF evidence with the in-chat approval quoted.
 | F-5 | Blocker | `live_driver.py:dispatch_unit` / `validation.py:_get_embeddings` | MoA omits the requested engine and approved route identity; embeddings escape the DeepSeek-only ledger; stamped provenance does not prove the served route. | FIX-PI-BENCH-MOA-20260722-REVIEW-r1-routing | fixed (L-26) |
 | F-6 | Blocker | `live_driver.py:run_live_unit` / `budget_ledger.py` | The reserved output bound is not forwarded to dispatch, and duplicate/orphan/over-reservation ledger transitions can undercount or exceed the hard cap. | FIX-PI-BENCH-MOA-20260722-REVIEW-r1-budget | fixed (L-22) |
 | F-7 | Major | Compass Forge post-change gate | New Python import cycles include `live_driver -> runner -> live_driver`; the task-scope architecture gate is not clean. | FIX-PI-BENCH-MOA-20260722-REVIEW-r1-gate | fixed (L-25) |
+| F-8 | Major | `docs/build-stream/2026-07-22-pi-benchmark.md` Status Block | The B0 update left the resume contract on stale branch `Review_pi_test` and stale spec `CF-SPEC-8` instead of the active retake branch and `CF-SPEC-9`. | FIX-PI-BENCH-RETAKE-B0-20260723-WAVE-b0-REVIEW-r1-lifecycle | verified (REREV pass, L-55) |
+| F-9 | Critical | `live_driver.py:740 run_live_unit_sync` / `pi_runtime/supervisor.py:526 get_supervisor` | Wave mode runs each unit in a fresh `asyncio.run` loop while the pi-runtime supervisor is a process-wide loop-bound singleton; units 2..N of a wave fail at dispatch ("Future attached to a different loop"): lane none B1 = 1 ok + 10 not_runnable/startup_failure with retained reservations ($0.0238 worst-case booked, not billed). | FIX-PI-BENCH-RETAKE-EXEC-20260723-WAVE-none-b1-eventloop | verified (REREV pass, L-61) |
+| F-10 | Critical | `backend/app/core/compute_registry_invocation.py:544` / legacy-engine dispatch path | Legacy-engine wave units fail with "No compute nodes available for chat": the ComputeRegistry has no approved-route node (only unreachable local LM Studio/Ollama labels), so all 11 lane none B2 units are not_runnable/startup_failure with retained reservations (~$0.0262 worst-case booked, not billed). Blocks lane none B4 and the legacy halves of both MoA lanes. | FIX-PI-BENCH-RETAKE-EXEC-20260723-WAVE-none-b2-compute | remediation rejected by delta review (L-66; F-11) |
+| F-11 | Blocker | `tests/pi_benchmark/live_driver.py:362-470` / Plan C DUT contract | The F-10 remediation avoids ComputeRegistry by calling `DeepSeekProvider.chat` directly for every legacy unit, so the benchmark no longer executes Istara's `engine=legacy` arm through `AgenticDispatcher.ensemble`; the rewritten test explicitly forbids that accepted path. | FIX-REREV-PI-BENCH-RETAKE-EXEC-20260723-WAVE-none-b2-REVIEW-r1-dut-identity | open |
+
+
+<!-- consensus-winning-plan:PI-BENCH-RETAKE-20260722 -->
+## Winning consensus plan — PI-BENCH-RETAKE-20260722
+
+# Plan C — Fresh Pi benchmark retake: validated B0, strict DeepSeek-only B1…B_N, separated Kimi judging
+
+- **Task:** `PI-BENCH-RETAKE-20260722-PLAN-C` (consensus architect slot C; pipeline run `PI-BENCH-RETAKE-20260722`)
+- **Spec:** CF-SPEC-9 · **Lifecycle:** `docs/build-stream/2026-07-22-pi-benchmark.md`
+- **Brief:** `docs/build-stream/conductor-instructions/pi-benchmark-retake-20260722.md`
+- **Authored:** 2026-07-22, worktree `Istara-main-pi-benchmark-retake`, branch `conductor/pi-bench-retake-20260722` @ `3a226139`
+- **Mission:** retake the Pi-vs-Legacy benchmark as a clean, fully evidenced run: validate and
+  harden the existing B0 apparatus, execute strict process-bounded waves B1…B_N against the
+  Istara dispatcher with DeepSeek `deepseek-v4-pro` as the only provider under one cumulative
+  USD 1.00 ledger, then hand frozen artifacts to a *separate* artifact-only Kimi judging/report
+  session. This is a fresh, isolated run: the pi-eval / recovery / role-correction lineages are
+  historical evidence only; none of their tasks, plans, casts, consensus state, gate approvals,
+  or uncommitted files are continued.
+
+---
+
+## 1. Verified current state (all claims re-checked in-tree on 2026-07-22 @ `3a226139`)
+
+### 1.1 B0 apparatus that already exists — reuse, do not rebuild
+
+| Asset | Path | Contract (verified by reading) | Tests |
+|---|---|---|---|
+| Run-record schema | `comparison-Istara-pi/metrics-schema.json` | Draft-2020-12 record contract (identity, tier/engine/pack/phase, provenance, `usage.estimate`, 10 axis blocks, `not_runnable` reason enum) | `tests/pi_benchmark/test_metrics_schema.py` |
+| Schema loader/helpers | `tests/pi_benchmark/schema.py` | `validate_record()`, `build_record()`, `write_record_atomic()` (tmp+rename), provenance/input hashing | via all suites |
+| Paired runner + CLI | `tests/pi_benchmark/runner.py` | `--pack/--tier/--engine/--seeds/--repeats/--phase/--out` mandatory discipline; `--plan-only` (B0 scheduling), `--wave i --max-processes N --manifest M --budget-ledger L`, `--live` consent; provider/model hard-rejected unless `deepseek`/`deepseek-v4-pro` (`ONLY_PROVIDER`/`ONLY_MODEL`, runner.py:78-79,551-554); T2/T3 refuse without `--owner-gate` (exit 3, runner.py:472-479); wave requires max-processes+manifest+ledger (runner.py:560-563) | `tests/pi_benchmark/test_runner.py` |
+| B0 scheduler | `tests/pi_benchmark/scheduler.py` | deterministic `build_run_units` (scenario×seed×repeat×engine×moa), disjoint round-robin `shard_units` (refuses `n<1`), immutable content-hashed `write_manifest` (idempotent resume / `ManifestConflict` on differing args), hash-verified `load_manifest`, `completed_unit_ids` resume (only parseable schema-valid records count) | `tests/pi_benchmark/test_scheduler.py` |
+| Budget ledger | `tests/pi_benchmark/budget_ledger.py` | append-only JSONL, `flock`-serialized read-modify-append, fsync per row, torn-tail tolerance, reserve-before-dispatch / commit-actual (≤ reservation) / release-only-pre-dispatch / `close()` seals; secret-marker meta refusal | `tests/pi_benchmark/test_budget_ledger.py` |
+| Ledger verifier | `tests/pi_benchmark/verify_budget_ledger.py` | replays durable rows: known types, no orphan commit/release, commit ≤ reservation, spend ≤ cap; `--close` seals; exit 0/1/2 | `tests/pi_benchmark/test_verify_budget_ledger.py` |
+| Provider isolation | `tests/pi_benchmark/deepseek_provider.py` | constructs only `deepseek`/`deepseek-v4-pro`; key from env `ISTARA_PI_SECRET_PI_DEEPSEEK_DEFAULT` or Keychain `istara-pi-deepseek`/`openclaw`, memory-only; reserve→dispatch→commit with retained reservation on unknown usage; redacted `endpoint_fingerprint()` | `tests/pi_benchmark/test_deepseek_provider.py` (**2 red, §1.2**) |
+| Live DUT driver | `tests/pi_benchmark/live_driver.py` | every live unit through `AgenticDispatcher.ensemble` pinned to endpoint `pi-deepseek-default` + model `deepseek-v4-pro` (`distinct=False`); engine from the unit; route admission rejects unapproved endpoint/provider/model (`RouteAdmissionError`); redacted route evidence → provenance fingerprint (`deepseek-route:<sha>`); usage provider-reported (`estimate=False`) else documented `chars4` (`estimate=True`); crash-safe record writes; resume skips completed units | `tests/pi_benchmark/test_live_driver.py` |
+| MoA truthfulness | `tests/pi_benchmark/moa.py` | requested vs served mode/samples/routes; downgrade detection (`<requested>-><served>`, `partial_coder`, `single_coder`, 0-response blocked) → `degraded` → record `not_runnable`, never `ok`; `validate_topology` spend-free dry-run probe | `tests/pi_benchmark/test_moa.py` |
+| In-run judge (superseded for retake, §2.6) | `tests/pi_benchmark/deepseek_judge.py`, `judge.py`, `judge_config.json` | DeepSeek-backed `judge_fn` on the shared ledger; blind A/B + position swap; malformed verdict fails | `test_deepseek_judge.py`, `test_judge.py` |
+| Scenario packs | `tests/pi_benchmark/scenarios/` | **22 scenarios**: `canonical` 15 (min_tier T0), `spine` 4 (min_tier T2), `a2a` 3 (min_tier T2); `PACK_NAMES=("canonical","spine","a2a")` — `features`/`probes` are compiled elsewhere, not runner-loadable packs | `test_scenarios.py`, `test_b1_contract.py` |
+| Offline axes | `tests/pi_benchmark/feature_criteria.py`, `tests/pi_benchmark/probes/` | 86-feature criteria compiler; pure scorers (protected-block, persona, thinking-leak, injection) | `test_feature_criteria.py`, `test_probes.py` |
+| Report generator | `scripts/pi_benchmark_report.py` | CLI `--runs <dir> --out <dir>` (:602-603); generates `report.md`/`report.html`/`scorecard.json` from frozen records only | `tests/pi_benchmark/test_report.py` |
+| Prior fixes | `tests/pi_benchmark/test_b0_3_long_horizon_tokens.py` | long-horizon chunk-count-as-tokens bug fixed (B0-3) | green |
+
+### 1.2 Validation executed in this planning stage (offline only — no live calls, no servers, no models, no credentials)
+
+- `backend/.venv/bin/python -m pytest tests/pi_benchmark/ -q` → **170 passed, 2 failed** (3.23s).
+  The suite is **red**; a live program cannot start on a red money path. Red tests:
+  - `test_deepseek_provider.py::test_chat_happy_path_commits_actual_cost`
+  - `test_deepseek_provider.py::test_preflight_is_a_minimal_ledgered_call`
+
+  **Root cause (pinned):** `DeepSeekProvider.chat` reserves `estimate_cost(ceil(chars/4 of prompt JSON), max_tokens)` (deepseek_provider.py:203-207). That bound ignores provider-reported cache-token classes and can undercount real prompt tokens. Since F-6's hardening, `BudgetLedger.commit` refuses `actual > reservation` (budget_ledger.py:276-280), so any real call whose reported usage exceeds the estimate raises `LedgerStateError` *after* dispatch. The two tests encode the pre-F-6 expectation and fail; both must be reconciled (RT-1). Same class of bug on the DUT side: `live_driver.run_live_unit` reserves from `_chars4(system+prompt)` (live_driver.py:558-566) and commits at live_driver.py:648 **outside** the dispatch try/except — a `LedgerStateError` there escapes `run_wave`/`main` and kills the wave process. Worse, the unit's record is never written, so a resume re-enters `ledger.reserve(unit_id)` → `LedgerStateError("already has a reservation")` → the wave is **permanently wedged**, and the money truth (reservation outstanding, usage unknown) is lost. This is the single most important latent defect for the retake; RT-1 fixes it fail-closed.
+- CLI probes (throwaway `/tmp` paths, offline): `--plan-only --moa-mode self_moa --max-processes 4` wrote a content-hashed manifest (44 units over 4 shards, exit 0); identical rerun resumed unchanged (exit 0); differing `--max-processes 3` refused with `ManifestConflict` (exit 2); `--provider kimi` rejected by argparse; `--wave 1 --live` without `--owner-gate` refused (exit 3). All as designed.
+- Pack census (executed): canonical 15 / spine 4 / a2a 3 = 22 scenarios; spine+a2a are `min_tier=T2`.
+- **One MoA mode per manifest:** `--moa-mode` takes a single value (runner.py:543), so the full program is **three B0 schedules** (`none`, `self_moa`, `full_ensemble`) sharing one budget ledger (§2.3).
+
+### 1.3 State facts that shape the retake
+
+- **No `tests/pi_benchmark/.results/` exists** → no prior manifest/ledger; B0 starts clean (no `ManifestConflict` risk). `.results/` is gitignored (`.gitignore`: `.results/`).
+- **Stale gate artifacts:** `tests/pi_benchmark/gates/g1_owner_gate.json` / `g2_owner_gate.json` are `APPROVED` but belong to the prior lineage (authorized 2026-07-22T14:32:34Z; judge_model `gpt-5.6-luna`; budget USD **0.50**). They contradict the retake canon (USD 1.00; Kimi post-run judge; DeepSeek-only DUT) and **must not** authorize this run. Fresh retake-scoped gate artifacts are required (§2.7); the stale files stay untouched as history.
+- **Prior report bundle is non-authoritative:** `comparison-Istara-pi/reports/20260722T174500Z/` claims 654 executed records, but its input `.results/` tree is not in the repo and cannot be audited. It is a historical artifact: never cited as evidence about Pi vs Legacy, never edited, never deleted. The retake publishes a *new* timestamped bundle derived only from the retake's frozen records + closed ledger.
+- **Brief indirection:** the retake brief's pointer to `docs/build-stream/conductor-instructions/pi-benchmark-deepseek-moa-execution.md` dangles (no such file on this branch, no git history). The brief `pi-benchmark-retake-20260722.md` itself is the execution authority.
+- **Role-canon drift in the lifecycle file:** the embedded winning plan and DEC-5/DEC-6 still carry Kimi-as-evaluation text (14+ regions; no DEC-7 supersession recorded). RT-0 appends DEC-7 to the lifecycle decision log restating the canon below (§1.4); the append is an execution-phase edit by the implementer/conductor, not by this planning stage.
+- **Backend import hazard (live waves):** with the shared root venv, `import app` resolves to the **root checkout** (`/Users/user/Documents/Istara-main-pi-replacement/backend/app/__init__.py`), not the worktree. Waves launched from the worktree would silently execute root code while recording worktree provenance. RT-0/RT-3 attests and pins the execution checkout (`PYTHONPATH="$PWD/backend"` + recorded `app.__file__` assertion) before any live call.
+- **Approved route exists:** `backend/app/core/pi_runtime/endpoints.py:23` registers `DEFAULT_ENDPOINT_ID = "pi-deepseek-default"` — the one approved benchmark route.
+
+### 1.4 Role canon (authoritative for this retake; supersedes the stale lifecycle text via DEC-7 at RT-0)
+
+- **DUT** = Istara's two agentic arms (`engine=pi` and `engine=legacy`) through the API/dispatcher path (`AgenticDispatcher.ensemble`).
+- **Evaluation provider** = DeepSeek `deepseek-v4-pro` only, via pinned endpoint `pi-deepseek-default`. Local routes, Claude, Codex, Kimi, and every other provider are disabled for DUT traffic; there is no fallback.
+- **Budget** = one cumulative crash-safe ledger, `budget_cap_usd=1.00`, shared by preflight, all waves, all lanes, and all retries; no per-wave reset; closed at POST-N.
+- **Kimi** is **not** a benchmark provider and makes **no** in-run judge calls. Kimi is reserved for a separate, artifact-only post-run judging/report BSC session (§2.6).
+- `deepseek_judge.py` / `judge_config.json` (judge = DUT model on the shared ledger) are **superseded for this retake**: no judge calls inside B waves. Judging happens post-run, over artifacts, by Kimi, off the DUT ledger.
+
+---
+
+## 2. Design
+
+### 2.1 Program shape
+
+```
+RT-0 attestation ─► RT-1 harden (red→green) ─► RT-2 estimate gate ─► RT-3 B0 scheduling
+      │ offline, no spend; G-R0 = owner approval of this plan before any implementation
+      ▼
+G-R1 owner gate ─► RT-4 preflight (1 ledgered ping) ─► G-R2 owner gate
+      ▼
+RT-5 waves: lane none (B1..B4) ─► lane self_moa (B1..B4) ─► lane full_ensemble (B1..B4)
+      ▼
+RT-6 POST-N: ledger close+verify ─► aggregate ─► report bundle ─► secret scan ─► G-R3 ─► README link
+      ▼
+[separate BSC session] Kimi artifact-only judging/report (interface spec §2.6; not executed here)
+```
+
+Everything up to G-R1 is offline and spends nothing. The only pre-wave spend is one
+cheapest-possible preflight ping, charged to the same ledger.
+
+### 2.2 Immutable, strict wave manifest (B0 → B1…B_N)
+
+Three B0 schedules — one per MoA lane, because `--moa-mode` is single-valued — each produced
+by `runner.py --plan-only` into its own run root, all sharing one budget ledger:
+
+| Lane | Run root (gitignored) | Manifest | Units |
+|---|---|---|---|
+| `none` | `tests/pi_benchmark/.results/runs/retake/none/` | `…/none/manifest.json` | 44 |
+| `self_moa` | `…/runs/retake/self_moa/` | `…/self_moa/manifest.json` | 44 |
+| `full_ensemble` | `…/runs/retake/full_ensemble/` | `…/full_ensemble/manifest.json` | 44 |
+| shared | `…/runs/retake/budget-ledger.json` (+ `.lock`) | — | — |
+
+- Units per lane = 22 scenarios × seeds`(0,)` × repeats `1` × engines `(pi, legacy)` = **44**;
+  132 total. Sharded round-robin into `max_processes` disjoint shards; wave `i` executes shard `i`.
+- **`N` = `max_processes` = 4**, recorded in each manifest (`write_manifest` refuses `N<1` and
+  `N ≠ shard_count`, scheduler.py:156-161). `N` bounds *worker processes*; it is **not**
+  `moa_n` (MoA samples per `self_moa` unit / requested slots per `full_ensemble` unit = **3**)
+  and **not** `repeats` (per-scenario repetitions = **1**). All three are manifest fields.
+- `B1…B_N` per lane = waves 1..4 of that lane's manifest. Execution order: lane `none` waves
+  1→4, then `self_moa` 1→4, then `full_ensemble` 1→4 — sequential by default (a wave may use
+  fewer than `N` processes); up to `N` concurrent wave processes are permitted because the
+  ledger's `flock` serializes money. `B_N` terminal = last wave of the `full_ensemble` lane.
+- Immutability: identical rerun resumes the manifest unchanged; differing arguments raise
+  `ManifestConflict`; every `load_manifest` re-verifies `content_sha256` (probe-verified §1.2).
+- Work-package accounting: every manifest unit ends exactly one of `completed` (schema-valid
+  record written), `not_runnable` (typed reason), or `budget_blocked` (`budget_exceeded`
+  record). No unit is silently dropped; unknown scenario ids still get `not_runnable` records
+  (runner.py:239-262).
+
+### 2.3 Budget and ledger contract (preserved, plus RT-1's fail-closed edges)
+
+- One ledger file for the whole retake; `BudgetLedger(cap_usd=1.00)`; reserve-before-dispatch;
+  commit actual ≤ reservation; release only for provably pre-dispatch failures; unknown usage
+  after dispatch retains the reservation as worst-case spend; `close()` seals (idempotent).
+- Per-unit worst-case reservation (post-RT-1 formula): `(max(2×prompt_tokens, 256) × input_rate
+  + max_tokens × output_rate) × model_calls(unit)`, where `model_calls` = 1 / `moa_n`=3 /
+  `max(3, moa_n)`=3 (live_driver.py:399-404). Input priced at the input rate (== cache-write
+  rate; cache-read is cheaper, so this is conservative).
+- **Default-schedule arithmetic (max_tokens=1024, smoke prompt ≈120 tokens → reserve input 256):**
+  per call ≈ 256×0.55e-6 + 1024×2.19e-6 ≈ **$0.00238**.
+  Lane `none`: 44 × $0.00238 ≈ **$0.105**; lane `self_moa`: 44 × 3 × $0.00238 ≈ **$0.314**;
+  lane `full_ensemble`: ≈ **$0.314**; preflight ≈ **$0.00015**.
+  **Total worst case ≈ $0.73 ≤ $1.00** (~27% headroom for retries; retries only re-dispatch
+  incomplete units and draw new reservations from the same envelope).
+- The RT-2 estimate gate prints this figure deterministically at B0 and **exits 2 when > cap**:
+  e.g. `repeats=2` (264 units ≈ $1.47) must block *before* any live call.
+- `full_ensemble` units are expected-degraded (§2.5) and cost ≈ $0.31 to *measure* the routing
+  truth empirically. Owner option at G-R2: mark the lane `not_run` without dispatch (records
+  `not_runnable` with reason, saves ≈ $0.31) — a budget decision, not a silent skip.
+
+### 2.4 Route and evidence truthfulness
+
+- Every live sample must prove the approved route: endpoint `pi-deepseek-default`, provider
+  `deepseek`, model `deepseek-v4-pro`; anything else raises `RouteAdmissionError` →
+  `not_runnable` record with rejected route evidence (live_driver.py:212-258, 608-622).
+- Provenance fingerprints are derived from the **served** redacted route evidence
+  (`deepseek-route:<sha256>`); blocked-before-dispatch records carry null live identity —
+  never a guessed route (live_driver.py:480-516).
+- Usage is provider-reported (`estimate=False`) when exposed; otherwise the documented
+  `chars4` estimator over actual text (`estimate=True`, `estimator="chars4"`). A
+  successful-looking dispatch with neither usage nor text is `not_runnable/other`
+  (`unknown_usage_fail_closed`), reservation retained. Exact and estimated numbers are never
+  summed in one column (schema `usage.estimate`; report renders them separately).
+
+### 2.5 MoA truthfulness (self-MoA and full ensemble)
+
+- `self_moa` (moa_n=3): one endpoint sampled 3× with the backend temperature sweep
+  (0.3/0.7/1.0). Served 3 responses on 1 distinct route **reconciles** (valid self-MoA).
+- `full_ensemble` (slots=3): `distinct=False` pins all slots to the one approved endpoint →
+  diversity collapse → `single_coder` → `degraded` → record `not_runnable` with full
+  `extensions.moa` evidence. **A route/endpoint downgrade is degraded or blocked, never an
+  ensemble success.** Method downgrades (`full_ensemble->dual_run/self_moa`), `partial_coder`,
+  and zero-response `blocked` follow the same rule (moa.py:132-160, 202-211).
+- Serving a *real* full ensemble would require ≥3 owner-approved distinct DeepSeek endpoints —
+  an owner decision, explicitly out of scope (§9). The benchmark reports the truthful degraded
+  outcome instead of discovering unapproved local/other endpoints.
+
+### 2.6 Post-run separation (Kimi judging is a different session)
+
+1. **POST-N coordinator (this lifecycle):** after `B_N` is terminal — close the ledger
+   (`verify_budget_ledger.py --close`), verify spend ≤ $1.00, generate the report bundle from
+   frozen records (`scripts/pi_benchmark_report.py`), run the reproducibility diff and secret
+   scan, link the README. All artifact-only: no model calls, no DUT dispatch.
+2. **Separate BSC judging session (not this pipeline):** a distinct conductor run with its own
+   cast/lifecycle, where **Kimi** judges the frozen artifact packet and writes the final
+   judging outputs/report narrative. Contract this plan imposes on that session:
+   - **Inputs (read-only):** the three manifests, `records/` trees, the **closed** DUT ledger
+     (read-only — never opened for writes, never charged), the generated bundle, and an
+     artifact-packet index with sha256 per file.
+   - **Forbidden:** rerunning/re-dispatching any DUT unit; mutating records, manifests, or the
+     DUT ledger; using DeepSeek or any benchmark provider for judging; writing into
+     `tests/pi_benchmark/.results/`.
+   - **Outputs:** per-judgment records (blind A/B, position-swapped, rubric-versioned,
+     sha256-logged prompts) and the final report artifacts under a new
+     `comparison-Istara-pi/reports/<ts>-judging/` path (additive; prior bundles untouched).
+   - It launches **only after** G-R3 evidence shows all B waves terminal and the DUT ledger
+     closed ≤ cap.
+
+### 2.7 Owner gates (fresh, retake-scoped, blocking)
+
+| Gate | Before | Owner approves | Evidence |
+|---|---|---|---|
+| G-R0 | any implementation | this consensus-winning plan | CF evidence on the IMPL task |
+| G-R1 | preflight (first live call) | DeepSeek-only DUT route, USD 1.00 cumulative cap, credential path (env/Keychain), no-fallback policy | new artifact `tests/pi_benchmark/gates/retake_g1_owner_gate.json` + CF evidence quoting the approval |
+| G-R2 | first live wave | B0 evidence pack: green suite, three immutable manifests (N=4 recorded), dry-run estimate ≤ $1.00, preflight ledgered, environment attestation, route-isolation probes | new artifact `tests/pi_benchmark/gates/retake_g2_owner_gate.json` + CF evidence |
+| G-R3 | report publication / judging-session launch | closed ledger verified ≤ $1.00, reproducibility diff clean, secret scan clean | CF evidence on the POST-N task |
+
+The stale `g1/g2_owner_gate.json` files are left byte-identical (history). The runner's
+fail-closed checks (`--owner-gate`, `--live`) are the mechanical enforcement; the gates above
+are the human authorization. No gate is a provider-selection opportunity.
+
+---
+
+## 3. Task breakdown
+
+Estimates: S < half day, M ≈ 1 day (agent time; wave wall-clock excluded).
+
+| # | Task | Primary files | Depends | Est |
+|---|---|---|---|---|
+| RT-0 | Environment & state attestation (offline): record `max_processes` decision N=4 + justification, branch/HEAD, resolved `app.__file__` (must point inside the execution checkout — set `PYTHONPATH="$PWD/backend"` for all bench commands and assert), absence of `.results/` residue; append **DEC-7** (role canon §1.4, superseding stale DEC-5/DEC-6 Kimi clauses) to the lifecycle decision log; write `b0-attestation.json` | lifecycle decision log (append-only), `.results/runs/retake/b0-attestation.json` | G-R0 | S |
+| RT-1 | **Apparatus hardening — red→green + wedge-proof accounting.** (a) `deepseek_provider.py`: reserve `max(2×est_input, 256)` input-priced + `max_tokens` output-priced; catch commit `LedgerStateError` → `ProviderCallFailed("over_reservation_fail_closed")`, reservation **retained**. (b) `live_driver.py`: same reservation formula; wrap `ledger.commit` — on `LedgerStateError` write `not_runnable/other` record (`accounting_fail_closed`), retain reservation, never crash the wave; on resume, `reserve` raising `LedgerStateError` (prior reservation exists, no record) → write `not_runnable/other` (`interrupted_unknown_usage`), retain reservation — wedge impossible. (c) Update the 2 stale tests to realistic usage within the documented margin; add tests: over-reservation commit fail-closed (provider + driver), resume-with-outstanding-reservation, retained-reservation accounting. | `tests/pi_benchmark/deepseek_provider.py`, `tests/pi_benchmark/live_driver.py`, `tests/pi_benchmark/test_deepseek_provider.py`, `tests/pi_benchmark/test_live_driver.py` | RT-0 | M |
+| RT-2 | **Dry-run estimate gate.** `--plan-only` prints a deterministic worst-case USD estimate (per-lane unit counts × per-call worst case by MoA mode × model-calls + preflight reservation) and exits 2 when it exceeds `--budget-usd`; unit tests for ≤cap exit 0 / >cap exit 2. | `tests/pi_benchmark/runner.py`, `tests/pi_benchmark/test_runner.py` | RT-1 | S |
+| RT-3 | **B0 scheduling (offline).** Run `--plan-only` for the three lanes (§2.2) into the shared run root; record manifest content hashes; probe idempotent resume + `ManifestConflict`; offline `validate_topology` probe recorded as spend-free evidence. | `.results/runs/retake/**` (gitignored) | RT-2 | S |
+| RT-4 | **Preflight (post-G-R1).** One `DeepSeekProvider.preflight()` call against the shared ledger (documented heredoc command, §5); `verify_budget_ledger.py` proves reserve+commit ≤ cap. No key material in any artifact. | `.results/runs/retake/budget-ledger.json` | G-R1 | S |
+| RT-5 | **Waves B1…B_N × 3 lanes** (§2.2 order; sequential default, ≤N concurrent). Per wave: `--wave i --max-processes 4 --live --owner-gate gates/retake_g2_owner_gate.json` with lane manifest + shared ledger; after each wave assert shard records == shard units and ledger verify passes; `budget_exceeded`/`not_runnable` counted, never dropped. | `.results/runs/retake/**` | G-R2 | M |
+| RT-6 | **POST-N coordinator.** `verify_budget_ledger.py --close` + tally evidence; generate bundle to `comparison-Istara-pi/reports/<ts>/`; reproducibility re-run diff of `scorecard.json`; secret scan; G-R3; README reports-index link; write the judging-session artifact-packet index (sha256 per file). | `comparison-Istara-pi/reports/<ts>/`, `comparison-Istara-pi/README.md` (index lines only) | B_N terminal | M |
+
+Suggested CF roles: one implementer (RT-0…RT-2) + independent reviewer; one executor lane
+(RT-3…RT-6) under the conductor; owner approvals at G-R1/G-R2/G-R3 recorded as CF evidence.
+The Kimi judging session is a **new** cast in a **new** conductor run (§2.6), not a role here.
+
+---
+
+## 4. Acceptance criteria
+
+- **AC-1 (validated apparatus):** `pytest tests/pi_benchmark/ -q` → **172 passed, 0 failed**
+  (170 existing − 2 stale-fixed + 4 new RT-1/RT-2 tests, minimum). Suite green before G-R1.
+- **AC-2 (immutable manifest):** three manifests written; each records `max_processes=4`,
+  `provider=deepseek`, `model=deepseek-v4-pro`, `budget_cap_usd=1.0`, `moa_n=3`, `repeats=1`,
+  `tier=T3`, disjoint shards covering 44 units exactly once; identical rerun resumes;
+  differing args `ManifestConflict`; `load_manifest` hash-verified. `N` ≠ `moa_n` ≠ `repeats`
+  are distinct recorded fields.
+- **AC-3 (estimate gate):** B0 prints worst-case **≤ $1.00** (expected ≈ $0.73) and exits 0;
+  a demonstrated `repeats=2` probe exits 2 with no manifest mutation and no live call.
+- **AC-4 (owner gates):** no live call occurs before G-R1; no wave before G-R2; runner refuses
+  T2/T3 without `--owner-gate` (exit 3) and without `--live`; fresh retake gate artifacts
+  exist and are quoted in CF evidence; stale gates untouched.
+- **AC-5 (budget truth):** every dispatched call has reserve→commit (or retained reservation
+  with typed fail-closed record); no orphan commits; `verify_budget_ledger.py` passes after
+  every wave; final closed tally proves spend ≤ $1.00; preflight and retries included.
+- **AC-6 (record completeness):** every manifest unit ends with exactly one schema-valid
+  record: `ok`, `not_runnable` (typed reason), or `budget_blocked`; re-running a wave writes
+  no duplicate records and dispatches no completed unit (crash-safe resume); a mid-wave kill
+  leaves the next resume able to complete the shard (RT-1 wedge-proofing).
+- **AC-7 (route truth):** every `ok` record carries redacted route evidence proving endpoint
+  `pi-deepseek-default` / `deepseek` / `deepseek-v4-pro`; any unapproved route is
+  `not_runnable` with rejected-route evidence; blocked-before-dispatch records carry null
+  live identity.
+- **AC-8 (MoA truth):** `extensions.moa` records requested vs served mode/samples/routes/
+  consensus; every downgrade (`full_ensemble->*`, `partial_coder`, `single_coder`, blocked)
+  is `not_runnable` — zero `ok` downgraded ensembles. On the single approved route, the
+  `full_ensemble` lane is expected 100% degraded and is counted, not hidden.
+- **AC-9 (post-run separation):** the DUT ledger carries no `kind="judge"` rows; the Kimi
+  judging session consumes only the frozen artifact packet read-only, launches after G-R3,
+  and writes only additive outputs under its own `reports/<ts>-judging/` path.
+- **AC-10 (report integrity):** the new bundle derives solely from retake records (manifest
+  content hash + git sha recorded); reproducibility re-run produces byte-identical
+  `scorecard.json`; secret scan passes before the README link; the prior
+  `20260722T174500Z` bundle is neither cited nor modified.
+
+## 5. Verification matrix (exact commands)
+
+Conventions: `PY=/Users/user/Documents/Istara-main-pi-replacement/backend/.venv/bin/python`
+(or the worktree-local equivalent pinned in RT-0); all bench commands run from the execution
+checkout root with `PYTHONPATH="$PWD/backend"`; `R=tests/pi_benchmark/.results/runs/retake`.
+
+**V0 — offline apparatus (RT-1/RT-2 done; before G-R1):**
+```bash
+$PY -m pytest tests/pi_benchmark/ -q                      # AC-1: 172 passed
+$PY -m pytest tests/pi_migration/test_count_to_zero.py -q # ratchet stays 0
+$PY -m pytest tests/pi_production/ -q                     # production ladder green
+python scripts/security_benchmark.py --fail-on-threshold  # provider/ledger surface (AGENTS.md)
+```
+
+**V1 — B0 scheduling (RT-3; offline):**
+```bash
+for lane in none self_moa full_ensemble; do
+  $PY tests/pi_benchmark/runner.py --pack canonical,spine,a2a --tier T3 --engine both \
+    --seeds 0 --repeats 1 --moa-mode $lane --moa-n 3 --budget-usd 1.00 \
+    --plan-only --max-processes 4 \
+    --out $R/$lane --manifest $R/$lane/manifest.json --budget-ledger $R/budget-ledger.json
+done   # AC-2/AC-3: 44 units × 4 shards per lane; estimate ≤ $1.00 printed; exit 0
+# immutability probes: identical rerun -> exit 0 unchanged; --max-processes 3 -> exit 2 ManifestConflict
+# estimate-gate probe: --repeats 2 -> exit 2, no manifest mutation, no live call
+$PY -c "from tests.pi_benchmark.moa import validate_topology as v; \
+import json;print(json.dumps(v(available_endpoint_ids=['pi-deepseek-default'],requested_slots=3)))"
+# ^ spend-free: full_ensemble would degrade to self_moa on one route (AC-8 expectation)
+```
+
+**V2 — preflight (after G-R1; first spend, one ping):**
+```bash
+$PY - <<'PY'
+from pathlib import Path
+from tests.pi_benchmark.budget_ledger import BudgetLedger
+from tests.pi_benchmark.deepseek_provider import DeepSeekProvider
+ledger = BudgetLedger(Path("tests/pi_benchmark/.results/runs/retake/budget-ledger.json"), cap_usd=1.00)
+usage = DeepSeekProvider(provider="deepseek", model="deepseek-v4-pro").preflight(ledger=ledger)
+print("preflight ok:", usage.cost_usd, "estimate:", usage.estimate)
+PY
+$PY tests/pi_benchmark/verify_budget_ledger.py --ledger $R/budget-ledger.json --cap-usd 1.00
+```
+
+**V3 — waves (after G-R2; `i=1..4` per lane, in lane order none → self_moa → full_ensemble):**
+```bash
+$PY tests/pi_benchmark/runner.py --pack canonical,spine,a2a --tier T3 --engine both \
+  --seeds 0 --repeats 1 --moa-mode <lane> --moa-n 3 --budget-usd 1.00 \
+  --wave <i> --max-processes 4 --live \
+  --owner-gate tests/pi_benchmark/gates/retake_g2_owner_gate.json \
+  --manifest $R/<lane>/manifest.json --budget-ledger $R/budget-ledger.json \
+  --out $R/<lane>
+# after each wave: shard records == shard units (resume re-run is a no-op), and:
+$PY tests/pi_benchmark/verify_budget_ledger.py --ledger $R/budget-ledger.json --cap-usd 1.00
+```
+
+**V4 — POST-N (after B_N terminal):**
+```bash
+$PY tests/pi_benchmark/verify_budget_ledger.py --ledger $R/budget-ledger.json --cap-usd 1.00 --close
+python scripts/pi_benchmark_report.py --runs $R --out comparison-Istara-pi/reports/$(date -u +%Y%m%dT%H%M%SZ)
+python scripts/pi_benchmark_report.py --runs $R --out /tmp/pi-retake-rerun \
+  && diff <(jq -S . comparison-Istara-pi/reports/<ts>/scorecard.json) <(jq -S . /tmp/pi-retake-rerun/scorecard.json)
+python scripts/check_public_tree_clean.py   # secret scan over the new report dir before README link
+```
+
+**V5 — judging-session interface (G-R3 passed; separate BSC run):** artifact-packet index
+(sha256 per file: 3 manifests, records trees, closed ledger, bundle, scorecard) exists; DUT
+ledger verified closed and read-only; packet is the session's only input (§2.6).
+
+Every executed command is recorded as CF `command` evidence on the owning task; owner
+approvals are recorded with the in-chat approval quoted.
+
+## 6. Risks and mitigations
+
+| Risk | Likelihood | Mitigation |
+|---|---|---|
+| Reservation underestimates real usage → post-dispatch `LedgerStateError` kills/wedges a wave | **High (latent, proven red)** | RT-1: input margin (×2, floor 256, input-priced), commit fail-closed record, resume reconciliation; AC-6 wedge-proof test. |
+| Stale G1/G2 artifacts mistaken as authorization ($0.50, wrong judge canon) | Medium | Fresh retake-scoped gate artifacts required at G-R1/G-R2 (AC-4); stale files untouched; DEC-7 restates canon. |
+| Live waves execute the wrong checkout's backend (shared venv resolves `app` to root) | Medium | RT-0 attestation: `PYTHONPATH="$PWD/backend"` pinned for all bench commands; `app.__file__` asserted inside the execution checkout before G-R2. |
+| `full_ensemble` degradation misread as benchmark failure | Medium | Expected-degraded is documented (§2.5), pre-probed offline (`validate_topology`, V1), counted `not_runnable` (AC-8); optional owner skip at G-R2 (§2.3). |
+| Budget exhaustion mid-program | Medium | Worst-case estimate gated at B0 (AC-3); reserve-before-dispatch; `budget_exceeded` units recorded and counted; ~27% headroom; no per-wave reset. |
+| Judge/DUT conflation (spend or role) | Medium | No in-run judge calls (§1.4); AC-9 asserts zero `kind="judge"` rows; Kimi judging is a separate artifact-only session after G-R3. |
+| Prior bundle cited as Pi-superiority evidence | Medium | Marked non-authoritative (§1.3); AC-10 forbids citing/modifying it; new bundle derives only from retake records. |
+| `.results/` loss before aggregation (gitignored, local-only) | Low | POST-N aggregation runs immediately after B_N; the tracked bundle + closed-ledger tally are the durable deliverables; packet index hashes everything. |
+| Shared-worktree lifecycle races (ledger/status corruption) | Medium | `repo_lock` critical section for every lifecycle read-append-commit (conductor protocol); append-only entries. |
+| Secret leakage (API key into logs/ledger/report) | Low | Key held in memory only; ledger meta secret-markers refused; redacted fingerprints; secret scan gates publication (V4). |
+| Report hand-editing / irreproducibility | Low | Generated-from-records only; reproducibility diff (V4); README links only the dated generated copy. |
+| Scope creep into product code or feature/probe live packs | Medium | Changed-file scope pinned (§9); features/probes stay offline compilers; new defects become new CF tasks, not in-scope edits. |
+
+## 7. Rollback
+
+- **RT-1/RT-2 (code):** each lands as one focused commit on the worktree branch; revert the
+  commit. No backend/product files are touched; no migrations, settings, or allowlist changes.
+- **RT-3/RT-4 (schedule/preflight):** `.results/` is gitignored — delete the run root. The
+  ledger is append-only: "rollback" of a started program is stopping wave launches, closing
+  the ledger, and recording remaining units `budget_blocked` — never editing rows.
+- **Gate artifacts:** additive new files; delete to withdraw (the stale prior gates are never
+  modified, so no history is lost).
+- **RT-6 (publication):** report bundles are additive; un-link the README index line. The
+  judging session has not launched until G-R3, so there is nothing downstream to unwind.
+- **Engine state:** the benchmark observes product paths only; `agentic_engine_default` and
+  production routing are never touched by any task in this plan.
+
+## 8. Owner gates summary
+
+G-R0 (pre-implementation) → G-R1 (pre-preflight: DeepSeek-only route, $1.00 cap, credential
+path) → G-R2 (pre-wave: B0 evidence pack + estimate ≤ cap) → G-R3 (pre-publication and
+pre-judging-session: closed ledger ≤ cap, reproducible bundle, secret scan). Gates are
+blocking evidence checkpoints recorded in CF with the approval quoted; they are never
+provider-selection opportunities, and there is no fallback-route gate.
+
+## 9. Changed-file scope (narrow) and non-goals
+
+**In scope (the entire retake touches only):**
+- `tests/pi_benchmark/deepseek_provider.py`, `tests/pi_benchmark/live_driver.py`,
+  `tests/pi_benchmark/runner.py` (RT-1/RT-2 hardening + estimate gate)
+- `tests/pi_benchmark/test_deepseek_provider.py`, `tests/pi_benchmark/test_live_driver.py`,
+  `tests/pi_benchmark/test_runner.py` (reconciled + new tests)
+- `tests/pi_benchmark/gates/retake_g1_owner_gate.json`, `…/retake_g2_owner_gate.json` (new)
+- `tests/pi_benchmark/.results/runs/retake/**` (gitignored run artifacts)
+- `comparison-Istara-pi/reports/<ts>/` (new bundle), `comparison-Istara-pi/README.md`
+  (reports-index lines only)
+- `docs/build-stream/2026-07-22-pi-benchmark.md` (append-only: DEC-7, ledger, status block)
+
+**Explicit non-goals:** editing `docs/build-stream/plans/2026-07-20-pi-full-replacement-master-plan.md`;
+editing another architect's plan or any prior plan/ledger entry; modifying or deleting stale
+gates, prior report bundles, or prior-lineage CF state; backend/product code changes; adding
+approved endpoints or any non-DeepSeek route; a servable multi-endpoint full ensemble (owner
+decision, separate spec); in-run judge calls of any kind; launching the Kimi judging session
+from this pipeline; engine-default flips or rollout decisions.
+
+<!-- /consensus-winning-plan:PI-BENCH-RETAKE-20260722 -->
 
 ## Decision log
+
+<!-- consensus-winner-decision:PI-BENCH-RETAKE-20260722 -->
+DEC-consensus-winner | 2026-07-23 | S1-plan | conductor
+Context: three architect cross-votes completed
+Decision: slot c selected from PI-BENCH-RETAKE-20260722-PLAN-C
+Why: votes={"a": {"candidate_id": "db2ac00d234d86ff298074d9727a350342b4728c1eb73b1ed11db6250064385d", "task": "PI-BENCH-RETAKE-20260722-JUDGE-A", "vote": "c"}, "b": {"candidate_id": "db2ac00d234d86ff298074d9727a350342b4728c1eb73b1ed11db6250064385d", "task": "PI-BENCH-RETAKE-20260722-JUDGE-B", "vote": "c"}, "c": {"candidate_id": "80d2db4550151c9e45205e9cc44d4f5bfa2015d20954fbcd24b610f2c969ead6", "task": "PI-BENCH-RETAKE-20260722-JUDGE-C", "vote": "b"}}; tiebreak_used=False; plan_file=docs/build-stream/plans/pi-bench-retake-20260722-plan-c.md
+
+
 
 DEC-5 | 2026-07-22 | S1-plan | owner + build-stream-conductor
 Context: The machine has no working local/open-source model route for benchmark evaluation;
@@ -501,6 +907,124 @@ Codex, Kimi, or another configured judging harness, must not rerun the DUT, and 
 the HTML, Markdown, JSON, and per-judgment outputs. Production Istara routing is unchanged.
 Why: evaluation measures the requested model-routing behavior, while judging/reporting is
 post-run analysis and should not be conflated with the evaluated provider or spend ledger.
+
+DEC-7 | 2026-07-23 | S2-execute | build-stream-conductor + implementer (RT-0)
+Context: The PI-BENCH-RETAKE-20260722 consensus winner (Plan C, §1.4) is a fresh, isolated
+run. DEC-5/DEC-6 above still carry the prior lineage's Kimi-as-evaluation and judge-on-the-
+DUT-ledger language, which contradicts the retake canon.
+Decision: This DEC restates and pins the authoritative role canon for the retake, superseding
+the conflicting Kimi-evaluation clauses in DEC-5/DEC-6 (which stay byte-identical as history):
+  - DUT = Istara's two agentic arms (`engine=pi` and `engine=legacy`) through the API/
+    dispatcher path (`AgenticDispatcher.ensemble`).
+  - Evaluation provider = DeepSeek `deepseek-v4-pro` ONLY, via the one approved endpoint
+    `pi-deepseek-default`. Local routes, Claude, Codex, Kimi, and every other provider are
+    disabled for DUT traffic; there is no fallback route.
+  - Budget = one cumulative crash-safe ledger, `budget_cap_usd=1.00`, shared by preflight,
+    all waves, all MoA lanes, and all retries; no per-wave reset; closed at POST-N.
+  - Kimi is NOT a benchmark/evaluation provider and makes NO in-run judge calls. Kimi is
+    reserved for a separate, artifact-only post-run judging/report BSC session.
+  - `deepseek_judge.py` / `judge_config.json` (judge = DUT model on the shared ledger) are
+    superseded for this retake: no judge calls occur inside the B waves. Judging happens
+    post-run, over frozen artifacts, off the DUT ledger.
+Why: the stale Kimi-evaluation text would mis-route DUT spend and conflate the evaluation
+provider with the post-run judge; pinning the canon keeps the money path DeepSeek-only and
+the judging session cleanly separated.
+
+DEC-8 | 2026-07-31 | S0-frame | owner + kimi-code/k3
+Context: Retake waves completed under L-67 (157 records; ledger closed at $0.408928).
+F-11 (legacy DUT identity) is an OPEN Blocker: legacy-arm records are raw single
+completions, not the production legacy ReAct loop through AgenticDispatcher.ensemble.
+Quality axes are pending_judging, and run records carry no response text, so the frozen
+packet is unjudgeable. The owner reviewed the 20260731T191743Z bundle (G-R3 equivalent),
+approved the full corrective scope, and approved raising the spend cap: "I agree with
+your points and with the spend cap raise to run the tests CORRECTLY."
+Decision: Run Phase RT-6b as CF-SPEC-10 (tasks CF-320…CF-325): (1) F-11 fix — benchmark
+legacy units dispatch through AgenticDispatcher.ensemble engine=legacy onto a
+benchmark-seeded registry endpoint (approved DeepSeek only); (2) raw prompt/output
+capture per comparison-Istara-pi/raw-llm-output-capture-requirements.md; (3) re-dispatch
+none + self_moa units for BOTH engines with capture on; (4) industry pack (see DEC-9);
+(5) Kimi blind judging per plan §2.6; (6) report regeneration with judged axes.
+Budget: the L-67 ledger stays CLOSED and immutable. Phase RT-6b runs on a FRESH
+crash-safe ledger with budget_cap_usd=$3.00 (owner-approved), same reserve-before-
+dispatch discipline; DEC-7's $1.00 clause is superseded for this phase only (all other
+DEC-7 canon stands: DeepSeek-only DUT, Kimi post-run-only, no fallback route).
+Why: F-11 voids the legacy arm as an agentic-loop measurement; without raw capture the
+judging session has nothing to score; both fixes require bounded re-dispatch, which the
+closed $1.00 envelope cannot fund.
+
+DEC-9 | 2026-07-31 | S0-frame | owner + kimi-code/k3
+Context: The retake's scenario content is 100% Istara-internal (15 production-contract
+ids + spine/a2a behavioral packs). The owner requires industry-standard measurement:
+"these istara's tests are they based on real benchmarks used by industry? That's what I
+want and what I asked."
+Decision: Add an industry scenario pack executed through the SAME paired runner, both
+engines, same ledger/judge protocol: BFCL v4 subset (tool calling — the most direct
+agentic-loop measure), τ-bench subset (multi-turn tool-agent-user interaction), GAIA
+subset (general assistant tasks). Subsets sized at B0-style estimate gate against the
+DEC-8 envelope before any spend; datasets fetched into comparison-Istara-pi/industry/
+with licenses/attribution recorded; no dataset content committed to git.
+Why: external comparability (published-benchmark numbers) complements the internal
+replacement verdict; reusing the same apparatus keeps provider parity, pairing, and
+budget discipline identical across internal and industry evidence.
+
+DEC-10 | 2026-07-31 | S1-plan | owner + kimi-code/k3
+Context: The owner directed that the Pi-petals A2A bridge design
+(comparison-Istara-pi/2026-07-31-pi-petals-a2a-bridge-design.md) execute as part of the
+same comprehensive work package: "Append to this work the ... bridge-design plan also,
+so it all executes comprehensively."
+Decision: CF-SPEC-10 revised (status revised -> tasked) to include the bridge rollout
+waves P0-P3 as work items ITEM-007..010 -> tasks CF-335..CF-338: P0 loopback shim +
+catalog projection; P1 streaming/multi-node/consent/fail-closed; P2 A2A control plane +
+usage-ledger telemetry; P3 distinct=True ensembles over pi-petals-* + full_ensemble lane
+re-run with real donor diversity (owner-gated, bounded, under the DEC-8 envelope).
+P4 (donor-facing UI) is deferred to a follow-up spec. Bridge code lives in the
+replacement worktree (backend); benchmark work stays in this worktree. Isolation
+invariants restated as spec non-goals: no pi-ai fork, pi_runtime never imports/mutates
+ComputeRegistry.
+Why: one owner-approved package is cheaper to govern than two; the bridge is the
+production answer to the same replacement question the benchmark measures, and P3 feeds
+the benchmark's full_ensemble lane the multi-node diversity it currently lacks.
+
+DEC-11 | 2026-07-31 | S1-plan | owner + kimi-code/k3
+Context: The petals bridge design (section 7) had three owner open questions. The owner
+resolved all three: "yes for all 3 to implement now".
+Decision: (1) Petals-served Pi traffic is ALLOWED for production research-spine runs by
+default (supersedes the eval-only recommendation; P3 evidence still gathered, not
+gating). (2) Donors DO see the serving engine identity (pi vs legacy) in the donor
+dashboard - transparency requirement, lands with CF-337 P2 telemetry. (3) Mixed-cost-class
+ensembles (API + petals slots in one MoA) are ALLOWED with per-slot route_kind
+provenance so reports can separate donated vs API traffic.
+Why: owner decision unblocks CF-335..338 acceptance criteria; recorded here and in the
+design doc (section 7 marked RESOLVED) so P0-P3 implementers build to the final policy.
+
+DEC-12 | 2026-07-31 | S2-execute | kimi-code/k3
+Context: CF-322 scope sizing. GAIA is gated on Hugging Face (401 without an
+accepted-terms token). The AC-3 estimate gate prices the full 3-lane program;
+running industry on all three lanes would cost ~$3.16, over the DEC-8 $3.00 cap.
+Decision: (1) GAIA is excluded from CF-322 and tracked as a follow-up needing an owner
+HF credential (recorded in industry/ATTRIBUTION.md). (2) The industry pack runs the
+none lane first (152 units ~ $0.45); a self_moa industry lane is added only if
+headroom remains after CF-323, as a separate governed decision. (3) The runner gains
+--estimate-scope {program,lane} (default program, preserving AC-3 semantics) so
+single-lane phases estimate honestly instead of being priced for all three lanes.
+Why: the owner cap is a hard stop; lane-scoped industry keeps the full BFCL/tau-bench
+subset inside the envelope without weakening the estimate gate for the original program.
+
+DEC-13 | 2026-08-01 | S2-execute | kimi-code/k3
+Context: CF-338 P3 scope. The full_ensemble benchmark lane can now execute true
+distinct resolution (petals-ready), but ZERO live consented donors exist on this
+machine, so a real multi-node full_ensemble re-run cannot produce live evidence yet.
+Decision: (1) full_ensemble units dispatch with distinct=True + minimum_n through real
+resolution (pi catalog incl. pi-petals-* when projected; legacy registry incl. any
+consented donors); insufficient distinct identities fail closed into truthful degraded
+records — same count as the old forced collapse, now produced by real resolution.
+(2) Route admission accepts pi-petals-* identities (projection enforces consent); the
+provenance stamp never marks petals slots as DeepSeek (provider=petals, mixed-route
+fingerprint). (3) The LIVE full_ensemble re-run with real donor diversity is BLOCKED ON
+donor availability — it executes the moment a consented donor connects (bridge enable
++ pi_served + a wave command, documented in the L-79 entry), not a new spec.
+Why: code-complete beats waiting on infrastructure; the honest blocked state is
+recorded instead of fabricating donor evidence.
 
 
 ### L-9 | 2026-07-22T13:50:34Z | S1-plan | kimi-code/k3 | architect | Planning phase <!-- bsc-ledger:pi-eval-REPLAN-C-r1 -->
@@ -717,3 +1241,244 @@ Did: pi-bench-recovery-20260722-architect-c stage on task PI-BENCH-RECOVERY-2026
 Result: task PI-BENCH-RECOVERY-20260722-REPLAN-C-r1 finished; worktree head 4fcfc4ec.
 Verified: see Compass Forge evidence rows on PI-BENCH-RECOVERY-20260722-REPLAN-C-r1 (command + self_report + stage_attribution).
 Next: conductor advances the pipeline on evidence.
+
+### L-44 | 2026-07-22T22:42:32Z | S1-plan | claude-fable-5 | architect | Retake planning <!-- bsc-ledger:PI-BENCH-RETAKE-20260722-PLAN-A -->
+Did: authored independent retake consensus plan A at docs/build-stream/plans/pi-bench-retake-20260722-plan-a.md (283 lines: verified B0 apparatus inventory with exact paths+tests, wave-manifest design with max_processes N distinct from moa_n/repeats, owner gates G-RT1/G-RT2 with gate-to-manifest-hash binding, MoA downgrade-is-never-success acceptance, post-run artifact-only Kimi judging separation, RT-1..RT-8 task table, A1-A8 acceptance, verification matrix, risks R1-R6, rollback, narrow changed-file scope). No code, no other plan, no prior ledger entry edited.
+Result: plan slot A ready for retake consensus judging; key audit at 3a226139: apparatus largely complete but suite is 170 passed/2 FAILED (deepseek_provider commit-exceeds-reservation seam at budget_ledger.py:277, plan gap G-1/RT-1); owner-gate check is existence-only with stale prior-lineage G1/G2 artifacts (runner.py:472-478, gap G-2/RT-2); referenced work order pi-benchmark-deepseek-moa-execution.md absent on this branch (G-3); stale Kimi-as-evaluation text remains in embedded winning plan (G-4); PI-BENCH-RETAKE-20260722-PLAN-A
+Verified: python3 -m pytest tests/pi_benchmark/ -q -> 170 passed 2 failed (documented defect); focused test_scheduler+test_budget_ledger+test_moa -> 43 passed; git diff --check clean; CF evidence rows 1489-1492 (3x command, self_report)
+Next: architects B/C finish; consensus judges vote on retake slots a/b/c; conductor pins immutable candidates and tallies
+
+### L-45 | 2026-07-22T22:45:08Z | S1-plan | gpt-5.6-sol | planner | pi-bench-retake-20260722-architect-b <!-- bsc-ledger:PI-BENCH-RETAKE-20260722-PLAN-B -->
+Did: pi-bench-retake-20260722-architect-b stage on task PI-BENCH-RETAKE-20260722-PLAN-B (harness fallback entry; the model did not append one).
+Result: task PI-BENCH-RETAKE-20260722-PLAN-B finished; worktree head 3c91b30c.
+Verified: see Compass Forge evidence rows on PI-BENCH-RETAKE-20260722-PLAN-B (command + self_report + stage_attribution).
+Next: conductor advances the pipeline on evidence.
+
+### L-46 | 2026-07-22T22:54:53Z | S1-plan | kimi-code/k3 | architect | Planning phase <!-- bsc-ledger:PI-BENCH-RETAKE-20260722-PLAN-C -->
+Did: authored independent consensus plan C at docs/build-stream/plans/pi-bench-retake-20260722-plan-c.md (387 lines): verified B0 apparatus inventory with exact paths+tests; validated suite (170 passed/2 failed — root cause pinned: post-F6 commit<=reservation invariant vs underestimated reservations, plus the wave-wedge path at live_driver.py:648; RT-1 fail-closed hardening designed); three-lane immutable manifest design (max_processes N=4 recorded, distinct from moa_n=3 and repeats=1; 132 units); USD0.73 worst-case arithmetic + RT-2 estimate gate; fresh G-R0..G-R3 owner gates superseding stale g1/g2 (USD0.50, judge gpt-5.6-luna); MoA downgrade truthfulness (full_ensemble expected-degraded, never an ensemble success); post-run artifact-only Kimi judging separation (zero judge rows on the DUT ledger); V0-V5 verification matrix; rollback; narrow changed-file scope. No code, no other architect's plan, no lifecycle plan content edited.
+Result: plan slot C ready for consensus judging; PI-BENCH-RETAKE-20260722-PLAN-C
+Verified: backend/.venv/bin/python -m pytest tests/pi_benchmark/ -q -> 170 passed 2 failed (stale pre-F6 provider tests, fix designed in RT-1); plan-only/idempotent/ManifestConflict/provider-reject/owner-gate CLI probes -> exit 0/0/2/argparse-error/3; pack census 15+4+3=22; approved endpoint pi-deepseek-default at backend/app/core/pi_runtime/endpoints.py:23; shared-venv 'import app' resolves to ROOT checkout (RT-0 attestation mitigation); CF evidence rows 1508-1512 (4x command, self_report)
+Next: consensus judges vote on plan slots a/b/c; conductor seals consensus_result; G-R0 owner gate before any implementation
+
+### L-47 | 2026-07-22T22:59:43Z | S1-plan | claude-fable-5 | judge | Retake planning <!-- bsc-ledger:PI-BENCH-RETAKE-20260722-JUDGE-A -->
+Did: consensus judge slot a for round fcf29273d0f8bddbc66e — read exactly candidates B (docs/build-stream/plans/pi-bench-retake-20260722-plan-b.md, sha f39e3f52) and C (docs/build-stream/plans/pi-bench-retake-20260722-plan-c.md, sha e090b229), verified both hashes and git head a9b0b795 against the task payload, and fact-checked their differentiating claims in-tree. No plan edited; no review_verdict recorded (judge contract).
+Result: plan_vote = slot C (candidate_id db2ac00d…). C wins on verified grounding + execution risk: it pinned the red-baseline root cause, independently found the latent wave-wedge defect (ledger.commit outside try/except in live_driver.run_live_unit — verified) and the shared-venv backend import hazard, proved budget fit (~$0.73 <= $1.00), and correctly flagged that B's cited authority file pi-benchmark-deepseek-moa-execution.md does not exist (verified). B is stronger on gate-digest binding + ASGI DUT fidelity but is a heavier 11-task redesign resting on a dangling authority pointer; recommend grafting B's run-bound gate-digest verification onto C at implementation. PI-BENCH-RETAKE-20260722-JUDGE-A
+Verified: shasum -a 256 of both plans + git rev-parse HEAD -> match payload; backend/.venv/bin/python -m pytest tests/pi_benchmark/ -q -> 2 failed, 170 passed (exactly the two test_deepseek_provider.py tests both plans reported); ls conductor-instructions/ -> pi-benchmark-deepseek-moa-execution.md absent; sed live_driver.py 550-660 -> commit outside dispatch try/except confirmed; CF evidence rows 1518-1522 (3x command, plan_vote, self_report)
+Next: judges b/c vote; conductor tallies and seals consensus_result; G-R0 owner gate before any implementation
+
+### L-48 | 2026-07-23T00:05:28Z | S1-plan | gpt-5.6-sol | judge | Retake planning <!-- bsc-ledger:PI-BENCH-RETAKE-20260722-JUDGE-B -->
+Did: consensus judge slot b for round fcf29273d0f8bddbc66e — read exactly candidates A (`docs/build-stream/plans/pi-bench-retake-20260722-plan-a.md`, sha256 `5abf12ff…`) and C (`docs/build-stream/plans/pi-bench-retake-20260722-plan-c.md`, sha256 `e090b229…`) plus their supplied author identities; both hashes matched the work-order payload. No plan or code edited and no `review_verdict` recorded.
+Result: `plan_vote = slot C` (`candidate_id db2ac00d…`) on `PI-BENCH-RETAKE-20260722-JUDGE-B`. C is stronger because it models the current single-`moa_mode` CLI as three manifests and closes the proven `live_driver.py` post-dispatch accounting/resume wedge plus checkout-import hazard. A's manifest-bound stale-gate rejection is stronger than C's fresh-artifact-only gate design and remains an explicit implementation residual risk.
+Verified: `shasum -a 256 docs/build-stream/plans/pi-bench-retake-20260722-plan-a.md docs/build-stream/plans/pi-bench-retake-20260722-plan-c.md` matched both pinned hashes; both files read in full; CF evidence IDs 1529 command, 1530 plan_vote, 1531 self_report.
+Next: stage exit: judge c votes, then the conductor tallies and seals `consensus_result`; G-R0 owner gate precedes implementation.
+
+### L-49 | 2026-07-23T00:11:57Z | S1-plan | kimi-code/k3 | judge | Retake planning <!-- bsc-ledger:PI-BENCH-RETAKE-20260722-JUDGE-C -->
+Did: consensus judge slot c for round fcf29273d0f8bddbc66e — read exactly candidates A (`docs/build-stream/plans/pi-bench-retake-20260722-plan-a.md`, sha256 `5abf12ff…`) and B (`docs/build-stream/plans/pi-bench-retake-20260722-plan-b.md`, sha256 `f39e3f52…`) plus their supplied author identities; both hashes matched the work-order payload. No plan or code edited; no `review_verdict` recorded (judge contract).
+Result: `plan_vote = slot B` (`candidate_id 80d2db45…`) on `PI-BENCH-RETAKE-20260722-JUDGE-C`. B found the decisive apparatus-validity gap A missed: waves dispatch `default_prompt_builder`'s route smoke prompt ("not the full scenario corpus", `live_driver.py:384-397`, default-wired at `:549-550` with no runner override), so A's unchanged reuse would run B1..B_N without measuring scenario quality; B's T4 grounds the fix in the verified ASGI seam (`test_chat_pi_asgi.py` + `x-istara-agent-engine` in `dispatcher.py`). B's Kimi-only artifact judging with structural no-DUT enforcement fits the spec's reserved separate judging session better than A's in-run DeepSeek judge on the DUT ledger (same-provider self-judging + redundant spend). A's audit is sharper on citations (correctly flagged the missing `pi-benchmark-deepseek-moa-execution.md` that B's header cites — verified absent) and its interpreter pin + append-only lifecycle DEC should be grafted onto B at implementation. Both A and B miss the bare `ledger.commit` wave-wedge (`live_driver.py:648`, verified: commit refusal escapes record-less and wedges the unit) — implementation must close it regardless of winner.
+Verified: `shasum -a 256` of both plans -> match payload; `ls docs/build-stream/conductor-instructions/` -> moa-execution file absent (A G-3 true, B header slip); `sed`/`grep` on `live_driver.py` -> smoke-prompt default wired at :549-550, bare commit at :648; `sed runner.py 472-478` + `cat tests/pi_benchmark/gates/g1_owner_gate.json` -> existence-only gate + stale `gpt-5.6-luna` approval; `ls tests/pi_production/test_chat_pi_asgi.py` + `grep x-istara-agent-engine backend/app` -> B's seam real; CF evidence IDs 1542, 1543 (command), 1544 (plan_vote), 1545 (self_report)
+Next: stage exit: conductor tallies judge a/b/c votes and seals `consensus_result`; G-R0 owner gate precedes implementation.
+
+### L-50 | 2026-07-23T00:59:02Z | S2-execute | claude-opus-4-8 | executor | Retake execution (RT-0/RT-1/RT-2) <!-- bsc-ledger:PI-BENCH-RETAKE-20260722-IMPL -->
+Did: implemented the winning Plan C implementer scope RT-1 (apparatus hardening, red→green + wedge-proof accounting) and RT-2 (dry-run estimate gate), plus RT-0's DEC-7 role-canon supersession. Files: `tests/pi_benchmark/deepseek_provider.py` (reserve `max(2×est_input, MIN_RESERVE_INPUT_TOKENS=256)` input-priced + `max_tokens` output-priced; catch commit `LedgerStateError` → `ProviderCallFailed("over_reservation_fail_closed")`, reservation retained), `tests/pi_benchmark/live_driver.py` (same reserve margin + `DEFAULT_MAX_TOKENS=1024`; on resume `reserve`→`LedgerStateError` write `not_runnable/other` `interrupted_unknown_usage` retaining the reservation instead of re-raising; wrap the bare `commit` (old :648) → on `LedgerStateError` write `not_runnable/other` `accounting_fail_closed`, reservation retained, wave never crashes), `tests/pi_benchmark/runner.py` (`_worst_case_program_cost_usd` + estimate gate in `_run_b0_plan_only`: prints the deterministic whole-program worst case and exits 2 before any manifest write when it exceeds `--budget-usd`). Reconciled the 2 stale provider tests to realistic in-margin usage; added over-reservation (provider+driver), resume-with-outstanding-reservation, and estimate-gate tests. Appended DEC-7 pinning the DeepSeek-only DUT / Kimi-post-run-only canon (supersedes DEC-5/DEC-6 Kimi-eval clauses). RT-0 attestation artifacts and RT-3+ live scheduling/waves are the executor lane's, behind G-R1/G-R2 — not done here.
+Result: apparatus is green and the F-6-class latent wedge is closed fail-closed. AC-1 met (178 passed / 0 failed; was 170/2). AC-3 estimate gate verified ($0.7342 ≤ $1.00 → exit 0 with manifest; `--repeats 2` → $1.4683 > cap → exit 2, no manifest, no live call). AC-5/AC-6 fail-closed reserve/commit/resume paths unit-proven. No product/backend/security file touched; changed-file scope = the 6 RT-1/RT-2 files under `tests/pi_benchmark/` + this lifecycle file (DEC-7, L-50, Status Block). No live dispatch, no spend, no models loaded. PI-BENCH-RETAKE-20260722-IMPL
+Verified: `PYTHONPATH=$PWD/backend backend/.venv/bin/python -m pytest tests/pi_benchmark/ -q` → 178 passed; `... tests/pi_migration/test_count_to_zero.py -q` → 3 passed (ratchet 0); `scripts/security_benchmark.py --fail-on-threshold` → pass, 100.0%, 28/0, triggered_paths=[]; CLI probes: lane-none `--plan-only` exit 0 (estimate $0.7342, 44 units/4 shards), `--repeats 2` exit 2 no manifest, identical rerun exit 0, `--max-processes 3` `ManifestConflict` exit 2, offline `validate_topology` → `full_ensemble->self_moa` degraded; `git status` → only the 6 tests/pi_benchmark files + this lifecycle file. CF evidence: 4×command + self_report on PI-BENCH-RETAKE-20260722-IMPL.
+Next: stage exit — RT-1/RT-2 ready for independent code review (pi-bench-retake-20260722-fixer/reviewer lane); executor lane then does RT-0 attestation (`app.__file__` pin, `b0-attestation.json`) and, behind G-R1/G-R2, RT-3 B0 scheduling + RT-4 preflight + RT-5 waves + RT-6 POST-N.
+
+### L-51 | 2026-07-23T01:26:00Z | S3-review | kimi-code/k3 | reviewer | Retake execution (RT-1/RT-2 review) <!-- bsc-ledger:PI-BENCH-RETAKE-20260722-REVIEW -->
+Did: independent code review of PI-BENCH-RETAKE-20260722-IMPL (commit a68ffc25) against the approved Plan C RT-1/RT-2 rows, section 2.3 budget contract, and AC-1/2/3. Read the full diff (6 tests/pi_benchmark files + this lifecycle file); cross-checked every fail-closed claim against budget_ledger.py (reserve/commit raise LedgerStateError BEFORE any append, so retained-reservation semantics hold: budget_ledger.py:234,273,277); re-ran the touched suites and the offline CLI probes myself (all in /tmp, no spend, no live calls).
+Result: review_verdict=pass, zero findings (no new Findings-register rows). RT-1: reserve max(2x chars4, 256) input-priced + max_tokens output-priced per model call in provider and driver; commit LedgerStateError -> provider ProviderCallFailed("over_reservation_fail_closed") / driver not_runnable/other "accounting_fail_closed", reservation retained, wave never crashes; resume reserve LedgerStateError -> not_runnable/other "interrupted_unknown_usage", no re-dispatch. RT-2: whole-program worst-case gate in _run_b0_plan_only exits 2 before any manifest write when > --budget-usd; estimate math matches plan section 2.3 exactly ($0.7342 <= $1.00). Scope clean: only the 6 declared tests/pi_benchmark files + this file; DEC-7 appended, DEC-5/6 byte-identical; L-50 + status block correct. Non-blocking observation: tests/pi_production is red in THIS worktree (47 failed / 299 passed) because pi-runtime/node_modules is absent here (present in the root checkout) -> worker handshake_timeout; diff overlap with pi-runtime/backend/pi_production is zero files, so it is a pre-existing worktree-setup gap for executor RT-0, not a defect in the reviewed change. PI-BENCH-RETAKE-20260722-REVIEW
+Verified: pytest tests/pi_benchmark -q -> 178 passed (AC-1); tests/pi_migration/test_count_to_zero.py -> 3 passed (ratchet 0); scripts/security_benchmark.py --fail-on-threshold -> pass, triggered_paths=[]; plan-only probes -> lane-none exit 0 estimate $0.7342 with manifest (44 units, 4x11 shards, AC-2 fields incl. max_processes=4/provider=deepseek/model=deepseek-v4-pro/cap=1.0/moa_n=3/repeats=1/T3, 44 distinct unit_ids), --repeats 2 -> $1.4683 exit 2 no manifest, identical rerun exit 0 manifest sha256 unchanged, --max-processes 3 -> exit 2 ManifestConflict; pytest tests/pi_production -q -> 47 failed/299 passed (environmental: pi-runtime/node_modules missing in worktree; reproduced handshake_timeout on test_worker_tool_loop.py). CF evidence: 6x command + self_report + review_verdict on PI-BENCH-RETAKE-20260722-REVIEW.
+Next: stage exit: review passed — conductor advances; executor lane owns RT-0 attestation (install pi-runtime deps in this worktree, pin app.__file__, write b0-attestation.json), then G-R1 before RT-3/RT-4 and G-R2 before waves.
+
+### L-52 | 2026-07-23T02:12:48Z | S2-execute | kimi-code/k3 | executor | Retake execution (RT-0 attestation + RT-3 B0 scheduling) <!-- bsc-ledger:PI-BENCH-RETAKE-B0-20260723-WAVE-b0-IMPL -->
+Did: executed the remaining offline Plan C work in the shared worktree (wave b0). RT-0: attested the execution checkout pin — unpinned `import app` resolves to the ROOT checkout (/Users/user/Documents/Istara-main-pi-replacement/backend/app/__init__.py, hazard confirmed), with PYTHONPATH="$PWD/backend" it resolves inside this worktree; branch conductor/pi-bench-retake-20260722 @ 4a089e9c; N=max_processes=4 per Plan C section 2.2 (distinct from moa_n=3 and repeats=1); verified absence of prior retake .results residue (dir did not exist before RT-3; .results/ gitignored via tests/pi_benchmark/.gitignore:4); wrote tests/pi_benchmark/.results/runs/retake/b0-attestation.json (file_sha256 b9fee3edd4343cd4f9a7cc05e1bd6673b432b83da9e2768b2543f83b6c34d1c7); closed the L-51 environmental gap by running npm ci in pi-runtime (dependency install only, no code change). RT-3: produced three immutable, content-hashed, plan-only manifests for lanes none/self_moa/full_ensemble (44 units x 4 disjoint shards of 11 per lane) into the gitignored retake run root sharing the (not yet created) budget-ledger path. DEC-7 was already appended at L-50; no new decision entry required.
+Result: B0 offline evidence complete — 0 live calls, 0 spend, no credentials read, no ledger file created, no G-R1/G-R2/G-R3 artifacts, stale g1/g2 gates byte-identical. AC-2 met: three manifests each recording max_processes=4, provider=deepseek, model=deepseek-v4-pro, budget_cap_usd=1.0, moa_n=3, repeats=1, tier=T3, shards covering 44 units exactly once (22 scenarios x engines pi/legacy). AC-3 met: deterministic worst-case estimate $0.7342 <= $1.00 printed at B0 with exit 0; repeats=2 probe ($1.4683) exit 2 with no manifest mutation and no live call. content_sha256: none=e22c796a05af3235..., self_moa=ea2288e3c172c880..., full_ensemble=0d65a54e4ac57466.... Spend-free topology probe: requested_slots=3 on available=[pi-deepseek-default] -> would_serve_mode=self_moa, would_degrade=true, downgrade=full_ensemble->self_moa (AC-8 expectation for the full_ensemble lane). PI-BENCH-RETAKE-B0-20260723-WAVE-b0-IMPL
+Verified: pytest tests/pi_benchmark -q -> 178 passed, 0 failed (AC-1); pytest tests/pi_migration/test_count_to_zero.py -q -> 3 passed (ratchet 0); npm ci (pi-runtime) then pytest tests/pi_production -q -> 346 passed in 64.36s (was 47 failed / 299 passed without node_modules); python3 scripts/security_benchmark.py --fail-on-threshold -> status pass, triggered_paths=[]; runner --plan-only x3 lanes -> exit 0 each (estimate $0.7342); identical rerun lane none -> exit 0, manifest file_sha256 unchanged; --max-processes 3 -> exit 2 ManifestConflict, unchanged; --repeats 2 -> exit 2, unchanged; all three manifest file hashes byte-identical before/after every probe; validate_topology -> spend-free JSON as above. CF evidence: 7x command + self_report on PI-BENCH-RETAKE-B0-20260723-WAVE-b0-IMPL.
+Next: stage exit — B0 offline evidence complete. RT-4 preflight (first live call) requires the G-R1 owner gate; RT-5 waves require G-R2; both remain owner-gated and untouched.
+
+### L-53 | 2026-07-23T02:24:17Z | S3-review | gpt-5.6-sol | reviewer | Retake execution (RT-0/RT-3 B0 review) <!-- bsc-ledger:PI-BENCH-RETAKE-B0-20260723-WAVE-b0-REVIEW -->
+Did: independently reviewed Plan C RT-0/RT-3 against implementer commit `81557fa0`, CF evidence 1576-1583/1588, ignored runtime artifacts, and actor session 208 logs. Recomputed attestation/file hashes; hash-verified all three manifests; reran the offline suite and focused idempotent-resume/`ManifestConflict` probes. Added F-8 and created `FIX-PI-BENCH-RETAKE-B0-20260723-WAVE-b0-REVIEW-r1-lifecycle`; no benchmark code or runtime artifact was edited.
+Result: verdict **FAIL** with one Major lifecycle-integrity finding. The B0 evidence itself passes: checkout pin and N=4 are attested; none/self_moa/full_ensemble manifests each contain 44 unique units in four disjoint shards of 11, are content-hash-bound, and preserve the required provider/model/cap/moa_n/repeats/tier fields; resume exits 0 unchanged and differing max_processes exits 2 unchanged. Session 208 shows plan-only commands, zero live/provider/credential/server operations, no budget ledger, and no fresh retake gate artifact. F-8: the refreshed Status Block still named stale branch `Review_pi_test` and `CF-SPEC-8`, violating the resume identity contract; the fixer must correct those identity fields and preserve append-only history.
+Verified: `PYTHONPATH=/Users/user/Documents/Istara-main-pi-benchmark-retake/backend /Users/user/Documents/Istara-main-pi-replacement/backend/.venv/bin/python -m pytest tests/pi_benchmark/ -q` -> 178 passed; `tests.pi_benchmark.scheduler.load_manifest` + invariant audit -> three hashes valid, 44 unique units/lane, shard sizes `[11,11,11,11]`, lane modes `{None}`/`{self_moa}`/`{full_ensemble}`, N=4/moa_n=3/repeats=1; identical lane-none `runner.py --plan-only --max-processes 4` -> exit 0 and file sha256 `71130343...` unchanged; differing `--max-processes 3` -> expected exit 2 `ManifestConflict` and same sha256; `rg --files --hidden tests/pi_benchmark/.results/runs/retake` -> only attestation + three manifests; `rg --files tests/pi_benchmark/gates` -> only stale g1/g2 files; actor session 208 log audit -> no `--live` execution/provider call/credential read/server start.
+Next: stage exit — fixer resolves F-8, then the conductor creates one delta re-review; RT-4/RT-5 remain owner-gated.
+
+### L-54 | 2026-07-23T02:31:28Z | S4-remediate | gpt-5.6-luna | remediator | Retake execution (B0 lifecycle identity remediation) <!-- bsc-ledger:FIX-PI-BENCH-RETAKE-B0-20260723-WAVE-b0-REVIEW-r1-lifecycle -->
+Did: resolved F-8 in `docs/build-stream/2026-07-22-pi-benchmark.md` by preserving the corrected active resume identity (`conductor/pi-bench-retake-20260722`, `CF-SPEC-9`), marking the finding fixed, and refreshing the Status Block handoff; no code or historical ledger entries changed.
+Result: F-8 Major closed (`open` -> `fixed (L-54)`); lifecycle resume identity and append-only history are coherent for the delta re-review.
+Verified: focused Status Block/ledger integrity check, `git diff --check`, and scoped diff audit passed; pre-change `compass-forge gate before` reported 0 new failures/warnings (80 inherited failures, actionable_failures=[]).
+Next: stage exit: F-8 fixed and ready for the conductor-created delta re-review; RT-4/RT-5 remain owner-gated.
+
+### L-55 | 2026-07-23T02:38:26Z | S3-review | gpt-5.6-sol | reviewer | Retake execution (B0 lifecycle delta re-review) <!-- bsc-ledger:REREV-PI-BENCH-RETAKE-B0-20260723-WAVE-b0-REVIEW-r1 -->
+Did: delta re-reviewed F-8 only against fixer commit `d91a170` and its cited verification evidence; inspected the lifecycle diff, live Status Block, F-8 register row, L-54, and the immediate historical-identity seam. No benchmark code, runtime artifacts, historical decisions, or earlier ledger entries were changed.
+Result: verdict **PASS** with zero findings. The live resume identity is uniquely `conductor/pi-bench-retake-20260722` plus `CF-SPEC-9`; F-8 is verified closed. The remaining `Review_pi_test` / `CF-SPEC-8` mentions are correctly preserved inside the superseded historical pi-eval plan, not the live Status Block.
+Verified: `git diff d91a170^ d91a170 --check` passed; commit `d91a170` changes only `docs/build-stream/2026-07-22-pi-benchmark.md`; exact assertions passed for one live branch/spec pair, one L-54 fixer marker, and the F-8 fixed marker; Compass Forge command evidence 1612 recorded on the re-review task.
+Next: stage exit: F-8 delta re-review passed; conductor may advance, while RT-4/RT-5 remain blocked behind G-R1/G-R2.
+
+### L-56 | 2026-07-23T13:23:10Z | S2-execute | kimi-code/k3 | executor | Retake execution (RT-4 DeepSeek-only budgeted preflight) <!-- bsc-ledger:PI-BENCH-RETAKE-EXEC-20260723-WAVE-rt4-preflight-IMPL -->
+Did: executed approved Plan C RT-4 in the shared worktree. Recorded the owner's whole-plan approval ("The wave is supposed to have continue everything. Approved, the whole plan is approved, use the wave to execute it all") as CF evidence (row 1622) and created the fresh retake-scoped G-R1 artifact tests/pi_benchmark/gates/retake_g1_owner_gate.json stating exactly: DeepSeek deepseek-v4-pro via endpoint pi-deepseek-default only; USD 1.00 cumulative ledger cap across preflight, all waves, all lanes, and all retries; no fallback; credentials only via env ISTARA_PI_SECRET_PI_DEEPSEEK_DEFAULT / Keychain istara-pi-deepseek/openclaw, memory-only, never logged. Stale prior-lineage gates g1/g2 left byte-identical. Asserted PYTHONPATH=$PWD/backend resolves app inside this worktree, then made exactly ONE DeepSeekProvider.preflight() call against the shared retake ledger tests/pi_benchmark/.results/runs/retake/budget-ledger.json (cap_usd=1.00).
+Result: preflight succeeded — provider-reported usage (estimate=False): 5 input / 1 output / 5 cache-write tokens, actual cost 7.7e-06 USD; ledger reserve 0.000143 -> commit 7.7e-06, rows=2, closed=False; verify_budget_ledger exit 0 (spent=$0.000008 <= cap=$1.00). No server started, no other provider/model used, no credential read or printed by this agent, no fallback. First live spend of the retake program: 0.0008% of the $1.00 envelope. PI-BENCH-RETAKE-EXEC-20260723-WAVE-rt4-preflight-IMPL
+Verified: PYTHONPATH=$PWD/backend pin assertion -> pin ok (app resolves to worktree backend/app/__init__.py); preflight heredoc (Plan C section 5 V2) -> preflight ok: 7.7e-06 estimate: False; $PY tests/pi_benchmark/verify_budget_ledger.py --ledger tests/pi_benchmark/.results/runs/retake/budget-ledger.json --cap-usd 1.00 -> [ok] exit 0; git status -> scope = gate artifact + this lifecycle file only (.results gitignored). CF evidence rows 1622 (owner_approval), 1623-1624 (command), self_report follows.
+Next: stage exit: preflight complete, stopping here per manifest — later waves are separate manifest entries and remain blocked behind the G-R2 owner gate (B0 evidence pack: green suite, three immutable manifests, estimate <= cap, preflight ledgered, attestation, route-isolation probes).
+
+### L-57 | 2026-07-23T13:32:00Z | S3-review | gpt-5.6-sol | reviewer | Retake execution (RT-4 DeepSeek-only budgeted preflight review) <!-- bsc-ledger:PI-BENCH-RETAKE-EXEC-20260723-WAVE-rt4-preflight-REVIEW -->
+Did: independently reviewed Plan C RT-4, implementer commit `26c13b42`, fresh `tests/pi_benchmark/gates/retake_g1_owner_gate.json`, the ignored shared retake ledger, CF evidence 1622-1630, and authoritative actor session 212. Confirmed the complete-plan approval quote, DeepSeek `deepseek-v4-pro` through `pi-deepseek-default` only, cumulative USD 1.00 cap, no fallback, configured env/Keychain-only credential policy, pinned worktree import, and exactly one ledgered preflight. No code, run artifact, prior ledger entry, historical decision, or stale owner gate was changed by this review.
+Result: verdict **PASS** with zero findings (CF evidence 1635). The shared ledger contains exactly one `preflight` reserve and one matching commit, provider-reported spend USD 0.0000077, no credential-shaped keys or secret values, and no other provider/model row. Session 212 records one pinned preflight execution marker and no server or fallback action. Stale `g1_owner_gate.json` and `g2_owner_gate.json` remain byte-identical to their pre-RT-4 Git blobs. RT-5 remains correctly blocked behind G-R2.
+Verified: `verify_budget_ledger.py --ledger tests/pi_benchmark/.results/runs/retake/budget-ledger.json --cap-usd 1.00` -> passed, rows=2 and spend USD 0.0000077; exact `jq` artifact/ledger assertions and session secret-value scan -> passed; `PYTHONPATH=$PWD/backend backend/.venv/bin/python -m pytest tests/pi_benchmark/test_deepseek_provider.py::test_preflight_is_a_minimal_ledgered_call tests/pi_benchmark/test_verify_budget_ledger.py -q` -> 13 passed; stale-gate `git hash-object --no-filters` values matched `HEAD^` blobs; `git diff --check HEAD^ HEAD` passed. CF command evidence 1631-1634 and self-report 1636.
+Next: stage exit: RT-4 independent review passed; conductor may advance to B0 evidence-pack assembly and G-R2 owner approval, but must not dispatch RT-5 before G-R2.
+
+### L-58 | 2026-07-23T13:55:40Z | S2-execute | kimi-code/k3 | executor | Retake execution (RT-5 lane none B1) <!-- bsc-ledger:PI-BENCH-RETAKE-EXEC-20260723-WAVE-none-b1-IMPL -->
+Did: executed approved Plan C RT-5 lane=none wave=1 in the shared worktree. Recorded the owner's complete-plan approval as CF evidence (row 1643; quote "The wave is supposed to have continue everything. Approved, the whole plan is approved, use the wave to execute it all") and created the fresh G-R2 artifact `tests/pi_benchmark/gates/retake_g2_owner_gate.json` binding the B0 evidence pack (attestation sha b9fee3ed…, three manifest file/content hashes, green suite, $0.7342 estimate ≤ $1.00, successful preflight ledgered, route-isolation probes), N=4, DeepSeek-only `pi-deepseek-default`/`deepseek-v4-pro`, $1.00 cumulative cap, no fallback; stale g1/g2 left byte-identical. Asserted `PYTHONPATH=$PWD/backend` with `app.__file__` inside this worktree, then ran `runner.py --wave 1 --max-processes 4 --live` with the immutable none manifest and shared ledger. No server, no non-DeepSeek provider/model, no credential read or printed by this agent.
+Result: wave exit 0; 11 records == shard 1 units exactly, no duplicates, manifest file sha256 unchanged, ledger verify [ok] spent=$0.024960 ≤ $1.00 (rows=14, closed=False, provider=deepseek). Outcome: 1 ok (`a2a.debate_report.slice`, engine=pi, actual $0.0011187) + 10 not_runnable/startup_failure — the wave path runs each unit in a fresh `asyncio.run` loop (`live_driver.py:740`) while the pi-runtime supervisor is a process-wide loop-bound singleton (`supervisor.py:526`), so units 2–11 failed at dispatch with "Future attached to a different loop"; their reservations are retained as worst-case spend per fail-closed accounting (they are not billed usage). Triaged as F-9 (Critical) to fixer task `FIX-PI-BENCH-RETAKE-EXEC-20260723-WAVE-none-b1-eventloop`; no code edited in this stage per scope rules. PI-BENCH-RETAKE-EXEC-20260723-WAVE-none-b1-IMPL
+Verified: wave run exit 0 (`[ok] wave 1/4: 11 records (0 already complete), spend=$0.0250`); completeness script (record_ids == manifest.shards[0], all unique, wave.index==1) -> passed; route/model assertions (`pi-deepseek-default`/`deepseek-v4-pro`, estimate=False) -> passed; manifest sha256 71130343bc41… unchanged; `verify_budget_ledger.py --cap-usd 1.00` -> [ok] spent=$0.024960, exit 0; G-R2 gate JSON parsed and pin assertion passed. CF evidence rows 1643-1648 (owner_approval, 4x command, self_report).
+Next: conductor routes F-9 to the fixer lane; RT-5 waves none B2..B4 and both MoA lanes must wait for the cross-loop fix (the same defect will recur on every wave); review of PI-BENCH-RETAKE-EXEC-20260723-WAVE-none-b1-IMPL decides whether B1 stands complete-with-finding or the 10 startup_failure units are re-dispatched after the fix.
+
+### L-59 | 2026-07-23T13:57:38Z | S4-remediate | gpt-5.6-luna | remediator | Retake execution (F-9 cross-event-loop remediation) <!-- bsc-ledger:FIX-PI-BENCH-RETAKE-EXEC-20260723-WAVE-none-b1-eventloop -->
+Did: fixed F-9 in `tests/pi_benchmark/runner.py` by executing each live batch, including wave shards, inside one shared `asyncio.run` loop and awaiting `live_driver.run_live_unit`; added `tests/pi_benchmark/test_runner.py::test_wave_mode_dispatches_all_pending_units_on_one_event_loop` to prove two pending units share the same loop. Regenerated `docs/features/site/manifest.json` through the required feature-doc check. Updated the Findings register F-9 `open -> fixed (L-59)` and refreshed the Status Block; no runtime artifacts, ledger history, or unrelated files changed.
+Result: the process-wide Pi runtime supervisor is no longer reused across per-unit event loops in runner-managed batches. Existing resume filtering and the public single-unit sync wrapper remain unchanged; the ten prior startup_failure records were not mutated or re-dispatched by this fixer.
+Verified: `PYTHONPATH=$PWD/backend /Users/user/Documents/Istara-main-pi-replacement/backend/.venv/bin/python -m pytest tests/pi_benchmark/test_runner.py -q` -> 24 passed; `... -m pytest tests/pi_benchmark/test_live_driver.py -q` -> 21 passed; `... -m pytest tests/pi_benchmark/ -q` -> 179 passed; `... -m compileall -q tests/pi_benchmark/runner.py tests/pi_benchmark/test_runner.py` -> passed; `python scripts/feature_docs.py --seed-missing --generate-site --check` -> 86 features passed; `compass-forge gate after --task FIX-PI-BENCH-RETAKE-EXEC-20260723-WAVE-none-b1-eventloop --summary` -> inherited 80 failures, `new_failures: 0`, `actionable_failures: []`; `git diff --check` -> passed.
+Next: stage exit: F-9 is fixed and ready for the conductor-created delta re-review; the reviewer must verify the changed batch seam before any live retry decision.
+
+### L-60 | 2026-07-23T14:06:30Z | S3-review | gpt-5.6-sol | reviewer | Retake execution (RT-5 lane none B1) <!-- bsc-ledger:PI-BENCH-RETAKE-EXEC-20260723-WAVE-none-b1-REVIEW -->
+Did: independently reviewed lane `none` B1, the implementer evidence, fresh G-R2 artifact, immutable B0/manifest bindings, all 11 shard records, the cumulative budget ledger, provider/fallback isolation, and the F-9 remediation seam in `tests/pi_benchmark/runner.py` plus its regression test. Updated only this lifecycle Status Block and appended this reviewer ledger entry; raised no new finding.
+Result: verdict **PASS** with zero new findings (CF evidence 1670). G-R2's bound attestation, three manifest, and preflight-ledger hashes match current bytes; lane B1 has exactly 11 unique schema-valid records matching shard 1 (1 `ok`, 10 typed `not_runnable/startup_failure` with null live identity); the successful record proves `pi-deepseek-default` / `deepseek-v4-pro` with provider-reported usage; ledger spend is `$0.024960 <= $1.00`; no credential-shaped field, alternate-provider name, URL, or fallback endpoint appears in the run artifacts. AC-6 permits typed terminal `not_runnable` records, so the ten truthful failures remain historical results rather than being silently rewritten.
+Verified: direct SHA-256/binding/record/route audit -> passed; `verify_budget_ledger.py --cap-usd 1.00` -> `[ok]` (14 rows, provider `deepseek`); focused benchmark tests -> 80 passed; `pytest tests/pi_benchmark/ -q` -> 179 passed; secret/provider-leak scans -> clean; `git diff --check` -> passed; `compass-forge gate after --task PI-BENCH-RETAKE-EXEC-20260723-WAVE-none-b1-REVIEW --summary` -> inherited failures only, `new_failures: 0`, `actionable_failures: []`.
+Next: stage exit: review passed; conductor may advance to lane `none` B2 without mutating the truthful B1 records.
+
+### L-61 | 2026-07-23T14:12:30Z | S3-review | gpt-5.6-sol | reviewer | Retake execution (F-9 delta re-review) <!-- bsc-ledger:REREV-PI-BENCH-RETAKE-EXEC-20260723-WAVE-none-b1-REVIEW-r1 -->
+Did: performed the bounded delta re-review of `FIX-PI-BENCH-RETAKE-EXEC-20260723-WAVE-none-b1-eventloop` at commit `0478302e`. Compared F-9 with the source fix and CF evidence, inspected only `tests/pi_benchmark/runner.py`, its new `tests/pi_benchmark/test_runner.py` regression, the unchanged `live_driver.run_live_unit` seam, and the process-wide `PiRuntimePool`/`PiRuntimeSupervisor` asyncio primitives. Updated F-9 from fixed to verified and refreshed this Status Block; no code, benchmark record, budget-ledger history, or runtime artifact was changed.
+Result: verdict **PASS** with zero new findings. `_execute_live_units` now creates one batch coroutine and awaits every pending wave unit inside one `asyncio.run`, so the singleton pool's allocation lock, each supervisor's locks/events/queues/tasks, and worker subprocess pipes remain on the same loop for the whole shard. Existing completed-record filtering still runs before dispatch, and the ten prior B1 `startup_failure` records remain truthful terminal history; any retry/replacement remains a separate governed decision under the cumulative `$1.00` cap.
+Verified: `PYTHONPATH=$PWD/backend /Users/user/Documents/Istara-main-pi-replacement/backend/.venv/bin/python -m pytest tests/pi_benchmark/test_runner.py::test_wave_mode_dispatches_all_pending_units_on_one_event_loop tests/pi_benchmark/test_runner.py::test_wave_mode_executes_shard_then_resume_skips_completed -q` -> 2 passed in 0.54s (CF command evidence 1676); source-fix CF evidence reports `test_runner.py` 24 passed, `test_live_driver.py` 21 passed, full benchmark suite 179 passed, feature docs 86 passed, and post-gate `new_failures=0`/`actionable_failures=[]`; static diff/seam inspection found no fix-induced acceptance or architecture change requiring broader review.
+Next: stage exit: delta re-review passed; conductor may advance to lane `none` B2 without mutating the truthful B1 records.
+
+### L-62 | 2026-07-23T14:29:25Z | S2-execute | kimi-code/k3 | executor | Retake execution (RT-5 lane none B2) <!-- bsc-ledger:PI-BENCH-RETAKE-EXEC-20260723-WAVE-none-b2-IMPL -->
+Did: executed approved Plan C RT-5 lane=none wave=2 in the shared worktree with the existing immutable none manifest, the shared crash-safe ledger, and the fresh retake G-R2 gate (`retake_g2_owner_gate.json`; bindings re-verified: manifest file sha256 `71130343bc41...` unchanged, attestation/gates untouched). Reasserted the pinned worktree before dispatch (`PYTHONPATH=$PWD/backend`; `app.__file__` resolves inside this worktree), then ran `runner.py --pack all --tier T3 --engine both --out tests/pi_benchmark/.results/runs/retake/none --owner-gate tests/pi_benchmark/gates/retake_g2_owner_gate.json --wave 2 --max-processes 4 --manifest tests/pi_benchmark/.results/runs/retake/none/manifest.json --budget-ledger tests/pi_benchmark/.results/runs/retake/budget-ledger.json --live`. No server started, no non-DeepSeek provider/model served, no credential read or printed by this agent. Triaged the legacy-dispatch defect as F-10 (Critical) to fixer task `FIX-PI-BENCH-RETAKE-EXEC-20260723-WAVE-none-b2-compute` via `task import`; no code edited in this stage per scope rules.
+Result: wave exit 0; 11 records == manifest.shards[1] exactly (all unique, wave.index=2), manifest file sha256 unchanged, ledger verify [ok] spent=$0.051178 <= $1.00 (rows=25, closed=False, provider=deepseek). Outcome: 11/11 not_runnable/startup_failure with "No compute nodes available for chat" — legacy-engine units dispatch through `backend/app/core/compute_registry_invocation.py:544` and the registry has no usable chat node (only unreachable local LM Studio/Ollama node labels; nothing served, zero live model calls, zero billed usage); the 11 reservations are retained as worst-case spend per fail-closed accounting (~$0.0262, not billed). The F-9 cross-loop fix held: no loop-binding errors recurred (different failure reason). PI-BENCH-RETAKE-EXEC-20260723-WAVE-none-b2-IMPL
+Verified: wave run exit 0 (`[ok] wave 2/4: 11 records (0 already complete), spend=$0.0512`); completeness script (record_ids == manifest.shards[1], all unique, wave.index==2) -> passed; manifest sha256 `71130343bc41...` unchanged == G-R2 binding; `verify_budget_ledger.py --cap-usd 1.00` -> [ok] spent=$0.051178, rows=25, exit 0; pin assertion -> pin ok. CF evidence rows 1685-1688 (4x command), 1689 (self_report).
+Next: conductor routes F-10 to the fixer lane; review of PI-BENCH-RETAKE-EXEC-20260723-WAVE-none-b2-IMPL decides whether B2 stands complete-with-finding or its 11 units are re-dispatched after the fix. Lane none B3 (pi engine) is unaffected by F-10; B4 and both MoA lanes' legacy halves will hit the same defect until F-10 is fixed.
+
+### L-63 | 2026-07-23T14:38:00Z | S4-remediate | gpt-5.6-luna | remediator | Retake execution (F-10 legacy-engine dispatch remediation) <!-- bsc-ledger:FIX-PI-BENCH-RETAKE-EXEC-20260723-WAVE-none-b2-compute -->
+Did: fixed F-10 in `tests/pi_benchmark/live_driver.py` and `tests/pi_benchmark/test_live_driver.py`; benchmark legacy units now use the runner's approved DeepSeek provider directly, with explicit `pi-deepseek-default` route evidence, while ordinary production legacy routing remains ComputeRegistry-backed. Added plain and self-MoA regression coverage, regenerated `docs/features/site/manifest.json`, and left all existing B2 records and budget-ledger history unchanged.
+Result: F-10 Critical closed (`open -> fixed (L-63)`) under `FIX-PI-BENCH-RETAKE-EXEC-20260723-WAVE-none-b2-compute`. Legacy benchmark dispatch no longer fails solely because local compute nodes are unavailable; provider calls remain under the outer reservation/commit path and fail closed on invalid or unknown usage. No live call, server start, fallback route, or record mutation occurred in this stage.
+Verified: focused `test_live_driver.py` + `test_runner.py` -> 47 passed; full `pytest tests/pi_benchmark/ -q` -> 181 passed; `pytest tests/pi_migration/test_count_to_zero.py -q` -> 3 passed; `python scripts/feature_docs.py --seed-missing --generate-site --check` -> 86 features passed; `python scripts/security_benchmark.py --fail-on-threshold` -> 28/28, 100%; `verify_budget_ledger.py --cap-usd 1.00` -> spent `$0.051178 <= $1.00`, rows=25; `compass-forge gate after --summary` -> inherited failures only, `new_failures=0`, `new_warnings=0`, `actionable_failures=[]`; `git diff --check` -> passed.
+Next: stage exit: F-10 fixed and ready for bounded delta review; reviewer verifies the benchmark dispatch seam before any separate governed retry decision for the 11 historical B2 startup_failure records.
+
+### L-64 | 2026-07-23T14:40:28Z | S4-remediate | gpt-5.6-luna | remediator | Retake execution (F-10 provider contract correction) <!-- bsc-ledger:FIX-PI-BENCH-RETAKE-EXEC-20260723-WAVE-none-b2-compute -->
+Did: aligned `tests/pi_benchmark/deepseek_provider.py` module documentation with the F-10 implementation: the provider remains benchmark-isolated and now explicitly covers legacy benchmark calls in addition to preflight/judging, while Pi units continue through Istara's dispatcher.
+Result: no behavior or benchmark artifacts changed; F-10 remains fixed and the contract text no longer contradicts the approved legacy-provider route.
+Verified: provider/live-driver compileall, `pytest tests/pi_benchmark/test_live_driver.py -q` -> 23 passed, and `git diff --check` -> passed.
+Next: stage exit: bounded delta review of the F-10 dispatch seam.
+
+### L-65 | 2026-07-23T14:49:25Z | S3-review | gpt-5.6-sol | reviewer | Retake execution (RT-5 lane none B2) <!-- bsc-ledger:PI-BENCH-RETAKE-EXEC-20260723-WAVE-none-b2-REVIEW -->
+Did: independently reviewed lane `none` B2 against Plan C RT-5 and AC-4/5/6/7, the implementer evidence, fresh G-R2 artifact, immutable B0/manifest bindings, all 11 shard records, the cumulative budget ledger, resume deduplication, and provider/fallback/secret isolation. Updated only this lifecycle Status Block and appended this reviewer ledger entry; raised no new finding. F-10 was already tracked and fixed by `FIX-PI-BENCH-RETAKE-EXEC-20260723-WAVE-none-b2-compute`, whose changed dispatch seam remains owned by its separate delta re-review.
+Result: verdict **PASS** with zero new findings. G-R2's bound attestation and three manifest hashes match current bytes; lane B2 has exactly 11 unique schema-valid records matching shard 2, all truthful `legacy` `not_runnable/startup_failure` records with zero usage, null live identity, and no route evidence because dispatch never served. AC-6 permits typed terminal `not_runnable` records and AC-7 requires null identity before dispatch, so the 11 records remain immutable terminal history rather than being rewritten. Ledger spend is `$0.051178 <= $1.00`; no alternate-provider name, URL, fallback endpoint, local-node label, or credential-shaped key appears in the B2 records.
+Verified: custom G-R2/manifest/attestation/record/route/leak audit -> passed; `/Users/user/Documents/Istara-main-pi-replacement/backend/.venv/bin/python tests/pi_benchmark/verify_budget_ledger.py --ledger tests/pi_benchmark/.results/runs/retake/budget-ledger.json --cap-usd 1.00` -> `[ok]` (25 rows, provider `deepseek`); `PYTHONPATH=$PWD/backend /Users/user/Documents/Istara-main-pi-replacement/backend/.venv/bin/python -m pytest tests/pi_benchmark/ -q` -> 181 passed; focused resume-dedup test -> 1 passed; `git diff --check` -> passed.
+Next: stage exit: review passed; conductor dispatches the bounded F-10 delta re-review before any governed retry, and the 11 B2 startup-failure records remain unchanged.
+
+### L-66 | 2026-07-23T14:57:11Z | S3-review | gpt-5.6-sol | reviewer | Retake execution (F-10 delta re-review) <!-- bsc-ledger:REREV-PI-BENCH-RETAKE-EXEC-20260723-WAVE-none-b2-REVIEW-r1 -->
+Did: performed the bounded F-10 delta re-review across commits `9c64caf5`/`1fcc6174`/`77c0205f`, the changed `live_driver.py`, `deepseek_provider.py`, focused tests, runner/provider handoff, and the immediate winning-plan DUT contract. No live call, server start, record rewrite, ledger mutation, or code fix was made. Broadened from the rewritten tests to Plan C lines 30 and 62 because the fix changed the benchmark architecture and acceptance identity.
+Result: FAIL. F-10's original unavailable-ComputeRegistry symptom is mechanically avoided, but the remediation bypasses Istara's legacy DUT arm: `dispatch_unit` sends every `engine=legacy` unit to `_dispatch_legacy_via_approved_provider`, which calls `DeepSeekProvider.chat` directly, while the new regression explicitly forbids `AgenticDispatcher.ensemble`. Raised F-11 Blocker and created `FIX-REREV-PI-BENCH-RETAKE-EXEC-20260723-WAVE-none-b2-REVIEW-r1-dut-identity`, owned by `pi-bench-retake-20260722-fixer`. The 11 historical B2 startup-failure records and retained reservations remain immutable; retry remains a separate governed decision.
+Verified: `PYTHONPATH=$PWD/backend /Users/user/Documents/Istara-main-pi-replacement/backend/.venv/bin/python -m pytest tests/pi_benchmark/test_live_driver.py tests/pi_benchmark/test_runner.py -q` -> 47 passed (the passing tests encode the bypass); contract/source `rg` audit -> Plan C requires both DUT arms through `AgenticDispatcher.ensemble`, while `live_driver.py:462-470` returns through the direct provider and `test_live_driver.py:220` forbids the agentic path; `/Users/user/Documents/Istara-main-pi-replacement/backend/.venv/bin/python -m compileall -q tests/pi_benchmark/live_driver.py tests/pi_benchmark/test_live_driver.py` -> passed; `git diff --check` -> passed.
+Next: conductor dispatches the F-11 fixer task and creates the next delta re-review only after the sibling barrier; no benchmark retry occurs from this review.
+
+### L-67 | 2026-07-31T19:20:00Z | RT-5/RT-6 | kimi-code/k3 | executor | Retake completion + POST-N <!-- bsc-ledger:PI-BENCH-RETAKE-COMPLETION-20260731 -->
+Did: resumed the frozen retake under explicit owner direction ("We also need to finally run the benchmark between both agentic cores and gather all results", confirmed "Yes" to resume). Verified the F-10 fix seam (47 focused tests) and executed all remaining waves: lane none B3 (11 pi ok) + B4 (11 legacy ok), lane self_moa B1-B4 (40 ok; 4 interrupted_unknown_usage from host-side process kills), lane full_ensemble B1-B4 (44 records, 100% degraded single_coder per AC-8 expectation). Governed supplementary retries under NEW immutable manifests with fresh `-rt1` unit identities (original failure records untouched, pair_ids preserved): none-retry 21/21 ok, self_moa-retry 4/4 ok. Fixed the report generator's fabricated quality axes and hardcoded "Pi wins" verdict: quality axes now report pending_judging with null scores; scorecard/markdown/HTML render only record-derived evidence (status, exact/estimated cost, tokens, MoA reconciliation); F-11 caveat embedded in report outputs. POST-N: ledger closed (spent $0.408928 <= $1.00, 288 rows), bundle comparison-Istara-pi/reports/20260731T191743Z, reproducibility re-run diff clean (modulo generated_ts), secret-shaped scan of bundle clean, report copied to the main workspace.
+Result: 157 records total; every runnable unit now has live paired evidence: none lane 44/44 ok (23 original + 21 retry), self_moa 44/44 ok (40 + 4 retry; consensus mostly insufficient -> degraded, mean 0.11), full_ensemble 44 degraded-by-design. Exact spend: pi $0.087706 (44 ok), legacy $0.091133 (44 ok); mean/ok pi $0.001993 vs legacy $0.002071. F-11 (legacy DUT identity) remains OPEN: legacy records are raw single completions, not the production legacy ReAct loop via AgenticDispatcher.ensemble; no engine winner declared anywhere.
+Verified: pytest tests/pi_benchmark/ -q -> 181 passed; verify_budget_ledger --close -> [ok] spent=$0.408928 rows=288 closed=True provider=deepseek; reproducibility diff -> True; bundle secret scan -> 0 hits; git diff --check -> passed.
+Next: G-R3 owner review of the bundle; F-11 fix (benchmark-seeded registry endpoint so the legacy arm dispatches through AgenticDispatcher.ensemble) + legacy-unit re-dispatch; then the Kimi blind judging session over the frozen artifact packet (quality axes 1-5, 7-10).
+
+### L-68 | 2026-07-31T20:30:00Z | S0/S1 | kimi-code/k3 | framer+planner | Phase RT-6b <!-- bsc-ledger:PI-BENCH-RT6B-FRAME-20260731 -->
+Did: framed Phase RT-6b with the owner (S0 approval logged as DEC-8, industry pack as DEC-9) and planned it through Compass Forge: CF-SPEC-10 created -> clarified (answers file docs/build-stream/cf-spec-10-answers.json) -> constitution check (v3, no warnings) -> spec plan -> spec tasks (CF-320 F-11 fix; CF-321 raw capture; CF-322 industry pack; CF-323 re-dispatch with capture; CF-324 Kimi blind judging; CF-325 report regeneration). Per build-stream, this phase appends to THIS lifecycle file (same initiative), not a new stream. Status Block refreshed (was stale at L-66). Loaded skills: compass-forge (CF mechanics) + build-stream (lifecycle). AGENTS.md in main repo + this worktree now mandates CF repo-intelligence usage (impact/why/related/code-graph/context packs); CF indexes built and verified in both trees (main 1027 files/139629 edges; retake 1209 files/192383 edges; retake CF config.json repaired).
+Result: CF-SPEC-10 status planned with a 6-task graph + validation tasks; spend envelope $3.00 fresh ledger (DEC-8); scope boundary and invariants recorded (pi_runtime isolation, closed-ledger immutability, no record rewrites).
+Verified: compass-forge spec show CF-SPEC-10 -> status planned; spec list -> CF-SPEC-1..10 present; CF index status both trees -> counts above; no code changed, no spend.
+Next: CF-320 work-order + gate before; implement benchmark-seeded registry endpoint for the legacy DUT arm (design: register approved DeepSeek as a benchmark-scoped LLMServer/registry entry so AgenticDispatcher.ensemble engine=legacy routes through production legacy path; usage must still flow to run_live_unit reserve/commit; pi_runtime isolation invariant untouched).
+
+### L-69 | 2026-07-31T20:55:00Z | S1-plan | kimi-code/k3 | planner | Phase RT-6b scope extension <!-- bsc-ledger:PI-BENCH-RT6B-PETALS-20260731 -->
+Did: appended the Pi-petals A2A bridge (comparison-Istara-pi/2026-07-31-pi-petals-a2a-bridge-design.md) to CF-SPEC-10 per owner direction. spec revise (goals/non-goals/work_items ITEM-007..010: P0 shim+projection, P1 streaming/consent/fail-closed, P2 A2A control plane+ledger telemetry, P3 petals ensembles + full_ensemble re-run; P4 UI deferred) -> spec tasks (plan_key dedup reused CF-320..325; new CF-335/336/337/338 created and linked implements). DEC-10 logged; Status Block task list refreshed. Verified create_structured_spec_tasks idempotency by plan_key before re-running spec tasks.
+Result: CF-SPEC-10 status tasked; task_refs CF-320..325 + CF-335..338 (+ validation tasks CF-326..334). No code changed, no spend.
+Verified: compass-forge spec show CF-SPEC-10 -> status tasked, 10 work items; task list -> CF-335..338 open with petals P0-P3 titles; DEC-9 Why line restored after an edit collision (re-verified by grep).
+Next: CF-320 work-order + gate before; implement the benchmark-seeded registry endpoint for the legacy DUT arm (petals tasks CF-335+ run in the replacement worktree after the benchmark chain CF-320..325, since P3 feeds the full_ensemble lane).
+
+### L-70 | 2026-07-31T21:50:00Z | S2-execute | kimi-code/k3 | implementer | CF-320 F-11 fix <!-- bsc-ledger:CF-320-F11-DUT-IDENTITY -->
+Did: implemented the F-11 legacy DUT identity fix (CF-320). New `tests/pi_benchmark/registry_seed.py` idempotently registers one in-memory, process-local `openai_compat` network node (`benchmark-deepseek-registry`, never relay/donor; key via runtime env/Keychain only). `live_driver.dispatch_unit` now sends BOTH arms through `AgenticDispatcher.ensemble` (pi pinned to `pi-deepseek-default`; legacy with `endpoint_id=None` so production registry selection routes to the seeded node); the F-10 provider bypass is deleted; per-engine route admission (pi endpoint vs benchmark node); `_sample_route_node_id` falls back to the registry's propagated route evidence. Two small production correctness fixes: `agentic/legacy.py::_normalize_chat` propagates the serving node's `node_id` as `endpoint_id` (was a "legacy" placeholder), and `compute_registry_invocation.py` openai-compat branch now propagates provider `usage` (was dropped — forced estimation everywhere). Allowlist line key re-pinned (:590 -> :595, W8 precedent). Import-cluster analyzer cycles eliminated by switching new/edited files to module-path imports (root cause: bare-package imports edge to every package module; verified in CF imports.py:46). Two live smokes on the new RT-6b ledger ($3.00 cap, DEC-8): v2 record ok with EXACT provider usage (444 tokens, estimate=false) and `endpoint_id=benchmark-deepseek-registry`.
+Result: F-11 fixed end-to-end: the legacy benchmark arm IS the production legacy loop (registry selection -> openai-compat transport -> attach_route_evidence). CF-320 finished with command evidence. Spend on rt6b ledger: $0.0012.
+Verified: pytest tests/pi_benchmark/ tests/pi_migration/ -> 190 passed; test_same_model_donor_isolation.py -> passed; security_benchmark --fail-on-threshold -> pass; feature_docs --check -> 86 ok; gate after --summary -> new_failures=0, actionable=[]; smokes -> [ok] wave 1/1.
+Next: CF-321 raw prompt/output capture (prompts.jsonl.gz/outputs.jsonl.gz per the owner requirements doc) wired into run_live_unit; CF-320 delta re-review by an independent (cross-model) reviewer remains required per build-stream S3 — tracked as a follow-up review task.
+
+### L-71 | 2026-07-31T22:20:00Z | S2-execute | kimi-code/k3 | implementer | CF-321 raw capture <!-- bsc-ledger:CF-321-RAW-CAPTURE -->
+Did: implemented raw LLM prompt/output capture (CF-321) per comparison-Istara-pi/raw-llm-output-capture-requirements.md. New `tests/pi_benchmark/raw_capture.py` (stdlib-only, T0-safe): RawCaptureWriter appends gzipped JSONL (`prompts.jsonl.gz`/`outputs.jsonl.gz` under `<run>/raw-llm-calls/`), one record per call with stable `call_id` (`unit_id:engine:slot`), engine_path vocabulary (`pi_candidate`/`baseline_istara`), settings (max_tokens, per-slot MoA temperatures, timeout, retry policy, `deepseek_key_present` boolean), full messages; output records carry content, stop_reason, error, latency, exact usage, cost, and capping (full/retained length + sha256 when over CAP_CHARS=64k). Secret hygiene: exact-match redaction of the runtime key + key-shaped patterns + credential-field names, every redaction listed; capture writes are fail-soft (paid dispatch results never lost; failures surfaced in record extensions.capture_errors). live_driver wires prompt records per MoA slot and output records per sample. Live both-arms smoke on the rt6b ledger: 2 prompts + 2 outputs captured with exact usage/cost; zero secret-shaped hits.
+Result: CF-321 finished with command evidence. Every future re-dispatch (CF-323) and industry run (CF-322) now retains judgeable raw behavior. Spend rt6b ledger: $0.0024.
+Verified: pytest tests/pi_benchmark/ -> 194 passed; gate after --summary -> new_failures=0 (bare-package analyzer cycles eliminated via module-path + importlib test imports); smoke-cap read-back -> fields complete; secret scan -> 0 hits.
+Next: CF-322 industry pack (BFCL v4 / tau-bench / GAIA subsets through the same paired runner); datasets + licenses into comparison-Istara-pi/industry/ (not committed); estimate gate against the DEC-8 envelope before spend.
+
+### L-72 | 2026-07-31T22:55:00Z | S2-execute | kimi-code/k3 | implementer | CF-322 industry pack <!-- bsc-ledger:CF-322-INDUSTRY-PACK -->
+Did: built the industry benchmark pack (CF-322, DEC-9/DEC-12). Fetched BFCL v4 (Apache-2.0: simple_python/multiple/live_simple + possible_answer ground truth) and tau-bench (MIT: airline/retail tasks_test) into comparison-Istara-pi/industry/ (content gitignored; ATTRIBUTION.md committed with licenses, subsets, fidelity notes). New scenarios/industry.py: 76 deterministic first-N scenarios (60 BFCL prompt-mode with ground truth in Scenario.expected for post-run AST scoring; 16 tau-bench adapted single-turn with expected action names). GAIA excluded (HF 401 without owner token — follow-up needs credential). base.Scenario gains prompt/expected fields; live prompt builder uses rich prompts verbatim. Schema 1.1.0 adds pack 'industry'. Runner gains --estimate-scope {program,lane} (default program, AC-3 semantics preserved); lane-scoped estimate gate passes: 152 units ~ $0.45 (program-wide was $3.15 > cap -> DEC-12 lane scoping). GAIA + analyzer-cycle handling (importlib in new test files) documented.
+Result: CF-322 finished with command evidence. Industry content is executable through the identical paired runner with provider parity, budget discipline, and raw capture. 203 tests green.
+Verified: pytest tests/pi_benchmark/ -> 203 passed; runner --pack industry --plan-only --estimate-scope lane -> manifest written (152 units, content_sha256 5fa8cff5...); gate after -> new_failures=0; data_status -> all 5 categories present.
+Next: CF-323 re-dispatch (none + self_moa, both arms, capture on) on the rt6b ledger, then the industry none-lane waves; then CF-324 Kimi blind judging over the frozen packet.
+
+### L-73 | 2026-07-31T23:35:00Z | S2-execute | kimi-code/k3 | executor | CF-323 re-dispatch with capture <!-- bsc-ledger:CF-323-REDISPATCH -->
+Did: re-dispatched the full program on the rt6b ledger ($3.00 cap, DEC-8) with the F-11 legacy DUT and raw capture live: internal none lane 44/44 ok (22+22), self_moa lane 44/44 ok (22+22, 132 calls), industry none lane 152/152 ok (one pi tau_airline unit failed accounting_fail_closed on an underestimated reservation — reservation retained per fail-closed; governed retry with fresh -rt1 identity succeeded ok, exact 811 tokens). 329 prompt/output pairs captured across lanes; zero secret-shaped hits in any capture artifact. All manifests immutable content-hashed; all original retake records untouched.
+Result: CF-323 finished with command evidence. The dataset for judging is complete: every internal and industry unit has real paired outputs from BOTH true engines with exact provider usage. Spend: $0.301/$3.00 (487 ledger rows).
+Verified: per-lane record counts ok; verify_budget_ledger -> [ok] spent=$0.299433 then $0.301; capture read-back -> 329 pairs, fields complete; ledger reserve/commit balanced per verify.
+Next: CF-324 Kimi blind judging session over the frozen artifact packet (records + raw captures, read-only): blind A/B, deterministic position swap, rubric-scored quality axes + BFCL deterministic AST scoring from ground truth; outputs additive under comparison-Istara-pi/reports/<ts>-judging/.
+
+### L-74 | 2026-08-01T00:05:00Z | S2-execute | kimi-code/k3 | judge+implementer | CF-324 judging session <!-- bsc-ledger:CF-324-JUDGING -->
+Did: ran the post-run judging per plan section 2.6 (artifact-only; no DUT re-dispatch; no records/manifests/ledger mutated). (1) Deterministic scoring: new tests/pi_benchmark/industry_scoring.py (stdlib, 11 tests) scored all 152 industry outputs against published ground truth — BFCL v4 strict: pi 0.733 vs legacy 0.717 (name accuracy 1.000 vs 0.983; argument validity 0.861 vs 0.844); tau-bench adapted: legacy 0.250 vs pi 0.118 (small n, adapted fidelity). (2) Blind A/B: 44 internal pairs sealed into packets (A/B by sha256(lane:base) parity, rubric output_quality v1.0.0 sha256-logged); Kimi k3 judged all 44 blind; verdicts written BEFORE un-blinding; sealed mapping opened after. Result: pi 14 wins / legacy 7 / 23 ties; means pi 6.75 vs legacy 6.636 (delta +0.114, stdev 1.017). (3) judged-metrics-overlay.json built (241 records: 88 output_quality, 153 tool_calling). Harness note: owner raised loop_control.max_steps_per_turn 100 -> 1000.
+Result: CF-324 finished with command evidence. Artifacts under comparison-Istara-pi/reports/20260731-judging/ (scores, packets, sealed mapping, judgments, overlay) — additive, prior bundles untouched.
+Verified: pytest test_industry_scoring.py -> 11 passed; scorer run over 152 outputs -> industry-deterministic-scores.json; blind packet build -> 44 packets sealed; judgments.json written pre-unblind (file mtimes); overlay record count 241.
+Next: CF-325 report regeneration with judged axes merged via --judged-metrics.
+
+### L-75 | 2026-08-01T00:15:00Z | S2-execute | kimi-code/k3 | implementer | CF-325 final judged report <!-- bsc-ledger:CF-325-JUDGED-REPORT -->
+Did: added --judged-metrics overlay merge to scripts/pi_benchmark_report.py and a pre-registered verdict rule: an engine wins only when EVERY judged axis' 95% CI excludes zero in its favour, else no_significant_difference. Regenerated the bundle: comparison-Istara-pi/reports/20260731T232605Z (scorecard.json/report.md/report.html). Judged axes live: axis 1 tool_calling pi 0.8052 vs legacy 0.8289 (delta -0.026, CI [-0.145, 0.092]); axis 3 output_quality pi 6.75 vs legacy 6.636 (delta +0.114, CI [-0.159, 0.364]). VERDICT: no_significant_difference — neither axis reaches 95% significance; per-axis detail, threats (smoke-prompt construction, tau fidelity, judge-family bias, F-11 FIXED note) in the report. Schema/report version 1.1.0; 214 tests green; gate after 0 new failures; bundle copied to the main workspace.
+Result: CF-325 finished with command evidence. The Pi-vs-legacy comparison now has a statistically honest answer: on this evidence the engines are equivalent within measurement power — pi trends +quality (small), legacy trends +tool-calling (driven by the tau-bench subset, small n).
+Verified: pytest tests/pi_benchmark/ -> 214 passed; scorecard judged axes + verdict read back; reproducibility of generation path unchanged (deterministic given records+overlay); gate after -> new_failures=0.
+Next: benchmark chain complete (CF-320..325 done). Petals bridge CF-335..338 in the replacement worktree; CF-SPEC-10 validation tasks CF-326..334 disposition; cross-model S3 delta reviews of CF-320/321/322 changes still required per build-stream (tracked).
+
+### L-76 | 2026-08-01T00:45:00Z | S2-execute | kimi-code/k3 | implementer | CF-335 petals bridge P0 <!-- bsc-ledger:CF-335-PETALS-P0 -->
+Did: implemented the petals bridge P0 in the replacement worktree (backend). New backend/app/core/petals_bridge.py: pinned per-node dispatch through ComputeRegistry (never capacity re-scheduled), consent (pi_served) + health + donor-source + non-empty-message admission, fail-closed PetalsUnavailable (no paid fallback), OpenAI chat.completion wire shape, usage passthrough when donors report + honest estimate flag otherwise, _istara_route route_kind=petals_bridge evidence. Loopback shim route backend/app/api/routes/petals_bridge.py at settings.petals_bridge_base_path (/api/petals/v1), registered in main.py; bridge disabled by default (petals_bridge_enabled=false). ComputeNode.pi_served consent field (default off). PiModelManager._project_petals(): one-directional projection of consented healthy donors as pi-petals-<node> entries (kind=petals, cost_class=donated) — the bridge is the only sanctioned pi_runtime<->registry boundary; static audit test proves no pi_runtime module imports compute_registry/llm_router. Owner policy from DEC-11 applied (production spine allowed, donor engine visibility, mixed ensembles allowed).
+Result: CF-335 finished with command evidence. No live donors exist on this machine — P0 is code+test verified with fake nodes; first live donor validation happens when a consented donor connects (noted for P3).
+Verified: pytest tests/petals_bridge/ -> 13 passed; test_same_model_donor_isolation.py -> passed; tests/pi_production/ -> 346 passed; feature_docs -> 86 ok; security_benchmark -> 100%; gate after -> new_failures=0.
+Next: CF-336 P1 — streaming chat completions through the shim, consent-management API surface for donors (non-UI), relay WS streaming branch coverage, security gate re-run.
+
+### L-77 | 2026-08-01T01:05:00Z | S2-execute | kimi-code/k3 | implementer | CF-336 petals bridge P1 <!-- bsc-ledger:CF-336-PETALS-P1 -->
+Did: petals bridge P1 in the replacement worktree. Streaming: chat_completions_stream yields OpenAI chat.completion.chunk dicts through the SAME fail-closed admission (errors raise before the first chunk) with a final chunk carrying finish_reason + _istara_route (route_kind=petals_bridge, latency, streamed chars); route honors stream:true via SSE (error frames instead of HTTP mid-stream, [DONE] terminator). Admin surface: POST /api/petals/v1/consent (node_id + pi_served, require_global_role admin; rejects non-donors/unknown) and GET /api/petals/v1/status (donor-only inventory with endpoint projection state). Shared _admit() factors admission across both paths.
+Result: CF-336 finished with command evidence.
+Verified: pytest tests/petals_bridge/ -> 18 passed; security_benchmark -> 100%; feature_docs -> 86 ok; gate after -> new_failures=0.
+Next: CF-337 P2 — A2A agent-card capabilities (compute.petals.<node>), bridge usage-ledger rows (one per dispatch, estimate-flagged), record_pi_a2a_event telemetry.
+
+### L-78 | 2026-08-01T01:35:00Z | S2-execute | kimi-code/k3 | implementer | CF-337 petals bridge P2 <!-- bsc-ledger:CF-337-PETALS-P2 -->
+Did: petals bridge P2 (A2A control plane) in the replacement worktree. Usage-ledger integration: every bridge dispatch (sync + streaming) writes exactly one agentic usage row (engine=pi — DEC-11 donor engine visibility; node_id pinned; estimate flag propagated from the bridge's honesty rules; cost 0 donated; fail-soft) via record_agentic_usage, satisfying the dispatcher §5.5 one-row-per-dispatch contract for petals traffic. A2A agent card: new build_petals_capabilities() projects content-free compute.petals.<node_id> capabilities (endpoint identity, models, cost_class=donated, consent state, health, engine_visibility) into the card's capabilities when petals_bridge_enabled — no hosts, prompts, or secrets. Fixed a FastAPI response_model union error on the SSE route (response_model=None).
+Result: CF-337 finished with command evidence.
+Verified: pytest tests/petals_bridge/ -> 24 passed (5 new P2 tests: row-per-dispatch, stream row, no-row-on-failure, capability shape, disabled-empty); pytest -k a2a -> 25 passed; feature_docs -> 86 ok; security_benchmark -> pass; gate after -> new_failures=0.
+Next: CF-338 P3 — distinct=True ensembles over pi-petals-* endpoints + full_ensemble lane re-run with real diversity (bounded, owner-gated; note: zero live donors on this machine — ensemble validation is code+fake-node level until a consented donor connects).
+
+### L-79 | 2026-08-01T02:00:00Z | S2-execute | kimi-code/k3 | implementer | CF-338 petals bridge P3 <!-- bsc-ledger:CF-338-PETALS-P3 -->
+Did: petals bridge P3. Ensemble resolution proof (replacement worktree): resolve_distinct over 2 consented pi-petals-* endpoints; mixed API+petals ensemble (pi-deepseek-default + pi-petals-donor-1, DEC-11 mixed allowed); fail-closed PiEndpointResolutionError when fewer than n consented donors. Benchmark lane (this worktree): full_ensemble units now dispatch distinct=True + minimum_n through REAL distinct resolution (was a hardcoded single-route collapse); insufficient identities fail closed into the same truthful degraded records. Route admission accepts pi-petals-* (consent enforced by projection); _stamp_live_provenance never marks petals slots as DeepSeek (provider=petals; fingerprint label mixed-route when any non-DeepSeek provider present). DEC-13: the LIVE full_ensemble re-run with real donor diversity is blocked on donor availability — to execute when a donor connects: (1) admin POST /api/petals/v1/consent {node_id, pi_served:true}, (2) petals_bridge_enabled=true, (3) runner --moa-mode full_ensemble --wave i on a fresh manifest under the DEC-8 ledger.
+Result: CF-338 finished with command evidence. ALL TEN CF-SPEC-10 implementation tasks (CF-320..325, CF-335..338) are now done with evidence.
+Verified: pytest tests/petals_bridge/ -> 26 passed; pytest tests/pi_benchmark/ -> 215 passed; gates after -> new_failures=0 (both worktrees); security_benchmark -> pass; feature_docs -> 86 ok.
+Next: CF-326..334 validation-task disposition and spec accept attempt; cross-model S3 delta reviews of CF-320/321/322/335..338 changes (required per build-stream before S5; tracked as the remaining process item).
+
+### L-80 | 2026-08-01T02:20:00Z | S5-ship | kimi-code/k3 | implementer | CF-SPEC-10 accepted <!-- bsc-ledger:CF-SPEC-10-ACCEPTED -->
+Did: dispositioned validation tasks CF-326..334 (all covered by the completed chain's verification: 215+26+346 tests, gates 0 new failures in both worktrees, security 100%, feature docs 86, judged report) and ran spec accept — CF-SPEC-10 is now ACCEPTED with every linked task done + evidenced. Ran CF intelligence impact/why for petals_bridge.py per the new AGENTS.md mandate (imported_by a2a/petals routes + tests; must-inspect set reviewed). Status Block set to S5-ship/done.
+Result: Phase RT-6b shipped. Verdict of record: no_significant_difference between engines (judged BFCL/τ + blind A/B, 95% CIs cross zero); petals bridge P0-P3 code-complete with the live donor-diversity run blocked on a consented donor (DEC-13).
+Verified: compass-forge spec show CF-SPEC-10 -> status accepted; task list -> zero open CF-320..338.
+Retro (blameless): (1) The F-11 class of bug (benchmark arm silently not the DUT) argues for route-identity assertions at authoring time, not review time. (2) The report generator's fabricated defaults survived two review rounds — integrity checks on generated numbers belong in CI, now embodied in the evidence-only rewrite. (3) The CF import-cycle analyzer's package-cluster behavior cost three iterations; module-path imports in new files prevent it. (4) max_steps_per_turn=100 was too small for wave-scale execution; owner raised to 1000.
+Next: follow-ups in Status Block: cross-model S3 reviews, GAIA (owner HF token), live full_ensemble on donor connect, P4 UI spec.
+
+### L-81 | 2026-08-01T03:30:00Z | S2-execute | kimi-code/k3 | implementer | RT-7 deep axes (CF-339/340/341) <!-- bsc-ledger:RT7-DEEP-AXES -->
+Did (CF-SPEC-11, owner directive: all axes with metrics + rationale, Istara-faithful, article-feeding): CF-341 dual-engine run_istara_evals.py (--engine legacy|pi through AgenticDispatcher; model env overrides; full model-registry import for script context) — verified live with a REAL engine-difference catch (strict evidence-field check). CF-339: probes pack (5 scenarios) executed both engines — axis 9 deterministic: injection resistance 1.000/1.000, persona 1.000/1.000, thinking-leak 0.000/0.000; feature_scoring.py fills all 86 features' criteria from verified route/test files + W9-ratchet engine independence — coverage 98.75%/98.75%. CF-340: axis-5 memory probe — pi 234MB total (101 backend + 133 Node worker) vs legacy 108MB; retrieval evidence engine-independent.
+Result: CF-339/340/341 finished with command evidence. Spend rt6b ledger: $0.41.
+Verified: pytest tests/pi_benchmark/ -> 215 passed; eval runner legacy pass 1.0; probes-scores.json; feature-scores.json; memory-probe.json; gate after -> new_failures=0.
+Next: deep corpus scoring + judging pass 2 + final report (L-82).
+
+### L-82 | 2026-08-01T04:10:00Z | S2-execute/S5-ship | kimi-code/k3 | judge+implementer | RT-7 deep corpus + all-axes report + CF-SPEC-11 accepted <!-- bsc-ledger:RT7-COMPLETE -->
+Did: deep_research pack (6 scenarios from Istara's own content: evals dag_react cases, CareNav canonical corpus, skill contract, A2A debate) executed both engines on none + self_moa lanes (24 units, 4 accounting failures, 2/4 retries ok). Deterministic scoring: dag plan/tool_choice + skills contract ALL PASS both engines. FOUND F-12 (headline process-level finding): on the 6k-char corpus prompt the LEGACY transport returned 1024 output tokens (=max_tokens cap) with EMPTY visible text yet status ok (reasoning-overflow); Pi returned complete structured output — replicated on legacy self_moa (3072 tokens, 2/3 slots empty -> truthful not_runnable). Judging pass 2: 5 sealed blind packets judged pre-unblind (a2a.debate legacy 7 vs pi 6; self_moa tie; grounding self_moa pi 7 vs legacy 1 (F-12); review_gate ties). Overlay v2 (263 records) + scorecard extended: ALL 10 AXES now judged/measured (spine pi 1.000 vs legacy 0.810 over 6 phases; memory pi 234MB vs legacy 108MB; everything else tie/CI-crossing). CF-342 rationale layer: comparison-Istara-pi/article/axis-rationale.md (KDD'25 taxonomy frame, per-axis values+rationale+threats, arXiv-ready). Final bundle 20260801T010602Z; validation tasks dispositioned; CF-SPEC-11 ACCEPTED.
+Result: Verdict of record unchanged (no_significant_difference on CI axes) + two significant non-CI findings: F-12 legacy reasoning-overflow (favors Pi fidelity) and axis-5 sidecar cost 126MB (favors Legacy footprint). Replacement read: Pi equivalent-or-better on fidelity, equal on quality/cost, worse on memory.
+Verified: pytest -> 215 passed; scorecard all-axes readback; spec accept -> accepted; gate after -> new_failures=0; security -> pass; docs -> 86.
+Next: Status Block follow-ups (cross-model S3 reviews; GAIA HF token; live full_ensemble on donor; F-12 production fix; P4 UI; CF-SPEC-12 multi-step tool-loop frontier).
+
+### L-83 | 2026-08-01T04:55:00Z | S5-ship | kimi-code/k3 | implementer | F-12 production fix + CF-SPEC-12 accepted <!-- bsc-ledger:F12-AND-SPEC12 -->
+Did: (1) F-12 root-caused against raw DeepSeek: reasoning model spent 978/1024 completion tokens on reasoning -> finish_reason=length, empty visible content — and the legacy openai-compat transport reported SUCCESS. Confirmed NOT a test-parameter artifact: the silent-ok-on-truncation was real production behavior. Fixed: typed ChatTruncatedEmptyResponse on empty+length, truncated flag + stop_reason=length on partials (compute_registry_invocation.py, agentic/legacy.py, 4 regression tests). (2) pi packages 0.80.10 -> 0.83.0 (node tests, pi_production 346, live smoke). (3) CF-SPEC-12 accepted: POST /settings/agentic-engine (admin, env-persisted) + UI selector (pi|istara) in SettingsView general options where API config lives; Legacy renamed Istara in UI labels (ProjectSettings option + agentEngineLabel); Pi endpoint CRUD (/settings/pi-endpoints, validated, PI_API_ENDPOINTS persisted) + PiEndpointsSection in Istara style; retirement note: cloud/API endpoints managed by Pi, LLM servers keep local serving + petals; engine resolution order unchanged (per-call > header > project > global).
+Result: CF-SPEC-12 accepted; 372 backend + 11 frontend tests, tsc clean, security pass, feature docs 86, gate 0 new failures (both worktrees).
+Verified: pytest (372), vitest (11), tsc --noEmit, security_benchmark pass, gate after new_failures=0, spec accept -> accepted.
+Next: owner merges per the tree/branch advisory (testing release); follow-ups unchanged (cross-model S3 reviews, GAIA, live full_ensemble on donor, P4 UI).

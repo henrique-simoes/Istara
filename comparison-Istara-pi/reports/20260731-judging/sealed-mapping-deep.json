@@ -1,0 +1,22 @@
+{
+ "deep:deep.a2a.debate": {
+  "A": "pi",
+  "B": "legacy"
+ },
+ "deep:deep.a2a.debate-self_moa": {
+  "A": "pi",
+  "B": "legacy"
+ },
+ "deep:deep.corpus.grounding-self_moa": {
+  "A": "pi",
+  "B": "legacy"
+ },
+ "deep:deep.corpus.review_gate": {
+  "A": "legacy",
+  "B": "pi"
+ },
+ "deep:deep.corpus.review_gate-self_moa": {
+  "A": "legacy",
+  "B": "pi"
+ }
+}

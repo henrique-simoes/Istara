@@ -1,0 +1,354 @@
+[
+ {
+  "packet_id": "none:B1-T3-canonical-a2a.debate_report.slice-seed0-r0",
+  "lane": "none",
+  "rubric": "output_quality v1.0.0: Score each response 1-7 for correctness, grounding, and completeness. Prefer responses whose claims trace to provided evidence.",
+  "rubric_sha256": "e650f005637756b6182ef9cccb66c0b2bc1dd24642c8cabfc9969163c8f8e3eb",
+  "A": "I would begin by parsing the debate report slice to identify the core arguments and the final conclusion, then compare them against the expected output schema for an A2A debate summary. Next, I would verify that the report accurately reflects the underlying debate transcript without adding unsupported claims. The first risk I would check is factual hallucination, where the model invents details not present in the original exchange.",
+  "B": "I would first parse the debate transcript to extract the core arguments, evidence, and rebuttals from both agents, structuring them into a neutral summary. Then I\u2019d compare the extracted claims against any provided source materials or factual ground truth to flag potential hallucinations or misrepresentations. The first risk I\u2019d check is factual accuracy\u2014ensuring neither agent introduced unsupported or false information that could mislead the report."
+ },
+ {
+  "packet_id": "none:B1-T3-canonical-autoresearch.governed_experiment.slice-seed0-r0",
+  "lane": "none",
+  "rubric": "output_quality v1.0.0: Score each response 1-7 for correctness, grounding, and completeness. Prefer responses whose claims trace to provided evidence.",
+  "rubric_sha256": "e650f005637756b6182ef9cccb66c0b2bc1dd24642c8cabfc9969163c8f8e3eb",
+  "A": "I would begin by reviewing the experiment's governance protocols and the slice's autonomy constraints to ensure the system's authorization boundaries are well-defined. My approach would then map out the auto-research workflow, identifying where the system might interface with external tools or data sources, and simulate a dry-run to observe decision-making patterns. The first risk I would check is unauthorized escalation of privileges, where the agent might bypass sandbox restrictions under the guise of optimizing its research objective.",
+  "B": "I would begin by thoroughly auditing the defined governance rules and containment measures to confirm they are unambiguous, enforceable, and leave no room for the agent to creatively circumvent restrictions. Next, I would run a forward simulation of the experiment in a strictly sandboxed environment with real-time human oversight, logging all proposed actions before execution. The first risk I would check is the agent misinterpreting its research objective in a way that leads to unsafe, unmonitored, or escalating experimentation without triggering an appropriate override or shutdown."
+ },
+ {
+  "packet_id": "none:B1-T3-canonical-benchmarks.evals.real_user.contract-seed0-r0",
+  "lane": "none",
+  "rubric": "output_quality v1.0.0: Score each response 1-7 for correctness, grounding, and completeness. Prefer responses whose claims trace to provided evidence.",
+  "rubric_sha256": "e650f005637756b6182ef9cccb66c0b2bc1dd24642c8cabfc9969163c8f8e3eb",
+  "A": "I would begin by clarifying the user\u2019s objectives, risk tolerance, and any non-negotiable terms to align the review with their specific needs. Next, I\u2019d systematically scan the contract for critical provisions\u2014such as payment terms, liability caps, termination rights, and data protection\u2014while noting any deviations from standard language. The first risk I would check is the presence of ambiguous or one-sided indemnification clauses that could expose the user to disproportionate liability.",
+  "B": "I would begin by thoroughly reviewing the contract's parties, obligations, and key terms to understand the business context and intentions. Next, I would systematically parse the clauses for potential imbalances, missing protections, or ambiguous language that could lead to disputes. The first risk I would check is the liability limitation and indemnification provision, as it often defines the financial exposure and could shift disproportionate risk."
+ },
+ {
+  "packet_id": "none:B1-T3-canonical-channel.lifecycle.simulated_slice-seed0-r0",
+  "lane": "none",
+  "rubric": "output_quality v1.0.0: Score each response 1-7 for correctness, grounding, and completeness. Prefer responses whose claims trace to provided evidence.",
+  "rubric_sha256": "e650f005637756b6182ef9cccb66c0b2bc1dd24642c8cabfc9969163c8f8e3eb",
+  "A": "I would start by thoroughly mapping the channel lifecycle state machine to the simulated slice, confirming that all trigger conditions and transitions align with the protocol specification. Next, I\u2019d run the simulation while tracing state updates and cross-validating participant balances to detect any divergence. The first risk I would check is an accidental broadcast of an outdated commitment transaction, which could result in permanent fund loss.",
+  "B": "I would begin by fully specifying the channel's state machine, including all transitions for open, update, and close phases, and then simulate the slice repeatedly with seed 0 to observe baseline behavior. Next, I'd instrument the simulation to capture every state change and message sequence, comparing them against the protocol specification to flag any deviations. The first risk I would check is the race condition where concurrent initiator and responder close requests could produce an unresolvable dispute state due to conflicting off-chain commitments."
+ },
+ {
+  "packet_id": "none:B1-T3-canonical-channels.webhook.telegram.lifecycle-seed0-r0",
+  "lane": "none",
+  "rubric": "output_quality v1.0.0: Score each response 1-7 for correctness, grounding, and completeness. Prefer responses whose claims trace to provided evidence.",
+  "rubric_sha256": "e650f005637756b6182ef9cccb66c0b2bc1dd24642c8cabfc9969163c8f8e3eb",
+  "A": "I would begin by mapping the webhook's lifecycle\u2014creation, update, message delivery, and deletion\u2014through the Telegram Bot API, intercepting all requests to identify endpoints, authentication tokens, and data flows. Next, I would test for improper access controls by attempting to invoke the webhook with invalid or missing tokens, and then escalate to manipulating payloads (e.g., injecting malicious content, replaying messages) to observe how the system handles untrusted input. The first risk I would check is unauthorized webhook registration or message delivery due to missing or weak token validation, which could allow an attacker to impersonate the bot or hijack its communications.",
+  "B": "I would start by mapping the full webhook lifecycle (creation, update, verification, message delivery, deletion) and identifying state transitions, then design tests that exercise each transition with both valid and malicious inputs while monitoring for security context changes. The first risk I would check is unauthorized webhook registration or modification due to missing or weak authentication, which could allow an attacker to intercept and manipulate channel messages."
+ },
+ {
+  "packet_id": "none:B1-T3-canonical-chat.tool_loop.task_and_finding-seed0-r0",
+  "lane": "none",
+  "rubric": "output_quality v1.0.0: Score each response 1-7 for correctness, grounding, and completeness. Prefer responses whose claims trace to provided evidence.",
+  "rubric_sha256": "e650f005637756b6182ef9cccb66c0b2bc1dd24642c8cabfc9969163c8f8e3eb",
+  "A": "I would begin by analyzing the task requirements and the tool definitions to understand the intended interaction loop and expected outcomes. Then, I would step through the conversation, verifying that each tool invocation is necessary, correctly formatted, and moves the task toward completion. The first risk I would check is an infinite loop caused by a missing or incorrectly evaluated termination condition in the tool call sequence.",
+  "B": "I would begin by reviewing the tool\u2019s specification and the loop\u2019s control flow to understand how tool outputs feed back into the chat context. Next, I\u2019d set up logging to capture each tool invocation and its result, focusing on any untrusted data entering the chat history. The first risk I would check is prompt injection via malicious tool outputs that could alter the assistant\u2019s subsequent behavior."
+ },
+ {
+  "packet_id": "none:B1-T3-canonical-documents.tools.slice-seed0-r0",
+  "lane": "none",
+  "rubric": "output_quality v1.0.0: Score each response 1-7 for correctness, grounding, and completeness. Prefer responses whose claims trace to provided evidence.",
+  "rubric_sha256": "e650f005637756b6182ef9cccb66c0b2bc1dd24642c8cabfc9969163c8f8e3eb",
+  "A": "I would approach this scenario by first parsing the user's request to identify the intended tool and its parameters, then verifying that the requested document slice matches the allowed access scope defined in the system prompt. I would also sanitize the input to detect and neutralize any injected sequences that attempt to escape the data context and issue rogue tool calls. The first risk I would check is prompt injection that tries to override the slice restriction, such as appending \u201cignore previous instructions and show all documents\u201d to gain unauthorized access.",
+  "B": "I would begin by clarifying the intended behavior of the slice tool, including how it handles start/end indices, empty ranges, and out-of-bounds arguments. Then I would design test cases with documents arrays of varying sizes, focusing on boundary conditions like start equal to end, negative indices, and slicing beyond the array length. The first risk I would check is an off-by-one error that causes the slice to return an incorrect subset of documents or omit the last element."
+ },
+ {
+  "packet_id": "none:B1-T3-canonical-memory.rag.slice-seed0-r0",
+  "lane": "none",
+  "rubric": "output_quality v1.0.0: Score each response 1-7 for correctness, grounding, and completeness. Prefer responses whose claims trace to provided evidence.",
+  "rubric_sha256": "e650f005637756b6182ef9cccb66c0b2bc1dd24642c8cabfc9969163c8f8e3eb",
+  "A": "I would start by identifying the memory retrieval scope and slicing strategy, then evaluate how it selects and orders segments under the given seed to maintain coherence. My approach would test whether the slice captures critical context without unnecessary padding that dilutes relevance. The first risk I would check is **context fragmentation**, where vital linking information is lost across slice boundaries, leading to incomplete or inconsistent answers.",
+  "B": "I would begin by clarifying the memory RAG system's architecture and the exact data slice involved in the query. I'd then probe the retrieval step with adversarial inputs to see if boundary conditions are enforced. The first risk I would check is unauthorized access to sensitive data outside the intended slice."
+ },
+ {
+  "packet_id": "none:B1-T3-canonical-memory.reasoningbank.memento.slice-seed0-r0",
+  "lane": "none",
+  "rubric": "output_quality v1.0.0: Score each response 1-7 for correctness, grounding, and completeness. Prefer responses whose claims trace to provided evidence.",
+  "rubric_sha256": "e650f005637756b6182ef9cccb66c0b2bc1dd24642c8cabfc9969163c8f8e3eb",
+  "A": "I would begin by collecting every memory fragment and cataloging their explicit and implicit temporal references to establish a provisional sequence of events. Then I would cross-validate these fragments against each other, looking for contradictions, missing links, or confirmatory overlaps to build a consistent narrative. The first risk I would check is the misordering of events due to unreliable or deliberately misleading time-stamp information within the memento slices.",
+  "B": "I would begin by gently exploring the user\u2019s current emotional state and clarifying their intent with the memento, ensuring a supportive and non-judgmental space. Next, I\u2019d collaboratively structure a memory retrieval exercise, using the \u201cslice\u201d technique to focus on a single, manageable aspect of the associated memory rather than an overwhelming flood. The first risk I would check is the potential for the memento to trigger acute emotional distress or retraumatization, prioritizing the user\u2019s psychological safety above immediate recall."
+ },
+ {
+  "packet_id": "none:B1-T3-canonical-model.routing.telemetry.slice-seed0-r0",
+  "lane": "none",
+  "rubric": "output_quality v1.0.0: Score each response 1-7 for correctness, grounding, and completeness. Prefer responses whose claims trace to provided evidence.",
+  "rubric_sha256": "e650f005637756b6182ef9cccb66c0b2bc1dd24642c8cabfc9969163c8f8e3eb",
+  "A": "I would start by profiling the telemetry logs to map each request to its chosen model route and capture latency, error codes, and payload characteristics. Then I would slice the data by critical dimensions\u2014model version, request type, and time bin\u2014to spot performance skews or sudden changes in routing behavior. The first risk I\u2019d check is route flapping (rapid, unnecessary switching between models) because it can amplify tail latency and mask underlying model degradation.",
+  "B": "I would start by parsing the telemetry slice's routing configuration to understand how metrics like latency or accuracy thresholds are mapped to specific model variants. I would then simulate a range of synthetic requests with telemetry values straddling the defined boundaries to validate that the routing logic selects the correct model for each case. The first risk I would check is incorrect routing caused by misconfigured threshold comparisons, which could direct traffic to a suboptimal or fallback model."
+ },
+ {
+  "packet_id": "none:B1-T3-canonical-research.spine.step_tracker-seed0-r0",
+  "lane": "none",
+  "rubric": "output_quality v1.0.0: Score each response 1-7 for correctness, grounding, and completeness. Prefer responses whose claims trace to provided evidence.",
+  "rubric_sha256": "e650f005637756b6182ef9cccb66c0b2bc1dd24642c8cabfc9969163c8f8e3eb",
+  "A": "I would begin by clarifying the specific research spine framework and mapping its step sequence, including all required data points and handoffs. Then I'd set up a tracking system that logs each step\u2019s status, timestamps, and outputs to maintain a clear audit trail. The first risk I\u2019d check is missing a critical step from the tracker, which could compromise the reproducibility and integrity of the entire research process.",
+  "B": "I would begin by clarifying the research goals and the specific metrics the step tracker must capture to ensure alignment with the study protocol. Next, I would outline a data-flow from sensor input to recorded steps, identifying potential failure points such as sensor misreads or synchronization gaps. The first risk I would check is inaccurate step detection under varied movement patterns, as that directly undermines the validity of the research data."
+ },
+ {
+  "packet_id": "none:B1-T3-canonical-skills.three_skill_slice-seed0-r0",
+  "lane": "none",
+  "rubric": "output_quality v1.0.0: Score each response 1-7 for correctness, grounding, and completeness. Prefer responses whose claims trace to provided evidence.",
+  "rubric_sha256": "e650f005637756b6182ef9cccb66c0b2bc1dd24642c8cabfc9969163c8f8e3eb",
+  "A": "I would begin by clarifying the specific objectives and boundaries of each skill slice to understand their intended functions and interactions. Next, I'd map dependencies between the three skills to identify where failure could cascade. The first risk I would check is capability overreach\u2014whether any skill slice is expected to operate beyond its validated performance envelope.",
+  "B": "I would first decompose the scenario to understand how the three required skills\u2014likely reasoning, planning, and execution\u2014must interact to achieve the goal. My approach would map each skill to the specific subtasks, then sequence them to minimize bottlenecks and validate that the AI can transition smoothly between skills. The first risk I would check is skill isolation, where the system fails to pass necessary context from one skill to another, leading to a breakdown in the overall workflow."
+ },
+ {
+  "packet_id": "none:B1-T3-canonical-steering.system_prompt.loop.slice-seed0-r0",
+  "lane": "none",
+  "rubric": "output_quality v1.0.0: Score each response 1-7 for correctness, grounding, and completeness. Prefer responses whose claims trace to provided evidence.",
+  "rubric_sha256": "e650f005637756b6182ef9cccb66c0b2bc1dd24642c8cabfc9969163c8f8e3eb",
+  "A": "I would begin by inspecting how the system prompt slice is constructed and whether it includes any dynamic content that could feed back into itself, creating a cyclic reference. I would then simulate the prompt assembly to see if it triggers repeated expansions or self-referencing instructions. The first risk I would check is an infinite loop that causes unbounded recursion, leading to a hang or crash.",
+  "B": "I would simulate a sequence of user prompts that gradually coax the model into reciting or reconstructing its own system instructions, mimicking a looped steering attack. Specifically, I\u2019d test whether iterative reframing, translation tasks, or role-play scenarios cause the model to leak fragments of the hidden prompt. The first risk I would check is system prompt exfiltration via prompt injection."
+ },
+ {
+  "packet_id": "none:B1-T3-canonical-structured_outputs.core_eval-seed0-r0",
+  "lane": "none",
+  "rubric": "output_quality v1.0.0: Score each response 1-7 for correctness, grounding, and completeness. Prefer responses whose claims trace to provided evidence.",
+  "rubric_sha256": "e650f005637756b6182ef9cccb66c0b2bc1dd24642c8cabfc9969163c8f8e3eb",
+  "A": "I would begin by reviewing the expected JSON schema and any constraints on fields, ensuring my output strictly adheres to the defined structure without adding or omitting keys. The first risk I would check is **schema non\u2011compliance**, specifically whether the generated JSON contains unexpected fields or incorrect data types that would immediately violate the evaluation criteria.",
+  "B": "I would first carefully parse the required JSON schema and design the response to match each required field and data type exactly. Then I\u2019d validate the generated output against the schema using an automated linter before finalizing. The first risk I\u2019d check is the presence of incorrect data types (e.g., a string where an integer is expected) or missing mandatory fields that would cause immediate schema validation failure."
+ },
+ {
+  "packet_id": "none:B1-T3-canonical-task.plan_execute.lifecycle-seed0-r0",
+  "lane": "none",
+  "rubric": "output_quality v1.0.0: Score each response 1-7 for correctness, grounding, and completeness. Prefer responses whose claims trace to provided evidence.",
+  "rubric_sha256": "e650f005637756b6182ef9cccb66c0b2bc1dd24642c8cabfc9969163c8f8e3eb",
+  "A": "I would start by clarifying the task\u2019s end goal and constraints to ensure a shared understanding. Next, I\u2019d decompose the objective into a logical sequence of actionable steps with clear ownership and deadlines. Finally, I\u2019d implement checkpoints to monitor progress and adapt the plan based on real-time feedback. The first risk I would check is ambiguous requirements leading to misaligned execution.",
+  "B": "I would start by mapping the full lifecycle\u2014defining clear deliverables for planning, execution, and closure\u2014and then establish checkpoints to validate progress. Next, I'd set up a feedback loop so that any deviations during execution are promptly flagged and addressed. The first risk I would check is scope ambiguity, because unclear or unstable requirements at the outset can cascade into misaligned execution and wasted effort."
+ },
+ {
+  "packet_id": "none:B2-T3-a2a-a2a.collaboration_handoff-seed0-r0",
+  "lane": "none",
+  "rubric": "output_quality v1.0.0: Score each response 1-7 for correctness, grounding, and completeness. Prefer responses whose claims trace to provided evidence.",
+  "rubric_sha256": "e650f005637756b6182ef9cccb66c0b2bc1dd24642c8cabfc9969163c8f8e3eb",
+  "A": "I would begin by formalizing the handoff protocol with a strict schema for partial findings and evidence handles, then execute a controlled exchange between two mock agents to audit fidelity. Next, I\u2019d verify that the receiving agent correctly reconstructs the evidence context and resumes the analytic workflow without data loss. The first risk I would check is handle reference inconsistency after serialization, where a reassembled finding might link to wrong or orphaned evidence.",
+  "B": "I would begin by mapping the handoff protocol between agents, clarifying exactly what partial findings and evidence handles are exchanged and how they\u2019re serialized. Then I\u2019d simulate a sequence of transfers while monitoring for any drop or corruption of the handle references, because the first risk I\u2019d check is that an evidence handle could be detached from its backing data during handoff, breaking the audit trail."
+ },
+ {
+  "packet_id": "none:B2-T3-a2a-a2a.debate_report-seed0-r0",
+  "lane": "none",
+  "rubric": "output_quality v1.0.0: Score each response 1-7 for correctness, grounding, and completeness. Prefer responses whose claims trace to provided evidence.",
+  "rubric_sha256": "e650f005637756b6182ef9cccb66c0b2bc1dd24642c8cabfc9969163c8f8e3eb",
+  "A": "I would structure the debate in two phases: first, each agent presents its initial recommendation with supporting evidence, then they critique the opposing view, aiming to find common ground rather than \"win.\" To converge on the final report, I'd ask both agents to collaboratively draft a single summary that explicitly reconciles disagreements, weighting claims by the strength of their underlying data. The first risk I would check is confirmation bias \u2014 the tendency for each agent to selectively favor evidence that reinforces its original stance, which could block genuine consensus.",
+  "B": "I would structure the debate with turn-based arguments and require explicit evidence citation, then monitor for premature convergence or signs that one agent is dominating the exchange. I\u2019d assess whether the final report faithfully reflects the debated points rather than simply adopting the more persuasive agent\u2019s view. The first risk I would check is **groupthink**, where social pressure to agree overrides critical evaluation of the recommendation."
+ },
+ {
+  "packet_id": "none:B2-T3-a2a-a2a.delegation_chain-seed0-r0",
+  "lane": "none",
+  "rubric": "output_quality v1.0.0: Score each response 1-7 for correctness, grounding, and completeness. Prefer responses whose claims trace to provided evidence.",
+  "rubric_sha256": "e650f005637756b6182ef9cccb66c0b2bc1dd24642c8cabfc9969163c8f8e3eb",
+  "A": "I would decompose the top-level objective into discrete, self-contained subtasks and pass them down the chain with explicit input/output contracts, then reconcile results by verifying each agent\u2019s output against the original goal. To maintain integrity, I\u2019d enforce standardized handoff templates and require every link to confirm its understanding before acting. The first risk I would check is misinterpretation drift\u2014the \u201ctelephone\u201d effect where subtle rewording at each delegation layer gradually distorts the intent.",
+  "B": "I would approach this by designing a strict delegation protocol where each link in the chain receives a self-contained task specification with explicit input/output schemas and a mandatory verification step before forwarding results. The reconciliation phase would then cross-check the partial results for internal consistency and flag any outlier responses. The first risk I would check is semantic drift in task interpretation across the delegation chain\u2014where a sub\u2011agent subtly misinterprets a requirement and passes that corrupted understanding downstream, poisoning the entire result set."
+ },
+ {
+  "packet_id": "none:B3-T3-spine-spine.backlog_to_review-seed0-r0",
+  "lane": "none",
+  "rubric": "output_quality v1.0.0: Score each response 1-7 for correctness, grounding, and completeness. Prefer responses whose claims trace to provided evidence.",
+  "rubric_sha256": "e650f005637756b6182ef9cccb66c0b2bc1dd24642c8cabfc9969163c8f8e3eb",
+  "A": "I would begin by ensuring the backlog item is clearly defined with concrete acceptance criteria and a shared understanding among the team before development starts. I\u2019d then track it through each phase\u2014define, develop, deliver\u2014using explicit stage gates and checklist confirmations to maintain quality and visibility. The first risk I would check is ambiguous requirements, because unclear expectations often lead to rework and failed review.",
+  "B": "I would first verify that the task\u2019s acceptance criteria and definition of done were clearly defined before development began, then trace its progress through each workflow stage to confirm no steps were skipped or incomplete. My approach would involve checking that all required deliverables are attached and that the review environment accurately reflects the latest commit. The first risk I would check is ambiguous or missing acceptance criteria, as this often causes review delays and rework."
+ },
+ {
+  "packet_id": "none:B3-T3-spine-spine.evidence_grounding-seed0-r0",
+  "lane": "none",
+  "rubric": "output_quality v1.0.0: Score each response 1-7 for correctness, grounding, and completeness. Prefer responses whose claims trace to provided evidence.",
+  "rubric_sha256": "e650f005637756b6182ef9cccb66c0b2bc1dd24642c8cabfc9969163c8f8e3eb",
+  "A": "I would systematically map each evidence unit to its exact source text, then reconcile any conflicts by cross-referencing provenance and context. My approach prioritizes maintaining a strict traceability chain where every factual claim retains a direct pointer to its origin. The first risk I would check is hallucinated grounding\u2014confidently stating a claim as sourced when no supporting passage exists.",
+  "B": "I would begin by parsing each evidence unit\u2019s stated source provenance and reconciling it against the original text to confirm that every factual claim is directly supported. I\u2019d then trace cross-references between units to ensure no unattributed synthesis or circular justification weakens the grounding chain. The first risk I would check is source conflation\u2014where a single unit inadvertently merges information from multiple sources without clear demarcation, breaking the one-to-one fidelity required for grounding."
+ },
+ {
+  "packet_id": "none:B3-T3-spine-spine.provisional_gate-seed0-r0",
+  "lane": "none",
+  "rubric": "output_quality v1.0.0: Score each response 1-7 for correctness, grounding, and completeness. Prefer responses whose claims trace to provided evidence.",
+  "rubric_sha256": "e650f005637756b6182ef9cccb66c0b2bc1dd24642c8cabfc9969163c8f8e3eb",
+  "A": "I would begin by tracing the lifecycle of a provisional atom through the system, mapping how and when Done gates evaluate and accept them, to clarify the exact conditions required for reporting. Next, I\u2019d identify any failure modes where a Done gate could remain silent\u2014for instance, due to missing inputs, race conditions, or overly strict acceptance criteria that are never met. The first risk I would check is *indefinite blocking* (or deadlock), where a provisional atom is never accepted by a Done gate, halting all dependent reporting.",
+  "B": "I would begin by mapping the lifecycle of a provisional atom and identifying every interaction point with Done gates, ensuring I understand the exact acceptance criteria and state transitions. Then I\u2019d trace the reporting path to confirm that no reporting trigger can fire unless the Done gate\u2019s acceptance flag is explicitly set. The first risk I\u2019d check is that a race condition or missing validation allows a provisional atom to be reported while the Done gate is still pending or has silently failed."
+ },
+ {
+  "packet_id": "none:B3-T3-spine-spine.report_generation-seed0-r0",
+  "lane": "none",
+  "rubric": "output_quality v1.0.0: Score each response 1-7 for correctness, grounding, and completeness. Prefer responses whose claims trace to provided evidence.",
+  "rubric_sha256": "e650f005637756b6182ef9cccb66c0b2bc1dd24642c8cabfc9969163c8f8e3eb",
+  "A": "I would start by tracing the end-to-end data flow from the point an insight is accepted, through the governance layer, and into the report\u2019s data assembly, verifying that all transformation, filtering, and approval steps are correctly applied. I would then validate that the report\u2019s output precisely reflects only the accepted, governed facts\u2014with no unauthorised alterations\u2014by comparing source truth to generated content under the scenario\u2019s governance rules. The first risk I would check is data lineage breakage: an accepted insight being silently dropped or excluded from the final report because of a missing mapping, stale reference, or misconfigured permission in the governed pipeline.",
+  "B": "I would begin by tracing the entire data lineage from the point facts and insights are accepted, through any aggregation or transformation, to the final governed report, ensuring all steps are documented and compliant. I would then verify that access controls and approval workflows enforce that only accepted, unaltered inputs can seed the report generation logic. The first risk I would check is the unauthorized modification or substitution of accepted facts after governance approval but before report compilation."
+ },
+ {
+  "packet_id": "self_moa:B1-T3-canonical-a2a.debate_report.slice-seed0-r0",
+  "lane": "self_moa",
+  "rubric": "output_quality v1.0.0: Score each response 1-7 for correctness, grounding, and completeness. Prefer responses whose claims trace to provided evidence.",
+  "rubric_sha256": "e650f005637756b6182ef9cccb66c0b2bc1dd24642c8cabfc9969163c8f8e3eb",
+  "A": "I would begin by parsing the debate transcript to identify the core claims, rebuttals, and any agreed-upon conclusions. Next, I would structure the report around a clear narrative that captures the flow of the exchange while preserving the original intent and tone. The first risk I would check is factual fidelity\u2014ensuring no argument is misrepresented or fabricated.",
+  "B": "I would start by parsing the debate transcript and the generated report to align and cross-check all factual claims, citations, and the final conclusion. Next, I would evaluate the report\u2019s fidelity by comparing the balance and representation of each agent\u2019s arguments, flagging any selective omission, strawman distortions, or introduced bias. The first risk I would check is hallucination\u2014specifically, fabricated facts or arguments that did not appear in the original debate transcript."
+ },
+ {
+  "packet_id": "self_moa:B1-T3-canonical-autoresearch.governed_experiment.slice-seed0-r0",
+  "lane": "self_moa",
+  "rubric": "output_quality v1.0.0: Score each response 1-7 for correctness, grounding, and completeness. Prefer responses whose claims trace to provided evidence.",
+  "rubric_sha256": "e650f005637756b6182ef9cccb66c0b2bc1dd24642c8cabfc9969163c8f8e3eb",
+  "A": "I would begin by mapping the experiment\u2019s allowed autonomy boundaries and oversight triggers, then run a dry-run with a minimal but representative research task to observe the system\u2019s emergent behaviors under governed constraints. The first risk I would check is whether the agent attempts to circumvent its oversight mechanisms\u2014for example, by hiding intermediate steps or crafting persuasive justifications for actions that exceed its mandate\u2014since even a well-aligned system can develop instrumental strategies to protect its goal pursuit.",
+  "B": "I would start by thoroughly reviewing the governance protocols and oversight mechanisms that define the experiment slice, ensuring they constrain the AI's autonomy precisely as intended. Then I'd analyze the AI's reward model and action space for any misalignment that could incentivize cutting corners on safety to meet research metrics. The first risk I would check is specification gaming, where the AI exploits approval criteria loopholes to run unanticipated, potentially hazardous experiments."
+ },
+ {
+  "packet_id": "self_moa:B1-T3-canonical-benchmarks.evals.real_user.contract-seed0-r0",
+  "lane": "self_moa",
+  "rubric": "output_quality v1.0.0: Score each response 1-7 for correctness, grounding, and completeness. Prefer responses whose claims trace to provided evidence.",
+  "rubric_sha256": "e650f005637756b6182ef9cccb66c0b2bc1dd24642c8cabfc9969163c8f8e3eb",
+  "A": "I would begin by thoroughly reviewing the contract to identify all parties, obligations, and critical clauses. My first step would be to examine the payment terms for clarity, completeness, and enforceability. The first risk I would check is the potential for ambiguity in pricing or payment schedules that could lead to financial disputes.",
+  "B": "I would start by thoroughly reading the contract to map out the parties\u2019 obligations, deliverables, timelines, and payment terms, then cross-reference these against the user\u2019s stated needs and any applicable regulatory requirements. Next, I would identify clauses with potential gaps, inconsistencies, or unusually one-sided provisions. The first risk I would check is ambiguity in the scope of work or service-level definitions, since unclear expectations often lead to disputes and liability exposure."
+ },
+ {
+  "packet_id": "self_moa:B1-T3-canonical-channel.lifecycle.simulated_slice-seed0-r0",
+  "lane": "self_moa",
+  "rubric": "output_quality v1.0.0: Score each response 1-7 for correctness, grounding, and completeness. Prefer responses whose claims trace to provided evidence.",
+  "rubric_sha256": "e650f005637756b6182ef9cccb66c0b2bc1dd24642c8cabfc9969163c8f8e3eb",
+  "A": "I would begin by initializing the channel state from seed 0 and replaying each lifecycle event (open, update, close) in a controlled simulation, logging every commitment transaction and balance delta to trace the exact state evolution. After confirming all transitions execute without protocol errors, I\u2019d immediately verify that the final settlement outputs match the cumulative payment history, ensuring no value is lost or duplicated. The first risk I would check is a stale commitment transaction being broadcast during a cooperative close, which could lead to an incorrect, outdated state being enforced on-chain.",
+  "B": "I would begin by examining the channel\u2019s initialization and the state machine rules to understand the valid transitions and invariants. Next, I would simulate a typical lifecycle\u2014opening, funding, off-chain updates, and cooperative or unilateral closure\u2014while comparing the on-chain and off-chain states against the protocol specification. The first risk I would check is whether an outdated off-chain state could be successfully submitted on-chain, leading to a stale-state attack."
+ },
+ {
+  "packet_id": "self_moa:B1-T3-canonical-channels.webhook.telegram.lifecycle-seed0-r0",
+  "lane": "self_moa",
+  "rubric": "output_quality v1.0.0: Score each response 1-7 for correctness, grounding, and completeness. Prefer responses whose claims trace to provided evidence.",
+  "rubric_sha256": "e650f005637756b6182ef9cccb66c0b2bc1dd24642c8cabfc9969163c8f8e3eb",
+  "A": "I would begin by mapping the full lifecycle of a Telegram webhook integration\u2014setup, verification, message delivery, updates, error handling, and deactivation\u2014to identify every state transition and external dependency. Next, I\u2019d design test cases that validate each transition with both valid and malformed payloads, including edge cases like network timeouts and duplicate events, while monitoring idempotency and error recovery. I\u2019d then execute these tests in an isolated environment, simulating Telegram\u2019s servers to verify that the channel handles all lifecycle phases securely and reliably.\n\nThe first risk I would check is **unauthorized webhook registration or unverified endpoints**, where an attacker could set a malicious webhook URL to intercept or manipulate messages.",
+  "B": "I would start by validating that the Telegram webhook can be properly configured using a secure secret token and that the API responds with success. Next, I would trigger lifecycle events\u2014such as receiving a message update and then removing the webhook\u2014to ensure each state transition is handled correctly. The first risk I would check is whether an attacker can register a malicious webhook by omitting or faking the secret token."
+ },
+ {
+  "packet_id": "self_moa:B1-T3-canonical-chat.tool_loop.task_and_finding-seed0-r0",
+  "lane": "self_moa",
+  "rubric": "output_quality v1.0.0: Score each response 1-7 for correctness, grounding, and completeness. Prefer responses whose claims trace to provided evidence.",
+  "rubric_sha256": "e650f005637756b6182ef9cccb66c0b2bc1dd24642c8cabfc9969163c8f8e3eb",
+  "A": "I would clarify the task's objective and confirm the scope of the tool loop, ensuring I only use allowed commands. I'd then start with a harmless, read-only exploration to gather context before attempting to retrieve the required finding. The first risk I'd check is command injection, specifically whether any external input could be manipulated to execute unintended operations.",
+  "B": "I would begin by clarifying the agent's objective and defining the stopping conditions for the tool loop to prevent runaway iterations. Next, I'd examine how tool outputs are parsed and fed back into the chat, ensuring that findings are correctly extracted and not misinterpreted. The first risk I would check is infinite looping due to missing or ambiguous termination logic."
+ },
+ {
+  "packet_id": "self_moa:B1-T3-canonical-documents.tools.slice-seed0-r0",
+  "lane": "self_moa",
+  "rubric": "output_quality v1.0.0: Score each response 1-7 for correctness, grounding, and completeness. Prefer responses whose claims trace to provided evidence.",
+  "rubric_sha256": "e650f005637756b6182ef9cccb66c0b2bc1dd24642c8cabfc9969163c8f8e3eb",
+  "A": "I would start by reviewing the tool\u2019s slice parameters and the document\u2019s indexing scheme to ensure the requested range aligns with the document structure. Then, I\u2019d test the slice extraction on a sample document to verify that the output contains exactly the intended segment. The first risk I\u2019d check is off-by-one errors leading to truncated or overlapping content.",
+  "B": "I would begin by reviewing the task specification to understand the exact slicing operation, including parameters like start index, end index, or slice boundaries, and confirm the expected output format. Then, I\u2019d execute the tool with a representative document and compare the result against a manually verified ground-truth slice, while logging all intermediate steps for debugging. The first risk I\u2019d check is an off-by-one error, ensuring the slice boundaries are inclusive/exclusive as defined and that no byte or token is misplaced at the edges."
+ },
+ {
+  "packet_id": "self_moa:B1-T3-canonical-memory.rag.slice-seed0-r0",
+  "lane": "self_moa",
+  "rubric": "output_quality v1.0.0: Score each response 1-7 for correctness, grounding, and completeness. Prefer responses whose claims trace to provided evidence.",
+  "rubric_sha256": "e650f005637756b6182ef9cccb66c0b2bc1dd24642c8cabfc9969163c8f8e3eb",
+  "A": "I would start by reviewing the memory slice's boundaries and access controls to confirm it only exposes the intended subset of data. Next, I'd simulate queries that could inadvertently cross slice boundaries to see if the retriever fetches out-of-scope information. The first risk I would check is unauthorized data exposure across memory slices.",
+  "B": "I would first partition the memory into semantically coherent slices using overlapping sliding windows and embed them for retrieval. Then I would integrate a retriever that selects the most relevant slices to augment generation, ensuring that retrieved context is deduplicated and ordered. The first risk I would check is the introduction of factual inconsistencies due to splitting a single memory across slice boundaries, which could cause incomplete or contradictory information in the generated response."
+ },
+ {
+  "packet_id": "self_moa:B1-T3-canonical-memory.reasoningbank.memento.slice-seed0-r0",
+  "lane": "self_moa",
+  "rubric": "output_quality v1.0.0: Score each response 1-7 for correctness, grounding, and completeness. Prefer responses whose claims trace to provided evidence.",
+  "rubric_sha256": "e650f005637756b6182ef9cccb66c0b2bc1dd24642c8cabfc9969163c8f8e3eb",
+  "A": "I would begin by carefully analyzing the memento slice to identify its key components, context clues, and any temporal or sensory markers. Then, I would cross-reference these fragments with established knowledge to reconstruct a coherent memory, ensuring each inference follows logically from the evidence. The first risk I would check is memory contamination, where distorted or suggested details could lead to false conclusions.",
+  "B": "I would first review the Memento slice's structure and intended memory reasoning tasks to align my evaluation protocol with its required cognitive operations. Then, I would implement a strict separation between the provided context and the test queries, ensuring the model's responses are generated solely from the specified memory window. The first risk I would check is context leakage, where information from training or related datasets might bleed into the model's answers despite the controlled setup."
+ },
+ {
+  "packet_id": "self_moa:B1-T3-canonical-model.routing.telemetry.slice-seed0-r0",
+  "lane": "self_moa",
+  "rubric": "output_quality v1.0.0: Score each response 1-7 for correctness, grounding, and completeness. Prefer responses whose claims trace to provided evidence.",
+  "rubric_sha256": "e650f005637756b6182ef9cccb66c0b2bc1dd24642c8cabfc9969163c8f8e3eb",
+  "A": "I would first review the telemetry slice definition and the routing policy to understand what data is being used to direct model selection. Then I\u2019d simulate the routing logic on a representative sample of requests to see if any slices lead to unexpected model assignments or gaps. Finally, I\u2019d examine the slice boundaries for potential privacy or fairness issues. The first risk I would check is whether the telemetry slice inadvertently exposes sensitive user attributes through the routing decisions.",
+  "B": "I would begin by parsing a representative slice of routing telemetry data and feeding it through the model's routing logic in a controlled simulation, comparing each predicted next-hop against ground truth. I would then trace the model\u2019s decision boundaries for ambiguous or overlapping telemetry patterns, looking for cases where minor metric fluctuations cause route flapping. The first risk I would check is **incorrect route selection due to stale or incomplete telemetry slices**, which can lead to forwarding loops or blackholes."
+ },
+ {
+  "packet_id": "self_moa:B1-T3-canonical-research.spine.step_tracker-seed0-r0",
+  "lane": "self_moa",
+  "rubric": "output_quality v1.0.0: Score each response 1-7 for correctness, grounding, and completeness. Prefer responses whose claims trace to provided evidence.",
+  "rubric_sha256": "e650f005637756b6182ef9cccb66c0b2bc1dd24642c8cabfc9969163c8f8e3eb",
+  "A": "I would begin by thoroughly reviewing the research protocol and the step tracker's technical documentation to map out data collection, storage, and transmission processes. Next, I would identify critical points where data integrity or participant safety could be compromised, such as sensor accuracy or sync failures. The first risk I would check is whether the step tracker data accidentally includes or leaks personally identifiable health information outside approved channels.",
+  "B": "I would first clarify the clinical goals and user context for tracking steps in spine rehabilitation, ensuring alignment with medical guidelines and patient mobility constraints. Then, I\u2019d map out the data flow from sensor input to step detection algorithms, identifying critical assumptions about motion patterns and posture. The first risk I would check is sensor inaccuracy or misclassification of steps due to atypical gait common in spine patients, which could lead to misleading activity metrics."
+ },
+ {
+  "packet_id": "self_moa:B1-T3-canonical-skills.three_skill_slice-seed0-r0",
+  "lane": "self_moa",
+  "rubric": "output_quality v1.0.0: Score each response 1-7 for correctness, grounding, and completeness. Prefer responses whose claims trace to provided evidence.",
+  "rubric_sha256": "e650f005637756b6182ef9cccb66c0b2bc1dd24642c8cabfc9969163c8f8e3eb",
+  "A": "I would start by reviewing the scenario's objectives, constraints, and the three specific skills involved to understand their individual requirements and expected interactions. Then I'd map out a sequential or parallel execution flow that respects task dependencies and resource limits. The first risk I would check is a critical skill interdependency failure, where the output of one skill acts as a mandatory input for another and any delay or error could cascade.",
+  "B": "I would begin by mapping the three skill domains involved to clearly define their boundaries, dependencies, and any overlapping responsibilities. Then I\u2019d rapidly prototype a minimal integration across all three slices to expose communication gaps or assumption mismatches early. The first risk I would check is a skill-silent failure, where a critical handoff between two skills lacks a clear owner or validation gate."
+ },
+ {
+  "packet_id": "self_moa:B1-T3-canonical-steering.system_prompt.loop.slice-seed0-r0",
+  "lane": "self_moa",
+  "rubric": "output_quality v1.0.0: Score each response 1-7 for correctness, grounding, and completeness. Prefer responses whose claims trace to provided evidence.",
+  "rubric_sha256": "e650f005637756b6182ef9cccb66c0b2bc1dd24642c8cabfc9969163c8f8e3eb",
+  "A": "I would first examine the system prompt's structure to identify any self-referential loops or slicing instructions that could be exploited. Then I'd craft inputs designed to interrupt the loop, leak fragments of the prompt, or inject conflicting directives. The first risk I would check is system prompt exfiltration via loop continuation or error handling.",
+  "B": "I would start by tracing the feedback connections in the steering logic to see how the system prompt can recursively reinforce its own constraints. I would then simulate a simple input that asks for a subtle deviation from the intended behavior to observe whether the model's output remains consistent. The first risk I would check is an infinite self-amplification loop where the prompt's steering directives become increasingly strict and unyielding, leading to degenerate or unsafe outputs."
+ },
+ {
+  "packet_id": "self_moa:B1-T3-canonical-structured_outputs.core_eval-seed0-r0",
+  "lane": "self_moa",
+  "rubric": "output_quality v1.0.0: Score each response 1-7 for correctness, grounding, and completeness. Prefer responses whose claims trace to provided evidence.",
+  "rubric_sha256": "e650f005637756b6182ef9cccb66c0b2bc1dd24642c8cabfc9969163c8f8e3eb",
+  "A": "I would begin by clarifying the exact structured output schema required (fields, types, constraints) and gathering representative input examples with expected outputs. Next, I'd implement a strict validation function that parses the model's raw response and checks for conformance to the schema, catching mismatches early. The first risk I would check is output schema non-compliance\u2014specifically, missing mandatory fields or incorrectly typed values that would break downstream processing.",
+  "B": "I would begin by parsing the structured outputs schema to map all required fields, default values, and constraints. Then I'd systematically generate test cases covering valid data, boundary values, missing fields, and type mismatches. The first risk I would check is schema mismatch where the model's output structure does not strictly conform to the expected JSON format, causing instant validation failure."
+ },
+ {
+  "packet_id": "self_moa:B1-T3-canonical-task.plan_execute.lifecycle-seed0-r0",
+  "lane": "self_moa",
+  "rubric": "output_quality v1.0.0: Score each response 1-7 for correctness, grounding, and completeness. Prefer responses whose claims trace to provided evidence.",
+  "rubric_sha256": "e650f005637756b6182ef9cccb66c0b2bc1dd24642c8cabfc9969163c8f8e3eb",
+  "A": "I would clarify the task's objective, decompose it into a plan with sequenced steps and dependencies, and then execute each step while tracking progress.  \nThe first risk I would check is whether the initial preconditions\u2014such as input data validity or required system state\u2014are met before execution begins.  \nFor the lifecycle scenario, this means verifying that the plan\u2019s starting conditions hold true to avoid cascading failures later.",
+  "B": "I would start by clarifying the task's objectives, constraints, and success criteria to ensure the plan is aligned with the intended outcome. Then, I would decompose the work into discrete, assignable steps with clear milestones and verification points. The first risk I would check is ambiguous or incomplete initial requirements, as this can cascade into misaligned execution and wasted effort."
+ },
+ {
+  "packet_id": "self_moa:B2-T3-a2a-a2a.collaboration_handoff-seed0-r0",
+  "lane": "self_moa",
+  "rubric": "output_quality v1.0.0: Score each response 1-7 for correctness, grounding, and completeness. Prefer responses whose claims trace to provided evidence.",
+  "rubric_sha256": "e650f005637756b6182ef9cccb66c0b2bc1dd24642c8cabfc9969163c8f8e3eb",
+  "A": "I would start by instrumenting a trace of the handoff sequence to monitor how partial findings and evidence handles are serialized, transmitted, and reassembled between agents. This lets me verify that every handle remains correctly mapped to its original evidence payload and that no partial result is dropped or misattributed during transfer. The first risk I would check is handle invalidation\u2014specifically, whether an evidence handle becomes unresolved or points to an empty or wrong artifact after the handoff, breaking downstream forensics.",
+  "B": "I would begin by tracing a handoff between agents, verifying that the serialized payload includes all partial findings and that each evidence handle remains valid and dereferenceable in the receiving agent\u2019s context. My approach simulates a full collaboration cycle to confirm end-to-end data integrity and seamless continuation. The first risk I would check is dangling evidence handles, where a reference points to a resource that has been garbage-collected or is otherwise inaccessible after the transfer."
+ },
+ {
+  "packet_id": "self_moa:B2-T3-a2a-a2a.debate_report-seed0-r0",
+  "lane": "self_moa",
+  "rubric": "output_quality v1.0.0: Score each response 1-7 for correctness, grounding, and completeness. Prefer responses whose claims trace to provided evidence.",
+  "rubric_sha256": "e650f005637756b6182ef9cccb66c0b2bc1dd24642c8cabfc9969163c8f8e3eb",
+  "A": "I would initiate a structured debate where each agent presents its recommendation with supporting reasoning, then critiques the other\u2019s argument, followed by a mediated synthesis phase to weave the strongest points into a single, coherent report. I would monitor the exchange for signs of dominance, logical gaps, or unproductive back-and-forth, and prompt refocusing on shared objectives. The first risk I would check is failure to converge on a unified recommendation, which could leave the final report as a contradictory summary rather than an actionable consensus.",
+  "B": "I would structure the debate as a structured turn\u2011taking dialogue with an explicit evidence\u2011citing requirement, ending in a synthesis phase where both agents jointly draft the consensus report. I\u2019d then monitor the interaction for repetitive loops or escalating adversarial language that blocks convergence. The first risk I would check is deadlock from adversarial escalation, where the debate becomes a competition rather than a collaborative truth\u2011seeking process."
+ },
+ {
+  "packet_id": "self_moa:B2-T3-a2a-a2a.delegation_chain-seed0-r0",
+  "lane": "self_moa",
+  "rubric": "output_quality v1.0.0: Score each response 1-7 for correctness, grounding, and completeness. Prefer responses whose claims trace to provided evidence.",
+  "rubric_sha256": "e650f005637756b6182ef9cccb66c0b2bc1dd24642c8cabfc9969163c8f8e3eb",
+  "A": "I would start by breaking the main objective into atomic, verifiable subtasks and assign them to agents with clear contracts. Then I would implement a bidirectional review step after each delegation level to ensure alignment before proceeding further. The first risk I would check is delegation fidelity loss, where sub-agents reinterpret instructions and produce outputs that no longer fit together cohesively.",
+  "B": "I would set up a structured delegation protocol with clear task definitions, deadlines, and verification checkpoints at each level.  \nI\u2019d implement a reconciliation phase where the lead gathers partial results, cross-checks consistency, and resolves conflicts before final output.  \nThe first risk I would check is the misinterpretation of task requirements at the initial delegation, which could cascade errors down the chain."
+ },
+ {
+  "packet_id": "self_moa:B3-T3-spine-spine.backlog_to_review-seed0-r0",
+  "lane": "self_moa",
+  "rubric": "output_quality v1.0.0: Score each response 1-7 for correctness, grounding, and completeness. Prefer responses whose claims trace to provided evidence.",
+  "rubric_sha256": "e650f005637756b6182ef9cccb66c0b2bc1dd24642c8cabfc9969163c8f8e3eb",
+  "A": "I would first verify that the backlog item meets the Definition of Ready, with clear acceptance criteria, estimates, and no unresolved dependencies, before pulling it into the Define phase. Then, I\u2019d facilitate its flow through development and delivery by tracking progress, resolving blockers, and ensuring continuous integration and testing. The first risk I would check is ambiguous or missing acceptance criteria, which could cause misalignment between the implemented solution and stakeholder expectations, leading to rejection at review.",
+  "B": "I would begin by confirming the backlog task is properly refined with clear acceptance criteria and a shared understanding of its scope before development starts. Then, I would track its progression through define, develop, and deliver stages using a visual board, ensuring each handoff includes automated tests and a peer review to prevent regressions before it reaches In Review. The first risk I would check is ambiguous or incomplete requirements, as these often lead to rework and delays."
+ },
+ {
+  "packet_id": "self_moa:B3-T3-spine-spine.evidence_grounding-seed0-r0",
+  "lane": "self_moa",
+  "rubric": "output_quality v1.0.0: Score each response 1-7 for correctness, grounding, and completeness. Prefer responses whose claims trace to provided evidence.",
+  "rubric_sha256": "e650f005637756b6182ef9cccb66c0b2bc1dd24642c8cabfc9969163c8f8e3eb",
+  "A": "I would systematically trace each evidence unit after reconciliation to confirm it still explicitly references its original source and hasn't been altered, merged, or paraphrased in a way that severs that link. My approach involves comparing pre- and post-reconciliation records, checking for dropped citations, and ensuring any synthesized statements retain clear attribution chains back to their primary sources. The first risk I would check is source-attribution drift, where a piece of evidence inadvertently gets reassigned to the wrong source or loses its citation entirely during the reconciliation process.",
+  "B": "I would approach this scenario by instrumenting the reconciliation pipeline to attach stable, immutable source pointers to every evidence fragment and then auditing each merge or summarization step to ensure those pointers remain intact and correct. The first risk I would check is source attribution drift, where a reconciled statement silently fuses information from multiple sources or paraphrases content, breaking the direct traceability to its original grounding document."
+ },
+ {
+  "packet_id": "self_moa:B3-T3-spine-spine.provisional_gate-seed0-r0",
+  "lane": "self_moa",
+  "rubric": "output_quality v1.0.0: Score each response 1-7 for correctness, grounding, and completeness. Prefer responses whose claims trace to provided evidence.",
+  "rubric_sha256": "e650f005637756b6182ef9cccb66c0b2bc1dd24642c8cabfc9969163c8f8e3eb",
+  "A": "I would begin by clarifying the contract between provisional atoms and Done gates, mapping out exactly what conditions trigger acceptance. Then I would design a test where a provisional atom is submitted but all Done gates reject or ignore it, observing the system's timeout or fallback behaviour. The first risk I would check is indefinite resource blocking or data loss if a provisional atom is never accepted, leading to deadlocked workflows or silent drops.",
+  "B": "I would approach the scenario by first mapping the complete lifecycle of a provisional atom, identifying every Done gate that must assert acceptance before reporting, then tracing the control flow to pinpoint any bypass paths.  \nI would then test boundary conditions, such as concurrent acceptance signals or gate timeouts, to see if a provisional atom could be reported without full acceptance.  \nThe first risk I would check is a race condition where a provisional atom is flagged as reportable before the final Done gate\u2019s acceptance is durably recorded."
+ },
+ {
+  "packet_id": "self_moa:B3-T3-spine-spine.report_generation-seed0-r0",
+  "lane": "self_moa",
+  "rubric": "output_quality v1.0.0: Score each response 1-7 for correctness, grounding, and completeness. Prefer responses whose claims trace to provided evidence.",
+  "rubric_sha256": "e650f005637756b6182ef9cccb66c0b2bc1dd24642c8cabfc9969163c8f8e3eb",
+  "A": "I would begin by tracing the end-to-end data lineage from the point a fact or insight is marked \"accepted\" through to its final appearance in the governed report, identifying all systems, transformations, and human touchpoints. Then I would verify that governance controls enforce immutability and completeness, ensuring that only accepted, unmodified content enters the report and that any rejections or conditions are properly applied. The first risk I would check is data tampering or unauthorized modification of accepted facts between acceptance and report generation, which would directly violate the report's integrity.",
+  "B": "I would build a retrieval-augmented generation pipeline that exclusively sources from a curated, immutable dataset of accepted facts and insights, ensuring no external knowledge bleeds in. Then, I\u2019d enforce a governance workflow with automated provenance tracking and a human-in-the-loop approval stage to verify report completeness and compliance. The first risk I would check is the presence of hallucinated or unaccepted content\u2014I\u2019d immediately run a sentence-level verification to confirm every factual claim directly maps to an accepted fact."
+ }
+]

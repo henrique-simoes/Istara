@@ -52,6 +52,6 @@ def test_behavioural_packs_declare_t2_and_have_no_offline_check():
 
 
 def test_pack_names_and_unknown_pack_raises():
-    assert set(PACK_NAMES) == {"canonical", "spine", "a2a"}
+    assert set(PACK_NAMES) == {"canonical", "spine", "a2a", "industry", "probes", "deep_research"}
     with pytest.raises(KeyError):
         load_pack("does-not-exist")

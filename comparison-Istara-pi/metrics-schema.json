@@ -20,7 +20,7 @@
   "additionalProperties": false,
   "properties": {
     "schema_version": {
-      "description": "Semantic version of THIS schema. Records whose major version differs from the report generator's are rejected, not silently pooled.",
+      "description": "Semantic version of THIS schema. Records whose major version differs from the report generator's are rejected, not silently pooled. Minor 1.1.0: added 'industry' to the pack enum (additive).",
       "type": "string",
       "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"
     },
@@ -37,56 +37,109 @@
     "phase": {
       "description": "Benchmark phase (master plan §10.4).",
       "type": "string",
-      "enum": ["B1", "B2", "B3", "B4"]
+      "enum": [
+        "B1",
+        "B2",
+        "B3",
+        "B4"
+      ]
     },
     "tier": {
       "description": "Determinism tier (master plan §10.1.2). Mandatory on every record; the report generator asserts no table mixes tiers.",
       "type": "string",
-      "enum": ["T0", "T1", "T2", "T3"]
+      "enum": [
+        "T0",
+        "T1",
+        "T2",
+        "T3"
+      ]
     },
     "engine": {
       "description": "Engine under test for this arm. Selected per-call via the dispatcher header x-istara-agent-engine.",
       "type": "string",
-      "enum": ["pi", "legacy"]
+      "enum": [
+        "pi",
+        "legacy"
+      ]
     },
     "pack": {
       "description": "Scenario pack this record belongs to (master plan §10.3).",
       "type": "string",
-      "enum": ["canonical", "spine", "a2a", "features", "probes"]
+      "enum": [
+        "canonical",
+        "spine",
+        "a2a",
+        "features",
+        "probes",
+        "industry",
+        "deep_research"
+      ]
     },
     "scenario": {
       "description": "Scenario identity within the pack.",
       "type": "object",
-      "required": ["id", "seed"],
+      "required": [
+        "id",
+        "seed"
+      ],
       "additionalProperties": false,
       "properties": {
-        "id": { "type": "string", "minLength": 1 },
-        "title": { "type": "string" },
-        "seed": { "type": "integer", "minimum": 0 },
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "title": {
+          "type": "string"
+        },
+        "seed": {
+          "type": "integer",
+          "minimum": 0
+        },
         "order": {
           "description": "Which arm ran first for this pair, to expose and control order bias.",
           "type": "string",
-          "enum": ["legacy_first", "pi_first"]
+          "enum": [
+            "legacy_first",
+            "pi_first"
+          ]
         }
       }
     },
     "provenance": {
       "description": "Immutable run provenance. Endpoint fingerprints MUST be redacted before write (master plan §10.6); raw URLs/tokens/connection strings never reach an artifact.",
       "type": "object",
-      "required": ["git_sha", "git_dirty", "input_sha256", "ts"],
+      "required": [
+        "git_sha",
+        "git_dirty",
+        "input_sha256",
+        "ts"
+      ],
       "additionalProperties": false,
       "properties": {
-        "git_sha": { "type": "string", "minLength": 7 },
-        "git_dirty": { "type": "boolean" },
+        "git_sha": {
+          "type": "string",
+          "minLength": 7
+        },
+        "git_dirty": {
+          "type": "boolean"
+        },
         "input_sha256": {
           "description": "Hash of the byte-identical fixture/input shared by both arms of the pair.",
           "type": "string",
           "pattern": "^[a-f0-9]{64}$"
         },
-        "model_id": { "type": ["string", "null"] },
+        "model_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
         "endpoint_fingerprint": {
           "description": "Redacted, non-identifying fingerprint of the endpoint (never a raw URL, token, or connection string).",
-          "type": ["string", "null"]
+          "type": [
+            "string",
+            "null"
+          ]
         },
         "ts": {
           "description": "ISO-8601 UTC timestamp. Normalized out before the report reproducibility (byte-identity) check.",
@@ -97,7 +150,11 @@
     "status": {
       "description": "Run outcome. `not_runnable` and `invalid_pair` are counted in every denominator/table, never silently dropped (master plan §10.1.6).",
       "type": "string",
-      "enum": ["ok", "not_runnable", "invalid_pair"]
+      "enum": [
+        "ok",
+        "not_runnable",
+        "invalid_pair"
+      ]
     },
     "not_runnable_reason": {
       "description": "Required when status is not_runnable; a machine-readable typed reason.",
@@ -117,21 +174,56 @@
     "usage": {
       "description": "Token/cost accounting (axis 6, master plan §5.5). `estimate` is mandatory: Pi rows are exact from the ledger; legacy rows are provider-reported when available (estimate=false) else estimated (estimate=true). Exact and estimated values are NEVER summed into one column downstream (acceptance A15).",
       "type": "object",
-      "required": ["estimate"],
+      "required": [
+        "estimate"
+      ],
       "additionalProperties": false,
       "properties": {
-        "input_tokens": { "type": ["integer", "null"], "minimum": 0 },
-        "output_tokens": { "type": ["integer", "null"], "minimum": 0 },
-        "cache_tokens": { "type": ["integer", "null"], "minimum": 0 },
-        "total_tokens": { "type": ["integer", "null"], "minimum": 0 },
-        "cost_usd": { "type": ["number", "null"], "minimum": 0 },
+        "input_tokens": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "output_tokens": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "cache_tokens": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "total_tokens": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "cost_usd": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0
+        },
         "estimate": {
           "description": "true when any figure in this block is estimated rather than provider-reported/ledger-exact.",
           "type": "boolean"
         },
         "estimator": {
           "description": "Name of the estimator when estimate=true (e.g. the pricing table + heuristic used).",
-          "type": ["string", "null"]
+          "type": [
+            "string",
+            "null"
+          ]
         }
       }
     },
@@ -145,11 +237,36 @@
           "type": "object",
           "additionalProperties": true,
           "properties": {
-            "tool_name_accuracy": { "type": ["number", "null"] },
-            "argument_schema_validity": { "type": ["number", "null"] },
-            "hallucinated_call_rate": { "type": ["number", "null"] },
-            "calls_per_success": { "type": ["number", "null"] },
-            "recovery_rate": { "type": ["number", "null"] }
+            "tool_name_accuracy": {
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "argument_schema_validity": {
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "hallucinated_call_rate": {
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "calls_per_success": {
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "recovery_rate": {
+              "type": [
+                "number",
+                "null"
+              ]
+            }
           }
         },
         "feature_integration": {
@@ -157,11 +274,16 @@
           "type": "object",
           "additionalProperties": false,
           "properties": {
-            "feature_id": { "type": "string" },
+            "feature_id": {
+              "type": "string"
+            },
             "criteria": {
               "description": "`auto` when every criterion is machine-derivable; `manual` when at least one is not (still counted and reported).",
               "type": "string",
-              "enum": ["auto", "manual"]
+              "enum": [
+                "auto",
+                "manual"
+              ]
             },
             "criteria_scores": {
               "$ref": "#/$defs/feature_criteria_scores"
@@ -178,16 +300,66 @@
           "type": "object",
           "additionalProperties": false,
           "properties": {
-            "intent": { "type": ["number", "null"] },
-            "context": { "type": ["number", "null"] },
-            "plan": { "type": ["number", "null"] },
-            "tool_selection": { "type": ["number", "null"] },
-            "execution": { "type": ["number", "null"] },
-            "recovery": { "type": ["number", "null"] },
-            "grounding": { "type": ["number", "null"] },
-            "synthesis": { "type": ["number", "null"] },
-            "review": { "type": ["number", "null"] },
-            "governance": { "type": ["number", "null"] }
+            "intent": {
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "context": {
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "plan": {
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "tool_selection": {
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "execution": {
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "recovery": {
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "grounding": {
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "synthesis": {
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "review": {
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "governance": {
+              "type": [
+                "number",
+                "null"
+              ]
+            }
           }
         },
         "memory_load": {
@@ -195,12 +367,46 @@
           "type": "object",
           "additionalProperties": true,
           "properties": {
-            "memory_items": { "type": ["integer", "null"], "minimum": 0 },
-            "memory_tokens": { "type": ["integer", "null"], "minimum": 0 },
-            "precision_at_1": { "type": ["number", "null"] },
-            "recall_at_3": { "type": ["number", "null"] },
-            "worker_rss_bytes": { "type": ["integer", "null"], "minimum": 0 },
-            "backend_rss_bytes": { "type": ["integer", "null"], "minimum": 0 }
+            "memory_items": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "minimum": 0
+            },
+            "memory_tokens": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "minimum": 0
+            },
+            "precision_at_1": {
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "recall_at_3": {
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "worker_rss_bytes": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "minimum": 0
+            },
+            "backend_rss_bytes": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "minimum": 0
+            }
           }
         },
         "tool_efficiency": {
@@ -238,10 +444,20 @@
     {
       "description": "A not_runnable record must carry a typed reason.",
       "if": {
-        "properties": { "status": { "const": "not_runnable" } },
-        "required": ["status"]
+        "properties": {
+          "status": {
+            "const": "not_runnable"
+          }
+        },
+        "required": [
+          "status"
+        ]
       },
-      "then": { "required": ["not_runnable_reason"] }
+      "then": {
+        "required": [
+          "not_runnable_reason"
+        ]
+      }
     }
   ],
   "$defs": {
@@ -250,12 +466,54 @@
       "type": "object",
       "additionalProperties": false,
       "properties": {
-        "reachable": { "type": ["number", "null"], "minimum": 0, "maximum": 1 },
-        "project_scoped": { "type": ["number", "null"], "minimum": 0, "maximum": 1 },
-        "expected_action": { "type": ["number", "null"], "minimum": 0, "maximum": 1 },
-        "engine_behavior": { "type": ["number", "null"], "minimum": 0, "maximum": 1 },
-        "evidence_emitted": { "type": ["number", "null"], "minimum": 0, "maximum": 1 },
-        "graceful_failure": { "type": ["number", "null"], "minimum": 0, "maximum": 1 }
+        "reachable": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 1
+        },
+        "project_scoped": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 1
+        },
+        "expected_action": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 1
+        },
+        "engine_behavior": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 1
+        },
+        "evidence_emitted": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 1
+        },
+        "graceful_failure": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 1
+        }
       }
     },
     "paired_stats": {
@@ -265,19 +523,42 @@
       "properties": {
         "delta": {
           "description": "Per-scenario paired delta (pi minus legacy) for the axis metric under comparison.",
-          "type": ["number", "null"]
+          "type": [
+            "number",
+            "null"
+          ]
         },
-        "effect_size": { "type": ["number", "null"] },
+        "effect_size": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
         "bootstrap_ci": {
           "type": "object",
           "additionalProperties": false,
           "properties": {
-            "low": { "type": "number" },
-            "high": { "type": "number" },
-            "resamples": { "type": "integer", "minimum": 1 },
-            "confidence": { "type": "number", "exclusiveMinimum": 0, "exclusiveMaximum": 1 }
+            "low": {
+              "type": "number"
+            },
+            "high": {
+              "type": "number"
+            },
+            "resamples": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "confidence": {
+              "type": "number",
+              "exclusiveMinimum": 0,
+              "exclusiveMaximum": 1
+            }
           },
-          "required": ["low", "high", "resamples"]
+          "required": [
+            "low",
+            "high",
+            "resamples"
+          ]
         },
         "no_detected_difference": {
           "description": "true when the bootstrap CI crosses zero.",

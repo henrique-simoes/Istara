@@ -1,0 +1,72 @@
+{
+  "gate_id": "G-R2",
+  "name": "Retake Owner Gate G-R2 — first live wave authorization (B0 evidence pack bound)",
+  "status": "APPROVED",
+  "authorized_by": "user",
+  "authorized_at": "2026-07-23T13:20:27Z",
+  "approval_quote": "The wave is supposed to have continue everything. Approved, the whole plan is approved, use the wave to execute it all",
+  "approval_evidence": {
+    "cf_task": "PI-BENCH-RETAKE-EXEC-20260723-WAVE-none-b1-IMPL",
+    "cf_evidence_id": 1643,
+    "note": "Complete-plan owner approval recorded as CF evidence on the first RT-5 wave task; same quote as G-R1 (retake_g1_owner_gate.json), which authorized the RT-4 preflight."
+  },
+  "plan": "docs/build-stream/plans/pi-bench-retake-20260722-plan-c.md",
+  "spec": "CF-SPEC-9",
+  "pipeline_run": "PI-BENCH-RETAKE-EXEC-20260723",
+  "provider": "deepseek",
+  "model": "deepseek-v4-pro",
+  "endpoint": "pi-deepseek-default",
+  "no_fallback": true,
+  "max_processes": 4,
+  "budget": {
+    "cap_usd": 1.00,
+    "scope": "cumulative across preflight, all waves, all lanes, and all retries; no per-wave reset; enforced by the shared crash-safe ledger at tests/pi_benchmark/.results/runs/retake/budget-ledger.json",
+    "ledger_sha256_at_gate": "7ed216fd7829da3f22a1e4411bdf0a1fd2a167b1e33a7843f1cca2d84be640af",
+    "spent_usd_at_gate": 0.0000077
+  },
+  "preflight": {
+    "status": "success",
+    "task": "PI-BENCH-RETAKE-EXEC-20260723-WAVE-rt4-preflight-IMPL",
+    "ledger_rows": 2,
+    "actual_cost_usd": 0.0000077,
+    "estimate": false,
+    "review": "PI-BENCH-RETAKE-EXEC-20260723-WAVE-rt4-preflight-REVIEW verdict PASS (ledger L-57)"
+  },
+  "b0_evidence_pack": {
+    "attestation": {
+      "path": "tests/pi_benchmark/.results/runs/retake/b0-attestation.json",
+      "file_sha256": "b9fee3edd4343cd4f9a7cc05e1bd6673b432b83da9e2768b2543f83b6c34d1c7",
+      "app_file_pinned": "/Users/user/Documents/Istara-main-pi-benchmark-retake/backend/app/__init__.py",
+      "pythonpath_pin": "PYTHONPATH=$PWD/backend (mandatory for all bench commands)"
+    },
+    "manifests": {
+      "none": {
+        "path": "tests/pi_benchmark/.results/runs/retake/none/manifest.json",
+        "file_sha256": "71130343bc4102db14bd10059d66b9072e4874f8473fc2e380848021f4bde36f",
+        "content_sha256": "e22c796a05af3235f67013686f92a4e46795ab2fe550f3f759a5b85be9268859"
+      },
+      "self_moa": {
+        "path": "tests/pi_benchmark/.results/runs/retake/self_moa/manifest.json",
+        "file_sha256": "7f9797f1a0563609de61f8be648cb3660fad913f2b3f5b16614258863ea3ce77",
+        "content_sha256": "ea2288e3c172c880413cfdb5b40decba2b0c69e161692606ba6edc1715c656e8"
+      },
+      "full_ensemble": {
+        "path": "tests/pi_benchmark/.results/runs/retake/full_ensemble/manifest.json",
+        "file_sha256": "bcc3e8006f34ee201017ece68389c075194050de2f6e006b7c736842aff4a8ef",
+        "content_sha256": "0d65a54e4ac5746689c4962e3bb8b3151af45faafd6e1c074b11d42a6ff40195"
+      },
+      "invariants": "max_processes=4, shard_count=4, provider=deepseek, model=deepseek-v4-pro, budget_cap_usd=1.0, moa_n=3, repeats=1, tier=T3, 44 units per lane in 4 disjoint shards of 11"
+    },
+    "green_suite": "pytest tests/pi_benchmark -q -> 178 passed, 0 failed (AC-1); tests/pi_migration ratchet 0; tests/pi_production 346 passed; security_benchmark pass",
+    "estimate_gate": "deterministic worst-case program estimate $0.7342 <= $1.00 printed at B0, exit 0; --repeats 2 ($1.4683) exit 2 with no manifest write and no live call",
+    "route_isolation_probes": "provider/model argparse hard-reject unless deepseek/deepseek-v4-pro; T2/T3 refuse without --owner-gate (exit 3) and without --live; validate_topology spend-free: full_ensemble expected-degraded to self_moa on the single approved route"
+  },
+  "credentials": {
+    "env_var": "ISTARA_PI_SECRET_PI_DEEPSEEK_DEFAULT",
+    "keychain_service": "istara-pi-deepseek",
+    "keychain_account": "openclaw",
+    "policy": "credentials resolve only through the configured env/Keychain path, are held in memory only, and are never written to files, logs, ledger rows, or exception messages"
+  },
+  "wave_order": "lane none B1..B4, then lane self_moa B1..B4, then lane full_ensemble B1..B4 (Plan C section 2.2); sequential, one wave per task; shard records == shard units asserted after each wave",
+  "notes": "Fresh retake-scoped gate per Plan C section 2.7 G-R2. Authorizes RT-5 live waves only; POST-N report remains gated behind G-R3. The stale prior-lineage gates g1_owner_gate.json/g2_owner_gate.json remain byte-identical and do NOT authorize this retake."
+}

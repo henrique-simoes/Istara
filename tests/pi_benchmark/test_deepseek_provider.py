@@ -63,7 +63,13 @@ def test_estimate_cost_exact_arithmetic():
 
 def test_chat_happy_path_commits_actual_cost(tmp_path):
     ledger = BudgetLedger(tmp_path / "ledger.jsonl", cap_usd=1.00)
-    provider = _provider(http_post=lambda url, headers, body, timeout: _usage_payload())
+    # Realistic usage within the reservation margin: the worst-case reservation for this
+    # tiny prompt floors at estimate_cost(MIN_RESERVE_INPUT_TOKENS=256, 512) ≈ $0.00126,
+    # and a provider-reported cost below that commits cleanly.
+    provider = _provider(http_post=lambda url, headers, body, timeout: _usage_payload(
+        prompt_tokens=120, completion_tokens=90,
+        prompt_cache_hit_tokens=20, prompt_cache_miss_tokens=100,
+    ))
     text, usage = provider.chat(
         messages=[{"role": "user", "content": "judge this"}],
         max_tokens=512,
@@ -72,20 +78,21 @@ def test_chat_happy_path_commits_actual_cost(tmp_path):
     )
     assert text == "ok"
     assert usage == ProviderUsage(
-        input_tokens=1000,
-        output_tokens=500,
-        cache_read_tokens=100,
-        cache_write_tokens=900,
-        total_tokens=1500,
-        cost_usd=0.002154,  # 0.001645 + 100*0.14/1e6 + 900*0.55/1e6
+        input_tokens=120,
+        output_tokens=90,
+        cache_read_tokens=20,
+        cache_write_tokens=100,
+        # (120*0.55 + 90*2.19 + 20*0.14 + 100*0.55) / 1e6 = 0.0003209
+        total_tokens=210,
+        cost_usd=0.0003209,
         estimate=False,
     )
     rows = [json.loads(line) for line in ledger.path.read_text().splitlines()]
     assert [row["type"] for row in rows] == ["reserve", "commit"]
     assert rows[0]["call_id"] == rows[1]["call_id"] == "judge-1"
     assert rows[0]["kind"] == "judge"
-    assert rows[1]["actual_cost_usd"] == 0.002154
-    assert ledger.spent_usd() == 0.002154
+    assert rows[1]["actual_cost_usd"] == 0.0003209
+    assert ledger.spent_usd() == 0.0003209
     assert ledger.outstanding() == {}
 
 
@@ -105,6 +112,27 @@ def test_unknown_usage_fails_closed_and_keeps_reservation(tmp_path):
         )
     # Fail closed: the worst-case reservation is NOT released.
     assert list(ledger.outstanding()) == ["judge-unknown"]
+    assert [json.loads(line)["type"] for line in ledger.path.read_text().splitlines()] == ["reserve"]
+
+
+def test_over_reservation_commit_fails_closed_and_retains_reservation(tmp_path):
+    # A dispatched call whose provider-reported usage exceeds the worst-case reservation:
+    # the ledger refuses the commit, and the provider fails closed with a typed error and
+    # the reservation still booked (rather than letting the LedgerStateError escape).
+    ledger = BudgetLedger(tmp_path / "ledger.jsonl", cap_usd=1.00)
+    provider = _provider(http_post=lambda url, headers, body, timeout: _usage_payload(
+        prompt_tokens=1_000_000, completion_tokens=1_000_000,
+        prompt_cache_hit_tokens=0, prompt_cache_miss_tokens=0,
+    ))
+    with pytest.raises(ProviderCallFailed, match="over_reservation_fail_closed"):
+        provider.chat(
+            messages=[{"role": "user", "content": "judge this"}],
+            max_tokens=512,
+            ledger=ledger,
+            call_id="judge-over",
+        )
+    # Fail closed: only the reserve row was written; the reservation stays outstanding.
+    assert list(ledger.outstanding()) == ["judge-over"]
     assert [json.loads(line)["type"] for line in ledger.path.read_text().splitlines()] == ["reserve"]
 
 
@@ -186,7 +214,11 @@ def test_preflight_is_a_minimal_ledgered_call(tmp_path):
 
     def fake_post(url, headers, body, timeout):
         seen["body"] = body
-        return _usage_payload(prompt_tokens=2, completion_tokens=1)
+        # A one-token ping reports minimal usage — well within the reservation floor.
+        return _usage_payload(
+            prompt_tokens=2, completion_tokens=1,
+            prompt_cache_hit_tokens=0, prompt_cache_miss_tokens=2,
+        )
 
     provider = _provider(http_post=fake_post)
     usage = provider.preflight(ledger=ledger)
