@@ -678,3 +678,141 @@ async def toggle_team_mode(request: Request, db: AsyncSession = Depends(get_db))
         "team_mode": enabled,
         "message": "Team mode updated. Server restart recommended for full effect.",
     }
+
+
+# ── Agentic core + Pi endpoint management (CF-SPEC-12) ──────────────────────
+
+
+class AgenticEngineRequest(BaseModel):
+    engine: str  # "pi" | "istara" (UI name) | "legacy" (internal alias)
+
+
+class PiEndpointRequest(BaseModel):
+    endpoint_id: str
+    provider_kind: str = "openai_compat"
+    base_url: str
+    model: str
+    keychain_service: str  # required: every Pi endpoint resolves its secret via Keychain
+    keychain_account: str = ""
+    timeout_ms: int = 30_000
+    max_retries: int = 0
+    cost_input_per_mtok: float = 0.0
+    cost_output_per_mtok: float = 0.0
+    cost_cache_read_per_mtok: float = 0.0
+    cost_cache_write_per_mtok: float = 0.0
+    context_window: int = 0
+    max_tokens: int = 0
+    supports_tools: bool = True
+    supports_vision: bool = False
+
+
+def _persist_pi_endpoints() -> None:
+    import json as _json
+
+    payload = [endpoint.model_dump() for endpoint in settings.pi_api_endpoints]
+    _persist_env("PI_API_ENDPOINTS", _json.dumps(payload))
+
+
+@router.post("/settings/agentic-engine")
+async def set_agentic_engine(data: AgenticEngineRequest, request: Request):
+    """Set the GLOBAL default agentic core: 'pi' or 'istara' (CF-SPEC-12).
+
+    Engine resolution order is unchanged (per-call > header > project > this
+    global default). Persisted to .env like every other settings switch.
+    """
+    require_global_role(request, "admin")
+    from app.core.pi_replacement import PI_ENGINE_VALUES
+
+    value = data.engine.strip().lower()
+    if value == "istara":
+        value = "legacy"
+    if value != "pi" and value not in PI_ENGINE_VALUES and value != "legacy":
+        raise HTTPException(status_code=400, detail="engine must be 'pi' or 'istara'")
+    settings.agentic_engine_default = value
+    try:
+        _persist_env("AGENTIC_ENGINE_DEFAULT", value)
+        persisted = True
+    except Exception as exc:  # pragma: no cover
+        logger.warning("Could not persist AGENTIC_ENGINE_DEFAULT: %s", exc)
+        persisted = False
+    return {"status": "switched", "agentic_engine_default": value, "persisted": persisted}
+
+
+@router.get("/settings/pi-endpoints")
+async def list_pi_endpoints(request: Request):
+    """List PiModelManager catalog entries (cloud/API endpoints), secrets never included."""
+    require_global_role(request, "admin")
+    return {
+        "endpoints": [endpoint.model_dump() for endpoint in settings.pi_api_endpoints],
+        "retirement_note": (
+            "Cloud/API endpoints are managed here (Pi model management). The legacy "
+            "LLM-server section manages local serving and donated compute only."
+        ),
+    }
+
+
+@router.post("/settings/pi-endpoints")
+async def add_pi_endpoint(data: PiEndpointRequest, request: Request):
+    require_global_role(request, "admin")
+    from app.config import PiApiEndpoint
+
+    endpoint_id = data.endpoint_id.strip()
+    if not endpoint_id:
+        raise HTTPException(status_code=400, detail="endpoint_id is required")
+    if endpoint_id == "pi-deepseek-default":
+        raise HTTPException(status_code=400, detail="pi-deepseek-default is built in")
+    if any(e.endpoint_id == endpoint_id for e in settings.pi_api_endpoints):
+        raise HTTPException(status_code=409, detail=f"endpoint {endpoint_id!r} already exists")
+    if not data.base_url.startswith(("https://", "http://127.0.0.1", "http://localhost")):
+        raise HTTPException(status_code=400, detail="base_url must be https (or loopback)")
+    if not data.keychain_service.strip():
+        raise HTTPException(status_code=400, detail="keychain_service is required (Pi endpoints resolve secrets via Keychain)")
+    try:
+        settings.pi_api_endpoints.append(PiApiEndpoint(**data.model_dump()))
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    try:
+        _persist_pi_endpoints()
+        persisted = True
+    except Exception as exc:  # pragma: no cover
+        logger.warning("Could not persist PI_API_ENDPOINTS: %s", exc)
+        persisted = False
+    return {"status": "added", "endpoint_id": endpoint_id, "persisted": persisted}
+
+
+@router.put("/settings/pi-endpoints/{endpoint_id}")
+async def update_pi_endpoint(endpoint_id: str, data: PiEndpointRequest, request: Request):
+    require_global_role(request, "admin")
+    for index, endpoint in enumerate(settings.pi_api_endpoints):
+        if endpoint.endpoint_id == endpoint_id:
+            updated = data.model_dump()
+            updated["endpoint_id"] = endpoint_id
+            from app.config import PiApiEndpoint
+
+            settings.pi_api_endpoints[index] = PiApiEndpoint(**updated)
+            try:
+                _persist_pi_endpoints()
+                persisted = True
+            except Exception as exc:  # pragma: no cover
+                logger.warning("Could not persist PI_API_ENDPOINTS: %s", exc)
+                persisted = False
+            return {"status": "updated", "endpoint_id": endpoint_id, "persisted": persisted}
+    raise HTTPException(status_code=404, detail=f"endpoint {endpoint_id!r} not found")
+
+
+@router.delete("/settings/pi-endpoints/{endpoint_id}")
+async def delete_pi_endpoint(endpoint_id: str, request: Request):
+    require_global_role(request, "admin")
+    before = len(settings.pi_api_endpoints)
+    settings.pi_api_endpoints = [
+        endpoint for endpoint in settings.pi_api_endpoints if endpoint.endpoint_id != endpoint_id
+    ]
+    if len(settings.pi_api_endpoints) == before:
+        raise HTTPException(status_code=404, detail=f"endpoint {endpoint_id!r} not found")
+    try:
+        _persist_pi_endpoints()
+        persisted = True
+    except Exception as exc:  # pragma: no cover
+        logger.warning("Could not persist PI_API_ENDPOINTS: %s", exc)
+        persisted = False
+    return {"status": "deleted", "endpoint_id": endpoint_id, "persisted": persisted}

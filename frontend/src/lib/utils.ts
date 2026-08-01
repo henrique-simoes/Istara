@@ -36,7 +36,8 @@ export function phaseLabel(phase: string): string {
 const PI_ENGINE_VALUES = new Set(["pi", "pi-candidate", "pi-replacement", "deepseek-pi"]);
 
 export function agentEngineLabel(engine: string | null | undefined): string {
-  return engine && PI_ENGINE_VALUES.has(engine.trim().toLowerCase()) ? "Pi" : "Legacy";
+  // CF-SPEC-12: the legacy engine's public UI name is "Istara".
+  return engine && PI_ENGINE_VALUES.has(engine.trim().toLowerCase()) ? "Pi" : "Istara";
 }
 
 export function statusLabel(status: string): string {

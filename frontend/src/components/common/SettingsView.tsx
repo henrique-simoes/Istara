@@ -2,8 +2,9 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { Cpu, HardDrive, Monitor, Wifi, WifiOff, RefreshCw, Plus, Server, Trash2, Users, Lock, Gauge, Download } from "lucide-react";
-import { settings as settingsApi, llmServers, telemetry as telemetryApi } from "@/lib/api";
+import { settings as settingsApi, llmServers, telemetry as telemetryApi, piEndpoints } from "@/lib/api";
 import type { HardwareInfo, ModelRecommendation } from "@/lib/types";
+import type { PiEndpoint } from "@/lib/api";
 import { useAuthStore } from "@/stores/authStore";
 import UserManagement from "./UserManagement";
 import ConnectionStringPanel from "@/components/settings/ConnectionStringPanel";
@@ -156,13 +157,40 @@ export default function SettingsView() {
           </div>
           {canManageInfrastructure && models?.agentic_engine_default && (
             <div className="flex items-center gap-2">
-              <span className="text-sm text-slate-500">Agent Engine:</span>
-              <span
-                aria-label={`Global agent engine: ${agentEngineLabel(models.agentic_engine_default)}`}
-                className="text-sm font-medium"
+              <span className="text-sm text-slate-500">Agentic Core:</span>
+              <select
+                aria-label="Global agentic core"
+                value={models.agentic_engine_default === "pi" ? "pi" : "istara"}
+                onChange={async (e) => {
+                  try {
+                    await settingsApi.setAgenticEngine(e.target.value as "pi" | "istara");
+                    window.dispatchEvent(
+                      new CustomEvent("istara:toast", {
+                        detail: {
+                          type: "success",
+                          title: "Agentic Core Switched",
+                          message: `Global agentic core is now ${e.target.value === "pi" ? "Pi" : "Istara"}. New calls use it unless a project overrides.`,
+                        },
+                      })
+                    );
+                    window.location.reload();
+                  } catch (err: any) {
+                    window.dispatchEvent(
+                      new CustomEvent("istara:toast", {
+                        detail: {
+                          type: "error",
+                          title: "Switch Failed",
+                          message: err.message || "Could not switch the agentic core",
+                        },
+                      })
+                    );
+                  }
+                }}
+                className="px-2 py-1 text-sm rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-istara-500"
               >
-                {agentEngineLabel(models.agentic_engine_default)}
-              </span>
+                <option value="pi">Pi</option>
+                <option value="istara">Istara</option>
+              </select>
             </div>
           )}
           {canManageInfrastructure && (
@@ -363,6 +391,9 @@ export default function SettingsView() {
 
       {/* LLM Servers */}
       {capabilities.canManageLlmInfrastructure && <LLMServersSection />}
+
+      {/* Pi Model Management (cloud/API endpoints) */}
+      {capabilities.canManageLlmInfrastructure && <PiEndpointsSection />}
 
       {/* Telemetry (Local-first, No phone-home) */}
       {capabilities.canManageTelemetry && <TelemetrySection />}
@@ -790,6 +821,202 @@ function LLMServersSection() {
         <p className="text-sm text-slate-400">
           No external servers. Local and OpenAI-compatible servers can be added here.
         </p>
+      )}
+    </div>
+  );
+}
+
+function PiEndpointsSection() {
+  const { user, teamMode } = useAuthStore();
+  const [endpoints, setEndpoints] = useState<PiEndpoint[]>([]);
+  const [retirementNote, setRetirementNote] = useState("");
+  const [showAdd, setShowAdd] = useState(false);
+  const [newId, setNewId] = useState("");
+  const [newBaseUrl, setNewBaseUrl] = useState("");
+  const [newModel, setNewModel] = useState("");
+  const [newKind, setNewKind] = useState("openai_compat");
+  const [newKeychain, setNewKeychain] = useState("");
+  const [addError, setAddError] = useState<string | null>(null);
+  const canManage = !teamMode || user?.role === "admin";
+
+  const fetchEndpoints = useCallback(async () => {
+    if (!canManage) {
+      setEndpoints([]);
+      return;
+    }
+    try {
+      const data = await piEndpoints.list();
+      setEndpoints(data.endpoints || []);
+      setRetirementNote(data.retirement_note || "");
+    } catch {}
+  }, [canManage]);
+
+  useEffect(() => {
+    void fetchEndpoints();
+  }, [fetchEndpoints]);
+
+  const handleAdd = async () => {
+    if (!canManage || !newId.trim() || !newBaseUrl.trim() || !newModel.trim()) return;
+    setAddError(null);
+    try {
+      await piEndpoints.add({
+        endpoint_id: newId.trim(),
+        provider_kind: newKind,
+        base_url: newBaseUrl.trim(),
+        model: newModel.trim(),
+        keychain_service: newKeychain.trim(),
+      });
+      setNewId("");
+      setNewBaseUrl("");
+      setNewModel("");
+      setNewKeychain("");
+      setShowAdd(false);
+      await fetchEndpoints();
+    } catch (err: any) {
+      setAddError(err.message || "Failed to add endpoint");
+    }
+  };
+
+  const handleDelete = async (id: string) => {
+    if (!canManage) return;
+    try {
+      await piEndpoints.delete(id);
+      await fetchEndpoints();
+    } catch (err: any) {
+      window.dispatchEvent(
+        new CustomEvent("istara:toast", {
+          detail: { type: "error", title: "Delete Failed", message: err.message || "Failed to remove endpoint" },
+        })
+      );
+    }
+  };
+
+  if (!canManage) {
+    return (
+      <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-5">
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="font-medium text-slate-900 dark:text-white flex items-center gap-2">
+            <Server size={18} />
+            Pi Model Management
+          </h3>
+          <Lock size={16} className="text-slate-400" aria-hidden="true" />
+        </div>
+        <p className="text-sm text-slate-500">
+          Global admin access is required to manage cloud and API endpoints.
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-5">
+      <div className="flex items-center justify-between mb-3">
+        <h3 className="font-medium text-slate-900 dark:text-white flex items-center gap-2">
+          <Server size={18} />
+          Pi Model Management (Cloud &amp; API)
+        </h3>
+        <button
+          onClick={() => setShowAdd((v) => !v)}
+          className="flex items-center gap-1 px-3 py-1.5 text-sm rounded-lg bg-istara-600 text-white hover:bg-istara-700 transition-colors"
+        >
+          <Plus size={14} /> Add Endpoint
+        </button>
+      </div>
+      <p className="text-sm text-slate-500 dark:text-slate-400 mb-3">
+        Cloud models and API endpoints are managed by Pi from now on. Local serving and donated
+        compute (petals) stay in their own sections and keep working with either agentic core.
+      </p>
+      {retirementNote && (
+        <p className="text-xs text-slate-400 dark:text-slate-500 mb-3">{retirementNote}</p>
+      )}
+
+      {showAdd && (
+        <div className="mb-4 p-3 rounded-lg border border-slate-200 dark:border-slate-700 space-y-2">
+          <input
+            type="text"
+            placeholder="Endpoint id (e.g. pi-openai-main)"
+            value={newId}
+            onChange={(e) => setNewId(e.target.value)}
+            className="w-full px-3 py-2 text-sm rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white"
+          />
+          <input
+            type="text"
+            placeholder="Base URL (https://...)"
+            value={newBaseUrl}
+            onChange={(e) => setNewBaseUrl(e.target.value)}
+            className="w-full px-3 py-2 text-sm rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white"
+          />
+          <input
+            type="text"
+            placeholder="Model (e.g. gpt-4o, claude-sonnet-4-5)"
+            value={newModel}
+            onChange={(e) => setNewModel(e.target.value)}
+            className="w-full px-3 py-2 text-sm rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white"
+          />
+          <div className="flex gap-2">
+            <select
+              value={newKind}
+              onChange={(e) => setNewKind(e.target.value)}
+              className="flex-1 px-3 py-2 text-sm rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white"
+            >
+              <option value="openai_compat">OpenAI-compatible</option>
+              <option value="anthropic_compat">Anthropic-compatible</option>
+            </select>
+            <input
+              type="text"
+              placeholder="Keychain service (optional)"
+              value={newKeychain}
+              onChange={(e) => setNewKeychain(e.target.value)}
+              className="flex-1 px-3 py-2 text-sm rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white"
+            />
+          </div>
+          {addError && <p className="text-sm text-red-500">{addError}</p>}
+          <div className="flex gap-2">
+            <button
+              onClick={handleAdd}
+              className="px-3 py-1.5 text-sm rounded-lg bg-istara-600 text-white hover:bg-istara-700 transition-colors"
+            >
+              Add
+            </button>
+            <button
+              onClick={() => setShowAdd(false)}
+              className="px-3 py-1.5 text-sm rounded-lg border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
+
+      {endpoints.length === 0 ? (
+        <p className="text-sm text-slate-500">
+          No custom endpoints yet. The built-in <span className="font-mono">pi-deepseek-default</span> endpoint is always available.
+        </p>
+      ) : (
+        <ul className="space-y-2">
+          {endpoints.map((endpoint) => (
+            <li
+              key={endpoint.endpoint_id}
+              className="flex items-center justify-between p-3 rounded-lg border border-slate-200 dark:border-slate-700"
+            >
+              <div>
+                <p className="text-sm font-medium text-slate-900 dark:text-white">
+                  {endpoint.endpoint_id}
+                </p>
+                <p className="text-xs text-slate-500">
+                  {endpoint.model} · {endpoint.provider_kind} · {endpoint.base_url}
+                </p>
+              </div>
+              <button
+                onClick={() => handleDelete(endpoint.endpoint_id)}
+                aria-label={`Delete ${endpoint.endpoint_id}`}
+                className="p-1.5 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+              >
+                <Trash2 size={16} />
+              </button>
+            </li>
+          ))}
+        </ul>
       )}
     </div>
   );

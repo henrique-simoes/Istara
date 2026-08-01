@@ -506,6 +506,11 @@ export const settings = {
     request<any>(`/api/settings/model?model_name=${model}`, { method: "POST" }),
   switchProvider: (provider: string) =>
     request<any>(`/api/settings/provider?provider=${provider}`, { method: "POST" }),
+  setAgenticEngine: (engine: "pi" | "istara") =>
+    request<{ status: string; agentic_engine_default: string; persisted: boolean }>(
+      "/api/settings/agentic-engine",
+      { method: "POST", body: JSON.stringify({ engine }) }
+    ),
   maintenance: () => request<any>("/api/settings/maintenance"),
   integrationsStatus: () =>
     request<{ stitch_configured: boolean; figma_configured: boolean }>(
@@ -1157,3 +1162,43 @@ export {
   researchValidity,
   steering,
 } from "./researchIntegrityApi";
+
+export interface PiEndpoint {
+  endpoint_id: string;
+  provider_kind: string;
+  base_url: string;
+  model: string;
+  keychain_service?: string;
+  keychain_account?: string;
+  timeout_ms?: number;
+  max_retries?: number;
+  cost_input_per_mtok?: number;
+  cost_output_per_mtok?: number;
+  cost_cache_read_per_mtok?: number;
+  cost_cache_write_per_mtok?: number;
+  context_window?: number;
+  max_tokens?: number;
+  supports_tools?: boolean;
+  supports_vision?: boolean;
+}
+
+export const piEndpoints = {
+  list: () =>
+    request<{ endpoints: PiEndpoint[]; retirement_note: string }>(
+      "/api/settings/pi-endpoints"
+    ),
+  add: (endpoint: PiEndpoint) =>
+    request<any>("/api/settings/pi-endpoints", {
+      method: "POST",
+      body: JSON.stringify(endpoint),
+    }),
+  update: (endpointId: string, endpoint: PiEndpoint) =>
+    request<any>(`/api/settings/pi-endpoints/${encodeURIComponent(endpointId)}`, {
+      method: "PUT",
+      body: JSON.stringify(endpoint),
+    }),
+  delete: (endpointId: string) =>
+    request<any>(`/api/settings/pi-endpoints/${encodeURIComponent(endpointId)}`, {
+      method: "DELETE",
+    }),
+};
