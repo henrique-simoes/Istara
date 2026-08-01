@@ -1,266 +1,297 @@
-# Plan B — Contract-first correction of Pi benchmark execution and judging roles
+# Plan B r2 — Contract-first Pi benchmark role correction
 
-- **Task:** `PI-BENCH-ROLE-CORRECTION-20260722-PLAN-B`
+- **Task:** `PI-BENCH-ROLE-CORRECTION-20260722-REPLAN-B-r2`
 - **Role:** `pi-bench-role-correction-20260722-architect-b`
 - **Spec:** `CF-SPEC-8`
 - **Pipeline:** `PI-BENCH-ROLE-CORRECTION-20260722`
-- **Scope:** planning and documentation only; the implementation changes the Pi benchmark
-  lifecycle and its Conductor work-order, not the master plan, benchmark code, or Istara
-  production routing.
+- **Lifecycle:** `docs/build-stream/2026-07-22-pi-benchmark.md`
+- **Scope:** documentation-only correction of the Pi benchmark lifecycle and remaining-wave
+  work-order. Do not edit the master plan, benchmark code, production code, routing defaults,
+  manifests, reports, or historical ledger entries.
 
-## 1. Outcome and constraints
+> **r2 correction note (grounded at `8fc982d8`).** This revision adds exact anchors for
+> every active role contradiction and separates the required two-document correction from
+> the adjacent stale operator/code surfaces. The latter are recorded as follow-up debt; they
+> are not silently pulled into this documentation task. Source lines are planning anchors,
+> not edit coordinates: the implementer must refresh them after acquiring the repository
+> completion lock because the shared lifecycle is concurrently append-only.
 
-The correction must leave one unambiguous operating contract for all later workers:
+## 1. Outcome and invariants
 
-| Role | Authority after correction | Prohibited interpretation |
+The implementation leaves one authoritative contract that every later benchmark worker can
+apply without inferring roles from provider names:
+
+| Concern | Authoritative role | Prohibited interpretation |
 |---|---|---|
-| Device under test (DUT) | Istara's original agentic loop and Pi adaptation receive identical scenario inputs; their captured behavior is compared. | A provider model, Conductor worker, or judge is not the DUT. |
-| Evaluation backend | Live calls from both Istara arms traverse Istara's API/`AgenticDispatcher` and use the configured DeepSeek API route under the existing cumulative `$1.00` evaluation ledger. | The runner must not call DeepSeek directly as a substitute for exercising Istara. |
-| MoA behavior | `self_moa` and `full_ensemble` exercise Istara's existing dispatcher/validation behavior. Requested and served route identities, coder/sample width, and downgrades are durable evidence. | The benchmark must not modify production defaults or call a benchmark-only ensemble implementation. |
-| Post-run judge | Only after B0 and B1…B_N are terminal, a separate Build Stream Conductor session uses Kimi as the intended judge harness/model over immutable durable artifacts. It emits `report.md`, `report.html`, `scorecard.json`, and per-judgment outputs. | The judge must not rerun the DUT, make new benchmark-provider calls, or draw from the evaluation ledger. |
-| BSC execution workers | Implementers, reviewers, and remediators orchestrate the benchmark and preserve evidence. | Their model output is neither DUT evidence nor judge evidence unless they are explicitly cast in the separate post-run judging session. |
+| DUT/evaluation | Run Istara's original agentic loop and Pi adaptation against identical scenario inputs and compare their captured behavior. | DeepSeek, Kimi, or a BSC worker is not the DUT. |
+| Evaluation backend | Live model calls from both Istara arms traverse Istara's API/dispatcher and use the configured DeepSeek API route under one cumulative `$1.00` evaluation cap. | The runner may not call DeepSeek directly as a substitute for exercising Istara. |
+| MoA | `self_moa` and `full_ensemble` exercise Istara's existing dispatcher/validation path. Record requested and served route identity and mark any downgrade `degraded`, `blocked`, or `not_runnable`. | Benchmark-only ensemble behavior and production-default changes are forbidden. |
+| Post-run judge | After B0 and every B1…B_N unit are terminal, a separate BSC session uses Kimi as the intended judge harness/model over frozen durable artifacts. It emits `report.md`, `report.html`, `scorecard.json`, and per-judgment outputs. | The judge may not rerun the DUT, call a benchmark provider, or reserve/commit evaluation-ledger spend. |
+| BSC workers | Implementation, review, and remediation workers are orchestration infrastructure. | Their outputs are not DUT or judge evidence unless explicitly cast in the separate judging session. |
 
-Preserve without semantic change: `budget_cap_usd=1.00`, `max_processes=N`, the immutable
-content-addressed manifest, disjoint/resumable B1…B_N shards, fail-closed provider and
-budget behavior, owner gates, and Istara's existing production model-selection defaults.
+The correction must preserve without semantic change:
 
-## 2. Verified current-state problem
+- `budget_cap_usd=1.00` and the crash-safe cumulative evaluation ledger;
+- `max_processes=N`, disjoint/resumable B1…B_N shards, and the immutable content-addressed
+  manifest;
+- fail-closed provider, usage, cost, route, and downgrade handling;
+- existing owner gates and no unapproved live calls or model loading;
+- Istara's production engine, provider, model-selection, fallback, catalog, and validation
+  defaults.
 
-The lifecycle already has correct top-level Goals and a mostly correct “Wave and provider
-contract,” but its embedded forward-looking winning plan remains internally inconsistent:
+## 2. Current-state audit
 
-- the B0/B-wave task table, acceptance criteria, commands, risks, gates, and non-goals
-  still call Kimi the evaluation provider and use `--provider kimi`;
-- DEC-5 routes both evaluation and judge calls through DeepSeek and charges judges to the
-  shared ledger;
-- DEC-6 then routes evaluation through Kimi and leaves the judging cast open-ended;
-- the newer top-level contract instead requires DeepSeek to serve live calls made through
-  Istara and reserves Kimi for a separate artifact-only judging session.
+The lifecycle's top-level goals and wave/provider contract already identify DeepSeek as the
+backend serving Istara evaluation calls and Kimi as the later judge. Its embedded active plan
+still contradicts that contract in task rows, acceptance criteria, example commands, risks,
+gates, non-goals, and decisions:
 
-The execution work-order is closer to the intended contract, but the correction should
-make the five roles above an explicit normative block rather than rely on scattered prose.
-It must also enumerate all required evaluation packs in both documents.
+- active text still calls Kimi the evaluation adapter/credential/provider and includes
+  `--provider kimi` examples;
+- DEC-5 includes judge calls in the DeepSeek route and shared evaluation ledger;
+- DEC-6 sends evaluation through Kimi and leaves the judging harness open-ended;
+- the remaining-wave work-order is substantially role-correct but does not yet enumerate
+  MoA route/downgrade evidence as a seventh evaluation pack or present the five roles as one
+  normative block.
 
-Append-only ledger entries are historical evidence, including entries that describe the
-old role assignment. They must not be rewritten. A new decision and ledger entry will
-supersede their forward-looking meaning.
+The grounded edit map is:
+
+| Surface at `8fc982d8` | Current state | Planned disposition |
+|---|---|---|
+| Lifecycle lines 24–31 and 36–64 | Top-level Goals and wave/provider contract are already role-correct. | Preserve and use as the normative source for the active-plan rewrite. |
+| Lifecycle lines 307–313 | B0/B-wave tasks call Kimi the evaluation adapter/provider and use `--provider kimi`. | Rewrite active task rows to DeepSeek-behind-Istara evaluation and a terminal artifact-only Kimi judge session. |
+| Lifecycle lines 327–353 | Acceptance A3/A4/A7 assign Kimi to evaluation; POST-N names outputs without a full judge barrier. | Correct the provider identity and add manifest/ledger terminality plus frozen-artifact prerequisites. |
+| Lifecycle lines 357–405 | Verification headings and commands use Kimi evaluation credentials and runner flags. | Use the supported DeepSeek route/model while retaining Istara runner/dispatcher execution. |
+| Lifecycle lines 418–424 and 449–466 | Risks, G0/G1, and non-goals still describe Kimi-only evaluation. | Reconcile the forward-looking language; preserve cap, gates, and fail-closed semantics. |
+| Lifecycle lines 484–503 | DEC-5 sends judges through DeepSeek/shared spend; DEC-6 sends evaluation through Kimi and leaves the judging cast open. | Leave DEC-5/DEC-6 immutable and append the next decision that prospectively supersedes only those role clauses. |
+| Work-order lines 24–38 and 43–55 | DUT, DeepSeek evaluation route, artifact-only Kimi judging, and MoA downgrade rules are already correct. | Preserve; consolidate them as the normative five-role block for every future worker. |
+| Work-order lines 71–82 | Six evaluation packs are named; MoA route/downgrade appears only as a judging criterion. | Enumerate all seven required evaluation packs explicitly and retain the artifact-only judging rule. |
+
+Historical `### L-*` entries are evidence of what agents previously believed and must remain
+byte-preserved. The implementation must append a new decision and ledger entry that supersede
+the stale role assignments prospectively.
+
+There are also adjacent contradictions outside the required two-document correction:
+
+- `tests/pi_benchmark/README.md:73-76` advertises a DeepSeek judge that shares the
+  evaluation ledger;
+- `tests/pi_benchmark/deepseek_judge.py:3-7,84-89` implements and documents that same
+  provider-backed/shared-ledger judge path.
+
+Neither may be presented as satisfying the corrected Kimi artifact-only judging contract.
+The implementation must identify them in the lifecycle/work-order as non-conforming legacy
+apparatus and create one separately scoped follow-up task for their documentation/code
+migration or retirement. This task must not edit either file, because doing so would expand a
+role-contract documentation correction into executable benchmark behavior without its tests,
+security trigger analysis, or independent review.
 
 ## 3. Design
 
-### 3.1 Establish one normative role block
+### 3.1 One normative role block in both active documents
 
-Add a compact “Authoritative role separation” block near the lifecycle's top-level wave
-contract and near the start of
-`docs/build-stream/conductor-instructions/pi-benchmark-deepseek-moa-execution.md`.
-Use the same five numbered statements in both places. Future workers should not need to
-infer roles from provider names in individual commands.
+Add the five-role contract from section 1 near the lifecycle's top-level provider/wave
+contract and near the beginning of
+`docs/build-stream/conductor-instructions/pi-benchmark-deepseek-moa-execution.md`. The two
+blocks must be semantically identical. Both must state that DeepSeek is a serving route behind
+Istara, not the DUT, and that Kimi is reserved for the terminal artifact-only judging session.
 
-The block must distinguish route from DUT: DeepSeek serves model calls, but the benchmark
-continues to measure Istara's original loop versus its Pi adaptation through Istara's own
-API/dispatcher. It must also say that route identity is observed, not selected by changing
-production defaults.
+Enumerate the same seven evaluation packs in both documents:
 
-### 3.2 Reconcile all active lifecycle instructions
+1. canonical 15-scenario contract coverage;
+2. feature breadth;
+3. Research Spine lifecycle;
+4. A2A collaboration;
+5. prompt/injection probes;
+6. usage/cost accounting;
+7. MoA route/downgrade evidence.
 
-Within active, forward-looking lifecycle material, replace stale Kimi-as-evaluation and
-DeepSeek-as-judge language consistently across:
+Keep any existing `depth` or internal scheduling labels when they map manifest work; the
+seven-pack list is the external coverage contract, not permission to silently drop work.
 
-- the program diagram and component descriptions;
-- B0/B1…B_N task rows;
-- acceptance criteria;
-- verification examples and preflight/wave commands;
-- risks and mitigations;
-- owner gates and explicit non-goals.
+### 3.2 Reconcile only active forward-looking lifecycle text
 
-Commands should name the benchmark's supported DeepSeek provider/model arguments exactly
-as implemented at execution time, while the prose retains “configured DeepSeek API route”
-as the contract. The correction must not introduce a direct provider call: commands still
-invoke the Istara benchmark runner, whose live driver traverses Istara's API/dispatcher.
+Within the active plan, update every stale Kimi-as-evaluation or DeepSeek-as-judge reference
+across the diagram, component descriptions, B0/B-wave task table, acceptance, commands,
+risks, gates, and non-goals. Supported runner examples use the existing CLI contract
+`--provider deepseek --model deepseek-v4-pro` while still invoking Istara's benchmark runner.
 
-Do not edit prior `### L-*` entries. Do not rewrite the historical content of DEC-5 or
-DEC-6 in a way that hides the change; supersede them explicitly in a new decision.
+Do not globally replace provider names. Kimi remains correct in judge-only text, DeepSeek
+remains correct in evaluation-backend text, and historical ledger entries remain untouched.
 
-### 3.3 Make MoA evidence part of the DUT contract
+### 3.3 Make MoA proof observational and fail closed
 
-The corrected lifecycle and work-order must state that `self_moa` and `full_ensemble` are
-Istara dispatcher/validation modes. Every applicable record captures:
+For every applicable `self_moa` or `full_ensemble` result, require durable capture of:
 
-- requested provider/model/endpoint slots and requested coder/sample width;
+- requested provider/model/endpoint slots and requested sample/coder width;
 - served provider/model/endpoint identities and successful response count;
-- engine arm (`legacy` or `pi`), reconciliation status, and route evidence handles;
-- any downgrade to fewer routes/coders or another mode as `degraded`, `blocked`, or
-  `not_runnable`, never a successful full-ensemble result.
+- engine arm (`legacy` or `pi`), reconciliation state, and route evidence handles;
+- rejected route evidence and any downgrade classification.
 
-This is an observational benchmark contract only. No production route, fallback, model
-catalog, default, or validation policy is changed.
+Selected or requested routes are not proof of service. A run with fewer served routes or
+coders than requested cannot be recorded as successful full ensemble. This change documents
+existing Istara behavior; it does not add a benchmark-only dispatcher or alter production
+routing.
 
-### 3.4 Separate evaluation closure from judging startup
+### 3.4 Add a terminal evaluation-to-judging barrier
 
-Add an explicit barrier between the phases:
+The active lifecycle and work-order must enforce this sequence:
 
-1. B0 and every manifest unit in B1…B_N reach a terminal state.
-2. The immutable manifest and evaluation ledger are reconciled and closed; all seven
-   evaluation packs are accounted for.
-3. A durable artifact index with hashes and redacted route evidence is frozen.
-4. A new BSC judging session is launched with Kimi as intended judge harness/model.
-5. The judge reads only that artifact packet and writes the four required report classes.
+1. B0 and every immutable-manifest unit in B1…B_N reaches a terminal state.
+2. The evaluation ledger is reconciled and closed, with all seven packs accounted for.
+3. A frozen artifact index records hashes and redacted route-evidence handles.
+4. A separate BSC judging session is launched with Kimi as the intended judge harness/model.
+5. The judge reads only the frozen packet and writes `report.md`, `report.html`,
+   `scorecard.json`, and per-judgment outputs.
 
-The separate judging session must have no benchmark credential requirement, no DUT runner
-permission, and no evaluation-ledger reservation path. Deterministic report aggregation
-may consume the judge outputs, but may not manufacture missing DUT records.
+The judging session has no DUT-runner permission, no benchmark-provider credential
+requirement, and no evaluation-ledger reservation/commit path. Deterministic aggregation may
+consume judgment files but may not fabricate missing DUT records.
 
-### 3.5 Decision and ledger treatment
+### 3.5 Supersede, append, and commit safely
 
-Append the next decision (`DEC-7` if still available when the implementer acquires the
-lock) with the five-role matrix and a precise supersession statement:
+Append the next available decision number after re-reading the lifecycle under the repository
+completion lock. At the audited snapshot this would be `DEC-7`, but the implementer must use
+the actual next number under lock. The new decision must preserve DEC-5's
+wave/process/cap choices while superseding its DeepSeek-judge/shared-judge-spend clause, and
+preserve DEC-6's evaluation-to-judging separation while superseding its
+Kimi-evaluation/open-judge clauses. Its decision text must explicitly bind all five roles,
+all seven packs, the frozen-artifact barrier, and the adjacent non-conforming judge debt.
 
-- DEC-5 remains authoritative for B0/B1…B_N process waves, `max_processes=N`, DeepSeek
-  evaluation routing, and the cumulative `$1.00` cap, but not for DeepSeek judging or
-  charging post-run judging to the evaluation ledger.
-- DEC-6 is superseded for Kimi-as-evaluation and open-ended judge selection; its durable
-  separation of evaluation from judging remains valid.
-
-Under `repo_lock.completion_lock`, append exactly one task-marked ledger entry and update
-the Status Block's `last` pointer without changing the current remediation stage or
-overwriting concurrent next-action state. Commit only the lifecycle and work-order paths
-with `repo_lock.commit_paths`; never stage unrelated shared-worktree changes.
+Do not edit historical ledger text. Under `repo_lock.completion_lock`, re-read the latest
+decision, ledger number, and Status Block; append exactly one task-marked ledger entry and
+refresh only the concurrency-safe status fields. Commit the lifecycle and work-order with
+`repo_lock.commit_paths`. Never stage unrelated shared-worktree files.
 
 ## 4. Task graph
 
 | ID | Task | Files | Depends on | Definition of ready |
 |---|---|---|---|---|
-| RC-B1 | Capture a pre-edit role/invariant audit and the shared-worktree path baseline. | none | — | Current lifecycle/work-order read; stale active references and pre-existing dirty paths listed. |
-| RC-B2 | Add the identical normative five-role block and seven-pack inventory to both documents. | lifecycle; execution work-order | RC-B1 | Exact role wording agreed from the task payload. |
-| RC-B3 | Reconcile every forward-looking lifecycle occurrence in diagram, tasks, acceptance, commands, risks, gates, and non-goals. | lifecycle | RC-B2 | Active-vs-historical regions identified; no ledger rewrite required. |
-| RC-B4 | Add the MoA observation contract and evaluation-to-judging terminal barrier. | lifecycle; execution work-order | RC-B2 | Existing manifest, ledger, and route-evidence terminology preserved. |
-| RC-B5 | Append the superseding decision and one ledger entry; refresh only the concurrency-safe Status Block fields. | lifecycle | RC-B2..RC-B4 | Lock acquired; latest DEC/L number and current status re-read inside lock. |
-| RC-B6 | Run lexical, invariant, path-scope, and diff-hygiene checks; record CF command evidence. | none | RC-B5 | Only the two intended implementation paths are staged/committed for this task. |
-| RC-B7 | Independent review of the changed forward-looking regions and adjacent role seams. | none | RC-B6 | Implementer evidence and scoped diff available. |
+| RC-B1 | Capture a pre-edit role/invariant audit and dirty-path baseline. | none | — | Lifecycle/work-order read; active stale references distinguished from historical ledger text; unrelated dirty paths recorded. |
+| RC-B2 | Add the normative five-role block and seven-pack inventory to both documents. | lifecycle; work-order | RC-B1 | Exact task-payload roles are available; no provider inference required. |
+| RC-B3 | Reconcile all active Kimi-evaluation and DeepSeek-judge references, including supported CLI examples. | lifecycle | RC-B2 | Active regions and first historical ledger boundary identified. |
+| RC-B4 | Add requested-versus-served MoA evidence and the terminal artifact barrier. | lifecycle; work-order | RC-B2 | Existing manifest, ledger, route-evidence, and report vocabulary preserved. |
+| RC-B5 | Record the README/DeepSeek-judge mismatch as out-of-scope debt, bar it from satisfying the post-run contract, and import one separately scoped cleanup task. | lifecycle; work-order; CF state only | RC-B2 | Exact contradictory anchors are refreshed; no benchmark or production code edit is required. |
+| RC-B6 | Append the superseding decision and task ledger entry; refresh minimal status fields under lock. | lifecycle | RC-B2..RC-B5 | Lock acquired; latest decision/ledger/status re-read. |
+| RC-B7 | Run lexical, invariant, diff-hygiene, and task-commit path checks; attach command evidence. | none | RC-B6 | Only lifecycle/work-order paths belong to the task commit. |
+| RC-B8 | Independent delta review of changed active regions and immediate role seams. | none | RC-B7 | Scoped diff and evidence capsule available. |
 
-RC-B2 through RC-B6 are one small documentation implementation task. RC-B7 is a separate
-review task; it must not silently repair findings in the review stage.
+RC-B2 through RC-B7 form one documentation implementation task. RC-B8 is a separate review
+task; the reviewer reports findings rather than repairing them in-place.
 
 ## 5. Acceptance criteria
 
-- **AC-1 — DUT identity:** Given either benchmark arm runs a live scenario, when the
-  lifecycle/work-order describes the run, then it identifies Istara's original loop or Pi
-  adaptation as the DUT and requires identical scenario inputs and captured behavior.
-- **AC-2 — served route:** Given a DUT call needs a model, when it is dispatched, then the
-  documents require the configured DeepSeek API route through Istara's API/dispatcher,
-  charge it to the one cumulative `$1.00` ledger, and forbid a direct DeepSeek substitute
-  or provider fallback.
-- **AC-3 — MoA provenance:** Given `self_moa` or `full_ensemble` is requested, when results
-  are recorded, then requested-versus-served route identity and width are present and any
-  downgrade is degraded/blocked/not-runnable rather than success.
-- **AC-4 — judge separation:** Given B0 or any B1…B_N unit is non-terminal, when judging is
-  considered, then the judging session cannot start. Once all evaluation artifacts and the
-  ledger are terminal/closed, the separate Kimi BSC judge reads durable artifacts only,
-  makes no new benchmark-provider calls, and produces `report.md`, `report.html`,
-  `scorecard.json`, and per-judgment outputs.
-- **AC-5 — worker identity:** The work-order explicitly says ordinary BSC implementer,
-  reviewer, and fixer model output is orchestration evidence, not DUT/judge evidence.
-- **AC-6 — pack completeness:** Both documents enumerate canonical 15-scenario contract
-  coverage, feature breadth, Research Spine lifecycle, A2A collaboration,
-  prompt/injection probes, usage/cost accounting, and MoA route/downgrade evidence.
-- **AC-7 — preserved mechanics:** The correction retains `budget_cap_usd=1.00`,
-  `max_processes=N`, immutable manifest hashing, disjoint/resumable B1…B_N waves,
-  fail-closed semantics, and unchanged production Istara model-selection behavior.
-- **AC-8 — history and scope:** Historical ledger entries are byte-preserved; a new
-  decision/ledger entry records the correction; the implementation task changes only the
-  lifecycle and execution work-order under `docs/build-stream/`.
+- **AC-1 — DUT identity:** Given either benchmark arm runs a scenario, when the documents
+  describe the result, then Istara's original loop or Pi adaptation is the evaluated system,
+  the scenario input is paired, and DeepSeek/Kimi/BSC workers are not called the DUT.
+- **AC-2 — evaluation route:** Given a live DUT model call, when it is dispatched, then it
+  traverses Istara's API/dispatcher, uses the configured DeepSeek route, reserves against the
+  one cumulative `$1.00` evaluation ledger, and has no direct-provider substitute or fallback.
+- **AC-3 — MoA provenance:** Given `self_moa` or `full_ensemble` is requested, when the
+  record is finalized, then requested and served identities/widths are present and any
+  shortfall is degraded, blocked, or not-runnable rather than successful ensemble evidence.
+- **AC-4 — judge barrier:** Given B0 or any B1…B_N unit is non-terminal or the ledger is
+  open, when judging is considered, then the separate session cannot start. Once terminal,
+  the Kimi BSC judge reads frozen artifacts only, makes no provider calls, spends nothing
+  from the evaluation ledger, and emits all four required report classes.
+- **AC-5 — worker identity:** Ordinary BSC implementer/reviewer/remediator output is clearly
+  orchestration evidence, not DUT/judge evidence.
+- **AC-6 — pack completeness:** Both active documents enumerate all seven required packs.
+- **AC-7 — preserved mechanics:** `budget_cap_usd=1.00`, `max_processes=N`, immutable
+  manifest hashing, disjoint/resumable waves, fail-closed behavior, owner gates, and
+  production model-selection defaults retain their meaning.
+- **AC-8 — honest debt:** `tests/pi_benchmark/README.md` and the executable DeepSeek-judge
+  path are not claimed as the corrected Kimi judge; one separately scoped cleanup task owns
+  their migration/retirement and its required tests/gates.
+- **AC-9 — history and scope:** Historical ledger entries are unchanged; a new decision and
+  ledger entry explain the correction; the task commit contains only the lifecycle and
+  remaining-wave work-order under `docs/build-stream/`.
 
 ## 6. Verification
 
-Run from `/Users/user/Documents/Istara-main-pi-replacement`; use the repository's actual
-current paths and do not interpret unrelated dirty files as this task's edits.
+Run from `/Users/user/Documents/Istara-main-pi-replacement`. Compare against the captured
+dirty-path baseline so concurrent user/worker changes are not attributed to this task.
 
 ```bash
-# Diff hygiene for the two implementation paths.
+# Whitespace and Markdown diff hygiene for the implementation paths.
 git diff --check -- \
   docs/build-stream/2026-07-22-pi-benchmark.md \
   docs/build-stream/conductor-instructions/pi-benchmark-deepseek-moa-execution.md
 
-# Path-scoped staging audit inside the lock; expected output is exactly these two paths.
-git diff --cached --name-only -- \
+# Inspect active ambiguity hits. Hits in historical L-* entries are allowed only as
+# preserved history; active hits must be judge-only or explicit supersession prose.
+rg -n -i \
+  'provider kimi|--provider kimi|kimi[- ]only evaluation|kimi evaluation (credential|provider|adapter|envelope)|judge call through deepseek|deepseek.{0,40}judge' \
   docs/build-stream/2026-07-22-pi-benchmark.md \
   docs/build-stream/conductor-instructions/pi-benchmark-deepseek-moa-execution.md
 
-# No active Kimi-as-evaluation command or direct-provider wording.
-rg -n -i --glob '!docs/build-stream/2026-07-22-pi-benchmark.md' \
-  '(^|[^a-z])(provider kimi|--provider kimi|kimi[- ]only evaluation|kimi evaluation (provider|credential|adapter|envelope))' \
-  docs/build-stream/conductor-instructions/pi-benchmark-deepseek-moa-execution.md
-
-# Inspect lifecycle hits manually by region: any hit before the first historical ledger
-# entry must be judge-only or an explicit supersession statement.
-rg -n -i 'provider kimi|--provider kimi|kimi[- ]only evaluation|kimi evaluation (provider|credential|adapter|envelope)|deepseek.{0,40}judge|judge.{0,40}deepseek' \
+# Exact supported runner route appears in active examples.
+rg -n -- '--provider deepseek|--model deepseek-v4-pro' \
   docs/build-stream/2026-07-22-pi-benchmark.md
 
-# The role and output vocabulary must exist in both active documents.
+# Both documents contain the role/output vocabulary and every evaluation pack.
 for file in \
   docs/build-stream/2026-07-22-pi-benchmark.md \
   docs/build-stream/conductor-instructions/pi-benchmark-deepseek-moa-execution.md; do
-  rg -q 'original agentic loop' "$file"
-  rg -q 'Pi adaptation' "$file"
-  rg -q 'DeepSeek' "$file"
-  rg -q 'Istara.{0,40}(API|dispatcher)|API/dispatcher' "$file"
-  rg -q 'Kimi' "$file"
-  rg -q 'report\.md' "$file"
-  rg -q 'report\.html' "$file"
-  rg -q 'scorecard\.json' "$file"
-  rg -q 'per-judgment' "$file"
-done
-
-# Required seven-pack vocabulary in both documents.
-for file in \
-  docs/build-stream/2026-07-22-pi-benchmark.md \
-  docs/build-stream/conductor-instructions/pi-benchmark-deepseek-moa-execution.md; do
-  for term in 'canonical 15-scenario' 'feature breadth' 'Research Spine' 'A2A' \
+  for term in 'original agentic loop' 'Pi adaptation' 'DeepSeek' 'API/dispatcher' \
+              'Kimi' 'report.md' 'report.html' 'scorecard.json' 'per-judgment' \
+              'canonical 15-scenario' 'feature breadth' 'Research Spine' 'A2A' \
               'prompt/injection' 'usage/cost' 'route/downgrade'; do
     rg -q "$term" "$file" || { echo "missing: $term in $file"; exit 1; }
   done
 done
 
-# Preserved mechanics and explicit non-mutation of production defaults.
-rg -n 'budget_cap_usd=1\.00|max_processes=N|immutable|resumable|production.*defaults|model-selection' \
+# Preserved mechanics and explicit production non-mutation remain visible.
+rg -n \
+  'budget_cap_usd=1\.00|max_processes=N|immutable|resumable|production.*defaults|model-selection' \
   docs/build-stream/2026-07-22-pi-benchmark.md \
   docs/build-stream/conductor-instructions/pi-benchmark-deepseek-moa-execution.md
 
-# Scoped task commit audit after commit. Replace <task-commit> with the resulting SHA;
-# expected paths are exactly the lifecycle and work-order.
+# Adjacent stale judge surfaces are explicitly named as debt, not silently treated as
+# compliant or edited in this task.
+rg -n \
+  'tests/pi_benchmark/README\.md|tests/pi_benchmark/deepseek_judge\.py|non-conforming|follow-up' \
+  docs/build-stream/2026-07-22-pi-benchmark.md \
+  docs/build-stream/conductor-instructions/pi-benchmark-deepseek-moa-execution.md
+
+# Before committing, staged paths must be exactly the two implementation paths.
+git diff --cached --name-only
+
+# After the path-scoped commit, audit that commit rather than the globally dirty tree.
 git diff-tree --no-commit-id --name-only -r <task-commit>
 ```
 
-No backend/frontend test suite is required for a wording-only correction. If implementation
-touches provider, dispatcher, validation, benchmark Python, or any production file, stop:
-that is scope expansion and requires a new task plus the applicable architecture/security
-verification rather than being folded into this correction.
+No backend/frontend or live benchmark suite is required for this wording-only correction.
+If implementation touches benchmark Python, provider/dispatcher/validation code, production
+files, credentials, or live services, stop and create a new scoped task with the applicable
+architecture/security verification. Do not load a model or make a DeepSeek/Kimi call.
 
 ## 7. Risks and mitigations
 
 | Risk | Impact | Mitigation |
 |---|---|---|
-| Blind global replacement rewrites historical ledger evidence. | Audit trail becomes false. | Bound edits to active sections; preserve every prior `### L-*` entry; supersede via new DEC/L entry. |
-| DeepSeek is described as the DUT rather than the serving route. | Benchmark no longer measures Istara. | Lead both documents with the five-role matrix and explicitly require the Istara API/dispatcher path. |
-| A “configured route” phrase silently changes production defaults. | Production behavior changes outside experiment scope. | State route observation/approval is benchmark-scoped; prohibit model catalog/default/fallback changes. |
-| The Kimi judging session accidentally reruns scenarios or spends from the evaluation ledger. | Biased results and cap ambiguity. | Require terminal artifact barrier; artifact-only inputs; no DUT credential/runner permission; ledger already closed. |
-| MoA selected endpoints are mistaken for served routes. | Downgraded runs look successful. | Require successful served-route evidence and requested width; selected-but-failed routes remain provenance only. |
-| Shared-worktree status contains unrelated code changes. | Scope audit or commit captures another worker's files. | Snapshot baseline; lock before final read/append/stage; use explicit path-scoped commit; audit the task commit, not global dirtiness. |
-| Concurrent lifecycle append changes DEC/L numbering or status. | Duplicate numbering or stale Status Block. | Re-read the latest decision, ledger heading, and Status Block only after acquiring `completion_lock`; update minimally. |
-| Existing benchmark code still contains a DeepSeek judge path. | Docs and executable behavior may diverge after this docs-only correction. | Treat it as explicit architecture debt: the corrected work-order bars that path from the post-run judge; create a separate code task if executable judging still consumes DeepSeek or the evaluation ledger. |
+| Global replacement rewrites append-only history. | Audit trail becomes false. | Bound edits to active regions; verify historical ledger hunks are absent; supersede with new DEC/L entries. |
+| DeepSeek is described as the DUT instead of a serving route. | The comparison no longer measures Istara. | Put the five-role contract first and require the Istara API/dispatcher path. |
+| Kimi judging starts before terminal evaluation. | Results become incomplete or biased. | Require manifest/ledger terminality and a frozen artifact index before launching the separate session. |
+| The judge makes provider calls or uses the evaluation ledger. | Role leakage and cap ambiguity. | Give the judge artifact-only inputs and no runner, provider credential, or evaluation-ledger write path. |
+| Requested routes are mistaken for served routes. | Downgraded MoA looks successful. | Require served identities/counts and explicit degraded/blocked/not-runnable classification. |
+| Existing README/`deepseek_judge.py` surfaces are treated as compliant. | Docs overclaim executable readiness and future workers may select the wrong judge path. | Name both exact surfaces as non-conforming debt, bar them from the corrected contract, and create one separate cleanup task. |
+| Shared-worktree changes are staged with this task. | Another worker's code enters the commit. | Capture baseline, use the completion lock and `commit_paths`, and audit the task commit's exact paths. |
+| Concurrent lifecycle append changes numbering/status. | Duplicate DEC/L numbers or stale status. | Re-read inside the lock and update only the fields owned by this completion. |
 
 ## 8. Rollback
 
-The implementation is one path-scoped documentation commit. Roll back by reverting that
-commit; no schema, model setting, provider credential, runtime state, or benchmark artifact
-is mutated. Because decision and ledger records are append-only, a rollback should append a
-new superseding decision/ledger entry explaining the revert rather than erase the original
-correction history.
+The implementation is a path-scoped documentation commit. Revert that commit to restore the
+prior active wording; no runtime state, schema, credential, manifest, report, or production
+route changes. Because decisions and ledger entries are append-only, a later rollback records
+a superseding decision/ledger entry rather than deleting the correction from history.
 
 ## 9. Non-goals
 
 - Do not edit `docs/build-stream/plans/2026-07-20-pi-full-replacement-master-plan.md`.
-- Do not edit backend, frontend, benchmark Python, tests, recipes, manifests, or reports.
-- Do not start a server, load a model, call DeepSeek/Kimi, run a benchmark wave, or spend.
-- Do not alter Istara's production engine/model defaults or provider fallback policy.
-- Do not judge results during this correction; this stage only makes the later judging
-  session's authority and prerequisites explicit.
+- Do not edit backend, frontend, `tests/pi_benchmark/`, recipes, manifests, reports, or
+  generated feature documentation.
+- Do not repair, annotate, or invoke `tests/pi_benchmark/README.md` or
+  `deepseek_judge.py` in this documentation task; their cleanup is separately scoped.
+- Do not start servers, load models, call DeepSeek/Kimi, run benchmark waves, or spend.
+- Do not alter Istara production engine/provider/model defaults or fallback policy.
+- Do not judge benchmark results during this role-correction stage.
