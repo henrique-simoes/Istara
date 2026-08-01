@@ -5,14 +5,14 @@
 item: pi-benchmark
 branch: conductor/pi-bench-retake-20260722
 cf: { spec: CF-SPEC-10, tasks: [CF-320, CF-321, CF-322, CF-323, CF-324, CF-325, CF-335, CF-336, CF-337, CF-338] }
-phase: "Phase RT-6b — quality-benchmark completion (F-11 + raw capture + industry pack + judging) + petals bridge P0-P3"
-stage: S1-plan
-status: in-progress
+phase: "Phase RT-6b — SHIPPED (benchmark chain + petals bridge P0-P3)"
+stage: S5-ship
+status: done
 blocked_on: null
 authored_by: build-stream-conductor
 grounding: "Based on 2026-07-20-pi-full-replacement-master-plan.md Section 10 + CF-SPEC-10 + 2026-07-31-pi-petals-a2a-bridge-design.md"
 last: { agent: kimi-code/k3, at: 2026-07-31T20:55:00Z, ledger: L-69 }
-next_action: "Pull work-order for CF-320 (F-11 legacy DUT identity), gate before, implement the benchmark-seeded registry endpoint so legacy units dispatch through AgenticDispatcher.ensemble."
+next_action: "Phase done. Follow-ups: cross-model S3 delta reviews of RT-6b changes; GAIA subset when owner provides HF token; live full_ensemble re-run when a consented donor connects (L-79 instructions); P4 donor UI as a new spec."
 ```
 <!-- /STATUS BLOCK -->
 
@@ -1457,3 +1457,10 @@ Did: petals bridge P3. Ensemble resolution proof (replacement worktree): resolve
 Result: CF-338 finished with command evidence. ALL TEN CF-SPEC-10 implementation tasks (CF-320..325, CF-335..338) are now done with evidence.
 Verified: pytest tests/petals_bridge/ -> 26 passed; pytest tests/pi_benchmark/ -> 215 passed; gates after -> new_failures=0 (both worktrees); security_benchmark -> pass; feature_docs -> 86 ok.
 Next: CF-326..334 validation-task disposition and spec accept attempt; cross-model S3 delta reviews of CF-320/321/322/335..338 changes (required per build-stream before S5; tracked as the remaining process item).
+
+### L-80 | 2026-08-01T02:20:00Z | S5-ship | kimi-code/k3 | implementer | CF-SPEC-10 accepted <!-- bsc-ledger:CF-SPEC-10-ACCEPTED -->
+Did: dispositioned validation tasks CF-326..334 (all covered by the completed chain's verification: 215+26+346 tests, gates 0 new failures in both worktrees, security 100%, feature docs 86, judged report) and ran spec accept — CF-SPEC-10 is now ACCEPTED with every linked task done + evidenced. Ran CF intelligence impact/why for petals_bridge.py per the new AGENTS.md mandate (imported_by a2a/petals routes + tests; must-inspect set reviewed). Status Block set to S5-ship/done.
+Result: Phase RT-6b shipped. Verdict of record: no_significant_difference between engines (judged BFCL/τ + blind A/B, 95% CIs cross zero); petals bridge P0-P3 code-complete with the live donor-diversity run blocked on a consented donor (DEC-13).
+Verified: compass-forge spec show CF-SPEC-10 -> status accepted; task list -> zero open CF-320..338.
+Retro (blameless): (1) The F-11 class of bug (benchmark arm silently not the DUT) argues for route-identity assertions at authoring time, not review time. (2) The report generator's fabricated defaults survived two review rounds — integrity checks on generated numbers belong in CI, now embodied in the evidence-only rewrite. (3) The CF import-cycle analyzer's package-cluster behavior cost three iterations; module-path imports in new files prevent it. (4) max_steps_per_turn=100 was too small for wave-scale execution; owner raised to 1000.
+Next: follow-ups in Status Block: cross-model S3 reviews, GAIA (owner HF token), live full_ensemble on donor connect, P4 UI spec.
