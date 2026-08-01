@@ -242,7 +242,7 @@ def _scenario_for_unit(unit: Any) -> Scenario | None:
 
 def _record_unknown_scenario(unit: Any, config: RunConfig, records_dir: Path) -> dict[str, Any]:
     """A unit whose scenario/pack doesn't resolve still gets a record (never dropped)."""
-    known_packs = ("canonical", "spine", "a2a", "features", "probes", "industry")  # schema enum
+    known_packs = ("canonical", "spine", "a2a", "features", "probes", "industry", "deep_research")  # schema enum
     pack = unit.pack if unit.pack in known_packs else "canonical"
     scenario = Scenario(id=unit.scenario_id, title=unit.scenario_id, pack=pack)
     git_sha, git_dirty = git_provenance()
