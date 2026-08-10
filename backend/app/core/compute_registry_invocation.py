@@ -40,6 +40,15 @@ from app.core.token_counter import count_tokens
 logger = logging.getLogger("app.core.compute_registry")
 
 
+class ChatTruncatedEmptyResponse(RuntimeError):
+    """The model exhausted its token budget on reasoning and returned no usable answer.
+
+    Raised instead of reporting success on finish_reason="length" with empty content
+    (F-12): callers must see a typed failure, increase the budget, or switch to a
+    non-reasoning model — never receive a silent empty "ok".
+    """
+
+
 def _hardware_resource_key(node: ComputeNode) -> tuple[str, str]:
     host = getattr(node, "host", "") or getattr(node, "provider_host", "") or ""
     if host:
@@ -400,13 +409,34 @@ class ComputeRegistryInvocationMixin:
 
                         choice = data["choices"][0]
                         message = choice["message"]
+                        finish_reason = choice.get("finish_reason")
+                        visible_content = visible_assistant_content(message)
+
+                        # F-12: a reasoning model can spend the whole max_tokens budget on
+                        # reasoning and return finish_reason="length" with an empty or
+                        # truncated answer. An empty answer is NEVER a silent success —
+                        # fail closed with a typed error; a partial answer is delivered
+                        # with explicit truncation evidence, never silently "stop".
+                        if finish_reason == "length" and not visible_content.strip():
+                            raise ChatTruncatedEmptyResponse(
+                                f"model returned finish_reason=length with empty content "
+                                f"(reasoning exhausted the token budget on {resolved_model})"
+                            )
 
                         result: dict = {
                             "message": {
                                 "role": "assistant",
-                                "content": visible_assistant_content(message),
-                            }
+                                "content": visible_content,
+                            },
+                            "finish_reason": finish_reason or "stop",
                         }
+                        if finish_reason == "length":
+                            result["truncated"] = True
+                        if isinstance(data.get("usage"), dict):
+                            # Propagate provider-reported usage so exact accounting
+                            # (dispatcher ledger, benchmark capture) works instead of
+                            # falling back to text estimation.
+                            result["usage"] = data["usage"]
                         if message.get("tool_calls"):
                             result["message"]["tool_calls"] = message["tool_calls"]
                             result["finish_reason"] = choice.get(
@@ -554,6 +584,7 @@ class ComputeRegistryInvocationMixin:
         min_context: int = 0,
         thinking_mode: str | None = None,
         project_id: str | None = None,
+        strict_model_routing: bool | None = None,
     ) -> AsyncGenerator[str | dict, None]:
         """Streaming chat -- yields str chunks and dict for tool calls."""
         explicit_model_requested = bool(
@@ -576,8 +607,10 @@ class ComputeRegistryInvocationMixin:
             )
         ):
             model = None
-        strict_requested_model = (
-            settings.strict_auto_routing and explicit_model_requested
+        strict_requested_model = explicit_model_requested and (
+            settings.strict_auto_routing
+            if strict_model_routing is None
+            else strict_model_routing
         )
         if min_context <= 0:
             min_context = self._estimate_context_tokens(msgs, max_tokens, tools=tools)

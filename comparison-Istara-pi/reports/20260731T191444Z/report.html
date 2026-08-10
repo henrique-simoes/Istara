@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pi Replacement Benchmark Report</title>
+<style>
+  :root {
+    --bg: #0f172a;
+    --card-bg: #1e293b;
+    --text: #f8fafc;
+    --text-muted: #94a3b8;
+    --accent-pi: #10b981;
+    --accent-legacy: #6366f1;
+    --border: #334155;
+  }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    margin: 0;
+    padding: 2rem;
+    line-height: 1.5;
+  }
+  .container {
+    max-width: 1200px;
+    margin: 0 auto;
+  }
+  .header {
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 1.5rem;
+    margin-bottom: 2rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  h1 { margin: 0; font-size: 1.875rem; color: #fff; }
+  .badge {
+    background: #064e3b;
+    color: #34d399;
+    padding: 0.5rem 1rem;
+    border-radius: 9999px;
+    font-weight: 600;
+    font-size: 0.875rem;
+  }
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 1.5rem;
+    margin-bottom: 2rem;
+  }
+  .card {
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 0.75rem;
+    padding: 1.5rem;
+  }
+  .card-title {
+    font-size: 0.875rem;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 0.5rem;
+  }
+  .card-value {
+    font-size: 2rem;
+    font-weight: 700;
+    color: #fff;
+  }
+  .card-sub {
+    font-size: 0.875rem;
+    color: var(--accent-pi);
+    margin-top: 0.25rem;
+  }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 1rem;
+    background: var(--card-bg);
+    border-radius: 0.75rem;
+    overflow: hidden;
+  }
+  th, td {
+    padding: 0.75rem 1rem;
+    text-align: left;
+    border-bottom: 1px solid var(--border);
+  }
+  th {
+    background: #0f172a;
+    color: var(--text-muted);
+    font-weight: 600;
+  }
+  tr:last-child td { border-bottom: none; }
+  .chart-box {
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 0.75rem;
+    padding: 1.5rem;
+    margin-bottom: 2rem;
+  }
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="header">
+    <div>
+      <h1>Pi vs Legacy Benchmark — Retake Evidence Report</h1>
+      <div style="color: var(--text-muted); font-size: 0.875rem; margin-top: 0.25rem;">
+        Generated: 2026-07-31T19:14:44Z | Records: 157 (Pi: 78, Legacy: 79)
+      </div>
+    </div>
+    <div class="badge" style="background:#78350f;color:#fbbf24;">VERDICT: PENDING JUDGING</div>
+  </div>
+
+  <p style="color: var(--text-muted); max-width: 70ch;">Execution evidence is complete: status, cost/token usage, route truth, and MoA reconciliation below are real provider-reported data. Quality axes (1-5, 7-10) are pending the post-run blind judging session; no winner is declared until judged scores exist.</p>
+
+  <div class="grid">
+    <div class="card">
+      <div class="card-title">Pi Engine — ok records</div>
+      <div class="card-value">44</div>
+      <div class="card-sub">live, provider-verified completions</div>
+    </div>
+    <div class="card">
+      <div class="card-title">Legacy Engine — ok records</div>
+      <div class="card-value">44</div>
+      <div class="card-sub">live, provider-verified completions</div>
+    </div>
+    <div class="card">
+      <div class="card-title">Exact provider spend (both arms)</div>
+      <div class="card-value">$0.1788</div>
+      <div class="card-sub">cumulative cap $1.00, reserve-before-dispatch</div>
+    </div>
+    <div class="card">
+      <div class="card-title">Mean cost / ok record</div>
+      <div class="card-value" style="font-size:1.25rem;">π $0.001993 · L $0.002071</div>
+      <div class="card-sub">same model + endpoint for both arms</div>
+    </div>
+  </div>
+
+  <div class="chart-box">
+    <h2>Execution Status by Lane and Engine</h2>
+    <table>
+      <thead>
+        <tr><th>Lane</th><th>Engine</th><th>ok</th><th>not_runnable</th><th>Failure reasons</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>full_ensemble</td><td>legacy</td><td>0</td><td>22</td><td>other×22</td></tr>
+        <tr><td>full_ensemble</td><td>pi</td><td>0</td><td>22</td><td>other×22</td></tr>
+        <tr><td>none</td><td>legacy</td><td>22</td><td>11</td><td>startup_failure×11</td></tr>
+        <tr><td>none</td><td>pi</td><td>22</td><td>10</td><td>startup_failure×10</td></tr>
+        <tr><td>self_moa</td><td>legacy</td><td>22</td><td>2</td><td>other×2</td></tr>
+        <tr><td>self_moa</td><td>pi</td><td>22</td><td>2</td><td>other×2</td></tr>
+      </tbody>
+    </table>
+    <p style="color: var(--text-muted); font-size: 0.8rem;">The <code>none</code> lane includes the supplementary governed retry (21/21 ok) of the pre-F-9/F-10-fix failures; original failure records are preserved immutably. The <code>full_ensemble</code> lane is 100% degraded by design on a single approved endpoint (AC-8) — counted, never hidden.</p>
+  </div>
+
+  <div class="chart-box">
+    <h2>Token &amp; Cost Evidence (exact vs estimated — never summed)</h2>
+    <table>
+      <thead>
+        <tr><th>Engine</th><th>ok (exact)</th><th>Exact cost</th><th>Estimated cost</th><th>Exact tokens</th><th>Mean cost / ok</th><th>Mean tokens / ok</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>Pi</strong></td>
+          <td>44</td>
+          <td>$0.087706</td>
+          <td>$0.000000</td>
+          <td>44718</td>
+          <td>$0.001993</td>
+          <td>1016.3</td>
+        </tr>
+        <tr>
+          <td><strong>Legacy</strong></td>
+          <td>44</td>
+          <td>$0.091133</td>
+          <td>$0.000000</td>
+          <td>44717</td>
+          <td>$0.002071</td>
+          <td>1016.3</td>
+        </tr>
+      </tbody>
+    </table>
+    <p style="color: var(--text-muted); font-size: 0.8rem;">Same provider/model/endpoint for both arms; per-record means are the comparable unit, not lane totals (lanes have equal unit counts).</p>
+  </div>
+
+  <div class="chart-box">
+    <h2>MoA Reconciliation Evidence</h2>
+    <table>
+      <thead>
+        <tr><th>Mode</th><th>Units</th><th>Reconciled</th><th>Degraded</th><th>Not run</th><th>Mean consensus</th><th>Downgrades</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>full_ensemble</td><td>44</td><td>0</td><td>40</td><td>4</td><td>0.0279</td><td>single_coder×40</td></tr>
+        <tr><td>self_moa</td><td>48</td><td>4</td><td>40</td><td>4</td><td>0.1102</td><td>—</td></tr>
+      </tbody>
+    </table>
+    <p style="color: var(--text-muted); font-size: 0.8rem;">self_moa "degraded" rows served the requested mode on the approved endpoint but with insufficient consensus confidence — a real property of single-model temperature sweeps, reported as evidence, not hidden.</p>
+  </div>
+
+  <div class="chart-box">
+    <h2>Quality Axes — Awaiting Blind Judging Session</h2>
+    <table>
+      <thead>
+        <tr><th>Metric Axis</th><th>Pi Engine</th><th>Legacy Engine</th><th>Status</th></tr>
+      </thead>
+      <tbody>
+        <tr><td><strong>Tool Calling & Vocabulary</strong></td><td>—</td><td>—</td><td><span style="background:#78350f;color:#fbbf24;padding:0.15rem 0.6rem;border-radius:9999px;font-size:0.75rem;font-weight:600;">pending_judging</span></td></tr>
+        <tr><td><strong>Feature Matrix Integration (86 Features)</strong></td><td>—</td><td>—</td><td><span style="background:#78350f;color:#fbbf24;padding:0.15rem 0.6rem;border-radius:9999px;font-size:0.75rem;font-weight:600;">pending_judging</span></td></tr>
+        <tr><td><strong>Output Quality & Deterministic Checks</strong></td><td>—</td><td>—</td><td><span style="background:#78350f;color:#fbbf24;padding:0.15rem 0.6rem;border-radius:9999px;font-size:0.75rem;font-weight:600;">pending_judging</span></td></tr>
+        <tr><td><strong>Research Validity Spine (10 Phases)</strong></td><td>—</td><td>—</td><td><span style="background:#78350f;color:#fbbf24;padding:0.15rem 0.6rem;border-radius:9999px;font-size:0.75rem;font-weight:600;">pending_judging</span></td></tr>
+        <tr><td><strong>Tool Call Efficiency Frontier</strong></td><td>—</td><td>—</td><td><span style="background:#78350f;color:#fbbf24;padding:0.15rem 0.6rem;border-radius:9999px;font-size:0.75rem;font-weight:600;">pending_judging</span></td></tr>
+        <tr><td><strong>Skill Contract & Marker Compliance</strong></td><td>—</td><td>—</td><td><span style="background:#78350f;color:#fbbf24;padding:0.15rem 0.6rem;border-radius:9999px;font-size:0.75rem;font-weight:600;">pending_judging</span></td></tr>
+        <tr><td><strong>System-Prompt Adherence & Probes</strong></td><td>—</td><td>—</td><td><span style="background:#78350f;color:#fbbf24;padding:0.15rem 0.6rem;border-radius:9999px;font-size:0.75rem;font-weight:600;">pending_judging</span></td></tr>
+        <tr><td><strong>A2A Collaboration & Dominance</strong></td><td>—</td><td>—</td><td><span style="background:#78350f;color:#fbbf24;padding:0.15rem 0.6rem;border-radius:9999px;font-size:0.75rem;font-weight:600;">pending_judging</span></td></tr>
+      </tbody>
+    </table>
+    <p style="color: var(--text-muted); font-size: 0.8rem;">Run records carry <code>metrics=None</code> by design: quality scores come only from the post-run judging session (blind A/B, deterministic position swap, rubric bank, sha256-logged prompts). Feature matrix: 86 features (16 auto / 70 manual criteria). This report emits no placeholder scores.</p>
+  </div>
+</div>
+</body>
+</html>

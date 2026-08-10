@@ -1,8 +1,12 @@
 """Istara application configuration."""
 
+import os
 from pathlib import Path
+import re
 import subprocess
+from typing import Literal
 
+from pydantic import BaseModel, Field, field_validator
 from pydantic_settings import BaseSettings
 
 
@@ -13,13 +17,59 @@ _BACKEND_ENV_FILES = (
 )
 
 
-def _read_macos_keychain_secret(service: str) -> str:
+class PiApiEndpoint(BaseModel):
+    """A Pi-only provider target.
+
+    These targets intentionally do not share the LLM-server/compute registry:
+    their identity is an authority boundary, not a model preference.
+    """
+
+    endpoint_id: str
+    provider_kind: Literal["openai_compat", "anthropic_compat"] = "openai_compat"
+    base_url: str
+    model: str
+    keychain_service: str
+    keychain_account: str = ""
+    timeout_ms: int = Field(default=30_000, ge=1, le=120_000)
+    max_retries: int = Field(default=0, ge=0, le=3)
+    # Trustworthy per-endpoint pricing (USD per 1M tokens) resolved from the
+    # deployment's contract. The worker feeds these into the pi-ai model rates so
+    # a real turn's usage is priced and the per-run ``max_cost_usd`` ceiling can
+    # fail closed. An endpoint left unpriced cannot enforce a cost budget: a
+    # budgeted run that spends tokens fails closed at the worker rather than
+    # silently reporting $0 (see pi-runtime/src/session.mjs).
+    cost_input_per_mtok: float = Field(default=0.0, ge=0.0)
+    cost_output_per_mtok: float = Field(default=0.0, ge=0.0)
+    cost_cache_read_per_mtok: float = Field(default=0.0, ge=0.0)
+    cost_cache_write_per_mtok: float = Field(default=0.0, ge=0.0)
+    # Static capability advertisement (the parity subset meaningful for exact
+    # endpoints). 0/False means "unknown" and fails capability admission closed
+    # when a caller explicitly requires that capability (min_context/vision).
+    context_window: int = Field(default=0, ge=0)
+    max_tokens: int = Field(default=0, ge=0)
+    supports_tools: bool = True
+    supports_vision: bool = False
+
+    @field_validator("endpoint_id", "base_url", "model", "keychain_service")
+    @classmethod
+    def required_value(cls, value: str) -> str:
+        value = value.strip()
+        if not value:
+            raise ValueError("Pi endpoint fields must be non-empty")
+        return value
+
+
+def _read_macos_keychain_secret(service: str, account: str = "") -> str:
     """Read a local secret from macOS Keychain without logging its value."""
     if not service or not Path("/usr/bin/security").exists():
         return ""
+    command = ["/usr/bin/security", "find-generic-password"]
+    if account:
+        command.extend(["-a", account])
+    command.extend(["-s", service, "-w"])
     try:
         result = subprocess.run(
-            ["/usr/bin/security", "find-generic-password", "-s", service, "-w"],
+            command,
             capture_output=True,
             text=True,
             timeout=3,
@@ -30,6 +80,33 @@ def _read_macos_keychain_secret(service: str) -> str:
     if result.returncode != 0:
         return ""
     return result.stdout.strip()
+
+
+def _pi_endpoint_secret_env_name(endpoint_id: str) -> str:
+    """Return the env var that supplies a Pi endpoint secret without Keychain."""
+    slug = re.sub(r"[^A-Za-z0-9]+", "_", endpoint_id).strip("_").upper()
+    return f"ISTARA_PI_SECRET_{slug}"
+
+
+def _read_pi_endpoint_secret(
+    endpoint_id: str,
+    service: str,
+    account: str = "",
+    *,
+    keychain_reader=None,
+) -> str:
+    """Read a Pi endpoint secret: ``ISTARA_PI_SECRET_<ID>`` env first, then Keychain.
+
+    Parity with ``resolve_llm_fallback_api_key``: a configured environment value
+    wins, so non-macOS hosts (no ``/usr/bin/security``) can still bind endpoints.
+    *keychain_reader* lets the caller keep its own import seam; the secret value
+    is never logged.
+    """
+    env_value = os.environ.get(_pi_endpoint_secret_env_name(endpoint_id), "").strip()
+    if env_value:
+        return env_value
+    reader = keychain_reader or _read_macos_keychain_secret
+    return reader(service, account)
 
 
 class Settings(BaseSettings):
@@ -200,6 +277,40 @@ class Settings(BaseSettings):
     self_evolution_auto_promote: bool = False  # Auto-promote (vs user approval)
     autonomous_quality_agents_enabled: bool = False  # Dev/Admin QA loops only when explicitly enabled
 
+    # Pi replacement candidate (off unless explicitly selected by env/header).
+    pi_replacement_enabled: bool = False
+    pi_replacement_request_header: str = "x-istara-agent-engine"
+    pi_replacement_deepseek_base_url: str = "https://api.deepseek.com"
+    pi_replacement_deepseek_model: str = "deepseek-v4-pro"
+    pi_replacement_deepseek_keychain_service: str = "istara-pi-deepseek"
+    pi_replacement_deepseek_keychain_account: str = "openclaw"
+    # Default endpoint pricing (USD per 1M tokens). Sourced from the configured
+    # model's (deepseek-v4-pro) published list price as of 2026-07-20 so the
+    # built-in endpoint is priced out of the box and its per-run cost ceiling
+    # fails closed; operators override per env/.env with their own negotiated
+    # contract rate. Every category the endpoint can spend must be priced: pi-ai
+    # prices input, output, and cache-read (DeepSeek reports cache hits via
+    # ``prompt_cache_hit_tokens``) independently, and a cache-read turn on an
+    # endpoint that priced only input/output would otherwise fail closed as
+    # unpriced. DeepSeek bills cache writes at the cache-miss input rate and does
+    # not report a separate cache-write token count, so that category is never
+    # spent and needs no rate. Never zero — an unpriced real endpoint cannot
+    # enforce a cost budget.
+    pi_replacement_deepseek_cost_input_per_mtok: float = 0.435  # cache-miss input
+    pi_replacement_deepseek_cost_output_per_mtok: float = 0.87  # output
+    pi_replacement_deepseek_cost_cache_read_per_mtok: float = 0.003625  # cache-hit input
+    # JSON-compatible settings input.  Empty preserves the existing default
+    # endpoint without registering it as donated/shared compute.
+    pi_api_endpoints: list[PiApiEndpoint] = []
+    # Bounded Pi runtime worker pool size (round-robin by session_key hash).
+    pi_worker_pool_size: int = 2
+
+    # AgenticDispatcher engine default (master plan §5.1): the last resort after
+    # per-call override, request header, and the project's `agentic_engine`
+    # setting. Stays "legacy" until the owner flips the rollout.
+    agentic_engine_default: str = "legacy"
+    agentic_core: bool = False
+
     # Meta-Hyperagent (optional layer that tunes subsystem parameters)
     meta_hyperagent_enabled: bool = False
     meta_hyperagent_observation_interval_hours: int = 6
@@ -234,6 +345,13 @@ class Settings(BaseSettings):
             return configured_key
         return _read_macos_keychain_secret(
             self.llm_fallback_api_key_keychain_service.strip()
+        )
+
+    def resolve_pi_replacement_deepseek_api_key(self) -> str:
+        """Return the Pi candidate DeepSeek key from the configured Keychain item."""
+        return _read_macos_keychain_secret(
+            self.pi_replacement_deepseek_keychain_service.strip(),
+            self.pi_replacement_deepseek_keychain_account.strip(),
         )
 
     def ensure_dirs(self) -> None:

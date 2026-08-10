@@ -15,7 +15,7 @@ import { useNotificationStore } from "@/stores/notificationStore";
 import { useAuthStore } from "@/stores/authStore";
 import DarkModeToggle from "@/components/common/DarkModeToggle";
 import UserMenu from "@/components/common/UserMenu";
-import { cn, phaseLabel } from "@/lib/utils";
+import { cn, phaseLabel, agentEngineLabel } from "@/lib/utils";
 import { PRIMARY_NAV_ITEMS, SECONDARY_NAV_IDS, SECONDARY_NAV_ITEMS, filterNavItemsForRole, type ViewId } from "@/lib/navigation";
 
 interface SidebarProps {
@@ -283,8 +283,20 @@ export default function Sidebar({ activeView, onViewChange, onSearchOpen }: Side
                   <FolderOpen size={14} className="shrink-0" />
                   <div className="text-left truncate flex-1 min-w-0">
                     <div className="truncate">{project.name}</div>
-                    <div className="text-xs text-slate-400">
-                      {project.is_paused ? "⏸ Paused" : phaseLabel(project.phase)}
+                    <div className="text-xs text-slate-400 flex items-center gap-1">
+                      <span className="truncate">{project.is_paused ? "⏸ Paused" : phaseLabel(project.phase)}</span>
+                      <span
+                        aria-label={`Engine: ${agentEngineLabel(project.agentic_engine || project.global_agentic_engine)}`}
+                        title={`Agent engine: ${agentEngineLabel(project.agentic_engine || project.global_agentic_engine)}${project.agentic_engine ? "" : " (global default)"}`}
+                        className={cn(
+                          "shrink-0 px-1 rounded text-[9px] font-semibold uppercase tracking-wide",
+                          agentEngineLabel(project.agentic_engine || project.global_agentic_engine) === "Pi"
+                            ? "bg-istara-100 text-istara-700 dark:bg-istara-900/40 dark:text-istara-400"
+                            : "bg-slate-200 text-slate-500 dark:bg-slate-700 dark:text-slate-400"
+                        )}
+                      >
+                        {agentEngineLabel(project.agentic_engine || project.global_agentic_engine)}
+                      </span>
                     </div>
                   </div>
                   <button

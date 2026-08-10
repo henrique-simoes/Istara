@@ -60,7 +60,6 @@ class SkillPromptRunner(BaseLoopRunner):
         self, target: str, current_score: float, history: list[dict]
     ) -> tuple[str, dict]:
         """Use LLM with one of 6 mutation operators to propose a prompt edit."""
-        from app.core.llm_router import llm_router
         from app.skills.skill_manager import skill_manager
 
         defn = skill_manager.get(target)
@@ -153,10 +152,21 @@ class SkillPromptRunner(BaseLoopRunner):
         ]
 
         try:
-            response = await llm_router.chat(
-                messages, temperature=0.7, max_tokens=2000
+            # W6/W9: the skill-prompt mutation goes through the
+            # AgenticDispatcher (``autoresearch.skill_prompt.hypothesize``).
+            from app.core.agentic import agentic
+            from app.core.agentic.types import TurnParams
+
+            outcome = await agentic.completion(
+                purpose="autoresearch.skill_prompt.hypothesize",
+                project_id=self.require_project_id(),
+                system=messages[0]["content"],
+                messages=messages[1:],
+                params=TurnParams(temperature=0.7, max_tokens=2000),
+                spine_phase="plan",
+                engine=self.engine,
             )
-            new_prompt = response.get("message", {}).get("content", "").strip()
+            new_prompt = (outcome.text or "").strip()
         except Exception as e:
             raise RuntimeError(f"LLM mutation failed: {e}") from e
 
@@ -225,7 +235,6 @@ class SkillPromptRunner(BaseLoopRunner):
 
     async def _single_eval(self, skill_name: str) -> float:
         """Execute skill once and score the output quality."""
-        from app.core.llm_router import llm_router
         from app.skills.skill_manager import skill_manager
 
         defn = skill_manager.get(skill_name)
@@ -249,8 +258,21 @@ class SkillPromptRunner(BaseLoopRunner):
         ]
 
         try:
-            response = await llm_router.chat(messages, temperature=0.5, max_tokens=1500)
-            content = response.get("message", {}).get("content", "")
+            # W6/W9: the sample skill run goes through the AgenticDispatcher
+            # (``autoresearch.skill_prompt.evaluate``).
+            from app.core.agentic import agentic
+            from app.core.agentic.types import TurnParams
+
+            outcome = await agentic.completion(
+                purpose="autoresearch.skill_prompt.evaluate",
+                project_id=self.require_project_id(),
+                system=messages[0]["content"],
+                messages=messages[1:],
+                params=TurnParams(temperature=0.5, max_tokens=1500),
+                spine_phase="execution",
+                engine=self.engine,
+            )
+            content = outcome.text
         except Exception:
             return 0.0
 
@@ -258,8 +280,6 @@ class SkillPromptRunner(BaseLoopRunner):
 
     async def _score_output(self, output: str, skill_name: str) -> float:
         """LLM-based quality scoring on [0, 1] scale."""
-        from app.core.llm_router import llm_router
-
         if not output or len(output.strip()) < 30:
             return 0.1
 
@@ -284,8 +304,21 @@ class SkillPromptRunner(BaseLoopRunner):
         ]
 
         try:
-            response = await llm_router.chat(messages, temperature=0.1, max_tokens=10)
-            score_text = response.get("message", {}).get("content", "").strip()
+            # W6/W9: the skill-output score goes through the AgenticDispatcher
+            # (``autoresearch.skill_prompt.score``).
+            from app.core.agentic import agentic
+            from app.core.agentic.types import TurnParams
+
+            outcome = await agentic.completion(
+                purpose="autoresearch.skill_prompt.score",
+                project_id=self.require_project_id(),
+                system=messages[0]["content"],
+                messages=messages[1:],
+                params=TurnParams(temperature=0.1, max_tokens=10),
+                spine_phase="review",
+                engine=self.engine,
+            )
+            score_text = (outcome.text or "").strip()
             for token in score_text.replace(",", ".").split():
                 try:
                     val = float(token)

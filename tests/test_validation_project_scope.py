@@ -1,8 +1,15 @@
-"""Project-scope contracts for ensemble validation compute routing."""
+"""Project-scope contracts for ensemble validation compute routing.
+
+W9: the validation helpers no longer carry a per-site legacy branch — every
+call enters through the AgenticDispatcher (``app.core.agentic.agentic``).
+These tests stub that singleton and assert the active project scope is
+forwarded into every dispatch and every consensus-embedding call.
+"""
 
 from __future__ import annotations
 
 from pathlib import Path
+from types import SimpleNamespace
 from unittest.mock import AsyncMock
 
 import pytest
@@ -15,71 +22,56 @@ def read_repo(path: str) -> str:
     return (REPO_ROOT / path).read_text(encoding="utf-8")
 
 
-class _FakeValidationServer:
-    def __init__(self, name: str, project_calls: list[str | None]) -> None:
-        self.name = name
-        self.is_healthy = True
-        self.project_calls = project_calls
+class _StubAgenticDispatcher:
+    """Recording stand-in for the ``agentic`` dispatcher singleton."""
 
-    async def chat(self, messages, **kwargs):  # noqa: ANN001
-        self.project_calls.append(kwargs.get("project_id"))
-        return {
-            "message": {"content": f"{self.name} validation response"},
-            "_istara_route": {
-                "node_id": self.name,
-                "node_source": "local",
-                "provider_type": "fake",
-                "route_kind": "chat",
-                "project_id": kwargs.get("project_id") or "",
-                "model": kwargs.get("model") or self.name,
-                "outcome": "served",
-            },
-        }
-
-
-class _FakeValidationRouter:
     def __init__(self) -> None:
-        self.chat_project_calls: list[str | None] = []
+        self.project_calls: list[str] = []
         self.embed_project_calls: list[str | None] = []
-        self.sorted_project_calls: list[str | None] = []
-        self.server_project_calls: list[str | None] = []
-        self.servers = [
-            _FakeValidationServer("server-a", self.server_project_calls),
-            _FakeValidationServer("server-b", self.server_project_calls),
-            _FakeValidationServer("server-c", self.server_project_calls),
+
+    async def completion(self, **kwargs):  # noqa: ANN001
+        self.project_calls.append(kwargs.get("project_id") or "")
+        return SimpleNamespace(
+            text="dispatcher validation response",
+            status="success",
+            usage={},
+            stop_reason="stop",
+            endpoint_id="ep-stub",
+            tool_calls=[],
+        )
+
+    async def ensemble(self, **kwargs):  # noqa: ANN001
+        self.project_calls.append(kwargs.get("project_id") or "")
+        n = kwargs.get("n") or 1
+        samples = [
+            SimpleNamespace(
+                text=f"ensemble response {index}",
+                status="success",
+                usage={},
+                stop_reason="stop",
+                endpoint_id=f"ep-{index}",
+                tool_calls=[],
+            )
+            for index in range(n)
         ]
+        return SimpleNamespace(
+            samples=samples,
+            endpoint_ids=[f"ep-{index}" for index in range(n)],
+            usage={},
+            status="success",
+        )
 
-    def _sorted_servers(self, **kwargs):
-        self.sorted_project_calls.append(kwargs.get("project_id"))
-        return self.servers
-
-    async def chat(self, messages, **kwargs):  # noqa: ANN001
-        self.chat_project_calls.append(kwargs.get("project_id"))
-        return {
-            "message": {"content": "project scoped validation response"},
-            "_istara_route": {
-                "node_id": "router",
-                "node_source": "local",
-                "provider_type": "fake",
-                "route_kind": "chat",
-                "project_id": kwargs.get("project_id") or "",
-                "model": kwargs.get("model") or "router-model",
-                "outcome": "served",
-            },
-        }
-
-    async def embed_batch(self, texts, **kwargs):  # noqa: ANN001
+    async def embed(self, **kwargs):  # noqa: ANN001
         self.embed_project_calls.append(kwargs.get("project_id"))
-        return [[1.0, 0.0] for _ in texts]
+        return [[1.0, 0.0] for _ in (kwargs.get("texts") or [])]
 
 
 @pytest.mark.asyncio
 async def test_validation_helpers_forward_project_id_to_llm_and_embeddings(monkeypatch):
-    from app.core import llm_router as llm_router_module
     from app.core import validation
 
-    fake_router = _FakeValidationRouter()
-    monkeypatch.setattr(llm_router_module, "llm_router", fake_router)
+    stub = _StubAgenticDispatcher()
+    monkeypatch.setattr("app.core.agentic.agentic", stub)
 
     adversarial = await validation.adversarial_review(
         "Review this",
@@ -91,32 +83,16 @@ async def test_validation_helpers_forward_project_id_to_llm_and_embeddings(monke
     dual = await validation.dual_run("Compare this", project_id="project-a")
     ensemble = await validation.full_ensemble("Ensemble this", min_responses=2, project_id="project-a")
 
-    assert fake_router.chat_project_calls == [
-        "project-a",
-        "project-a",
-        "project-a",
-        "project-a",
-        "project-a",
-    ]
-    assert fake_router.embed_project_calls == [
-        "project-a",
-        "project-a",
-        "project-a",
-        "project-a",
-        "project-a",
-    ]
-    assert fake_router.sorted_project_calls == ["project-a", "project-a"]
-    assert fake_router.server_project_calls == [
-        "project-a",
-        "project-a",
-        "project-a",
-        "project-a",
-    ]
-    assert adversarial.metadata["route_evidence"][0]["project_id"] == "project-a"
-    assert self_moa.metadata["route_evidence"][0]["node_id"] == "router"
-    assert debate.metadata["route_evidence"][0]["route_kind"] == "chat"
-    assert dual.metadata["route_evidence"][0]["node_id"] == "server-a"
-    assert ensemble.metadata["models_used"] == ["server-a", "server-b"]
+    # 3 completions (adversarial + debate initial/round) + 3 ensembles
+    # (self_moa, dual_run, full_ensemble) — every dispatch project-scoped.
+    assert stub.project_calls == ["project-a"] * 6
+    assert stub.embed_project_calls == ["project-a"] * 5
+    assert adversarial.metadata["route_evidence"][0]["route_kind"] == "agentic_completion"
+    assert adversarial.metadata["route_evidence"][0]["endpoint_id"] == "ep-stub"
+    assert self_moa.metadata["assurance"] == "single_model_temperature_variation"
+    assert debate.metadata["route_evidence"][0]["route_kind"] == "agentic_completion"
+    assert dual.metadata["endpoint_ids"] == ["ep-0", "ep-1"]
+    assert ensemble.metadata["n_responses"] == 3
     assert adversarial.metadata["validation_scope"] == "response_level_quality_signal"
     assert adversarial.metadata["formal_reliability"] is False
     assert debate.metadata["validation_scope"] == "response_level_quality_signal"
@@ -125,13 +101,12 @@ async def test_validation_helpers_forward_project_id_to_llm_and_embeddings(monke
 
 @pytest.mark.asyncio
 async def test_debate_and_adversarial_review_emit_coded_evidence_telemetry(monkeypatch):
-    from app.core import llm_router as llm_router_module
     from app.core import validation
     from app.core import telemetry as telemetry_module
 
-    fake_router = _FakeValidationRouter()
+    stub = _StubAgenticDispatcher()
     record_event = AsyncMock()
-    monkeypatch.setattr(llm_router_module, "llm_router", fake_router)
+    monkeypatch.setattr("app.core.agentic.agentic", stub)
     monkeypatch.setattr(
         telemetry_module.telemetry_recorder,
         "record_research_validity_event",
@@ -161,7 +136,7 @@ async def test_debate_and_adversarial_review_emit_coded_evidence_telemetry(monke
     assert adversarial.metadata["coding_run_id"] == "coding-run-a"
     assert adversarial.metadata["evidence_unit_ids"] == ["evidence-unit-a"]
     assert debate.metadata["validation_scope"] == "coded_evidence_review"
-    assert debate.metadata["models_used"] == ["router-model", "router-model"]
+    assert len(debate.metadata["route_evidence"]) == 2
     operations = [call.kwargs["operation"] for call in record_event.await_args_list]
     assert operations == ["adversarial.review", "debate.review"]
     assert record_event.await_args_list[0].kwargs["coding_run_id"] == "coding-run-a"
@@ -176,6 +151,8 @@ def test_task_ensemble_validation_passes_active_project_scope() -> None:
 
     assert '"project_id": project.id' in agent_execution
     assert "project_id: str | None = None" in validation_module
-    assert "llm_router._sorted_servers(project_id=project_id)" in validation_module
     assert "project_id=project_id" in validation_module
-    assert "llm_router.embed_batch(texts, project_id=project_id)" in validation_module
+    # W9: the helpers forward the active scope into every dispatcher call.
+    assert 'project_id=project_id or ""' in validation_module
+    # W8: consensus embeddings are dispatcher-routed, project scope intact.
+    assert "agentic.embed(texts=texts, project_id=project_id)" in validation_module

@@ -3,11 +3,21 @@
 Uses browser-use library with LM Studio/Ollama as the LLM provider.
 Compatible with any OpenAI-compatible endpoint via langchain_openai.ChatOpenAI.
 
+W2 (master plan §8): endpoint identity no longer comes from raw settings —
+``_resolve_browser_endpoint`` resolves the matching LOCAL entry of the Pi
+catalog (``PiModelManager``), and every run records one governed row in the
+agentic usage ledger under ``tool.browse_website``. browser-use still drives
+its own agent loop (it needs a live LangChain LLM object); only the routing
+identity and accounting moved onto the governed plane.
+
 Install: pip install browser-use langchain-openai
 """
 
 import logging
+import time
 from app.config import settings
+from app.core.pi_runtime.model_manager import PiModelManager
+from app.core.pi_runtime.endpoints import ResolvedPiEndpoint
 
 logger = logging.getLogger(__name__)
 
@@ -23,32 +33,69 @@ except ImportError:
     )
 
 
-def _get_llm():
-    """Create an LLM client pointing to the user's LM Studio or Ollama."""
-    if settings.llm_provider == "lmstudio":
-        return ChatOpenAI(
-            model=settings.lmstudio_model or "default",
-            base_url=f"{settings.lmstudio_host}/v1",
-            api_key="lm-studio",
-            temperature=0.3,
-        )
-    elif settings.llm_provider == "ollama":
-        return ChatOpenAI(
-            model=settings.ollama_model or "qwen3:latest",
-            base_url=f"{settings.ollama_host}/v1",
-            api_key="ollama",
-            temperature=0.3,
-        )
-    else:
-        return ChatOpenAI(
-            model="default",
-            base_url="http://localhost:1234/v1",
-            api_key="lm-studio",
-            temperature=0.3,
-        )
+def _resolve_browser_endpoint() -> ResolvedPiEndpoint:
+    """Resolve the browser tool's endpoint identity from the Pi catalog (W2).
+
+    Maps the configured provider onto the corresponding LOCAL Pi catalog
+    entry: ``pi-local-lmstudio`` / ``pi-local-ollama`` carry the same hosts,
+    models, and keys the old raw-settings construction used, so routing is
+    unchanged while identity now comes from the Pi plane. An unknown provider
+    keeps the old LM Studio guess. Resolution fails closed
+    (``PiEndpointResolutionError``) rather than falling back to raw settings.
+    """
+    provider = (settings.llm_provider or "").strip().lower()
+    endpoint_id = {
+        "lmstudio": "pi-local-lmstudio",
+        "ollama": "pi-local-ollama",
+    }.get(provider, "pi-local-lmstudio")
+    return PiModelManager().resolve(endpoint_id=endpoint_id)
 
 
-async def browse_website(url: str, task: str, max_steps: int = 10) -> dict:
+def _get_llm(endpoint: ResolvedPiEndpoint):
+    """Build the browser-use LangChain LLM from a Pi-resolved endpoint."""
+    return ChatOpenAI(  # pi-governed: endpoint identity from PiModelManager (W2, F-W2-1b)
+        model=endpoint.model or "default",
+        base_url=endpoint.base_url,
+        api_key=endpoint.api_key,
+        temperature=0.3,
+    )
+
+
+async def _record_browser_usage(
+    *,
+    endpoint: ResolvedPiEndpoint | None,
+    project_id: str,
+    agent_id: str,
+    status: str,
+    started: float,
+    error_type: str | None = None,
+) -> None:
+    """One governed ledger row per browser run (``tool.browse_website``).
+
+    The LangChain loop does not expose per-call token counts, so the row is a
+    zeroed exact accounting carrying endpoint identity, latency, and outcome —
+    never fabricated estimates. Ledger writes are never load-bearing.
+    """
+    from app.core.agentic.usage_ledger import record_agentic_usage
+
+    await record_agentic_usage(
+        engine="pi",
+        purpose="tool.browse_website",
+        project_id=project_id,
+        agent_id=agent_id or "browser-use",
+        outcome={
+            "status": status,
+            "endpoint_id": endpoint.endpoint_id if endpoint else "",
+        },
+        model=endpoint.model if endpoint else None,
+        started_at=started,
+        error_type=error_type,
+    )
+
+
+async def browse_website(
+    url: str, task: str, max_steps: int = 10, *, project_id: str = "", agent_id: str = ""
+) -> dict:
     """Browse a website and perform a task using an AI-driven browser agent.
 
     Args:
@@ -68,8 +115,11 @@ async def browse_website(url: str, task: str, max_steps: int = 10) -> dict:
             "result": None,
         }
 
+    started = time.perf_counter()
+    endpoint: ResolvedPiEndpoint | None = None
     try:
-        llm = _get_llm()
+        endpoint = _resolve_browser_endpoint()
+        llm = _get_llm(endpoint)
         browser = Browser(config=BrowserConfig(headless=True))
 
         full_task = f"Navigate to {url} and {task}"
@@ -104,8 +154,16 @@ async def browse_website(url: str, task: str, max_steps: int = 10) -> dict:
         }
 
         await browser.close()
+        await _record_browser_usage(
+            endpoint=endpoint, project_id=project_id, agent_id=agent_id,
+            status="success", started=started,
+        )
         return result
 
     except Exception as e:
         logger.exception("Browser browsing failed")
+        await _record_browser_usage(
+            endpoint=endpoint, project_id=project_id, agent_id=agent_id,
+            status="error", started=started, error_type=type(e).__name__,
+        )
         return {"error": str(e), "result": None}

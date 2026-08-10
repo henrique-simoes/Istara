@@ -73,6 +73,7 @@ export const scenarioFiles = Object.freeze([
   "76-long-horizon-trajectory",
   "77-voice-transcription",
   "78-real-time-voice",
+  "79-engine-selector",
   "75-participant-simulation",
   "74-2fa-login-flow",
 ]);

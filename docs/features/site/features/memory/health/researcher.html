@@ -237,8 +237,8 @@
   <dl class="meta-grid">
     <div><dt>UI Path</dt><dd>Memory &gt; Health</dd></div>
     <div><dt>Component</dt><dd><code>MemoryView</code></dd></div>
-    <div><dt>Source Refs</dt><dd>2</dd></div>
-    <div><dt>Tests</dt><dd>0</dd></div>
+    <div><dt>Source Refs</dt><dd>11</dd></div>
+    <div><dt>Tests</dt><dd>5</dd></div>
   </dl>
   <div class="link-cluster" aria-label="Related feature links"><a href="../knowledge/researcher.html">Knowledge Memory</a>
 <a href="../../quality/dashboard/researcher.html">Quality Dashboard</a></div>
@@ -272,6 +272,14 @@
 <li>Project-scoped state or artifact updates associated with memory health.</li>
 <li>Visible status, lists, forms, generated artifacts, or review results shown by the referenced component and routes.</li>
 </ul>
+<h2 id="embeddings-and-engine-selection">Embeddings And Engine Selection</h2>
+<ul>
+<li>Retrieval and memory features embed text into vectors. Pi Replacement wave W8 gives the Pi replacement engine its own embeddings path: because the Pi runtime cannot execute embeddings itself, a small gateway calls the configured embedding endpoint directly over HTTP. Selection honors the active vector-space provider and the requested embedding model exactly: LM Studio stays on LM Studio, Ollama stays on Ollama, and a configured compatible remote endpoint can win when its model is requested. If no compatible endpoint exists it fails visibly instead of quietly using the legacy engine.</li>
+<li>Both engines must prove the same model and vector dimension before switching is allowed. Istara checks the legacy and Pi embedding routes independently at startup — together with the existing embedding-dimension health probe — and refuses to start when either probe fails or the dimensions diverge rather than silently mixing vector spaces. Empty or malformed provider vectors are rejected before cache or index writes.</li>
+<li>Embedding results are still cached first, so repeated lookups do not call the model again; only cache misses go through the new dispatch path, and each one is counted once in usage accounting regardless of engine. All fourteen retrieval, memory, and agent features that embed text keep working unchanged.</li>
+<li>Usage reports distinguish provider-reported embedding tokens/cost from estimates: remote responses with usage remain exact, while responses without usage are visibly governed as estimates rather than exact zero consumption.</li>
+<li>Rolling back to the legacy engine is safe: embeddings return to the previous Ollama-based path and, because the model is the same on both engines, existing project vectors remain valid.</li>
+</ul>
 <h2 id="caveats">Caveats</h2>
 <ul>
 <li>Needs interactive verification for exact empty, loading, error, and permission-denied states.</li>
@@ -288,9 +296,9 @@
 </ul>
 <h2 id="evidence">Evidence</h2>
 <ul>
-<li>Source files: <code>frontend/src/components/memory/MemoryView.tsx</code>, <code>backend/app/core/vector_health.py</code></li>
+<li>Source files: <code>frontend/src/components/memory/MemoryView.tsx</code>, <code>backend/app/core/vector_health.py</code>, <code>backend/app/core/embeddings.py</code>, <code>backend/app/core/pi_runtime/embeddings_gateway.py</code>, <code>backend/app/core/agentic/dispatcher.py</code></li>
 <li>API references: <code>backend/app/api/routes/memory.py</code></li>
-<li>Tests: <code>tests/test_memory.py</code></li>
+<li>Tests: <code>tests/test_memory.py</code>, <code>tests/pi_production/test_w8_embeddings_gateway.py</code>, <code>tests/pi_migration/test_count_to_zero.py</code></li>
 </ul>
         </article>
         <aside class="toc-panel" aria-label="Page sections">
@@ -302,6 +310,7 @@
 <li class="toc-level-2"><a href="#how-ux-researchers-use-it">How UX Researchers Use It</a></li>
 <li class="toc-level-2"><a href="#supported-workflows">Supported Workflows</a></li>
 <li class="toc-level-2"><a href="#inputs-outputs-and-expected-outcomes">Inputs, Outputs, And Expected Outcomes</a></li>
+<li class="toc-level-2"><a href="#embeddings-and-engine-selection">Embeddings And Engine Selection</a></li>
 <li class="toc-level-2"><a href="#caveats">Caveats</a></li>
 <li class="toc-level-2"><a href="#related-features">Related Features</a></li>
 <li class="toc-level-2"><a href="#related-concepts">Related Concepts</a></li>

@@ -22,7 +22,8 @@ from enum import Enum
 import httpx
 
 from app.api.websocket import broadcast_agent_status
-from app.core.ollama import ollama
+from app.core.agentic import agentic
+from app.core.agentic.types import TurnParams
 
 logger = logging.getLogger(__name__)
 
@@ -496,8 +497,14 @@ Respond in JSON:
 "description": "...", "recommendation": "..."}}]}}"""
 
         try:
-            resp = await ollama.chat(messages=[{"role": "user", "content": prompt}], temperature=0.3)
-            text = resp.get("message", {}).get("content", "")
+            resp = await agentic.completion(
+                purpose="ui_audit.heuristics",
+                project_id="",
+                system=None,
+                messages=[{"role": "user", "content": prompt}],
+                params=TurnParams(temperature=0.3),
+            )
+            text = resp.text
             start = text.find("{")
             end = text.rfind("}") + 1
             if start >= 0 and end > start:

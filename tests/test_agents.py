@@ -939,10 +939,15 @@ def test_agent_complex_auto_task_attempts_research_plan():
 
 @pytest.mark.asyncio
 async def test_agent_research_plan_parses_dag_dependencies(monkeypatch):
-    """The planner should preserve ordered steps and dependency edges from LLM JSON."""
+    """The planner should preserve ordered steps and dependency edges from LLM JSON.
+
+    W3: the planner enters through the AgenticDispatcher (``spine.plan``); the
+    fake binds the legacy plane the dispatcher's legacy executor calls, so the
+    structured call is exercised end-to-end through the new seam.
+    """
     from types import SimpleNamespace
 
-    import app.core.agent_research as agent_research_module
+    import app.core.ollama as ollama_module
     from app.core.agent import AgentOrchestrator
     from app.models.task import Task
 
@@ -963,7 +968,7 @@ async def test_agent_research_plan_parses_dag_dependencies(monkeypatch):
             }
         }
 
-    monkeypatch.setattr(agent_research_module.ollama, "chat", fake_chat)
+    monkeypatch.setattr(ollama_module.ollama, "chat", fake_chat)
 
     from app.core.agent_skill_tools import SkillCandidate
 

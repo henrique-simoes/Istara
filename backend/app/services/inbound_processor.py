@@ -17,6 +17,7 @@ from app.models.channel_message import ChannelMessage
 from app.models.database import async_session
 from app.models.project import Project
 from app.models.research_deployment import ResearchDeployment
+from app.core.pi_runtime.seams import build_pi_channel_reply
 from app.services.adaptive_interview import get_next_action, update_conversation_metadata
 
 logger = logging.getLogger(__name__)
@@ -203,13 +204,48 @@ async def process_inbound_channel_message(
                 )
             except Exception:
                 pass
+            # H-8: persist and commit the inbound row BEFORE running the Pi turn.
+            # A crash mid-turn must never roll the inbound record back with the
+            # transaction; the outbound reply is written in a fresh session below.
             await db.commit()
+
+            pi_response = await build_pi_channel_reply(
+                message_channel=message.channel,
+                channel_id=message.channel_id,
+                instance_id=message.instance_id,
+                project_id=project_id,
+                inbound_message_id=inbound_msg.id,
+                inbound_text=message.text,
+                metadata=metadata,
+            )
+            if pi_response is not None and pi_response.text:
+                # Persist the real Pi channel reply in a new session so the
+                # transcript matches what the router sends back.
+                async with async_session() as out_db:
+                    out_db.add(
+                        ChannelMessage(
+                            id=str(uuid.uuid4()),
+                            channel_instance_id=message.instance_id,
+                            project_id=project_id,
+                            direction="outbound",
+                            sender_id="system",
+                            sender_name="Istara",
+                            content=pi_response.text,
+                            content_type="text",
+                            thread_id=conversation.id,
+                            metadata_json=json.dumps(pi_response.metadata or {}),
+                        )
+                    )
+                    out_instance = await out_db.get(ChannelInstance, message.instance_id)
+                    if out_instance is not None:
+                        out_instance.message_count = (out_instance.message_count or 0) + 1
+                    await out_db.commit()
             await broadcast_channel_status(
                 message.instance_id,
                 "active",
                 f"Recorded message from {message.sender_id}",
             )
-            return None
+            return pi_response
 
         action = await get_next_action(conversation, deployment, message.text)
         action_state = _state_value(action.get("state"), conversation.state)

@@ -46,6 +46,22 @@ def _is_local_host(host: str) -> bool:
     return hostname in {"localhost", "127.0.0.1", "::1"}
 
 
+def _refresh_pi_catalog_projection() -> None:
+    """W8 UX parity: LLMServer mutations re-project into the Pi catalog.
+
+    The legacy plane stays authoritative for its own rows; this only
+    invalidates the one-directional DB -> Pi catalog projection on every live
+    PiModelManager so the next Pi resolution sees the change. Never breaks
+    the legacy CRUD path that triggered it.
+    """
+    try:
+        from app.core.pi_runtime.model_manager import reset_live_db_projections
+
+        reset_live_db_projections()
+    except Exception:
+        logger.debug("pi catalog projection refresh skipped", exc_info=True)
+
+
 def _runtime_entry_for_server(server: LLMServer):
     """Build the live router entry for a persisted LLM server."""
     from app.core.llm_router import LLMServerEntry
@@ -156,6 +172,9 @@ async def add_llm_server(
     # Register with the live compute registry and run the initial probe.
     _, healthy = await _register_and_probe_server(server)
     await db.commit()
+
+    # W8: project the new row into the Pi catalog (one-directional).
+    _refresh_pi_catalog_projection()
 
     logger.info(
         "Added LLM server: %s (%s @ %s) healthy=%s",
@@ -274,6 +293,9 @@ async def update_llm_server(
     entry, healthy = await _register_and_probe_server(server)
     await db.commit()
 
+    # W8: re-project the updated row into the Pi catalog.
+    _refresh_pi_catalog_projection()
+
     from app.core.compute_registry import compute_registry
 
     node = compute_registry._nodes.get(server_id)
@@ -304,6 +326,9 @@ async def delete_llm_server(server_id: str, request: Request, db: AsyncSession =
     await db.delete(server)
     await db.commit()
 
+    # W8: drop the deleted row from the Pi catalog projection.
+    _refresh_pi_catalog_projection()
+
     return {"id": server_id, "deleted": True}
 
 
@@ -314,6 +339,8 @@ async def discover_network_llm_servers(request: Request):
     from app.core.network_discovery import discover_and_register
 
     discovered = await discover_and_register()
+    # discover_and_register already refreshes the Pi catalog projection after
+    # persisting new rows (W8: discovered servers feed BOTH planes).
     return {
         "discovered": len(discovered),
         "servers": discovered,

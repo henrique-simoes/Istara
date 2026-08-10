@@ -237,8 +237,8 @@
   <dl class="meta-grid">
     <div><dt>UI Path</dt><dd>Autoresearch &gt; Config</dd></div>
     <div><dt>Component</dt><dd><code>AutoresearchView</code></dd></div>
-    <div><dt>Source Refs</dt><dd>2</dd></div>
-    <div><dt>Tests</dt><dd>0</dd></div>
+    <div><dt>Source Refs</dt><dd>3</dd></div>
+    <div><dt>Tests</dt><dd>1</dd></div>
   </dl>
   <div class="link-cluster" aria-label="Related feature links"><a href="../experiments/architecture.html">Autoresearch Experiments</a>
 <a href="../../chat/model-controls/architecture.html">Chat Model Controls</a></div>
@@ -262,6 +262,14 @@
 <li><code>backend/app/api/routes/autoresearch.py</code></li>
 <li>Autoresearch configuration mutations and global enable/disable toggles require global admin access because they affect every project. Project-facing status, experiments, and leaderboard routes remain project-scoped.</li>
 </ul>
+<h3 id="agentic-dispatcher-migration-pi-replacement-w6">Agentic Dispatcher Migration (Pi Replacement W6)</h3>
+<ul>
+<li>Pi Replacement wave W6 (master plan <code>docs/build-stream/plans/2026-07-20-pi-full-replacement-master-plan.md</code> §8 W6, spec CF-SPEC-8) routes the autoresearch RAG-parameter runner&#x27;s LLM call through the shared <code>AgenticDispatcher</code> (<code>backend/app/core/agentic/dispatcher.py</code>, module singleton <code>agentic</code>). W9 retired the preserved legacy <code>llm_router.chat</code> branch: the dispatcher path is the only path, and a legacy-resolved engine is served by the dispatcher&#x27;s permanent legacy executor. Engine selection is bound once per experiment: an explicit <code>pi</code> or <code>legacy</code> value wins, while an unset value defaults from the global <code>settings.agentic_core</code> flag (<code>pi</code> when enabled, otherwise <code>legacy</code>). The full six-runner routing table and model/temperature sweep semantics are documented on the <a href="../experiments/architecture.html">autoresearch.experiments</a> architecture page; this page covers the RAG-parameter runner specifically.</li>
+<li><code>RAGParamsRunner._llm_hypothesis</code> (<code>backend/app/core/autoresearch_runners/rag_params.py</code>) issues its next-parameter suggestion as <code>agentic.completion(purpose=&quot;autoresearch.rag_params.hypothesize&quot;, spine_phase=&quot;plan&quot;, engine=self.engine)</code>. The bound per-experiment engine is the dispatcher call-level selection, so it does not re-read the global flag or use the generic header/project/default precedence; the dispatcher still fails closed on a selected engine that cannot execute rather than silently falling back.</li>
+<li>RAG retrieval-eval embedding migrated in W8: the <code>_score_single_query</code> (<code>embed_text</code>) call inherits the W8 <code>agentic.embed</code> dispatch like every other embed consumer (legacy engine → the unchanged <code>ollama.embed*</code> plane via the dispatcher&#x27;s permanent legacy executor; Pi engine → the W8 embeddings gateway).</li>
+<li>Project scope is preserved: the RAG-parameter runner carries the authorized project id bound by the autoresearch engine into its dispatcher call for engine resolution, telemetry, and execution scope, so a Pi run cannot resolve an engine, record telemetry, or execute against a project other than the one that authorized the experiment. Global configuration mutations still require global admin access and contain no project content; runtime experiment execution still requires project authorization.</li>
+<li>Rollback: select the <code>legacy</code> engine for the project (or keep the legacy global default) and the runner is served by the dispatcher&#x27;s permanent legacy executor with no schema or behavior change. W9 retired the per-site legacy branch, so the count-to-zero ratchet is 0: the dispatcher path is the only path in product code.</li>
+</ul>
 <h2 id="architecture-notes">Architecture Notes</h2>
 <ul>
 <li>The feature is mounted through <code>frontend/src/components/autoresearch/AutoresearchView.tsx</code> and the UI navigation path recorded in the inventory.</li>
@@ -276,6 +284,8 @@
 <ul>
 <li><code>tests/test_autoresearch.py</code> verifies non-admin researchers cannot mutate global autoresearch config and admins can.</li>
 <li><code>tests/test_project_scope_contracts.py</code> verifies project-facing autoresearch calls carry project ids.</li>
+<li><code>tests/pi_production/test_w6_autoresearch_runners.py</code> verifies the RAG-parameter runner routes <code>_llm_hypothesis</code> through <code>agentic.completion</code> (<code>autoresearch.rag_params.hypothesize</code>) unconditionally (W9 retired the legacy branch), and that the retrieval-eval embedding in <code>_score_single_query</code> inherits the W8 <code>agentic.embed</code> dispatch.</li>
+<li>Regenerate and validate the machine manifests and static site with <code>python scripts/feature_docs.py --seed-missing --generate-site --check</code>.</li>
 </ul>
 <h2 id="related-features">Related Features</h2>
 <ul>
@@ -288,7 +298,7 @@
 </ul>
 <h2 id="compass-evidence">Compass Evidence</h2>
 <ul>
-<li>Spec/task: CF-SPEC-60 / CF-754</li>
+<li>Spec/task: CF-SPEC-60 / CF-754; CF-SPEC-8 (Pi replacement W6 autoresearch-runner dispatcher migration)</li>
 <li>Inventory source: <code>docs/features/inventory.json</code></li>
 </ul>
 <h2 id="when-to-update">When To Update</h2>
@@ -305,6 +315,7 @@
 <li class="toc-level-2"><a href="#state-api-and-backend-contracts">State, API, And Backend Contracts</a></li>
 <li class="toc-level-3"><a href="#stores">Stores</a></li>
 <li class="toc-level-3"><a href="#api-and-backend">API And Backend</a></li>
+<li class="toc-level-3"><a href="#agentic-dispatcher-migration-pi-replacement-w6">Agentic Dispatcher Migration (Pi Replacement W6)</a></li>
 <li class="toc-level-2"><a href="#architecture-notes">Architecture Notes</a></li>
 <li class="toc-level-2"><a href="#agents-skills-llm-mcp-and-permissions">Agents, Skills, LLM, MCP, And Permissions</a></li>
 <li class="toc-level-2"><a href="#tests-and-verification">Tests And Verification</a></li>

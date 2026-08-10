@@ -274,6 +274,7 @@
 <li><code>backend/app/core/steering.py</code> stores queue metadata per message and filters by <code>metadata.project_id</code> for status, read, clear, abort, and drain operations.</li>
 <li>A drain call without a project only sees legacy unscoped messages. Project-bound messages are never drained by a global <code>agent_id</code> call.</li>
 <li><code>backend/app/core/agent_lifecycle.py</code> discovers queued project ids, loads the matching project, skips paused or missing projects, and executes steering with <code>SkillInput.project_id</code>, project context, company context, and project-scoped websocket broadcasts.</li>
+<li>Pi-selected chat turns construct a <code>PiExecutionService</code> steering binding with the authenticated agent and project ids before calling the worker, so queued steering/follow-up/abort controls retain the same project boundary through the live Pi turn.</li>
 </ul>
 <h2 id="agents-skills-llm-mcp-and-permissions">Agents, Skills, LLM, MCP, And Permissions</h2>
 <ul>
@@ -287,6 +288,7 @@
 <li><code>tests/test_steering_api.py</code></li>
 <li><code>tests/test_steering_manager.py</code></li>
 <li><code>tests/test_steering_project_scope_contracts.py</code></li>
+<li><code>tests/pi_production/test_scenario_steering.py</code></li>
 </ul>
 <h2 id="related-features">Related Features</h2>
 <ul>

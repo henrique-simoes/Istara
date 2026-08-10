@@ -473,8 +473,6 @@ class ReportManager:
         if len(finding_ids) < 3:
             return
         try:
-            from app.core.llm_router import llm_router
-
             # Load finding texts
             from app.models.finding import Fact, Insight, Nugget, Recommendation
 
@@ -495,12 +493,20 @@ class ReportManager:
                 + "\n".join(f"- {t[:200]}" for t in findings_text[:15])
                 + "\n\nFormat the summary with clear headings: SITUATION, COMPLICATION, and RESOLUTION. Ensure it addresses executive stakeholders with high clarity and academic rigor."
             )
-            response = await llm_router.chat(
-                [{"role": "user", "content": summary_prompt}],
-                temperature=0.3,
+            # W5: the SCR executive summary goes through the
+            # AgenticDispatcher (``report.exec_summary``).
+            from app.core.agentic import agentic
+            from app.core.agentic.types import TurnParams
+
+            outcome = await agentic.completion(
+                purpose="report.exec_summary",
                 project_id=report_project_id,
+                system=None,
+                messages=[{"role": "user", "content": summary_prompt}],
+                params=TurnParams(temperature=0.3),
+                spine_phase="synthesis",
             )
-            summary = response.get("message", {}).get("content", "")
+            summary = outcome.text
             if summary and len(summary) > 20:
                 from app.models.project_report import ProjectReport
 
@@ -526,7 +532,6 @@ class ReportManager:
         if existing_categories:
             return
         try:
-            from app.core.llm_router import llm_router
             from app.models.finding import Fact, Insight, Nugget, Recommendation
 
             findings_text = []
@@ -552,17 +557,46 @@ class ReportManager:
                 + "\n".join(f"- [{f['id'][:8]}] {f['text']}" for f in findings_text)
                 + '\n\nRespond with a JSON array: [{"name": "Action Title Sentence", "description": "So-What explanation...", "finding_ids": ["id1", "id2"]}]'
             )
-            response = await llm_router.chat(
-                [{"role": "user", "content": mece_prompt}],
-                temperature=0.3,
-                project_id=report_project_id,
-            )
-            content = response.get("message", {}).get("content", "")
-            import re
+            # W5: MECE categorization goes through the AgenticDispatcher
+            # (``report.mece``) as a structured call.
+            from app.core.agentic import agentic
+            from app.core.agentic.types import TurnParams
 
-            json_match = re.search(r"\[.*\]", content, re.DOTALL)
-            if json_match:
-                categories = json.loads(json_match.group())
+            outcome = await agentic.structured(
+                purpose="report.mece",
+                project_id=report_project_id,
+                system=None,
+                messages=[{"role": "user", "content": mece_prompt}],
+                schema={
+                    "type": "object",
+                    "properties": {
+                        "categories": {
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "properties": {
+                                    "name": {"type": "string"},
+                                    "description": {"type": "string"},
+                                    "finding_ids": {
+                                        "type": "array",
+                                        "items": {"type": "string"},
+                                    },
+                                },
+                                "required": ["name", "description", "finding_ids"],
+                            },
+                        },
+                    },
+                    "required": ["categories"],
+                },
+                params=TurnParams(temperature=0.3),
+                spine_phase="synthesis",
+            )
+            categories = (
+                outcome.value.get("categories")
+                if outcome.status == "success" and outcome.value
+                else None
+            )
+            if categories:
                 from app.models.project_report import ProjectReport
 
                 fresh_report = await db.get(ProjectReport, report_id)
@@ -674,7 +708,6 @@ class ReportManager:
     async def _compose_full_report(self, report, project_id: str, db: AsyncSession) -> None:
         """Compose the full L4 report document from template sections."""
         try:
-            from app.core.llm_router import llm_router
             from app.models.finding import Nugget, Fact, Insight, Recommendation
 
             report_id = report.id
@@ -729,7 +762,6 @@ class ReportManager:
                     findings,
                     report_snapshot,
                     methodologies,
-                    llm_router,
                     project_id=project_id,
                 )
                 if section_content:
@@ -751,20 +783,41 @@ class ReportManager:
                         f'Respond with JSON: {{"scores": {{"section_name": score}}, '
                         f'"weakest": "section_name", "reason": "...", "suggestion": "..."}}'
                     )
-                    score_response = await llm_router.chat(
-                        [{"role": "user", "content": score_prompt}],
-                        temperature=0.2,
+                    # W5: weakest-section scoring goes through the
+                    # AgenticDispatcher (``report.weakest_section``) as a
+                    # structured call.
+                    from app.core.agentic import agentic
+                    from app.core.agentic.types import TurnParams
+
+                    outcome = await agentic.structured(
+                        purpose="report.weakest_section",
                         project_id=project_id,
+                        system=None,
+                        messages=[{"role": "user", "content": score_prompt}],
+                        schema={
+                            "type": "object",
+                            "properties": {
+                                "scores": {
+                                    "type": "object",
+                                    "additionalProperties": True,
+                                },
+                                "weakest": {"type": "string"},
+                                "reason": {"type": "string"},
+                                "suggestion": {"type": "string"},
+                            },
+                            "required": ["scores", "weakest", "suggestion"],
+                        },
+                        params=TurnParams(temperature=0.2),
+                        spine_phase="review",
                     )
-                    score_text = score_response.get("message", {}).get("content", "")
-
-                    import re as _re
-
-                    json_match = _re.search(r'\{.*"weakest".*\}', score_text, _re.DOTALL)
-                    if not json_match:
+                    score_data = (
+                        outcome.value
+                        if outcome.status == "success" and outcome.value
+                        else None
+                    )
+                    if not score_data:
                         break
 
-                    score_data = json.loads(json_match.group())
                     scores = score_data.get("scores", {})
                     weakest = score_data.get("weakest", "")
                     suggestion = score_data.get("suggestion", "")
@@ -784,7 +837,6 @@ class ReportManager:
                                 findings,
                                 report_snapshot,
                                 methodologies,
-                                llm_router,
                                 refinement_hint=suggestion,
                                 project_id=project_id,
                             )
@@ -844,7 +896,6 @@ class ReportManager:
         findings: dict,
         report,
         methodologies: list,
-        llm_router,
         refinement_hint: str = "",
         project_id: str | None = None,
     ) -> str:
@@ -880,12 +931,20 @@ class ReportManager:
                     + "\n".join(f"- {i['text']}" for i in items)
                 )
                 try:
-                    response = await llm_router.chat(
-                        [{"role": "user", "content": prompt}],
-                        temperature=0.3,
-                        project_id=project_id or getattr(report, "project_id", None),
+                    # W5: the detailed insights narrative goes through the
+                    # AgenticDispatcher (``report.insights_narrative``).
+                    from app.core.agentic import agentic
+                    from app.core.agentic.types import TurnParams
+
+                    outcome = await agentic.completion(
+                        purpose="report.insights_narrative",
+                        project_id=project_id or getattr(report, "project_id", None) or "",
+                        system=None,
+                        messages=[{"role": "user", "content": prompt}],
+                        params=TurnParams(temperature=0.3),
+                        spine_phase="synthesis",
                     )
-                    return response.get("message", {}).get("content", "Detailed narrative generation failed.")
+                    return outcome.text or "Detailed narrative generation failed."
                 except Exception:
                     fmt = "evidence_table"  # Fallback
 
@@ -934,12 +993,20 @@ class ReportManager:
                 + "\n".join(f"- {r['text']}" for r in items)
             )
             try:
-                response = await llm_router.chat(
-                    [{"role": "user", "content": prompt}],
-                    temperature=0.3,
-                    project_id=project_id or getattr(report, "project_id", None),
+                # W5: the recommendations justification goes through the
+                # AgenticDispatcher (``report.recommendations_narrative``).
+                from app.core.agentic import agentic
+                from app.core.agentic.types import TurnParams
+
+                outcome = await agentic.completion(
+                    purpose="report.recommendations_narrative",
+                    project_id=project_id or getattr(report, "project_id", None) or "",
+                    system=None,
+                    messages=[{"role": "user", "content": prompt}],
+                    params=TurnParams(temperature=0.3),
+                    spine_phase="synthesis",
                 )
-                return response.get("message", {}).get("content", "Recommendation detail generation failed.")
+                return outcome.text or "Recommendation detail generation failed."
             except Exception:
                 rows = ["| # | Recommendation | Priority |", "|---|---------------|----------|"]
                 for i, item in enumerate(items, 1):
@@ -993,12 +1060,20 @@ class ReportManager:
                 if refinement_hint:
                     prompt += f"\n\nRefinement guidance: {refinement_hint}"
                 prompt += "\n\nBe specific and concise."
-                response = await llm_router.chat(
-                    [{"role": "user", "content": prompt}],
-                    temperature=0.3,
-                    project_id=project_id or getattr(report, "project_id", None),
+                # W5: the gaps/limitations analysis goes through the
+                # AgenticDispatcher (``report.gaps_analysis``).
+                from app.core.agentic import agentic
+                from app.core.agentic.types import TurnParams
+
+                outcome = await agentic.completion(
+                    purpose="report.gaps_analysis",
+                    project_id=project_id or getattr(report, "project_id", None) or "",
+                    system=None,
+                    messages=[{"role": "user", "content": prompt}],
+                    params=TurnParams(temperature=0.3),
+                    spine_phase="review",
                 )
-                return response.get("message", {}).get("content", "No gaps analysis available.")
+                return outcome.text or "No gaps analysis available."
             except Exception:
                 return "Gap analysis could not be generated."
 

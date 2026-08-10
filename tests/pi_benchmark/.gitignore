@@ -1,0 +1,4 @@
+# Benchmark run records, manifests, and eval outputs are local, append-only evidence —
+# never source. Only the generated, secret-scanned report bundles under
+# comparison-Istara-pi/reports/ are tracked.
+.results/

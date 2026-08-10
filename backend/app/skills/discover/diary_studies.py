@@ -1,9 +1,87 @@
 """Diary Studies skill — longitudinal self-reported user experiences."""
 import json
-from app.core.ollama import ollama
+import logging
 from app.core.file_processor import process_file
 from app.skills.base import BaseSkill, SkillInput, SkillOutput, SkillPhase, SkillType
 from pathlib import Path
+
+logger = logging.getLogger(__name__)
+
+
+# W5: schema for the AgenticDispatcher structured path of ``execute``
+# (``skill.discover_analyze``); the dispatcher validates against it. Formalized
+# from the analysis prompt's response shape — every key is read via ``.get``
+# downstream, so nothing is required.
+DIARY_ANALYSIS_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "temporal_patterns": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "pattern": {"type": "string"},
+                    "timeframe": {"type": "string"},
+                },
+            },
+        },
+        "emotional_arc": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "phase": {"type": "string"},
+                    "sentiment": {"type": "string"},
+                    "description": {"type": "string"},
+                },
+            },
+        },
+        "behaviors": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "behavior": {"type": "string"},
+                    "frequency": {"type": "string"},
+                },
+            },
+        },
+        "triggers": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "trigger": {"type": "string"},
+                    "resulting_behavior": {"type": "string"},
+                },
+            },
+        },
+        "pain_points": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "issue": {"type": "string"},
+                    "persistent": {"type": "boolean"},
+                    "severity": {"type": "number"},
+                },
+            },
+        },
+        "nuggets": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "text": {"type": "string"},
+                    "day": {"type": "string"},
+                    "tags": {"type": "array", "items": {"type": "string"}},
+                },
+            },
+        },
+        "summary": {"type": "string"},
+    },
+    "required": [],
+}
 
 class DiaryStudiesSkill(BaseSkill):
     @property
@@ -25,8 +103,21 @@ Context: {skill_input.project_context or 'General UX research'}
 Include: study duration recommendation, entry frequency, prompt design (structured + open-ended), 
 participant guidelines, reminder strategy, sample diary prompts for each day/phase,
 analysis approach, and dropout mitigation strategies. Format as Markdown."""
-        resp = await ollama.chat(messages=[{"role": "user", "content": prompt}], temperature=0.7)
-        return {"skill": self.name, "plan": resp.get("message", {}).get("content", "")}
+        # W5: diary study plan generation goes through the
+        # AgenticDispatcher (``skill.discover_plan``).
+        from app.core.agentic import agentic
+        from app.core.agentic.types import TurnParams
+
+        outcome = await agentic.completion(
+            purpose="skill.discover_plan",
+            project_id=skill_input.project_id,
+            system=None,
+            messages=[{"role": "user", "content": prompt}],
+            params=TurnParams(temperature=0.7),
+            spine_phase="plan",
+        )
+        plan_text = outcome.text
+        return {"skill": self.name, "plan": plan_text}
 
     async def execute(self, skill_input: SkillInput) -> SkillOutput:
         texts = []
@@ -67,11 +158,28 @@ JSON format:
 "nuggets": [{{"text": "...", "day": "...", "tags": ["..."]}}],
 "summary": "..."}}"""
 
-        resp = await ollama.chat(messages=[{"role": "user", "content": prompt}], temperature=0.3)
-        text = resp.get("message", {}).get("content", "")
+        # W5: diary-entry analysis goes through the AgenticDispatcher
+        # (``skill.discover_analyze``) with DIARY_ANALYSIS_SCHEMA driving
+        # the engine.
+        from app.core.agentic import agentic
+        from app.core.agentic.types import TurnParams
+
         try:
-            data = json.loads(text[text.find("{"):text.rfind("}") + 1])
-        except (json.JSONDecodeError, ValueError):
+            outcome = await agentic.structured(
+                purpose="skill.discover_analyze",
+                project_id=skill_input.project_id,
+                system=None,
+                messages=[{"role": "user", "content": prompt}],
+                schema=DIARY_ANALYSIS_SCHEMA,
+                params=TurnParams(temperature=0.3),
+                spine_phase="synthesis",
+            )
+            data = outcome.value if outcome.status == "success" and outcome.value else {}
+        except Exception as e:
+            # F-W5-2: the Pi engine raises PiRuntimeTurnError on invalid
+            # structured output instead of returning status != "success";
+            # degrade to the same empty-result fallback.
+            logger.warning("Diary study analysis raised; degrading to empty analysis: %s", e)
             data = {}
 
         nuggets = [{"text": n["text"], "source": "diary-study", "tags": n.get("tags", [])} for n in data.get("nuggets", [])]

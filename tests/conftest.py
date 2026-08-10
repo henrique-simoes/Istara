@@ -15,8 +15,10 @@ async def dispose_db_engine():
     """Dispose the global async engine after each test to prevent
     aiosqlite 'Event loop is closed' warnings and SQLite locking."""
     yield
+    from app.core.compute_route_evidence import drain_compute_telemetry
     from app.models.database import engine
 
+    await drain_compute_telemetry()
     await engine.dispose()
 
 

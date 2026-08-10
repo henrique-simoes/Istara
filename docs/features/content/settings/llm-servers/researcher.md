@@ -6,11 +6,11 @@ audience: researcher
 status: documented
 related_features: ["chat.model-controls", "settings.connection-strings"]
 related_glossary: ["rag"]
-code_references: ["frontend/src/components/common/SettingsView.tsx", "frontend/src/lib/modelProviders.ts", "backend/app/api/routes/llm_servers.py"]
-api_references: ["backend/app/api/routes/llm_servers.py"]
-test_references: ["frontend/src/lib/modelProviders.test.ts", "tests/test_llm_servers.py"]
-last_verified: 2026-05-19
-compass: CF-SPEC-94 / CF-1193
+code_references: ["frontend/src/components/common/SettingsView.tsx", "frontend/src/lib/modelProviders.ts", "backend/app/api/routes/llm_servers.py", "backend/app/api/routes/settings.py", "backend/app/core/network_discovery.py", "backend/app/core/pi_runtime/model_manager.py"]
+api_references: ["backend/app/api/routes/llm_servers.py", "backend/app/api/routes/settings.py"]
+test_references: ["frontend/src/lib/modelProviders.test.ts", "tests/test_llm_servers.py", "tests/pi_production/test_w8_embeddings_gateway.py"]
+last_verified: 2026-07-22
+compass: CF-SPEC-94 / CF-1193; CF-SPEC-8
 ---
 
 # LLM Server Settings
@@ -46,6 +46,12 @@ LLM Server Settings exists so the work represented by Settings > LLM Servers has
 - Admin-only shared provider endpoint inventory, status, forms, and health-check results shown by the referenced component and routes.
 - Non-admin users receive a permission-gated state with no endpoint inventory or probe controls.
 
+## Engine Catalog Parity
+
+- Istara can run on a legacy engine or the newer Pi replacement engine, and each engine keeps its own view of the available model servers. Pi Replacement wave W8 keeps those views in sync: adding, editing, deleting, or auto-discovering an LLM server in Settings now refreshes the Pi engine's model catalog as well as the legacy one, so a server you register once is available to both engines without a restart.
+- The sync is one-directional — registered servers flow into the Pi catalog, but Pi never writes back or changes how the legacy engine schedules work, and shared relay/donor capacity is still never offered to Pi traffic.
+- The settings model list also reports the Pi catalog alongside the legacy list. It shows only identity information — which endpoints and model names exist and what kind they are — never server addresses or API keys, and it is available whether the servers are currently reachable or offline.
+
 ## Caveats
 
 - Needs interactive verification for exact empty, loading, error, and permission-denied states.
@@ -62,6 +68,6 @@ LLM Server Settings exists so the work represented by Settings > LLM Servers has
 
 ## Evidence
 
-- Source files: `frontend/src/components/common/SettingsView.tsx`, `frontend/src/lib/modelProviders.ts`, `backend/app/api/routes/llm_servers.py`
-- API references: `backend/app/api/routes/llm_servers.py`
-- Tests: `frontend/src/lib/modelProviders.test.ts`
+- Source files: `frontend/src/components/common/SettingsView.tsx`, `frontend/src/lib/modelProviders.ts`, `backend/app/api/routes/llm_servers.py`, `backend/app/api/routes/settings.py`, `backend/app/core/network_discovery.py`
+- API references: `backend/app/api/routes/llm_servers.py`, `backend/app/api/routes/settings.py`
+- Tests: `frontend/src/lib/modelProviders.test.ts`, `tests/test_llm_servers.py`, `tests/pi_production/test_w8_embeddings_gateway.py`

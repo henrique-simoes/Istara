@@ -6,11 +6,11 @@ audience: researcher
 status: needs-verification
 related_features: ["quality.dashboard", "compute.pool"]
 related_glossary: ["fleiss-kappa"]
-code_references: ["frontend/src/components/common/EnsembleHealthView.tsx", "backend/app/core/consensus.py"]
+code_references: ["frontend/src/components/common/EnsembleHealthView.tsx", "backend/app/core/consensus.py", "backend/app/core/validation.py", "backend/app/core/validation_executor.py", "backend/app/services/research_validity_service.py", "backend/app/core/agentic/dispatcher.py"]
 api_references: ["backend/app/api/routes/metrics.py"]
-test_references: []
-last_verified: 2026-05-15
-compass: CF-SPEC-53 / CF-657
+test_references: ["tests/pi_production/test_w1_dispatcher_authority.py", "tests/pi_production/test_w7_validation.py", "tests/test_validation_project_scope.py", "tests/test_research_validity_contract.py", "tests/test_metrics.py"]
+last_verified: 2026-07-22
+compass: CF-SPEC-8 / FIX-pi-full-20260720-w7-REVIEW-r1-docs; CF-SPEC-53 / CF-657
 ---
 
 # Ensemble Health
@@ -41,6 +41,18 @@ Ensemble Health exists so the work represented by Ensemble Health has a stable, 
 - Use the visible controls to create, inspect, refine, or route project work without leaving the active Istara context.
 - Move to related surfaces when needed: quality.dashboard, compute.pool.
 
+## How Validation Confidence Is Established
+
+- W7's dual-run, full-ensemble, Self-MoA, adversarial review, debate, and structured-judge call sites now use the shared dispatcher unconditionally. The dispatcher resolves the selected engine; a legacy selection remains available for rollback through its permanent legacy executor.
+- Full ensemble requests carry the minimum response width plus one optional spare. The legacy route accepts exactly the minimum number of healthy distinct servers and consults the spare only when an earlier server fails; three healthy servers therefore remain a full three-response ensemble rather than degrading to dual-run. If the spare restores the minimum width, the aggregate result and usage/telemetry outcome are successful while the failed sample remains available for diagnostics.
+- “Different models” means different serving endpoint identities for independent validation. Two endpoints may serve the same model and still count as separate route identities when both are explicitly preserved; the system does not invent diversity when the required endpoints are unavailable.
+- When distinct endpoints cannot be selected, validation degrades to the documented lower-assurance path or reports unavailable/blocked. A failed judge is not a pass. These outcomes keep unvalidated work out of accepted research evidence and reports.
+- W8 now routes embedding-based comparison through `agentic.embed`: Pi uses the `EmbeddingsGateway`, while legacy keeps the unchanged `ollama.embed*` plane. This preserves the vector-space and fail-closed boundaries for both engines.
+
+## Rollback
+
+Choose the `legacy` engine for the project (or keep the legacy global default) to return validation calls to the dispatcher's preserved legacy route. Engine selection changes the executor, not the product call-site path.
+
 ## Inputs, Outputs, And Expected Outcomes
 
 - Project-scoped state or artifact updates associated with ensemble health.
@@ -62,6 +74,6 @@ Ensemble Health exists so the work represented by Ensemble Health has a stable, 
 
 ## Evidence
 
-- Source files: `frontend/src/components/common/EnsembleHealthView.tsx`, `backend/app/core/consensus.py`
+- Source files: `frontend/src/components/common/EnsembleHealthView.tsx`, `backend/app/core/consensus.py`, `backend/app/core/validation.py`, `backend/app/core/validation_executor.py`, `backend/app/services/research_validity_service.py`, `backend/app/core/agentic/dispatcher.py`
 - API references: `backend/app/api/routes/metrics.py`
-- Tests: none recorded
+- Tests: `tests/pi_production/test_w7_validation.py`, `tests/test_validation_project_scope.py`, `tests/test_research_validity_contract.py`, `tests/test_metrics.py`

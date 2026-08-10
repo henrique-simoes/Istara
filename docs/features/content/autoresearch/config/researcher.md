@@ -6,11 +6,11 @@ audience: researcher
 status: documented
 related_features: ["autoresearch.experiments", "chat.model-controls"]
 related_glossary: ["rag"]
-code_references: ["frontend/src/components/autoresearch/AutoresearchView.tsx", "backend/app/core/autoresearch_runners/rag_params.py"]
+code_references: ["frontend/src/components/autoresearch/AutoresearchView.tsx", "backend/app/core/autoresearch_runners/rag_params.py", "backend/app/core/agentic/dispatcher.py"]
 api_references: ["backend/app/api/routes/autoresearch.py"]
-test_references: ["tests/test_autoresearch.py", "tests/test_project_scope_contracts.py"]
-last_verified: 2026-05-18
-compass: CF-SPEC-60 / CF-754
+test_references: ["tests/test_autoresearch.py", "tests/test_project_scope_contracts.py", "tests/pi_production/test_w6_autoresearch_runners.py"]
+last_verified: 2026-07-22
+compass: CF-SPEC-60 / CF-754; CF-SPEC-8
 ---
 
 # Autoresearch Configuration
@@ -46,6 +46,14 @@ Autoresearch Configuration exists so the work represented by Autoresearch > Conf
 - Global runtime configuration values that contain no project content.
 - Project-scoped status refreshes shown from this tab, filtered to the active project before any operational metrics are rendered.
 
+## Model Routing And Engine Selection
+
+- The RAG-parameter runner tunes retrieval settings by asking a model to suggest the next parameters to try, then scoring how well retrieval performs with them.
+- Pi Replacement wave W6 sends that suggestion call through Istara's shared agentic dispatcher, so RAG tuning can run on either the Pi replacement engine or the legacy engine without changing what the tuning does. The experiment start boundary binds an explicit `pi` or `legacy` choice once, or defaults from `settings.agentic_core` when no engine is supplied. W9 removed the old per-site legacy fallback: the dispatcher is the only path, and selecting the legacy engine is still a safe rollback because the dispatcher serves it through its own legacy executor.
+- Only the suggestion step is a direct `agentic.completion` call. The embedding the runner uses to score retrieval quality inherits the W8 `agentic.embed` dispatch, so legacy keeps the unchanged embedding plane and Pi uses the embeddings gateway without changing retrieval scoring semantics.
+- The runner stays bound to the project that authorized the experiment for engine choice, telemetry, and execution, and global configuration changes remain admin-only and carry no project content.
+- The full engine-selection behavior for all six autoresearch runners is described on the [Autoresearch Experiments](../../autoresearch/experiments/researcher.md) page.
+
 ## Caveats
 
 - Needs interactive verification for exact empty, loading, error, and permission-denied states.
@@ -62,6 +70,6 @@ Autoresearch Configuration exists so the work represented by Autoresearch > Conf
 
 ## Evidence
 
-- Source files: `frontend/src/components/autoresearch/AutoresearchView.tsx`, `backend/app/core/autoresearch_runners/rag_params.py`
+- Source files: `frontend/src/components/autoresearch/AutoresearchView.tsx`, `backend/app/core/autoresearch_runners/rag_params.py`, `backend/app/core/agentic/dispatcher.py`
 - API references: `backend/app/api/routes/autoresearch.py`
-- Tests: `tests/test_autoresearch.py`, `tests/test_project_scope_contracts.py`
+- Tests: `tests/test_autoresearch.py`, `tests/test_project_scope_contracts.py`, `tests/pi_production/test_w6_autoresearch_runners.py`

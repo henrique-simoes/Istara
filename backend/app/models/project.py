@@ -35,6 +35,10 @@ class Project(Base):
     is_paused: Mapped[bool] = mapped_column(Boolean, default=False)
     owner_id: Mapped[str] = mapped_column(String(36), default="")
     watch_folder_path: Mapped[str | None] = mapped_column(String(1000), nullable=True)
+    # Per-project agentic engine override ("pi" | "legacy" | None). Read by the
+    # AgenticDispatcher after the request header and before the global default
+    # (master plan §5.1); None means "follow the default".
+    agentic_engine: Mapped[str | None] = mapped_column(String(32), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
     )

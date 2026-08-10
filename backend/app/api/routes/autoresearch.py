@@ -10,11 +10,12 @@ from datetime import datetime, timedelta, timezone
 from typing import Optional
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, Request
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
+from app.core.pi_replacement import pi_replacement_requested, record_pi_span
 from app.core.permissions import (
     get_active_project_or_404,
     require_global_admin,
@@ -47,6 +48,21 @@ class StartExperimentRequest(BaseModel):
     target: str  # skill name, agent id, deployment id, or component path
     max_iterations: int = 20
     project_id: str = ""
+    dry_run: bool = False
+    # Per-experiment engine selection threaded into the runner loop; None
+    # defaults from settings.agentic_core (W6, master plan §8).
+    engine: Optional[str] = None  # "pi" | "legacy"
+
+    @field_validator("engine")
+    @classmethod
+    def _validate_engine(cls, value: Optional[str]) -> Optional[str]:
+        """Reject any engine other than pi|legacy at the experiment boundary."""
+        if value is None:
+            return None
+        normalized = str(value).strip().lower()
+        if normalized not in ("pi", "legacy"):
+            raise ValueError("engine must be 'pi' or 'legacy'")
+        return normalized
 
 
 class ConfigUpdate(BaseModel):
@@ -607,8 +623,80 @@ async def start_experiment(
             detail="Autoresearch is disabled. Enable it first via /api/autoresearch/toggle.",
         )
 
-    runner = _get_runner(body.loop_type)
     max_iterations = _clamp_iterations(body.max_iterations)
+    # Resolve the per-experiment engine once at the boundary (validated pi|legacy,
+    # or defaulted from settings.agentic_core) and thread it into the runner loop.
+    from app.core.autoresearch_runners import resolve_engine
+
+    resolved_engine = resolve_engine(body.engine)
+    if body.dry_run:
+        pi_replacement = pi_replacement_requested(request)
+        if pi_replacement:
+            await record_pi_span(
+                operation="pi_candidate_autoresearch_dry_run",
+                project_id=scoped_project_id,
+                agent_id="autoresearch",
+                event_kind="autoresearch_governance",
+                route_id=f"{body.loop_type}:{body.target}",
+            )
+        return {
+            "status": "dry_run",
+            "loop_type": body.loop_type,
+            "target": body.target,
+            "project_id": scoped_project_id,
+            "max_iterations": max_iterations,
+            "engine": resolved_engine,
+            "pi_replacement": pi_replacement,
+            "production_mutation_allowed": False,
+            "background_task_started": False,
+            "proposal": {
+                "hypothesis": "Measure Pi replacement candidate without mutating production autoresearch state.",
+                "governance_required": True,
+                "report_evidence": False,
+            },
+        }
+
+    # Governed Pi mode slots between the mutation-free dry-run and the legacy
+    # runners: it runs one bounded Pi turn with a read-only/proposal-only catalog
+    # and returns a candidate proposal only — no background loop, no promotion,
+    # no filesystem mutation. Human governance gates are unchanged (AC-5).
+    if pi_replacement_requested(request):
+        from app.core.pi_runtime.endpoints import (
+            PiEndpointResolutionError,
+            PiRuntimeTurnError,
+        )
+        from app.core.pi_runtime.seams import run_pi_governed_autoresearch
+        from app.core.pi_runtime.supervisor import PiWorkerError
+
+        try:
+            proposal = await run_pi_governed_autoresearch(
+                project_id=scoped_project_id,
+                loop_type=body.loop_type,
+                target=body.target,
+            )
+        except PiEndpointResolutionError as exc:
+            raise HTTPException(
+                status_code=503,
+                detail=f"Pi runtime endpoint unavailable: {exc}",
+            )
+        except PiRuntimeTurnError as exc:
+            # Fail closed: a failed/aborted governed turn returns a typed error,
+            # never a fabricated candidate proposal (RF3-2).
+            raise HTTPException(
+                status_code=503,
+                detail=f"Pi runtime turn failed: {exc}",
+            )
+        except (PiWorkerError, TimeoutError) as exc:
+            # Fail closed (H-9): a dead/busy worker or a turn timeout is a typed
+            # 503, never an uncaught 500.
+            raise HTTPException(
+                status_code=503,
+                detail=f"Pi runtime worker unavailable: {exc}",
+            )
+        proposal["max_iterations"] = max_iterations
+        return proposal
+
+    runner = _get_runner(body.loop_type)
 
     async def _run_loop():
         try:
@@ -617,6 +705,7 @@ async def start_experiment(
                 target=body.target,
                 max_iterations=max_iterations,
                 project_id=scoped_project_id,
+                engine=resolved_engine,
             )
         except Exception as exc:
             logger.error(f"Autoresearch loop failed: {exc}", exc_info=True)
@@ -629,6 +718,7 @@ async def start_experiment(
         "target": body.target,
         "project_id": scoped_project_id,
         "max_iterations": max_iterations,
+        "engine": resolved_engine,
     }
 
 

@@ -16,6 +16,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.channels.base import ChannelAdapter, OutgoingMessage, channel_router
 from app.channels.google_chat import GoogleChatAdapter
+from app.channels.pi_local import PiLocalAdapter
 from app.channels.slack import SlackAdapter
 from app.channels.telegram import TelegramAdapter
 from app.channels.whatsapp import WhatsAppAdapter
@@ -32,6 +33,7 @@ PLATFORM_ADAPTERS: dict[str, type[ChannelAdapter]] = {
     "slack": SlackAdapter,
     "whatsapp": WhatsAppAdapter,
     "google_chat": GoogleChatAdapter,
+    "pi_local": PiLocalAdapter,
 }
 
 CONFIG_ALIASES: dict[str, dict[str, str]] = {

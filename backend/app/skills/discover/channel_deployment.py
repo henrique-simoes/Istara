@@ -121,6 +121,74 @@ Respond in valid JSON:
 }}"""
 
 
+# W5: schema for the AgenticDispatcher structured path of ``_analyze``
+# (``skill.discover_analyze``); the dispatcher validates against it. Formalized
+# from the ANALYSIS_PROMPT response shape — every key is read via ``.get``
+# downstream, so nothing is required.
+DEPLOYMENT_ANALYSIS_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "themes": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "name": {"type": "string"},
+                    "description": {"type": "string"},
+                    "frequency": {"type": "number"},
+                    "confidence": {"type": "string"},
+                },
+            },
+        },
+        "candidate_nuggets": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "text": {"type": "string"},
+                    "source": {"type": "string"},
+                    "source_location": {"type": "string"},
+                    "source_quote": {"type": "string"},
+                    "tags": {"type": "array", "items": {"type": "string"}},
+                    "confidence": {"type": "string"},
+                },
+            },
+        },
+        "candidate_insights": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "text": {"type": "string"},
+                    "confidence": {"type": "string"},
+                    "impact": {"type": "string"},
+                },
+            },
+        },
+        "candidate_recommendations": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "text": {"type": "string"},
+                    "priority": {"type": "string"},
+                    "effort": {"type": "string"},
+                },
+            },
+        },
+        "data_quality": {
+            "type": "object",
+            "properties": {
+                "overall_quality": {"type": "string"},
+                "biases": {"type": "array", "items": {"type": "string"}},
+                "gaps": {"type": "array", "items": {"type": "string"}},
+            },
+        },
+    },
+    "required": [],
+}
+
+
 class ChannelResearchDeploymentSkill(BaseSkill):
     """Skill for deploying and analyzing research via messaging channels."""
 
@@ -155,8 +223,6 @@ class ChannelResearchDeploymentSkill(BaseSkill):
 
     async def plan(self, skill_input: SkillInput) -> dict:
         """Generate a deployment plan with questions and adaptive rules."""
-        from app.core.ollama import ollama
-
         deployment_type = skill_input.parameters.get("deployment_type", "interview")
         research_goals = skill_input.parameters.get(
             "research_goals", "Understand user experience and identify pain points"
@@ -177,11 +243,21 @@ class ChannelResearchDeploymentSkill(BaseSkill):
             deployment_type=deployment_type,
         )
 
-        response = await ollama.chat(
+        # W5: deployment plan generation goes through the
+        # AgenticDispatcher (``skill.discover_plan``) — prose/JSON text
+        # with the same downstream parse-and-fallback handling.
+        from app.core.agentic import agentic
+        from app.core.agentic.types import TurnParams
+
+        outcome = await agentic.completion(
+            purpose="skill.discover_plan",
+            project_id=skill_input.project_id,
+            system=None,
             messages=[{"role": "user", "content": prompt}],
-            temperature=0.7,
+            params=TurnParams(temperature=0.7),
+            spine_phase="plan",
         )
-        response_text = response.get("message", {}).get("content", "")
+        response_text = outcome.text
 
         # Parse JSON from response
         plan_data = {}
@@ -233,8 +309,6 @@ class ChannelResearchDeploymentSkill(BaseSkill):
 
     async def _analyze(self, skill_input: SkillInput) -> SkillOutput:
         """Analyze collected deployment responses."""
-        from app.core.ollama import ollama
-
         deployment_name = skill_input.parameters.get("deployment_name", "Unnamed")
         deployment_type = skill_input.parameters.get("deployment_type", "interview")
         responses_data = skill_input.parameters.get("responses", [])
@@ -258,21 +332,32 @@ class ChannelResearchDeploymentSkill(BaseSkill):
             responses=responses_text[:8000],
         )
 
-        response = await ollama.chat(
-            messages=[{"role": "user", "content": prompt}],
-            temperature=0.3,
-        )
-        response_text = response.get("message", {}).get("content", "")
+        # W5: deployment response analysis goes through the
+        # AgenticDispatcher (``skill.discover_analyze``) with
+        # DEPLOYMENT_ANALYSIS_SCHEMA driving the engine.
+        from app.core.agentic import agentic
+        from app.core.agentic.types import TurnParams
 
-        # Parse JSON
-        analysis = {}
         try:
-            json_start = response_text.find("{")
-            json_end = response_text.rfind("}") + 1
-            if json_start >= 0 and json_end > json_start:
-                analysis = json.loads(response_text[json_start:json_end])
-        except json.JSONDecodeError:
-            analysis = {"raw_analysis": response_text}
+            outcome = await agentic.structured(
+                purpose="skill.discover_analyze",
+                project_id=skill_input.project_id,
+                system=None,
+                messages=[{"role": "user", "content": prompt}],
+                schema=DEPLOYMENT_ANALYSIS_SCHEMA,
+                params=TurnParams(temperature=0.3),
+                spine_phase="synthesis",
+            )
+            if outcome.status == "success" and outcome.value:
+                analysis = outcome.value
+            else:
+                analysis = {"raw_analysis": outcome.text}
+        except Exception as e:
+            # F-W5-2: the Pi engine raises PiRuntimeTurnError on invalid
+            # structured output instead of returning status != "success";
+            # degrade to the same raw-analysis fallback.
+            logger.warning("Channel deployment raised; degrading to raw_analysis: %s", e)
+            analysis = {"raw_analysis": ""}
 
         research_validity = {
             "status": "provisional",

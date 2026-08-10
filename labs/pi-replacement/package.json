@@ -1,0 +1,21 @@
+{
+  "name": "@istara/pi-replacement-lab",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Lab-only Pi replacement adapter for Istara agentic-core comparison.",
+  "scripts": {
+    "validate": "node --test test/*.test.mjs",
+    "smoke:no-model": "node scenarios/chat-tool-loop.mjs --mode no-model",
+    "smoke:all-no-model": "node scenarios/chat-tool-loop.mjs --mode no-model --scenario all --engine pi",
+    "paired:no-model": "node scenarios/chat-tool-loop.mjs --mode no-model --scenario all --engine both",
+    "collect:artifacts": "node scenarios/collect-replacement-artifacts.mjs",
+    "smoke:deepseek": "node scenarios/chat-tool-loop.mjs --mode deepseek",
+    "role-rounds:deepseek": "node scenarios/deepseek-role-rounds.mjs"
+  },
+  "dependencies": {
+    "@earendil-works/pi-agent-core": "0.80.10",
+    "@earendil-works/pi-ai": "0.80.10"
+  },
+  "devDependencies": {}
+}

@@ -9,7 +9,16 @@ function parseEnvFileValue(content, key) {
 }
 
 export class IstaraApiClient {
-  constructor({ apiBase, repoRoot, logger, networkAccessToken = "", adminUsername = "", adminPassword = "" }) {
+  constructor({
+    apiBase,
+    repoRoot,
+    logger,
+    networkAccessToken = "",
+    adminUsername = "",
+    adminPassword = "",
+    chatHeaders = {},
+    agentEngine = "",
+  }) {
     this.apiBase = apiBase.replace(/\/$/, "");
     this.repoRoot = repoRoot;
     this.logger = logger;
@@ -18,6 +27,8 @@ export class IstaraApiClient {
     this.networkAccessToken = networkAccessToken;
     this.adminUsername = adminUsername;
     this.adminPassword = adminPassword;
+    this.chatHeaders = { ...chatHeaders };
+    if (agentEngine) this.chatHeaders["x-istara-agent-engine"] = agentEngine;
   }
 
   headers(extra = {}) {
@@ -213,14 +224,26 @@ export class IstaraApiClient {
     return data;
   }
 
-  async sendChat({ projectId, message, sessionId = null, maxHistory = 30, timeoutMs = 240000 }) {
+  async sendChat({
+    projectId,
+    message,
+    sessionId = null,
+    maxHistory = 30,
+    timeoutMs = 240000,
+    headers = {},
+    agentEngine = "",
+  }) {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), timeoutMs);
     const started = Date.now();
     try {
       const response = await fetch(`${this.apiBase}/api/chat`, {
         method: "POST",
-        headers: this.headers(),
+        headers: this.headers({
+          ...this.chatHeaders,
+          ...(agentEngine ? { "x-istara-agent-engine": agentEngine } : {}),
+          ...headers,
+        }),
         body: JSON.stringify({
           project_id: projectId,
           message,

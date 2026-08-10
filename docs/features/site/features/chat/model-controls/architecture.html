@@ -269,6 +269,82 @@
 <p>access in team mode before endpoint status or capability metadata is returned.</p>
 <p>Project prompt, retrieval, and compute payloads remain governed by the active</p>
 <p>project routes that call the model controls.</p>
+<h3 id="agentic-dispatcher-and-engine-selection-pi-replacement-w1">Agentic Dispatcher And Engine Selection (Pi Replacement W1)</h3>
+<ul>
+<li><code>backend/app/core/agentic/dispatcher.py</code> (<code>AgenticDispatcher</code>, module</li>
+</ul>
+<p>singleton <code>agentic</code>) is the single choke point for every agentic-loop or</p>
+<p>model invocation. It exposes exactly five verbs — <code>chat_turn</code>, <code>completion</code>,</p>
+<p><code>structured</code>, <code>ensemble</code>, and <code>embed</code> — and contains no business logic: it</p>
+<p>only resolves the engine, executes, and records usage.</p>
+<ul>
+<li>Engine selection resolves in a fixed precedence order (first match wins):</li>
+</ul>
+<p>per-call override (benchmark harness / A2A envelope metadata), then the</p>
+<p><code>x-istara-agent-engine</code> request header predicate, then the project setting</p>
+<p><code>agentic_engine</code>, then <code>settings.agentic_engine_default</code>. A selected engine</p>
+<p>that cannot execute raises a typed dispatch error; the dispatcher never</p>
+<p>silently falls back to the other engine.</p>
+<ul>
+<li>Both engine seams are real: Pi selections execute through the isolated</li>
+</ul>
+<p><code>PiExecutionService</code> (<code>run_completion</code> / <code>run_structured</code> / <code>run_react</code>), and</p>
+<p>legacy selections execute through the byte-compatible legacy executor</p>
+<p>(<code>backend/app/core/agentic/legacy.py</code>), which drives the same</p>
+<p>ComputeRegistry-backed <code>app.core.ollama.ollama</code> plane the 87 inventory sites</p>
+<p>already use — <code>ollama.chat</code> for completion/structured/ReAct and</p>
+<p><code>ollama.embed_batch</code> for embed — with identical parameter names and message</p>
+<p>shapes, so Pi and legacy remain benchmarkable on the same axes. Neither seam</p>
+<p>ever falls back to the other: a selected engine executes or raises.</p>
+<ul>
+<li><code>TurnParams</code> (<code>model</code>, <code>temperature</code>, <code>max_tokens</code>, <code>thinking_mode</code>,</li>
+</ul>
+<p><code>min_context</code>, <code>timeout_s</code>, <code>max_turns</code>, <code>require_vision</code>) is forwarded</p>
+<p>unchanged on every verb. The Pi path maps them onto pi-ai turn options</p>
+<p>(<code>temperature</code>, <code>max_tokens</code>, <code>thinking_level</code>, provider <code>timeout_ms</code>);</p>
+<p><code>min_context</code> and <code>require_vision</code> map to capability admission in the Pi</p>
+<p>model catalog, and <code>max_turns</code> bounds the ReAct tool loop.</p>
+<ul>
+<li>Structured output is a forced tool call, never free-form JSON text: the Pi</li>
+</ul>
+<p>worker registers an <code>emit_structured_output</code> capture tool</p>
+<p>(<code>pi-runtime/src/structured.mjs</code>) whose parameters are a mechanical</p>
+<p>JSON-Schema translation (unsupported constructs fail closed at session open</p>
+<p>with <code>structured_output_schema_unsupported</code>, never mid-turn) and forces that</p>
+<p>tool choice. A turn that answers with free-form text instead of the forced</p>
+<p>call raises <code>structured_output_missing</code>; Python then revalidates the captured</p>
+<p>object against the original JSON Schema, allows exactly one bounded repair</p>
+<p>turn, and raises a typed <code>structured_output_invalid</code> fail-closed failure</p>
+<p>instead of returning an error-shaped result. The legacy structured path keeps</p>
+<p>using <code>llm_schema_adapter</code>&#x27;s OpenAI-compatible JSON-schema <code>response_format</code></p>
+<p>plus <code>parse_json_object</code>, so both engines yield a schema-validated object and</p>
+<p>stay methodologically comparable.</p>
+<ul>
+<li>The Pi worker wire protocol is versioned (<code>PROTOCOL_VERSION = 2</code>, pinned in</li>
+</ul>
+<p>both <code>backend/app/core/pi_runtime/protocol.py</code> and</p>
+<p><code>pi-runtime/src/protocol.mjs</code>); v2 is what carries the forced structured</p>
+<p>frames (<code>output_schema</code>, <code>tool_choice</code>, and the captured <code>structured</code></p>
+<p>object). Both sides validate the version at handshake and per frame, and a</p>
+<p>worker answering with a mismatched version is rejected</p>
+<p>(<code>protocol_version_mismatch</code>) and reclaimed rather than used.</p>
+<ul>
+<li>Every dispatcher call persists exactly one durable, queryable usage-ledger</li>
+</ul>
+<p>row (<code>backend/app/core/agentic/usage_ledger.py</code> writes <code>AgenticUsageRow</code> into</p>
+<p>the <code>agentic_usage_rows</code> table, migration <code>023_agentic_usage_ledger</code>)</p>
+<p>regardless of engine or outcome: success, error, abort, endpoint-resolution</p>
+<p>failure, and a raising legacy executor each record their one row, with</p>
+<p>pre-dispatch failures zeroed and stamped <code>error_type</code>. Pi rows carry exact</p>
+<p>pi-ai usage including <code>cost.total</code>; legacy rows carry provider-reported usage</p>
+<p>where present and otherwise estimate input/output with the existing</p>
+<p><code>count_tokens</code> counter and mark <code>estimate=true</code> — estimated and exact numbers</p>
+<p>are never mixed silently. A separate short identity-only trace span</p>
+<p>(<code>event_kind=&quot;agentic_usage&quot;</code>,</p>
+<p><code>route_id=&quot;agentic:&lt;engine&gt;:&lt;endpoint|node|unresolved&gt;&quot;</code>) is recorded for</p>
+<p>trace continuity; the accounting row never lives inside that 120-char</p>
+<p>identity field. Ledger identity fields carry <code>endpoint_id</code>/<code>node_id</code> only,</p>
+<p>never endpoint URLs, keys, prompts, or response content.</p>
 <h2 id="architecture-notes">Architecture Notes</h2>
 <ul>
 <li>The feature is mounted through <code>frontend/src/components/chat/ChatView.tsx</code> and the UI navigation path recorded in the inventory.</li>
@@ -297,7 +373,7 @@
 </ul>
 <h2 id="compass-evidence">Compass Evidence</h2>
 <ul>
-<li>Spec/task: CF-SPEC-77 / CF-986</li>
+<li>Spec/task: CF-SPEC-77 / CF-986; CF-SPEC-8 (Pi replacement W1 dispatcher)</li>
 <li>Inventory source: <code>docs/features/inventory.json</code></li>
 </ul>
 <h2 id="when-to-update">When To Update</h2>
@@ -314,6 +390,7 @@
 <li class="toc-level-2"><a href="#state-api-and-backend-contracts">State, API, And Backend Contracts</a></li>
 <li class="toc-level-3"><a href="#stores">Stores</a></li>
 <li class="toc-level-3"><a href="#api-and-backend">API And Backend</a></li>
+<li class="toc-level-3"><a href="#agentic-dispatcher-and-engine-selection-pi-replacement-w1">Agentic Dispatcher And Engine Selection (Pi Replacement W1)</a></li>
 <li class="toc-level-2"><a href="#architecture-notes">Architecture Notes</a></li>
 <li class="toc-level-2"><a href="#agents-skills-llm-mcp-and-permissions">Agents, Skills, LLM, MCP, And Permissions</a></li>
 <li class="toc-level-2"><a href="#tests-and-verification">Tests And Verification</a></li>

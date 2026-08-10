@@ -237,8 +237,8 @@
   <dl class="meta-grid">
     <div><dt>UI Path</dt><dd>Autoresearch &gt; Experiments</dd></div>
     <div><dt>Component</dt><dd><code>AutoresearchView</code></dd></div>
-    <div><dt>Source Refs</dt><dd>2</dd></div>
-    <div><dt>Tests</dt><dd>0</dd></div>
+    <div><dt>Source Refs</dt><dd>9</dd></div>
+    <div><dt>Tests</dt><dd>1</dd></div>
   </dl>
   <div class="link-cluster" aria-label="Related feature links"><a href="../dashboard/researcher.html">Autoresearch Dashboard</a>
 <a href="../config/researcher.html">Autoresearch Configuration</a></div>
@@ -272,6 +272,15 @@
 <li>Generated experiment records, reasoning memories, and improvement proposals keep the project id that authorized the run.</li>
 <li>Question-bank experiments can only evaluate or rewrite deployments that belong to the active project; stale deployment ids from another project are treated as not found before LLM evaluation or mutation.</li>
 </ul>
+<h2 id="model-routing-and-engine-selection">Model Routing And Engine Selection</h2>
+<ul>
+<li>Autoresearch experiments run through six loop runners — model-and-temperature sweeps, persona tuning, question-bank improvement, RAG-parameter tuning, skill-prompt tuning, and UI-simulation tuning. Each runner makes its own model calls to hypothesize a change, evaluate it, and score the result.</li>
+<li>Pi Replacement wave W6 sends those runner calls through Istara&#x27;s shared agentic dispatcher, so the same experiment can run on either the Pi replacement engine or the legacy engine without changing what the experiment does. The experiment start boundary validates and binds an explicit <code>pi</code> or <code>legacy</code> choice once; when unset, it defaults from <code>settings.agentic_core</code>. W9 removed the old per-site legacy fallbacks: the dispatcher is the only path, and selecting the legacy engine is still a safe rollback because the dispatcher serves it through its own legacy executor.</li>
+<li>Which engine ran an experiment is recorded in the run&#x27;s usage accounting, so Pi and legacy runs of the same experiment stay distinguishable and auditable; no prompts, hypotheses, or responses are added to that accounting.</li>
+<li>Model-and-temperature sweeps on the Pi engine explore the configured Pi model catalog (settings endpoints, registered LLM servers, and local Ollama or LM Studio models) across temperatures, skipping embedding-only models. Each catalog endpoint is swept as its own comparison point, so two endpoints that serve the same model still count as two distinct points rather than collapsing into one. If the catalog cannot span the requested number of distinct endpoints (two by default) the run is marked as a truncated sweep rather than quietly shrinking, so a narrow comparison stays visible instead of hidden.</li>
+<li>RAG-parameter tuning moves its suggestion step through the dispatcher, and its retrieval-quality embedding inherits the W8 <code>agentic.embed</code> dispatch: legacy uses the unchanged <code>ollama.embed*</code> plane and Pi uses the embeddings gateway.</li>
+<li>Every runner stays bound to the project that authorized the experiment: engine choice, telemetry, and execution all use that authorized project, and the governed proposal-only path for autoresearch is unchanged, so a run cannot act on or account against another project.</li>
+</ul>
 <h2 id="caveats">Caveats</h2>
 <ul>
 <li>Needs interactive verification for exact empty, loading, error, and permission-denied states.</li>
@@ -288,9 +297,9 @@
 </ul>
 <h2 id="evidence">Evidence</h2>
 <ul>
-<li>Source files: <code>frontend/src/components/autoresearch/AutoresearchView.tsx</code>, <code>backend/app/core/autoresearch_engine.py</code>, <code>backend/app/core/autoresearch_runners/question_bank.py</code></li>
+<li>Source files: <code>frontend/src/components/autoresearch/AutoresearchView.tsx</code>, <code>backend/app/core/autoresearch_engine.py</code>, <code>backend/app/core/autoresearch_runners/model_temp.py</code>, <code>backend/app/core/autoresearch_runners/question_bank.py</code>, <code>backend/app/core/agentic/dispatcher.py</code></li>
 <li>API references: <code>backend/app/api/routes/autoresearch.py</code></li>
-<li>Tests: <code>tests/test_autoresearch.py</code>, <code>tests/test_project_scope_contracts.py</code></li>
+<li>Tests: <code>tests/test_autoresearch.py</code>, <code>tests/test_project_scope_contracts.py</code>, <code>tests/pi_production/test_w6_autoresearch_runners.py</code></li>
 </ul>
         </article>
         <aside class="toc-panel" aria-label="Page sections">
@@ -302,6 +311,7 @@
 <li class="toc-level-2"><a href="#how-ux-researchers-use-it">How UX Researchers Use It</a></li>
 <li class="toc-level-2"><a href="#supported-workflows">Supported Workflows</a></li>
 <li class="toc-level-2"><a href="#inputs-outputs-and-expected-outcomes">Inputs, Outputs, And Expected Outcomes</a></li>
+<li class="toc-level-2"><a href="#model-routing-and-engine-selection">Model Routing And Engine Selection</a></li>
 <li class="toc-level-2"><a href="#caveats">Caveats</a></li>
 <li class="toc-level-2"><a href="#related-features">Related Features</a></li>
 <li class="toc-level-2"><a href="#related-concepts">Related Concepts</a></li>

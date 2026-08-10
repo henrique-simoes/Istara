@@ -9,8 +9,8 @@ related_glossary: ["rag"]
 code_references: ["frontend/src/components/common/ComputePoolView.tsx", "frontend/src/stores/computeStore.ts", "backend/app/api/routes/compute.py", "backend/app/core/compute_node_invocation.py", "backend/app/core/compute_registry_helpers.py", "backend/app/core/compute_registry_invocation.py", "backend/app/core/compute_registry_lifecycle.py", "backend/app/core/compute_registry_routing.py", "backend/app/core/compute_route_evidence.py", "backend/app/core/network_discovery.py", "backend/app/core/compute_pool.py"]
 api_references: ["backend/app/api/routes/compute.py"]
 test_references: ["tests/test_compute.py", "tests/compute_cases/status_contracts.py", "tests/compute_cases/stats_websocket.py", "tests/compute_cases/routing.py", "tests/test_compute_registry_model_loading.py", "tests/test_compute_registry_hardening.py", "tests/test_network_discovery.py", "tests/test_project_rbac.py", "tests/test_project_scope_contracts.py", "tests/test_validation_project_scope.py", "tests/real_user_benchmark/run.mjs"]
-last_verified: 2026-05-23
-compass: CF-SPEC-60 / CF-774; CF-SPEC-63 / CF-814; CF-SPEC-63 / CF-815; CF-SPEC-66 / CF-856; CF-SPEC-70 / CF-899; CF-SPEC-90 / CF-1142; CF-SPEC-92 / CF-1170; CF-SPEC-121; CF-SPEC-122; CF-SPEC-123 / CF-1581; CF-SPEC-124 / CF-1590; CF-SPEC-138 / CF-1722
+last_verified: 2026-07-20
+compass: CF-SPEC-60 / CF-774; CF-SPEC-63 / CF-814; CF-SPEC-63 / CF-815; CF-SPEC-66 / CF-856; CF-SPEC-70 / CF-899; CF-SPEC-90 / CF-1142; CF-SPEC-92 / CF-1170; CF-SPEC-121; CF-SPEC-122; CF-SPEC-123 / CF-1581; CF-SPEC-124 / CF-1590; CF-SPEC-138 / CF-1722; CF-SPEC-8
 ---
 
 # Compute Pool Architecture
@@ -57,6 +57,8 @@ The architecture is Petals-inspired in collaboration and donation semantics, but
 - `ComputeRegistry.get_stats(project_id=...)` and `get_warnings(project_id=...)` reuse the same project visibility rule so the regular Compute Pool UI cannot disclose other projects' donors, models, hosts, or RAM totals. The `/api/compute/nodes`, `/api/compute/stats`, and `/api/compute/model-warnings` routes reject missing `project_id` instead of falling back to global admin capacity; global fleet stats are exposed only by `/api/admin/compute/stats` after `require_global_admin`.
 - Compute node stats distinguish donor lifecycle states: registration/health comes from visible relay/browser nodes, selection increments `selected_request_count`, successful chat/stream service increments `served_request_count`, and failures increment `failed_request_count`. The real-user benchmark must use these counters or explicit backend route logs/forced topology to prove donor usage; a model override alone is not proof that donated compute served a request.
 - Successful chat responses carry `_istara_route` metadata with content-free node id, source, provider type, route kind, project id, served model, outcome, and selected/served/failed counter snapshots. This route evidence intentionally excludes provider hosts, tokens, prompts, response text, and private endpoint fingerprints.
+- Pi API endpoints are private identity-pinned targets (`endpoint_id`, provider family, model and Keychain reference) and are never registered in the ComputeRegistry. A Pi endpoint with the same model alias as an authorized relay/browser donor therefore cannot be selected by donated-compute scheduling; telemetry may record endpoint identity/provider family/model but never endpoint URLs or credentials. Missing Pi Keychain material remains fail-closed and never falls back to the default provider.
+- The isolation invariant is bidirectional and permanent: `PiModelManager` (`backend/app/core/pi_runtime/model_manager.py`) never consults the ComputeRegistry, and the ComputeRegistry never consults it. Pi catalog entries come only from static Pi settings, read-only `LLMServer` row projections, and local serving hosts — never from relay/browser donor capacity — and Pi endpoint selection is exact-identity or capability-filtered, never donor-style scoring. `tests/pi_production/test_same_model_donor_isolation.py` guards this invariant and must stay green through every migration wave.
 - Donor lifecycle telemetry mirrors the route counters without storing content: relay/browser registration emits `donor.registered`, `donor.visible`, `donor.reachable`, and `donor.ready` once per authorized project, while routed requests emit `donor.selected`, `donor.served`, and `donor.failed` from the same project-scoped selection/success/failure paths that attach route evidence.
 - Collaborative benchmark scoring separates technical relay verification from natural orchestration evidence. The technical probe may temporarily enable strict routing for one bounded route-proof pass; with a project id and explicit model override, strict routing prefers authorized relay/browser nodes over duplicate server-local capacity for the same model so donor usage can be proven. After real chat, task execution, review, and findings work, the benchmark restores normal scheduling, snapshots project-scoped compute stats, and records selected/served/failure counter deltas without pinning a specific donor or bypassing Istara's model manager. Observing scheduler activity is not enough for full agentic-orchestration credit; the score remains capped until donated relay usage is actually proven.
 - Multi-donor real-user benchmarks leave explicit model pinning off for ordinary research work. Even when strict routing is enabled for a bounded technical probe, a configured server default model is treated as a preference rather than an explicit project-scoped request; otherwise stale host LM Studio defaults can exclude healthy donated relays before Istara resolves the model actually loaded on that donor. Explicit model overrides remain strict for route-proof probes.
@@ -78,6 +80,10 @@ The architecture is Petals-inspired in collaboration and donation semantics, but
 - `tests/test_project_rbac.py`
 - `tests/test_compute_registry_hardening.py`
 - `tests/test_compute_registry_model_loading.py`
+- `tests/test_pi_replacement_candidate.py`
+- `tests/test_pi_runtime_endpoints.py`
+- `tests/pi_production/test_same_model_donor_isolation.py`
+- `tests/test_compute_route_evidence_lifecycle.py`
 - `tests/test_network_discovery.py`
 - `tests/test_validation_project_scope.py`
 - `tests/real_user_benchmark/run.mjs`
@@ -93,7 +99,7 @@ The architecture is Petals-inspired in collaboration and donation semantics, but
 
 ## Compass Evidence
 
-- Spec/task: CF-SPEC-60 / CF-774; CF-SPEC-63 / CF-814; CF-SPEC-63 / CF-815; CF-SPEC-66 / CF-856; CF-SPEC-70 / CF-899; CF-SPEC-90 / CF-1142; CF-SPEC-92 / CF-1170; CF-SPEC-121; CF-SPEC-122; CF-SPEC-123 / CF-1581; CF-SPEC-124 / CF-1590; CF-SPEC-138 / CF-1722
+- Spec/task: CF-SPEC-60 / CF-774; CF-SPEC-63 / CF-814; CF-SPEC-63 / CF-815; CF-SPEC-66 / CF-856; CF-SPEC-70 / CF-899; CF-SPEC-90 / CF-1142; CF-SPEC-92 / CF-1170; CF-SPEC-121; CF-SPEC-122; CF-SPEC-123 / CF-1581; CF-SPEC-124 / CF-1590; CF-SPEC-138 / CF-1722; CF-SPEC-3 / CF-38; CF-SPEC-8 (Pi replacement W1 catalog isolation)
 - Inventory source: `docs/features/inventory.json`
 
 ## When To Update

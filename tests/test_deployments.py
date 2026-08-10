@@ -2,6 +2,15 @@
 
 from __future__ import annotations
 
+# Import-order guard: app.main pulls modules on a latent module-level import
+# cycle (research_validity -> skills.intercoder -> skill_factory ->
+# file_processor -> embeddings -> pi_runtime.engine -> telemetry ->
+# research_validity) that only resolves when the dispatcher plane
+# (app.core.agentic) has been initialized first in the process. The cycle is
+# pre-existing architecture debt outside this file; initializing the plane
+# here keeps a standalone run of this file green.
+import app.core.agentic  # noqa: F401
+
 import json
 import uuid
 from datetime import datetime, timezone

@@ -24,13 +24,11 @@ from app.api.websocket import (
     broadcast_task_progress,
     broadcast_task_queue_update,
 )
-from app.config import settings
 from app.core.agent_hooks import agent_hooks
 from app.core.checkpoint import complete_checkpoint, create_checkpoint, update_checkpoint
 from app.core.context_hierarchy import context_hierarchy
 from app.core.datetime_utils import ensure_utc
 from app.core.embeddings import TextChunk
-from app.core.ollama import ollama
 from app.core.rag import ingest_chunks, retrieve_context
 from app.core.resource_governor import governor
 from app.core.self_check import Confidence, verify_claim
@@ -515,20 +513,33 @@ class AgentLifecycleMixin:
                     project_id=project.id,
                 )
             else:
-                # No matching skill — use the general LLM to respond
-                response = await ollama.chat(
-                    messages=[
-                        {
-                            "role": "system",
-                            "content": (
-                                "You are Istara's main agent. Respond helpfully to the "
-                                f"user's steering message for project {project.name}."
-                            ),
-                        },
-                        {"role": "user", "content": message_text},
-                    ]
+                # No matching skill — use the general LLM to respond.
+                # W3 (L10): the steering reply goes through the
+                # AgenticDispatcher (``steering.reply``) with a per-message Pi
+                # session and a SteeringBinding, so queued steer/follow-up
+                # messages deliver mid-turn and /steering abort maps to
+                # turn.abort (H-5). Keyword-skill routing above is unchanged.
+                from app.core.agentic import agentic
+                from app.core.agentic.types import TurnParams
+
+                outcome = await agentic.chat_turn(
+                    project_id=project.id,
+                    agent_id=self._agent_id,
+                    session_key=f"steering:{project.id}:{uuid.uuid4().hex[:12]}",
+                    system_prompt=(
+                        "You are Istara's main agent. Respond helpfully to the "
+                        f"user's steering message for project {project.name}."
+                    ),
+                    messages=[],
+                    user_text=message_text,
+                    tool_names=[],
+                    steering_binding=agentic.steering_binding(
+                        agent_id=self._agent_id, project_id=project.id
+                    ),
+                    params=TurnParams(timeout_s=120),
+                    spine_phase="intent",
                 )
-                reply = response.get("message", {}).get("content", "")
+                reply = outcome.text
                 await broadcast_agent_status(
                     "idle",
                     f"Steering response: {reply[:200]}...",
@@ -580,11 +591,100 @@ class AgentLifecycleMixin:
                     await self._handle_debate(db, msg)
                 elif msg_type == "delegate":
                     await self._handle_delegate(db, msg)
+                elif msg_type == "a2a_task":
+                    await self._handle_a2a_task(db, msg)
                 msg_id = msg.get("id") if isinstance(msg, dict) else getattr(msg, "id", "")
                 if msg_id:
                     await mark_read(db, msg_id, project_id=msg_project_id)
         except Exception as e:
             logger.debug(f"A2A inbox check skipped: {e}")
+
+    async def _handle_a2a_task(self, db: AsyncSession, msg) -> None:
+        """Dispatch an admitted A2A ``tasks/send`` envelope to governed Pi delegation.
+
+        The public ``tasks/send`` route (``a2a.py``) persists
+        ``message_type='a2a_task'`` with plain-text content and any Pi selection
+        carried in the message metadata. This is the production caller that routes
+        such an admitted, Pi-selected task through the real Pi Agent: the route's
+        full gate chain (auth, rate, size, replay, project scope, persist, audit)
+        already ran, so no gate is weakened here. A non-Pi ``a2a_task`` envelope
+        runs no Pi work.
+        """
+        try:
+            metadata = (
+                msg.get("metadata") if isinstance(msg, dict) else getattr(msg, "metadata", None)
+            )
+            if isinstance(metadata, str):
+                try:
+                    metadata = json.loads(metadata) if metadata else {}
+                except (json.JSONDecodeError, TypeError):
+                    metadata = {}
+            metadata = metadata if isinstance(metadata, dict) else {}
+            project_id = (
+                msg.get("project_id", "")
+                if isinstance(msg, dict)
+                else getattr(msg, "project_id", "")
+            )
+            meta_project_id = str(metadata.get("project_id") or "").strip()
+            if not project_id or (meta_project_id and meta_project_id != project_id):
+                return
+            content = (
+                msg.get("content", "") if isinstance(msg, dict) else getattr(msg, "content", "")
+            )
+            await self._run_and_persist_pi_delegation(
+                db, msg, project_id=project_id, task_text=content or "", metadata=metadata
+            )
+        except Exception as e:  # pragma: no cover - defensive; never break inbox polling
+            logger.debug(f"A2A pi task dispatch skipped: {e}")
+
+    async def _run_and_persist_pi_delegation(
+        self, db: AsyncSession, msg, *, project_id: str, task_text: str, metadata: dict
+    ) -> None:
+        """Run an admitted, Pi-selected A2A delegation through the real Pi Agent
+        and persist the reply.
+
+        Shared by the ``a2a_task`` (real ``tasks/send`` route shape) and the
+        ``pi_delegate`` (structured-content) dispatch paths. Only Pi-selected
+        delegations run; on any resolver/Keychain/worker failure
+        ``run_pi_delegation`` fails closed (returns ``None``) and nothing is
+        persisted. Project/agent scope is fixed by the authenticated caller —
+        the model cannot set it.
+        """
+        from app.core.pi_replacement import pi_replacement_requested
+        from app.core.pi_runtime.seams import run_pi_delegation
+
+        if not pi_replacement_requested(metadata=metadata):
+            return
+        delegation = await run_pi_delegation(
+            project_id=project_id,
+            task_text=str(task_text),
+            agent_id=self._agent_id,
+            metadata=metadata,
+        )
+        if delegation is None:
+            return
+        from app.services.a2a import send_message as a2a_send
+
+        msg_from = (
+            msg.get("from_agent_id", "")
+            if isinstance(msg, dict)
+            else getattr(msg, "from_agent_id", "")
+        )
+        await a2a_send(
+            db=db,
+            from_agent_id=self._agent_id,
+            to_agent_id=msg_from,
+            message_type="response",
+            content=(delegation.get("text") or "Pi delegation completed.")[:4000],
+            project_id=project_id,
+            metadata={
+                "project_id": project_id,
+                "engine": "pi",
+                "delegation_result": True,
+                "turn_status": delegation.get("status"),
+                "endpoint_id": delegation.get("endpoint_id"),
+            },
+        )
 
     async def _handle_delegate(self, db: AsyncSession, msg) -> None:
         """Handle delegated tasks from other agents (e.g. MECE reporting)."""
@@ -595,6 +695,27 @@ class AgentLifecycleMixin:
             if not content_str:
                 return
             data = json.loads(content_str)
+
+            if data.get("type") == "pi_delegate":
+                # Governed Pi delegation: the A2A gate chain (auth, rate, size,
+                # replay, project scope, persist, audit) already ran in the route;
+                # this is where the admitted work actually executes. Only Pi-
+                # selected delegations run through the real Pi Agent.
+                metadata = data.get("metadata") or {}
+                if isinstance(metadata, str):
+                    try:
+                        metadata = json.loads(metadata) if metadata else {}
+                    except (json.JSONDecodeError, TypeError):
+                        metadata = {}
+                project_id = data.get("project_id") or metadata.get("project_id")
+                msg_project_id = msg.get("project_id", "") if isinstance(msg, dict) else ""
+                if not project_id or (msg_project_id and msg_project_id != project_id):
+                    return
+                task_text = data.get("task") or data.get("text") or data.get("message") or ""
+                await self._run_and_persist_pi_delegation(
+                    db, msg, project_id=project_id, task_text=str(task_text), metadata=metadata
+                )
+                return
 
             if data.get("type") == "mece_report_request":
                 from app.core.report_manager import report_manager
@@ -744,8 +865,26 @@ class AgentLifecycleMixin:
                     {"role": "user", "content": f"[Relevant documents]\n{rag.context_text[:800]}"}
                 )
 
-            response = await ollama.chat(messages=llm_messages)
-            analysis = response.get("message", {}).get("content", "")
+            # W4: the collaboration reply goes through the AgenticDispatcher
+            # (``a2a.collaboration``) — thread history maps to the turn
+            # history exactly like ``run_delegation(history=...)``. The
+            # dispatcher's engine resolution decides Pi vs. legacy.
+            from app.core.agentic import agentic
+            from app.core.agentic.types import TurnParams
+
+            outcome = await agentic.chat_turn(
+                project_id=task.project_id,
+                agent_id=self._agent_id,
+                session_key=f"a2a-collab:{context_id}",
+                system_prompt=llm_messages[0]["content"],
+                messages=llm_messages[1:-1],
+                user_text=llm_messages[-1]["content"],
+                tool_names=[],
+                params=TurnParams(timeout_s=120),
+                task_id=task_id,
+                spine_phase="synthesis",
+            )
+            analysis = outcome.text
             if not analysis:
                 return
 
@@ -829,26 +968,29 @@ class AgentLifecycleMixin:
                     ):
                         critique = msg.get("content", "")
                         # Synthesize both perspectives
-                        synth = await ollama.chat(
-                            messages=[
-                                {
-                                    "role": "system",
-                                    "content": (
-                                        "Synthesize two perspectives on the same research "
-                                        "analysis into a single improved output."
-                                    ),
-                                },
-                                {
-                                    "role": "user",
-                                    "content": (
-                                        f"Original analysis:\n{output.summary[:1000]}\n\n"
-                                        f"Critique from {target}:\n{critique[:1000]}\n\n"
-                                        "Produce a refined analysis that addresses the critique."
-                                    ),
-                                },
-                            ]
+                        synthesis_system = (
+                            "Synthesize two perspectives on the same research "
+                            "analysis into a single improved output."
                         )
-                        return synth.get("message", {}).get("content", "")
+                        synthesis_user = (
+                            f"Original analysis:\n{output.summary[:1000]}\n\n"
+                            f"Critique from {target}:\n{critique[:1000]}\n\n"
+                            "Produce a refined analysis that addresses the critique."
+                        )
+                        # W4: dispatcher completion (``a2a.debate_synthesis``).
+                        from app.core.agentic import agentic
+                        from app.core.agentic.types import TurnParams
+
+                        outcome = await agentic.completion(
+                            purpose="a2a.debate_synthesis",
+                            project_id=task.project_id,
+                            system=synthesis_system,
+                            messages=[{"role": "user", "content": synthesis_user}],
+                            params=TurnParams(timeout_s=120),
+                            task_id=task.id,
+                            spine_phase="synthesis",
+                        )
+                        return outcome.text
 
             logger.debug(f"A2A debate timed out — no response from {target}")
         except Exception as e:
@@ -883,20 +1025,25 @@ class AgentLifecycleMixin:
             if not project_id:
                 return
 
-            response = await ollama.chat(
-                messages=[
-                    {
-                        "role": "system",
-                        "content": (
-                            f"You are {self._agent_id}, a critical reviewer. Identify gaps, "
-                            "unsupported claims, missing perspectives, and areas for "
-                            "improvement. Be constructive but rigorous."
-                        ),
-                    },
-                    {"role": "user", "content": content},
-                ]
+            critique_system = (
+                f"You are {self._agent_id}, a critical reviewer. Identify gaps, "
+                "unsupported claims, missing perspectives, and areas for "
+                "improvement. Be constructive but rigorous."
             )
-            critique = response.get("message", {}).get("content", "")
+            # W4: dispatcher completion (``a2a.debate_critique``).
+            from app.core.agentic import agentic
+            from app.core.agentic.types import TurnParams
+
+            outcome = await agentic.completion(
+                purpose="a2a.debate_critique",
+                project_id=project_id,
+                system=critique_system,
+                messages=[{"role": "user", "content": content}],
+                params=TurnParams(timeout_s=120),
+                task_id=task_id or None,
+                spine_phase="review",
+            )
+            critique = outcome.text
             if not critique:
                 return
 

@@ -237,8 +237,8 @@
   <dl class="meta-grid">
     <div><dt>UI Path</dt><dd>Findings &gt; Codebook</dd></div>
     <div><dt>Component</dt><dd><code>CodebookViewer</code></dd></div>
-    <div><dt>Source Refs</dt><dd>4</dd></div>
-    <div><dt>Tests</dt><dd>2</dd></div>
+    <div><dt>Source Refs</dt><dd>6</dd></div>
+    <div><dt>Tests</dt><dd>4</dd></div>
   </dl>
   <div class="link-cluster" aria-label="Related feature links"><a href="../evidence/researcher.html">Findings Evidence</a>
 <a href="../review/researcher.html">Findings Code Review</a></div>
@@ -272,6 +272,15 @@
 <li>Direct codebook and code actions stay bound to the active project; stale links or ids from other projects do not open or update records in this view.</li>
 <li>Visible status, lists, forms, generated artifacts, or review results shown by the referenced component and routes.</li>
 </ul>
+<h2 id="independent-coding-and-reliability">Independent Coding And Reliability</h2>
+<ul>
+<li>In the Pi-enabled path, Istara asks the dispatcher for independent structured coding passes through <code>validity.coder</code>. Each pass is pinned to a concrete endpoint identity from the authorized project catalog.</li>
+<li>Endpoint identity is the independence unit. Two endpoints serving the same model can be separate coders when their endpoint identities are different; the system does not count repeated calls to one endpoint as independent agreement.</li>
+<li>If enough distinct endpoints are not available, the coding run is blocked and records a failed route-evidence reason. It does not silently switch engines or accept provisional codes as reliable.</li>
+<li>Codes remain provisional until source-grounded reliability, reconciliation, and human review gates are complete. Only then may findings proceed toward accepted research evidence and reports.</li>
+</ul>
+<h2 id="rollback-and-migration-boundary">Rollback And Migration Boundary</h2>
+<p>Select the <code>legacy</code> engine for the project (or keep the legacy global default) to return coder calls to the dispatcher&#x27;s permanent project-authorized legacy executor. W8 now routes embedding consumers through <code>agentic.embed</code>: legacy keeps the unchanged <code>ollama.embed*</code> plane, while Pi uses the <code>EmbeddingsGateway</code>; the codebook&#x27;s structured-coder route does not change that embedding boundary.</p>
 <h2 id="caveats">Caveats</h2>
 <ul>
 <li>Needs interactive verification for exact empty, loading, error, and permission-denied states.</li>
@@ -288,9 +297,9 @@
 </ul>
 <h2 id="evidence">Evidence</h2>
 <ul>
-<li>Source files: <code>frontend/src/components/findings/FindingsView.tsx</code>, <code>frontend/src/components/findings/CodebookViewer.tsx</code>, <code>backend/app/api/routes/codebooks.py</code>, <code>backend/app/api/routes/codebook_versions.py</code></li>
+<li>Source files: <code>frontend/src/components/findings/FindingsView.tsx</code>, <code>frontend/src/components/findings/CodebookViewer.tsx</code>, <code>backend/app/api/routes/codebooks.py</code>, <code>backend/app/api/routes/codebook_versions.py</code>, <code>backend/app/services/research_validity_service.py</code>, <code>backend/app/core/agentic/dispatcher.py</code></li>
 <li>API references: <code>backend/app/api/routes/codebooks.py</code>, <code>backend/app/api/routes/codebook_versions.py</code></li>
-<li>Tests: <code>tests/test_codebooks.py</code>, <code>tests/test_project_scope_contracts.py</code></li>
+<li>Tests: <code>tests/test_codebooks.py</code>, <code>tests/test_project_scope_contracts.py</code>, <code>tests/test_research_validity_contract.py</code>, <code>tests/pi_production/test_w7_validation.py</code></li>
 </ul>
         </article>
         <aside class="toc-panel" aria-label="Page sections">
@@ -302,6 +311,8 @@
 <li class="toc-level-2"><a href="#how-ux-researchers-use-it">How UX Researchers Use It</a></li>
 <li class="toc-level-2"><a href="#supported-workflows">Supported Workflows</a></li>
 <li class="toc-level-2"><a href="#inputs-outputs-and-expected-outcomes">Inputs, Outputs, And Expected Outcomes</a></li>
+<li class="toc-level-2"><a href="#independent-coding-and-reliability">Independent Coding And Reliability</a></li>
+<li class="toc-level-2"><a href="#rollback-and-migration-boundary">Rollback And Migration Boundary</a></li>
 <li class="toc-level-2"><a href="#caveats">Caveats</a></li>
 <li class="toc-level-2"><a href="#related-features">Related Features</a></li>
 <li class="toc-level-2"><a href="#related-concepts">Related Concepts</a></li>

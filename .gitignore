@@ -135,3 +135,8 @@ backend/data/skills/
 .compass-forge/
 .mcp.json
 opencode.json
+
+# CF-322/DEC-9: industry dataset content is fetched, never committed (attribution only)
+comparison-Istara-pi/industry/bfcl/*.json
+comparison-Istara-pi/industry/tau_bench/*_tasks_test.py
+comparison-Istara-pi/industry/tau_bench/*_rules.py

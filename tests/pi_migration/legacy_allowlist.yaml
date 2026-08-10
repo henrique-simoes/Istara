@@ -1,0 +1,143 @@
+# Pi full-replacement — legacy-plane call-site allowlist (master plan §4.2).
+#
+# This is the ONLY file allowed to authorize a direct legacy-plane call
+# (ollama.* / llm_router.* / compute_registry.* aliases, direct per-node
+# dispatch, ChatOpenAI browser bypass) in backend/app/.
+#
+# Each wave removes the product sites it migrated and lowers
+# ratchet.expected_product_sites by exactly that many. Final state (W9,
+# reached): `product` is empty, expected_product_sites is 0, and only
+# `permanent` remains. Any new direct call added later fails CI.
+#
+# Written in a tiny YAML subset (flow lists + quoted scalars only) so it can
+# be parsed without pyyaml; see tests/pi_migration/test_count_to_zero.py.
+
+ratchet:
+  # W0 baseline: 69 chat + 17 embed + 1 browser bypass = 87 product sites.
+  # W2 (complete) migrated all 9 interactive surfaces to the AgenticDispatcher:
+  # the 4 one-shot completion surfaces (context_dag DAG compaction,
+  # context_summarizer, presentation slide-instruction, UI-audit heuristics),
+  # the 4 streaming ReAct loops (chat.py native tools + text fallback,
+  # interfaces.py design native tools + design text fallback), and the
+  # browser_service browse_website tool (endpoint identity now resolved via
+  # PiModelManager; see the F-W2-1b governance decision in
+  # scripts/pi_migration_inventory.py). The ratchet drops by 9.
+  # W3 migrated the 8 research-spine + steering sites (master plan §8 W3):
+  # agent_research.py L1 ReAct (:129,:131), L2 planner (:478), L3 step
+  # executor (:667), L5 reflection verifier (:1062), self_check.py L6 claim
+  # verification (:75), agent_execution.py L7 skill reflection (:472), and
+  # agent_lifecycle.py L10 steering reply (:519). The ratchet drops by 8.
+  # W4 routed the 3 A2A handler sites (agent_lifecycle.py collaboration,
+  # debate synthesis, debate critique) through the AgenticDispatcher behind
+  # the `agentic_core` feature flag with the legacy ollama branch preserved
+  # alongside it, so the sites stayed allowlisted and the ratchet stayed at
+  # 70 until the legacy branch was retired.
+  # W5 routed the 28 skills/reports/interview-services sites (skill_factory
+  # plan/execute + 3-stage repair chain, the 4 Discover skills, intercoder
+  # kappa pipeline, report_manager summaries/MECE/narratives, adaptive
+  # interview clarify/saturation, deployment follow-up) through the
+  # AgenticDispatcher behind the same `agentic_core` feature flag with the
+  # legacy ollama/llm_router branch preserved alongside it, so the sites
+  # stayed allowlisted and the ratchet stayed at 70 until the legacy branch
+  # was retired.
+  # W6 routed the 14 autoresearch-runner chat sites (model_temp
+  # evaluate/score, persona hypothesize/evaluate/score, question_bank
+  # hypothesize/evaluate/score, rag_params hypothesize, skill_prompt
+  # hypothesize/evaluate/score, ui_sim hypothesize/evaluate) through the
+  # AgenticDispatcher behind the same `agentic_core` feature flag with the
+  # legacy llm_router branch preserved alongside it, so the sites stayed
+  # allowlisted and the ratchet stayed at 70 until the legacy branch was
+  # retired. The rag_params retrieval-eval embed migrated with the other
+  # embed sites in W8 (see the W8 note below).
+  # W7 routed the 7 validation/consensus/dual-coder chat sites (validation.py
+  # dual_run/full_ensemble/self_moa ensembles, adversarial_review + debate
+  # completions, validation_executor LLM-as-judge, research_validity_service
+  # dual-coder) through the AgenticDispatcher behind the same `agentic_core`
+  # feature flag with the legacy llm_router/server/node branch preserved
+  # alongside it, so the sites stayed allowlisted and the ratchet stayed at
+  # 70 until the legacy branch was retired. The W7 migration also fixed the
+  # latent validation_executor judge bug (registry returns message.content;
+  # the old code read a top-level "content" key and silently degraded to the
+  # default pass).
+  # W8 migrated all 17 embed sites: the wrappers (embeddings.py embed_text /
+  # embed_chunks / ensure_embed_model, validation.py _get_embeddings) now route
+  # through agentic.embed — legacy engine: the unchanged ollama.embed* plane
+  # via the dispatcher's permanent legacy executor; Pi engine: the W8
+  # EmbeddingsGateway (pi_runtime/embeddings_gateway.py). The 14 wrapper
+  # consumers inherit the dispatch with zero edits. The W8 migration also
+  # fixed the latent W1 legacy-executor embed bug (OllamaClient.embed_batch
+  # takes no project_id kwarg; passing it raised TypeError on the real
+  # client). The ratchet drops by 17.
+  # W9 (final): retired the preserved per-site legacy branches in the 53
+  # remaining product sites (W4 A2A ×3, W5 skills/reports/interviews ×28,
+  # W6 autoresearch runners ×14, W7 validation/consensus/dual-coder ×7 +
+  # the validation_executor judge). The dispatcher path is now the ONLY
+  # path in product code; the legacy engine is reached exclusively through
+  # the dispatcher's permanent legacy executor (agentic/legacy.py, see
+  # `permanent` below), so behavior under engine="legacy" is preserved by
+  # construction. `product` is empty and the ratchet is 0 — any NEW direct
+  # legacy-plane call in backend/app/ fails CI from here on.
+  expected_product_sites: 0
+
+# ---------------------------------------------------------------------------
+# PRODUCT SITES — NONE REMAIN (W9 final state). All 87 W0 product sites route
+# through the AgenticDispatcher. Adding an entry here requires a governed
+# exception; prefer deleting the direct call instead.
+# ---------------------------------------------------------------------------
+product: []
+
+# ---------------------------------------------------------------------------
+# PERMANENT INFRASTRUCTURE — NEVER migrate (master plan §4.3). The scanner
+# does not flag these (donor dispatch uses bare node.chat / raw HTTP, which
+# the §4.1 patterns deliberately exclude); they are recorded here so the
+# count-to-zero contract names the permanent exceptions explicitly.
+# ---------------------------------------------------------------------------
+permanent:
+  - keys: ["backend/app/core/agentic/legacy.py:599"]
+    category: "legacy-engine internals"
+    note: "AgenticDispatcher legacy distinct ensemble — direct calls to each selected healthy ComputeRegistry server preserve the pre-dispatcher validation baseline (line key re-pinned in W8 after the _embed project_id fix; re-pinned again at CF-320 after the F-11 endpoint-identity addition; re-pinned at F-12 stop_reason/truncated surfacing)"
+  - keys: ["backend/app/core/compute_node_transport.py:298-333"]
+    category: "donated-compute transport"
+    note: "websocket request/response transport for relay/browser donors"
+  - keys: ["backend/app/core/compute_node_invocation.py:57-77", "backend/app/core/compute_node_invocation.py:178-191", "backend/app/core/compute_node_invocation.py:323-333", "backend/app/core/compute_node_invocation.py:362-372"]
+    category: "donated-compute transport"
+    note: "WS llm_request / stream fallback / embed_request / embed_batch branches"
+  - keys: ["backend/app/api/routes/compute.py"]
+    category: "donated-compute transport"
+    note: "relay routes (whole file); relay/ CLI and DonateComputeToggle.tsx outside backend/app"
+  - keys: ["backend/app/core/compute_registry_routing.py:106-109", "backend/app/core/compute_registry_routing.py:120-124", "backend/app/core/compute_registry_routing.py:181-190", "backend/app/core/compute_registry_routing.py:206-228"]
+    category: "donor scheduling/authorization"
+    note: "donor node selection and project-scope authorization"
+  - keys: ["backend/app/core/compute_registry_invocation.py:184-203", "backend/app/core/compute_registry_invocation.py:231-238", "backend/app/core/compute_registry_invocation.py:288-311", "backend/app/core/compute_registry_invocation.py:628-648", "backend/app/core/compute_registry_invocation.py:940-943", "backend/app/core/compute_registry_invocation.py:1003-1008"]
+    category: "donor scheduling/authorization"
+    note: "registry chat/chat_stream/embed/embed_batch dispatch incl. relay WS branches"
+  - keys: ["backend/app/core/compute_registry_lifecycle.py:38-79", "backend/app/core/compute_registry_lifecycle.py:161-163", "backend/app/core/compute_registry_lifecycle.py:443-476"]
+    category: "donor lifecycle/telemetry/heartbeat"
+    note: "project scopes, donor health/heartbeat tracking"
+  - keys: ["backend/app/core/compute_node.py:77-91"]
+    category: "donor lifecycle/telemetry/heartbeat"
+    note: "relay connection fields (websocket, pending_requests, last_heartbeat)"
+  - keys: ["backend/app/core/connection_string.py", "backend/app/api/routes/connections.py"]
+    category: "donor lifecycle/telemetry/heartbeat"
+    note: "connection strings"
+  - keys: ["backend/app/core/compute_registry_invocation.py:332", "backend/app/core/compute_registry_invocation.py:353", "backend/app/core/compute_registry_invocation.py:394", "backend/app/core/compute_registry_invocation.py:662", "backend/app/core/compute_registry_invocation.py:683", "backend/app/core/compute_registry_invocation.py:720", "backend/app/core/compute_registry_invocation.py:949", "backend/app/core/compute_registry_invocation.py:954", "backend/app/core/compute_registry_invocation.py:1014", "backend/app/core/compute_registry_invocation.py:1022"]
+    category: "legacy-engine internals"
+    note: "raw-HTTP provider transport branches (ollama/anthropic/openai) — the benchmark baseline"
+  - keys: ["backend/app/core/ollama.py:88-200", "backend/app/core/lmstudio.py:161-344"]
+    category: "legacy-engine internals"
+    note: "OllamaClient/LMStudioClient chat/chat_stream/embed/embed_batch transports"
+  - keys: ["backend/app/core/compute_registry_lifecycle.py:568", "backend/app/core/compute_registry_lifecycle.py:586"]
+    category: "legacy-engine internals"
+    note: "LM Studio chat-readiness health probes"
+  - keys: ["backend/app/core/model_capabilities.py:590", "backend/app/core/lmstudio.py:97"]
+    category: "legacy-engine internals"
+    note: "tool-support capability probe; LM Studio loaded-model detect probe"
+  - keys: ["backend/app/core/compute_registry_invocation.py:1153-1177", "backend/app/core/ollama.py:74-86", "backend/app/core/ollama.py:210-223"]
+    category: "local model lifecycle"
+    note: "pull_model/ensure_model provisioning (re-used by §5.2.3 provisioner)"
+  - keys: ["backend/app/core/compute_node_models.py:282-407"]
+    category: "local model lifecycle"
+    note: "LM Studio JIT model load"
+  - keys: ["backend/app/core/compute_registry_routing.py:350-633"]
+    category: "local model lifecycle"
+    note: "donor/node recovery"

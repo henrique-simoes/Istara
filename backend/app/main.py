@@ -588,6 +588,25 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     except Exception as e:
         _log.warning(f"Dimension check skipped: {e}")
 
+    # W8 vector-space invariant: both engines must embed with the SAME model —
+    # an engine switch must never silently change the embedding space, or
+    # every stored vector is invalidated.
+    try:
+        from app.core.pi_runtime.embeddings_gateway import assert_vector_space_invariant
+        from app.core.vector_health import check_embedding_dimensions
+
+        shared_embed_model = await assert_vector_space_invariant(
+            dimension_probe=check_embedding_dimensions
+        )
+        _log.info(f"Vector-space invariant OK (embed model: {shared_embed_model})")
+    except Exception as e:
+        _log.critical(
+            "Vector-space invariant check failed; refusing startup to prevent unsafe "
+            "engine switching: %s",
+            e,
+        )
+        raise RuntimeError("vector_space_invariant_violation") from e
+
     # ── Data integrity check ──
     try:
         from app.core.data_integrity import run_integrity_check
@@ -732,6 +751,16 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
             pass
         except Exception as e:
             _sd_log.warning(f"Background task stopped with error during shutdown: {e}")
+
+    # Owned teardown of the supervised Pi runtime worker (Plan C D-C1): cancel
+    # runs, terminate, then kill only the child PID it created. No-op when a Pi
+    # request never started the worker; never blocks shutdown on a stuck child.
+    try:
+        from app.core.pi_runtime import shutdown_supervisor
+
+        await shutdown_supervisor()
+    except Exception as e:
+        _sd_log.warning(f"Pi runtime worker shutdown error: {e}")
 
     _sd_log.info("Shutdown complete.")
 

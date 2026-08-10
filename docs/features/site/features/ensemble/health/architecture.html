@@ -228,7 +228,7 @@
       <h1>Ensemble Health</h1>
       <p class="lede">Ensemble Health surfaces health and consensus signals for Istara&#x27;s multi-model or multi-agent ensemble behavior.</p>
     </div>
-    <span class="status-chip">needs-verification</span>
+    <span class="status-chip">documented</span>
   </div>
   <nav class="audience-tabs" aria-label="Documentation audience">
     <a href="researcher.html">Researcher</a>
@@ -237,8 +237,8 @@
   <dl class="meta-grid">
     <div><dt>UI Path</dt><dd>Ensemble Health</dd></div>
     <div><dt>Component</dt><dd><code>EnsembleHealthView</code></dd></div>
-    <div><dt>Source Refs</dt><dd>2</dd></div>
-    <div><dt>Tests</dt><dd>0</dd></div>
+    <div><dt>Source Refs</dt><dd>6</dd></div>
+    <div><dt>Tests</dt><dd>4</dd></div>
   </dl>
   <div class="link-cluster" aria-label="Related feature links"><a href="../../quality/dashboard/architecture.html">Quality Dashboard</a>
 <a href="../../compute/pool/architecture.html">Compute Pool</a></div>
@@ -273,6 +273,9 @@
 <li>Debate and adversarial helpers now label their scope explicitly. Calls without <code>coding_run_id</code> are response-level quality signals and are not formal reliability; calls with coding-run/evidence-unit/codebook handles emit <code>debate.review</code> or <code>adversarial.review</code> telemetry for coded-evidence reconciliation.</li>
 <li>Qualitative coding prompts must include protected methodology, codebook, evidence-unit schema, reliability policy, and promotion gate blocks before any model codes evidence.</li>
 <li>Governed coding runs use Compute Manager to select distinct healthy project-authorized model identities, execute independent coding passes, persist route evidence, and compute Fleiss/Cohen/Krippendorff-style reliability on evidence-unit matrices. This is the formal reliability path; response-level validation remains an operational quality signal.</li>
+<li>W7 routes the validation call sites through the shared <code>AgenticDispatcher</code> unconditionally: <code>agentic.ensemble</code> uses purposes <code>validation.dual_run</code> (two distinct endpoints), <code>validation.full_ensemble</code> (the requested minimum width plus one optional spare), and <code>validation.self_moa</code> (temperature samples with <code>distinct=False</code>); <code>agentic.completion</code> uses <code>validation.adversarial</code> and <code>validation.debate</code>; the structured judge uses <code>validation.judge</code>. The dispatcher remains the engine-resolution boundary. W9 retired the per-site preserved router/server/compute-registry branches: the dispatcher path is the only path, and a legacy-resolved engine is served exclusively by the dispatcher&#x27;s permanent legacy executor. For a legacy-resolved full ensemble, the minimum width is authoritative: a healthy distinct server is only used as the optional spare when an earlier sample fails, and satisfying that minimum records aggregate success while retaining the failed sample detail for telemetry.</li>
+<li><code>distinct=True</code> is an endpoint-identity contract, not a model-name contract. Multiple endpoints serving the same model remain independent route identities; if the Pi catalog cannot satisfy the requested distinct width, validation fails closed rather than fabricating diversity. Dual-run degrades to the labeled Self-MoA path and full ensemble degrades through dual-run; dispatch failures produce an empty/unavailable validation result. The structured judge returns <code>passed=False</code> with an unavailable reason when dispatch or a usable verdict is missing, so unavailable validation cannot become report evidence.</li>
+<li>W8 migrated <code>validation.py:_get_embeddings</code> to <code>agentic.embed</code>: the legacy engine keeps the unchanged embedding plane and the Pi engine uses the <code>EmbeddingsGateway</code>. The W7 validation migration therefore has no separate embedding fallback branch to document.</li>
 <li>Real-user and Colima/Docker benchmarks must not enable strict single-model routing as their default architecture test. Strict routing is a technical isolation probe; the product-faithful benchmark observes the normal compute/model manager selecting and serving work across registered donors.</li>
 <li>Validation calls without project context remain server-owned/local only; cross-project compute aggregation is reserved for explicit admin-only surfaces.</li>
 <li>The frontmatter and manifest entries are the durable contract for agents updating this page after code changes.</li>
@@ -281,13 +284,16 @@
 <h2 id="agents-skills-llm-mcp-and-permissions">Agents, Skills, LLM, MCP, And Permissions</h2>
 <ul>
 <li>Ensemble LLM calls must preserve project scope when validating task output or skill artifacts.</li>
-<li>Full ensemble reliability requires distinct model identities. Reusing the same model as if it were multiple independent raters is rejected as lower assurance.</li>
+<li>Full ensemble reliability requires distinct serving endpoint identities. Reusing one endpoint as if it were multiple independent raters is rejected as lower assurance.</li>
+<li>The concrete independence unit is the serving endpoint identity. Same-model endpoints are valid independent raters only when their endpoint identities are distinct and preserved in route evidence; a missing or insufficient endpoint set is lower assurance and remains unavailable/blocked.</li>
+<li>Rollback is reversible: select the legacy engine for the project (or keep <code>settings.agentic_engine_default</code> at <code>legacy</code>). The dispatcher&#x27;s permanent legacy executor then serves validation without changing the legacy schemas or behavior; W9 removed the per-site legacy fallback branches, so engine choice no longer changes the code path.</li>
 </ul>
 <h2 id="tests-and-verification">Tests And Verification</h2>
 <ul>
 <li><code>tests/test_validation_project_scope.py</code></li>
 <li><code>tests/test_evaluation_skill.py</code></li>
 <li><code>tests/test_research_validity_contract.py</code></li>
+<li><code>tests/pi_production/test_w7_validation.py</code> — dispatcher purpose/verb mapping, legacy parity, endpoint-pinned distinctness, fail-closed degradation, and judge unavailability. W8 embedding dispatch and gateway behavior are covered by <code>tests/pi_production/test_w8_embeddings_gateway.py</code>.</li>
 </ul>
 <h2 id="related-features">Related Features</h2>
 <ul>

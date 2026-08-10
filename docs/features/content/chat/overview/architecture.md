@@ -49,6 +49,8 @@ Chat is the project-scoped conversational workspace for working with Istara agen
 - Toolbar session updates carry the active project id so model, agent, preset, and thinking-mode changes cannot mutate a stale session from another project.
 - Chat session agent assignment is server-validated before create, update, or LLM prompt composition: project-owned agents must belong to the active project, inactive or foreign agents return 404, and universal system agents remain usable.
 - Native tool calling falls back to text-based tool prompting when the selected project-scoped compute path has no tool-capable streaming node, allowing smaller donated relay models to answer instead of failing before the fallback path can run.
+- Chat's native-tool and text-fallback ReAct loops enter through `AgenticDispatcher`. The legacy executor preserves project-scoped provider selection, tool authorization, hallucinated-tool filtering, and the SSE envelope; native provider content is forwarded as it arrives rather than being buffered into one terminal route chunk.
+- The Pi replacement candidate is opt-in through the configured request header or environment flag. When selected, `/api/chat` keeps the normal session, Prompt-RAG, Research Spine, SSE, and tool-call envelope while routing through the DeepSeek candidate node registered at runtime from Keychain with strict model routing: a candidate transport failure is surfaced as an SSE error and cannot fall through to another node. Both native and text fallback tool loops emit the same Pi chat-run metrics span. If registration is unavailable, the route emits a terminal `pi_registration_unavailable` SSE error and never falls back to the default provider transport.
 - Chat injects a protected Research Spine promotion gate into the runtime system prompt. Prompt-RAG, RAG snippets, tool output, and memories may support conversation, but chat must label provisional material and cannot present it as accepted research.
 - The `search_findings` system action returns each finding with accepted/provisional/reportable status so ReAct/tool-assisted chat answers preserve the same gate state shown in Findings and Reports.
 - Steering status/input is a global-admin capability in the current backend contract. Researcher chat sessions must not mount steering polling or steering mutation controls during normal chat journeys; negative authorization tests may still assert that researcher calls are rejected.
@@ -65,6 +67,7 @@ Chat is the project-scoped conversational workspace for working with Istara agen
 ## Tests And Verification
 
 - `tests/test_chat.py`
+- `tests/test_pi_replacement_candidate.py`
 - `tests/test_sessions.py`
 - `tests/test_project_rbac.py`
 - `tests/test_project_scope_contracts.py`
@@ -84,7 +87,7 @@ Chat is the project-scoped conversational workspace for working with Istara agen
 
 ## Compass Evidence
 
-- Spec/task: CF-SPEC-102 / CF-1295
+- Spec/task: CF-SPEC-102 / CF-1295; CF-SPEC-3 / CF-38
 - Inventory source: `docs/features/inventory.json`
 
 ## When To Update

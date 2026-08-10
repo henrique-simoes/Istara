@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime, timezone
 import json
+import logging
 import re
 import uuid
 from typing import Any, Awaitable, Callable
@@ -12,7 +13,6 @@ from typing import Any, Awaitable, Callable
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.llm_schema_adapter import openai_json_schema_response_format
 from app.core.llm_router import llm_router
 from app.core.research_validity import (
     DEFAULT_RELIABILITY_THRESHOLD,
@@ -33,6 +33,7 @@ from app.models.research_validity import (
 )
 
 CoderRunner = Callable[[Any, list[dict], str | None, str], Awaitable[dict]]
+logger = logging.getLogger(__name__)
 ACCEPTED_PROMOTION_STATUSES = {"accepted", "accepted_after_reconciliation"}
 MAX_CODING_SOURCE_TEXT_CHARS = 700
 UNRESOLVED_PROMOTION_STATUSES = {
@@ -547,23 +548,96 @@ def _usable_coding_applications(
     return usable
 
 
-async def _default_coder_runner(
+async def _use_pi_coding_plane(db: AsyncSession, project_id: str) -> bool:
+    """True when the dual-coder run routes through the Pi dispatcher plane.
+
+    Gated on the engine that would actually serve the dispatch resolving to
+    Pi — selecting Pi-catalog coders for a run the legacy engine would serve
+    would pin endpoint identities the legacy plane cannot honor.
+    """
+    from app.core.agentic import agentic
+    from app.models.project import Project
+
+    try:
+        value = await db.scalar(
+            select(Project.agentic_engine).where(Project.id == project_id)
+        )
+    except Exception:
+        value = None
+    return agentic.resolve_engine(project_engine=(value or "").strip() or None) == "pi"
+
+
+async def _select_pi_coders(max_coders: int) -> list[CoderSpec]:
+    """W7: independent coders as distinct Pi endpoint identities (fail-closed).
+
+    The "≥3 distinct model coders" reliability gate maps to distinct Pi
+    endpoint identities (master plan §8 W7). ``resolve_distinct`` raises
+    ``PiEndpointResolutionError`` when the catalog spans fewer distinct
+    endpoints than requested — diversity is never fabricated from one
+    endpoint.
+    """
+    from types import SimpleNamespace
+
+    from app.core.pi_runtime.model_manager import PiModelManager
+
+    manager = PiModelManager()
+    # Read-only DB projection of persisted LLMServer endpoint identities;
+    # it never connects to a server or loads a model.
+    await manager.ensure_db_projection()
+    endpoints = manager.resolve_distinct(max(1, max_coders))
+    return [
+        CoderSpec(
+            node=SimpleNamespace(
+                node_id=endpoint.endpoint_id,
+                name=endpoint.endpoint_id,
+                source="pi",
+                provider_type=endpoint.provider_kind,
+                endpoint_id=endpoint.endpoint_id,
+            ),
+            coder_id=f"model-coder:{endpoint.endpoint_id}",
+            model_name=endpoint.model,
+        )
+        for endpoint in endpoints
+    ]
+
+
+async def _pi_coder_runner(
     coder: CoderSpec,
     messages: list[dict],
     model_name: str | None,
     project_id: str,
 ) -> dict:
-    return await coder.node.chat(
-        messages,
-        model=model_name or None,
-        temperature=0.2,
-        response_format=openai_json_schema_response_format(
-            name="qualitative_code_applications",
-            schema=CODING_RESPONSE_SCHEMA,
-            strict=False,
-        ),
+    """W7 coder runner: structured dispatch pinned to the coder's exact endpoint."""
+    from app.core.agentic import agentic
+    from app.core.agentic.types import TurnParams
+
+    outcome = await agentic.structured(
+        purpose="validity.coder",
         project_id=project_id,
+        system=None,
+        messages=messages,
+        schema=CODING_RESPONSE_SCHEMA,
+        params=TurnParams(
+            temperature=0.2,
+            model=model_name,
+            endpoint_id=getattr(coder.node, "endpoint_id", None),
+        ),
+        spine_phase="execution",
     )
+    return {
+        "message": {"content": json.dumps(outcome.value)},
+        "_istara_route": {
+            "node_id": getattr(coder.node, "node_id", ""),
+            "node_source": "pi",
+            "provider_type": getattr(coder.node, "provider_type", ""),
+            "model": model_name or "",
+            "endpoint_id": outcome.endpoint_id
+            or getattr(coder.node, "endpoint_id", "")
+            or "",
+            "route_kind": "coding_run",
+            "outcome": "served",
+        },
+    }
 
 
 async def _load_units(
@@ -1119,13 +1193,39 @@ async def run_independent_coding_run(
         await db.commit()
         return coding_run.to_dict()
 
-    runner = coder_runner or _default_coder_runner
-    coders = _select_project_coders(project_id, max_coders=max_coders)
+    runner = coder_runner or _pi_coder_runner
+    pi_selection_error: str | None = None
+    if coder_runner is None and await _use_pi_coding_plane(db, project_id):
+        # W7: coders are distinct Pi endpoint identities coded through the
+        # AgenticDispatcher structured verb (``validity.coder``).
+        try:
+            coders = await _select_pi_coders(max_coders=max_coders)
+        except Exception as exc:
+            # Fail-closed (master plan §8 W7): fewer distinct Pi endpoints
+            # than requested coders (or an unavailable catalog) means
+            # validation unavailable — never fabricate diversity from fewer
+            # endpoints and never switch engines silently. The empty coder
+            # set flows into the existing reliability-gate "blocked"
+            # handling below.
+            logger.warning("Dual-coder Pi selection failed closed: %s", exc)
+            coders = []
+            pi_selection_error = str(exc)
+    else:
+        coders = _select_project_coders(project_id, max_coders=max_coders)
     messages = _coding_messages(units, codebook, threshold)
     unit_by_id = {unit.id: unit for unit in units}
     gate_applications: list[dict] = []
     persisted_count = 0
     route_evidence: list[dict] = []
+    if pi_selection_error:
+        route_evidence.append(
+            {
+                "coder_id": "",
+                "model": "",
+                "outcome": "failed",
+                "error": pi_selection_error[:160],
+            }
+        )
 
     for coder in coders:
         donor_id = getattr(coder.node, "node_id", "") or getattr(coder.node, "name", "")
@@ -1240,6 +1340,14 @@ async def run_independent_coding_run(
                     "model_name": route.get("model") or coder.model_name,
                     "donor_id": served_donor_id,
                     "route_id": served_route_id,
+                    # Preserve the exact served endpoint identity so same-model
+                    # Pi endpoints stay distinct raters at the reliability gate
+                    # (W7 endpoint-identity contract).
+                    "endpoint_id": (
+                        route.get("endpoint_id")
+                        or getattr(coder.node, "endpoint_id", "")
+                        or served_donor_id
+                    ),
                     "evidence_unit_id": unit.id,
                     "codes": codes,
                 }

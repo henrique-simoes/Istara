@@ -58,6 +58,10 @@ class EvalConfig:
     compass_spec: str
     compass_task: str
     allow_unignored_output: bool = False
+    # CF-341: which agentic engine serves live cases. "legacy" keeps the original
+    # compute_registry.chat path (byte-compatible); "pi" routes the same cases
+    # through AgenticDispatcher.completion on an injected profile endpoint.
+    engine: str = "legacy"
 
 
 def sha256_text(text: str) -> str:
@@ -377,11 +381,108 @@ def evaluate_checks(text: str, checks: dict[str, Any]) -> tuple[list[dict[str, A
     return results, metrics
 
 
+def _import_all_models() -> None:
+    """Import every model module so the SQLAlchemy mapper registry is complete.
+
+    The dispatcher's usage-ledger write touches ORM relationships (e.g.
+    Project -> Message); in a bare script context those mappers are only
+    configured once every model module has been imported.
+    """
+    import importlib
+    import pathlib
+
+    models_dir = pathlib.Path(__file__).resolve().parents[1] / "backend" / "app" / "models"
+    for path in sorted(models_dir.glob("*.py")):
+        if path.stem != "__init__":
+            importlib.import_module(f"app.models.{path.stem}")
+
+
+async def _run_live_case_pi(
+    case: dict[str, Any],
+    *,
+    timeout_seconds: float,
+    started: float,
+) -> dict[str, Any]:
+    """Serve one live case through the Pi engine (CF-341).
+
+    Same configured live profile as the legacy path (tests/llm_test_config), but
+    dispatched through AgenticDispatcher.completion on an explicitly injected
+    PiModelManager endpoint — the pi arm of the same serving target, so paired
+    legacy/pi eval runs isolate the ENGINE, not the model.
+    """
+    from tests.llm_test_config import current_primary_llm_profile, get_live_llm_api_key
+    from app.core.agentic.dispatcher import AgenticDispatcher
+    from app.core.agentic.types import TurnParams
+    from app.core.pi_runtime.endpoints import ResolvedPiEndpoint
+    from app.core.pi_runtime.engine import PiExecutionService
+    from app.core.pi_runtime.model_manager import PiModelManager
+
+    profile = current_primary_llm_profile()
+    api_key = get_live_llm_api_key()
+    _import_all_models()  # complete the SQLAlchemy mapper registry before ledger writes
+    import os as _os
+
+    eval_model = _os.getenv("ISTARA_EVALS_MODEL", profile.model)
+    endpoint = ResolvedPiEndpoint(
+        endpoint_id="eval-live-profile",
+        provider_kind="openai_compat",
+        base_url=profile.base_url,
+        model=eval_model,
+        api_key=api_key,
+        timeout_ms=int(timeout_seconds * 1000),
+        max_retries=0,
+    )
+    manager = PiModelManager(endpoints=[endpoint])
+    dispatcher = AgenticDispatcher(pi_service=PiExecutionService(model_manager=manager))
+    outcome = await asyncio.wait_for(
+        dispatcher.completion(
+            purpose=f"istara_evals.{case['suite']}",
+            project_id="istara-evals",
+            system=None,
+            messages=case.get("messages", []),
+            params=TurnParams(
+                endpoint_id="eval-live-profile",
+                model=eval_model,
+                temperature=0.0,
+                max_tokens=int(case.get("max_tokens", 256)),
+            ),
+            engine="pi",
+        ),
+        timeout=timeout_seconds,
+    )
+    duration_ms = round((time.perf_counter() - started) * 1000, 2)
+    visible_text = str(getattr(outcome, "text", "") or "")
+    check_results, metrics = evaluate_checks(visible_text, case.get("checks", {}))
+    if not check_results:
+        check_results = [
+            {"name": "response_nonempty", "passed": bool(visible_text), "detail": ""}
+        ]
+    passed = all(item["passed"] for item in check_results)
+    metrics["latency_ms"] = duration_ms
+    metrics["output_chars"] = len(visible_text)
+    metrics["llm_serving_path"] = "agentic_dispatcher.completion:pi"
+    usage = getattr(outcome, "usage", None) or {}
+    if usage:
+        metrics["usage"] = {k: usage.get(k) for k in ("input_tokens", "output_tokens", "total_tokens") if usage.get(k) is not None}
+    return {
+        "case_id": case["id"],
+        "suite": case["suite"],
+        "status": "passed" if passed else "failed",
+        "score": 1.0 if passed else 0.0,
+        "duration_ms": duration_ms,
+        "checks": check_results,
+        "metrics": metrics,
+        "response_preview": sanitize_text(visible_text[:500]),
+        "response_text": sanitize_text(visible_text),
+    }
+
+
 async def run_live_case(
     case: dict[str, Any],
     *,
     timeout_seconds: float,
     require_live_llm: bool,
+    engine: str = "legacy",
 ) -> dict[str, Any]:
     from tests.llm_test_config import (
         PRIMARY_LIVE_LLM_MAX_ATTEMPTS,
@@ -396,6 +497,20 @@ async def run_live_case(
     started = time.perf_counter()
     profile = current_primary_llm_profile()
     api_key = get_live_llm_api_key()
+    if engine == "pi" and profile.base_url and api_key:
+        try:
+            return await _run_live_case_pi(case, timeout_seconds=timeout_seconds, started=started)
+        except Exception as exc:
+            duration_ms = round((time.perf_counter() - started) * 1000, 2)
+            return {
+                "case_id": case["id"],
+                "suite": case["suite"],
+                "status": "failed",
+                "score": 0.0,
+                "duration_ms": duration_ms,
+                "checks": [{"name": "live_call_pi", "passed": False, "detail": sanitize_text(type(exc).__name__)}],
+                "metrics": {"latency_ms": duration_ms, "llm_serving_path": "agentic_dispatcher.completion:pi"},
+            }
     if not profile.base_url or not api_key:
         status = "failed" if require_live_llm else "blocked"
         return {
@@ -424,10 +539,12 @@ async def run_live_case(
     }
     try:
         configure_live_compute_registry(clear_existing=True)
+        import os as _os
+
         response = await asyncio.wait_for(
             compute_registry.chat(
                 case.get("messages", []),
-                model=profile.model,
+                model=_os.getenv("ISTARA_EVALS_MODEL", profile.model),
                 temperature=0,
                 max_tokens=int(case.get("max_tokens", 256)),
                 thinking_mode=case.get("thinking_mode", "off"),
@@ -900,6 +1017,7 @@ async def run_eval_suite(config: EvalConfig) -> dict[str, Any]:
                 case,
                 timeout_seconds=config.timeout_seconds,
                 require_live_llm=config.require_live_llm,
+                engine=config.engine,
             )
         )
 
@@ -1066,6 +1184,8 @@ def parse_args(argv: list[str] | None = None) -> EvalConfig:
     parser.add_argument("--require-live-llm", action="store_true")
     parser.add_argument("--max-live-cases", type=int, default=None)
     parser.add_argument("--timeout", type=float, default=90.0)
+    parser.add_argument("--engine", choices=["legacy", "pi"], default="legacy",
+                        help="agentic engine for live cases (CF-341; default legacy = original behavior)")
     parser.add_argument("--fail-on-threshold", action="store_true")
     parser.add_argument(
         "--allow-unignored-output",
@@ -1090,6 +1210,7 @@ def parse_args(argv: list[str] | None = None) -> EvalConfig:
         compass_spec=args.compass_spec,
         compass_task=args.compass_task,
         allow_unignored_output=args.allow_unignored_output,
+        engine=args.engine,
     )
 
 

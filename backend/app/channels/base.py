@@ -98,7 +98,7 @@ class ChannelAdapter(ABC):
         """Check connection health. Override for platform-specific checks."""
         return {"status": "healthy" if self._running else "stopped", "platform": self.platform}
 
-    def on_message(self, callback: MessageCallback) -> None:
+    def on_message(self, callback: MessageCallback | None) -> None:
         """Register a callback for incoming messages."""
         self._callback = callback
 
@@ -149,6 +149,9 @@ class ChannelRouter:
             logger.warning(
                 "Unregistering running adapter '%s'; call stop first to be safe.", instance_id
             )
+        if adapter:
+            # Do not retain a router callback on an adapter that no longer belongs to it.
+            adapter.on_message(None)
 
     def get(self, instance_id: str) -> ChannelAdapter | None:
         return self._adapters.get(instance_id)

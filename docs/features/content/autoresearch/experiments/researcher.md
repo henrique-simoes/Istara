@@ -6,11 +6,11 @@ audience: researcher
 status: documented
 related_features: ["autoresearch.dashboard", "autoresearch.config"]
 related_glossary: ["triangulation"]
-code_references: ["frontend/src/components/autoresearch/AutoresearchView.tsx", "backend/app/core/autoresearch_engine.py", "backend/app/core/autoresearch_runners/question_bank.py"]
+code_references: ["frontend/src/components/autoresearch/AutoresearchView.tsx", "backend/app/core/autoresearch_engine.py", "backend/app/core/autoresearch_runners/model_temp.py", "backend/app/core/autoresearch_runners/question_bank.py", "backend/app/core/agentic/dispatcher.py"]
 api_references: ["backend/app/api/routes/autoresearch.py"]
-test_references: ["tests/test_autoresearch.py", "tests/test_project_scope_contracts.py"]
-last_verified: 2026-05-19
-compass: CF-SPEC-60 / CF-754; CF-SPEC-96 / CF-1226
+test_references: ["tests/test_autoresearch.py", "tests/test_project_scope_contracts.py", "tests/pi_production/test_w6_autoresearch_runners.py"]
+last_verified: 2026-07-22
+compass: CF-SPEC-60 / CF-754; CF-SPEC-96 / CF-1226; CF-SPEC-8
 ---
 
 # Autoresearch Experiments
@@ -47,6 +47,15 @@ Autoresearch Experiments exists so the work represented by Autoresearch > Experi
 - Generated experiment records, reasoning memories, and improvement proposals keep the project id that authorized the run.
 - Question-bank experiments can only evaluate or rewrite deployments that belong to the active project; stale deployment ids from another project are treated as not found before LLM evaluation or mutation.
 
+## Model Routing And Engine Selection
+
+- Autoresearch experiments run through six loop runners — model-and-temperature sweeps, persona tuning, question-bank improvement, RAG-parameter tuning, skill-prompt tuning, and UI-simulation tuning. Each runner makes its own model calls to hypothesize a change, evaluate it, and score the result.
+- Pi Replacement wave W6 sends those runner calls through Istara's shared agentic dispatcher, so the same experiment can run on either the Pi replacement engine or the legacy engine without changing what the experiment does. The experiment start boundary validates and binds an explicit `pi` or `legacy` choice once; when unset, it defaults from `settings.agentic_core`. W9 removed the old per-site legacy fallbacks: the dispatcher is the only path, and selecting the legacy engine is still a safe rollback because the dispatcher serves it through its own legacy executor.
+- Which engine ran an experiment is recorded in the run's usage accounting, so Pi and legacy runs of the same experiment stay distinguishable and auditable; no prompts, hypotheses, or responses are added to that accounting.
+- Model-and-temperature sweeps on the Pi engine explore the configured Pi model catalog (settings endpoints, registered LLM servers, and local Ollama or LM Studio models) across temperatures, skipping embedding-only models. Each catalog endpoint is swept as its own comparison point, so two endpoints that serve the same model still count as two distinct points rather than collapsing into one. If the catalog cannot span the requested number of distinct endpoints (two by default) the run is marked as a truncated sweep rather than quietly shrinking, so a narrow comparison stays visible instead of hidden.
+- RAG-parameter tuning moves its suggestion step through the dispatcher, and its retrieval-quality embedding inherits the W8 `agentic.embed` dispatch: legacy uses the unchanged `ollama.embed*` plane and Pi uses the embeddings gateway.
+- Every runner stays bound to the project that authorized the experiment: engine choice, telemetry, and execution all use that authorized project, and the governed proposal-only path for autoresearch is unchanged, so a run cannot act on or account against another project.
+
 ## Caveats
 
 - Needs interactive verification for exact empty, loading, error, and permission-denied states.
@@ -63,6 +72,6 @@ Autoresearch Experiments exists so the work represented by Autoresearch > Experi
 
 ## Evidence
 
-- Source files: `frontend/src/components/autoresearch/AutoresearchView.tsx`, `backend/app/core/autoresearch_engine.py`, `backend/app/core/autoresearch_runners/question_bank.py`
+- Source files: `frontend/src/components/autoresearch/AutoresearchView.tsx`, `backend/app/core/autoresearch_engine.py`, `backend/app/core/autoresearch_runners/model_temp.py`, `backend/app/core/autoresearch_runners/question_bank.py`, `backend/app/core/agentic/dispatcher.py`
 - API references: `backend/app/api/routes/autoresearch.py`
-- Tests: `tests/test_autoresearch.py`, `tests/test_project_scope_contracts.py`
+- Tests: `tests/test_autoresearch.py`, `tests/test_project_scope_contracts.py`, `tests/pi_production/test_w6_autoresearch_runners.py`

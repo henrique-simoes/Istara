@@ -291,8 +291,6 @@ async def generate_clarification(
     deployment_type = config.get("deployment_type", "interview")
 
     try:
-        from app.core.llm_router import llm_router
-
         prompt = (
             f"You are an expert UX researcher conducting a {deployment_type}.\n"
             f'The participant just said: "{response}"\n'
@@ -305,11 +303,19 @@ async def generate_clarification(
             "Only output the question text, nothing else."
         )
 
-        result = await llm_router.chat(
-            [{"role": "user", "content": prompt}],
-            project_id=project_id,
+        # W5: the clarification probe goes through the AgenticDispatcher
+        # (``channel.clarify``).
+        from app.core.agentic import agentic
+        from app.core.agentic.types import TurnParams
+
+        outcome = await agentic.completion(
+            purpose="channel.clarify",
+            project_id=project_id or "",
+            system=None,
+            messages=[{"role": "user", "content": prompt}],
+            params=TurnParams(),
         )
-        content = result.get("content", "").strip()
+        content = outcome.text.strip()
         if content and content.upper() != "NONE":
             return content
     except Exception as e:
@@ -351,8 +357,6 @@ async def _is_saturated(
     """
     if config.get("saturation_check_llm", False):
         try:
-            from app.core.llm_router import llm_router
-
             prompt = (
                 "A research participant just gave this response to a follow-up probe:\n"
                 f'"{response}"\n\n'
@@ -360,11 +364,19 @@ async def _is_saturated(
                 "participant repeating themselves / giving minimal answers?\n"
                 'Respond with exactly "SATURATED" or "NOT_SATURATED".'
             )
-            result = await llm_router.chat(
-                [{"role": "user", "content": prompt}],
-                project_id=project_id,
+            # W5: the saturation judgment goes through the AgenticDispatcher
+            # (``channel.saturation``).
+            from app.core.agentic import agentic
+            from app.core.agentic.types import TurnParams
+
+            outcome = await agentic.completion(
+                purpose="channel.saturation",
+                project_id=project_id or "",
+                system=None,
+                messages=[{"role": "user", "content": prompt}],
+                params=TurnParams(),
             )
-            content = result.get("content", "").strip().upper()
+            content = outcome.text.strip().upper()
             return "SATURATED" in content
         except Exception:
             pass

@@ -48,6 +48,7 @@ Steering controls collect lightweight user guidance that can shape downstream as
 - `backend/app/core/steering.py` stores queue metadata per message and filters by `metadata.project_id` for status, read, clear, abort, and drain operations.
 - A drain call without a project only sees legacy unscoped messages. Project-bound messages are never drained by a global `agent_id` call.
 - `backend/app/core/agent_lifecycle.py` discovers queued project ids, loads the matching project, skips paused or missing projects, and executes steering with `SkillInput.project_id`, project context, company context, and project-scoped websocket broadcasts.
+- Pi-selected chat turns construct a `PiExecutionService` steering binding with the authenticated agent and project ids before calling the worker, so queued steering/follow-up/abort controls retain the same project boundary through the live Pi turn.
 
 ## Agents, Skills, LLM, MCP, And Permissions
 
@@ -61,6 +62,7 @@ Steering controls collect lightweight user guidance that can shape downstream as
 - `tests/test_steering_api.py`
 - `tests/test_steering_manager.py`
 - `tests/test_steering_project_scope_contracts.py`
+- `tests/pi_production/test_scenario_steering.py`
 
 ## Related Features
 
