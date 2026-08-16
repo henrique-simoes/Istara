@@ -1,0 +1,29 @@
+{
+  "smoke": "deepseek_openai_compatible",
+  "provider": "DeepSeek",
+  "base_url": "https://api.deepseek.com",
+  "model": "deepseek-v4-pro",
+  "reasoning_effort": "high",
+  "thinking_requested": true,
+  "deepseek_key_present": true,
+  "secret_value_logged": false,
+  "passed": true,
+  "latency_ms": 2163,
+  "status_code": 200,
+  "usage": {
+    "prompt_tokens": 20,
+    "completion_tokens": 16,
+    "total_tokens": 36,
+    "prompt_tokens_details": {
+      "cached_tokens": 0
+    },
+    "completion_tokens_details": {
+      "reasoning_tokens": 16
+    },
+    "prompt_cache_hit_tokens": 0,
+    "prompt_cache_miss_tokens": 20
+  },
+  "response_text_capped": "",
+  "error_capped": "",
+  "response_model": "deepseek-v4-pro"
+}

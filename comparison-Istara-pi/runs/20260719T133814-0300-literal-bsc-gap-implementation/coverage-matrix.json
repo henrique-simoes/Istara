@@ -1,0 +1,288 @@
+{
+  "schema_version": 1,
+  "generated_at": "2026-07-19T17:06:13.896Z",
+  "harness_backbone": [
+    "tests/benchmarks",
+    "tests/evals",
+    "tests/simulation/scenarios",
+    "tests/real_user_benchmark",
+    "tests/agentic_eval_contract.json"
+  ],
+  "sampling_policy": "Conservative representative sampling; skill-heavy and fanout-heavy paths are capped to at most three skill slices.",
+  "deepseek_policy": {
+    "provider": "deepseek",
+    "model": "deepseek-v4-pro",
+    "local_models_allowed": false,
+    "previous_conservative_spend_usd": 0.0801,
+    "estimated_added_spend_usd": 0.01086299,
+    "hard_cap_usd": 0.5,
+    "remaining_after_added_estimate_usd": 0.40903701
+  },
+  "dimensions": {
+    "tool_calling": {
+      "required": "Pi-owned loop executes canonical Istara tool calls with schema validation.",
+      "status": "covered",
+      "scenarios": [
+        "chat.tool_loop.task_and_finding",
+        "documents.tools.slice",
+        "structured_outputs.core_eval"
+      ],
+      "covered": [
+        "chat.tool_loop.task_and_finding",
+        "documents.tools.slice",
+        "structured_outputs.core_eval"
+      ],
+      "blocked": []
+    },
+    "feature_integration_adherence": {
+      "required": "Feature contracts preserve Istara-shaped tasks, findings, documents, plans, and eval artifacts.",
+      "status": "covered",
+      "scenarios": [
+        "chat.tool_loop.task_and_finding",
+        "task.plan_execute.lifecycle",
+        "documents.tools.slice",
+        "structured_outputs.core_eval",
+        "memory.rag.slice",
+        "skills.three_skill_slice",
+        "a2a.debate_report.slice",
+        "channel.lifecycle.simulated_slice",
+        "research.spine.step_tracker",
+        "model.routing.telemetry.slice"
+      ],
+      "covered": [
+        "chat.tool_loop.task_and_finding",
+        "task.plan_execute.lifecycle",
+        "documents.tools.slice",
+        "structured_outputs.core_eval",
+        "memory.rag.slice",
+        "skills.three_skill_slice",
+        "a2a.debate_report.slice",
+        "channel.lifecycle.simulated_slice",
+        "research.spine.step_tracker",
+        "model.routing.telemetry.slice"
+      ],
+      "blocked": []
+    },
+    "final_output": {
+      "required": "Candidate emits a final assistant output after tool execution.",
+      "status": "covered",
+      "scenarios": [
+        "chat.tool_loop.task_and_finding",
+        "task.plan_execute.lifecycle",
+        "documents.tools.slice",
+        "structured_outputs.core_eval",
+        "memory.rag.slice",
+        "skills.three_skill_slice",
+        "a2a.debate_report.slice",
+        "channel.lifecycle.simulated_slice",
+        "research.spine.step_tracker",
+        "model.routing.telemetry.slice"
+      ],
+      "covered": [
+        "chat.tool_loop.task_and_finding",
+        "task.plan_execute.lifecycle",
+        "documents.tools.slice",
+        "structured_outputs.core_eval",
+        "memory.rag.slice",
+        "skills.three_skill_slice",
+        "a2a.debate_report.slice",
+        "channel.lifecycle.simulated_slice",
+        "research.spine.step_tracker",
+        "model.routing.telemetry.slice"
+      ],
+      "blocked": []
+    },
+    "research_spine_step_quality": {
+      "required": "Source-grounded research-spine steps are tracked and remain provisional until review/Done.",
+      "status": "covered",
+      "scenarios": [
+        "research.spine.step_tracker",
+        "memory.rag.slice",
+        "structured_outputs.core_eval"
+      ],
+      "covered": [
+        "research.spine.step_tracker",
+        "memory.rag.slice",
+        "structured_outputs.core_eval"
+      ],
+      "blocked": []
+    },
+    "memory_load": {
+      "required": "Memory/RAG boundary loads scoped memory and records search/write behavior.",
+      "status": "covered",
+      "scenarios": [
+        "memory.rag.slice"
+      ],
+      "covered": [
+        "memory.rag.slice"
+      ],
+      "blocked": []
+    },
+    "tokens_by_step_total": {
+      "required": "Token usage is recorded by scenario and in total for live and deterministic paths.",
+      "status": "covered",
+      "scenarios": [
+        "chat.tool_loop.task_and_finding",
+        "task.plan_execute.lifecycle",
+        "documents.tools.slice",
+        "structured_outputs.core_eval",
+        "memory.rag.slice",
+        "skills.three_skill_slice",
+        "a2a.debate_report.slice",
+        "channel.lifecycle.simulated_slice",
+        "research.spine.step_tracker",
+        "model.routing.telemetry.slice"
+      ],
+      "covered": [
+        "chat.tool_loop.task_and_finding",
+        "task.plan_execute.lifecycle",
+        "documents.tools.slice",
+        "structured_outputs.core_eval",
+        "memory.rag.slice",
+        "skills.three_skill_slice",
+        "a2a.debate_report.slice",
+        "channel.lifecycle.simulated_slice",
+        "research.spine.step_tracker",
+        "model.routing.telemetry.slice"
+      ],
+      "blocked": []
+    },
+    "tool_calls_vs_output_quality": {
+      "required": "Tool-call counts are reported beside pass/fail and final-output quality proxies.",
+      "status": "covered",
+      "scenarios": [
+        "chat.tool_loop.task_and_finding",
+        "task.plan_execute.lifecycle",
+        "documents.tools.slice",
+        "structured_outputs.core_eval",
+        "memory.rag.slice",
+        "skills.three_skill_slice",
+        "a2a.debate_report.slice",
+        "channel.lifecycle.simulated_slice",
+        "research.spine.step_tracker",
+        "model.routing.telemetry.slice"
+      ],
+      "covered": [
+        "chat.tool_loop.task_and_finding",
+        "task.plan_execute.lifecycle",
+        "documents.tools.slice",
+        "structured_outputs.core_eval",
+        "memory.rag.slice",
+        "skills.three_skill_slice",
+        "a2a.debate_report.slice",
+        "channel.lifecycle.simulated_slice",
+        "research.spine.step_tracker",
+        "model.routing.telemetry.slice"
+      ],
+      "blocked": []
+    },
+    "skills_adherence": {
+      "required": "Skill fanout is capped at three representative slices.",
+      "status": "covered",
+      "scenarios": [
+        "skills.three_skill_slice"
+      ],
+      "covered": [
+        "skills.three_skill_slice"
+      ],
+      "blocked": []
+    },
+    "system_prompt_adherence": {
+      "required": "Product actions use canonical tools and local models stay disallowed.",
+      "status": "covered",
+      "scenarios": [
+        "chat.tool_loop.task_and_finding",
+        "task.plan_execute.lifecycle",
+        "documents.tools.slice",
+        "structured_outputs.core_eval",
+        "memory.rag.slice",
+        "skills.three_skill_slice",
+        "a2a.debate_report.slice",
+        "channel.lifecycle.simulated_slice",
+        "research.spine.step_tracker",
+        "model.routing.telemetry.slice"
+      ],
+      "covered": [
+        "chat.tool_loop.task_and_finding",
+        "task.plan_execute.lifecycle",
+        "documents.tools.slice",
+        "structured_outputs.core_eval",
+        "memory.rag.slice",
+        "skills.three_skill_slice",
+        "a2a.debate_report.slice",
+        "channel.lifecycle.simulated_slice",
+        "research.spine.step_tracker",
+        "model.routing.telemetry.slice"
+      ],
+      "blocked": []
+    },
+    "a2a_success": {
+      "required": "A2A delegation and layered report envelope succeed.",
+      "status": "covered",
+      "scenarios": [
+        "a2a.debate_report.slice"
+      ],
+      "covered": [
+        "a2a.debate_report.slice"
+      ],
+      "blocked": []
+    },
+    "channels": {
+      "required": "Simulated channel creation, inbound receive, and outbound response are exercised without real credentials.",
+      "status": "covered",
+      "scenarios": [
+        "channel.lifecycle.simulated_slice"
+      ],
+      "covered": [
+        "channel.lifecycle.simulated_slice"
+      ],
+      "blocked": []
+    },
+    "documents": {
+      "required": "Document create/search/read/attach paths are represented.",
+      "status": "covered",
+      "scenarios": [
+        "documents.tools.slice",
+        "research.spine.step_tracker"
+      ],
+      "covered": [
+        "documents.tools.slice",
+        "research.spine.step_tracker"
+      ],
+      "blocked": []
+    },
+    "plan_review_state": {
+      "required": "Plan lifecycle and in-review state are represented.",
+      "status": "covered",
+      "scenarios": [
+        "task.plan_execute.lifecycle"
+      ],
+      "covered": [
+        "task.plan_execute.lifecycle"
+      ],
+      "blocked": []
+    },
+    "model_routing": {
+      "required": "DeepSeek-only route and no-local-model policy are recorded.",
+      "status": "covered",
+      "scenarios": [
+        "model.routing.telemetry.slice"
+      ],
+      "covered": [
+        "model.routing.telemetry.slice"
+      ],
+      "blocked": []
+    },
+    "telemetry": {
+      "required": "Trace rows and explicit telemetry metric envelopes are emitted.",
+      "status": "covered",
+      "scenarios": [
+        "model.routing.telemetry.slice"
+      ],
+      "covered": [
+        "model.routing.telemetry.slice"
+      ],
+      "blocked": []
+    }
+  }
+}

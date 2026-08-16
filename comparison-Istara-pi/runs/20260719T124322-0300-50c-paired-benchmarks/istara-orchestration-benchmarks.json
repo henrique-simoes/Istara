@@ -1,0 +1,47 @@
+{
+  "suite": "full_orchestration",
+  "benchmarks": {
+    "long_horizon_dag": {
+      "benchmark": "long-horizon_dag_decomposition",
+      "steps_count": 10,
+      "has_cycles": false,
+      "topological_order_valid": true,
+      "context_retention_verified": true,
+      "max_iterations_enforced": true,
+      "execution_time_ms": 0.13,
+      "status": "PASS"
+    },
+    "tool_calling_accuracy": {
+      "benchmark": "tool-calling_accuracy_&_resilience",
+      "valid_tools_tested": 2,
+      "hallucinations_filtered": 1,
+      "regex_fallback_works": true,
+      "max_iterations_enforced": 8,
+      "schema_strict_mode": true,
+      "execution_time_ms": 0.22,
+      "status": "PASS"
+    },
+    "a2a_consensus": {
+      "benchmark": "a2a_mathematical_consensus",
+      "clear_case_kappa": 1.0,
+      "ambiguous_case_kappa": -0.3846,
+      "cosine_similar_high": 0.9987,
+      "cosine_similar_low": 0.64,
+      "consensus_threshold": 0.6,
+      "routing_logic_verified": true,
+      "execution_time_ms": 0.1,
+      "status": "PASS"
+    },
+    "async_steering_responsiveness": {
+      "benchmark": "async_steering_responsiveness",
+      "steering_injection_time_ms": 500,
+      "steering_processed_correctly": true,
+      "follow_up_messages_queued": 1,
+      "atomic_lock_verified": true,
+      "concurrent_injections_stress_tested": 10,
+      "no_state_corruption": true,
+      "execution_time_ms": 720.11,
+      "status": "PASS"
+    }
+  }
+}

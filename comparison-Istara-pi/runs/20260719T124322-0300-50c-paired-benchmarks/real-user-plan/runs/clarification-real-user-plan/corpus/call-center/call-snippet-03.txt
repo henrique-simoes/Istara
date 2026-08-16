@@ -1,0 +1,5 @@
+Call 3
+Caller role: patient
+Issue: patients cannot tell which tasks are required before the appointment.
+Quote: "I do not need another reminder. I need to know which thing is actually blocking the visit."
+Disposition: resolved with manual explanation

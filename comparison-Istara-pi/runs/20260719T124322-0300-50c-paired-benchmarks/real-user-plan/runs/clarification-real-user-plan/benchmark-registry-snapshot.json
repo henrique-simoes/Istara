@@ -1,0 +1,127 @@
+{
+  "version": "2026-05-09.3",
+  "benchmark_id": "istara-real-user-ux-research-longform",
+  "purpose": "Longitudinal, human-in-the-loop UX research benchmark that complements deterministic Istara scenario, eval, security, and long-horizon benchmark suites.",
+  "non_duplication_policy": "Do not re-run or re-implement classical deterministic studies from tests/simulation, tests/evals, tests/benchmarks, or scripts/security_benchmark.py inside this benchmark. Treat those suites as baseline evidence. This benchmark should test realistic cross-feature user behavior, longitudinal usefulness, integration ergonomics, compute donation, and human review quality.",
+  "default_run_contract": {
+    "non_plan_runs_require_compute_donation": true,
+    "non_plan_runs_require_non_empty_live_chat": true,
+    "force_donated_chat_when_compute_required": true,
+    "storage_guardrail": "Colima autostart uses --root-disk 10 --disk 10 and records actual/apparent storage snapshots with 10GB actual and 20GB apparent budgets.",
+    "client_sandbox_policy": "Server sandboxing and client/donor sandboxing are independent. External Istara servers can receive donated compute from disposable benchmark containers.",
+    "multi_donor_policy": "Default comparison uses one Gemma donor. Multi-donor runs require per-donor pre-provisioned OpenAI-compatible/LM Studio endpoints and connection strings; missing Qwen endpoints are blockers, not downloads.",
+    "opt_out": "Set ISTARA_BENCHMARK_REQUIRE_COMPUTE_DONATION=0 and ISTARA_BENCHMARK_REQUIRE_LIVE_CHAT=0 only for offline harness debugging, not comparison runs."
+  },
+  "live_model_profile": {
+    "source": "tests/llm_test_config.py",
+    "model": "google/gemma-4-e4b",
+    "provider_contract": "one configured OpenAI-compatible/LM Studio target loaded from gitignored env or Keychain",
+    "multiple_heavy_models_allowed": false,
+    "multi_donor_exception": "Only explicit multi-donor benchmark runs may use additional already-provisioned per-donor endpoints such as Qwen3.5-4B. The benchmark must not download missing models."
+  },
+  "companion_suites": [
+    {
+      "path": "tests/simulation",
+      "role": "Deterministic feature and menu scenario coverage.",
+      "relationship": "Reference for coverage mapping; do not duplicate scenario assertions."
+    },
+    {
+      "path": "tests/evals",
+      "role": "Tracked AI eval definitions and live-LLM quality probes.",
+      "relationship": "Reference for model-serving and quality baselines; this benchmark adds realistic product workflow evidence."
+    },
+    {
+      "path": "tests/benchmarks",
+      "role": "Classical long-horizon and orchestration benchmarks.",
+      "relationship": "Reference for agent orchestration baseline; this benchmark adds UI, onboarding, integrations, and human task review."
+    },
+    {
+      "path": "scripts/security_benchmark.py",
+      "role": "Tracked security control benchmark.",
+      "relationship": "Run as a separate gate for auth, connection-string, compute, MCP, webhook, and LLM-provider changes."
+    }
+  ],
+  "agentic_eval_focus": [
+    {
+      "area": "live chat and donated compute routing",
+      "baseline": "testing/TESTING_STRATEGY.md live LLM contract and tests/integration/test_llm_orchestration_real.py",
+      "benchmark_role": "Prove that realistic chat turns return non-empty output through the donated compute path before scoring researcher usefulness."
+    },
+    {
+      "area": "tool calling and ReAct skill use",
+      "baseline": "tests/agentic_eval_contract.json and testing/AI_EVALS_STRATEGY.md BFCL/ReAct sections",
+      "benchmark_role": "Ask natural researcher requests that require tool/skill attempts and record whether Istara exposes useful call evidence."
+    },
+    {
+      "area": "RAG and context management",
+      "baseline": "tests/evals plus Ragas/TruLens-inspired metrics in testing/AI_EVALS_STRATEGY.md",
+      "benchmark_role": "Check retrieved-source usefulness, citations, contradictions, uploaded-corpus grounding, and context-window stress behavior."
+    },
+    {
+      "area": "ReasoningBank and memento",
+      "baseline": "tests/agentic_eval_contract.json memory and ReasoningBank suites",
+      "benchmark_role": "Ask whether stored project memory improves current synthesis without overriding fresh evidence."
+    },
+    {
+      "area": "Hyperagent and governed improvement",
+      "baseline": "tests/agentic_eval_contract.json hyperagent/governed-improvement suites",
+      "benchmark_role": "Use the safest product path to propose bounded benchmark/process improvements and review their quality."
+    },
+    {
+      "area": "ensemble and MoA health",
+      "baseline": "tests/agentic_eval_contract.json ensemble orchestration suite",
+      "benchmark_role": "Record compute-health and ensemble/MoA readiness evidence; multi-donor runs wait for the requested relay-node count and preserve route evidence before scoring ensemble readiness."
+    }
+  ],
+  "future_multi_donor_profiles": [
+    {
+      "id": "donor-admin-gemma4",
+      "persona": "admin/server-side benchmark researcher workstation",
+      "model": "google/gemma-4-e4b",
+      "provider": "LM Studio/OpenAI-compatible",
+      "enabled_by_default": true,
+      "model_download_allowed": false,
+      "runtime_status": "default-comparison-donor",
+      "notes": "Uses the existing configured live test target. Sensitive host/token values stay outside committed files."
+    },
+    {
+      "id": "donor-researcher-qwen35-4b",
+      "persona": "future separate researcher workstation",
+      "model": "Qwen3.5-4B",
+      "provider": "LM Studio/OpenAI-compatible",
+      "enabled_by_default": false,
+      "model_download_allowed": false,
+      "runtime_status": "endpoint-gated-donor",
+      "notes": "Activated by ISTARA_BENCHMARK_DONOR_COUNT=2 plus a provisioned endpoint such as ISTARA_BENCHMARK_DONOR_2_LLM_HOST or ISTARA_BENCHMARK_QWEN_LLM_HOST. Do not download or autoload this model until explicitly provisioned by the user."
+    }
+  ],
+  "industry_alignment": [
+    {
+      "reference": "ISO/IEC/IEEE 29119-style test process",
+      "applied_as": "Explicit test objective, reusable test design, execution logs, incident evidence, and repeatable reporting."
+    },
+    {
+      "reference": "ISO/IEC 25010 quality model",
+      "applied_as": "Score dimensions cover functional suitability, usability, reliability, performance, security-sensitive integration behavior, and maintainability of the benchmark evidence."
+    },
+    {
+      "reference": "ISO 9241-210 human-centred design",
+      "applied_as": "Scenario uses a realistic UX researcher persona, context of use, evidence review, and human decision points."
+    },
+    {
+      "reference": "ISTQB exploratory and session-based testing practice",
+      "applied_as": "Long-form chartered session with natural steering, timestamped notes, observed failures, and product-risk classification."
+    },
+    {
+      "reference": "AI evaluation and red-team evidence practice",
+      "applied_as": "Preserves prompts, responses, model-routing evidence, tool behavior, integration blockers, and comparison-ready history without storing private endpoints or tokens."
+    }
+  ],
+  "history_outputs": [
+    "tests/real_user_benchmark/.results/runs/<run_id>/history-record.json",
+    "tests/real_user_benchmark/.results/runs/<run_id>/benchmark-registry-snapshot.json",
+    "tests/real_user_benchmark/.results/runs/<run_id>/storage/colima-*.json",
+    "tests/real_user_benchmark/.results/history.jsonl",
+    "tests/real_user_benchmark/.results/latest-run.json"
+  ]
+}

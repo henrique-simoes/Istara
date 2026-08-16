@@ -1,0 +1,1741 @@
+{
+  "system_prompt": {
+    "source_path": "/Users/user/Documents/Istara-main/tests/real_user_benchmark/system-prompt.md",
+    "copied_to_run": "system-prompt.md",
+    "version": "2026-05-09.4",
+    "sha256": "b2f639ee62e7350ce88b487fc0b9bd67b3f5f10cc2a5197eadc861e8ddb650c3",
+    "bytes": 11407
+  },
+  "persona": "Maya Rodrigues, senior UX researcher",
+  "project": {
+    "name": "CareNav Renewal",
+    "company": "Northstar Health",
+    "audience": "care coordinators, patients, family caregivers, and clinic administrators",
+    "product": "a patient-care coordination workspace for appointment prep, reminders, and task follow-up",
+    "stage": "mid-fidelity redesign after a failed pilot",
+    "guardrails": [
+      "Do not infer medical advice.",
+      "Treat patient stories as synthetic PHI-like data and avoid exposing names in reports.",
+      "Separate staff workflow evidence from patient/caregiver evidence.",
+      "Flag contradictions and missing sampling context.",
+      "Prefer source-cited recommendations over generic UX advice."
+    ],
+    "researchQuestions": [
+      "Where does appointment-prep coordination break down?",
+      "Which reminders feel supportive versus nagging?",
+      "What does staff need to trust automation?",
+      "How should caregiver involvement be represented without confusing consent?"
+    ]
+  },
+  "requested_full_chat_turns": 100,
+  "requested_completed_tasks": 50,
+  "requested_researcher_client_count": 1,
+  "requested_compute_donor_count": 1,
+  "compute_donor_profiles": [
+    {
+      "id": "donor-1-gemma4",
+      "index": 1,
+      "required": true,
+      "enabled": true,
+      "blocked_reason": "",
+      "provisioned_only": false,
+      "provider": "lmstudio",
+      "provider_source": "inferred-from-testing-live-llm-base-url",
+      "host": {
+        "configured": true,
+        "scheme": "http",
+        "host_kind": "docker-host",
+        "port_set": true,
+        "has_path": false
+      },
+      "host_source": ".env",
+      "host_localhost_translated_for_container": true,
+      "host_openai_path_stripped_for_native_lmstudio": false,
+      "api_key_configured": false,
+      "api_key_source": "unset",
+      "model_family": "gemma",
+      "model_configured": true,
+      "model_source": "tests/llm_test_config.py:PRIMARY_TEST_MODEL",
+      "model_id_redacted": true,
+      "connection_string_configured": false,
+      "connection_string_source": "unset"
+    }
+  ],
+  "generated_chat_turn_templates": [
+    {
+      "turn": 1,
+      "speaker": "Maya Rodrigues",
+      "content": "I am starting a new project called CareNav Renewal. Before you analyze anything, ask me the minimum clarifying questions you need as my research partner.",
+      "intent": "scenario-steering"
+    },
+    {
+      "turn": 2,
+      "speaker": "Maya Rodrigues",
+      "content": "Here is the context: we are redesigning appointment-prep coordination for care coordinators, patients, and caregivers. Summarize what you think the project is and flag assumptions.",
+      "intent": "scenario-steering"
+    },
+    {
+      "turn": 3,
+      "speaker": "Maya Rodrigues",
+      "content": "I am uploading a previous research archive. When it is ready, tell me what kinds of sources you found and what might be risky to synthesize.",
+      "intent": "scenario-steering"
+    },
+    {
+      "turn": 4,
+      "speaker": "Maya Rodrigues",
+      "content": "Please search across the uploaded interviews for evidence about trust in readiness statuses. Cite source names when you can.",
+      "intent": "scenario-steering"
+    },
+    {
+      "turn": 5,
+      "speaker": "Maya Rodrigues",
+      "content": "Use RAG/search intentionally here: tell me which retrieved sources actually changed the answer and which were noise.",
+      "intent": "scenario-steering"
+    },
+    {
+      "turn": 6,
+      "speaker": "Maya Rodrigues",
+      "content": "That is too generic. Separate staff evidence from patient/caregiver evidence and call out contradictions.",
+      "intent": "scenario-steering"
+    },
+    {
+      "turn": 7,
+      "speaker": "Maya Rodrigues",
+      "content": "Create tasks to analyze interview pain points, survey trends, diary-study friction, and support-ticket themes. Keep them reviewable.",
+      "intent": "scenario-steering"
+    },
+    {
+      "turn": 8,
+      "speaker": "Maya Rodrigues",
+      "content": "Call whichever Istara skills or tools are appropriate for this corpus, but tell me what you attempted and what returned useful evidence.",
+      "intent": "scenario-steering"
+    },
+    {
+      "turn": 9,
+      "speaker": "Maya Rodrigues",
+      "content": "What does the survey say about reminder clarity by role and language? Do not overclaim if the CSV is thin.",
+      "intent": "scenario-steering"
+    },
+    {
+      "turn": 10,
+      "speaker": "Maya Rodrigues",
+      "content": "Pull together early atomic findings as nuggets, facts, insights, and recommendations if the evidence supports them.",
+      "intent": "scenario-steering"
+    },
+    {
+      "turn": 11,
+      "speaker": "Maya Rodrigues",
+      "content": "Check whether any memento, memory, or reasoning-bank style context exists for this project and whether it should influence the next steps.",
+      "intent": "scenario-steering"
+    },
+    {
+      "turn": 12,
+      "speaker": "Maya Rodrigues",
+      "content": "Use the usability reports to compare prototype A and prototype B. I care about scan speed and source-trail trust.",
+      "intent": "scenario-steering"
+    },
+    {
+      "turn": 13,
+      "speaker": "Maya Rodrigues",
+      "content": "I want a report outline for leadership, but make it evidence-led, not a marketing narrative.",
+      "intent": "scenario-steering"
+    },
+    {
+      "turn": 14,
+      "speaker": "Maya Rodrigues",
+      "content": "Before drafting the report, reason through the evidence chain and mark any claim that needs another retrieval pass.",
+      "intent": "scenario-steering"
+    },
+    {
+      "turn": 15,
+      "speaker": "Maya Rodrigues",
+      "content": "Try fetching the NN/g service blueprinting URL from the project URL list and tell me whether it is relevant to this workflow.",
+      "intent": "scenario-steering"
+    },
+    {
+      "turn": 16,
+      "speaker": "Maya Rodrigues",
+      "content": "Create a task to evaluate caregiver permission language. Include the Portuguese and Spanish examples as context.",
+      "intent": "scenario-steering"
+    },
+    {
+      "turn": 17,
+      "speaker": "Maya Rodrigues",
+      "content": "I suspect you are mixing caregiver and coordinator needs. Please correct that and state which sources changed your mind.",
+      "intent": "scenario-steering"
+    },
+    {
+      "turn": 18,
+      "speaker": "Maya Rodrigues",
+      "content": "Create a small agent or specialist workflow if Istara supports it, then evaluate whether the handoff made the answer better.",
+      "intent": "scenario-steering"
+    },
+    {
+      "turn": 19,
+      "speaker": "Maya Rodrigues",
+      "content": "Draft a research-backed design brief for a readiness timeline screen.",
+      "intent": "scenario-steering"
+    },
+    {
+      "turn": 20,
+      "speaker": "Maya Rodrigues",
+      "content": "Now generate or request an interface concept for the readiness timeline using the available design tools.",
+      "intent": "scenario-steering"
+    },
+    {
+      "turn": 21,
+      "speaker": "Maya Rodrigues",
+      "content": "If hyperagent or governed-improvement features exist, use the safest test path to suggest one benchmark-process improvement and keep it reviewable.",
+      "intent": "scenario-steering"
+    },
+    {
+      "turn": 22,
+      "speaker": "Maya Rodrigues",
+      "content": "Open the integrations thinking: what would I need to test Telegram recruitment without a real bot token?",
+      "intent": "scenario-steering"
+    },
+    {
+      "turn": 23,
+      "speaker": "Maya Rodrigues",
+      "content": "Try a fake Telegram setup path and tell me whether the errors are useful for a researcher.",
+      "intent": "scenario-steering"
+    },
+    {
+      "turn": 24,
+      "speaker": "Maya Rodrigues",
+      "content": "Create an AURA-style deployment plan for five adaptive interview questions about appointment preparation.",
+      "intent": "scenario-steering"
+    },
+    {
+      "turn": 25,
+      "speaker": "Maya Rodrigues",
+      "content": "Simulate participant responses if the app has a local harness. If not, record exactly what is missing.",
+      "intent": "scenario-steering"
+    },
+    {
+      "turn": 26,
+      "speaker": "Maya Rodrigues",
+      "content": "Try Typeform survey creation or a developer/demo path. I do not have credentials.",
+      "intent": "scenario-steering"
+    },
+    {
+      "turn": 27,
+      "speaker": "Maya Rodrigues",
+      "content": "Try SurveyMonkey sync with a demo/fake provider setup. Classify the result honestly.",
+      "intent": "scenario-steering"
+    },
+    {
+      "turn": 28,
+      "speaker": "Maya Rodrigues",
+      "content": "Try Google Forms setup. If service account JSON is required, test validation behavior without exposing secrets.",
+      "intent": "scenario-steering"
+    },
+    {
+      "turn": 29,
+      "speaker": "Maya Rodrigues",
+      "content": "Try Figma import with a fake URL and the mock design path if one exists.",
+      "intent": "scenario-steering"
+    },
+    {
+      "turn": 30,
+      "speaker": "Maya Rodrigues",
+      "content": "Try Google Stitch or the mock screen generation flow and show me what was generated.",
+      "intent": "scenario-steering"
+    },
+    {
+      "turn": 31,
+      "speaker": "Maya Rodrigues",
+      "content": "Check ensemble, MoA, or compute-health surfaces. I want to know whether donated Gemma chat is healthy before I trust the synthesis.",
+      "intent": "scenario-steering"
+    },
+    {
+      "turn": 32,
+      "speaker": "Maya Rodrigues",
+      "content": "Set up a loop or schedule that would recheck new support tickets weekly.",
+      "intent": "scenario-steering"
+    },
+    {
+      "turn": 33,
+      "speaker": "Maya Rodrigues",
+      "content": "Check Autoresearch status and explain whether it can be tested safely in this credential-free run.",
+      "intent": "scenario-steering"
+    },
+    {
+      "turn": 34,
+      "speaker": "Maya Rodrigues",
+      "content": "Try an autoresearch or research-agent path that uses tools, but keep it bounded to this project and tell me if it refuses safely.",
+      "intent": "scenario-steering"
+    },
+    {
+      "turn": 35,
+      "speaker": "Maya Rodrigues",
+      "content": "Review the tasks currently in Review. Approve only work that is specific, grounded, and useful.",
+      "intent": "scenario-steering"
+    },
+    {
+      "turn": 36,
+      "speaker": "Maya Rodrigues",
+      "content": "For weak reviewed work, send it back with concrete instructions instead of marking it done.",
+      "intent": "scenario-steering"
+    },
+    {
+      "turn": 37,
+      "speaker": "Maya Rodrigues",
+      "content": "Give me a compact decision log: what should the team design first and why?",
+      "intent": "scenario-steering"
+    },
+    {
+      "turn": 38,
+      "speaker": "Maya Rodrigues",
+      "content": "Now challenge your own conclusion. What evidence could point the other way?",
+      "intent": "scenario-steering"
+    },
+    {
+      "turn": 39,
+      "speaker": "Maya Rodrigues",
+      "content": "Please cite the exact files you relied on for that statement.",
+      "intent": "natural-follow-up"
+    },
+    {
+      "turn": 40,
+      "speaker": "Maya Rodrigues",
+      "content": "Turn that into a task with a clear review checklist.",
+      "intent": "natural-follow-up"
+    },
+    {
+      "turn": 41,
+      "speaker": "Maya Rodrigues",
+      "content": "This feels vague. Rewrite it as a finding with source, evidence, implication, and confidence.",
+      "intent": "natural-follow-up"
+    },
+    {
+      "turn": 42,
+      "speaker": "Maya Rodrigues",
+      "content": "What would you ask in the next participant interview to reduce uncertainty?",
+      "intent": "natural-follow-up"
+    },
+    {
+      "turn": 43,
+      "speaker": "Maya Rodrigues",
+      "content": "Compare patient versus staff needs in a two-column summary.",
+      "intent": "natural-follow-up"
+    },
+    {
+      "turn": 44,
+      "speaker": "Maya Rodrigues",
+      "content": "What should we not automate yet because trust is too low?",
+      "intent": "natural-follow-up"
+    },
+    {
+      "turn": 45,
+      "speaker": "Maya Rodrigues",
+      "content": "Use the analytics export to sanity-check whether the qualitative pattern appears in behavior.",
+      "intent": "natural-follow-up"
+    },
+    {
+      "turn": 46,
+      "speaker": "Maya Rodrigues",
+      "content": "Which recommendation has the strongest evidence and which is only a hypothesis?",
+      "intent": "natural-follow-up"
+    },
+    {
+      "turn": 47,
+      "speaker": "Maya Rodrigues",
+      "content": "Ask Istara to use the reasoning bank or project memory, then verify whether the response cites current corpus evidence too.",
+      "intent": "natural-follow-up"
+    },
+    {
+      "turn": 48,
+      "speaker": "Maya Rodrigues",
+      "content": "Ask for a tool-call or skill-call trace if available; otherwise record that observability gap.",
+      "intent": "natural-follow-up"
+    },
+    {
+      "turn": 49,
+      "speaker": "Maya Rodrigues",
+      "content": "Stress the context window: summarize only the newest contradictory evidence without losing the original project constraints.",
+      "intent": "natural-follow-up"
+    },
+    {
+      "turn": 50,
+      "speaker": "Maya Rodrigues",
+      "content": "Create a small survey question set to validate this with caregivers.",
+      "intent": "natural-follow-up"
+    },
+    {
+      "turn": 51,
+      "speaker": "Maya Rodrigues",
+      "content": "What UI state should exist for stale or contradictory readiness evidence?",
+      "intent": "natural-follow-up"
+    },
+    {
+      "turn": 52,
+      "speaker": "Maya Rodrigues",
+      "content": "Find any multilingual wording risk in the archive.",
+      "intent": "natural-follow-up"
+    },
+    {
+      "turn": 53,
+      "speaker": "Maya Rodrigues",
+      "content": "What is the smallest prototype we could test next week?",
+      "intent": "natural-follow-up"
+    },
+    {
+      "turn": 54,
+      "speaker": "Maya Rodrigues",
+      "content": "Turn the strongest insight into a design principle.",
+      "intent": "natural-follow-up"
+    },
+    {
+      "turn": 55,
+      "speaker": "Maya Rodrigues",
+      "content": "Write a task for generating an executive readout slide.",
+      "intent": "natural-follow-up"
+    },
+    {
+      "turn": 56,
+      "speaker": "Maya Rodrigues",
+      "content": "Review whether the source trail concept could create privacy risk.",
+      "intent": "natural-follow-up"
+    },
+    {
+      "turn": 57,
+      "speaker": "Maya Rodrigues",
+      "content": "Use web context only if it adds something concrete.",
+      "intent": "natural-follow-up"
+    },
+    {
+      "turn": 58,
+      "speaker": "Maya Rodrigues",
+      "content": "Check if any task is stuck in Review and needs human approval.",
+      "intent": "natural-follow-up"
+    },
+    {
+      "turn": 59,
+      "speaker": "Maya Rodrigues",
+      "content": "If the result is unsupported, ask yourself what context was missing.",
+      "intent": "natural-follow-up"
+    },
+    {
+      "turn": 60,
+      "speaker": "Maya Rodrigues",
+      "content": "Please cite the exact files you relied on for that statement.",
+      "intent": "natural-follow-up"
+    },
+    {
+      "turn": 61,
+      "speaker": "Maya Rodrigues",
+      "content": "Turn that into a task with a clear review checklist.",
+      "intent": "natural-follow-up"
+    },
+    {
+      "turn": 62,
+      "speaker": "Maya Rodrigues",
+      "content": "This feels vague. Rewrite it as a finding with source, evidence, implication, and confidence.",
+      "intent": "natural-follow-up"
+    },
+    {
+      "turn": 63,
+      "speaker": "Maya Rodrigues",
+      "content": "What would you ask in the next participant interview to reduce uncertainty?",
+      "intent": "natural-follow-up"
+    },
+    {
+      "turn": 64,
+      "speaker": "Maya Rodrigues",
+      "content": "Compare patient versus staff needs in a two-column summary.",
+      "intent": "natural-follow-up"
+    },
+    {
+      "turn": 65,
+      "speaker": "Maya Rodrigues",
+      "content": "What should we not automate yet because trust is too low?",
+      "intent": "natural-follow-up"
+    },
+    {
+      "turn": 66,
+      "speaker": "Maya Rodrigues",
+      "content": "Use the analytics export to sanity-check whether the qualitative pattern appears in behavior.",
+      "intent": "natural-follow-up"
+    },
+    {
+      "turn": 67,
+      "speaker": "Maya Rodrigues",
+      "content": "Which recommendation has the strongest evidence and which is only a hypothesis?",
+      "intent": "natural-follow-up"
+    },
+    {
+      "turn": 68,
+      "speaker": "Maya Rodrigues",
+      "content": "Ask Istara to use the reasoning bank or project memory, then verify whether the response cites current corpus evidence too.",
+      "intent": "natural-follow-up"
+    },
+    {
+      "turn": 69,
+      "speaker": "Maya Rodrigues",
+      "content": "Ask for a tool-call or skill-call trace if available; otherwise record that observability gap.",
+      "intent": "natural-follow-up"
+    },
+    {
+      "turn": 70,
+      "speaker": "Maya Rodrigues",
+      "content": "Stress the context window: summarize only the newest contradictory evidence without losing the original project constraints.",
+      "intent": "natural-follow-up"
+    },
+    {
+      "turn": 71,
+      "speaker": "Maya Rodrigues",
+      "content": "Create a small survey question set to validate this with caregivers.",
+      "intent": "natural-follow-up"
+    },
+    {
+      "turn": 72,
+      "speaker": "Maya Rodrigues",
+      "content": "What UI state should exist for stale or contradictory readiness evidence?",
+      "intent": "natural-follow-up"
+    },
+    {
+      "turn": 73,
+      "speaker": "Maya Rodrigues",
+      "content": "Find any multilingual wording risk in the archive.",
+      "intent": "natural-follow-up"
+    },
+    {
+      "turn": 74,
+      "speaker": "Maya Rodrigues",
+      "content": "What is the smallest prototype we could test next week?",
+      "intent": "natural-follow-up"
+    },
+    {
+      "turn": 75,
+      "speaker": "Maya Rodrigues",
+      "content": "Turn the strongest insight into a design principle.",
+      "intent": "natural-follow-up"
+    },
+    {
+      "turn": 76,
+      "speaker": "Maya Rodrigues",
+      "content": "Write a task for generating an executive readout slide.",
+      "intent": "natural-follow-up"
+    },
+    {
+      "turn": 77,
+      "speaker": "Maya Rodrigues",
+      "content": "Review whether the source trail concept could create privacy risk.",
+      "intent": "natural-follow-up"
+    },
+    {
+      "turn": 78,
+      "speaker": "Maya Rodrigues",
+      "content": "Use web context only if it adds something concrete.",
+      "intent": "natural-follow-up"
+    },
+    {
+      "turn": 79,
+      "speaker": "Maya Rodrigues",
+      "content": "Check if any task is stuck in Review and needs human approval.",
+      "intent": "natural-follow-up"
+    },
+    {
+      "turn": 80,
+      "speaker": "Maya Rodrigues",
+      "content": "If the result is unsupported, ask yourself what context was missing.",
+      "intent": "natural-follow-up"
+    },
+    {
+      "turn": 81,
+      "speaker": "Maya Rodrigues",
+      "content": "Please cite the exact files you relied on for that statement.",
+      "intent": "natural-follow-up"
+    },
+    {
+      "turn": 82,
+      "speaker": "Maya Rodrigues",
+      "content": "Turn that into a task with a clear review checklist.",
+      "intent": "natural-follow-up"
+    },
+    {
+      "turn": 83,
+      "speaker": "Maya Rodrigues",
+      "content": "This feels vague. Rewrite it as a finding with source, evidence, implication, and confidence.",
+      "intent": "natural-follow-up"
+    },
+    {
+      "turn": 84,
+      "speaker": "Maya Rodrigues",
+      "content": "What would you ask in the next participant interview to reduce uncertainty?",
+      "intent": "natural-follow-up"
+    },
+    {
+      "turn": 85,
+      "speaker": "Maya Rodrigues",
+      "content": "Compare patient versus staff needs in a two-column summary.",
+      "intent": "natural-follow-up"
+    },
+    {
+      "turn": 86,
+      "speaker": "Maya Rodrigues",
+      "content": "What should we not automate yet because trust is too low?",
+      "intent": "natural-follow-up"
+    },
+    {
+      "turn": 87,
+      "speaker": "Maya Rodrigues",
+      "content": "Use the analytics export to sanity-check whether the qualitative pattern appears in behavior.",
+      "intent": "natural-follow-up"
+    },
+    {
+      "turn": 88,
+      "speaker": "Maya Rodrigues",
+      "content": "Which recommendation has the strongest evidence and which is only a hypothesis?",
+      "intent": "natural-follow-up"
+    },
+    {
+      "turn": 89,
+      "speaker": "Maya Rodrigues",
+      "content": "Ask Istara to use the reasoning bank or project memory, then verify whether the response cites current corpus evidence too.",
+      "intent": "natural-follow-up"
+    },
+    {
+      "turn": 90,
+      "speaker": "Maya Rodrigues",
+      "content": "Ask for a tool-call or skill-call trace if available; otherwise record that observability gap.",
+      "intent": "natural-follow-up"
+    },
+    {
+      "turn": 91,
+      "speaker": "Maya Rodrigues",
+      "content": "Stress the context window: summarize only the newest contradictory evidence without losing the original project constraints.",
+      "intent": "natural-follow-up"
+    },
+    {
+      "turn": 92,
+      "speaker": "Maya Rodrigues",
+      "content": "Create a small survey question set to validate this with caregivers.",
+      "intent": "natural-follow-up"
+    },
+    {
+      "turn": 93,
+      "speaker": "Maya Rodrigues",
+      "content": "What UI state should exist for stale or contradictory readiness evidence?",
+      "intent": "natural-follow-up"
+    },
+    {
+      "turn": 94,
+      "speaker": "Maya Rodrigues",
+      "content": "Find any multilingual wording risk in the archive.",
+      "intent": "natural-follow-up"
+    },
+    {
+      "turn": 95,
+      "speaker": "Maya Rodrigues",
+      "content": "What is the smallest prototype we could test next week?",
+      "intent": "natural-follow-up"
+    },
+    {
+      "turn": 96,
+      "speaker": "Maya Rodrigues",
+      "content": "Turn the strongest insight into a design principle.",
+      "intent": "natural-follow-up"
+    },
+    {
+      "turn": 97,
+      "speaker": "Maya Rodrigues",
+      "content": "Write a task for generating an executive readout slide.",
+      "intent": "natural-follow-up"
+    },
+    {
+      "turn": 98,
+      "speaker": "Maya Rodrigues",
+      "content": "Review whether the source trail concept could create privacy risk.",
+      "intent": "natural-follow-up"
+    },
+    {
+      "turn": 99,
+      "speaker": "Maya Rodrigues",
+      "content": "Use web context only if it adds something concrete.",
+      "intent": "natural-follow-up"
+    },
+    {
+      "turn": 100,
+      "speaker": "Maya Rodrigues",
+      "content": "Check if any task is stuck in Review and needs human approval.",
+      "intent": "natural-follow-up"
+    },
+    {
+      "turn": 101,
+      "speaker": "Maya Rodrigues",
+      "content": "If the result is unsupported, ask yourself what context was missing.",
+      "intent": "natural-follow-up"
+    },
+    {
+      "turn": 102,
+      "speaker": "Maya Rodrigues",
+      "content": "Please cite the exact files you relied on for that statement.",
+      "intent": "natural-follow-up"
+    },
+    {
+      "turn": 103,
+      "speaker": "Maya Rodrigues",
+      "content": "Turn that into a task with a clear review checklist.",
+      "intent": "natural-follow-up"
+    },
+    {
+      "turn": 104,
+      "speaker": "Maya Rodrigues",
+      "content": "This feels vague. Rewrite it as a finding with source, evidence, implication, and confidence.",
+      "intent": "natural-follow-up"
+    },
+    {
+      "turn": 105,
+      "speaker": "Maya Rodrigues",
+      "content": "What would you ask in the next participant interview to reduce uncertainty?",
+      "intent": "natural-follow-up"
+    },
+    {
+      "turn": 106,
+      "speaker": "Maya Rodrigues",
+      "content": "Compare patient versus staff needs in a two-column summary.",
+      "intent": "natural-follow-up"
+    },
+    {
+      "turn": 107,
+      "speaker": "Maya Rodrigues",
+      "content": "What should we not automate yet because trust is too low?",
+      "intent": "natural-follow-up"
+    },
+    {
+      "turn": 108,
+      "speaker": "Maya Rodrigues",
+      "content": "Use the analytics export to sanity-check whether the qualitative pattern appears in behavior.",
+      "intent": "natural-follow-up"
+    }
+  ],
+  "generated_task_templates": [
+    {
+      "title": "[RU-01] Analyze staff interview trust signals",
+      "description": "Extract staff evidence about readiness-status trust, source trails, and manual overrides.",
+      "skill_name": "analyze-interview",
+      "priority": "high",
+      "labels": [
+        "real-user-benchmark",
+        "needs-citations"
+      ],
+      "shouldReviseFirst": true,
+      "acceptance": [
+        "Names at least two source documents when evidence is synthesized.",
+        "Distinguishes evidence, interpretation, and recommendation.",
+        "States confidence or uncertainty.",
+        "Avoids medical advice and private patient disclosure."
+      ]
+    },
+    {
+      "title": "[RU-02] Analyze patient appointment-prep blockers",
+      "description": "Identify patient-facing blockers, especially required versus optional tasks.",
+      "skill_name": "",
+      "priority": "medium",
+      "labels": [
+        "real-user-benchmark",
+        "synthesis"
+      ],
+      "shouldReviseFirst": false,
+      "acceptance": [
+        "Names at least two source documents when evidence is synthesized.",
+        "Distinguishes evidence, interpretation, and recommendation.",
+        "States confidence or uncertainty.",
+        "Avoids medical advice and private patient disclosure."
+      ]
+    },
+    {
+      "title": "[RU-03] Analyze caregiver permission confusion",
+      "description": "Synthesize caregiver evidence, multilingual examples, and support tickets about access boundaries.",
+      "skill_name": "",
+      "priority": "medium",
+      "labels": [
+        "real-user-benchmark",
+        "synthesis"
+      ],
+      "shouldReviseFirst": false,
+      "acceptance": [
+        "Names at least two source documents when evidence is synthesized.",
+        "Distinguishes evidence, interpretation, and recommendation.",
+        "States confidence or uncertainty.",
+        "Avoids medical advice and private patient disclosure."
+      ]
+    },
+    {
+      "title": "[RU-04] Survey trend readout",
+      "description": "Quantify reminder clarity, readiness trust, NPS, and role/language differences from the survey CSV.",
+      "skill_name": "",
+      "priority": "medium",
+      "labels": [
+        "real-user-benchmark",
+        "synthesis"
+      ],
+      "shouldReviseFirst": false,
+      "acceptance": [
+        "Names at least two source documents when evidence is synthesized.",
+        "Distinguishes evidence, interpretation, and recommendation.",
+        "States confidence or uncertainty.",
+        "Avoids medical advice and private patient disclosure."
+      ]
+    },
+    {
+      "title": "[RU-05] Usability prototype comparison",
+      "description": "Compare prototype A and B for scan speed, source-trail comprehension, and caregiver-safe update completion.",
+      "skill_name": "",
+      "priority": "medium",
+      "labels": [
+        "real-user-benchmark",
+        "synthesis"
+      ],
+      "shouldReviseFirst": false,
+      "acceptance": [
+        "Names at least two source documents when evidence is synthesized.",
+        "Distinguishes evidence, interpretation, and recommendation.",
+        "States confidence or uncertainty.",
+        "Avoids medical advice and private patient disclosure."
+      ]
+    },
+    {
+      "title": "[RU-06] Diary study synthesis",
+      "description": "Find recurring day-by-day prep friction and emotional patterns.",
+      "skill_name": "analyze-interview",
+      "priority": "medium",
+      "labels": [
+        "real-user-benchmark",
+        "synthesis"
+      ],
+      "shouldReviseFirst": false,
+      "acceptance": [
+        "Names at least two source documents when evidence is synthesized.",
+        "Distinguishes evidence, interpretation, and recommendation.",
+        "States confidence or uncertainty.",
+        "Avoids medical advice and private patient disclosure."
+      ]
+    },
+    {
+      "title": "[RU-07] Support ticket theme clustering",
+      "description": "Cluster support tickets into actionable product themes and severity patterns.",
+      "skill_name": "",
+      "priority": "medium",
+      "labels": [
+        "real-user-benchmark",
+        "synthesis"
+      ],
+      "shouldReviseFirst": false,
+      "acceptance": [
+        "Names at least two source documents when evidence is synthesized.",
+        "Distinguishes evidence, interpretation, and recommendation.",
+        "States confidence or uncertainty.",
+        "Avoids medical advice and private patient disclosure."
+      ]
+    },
+    {
+      "title": "[RU-08] Design brief for readiness timeline",
+      "description": "Create a brief grounded in findings, with UI requirements and non-goals.",
+      "skill_name": "",
+      "priority": "medium",
+      "labels": [
+        "real-user-benchmark",
+        "needs-citations"
+      ],
+      "shouldReviseFirst": false,
+      "acceptance": [
+        "Names at least two source documents when evidence is synthesized.",
+        "Distinguishes evidence, interpretation, and recommendation.",
+        "States confidence or uncertainty.",
+        "Avoids medical advice and private patient disclosure."
+      ]
+    },
+    {
+      "title": "[RU-09] Interface generation review",
+      "description": "Evaluate generated readiness timeline screens for evidence fit and usability risks.",
+      "skill_name": "",
+      "priority": "medium",
+      "labels": [
+        "real-user-benchmark",
+        "synthesis"
+      ],
+      "shouldReviseFirst": true,
+      "acceptance": [
+        "Names at least two source documents when evidence is synthesized.",
+        "Distinguishes evidence, interpretation, and recommendation.",
+        "States confidence or uncertainty.",
+        "Avoids medical advice and private patient disclosure."
+      ]
+    },
+    {
+      "title": "[RU-10] Integration setup audit",
+      "description": "Document credential-free setup, harness status, and graceful degradation for one integration.",
+      "skill_name": "",
+      "priority": "high",
+      "labels": [
+        "real-user-benchmark",
+        "synthesis"
+      ],
+      "shouldReviseFirst": false,
+      "acceptance": [
+        "Names at least two source documents when evidence is synthesized.",
+        "Distinguishes evidence, interpretation, and recommendation.",
+        "States confidence or uncertainty.",
+        "Avoids medical advice and private patient disclosure."
+      ]
+    },
+    {
+      "title": "[RU-11] RAG grounding audit",
+      "description": "Inspect retrieved evidence quality, source precision, false positives, and missing-source risks for one chat synthesis.",
+      "skill_name": "analyze-interview",
+      "priority": "medium",
+      "labels": [
+        "real-user-benchmark",
+        "synthesis"
+      ],
+      "shouldReviseFirst": false,
+      "acceptance": [
+        "Names at least two source documents when evidence is synthesized.",
+        "Distinguishes evidence, interpretation, and recommendation.",
+        "States confidence or uncertainty.",
+        "Avoids medical advice and private patient disclosure."
+      ]
+    },
+    {
+      "title": "[RU-12] Tool and skill trace audit",
+      "description": "Check whether Istara exposed useful tool-call or skill-call evidence for a researcher-facing answer.",
+      "skill_name": "",
+      "priority": "medium",
+      "labels": [
+        "real-user-benchmark",
+        "synthesis"
+      ],
+      "shouldReviseFirst": false,
+      "acceptance": [
+        "Names at least two source documents when evidence is synthesized.",
+        "Distinguishes evidence, interpretation, and recommendation.",
+        "States confidence or uncertainty.",
+        "Avoids medical advice and private patient disclosure."
+      ]
+    },
+    {
+      "title": "[RU-13] ReasoningBank and memento audit",
+      "description": "Evaluate whether project memory, reasoning bank, or memento-style context improves or contaminates the answer.",
+      "skill_name": "",
+      "priority": "medium",
+      "labels": [
+        "real-user-benchmark",
+        "synthesis"
+      ],
+      "shouldReviseFirst": false,
+      "acceptance": [
+        "Names at least two source documents when evidence is synthesized.",
+        "Distinguishes evidence, interpretation, and recommendation.",
+        "States confidence or uncertainty.",
+        "Avoids medical advice and private patient disclosure."
+      ]
+    },
+    {
+      "title": "[RU-14] Hyperagent workflow audit",
+      "description": "Use the safest available hyperagent or governed-improvement path and review whether it produced a bounded useful improvement.",
+      "skill_name": "",
+      "priority": "medium",
+      "labels": [
+        "real-user-benchmark",
+        "synthesis"
+      ],
+      "shouldReviseFirst": false,
+      "acceptance": [
+        "Names at least two source documents when evidence is synthesized.",
+        "Distinguishes evidence, interpretation, and recommendation.",
+        "States confidence or uncertainty.",
+        "Avoids medical advice and private patient disclosure."
+      ]
+    },
+    {
+      "title": "[RU-15] Compute and ensemble health audit",
+      "description": "Verify donated compute health, model routing, and any ensemble/MoA health evidence before relying on synthesis.",
+      "skill_name": "",
+      "priority": "medium",
+      "labels": [
+        "real-user-benchmark",
+        "needs-citations"
+      ],
+      "shouldReviseFirst": false,
+      "acceptance": [
+        "Names at least two source documents when evidence is synthesized.",
+        "Distinguishes evidence, interpretation, and recommendation.",
+        "States confidence or uncertainty.",
+        "Avoids medical advice and private patient disclosure."
+      ]
+    },
+    {
+      "title": "[RU-16] Analyze staff interview trust signals",
+      "description": "Extract staff evidence about readiness-status trust, source trails, and manual overrides.",
+      "skill_name": "analyze-interview",
+      "priority": "medium",
+      "labels": [
+        "real-user-benchmark",
+        "synthesis"
+      ],
+      "shouldReviseFirst": false,
+      "acceptance": [
+        "Names at least two source documents when evidence is synthesized.",
+        "Distinguishes evidence, interpretation, and recommendation.",
+        "States confidence or uncertainty.",
+        "Avoids medical advice and private patient disclosure."
+      ]
+    },
+    {
+      "title": "[RU-17] Analyze patient appointment-prep blockers",
+      "description": "Identify patient-facing blockers, especially required versus optional tasks.",
+      "skill_name": "",
+      "priority": "medium",
+      "labels": [
+        "real-user-benchmark",
+        "synthesis"
+      ],
+      "shouldReviseFirst": true,
+      "acceptance": [
+        "Names at least two source documents when evidence is synthesized.",
+        "Distinguishes evidence, interpretation, and recommendation.",
+        "States confidence or uncertainty.",
+        "Avoids medical advice and private patient disclosure."
+      ]
+    },
+    {
+      "title": "[RU-18] Analyze caregiver permission confusion",
+      "description": "Synthesize caregiver evidence, multilingual examples, and support tickets about access boundaries.",
+      "skill_name": "",
+      "priority": "medium",
+      "labels": [
+        "real-user-benchmark",
+        "synthesis"
+      ],
+      "shouldReviseFirst": false,
+      "acceptance": [
+        "Names at least two source documents when evidence is synthesized.",
+        "Distinguishes evidence, interpretation, and recommendation.",
+        "States confidence or uncertainty.",
+        "Avoids medical advice and private patient disclosure."
+      ]
+    },
+    {
+      "title": "[RU-19] Survey trend readout",
+      "description": "Quantify reminder clarity, readiness trust, NPS, and role/language differences from the survey CSV.",
+      "skill_name": "",
+      "priority": "high",
+      "labels": [
+        "real-user-benchmark",
+        "synthesis"
+      ],
+      "shouldReviseFirst": false,
+      "acceptance": [
+        "Names at least two source documents when evidence is synthesized.",
+        "Distinguishes evidence, interpretation, and recommendation.",
+        "States confidence or uncertainty.",
+        "Avoids medical advice and private patient disclosure."
+      ]
+    },
+    {
+      "title": "[RU-20] Usability prototype comparison",
+      "description": "Compare prototype A and B for scan speed, source-trail comprehension, and caregiver-safe update completion.",
+      "skill_name": "",
+      "priority": "medium",
+      "labels": [
+        "real-user-benchmark",
+        "synthesis"
+      ],
+      "shouldReviseFirst": false,
+      "acceptance": [
+        "Names at least two source documents when evidence is synthesized.",
+        "Distinguishes evidence, interpretation, and recommendation.",
+        "States confidence or uncertainty.",
+        "Avoids medical advice and private patient disclosure."
+      ]
+    },
+    {
+      "title": "[RU-21] Diary study synthesis",
+      "description": "Find recurring day-by-day prep friction and emotional patterns.",
+      "skill_name": "analyze-interview",
+      "priority": "medium",
+      "labels": [
+        "real-user-benchmark",
+        "synthesis"
+      ],
+      "shouldReviseFirst": false,
+      "acceptance": [
+        "Names at least two source documents when evidence is synthesized.",
+        "Distinguishes evidence, interpretation, and recommendation.",
+        "States confidence or uncertainty.",
+        "Avoids medical advice and private patient disclosure."
+      ]
+    },
+    {
+      "title": "[RU-22] Support ticket theme clustering",
+      "description": "Cluster support tickets into actionable product themes and severity patterns.",
+      "skill_name": "",
+      "priority": "medium",
+      "labels": [
+        "real-user-benchmark",
+        "needs-citations"
+      ],
+      "shouldReviseFirst": false,
+      "acceptance": [
+        "Names at least two source documents when evidence is synthesized.",
+        "Distinguishes evidence, interpretation, and recommendation.",
+        "States confidence or uncertainty.",
+        "Avoids medical advice and private patient disclosure."
+      ]
+    },
+    {
+      "title": "[RU-23] Design brief for readiness timeline",
+      "description": "Create a brief grounded in findings, with UI requirements and non-goals.",
+      "skill_name": "",
+      "priority": "medium",
+      "labels": [
+        "real-user-benchmark",
+        "synthesis"
+      ],
+      "shouldReviseFirst": false,
+      "acceptance": [
+        "Names at least two source documents when evidence is synthesized.",
+        "Distinguishes evidence, interpretation, and recommendation.",
+        "States confidence or uncertainty.",
+        "Avoids medical advice and private patient disclosure."
+      ]
+    },
+    {
+      "title": "[RU-24] Interface generation review",
+      "description": "Evaluate generated readiness timeline screens for evidence fit and usability risks.",
+      "skill_name": "",
+      "priority": "medium",
+      "labels": [
+        "real-user-benchmark",
+        "synthesis"
+      ],
+      "shouldReviseFirst": false,
+      "acceptance": [
+        "Names at least two source documents when evidence is synthesized.",
+        "Distinguishes evidence, interpretation, and recommendation.",
+        "States confidence or uncertainty.",
+        "Avoids medical advice and private patient disclosure."
+      ]
+    },
+    {
+      "title": "[RU-25] Integration setup audit",
+      "description": "Document credential-free setup, harness status, and graceful degradation for one integration.",
+      "skill_name": "",
+      "priority": "medium",
+      "labels": [
+        "real-user-benchmark",
+        "synthesis"
+      ],
+      "shouldReviseFirst": true,
+      "acceptance": [
+        "Names at least two source documents when evidence is synthesized.",
+        "Distinguishes evidence, interpretation, and recommendation.",
+        "States confidence or uncertainty.",
+        "Avoids medical advice and private patient disclosure."
+      ]
+    },
+    {
+      "title": "[RU-26] RAG grounding audit",
+      "description": "Inspect retrieved evidence quality, source precision, false positives, and missing-source risks for one chat synthesis.",
+      "skill_name": "analyze-interview",
+      "priority": "medium",
+      "labels": [
+        "real-user-benchmark",
+        "synthesis"
+      ],
+      "shouldReviseFirst": false,
+      "acceptance": [
+        "Names at least two source documents when evidence is synthesized.",
+        "Distinguishes evidence, interpretation, and recommendation.",
+        "States confidence or uncertainty.",
+        "Avoids medical advice and private patient disclosure."
+      ]
+    },
+    {
+      "title": "[RU-27] Tool and skill trace audit",
+      "description": "Check whether Istara exposed useful tool-call or skill-call evidence for a researcher-facing answer.",
+      "skill_name": "",
+      "priority": "medium",
+      "labels": [
+        "real-user-benchmark",
+        "synthesis"
+      ],
+      "shouldReviseFirst": false,
+      "acceptance": [
+        "Names at least two source documents when evidence is synthesized.",
+        "Distinguishes evidence, interpretation, and recommendation.",
+        "States confidence or uncertainty.",
+        "Avoids medical advice and private patient disclosure."
+      ]
+    },
+    {
+      "title": "[RU-28] ReasoningBank and memento audit",
+      "description": "Evaluate whether project memory, reasoning bank, or memento-style context improves or contaminates the answer.",
+      "skill_name": "",
+      "priority": "high",
+      "labels": [
+        "real-user-benchmark",
+        "synthesis"
+      ],
+      "shouldReviseFirst": false,
+      "acceptance": [
+        "Names at least two source documents when evidence is synthesized.",
+        "Distinguishes evidence, interpretation, and recommendation.",
+        "States confidence or uncertainty.",
+        "Avoids medical advice and private patient disclosure."
+      ]
+    },
+    {
+      "title": "[RU-29] Hyperagent workflow audit",
+      "description": "Use the safest available hyperagent or governed-improvement path and review whether it produced a bounded useful improvement.",
+      "skill_name": "",
+      "priority": "medium",
+      "labels": [
+        "real-user-benchmark",
+        "needs-citations"
+      ],
+      "shouldReviseFirst": false,
+      "acceptance": [
+        "Names at least two source documents when evidence is synthesized.",
+        "Distinguishes evidence, interpretation, and recommendation.",
+        "States confidence or uncertainty.",
+        "Avoids medical advice and private patient disclosure."
+      ]
+    },
+    {
+      "title": "[RU-30] Compute and ensemble health audit",
+      "description": "Verify donated compute health, model routing, and any ensemble/MoA health evidence before relying on synthesis.",
+      "skill_name": "",
+      "priority": "medium",
+      "labels": [
+        "real-user-benchmark",
+        "synthesis"
+      ],
+      "shouldReviseFirst": false,
+      "acceptance": [
+        "Names at least two source documents when evidence is synthesized.",
+        "Distinguishes evidence, interpretation, and recommendation.",
+        "States confidence or uncertainty.",
+        "Avoids medical advice and private patient disclosure."
+      ]
+    },
+    {
+      "title": "[RU-31] Analyze staff interview trust signals",
+      "description": "Extract staff evidence about readiness-status trust, source trails, and manual overrides.",
+      "skill_name": "analyze-interview",
+      "priority": "medium",
+      "labels": [
+        "real-user-benchmark",
+        "synthesis"
+      ],
+      "shouldReviseFirst": false,
+      "acceptance": [
+        "Names at least two source documents when evidence is synthesized.",
+        "Distinguishes evidence, interpretation, and recommendation.",
+        "States confidence or uncertainty.",
+        "Avoids medical advice and private patient disclosure."
+      ]
+    },
+    {
+      "title": "[RU-32] Analyze patient appointment-prep blockers",
+      "description": "Identify patient-facing blockers, especially required versus optional tasks.",
+      "skill_name": "",
+      "priority": "medium",
+      "labels": [
+        "real-user-benchmark",
+        "synthesis"
+      ],
+      "shouldReviseFirst": false,
+      "acceptance": [
+        "Names at least two source documents when evidence is synthesized.",
+        "Distinguishes evidence, interpretation, and recommendation.",
+        "States confidence or uncertainty.",
+        "Avoids medical advice and private patient disclosure."
+      ]
+    },
+    {
+      "title": "[RU-33] Analyze caregiver permission confusion",
+      "description": "Synthesize caregiver evidence, multilingual examples, and support tickets about access boundaries.",
+      "skill_name": "",
+      "priority": "medium",
+      "labels": [
+        "real-user-benchmark",
+        "synthesis"
+      ],
+      "shouldReviseFirst": true,
+      "acceptance": [
+        "Names at least two source documents when evidence is synthesized.",
+        "Distinguishes evidence, interpretation, and recommendation.",
+        "States confidence or uncertainty.",
+        "Avoids medical advice and private patient disclosure."
+      ]
+    },
+    {
+      "title": "[RU-34] Survey trend readout",
+      "description": "Quantify reminder clarity, readiness trust, NPS, and role/language differences from the survey CSV.",
+      "skill_name": "",
+      "priority": "medium",
+      "labels": [
+        "real-user-benchmark",
+        "synthesis"
+      ],
+      "shouldReviseFirst": false,
+      "acceptance": [
+        "Names at least two source documents when evidence is synthesized.",
+        "Distinguishes evidence, interpretation, and recommendation.",
+        "States confidence or uncertainty.",
+        "Avoids medical advice and private patient disclosure."
+      ]
+    },
+    {
+      "title": "[RU-35] Usability prototype comparison",
+      "description": "Compare prototype A and B for scan speed, source-trail comprehension, and caregiver-safe update completion.",
+      "skill_name": "",
+      "priority": "medium",
+      "labels": [
+        "real-user-benchmark",
+        "synthesis"
+      ],
+      "shouldReviseFirst": false,
+      "acceptance": [
+        "Names at least two source documents when evidence is synthesized.",
+        "Distinguishes evidence, interpretation, and recommendation.",
+        "States confidence or uncertainty.",
+        "Avoids medical advice and private patient disclosure."
+      ]
+    },
+    {
+      "title": "[RU-36] Diary study synthesis",
+      "description": "Find recurring day-by-day prep friction and emotional patterns.",
+      "skill_name": "analyze-interview",
+      "priority": "medium",
+      "labels": [
+        "real-user-benchmark",
+        "needs-citations"
+      ],
+      "shouldReviseFirst": false,
+      "acceptance": [
+        "Names at least two source documents when evidence is synthesized.",
+        "Distinguishes evidence, interpretation, and recommendation.",
+        "States confidence or uncertainty.",
+        "Avoids medical advice and private patient disclosure."
+      ]
+    },
+    {
+      "title": "[RU-37] Support ticket theme clustering",
+      "description": "Cluster support tickets into actionable product themes and severity patterns.",
+      "skill_name": "",
+      "priority": "high",
+      "labels": [
+        "real-user-benchmark",
+        "synthesis"
+      ],
+      "shouldReviseFirst": false,
+      "acceptance": [
+        "Names at least two source documents when evidence is synthesized.",
+        "Distinguishes evidence, interpretation, and recommendation.",
+        "States confidence or uncertainty.",
+        "Avoids medical advice and private patient disclosure."
+      ]
+    },
+    {
+      "title": "[RU-38] Design brief for readiness timeline",
+      "description": "Create a brief grounded in findings, with UI requirements and non-goals.",
+      "skill_name": "",
+      "priority": "medium",
+      "labels": [
+        "real-user-benchmark",
+        "synthesis"
+      ],
+      "shouldReviseFirst": false,
+      "acceptance": [
+        "Names at least two source documents when evidence is synthesized.",
+        "Distinguishes evidence, interpretation, and recommendation.",
+        "States confidence or uncertainty.",
+        "Avoids medical advice and private patient disclosure."
+      ]
+    },
+    {
+      "title": "[RU-39] Interface generation review",
+      "description": "Evaluate generated readiness timeline screens for evidence fit and usability risks.",
+      "skill_name": "",
+      "priority": "medium",
+      "labels": [
+        "real-user-benchmark",
+        "synthesis"
+      ],
+      "shouldReviseFirst": false,
+      "acceptance": [
+        "Names at least two source documents when evidence is synthesized.",
+        "Distinguishes evidence, interpretation, and recommendation.",
+        "States confidence or uncertainty.",
+        "Avoids medical advice and private patient disclosure."
+      ]
+    },
+    {
+      "title": "[RU-40] Integration setup audit",
+      "description": "Document credential-free setup, harness status, and graceful degradation for one integration.",
+      "skill_name": "",
+      "priority": "medium",
+      "labels": [
+        "real-user-benchmark",
+        "synthesis"
+      ],
+      "shouldReviseFirst": false,
+      "acceptance": [
+        "Names at least two source documents when evidence is synthesized.",
+        "Distinguishes evidence, interpretation, and recommendation.",
+        "States confidence or uncertainty.",
+        "Avoids medical advice and private patient disclosure."
+      ]
+    },
+    {
+      "title": "[RU-41] RAG grounding audit",
+      "description": "Inspect retrieved evidence quality, source precision, false positives, and missing-source risks for one chat synthesis.",
+      "skill_name": "analyze-interview",
+      "priority": "medium",
+      "labels": [
+        "real-user-benchmark",
+        "synthesis"
+      ],
+      "shouldReviseFirst": true,
+      "acceptance": [
+        "Names at least two source documents when evidence is synthesized.",
+        "Distinguishes evidence, interpretation, and recommendation.",
+        "States confidence or uncertainty.",
+        "Avoids medical advice and private patient disclosure."
+      ]
+    },
+    {
+      "title": "[RU-42] Tool and skill trace audit",
+      "description": "Check whether Istara exposed useful tool-call or skill-call evidence for a researcher-facing answer.",
+      "skill_name": "",
+      "priority": "medium",
+      "labels": [
+        "real-user-benchmark",
+        "synthesis"
+      ],
+      "shouldReviseFirst": false,
+      "acceptance": [
+        "Names at least two source documents when evidence is synthesized.",
+        "Distinguishes evidence, interpretation, and recommendation.",
+        "States confidence or uncertainty.",
+        "Avoids medical advice and private patient disclosure."
+      ]
+    },
+    {
+      "title": "[RU-43] ReasoningBank and memento audit",
+      "description": "Evaluate whether project memory, reasoning bank, or memento-style context improves or contaminates the answer.",
+      "skill_name": "",
+      "priority": "medium",
+      "labels": [
+        "real-user-benchmark",
+        "needs-citations"
+      ],
+      "shouldReviseFirst": false,
+      "acceptance": [
+        "Names at least two source documents when evidence is synthesized.",
+        "Distinguishes evidence, interpretation, and recommendation.",
+        "States confidence or uncertainty.",
+        "Avoids medical advice and private patient disclosure."
+      ]
+    },
+    {
+      "title": "[RU-44] Hyperagent workflow audit",
+      "description": "Use the safest available hyperagent or governed-improvement path and review whether it produced a bounded useful improvement.",
+      "skill_name": "",
+      "priority": "medium",
+      "labels": [
+        "real-user-benchmark",
+        "synthesis"
+      ],
+      "shouldReviseFirst": false,
+      "acceptance": [
+        "Names at least two source documents when evidence is synthesized.",
+        "Distinguishes evidence, interpretation, and recommendation.",
+        "States confidence or uncertainty.",
+        "Avoids medical advice and private patient disclosure."
+      ]
+    },
+    {
+      "title": "[RU-45] Compute and ensemble health audit",
+      "description": "Verify donated compute health, model routing, and any ensemble/MoA health evidence before relying on synthesis.",
+      "skill_name": "",
+      "priority": "medium",
+      "labels": [
+        "real-user-benchmark",
+        "synthesis"
+      ],
+      "shouldReviseFirst": false,
+      "acceptance": [
+        "Names at least two source documents when evidence is synthesized.",
+        "Distinguishes evidence, interpretation, and recommendation.",
+        "States confidence or uncertainty.",
+        "Avoids medical advice and private patient disclosure."
+      ]
+    },
+    {
+      "title": "[RU-46] Analyze staff interview trust signals",
+      "description": "Extract staff evidence about readiness-status trust, source trails, and manual overrides.",
+      "skill_name": "analyze-interview",
+      "priority": "high",
+      "labels": [
+        "real-user-benchmark",
+        "synthesis"
+      ],
+      "shouldReviseFirst": false,
+      "acceptance": [
+        "Names at least two source documents when evidence is synthesized.",
+        "Distinguishes evidence, interpretation, and recommendation.",
+        "States confidence or uncertainty.",
+        "Avoids medical advice and private patient disclosure."
+      ]
+    },
+    {
+      "title": "[RU-47] Analyze patient appointment-prep blockers",
+      "description": "Identify patient-facing blockers, especially required versus optional tasks.",
+      "skill_name": "",
+      "priority": "medium",
+      "labels": [
+        "real-user-benchmark",
+        "synthesis"
+      ],
+      "shouldReviseFirst": false,
+      "acceptance": [
+        "Names at least two source documents when evidence is synthesized.",
+        "Distinguishes evidence, interpretation, and recommendation.",
+        "States confidence or uncertainty.",
+        "Avoids medical advice and private patient disclosure."
+      ]
+    },
+    {
+      "title": "[RU-48] Analyze caregiver permission confusion",
+      "description": "Synthesize caregiver evidence, multilingual examples, and support tickets about access boundaries.",
+      "skill_name": "",
+      "priority": "medium",
+      "labels": [
+        "real-user-benchmark",
+        "synthesis"
+      ],
+      "shouldReviseFirst": false,
+      "acceptance": [
+        "Names at least two source documents when evidence is synthesized.",
+        "Distinguishes evidence, interpretation, and recommendation.",
+        "States confidence or uncertainty.",
+        "Avoids medical advice and private patient disclosure."
+      ]
+    },
+    {
+      "title": "[RU-49] Survey trend readout",
+      "description": "Quantify reminder clarity, readiness trust, NPS, and role/language differences from the survey CSV.",
+      "skill_name": "",
+      "priority": "medium",
+      "labels": [
+        "real-user-benchmark",
+        "synthesis"
+      ],
+      "shouldReviseFirst": true,
+      "acceptance": [
+        "Names at least two source documents when evidence is synthesized.",
+        "Distinguishes evidence, interpretation, and recommendation.",
+        "States confidence or uncertainty.",
+        "Avoids medical advice and private patient disclosure."
+      ]
+    },
+    {
+      "title": "[RU-50] Usability prototype comparison",
+      "description": "Compare prototype A and B for scan speed, source-trail comprehension, and caregiver-safe update completion.",
+      "skill_name": "",
+      "priority": "medium",
+      "labels": [
+        "real-user-benchmark",
+        "needs-citations"
+      ],
+      "shouldReviseFirst": false,
+      "acceptance": [
+        "Names at least two source documents when evidence is synthesized.",
+        "Distinguishes evidence, interpretation, and recommendation.",
+        "States confidence or uncertainty.",
+        "Avoids medical advice and private patient disclosure."
+      ]
+    },
+    {
+      "title": "[RU-51] Diary study synthesis",
+      "description": "Find recurring day-by-day prep friction and emotional patterns.",
+      "skill_name": "analyze-interview",
+      "priority": "medium",
+      "labels": [
+        "real-user-benchmark",
+        "synthesis"
+      ],
+      "shouldReviseFirst": false,
+      "acceptance": [
+        "Names at least two source documents when evidence is synthesized.",
+        "Distinguishes evidence, interpretation, and recommendation.",
+        "States confidence or uncertainty.",
+        "Avoids medical advice and private patient disclosure."
+      ]
+    },
+    {
+      "title": "[RU-52] Support ticket theme clustering",
+      "description": "Cluster support tickets into actionable product themes and severity patterns.",
+      "skill_name": "",
+      "priority": "medium",
+      "labels": [
+        "real-user-benchmark",
+        "synthesis"
+      ],
+      "shouldReviseFirst": false,
+      "acceptance": [
+        "Names at least two source documents when evidence is synthesized.",
+        "Distinguishes evidence, interpretation, and recommendation.",
+        "States confidence or uncertainty.",
+        "Avoids medical advice and private patient disclosure."
+      ]
+    },
+    {
+      "title": "[RU-53] Design brief for readiness timeline",
+      "description": "Create a brief grounded in findings, with UI requirements and non-goals.",
+      "skill_name": "",
+      "priority": "medium",
+      "labels": [
+        "real-user-benchmark",
+        "synthesis"
+      ],
+      "shouldReviseFirst": false,
+      "acceptance": [
+        "Names at least two source documents when evidence is synthesized.",
+        "Distinguishes evidence, interpretation, and recommendation.",
+        "States confidence or uncertainty.",
+        "Avoids medical advice and private patient disclosure."
+      ]
+    },
+    {
+      "title": "[RU-54] Interface generation review",
+      "description": "Evaluate generated readiness timeline screens for evidence fit and usability risks.",
+      "skill_name": "",
+      "priority": "medium",
+      "labels": [
+        "real-user-benchmark",
+        "synthesis"
+      ],
+      "shouldReviseFirst": false,
+      "acceptance": [
+        "Names at least two source documents when evidence is synthesized.",
+        "Distinguishes evidence, interpretation, and recommendation.",
+        "States confidence or uncertainty.",
+        "Avoids medical advice and private patient disclosure."
+      ]
+    },
+    {
+      "title": "[RU-55] Integration setup audit",
+      "description": "Document credential-free setup, harness status, and graceful degradation for one integration.",
+      "skill_name": "",
+      "priority": "high",
+      "labels": [
+        "real-user-benchmark",
+        "synthesis"
+      ],
+      "shouldReviseFirst": false,
+      "acceptance": [
+        "Names at least two source documents when evidence is synthesized.",
+        "Distinguishes evidence, interpretation, and recommendation.",
+        "States confidence or uncertainty.",
+        "Avoids medical advice and private patient disclosure."
+      ]
+    },
+    {
+      "title": "[RU-56] RAG grounding audit",
+      "description": "Inspect retrieved evidence quality, source precision, false positives, and missing-source risks for one chat synthesis.",
+      "skill_name": "analyze-interview",
+      "priority": "medium",
+      "labels": [
+        "real-user-benchmark",
+        "synthesis"
+      ],
+      "shouldReviseFirst": false,
+      "acceptance": [
+        "Names at least two source documents when evidence is synthesized.",
+        "Distinguishes evidence, interpretation, and recommendation.",
+        "States confidence or uncertainty.",
+        "Avoids medical advice and private patient disclosure."
+      ]
+    },
+    {
+      "title": "[RU-57] Tool and skill trace audit",
+      "description": "Check whether Istara exposed useful tool-call or skill-call evidence for a researcher-facing answer.",
+      "skill_name": "",
+      "priority": "medium",
+      "labels": [
+        "real-user-benchmark",
+        "needs-citations"
+      ],
+      "shouldReviseFirst": true,
+      "acceptance": [
+        "Names at least two source documents when evidence is synthesized.",
+        "Distinguishes evidence, interpretation, and recommendation.",
+        "States confidence or uncertainty.",
+        "Avoids medical advice and private patient disclosure."
+      ]
+    },
+    {
+      "title": "[RU-58] ReasoningBank and memento audit",
+      "description": "Evaluate whether project memory, reasoning bank, or memento-style context improves or contaminates the answer.",
+      "skill_name": "",
+      "priority": "medium",
+      "labels": [
+        "real-user-benchmark",
+        "synthesis"
+      ],
+      "shouldReviseFirst": false,
+      "acceptance": [
+        "Names at least two source documents when evidence is synthesized.",
+        "Distinguishes evidence, interpretation, and recommendation.",
+        "States confidence or uncertainty.",
+        "Avoids medical advice and private patient disclosure."
+      ]
+    },
+    {
+      "title": "[RU-59] Hyperagent workflow audit",
+      "description": "Use the safest available hyperagent or governed-improvement path and review whether it produced a bounded useful improvement.",
+      "skill_name": "",
+      "priority": "medium",
+      "labels": [
+        "real-user-benchmark",
+        "synthesis"
+      ],
+      "shouldReviseFirst": false,
+      "acceptance": [
+        "Names at least two source documents when evidence is synthesized.",
+        "Distinguishes evidence, interpretation, and recommendation.",
+        "States confidence or uncertainty.",
+        "Avoids medical advice and private patient disclosure."
+      ]
+    },
+    {
+      "title": "[RU-60] Compute and ensemble health audit",
+      "description": "Verify donated compute health, model routing, and any ensemble/MoA health evidence before relying on synthesis.",
+      "skill_name": "",
+      "priority": "medium",
+      "labels": [
+        "real-user-benchmark",
+        "synthesis"
+      ],
+      "shouldReviseFirst": false,
+      "acceptance": [
+        "Names at least two source documents when evidence is synthesized.",
+        "Distinguishes evidence, interpretation, and recommendation.",
+        "States confidence or uncertainty.",
+        "Avoids medical advice and private patient disclosure."
+      ]
+    }
+  ],
+  "corpus_summary": {
+    "document_count": 72,
+    "total_bytes": 144331
+  },
+  "integration_policy": "Attempt developer-friendly harnesses first; classify credential-free blockers as product findings."
+}

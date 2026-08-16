@@ -1,0 +1,223 @@
+{
+  "schema_version": 1,
+  "status": "pass",
+  "output_dir": "/Users/user/Documents/Istara-main/comparison-Istara-pi/runs/20260719T124322-0300-50c-paired-benchmarks/istara-static-evals",
+  "totals": {
+    "total": 8,
+    "passed": 8,
+    "failed": 0,
+    "blocked": 0,
+    "pass_rate": 1.0
+  },
+  "suites": {
+    "rag": {
+      "total": 1,
+      "passed": 1,
+      "failed": 0,
+      "blocked": 0,
+      "score_sum": 1.0,
+      "metrics": {
+        "context_precision_at_1": {
+          "avg": 1.0,
+          "min": 1.0,
+          "max": 1.0,
+          "count": 1
+        },
+        "context_recall_at_3": {
+          "avg": 1.0,
+          "min": 1.0,
+          "max": 1.0,
+          "count": 1
+        },
+        "retrieved_count": {
+          "avg": 3.0,
+          "min": 3.0,
+          "max": 3.0,
+          "count": 1
+        }
+      },
+      "pass_rate": 1.0,
+      "average_score": 1.0
+    },
+    "prompt_rag": {
+      "total": 1,
+      "passed": 1,
+      "failed": 0,
+      "blocked": 0,
+      "score_sum": 1.0,
+      "metrics": {
+        "identity_anchor_survival": {
+          "avg": 1.0,
+          "min": 1.0,
+          "max": 1.0,
+          "count": 1
+        },
+        "composed_chars": {
+          "avg": 471.0,
+          "min": 471.0,
+          "max": 471.0,
+          "count": 1
+        },
+        "token_estimate": {
+          "avg": 117.0,
+          "min": 117.0,
+          "max": 117.0,
+          "count": 1
+        }
+      },
+      "pass_rate": 1.0,
+      "average_score": 1.0
+    },
+    "llmlingua": {
+      "total": 1,
+      "passed": 1,
+      "failed": 0,
+      "blocked": 0,
+      "score_sum": 1.0,
+      "metrics": {
+        "compression_ratio": {
+          "avg": 0.0366,
+          "min": 0.0366,
+          "max": 0.0366,
+          "count": 1
+        },
+        "compressed_chars": {
+          "avg": 131.0,
+          "min": 131.0,
+          "max": 131.0,
+          "count": 1
+        }
+      },
+      "pass_rate": 1.0,
+      "average_score": 1.0
+    },
+    "memory_reasoning_bank": {
+      "total": 1,
+      "passed": 1,
+      "failed": 0,
+      "blocked": 0,
+      "score_sum": 1.0,
+      "metrics": {
+        "distilled_memories": {
+          "avg": 1.0,
+          "min": 1.0,
+          "max": 1.0,
+          "count": 1
+        },
+        "secret_redaction": {
+          "avg": 1.0,
+          "min": 1.0,
+          "max": 1.0,
+          "count": 1
+        },
+        "confidence": {
+          "avg": 0.7,
+          "min": 0.7,
+          "max": 0.7,
+          "count": 1
+        }
+      },
+      "pass_rate": 1.0,
+      "average_score": 1.0
+    },
+    "memento_skills": {
+      "total": 1,
+      "passed": 1,
+      "failed": 0,
+      "blocked": 0,
+      "score_sum": 1.0,
+      "metrics": {
+        "skill_count": {
+          "avg": 58.0,
+          "min": 58.0,
+          "max": 58.0,
+          "count": 1
+        },
+        "valid_skill_count": {
+          "avg": 58.0,
+          "min": 58.0,
+          "max": 58.0,
+          "count": 1
+        },
+        "enabled_skill_count": {
+          "avg": 58.0,
+          "min": 58.0,
+          "max": 58.0,
+          "count": 1
+        },
+        "output_schema_coverage": {
+          "avg": 1.0,
+          "min": 1.0,
+          "max": 1.0,
+          "count": 1
+        }
+      },
+      "pass_rate": 1.0,
+      "average_score": 1.0
+    },
+    "meta_hyperagent": {
+      "total": 1,
+      "passed": 1,
+      "failed": 0,
+      "blocked": 0,
+      "score_sum": 1.0,
+      "metrics": {
+        "parameter_bound_count": {
+          "avg": 6.0,
+          "min": 6.0,
+          "max": 6.0,
+          "count": 1
+        },
+        "max_active_variants": {
+          "avg": 3.0,
+          "min": 3.0,
+          "max": 3.0,
+          "count": 1
+        }
+      },
+      "pass_rate": 1.0,
+      "average_score": 1.0
+    },
+    "thinking_output": {
+      "total": 1,
+      "passed": 1,
+      "failed": 0,
+      "blocked": 0,
+      "score_sum": 1.0,
+      "metrics": {
+        "marker_family_count": {
+          "avg": 6.0,
+          "min": 6.0,
+          "max": 6.0,
+          "count": 1
+        },
+        "visible_output_safety": {
+          "avg": 1.0,
+          "min": 1.0,
+          "max": 1.0,
+          "count": 1
+        }
+      },
+      "pass_rate": 1.0,
+      "average_score": 1.0
+    },
+    "voice_transcription": {
+      "total": 1,
+      "passed": 1,
+      "failed": 0,
+      "blocked": 0,
+      "score_sum": 1.0,
+      "metrics": {
+        "tag_count": {
+          "avg": 5.0,
+          "min": 5.0,
+          "max": 5.0,
+          "count": 1
+        }
+      },
+      "pass_rate": 1.0,
+      "average_score": 1.0
+    }
+  },
+  "threshold_violations": []
+}

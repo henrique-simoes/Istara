@@ -1,0 +1,1199 @@
+{
+  "schema_version": 1,
+  "items": [
+    {
+      "id": "long_horizon_dag",
+      "name": "Long-Horizon DAG Decomposition",
+      "source": "tests/benchmarks/run_benchmarks.py",
+      "category": "plan_execute_dag",
+      "decision": "inventory_only",
+      "reason": "covered by metadata inventory; not selected for first 50c slice"
+    },
+    {
+      "id": "tool_calling_accuracy",
+      "name": "Tool-Calling Accuracy & Resilience",
+      "source": "tests/benchmarks/run_benchmarks.py",
+      "category": "tool_task_document",
+      "decision": "inventory_only",
+      "reason": "covered by metadata inventory; not selected for first 50c slice"
+    },
+    {
+      "id": "a2a_consensus",
+      "name": "A2A Mathematical Consensus",
+      "source": "tests/benchmarks/run_benchmarks.py",
+      "category": "a2a",
+      "decision": "deferred_or_blocked",
+      "reason": "would need running services, credentials, or missing Pi adapter; kept in denominator"
+    },
+    {
+      "id": "async_steering_responsiveness",
+      "name": "Async Steering Responsiveness",
+      "source": "tests/benchmarks/run_benchmarks.py",
+      "category": "other_feature_simulation",
+      "decision": "inventory_only",
+      "reason": "covered by metadata inventory; not selected for first 50c slice"
+    },
+    {
+      "id": "classic_llm",
+      "name": "Instruction following, JSON shape, visible-output hygiene, and deterministic short-answer behavior.",
+      "source": "tests/evals/registry.json",
+      "category": "model_management",
+      "suite_type": "live_llm",
+      "decision": "selected_live_capped",
+      "reason": "one of three core live cases under 50c cap"
+    },
+    {
+      "id": "rag",
+      "name": "Synthetic retrieval with gold documents, distractors, BM25 fallback, and source coverage.",
+      "source": "tests/evals/registry.json",
+      "category": "memory_rag_skills",
+      "suite_type": "static_system",
+      "decision": "selected_static_or_sampled",
+      "reason": "static/no-model coverage is essentially free; skill-heavy coverage capped to representative cases"
+    },
+    {
+      "id": "prompt_rag",
+      "name": "Query-aware persona section retrieval with identity anchor survival and distractor suppression.",
+      "source": "tests/evals/registry.json",
+      "category": "memory_rag_skills",
+      "suite_type": "static_system",
+      "decision": "selected_static_or_sampled",
+      "reason": "static/no-model coverage is essentially free; skill-heavy coverage capped to representative cases"
+    },
+    {
+      "id": "llmlingua",
+      "name": "LLMLingua-inspired compression ratio, protected-context survival, and critical-term retention.",
+      "source": "tests/evals/registry.json",
+      "category": "memory_rag_skills",
+      "suite_type": "static_system",
+      "decision": "selected_static_or_sampled",
+      "reason": "static/no-model coverage is essentially free; skill-heavy coverage capped to representative cases"
+    },
+    {
+      "id": "dag_react",
+      "name": "Plan decomposition, acyclic dependencies, ReAct-style tool choices, and trajectory-valid outputs.",
+      "source": "tests/evals/registry.json",
+      "category": "plan_execute_dag",
+      "suite_type": "live_llm_and_static",
+      "decision": "selected_live_capped",
+      "reason": "one of three core live cases under 50c cap"
+    },
+    {
+      "id": "memory_reasoning_bank",
+      "name": "Trace distillation, redaction, retrieval-readiness, and reusable success/failure memory checks.",
+      "source": "tests/evals/registry.json",
+      "category": "memory_rag_skills",
+      "suite_type": "static_system",
+      "decision": "selected_static_or_sampled",
+      "reason": "static/no-model coverage is essentially free; skill-heavy coverage capped to representative cases"
+    },
+    {
+      "id": "memento_skills",
+      "name": "Skill schema coverage, enabled/toggle readiness, approval lifecycle evidence, and skill memory readiness.",
+      "source": "tests/evals/registry.json",
+      "category": "memory_rag_skills",
+      "suite_type": "static_system",
+      "decision": "selected_static_or_sampled",
+      "reason": "static/no-model coverage is essentially free; skill-heavy coverage capped to representative cases"
+    },
+    {
+      "id": "meta_hyperagent",
+      "name": "Observation/proposal safety, parameter bounds, active-variant cap, and governance hooks.",
+      "source": "tests/evals/registry.json",
+      "category": "memory_rag_skills",
+      "suite_type": "static_system",
+      "decision": "selected_static_or_sampled",
+      "reason": "static/no-model coverage is essentially free; skill-heavy coverage capped to representative cases"
+    },
+    {
+      "id": "thinking_output",
+      "name": "Thinking-mode controls and family-specific hidden-reasoning marker stripping.",
+      "source": "tests/evals/registry.json",
+      "category": "model_management",
+      "suite_type": "static_system",
+      "decision": "inventory_only",
+      "reason": "covered by metadata inventory; not selected for first 50c slice"
+    },
+    {
+      "id": "voice_transcription",
+      "name": "Whisper dependency status, typed transcription errors, ICR readiness, and spoken-research tagging.",
+      "source": "tests/evals/registry.json",
+      "category": "real_user_research_spine",
+      "suite_type": "static_system",
+      "decision": "inventory_only",
+      "reason": "covered by metadata inventory; not selected for first 50c slice"
+    },
+    {
+      "id": "orchestration_benchmarks",
+      "name": "Existing Istara long-horizon DAG, tool-calling, A2A consensus, and steering benchmarks.",
+      "source": "tests/evals/registry.json",
+      "category": "plan_execute_dag",
+      "suite_type": "benchmark_runner",
+      "decision": "selected_static_or_sampled",
+      "reason": "static/no-model coverage is essentially free; skill-heavy coverage capped to representative cases"
+    },
+    {
+      "id": "classic_json_contract",
+      "name": "classic_json_contract",
+      "source": "tests/evals/cases/core_eval_cases.json",
+      "category": "model_management",
+      "suite": "classic_llm",
+      "live": true,
+      "decision": "selected_live_capped",
+      "reason": "one of three core live cases under 50c cap"
+    },
+    {
+      "id": "tool_choice_memory_search",
+      "name": "tool_choice_memory_search",
+      "source": "tests/evals/cases/core_eval_cases.json",
+      "category": "plan_execute_dag",
+      "suite": "dag_react",
+      "live": true,
+      "decision": "selected_live_capped",
+      "reason": "one of three core live cases under 50c cap"
+    },
+    {
+      "id": "dag_react_json_plan",
+      "name": "dag_react_json_plan",
+      "source": "tests/evals/cases/core_eval_cases.json",
+      "category": "plan_execute_dag",
+      "suite": "dag_react",
+      "live": true,
+      "decision": "selected_live_capped",
+      "reason": "one of three core live cases under 50c cap"
+    },
+    {
+      "id": "rag_keyword_gold",
+      "name": "rag_keyword_gold",
+      "source": "tests/evals/cases/core_eval_cases.json",
+      "category": "memory_rag_skills",
+      "suite": "rag",
+      "live": false,
+      "decision": "selected_static_or_sampled",
+      "reason": "static/no-model coverage is essentially free; skill-heavy coverage capped to representative cases"
+    },
+    {
+      "id": "prompt_rag_identity_and_relevance",
+      "name": "prompt_rag_identity_and_relevance",
+      "source": "tests/evals/cases/core_eval_cases.json",
+      "category": "memory_rag_skills",
+      "suite": "prompt_rag",
+      "live": false,
+      "decision": "selected_static_or_sampled",
+      "reason": "static/no-model coverage is essentially free; skill-heavy coverage capped to representative cases"
+    },
+    {
+      "id": "llmlingua_protected_context",
+      "name": "llmlingua_protected_context",
+      "source": "tests/evals/cases/core_eval_cases.json",
+      "category": "memory_rag_skills",
+      "suite": "llmlingua",
+      "live": false,
+      "decision": "selected_static_or_sampled",
+      "reason": "static/no-model coverage is essentially free; skill-heavy coverage capped to representative cases"
+    },
+    {
+      "id": "reasoning_bank_distillation_redaction",
+      "name": "reasoning_bank_distillation_redaction",
+      "source": "tests/evals/cases/core_eval_cases.json",
+      "category": "memory_rag_skills",
+      "suite": "memory_reasoning_bank",
+      "live": false,
+      "decision": "selected_static_or_sampled",
+      "reason": "static/no-model coverage is essentially free; skill-heavy coverage capped to representative cases"
+    },
+    {
+      "id": "memento_skill_definition_coverage",
+      "name": "memento_skill_definition_coverage",
+      "source": "tests/evals/cases/core_eval_cases.json",
+      "category": "memory_rag_skills",
+      "suite": "memento_skills",
+      "live": false,
+      "decision": "selected_static_or_sampled",
+      "reason": "static/no-model coverage is essentially free; skill-heavy coverage capped to representative cases"
+    },
+    {
+      "id": "meta_hyperagent_bounds",
+      "name": "meta_hyperagent_bounds",
+      "source": "tests/evals/cases/core_eval_cases.json",
+      "category": "memory_rag_skills",
+      "suite": "meta_hyperagent",
+      "live": false,
+      "decision": "selected_static_or_sampled",
+      "reason": "static/no-model coverage is essentially free; skill-heavy coverage capped to representative cases"
+    },
+    {
+      "id": "thinking_marker_sanitization",
+      "name": "thinking_marker_sanitization",
+      "source": "tests/evals/cases/core_eval_cases.json",
+      "category": "model_management",
+      "suite": "thinking_output",
+      "live": false,
+      "decision": "inventory_only",
+      "reason": "covered by metadata inventory; not selected for first 50c slice"
+    },
+    {
+      "id": "voice_transcription_contract",
+      "name": "voice_transcription_contract",
+      "source": "tests/evals/cases/core_eval_cases.json",
+      "category": "other_feature_simulation",
+      "suite": "voice_transcription",
+      "live": false,
+      "decision": "inventory_only",
+      "reason": "covered by metadata inventory; not selected for first 50c slice"
+    },
+    {
+      "id": "autoresearch",
+      "name": "autoresearch",
+      "source": "tests/agentic_eval_contract.json",
+      "category": "real_user_research_spine",
+      "features": [
+        "karpathy_autoresearch",
+        "governed_evolution"
+      ],
+      "simulation_scenarios": [
+        "tests/simulation/scenarios/61-autoresearch-isolation.mjs",
+        "tests/simulation/scenarios/70-research-integrity.mjs"
+      ],
+      "decision": "inventory_only",
+      "reason": "covered by metadata inventory; not selected for first 50c slice"
+    },
+    {
+      "id": "reasoning_bank",
+      "name": "reasoning_bank",
+      "source": "tests/agentic_eval_contract.json",
+      "category": "memory_rag_skills",
+      "features": [
+        "reasoning_bank",
+        "prompt_rag",
+        "llmlingua_protected_context"
+      ],
+      "simulation_scenarios": [
+        "tests/simulation/scenarios/23-memory-view.mjs"
+      ],
+      "decision": "selected_static_or_sampled",
+      "reason": "static/no-model coverage is essentially free; skill-heavy coverage capped to representative cases"
+    },
+    {
+      "id": "memento_skills_and_agent_creation",
+      "name": "memento_skills_and_agent_creation",
+      "source": "tests/agentic_eval_contract.json",
+      "category": "memory_rag_skills",
+      "features": [
+        "memento_skills",
+        "agent_factory",
+        "approval_required_mutations"
+      ],
+      "simulation_scenarios": [
+        "tests/simulation/scenarios/41-skill-creation.mjs",
+        "tests/simulation/scenarios/44-agent-factory.mjs"
+      ],
+      "decision": "selected_static_or_sampled",
+      "reason": "static/no-model coverage is essentially free; skill-heavy coverage capped to representative cases"
+    },
+    {
+      "id": "hyperagent_meta_tuning",
+      "name": "hyperagent_meta_tuning",
+      "source": "tests/agentic_eval_contract.json",
+      "category": "memory_rag_skills",
+      "features": [
+        "meta_hyperagent",
+        "governed_evolution",
+        "approval_required_mutations"
+      ],
+      "simulation_scenarios": [
+        "tests/simulation/scenarios/52-meta-hyperagent.mjs"
+      ],
+      "decision": "selected_static_or_sampled",
+      "reason": "static/no-model coverage is essentially free; skill-heavy coverage capped to representative cases"
+    },
+    {
+      "id": "dgmh_archive_evolution",
+      "name": "dgmh_archive_evolution",
+      "source": "tests/agentic_eval_contract.json",
+      "category": "other_feature_simulation",
+      "features": [
+        "dgmh_archive",
+        "variant_lineage",
+        "rollback"
+      ],
+      "simulation_scenarios": [
+        "tests/simulation/scenarios/52-meta-hyperagent.mjs"
+      ],
+      "decision": "inventory_only",
+      "reason": "covered by metadata inventory; not selected for first 50c slice"
+    },
+    {
+      "id": "ensemble_llm_orchestration",
+      "name": "ensemble_llm_orchestration",
+      "source": "tests/agentic_eval_contract.json",
+      "category": "model_management",
+      "features": [
+        "ensemble_model",
+        "compute_registry",
+        "live_llm_fallback"
+      ],
+      "simulation_scenarios": [
+        "tests/simulation/scenarios/35-ensemble-validation.mjs",
+        "tests/simulation/scenarios/36-llm-servers.mjs",
+        "tests/simulation/scenarios/37-ensemble-health-view.mjs"
+      ],
+      "decision": "inventory_only",
+      "reason": "covered by metadata inventory; not selected for first 50c slice"
+    },
+    {
+      "id": "tool_calling_react",
+      "name": "tool_calling_react",
+      "source": "tests/agentic_eval_contract.json",
+      "category": "tool_task_document",
+      "features": [
+        "system_action_tools",
+        "react_loop",
+        "agentic_tool_calling"
+      ],
+      "simulation_scenarios": [
+        "tests/simulation/scenarios/31-task-documents-tools.mjs",
+        "tests/simulation/scenarios/71-plan-and-execute.mjs",
+        "tests/simulation/scenarios/73-a2a-debate-and-reports.mjs"
+      ],
+      "decision": "selected_static_or_sampled",
+      "reason": "static/no-model coverage is essentially free; skill-heavy coverage capped to representative cases"
+    },
+    {
+      "id": "acceptance_ui_simulation",
+      "name": "acceptance_ui_simulation",
+      "source": "tests/agentic_eval_contract.json",
+      "category": "security_or_external_service",
+      "features": [
+        "ui_menus",
+        "browser_acceptance",
+        "auth_state_reuse"
+      ],
+      "simulation_scenarios": [
+        "tests/simulation/scenarios/45-interfaces-menu.mjs",
+        "tests/simulation/scenarios/69-user-management-ui.mjs",
+        "tests/simulation/scenarios/74-2fa-login-flow.mjs",
+        "tests/simulation/scenarios/77-voice-transcription.mjs",
+        "tests/simulation/scenarios/78-real-time-voice.mjs"
+      ],
+      "decision": "deferred_or_blocked",
+      "reason": "would need running services, credentials, or missing Pi adapter; kept in denominator"
+    },
+    {
+      "id": "istara-real-user-ux-research-longform",
+      "name": "Longitudinal, human-in-the-loop UX research benchmark that complements deterministic Istara scenario, eval, security, and long-horizon benchmark suites.",
+      "source": "tests/real_user_benchmark/benchmark-registry.json",
+      "category": "real_user_research_spine",
+      "decision": "deferred_or_blocked",
+      "reason": "broad real-user benchmark requires live app, compute donation defaults, and more spend than first 50c representative slice"
+    },
+    {
+      "id": "live_chat_and_donated_compute_routing",
+      "name": "live chat and donated compute routing",
+      "source": "tests/real_user_benchmark/benchmark-registry.json",
+      "category": "model_management",
+      "decision": "inventory_only",
+      "reason": "covered by metadata inventory; not selected for first 50c slice"
+    },
+    {
+      "id": "tool_calling_and_ReAct_skill_use",
+      "name": "tool calling and ReAct skill use",
+      "source": "tests/real_user_benchmark/benchmark-registry.json",
+      "category": "tool_task_document",
+      "decision": "inventory_only",
+      "reason": "covered by metadata inventory; not selected for first 50c slice"
+    },
+    {
+      "id": "RAG_and_context_management",
+      "name": "RAG and context management",
+      "source": "tests/real_user_benchmark/benchmark-registry.json",
+      "category": "memory_rag_skills",
+      "decision": "inventory_only",
+      "reason": "covered by metadata inventory; not selected for first 50c slice"
+    },
+    {
+      "id": "ReasoningBank_and_memento",
+      "name": "ReasoningBank and memento",
+      "source": "tests/real_user_benchmark/benchmark-registry.json",
+      "category": "memory_rag_skills",
+      "decision": "inventory_only",
+      "reason": "covered by metadata inventory; not selected for first 50c slice"
+    },
+    {
+      "id": "Hyperagent_and_governed_improvement",
+      "name": "Hyperagent and governed improvement",
+      "source": "tests/real_user_benchmark/benchmark-registry.json",
+      "category": "memory_rag_skills",
+      "decision": "inventory_only",
+      "reason": "covered by metadata inventory; not selected for first 50c slice"
+    },
+    {
+      "id": "ensemble_and_MoA_health",
+      "name": "ensemble and MoA health",
+      "source": "tests/real_user_benchmark/benchmark-registry.json",
+      "category": "other_feature_simulation",
+      "decision": "inventory_only",
+      "reason": "covered by metadata inventory; not selected for first 50c slice"
+    },
+    {
+      "id": "01-health-check",
+      "name": "Health Check",
+      "source": "tests/simulation/scenarios/01-health-check.mjs",
+      "category": "model_management",
+      "uses_api": true,
+      "uses_page": true,
+      "decision": "inventory_only",
+      "reason": "covered by metadata inventory; not selected for first 50c slice"
+    },
+    {
+      "id": "02-onboarding",
+      "name": "Onboarding & Project Setup",
+      "source": "tests/simulation/scenarios/02-onboarding.mjs",
+      "category": "other_feature_simulation",
+      "uses_api": true,
+      "uses_page": true,
+      "decision": "inventory_only",
+      "reason": "covered by metadata inventory; not selected for first 50c slice"
+    },
+    {
+      "id": "03-project-setup",
+      "name": "Project Context Setup",
+      "source": "tests/simulation/scenarios/03-project-setup.mjs",
+      "category": "memory_rag_skills",
+      "uses_api": true,
+      "uses_page": true,
+      "decision": "inventory_only",
+      "reason": "covered by metadata inventory; not selected for first 50c slice"
+    },
+    {
+      "id": "04-file-upload",
+      "name": "File Upload & Ingestion",
+      "source": "tests/simulation/scenarios/04-file-upload.mjs",
+      "category": "real_user_research_spine",
+      "uses_api": true,
+      "uses_page": true,
+      "decision": "inventory_only",
+      "reason": "covered by metadata inventory; not selected for first 50c slice"
+    },
+    {
+      "id": "05-chat-interaction",
+      "name": "Chat Interaction",
+      "source": "tests/simulation/scenarios/05-chat-interaction.mjs",
+      "category": "model_management",
+      "uses_api": true,
+      "uses_page": true,
+      "decision": "inventory_only",
+      "reason": "covered by metadata inventory; not selected for first 50c slice"
+    },
+    {
+      "id": "06-skill-execution",
+      "name": "Skill Execution & Management",
+      "source": "tests/simulation/scenarios/06-skill-execution.mjs",
+      "category": "other_feature_simulation",
+      "uses_api": true,
+      "uses_page": true,
+      "decision": "inventory_only",
+      "reason": "covered by metadata inventory; not selected for first 50c slice"
+    },
+    {
+      "id": "07-findings-chain",
+      "name": "Findings & Atomic Research",
+      "source": "tests/simulation/scenarios/07-findings-chain.mjs",
+      "category": "real_user_research_spine",
+      "uses_api": true,
+      "uses_page": true,
+      "decision": "inventory_only",
+      "reason": "covered by metadata inventory; not selected for first 50c slice"
+    },
+    {
+      "id": "08-kanban-workflow",
+      "name": "Kanban Task Workflow",
+      "source": "tests/simulation/scenarios/08-kanban-workflow.mjs",
+      "category": "other_feature_simulation",
+      "uses_api": true,
+      "uses_page": true,
+      "decision": "inventory_only",
+      "reason": "covered by metadata inventory; not selected for first 50c slice"
+    },
+    {
+      "id": "09-navigation-search",
+      "name": "Navigation & Search",
+      "source": "tests/simulation/scenarios/09-navigation-search.mjs",
+      "category": "other_feature_simulation",
+      "uses_api": false,
+      "uses_page": true,
+      "decision": "inventory_only",
+      "reason": "covered by metadata inventory; not selected for first 50c slice"
+    },
+    {
+      "id": "10-agent-architecture",
+      "name": "Agent Architecture Verification",
+      "source": "tests/simulation/scenarios/10-agent-architecture.mjs",
+      "category": "a2a",
+      "uses_api": true,
+      "uses_page": false,
+      "decision": "deferred_or_blocked",
+      "reason": "would need running services, credentials, or missing Pi adapter; kept in denominator"
+    },
+    {
+      "id": "10-settings-models",
+      "name": "Settings & Models",
+      "source": "tests/simulation/scenarios/10-settings-models.mjs",
+      "category": "model_management",
+      "uses_api": true,
+      "uses_page": true,
+      "decision": "inventory_only",
+      "reason": "covered by metadata inventory; not selected for first 50c slice"
+    },
+    {
+      "id": "11-agents-system",
+      "name": "Agents System",
+      "source": "tests/simulation/scenarios/11-agents-system.mjs",
+      "category": "a2a",
+      "uses_api": true,
+      "uses_page": true,
+      "decision": "deferred_or_blocked",
+      "reason": "would need running services, credentials, or missing Pi adapter; kept in denominator"
+    },
+    {
+      "id": "12-chat-sessions",
+      "name": "Chat Sessions",
+      "source": "tests/simulation/scenarios/12-chat-sessions.mjs",
+      "category": "other_feature_simulation",
+      "uses_api": true,
+      "uses_page": true,
+      "decision": "inventory_only",
+      "reason": "covered by metadata inventory; not selected for first 50c slice"
+    },
+    {
+      "id": "13-task-agent-assignment",
+      "name": "Task Agent Assignment",
+      "source": "tests/simulation/scenarios/13-task-agent-assignment.mjs",
+      "category": "other_feature_simulation",
+      "uses_api": true,
+      "uses_page": true,
+      "decision": "inventory_only",
+      "reason": "covered by metadata inventory; not selected for first 50c slice"
+    },
+    {
+      "id": "14-agent-communication",
+      "name": "Agent Communication",
+      "source": "tests/simulation/scenarios/14-agent-communication.mjs",
+      "category": "a2a",
+      "uses_api": true,
+      "uses_page": false,
+      "decision": "deferred_or_blocked",
+      "reason": "would need running services, credentials, or missing Pi adapter; kept in denominator"
+    },
+    {
+      "id": "15-vector-db",
+      "name": "Vector Database & RAG",
+      "source": "tests/simulation/scenarios/15-vector-db.mjs",
+      "category": "memory_rag_skills",
+      "uses_api": true,
+      "uses_page": false,
+      "decision": "inventory_only",
+      "reason": "covered by metadata inventory; not selected for first 50c slice"
+    },
+    {
+      "id": "16-findings-population",
+      "name": "Findings Population",
+      "source": "tests/simulation/scenarios/16-findings-population.mjs",
+      "category": "real_user_research_spine",
+      "uses_api": true,
+      "uses_page": true,
+      "decision": "inventory_only",
+      "reason": "covered by metadata inventory; not selected for first 50c slice"
+    },
+    {
+      "id": "17-full-pipeline",
+      "name": "Full Pipeline (Discover \u2192 Deliver)",
+      "source": "tests/simulation/scenarios/17-full-pipeline.mjs",
+      "category": "real_user_research_spine",
+      "uses_api": true,
+      "uses_page": false,
+      "decision": "inventory_only",
+      "reason": "covered by metadata inventory; not selected for first 50c slice"
+    },
+    {
+      "id": "18-task-verification",
+      "name": "Task Self-Verification",
+      "source": "tests/simulation/scenarios/18-task-verification.mjs",
+      "category": "other_feature_simulation",
+      "uses_api": true,
+      "uses_page": false,
+      "decision": "inventory_only",
+      "reason": "covered by metadata inventory; not selected for first 50c slice"
+    },
+    {
+      "id": "19-file-preview",
+      "name": "File Preview & Content",
+      "source": "tests/simulation/scenarios/19-file-preview.mjs",
+      "category": "other_feature_simulation",
+      "uses_api": true,
+      "uses_page": true,
+      "decision": "inventory_only",
+      "reason": "covered by metadata inventory; not selected for first 50c slice"
+    },
+    {
+      "id": "20-all-skills-comprehensive",
+      "name": "Comprehensive Skills Test (All Registered Skills)",
+      "source": "tests/simulation/scenarios/20-all-skills-comprehensive.mjs",
+      "category": "plan_execute_dag",
+      "uses_api": true,
+      "uses_page": false,
+      "decision": "inventory_only",
+      "reason": "covered by metadata inventory; not selected for first 50c slice"
+    },
+    {
+      "id": "21-agent-work-simulation",
+      "name": "Agent Work Simulation (Multi-Agent)",
+      "source": "tests/simulation/scenarios/21-agent-work-simulation.mjs",
+      "category": "memory_rag_skills",
+      "uses_api": true,
+      "uses_page": false,
+      "decision": "inventory_only",
+      "reason": "covered by metadata inventory; not selected for first 50c slice"
+    },
+    {
+      "id": "22-architecture-evaluation",
+      "name": "Architecture & Protocol Evaluation",
+      "source": "tests/simulation/scenarios/22-architecture-evaluation.mjs",
+      "category": "memory_rag_skills",
+      "uses_api": true,
+      "uses_page": false,
+      "decision": "inventory_only",
+      "reason": "covered by metadata inventory; not selected for first 50c slice"
+    },
+    {
+      "id": "23-memory-view",
+      "name": "Memory View & Knowledge Base",
+      "source": "tests/simulation/scenarios/23-memory-view.mjs",
+      "category": "memory_rag_skills",
+      "uses_api": true,
+      "uses_page": true,
+      "decision": "selected_representative",
+      "reason": "owner-priority representative slice"
+    },
+    {
+      "id": "24-context-dag",
+      "name": "Context DAG (Lossless Summarization)",
+      "source": "tests/simulation/scenarios/24-context-dag.mjs",
+      "category": "plan_execute_dag",
+      "uses_api": true,
+      "uses_page": true,
+      "decision": "inventory_only",
+      "reason": "covered by metadata inventory; not selected for first 50c slice"
+    },
+    {
+      "id": "25-systemic-robustness",
+      "name": "Systemic Robustness (Cascades & Orphan Cleanup)",
+      "source": "tests/simulation/scenarios/25-systemic-robustness.mjs",
+      "category": "other_feature_simulation",
+      "uses_api": true,
+      "uses_page": false,
+      "decision": "inventory_only",
+      "reason": "covered by metadata inventory; not selected for first 50c slice"
+    },
+    {
+      "id": "26-model-session-persistence",
+      "name": "Model & Session Persistence",
+      "source": "tests/simulation/scenarios/26-model-session-persistence.mjs",
+      "category": "model_management",
+      "uses_api": true,
+      "uses_page": false,
+      "decision": "inventory_only",
+      "reason": "covered by metadata inventory; not selected for first 50c slice"
+    },
+    {
+      "id": "27-agent-identity",
+      "name": "Agent Identity & Persona System",
+      "source": "tests/simulation/scenarios/27-agent-identity-system.mjs",
+      "category": "real_user_research_spine",
+      "uses_api": true,
+      "uses_page": false,
+      "decision": "inventory_only",
+      "reason": "covered by metadata inventory; not selected for first 50c slice"
+    },
+    {
+      "id": "28-self-evolution-prompt-compression",
+      "name": "Self-Evolution & Prompt Compression",
+      "source": "tests/simulation/scenarios/28-self-evolution-prompt-compression.mjs",
+      "category": "memory_rag_skills",
+      "uses_api": true,
+      "uses_page": false,
+      "decision": "inventory_only",
+      "reason": "covered by metadata inventory; not selected for first 50c slice"
+    },
+    {
+      "id": "29-documents-system",
+      "name": "Documents System",
+      "source": "tests/simulation/scenarios/29-documents-system.mjs",
+      "category": "other_feature_simulation",
+      "uses_api": true,
+      "uses_page": true,
+      "decision": "inventory_only",
+      "reason": "covered by metadata inventory; not selected for first 50c slice"
+    },
+    {
+      "id": "30-event-wiring-audit",
+      "name": "Event Wiring Audit",
+      "source": "tests/simulation/scenarios/30-event-wiring-audit.mjs",
+      "category": "other_feature_simulation",
+      "uses_api": true,
+      "uses_page": true,
+      "decision": "inventory_only",
+      "reason": "covered by metadata inventory; not selected for first 50c slice"
+    },
+    {
+      "id": "31-task-documents-tools",
+      "name": "Task-Document Linking & System Tools",
+      "source": "tests/simulation/scenarios/31-task-documents-tools.mjs",
+      "category": "tool_task_document",
+      "uses_api": true,
+      "uses_page": true,
+      "decision": "selected_representative",
+      "reason": "owner-priority representative slice"
+    },
+    {
+      "id": "32-auth-flow",
+      "name": "Auth Flow",
+      "source": "tests/simulation/scenarios/32-auth-flow.mjs",
+      "category": "security_or_external_service",
+      "uses_api": true,
+      "uses_page": false,
+      "decision": "deferred_or_blocked",
+      "reason": "would need running services, credentials, or missing Pi adapter; kept in denominator"
+    },
+    {
+      "id": "33-task-locking",
+      "name": "Task Locking",
+      "source": "tests/simulation/scenarios/33-task-locking.mjs",
+      "category": "other_feature_simulation",
+      "uses_api": true,
+      "uses_page": false,
+      "decision": "inventory_only",
+      "reason": "covered by metadata inventory; not selected for first 50c slice"
+    },
+    {
+      "id": "34-compute-pool",
+      "name": "Compute Pool",
+      "source": "tests/simulation/scenarios/34-compute-pool.mjs",
+      "category": "model_management",
+      "uses_api": true,
+      "uses_page": false,
+      "decision": "inventory_only",
+      "reason": "covered by metadata inventory; not selected for first 50c slice"
+    },
+    {
+      "id": "35-ensemble-validation",
+      "name": "Ensemble Validation",
+      "source": "tests/simulation/scenarios/35-ensemble-validation.mjs",
+      "category": "model_management",
+      "uses_api": true,
+      "uses_page": false,
+      "decision": "inventory_only",
+      "reason": "covered by metadata inventory; not selected for first 50c slice"
+    },
+    {
+      "id": "36-llm-servers",
+      "name": "LLM Servers",
+      "source": "tests/simulation/scenarios/36-llm-servers.mjs",
+      "category": "model_management",
+      "uses_api": true,
+      "uses_page": false,
+      "decision": "inventory_only",
+      "reason": "covered by metadata inventory; not selected for first 50c slice"
+    },
+    {
+      "id": "37-ensemble-health-view",
+      "name": "Ensemble Health View",
+      "source": "tests/simulation/scenarios/37-ensemble-health-view.mjs",
+      "category": "model_management",
+      "uses_api": true,
+      "uses_page": true,
+      "decision": "inventory_only",
+      "reason": "covered by metadata inventory; not selected for first 50c slice"
+    },
+    {
+      "id": "38-task-routing",
+      "name": "Multi-Agent Task Routing",
+      "source": "tests/simulation/scenarios/38-task-routing.mjs",
+      "category": "real_user_research_spine",
+      "uses_api": true,
+      "uses_page": false,
+      "decision": "inventory_only",
+      "reason": "covered by metadata inventory; not selected for first 50c slice"
+    },
+    {
+      "id": "39-data-migration",
+      "name": "Data Migration & Integrity",
+      "source": "tests/simulation/scenarios/39-data-migration.mjs",
+      "category": "other_feature_simulation",
+      "uses_api": true,
+      "uses_page": false,
+      "decision": "inventory_only",
+      "reason": "covered by metadata inventory; not selected for first 50c slice"
+    },
+    {
+      "id": "40-agent-identity-editing",
+      "name": "Agent Identity Editing",
+      "source": "tests/simulation/scenarios/40-agent-identity-editing.mjs",
+      "category": "other_feature_simulation",
+      "uses_api": true,
+      "uses_page": true,
+      "decision": "inventory_only",
+      "reason": "covered by metadata inventory; not selected for first 50c slice"
+    },
+    {
+      "id": "41-skill-creation",
+      "name": "Autonomous Skill Creation",
+      "source": "tests/simulation/scenarios/41-skill-creation.mjs",
+      "category": "other_feature_simulation",
+      "uses_api": true,
+      "uses_page": true,
+      "decision": "inventory_only",
+      "reason": "covered by metadata inventory; not selected for first 50c slice"
+    },
+    {
+      "id": "42-content-guard",
+      "name": "Content Guard & Prompt Injection Protection",
+      "source": "tests/simulation/scenarios/42-content-guard.mjs",
+      "category": "other_feature_simulation",
+      "uses_api": true,
+      "uses_page": false,
+      "decision": "inventory_only",
+      "reason": "covered by metadata inventory; not selected for first 50c slice"
+    },
+    {
+      "id": "43-process-hardening",
+      "name": "Process Hardening",
+      "source": "tests/simulation/scenarios/43-process-hardening.mjs",
+      "category": "other_feature_simulation",
+      "uses_api": true,
+      "uses_page": false,
+      "decision": "inventory_only",
+      "reason": "covered by metadata inventory; not selected for first 50c slice"
+    },
+    {
+      "id": "44-agent-factory",
+      "name": "Agent Factory",
+      "source": "tests/simulation/scenarios/44-agent-factory.mjs",
+      "category": "other_feature_simulation",
+      "uses_api": true,
+      "uses_page": false,
+      "decision": "inventory_only",
+      "reason": "covered by metadata inventory; not selected for first 50c slice"
+    },
+    {
+      "id": "45-interfaces-menu",
+      "name": "Interfaces Menu",
+      "source": "tests/simulation/scenarios/45-interfaces-menu.mjs",
+      "category": "model_management",
+      "uses_api": true,
+      "uses_page": false,
+      "decision": "inventory_only",
+      "reason": "covered by metadata inventory; not selected for first 50c slice"
+    },
+    {
+      "id": "46-stitch-figma-integration",
+      "name": "Stitch & Figma Integration",
+      "source": "tests/simulation/scenarios/46-stitch-figma-integration.mjs",
+      "category": "other_feature_simulation",
+      "uses_api": true,
+      "uses_page": false,
+      "decision": "inventory_only",
+      "reason": "covered by metadata inventory; not selected for first 50c slice"
+    },
+    {
+      "id": "47-atomic-research-design",
+      "name": "Atomic Research Design Extension",
+      "source": "tests/simulation/scenarios/47-atomic-research-design.mjs",
+      "category": "real_user_research_spine",
+      "uses_api": true,
+      "uses_page": false,
+      "decision": "inventory_only",
+      "reason": "covered by metadata inventory; not selected for first 50c slice"
+    },
+    {
+      "id": "48-real-user-simulation",
+      "name": "Real User Simulation (Live APIs)",
+      "source": "tests/simulation/scenarios/48-real-user-simulation.mjs",
+      "category": "real_user_research_spine",
+      "uses_api": true,
+      "uses_page": false,
+      "decision": "inventory_only",
+      "reason": "covered by metadata inventory; not selected for first 50c slice"
+    },
+    {
+      "id": "49-loops-schedule",
+      "name": "Loops & Schedule",
+      "source": "tests/simulation/scenarios/49-loops-schedule.mjs",
+      "category": "other_feature_simulation",
+      "uses_api": true,
+      "uses_page": false,
+      "decision": "inventory_only",
+      "reason": "covered by metadata inventory; not selected for first 50c slice"
+    },
+    {
+      "id": "50-notifications",
+      "name": "Notifications",
+      "source": "tests/simulation/scenarios/50-notifications.mjs",
+      "category": "other_feature_simulation",
+      "uses_api": true,
+      "uses_page": false,
+      "decision": "inventory_only",
+      "reason": "covered by metadata inventory; not selected for first 50c slice"
+    },
+    {
+      "id": "51-backup-system",
+      "name": "Backup System",
+      "source": "tests/simulation/scenarios/51-backup-system.mjs",
+      "category": "other_feature_simulation",
+      "uses_api": true,
+      "uses_page": false,
+      "decision": "inventory_only",
+      "reason": "covered by metadata inventory; not selected for first 50c slice"
+    },
+    {
+      "id": "52-meta-hyperagent",
+      "name": "Meta-Hyperagent",
+      "source": "tests/simulation/scenarios/52-meta-hyperagent.mjs",
+      "category": "memory_rag_skills",
+      "uses_api": true,
+      "uses_page": false,
+      "decision": "inventory_only",
+      "reason": "covered by metadata inventory; not selected for first 50c slice"
+    },
+    {
+      "id": "53-channel-lifecycle",
+      "name": "Channel Lifecycle",
+      "source": "tests/simulation/scenarios/53-channel-lifecycle.mjs",
+      "category": "channel_lifecycle",
+      "uses_api": true,
+      "uses_page": true,
+      "decision": "selected_simulated_or_deferred",
+      "reason": "priority channel slice; simulate only, no real credentials; Pi channel adapter missing"
+    },
+    {
+      "id": "55-survey-integration",
+      "name": "Survey Integration",
+      "source": "tests/simulation/scenarios/55-survey-integration.mjs",
+      "category": "other_feature_simulation",
+      "uses_api": true,
+      "uses_page": false,
+      "decision": "inventory_only",
+      "reason": "covered by metadata inventory; not selected for first 50c slice"
+    },
+    {
+      "id": "56-mcp-server-security",
+      "name": "MCP Server Security",
+      "source": "tests/simulation/scenarios/56-mcp-server-security.mjs",
+      "category": "security_or_external_service",
+      "uses_api": true,
+      "uses_page": false,
+      "decision": "deferred_or_blocked",
+      "reason": "would need running services, credentials, or missing Pi adapter; kept in denominator"
+    },
+    {
+      "id": "57-mcp-client-registry",
+      "name": "MCP Client Registry",
+      "source": "tests/simulation/scenarios/57-mcp-client-registry.mjs",
+      "category": "memory_rag_skills",
+      "uses_api": true,
+      "uses_page": false,
+      "decision": "inventory_only",
+      "reason": "covered by metadata inventory; not selected for first 50c slice"
+    },
+    {
+      "id": "58-research-deployment",
+      "name": "Research Deployment",
+      "source": "tests/simulation/scenarios/58-research-deployment.mjs",
+      "category": "channel_lifecycle",
+      "uses_api": true,
+      "uses_page": false,
+      "decision": "deferred_or_blocked",
+      "reason": "would need running services, credentials, or missing Pi adapter; kept in denominator"
+    },
+    {
+      "id": "59-agent-integration-knowledge",
+      "name": "Agent Integration Knowledge",
+      "source": "tests/simulation/scenarios/59-agent-integration-knowledge.mjs",
+      "category": "channel_lifecycle",
+      "uses_api": true,
+      "uses_page": false,
+      "decision": "deferred_or_blocked",
+      "reason": "would need running services, credentials, or missing Pi adapter; kept in denominator"
+    },
+    {
+      "id": "61-autoresearch-isolation",
+      "name": "Autoresearch Isolation",
+      "source": "tests/simulation/scenarios/61-autoresearch-isolation.mjs",
+      "category": "real_user_research_spine",
+      "uses_api": true,
+      "uses_page": false,
+      "decision": "inventory_only",
+      "reason": "covered by metadata inventory; not selected for first 50c slice"
+    },
+    {
+      "id": "64-docker-security",
+      "name": "Docker Security & Infrastructure",
+      "source": "tests/simulation/scenarios/64-docker-security.mjs",
+      "category": "security_or_external_service",
+      "uses_api": true,
+      "uses_page": false,
+      "decision": "deferred_or_blocked",
+      "reason": "would need running services, credentials, or missing Pi adapter; kept in denominator"
+    },
+    {
+      "id": "65-laws-of-ux",
+      "name": "Laws of UX Knowledge Layer",
+      "source": "tests/simulation/scenarios/65-laws-of-ux.mjs",
+      "category": "real_user_research_spine",
+      "uses_api": true,
+      "uses_page": true,
+      "decision": "inventory_only",
+      "reason": "covered by metadata inventory; not selected for first 50c slice"
+    },
+    {
+      "id": "66-featured-mcp-servers",
+      "name": "Featured MCP Servers",
+      "source": "tests/simulation/scenarios/66-featured-mcp-servers.mjs",
+      "category": "memory_rag_skills",
+      "uses_api": true,
+      "uses_page": false,
+      "decision": "inventory_only",
+      "reason": "covered by metadata inventory; not selected for first 50c slice"
+    },
+    {
+      "id": "67-auth-enforcement",
+      "name": "Authentication Enforcement",
+      "source": "tests/simulation/scenarios/67-auth-enforcement.mjs",
+      "category": "security_or_external_service",
+      "uses_api": true,
+      "uses_page": false,
+      "decision": "deferred_or_blocked",
+      "reason": "would need running services, credentials, or missing Pi adapter; kept in denominator"
+    },
+    {
+      "id": "68-data-security",
+      "name": "Data Security",
+      "source": "tests/simulation/scenarios/68-data-security.mjs",
+      "category": "security_or_external_service",
+      "uses_api": true,
+      "uses_page": false,
+      "decision": "deferred_or_blocked",
+      "reason": "would need running services, credentials, or missing Pi adapter; kept in denominator"
+    },
+    {
+      "id": "69-user-management-ui",
+      "name": "User Management",
+      "source": "tests/simulation/scenarios/69-user-management-ui.mjs",
+      "category": "real_user_research_spine",
+      "uses_api": true,
+      "uses_page": false,
+      "decision": "inventory_only",
+      "reason": "covered by metadata inventory; not selected for first 50c slice"
+    },
+    {
+      "id": "70-mid-execution-steering",
+      "name": "Mid-Execution Steering",
+      "source": "tests/simulation/scenarios/70-mid-execution-steering.mjs",
+      "category": "security_or_external_service",
+      "uses_api": true,
+      "uses_page": false,
+      "decision": "deferred_or_blocked",
+      "reason": "would need running services, credentials, or missing Pi adapter; kept in denominator"
+    },
+    {
+      "id": "70-research-integrity",
+      "name": "Research Integrity System",
+      "source": "tests/simulation/scenarios/70-research-integrity.mjs",
+      "category": "real_user_research_spine",
+      "uses_api": true,
+      "uses_page": false,
+      "decision": "inventory_only",
+      "reason": "covered by metadata inventory; not selected for first 50c slice"
+    },
+    {
+      "id": "71-plan-and-execute",
+      "name": "Plan-and-Execute Architecture",
+      "source": "tests/simulation/scenarios/71-plan-and-execute.mjs",
+      "category": "plan_execute_dag",
+      "uses_api": true,
+      "uses_page": false,
+      "decision": "selected_representative",
+      "reason": "owner-priority representative slice"
+    },
+    {
+      "id": "72-circuit-breaker-health",
+      "name": "Circuit Breaker & LLM Health",
+      "source": "tests/simulation/scenarios/72-circuit-breaker-health.mjs",
+      "category": "model_management",
+      "uses_api": true,
+      "uses_page": true,
+      "decision": "inventory_only",
+      "reason": "covered by metadata inventory; not selected for first 50c slice"
+    },
+    {
+      "id": "73-a2a-debate-and-reports",
+      "name": "A2A Debate & Report Pipeline",
+      "source": "tests/simulation/scenarios/73-a2a-debate-and-reports.mjs",
+      "category": "a2a",
+      "uses_api": true,
+      "uses_page": false,
+      "decision": "selected_simulated_or_deferred",
+      "reason": "priority A2A slice; Pi facade has a2a schema but reporting/service adapter missing"
+    },
+    {
+      "id": "74-2fa-login-flow",
+      "name": "2FA Login Flow",
+      "source": "tests/simulation/scenarios/74-2fa-login-flow.mjs",
+      "category": "memory_rag_skills",
+      "uses_api": true,
+      "uses_page": true,
+      "decision": "inventory_only",
+      "reason": "covered by metadata inventory; not selected for first 50c slice"
+    },
+    {
+      "id": "75-participant-simulation",
+      "name": "Game Theory Participant Simulation",
+      "source": "tests/simulation/scenarios/75-participant-simulation.mjs",
+      "category": "other_feature_simulation",
+      "uses_api": true,
+      "uses_page": false,
+      "decision": "inventory_only",
+      "reason": "covered by metadata inventory; not selected for first 50c slice"
+    },
+    {
+      "id": "76-long-horizon-trajectory",
+      "name": "Long-Horizon Orchestration Trajectory",
+      "source": "tests/simulation/scenarios/76-long-horizon-trajectory.mjs",
+      "category": "plan_execute_dag",
+      "uses_api": true,
+      "uses_page": false,
+      "decision": "inventory_only",
+      "reason": "covered by metadata inventory; not selected for first 50c slice"
+    },
+    {
+      "id": "77-voice-transcription",
+      "name": "Voice Transcription",
+      "source": "tests/simulation/scenarios/77-voice-transcription.mjs",
+      "category": "other_feature_simulation",
+      "uses_api": true,
+      "uses_page": true,
+      "decision": "inventory_only",
+      "reason": "covered by metadata inventory; not selected for first 50c slice"
+    },
+    {
+      "id": "78-real-time-voice",
+      "name": "Real-Time Voice Recording",
+      "source": "tests/simulation/scenarios/78-real-time-voice.mjs",
+      "category": "memory_rag_skills",
+      "uses_api": false,
+      "uses_page": true,
+      "decision": "inventory_only",
+      "reason": "covered by metadata inventory; not selected for first 50c slice"
+    }
+  ]
+}

@@ -1,0 +1,19 @@
+{
+  "command": "npm run smoke:deepseek",
+  "workdir": "/Users/user/Documents/Istara-main-pi-replacement/labs/pi-replacement",
+  "ok": true,
+  "scenario": "provider.deepseek_v4_pro",
+  "provider": "deepseek",
+  "model": "deepseek-v4-pro",
+  "adapterMode": "library_builtin_deepseek_provider",
+  "latencyMs": 2250,
+  "usage": {
+    "input": 10,
+    "output": 37,
+    "reasoning": 34,
+    "totalTokens": 47,
+    "costTotalUsd": 0.00003654
+  },
+  "cappedText": "pong",
+  "secretPolicy": "DeepSeek API key retrieved by the adapter from macOS Keychain at runtime and not written to artifacts."
+}

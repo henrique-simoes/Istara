@@ -1,0 +1,460 @@
+{
+  "project": {
+    "name": "CareNav Renewal",
+    "company": "Northstar Health",
+    "audience": "care coordinators, patients, family caregivers, and clinic administrators",
+    "product": "a patient-care coordination workspace for appointment prep, reminders, and task follow-up",
+    "stage": "mid-fidelity redesign after a failed pilot",
+    "guardrails": [
+      "Do not infer medical advice.",
+      "Treat patient stories as synthetic PHI-like data and avoid exposing names in reports.",
+      "Separate staff workflow evidence from patient/caregiver evidence.",
+      "Flag contradictions and missing sampling context.",
+      "Prefer source-cited recommendations over generic UX advice."
+    ],
+    "researchQuestions": [
+      "Where does appointment-prep coordination break down?",
+      "Which reminders feel supportive versus nagging?",
+      "What does staff need to trust automation?",
+      "How should caregiver involvement be represented without confusing consent?"
+    ]
+  },
+  "generated_at": "2026-07-19T15:56:23.937Z",
+  "document_count": 72,
+  "total_bytes": 144331,
+  "manifest": [
+    {
+      "path": "/Users/user/Documents/Istara-main/comparison-Istara-pi/runs/20260719T124322-0300-50c-paired-benchmarks/real-user-plan/runs/clarification-real-user-plan/corpus/00-project-context.md",
+      "file_name": "00-project-context.md",
+      "relative_path": "00-project-context.md",
+      "bytes": 842
+    },
+    {
+      "path": "/Users/user/Documents/Istara-main/comparison-Istara-pi/runs/20260719T124322-0300-50c-paired-benchmarks/real-user-plan/runs/clarification-real-user-plan/corpus/interviews/P01-care-coordinator.md",
+      "file_name": "P01-care-coordinator.md",
+      "relative_path": "interviews/P01-care-coordinator.md",
+      "bytes": 1266
+    },
+    {
+      "path": "/Users/user/Documents/Istara-main/comparison-Istara-pi/runs/20260719T124322-0300-50c-paired-benchmarks/real-user-plan/runs/clarification-real-user-plan/corpus/interviews/P02-patient.md",
+      "file_name": "P02-patient.md",
+      "relative_path": "interviews/P02-patient.md",
+      "bytes": 1148
+    },
+    {
+      "path": "/Users/user/Documents/Istara-main/comparison-Istara-pi/runs/20260719T124322-0300-50c-paired-benchmarks/real-user-plan/runs/clarification-real-user-plan/corpus/interviews/P03-caregiver.md",
+      "file_name": "P03-caregiver.md",
+      "relative_path": "interviews/P03-caregiver.md",
+      "bytes": 1173
+    },
+    {
+      "path": "/Users/user/Documents/Istara-main/comparison-Istara-pi/runs/20260719T124322-0300-50c-paired-benchmarks/real-user-plan/runs/clarification-real-user-plan/corpus/interviews/P04-nurse-manager.md",
+      "file_name": "P04-nurse-manager.md",
+      "relative_path": "interviews/P04-nurse-manager.md",
+      "bytes": 1235
+    },
+    {
+      "path": "/Users/user/Documents/Istara-main/comparison-Istara-pi/runs/20260719T124322-0300-50c-paired-benchmarks/real-user-plan/runs/clarification-real-user-plan/corpus/interviews/P05-patient.md",
+      "file_name": "P05-patient.md",
+      "relative_path": "interviews/P05-patient.md",
+      "bytes": 1149
+    },
+    {
+      "path": "/Users/user/Documents/Istara-main/comparison-Istara-pi/runs/20260719T124322-0300-50c-paired-benchmarks/real-user-plan/runs/clarification-real-user-plan/corpus/interviews/P06-care-coordinator.md",
+      "file_name": "P06-care-coordinator.md",
+      "relative_path": "interviews/P06-care-coordinator.md",
+      "bytes": 1170
+    },
+    {
+      "path": "/Users/user/Documents/Istara-main/comparison-Istara-pi/runs/20260719T124322-0300-50c-paired-benchmarks/real-user-plan/runs/clarification-real-user-plan/corpus/interviews/P07-caregiver.md",
+      "file_name": "P07-caregiver.md",
+      "relative_path": "interviews/P07-caregiver.md",
+      "bytes": 1249
+    },
+    {
+      "path": "/Users/user/Documents/Istara-main/comparison-Istara-pi/runs/20260719T124322-0300-50c-paired-benchmarks/real-user-plan/runs/clarification-real-user-plan/corpus/interviews/P08-clinic-admin.md",
+      "file_name": "P08-clinic-admin.md",
+      "relative_path": "interviews/P08-clinic-admin.md",
+      "bytes": 1160
+    },
+    {
+      "path": "/Users/user/Documents/Istara-main/comparison-Istara-pi/runs/20260719T124322-0300-50c-paired-benchmarks/real-user-plan/runs/clarification-real-user-plan/corpus/interviews/P09-patient.md",
+      "file_name": "P09-patient.md",
+      "relative_path": "interviews/P09-patient.md",
+      "bytes": 1191
+    },
+    {
+      "path": "/Users/user/Documents/Istara-main/comparison-Istara-pi/runs/20260719T124322-0300-50c-paired-benchmarks/real-user-plan/runs/clarification-real-user-plan/corpus/interviews/P10-care-coordinator.md",
+      "file_name": "P10-care-coordinator.md",
+      "relative_path": "interviews/P10-care-coordinator.md",
+      "bytes": 1221
+    },
+    {
+      "path": "/Users/user/Documents/Istara-main/comparison-Istara-pi/runs/20260719T124322-0300-50c-paired-benchmarks/real-user-plan/runs/clarification-real-user-plan/corpus/interviews/P11-patient.md",
+      "file_name": "P11-patient.md",
+      "relative_path": "interviews/P11-patient.md",
+      "bytes": 1184
+    },
+    {
+      "path": "/Users/user/Documents/Istara-main/comparison-Istara-pi/runs/20260719T124322-0300-50c-paired-benchmarks/real-user-plan/runs/clarification-real-user-plan/corpus/interviews/P12-caregiver.md",
+      "file_name": "P12-caregiver.md",
+      "relative_path": "interviews/P12-caregiver.md",
+      "bytes": 1168
+    },
+    {
+      "path": "/Users/user/Documents/Istara-main/comparison-Istara-pi/runs/20260719T124322-0300-50c-paired-benchmarks/real-user-plan/runs/clarification-real-user-plan/corpus/interviews/P13-care-coordinator.md",
+      "file_name": "P13-care-coordinator.md",
+      "relative_path": "interviews/P13-care-coordinator.md",
+      "bytes": 1246
+    },
+    {
+      "path": "/Users/user/Documents/Istara-main/comparison-Istara-pi/runs/20260719T124322-0300-50c-paired-benchmarks/real-user-plan/runs/clarification-real-user-plan/corpus/interviews/P14-patient.md",
+      "file_name": "P14-patient.md",
+      "relative_path": "interviews/P14-patient.md",
+      "bytes": 1166
+    },
+    {
+      "path": "/Users/user/Documents/Istara-main/comparison-Istara-pi/runs/20260719T124322-0300-50c-paired-benchmarks/real-user-plan/runs/clarification-real-user-plan/corpus/interviews/P15-nurse.md",
+      "file_name": "P15-nurse.md",
+      "relative_path": "interviews/P15-nurse.md",
+      "bytes": 1186
+    },
+    {
+      "path": "/Users/user/Documents/Istara-main/comparison-Istara-pi/runs/20260719T124322-0300-50c-paired-benchmarks/real-user-plan/runs/clarification-real-user-plan/corpus/interviews/P16-patient.md",
+      "file_name": "P16-patient.md",
+      "relative_path": "interviews/P16-patient.md",
+      "bytes": 1242
+    },
+    {
+      "path": "/Users/user/Documents/Istara-main/comparison-Istara-pi/runs/20260719T124322-0300-50c-paired-benchmarks/real-user-plan/runs/clarification-real-user-plan/corpus/interviews/P17-caregiver.md",
+      "file_name": "P17-caregiver.md",
+      "relative_path": "interviews/P17-caregiver.md",
+      "bytes": 1195
+    },
+    {
+      "path": "/Users/user/Documents/Istara-main/comparison-Istara-pi/runs/20260719T124322-0300-50c-paired-benchmarks/real-user-plan/runs/clarification-real-user-plan/corpus/interviews/P18-operations-analyst.md",
+      "file_name": "P18-operations-analyst.md",
+      "relative_path": "interviews/P18-operations-analyst.md",
+      "bytes": 1161
+    },
+    {
+      "path": "/Users/user/Documents/Istara-main/comparison-Istara-pi/runs/20260719T124322-0300-50c-paired-benchmarks/real-user-plan/runs/clarification-real-user-plan/corpus/usability/usability-test-01.md",
+      "file_name": "usability-test-01.md",
+      "relative_path": "usability/usability-test-01.md",
+      "bytes": 836
+    },
+    {
+      "path": "/Users/user/Documents/Istara-main/comparison-Istara-pi/runs/20260719T124322-0300-50c-paired-benchmarks/real-user-plan/runs/clarification-real-user-plan/corpus/usability/usability-test-02.md",
+      "file_name": "usability-test-02.md",
+      "relative_path": "usability/usability-test-02.md",
+      "bytes": 809
+    },
+    {
+      "path": "/Users/user/Documents/Istara-main/comparison-Istara-pi/runs/20260719T124322-0300-50c-paired-benchmarks/real-user-plan/runs/clarification-real-user-plan/corpus/usability/usability-test-03.md",
+      "file_name": "usability-test-03.md",
+      "relative_path": "usability/usability-test-03.md",
+      "bytes": 811
+    },
+    {
+      "path": "/Users/user/Documents/Istara-main/comparison-Istara-pi/runs/20260719T124322-0300-50c-paired-benchmarks/real-user-plan/runs/clarification-real-user-plan/corpus/usability/usability-test-04.md",
+      "file_name": "usability-test-04.md",
+      "relative_path": "usability/usability-test-04.md",
+      "bytes": 823
+    },
+    {
+      "path": "/Users/user/Documents/Istara-main/comparison-Istara-pi/runs/20260719T124322-0300-50c-paired-benchmarks/real-user-plan/runs/clarification-real-user-plan/corpus/usability/usability-test-05.md",
+      "file_name": "usability-test-05.md",
+      "relative_path": "usability/usability-test-05.md",
+      "bytes": 834
+    },
+    {
+      "path": "/Users/user/Documents/Istara-main/comparison-Istara-pi/runs/20260719T124322-0300-50c-paired-benchmarks/real-user-plan/runs/clarification-real-user-plan/corpus/usability/usability-test-06.md",
+      "file_name": "usability-test-06.md",
+      "relative_path": "usability/usability-test-06.md",
+      "bytes": 817
+    },
+    {
+      "path": "/Users/user/Documents/Istara-main/comparison-Istara-pi/runs/20260719T124322-0300-50c-paired-benchmarks/real-user-plan/runs/clarification-real-user-plan/corpus/surveys/carenav-survey-180.csv",
+      "file_name": "carenav-survey-180.csv",
+      "relative_path": "surveys/carenav-survey-180.csv",
+      "bytes": 54576
+    },
+    {
+      "path": "/Users/user/Documents/Istara-main/comparison-Istara-pi/runs/20260719T124322-0300-50c-paired-benchmarks/real-user-plan/runs/clarification-real-user-plan/corpus/diary/diary-study-week.csv",
+      "file_name": "diary-study-week.csv",
+      "relative_path": "diary/diary-study-week.csv",
+      "bytes": 7057
+    },
+    {
+      "path": "/Users/user/Documents/Istara-main/comparison-Istara-pi/runs/20260719T124322-0300-50c-paired-benchmarks/real-user-plan/runs/clarification-real-user-plan/corpus/analytics/pilot-analytics.csv",
+      "file_name": "pilot-analytics.csv",
+      "relative_path": "analytics/pilot-analytics.csv",
+      "bytes": 611
+    },
+    {
+      "path": "/Users/user/Documents/Istara-main/comparison-Istara-pi/runs/20260719T124322-0300-50c-paired-benchmarks/real-user-plan/runs/clarification-real-user-plan/corpus/support/support-tickets.jsonl",
+      "file_name": "support-tickets.jsonl",
+      "relative_path": "support/support-tickets.jsonl",
+      "bytes": 37051
+    },
+    {
+      "path": "/Users/user/Documents/Istara-main/comparison-Istara-pi/runs/20260719T124322-0300-50c-paired-benchmarks/real-user-plan/runs/clarification-real-user-plan/corpus/competitive/competitor-notes.md",
+      "file_name": "competitor-notes.md",
+      "relative_path": "competitive/competitor-notes.md",
+      "bytes": 593
+    },
+    {
+      "path": "/Users/user/Documents/Istara-main/comparison-Istara-pi/runs/20260719T124322-0300-50c-paired-benchmarks/real-user-plan/runs/clarification-real-user-plan/corpus/design/design-critique-notes.md",
+      "file_name": "design-critique-notes.md",
+      "relative_path": "design/design-critique-notes.md",
+      "bytes": 338
+    },
+    {
+      "path": "/Users/user/Documents/Istara-main/comparison-Istara-pi/runs/20260719T124322-0300-50c-paired-benchmarks/real-user-plan/runs/clarification-real-user-plan/corpus/field-notes/clinic-shadowing.md",
+      "file_name": "clinic-shadowing.md",
+      "relative_path": "field-notes/clinic-shadowing.md",
+      "bytes": 373
+    },
+    {
+      "path": "/Users/user/Documents/Istara-main/comparison-Istara-pi/runs/20260719T124322-0300-50c-paired-benchmarks/real-user-plan/runs/clarification-real-user-plan/corpus/stakeholder-memos/stakeholder-memo-01.md",
+      "file_name": "stakeholder-memo-01.md",
+      "relative_path": "stakeholder-memos/stakeholder-memo-01.md",
+      "bytes": 607
+    },
+    {
+      "path": "/Users/user/Documents/Istara-main/comparison-Istara-pi/runs/20260719T124322-0300-50c-paired-benchmarks/real-user-plan/runs/clarification-real-user-plan/corpus/stakeholder-memos/stakeholder-memo-02.md",
+      "file_name": "stakeholder-memo-02.md",
+      "relative_path": "stakeholder-memos/stakeholder-memo-02.md",
+      "bytes": 618
+    },
+    {
+      "path": "/Users/user/Documents/Istara-main/comparison-Istara-pi/runs/20260719T124322-0300-50c-paired-benchmarks/real-user-plan/runs/clarification-real-user-plan/corpus/stakeholder-memos/stakeholder-memo-03.md",
+      "file_name": "stakeholder-memo-03.md",
+      "relative_path": "stakeholder-memos/stakeholder-memo-03.md",
+      "bytes": 621
+    },
+    {
+      "path": "/Users/user/Documents/Istara-main/comparison-Istara-pi/runs/20260719T124322-0300-50c-paired-benchmarks/real-user-plan/runs/clarification-real-user-plan/corpus/stakeholder-memos/stakeholder-memo-04.md",
+      "file_name": "stakeholder-memo-04.md",
+      "relative_path": "stakeholder-memos/stakeholder-memo-04.md",
+      "bytes": 609
+    },
+    {
+      "path": "/Users/user/Documents/Istara-main/comparison-Istara-pi/runs/20260719T124322-0300-50c-paired-benchmarks/real-user-plan/runs/clarification-real-user-plan/corpus/stakeholder-memos/stakeholder-memo-05.md",
+      "file_name": "stakeholder-memo-05.md",
+      "relative_path": "stakeholder-memos/stakeholder-memo-05.md",
+      "bytes": 592
+    },
+    {
+      "path": "/Users/user/Documents/Istara-main/comparison-Istara-pi/runs/20260719T124322-0300-50c-paired-benchmarks/real-user-plan/runs/clarification-real-user-plan/corpus/stakeholder-memos/stakeholder-memo-06.md",
+      "file_name": "stakeholder-memo-06.md",
+      "relative_path": "stakeholder-memos/stakeholder-memo-06.md",
+      "bytes": 635
+    },
+    {
+      "path": "/Users/user/Documents/Istara-main/comparison-Istara-pi/runs/20260719T124322-0300-50c-paired-benchmarks/real-user-plan/runs/clarification-real-user-plan/corpus/stakeholder-memos/stakeholder-memo-07.md",
+      "file_name": "stakeholder-memo-07.md",
+      "relative_path": "stakeholder-memos/stakeholder-memo-07.md",
+      "bytes": 628
+    },
+    {
+      "path": "/Users/user/Documents/Istara-main/comparison-Istara-pi/runs/20260719T124322-0300-50c-paired-benchmarks/real-user-plan/runs/clarification-real-user-plan/corpus/stakeholder-memos/stakeholder-memo-08.md",
+      "file_name": "stakeholder-memo-08.md",
+      "relative_path": "stakeholder-memos/stakeholder-memo-08.md",
+      "bytes": 603
+    },
+    {
+      "path": "/Users/user/Documents/Istara-main/comparison-Istara-pi/runs/20260719T124322-0300-50c-paired-benchmarks/real-user-plan/runs/clarification-real-user-plan/corpus/experiments/concept-test-01.md",
+      "file_name": "concept-test-01.md",
+      "relative_path": "experiments/concept-test-01.md",
+      "bytes": 499
+    },
+    {
+      "path": "/Users/user/Documents/Istara-main/comparison-Istara-pi/runs/20260719T124322-0300-50c-paired-benchmarks/real-user-plan/runs/clarification-real-user-plan/corpus/experiments/concept-test-02.md",
+      "file_name": "concept-test-02.md",
+      "relative_path": "experiments/concept-test-02.md",
+      "bytes": 519
+    },
+    {
+      "path": "/Users/user/Documents/Istara-main/comparison-Istara-pi/runs/20260719T124322-0300-50c-paired-benchmarks/real-user-plan/runs/clarification-real-user-plan/corpus/experiments/concept-test-03.md",
+      "file_name": "concept-test-03.md",
+      "relative_path": "experiments/concept-test-03.md",
+      "bytes": 513
+    },
+    {
+      "path": "/Users/user/Documents/Istara-main/comparison-Istara-pi/runs/20260719T124322-0300-50c-paired-benchmarks/real-user-plan/runs/clarification-real-user-plan/corpus/experiments/concept-test-04.md",
+      "file_name": "concept-test-04.md",
+      "relative_path": "experiments/concept-test-04.md",
+      "bytes": 514
+    },
+    {
+      "path": "/Users/user/Documents/Istara-main/comparison-Istara-pi/runs/20260719T124322-0300-50c-paired-benchmarks/real-user-plan/runs/clarification-real-user-plan/corpus/experiments/concept-test-05.md",
+      "file_name": "concept-test-05.md",
+      "relative_path": "experiments/concept-test-05.md",
+      "bytes": 499
+    },
+    {
+      "path": "/Users/user/Documents/Istara-main/comparison-Istara-pi/runs/20260719T124322-0300-50c-paired-benchmarks/real-user-plan/runs/clarification-real-user-plan/corpus/experiments/concept-test-06.md",
+      "file_name": "concept-test-06.md",
+      "relative_path": "experiments/concept-test-06.md",
+      "bytes": 508
+    },
+    {
+      "path": "/Users/user/Documents/Istara-main/comparison-Istara-pi/runs/20260719T124322-0300-50c-paired-benchmarks/real-user-plan/runs/clarification-real-user-plan/corpus/experiments/concept-test-07.md",
+      "file_name": "concept-test-07.md",
+      "relative_path": "experiments/concept-test-07.md",
+      "bytes": 530
+    },
+    {
+      "path": "/Users/user/Documents/Istara-main/comparison-Istara-pi/runs/20260719T124322-0300-50c-paired-benchmarks/real-user-plan/runs/clarification-real-user-plan/corpus/experiments/concept-test-08.md",
+      "file_name": "concept-test-08.md",
+      "relative_path": "experiments/concept-test-08.md",
+      "bytes": 527
+    },
+    {
+      "path": "/Users/user/Documents/Istara-main/comparison-Istara-pi/runs/20260719T124322-0300-50c-paired-benchmarks/real-user-plan/runs/clarification-real-user-plan/corpus/experiments/concept-test-09.md",
+      "file_name": "concept-test-09.md",
+      "relative_path": "experiments/concept-test-09.md",
+      "bytes": 499
+    },
+    {
+      "path": "/Users/user/Documents/Istara-main/comparison-Istara-pi/runs/20260719T124322-0300-50c-paired-benchmarks/real-user-plan/runs/clarification-real-user-plan/corpus/experiments/concept-test-10.md",
+      "file_name": "concept-test-10.md",
+      "relative_path": "experiments/concept-test-10.md",
+      "bytes": 520
+    },
+    {
+      "path": "/Users/user/Documents/Istara-main/comparison-Istara-pi/runs/20260719T124322-0300-50c-paired-benchmarks/real-user-plan/runs/clarification-real-user-plan/corpus/experiments/concept-test-11.md",
+      "file_name": "concept-test-11.md",
+      "relative_path": "experiments/concept-test-11.md",
+      "bytes": 514
+    },
+    {
+      "path": "/Users/user/Documents/Istara-main/comparison-Istara-pi/runs/20260719T124322-0300-50c-paired-benchmarks/real-user-plan/runs/clarification-real-user-plan/corpus/experiments/concept-test-12.md",
+      "file_name": "concept-test-12.md",
+      "relative_path": "experiments/concept-test-12.md",
+      "bytes": 515
+    },
+    {
+      "path": "/Users/user/Documents/Istara-main/comparison-Istara-pi/runs/20260719T124322-0300-50c-paired-benchmarks/real-user-plan/runs/clarification-real-user-plan/corpus/call-center/call-snippet-01.txt",
+      "file_name": "call-snippet-01.txt",
+      "relative_path": "call-center/call-snippet-01.txt",
+      "bytes": 243
+    },
+    {
+      "path": "/Users/user/Documents/Istara-main/comparison-Istara-pi/runs/20260719T124322-0300-50c-paired-benchmarks/real-user-plan/runs/clarification-real-user-plan/corpus/call-center/call-snippet-02.txt",
+      "file_name": "call-snippet-02.txt",
+      "relative_path": "call-center/call-snippet-02.txt",
+      "bytes": 232
+    },
+    {
+      "path": "/Users/user/Documents/Istara-main/comparison-Istara-pi/runs/20260719T124322-0300-50c-paired-benchmarks/real-user-plan/runs/clarification-real-user-plan/corpus/call-center/call-snippet-03.txt",
+      "file_name": "call-snippet-03.txt",
+      "relative_path": "call-center/call-snippet-03.txt",
+      "bytes": 250
+    },
+    {
+      "path": "/Users/user/Documents/Istara-main/comparison-Istara-pi/runs/20260719T124322-0300-50c-paired-benchmarks/real-user-plan/runs/clarification-real-user-plan/corpus/call-center/call-snippet-04.txt",
+      "file_name": "call-snippet-04.txt",
+      "relative_path": "call-center/call-snippet-04.txt",
+      "bytes": 243
+    },
+    {
+      "path": "/Users/user/Documents/Istara-main/comparison-Istara-pi/runs/20260719T124322-0300-50c-paired-benchmarks/real-user-plan/runs/clarification-real-user-plan/corpus/call-center/call-snippet-05.txt",
+      "file_name": "call-snippet-05.txt",
+      "relative_path": "call-center/call-snippet-05.txt",
+      "bytes": 254
+    },
+    {
+      "path": "/Users/user/Documents/Istara-main/comparison-Istara-pi/runs/20260719T124322-0300-50c-paired-benchmarks/real-user-plan/runs/clarification-real-user-plan/corpus/call-center/call-snippet-06.txt",
+      "file_name": "call-snippet-06.txt",
+      "relative_path": "call-center/call-snippet-06.txt",
+      "bytes": 234
+    },
+    {
+      "path": "/Users/user/Documents/Istara-main/comparison-Istara-pi/runs/20260719T124322-0300-50c-paired-benchmarks/real-user-plan/runs/clarification-real-user-plan/corpus/call-center/call-snippet-07.txt",
+      "file_name": "call-snippet-07.txt",
+      "relative_path": "call-center/call-snippet-07.txt",
+      "bytes": 241
+    },
+    {
+      "path": "/Users/user/Documents/Istara-main/comparison-Istara-pi/runs/20260719T124322-0300-50c-paired-benchmarks/real-user-plan/runs/clarification-real-user-plan/corpus/call-center/call-snippet-08.txt",
+      "file_name": "call-snippet-08.txt",
+      "relative_path": "call-center/call-snippet-08.txt",
+      "bytes": 243
+    },
+    {
+      "path": "/Users/user/Documents/Istara-main/comparison-Istara-pi/runs/20260719T124322-0300-50c-paired-benchmarks/real-user-plan/runs/clarification-real-user-plan/corpus/call-center/call-snippet-09.txt",
+      "file_name": "call-snippet-09.txt",
+      "relative_path": "call-center/call-snippet-09.txt",
+      "bytes": 241
+    },
+    {
+      "path": "/Users/user/Documents/Istara-main/comparison-Istara-pi/runs/20260719T124322-0300-50c-paired-benchmarks/real-user-plan/runs/clarification-real-user-plan/corpus/call-center/call-snippet-10.txt",
+      "file_name": "call-snippet-10.txt",
+      "relative_path": "call-center/call-snippet-10.txt",
+      "bytes": 226
+    },
+    {
+      "path": "/Users/user/Documents/Istara-main/comparison-Istara-pi/runs/20260719T124322-0300-50c-paired-benchmarks/real-user-plan/runs/clarification-real-user-plan/corpus/privacy/consent-review-01.md",
+      "file_name": "consent-review-01.md",
+      "relative_path": "privacy/consent-review-01.md",
+      "bytes": 339
+    },
+    {
+      "path": "/Users/user/Documents/Istara-main/comparison-Istara-pi/runs/20260719T124322-0300-50c-paired-benchmarks/real-user-plan/runs/clarification-real-user-plan/corpus/privacy/consent-review-02.md",
+      "file_name": "consent-review-02.md",
+      "relative_path": "privacy/consent-review-02.md",
+      "bytes": 358
+    },
+    {
+      "path": "/Users/user/Documents/Istara-main/comparison-Istara-pi/runs/20260719T124322-0300-50c-paired-benchmarks/real-user-plan/runs/clarification-real-user-plan/corpus/privacy/consent-review-03.md",
+      "file_name": "consent-review-03.md",
+      "relative_path": "privacy/consent-review-03.md",
+      "bytes": 357
+    },
+    {
+      "path": "/Users/user/Documents/Istara-main/comparison-Istara-pi/runs/20260719T124322-0300-50c-paired-benchmarks/real-user-plan/runs/clarification-real-user-plan/corpus/privacy/consent-review-04.md",
+      "file_name": "consent-review-04.md",
+      "relative_path": "privacy/consent-review-04.md",
+      "bytes": 353
+    },
+    {
+      "path": "/Users/user/Documents/Istara-main/comparison-Istara-pi/runs/20260719T124322-0300-50c-paired-benchmarks/real-user-plan/runs/clarification-real-user-plan/corpus/privacy/consent-review-05.md",
+      "file_name": "consent-review-05.md",
+      "relative_path": "privacy/consent-review-05.md",
+      "bytes": 350
+    },
+    {
+      "path": "/Users/user/Documents/Istara-main/comparison-Istara-pi/runs/20260719T124322-0300-50c-paired-benchmarks/real-user-plan/runs/clarification-real-user-plan/corpus/privacy/consent-review-06.md",
+      "file_name": "consent-review-06.md",
+      "relative_path": "privacy/consent-review-06.md",
+      "bytes": 347
+    },
+    {
+      "path": "/Users/user/Documents/Istara-main/comparison-Istara-pi/runs/20260719T124322-0300-50c-paired-benchmarks/real-user-plan/runs/clarification-real-user-plan/corpus/multilingual/pt-es-reminder-examples.md",
+      "file_name": "pt-es-reminder-examples.md",
+      "relative_path": "multilingual/pt-es-reminder-examples.md",
+      "bytes": 409
+    },
+    {
+      "path": "/Users/user/Documents/Istara-main/comparison-Istara-pi/runs/20260719T124322-0300-50c-paired-benchmarks/real-user-plan/runs/clarification-real-user-plan/corpus/edge-cases/malformed-survey-export.csv",
+      "file_name": "malformed-survey-export.csv",
+      "relative_path": "edge-cases/malformed-survey-export.csv",
+      "bytes": 191
+    },
+    {
+      "path": "/Users/user/Documents/Istara-main/comparison-Istara-pi/runs/20260719T124322-0300-50c-paired-benchmarks/real-user-plan/runs/clarification-real-user-plan/corpus/web/url-fetch-targets.md",
+      "file_name": "url-fetch-targets.md",
+      "relative_path": "web/url-fetch-targets.md",
+      "bytes": 269
+    },
+    {
+      "path": "/Users/user/Documents/Istara-main/comparison-Istara-pi/runs/20260719T124322-0300-50c-paired-benchmarks/real-user-plan/runs/clarification-real-user-plan/corpus/presentations/carenav-readout.pptx",
+      "file_name": "carenav-readout.pptx",
+      "relative_path": "presentations/carenav-readout.pptx",
+      "bytes": 0,
+      "generated_with": "minimal-openxml-zip"
+    }
+  ]
+}

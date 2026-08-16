@@ -1,0 +1,1133 @@
+{
+  "schema_version": 1,
+  "generated_at": "2026-07-19T18:17:14.242Z",
+  "harness_backbone": [
+    "tests/benchmarks",
+    "tests/evals",
+    "tests/simulation/scenarios",
+    "tests/real_user_benchmark",
+    "tests/agentic_eval_contract.json"
+  ],
+  "sampling_policy": "Conservative representative sampling; skill-heavy and fanout-heavy paths are capped to at most three skill slices.",
+  "deepseek_policy": {
+    "provider": "deepseek",
+    "model": "deepseek-v4-pro",
+    "local_models_allowed": false,
+    "previous_conservative_spend_usd": 0.09096299,
+    "estimated_added_spend_usd": 0.00339262,
+    "hard_cap_usd": 0.5,
+    "remaining_after_added_estimate_usd": 0.40564439
+  },
+  "surface_coverage": {
+    "mandatorySurfaceCount": 10,
+    "mappedSurfaceCount": 10,
+    "coveredSurfaceCount": 10,
+    "runnableSurfaceCount": 10,
+    "blockedProductionGapCount": 10,
+    "coveredSurfaceIds": [
+      "a2a_delegation_reports",
+      "autoresearch_governance",
+      "benchmarks_evals_simulations_real_user_contract",
+      "channels_webhooks_telegram_lifecycle",
+      "chat_react_loop",
+      "memory_rag_reasoning_memento_skills",
+      "plan_review_state",
+      "steering_system_prompt",
+      "tasks_findings_documents",
+      "telemetry_tokens_tool_metrics"
+    ],
+    "uncoveredMandatorySurfaceIds": [],
+    "canonicalToolCount": 29,
+    "canonicalTools": [
+      "a2a.delegate",
+      "a2a.report",
+      "autoresearch.propose_experiment",
+      "autoresearch.record_measurement",
+      "benchmarks.map_contract",
+      "channels.create",
+      "channels.receive",
+      "channels.respond",
+      "documents.create",
+      "documents.read",
+      "documents.search",
+      "evals.emit_structured",
+      "findings.create",
+      "memento.record_skill_memory",
+      "memory.search",
+      "memory.write",
+      "models.route",
+      "plans.create",
+      "reasoning_bank.retrieve",
+      "reasoning_bank.store",
+      "research.record_step",
+      "skills.apply",
+      "steering.queue",
+      "system_prompt.audit",
+      "tasks.attach_document",
+      "tasks.create",
+      "tasks.update_lifecycle",
+      "telemetry.record_metric",
+      "webhooks.receive"
+    ],
+    "surfaces": [
+      {
+        "id": "chat_react_loop",
+        "label": "Chat Routes And ReAct Tool Loop",
+        "category": "agent_loop",
+        "bridgeStatus": "runnable_lab_adapter",
+        "covered": true,
+        "bridgeTools": [
+          "tasks.create",
+          "documents.search",
+          "findings.create",
+          "research.record_step",
+          "telemetry.record_metric",
+          "models.route"
+        ],
+        "missingBridgeTools": [],
+        "candidateScenarios": [
+          "chat.tool_loop.task_and_finding",
+          "documents.tools.slice",
+          "research.spine.step_tracker"
+        ],
+        "realFiles": [
+          {
+            "path": "backend/app/api/routes/chat.py",
+            "line": 1,
+            "evidence": "Chat route is documented as Prompt RAG plus native tool-calling ReAct loop."
+          },
+          {
+            "path": "backend/app/api/routes/chat.py",
+            "line": 71,
+            "evidence": "Research-spine chat contract blocks reportable claims from raw model/RAG/tool output."
+          },
+          {
+            "path": "backend/app/api/routes/chat.py",
+            "line": 123,
+            "evidence": "Native tool call loop filters hallucinated tools and executes canonical Istara tools."
+          },
+          {
+            "path": "backend/app/api/routes/chat.py",
+            "line": 389,
+            "evidence": "POST /chat owns the session/message streaming lifecycle."
+          }
+        ],
+        "realTests": [
+          "tests/agentic_eval_contract.json",
+          "tests/benchmarks/test_orchestration.py",
+          "tests/simulation/scenarios/31-task-documents-tools.mjs"
+        ],
+        "productionGaps": [
+          {
+            "reason": "The bridge does not invoke FastAPI /chat, database sessions, SSE streaming, auth, or production provider routing.",
+            "files": [
+              "backend/app/api/routes/chat.py:389",
+              "backend/app/models/chat.py:1"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "autoresearch_governance",
+        "label": "Autoresearch Routes And Governed Experiment Loop",
+        "category": "self_improvement",
+        "bridgeStatus": "runnable_lab_adapter_with_production_blockers",
+        "covered": true,
+        "bridgeTools": [
+          "autoresearch.propose_experiment",
+          "autoresearch.record_measurement",
+          "research.record_step",
+          "telemetry.record_metric"
+        ],
+        "missingBridgeTools": [],
+        "candidateScenarios": [
+          "autoresearch.governed_experiment.slice"
+        ],
+        "realFiles": [
+          {
+            "path": "backend/app/api/routes/autoresearch.py",
+            "line": 45,
+            "evidence": "Experiment requests include loop type, metric target, max iterations, and project scope."
+          },
+          {
+            "path": "backend/app/api/routes/autoresearch.py",
+            "line": 582,
+            "evidence": "POST /autoresearch/start starts a background engine loop after project/settings checks."
+          },
+          {
+            "path": "backend/app/core/autoresearch_engine.py",
+            "line": 20,
+            "evidence": "Autoresearch policy says experiment artifacts are governed proposals, not report evidence."
+          },
+          {
+            "path": "backend/app/core/autoresearch_isolation.py",
+            "line": 1,
+            "evidence": "Isolation context prevents sandbox experiments from leaking into live skill/self-evolution state."
+          }
+        ],
+        "realTests": [
+          "tests/test_autoresearch.py",
+          "tests/simulation/scenarios/61-autoresearch-isolation.mjs",
+          "tests/agentic_eval_contract.json"
+        ],
+        "productionGaps": [
+          {
+            "reason": "Running the real background AutoresearchEngine would mutate experiment DB state and can touch live model/provider settings; the lab only records the governed envelope.",
+            "files": [
+              "backend/app/api/routes/autoresearch.py:582",
+              "backend/app/core/autoresearch_engine.py:35"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "plan_review_state",
+        "label": "Plan, Review, And Human Done Gates",
+        "category": "task_lifecycle",
+        "bridgeStatus": "runnable_lab_adapter_with_governance_warning",
+        "covered": true,
+        "bridgeTools": [
+          "tasks.create",
+          "plans.create",
+          "tasks.update_lifecycle",
+          "research.record_step"
+        ],
+        "missingBridgeTools": [],
+        "candidateScenarios": [
+          "task.plan_execute.lifecycle",
+          "research.spine.step_tracker"
+        ],
+        "realFiles": [
+          {
+            "path": "backend/app/api/routes/tasks.py",
+            "line": 277,
+            "evidence": "Task approval blocks research artifacts until validity says report_allowed."
+          },
+          {
+            "path": "backend/app/core/task_review.py",
+            "line": 82,
+            "evidence": "Atomic review snapshot captures documents, findings, reports, coding runs, and validity preview."
+          },
+          {
+            "path": "backend/app/core/task_review.py",
+            "line": 216,
+            "evidence": "Review events transition In Review to Done only through explicit review actions."
+          },
+          {
+            "path": "backend/app/core/task_contracts.py",
+            "line": 1,
+            "evidence": "Shared task/document contracts normalize priorities and evidence attachments."
+          }
+        ],
+        "realTests": [
+          "tests/test_tasks.py",
+          "tests/test_research_validity_contract.py",
+          "tests/simulation/scenarios/71-plan-and-execute.mjs"
+        ],
+        "productionGaps": [
+          {
+            "reason": "The lab can represent in_review/done envelopes but cannot perform a real human approval or DB-backed validity gate without changing production task state.",
+            "files": [
+              "backend/app/api/routes/tasks.py:595",
+              "backend/app/core/task_review.py:216"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "tasks_findings_documents",
+        "label": "Tasks, Findings, Documents, And Source Evidence",
+        "category": "research_artifacts",
+        "bridgeStatus": "runnable_lab_adapter",
+        "covered": true,
+        "bridgeTools": [
+          "tasks.create",
+          "tasks.attach_document",
+          "documents.create",
+          "documents.search",
+          "documents.read",
+          "findings.create",
+          "research.record_step"
+        ],
+        "missingBridgeTools": [],
+        "candidateScenarios": [
+          "chat.tool_loop.task_and_finding",
+          "documents.tools.slice",
+          "research.spine.step_tracker"
+        ],
+        "realFiles": [
+          {
+            "path": "backend/app/api/routes/tasks.py",
+            "line": 61,
+            "evidence": "TaskCreate captures project, skill, user context, documents, URLs, instructions, and labels."
+          },
+          {
+            "path": "backend/app/api/routes/documents.py",
+            "line": 165,
+            "evidence": "Document creation persists source units used by research validity."
+          },
+          {
+            "path": "backend/app/api/routes/findings.py",
+            "line": 583,
+            "evidence": "Finding evidence-chain endpoint exposes research-spine provenance."
+          },
+          {
+            "path": "backend/app/services/finding_validity_service.py",
+            "line": 1,
+            "evidence": "Finding validity service distinguishes provisional and reportable artifacts."
+          }
+        ],
+        "realTests": [
+          "tests/test_documents.py",
+          "tests/test_findings.py",
+          "tests/test_tasks.py",
+          "tests/simulation/scenarios/31-task-documents-tools.mjs"
+        ],
+        "productionGaps": [
+          {
+            "reason": "The lab stores source spans in memory only; it does not write the production source-unit tables or accepted evidence-chain rows.",
+            "files": [
+              "backend/app/api/routes/documents.py:165",
+              "backend/app/api/routes/findings.py:583"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "memory_rag_reasoning_memento_skills",
+        "label": "Memory, RAG, ReasoningBank, Memento, And Skills",
+        "category": "memory_and_skills",
+        "bridgeStatus": "runnable_lab_adapter_with_production_blockers",
+        "covered": true,
+        "bridgeTools": [
+          "memory.search",
+          "memory.write",
+          "reasoning_bank.store",
+          "reasoning_bank.retrieve",
+          "memento.record_skill_memory",
+          "skills.apply"
+        ],
+        "missingBridgeTools": [],
+        "candidateScenarios": [
+          "memory.rag.slice",
+          "skills.three_skill_slice",
+          "memory.reasoningbank.memento.slice"
+        ],
+        "realFiles": [
+          {
+            "path": "backend/app/api/routes/memory.py",
+            "line": 74,
+            "evidence": "Memory search retrieves scoped hybrid RAG context."
+          },
+          {
+            "path": "backend/app/core/rag.py",
+            "line": 457,
+            "evidence": "Hybrid search fuses vector and keyword rankings by provenance."
+          },
+          {
+            "path": "backend/app/api/routes/reasoning_bank.py",
+            "line": 59,
+            "evidence": "ReasoningBank memories are admin-only because traces can be sensitive."
+          },
+          {
+            "path": "backend/app/core/reasoning_bank.py",
+            "line": 122,
+            "evidence": "ReasoningBank stores process memory and tags process-only source kinds."
+          },
+          {
+            "path": "backend/app/core/agent_skill_tools.py",
+            "line": 262,
+            "evidence": "Skill ranking combines explicit task skill, keywords, usage stats, telemetry, and reasoning memory."
+          }
+        ],
+        "realTests": [
+          "tests/evals/cases/core_eval_cases.json",
+          "tests/evals/registry.json",
+          "tests/agentic_eval_contract.json",
+          "tests/simulation/scenarios/20-all-skills-comprehensive.mjs",
+          "tests/simulation/scenarios/23-memory-view.mjs"
+        ],
+        "productionGaps": [
+          {
+            "reason": "The lab cannot exercise production embeddings, LanceDB/keyword indexes, admin-scoped ReasoningBank routes, or learned skill stats without credentials/DB state.",
+            "files": [
+              "backend/app/api/routes/memory.py:74",
+              "backend/app/api/routes/reasoning_bank.py:59",
+              "backend/app/core/agent_skill_tools.py:262"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "a2a_delegation_reports",
+        "label": "A2A Delegation And Reports",
+        "category": "delegation",
+        "bridgeStatus": "runnable_lab_adapter_with_production_blockers",
+        "covered": true,
+        "bridgeTools": [
+          "a2a.delegate",
+          "a2a.report",
+          "tasks.update_lifecycle",
+          "telemetry.record_metric"
+        ],
+        "missingBridgeTools": [],
+        "candidateScenarios": [
+          "a2a.debate_report.slice"
+        ],
+        "realFiles": [
+          {
+            "path": "backend/app/api/routes/a2a.py",
+            "line": 263,
+            "evidence": "A2A agent-card endpoint advertises Istara capabilities."
+          },
+          {
+            "path": "backend/app/api/routes/a2a.py",
+            "line": 305,
+            "evidence": "JSON-RPC /a2a enforces auth, rate limits, body size, and replay protection."
+          },
+          {
+            "path": "backend/app/core/report_manager.py",
+            "line": 227,
+            "evidence": "Reports only route task findings after human-approved Done and reportable evidence."
+          },
+          {
+            "path": "backend/app/api/routes/reports.py",
+            "line": 13,
+            "evidence": "Reports API exposes project report envelopes."
+          }
+        ],
+        "realTests": [
+          "tests/test_a2a.py",
+          "tests/benchmarks/test_orchestration.py",
+          "tests/simulation/scenarios/73-a2a-debate-and-reports.mjs"
+        ],
+        "productionGaps": [
+          {
+            "reason": "The lab does not open JSON-RPC sockets or validate JWT/network tokens/replay keys; it records the canonical delegation/report shape only.",
+            "files": [
+              "backend/app/api/routes/a2a.py:305",
+              "backend/app/core/report_manager.py:227"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "channels_webhooks_telegram_lifecycle",
+        "label": "Channels, Webhooks, And Telegram-Like Lifecycle",
+        "category": "channels",
+        "bridgeStatus": "runnable_lab_adapter_with_credentials_blocked",
+        "covered": true,
+        "bridgeTools": [
+          "channels.create",
+          "webhooks.receive",
+          "channels.receive",
+          "channels.respond"
+        ],
+        "missingBridgeTools": [],
+        "candidateScenarios": [
+          "channel.lifecycle.simulated_slice",
+          "channels.webhook.telegram.lifecycle"
+        ],
+        "realFiles": [
+          {
+            "path": "backend/app/api/routes/channels.py",
+            "line": 79,
+            "evidence": "Channel route lists project-scoped channel instances."
+          },
+          {
+            "path": "backend/app/api/routes/channels.py",
+            "line": 189,
+            "evidence": "Channel instances start/stop concrete adapters."
+          },
+          {
+            "path": "backend/app/api/routes/webhooks.py",
+            "line": 81,
+            "evidence": "Inbound WhatsApp webhook checks signatures and replay protection."
+          },
+          {
+            "path": "backend/app/channels/telegram.py",
+            "line": 49,
+            "evidence": "Telegram adapter requires a bot token and external dependency availability."
+          }
+        ],
+        "realTests": [
+          "tests/test_channel_inbound.py",
+          "tests/test_webhooks_security.py",
+          "tests/simulation/scenarios/53-channel-lifecycle.mjs",
+          "tests/real_user_benchmark/lib/persona.mjs"
+        ],
+        "productionGaps": [
+          {
+            "reason": "Real Telegram/WhatsApp/Google Chat loops need external bot/webhook credentials and running adapters; the lab uses signed simulated inbound envelopes.",
+            "files": [
+              "backend/app/channels/telegram.py:49",
+              "backend/app/api/routes/webhooks.py:81"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "steering_system_prompt",
+        "label": "Steering And System Prompt Policy",
+        "category": "runtime_control",
+        "bridgeStatus": "runnable_lab_adapter_with_production_blockers",
+        "covered": true,
+        "bridgeTools": [
+          "steering.queue",
+          "system_prompt.audit",
+          "models.route",
+          "telemetry.record_metric"
+        ],
+        "missingBridgeTools": [],
+        "candidateScenarios": [
+          "steering.system_prompt.loop.slice"
+        ],
+        "realFiles": [
+          {
+            "path": "backend/app/api/routes/steering.py",
+            "line": 139,
+            "evidence": "Steering route queues mid-execution messages to a project-scoped agent."
+          },
+          {
+            "path": "backend/app/api/routes/steering.py",
+            "line": 171,
+            "evidence": "Follow-up route queues messages for the moment an agent would stop."
+          },
+          {
+            "path": "backend/app/core/prompt_rag.py",
+            "line": 430,
+            "evidence": "Dynamic prompt composition protects identity anchors, token budget, and research-spine notices."
+          },
+          {
+            "path": "backend/app/api/routes/chat.py",
+            "line": 71,
+            "evidence": "Chat prompt includes protected research-spine policy."
+          }
+        ],
+        "realTests": [
+          "tests/benchmarks/test_orchestration.py",
+          "tests/simulation/scenarios/70-mid-execution-steering.mjs"
+        ],
+        "productionGaps": [
+          {
+            "reason": "The lab does not interrupt a live long-running agent or SSE stream; it records queued steering/follow-up envelopes and policy-audit results.",
+            "files": [
+              "backend/app/api/routes/steering.py:139",
+              "backend/app/api/routes/steering.py:305"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "telemetry_tokens_tool_metrics",
+        "label": "Telemetry, Token Budgets, Tool Metrics, And Model Routes",
+        "category": "observability",
+        "bridgeStatus": "runnable_lab_adapter",
+        "covered": true,
+        "bridgeTools": [
+          "telemetry.record_metric",
+          "models.route",
+          "benchmarks.map_contract"
+        ],
+        "missingBridgeTools": [],
+        "candidateScenarios": [
+          "model.routing.telemetry.slice",
+          "benchmarks.evals.real_user.contract"
+        ],
+        "realFiles": [
+          {
+            "path": "backend/app/core/telemetry.py",
+            "line": 21,
+            "evidence": "Telemetry spans record operation, model, project, route, research validity, tool, and duration fields."
+          },
+          {
+            "path": "backend/app/api/routes/chat.py",
+            "line": 535,
+            "evidence": "Chat allocates context budget and token buckets before model execution."
+          },
+          {
+            "path": "backend/app/core/token_counter.py",
+            "line": 1,
+            "evidence": "Context guards keep prompts within provider window limits."
+          },
+          {
+            "path": "tests/benchmarks/long_horizon_runner.py",
+            "line": 111,
+            "evidence": "Benchmark runner tracks tool calls and token-like streaming deltas."
+          }
+        ],
+        "realTests": [
+          "tests/test_telemetry.py",
+          "tests/benchmarks/long_horizon_runner.py",
+          "tests/evals/registry.json"
+        ],
+        "productionGaps": [
+          {
+            "reason": "The lab records local JSON metrics and raw LLM capture; it does not insert production TelemetrySpan or ModelSkillStats rows.",
+            "files": [
+              "backend/app/core/telemetry.py:21",
+              "backend/app/models/model_skill_stats.py:1"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "benchmarks_evals_simulations_real_user_contract",
+        "label": "Benchmarks, Evals, Simulations, Real User Benchmark, And Eval Contract",
+        "category": "verification",
+        "bridgeStatus": "runnable_lab_adapter",
+        "covered": true,
+        "bridgeTools": [
+          "benchmarks.map_contract",
+          "evals.emit_structured",
+          "telemetry.record_metric"
+        ],
+        "missingBridgeTools": [],
+        "candidateScenarios": [
+          "benchmarks.evals.real_user.contract"
+        ],
+        "realFiles": [
+          {
+            "path": "tests/benchmarks/run_benchmarks.py",
+            "line": 67,
+            "evidence": "Benchmark registry includes long horizon, tool-calling, A2A, and async steering checks."
+          },
+          {
+            "path": "tests/evals/registry.json",
+            "line": 1,
+            "evidence": "Core eval registry covers provider compatibility, Prompt RAG, memory, skills, and orchestration."
+          },
+          {
+            "path": "tests/real_user_benchmark/benchmark-registry.json",
+            "line": 1,
+            "evidence": "Real-user benchmark registry keeps credential and artifact safety policies."
+          },
+          {
+            "path": "tests/agentic_eval_contract.json",
+            "line": 1,
+            "evidence": "Agentic eval contract enumerates release-facing evidence for autoresearch, ReasoningBank, Memento, tool calling, and UI."
+          }
+        ],
+        "realTests": [
+          "tests/benchmarks",
+          "tests/evals",
+          "tests/simulation/scenarios",
+          "tests/real_user_benchmark",
+          "tests/agentic_eval_contract.json"
+        ],
+        "productionGaps": [
+          {
+            "reason": "The bridge maps benchmark contracts and executes lab scenarios; it does not run full production browser/API/live-user harnesses.",
+            "files": [
+              "tests/real_user_benchmark/run.mjs:1",
+              "tests/benchmarks/run_benchmarks.py:67"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "dimensions": {
+    "tool_calling": {
+      "required": "Pi-owned loop executes canonical Istara tool calls with schema validation.",
+      "status": "covered",
+      "scenarios": [
+        "chat.tool_loop.task_and_finding",
+        "documents.tools.slice",
+        "structured_outputs.core_eval"
+      ],
+      "covered": [
+        "chat.tool_loop.task_and_finding",
+        "documents.tools.slice",
+        "structured_outputs.core_eval"
+      ],
+      "blocked": []
+    },
+    "feature_integration_adherence": {
+      "required": "Feature contracts preserve Istara-shaped tasks, findings, documents, plans, and eval artifacts.",
+      "status": "covered",
+      "scenarios": [
+        "chat.tool_loop.task_and_finding",
+        "task.plan_execute.lifecycle",
+        "documents.tools.slice",
+        "structured_outputs.core_eval",
+        "memory.rag.slice",
+        "skills.three_skill_slice",
+        "a2a.debate_report.slice",
+        "channel.lifecycle.simulated_slice",
+        "research.spine.step_tracker",
+        "autoresearch.governed_experiment.slice",
+        "memory.reasoningbank.memento.slice",
+        "channels.webhook.telegram.lifecycle",
+        "steering.system_prompt.loop.slice",
+        "benchmarks.evals.real_user.contract",
+        "model.routing.telemetry.slice"
+      ],
+      "covered": [
+        "chat.tool_loop.task_and_finding",
+        "task.plan_execute.lifecycle",
+        "documents.tools.slice",
+        "structured_outputs.core_eval",
+        "memory.rag.slice",
+        "skills.three_skill_slice",
+        "a2a.debate_report.slice",
+        "channel.lifecycle.simulated_slice",
+        "research.spine.step_tracker",
+        "autoresearch.governed_experiment.slice",
+        "memory.reasoningbank.memento.slice",
+        "channels.webhook.telegram.lifecycle",
+        "steering.system_prompt.loop.slice",
+        "benchmarks.evals.real_user.contract",
+        "model.routing.telemetry.slice"
+      ],
+      "blocked": []
+    },
+    "final_output": {
+      "required": "Candidate emits a final assistant output after tool execution.",
+      "status": "covered",
+      "scenarios": [
+        "chat.tool_loop.task_and_finding",
+        "task.plan_execute.lifecycle",
+        "documents.tools.slice",
+        "structured_outputs.core_eval",
+        "memory.rag.slice",
+        "skills.three_skill_slice",
+        "a2a.debate_report.slice",
+        "channel.lifecycle.simulated_slice",
+        "research.spine.step_tracker",
+        "autoresearch.governed_experiment.slice",
+        "memory.reasoningbank.memento.slice",
+        "channels.webhook.telegram.lifecycle",
+        "steering.system_prompt.loop.slice",
+        "benchmarks.evals.real_user.contract",
+        "model.routing.telemetry.slice"
+      ],
+      "covered": [
+        "chat.tool_loop.task_and_finding",
+        "task.plan_execute.lifecycle",
+        "documents.tools.slice",
+        "structured_outputs.core_eval",
+        "memory.rag.slice",
+        "skills.three_skill_slice",
+        "a2a.debate_report.slice",
+        "channel.lifecycle.simulated_slice",
+        "research.spine.step_tracker",
+        "autoresearch.governed_experiment.slice",
+        "memory.reasoningbank.memento.slice",
+        "channels.webhook.telegram.lifecycle",
+        "steering.system_prompt.loop.slice",
+        "benchmarks.evals.real_user.contract",
+        "model.routing.telemetry.slice"
+      ],
+      "blocked": []
+    },
+    "research_spine_step_quality": {
+      "required": "Source-grounded research-spine steps are tracked and remain provisional until review/Done.",
+      "status": "covered",
+      "scenarios": [
+        "research.spine.step_tracker",
+        "memory.rag.slice",
+        "autoresearch.governed_experiment.slice"
+      ],
+      "covered": [
+        "research.spine.step_tracker",
+        "memory.rag.slice",
+        "autoresearch.governed_experiment.slice"
+      ],
+      "blocked": []
+    },
+    "memory_load": {
+      "required": "Memory/RAG boundary loads scoped memory and records search/write behavior.",
+      "status": "covered",
+      "scenarios": [
+        "memory.rag.slice",
+        "memory.reasoningbank.memento.slice"
+      ],
+      "covered": [
+        "memory.rag.slice",
+        "memory.reasoningbank.memento.slice"
+      ],
+      "blocked": []
+    },
+    "reasoning_bank_memento": {
+      "required": "ReasoningBank and Memento skill-memory paths are represented as process memory, not report evidence.",
+      "status": "covered",
+      "scenarios": [
+        "memory.reasoningbank.memento.slice"
+      ],
+      "covered": [
+        "memory.reasoningbank.memento.slice"
+      ],
+      "blocked": []
+    },
+    "autoresearch_governance": {
+      "required": "Autoresearch proposals remain sandboxed and governed, with no production mutation or report evidence promotion.",
+      "status": "covered",
+      "scenarios": [
+        "autoresearch.governed_experiment.slice"
+      ],
+      "covered": [
+        "autoresearch.governed_experiment.slice"
+      ],
+      "blocked": []
+    },
+    "tokens_by_step_total": {
+      "required": "Token usage is recorded by scenario and in total for live and deterministic paths.",
+      "status": "covered",
+      "scenarios": [
+        "chat.tool_loop.task_and_finding",
+        "task.plan_execute.lifecycle",
+        "documents.tools.slice",
+        "structured_outputs.core_eval",
+        "memory.rag.slice",
+        "skills.three_skill_slice",
+        "a2a.debate_report.slice",
+        "channel.lifecycle.simulated_slice",
+        "research.spine.step_tracker",
+        "autoresearch.governed_experiment.slice",
+        "memory.reasoningbank.memento.slice",
+        "channels.webhook.telegram.lifecycle",
+        "steering.system_prompt.loop.slice",
+        "benchmarks.evals.real_user.contract",
+        "model.routing.telemetry.slice"
+      ],
+      "covered": [
+        "chat.tool_loop.task_and_finding",
+        "task.plan_execute.lifecycle",
+        "documents.tools.slice",
+        "structured_outputs.core_eval",
+        "memory.rag.slice",
+        "skills.three_skill_slice",
+        "a2a.debate_report.slice",
+        "channel.lifecycle.simulated_slice",
+        "research.spine.step_tracker",
+        "autoresearch.governed_experiment.slice",
+        "memory.reasoningbank.memento.slice",
+        "channels.webhook.telegram.lifecycle",
+        "steering.system_prompt.loop.slice",
+        "benchmarks.evals.real_user.contract",
+        "model.routing.telemetry.slice"
+      ],
+      "blocked": []
+    },
+    "tool_calls_vs_output_quality": {
+      "required": "Tool-call counts are reported beside pass/fail and final-output quality proxies.",
+      "status": "covered",
+      "scenarios": [
+        "chat.tool_loop.task_and_finding",
+        "task.plan_execute.lifecycle",
+        "documents.tools.slice",
+        "structured_outputs.core_eval",
+        "memory.rag.slice",
+        "skills.three_skill_slice",
+        "a2a.debate_report.slice",
+        "channel.lifecycle.simulated_slice",
+        "research.spine.step_tracker",
+        "autoresearch.governed_experiment.slice",
+        "memory.reasoningbank.memento.slice",
+        "channels.webhook.telegram.lifecycle",
+        "steering.system_prompt.loop.slice",
+        "benchmarks.evals.real_user.contract",
+        "model.routing.telemetry.slice"
+      ],
+      "covered": [
+        "chat.tool_loop.task_and_finding",
+        "task.plan_execute.lifecycle",
+        "documents.tools.slice",
+        "structured_outputs.core_eval",
+        "memory.rag.slice",
+        "skills.three_skill_slice",
+        "a2a.debate_report.slice",
+        "channel.lifecycle.simulated_slice",
+        "research.spine.step_tracker",
+        "autoresearch.governed_experiment.slice",
+        "memory.reasoningbank.memento.slice",
+        "channels.webhook.telegram.lifecycle",
+        "steering.system_prompt.loop.slice",
+        "benchmarks.evals.real_user.contract",
+        "model.routing.telemetry.slice"
+      ],
+      "blocked": []
+    },
+    "skills_adherence": {
+      "required": "Skill fanout is capped at three representative slices.",
+      "status": "covered",
+      "scenarios": [
+        "skills.three_skill_slice"
+      ],
+      "covered": [
+        "skills.three_skill_slice"
+      ],
+      "blocked": []
+    },
+    "system_prompt_adherence": {
+      "required": "Product actions use canonical tools and local models stay disallowed.",
+      "status": "covered",
+      "scenarios": [
+        "chat.tool_loop.task_and_finding",
+        "task.plan_execute.lifecycle",
+        "documents.tools.slice",
+        "structured_outputs.core_eval",
+        "memory.rag.slice",
+        "skills.three_skill_slice",
+        "a2a.debate_report.slice",
+        "channel.lifecycle.simulated_slice",
+        "research.spine.step_tracker",
+        "autoresearch.governed_experiment.slice",
+        "memory.reasoningbank.memento.slice",
+        "channels.webhook.telegram.lifecycle",
+        "steering.system_prompt.loop.slice",
+        "benchmarks.evals.real_user.contract",
+        "model.routing.telemetry.slice"
+      ],
+      "covered": [
+        "chat.tool_loop.task_and_finding",
+        "task.plan_execute.lifecycle",
+        "documents.tools.slice",
+        "structured_outputs.core_eval",
+        "memory.rag.slice",
+        "skills.three_skill_slice",
+        "a2a.debate_report.slice",
+        "channel.lifecycle.simulated_slice",
+        "research.spine.step_tracker",
+        "autoresearch.governed_experiment.slice",
+        "memory.reasoningbank.memento.slice",
+        "channels.webhook.telegram.lifecycle",
+        "steering.system_prompt.loop.slice",
+        "benchmarks.evals.real_user.contract",
+        "model.routing.telemetry.slice"
+      ],
+      "blocked": []
+    },
+    "a2a_success": {
+      "required": "A2A delegation and layered report envelope succeed.",
+      "status": "covered",
+      "scenarios": [
+        "a2a.debate_report.slice"
+      ],
+      "covered": [
+        "a2a.debate_report.slice"
+      ],
+      "blocked": []
+    },
+    "channels": {
+      "required": "Simulated channel creation, inbound receive, and outbound response are exercised without real credentials.",
+      "status": "covered",
+      "scenarios": [
+        "channel.lifecycle.simulated_slice",
+        "channels.webhook.telegram.lifecycle"
+      ],
+      "covered": [
+        "channel.lifecycle.simulated_slice",
+        "channels.webhook.telegram.lifecycle"
+      ],
+      "blocked": []
+    },
+    "webhook_telegram_lifecycle": {
+      "required": "Telegram-like inbound webhook envelopes include signature and replay status before channel receive/respond.",
+      "status": "covered",
+      "scenarios": [
+        "channels.webhook.telegram.lifecycle"
+      ],
+      "covered": [
+        "channels.webhook.telegram.lifecycle"
+      ],
+      "blocked": []
+    },
+    "documents": {
+      "required": "Document create/search/read/attach paths are represented.",
+      "status": "covered",
+      "scenarios": [
+        "documents.tools.slice",
+        "research.spine.step_tracker"
+      ],
+      "covered": [
+        "documents.tools.slice",
+        "research.spine.step_tracker"
+      ],
+      "blocked": []
+    },
+    "plan_review_state": {
+      "required": "Plan lifecycle and in-review state are represented.",
+      "status": "covered",
+      "scenarios": [
+        "task.plan_execute.lifecycle"
+      ],
+      "covered": [
+        "task.plan_execute.lifecycle"
+      ],
+      "blocked": []
+    },
+    "steering": {
+      "required": "Mid-execution steering and prompt policy audit are represented without live SSE interruption.",
+      "status": "covered",
+      "scenarios": [
+        "steering.system_prompt.loop.slice"
+      ],
+      "covered": [
+        "steering.system_prompt.loop.slice"
+      ],
+      "blocked": []
+    },
+    "benchmark_contracts": {
+      "required": "Benchmark, eval, simulation, real-user benchmark, and agentic eval contracts are mapped to candidate scenarios.",
+      "status": "covered",
+      "scenarios": [
+        "benchmarks.evals.real_user.contract"
+      ],
+      "covered": [
+        "benchmarks.evals.real_user.contract"
+      ],
+      "blocked": []
+    },
+    "model_routing": {
+      "required": "DeepSeek-only route and no-local-model policy are recorded.",
+      "status": "covered",
+      "scenarios": [
+        "model.routing.telemetry.slice",
+        "steering.system_prompt.loop.slice"
+      ],
+      "covered": [
+        "model.routing.telemetry.slice",
+        "steering.system_prompt.loop.slice"
+      ],
+      "blocked": []
+    },
+    "telemetry": {
+      "required": "Trace rows and explicit telemetry metric envelopes are emitted.",
+      "status": "covered",
+      "scenarios": [
+        "model.routing.telemetry.slice",
+        "autoresearch.governed_experiment.slice",
+        "benchmarks.evals.real_user.contract"
+      ],
+      "covered": [
+        "model.routing.telemetry.slice",
+        "autoresearch.governed_experiment.slice",
+        "benchmarks.evals.real_user.contract"
+      ],
+      "blocked": []
+    },
+    "real_surface_map": {
+      "required": "Mapped surfaces are tied to concrete Istara files/tests and runnable lab bridge tools, with explicit production blockers.",
+      "status": "covered",
+      "scenarios": [
+        "chat.tool_loop.task_and_finding",
+        "task.plan_execute.lifecycle",
+        "documents.tools.slice",
+        "structured_outputs.core_eval",
+        "memory.rag.slice",
+        "skills.three_skill_slice",
+        "a2a.debate_report.slice",
+        "channel.lifecycle.simulated_slice",
+        "research.spine.step_tracker",
+        "autoresearch.governed_experiment.slice",
+        "memory.reasoningbank.memento.slice",
+        "channels.webhook.telegram.lifecycle",
+        "steering.system_prompt.loop.slice",
+        "benchmarks.evals.real_user.contract",
+        "model.routing.telemetry.slice"
+      ],
+      "covered": [
+        "chat.tool_loop.task_and_finding",
+        "task.plan_execute.lifecycle",
+        "documents.tools.slice",
+        "structured_outputs.core_eval",
+        "memory.rag.slice",
+        "skills.three_skill_slice",
+        "a2a.debate_report.slice",
+        "channel.lifecycle.simulated_slice",
+        "research.spine.step_tracker",
+        "autoresearch.governed_experiment.slice",
+        "memory.reasoningbank.memento.slice",
+        "channels.webhook.telegram.lifecycle",
+        "steering.system_prompt.loop.slice",
+        "benchmarks.evals.real_user.contract",
+        "model.routing.telemetry.slice"
+      ],
+      "blocked": [
+        {
+          "surface_id": "chat_react_loop",
+          "reason": "The bridge does not invoke FastAPI /chat, database sessions, SSE streaming, auth, or production provider routing.",
+          "files": [
+            "backend/app/api/routes/chat.py:389",
+            "backend/app/models/chat.py:1"
+          ]
+        },
+        {
+          "surface_id": "autoresearch_governance",
+          "reason": "Running the real background AutoresearchEngine would mutate experiment DB state and can touch live model/provider settings; the lab only records the governed envelope.",
+          "files": [
+            "backend/app/api/routes/autoresearch.py:582",
+            "backend/app/core/autoresearch_engine.py:35"
+          ]
+        },
+        {
+          "surface_id": "plan_review_state",
+          "reason": "The lab can represent in_review/done envelopes but cannot perform a real human approval or DB-backed validity gate without changing production task state.",
+          "files": [
+            "backend/app/api/routes/tasks.py:595",
+            "backend/app/core/task_review.py:216"
+          ]
+        },
+        {
+          "surface_id": "tasks_findings_documents",
+          "reason": "The lab stores source spans in memory only; it does not write the production source-unit tables or accepted evidence-chain rows.",
+          "files": [
+            "backend/app/api/routes/documents.py:165",
+            "backend/app/api/routes/findings.py:583"
+          ]
+        },
+        {
+          "surface_id": "memory_rag_reasoning_memento_skills",
+          "reason": "The lab cannot exercise production embeddings, LanceDB/keyword indexes, admin-scoped ReasoningBank routes, or learned skill stats without credentials/DB state.",
+          "files": [
+            "backend/app/api/routes/memory.py:74",
+            "backend/app/api/routes/reasoning_bank.py:59",
+            "backend/app/core/agent_skill_tools.py:262"
+          ]
+        },
+        {
+          "surface_id": "a2a_delegation_reports",
+          "reason": "The lab does not open JSON-RPC sockets or validate JWT/network tokens/replay keys; it records the canonical delegation/report shape only.",
+          "files": [
+            "backend/app/api/routes/a2a.py:305",
+            "backend/app/core/report_manager.py:227"
+          ]
+        },
+        {
+          "surface_id": "channels_webhooks_telegram_lifecycle",
+          "reason": "Real Telegram/WhatsApp/Google Chat loops need external bot/webhook credentials and running adapters; the lab uses signed simulated inbound envelopes.",
+          "files": [
+            "backend/app/channels/telegram.py:49",
+            "backend/app/api/routes/webhooks.py:81"
+          ]
+        },
+        {
+          "surface_id": "steering_system_prompt",
+          "reason": "The lab does not interrupt a live long-running agent or SSE stream; it records queued steering/follow-up envelopes and policy-audit results.",
+          "files": [
+            "backend/app/api/routes/steering.py:139",
+            "backend/app/api/routes/steering.py:305"
+          ]
+        },
+        {
+          "surface_id": "telemetry_tokens_tool_metrics",
+          "reason": "The lab records local JSON metrics and raw LLM capture; it does not insert production TelemetrySpan or ModelSkillStats rows.",
+          "files": [
+            "backend/app/core/telemetry.py:21",
+            "backend/app/models/model_skill_stats.py:1"
+          ]
+        },
+        {
+          "surface_id": "benchmarks_evals_simulations_real_user_contract",
+          "reason": "The bridge maps benchmark contracts and executes lab scenarios; it does not run full production browser/API/live-user harnesses.",
+          "files": [
+            "tests/real_user_benchmark/run.mjs:1",
+            "tests/benchmarks/run_benchmarks.py:67"
+          ]
+        }
+      ]
+    }
+  }
+}

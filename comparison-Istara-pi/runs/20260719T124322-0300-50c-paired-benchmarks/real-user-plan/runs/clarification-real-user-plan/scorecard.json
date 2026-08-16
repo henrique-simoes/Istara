@@ -1,0 +1,107 @@
+{
+  "total": 20.5,
+  "max": 100,
+  "mode": "plan-only",
+  "completed_tasks": 0,
+  "chat_turns": 0,
+  "uploaded_documents": 0,
+  "compute_donation_verified": false,
+  "live_chat_verified": false,
+  "dimensions": [
+    {
+      "key": "install",
+      "weight": 10,
+      "score": 2,
+      "max": 10,
+      "ratio": 0.2
+    },
+    {
+      "key": "onboarding",
+      "weight": 8,
+      "score": 1.6,
+      "max": 8,
+      "ratio": 0.2
+    },
+    {
+      "key": "corpus",
+      "weight": 10,
+      "score": 4,
+      "max": 10,
+      "ratio": 0.4
+    },
+    {
+      "key": "chat",
+      "weight": 10,
+      "score": 1,
+      "max": 10,
+      "ratio": 0.1
+    },
+    {
+      "key": "grounding",
+      "weight": 10,
+      "score": 2.5,
+      "max": 10,
+      "ratio": 0.25
+    },
+    {
+      "key": "tasks",
+      "weight": 12,
+      "score": 1.2,
+      "max": 12,
+      "ratio": 0.1
+    },
+    {
+      "key": "reports_findings",
+      "weight": 10,
+      "score": 2.5,
+      "max": 10,
+      "ratio": 0.25
+    },
+    {
+      "key": "integrations",
+      "weight": 10,
+      "score": 0,
+      "max": 10,
+      "ratio": 0
+    },
+    {
+      "key": "loops_autoresearch",
+      "weight": 6,
+      "score": 1.2,
+      "max": 6,
+      "ratio": 0.2
+    },
+    {
+      "key": "url_fetching",
+      "weight": 4,
+      "score": 0.8,
+      "max": 4,
+      "ratio": 0.2
+    },
+    {
+      "key": "interfaces",
+      "weight": 4,
+      "score": 0.8,
+      "max": 4,
+      "ratio": 0.2
+    },
+    {
+      "key": "stability_performance",
+      "weight": 4,
+      "score": 2.2,
+      "max": 4,
+      "ratio": 0.55
+    },
+    {
+      "key": "researcher_usefulness",
+      "weight": 2,
+      "score": 0.7,
+      "max": 2,
+      "ratio": 0.35
+    }
+  ],
+  "blockers": [
+    "Plan-only mode did not attempt live services."
+  ],
+  "integration_summary": []
+}

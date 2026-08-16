@@ -1,0 +1,29 @@
+{
+  "schema_version": 2,
+  "prompt_records": 22,
+  "output_records": 22,
+  "files": {
+    "prompts": "prompts.jsonl.gz",
+    "outputs": "outputs.jsonl.gz"
+  },
+  "live_llm_spend_added_by_collection": 0,
+  "baseline_istara": {
+    "llm_calls": 0,
+    "note": "The deterministic baseline runner executes canonical contracts without an LLM."
+  },
+  "pi_candidate": {
+    "faux_provider_calls": 21,
+    "deepseek_smoke_calls": 1
+  },
+  "redaction_policy": "Only secrets/credentials are redacted. Normal prompt and output text is preserved. No auth headers or API keys are stored.",
+  "capping_policy": "No records were capped in this run.",
+  "reconstruction_notes": [
+    "Deterministic faux-provider records are reconstructed from the scenario catalog because the provider responses are fixed test fixtures.",
+    "The DeepSeek smoke record is reconstructed from the fixed smoke prompt plus live-provider-smoke.json and the prior raw capture; no new live call was made."
+  ],
+  "missing_raw_capture": [],
+  "deepseek_capture": {
+    "captured": true,
+    "call_id": "deepseek-provider-smoke-1"
+  }
+}

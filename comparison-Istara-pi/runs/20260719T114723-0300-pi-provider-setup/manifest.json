@@ -1,0 +1,132 @@
+{
+  "run_id": "20260719T114723-0300-pi-provider-setup",
+  "created_at": "2026-07-19T11:47:23-03:00",
+  "completed_at": "2026-07-19T11:50:57-03:00",
+  "owner_request": "Approved Pi dependency setup/local checkout enough to run Pi provider smoke",
+  "scope": {
+    "project_root": "/Users/user/Documents/Istara-main",
+    "artifact_root": "comparison-Istara-pi",
+    "run_root": "comparison-Istara-pi/runs/20260719T114723-0300-pi-provider-setup",
+    "istara_application_code_modified": false,
+    "allowed_write_boundary": "comparison-Istara-pi/"
+  },
+  "git": {
+    "istara_git_sha": "6e3f7e332f528763d07dbb54d657377d5646b6e0",
+    "worktree_had_unrelated_changes": true
+  },
+  "model_policy": {
+    "provider": "DeepSeek",
+    "base_url": "https://api.deepseek.com",
+    "model": "deepseek-v4-pro",
+    "reasoning_effort": "high",
+    "thinking": "enabled",
+    "cloud_llm_only": true,
+    "local_models_allowed": false,
+    "budget_gate": "Pi provider/setup is package-boundary preflight only; replacement metrics require isolated worktree/sidecar harness plus Istara harness coverage and owner token/cost cap"
+  },
+  "secret_policy": {
+    "runtime_env_var": "DEEPSEEK_API_KEY",
+    "deepseek_key_present": true,
+    "secret_value_logged": false,
+    "secret_source": "macOS Keychain item openclaw/istara-pi-deepseek, read only inside smoke process"
+  },
+  "pi_setup": {
+    "package": "@earendil-works/pi-ai",
+    "requested_version": "0.80.10",
+    "installed_version": "0.80.10",
+    "install_method": "temporary npm install in run-local tmp-pi-deps",
+    "monorepo_clone_required": false,
+    "temporary_dependency_tree_deleted": true,
+    "adapter_mode": "library_builtin_deepseek_provider",
+    "replacement_evidence_scope": "package-boundary preflight only; not a standalone Pi replacement test or replacement score"
+  },
+  "compass_forge_scope": {
+    "mode": "read-only orientation and focused context mapping",
+    "state": "unregistered/unknown; no snapshot recorded",
+    "agent_brief": "structured timeout with fallback_authorized true",
+    "classification": "local_fix/lite for provider-scope artifact correction",
+    "relevant_to_provider_smoke": [
+      "comparison artifact scope",
+      "@earendil-works/pi-ai package/provider boundary",
+      "DeepSeek provider smoke configuration",
+      "secret handling",
+      "cleanup and storage validation",
+      "claim-boundary wording"
+    ],
+    "future_replacement_harness_inputs": [
+      "compute/provider routing",
+      "agent lifecycle",
+      "tool and skill execution",
+      "RAG, memory, and reasoning",
+      "A2A and channel behavior",
+      "product feature contracts and related tests/docs"
+    ],
+    "out_of_scope_for_provider_smoke": [
+      "IstaraPiAdapter",
+      "CanonicalToolFacade",
+      "sidecar/RPC bridge",
+      "Pi-owned Istara agent loop execution",
+      "paired Istara-vs-Pi metrics",
+      "Istara application code modification"
+    ],
+    "replacement_score_backbone": [
+      "tests/benchmarks/",
+      "tests/evals/",
+      "scripts/run_istara_evals.py",
+      "tests/agentic_eval_contract.json",
+      "tests/real_user_benchmark/",
+      "tests/simulation/scenarios/"
+    ],
+    "details": "cf-context-scope.md"
+  },
+  "smoke_result": {
+    "passed": true,
+    "status_code": 200,
+    "latency_ms": 2787,
+    "usage": {
+      "input": 20,
+      "output": 74,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "reasoning": 71,
+      "totalTokens": 94,
+      "cost": {
+        "input": 0.0000087,
+        "output": 0.00006438,
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "total": 0.00007308
+      }
+    },
+    "response_model": "deepseek-v4-pro",
+    "stop_reason": "stop"
+  },
+  "retention": {
+    "gzip_jsonl": true,
+    "screenshots_enabled": false,
+    "forbidden_retained_dirs": [
+      "node_modules",
+      "dist",
+      "coverage",
+      ".cache",
+      "tmp",
+      "tmp-pi-deps"
+    ],
+    "final_run_folder_size": "36K",
+    "final_comparison_folder_size": "380K"
+  },
+  "artifacts": {
+    "status": "status.md",
+    "logs": [
+      "logs/pi-provider-deepseek-smoke.json",
+      "logs/dependency-setup.json"
+    ],
+    "scripts": [
+      "scripts/pi_deepseek_smoke.mjs"
+    ],
+    "trace": "trace.jsonl.gz",
+    "outputs": "outputs.jsonl.gz",
+    "cleanup_report": "cleanup-report.md",
+    "cf_context_scope": "cf-context-scope.md"
+  }
+}

@@ -1,0 +1,4 @@
+{"scenario_id":"smoke.deepseek.openai_compatible","family":"model_management","engine":"istara_compatible","description":"One no-sensitive-content chat completion through OpenAI-compatible DeepSeek base_url shape.","feature_ids":["chat.model-controls","settings.llm-servers","compute.pool"],"max_steps":1,"live_llm":true,"budget_scope":"small_smoke"}
+{"scenario_id":"smoke.pi.provider_static","family":"model_management","engine":"pi","description":"Static package/provider feasibility check without package installation or model call.","feature_ids":["chat.model-controls","settings.llm-servers","compute.pool"],"max_steps":0,"live_llm":false,"budget_scope":"no_model"}
+{"scenario_id":"dry.feature_matrix_schema","family":"feature_matrix","engine":"both","description":"No-model validation that all feature inventory rows have replacement coverage placeholders.","feature_ids":["all"],"max_steps":0,"live_llm":false,"budget_scope":"no_model"}
+

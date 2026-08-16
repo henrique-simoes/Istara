@@ -1,0 +1,47 @@
+{
+  "schema_version": 2,
+  "checks": [
+    {
+      "command": "npm run validate",
+      "passed": true
+    },
+    {
+      "command": "npm run collect:artifacts -- --out /Users/user/Documents/Istara-main/comparison-Istara-pi/runs/20260719T125756-0300-full-replacement-candidate",
+      "passed": true
+    },
+    {
+      "command": "PYTHONDONTWRITEBYTECODE=1 pytest -p no:cacheprovider tests/test_agentic_eval_contract.py tests/test_istara_eval_runner.py tests/benchmarks/test_orchestration.py -q",
+      "passed": true,
+      "result": "17 passed"
+    },
+    {
+      "command": "gzip -t traces.jsonl.gz outputs.jsonl.gz raw-llm-calls/prompts.jsonl.gz raw-llm-calls/outputs.jsonl.gz",
+      "passed": true
+    },
+    {
+      "command": "python -m json.tool scores.json",
+      "passed": true
+    },
+    {
+      "command": "python -m json.tool raw-llm-calls/manifest.json",
+      "passed": true
+    },
+    {
+      "command": "raw LLM JSONL required-field, call-id matching, manifest-count, and secret-pattern validator",
+      "passed": true,
+      "result": {
+        "prompt_records": 22,
+        "output_records": 22,
+        "providers": [
+          "faux",
+          "deepseek"
+        ]
+      }
+    },
+    {
+      "command": "compass-forge gate after --summary",
+      "passed": true,
+      "result": "warn only; failures=0; new_failures=0; security=0; inherited complexity warnings"
+    }
+  ]
+}

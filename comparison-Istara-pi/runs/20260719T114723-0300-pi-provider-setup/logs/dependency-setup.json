@@ -1,0 +1,24 @@
+{
+  "setup": "pi_provider_dependency_setup",
+  "package": "@earendil-works/pi-ai",
+  "requested_version": "0.80.10",
+  "installed_version": "0.80.10",
+  "install_method": "temporary npm install in run-local tmp-pi-deps",
+  "command_summary": "npm init -y; npm install --no-audit --no-fund @earendil-works/pi-ai@0.80.10",
+  "install_passed": true,
+  "npm_top_level_dependencies": [
+    "@earendil-works/pi-ai"
+  ],
+  "top_level_node_modules_entries": 52,
+  "temporary_sizes_before_cleanup": {
+    "tmp_pi_deps": "128M",
+    "node_modules": "128M",
+    "pi_ai_package": "7.6M"
+  },
+  "retained_dependency_artifacts_after_cleanup": false,
+  "secret_value_logged": false,
+  "notes": [
+    "Installed only pi-ai; no Pi monorepo clone was required.",
+    "Temporary dependency tree was used to execute the native DeepSeek provider smoke and is removed before finish."
+  ]
+}

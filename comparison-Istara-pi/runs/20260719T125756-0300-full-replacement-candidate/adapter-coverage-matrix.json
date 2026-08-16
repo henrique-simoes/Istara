@@ -1,0 +1,177 @@
+{
+  "schema_version": 1,
+  "coverage": [
+    {
+      "surface": "chat/tool loop",
+      "family": "chat_tool_loop",
+      "verdict": "prototype-supported",
+      "scenario": "chat.tool_loop.task_and_finding",
+      "candidate_passed": true,
+      "canonical_tools": [
+        "tasks.create",
+        "findings.create"
+      ],
+      "source_assets": [
+        "tests/agentic_eval_contract.json",
+        "tests/simulation/scenarios/31-task-documents-tools.mjs"
+      ],
+      "remaining_gap": "Production SSE route adapter, history persistence, project auth and RAG injection still needed."
+    },
+    {
+      "surface": "plan-and-execute/task lifecycle",
+      "family": "plan_and_execute",
+      "verdict": "prototype-supported",
+      "scenario": "task.plan_execute.lifecycle",
+      "candidate_passed": true,
+      "canonical_tools": [
+        "tasks.create",
+        "plans.create",
+        "tasks.update_lifecycle"
+      ],
+      "source_assets": [
+        "tests/benchmarks/test_orchestration.py",
+        "tests/simulation/scenarios/71-plan-and-execute.mjs"
+      ],
+      "remaining_gap": "Real Task DB lifecycle, planner execution, review rewards, hooks, and steering remain unwired."
+    },
+    {
+      "surface": "documents/tools representative slice",
+      "family": "documents_tools",
+      "verdict": "prototype-supported",
+      "scenario": "documents.tools.slice",
+      "candidate_passed": true,
+      "canonical_tools": [
+        "documents.create",
+        "tasks.create",
+        "tasks.attach_document",
+        "findings.create"
+      ],
+      "source_assets": [
+        "tests/simulation/scenarios/31-task-documents-tools.mjs"
+      ],
+      "remaining_gap": "Actual document APIs, file storage, attach/detach endpoints and UI actions remain simulated."
+    },
+    {
+      "surface": "structured outputs/core evals",
+      "family": "structured_outputs",
+      "verdict": "prototype-supported",
+      "scenario": "structured_outputs.core_eval",
+      "candidate_passed": true,
+      "canonical_tools": [
+        "evals.emit_structured"
+      ],
+      "source_assets": [
+        "tests/evals/cases/core_eval_cases.json",
+        "scripts/run_istara_evals.py"
+      ],
+      "remaining_gap": "Only deterministic eval artifact; live structured judge via Pi-owned tool loop not run this round."
+    },
+    {
+      "surface": "memory/RAG representative slice",
+      "family": "memory_rag",
+      "verdict": "prototype-supported",
+      "scenario": "memory.rag.slice",
+      "candidate_passed": true,
+      "canonical_tools": [
+        "memory.search",
+        "findings.create",
+        "memory.write"
+      ],
+      "source_assets": [
+        "tests/agentic_eval_contract.json",
+        "tests/simulation/scenarios/23-memory-view.mjs"
+      ],
+      "remaining_gap": "Memory search/write are in-memory; LanceDB/RAG/content guard/citations need adapters."
+    },
+    {
+      "surface": "skills representative slice",
+      "family": "skills",
+      "verdict": "prototype-supported",
+      "scenario": "skills.three_skill_slice",
+      "candidate_passed": true,
+      "canonical_tools": [
+        "skills.apply",
+        "skills.apply",
+        "skills.apply",
+        "findings.create"
+      ],
+      "source_assets": [
+        "tests/agentic_eval_contract.json",
+        "tests/simulation/scenarios/20-all-skills-comprehensive.mjs"
+      ],
+      "remaining_gap": "Exactly three skill adapters simulated; full registry/ranking/memento lifecycle is not wired."
+    },
+    {
+      "surface": "A2A representative slice",
+      "family": "a2a",
+      "verdict": "prototype-supported",
+      "scenario": "a2a.debate_report.slice",
+      "candidate_passed": true,
+      "canonical_tools": [
+        "a2a.delegate",
+        "a2a.delegate",
+        "a2a.report"
+      ],
+      "source_assets": [
+        "tests/simulation/scenarios/73-a2a-debate-and-reports.mjs"
+      ],
+      "remaining_gap": "Delegation/report envelopes only; A2A service persistence, rate limits and consensus are not wired."
+    },
+    {
+      "surface": "channel lifecycle simulated slice",
+      "family": "channels",
+      "verdict": "prototype-supported",
+      "scenario": "channel.lifecycle.simulated_slice",
+      "candidate_passed": true,
+      "canonical_tools": [
+        "channels.create",
+        "channels.receive",
+        "channels.respond"
+      ],
+      "source_assets": [
+        "tests/simulation/scenarios/53-channel-lifecycle.mjs"
+      ],
+      "remaining_gap": "Simulated channel create/inbound/outbound only; real credentials/lifecycle/auth are intentionally unused."
+    },
+    {
+      "surface": "model/provider routing through Pi ai",
+      "family": "provider_deepseek",
+      "verdict": "provider-smoke-supported",
+      "scenario": null,
+      "candidate_passed": null,
+      "canonical_tools": [],
+      "source_assets": [],
+      "remaining_gap": "Pi ai reached DeepSeek in adapter package, but live model call was provider smoke, not full scenario scoring."
+    },
+    {
+      "surface": "telemetry/token/tool-count trace capture",
+      "family": "telemetry",
+      "verdict": "prototype-supported",
+      "scenario": null,
+      "candidate_passed": true,
+      "canonical_tools": [],
+      "source_assets": [],
+      "remaining_gap": "Trace JSONL and scores capture Pi events, token estimates, tool counts; production telemetry redaction/export not wired."
+    },
+    {
+      "surface": "real user CareNav benchmark",
+      "family": "real_user",
+      "verdict": "blocked",
+      "scenario": null,
+      "candidate_passed": null,
+      "canonical_tools": [],
+      "source_assets": [],
+      "remaining_gap": "Needs production-like scenario adapter and budgeted live run; prior plan artifacts inventoried only."
+    },
+    {
+      "surface": "production route replacement",
+      "family": "production_routes",
+      "verdict": "blocked",
+      "scenario": null,
+      "candidate_passed": null,
+      "canonical_tools": [],
+      "source_assets": [],
+      "remaining_gap": "Main Istara app code intentionally untouched; sidecar only."
+    }
+  ]
+}

@@ -1,0 +1,1332 @@
+{
+  "schema_version": 1,
+  "run_id": "20260719T124322-0300-50c-paired-benchmarks",
+  "hard_budget_usd": 0.5,
+  "spend_used_usd_conservative_estimate": 0.08,
+  "budget_remaining_usd_conservative_estimate": 0.42,
+  "budget_policy": {
+    "stopped_before_threshold": true,
+    "estimate_method": "provider usage where available; otherwise conservative floor $0.01/call plus high per-token estimate"
+  },
+  "metrics": [
+    {
+      "pass": null,
+      "tool_call_count": 0,
+      "token_usage": {
+        "prompt_tokens": 0,
+        "completion_tokens": 0,
+        "total_tokens": 0
+      },
+      "cost_usd": 0,
+      "step_quality": null,
+      "memory_load": {
+        "items": 0,
+        "tokens_estimate": 0
+      },
+      "prompt_skill_adherence": null,
+      "a2a_channel_status": "not_applicable",
+      "final_output_quality": null,
+      "id": "pi_validate",
+      "engine": "command",
+      "scenario": "pi_validate",
+      "mode": "deterministic_no_model",
+      "pass_": null,
+      "pass_status": true,
+      "pass_fail": "pass",
+      "latency_ms": 610.55
+    },
+    {
+      "pass": null,
+      "tool_call_count": 0,
+      "token_usage": {
+        "prompt_tokens": 0,
+        "completion_tokens": 0,
+        "total_tokens": 0
+      },
+      "cost_usd": 0,
+      "step_quality": null,
+      "memory_load": {
+        "items": 0,
+        "tokens_estimate": 0
+      },
+      "prompt_skill_adherence": null,
+      "a2a_channel_status": "not_applicable",
+      "final_output_quality": null,
+      "id": "pi_smoke_no_model",
+      "engine": "command",
+      "scenario": "pi_smoke_no_model",
+      "mode": "deterministic_no_model",
+      "pass_": null,
+      "pass_status": true,
+      "pass_fail": "pass",
+      "latency_ms": 381.72
+    },
+    {
+      "pass": null,
+      "tool_call_count": 0,
+      "token_usage": {
+        "prompt_tokens": 0,
+        "completion_tokens": 0,
+        "total_tokens": 0
+      },
+      "cost_usd": 0,
+      "step_quality": null,
+      "memory_load": {
+        "items": 0,
+        "tokens_estimate": 0
+      },
+      "prompt_skill_adherence": null,
+      "a2a_channel_status": "not_applicable",
+      "final_output_quality": null,
+      "id": "istara_orchestration_benchmarks",
+      "engine": "command",
+      "scenario": "istara_orchestration_benchmarks",
+      "mode": "deterministic_no_model",
+      "pass_": null,
+      "pass_status": true,
+      "pass_fail": "pass",
+      "latency_ms": 4358.63
+    },
+    {
+      "pass": null,
+      "tool_call_count": 0,
+      "token_usage": {
+        "prompt_tokens": 0,
+        "completion_tokens": 0,
+        "total_tokens": 0
+      },
+      "cost_usd": 0,
+      "step_quality": null,
+      "memory_load": {
+        "items": 0,
+        "tokens_estimate": 0
+      },
+      "prompt_skill_adherence": null,
+      "a2a_channel_status": "not_applicable",
+      "final_output_quality": null,
+      "id": "istara_static_evals",
+      "engine": "command",
+      "scenario": "istara_static_evals",
+      "mode": "deterministic_no_model",
+      "pass_": null,
+      "pass_status": true,
+      "pass_fail": "pass",
+      "latency_ms": 1529.23
+    },
+    {
+      "pass": null,
+      "tool_call_count": 0,
+      "token_usage": {
+        "prompt_tokens": 0,
+        "completion_tokens": 0,
+        "total_tokens": 0
+      },
+      "cost_usd": 0,
+      "step_quality": null,
+      "memory_load": {
+        "items": 0,
+        "tokens_estimate": 0
+      },
+      "prompt_skill_adherence": null,
+      "a2a_channel_status": "not_applicable",
+      "final_output_quality": null,
+      "id": "pi_live_core_evals",
+      "engine": "command",
+      "scenario": "pi_live_core_evals",
+      "mode": "deterministic_no_model",
+      "pass_": null,
+      "pass_status": true,
+      "pass_fail": "pass",
+      "latency_ms": 11144,
+      "note": "rerun with absolute file imports passed; output retained in pi-live-core-evals-output.json"
+    },
+    {
+      "pass": null,
+      "tool_call_count": 0,
+      "token_usage": {
+        "prompt_tokens": 0,
+        "completion_tokens": 0,
+        "total_tokens": 0
+      },
+      "cost_usd": 0,
+      "step_quality": {
+        "raw_metrics": {
+          "steps_count": 10,
+          "has_cycles": false,
+          "topological_order_valid": true,
+          "context_retention_verified": true,
+          "max_iterations_enforced": true
+        }
+      },
+      "memory_load": {
+        "items": 0,
+        "tokens_estimate": 0
+      },
+      "prompt_skill_adherence": null,
+      "a2a_channel_status": "not_applicable",
+      "final_output_quality": null,
+      "id": "baseline_benchmark_long_horizon_dag",
+      "engine": "baseline_istara",
+      "scenario": "long_horizon_dag",
+      "mode": "deterministic_no_model",
+      "pass_status": true,
+      "pass_fail": "pass",
+      "latency_ms": 0.13
+    },
+    {
+      "pass": null,
+      "tool_call_count": 0,
+      "token_usage": {
+        "prompt_tokens": 0,
+        "completion_tokens": 0,
+        "total_tokens": 0
+      },
+      "cost_usd": 0,
+      "step_quality": {
+        "raw_metrics": {
+          "valid_tools_tested": 2,
+          "hallucinations_filtered": 1,
+          "regex_fallback_works": true,
+          "max_iterations_enforced": 8,
+          "schema_strict_mode": true
+        }
+      },
+      "memory_load": {
+        "items": 0,
+        "tokens_estimate": 0
+      },
+      "prompt_skill_adherence": null,
+      "a2a_channel_status": "not_applicable",
+      "final_output_quality": null,
+      "id": "baseline_benchmark_tool_calling_accuracy",
+      "engine": "baseline_istara",
+      "scenario": "tool_calling_accuracy",
+      "mode": "deterministic_no_model",
+      "pass_status": true,
+      "pass_fail": "pass",
+      "latency_ms": 0.22
+    },
+    {
+      "pass": null,
+      "tool_call_count": 0,
+      "token_usage": {
+        "prompt_tokens": 0,
+        "completion_tokens": 0,
+        "total_tokens": 0
+      },
+      "cost_usd": 0,
+      "step_quality": {
+        "raw_metrics": {
+          "clear_case_kappa": 1,
+          "ambiguous_case_kappa": -0.3846,
+          "cosine_similar_high": 0.9987,
+          "cosine_similar_low": 0.64,
+          "consensus_threshold": 0.6,
+          "routing_logic_verified": true
+        }
+      },
+      "memory_load": {
+        "items": 0,
+        "tokens_estimate": 0
+      },
+      "prompt_skill_adherence": null,
+      "a2a_channel_status": "not_applicable",
+      "final_output_quality": null,
+      "id": "baseline_benchmark_a2a_consensus",
+      "engine": "baseline_istara",
+      "scenario": "a2a_consensus",
+      "mode": "deterministic_no_model",
+      "pass_status": true,
+      "pass_fail": "pass",
+      "latency_ms": 0.1
+    },
+    {
+      "pass": null,
+      "tool_call_count": 0,
+      "token_usage": {
+        "prompt_tokens": 0,
+        "completion_tokens": 0,
+        "total_tokens": 0
+      },
+      "cost_usd": 0,
+      "step_quality": {
+        "raw_metrics": {
+          "steering_injection_time_ms": 500,
+          "steering_processed_correctly": true,
+          "follow_up_messages_queued": 1,
+          "atomic_lock_verified": true,
+          "concurrent_injections_stress_tested": 10,
+          "no_state_corruption": true
+        }
+      },
+      "memory_load": {
+        "items": 0,
+        "tokens_estimate": 0
+      },
+      "prompt_skill_adherence": null,
+      "a2a_channel_status": "not_applicable",
+      "final_output_quality": null,
+      "id": "baseline_benchmark_async_steering_responsiveness",
+      "engine": "baseline_istara",
+      "scenario": "async_steering_responsiveness",
+      "mode": "deterministic_no_model",
+      "pass_status": true,
+      "pass_fail": "pass",
+      "latency_ms": 720.11
+    },
+    {
+      "pass": null,
+      "tool_call_count": 0,
+      "token_usage": {
+        "prompt_tokens": 0,
+        "completion_tokens": 0,
+        "total_tokens": 0
+      },
+      "cost_usd": 0,
+      "step_quality": {
+        "score": 1,
+        "checks": [
+          {
+            "name": "has_context",
+            "passed": true,
+            "detail": "3 hits"
+          },
+          {
+            "name": "gold_source_retrieved",
+            "passed": true,
+            "detail": "gold_checkout.md, distractor_dashboard.md, distractor_search.md"
+          },
+          {
+            "name": "gold_source_ranked_first",
+            "passed": true,
+            "detail": "gold_checkout.md, distractor_dashboard.md, distractor_search.md"
+          },
+          {
+            "name": "context_is_guard_wrapped",
+            "passed": true,
+            "detail": ""
+          }
+        ]
+      },
+      "memory_load": {
+        "items": 3,
+        "tokens_estimate": 0
+      },
+      "prompt_skill_adherence": {
+        "metrics": {
+          "context_precision_at_1": 1,
+          "context_recall_at_3": 1,
+          "retrieved_count": 3
+        }
+      },
+      "a2a_channel_status": "not_applicable",
+      "final_output_quality": null,
+      "id": "baseline_static_rag_keyword_gold",
+      "engine": "baseline_istara",
+      "scenario": "rag_keyword_gold",
+      "category": "rag",
+      "mode": "deterministic_no_model",
+      "pass_status": true,
+      "pass_fail": "passed",
+      "latency_ms": 4.16
+    },
+    {
+      "pass": null,
+      "tool_call_count": 0,
+      "token_usage": {
+        "prompt_tokens": 0,
+        "completion_tokens": 0,
+        "total_tokens": 0
+      },
+      "cost_usd": 0,
+      "step_quality": {
+        "score": 1,
+        "checks": [
+          {
+            "name": "identity_anchor_survives",
+            "passed": true,
+            "detail": ""
+          },
+          {
+            "name": "relevant_section_selected",
+            "passed": true,
+            "detail": ""
+          },
+          {
+            "name": "synthesis_section_selected",
+            "passed": true,
+            "detail": ""
+          },
+          {
+            "name": "distractor_suppressed",
+            "passed": true,
+            "detail": ""
+          }
+        ]
+      },
+      "memory_load": {
+        "items": 0,
+        "tokens_estimate": 117
+      },
+      "prompt_skill_adherence": {
+        "metrics": {
+          "identity_anchor_survival": 1,
+          "composed_chars": 471,
+          "token_estimate": 117
+        }
+      },
+      "a2a_channel_status": "not_applicable",
+      "final_output_quality": null,
+      "id": "baseline_static_prompt_rag_identity_and_relevance",
+      "engine": "baseline_istara",
+      "scenario": "prompt_rag_identity_and_relevance",
+      "category": "prompt_rag",
+      "mode": "deterministic_no_model",
+      "pass_status": true,
+      "pass_fail": "passed",
+      "latency_ms": 0.87
+    },
+    {
+      "pass": null,
+      "tool_call_count": 0,
+      "token_usage": {
+        "prompt_tokens": 0,
+        "completion_tokens": 0,
+        "total_tokens": 0
+      },
+      "cost_usd": 0,
+      "step_quality": {
+        "score": 1,
+        "checks": [
+          {
+            "name": "compressed_smaller",
+            "passed": true,
+            "detail": "3578 to 131 chars"
+          },
+          {
+            "name": "protected_block_survives",
+            "passed": true,
+            "detail": ""
+          },
+          {
+            "name": "critical_term_survives",
+            "passed": true,
+            "detail": ""
+          }
+        ]
+      },
+      "memory_load": {
+        "items": 0,
+        "tokens_estimate": 0
+      },
+      "prompt_skill_adherence": {
+        "metrics": {
+          "compression_ratio": 0.0366,
+          "compressed_chars": 131
+        }
+      },
+      "a2a_channel_status": "not_applicable",
+      "final_output_quality": null,
+      "id": "baseline_static_llmlingua_protected_context",
+      "engine": "baseline_istara",
+      "scenario": "llmlingua_protected_context",
+      "category": "llmlingua",
+      "mode": "deterministic_no_model",
+      "pass_status": true,
+      "pass_fail": "passed",
+      "latency_ms": 1.44
+    },
+    {
+      "pass": null,
+      "tool_call_count": 0,
+      "token_usage": {
+        "prompt_tokens": 0,
+        "completion_tokens": 0,
+        "total_tokens": 0
+      },
+      "cost_usd": 0,
+      "step_quality": {
+        "score": 1,
+        "checks": [
+          {
+            "name": "one_memory_extracted",
+            "passed": true,
+            "detail": ""
+          },
+          {
+            "name": "failure_outcome_tagged",
+            "passed": true,
+            "detail": ""
+          },
+          {
+            "name": "source_kind_tagged",
+            "passed": true,
+            "detail": ""
+          },
+          {
+            "name": "secret_redacted",
+            "passed": true,
+            "detail": ""
+          },
+          {
+            "name": "confidence_bounded",
+            "passed": true,
+            "detail": "0.7"
+          }
+        ]
+      },
+      "memory_load": {
+        "items": 0,
+        "tokens_estimate": 0
+      },
+      "prompt_skill_adherence": {
+        "metrics": {
+          "distilled_memories": 1,
+          "secret_redaction": 1,
+          "confidence": 0.7
+        }
+      },
+      "a2a_channel_status": "not_applicable",
+      "final_output_quality": null,
+      "id": "baseline_static_reasoning_bank_distillation_redaction",
+      "engine": "baseline_istara",
+      "scenario": "reasoning_bank_distillation_redaction",
+      "category": "memory_reasoning_bank",
+      "mode": "deterministic_no_model",
+      "pass_status": true,
+      "pass_fail": "passed",
+      "latency_ms": 0.13
+    },
+    {
+      "pass": null,
+      "tool_call_count": 0,
+      "token_usage": {
+        "prompt_tokens": 0,
+        "completion_tokens": 0,
+        "total_tokens": 0
+      },
+      "cost_usd": 0,
+      "step_quality": {
+        "score": 1,
+        "checks": [
+          {
+            "name": "skill_definitions_present",
+            "passed": true,
+            "detail": "58"
+          },
+          {
+            "name": "skill_definitions_valid",
+            "passed": true,
+            "detail": ""
+          },
+          {
+            "name": "output_schema_coverage",
+            "passed": true,
+            "detail": "58/58"
+          },
+          {
+            "name": "expected_core_skills_present",
+            "passed": true,
+            "detail": ""
+          },
+          {
+            "name": "enabled_skill_coverage",
+            "passed": true,
+            "detail": "58/58"
+          }
+        ]
+      },
+      "memory_load": {
+        "items": 0,
+        "tokens_estimate": 0
+      },
+      "prompt_skill_adherence": {
+        "metrics": {
+          "skill_count": 58,
+          "valid_skill_count": 58,
+          "enabled_skill_count": 58,
+          "output_schema_coverage": 1
+        }
+      },
+      "a2a_channel_status": "not_applicable",
+      "final_output_quality": null,
+      "id": "baseline_static_memento_skill_definition_coverage",
+      "engine": "baseline_istara",
+      "scenario": "memento_skill_definition_coverage",
+      "category": "memento_skills",
+      "mode": "deterministic_no_model",
+      "pass_status": true,
+      "pass_fail": "passed",
+      "latency_ms": 10.78
+    },
+    {
+      "pass": null,
+      "tool_call_count": 0,
+      "token_usage": {
+        "prompt_tokens": 0,
+        "completion_tokens": 0,
+        "total_tokens": 0
+      },
+      "cost_usd": 0,
+      "step_quality": {
+        "score": 1,
+        "checks": [
+          {
+            "name": "skill_threshold_bounds_present",
+            "passed": true,
+            "detail": "(0.3, 0.9)"
+          },
+          {
+            "name": "valid_bound_accepted",
+            "passed": true,
+            "detail": ""
+          },
+          {
+            "name": "invalid_bound_rejected",
+            "passed": true,
+            "detail": ""
+          },
+          {
+            "name": "active_variant_cap_hardened",
+            "passed": true,
+            "detail": "3"
+          }
+        ]
+      },
+      "memory_load": {
+        "items": 0,
+        "tokens_estimate": 0
+      },
+      "prompt_skill_adherence": {
+        "metrics": {
+          "parameter_bound_count": 6,
+          "max_active_variants": 3
+        }
+      },
+      "a2a_channel_status": "not_applicable",
+      "final_output_quality": null,
+      "id": "baseline_static_meta_hyperagent_bounds",
+      "engine": "baseline_istara",
+      "scenario": "meta_hyperagent_bounds",
+      "category": "meta_hyperagent",
+      "mode": "deterministic_no_model",
+      "pass_status": true,
+      "pass_fail": "passed",
+      "latency_ms": 0.27
+    },
+    {
+      "pass": null,
+      "tool_call_count": 0,
+      "token_usage": {
+        "prompt_tokens": 0,
+        "completion_tokens": 0,
+        "total_tokens": 0
+      },
+      "cost_usd": 0,
+      "step_quality": {
+        "score": 1,
+        "checks": [
+          {
+            "name": "invalid_mode_defaults",
+            "passed": true,
+            "detail": ""
+          },
+          {
+            "name": "off_directive_injected",
+            "passed": true,
+            "detail": ""
+          },
+          {
+            "name": "qwen_thinking_stripped",
+            "passed": true,
+            "detail": "Final answer"
+          },
+          {
+            "name": "gemma_thought_stripped",
+            "passed": true,
+            "detail": "Visible"
+          },
+          {
+            "name": "marker_registry_covers_families",
+            "passed": true,
+            "detail": "anthropic, deepseek, gemini, gemma, openai, qwen"
+          }
+        ]
+      },
+      "memory_load": {
+        "items": 0,
+        "tokens_estimate": 0
+      },
+      "prompt_skill_adherence": {
+        "metrics": {
+          "marker_family_count": 6,
+          "visible_output_safety": 1
+        }
+      },
+      "a2a_channel_status": "not_applicable",
+      "final_output_quality": null,
+      "id": "baseline_static_thinking_marker_sanitization",
+      "engine": "baseline_istara",
+      "scenario": "thinking_marker_sanitization",
+      "category": "thinking_output",
+      "mode": "deterministic_no_model",
+      "pass_status": true,
+      "pass_fail": "passed",
+      "latency_ms": 0.04
+    },
+    {
+      "pass": null,
+      "tool_call_count": 0,
+      "token_usage": {
+        "prompt_tokens": 0,
+        "completion_tokens": 0,
+        "total_tokens": 0
+      },
+      "cost_usd": 0,
+      "step_quality": {
+        "score": 1,
+        "checks": [
+          {
+            "name": "dependency_status_shape",
+            "passed": true,
+            "detail": ""
+          },
+          {
+            "name": "missing_file_typed_failure",
+            "passed": true,
+            "detail": "{'error_type': 'audio_file_missing'}"
+          },
+          {
+            "name": "missing_file_needs_review",
+            "passed": true,
+            "detail": ""
+          },
+          {
+            "name": "spoken_tags_detected",
+            "passed": true,
+            "detail": "pain-point, negative, navigation, accessibility, spoken-style"
+          }
+        ]
+      },
+      "memory_load": {
+        "items": 0,
+        "tokens_estimate": 0
+      },
+      "prompt_skill_adherence": {
+        "metrics": {
+          "ffmpeg_available": true,
+          "whisper_available": false,
+          "tag_count": 5
+        }
+      },
+      "a2a_channel_status": "not_applicable",
+      "final_output_quality": null,
+      "id": "baseline_static_voice_transcription_contract",
+      "engine": "baseline_istara",
+      "scenario": "voice_transcription_contract",
+      "category": "voice_transcription",
+      "mode": "deterministic_no_model",
+      "pass_status": true,
+      "pass_fail": "passed",
+      "latency_ms": 1.36
+    },
+    {
+      "pass": null,
+      "tool_call_count": 0,
+      "token_usage": {
+        "prompt_tokens": 43,
+        "completion_tokens": 80,
+        "total_tokens": 123
+      },
+      "cost_usd": 0.01,
+      "step_quality": {
+        "checks": [
+          {
+            "name": "json_object",
+            "passed": true,
+            "detail": "valid"
+          },
+          {
+            "name": "json_keys",
+            "passed": true,
+            "detail": "2/2"
+          },
+          {
+            "name": "field_equals:answer",
+            "passed": true,
+            "detail": "got 'AURORA'"
+          },
+          {
+            "name": "field_equals:evidence",
+            "passed": true,
+            "detail": "got 'instruction'"
+          }
+        ],
+        "retry_superseded_initial": true
+      },
+      "memory_load": {
+        "items": 0,
+        "tokens_estimate": 0
+      },
+      "prompt_skill_adherence": {
+        "json_or_tool_contract_checks": [
+          {
+            "name": "json_object",
+            "passed": false,
+            "detail": "JSONDecodeError"
+          }
+        ]
+      },
+      "a2a_channel_status": "not_applicable",
+      "final_output_quality": {
+        "capped_text_chars": 130
+      },
+      "id": "baseline_istara_openai_compatible_classic_json_contract",
+      "engine": "baseline_istara_openai_compatible",
+      "scenario": "classic_json_contract",
+      "mode": "live_deepseek_capped",
+      "pass_status": true,
+      "pass_fail": "pass",
+      "latency_ms": 2351.41,
+      "replacement_scoring": false
+    },
+    {
+      "pass": null,
+      "tool_call_count": 0,
+      "token_usage": {
+        "prompt_tokens": 77,
+        "completion_tokens": 137,
+        "total_tokens": 214
+      },
+      "cost_usd": 0.01,
+      "step_quality": {
+        "checks": [
+          {
+            "name": "json_object",
+            "passed": true,
+            "detail": "valid"
+          },
+          {
+            "name": "json_keys",
+            "passed": true,
+            "detail": "2/2"
+          },
+          {
+            "name": "field_equals:tool_name",
+            "passed": true,
+            "detail": "got 'search_memory'"
+          },
+          {
+            "name": "nested_contains:arguments.query",
+            "passed": true,
+            "detail": "got 'checkout friction'"
+          }
+        ]
+      },
+      "memory_load": {
+        "items": 0,
+        "tokens_estimate": 0
+      },
+      "prompt_skill_adherence": {
+        "json_or_tool_contract_checks": [
+          {
+            "name": "json_object",
+            "passed": true,
+            "detail": "valid"
+          },
+          {
+            "name": "json_keys",
+            "passed": true,
+            "detail": "2/2"
+          },
+          {
+            "name": "field_equals:tool_name",
+            "passed": true,
+            "detail": "got 'search_memory'"
+          },
+          {
+            "name": "nested_contains:arguments.query",
+            "passed": true,
+            "detail": "got 'checkout friction'"
+          }
+        ]
+      },
+      "a2a_channel_status": "not_applicable",
+      "final_output_quality": {
+        "capped_text_chars": 87
+      },
+      "id": "baseline_istara_openai_compatible_tool_choice_memory_search",
+      "engine": "baseline_istara_openai_compatible",
+      "scenario": "tool_choice_memory_search",
+      "mode": "live_deepseek_capped",
+      "pass_status": true,
+      "pass_fail": "pass",
+      "latency_ms": 3117.6,
+      "replacement_scoring": false
+    },
+    {
+      "pass": null,
+      "tool_call_count": 0,
+      "token_usage": {
+        "prompt_tokens": 93,
+        "completion_tokens": 284,
+        "total_tokens": 377
+      },
+      "cost_usd": 0.01,
+      "step_quality": {
+        "checks": [
+          {
+            "name": "json_object",
+            "passed": true,
+            "detail": "valid"
+          },
+          {
+            "name": "json_keys",
+            "passed": true,
+            "detail": "2/2"
+          },
+          {
+            "name": "dag",
+            "passed": true,
+            "detail": "shape/refs valid"
+          },
+          {
+            "name": "contains_any",
+            "passed": true,
+            "detail": "retrieve, theme"
+          }
+        ],
+        "retry_superseded_initial": true
+      },
+      "memory_load": {
+        "items": 0,
+        "tokens_estimate": 0
+      },
+      "prompt_skill_adherence": {
+        "json_or_tool_contract_checks": [
+          {
+            "name": "json_object",
+            "passed": false,
+            "detail": "JSONDecodeError"
+          },
+          {
+            "name": "contains_any",
+            "passed": false,
+            "detail": ""
+          }
+        ]
+      },
+      "a2a_channel_status": "not_applicable",
+      "final_output_quality": {
+        "capped_text_chars": 0
+      },
+      "id": "baseline_istara_openai_compatible_dag_react_json_plan",
+      "engine": "baseline_istara_openai_compatible",
+      "scenario": "dag_react_json_plan",
+      "mode": "live_deepseek_capped",
+      "pass_status": true,
+      "pass_fail": "pass",
+      "latency_ms": 4915.45,
+      "replacement_scoring": false
+    },
+    {
+      "id": "pi_candidate_provider_path_classic_json_contract",
+      "engine": "pi_candidate_provider_path",
+      "scenario": "classic_json_contract",
+      "mode": "live_deepseek_capped",
+      "pass_status": true,
+      "pass_fail": "pass",
+      "tool_call_count": 0,
+      "token_usage": {
+        "prompt_tokens": 43,
+        "completion_tokens": 87,
+        "total_tokens": 130
+      },
+      "cost_usd": 0.01,
+      "latency_ms": 2427,
+      "step_quality": {
+        "checks": [
+          {
+            "name": "json_object",
+            "passed": true,
+            "detail": "valid"
+          },
+          {
+            "name": "json_keys",
+            "passed": true,
+            "detail": "2/2"
+          },
+          {
+            "name": "field_equals:answer",
+            "passed": true,
+            "detail": "got 'AURORA'"
+          },
+          {
+            "name": "field_equals:evidence",
+            "passed": true,
+            "detail": "got 'instruction'"
+          }
+        ]
+      },
+      "memory_load": {
+        "items": 0,
+        "tokens_estimate": 0
+      },
+      "prompt_skill_adherence": {
+        "json_or_tool_contract_checks": [
+          {
+            "name": "json_object",
+            "passed": true,
+            "detail": "valid"
+          },
+          {
+            "name": "json_keys",
+            "passed": true,
+            "detail": "2/2"
+          },
+          {
+            "name": "field_equals:answer",
+            "passed": true,
+            "detail": "got 'AURORA'"
+          },
+          {
+            "name": "field_equals:evidence",
+            "passed": true,
+            "detail": "got 'instruction'"
+          }
+        ]
+      },
+      "a2a_channel_status": "not_applicable",
+      "final_output_quality": {
+        "capped_text_chars": 47
+      },
+      "replacement_scoring": false
+    },
+    {
+      "id": "pi_candidate_provider_path_tool_choice_memory_search",
+      "engine": "pi_candidate_provider_path",
+      "scenario": "tool_choice_memory_search",
+      "mode": "live_deepseek_capped",
+      "pass_status": true,
+      "pass_fail": "pass",
+      "tool_call_count": 0,
+      "token_usage": {
+        "prompt_tokens": 77,
+        "completion_tokens": 172,
+        "total_tokens": 249
+      },
+      "cost_usd": 0.01,
+      "latency_ms": 3519,
+      "step_quality": {
+        "checks": [
+          {
+            "name": "json_object",
+            "passed": true,
+            "detail": "valid"
+          },
+          {
+            "name": "json_keys",
+            "passed": true,
+            "detail": "2/2"
+          },
+          {
+            "name": "field_equals:tool_name",
+            "passed": true,
+            "detail": "got 'search_memory'"
+          },
+          {
+            "name": "nested_contains:arguments.query",
+            "passed": true,
+            "detail": "got 'checkout friction'"
+          }
+        ]
+      },
+      "memory_load": {
+        "items": 0,
+        "tokens_estimate": 0
+      },
+      "prompt_skill_adherence": {
+        "json_or_tool_contract_checks": [
+          {
+            "name": "json_object",
+            "passed": true,
+            "detail": "valid"
+          },
+          {
+            "name": "json_keys",
+            "passed": true,
+            "detail": "2/2"
+          },
+          {
+            "name": "field_equals:tool_name",
+            "passed": true,
+            "detail": "got 'search_memory'"
+          },
+          {
+            "name": "nested_contains:arguments.query",
+            "passed": true,
+            "detail": "got 'checkout friction'"
+          }
+        ]
+      },
+      "a2a_channel_status": "not_applicable",
+      "final_output_quality": {
+        "capped_text_chars": 87
+      },
+      "replacement_scoring": false
+    },
+    {
+      "id": "pi_candidate_provider_path_dag_react_json_plan",
+      "engine": "pi_candidate_provider_path",
+      "scenario": "dag_react_json_plan",
+      "mode": "live_deepseek_capped",
+      "pass_status": true,
+      "pass_fail": "pass",
+      "tool_call_count": 0,
+      "token_usage": {
+        "prompt_tokens": 93,
+        "completion_tokens": 290,
+        "total_tokens": 383
+      },
+      "cost_usd": 0.01,
+      "latency_ms": 5198,
+      "step_quality": {
+        "checks": [
+          {
+            "name": "json_object",
+            "passed": true,
+            "detail": "valid"
+          },
+          {
+            "name": "json_keys",
+            "passed": true,
+            "detail": "2/2"
+          },
+          {
+            "name": "dag",
+            "passed": true,
+            "detail": "shape/refs valid"
+          },
+          {
+            "name": "contains_any",
+            "passed": true,
+            "detail": "retrieve, theme"
+          }
+        ]
+      },
+      "memory_load": {
+        "items": 0,
+        "tokens_estimate": 0
+      },
+      "prompt_skill_adherence": {
+        "json_or_tool_contract_checks": [
+          {
+            "name": "json_object",
+            "passed": true,
+            "detail": "valid"
+          },
+          {
+            "name": "json_keys",
+            "passed": true,
+            "detail": "2/2"
+          },
+          {
+            "name": "dag",
+            "passed": true,
+            "detail": "shape/refs valid"
+          },
+          {
+            "name": "contains_any",
+            "passed": true,
+            "detail": "retrieve, theme"
+          }
+        ]
+      },
+      "a2a_channel_status": "not_applicable",
+      "final_output_quality": {
+        "capped_text_chars": 494
+      },
+      "replacement_scoring": false
+    },
+    {
+      "id": "pi_replacement_chat_tool_loop_no_model",
+      "engine": "pi_candidate",
+      "scenario": "chat.tool_loop.task_and_finding",
+      "mode": "deterministic_no_model",
+      "pass_status": true,
+      "pass_fail": "pass",
+      "tool_call_count": 2,
+      "token_usage": {
+        "prompt_tokens": 0,
+        "completion_tokens": 0,
+        "total_tokens": 0
+      },
+      "cost_usd": 0,
+      "latency_ms": null,
+      "step_quality": {
+        "pi_owned_loop": true,
+        "canonical_tools_used": [
+          "tasks.create",
+          "findings.create"
+        ],
+        "istara_product_state_preserved": {
+          "projectId": "pi-replacement-lab",
+          "taskCount": 1,
+          "findingCount": 1
+        }
+      },
+      "memory_load": {
+        "items": 1,
+        "tokens_estimate": 0
+      },
+      "prompt_skill_adherence": {
+        "system_prompt_boundary": "Pi owns loop; Istara owns product state; product actions through canonical tools"
+      },
+      "a2a_channel_status": "not_applicable",
+      "final_output_quality": {
+        "capped_text": "Created a task and finding through Istara canonical tools."
+      },
+      "replacement_scoring": true
+    },
+    {
+      "pass": null,
+      "tool_call_count": 0,
+      "token_usage": {
+        "prompt_tokens": 0,
+        "completion_tokens": 0,
+        "total_tokens": 0
+      },
+      "cost_usd": 0,
+      "memory_load": {
+        "items": 0,
+        "tokens_estimate": 0
+      },
+      "a2a_channel_status": "not_applicable",
+      "replacement_scoring": false,
+      "id": "simulation_static_09-navigation-search",
+      "engine": "baseline_istara_static_harness",
+      "scenario": "09-navigation-search",
+      "mode": "static_no_model_node_check",
+      "pass_status": true,
+      "pass_fail": "pass",
+      "latency_ms": null,
+      "step_quality": {
+        "validation": "node --check syntax validation",
+        "live_services_attempted": false
+      },
+      "prompt_skill_adherence": {
+        "max_representatives_rule": "3 selected for oversized other_feature_simulation category"
+      },
+      "final_output_quality": {
+        "capped_text": "Static syntax validation passed; runtime browser/API flow deferred."
+      }
+    },
+    {
+      "pass": null,
+      "tool_call_count": 0,
+      "token_usage": {
+        "prompt_tokens": 0,
+        "completion_tokens": 0,
+        "total_tokens": 0
+      },
+      "cost_usd": 0,
+      "memory_load": {
+        "items": 0,
+        "tokens_estimate": 0
+      },
+      "a2a_channel_status": "not_applicable",
+      "replacement_scoring": false,
+      "id": "simulation_static_43-process-hardening",
+      "engine": "baseline_istara_static_harness",
+      "scenario": "43-process-hardening",
+      "mode": "static_no_model_node_check",
+      "pass_status": true,
+      "pass_fail": "pass",
+      "latency_ms": null,
+      "step_quality": {
+        "validation": "node --check syntax validation",
+        "live_services_attempted": false
+      },
+      "prompt_skill_adherence": {
+        "max_representatives_rule": "3 selected for oversized other_feature_simulation category"
+      },
+      "final_output_quality": {
+        "capped_text": "Static syntax validation passed; runtime browser/API flow deferred."
+      }
+    },
+    {
+      "pass": null,
+      "tool_call_count": 0,
+      "token_usage": {
+        "prompt_tokens": 0,
+        "completion_tokens": 0,
+        "total_tokens": 0
+      },
+      "cost_usd": 0,
+      "memory_load": {
+        "items": 0,
+        "tokens_estimate": 0
+      },
+      "a2a_channel_status": "not_applicable",
+      "replacement_scoring": false,
+      "id": "simulation_static_75-participant-simulation",
+      "engine": "baseline_istara_static_harness",
+      "scenario": "75-participant-simulation",
+      "mode": "static_no_model_node_check",
+      "pass_status": true,
+      "pass_fail": "pass",
+      "latency_ms": null,
+      "step_quality": {
+        "validation": "node --check syntax validation",
+        "live_services_attempted": false
+      },
+      "prompt_skill_adherence": {
+        "max_representatives_rule": "3 selected for oversized other_feature_simulation category"
+      },
+      "final_output_quality": {
+        "capped_text": "Static syntax validation passed; runtime browser/API flow deferred."
+      }
+    },
+    {
+      "pass": null,
+      "tool_call_count": 0,
+      "token_usage": {
+        "prompt_tokens": 0,
+        "completion_tokens": 0,
+        "total_tokens": 0
+      },
+      "cost_usd": 0,
+      "memory_load": {
+        "items": 0,
+        "tokens_estimate": 0
+      },
+      "a2a_channel_status": "not_applicable",
+      "replacement_scoring": false,
+      "id": "real_user_benchmark_plan_only",
+      "engine": "baseline_istara_real_user_benchmark",
+      "scenario": "istara-real-user-ux-research-longform",
+      "mode": "plan_only_no_model",
+      "pass_status": true,
+      "pass_fail": "pass_with_expected_blocker",
+      "latency_ms": null,
+      "step_quality": {
+        "generated_artifacts": [
+          "benchmark-playbook-snapshot.json",
+          "benchmark-registry-snapshot.json",
+          "corpus-manifest.json",
+          "scorecard.json"
+        ],
+        "live_services_attempted": false
+      },
+      "prompt_skill_adherence": {
+        "credential_free_mode": true,
+        "no_local_models": true,
+        "no_live_app": true
+      },
+      "final_output_quality": {
+        "capped_text": "Plan-only mode generated benchmark corpus, playbook snapshot, and scoring scaffold; live services intentionally not attempted."
+      }
+    }
+  ],
+  "replacement_score_rules": "Counts for Pi replacement only when an Istara scenario/representative contract runs through the Pi-wired adapter/canonical facade. Pi provider live evals are provider-path evidence only."
+}

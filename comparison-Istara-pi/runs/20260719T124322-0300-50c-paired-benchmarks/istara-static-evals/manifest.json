@@ -1,0 +1,52 @@
+{
+  "schema_version": 1,
+  "run_id": "istara-static-evals",
+  "created_at_utc": "2026-07-19T15:47:53.390588+00:00",
+  "repo_root": "/Users/user/Documents/Istara-main",
+  "compass": {
+    "spec": "CF-SPEC-26",
+    "task": "CF-295"
+  },
+  "git": {
+    "head": "6e3f7e332f528763d07dbb54d657377d5646b6e0",
+    "short_head": "6e3f7e33",
+    "branch": "compass-forge/complete-health-pass",
+    "dirty": true,
+    "changed_path_count": 4,
+    "status_sha256": "341dd4a0a0658e1be89cc968efab538789bf5d85e5143d81775e1be0a6496cbb"
+  },
+  "registry": {
+    "path": "tests/evals/registry.json",
+    "sha256": "c445331face4a1f0af600cccdddcf25df8b22cd9efc22bc38d61f8d0a5dc77dd",
+    "registry_id": "istara-ai-evals",
+    "registry_version": "2026-05-07"
+  },
+  "cases": {
+    "path": "tests/evals/cases/core_eval_cases.json",
+    "sha256": "9c501e8bc1faefc8a52b8eb50ae7784615cc118ab4c8c68a990425bd631ad022",
+    "live_case_count": 3,
+    "static_case_count": 8
+  },
+  "runtime": {
+    "python": "3.11.15",
+    "platform": "macOS-26.5.1-arm64-arm-64bit",
+    "loaded_gitignored_env_file_count": 3
+  },
+  "live_llm": {
+    "profile_name": "main-openai-compatible",
+    "provider_type": "openai_compat",
+    "model": "google/gemma-4-e4b",
+    "base_url_configured": true,
+    "api_key_configured": false,
+    "endpoint_fingerprint": "7b9aabe75e992980",
+    "primary_attempt_budget": 5
+  },
+  "command": {
+    "suite": "static",
+    "require_live_llm": false,
+    "max_live_cases": null,
+    "timeout_seconds": 90.0,
+    "fail_on_threshold": false,
+    "allow_unignored_output": true
+  }
+}

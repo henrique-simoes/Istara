@@ -1,0 +1,1053 @@
+{
+  "schema_version": 1,
+  "inventory_count": 114,
+  "items": [
+    {
+      "id": "long_horizon_runner",
+      "category": "benchmarks",
+      "path": "tests/benchmarks/long_horizon_runner.py",
+      "status": "inventoried",
+      "sha256": "f0a397884ab82d2a77bd70aac1f394430c62e23bc9bb836ebb86e84c19e12daa"
+    },
+    {
+      "id": "run_benchmarks",
+      "category": "benchmarks",
+      "path": "tests/benchmarks/run_benchmarks.py",
+      "status": "inventoried",
+      "sha256": "3fd8c1463e87076d9a591c7787b5a9e8f02fbe77bc31c997d81b528159114d7f"
+    },
+    {
+      "id": "test_orchestration",
+      "category": "benchmarks",
+      "path": "tests/benchmarks/test_orchestration.py",
+      "status": "inventoried",
+      "sha256": "d4f68f32e2280fea686ac573cf48ad41e9ef7d9add74c8d173f7b88c441de492"
+    },
+    {
+      "id": "classic_llm",
+      "category": "eval_suite",
+      "type": "live_llm",
+      "path": "tests/evals/registry.json",
+      "metrics": [
+        "json_validity",
+        "required_key_coverage",
+        "exact_match",
+        "latency_ms"
+      ],
+      "status": "inventoried"
+    },
+    {
+      "id": "rag",
+      "category": "eval_suite",
+      "type": "static_system",
+      "path": "tests/evals/registry.json",
+      "metrics": [
+        "context_precision_at_k",
+        "context_recall_at_k",
+        "source_coverage",
+        "groundedness_proxy"
+      ],
+      "status": "inventoried"
+    },
+    {
+      "id": "prompt_rag",
+      "category": "eval_suite",
+      "type": "static_system",
+      "path": "tests/evals/registry.json",
+      "metrics": [
+        "identity_anchor_survival",
+        "section_recall",
+        "distractor_exclusion",
+        "token_budget_fit"
+      ],
+      "status": "inventoried"
+    },
+    {
+      "id": "llmlingua",
+      "category": "eval_suite",
+      "type": "static_system",
+      "path": "tests/evals/registry.json",
+      "metrics": [
+        "compression_ratio",
+        "protected_context_survival",
+        "critical_term_recall"
+      ],
+      "status": "inventoried"
+    },
+    {
+      "id": "dag_react",
+      "category": "eval_suite",
+      "type": "live_llm_and_static",
+      "path": "tests/evals/registry.json",
+      "metrics": [
+        "dag_validity",
+        "tool_name_accuracy",
+        "argument_schema_validity",
+        "trajectory_score"
+      ],
+      "status": "inventoried"
+    },
+    {
+      "id": "memory_reasoning_bank",
+      "category": "eval_suite",
+      "type": "static_system",
+      "path": "tests/evals/registry.json",
+      "metrics": [
+        "distillation_traceability",
+        "secret_redaction",
+        "outcome_tagging",
+        "retrieval_precision_proxy"
+      ],
+      "status": "inventoried"
+    },
+    {
+      "id": "memento_skills",
+      "category": "eval_suite",
+      "type": "static_system",
+      "path": "tests/evals/registry.json",
+      "metrics": [
+        "skill_schema_validity",
+        "skill_coverage",
+        "approval_lineage",
+        "execution_prompt_coverage"
+      ],
+      "status": "inventoried"
+    },
+    {
+      "id": "meta_hyperagent",
+      "category": "eval_suite",
+      "type": "static_system",
+      "path": "tests/evals/registry.json",
+      "metrics": [
+        "bounds_enforcement",
+        "variant_limit_enforcement",
+        "proposal_evidence_coverage",
+        "rollback_readiness"
+      ],
+      "status": "inventoried"
+    },
+    {
+      "id": "thinking_output",
+      "category": "eval_suite",
+      "type": "static_system",
+      "path": "tests/evals/registry.json",
+      "metrics": [
+        "mode_normalization",
+        "marker_registry_coverage",
+        "visible_output_safety"
+      ],
+      "status": "inventoried"
+    },
+    {
+      "id": "voice_transcription",
+      "category": "eval_suite",
+      "type": "static_system",
+      "path": "tests/evals/registry.json",
+      "metrics": [
+        "dependency_status",
+        "typed_failure_coverage",
+        "tagging_precision_proxy",
+        "review_flag_coverage"
+      ],
+      "status": "inventoried"
+    },
+    {
+      "id": "orchestration_benchmarks",
+      "category": "eval_suite",
+      "type": "benchmark_runner",
+      "path": "tests/evals/registry.json",
+      "metrics": [
+        "dag_success",
+        "tool_selection_quality",
+        "consensus_accuracy",
+        "steering_latency_ms"
+      ],
+      "status": "inventoried"
+    },
+    {
+      "id": "classic_json_contract",
+      "category": "eval_live_case",
+      "suite": "classic_llm",
+      "path": "tests/evals/cases/core_eval_cases.json",
+      "status": "inventoried"
+    },
+    {
+      "id": "tool_choice_memory_search",
+      "category": "eval_live_case",
+      "suite": "dag_react",
+      "path": "tests/evals/cases/core_eval_cases.json",
+      "status": "inventoried"
+    },
+    {
+      "id": "dag_react_json_plan",
+      "category": "eval_live_case",
+      "suite": "dag_react",
+      "path": "tests/evals/cases/core_eval_cases.json",
+      "status": "inventoried"
+    },
+    {
+      "id": "rag_keyword_gold",
+      "category": "eval_static_case",
+      "suite": "rag",
+      "path": "tests/evals/cases/core_eval_cases.json",
+      "status": "inventoried"
+    },
+    {
+      "id": "prompt_rag_identity_and_relevance",
+      "category": "eval_static_case",
+      "suite": "prompt_rag",
+      "path": "tests/evals/cases/core_eval_cases.json",
+      "status": "inventoried"
+    },
+    {
+      "id": "llmlingua_protected_context",
+      "category": "eval_static_case",
+      "suite": "llmlingua",
+      "path": "tests/evals/cases/core_eval_cases.json",
+      "status": "inventoried"
+    },
+    {
+      "id": "reasoning_bank_distillation_redaction",
+      "category": "eval_static_case",
+      "suite": "memory_reasoning_bank",
+      "path": "tests/evals/cases/core_eval_cases.json",
+      "status": "inventoried"
+    },
+    {
+      "id": "memento_skill_definition_coverage",
+      "category": "eval_static_case",
+      "suite": "memento_skills",
+      "path": "tests/evals/cases/core_eval_cases.json",
+      "status": "inventoried"
+    },
+    {
+      "id": "meta_hyperagent_bounds",
+      "category": "eval_static_case",
+      "suite": "meta_hyperagent",
+      "path": "tests/evals/cases/core_eval_cases.json",
+      "status": "inventoried"
+    },
+    {
+      "id": "thinking_marker_sanitization",
+      "category": "eval_static_case",
+      "suite": "thinking_output",
+      "path": "tests/evals/cases/core_eval_cases.json",
+      "status": "inventoried"
+    },
+    {
+      "id": "voice_transcription_contract",
+      "category": "eval_static_case",
+      "suite": "voice_transcription",
+      "path": "tests/evals/cases/core_eval_cases.json",
+      "status": "inventoried"
+    },
+    {
+      "id": "autoresearch",
+      "category": "agentic_eval_contract",
+      "path": "tests/agentic_eval_contract.json",
+      "features": [
+        "karpathy_autoresearch",
+        "governed_evolution"
+      ],
+      "unit_tests": [
+        "tests/test_autoresearch.py",
+        "tests/test_research_integrity.py"
+      ],
+      "simulation_scenarios": [
+        "tests/simulation/scenarios/61-autoresearch-isolation.mjs",
+        "tests/simulation/scenarios/70-research-integrity.mjs"
+      ],
+      "status": "inventoried"
+    },
+    {
+      "id": "reasoning_bank",
+      "category": "agentic_eval_contract",
+      "path": "tests/agentic_eval_contract.json",
+      "features": [
+        "reasoning_bank",
+        "prompt_rag",
+        "llmlingua_protected_context"
+      ],
+      "unit_tests": [
+        "tests/test_reasoning_bank.py",
+        "tests/test_rag_resilience.py"
+      ],
+      "simulation_scenarios": [
+        "tests/simulation/scenarios/23-memory-view.mjs"
+      ],
+      "status": "inventoried"
+    },
+    {
+      "id": "memento_skills_and_agent_creation",
+      "category": "agentic_eval_contract",
+      "path": "tests/agentic_eval_contract.json",
+      "features": [
+        "memento_skills",
+        "agent_factory",
+        "approval_required_mutations"
+      ],
+      "unit_tests": [
+        "tests/test_skills.py",
+        "tests/test_agents.py",
+        "tests/test_improvement_governance.py"
+      ],
+      "simulation_scenarios": [
+        "tests/simulation/scenarios/41-skill-creation.mjs",
+        "tests/simulation/scenarios/44-agent-factory.mjs"
+      ],
+      "status": "inventoried"
+    },
+    {
+      "id": "hyperagent_meta_tuning",
+      "category": "agentic_eval_contract",
+      "path": "tests/agentic_eval_contract.json",
+      "features": [
+        "meta_hyperagent",
+        "governed_evolution",
+        "approval_required_mutations"
+      ],
+      "unit_tests": [
+        "tests/test_meta_hyperagent.py",
+        "tests/test_improvement_governance.py"
+      ],
+      "simulation_scenarios": [
+        "tests/simulation/scenarios/52-meta-hyperagent.mjs"
+      ],
+      "status": "inventoried"
+    },
+    {
+      "id": "dgmh_archive_evolution",
+      "category": "agentic_eval_contract",
+      "path": "tests/agentic_eval_contract.json",
+      "features": [
+        "dgmh_archive",
+        "variant_lineage",
+        "rollback"
+      ],
+      "unit_tests": [
+        "tests/test_dgmh_archive.py",
+        "tests/test_improvement_governance.py"
+      ],
+      "simulation_scenarios": [
+        "tests/simulation/scenarios/52-meta-hyperagent.mjs"
+      ],
+      "status": "inventoried"
+    },
+    {
+      "id": "ensemble_llm_orchestration",
+      "category": "agentic_eval_contract",
+      "path": "tests/agentic_eval_contract.json",
+      "features": [
+        "ensemble_model",
+        "compute_registry",
+        "live_llm_fallback"
+      ],
+      "unit_tests": [
+        "tests/test_compute.py",
+        "tests/test_harness_config.py"
+      ],
+      "simulation_scenarios": [
+        "tests/simulation/scenarios/35-ensemble-validation.mjs",
+        "tests/simulation/scenarios/36-llm-servers.mjs",
+        "tests/simulation/scenarios/37-ensemble-health-view.mjs"
+      ],
+      "status": "inventoried"
+    },
+    {
+      "id": "tool_calling_react",
+      "category": "agentic_eval_contract",
+      "path": "tests/agentic_eval_contract.json",
+      "features": [
+        "system_action_tools",
+        "react_loop",
+        "agentic_tool_calling"
+      ],
+      "unit_tests": [
+        "tests/benchmarks/test_orchestration.py",
+        "tests/test_chat.py"
+      ],
+      "simulation_scenarios": [
+        "tests/simulation/scenarios/31-task-documents-tools.mjs",
+        "tests/simulation/scenarios/71-plan-and-execute.mjs",
+        "tests/simulation/scenarios/73-a2a-debate-and-reports.mjs"
+      ],
+      "status": "inventoried"
+    },
+    {
+      "id": "acceptance_ui_simulation",
+      "category": "agentic_eval_contract",
+      "path": "tests/agentic_eval_contract.json",
+      "features": [
+        "ui_menus",
+        "browser_acceptance",
+        "auth_state_reuse"
+      ],
+      "unit_tests": [
+        "tests/test_harness_config.py"
+      ],
+      "simulation_scenarios": [
+        "tests/simulation/scenarios/45-interfaces-menu.mjs",
+        "tests/simulation/scenarios/69-user-management-ui.mjs",
+        "tests/simulation/scenarios/74-2fa-login-flow.mjs",
+        "tests/simulation/scenarios/77-voice-transcription.mjs",
+        "tests/simulation/scenarios/78-real-time-voice.mjs"
+      ],
+      "status": "inventoried"
+    },
+    {
+      "id": "benchmark-registry",
+      "category": "real_user_benchmark",
+      "path": "tests/real_user_benchmark/benchmark-registry.json",
+      "status": "inventoried",
+      "sha256": "950a074b0a81a081162cdbba31c757ed504c66d58f4abad26f186da23ba157da",
+      "keys": [
+        "version",
+        "benchmark_id",
+        "purpose",
+        "non_duplication_policy",
+        "default_run_contract",
+        "live_model_profile",
+        "companion_suites",
+        "agentic_eval_focus",
+        "future_multi_donor_profiles",
+        "industry_alignment"
+      ]
+    },
+    {
+      "id": "benchmark-plan",
+      "category": "real_user_benchmark",
+      "path": "tests/real_user_benchmark/benchmark-plan.md",
+      "status": "inventoried",
+      "sha256": "2c7b5470cb2c3996986c180b74f123b2711a6b087bbab11d1a949b6ae5afc159"
+    },
+    {
+      "id": "run",
+      "category": "real_user_benchmark",
+      "path": "tests/real_user_benchmark/run.mjs",
+      "status": "inventoried",
+      "sha256": "737d45cdd5f26449a14fe176e0a09621f3bc4f46679cae7db59dac575a929a9d"
+    },
+    {
+      "id": "system-prompt",
+      "category": "real_user_benchmark",
+      "path": "tests/real_user_benchmark/system-prompt.md",
+      "status": "inventoried",
+      "sha256": "b2f639ee62e7350ce88b487fc0b9bd67b3f5f10cc2a5197eadc861e8ddb650c3"
+    },
+    {
+      "id": "01-health-check",
+      "name": "Health Check",
+      "category": "simulation_scenario",
+      "path": "tests/simulation/scenarios/01-health-check.mjs",
+      "status": "inventoried",
+      "sha256": "7487206c9d53deb9de185d041ab281090b64392cef67d241459e2a96f9e9758a"
+    },
+    {
+      "id": "02-onboarding",
+      "name": "Onboarding & Project Setup",
+      "category": "simulation_scenario",
+      "path": "tests/simulation/scenarios/02-onboarding.mjs",
+      "status": "inventoried",
+      "sha256": "6ef22024e6becbbceafa3e42bb3964aa646a126c9706ff52e97070f716158be8"
+    },
+    {
+      "id": "03-project-setup",
+      "name": "Project Context Setup",
+      "category": "simulation_scenario",
+      "path": "tests/simulation/scenarios/03-project-setup.mjs",
+      "status": "inventoried",
+      "sha256": "dc028fecb2e976fc07cc03bd7e56a7b3c87590db363e8fd9c95ee3b4c4155f88"
+    },
+    {
+      "id": "04-file-upload",
+      "name": "File Upload & Ingestion",
+      "category": "simulation_scenario",
+      "path": "tests/simulation/scenarios/04-file-upload.mjs",
+      "status": "inventoried",
+      "sha256": "a348f2f497f3ca5044ca9eb062d604b004649f5315db3e3f0216e3880655327e"
+    },
+    {
+      "id": "05-chat-interaction",
+      "name": "Chat Interaction",
+      "category": "simulation_scenario",
+      "path": "tests/simulation/scenarios/05-chat-interaction.mjs",
+      "status": "inventoried",
+      "sha256": "80fdb9080bdb634b26af911d512032af2006af39eee0a990eb4335ec07af521f"
+    },
+    {
+      "id": "06-skill-execution",
+      "name": "Skill Execution & Management",
+      "category": "simulation_scenario",
+      "path": "tests/simulation/scenarios/06-skill-execution.mjs",
+      "status": "inventoried",
+      "sha256": "a4809a55b8a1d613908f9d033f986e64f73892378acadb0abae0d3a9fb2ebbcc"
+    },
+    {
+      "id": "07-findings-chain",
+      "name": "Findings & Atomic Research",
+      "category": "simulation_scenario",
+      "path": "tests/simulation/scenarios/07-findings-chain.mjs",
+      "status": "inventoried",
+      "sha256": "913746164a55eb35d216ba0a7c47d5e6306743ae1f76b75f60f62793088dd407"
+    },
+    {
+      "id": "08-kanban-workflow",
+      "name": "Kanban Task Workflow",
+      "category": "simulation_scenario",
+      "path": "tests/simulation/scenarios/08-kanban-workflow.mjs",
+      "status": "inventoried",
+      "sha256": "2e3f976afa088b04549941c702ed4c1ac3b1c50d3e63f9d4b8b5042628344171"
+    },
+    {
+      "id": "09-navigation-search",
+      "name": "Navigation & Search",
+      "category": "simulation_scenario",
+      "path": "tests/simulation/scenarios/09-navigation-search.mjs",
+      "status": "inventoried",
+      "sha256": "cb14b3df3fa6e011d95d91274928bdb6d7146349a5990064f969c182bf4957cb"
+    },
+    {
+      "id": "10-agent-architecture",
+      "name": "Agent Architecture Verification",
+      "category": "simulation_scenario",
+      "path": "tests/simulation/scenarios/10-agent-architecture.mjs",
+      "status": "inventoried",
+      "sha256": "c588cd56aca8cf7748a8f941c9a4356b29172d8dbc2c53faff529094ebbe7914"
+    },
+    {
+      "id": "10-settings-models",
+      "name": "Settings & Models",
+      "category": "simulation_scenario",
+      "path": "tests/simulation/scenarios/10-settings-models.mjs",
+      "status": "inventoried",
+      "sha256": "74398e365f4a2a675669826c3d3de448531652f23d37f819b58ec6019714dbff"
+    },
+    {
+      "id": "11-agents-system",
+      "name": "Agents System",
+      "category": "simulation_scenario",
+      "path": "tests/simulation/scenarios/11-agents-system.mjs",
+      "status": "inventoried",
+      "sha256": "da210ca0000d614d660c6013b4b5a0b3217200f32add629738362fc3c9cf50aa"
+    },
+    {
+      "id": "12-chat-sessions",
+      "name": "Chat Sessions",
+      "category": "simulation_scenario",
+      "path": "tests/simulation/scenarios/12-chat-sessions.mjs",
+      "status": "inventoried",
+      "sha256": "2b272f16be695d5436e9d6e772df048683f27aba37bbeb0213b2c3cf3dc47178"
+    },
+    {
+      "id": "13-task-agent-assignment",
+      "name": "Task Agent Assignment",
+      "category": "simulation_scenario",
+      "path": "tests/simulation/scenarios/13-task-agent-assignment.mjs",
+      "status": "inventoried",
+      "sha256": "131382b888bec9ae32817675bafc324ecf2114820ac7647255bf90d318d5b402"
+    },
+    {
+      "id": "14-agent-communication",
+      "name": "Agent Communication",
+      "category": "simulation_scenario",
+      "path": "tests/simulation/scenarios/14-agent-communication.mjs",
+      "status": "inventoried",
+      "sha256": "0b7d49624a5e354566e7582137f94d8562137a07bb37a65c7c4c1c54976bbfa9"
+    },
+    {
+      "id": "15-vector-db",
+      "name": "Vector Database & RAG",
+      "category": "simulation_scenario",
+      "path": "tests/simulation/scenarios/15-vector-db.mjs",
+      "status": "inventoried",
+      "sha256": "579c9a85c36eb42bcd97d839f5759fe5e320d6c7686b0cea2d1e4e9cb962ee55"
+    },
+    {
+      "id": "16-findings-population",
+      "name": "Findings Population",
+      "category": "simulation_scenario",
+      "path": "tests/simulation/scenarios/16-findings-population.mjs",
+      "status": "inventoried",
+      "sha256": "a3db790c6eb20c4071f8bd290292fac129590643eaa812aae6ea09dda541a73e"
+    },
+    {
+      "id": "17-full-pipeline",
+      "name": "Full Pipeline (Discover \u2192 Deliver)",
+      "category": "simulation_scenario",
+      "path": "tests/simulation/scenarios/17-full-pipeline.mjs",
+      "status": "inventoried",
+      "sha256": "ad20626c0df837aac34f6467aa7c1768127cab65a4aa73b486d9c815f749cbf0"
+    },
+    {
+      "id": "18-task-verification",
+      "name": "Task Self-Verification",
+      "category": "simulation_scenario",
+      "path": "tests/simulation/scenarios/18-task-verification.mjs",
+      "status": "inventoried",
+      "sha256": "cf1a98b80668c3584231b72ed93063cea433eccefa4e035d412e4d6721996abe"
+    },
+    {
+      "id": "19-file-preview",
+      "name": "File Preview & Content",
+      "category": "simulation_scenario",
+      "path": "tests/simulation/scenarios/19-file-preview.mjs",
+      "status": "inventoried",
+      "sha256": "c21fac3021d483681ed250bb3b6d9e6f7e4bff7ac912e636708e2a780135dc2d"
+    },
+    {
+      "id": "20-all-skills-comprehensive",
+      "name": "Comprehensive Skills Test (All Registered Skills)",
+      "category": "simulation_scenario",
+      "path": "tests/simulation/scenarios/20-all-skills-comprehensive.mjs",
+      "status": "inventoried",
+      "sha256": "297fc45f166cb46d285d09f1a1622b2b91ea849124b950fc78fded47ed8a7725"
+    },
+    {
+      "id": "21-agent-work-simulation",
+      "name": "Agent Work Simulation (Multi-Agent)",
+      "category": "simulation_scenario",
+      "path": "tests/simulation/scenarios/21-agent-work-simulation.mjs",
+      "status": "inventoried",
+      "sha256": "83a3aeb97a213fd0e2af725589d9d8210e836dc122c18f5f631672ba9f4ba736"
+    },
+    {
+      "id": "22-architecture-evaluation",
+      "name": "Architecture & Protocol Evaluation",
+      "category": "simulation_scenario",
+      "path": "tests/simulation/scenarios/22-architecture-evaluation.mjs",
+      "status": "inventoried",
+      "sha256": "00d50213eed638cf340d97f321f44efa5180fed377e12b30c107b3bd2c935f23"
+    },
+    {
+      "id": "23-memory-view",
+      "name": "Memory View & Knowledge Base",
+      "category": "simulation_scenario",
+      "path": "tests/simulation/scenarios/23-memory-view.mjs",
+      "status": "inventoried",
+      "sha256": "dbb70efcafd2d9e3e9b186a58c08b92358b0e9ce30c0e1774454083465992aac"
+    },
+    {
+      "id": "24-context-dag",
+      "name": "Context DAG (Lossless Summarization)",
+      "category": "simulation_scenario",
+      "path": "tests/simulation/scenarios/24-context-dag.mjs",
+      "status": "inventoried",
+      "sha256": "5bcc789b30bb6c24fa74a4b6b544a280a497568004dd3e5dae996584df206804"
+    },
+    {
+      "id": "25-systemic-robustness",
+      "name": "Systemic Robustness (Cascades & Orphan Cleanup)",
+      "category": "simulation_scenario",
+      "path": "tests/simulation/scenarios/25-systemic-robustness.mjs",
+      "status": "inventoried",
+      "sha256": "e5527d5061f6963258c0162e8092ed49ed3ddb1a054680f5c46e3de289e27725"
+    },
+    {
+      "id": "26-model-session-persistence",
+      "name": "Model & Session Persistence",
+      "category": "simulation_scenario",
+      "path": "tests/simulation/scenarios/26-model-session-persistence.mjs",
+      "status": "inventoried",
+      "sha256": "52cdf4ef561d82175d5804c0c0068981d49e7febae7439beccc1e673563d3540"
+    },
+    {
+      "id": "27-agent-identity",
+      "name": "Agent Identity & Persona System",
+      "category": "simulation_scenario",
+      "path": "tests/simulation/scenarios/27-agent-identity-system.mjs",
+      "status": "inventoried",
+      "sha256": "05591b5b14d1aad24a1c5cd09aead4be8053c5e6fac06482e013773aafe05ba7"
+    },
+    {
+      "id": "28-self-evolution-prompt-compression",
+      "name": "Self-Evolution & Prompt Compression",
+      "category": "simulation_scenario",
+      "path": "tests/simulation/scenarios/28-self-evolution-prompt-compression.mjs",
+      "status": "inventoried",
+      "sha256": "d5ff36f662f25819bd4dc4998d6084185e64e2e6c378074a51590596df88b387"
+    },
+    {
+      "id": "29-documents-system",
+      "name": "Documents System",
+      "category": "simulation_scenario",
+      "path": "tests/simulation/scenarios/29-documents-system.mjs",
+      "status": "inventoried",
+      "sha256": "514068a1ff35c91782dd9c82f7149980f2aada415985e1708cd91682655369c5"
+    },
+    {
+      "id": "30-event-wiring-audit",
+      "name": "Event Wiring Audit",
+      "category": "simulation_scenario",
+      "path": "tests/simulation/scenarios/30-event-wiring-audit.mjs",
+      "status": "inventoried",
+      "sha256": "f57b4a9428337e3714f12000e78e909133cc89e552e2969e8e5551ce67b12660"
+    },
+    {
+      "id": "31-task-documents-tools",
+      "name": "Task-Document Linking & System Tools",
+      "category": "simulation_scenario",
+      "path": "tests/simulation/scenarios/31-task-documents-tools.mjs",
+      "status": "inventoried",
+      "sha256": "cefbcdbcd0896d3e75003876f54f97aae425d2834d66002f756e1983c98ed627"
+    },
+    {
+      "id": "32-auth-flow",
+      "name": "Auth Flow",
+      "category": "simulation_scenario",
+      "path": "tests/simulation/scenarios/32-auth-flow.mjs",
+      "status": "inventoried",
+      "sha256": "d413b76dd81a225ca1797d0ef7db21d5b01d2f1dd509e24e981545b25d4f39c6"
+    },
+    {
+      "id": "33-task-locking",
+      "name": "Task Locking",
+      "category": "simulation_scenario",
+      "path": "tests/simulation/scenarios/33-task-locking.mjs",
+      "status": "inventoried",
+      "sha256": "c620f5248d36be05175a476195d6746eb5720b055785d70800ce4a86530ee178"
+    },
+    {
+      "id": "34-compute-pool",
+      "name": "Compute Pool",
+      "category": "simulation_scenario",
+      "path": "tests/simulation/scenarios/34-compute-pool.mjs",
+      "status": "inventoried",
+      "sha256": "89422ea4bedff5784949891c029eec5fc32c66879b4e17c606dd7342e74c2a8d"
+    },
+    {
+      "id": "35-ensemble-validation",
+      "name": "Ensemble Validation",
+      "category": "simulation_scenario",
+      "path": "tests/simulation/scenarios/35-ensemble-validation.mjs",
+      "status": "inventoried",
+      "sha256": "635468628ad724af6d78f88c1a4b96b54989424a30429125e5b55a281ccc00bf"
+    },
+    {
+      "id": "36-llm-servers",
+      "name": "LLM Servers",
+      "category": "simulation_scenario",
+      "path": "tests/simulation/scenarios/36-llm-servers.mjs",
+      "status": "inventoried",
+      "sha256": "88a2b54f85c62d5445c73de91e427217ec81fda9881d90929d454aa82b300e9e"
+    },
+    {
+      "id": "37-ensemble-health-view",
+      "name": "Ensemble Health View",
+      "category": "simulation_scenario",
+      "path": "tests/simulation/scenarios/37-ensemble-health-view.mjs",
+      "status": "inventoried",
+      "sha256": "f6e20e0ee4928f57c56b8fb19107f27022a214de92c5e199d49be9f5d3522c4a"
+    },
+    {
+      "id": "38-task-routing",
+      "name": "Multi-Agent Task Routing",
+      "category": "simulation_scenario",
+      "path": "tests/simulation/scenarios/38-task-routing.mjs",
+      "status": "inventoried",
+      "sha256": "5211cd5a0cc60c258b25164fd8387879464a9611fc2023952618a77f5f622ea7"
+    },
+    {
+      "id": "39-data-migration",
+      "name": "Data Migration & Integrity",
+      "category": "simulation_scenario",
+      "path": "tests/simulation/scenarios/39-data-migration.mjs",
+      "status": "inventoried",
+      "sha256": "e2a8636cd7b199dea19c58e7c0d7eb3794b348e6aeef69f9db916e592bafbbdd"
+    },
+    {
+      "id": "40-agent-identity-editing",
+      "name": "Agent Identity Editing",
+      "category": "simulation_scenario",
+      "path": "tests/simulation/scenarios/40-agent-identity-editing.mjs",
+      "status": "inventoried",
+      "sha256": "353657c5de739b54dec437ac2e58791a97793155555415b71cd2b08d38baaeef"
+    },
+    {
+      "id": "41-skill-creation",
+      "name": "Autonomous Skill Creation",
+      "category": "simulation_scenario",
+      "path": "tests/simulation/scenarios/41-skill-creation.mjs",
+      "status": "inventoried",
+      "sha256": "6de9766f03f6f78f47867ac22229429abffe4883e8033cc9cb9f6c33492ef9fa"
+    },
+    {
+      "id": "42-content-guard",
+      "name": "Content Guard & Prompt Injection Protection",
+      "category": "simulation_scenario",
+      "path": "tests/simulation/scenarios/42-content-guard.mjs",
+      "status": "inventoried",
+      "sha256": "6fb4b8b51c9b6152b495cb5ba1bf25497056d90a0e24b4c4dfa9233e7ffe37d2"
+    },
+    {
+      "id": "43-process-hardening",
+      "name": "Process Hardening",
+      "category": "simulation_scenario",
+      "path": "tests/simulation/scenarios/43-process-hardening.mjs",
+      "status": "inventoried",
+      "sha256": "bf628650b809a50e9d5c25e61c6db1b7b511b9de9c6aa03157b5c9b96cf7a67b"
+    },
+    {
+      "id": "44-agent-factory",
+      "name": "Agent Factory",
+      "category": "simulation_scenario",
+      "path": "tests/simulation/scenarios/44-agent-factory.mjs",
+      "status": "inventoried",
+      "sha256": "00018baac28fed9dd5dcff9d95098c484b6b5d30d9500508387a78452f9b0112"
+    },
+    {
+      "id": "45-interfaces-menu",
+      "name": "Interfaces Menu",
+      "category": "simulation_scenario",
+      "path": "tests/simulation/scenarios/45-interfaces-menu.mjs",
+      "status": "inventoried",
+      "sha256": "ffa0f63819804e53cc7e692f28f734b38a97fd72e2df46763eb527db7330b1ae"
+    },
+    {
+      "id": "46-stitch-figma-integration",
+      "name": "Stitch & Figma Integration",
+      "category": "simulation_scenario",
+      "path": "tests/simulation/scenarios/46-stitch-figma-integration.mjs",
+      "status": "inventoried",
+      "sha256": "b6cab447fe311071735511d2f84f820d3fc5ce2f93d8fdedaf0631c382198653"
+    },
+    {
+      "id": "47-atomic-research-design",
+      "name": "Atomic Research Design Extension",
+      "category": "simulation_scenario",
+      "path": "tests/simulation/scenarios/47-atomic-research-design.mjs",
+      "status": "inventoried",
+      "sha256": "07ecb6625eb7c0875992059cdbc0bd103f9cf9ea9de2de011e7a50f5533c6e6a"
+    },
+    {
+      "id": "48-real-user-simulation",
+      "name": "Real User Simulation (Live APIs)",
+      "category": "simulation_scenario",
+      "path": "tests/simulation/scenarios/48-real-user-simulation.mjs",
+      "status": "inventoried",
+      "sha256": "918c280d5e22606065e57c3cb56c966a71c292954da6cd9859c439e9c3eb1650"
+    },
+    {
+      "id": "49-loops-schedule",
+      "name": "Loops & Schedule",
+      "category": "simulation_scenario",
+      "path": "tests/simulation/scenarios/49-loops-schedule.mjs",
+      "status": "inventoried",
+      "sha256": "b6fdd792cc6d6e2369e0cb963ec5d5c894a043e673615770e46b93b15ee150ed"
+    },
+    {
+      "id": "50-notifications",
+      "name": "Notifications",
+      "category": "simulation_scenario",
+      "path": "tests/simulation/scenarios/50-notifications.mjs",
+      "status": "inventoried",
+      "sha256": "f078846a1c2fdb486052cd2870ebc2ce5489f49fb4c6c65c453d6a9f9310e63d"
+    },
+    {
+      "id": "51-backup-system",
+      "name": "Backup System",
+      "category": "simulation_scenario",
+      "path": "tests/simulation/scenarios/51-backup-system.mjs",
+      "status": "inventoried",
+      "sha256": "cf804fad3edca99f3504c44b52403ce4715942ef1ffeabd15f8485648db392af"
+    },
+    {
+      "id": "52-meta-hyperagent",
+      "name": "Meta-Hyperagent",
+      "category": "simulation_scenario",
+      "path": "tests/simulation/scenarios/52-meta-hyperagent.mjs",
+      "status": "inventoried",
+      "sha256": "642bf65789514272cfc33433e881aad90f58905f32f23783a54ce6584c1597af"
+    },
+    {
+      "id": "53-channel-lifecycle",
+      "name": "Channel Lifecycle",
+      "category": "simulation_scenario",
+      "path": "tests/simulation/scenarios/53-channel-lifecycle.mjs",
+      "status": "inventoried",
+      "sha256": "626c2b91952c3b8302b38e20a0b07c4a5ec4e0996cfbf2f88baa1987d3a49ee5"
+    },
+    {
+      "id": "55-survey-integration",
+      "name": "Survey Integration",
+      "category": "simulation_scenario",
+      "path": "tests/simulation/scenarios/55-survey-integration.mjs",
+      "status": "inventoried",
+      "sha256": "94eb14aa609eb1cf95e678f61ff23f91af2e9c66ac7fb29ef70a82145d7810aa"
+    },
+    {
+      "id": "56-mcp-server-security",
+      "name": "MCP Server Security",
+      "category": "simulation_scenario",
+      "path": "tests/simulation/scenarios/56-mcp-server-security.mjs",
+      "status": "inventoried",
+      "sha256": "a170345957a052badbaa9cbd48abc2223462a607f61e02b3ce355553bb54f4de"
+    },
+    {
+      "id": "57-mcp-client-registry",
+      "name": "MCP Client Registry",
+      "category": "simulation_scenario",
+      "path": "tests/simulation/scenarios/57-mcp-client-registry.mjs",
+      "status": "inventoried",
+      "sha256": "4a5ede1b066c0e984039ada4e3ada2d5a06b29eee177a267e143274f96ad5c8d"
+    },
+    {
+      "id": "58-research-deployment",
+      "name": "Research Deployment",
+      "category": "simulation_scenario",
+      "path": "tests/simulation/scenarios/58-research-deployment.mjs",
+      "status": "inventoried",
+      "sha256": "8ea40369045b057c3c59f0668a84084eb4fcadb99dab0d959ef8d635786a3806"
+    },
+    {
+      "id": "59-agent-integration-knowledge",
+      "name": "Agent Integration Knowledge",
+      "category": "simulation_scenario",
+      "path": "tests/simulation/scenarios/59-agent-integration-knowledge.mjs",
+      "status": "inventoried",
+      "sha256": "30c7bea0ca9b8670f7c2c88050dae34ed3f5c6698729a1742b2b64683b21a202"
+    },
+    {
+      "id": "61-autoresearch-isolation",
+      "name": "Autoresearch Isolation",
+      "category": "simulation_scenario",
+      "path": "tests/simulation/scenarios/61-autoresearch-isolation.mjs",
+      "status": "inventoried",
+      "sha256": "6697814bab0fda1d7bd9d56da7d819bf9609503d5c2b73697982817354a8932c"
+    },
+    {
+      "id": "64-docker-security",
+      "name": "Docker Security & Infrastructure",
+      "category": "simulation_scenario",
+      "path": "tests/simulation/scenarios/64-docker-security.mjs",
+      "status": "inventoried",
+      "sha256": "29d82e68c01b52025a01e2aea9e2bb19861822b581ce827dbcd2a5db13ff03d7"
+    },
+    {
+      "id": "65-laws-of-ux",
+      "name": "Laws of UX Knowledge Layer",
+      "category": "simulation_scenario",
+      "path": "tests/simulation/scenarios/65-laws-of-ux.mjs",
+      "status": "inventoried",
+      "sha256": "3d3951beea9c16bc409919b3e9345dacf5bf8c6f03ee47066d77d875328256e3"
+    },
+    {
+      "id": "66-featured-mcp-servers",
+      "name": "Featured MCP Servers",
+      "category": "simulation_scenario",
+      "path": "tests/simulation/scenarios/66-featured-mcp-servers.mjs",
+      "status": "inventoried",
+      "sha256": "738e78a661b2d6b489979c2e3833d253cd183d51c8f557e816931f03a878524a"
+    },
+    {
+      "id": "67-auth-enforcement",
+      "name": "Authentication Enforcement",
+      "category": "simulation_scenario",
+      "path": "tests/simulation/scenarios/67-auth-enforcement.mjs",
+      "status": "inventoried",
+      "sha256": "f6bf7df4b761ed4323cffd4706ac1b284d9761ed5c2fa8646a39db42dfed5662"
+    },
+    {
+      "id": "68-data-security",
+      "name": "Data Security",
+      "category": "simulation_scenario",
+      "path": "tests/simulation/scenarios/68-data-security.mjs",
+      "status": "inventoried",
+      "sha256": "be6b9bc094be76d733b6455e1b20601614093d563d1061bc84c49a628b868292"
+    },
+    {
+      "id": "69-user-management-ui",
+      "name": "User Management",
+      "category": "simulation_scenario",
+      "path": "tests/simulation/scenarios/69-user-management-ui.mjs",
+      "status": "inventoried",
+      "sha256": "9e9e3ebac050670d798837073dcce30a47dafa17fbcb0793ba05d7cd42086004"
+    },
+    {
+      "id": "70-mid-execution-steering",
+      "name": "Mid-Execution Steering",
+      "category": "simulation_scenario",
+      "path": "tests/simulation/scenarios/70-mid-execution-steering.mjs",
+      "status": "inventoried",
+      "sha256": "1537e364ab69a2b5d99c5500385b30f7b2b0a3f337ddfeaaeea8d7d4e40c84c2"
+    },
+    {
+      "id": "70-research-integrity",
+      "name": "Research Integrity System",
+      "category": "simulation_scenario",
+      "path": "tests/simulation/scenarios/70-research-integrity.mjs",
+      "status": "inventoried",
+      "sha256": "1591257b361926a13dc22d2425aef5d3cd089ddc62de040922ef5ffb89593316"
+    },
+    {
+      "id": "71-plan-and-execute",
+      "name": "Plan-and-Execute Architecture",
+      "category": "simulation_scenario",
+      "path": "tests/simulation/scenarios/71-plan-and-execute.mjs",
+      "status": "inventoried",
+      "sha256": "3b88bac9a97ca6c1ba79a4ee35c4d83b49d288e38958c3706518ff856be2c19f"
+    },
+    {
+      "id": "72-circuit-breaker-health",
+      "name": "Circuit Breaker & LLM Health",
+      "category": "simulation_scenario",
+      "path": "tests/simulation/scenarios/72-circuit-breaker-health.mjs",
+      "status": "inventoried",
+      "sha256": "fff1ab1bec2efa7e27aedceaa7d7aefc59a07f1b785b9a19a06ae17d8ec5090a"
+    },
+    {
+      "id": "73-a2a-debate-and-reports",
+      "name": "A2A Debate & Report Pipeline",
+      "category": "simulation_scenario",
+      "path": "tests/simulation/scenarios/73-a2a-debate-and-reports.mjs",
+      "status": "inventoried",
+      "sha256": "faf438de92088daf7a69314fdf82a52bd785f7be6a28881ef483f6039858a552"
+    },
+    {
+      "id": "74-2fa-login-flow",
+      "name": "2FA Login Flow",
+      "category": "simulation_scenario",
+      "path": "tests/simulation/scenarios/74-2fa-login-flow.mjs",
+      "status": "inventoried",
+      "sha256": "b264a3026ce870e42f666897e74d383cde74abb9280ebc4a702b11fb2e352d3c"
+    },
+    {
+      "id": "75-participant-simulation",
+      "name": "Game Theory Participant Simulation",
+      "category": "simulation_scenario",
+      "path": "tests/simulation/scenarios/75-participant-simulation.mjs",
+      "status": "inventoried",
+      "sha256": "f153e03dda45759114559f5322ea672f5f4ee3c38caa25a61ccd6633fa86c466"
+    },
+    {
+      "id": "76-long-horizon-trajectory",
+      "name": "Long-Horizon Orchestration Trajectory",
+      "category": "simulation_scenario",
+      "path": "tests/simulation/scenarios/76-long-horizon-trajectory.mjs",
+      "status": "inventoried",
+      "sha256": "d5d36c3a6d0d93d874f9037352b9e50c440ba250789e267220b9006d16f347e4"
+    },
+    {
+      "id": "77-voice-transcription",
+      "name": "Voice Transcription",
+      "category": "simulation_scenario",
+      "path": "tests/simulation/scenarios/77-voice-transcription.mjs",
+      "status": "inventoried",
+      "sha256": "67a0ba3d2393666b8e4a0d49e5ed4cea116f3bf52bdc2cf34f8f41867e6c2e9a"
+    },
+    {
+      "id": "78-real-time-voice",
+      "name": "Real-Time Voice Recording",
+      "category": "simulation_scenario",
+      "path": "tests/simulation/scenarios/78-real-time-voice.mjs",
+      "status": "inventoried",
+      "sha256": "6aa42a12fa212647b0eb6b07c310eabb1b4d588bafcd035e48760f21a938da96"
+    },
+    {
+      "id": "run_istara_evals",
+      "category": "eval_runner",
+      "path": "scripts/run_istara_evals.py",
+      "status": "inventoried",
+      "sha256": "ac6ab6e6c0f85a3131392fa13701c6b3ff3ca5422d18a469047d0ae2eb1a23b6"
+    }
+  ]
+}

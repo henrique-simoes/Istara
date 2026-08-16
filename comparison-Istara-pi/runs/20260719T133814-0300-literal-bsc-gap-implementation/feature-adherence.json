@@ -1,0 +1,384 @@
+{
+  "schema_version": 1,
+  "scenarios": [
+    {
+      "scenario_id": "chat.tool_loop.task_and_finding",
+      "family": "chat_tool_loop",
+      "ok": true,
+      "source_assets": [
+        "tests/agentic_eval_contract.json",
+        "tests/simulation/scenarios/31-task-documents-tools.mjs"
+      ],
+      "surfaces": [
+        "chat/tool loop",
+        "tasks",
+        "findings",
+        "telemetry"
+      ],
+      "expected_tools": [
+        "tasks.create",
+        "findings.create"
+      ],
+      "actual_tools": [
+        "tasks.create",
+        "findings.create"
+      ],
+      "expected_tool_order_matched": true,
+      "system_prompt_adherence": {
+        "canonicalToolsOnly": true,
+        "localModelsAllowed": false,
+        "policy": "Pi owns loop/tool execution; Istara owns product state and policy."
+      },
+      "skills_adherence": {
+        "maxRepresentativeSkillSlices": 3,
+        "skillCalls": 0,
+        "adhered": true
+      },
+      "a2a_success": null
+    },
+    {
+      "scenario_id": "task.plan_execute.lifecycle",
+      "family": "plan_and_execute",
+      "ok": true,
+      "source_assets": [
+        "tests/benchmarks/test_orchestration.py",
+        "tests/simulation/scenarios/71-plan-and-execute.mjs"
+      ],
+      "surfaces": [
+        "task lifecycle",
+        "plan DAG",
+        "review state",
+        "skills endpoint representative"
+      ],
+      "expected_tools": [
+        "tasks.create",
+        "plans.create",
+        "tasks.update_lifecycle"
+      ],
+      "actual_tools": [
+        "tasks.create",
+        "plans.create",
+        "tasks.update_lifecycle"
+      ],
+      "expected_tool_order_matched": true,
+      "system_prompt_adherence": {
+        "canonicalToolsOnly": true,
+        "localModelsAllowed": false,
+        "policy": "Pi owns loop/tool execution; Istara owns product state and policy."
+      },
+      "skills_adherence": {
+        "maxRepresentativeSkillSlices": 3,
+        "skillCalls": 0,
+        "adhered": true
+      },
+      "a2a_success": null
+    },
+    {
+      "scenario_id": "documents.tools.slice",
+      "family": "documents_tools",
+      "ok": true,
+      "source_assets": [
+        "tests/simulation/scenarios/29-documents-system.mjs",
+        "tests/simulation/scenarios/31-task-documents-tools.mjs"
+      ],
+      "surfaces": [
+        "documents",
+        "document search/read",
+        "task document links",
+        "tool schema validation"
+      ],
+      "expected_tools": [
+        "documents.create",
+        "documents.search",
+        "documents.read",
+        "tasks.create",
+        "tasks.attach_document",
+        "findings.create"
+      ],
+      "actual_tools": [
+        "documents.create",
+        "documents.search",
+        "documents.read",
+        "tasks.create",
+        "tasks.attach_document",
+        "findings.create"
+      ],
+      "expected_tool_order_matched": true,
+      "system_prompt_adherence": {
+        "canonicalToolsOnly": true,
+        "localModelsAllowed": false,
+        "policy": "Pi owns loop/tool execution; Istara owns product state and policy."
+      },
+      "skills_adherence": {
+        "maxRepresentativeSkillSlices": 3,
+        "skillCalls": 0,
+        "adhered": true
+      },
+      "a2a_success": null
+    },
+    {
+      "scenario_id": "structured_outputs.core_eval",
+      "family": "structured_outputs",
+      "ok": true,
+      "source_assets": [
+        "tests/evals/cases/core_eval_cases.json",
+        "scripts/run_istara_evals.py"
+      ],
+      "surfaces": [
+        "core evals",
+        "JSON contract",
+        "DAG/ReAct structured output"
+      ],
+      "expected_tools": [
+        "evals.emit_structured"
+      ],
+      "actual_tools": [
+        "evals.emit_structured"
+      ],
+      "expected_tool_order_matched": true,
+      "system_prompt_adherence": {
+        "canonicalToolsOnly": true,
+        "localModelsAllowed": false,
+        "policy": "Pi owns loop/tool execution; Istara owns product state and policy."
+      },
+      "skills_adherence": {
+        "maxRepresentativeSkillSlices": 3,
+        "skillCalls": 0,
+        "adhered": true
+      },
+      "a2a_success": null
+    },
+    {
+      "scenario_id": "memory.rag.slice",
+      "family": "memory_rag",
+      "ok": true,
+      "source_assets": [
+        "tests/agentic_eval_contract.json",
+        "tests/simulation/scenarios/23-memory-view.mjs"
+      ],
+      "surfaces": [
+        "memory search",
+        "memory write",
+        "RAG grounding proxy"
+      ],
+      "expected_tools": [
+        "memory.search",
+        "findings.create",
+        "memory.write"
+      ],
+      "actual_tools": [
+        "memory.search",
+        "findings.create",
+        "memory.write"
+      ],
+      "expected_tool_order_matched": true,
+      "system_prompt_adherence": {
+        "canonicalToolsOnly": true,
+        "localModelsAllowed": false,
+        "policy": "Pi owns loop/tool execution; Istara owns product state and policy."
+      },
+      "skills_adherence": {
+        "maxRepresentativeSkillSlices": 3,
+        "skillCalls": 0,
+        "adhered": true
+      },
+      "a2a_success": null
+    },
+    {
+      "scenario_id": "skills.three_skill_slice",
+      "family": "skills",
+      "ok": true,
+      "source_assets": [
+        "tests/agentic_eval_contract.json",
+        "tests/simulation/scenarios/20-all-skills-comprehensive.mjs"
+      ],
+      "surfaces": [
+        "skills",
+        "prompt adherence",
+        "research spine"
+      ],
+      "expected_tools": [
+        "skills.apply",
+        "skills.apply",
+        "skills.apply",
+        "findings.create"
+      ],
+      "actual_tools": [
+        "skills.apply",
+        "skills.apply",
+        "skills.apply",
+        "findings.create"
+      ],
+      "expected_tool_order_matched": true,
+      "system_prompt_adherence": {
+        "canonicalToolsOnly": true,
+        "localModelsAllowed": false,
+        "policy": "Pi owns loop/tool execution; Istara owns product state and policy."
+      },
+      "skills_adherence": {
+        "maxRepresentativeSkillSlices": 3,
+        "skillCalls": 3,
+        "adhered": true
+      },
+      "a2a_success": null
+    },
+    {
+      "scenario_id": "a2a.debate_report.slice",
+      "family": "a2a",
+      "ok": true,
+      "source_assets": [
+        "tests/simulation/scenarios/73-a2a-debate-and-reports.mjs"
+      ],
+      "surfaces": [
+        "A2A delegation",
+        "layered reports",
+        "MECE summary"
+      ],
+      "expected_tools": [
+        "a2a.delegate",
+        "a2a.delegate",
+        "a2a.report"
+      ],
+      "actual_tools": [
+        "a2a.delegate",
+        "a2a.delegate",
+        "a2a.report"
+      ],
+      "expected_tool_order_matched": true,
+      "system_prompt_adherence": {
+        "canonicalToolsOnly": true,
+        "localModelsAllowed": false,
+        "policy": "Pi owns loop/tool execution; Istara owns product state and policy."
+      },
+      "skills_adherence": {
+        "maxRepresentativeSkillSlices": 3,
+        "skillCalls": 0,
+        "adhered": true
+      },
+      "a2a_success": true
+    },
+    {
+      "scenario_id": "channel.lifecycle.simulated_slice",
+      "family": "channels",
+      "ok": true,
+      "source_assets": [
+        "tests/simulation/scenarios/53-channel-lifecycle.mjs"
+      ],
+      "surfaces": [
+        "channel lifecycle",
+        "inbound turn",
+        "outbound response",
+        "session scoping"
+      ],
+      "expected_tools": [
+        "channels.create",
+        "channels.receive",
+        "channels.respond"
+      ],
+      "actual_tools": [
+        "channels.create",
+        "channels.receive",
+        "channels.respond"
+      ],
+      "expected_tool_order_matched": true,
+      "system_prompt_adherence": {
+        "canonicalToolsOnly": true,
+        "localModelsAllowed": false,
+        "policy": "Pi owns loop/tool execution; Istara owns product state and policy."
+      },
+      "skills_adherence": {
+        "maxRepresentativeSkillSlices": 3,
+        "skillCalls": 0,
+        "adhered": true
+      },
+      "a2a_success": null
+    },
+    {
+      "scenario_id": "research.spine.step_tracker",
+      "family": "research_spine",
+      "ok": true,
+      "source_assets": [
+        "docs/architecture/research-validity-contract.md",
+        "tests/real_user_benchmark/lib/research-spine-probes.mjs",
+        "tests/agentic_eval_contract.json"
+      ],
+      "surfaces": [
+        "research spine",
+        "evidence units",
+        "quality scoring",
+        "human-review gate proxy"
+      ],
+      "expected_tools": [
+        "documents.search",
+        "documents.read",
+        "research.record_step",
+        "research.record_step",
+        "research.record_step",
+        "research.record_step",
+        "findings.create"
+      ],
+      "actual_tools": [
+        "documents.search",
+        "documents.read",
+        "research.record_step",
+        "research.record_step",
+        "research.record_step",
+        "research.record_step",
+        "findings.create"
+      ],
+      "expected_tool_order_matched": true,
+      "system_prompt_adherence": {
+        "canonicalToolsOnly": true,
+        "localModelsAllowed": false,
+        "policy": "Pi owns loop/tool execution; Istara owns product state and policy."
+      },
+      "skills_adherence": {
+        "maxRepresentativeSkillSlices": 3,
+        "skillCalls": 0,
+        "adhered": true
+      },
+      "a2a_success": null
+    },
+    {
+      "scenario_id": "model.routing.telemetry.slice",
+      "family": "model_routing_telemetry",
+      "ok": true,
+      "source_assets": [
+        "tests/agentic_eval_contract.json",
+        "tests/evals/registry.json",
+        "tests/test_telemetry.py",
+        "tests/test_telemetry_export.py"
+      ],
+      "surfaces": [
+        "model routing",
+        "telemetry",
+        "tokens",
+        "tool calls versus quality"
+      ],
+      "expected_tools": [
+        "models.route",
+        "telemetry.record_metric",
+        "telemetry.record_metric",
+        "evals.emit_structured"
+      ],
+      "actual_tools": [
+        "models.route",
+        "telemetry.record_metric",
+        "telemetry.record_metric",
+        "evals.emit_structured"
+      ],
+      "expected_tool_order_matched": true,
+      "system_prompt_adherence": {
+        "canonicalToolsOnly": true,
+        "localModelsAllowed": false,
+        "policy": "Pi owns loop/tool execution; Istara owns product state and policy."
+      },
+      "skills_adherence": {
+        "maxRepresentativeSkillSlices": 3,
+        "skillCalls": 0,
+        "adhered": true
+      },
+      "a2a_success": null
+    }
+  ]
+}

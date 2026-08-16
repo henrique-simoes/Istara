@@ -1,0 +1,5 @@
+Call 6
+Caller role: patient
+Issue: the dashboard hides stale tasks until the day before a visit.
+Quote: "I do not need another reminder. I need to know which thing is actually blocking the visit."
+Disposition: escalated to coordinator

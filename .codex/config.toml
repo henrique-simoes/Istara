@@ -1,0 +1,16 @@
+[mcp_servers.compass-forge]
+command = "/opt/homebrew/opt/python@3.11/bin/python3.11"
+args = [
+    "-m",
+    "compass_forge.cli",
+    "--workspace",
+    "/Users/user/Documents/compass-forge",
+    "mcp",
+    "--target",
+    "/Users/user/Documents/Istara-main",
+    "--recipe",
+    "istararustgraphtrial",
+]
+
+[mcp_servers.compass-forge.env]
+PYTHONPATH = "/Users/user/Documents/compass-forge"

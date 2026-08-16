@@ -1,0 +1,77 @@
+{
+  "label": "run-start",
+  "captured_at": "2026-07-19T15:56:23.920Z",
+  "policy": "warn",
+  "budgets_gb": {
+    "actualGb": 10,
+    "apparentGb": 20,
+    "toleranceGb": 0.25
+  },
+  "paths": [
+    {
+      "name": "colima-home",
+      "path": "/Users/user/.colima",
+      "exists": false,
+      "actual": {
+        "ok": false,
+        "path": "/Users/user/.colima",
+        "kib": 0,
+        "gib": 0,
+        "supported": true,
+        "reason": "missing"
+      },
+      "apparent": {
+        "ok": false,
+        "path": "/Users/user/.colima",
+        "kib": 0,
+        "gib": 0,
+        "supported": true,
+        "reason": "missing"
+      }
+    },
+    {
+      "name": "lima-disks",
+      "path": "/Users/user/.colima/_lima/_disks",
+      "exists": false,
+      "actual": {
+        "ok": false,
+        "path": "/Users/user/.colima/_lima/_disks",
+        "kib": 0,
+        "gib": 0,
+        "supported": true,
+        "reason": "missing"
+      },
+      "apparent": {
+        "ok": false,
+        "path": "/Users/user/.colima/_lima/_disks",
+        "kib": 0,
+        "gib": 0,
+        "supported": true,
+        "reason": "missing"
+      }
+    },
+    {
+      "name": "lima-colima-profile",
+      "path": "/Users/user/.colima/_lima/colima",
+      "exists": false,
+      "actual": {
+        "ok": false,
+        "path": "/Users/user/.colima/_lima/colima",
+        "kib": 0,
+        "gib": 0,
+        "supported": true,
+        "reason": "missing"
+      },
+      "apparent": {
+        "ok": false,
+        "path": "/Users/user/.colima/_lima/colima",
+        "kib": 0,
+        "gib": 0,
+        "supported": true,
+        "reason": "missing"
+      }
+    }
+  ],
+  "over_budget": [],
+  "remediation": ""
+}

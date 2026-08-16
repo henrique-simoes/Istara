@@ -1,0 +1,116 @@
+{
+  "schema_version": 1,
+  "run_id": "20260719T124322-0300-50c-paired-benchmarks",
+  "categories": [
+    {
+      "category": "a2a",
+      "inventory_count": 5,
+      "representative_or_sampled_count": 1,
+      "coverage_mode": "executed_or_sampled"
+    },
+    {
+      "category": "channel_lifecycle",
+      "inventory_count": 3,
+      "representative_or_sampled_count": 1,
+      "coverage_mode": "executed_or_sampled"
+    },
+    {
+      "category": "memory_rag_skills",
+      "inventory_count": 29,
+      "representative_or_sampled_count": 16,
+      "coverage_mode": "executed_or_sampled"
+    },
+    {
+      "category": "model_management",
+      "inventory_count": 16,
+      "representative_or_sampled_count": 2,
+      "coverage_mode": "executed_or_sampled"
+    },
+    {
+      "category": "other_feature_simulation",
+      "inventory_count": 29,
+      "representative_or_sampled_count": 3,
+      "coverage_mode": "static_no_model_representative"
+    },
+    {
+      "category": "plan_execute_dag",
+      "inventory_count": 9,
+      "representative_or_sampled_count": 5,
+      "coverage_mode": "executed_or_sampled"
+    },
+    {
+      "category": "real_user_research_spine",
+      "inventory_count": 15,
+      "representative_or_sampled_count": 1,
+      "coverage_mode": "plan_only_no_model_representative"
+    },
+    {
+      "category": "security_or_external_service",
+      "inventory_count": 7,
+      "representative_or_sampled_count": 0,
+      "coverage_mode": "inventory_only"
+    },
+    {
+      "category": "tool_task_document",
+      "inventory_count": 4,
+      "representative_or_sampled_count": 2,
+      "coverage_mode": "executed_or_sampled"
+    }
+  ],
+  "priority_slices": [
+    {
+      "id": "71-plan-and-execute",
+      "category": "plan_execute_dag",
+      "decision": "selected_representative",
+      "reason": "owner-priority representative slice"
+    },
+    {
+      "id": "31-task-documents-tools",
+      "category": "tool_task_document",
+      "decision": "selected_representative",
+      "reason": "owner-priority representative slice"
+    },
+    {
+      "id": "23-memory-view",
+      "category": "memory_rag_skills",
+      "decision": "selected_representative",
+      "reason": "owner-priority representative slice"
+    },
+    {
+      "id": "53-channel-lifecycle",
+      "category": "channel_lifecycle",
+      "decision": "selected_simulated_or_deferred",
+      "reason": "priority channel slice; simulate only, no real credentials; Pi channel adapter missing"
+    },
+    {
+      "id": "73-a2a-debate-and-reports",
+      "category": "a2a",
+      "decision": "selected_simulated_or_deferred",
+      "reason": "priority A2A slice; Pi facade has a2a schema but reporting/service adapter missing"
+    },
+    {
+      "id": "09-navigation-search",
+      "category": "other_feature_simulation",
+      "decision": "selected_static_representative",
+      "reason": "owner clarification broad category coverage; node --check syntax validation only"
+    },
+    {
+      "id": "43-process-hardening",
+      "category": "other_feature_simulation",
+      "decision": "selected_static_representative",
+      "reason": "owner clarification broad category coverage; node --check syntax validation only"
+    },
+    {
+      "id": "75-participant-simulation",
+      "category": "other_feature_simulation",
+      "decision": "selected_static_representative",
+      "reason": "owner clarification broad category coverage; node --check syntax validation only"
+    },
+    {
+      "id": "real-user-plan-only",
+      "category": "real_user_research_spine",
+      "decision": "selected_plan_only_representative",
+      "reason": "credential-free plan/corpus/scoring scaffold; live services intentionally not attempted"
+    }
+  ]
+}

@@ -1,0 +1,5 @@
+Call 8
+Caller role: care coordinator
+Issue: Spanish and Portuguese copy is inconsistent across reminders.
+Quote: "I do not need another reminder. I need to know which thing is actually blocking the visit."
+Disposition: escalated to coordinator

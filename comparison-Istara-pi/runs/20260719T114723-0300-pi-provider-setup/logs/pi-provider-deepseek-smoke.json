@@ -1,0 +1,68 @@
+{
+  "smoke": "pi_provider_deepseek",
+  "package": "@earendil-works/pi-ai",
+  "package_version": "0.80.10",
+  "adapter_mode": "library_builtin_deepseek_provider",
+  "provider": "deepseek",
+  "base_url": "https://api.deepseek.com",
+  "model": "deepseek-v4-pro",
+  "api": "openai-completions",
+  "reasoning_requested": "high",
+  "thinking_requested": true,
+  "max_tokens_requested": 16,
+  "deepseek_key_present": true,
+  "secret_value_logged": false,
+  "passed": true,
+  "status_code": 200,
+  "latency_ms": 2787,
+  "usage": {
+    "input": 20,
+    "output": 74,
+    "cacheRead": 0,
+    "cacheWrite": 0,
+    "reasoning": 71,
+    "totalTokens": 94,
+    "cost": {
+      "input": 0.0000087,
+      "output": 0.00006438,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "total": 0.00007308
+    }
+  },
+  "response_model": "deepseek-v4-pro",
+  "stop_reason": "stop",
+  "thinking_block_count": 1,
+  "output_text_capped": "pong",
+  "failure_reason_capped": "",
+  "provider_config": {
+    "catalog_model_id": "deepseek-v4-pro",
+    "catalog_provider": "deepseek",
+    "catalog_base_url": "https://api.deepseek.com",
+    "reasoning": true,
+    "compat": {
+      "supportsStore": false,
+      "supportsDeveloperRole": false,
+      "requiresReasoningContentOnAssistantMessages": true,
+      "thinkingFormat": "deepseek"
+    },
+    "thinking_level_map": {
+      "minimal": null,
+      "low": null,
+      "medium": null,
+      "high": "high",
+      "max": "max"
+    },
+    "observed_payload": {
+      "model": "deepseek-v4-pro",
+      "stream": true,
+      "max_completion_tokens_present": true,
+      "max_tokens_present": false,
+      "reasoning_effort": "high",
+      "thinking": {
+        "type": "enabled"
+      },
+      "message_count": 2
+    }
+  }
+}

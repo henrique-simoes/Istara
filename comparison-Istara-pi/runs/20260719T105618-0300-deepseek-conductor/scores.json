@@ -1,0 +1,22 @@
+{
+  "run_id": "20260719T105618-0300-deepseek-conductor",
+  "smoke": {
+    "istara_openai_compatible_deepseek": {
+      "passed": true,
+      "latency_ms": 2163,
+      "total_tokens": 36
+    },
+    "pi_provider_path": {
+      "executed": false,
+      "blocked_reason": "@earendil-works/pi-ai is not installed in the Istara repo runtime; executing Pi's provider layer would require dependency installation or a local Pi checkout."
+    }
+  },
+  "paired_benchmarks": {
+    "executed": false,
+    "blocked_on": "owner budget and Pi dependency/setup gate"
+  },
+  "feature_matrix": {
+    "feature_count": 86,
+    "scores_populated": false
+  }
+}

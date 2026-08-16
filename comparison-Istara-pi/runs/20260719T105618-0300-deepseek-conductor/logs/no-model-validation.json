@@ -1,0 +1,7 @@
+{
+  "validator": "validate_no_model.py",
+  "status": "passed",
+  "feature_count": 86,
+  "article_file_count": 12,
+  "failures": []
+}

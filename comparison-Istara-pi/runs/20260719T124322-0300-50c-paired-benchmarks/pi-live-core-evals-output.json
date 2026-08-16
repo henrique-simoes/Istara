@@ -1,0 +1,74 @@
+{
+  "ok": true,
+  "results": [
+    {
+      "case_id": "classic_json_contract",
+      "ok": true,
+      "provider": "deepseek",
+      "stopReason": "stop",
+      "latency_ms": 2427,
+      "usage": {
+        "input": 43,
+        "output": 87,
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "reasoning": 72,
+        "totalTokens": 130,
+        "cost": {
+          "input": 1.8705e-05,
+          "output": 7.569e-05,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "total": 9.439500000000001e-05
+        }
+      },
+      "capped_text": "{\"answer\": \"AURORA\", \"evidence\": \"instruction\"}"
+    },
+    {
+      "case_id": "tool_choice_memory_search",
+      "ok": true,
+      "provider": "deepseek",
+      "stopReason": "stop",
+      "latency_ms": 3519,
+      "usage": {
+        "input": 77,
+        "output": 172,
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "reasoning": 144,
+        "totalTokens": 249,
+        "cost": {
+          "input": 3.3495000000000004e-05,
+          "output": 0.00014964,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "total": 0.00018313500000000001
+        }
+      },
+      "capped_text": "{\"tool_name\": \"search_memory\", \"arguments\": {\"query\": \"checkout friction\", \"top_k\": 3}}"
+    },
+    {
+      "case_id": "dag_react_json_plan",
+      "ok": true,
+      "provider": "deepseek",
+      "stopReason": "stop",
+      "latency_ms": 5198,
+      "usage": {
+        "input": 93,
+        "output": 290,
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "reasoning": 184,
+        "totalTokens": 383,
+        "cost": {
+          "input": 4.0455000000000005e-05,
+          "output": 0.0002523,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "total": 0.000292755
+        }
+      },
+      "capped_text": "{\"nodes\":[{\"id\":\"retrieve\",\"action\":\"Search and collect documents relevant to the research question from a corpus or database.\"},{\"id\":\"analyze\",\"action\":\"Apply thematic analysis to identify, code, and extract key themes and patterns across the retrieved documents.\"},{\"id\":\"synthesize\",\"action\":\"Synthesize the identified themes into a coherent, comprehensive answer to the research question, highlighting connections and insights.\"}],\"edges\":[[\"retrieve\",\"analyze\"],[\"analyze\",\"synthesize\"]]}"
+    }
+  ]
+}

@@ -1,0 +1,201 @@
+{
+  "schema_version": 1,
+  "scenarios": [
+    {
+      "scenario_id": "chat.tool_loop.task_and_finding",
+      "family": "chat_tool_loop",
+      "quality": {
+        "stepCount": 0,
+        "groundedStepCount": 0,
+        "validatedStepCount": 0,
+        "provisionalStepCount": 0,
+        "averageQuality": null,
+        "sourceSpanPreserved": true,
+        "reportableDoneGate": false,
+        "doneGateReason": "Lab-only candidate records source-grounded/provisional spine steps but does not bypass Istara's human Done gate."
+      },
+      "steps": []
+    },
+    {
+      "scenario_id": "task.plan_execute.lifecycle",
+      "family": "plan_and_execute",
+      "quality": {
+        "stepCount": 0,
+        "groundedStepCount": 0,
+        "validatedStepCount": 0,
+        "provisionalStepCount": 0,
+        "averageQuality": null,
+        "sourceSpanPreserved": true,
+        "reportableDoneGate": false,
+        "doneGateReason": "Lab-only candidate records source-grounded/provisional spine steps but does not bypass Istara's human Done gate."
+      },
+      "steps": []
+    },
+    {
+      "scenario_id": "documents.tools.slice",
+      "family": "documents_tools",
+      "quality": {
+        "stepCount": 0,
+        "groundedStepCount": 0,
+        "validatedStepCount": 0,
+        "provisionalStepCount": 0,
+        "averageQuality": null,
+        "sourceSpanPreserved": true,
+        "reportableDoneGate": false,
+        "doneGateReason": "Lab-only candidate records source-grounded/provisional spine steps but does not bypass Istara's human Done gate."
+      },
+      "steps": []
+    },
+    {
+      "scenario_id": "structured_outputs.core_eval",
+      "family": "structured_outputs",
+      "quality": {
+        "stepCount": 0,
+        "groundedStepCount": 0,
+        "validatedStepCount": 0,
+        "provisionalStepCount": 0,
+        "averageQuality": null,
+        "sourceSpanPreserved": true,
+        "reportableDoneGate": false,
+        "doneGateReason": "Lab-only candidate records source-grounded/provisional spine steps but does not bypass Istara's human Done gate."
+      },
+      "steps": []
+    },
+    {
+      "scenario_id": "memory.rag.slice",
+      "family": "memory_rag",
+      "quality": {
+        "stepCount": 0,
+        "groundedStepCount": 0,
+        "validatedStepCount": 0,
+        "provisionalStepCount": 0,
+        "averageQuality": null,
+        "sourceSpanPreserved": true,
+        "reportableDoneGate": false,
+        "doneGateReason": "Lab-only candidate records source-grounded/provisional spine steps but does not bypass Istara's human Done gate."
+      },
+      "steps": []
+    },
+    {
+      "scenario_id": "skills.three_skill_slice",
+      "family": "skills",
+      "quality": {
+        "stepCount": 0,
+        "groundedStepCount": 0,
+        "validatedStepCount": 0,
+        "provisionalStepCount": 0,
+        "averageQuality": null,
+        "sourceSpanPreserved": true,
+        "reportableDoneGate": false,
+        "doneGateReason": "Lab-only candidate records source-grounded/provisional spine steps but does not bypass Istara's human Done gate."
+      },
+      "steps": []
+    },
+    {
+      "scenario_id": "a2a.debate_report.slice",
+      "family": "a2a",
+      "quality": {
+        "stepCount": 0,
+        "groundedStepCount": 0,
+        "validatedStepCount": 0,
+        "provisionalStepCount": 0,
+        "averageQuality": null,
+        "sourceSpanPreserved": true,
+        "reportableDoneGate": false,
+        "doneGateReason": "Lab-only candidate records source-grounded/provisional spine steps but does not bypass Istara's human Done gate."
+      },
+      "steps": []
+    },
+    {
+      "scenario_id": "channel.lifecycle.simulated_slice",
+      "family": "channels",
+      "quality": {
+        "stepCount": 0,
+        "groundedStepCount": 0,
+        "validatedStepCount": 0,
+        "provisionalStepCount": 0,
+        "averageQuality": null,
+        "sourceSpanPreserved": true,
+        "reportableDoneGate": false,
+        "doneGateReason": "Lab-only candidate records source-grounded/provisional spine steps but does not bypass Istara's human Done gate."
+      },
+      "steps": []
+    },
+    {
+      "scenario_id": "research.spine.step_tracker",
+      "family": "research_spine",
+      "quality": {
+        "stepCount": 4,
+        "groundedStepCount": 3,
+        "validatedStepCount": 1,
+        "provisionalStepCount": 1,
+        "averageQuality": 0.847,
+        "sourceSpanPreserved": true,
+        "reportableDoneGate": false,
+        "doneGateReason": "Lab-only candidate records source-grounded/provisional spine steps but does not bypass Istara's human Done gate."
+      },
+      "steps": [
+        {
+          "id": "research-step-1",
+          "projectId": "pi-replacement-lab",
+          "step": "evidence_unit",
+          "artifact_id": "eu-checkout-p03",
+          "source_document_id": "document-seed-checkout-friction",
+          "source_span": "Participant P03 abandoned checkout after surprise shipping and mandatory account creation.",
+          "grounding_status": "source_grounded",
+          "quality_score": 0.94,
+          "notes": "Exact source span preserved."
+        },
+        {
+          "id": "research-step-2",
+          "projectId": "pi-replacement-lab",
+          "step": "atomic_extraction",
+          "artifact_id": "atom-hidden-cost-account-pressure",
+          "source_document_id": "document-seed-checkout-friction",
+          "source_span": "surprise shipping and mandatory account creation",
+          "grounding_status": "source_grounded",
+          "quality_score": 0.9,
+          "notes": ""
+        },
+        {
+          "id": "research-step-3",
+          "projectId": "pi-replacement-lab",
+          "step": "reliability",
+          "artifact_id": "rel-hidden-cost-account-pressure",
+          "source_document_id": "document-seed-checkout-friction",
+          "source_span": "surprise shipping and mandatory account creation",
+          "grounding_status": "validated",
+          "quality_score": 0.83,
+          "notes": "Proxy reliability score; true multi-model reconciliation remains future work."
+        },
+        {
+          "id": "research-step-4",
+          "projectId": "pi-replacement-lab",
+          "step": "recommendation",
+          "artifact_id": "rec-transparent-checkout",
+          "source_document_id": "document-seed-checkout-friction",
+          "source_span": "surprise shipping and mandatory account creation",
+          "grounding_status": "candidate_only",
+          "quality_score": 0.72,
+          "notes": "Not reportable until human Done review in production Istara."
+        }
+      ]
+    },
+    {
+      "scenario_id": "model.routing.telemetry.slice",
+      "family": "model_routing_telemetry",
+      "quality": {
+        "stepCount": 0,
+        "groundedStepCount": 0,
+        "validatedStepCount": 0,
+        "provisionalStepCount": 0,
+        "averageQuality": null,
+        "sourceSpanPreserved": true,
+        "reportableDoneGate": false,
+        "doneGateReason": "Lab-only candidate records source-grounded/provisional spine steps but does not bypass Istara's human Done gate."
+      },
+      "steps": []
+    }
+  ],
+  "note": "Lab quality rows prove source-span preservation and provisional status. Production reportability still requires Istara's human-approved Done gate."
+}

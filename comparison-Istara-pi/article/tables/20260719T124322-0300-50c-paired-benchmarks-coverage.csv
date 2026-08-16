@@ -1,0 +1,10 @@
+category,inventory_count,representative_or_sampled_count,coverage_mode
+a2a,5,1,executed_or_sampled
+channel_lifecycle,3,1,executed_or_sampled
+memory_rag_skills,29,16,executed_or_sampled
+model_management,16,2,executed_or_sampled
+other_feature_simulation,29,0,inventory_only
+plan_execute_dag,9,5,executed_or_sampled
+real_user_research_spine,15,0,inventory_only
+security_or_external_service,7,0,inventory_only
+tool_task_document,4,2,executed_or_sampled

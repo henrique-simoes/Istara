@@ -1,0 +1,19 @@
+nav_group,feature_count,pi_replacement_paths
+Agents,5,pi_agent_core_or_coding_agent_harness:5
+Autoresearch,4,adapter_owned_memory_with_pi_loop_hooks:1; unsupported_until_governed_evolution_adapter_exists:3
+Chat,6,adapter_owned_memory_with_pi_loop_hooks:1; istara_product_layer_preserved:4; pi_agent_core:1
+Context,1,adapter_owned_memory_with_pi_loop_hooks:1
+Documents,4,canonical_tools_under_pi_agent_core:4
+Findings,6,canonical_tools_under_pi_agent_core:6
+Integrations,6,istara_product_layer_preserved:3; pi_ai_plus_istara_policy_adapter:1; pi_coding_agent_or_channel_sidecar_candidate:2
+Interfaces,6,istara_product_layer_preserved:1; pi_agent_core:5
+Interviews,3,canonical_tools_under_pi_agent_core:3
+Loops,5,pi_agent_core_candidate:5
+Memory,4,adapter_owned_memory_with_pi_loop_hooks:4
+Notifications,2,istara_product_layer_preserved:2
+Secondary,8,adapter_owned_memory_with_pi_loop_hooks:1; istara_product_layer_preserved:5; pi_ai_plus_istara_policy_adapter:2
+Settings,9,adapter_owned_memory_with_pi_loop_hooks:1; istara_product_layer_preserved:4; pi_ai_plus_istara_policy_adapter:4
+Shell,7,istara_product_layer_preserved:7
+Skills,3,pi_skills_bridge_candidate:3
+Tasks,5,pi_agent_core:5
+UX Laws,2,istara_product_layer_preserved:2

@@ -1,0 +1,75 @@
+{
+  "schema_version": 1,
+  "run_id": "20260719T120128-0300-replacement-worktree",
+  "commands": [
+    {
+      "command": "npm run validate",
+      "cwd": "/Users/user/Documents/Istara-main-pi-replacement/labs/pi-replacement",
+      "exit_code": 0,
+      "result": "passed",
+      "summary": "Node test runner passed 2 tests: canonical facade validation and Pi-owned Agent tool-loop scenario."
+    },
+    {
+      "command": "npm run smoke:no-model",
+      "cwd": "/Users/user/Documents/Istara-main-pi-replacement/labs/pi-replacement",
+      "exit_code": 0,
+      "result": "passed",
+      "summary": "Pi Agent loop executed canonical Istara task and finding tools using the faux no-model provider."
+    },
+    {
+      "command": "node --input-type=module -e 'import { IstaraPiAdapter } from \"./src/istara-pi-adapter.mjs\"; const adapter = new IstaraPiAdapter({ mode: \"deepseek\", projectId: \"pi-replacement-lab\" }); const result = await adapter.runDeepSeekProviderSmoke(); console.log(JSON.stringify({ result, envAfter: Boolean(process.env.DEEPSEEK_API_KEY) }, null, 2)); process.exitCode = result.ok && !process.env.DEEPSEEK_API_KEY ? 0 : 1;'",
+      "cwd": "/Users/user/Documents/Istara-main-pi-replacement/labs/pi-replacement",
+      "exit_code": 0,
+      "result": "passed",
+      "summary": "Pi deepseekProvider() reached deepseek-v4-pro, returned capped text pong, and same-process env cleanup check reported envAfter=false."
+    }
+  ],
+  "no_model_scenario": {
+    "passed": true,
+    "scenario": "chat.tool_loop.task_and_finding",
+    "adapter_mode": "pi_agent_core_faux_provider",
+    "pi_owned_loop": true,
+    "canonical_tools_used": [
+      "tasks.create",
+      "findings.create"
+    ],
+    "pi_provider_calls": 2,
+    "project_id": "pi-replacement-lab",
+    "task_count": 1,
+    "finding_count": 1,
+    "usage": {
+      "input": 621,
+      "output": 15,
+      "cacheRead": 87,
+      "cacheWrite": 621,
+      "totalTokens": 1344,
+      "cost": {
+        "total": 0
+      }
+    }
+  },
+  "deepseek_provider_smoke": {
+    "passed": true,
+    "scenario": "provider.deepseek_v4_pro",
+    "adapter_mode": "library_builtin_deepseek_provider",
+    "deepseek_key_present": true,
+    "secret_value_logged": false,
+    "provider": "deepseek",
+    "model": "deepseek-v4-pro",
+    "stopReason": "stop",
+    "latencyMs": 2438,
+    "envAfter": false,
+    "usage": {
+      "input": 10,
+      "output": 40,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "reasoning": 37,
+      "totalTokens": 50,
+      "cost": {
+        "total": 0.000039149999999999996
+      }
+    },
+    "cappedText": "pong"
+  }
+}

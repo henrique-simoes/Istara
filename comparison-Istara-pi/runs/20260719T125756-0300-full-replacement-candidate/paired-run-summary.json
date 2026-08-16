@@ -1,0 +1,783 @@
+{
+  "baseline": [
+    {
+      "scenario": "chat.tool_loop.task_and_finding",
+      "family": "chat_tool_loop",
+      "ok": true,
+      "sourceAssets": [
+        "tests/agentic_eval_contract.json",
+        "tests/simulation/scenarios/31-task-documents-tools.mjs"
+      ],
+      "canonicalToolsUsed": [
+        "tasks.create",
+        "findings.create"
+      ],
+      "toolCallCount": 2,
+      "successfulToolCallCount": 2,
+      "tokenUsage": {
+        "input": 0,
+        "output": 0,
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "totalTokens": 0,
+        "cost": {
+          "input": 0,
+          "output": 0,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "total": 0
+        }
+      },
+      "baselineEvidence": {
+        "nativeIstaraContractSource": [
+          "tests/agentic_eval_contract.json",
+          "tests/simulation/scenarios/31-task-documents-tools.mjs"
+        ],
+        "canonicalToolsUsed": [
+          "tasks.create",
+          "findings.create"
+        ],
+        "expectedCanonicalTools": [
+          "tasks.create",
+          "findings.create"
+        ],
+        "deterministicOnly": true
+      }
+    },
+    {
+      "scenario": "task.plan_execute.lifecycle",
+      "family": "plan_and_execute",
+      "ok": true,
+      "sourceAssets": [
+        "tests/benchmarks/test_orchestration.py",
+        "tests/simulation/scenarios/71-plan-and-execute.mjs"
+      ],
+      "canonicalToolsUsed": [
+        "tasks.create",
+        "plans.create",
+        "tasks.update_lifecycle"
+      ],
+      "toolCallCount": 3,
+      "successfulToolCallCount": 3,
+      "tokenUsage": {
+        "input": 0,
+        "output": 0,
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "totalTokens": 0,
+        "cost": {
+          "input": 0,
+          "output": 0,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "total": 0
+        }
+      },
+      "baselineEvidence": {
+        "nativeIstaraContractSource": [
+          "tests/benchmarks/test_orchestration.py",
+          "tests/simulation/scenarios/71-plan-and-execute.mjs"
+        ],
+        "canonicalToolsUsed": [
+          "tasks.create",
+          "plans.create",
+          "tasks.update_lifecycle"
+        ],
+        "expectedCanonicalTools": [
+          "tasks.create",
+          "plans.create",
+          "tasks.update_lifecycle"
+        ],
+        "deterministicOnly": true
+      }
+    },
+    {
+      "scenario": "documents.tools.slice",
+      "family": "documents_tools",
+      "ok": true,
+      "sourceAssets": [
+        "tests/simulation/scenarios/31-task-documents-tools.mjs"
+      ],
+      "canonicalToolsUsed": [
+        "documents.create",
+        "tasks.create",
+        "tasks.attach_document",
+        "findings.create"
+      ],
+      "toolCallCount": 4,
+      "successfulToolCallCount": 4,
+      "tokenUsage": {
+        "input": 0,
+        "output": 0,
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "totalTokens": 0,
+        "cost": {
+          "input": 0,
+          "output": 0,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "total": 0
+        }
+      },
+      "baselineEvidence": {
+        "nativeIstaraContractSource": [
+          "tests/simulation/scenarios/31-task-documents-tools.mjs"
+        ],
+        "canonicalToolsUsed": [
+          "documents.create",
+          "tasks.create",
+          "tasks.attach_document",
+          "findings.create"
+        ],
+        "expectedCanonicalTools": [
+          "documents.create",
+          "tasks.create",
+          "tasks.attach_document",
+          "findings.create"
+        ],
+        "deterministicOnly": true
+      }
+    },
+    {
+      "scenario": "structured_outputs.core_eval",
+      "family": "structured_outputs",
+      "ok": true,
+      "sourceAssets": [
+        "tests/evals/cases/core_eval_cases.json",
+        "scripts/run_istara_evals.py"
+      ],
+      "canonicalToolsUsed": [
+        "evals.emit_structured"
+      ],
+      "toolCallCount": 1,
+      "successfulToolCallCount": 1,
+      "tokenUsage": {
+        "input": 0,
+        "output": 0,
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "totalTokens": 0,
+        "cost": {
+          "input": 0,
+          "output": 0,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "total": 0
+        }
+      },
+      "baselineEvidence": {
+        "nativeIstaraContractSource": [
+          "tests/evals/cases/core_eval_cases.json",
+          "scripts/run_istara_evals.py"
+        ],
+        "canonicalToolsUsed": [
+          "evals.emit_structured"
+        ],
+        "expectedCanonicalTools": [
+          "evals.emit_structured"
+        ],
+        "deterministicOnly": true
+      }
+    },
+    {
+      "scenario": "memory.rag.slice",
+      "family": "memory_rag",
+      "ok": true,
+      "sourceAssets": [
+        "tests/agentic_eval_contract.json",
+        "tests/simulation/scenarios/23-memory-view.mjs"
+      ],
+      "canonicalToolsUsed": [
+        "memory.search",
+        "findings.create",
+        "memory.write"
+      ],
+      "toolCallCount": 3,
+      "successfulToolCallCount": 3,
+      "tokenUsage": {
+        "input": 0,
+        "output": 0,
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "totalTokens": 0,
+        "cost": {
+          "input": 0,
+          "output": 0,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "total": 0
+        }
+      },
+      "baselineEvidence": {
+        "nativeIstaraContractSource": [
+          "tests/agentic_eval_contract.json",
+          "tests/simulation/scenarios/23-memory-view.mjs"
+        ],
+        "canonicalToolsUsed": [
+          "memory.search",
+          "findings.create",
+          "memory.write"
+        ],
+        "expectedCanonicalTools": [
+          "memory.search",
+          "findings.create",
+          "memory.write"
+        ],
+        "deterministicOnly": true
+      }
+    },
+    {
+      "scenario": "skills.three_skill_slice",
+      "family": "skills",
+      "ok": true,
+      "sourceAssets": [
+        "tests/agentic_eval_contract.json",
+        "tests/simulation/scenarios/20-all-skills-comprehensive.mjs"
+      ],
+      "canonicalToolsUsed": [
+        "skills.apply",
+        "skills.apply",
+        "skills.apply",
+        "findings.create"
+      ],
+      "toolCallCount": 4,
+      "successfulToolCallCount": 4,
+      "tokenUsage": {
+        "input": 0,
+        "output": 0,
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "totalTokens": 0,
+        "cost": {
+          "input": 0,
+          "output": 0,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "total": 0
+        }
+      },
+      "baselineEvidence": {
+        "nativeIstaraContractSource": [
+          "tests/agentic_eval_contract.json",
+          "tests/simulation/scenarios/20-all-skills-comprehensive.mjs"
+        ],
+        "canonicalToolsUsed": [
+          "skills.apply",
+          "skills.apply",
+          "skills.apply",
+          "findings.create"
+        ],
+        "expectedCanonicalTools": [
+          "skills.apply",
+          "skills.apply",
+          "skills.apply",
+          "findings.create"
+        ],
+        "deterministicOnly": true
+      }
+    },
+    {
+      "scenario": "a2a.debate_report.slice",
+      "family": "a2a",
+      "ok": true,
+      "sourceAssets": [
+        "tests/simulation/scenarios/73-a2a-debate-and-reports.mjs"
+      ],
+      "canonicalToolsUsed": [
+        "a2a.delegate",
+        "a2a.delegate",
+        "a2a.report"
+      ],
+      "toolCallCount": 3,
+      "successfulToolCallCount": 3,
+      "tokenUsage": {
+        "input": 0,
+        "output": 0,
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "totalTokens": 0,
+        "cost": {
+          "input": 0,
+          "output": 0,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "total": 0
+        }
+      },
+      "baselineEvidence": {
+        "nativeIstaraContractSource": [
+          "tests/simulation/scenarios/73-a2a-debate-and-reports.mjs"
+        ],
+        "canonicalToolsUsed": [
+          "a2a.delegate",
+          "a2a.delegate",
+          "a2a.report"
+        ],
+        "expectedCanonicalTools": [
+          "a2a.delegate",
+          "a2a.delegate",
+          "a2a.report"
+        ],
+        "deterministicOnly": true
+      }
+    },
+    {
+      "scenario": "channel.lifecycle.simulated_slice",
+      "family": "channels",
+      "ok": true,
+      "sourceAssets": [
+        "tests/simulation/scenarios/53-channel-lifecycle.mjs"
+      ],
+      "canonicalToolsUsed": [
+        "channels.create",
+        "channels.receive",
+        "channels.respond"
+      ],
+      "toolCallCount": 3,
+      "successfulToolCallCount": 3,
+      "tokenUsage": {
+        "input": 0,
+        "output": 0,
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "totalTokens": 0,
+        "cost": {
+          "input": 0,
+          "output": 0,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "total": 0
+        }
+      },
+      "baselineEvidence": {
+        "nativeIstaraContractSource": [
+          "tests/simulation/scenarios/53-channel-lifecycle.mjs"
+        ],
+        "canonicalToolsUsed": [
+          "channels.create",
+          "channels.receive",
+          "channels.respond"
+        ],
+        "expectedCanonicalTools": [
+          "channels.create",
+          "channels.receive",
+          "channels.respond"
+        ],
+        "deterministicOnly": true
+      }
+    }
+  ],
+  "candidate": [
+    {
+      "scenario": "chat.tool_loop.task_and_finding",
+      "family": "chat_tool_loop",
+      "ok": true,
+      "sourceAssets": [
+        "tests/agentic_eval_contract.json",
+        "tests/simulation/scenarios/31-task-documents-tools.mjs"
+      ],
+      "canonicalToolsUsed": [
+        "tasks.create",
+        "findings.create"
+      ],
+      "toolCallCount": 2,
+      "successfulToolCallCount": 2,
+      "tokenUsage": {
+        "input": 1819,
+        "output": 15,
+        "cacheRead": 77,
+        "cacheWrite": 1819,
+        "totalTokens": 3730,
+        "cost": {
+          "input": 0,
+          "output": 0,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "total": 0
+        }
+      },
+      "replacementEvidence": {
+        "piOwnedLoop": true,
+        "canonicalToolsUsed": [
+          "tasks.create",
+          "findings.create"
+        ],
+        "expectedCanonicalTools": [
+          "tasks.create",
+          "findings.create"
+        ],
+        "expectedToolOrderMatched": true,
+        "istaraProductStatePreserved": {
+          "projectId": "pi-replacement-lab",
+          "taskCount": 1,
+          "findingCount": 1,
+          "documentCount": 0,
+          "memoryCount": 2,
+          "channelCount": 0
+        }
+      }
+    },
+    {
+      "scenario": "task.plan_execute.lifecycle",
+      "family": "plan_and_execute",
+      "ok": true,
+      "sourceAssets": [
+        "tests/benchmarks/test_orchestration.py",
+        "tests/simulation/scenarios/71-plan-and-execute.mjs"
+      ],
+      "canonicalToolsUsed": [
+        "tasks.create",
+        "plans.create",
+        "tasks.update_lifecycle"
+      ],
+      "toolCallCount": 3,
+      "successfulToolCallCount": 3,
+      "tokenUsage": {
+        "input": 1971,
+        "output": 15,
+        "cacheRead": 238,
+        "cacheWrite": 1971,
+        "totalTokens": 4195,
+        "cost": {
+          "input": 0,
+          "output": 0,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "total": 0
+        }
+      },
+      "replacementEvidence": {
+        "piOwnedLoop": true,
+        "canonicalToolsUsed": [
+          "tasks.create",
+          "plans.create",
+          "tasks.update_lifecycle"
+        ],
+        "expectedCanonicalTools": [
+          "tasks.create",
+          "plans.create",
+          "tasks.update_lifecycle"
+        ],
+        "expectedToolOrderMatched": true,
+        "istaraProductStatePreserved": {
+          "projectId": "pi-replacement-lab",
+          "taskCount": 1,
+          "findingCount": 0,
+          "documentCount": 0,
+          "memoryCount": 2,
+          "channelCount": 0
+        }
+      }
+    },
+    {
+      "scenario": "documents.tools.slice",
+      "family": "documents_tools",
+      "ok": true,
+      "sourceAssets": [
+        "tests/simulation/scenarios/31-task-documents-tools.mjs"
+      ],
+      "canonicalToolsUsed": [
+        "documents.create",
+        "tasks.create",
+        "tasks.attach_document",
+        "findings.create"
+      ],
+      "toolCallCount": 4,
+      "successfulToolCallCount": 4,
+      "tokenUsage": {
+        "input": 1841,
+        "output": 17,
+        "cacheRead": 401,
+        "cacheWrite": 1841,
+        "totalTokens": 4100,
+        "cost": {
+          "input": 0,
+          "output": 0,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "total": 0
+        }
+      },
+      "replacementEvidence": {
+        "piOwnedLoop": true,
+        "canonicalToolsUsed": [
+          "documents.create",
+          "tasks.create",
+          "tasks.attach_document",
+          "findings.create"
+        ],
+        "expectedCanonicalTools": [
+          "documents.create",
+          "tasks.create",
+          "tasks.attach_document",
+          "findings.create"
+        ],
+        "expectedToolOrderMatched": true,
+        "istaraProductStatePreserved": {
+          "projectId": "pi-replacement-lab",
+          "taskCount": 1,
+          "findingCount": 1,
+          "documentCount": 1,
+          "memoryCount": 2,
+          "channelCount": 0
+        }
+      }
+    },
+    {
+      "scenario": "structured_outputs.core_eval",
+      "family": "structured_outputs",
+      "ok": true,
+      "sourceAssets": [
+        "tests/evals/cases/core_eval_cases.json",
+        "scripts/run_istara_evals.py"
+      ],
+      "canonicalToolsUsed": [
+        "evals.emit_structured"
+      ],
+      "toolCallCount": 1,
+      "successfulToolCallCount": 1,
+      "tokenUsage": {
+        "input": 1714,
+        "output": 15,
+        "cacheRead": 84,
+        "cacheWrite": 1714,
+        "totalTokens": 3527,
+        "cost": {
+          "input": 0,
+          "output": 0,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "total": 0
+        }
+      },
+      "replacementEvidence": {
+        "piOwnedLoop": true,
+        "canonicalToolsUsed": [
+          "evals.emit_structured"
+        ],
+        "expectedCanonicalTools": [
+          "evals.emit_structured"
+        ],
+        "expectedToolOrderMatched": true,
+        "istaraProductStatePreserved": {
+          "projectId": "pi-replacement-lab",
+          "taskCount": 0,
+          "findingCount": 0,
+          "documentCount": 0,
+          "memoryCount": 2,
+          "channelCount": 0
+        }
+      }
+    },
+    {
+      "scenario": "memory.rag.slice",
+      "family": "memory_rag",
+      "ok": true,
+      "sourceAssets": [
+        "tests/agentic_eval_contract.json",
+        "tests/simulation/scenarios/23-memory-view.mjs"
+      ],
+      "canonicalToolsUsed": [
+        "memory.search",
+        "findings.create",
+        "memory.write"
+      ],
+      "toolCallCount": 3,
+      "successfulToolCallCount": 3,
+      "tokenUsage": {
+        "input": 1847,
+        "output": 15,
+        "cacheRead": 86,
+        "cacheWrite": 1847,
+        "totalTokens": 3795,
+        "cost": {
+          "input": 0,
+          "output": 0,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "total": 0
+        }
+      },
+      "replacementEvidence": {
+        "piOwnedLoop": true,
+        "canonicalToolsUsed": [
+          "memory.search",
+          "findings.create",
+          "memory.write"
+        ],
+        "expectedCanonicalTools": [
+          "memory.search",
+          "findings.create",
+          "memory.write"
+        ],
+        "expectedToolOrderMatched": true,
+        "istaraProductStatePreserved": {
+          "projectId": "pi-replacement-lab",
+          "taskCount": 0,
+          "findingCount": 1,
+          "documentCount": 0,
+          "memoryCount": 3,
+          "channelCount": 0
+        }
+      }
+    },
+    {
+      "scenario": "skills.three_skill_slice",
+      "family": "skills",
+      "ok": true,
+      "sourceAssets": [
+        "tests/agentic_eval_contract.json",
+        "tests/simulation/scenarios/20-all-skills-comprehensive.mjs"
+      ],
+      "canonicalToolsUsed": [
+        "skills.apply",
+        "skills.apply",
+        "skills.apply",
+        "findings.create"
+      ],
+      "toolCallCount": 4,
+      "successfulToolCallCount": 4,
+      "tokenUsage": {
+        "input": 1652,
+        "output": 14,
+        "cacheRead": 375,
+        "cacheWrite": 1652,
+        "totalTokens": 3693,
+        "cost": {
+          "input": 0,
+          "output": 0,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "total": 0
+        }
+      },
+      "replacementEvidence": {
+        "piOwnedLoop": true,
+        "canonicalToolsUsed": [
+          "skills.apply",
+          "skills.apply",
+          "skills.apply",
+          "findings.create"
+        ],
+        "expectedCanonicalTools": [
+          "skills.apply",
+          "skills.apply",
+          "skills.apply",
+          "findings.create"
+        ],
+        "expectedToolOrderMatched": true,
+        "istaraProductStatePreserved": {
+          "projectId": "pi-replacement-lab",
+          "taskCount": 0,
+          "findingCount": 1,
+          "documentCount": 0,
+          "memoryCount": 2,
+          "channelCount": 0
+        }
+      }
+    },
+    {
+      "scenario": "a2a.debate_report.slice",
+      "family": "a2a",
+      "ok": true,
+      "sourceAssets": [
+        "tests/simulation/scenarios/73-a2a-debate-and-reports.mjs"
+      ],
+      "canonicalToolsUsed": [
+        "a2a.delegate",
+        "a2a.delegate",
+        "a2a.report"
+      ],
+      "toolCallCount": 3,
+      "successfulToolCallCount": 3,
+      "tokenUsage": {
+        "input": 1657,
+        "output": 16,
+        "cacheRead": 264,
+        "cacheWrite": 1657,
+        "totalTokens": 3594,
+        "cost": {
+          "input": 0,
+          "output": 0,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "total": 0
+        }
+      },
+      "replacementEvidence": {
+        "piOwnedLoop": true,
+        "canonicalToolsUsed": [
+          "a2a.delegate",
+          "a2a.delegate",
+          "a2a.report"
+        ],
+        "expectedCanonicalTools": [
+          "a2a.delegate",
+          "a2a.delegate",
+          "a2a.report"
+        ],
+        "expectedToolOrderMatched": true,
+        "istaraProductStatePreserved": {
+          "projectId": "pi-replacement-lab",
+          "taskCount": 0,
+          "findingCount": 0,
+          "documentCount": 0,
+          "memoryCount": 2,
+          "channelCount": 0
+        }
+      }
+    },
+    {
+      "scenario": "channel.lifecycle.simulated_slice",
+      "family": "channels",
+      "ok": true,
+      "sourceAssets": [
+        "tests/simulation/scenarios/53-channel-lifecycle.mjs"
+      ],
+      "canonicalToolsUsed": [
+        "channels.create",
+        "channels.receive",
+        "channels.respond"
+      ],
+      "toolCallCount": 3,
+      "successfulToolCallCount": 3,
+      "tokenUsage": {
+        "input": 1761,
+        "output": 20,
+        "cacheRead": 172,
+        "cacheWrite": 1761,
+        "totalTokens": 3714,
+        "cost": {
+          "input": 0,
+          "output": 0,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "total": 0
+        }
+      },
+      "replacementEvidence": {
+        "piOwnedLoop": true,
+        "canonicalToolsUsed": [
+          "channels.create",
+          "channels.receive",
+          "channels.respond"
+        ],
+        "expectedCanonicalTools": [
+          "channels.create",
+          "channels.receive",
+          "channels.respond"
+        ],
+        "expectedToolOrderMatched": true,
+        "istaraProductStatePreserved": {
+          "projectId": "pi-replacement-lab",
+          "taskCount": 0,
+          "findingCount": 0,
+          "documentCount": 0,
+          "memoryCount": 2,
+          "channelCount": 1
+        }
+      }
+    }
+  ]
+}

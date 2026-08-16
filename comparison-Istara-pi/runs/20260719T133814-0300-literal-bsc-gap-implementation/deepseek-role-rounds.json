@@ -1,0 +1,42 @@
+{
+  "schema_version": 1,
+  "provider": "deepseek",
+  "model": "deepseek-v4-pro",
+  "roles": [
+    "code-reviewer-rereview"
+  ],
+  "completed_roles": [
+    "code-reviewer-rereview"
+  ],
+  "ok": true,
+  "totalEstimatedCostUsd": 0.0004920140000000001,
+  "raw_capture": {
+    "prompts": "raw-llm-calls/prompts.jsonl.gz",
+    "outputs": "raw-llm-calls/outputs.jsonl.gz"
+  },
+  "results": [
+    {
+      "role": "code-reviewer-rereview",
+      "ok": true,
+      "stopReason": "stop",
+      "latencyMs": 9551,
+      "usage": {
+        "input": 328,
+        "output": 401,
+        "cacheRead": 128,
+        "cacheWrite": 0,
+        "reasoning": 252,
+        "totalTokens": 857,
+        "cost": {
+          "input": 0.00014268,
+          "output": 0.00034887000000000004,
+          "cacheRead": 4.64e-7,
+          "cacheWrite": 0,
+          "total": 0.0004920140000000001
+        }
+      },
+      "estimatedCostUsd": 0.0004920140000000001,
+      "text": "```json\n{\n  \"verdict\": \"PASS\",\n  \"remaining_blockers\": [],\n  \"notes\": \"All required coverage artifacts are present and validate. The 10/10 Pi-owned scenarios pass, tool-call counts (36/36) match expectations, and every required capability (memory, skills, A2A, channels, documents, plan/review, model routing to deepseek-v4-pro, telemetry, research spine steps) is exercised and confirmed. The only recorded limitation—cast routes to Codex CLI probes that hung in OpenClaw—is an external conductor comportment issue and does not reflect a defect in the candidate Pi replacement. No further evidence contradicts the candidate’s readiness.\"\n}\n```"
+    }
+  ]
+}

@@ -1,0 +1,8 @@
+{
+  "gzip_test_exit_code": 0,
+  "secret_scan_exit_code": 0,
+  "secret_scan_match_count": 3,
+  "secret_scan_allowed_match_count": 3,
+  "secret_scan_unexpected_match_count": 0,
+  "secret_scan_note": "Only allowed env-var/keychain retrieval mentions were found; no literal key or bearer value is stored."
+}

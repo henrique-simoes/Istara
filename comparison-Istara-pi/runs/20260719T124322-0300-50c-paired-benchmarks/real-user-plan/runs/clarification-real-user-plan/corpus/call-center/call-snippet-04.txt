@@ -1,0 +1,5 @@
+Call 4
+Caller role: caregiver
+Issue: staff duplicate reminders in SMS, portal messages, and sticky notes.
+Quote: "I do not need another reminder. I need to know which thing is actually blocking the visit."
+Disposition: escalated to coordinator

@@ -1,0 +1,2122 @@
+{
+  "schema_version": 1,
+  "source": "docs/features/inventory.json",
+  "run_id": "20260719T105618-0300-deepseek-conductor",
+  "feature_count": 86,
+  "summary_by_group": {
+    "Shell": {
+      "count": 7,
+      "paths": {
+        "istara_product_layer_preserved": 7
+      }
+    },
+    "Chat": {
+      "count": 6,
+      "paths": {
+        "pi_agent_core": 1,
+        "istara_product_layer_preserved": 4,
+        "adapter_owned_memory_with_pi_loop_hooks": 1
+      }
+    },
+    "Findings": {
+      "count": 6,
+      "paths": {
+        "canonical_tools_under_pi_agent_core": 6
+      }
+    },
+    "UX Laws": {
+      "count": 2,
+      "paths": {
+        "istara_product_layer_preserved": 2
+      }
+    },
+    "Tasks": {
+      "count": 5,
+      "paths": {
+        "pi_agent_core": 5
+      }
+    },
+    "Interviews": {
+      "count": 3,
+      "paths": {
+        "canonical_tools_under_pi_agent_core": 3
+      }
+    },
+    "Documents": {
+      "count": 4,
+      "paths": {
+        "canonical_tools_under_pi_agent_core": 4
+      }
+    },
+    "Context": {
+      "count": 1,
+      "paths": {
+        "adapter_owned_memory_with_pi_loop_hooks": 1
+      }
+    },
+    "Skills": {
+      "count": 3,
+      "paths": {
+        "pi_skills_bridge_candidate": 3
+      }
+    },
+    "Agents": {
+      "count": 5,
+      "paths": {
+        "pi_agent_core_or_coding_agent_harness": 5
+      }
+    },
+    "Memory": {
+      "count": 4,
+      "paths": {
+        "adapter_owned_memory_with_pi_loop_hooks": 4
+      }
+    },
+    "Interfaces": {
+      "count": 6,
+      "paths": {
+        "pi_agent_core": 5,
+        "istara_product_layer_preserved": 1
+      }
+    },
+    "Integrations": {
+      "count": 6,
+      "paths": {
+        "istara_product_layer_preserved": 3,
+        "pi_coding_agent_or_channel_sidecar_candidate": 2,
+        "pi_ai_plus_istara_policy_adapter": 1
+      }
+    },
+    "Loops": {
+      "count": 5,
+      "paths": {
+        "pi_agent_core_candidate": 5
+      }
+    },
+    "Settings": {
+      "count": 9,
+      "paths": {
+        "pi_ai_plus_istara_policy_adapter": 4,
+        "istara_product_layer_preserved": 4,
+        "adapter_owned_memory_with_pi_loop_hooks": 1
+      }
+    },
+    "Secondary": {
+      "count": 8,
+      "paths": {
+        "istara_product_layer_preserved": 5,
+        "pi_ai_plus_istara_policy_adapter": 2,
+        "adapter_owned_memory_with_pi_loop_hooks": 1
+      }
+    },
+    "Autoresearch": {
+      "count": 4,
+      "paths": {
+        "unsupported_until_governed_evolution_adapter_exists": 3,
+        "adapter_owned_memory_with_pi_loop_hooks": 1
+      }
+    },
+    "Notifications": {
+      "count": 2,
+      "paths": {
+        "istara_product_layer_preserved": 2
+      }
+    }
+  },
+  "features": [
+    {
+      "feature_id": "shell.navigation",
+      "title": "Application Navigation",
+      "nav_group": "Shell",
+      "status": "documented",
+      "source_code_refs": [
+        "frontend/src/lib/navigation.ts",
+        "frontend/src/components/layout/HomeClient.tsx",
+        "frontend/src/components/layout/Sidebar.tsx",
+        "frontend/src/components/layout/MobileNav.tsx"
+      ],
+      "api_refs": [],
+      "test_refs": [],
+      "istara_contract": "Preserve current user-visible behavior, project/auth scoping, data ownership, and documented graceful failure path.",
+      "pi_replacement_path": "istara_product_layer_preserved",
+      "adapter_contract": "No direct agentic-core ownership expected; feature must remain reachable and project-scoped while adjacent agentic calls route through the adapter.",
+      "evidence_required": "TBD-evidence: runs/20260719T105618-0300-deepseek-conductor/trace.jsonl.gz and feature-matrix row for shell.navigation",
+      "pi_score": null,
+      "istara_score": null,
+      "delta": null,
+      "notes": "Generated from docs/features/inventory.json; score after paired benchmarks."
+    },
+    {
+      "feature_id": "shell.projects",
+      "title": "Project Switcher",
+      "nav_group": "Shell",
+      "status": "documented",
+      "source_code_refs": [
+        "frontend/src/components/layout/Sidebar.tsx",
+        "frontend/src/stores/projectStore.ts",
+        "backend/app/api/routes/projects.py"
+      ],
+      "api_refs": [
+        "backend/app/api/routes/projects.py"
+      ],
+      "test_refs": [],
+      "istara_contract": "Preserve current user-visible behavior, project/auth scoping, data ownership, and documented graceful failure path.",
+      "pi_replacement_path": "istara_product_layer_preserved",
+      "adapter_contract": "No direct agentic-core ownership expected; feature must remain reachable and project-scoped while adjacent agentic calls route through the adapter.",
+      "evidence_required": "TBD-evidence: runs/20260719T105618-0300-deepseek-conductor/trace.jsonl.gz and feature-matrix row for shell.projects",
+      "pi_score": null,
+      "istara_score": null,
+      "delta": null,
+      "notes": "Generated from docs/features/inventory.json; score after paired benchmarks."
+    },
+    {
+      "feature_id": "shell.search",
+      "title": "Global Search",
+      "nav_group": "Shell",
+      "status": "needs-verification",
+      "source_code_refs": [
+        "frontend/src/components/layout/HomeClient.tsx",
+        "frontend/src/components/common/SearchModal.tsx"
+      ],
+      "api_refs": [],
+      "test_refs": [],
+      "istara_contract": "Preserve current user-visible behavior, project/auth scoping, data ownership, and documented graceful failure path.",
+      "pi_replacement_path": "istara_product_layer_preserved",
+      "adapter_contract": "No direct agentic-core ownership expected; feature must remain reachable and project-scoped while adjacent agentic calls route through the adapter.",
+      "evidence_required": "TBD-evidence: runs/20260719T105618-0300-deepseek-conductor/trace.jsonl.gz and feature-matrix row for shell.search",
+      "pi_score": null,
+      "istara_score": null,
+      "delta": null,
+      "notes": "Generated from docs/features/inventory.json; score after paired benchmarks."
+    },
+    {
+      "feature_id": "shell.notifications-bell",
+      "title": "Notification Bell",
+      "nav_group": "Shell",
+      "status": "documented",
+      "source_code_refs": [
+        "frontend/src/components/layout/Sidebar.tsx",
+        "frontend/src/stores/notificationStore.ts",
+        "backend/app/api/routes/notifications.py"
+      ],
+      "api_refs": [
+        "backend/app/api/routes/notifications.py"
+      ],
+      "test_refs": [],
+      "istara_contract": "Preserve current user-visible behavior, project/auth scoping, data ownership, and documented graceful failure path.",
+      "pi_replacement_path": "istara_product_layer_preserved",
+      "adapter_contract": "No direct agentic-core ownership expected; feature must remain reachable and project-scoped while adjacent agentic calls route through the adapter.",
+      "evidence_required": "TBD-evidence: runs/20260719T105618-0300-deepseek-conductor/trace.jsonl.gz and feature-matrix row for shell.notifications-bell",
+      "pi_score": null,
+      "istara_score": null,
+      "delta": null,
+      "notes": "Generated from docs/features/inventory.json; score after paired benchmarks."
+    },
+    {
+      "feature_id": "shell.keyboard-shortcuts",
+      "title": "Keyboard Shortcuts",
+      "nav_group": "Shell",
+      "status": "documented",
+      "source_code_refs": [
+        "frontend/src/components/layout/HomeClient.tsx",
+        "frontend/src/components/common/KeyboardShortcuts.tsx"
+      ],
+      "api_refs": [],
+      "test_refs": [],
+      "istara_contract": "Preserve current user-visible behavior, project/auth scoping, data ownership, and documented graceful failure path.",
+      "pi_replacement_path": "istara_product_layer_preserved",
+      "adapter_contract": "No direct agentic-core ownership expected; feature must remain reachable and project-scoped while adjacent agentic calls route through the adapter.",
+      "evidence_required": "TBD-evidence: runs/20260719T105618-0300-deepseek-conductor/trace.jsonl.gz and feature-matrix row for shell.keyboard-shortcuts",
+      "pi_score": null,
+      "istara_score": null,
+      "delta": null,
+      "notes": "Generated from docs/features/inventory.json; score after paired benchmarks."
+    },
+    {
+      "feature_id": "shell.onboarding",
+      "title": "View Onboarding",
+      "nav_group": "Shell",
+      "status": "documented",
+      "source_code_refs": [
+        "frontend/src/components/common/ViewOnboarding.tsx",
+        "frontend/src/hooks/useViewOnboarding.ts",
+        "frontend/src/stores/tourStore.ts"
+      ],
+      "api_refs": [],
+      "test_refs": [],
+      "istara_contract": "Preserve current user-visible behavior, project/auth scoping, data ownership, and documented graceful failure path.",
+      "pi_replacement_path": "istara_product_layer_preserved",
+      "adapter_contract": "No direct agentic-core ownership expected; feature must remain reachable and project-scoped while adjacent agentic calls route through the adapter.",
+      "evidence_required": "TBD-evidence: runs/20260719T105618-0300-deepseek-conductor/trace.jsonl.gz and feature-matrix row for shell.onboarding",
+      "pi_score": null,
+      "istara_score": null,
+      "delta": null,
+      "notes": "Generated from docs/features/inventory.json; score after paired benchmarks."
+    },
+    {
+      "feature_id": "auth.login",
+      "title": "Login And Session Bootstrap",
+      "nav_group": "Shell",
+      "status": "documented",
+      "source_code_refs": [
+        "frontend/src/components/layout/HomeClient.tsx",
+        "frontend/src/stores/authStore.ts",
+        "backend/app/api/routes/auth.py",
+        "backend/app/core/auth_sessions.py"
+      ],
+      "api_refs": [
+        "backend/app/api/routes/auth.py",
+        "backend/app/api/routes/sessions.py"
+      ],
+      "test_refs": [],
+      "istara_contract": "Preserve current user-visible behavior, project/auth scoping, data ownership, and documented graceful failure path.",
+      "pi_replacement_path": "istara_product_layer_preserved",
+      "adapter_contract": "No direct agentic-core ownership expected; feature must remain reachable and project-scoped while adjacent agentic calls route through the adapter.",
+      "evidence_required": "TBD-evidence: runs/20260719T105618-0300-deepseek-conductor/trace.jsonl.gz and feature-matrix row for auth.login",
+      "pi_score": null,
+      "istara_score": null,
+      "delta": null,
+      "notes": "Generated from docs/features/inventory.json; score after paired benchmarks."
+    },
+    {
+      "feature_id": "chat.overview",
+      "title": "Chat Workspace",
+      "nav_group": "Chat",
+      "status": "documented",
+      "source_code_refs": [
+        "frontend/src/components/chat/ChatView.tsx",
+        "frontend/src/stores/chatStore.ts",
+        "backend/app/api/routes/chat.py"
+      ],
+      "api_refs": [
+        "backend/app/api/routes/chat.py",
+        "frontend/src/lib/chatApi.ts"
+      ],
+      "test_refs": [],
+      "istara_contract": "Preserve current user-visible behavior, project/auth scoping, data ownership, and documented graceful failure path.",
+      "pi_replacement_path": "pi_agent_core",
+      "adapter_contract": "Pi owns the ReAct/tool loop; Istara adapter preserves project context, tool facade, RAG/persona boundaries, and chat/session storage.",
+      "evidence_required": "TBD-evidence: runs/20260719T105618-0300-deepseek-conductor/trace.jsonl.gz and feature-matrix row for chat.overview",
+      "pi_score": null,
+      "istara_score": null,
+      "delta": null,
+      "notes": "Generated from docs/features/inventory.json; score after paired benchmarks."
+    },
+    {
+      "feature_id": "chat.sessions",
+      "title": "Chat Sessions",
+      "nav_group": "Chat",
+      "status": "documented",
+      "source_code_refs": [
+        "frontend/src/components/chat/ChatSessionsSidebar.tsx",
+        "frontend/src/stores/sessionStore.ts",
+        "backend/app/api/routes/sessions.py"
+      ],
+      "api_refs": [
+        "frontend/src/lib/sessionsApi.ts",
+        "backend/app/api/routes/sessions.py"
+      ],
+      "test_refs": [],
+      "istara_contract": "Preserve current user-visible behavior, project/auth scoping, data ownership, and documented graceful failure path.",
+      "pi_replacement_path": "istara_product_layer_preserved",
+      "adapter_contract": "No direct agentic-core ownership expected; feature must remain reachable and project-scoped while adjacent agentic calls route through the adapter.",
+      "evidence_required": "TBD-evidence: runs/20260719T105618-0300-deepseek-conductor/trace.jsonl.gz and feature-matrix row for chat.sessions",
+      "pi_score": null,
+      "istara_score": null,
+      "delta": null,
+      "notes": "Generated from docs/features/inventory.json; score after paired benchmarks."
+    },
+    {
+      "feature_id": "chat.model-controls",
+      "title": "Chat Model Controls",
+      "nav_group": "Chat",
+      "status": "documented",
+      "source_code_refs": [
+        "frontend/src/components/chat/ChatView.tsx",
+        "frontend/src/components/chat/chatViewParts.tsx",
+        "frontend/src/lib/modelProviders.ts",
+        "backend/app/api/routes/llm_servers.py"
+      ],
+      "api_refs": [
+        "backend/app/api/routes/llm_servers.py",
+        "backend/app/core/llm_router.py"
+      ],
+      "test_refs": [
+        "frontend/src/lib/modelProviders.test.ts"
+      ],
+      "istara_contract": "Preserve current user-visible behavior, project/auth scoping, data ownership, and documented graceful failure path.",
+      "pi_replacement_path": "adapter_owned_memory_with_pi_loop_hooks",
+      "adapter_contract": "Istara remains source of truth for RAG, ReasoningBank, memory scope, redaction, and context DAG; Pi may request/load memory through canonical tools only.",
+      "evidence_required": "TBD-evidence: runs/20260719T105618-0300-deepseek-conductor/trace.jsonl.gz and feature-matrix row for chat.model-controls",
+      "pi_score": null,
+      "istara_score": null,
+      "delta": null,
+      "notes": "Generated from docs/features/inventory.json; score after paired benchmarks."
+    },
+    {
+      "feature_id": "chat.files",
+      "title": "Chat File Attachments",
+      "nav_group": "Chat",
+      "status": "documented",
+      "source_code_refs": [
+        "frontend/src/components/chat/ChatView.tsx",
+        "backend/app/api/routes/files.py",
+        "backend/app/core/file_processor.py"
+      ],
+      "api_refs": [
+        "backend/app/api/routes/files.py",
+        "backend/app/api/routes/documents.py"
+      ],
+      "test_refs": [],
+      "istara_contract": "Preserve current user-visible behavior, project/auth scoping, data ownership, and documented graceful failure path.",
+      "pi_replacement_path": "istara_product_layer_preserved",
+      "adapter_contract": "No direct agentic-core ownership expected; feature must remain reachable and project-scoped while adjacent agentic calls route through the adapter.",
+      "evidence_required": "TBD-evidence: runs/20260719T105618-0300-deepseek-conductor/trace.jsonl.gz and feature-matrix row for chat.files",
+      "pi_score": null,
+      "istara_score": null,
+      "delta": null,
+      "notes": "Generated from docs/features/inventory.json; score after paired benchmarks."
+    },
+    {
+      "feature_id": "chat.audio",
+      "title": "Chat Audio Conversation",
+      "nav_group": "Chat",
+      "status": "needs-verification",
+      "source_code_refs": [
+        "frontend/src/hooks/useVoiceRecorder.ts",
+        "frontend/src/components/chat/ChatView.tsx",
+        "backend/app/api/routes/chat_voice.py",
+        "backend/app/core/transcription.py"
+      ],
+      "api_refs": [
+        "backend/app/api/routes/chat_voice.py"
+      ],
+      "test_refs": [],
+      "istara_contract": "Preserve current user-visible behavior, project/auth scoping, data ownership, and documented graceful failure path.",
+      "pi_replacement_path": "istara_product_layer_preserved",
+      "adapter_contract": "No direct agentic-core ownership expected; feature must remain reachable and project-scoped while adjacent agentic calls route through the adapter.",
+      "evidence_required": "TBD-evidence: runs/20260719T105618-0300-deepseek-conductor/trace.jsonl.gz and feature-matrix row for chat.audio",
+      "pi_score": null,
+      "istara_score": null,
+      "delta": null,
+      "notes": "Generated from docs/features/inventory.json; score after paired benchmarks."
+    },
+    {
+      "feature_id": "chat.steering",
+      "title": "Chat Steering",
+      "nav_group": "Chat",
+      "status": "documented",
+      "source_code_refs": [
+        "frontend/src/components/common/SteeringInput.tsx",
+        "backend/app/api/routes/steering.py"
+      ],
+      "api_refs": [
+        "backend/app/api/routes/steering.py"
+      ],
+      "test_refs": [
+        "tests/test_steering_api.py"
+      ],
+      "istara_contract": "Preserve current user-visible behavior, project/auth scoping, data ownership, and documented graceful failure path.",
+      "pi_replacement_path": "istara_product_layer_preserved",
+      "adapter_contract": "No direct agentic-core ownership expected; feature must remain reachable and project-scoped while adjacent agentic calls route through the adapter.",
+      "evidence_required": "TBD-evidence: runs/20260719T105618-0300-deepseek-conductor/trace.jsonl.gz and feature-matrix row for chat.steering",
+      "pi_score": null,
+      "istara_score": null,
+      "delta": null,
+      "notes": "Generated from docs/features/inventory.json; score after paired benchmarks."
+    },
+    {
+      "feature_id": "findings.evidence",
+      "title": "Findings Evidence",
+      "nav_group": "Findings",
+      "status": "documented",
+      "source_code_refs": [
+        "frontend/src/components/findings/FindingsView.tsx",
+        "backend/app/api/routes/findings.py"
+      ],
+      "api_refs": [
+        "backend/app/api/routes/findings.py"
+      ],
+      "test_refs": [],
+      "istara_contract": "Preserve current user-visible behavior, project/auth scoping, data ownership, and documented graceful failure path.",
+      "pi_replacement_path": "canonical_tools_under_pi_agent_core",
+      "adapter_contract": "Istara owns data and APIs; Pi may drive research actions through canonical tools with evidence grounding and project scoping.",
+      "evidence_required": "TBD-evidence: runs/20260719T105618-0300-deepseek-conductor/trace.jsonl.gz and feature-matrix row for findings.evidence",
+      "pi_score": null,
+      "istara_score": null,
+      "delta": null,
+      "notes": "Generated from docs/features/inventory.json; score after paired benchmarks."
+    },
+    {
+      "feature_id": "findings.phase-tabs",
+      "title": "Findings Phase Tabs",
+      "nav_group": "Findings",
+      "status": "documented",
+      "source_code_refs": [
+        "frontend/src/components/findings/FindingsView.tsx"
+      ],
+      "api_refs": [
+        "backend/app/api/routes/findings.py"
+      ],
+      "test_refs": [],
+      "istara_contract": "Preserve current user-visible behavior, project/auth scoping, data ownership, and documented graceful failure path.",
+      "pi_replacement_path": "canonical_tools_under_pi_agent_core",
+      "adapter_contract": "Istara owns data and APIs; Pi may drive research actions through canonical tools with evidence grounding and project scoping.",
+      "evidence_required": "TBD-evidence: runs/20260719T105618-0300-deepseek-conductor/trace.jsonl.gz and feature-matrix row for findings.phase-tabs",
+      "pi_score": null,
+      "istara_score": null,
+      "delta": null,
+      "notes": "Generated from docs/features/inventory.json; score after paired benchmarks."
+    },
+    {
+      "feature_id": "findings.codebook",
+      "title": "Findings Codebook",
+      "nav_group": "Findings",
+      "status": "documented",
+      "source_code_refs": [
+        "frontend/src/components/findings/FindingsView.tsx",
+        "frontend/src/components/findings/CodebookViewer.tsx",
+        "backend/app/api/routes/codebooks.py",
+        "backend/app/api/routes/codebook_versions.py"
+      ],
+      "api_refs": [
+        "backend/app/api/routes/codebooks.py",
+        "backend/app/api/routes/codebook_versions.py"
+      ],
+      "test_refs": [
+        "tests/test_codebooks.py",
+        "tests/test_project_scope_contracts.py"
+      ],
+      "istara_contract": "Preserve current user-visible behavior, project/auth scoping, data ownership, and documented graceful failure path.",
+      "pi_replacement_path": "canonical_tools_under_pi_agent_core",
+      "adapter_contract": "Istara owns data and APIs; Pi may drive research actions through canonical tools with evidence grounding and project scoping.",
+      "evidence_required": "TBD-evidence: runs/20260719T105618-0300-deepseek-conductor/trace.jsonl.gz and feature-matrix row for findings.codebook",
+      "pi_score": null,
+      "istara_score": null,
+      "delta": null,
+      "notes": "Generated from docs/features/inventory.json; score after paired benchmarks."
+    },
+    {
+      "feature_id": "findings.review",
+      "title": "Findings Code Review",
+      "nav_group": "Findings",
+      "status": "documented",
+      "source_code_refs": [
+        "frontend/src/components/findings/FindingsView.tsx",
+        "frontend/src/components/findings/CodeReviewQueue.tsx",
+        "frontend/src/lib/researchIntegrityApi.ts"
+      ],
+      "api_refs": [
+        "backend/app/api/routes/code_applications.py",
+        "backend/app/api/routes/codebooks.py"
+      ],
+      "test_refs": [
+        "tests/test_code_applications.py",
+        "tests/test_project_scope_contracts.py"
+      ],
+      "istara_contract": "Preserve current user-visible behavior, project/auth scoping, data ownership, and documented graceful failure path.",
+      "pi_replacement_path": "canonical_tools_under_pi_agent_core",
+      "adapter_contract": "Istara owns data and APIs; Pi may drive research actions through canonical tools with evidence grounding and project scoping.",
+      "evidence_required": "TBD-evidence: runs/20260719T105618-0300-deepseek-conductor/trace.jsonl.gz and feature-matrix row for findings.review",
+      "pi_score": null,
+      "istara_score": null,
+      "delta": null,
+      "notes": "Generated from docs/features/inventory.json; score after paired benchmarks."
+    },
+    {
+      "feature_id": "findings.reports",
+      "title": "Project Reports",
+      "nav_group": "Findings",
+      "status": "documented",
+      "source_code_refs": [
+        "frontend/src/components/findings/FindingsView.tsx",
+        "frontend/src/components/findings/ProjectReportsView.tsx",
+        "backend/app/api/routes/reports.py",
+        "backend/app/core/report_manager.py",
+        "backend/app/core/reporting_worker.py"
+      ],
+      "api_refs": [
+        "backend/app/api/routes/reports.py"
+      ],
+      "test_refs": [],
+      "istara_contract": "Preserve current user-visible behavior, project/auth scoping, data ownership, and documented graceful failure path.",
+      "pi_replacement_path": "canonical_tools_under_pi_agent_core",
+      "adapter_contract": "Istara owns data and APIs; Pi may drive research actions through canonical tools with evidence grounding and project scoping.",
+      "evidence_required": "TBD-evidence: runs/20260719T105618-0300-deepseek-conductor/trace.jsonl.gz and feature-matrix row for findings.reports",
+      "pi_score": null,
+      "istara_score": null,
+      "delta": null,
+      "notes": "Generated from docs/features/inventory.json; score after paired benchmarks."
+    },
+    {
+      "feature_id": "findings.slide-instructions",
+      "title": "Report Slide Instructions",
+      "nav_group": "Findings",
+      "status": "needs-verification",
+      "source_code_refs": [
+        "frontend/src/components/findings/ProjectReportsView.tsx",
+        "backend/app/api/routes/presentation.py"
+      ],
+      "api_refs": [
+        "backend/app/api/routes/presentation.py",
+        "backend/app/api/routes/reports.py"
+      ],
+      "test_refs": [],
+      "istara_contract": "Preserve current user-visible behavior, project/auth scoping, data ownership, and documented graceful failure path.",
+      "pi_replacement_path": "canonical_tools_under_pi_agent_core",
+      "adapter_contract": "Istara owns data and APIs; Pi may drive research actions through canonical tools with evidence grounding and project scoping.",
+      "evidence_required": "TBD-evidence: runs/20260719T105618-0300-deepseek-conductor/trace.jsonl.gz and feature-matrix row for findings.slide-instructions",
+      "pi_score": null,
+      "istara_score": null,
+      "delta": null,
+      "notes": "Generated from docs/features/inventory.json; score after paired benchmarks."
+    },
+    {
+      "feature_id": "laws.catalog",
+      "title": "UX Laws Catalog",
+      "nav_group": "UX Laws",
+      "status": "documented",
+      "source_code_refs": [
+        "frontend/src/components/laws/LawsView.tsx",
+        "frontend/src/stores/lawsStore.ts",
+        "backend/app/api/routes/laws.py"
+      ],
+      "api_refs": [
+        "backend/app/api/routes/laws.py"
+      ],
+      "test_refs": [],
+      "istara_contract": "Preserve current user-visible behavior, project/auth scoping, data ownership, and documented graceful failure path.",
+      "pi_replacement_path": "istara_product_layer_preserved",
+      "adapter_contract": "No direct agentic-core ownership expected; feature must remain reachable and project-scoped while adjacent agentic calls route through the adapter.",
+      "evidence_required": "TBD-evidence: runs/20260719T105618-0300-deepseek-conductor/trace.jsonl.gz and feature-matrix row for laws.catalog",
+      "pi_score": null,
+      "istara_score": null,
+      "delta": null,
+      "notes": "Generated from docs/features/inventory.json; score after paired benchmarks."
+    },
+    {
+      "feature_id": "laws.compliance",
+      "title": "UX Laws Compliance",
+      "nav_group": "UX Laws",
+      "status": "needs-verification",
+      "source_code_refs": [
+        "frontend/src/components/laws/LawsView.tsx",
+        "frontend/src/stores/lawsStore.ts",
+        "backend/app/api/routes/laws.py"
+      ],
+      "api_refs": [
+        "backend/app/api/routes/laws.py"
+      ],
+      "test_refs": [],
+      "istara_contract": "Preserve current user-visible behavior, project/auth scoping, data ownership, and documented graceful failure path.",
+      "pi_replacement_path": "istara_product_layer_preserved",
+      "adapter_contract": "No direct agentic-core ownership expected; feature must remain reachable and project-scoped while adjacent agentic calls route through the adapter.",
+      "evidence_required": "TBD-evidence: runs/20260719T105618-0300-deepseek-conductor/trace.jsonl.gz and feature-matrix row for laws.compliance",
+      "pi_score": null,
+      "istara_score": null,
+      "delta": null,
+      "notes": "Generated from docs/features/inventory.json; score after paired benchmarks."
+    },
+    {
+      "feature_id": "tasks.kanban",
+      "title": "Task Kanban Board",
+      "nav_group": "Tasks",
+      "status": "documented",
+      "source_code_refs": [
+        "frontend/src/components/kanban/KanbanBoard.tsx",
+        "frontend/src/stores/taskStore.ts",
+        "backend/app/api/routes/tasks.py"
+      ],
+      "api_refs": [
+        "backend/app/api/routes/tasks.py"
+      ],
+      "test_refs": [
+        "tests/test_tasks.py"
+      ],
+      "istara_contract": "Preserve current user-visible behavior, project/auth scoping, data ownership, and documented graceful failure path.",
+      "pi_replacement_path": "pi_agent_core",
+      "adapter_contract": "Pi owns plan/execute turns; Istara adapter preserves tasks, findings, reviews, project auth, and research-spine semantics.",
+      "evidence_required": "TBD-evidence: runs/20260719T105618-0300-deepseek-conductor/trace.jsonl.gz and feature-matrix row for tasks.kanban",
+      "pi_score": null,
+      "istara_score": null,
+      "delta": null,
+      "notes": "Generated from docs/features/inventory.json; score after paired benchmarks."
+    },
+    {
+      "feature_id": "tasks.editor",
+      "title": "Task Editor",
+      "nav_group": "Tasks",
+      "status": "documented",
+      "source_code_refs": [
+        "frontend/src/components/kanban/TaskEditor.tsx",
+        "frontend/src/stores/taskStore.ts",
+        "backend/app/api/routes/tasks.py"
+      ],
+      "api_refs": [
+        "backend/app/api/routes/tasks.py"
+      ],
+      "test_refs": [
+        "tests/test_tasks.py"
+      ],
+      "istara_contract": "Preserve current user-visible behavior, project/auth scoping, data ownership, and documented graceful failure path.",
+      "pi_replacement_path": "pi_agent_core",
+      "adapter_contract": "Pi owns plan/execute turns; Istara adapter preserves tasks, findings, reviews, project auth, and research-spine semantics.",
+      "evidence_required": "TBD-evidence: runs/20260719T105618-0300-deepseek-conductor/trace.jsonl.gz and feature-matrix row for tasks.editor",
+      "pi_score": null,
+      "istara_score": null,
+      "delta": null,
+      "notes": "Generated from docs/features/inventory.json; score after paired benchmarks."
+    },
+    {
+      "feature_id": "tasks.review",
+      "title": "Human Task Review",
+      "nav_group": "Tasks",
+      "status": "documented",
+      "source_code_refs": [
+        "frontend/src/components/kanban/KanbanBoard.tsx",
+        "frontend/src/components/kanban/TaskEditor.tsx",
+        "backend/app/core/task_review.py"
+      ],
+      "api_refs": [
+        "backend/app/api/routes/tasks.py"
+      ],
+      "test_refs": [
+        "tests/test_tasks.py"
+      ],
+      "istara_contract": "Preserve current user-visible behavior, project/auth scoping, data ownership, and documented graceful failure path.",
+      "pi_replacement_path": "pi_agent_core",
+      "adapter_contract": "Pi owns plan/execute turns; Istara adapter preserves tasks, findings, reviews, project auth, and research-spine semantics.",
+      "evidence_required": "TBD-evidence: runs/20260719T105618-0300-deepseek-conductor/trace.jsonl.gz and feature-matrix row for tasks.review",
+      "pi_score": null,
+      "istara_score": null,
+      "delta": null,
+      "notes": "Generated from docs/features/inventory.json; score after paired benchmarks."
+    },
+    {
+      "feature_id": "tasks.attachments",
+      "title": "Task Attachments",
+      "nav_group": "Tasks",
+      "status": "needs-verification",
+      "source_code_refs": [
+        "frontend/src/components/kanban/TaskEditor.tsx",
+        "backend/app/api/routes/tasks.py",
+        "backend/app/api/routes/files.py"
+      ],
+      "api_refs": [
+        "backend/app/api/routes/tasks.py",
+        "backend/app/api/routes/files.py"
+      ],
+      "test_refs": [
+        "tests/test_tasks.py"
+      ],
+      "istara_contract": "Preserve current user-visible behavior, project/auth scoping, data ownership, and documented graceful failure path.",
+      "pi_replacement_path": "pi_agent_core",
+      "adapter_contract": "Pi owns plan/execute turns; Istara adapter preserves tasks, findings, reviews, project auth, and research-spine semantics.",
+      "evidence_required": "TBD-evidence: runs/20260719T105618-0300-deepseek-conductor/trace.jsonl.gz and feature-matrix row for tasks.attachments",
+      "pi_score": null,
+      "istara_score": null,
+      "delta": null,
+      "notes": "Generated from docs/features/inventory.json; score after paired benchmarks."
+    },
+    {
+      "feature_id": "tasks.send-report",
+      "title": "Send Task To Report",
+      "nav_group": "Tasks",
+      "status": "needs-verification",
+      "source_code_refs": [
+        "frontend/src/components/kanban/KanbanBoard.tsx",
+        "frontend/src/components/kanban/TaskEditor.tsx",
+        "backend/app/api/routes/tasks.py"
+      ],
+      "api_refs": [
+        "backend/app/api/routes/tasks.py",
+        "backend/app/api/routes/reports.py"
+      ],
+      "test_refs": [
+        "tests/test_tasks.py"
+      ],
+      "istara_contract": "Preserve current user-visible behavior, project/auth scoping, data ownership, and documented graceful failure path.",
+      "pi_replacement_path": "pi_agent_core",
+      "adapter_contract": "Pi owns plan/execute turns; Istara adapter preserves tasks, findings, reviews, project auth, and research-spine semantics.",
+      "evidence_required": "TBD-evidence: runs/20260719T105618-0300-deepseek-conductor/trace.jsonl.gz and feature-matrix row for tasks.send-report",
+      "pi_score": null,
+      "istara_score": null,
+      "delta": null,
+      "notes": "Generated from docs/features/inventory.json; score after paired benchmarks."
+    },
+    {
+      "feature_id": "interviews.files",
+      "title": "Interview Files",
+      "nav_group": "Interviews",
+      "status": "documented",
+      "source_code_refs": [
+        "frontend/src/components/interviews/InterviewView.tsx",
+        "backend/app/api/routes/files.py"
+      ],
+      "api_refs": [
+        "backend/app/api/routes/files.py"
+      ],
+      "test_refs": [],
+      "istara_contract": "Preserve current user-visible behavior, project/auth scoping, data ownership, and documented graceful failure path.",
+      "pi_replacement_path": "canonical_tools_under_pi_agent_core",
+      "adapter_contract": "Istara owns data and APIs; Pi may drive research actions through canonical tools with evidence grounding and project scoping.",
+      "evidence_required": "TBD-evidence: runs/20260719T105618-0300-deepseek-conductor/trace.jsonl.gz and feature-matrix row for interviews.files",
+      "pi_score": null,
+      "istara_score": null,
+      "delta": null,
+      "notes": "Generated from docs/features/inventory.json; score after paired benchmarks."
+    },
+    {
+      "feature_id": "interviews.transcription",
+      "title": "Interview Transcription",
+      "nav_group": "Interviews",
+      "status": "needs-verification",
+      "source_code_refs": [
+        "frontend/src/components/interviews/InterviewView.tsx",
+        "frontend/src/components/interviews/AudioPlayer.tsx",
+        "backend/app/core/transcription.py"
+      ],
+      "api_refs": [
+        "backend/app/api/routes/files.py"
+      ],
+      "test_refs": [],
+      "istara_contract": "Preserve current user-visible behavior, project/auth scoping, data ownership, and documented graceful failure path.",
+      "pi_replacement_path": "canonical_tools_under_pi_agent_core",
+      "adapter_contract": "Istara owns data and APIs; Pi may drive research actions through canonical tools with evidence grounding and project scoping.",
+      "evidence_required": "TBD-evidence: runs/20260719T105618-0300-deepseek-conductor/trace.jsonl.gz and feature-matrix row for interviews.transcription",
+      "pi_score": null,
+      "istara_score": null,
+      "delta": null,
+      "notes": "Generated from docs/features/inventory.json; score after paired benchmarks."
+    },
+    {
+      "feature_id": "interviews.preview-tags",
+      "title": "Interview Preview And Tags",
+      "nav_group": "Interviews",
+      "status": "documented",
+      "source_code_refs": [
+        "frontend/src/components/interviews/interviewPreviewParts.tsx",
+        "frontend/src/components/interviews/InterviewView.tsx"
+      ],
+      "api_refs": [
+        "backend/app/api/routes/files.py"
+      ],
+      "test_refs": [],
+      "istara_contract": "Preserve current user-visible behavior, project/auth scoping, data ownership, and documented graceful failure path.",
+      "pi_replacement_path": "canonical_tools_under_pi_agent_core",
+      "adapter_contract": "Istara owns data and APIs; Pi may drive research actions through canonical tools with evidence grounding and project scoping.",
+      "evidence_required": "TBD-evidence: runs/20260719T105618-0300-deepseek-conductor/trace.jsonl.gz and feature-matrix row for interviews.preview-tags",
+      "pi_score": null,
+      "istara_score": null,
+      "delta": null,
+      "notes": "Generated from docs/features/inventory.json; score after paired benchmarks."
+    },
+    {
+      "feature_id": "documents.library",
+      "title": "Document Library",
+      "nav_group": "Documents",
+      "status": "documented",
+      "source_code_refs": [
+        "frontend/src/components/documents/DocumentsView.tsx",
+        "frontend/src/stores/documentStore.ts",
+        "backend/app/api/routes/documents.py"
+      ],
+      "api_refs": [
+        "backend/app/api/routes/documents.py"
+      ],
+      "test_refs": [],
+      "istara_contract": "Preserve current user-visible behavior, project/auth scoping, data ownership, and documented graceful failure path.",
+      "pi_replacement_path": "canonical_tools_under_pi_agent_core",
+      "adapter_contract": "Istara owns data and APIs; Pi may drive research actions through canonical tools with evidence grounding and project scoping.",
+      "evidence_required": "TBD-evidence: runs/20260719T105618-0300-deepseek-conductor/trace.jsonl.gz and feature-matrix row for documents.library",
+      "pi_score": null,
+      "istara_score": null,
+      "delta": null,
+      "notes": "Generated from docs/features/inventory.json; score after paired benchmarks."
+    },
+    {
+      "feature_id": "documents.upload",
+      "title": "Document Upload",
+      "nav_group": "Documents",
+      "status": "documented",
+      "source_code_refs": [
+        "frontend/src/components/documents/DocumentsView.tsx",
+        "backend/app/api/routes/files.py",
+        "backend/app/core/upload_security.py"
+      ],
+      "api_refs": [
+        "backend/app/api/routes/files.py",
+        "backend/app/api/routes/documents.py"
+      ],
+      "test_refs": [],
+      "istara_contract": "Preserve current user-visible behavior, project/auth scoping, data ownership, and documented graceful failure path.",
+      "pi_replacement_path": "canonical_tools_under_pi_agent_core",
+      "adapter_contract": "Istara owns data and APIs; Pi may drive research actions through canonical tools with evidence grounding and project scoping.",
+      "evidence_required": "TBD-evidence: runs/20260719T105618-0300-deepseek-conductor/trace.jsonl.gz and feature-matrix row for documents.upload",
+      "pi_score": null,
+      "istara_score": null,
+      "delta": null,
+      "notes": "Generated from docs/features/inventory.json; score after paired benchmarks."
+    },
+    {
+      "feature_id": "documents.preview",
+      "title": "Document Preview",
+      "nav_group": "Documents",
+      "status": "needs-verification",
+      "source_code_refs": [
+        "frontend/src/components/documents/DocumentsView.tsx",
+        "frontend/src/components/common/ContextPreview.tsx"
+      ],
+      "api_refs": [
+        "backend/app/api/routes/documents.py"
+      ],
+      "test_refs": [],
+      "istara_contract": "Preserve current user-visible behavior, project/auth scoping, data ownership, and documented graceful failure path.",
+      "pi_replacement_path": "canonical_tools_under_pi_agent_core",
+      "adapter_contract": "Istara owns data and APIs; Pi may drive research actions through canonical tools with evidence grounding and project scoping.",
+      "evidence_required": "TBD-evidence: runs/20260719T105618-0300-deepseek-conductor/trace.jsonl.gz and feature-matrix row for documents.preview",
+      "pi_score": null,
+      "istara_score": null,
+      "delta": null,
+      "notes": "Generated from docs/features/inventory.json; score after paired benchmarks."
+    },
+    {
+      "feature_id": "documents.suggestions",
+      "title": "Document Suggestions",
+      "nav_group": "Documents",
+      "status": "needs-verification",
+      "source_code_refs": [
+        "frontend/src/components/common/InteractiveSuggestionBox.tsx",
+        "frontend/src/components/documents/DocumentsView.tsx"
+      ],
+      "api_refs": [
+        "backend/app/api/routes/documents.py"
+      ],
+      "test_refs": [],
+      "istara_contract": "Preserve current user-visible behavior, project/auth scoping, data ownership, and documented graceful failure path.",
+      "pi_replacement_path": "canonical_tools_under_pi_agent_core",
+      "adapter_contract": "Istara owns data and APIs; Pi may drive research actions through canonical tools with evidence grounding and project scoping.",
+      "evidence_required": "TBD-evidence: runs/20260719T105618-0300-deepseek-conductor/trace.jsonl.gz and feature-matrix row for documents.suggestions",
+      "pi_score": null,
+      "istara_score": null,
+      "delta": null,
+      "notes": "Generated from docs/features/inventory.json; score after paired benchmarks."
+    },
+    {
+      "feature_id": "context.editor",
+      "title": "Project Context Editor",
+      "nav_group": "Context",
+      "status": "documented",
+      "source_code_refs": [
+        "frontend/src/components/projects/ContextEditor.tsx",
+        "backend/app/api/routes/projects.py"
+      ],
+      "api_refs": [
+        "backend/app/api/routes/projects.py"
+      ],
+      "test_refs": [],
+      "istara_contract": "Preserve current user-visible behavior, project/auth scoping, data ownership, and documented graceful failure path.",
+      "pi_replacement_path": "adapter_owned_memory_with_pi_loop_hooks",
+      "adapter_contract": "Istara remains source of truth for RAG, ReasoningBank, memory scope, redaction, and context DAG; Pi may request/load memory through canonical tools only.",
+      "evidence_required": "TBD-evidence: runs/20260719T105618-0300-deepseek-conductor/trace.jsonl.gz and feature-matrix row for context.editor",
+      "pi_score": null,
+      "istara_score": null,
+      "delta": null,
+      "notes": "Generated from docs/features/inventory.json; score after paired benchmarks."
+    },
+    {
+      "feature_id": "skills.catalog",
+      "title": "Skills Catalog",
+      "nav_group": "Skills",
+      "status": "documented",
+      "source_code_refs": [
+        "frontend/src/components/skills/SkillsView.tsx",
+        "backend/app/api/routes/skills.py",
+        "backend/app/core/agent_skill_tools.py"
+      ],
+      "api_refs": [
+        "backend/app/api/routes/skills.py"
+      ],
+      "test_refs": [],
+      "istara_contract": "Preserve current user-visible behavior, project/auth scoping, data ownership, and documented graceful failure path.",
+      "pi_replacement_path": "pi_skills_bridge_candidate",
+      "adapter_contract": "Pi skill loading can be evaluated, but Istara adapter must preserve skill ACLs, proposal workflow, telemetry, and output validation.",
+      "evidence_required": "TBD-evidence: runs/20260719T105618-0300-deepseek-conductor/trace.jsonl.gz and feature-matrix row for skills.catalog",
+      "pi_score": null,
+      "istara_score": null,
+      "delta": null,
+      "notes": "Generated from docs/features/inventory.json; score after paired benchmarks."
+    },
+    {
+      "feature_id": "skills.proposals",
+      "title": "Skill Proposals",
+      "nav_group": "Skills",
+      "status": "needs-verification",
+      "source_code_refs": [
+        "frontend/src/components/skills/SkillsView.tsx",
+        "backend/app/api/routes/skills.py"
+      ],
+      "api_refs": [
+        "backend/app/api/routes/skills.py"
+      ],
+      "test_refs": [],
+      "istara_contract": "Preserve current user-visible behavior, project/auth scoping, data ownership, and documented graceful failure path.",
+      "pi_replacement_path": "pi_skills_bridge_candidate",
+      "adapter_contract": "Pi skill loading can be evaluated, but Istara adapter must preserve skill ACLs, proposal workflow, telemetry, and output validation.",
+      "evidence_required": "TBD-evidence: runs/20260719T105618-0300-deepseek-conductor/trace.jsonl.gz and feature-matrix row for skills.proposals",
+      "pi_score": null,
+      "istara_score": null,
+      "delta": null,
+      "notes": "Generated from docs/features/inventory.json; score after paired benchmarks."
+    },
+    {
+      "feature_id": "skills.create",
+      "title": "Create Skill",
+      "nav_group": "Skills",
+      "status": "needs-verification",
+      "source_code_refs": [
+        "frontend/src/components/skills/SkillsView.tsx",
+        "backend/app/api/routes/skills.py"
+      ],
+      "api_refs": [
+        "backend/app/api/routes/skills.py"
+      ],
+      "test_refs": [],
+      "istara_contract": "Preserve current user-visible behavior, project/auth scoping, data ownership, and documented graceful failure path.",
+      "pi_replacement_path": "pi_skills_bridge_candidate",
+      "adapter_contract": "Pi skill loading can be evaluated, but Istara adapter must preserve skill ACLs, proposal workflow, telemetry, and output validation.",
+      "evidence_required": "TBD-evidence: runs/20260719T105618-0300-deepseek-conductor/trace.jsonl.gz and feature-matrix row for skills.create",
+      "pi_score": null,
+      "istara_score": null,
+      "delta": null,
+      "notes": "Generated from docs/features/inventory.json; score after paired benchmarks."
+    },
+    {
+      "feature_id": "agents.registry",
+      "title": "Agent Registry",
+      "nav_group": "Agents",
+      "status": "documented",
+      "source_code_refs": [
+        "frontend/src/components/agents/AgentsView.tsx",
+        "frontend/src/stores/agentStore.ts",
+        "backend/app/api/routes/agents.py"
+      ],
+      "api_refs": [
+        "backend/app/api/routes/agents.py"
+      ],
+      "test_refs": [],
+      "istara_contract": "Preserve current user-visible behavior, project/auth scoping, data ownership, and documented graceful failure path.",
+      "pi_replacement_path": "pi_agent_core_or_coding_agent_harness",
+      "adapter_contract": "Pi owns agent session/handoff mechanics where feasible; Istara adapter preserves registry scope, A2A auth, audit log, and message caps.",
+      "evidence_required": "TBD-evidence: runs/20260719T105618-0300-deepseek-conductor/trace.jsonl.gz and feature-matrix row for agents.registry",
+      "pi_score": null,
+      "istara_score": null,
+      "delta": null,
+      "notes": "Generated from docs/features/inventory.json; score after paired benchmarks."
+    },
+    {
+      "feature_id": "agents.detail",
+      "title": "Agent Detail Panels",
+      "nav_group": "Agents",
+      "status": "documented",
+      "source_code_refs": [
+        "frontend/src/components/agents/AgentsView.tsx",
+        "backend/app/core/agent_identity.py",
+        "backend/app/core/agent_memory.py",
+        "backend/app/core/permissions.py"
+      ],
+      "api_refs": [
+        "backend/app/api/routes/agents.py"
+      ],
+      "test_refs": [],
+      "istara_contract": "Preserve current user-visible behavior, project/auth scoping, data ownership, and documented graceful failure path.",
+      "pi_replacement_path": "pi_agent_core_or_coding_agent_harness",
+      "adapter_contract": "Pi owns agent session/handoff mechanics where feasible; Istara adapter preserves registry scope, A2A auth, audit log, and message caps.",
+      "evidence_required": "TBD-evidence: runs/20260719T105618-0300-deepseek-conductor/trace.jsonl.gz and feature-matrix row for agents.detail",
+      "pi_score": null,
+      "istara_score": null,
+      "delta": null,
+      "notes": "Generated from docs/features/inventory.json; score after paired benchmarks."
+    },
+    {
+      "feature_id": "agents.a2a",
+      "title": "Agent-To-Agent Log",
+      "nav_group": "Agents",
+      "status": "documented",
+      "source_code_refs": [
+        "frontend/src/components/agents/AgentsView.tsx",
+        "backend/app/api/routes/a2a.py"
+      ],
+      "api_refs": [
+        "backend/app/api/routes/a2a.py"
+      ],
+      "test_refs": [],
+      "istara_contract": "Preserve current user-visible behavior, project/auth scoping, data ownership, and documented graceful failure path.",
+      "pi_replacement_path": "pi_agent_core_or_coding_agent_harness",
+      "adapter_contract": "Pi owns agent session/handoff mechanics where feasible; Istara adapter preserves registry scope, A2A auth, audit log, and message caps.",
+      "evidence_required": "TBD-evidence: runs/20260719T105618-0300-deepseek-conductor/trace.jsonl.gz and feature-matrix row for agents.a2a",
+      "pi_score": null,
+      "istara_score": null,
+      "delta": null,
+      "notes": "Generated from docs/features/inventory.json; score after paired benchmarks."
+    },
+    {
+      "feature_id": "agents.proposals",
+      "title": "Agent Proposals",
+      "nav_group": "Agents",
+      "status": "needs-verification",
+      "source_code_refs": [
+        "frontend/src/components/agents/AgentsView.tsx",
+        "backend/app/api/routes/agents.py",
+        "backend/app/api/routes/permission_requests.py"
+      ],
+      "api_refs": [
+        "backend/app/api/routes/agents.py",
+        "backend/app/api/routes/permission_requests.py"
+      ],
+      "test_refs": [],
+      "istara_contract": "Preserve current user-visible behavior, project/auth scoping, data ownership, and documented graceful failure path.",
+      "pi_replacement_path": "pi_agent_core_or_coding_agent_harness",
+      "adapter_contract": "Pi owns agent session/handoff mechanics where feasible; Istara adapter preserves registry scope, A2A auth, audit log, and message caps.",
+      "evidence_required": "TBD-evidence: runs/20260719T105618-0300-deepseek-conductor/trace.jsonl.gz and feature-matrix row for agents.proposals",
+      "pi_score": null,
+      "istara_score": null,
+      "delta": null,
+      "notes": "Generated from docs/features/inventory.json; score after paired benchmarks."
+    },
+    {
+      "feature_id": "agents.create",
+      "title": "Create Agent",
+      "nav_group": "Agents",
+      "status": "needs-verification",
+      "source_code_refs": [
+        "frontend/src/components/agents/AgentsView.tsx",
+        "backend/app/api/routes/agents.py",
+        "backend/app/core/agent_factory.py"
+      ],
+      "api_refs": [
+        "backend/app/api/routes/agents.py"
+      ],
+      "test_refs": [],
+      "istara_contract": "Preserve current user-visible behavior, project/auth scoping, data ownership, and documented graceful failure path.",
+      "pi_replacement_path": "pi_agent_core_or_coding_agent_harness",
+      "adapter_contract": "Pi owns agent session/handoff mechanics where feasible; Istara adapter preserves registry scope, A2A auth, audit log, and message caps.",
+      "evidence_required": "TBD-evidence: runs/20260719T105618-0300-deepseek-conductor/trace.jsonl.gz and feature-matrix row for agents.create",
+      "pi_score": null,
+      "istara_score": null,
+      "delta": null,
+      "notes": "Generated from docs/features/inventory.json; score after paired benchmarks."
+    },
+    {
+      "feature_id": "memory.knowledge",
+      "title": "Knowledge Memory",
+      "nav_group": "Memory",
+      "status": "documented",
+      "source_code_refs": [
+        "frontend/src/components/memory/MemoryView.tsx",
+        "frontend/src/lib/memoryApi.ts",
+        "backend/app/api/routes/memory.py"
+      ],
+      "api_refs": [
+        "backend/app/api/routes/memory.py"
+      ],
+      "test_refs": [],
+      "istara_contract": "Preserve current user-visible behavior, project/auth scoping, data ownership, and documented graceful failure path.",
+      "pi_replacement_path": "adapter_owned_memory_with_pi_loop_hooks",
+      "adapter_contract": "Istara remains source of truth for RAG, ReasoningBank, memory scope, redaction, and context DAG; Pi may request/load memory through canonical tools only.",
+      "evidence_required": "TBD-evidence: runs/20260719T105618-0300-deepseek-conductor/trace.jsonl.gz and feature-matrix row for memory.knowledge",
+      "pi_score": null,
+      "istara_score": null,
+      "delta": null,
+      "notes": "Generated from docs/features/inventory.json; score after paired benchmarks."
+    },
+    {
+      "feature_id": "memory.agent",
+      "title": "Agent Memory",
+      "nav_group": "Memory",
+      "status": "documented",
+      "source_code_refs": [
+        "frontend/src/components/memory/MemoryView.tsx",
+        "backend/app/core/agent_memory.py"
+      ],
+      "api_refs": [
+        "backend/app/api/routes/memory.py"
+      ],
+      "test_refs": [],
+      "istara_contract": "Preserve current user-visible behavior, project/auth scoping, data ownership, and documented graceful failure path.",
+      "pi_replacement_path": "adapter_owned_memory_with_pi_loop_hooks",
+      "adapter_contract": "Istara remains source of truth for RAG, ReasoningBank, memory scope, redaction, and context DAG; Pi may request/load memory through canonical tools only.",
+      "evidence_required": "TBD-evidence: runs/20260719T105618-0300-deepseek-conductor/trace.jsonl.gz and feature-matrix row for memory.agent",
+      "pi_score": null,
+      "istara_score": null,
+      "delta": null,
+      "notes": "Generated from docs/features/inventory.json; score after paired benchmarks."
+    },
+    {
+      "feature_id": "memory.health",
+      "title": "Memory Health",
+      "nav_group": "Memory",
+      "status": "needs-verification",
+      "source_code_refs": [
+        "frontend/src/components/memory/MemoryView.tsx",
+        "backend/app/core/vector_health.py"
+      ],
+      "api_refs": [
+        "backend/app/api/routes/memory.py"
+      ],
+      "test_refs": [],
+      "istara_contract": "Preserve current user-visible behavior, project/auth scoping, data ownership, and documented graceful failure path.",
+      "pi_replacement_path": "adapter_owned_memory_with_pi_loop_hooks",
+      "adapter_contract": "Istara remains source of truth for RAG, ReasoningBank, memory scope, redaction, and context DAG; Pi may request/load memory through canonical tools only.",
+      "evidence_required": "TBD-evidence: runs/20260719T105618-0300-deepseek-conductor/trace.jsonl.gz and feature-matrix row for memory.health",
+      "pi_score": null,
+      "istara_score": null,
+      "delta": null,
+      "notes": "Generated from docs/features/inventory.json; score after paired benchmarks."
+    },
+    {
+      "feature_id": "memory.context-dag",
+      "title": "Context DAG",
+      "nav_group": "Memory",
+      "status": "documented",
+      "source_code_refs": [
+        "frontend/src/components/memory/MemoryView.tsx",
+        "frontend/src/lib/contextDagApi.ts",
+        "backend/app/api/routes/context_dag.py",
+        "backend/app/core/context_dag.py"
+      ],
+      "api_refs": [
+        "backend/app/api/routes/context_dag.py"
+      ],
+      "test_refs": [],
+      "istara_contract": "Preserve current user-visible behavior, project/auth scoping, data ownership, and documented graceful failure path.",
+      "pi_replacement_path": "adapter_owned_memory_with_pi_loop_hooks",
+      "adapter_contract": "Istara remains source of truth for RAG, ReasoningBank, memory scope, redaction, and context DAG; Pi may request/load memory through canonical tools only.",
+      "evidence_required": "TBD-evidence: runs/20260719T105618-0300-deepseek-conductor/trace.jsonl.gz and feature-matrix row for memory.context-dag",
+      "pi_score": null,
+      "istara_score": null,
+      "delta": null,
+      "notes": "Generated from docs/features/inventory.json; score after paired benchmarks."
+    },
+    {
+      "feature_id": "interfaces.design-chat",
+      "title": "Interface Design Chat",
+      "nav_group": "Interfaces",
+      "status": "documented",
+      "source_code_refs": [
+        "frontend/src/components/interfaces/InterfacesView.tsx",
+        "frontend/src/components/interfaces/DesignChatTab.tsx",
+        "frontend/src/stores/interfacesStore.ts",
+        "backend/app/api/routes/interfaces.py"
+      ],
+      "api_refs": [
+        "backend/app/api/routes/interfaces.py"
+      ],
+      "test_refs": [],
+      "istara_contract": "Preserve current user-visible behavior, project/auth scoping, data ownership, and documented graceful failure path.",
+      "pi_replacement_path": "pi_agent_core",
+      "adapter_contract": "Pi owns the ReAct/tool loop; Istara adapter preserves project context, tool facade, RAG/persona boundaries, and chat/session storage.",
+      "evidence_required": "TBD-evidence: runs/20260719T105618-0300-deepseek-conductor/trace.jsonl.gz and feature-matrix row for interfaces.design-chat",
+      "pi_score": null,
+      "istara_score": null,
+      "delta": null,
+      "notes": "Generated from docs/features/inventory.json; score after paired benchmarks."
+    },
+    {
+      "feature_id": "interfaces.generate",
+      "title": "Generate Interfaces",
+      "nav_group": "Interfaces",
+      "status": "needs-verification",
+      "source_code_refs": [
+        "frontend/src/components/interfaces/GenerateTab.tsx",
+        "frontend/src/stores/interfacesStore.ts",
+        "backend/app/api/routes/interfaces.py"
+      ],
+      "api_refs": [
+        "backend/app/api/routes/interfaces.py"
+      ],
+      "test_refs": [],
+      "istara_contract": "Preserve current user-visible behavior, project/auth scoping, data ownership, and documented graceful failure path.",
+      "pi_replacement_path": "pi_agent_core",
+      "adapter_contract": "Pi owns the ReAct/tool loop; Istara adapter preserves project context, tool facade, RAG/persona boundaries, and chat/session storage.",
+      "evidence_required": "TBD-evidence: runs/20260719T105618-0300-deepseek-conductor/trace.jsonl.gz and feature-matrix row for interfaces.generate",
+      "pi_score": null,
+      "istara_score": null,
+      "delta": null,
+      "notes": "Generated from docs/features/inventory.json; score after paired benchmarks."
+    },
+    {
+      "feature_id": "interfaces.screens",
+      "title": "Screens Gallery",
+      "nav_group": "Interfaces",
+      "status": "documented",
+      "source_code_refs": [
+        "frontend/src/components/interfaces/ScreensGalleryTab.tsx",
+        "frontend/src/components/interfaces/ScreenPreview.tsx",
+        "backend/app/api/routes/interfaces_screens.py"
+      ],
+      "api_refs": [
+        "backend/app/api/routes/interfaces_screens.py"
+      ],
+      "test_refs": [],
+      "istara_contract": "Preserve current user-visible behavior, project/auth scoping, data ownership, and documented graceful failure path.",
+      "pi_replacement_path": "pi_agent_core",
+      "adapter_contract": "Pi owns the ReAct/tool loop; Istara adapter preserves project context, tool facade, RAG/persona boundaries, and chat/session storage.",
+      "evidence_required": "TBD-evidence: runs/20260719T105618-0300-deepseek-conductor/trace.jsonl.gz and feature-matrix row for interfaces.screens",
+      "pi_score": null,
+      "istara_score": null,
+      "delta": null,
+      "notes": "Generated from docs/features/inventory.json; score after paired benchmarks."
+    },
+    {
+      "feature_id": "interfaces.figma",
+      "title": "Configuration",
+      "nav_group": "Interfaces",
+      "status": "needs-verification",
+      "source_code_refs": [
+        "frontend/src/components/interfaces/FigmaTab.tsx",
+        "backend/app/api/routes/interfaces_integrations.py"
+      ],
+      "api_refs": [
+        "backend/app/api/routes/interfaces_integrations.py"
+      ],
+      "test_refs": [],
+      "istara_contract": "Preserve current user-visible behavior, project/auth scoping, data ownership, and documented graceful failure path.",
+      "pi_replacement_path": "pi_agent_core",
+      "adapter_contract": "Pi owns the ReAct/tool loop; Istara adapter preserves project context, tool facade, RAG/persona boundaries, and chat/session storage.",
+      "evidence_required": "TBD-evidence: runs/20260719T105618-0300-deepseek-conductor/trace.jsonl.gz and feature-matrix row for interfaces.figma",
+      "pi_score": null,
+      "istara_score": null,
+      "delta": null,
+      "notes": "Generated from docs/features/inventory.json; score after paired benchmarks."
+    },
+    {
+      "feature_id": "interfaces.handoff",
+      "title": "Interface Handoff",
+      "nav_group": "Interfaces",
+      "status": "needs-verification",
+      "source_code_refs": [
+        "frontend/src/components/interfaces/HandoffTab.tsx",
+        "backend/app/api/routes/interfaces.py"
+      ],
+      "api_refs": [
+        "backend/app/api/routes/interfaces.py"
+      ],
+      "test_refs": [],
+      "istara_contract": "Preserve current user-visible behavior, project/auth scoping, data ownership, and documented graceful failure path.",
+      "pi_replacement_path": "pi_agent_core",
+      "adapter_contract": "Pi owns the ReAct/tool loop; Istara adapter preserves project context, tool facade, RAG/persona boundaries, and chat/session storage.",
+      "evidence_required": "TBD-evidence: runs/20260719T105618-0300-deepseek-conductor/trace.jsonl.gz and feature-matrix row for interfaces.handoff",
+      "pi_score": null,
+      "istara_score": null,
+      "delta": null,
+      "notes": "Generated from docs/features/inventory.json; score after paired benchmarks."
+    },
+    {
+      "feature_id": "interfaces.findings-picker",
+      "title": "Findings Picker",
+      "nav_group": "Interfaces",
+      "status": "documented",
+      "source_code_refs": [
+        "frontend/src/components/interfaces/FindingsPicker.tsx",
+        "backend/app/api/routes/findings.py"
+      ],
+      "api_refs": [
+        "backend/app/api/routes/findings.py"
+      ],
+      "test_refs": [],
+      "istara_contract": "Preserve current user-visible behavior, project/auth scoping, data ownership, and documented graceful failure path.",
+      "pi_replacement_path": "istara_product_layer_preserved",
+      "adapter_contract": "No direct agentic-core ownership expected; feature must remain reachable and project-scoped while adjacent agentic calls route through the adapter.",
+      "evidence_required": "TBD-evidence: runs/20260719T105618-0300-deepseek-conductor/trace.jsonl.gz and feature-matrix row for interfaces.findings-picker",
+      "pi_score": null,
+      "istara_score": null,
+      "delta": null,
+      "notes": "Generated from docs/features/inventory.json; score after paired benchmarks."
+    },
+    {
+      "feature_id": "integrations.overview",
+      "title": "Integrations Overview",
+      "nav_group": "Integrations",
+      "status": "documented",
+      "source_code_refs": [
+        "frontend/src/components/integrations/IntegrationsView.tsx",
+        "frontend/src/components/integrations/IntegrationsOverview.tsx",
+        "frontend/src/stores/integrationsStore.ts"
+      ],
+      "api_refs": [
+        "backend/app/api/routes/channels.py",
+        "backend/app/api/routes/deployments.py"
+      ],
+      "test_refs": [],
+      "istara_contract": "Preserve current user-visible behavior, project/auth scoping, data ownership, and documented graceful failure path.",
+      "pi_replacement_path": "istara_product_layer_preserved",
+      "adapter_contract": "No direct agentic-core ownership expected; feature must remain reachable and project-scoped while adjacent agentic calls route through the adapter.",
+      "evidence_required": "TBD-evidence: runs/20260719T105618-0300-deepseek-conductor/trace.jsonl.gz and feature-matrix row for integrations.overview",
+      "pi_score": null,
+      "istara_score": null,
+      "delta": null,
+      "notes": "Generated from docs/features/inventory.json; score after paired benchmarks."
+    },
+    {
+      "feature_id": "integrations.messaging",
+      "title": "Messaging Integrations",
+      "nav_group": "Integrations",
+      "status": "documented",
+      "source_code_refs": [
+        "frontend/src/components/integrations/MessagingTab.tsx",
+        "frontend/src/components/integrations/ChannelSetupWizard.tsx",
+        "backend/app/api/routes/channels.py"
+      ],
+      "api_refs": [
+        "backend/app/api/routes/channels.py",
+        "backend/app/api/routes/webhooks.py"
+      ],
+      "test_refs": [],
+      "istara_contract": "Preserve current user-visible behavior, project/auth scoping, data ownership, and documented graceful failure path.",
+      "pi_replacement_path": "pi_coding_agent_or_channel_sidecar_candidate",
+      "adapter_contract": "Pi harness/channel patterns may own channel-facing agent turns; Istara adapter preserves deployment state, identities, attachments, and remote-control safety.",
+      "evidence_required": "TBD-evidence: runs/20260719T105618-0300-deepseek-conductor/trace.jsonl.gz and feature-matrix row for integrations.messaging",
+      "pi_score": null,
+      "istara_score": null,
+      "delta": null,
+      "notes": "Generated from docs/features/inventory.json; score after paired benchmarks."
+    },
+    {
+      "feature_id": "integrations.surveys",
+      "title": "Survey Integrations",
+      "nav_group": "Integrations",
+      "status": "documented",
+      "source_code_refs": [
+        "frontend/src/components/integrations/SurveysTab.tsx",
+        "frontend/src/components/integrations/SurveySetupWizard.tsx",
+        "backend/app/api/routes/surveys.py"
+      ],
+      "api_refs": [
+        "backend/app/api/routes/surveys.py"
+      ],
+      "test_refs": [],
+      "istara_contract": "Preserve current user-visible behavior, project/auth scoping, data ownership, and documented graceful failure path.",
+      "pi_replacement_path": "istara_product_layer_preserved",
+      "adapter_contract": "No direct agentic-core ownership expected; feature must remain reachable and project-scoped while adjacent agentic calls route through the adapter.",
+      "evidence_required": "TBD-evidence: runs/20260719T105618-0300-deepseek-conductor/trace.jsonl.gz and feature-matrix row for integrations.surveys",
+      "pi_score": null,
+      "istara_score": null,
+      "delta": null,
+      "notes": "Generated from docs/features/inventory.json; score after paired benchmarks."
+    },
+    {
+      "feature_id": "integrations.mcp",
+      "title": "MCP Integrations",
+      "nav_group": "Integrations",
+      "status": "documented",
+      "source_code_refs": [
+        "frontend/src/components/integrations/MCPTab.tsx",
+        "frontend/src/components/integrations/MCPAccessPolicyEditor.tsx",
+        "frontend/src/components/integrations/MCPAuditLog.tsx",
+        "backend/app/api/routes/mcp.py"
+      ],
+      "api_refs": [
+        "backend/app/api/routes/mcp.py"
+      ],
+      "test_refs": [],
+      "istara_contract": "Preserve current user-visible behavior, project/auth scoping, data ownership, and documented graceful failure path.",
+      "pi_replacement_path": "pi_ai_plus_istara_policy_adapter",
+      "adapter_contract": "Pi may own provider/model calls and usage accounting; Istara adapter must enforce compute authorization, circuit breakers, routing eligibility, and secret redaction.",
+      "evidence_required": "TBD-evidence: runs/20260719T105618-0300-deepseek-conductor/trace.jsonl.gz and feature-matrix row for integrations.mcp",
+      "pi_score": null,
+      "istara_score": null,
+      "delta": null,
+      "notes": "Generated from docs/features/inventory.json; score after paired benchmarks."
+    },
+    {
+      "feature_id": "integrations.deployments",
+      "title": "Research Deployments",
+      "nav_group": "Integrations",
+      "status": "documented",
+      "source_code_refs": [
+        "frontend/src/components/integrations/DeploymentsTab.tsx",
+        "frontend/src/components/integrations/DeploymentWizard.tsx",
+        "backend/app/api/routes/deployments.py"
+      ],
+      "api_refs": [
+        "backend/app/api/routes/deployments.py"
+      ],
+      "test_refs": [],
+      "istara_contract": "Preserve current user-visible behavior, project/auth scoping, data ownership, and documented graceful failure path.",
+      "pi_replacement_path": "pi_coding_agent_or_channel_sidecar_candidate",
+      "adapter_contract": "Pi harness/channel patterns may own channel-facing agent turns; Istara adapter preserves deployment state, identities, attachments, and remote-control safety.",
+      "evidence_required": "TBD-evidence: runs/20260719T105618-0300-deepseek-conductor/trace.jsonl.gz and feature-matrix row for integrations.deployments",
+      "pi_score": null,
+      "istara_score": null,
+      "delta": null,
+      "notes": "Generated from docs/features/inventory.json; score after paired benchmarks."
+    },
+    {
+      "feature_id": "integrations.deployment-dashboard",
+      "title": "Deployment Dashboard",
+      "nav_group": "Integrations",
+      "status": "documented",
+      "source_code_refs": [
+        "frontend/src/components/integrations/DeploymentDashboard.tsx",
+        "backend/app/api/routes/deployments.py"
+      ],
+      "api_refs": [
+        "backend/app/api/routes/deployments.py"
+      ],
+      "test_refs": [],
+      "istara_contract": "Preserve current user-visible behavior, project/auth scoping, data ownership, and documented graceful failure path.",
+      "pi_replacement_path": "istara_product_layer_preserved",
+      "adapter_contract": "No direct agentic-core ownership expected; feature must remain reachable and project-scoped while adjacent agentic calls route through the adapter.",
+      "evidence_required": "TBD-evidence: runs/20260719T105618-0300-deepseek-conductor/trace.jsonl.gz and feature-matrix row for integrations.deployment-dashboard",
+      "pi_score": null,
+      "istara_score": null,
+      "delta": null,
+      "notes": "Generated from docs/features/inventory.json; score after paired benchmarks."
+    },
+    {
+      "feature_id": "loops.overview",
+      "title": "Loops Overview",
+      "nav_group": "Loops",
+      "status": "documented",
+      "source_code_refs": [
+        "frontend/src/components/loops/LoopsView.tsx",
+        "frontend/src/components/loops/LoopOverviewTab.tsx",
+        "frontend/src/stores/loopsStore.ts",
+        "backend/app/api/routes/loops.py"
+      ],
+      "api_refs": [
+        "backend/app/api/routes/loops.py"
+      ],
+      "test_refs": [],
+      "istara_contract": "Preserve current user-visible behavior, project/auth scoping, data ownership, and documented graceful failure path.",
+      "pi_replacement_path": "pi_agent_core_candidate",
+      "adapter_contract": "Pi may own loop scheduling/execution events; Istara adapter must preserve configured schedules, history, and loop governance.",
+      "evidence_required": "TBD-evidence: runs/20260719T105618-0300-deepseek-conductor/trace.jsonl.gz and feature-matrix row for loops.overview",
+      "pi_score": null,
+      "istara_score": null,
+      "delta": null,
+      "notes": "Generated from docs/features/inventory.json; score after paired benchmarks."
+    },
+    {
+      "feature_id": "loops.schedules",
+      "title": "Loop Schedules",
+      "nav_group": "Loops",
+      "status": "documented",
+      "source_code_refs": [
+        "frontend/src/components/loops/SchedulesTab.tsx",
+        "frontend/src/components/loops/CronBuilder.tsx",
+        "backend/app/api/routes/scheduler.py"
+      ],
+      "api_refs": [
+        "backend/app/api/routes/scheduler.py",
+        "backend/app/api/routes/loops.py"
+      ],
+      "test_refs": [],
+      "istara_contract": "Preserve current user-visible behavior, project/auth scoping, data ownership, and documented graceful failure path.",
+      "pi_replacement_path": "pi_agent_core_candidate",
+      "adapter_contract": "Pi may own loop scheduling/execution events; Istara adapter must preserve configured schedules, history, and loop governance.",
+      "evidence_required": "TBD-evidence: runs/20260719T105618-0300-deepseek-conductor/trace.jsonl.gz and feature-matrix row for loops.schedules",
+      "pi_score": null,
+      "istara_score": null,
+      "delta": null,
+      "notes": "Generated from docs/features/inventory.json; score after paired benchmarks."
+    },
+    {
+      "feature_id": "loops.agent-loops",
+      "title": "Agent Loops",
+      "nav_group": "Loops",
+      "status": "documented",
+      "source_code_refs": [
+        "frontend/src/components/loops/AgentLoopsTab.tsx",
+        "backend/app/api/routes/loops.py",
+        "backend/app/core/scheduler.py"
+      ],
+      "api_refs": [
+        "backend/app/api/routes/loops.py"
+      ],
+      "test_refs": [],
+      "istara_contract": "Preserve current user-visible behavior, project/auth scoping, data ownership, and documented graceful failure path.",
+      "pi_replacement_path": "pi_agent_core_candidate",
+      "adapter_contract": "Pi may own loop scheduling/execution events; Istara adapter must preserve configured schedules, history, and loop governance.",
+      "evidence_required": "TBD-evidence: runs/20260719T105618-0300-deepseek-conductor/trace.jsonl.gz and feature-matrix row for loops.agent-loops",
+      "pi_score": null,
+      "istara_score": null,
+      "delta": null,
+      "notes": "Generated from docs/features/inventory.json; score after paired benchmarks."
+    },
+    {
+      "feature_id": "loops.custom",
+      "title": "Custom Loops",
+      "nav_group": "Loops",
+      "status": "needs-verification",
+      "source_code_refs": [
+        "frontend/src/components/loops/CustomLoopsTab.tsx",
+        "backend/app/api/routes/loops.py"
+      ],
+      "api_refs": [
+        "backend/app/api/routes/loops.py"
+      ],
+      "test_refs": [],
+      "istara_contract": "Preserve current user-visible behavior, project/auth scoping, data ownership, and documented graceful failure path.",
+      "pi_replacement_path": "pi_agent_core_candidate",
+      "adapter_contract": "Pi may own loop scheduling/execution events; Istara adapter must preserve configured schedules, history, and loop governance.",
+      "evidence_required": "TBD-evidence: runs/20260719T105618-0300-deepseek-conductor/trace.jsonl.gz and feature-matrix row for loops.custom",
+      "pi_score": null,
+      "istara_score": null,
+      "delta": null,
+      "notes": "Generated from docs/features/inventory.json; score after paired benchmarks."
+    },
+    {
+      "feature_id": "loops.history",
+      "title": "Loop Execution History",
+      "nav_group": "Loops",
+      "status": "documented",
+      "source_code_refs": [
+        "frontend/src/components/loops/ExecutionHistoryTab.tsx",
+        "backend/app/api/routes/loops.py"
+      ],
+      "api_refs": [
+        "backend/app/api/routes/loops.py"
+      ],
+      "test_refs": [],
+      "istara_contract": "Preserve current user-visible behavior, project/auth scoping, data ownership, and documented graceful failure path.",
+      "pi_replacement_path": "pi_agent_core_candidate",
+      "adapter_contract": "Pi may own loop scheduling/execution events; Istara adapter must preserve configured schedules, history, and loop governance.",
+      "evidence_required": "TBD-evidence: runs/20260719T105618-0300-deepseek-conductor/trace.jsonl.gz and feature-matrix row for loops.history",
+      "pi_score": null,
+      "istara_score": null,
+      "delta": null,
+      "notes": "Generated from docs/features/inventory.json; score after paired benchmarks."
+    },
+    {
+      "feature_id": "settings.general",
+      "title": "System Status And Models",
+      "nav_group": "Settings",
+      "status": "documented",
+      "source_code_refs": [
+        "frontend/src/components/common/SettingsView.tsx",
+        "backend/app/api/routes/settings.py"
+      ],
+      "api_refs": [
+        "backend/app/api/routes/settings.py"
+      ],
+      "test_refs": [],
+      "istara_contract": "Preserve current user-visible behavior, project/auth scoping, data ownership, and documented graceful failure path.",
+      "pi_replacement_path": "pi_ai_plus_istara_policy_adapter",
+      "adapter_contract": "Pi may own provider/model calls and usage accounting; Istara adapter must enforce compute authorization, circuit breakers, routing eligibility, and secret redaction.",
+      "evidence_required": "TBD-evidence: runs/20260719T105618-0300-deepseek-conductor/trace.jsonl.gz and feature-matrix row for settings.general",
+      "pi_score": null,
+      "istara_score": null,
+      "delta": null,
+      "notes": "Generated from docs/features/inventory.json; score after paired benchmarks."
+    },
+    {
+      "feature_id": "settings.llm-servers",
+      "title": "LLM Server Settings",
+      "nav_group": "Settings",
+      "status": "documented",
+      "source_code_refs": [
+        "frontend/src/components/common/SettingsView.tsx",
+        "frontend/src/lib/modelProviders.ts",
+        "backend/app/api/routes/llm_servers.py"
+      ],
+      "api_refs": [
+        "backend/app/api/routes/llm_servers.py"
+      ],
+      "test_refs": [
+        "frontend/src/lib/modelProviders.test.ts",
+        "tests/test_llm_servers.py"
+      ],
+      "istara_contract": "Preserve current user-visible behavior, project/auth scoping, data ownership, and documented graceful failure path.",
+      "pi_replacement_path": "pi_ai_plus_istara_policy_adapter",
+      "adapter_contract": "Pi may own provider/model calls and usage accounting; Istara adapter must enforce compute authorization, circuit breakers, routing eligibility, and secret redaction.",
+      "evidence_required": "TBD-evidence: runs/20260719T105618-0300-deepseek-conductor/trace.jsonl.gz and feature-matrix row for settings.llm-servers",
+      "pi_score": null,
+      "istara_score": null,
+      "delta": null,
+      "notes": "Generated from docs/features/inventory.json; score after paired benchmarks."
+    },
+    {
+      "feature_id": "settings.users",
+      "title": "User Management",
+      "nav_group": "Settings",
+      "status": "needs-verification",
+      "source_code_refs": [
+        "frontend/src/components/common/UserManagement.tsx",
+        "backend/app/api/routes/admin.py"
+      ],
+      "api_refs": [
+        "backend/app/api/routes/admin.py"
+      ],
+      "test_refs": [],
+      "istara_contract": "Preserve current user-visible behavior, project/auth scoping, data ownership, and documented graceful failure path.",
+      "pi_replacement_path": "istara_product_layer_preserved",
+      "adapter_contract": "No direct agentic-core ownership expected; feature must remain reachable and project-scoped while adjacent agentic calls route through the adapter.",
+      "evidence_required": "TBD-evidence: runs/20260719T105618-0300-deepseek-conductor/trace.jsonl.gz and feature-matrix row for settings.users",
+      "pi_score": null,
+      "istara_score": null,
+      "delta": null,
+      "notes": "Generated from docs/features/inventory.json; score after paired benchmarks."
+    },
+    {
+      "feature_id": "settings.connection-strings",
+      "title": "Connection Strings",
+      "nav_group": "Settings",
+      "status": "documented",
+      "source_code_refs": [
+        "frontend/src/components/settings/ConnectionStringPanel.tsx",
+        "backend/app/api/routes/connections.py",
+        "backend/app/core/connection_string.py"
+      ],
+      "api_refs": [
+        "backend/app/api/routes/connections.py"
+      ],
+      "test_refs": [],
+      "istara_contract": "Preserve current user-visible behavior, project/auth scoping, data ownership, and documented graceful failure path.",
+      "pi_replacement_path": "pi_ai_plus_istara_policy_adapter",
+      "adapter_contract": "Pi may own provider/model calls and usage accounting; Istara adapter must enforce compute authorization, circuit breakers, routing eligibility, and secret redaction.",
+      "evidence_required": "TBD-evidence: runs/20260719T105618-0300-deepseek-conductor/trace.jsonl.gz and feature-matrix row for settings.connection-strings",
+      "pi_score": null,
+      "istara_score": null,
+      "delta": null,
+      "notes": "Generated from docs/features/inventory.json; score after paired benchmarks."
+    },
+    {
+      "feature_id": "settings.security-factors",
+      "title": "Passkeys And Two-Factor Authentication",
+      "nav_group": "Settings",
+      "status": "documented",
+      "source_code_refs": [
+        "frontend/src/components/settings/PasskeyManager.tsx",
+        "frontend/src/components/settings/TOTPManager.tsx",
+        "backend/app/api/routes/webauthn.py",
+        "backend/app/core/recovery_codes.py"
+      ],
+      "api_refs": [
+        "backend/app/api/routes/webauthn.py",
+        "backend/app/api/routes/auth.py"
+      ],
+      "test_refs": [],
+      "istara_contract": "Preserve current user-visible behavior, project/auth scoping, data ownership, and documented graceful failure path.",
+      "pi_replacement_path": "istara_product_layer_preserved",
+      "adapter_contract": "No direct agentic-core ownership expected; feature must remain reachable and project-scoped while adjacent agentic calls route through the adapter.",
+      "evidence_required": "TBD-evidence: runs/20260719T105618-0300-deepseek-conductor/trace.jsonl.gz and feature-matrix row for settings.security-factors",
+      "pi_score": null,
+      "istara_score": null,
+      "delta": null,
+      "notes": "Generated from docs/features/inventory.json; score after paired benchmarks."
+    },
+    {
+      "feature_id": "settings.sessions",
+      "title": "Active Sessions",
+      "nav_group": "Settings",
+      "status": "documented",
+      "source_code_refs": [
+        "frontend/src/components/settings/SessionManager.tsx",
+        "backend/app/api/routes/sessions.py",
+        "backend/app/core/auth_sessions.py"
+      ],
+      "api_refs": [
+        "backend/app/api/routes/sessions.py"
+      ],
+      "test_refs": [],
+      "istara_contract": "Preserve current user-visible behavior, project/auth scoping, data ownership, and documented graceful failure path.",
+      "pi_replacement_path": "istara_product_layer_preserved",
+      "adapter_contract": "No direct agentic-core ownership expected; feature must remain reachable and project-scoped while adjacent agentic calls route through the adapter.",
+      "evidence_required": "TBD-evidence: runs/20260719T105618-0300-deepseek-conductor/trace.jsonl.gz and feature-matrix row for settings.sessions",
+      "pi_score": null,
+      "istara_score": null,
+      "delta": null,
+      "notes": "Generated from docs/features/inventory.json; score after paired benchmarks."
+    },
+    {
+      "feature_id": "settings.updates",
+      "title": "Software Updates",
+      "nav_group": "Settings",
+      "status": "documented",
+      "source_code_refs": [
+        "frontend/src/components/settings/UpdateChecker.tsx",
+        "frontend/src/lib/updatesApi.ts",
+        "backend/app/api/routes/updates.py"
+      ],
+      "api_refs": [
+        "backend/app/api/routes/updates.py"
+      ],
+      "test_refs": [],
+      "istara_contract": "Preserve current user-visible behavior, project/auth scoping, data ownership, and documented graceful failure path.",
+      "pi_replacement_path": "istara_product_layer_preserved",
+      "adapter_contract": "No direct agentic-core ownership expected; feature must remain reachable and project-scoped while adjacent agentic calls route through the adapter.",
+      "evidence_required": "TBD-evidence: runs/20260719T105618-0300-deepseek-conductor/trace.jsonl.gz and feature-matrix row for settings.updates",
+      "pi_score": null,
+      "istara_score": null,
+      "delta": null,
+      "notes": "Generated from docs/features/inventory.json; score after paired benchmarks."
+    },
+    {
+      "feature_id": "settings.governed-evolution",
+      "title": "Governed Evolution",
+      "nav_group": "Settings",
+      "status": "documented",
+      "source_code_refs": [
+        "frontend/src/components/settings/GovernedEvolutionView.tsx",
+        "frontend/src/lib/improvementGovernanceApi.ts",
+        "backend/app/api/routes/improvement_governance.py",
+        "backend/app/core/improvement_governance.py"
+      ],
+      "api_refs": [
+        "backend/app/api/routes/improvement_governance.py"
+      ],
+      "test_refs": [],
+      "istara_contract": "Preserve current user-visible behavior, project/auth scoping, data ownership, and documented graceful failure path.",
+      "pi_replacement_path": "adapter_owned_memory_with_pi_loop_hooks",
+      "adapter_contract": "Istara remains source of truth for RAG, ReasoningBank, memory scope, redaction, and context DAG; Pi may request/load memory through canonical tools only.",
+      "evidence_required": "TBD-evidence: runs/20260719T105618-0300-deepseek-conductor/trace.jsonl.gz and feature-matrix row for settings.governed-evolution",
+      "pi_score": null,
+      "istara_score": null,
+      "delta": null,
+      "notes": "Generated from docs/features/inventory.json; score after paired benchmarks."
+    },
+    {
+      "feature_id": "settings.compute-donation",
+      "title": "Compute Donation",
+      "nav_group": "Settings",
+      "status": "documented",
+      "source_code_refs": [
+        "frontend/src/components/common/DonateComputeToggle.tsx",
+        "backend/app/core/compute_pool.py"
+      ],
+      "api_refs": [
+        "backend/app/api/routes/compute.py"
+      ],
+      "test_refs": [],
+      "istara_contract": "Preserve current user-visible behavior, project/auth scoping, data ownership, and documented graceful failure path.",
+      "pi_replacement_path": "pi_ai_plus_istara_policy_adapter",
+      "adapter_contract": "Pi may own provider/model calls and usage accounting; Istara adapter must enforce compute authorization, circuit breakers, routing eligibility, and secret redaction.",
+      "evidence_required": "TBD-evidence: runs/20260719T105618-0300-deepseek-conductor/trace.jsonl.gz and feature-matrix row for settings.compute-donation",
+      "pi_score": null,
+      "istara_score": null,
+      "delta": null,
+      "notes": "Generated from docs/features/inventory.json; score after paired benchmarks."
+    },
+    {
+      "feature_id": "settings.project",
+      "title": "Project Settings",
+      "nav_group": "Secondary",
+      "status": "documented",
+      "source_code_refs": [
+        "frontend/src/components/settings/ProjectSettingsView.tsx",
+        "backend/app/api/routes/projects.py"
+      ],
+      "api_refs": [
+        "backend/app/api/routes/projects.py"
+      ],
+      "test_refs": [],
+      "istara_contract": "Preserve current user-visible behavior, project/auth scoping, data ownership, and documented graceful failure path.",
+      "pi_replacement_path": "istara_product_layer_preserved",
+      "adapter_contract": "No direct agentic-core ownership expected; feature must remain reachable and project-scoped while adjacent agentic calls route through the adapter.",
+      "evidence_required": "TBD-evidence: runs/20260719T105618-0300-deepseek-conductor/trace.jsonl.gz and feature-matrix row for settings.project",
+      "pi_score": null,
+      "istara_score": null,
+      "delta": null,
+      "notes": "Generated from docs/features/inventory.json; score after paired benchmarks."
+    },
+    {
+      "feature_id": "autoresearch.dashboard",
+      "title": "Autoresearch Dashboard",
+      "nav_group": "Autoresearch",
+      "status": "documented",
+      "source_code_refs": [
+        "frontend/src/components/autoresearch/AutoresearchView.tsx",
+        "frontend/src/stores/autoresearchStore.ts",
+        "backend/app/api/routes/autoresearch.py"
+      ],
+      "api_refs": [
+        "backend/app/api/routes/autoresearch.py"
+      ],
+      "test_refs": [],
+      "istara_contract": "Preserve current user-visible behavior, project/auth scoping, data ownership, and documented graceful failure path.",
+      "pi_replacement_path": "unsupported_until_governed_evolution_adapter_exists",
+      "adapter_contract": "Full replacement requires explicit evidence that Pi can run governed experiment loops without bypassing Istara approval and archive policy.",
+      "evidence_required": "TBD-evidence: runs/20260719T105618-0300-deepseek-conductor/trace.jsonl.gz and feature-matrix row for autoresearch.dashboard",
+      "pi_score": null,
+      "istara_score": null,
+      "delta": null,
+      "notes": "Generated from docs/features/inventory.json; score after paired benchmarks."
+    },
+    {
+      "feature_id": "autoresearch.experiments",
+      "title": "Autoresearch Experiments",
+      "nav_group": "Autoresearch",
+      "status": "documented",
+      "source_code_refs": [
+        "frontend/src/components/autoresearch/AutoresearchView.tsx",
+        "backend/app/core/autoresearch_engine.py"
+      ],
+      "api_refs": [
+        "backend/app/api/routes/autoresearch.py"
+      ],
+      "test_refs": [],
+      "istara_contract": "Preserve current user-visible behavior, project/auth scoping, data ownership, and documented graceful failure path.",
+      "pi_replacement_path": "unsupported_until_governed_evolution_adapter_exists",
+      "adapter_contract": "Full replacement requires explicit evidence that Pi can run governed experiment loops without bypassing Istara approval and archive policy.",
+      "evidence_required": "TBD-evidence: runs/20260719T105618-0300-deepseek-conductor/trace.jsonl.gz and feature-matrix row for autoresearch.experiments",
+      "pi_score": null,
+      "istara_score": null,
+      "delta": null,
+      "notes": "Generated from docs/features/inventory.json; score after paired benchmarks."
+    },
+    {
+      "feature_id": "autoresearch.leaderboard",
+      "title": "Autoresearch Leaderboard",
+      "nav_group": "Autoresearch",
+      "status": "needs-verification",
+      "source_code_refs": [
+        "frontend/src/components/autoresearch/AutoresearchView.tsx",
+        "backend/app/api/routes/autoresearch.py"
+      ],
+      "api_refs": [
+        "backend/app/api/routes/autoresearch.py"
+      ],
+      "test_refs": [],
+      "istara_contract": "Preserve current user-visible behavior, project/auth scoping, data ownership, and documented graceful failure path.",
+      "pi_replacement_path": "unsupported_until_governed_evolution_adapter_exists",
+      "adapter_contract": "Full replacement requires explicit evidence that Pi can run governed experiment loops without bypassing Istara approval and archive policy.",
+      "evidence_required": "TBD-evidence: runs/20260719T105618-0300-deepseek-conductor/trace.jsonl.gz and feature-matrix row for autoresearch.leaderboard",
+      "pi_score": null,
+      "istara_score": null,
+      "delta": null,
+      "notes": "Generated from docs/features/inventory.json; score after paired benchmarks."
+    },
+    {
+      "feature_id": "autoresearch.config",
+      "title": "Autoresearch Configuration",
+      "nav_group": "Autoresearch",
+      "status": "documented",
+      "source_code_refs": [
+        "frontend/src/components/autoresearch/AutoresearchView.tsx",
+        "backend/app/core/autoresearch_runners/rag_params.py"
+      ],
+      "api_refs": [
+        "backend/app/api/routes/autoresearch.py"
+      ],
+      "test_refs": [],
+      "istara_contract": "Preserve current user-visible behavior, project/auth scoping, data ownership, and documented graceful failure path.",
+      "pi_replacement_path": "adapter_owned_memory_with_pi_loop_hooks",
+      "adapter_contract": "Istara remains source of truth for RAG, ReasoningBank, memory scope, redaction, and context DAG; Pi may request/load memory through canonical tools only.",
+      "evidence_required": "TBD-evidence: runs/20260719T105618-0300-deepseek-conductor/trace.jsonl.gz and feature-matrix row for autoresearch.config",
+      "pi_score": null,
+      "istara_score": null,
+      "delta": null,
+      "notes": "Generated from docs/features/inventory.json; score after paired benchmarks."
+    },
+    {
+      "feature_id": "compute.pool",
+      "title": "Compute Pool",
+      "nav_group": "Secondary",
+      "status": "documented",
+      "source_code_refs": [
+        "frontend/src/components/common/ComputePoolView.tsx",
+        "backend/app/api/routes/compute.py",
+        "backend/app/core/compute_pool.py"
+      ],
+      "api_refs": [
+        "backend/app/api/routes/compute.py"
+      ],
+      "test_refs": [
+        "tests/test_compute_registry_model_loading.py"
+      ],
+      "istara_contract": "Preserve current user-visible behavior, project/auth scoping, data ownership, and documented graceful failure path.",
+      "pi_replacement_path": "pi_ai_plus_istara_policy_adapter",
+      "adapter_contract": "Pi may own provider/model calls and usage accounting; Istara adapter must enforce compute authorization, circuit breakers, routing eligibility, and secret redaction.",
+      "evidence_required": "TBD-evidence: runs/20260719T105618-0300-deepseek-conductor/trace.jsonl.gz and feature-matrix row for compute.pool",
+      "pi_score": null,
+      "istara_score": null,
+      "delta": null,
+      "notes": "Generated from docs/features/inventory.json; score after paired benchmarks."
+    },
+    {
+      "feature_id": "ensemble.health",
+      "title": "Ensemble Health",
+      "nav_group": "Secondary",
+      "status": "needs-verification",
+      "source_code_refs": [
+        "frontend/src/components/common/EnsembleHealthView.tsx",
+        "backend/app/core/consensus.py"
+      ],
+      "api_refs": [
+        "backend/app/api/routes/metrics.py"
+      ],
+      "test_refs": [],
+      "istara_contract": "Preserve current user-visible behavior, project/auth scoping, data ownership, and documented graceful failure path.",
+      "pi_replacement_path": "pi_ai_plus_istara_policy_adapter",
+      "adapter_contract": "Pi may own provider/model calls and usage accounting; Istara adapter must enforce compute authorization, circuit breakers, routing eligibility, and secret redaction.",
+      "evidence_required": "TBD-evidence: runs/20260719T105618-0300-deepseek-conductor/trace.jsonl.gz and feature-matrix row for ensemble.health",
+      "pi_score": null,
+      "istara_score": null,
+      "delta": null,
+      "notes": "Generated from docs/features/inventory.json; score after paired benchmarks."
+    },
+    {
+      "feature_id": "quality.dashboard",
+      "title": "Quality Dashboard",
+      "nav_group": "Secondary",
+      "status": "documented",
+      "source_code_refs": [
+        "frontend/src/components/common/QualityView.tsx",
+        "backend/app/core/validation.py",
+        "backend/app/core/adaptive_validation.py"
+      ],
+      "api_refs": [
+        "backend/app/api/routes/metrics.py"
+      ],
+      "test_refs": [],
+      "istara_contract": "Preserve current user-visible behavior, project/auth scoping, data ownership, and documented graceful failure path.",
+      "pi_replacement_path": "istara_product_layer_preserved",
+      "adapter_contract": "No direct agentic-core ownership expected; feature must remain reachable and project-scoped while adjacent agentic calls route through the adapter.",
+      "evidence_required": "TBD-evidence: runs/20260719T105618-0300-deepseek-conductor/trace.jsonl.gz and feature-matrix row for quality.dashboard",
+      "pi_score": null,
+      "istara_score": null,
+      "delta": null,
+      "notes": "Generated from docs/features/inventory.json; score after paired benchmarks."
+    },
+    {
+      "feature_id": "backup.view",
+      "title": "Backup",
+      "nav_group": "Secondary",
+      "status": "documented",
+      "source_code_refs": [
+        "frontend/src/components/backup/BackupView.tsx",
+        "frontend/src/lib/backupApi.ts",
+        "backend/app/api/routes/backup.py",
+        "backend/app/core/backup_manager.py"
+      ],
+      "api_refs": [
+        "backend/app/api/routes/backup.py"
+      ],
+      "test_refs": [],
+      "istara_contract": "Preserve current user-visible behavior, project/auth scoping, data ownership, and documented graceful failure path.",
+      "pi_replacement_path": "istara_product_layer_preserved",
+      "adapter_contract": "No direct agentic-core ownership expected; feature must remain reachable and project-scoped while adjacent agentic calls route through the adapter.",
+      "evidence_required": "TBD-evidence: runs/20260719T105618-0300-deepseek-conductor/trace.jsonl.gz and feature-matrix row for backup.view",
+      "pi_score": null,
+      "istara_score": null,
+      "delta": null,
+      "notes": "Generated from docs/features/inventory.json; score after paired benchmarks."
+    },
+    {
+      "feature_id": "meta.hyperagent",
+      "title": "Meta-Agent",
+      "nav_group": "Secondary",
+      "status": "documented",
+      "source_code_refs": [
+        "frontend/src/components/meta/MetaHyperagentView.tsx",
+        "backend/app/api/routes/meta_hyperagent.py",
+        "backend/app/core/meta_hyperagent.py"
+      ],
+      "api_refs": [
+        "backend/app/api/routes/meta_hyperagent.py"
+      ],
+      "test_refs": [],
+      "istara_contract": "Preserve current user-visible behavior, project/auth scoping, data ownership, and documented graceful failure path.",
+      "pi_replacement_path": "adapter_owned_memory_with_pi_loop_hooks",
+      "adapter_contract": "Istara remains source of truth for RAG, ReasoningBank, memory scope, redaction, and context DAG; Pi may request/load memory through canonical tools only.",
+      "evidence_required": "TBD-evidence: runs/20260719T105618-0300-deepseek-conductor/trace.jsonl.gz and feature-matrix row for meta.hyperagent",
+      "pi_score": null,
+      "istara_score": null,
+      "delta": null,
+      "notes": "Generated from docs/features/inventory.json; score after paired benchmarks."
+    },
+    {
+      "feature_id": "admin.dashboard",
+      "title": "Admin Dashboard",
+      "nav_group": "Secondary",
+      "status": "needs-verification",
+      "source_code_refs": [
+        "frontend/src/components/admin/AdminDashboard.tsx",
+        "backend/app/api/routes/admin.py"
+      ],
+      "api_refs": [
+        "backend/app/api/routes/admin.py"
+      ],
+      "test_refs": [],
+      "istara_contract": "Preserve current user-visible behavior, project/auth scoping, data ownership, and documented graceful failure path.",
+      "pi_replacement_path": "istara_product_layer_preserved",
+      "adapter_contract": "No direct agentic-core ownership expected; feature must remain reachable and project-scoped while adjacent agentic calls route through the adapter.",
+      "evidence_required": "TBD-evidence: runs/20260719T105618-0300-deepseek-conductor/trace.jsonl.gz and feature-matrix row for admin.dashboard",
+      "pi_score": null,
+      "istara_score": null,
+      "delta": null,
+      "notes": "Generated from docs/features/inventory.json; score after paired benchmarks."
+    },
+    {
+      "feature_id": "history.version",
+      "title": "Version History",
+      "nav_group": "Secondary",
+      "status": "documented",
+      "source_code_refs": [
+        "frontend/src/components/common/VersionHistory.tsx",
+        "backend/app/core/versioning.py"
+      ],
+      "api_refs": [
+        "backend/app/api/routes/projects.py"
+      ],
+      "test_refs": [],
+      "istara_contract": "Preserve current user-visible behavior, project/auth scoping, data ownership, and documented graceful failure path.",
+      "pi_replacement_path": "istara_product_layer_preserved",
+      "adapter_contract": "No direct agentic-core ownership expected; feature must remain reachable and project-scoped while adjacent agentic calls route through the adapter.",
+      "evidence_required": "TBD-evidence: runs/20260719T105618-0300-deepseek-conductor/trace.jsonl.gz and feature-matrix row for history.version",
+      "pi_score": null,
+      "istara_score": null,
+      "delta": null,
+      "notes": "Generated from docs/features/inventory.json; score after paired benchmarks."
+    },
+    {
+      "feature_id": "notifications.list",
+      "title": "Notifications List",
+      "nav_group": "Notifications",
+      "status": "documented",
+      "source_code_refs": [
+        "frontend/src/components/notifications/NotificationsView.tsx",
+        "frontend/src/stores/notificationStore.ts",
+        "frontend/src/lib/notificationApi.ts",
+        "backend/app/api/routes/notifications.py"
+      ],
+      "api_refs": [
+        "backend/app/api/routes/notifications.py"
+      ],
+      "test_refs": [],
+      "istara_contract": "Preserve current user-visible behavior, project/auth scoping, data ownership, and documented graceful failure path.",
+      "pi_replacement_path": "istara_product_layer_preserved",
+      "adapter_contract": "No direct agentic-core ownership expected; feature must remain reachable and project-scoped while adjacent agentic calls route through the adapter.",
+      "evidence_required": "TBD-evidence: runs/20260719T105618-0300-deepseek-conductor/trace.jsonl.gz and feature-matrix row for notifications.list",
+      "pi_score": null,
+      "istara_score": null,
+      "delta": null,
+      "notes": "Generated from docs/features/inventory.json; score after paired benchmarks."
+    },
+    {
+      "feature_id": "notifications.preferences",
+      "title": "Notification Preferences",
+      "nav_group": "Notifications",
+      "status": "needs-verification",
+      "source_code_refs": [
+        "frontend/src/components/notifications/NotificationsView.tsx",
+        "frontend/src/stores/notificationStore.ts",
+        "backend/app/api/routes/notifications.py"
+      ],
+      "api_refs": [
+        "backend/app/api/routes/notifications.py"
+      ],
+      "test_refs": [],
+      "istara_contract": "Preserve current user-visible behavior, project/auth scoping, data ownership, and documented graceful failure path.",
+      "pi_replacement_path": "istara_product_layer_preserved",
+      "adapter_contract": "No direct agentic-core ownership expected; feature must remain reachable and project-scoped while adjacent agentic calls route through the adapter.",
+      "evidence_required": "TBD-evidence: runs/20260719T105618-0300-deepseek-conductor/trace.jsonl.gz and feature-matrix row for notifications.preferences",
+      "pi_score": null,
+      "istara_score": null,
+      "delta": null,
+      "notes": "Generated from docs/features/inventory.json; score after paired benchmarks."
+    }
+  ]
+}

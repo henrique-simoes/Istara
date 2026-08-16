@@ -1,0 +1,324 @@
+{
+  "schema_version": 1,
+  "mode": "deterministic_no_model_paired_contract_plus_pi_agent",
+  "scenario_count": 8,
+  "baseline": {
+    "passed": 8,
+    "failed": 0,
+    "tool_calls": 23
+  },
+  "candidate": {
+    "passed": 8,
+    "failed": 0,
+    "pi_owned_loop_scenarios": 8,
+    "expected_tool_order_matched": 8,
+    "tool_calls": 23,
+    "pi_provider_calls": 21,
+    "faux_token_total": 30348
+  },
+  "surfaces": {
+    "chat_tool_loop": {
+      "scenario": "chat.tool_loop.task_and_finding",
+      "ok": true,
+      "canonicalToolsUsed": [
+        "tasks.create",
+        "findings.create"
+      ],
+      "sourceAssets": [
+        "tests/agentic_eval_contract.json",
+        "tests/simulation/scenarios/31-task-documents-tools.mjs"
+      ]
+    },
+    "plan_and_execute": {
+      "scenario": "task.plan_execute.lifecycle",
+      "ok": true,
+      "canonicalToolsUsed": [
+        "tasks.create",
+        "plans.create",
+        "tasks.update_lifecycle"
+      ],
+      "sourceAssets": [
+        "tests/benchmarks/test_orchestration.py",
+        "tests/simulation/scenarios/71-plan-and-execute.mjs"
+      ]
+    },
+    "documents_tools": {
+      "scenario": "documents.tools.slice",
+      "ok": true,
+      "canonicalToolsUsed": [
+        "documents.create",
+        "tasks.create",
+        "tasks.attach_document",
+        "findings.create"
+      ],
+      "sourceAssets": [
+        "tests/simulation/scenarios/31-task-documents-tools.mjs"
+      ]
+    },
+    "structured_outputs": {
+      "scenario": "structured_outputs.core_eval",
+      "ok": true,
+      "canonicalToolsUsed": [
+        "evals.emit_structured"
+      ],
+      "sourceAssets": [
+        "tests/evals/cases/core_eval_cases.json",
+        "scripts/run_istara_evals.py"
+      ]
+    },
+    "memory_rag": {
+      "scenario": "memory.rag.slice",
+      "ok": true,
+      "canonicalToolsUsed": [
+        "memory.search",
+        "findings.create",
+        "memory.write"
+      ],
+      "sourceAssets": [
+        "tests/agentic_eval_contract.json",
+        "tests/simulation/scenarios/23-memory-view.mjs"
+      ]
+    },
+    "skills": {
+      "scenario": "skills.three_skill_slice",
+      "ok": true,
+      "canonicalToolsUsed": [
+        "skills.apply",
+        "skills.apply",
+        "skills.apply",
+        "findings.create"
+      ],
+      "sourceAssets": [
+        "tests/agentic_eval_contract.json",
+        "tests/simulation/scenarios/20-all-skills-comprehensive.mjs"
+      ]
+    },
+    "a2a": {
+      "scenario": "a2a.debate_report.slice",
+      "ok": true,
+      "canonicalToolsUsed": [
+        "a2a.delegate",
+        "a2a.delegate",
+        "a2a.report"
+      ],
+      "sourceAssets": [
+        "tests/simulation/scenarios/73-a2a-debate-and-reports.mjs"
+      ]
+    },
+    "channels": {
+      "scenario": "channel.lifecycle.simulated_slice",
+      "ok": true,
+      "canonicalToolsUsed": [
+        "channels.create",
+        "channels.receive",
+        "channels.respond"
+      ],
+      "sourceAssets": [
+        "tests/simulation/scenarios/53-channel-lifecycle.mjs"
+      ]
+    }
+  },
+  "owner_dimensions": {
+    "tool_calling": {
+      "baseline_tool_calls": 23,
+      "candidate_tool_calls": 23,
+      "expected_tool_order_matched": 8,
+      "scenario_count": 8
+    },
+    "feature_integration": {
+      "chat_tool_loop": {
+        "scenario_id": "chat.tool_loop.task_and_finding",
+        "success_criteria": "required canonical tool sequence executed and Istara-shaped envelopes preserved",
+        "adherence": true,
+        "source_assets": [
+          "tests/agentic_eval_contract.json",
+          "tests/simulation/scenarios/31-task-documents-tools.mjs"
+        ]
+      },
+      "plan_and_execute": {
+        "scenario_id": "task.plan_execute.lifecycle",
+        "success_criteria": "required canonical tool sequence executed and Istara-shaped envelopes preserved",
+        "adherence": true,
+        "source_assets": [
+          "tests/benchmarks/test_orchestration.py",
+          "tests/simulation/scenarios/71-plan-and-execute.mjs"
+        ]
+      },
+      "documents_tools": {
+        "scenario_id": "documents.tools.slice",
+        "success_criteria": "required canonical tool sequence executed and Istara-shaped envelopes preserved",
+        "adherence": true,
+        "source_assets": [
+          "tests/simulation/scenarios/31-task-documents-tools.mjs"
+        ]
+      },
+      "structured_outputs": {
+        "scenario_id": "structured_outputs.core_eval",
+        "success_criteria": "required canonical tool sequence executed and Istara-shaped envelopes preserved",
+        "adherence": true,
+        "source_assets": [
+          "tests/evals/cases/core_eval_cases.json",
+          "scripts/run_istara_evals.py"
+        ]
+      },
+      "memory_rag": {
+        "scenario_id": "memory.rag.slice",
+        "success_criteria": "required canonical tool sequence executed and Istara-shaped envelopes preserved",
+        "adherence": true,
+        "source_assets": [
+          "tests/agentic_eval_contract.json",
+          "tests/simulation/scenarios/23-memory-view.mjs"
+        ]
+      },
+      "skills": {
+        "scenario_id": "skills.three_skill_slice",
+        "success_criteria": "required canonical tool sequence executed and Istara-shaped envelopes preserved",
+        "adherence": true,
+        "source_assets": [
+          "tests/agentic_eval_contract.json",
+          "tests/simulation/scenarios/20-all-skills-comprehensive.mjs"
+        ]
+      },
+      "a2a": {
+        "scenario_id": "a2a.debate_report.slice",
+        "success_criteria": "required canonical tool sequence executed and Istara-shaped envelopes preserved",
+        "adherence": true,
+        "source_assets": [
+          "tests/simulation/scenarios/73-a2a-debate-and-reports.mjs"
+        ]
+      },
+      "channels": {
+        "scenario_id": "channel.lifecycle.simulated_slice",
+        "success_criteria": "required canonical tool sequence executed and Istara-shaped envelopes preserved",
+        "adherence": true,
+        "source_assets": [
+          "tests/simulation/scenarios/53-channel-lifecycle.mjs"
+        ]
+      }
+    },
+    "final_output_quality": {
+      "deterministic_proxy": "pass/fail only; qualitative judging requires future live evaluator calls with raw capture",
+      "candidate_passed": 8,
+      "candidate_failed": 0
+    },
+    "research_spine_steps": {
+      "ingest": {
+        "covered_by": [
+          "documents.tools.slice"
+        ],
+        "status": "representative_slice"
+      },
+      "extract": {
+        "covered_by": [
+          "memory.rag.slice",
+          "structured_outputs.core_eval"
+        ],
+        "status": "representative_slice"
+      },
+      "structure": {
+        "covered_by": [
+          "structured_outputs.core_eval",
+          "task.plan_execute.lifecycle"
+        ],
+        "status": "representative_slice"
+      },
+      "synthesize": {
+        "covered_by": [
+          "skills.three_skill_slice",
+          "a2a.debate_report.slice"
+        ],
+        "status": "representative_slice"
+      },
+      "compose": {
+        "covered_by": [
+          "chat.tool_loop.task_and_finding",
+          "channel.lifecycle.simulated_slice"
+        ],
+        "status": "representative_slice"
+      },
+      "cite_review": {
+        "covered_by": [
+          "memory.rag.slice",
+          "task.plan_execute.lifecycle"
+        ],
+        "status": "proxy_only"
+      }
+    },
+    "memory_load": {
+      "scenario_id": "memory.rag.slice",
+      "memory_records_loaded": 3,
+      "status": "in_memory_proxy"
+    },
+    "tokens_by_step": {
+      "chat.tool_loop.task_and_finding": {
+        "surface": "chat_tool_loop",
+        "faux_total_tokens": 3730
+      },
+      "task.plan_execute.lifecycle": {
+        "surface": "plan_and_execute",
+        "faux_total_tokens": 4195
+      },
+      "documents.tools.slice": {
+        "surface": "documents_tools",
+        "faux_total_tokens": 4100
+      },
+      "structured_outputs.core_eval": {
+        "surface": "structured_outputs",
+        "faux_total_tokens": 3527
+      },
+      "memory.rag.slice": {
+        "surface": "memory_rag",
+        "faux_total_tokens": 3795
+      },
+      "skills.three_skill_slice": {
+        "surface": "skills",
+        "faux_total_tokens": 3693
+      },
+      "a2a.debate_report.slice": {
+        "surface": "a2a",
+        "faux_total_tokens": 3594
+      },
+      "channel.lifecycle.simulated_slice": {
+        "surface": "channels",
+        "faux_total_tokens": 3714
+      }
+    },
+    "total_tokens": {
+      "candidate_faux_tokens": 30348,
+      "live_deepseek_tokens": 47
+    },
+    "tool_calls_vs_quality": {
+      "candidate_tool_calls": 23,
+      "candidate_passed": 8,
+      "quality_proxy": "scenario pass count"
+    },
+    "skills_adherence": {
+      "scenario_id": "skills.three_skill_slice",
+      "max_skills_allowed": 3,
+      "skills_called": 3,
+      "adhered": true
+    },
+    "system_prompt_adherence": {
+      "policy": "Pi owns loop/tool execution; Istara owns product state and policy; product actions use canonical tools only.",
+      "canonical_tool_only": true,
+      "violations_observed": 0
+    },
+    "a2a_task_success": {
+      "scenario_id": "a2a.debate_report.slice",
+      "tool_calls": 3,
+      "passed": true,
+      "efficiency_vs_quality_proxy": "3 canonical A2A calls for one passing L3 report slice"
+    }
+  },
+  "raw_llm_capture": {
+    "prompts_path": "raw-llm-calls/prompts.jsonl.gz",
+    "outputs_path": "raw-llm-calls/outputs.jsonl.gz",
+    "prompt_records": 22,
+    "output_records": 22,
+    "includes_reconstructed_faux_provider_calls": true,
+    "includes_reconstructed_deepseek_smoke": true,
+    "baseline_llm_calls": 0,
+    "missing_raw_capture": [],
+    "separation": "raw prompt/output records are stored separately from analysis and judging"
+  }
+}

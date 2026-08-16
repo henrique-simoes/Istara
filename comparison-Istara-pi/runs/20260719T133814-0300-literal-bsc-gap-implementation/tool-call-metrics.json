@@ -1,0 +1,156 @@
+{
+  "schema_version": 1,
+  "scenarios": [
+    {
+      "scenario_id": "chat.tool_loop.task_and_finding",
+      "family": "chat_tool_loop",
+      "tool_calls": 2,
+      "successful_tool_calls": 2,
+      "expected_tool_order_matched": true,
+      "final_output_present": true,
+      "output_quality_proxy": "pass",
+      "canonical_tools": [
+        "tasks.create",
+        "findings.create"
+      ]
+    },
+    {
+      "scenario_id": "task.plan_execute.lifecycle",
+      "family": "plan_and_execute",
+      "tool_calls": 3,
+      "successful_tool_calls": 3,
+      "expected_tool_order_matched": true,
+      "final_output_present": true,
+      "output_quality_proxy": "pass",
+      "canonical_tools": [
+        "tasks.create",
+        "plans.create",
+        "tasks.update_lifecycle"
+      ]
+    },
+    {
+      "scenario_id": "documents.tools.slice",
+      "family": "documents_tools",
+      "tool_calls": 6,
+      "successful_tool_calls": 6,
+      "expected_tool_order_matched": true,
+      "final_output_present": true,
+      "output_quality_proxy": "pass",
+      "canonical_tools": [
+        "documents.create",
+        "documents.search",
+        "documents.read",
+        "tasks.create",
+        "tasks.attach_document",
+        "findings.create"
+      ]
+    },
+    {
+      "scenario_id": "structured_outputs.core_eval",
+      "family": "structured_outputs",
+      "tool_calls": 1,
+      "successful_tool_calls": 1,
+      "expected_tool_order_matched": true,
+      "final_output_present": true,
+      "output_quality_proxy": "pass",
+      "canonical_tools": [
+        "evals.emit_structured"
+      ]
+    },
+    {
+      "scenario_id": "memory.rag.slice",
+      "family": "memory_rag",
+      "tool_calls": 3,
+      "successful_tool_calls": 3,
+      "expected_tool_order_matched": true,
+      "final_output_present": true,
+      "output_quality_proxy": "pass",
+      "canonical_tools": [
+        "memory.search",
+        "findings.create",
+        "memory.write"
+      ]
+    },
+    {
+      "scenario_id": "skills.three_skill_slice",
+      "family": "skills",
+      "tool_calls": 4,
+      "successful_tool_calls": 4,
+      "expected_tool_order_matched": true,
+      "final_output_present": true,
+      "output_quality_proxy": "pass",
+      "canonical_tools": [
+        "skills.apply",
+        "skills.apply",
+        "skills.apply",
+        "findings.create"
+      ]
+    },
+    {
+      "scenario_id": "a2a.debate_report.slice",
+      "family": "a2a",
+      "tool_calls": 3,
+      "successful_tool_calls": 3,
+      "expected_tool_order_matched": true,
+      "final_output_present": true,
+      "output_quality_proxy": "pass",
+      "canonical_tools": [
+        "a2a.delegate",
+        "a2a.delegate",
+        "a2a.report"
+      ]
+    },
+    {
+      "scenario_id": "channel.lifecycle.simulated_slice",
+      "family": "channels",
+      "tool_calls": 3,
+      "successful_tool_calls": 3,
+      "expected_tool_order_matched": true,
+      "final_output_present": true,
+      "output_quality_proxy": "pass",
+      "canonical_tools": [
+        "channels.create",
+        "channels.receive",
+        "channels.respond"
+      ]
+    },
+    {
+      "scenario_id": "research.spine.step_tracker",
+      "family": "research_spine",
+      "tool_calls": 7,
+      "successful_tool_calls": 7,
+      "expected_tool_order_matched": true,
+      "final_output_present": true,
+      "output_quality_proxy": "pass",
+      "canonical_tools": [
+        "documents.search",
+        "documents.read",
+        "research.record_step",
+        "research.record_step",
+        "research.record_step",
+        "research.record_step",
+        "findings.create"
+      ]
+    },
+    {
+      "scenario_id": "model.routing.telemetry.slice",
+      "family": "model_routing_telemetry",
+      "tool_calls": 4,
+      "successful_tool_calls": 4,
+      "expected_tool_order_matched": true,
+      "final_output_present": true,
+      "output_quality_proxy": "pass",
+      "canonical_tools": [
+        "models.route",
+        "telemetry.record_metric",
+        "telemetry.record_metric",
+        "evals.emit_structured"
+      ]
+    }
+  ],
+  "totals": {
+    "tool_calls": 36,
+    "successful_tool_calls": 36,
+    "passing_scenarios": 10
+  }
+}

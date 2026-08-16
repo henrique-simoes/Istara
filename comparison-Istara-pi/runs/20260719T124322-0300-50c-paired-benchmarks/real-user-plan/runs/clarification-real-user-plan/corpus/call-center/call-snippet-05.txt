@@ -1,0 +1,5 @@
+Call 5
+Caller role: care coordinator
+Issue: caregivers receive partial information and then call the clinic.
+Quote: "I do not need another reminder. I need to know which thing is actually blocking the visit."
+Disposition: resolved with manual explanation

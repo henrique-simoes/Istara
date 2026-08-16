@@ -1,0 +1,9 @@
+{
+  "probe": "pi_provider_static",
+  "package": "@earendil-works/pi-ai",
+  "local_package_resolvable": false,
+  "npm_latest_version": "0.80.10",
+  "deepseek_provider_smoke_executed": false,
+  "blocked_reason": "@earendil-works/pi-ai is not installed in the Istara repo runtime; executing Pi's provider layer would require dependency installation or a local Pi checkout.",
+  "next_gate": "Ask owner before installing Pi packages or cloning/checking out the Pi monorepo."
+}

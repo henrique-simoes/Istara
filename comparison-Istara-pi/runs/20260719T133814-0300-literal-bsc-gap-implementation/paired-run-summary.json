@@ -1,0 +1,1405 @@
+{
+  "baseline": [
+    {
+      "scenario": "chat.tool_loop.task_and_finding",
+      "family": "chat_tool_loop",
+      "ok": true,
+      "sourceAssets": [
+        "tests/agentic_eval_contract.json",
+        "tests/simulation/scenarios/31-task-documents-tools.mjs"
+      ],
+      "canonicalToolsUsed": [
+        "tasks.create",
+        "findings.create"
+      ],
+      "toolCallCount": 2,
+      "successfulToolCallCount": 2,
+      "tokenUsage": {
+        "input": 0,
+        "output": 0,
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "totalTokens": 0,
+        "cost": {
+          "input": 0,
+          "output": 0,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "total": 0
+        }
+      },
+      "baselineEvidence": {
+        "nativeIstaraContractSource": [
+          "tests/agentic_eval_contract.json",
+          "tests/simulation/scenarios/31-task-documents-tools.mjs"
+        ],
+        "canonicalToolsUsed": [
+          "tasks.create",
+          "findings.create"
+        ],
+        "expectedCanonicalTools": [
+          "tasks.create",
+          "findings.create"
+        ],
+        "deterministicOnly": true
+      }
+    },
+    {
+      "scenario": "task.plan_execute.lifecycle",
+      "family": "plan_and_execute",
+      "ok": true,
+      "sourceAssets": [
+        "tests/benchmarks/test_orchestration.py",
+        "tests/simulation/scenarios/71-plan-and-execute.mjs"
+      ],
+      "canonicalToolsUsed": [
+        "tasks.create",
+        "plans.create",
+        "tasks.update_lifecycle"
+      ],
+      "toolCallCount": 3,
+      "successfulToolCallCount": 3,
+      "tokenUsage": {
+        "input": 0,
+        "output": 0,
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "totalTokens": 0,
+        "cost": {
+          "input": 0,
+          "output": 0,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "total": 0
+        }
+      },
+      "baselineEvidence": {
+        "nativeIstaraContractSource": [
+          "tests/benchmarks/test_orchestration.py",
+          "tests/simulation/scenarios/71-plan-and-execute.mjs"
+        ],
+        "canonicalToolsUsed": [
+          "tasks.create",
+          "plans.create",
+          "tasks.update_lifecycle"
+        ],
+        "expectedCanonicalTools": [
+          "tasks.create",
+          "plans.create",
+          "tasks.update_lifecycle"
+        ],
+        "deterministicOnly": true
+      }
+    },
+    {
+      "scenario": "documents.tools.slice",
+      "family": "documents_tools",
+      "ok": true,
+      "sourceAssets": [
+        "tests/simulation/scenarios/29-documents-system.mjs",
+        "tests/simulation/scenarios/31-task-documents-tools.mjs"
+      ],
+      "canonicalToolsUsed": [
+        "documents.create",
+        "documents.search",
+        "documents.read",
+        "tasks.create",
+        "tasks.attach_document",
+        "findings.create"
+      ],
+      "toolCallCount": 6,
+      "successfulToolCallCount": 6,
+      "tokenUsage": {
+        "input": 0,
+        "output": 0,
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "totalTokens": 0,
+        "cost": {
+          "input": 0,
+          "output": 0,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "total": 0
+        }
+      },
+      "baselineEvidence": {
+        "nativeIstaraContractSource": [
+          "tests/simulation/scenarios/29-documents-system.mjs",
+          "tests/simulation/scenarios/31-task-documents-tools.mjs"
+        ],
+        "canonicalToolsUsed": [
+          "documents.create",
+          "documents.search",
+          "documents.read",
+          "tasks.create",
+          "tasks.attach_document",
+          "findings.create"
+        ],
+        "expectedCanonicalTools": [
+          "documents.create",
+          "documents.search",
+          "documents.read",
+          "tasks.create",
+          "tasks.attach_document",
+          "findings.create"
+        ],
+        "deterministicOnly": true
+      }
+    },
+    {
+      "scenario": "structured_outputs.core_eval",
+      "family": "structured_outputs",
+      "ok": true,
+      "sourceAssets": [
+        "tests/evals/cases/core_eval_cases.json",
+        "scripts/run_istara_evals.py"
+      ],
+      "canonicalToolsUsed": [
+        "evals.emit_structured"
+      ],
+      "toolCallCount": 1,
+      "successfulToolCallCount": 1,
+      "tokenUsage": {
+        "input": 0,
+        "output": 0,
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "totalTokens": 0,
+        "cost": {
+          "input": 0,
+          "output": 0,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "total": 0
+        }
+      },
+      "baselineEvidence": {
+        "nativeIstaraContractSource": [
+          "tests/evals/cases/core_eval_cases.json",
+          "scripts/run_istara_evals.py"
+        ],
+        "canonicalToolsUsed": [
+          "evals.emit_structured"
+        ],
+        "expectedCanonicalTools": [
+          "evals.emit_structured"
+        ],
+        "deterministicOnly": true
+      }
+    },
+    {
+      "scenario": "memory.rag.slice",
+      "family": "memory_rag",
+      "ok": true,
+      "sourceAssets": [
+        "tests/agentic_eval_contract.json",
+        "tests/simulation/scenarios/23-memory-view.mjs"
+      ],
+      "canonicalToolsUsed": [
+        "memory.search",
+        "findings.create",
+        "memory.write"
+      ],
+      "toolCallCount": 3,
+      "successfulToolCallCount": 3,
+      "tokenUsage": {
+        "input": 0,
+        "output": 0,
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "totalTokens": 0,
+        "cost": {
+          "input": 0,
+          "output": 0,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "total": 0
+        }
+      },
+      "baselineEvidence": {
+        "nativeIstaraContractSource": [
+          "tests/agentic_eval_contract.json",
+          "tests/simulation/scenarios/23-memory-view.mjs"
+        ],
+        "canonicalToolsUsed": [
+          "memory.search",
+          "findings.create",
+          "memory.write"
+        ],
+        "expectedCanonicalTools": [
+          "memory.search",
+          "findings.create",
+          "memory.write"
+        ],
+        "deterministicOnly": true
+      }
+    },
+    {
+      "scenario": "skills.three_skill_slice",
+      "family": "skills",
+      "ok": true,
+      "sourceAssets": [
+        "tests/agentic_eval_contract.json",
+        "tests/simulation/scenarios/20-all-skills-comprehensive.mjs"
+      ],
+      "canonicalToolsUsed": [
+        "skills.apply",
+        "skills.apply",
+        "skills.apply",
+        "findings.create"
+      ],
+      "toolCallCount": 4,
+      "successfulToolCallCount": 4,
+      "tokenUsage": {
+        "input": 0,
+        "output": 0,
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "totalTokens": 0,
+        "cost": {
+          "input": 0,
+          "output": 0,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "total": 0
+        }
+      },
+      "baselineEvidence": {
+        "nativeIstaraContractSource": [
+          "tests/agentic_eval_contract.json",
+          "tests/simulation/scenarios/20-all-skills-comprehensive.mjs"
+        ],
+        "canonicalToolsUsed": [
+          "skills.apply",
+          "skills.apply",
+          "skills.apply",
+          "findings.create"
+        ],
+        "expectedCanonicalTools": [
+          "skills.apply",
+          "skills.apply",
+          "skills.apply",
+          "findings.create"
+        ],
+        "deterministicOnly": true
+      }
+    },
+    {
+      "scenario": "a2a.debate_report.slice",
+      "family": "a2a",
+      "ok": true,
+      "sourceAssets": [
+        "tests/simulation/scenarios/73-a2a-debate-and-reports.mjs"
+      ],
+      "canonicalToolsUsed": [
+        "a2a.delegate",
+        "a2a.delegate",
+        "a2a.report"
+      ],
+      "toolCallCount": 3,
+      "successfulToolCallCount": 3,
+      "tokenUsage": {
+        "input": 0,
+        "output": 0,
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "totalTokens": 0,
+        "cost": {
+          "input": 0,
+          "output": 0,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "total": 0
+        }
+      },
+      "baselineEvidence": {
+        "nativeIstaraContractSource": [
+          "tests/simulation/scenarios/73-a2a-debate-and-reports.mjs"
+        ],
+        "canonicalToolsUsed": [
+          "a2a.delegate",
+          "a2a.delegate",
+          "a2a.report"
+        ],
+        "expectedCanonicalTools": [
+          "a2a.delegate",
+          "a2a.delegate",
+          "a2a.report"
+        ],
+        "deterministicOnly": true
+      }
+    },
+    {
+      "scenario": "channel.lifecycle.simulated_slice",
+      "family": "channels",
+      "ok": true,
+      "sourceAssets": [
+        "tests/simulation/scenarios/53-channel-lifecycle.mjs"
+      ],
+      "canonicalToolsUsed": [
+        "channels.create",
+        "channels.receive",
+        "channels.respond"
+      ],
+      "toolCallCount": 3,
+      "successfulToolCallCount": 3,
+      "tokenUsage": {
+        "input": 0,
+        "output": 0,
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "totalTokens": 0,
+        "cost": {
+          "input": 0,
+          "output": 0,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "total": 0
+        }
+      },
+      "baselineEvidence": {
+        "nativeIstaraContractSource": [
+          "tests/simulation/scenarios/53-channel-lifecycle.mjs"
+        ],
+        "canonicalToolsUsed": [
+          "channels.create",
+          "channels.receive",
+          "channels.respond"
+        ],
+        "expectedCanonicalTools": [
+          "channels.create",
+          "channels.receive",
+          "channels.respond"
+        ],
+        "deterministicOnly": true
+      }
+    },
+    {
+      "scenario": "research.spine.step_tracker",
+      "family": "research_spine",
+      "ok": true,
+      "sourceAssets": [
+        "docs/architecture/research-validity-contract.md",
+        "tests/real_user_benchmark/lib/research-spine-probes.mjs",
+        "tests/agentic_eval_contract.json"
+      ],
+      "canonicalToolsUsed": [
+        "documents.search",
+        "documents.read",
+        "research.record_step",
+        "research.record_step",
+        "research.record_step",
+        "research.record_step",
+        "findings.create"
+      ],
+      "toolCallCount": 7,
+      "successfulToolCallCount": 7,
+      "tokenUsage": {
+        "input": 0,
+        "output": 0,
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "totalTokens": 0,
+        "cost": {
+          "input": 0,
+          "output": 0,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "total": 0
+        }
+      },
+      "baselineEvidence": {
+        "nativeIstaraContractSource": [
+          "docs/architecture/research-validity-contract.md",
+          "tests/real_user_benchmark/lib/research-spine-probes.mjs",
+          "tests/agentic_eval_contract.json"
+        ],
+        "canonicalToolsUsed": [
+          "documents.search",
+          "documents.read",
+          "research.record_step",
+          "research.record_step",
+          "research.record_step",
+          "research.record_step",
+          "findings.create"
+        ],
+        "expectedCanonicalTools": [
+          "documents.search",
+          "documents.read",
+          "research.record_step",
+          "research.record_step",
+          "research.record_step",
+          "research.record_step",
+          "findings.create"
+        ],
+        "deterministicOnly": true
+      }
+    },
+    {
+      "scenario": "model.routing.telemetry.slice",
+      "family": "model_routing_telemetry",
+      "ok": true,
+      "sourceAssets": [
+        "tests/agentic_eval_contract.json",
+        "tests/evals/registry.json",
+        "tests/test_telemetry.py",
+        "tests/test_telemetry_export.py"
+      ],
+      "canonicalToolsUsed": [
+        "models.route",
+        "telemetry.record_metric",
+        "telemetry.record_metric",
+        "evals.emit_structured"
+      ],
+      "toolCallCount": 4,
+      "successfulToolCallCount": 4,
+      "tokenUsage": {
+        "input": 0,
+        "output": 0,
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "totalTokens": 0,
+        "cost": {
+          "input": 0,
+          "output": 0,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "total": 0
+        }
+      },
+      "baselineEvidence": {
+        "nativeIstaraContractSource": [
+          "tests/agentic_eval_contract.json",
+          "tests/evals/registry.json",
+          "tests/test_telemetry.py",
+          "tests/test_telemetry_export.py"
+        ],
+        "canonicalToolsUsed": [
+          "models.route",
+          "telemetry.record_metric",
+          "telemetry.record_metric",
+          "evals.emit_structured"
+        ],
+        "expectedCanonicalTools": [
+          "models.route",
+          "telemetry.record_metric",
+          "telemetry.record_metric",
+          "evals.emit_structured"
+        ],
+        "deterministicOnly": true
+      }
+    }
+  ],
+  "candidate": [
+    {
+      "scenario": "chat.tool_loop.task_and_finding",
+      "family": "chat_tool_loop",
+      "ok": true,
+      "sourceAssets": [
+        "tests/agentic_eval_contract.json",
+        "tests/simulation/scenarios/31-task-documents-tools.mjs"
+      ],
+      "canonicalToolsUsed": [
+        "tasks.create",
+        "findings.create"
+      ],
+      "toolCallCount": 2,
+      "successfulToolCallCount": 2,
+      "tokenUsage": {
+        "input": 2516,
+        "output": 15,
+        "cacheRead": 77,
+        "cacheWrite": 2517,
+        "totalTokens": 5125,
+        "cost": {
+          "input": 0,
+          "output": 0,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "total": 0
+        }
+      },
+      "replacementEvidence": {
+        "piOwnedLoop": true,
+        "canonicalToolsUsed": [
+          "tasks.create",
+          "findings.create"
+        ],
+        "expectedCanonicalTools": [
+          "tasks.create",
+          "findings.create"
+        ],
+        "expectedToolOrderMatched": true,
+        "traceEmission": {
+          "piEvents": 52,
+          "canonicalTraceRows": 2,
+          "rawCaptureRequiredForLiveCalls": true
+        },
+        "modelRouting": {
+          "recordedRoutes": [],
+          "deepseekOnlyPolicy": true,
+          "localModelsAllowed": false
+        },
+        "researchSpine": {
+          "stepCount": 0,
+          "groundedStepCount": 0,
+          "validatedStepCount": 0,
+          "provisionalStepCount": 0,
+          "averageQuality": null,
+          "sourceSpanPreserved": true,
+          "reportableDoneGate": false,
+          "doneGateReason": "Lab-only candidate records source-grounded/provisional spine steps but does not bypass Istara's human Done gate."
+        },
+        "memoryLoad": {
+          "recordsAvailable": 2,
+          "searchCalls": 0
+        },
+        "skillsAdherence": {
+          "maxRepresentativeSkillSlices": 3,
+          "skillCalls": 0,
+          "adhered": true
+        },
+        "systemPromptAdherence": {
+          "canonicalToolsOnly": true,
+          "localModelsAllowed": false,
+          "policy": "Pi owns loop/tool execution; Istara owns product state and policy."
+        },
+        "istaraProductStatePreserved": {
+          "projectId": "pi-replacement-lab",
+          "taskCount": 1,
+          "findingCount": 1,
+          "documentCount": 1,
+          "memoryCount": 2,
+          "channelCount": 0,
+          "researchStepCount": 0,
+          "modelRouteCount": 0
+        }
+      }
+    },
+    {
+      "scenario": "task.plan_execute.lifecycle",
+      "family": "plan_and_execute",
+      "ok": true,
+      "sourceAssets": [
+        "tests/benchmarks/test_orchestration.py",
+        "tests/simulation/scenarios/71-plan-and-execute.mjs"
+      ],
+      "canonicalToolsUsed": [
+        "tasks.create",
+        "plans.create",
+        "tasks.update_lifecycle"
+      ],
+      "toolCallCount": 3,
+      "successfulToolCallCount": 3,
+      "tokenUsage": {
+        "input": 2656,
+        "output": 15,
+        "cacheRead": 238,
+        "cacheWrite": 2657,
+        "totalTokens": 5566,
+        "cost": {
+          "input": 0,
+          "output": 0,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "total": 0
+        }
+      },
+      "replacementEvidence": {
+        "piOwnedLoop": true,
+        "canonicalToolsUsed": [
+          "tasks.create",
+          "plans.create",
+          "tasks.update_lifecycle"
+        ],
+        "expectedCanonicalTools": [
+          "tasks.create",
+          "plans.create",
+          "tasks.update_lifecycle"
+        ],
+        "expectedToolOrderMatched": true,
+        "traceEmission": {
+          "piEvents": 75,
+          "canonicalTraceRows": 3,
+          "rawCaptureRequiredForLiveCalls": true
+        },
+        "modelRouting": {
+          "recordedRoutes": [],
+          "deepseekOnlyPolicy": true,
+          "localModelsAllowed": false
+        },
+        "researchSpine": {
+          "stepCount": 0,
+          "groundedStepCount": 0,
+          "validatedStepCount": 0,
+          "provisionalStepCount": 0,
+          "averageQuality": null,
+          "sourceSpanPreserved": true,
+          "reportableDoneGate": false,
+          "doneGateReason": "Lab-only candidate records source-grounded/provisional spine steps but does not bypass Istara's human Done gate."
+        },
+        "memoryLoad": {
+          "recordsAvailable": 2,
+          "searchCalls": 0
+        },
+        "skillsAdherence": {
+          "maxRepresentativeSkillSlices": 3,
+          "skillCalls": 0,
+          "adhered": true
+        },
+        "systemPromptAdherence": {
+          "canonicalToolsOnly": true,
+          "localModelsAllowed": false,
+          "policy": "Pi owns loop/tool execution; Istara owns product state and policy."
+        },
+        "istaraProductStatePreserved": {
+          "projectId": "pi-replacement-lab",
+          "taskCount": 1,
+          "findingCount": 0,
+          "documentCount": 1,
+          "memoryCount": 2,
+          "channelCount": 0,
+          "researchStepCount": 0,
+          "modelRouteCount": 0
+        }
+      }
+    },
+    {
+      "scenario": "documents.tools.slice",
+      "family": "documents_tools",
+      "ok": true,
+      "sourceAssets": [
+        "tests/simulation/scenarios/29-documents-system.mjs",
+        "tests/simulation/scenarios/31-task-documents-tools.mjs"
+      ],
+      "canonicalToolsUsed": [
+        "documents.create",
+        "documents.search",
+        "documents.read",
+        "tasks.create",
+        "tasks.attach_document",
+        "findings.create"
+      ],
+      "toolCallCount": 6,
+      "successfulToolCallCount": 6,
+      "tokenUsage": {
+        "input": 2550,
+        "output": 17,
+        "cacheRead": 854,
+        "cacheWrite": 2551,
+        "totalTokens": 5972,
+        "cost": {
+          "input": 0,
+          "output": 0,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "total": 0
+        }
+      },
+      "replacementEvidence": {
+        "piOwnedLoop": true,
+        "canonicalToolsUsed": [
+          "documents.create",
+          "documents.search",
+          "documents.read",
+          "tasks.create",
+          "tasks.attach_document",
+          "findings.create"
+        ],
+        "expectedCanonicalTools": [
+          "documents.create",
+          "documents.search",
+          "documents.read",
+          "tasks.create",
+          "tasks.attach_document",
+          "findings.create"
+        ],
+        "expectedToolOrderMatched": true,
+        "traceEmission": {
+          "piEvents": 121,
+          "canonicalTraceRows": 6,
+          "rawCaptureRequiredForLiveCalls": true
+        },
+        "modelRouting": {
+          "recordedRoutes": [],
+          "deepseekOnlyPolicy": true,
+          "localModelsAllowed": false
+        },
+        "researchSpine": {
+          "stepCount": 0,
+          "groundedStepCount": 0,
+          "validatedStepCount": 0,
+          "provisionalStepCount": 0,
+          "averageQuality": null,
+          "sourceSpanPreserved": true,
+          "reportableDoneGate": false,
+          "doneGateReason": "Lab-only candidate records source-grounded/provisional spine steps but does not bypass Istara's human Done gate."
+        },
+        "memoryLoad": {
+          "recordsAvailable": 2,
+          "searchCalls": 0
+        },
+        "skillsAdherence": {
+          "maxRepresentativeSkillSlices": 3,
+          "skillCalls": 0,
+          "adhered": true
+        },
+        "systemPromptAdherence": {
+          "canonicalToolsOnly": true,
+          "localModelsAllowed": false,
+          "policy": "Pi owns loop/tool execution; Istara owns product state and policy."
+        },
+        "istaraProductStatePreserved": {
+          "projectId": "pi-replacement-lab",
+          "taskCount": 1,
+          "findingCount": 1,
+          "documentCount": 2,
+          "memoryCount": 2,
+          "channelCount": 0,
+          "researchStepCount": 0,
+          "modelRouteCount": 0
+        }
+      }
+    },
+    {
+      "scenario": "structured_outputs.core_eval",
+      "family": "structured_outputs",
+      "ok": true,
+      "sourceAssets": [
+        "tests/evals/cases/core_eval_cases.json",
+        "scripts/run_istara_evals.py"
+      ],
+      "canonicalToolsUsed": [
+        "evals.emit_structured"
+      ],
+      "toolCallCount": 1,
+      "successfulToolCallCount": 1,
+      "tokenUsage": {
+        "input": 2399,
+        "output": 15,
+        "cacheRead": 84,
+        "cacheWrite": 2399,
+        "totalTokens": 4897,
+        "cost": {
+          "input": 0,
+          "output": 0,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "total": 0
+        }
+      },
+      "replacementEvidence": {
+        "piOwnedLoop": true,
+        "canonicalToolsUsed": [
+          "evals.emit_structured"
+        ],
+        "expectedCanonicalTools": [
+          "evals.emit_structured"
+        ],
+        "expectedToolOrderMatched": true,
+        "traceEmission": {
+          "piEvents": 41,
+          "canonicalTraceRows": 1,
+          "rawCaptureRequiredForLiveCalls": true
+        },
+        "modelRouting": {
+          "recordedRoutes": [],
+          "deepseekOnlyPolicy": true,
+          "localModelsAllowed": false
+        },
+        "researchSpine": {
+          "stepCount": 0,
+          "groundedStepCount": 0,
+          "validatedStepCount": 0,
+          "provisionalStepCount": 0,
+          "averageQuality": null,
+          "sourceSpanPreserved": true,
+          "reportableDoneGate": false,
+          "doneGateReason": "Lab-only candidate records source-grounded/provisional spine steps but does not bypass Istara's human Done gate."
+        },
+        "memoryLoad": {
+          "recordsAvailable": 2,
+          "searchCalls": 0
+        },
+        "skillsAdherence": {
+          "maxRepresentativeSkillSlices": 3,
+          "skillCalls": 0,
+          "adhered": true
+        },
+        "systemPromptAdherence": {
+          "canonicalToolsOnly": true,
+          "localModelsAllowed": false,
+          "policy": "Pi owns loop/tool execution; Istara owns product state and policy."
+        },
+        "istaraProductStatePreserved": {
+          "projectId": "pi-replacement-lab",
+          "taskCount": 0,
+          "findingCount": 0,
+          "documentCount": 1,
+          "memoryCount": 2,
+          "channelCount": 0,
+          "researchStepCount": 0,
+          "modelRouteCount": 0
+        }
+      }
+    },
+    {
+      "scenario": "memory.rag.slice",
+      "family": "memory_rag",
+      "ok": true,
+      "sourceAssets": [
+        "tests/agentic_eval_contract.json",
+        "tests/simulation/scenarios/23-memory-view.mjs"
+      ],
+      "canonicalToolsUsed": [
+        "memory.search",
+        "findings.create",
+        "memory.write"
+      ],
+      "toolCallCount": 3,
+      "successfulToolCallCount": 3,
+      "tokenUsage": {
+        "input": 2544,
+        "output": 15,
+        "cacheRead": 86,
+        "cacheWrite": 2545,
+        "totalTokens": 5190,
+        "cost": {
+          "input": 0,
+          "output": 0,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "total": 0
+        }
+      },
+      "replacementEvidence": {
+        "piOwnedLoop": true,
+        "canonicalToolsUsed": [
+          "memory.search",
+          "findings.create",
+          "memory.write"
+        ],
+        "expectedCanonicalTools": [
+          "memory.search",
+          "findings.create",
+          "memory.write"
+        ],
+        "expectedToolOrderMatched": true,
+        "traceEmission": {
+          "piEvents": 58,
+          "canonicalTraceRows": 3,
+          "rawCaptureRequiredForLiveCalls": true
+        },
+        "modelRouting": {
+          "recordedRoutes": [],
+          "deepseekOnlyPolicy": true,
+          "localModelsAllowed": false
+        },
+        "researchSpine": {
+          "stepCount": 0,
+          "groundedStepCount": 0,
+          "validatedStepCount": 0,
+          "provisionalStepCount": 0,
+          "averageQuality": null,
+          "sourceSpanPreserved": true,
+          "reportableDoneGate": false,
+          "doneGateReason": "Lab-only candidate records source-grounded/provisional spine steps but does not bypass Istara's human Done gate."
+        },
+        "memoryLoad": {
+          "recordsAvailable": 3,
+          "searchCalls": 1
+        },
+        "skillsAdherence": {
+          "maxRepresentativeSkillSlices": 3,
+          "skillCalls": 0,
+          "adhered": true
+        },
+        "systemPromptAdherence": {
+          "canonicalToolsOnly": true,
+          "localModelsAllowed": false,
+          "policy": "Pi owns loop/tool execution; Istara owns product state and policy."
+        },
+        "istaraProductStatePreserved": {
+          "projectId": "pi-replacement-lab",
+          "taskCount": 0,
+          "findingCount": 1,
+          "documentCount": 1,
+          "memoryCount": 3,
+          "channelCount": 0,
+          "researchStepCount": 0,
+          "modelRouteCount": 0
+        }
+      }
+    },
+    {
+      "scenario": "skills.three_skill_slice",
+      "family": "skills",
+      "ok": true,
+      "sourceAssets": [
+        "tests/agentic_eval_contract.json",
+        "tests/simulation/scenarios/20-all-skills-comprehensive.mjs"
+      ],
+      "canonicalToolsUsed": [
+        "skills.apply",
+        "skills.apply",
+        "skills.apply",
+        "findings.create"
+      ],
+      "toolCallCount": 4,
+      "successfulToolCallCount": 4,
+      "tokenUsage": {
+        "input": 2349,
+        "output": 14,
+        "cacheRead": 375,
+        "cacheWrite": 2350,
+        "totalTokens": 5088,
+        "cost": {
+          "input": 0,
+          "output": 0,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "total": 0
+        }
+      },
+      "replacementEvidence": {
+        "piOwnedLoop": true,
+        "canonicalToolsUsed": [
+          "skills.apply",
+          "skills.apply",
+          "skills.apply",
+          "findings.create"
+        ],
+        "expectedCanonicalTools": [
+          "skills.apply",
+          "skills.apply",
+          "skills.apply",
+          "findings.create"
+        ],
+        "expectedToolOrderMatched": true,
+        "traceEmission": {
+          "piEvents": 74,
+          "canonicalTraceRows": 4,
+          "rawCaptureRequiredForLiveCalls": true
+        },
+        "modelRouting": {
+          "recordedRoutes": [],
+          "deepseekOnlyPolicy": true,
+          "localModelsAllowed": false
+        },
+        "researchSpine": {
+          "stepCount": 0,
+          "groundedStepCount": 0,
+          "validatedStepCount": 0,
+          "provisionalStepCount": 0,
+          "averageQuality": null,
+          "sourceSpanPreserved": true,
+          "reportableDoneGate": false,
+          "doneGateReason": "Lab-only candidate records source-grounded/provisional spine steps but does not bypass Istara's human Done gate."
+        },
+        "memoryLoad": {
+          "recordsAvailable": 2,
+          "searchCalls": 0
+        },
+        "skillsAdherence": {
+          "maxRepresentativeSkillSlices": 3,
+          "skillCalls": 3,
+          "adhered": true
+        },
+        "systemPromptAdherence": {
+          "canonicalToolsOnly": true,
+          "localModelsAllowed": false,
+          "policy": "Pi owns loop/tool execution; Istara owns product state and policy."
+        },
+        "istaraProductStatePreserved": {
+          "projectId": "pi-replacement-lab",
+          "taskCount": 0,
+          "findingCount": 1,
+          "documentCount": 1,
+          "memoryCount": 2,
+          "channelCount": 0,
+          "researchStepCount": 0,
+          "modelRouteCount": 0
+        }
+      }
+    },
+    {
+      "scenario": "a2a.debate_report.slice",
+      "family": "a2a",
+      "ok": true,
+      "sourceAssets": [
+        "tests/simulation/scenarios/73-a2a-debate-and-reports.mjs"
+      ],
+      "canonicalToolsUsed": [
+        "a2a.delegate",
+        "a2a.delegate",
+        "a2a.report"
+      ],
+      "toolCallCount": 3,
+      "successfulToolCallCount": 3,
+      "tokenUsage": {
+        "input": 2342,
+        "output": 16,
+        "cacheRead": 264,
+        "cacheWrite": 2342,
+        "totalTokens": 4964,
+        "cost": {
+          "input": 0,
+          "output": 0,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "total": 0
+        }
+      },
+      "replacementEvidence": {
+        "piOwnedLoop": true,
+        "canonicalToolsUsed": [
+          "a2a.delegate",
+          "a2a.delegate",
+          "a2a.report"
+        ],
+        "expectedCanonicalTools": [
+          "a2a.delegate",
+          "a2a.delegate",
+          "a2a.report"
+        ],
+        "expectedToolOrderMatched": true,
+        "traceEmission": {
+          "piEvents": 65,
+          "canonicalTraceRows": 3,
+          "rawCaptureRequiredForLiveCalls": true
+        },
+        "modelRouting": {
+          "recordedRoutes": [],
+          "deepseekOnlyPolicy": true,
+          "localModelsAllowed": false
+        },
+        "researchSpine": {
+          "stepCount": 0,
+          "groundedStepCount": 0,
+          "validatedStepCount": 0,
+          "provisionalStepCount": 0,
+          "averageQuality": null,
+          "sourceSpanPreserved": true,
+          "reportableDoneGate": false,
+          "doneGateReason": "Lab-only candidate records source-grounded/provisional spine steps but does not bypass Istara's human Done gate."
+        },
+        "memoryLoad": {
+          "recordsAvailable": 2,
+          "searchCalls": 0
+        },
+        "skillsAdherence": {
+          "maxRepresentativeSkillSlices": 3,
+          "skillCalls": 0,
+          "adhered": true
+        },
+        "systemPromptAdherence": {
+          "canonicalToolsOnly": true,
+          "localModelsAllowed": false,
+          "policy": "Pi owns loop/tool execution; Istara owns product state and policy."
+        },
+        "istaraProductStatePreserved": {
+          "projectId": "pi-replacement-lab",
+          "taskCount": 0,
+          "findingCount": 0,
+          "documentCount": 1,
+          "memoryCount": 2,
+          "channelCount": 0,
+          "researchStepCount": 0,
+          "modelRouteCount": 0
+        }
+      }
+    },
+    {
+      "scenario": "channel.lifecycle.simulated_slice",
+      "family": "channels",
+      "ok": true,
+      "sourceAssets": [
+        "tests/simulation/scenarios/53-channel-lifecycle.mjs"
+      ],
+      "canonicalToolsUsed": [
+        "channels.create",
+        "channels.receive",
+        "channels.respond"
+      ],
+      "toolCallCount": 3,
+      "successfulToolCallCount": 3,
+      "tokenUsage": {
+        "input": 2447,
+        "output": 20,
+        "cacheRead": 172,
+        "cacheWrite": 2447,
+        "totalTokens": 5086,
+        "cost": {
+          "input": 0,
+          "output": 0,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "total": 0
+        }
+      },
+      "replacementEvidence": {
+        "piOwnedLoop": true,
+        "canonicalToolsUsed": [
+          "channels.create",
+          "channels.receive",
+          "channels.respond"
+        ],
+        "expectedCanonicalTools": [
+          "channels.create",
+          "channels.receive",
+          "channels.respond"
+        ],
+        "expectedToolOrderMatched": true,
+        "traceEmission": {
+          "piEvents": 61,
+          "canonicalTraceRows": 3,
+          "rawCaptureRequiredForLiveCalls": true
+        },
+        "modelRouting": {
+          "recordedRoutes": [],
+          "deepseekOnlyPolicy": true,
+          "localModelsAllowed": false
+        },
+        "researchSpine": {
+          "stepCount": 0,
+          "groundedStepCount": 0,
+          "validatedStepCount": 0,
+          "provisionalStepCount": 0,
+          "averageQuality": null,
+          "sourceSpanPreserved": true,
+          "reportableDoneGate": false,
+          "doneGateReason": "Lab-only candidate records source-grounded/provisional spine steps but does not bypass Istara's human Done gate."
+        },
+        "memoryLoad": {
+          "recordsAvailable": 2,
+          "searchCalls": 0
+        },
+        "skillsAdherence": {
+          "maxRepresentativeSkillSlices": 3,
+          "skillCalls": 0,
+          "adhered": true
+        },
+        "systemPromptAdherence": {
+          "canonicalToolsOnly": true,
+          "localModelsAllowed": false,
+          "policy": "Pi owns loop/tool execution; Istara owns product state and policy."
+        },
+        "istaraProductStatePreserved": {
+          "projectId": "pi-replacement-lab",
+          "taskCount": 0,
+          "findingCount": 0,
+          "documentCount": 1,
+          "memoryCount": 2,
+          "channelCount": 1,
+          "researchStepCount": 0,
+          "modelRouteCount": 0
+        }
+      }
+    },
+    {
+      "scenario": "research.spine.step_tracker",
+      "family": "research_spine",
+      "ok": true,
+      "sourceAssets": [
+        "docs/architecture/research-validity-contract.md",
+        "tests/real_user_benchmark/lib/research-spine-probes.mjs",
+        "tests/agentic_eval_contract.json"
+      ],
+      "canonicalToolsUsed": [
+        "documents.search",
+        "documents.read",
+        "research.record_step",
+        "research.record_step",
+        "research.record_step",
+        "research.record_step",
+        "findings.create"
+      ],
+      "toolCallCount": 7,
+      "successfulToolCallCount": 7,
+      "tokenUsage": {
+        "input": 2450,
+        "output": 19,
+        "cacheRead": 1211,
+        "cacheWrite": 2450,
+        "totalTokens": 6130,
+        "cost": {
+          "input": 0,
+          "output": 0,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "total": 0
+        }
+      },
+      "replacementEvidence": {
+        "piOwnedLoop": true,
+        "canonicalToolsUsed": [
+          "documents.search",
+          "documents.read",
+          "research.record_step",
+          "research.record_step",
+          "research.record_step",
+          "research.record_step",
+          "findings.create"
+        ],
+        "expectedCanonicalTools": [
+          "documents.search",
+          "documents.read",
+          "research.record_step",
+          "research.record_step",
+          "research.record_step",
+          "research.record_step",
+          "findings.create"
+        ],
+        "expectedToolOrderMatched": true,
+        "traceEmission": {
+          "piEvents": 178,
+          "canonicalTraceRows": 7,
+          "rawCaptureRequiredForLiveCalls": true
+        },
+        "modelRouting": {
+          "recordedRoutes": [],
+          "deepseekOnlyPolicy": true,
+          "localModelsAllowed": false
+        },
+        "researchSpine": {
+          "stepCount": 4,
+          "groundedStepCount": 3,
+          "validatedStepCount": 1,
+          "provisionalStepCount": 1,
+          "averageQuality": 0.847,
+          "sourceSpanPreserved": true,
+          "reportableDoneGate": false,
+          "doneGateReason": "Lab-only candidate records source-grounded/provisional spine steps but does not bypass Istara's human Done gate."
+        },
+        "memoryLoad": {
+          "recordsAvailable": 2,
+          "searchCalls": 0
+        },
+        "skillsAdherence": {
+          "maxRepresentativeSkillSlices": 3,
+          "skillCalls": 0,
+          "adhered": true
+        },
+        "systemPromptAdherence": {
+          "canonicalToolsOnly": true,
+          "localModelsAllowed": false,
+          "policy": "Pi owns loop/tool execution; Istara owns product state and policy."
+        },
+        "istaraProductStatePreserved": {
+          "projectId": "pi-replacement-lab",
+          "taskCount": 0,
+          "findingCount": 1,
+          "documentCount": 1,
+          "memoryCount": 2,
+          "channelCount": 0,
+          "researchStepCount": 4,
+          "modelRouteCount": 0
+        }
+      }
+    },
+    {
+      "scenario": "model.routing.telemetry.slice",
+      "family": "model_routing_telemetry",
+      "ok": true,
+      "sourceAssets": [
+        "tests/agentic_eval_contract.json",
+        "tests/evals/registry.json",
+        "tests/test_telemetry.py",
+        "tests/test_telemetry_export.py"
+      ],
+      "canonicalToolsUsed": [
+        "models.route",
+        "telemetry.record_metric",
+        "telemetry.record_metric",
+        "evals.emit_structured"
+      ],
+      "toolCallCount": 4,
+      "successfulToolCallCount": 4,
+      "tokenUsage": {
+        "input": 2694,
+        "output": 14,
+        "cacheRead": 85,
+        "cacheWrite": 2694,
+        "totalTokens": 5487,
+        "cost": {
+          "input": 0,
+          "output": 0,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "total": 0
+        }
+      },
+      "replacementEvidence": {
+        "piOwnedLoop": true,
+        "canonicalToolsUsed": [
+          "models.route",
+          "telemetry.record_metric",
+          "telemetry.record_metric",
+          "evals.emit_structured"
+        ],
+        "expectedCanonicalTools": [
+          "models.route",
+          "telemetry.record_metric",
+          "telemetry.record_metric",
+          "evals.emit_structured"
+        ],
+        "expectedToolOrderMatched": true,
+        "traceEmission": {
+          "piEvents": 78,
+          "canonicalTraceRows": 4,
+          "rawCaptureRequiredForLiveCalls": true
+        },
+        "modelRouting": {
+          "recordedRoutes": [
+            {
+              "id": "model-route-1",
+              "projectId": "pi-replacement-lab",
+              "step": "candidate_live_sample",
+              "provider": "deepseek",
+              "model": "deepseek-v4-pro",
+              "reason": "Owner-approved cloud model route; local models are disallowed.",
+              "local_models_allowed": false
+            }
+          ],
+          "deepseekOnlyPolicy": true,
+          "localModelsAllowed": false
+        },
+        "researchSpine": {
+          "stepCount": 0,
+          "groundedStepCount": 0,
+          "validatedStepCount": 0,
+          "provisionalStepCount": 0,
+          "averageQuality": null,
+          "sourceSpanPreserved": true,
+          "reportableDoneGate": false,
+          "doneGateReason": "Lab-only candidate records source-grounded/provisional spine steps but does not bypass Istara's human Done gate."
+        },
+        "memoryLoad": {
+          "recordsAvailable": 2,
+          "searchCalls": 0
+        },
+        "skillsAdherence": {
+          "maxRepresentativeSkillSlices": 3,
+          "skillCalls": 0,
+          "adhered": true
+        },
+        "systemPromptAdherence": {
+          "canonicalToolsOnly": true,
+          "localModelsAllowed": false,
+          "policy": "Pi owns loop/tool execution; Istara owns product state and policy."
+        },
+        "istaraProductStatePreserved": {
+          "projectId": "pi-replacement-lab",
+          "taskCount": 0,
+          "findingCount": 0,
+          "documentCount": 1,
+          "memoryCount": 2,
+          "channelCount": 0,
+          "researchStepCount": 0,
+          "modelRouteCount": 1
+        }
+      }
+    }
+  ]
+}

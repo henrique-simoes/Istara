@@ -1,0 +1,5 @@
+Call 7
+Caller role: caregiver
+Issue: forms look complete even when lab attachments are missing.
+Quote: "I do not need another reminder. I need to know which thing is actually blocking the visit."
+Disposition: resolved with manual explanation

@@ -1,0 +1,13 @@
+{
+  "run_id": "clarification-real-user-plan",
+  "mode": "plan-only",
+  "started_at": "2026-07-19T15:56:23.918Z",
+  "cwd": "/Users/user/Documents/Istara-main",
+  "node": "v26.0.0",
+  "system_prompt": {
+    "source_path": "/Users/user/Documents/Istara-main/tests/real_user_benchmark/system-prompt.md",
+    "version": "2026-05-09.4",
+    "sha256": "b2f639ee62e7350ce88b487fc0b9bd67b3f5f10cc2a5197eadc861e8ddb650c3",
+    "bytes": 11407
+  }
+}
