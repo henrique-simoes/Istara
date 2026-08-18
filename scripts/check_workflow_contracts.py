@@ -16,6 +16,11 @@ Structural, deterministic checks (stdlib only):
      `testing` (or any other triggering branch), so `testing` HEAD stays a
      stable, reproducible source for the exact-SHA human promotion gate and
      the no-direct-push contract.
+  7. (F-5-r2 regression) promote-testing.yml's fail-closed required-checks
+     step lists Actions runs via `gh api .../actions/runs`, which requires the
+     Actions read scope on the workflow token; the explicit `permissions`
+     block must therefore bind `actions: read`, or a normal runner 403s and
+     the only promotion path can never reach PR creation.
 """
 
 from __future__ import annotations
@@ -102,6 +107,23 @@ def check_promote(issues: list[str], root: Path = ROOT) -> None:
         issues.append("promote-testing.yml: must bind the exact source SHA (anti-replay)")
     if "fail" not in promo.lower() and "exit 1" not in promo:
         issues.append("promote-testing.yml: changed-SHA replay must fail closed")
+    # F-5-r2 regression contract: the required-checks step calls
+    # `gh api .../actions/runs` and must exist (anchor), and the explicit
+    # `permissions` block must bind the Actions read scope. `actions: write`
+    # implies read and is accepted; without any `actions` scope the workflow
+    # token cannot list runs and the fail-closed check 403s on a normal runner.
+    if "actions/runs" not in promo:
+        issues.append(
+            "promote-testing.yml: missing the required-checks "
+            "`gh api .../actions/runs` verification step"
+        )
+    perm = re.search(r"^permissions:\s*\n((?:[ \t]+[^\n]*\n)+)", promo, re.MULTILINE)
+    if not perm or not re.search(r"[ \t]+actions:\s*(read|write)\b", perm.group(1)):
+        issues.append(
+            "promote-testing.yml: must bind `actions: read` (the required-checks "
+            "step lists Actions runs via `gh api .../actions/runs`, which needs "
+            "the Actions read scope on the workflow token)"
+        )
 
 
 def main() -> int:

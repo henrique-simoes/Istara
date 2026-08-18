@@ -2809,6 +2809,9 @@ Istara's public release testing is now provider-agnostic and human-gated:
   may create a promotion PR to `main`, and only after a protected-environment
   approval that binds the exact source SHA, evidence manifest, and image
   digest. No workflow auto-merges; a changed SHA invalidates the approval.
+  The promotion step verifies required checks for the exact SHA via
+  `gh api .../actions/runs` with an `actions: read`-scoped workflow token
+  (enforced by `scripts/check_workflow_contracts.py`).
 - **Research Spine boundary:** synthetic QA seeds (`qa/corpora/`) ingest through
   the real evidence-unit path with `is_qa_provisional = true` and can never
   reach accepted/reportable states (`qa/scripts/seed_synthetic.py`,

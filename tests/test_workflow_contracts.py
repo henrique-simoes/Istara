@@ -4,6 +4,12 @@ Covers the F-6 regression contract: CI-generated badge-sync writebacks are
 restricted to the release branch (`main`) and never mutate `testing`, so
 `testing` HEAD stays a stable, reproducible source for the exact-SHA human
 promotion gate (no-direct-push contract).
+
+Covers the F-5-r2 regression contract: promote-testing.yml's fail-closed
+required-checks step lists Actions runs via `gh api .../actions/runs`, so the
+workflow's explicit `permissions` block must bind `actions: read` — without
+it the check 403s on a normal runner and the only promotion path can never
+reach PR creation.
 """
 
 from __future__ import annotations
@@ -20,6 +26,20 @@ from scripts.check_workflow_contracts import (
 )
 
 REAL_CI = (WORKFLOWS / "ci.yml").read_text(encoding="utf-8")
+REAL_PROMOTE = (WORKFLOWS / "promote-testing.yml").read_text(encoding="utf-8")
+
+
+def _write_promote(text: str, tmp_path: Path) -> Path:
+    wf = tmp_path / ".github" / "workflows"
+    wf.mkdir(parents=True)
+    (wf / "promote-testing.yml").write_text(text, encoding="utf-8")
+    return tmp_path
+
+
+def _promote_issues(text: str, tmp_path: Path) -> list[str]:
+    issues: list[str] = []
+    check_promote(issues, root=_write_promote(text, tmp_path))
+    return issues
 
 
 def _write_ci(text: str, tmp_path: Path) -> Path:
@@ -89,3 +109,26 @@ def test_ci_rejects_writeback_with_disabled_gate(tmp_path):
     )
     issues = _ci_issues(bad, tmp_path)
     assert any("release branch" in issue for issue in issues)
+
+
+def test_real_promote_passes_actions_read_regression(tmp_path):
+    # The real promote-testing.yml binds `actions: read` and keeps the
+    # required-checks `gh api .../actions/runs` verification step.
+    issues = _promote_issues(REAL_PROMOTE, tmp_path)
+    assert issues == []
+
+
+def test_promote_rejects_missing_actions_read(tmp_path):
+    # Reintroducing the F-5-r2 regression: dropping `actions: read` from the
+    # explicit permissions leaves the Actions-runs listing unauthorized.
+    bad = REAL_PROMOTE.replace("  actions: read\n", "")
+    issues = _promote_issues(bad, tmp_path)
+    assert any("actions: read" in issue for issue in issues)
+
+
+def test_promote_rejects_missing_actions_runs_check(tmp_path):
+    # Removing the required-checks API call silently disables the green-checks
+    # gate; the permission contract must stay anchored to a real check.
+    bad = REAL_PROMOTE.replace("/actions/runs", "/workflows")
+    issues = _promote_issues(bad, tmp_path)
+    assert any("actions/runs" in issue for issue in issues)

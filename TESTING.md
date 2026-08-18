@@ -124,6 +124,12 @@ The dedicated `qa-artifact.yml` workflow builds the disposable QA image; the
 to `main`, and only after a protected-environment human approval that binds the
 exact source SHA. Nothing auto-merges.
 
+Before creating the PR, the promotion workflow verifies required checks are
+green for the exact SHA via `gh api .../actions/runs`; the workflow token binds
+`actions: read` (plus `contents`/`pull-requests` write) so that check is
+authorized on a normal runner (`scripts/check_workflow_contracts.py` enforces
+this permission contract).
+
 The `governance` job's README version-badge sync is restricted to `main` (the
 release branch): CI never pushes a generated commit to `testing` or `staging`,
 so `testing` HEAD stays the exact, reproducible SHA the promotion gate verifies

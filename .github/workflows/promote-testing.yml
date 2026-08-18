@@ -29,6 +29,11 @@ on:
 permissions:
   contents: write
   pull-requests: write
+  # The required-checks step lists Actions runs via `gh api .../actions/runs`,
+  # which needs the Actions read scope on the workflow token. Without it the
+  # fail-closed check 403s on a normal runner and the only promotion path can
+  # never reach PR creation (F-5-r2 regression contract).
+  actions: read
 
 jobs:
   promote:

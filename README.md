@@ -176,6 +176,9 @@ curated release baselines instead of scattered temporary logs.
   `main` — and only after a protected-environment human approval bound to the
   exact source SHA. No workflow auto-merges, and CI-generated commits (README
   badge sync) stay on `main` only, so `testing` HEAD is never mutated by CI.
+  The promotion workflow's green-checks verification lists Actions runs with an
+  `actions: read`-scoped workflow token, enforced by
+  `scripts/check_workflow_contracts.py`.
 - **Security:** see [SECURITY.md](SECURITY.md),
   [security/SECURITY_BENCHMARK.md](security/SECURITY_BENCHMARK.md),
   [security/RELEASE_SECURITY_READINESS.md](security/RELEASE_SECURITY_READINESS.md),
