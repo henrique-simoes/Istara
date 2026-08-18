@@ -121,7 +121,6 @@ GOVERNED_EVOLUTION_PATTERNS = [
     "frontend/src/lib/improvementGovernance*.ts",
     "frontend/src/lib/reasoningBank*.ts",
     "scripts/production_rehearsal.py",
-    "scripts/check_test_harness.py",
     "tests/agentic_eval_contract.json",
 ]
 
