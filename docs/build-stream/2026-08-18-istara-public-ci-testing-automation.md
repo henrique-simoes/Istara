@@ -7,10 +7,10 @@ branch: conductor/istara-public-ci-testing-20260818
 cf: { spec: CF-SPEC-56, tasks: [CF-717, CF-718, CF-719, CF-720, CF-721, CF-722, CF-723, CF-724, CF-725, CF-726, CF-727, CF-728, CF-729, CF-730] }
 phase: "Phase 1 — MECE master planning"
 stage: S1-plan
-status: awaiting-owner-approval
-blocked_on: "owner approval of MECE master plan (slot c)"
+status: in-progress
+blocked_on: null
 last: { agent: deepseek/deepseek-v4-flash, at: 2026-08-18T00:39:44Z, ledger: L-10 }
-next_action: "Owner approval required: approve selected MECE master plan (slot c) before implementation dispatch."
+next_action: "Owner approved MECE master plan (slot c); conductor may dispatch implementation."
 ```
 <!-- /STATUS BLOCK -->
 
