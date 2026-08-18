@@ -8,8 +8,11 @@ no forbidden host deps) always run.
 
 from __future__ import annotations
 
+import os
+import re
 import shutil
 import subprocess
+import tempfile
 from pathlib import Path
 
 import pytest
@@ -74,6 +77,67 @@ def test_istara_qa_sh_never_merges_base_compose():
     assert "run --rm" in script
     assert '"$ROOT/backend"' not in script
     assert "docker run --rm" not in script
+
+
+def test_istara_qa_sh_exports_generated_run_id():
+    # F-3-r2 regression: the script's shell-local RUN_ID must be exported as
+    # QA_RUN_ID so every compose subprocess resolves ${QA_RUN_ID:-local} to the
+    # generated run id instead of the `local` fallback.
+    script = (ROOT / "scripts" / "istara-qa.sh").read_text(encoding="utf-8")
+    assert re.search(r"^export QA_RUN_ID=\"\$RUN_ID\"$", script, re.M)
+    assert 'RUN_ID="${QA_RUN_ID:-$(date -u +%Y%m%d%H%M%S)}"' in script
+
+
+def test_istara_qa_sh_seed_passes_run_id_to_seeder_explicitly():
+    # F-3-r2 regression: `seed` must pass -e QA_RUN_ID="$RUN_ID" to the compose
+    # run, so the seeder service never falls back to `local` even if the export
+    # is later removed.
+    script = (ROOT / "scripts" / "istara-qa.sh").read_text(encoding="utf-8")
+    seed_cmd = script[script.index('cmd_seed()'):script.index('cmd_qa()')]
+    assert '-e QA_RUN_ID="$RUN_ID"' in seed_cmd
+
+
+def test_istara_qa_sh_seed_unset_input_propagates_generated_run_id():
+    # F-3-r2 behavioral regression: with QA_RUN_ID unset, `seed` must generate a
+    # timestamp run id and propagate it (explicit -e AND exported env) into the
+    # compose seeder invocation — never `local`, so the manifest lands under
+    # qa/runs/<run-id> matching the claimed istara-qa-<run-id> project.
+    script = ROOT / "scripts" / "istara-qa.sh"
+    with tempfile.TemporaryDirectory() as tmp:
+        stub_dir = Path(tmp)
+        stub = stub_dir / "docker"
+        stub.write_text(
+            "#!/usr/bin/env bash\n"
+            'printf \'%s\\n\' "ARGS: $*" >> "$STUB_LOG"\n'
+            'env | grep \'^QA_RUN_ID=\' >> "$STUB_LOG"\n'
+            "exit 0\n",
+            encoding="utf-8",
+        )
+        stub.chmod(0o755)
+        log = stub_dir / "docker.log"
+        env = dict(os.environ)
+        env.pop("QA_RUN_ID", None)
+        env["PATH"] = f"{stub_dir}:{env['PATH']}"
+        env["STUB_LOG"] = str(log)
+        result = subprocess.run(
+            ["bash", str(script), "seed"],
+            cwd=ROOT,
+            capture_output=True,
+            text=True,
+            env=env,
+            timeout=60,
+        )
+        assert result.returncode == 0, result.stderr
+        assert "Seeded slice=" in result.stdout
+        seen = log.read_text(encoding="utf-8")
+    # (log content captured before the tempdir is removed)
+    # The compose invocation carries an explicit -e QA_RUN_ID=<generated>.
+    assert re.search(r"-e QA_RUN_ID=\d{14}", seen), seen
+    # The exported environment carries the same generated run id.
+    assert re.search(r"^QA_RUN_ID=\d{14}$", seen, re.M), seen
+    # The `local` fallback must never reach the seeder.
+    assert "QA_RUN_ID=local" not in seen
+    assert "istara-qa-local" not in seen
 
 
 def test_qa_seeder_depends_on_healthy_backend():

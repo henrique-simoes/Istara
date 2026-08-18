@@ -21,6 +21,11 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 RUN_ID="${QA_RUN_ID:-$(date -u +%Y%m%d%H%M%S)}"
+# Export so EVERY compose subprocess (up/seed/reset/audit/down) resolves
+# ${QA_RUN_ID:-local} to THIS run's id instead of the fallback `local`; the
+# shell-local RUN_ID must never diverge from what the compose overlay sees
+# (F-3-r2: default-invocation seed wrote manifests under qa/runs/local).
+export QA_RUN_ID="$RUN_ID"
 PROFILE="${QA_PROFILE:-contract}"
 # The QA overlay is SELF-CONTAINED: never merge the base compose, which would
 # reintroduce ollama and the fixed istara-* container names.
@@ -64,6 +69,7 @@ cmd_seed() {
   # path. QA_API_BASE defaults to the in-network qa-backend service DNS.
   "${COMPOSE[@]}" -p "$PROJECT" --profile synthetic run --rm -T \
     -e QA_SLICE="$slice" \
+    -e QA_RUN_ID="$RUN_ID" \
     qa-seeder
   echo "Seeded slice=$slice run=$RUN_ID (provisional only)."
 }
