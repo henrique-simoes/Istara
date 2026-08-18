@@ -51,8 +51,14 @@ jobs:
           fi
 
       - name: Verify required checks are green on the exact SHA
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          RUNS=$(gh api "repos/${{ github.repository }}/actions/runs?head_sha=${{ github.event.inputs.source_sha }}&event=push" --jq '.workflow_runs[] | select(.name == "CI") | .conclusion' 2>/dev/null || true)
+          # Fail explicitly on API/authentication errors: the gh call runs with
+          # the workflow token bound above, and (with the shell's -e) a non-zero
+          # gh exit aborts the step with the real error instead of silently
+          # producing an empty RUNS result.
+          RUNS=$(gh api "repos/${{ github.repository }}/actions/runs?head_sha=${{ github.event.inputs.source_sha }}&event=push" --jq '.workflow_runs[] | select(.name == "CI") | .conclusion')
           echo "CI conclusions: $RUNS"
           case "$RUNS" in
             *success*) ;;
