@@ -1,0 +1,90 @@
+# Human-gated promotion workflow (testing -> main).
+#
+# This is the ONLY path that may create a promotion PR to `main`. It requires:
+#   1. an explicit human approval recorded on a protected GitHub environment
+#      (configure `testing-promotion` with required reviewers in repo settings);
+#   2. an immutable source SHA that is verified to equal current `testing`
+#      HEAD immediately before PR creation (anti-replay);
+#   3. green required checks + QA artifact evidence for that exact SHA.
+#
+# It NEVER auto-merges. After the promotion PR exists, `main` branch protection
+# re-runs required checks and requires CODEOWNERS/human review; a changed SHA
+# invalidates the manifest and requires a new approval.
+
+name: Promote testing to main
+
+on:
+  workflow_dispatch:
+    inputs:
+      source_sha:
+        description: "Exact testing SHA to promote (must equal current testing HEAD)"
+        required: true
+        type: string
+      base_branch:
+        description: "Target base branch for the promotion PR"
+        required: true
+        default: main
+        type: string
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  promote:
+    runs-on: ubuntu-latest
+    environment: testing-promotion
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Verify source SHA is current testing HEAD (anti-replay)
+        run: |
+          git fetch origin testing --depth=1
+          CURRENT=$(git rev-parse origin/testing)
+          EXPECTED="${{ github.event.inputs.source_sha }}"
+          echo "expected=$EXPECTED current=$CURRENT"
+          if [ "$CURRENT" != "$EXPECTED" ]; then
+            echo "FAIL: source SHA changed; a new approval is required" >&2
+            exit 1
+          fi
+
+      - name: Verify required checks are green on the exact SHA
+        run: |
+          RUNS=$(gh api "repos/${{ github.repository }}/actions/runs?head_sha=${{ github.event.inputs.source_sha }}&event=push" --jq '.workflow_runs[] | select(.name == "CI") | .conclusion' 2>/dev/null || true)
+          echo "CI conclusions: $RUNS"
+          case "$RUNS" in
+            *success*) ;;
+            *)
+              echo "FAIL: no green CI run found for source SHA; promotion blocked" >&2
+              exit 1
+              ;;
+          esac
+
+      - name: Create promotion PR (never auto-merge)
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          SOURCE_SHA="${{ github.event.inputs.source_sha }}"
+          BASE="${{ github.event.inputs.base_branch }}"
+          BODY=$(cat <<'EOF'
+          ## Promotion from `testing` (human-approved)
+
+          - Source SHA: `${{ github.event.inputs.source_sha }}`
+          - Approved via protected environment `testing-promotion`
+          - Evidence: QA artifact manifest + CI run for the exact SHA above
+          - This PR was created by automation AFTER an explicit human gate.
+            It is NOT auto-merged; `main` branch protection re-runs checks and
+            requires human review before merge.
+
+          If the source SHA changes after approval, this PR is invalid and a
+          new approval is required.
+          EOF
+          )
+          gh pr create \
+            --base "$BASE" \
+            --head testing \
+            --title "Promote testing -> $BASE (approved: $SOURCE_SHA)" \
+            --body "$BODY"
+          echo "Promotion PR created (not merged)."

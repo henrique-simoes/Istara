@@ -431,6 +431,61 @@ def check_mutation_property_harness(issues: list[str]) -> None:
             issues.append(f".github/workflows/ci.yml: missing executable test gate `{snippet}`")
 
 
+def check_qa_obligation_harness(issues: list[str]) -> None:
+    """Audit the public QA obligation/artifact harness (master plan §5-§8)."""
+    required_files = [
+        "testing/feature_coverage.yml",
+        "scripts/check_feature_obligations.py",
+        "scripts/check_workflow_contracts.py",
+        "scripts/check_qa_capabilities.py",
+        "qa/runtime_capabilities.json",
+        "qa/corpora/manifest.json",
+        "docker-compose.qa.yml",
+        "scripts/istara-qa.sh",
+        "tests/test_feature_obligations.py",
+        "tests/test_qa_stack_contract.py",
+        "tests/test_qa_reset_seed.py",
+        "tests/test_qa_artifacts.py",
+        "tests/test_provider_contracts.py",
+        "tests/test_qa_capabilities.py",
+        "tests/test_synthetic_provisional_boundary.py",
+    ]
+    for relative_path in required_files:
+        if not (ROOT / relative_path).exists():
+            issues.append(f"{relative_path}: missing public QA harness file")
+
+    registry = read("testing/feature_coverage.yml")
+    for snippet in ("schema_version: 1", "allowlist:", "obligations:", "requires_human_review"):
+        if snippet not in registry:
+            issues.append(f"testing/feature_coverage.yml: missing `{snippet}`")
+
+    classifier = read("scripts/check_feature_obligations.py")
+    for snippet in ("--base", "--json-out", "unknown_paths", "missing_test_ownership"):
+        if snippet not in classifier:
+            issues.append(f"scripts/check_feature_obligations.py: missing `{snippet}`")
+
+    seeder = read("qa/scripts/seed_synthetic.py")
+    for snippet in ("is_qa_provisional", "promotion_blocked", "source_kind"):
+        if snippet not in seeder:
+            issues.append(f"qa/scripts/seed_synthetic.py: missing `{snippet}`")
+
+    reset_script = read("qa/scripts/reset_qa.py")
+    for snippet in ("RESET-ISTARA-QA-RUN", "istara-qa-", "Model_Finetuning"):
+        if snippet not in reset_script:
+            issues.append(f"qa/scripts/reset_qa.py: missing `{snippet}`")
+
+    workflow_ci = read(".github/workflows/ci.yml")
+    if "check_feature_obligations.py" not in workflow_ci:
+        issues.append(".github/workflows/ci.yml: missing feature-obligation classifier step")
+    if "branches: [main, staging, testing]" not in workflow_ci:
+        issues.append(".github/workflows/ci.yml: missing `testing` integration trigger")
+
+    promote = read(".github/workflows/promote-testing.yml")
+    for snippet in ("workflow_dispatch", "environment: testing-promotion", "gh pr create"):
+        if snippet not in promote:
+            issues.append(f".github/workflows/promote-testing.yml: missing `{snippet}`")
+
+
 def main() -> int:
     issues: list[str] = []
     check_no_committed_live_llm_secrets(issues)
@@ -444,6 +499,7 @@ def main() -> int:
     check_agentic_eval_contract(issues)
     check_ci_governance(issues)
     check_mutation_property_harness(issues)
+    check_qa_obligation_harness(issues)
 
     if issues:
         print("Test harness governance check failed:")

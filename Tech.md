@@ -2785,6 +2785,34 @@ The `featured_mcp_servers.json` knowledge file stores pre-configured server defi
 
 ## Docker & Security Infrastructure
 
+### Public Testing Branch & CI Automation (2026-08)
+
+Istara's public release testing is now provider-agnostic and human-gated:
+
+- **Feature obligation registry:** `testing/feature_coverage.yml` is the single
+  authority mapping every changed behavioral path to deterministic
+  obligations. `scripts/check_feature_obligations.py` fails closed on unowned
+  paths and emits a stable JSON obligation report; `qa/runtime_capabilities.json`
+  is the consulted runtime/provider capability declaration.
+- **Testing integration branch:** `.github/workflows/ci.yml` triggers on
+  `main`, `staging`, and the long-lived `testing` branch. The
+  `feature-obligations` job gates unknown paths before expensive jobs; the
+  `qa-artifact` job builds a disposable QA image with immutable digest +
+  provenance/SBOM.
+- **Disposable QA runtime:** `docker-compose.qa.yml` provides profile-gated QA
+  stacks (`contract`, `synthetic`, `reset`, `audit`, `live`, `ui`) with unique
+  project names (`istara-qa-<run-id>`), no fixed container names, no local
+  model services by default, internal networks, and loopback-only UI publish.
+  `scripts/istara-qa.sh` is the developer entrypoint.
+- **Human-gated promotion:** `promote-testing.yml` is the only workflow that
+  may create a promotion PR to `main`, and only after a protected-environment
+  approval that binds the exact source SHA, evidence manifest, and image
+  digest. No workflow auto-merges; a changed SHA invalidates the approval.
+- **Research Spine boundary:** synthetic QA seeds (`qa/corpora/`) ingest through
+  the real evidence-unit path with `is_qa_provisional = true` and can never
+  reach accepted/reportable states (`qa/scripts/seed_synthetic.py`,
+  `tests/test_synthetic_provisional_boundary.py`).
+
 ### Deployment Modes
 
 | Mode | Command | TLS | Auth | Use Case |

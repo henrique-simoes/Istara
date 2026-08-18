@@ -28,13 +28,32 @@ stay aligned with Compass Forge, CI, and the production behavior described in
   LoCoMo, and Memento Skills. See `testing/AI_EVALS_STRATEGY.md`.
 - Tool-calling evals should track BFCL-style function-call correctness:
   https://sky.cs.berkeley.edu/project/berkeley-function-calling-leaderboard/
+- **Feature obligations** (master plan §5-§6): every changed behavioral path
+  must be owned by exactly one entry in `testing/feature_coverage.yml`. The
+  classifier `scripts/check_feature_obligations.py` FAILS CLOSED on unowned
+  paths, emits a stable JSON obligation report, and validates test ownership
+  for every selected obligation. `qa/runtime_capabilities.json` is the
+  *consulted* runtime/provider capability declaration — never a second
+  contradictory authority.
+- **Disposable QA artifact** (master plan §7-§8): `docker-compose.qa.yml`
+  provides profile-gated QA stacks (`contract`, `synthetic`, `reset`, `audit`,
+  `live`, `ui`) with unique project names, no fixed container names, no local
+  model services by default, and loopback-only UI publish. QA lanes keep
+  synthetic research data provisional-only (`is_qa_provisional = true`) and
+  never reach accepted/reportable states.
+- **Human-gated promotion** (master plan §12-§13): `promote-testing.yml` is the
+  only workflow that may create a promotion PR to `main`, and only after a
+  protected-environment approval binds the exact source SHA, evidence manifest,
+  and image digest. No workflow auto-merges.
 
 ## Test Layers
 
 1. Static governance: `scripts/check_integrity.py`,
    `scripts/check_ci_governance.py`, `scripts/check_change_obligations.py`,
    `scripts/check_test_harness.py`, and `scripts/security_benchmark.py`.
-2. Unit and contract tests: `pytest` over `tests/`, with explicit markers for
+2. Feature-obligation classifier: `scripts/check_feature_obligations.py` runs on
+   every PR/push and gates unknown paths before expensive jobs.
+3. Unit and contract tests: `pytest` over `tests/`, with explicit markers for
    `contract`, `security`, `benchmark`, `agentic_eval`, `live_llm`, `e2e`,
    `simulation`, `acceptance`, `mutation`, and `ui`.
 3. Production rehearsal: `scripts/production_rehearsal.py --json` verifies the

@@ -1,0 +1,84 @@
+{
+  "version": 1,
+  "description": "Runtime/provider capability declaration consulted by scripts/check_feature_obligations.py. This is NOT an authority for feature->obligation mapping (testing/feature_coverage.yml is); it declares what each surface can prove deterministically vs only live.",
+  "surfaces": [
+    {
+      "id": "provider.embedding",
+      "paths": [
+        "backend/app/core/pi_runtime/embeddings_gateway.py",
+        "backend/app/core/embedding_validation.py",
+        "backend/app/core/pi_runtime/model_manager.py"
+      ],
+      "deterministic": [
+        "provider_contracts",
+        "backend_contracts",
+        "qa_stack_contract"
+      ],
+      "live_optional": ["dimension_probe_live"],
+      "spine_touch": false
+    },
+    {
+      "id": "provider.chat",
+      "paths": [
+        "backend/app/config.py",
+        "backend/app/core/compute_registry.py",
+        "backend/app/api/routes/llm_servers.py",
+        "qa/scripts/provider_contracts.py"
+      ],
+      "deterministic": [
+        "provider_contracts",
+        "backend_contracts",
+        "security_benchmark"
+      ],
+      "live_optional": ["authorized_chat_smoke"],
+      "spine_touch": false
+    },
+    {
+      "id": "research.spine",
+      "paths": [
+        "backend/app/services/research_validity_service.py",
+        "backend/app/core/research_validity.py",
+        "qa/scripts/seed_synthetic.py",
+        "qa/corpora/**"
+      ],
+      "deterministic": [
+        "research_spine_contract",
+        "synthetic_provisional"
+      ],
+      "live_optional": [],
+      "spine_touch": true
+    },
+    {
+      "id": "docker.qa",
+      "paths": [
+        "docker-compose.yml",
+        "docker-compose.qa.yml",
+        "qa/scripts/**",
+        "scripts/istara-qa.sh"
+      ],
+      "deterministic": [
+        "qa_stack_contract",
+        "qa_artifact_contract",
+        "public_tree"
+      ],
+      "live_optional": ["authorized_live"],
+      "spine_touch": false
+    },
+    {
+      "id": "security.ci",
+      "paths": [
+        ".github/workflows/**",
+        "scripts/check_ci_governance.py",
+        "scripts/check_test_harness.py",
+        "security/**"
+      ],
+      "deterministic": [
+        "governance",
+        "ci_governance",
+        "security_benchmark"
+      ],
+      "live_optional": [],
+      "spine_touch": false
+    }
+  ]
+}

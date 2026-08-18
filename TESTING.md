@@ -56,6 +56,11 @@ Run commands from the repository root unless the command says otherwise.
 | Production rehearsal | `python scripts/production_rehearsal.py --json` | You need release-critical governed-evolution, compute, rollback, and dependency checks. | No live model by default |
 | Security benchmark | `python scripts/security_benchmark.py --fail-on-threshold` | Auth, authorization, sessions, WebAuthn, connection strings, pooled compute, MCP, webhook, LLM-provider, autoresearch, self-evolution, or agentic-memory changes. | No |
 | Security benchmark tests | `pytest tests/test_security_benchmark.py -q` | You changed the control matrix, evidence paths, or trigger patterns. | No |
+| Feature-obligation classifier | `python scripts/check_feature_obligations.py --base origin/testing --head HEAD --json-out artifacts/feature-obligations.json` | You changed product behavior and need the fail-closed obligation report. | No |
+| QA capabilities check | `python scripts/check_qa_capabilities.py` | You changed `qa/runtime_capabilities.json` or the QA capability contract. | No |
+| Workflow contract check | `python scripts/check_workflow_contracts.py` | You changed public CI/promotion workflows. | No |
+| QA compose render | `docker compose -f docker-compose.qa.yml --profile contract config --quiet` | You changed the disposable QA stack contract. | No (render only) |
+| QA developer entrypoint | `./scripts/istara-qa.sh render` | You want the documented QA lifecycle (render/up/wait/seed/qa/collect/reset/down). | `up` needs Docker |
 | Feature docs | `python scripts/feature_docs.py --seed-missing --generate-site --check` | UI/menu/route/store/agent/skill/model/test behavior changed. | No |
 | Feature docs tests | `pytest tests/test_feature_docs.py -q` | You changed feature docs inventory, source pages, glossary, generator, or generated site expectations. | No |
 | Frontend unit tests | `cd frontend` then `npm run test:unit` | You changed frontend logic covered by Vitest. | No |
@@ -104,7 +109,22 @@ This is the shape developers should expect when navigating the suite:
 
 ## CI Coverage
 
-GitHub Actions lives in `.github/workflows/ci.yml` and is split into five jobs:
+GitHub Actions lives in `.github/workflows/ci.yml`. It runs on `main`, `staging`,
+and the long-lived public `testing` integration branch. In addition to the
+classic jobs below, CI now includes:
+
+| Job | What it runs |
+| --- | --- |
+| `feature-obligations` | `scripts/check_feature_obligations.py --base --head --json-out` (fail-closed classifier), `scripts/check_qa_capabilities.py`, `scripts/check_workflow_contracts.py`. Gates unknown paths before expensive jobs. |
+| `qa-artifact` | Builds a disposable QA image with immutable digest + provenance/SBOM and records `qa-artifact-manifest.json` on `testing` pushes. |
+| `qa-contract-stack` | Renders QA Compose profiles and runs the QA contract tests. |
+
+The dedicated `qa-artifact.yml` workflow builds the disposable QA image; the
+`promote-testing.yml` workflow is the ONLY path that may create a promotion PR
+to `main`, and only after a protected-environment human approval that binds the
+exact source SHA. Nothing auto-merges.
+
+The original five jobs:
 
 | Job | What it runs |
 | --- | --- |

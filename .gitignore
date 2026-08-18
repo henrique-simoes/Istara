@@ -140,3 +140,7 @@ opencode.json
 comparison-Istara-pi/industry/bfcl/*.json
 comparison-Istara-pi/industry/tau_bench/*_tasks_test.py
 comparison-Istara-pi/industry/tau_bench/*_rules.py
+
+# QA run artifacts (disposable, gitignored)
+qa/runs/
+artifacts/

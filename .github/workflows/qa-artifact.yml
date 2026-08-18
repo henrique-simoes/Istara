@@ -1,0 +1,110 @@
+# QA artifact workflow — public, provider-agnostic disposable QA image.
+#
+# Runs on every push to `testing` and on manual dispatch. Builds a disposable
+# synthetic QA image with an immutable digest + provenance/SBOM, verifies the
+# QA compose contract renders (without starting services), and uploads
+# sanitized evidence. This workflow NEVER:
+#   * starts ollama/lmstudio or any private host,
+#   * loads models or sends live provider requests,
+#   * opens a PR, merges, or promotes to main (see promote-testing.yml),
+#   * runs with secrets (public contract-only mode only).
+#
+# The human gate lives in promote-testing.yml: nothing here can create a PR.
+
+name: QA Artifact
+
+on:
+  push:
+    branches: [testing]
+  workflow_dispatch:
+    inputs:
+      provider_mode:
+        description: "Provider mode recorded in the evidence manifest"
+        type: choice
+        options: [contract, synthetic_provisional]
+        default: contract
+
+concurrency:
+  group: qa-artifact-${{ github.ref }}-${{ github.sha }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  packages: write
+  id-token: write
+
+jobs:
+  render:
+    name: Render QA compose contract
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate QA compose contract
+        run: |
+          docker compose -f docker-compose.qa.yml --profile contract config --quiet
+          docker compose -f docker-compose.qa.yml --profile synthetic config --quiet
+          docker compose -f docker-compose.qa.yml --profile audit config --quiet
+          docker compose -f docker-compose.qa.yml --profile ui config --quiet
+
+  build:
+    name: Build disposable QA image
+    runs-on: ubuntu-latest
+    needs: [render]
+    outputs:
+      image_digest: ${{ steps.digest.outputs.digest }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build backend QA image (immutable tag, never `latest`)
+        id: build
+        uses: docker/build-push-action@v6
+        with:
+          context: ./backend
+          file: backend/Dockerfile
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository }}/istara-qa:${{ github.sha }}
+            ghcr.io/${{ github.repository }}/istara-qa:qa-run-${{ github.run_id }}-${{ github.run_attempt }}
+          provenance: true
+          sbom: true
+
+      - name: Record immutable digest
+        id: digest
+        run: |
+          DIGEST=$(docker buildx imagetools inspect \
+            ghcr.io/${{ github.repository }}/istara-qa:${{ github.sha }} \
+            --format '{{.Manifest.Digest}}')
+          echo "digest=$DIGEST" >> "$GITHUB_OUTPUT"
+          mkdir -p artifacts
+          printf '%s' "$DIGEST" > artifacts/docker-image-digest.txt
+
+      - name: Write evidence manifest
+        run: |
+          cat > artifacts/qa-artifact-manifest.json <<EOF
+          {
+            "source_sha": "${{ github.sha }}",
+            "image_digest": "${{ steps.digest.outputs.digest }}",
+            "run_id": "${{ github.run_id }}",
+            "attempt": "${{ github.run_attempt }}",
+            "provider_mode": "${{ github.event.inputs.provider_mode || 'contract' }}",
+            "human_gate_required": true
+          }
+          EOF
+
+      - name: Upload sanitized QA evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: istara-qa-artifact-evidence
+          path: artifacts/

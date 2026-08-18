@@ -167,6 +167,14 @@ curated release baselines instead of scattered temporary logs.
   orchestration benchmarks, live single-profile LLM checks, RAG, Prompt RAG,
   LLMLingua, DAG/ReAct, ReasoningBank, Memento Skills, Meta Hyperagents,
   thinking-output controls, and voice contracts.
+- **Public testing branch and CI:** every feature change is mapped to
+  deterministic obligations by `testing/feature_coverage.yml` +
+  `scripts/check_feature_obligations.py` (fail-closed on unowned paths). The
+  long-lived `testing` branch builds a disposable, provider-agnostic Docker QA
+  artifact (`docker-compose.qa.yml`, `scripts/istara-qa.sh`), and
+  `promote-testing.yml` is the only workflow that may create a promotion PR to
+  `main` — and only after a protected-environment human approval bound to the
+  exact source SHA. No workflow auto-merges.
 - **Security:** see [SECURITY.md](SECURITY.md),
   [security/SECURITY_BENCHMARK.md](security/SECURITY_BENCHMARK.md),
   [security/RELEASE_SECURITY_READINESS.md](security/RELEASE_SECURITY_READINESS.md),

@@ -146,13 +146,11 @@ services:
         condition: service_healthy
     extra_hosts:
       - "host.docker.internal:host-gateway"  # Access host LM Studio from container
-    deploy:
-      resources:
-        limits:
-          memory: 4G
-          cpus: "2.0"
-        reservations:
-          memory: 1G
+    # Resource budget (compose-spec keys; pids_limit + deploy.resources.limits
+    # conflict under modern Compose, so limits live at top level)
+    mem_limit: 4G
+    cpus: "2.0"
+    mem_reservation: 1G
     restart: unless-stopped
 
   frontend:
@@ -185,10 +183,7 @@ services:
     depends_on:
       backend:
         condition: service_healthy
-    deploy:
-      resources:
-        limits:
-          memory: 512M
+    mem_limit: 512M
     restart: unless-stopped
 
   # Caddy reverse proxy — auto-TLS, production deployment

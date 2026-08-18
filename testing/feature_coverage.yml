@@ -1,0 +1,421 @@
+# Feature → obligation coverage registry (SINGLE AUTHORITY).
+#
+# Every changed behavioral path must be owned by exactly one feature entry here
+# (overlapping matches are allowed only when the union is intentional and
+# tested). `scripts/check_feature_obligations.py` reads this file on every CI
+# run and FAILS CLOSED when a changed path matches no feature and is not on the
+# audited mechanical allowlist.
+#
+# Obligation vocabulary (deterministic):
+#   governance, ci_governance, test_harness, public_tree, feature_obligations,
+#   security_benchmark, backend_contracts, research_spine_contract,
+#   provider_contracts, synthetic_provisional, qa_stack_contract,
+#   qa_artifact_contract, feature_docs, project_scope, frontend_contracts,
+#   relay_contracts, mutation_property, workflow_contract
+# Optional (owner-authorized only, never a default PR requirement):
+#   authorized_live, staging_adapter
+#
+# Fields:
+#   id: dotted feature id (stable)
+#   status: active | deprecated
+#   owner: owning team/persona
+#   paths: git path patterns owned by this feature (fnmatch)
+#   exceptions: narrow, reviewed exceptions (never backend/frontend/security behavior)
+#   requires_human_review: true for spine/report/security/promotion surfaces
+#   docs_features_update: true when UI/menu/route/store/agent/skill/model/test behavior changes
+#   obligations.deterministic: required deterministic checks
+#   obligations.live: owner-authorized optional lanes (never satisfy deterministic)
+#   commands.deterministic: pinned commands (see COMMAND_CATALOG in the classifier)
+#   acceptance: what this feature must prove
+#   introduced_in / last_verified_sha: provenance so stale coverage is visible
+
+schema_version: 1
+
+allowlist:
+  - "*.md"
+  - "*.txt"
+  - "docs/**"
+  - "*.png"
+  - "*.svg"
+  - "*.gif"
+  - "LICENSE"
+  - "VERSION"
+  - ".gitignore"
+  - ".gitattributes"
+  - ".editorconfig"
+  - ".nvmrc"
+  - ".node-version"
+  - "Caddyfile"
+  - "pytest.ini"
+  - "Vagrantfile"
+  - "Makefile"
+  - "Procfile"
+  - "*.example"
+  - "*.yml.dist"
+  - "installer/**"
+  - "desktop/src-tauri/icons/**"
+  - "desktop/src-tauri/tauri.conf.json"
+  - "docs/features/site/**"
+
+features:
+  - id: ci.public-testing-branch
+    status: active
+    owner: platform
+    paths:
+      - ".github/workflows/ci.yml"
+      - ".github/workflows/qa-artifact.yml"
+      - ".github/workflows/promote-testing.yml"
+      - ".github/workflows/build-installers.yml"
+      - ".github/workflows/scorecard.yml"
+      - ".github/workflows/sync-staging.yml"
+      - ".github/workflows/track-autoresearch.yml"
+      - ".github/CODEOWNERS"
+      - ".github/dependabot.yml"
+    exceptions: []
+    requires_human_review: true
+    docs_features_update: false
+    obligations:
+      deterministic:
+        - governance
+        - ci_governance
+        - test_harness
+        - feature_obligations
+        - workflow_contract
+        - security_benchmark
+      live: []
+      docs: []
+    commands:
+      deterministic:
+        - check_integrity
+        - check_ci_governance
+        - check_test_harness
+        - check_feature_obligations
+        - security_benchmark
+        - check_workflow_contracts
+    acceptance: "Every PR/push to `testing` is classified; unknown paths block; human gate precedes any promotion PR to main."
+    introduced_in: "pending"
+    last_verified_sha: "pending"
+
+  - id: qa.obligation-registry
+    status: active
+    owner: platform
+    paths:
+      - "testing/feature_coverage.yml"
+      - "scripts/check_feature_obligations.py"
+      - "qa/runtime_capabilities.json"
+      - "scripts/check_qa_capabilities.py"
+      - "tests/test_feature_obligations.py"
+      - "tests/test_qa_capabilities.py"
+    exceptions: []
+    requires_human_review: false
+    docs_features_update: false
+    obligations:
+      deterministic:
+        - governance
+        - feature_obligations
+        - qa_artifact_contract
+      live: []
+      docs: []
+    commands:
+      deterministic:
+        - check_integrity
+        - check_feature_obligations
+        - check_qa_capabilities
+        - pytest_feature_obligations
+    acceptance: "Registry + classifier fail closed on unowned paths and emit a stable JSON obligation report."
+    introduced_in: "pending"
+    last_verified_sha: "pending"
+
+  - id: qa.disposable-runtime
+    status: active
+    owner: platform
+    paths:
+      - "docker-compose.yml"
+      - "docker-compose.qa.yml"
+      - "docker-compose.gpu.yml"
+      - "qa/scripts/**"
+      - "qa/corpora/**"
+      - "scripts/istara-qa.sh"
+      - "scripts/qa_stack.py"
+      - "tests/test_qa_stack_contract.py"
+      - "tests/test_qa_reset_seed.py"
+      - "tests/test_qa_artifacts.py"
+      - "backend/Dockerfile"
+      - "frontend/Dockerfile"
+      - "relay/Dockerfile"
+      - ".dockerignore"
+    exceptions: []
+    requires_human_review: false
+    docs_features_update: false
+    obligations:
+      deterministic:
+        - governance
+        - qa_stack_contract
+        - qa_artifact_contract
+        - public_tree
+      live:
+        - authorized_live
+      docs: []
+    commands:
+      deterministic:
+        - check_integrity
+        - compose_qa_render
+        - pytest_qa_stack
+        - pytest_qa_reset_seed
+        - pytest_qa_artifacts
+        - check_public_tree
+    acceptance: "Disposable QA stack renders without local model services, uses unique project names, resets only its own namespace, and redacts artifacts."
+    introduced_in: "pending"
+    last_verified_sha: "pending"
+
+  - id: provider.llm-contracts
+    status: active
+    owner: research-platform
+    paths:
+      - "backend/app/api/routes/llm_servers.py"
+      - "backend/app/core/endpoint_security.py"
+      - "backend/app/core/field_encryption.py"
+      - "backend/app/core/connection_string.py"
+      - "backend/app/core/model_capabilities.py"
+      - "backend/app/core/compute_registry.py"
+      - "backend/app/core/pi_runtime/embeddings_gateway.py"
+      - "backend/app/core/embedding_validation.py"
+      - "backend/app/config.py"
+      - "qa/scripts/provider_contracts.py"
+      - "tests/test_model_provider_contract.py"
+      - "tests/test_provider_contracts.py"
+      - "tests/pi_production/test_w8_embeddings_gateway.py"
+      - "tests/pi_production/test_engine_http_provider.py"
+      - "tests/llm_test_config.py"
+      - "scripts/test_llm_integration.py"
+    exceptions: []
+    requires_human_review: false
+    docs_features_update: false
+    obligations:
+      deterministic:
+        - security_benchmark
+        - provider_contracts
+        - backend_contracts
+      live:
+        - authorized_live
+      docs: []
+    commands:
+      deterministic:
+        - security_benchmark
+        - pytest_provider_contracts
+        - pytest_model_provider_contract
+        - pytest_embeddings_gateway
+    acceptance: "Exact chat/embedding identity, vector-space invariant, no fallback, and fail-closed readiness; live lane is one-target and owner-authorized only."
+    introduced_in: "pending"
+    last_verified_sha: "pending"
+
+  - id: research.spine-qa
+    status: active
+    owner: research-platform
+    paths:
+      - "backend/app/services/research_validity_service.py"
+      - "backend/app/core/research_validity.py"
+      - "backend/app/models/code_application.py"
+      - "qa/scripts/seed_synthetic.py"
+      - "tests/test_synthetic_provisional_boundary.py"
+      - "tests/test_research_validity_contract.py"
+      - "tests/pi_production/test_w5_intercoder.py"
+    exceptions: []
+    requires_human_review: true
+    docs_features_update: false
+    obligations:
+      deterministic:
+        - research_spine_contract
+        - synthetic_provisional
+      live: []
+      docs: []
+    commands:
+      deterministic:
+        - pytest_research_validity
+        - pytest_synthetic_provisional
+    acceptance: "Synthetic sources become provisional evidence units only; accepted/reportable states are unreachable from synthetic rows."
+    introduced_in: "pending"
+    last_verified_sha: "pending"
+
+  - id: testing.harness-governance
+    status: active
+    owner: platform
+    paths:
+      - "scripts/check_test_harness.py"
+      - "scripts/check_change_obligations.py"
+      - "scripts/check_integrity.py"
+      - "scripts/check_ci_governance.py"
+      - "scripts/check_public_tree_clean.py"
+      - "scripts/check_workflow_contracts.py"
+      - "scripts/security_benchmark.py"
+      - "scripts/security_release_readiness.py"
+      - "scripts/production_rehearsal.py"
+      - "scripts/run_backend_mutation.py"
+      - "scripts/check_ruff_changed.py"
+      - "tests/test_harness_config.py"
+      - "tests/test_harness_project_scope_contracts.py"
+      - "tests/test_marathon_config_integrity.py"
+      - "tests/test_property_contracts.py"
+      - "tests/test_agentic_eval_contract.py"
+      - "tests/agentic_eval_contract.json"
+      - "pytest.ini"
+    exceptions: []
+    requires_human_review: false
+    docs_features_update: false
+    obligations:
+      deterministic:
+        - governance
+        - test_harness
+        - ci_governance
+        - mutation_property
+        - security_benchmark
+      live: []
+      docs: []
+    commands:
+      deterministic:
+        - check_integrity
+        - check_test_harness
+        - check_ci_governance
+        - security_benchmark
+        - pytest_harness_contracts
+        - pytest_property_contracts
+    acceptance: "Governance scripts stay aligned with live contracts; harness audits pass on every run."
+    introduced_in: "pending"
+    last_verified_sha: "pending"
+
+  - id: frontend.contracts
+    status: active
+    owner: platform
+    paths:
+      - "frontend/src/lib/modelCatalog.ts"
+      - "frontend/src/lib/modelProviders.ts"
+      - "frontend/src/lib/runtimeConfig.ts"
+      - "frontend/src/lib/api.ts"
+      - "frontend/src/lib/types.ts"
+      - "frontend/package.json"
+      - "frontend/vitest.config.ts"
+      - "frontend/stryker.config.json"
+      - "frontend/src/lib/runtimeConfig.test.ts"
+      - "frontend/src/lib/modelCatalog.test.ts"
+      - "frontend/src/lib/modelProviders.test.ts"
+    exceptions: []
+    requires_human_review: false
+    docs_features_update: false
+    obligations:
+      deterministic:
+        - frontend_contracts
+        - mutation_property
+      live: []
+      docs: []
+    commands:
+      deterministic:
+        - frontend_unit
+        - frontend_typecheck
+        - frontend_lint
+        - frontend_mutation
+    acceptance: "Frontend lint/type/unit/mutation gates cover changed shared behavior."
+    introduced_in: "pending"
+    last_verified_sha: "pending"
+
+  - id: relay.js-harness
+    status: active
+    owner: platform
+    paths:
+      - "relay/**"
+      - "tests/simulation/**"
+      - "tests/real_user_benchmark/**"
+      - "scripts/marathon/**"
+      - "tests/pi_benchmark/**"
+    exceptions: []
+    requires_human_review: false
+    docs_features_update: false
+    obligations:
+      deterministic:
+        - relay_contracts
+        - project_scope
+      live:
+        - simulation_live
+      docs: []
+    commands:
+      deterministic:
+        - relay_unit
+        - simulation_static
+        - real_user_static
+        - pytest_project_scope
+        - marathon_integrity
+    acceptance: "JS harnesses stay deterministic by default; live browser/simulation lanes require operator authorization."
+    introduced_in: "pending"
+    last_verified_sha: "pending"
+
+  - id: security.auth-surface
+    status: active
+    owner: security
+    paths:
+      - "backend/app/api/routes/auth.py"
+      - "backend/app/api/routes/webauthn.py"
+      - "backend/app/api/routes/connections.py"
+      - "backend/app/api/routes/mcp.py"
+      - "backend/app/api/routes/webhooks.py"
+      - "backend/app/core/auth*.py"
+      - "backend/app/core/security*.py"
+      - "backend/app/core/auth_sessions.py"
+      - "backend/app/core/auth_cookies.py"
+      - "backend/app/core/auth_origins.py"
+      - "backend/app/core/permissions.py"
+      - "backend/app/models/user.py"
+      - "backend/app/models/*auth*.py"
+      - "backend/app/models/*webauthn*.py"
+      - "backend/alembic/versions/*auth*.py"
+      - "backend/alembic/versions/*webauthn*.py"
+      - "security/**"
+      - "tests/test_security_benchmark.py"
+      - "tests/test_auth_security.py"
+    exceptions: []
+    requires_human_review: true
+    docs_features_update: false
+    obligations:
+      deterministic:
+        - security_benchmark
+      live: []
+      docs: []
+    commands:
+      deterministic:
+        - security_benchmark
+        - pytest_security_benchmark
+    acceptance: "Auth/security changes run the tracked security benchmark and update the matrix only when controls/evidence/triggers change."
+    introduced_in: "pending"
+    last_verified_sha: "pending"
+
+  - id: docs.testing-owner
+    status: active
+    owner: platform
+    paths:
+      - "TESTING.md"
+      - "testing/TESTING_STRATEGY.md"
+      - "testing/TEST_HISTORY.md"
+      - "testing/AI_EVALS_STRATEGY.md"
+      - "CHANGE_CHECKLIST.md"
+      - "README.md"
+      - "README.pt-BR.md"
+      - "Tech.md"
+      - "SYSTEM_CHANGE_MATRIX.md"
+      - "DOCUMENTATION.md"
+      - "CONTRIBUTING.md"
+      - "SECURITY.md"
+    exceptions: []
+    requires_human_review: false
+    docs_features_update: false
+    obligations:
+      deterministic:
+        - governance
+        - feature_docs
+      live: []
+      docs: []
+    commands:
+      deterministic:
+        - check_integrity
+        - check_testing_strategy
+        - feature_docs_check
+    acceptance: "Testing/architecture docs stay aligned with the implemented gates."
+    introduced_in: "pending"
+    last_verified_sha: "pending"

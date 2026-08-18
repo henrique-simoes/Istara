@@ -1,0 +1,57 @@
+{
+  "version": 1,
+  "description": "Canonical synthetic QA corpus manifest (Research Spine provisional-only). Every slice is small, license-clean, and tracked. Seeding goes through the real evidence-unit path; every seeded artifact carries is_qa_provisional=true and can never reach accepted/reportable states.",
+  "slices": [
+    {
+      "slice_id": "coding-reliability",
+      "kind": "synthetic_qa",
+      "provenance": "generated",
+      "sources": [
+        {
+          "id": "synthetic-coding-001",
+          "kind": "synthetic_qa",
+          "provenance": "generated",
+          "text": "Synthetic coding task: participant describes a feature request with ambiguous acceptance criteria and a single edge case."
+        },
+        {
+          "id": "synthetic-coding-002",
+          "kind": "synthetic_qa",
+          "provenance": "generated",
+          "text": "Synthetic usability note: the reviewer flags a missing success state and a vague error message."
+        }
+      ]
+    },
+    {
+      "slice_id": "graph-synthesis",
+      "kind": "synthetic_qa",
+      "provenance": "generated",
+      "sources": [
+        {
+          "id": "synthetic-graph-001",
+          "kind": "synthetic_qa",
+          "provenance": "generated",
+          "text": "Synthetic synthesis input: two evidence units that partially overlap and cite different source spans."
+        },
+        {
+          "id": "synthetic-graph-002",
+          "kind": "synthetic_qa",
+          "provenance": "generated",
+          "text": "Synthetic synthesis input: one unit with low consensus that must enter reconciliation."
+        }
+      ]
+    },
+    {
+      "slice_id": "low-consensus-review",
+      "kind": "synthetic_qa",
+      "provenance": "generated",
+      "sources": [
+        {
+          "id": "synthetic-review-001",
+          "kind": "synthetic_qa",
+          "provenance": "generated",
+          "text": "Synthetic low-consensus case: coders disagree on the primary theme and the disagreement must be preserved."
+        }
+      ]
+    }
+  ]
+}

@@ -113,6 +113,111 @@ REQUIRED_SNIPPETS: dict[str, dict[str, str]] = {
         "CI governance obligation": "scripts/check_ci_governance.py",
         "test harness obligation": "scripts/check_test_harness.py",
     },
+    "scripts/check_feature_obligations.py": {
+        "fail-closed unknown path handling": "unknown_paths",
+        "stable JSON obligation report": "json-out",
+        "single-authority registry load": "feature_coverage.yml",
+        "consulted capability registry": "runtime_capabilities.json",
+        "test ownership validation": "missing_test_ownership",
+    },
+    "scripts/check_workflow_contracts.py": {
+        "testing branch trigger check": "branches",
+        "human-gate environment check": "environment",
+        "no auto-merge check": "auto-merge",
+    },
+    "scripts/check_qa_capabilities.py": {
+        "capability declaration validation": "surfaces",
+        "deterministic obligation rule": "deterministic",
+        "spine touch rule": "spine_touch",
+    },
+    "qa/runtime_capabilities.json": {
+        "capability schema version": "\"version\": 1",
+        "provider embedding surface": "provider.embedding",
+        "research spine surface": "research.spine",
+    },
+    "qa/scripts/seed_synthetic.py": {
+        "provisional-only stamp": "is_qa_provisional",
+        "promotion gate block": "promotion_blocked",
+        "safe run id validation": "SAFE_RUN_ID",
+    },
+    "qa/scripts/reset_qa.py": {
+        "confirmation token contract": "RESET-ISTARA-QA-RUN",
+        "protected folder refusal": "Model_Finetuning",
+        "unique project naming": "istara-qa-",
+    },
+    "qa/scripts/scan_qa_artifacts.py": {
+        "private endpoint patterns": "PRIVATE_PATTERNS",
+        "secret pattern scan": "SECRET_PATTERNS",
+        "clean result contract": "clean",
+    },
+    "qa/scripts/audit_qa.py": {
+        "provenance evidence": "provenance",
+        "redaction evidence": "redaction",
+        "audit pass contract": "audit_pass",
+    },
+    "qa/scripts/provider_contracts.py": {
+        "exact chat identity": "ChatIdentity",
+        "no-fallback rule": "assert_no_fallback",
+        "vector-space invariant": "vector_space_invariant",
+    },
+    "qa/corpora/manifest.json": {
+        "canonical synthetic slices": "coding-reliability",
+        "graph synthesis slice": "graph-synthesis",
+        "low consensus slice": "low-consensus-review",
+    },
+    "docker-compose.qa.yml": {
+        "unique project naming": "istara-qa-${QA_RUN_ID",
+        "contract profile": "- contract",
+        "live profile gate": "QA_LIVE_PROVIDER_TARGET",
+    },
+    "scripts/istara-qa.sh": {
+        "render command": "cmd_render",
+        "reset command": "cmd_reset",
+        "no model services default": "ollama",
+    },
+    ".github/workflows/qa-artifact.yml": {
+        "testing branch trigger": "branches: [testing]",
+        "immutable digest tag": "qa-run-$",
+        "evidence manifest": "qa-artifact-manifest.json",
+        "no auto PR": "promote-testing.yml",
+    },
+    ".github/workflows/promote-testing.yml": {
+        "manual dispatch only": "workflow_dispatch",
+        "protected environment": "environment: testing-promotion",
+        "anti-replay SHA check": "source SHA changed",
+        "never auto-merge": "gh pr create",
+    },
+    "tests/test_feature_obligations.py": {
+        "fail-closed unknown path test": "unknown_path_fails_closed",
+        "registered CI path test": "registered_ci_path_selects_obligations",
+        "capability spine test": "capability_surface_triggers_spine_obligation",
+    },
+    "tests/test_qa_stack_contract.py": {
+        "no fixed container name test": "test_qa_compose_has_no_fixed_container_name",
+        "profile render test": "test_qa_profile_renders",
+        "base compose render test": "test_base_compose_renders_after_qa_hardening_fix",
+    },
+    "tests/test_qa_reset_seed.py": {
+        "reset confirmation test": "test_reset_requires_confirmation_token",
+        "seed provisional test": "test_seed_plan_is_provisional_and_blocks_promotion",
+        "safe project naming test": "test_project_name_is_namespaced_and_safe",
+    },
+    "tests/test_qa_artifacts.py": {
+        "redaction detection test": "test_scan_text_detects_private_endpoints_and_secrets",
+        "audit pass contract test": "test_audit_run_requires_seed_manifest_and_clean_redaction",
+    },
+    "tests/test_provider_contracts.py": {
+        "no fallback test": "test_no_fallback_is_fail_closed",
+        "vector invariant test": "test_vector_space_invariant_violation_fails_closed",
+    },
+    "tests/test_qa_capabilities.py": {
+        "capabilities clean validation": "test_capabilities_validate_clean",
+        "spine touch obligation test": "test_capabilities_spine_touch_requires_synthetic_provisional",
+    },
+    "tests/test_synthetic_provisional_boundary.py": {
+        "provisional boundary test": "test_synthetic_rows_are_always_provisional",
+        "report gate exclusion test": "test_report_gate_excludes_provisional_artifacts",
+    },
     "scripts/check_integrity.py": {
         "legacy Compass guard": "LEGACY_COMPASS_DOCS",
         "security benchmark governance doc": "SECURITY_BENCHMARK_MD",
@@ -135,6 +240,7 @@ REQUIRED_SNIPPETS: dict[str, dict[str, str]] = {
         "JavaScript harness static audit": "check_js_static_harness",
         "agentic eval manifest audit": "check_agentic_eval_contract",
         "mutation property harness audit": "check_mutation_property_harness",
+        "QA obligation harness audit": "check_qa_obligation_harness",
     },
     "testing/TESTING_STRATEGY.md": {
         "pytest strict marker strategy": "--strict-markers",

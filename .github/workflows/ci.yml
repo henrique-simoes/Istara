@@ -2,11 +2,55 @@ name: CI
 
 on:
   push:
-    branches: [main, staging]
+    branches: [main, staging, testing]
   pull_request:
-    branches: [main, staging]
+    branches: [main, staging, testing]
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}-${{ github.event_name }}
+  cancel-in-progress: true
 
 jobs:
+  feature-obligations:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Classify feature obligations (fail-closed)
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            BASE="${{ github.event.pull_request.base.sha }}"
+            HEAD="${{ github.event.pull_request.head.sha }}"
+          else
+            BASE="${{ github.event.before }}"
+            HEAD="${{ github.sha }}"
+          fi
+          python scripts/check_feature_obligations.py --base "$BASE" --head "$HEAD" \
+            --json-out artifacts/feature-obligations.json
+
+      - name: Validate QA capability declaration
+        run: python scripts/check_qa_capabilities.py
+
+      - name: Validate public workflow human-gate contract
+        run: python scripts/check_workflow_contracts.py
+
+      - name: Upload obligation report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: istara-feature-obligations
+          path: artifacts/feature-obligations.json
+          if-no-files-found: ignore
+
   governance:
     runs-on: ubuntu-latest
     permissions:
@@ -214,3 +258,96 @@ jobs:
       - name: Check Rust compiles
         run: cargo check
         continue-on-error: true  # Dependencies may require system libs not available in CI
+
+  qa-artifact:
+    runs-on: ubuntu-latest
+    needs: [feature-obligations, governance, backend, frontend, test-harness-js]
+    permissions:
+      contents: read
+      packages: write  # trusted `testing` runs may publish a QA image to GHCR
+      id-token: write  # provenance attestation
+    if: ${{ github.event_name == 'push' && github.ref_name == 'testing' }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Validate QA compose contract (no services started)
+        run: docker compose -f docker-compose.qa.yml --profile contract config --quiet
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR (trusted testing runs only)
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build disposable QA image (immutable tag)
+        uses: docker/build-push-action@v6
+        with:
+          context: ./backend
+          file: backend/Dockerfile
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository }}/istara-qa:${{ github.sha }}
+            ghcr.io/${{ github.repository }}/istara-qa:qa-run-${{ github.run_id }}-${{ github.run_attempt }}
+          provenance: true
+          sbom: true
+
+      - name: Record image digest + evidence manifest
+        run: |
+          mkdir -p artifacts
+          DIGEST=$(docker buildx imagetools inspect ghcr.io/${{ github.repository }}/istara-qa:${{ github.sha }} --format '{{.Manifest.Digest}}')
+          printf '%s' "$DIGEST" > artifacts/docker-image-digest.txt
+          cat > artifacts/qa-artifact-manifest.json <<EOF
+          {
+            "source_sha": "${{ github.sha }}",
+            "image_digest": "$DIGEST",
+            "run_id": "${{ github.run_id }}",
+            "attempt": "${{ github.run_attempt }}",
+            "provider_mode": "contract",
+            "human_gate_required": true
+          }
+          EOF
+
+      - name: Upload QA artifact evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: istara-qa-artifact-evidence
+          path: artifacts/
+
+  qa-contract-stack:
+    runs-on: ubuntu-latest
+    needs: [feature-obligations]
+    permissions:
+      contents: read
+    if: ${{ always() && needs.feature-obligations.result == 'success' }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Render QA profiles
+        run: |
+          docker compose -f docker-compose.qa.yml --profile contract config --quiet
+          docker compose -f docker-compose.qa.yml --profile synthetic config --quiet
+          docker compose -f docker-compose.qa.yml --profile audit config --quiet
+
+      - name: Run QA contract tests
+        run: |
+          pytest tests/test_qa_stack_contract.py tests/test_qa_reset_seed.py \
+            tests/test_qa_artifacts.py tests/test_feature_obligations.py \
+            tests/test_qa_capabilities.py -q
