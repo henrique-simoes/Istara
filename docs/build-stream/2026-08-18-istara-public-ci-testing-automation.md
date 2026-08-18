@@ -5,12 +5,12 @@
 item: istara-public-ci-testing-automation
 branch: conductor/istara-public-ci-testing-20260818
 cf: { spec: CF-SPEC-56, tasks: [CF-717, CF-718, CF-719, CF-720, CF-721, CF-722, CF-723, CF-724, CF-725, CF-726, CF-727, CF-728, CF-729, CF-730] }
-phase: "Phase 1 — MECE master planning"
+phase: "Phase 3 — Public CI/testing implementation"
 stage: S3-review
-status: in-progress
-blocked_on: null
+status: blocked
+blocked_on: "F-1: implementation task produced no public CI/testing implementation"
 last: { agent: openai/gpt-5.6-luna, at: 2026-08-18T01:20:00Z, ledger: L-12 }
-next_action: "Owner approved MECE master plan (slot c); conductor may dispatch implementation."
+next_action: "Dispatch the fixer task for F-1/F-2, implement the approved public CI/testing surface, and return for delta review."
 ```
 <!-- /STATUS BLOCK -->
 
