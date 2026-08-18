@@ -660,6 +660,22 @@ async def _load_units(
     return list(result.scalars().all())
 
 
+def _is_qa_provisional_unit(unit: Any) -> bool:
+    """True when an evidence unit is stamped as synthetic-QA provisional.
+
+    The QA seeder stamps ``is_qa_provisional``/``promotion_blocked`` on
+    evidence-unit metadata at ingestion (documents API). Any coding run that
+    would promote such a unit is fail-closed blocked below.
+    """
+    try:
+        metadata = json.loads(unit.metadata_json or "{}")
+    except (json.JSONDecodeError, TypeError):
+        metadata = {}
+    if not isinstance(metadata, dict):
+        return False
+    return bool(metadata.get("is_qa_provisional"))
+
+
 async def _load_codebook(
     db: AsyncSession,
     *,
@@ -1189,6 +1205,21 @@ async def run_independent_coding_run(
         coding_run.status = "blocked"
         coding_run.promotion_status = "blocked"
         coding_run.fallback_reason = "No evidence units are available for coding."
+        coding_run.completed_at = datetime.now(timezone.utc)
+        await db.commit()
+        return coding_run.to_dict()
+
+    # Fail-closed provisional boundary: synthetic-QA evidence units may never
+    # be promoted to accepted/reportable states, regardless of reliability
+    # scores. Block the whole run rather than silently skipping units.
+    provisional_unit_ids = [unit.id for unit in units if _is_qa_provisional_unit(unit)]
+    if provisional_unit_ids:
+        coding_run.status = "blocked"
+        coding_run.promotion_status = "blocked"
+        coding_run.fallback_reason = (
+            "Synthetic QA evidence units are provisional-only and can never be "
+            f"promoted (blocked unit count: {len(provisional_unit_ids)})."
+        )
         coding_run.completed_at = datetime.now(timezone.utc)
         await db.commit()
         return coding_run.to_dict()

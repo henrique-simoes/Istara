@@ -22,7 +22,9 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 RUN_ID="${QA_RUN_ID:-$(date -u +%Y%m%d%H%M%S)}"
 PROFILE="${QA_PROFILE:-contract}"
-COMPOSE=(docker compose -f "$ROOT/docker-compose.yml" -f "$ROOT/docker-compose.qa.yml")
+# The QA overlay is SELF-CONTAINED: never merge the base compose, which would
+# reintroduce ollama and the fixed istara-* container names.
+COMPOSE=(docker compose -f "$ROOT/docker-compose.qa.yml")
 PROJECT="istara-qa-${RUN_ID}"
 
 usage() {
@@ -56,13 +58,13 @@ cmd_wait() {
 
 cmd_seed() {
   local slice="${QA_SLICE:-coding-reliability}"
-  docker run --rm \
-    -e QA_RUN_ID="$RUN_ID" \
+  # Run the seeder THROUGH the compose service (never `docker run $ROOT/backend`):
+  # the QA image contains qa/scripts + qa/corpora, starts qa-backend (healthy)
+  # as its dependency, and ingests the slice through the real evidence-unit
+  # path. QA_API_BASE defaults to the in-network qa-backend service DNS.
+  "${COMPOSE[@]}" -p "$PROJECT" --profile synthetic run --rm -T \
     -e QA_SLICE="$slice" \
-    -e QA_RUNS_DIR=/qa/runs \
-    -v "$ROOT/qa/runs:/qa/runs" \
-    "$ROOT/backend" \
-    python qa/scripts/seed_synthetic.py --slice "$slice" --run-id "$RUN_ID" --runs-dir /qa/runs
+    qa-seeder
   echo "Seeded slice=$slice run=$RUN_ID (provisional only)."
 }
 

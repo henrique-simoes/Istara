@@ -162,12 +162,36 @@ async def _document_payloads(
     return [_document_payload(doc, counts.get(doc.id, 0)) for doc in docs]
 
 
-async def _persist_document_source_units(db: AsyncSession, doc: Document) -> list[Any]:
+async def _persist_document_source_units(
+    db: AsyncSession,
+    doc: Document,
+    *,
+    qa_provisional: bool = False,
+    source_kind: str = "",
+) -> list[Any]:
     if doc.status != DocumentStatus.READY:
         return []
     source_text = reveal_document_text(doc.content_text or doc.content_preview or "")
     if not source_text.strip():
         return []
+    metadata: dict[str, Any] = {
+        "file_name": doc.file_name,
+        "file_type": doc.file_type,
+        "ingestion_surface": "documents_api",
+    }
+    if qa_provisional:
+        # Explicit QA provenance boundary (master plan §6.4): synthetic QA rows
+        # are stamped provisional at ingestion and can never reach
+        # accepted/reportable states. The coding-run guard blocks promotion for
+        # any evidence unit carrying this marker.
+        metadata.update(
+            {
+                "is_qa_provisional": True,
+                "source_kind": source_kind or "synthetic_qa",
+                "promotion_blocked": True,
+                "qa_run_boundary": "synthetic_qa_provisional",
+            }
+        )
     return await persist_document_source_evidence_units(
         db,
         project_id=doc.project_id,
@@ -180,11 +204,7 @@ async def _persist_document_source_units(db: AsyncSession, doc: Document) -> lis
         phase=doc.phase,
         task_id=doc.task_id,
         version=doc.version or 1,
-        metadata={
-            "file_name": doc.file_name,
-            "file_type": doc.file_type,
-            "ingestion_surface": "documents_api",
-        },
+        metadata=metadata,
     )
 
 
@@ -308,6 +328,12 @@ class DocumentCreate(BaseModel):
     atomic_path: dict[str, Any] = Field(default_factory=dict)
     content_preview: str = Field(default="", max_length=2000)
     content_text: str = Field(default="", max_length=5000000)
+    # QA provenance boundary (master plan §6.4): when set, every evidence unit
+    # persisted for this document is stamped is_qa_provisional=true and can
+    # never reach accepted/reportable states. Used by the disposable QA
+    # seeder only; normal product ingestion leaves these unset.
+    qa_provisional: bool = Field(default=False)
+    source_kind: str = Field(default="", max_length=60)
 
     @field_validator("project_id", "title", "description", "file_path", "file_name", "file_type", "task_id", "phase", "content_preview", "content_text", mode="before")
     @classmethod
@@ -540,7 +566,12 @@ async def create_document(data: DocumentCreate, request: Request, db: AsyncSessi
             encrypt_file_in_place(candidate_path)
 
     db.add(doc)
-    units = await _persist_document_source_units(db, doc)
+    units = await _persist_document_source_units(
+        db,
+        doc,
+        qa_provisional=data.qa_provisional,
+        source_kind=data.source_kind,
+    )
     await db.commit()
     await record_source_evidence_unit_telemetry(
         project_id=doc.project_id,

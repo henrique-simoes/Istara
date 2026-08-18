@@ -33,9 +33,11 @@ x-qa-hardening: &qa-hardening
 
 services:
   qa-backend:
+    # One QA image built from the repo root: the product backend PLUS the QA
+    # tooling (qa/scripts, qa/corpora) the seeder/resetter/auditor need.
     build:
-      context: ./backend
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: qa/Dockerfile
     <<: *qa-hardening
     tmpfs:
       - /tmp:noexec,nosuid,size=100M
@@ -104,11 +106,13 @@ services:
     profiles:
       - contract
 
-  # Synthetic corpus seeder (Research Spine provisional-only).
+  # Synthetic corpus seeder (Research Spine provisional-only). Ingests the
+  # named slice through the REAL evidence-unit path (POST /api/documents on
+  # the running qa-backend) and writes the seed manifest with live handles.
   qa-seeder:
     build:
-      context: ./backend
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: qa/Dockerfile
     <<: *qa-hardening
     tmpfs:
       - /tmp:noexec,nosuid,size=100M
@@ -119,16 +123,22 @@ services:
       - DAC_OVERRIDE
     networks:
       - qa-data-net
+    depends_on:
+      qa-backend:
+        condition: service_healthy
     environment:
       QA_RUN_ID: ${QA_RUN_ID:-local}
       QA_SLICE: ${QA_SLICE:-coding-reliability}
       QA_RUNS_DIR: /qa/runs
+      QA_API_BASE: ${QA_API_BASE:-http://qa-backend:8000}
     volumes:
-      - qa_runs:/qa/runs
+      # Bind the gitignored artifact dir so host-side collect/audit can read
+      # the seed manifest; the QA runtime never mounts the Docker socket.
+      - ./qa/runs:/qa/runs
     command:
       - sh
       - -c
-      - python qa/scripts/seed_synthetic.py --slice "$${QA_SLICE}" --run-id "$${QA_RUN_ID}" --runs-dir "$${QA_RUNS_DIR}"
+      - python qa/scripts/seed_synthetic.py --slice "$${QA_SLICE}" --run-id "$${QA_RUN_ID}" --runs-dir "$${QA_RUNS_DIR}" --api-base "$${QA_API_BASE}"
     profiles:
       - synthetic
       - reset
@@ -136,8 +146,8 @@ services:
   # Resetter: wipes ONLY this project's volumes/networks and reseeds.
   qa-resetter:
     build:
-      context: ./backend
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: qa/Dockerfile
     <<: *qa-hardening
     tmpfs:
       - /tmp:noexec,nosuid,size=100M
@@ -156,8 +166,8 @@ services:
   # Auditor: provenance/retention/redaction evidence for the gate bundle.
   qa-auditor:
     build:
-      context: ./backend
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: qa/Dockerfile
     <<: *qa-hardening
     tmpfs:
       - /tmp:noexec,nosuid,size=100M
@@ -169,7 +179,7 @@ services:
       QA_SOURCE_SHA: ${QA_SOURCE_SHA:-}
       QA_IMAGE_DIGEST: ${QA_IMAGE_DIGEST:-}
     volumes:
-      - qa_runs:/qa/runs
+      - ./qa/runs:/qa/runs
     command:
       - sh
       - -c
@@ -216,9 +226,6 @@ services:
     mem_limit: 512M
     profiles:
       - ui
-
-volumes:
-  qa_runs:
 
 networks:
   qa-frontend-net:

@@ -52,6 +52,37 @@ def test_qa_compose_has_no_fixed_container_name():
     )
 
 
+def test_qa_compose_builds_qa_image_from_repo_root():
+    # The QA seeder/resetter/auditor run qa/scripts + qa/corpora, so the image
+    # must be built from the repo ROOT (context: .) with qa/Dockerfile, never
+    # from ./backend (which lacks the QA tooling).
+    text = QA_COMPOSE.read_text(encoding="utf-8")
+    assert "context: ." in text
+    assert "dockerfile: qa/Dockerfile" in text
+    assert "context: ./backend" not in text
+    assert (ROOT / "qa" / "Dockerfile").exists()
+
+
+def test_istara_qa_sh_never_merges_base_compose():
+    # up/down/seed/reset must stay isolated from the base local-model stack:
+    # merging docker-compose.yml would reintroduce ollama + fixed istara-*
+    # container names.
+    script = (ROOT / "scripts" / "istara-qa.sh").read_text(encoding="utf-8")
+    assert 'COMPOSE=(docker compose -f "$ROOT/docker-compose.qa.yml")' in script
+    assert "docker-compose.yml" not in script.replace("docker-compose.qa.yml", "")
+    # seed must run the compose seeder service, never `docker run $ROOT/backend`.
+    assert "run --rm" in script
+    assert '"$ROOT/backend"' not in script
+    assert "docker run --rm" not in script
+
+
+def test_qa_seeder_depends_on_healthy_backend():
+    text = QA_COMPOSE.read_text(encoding="utf-8")
+    assert "condition: service_healthy" in text
+    assert "QA_API_BASE" in text
+    assert "--api-base" in text
+
+
 def test_qa_compose_forbids_host_docker_socket_and_host_mounts():
     text = QA_COMPOSE.read_text(encoding="utf-8").lower()
     assert "/var/run/docker.sock" not in text

@@ -51,10 +51,12 @@ def reset_project(run_id: str, *, dry_run: bool = False, compose_files: list[str
     """Tear down one QA project namespace with ``docker compose -p ... down -v``.
 
     Returns the command run. When ``dry_run`` is true nothing is executed.
+    Only the self-contained QA overlay is targeted: merging the base compose
+    here would reintroduce ollama and the fixed istara-* container names.
     """
     validate_target(run_id)
     project = project_name(run_id)
-    files = compose_files or ["docker-compose.yml", "docker-compose.qa.yml"]
+    files = compose_files or ["docker-compose.qa.yml"]
     cmd = ["docker", "compose"]
     for f in files:
         cmd += ["-f", f]

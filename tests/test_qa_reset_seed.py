@@ -74,6 +74,14 @@ def test_reset_dry_run_returns_project_scoped_command():
     assert "istara-qa-20260818abc" in result["command"]
 
 
+def test_reset_only_targets_qa_overlay_not_base_compose():
+    # Merging the base compose into reset would reintroduce ollama and the
+    # fixed istara-* container names; reset must target ONLY the QA overlay.
+    result = reset_project("20260818abc", dry_run=True)
+    assert "docker-compose.qa.yml" in result["command"]
+    assert "docker-compose.yml" not in result["command"]
+
+
 # ---------------------------------------------------------------------------
 # Seed contract (Research Spine provisional-only)
 # ---------------------------------------------------------------------------
