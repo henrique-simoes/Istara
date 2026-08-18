@@ -6,7 +6,7 @@ item: istara-public-ci-testing-automation
 branch: conductor/istara-public-ci-testing-20260818
 cf: { spec: CF-SPEC-56, tasks: [CF-717, CF-718, CF-719, CF-720, CF-721, CF-722, CF-723, CF-724, CF-725, CF-726, CF-727, CF-728, CF-729, CF-730] }
 phase: "Phase 3 — Public CI/testing implementation"
-stage: S4-remediate
+stage: S3-review
 status: in-progress
 blocked_on: null
 last: { agent: openai/gpt-5.6-luna, at: 2026-08-18T02:44:20Z, ledger: L-22 }
