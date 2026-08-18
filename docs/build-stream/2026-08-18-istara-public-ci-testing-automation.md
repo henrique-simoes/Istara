@@ -1463,7 +1463,7 @@ Next: conductor advances the pipeline on evidence.
 | F-5 | Major | Promotion workflow | `.github/workflows/promote-testing.yml:53-63` | The human-gated promotion workflow does not provide `GH_TOKEN`/`GITHUB_TOKEN` to the `gh api` check step. The token is only exported in the later PR-creation step, while the check masks API/authentication errors with `|| true` and then exits because `RUNS` is empty; the only promotion path therefore fails before PR creation on a normal runner. | CF-746 | open |
 | F-6 | Major | CI/promotion integrity | `.github/workflows/ci.yml:54-81` | Adding `testing` to CI triggers also activates the existing governance job's `contents:write` README badge sync and pushes a generated commit to whatever branch triggered the run, including `testing`. That can change `testing` HEAD during or immediately after QA evidence and invalidate the exact-SHA human promotion gate. | CF-747 | open |
 
-**Verdict:** fail. The implementation is not reviewable as a completed change; no blocker/major can be accepted or waived at this stage.
+**Verdict:** fail. F-1 and F-2 are fixed, but the bounded delta review found open Major findings F-3 through F-6; no finding may be accepted or waived before the fixer tasks and conductor-created re-review complete.
 
 
 ### L-12 | 2026-08-18T01:20:00Z | S3-review | openai/gpt-5.6-luna | reviewer | Phase 3 <!-- bsc-ledger:ISTARA-PUBLIC-CI-TESTING-20260818-REVIEW -->
