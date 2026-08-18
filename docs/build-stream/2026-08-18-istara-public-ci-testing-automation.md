@@ -8,9 +8,9 @@ cf: { spec: CF-SPEC-56, tasks: [CF-717, CF-718, CF-719, CF-720, CF-721, CF-722, 
 phase: "Phase 1 — MECE master planning"
 stage: S1-plan
 status: in-review
-blocked_on: "Waiting for S1 master plan completion and owner consensus review"
-last: { agent: deepseek/deepseek-v4-flash, at: 2026-08-18T00:34:52Z, ledger: L-7 }
-next_action: "Architect C MECE master synthesis complete; cross-vote the master candidates (A/B/C), then hold at the owner-approval barrier."
+blocked_on: "Waiting for owner approval of the selected Phase 1 master plan"
+last: { agent: openai/gpt-5.6-luna, at: 2026-08-18T00:39:33Z, ledger: L-9 }
+next_action: "Vote B selected Master Plan C; await owner approval in Phase 2 and block implementation until approval is recorded."
 ```
 <!-- /STATUS BLOCK -->
 
@@ -86,6 +86,12 @@ Result: MECE master-plan candidate C complete for the conductor's cross-vote; co
 Verified: wc -l -> 1289 lines; grep -c '^## ' -> 20 sections; 27 AC-* criteria; repo facts re-verified: assert_vector_space_invariant at backend/app/core/pi_runtime/embeddings_gateway.py, ci.yml jobs (governance/backend/frontend/test-harness-js/desktop), scripts/check_change_obligations.py --base/--head, TESTING.md live LLM profile (ISTARA_RUN_REAL_LLM_BENCHMARK=1); command evidence + self_report recorded via compass-forge (workspace /Users/user/Documents/compass-forge).
 Next: Conductor cross-votes the three master candidates (A/B/C), preserves disagreement/trade-offs, and pauses at the owner-approval barrier (Phase 2); no implementation before approval.
 
+### L-8 | 2026-08-18T00:38:13Z | S1-plan | gpt-5.3-codex-spark | executor | Phase 1 <!-- bsc-ledger:ISTARA-PUBLIC-CI-TESTING-20260818-VOTE-B -->
+Did: Reviewed and compared master-plan candidates A and C against the user request, then issued a MECE cross-vote.
+Result: Voted `C` (`75a1fc68de62745e5a9aaabe8580d02d071e3a98260a765b37c17f7b0cd91d37`) to carry the synthesis that explicitly resolves draft conflicts, keeps one canonical feature obligation authority, and preserves explicit owner-gated uncertainty and rollback paths.
+Verified: `compass-forge --workspace /Users/user/Documents/compass-forge task evidence ISTARA-PUBLIC-CI-TESTING-20260818-VOTE-B --type plan_vote ...`; `compass-forge --workspace /Users/user/Documents/compass-forge task evidence ISTARA-PUBLIC-CI-TESTING-20260818-VOTE-B --type command --summary "Read work-order payload for vote"`; `compass-forge --workspace /Users/user/Documents/compass-forge task evidence ISTARA-PUBLIC-CI-TESTING-20260818-VOTE-B --type self_report --summary ...`.
+Next: Await owner approval for the selected Phase 1 master plan before any implementation work.
+
 ## Phase 1 — MECE master planning
 
 **Architect coverage contract:**
@@ -117,3 +123,10 @@ Did: Synthesized the three immutable Architect A/B/C snapshots into `docs/build-
 Result: Candidate A is complete and ready for consensus review. The synthesis deliberately avoids three competing registries by keeping runtime capabilities in the canonical coverage registry; it distinguishes contract-only, synthetic-provisional, authorized-live, and staging claims; and it preserves unverified blockers, owner decisions, inherited gate debt, and rollback boundaries. The lifecycle status now reflects concurrent master-plan review; no existing ledger entry or unrelated worker artifact was edited.
 Verified: the plan validator command passed: `python - <<'PY' ... required sections present; no trailing whitespace/TODO/clarification markers ... PY` (1,222 lines / 81,351 bytes); `git status --short --untracked-files=all` showed the candidate plus pre-existing architect instruction/master-plan files. No architecture gate was run because this stage is planning-only and changes no architecture boundary.
 Next: Conductor cross-votes master candidates A, B, and C, records the selected candidate ID in `plan_vote` evidence, and pauses for explicit owner approval before implementation.
+
+
+### L-9 | 2026-08-18T00:39:33Z | S1-plan | openai/gpt-5.6-luna | planner | Phase 1 <!-- bsc-ledger:ISTARA-PUBLIC-CI-TESTING-20260818-VOTE-A -->
+Did: Reviewed exactly the two supplied master-plan snapshots (candidate B and candidate C) and recorded a vote for candidate C; no code or plan artifact was edited.
+Result: Candidate C selected for explicit R1-R7 reconciliation, coverage matrix, labeled uncertainties, single registry authority, phase gates, acceptance criteria, and rollback/evidence boundaries; ISTARA-PUBLIC-CI-TESTING-20260818-VOTE-A is ready for conductor tally.
+Verified: packet validation Python command -> passed; Compass Forge command, plan_vote, and self_report evidence rows -> recorded.
+Next: Conductor tallies the cross-votes, freezes the winning master plan, and waits at the owner-approval barrier before implementation.
