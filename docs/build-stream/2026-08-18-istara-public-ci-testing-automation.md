@@ -9,8 +9,8 @@ phase: "Phase 1 — MECE master planning"
 stage: S1-plan
 status: in-progress
 blocked_on: "Owner approval of the winning MECE plan before implementation or PR creation"
-last: { agent: openai/gpt-5.6-luna, at: 2026-08-18T00:24:01Z, ledger: L-3 }
-next_action: "Synthesize this draft with Architect B and Architect C, cross-vote the master candidates, then stop at the owner-approval barrier."
+last: { agent: gpt-5.3-codex-spark, at: 2026-08-18T00:25:39Z, ledger: L-4 }
+next_action: "Architect B draft complete; synthesize and cross-vote with Architect A and Architect C, then hold at the owner-approval barrier."
 ```
 <!-- /STATUS BLOCK -->
 
@@ -66,6 +66,12 @@ Did: Wrote the independent holistic Architect A draft at `docs/build-stream/plan
 Result: Plan A is ready for MECE synthesis. It recommends a public `testing` integration branch, a registry-driven obligation classifier, distinct contract-only/synthetic-provisional/authorized-live lanes, and a human approval boundary before promotion-PR creation. No product source, CI workflow, Compose file, test, provider, model, server, Docker runtime, or `multivac` state was changed.
 Verified: plan structure assertion (passed; 1,204 lines / 72,853 bytes); `python -m py_compile scripts/check_ci_governance.py scripts/check_test_harness.py scripts/check_public_tree_clean.py scripts/check_change_obligations.py` (passed); `python scripts/check_ci_governance.py` (passed); `python scripts/check_test_harness.py` (passed); `docker compose -f docker-compose.yml config --quiet` (failed with the inherited `pids_limit`/`deploy.resources.limits.pids` conflict; no services started).
 Next: Conductor synthesizes this draft with Architect B and Architect C, cross-votes the master candidates, and pauses for owner approval before implementation.
+
+### L-4 | 2026-08-18T00:25:39Z | S1-plan | gpt-5.3-codex-spark | planner | Phase 1 <!-- bsc-ledger:ISTARA-PUBLIC-CI-TESTING-20260818-PLAN-B -->
+Did: Wrote independent Architect B planning draft at docs/build-stream/plans/istara-public-ci-testing-20260818-plan-b.md, covering public branch/CI state machine, fail-closed feature-obligation mapping, deterministic test automation order, provider-agnostic disposable Docker QA artifact design, Research Spine-compliant provisional lane boundaries, security posture, optional `multivac` adapter boundaries, and acceptance criteria in executable form.
+Result: Planning artifact is ready for MECE synthesis; no code/workflow/compose/tests/runtime or provider calls were changed.
+Verified: `python scripts/check_public_tree_clean.py --help`; `python scripts/check_change_obligations.py --help`; `python scripts/check_ci_governance.py` (passed); `python scripts/public_repo_quality_audit.py --check` (failed on historical findings unrelated to this draft, treated as pre-existing).
+Next: Await synthesis/cross-vote and owner approval checkpoint before any implementation work.
 
 ## Phase 1 — MECE master planning
 
