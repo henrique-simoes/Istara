@@ -84,6 +84,17 @@ def test_live_profile_fails_closed_without_target():
     assert result.returncode in (0, 1)
 
 
+def test_live_gate_never_echoes_target_verbatim():
+    # F-4 regression: the live gate must never echo QA_LIVE_PROVIDER_TARGET (a
+    # private endpoint) verbatim into logs; it may only emit a redacted
+    # label/handle.
+    text = QA_COMPOSE.read_text(encoding="utf-8")
+    gate = text[text.index("qa-live-gate"):]
+    assert "live-target=$${" not in gate
+    assert "echo live-target=" not in gate
+    assert "live-target-label" in gate or "live-target-set" in gate
+
+
 @pytest.mark.parametrize("profile", ["contract", "synthetic", "reset", "audit", "ui"])
 def test_qa_profile_renders(profile):
     if not docker_compose:

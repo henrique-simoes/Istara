@@ -183,7 +183,9 @@ services:
   qa-live-gate:
     image: busybox:1.36
     <<: *qa-hardening
-    command: ["sh", "-c", "test -n \"$${QA_LIVE_PROVIDER_TARGET}\" || { echo 'QA_LIVE_PROVIDER_TARGET is required for the live profile'; exit 1; }; echo live-target=$${QA_LIVE_PROVIDER_TARGET}"]
+    # F-4: the gate must never echo QA_LIVE_PROVIDER_TARGET (a private endpoint)
+    # verbatim into logs; it emits only a redacted checksum label/handle.
+    command: ["sh", "-c", "test -n \"$${QA_LIVE_PROVIDER_TARGET}\" || { echo 'QA_LIVE_PROVIDER_TARGET is required for the live profile'; exit 1; }; echo live-target-set=1; echo \"live-target-label=$$(printf '%s' \"$${QA_LIVE_PROVIDER_TARGET}\" | cksum | cut -d' ' -f1)\""]
     environment:
       QA_LIVE_PROVIDER_TARGET: ${QA_LIVE_PROVIDER_TARGET:-}
     networks:

@@ -120,7 +120,9 @@ def vector_space_invariant(
 def readiness_gate(identity: ChatIdentity, capability_decl: dict[str, Any]) -> ChatReadiness:
     """Fail-closed readiness: identity present, secret-handle present, capability declared.
 
-    Never prints a secret value; only presence is checked.
+    Never prints a secret value; only presence is checked. A missing, empty, or
+    non-string ``secret_handle`` makes the gate fail closed (F-4): a live report
+    is green only when a secret handle is present without ever being printed.
     """
     missing: list[str] = []
     if not identity.provider:
@@ -129,13 +131,19 @@ def readiness_gate(identity: ChatIdentity, capability_decl: dict[str, Any]) -> C
         missing.append("model")
     if not capability_decl.get("capability"):
         missing.append("capability_decl")
-    if capability_decl.get("secret_handle") and not isinstance(
-        capability_decl.get("secret_handle"), str
-    ):
+    secret_handle = capability_decl.get("secret_handle")
+    secret_handle_present = bool(
+        secret_handle and isinstance(secret_handle, str) and secret_handle.strip()
+    )
+    if not secret_handle_present:
         missing.append("secret_handle")
     healthy = not missing
     return ChatReadiness(
         identity=identity,
         healthy=healthy,
-        capability_decl={"capability": capability_decl.get("capability"), "missing": missing},
+        capability_decl={
+            "capability": capability_decl.get("capability"),
+            "secret_handle_present": secret_handle_present,
+            "missing": missing,
+        },
     )

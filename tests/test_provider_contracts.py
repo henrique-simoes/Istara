@@ -63,11 +63,27 @@ def test_vector_space_invariant_violation_fails_closed():
         )
 
 
-def test_readiness_gate_requires_capability_decl():
+def test_readiness_gate_requires_capability_decl_and_secret_handle():
     identity = ChatIdentity(ProviderKind.VLLM, ApiShape.OPENAI_COMPAT, "qwen3")
-    ready = readiness_gate(identity, {"capability": "chat"})
-    assert isinstance(ready, ChatReadiness)
-    assert ready.healthy is True
+    # Fail closed: capability declared but no secret_handle (F-4 regression).
+    no_secret = readiness_gate(identity, {"capability": "chat"})
+    assert isinstance(no_secret, ChatReadiness)
+    assert no_secret.healthy is False
+    assert "secret_handle" in no_secret.capability_decl["missing"]
+    assert no_secret.capability_decl["secret_handle_present"] is False
+    # Capability declaration itself is still required.
     missing = readiness_gate(identity, {})
     assert missing.healthy is False
     assert "capability_decl" in missing.capability_decl["missing"]
+    assert "secret_handle" in missing.capability_decl["missing"]
+    # A non-empty string secret handle (a handle, never the secret value) passes.
+    ready = readiness_gate(identity, {"capability": "chat", "secret_handle": "qa-live-openai"})
+    assert ready.healthy is True
+    assert ready.capability_decl["secret_handle_present"] is True
+    # An empty or non-string secret handle still fails closed.
+    empty = readiness_gate(identity, {"capability": "chat", "secret_handle": ""})
+    assert empty.healthy is False
+    assert "secret_handle" in empty.capability_decl["missing"]
+    non_string = readiness_gate(identity, {"capability": "chat", "secret_handle": 42})
+    assert non_string.healthy is False
+    assert "secret_handle" in non_string.capability_decl["missing"]
