@@ -9,8 +9,8 @@ phase: "Phase 1 — MECE master planning"
 stage: S1-plan
 status: in-progress
 blocked_on: "Owner approval of the winning MECE plan before implementation or PR creation"
-last: { agent: deepseek/deepseek-v4-flash, at: 2026-08-18T00:21:04Z, ledger: L-2 }
-next_action: "Run the three-architect MECE planning pipeline, synthesize and cross-vote the master plans, then stop at the owner-approval gate."
+last: { agent: openai/gpt-5.6-luna, at: 2026-08-18T00:24:01Z, ledger: L-3 }
+next_action: "Synthesize this draft with Architect B and Architect C, cross-vote the master candidates, then stop at the owner-approval barrier."
 ```
 <!-- /STATUS BLOCK -->
 
@@ -59,6 +59,13 @@ Did: Wrote the independent Architect C draft plan at docs/build-stream/plans/ist
 Result: Draft plan artifact complete for MECE synthesis; lane boundaries stated for A (state machine/gate mechanics) and B (workflow graph). Unverified items explicitly labeled: multivac surface, current .gitignore contents, live-lane pass state, existing SBOM tooling.
 Verified: wc -l docs/build-stream/plans/istara-public-ci-testing-20260818-plan-c.md -> 774 lines; grep -c '^## ' -> 20; evidence rows E1-E15 cited from docker-compose.yml, .github/workflows/ci.yml, backend/app/core/pi_runtime/embeddings_gateway.py (assert_vector_space_invariant), backend/app/services/research_validity_service.py, backend/app/api/routes/llm_servers.py, backend/app/core/embedding_validation.py, scripts/check_public_tree_clean.py, scripts/check_change_obligations.py, TESTING.md, pytest.ini, security/SECURITY_BENCHMARK.md; command evidence + self_report recorded via compass-forge.
 Next: Conductor synthesizes A+B+C drafts into MECE master candidates, cross-votes, then pauses at the owner-approval gate (Phase 2); no implementation before approval.
+
+
+### L-3 | 2026-08-18T00:24:01Z | S1-plan | openai/gpt-5.6-luna | planner | Phase 1 <!-- bsc-ledger:ISTARA-PUBLIC-CI-TESTING-20260818-PLAN-A -->
+Did: Wrote the independent holistic Architect A draft at `docs/build-stream/plans/istara-public-ci-testing-20260818-plan-a.md` (1,204 lines; 72,853 bytes). It covers public branch and promotion state machine, fail-closed feature/subfeature obligations, deterministic and authorized test lanes, immutable disposable Docker QA artifacts, provider/vector-space safety, Research Spine and self-improvement governance, security, optional `multivac` staging adapter, implementation phases, executable acceptance, evidence, risks, rollback, and owner-gated decisions.
+Result: Plan A is ready for MECE synthesis. It recommends a public `testing` integration branch, a registry-driven obligation classifier, distinct contract-only/synthetic-provisional/authorized-live lanes, and a human approval boundary before promotion-PR creation. No product source, CI workflow, Compose file, test, provider, model, server, Docker runtime, or `multivac` state was changed.
+Verified: plan structure assertion (passed; 1,204 lines / 72,853 bytes); `python -m py_compile scripts/check_ci_governance.py scripts/check_test_harness.py scripts/check_public_tree_clean.py scripts/check_change_obligations.py` (passed); `python scripts/check_ci_governance.py` (passed); `python scripts/check_test_harness.py` (passed); `docker compose -f docker-compose.yml config --quiet` (failed with the inherited `pids_limit`/`deploy.resources.limits.pids` conflict; no services started).
+Next: Conductor synthesizes this draft with Architect B and Architect C, cross-votes the master candidates, and pauses for owner approval before implementation.
 
 ## Phase 1 — MECE master planning
 
