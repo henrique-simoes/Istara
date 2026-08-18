@@ -1466,7 +1466,7 @@ Next: conductor advances the pipeline on evidence.
 | F-3-r2 | Major | QA runtime / run isolation | `scripts/istara-qa.sh:23,58-67`; `docker-compose.qa.yml:130-141` | The compose-backed seed command does not propagate the script's generated `RUN_ID` into `qa-seeder`; with `QA_RUN_ID` unset, Compose resolves the service value to `local`, so the manifest is written under `qa/runs/local` while the output/project claims `istara-qa-<timestamp>`. The default seed path's collected artifacts and project/evidence handles therefore do not match the run. | FIX-REREV-ISTARA-PUBLIC-CI-TESTING-20260818-REVIEW-r2-F3 | open |
 | F-5-r2 | Major | Promotion workflow permissions | `.github/workflows/promote-testing.yml:29-31,54-63` | The new fail-closed `gh api` check has a token but no `actions: read` permission: the workflow's explicit permissions grant only `contents:write` and `pull-requests:write`, while listing Actions runs requires the Actions read scope. A normal runner can therefore receive 403 and still cannot reach PR creation. | FIX-REREV-ISTARA-PUBLIC-CI-TESTING-20260818-REVIEW-r2-F5 | open |
 
-**Verdict:** fail. F-1 and F-2 are fixed, but the bounded delta review found open Major findings F-3 through F-6; no finding may be accepted or waived before the fixer tasks and conductor-created re-review complete.
+**Verdict:** fail. F-1, F-2, F-4, and F-6 are fixed. The bounded r2 delta review found two new residual Major findings, F-3-r2 and F-5-r2; no finding may be accepted or waived before both fixer tasks and the conductor-created re-review complete.
 
 
 ### L-12 | 2026-08-18T01:20:00Z | S3-review | openai/gpt-5.6-luna | reviewer | Phase 3 <!-- bsc-ledger:ISTARA-PUBLIC-CI-TESTING-20260818-REVIEW -->
