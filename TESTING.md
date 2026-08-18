@@ -124,6 +124,11 @@ The dedicated `qa-artifact.yml` workflow builds the disposable QA image; the
 to `main`, and only after a protected-environment human approval that binds the
 exact source SHA. Nothing auto-merges.
 
+The `governance` job's README version-badge sync is restricted to `main` (the
+release branch): CI never pushes a generated commit to `testing` or `staging`,
+so `testing` HEAD stays the exact, reproducible SHA the promotion gate verifies
+(`scripts/check_workflow_contracts.py` enforces this writeback contract).
+
 The original five jobs:
 
 | Job | What it runs |

@@ -66,8 +66,12 @@ jobs:
         with:
           python-version: "3.12"
 
-      - name: Sync README version badges
-        if: github.event_name == 'push'
+      - name: Sync README version badges (release branch only — never mutates testing/staging)
+        # F-6 regression guard: the writeback is restricted to `main`, the release
+        # branch. On `testing`/`staging` pushes the step is skipped, so CI never
+        # pushes a generated commit to the promotion source; `testing` HEAD stays
+        # the exact, reproducible SHA the human promotion gate verifies.
+        if: github.event_name == 'push' && github.ref_name == 'main'
         run: |
           VERSION=$(cat VERSION)
           # English README
@@ -77,7 +81,7 @@ jobs:
           if [ -n "$(git diff -- README.md README.pt-BR.md)" ]; then
             git add README.md README.pt-BR.md
             git commit -m "ci: sync README version badges to ${VERSION} [skip ci]" || true
-            git push origin HEAD:${{ github.ref_name }} || echo "Push failed (token permissions)"
+            git push origin HEAD:main || echo "Push failed (token permissions)"
           fi
 
       - name: Check integrity

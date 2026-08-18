@@ -31,6 +31,7 @@ Before making ANY change:
 - [ ] Run the feature-obligation classifier and check every changed path is owned by `testing/feature_coverage.yml` (or is on the audited allowlist); unowned paths fail closed
 - [ ] Run `python scripts/check_qa_capabilities.py` when `qa/runtime_capabilities.json` or the provider capability contract changes
 - [ ] Run `python scripts/check_workflow_contracts.py` when public CI/promotion workflows change
+- [ ] Keep CI-generated commits (e.g. README badge sync) on `main` only — never let a workflow push a generated commit to `testing` (it would move the promotion source and invalidate the exact-SHA human gate)
 - [ ] Render the QA compose contract (`docker compose -f docker-compose.qa.yml --profile contract config --quiet`) when the disposable QA stack changes
 - [ ] Keep synthetic QA data provisional-only (`is_qa_provisional`); never let a QA lane promote synthetic rows to accepted/reportable states
 - [ ] Do not reference private hosts or endpoints (`multivac`, LAN IPs, localhost fingerprints) in public workflows or QA artifacts

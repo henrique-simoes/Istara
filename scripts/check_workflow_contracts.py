@@ -11,6 +11,11 @@ Structural, deterministic checks (stdlib only):
      auto-merge, and must fail closed when the source SHA changes.
   5. No public workflow may reference `multivac`, a private endpoint, or a
      committed credential.
+  6. (F-6 regression) ci.yml's governance badge-sync writeback is restricted
+     to the release branch `main`: CI never pushes a generated commit to
+     `testing` (or any other triggering branch), so `testing` HEAD stays a
+     stable, reproducible source for the exact-SHA human promotion gate and
+     the no-direct-push contract.
 """
 
 from __future__ import annotations
@@ -29,15 +34,15 @@ FORBIDDEN_IN_WORKFLOWS = (
 )
 
 
-def read(name: str) -> str:
-    path = WORKFLOWS / name
+def read(name: str, root: Path = ROOT) -> str:
+    path = root / ".github" / "workflows" / name
     if not path.exists():
         raise FileNotFoundError(f"missing workflow: {name}")
     return path.read_text(encoding="utf-8")
 
 
-def check_ci(issues: list[str]) -> None:
-    ci = read("ci.yml")
+def check_ci(issues: list[str], root: Path = ROOT) -> None:
+    ci = read("ci.yml", root=root)
     if not re.search(r"branches:\s*\[[^\]]*\btesting\b", ci):
         issues.append("ci.yml: must trigger on the `testing` integration branch")
     if "check_feature_obligations.py" not in ci:
@@ -46,10 +51,31 @@ def check_ci(issues: list[str]) -> None:
         issues.append("ci.yml: missing QA capabilities check")
     if "istara-security-scorecard" not in ci:
         issues.append("ci.yml: missing security scorecard artifact upload")
+    # F-6 regression contract: CI-generated badge-sync writebacks are restricted
+    # to the release branch (`main`). A writeback that follows the triggering
+    # branch (`${{ github.ref_name }}`) would push a generated commit to
+    # `testing` during/after QA evidence, move HEAD, and invalidate the
+    # exact-SHA human promotion gate.
+    if re.search(r"git push\s+origin\s+HEAD:\$\{\{\s*github\.ref_name\s*\}\}", ci):
+        issues.append(
+            "ci.yml: badge-sync writeback pushes to the triggering branch "
+            "(`${{ github.ref_name }}`); on `testing` this would mutate the "
+            "promotion source — the writeback must target `main`"
+        )
+    if "github.ref_name == 'main'" not in ci:
+        issues.append(
+            "ci.yml: badge-sync writeback must be gated to the release branch "
+            "(`if: github.event_name == 'push' && github.ref_name == 'main'`)"
+        )
+    if re.search(r"git push\b[^\n]*\btesting\b", ci):
+        issues.append(
+            "ci.yml: no CI step may push a generated commit to `testing` "
+            "(no-direct-push / reproducible-source contract)"
+        )
 
 
-def check_qa_artifact(issues: list[str]) -> None:
-    qa = read("qa-artifact.yml")
+def check_qa_artifact(issues: list[str], root: Path = ROOT) -> None:
+    qa = read("qa-artifact.yml", root=root)
     if "testing" not in qa:
         issues.append("qa-artifact.yml: must trigger on the `testing` branch")
     if "docker" not in qa.lower():
@@ -62,8 +88,8 @@ def check_qa_artifact(issues: list[str]) -> None:
         issues.append("qa-artifact.yml: failed runs must not publish a green manifest")
 
 
-def check_promote(issues: list[str]) -> None:
-    promo = read("promote-testing.yml")
+def check_promote(issues: list[str], root: Path = ROOT) -> None:
+    promo = read("promote-testing.yml", root=root)
     if "workflow_dispatch" not in promo:
         issues.append("promote-testing.yml: must be manual dispatch (no auto-trigger)")
     if "environment" not in promo:

@@ -1561,6 +1561,7 @@ Notification types added to EVENT_METADATA: `update_available`, `update_started`
 ### CI/CD Release Flow
 Regular CI and installer publishing are related but distinct:
 - `.github/workflows/ci.yml` runs governance + build/test checks for normal development
+- CI-generated writebacks (the governance job's README version-badge sync) are restricted to `main`, the release branch; CI never pushes a generated commit to `testing`/`staging`, so `testing` HEAD stays a stable, reproducible promotion source (enforced by `scripts/check_workflow_contracts.py`)
 - `.github/workflows/build-installers.yml` publishes installers/releases on **release-worthy** pushes to `main`
 - `.github/workflows/pages.yml` regenerates the living feature documentation site, verifies `tests/test_feature_docs.py`, uploads `docs/features/site`, and deploys it to GitHub Pages from the `github-pages` environment
 - tag pushes (`v*`) and manual dispatch remain available for explicit release control or rebuilds

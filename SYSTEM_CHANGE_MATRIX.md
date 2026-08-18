@@ -206,7 +206,7 @@ pytest tests/test_feature_docs.py -q
 | versioning format | `scripts/set-version.sh`, `scripts/prepare-release.sh`, `VERSION`, `CHANGELOG.md`, updater logic, desktop tag checks, release workflow |
 | release workflow | `.github/workflows/build-installers.yml`, artifact naming, updater `latest.json`, release notes assumptions, `CHANGELOG.md` |
 | release preparation | `scripts/prepare-release.sh`, `CHANGELOG.md`, integrity/governance/rehearsal flow, release commit/tag sequence |
-| CI enforcement | `.github/workflows/ci.yml`, required checks, docs/checker steps, contributor workflow |
+| CI enforcement | `.github/workflows/ci.yml`, required checks, docs/checker steps, contributor workflow; CI-generated writebacks (e.g. README badge sync) stay on `main` only and never mutate `testing` (promotion source must remain reproducible) |
 | runtime update behavior | `backend/app/api/routes/updates.py`, `desktop/src-tauri/src/health.rs`, settings update UI, backup/update docs |
 | installer packaging | desktop build, bundled resources, source inclusion/exclusion, install docs |
 
