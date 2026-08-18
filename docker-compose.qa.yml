@@ -44,7 +44,7 @@ services:
       # The application creates its disposable SQLite/Lance/upload/runtime
       # tree during startup; keep the root read-only and expose only this
       # bounded in-memory QA data surface.
-      - /app/data:rw,nosuid,nodev,size=2G
+      - /app/data:rw,nosuid,nodev,uid=999,gid=999,mode=0750,size=2G
     cap_add:
       - CHOWN
       - SETUID

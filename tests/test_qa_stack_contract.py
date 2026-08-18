@@ -151,7 +151,7 @@ def test_qa_backend_has_bounded_ephemeral_data_surface():
     text = QA_COMPOSE.read_text(encoding="utf-8")
     backend = text[text.index("  qa-backend:"):text.index("  qa-frontend:")]
     assert "read_only: true" in text
-    assert "/app/data:rw,nosuid,nodev,size=2G" in backend
+    assert "/app/data:rw,nosuid,nodev,uid=999,gid=999,mode=0750,size=2G" in backend
 
 
 def test_qa_compose_forbids_host_docker_socket_and_host_mounts():
