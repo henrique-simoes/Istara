@@ -6,11 +6,11 @@ item: istara-public-ci-testing-automation
 branch: conductor/istara-public-ci-testing-20260818
 cf: { spec: CF-SPEC-56, tasks: [CF-717, CF-718, CF-719, CF-720, CF-721, CF-722, CF-723, CF-724, CF-725, CF-726, CF-727, CF-728, CF-729, CF-730] }
 phase: "Phase 1 — MECE master planning"
-stage: S1-plan
-status: in-progress
-blocked_on: null
-last: { agent: deepseek/deepseek-v4-flash, at: 2026-08-18T00:39:44Z, ledger: L-10 }
-next_action: "Owner approved MECE master plan (slot c); conductor may dispatch implementation."
+stage: S3-review
+status: blocked
+blocked_on: "F-1: implementation task produced no public CI/testing implementation"
+last: { agent: openai/gpt-5.6-luna, at: 2026-08-18T01:20:00Z, ledger: L-12 }
+next_action: "Dispatch the fixer task for F-1/F-2, implement the approved public CI/testing surface, and return for delta review."
 ```
 <!-- /STATUS BLOCK -->
 
@@ -1446,3 +1446,24 @@ Did: istara-public-ci-testing-20260818-implementer stage on task ISTARA-PUBLIC-C
 Result: task ISTARA-PUBLIC-CI-TESTING-20260818-IMPL finished; worktree head 7f69a1a5.
 Verified: see Compass Forge evidence rows on ISTARA-PUBLIC-CI-TESTING-20260818-IMPL (command + self_report + stage_attribution).
 Next: conductor advances the pipeline on evidence.
+
+
+## Phase 3 — Public CI/testing implementation
+
+### Review (S3)
+
+**Findings register**
+
+| ID | Sev | Dim | Where | Finding | CF task | Status |
+|----|-----|-----|-------|---------|---------|--------|
+| F-1 | Blocker | Completeness | branch diff / implementation task | The implementation stage produced no implementation: the branch diff from `origin/testing` contains only Build Stream planning documents, while every load-bearing artifact required by the approved plan is absent (`testing/feature_coverage.yml`, `scripts/check_feature_obligations.py`, `qa/runtime_capabilities.json`, `docker-compose.qa.yml`, QA lifecycle scripts/tests, and QA/promotion workflows). Therefore the public provider-agnostic CI/testing system is not present and the acceptance criteria cannot be met. | FIX-ISTARA-PUBLIC-CI-TESTING-20260818-REVIEW-r1 | open |
+| F-2 | Major | CI/promotion | `.github/workflows/ci.yml:4-7` | The existing CI remains scoped to pushes/PRs for `main` and `staging` and has no `testing` integration trigger, feature-obligation job, disposable QA artifact job, or human-approval promotion workflow. This independently leaves AC-1 through AC-4 and the approved human-gate contract unenforced even if the planning documents are present. | FIX-ISTARA-PUBLIC-CI-TESTING-20260818-REVIEW-r1 | open |
+
+**Verdict:** fail. The implementation is not reviewable as a completed change; no blocker/major can be accepted or waived at this stage.
+
+
+### L-12 | 2026-08-18T01:20:00Z | S3-review | openai/gpt-5.6-luna | reviewer | Phase 3 <!-- bsc-ledger:ISTARA-PUBLIC-CI-TESTING-20260818-REVIEW -->
+Did: Reviewed the implementation task and branch diff against CF-SPEC-56 and the winning MECE plan. No implementation files were changed; added review findings F-1 (Blocker: implementation absent) and F-2 (Major: existing CI has no testing/human-promotion path). No product, Docker, provider, multivac, or runtime surfaces were started or mutated.
+Result: FAIL. The branch contains planning artifacts only, so the approved public provider-agnostic testing branch/CI system and its required evidence gates are not present. Findings remain open under FIX-ISTARA-PUBLIC-CI-TESTING-20260818-REVIEW-r1.
+Verified: `git diff --no-ext-diff origin/testing...HEAD --name-status` -> only seven planning-document additions; required implementation artifact existence check -> all missing; `python scripts/check_ci_governance.py` -> passed; `python scripts/check_test_harness.py` -> passed; `python scripts/check_integrity.py` -> passed; `python scripts/check_public_tree_clean.py --base origin/testing --head HEAD` -> passed; `python scripts/security_benchmark.py --fail-on-threshold` -> passed (100%); `docker compose -f docker-compose.yml config --quiet` -> failed on inherited pids_limit/deploy.resources conflict; focused pytest -> 15 passed, 1 pre-existing public-repo-quality failure; `compass-forge gate after --task ISTARA-PUBLIC-CI-TESTING-20260818-REVIEW --summary` -> failed with 0 new failures and 80 inherited failures.
+Next: Fix F-1/F-2 in FIX-ISTARA-PUBLIC-CI-TESTING-20260818-REVIEW-r1, then run a focused delta re-review; do not promote or create a PR.
