@@ -41,6 +41,10 @@ services:
     <<: *qa-hardening
     tmpfs:
       - /tmp:noexec,nosuid,size=100M
+      # The application creates its disposable SQLite/Lance/upload/runtime
+      # tree during startup; keep the root read-only and expose only this
+      # bounded in-memory QA data surface.
+      - /app/data:rw,nosuid,nodev,size=2G
     cap_add:
       - CHOWN
       - SETUID

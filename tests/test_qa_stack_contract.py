@@ -147,6 +147,13 @@ def test_qa_seeder_depends_on_healthy_backend():
     assert "--api-base" in text
 
 
+def test_qa_backend_has_bounded_ephemeral_data_surface():
+    text = QA_COMPOSE.read_text(encoding="utf-8")
+    backend = text[text.index("  qa-backend:"):text.index("  qa-frontend:")]
+    assert "read_only: true" in text
+    assert "/app/data:rw,nosuid,nodev,size=2G" in backend
+
+
 def test_qa_compose_forbids_host_docker_socket_and_host_mounts():
     text = QA_COMPOSE.read_text(encoding="utf-8").lower()
     assert "/var/run/docker.sock" not in text
