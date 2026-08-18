@@ -37,10 +37,14 @@ stay aligned with Compass Forge, CI, and the production behavior described in
   contradictory authority.
 - **Disposable QA artifact** (master plan §7-§8): `docker-compose.qa.yml`
   provides profile-gated QA stacks (`contract`, `synthetic`, `reset`, `audit`,
-  `live`, `ui`) with unique project names, no fixed container names, no local
-  model services by default, and loopback-only UI publish. QA lanes keep
-  synthetic research data provisional-only (`is_qa_provisional = true`) and
-  never reach accepted/reportable states.
+  `live`, `ui`) with unique project names, no fixed container names, no live
+  model services, and loopback-only UI publish. Contract profiles use the
+  in-network `qa-provider-stub`, a deterministic non-model wire adapter with
+  exact chat/embed identities and fixed-dimension vectors, so the real backend
+  provider and `assert_vector_space_invariant` gates execute without loading a
+  model or contacting a host provider. QA lanes keep synthetic research data
+  provisional-only (`is_qa_provisional = true`) and never reach
+  accepted/reportable states.
 - **Human-gated promotion** (master plan §12-§13): `promote-testing.yml` is the
   only workflow that may create a promotion PR to `main`, and only after a
   protected-environment approval binds the exact source SHA, evidence manifest,

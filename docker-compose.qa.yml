@@ -54,9 +54,17 @@ services:
     networks:
       - qa-backend-net
       - qa-data-net
+    depends_on:
+      qa-provider-stub:
+        condition: service_healthy
     environment:
-      # Deterministic contract mode: no local model service required.
-      LLM_PROVIDER: ${QA_LLM_PROVIDER:-contract}
+      # Deterministic contract mode: this is an in-network wire stub, not a
+      # model service. The backend uses the Ollama protocol shape only so its
+      # real provider and vector-space guards execute without a live provider.
+      LLM_PROVIDER: ${QA_LLM_PROVIDER:-ollama}
+      OLLAMA_HOST: ${QA_OLLAMA_HOST:-http://qa-provider-stub:11434}
+      OLLAMA_MODEL: ${QA_OLLAMA_MODEL:-istara-qa-contract-chat:latest}
+      OLLAMA_EMBED_MODEL: ${QA_OLLAMA_EMBED_MODEL:-istara-qa-contract-embed:latest}
       LLM_FALLBACK_ENABLED: "false"
       MCP_SERVER_ENABLED: "false"
       AUTORESEARCH_ENABLED: "false"
@@ -101,14 +109,35 @@ services:
 
   # Provider contract stub: bounded, in-network, deterministic. Proves
   # request/response plumbing only — it never claims model or research quality.
+  # It implements a tiny Ollama-compatible wire surface but never loads a model
+  # or makes an outbound request.
   qa-provider-stub:
-    image: busybox:1.36
+    build:
+      context: .
+      dockerfile: qa/provider-stub.Dockerfile
     <<: *qa-hardening
-    command: ["sh", "-c", "echo qa-provider-stub-ready; sleep infinity"]
+    tmpfs:
+      - /tmp:noexec,nosuid,size=16M
+    environment:
+      QA_CONTRACT_CHAT_MODEL: ${QA_OLLAMA_MODEL:-istara-qa-contract-chat:latest}
+      QA_CONTRACT_EMBED_MODEL: ${QA_OLLAMA_EMBED_MODEL:-istara-qa-contract-embed:latest}
     networks:
       - qa-data-net
+    pids_limit: 32
+    mem_limit: 128M
+    cpus: "0.25"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:11434/api/tags', timeout=2)"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
     profiles:
       - contract
+      - synthetic
+      - reset
+      - audit
+      - live
+      - ui
 
   # Synthetic corpus seeder (Research Spine provisional-only). Ingests the
   # named slice through the REAL evidence-unit path (POST /api/documents on

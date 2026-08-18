@@ -2802,9 +2802,12 @@ Istara's public release testing is now provider-agnostic and human-gated:
   provenance/SBOM.
 - **Disposable QA runtime:** `docker-compose.qa.yml` provides profile-gated QA
   stacks (`contract`, `synthetic`, `reset`, `audit`, `live`, `ui`) with unique
-  project names (`istara-qa-<run-id>`), no fixed container names, no local
-  model services by default, internal networks, and loopback-only UI publish.
-  `scripts/istara-qa.sh` is the developer entrypoint.
+  project names (`istara-qa-<run-id>`), no fixed container names, no live model
+  services, internal networks, and loopback-only UI publish. Contract-capable
+  profiles use the in-network `qa-provider-stub`, a non-model Ollama-compatible
+  adapter that returns exact identities and fixed-dimension vectors so the real
+  provider and `assert_vector_space_invariant` gates execute without contacting
+  a host provider. `scripts/istara-qa.sh` is the developer entrypoint.
 - **Human-gated promotion:** `promote-testing.yml` is the only workflow that
   may create a promotion PR to `main`, and only after a protected-environment
   approval that binds the exact source SHA, evidence manifest, and image

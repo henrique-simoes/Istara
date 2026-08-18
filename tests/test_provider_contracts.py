@@ -15,6 +15,22 @@ from qa.scripts.provider_contracts import (
     readiness_gate,
     vector_space_invariant,
 )
+from qa.scripts.provider_stub import (
+    EMBEDDING_DIMENSION,
+    embedding_for_text,
+    embeddings_for_input,
+)
+
+
+def test_contract_stub_vectors_are_deterministic_and_bounded():
+    first = embedding_for_text("source span")
+    second = embedding_for_text("source span")
+    other = embedding_for_text("different source span")
+    assert first == second
+    assert first != other
+    assert len(first) == EMBEDDING_DIMENSION
+    assert all(-1.0 <= value <= 1.0 for value in first)
+    assert embeddings_for_input(["source span", "other"]) == [first, embedding_for_text("other")]
 
 
 def test_chat_identity_requires_exact_model():

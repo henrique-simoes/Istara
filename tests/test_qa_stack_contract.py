@@ -66,6 +66,18 @@ def test_qa_compose_builds_qa_image_from_repo_root():
     assert (ROOT / "qa" / "Dockerfile").exists()
 
 
+def test_contract_stub_is_non_model_and_in_network():
+    text = QA_COMPOSE.read_text(encoding="utf-8")
+    stub = text[text.index("  qa-provider-stub:"):text.index("  # Synthetic corpus seeder")]
+    assert "dockerfile: qa/provider-stub.Dockerfile" in stub
+    assert "busybox" not in stub.lower()
+    assert "qa-provider-stub:11434" in text
+    assert "OLLAMA_MODEL" in text
+    assert "OLLAMA_EMBED_MODEL" in text
+    assert (ROOT / "qa" / "provider-stub.Dockerfile").exists()
+    assert (ROOT / "qa" / "scripts" / "provider_stub.py").exists()
+
+
 def test_istara_qa_sh_never_merges_base_compose():
     # up/down/seed/reset must stay isolated from the base local-model stack:
     # merging docker-compose.yml would reintroduce ollama + fixed istara-*
