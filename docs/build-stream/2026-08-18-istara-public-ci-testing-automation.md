@@ -9,8 +9,8 @@ phase: "Phase 1 — MECE master planning"
 stage: S1-plan
 status: in-review
 blocked_on: "Waiting for S1 master plan completion and owner consensus review"
-last: { agent: gpt-5.3-codex-spark, at: 2026-08-18T00:30:01Z, ledger: L-5 }
-next_action: "Master-B synthesis completed. Await owner review and consensus resolution before implementation tasks."
+last: { agent: openai/gpt-5.6-luna, at: 2026-08-18T00:34:06Z, ledger: L-6 }
+next_action: "Cross-vote master candidates A, B, and C, preserve the selected candidate ID, and await owner approval before implementation."
 ```
 <!-- /STATUS BLOCK -->
 
@@ -104,3 +104,9 @@ Next: Provide this plan to conductor consensus and wait for owner approval befor
 ## Summary (S5 — whole plan)
 
 Pending. This section is completed only after implementation, validation, human approval, PR creation, and final evidence review.
+
+### L-6 | 2026-08-18T00:34:06Z | S1-plan | openai/gpt-5.6-luna | planner | Phase 1 <!-- bsc-ledger:ISTARA-PUBLIC-CI-TESTING-20260818-MASTER-A -->
+Did: Synthesized the three immutable Architect A/B/C snapshots into `docs/build-stream/plans/istara-public-ci-testing-20260818-master-a.md`. Reconciled the whole-system branch/promotion lifecycle, one canonical feature-obligation and capability registry, deterministic CI graph, disposable Docker QA, provider/vector safety, Research Spine and self-improvement governance, security, optional owner-local staging, human approval, implementation phases, executable acceptance, evidence, rollback, open decisions, and a draft coverage matrix. No product source, workflow, Compose, test, generated-doc, runtime, provider, Docker, staging, PR, or production surface was changed.
+Result: Candidate A is complete and ready for consensus review. The synthesis deliberately avoids three competing registries by keeping runtime capabilities in the canonical coverage registry; it distinguishes contract-only, synthetic-provisional, authorized-live, and staging claims; and it preserves unverified blockers, owner decisions, inherited gate debt, and rollback boundaries. The lifecycle status now reflects concurrent master-plan review; no existing ledger entry or unrelated worker artifact was edited.
+Verified: the plan validator command passed: `python - <<'PY' ... required sections present; no trailing whitespace/TODO/clarification markers ... PY` (1,222 lines / 81,351 bytes); `git status --short --untracked-files=all` showed the candidate plus pre-existing architect instruction/master-plan files. No architecture gate was run because this stage is planning-only and changes no architecture boundary.
+Next: Conductor cross-votes master candidates A, B, and C, records the selected candidate ID in `plan_vote` evidence, and pauses for explicit owner approval before implementation.
