@@ -1330,7 +1330,15 @@ task may run before explicit owner approval. After approval, implementation foll
 
 <!-- /consensus-winning-plan:ISTARA-PUBLIC-CI-TESTING-20260818-4daccbc523dcf574f44a4abfc595ded25ba3fbf085acdf6376de9a505fb3559f -->
 
-## Decision log <!-- append-only -->
+## Decision log
+
+<!-- consensus-winner-decision:ISTARA-PUBLIC-CI-TESTING-20260818-4daccbc523dcf574f44a4abfc595ded25ba3fbf085acdf6376de9a505fb3559f -->
+DEC-consensus-winner | 2026-08-18 | S1-plan | conductor
+Context: three architect cross-votes completed
+Decision: slot c selected from ISTARA-PUBLIC-CI-TESTING-20260818-MASTER-C
+Why: votes={"a": {"candidate_id": "75a1fc68de62745e5a9aaabe8580d02d071e3a98260a765b37c17f7b0cd91d37", "task": "ISTARA-PUBLIC-CI-TESTING-20260818-VOTE-A", "vote": "c"}, "b": {"candidate_id": "75a1fc68de62745e5a9aaabe8580d02d071e3a98260a765b37c17f7b0cd91d37", "task": "ISTARA-PUBLIC-CI-TESTING-20260818-VOTE-B", "vote": "c"}, "c": {"candidate_id": "1bc3c6cd42ef3e87a77be964f71fe7055cdcc860b437d9af04d96168c829bed6", "task": "ISTARA-PUBLIC-CI-TESTING-20260818-VOTE-C", "vote": "a"}}; tiebreak_used=False; plan_file=docs/build-stream/plans/istara-public-ci-testing-20260818-master-c.md
+
+ <!-- append-only -->
 
 DEC-1 | 2026-08-18 | S0 | owner
 Context: The existing `testing` branch/process is documented but not current-by-construction, lacks Docker/feature CI enforcement, and cannot make the private `multivac` server the public testing dependency.
