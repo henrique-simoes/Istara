@@ -10,7 +10,7 @@ stage: S4-remediate
 status: in-progress
 blocked_on: null
 last: { agent: deepseek/deepseek-v4-flash, at: 2026-08-18T02:32:41Z, ledger: L-20 }
-next_action: "F-5-r2 fixed; awaiting sibling F-3-r2 fixer task; conductor dispatches the r2 re-review once both fixer tasks are terminal."
+next_action: "Owner approved MECE master plan (slot c); conductor may dispatch implementation."
 ```
 <!-- /STATUS BLOCK -->
 
