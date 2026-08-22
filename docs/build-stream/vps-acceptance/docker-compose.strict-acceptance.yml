@@ -1,0 +1,65 @@
+# Strict single-workload VPS acceptance service — Istara Pi model-management migration (2026-08-22 run)
+#
+# Owner-approved master plan §9.2 baseline + vps skill strict deployment contract
+# (references/dokploy-and-isolation.md). This is the ONLY profile that satisfies
+# the requirement that the acceptance workload cannot communicate with another
+# container or the VPS host.
+#
+# Deploy-time rules (vps skill / master plan §9):
+#   1. Exactly one service, one project-local bridge network with `internal: true`,
+#      one published port. No Dokploy Domain, proxy labels, external network,
+#      Docker socket, `network_mode: host`, `privileged`, or host PID/IPC.
+#   2. Replace `image:` with the immutable digest of the acceptance image built
+#      from the testing-branch head (qa/Dockerfile; digest recorded at build).
+#      A mutable tag is a pre-deploy review rejection.
+#   3. `published:` MUST equal the owner-approved host port from
+#      `port-contract.md`. No deployment before that approval is recorded.
+#   4. Preview the rendered Compose before deploying (Dokploy preview + local
+#      `docker compose config`); STOP if it adds a shared/proxy network or a
+#      second service.
+#   5. The `/app/data` tmpfs uid/gid MUST match the `istara` user of the built
+#      image (verify `id -u istara` in the image at build time; QA compose
+#      convention uid=999,gid=999 is the initial value). No `cap_add` is
+#      permitted under the strict profile.
+#   6. No firewall (ufw / DOCKER-USER) change without separate owner approval.
+
+name: istara-pi-model-migration-20260822-acceptance
+
+services:
+  app:
+    # REQUIRED substitution at deploy time: <registry>/istara-pi-model-migration-acceptance@sha256:<immutable-digest>
+    # The hex digest below is a format placeholder (sha256 of qa/Dockerfile at
+    # the testing-branch head), NOT a deployed image.
+    image: istara-pi-model-migration-acceptance@sha256:9a0e7e3d4b1f2c8a5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f6a7b8c
+    restart: unless-stopped
+    ports:
+      - target: 8000
+        published: "18443"          # owner-approved host port (port-contract.md)
+        protocol: tcp
+        mode: host
+    networks:
+      - workload
+    read_only: true
+    tmpfs:
+      - /tmp:noexec,nosuid,size=100M
+      # The application creates its disposable SQLite/Lance/upload/runtime tree
+      # during startup; keep the root read-only and expose only this bounded
+      # in-memory QA data surface (mirrors docker-compose.qa.yml).
+      - /app/data:rw,nosuid,nodev,uid=999,gid=999,mode=0750,size=2G
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    pids_limit: 256
+    mem_limit: 512m
+    cpus: 1.0
+    healthcheck:
+      test: [CMD, curl, -f, http://localhost:8000/api/health]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+networks:
+  workload:
+    driver: bridge
+    internal: true

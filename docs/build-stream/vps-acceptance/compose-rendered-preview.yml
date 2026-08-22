@@ -1,0 +1,68 @@
+# Rendered Compose preview — strict single-workload VPS acceptance service
+#
+# Generated 2026-08-22 (fix task FIX-ISTARA-PI-MODEL-MIGRATION-20260822-WAVE-qa-docs-vps-REVIEW-r1)
+# from `docker-compose.strict-acceptance.yml`:
+#
+#   docker compose -f docs/build-stream/vps-acceptance/docker-compose.strict-acceptance.yml config
+#
+# Pre-deploy review (vps skill references/dokploy-and-isolation.md): REJECT the
+# configuration if any of the following is true. This preview has NONE of them:
+#
+#   [ ] More than one service or one network is present          -> exactly 1 service, 1 network
+#   [ ] The network is external, non-internal, or shares a
+#       project/system network                                   -> project-local `workload`, internal: true
+#   [ ] A domain/proxy integration or routing label is enabled   -> none
+#   [ ] network_mode: host, privileged, pid: host, ipc: host, an
+#       added capability, a Docker socket, device, or broad host
+#       mount is present                                         -> none (cap_drop: ALL only)
+#   [ ] An image tag is mutable and no resolved digest is
+#       recorded                                                  -> image pinned `@sha256:<digest>` (placeholder
+#                                                                   digest below MUST be replaced with the recorded
+#                                                                   immutable digest of the built acceptance image;
+#                                                                   a mutable tag is a rejection)
+#   [ ] The port is already bound, unapproved, or not
+#       represented in the firewall change plan                  -> 18443 unbound on the host today (inventory
+#                                                                   event 608); owner approval required before
+#                                                                   deploy (port-contract.md); no firewall change
+#                                                                   planned by default
+#
+# Re-render from the exact file used for deployment (Dokploy renders the
+# service's own compose; compare it against this artifact before deploying).
+
+name: istara-pi-model-migration-20260822-acceptance
+services:
+  app:
+    cap_drop:
+      - ALL
+    cpus: 1
+    healthcheck:
+      test:
+        - CMD
+        - curl
+        - -f
+        - http://localhost:8000/api/health
+      timeout: 5s
+      interval: 30s
+      retries: 3
+    image: istara-pi-model-migration-acceptance@sha256:9a0e7e3d4b1f2c8a5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f6a7b8c
+    mem_limit: "536870912"
+    networks:
+      workload: null
+    pids_limit: 256
+    ports:
+      - mode: host
+        target: 8000
+        published: "18443"
+        protocol: tcp
+    read_only: true
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    tmpfs:
+      - /tmp:noexec,nosuid,size=100M
+      - /app/data:rw,nosuid,nodev,uid=999,gid=999,mode=0750,size=2G
+networks:
+  workload:
+    name: istara-pi-model-migration-20260822-acceptance_workload
+    driver: bridge
+    internal: true
