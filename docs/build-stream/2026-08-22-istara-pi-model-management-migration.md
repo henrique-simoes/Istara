@@ -16,7 +16,7 @@ last:
   agent: deepseek/deepseek-v4-flash
   at: 2026-08-22T14:50:09Z
   ledger: L-19
-next_action: "Fixer remediates F-5..F-8 (FIX-ISTARA-PI-MODEL-MIGRATION-20260822-WAVE-pi-catalog-secrets-REVIEW-r1); conductor dispatches delta re-review after fix task terminal."
+next_action: "Owner approved MECE master plan (slot a); conductor may dispatch implementation."
 ```
 
 ## Plan overview
