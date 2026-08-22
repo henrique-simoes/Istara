@@ -11,12 +11,12 @@ cf:
 phase: "Phase 0 — architecture and migration plan (resumed)"
 stage: S1-plan
 status: in-progress
-blocked_on: architect-c draft
+blocked_on: synthesis of A/B/C drafts into one MECE master plan (plan-c draft file present; PLAN-C task blocked after gpt-5.6-luna auth-failure retries)
 last:
-  agent: deepseek/deepseek-v4-pro
-  at: 2026-08-22T11:55:00Z
-  ledger: L-3
-next_action: "Architect C draft pending; then the synthesis phase reconciles the three independent drafts into one MECE master plan; freeze the plan and stop at the owner approval gate before any implementation task is released."
+  agent: deepseek/deepseek-v4-flash
+  at: 2026-08-22T12:02:16Z
+  ledger: L-4
+next_action: "Slot-A draft repaired at the correct plan_file (REPLAN-A-r1). All three independent drafts (A repaired, B, C) now exist; the synthesis phase reconciles them into one MECE master plan with a coverage matrix, freezes the plan, and stops at the owner approval gate before any implementation task is released."
 ```
 
 ## Plan overview
@@ -138,3 +138,9 @@ Did: Independent architect-B draft written to `docs/build-stream/plans/istara-pi
 Result: Draft covers canonical identity model (model_id/endpoint_id/credential_ref/embedding+audio profiles), resolver+transport boundary, engine precedence (per-call > header x-istara-agent-engine > project agentic_engine > settings.agentic_engine_default="legacy"; no silent fallback), reversible retirement state machine S0-S5 with feature-flag registry + deprecation/removal criteria, exact data/secret migration + rollback playbook, per-wave acceptance + commands for all six manifest waves, isolated VPS acceptance/cleanup runbook (vpsctl.py preflight -> inventory -> strict single-workload profile -> rendered-Compose preview -> deploy preserving prior identity -> verify-isolation -> verify-exposure -> firewall/DOCKER-USER evidence -> audit-anchor; no firewall change without owner approval), docs/manifests/security/test-ownership obligations, risk register R1-R11, Definition of Ready/Done + owner gates, coverage matrix vs carried drafts A/B/C. ISTARA-PI-MODEL-MIGRATION-20260822-PLAN-B.
 Verified: `compass-forge status/next --target <wt>` (project resolved, runtime rust, python_fallback false); `gate before --summary` (fail, 30 failures secret_flow/unexpected_large_files, new_failures=0, actionable=0, drift route=4 type=2, warnings=188); `npm view @earendil-works/pi-agent-core|pi-ai version` (0.84.2 both; tree pins 0.83.0/0.80.10); `uv run --project backend python -m pytest tests/pi_migration/test_count_to_zero.py -q` (3 passed); `python3 scripts/security_benchmark.py --fail-on-threshold` (28/28 pass, 100.0%); `python3 scripts/feature_docs.py --seed-missing --generate-site --check` (86 features green, 224 artifacts); boundary file sweep + `vpsctl.py --help` (subcommands preflight/inventory/audit-verify/audit-anchor/verify-isolation/verify-exposure/ssh; 3 test paths recorded as new obligations: test_research_spine_donor_routing.py, test_model_management_migration.py, test_model_management_rollback.py). CF evidence rows 28-36 on ISTARA-PI-MODEL-MIGRATION-20260822-PLAN-B.
 Next: Architect C draft, then consensus synthesis (A/B/C -> one MECE master plan -> vote); conductor freezes the plan and stops at the owner approval gate before any implementation task is released.
+
+### L-4 | 2026-08-22T12:02:16Z | S1-plan | deepseek/deepseek-v4-flash | architect | draft <!-- bsc-ledger:ISTARA-PI-MODEL-MIGRATION-20260822-REPLAN-A-r1 -->
+Did: Repaired the slot-A consensus draft. The L-2 slot-A draft had landed at the misnamed path `docs/build-stream/plans/istara-pi-model-management-20260822-plan-a.md`, which the synthesis phase cannot consume; wrote the full 15-section S1 draft to the task's authoritative `plan_file` `docs/build-stream/plans/istara-pi-model-migration-20260822-plan-a.md` and removed the duplicate in the same commit. Re-verified every current-tree fact at repair time and added correction C7: `vpsctl.py` lives in the vps skill (`~/.pi/agent/skills/vps/scripts/vpsctl.py`), not in repo `scripts/` (subcommands verified: preflight, inventory, audit-verify, audit-anchor, verify-isolation, verify-exposure, ssh).
+Result: Authoritative slot-A draft exists at the path the synthesis phase reads; covers the six manifest waves, canonical identity model (model_id/endpoint_id/credential_ref/embedding+audio profiles), resolver/transport boundary, exact data+secret migration and rollback state machine, feature-flag/deprecation/removal criteria, test ownership, docs/manifest obligations, security benchmark coverage, and isolated VPS acceptance per the vps skill (C1/C5/C7). ISTARA-PI-MODEL-MIGRATION-20260822-REPLAN-A-r1.
+Verified: `npm view` -> 0.84.2 / 0.84.2 (passed; tree pins 0.83.0 / 0.80.10); `python3 scripts/pi_migration_inventory.py --json` -> 1 allowlisted permanent site, ratchet 0 (passed); `compass-forge gate before --task ISTARA-PI-MODEL-MIGRATION-20260822-REPLAN-A-r1 --summary` -> fail, 30 inherited, 0 new, 0 actionable (passed as baseline); `pytest --collect-only` on six key surfaces -> 62 tests collected (passed); `vpsctl.py --help` -> 7 subcommands (passed); `git diff --check` clean. CF evidence rows on ISTARA-PI-MODEL-MIGRATION-20260822-REPLAN-A-r1.
+Next: Architect B and C drafts -> consensus synthesis into one MECE master plan with coverage matrix; freeze plan and stop at the owner approval gate before any implementation task is released.
