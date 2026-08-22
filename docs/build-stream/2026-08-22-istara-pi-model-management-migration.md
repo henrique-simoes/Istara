@@ -8,14 +8,14 @@ cf:
   framing_spec: CF-SPEC-58 (prior run) / CF-SPEC-1 (this run)
   spec: CF-SPEC-1
   tasks: [planning-only until owner approval; CF-SPEC-1 tasks generated at approval]
-phase: "Phase 0 — architecture and migration plan (resumed)"
-stage: S3-review
+phase: "Phase 2 — implementation"
+stage: S2-execute
 status: in-progress
 blocked_on: null
 last:
-  agent: deepseek/deepseek-v4-flash
-  at: 2026-08-22T14:15:14Z
-  ledger: L-18
+  agent: gpt-5.6-luna
+  at: 2026-08-22T14:45:00Z
+  ledger: L-14
 next_action: "Owner approved MECE master plan (slot a); conductor may dispatch implementation."
 ```
 
