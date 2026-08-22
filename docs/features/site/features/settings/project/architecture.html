@@ -291,15 +291,47 @@
 <p><code>frontend/src/components/layout/Sidebar.tsx</code> shows a per-project engine</p>
 <p>indicator badge (<code>aria-label=&quot;Engine: Pi|Legacy&quot;</code>) next to the phase</p>
 <p>subtitle, and <code>frontend/src/components/settings/ProjectSettingsView.tsx</code></p>
-<p>adds an &quot;Agent Engine&quot; section with a <code>select[aria-label=&quot;Agent engine&quot;]</code></p>
-<p>(Inherit global default / Legacy / Pi) for project admins — saved through</p>
-<p><code>updateProject(id, { agentic_engine })</code> — and a read-only badge for</p>
-<p>non-admins.</p>
+<p>adds an &quot;Agent Engine&quot; section: a <code>role=&quot;radiogroup&quot;</code></p>
+<p>(<code>aria-label=&quot;Agent engine&quot;</code>) with explicit Pi / Istara engine buttons for</p>
+<p>project admins — saved through <code>updateProject(id, { agentic_engine })</code> —</p>
+<p>and a read-only badge for non-admins. The three choices are &quot;Inherit global</p>
+<p>default&quot;, <code>legacy</code> (Istara), and <code>pi</code> (Pi).</p>
+<ul>
+<li>**Engine buttons carry evidence-backed, provisional comparative summaries</li>
+</ul>
+<p>(W3).** <code>frontend/src/lib/modelCatalog.ts</code> exports</p>
+<p><code>ENGINE_COMPARATIVE_SUMMARIES</code>, one entry per engine with a concise summary</p>
+<p>grounded in the accepted Pi-vs-Istara benchmark bundle</p>
+<p><code>comparison-Istara-pi/reports/20260801T010602Z/scorecard.json</code> (verdict</p>
+<p><code>no_significant_difference</code>: no judged axis reaches significance at 95%</p>
+<p>CI). Each summary lists its evidence provenance and is rendered with a</p>
+<p>&quot;Provisional&quot; badge — comparative model prose is never presented as</p>
+<p>accepted research evidence (Research Spine contract), and the selector</p>
+<p>never fabricates performance claims.</p>
+<ul>
+<li>**Embedding identity policy.** Both engines share one canonical embedding</li>
+</ul>
+<p>model (<code>embed_model</code>, exposed as safe metadata in the project response —</p>
+<p>model name only, never an endpoint/URL/key). Switching engines never</p>
+<p>changes the embedding space; cached vectors are validated against the</p>
+<p>engine&#x27;s known embedding dimension for that model (learned from startup</p>
+<p>probes and provider responses), so an entry written under a different</p>
+<p>embedding model/dimension is discarded and re-embedded instead of reaching</p>
+<p>retrieval.</p>
+<ul>
+<li>**Accessibility contract.** The selector is a native radiogroup: every</li>
+</ul>
+<p>option is a real radio input (keyboard arrow-key navigation, <code>aria-checked</code></p>
+<p>from the native control), the group is <code>aria-labelledby</code> the section</p>
+<p>heading and <code>aria-describedby</code> the hint, each option is a labelled <code>&lt;label&gt;</code></p>
+<p>(click target) with <code>:focus-visible</code> ring styling, and the embedding</p>
+<p>identity line is part of the group hint (<code>id=&quot;agent-engine-hint&quot;</code>). The</p>
+<p>read-only badge keeps <code>aria-label=&quot;Agent engine&quot;</code> for non-admins.</p>
 <ul>
 <li>Simulation scenario <code>tests/simulation/scenarios/79-engine-selector.mjs</code></li>
 </ul>
 <p>(registered in <code>tests/simulation/lib/scenario-registry.mjs</code>) walks the</p>
-<p>selector and badge end to end.</p>
+<p>radiogroup, the comparative-summary provenance, and the badge end to end.</p>
 <h2 id="architecture-notes">Architecture Notes</h2>
 <ul>
 <li>The feature is mounted through <code>frontend/src/components/settings/ProjectSettingsView.tsx</code> and the UI navigation path recorded in the inventory.</li>

@@ -3220,6 +3220,10 @@ System agents must have complete persona directories with `CORE.md`, `SKILLS.md`
 
 The Pi and Istara engines share one configured embedding model. The Pi gateway
 records endpoint/model identity and validates vectors; startup dimension probes
-fail closed on divergence. Batch cache hits use the same validation path as
-provider responses, so stale or malformed entries cannot contaminate retrieval.
-Chat temperature, thinking, and effort controls are generation controls only.
+fail closed on divergence. Cache hits are validated against the engine's known
+embedding dimension for that model (established by the startup probes and every
+validated provider response): a numeric entry written under a different
+embedding model/dimension is discarded and re-embedded rather than served, and
+an entry whose dimension cannot be verified yet is treated as a miss (fail
+closed). Chat temperature, thinking, and effort controls are generation
+controls only.

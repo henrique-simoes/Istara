@@ -143,4 +143,7 @@ Chat controls affect generation only and must never select or mutate the
 embedding model. Both engines use the configured default embedding model;
 startup probes compare provider-reported model and dimension before switching
 is trusted. Provider responses and cached vectors share one typed validation
-boundary, so malformed cache entries are discarded and re-embedded.
+boundary, and cache hits are additionally checked against the engine's known
+dimension for that model (probe- and provider-established): stale-dimension or
+malformed entries are discarded and re-embedded, and unverifiable entries are
+treated as misses (fail closed).

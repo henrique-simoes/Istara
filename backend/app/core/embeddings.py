@@ -18,6 +18,24 @@ from app.core.ollama import ollama
 
 logger = logging.getLogger(__name__)
 
+# Engine-known embedding dimensions per model, keyed by the canonical model
+# identity (the configured embed model name). Learned from validated provider
+# responses and seeded by the startup vector-space probes; cache hits are
+# validated against it so an entry written under a different embedding
+# model/dimension can never flow into retrieval.
+_known_embed_dimensions: dict[str, int] = {}
+
+
+def record_known_embed_dimension(model: str, dimension: int) -> None:
+    """Record the engine's known embedding dimension for a model."""
+    if dimension and dimension > 0:
+        _known_embed_dimensions[model] = dimension
+
+
+def known_embed_dimension(model: str) -> int | None:
+    """Return the engine's known embedding dimension for a model, if any."""
+    return _known_embed_dimensions.get(model)
+
 
 def _validate_embedding_vectors(vectors, **kwargs):  # noqa: ANN001, ANN201
     """Lazy wrapper around the gateway validator.
@@ -76,12 +94,32 @@ async def embed_text(text: str) -> list[float]:
 
     cached = await embedding_cache.get(model, text)
     if cached is not None:
-        try:
-            return _validate_embedding_vectors([cached], expected_count=1)[0]
-        except Exception:
-            logger.warning("Ignoring malformed embedding cache entry for model %s", model)
+        known = known_embed_dimension(model)
+        if known is not None:
+            try:
+                # Validate the cached vector against the engine's known
+                # dimension for this model (not the dimension the entry happens
+                # to carry): a numeric entry written under a different
+                # embedding model/dimension must be treated as a miss and
+                # re-embedded.
+                return _validate_embedding_vectors(
+                    [cached], expected_count=1, expected_dimension=known
+                )[0]
+            except Exception:
+                logger.warning(
+                    "Ignoring malformed or stale-dimension embedding cache entry for model %s",
+                    model,
+                )
+        else:
+            # The engine's dimension for this model has not been established
+            # yet in this process — fail closed and re-embed rather than trust
+            # an entry whose vector space cannot be verified.
+            logger.debug(
+                "Embedding cache entry for model %s not trusted (dimension unknown)", model
+            )
 
     vectors = _validate_embedding_vectors(await _dispatch_embed([text]), expected_count=1)
+    record_known_embed_dimension(model, len(vectors[0]))
     vector = vectors[0]
     await embedding_cache.put(model, text, vector)
     return vector
@@ -105,17 +143,30 @@ async def embed_chunks(chunks: list[TextChunk], batch_size: int = 32) -> list[Em
     for idx, chunk in enumerate(chunks):
         cached = await embedding_cache.get(model, chunk.text)
         if cached is not None:
-            try:
-                # Cache entries are part of the shared vector space too.  Do
-                # not let a stale/corrupt value bypass the same cardinality,
-                # numeric, and dimensional validation used for provider data.
-                results[idx] = EmbeddedChunk(
-                    chunk=chunk,
-                    vector=_validate_embedding_vectors([cached], expected_count=1)[0],
+            known = known_embed_dimension(model)
+            if known is not None:
+                try:
+                    # Cache entries are part of the shared vector space too.  Do
+                    # not let a stale/corrupt value bypass the same cardinality,
+                    # numeric, and dimensional validation used for provider data —
+                    # dimension is checked against the engine's known dimension
+                    # for this model, never inferred from the entry itself.
+                    results[idx] = EmbeddedChunk(
+                        chunk=chunk,
+                        vector=_validate_embedding_vectors(
+                            [cached], expected_count=1, expected_dimension=known
+                        )[0],
+                    )
+                    continue
+                except Exception:
+                    logger.warning(
+                        "Ignoring malformed or stale-dimension embedding cache entry for model %s",
+                        model,
+                    )
+            else:
+                logger.debug(
+                    "Embedding cache entry for model %s not trusted (dimension unknown)", model
                 )
-                continue
-            except Exception:
-                logger.warning("Ignoring malformed embedding cache entry for model %s", model)
         uncached_indices.append(idx)
 
     if uncached_indices:
@@ -134,6 +185,7 @@ async def embed_chunks(chunks: list[TextChunk], batch_size: int = 32) -> list[Em
         vectors = _validate_embedding_vectors(
             await _dispatch_embed(texts), expected_count=len(texts)
         )
+        record_known_embed_dimension(model, len(vectors[0]))
 
         for i, (chunk, vector) in enumerate(zip(batch_chunks, vectors)):
             original_idx = batch_indices[i]

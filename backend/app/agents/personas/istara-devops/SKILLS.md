@@ -56,6 +56,11 @@
 - Detect inconsistencies between document ingestion count and vector embedding count
 - Verify search functionality returns relevant results (sanity check queries)
 - Detect stale embeddings from deleted documents that were not cleaned up
+- Confirm cache hits are dimension-validated: `embedding_cache` entries whose
+  dimension differs from the engine's known dimension for the model are
+  discarded and re-embedded (warn-level log `stale-dimension embedding cache
+  entry`); repeated warnings signal an embedding model/dimension switch that
+  may need a cache rebuild
 
 ### Agent Ecosystem Monitoring
 - Track heartbeat status for all active agents (system and custom)

@@ -79,12 +79,26 @@ export async function run(ctx) {
       await page.waitForTimeout(300);
     }
     await page.locator('button[aria-label="Project Settings"]').first().click();
-    const selector = page.locator('select[aria-label="Agent engine"]').first();
-    await selector.waitFor({ state: "visible", timeout: 10000 });
+    const group = page.locator('[role="radiogroup"][aria-label="Agent engine"]').first();
+    await group.waitFor({ state: "visible", timeout: 10000 });
+    const piRadio = page.locator('input[type="radio"][name="agent-engine"][value="pi"]').first();
     checks.push({
-      name: "Project settings engine selector",
-      passed: (await selector.inputValue()) === "pi",
-      detail: `value=${await selector.inputValue()}`,
+      name: "Project settings engine radiogroup",
+      passed: await piRadio.isChecked().catch(() => false),
+      detail: `pi checked=${await piRadio.isChecked().catch(() => false)}`,
+    });
+    // W3 deliverable: evidence-backed comparative summary + provisional badge.
+    const provisionalBadge = page.getByText("Provisional", { exact: true }).first();
+    checks.push({
+      name: "Engine comparative summary present with provisional badge",
+      passed: await provisionalBadge.isVisible({ timeout: 3000 }).catch(() => false),
+      detail: "",
+    });
+    const evidenceNote = page.getByText(/Evidence: comparison-Istara-pi\/reports\//).first();
+    checks.push({
+      name: "Comparative summary cites evidence provenance",
+      passed: await evidenceNote.isVisible({ timeout: 3000 }).catch(() => false),
+      detail: "",
     });
     await screenshot("79-project-settings-engine-selector");
   } catch (e) {

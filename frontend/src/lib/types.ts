@@ -22,6 +22,7 @@ export interface Project {
   watch_folder_path: string | null;
   agentic_engine?: string | null;
   global_agentic_engine?: string;
+  embed_model?: string;
   current_user_project_role?: "viewer" | "researcher" | "project_admin" | null;
   created_at: string;
   updated_at: string;

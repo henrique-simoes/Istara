@@ -54,3 +54,30 @@ async def test_project_response_exposes_normalized_global_engine(monkeypatch):
     response = await project_routes._project_response(project, object(), object())
 
     assert response["global_agentic_engine"] == "pi"
+
+
+@pytest.mark.asyncio
+async def test_project_response_exposes_embed_model_as_safe_metadata(monkeypatch):
+    """W3: the canonical embedding identity is visible in safe metadata — the
+    model NAME only, never an endpoint URL or key."""
+    project = type(
+        "ProjectStub",
+        (),
+        dict(
+            id="project-1", name="Project", description="", phase="discover",
+            company_context="", project_context="", guardrails="", is_paused=False,
+            owner_id="owner", watch_folder_path=None, agentic_engine=None,
+            created_at=None, updated_at=None,
+        ),
+    )()
+    monkeypatch.setattr(settings, "llm_provider", "ollama", raising=False)
+    monkeypatch.setattr(settings, "ollama_embed_model", "nomic-embed-text", raising=False)
+    monkeypatch.setattr(project_routes, "get_subject", lambda _r: type("S", (), {"id": "u"})())
+    monkeypatch.setattr(project_routes, "is_global_admin", lambda _s: True)
+
+    response = await project_routes._project_response(project, object(), object())
+
+    assert response["embed_model"] == "nomic-embed-text"
+    # Safe metadata: a bare model name — no scheme, host, port, or key material.
+    assert "://" not in response["embed_model"]
+    assert " " not in response["embed_model"]

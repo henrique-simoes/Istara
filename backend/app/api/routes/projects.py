@@ -38,6 +38,17 @@ def _global_agentic_engine() -> str:
     return "pi" if value in PI_ENGINE_VALUES else "legacy"
 
 
+def _embed_model() -> str:
+    """Canonical embedding model identity (safe metadata: name only).
+
+    Mirrors ``app.core.embeddings._embed_model_name`` and the settings route;
+    the W8 vector-space invariant keeps the rules in lockstep.
+    """
+    if settings.llm_provider == "lmstudio":
+        return settings.lmstudio_embed_model
+    return settings.ollama_embed_model
+
+
 def _validate_watch_folder(folder_path: str) -> Path:
     folder = Path(folder_path).expanduser()
     try:
@@ -186,6 +197,7 @@ class ProjectResponse(BaseModel):
     watch_folder_path: str | None = None
     agentic_engine: str | None = None
     global_agentic_engine: str = "legacy"
+    embed_model: str = "nomic-embed-text"
     current_user_project_role: str | None = None
     created_at: datetime
     updated_at: datetime
@@ -213,6 +225,7 @@ async def _project_response(
         "watch_folder_path": project.watch_folder_path,
         "agentic_engine": project.agentic_engine,
         "global_agentic_engine": _global_agentic_engine(),
+        "embed_model": _embed_model(),
         "current_user_project_role": role,
         "created_at": project.created_at,
         "updated_at": project.updated_at,

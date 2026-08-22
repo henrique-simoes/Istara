@@ -260,9 +260,9 @@ If you add a new `reports` view:
 
 | Surface | Contract | Verification |
 | --- | --- | --- |
-| Embedding gateway/cache | one configured model and validated dimension across engines | W8 gateway tests, malformed-cache regression |
+| Embedding gateway/cache | one configured model and validated dimension across engines; cache hits checked against the engine's known dimension | W8 gateway tests, stale-dimension regression |
 | Chat controls | generation-only temperature/thinking/effort controls | chat/session contract tests |
-| Engine selector | explicit accessible Pi/Istara routing choice | model catalog and project settings tests |
+| Engine selector | explicit accessible Pi/Istara routing choice with evidence-backed provisional comparative summaries + shared embed identity in safe metadata | model catalog and project settings tests, scenario 79 |
 
 ### Example 3: Change task status logic
 

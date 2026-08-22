@@ -49,6 +49,17 @@ async def check_embedding_dimensions(
             "model_dim": 0,
         }
 
+    # Seed the engine's known embedding dimension for the probed model so
+    # cache hits are validated against a probe-established vector space (the
+    # engine's dimension), never inferred from the cache entry itself.
+    if model:
+        try:
+            from app.core.embeddings import record_known_embed_dimension
+
+            record_known_embed_dimension(model, model_dim)
+        except Exception:
+            logger.debug("Could not record known embedding dimension", exc_info=True)
+
     result = {
         "status": "ok",
         "message": "Embedding probe dimensions are valid",

@@ -305,6 +305,24 @@
 <p><code>min_context</code> and <code>require_vision</code> map to capability admission in the Pi</p>
 <p>model catalog, and <code>max_turns</code> bounds the ReAct tool loop.</p>
 <ul>
+<li>**Embedding identity policy (W3).** Chat controls are generation controls</li>
+</ul>
+<p>only: temperature/thinking/effort never select or mutate the embedding</p>
+<p>model. Both engines embed with the one canonical model</p>
+<p>(<code>default_embed_model()</code> / <code>_embed_model_name()</code>), and the engine selector</p>
+<p>in Project Settings surfaces that identity as safe metadata (<code>embed_model</code></p>
+<p>in the project response — model name only, never an endpoint/URL/key) and</p>
+<p>never offers a per-engine embedding choice. Cached embedding vectors are</p>
+<p>validated against the engine&#x27;s known dimension for that model (established</p>
+<p>by the startup vector-space probes and every validated provider response):</p>
+<p>a numeric entry written under a different embedding model/dimension is</p>
+<p>discarded and re-embedded instead of flowing into retrieval, and entries</p>
+<p>whose dimension cannot be verified yet are treated as misses (fail closed).</p>
+<p>See the &quot;Engine buttons&quot; paragraph in</p>
+<p><a href="../../settings/project/architecture.html">settings.project</a> for the</p>
+<p>evidence-backed, provisional comparative summaries shown next to the</p>
+<p>selector.</p>
+<ul>
 <li>Structured output is a forced tool call, never free-form JSON text: the Pi</li>
 </ul>
 <p>worker registers an <code>emit_structured_output</code> capture tool</p>

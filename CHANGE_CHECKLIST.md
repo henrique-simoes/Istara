@@ -796,9 +796,14 @@ curl http://localhost:8000/api/compute/nodes \
 ## Pi model-management changes
 
 - Keep chat generation controls separate from embedding identity.
-- Test malformed cached vectors and model/dimension mismatch fail-closed behavior.
+- Test malformed cached vectors and model/dimension mismatch fail-closed
+  behavior; cache hits are validated against the engine's known embedding
+  dimension (stale-dimension entries are re-embedded, never served).
 - Keep the project engine selector explicit and accessible: `Pi` and `Istara`
-  describe routing, not different vector spaces.
+  describe routing, not different vector spaces. The selector shows
+  evidence-backed provisional comparative summaries with provenance (from the
+  accepted `comparison-Istara-pi` benchmark bundle) and exposes the shared
+  embedding model as safe metadata.
 
 ## REFERENCES
 

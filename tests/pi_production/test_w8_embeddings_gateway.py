@@ -100,6 +100,143 @@ async def test_cached_batch_vectors_use_the_same_validation_boundary(monkeypatch
     assert stored
 
 
+@pytest.mark.asyncio
+async def test_cache_hit_dimension_is_checked_against_engine_known_dimension(monkeypatch):
+    """F-2: a numeric cache entry written under a different embedding
+    model/dimension must be treated as a miss and re-embedded — the cached
+    vector's dimension is validated against the engine's KNOWN dimension for
+    the model, never inferred from the entry itself."""
+    from app.core import embeddings
+
+    model = embeddings._embed_model_name()
+    # The engine knows this model embeds at dimension 2 (startup probe / a
+    # prior provider response recorded it).
+    monkeypatch.setattr(embeddings, "_known_embed_dimensions", {model: 2})
+    # The cache holds a numeric-but-stale 3-dim entry.
+    monkeypatch.setattr(embeddings.embedding_cache, "get", lambda *_: _async_value([0.1, 0.2, 0.3]))
+    dispatched = []
+
+    async def fake_dispatch(*_a, **_k):
+        dispatched.append(True)
+        return [[0.4, 0.5]]
+
+    monkeypatch.setattr(embeddings, "_dispatch_embed", fake_dispatch)
+    stored = []
+    monkeypatch.setattr(embeddings.embedding_cache, "put", lambda *args: _async_record(stored, args))
+
+    result = await embeddings.embed_text("stale-dim")
+
+    # Re-embedded through the provider; the stale entry never reached retrieval.
+    assert result == [0.4, 0.5]
+    assert dispatched
+    assert stored
+
+
+@pytest.mark.asyncio
+async def test_cache_hit_matching_known_dimension_is_served(monkeypatch):
+    """A cache entry whose dimension matches the engine's known dimension is
+    served without touching the provider."""
+    from app.core import embeddings
+
+    model = embeddings._embed_model_name()
+    monkeypatch.setattr(embeddings, "_known_embed_dimensions", {model: 2})
+    monkeypatch.setattr(embeddings.embedding_cache, "get", lambda *_: _async_value([0.5, 0.6]))
+    dispatched = []
+    monkeypatch.setattr(
+        embeddings, "_dispatch_embed", lambda *_a, **_k: _async_record(dispatched, [[0.7, 0.8]])
+    )
+    stored = []
+    monkeypatch.setattr(embeddings.embedding_cache, "put", lambda *args: _async_record(stored, args))
+
+    result = await embeddings.embed_text("matching-dim")
+
+    assert result == [0.5, 0.6]
+    assert not dispatched
+    assert not stored
+
+
+@pytest.mark.asyncio
+async def test_cache_hit_with_unknown_engine_dimension_fails_closed(monkeypatch):
+    """Before the engine's dimension is established (no probe/provider
+    response in this process), a cached entry must NOT be trusted — fail
+    closed and re-embed rather than serve an unverifiable vector space."""
+    from app.core import embeddings
+
+    model = embeddings._embed_model_name()
+    monkeypatch.setattr(embeddings, "_known_embed_dimensions", {})
+    monkeypatch.setattr(embeddings.embedding_cache, "get", lambda *_: _async_value([1.0, 2.0, 3.0]))
+    dispatched = []
+
+    async def fake_dispatch(*_a, **_k):
+        dispatched.append(True)
+        return [[0.1, 0.2]]
+
+    monkeypatch.setattr(embeddings, "_dispatch_embed", fake_dispatch)
+    stored = []
+    monkeypatch.setattr(embeddings.embedding_cache, "put", lambda *args: _async_record(stored, args))
+
+    result = await embeddings.embed_text("unknown-dim")
+
+    assert result == [0.1, 0.2]
+    assert dispatched
+    assert stored
+    assert embeddings.known_embed_dimension(model) == 2
+
+
+@pytest.mark.asyncio
+async def test_embed_chunks_stale_dimension_entry_is_reembedded(monkeypatch):
+    """Batch path: a stale-dimension cached chunk is re-embedded and the
+    provider dimension is recorded for later hits."""
+    from app.core import embeddings
+
+    model = embeddings._embed_model_name()
+    monkeypatch.setattr(embeddings, "_known_embed_dimensions", {model: 2})
+    chunks = [
+        TextChunk(text="stale-a", source="s"),
+        TextChunk(text="stale-b", source="s"),
+    ]
+
+    async def fake_get(_model, text):
+        return [0.1, 0.2, 0.3] if text == "stale-a" else None
+
+    monkeypatch.setattr(embeddings.embedding_cache, "get", fake_get)
+    dispatched = []
+
+    async def fake_dispatch(texts, **_k):
+        dispatched.append(True)
+        return [[0.4, 0.5] for _ in texts]
+
+    monkeypatch.setattr(embeddings, "_dispatch_embed", fake_dispatch)
+    stored = []
+    monkeypatch.setattr(embeddings.embedding_cache, "put", lambda *args: _async_record(stored, args))
+
+    results = await embeddings.embed_chunks(chunks)
+
+    assert [r.vector for r in results] == [[0.4, 0.5], [0.4, 0.5]]
+    # Both chunks went through the provider: the stale hit was re-embedded.
+    assert dispatched
+    assert len(stored) == 2
+
+
+@pytest.mark.asyncio
+async def test_record_known_dimension_persists_for_later_hits(monkeypatch):
+    """Provider responses record the engine's dimension; matching cache hits
+    after a restart-style unknown state are then trusted."""
+    from app.core import embeddings
+
+    model = embeddings._embed_model_name()
+    monkeypatch.setattr(embeddings, "_known_embed_dimensions", {})
+    monkeypatch.setattr(embeddings.embedding_cache, "get", lambda *_: _async_value(None))
+    monkeypatch.setattr(embeddings, "_dispatch_embed", lambda *_a, **_k: _async_value([[0.5, 0.6]]))
+    stored = []
+    monkeypatch.setattr(embeddings.embedding_cache, "put", lambda *args: _async_record(stored, args))
+
+    await embeddings.embed_text("probe")
+
+    assert embeddings.known_embed_dimension(model) == 2
+    assert stored
+
+
 async def _async_value(value):
     return value
 

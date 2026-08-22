@@ -71,6 +71,22 @@ project routes that call the model controls.
   (`temperature`, `max_tokens`, `thinking_level`, provider `timeout_ms`);
   `min_context` and `require_vision` map to capability admission in the Pi
   model catalog, and `max_turns` bounds the ReAct tool loop.
+- **Embedding identity policy (W3).** Chat controls are generation controls
+  only: temperature/thinking/effort never select or mutate the embedding
+  model. Both engines embed with the one canonical model
+  (`default_embed_model()` / `_embed_model_name()`), and the engine selector
+  in Project Settings surfaces that identity as safe metadata (`embed_model`
+  in the project response — model name only, never an endpoint/URL/key) and
+  never offers a per-engine embedding choice. Cached embedding vectors are
+  validated against the engine's known dimension for that model (established
+  by the startup vector-space probes and every validated provider response):
+  a numeric entry written under a different embedding model/dimension is
+  discarded and re-embedded instead of flowing into retrieval, and entries
+  whose dimension cannot be verified yet are treated as misses (fail closed).
+  See the "Engine buttons" paragraph in
+  [settings.project](../../settings/project/architecture.md) for the
+  evidence-backed, provisional comparative summaries shown next to the
+  selector.
 - Structured output is a forced tool call, never free-form JSON text: the Pi
   worker registers an `emit_structured_output` capture tool
   (`pi-runtime/src/structured.mjs`) whose parameters are a mechanical

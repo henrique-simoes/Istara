@@ -58,13 +58,39 @@ Project Settings configure project-specific metadata and operational preferences
   `frontend/src/components/layout/Sidebar.tsx` shows a per-project engine
   indicator badge (`aria-label="Engine: Pi|Legacy"`) next to the phase
   subtitle, and `frontend/src/components/settings/ProjectSettingsView.tsx`
-  adds an "Agent Engine" section with a `select[aria-label="Agent engine"]`
-  (Inherit global default / Legacy / Pi) for project admins — saved through
-  `updateProject(id, { agentic_engine })` — and a read-only badge for
-  non-admins.
+  adds an "Agent Engine" section: a `role="radiogroup"`
+  (`aria-label="Agent engine"`) with explicit Pi / Istara engine buttons for
+  project admins — saved through `updateProject(id, { agentic_engine })` —
+  and a read-only badge for non-admins. The three choices are "Inherit global
+  default", `legacy` (Istara), and `pi` (Pi).
+- **Engine buttons carry evidence-backed, provisional comparative summaries
+  (W3).** `frontend/src/lib/modelCatalog.ts` exports
+  `ENGINE_COMPARATIVE_SUMMARIES`, one entry per engine with a concise summary
+  grounded in the accepted Pi-vs-Istara benchmark bundle
+  `comparison-Istara-pi/reports/20260801T010602Z/scorecard.json` (verdict
+  `no_significant_difference`: no judged axis reaches significance at 95%
+  CI). Each summary lists its evidence provenance and is rendered with a
+  "Provisional" badge — comparative model prose is never presented as
+  accepted research evidence (Research Spine contract), and the selector
+  never fabricates performance claims.
+- **Embedding identity policy.** Both engines share one canonical embedding
+  model (`embed_model`, exposed as safe metadata in the project response —
+  model name only, never an endpoint/URL/key). Switching engines never
+  changes the embedding space; cached vectors are validated against the
+  engine's known embedding dimension for that model (learned from startup
+  probes and provider responses), so an entry written under a different
+  embedding model/dimension is discarded and re-embedded instead of reaching
+  retrieval.
+- **Accessibility contract.** The selector is a native radiogroup: every
+  option is a real radio input (keyboard arrow-key navigation, `aria-checked`
+  from the native control), the group is `aria-labelledby` the section
+  heading and `aria-describedby` the hint, each option is a labelled `<label>`
+  (click target) with `:focus-visible` ring styling, and the embedding
+  identity line is part of the group hint (`id="agent-engine-hint"`). The
+  read-only badge keeps `aria-label="Agent engine"` for non-admins.
 - Simulation scenario `tests/simulation/scenarios/79-engine-selector.mjs`
   (registered in `tests/simulation/lib/scenario-registry.mjs`) walks the
-  selector and badge end to end.
+  radiogroup, the comparative-summary provenance, and the badge end to end.
 
 ## Architecture Notes
 
