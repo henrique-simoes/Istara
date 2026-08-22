@@ -11,7 +11,7 @@ cf:
 phase: "Phase 2 — implementation"
 stage: S4-remediate
 status: in-progress
-blocked_on: "owner approval of VPS acceptance port contract (18443/tcp) + strict single-workload service definition (docs/build-stream/vps-acceptance/port-contract.md §5); approval routed 2026-08-22 — durable hold: approval_holds header field + docs/build-stream/vps-acceptance/approval-hold.json (sync-preserved); re-asserted at fix head L-45 (verification-time snapshot)"
+blocked_on: null
 approval_holds:
   - id: vps-acceptance-deployment
     state: pending
@@ -23,7 +23,7 @@ last:
   agent: deepseek/deepseek-v4-flash
   at: 2026-08-22T18:47:22Z
   ledger: L-45
-next_action: "Delta re-review r3 of the durable F-4 hold surface (FIX-REREV-...-r2-hygiene): verify approval_holds: header field + approval-hold.json survive the owner-gate sync; then ship (owner-gated). F-1 VPS deployment still pending owner approval of port-contract.md §5 (18443/tcp)."
+next_action: "Owner approved MECE master plan (slot a); conductor may dispatch implementation."
 ```
 
 ## Plan overview
