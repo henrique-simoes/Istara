@@ -122,8 +122,8 @@ export class IstaraPiAdapter {
       adapter: "IstaraPiAdapter",
       adapterMode: this.mode === "deepseek" ? "library_builtin_deepseek_provider" : "pi_agent_core_faux_provider",
       piPackages: {
-        "@earendil-works/pi-agent-core": "0.80.10",
-        "@earendil-works/pi-ai": "0.80.10",
+        "@earendil-works/pi-agent-core": "0.84.2",
+        "@earendil-works/pi-ai": "0.84.2",
       },
       modelPolicy: {
         provider: this.mode === "deepseek" ? "deepseek" : "faux",

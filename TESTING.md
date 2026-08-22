@@ -68,6 +68,8 @@ Run commands from the repository root unless the command says otherwise.
 | Frontend lint | `cd frontend` then `npm run lint` | You changed frontend source. | No |
 | Frontend mutation | `cd frontend` then `npm run test:mutation` | You changed `src/lib/runtimeConfig.ts` or mutation harness config. | No |
 | Frontend build | `cd frontend` then `npm run build` | You need the full Next build gate. | No live backend |
+| Pi runtime contract tests | `cd pi-runtime` then `npm ci && npm test` | You changed Pi provider binding, protocol, model identity, budgets, or secret-flow behavior. | No live provider; uses deterministic and loopback fixtures |
+| Pi replacement lab tests | `cd labs/pi-replacement` then `npm ci && npm run validate` | You changed the standalone-Pi compatibility adapter or its contract fixtures. | No live provider |
 | Relay unit tests | `cd relay` then `npm test` | You changed relay connection strings, heartbeats, LLM proxying, or compute donation client code. | No |
 | Simulation static checks | `cd tests/simulation` then `npm run test:static` | You changed simulation runner, scenario, evaluator, or helper JavaScript and want syntax plus pure harness smoke coverage. | No |
 | Marathon config integrity | `pytest tests/test_marathon_config_integrity.py -q` | You changed `scripts/marathon/config.json`, scenario registration, or custom-check wiring. | No |
