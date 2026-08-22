@@ -248,11 +248,11 @@ python -m pytest tests/pi_production/test_w1_agentic_contract.py tests/pi_produc
 python -m pytest tests/pi_production/test_endpoint_secrets.py tests/pi_production/test_same_model_donor_isolation.py -q
 python -m pytest tests/pi_production/test_w8_embeddings_gateway.py tests/test_research_validity_contract.py -q
 python -m pytest tests/petals_bridge -q
-python -m pytest tests/llm_servers.py tests/test_llm_servers.py -q  # use only paths that exist
+python -m pytest tests/test_llm_servers.py -q
 
 # frontend/runtime and repository gates
 cd pi-runtime && npm test
-cd ../frontend && npm test -- --runInBand
+cd ../frontend && npm run test:unit -- --run
 cd ..
 python scripts/security_benchmark.py --fail-on-threshold
 python scripts/feature_docs.py --seed-missing --generate-site --check

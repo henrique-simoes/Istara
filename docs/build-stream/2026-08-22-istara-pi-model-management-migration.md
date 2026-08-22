@@ -13,10 +13,10 @@ stage: S1-plan
 status: in-progress
 blocked_on: synthesis of A/B/C drafts into one MECE master plan (plan-c draft file present; PLAN-C task blocked after gpt-5.6-luna auth-failure retries)
 last:
-  agent: deepseek/deepseek-v4-flash
-  at: 2026-08-22T12:02:16Z
-  ledger: L-4
-next_action: "Slot-A draft repaired at the correct plan_file (REPLAN-A-r1). All three independent drafts (A repaired, B, C) now exist; the synthesis phase reconciles them into one MECE master plan with a coverage matrix, freezes the plan, and stops at the owner approval gate before any implementation task is released."
+  agent: gpt-5.6-luna
+  at: 2026-08-22T12:18:00Z
+  ledger: L-5
+next_action: "Synthesize the three independent drafts into one MECE master plan with a coverage matrix, then stop at the owner approval gate before implementation."
 ```
 
 ## Plan overview
@@ -144,3 +144,9 @@ Did: Repaired the slot-A consensus draft. The L-2 slot-A draft had landed at the
 Result: Authoritative slot-A draft exists at the path the synthesis phase reads; covers the six manifest waves, canonical identity model (model_id/endpoint_id/credential_ref/embedding+audio profiles), resolver/transport boundary, exact data+secret migration and rollback state machine, feature-flag/deprecation/removal criteria, test ownership, docs/manifest obligations, security benchmark coverage, and isolated VPS acceptance per the vps skill (C1/C5/C7). ISTARA-PI-MODEL-MIGRATION-20260822-REPLAN-A-r1.
 Verified: `npm view` -> 0.84.2 / 0.84.2 (passed; tree pins 0.83.0 / 0.80.10); `python3 scripts/pi_migration_inventory.py --json` -> 1 allowlisted permanent site, ratchet 0 (passed); `compass-forge gate before --task ISTARA-PI-MODEL-MIGRATION-20260822-REPLAN-A-r1 --summary` -> fail, 30 inherited, 0 new, 0 actionable (passed as baseline); `pytest --collect-only` on six key surfaces -> 62 tests collected (passed); `vpsctl.py --help` -> 7 subcommands (passed); `git diff --check` clean. CF evidence rows on ISTARA-PI-MODEL-MIGRATION-20260822-REPLAN-A-r1.
 Next: Architect B and C drafts -> consensus synthesis into one MECE master plan with coverage matrix; freeze plan and stop at the owner approval gate before any implementation task is released.
+
+### L-5 | 2026-08-22T12:18:00Z | S1-plan | gpt-5.6-luna | architect | draft <!-- bsc-ledger:ISTARA-PI-MODEL-MIGRATION-20260822-PLAN-C -->
+Did: Updated the authoritative slot-C draft `docs/build-stream/plans/istara-pi-model-migration-20260822-plan-c.md` after rechecking the current tree and all three carried drafts; corrected its focused verification matrix to use the existing `tests/test_llm_servers.py` and frontend `test:unit` script.
+Result: Independent plan covers the Pi canonical catalog/resolver and dependency boundary, legacy storage/routing/encryption migration, both explicit engines, embeddings/vector-space invariant, Petals isolation, audio/transcription capability contracts, UI, testing-branch QA, managed VPS/Dokploy/vpsctl acceptance, security/docs obligations, reversible retirement, and owner gates. No implementation or live workload changes.
+Verified: pinned native `compass-forge status`, `next`, and compact `agent-brief` (project resolved; Rust runtime); Compass Forge impact/why/test-impact; `python -m pytest tests/pi_migration/test_count_to_zero.py -q` -> 3 passed; `git diff --check` clean; current-tree existence check corrected the stale/nonexistent test path and frontend script.
+Next: Synthesize A/B/C into one MECE master plan, freeze it, and stop at the owner approval gate.
