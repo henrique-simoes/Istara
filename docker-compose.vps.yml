@@ -41,7 +41,7 @@ services:
       - OLLAMA_HOST=${OLLAMA_HOST:-http://host.docker.internal:11434}
       - OLLAMA_MODEL=${OLLAMA_MODEL:-qwen3:latest}
       - OLLAMA_EMBED_MODEL=${OLLAMA_EMBED_MODEL:-nomic-embed-text}
-      - DATABASE_URL=postgresql+asyncpg://istara:istara@postgres:5432/istara
+      - DATABASE_URL=postgresql+asyncpg://istara:istara@postgres:5432/istara?sslmode=disable
       - LANCE_DB_PATH=/app/data/lance_db
       - UPLOAD_DIR=/app/data/uploads
       - PROJECTS_DIR=/app/data/projects
