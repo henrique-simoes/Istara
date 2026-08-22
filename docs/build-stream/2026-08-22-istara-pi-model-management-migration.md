@@ -9,14 +9,14 @@ cf:
   spec: CF-SPEC-1
   tasks: [planning-only until owner approval; CF-SPEC-1 tasks generated at approval]
 phase: "Phase 0 — architecture and migration plan (resumed)"
-stage: S1-plan
-status: in-progress
-blocked_on: null
+stage: S2-execute
+status: blocked
+blocked_on: owner approval gate; CF-SPEC-1 remains draft and clarification-blocked
 last:
-  agent: deepseek/deepseek-v4-flash
-  at: 2026-08-22T12:42:10Z
-  ledger: L-13
-next_action: "Owner approved MECE master plan (slot a); conductor may dispatch implementation."
+  agent: gpt-5.6-luna
+  at: 2026-08-22T13:11:39Z
+  ledger: L-14
+next_action: "Resolve CF-SPEC-1 clarification, complete owner-approved plan/task graph, then re-dispatch foundation implementation."
 ```
 
 ## Plan overview
@@ -728,6 +728,12 @@ Decision: Replace multivac acceptance with the managed VPS (wildsync) following 
 Why: The vps skill is the maintained, audited deployment path for this host.
 
 ## Ledger
+
+### L-14 | 2026-08-22T13:11:39Z | S2-execute | gpt-5.6-luna | executor | implement <!-- bsc-ledger:ISTARA-PI-MODEL-MIGRATION-20260822-WAVE-foundation-IMPL -->
+Did: Inspected the pinned Compass Forge task, CF-SPEC-1, lifecycle, and authoritative migration-plan artifacts. Made no code or test changes because the task payload is explicitly planning-only and the owner approval gate remains closed.
+Result: Stage blocked truthfully; no implementation artifact is ready. CF-SPEC-1 is draft with an unresolved clarification, and the lifecycle Definition of Ready prohibits implementation dispatch before owner-approved plan freeze.
+Verified: pinned native `status`, `next`, `agent-brief`, `task show`, `spec show CF-SPEC-1`, and `task evidence-list`; `git diff --check` passed. Command and self-report evidence recorded on ISTARA-PI-MODEL-MIGRATION-20260822-WAVE-foundation-IMPL.
+Next: Resolve the spec clarification and owner approval gate, generate the explicit task graph, then re-dispatch this foundation implementation task.
 
 ### L-1 | 2026-08-22T11:36:00Z | S0-frame | owner | framer | Phase 0
 
