@@ -35,10 +35,10 @@ services:
     expose: ["8000"]
     ports:
       - "127.0.0.1:18080:8000"
-    networks: [backend-net, data-net]
+    networks: [backend-net, data-net, provider-net]
     environment:
       - LLM_PROVIDER=${LLM_PROVIDER:-ollama}
-      - OLLAMA_HOST=${OLLAMA_HOST:-http://host.docker.internal:11434}
+      - OLLAMA_HOST=http://provider-stub:11434
       - OLLAMA_MODEL=${OLLAMA_MODEL:-qwen3:latest}
       - OLLAMA_EMBED_MODEL=${OLLAMA_EMBED_MODEL:-nomic-embed-text}
       - DATABASE_URL=postgresql+asyncpg://istara:istara@postgres:5432/istara
@@ -103,6 +103,30 @@ services:
         condition: service_healthy
     restart: unless-stopped
 
+  provider-stub:
+    build:
+      context: .
+      dockerfile: qa/provider-stub.Dockerfile
+    container_name: istara-test-provider-stub
+    expose: ["11434"]
+    networks: [provider-net]
+    environment:
+      - QA_CONTRACT_CHAT_MODEL=${QA_OLLAMA_MODEL:-istara-qa-contract-chat:latest}
+      - QA_CONTRACT_EMBED_MODEL=${QA_OLLAMA_EMBED_MODEL:-istara-qa-contract-embed:latest}
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:11434/api/tags', timeout=2)"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    security_opt: [no-new-privileges:true]
+    read_only: true
+    tmpfs: ["/tmp:noexec,nosuid,size=16M"]
+    cap_drop: [ALL]
+    pids_limit: 32
+    mem_limit: 128M
+    cpus: "0.25"
+    restart: unless-stopped
+
 networks:
   frontend-net:
     driver: bridge
@@ -110,5 +134,8 @@ networks:
     driver: bridge
     internal: true
   data-net:
+    driver: bridge
+    internal: true
+  provider-net:
     driver: bridge
     internal: true
