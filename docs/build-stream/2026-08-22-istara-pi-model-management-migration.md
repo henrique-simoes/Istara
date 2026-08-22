@@ -13,9 +13,9 @@ stage: S1-plan
 status: in-progress
 blocked_on: owner approval gate — slot-A MECE master plan synthesized from A/B/C (awaiting vote/freeze); no implementation task released before owner approval
 last:
-  agent: deepseek/deepseek-v4-flash
-  at: 2026-08-22T12:17:22Z
-  ledger: L-8
+  agent: deepseek/deepseek-v4-pro
+  at: 2026-08-22T12:20:03Z
+  ledger: L-9
 next_action: "Vote round compares the master-plan candidates; conductor freezes the consensus plan and stops at the owner approval gate before any implementation task is generated or released."
 ```
 
@@ -178,7 +178,7 @@ Result: Complete slot-A master-plan candidate covering the full task scope: lega
 Verified: `npm view` → 0.84.2 / 0.84.2 (passed; tree pins 0.83.0/0.80.10); `python3 scripts/pi_migration_inventory.py --json` → 1 allowlisted permanent site, ratchet 0 (passed); `compass-forge gate before --task …-MASTER-A --summary` → fail, 30 inherited, 0 new, 0 actionable (passed as baseline); `uv run --project backend python -m pytest tests/pi_migration/test_count_to_zero.py -q` → 3 passed; `python3 scripts/security_benchmark.py --fail-on-threshold` → 28/28, 100.0%, pass; `python3 scripts/feature_docs.py --seed-missing --generate-site --check` → 86 features, 224 artifacts, 0 seeded; `pytest --collect-only` six key surfaces → 62 tests collected; `python3 ~/.pi/agent/skills/vps/scripts/vpsctl.py --help` → 7 subcommands; 40/40 V13 anchors present, 3/3 V14 obligations absent (passed); `git diff --check` clean. CF evidence rows (command ×3 + self_report) on …-MASTER-A.
 Next: Vote round compares master-plan candidates; conductor freezes the consensus plan and stops at the owner approval gate before any implementation task is generated or released.
 
-### L-7 | 2026-08-22T12:20:03Z | S1-plan | deepseek/deepseek-v4-pro | architect | synthesize <!-- bsc-ledger:ISTARA-PI-MODEL-MIGRATION-20260822-MASTER-B -->
+### L-9 | 2026-08-22T12:20:03Z | S1-plan | deepseek/deepseek-v4-pro | architect | synthesize <!-- bsc-ledger:ISTARA-PI-MODEL-MIGRATION-20260822-MASTER-B -->
 Did: Wrote the slot-B MECE master-plan synthesis candidate to `docs/build-stream/plans/istara-pi-model-migration-20260822-master-b.md` (544 lines). Re-read all three immutable consensus snapshots (SHA-verified against consensus.json: A 830a54b9, B ffa5899f, C fd6fa270) and reconciled them into ONE master plan (not a concatenation): unified retirement model (§6: global mode registry + per-row state machine + S0-S5 phases), 13-item conflict/correction table C1-C13 (multivac->VPS, six-wave re-baselining, 30-inherited gate baseline, `pi_api_endpoints` naming, single-service VPS reality check, environment prerequisites, vpsctl skill path, test-anchor corrections, `uv run --project backend` command canonicalization, state-machine unification, Wave-1 dependency update, frontend path fix, lockstep lab pin), merged per-wave acceptance + exact verification commands for all six manifest waves, unified risk register R1-R14, Definition of Ready/Done + owner gates, and two coverage matrices (§0 draft->section; §15 requirement->section).
 Result: Complete MECE master-plan candidate B exists at the authoritative plan_file for synthesis round `0bb85df72bbe6604f51a`; the parallel slot-C candidate (master-c.md) exists in the worktree. Ready for the vote phase. ISTARA-PI-MODEL-MIGRATION-20260822-MASTER-B.
 Verified: `npm view` -> 0.84.2 / 0.84.2 (tree pins 0.83.0 / 0.80.10); `uv run --project backend python -m pytest tests/pi_migration/test_count_to_zero.py -q` -> 3 passed; `python3 scripts/pi_migration_inventory.py --json` -> 1 allowlisted permanent site, ratchet 0; pinned-CF `gate before --summary` -> fail, 30 inherited / 0 new / 0 actionable, drift route=4 type=2, warnings=188; `vpsctl.py --help` -> 7 subcommands at the vps skill path; snapshot SHA triple-check -> matches consensus.json; manifest binding hash b9c8ff0c re-derived from canonical JSON; `git diff --check` clean. CF evidence rows 104-111 on ISTARA-PI-MODEL-MIGRATION-20260822-MASTER-B.
