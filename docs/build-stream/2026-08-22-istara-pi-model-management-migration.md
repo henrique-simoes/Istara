@@ -156,3 +156,19 @@ Did: Repaired the slot-B consensus draft. The L-3 slot-B draft had landed at the
 Result: Authoritative slot-B draft exists at the path the synthesis phase reads; covers the six manifest waves, canonical identity model (model_id/endpoint_id/credential_ref/embedding+audio profiles), resolver/transport boundary, engine precedence (per-call > header x-istara-agent-engine > project agentic_engine > settings.agentic_engine_default="legacy"; no silent fallback), reversible retirement state machine S0-S5 with feature-flag registry + deprecation/removal criteria, exact data/secret migration + rollback playbook, per-wave acceptance + commands, isolated VPS acceptance/cleanup per the vps skill (C1/C5/C7), docs/manifests/security/test-ownership obligations, risk register R1-R11, Definition of Ready/Done + owner gates, coverage matrix vs carried drafts A/B/C. ISTARA-PI-MODEL-MIGRATION-20260822-REPLAN-B-r1.
 Verified: `npm view` -> 0.84.2 / 0.84.2 (passed; tree pins 0.83.0 / 0.80.10); `python3 scripts/pi_migration_inventory.py --json` -> 1 allowlisted permanent site (legacy.py:599), ratchet 0 (passed); `compass-forge gate before --task ISTARA-PI-MODEL-MIGRATION-20260822-REPLAN-B-r1 --summary` -> fail, 30 inherited, 0 new, drift route=4/type=2, warnings=188 (passed as baseline); `uv run --project backend python -m pytest tests/pi_migration/test_count_to_zero.py -q` -> 3 passed; `python3 scripts/security_benchmark.py --fail-on-threshold` -> 28/28, 100.0%, pass; `python3 scripts/feature_docs.py --seed-missing --generate-site --check` -> 86 features, 224 artifacts, 0 seeded (passed); `python3 ~/.pi/agent/skills/vps/scripts/vpsctl.py --help` -> 7 subcommands (passed); 38/38 V13 test anchors present, 3/3 V14 absent (passed); `git diff --check` clean. CF evidence rows on ISTARA-PI-MODEL-MIGRATION-20260822-REPLAN-B-r1.
 Next: All three authoritative drafts now exist (A repaired, B repaired, C); consensus synthesis reconciles them into one MECE master plan with a coverage matrix, freezes the plan, and stops at the owner approval gate before any implementation task is released.
+
+### L-2 | 2026-08-22T12:10:00Z | S1-plan | owner | cast-manager | Phase 0
+
+Did: Managed the cast during planning. Diagnosed PLAN-C blocked-loop: the architect-a REPLAN worker generated `backend/uv.lock` (1.5MB, untracked) while validating `uv run` commands, and the gate `after --new-only` treated it as a new large file, reopening PLAN-C repeatedly; architect-c had no fallbacks so escalation was inert. Removed the spurious file and added `backend/uv.lock` to `allowed_large_file_globs` + `ignored_file_globs` in the worktree and workspace recipes (config-only, no source code). Reopened PLAN-C and cleared the stale escalation state; architect-c re-dispatched (session 8/9).
+
+Result: Gate `after --new-only` now reports zero new issues with uv.lock present. Architect-c can complete PLAN-C with valid finalization.
+
+Verified: `compass-forge gate after --new-only --report-format json` (new_issues: []); `conductor.py status` (daemon up); sessions 8/9 architect-c active.
+
+Next: Monitor planning to convergence; expect PLAN-C done, then MECE synthesis and owner approval gate.
+
+### L-7 | 2026-08-22T12:15:38Z | S1-plan | gpt-5.6-luna | planner | istara-pi-model-migration-20260822-architect-c <!-- bsc-ledger:ISTARA-PI-MODEL-MIGRATION-20260822-MASTER-C -->
+Did: istara-pi-model-migration-20260822-architect-c stage on task ISTARA-PI-MODEL-MIGRATION-20260822-MASTER-C (harness fallback entry; the model did not append one).
+Result: task ISTARA-PI-MODEL-MIGRATION-20260822-MASTER-C finished; worktree head 15f26486.
+Verified: see Compass Forge evidence rows on ISTARA-PI-MODEL-MIGRATION-20260822-MASTER-C (command + self_report + stage_attribution).
+Next: conductor advances the pipeline on evidence.
