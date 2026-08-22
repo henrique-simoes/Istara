@@ -42,6 +42,12 @@ checks = ["architecture gate", "security-sensitive surface review", "broad verif
 steps = ["capture baseline", "plan task graph", "implement in scoped slices", "run post-change gate", "record decision"]
 
 [context.actor_roles]
+istara-pi-model-migration-20260822-implementer = "Pipeline implementer. Make the smallest correct code change for the claimed task in the shared worktree, add/adjust tests, run them, and record command + self_report evidence."
+istara-pi-model-migration-20260822-code-reviewer = "Independent code reviewer (different model than the implementer). Review the implementer's diff for correctness, tests, and scope. Record a review_verdict (pass/fail). On fail, create a follow-up fixer task and record findings."
+istara-pi-model-migration-20260822-fixer = "Remediator. Address the cited review findings on the referenced task in the shared worktree, re-run verification, flip the findings to fixed, and record evidence."
+istara-pi-model-migration-20260822-architect-a = "Consensus architect. Follow the planning_phase in the work order: write an independent draft, synthesize a MECE master plan from all three drafts, or vote on the other two master plans. Do not implement or edit the lifecycle plan."
+istara-pi-model-migration-20260822-architect-b = "Consensus architect. Follow the planning_phase in the work order: write an independent draft, synthesize a MECE master plan from all three drafts, or vote on the other two master plans. Do not implement or edit the lifecycle plan."
+istara-pi-model-migration-20260822-architect-c = "Consensus architect. Follow the planning_phase in the work order: write an independent draft, synthesize a MECE master plan from all three drafts, or vote on the other two master plans. Do not implement or edit the lifecycle plan."
 pi-bench-retake-20260722-implementer = "Pipeline implementer. Make the smallest correct code change for the claimed task in the shared worktree, add/adjust tests, run them, and record command + self_report evidence."
 pi-bench-retake-20260722-code-reviewer = "Independent code reviewer (different model than the implementer). Review the implementer's diff for correctness, tests, and scope. Record a review_verdict (pass/fail). On fail, create a follow-up fixer task and record findings."
 pi-bench-retake-20260722-fixer = "Remediator. Address the cited review findings on the referenced task in the shared worktree, re-run verification, flip the findings to fixed, and record evidence."
