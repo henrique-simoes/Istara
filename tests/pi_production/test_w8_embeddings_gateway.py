@@ -39,6 +39,7 @@ from app.core.pi_runtime.embeddings_gateway import (
 from app.core.pi_runtime.endpoints import PiEndpointResolutionError, ResolvedPiEndpoint
 from app.core.pi_runtime.model_manager import PiModelManager, reset_live_db_projections
 from app.core.pi_runtime.model_manager_provisioning import ensure_endpoint_model
+from app.core.embeddings import EmbeddedChunk, TextChunk
 from app.models.agentic_usage import AgenticUsageRow
 from app.models.database import async_session, init_db
 
@@ -80,6 +81,31 @@ def _function_source(path: Path, function_name: str) -> str:
         if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)) and node.name == function_name:
             return ast.get_source_segment(text, node) or ""
     raise AssertionError(f"{function_name} not found in {path}")
+
+
+@pytest.mark.asyncio
+async def test_cached_batch_vectors_use_the_same_validation_boundary(monkeypatch):
+    """Malformed cached vectors must be treated as misses, not trusted data."""
+    from app.core import embeddings
+
+    chunks = [TextChunk(text="cached", source="test")]
+    monkeypatch.setattr(embeddings.embedding_cache, "get", lambda *_: _async_value(["bad"]))
+    monkeypatch.setattr(embeddings, "_dispatch_embed", lambda *_args, **_kwargs: _async_value([[0.25]]))
+    stored = []
+    monkeypatch.setattr(embeddings.embedding_cache, "put", lambda *args: _async_record(stored, args))
+
+    result = await embeddings.embed_chunks(chunks)
+
+    assert result[0].vector == [0.25]
+    assert stored
+
+
+async def _async_value(value):
+    return value
+
+
+async def _async_record(target, value):
+    target.append(value)
 
 
 # ── gateway: native Ollama + /v1/embeddings ─────────────────────────────

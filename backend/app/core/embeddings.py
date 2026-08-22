@@ -105,9 +105,18 @@ async def embed_chunks(chunks: list[TextChunk], batch_size: int = 32) -> list[Em
     for idx, chunk in enumerate(chunks):
         cached = await embedding_cache.get(model, chunk.text)
         if cached is not None:
-            results[idx] = EmbeddedChunk(chunk=chunk, vector=cached)
-        else:
-            uncached_indices.append(idx)
+            try:
+                # Cache entries are part of the shared vector space too.  Do
+                # not let a stale/corrupt value bypass the same cardinality,
+                # numeric, and dimensional validation used for provider data.
+                results[idx] = EmbeddedChunk(
+                    chunk=chunk,
+                    vector=_validate_embedding_vectors([cached], expected_count=1)[0],
+                )
+                continue
+            except Exception:
+                logger.warning("Ignoring malformed embedding cache entry for model %s", model)
+        uncached_indices.append(idx)
 
     if uncached_indices:
         logger.debug(

@@ -256,6 +256,14 @@ If you add a new `reports` view:
 - update `docs/features/inventory.json` and the two source pages for the new view
 - regenerate feature docs with `python scripts/feature_docs.py --seed-missing --generate-site --check`
 
+### Pi embedding/control slice
+
+| Surface | Contract | Verification |
+| --- | --- | --- |
+| Embedding gateway/cache | one configured model and validated dimension across engines | W8 gateway tests, malformed-cache regression |
+| Chat controls | generation-only temperature/thinking/effort controls | chat/session contract tests |
+| Engine selector | explicit accessible Pi/Istara routing choice | model catalog and project settings tests |
+
 ### Example 3: Change task status logic
 
 If you change task transitions or verification:

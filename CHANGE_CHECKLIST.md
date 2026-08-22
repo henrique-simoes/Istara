@@ -793,6 +793,13 @@ curl http://localhost:8000/api/compute/nodes \
 
 ---
 
+## Pi model-management changes
+
+- Keep chat generation controls separate from embedding identity.
+- Test malformed cached vectors and model/dimension mismatch fail-closed behavior.
+- Keep the project engine selector explicit and accessible: `Pi` and `Istara`
+  describe routing, not different vector spaces.
+
 ## REFERENCES
 
 - **Active Governance**: `AGENTS.md`, Compass Forge, and `Tech.md`

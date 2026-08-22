@@ -136,3 +136,11 @@ precedence documented above.
 - `tests/pi_migration/legacy_allowlist.yaml` + `test_count_to_zero.py` —
   the ratchet
 - `tests/pi_production/` — per-wave contract suites (W1–W8)
+
+## Embedding and control invariants
+
+Chat controls affect generation only and must never select or mutate the
+embedding model. Both engines use the configured default embedding model;
+startup probes compare provider-reported model and dimension before switching
+is trusted. Provider responses and cached vectors share one typed validation
+boundary, so malformed cache entries are discarded and re-embedded.

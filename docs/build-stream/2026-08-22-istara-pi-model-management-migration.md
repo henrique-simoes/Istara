@@ -9,14 +9,14 @@ cf:
   spec: CF-SPEC-1
   tasks: [planning-only until owner approval; CF-SPEC-1 tasks generated at approval]
 phase: "Phase 2 — implementation"
-stage: S3-review
+stage: S2-execute
 status: in-progress
 blocked_on: null
 last:
-  agent: deepseek/deepseek-v4-flash-max
-  at: 2026-08-22T15:25:00Z
-  ledger: L-25
-next_action: "Owner approved MECE master plan (slot a); conductor may dispatch implementation."
+  agent: gpt-5.6-luna
+  at: 2026-08-22T15:32:00Z
+  ledger: L-26
+next_action: "Focused review of embeddings cache validation and documented control invariants."
 ```
 
 ## Plan overview
@@ -728,6 +728,12 @@ Decision: Replace multivac acceptance with the managed VPS (wildsync) following 
 Why: The vps skill is the maintained, audited deployment path for this host.
 
 ## Ledger
+
+### L-26 | 2026-08-22T15:32:00Z | S2-execute | gpt-5.6-luna | executor | implement <!-- bsc-ledger:ISTARA-PI-MODEL-MIGRATION-20260822-WAVE-embeddings-controls-IMPL -->
+Did: tightened batched embedding cache validation in `backend/app/core/embeddings.py`; added regression coverage and synchronized change matrix, checklist, Tech, and agentic-core docs.
+Result: malformed cached vectors are discarded and re-embedded through the shared validation boundary; ISTARA-PI-MODEL-MIGRATION-20260822-WAVE-embeddings-controls-IMPL.
+Verified: `PYTHONPATH=backend pytest -q tests/pi_production/test_w8_embeddings_gateway.py -q` passed; `python scripts/feature_docs.py --seed-missing --generate-site --check` passed; gate after reported no new failures (one complexity warning in the expanded existing W8 test file).
+Next: stage exit: criteria met; ready for focused review.
 
 ### L-14 | 2026-08-22T13:11:39Z | S2-execute | gpt-5.6-luna | executor | implement <!-- bsc-ledger:ISTARA-PI-MODEL-MIGRATION-20260822-WAVE-foundation-IMPL -->
 Did: Inspected the pinned Compass Forge task, CF-SPEC-1, lifecycle, and authoritative migration-plan artifacts. Made no code or test changes because the task payload is explicitly planning-only and the owner approval gate remains closed.

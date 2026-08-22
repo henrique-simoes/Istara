@@ -3215,3 +3215,11 @@ The April 30 stabilization pass aligned backend persistence, frontend surfaces, 
 ### Persona Integrity
 
 System agents must have complete persona directories with `CORE.md`, `SKILLS.md`, `PROTOCOLS.md`, and `MEMORY.md`. Piper/design-lead is a first-class system agent and must follow the same persona-file contract as the other built-in agents.
+
+### Model management and vector safety
+
+The Pi and Istara engines share one configured embedding model. The Pi gateway
+records endpoint/model identity and validates vectors; startup dimension probes
+fail closed on divergence. Batch cache hits use the same validation path as
+provider responses, so stale or malformed entries cannot contaminate retrieval.
+Chat temperature, thinking, and effort controls are generation controls only.
