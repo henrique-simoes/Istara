@@ -11,12 +11,12 @@ cf:
 phase: "Phase 0 — architecture and migration plan (resumed)"
 stage: S1-plan
 status: in-progress
-blocked_on: owner approval gate — consensus vote in progress: architect-b (deepseek/deepseek-v4-pro) voted slot a (ec3a76e7…, master-a.md) in round ef3baec72460f4802e2b; freeze + owner approval still pending; no implementation task released before owner approval
+blocked_on: owner approval gate — consensus vote round ef3baec72460f4802e2b complete (a=2: VOTE-B, VOTE-C; b=1: VOTE-A); winner candidate ec3a76e7… (master-a.md) pending freeze + owner approval; no implementation task released before owner approval
 last:
-  agent: deepseek/deepseek-v4-pro
-  at: 2026-08-22T12:37:59Z
-  ledger: L-11
-next_action: "Remaining vote slot(s) record plan_vote; conductor tallies round ef3baec72460f4802e2b, freezes the winning consensus plan, and stops at the owner approval gate before any implementation task is generated or released."
+  agent: deepseek/deepseek-v4-flash
+  at: 2026-08-22T12:42:10Z
+  ledger: L-13
+next_action: "Conductor freezes the winning consensus plan (candidate ec3a76e7…, master-a.md), records owner approval at the plan gate, then generates implementation tasks from CF-SPEC-1; no implementation task is released before owner approval."
 ```
 
 ## Plan overview
@@ -201,3 +201,9 @@ Did: istara-pi-model-migration-20260822-architect-c stage on task ISTARA-PI-MODE
 Result: task ISTARA-PI-MODEL-MIGRATION-20260822-VOTE-C finished; worktree head cd8aa76f.
 Verified: see Compass Forge evidence rows on ISTARA-PI-MODEL-MIGRATION-20260822-VOTE-C (command + self_report + stage_attribution).
 Next: conductor advances the pipeline on evidence.
+
+### L-13 | 2026-08-22T12:42:10Z | S1-plan | deepseek/deepseek-v4-flash | voter | vote <!-- bsc-ledger:ISTARA-PI-MODEL-MIGRATION-20260822-VOTE-A -->
+Did: Read both master-plan candidates supplied for vote round ef3baec72460f4802e2b — slot b (master-b.md, candidate 65a2de29…) and slot c (master-c.md, candidate a1619826…) via their immutable consensus snapshots (the work-order plan_file paths for b/c did not exist in the worktree; snapshots are the authoritative inputs). Spot-checked shared load-bearing facts at vote time: config.py:304 `pi_api_endpoints: list[PiApiEndpoint]`, config.py:315 `agentic_engine_default="legacy"`, pi-runtime pins 0.83.0 vs labs/pi-replacement 0.80.10, `tests/test_llm_servers.py` present (not `tests/llm_servers.py`) — all accurate in both candidates. No plan files edited; no code touched.
+Result: Voted slot b (candidate 65a2de29913abc7cbda40c9edb336a3634b50cd832c3955877674f374761a587). Rationale: B is the more complete MECE synthesis — explicit C10 unified three-layer retirement model (initiative S0–S5 × per-row state machine × PI_MODEL_MANAGEMENT_MODE registry), 13-item conflict table (C1–C13) vs C's 7, broadest per-wave verification command sets (compute_cases, pi_benchmark, w4_a2a_handlers, research-spine anchors), security reviewer checklist. C is nearly as strong (finer V1–V16 fact table, explicit doc paths, CF task-shape table). Round ef3baec72460f4802e2b tally: a=2 (VOTE-B, VOTE-C), b=1 (VOTE-A). ISTARA-PI-MODEL-MIGRATION-20260822-VOTE-A.
+Verified: read .compass-forge/conductor/consensus-snapshots/65a2de29… + a1619826… (both full plans, passed); `grep -n "agentic_engine_default|pi_api_endpoints" backend/app/config.py` -> lines 304/315 (passed); `grep @earendil-works/pi-agent-core|pi-ai pi-runtime/package.json labs/pi-replacement/package.json` -> 0.83.0 / 0.80.10 (passed); `ls tests/test_llm_servers.py tests/llm_servers.py` -> only tests/test_llm_servers.py exists (passed). CF evidence rows on ISTARA-PI-MODEL-MIGRATION-20260822-VOTE-A: command (id 146) + plan_vote (id 155) + self_report (id 156).
+Next: Conductor tallies round ef3baec72460f4802e2b (a=2, b=1), freezes the winning consensus plan, and stops at the owner approval gate before any implementation task is generated or released.
