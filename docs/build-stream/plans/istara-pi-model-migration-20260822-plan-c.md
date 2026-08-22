@@ -55,6 +55,16 @@ The current tree has at least these coupled surfaces:
 The inventory must also run Compass Forge impact/why/test-impact for each planned
 entry point and record inherited gate failures separately from new drift.
 
+Before implementation begins, reconcile this plan against all three immutable
+inputs (`carried-20260818-plan-a.md`, `carried-20260818-plan-b.md`, and
+`carried-20260818-plan-c.md`) and the current-tree inventory. A carried-forward
+claim is not an acceptance fact until the named file, symbol, lockfile, or
+runtime contract is present and its command has been run in this checkout.
+Where a draft names a historical surface (for example multivac or a former test
+path), retain it only as provenance and replace it with the current approved
+testing-branch/Dokploy target. This prevents stale operational assumptions from
+becoming migration scope.
+
 ## 3. Contracts and non-negotiable invariants
 
 ### 3.1 Canonical identity
@@ -250,8 +260,9 @@ compass-forge gate before --task <wave-task> --summary
 compass-forge gate after --task <wave-task> --summary
 ```
 
-Commands must be adapted to the actual available test paths; a nonexistent path
-is not a pass. Add migration-specific tests for idempotence, deterministic
+Commands must be resolved against the current tree before recording evidence;
+a nonexistent path is a failed verification, never a pass or a command to be
+silently skipped. Add migration-specific tests for idempotence, deterministic
 mapping, duplicate identity rejection, secret non-disclosure, snapshot restore,
 engine no-fallback, capability admission, and one-row usage accounting. Run
 `tests/pi_benchmark` only for the explicitly authorized bounded benchmark lane;
