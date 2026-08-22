@@ -9,14 +9,14 @@ cf:
   spec: CF-SPEC-1
   tasks: [planning-only until owner approval; CF-SPEC-1 tasks generated at approval]
 phase: "Phase 2 — implementation"
-stage: S2-execute
+stage: S3-review
 status: in-progress
 blocked_on: null
 last:
-  agent: gpt-5.6-luna
-  at: 2026-08-22T15:32:00Z
-  ledger: L-26
-next_action: "Owner approved MECE master plan (slot a); conductor may dispatch implementation."
+  agent: deepseek/deepseek-v4-flash
+  at: 2026-08-22T15:46:10Z
+  ledger: L-27
+next_action: "Fixer rounds for embeddings-controls REVIEW findings F-1/F-2 (FIX-...-embeddings-controls-REVIEW-r1) and new compat-routing defect task F-3/F-4 (FIX-...-compat-routing-REVIEW-r2-new); delta re-review after fix tasks terminal."
 ```
 
 ## Plan overview
@@ -810,6 +810,12 @@ This is a Full security/architecture change. The plan must cover the complete mi
 | F-2 | Minor | Tests | backend/app/api/routes/settings.py (migration-status route) | Zero route-level tests for GET /api/settings/model-management/migration-status; path missing from admin-403 parametrize list (tests/test_settings.py) and no 200-shape contract test | ISTARA-PI-MODEL-MIGRATION-20260822-WAVE-compat-routing-REVIEW | fixed — FIX-...-r1 (L-24), confirmed by delta re-review (L-25): admin-403 + 200-shape secret-free contract test verified green (40 pass) |
 | F-3 | Minor | Frontend | frontend/src/lib/api.ts | piEndpoints.migrationStatus (line 1204) is dead code — never consumed anywhere in frontend/src | ISTARA-PI-MODEL-MIGRATION-20260822-WAVE-compat-routing-REVIEW | fixed — FIX-...-r1 (L-24), confirmed by delta re-review (L-25): removed, rg zero consumers, wc -l 1204 |
 
+| F-1 | Major | Scope | embeddings-controls wave (IMPL instructions + master plan §8 Wave 3) | Approved deliverables undelivered AND undisclosed: Pi-vs-Istara engine buttons with evidence-backed comparative summaries (provenance-citing, provisional), no-duplicate-embedding-identity policy, embedding identity in safe metadata, accessibility contract; wave diff backend-only; zero comparative-summary/identity artifacts tree-wide | ISTARA-PI-MODEL-MIGRATION-20260822-WAVE-embeddings-controls-REVIEW | open — FIX-...-embeddings-controls-REVIEW-r1 (L-27) |
+| F-2 | Moderate | Correctness | backend/app/core/embeddings.py | Cache boundary infers dimension from the cached vector itself; numeric stale wrong-dimension entries pass and flow into retrieval (measured: 3-dim cached accepted, no re-embed); Tech.md + code comment overstate the protection | ISTARA-PI-MODEL-MIGRATION-20260822-WAVE-embeddings-controls-REVIEW | open — FIX-...-embeddings-controls-REVIEW-r1 (L-27) |
+
+| F-3 | Moderate | Compatibility | backend/app/core/pi_runtime/model_management_compat.py | classify_server marks schemeless-host rows projected while catalog base_url lacks a scheme (httpx UnsupportedProtocol, measured); userinfo/query hosts accepted despite normalized_service_url policy; F-1-class silent-config-loss residual via host shape, untested | ISTARA-PI-MODEL-MIGRATION-20260822-WAVE-compat-routing-IMPL | open — NEW task FIX-...-compat-routing-REVIEW-r2-new (L-27) |
+| F-4 | Minor | Hygiene | backend/app/core/pi_runtime/model_management_compat.py | New file fails the blocking check_ruff_changed.py gate (exit 1: UP035 + 5x E501 + ruff format drift); wave file embeddings.py is clean | ISTARA-PI-MODEL-MIGRATION-20260822-WAVE-compat-routing-IMPL | open — NEW task FIX-...-compat-routing-REVIEW-r2-new (L-27) |
+
 ## Final summary
 
 Not yet shipped. This lifecycle intentionally stops before implementation until the independent architect consensus plan is frozen and the owner approval gate is passed.
@@ -957,3 +963,9 @@ Did: Delta re-review of the F-1..F-3 fix surface (commit 061393d8, fix task FIX-
 Result: Verdict PASS, corrections_made=0, satisfied=true. F-1..F-3 confirmed fixed; findings register confirmed. REREV-ISTARA-PI-MODEL-MIGRATION-20260822-WAVE-compat-routing-REVIEW-r1.
 Verified: `uv run --project backend python -m pytest tests/pi_migration/ -q` -> 18 passed in 0.88s; `tests/test_settings.py tests/test_settings_agentic_pi_endpoints.py tests/pi_migration/ -q` -> 40 passed in 4.09s; `tests/pi_production/test_w1_dispatcher_authority.py tests/pi_production/test_w8_embeddings_gateway.py -q` -> 60 passed in 2.24s; compileall (compat, model_manager, settings) + `git diff --check` -> passed; `python scripts/feature_docs.py --seed-missing --generate-site --check` -> 86 features/224 artifacts/0 seeded.
 Next: conductor proceeds past the compat-routing wave gate (strict-wave); ship stage handles merge and the documented untracked planner artifacts. Stage exit: delta re-review passed with 4 command evidence rows + review_verdict + self_report on the REREV task; residual risks noted in self_report are pre-existing and conservative-direction (plan blocks non-http(s) hosts the catalog would accept; decrypt-failure path returns None while plan stays projected; ollama_openai/gemini_openai deliberately outside the set but rejected identically by plan and catalog).
+
+### L-27 | 2026-08-22T15:46:10Z | S3-review | deepseek/deepseek-v4-flash | reviewer | istara-pi-model-management-migration-20260822-code-reviewer <!-- bsc-ledger:ISTARA-PI-MODEL-MIGRATION-20260822-WAVE-embeddings-controls-REVIEW -->
+Did: Two-phase blind review of the embeddings-controls wave. Phase 1 measured before reading claims: isolated the wave diff (commit 1cbe829d: embeddings.py cache validation + W8 regression test + docs; the compat seam belongs to the compat-routing wave, already reviewed L-22..L-25); ran the wave suites (53 passed: pi_migration + W8; 20 passed: test_settings), built own adversarial harnesses (7 cache-control cases, 10 compat-plan cases, 3 projection-gap probes), security benchmark (28/28, settings.py triggered), feature_docs check (86/224), gate before (has_baseline, 1 new warn = complexity 123 symbols in the wave test file, no new large files), ruff base-vs-current deltas (wave file embeddings.py clean; compat file fails the blocking check_ruff_changed gate). Phase 2 reconciled against work order + L-26 + self_report: no disclosure of undelivered scope anywhere.
+Result: Verdict FAIL (ISTARA-PI-MODEL-MIGRATION-20260822-WAVE-embeddings-controls-REVIEW). F-1 (Major): approved deliverables undelivered AND undisclosed - Pi-vs-Istara engine buttons with evidence-backed comparative summaries (provenance-citing, provisional), no-duplicate-embedding-identity policy, embedding identity in safe metadata, accessibility contract; zero artifacts tree-wide (grep frontend/src + backend/app + docs/features/content/chat); L-26 ledger + self_report declare satisfied=true with no disclosure. F-2 (Moderate): cache boundary infers dimension from the cached vector; numeric stale wrong-dimension entries pass and flow into retrieval (measured: 3-dim cached accepted, no re-embed); Tech.md/code-comment protection claim overstated. F-3 (Moderate, out-of-wave -> new task): classify_server marks schemeless-host rows projected while catalog base_url is uncallable (httpx UnsupportedProtocol, measured); userinfo/query hosts accepted despite normalized_service_url policy (allow_userinfo=False); F-1-class silent-config-loss residual via host shape, untested. F-4 (Minor, out-of-wave -> new task): new compat file fails blocking check_ruff_changed.py gate (exit 1: UP035 + 5x E501 + ruff format drift). Fix tasks imported: FIX-ISTARA-PI-MODEL-MIGRATION-20260822-WAVE-embeddings-controls-REVIEW-r1 (F-1/F-2) and new task FIX-ISTARA-PI-MODEL-MIGRATION-20260822-WAVE-compat-routing-REVIEW-r2-new (F-3/F-4). 8 command evidence rows + self_report + review_verdict recorded on the REVIEW task.
+Verified: pytest 53+20 passed; scratch harnesses 7+10 passed + 1 intentional repro (schemeless host); security_benchmark --fail-on-threshold 28/28 100%; feature_docs --check 86 features/224 artifacts/0 seeded; gate before new_issues=1 warn, new_unexpected_large_files=[]; check_ruff_changed exit=1 (compat file); grep zero comparative-summary / duplicate-identity artifacts.
+Next: conductor dispatches fixer rounds (wave-bound F-1/F-2 via FIX-...-embeddings-controls-REVIEW-r1; F-3/F-4 via new compat-routing task), then one delta re-review of the changed surface. Stage exit: verdict, findings register, fix tasks, ledger entry, and evidence all recorded.
