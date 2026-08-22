@@ -16,7 +16,7 @@ last:
   agent: deepseek/deepseek-v4-flash
   at: 2026-08-22T16:43:48Z
   ledger: L-34
-next_action: "petals-audio REVIEW verdict: fail (F-1..F-4); fixer dispatches FIX-ISTARA-PI-MODEL-MIGRATION-20260822-WAVE-petals-audio-REVIEW-r1, then delta re-review."
+next_action: "Owner approved MECE master plan (slot a); conductor may dispatch implementation."
 ```
 
 ## Plan overview
