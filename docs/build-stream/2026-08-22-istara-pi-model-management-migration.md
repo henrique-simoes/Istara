@@ -16,7 +16,7 @@ last:
   agent: deepseek/deepseek-v4-flash
   at: 2026-08-22T14:07:36Z
   ledger: L-16
-next_action: "Fix r1-hygiene done (F-3/F-4 fixed, L-16); conductor dispatches delta re-review once r1-record (F-1/F-2) is terminal; watchdog to clear REMASTER-A-r2 stale claim."
+next_action: "Owner approved MECE master plan (slot a); conductor may dispatch implementation."
 ```
 
 ## Plan overview
