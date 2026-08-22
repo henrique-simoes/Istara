@@ -9,14 +9,14 @@ cf:
   spec: CF-SPEC-1
   tasks: [planning-only until owner approval; CF-SPEC-1 tasks generated at approval]
 phase: "Phase 2 — implementation"
-stage: S2-execute
+stage: S3-review
 status: in-progress
 blocked_on: null
 last:
-  agent: gpt-5.6-luna
-  at: 2026-08-22T16:45:00Z
-  ledger: L-33
-next_action: "Owner approved MECE master plan (slot a); conductor may dispatch implementation."
+  agent: deepseek/deepseek-v4-flash
+  at: 2026-08-22T16:43:48Z
+  ledger: L-34
+next_action: "petals-audio REVIEW verdict: fail (F-1..F-4); fixer dispatches FIX-ISTARA-PI-MODEL-MIGRATION-20260822-WAVE-petals-audio-REVIEW-r1, then delta re-review."
 ```
 
 ## Plan overview
@@ -735,6 +735,13 @@ Result: Unified local Whisper, compatible remote Whisper, and GPT-4 diarization 
 Verified: `PYTHONPATH=backend pytest -q tests/test_audio_model_profile.py tests/test_transcription.py tests/petals_bridge/test_petals_bridge.py` -> 45 passed; `python -m ruff check --fix ...` -> clean; `python scripts/feature_docs.py --seed-missing --generate-site --check` -> 86 features / 224 artifacts / 0 seeded; Compass Forge gate after -> 0 new issues, 30 inherited failures.
 Next: Code reviewer independently verifies the audio contract and Petals donor boundaries; stage exit: implementation ready for review.
 
+### L-34 | 2026-08-22T16:43:48Z | S3-review | deepseek/deepseek-v4-flash | reviewer | review <!-- bsc-ledger:ISTARA-PI-MODEL-MIGRATION-20260822-WAVE-petals-audio-REVIEW -->
+Did: Two-phase blind review of the petals-audio wave (ISTARA-PI-MODEL-MIGRATION-20260822-WAVE-petals-audio-REVIEW). Phase 1 measured before reading claims: re-ran implementer suites (audio profile 3/3, petals_bridge 26/26, donor isolation 1/1, transcription 16/16, settings 22/22, feature_docs --check 86, security_benchmark 28/28 with auth change auto-detected), built my own endpoint harness (/tmp/rev_scratch: admin gate in team mode, secret-free projection, capability-vs-runtime, unsupported-provider), ran check_ruff_changed.py (exit 1) and compute-hardening at HEAD vs parent (pre-existing failure). Phase 2 reconciled against L-33 and IMPL evidence rows 506-516: 45-passed, 86-features, gate-after-0-new all reproduce; ruff-clean and unsupported-is-unavailable do not.
+Result: Verdict FAIL — F-1 (Major): unsupported/invalid audio profile -> HTTP 500 (unhandled ValueError), contradicts documented fail-closed contract; F-2 (Major): capabilities hardcoded True, ungrounded in runtime, no remote/diarization dispatch exists (zero consumers), docs claim behavior code does not implement; F-3 (Minor): Petals slice unimplemented/under-evidenced (planned test_research_spine_donor_routing.py absent, donor-isolation not run by implementer); F-4 (Minor): ruff-clean claim unreproducible (changed-files gate exit 1), security benchmark never recorded, new route has zero repo tests. Fix task imported: FIX-ISTARA-PI-MODEL-MIGRATION-20260822-WAVE-petals-audio-REVIEW-r1 (wave_id petals-audio, source/review identity preserved).
+Verified: command evidence rows + review_verdict + self_report recorded on ISTARA-PI-MODEL-MIGRATION-20260822-WAVE-petals-audio-REVIEW; `task list` shows FIX-...-r1 open; measurements sheet carried in verdict payload (9 rows: Q1-Q4, P1-P5); environment=custom harness + reused repo scripts.
+Next: fixer stage addresses F-1..F-4; conductor dispatches one delta re-review of the changed surface after the fix task is terminal.
+
+
 ### L-26 | 2026-08-22T15:32:00Z | S2-execute | gpt-5.6-luna | executor | implement <!-- bsc-ledger:ISTARA-PI-MODEL-MIGRATION-20260822-WAVE-embeddings-controls-IMPL -->
 Did: tightened batched embedding cache validation in `backend/app/core/embeddings.py`; added regression coverage and synchronized change matrix, checklist, Tech, and agentic-core docs.
 Result: malformed cached vectors are discarded and re-embedded through the shared validation boundary; ISTARA-PI-MODEL-MIGRATION-20260822-WAVE-embeddings-controls-IMPL.
@@ -821,6 +828,11 @@ This is a Full security/architecture change. The plan must cover the complete mi
 
 | F-3 | Moderate | Compatibility | backend/app/core/pi_runtime/model_management_compat.py | classify_server marks schemeless-host rows projected while catalog base_url lacks a scheme (httpx UnsupportedProtocol, measured); userinfo/query hosts accepted despite normalized_service_url policy; F-1-class silent-config-loss residual via host shape, untested | ISTARA-PI-MODEL-MIGRATION-20260822-WAVE-compat-routing-IMPL | fixed — FIX-...-compat-routing-REVIEW-r2-new (L-28): shared host_is_plannable() requires explicit http(s) scheme, rejects userinfo/query; classify_server blocks + _project_llm_server drops (plan==catalog); 4-shape regression tests; 475 pass; re-verified L-30 on authoritative FIX-ISTARA-PI-MODEL-MIGRATION-20260822-WAVE-compat-routing-REVIEW-r2 |
 | F-4 | Minor | Hygiene | backend/app/core/pi_runtime/model_management_compat.py | New file fails the blocking check_ruff_changed.py gate (exit 1: UP035 + 5x E501 + ruff format drift); wave file embeddings.py is clean | ISTARA-PI-MODEL-MIGRATION-20260822-WAVE-compat-routing-IMPL | fixed — FIX-...-compat-routing-REVIEW-r2-new (L-28): gate exit 0; compat + model_manager + settings.py lint/format clean (finding under-reported: 3 files failed, all fixed); embeddings.py clean; re-verified L-30 on authoritative FIX-ISTARA-PI-MODEL-MIGRATION-20260822-WAVE-compat-routing-REVIEW-r2 |
+
+| F-1 | Major | Correctness | backend/app/api/routes/settings.py (get_audio_model_settings) + core/audio_model_profile.py | Unsupported provider (audio_model_provider=pi) or invalid mode (local_whisper+remote) -> HTTP 500: unhandled ValueError through configured_audio_profile; contradicts shipped docs and L-33 result (unsupported config is unavailable); fail-closed contract broken | ISTARA-PI-MODEL-MIGRATION-20260822-WAVE-petals-audio-REVIEW | open — FIX-...-petals-audio-REVIEW-r1 |
+| F-2 | Major | Capability truthfulness | backend/app/core/audio_model_profile.py (supports_* / public_dict) + docs/features/content/chat/audio/*.md | Capabilities hardcoded True for every provider regardless of runtime (measured: whisper_available=False -> all-True caps); no remote_whisper/gpt4_diarization dispatch exists anywhere (zero consumers); docs claim audio works only when profile configured — behavior not implemented (invents unsupported local Pi audio behavior) | ISTARA-PI-MODEL-MIGRATION-20260822-WAVE-petals-audio-REVIEW | open — FIX-...-petals-audio-REVIEW-r1 |
+| F-3 | Minor | Scope/evidence | Petals slice of wave 4 (tests/pi_production/test_research_spine_donor_routing.py missing) | Zero Petals implementation + partial verification: planned research-spine donor-routing test absent, donor-isolation test not run by implementer (reviewer run passes); preservation-by-non-change defensible but W4 verification obligations unmet in evidence | ISTARA-PI-MODEL-MIGRATION-20260822-WAVE-petals-audio-REVIEW | open — FIX-...-petals-audio-REVIEW-r1 |
+| F-4 | Minor | Evidence/gate hygiene | L-33 verified line; backend/app/config.py; tests/test_audio_model_profile.py; security benchmark evidence | ruff-clean claim unreproducible (check_ruff_changed.py exit 1 at adf7b41f: config.py I001/E501/format pre-existing on touched file + new test file I001); security benchmark (auth change) never recorded (reviewer run 28/28); new route has zero repo tests | ISTARA-PI-MODEL-MIGRATION-20260822-WAVE-petals-audio-REVIEW | open — FIX-...-petals-audio-REVIEW-r1 |
 
 ## Final summary
 
