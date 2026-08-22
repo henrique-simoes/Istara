@@ -9,13 +9,13 @@ cf:
   spec: CF-SPEC-1
   tasks: [planning-only until owner approval; CF-SPEC-1 tasks generated at approval]
 phase: "Phase 2 — implementation"
-stage: S3-review
+stage: S2-execute
 status: in-progress
 blocked_on: null
 last:
-  agent: deepseek/deepseek-v4-flash
-  at: 2026-08-22T14:59:51Z
-  ledger: L-21
+  agent: gpt-5.6-luna
+  at: 2026-08-22T15:12:00Z
+  ledger: L-22
 next_action: "Owner approved MECE master plan (slot a); conductor may dispatch implementation."
 ```
 
@@ -923,3 +923,9 @@ Did: Delta re-review of FIX-ISTARA-PI-MODEL-MIGRATION-20260822-WAVE-pi-catalog-s
 Result: Verdict PASS (review_verdict evidence id 357, self_report id 358 on REREV-r1). All four findings F-5..F-8 verified fixed; corrections_made 0; register rows F-5..F-8 confirmed as fixed.
 Verified: independent commands this round — `git rev-parse HEAD:.../istara-pi-model-management-migration-20260822-master-a.md` == 69ddf68e == 10a6fc1d; `uv run --project backend python -m pytest tests/pi_migration/test_version_provenance.py -q` -> 3 passed in 0.35s; `python3 scripts/feature_docs.py --seed-missing --generate-site --check` -> 86 features/224 artifacts/0 seeded; `git status --porcelain` -> no tracked deletions (only documented untracked planner artifacts remain).
 Next: conductor proceeds past this wave gate (strict-wave); ship stage decides fate of the documented untracked planner artifacts. Stage exit: delta re-review passed with evidence; satisfied=true.
+
+### L-22 | 2026-08-22T15:12:00Z | S2-execute | gpt-5.6-luna | executor | implement <!-- bsc-ledger:ISTARA-PI-MODEL-MIGRATION-20260822-WAVE-compat-routing-IMPL -->
+Did: Added secret-free reversible compatibility planner `backend/app/core/pi_runtime/model_management_compat.py`, admin migration-status route and frontend client seam, focused migration tests, and living feature documentation.
+Result: LLMServer rows classify deterministically as `projected`, `legacy_only`, or `blocked`; Pi endpoint IDs and source checksums are stable; source rows are retained and rollback readiness is explicit. ISTARA-PI-MODEL-MIGRATION-20260822-WAVE-compat-routing-IMPL.
+Verified: `uv run --project backend python -m pytest tests/pi_migration/test_model_management_migration.py tests/pi_production/test_w8_embeddings_gateway.py -q` -> 42 passed; `python3 -m compileall -q backend/app/core/pi_runtime/model_management_compat.py backend/app/api/routes/settings.py` -> passed; `python scripts/feature_docs.py --seed-missing --generate-site --check` -> 86 features/224 artifacts passed; `compass-forge gate after --task ISTARA-PI-MODEL-MIGRATION-20260822-WAVE-compat-routing-IMPL --summary` -> 30 inherited failures, 0 new failures, 0 actionable failures; `git diff --check` -> passed.
+Next: independent review of compatibility classification, status contract, and rollback evidence.
