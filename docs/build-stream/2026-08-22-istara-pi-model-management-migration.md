@@ -11,12 +11,12 @@ cf:
 phase: "Phase 0 — architecture and migration plan (resumed)"
 stage: S1-plan
 status: in-progress
-blocked_on: architect-b/c drafts
+blocked_on: architect-c draft
 last:
-  agent: deepseek/deepseek-v4-flash
-  at: 2026-08-22T11:49:51Z
-  ledger: L-2
-next_action: "Architect B and C produce their independent drafts, then the synthesis phase reconciles all three into one MECE master plan; freeze the plan and stop at the owner approval gate before any implementation task is released."
+  agent: deepseek/deepseek-v4-pro
+  at: 2026-08-22T11:55:00Z
+  ledger: L-3
+next_action: "Architect C draft pending; then the synthesis phase reconciles the three independent drafts into one MECE master plan; freeze the plan and stop at the owner approval gate before any implementation task is released."
 ```
 
 ## Plan overview
@@ -133,3 +133,8 @@ Result: Draft covers the six manifest waves, canonical identity model (model_id/
 Verified: `npm view` → 0.84.2 / 0.84.2 (passed); `python3 scripts/pi_migration_inventory.py --json` → 1 allowlisted permanent site, ratchet 0 (passed); `compass-forge gate before --task ISTARA-PI-MODEL-MIGRATION-20260822-PLAN-A --summary` → fail, 30 inherited, 0 new (passed as baseline); `uv run --project backend --with pytest --with pytest-asyncio python -m pytest --collect-only -q` on 6 key surfaces → 62 tests collected (passed).
 Next: Architect B and C independent drafts, then synthesis into one MECE master plan with coverage matrix; freeze plan and stop at the owner approval gate. No implementation before owner approval.
 
+### L-3 | 2026-08-22T11:55:00Z | S1-plan | deepseek/deepseek-v4-pro | architect | draft <!-- bsc-ledger:ISTARA-PI-MODEL-MIGRATION-20260822-PLAN-B -->
+Did: Independent architect-B draft written to `docs/build-stream/plans/istara-pi-model-management-migration-20260822-plan-b.md` (47 KB; no code touched). Independently re-verified the carried 2026-08-18 drafts A/B/C against the current tree and recorded corrections C1-C6: multivac retired -> managed VPS per vps skill (DEC-2); CF-SPEC-59/CF-787..805 graph superseded by CF-SPEC-1 + this run's six-wave manifest (foundation, pi-catalog-secrets, compat-routing, embeddings-controls, petals-audio, qa-docs-vps); gate baseline refreshed (30 failures / 0 new / 0 actionable, not the stale "80"); settings field corrected to `pi_api_endpoints: list[PiApiEndpoint]` (config.py:304); VPS strict single-workload profile vs 8-service docker-compose.yml reality check (dedicated single-service acceptance image or owner-approved connectivity exception, vps skill §decision-rule); environment prerequisites made explicit (`uv sync --extra dev`; `cd pi-runtime && npm ci` before worker-backed tests).
+Result: Draft covers canonical identity model (model_id/endpoint_id/credential_ref/embedding+audio profiles), resolver+transport boundary, engine precedence (per-call > header x-istara-agent-engine > project agentic_engine > settings.agentic_engine_default="legacy"; no silent fallback), reversible retirement state machine S0-S5 with feature-flag registry + deprecation/removal criteria, exact data/secret migration + rollback playbook, per-wave acceptance + commands for all six manifest waves, isolated VPS acceptance/cleanup runbook (vpsctl.py preflight -> inventory -> strict single-workload profile -> rendered-Compose preview -> deploy preserving prior identity -> verify-isolation -> verify-exposure -> firewall/DOCKER-USER evidence -> audit-anchor; no firewall change without owner approval), docs/manifests/security/test-ownership obligations, risk register R1-R11, Definition of Ready/Done + owner gates, coverage matrix vs carried drafts A/B/C. ISTARA-PI-MODEL-MIGRATION-20260822-PLAN-B.
+Verified: `compass-forge status/next --target <wt>` (project resolved, runtime rust, python_fallback false); `gate before --summary` (fail, 30 failures secret_flow/unexpected_large_files, new_failures=0, actionable=0, drift route=4 type=2, warnings=188); `npm view @earendil-works/pi-agent-core|pi-ai version` (0.84.2 both; tree pins 0.83.0/0.80.10); `uv run --project backend python -m pytest tests/pi_migration/test_count_to_zero.py -q` (3 passed); `python3 scripts/security_benchmark.py --fail-on-threshold` (28/28 pass, 100.0%); `python3 scripts/feature_docs.py --seed-missing --generate-site --check` (86 features green, 224 artifacts); boundary file sweep + `vpsctl.py --help` (subcommands preflight/inventory/audit-verify/audit-anchor/verify-isolation/verify-exposure/ssh; 3 test paths recorded as new obligations: test_research_spine_donor_routing.py, test_model_management_migration.py, test_model_management_rollback.py). CF evidence rows 28-36 on ISTARA-PI-MODEL-MIGRATION-20260822-PLAN-B.
+Next: Architect C draft, then consensus synthesis (A/B/C -> one MECE master plan -> vote); conductor freezes the plan and stops at the owner approval gate before any implementation task is released.
