@@ -245,10 +245,14 @@
   <p class="concept-line"><strong>Concepts:</strong> wcag</p>
 </header>
 <h3 id="model-availability">Model availability</h3>
-<p>Audio works only when an administrator has configured a supported audio profile.</p>
-<p>Local Whisper, compatible remote Whisper, and supported diarized providers are</p>
-<p>advertised separately. Unavailable providers do not silently route audio to a</p>
-<p>text model, and transcription output remains provisional until reviewed.</p>
+<p>Audio transcription is governed by an administrator-configured audio profile,</p>
+<p>and advertised capabilities are grounded in what the runtime can actually</p>
+<p>serve: local Whisper advertises support only when the local Whisper runtime is</p>
+<p>available; remote Whisper and diarized providers are configurable today but</p>
+<p>have no dispatch adapter yet, so they are advertised as unavailable until the</p>
+<p>adapter ships. An unconfigured, unsupported, or invalid profile is unavailable</p>
+<p>(typed 503, never a crash) and never falls back to a text model. Transcription</p>
+<p>output remains provisional until reviewed.</p>
 <h2 id="what-it-does">What It Does</h2>
 <p>The chat audio flow records user speech through the browser, sends it to the voice route, and returns transcription or voice-assisted chat input.</p>
 <h2 id="why-it-exists">Why It Exists</h2>

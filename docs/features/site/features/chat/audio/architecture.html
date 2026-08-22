@@ -249,8 +249,15 @@
 <p>uploads, microphone chat, and channel audio. Supported provider families are</p>
 <p><code>local_whisper</code>, compatible <code>remote_whisper</code>, and <code>gpt4_diarization</code>. Settings</p>
 <p>responses expose capabilities and an opaque credential reference only; secrets</p>
-<p>and provider URLs are never returned. An empty or unsupported profile is</p>
-<p>unavailable and does not fall back to a text/Pi model. Transcripts remain</p>
+<p>and provider URLs are never returned.</p>
+<p>Capability claims are grounded in the runtime/dispatch layer, never in</p>
+<p>configuration alone: <code>local_whisper</code> advertises support only when the local</p>
+<p>Whisper runtime (and its ffmpeg decode path) is actually available, and</p>
+<p><code>remote_whisper</code>/<code>gpt4_diarization</code> are configuration-only today — no dispatch</p>
+<p>adapter exists yet, so they are advertised as unavailable until an adapter</p>
+<p>lands. An empty, unsupported, or invalid profile is unavailable: the admin</p>
+<p>endpoint returns a typed 503 (<code>error.type=audio_profile_invalid</code>) rather than a</p>
+<p>crash, and no audio flow ever falls back to a text/Pi model. Transcripts remain</p>
 <p>provisional research source material until review gates pass.</p>
 <h2 id="implementation-summary">Implementation Summary</h2>
 <p>The chat audio flow records user speech through the browser, sends it to the voice route with the active <code>project_id</code>, and returns transcription or voice-assisted chat input only inside that project scope.</p>

@@ -1,14 +1,13 @@
 """Istara application configuration."""
 
 import os
-from pathlib import Path
 import re
 import subprocess
+from pathlib import Path
 from typing import Literal
 
 from pydantic import BaseModel, Field, field_validator
 from pydantic_settings import BaseSettings
-
 
 _BACKEND_DIR = Path(__file__).resolve().parent.parent
 _BACKEND_ENV_FILES = (
@@ -275,7 +274,9 @@ class Settings(BaseSettings):
     prompt_rag_top_k: int = 8  # Number of dynamic sections to retrieve
     self_evolution_enabled: bool = True  # Enable auto self-evolution scan
     self_evolution_auto_promote: bool = False  # Auto-promote (vs user approval)
-    autonomous_quality_agents_enabled: bool = False  # Dev/Admin QA loops only when explicitly enabled
+    autonomous_quality_agents_enabled: bool = (
+        False  # Dev/Admin QA loops only when explicitly enabled
+    )
 
     # Pi replacement candidate (off unless explicitly selected by env/header).
     pi_replacement_enabled: bool = False
@@ -360,9 +361,7 @@ class Settings(BaseSettings):
         configured_key = self.llm_fallback_api_key.strip()
         if configured_key:
             return configured_key
-        return _read_macos_keychain_secret(
-            self.llm_fallback_api_key_keychain_service.strip()
-        )
+        return _read_macos_keychain_secret(self.llm_fallback_api_key_keychain_service.strip())
 
     def resolve_pi_replacement_deepseek_api_key(self) -> str:
         """Return the Pi candidate DeepSeek key from the configured Keychain item."""

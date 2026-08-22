@@ -4,6 +4,7 @@ import logging
 from datetime import UTC, datetime, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -22,11 +23,32 @@ logger = logging.getLogger(__name__)
 
 @router.get("/settings/audio-model")
 async def get_audio_model_settings(request: Request):
-    """Return the governed audio profile without secrets or provider URLs."""
-    require_global_role(request, "admin")
-    from app.core.audio_model_profile import configured_audio_profile
+    """Return the governed audio profile without secrets or provider URLs.
 
-    profile = configured_audio_profile(settings)
+    Fail closed: an unsupported provider or an invalid profile combination is
+    a typed 503 (``error.type=audio_profile_invalid``) — never a crash and
+    never a silent text-model fallback, mirroring the petals bridge's
+    ``PetalsUnavailable`` contract.
+    """
+    require_global_role(request, "admin")
+    from app.core.audio_model_profile import audio_profile_error_reason, configured_audio_profile
+
+    try:
+        profile = configured_audio_profile(settings)
+    except ValueError as exc:
+        return JSONResponse(
+            status_code=503,
+            content={
+                "configured": False,
+                "profile": None,
+                "fallback": "unavailable",
+                "error": {
+                    "type": "audio_profile_invalid",
+                    "reason": audio_profile_error_reason(exc),
+                },
+                "research_data_status": "provisional_until_review",
+            },
+        )
     return {
         "configured": profile is not None,
         "profile": profile.public_dict() if profile else None,

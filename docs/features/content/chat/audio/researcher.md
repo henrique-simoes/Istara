@@ -17,10 +17,14 @@ compass: CF-SPEC-53 / CF-657
 
 ### Model availability
 
-Audio works only when an administrator has configured a supported audio profile.
-Local Whisper, compatible remote Whisper, and supported diarized providers are
-advertised separately. Unavailable providers do not silently route audio to a
-text model, and transcription output remains provisional until reviewed.
+Audio transcription is governed by an administrator-configured audio profile,
+and advertised capabilities are grounded in what the runtime can actually
+serve: local Whisper advertises support only when the local Whisper runtime is
+available; remote Whisper and diarized providers are configurable today but
+have no dispatch adapter yet, so they are advertised as unavailable until the
+adapter ships. An unconfigured, unsupported, or invalid profile is unavailable
+(typed 503, never a crash) and never falls back to a text model. Transcription
+output remains provisional until reviewed.
 
 ## What It Does
 

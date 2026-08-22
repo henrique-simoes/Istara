@@ -18,6 +18,19 @@ def reset_settings():
     original_runtime_personas_dir = settings.runtime_personas_dir
     original_strict_auto_routing = settings.strict_auto_routing
     original_active_probe = settings.llm_capability_active_probe_enabled
+    _audio_fields = (
+        "audio_model_provider",
+        "audio_model",
+        "audio_model_endpoint_id",
+        "audio_model_credential_ref",
+        "audio_model_mode",
+        "audio_model_languages",
+        "audio_model_diarization",
+        "audio_model_timestamps",
+        "audio_model_speaker_count",
+        "audio_model_review_threshold",
+    )
+    original_audio = {name: getattr(settings, name) for name in _audio_fields}
     yield
     settings.team_mode = original_team_mode
     settings.jwt_secret = original_jwt_secret
@@ -27,6 +40,8 @@ def reset_settings():
     settings.runtime_personas_dir = original_runtime_personas_dir
     settings.strict_auto_routing = original_strict_auto_routing
     settings.llm_capability_active_probe_enabled = original_active_probe
+    for name, value in original_audio.items():
+        setattr(settings, name, value)
 
 
 @pytest.fixture
@@ -212,6 +227,7 @@ async def test_settings_status_is_public_but_redacted_in_team_mode():
         "/api/settings/vector-health",
         "/api/settings/data-integrity",
         "/api/settings/model-management/migration-status",
+        "/api/settings/audio-model",
     ],
 )
 async def test_settings_infrastructure_metadata_requires_global_admin_in_team_mode(
@@ -348,3 +364,117 @@ async def test_data_integrity_quarantine_moves_orphans_and_invalid_pdfs(tmp_path
     assert result["moved"] >= 1
     assert not orphan_upload.exists()
     assert any(action["kind"] == "uploads" for action in result["actions"])
+
+
+@pytest.mark.asyncio
+async def test_settings_audio_model_unconfigured_fails_closed(auth_headers):
+    """GET /api/settings/audio-model with no profile -> 200 configured:false."""
+    await init_db()
+    settings.audio_model_provider = ""
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        response = await ac.get("/api/settings/audio-model", headers=auth_headers)
+    assert response.status_code == 200
+    body = response.json()
+    assert body["configured"] is False
+    assert body["profile"] is None
+    assert body["fallback"] == "unavailable"
+    assert body["research_data_status"] == "provisional_until_review"
+    assert "credential_ref" not in body
+
+
+@pytest.mark.asyncio
+async def test_settings_audio_model_valid_profile_is_secret_free(auth_headers, monkeypatch):
+    """Configured local profile -> 200 with runtime-grounded capabilities, no secrets."""
+    await init_db()
+    settings.audio_model_provider = "local_whisper"
+    settings.audio_model = "whisper-base"
+    settings.audio_model_endpoint_id = "audio-local"
+    settings.audio_model_credential_ref = "keychain://istara/whisper"
+    settings.audio_model_mode = "local"
+    settings.audio_model_speaker_count = "unknown"
+    monkeypatch.setattr(
+        "app.core.transcription.transcription_dependency_status",
+        lambda: {
+            "whisper_available": True,
+            "ffmpeg_available": True,
+            "ffmpeg_path": "/usr/bin/ffmpeg",
+        },
+    )
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        response = await ac.get("/api/settings/audio-model", headers=auth_headers)
+    assert response.status_code == 200
+    body = response.json()
+    assert body["configured"] is True
+    profile = body["profile"]
+    assert profile["provider"] == "local_whisper"
+    assert profile["model"] == "whisper-base"
+    assert profile["mode"] == "local"
+    assert profile["has_credential"] is True
+    assert profile["dispatch_available"] is True
+    assert profile["capabilities"] == {
+        "interview_audio": True, "microphone_chat": True, "channel_audio": True,
+    }
+    # Secret-free projection: credential references and URLs never surface.
+    assert "credential_ref" not in body
+    assert "credential_ref" not in profile
+    assert "keychain://" not in response.text
+
+
+@pytest.mark.asyncio
+async def test_settings_audio_model_capabilities_reflect_runtime(auth_headers, monkeypatch):
+    """Whisper unavailable at runtime -> local profile advertises no capabilities."""
+    await init_db()
+    settings.audio_model_provider = "local_whisper"
+    settings.audio_model = "whisper-base"
+    settings.audio_model_endpoint_id = "audio-local"
+    settings.audio_model_mode = "local"
+    monkeypatch.setattr(
+        "app.core.transcription.transcription_dependency_status",
+        lambda: {"whisper_available": False, "ffmpeg_available": False, "ffmpeg_path": None},
+    )
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        response = await ac.get("/api/settings/audio-model", headers=auth_headers)
+    assert response.status_code == 200
+    body = response.json()
+    assert body["configured"] is True
+    assert body["profile"]["dispatch_available"] is True
+    assert body["profile"]["capabilities"] == {
+        "interview_audio": False, "microphone_chat": False, "channel_audio": False,
+    }
+
+
+@pytest.mark.asyncio
+async def test_settings_audio_model_unsupported_provider_fails_closed(auth_headers):
+    """Unsupported provider -> typed 503 (never a crash, never a fallback)."""
+    await init_db()
+    settings.audio_model_provider = "pi"
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        response = await ac.get("/api/settings/audio-model", headers=auth_headers)
+    assert response.status_code == 503
+    body = response.json()
+    assert body["configured"] is False
+    assert body["profile"] is None
+    assert body["fallback"] == "unavailable"
+    assert body["error"] == {"type": "audio_profile_invalid", "reason": "unsupported_provider"}
+    assert body["research_data_status"] == "provisional_until_review"
+
+
+@pytest.mark.asyncio
+async def test_settings_audio_model_invalid_mode_fails_closed(auth_headers):
+    """local_whisper with remote mode -> typed 503."""
+    await init_db()
+    settings.audio_model_provider = "local_whisper"
+    settings.audio_model = "whisper-base"
+    settings.audio_model_endpoint_id = "audio-local"
+    settings.audio_model_mode = "remote"
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        response = await ac.get("/api/settings/audio-model", headers=auth_headers)
+    assert response.status_code == 503
+    body = response.json()
+    assert body["configured"] is False
+    assert body["error"] == {"type": "audio_profile_invalid", "reason": "local_whisper_remote_mode"}

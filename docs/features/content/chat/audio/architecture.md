@@ -21,8 +21,16 @@ Audio transcription uses one explicit `AudioModelProfile` contract for interview
 uploads, microphone chat, and channel audio. Supported provider families are
 `local_whisper`, compatible `remote_whisper`, and `gpt4_diarization`. Settings
 responses expose capabilities and an opaque credential reference only; secrets
-and provider URLs are never returned. An empty or unsupported profile is
-unavailable and does not fall back to a text/Pi model. Transcripts remain
+and provider URLs are never returned.
+
+Capability claims are grounded in the runtime/dispatch layer, never in
+configuration alone: `local_whisper` advertises support only when the local
+Whisper runtime (and its ffmpeg decode path) is actually available, and
+`remote_whisper`/`gpt4_diarization` are configuration-only today — no dispatch
+adapter exists yet, so they are advertised as unavailable until an adapter
+lands. An empty, unsupported, or invalid profile is unavailable: the admin
+endpoint returns a typed 503 (`error.type=audio_profile_invalid`) rather than a
+crash, and no audio flow ever falls back to a text/Pi model. Transcripts remain
 provisional research source material until review gates pass.
 
 ## Implementation Summary
