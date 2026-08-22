@@ -1201,4 +1201,6 @@ export const piEndpoints = {
     request<any>(`/api/settings/pi-endpoints/${encodeURIComponent(endpointId)}`, {
       method: "DELETE",
     }),
+  migrationStatus: () =>
+    request<any>("/api/settings/model-management/migration-status"),
 };

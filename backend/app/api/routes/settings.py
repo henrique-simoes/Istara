@@ -751,6 +751,19 @@ async def list_pi_endpoints(request: Request):
     }
 
 
+@router.get("/settings/model-management/migration-status")
+async def model_management_migration_status(request: Request, db: AsyncSession = Depends(get_db)):
+    """Expose secret-free compatibility progress and rollback readiness."""
+    require_global_role(request, "admin")
+    from sqlalchemy import select
+
+    from app.core.pi_runtime.model_management_compat import plan_migration
+    from app.models.llm_server import LLMServer
+
+    result = await db.execute(select(LLMServer).order_by(LLMServer.id))
+    return plan_migration(result.scalars().all())
+
+
 @router.post("/settings/pi-endpoints")
 async def add_pi_endpoint(data: PiEndpointRequest, request: Request):
     require_global_role(request, "admin")

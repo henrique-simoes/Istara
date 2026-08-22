@@ -142,3 +142,12 @@ project routes that call the model controls.
 
 - Update this page whenever the listed UI components, stores, routes, model behavior, permissions, or tests change.
 - Regenerate the site and machine manifests with `python scripts/feature_docs.py --seed-missing --generate-site --check`.
+
+## Model-management compatibility (2026-08-22)
+
+Legacy `LLMServer` rows are projected into the Pi canonical resolver through a
+secret-free, idempotent plan. Relay rows remain `legacy_only`; malformed or
+unsupported rows are `blocked`; no source row is deleted. Admins can inspect
+counts, source checksums, and rollback readiness at
+`GET /api/settings/model-management/migration-status`. Engine selection remains
+explicit and fail-closed: a Pi/provider failure never falls back to legacy.

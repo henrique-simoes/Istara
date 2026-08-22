@@ -381,6 +381,13 @@
 <li>Update this page whenever the listed UI components, stores, routes, model behavior, permissions, or tests change.</li>
 <li>Regenerate the site and machine manifests with <code>python scripts/feature_docs.py --seed-missing --generate-site --check</code>.</li>
 </ul>
+<h2 id="model-management-compatibility-2026-08-22">Model-management compatibility (2026-08-22)</h2>
+<p>Legacy <code>LLMServer</code> rows are projected into the Pi canonical resolver through a</p>
+<p>secret-free, idempotent plan. Relay rows remain <code>legacy_only</code>; malformed or</p>
+<p>unsupported rows are <code>blocked</code>; no source row is deleted. Admins can inspect</p>
+<p>counts, source checksums, and rollback readiness at</p>
+<p><code>GET /api/settings/model-management/migration-status</code>. Engine selection remains</p>
+<p>explicit and fail-closed: a Pi/provider failure never falls back to legacy.</p>
         </article>
         <aside class="toc-panel" aria-label="Page sections">
           <h2>On This Page</h2>
@@ -398,6 +405,7 @@
 <li class="toc-level-2"><a href="#related-concepts">Related Concepts</a></li>
 <li class="toc-level-2"><a href="#compass-evidence">Compass Evidence</a></li>
 <li class="toc-level-2"><a href="#when-to-update">When To Update</a></li>
+<li class="toc-level-2"><a href="#model-management-compatibility-2026-08-22">Model-management compatibility (2026-08-22)</a></li>
 </ul></nav>
         </aside>
       </div>
