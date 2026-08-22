@@ -12,11 +12,12 @@ phase: "Phase 0 — architecture and migration plan (resumed)"
 stage: S1-plan
 status: in-progress
 blocked_on: synthesis of A/B/C drafts into one MECE master plan (plan-c draft file present; PLAN-C task blocked after gpt-5.6-luna auth-failure retries)
+blocked_on: owner approval gate — slot-A MECE master plan synthesized from A/B/C (awaiting vote/freeze); no implementation task released before owner approval
 last:
-  agent: deepseek/deepseek-v4-pro
-  at: 2026-08-22T12:09:26Z
-  ledger: L-6
-next_action: "Slot-B draft repaired at the correct plan_file (REPLAN-B-r1); misnamed L-3 duplicate removed in the same commit. All three independent drafts (A repaired, B repaired, C) now exist at their authoritative paths; the synthesis phase reconciles them into one MECE master plan with a coverage matrix, freezes the plan, and stops at the owner approval gate before any implementation task is released."
+  agent: deepseek/deepseek-v4-flash
+  at: 2026-08-22T12:17:22Z
+  ledger: L-8
+next_action: "Vote round compares the master-plan candidates; conductor freezes the consensus plan and stops at the owner approval gate before any implementation task is generated or released."
 ```
 
 ## Plan overview
@@ -172,3 +173,8 @@ Did: istara-pi-model-migration-20260822-architect-c stage on task ISTARA-PI-MODE
 Result: task ISTARA-PI-MODEL-MIGRATION-20260822-MASTER-C finished; worktree head 15f26486.
 Verified: see Compass Forge evidence rows on ISTARA-PI-MODEL-MIGRATION-20260822-MASTER-C (command + self_report + stage_attribution).
 Next: conductor advances the pipeline on evidence.
+### L-8 | 2026-08-22T12:17:22Z | S1-plan | deepseek/deepseek-v4-flash | synthesizer | synthesize <!-- bsc-ledger:ISTARA-PI-MODEL-MIGRATION-20260822-MASTER-A -->
+Did: Synthesized the three immutable candidate snapshots (slot A `8b084d99…`, slot B `6ca5b84c…`, slot C `a7e88f54…`) into ONE MECE master plan at `docs/build-stream/plans/istara-pi-model-management-20260822-master-a.md` (610 lines, 17 sections). Reconciled overlaps/conflicts: the three drafts' retirement state vocabularies merged into two orthogonal axes (row/endpoint migration state + deployment stage S0–S5) plus the `PI_MODEL_MANAGEMENT_MODE` registry (§6); risk registers merged into R1–R13 (§14); rollback playbooks merged into one sequence (§7.4); per-wave verification command sets consolidated and re-verified against the tree (§8). Closed gaps: C8 (fresh disposable DBs + CF impact/why/test-impact packs before implementation), explicit transition rule with rollback-drill + owner gates (§6), VPS single-service reality check C5 (§9.3), vpsctl skill path C7 (§9), encryption context/version compatibility with standalone Pi. Coverage matrix §15 maps every section to its draft inputs.
+Result: Complete slot-A master-plan candidate covering the full task scope: legacy LLM Server storage/routing/encryption consumers, both agentic engines, Pi provider/model catalog + endpoint resolver, embeddings/vector-space invariant, Petals donor bridge, audio/transcription flows, UI contracts, testing-branch Docker QA, VPS deployment per the vps skill, reversible staged LLM Server retirement, exact data/secret migration + rollback, latest verified Pi dependency (0.84.2, re-verify at execution), no duplicate model identity semantics, feature-flag/deprecation/removal criteria, per-wave acceptance + commands, docs/manifest obligations, security benchmark coverage, isolated VPS deployment/cleanup. F-1 (multivac→VPS) bound into the plan (C1). No vote (sole synthesis round). ISTARA-PI-MODEL-MIGRATION-20260822-MASTER-A.
+Verified: `npm view` → 0.84.2 / 0.84.2 (passed; tree pins 0.83.0/0.80.10); `python3 scripts/pi_migration_inventory.py --json` → 1 allowlisted permanent site, ratchet 0 (passed); `compass-forge gate before --task …-MASTER-A --summary` → fail, 30 inherited, 0 new, 0 actionable (passed as baseline); `uv run --project backend python -m pytest tests/pi_migration/test_count_to_zero.py -q` → 3 passed; `python3 scripts/security_benchmark.py --fail-on-threshold` → 28/28, 100.0%, pass; `python3 scripts/feature_docs.py --seed-missing --generate-site --check` → 86 features, 224 artifacts, 0 seeded; `pytest --collect-only` six key surfaces → 62 tests collected; `python3 ~/.pi/agent/skills/vps/scripts/vpsctl.py --help` → 7 subcommands; 40/40 V13 anchors present, 3/3 V14 obligations absent (passed); `git diff --check` clean. CF evidence rows (command ×3 + self_report) on …-MASTER-A.
+Next: Vote round compares master-plan candidates; conductor freezes the consensus plan and stops at the owner approval gate before any implementation task is generated or released.
