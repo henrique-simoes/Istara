@@ -1,12 +1,26 @@
-# MECE Master Plan (Slot A synthesis) — Istara Pi Model-Management Migration, 2026-08-22 run
+# MECE Master Plan (Slot A synthesis, repaired) — Istara Pi Model-Management Migration, 2026-08-22 run
 
-**Task:** `ISTARA-PI-MODEL-MIGRATION-20260822-MASTER-A` (consensus master-plan synthesis a)
+**Task:** `ISTARA-PI-MODEL-MIGRATION-20260822-REMASTER-A-r1` (consensus master-plan repair a; supersedes the L-8 synthesis at the misnamed `istara-pi-model-management-20260822-master-a.md` path)
 **Role:** `istara-pi-model-management-20260822-architect-a` · **Spec:** `CF-SPEC-1`
 **Synthesis round:** `0bb85df72bbe6604f51a` · **Phase:** `synthesize` (sole synthesis round; no vote)
+**Plan file (authoritative):** `docs/build-stream/plans/istara-pi-model-management-migration-20260822-master-a.md` (this file)
 **Inputs (immutable snapshots):** slot-A draft `8b084d99…` (`…-plan-a.md`), slot-B repair `6ca5b84c…` (`…-plan-b.md`), slot-C draft `a7e88f54…` (`…-plan-c.md`); carried 2026-08-18 drafts `carried-20260818-plan-{a,b,c}.md` as historical inputs.
 **Branch:** `conductor/istara-pi-model-management-migration-20260822` (base `origin/testing@15260a78`). Everything stays on the testing lineage; never `main`.
 **Status:** Master-plan candidate. Implementation is prohibited until the frozen consensus plan passes the owner approval gate.
 
+> **Repair note (REMASTER-A-r1, 2026-08-22):** The L-8 slot-A synthesis was delivered
+> under the wrong filename (`istara-pi-model-management-20260822-master-a.md`) instead
+> of this task's authoritative `plan_file`
+> (`istara-pi-model-management-migration-20260822-master-a.md`), so the vote phase
+> could not consume it under the task's plan_file. This file is the repaired,
+> authoritative slot-A master-plan candidate: full content preserved from the L-8
+> synthesis, every current-tree fact re-verified at repair time (2026-08-22: Pi
+> latest 0.84.2/0.84.2; inventory ratchet 0 with 1 allowlisted permanent site; gate
+> before 30 inherited / 0 new; 62 tests collect across the six key surfaces; security
+> benchmark pass; feature-doc parity green 86 features/224 artifacts; `vpsctl.py` 7
+> subcommands at the vps skill path). The misnamed duplicate is removed in the same
+> commit.
+>
 > This is the sole synthesis round. The three independent drafts were read in full and
 > reconciled below — overlaps merged into single sections, conflicts resolved with a
 > stated rule, gaps closed, and every current-tree fact re-verified on 2026-08-22 at
@@ -51,7 +65,7 @@ surfaces the plan protects; nothing here is altered by the planning stage.
 | V3 | Engine precedence (dispatcher docstring + code): per-call `engine=` → header `x-istara-agent-engine` → project `agentic_engine` → `settings.agentic_engine_default` (**"legacy"**, config.py:315). No silent fallback either way | `backend/app/core/agentic/dispatcher.py` |
 | V4 | Pi endpoint config field is `pi_api_endpoints: list[PiApiEndpoint]` (config.py:304); `DEFAULT_ENDPOINT_ID="pi-deepseek-default"` (endpoints.py:23); `SECRET_CACHE_TTL_SECONDS=60.0` | read config/endpoints |
 | V5 | Count-to-zero ratchet green: **3 passed** | `uv run --project backend python -m pytest tests/pi_migration/test_count_to_zero.py -q` |
-| V6 | Gate baseline (this run): `gate before` = fail, **30 failures** (`secret_flow`, `unexpected_large_files`), **0 new, 0 actionable**, drift route=4/type=2, warnings=188, 1979 files scanned | `compass-forge gate before --task …-MASTER-A --summary` |
+| V6 | Gate baseline (this run): `gate before` = fail, **30 failures** (`secret_flow`, `unexpected_large_files`), **0 new, 0 actionable**, drift route=4/type=2, warnings=188, 1981 files scanned | `compass-forge gate before --task …-REMASTER-A-r1 --summary` |
 | V7 | Security benchmark baseline: **28/28 pass (100.0%)**, `status: pass`, version 2026.05.19, `triggered_paths: []` | `python3 scripts/security_benchmark.py --fail-on-threshold` |
 | V8 | Feature-doc parity green: **86 features, 224 site artifacts, 0 seeded** | `python3 scripts/feature_docs.py --seed-missing --generate-site --check` |
 | V9 | Ratchet inventory: **1 allowlisted permanent site** (`backend/app/core/agentic/legacy.py:599` — permanent legacy executor transport); `EXPECTED_PRODUCT_SITES = 0` | `python3 scripts/pi_migration_inventory.py --json` |
@@ -498,7 +512,7 @@ Until the owner accepts: preserve prior deployment identity/digest; re-deploy pr
 
 | Wave | This-run CF tasks (generated at approval) | Scope checklist (old-run anchors, reference only) |
 |---|---|---|
-| `foundation` | PLAN-A/B/C + REPLAN-A/B/C-r1 + MASTER-A synthesis + vote + owner gate (planning-only) | old CF-797/798/802/803 obligations folded into planning + later waves |
+| `foundation` | PLAN-A/B/C + REPLAN-A/B/C-r1 + REMASTER-A-r1 synthesis + vote + owner gate (planning-only) | old CF-797/798/802/803 obligations folded into planning + later waves |
 | `pi-catalog-secrets` | W1 implementation + reviewer + fixer | old CF-787/788/801 |
 | `compat-routing` | W2 implementation + reviewer + fixer | old CF-789/790/794/804 |
 | `embeddings-controls` | W3 implementation + reviewer + fixer | old CF-791/794/799 |
