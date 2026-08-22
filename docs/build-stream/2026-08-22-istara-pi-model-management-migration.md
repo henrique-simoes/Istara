@@ -16,7 +16,7 @@ last:
   agent: deepseek/deepseek-v4-flash
   at: 2026-08-22T17:07:12Z
   ledger: L-36
-next_action: "F-1..F-4 verified fixed and objective after-gate green (0 new issues) on FIX-ISTARA-PI-MODEL-MIGRATION-20260822-WAVE-petals-audio-REVIEW-r1; conductor dispatches delta re-review (REREV)."
+next_action: "Owner approved MECE master plan (slot a); conductor may dispatch implementation."
 ```
 
 ## Plan overview
