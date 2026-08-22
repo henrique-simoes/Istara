@@ -11,12 +11,12 @@ cf:
 phase: "Phase 2 — implementation"
 stage: S4-remediate
 status: in-progress
-blocked_on: "owner approval of VPS acceptance port contract (18443/tcp) + strict single-workload service definition (docs/build-stream/vps-acceptance/port-contract.md §5); approval routed 2026-08-22, hold re-asserted L-43"
+blocked_on: null
 last:
   agent: deepseek/deepseek-v4-flash
   at: 2026-08-22T18:23:46Z
   ledger: L-43
-next_action: "Delta re-review r2 of the F-4/F-5 hygiene fix surface (FIX-...-REVIEW-r1-hygiene); then ship (owner-gated). F-1 VPS deployment still pending owner approval of port-contract.md §5 (18443/tcp)."
+next_action: "Owner approved MECE master plan (slot a); conductor may dispatch implementation."
 ```
 
 ## Plan overview
