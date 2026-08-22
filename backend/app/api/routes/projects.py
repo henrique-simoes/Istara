@@ -2,10 +2,7 @@
 
 import logging
 import uuid
-from datetime import datetime, timezone
-
-logger = logging.getLogger(__name__)
-
+from datetime import UTC, datetime
 from pathlib import Path
 
 from fastapi import APIRouter, Depends, HTTPException, Request
@@ -26,6 +23,8 @@ from app.core.permissions import (
 from app.core.versioning import ProjectVersioning
 from app.models.database import get_db
 from app.models.project import Project, ProjectPhase
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -67,7 +66,9 @@ def _validate_watch_folder(folder_path: str) -> Path:
     try:
         home = Path.home().resolve()
         if resolved == home:
-            raise HTTPException(status_code=400, detail="Project folder cannot be the whole home directory.")
+            raise HTTPException(
+                status_code=400, detail="Project folder cannot be the whole home directory."
+            )
     except RuntimeError:
         pass
 
@@ -95,14 +96,10 @@ async def _stop_project_background_work(project_id: str, db: AsyncSession) -> di
         from app.core.autoresearch_engine import autoresearch_engine
 
         current = autoresearch_engine.get_current_experiment()
-        active_project_id = (
-            str(getattr(autoresearch_engine, "active_project_id", "") or "")
-            or (str(current.get("project_id") or "") if current else "")
+        active_project_id = str(getattr(autoresearch_engine, "active_project_id", "") or "") or (
+            str(current.get("project_id") or "") if current else ""
         )
-        if (
-            autoresearch_engine.is_running
-            and active_project_id == project_id
-        ):
+        if autoresearch_engine.is_running and active_project_id == project_id:
             autoresearch_engine.request_stop()
             stopped["autoresearch"] = True
     except Exception:
@@ -133,7 +130,9 @@ class ProjectCreate(BaseModel):
     def _strip_required_text(cls, value: str) -> str:
         return str(value or "").strip()
 
-    @field_validator("description", "company_context", "project_context", "guardrails", mode="before")
+    @field_validator(
+        "description", "company_context", "project_context", "guardrails", mode="before"
+    )
     @classmethod
     def _strip_optional_text(cls, value: str | None) -> str:
         return str(value or "").strip()
@@ -151,7 +150,9 @@ class ProjectUpdate(BaseModel):
     # W8 UX parity: per-project engine selector (None/"" = inherit global default).
     agentic_engine: str | None = Field(default=None, max_length=32)
 
-    @field_validator("name", "description", "company_context", "project_context", "guardrails", mode="before")
+    @field_validator(
+        "name", "description", "company_context", "project_context", "guardrails", mode="before"
+    )
     @classmethod
     def _strip_optional_text(cls, value: str | None) -> str | None:
         if value is None:
@@ -211,7 +212,11 @@ async def _project_response(
     db: AsyncSession,
 ) -> dict:
     subject = get_subject(request)
-    role = "project_admin" if is_global_admin(subject) else await get_project_role(db, project.id, subject.id)
+    role = (
+        "project_admin"
+        if is_global_admin(subject)
+        else await get_project_role(db, project.id, subject.id)
+    )
     return {
         "id": project.id,
         "name": project.name,
@@ -293,11 +298,15 @@ async def create_project(data: ProjectCreate, request: Request, db: AsyncSession
     # Initialize version control for the project
     versioning = ProjectVersioning(project_id)
     versioning.init()
-    versioning.save_json("project.json", {
-        "name": data.name,
-        "description": data.description,
-        "phase": data.phase.value,
-    }, message=f"Create project: {data.name}")
+    versioning.save_json(
+        "project.json",
+        {
+            "name": data.name,
+            "description": data.description,
+            "phase": data.phase.value,
+        },
+        message=f"Create project: {data.name}",
+    )
 
     # Auto-register file watcher for the project's upload directory
     upload_dir = str(Path(settings.upload_dir) / project_id)
@@ -335,14 +344,18 @@ async def update_project(
 
     # Version the change
     versioning = ProjectVersioning(project_id)
-    versioning.save_json("project.json", {
-        "name": project.name,
-        "description": project.description,
-        "phase": project.phase.value,
-        "company_context": project.company_context,
-        "project_context": project.project_context,
-        "guardrails": project.guardrails,
-    }, message=f"Update project: {', '.join(update_data.keys())}")
+    versioning.save_json(
+        "project.json",
+        {
+            "name": project.name,
+            "description": project.description,
+            "phase": project.phase.value,
+            "company_context": project.company_context,
+            "project_context": project.project_context,
+            "guardrails": project.guardrails,
+        },
+        message=f"Update project: {', '.join(update_data.keys())}",
+    )
 
     return await _project_response(project, request, db)
 
@@ -430,25 +443,23 @@ async def delete_project(project_id: str, request: Request, db: AsyncSession = D
     from app.models.session import ChatSession
 
     # Delete orphaned scheduled tasks for this project
-    await db.execute(
-        delete(ScheduledTask).where(ScheduledTask.project_id == project_id)
-    )
+    await db.execute(delete(ScheduledTask).where(ScheduledTask.project_id == project_id))
     # Delete orphaned DAG nodes for sessions belonging to this project
     session_ids_result = await db.execute(
         select(ChatSession.id).where(ChatSession.project_id == project_id)
     )
     session_ids = [row[0] for row in session_ids_result.fetchall()]
     if session_ids:
-        await db.execute(
-            delete(ContextDAGNode).where(ContextDAGNode.session_id.in_(session_ids))
-        )
+        await db.execute(delete(ContextDAGNode).where(ContextDAGNode.session_id.in_(session_ids)))
 
     await db.delete(project)
     await db.commit()
 
 
 @router.get("/projects/{project_id}/versions")
-async def get_project_versions(project_id: str, request: Request, limit: int = 50, db: AsyncSession = Depends(get_db)):
+async def get_project_versions(
+    project_id: str, request: Request, limit: int = 50, db: AsyncSession = Depends(get_db)
+):
     """Get version history for a project."""
     await get_visible_project_or_404(db, request, project_id)
     versioning = ProjectVersioning(project_id)
@@ -500,16 +511,22 @@ async def export_project(
         "project_context": project.project_context,
         "guardrails": project.guardrails,
         "created_at": project.created_at.isoformat() if project.created_at else None,
-        "exported_at": datetime.now(timezone.utc).isoformat(),
+        "exported_at": datetime.now(UTC).isoformat(),
     }
     (export_dir / "project.json").write_text(json.dumps(project_data, indent=2))
 
     # Export findings
-    from app.models.finding import Nugget, Fact, Insight, Recommendation
+    from app.models.finding import Fact, Insight, Nugget, Recommendation
+
     findings_dir = export_dir / "findings"
     findings_dir.mkdir(exist_ok=True)
 
-    for model, name in [(Nugget, "nuggets"), (Fact, "facts"), (Insight, "insights"), (Recommendation, "recommendations")]:
+    for model, name in [
+        (Nugget, "nuggets"),
+        (Fact, "facts"),
+        (Insight, "insights"),
+        (Recommendation, "recommendations"),
+    ]:
         res = await db.execute(select(model).where(model.project_id == project_id))
         items = res.scalars().all()
         data = []
@@ -523,6 +540,7 @@ async def export_project(
 
     # Export tasks
     from app.models.task import Task
+
     res = await db.execute(select(Task).where(Task.project_id == project_id))
     tasks = res.scalars().all()
     tasks_data = []
@@ -538,18 +556,26 @@ async def export_project(
 
     # Export chat messages
     from app.models.message import Message
+
     res = await db.execute(
         select(Message).where(Message.project_id == project_id).order_by(Message.created_at.asc())
     )
     messages = res.scalars().all()
     msgs_data = [
-        {"id": m.id, "role": m.role, "content": m.content, "agent_id": m.agent_id, "created_at": m.created_at.isoformat() if m.created_at else None}
+        {
+            "id": m.id,
+            "role": m.role,
+            "content": m.content,
+            "agent_id": m.agent_id,
+            "created_at": m.created_at.isoformat() if m.created_at else None,
+        }
         for m in messages
     ]
     (export_dir / "messages.json").write_text(json.dumps(msgs_data, indent=2))
 
     # Export documents
     from app.models.document import Document
+
     res = await db.execute(select(Document).where(Document.project_id == project_id))
     documents = res.scalars().all()
     docs_data = [d.to_dict() for d in documents]
@@ -557,6 +583,7 @@ async def export_project(
 
     # Export sessions
     from app.models.session import ChatSession
+
     res = await db.execute(select(ChatSession).where(ChatSession.project_id == project_id))
     chat_sessions = res.scalars().all()
     sessions_data = []
@@ -571,7 +598,8 @@ async def export_project(
     (export_dir / "sessions.json").write_text(json.dumps(sessions_data, indent=2))
 
     # Export codebooks
-    from app.models.codebook import Codebook, Code
+    from app.models.codebook import Codebook
+
     res = await db.execute(select(Codebook).where(Codebook.project_id == project_id))
     codebooks = res.scalars().all()
     codebooks_data = []
@@ -596,7 +624,7 @@ async def export_project(
     # Create a README
     readme = f"""# {project.name}
 
-Exported from Istara on {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M UTC')}
+Exported from Istara on {datetime.now(UTC).strftime("%Y-%m-%d %H:%M UTC")}
 
 ## Contents
 - `project.json` — Project metadata and context
@@ -633,16 +661,16 @@ class UpdateMemberRoleRequest(BaseModel):
 
 
 @router.get("/projects/{project_id}/members")
-async def list_project_members(project_id: str, request: Request, db: AsyncSession = Depends(get_db)):
+async def list_project_members(
+    project_id: str, request: Request, db: AsyncSession = Depends(get_db)
+):
     """List all members of a project with their last active time."""
     from app.models.project_member import ProjectMember
     from app.models.user import User
 
     await require_project_access(db, request, project_id, min_role="viewer")
 
-    result = await db.execute(
-        select(ProjectMember).where(ProjectMember.project_id == project_id)
-    )
+    result = await db.execute(select(ProjectMember).where(ProjectMember.project_id == project_id))
     members = result.scalars().all()
 
     # Enrich with user info
@@ -654,7 +682,9 @@ async def list_project_members(project_id: str, request: Request, db: AsyncSessi
         "members": [
             {
                 **m.to_dict(),
-                "username": users_by_id[m.user_id].username if m.user_id in users_by_id else "unknown",
+                "username": users_by_id[m.user_id].username
+                if m.user_id in users_by_id
+                else "unknown",
                 "email": users_by_id[m.user_id].email if m.user_id in users_by_id else "",
                 "display_name": getattr(users_by_id.get(m.user_id), "display_name", "") or "",
             }

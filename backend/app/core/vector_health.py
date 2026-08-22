@@ -87,6 +87,7 @@ async def check_embedding_dimensions(
     for pid in projects:
         try:
             import lancedb
+
             db_path = str(data_dir / pid)
             db = lancedb.connect(db_path)
             if "chunks" not in db.table_names():
