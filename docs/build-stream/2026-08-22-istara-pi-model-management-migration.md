@@ -703,6 +703,14 @@ This is the slot-A **MECE master-plan synthesis** — one complete plan, not a c
 
 ## Decision log
 
+<!-- consensus-winner-decision:ISTARA-PI-MODEL-MIGRATION-20260822-241fd9bafde32a2921e12fb79ffc33bbfdbacb29953e3e56ae5b7841a62748a5 -->
+DEC-consensus-winner | 2026-08-22 | S1-plan | conductor
+Context: three architect cross-votes completed
+Decision: slot a selected from ISTARA-PI-MODEL-MIGRATION-20260822-REMASTER-A-r1
+Why: votes={"a": {"candidate_id": "65a2de29913abc7cbda40c9edb336a3634b50cd832c3955877674f374761a587", "task": "ISTARA-PI-MODEL-MIGRATION-20260822-VOTE-A", "vote": "b"}, "b": {"candidate_id": "ec3a76e75d82e2d4495aec7d0c251f128fda99643de77b1180f56c00f9bc34ed", "task": "ISTARA-PI-MODEL-MIGRATION-20260822-VOTE-B", "vote": "a"}, "c": {"candidate_id": "ec3a76e75d82e2d4495aec7d0c251f128fda99643de77b1180f56c00f9bc34ed", "task": "ISTARA-PI-MODEL-MIGRATION-20260822-VOTE-C", "vote": "a"}}; tiebreak_used=False; plan_file=docs/build-stream/plans/istara-pi-model-migration-20260822-master-a.md
+
+
+
 ### DEC-1 | 2026-08-22 | S0-frame | owner
 
 Context: The prior 2026-08-18 run paused on a Conductor finalization hold; Skills and Compass Forge were subsequently fixed, and the native Rust Compass Forge cutover is now active.
