@@ -195,3 +195,9 @@ Did: Read both master-plan candidates supplied for vote round ef3baec72460f4802e
 Result: Voted slot a (candidate ec3a76e75d82e2d4495aec7d0c251f128fda99643de77b1180f56c00f9bc34ed). Rationale: A models retirement as three orthogonal axes (per-row migration state incl. canary_verified + rollback_ready→legacy_compat × S0–S5 deployment stage × PI_MODEL_MANAGEMENT_MODE registry) vs C's single linear S0–S5; A adds C8 (fresh disposable DBs + mandatory CF impact/why/test-impact packs), 17 verified facts (V1–V17) vs 16, risk register R1–R13 vs R1–R11, surface-by-surface test-ownership matrix, 8-item removal criteria, and a security-benchmark/review checklist — while retaining everything C covers (per-wave verification commands, VPS strict-profile acceptance, coverage matrix, owner gates). ISTARA-PI-MODEL-MIGRATION-20260822-VOTE-B.
 Verified: `shasum -a 256` snapshots + plan files → a=10096535…, c=85eae608… (both match consensus.json); `diff -q` plan vs snapshot → identical for both (A MATCH, C MATCH); `wc -l` 624/716. CF evidence rows: command (id 138) + plan_vote (id 139) + self_report (id 140) on ISTARA-PI-MODEL-MIGRATION-20260822-VOTE-B.
 Next: Remaining vote slot(s) record plan_vote; conductor tallies the round, freezes the winning consensus plan, and stops at the owner approval gate before any implementation task is generated or released.
+
+### L-12 | 2026-08-22T12:41:02Z | S1-plan | gpt-5.6-luna | planner | istara-pi-model-migration-20260822-architect-c <!-- bsc-ledger:ISTARA-PI-MODEL-MIGRATION-20260822-VOTE-C -->
+Did: istara-pi-model-migration-20260822-architect-c stage on task ISTARA-PI-MODEL-MIGRATION-20260822-VOTE-C (harness fallback entry; the model did not append one).
+Result: task ISTARA-PI-MODEL-MIGRATION-20260822-VOTE-C finished; worktree head cd8aa76f.
+Verified: see Compass Forge evidence rows on ISTARA-PI-MODEL-MIGRATION-20260822-VOTE-C (command + self_report + stage_attribution).
+Next: conductor advances the pipeline on evidence.
