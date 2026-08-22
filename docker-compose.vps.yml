@@ -62,7 +62,7 @@ services:
       start_period: 60s
     security_opt: [no-new-privileges:true]
     read_only: true
-    tmpfs: ["/tmp:noexec,nosuid,size=100M", "/app/data:size=512M"]
+    tmpfs: ["/tmp:noexec,nosuid,size=100M", "/app/data:size=512M,uid=100,gid=100,mode=0750"]
     cap_drop: [ALL]
     cap_add: [CHOWN, SETUID, SETGID, DAC_OVERRIDE, NET_BIND_SERVICE]
     pids_limit: 200
