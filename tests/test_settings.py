@@ -136,6 +136,56 @@ async def test_strict_routing_toggle_updates_runtime_and_persists(auth_headers, 
 
 
 @pytest.mark.asyncio
+async def test_model_management_migration_status_admin_plan_shape_no_secrets(auth_headers):
+    """GET /api/settings/model-management/migration-status: dry-run plan shape,
+    counts, rollback readiness, and never any secret material."""
+    import json
+    import uuid
+
+    from app.core.field_encryption import encrypt_field
+    from app.models.database import async_session
+    from app.models.llm_server import LLMServer
+    from sqlalchemy import select
+
+    await init_db()
+    row_id = f"mig-shape-{uuid.uuid4().hex[:8]}"
+    async with async_session() as db:
+        # The settings test DB file persists across runs; sweep stale rows from
+        # earlier runs so ordering and counts stay deterministic.
+        stale = list((await db.execute(select(LLMServer).where(LLMServer.id.like("mig-shape-%")))).scalars())
+        for row in stale:
+            await db.delete(row)
+        db.add(LLMServer(
+            id=row_id,
+            name="Compat shape",
+            provider_type="openai_compat",
+            host="https://llm.invalid/v1",
+            api_key=encrypt_field("super-secret-key-value"),
+            is_local=False,
+            is_relay=False,
+        ))
+        await db.commit()
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        response = await ac.get(
+            "/api/settings/model-management/migration-status", headers=auth_headers
+        )
+    assert response.status_code == 200
+    body = response.json()
+    assert body["mode"] == "dry_run"
+    assert body["delete_source_rows"] is False
+    assert set(body["counts"]) == {"projected", "legacy_only", "blocked"}
+    assert body["rollback"]["available"] is True
+    assert body["rollback"]["source_rows_retained"] is True
+    assert body["mappings"][0]["source_id"] == row_id
+    assert body["mappings"][0]["canonical_endpoint_id"] == f"pi-llm-{row_id}"
+    # Secret-free contract: the encrypted API key never surfaces, and no
+    # mapping/checksum material can contain it.
+    assert "api_key" not in body
+    assert "super-secret-key-value" not in json.dumps(body)
+
+
+@pytest.mark.asyncio
 async def test_settings_status_is_public_but_redacted_in_team_mode():
     """Settings status stays public for UI health checks but omits sensitive details."""
     await init_db()
@@ -161,6 +211,7 @@ async def test_settings_status_is_public_but_redacted_in_team_mode():
         "/api/settings/integrations-status",
         "/api/settings/vector-health",
         "/api/settings/data-integrity",
+        "/api/settings/model-management/migration-status",
     ],
 )
 async def test_settings_infrastructure_metadata_requires_global_admin_in_team_mode(

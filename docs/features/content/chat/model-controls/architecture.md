@@ -147,7 +147,11 @@ project routes that call the model controls.
 
 Legacy `LLMServer` rows are projected into the Pi canonical resolver through a
 secret-free, idempotent plan. Relay rows remain `legacy_only`; malformed or
-unsupported rows are `blocked`; no source row is deleted. Admins can inspect
-counts, source checksums, and rollback readiness at
+unsupported rows are `blocked`; no source row is deleted. The projected provider
+set (ollama, lmstudio, openai_compat, anthropic, anthropic_compat, vllm, sglang,
+llamacpp, mlx) is the single source of truth shared with the Pi catalog
+projection (`PiModelManager._project_llm_server`), so a row the plan marks
+`projected` always reaches the catalog and a `blocked` row never does. Admins can
+inspect counts, source checksums, and rollback readiness at
 `GET /api/settings/model-management/migration-status`. Engine selection remains
 explicit and fail-closed: a Pi/provider failure never falls back to legacy.

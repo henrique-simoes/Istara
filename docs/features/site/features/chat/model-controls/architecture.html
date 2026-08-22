@@ -384,8 +384,12 @@
 <h2 id="model-management-compatibility-2026-08-22">Model-management compatibility (2026-08-22)</h2>
 <p>Legacy <code>LLMServer</code> rows are projected into the Pi canonical resolver through a</p>
 <p>secret-free, idempotent plan. Relay rows remain <code>legacy_only</code>; malformed or</p>
-<p>unsupported rows are <code>blocked</code>; no source row is deleted. Admins can inspect</p>
-<p>counts, source checksums, and rollback readiness at</p>
+<p>unsupported rows are <code>blocked</code>; no source row is deleted. The projected provider</p>
+<p>set (ollama, lmstudio, openai_compat, anthropic, anthropic_compat, vllm, sglang,</p>
+<p>llamacpp, mlx) is the single source of truth shared with the Pi catalog</p>
+<p>projection (<code>PiModelManager._project_llm_server</code>), so a row the plan marks</p>
+<p><code>projected</code> always reaches the catalog and a <code>blocked</code> row never does. Admins can</p>
+<p>inspect counts, source checksums, and rollback readiness at</p>
 <p><code>GET /api/settings/model-management/migration-status</code>. Engine selection remains</p>
 <p>explicit and fail-closed: a Pi/provider failure never falls back to legacy.</p>
         </article>

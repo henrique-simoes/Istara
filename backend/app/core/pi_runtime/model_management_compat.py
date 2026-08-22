@@ -13,7 +13,24 @@ from dataclasses import asdict, dataclass
 from typing import Any, Iterable
 from urllib.parse import urlparse
 
-SUPPORTED_PROVIDERS = {"ollama", "lmstudio", "openai_compat", "vllm", "sglang", "llamacpp", "mlx", "anthropic"}
+# Providers the Pi catalog projection accepts. This set MUST stay in lockstep
+# with PiModelManager._project_llm_server (model_manager.py) — the manager
+# imports this constant, and a test asserts plan state == catalog projection
+# outcome for every provider. vllm/sglang/llamacpp/mlx are OpenAI-compatible
+# server types (model_capabilities.OPENAI_COMPATIBLE_PROVIDER_TYPES, also the
+# provider vocabulary of the legacy LLM-server API); anthropic_compat projects
+# through the Anthropic-compatible provider kind.
+SUPPORTED_PROVIDERS = frozenset({
+    "ollama",
+    "lmstudio",
+    "openai_compat",
+    "anthropic",
+    "anthropic_compat",
+    "vllm",
+    "sglang",
+    "llamacpp",
+    "mlx",
+})
 
 
 @dataclass(frozen=True)

@@ -31,6 +31,7 @@ from .endpoints import (
     PiEndpointResolver,
     ResolvedPiEndpoint,
 )
+from .model_management_compat import SUPPORTED_PROVIDERS
 
 logger = logging.getLogger(__name__)
 
@@ -229,7 +230,12 @@ class PiModelManager:
         if getattr(row, "is_relay", False):
             return None
         provider_type = (getattr(row, "provider_type", "") or "").strip().lower()
-        if provider_type not in {"ollama", "lmstudio", "openai_compat", "anthropic_compat", "anthropic"}:
+        # Single source of truth with the compatibility plan: rows the plan
+        # marks `projected` MUST reach the catalog, and rows it marks `blocked`
+        # MUST be dropped here (silent config loss at the migration gate
+        # otherwise). vllm/sglang/llamacpp/mlx are OpenAI-compatible server
+        # types and project through the openai_compat provider kind.
+        if provider_type not in SUPPORTED_PROVIDERS:
             return None
         try:
             capabilities = json.loads(getattr(row, "capabilities", "") or "{}")
