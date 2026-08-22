@@ -11,12 +11,12 @@ cf:
 phase: "Phase 0 — architecture and migration plan (resumed)"
 stage: S1-plan
 status: in-progress
-blocked_on: owner approval gate — slot-A MECE master plan repaired to its authoritative plan_file (REMASTER-A-r1); vote/freeze pending; no implementation task released before owner approval
+blocked_on: owner approval gate — consensus vote in progress: architect-b (deepseek/deepseek-v4-pro) voted slot a (ec3a76e7…, master-a.md) in round ef3baec72460f4802e2b; freeze + owner approval still pending; no implementation task released before owner approval
 last:
-  agent: deepseek/deepseek-v4-flash
-  at: 2026-08-22T12:24:25Z
-  ledger: L-10
-next_action: "Vote round compares the master-plan candidates; conductor freezes the consensus plan and stops at the owner approval gate before any implementation task is generated or released."
+  agent: deepseek/deepseek-v4-pro
+  at: 2026-08-22T12:37:59Z
+  ledger: L-11
+next_action: "Remaining vote slot(s) record plan_vote; conductor tallies round ef3baec72460f4802e2b, freezes the winning consensus plan, and stops at the owner approval gate before any implementation task is generated or released."
 ```
 
 ## Plan overview
@@ -190,3 +190,8 @@ Result: Authoritative slot-A MECE master-plan candidate exists at the path the v
 Verified: `npm view` → 0.84.2 / 0.84.2 (passed); `python3 scripts/pi_migration_inventory.py --json` → 1 allowlisted permanent site, ratchet 0 (passed); `compass-forge gate before --task …-REMASTER-A-r1 --summary` → fail, 30 inherited, 0 new, 0 actionable, drift route=4/type=2, warnings=188 (passed as baseline); `pytest --collect-only` six key surfaces → 62 tests collected (passed); `python3 scripts/security_benchmark.py --fail-on-threshold` → pass (passed); `python3 scripts/feature_docs.py --seed-missing --generate-site --check` → 86 features, 224 artifacts, 0 seeded (passed); `python3 ~/.pi/agent/skills/vps/scripts/vpsctl.py --help` → 7 subcommands (passed); `git diff --check` clean. CF evidence rows (command ×4 + self_report) on …-REMASTER-A-r1.
 Next: Vote round compares the master-plan candidates (a repaired, b, c); conductor freezes the consensus plan and stops at the owner approval gate before any implementation task is generated or released.
 
+### L-11 | 2026-08-22T12:37:59Z | S1-plan | deepseek/deepseek-v4-pro | voter | vote <!-- bsc-ledger:ISTARA-PI-MODEL-MIGRATION-20260822-VOTE-B -->
+Did: Read both master-plan candidates supplied for vote round ef3baec72460f4802e2b — slot a (`docs/build-stream/plans/istara-pi-model-migration-20260822-master-a.md`, candidate ec3a76e7…, 624 lines) and slot c (`docs/build-stream/plans/istara-pi-model-migration-20260822-master-c.md`, candidate a1619826…, 716 lines) — and verified each plan_file is byte-identical to its frozen consensus snapshot. No plan files edited; no code touched.
+Result: Voted slot a (candidate ec3a76e75d82e2d4495aec7d0c251f128fda99643de77b1180f56c00f9bc34ed). Rationale: A models retirement as three orthogonal axes (per-row migration state incl. canary_verified + rollback_ready→legacy_compat × S0–S5 deployment stage × PI_MODEL_MANAGEMENT_MODE registry) vs C's single linear S0–S5; A adds C8 (fresh disposable DBs + mandatory CF impact/why/test-impact packs), 17 verified facts (V1–V17) vs 16, risk register R1–R13 vs R1–R11, surface-by-surface test-ownership matrix, 8-item removal criteria, and a security-benchmark/review checklist — while retaining everything C covers (per-wave verification commands, VPS strict-profile acceptance, coverage matrix, owner gates). ISTARA-PI-MODEL-MIGRATION-20260822-VOTE-B.
+Verified: `shasum -a 256` snapshots + plan files → a=10096535…, c=85eae608… (both match consensus.json); `diff -q` plan vs snapshot → identical for both (A MATCH, C MATCH); `wc -l` 624/716. CF evidence rows: command (id 138) + plan_vote (id 139) + self_report (id 140) on ISTARA-PI-MODEL-MIGRATION-20260822-VOTE-B.
+Next: Remaining vote slot(s) record plan_vote; conductor tallies the round, freezes the winning consensus plan, and stops at the owner approval gate before any implementation task is generated or released.
