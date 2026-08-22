@@ -9,13 +9,13 @@ cf:
   spec: CF-SPEC-1
   tasks: [planning-only until owner approval; CF-SPEC-1 tasks generated at approval]
 phase: "Phase 2 — implementation"
-stage: S3-review
+stage: S2-execute
 status: in-progress
 blocked_on: null
 last:
-  agent: deepseek/deepseek-v4-flash
-  at: 2026-08-22T16:27:09Z
-  ledger: L-32
+  agent: gpt-5.6-luna
+  at: 2026-08-22T16:45:00Z
+  ledger: L-33
 next_action: "Owner approved MECE master plan (slot a); conductor may dispatch implementation."
 ```
 
@@ -728,6 +728,12 @@ Decision: Replace multivac acceptance with the managed VPS (wildsync) following 
 Why: The vps skill is the maintained, audited deployment path for this host.
 
 ## Ledger
+
+### L-33 | 2026-08-22T16:45:00Z | S2-execute | gpt-5.6-luna | executor | implement <!-- bsc-ledger:ISTARA-PI-MODEL-MIGRATION-20260822-WAVE-petals-audio-IMPL -->
+Did: Added the secret-safe `AudioModelProfile` contract and configuration fields, admin `/settings/audio-model` projection, focused contract tests, and living audio/research-spine documentation. Preserved the existing Petals bridge unchanged.
+Result: Unified local Whisper, compatible remote Whisper, and GPT-4 diarization profiles are explicit; unsupported or empty configuration is unavailable; credential values and URLs are excluded from the public projection. ISTARA-PI-MODEL-MIGRATION-20260822-WAVE-petals-audio-IMPL.
+Verified: `PYTHONPATH=backend pytest -q tests/test_audio_model_profile.py tests/test_transcription.py tests/petals_bridge/test_petals_bridge.py` -> 45 passed; `python -m ruff check --fix ...` -> clean; `python scripts/feature_docs.py --seed-missing --generate-site --check` -> 86 features / 224 artifacts / 0 seeded; Compass Forge gate after -> 0 new issues, 30 inherited failures.
+Next: Code reviewer independently verifies the audio contract and Petals donor boundaries; stage exit: implementation ready for review.
 
 ### L-26 | 2026-08-22T15:32:00Z | S2-execute | gpt-5.6-luna | executor | implement <!-- bsc-ledger:ISTARA-PI-MODEL-MIGRATION-20260822-WAVE-embeddings-controls-IMPL -->
 Did: tightened batched embedding cache validation in `backend/app/core/embeddings.py`; added regression coverage and synchronized change matrix, checklist, Tech, and agentic-core docs.
