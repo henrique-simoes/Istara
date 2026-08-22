@@ -9,13 +9,13 @@ cf:
   spec: CF-SPEC-1
   tasks: [planning-only until owner approval; CF-SPEC-1 tasks generated at approval]
 phase: "Phase 2 — implementation"
-stage: S3-review
+stage: S2-execute
 status: in-progress
 blocked_on: null
 last:
-  agent: deepseek/deepseek-v4-flash
-  at: 2026-08-22T17:16:51Z
-  ledger: L-37
+  agent: gpt-5.6-luna
+  at: 2026-08-22T17:23:00Z
+  ledger: L-33
 next_action: "Owner approved MECE master plan (slot a); conductor may dispatch implementation."
 ```
 
@@ -1020,6 +1020,12 @@ F-2 (Moderate, correctness/doc-claim) — cache hits are now validated against t
 Result: F-1 open->fixed, F-2 open->fixed (findings register). FIX-ISTARA-PI-MODEL-MIGRATION-20260822-WAVE-embeddings-controls-REVIEW-r1.
 Verified: `uv run --project backend python -m pytest tests/pi_production/test_w8_embeddings_gateway.py tests/pi_production/test_w8_ux_parity.py -q` -> 49 passed; wave suites (w6_engine_selection+w1_agentic_contract+pi_migration 109, settings+rbac+dispatcher 67, rag_resilience+w6_autoresearch 59, files+transcription+research_validity 54, w1_agentic_contract 25, feature_docs+obligations+pi_migration 43, project_scope+tasks 51) all green; frontend `npx tsc --noEmit` clean, `npx vitest run` 14 passed, `npm run build` OK, eslint clean; `node --check tests/simulation/scenarios/79-engine-selector.mjs` OK; `python3 scripts/feature_docs.py --seed-missing --generate-site --check` -> 86/224/0; `python3 scripts/security_benchmark.py --fail-on-threshold` -> 28/28 100.0%; compass-forge gate before/after -> 30 inherited / 0 new / 0 actionable; `git diff --check` clean.
 Next: conductor dispatches delta re-review (REREV) of the changed surface; ship stage handles merge. Stage exit: F-1/F-2 flipped to fixed with command evidence; satisfied=true.
+
+### L-33 | 2026-08-22T17:23:00Z | S2-execute | gpt-5.6-luna | executor | implement <!-- bsc-ledger:ISTARA-PI-MODEL-MIGRATION-20260822-WAVE-qa-docs-vps-IMPL -->
+Did: Verified the existing testing-branch QA integration slice: deterministic feature-doc generation, QA Compose profile contracts, provider-contract coverage, provisional artifact/reset guards, governance checks, and security benchmark. No code change was necessary because the scoped artifacts were already present and clean; no live model was loaded.
+Result: Public/testing deterministic acceptance is ready. VPS preflight and read-only inventory passed, but deployment remains blocked pending an owner-approved Dokploy service definition, approved port set, strict Compose template/image identity, and rollback target; no remote workload or firewall was mutated.
+Verified: `python3 scripts/feature_docs.py --seed-missing --generate-site --check` -> 86 features/224 artifacts/0 seeded; focused QA/docs suite -> 73 passed; all six `docker-compose.qa.yml` profiles plus `./scripts/istara-qa.sh render` -> passed; QA capabilities -> passed; integrity/CI governance/test harness/public tree -> passed; security benchmark -> 28/28 (100%); `vpsctl.py preflight` event 596 and inventory event 602 -> passed; Compass Forge gate before/after -> 30 inherited failures, 0 new issues, 0 actionable failures.
+Next: stage exit blocked only on missing owner-approved VPS deployment inputs; reviewer can consume deterministic evidence and confirm the scope.
 
 ### L-30 | 2026-08-22T16:15:49Z | S4-remediate | deepseek/deepseek-v4-flash | remediator | fix <!-- bsc-ledger:FIX-ISTARA-PI-MODEL-MIGRATION-20260822-WAVE-compat-routing-REVIEW-r2 -->
 Did: Verified the F-3/F-4 fix committed at bae56df1 on the AUTHORITATIVE task -r2 (the prior fixer run recorded L-28 + evidence on the superseded -r2-new task, so this stage re-verified the same committed fix and recorded evidence/ledger here). F-3: shared host_is_plannable() in model_management_compat.py requires an explicit http(s) scheme and rejects userinfo/query hosts (mirrors normalized_service_url/EndpointPolicy allow_userinfo=False allow_query=False); classify_server plans those hosts blocked/invalid_host and PiModelManager._project_llm_server (model_manager.py) drops them via the same helper — plan==catalog by construction; parametrized regression tests (schemeless localhost:11434, scheme-relative, userinfo, query) in tests/pi_migration/test_model_management_migration.py. F-4: check_ruff_changed.py gate green on the fix head — compat.py UP035/E501/format drift fixed; model_manager.py + settings.py also lint/format-clean (finding under-reported scope: 3 files, all fixed). Working-tree-only gate hygiene (NOT committed): wrapped one 101-char logger.debug in embeddings.py (embeddings-controls wave WIP, uncommitted) that had broken the shared gate after L-28's verification; embeddings fixer must commit their file with the wrap before ship.
