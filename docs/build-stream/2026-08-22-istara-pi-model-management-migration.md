@@ -10,13 +10,13 @@ cf:
   tasks: [planning-only until owner approval; CF-SPEC-1 tasks generated at approval]
 phase: "Phase 0 — architecture and migration plan (resumed)"
 stage: S2-execute
-status: blocked
-blocked_on: owner approval gate; CF-SPEC-1 remains draft and clarification-blocked
+status: in-progress
+blocked_on: null
 last:
   agent: gpt-5.6-luna
   at: 2026-08-22T13:11:39Z
   ledger: L-14
-next_action: "Resolve CF-SPEC-1 clarification, complete owner-approved plan/task graph, then re-dispatch foundation implementation."
+next_action: "Owner approved MECE master plan (slot a); conductor may dispatch implementation."
 ```
 
 ## Plan overview
