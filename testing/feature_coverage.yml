@@ -451,7 +451,7 @@ features:
         - feature_docs_check
     acceptance: "Settings/projects routes expose the Pi model-management catalog (models, pi-endpoints, migration status, embed_model identity) with plan==catalog parity and fail-closed behavior; feature docs regenerated."
     introduced_in: "502adbf7"
-    last_verified_sha: "pending"
+    last_verified_sha: "3d737e4c"
 
   - id: migration.compat-routing
     status: active
@@ -474,7 +474,7 @@ features:
         - pytest_model_provider_contract
     acceptance: "Legacy LLM Server rows classify into exactly the plan the Pi catalog projects (plan==catalog): unsupported providers and unplannable host shapes rejected identically, idempotent, fail-closed, no silent fallback."
     introduced_in: "502adbf7"
-    last_verified_sha: "pending"
+    last_verified_sha: "3d737e4c"
 
   - id: migration.audio-profile
     status: active
@@ -496,7 +496,7 @@ features:
         - feature_docs_check
     acceptance: "Governed audio model profile contract: runtime-grounded capabilities (dispatch map + whisper status), configuration-only remote/diarization, deterministic suite tests/test_audio_model_profile.py."
     introduced_in: "adf7b41f"
-    last_verified_sha: "pending"
+    last_verified_sha: "3d737e4c"
 
   - id: migration.embeddings-gateway
     status: active
@@ -523,7 +523,7 @@ features:
         - compose_qa_render
     acceptance: "Embedding cache validates vectors against the engine's known per-model dimension and fails closed (re-embed) on mismatch/unknown; vector-health probes record dimensions; exercised by the W8 gateway suite and the QA compose contract profile."
     introduced_in: "1cbe829d"
-    last_verified_sha: "pending"
+    last_verified_sha: "3d737e4c"
 
   - id: migration.engine-selector-ui
     status: active
@@ -549,7 +549,7 @@ features:
         - feature_docs_check
     acceptance: "Engine selector UI (Pi vs Istara radio cards) renders evidence-backed provisional comparative summaries with provenance and embed_model identity, satisfies the documented accessibility contract, and the feature site stays regenerated."
     introduced_in: "e66ad335"
-    last_verified_sha: "pending"
+    last_verified_sha: "3d737e4c"
 
   - id: migration.pi-dependency-provenance
     status: active
@@ -577,4 +577,4 @@ features:
         - check_integrity
     acceptance: "Bundled Pi surfaces (pi-runtime, labs/pi-replacement adapter) and repo-pinned Compass Forge recipes (istara-main, generic, istara-main-pi-replacement) pin exact approved versions; lockfiles match manifests; deterministic suite tests/pi_migration/test_version_provenance.py."
     introduced_in: "d3e5dfab"
-    last_verified_sha: "pending"
+    last_verified_sha: "3d737e4c"
