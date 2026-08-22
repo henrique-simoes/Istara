@@ -423,3 +423,158 @@ features:
     acceptance: "Testing/architecture docs stay aligned with the implemented gates."
     introduced_in: "pending"
     last_verified_sha: "pending"
+
+  - id: migration.model-management-catalog
+    status: active
+    owner: research-platform
+    paths:
+      - "backend/app/core/pi_runtime/model_manager.py"
+      - "backend/app/api/routes/projects.py"
+      - "backend/app/api/routes/settings.py"
+    exceptions: []
+    requires_human_review: false
+    docs_features_update: true
+    obligations:
+      deterministic:
+        - backend_contracts
+        - provider_contracts
+        - security_benchmark
+        - feature_docs
+      live: []
+      docs: []
+    commands:
+      deterministic:
+        - pytest_migration_suites
+        - pytest_provider_contracts
+        - pytest_model_provider_contract
+        - security_benchmark
+        - feature_docs_check
+    acceptance: "Settings/projects routes expose the Pi model-management catalog (models, pi-endpoints, migration status, embed_model identity) with plan==catalog parity and fail-closed behavior; feature docs regenerated."
+    introduced_in: "502adbf7"
+    last_verified_sha: "pending"
+
+  - id: migration.compat-routing
+    status: active
+    owner: research-platform
+    paths:
+      - "backend/app/core/pi_runtime/model_management_compat.py"
+    exceptions: []
+    requires_human_review: false
+    docs_features_update: false
+    obligations:
+      deterministic:
+        - backend_contracts
+        - provider_contracts
+      live: []
+      docs: []
+    commands:
+      deterministic:
+        - pytest_migration_suites
+        - pytest_provider_contracts
+        - pytest_model_provider_contract
+    acceptance: "Legacy LLM Server rows classify into exactly the plan the Pi catalog projects (plan==catalog): unsupported providers and unplannable host shapes rejected identically, idempotent, fail-closed, no silent fallback."
+    introduced_in: "502adbf7"
+    last_verified_sha: "pending"
+
+  - id: migration.audio-profile
+    status: active
+    owner: research-platform
+    paths:
+      - "backend/app/core/audio_model_profile.py"
+    exceptions: []
+    requires_human_review: false
+    docs_features_update: true
+    obligations:
+      deterministic:
+        - backend_contracts
+        - feature_docs
+      live: []
+      docs: []
+    commands:
+      deterministic:
+        - pytest_migration_suites
+        - feature_docs_check
+    acceptance: "Governed audio model profile contract: runtime-grounded capabilities (dispatch map + whisper status), configuration-only remote/diarization, deterministic suite tests/test_audio_model_profile.py."
+    introduced_in: "adf7b41f"
+    last_verified_sha: "pending"
+
+  - id: migration.embeddings-gateway
+    status: active
+    owner: research-platform
+    paths:
+      - "backend/app/core/embeddings.py"
+      - "backend/app/core/vector_health.py"
+    exceptions: []
+    requires_human_review: false
+    docs_features_update: false
+    obligations:
+      deterministic:
+        - provider_contracts
+        - backend_contracts
+        - qa_stack_contract
+      live: []
+      docs: []
+    commands:
+      deterministic:
+        - pytest_embeddings_gateway
+        - pytest_provider_contracts
+        - pytest_model_provider_contract
+        - pytest_migration_suites
+        - compose_qa_render
+    acceptance: "Embedding cache validates vectors against the engine's known per-model dimension and fails closed (re-embed) on mismatch/unknown; vector-health probes record dimensions; exercised by the W8 gateway suite and the QA compose contract profile."
+    introduced_in: "1cbe829d"
+    last_verified_sha: "pending"
+
+  - id: migration.engine-selector-ui
+    status: active
+    owner: research-platform
+    paths:
+      - "frontend/src/components/settings/ProjectSettingsView.tsx"
+    exceptions: []
+    requires_human_review: false
+    docs_features_update: true
+    obligations:
+      deterministic:
+        - frontend_contracts
+        - mutation_property
+        - feature_docs
+      live: []
+      docs: []
+    commands:
+      deterministic:
+        - frontend_unit
+        - frontend_typecheck
+        - frontend_lint
+        - frontend_mutation
+        - feature_docs_check
+    acceptance: "Engine selector UI (Pi vs Istara radio cards) renders evidence-backed provisional comparative summaries with provenance and embed_model identity, satisfies the documented accessibility contract, and the feature site stays regenerated."
+    introduced_in: "e66ad335"
+    last_verified_sha: "pending"
+
+  - id: migration.pi-dependency-provenance
+    status: active
+    owner: research-platform
+    paths:
+      - "pi-runtime/package.json"
+      - "pi-runtime/package-lock.json"
+      - "labs/pi-replacement/package.json"
+      - "labs/pi-replacement/package-lock.json"
+      - "labs/pi-replacement/src/istara-pi-adapter.mjs"
+      - "recipes/*"
+      - "recipes/**/*"
+    exceptions: []
+    requires_human_review: false
+    docs_features_update: false
+    obligations:
+      deterministic:
+        - backend_contracts
+        - governance
+      live: []
+      docs: []
+    commands:
+      deterministic:
+        - pytest_migration_suites
+        - check_integrity
+    acceptance: "Bundled Pi surfaces (pi-runtime, labs/pi-replacement adapter) and repo-pinned Compass Forge recipes (istara-main, generic, istara-main-pi-replacement) pin exact approved versions; lockfiles match manifests; deterministic suite tests/pi_migration/test_version_provenance.py."
+    introduced_in: "d3e5dfab"
+    last_verified_sha: "pending"
