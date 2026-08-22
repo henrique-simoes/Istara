@@ -15,7 +15,7 @@ blocked_on: null
 last:
   agent: gpt-5.6-luna
   at: 2026-08-22T17:23:00Z
-  ledger: L-33
+  ledger: L-38
 next_action: "Owner approved MECE master plan (slot a); conductor may dispatch implementation."
 ```
 
@@ -1021,7 +1021,7 @@ Result: F-1 open->fixed, F-2 open->fixed (findings register). FIX-ISTARA-PI-MODE
 Verified: `uv run --project backend python -m pytest tests/pi_production/test_w8_embeddings_gateway.py tests/pi_production/test_w8_ux_parity.py -q` -> 49 passed; wave suites (w6_engine_selection+w1_agentic_contract+pi_migration 109, settings+rbac+dispatcher 67, rag_resilience+w6_autoresearch 59, files+transcription+research_validity 54, w1_agentic_contract 25, feature_docs+obligations+pi_migration 43, project_scope+tasks 51) all green; frontend `npx tsc --noEmit` clean, `npx vitest run` 14 passed, `npm run build` OK, eslint clean; `node --check tests/simulation/scenarios/79-engine-selector.mjs` OK; `python3 scripts/feature_docs.py --seed-missing --generate-site --check` -> 86/224/0; `python3 scripts/security_benchmark.py --fail-on-threshold` -> 28/28 100.0%; compass-forge gate before/after -> 30 inherited / 0 new / 0 actionable; `git diff --check` clean.
 Next: conductor dispatches delta re-review (REREV) of the changed surface; ship stage handles merge. Stage exit: F-1/F-2 flipped to fixed with command evidence; satisfied=true.
 
-### L-33 | 2026-08-22T17:23:00Z | S2-execute | gpt-5.6-luna | executor | implement <!-- bsc-ledger:ISTARA-PI-MODEL-MIGRATION-20260822-WAVE-qa-docs-vps-IMPL -->
+### L-38 | 2026-08-22T17:23:00Z | S2-execute | gpt-5.6-luna | executor | implement <!-- bsc-ledger:ISTARA-PI-MODEL-MIGRATION-20260822-WAVE-qa-docs-vps-IMPL -->
 Did: Verified the existing testing-branch QA integration slice: deterministic feature-doc generation, QA Compose profile contracts, provider-contract coverage, provisional artifact/reset guards, governance checks, and security benchmark. No code change was necessary because the scoped artifacts were already present and clean; no live model was loaded.
 Result: Public/testing deterministic acceptance is ready. VPS preflight and read-only inventory passed, but deployment remains blocked pending an owner-approved Dokploy service definition, approved port set, strict Compose template/image identity, and rollback target; no remote workload or firewall was mutated.
 Verified: `python3 scripts/feature_docs.py --seed-missing --generate-site --check` -> 86 features/224 artifacts/0 seeded; focused QA/docs suite -> 73 passed; all six `docker-compose.qa.yml` profiles plus `./scripts/istara-qa.sh render` -> passed; QA capabilities -> passed; integrity/CI governance/test harness/public tree -> passed; security benchmark -> 28/28 (100%); `vpsctl.py preflight` event 596 and inventory event 602 -> passed; Compass Forge gate before/after -> 30 inherited failures, 0 new issues, 0 actionable failures.
