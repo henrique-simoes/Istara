@@ -10,13 +10,13 @@ cf:
   tasks: [planning-only until owner approval; CF-SPEC-1 tasks generated at approval]
 phase: "Phase 0 — architecture and migration plan (resumed)"
 stage: S1-plan
-status: awaiting-owner-approval
-blocked_on: "owner approval of MECE master plan (slot a)"
+status: in-progress
+blocked_on: null
 last:
   agent: deepseek/deepseek-v4-flash
   at: 2026-08-22T12:42:10Z
   ledger: L-13
-next_action: "Owner approval required: approve selected MECE master plan (slot a) before implementation dispatch."
+next_action: "Owner approved MECE master plan (slot a); conductor may dispatch implementation."
 ```
 
 ## Plan overview
@@ -846,3 +846,18 @@ Did: Read both master-plan candidates supplied for vote round ef3baec72460f4802e
 Result: Voted slot b (candidate 65a2de29913abc7cbda40c9edb336a3634b50cd832c3955877674f374761a587). Rationale: B is the more complete MECE synthesis — explicit C10 unified three-layer retirement model (initiative S0–S5 × per-row state machine × PI_MODEL_MANAGEMENT_MODE registry), 13-item conflict table (C1–C13) vs C's 7, broadest per-wave verification command sets (compute_cases, pi_benchmark, w4_a2a_handlers, research-spine anchors), security reviewer checklist. C is nearly as strong (finer V1–V16 fact table, explicit doc paths, CF task-shape table). Round ef3baec72460f4802e2b tally: a=2 (VOTE-B, VOTE-C), b=1 (VOTE-A). ISTARA-PI-MODEL-MIGRATION-20260822-VOTE-A.
 Verified: read .compass-forge/conductor/consensus-snapshots/65a2de29… + a1619826… (both full plans, passed); `grep -n "agentic_engine_default|pi_api_endpoints" backend/app/config.py` -> lines 304/315 (passed); `grep @earendil-works/pi-agent-core|pi-ai pi-runtime/package.json labs/pi-replacement/package.json` -> 0.83.0 / 0.80.10 (passed); `ls tests/test_llm_servers.py tests/llm_servers.py` -> only tests/test_llm_servers.py exists (passed). CF evidence rows on ISTARA-PI-MODEL-MIGRATION-20260822-VOTE-A: command (id 146) + plan_vote (id 155) + self_report (id 156).
 Next: Conductor tallies round ef3baec72460f4802e2b (a=2, b=1), freezes the winning consensus plan, and stops at the owner approval gate before any implementation task is generated or released.
+
+### DEC-3 | 2026-08-22 | S1-plan | owner
+
+Context: The owner reviewed the winning master plan (slot A) and confirmed three UX requirements must be binding for the implementation waves. These are owner-approved requirements that extend, not replace, the frozen plan; they are recorded here (the lifecycle file is the first document implementation workers read) and must be reflected in the W1/W3 work orders and acceptance criteria.
+
+Decision:
+1. **Pi catalog selection without typing endpoints (W1).** The Pi provider/model UI must present a selectable list of Pi providers, models, and endpoints from the canonical catalog. The user must NOT type endpoint URLs: cloud providers require only the API key (paste/save via Keychain or encrypted custody); OAuth-capable providers use Pi's own OAuth flow (same options/flow the standalone Pi CLI offers, e.g. device-code login like Codex) with no manual endpoint entry; custom/local endpoints remain an explicit, optional advanced path. Automatic endpoint/model configuration must be validated against standalone Pi behavior.
+2. **Pi-vs-Istara agentic engine selector (W3).** The settings UI must make the two engines clearly selectable with honest, evidence-backed comparative summaries (research-spine grounded, provisional-only), no duplicate model options, and the existing precedence (call > header > project > global) preserved. This was already in the plan (W3 selector UX rework) and is confirmed binding.
+3. **Granular effort, temperature and thinking controls in chat (W3).** The chat UI must expose easy-to-change controls, reusing/aligning with the effort UI Istara already has in the chat menu: granular effort levels (off/minimal/low/medium/high/xhigh/max as the endpoint supports), thinking toggle, and temperature — changeable per conversation without leaving the chat, with the same immediacy as any agent CLI/UI. Propagation must go through the canonical bind-params path and never alter the embedding profile.
+
+Result: W1 and W3 acceptance criteria must include these UX behaviors (with frontend tests/simulations and secret-flow checks); the frozen master plan snapshot is unchanged and its provenance intact.
+
+Verified: grep of master plan and three drafts for OAuth/API-key/effort/selector coverage; manifest W1/W3 instructions already name OAuth/API-key/custom/local configuration, temperature, thinking toggles, granular effort, and Pi-vs-Istara engine buttons.
+
+Next: owner approval gate — approve binds this lifecycle (with DEC-3) as the implementation contract.
