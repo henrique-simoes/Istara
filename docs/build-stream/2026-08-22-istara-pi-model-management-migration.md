@@ -11,7 +11,6 @@ cf:
 phase: "Phase 0 — architecture and migration plan (resumed)"
 stage: S1-plan
 status: in-progress
-blocked_on: synthesis of A/B/C drafts into one MECE master plan (plan-c draft file present; PLAN-C task blocked after gpt-5.6-luna auth-failure retries)
 blocked_on: owner approval gate — slot-A MECE master plan synthesized from A/B/C (awaiting vote/freeze); no implementation task released before owner approval
 last:
   agent: deepseek/deepseek-v4-flash
