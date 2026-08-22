@@ -11,12 +11,12 @@ cf:
 phase: "Phase 2 — implementation"
 stage: S4-remediate
 status: in-progress
-blocked_on: "owner approval of VPS acceptance port contract (18443/tcp) + strict single-workload service definition (docs/build-stream/vps-acceptance/port-contract.md §5); approval routed 2026-08-22"
+blocked_on: null
 last:
   agent: deepseek/deepseek-v4-flash
   at: 2026-08-22T18:05:07Z
   ledger: L-40
-next_action: "Owner approves port contract + service definition; then build acceptance image + deploy + verify-isolation/exposure + firewall/DOCKER-USER evidence + audit-anchor + cleanup proof per docs/build-stream/vps-acceptance/README.md"
+next_action: "Owner approved MECE master plan (slot a); conductor may dispatch implementation."
 ```
 
 ## Plan overview
