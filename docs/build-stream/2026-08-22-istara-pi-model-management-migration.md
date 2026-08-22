@@ -9,14 +9,14 @@ cf:
   spec: CF-SPEC-1
   tasks: [planning-only until owner approval; CF-SPEC-1 tasks generated at approval]
 phase: "Phase 2 — implementation"
-stage: S2-execute
+stage: S3-review
 status: in-progress
 blocked_on: null
 last:
-  agent: gpt-5.6-luna
-  at: 2026-08-22T14:45:00Z
-  ledger: L-14
-next_action: "Owner approved MECE master plan (slot a); conductor may dispatch implementation."
+  agent: deepseek/deepseek-v4-flash
+  at: 2026-08-22T14:50:09Z
+  ledger: L-19
+next_action: "Fixer remediates F-5..F-8 (FIX-ISTARA-PI-MODEL-MIGRATION-20260822-WAVE-pi-catalog-secrets-REVIEW-r1); conductor dispatches delta re-review after fix task terminal."
 ```
 
 ## Plan overview
@@ -795,6 +795,11 @@ This is a Full security/architecture change. The plan must cover the complete mi
 | F-3 | Minor | Hygiene | backend/uv.lock | 1.5MB untracked uv byproduct; recipe carve-outs but no .gitignore; git add -A at ship would commit it | ISTARA-PI-MODEL-MIGRATION-20260822-WAVE-foundation-REVIEW | fixed — .gitignore entry added (FIX-...-r1-hygiene, L-16); git check-ignore + gate before 30/0 verified; re-review r1 PASS (L-18) |
 | F-4 | Minor | Graph | ISTARA-PI-MODEL-MIGRATION-20260822-REMASTER-A-r2 | Task stuck claimed with zero events; r1 repair is authoritative; stale claim | ISTARA-PI-MODEL-MIGRATION-20260822-WAVE-foundation-REVIEW | fixed — stale-claim note evidence id 192 on task (r1 supersedes; watchdog cleanup outstanding, DEC-17); re-review r1 PASS (L-18) |
 
+| F-5 | Major | Branch artifact | docs/build-stream/plans/istara-pi-model-management-migration-20260822-master-a.md | Impl commit d3e5dfab deleted the owner-approved 66KB MECE master plan (present at HEAD~1 10a6fc1d) with no disclosure; only an untracked worktree copy remains (dataless-state risk at ship) | ISTARA-PI-MODEL-MIGRATION-20260822-WAVE-pi-catalog-secrets-REVIEW | open — FIX-...-r1 |
+| F-6 | Major | Evidence | ISTARA-PI-MODEL-MIGRATION-20260822-WAVE-pi-catalog-secrets-IMPL | Plan-mandated W1 verification not attached: full 5-file pytest suite, w1_agentic_contract, pi_migration_inventory, count_to_zero, security_benchmark (all pass in independent review run — 33/25/3/28-28/clean) | ISTARA-PI-MODEL-MIGRATION-20260822-WAVE-pi-catalog-secrets-REVIEW | open — FIX-...-r1 |
+| F-7 | Minor | Hygiene | worktree | manifest.json feature_docs regen uncommitted; recipe.toml actor roles uncommitted; plan-c.md 414-line working-tree delta; untracked planner artifacts (carried-*, master-c, manifests/, recipes/) | ISTARA-PI-MODEL-MIGRATION-20260822-WAVE-pi-catalog-secrets-REVIEW | open — FIX-...-r1 |
+| F-8 | Minor | Test ownership | tests/ | No version/lockfile provenance test for the Pi package surface (plan test-ownership obligation; wave requires focused tests) | ISTARA-PI-MODEL-MIGRATION-20260822-WAVE-pi-catalog-secrets-REVIEW | open — FIX-...-r1 |
+
 ## Final summary
 
 Not yet shipped. This lifecycle intentionally stops before implementation until the independent architect consensus plan is frozen and the owner approval gate is passed.
@@ -900,3 +905,10 @@ Did: Updated the canonical Pi runtime and standalone compatibility lab to the ve
 Result: W1 dependency and verification foundation is ready for review; no LLM Server data was deleted or migrated.
 Verified: `npm view @earendil-works/pi-agent-core version` and `npm view @earendil-works/pi-ai version` -> 0.84.2; `cd pi-runtime && npm install --ignore-scripts && npm test` -> 35 passed; `cd labs/pi-replacement && npm install --ignore-scripts && npm run validate` -> 5 passed; `uv run --project backend python -m pytest tests/pi_production/test_endpoint_secrets.py tests/test_settings_agentic_pi_endpoints.py tests/test_pi_runtime_endpoints.py -q` -> 8 passed; `python scripts/feature_docs.py --seed-missing --generate-site --check` -> 86 features, 224 artifacts, passed; `git diff --check` -> passed; Compass Forge gate before/after -> 30 inherited failures, 0 new issues, no actionable failures.
 Next: stage exit: criteria met; code reviewer should inspect the W1 catalog/authentication/secret-flow surface and dependency compatibility.
+
+### L-19 | 2026-08-22T14:50:09Z | S3-review | deepseek/deepseek-v4-flash | reviewer | istara-pi-model-management-migration-20260822-code-reviewer <!-- bsc-ledger:ISTARA-PI-MODEL-MIGRATION-20260822-WAVE-pi-catalog-secrets-REVIEW -->
+Did: Blind two-phase review of the pi-catalog-secrets wave (IMPL commit d3e5dfab + working tree). Phase 1 (blind): independently ran the full approved Wave-1 verification — pi-runtime npm ci + npm test (35/35), labs/pi-replacement npm ci + npm run validate (5/5), backend 5-file pytest suite (33/33), test_w1_agentic_contract (25/25), pi_migration_inventory --json (clean), test_count_to_zero (3/3), security_benchmark --fail-on-threshold (28/28, 100%), feature_docs (86 features/224 artifacts), compass-forge gate (has_baseline=true, comparison new_issues=[]). Adversarial probes: fail-closed binding/params/pricing all refuse by mechanism; secret env handoff (PI_RUNTIME_KEY_n) cleared on dispose and never logged; npm view re-run confirms 0.84.2 IS latest upstream. Phase 2 (unblinded): reconciled the impl ledger L-14 and evidence rows — all claimed numbers reproduce except: plan-mandated verification not fully attached (F-6), master plan deletion undisclosed (F-5), dirty worktree (F-7), no provenance test (F-8).
+Result: Verdict FAIL with 4 findings — F-5 Major (impl commit d3e5dfab deleted the owner-approved master plan docs/build-stream/plans/istara-pi-model-management-migration-20260822-master-a.md, present at HEAD~1 10a6fc1d; only an untracked copy remains, at dataless-state risk); F-6 Major (evidence incomplete on IMPL task vs approved Wave-1 verification block: full 5-file suite, w1_agentic_contract, inventory, count_to_zero, security_benchmark not attached — all pass in independent review run); F-7 Minor (manifest.json regen uncommitted, recipe.toml uncommitted, plan-c.md 414-line delta, untracked planner artifacts); F-8 Minor (no version/lockfile provenance test per plan test-ownership matrix). Fix task FIX-ISTARA-PI-MODEL-MIGRATION-20260822-WAVE-pi-catalog-secrets-REVIEW-r1 imported (wave_id pi-catalog-secrets). Evidence rows 318-329 on REVIEW task.
+Verified: 10 command evidence rows + review_verdict (with frozen measurements[]) + self_report recorded on the REVIEW task; suites green in independent runs (35/5/33/25/3/28-28/86-224); gate 0 new issues; git diff --check clean; fail-severity items measured 32 (impl claimed 30 inherited — snapshot variance, not material).
+Next: fixer remediates F-5..F-8 on FIX-ISTARA-PI-MODEL-MIGRATION-20260822-WAVE-pi-catalog-secrets-REVIEW-r1; conductor dispatches delta re-review (REREV) for this role after the fix task is terminal. Stage exit: verdict + findings + fix task recorded; satisfied=false.
+
