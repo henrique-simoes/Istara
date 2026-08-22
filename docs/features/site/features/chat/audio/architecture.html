@@ -244,6 +244,14 @@
 <a href="../../interviews/transcription/architecture.html">Interview Transcription</a></div>
   <p class="concept-line"><strong>Concepts:</strong> wcag</p>
 </header>
+<h2 id="governed-audio-model-settings">Governed audio model settings</h2>
+<p>Audio transcription uses one explicit <code>AudioModelProfile</code> contract for interview</p>
+<p>uploads, microphone chat, and channel audio. Supported provider families are</p>
+<p><code>local_whisper</code>, compatible <code>remote_whisper</code>, and <code>gpt4_diarization</code>. Settings</p>
+<p>responses expose capabilities and an opaque credential reference only; secrets</p>
+<p>and provider URLs are never returned. An empty or unsupported profile is</p>
+<p>unavailable and does not fall back to a text/Pi model. Transcripts remain</p>
+<p>provisional research source material until review gates pass.</p>
 <h2 id="implementation-summary">Implementation Summary</h2>
 <p>The chat audio flow records user speech through the browser, sends it to the voice route with the active <code>project_id</code>, and returns transcription or voice-assisted chat input only inside that project scope.</p>
 <h2 id="frontend-surface">Frontend Surface</h2>
@@ -307,6 +315,7 @@
         <aside class="toc-panel" aria-label="Page sections">
           <h2>On This Page</h2>
           <nav aria-label="On this page"><ul>
+<li class="toc-level-2"><a href="#governed-audio-model-settings">Governed audio model settings</a></li>
 <li class="toc-level-2"><a href="#implementation-summary">Implementation Summary</a></li>
 <li class="toc-level-2"><a href="#frontend-surface">Frontend Surface</a></li>
 <li class="toc-level-2"><a href="#state-api-and-backend-contracts">State, API, And Backend Contracts</a></li>

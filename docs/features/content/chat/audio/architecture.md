@@ -15,6 +15,16 @@ compass: CF-SPEC-109 / CF-1379
 
 # Chat Audio Conversation Architecture
 
+## Governed audio model settings
+
+Audio transcription uses one explicit `AudioModelProfile` contract for interview
+uploads, microphone chat, and channel audio. Supported provider families are
+`local_whisper`, compatible `remote_whisper`, and `gpt4_diarization`. Settings
+responses expose capabilities and an opaque credential reference only; secrets
+and provider URLs are never returned. An empty or unsupported profile is
+unavailable and does not fall back to a text/Pi model. Transcripts remain
+provisional research source material until review gates pass.
+
 ## Implementation Summary
 
 The chat audio flow records user speech through the browser, sends it to the voice route with the active `project_id`, and returns transcription or voice-assisted chat input only inside that project scope.

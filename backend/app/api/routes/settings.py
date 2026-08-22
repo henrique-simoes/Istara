@@ -20,6 +20,21 @@ router = APIRouter()
 logger = logging.getLogger(__name__)
 
 
+@router.get("/settings/audio-model")
+async def get_audio_model_settings(request: Request):
+    """Return the governed audio profile without secrets or provider URLs."""
+    require_global_role(request, "admin")
+    from app.core.audio_model_profile import configured_audio_profile
+
+    profile = configured_audio_profile(settings)
+    return {
+        "configured": profile is not None,
+        "profile": profile.public_dict() if profile else None,
+        "fallback": "unavailable",
+        "research_data_status": "provisional_until_review",
+    }
+
+
 class StrictRoutingRequest(BaseModel):
     enabled: bool
 

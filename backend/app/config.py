@@ -309,6 +309,19 @@ class Settings(BaseSettings):
     petals_bridge_enabled: bool = False
     petals_bridge_base_path: str = "/api/petals/v1"
 
+    # Audio is a separate, explicit catalog. Empty provider fails closed;
+    # credentials are referenced by opaque keychain/encrypted-store handles.
+    audio_model_provider: str = ""
+    audio_model: str = "whisper-base"
+    audio_model_endpoint_id: str = "audio-default"
+    audio_model_credential_ref: str = ""
+    audio_model_mode: str = "local"
+    audio_model_languages: list[str] = []
+    audio_model_diarization: bool = False
+    audio_model_timestamps: bool = True
+    audio_model_speaker_count: str = "unknown"
+    audio_model_review_threshold: float = 0.7
+
     # AgenticDispatcher engine default (master plan §5.1): the last resort after
     # per-call override, request header, and the project's `agentic_engine`
     # setting. Stays "legacy" until the owner flips the rollout.

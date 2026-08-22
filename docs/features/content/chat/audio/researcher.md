@@ -15,6 +15,13 @@ compass: CF-SPEC-53 / CF-657
 
 # Chat Audio Conversation
 
+### Model availability
+
+Audio works only when an administrator has configured a supported audio profile.
+Local Whisper, compatible remote Whisper, and supported diarized providers are
+advertised separately. Unavailable providers do not silently route audio to a
+text model, and transcription output remains provisional until reviewed.
+
 ## What It Does
 
 The chat audio flow records user speech through the browser, sends it to the voice route, and returns transcription or voice-assisted chat input.

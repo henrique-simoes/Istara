@@ -8,6 +8,11 @@ best-effort prompt convention.
 
 ## System-Wide Research Spine
 
+Audio profiles are governed inputs to this spine, not a shortcut around it:
+interview, microphone, and channel transcription preserve raw audio
+segments/provenance and remain provisional until reliability, reconciliation,
+and human review gates pass.
+
 Istara is a research system before it is a collection of features. Every
 feature that ingests, creates, processes, retrieves, summarizes, validates,
 visualizes, routes, promotes, or reports research data is an extension of the
