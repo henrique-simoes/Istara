@@ -9,14 +9,14 @@ cf:
   spec: CF-SPEC-1
   tasks: [planning-only until owner approval; CF-SPEC-1 tasks generated at approval]
 phase: "Phase 0 — architecture and migration plan (resumed)"
-stage: S3-review
+stage: S4-remediate
 status: in-progress
 blocked_on: null
 last:
   agent: deepseek/deepseek-v4-flash
-  at: 2026-08-22T14:05:00Z
-  ledger: L-15
-next_action: "Owner approved MECE master plan (slot a); conductor may dispatch implementation."
+  at: 2026-08-22T14:07:36Z
+  ledger: L-16
+next_action: "Fix r1-hygiene done (F-3/F-4 fixed, L-16); conductor dispatches delta re-review once r1-record (F-1/F-2) is terminal; watchdog to clear REMASTER-A-r2 stale claim."
 ```
 
 ## Plan overview
@@ -741,6 +741,11 @@ Result: Verdict FAIL - record gaps, not content gaps. F-1 (Major): IMPL task fin
 Verified: command evidence rows 177-185 + review_verdict id 184 + self_report on ISTARA-PI-MODEL-MIGRATION-20260822-WAVE-foundation-REVIEW; `task list` shows both FIX tasks open; `git diff --check` clean.
 Next: fixer stages address F-1..F-4; conductor dispatches delta re-review of the changed surface once both fix tasks are terminal.
 
+### L-16 | 2026-08-22T14:07:36Z | S4-remediate | deepseek/deepseek-v4-flash | remediator | fix <!-- bsc-ledger:FIX-ISTARA-PI-MODEL-MIGRATION-20260822-WAVE-foundation-REVIEW-r1-hygiene -->
+Did: Fixed F-3 (hygiene): added `backend/uv.lock` to the root `.gitignore` (Python section) with a comment noting it is a local uv byproduct of `uv run --project backend`; the repo tracks backend/requirements.txt + pyproject.toml, and recipes/istara-main/recipe.toml already listed uv.lock in ignored_file_globs + allowed_large_file_globs — the .gitignore entry now makes the disposition explicit so ship-time `git add -A` cannot commit the 1.5 MB file. Files touched: `.gitignore` only. Fixed F-4 (graph hygiene): recorded a stale-claim note (CF evidence id 192) on ISTARA-PI-MODEL-MIGRATION-20260822-REMASTER-A-r2 documenting that r1 (done) is the authoritative artifact, the claim is stale, and per DEC-17 the watchdog owns claim/session state (no force-finish, no claim theft).
+Result: F-3 and F-4 flipped open -> fixed in the findings register. Fix task FIX-ISTARA-PI-MODEL-MIGRATION-20260822-WAVE-foundation-REVIEW-r1-hygiene complete with command + self_report evidence (ids 193-196).
+Verified: `git check-ignore backend/uv.lock` -> returns backend/uv.lock (ignored); `git status --porcelain | grep -c uv.lock` -> 0; `compass-forge gate before --summary --target .` -> status fail (inherited), failures 30, new_failures 0, actionable_failures [], unexpected_large_files 28 inherited, backend/uv.lock NOT in unexpected_large_files (recipe carve-out effective), files_scanned 1981.
+Next: conductor/watchdog to clean up the REMASTER-A-r2 stale claim (note evidence recorded); delta re-review of the changed surface once the sibling r1-record fix (F-1/F-2) is also terminal.
 ### L-1 | 2026-08-22T11:36:00Z | S0-frame | owner | framer | Phase 0
 
 Did: Created fresh isolated worktree `istara-pi-model-management-migration-20260822` (branch `conductor/istara-pi-model-management-migration-20260822`, base `origin/testing@15260a78`); carried forward the three 2026-08-18 architect drafts as `docs/build-stream/plans/carried-20260818-plan-{a,b,c}.md`; initialized the native CF project (recipe `istara-main`, workspace `/Users/user/Documents/compass-forge`); created execution spec `CF-SPEC-1`; wrote the new strict-wave manifest `docs/build-stream/manifests/istara-pi-model-management-migration-20260822.json` (SHA-256 `b9c8ff0ca1c0521fff18e27d3caf53e11fac89c6fb9a44e1656688ac1cf5a8fd`); registered the new run's actor roles in the active recipe; generated the planning-only tasks `ISTARA-PI-MODEL-MIGRATION-20260822-PLAN-A/B/C` and the new cast with the owner-approved roster (see table above; `plan_gate=true`, `ship.auto_pr=false`, pending `wave_binding`).
@@ -775,8 +780,8 @@ This is a Full security/architecture change. The plan must cover the complete mi
 | — | — | — | — | No independent review has run yet in this run. | — | pending |
 | F-1 | Major | Evidence | ISTARA-PI-MODEL-MIGRATION-20260822-WAVE-foundation-IMPL | IMPL task completed by harness finalizer over implementer satisfied:false; no wave-0 verification command evidence on task; C8 impact/why/test-impact packs never recorded | ISTARA-PI-MODEL-MIGRATION-20260822-WAVE-foundation-REVIEW | open — fix task FIX-...-r1-record |
 | F-2 | Major | Record | docs/build-stream/2026-08-22-istara-pi-model-management-migration.md | Ledger/status misrepresent the wave: L-14 says blocked/no artifact, status in-progress; no completion entry after owner gate closed 13:12:06Z | ISTARA-PI-MODEL-MIGRATION-20260822-WAVE-foundation-REVIEW | open — fix task FIX-...-r1-record |
-| F-3 | Minor | Hygiene | backend/uv.lock | 1.5MB untracked uv byproduct; recipe carve-outs but no .gitignore; git add -A at ship would commit it | ISTARA-PI-MODEL-MIGRATION-20260822-WAVE-foundation-REVIEW | open — fix task FIX-...-r1-hygiene |
-| F-4 | Minor | Graph | ISTARA-PI-MODEL-MIGRATION-20260822-REMASTER-A-r2 | Task stuck claimed with zero events; r1 repair is authoritative; stale claim | ISTARA-PI-MODEL-MIGRATION-20260822-WAVE-foundation-REVIEW | open — fix task FIX-...-r1-hygiene |
+| F-3 | Minor | Hygiene | backend/uv.lock | 1.5MB untracked uv byproduct; recipe carve-outs but no .gitignore; git add -A at ship would commit it | ISTARA-PI-MODEL-MIGRATION-20260822-WAVE-foundation-REVIEW | fixed — .gitignore entry added (FIX-...-r1-hygiene, L-16); git check-ignore + gate before 30/0 verified |
+| F-4 | Minor | Graph | ISTARA-PI-MODEL-MIGRATION-20260822-REMASTER-A-r2 | Task stuck claimed with zero events; r1 repair is authoritative; stale claim | ISTARA-PI-MODEL-MIGRATION-20260822-WAVE-foundation-REVIEW | fixed — stale-claim note evidence id 192 on task (r1 supersedes; watchdog cleanup outstanding, DEC-17) |
 
 ## Final summary
 
