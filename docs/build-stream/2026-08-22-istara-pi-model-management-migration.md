@@ -10,13 +10,13 @@ cf:
   tasks: [planning-only until owner approval; CF-SPEC-1 tasks generated at approval]
 phase: "Phase 0 — architecture and migration plan (resumed)"
 stage: S1-plan
-status: in-progress
-blocked_on: owner approval gate — consensus vote round ef3baec72460f4802e2b complete (a=2: VOTE-B, VOTE-C; b=1: VOTE-A); winner candidate ec3a76e7… (master-a.md) pending freeze + owner approval; no implementation task released before owner approval
+status: awaiting-owner-approval
+blocked_on: "owner approval of MECE master plan (slot a)"
 last:
   agent: deepseek/deepseek-v4-flash
   at: 2026-08-22T12:42:10Z
   ledger: L-13
-next_action: "Conductor freezes the winning consensus plan (candidate ec3a76e7…, master-a.md), records owner approval at the plan gate, then generates implementation tasks from CF-SPEC-1; no implementation task is released before owner approval."
+next_action: "Owner approval required: approve selected MECE master plan (slot a) before implementation dispatch."
 ```
 
 ## Plan overview
