@@ -1,0 +1,70 @@
+{
+  "schema_version": 1,
+  "pipeline_run": "ISTARA-PI-MODEL-MIGRATION-20260822",
+  "waves": [
+    {
+      "id": "foundation",
+      "title": "Foundation: upstream Pi contract and migration boundary (resumed)",
+      "instructions": "Produce the architecture plan for the full Istara Pi model-management migration, resumed from the paused 2026-08-18 run. Three carried-forward architect drafts are available in docs/build-stream/plans/carried-20260818-plan-{a,b,c}.md and MUST be used as inputs; independently verify them against the current tree and extend/correct rather than discard. Cover: legacy LLM Server storage/routing/encryption consumers, both agentic engines, Pi provider/model catalog and endpoint resolver, embeddings/vector-space invariant, Petals donor bridge, audio/transcription flows, UI contracts, testing-branch Docker QA, and VPS deployment per the vps skill. Define a reversible staged LLM Server retirement, exact data/secret migration and rollback, latest verified Pi dependency update, no duplicate model identity semantics, feature-flag/deprecation/removal criteria, per-wave acceptance and commands, documentation/manifest obligations, security benchmark coverage, and isolated VPS deployment/cleanup (managed VPS via Dokploy strict single-workload profile, vpsctl.py preflight/inventory/verify-isolation/verify-exposure/audit-anchor, no firewall changes without owner approval). Everything stays on the testing branch. Do not implement code in this planning stage. The conductor must stop at the owner approval gate after the architect consensus plan is frozen.",
+      "scope": [
+        "backend/app",
+        "backend/alembic",
+        "frontend/src",
+        "pi-runtime",
+        "relay",
+        "tests",
+        "docs/architecture",
+        "docs/features",
+        "docs/build-stream",
+        "docker-compose.yml",
+        "docker-compose.qa.yml",
+        "docker-compose.gpu.yml",
+        "scripts",
+        "testing",
+        "qa"
+      ],
+      "review_instructions": "Review the architect consensus plan as an independent architecture reviewer before owner approval. Verify all legacy LLM Server consumers, Pi providers/endpoints/secrets, engine selection, embeddings, Petals, audio, UI, docs, tests, Compose QA, and VPS deployment per the vps skill are covered with reversible boundaries and exact evidence. Do not implement code.",
+      "spec": "CF-SPEC-1"
+    },
+    {
+      "id": "pi-catalog-secrets",
+      "title": "Pi canonical catalog, provider authentication, and secret custody",
+      "instructions": "Implement the approved Pi canonical model-management foundation: latest verified upstream Pi packages, provider/model catalog and exact model identity, endpoint capabilities, OAuth/API-key/custom/local configuration, effort/thinking/temperature controls, and encrypted secret custody validated against standalone Pi. Preserve fail-closed authorization, project scope, no secret leakage, and compatibility metadata required for later migration. Add focused backend/frontend/contract tests and living documentation. Do not delete LLM Server data yet.",
+      "scope": ["backend/app", "backend/alembic", "frontend/src", "pi-runtime", "tests", "docs/features", "docs/architecture"],
+      "review_instructions": "Review the Pi catalog, provider authentication, model identity, encryption, authorization, and dependency update implementation. Check backward compatibility, duplicate-ID handling, secret-flow safety, and contract/test/doc completeness.",
+      "spec": "CF-SPEC-1"
+    },
+    {
+      "id": "compat-routing",
+      "title": "Reversible LLM Server compatibility migration and dual-engine routing",
+      "instructions": "Implement the approved staged compatibility migration. Make Pi the canonical resolver for both selectable Pi and legacy Istara engines while preserving explicit engine semantics and existing project behavior. Migrate/project legacy LLM Server configuration without loss, keep a bounded deprecated adapter where required, add rollback and migration observability, and define fail-closed removal criteria. Update backend routes, storage/migrations, routing/compute seams, UI contracts, tests, and docs. Do not remove legacy data until migration proof is complete.",
+      "scope": ["backend/app", "backend/alembic", "frontend/src", "tests", "docs/features", "docs/architecture"],
+      "review_instructions": "Review migration correctness and compatibility independently. Verify data preservation, rollback, deprecation behavior, engine selection, authorization, routing isolation, and no silent fallback to legacy ownership.",
+      "spec": "CF-SPEC-1"
+    },
+    {
+      "id": "embeddings-controls",
+      "title": "Embedding invariant, chat controls, and agentic selector UX",
+      "instructions": "Implement the approved embedding and agent-control slice. Preserve one coherent vector space with explicit embedding endpoint/model/dimension identity; changing a chat endpoint must not silently change embeddings. Expose supported temperature, thinking toggles, granular effort, and clear Pi-vs-Istara engine buttons with concise evidence-backed comparative summaries. Cover API, stores, UI, accessibility, tests, and living docs.",
+      "scope": ["backend/app", "frontend/src", "tests", "docs/features", "docs/architecture"],
+      "review_instructions": "Review vector-space safety, request parameter propagation, UI clarity/accessibility, engine-selection semantics, and evidence provenance of comparative summaries.",
+      "spec": "CF-SPEC-1"
+    },
+    {
+      "id": "petals-audio",
+      "title": "Petals donation preservation and unified audio-model settings",
+      "instructions": "Implement the approved Petals and audio slice. Preserve donor opt-in, identity pinning, security boundaries, compute donation/scheduling, same-model donor isolation, fail-closed unavailable behavior, and interaction with Pi-managed models. Add a governed audio-model settings contract for local Whisper, compatible remote Whisper, and supported diarized transcription providers such as GPT-4 diarization, covering interview transcription, microphone chat, capabilities, secrets, and fallbacks without inventing unsupported local Pi audio behavior. Update tests and living docs.",
+      "scope": ["backend/app", "backend/alembic", "frontend/src", "tests", "docs/features", "docs/architecture"],
+      "review_instructions": "Review Petals donor identity/security and scheduling independently, then review audio endpoint/model capability handling, secret custody, unsupported-model behavior, and all relevant research-data protections.",
+      "spec": "CF-SPEC-1"
+    },
+    {
+      "id": "qa-docs-vps",
+      "title": "Testing-branch Docker automation, living docs, and isolated VPS acceptance",
+      "instructions": "Implement and verify the final integration slice. Ensure every accepted feature has deterministic contract coverage and is automatically exercised by the testing branch Docker Compose profiles without weakening public QA isolation. Update living feature docs and regenerate manifests/site with the required feature-doc command. Run security benchmark and broad focused suites. Then perform VPS acceptance per the vps skill: run vpsctl.py preflight and inventory first (read-only), create the Dokploy Docker Compose service using the strict single-workload profile (one service, internal project-local network, no proxy/external network/Docker socket/privileged/host namespace), preview the rendered Compose before deploying, deploy preserving the prior deployment identity, then verify-isolation and verify-exposure with the approved port set, firewall/DOCKER-USER evidence, and audit-anchor. Do not change firewall policy without owner approval; remove only initiative-owned disposable artifacts after acceptance. Keep everything on the testing branch; do not touch main or unrelated workloads.",
+      "scope": ["docker-compose.yml", "docker-compose.qa.yml", "scripts", "qa", "testing", "tests", "docs/features", "docs/architecture", "docs/build-stream"],
+      "review_instructions": "Review Compose isolation, automatic testing-branch coverage, docs regeneration, security evidence, VPS preflight/inventory/port contract, isolation/exposure proof, firewall result, rollback state, and cleanup proof. Confirm no unrelated workload or control-plane artifact was mutated.",
+      "spec": "CF-SPEC-1"
+    }
+  ]
+}
