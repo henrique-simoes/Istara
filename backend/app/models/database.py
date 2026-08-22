@@ -32,13 +32,15 @@ if _is_sqlite:
     # across tests by closing connections immediately.
     _engine_kwargs["poolclass"] = NullPool
 else:
-    # PostgreSQL: prefer SSL for connections (does not break local dev)
-    import ssl as _ssl
+    # PostgreSQL: SSL by default; disable explicitly for internal networks where the
+    # server has no TLS (POSTGRES_SSL=false). "prefer"-equivalent context when enabled.
+    if str(os.getenv("POSTGRES_SSL", "true")).strip().lower() not in ("0", "false", "no", "off"):
+        import ssl as _ssl
 
-    _pg_ssl_ctx = _ssl.create_default_context()
-    _pg_ssl_ctx.check_hostname = False
-    _pg_ssl_ctx.verify_mode = _ssl.CERT_NONE  # "prefer" equivalent
-    _engine_kwargs.setdefault("connect_args", {})["ssl"] = _pg_ssl_ctx
+        _pg_ssl_ctx = _ssl.create_default_context()
+        _pg_ssl_ctx.check_hostname = False
+        _pg_ssl_ctx.verify_mode = _ssl.CERT_NONE  # "prefer" equivalent
+        _engine_kwargs.setdefault("connect_args", {})["ssl"] = _pg_ssl_ctx
 
 engine = create_async_engine(settings.database_url, **_engine_kwargs)
 
