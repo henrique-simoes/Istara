@@ -9,14 +9,14 @@ cf:
   spec: CF-SPEC-1
   tasks: [planning-only until owner approval; CF-SPEC-1 tasks generated at approval]
 phase: "Phase 0 — architecture and migration plan (resumed)"
-stage: S2-execute
+stage: S3-review
 status: in-progress
 blocked_on: null
 last:
-  agent: gpt-5.6-luna
-  at: 2026-08-22T13:11:39Z
-  ledger: L-14
-next_action: "Owner approved MECE master plan (slot a); conductor may dispatch implementation."
+  agent: deepseek/deepseek-v4-flash
+  at: 2026-08-22T14:05:00Z
+  ledger: L-15
+next_action: "Review verdict FAIL (F-1..F-4) recorded on ISTARA-PI-MODEL-MIGRATION-20260822-WAVE-foundation-REVIEW; fix tasks FIX-...-r1-record and FIX-...-r1-hygiene dispatched; wave re-review after fixes."
 ```
 
 ## Plan overview
@@ -735,6 +735,12 @@ Result: Stage blocked truthfully; no implementation artifact is ready. CF-SPEC-1
 Verified: pinned native `status`, `next`, `agent-brief`, `task show`, `spec show CF-SPEC-1`, and `task evidence-list`; `git diff --check` passed. Command and self-report evidence recorded on ISTARA-PI-MODEL-MIGRATION-20260822-WAVE-foundation-IMPL.
 Next: Resolve the spec clarification and owner approval gate, generate the explicit task graph, then re-dispatch this foundation implementation task.
 
+### L-15 | 2026-08-22T14:05:00Z | S3-review | deepseek/deepseek-v4-flash | reviewer | review <!-- bsc-ledger:ISTARA-PI-MODEL-MIGRATION-20260822-WAVE-foundation-REVIEW -->
+Did: Two-phase blind review of ISTARA-PI-MODEL-MIGRATION-20260822-WAVE-foundation-REVIEW (foundation wave: upstream Pi contract and migration boundary). Phase 1 measured the wave independently before reading any claims: re-ran all six wave-0 verification commands (npm view 0.84.2/0.84.2; inventory 1 site; gate before 30 inherited/0 new/0 actionable; ratchet 3 passed; security benchmark 28/28 100%; feature_docs 86/224), verified master-plan V1-V17 claim-by-claim (all reproduce), attacked the count-to-zero ratchet (scanner flags synthetic legacy sites, enforcement is in test assertions), verified the uv.lock large-file carve-out, and confirmed zero code changes (planning-only wave). Phase 2 reconciled: plan artifacts are complete and internally consistent (master-a == winner snapshot ec3a76e7; plan-c == snapshot a7e88f54; 6-wave manifest; recipes validate). Owner gate closed 13:12:06Z (068c313a + DEC-3).
+Result: Verdict FAIL - record gaps, not content gaps. F-1 (Major): IMPL task finished by harness finalizer over implementer satisfied:false with no wave-0 verification command evidence on the task and C8 impact/why/test-impact packs never recorded. F-2 (Major): lifecycle L-14 says blocked/no artifact and status block says in-progress/may-dispatch while IMPL is done and REVIEW in flight; no completion entry. F-3 (Minor): backend/uv.lock 1.5MB untracked with recipe carve-outs but no .gitignore (git add -A would commit it). F-4 (Minor): REMASTER-A-r2 stuck claimed with zero events. Fix tasks imported: FIX-ISTARA-PI-MODEL-MIGRATION-20260822-WAVE-foundation-REVIEW-r1-record (F-1/F-2), FIX-...-r1-hygiene (F-3/F-4).
+Verified: command evidence rows 177-185 + review_verdict id 184 + self_report on ISTARA-PI-MODEL-MIGRATION-20260822-WAVE-foundation-REVIEW; `task list` shows both FIX tasks open; `git diff --check` clean.
+Next: fixer stages address F-1..F-4; conductor dispatches delta re-review of the changed surface once both fix tasks are terminal.
+
 ### L-1 | 2026-08-22T11:36:00Z | S0-frame | owner | framer | Phase 0
 
 Did: Created fresh isolated worktree `istara-pi-model-management-migration-20260822` (branch `conductor/istara-pi-model-management-migration-20260822`, base `origin/testing@15260a78`); carried forward the three 2026-08-18 architect drafts as `docs/build-stream/plans/carried-20260818-plan-{a,b,c}.md`; initialized the native CF project (recipe `istara-main`, workspace `/Users/user/Documents/compass-forge`); created execution spec `CF-SPEC-1`; wrote the new strict-wave manifest `docs/build-stream/manifests/istara-pi-model-management-migration-20260822.json` (SHA-256 `b9c8ff0ca1c0521fff18e27d3caf53e11fac89c6fb9a44e1656688ac1cf5a8fd`); registered the new run's actor roles in the active recipe; generated the planning-only tasks `ISTARA-PI-MODEL-MIGRATION-20260822-PLAN-A/B/C` and the new cast with the owner-approved roster (see table above; `plan_gate=true`, `ship.auto_pr=false`, pending `wave_binding`).
@@ -767,6 +773,10 @@ This is a Full security/architecture change. The plan must cover the complete mi
 |---|---|---|---|---|---|---|
 | F-1 | High | Architecture | Carried 2026-08-18 drafts reference multivac staging and old-run CF task ids (CF-787..CF-805) | Must be re-baselined to the managed-VPS contract (vps skill, DEC-2) and this run's six-wave manifest; corrected in draft A, must be held through synthesis | ISTARA-PI-MODEL-MIGRATION-20260822-PLAN-A | open — corrected in draft A; bind in master plan |
 | — | — | — | — | No independent review has run yet in this run. | — | pending |
+| F-1 | Major | Evidence | ISTARA-PI-MODEL-MIGRATION-20260822-WAVE-foundation-IMPL | IMPL task completed by harness finalizer over implementer satisfied:false; no wave-0 verification command evidence on task; C8 impact/why/test-impact packs never recorded | ISTARA-PI-MODEL-MIGRATION-20260822-WAVE-foundation-REVIEW | open — fix task FIX-...-r1-record |
+| F-2 | Major | Record | docs/build-stream/2026-08-22-istara-pi-model-management-migration.md | Ledger/status misrepresent the wave: L-14 says blocked/no artifact, status in-progress; no completion entry after owner gate closed 13:12:06Z | ISTARA-PI-MODEL-MIGRATION-20260822-WAVE-foundation-REVIEW | open — fix task FIX-...-r1-record |
+| F-3 | Minor | Hygiene | backend/uv.lock | 1.5MB untracked uv byproduct; recipe carve-outs but no .gitignore; git add -A at ship would commit it | ISTARA-PI-MODEL-MIGRATION-20260822-WAVE-foundation-REVIEW | open — fix task FIX-...-r1-hygiene |
+| F-4 | Minor | Graph | ISTARA-PI-MODEL-MIGRATION-20260822-REMASTER-A-r2 | Task stuck claimed with zero events; r1 repair is authoritative; stale claim | ISTARA-PI-MODEL-MIGRATION-20260822-WAVE-foundation-REVIEW | open — fix task FIX-...-r1-hygiene |
 
 ## Final summary
 
