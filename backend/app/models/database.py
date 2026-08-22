@@ -1,5 +1,6 @@
 """Database connection and session management."""
 
+import os
 from importlib import import_module
 from pathlib import Path
 
