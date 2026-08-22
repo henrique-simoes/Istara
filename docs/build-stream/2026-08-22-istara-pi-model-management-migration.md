@@ -16,7 +16,7 @@ last:
   agent: deepseek/deepseek-v4-flash
   at: 2026-08-22T17:59:08Z
   ledger: L-39
-next_action: "qa-docs-vps REVIEW verdict FAIL (F-1 VPS acceptance not performed, F-2 deterministic coverage registry red, F-3 hygiene); fixer rounds dispatched, then delta re-review."
+next_action: "Owner approved MECE master plan (slot a); conductor may dispatch implementation."
 ```
 
 ## Plan overview
