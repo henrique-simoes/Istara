@@ -146,9 +146,9 @@ async def get_file_encryption_status(request: Request):
     require_global_role(request, "admin")
     from app.core.file_encryption import (
         CRYPTO_AVAILABLE,
+        is_encrypted_file,
         key_fingerprint,
         managed_upload_files,
-        is_encrypted_file,
         resolve_file_encryption_key,
     )
 
@@ -160,9 +160,7 @@ async def get_file_encryption_status(request: Request):
         "crypto_available": CRYPTO_AVAILABLE,
         "key_available": key_available,
         "key_storage": (
-            "environment"
-            if settings.file_encryption_key
-            else "macos_keychain_or_owner_key_file"
+            "environment" if settings.file_encryption_key else "macos_keychain_or_owner_key_file"
         ),
         "key_fingerprint": key_fingerprint() if key_available else "",
         "managed_file_count": len(files),
@@ -779,7 +777,10 @@ async def add_pi_endpoint(data: PiEndpointRequest, request: Request):
     if not data.base_url.startswith(("https://", "http://127.0.0.1", "http://localhost")):
         raise HTTPException(status_code=400, detail="base_url must be https (or loopback)")
     if not data.keychain_service.strip():
-        raise HTTPException(status_code=400, detail="keychain_service is required (Pi endpoints resolve secrets via Keychain)")
+        raise HTTPException(
+            status_code=400,
+            detail="keychain_service is required (Pi endpoints resolve secrets via Keychain)",
+        )
     try:
         settings.pi_api_endpoints.append(PiApiEndpoint(**data.model_dump()))
     except ValueError as exc:

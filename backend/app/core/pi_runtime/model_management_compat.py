@@ -9,8 +9,9 @@ from __future__ import annotations
 
 import hashlib
 import json
+from collections.abc import Iterable
 from dataclasses import asdict, dataclass
-from typing import Any, Iterable
+from typing import Any
 from urllib.parse import urlparse
 
 # Providers the Pi catalog projection accepts. This set MUST stay in lockstep
@@ -20,17 +21,19 @@ from urllib.parse import urlparse
 # server types (model_capabilities.OPENAI_COMPATIBLE_PROVIDER_TYPES, also the
 # provider vocabulary of the legacy LLM-server API); anthropic_compat projects
 # through the Anthropic-compatible provider kind.
-SUPPORTED_PROVIDERS = frozenset({
-    "ollama",
-    "lmstudio",
-    "openai_compat",
-    "anthropic",
-    "anthropic_compat",
-    "vllm",
-    "sglang",
-    "llamacpp",
-    "mlx",
-})
+SUPPORTED_PROVIDERS = frozenset(
+    {
+        "ollama",
+        "lmstudio",
+        "openai_compat",
+        "anthropic",
+        "anthropic_compat",
+        "vllm",
+        "sglang",
+        "llamacpp",
+        "mlx",
+    }
+)
 
 
 @dataclass(frozen=True)
@@ -46,9 +49,44 @@ def _checksum(row: Any) -> str:
     """Hash non-secret source identity/configuration for recovery evidence."""
     payload = {
         key: getattr(row, key, None)
-        for key in ("id", "name", "provider_type", "host", "is_local", "is_relay", "priority", "capabilities")
+        for key in (
+            "id",
+            "name",
+            "provider_type",
+            "host",
+            "is_local",
+            "is_relay",
+            "priority",
+            "capabilities",
+        )
     }
     return hashlib.sha256(json.dumps(payload, sort_keys=True, default=str).encode()).hexdigest()
+
+
+def host_is_plannable(host: str) -> bool:
+    """Whether a legacy server host may be projected into the Pi catalog.
+
+    Mirrors the platform's endpoint policy for user-configured service URLs
+    (``EndpointPolicy.allow_userinfo=False``, ``allow_query=False``) and
+    tightens it one step further: the scheme must be written out explicitly.
+    ``PiModelManager._project_llm_server`` uses the stored host verbatim as
+    the catalog ``base_url``, so a schemeless host would project a URL that is
+    dead on arrival (httpx raises ``UnsupportedProtocol``) while the plan's
+    removal criteria would still bless the row for deletion — the same
+    silent-config-loss class as unsupported providers. The plan classifier and
+    the catalog projection both call this helper so their outcomes stay
+    identical.
+    """
+    value = (host or "").strip()
+    if "://" not in value:
+        return False
+    parsed = urlparse(value)
+    return (
+        parsed.scheme in {"http", "https"}
+        and bool(parsed.hostname)
+        and not (parsed.username or parsed.password)
+        and not parsed.query
+    )
 
 
 def classify_server(row: Any) -> CompatibilityMapping:
@@ -57,13 +95,14 @@ def classify_server(row: Any) -> CompatibilityMapping:
     if not source_id:
         return CompatibilityMapping("", None, "blocked", "missing_source_id", checksum)
     if bool(getattr(row, "is_relay", False)):
-        return CompatibilityMapping(source_id, None, "legacy_only", "relay_not_pi_catalog", checksum)
+        return CompatibilityMapping(
+            source_id, None, "legacy_only", "relay_not_pi_catalog", checksum
+        )
     provider = str(getattr(row, "provider_type", "") or "").strip().lower()
     if provider not in SUPPORTED_PROVIDERS:
         return CompatibilityMapping(source_id, None, "blocked", "unsupported_provider", checksum)
     host = str(getattr(row, "host", "") or "").strip()
-    parsed = urlparse(host if "://" in host else f"http://{host}")
-    if parsed.scheme not in {"http", "https"} or not parsed.hostname:
+    if not host_is_plannable(host):
         return CompatibilityMapping(source_id, None, "blocked", "invalid_host", checksum)
     return CompatibilityMapping(source_id, f"pi-llm-{source_id}", "projected", None, checksum)
 
@@ -71,13 +110,24 @@ def classify_server(row: Any) -> CompatibilityMapping:
 def plan_migration(rows: Iterable[Any]) -> dict[str, Any]:
     """Return an idempotent, secret-free migration plan and audit summary."""
     mappings = [classify_server(row) for row in rows]
-    counts = {state: sum(mapping.state == state for mapping in mappings) for state in ("projected", "legacy_only", "blocked")}
+    counts = {
+        state: sum(mapping.state == state for mapping in mappings)
+        for state in ("projected", "legacy_only", "blocked")
+    }
     return {
         "mode": "dry_run",
         "canonical_resolver": "PiModelManager",
         "delete_source_rows": False,
         "mappings": [asdict(mapping) for mapping in mappings],
         "counts": counts,
-        "rollback": {"available": True, "source_rows_retained": True, "checksums": [m.source_checksum for m in mappings]},
-        "removal_criteria": ["all rows projected or explicitly legacy_only", "zero blocked rows", "rollback drill recorded"],
+        "rollback": {
+            "available": True,
+            "source_rows_retained": True,
+            "checksums": [m.source_checksum for m in mappings],
+        },
+        "removal_criteria": [
+            "all rows projected or explicitly legacy_only",
+            "zero blocked rows",
+            "rollback drill recorded",
+        ],
     }

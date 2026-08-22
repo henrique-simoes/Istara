@@ -60,8 +60,53 @@ def test_plan_and_catalog_reject_unsupported_providers_identically():
     assert PiModelManager._project_llm_server(row) is None
 
 
+@pytest.mark.parametrize(
+    ("host", "provider"),
+    [
+        ("localhost:11434", "ollama"),  # schemeless — projection base_url is dead on arrival
+        ("//llm.invalid/v1", "openai_compat"),  # scheme-relative
+        ("http://user:pass@llm.invalid/v1", "openai_compat"),  # embedded credentials
+        ("http://llm.invalid/v1?key=secret", "openai_compat"),  # query string
+    ],
+)
+def test_plan_and_catalog_reject_unplannable_host_shapes_identically(host, provider):
+    """Plan state and Pi catalog projection must agree for host shapes the
+    platform's endpoint policy forbids (userinfo/query) or that would project
+    a dead base_url (schemeless). Regression for F-3: such rows used to be
+    planned `projected` — blessing their removal under the plan's criteria —
+    while the catalog entry was uncallable or carried credentials/query the
+    platform never accepts (EndpointPolicy.allow_userinfo/allow_query=False)."""
+    row = SimpleNamespace(
+        id="row-host-shape",
+        name="Host shape",
+        provider_type=provider,
+        host=host,
+        is_local=False,
+        is_relay=False,
+        priority=10,
+        capabilities="{}",
+        api_key="",
+    )
+    mapping = plan_migration([row])["mappings"][0]
+    # Plan outcome == catalog outcome: unplannable hosts are blocked AND dropped.
+    assert mapping["state"] == "blocked"
+    assert mapping["reason"] == "invalid_host"
+    assert PiModelManager._project_llm_server(row) is None
+
+
 def test_plan_is_idempotent_and_preserves_source_rows():
-    rows = [SimpleNamespace(id="a", name="A", provider_type="ollama", host="http://localhost:11434", is_local=True, is_relay=False, priority=1, capabilities="{}")]
+    rows = [
+        SimpleNamespace(
+            id="a",
+            name="A",
+            provider_type="ollama",
+            host="http://localhost:11434",
+            is_local=True,
+            is_relay=False,
+            priority=1,
+            capabilities="{}",
+        )
+    ]
     first = plan_migration(rows)
     second = plan_migration(rows)
     assert first == second
@@ -78,4 +123,8 @@ def test_plan_fails_closed_without_silent_fallback():
     ]
     plan = plan_migration(rows)
     assert plan["counts"] == {"projected": 0, "legacy_only": 1, "blocked": 2}
-    assert {item["reason"] for item in plan["mappings"]} == {"relay_not_pi_catalog", "unsupported_provider", "invalid_host"}
+    assert {item["reason"] for item in plan["mappings"]} == {
+        "relay_not_pi_catalog",
+        "unsupported_provider",
+        "invalid_host",
+    }

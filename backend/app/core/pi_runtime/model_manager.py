@@ -20,8 +20,8 @@ from __future__ import annotations
 import json
 import logging
 import weakref
+from collections.abc import Iterable
 from dataclasses import dataclass
-from typing import Iterable
 
 from app.config import PiApiEndpoint, settings
 
@@ -31,14 +31,14 @@ from .endpoints import (
     PiEndpointResolver,
     ResolvedPiEndpoint,
 )
-from .model_management_compat import SUPPORTED_PROVIDERS
+from .model_management_compat import SUPPORTED_PROVIDERS, host_is_plannable
 
 logger = logging.getLogger(__name__)
 
 # Live managers, so LLMServer CRUD / network discovery can invalidate the
 # DB projection on every in-process manager (W8 UX parity) without changing
 # how managers are constructed or shared.
-_LIVE_MANAGERS: "weakref.WeakSet[PiModelManager]" = weakref.WeakSet()
+_LIVE_MANAGERS: weakref.WeakSet[PiModelManager] = weakref.WeakSet()
 
 
 @dataclass(frozen=True)
@@ -82,15 +82,23 @@ class _CatalogEntry:
 class PiModelManager:
     """Select from the Pi catalog, never by donor capacity/scoring."""
 
-    def __init__(self, resolver: PiEndpointResolver | None = None,
-                 endpoints: Iterable[ResolvedPiEndpoint] | None = None,
-                 *, include_local: bool = True) -> None:
+    def __init__(
+        self,
+        resolver: PiEndpointResolver | None = None,
+        endpoints: Iterable[ResolvedPiEndpoint] | None = None,
+        *,
+        include_local: bool = True,
+    ) -> None:
         self._resolver = resolver or PiEndpointResolver()
         if endpoints is None:
             # Duck-typed resolvers (test doubles) may not expose configured();
             # they stay resolvable by id through resolver.resolve.
             configured = getattr(self._resolver, "configured", None)
-            entries = [self._from_settings(endpoint) for endpoint in configured()] if callable(configured) else []
+            entries = (
+                [self._from_settings(endpoint) for endpoint in configured()]
+                if callable(configured)
+                else []
+            )
             if include_local:
                 entries.extend(self._local_entries())
         else:
@@ -215,14 +223,17 @@ class PiModelManager:
             logger.debug("pi model manager: petals projection skipped")
             return
         for entry_dict in entries:
-            self._entries.setdefault(entry_dict["endpoint_id"], _CatalogEntry(
-                endpoint_id=entry_dict["endpoint_id"],
-                provider_kind=str(entry_dict.get("provider_kind", "openai_compat")),
-                base_url=str(entry_dict["base_url"]).rstrip("/"),
-                model=str(entry_dict.get("model") or "default"),
-                source="petals",
-                kind="petals",
-            ))
+            self._entries.setdefault(
+                entry_dict["endpoint_id"],
+                _CatalogEntry(
+                    endpoint_id=entry_dict["endpoint_id"],
+                    provider_kind=str(entry_dict.get("provider_kind", "openai_compat")),
+                    base_url=str(entry_dict["base_url"]).rstrip("/"),
+                    model=str(entry_dict.get("model") or "default"),
+                    source="petals",
+                    kind="petals",
+                ),
+            )
 
     @staticmethod
     def _project_llm_server(row: object) -> _CatalogEntry | None:
@@ -242,12 +253,14 @@ class PiModelManager:
         except (TypeError, ValueError):
             capabilities = {}
         host = (getattr(row, "host", "") or "").rstrip("/")
-        if not host:
+        if not host_is_plannable(host):
             return None
         is_local = bool(getattr(row, "is_local", False)) or provider_type in {"ollama", "lmstudio"}
         if provider_type in {"ollama", "lmstudio"} and not host.endswith("/v1"):
             host = f"{host}/v1"
-        provider_kind = "anthropic_compat" if provider_type.startswith("anthropic") else "openai_compat"
+        provider_kind = (
+            "anthropic_compat" if provider_type.startswith("anthropic") else "openai_compat"
+        )
         encrypted_key = getattr(row, "api_key", "") or ""
         api_key = ""
         if encrypted_key:
@@ -256,7 +269,10 @@ class PiModelManager:
 
                 api_key = decrypt_field(encrypted_key)
             except Exception:
-                logger.debug("pi model manager: LLMServer key projection failed for %s", getattr(row, "id", "?"))
+                logger.debug(
+                    "pi model manager: LLMServer key projection failed for %s",
+                    getattr(row, "id", "?"),
+                )
                 return None
         elif provider_type == "ollama":
             api_key = "ollama"
@@ -264,8 +280,10 @@ class PiModelManager:
             api_key = settings.lmstudio_api_key or "lm-studio"
         models = capabilities.get("models") if isinstance(capabilities, dict) else None
         model = (models[0] if isinstance(models, list) and models else "") or (
-            settings.ollama_model if provider_type == "ollama"
-            else settings.lmstudio_model if provider_type == "lmstudio"
+            settings.ollama_model
+            if provider_type == "ollama"
+            else settings.lmstudio_model
+            if provider_type == "lmstudio"
             else (getattr(row, "name", "") or "default")
         )
         return _CatalogEntry(
@@ -282,8 +300,14 @@ class PiModelManager:
             ),
             source="llm_server",
             api_key=api_key,
-            context_window=int(capabilities.get("context_window", 0) or 0) if isinstance(capabilities, dict) else 0,
-            supports_vision=bool(capabilities.get("vision", False)) if isinstance(capabilities, dict) else False,
+            context_window=(
+                int(capabilities.get("context_window", 0) or 0)
+                if isinstance(capabilities, dict)
+                else 0
+            ),
+            supports_vision=(
+                bool(capabilities.get("vision", False)) if isinstance(capabilities, dict) else False
+            ),
             kind="local" if is_local else "remote",
         )
 
@@ -303,7 +327,9 @@ class PiModelManager:
 
     # ── selection (exact identity or capability-filtered, never scored) ──
     @staticmethod
-    def _matches(entry: _CatalogEntry, *, model: str | None, require_vision: bool, min_context: int) -> bool:
+    def _matches(
+        entry: _CatalogEntry, *, model: str | None, require_vision: bool, min_context: int
+    ) -> bool:
         if model is not None and entry.model != model:
             return False
         if require_vision and not entry.supports_vision:
@@ -313,8 +339,15 @@ class PiModelManager:
         return True
 
     @staticmethod
-    def _admit(model: str | None, require_vision: bool, min_context: int,
-               *, entry_model: str, supports_vision: bool, context_window: int) -> None:
+    def _admit(
+        model: str | None,
+        require_vision: bool,
+        min_context: int,
+        *,
+        entry_model: str,
+        supports_vision: bool,
+        context_window: int,
+    ) -> None:
         if model is not None and entry_model != model:
             raise PiEndpointResolutionError("pi_endpoint_model_mismatch")
         if require_vision and not supports_vision:
@@ -347,41 +380,78 @@ class PiModelManager:
             kind=entry.kind,
         )
 
-    def resolve(self, *, endpoint_id: str | None = None, model: str | None = None,
-                require_vision: bool = False, min_context: int = 0) -> ResolvedPiEndpoint:
+    def resolve(
+        self,
+        *,
+        endpoint_id: str | None = None,
+        model: str | None = None,
+        require_vision: bool = False,
+        min_context: int = 0,
+    ) -> ResolvedPiEndpoint:
         if endpoint_id:
             entry = self._entries.get(endpoint_id)
             if entry is None:
                 # Settings-configured endpoints remain exactly resolvable.
                 endpoint = self._resolver.resolve(endpoint_id, model=model)
-                self._admit(None, require_vision, min_context, entry_model=endpoint.model,
-                            supports_vision=endpoint.supports_vision, context_window=endpoint.context_window)
+                self._admit(
+                    None,
+                    require_vision,
+                    min_context,
+                    entry_model=endpoint.model,
+                    supports_vision=endpoint.supports_vision,
+                    context_window=endpoint.context_window,
+                )
                 return endpoint
-            self._admit(model, require_vision, min_context, entry_model=entry.model,
-                        supports_vision=entry.supports_vision, context_window=entry.context_window)
+            self._admit(
+                model,
+                require_vision,
+                min_context,
+                entry_model=entry.model,
+                supports_vision=entry.supports_vision,
+                context_window=entry.context_window,
+            )
             return self._materialize(entry)
         candidates = [
-            entry for entry in self._entries.values()
-            if self._matches(entry, model=model, require_vision=require_vision, min_context=min_context)
+            entry
+            for entry in self._entries.values()
+            if self._matches(
+                entry, model=model, require_vision=require_vision, min_context=min_context
+            )
         ]
         if candidates:
             return self._materialize(candidates[0])
         if not self._entries:
             # Explicitly empty catalogs retain the resolver as the source of truth.
             endpoint = self._resolver.resolve(DEFAULT_ENDPOINT_ID, model=model)
-            self._admit(None, require_vision, min_context, entry_model=endpoint.model,
-                        supports_vision=endpoint.supports_vision, context_window=endpoint.context_window)
+            self._admit(
+                None,
+                require_vision,
+                min_context,
+                entry_model=endpoint.model,
+                supports_vision=endpoint.supports_vision,
+                context_window=endpoint.context_window,
+            )
             return endpoint
         raise PiEndpointResolutionError("no_matching_pi_endpoint")
 
-    def resolve_distinct(self, n: int, *, model: str | None = None, exclude: Iterable[str] = (),
-                         require_vision: bool = False, min_context: int = 0) -> list[ResolvedPiEndpoint]:
+    def resolve_distinct(
+        self,
+        n: int,
+        *,
+        model: str | None = None,
+        exclude: Iterable[str] = (),
+        require_vision: bool = False,
+        min_context: int = 0,
+    ) -> list[ResolvedPiEndpoint]:
         """N endpoints with distinct identity; fail-closed if fewer than n exist."""
         excluded = set(exclude)
         matches = [
-            entry for entry in self._entries.values()
+            entry
+            for entry in self._entries.values()
             if entry.endpoint_id not in excluded
-            and self._matches(entry, model=model, require_vision=require_vision, min_context=min_context)
+            and self._matches(
+                entry, model=model, require_vision=require_vision, min_context=min_context
+            )
         ]
         if len(matches) < n:
             raise PiEndpointResolutionError("insufficient_distinct_pi_endpoints")
@@ -431,8 +501,7 @@ class PiModelManager:
         ``default``, the active local provider anchors the vector space.
         """
         candidates = [
-            entry for entry in self._entries.values()
-            if entry.provider_kind == "openai_compat"
+            entry for entry in self._entries.values() if entry.provider_kind == "openai_compat"
         ]
         if not candidates:
             raise PiEndpointResolutionError("no_matching_pi_embed_endpoint")
@@ -441,27 +510,21 @@ class PiModelManager:
 
         if requested_model and requested_model != "default":
             exact = [
-                entry for entry in candidates
-                if self._embedding_model(entry) == requested_model
+                entry for entry in candidates if self._embedding_model(entry) == requested_model
             ]
             if exact:
                 active_local = [
-                    entry for entry in exact
-                    if self._is_active_local(entry, active_provider)
+                    entry for entry in exact if self._is_active_local(entry, active_provider)
                 ]
                 return self._materialize((active_local or exact)[0])
             raise PiEndpointResolutionError("no_matching_pi_embed_endpoint_model")
 
         active_local = [
-            entry for entry in candidates
-            if self._is_active_local(entry, active_provider)
+            entry for entry in candidates if self._is_active_local(entry, active_provider)
         ]
         if active_local:
             return self._materialize(active_local[0])
-        default_model = [
-            entry for entry in candidates
-            if self._embedding_model(entry) == "default"
-        ]
+        default_model = [entry for entry in candidates if self._embedding_model(entry) == "default"]
         if default_model:
             return self._materialize(default_model[0])
         if len(candidates) == 1:
@@ -474,9 +537,13 @@ class PiModelManager:
         """Identity/capability view for the settings UI and benchmarks."""
         return [
             PiEndpointInfo(
-                entry.endpoint_id, entry.model, entry.provider_kind,
-                context_window=entry.context_window, max_tokens=entry.max_tokens,
-                supports_tools=entry.supports_tools, supports_vision=entry.supports_vision,
+                entry.endpoint_id,
+                entry.model,
+                entry.provider_kind,
+                context_window=entry.context_window,
+                max_tokens=entry.max_tokens,
+                supports_tools=entry.supports_tools,
+                supports_vision=entry.supports_vision,
                 kind=entry.kind,
             )
             for entry in self._entries.values()
