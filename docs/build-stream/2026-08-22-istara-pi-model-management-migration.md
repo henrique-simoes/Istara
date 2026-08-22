@@ -16,7 +16,7 @@ last:
   agent: deepseek/deepseek-v4-flash
   at: 2026-08-22T14:05:00Z
   ledger: L-15
-next_action: "Review verdict FAIL (F-1..F-4) recorded on ISTARA-PI-MODEL-MIGRATION-20260822-WAVE-foundation-REVIEW; fix tasks FIX-...-r1-record and FIX-...-r1-hygiene dispatched; wave re-review after fixes."
+next_action: "Owner approved MECE master plan (slot a); conductor may dispatch implementation."
 ```
 
 ## Plan overview
