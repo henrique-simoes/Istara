@@ -9,14 +9,14 @@ cf:
   spec: CF-SPEC-1
   tasks: [planning-only until owner approval; CF-SPEC-1 tasks generated at approval]
 phase: "Phase 2 — implementation"
-stage: S3-review
+stage: S4-remediate
 status: in-progress
 blocked_on: null
 last:
   agent: deepseek/deepseek-v4-flash
-  at: 2026-08-22T16:43:48Z
-  ledger: L-34
-next_action: "Owner approved MECE master plan (slot a); conductor may dispatch implementation."
+  at: 2026-08-22T16:53:02Z
+  ledger: L-35
+next_action: "petals-audio FIX-r1 terminal (F-1..F-4 fixed, evidence recorded); conductor dispatches delta re-review of the changed surface."
 ```
 
 ## Plan overview
