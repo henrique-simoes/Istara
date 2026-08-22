@@ -9,13 +9,13 @@ cf:
   spec: CF-SPEC-1
   tasks: [planning-only until owner approval; CF-SPEC-1 tasks generated at approval]
 phase: "Phase 2 — implementation"
-stage: S4-remediate
+stage: S3-review
 status: in-progress
 blocked_on: null
 last:
   agent: deepseek/deepseek-v4-flash
-  at: 2026-08-22T16:15:49Z
-  ledger: L-30
+  at: 2026-08-22T16:27:09Z
+  ledger: L-32
 next_action: "Owner approved MECE master plan (slot a); conductor may dispatch implementation."
 ```
 
@@ -995,4 +995,10 @@ Did: Gate-hygiene follow-up (same stage): after the embeddings-controls fixer's 
 Result: Branch-level changed-files gate green again (F-4 acceptance holds for the whole wave surface). Same task FIX-ISTARA-PI-MODEL-MIGRATION-20260822-WAVE-compat-routing-REVIEW-r2 (F-3/F-4 already verified in L-30).
 Verified: `python scripts/check_ruff_changed.py --base origin/testing --head HEAD` -> exit 0, all 7 changed backend files lint+format clean; `ruff check` + `ruff format --check` on the 2 files -> All checks passed! / already formatted; `backend/.venv-fix/bin/python -m pytest tests/test_projects.py tests/test_project_rbac.py tests/test_project_scope_contracts.py tests/test_settings.py tests/test_settings_agentic_pi_endpoints.py tests/pi_migration/ tests/pi_production/test_w8_embeddings_gateway.py tests/pi_production/test_w8_ux_parity.py -q` -> 149 passed in 4.49s; compileall OK. Evidence ids 483-485.
 Next: conductor dispatches delta re-review (REREV) of this fix surface; reviewer may double-check the projects.py/vector_health.py hygiene diff. Stage exit: F-3/F-4 verified fixed + gate green at branch level; satisfied=true.
+
+### L-32 | 2026-08-22T16:27:09Z | S3-review | deepseek/deepseek-v4-flash | reviewer | istara-pi-model-management-migration-20260822-code-reviewer <!-- bsc-ledger:REREV-ISTARA-PI-MODEL-MIGRATION-20260822-WAVE-embeddings-controls-REVIEW-r1 -->
+Did: Delta re-review of the F-1..F-4 fix surface (fix commits bae56df1 + e66ad335 + 10e4bff9; fix tasks FIX-...-embeddings-controls-REVIEW-r1, FIX-...-compat-routing-REVIEW-r2-new, FIX-...-compat-routing-REVIEW-r2). Verified every cited finding against the fixes and ran independent focused proofs. F-1: radiogroup Pi/Istara engine buttons with evidence-backed provisional comparative summaries — every figure cross-checked verbatim against the cited artifact `comparison-Istara-pi/reports/20260801T010602Z/scorecard.json` (tool calling 0.81/0.83, output quality 6.75/6.64, spine 1.00/0.81, skills/A2A ties 1.00, verdict no_significant_difference; zero winner-fabrication language, test-enforced); single canonical `embed_model` safe metadata (name only; ux_parity test asserts no scheme/key material); no per-engine embedding option; a11y contract (radiogroup, aria-labelledby/describedby, native radios, focus rings) documented; scenario 79 asserts provisional badge + provenance in live UI; feature docs + site regenerated (86/224/0). F-2: cache hits validated against the engine's known per-model dimension via expected_dimension (probe/provider-seeded registry); unknown dimension fails closed; direct reviewer repro closed (3-dim cached + known dim 2 -> re-embedded [0.4,0.5], put called); 5 regression tests; Tech.md/agentic_core.md/comments corrected. F-3: shared host_is_plannable() (explicit http(s) scheme; userinfo/query rejected, mirroring EndpointPolicy allow_userinfo/allow_query=False) applied in classify_server AND _project_llm_server so plan==catalog by construction; 5-shape direct repro: all 4 forbidden shapes blocked+invalid_host AND catalog-dropped, valid control projected; 4 parametrized regression tests. F-4: check_ruff_changed.py --base 502adbf7^ --head HEAD exit 0 — all 6 wave backend files lint+format clean.
+Result: Verdict PASS, corrections_made=0, satisfied=true. All four findings F-1..F-4 confirmed fixed; findings register rows already flipped by L-28/L-29/L-30 (re-confirmed). REREV-ISTARA-PI-MODEL-MIGRATION-20260822-WAVE-embeddings-controls-REVIEW-r1.
+Verified: 8 command evidence rows + review_verdict + self_report recorded on this task. Independent runs: focused suites 87 passed (w8_embeddings_gateway + w8_ux_parity + w6_engine_selection + pi_migration model_management_migration); settings+projects surface 47 passed; full tests/pi_production 353 passed; F-2 and F-3 direct repros both closed; frontend tsc 0 / vitest 14/14 / build OK / eslint clean; security_benchmark 28/28 100%; feature_docs 86/224/0; scenario 79 syntax + registry line 76; compileall OK. Non-blocking nits: trailing blank line at EOF in this lifecycle doc (introduced by the L-29 ledger commit; removed with this entry); radiogroup div carries redundant aria-label beside aria-labelledby (labelledby wins; harmless); host_is_plannable permits URL fragments, consistent with normalized_service_url.
+Next: conductor proceeds past the embeddings-controls wave gate (strict-wave); ship stage handles merge and the documented untracked planner artifacts. Stage exit: delta re-review passed with evidence; satisfied=true.
 
