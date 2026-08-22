@@ -11,12 +11,12 @@ cf:
 phase: "Phase 2 — implementation"
 stage: S4-remediate
 status: in-progress
-blocked_on: "owner approval of VPS acceptance port contract (18443/tcp) + strict single-workload service definition (docs/build-stream/vps-acceptance/port-contract.md §5); approval routed 2026-08-22, hold re-asserted L-42"
+blocked_on: null
 last:
   agent: deepseek/deepseek-v4-flash
   at: 2026-08-22T18:21:34Z
   ledger: L-42
-next_action: "Fixer round r2 (F-4 status-block blocked_on/next_action, F-5 consensus plan_file) on FIX-REREV-ISTARA-PI-MODEL-MIGRATION-20260822-WAVE-qa-docs-vps-REVIEW-r1-hygiene; then ship (owner-gated). F-1 VPS deployment still pending owner approval of port-contract.md §5."
+next_action: "Owner approved MECE master plan (slot a); conductor may dispatch implementation."
 ```
 
 ## Plan overview
