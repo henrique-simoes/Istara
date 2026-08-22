@@ -9,13 +9,13 @@ cf:
   spec: CF-SPEC-1
   tasks: [planning-only until owner approval; CF-SPEC-1 tasks generated at approval]
 phase: "Phase 2 — implementation"
-stage: S4-remediate
+stage: S3-review
 status: in-progress
 blocked_on: null
 last:
-  agent: deepseek/deepseek-v4-flash
-  at: 2026-08-22T15:19:30Z
-  ledger: L-24
+  agent: deepseek/deepseek-v4-flash-max
+  at: 2026-08-22T15:25:00Z
+  ledger: L-25
 next_action: "Owner approved MECE master plan (slot a); conductor may dispatch implementation."
 ```
 
@@ -800,9 +800,9 @@ This is a Full security/architecture change. The plan must cover the complete mi
 | F-7 | Minor | Hygiene | worktree | manifest.json feature_docs regen uncommitted; recipe.toml actor roles uncommitted; plan-c.md 414-line working-tree delta; untracked planner artifacts (carried-*, master-c, manifests/, recipes/) | ISTARA-PI-MODEL-MIGRATION-20260822-WAVE-pi-catalog-secrets-REVIEW | fixed — FIX-...-r1 (L-20) |
 | F-8 | Minor | Test ownership | tests/ | No version/lockfile provenance test for the Pi package surface (plan test-ownership obligation; wave requires focused tests) | ISTARA-PI-MODEL-MIGRATION-20260822-WAVE-pi-catalog-secrets-REVIEW | fixed — FIX-...-r1 (L-20) |
 
-| F-1 | Major | Compatibility | backend/app/core/pi_runtime/model_management_compat.py | SUPPORTED_PROVIDERS diverges from PiModelManager._project_llm_server (model_manager.py:232): vllm/sglang/llamacpp/mlx plan=projected but catalog DROPS the row (silent config loss at the migration gate — removal criteria can pass while rows never reach the Pi catalog); anthropic_compat plan=blocked but catalog projects it | ISTARA-PI-MODEL-MIGRATION-20260822-WAVE-compat-routing-REVIEW | fixed — FIX-...-r1 (L-24): SUPPORTED_PROVIDERS single source of truth (model_manager imports it); 9-provider plan==catalog parametrized test; 18/52/40 pass |
-| F-2 | Minor | Tests | backend/app/api/routes/settings.py (migration-status route) | Zero route-level tests for GET /api/settings/model-management/migration-status; path missing from admin-403 parametrize list (tests/test_settings.py) and no 200-shape contract test | ISTARA-PI-MODEL-MIGRATION-20260822-WAVE-compat-routing-REVIEW | fixed — FIX-...-r1 (L-24): admin-403 parametrized + 200-shape secret-free contract test (40 pass) |
-| F-3 | Minor | Frontend | frontend/src/lib/api.ts | piEndpoints.migrationStatus (line 1204) is dead code — never consumed anywhere in frontend/src | ISTARA-PI-MODEL-MIGRATION-20260822-WAVE-compat-routing-REVIEW | fixed — FIX-...-r1 (L-24): dead migrationStatus removed from api.ts (1206->1204), zero consumers |
+| F-1 | Major | Compatibility | backend/app/core/pi_runtime/model_management_compat.py | SUPPORTED_PROVIDERS diverges from PiModelManager._project_llm_server (model_manager.py:232): vllm/sglang/llamacpp/mlx plan=projected but catalog DROPS the row (silent config loss at the migration gate — removal criteria can pass while rows never reach the Pi catalog); anthropic_compat plan=blocked but catalog projects it | ISTARA-PI-MODEL-MIGRATION-20260822-WAVE-compat-routing-REVIEW | fixed — FIX-...-r1 (L-24), confirmed by delta re-review (L-25): 18/40/60 independent pass; 9-provider set verified vs OPENAI_COMPATIBLE_PROVIDER_TYPES |
+| F-2 | Minor | Tests | backend/app/api/routes/settings.py (migration-status route) | Zero route-level tests for GET /api/settings/model-management/migration-status; path missing from admin-403 parametrize list (tests/test_settings.py) and no 200-shape contract test | ISTARA-PI-MODEL-MIGRATION-20260822-WAVE-compat-routing-REVIEW | fixed — FIX-...-r1 (L-24), confirmed by delta re-review (L-25): admin-403 + 200-shape secret-free contract test verified green (40 pass) |
+| F-3 | Minor | Frontend | frontend/src/lib/api.ts | piEndpoints.migrationStatus (line 1204) is dead code — never consumed anywhere in frontend/src | ISTARA-PI-MODEL-MIGRATION-20260822-WAVE-compat-routing-REVIEW | fixed — FIX-...-r1 (L-24), confirmed by delta re-review (L-25): removed, rg zero consumers, wc -l 1204 |
 
 ## Final summary
 
@@ -945,3 +945,9 @@ Did: Fixed F-1..F-3 of the L-23 REVIEW verdict. F-1: `model_management_compat.SU
 Result: F-1 open->fixed, F-2 open->fixed, F-3 open->fixed (findings register). FIX-ISTARA-PI-MODEL-MIGRATION-20260822-WAVE-compat-routing-REVIEW-r1.
 Verified: `uv run --project backend python -m pytest tests/pi_migration/ -q` -> 18 passed; `tests/pi_migration/test_model_management_migration.py tests/pi_production/test_w8_embeddings_gateway.py -q` -> 52 passed; `tests/test_settings.py tests/test_settings_agentic_pi_endpoints.py tests/pi_migration/ -q` -> 40 passed; `tests/pi_production/test_w1_dispatcher_authority.py tests/pi_production/test_w8_embeddings_gateway.py tests/test_settings_agentic_pi_endpoints.py -q` -> 62 passed; compileall (compat, model_manager, settings) + `git diff --check` -> passed; `python scripts/feature_docs.py --seed-missing --generate-site --check` -> 86 features/224 artifacts/0 seeded; `compass-forge gate before/after` -> 0 new issues vs baseline (2 pre-existing secret_flow fails in config.py unchanged).
 Next: conductor dispatches delta re-review (REREV) of the changed surface; ship stage handles merge. Stage exit: all three findings flipped fixed with command evidence; satisfied=true.
+
+### L-25 | 2026-08-22T15:25:00Z | S3-review | deepseek/deepseek-v4-flash | reviewer | istara-pi-model-management-migration-20260822-code-reviewer <!-- bsc-ledger:REREV-ISTARA-PI-MODEL-MIGRATION-20260822-WAVE-compat-routing-REVIEW-r1 -->
+Did: Delta re-review of the F-1..F-3 fix surface (commit 061393d8, fix task FIX-...-REVIEW-r1). Verified each cited finding against the fix and ran independent focused proof: F-1 — SUPPORTED_PROVIDERS is now the single source of truth (`PiModelManager._project_llm_server` imports the frozenset, so plan/catalog cannot diverge by construction); cross-checked the set against `model_capabilities.OPENAI_COMPATIBLE_PROVIDER_TYPES` (vllm/sglang/llamacpp/mlx confirmed OpenAI-compatible; anthropic_compat projects via the anthropic-prefix provider_kind mapping); reviewed classify_server vs _project_llm_server edges (relay→legacy_only/None, unsupported→blocked/None, valid host→projected/entry; missing_id and host-scheme edges pre-existing, conservative direction). F-2 — route in admin-403 parametrize list + 200-shape secret-free contract test reviewed and run. F-3 — dead client seam removed, rg confirms zero consumers, 1206→1204 lines. Seams checked: no other callers of _project_llm_server; no residual hardcoded provider set in pi_runtime; feature doc architecture.md documents the shared set; site/manifests regenerate cleanly (working-tree manifest diff is only my own regen's generated_at timestamp).
+Result: Verdict PASS, corrections_made=0, satisfied=true. F-1..F-3 confirmed fixed; findings register confirmed. REREV-ISTARA-PI-MODEL-MIGRATION-20260822-WAVE-compat-routing-REVIEW-r1.
+Verified: `uv run --project backend python -m pytest tests/pi_migration/ -q` -> 18 passed in 0.88s; `tests/test_settings.py tests/test_settings_agentic_pi_endpoints.py tests/pi_migration/ -q` -> 40 passed in 4.09s; `tests/pi_production/test_w1_dispatcher_authority.py tests/pi_production/test_w8_embeddings_gateway.py -q` -> 60 passed in 2.24s; compileall (compat, model_manager, settings) + `git diff --check` -> passed; `python scripts/feature_docs.py --seed-missing --generate-site --check` -> 86 features/224 artifacts/0 seeded.
+Next: conductor proceeds past the compat-routing wave gate (strict-wave); ship stage handles merge and the documented untracked planner artifacts. Stage exit: delta re-review passed with 4 command evidence rows + review_verdict + self_report on the REREV task; residual risks noted in self_report are pre-existing and conservative-direction (plan blocks non-http(s) hosts the catalog would accept; decrypt-failure path returns None while plan stays projected; ollama_openai/gemini_openai deliberately outside the set but rejected identically by plan and catalog).
