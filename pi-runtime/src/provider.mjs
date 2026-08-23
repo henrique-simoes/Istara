@@ -202,11 +202,24 @@ export function streamWithGuardedRetry(models, model, context, options, maxRetri
  * environment. `stream` wraps models.streamSimple with the guarded retry
  * budget from endpoint.params.max_retries.
  */
+/**
+ * Strip API-unsupported controls. The OpenAI Codex Responses API rejects
+ * sampling controls ("Unsupported parameter: temperature"); keep this
+ * knowledge in one tested place.
+ */
+export function filterParamsForApi(params, modelApi) {
+  if (modelApi === "openai-codex-responses") {
+    return Object.fromEntries(Object.entries(params || {}).filter(([key]) => key !== "temperature"));
+  }
+  return { ...(params || {}) };
+}
+
 export function buildRealProvider(endpoint) {
   const { provider_kind: kind, base_url: baseUrl, model: modelId, api_key: apiKey } = endpoint;
   if (!baseUrl || !modelId || !apiKey) throw new Error("incomplete_provider_binding");
   const { api, modelApi } = apiForKind(kind);
   const params = mapProviderParams(endpoint.params);
+  const wireParams = filterParamsForApi(params, modelApi);
   const maxRetries = params.maxRetries ?? 0;
   // Real model rates come from the backend-resolved endpoint pricing, not a
   // hardcoded zero — otherwise pi-ai prices every real turn at $0 and the
@@ -258,8 +271,9 @@ export function buildRealProvider(endpoint) {
     pricing: cost,
     stream: (streamModel, context, options) =>
       // Endpoint params are operator policy and win over agent defaults; the
-      // agent-supplied abort signal is always preserved.
-      streamWithGuardedRetry(models, streamModel, context, { ...options, ...params }, maxRetries),
+      // agent-supplied abort signal is always preserved. wireParams excludes
+      // API-unsupported controls (see above).
+      streamWithGuardedRetry(models, streamModel, context, { ...options, ...wireParams }, maxRetries),
     dispose: () => {
       delete process.env[envVar];
     },
