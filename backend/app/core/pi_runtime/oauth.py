@@ -153,7 +153,9 @@ def _http_request(
     timeout: int = 30,
 ) -> dict[str, Any]:
     body: bytes | None = None
-    request_headers = {"Accept": "application/json"}
+    # Provider edge protection (Cloudflare on auth.openai.com) rejects the
+    # default urllib User-Agent with 530; identify the runtime instead.
+    request_headers = {"Accept": "application/json", "User-Agent": "istara-pi-runtime/1.0"}
     if payload is not None:
         if form:
             request_headers["Content-Type"] = "application/x-www-form-urlencoded"
