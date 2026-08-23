@@ -367,6 +367,11 @@ class Settings(BaseSettings):
     # setting. Stays "legacy" until the owner flips the rollout.
     agentic_engine_default: str = "legacy"
     agentic_core: bool = False
+    # True when the configured Ollama-compatible provider plane is a
+    # deterministic wire stub (QA contract / connectivity-acceptance stacks),
+    # not a model service. Interactive chat fails closed instead of serving
+    # canned contract text as an assistant reply (CF-SPEC-1 ITEM-002).
+    llm_provider_contract_stub: bool = False
 
     # Meta-Hyperagent (optional layer that tunes subsystem parameters)
     meta_hyperagent_enabled: bool = False

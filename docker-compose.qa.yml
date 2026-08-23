@@ -63,6 +63,9 @@ services:
       # real provider and vector-space guards execute without a live provider.
       LLM_PROVIDER: ${QA_LLM_PROVIDER:-ollama}
       OLLAMA_HOST: ${QA_OLLAMA_HOST:-http://qa-provider-stub:11434}
+      # The provider plane below is a deterministic wire stub, not a model
+      # service. Interactive chat fails closed on this marker (CF-SPEC-1).
+      LLM_PROVIDER_CONTRACT_STUB: "true"
       OLLAMA_MODEL: ${QA_OLLAMA_MODEL:-istara-qa-contract-chat:latest}
       OLLAMA_EMBED_MODEL: ${QA_OLLAMA_EMBED_MODEL:-istara-qa-contract-embed:latest}
       LLM_FALLBACK_ENABLED: "false"

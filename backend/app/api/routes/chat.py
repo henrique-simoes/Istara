@@ -41,10 +41,10 @@ from app.core.llm_thinking import apply_thinking_control, normalize_thinking_mod
 from app.core.ollama import ollama  # noqa: F401 — W2: transport moved to the dispatcher; tests monkeypatch this handle
 from app.core.permissions import get_visible_project_or_404, require_project_access
 from app.core.pi_replacement import (
+    PI_ENGINE_VALUES,
     PiChatRunMetrics,
     ensure_pi_deepseek_registered,
     pi_chat_model,
-    pi_replacement_requested,
     record_pi_span,
 )
 from app.core.pi_runtime import PiExecutionService
@@ -121,6 +121,61 @@ def _get_agentic_dispatcher() -> AgenticDispatcher:
     reconfiguration) always dispatch through the current service instance.
     """
     return AgenticDispatcher(pi_service=_get_pi_execution_service())
+
+
+def _engine_choice_from_value(value: str | None) -> str:
+    """Map a persisted or header engine value onto the dispatcher vocabulary."""
+    return "pi" if str(value or "").strip().lower() in PI_ENGINE_VALUES else "legacy"
+
+
+async def _resolve_chat_engine(http_request: Request, project_id: str, db: AsyncSession) -> str:
+    """Resolve the agentic core for one chat turn (CF-SPEC-1 ITEM-001).
+
+    Resolution order mirrors ``AgenticDispatcher.resolve_engine`` so the UI's
+    persisted choice and per-request overrides actually route chat turns:
+
+      1. operator opt-in flag ``settings.pi_replacement_enabled``
+      2. request header ``x-istara-agent-engine`` (per-request override;
+         recognized Pi values select Pi, anything else selects legacy)
+      3. project setting ``projects.agentic_engine``
+      4. global default ``settings.agentic_engine_default`` ("legacy")
+    """
+    if settings.pi_replacement_enabled:
+        return "pi"
+    header_name = (settings.pi_replacement_request_header or "").strip() or "x-istara-agent-engine"
+    header_value = ((http_request.headers.get(header_name)) or "").strip().lower()
+    if header_value:
+        return _engine_choice_from_value(header_value)
+    project_engine = await db.scalar(select(Project.agentic_engine).where(Project.id == project_id))
+    if str(project_engine or "").strip():
+        return _engine_choice_from_value(project_engine)
+    return _engine_choice_from_value(getattr(settings, "agentic_engine_default", "legacy"))
+
+
+def _provider_stub_chat_blocked_events() -> str:
+    """SSE error event for deployments whose provider plane is a wire stub.
+
+    The QA contract stack and the connectivity-acceptance VPS stack declare
+    their Ollama-compatible plane as a deterministic stub. Interactive chat
+    must fail closed with an actionable error instead of streaming canned
+    ``qa-contract-response`` text as if it were a model reply.
+    """
+    return (
+        "data: "
+        + json.dumps(
+            {
+                "type": "error",
+                "code": "provider_stub_chat_blocked",
+                "message": (
+                    "Chat is unavailable: this deployment's model provider is a "
+                    "QA contract stub, not a real model. Configure a live provider "
+                    "host (OLLAMA_HOST) or select the Pi core with a configured "
+                    "endpoint."
+                ),
+            }
+        )
+        + "\n\n"
+    )
 
 
 async def _generate_pi_runtime(
@@ -604,6 +659,25 @@ async def chat(request: ChatRequest, http_request: Request, db: AsyncSession = D
         min_role="researcher",
     )
 
+    # Fail closed before ANY side effect (session/message persistence, RAG):
+    # a deployment that declared its provider plane as a QA wire stub must not
+    # accept interactive chat turns at all (CF-SPEC-1 ITEM-002).
+    if getattr(settings, "llm_provider_contract_stub", False):
+        _chat_log.warning(
+            "Chat rejected on stub provider plane (project=%s)", request.project_id
+        )
+        return StreamingResponse(
+            iter([_provider_stub_chat_blocked_events()]),
+            media_type="text/event-stream",
+            headers={
+                # Same SSE headers as the main stream so intermediaries
+                # (Caddy on the VPS path) never buffer the error frame.
+                "Cache-Control": "no-cache",
+                "Connection": "keep-alive",
+                "X-Accel-Buffering": "no",
+            },
+        )
+
     # Resolve or create the chat session before writing messages. A caller may
     # only use sessions that belong to the requested project and chat surface.
     session: ChatSession | None = None
@@ -898,7 +972,15 @@ async def chat(request: ChatRequest, http_request: Request, db: AsyncSession = D
 
         try:
             # ── Attempt native tool calling ──────────────────────────
-            pi_candidate = pi_replacement_requested(http_request)
+            # Resolve the engine the way the dispatcher does: operator flag >
+            # per-request header > persisted project choice > global default
+            # (CF-SPEC-1 ITEM-001). The UI's Agentic Core selection persists to
+            # projects.agentic_engine / agentic_engine_default and the frontend
+            # echoes its active core via x-istara-agent-engine, so a selected
+            # core now actually routes this turn.
+            pi_candidate = (
+                await _resolve_chat_engine(http_request, request.project_id, db) == "pi"
+            )
             pi_turn_status: dict = {}
             # Resolve the opt-in target before choosing either tool-loop transport.
             # A missing Keychain registration is terminal: falling back would silently

@@ -65,6 +65,12 @@ services:
     environment:
       - LLM_PROVIDER=${LLM_PROVIDER:-ollama}
       - OLLAMA_HOST=http://provider-stub:11434
+      # Honest declaration: this stack's provider plane is the QA wire stub,
+      # not a model service. Interactive chat fails closed on this marker
+      # instead of serving canned contract text (CF-SPEC-1 ITEM-002). Real
+      # chat here requires a live OLLAMA_HOST or the Pi core with a
+      # configured endpoint.
+      - LLM_PROVIDER_CONTRACT_STUB=true
       - OLLAMA_MODEL=${OLLAMA_MODEL:-qwen3:latest}
       - OLLAMA_EMBED_MODEL=${OLLAMA_EMBED_MODEL:-nomic-embed-text}
       - DATABASE_URL=postgresql+asyncpg://istara:istara@postgres:5432/istara

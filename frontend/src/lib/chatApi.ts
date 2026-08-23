@@ -22,14 +22,21 @@ export const chat = {
     message: string,
     sessionId?: string,
     signal?: AbortSignal,
-    thinkingMode?: ThinkingMode
+    thinkingMode?: ThinkingMode,
+    engine?: "pi" | "legacy"
   ) {
     const payload: Record<string, unknown> = { message, project_id: projectId };
     if (sessionId) payload.session_id = sessionId;
     if (thinkingMode) payload.thinking_mode = thinkingMode;
     const res = await fetch(`${API_BASE}/api/chat`, {
       method: "POST",
-      headers: { "Content-Type": "application/json", ...authHeaders() },
+      headers: {
+        "Content-Type": "application/json",
+        ...authHeaders(),
+        // Per-request Agentic Core override so the backend routes this turn
+        // through the exact core shown in the UI (CF-SPEC-1 ITEM-001).
+        ...(engine ? { "x-istara-agent-engine": engine } : {}),
+      },
       body: JSON.stringify(payload),
       signal,
     });

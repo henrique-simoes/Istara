@@ -13,6 +13,11 @@ interface ChatStore {
   error: string | null;
   usage: ChatUsage | null;
   abortController: AbortController | null;
+  // null = catalog unknown (fetch failed): send NO engine header so the
+  // backend falls back to the persisted project/global choice (F-B1).
+  engine: "pi" | "legacy" | null;
+
+  setEngine: (engine: "pi" | "legacy" | null) => void;
 
   fetchHistory: (projectId: string, sessionId?: string) => Promise<void>;
   sendMessage: (
@@ -32,6 +37,9 @@ export const useChatStore = create<ChatStore>((set, get) => ({
   error: null,
   usage: null,
   abortController: null,
+  engine: null,
+
+  setEngine: (engine) => set({ engine }),
 
   fetchHistory: async (projectId, sessionId) => {
     set({ messages: [], streamingContent: "", error: null, usage: null });
@@ -116,7 +124,8 @@ export const useChatStore = create<ChatStore>((set, get) => ({
         content,
         sessionId,
         controller.signal,
-        activeThinkingMode
+        activeThinkingMode,
+        get().engine ?? undefined
       )) {
         if (event.type === "chunk") {
           fullContent += event.content;

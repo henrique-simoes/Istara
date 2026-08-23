@@ -35,6 +35,49 @@ semantic roles rather than inventing one-off colors:
 Light and dark modes must preserve the same semantic roles and a minimum WCAG 2.2 AA
 contrast ratio: 4.5:1 for body text and 3:1 for controls, icons, and focus indicators.
 
+## Token architecture
+
+Three layers. New UI consumes layer 2 (semantic) or higher; raw primitives in component
+code are a review finding.
+
+**Layer 1 — primitives.** The project accent ramp lives in `frontend/tailwind.config.js`
+(`istara-50…950`, green family; `600` is deliberately darker than Tailwind's default green
+for AA compliance). Neutrals are Tailwind v3 `slate`; state hues use Tailwind `amber`,
+`red`, and `blue`. Primitives are never referenced directly by product components.
+
+**Layer 2 — semantic aliases.** Implemented once as CSS variables in
+`frontend/src/app/globals.css` (`:root` and `.dark`). These values are normative:
+
+| Role | Light | Dark | Used for |
+| --- | --- | --- | --- |
+| `--ui-surface` | `#ffffff` | `#0f172a` | page panels (`.ui-panel`) |
+| `--ui-surface-raised` | `#f8fafc` | `#172033` | raised cards, menus |
+| `--ui-surface-soft` | `#f1f5f9` | `#1e293b` | soft wells, tiles |
+| `--ui-ink` | `#0f172a` | `#f8fafc` | primary text |
+| `--ui-ink-muted` | `#475569` | `#cbd5e1` | secondary text |
+| `--ui-ink-subtle` | `#64748b` | `#94a3b8` | helper/metadata text |
+| `--ui-rule` | `#e2e8f0` | `#334155` | hairline boundaries |
+| `--ui-rule-strong` | `#cbd5e1` | `#475569` | emphasized boundaries |
+| `--ui-accent` | `#15803d` | `#4ade80` | selected state, primary action |
+| `--ui-accent-soft` | `#f0fdf4` | `#052e16` | accent tint backgrounds |
+| `--ui-focus` | `#2563eb` | `#93c5fd` | keyboard focus ring; never animated |
+| `--ui-danger` | `#b91c1c` | `#fca5a5` | destructive/error, always with a label |
+| `--ui-warning` | `#a16207` | `#facc15` | caution, always with a label |
+| `--ui-success` | `#166534` | `#86efac` | success, always with a label |
+
+Shape and control metrics: `--ui-radius-panel` 16px, `--ui-radius-control` 10px,
+`--ui-radius-pill` 999px, `--ui-control-height` 44px.
+
+**Layer 3 — portable export.** `docs/design/tokens.json` is generated from the two sources
+above by `python scripts/export_design_tokens.py` (W3C DTCG format). It is never
+hand-edited; CI-style checks run `--check` to fail on drift. This is the file design tools
+and other agents consume; `DESIGN.md` remains the human authority.
+
+**Enforcement.** `scripts/check_a11y_contrast.py` composites every alpha-modified pair over
+its real parent chain and measures both modes against the 4.5:1 / 3:1 bar;
+`tests/test_a11y_contrast.py` fails the suite when a token or class change breaks it.
+Adding a surface means adding its pairs to that audit in the same change.
+
 ## Typography and spacing
 
 - Preserve the repository's system UI font stack for compatibility; use weight and space
@@ -93,3 +136,22 @@ There is no horizontal document scroll. Buttons and primary controls remain at l
 44×44px. Clickable labels do not wrap into two lines. Menus are keyboard reachable and
 screen-reader labelled. Color is never the only state signal. Permission-denied,
 loading, empty, error, and success states are part of the interaction contract.
+
+## Governance — authority model and change flow
+
+| Domain | Authority |
+| --- | --- |
+| User-visible behavior, routes, data, component props | Tested production code |
+| Visual language, token names/roles, component contracts | This document + `docs/design/tokens.json` |
+| Token values as consumed at runtime | `globals.css` / `tailwind.config.js` (projections of this doc) |
+| Research-validity claims in any UI copy | The research spine contract; benchmarks stay provisional |
+
+When code and this document disagree, stop the affected slice, reconcile the authority
+first, then update projections (tokens export, components) — never silently pick the
+newest timestamp.
+
+Meaningful visual-system changes run through Compass Forge with Build Stream evidence:
+spec → slice → `scripts/check_a11y_contrast.py` + `export_design_tokens.py --check` →
+feature-docs regeneration → review. Do/don'ts: don't invent one-off colors, don't hardcode
+focus-ring hues outside `--ui-focus`, don't animate layout or delay focus visibility, don't
+ship a state you have not measured in both modes.

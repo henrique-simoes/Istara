@@ -60,7 +60,7 @@ function SteeringQueueIndicator({
 }
 
 export default function ChatView() {
-  const { messages, streaming, streamingContent, error, usage, sendMessage, fetchHistory, cancelStreaming } = useChatStore();
+  const { messages, streaming, streamingContent, error, usage, sendMessage, fetchHistory, cancelStreaming, setEngine } = useChatStore();
   const { activeProjectId, canWriteActiveProject } = useProjectStore();
   const { activeSessionId, ensureDefault, updateSession, pendingPrefill, setPendingPrefill, fetchSessions } = useSessionStore();
   const { agents, fetchAgents } = useAgentStore();
@@ -94,14 +94,20 @@ export default function ChatView() {
         setConfiguredModels(catalog.configured || []);
         setLegacyModels(catalog.legacy_models || []);
         setModelEngine(catalog.engine === "pi" ? "pi" : "legacy");
+        // Keep the request header in lockstep with the visible core chip so
+        // what the user sees is exactly what routes the turn (CF-SPEC-1).
+        setEngine(catalog.engine === "pi" ? "pi" : "legacy");
       }).catch(() => {
         setModelProviders([]);
         setConfiguredModels([]);
         setLegacyModels([]);
         setModelEngine("legacy");
+        // Catalog unknown: clear the override so the request carries no
+        // engine header and the backend uses the persisted choice (F-B1).
+        setEngine(null);
       });
     }
-  }, [activeProjectId, fetchSessions, ensureDefault, fetchAgents]);
+  }, [activeProjectId, fetchSessions, ensureDefault, fetchAgents, setEngine]);
 
   useEffect(() => {
     if (activeProjectId) {

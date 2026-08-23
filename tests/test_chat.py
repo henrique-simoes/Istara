@@ -2,6 +2,8 @@
 
 import pytest
 import uuid
+from pydantic import ValidationError
+from sqlalchemy import select
 from httpx import AsyncClient, ASGITransport
 from app.main import app
 from app.api.routes.chat import ChatRequest
@@ -230,3 +232,133 @@ async def test_chat_model_catalog_and_usage_are_project_scoped():
     assert catalog.json()["total_models"] > 1000
     assert usage.status_code == 200
     assert usage.json()["total_tokens"] == 0
+
+
+@pytest.mark.asyncio
+async def test_chat_blocked_when_provider_is_contract_stub():
+    """Interactive chat fails closed on declared stub provider planes.
+
+    The QA contract stack and the connectivity-acceptance VPS stack set
+    LLM_PROVIDER_CONTRACT_STUB=true; POST /api/chat must then return an
+    actionable SSE error before any session/message side effect instead of
+    streaming canned qa-contract-response text (CF-SPEC-1 ITEM-002).
+    """
+    await init_db()
+    if not settings.jwt_secret:
+        settings.jwt_secret = "test-secret"
+
+    token = create_token("user1", "testuser", "admin")
+    project_id = str(uuid.uuid4())
+    async with async_session() as db:
+        db.add(Project(id=project_id, name="Stub Provider Project"))
+        await db.commit()
+
+    original_stub = settings.llm_provider_contract_stub
+    settings.llm_provider_contract_stub = True
+    try:
+        transport = ASGITransport(app=app)
+        async with AsyncClient(transport=transport, base_url="http://test") as ac:
+            response = await ac.post(
+                "/api/chat",
+                json={"message": "hello", "project_id": project_id},
+                headers={"Authorization": f"Bearer {token}"},
+            )
+    finally:
+        settings.llm_provider_contract_stub = original_stub
+
+    assert response.status_code == 200
+    assert "provider_stub_chat_blocked" in response.text
+    assert "qa-contract-response" not in response.text
+
+    # Fail-closed means fail BEFORE side effects: no session or message rows.
+    from app.models.message import Message as _Message
+    from app.models.session import ChatSession as _ChatSession
+
+    async with async_session() as verify_db:
+        sessions = (
+            await verify_db.execute(
+                select(_ChatSession).where(_ChatSession.project_id == project_id)
+            )
+        ).scalars().all()
+        messages = (
+            await verify_db.execute(
+                select(_Message).where(_Message.project_id == project_id)
+            )
+        ).scalars().all()
+    assert sessions == []
+    assert messages == []
+
+
+def _engine_db_stub(project_value):
+    class _StubDb:
+        def __init__(self):
+            self.scalar_calls = 0
+
+        async def scalar(self, _stmt):
+            self.scalar_calls += 1
+            return project_value
+
+    return _StubDb()
+
+
+def _engine_request_stub(headers=None):
+    class _StubRequest:
+        def __init__(self):
+            self.headers = headers or {}
+
+    return _StubRequest()
+
+
+@pytest.mark.asyncio
+async def test_resolve_chat_engine_precedence():
+    """Chat engine resolution: operator flag > header > project > global default.
+
+    Locks CF-SPEC-1 ITEM-001 so the UI's Agentic Core selection actually
+    routes the turn and per-request overrides stay dispatcher-compatible.
+    """
+    from app.api.routes.chat import _resolve_chat_engine
+
+    original_flag = settings.pi_replacement_enabled
+    original_default = settings.agentic_engine_default
+    try:
+        settings.pi_replacement_enabled = True
+        db = _engine_db_stub("legacy")
+        assert (
+            await _resolve_chat_engine(
+                _engine_request_stub({"x-istara-agent-engine": "legacy"}), "p1", db
+            )
+            == "pi"
+        )
+        assert db.scalar_calls == 0
+        settings.pi_replacement_enabled = False
+
+        db = _engine_db_stub("legacy")
+        assert (
+            await _resolve_chat_engine(
+                _engine_request_stub({"x-istara-agent-engine": "PI-candidate"}), "p1", db
+            )
+            == "pi"
+        )
+        assert db.scalar_calls == 0
+
+        db = _engine_db_stub("pi")
+        assert (
+            await _resolve_chat_engine(
+                _engine_request_stub({"x-istara-agent-engine": "not-an-engine"}), "p1", db
+            )
+            == "legacy"
+        )
+        assert db.scalar_calls == 0
+
+        db = _engine_db_stub("pi")
+        assert await _resolve_chat_engine(_engine_request_stub(), "p1", db) == "pi"
+        assert db.scalar_calls == 1
+
+        settings.agentic_engine_default = "pi"
+        assert await _resolve_chat_engine(_engine_request_stub(), "p1", _engine_db_stub(None)) == "pi"
+
+        settings.agentic_engine_default = "legacy"
+        assert await _resolve_chat_engine(_engine_request_stub(), "p1", _engine_db_stub("")) == "legacy"
+    finally:
+        settings.pi_replacement_enabled = original_flag
+        settings.agentic_engine_default = original_default

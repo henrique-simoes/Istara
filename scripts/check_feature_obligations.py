@@ -276,6 +276,11 @@ COMMAND_CATALOG: dict[str, str] = {
         "tests/test_settings_agentic_pi_endpoints.py tests/test_audio_model_profile.py "
         "tests/test_projects.py tests/pi_production/test_w8_ux_parity.py -q"
     ),
+    "pytest_core_routing": (
+        "pytest tests/test_chat.py::test_resolve_chat_engine_precedence "
+        "tests/test_chat.py::test_chat_blocked_when_provider_is_contract_stub "
+        "tests/test_a11y_contrast.py tests/test_design_tokens.py -q"
+    ),
     "pytest_research_validity": "pytest tests/test_research_validity_contract.py -q",
     "pytest_synthetic_provisional": "pytest tests/test_synthetic_provisional_boundary.py -q",
     "pytest_harness_contracts": (

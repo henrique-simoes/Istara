@@ -46,7 +46,7 @@ function EngineOption({
       className={cn(
         "relative flex min-w-0 cursor-pointer gap-4 rounded-xl border p-4 transition-colors",
         selected
-          ? "border-istara-500 bg-istara-50/70 dark:border-istara-400 dark:bg-istara-950/40"
+          ? "border-istara-600 bg-istara-50/70 dark:border-istara-400 dark:bg-istara-950/40"
           : "border-slate-200 bg-white hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900/40 dark:hover:bg-slate-800",
         disabled && "cursor-not-allowed opacity-65"
       )}
@@ -64,8 +64,10 @@ function EngineOption({
         aria-hidden="true"
         className={cn(
           "mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2",
-          selected ? "border-istara-600 bg-istara-600 text-white" : "border-slate-300 dark:border-slate-600",
-          "peer-focus-visible:outline peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-blue-600"
+          selected
+            ? "border-istara-600 bg-istara-600 text-white dark:border-istara-400"
+            : "border-slate-500 dark:border-slate-400",
+          "peer-focus-visible:outline peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-[color:var(--ui-focus)]"
         )}
       >
         {selected && <Check size={13} strokeWidth={3} />}

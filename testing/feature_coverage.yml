@@ -58,6 +58,35 @@ allowlist:
   - "docs/features/site/**"
 
 features:
+  - id: design.system-contract
+    status: active
+    owner: research-platform
+    paths:
+      - "DESIGN.md"
+      - "docs/design/**"
+      - "frontend/tailwind.config.js"
+      - "scripts/check_a11y_contrast.py"
+      - "scripts/export_design_tokens.py"
+      - "tests/test_a11y_contrast.py"
+      - "tests/test_design_tokens.py"
+    exceptions: []
+    requires_human_review: false
+    docs_features_update: false
+    obligations:
+      deterministic:
+        - frontend_contracts
+        - feature_docs
+      live: []
+      docs: []
+    commands:
+      deterministic:
+        - pytest_core_routing
+        - frontend_typecheck
+        - frontend_lint
+    acceptance: "The interface contract stays authoritative and machine-readable: DESIGN.md documents the three-layer token architecture with per-mode values, tokens.json is exactly the deterministic DTCG export of globals.css + tailwind.config.js, and every audited chooser pair passes WCAG 2.2 AA contrast in light and dark modes."
+    introduced_in: "00be130f"
+    last_verified_sha: "00be130f"
+
   - id: ci.public-testing-branch
     status: active
     owner: platform
@@ -132,6 +161,7 @@ features:
     paths:
       - "docker-compose.yml"
       - "docker-compose.qa.yml"
+      - "docker-compose.vps.yml"
       - "docker-compose.gpu.yml"
       - "qa/scripts/**"
       - "qa/Dockerfile"
@@ -604,12 +634,13 @@ features:
       deterministic:
         - pytest_migration_suites
         - pytest_provider_contracts
+        - pytest_core_routing
         - frontend_unit
         - frontend_typecheck
         - frontend_lint
         - security_benchmark
         - feature_docs_check
-    acceptance: "Settings has a browseable + autocomplete Pi catalog, accurate OpenAI browser/device OAuth choices, a dedicated Agentic Core comparison, and Chat exposes provider/model, exact effort, and content-free token/cache/cost/context usage without secrets or research-spine bypass."
+    acceptance: "Settings has a browseable + autocomplete Pi catalog, accurate OpenAI browser/device OAuth choices, a dedicated Agentic Core comparison, and Chat exposes provider/model, exact effort, and content-free token/cache/cost/context usage without secrets or research-spine bypass. The selected Agentic Core actually routes the chat turn (persisted project/global setting plus per-request header), stub provider planes fail closed for interactive chat, and the chooser passes measured WCAG 2.2 AA in both modes."
     introduced_in: "pending"
     last_verified_sha: "pending"
 

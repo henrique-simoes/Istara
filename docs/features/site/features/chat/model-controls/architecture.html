@@ -368,6 +368,8 @@
 <li>The frontmatter and manifest entries are the durable contract for agents updating this page after code changes.</li>
 <li>When the referenced component, store, route, agent, skill, or test behavior changes, regenerate and validate the feature documentation.</li>
 </ul>
+<h2 id="agentic-core-resolution-cf-spec-1">Agentic Core Resolution (CF-SPEC-1)</h2>
+<p>Each chat turn resolves its engine in one order: operator flag <code>pi_replacement_enabled</code> → per-request header <code>x-istara-agent-engine</code> → persisted <code>projects.agentic_engine</code> → global <code>settings.agentic_engine_default</code>. The frontend echoes the core shown in the model-controls chip through that header (<code>chatStore.engine</code>, sourced from <code>/api/chat/model-catalog</code>); when the catalog is unavailable the header is omitted so the persisted choice governs. Deployments that declare their provider plane as a deterministic wire stub (<code>LLM_PROVIDER_CONTRACT_STUB=true</code>, set by the QA and connectivity-acceptance stacks) reject interactive chat before any session or message write with an SSE <code>provider_stub_chat_blocked</code> error instead of serving canned contract text.</p>
 <h2 id="agents-skills-llm-mcp-and-permissions">Agents, Skills, LLM, MCP, And Permissions</h2>
 <ul>
 <li>RAG-related behavior depends on project context, documents, memory, or retrieval material referenced by the cited stores and routes.</li>
@@ -420,6 +422,7 @@
 <li class="toc-level-3"><a href="#api-and-backend">API And Backend</a></li>
 <li class="toc-level-3"><a href="#agentic-dispatcher-and-engine-selection-pi-replacement-w1">Agentic Dispatcher And Engine Selection (Pi Replacement W1)</a></li>
 <li class="toc-level-2"><a href="#architecture-notes">Architecture Notes</a></li>
+<li class="toc-level-2"><a href="#agentic-core-resolution-cf-spec-1">Agentic Core Resolution (CF-SPEC-1)</a></li>
 <li class="toc-level-2"><a href="#agents-skills-llm-mcp-and-permissions">Agents, Skills, LLM, MCP, And Permissions</a></li>
 <li class="toc-level-2"><a href="#tests-and-verification">Tests And Verification</a></li>
 <li class="toc-level-2"><a href="#related-features">Related Features</a></li>
