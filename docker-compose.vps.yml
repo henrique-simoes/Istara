@@ -55,8 +55,8 @@ services:
 
   backend:
     build:
-      context: ./backend
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: backend/Dockerfile
       args:
         - INSTALL_WHISPER=false
     container_name: istara-test-backend

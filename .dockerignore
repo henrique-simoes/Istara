@@ -1,0 +1,23 @@
+# Root-context build guard (backend image ships backend/ + pi-runtime only).
+# Never send protected local artifacts, VCS history, or heavy trees as build context.
+.git
+.github
+**/.DS_Store
+LLMs
+Model_Finetuning
+frontend
+relay
+labs
+desktop
+testing
+tests
+docs
+qa
+scripts
+deploy
+data
+*.db
+*.db-journal
+**/node_modules
+**/__pycache__
+**/.venv
