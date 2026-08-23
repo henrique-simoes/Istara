@@ -71,6 +71,7 @@ services:
       # chat here requires a live OLLAMA_HOST or the Pi core with a
       # configured endpoint.
       - LLM_PROVIDER_CONTRACT_STUB=true
+      - PI_REPLACEMENT_DEEPSEEK_MODEL=${PI_REPLACEMENT_DEEPSEEK_MODEL:-deepseek-v4-pro}
       - ISTARA_ENV_FILE=/app/runtime-state/env
       - OLLAMA_MODEL=${OLLAMA_MODEL:-qwen3:latest}
       - OLLAMA_EMBED_MODEL=${OLLAMA_EMBED_MODEL:-nomic-embed-text}
