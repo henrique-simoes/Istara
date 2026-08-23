@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Activity,
   Bot,
@@ -154,6 +154,32 @@ function ModelPicker({
 }
 
 function UsagePopover({ usage, model, open, onOpenChange }: { usage: ChatUsage | null; model: PiCatalogModel | null; open: boolean; onOpenChange: (open: boolean) => void }) {
+  const buttonRef = useRef<HTMLButtonElement>(null);
+  const [position, setPosition] = useState({ top: 0, left: 0, width: 384 });
+  const updatePosition = () => {
+    const button = buttonRef.current;
+    if (!button) return;
+    const workbench = button.closest<HTMLElement>("[data-chat-workbench]")?.getBoundingClientRect();
+    const rect = button.getBoundingClientRect();
+    const maxWidth = Math.min(384, (workbench?.width || window.innerWidth) - 32);
+    const minLeft = (workbench?.left || 0) + 16;
+    const maxLeft = (workbench?.right || window.innerWidth) - maxWidth - 16;
+    const left = Math.max(minLeft, Math.min(rect.right - maxWidth, maxLeft));
+    setPosition({ top: rect.bottom + 8, left, width: maxWidth });
+  };
+
+  useEffect(() => {
+    if (!open) return;
+    updatePosition();
+    const onViewportChange = () => updatePosition();
+    window.addEventListener("resize", onViewportChange);
+    window.addEventListener("scroll", onViewportChange, true);
+    return () => {
+      window.removeEventListener("resize", onViewportChange);
+      window.removeEventListener("scroll", onViewportChange, true);
+    };
+  }, [open]);
+
   const data = usage?.last_turn?.usage || {};
   const currentInput = Number(data.input_tokens ?? data.input ?? usage?.latest?.input_tokens ?? 0);
   const contextWindow = model?.contextWindow || 0;
@@ -161,14 +187,14 @@ function UsagePopover({ usage, model, open, onOpenChange }: { usage: ChatUsage |
 
   return (
     <div className="relative shrink-0">
-      <button type="button" className="ui-control inline-flex items-center gap-2 px-3 text-xs font-semibold" onClick={() => onOpenChange(!open)} aria-expanded={open} aria-haspopup="dialog">
+      <button ref={buttonRef} type="button" className="ui-control inline-flex items-center gap-2 px-3 text-xs font-semibold" onClick={() => { if (!open) updatePosition(); onOpenChange(!open); }} aria-expanded={open} aria-haspopup="dialog">
         <Activity size={15} className="text-istara-600" aria-hidden="true" />
         <span className="hidden sm:inline">Usage</span>
         <span className="font-mono tabular-nums">{formatTokens(usage?.total_tokens || 0)}</span>
         <ChevronDown size={14} className={cn("text-slate-400 transition-transform", open && "rotate-180")} />
       </button>
       {open && (
-        <div role="dialog" aria-label="Chat usage details" className="ui-menu absolute right-0 top-[calc(100%+8px)] z-[120] w-[min(24rem,calc(100vw-2rem))] p-4">
+        <div role="dialog" aria-label="Chat usage details" className="ui-menu fixed z-[200] p-4" style={{ top: position.top, left: position.left, width: position.width }}>
           <div className="flex items-start justify-between gap-3">
             <div><h3 className="text-sm font-semibold text-slate-950 dark:text-white">This chat&apos;s usage</h3><p className="mt-1 text-xs text-slate-500">Provider-reported when available. Estimated values are labelled.</p></div>
             <button type="button" className="ui-icon-button !min-h-[36px] !min-w-[36px]" onClick={() => onOpenChange(false)} aria-label="Close usage details"><X size={15} /></button>

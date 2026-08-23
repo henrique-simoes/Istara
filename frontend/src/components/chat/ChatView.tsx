@@ -276,6 +276,7 @@ export default function ChatView() {
 
       {/* Main chat area */}
       <div
+        data-chat-workbench="true"
         className={cn("flex-1 min-w-0 flex flex-col min-h-0 overflow-hidden", dragOver && "ring-2 ring-istara-500 ring-inset bg-istara-50/50 dark:bg-istara-900/10")}
         onDragOver={(e) => { e.preventDefault(); if (canWrite) setDragOver(true); }}
         onDragLeave={() => setDragOver(false)}
