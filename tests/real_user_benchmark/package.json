@@ -6,6 +6,8 @@
   "scripts": {
     "plan": "node run.mjs --mode plan-only",
     "probe": "node run.mjs --mode probe --max-chat-turns 8 --max-tasks 8",
+    "probe:legacy": "ISTARA_BENCHMARK_ENGINE=legacy node run.mjs --mode probe --max-chat-turns 8 --max-tasks 8",
+    "probe:pi": "ISTARA_BENCHMARK_ENGINE=pi node run.mjs --mode probe --max-chat-turns 8 --max-tasks 8",
     "probe:deep": "node run.mjs --mode probe --max-chat-turns 20 --max-tasks 16 --max-uploads 174 --coding-limit 16",
     "probe:deep:three-model": "ISTARA_BENCHMARK_DONOR_TOPOLOGY=macstudio-colima-qwen-gemma ISTARA_BENCHMARK_SKIP_SANDBOX=1 ISTARA_BENCHMARK_START_SANDBOX=0 ISTARA_BENCHMARK_START_CLIENT_SANDBOXES=1 ISTARA_BENCHMARK_FORCE_DONATED_CHAT=1 ISTARA_BENCHMARK_STOP_COLIMA_AFTER_RUN=1 ISTARA_BENCHMARK_AUTOSTART_COLIMA=1 ISTARA_BENCHMARK_COLIMA_MEMORY=12 ISTARA_BENCHMARK_DONOR_COUNT=3 ISTARA_BENCHMARK_RESEARCHER_COUNT=2 ISTARA_BENCHMARK_REQUIRE_DISTINCT_DONOR_ENDPOINTS=1 node run.mjs --mode probe --max-chat-turns 20 --max-tasks 16 --max-uploads 174 --coding-limit 16",
     "full": "node run.mjs --mode full --start-sandbox",

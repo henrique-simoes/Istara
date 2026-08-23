@@ -4,12 +4,12 @@
 item: agentic-core-integrity-and-qa
 branch: testing
 cf: { spec: CF-SPEC-1 }
-phase: "Phases 1–3 executed — S3 independent review pending"
-stage: S2-execute
-status: in-progress
-blocked_on: "S3 requires an independent reviewer (different model) — conductor dispatch or owner-directed review"
-last: { agent: ox-alpha, at: 2026-08-23T16:05:00Z, ledger: L-5 }
-next_action: "Dispatch independent S3 review of the working diff (routing, guard, a11y, registries); remediate findings; then spec accept."
+phase: "Phases 1–4 complete — ship pending live VPS verification"
+stage: S5-ship
+status: blocked
+blocked_on: "Owner-gated outward steps: push, VPS redeploy (SSH direction), live chat smoke on Pi core"
+last: { agent: ox-alpha, at: 2026-08-23T16:40:00Z, ledger: L-7 }
+next_action: "Owner pushes 342ea9a4 and redeploys the VPS stack; verify Pi-core DeepSeek chat live; then Codex OAuth endpoint #2 and spec accept."
 ```
 
 ## Plan overview / roadmap
@@ -251,4 +251,60 @@ Verified: pytest tests/test_chat.py = 12 passed (incl. new row-absence assertion
 tsc+eslint OK; feature docs regen check passed (86 features).
 Next: Commit scoped diff; re-run obligation checker over real range (F-B6); record review
 verdict evidence; spec accept path.
+```
+
+```
+### L-7 | 2026-08-23T16:40:00Z | S5-ship | ox-alpha | executor | Phases 1-4
+Did: Committed the initiative as 342ea9a4 (26 files; includes AGENTS.md skills pointer and
+the two new test gates). Registered design.system-contract feature + docker-compose.vps.yml
+ownership so the real-range obligation gate passes (F-B6 closed with evidence, not an empty
+range). Review-verdict evidence attached to CF-4.
+Result: Local ship-ready state. Spec accept deferred until live VPS verification per plan.
+Verified: check_feature_obligations --base origin/testing --head HEAD → pass=true,
+unknown_paths=[]; pytest governance suites 22 passed; git status clean (except owner's
+pre-existing untracked 2026-08-17 planning files, intentionally untouched).
+Next: Owner-gated push + VPS redeploy → live Pi-core chat smoke → Codex OAuth endpoint #2
+→ spec accept CF-SPEC-1.
+```
+
+## Phase 5 — Dual-core assessment across real-user/simulation suites
+
+DEC-8 | 2026-08-23 | owner
+Context: Full landscape inventory (see L-8). Owner approved push (done, 342ea9a4), VPS
+redeploy, live smoke, and modifying the broad real-user/simulation suites so they assess
+BOTH agentic loops against current architecture (LLM Servers replaced by Pi).
+Decision: Modify in leverage order: (1) simulation runner engine wiring + scenario 79
+behavioral turns; (2) stale llm-servers scenarios 36/35/72/37 re-homed to Pi surfaces,
+keeping pinned IDs (70-73,76 untouched in name); (3) marathon engine threading + Pi-based
+env detection + cycle-M checks; (4) e2e_test.py + long_horizon_runner engine params;
+(5) benchmark npm engine passthrough + both→paired-runner handoff; (6) stub-guard explicit
+skip messaging for chat-asserting scenarios. Compat-route pytest files tracked as-is
+(compat projection exists by design). Colima/Docker requested ONLY at execution time.
+Why: Deterministic/static verification runs locally; broad live suites need the owner's
+Colima server and are explicitly gated.
+```
+
+```
+### L-8 | 2026-08-23T17:10:00Z | S2-execute | ox-alpha | executor | Phase 5
+Did: Dual-core assessment wiring across suites (DEC-8): simulation run.mjs now consumes
+liveEngineHeader (client default + inline client headers + [SIM] project agentic_engine
+pin/reconcile); api-client.mjs chat.send gains engine override, global engine default in
+authHeaders, and explicit provider_stub_chat_blocked error; scenario 79 adds behavioral
+per-engine chat turns with usage-ledger routing evidence (skips without LLM); scenarios
+35/36/37/72 re-homed from removed-surface assertions to the current dual-plane contract
+(model-catalog providers/engine/configured identity view; 36 pins compat-CRUD → Pi
+projection invariant incl. no-secret-leak); marathon threads ISTARA_MARATHON_ENGINE
+(pi|legacy|both double-run labeled id[engine]), env.llm detection now spans compat
+healthy servers OR Pi-configured endpoints; e2e_test.py Phase 5 dual turn via
+ISTARA_E2E_ENGINE; long_horizon_runner de-hardcoded API base + ISTARA_LONG_HORIZON_ENGINE;
+benchmark package gains probe:pi/probe:legacy; TESTING.md documents the full matrix;
+check_test_harness governance updated to REQUIRE x-istara-agent-engine capability.
+Result: All suites can now assess both agentic loops; stale-surface assertions replaced
+by current-architecture contracts.
+Verified: simulation test:static 6 pass/0 fail; benchmark check pass; node --check on all
+touched mjs OK; pytest marathon-integrity+harness 21 passed; chat/a11y/tokens/governance
+36 passed; check_test_harness exit=0; check_workflow_contracts exit=0; feature-obligation
+classifier over real range pass=true unknown=[].
+Next: Owner Colima server to RUN broad live suites (probe/full/marathon both-engine);
+VPS redeploy remains pending SSH direction.
 ```

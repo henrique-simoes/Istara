@@ -1,4 +1,7 @@
-/** Scenario 79 — Engine Selector: per-project agent engine indicator + selector (W8 UX parity). */
+/** Scenario 79 — Engine Selector: per-project agent engine indicator + selector (W8 UX parity),
+ * plus bounded behavioral turns proving each agentic core actually routes (CF-SPEC-1 Phase 5). */
+
+import { chat as chatClient, getApiBase } from "../lib/api-client.mjs";
 
 export const name = "Engine Selector";
 export const id = "79-engine-selector";
@@ -103,6 +106,46 @@ export async function run(ctx) {
     await screenshot("79-project-settings-engine-selector");
   } catch (e) {
     checks.push({ name: "Project settings engine selector", passed: false, detail: e.message });
+  }
+
+  // 5b. Behavioral: one bounded chat turn per engine, asserting the usage
+  // ledger records the selected core. This is the end-to-end routing proof:
+  // config surface alone cannot show the loop actually executed per engine.
+  if (!ctx.llmConnected) {
+    checks.push({
+      name: "Behavioral per-engine chat turns",
+      passed: true,
+      detail: "Skipped: LLM not connected — routing evidence requires a configured provider",
+    });
+  } else {
+    for (const engine of ["legacy", "pi"]) {
+      try {
+        await api.patch(`/api/projects/${projectId}`, { agentic_engine: engine });
+        const events = await chatClient.send(projectId, "Reply with exactly: ok", { engine });
+        const errored = events.find((event) => event?.type === "error");
+        checks.push({
+          name: `Chat turn executes on engine=${engine}`,
+          passed: !errored && events.length > 0,
+          detail: errored ? String(errored.message || errored.error || "stream error").slice(0, 120) : `${events.length} SSE events`,
+        });
+
+        // Routing evidence from the usage ledger (engine recorded per dispatch).
+        const usage = await api.get(`/api/chat/usage/${projectId}`);
+        const latestEngine = usage?.latest?.engine || usage?.last_turn?.engine || null;
+        checks.push({
+          name: `Usage ledger records engine=${engine}`,
+          passed: latestEngine === engine,
+          detail: `latest.engine=${JSON.stringify(latestEngine)}`,
+        });
+      } catch (e) {
+        checks.push({
+          name: `Chat turn executes on engine=${engine}`,
+          passed: false,
+          detail: String(e.message).slice(0, 140),
+        });
+      }
+    }
+    await screenshot("79-behavioral-engine-turns");
   }
 
   // 6. Restore the inherited default (and the probe project) — leave no trace.

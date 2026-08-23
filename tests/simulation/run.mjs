@@ -24,6 +24,7 @@ import {
   selectCanonicalSimulationProject,
 } from "./lib/project-selection.mjs";
 import { scenarioFiles } from "./lib/scenario-registry.mjs";
+import { setDefaultEngine as setClientDefaultEngine } from "./lib/api-client.mjs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const RESULTS_DIR = join(__dirname, ".results");
@@ -59,6 +60,12 @@ const selectedEngines = rawEngine !== null ? resolveEngines(rawEngine) : [];
 // here (the paired Python runner drives real pairing). Live runs use the first
 // concrete engine when exactly one is selected.
 const liveEngineHeader = selectedEngines.length === 1 ? selectedEngines[0] : null;
+if (liveEngineHeader) {
+  // Consume the computed plan (B0-2 completion): every request the shared
+  // client makes — including chat-producing paths — now carries the header,
+  // and the [SIM] project fixture is pinned to the same persisted choice.
+  setClientDefaultEngine(liveEngineHeader);
+}
 
 if (dryRun) {
   const plan = selectedEngines.length ? selectedEngines : ["(default)"];
@@ -390,6 +397,7 @@ const apiClient = {
   _headers() {
     const h = { "Content-Type": "application/json" };
     if (this._token) h["Authorization"] = `Bearer ${this._token}`;
+    if (liveEngineHeader) h[AGENT_ENGINE_HEADER] = liveEngineHeader;
     return h;
   },
 
@@ -914,6 +922,16 @@ async function main() {
     if (canonical) {
       simProjectId = canonical.id;
       console.log(`  Reusing existing project: ${simProjectId}`);
+      if (liveEngineHeader) {
+        // Keep the persisted project choice in lockstep with the selected
+        // engine so header-level and project-level routing agree (CF-SPEC-1).
+        try {
+          await apiClient.patch(`/api/projects/${simProjectId}`, { agentic_engine: liveEngineHeader });
+          console.log(`  Project agentic_engine pinned: ${liveEngineHeader}`);
+        } catch (e) {
+          console.log(`  Could not pin project agentic_engine (${e.message}) — relying on header`);
+        }
+      }
     }
 
     // Create the canonical project if it doesn't exist
@@ -922,9 +940,10 @@ async function main() {
         name: SIM_PROJECT_NAME,
         description: "Persistent simulation project — all automated tests run against this single project.",
         company_context: "TechStart Inc — B2B SaaS project management platform. Target: mid-market teams (50-500 employees). Culture: data-driven, move fast, user-centric.",
+        ...(liveEngineHeader ? { agentic_engine: liveEngineHeader } : {}),
       });
       simProjectId = created.id;
-      console.log(`  Created new project: ${simProjectId}`);
+      console.log(`  Created new project: ${simProjectId}${liveEngineHeader ? ` (agentic_engine=${liveEngineHeader})` : ""}`);
     }
 
     if (simProjectId) {

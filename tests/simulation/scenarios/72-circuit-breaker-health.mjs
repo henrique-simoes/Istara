@@ -83,6 +83,19 @@ export async function run(ctx) {
     checks.push({ name: "Healthy server check", passed: false, detail: e.message });
   }
 
+  // 4b. Pi plane availability: configured endpoints (identity view) or an
+  // active engine with a reachable provider. LLM health now spans BOTH planes.
+  try {
+    const catalog = await api.get(`/api/chat/model-catalog${ctx.projectId ? `?project_id=${encodeURIComponent(ctx.projectId)}` : ""}`);
+    checks.push({
+      name: "Pi/configured model plane visible",
+      passed: Array.isArray(catalog.configured) && ["pi", "legacy"].includes(catalog.engine),
+      detail: `pi_configured=${catalog.configured?.length}, engine=${catalog.engine}`,
+    });
+  } catch (e) {
+    checks.push({ name: "Pi/configured model plane visible", passed: false, detail: e.message });
+  }
+
   // 5. Verify system status endpoint includes LLM info
   try {
     const status = await api.get("/api/settings/status");

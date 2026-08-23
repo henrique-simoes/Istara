@@ -306,9 +306,16 @@ def main():
 
     if project_id:
         run_test_step(
-            "Chat — analyze",
-            lambda: chat_message(client, project_id, "Analyze transcripts."),
+            "Chat — analyze (legacy core)",
+            lambda: chat_message(client, project_id, "Analyze transcripts.", engine="legacy"),
         )
+        if os.environ.get("ISTARA_E2E_ENGINE", "").strip().lower() == "pi":
+            # Dual-core matrix: the same journey turn routed through the Pi
+            # agentic loop. Requires a configured Pi endpoint on the target.
+            run_test_step(
+                "Chat — analyze (Pi core)",
+                lambda: chat_message(client, project_id, "Analyze transcripts.", engine="pi"),
+            )
         run_test_step(
             "Direct skill execute",
             lambda: assert_skill_success(
@@ -430,10 +437,13 @@ def upload_file(client, project_id, file_path):
     return assert_ok(resp)
 
 
-def chat_message(client, project_id, message):
+def chat_message(client, project_id, message, engine: str | None = None):
+    """One streamed chat turn; `engine` pins the agentic core via header."""
+    headers = {"x-istara-agent-engine": engine} if engine else {}
     resp = client.post(
         "/api/chat",
         json={"message": message, "project_id": project_id},
+        headers=headers,
         timeout=120.0,
     )
     return assert_ok(resp)

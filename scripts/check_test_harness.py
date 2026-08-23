@@ -210,9 +210,18 @@ def check_simulation_runner(issues: list[str]) -> None:
     for snippet in ("setAuthToken", "authHeaders", "ISTARA_TEST_AUTH_TOKEN"):
         if snippet not in client:
             issues.append(f"tests/simulation/lib/api-client.mjs: missing `{snippet}`")
-    if 'headers: authHeaders({ "Content-Type": "application/json" })' not in client:
+    chat_sends_auth = (
+        'headers: authHeaders({ "Content-Type": "application/json" })' in client
+        or "headers: authHeaders(headers)" in client
+    )
+    if not chat_sends_auth:
         issues.append(
             "tests/simulation/lib/api-client.mjs: chat client must send auth headers"
+        )
+    # CF-SPEC-1 Phase 5: the shared client must be able to pin the agentic core.
+    if "x-istara-agent-engine" not in client:
+        issues.append(
+            "tests/simulation/lib/api-client.mjs: chat client must support the x-istara-agent-engine header"
         )
     if "headers: authHeaders()" not in client:
         issues.append(

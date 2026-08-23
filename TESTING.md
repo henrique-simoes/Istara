@@ -90,6 +90,21 @@ Run commands from the repository root unless the command says otherwise.
 | Real-user three-model deep probe | `npm --prefix tests/real_user_benchmark run probe:deep:three-model` | You want the validated Mac Studio LM Studio donor plus two Colima llama.cpp donors, two researchers, canonical corpus upload, Research Spine traceability, telemetry, donation, and governed self-improvement evidence. | Yes |
 | Real-user full | `npm --prefix tests/real_user_benchmark run full` | You are deliberately running the sandboxed comparison benchmark. | Yes, Docker/Colima and often live LLM |
 
+### Dual-core (Agentic Core) test matrix
+
+Chat resolves its engine as: operator flag > `x-istara-agent-engine` header > persisted
+`projects.agentic_engine` > global default. Suites that drive chat can pin either core:
+
+| Control | Effect |
+| --- | --- |
+| `node tests/simulation/run.mjs --scenario <id> --engine pi\|legacy\|both` | Threads the engine header into every harness request and pins the `[SIM]` project's `agentic_engine`; `both` is plan-only in this harness. |
+| Scenario 79 (`79-engine-selector`) | Config surface PLUS one bounded behavioral chat turn per core with usage-ledger routing evidence (`latest.engine`). Skips behavior when no LLM is connected. |
+| `ISTARA_MARATHON_ENGINE=pi\|legacy\|both ./scripts/marathon/start-marathon.sh …` | Runs each cycle scenario once per selected core; `both` executes legacy then pi and labels results `<id>[legacy]` / `<id>[pi]`. |
+| `ISTARA_E2E_ENGINE=pi python tests/e2e_test.py` | Adds a Pi-core journey turn next to the legacy turn in Phase 5. |
+| `ISTARA_LONG_HORIZON_ENGINE=pi ISTARA_API_URL=<base> python tests/benchmarks/long_horizon_runner.py` | Pins the long-horizon DAG trajectory to one core (also de-hardcodes the API base). |
+| `npm --prefix tests/real_user_benchmark run probe:pi` / `probe:legacy` | Bounded researcher benchmark on one core; `run.mjs` also accepts `--engine` directly. |
+| Stub-marked stacks | Backends with `LLM_PROVIDER_CONTRACT_STUB=true` (QA compose, VPS compose) reject interactive chat with SSE error `provider_stub_chat_blocked`; the simulation chat client surfaces this as an explicit error instead of a canned reply. Point behavioral suites at live-provider stacks or the Pi core. |
+
 ## Current Suite Topology
 
 This is the shape developers should expect when navigating the suite:

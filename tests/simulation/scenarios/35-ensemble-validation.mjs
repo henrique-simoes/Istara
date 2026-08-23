@@ -15,29 +15,35 @@ export async function run(ctx) {
   }
   const projectQuery = `project_id=${encodeURIComponent(projectId)}`;
 
-  // 1. LLM servers list endpoint
+  // 1. Model catalog surface (Pi providers + legacy identity list + active engine).
   try {
-    const servers = await api.get("/api/llm-servers");
+    const catalog = await api.get(`/api/chat/model-catalog?project_id=${encodeURIComponent(projectId)}`);
     checks.push({
-      name: "LLM servers endpoint",
-      passed: Array.isArray(servers.servers) && Array.isArray(servers.router_live),
-      detail: `servers=${servers.servers?.length}, router_live=${servers.router_live?.length}`,
+      name: "Model catalog endpoint",
+      passed: Array.isArray(catalog.providers) && typeof catalog.total_models === "number",
+      detail: `providers=${catalog.providers?.length}, total_models=${catalog.total_models}, engine=${catalog.engine}`,
+    });
+    checks.push({
+      name: "Catalog reports active agentic core",
+      passed: catalog.engine === "pi" || catalog.engine === "legacy",
+      detail: `engine=${JSON.stringify(catalog.engine)}`,
     });
   } catch (e) {
-    checks.push({ name: "LLM servers endpoint", passed: false, detail: e.message });
+    checks.push({ name: "Model catalog endpoint", passed: false, detail: e.message });
   }
 
-  // 2. Router has at least one entry (local provider)
+  // 2. Legacy compute plane still exposes routable models (compat projection source).
   try {
-    const servers = await api.get("/api/llm-servers");
-    const routerHasEntries = servers.router_live && servers.router_live.length > 0;
+    const catalog = await api.get(`/api/chat/model-catalog?project_id=${encodeURIComponent(projectId)}`);
+    const legacyModels = Array.isArray(catalog.legacy_models) ? catalog.legacy_models : [];
+    const configured = Array.isArray(catalog.configured) ? catalog.configured : [];
     checks.push({
-      name: "Router has local provider",
-      passed: routerHasEntries,
-      detail: `entries=${servers.router_live?.length}, first=${servers.router_live?.[0]?.name}`,
+      name: "Routable models available (legacy or Pi-configured)",
+      passed: legacyModels.length > 0 || configured.length > 0,
+      detail: `legacy_models=${legacyModels.length}, pi_configured=${configured.length}`,
     });
   } catch (e) {
-    checks.push({ name: "Router has local provider", passed: false, detail: e.message });
+    checks.push({ name: "Routable models available", passed: false, detail: e.message });
   }
 
   // 3. Maintenance status endpoint

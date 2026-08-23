@@ -5,7 +5,10 @@ import time
 import json
 from pathlib import Path
 
-API_BASE = "http://localhost:8000"
+API_BASE = os.environ.get("ISTARA_API_URL", "http://localhost:8000")
+# Agentic core under test (CF-SPEC-1 Phase 5): "legacy", "pi", or unset for
+# the dispatcher default. Applied as x-istara-agent-engine on every chat turn.
+ENGINE = os.environ.get("ISTARA_LONG_HORIZON_ENGINE", "").strip().lower() or None
 ROOT = Path(__file__).resolve().parents[2]
 ADMIN_PASSWORD_ENV_FILES = (
     ROOT / ".env.local",
@@ -122,6 +125,10 @@ async def main():
             "project_id": project_id,
             "message": prompt
         }
+
+        chat_headers = dict(headers)
+        if ENGINE:
+            chat_headers["x-istara-agent-engine"] = ENGINE
         
         print("⏳ Waiting for SSE stream (this will log all agent actions & tool calls)...")
         print("-" * 50)
@@ -130,7 +137,7 @@ async def main():
         tool_calls = 0
         stream_events: list[dict] = []
 
-        async with client.stream("POST", f"{API_BASE}/api/chat", json=chat_req, headers=headers) as response:
+        async with client.stream("POST", f"{API_BASE}/api/chat", json=chat_req, headers=chat_headers) as response:
             if response.status_code != 200:
                 body = await response.aread()
                 print(f"❌ Chat failed with status {response.status_code}: {body.decode()}")

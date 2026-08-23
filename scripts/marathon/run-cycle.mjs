@@ -196,17 +196,29 @@ async function checkEnvironment() {
     env.frontend = res.ok;
   } catch { /* not running */ }
 
-  // LLM (requires auth)
+  // LLM availability spans BOTH planes (CF-SPEC-1 Phase 5): the compat
+  // plane's healthy servers OR the Pi/configured model catalog. Cycles gate
+  // on any routable provider, not on the removed management surface.
+  let compatHealthy = 0;
   try {
     const res = await fetch(`${API_BASE}/api/llm-servers`, { headers: authHeaders() });
     if (res.ok) {
       const data = await res.json();
       const servers = data?.servers || (Array.isArray(data) ? data : []);
-      const healthy = servers.filter((s) => s.is_healthy);
-      env.llm = healthy.length > 0;
-      env.network_llm = healthy.length > 1;
+      compatHealthy = servers.filter((s) => s.is_healthy).length;
     }
   } catch { /* */ }
+  let piConfigured = 0;
+  try {
+    const res = await fetch(`${API_BASE}/api/chat/model-catalog`, { headers: authHeaders() });
+    if (res.ok) {
+      const data = await res.json();
+      piConfigured = Array.isArray(data?.configured) ? data.configured.length : 0;
+    }
+  } catch { /* */ }
+  const routableProviders = compatHealthy + piConfigured;
+  env.llm = routableProviders > 0;
+  env.network_llm = compatHealthy > 1;
 
   // Stitch/Figma keys (requires auth)
   try {
@@ -250,32 +262,45 @@ async function runScenarios(scenarioIds) {
   if (AUTH_TOKEN && !scenarioEnv.ISTARA_TEST_AUTH_TOKEN) {
     scenarioEnv.ISTARA_TEST_AUTH_TOKEN = AUTH_TOKEN;
   }
+  // Dual-core matrix: ISTARA_MARATHON_ENGINE=pi|legacy|both threads the
+  // simulation harness's --engine selection into every cycle scenario.
+  // `both` runs each scenario twice (legacy, then pi) and merges results.
+  const engineSetting = process.env.ISTARA_MARATHON_ENGINE;
+  const enginePasses =
+    engineSetting === "pi" ? ["pi"]
+    : engineSetting === "legacy" ? ["legacy"]
+    : engineSetting === "both" ? ["legacy", "pi"]
+    : [null];
   for (const id of scenarioIds) {
-    try {
-      const output = execSync(
-        `cd "${PROJECT_ROOT}" && node tests/simulation/run.mjs --scenario ${id} --skip-eval 2>&1`,
-        { timeout: 300000, encoding: "utf-8", maxBuffer: 10 * 1024 * 1024, env: scenarioEnv }
-      );
-      // Parse results from output
-      const parsed = parseScenarioOutput(output);
-      results.push({
-        scenario: id,
-        passed: parsed.passed,
-        failed: parsed.failed,
-        output: output.slice(-1200),
-        success: parsed.failed === 0,
-      });
-    } catch (e) {
-      const output = String(e.stdout || e.stderr || e.message || "Execution error");
-      const parsed = parseScenarioOutput(output);
-      results.push({
-        scenario: id,
-        passed: parsed.passed,
-        failed: parsed.failed || 1,
-        output: output.slice(-1200),
-        success: false,
-        error: true,
-      });
+    for (const enginePass of enginePasses) {
+      const label = enginePass ? `${id}[${enginePass}]` : id;
+      try {
+        const engineArgs = enginePass ? ` --engine ${enginePass}` : "";
+        const output = execSync(
+          `cd "${PROJECT_ROOT}" && node tests/simulation/run.mjs --scenario ${id}${engineArgs} --skip-eval 2>&1`,
+          { timeout: 300000, encoding: "utf-8", maxBuffer: 10 * 1024 * 1024, env: scenarioEnv }
+        );
+        // Parse results from output
+        const parsed = parseScenarioOutput(output);
+        results.push({
+          scenario: label,
+          passed: parsed.passed,
+          failed: parsed.failed,
+          output: output.slice(-1200),
+          success: parsed.failed === 0,
+        });
+      } catch (e) {
+        const output = String(e.stdout || e.stderr || e.message || "Execution error");
+        const parsed = parseScenarioOutput(output);
+        results.push({
+          scenario: label,
+          passed: parsed.passed,
+          failed: parsed.failed || 1,
+          output: output.slice(-1200),
+          success: false,
+          error: true,
+        });
+      }
     }
   }
   return results;

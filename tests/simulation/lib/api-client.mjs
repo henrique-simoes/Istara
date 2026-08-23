@@ -11,6 +11,19 @@
 
 const API_BASE = process.env.ISTARA_API_URL || "http://localhost:8000";
 let authToken = process.env.ISTARA_TEST_AUTH_TOKEN || "";
+// AgenticDispatcher engine override (benchmark task B0-2 / CF-SPEC-1 Phase 5).
+// When set, every request carries `x-istara-agent-engine` so chat-producing
+// paths route through the selected core instead of the dispatcher default.
+let defaultEngine = null;
+
+export function setDefaultEngine(engine) {
+  const value = String(engine || "").trim().toLowerCase();
+  defaultEngine = value === "pi" || value === "legacy" ? value : null;
+}
+
+export function getDefaultEngine() {
+  return defaultEngine;
+}
 
 export function setAuthToken(token) {
   authToken = token || "";
@@ -23,6 +36,9 @@ export function getApiBase() {
 export function authHeaders(extra = {}) {
   const headers = { ...extra };
   if (authToken) headers.Authorization = `Bearer ${authToken}`;
+  if (defaultEngine && !headers["x-istara-agent-engine"]) {
+    headers["x-istara-agent-engine"] = defaultEngine;
+  }
   return headers;
 }
 
@@ -208,13 +224,17 @@ export const chat = {
    *
    * @param {string} projectId
    * @param {string} message
+   * @param {{engine?: "pi"|"legacy"}} [opts] explicit per-call engine override
+   *        (x-istara-agent-engine); overrides the client default.
    * @returns {Promise<any[]>}  Array of SSE event payloads
    */
-  send: async (projectId, message) => {
+  send: async (projectId, message, opts = {}) => {
     const url = `${API_BASE}/api/chat`;
+    const headers = { "Content-Type": "application/json" };
+    if (opts.engine) headers["x-istara-agent-engine"] = opts.engine;
     const res = await fetch(url, {
       method: "POST",
-      headers: authHeaders({ "Content-Type": "application/json" }),
+      headers: authHeaders(headers),
       body: JSON.stringify({ message, project_id: projectId }),
     });
 
@@ -233,6 +253,17 @@ export const chat = {
           // Skip malformed SSE lines
         }
       }
+    }
+
+    const blocked = events.find(
+      (event) => event?.type === "error" && event?.code === "provider_stub_chat_blocked"
+    );
+    if (blocked) {
+      throw new Error(
+        "chat unavailable on this stack: the provider plane is a deterministic QA wire stub " +
+          "(LLM_PROVIDER_CONTRACT_STUB=true). Point the harness at a live-provider backend " +
+          "or select the Pi core with a configured endpoint."
+      );
     }
 
     return events;
