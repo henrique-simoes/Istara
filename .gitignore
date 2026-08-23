@@ -146,3 +146,4 @@ comparison-Istara-pi/industry/tau_bench/*_rules.py
 # QA run artifacts (disposable, gitignored)
 qa/runs/
 artifacts/
+.deploy/
