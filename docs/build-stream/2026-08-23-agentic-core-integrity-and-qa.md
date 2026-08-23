@@ -391,3 +391,23 @@ Live @afa22d98 on macstudio: /api/llm-servers gone (401 pre-auth gate); Istara-c
 DeepSeek turns still BRIDGE with full provenance.
 Next: Broad both-engine suites vs this instance; Codex OAuth endpoint #2; spec accept.
 ```
+
+## Phase 7 — Tri-model configuration (DeepSeek + Codex Luna/Terra via OAuth)
+
+```
+### L-12 | 2026-08-23T19:45:00Z | S2-execute | ox-alpha | executor | Phase 7
+Did: Configured the owner-specified three-model tier through pi model management on the
+Mac Studio deploy: pi-codex-luna (gpt-5.6-luna, oauth, effort=low) and pi-codex-terra
+(gpt-5.6-terra, oauth, effort=low) alongside pi-deepseek-default. Fixed en route (all
+committed+pushed): Cloudflare 530 on urllib UA (oauth.py runtime UA); codex-responses
+rejects temperature (pi-runtime filterParamsForApi + tests); durable ISTARA_ENV_FILE
+persistence (config loader + env writers + compose volume + Dockerfile ownership).
+Result: All three models serve real turns; endpoints + encryption key survive restarts.
+Note: live API advertises effort levels none|low|medium|high|xhigh|max for gpt-5.6-* —
+catalog metadata was stale; owner-requested "low" is valid and in use. Owner's
+"deepseek v4 flash" note: current default endpoint model is deepseek-v4-pro; switching
+to flash is a one-line settings change if desired.
+Verified: smoke_istara.py + verify_three.py outputs above; restart persistence check
+(endpoints + stable key) recorded.
+Next: metrics capture extension; broad both/tri-engine suites; Codex endpoint #2 done ->
+research-spine comparison can proceed after suites.
