@@ -1254,6 +1254,11 @@ export const piOAuthApi = {
       method: "POST",
       body: JSON.stringify({ provider }),
     }),
+  complete: (provider: string, authorizationInput: string) =>
+    request<any>("/api/settings/pi-oauth/manual", {
+      method: "POST",
+      body: JSON.stringify({ provider, authorization_input: authorizationInput }),
+    }),
   cancel: (provider: string) =>
     request<any>("/api/settings/pi-oauth/cancel", {
       method: "POST",

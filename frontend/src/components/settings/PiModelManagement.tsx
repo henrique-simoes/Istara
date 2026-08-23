@@ -224,6 +224,8 @@ export default function PiModelManagement() {
   const [oauthMethod, setOauthMethod] = useState<"browser" | "device_code">("browser");
   const [apiKey, setApiKey] = useState("");
   const [activeOAuth, setActiveOAuth] = useState<PiOAuthFlow | null>(null);
+  const [manualOAuthInput, setManualOAuthInput] = useState("");
+  const [completingOAuth, setCompletingOAuth] = useState(false);
   const [credentialReady, setCredentialReady] = useState(false);
   const [oauthError, setOauthError] = useState<string | null>(null);
   const [addError, setAddError] = useState<string | null>(null);
@@ -301,6 +303,7 @@ export default function PiModelManagement() {
     setModelQuery("");
     setCredentialReady(false);
     setActiveOAuth(null);
+    setManualOAuthInput("");
     setOauthError(null);
     if (provider?.login_methods.includes("api_key")) setAuthMode("api_key");
     else setAuthMode("oauth");
@@ -313,6 +316,7 @@ export default function PiModelManagement() {
     setModelOpen(false);
     setCredentialReady(false);
     setActiveOAuth(null);
+    setManualOAuthInput("");
     setOauthError(null);
     if (selectedProvider && authMode === "oauth" && selectedProvider.oauth_model_ids?.length && !selectedProvider.oauth_model_ids.includes(model?.id || "")) {
       setAuthMode("api_key");
@@ -329,12 +333,34 @@ export default function PiModelManagement() {
     if (!selectedProvider || !selectedModel || !oauthSupportedForModel) return;
     setOauthError(null);
     setCredentialReady(false);
+    setManualOAuthInput("");
     try {
       const provider = selectedProvider.oauth_provider || selectedProvider.id;
       const flow = await piOAuthApi.start(provider, oauthMethod);
       setActiveOAuth({ ...flow, provider: flow.provider || provider, method: oauthMethod });
     } catch (error) {
       setOauthError(error instanceof Error ? error.message : "Could not start the Pi login.");
+    }
+  };
+
+  const completeManualOAuth = async () => {
+    if (!activeOAuth || !manualOAuthInput.trim()) return;
+    setCompletingOAuth(true);
+    setOauthError(null);
+    try {
+      const response = await piOAuthApi.complete(activeOAuth.provider, manualOAuthInput.trim());
+      const latest = (response.flows || []).find((flow: PiOAuthFlow) => flow.provider === activeOAuth.provider);
+      if (latest?.status === "approved") {
+        setCredentialReady(true);
+        setActiveOAuth(null);
+        setManualOAuthInput("");
+      } else {
+        setOauthError(latest?.error || "The provider did not approve that code yet.");
+      }
+    } catch (error) {
+      setOauthError(error instanceof Error ? error.message : "Could not complete the browser login.");
+    } finally {
+      setCompletingOAuth(false);
     }
   };
 
@@ -576,6 +602,16 @@ export default function PiModelManagement() {
                             <p className="mt-3 break-all text-xs text-blue-900 dark:text-blue-200">Open: <span className="font-mono">{activeOAuth.verification_uri}</span></p>
                           )}
                           {activeOAuth.user_code && <p className="mt-2 text-sm text-blue-900 dark:text-blue-200">Code: <strong className="font-mono text-lg tracking-wider">{activeOAuth.user_code}</strong></p>}
+                          {activeOAuth.method === "browser" && (
+                            <div className="mt-4 border-t border-blue-200 pt-3 dark:border-blue-800">
+                              <label htmlFor="pi-oauth-redirect" className="block text-xs font-semibold text-blue-950 dark:text-blue-100">Pi manual handoff (if localhost did not return here)</label>
+                              <div className="mt-2 flex flex-col gap-2 sm:flex-row">
+                                <input id="pi-oauth-redirect" value={manualOAuthInput} onChange={(event) => setManualOAuthInput(event.target.value)} placeholder="Paste the authorization code or final redirect URL" className="min-h-[44px] min-w-0 flex-1 rounded-lg border border-blue-300 bg-white px-3 text-xs text-slate-900 outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-700 dark:border-blue-800 dark:bg-slate-900 dark:text-white" autoComplete="off" />
+                                <button type="button" onClick={() => void completeManualOAuth()} disabled={completingOAuth || !manualOAuthInput.trim()} className="min-h-[44px] rounded-lg bg-blue-700 px-3 text-xs font-semibold text-white hover:bg-blue-800 disabled:cursor-not-allowed disabled:opacity-50">{completingOAuth ? "Checking…" : "Complete login"}</button>
+                              </div>
+                              <p className="mt-2 text-xs text-blue-800 dark:text-blue-300">Pi uses a localhost callback for browser login. Pasting its final code here is the same fallback offered by Pi when the browser is on another machine.</p>
+                            </div>
+                          )}
                           <p className="mt-2 text-xs text-blue-800 dark:text-blue-300">Checking approval automatically. Tokens remain on the server.</p>
                         </div>
                         <button type="button" className="ui-icon-button shrink-0 text-blue-800 dark:text-blue-200" onClick={() => { void piOAuthApi.cancel(activeOAuth.provider); setActiveOAuth(null); }} aria-label="Cancel Pi login"><X size={17} /></button>

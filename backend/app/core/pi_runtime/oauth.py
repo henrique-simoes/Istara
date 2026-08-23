@@ -193,6 +193,30 @@ def _complete_flow(flow: OAuthFlowState, response: dict[str, Any]) -> OAuthFlowS
 # ---------------------------------------------------------------------------
 
 
+def _parse_authorization_input(value: str) -> tuple[str, str | None]:
+    """Parse Pi's manual browser fallback: code, URL, or code#state."""
+    raw = value.strip()
+    if not raw:
+        raise ValueError("oauth_code_required")
+    try:
+        parsed = urllib.parse.urlsplit(raw)
+        if parsed.scheme and parsed.query:
+            params = urllib.parse.parse_qs(parsed.query)
+            code = (params.get("code") or [""])[0]
+            state = (params.get("state") or [None])[0]
+            if code:
+                return code, state
+    except ValueError:
+        pass
+    if "#" in raw:
+        code, state = raw.split("#", 1)
+        return code, state
+    if "code=" in raw:
+        params = urllib.parse.parse_qs(raw)
+        return (params.get("code") or [""])[0], (params.get("state") or [None])[0]
+    return raw, None
+
+
 def _pkce_pair() -> tuple[str, str]:
     verifier = base64.urlsafe_b64encode(secrets.token_bytes(48)).rstrip(b"=").decode("ascii")
     challenge = base64.urlsafe_b64encode(hashlib.sha256(verifier.encode("ascii")).digest()).rstrip(b"=").decode("ascii")
@@ -530,6 +554,14 @@ def finish_browser_flow(provider: str, code: str, state: str) -> OAuthFlowState:
     if provider == "openrouter":
         return finish_pkce_flow(code, state)
     raise ValueError("unsupported_browser_oauth_provider")
+
+
+def complete_browser_flow(provider: str, authorization_input: str) -> OAuthFlowState:
+    code, state = _parse_authorization_input(authorization_input)
+    flow = _FLOWS.get(provider)
+    if not flow or flow.method != "browser":
+        raise ValueError("no_active_browser_flow")
+    return finish_browser_flow(provider, code, state or flow.state)
 
 
 def oauth_status(provider: str | None = None) -> list[dict[str, Any]]:

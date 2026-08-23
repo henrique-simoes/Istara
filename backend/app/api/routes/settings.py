@@ -5,7 +5,7 @@ from datetime import UTC, datetime, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import HTMLResponse, JSONResponse
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
@@ -733,6 +733,11 @@ class PiOAuthPollRequest(BaseModel):
     provider: str
 
 
+class PiOAuthManualCodeRequest(BaseModel):
+    provider: str
+    authorization_input: str = Field(..., min_length=1, max_length=4096)
+
+
 class PiOAuthPKCECallbackRequest(BaseModel):
     code: str
     state: str | None = None
@@ -825,14 +830,6 @@ async def list_oauth_flows(request: Request):
     return {"flows": oauth_status()}
 
 
-def _oauth_public_callback_url(request: Request) -> str:
-    """Build the public same-origin callback without trusting arbitrary URLs."""
-    forwarded_proto = (request.headers.get("x-forwarded-proto") or "").split(",")[0].strip()
-    scheme = forwarded_proto if forwarded_proto in {"http", "https"} else request.url.scheme
-    host = request.headers.get("host") or request.url.netloc
-    return f"{scheme}://{host}/api/settings/pi-oauth/openai/callback"
-
-
 @router.post("/settings/pi-oauth/start")
 async def start_oauth_flow(data: PiOAuthStartRequest, request: Request):
     """Start one of the login methods exposed by the standalone Pi loader."""
@@ -849,7 +846,10 @@ async def start_oauth_flow(data: PiOAuthStartRequest, request: Request):
     try:
         if provider in {"openai", "openai-codex"}:
             if method == "browser":
-                flow = start_openai_browser_flow(_oauth_public_callback_url(request))
+                # Pi's registered browser redirect is localhost:1455. The web
+                # UI also exposes Pi's manual paste fallback when no local Pi
+                # callback listener is present.
+                flow = start_openai_browser_flow("http://localhost:1455/auth/callback")
             elif method in {"device_code", "headless"}:
                 flow = start_device_flow("openai-codex")
             else:
@@ -857,11 +857,11 @@ async def start_oauth_flow(data: PiOAuthStartRequest, request: Request):
         elif provider == "openrouter":
             if method not in {"browser", "pkce", "device_code"}:
                 raise ValueError("unsupported_openrouter_oauth_method")
-            flow = start_pkce_flow(_oauth_public_callback_url(request).replace("/openai/callback", "/openrouter/callback"))
+            flow = start_pkce_flow("http://localhost:8090/callback")
         elif provider == "anthropic":
             if method != "browser":
                 raise ValueError("provider_supports_browser_only")
-            flow = start_anthropic_browser_flow(_oauth_public_callback_url(request).replace("/openai/callback", "/anthropic/callback"))
+            flow = start_anthropic_browser_flow("http://localhost:53692/callback")
         else:
             if method != "device_code":
                 raise ValueError("provider_supports_device_code_only")
@@ -914,6 +914,19 @@ async def pi_browser_oauth_callback(provider: str, code: str | None = None, stat
     except ValueError:
         return HTMLResponse(browser_callback_page(False, "The login could not be verified. Return to Istara and start again."), status_code=400)
     return HTMLResponse(browser_callback_page(True, "The provider is now connected to this Istara server."))
+
+
+@router.post("/settings/pi-oauth/manual")
+async def complete_manual_oauth(data: PiOAuthManualCodeRequest, request: Request):
+    """Complete Pi's browser flow with a pasted code/redirect URL fallback."""
+    require_global_role(request, "admin")
+    from app.core.pi_runtime.oauth import complete_browser_flow, oauth_status
+
+    try:
+        flow = complete_browser_flow(data.provider.strip().lower(), data.authorization_input)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return {"flows": oauth_status(flow.provider)}
 
 
 @router.post("/settings/pi-oauth/poll")
