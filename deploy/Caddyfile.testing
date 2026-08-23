@@ -46,8 +46,10 @@
 
 # HTTPS listener (self-signed) — same routing, for browsers that force
 # https:// (Chrome HTTPS-First, Firefox HTTPS-Only). Published as 13081.
+# Certificate is generated at deploy time by .deploy/deploy_testing.sh and
+# mounted read-only; never stored in the repository.
 https://:443 {
-    tls internal
+    tls /etc/caddy/tls/fullchain.pem /etc/caddy/tls/privkey.pem
 
     # Backend API
     handle /api/* {

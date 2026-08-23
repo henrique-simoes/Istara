@@ -37,6 +37,7 @@ services:
     networks: [frontend-net, backend-net]
     volumes:
       - ./deploy/Caddyfile.testing:/etc/caddy/Caddyfile:ro
+      - /etc/istara-testing-tls:/etc/caddy/tls:ro
     depends_on:
       backend:
         condition: service_healthy
