@@ -29,7 +29,8 @@ COPY --from=builder /install /usr/local
 COPY --from=builder /build/backend .
 COPY --from=builder /build/pi-runtime ./pi-runtime
 RUN mkdir -p data/uploads data/projects data/lance_db data/backups data/channel_audio \
-    && chown -R istara:istara data
+    runtime-state \
+    && chown -R istara:istara data runtime-state
 USER istara
 EXPOSE 8000
 ENV PI_RUNTIME_ROOT=/app
