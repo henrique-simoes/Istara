@@ -245,7 +245,7 @@
   <p class="concept-line"><strong>Concepts:</strong> rag</p>
 </header>
 <h2 id="what-it-does">What It Does</h2>
-<p>Settings shows backend, LLM, hardware, model recommendation, and available model status for the local installation.</p>
+<p>Settings shows backend and LLM status, a dedicated Agentic Core explanation/choice, hardware/model guidance, and a Pi model-management workbench. Pi lets an administrator browse the complete provider/model list or type to autocomplete, then use the authentication method Pi supports.</p>
 <h2 id="why-it-exists">Why It Exists</h2>
 <p>System Status And Models exists so the work represented by Settings &gt; System Status And Models has a stable, discoverable place in Istara&#x27;s project workflow. It keeps user actions, generated artifacts, and related follow-up surfaces connected to the active project rather than scattering them across unrelated tools.</p>
 <h2 id="where-it-lives">Where It Lives</h2>
@@ -256,20 +256,22 @@
 </ul>
 <h2 id="how-ux-researchers-use-it">How UX Researchers Use It</h2>
 <ul>
-<li>Open Settings &gt; System Status And Models from the Istara navigation or the parent tab.</li>
-<li>Use the visible controls in this surface to work with system status and models in the active project context.</li>
-<li>Review the output in the same view and follow the related feature links when the workflow moves into another Istara surface.</li>
+<li>Open Settings &gt; System Status, Agentic Core, And Pi Models from the Istara navigation.</li>
+<li>Read the Agentic Core comparison before choosing Pi or Istara; the benchmark snapshot is explicitly provisional.</li>
+<li>In Pi Model Management, click the provider/model arrows to browse or type to autocomplete. For OpenAI, choose OpenAI API for an API key or OpenAI Codex — ChatGPT subscription for Browser login or Device code (headless) OAuth.</li>
+<li>Return to Chat to choose any connected model and its exact effort levels.</li>
 </ul>
 <h2 id="supported-workflows">Supported Workflows</h2>
 <ul>
-<li>Start from Settings &gt; System Status And Models when the current research task needs system status and models.</li>
-<li>Use the visible controls to create, inspect, refine, or route project work without leaving the active Istara context.</li>
-<li>Move to related surfaces when needed: settings.llm-servers, compute.pool.</li>
+<li>Start from Settings &gt; System Status, Agentic Core, And Pi Models when the current task needs global execution or provider configuration.</li>
+<li>Use the visible controls to connect a model without typing an endpoint URL; credentials stay in server custody.</li>
+<li>Move to Chat to change the model and effort for an individual conversation.</li>
 </ul>
 <h2 id="inputs-outputs-and-expected-outcomes">Inputs, Outputs, And Expected Outcomes</h2>
 <ul>
-<li>Project-scoped state or artifact updates associated with system status and models.</li>
-<li>Visible status, lists, forms, generated artifacts, or review results shown by the referenced component and routes.</li>
+<li>Global Agentic Core and Pi endpoint configuration updates for authorized administrators.</li>
+<li>A visible, searchable provider/model list with API-key and Pi OAuth choices.</li>
+<li>Legacy backend compatibility data remains preserved but is not a competing normal Settings catalog.</li>
 </ul>
 <h2 id="caveats">Caveats</h2>
 <ul>
@@ -278,7 +280,6 @@
 </ul>
 <h2 id="related-features">Related Features</h2>
 <ul>
-<li><a href="../llm-servers/researcher.html">settings.llm-servers</a></li>
 <li><a href="../../compute/pool/researcher.html">compute.pool</a></li>
 </ul>
 <h2 id="related-concepts">Related Concepts</h2>
@@ -287,9 +288,9 @@
 </ul>
 <h2 id="evidence">Evidence</h2>
 <ul>
-<li>Source files: <code>frontend/src/components/common/SettingsView.tsx</code>, <code>backend/app/api/routes/settings.py</code></li>
+<li>Source files: <code>frontend/src/components/common/SettingsView.tsx</code>, <code>frontend/src/components/settings/AgenticCoreSection.tsx</code>, <code>frontend/src/components/settings/PiModelManagement.tsx</code>, <code>backend/app/api/routes/settings.py</code>, <code>backend/app/core/pi_runtime/catalog.py</code>, <code>backend/app/core/pi_runtime/oauth.py</code></li>
 <li>API references: <code>backend/app/api/routes/settings.py</code></li>
-<li>Tests: none recorded</li>
+<li>Tests: <code>tests/test_settings.py</code>, <code>tests/test_settings_agentic_pi_endpoints.py</code>, <code>tests/pi_production/test_pi_catalog_ux.py</code></li>
 </ul>
         </article>
         <aside class="toc-panel" aria-label="Page sections">

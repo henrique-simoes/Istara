@@ -28,12 +28,23 @@ SECRET_CACHE_TTL_SECONDS = 60.0
 
 
 def _read_endpoint_secret(endpoint: PiApiEndpoint) -> str:
-    """Resolve an endpoint secret (env fallback handled in ``app.config``).
+    """Resolve an endpoint secret without exposing it to route responses.
 
-    The Keychain read is delegated through this module's
-    ``_read_macos_keychain_secret`` global so the existing test seam keeps
-    working; the secret value is never logged.
+    OAuth credentials are Fernet-wrapped in the endpoint settings payload and
+    decrypted only at this runtime boundary. API-key endpoints retain the
+    existing env/Keychain resolution path.
     """
+    if endpoint.oauth_credential_encrypted:
+        try:
+            import json
+            from app.core.field_encryption import decrypt_field
+
+            payload = json.loads(decrypt_field(endpoint.oauth_credential_encrypted))
+            access = payload.get("access_token") if isinstance(payload, dict) else ""
+            if access:
+                return str(access)
+        except Exception:
+            return ""
     return _read_pi_endpoint_secret(
         endpoint.endpoint_id,
         endpoint.keychain_service,

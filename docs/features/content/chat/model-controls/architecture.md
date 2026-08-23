@@ -6,10 +6,10 @@ audience: architecture
 status: documented
 related_features: ["settings.llm-servers", "settings.general", "compute.pool"]
 related_glossary: ["rag"]
-code_references: ["frontend/src/components/chat/ChatView.tsx", "frontend/src/components/chat/chatViewParts.tsx", "frontend/src/lib/modelProviders.ts", "backend/app/api/routes/llm_servers.py", "backend/app/core/agentic/dispatcher.py", "backend/app/core/agentic/legacy.py", "backend/app/core/agentic/usage_ledger.py", "backend/app/core/pi_runtime/engine.py", "backend/app/core/pi_runtime/protocol.py"]
-api_references: ["backend/app/api/routes/llm_servers.py", "backend/app/core/llm_router.py"]
-test_references: ["frontend/src/lib/modelProviders.test.ts", "tests/test_llm_servers.py", "tests/test_project_scope_contracts.py", "tests/pi_production/test_w1_agentic_contract.py"]
-last_verified: 2026-07-20
+code_references: ["frontend/src/components/chat/ChatView.tsx", "frontend/src/components/chat/ChatModelControls.tsx", "frontend/src/components/chat/chatViewParts.tsx", "frontend/src/stores/chatStore.ts", "frontend/src/stores/sessionStore.ts", "frontend/src/lib/chatApi.ts", "frontend/src/lib/modelProviders.ts", "backend/app/api/routes/chat.py", "backend/app/api/routes/sessions.py", "backend/app/core/agentic/dispatcher.py", "backend/app/core/agentic/legacy.py", "backend/app/core/agentic/usage_ledger.py", "backend/app/core/pi_runtime/engine.py", "backend/app/core/pi_runtime/oauth.py"]
+api_references: ["backend/app/api/routes/chat.py", "backend/app/api/routes/sessions.py", "backend/app/core/agentic/usage_ledger.py"]
+test_references: ["frontend/src/lib/modelProviders.test.ts", "tests/test_chat.py", "tests/test_settings_agentic_pi_endpoints.py", "tests/pi_production/test_pi_catalog_ux.py", "tests/pi_production/test_w1_agentic_contract.py"]
+last_verified: 2026-08-23
 compass: CF-SPEC-77 / CF-986; CF-SPEC-8
 ---
 
@@ -17,7 +17,7 @@ compass: CF-SPEC-77 / CF-986; CF-SPEC-8
 
 ## Implementation Summary
 
-Chat exposes model, thinking, and reasoning controls so users can tune how the assistant responds within the configured local or server-backed model environment.
+Chat exposes a workbench-style model and effort menu so users can choose the provider/model and the exact provider-native effort levels supported by that model. A usage menu reports input, output, total, cache-read, cache-write, cost, context used, turns, engine, stop reason, and whether the values are exact or estimated.
 
 ## Frontend Surface
 
@@ -30,20 +30,21 @@ Chat exposes model, thinking, and reasoning controls so users can tune how the a
 
 ### Stores
 
-- `frontend/src/stores/chatStore.ts`
+- `frontend/src/stores/chatStore.ts` — transcript streaming plus session usage totals.
+- `frontend/src/stores/sessionStore.ts` — active model, endpoint, and effort selection.
 
 ### API And Backend
 
 - `backend/app/api/routes/llm_servers.py`
 - `backend/app/core/llm_router.py`
 
-Model controls may display shared LLM-provider availability, but the backing
-server inventory and manual health-check APIs require authenticated global
-access in team mode before endpoint status or capability metadata is returned.
-Project prompt, retrieval, and compute payloads remain governed by the active
-project routes that call the model controls.
+`ChatModelControls` is visible in Chat for project viewers with a selected session. It has one browseable, searchable model menu (chevron opens the list; typing filters it), an exact effort select populated from Pi `thinkingLevels`, and a usage popover. Catalog entries that are not configured are visible but disabled with an explanation; choosing a configured entry persists both `model_override` and `endpoint_override`, so two providers exposing the same model id cannot silently collide.
+
+`GET /api/chat/model-catalog` is project-scoped and secret-free. `GET /api/chat/usage/{project_id}` is project/session-scoped and returns content-free ledger aggregates. `POST /api/chat` emits an additive `usage` SSE event after each governed turn. Existing transcript/session payloads remain backward compatible.
 
 ### Agentic Dispatcher And Engine Selection (Pi Replacement W1)
+
+The selected Chat model menu is a generation control only. It never changes the embedding model or the research-validity gates. Provider-native effort is forwarded to Pi as `TurnParams.thinking_mode`; the legacy prompt control remains conservative and never exposes private reasoning.
 
 - `backend/app/core/agentic/dispatcher.py` (`AgenticDispatcher`, module
   singleton `agentic`) is the single choke point for every agentic-loop or

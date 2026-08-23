@@ -6,7 +6,7 @@ audience: researcher
 status: documented
 related_features: ["shell.projects", "settings.general"]
 related_glossary: ["compass-forge"]
-code_references: ["frontend/src/components/settings/ProjectSettingsView.tsx", "frontend/src/components/layout/Sidebar.tsx", "frontend/src/lib/types.ts", "frontend/src/lib/utils.ts", "backend/app/api/routes/projects.py", "backend/app/api/routes/permission_requests.py", "backend/app/core/agentic/dispatcher.py"]
+code_references: ["frontend/src/components/settings/ProjectSettingsView.tsx", "frontend/src/components/settings/AgenticCoreSection.tsx", "frontend/src/components/layout/Sidebar.tsx", "frontend/src/lib/types.ts", "frontend/src/lib/utils.ts", "backend/app/api/routes/projects.py", "backend/app/api/routes/permission_requests.py", "backend/app/core/agentic/dispatcher.py"]
 api_references: ["backend/app/api/routes/projects.py", "backend/app/api/routes/permission_requests.py"]
 test_references: ["tests/test_project_rbac.py", "tests/test_project_scope_contracts.py", "tests/pi_production/test_w8_embeddings_gateway.py", "tests/simulation/scenarios/79-engine-selector.mjs"]
 last_verified: 2026-07-22
@@ -50,9 +50,9 @@ Project Settings exists so the work represented by Project Settings has a stable
 ## Choosing The Agent Engine Per Project
 
 - Istara can run its agentic work on a legacy engine or the newer Pi replacement engine. Pi Replacement wave W8 lets each project choose its own engine instead of only following the global default.
-- Project admins see an "Agent Engine" section in Project Settings with three options: Inherit global default, Legacy, or Pi. The inherit label and read-only badge use the server's current normalized global default, so they stay accurate when the default is Pi. Choosing an unrecognized engine value is rejected by the server, so a project can never end up with a broken setting.
+- Project admins see a full "Choose your Agentic Core" section in Project Settings with three options: inherit global default, Istara, or Pi. Each option explains what it is, who it is for, and the source-linked provisional benchmark snapshot. The inherit label and read-only state use the server's current normalized global default, so they stay accurate when the default is Pi. Choosing an unrecognized engine value is rejected by the server.
 - The current engine is always visible while you work: the sidebar shows a small "Pi" or "Legacy" badge next to each project's phase label, so it is clear which engine serves that project's chat, agents, and validation before you run anything.
-- The project choice sits between per-call overrides and the global default: an explicit request or header still wins, the project setting applies next, and projects left on "Inherit" follow whatever the global default says. Switching a project back to Legacy is a safe rollback.
+- The project choice sits between per-call overrides and the global default: an explicit request or header still wins, the project setting applies next, and projects left on "Inherit" follow whatever the global default says. Switching a project back to Istara is a safe rollback. The shared embedding space is called out directly in the section and is never changed by this choice.
 
 ## Caveats
 

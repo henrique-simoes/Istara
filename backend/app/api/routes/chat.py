@@ -37,7 +37,7 @@ from app.core.agentic.types import TurnParams
 from app.core.content_guard import ContentGuard
 from app.core.prompt_rag import compose_dynamic_prompt, compose_keyword_prompt
 from app.core.context_summarizer import context_summarizer
-from app.core.llm_thinking import ThinkingMode, apply_thinking_control, normalize_thinking_mode
+from app.core.llm_thinking import apply_thinking_control, normalize_thinking_mode, validate_model_effort
 from app.core.ollama import ollama  # noqa: F401 — W2: transport moved to the dispatcher; tests monkeypatch this handle
 from app.core.permissions import get_visible_project_or_404, require_project_access
 from app.core.pi_replacement import (
@@ -129,6 +129,12 @@ async def _generate_pi_runtime(
     tool_results: list[dict],
     request,
     session_agent_id: str | None,
+    *,
+    model: str | None = None,
+    temperature: float | None = None,
+    max_tokens: int | None = None,
+    thinking_mode: str | None = None,
+    endpoint_id: str | None = None,
     turn_status: dict | None = None,
 ):
     """Drive one chat turn through the AgenticDispatcher's Pi engine (AC-1).
@@ -185,11 +191,21 @@ async def _generate_pi_runtime(
             project_id=request.project_id,
             agent_id=agent_id,
             session_key=session_key,
+            session_id=getattr(request, "session_id", None),
             system_prompt=system_prompt,
             messages=history,
             user_text=user_text,
             tool_executor=_tool_exec,
-            params=TurnParams(),
+            params=TurnParams(
+                model=model,
+                temperature=temperature,
+                max_tokens=max_tokens,
+                # Pi's worker receives the provider's exact effort level. The
+                # legacy server_default sentinel must not be sent as a level.
+                thinking_mode=(thinking_mode if thinking_mode not in {None, "", "server_default"} else None),
+                endpoint_id=endpoint_id,
+                max_turns=MAX_TOOL_ITERATIONS,
+            ),
             steering_binding=steering,
             engine="pi",
         ):
@@ -217,6 +233,15 @@ async def _generate_pi_runtime(
                 ) + "\n\n"
             elif etype == "_complete":
                 result = event.get("result")
+                if result is not None:
+                    yield "data: " + json.dumps({
+                        "type": "usage",
+                        "usage": result.usage or {},
+                        "model": model or "",
+                        "endpoint_id": result.endpoint_id,
+                        "stop_reason": result.stop_reason,
+                        "effort": thinking_mode or "server_default",
+                    }) + "\n\n"
                 if result is not None and result.status != "success" and status == "success":
                     # Terminal abort/error without a streamed error event still
                     # fails closed (H-9): no assistant message is persisted.
@@ -375,6 +400,7 @@ async def _generate_native_tools(
             queue=queue,
             project_id=request.project_id,
             agent_id=session_agent_id or "istara-main",
+            session_id=getattr(request, "session_id", None),
             session_key=None,
             system_prompt="",
             messages=list(conversation),
@@ -403,6 +429,17 @@ async def _generate_native_tools(
                 yield f"data: {json.dumps({'type': 'chunk', 'content': event.get('text', '')})}\n\n"
             elif etype == "tool_call":
                 yield f"data: {json.dumps({'type': 'tool_call', 'tool': event.get('tool'), 'params': event.get('params', {})})}\n\n"
+            elif etype == "_complete":
+                result = event.get("result")
+                if result is not None:
+                    yield "data: " + json.dumps({
+                        "type": "usage",
+                        "usage": result.usage or {},
+                        "model": effective_model or "",
+                        "endpoint_id": result.endpoint_id,
+                        "stop_reason": result.stop_reason,
+                        "effort": "server_default",
+                    }) + "\n\n"
     except Exception as exc:
         if pi_metrics:
             await pi_metrics.finish(status="error", error_message=str(exc))
@@ -475,6 +512,7 @@ async def _generate_text_fallback(
             queue=queue,
             project_id=request.project_id,
             agent_id=session_agent_id or "istara-main",
+            session_id=getattr(request, "session_id", None),
             session_key=None,
             system_prompt="",
             messages=list(conversation),
@@ -500,6 +538,17 @@ async def _generate_text_fallback(
                 yield f"data: {json.dumps({'type': 'chunk', 'content': text})}\n\n"
             elif etype == "tool_call":
                 yield f"data: {json.dumps({'type': 'tool_call', 'tool': event.get('tool'), 'params': event.get('params', {})})}\n\n"
+            elif etype == "_complete":
+                result = event.get("result")
+                if result is not None:
+                    yield "data: " + json.dumps({
+                        "type": "usage",
+                        "usage": result.usage or {},
+                        "model": (pi_chat_model(llm_model) if pi_candidate else llm_model) or "",
+                        "endpoint_id": result.endpoint_id,
+                        "stop_reason": result.stop_reason,
+                        "effort": "server_default",
+                    }) + "\n\n"
     except Exception as exc:
         if pi_metrics:
             await pi_metrics.finish(status="error", error_message=str(exc))
@@ -517,7 +566,12 @@ class ChatRequest(BaseModel):
     session_id: str | None = None
     include_history: bool = True
     max_history: int = Field(default=20, ge=0, le=200)
-    thinking_mode: ThinkingMode | None = None
+    thinking_mode: str | None = None
+
+    @field_validator("thinking_mode")
+    @classmethod
+    def validate_effort(cls, value: str | None) -> str | None:
+        return validate_model_effort(value) if value is not None else value
 
     @field_validator("message")
     @classmethod
@@ -602,6 +656,8 @@ async def chat(request: ChatRequest, http_request: Request, db: AsyncSession = D
     llm_temperature = 0.7
     llm_max_tokens: int | None = None
     llm_model: str | None = None
+    llm_endpoint_id: str | None = None
+    llm_effort = request.thinking_mode
     llm_thinking_mode = normalize_thinking_mode(request.thinking_mode)
     session_agent_id: str | None = None
     agent_identity_prompt: str = ""
@@ -626,8 +682,11 @@ async def chat(request: ChatRequest, http_request: Request, db: AsyncSession = D
 
         if session.model_override:
             llm_model = session.model_override
+        if getattr(session, "endpoint_override", None):
+            llm_endpoint_id = session.endpoint_override
         if request.thinking_mode is None:
-            llm_thinking_mode = normalize_thinking_mode(getattr(session, "thinking_mode", None))
+            llm_effort = getattr(session, "thinking_mode", None)
+            llm_thinking_mode = normalize_thinking_mode(llm_effort)
 
         # Load agent identity for this session
         # Use Prompt RAG for query-aware identity (retrieves relevant
@@ -864,6 +923,11 @@ async def chat(request: ChatRequest, http_request: Request, db: AsyncSession = D
                     tool_results,
                     request,
                     session_agent_id,
+                    model=llm_model,
+                    temperature=llm_temperature,
+                    max_tokens=llm_max_tokens,
+                    thinking_mode=llm_effort,
+                    endpoint_id=llm_endpoint_id,
                     turn_status=pi_turn_status,
                 ):
                     yield event
@@ -1060,6 +1124,82 @@ async def chat(request: ChatRequest, http_request: Request, db: AsyncSession = D
             "X-Accel-Buffering": "no",
         },
     )
+
+
+@router.get("/chat/model-catalog")
+async def get_chat_model_catalog(
+    project_id: str,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+):
+    """Project-readable model metadata for the in-chat model picker.
+
+    The catalog contains no secrets. ``configured`` is the identity-only Pi
+    endpoint view; the frontend keeps unconfigured catalog entries visible but
+    disabled so users understand what Settings must enable.
+    """
+    await require_project_access(db, request, project_id, min_role="viewer")
+    from dataclasses import asdict
+
+    from app.core.pi_runtime.catalog import pi_catalog_json
+    from app.core.pi_runtime.model_manager import PiModelManager
+
+    configured: list[dict] = []
+    try:
+        manager = PiModelManager()
+        await manager.ensure_db_projection()
+        configured = [asdict(info) for info in manager.catalog()]
+    except Exception:
+        _chat_log.debug("chat model catalog configured projection unavailable", exc_info=True)
+    catalog = pi_catalog_json()
+    return {
+        "providers": catalog,
+        "total_models": sum(len(provider["models"]) for provider in catalog),
+        "configured": configured,
+        "engine": "pi" if pi_replacement_requested(request) else "legacy",
+    }
+
+
+@router.get("/chat/usage/{project_id}")
+async def get_chat_usage(
+    project_id: str,
+    request: Request,
+    session_id: str | None = None,
+    db: AsyncSession = Depends(get_db),
+):
+    """Return content-free exact/estimated usage totals for the chat menu."""
+    await require_project_access(db, request, project_id, min_role="viewer")
+    from app.models.agentic_usage import AgenticUsageRow
+
+    query = select(AgenticUsageRow).where(AgenticUsageRow.project_id == project_id)
+    if session_id:
+        query = query.where(AgenticUsageRow.session_id == session_id)
+    result = await db.execute(query.order_by(AgenticUsageRow.created_at.asc()))
+    rows = list(result.scalars().all())
+    totals = {
+        "input_tokens": sum(int(row.input_tokens or 0) for row in rows),
+        "output_tokens": sum(int(row.output_tokens or 0) for row in rows),
+        "cache_read": sum(int(row.cache_read or 0) for row in rows),
+        "cache_write": sum(int(row.cache_write or 0) for row in rows),
+        "total_tokens": sum(int(row.total_tokens or 0) for row in rows),
+        "cost_usd": sum(float(row.cost_usd or 0) for row in rows),
+        "turns": sum(int(row.turns or 0) for row in rows),
+    }
+    latest = rows[-1] if rows else None
+    return {
+        **totals,
+        "row_count": len(rows),
+        "exact": not any(bool(row.estimate) for row in rows),
+        "estimated": any(bool(row.estimate) for row in rows),
+        "latest": {
+            "model": latest.model,
+            "endpoint_id": latest.endpoint_id,
+            "engine": latest.engine,
+            "stop_reason": latest.stop_reason,
+            "input_tokens": latest.input_tokens,
+            "created_at": latest.created_at.isoformat() if latest.created_at else None,
+        } if latest else None,
+    }
 
 
 @router.get("/chat/history/{project_id}")

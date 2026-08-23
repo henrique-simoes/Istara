@@ -110,7 +110,7 @@ def _estimated_numbers(
 def build_usage_row(
     *, engine: str, purpose: str, project_id: str, agent_id: str,
     outcome: dict[str, Any], model: str | None = None, started_at: float | None = None,
-    task_id: str | None = None, spine_phase: str | None = None, node_id: str | None = None,
+    session_id: str | None = None, task_id: str | None = None, spine_phase: str | None = None, node_id: str | None = None,
     request_text: str | None = None, response_text: str | None = None,
     error_type: str | None = None,
 ) -> AgenticUsageRow:
@@ -144,6 +144,7 @@ def build_usage_row(
         engine=engine,
         purpose=purpose[:120],
         project_id=project_id or "",
+        session_id=session_id,
         agent_id=agent_id or "",
         task_id=task_id,
         spine_phase=(spine_phase or "")[:40],
@@ -169,7 +170,7 @@ def build_usage_row(
 async def record_agentic_usage(
     *, engine: str, purpose: str, project_id: str, agent_id: str,
     outcome: dict[str, Any], model: str | None = None, started_at: float | None = None,
-    task_id: str | None = None, spine_phase: str | None = None, node_id: str | None = None,
+    session_id: str | None = None, task_id: str | None = None, spine_phase: str | None = None, node_id: str | None = None,
     request_text: str | None = None, response_text: str | None = None,
     error_type: str | None = None,
 ) -> None:
@@ -180,8 +181,8 @@ async def record_agentic_usage(
     """
     row = build_usage_row(
         engine=engine, purpose=purpose, project_id=project_id, agent_id=agent_id,
-        outcome=outcome, model=model, started_at=started_at, task_id=task_id,
-        spine_phase=spine_phase, node_id=node_id, request_text=request_text,
+        outcome=outcome, model=model, started_at=started_at, session_id=session_id,
+        task_id=task_id, spine_phase=spine_phase, node_id=node_id, request_text=request_text,
         response_text=response_text, error_type=error_type,
     )
     try:

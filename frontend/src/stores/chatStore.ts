@@ -1,7 +1,7 @@
 "use client";
 
 import { create } from "zustand";
-import type { ChatMessage, ThinkingMode } from "@/lib/types";
+import type { ChatMessage, ChatUsage, ThinkingMode } from "@/lib/types";
 import { chat as chatApi, sessions as sessionsApi } from "@/lib/api";
 import { useAgentStore } from "@/stores/agentStore";
 import { useSessionStore } from "@/stores/sessionStore";
@@ -11,6 +11,7 @@ interface ChatStore {
   streaming: boolean;
   streamingContent: string;
   error: string | null;
+  usage: ChatUsage | null;
   abortController: AbortController | null;
 
   fetchHistory: (projectId: string, sessionId?: string) => Promise<void>;
@@ -29,10 +30,11 @@ export const useChatStore = create<ChatStore>((set, get) => ({
   streaming: false,
   streamingContent: "",
   error: null,
+  usage: null,
   abortController: null,
 
   fetchHistory: async (projectId, sessionId) => {
-    set({ messages: [], streamingContent: "", error: null });
+    set({ messages: [], streamingContent: "", error: null, usage: null });
     try {
       if (sessionId) {
         // Fetch session-scoped messages
@@ -52,6 +54,13 @@ export const useChatStore = create<ChatStore>((set, get) => ({
       }
     } catch (e: any) {
       set({ messages: [], error: e.message });
+    }
+    try {
+      const usage = await chatApi.usage(projectId, sessionId);
+      set({ usage });
+    } catch {
+      // Older servers may not expose the additive usage endpoint yet.
+      set({ usage: null });
     }
   },
 
@@ -99,6 +108,23 @@ export const useChatStore = create<ChatStore>((set, get) => ({
         } else if (event.type === "done") {
           messageId = event.message_id;
           sources = event.sources || [];
+        } else if (event.type === "usage") {
+          set((state) => ({
+            usage: {
+              ...(state.usage || {
+                input_tokens: 0, output_tokens: 0, cache_read: 0, cache_write: 0,
+                total_tokens: 0, cost_usd: 0, turns: 0, row_count: 0,
+                exact: true, estimated: false,
+              }),
+              last_turn: {
+                usage: event.usage || {},
+                model: event.model || "",
+                endpoint_id: event.endpoint_id,
+                stop_reason: event.stop_reason,
+                effort: event.effort,
+              },
+            },
+          }));
         } else if (event.type === "error") {
           set({ error: event.message, streaming: false, abortController: null });
           return;
@@ -123,8 +149,15 @@ export const useChatStore = create<ChatStore>((set, get) => ({
         agent_name: agentName,
       };
 
+      let usage = get().usage;
+      try {
+        usage = await chatApi.usage(projectId, sessionId);
+      } catch {
+        // Keep the streamed last-turn telemetry if the aggregate request fails.
+      }
       set((s) => ({
         messages: [...s.messages, assistantMsg],
+        usage,
         streaming: false,
         streamingContent: "",
         abortController: null,
@@ -147,5 +180,5 @@ export const useChatStore = create<ChatStore>((set, get) => ({
     }
   },
 
-  clearMessages: () => set({ messages: [], streamingContent: "", error: null }),
+  clearMessages: () => set({ messages: [], streamingContent: "", error: null, usage: null }),
 }));

@@ -246,7 +246,7 @@
   <p class="concept-line"><strong>Concepts:</strong> rag</p>
 </header>
 <h2 id="implementation-summary">Implementation Summary</h2>
-<p>Chat exposes model, thinking, and reasoning controls so users can tune how the assistant responds within the configured local or server-backed model environment.</p>
+<p>Chat exposes a workbench-style model and effort menu so users can choose the provider/model and the exact provider-native effort levels supported by that model. A usage menu reports input, output, total, cache-read, cache-write, cost, context used, turns, engine, stop reason, and whether the values are exact or estimated.</p>
 <h2 id="frontend-surface">Frontend Surface</h2>
 <ul>
 <li><code>frontend/src/components/chat/ChatView.tsx</code></li>
@@ -257,19 +257,18 @@
 <h2 id="state-api-and-backend-contracts">State, API, And Backend Contracts</h2>
 <h3 id="stores">Stores</h3>
 <ul>
-<li><code>frontend/src/stores/chatStore.ts</code></li>
+<li><code>frontend/src/stores/chatStore.ts</code> — transcript streaming plus session usage totals.</li>
+<li><code>frontend/src/stores/sessionStore.ts</code> — active model, endpoint, and effort selection.</li>
 </ul>
 <h3 id="api-and-backend">API And Backend</h3>
 <ul>
 <li><code>backend/app/api/routes/llm_servers.py</code></li>
 <li><code>backend/app/core/llm_router.py</code></li>
 </ul>
-<p>Model controls may display shared LLM-provider availability, but the backing</p>
-<p>server inventory and manual health-check APIs require authenticated global</p>
-<p>access in team mode before endpoint status or capability metadata is returned.</p>
-<p>Project prompt, retrieval, and compute payloads remain governed by the active</p>
-<p>project routes that call the model controls.</p>
+<p><code>ChatModelControls</code> is visible in Chat for project viewers with a selected session. It has one browseable, searchable model menu (chevron opens the list; typing filters it), an exact effort select populated from Pi <code>thinkingLevels</code>, and a usage popover. Catalog entries that are not configured are visible but disabled with an explanation; choosing a configured entry persists both <code>model_override</code> and <code>endpoint_override</code>, so two providers exposing the same model id cannot silently collide.</p>
+<p><code>GET /api/chat/model-catalog</code> is project-scoped and secret-free. <code>GET /api/chat/usage/{project_id}</code> is project/session-scoped and returns content-free ledger aggregates. <code>POST /api/chat</code> emits an additive <code>usage</code> SSE event after each governed turn. Existing transcript/session payloads remain backward compatible.</p>
 <h3 id="agentic-dispatcher-and-engine-selection-pi-replacement-w1">Agentic Dispatcher And Engine Selection (Pi Replacement W1)</h3>
+<p>The selected Chat model menu is a generation control only. It never changes the embedding model or the research-validity gates. Provider-native effort is forwarded to Pi as <code>TurnParams.thinking_mode</code>; the legacy prompt control remains conservative and never exposes private reasoning.</p>
 <ul>
 <li><code>backend/app/core/agentic/dispatcher.py</code> (<code>AgenticDispatcher</code>, module</li>
 </ul>

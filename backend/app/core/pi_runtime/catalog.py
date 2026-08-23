@@ -42,26 +42,73 @@ class PiCatalogProvider:
     id: str
     display_name: str
     login_methods: list[str]  # "api_key" | "oauth" | "none"
-    oauth_flow: str | None  # "device_code" | "pkce" | "radius" | None
+    oauth_flow: str | None  # "openai_codex" | "browser" | "device_code" | "pkce" | None
     env_var: str | None  # canonical env var for API-key providers
     auth_json_key: str | None
     base_url: str | None
+    oauth_methods: list[str] = field(default_factory=list)  # browser | device_code
+    oauth_provider: str | None = None
+    oauth_model_ids: list[str] = field(default_factory=list)
+    auth_description: str = ""
     models: list[PiCatalogModel] = field(default_factory=list)
 
 
 # --- Auth metadata, mirroring the standalone Pi providers.md (2026-08) -------
 # OAuth/subscription providers (Pi `/login`):
-_OAUTH_PROVIDERS: dict[str, dict[str, str]] = {
-    "openai-codex": {"flow": "device_code", "display": "OpenAI Codex (ChatGPT Plus/Pro subscription)"},
-    "anthropic": {"flow": "device_code", "display": "Anthropic Claude (Pro/Max subscription or API key)"},
-    "github-copilot": {"flow": "device_code", "display": "GitHub Copilot (subscription)"},
-    "xai": {"flow": "device_code", "display": "xAI Grok/X (subscription or API key)"},
-    "openrouter": {"flow": "pkce", "display": "OpenRouter (PKCE authorization or API key)"},
-    "radius": {"flow": "radius", "display": "Radius (dynamic gateway, OAuth)"},
-    "google": {"flow": "device_code", "display": "Google Gemini (device-code OAuth or API key)"},
-    "zai": {"flow": "device_code", "display": "ZAI Coding Plan (subscription or API key)"},
-    "zai-coding-cn": {"flow": "device_code", "display": "ZAI Coding Plan China (subscription or API key)"},
-    "amazon-bedrock": {"flow": "device_code", "display": "Amazon Bedrock (AWS credential sources or API key)"},
+_OAUTH_PROVIDERS: dict[str, dict[str, Any]] = {
+    # These methods mirror the actual loaders in pi-ai/auth/oauth/load.js.
+    # OpenAI API and OpenAI Codex are separate Pi providers: only the shared
+    # Codex model ids can use ChatGPT subscription OAuth.
+    "openai": {
+        "flow": "openai_codex",
+        "oauth_provider": "openai-codex",
+        "oauth_methods": ["browser", "device_code"],
+        "display": "OpenAI API",
+        "description": "API key for OpenAI Platform. ChatGPT subscription OAuth is available on the shared Codex models below.",
+    },
+    "openai-codex": {
+        "flow": "openai_codex",
+        "oauth_provider": "openai-codex",
+        "oauth_methods": ["browser", "device_code"],
+        "display": "OpenAI Codex — ChatGPT subscription",
+        "description": "Use your ChatGPT Plus or Pro subscription through Pi's Codex Responses API.",
+    },
+    "anthropic": {
+        "flow": "browser_pkce",
+        "oauth_methods": ["browser"],
+        "display": "Anthropic Claude",
+        "description": "API key or Claude Pro/Max browser login, when your Pi build exposes the subscription flow.",
+    },
+    "github-copilot": {
+        "flow": "device_code",
+        "oauth_methods": ["device_code"],
+        "display": "GitHub Copilot",
+        "description": "Headless device-code login for a GitHub Copilot subscription.",
+    },
+    "xai": {
+        "flow": "device_code",
+        "oauth_methods": ["device_code"],
+        "display": "xAI Grok",
+        "description": "API key or SuperGrok/X Premium device-code login.",
+    },
+    "openrouter": {
+        "flow": "pkce",
+        "oauth_methods": ["browser"],
+        "display": "OpenRouter",
+        "description": "API key or Pi's browser PKCE authorization flow.",
+    },
+    "kimi-coding": {
+        "flow": "device_code",
+        "oauth_methods": ["device_code"],
+        "display": "Kimi Code",
+        "description": "API key or Kimi Code device-code subscription login.",
+    },
+    "radius": {
+        "flow": "radius",
+        "oauth_methods": ["browser", "device_code"],
+        "display": "Radius",
+        "description": "Dynamic gateway OAuth; gateway discovery is required before use.",
+    },
 }
 
 # API-key providers: (env var, auth.json key, display)
@@ -110,19 +157,21 @@ _NO_AUTH = {"ant-ling"}
 
 def _login_methods(provider_id: str) -> list[str]:
     methods: list[str] = []
-    if provider_id in _OAUTH_PROVIDERS:
+    oauth = _OAUTH_PROVIDERS.get(provider_id)
+    if oauth and oauth.get("oauth_methods"):
         methods.append("oauth")
-    if provider_id in _API_KEY_PROVIDERS and provider_id not in {"anthropic", "openai-codex", "github-copilot", "xai", "zai", "zai-coding-cn"}:
+    key_info = _API_KEY_PROVIDERS.get(provider_id)
+    if key_info and key_info[0]:
         methods.append("api_key")
     if not methods:
-        methods.append("api_key" if provider_id in _API_KEY_PROVIDERS else "none")
+        methods.append("none" if provider_id not in _API_KEY_PROVIDERS else "api_key")
     return methods
 
 
 def _display_name(provider_id: str) -> str:
     oauth = _OAUTH_PROVIDERS.get(provider_id)
     if oauth:
-        return oauth["display"]
+        return str(oauth["display"])
     key = _API_KEY_PROVIDERS.get(provider_id)
     if key:
         return key[2]
@@ -146,6 +195,12 @@ def pi_catalog_providers() -> list[PiCatalogProvider]:
             PiCatalogModel(**{k: v for k, v in m.items() if k in PiCatalogModel.__dataclass_fields__})
             for m in raw[provider_id]
         ]
+        oauth_provider = str(oauth.get("oauth_provider", provider_id)) if oauth else None
+        oauth_model_ids: list[str] = []
+        if oauth_provider and oauth_provider != provider_id:
+            oauth_model_ids = [m["id"] for m in raw.get(oauth_provider, [])]
+        elif oauth and oauth_provider == provider_id:
+            oauth_model_ids = [m.id for m in models]
         providers.append(
             PiCatalogProvider(
                 id=provider_id,
@@ -155,6 +210,10 @@ def pi_catalog_providers() -> list[PiCatalogProvider]:
                 env_var=key_info[0] if key_info else None,
                 auth_json_key=key_info[1] if key_info else None,
                 base_url=models[0].baseUrl if models else None,
+                oauth_methods=list(oauth.get("oauth_methods", [])) if oauth else [],
+                oauth_provider=oauth_provider,
+                oauth_model_ids=oauth_model_ids,
+                auth_description=str(oauth.get("description", "")) if oauth else "API key or configured ambient credentials.",
                 models=models,
             )
         )

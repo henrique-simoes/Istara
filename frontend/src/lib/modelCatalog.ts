@@ -31,6 +31,9 @@ export interface EngineComparativeSummary {
   asOf: string;
   /** Always true for selector summaries: never presented as accepted evidence. */
   provisional: boolean;
+  shortDescription: string;
+  bestFor: string;
+  benchmarkRows: Array<{ label: string; value: string }>;
 }
 
 const ENGINE_BENCHMARK_BUNDLE = "comparison-Istara-pi/reports/20260801T010602Z/scorecard.json";
@@ -53,6 +56,14 @@ export const ENGINE_COMPARATIVE_SUMMARIES: EngineComparativeSummary[] = [
     provenance: [ENGINE_BENCHMARK_BUNDLE, "docs/features/content/chat/model-controls/architecture.md"],
     asOf: "2026-08-01",
     provisional: true,
+    shortDescription: "A standalone, versioned agent runtime with a broad provider catalog and structured tool execution.",
+    bestFor: "Cloud providers, exact model/effort controls, and governed tool workflows.",
+    benchmarkRows: [
+      { label: "Tool calling", value: "0.81" },
+      { label: "Output quality", value: "6.75 / 10" },
+      { label: "Research-spine", value: "1.00" },
+      { label: "Skills / A2A", value: "1.00" },
+    ],
   },
   {
     engine: "legacy",
@@ -62,6 +73,14 @@ export const ENGINE_COMPARATIVE_SUMMARIES: EngineComparativeSummary[] = [
     provenance: [ENGINE_BENCHMARK_BUNDLE, "docs/features/content/chat/model-controls/architecture.md"],
     asOf: "2026-08-01",
     provisional: true,
+    shortDescription: "Istara's in-process executor over the existing ComputeRegistry and local/server model plane.",
+    bestFor: "Local models, donated compute, and workflows already attached to the legacy plane.",
+    benchmarkRows: [
+      { label: "Tool calling", value: "0.83" },
+      { label: "Output quality", value: "6.64 / 10" },
+      { label: "Research-spine", value: "0.81" },
+      { label: "Skills / A2A", value: "1.00" },
+    ],
   },
 ];
 

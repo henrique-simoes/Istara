@@ -51,6 +51,8 @@ class PiEndpointInfo:
     supports_tools: bool = True
     supports_vision: bool = False
     kind: str = "remote"
+    pi_provider: str = ""
+    auth_method: str = "api_key"
 
 
 @dataclass(frozen=True)
@@ -75,6 +77,8 @@ class _CatalogEntry:
     supports_tools: bool = True
     supports_vision: bool = False
     kind: str = "remote"
+    pi_provider: str = ""
+    auth_method: str = "api_key"
     # Settings-source entries keep their secrets in the resolver/Keychain.
     resolved: ResolvedPiEndpoint | None = None
 
@@ -117,6 +121,8 @@ class PiModelManager:
             base_url=endpoint.base_url.rstrip("/"),
             model=endpoint.model,
             source="settings",
+            pi_provider=getattr(endpoint, "auth_provider", "") or getattr(endpoint, "pi_provider", ""),
+            auth_method=getattr(endpoint, "auth_method", "api_key"),
             timeout_ms=endpoint.timeout_ms,
             max_retries=endpoint.max_retries,
             cost_input_per_mtok=endpoint.cost_input_per_mtok,
@@ -540,6 +546,8 @@ class PiModelManager:
                 entry.endpoint_id,
                 entry.model,
                 entry.provider_kind,
+                pi_provider=entry.pi_provider,
+                auth_method=entry.auth_method,
                 context_window=entry.context_window,
                 max_tokens=entry.max_tokens,
                 supports_tools=entry.supports_tools,

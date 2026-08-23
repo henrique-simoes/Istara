@@ -202,14 +202,31 @@ async def test_chat_rejects_session_with_cross_project_agent_before_llm():
     assert response.json()["detail"] == "Agent not found"
 
 
-def test_chat_request_accepts_only_supported_thinking_modes():
+def test_chat_request_preserves_provider_native_effort_levels():
     request = ChatRequest.model_validate(
-        {"message": "hello", "project_id": "project-1", "thinking_mode": "auto"}
+        {"message": "hello", "project_id": "project-1", "thinking_mode": "xhigh"}
     )
 
-    assert request.thinking_mode == "auto"
+    assert request.thinking_mode == "xhigh"
 
-    with pytest.raises(Exception):
-        ChatRequest.model_validate(
-            {"message": "hello", "project_id": "project-1", "thinking_mode": "show_raw"}
+
+@pytest.mark.asyncio
+async def test_chat_model_catalog_and_usage_are_project_scoped():
+    await init_db()
+    if not settings.jwt_secret:
+        settings.jwt_secret = "test-secret"
+    token = create_token("user1", "testuser", "admin")
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        catalog = await ac.get(
+            "/api/chat/model-catalog?project_id=test-project-123",
+            headers={"Authorization": f"Bearer {token}"},
         )
+        usage = await ac.get(
+            "/api/chat/usage/test-project-123",
+            headers={"Authorization": f"Bearer {token}"},
+        )
+    assert catalog.status_code == 200
+    assert catalog.json()["total_models"] > 1000
+    assert usage.status_code == 200
+    assert usage.json()["total_tokens"] == 0

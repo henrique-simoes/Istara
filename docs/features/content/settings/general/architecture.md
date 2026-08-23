@@ -1,12 +1,12 @@
 ---
 stable_id: settings.general
-title: System Status And Models
-ui_path: Settings > System Status And Models
+title: System Status, Agentic Core, And Pi Models
+ui_path: Settings > System Status, Agentic Core, And Pi Models
 audience: architecture
 status: documented
 related_features: ["settings.llm-servers", "compute.pool"]
 related_glossary: ["rag"]
-code_references: ["frontend/src/components/common/SettingsView.tsx", "frontend/src/components/layout/StatusBar.tsx", "backend/app/api/routes/settings.py", "backend/app/core/runtime_freshness.py"]
+code_references: ["frontend/src/components/common/SettingsView.tsx", "frontend/src/components/settings/AgenticCoreSection.tsx", "frontend/src/components/settings/PiModelManagement.tsx", "frontend/src/app/globals.css", "frontend/src/components/layout/StatusBar.tsx", "backend/app/api/routes/settings.py", "backend/app/core/pi_runtime/catalog.py", "backend/app/core/pi_runtime/oauth.py", "backend/app/core/runtime_freshness.py"]
 api_references: ["backend/app/api/routes/settings.py"]
 test_references: ["tests/test_settings.py"]
 last_verified: 2026-05-19
@@ -17,7 +17,7 @@ compass: CF-SPEC-55 / CF-684; CF-SPEC-66 / CF-856; CF-SPEC-91 / CF-1156
 
 ## Implementation Summary
 
-Settings shows backend, LLM, hardware, model recommendation, and available model status for the local installation. Public status is intentionally minimal: `/api/settings/status` exposes backend health, team mode, cached LLM reachability/readiness, and frontend freshness only. Provider, model, hardware, integration, vector-health, maintenance, and data-integrity details are shared infrastructure metadata and require global admin access in team mode.
+Settings shows backend and LLM health, a first-class Agentic Core comparison and choice, hardware/model guidance, and the Pi provider/model management workbench. Pi Model Management offers a complete browseable catalog plus autocomplete, provider-native authentication choices, and server-side credential custody. The former compact Agentic Core selector is no longer inside System Status; the legacy LLM Servers catalog is not rendered in normal Settings UX while compatibility routes/data remain preserved. Public status is intentionally minimal: `/api/settings/status` exposes backend health, team mode, cached LLM reachability/readiness, and frontend freshness only. Provider, model, hardware, integration, vector-health, maintenance, and data-integrity details are shared infrastructure metadata and require global admin access in team mode.
 
 ## Frontend Surface
 
@@ -41,10 +41,12 @@ Settings shows backend, LLM, hardware, model recommendation, and available model
 - `/api/settings/status` reports `services.llm` from cached provider reachability and `llm_readiness.chat_ready` separately, so status bars and guided checks can distinguish connected-but-not-ready from disconnected without running provider probes.
 - `/api/settings/status` does not expose provider names, active model identifiers, embedding model identifiers, RAG configuration, or loaded-model discovery results. Admin-only settings views read model/provider details from `/api/settings/models`.
 - `/api/settings/hardware`, `/api/settings/models`, `/api/settings/maintenance`, `/api/settings/integrations-status`, `/api/settings/vector-health`, `/api/settings/data-integrity`, `/api/settings/model`, and `/api/settings/provider` require global admin access in team mode.
-- `GET /api/settings/models` returns the normalized `agentic_engine_default` (`pi` or `legacy`) alongside the provider inventory and the identity-only `pi_catalog`. The Settings model inventory merges both planes, keeps Pi entries visible as `Available to Pi`, and only offers the legacy switch action for legacy-provider rows.
+- `GET /api/settings/models` returns the normalized `agentic_engine_default` (`pi` or `legacy`) alongside the provider inventory and identity-only Pi projections. `AgenticCoreSection` renders the global choice as a dedicated, plain-language comparison with the shared embedding invariant and source-linked provisional benchmark rows.
+- `GET /api/settings/pi-catalog` returns the full secret-free Pi catalog. `PiModelManagement` supports both a visible dropdown/browse path and autocomplete search. Selecting a model resolves URL, protocol, capabilities, effort levels, and pricing from the catalog; users never type an endpoint URL.
+- Pi OAuth metadata distinguishes API key, browser PKCE, and device-code methods. OpenAI is explicit: OpenAI API is API-key based, while the shared Codex models expose Pi's ChatGPT subscription OAuth with Browser login and Device code (headless) choices. Browser callbacks verify state and never return tokens.
 - Settings is role-composed rather than a single global-admin surface. Researcher-safe personal panels such as compute donation, security factors, sessions, and updates may render for researchers, while global-admin panels for governed evolution, users, connection strings, LLM infrastructure, telemetry, and team-mode toggles are gated before mounting so their admin-only API calls are never made by normal researcher journeys.
 - `/api/settings/status` also includes `runtime.frontend` freshness diagnostics. The status bar shows `Runtime bundle stale` when the production Next build predates tracked frontend source files, preventing stale bundles from being mistaken for current project-isolation behavior.
-- The frontmatter and manifest entries are the durable contract for agents updating this page after code changes.
+- The frontmatter and manifest entries are the durable contract for agents updating this page after code changes. The shared UI tokens and state contract live in root `DESIGN.md` and the semantic projection in `frontend/src/app/globals.css`.
 - When the referenced component, store, route, agent, skill, or test behavior changes, regenerate and validate the feature documentation.
 
 ## Agents, Skills, LLM, MCP, And Permissions

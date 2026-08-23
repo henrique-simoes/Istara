@@ -22,8 +22,8 @@ import { useAuthStore } from "@/stores/authStore";
 import { useRoleCapabilities } from "@/hooks/useRoleCapabilities";
 import { permissionRequests, users as usersApi } from "@/lib/api";
 import type { PermissionRequestItem } from "@/lib/types";
-import { cn, agentEngineLabel } from "@/lib/utils";
-import { ENGINE_COMPARATIVE_SUMMARIES, SHARED_EMBEDDING_IDENTITY_LABEL } from "@/lib/modelCatalog";
+import { cn } from "@/lib/utils";
+import AgenticCoreSection from "@/components/settings/AgenticCoreSection";
 import ViewOnboarding from "@/components/common/ViewOnboarding";
 
 import { API_BASE } from "@/lib/runtimeConfig";
@@ -354,82 +354,17 @@ export default function ProjectSettingsView() {
           )}
         </div>
 
-        {/* W8: per-project agent engine selector (legacy plane / Pi engine) */}
-        <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-5">
-          <h3 id="agent-engine-heading" className="font-medium text-slate-900 dark:text-white flex items-center gap-2 mb-2">
-            <Settings2 size={16} /> Agent Engine
-          </h3>
-          <p className="text-sm text-slate-500 dark:text-slate-400 mb-3" id="agent-engine-hint">
-            Choose which engine powers this project&apos;s agentic calls. {SHARED_EMBEDDING_IDENTITY_LABEL}{" "}
-            {project.embed_model ? `Embedding model: ${project.embed_model}.` : ""}
-          </p>
-          {canManageProject ? (
-            <div
-              role="radiogroup"
-              aria-labelledby="agent-engine-heading"
-              aria-describedby="agent-engine-hint"
-              aria-label="Agent engine"
-              className="space-y-2"
-            >
-              <label className="flex items-start gap-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2 text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-istara-500 has-[:checked]:border-istara-500">
-                <input
-                  type="radio"
-                  name="agent-engine"
-                  value=""
-                  checked={!project.agentic_engine}
-                  onChange={async () => {
-                    if (!activeProjectId) return;
-                    await updateProject(activeProjectId, { agentic_engine: "" });
-                  }}
-                  className="mt-1 accent-istara-600"
-                />
-                <span>
-                  <span className="font-medium">Inherit global default ({agentEngineLabel(project.global_agentic_engine)})</span>
-                </span>
-              </label>
-              {ENGINE_COMPARATIVE_SUMMARIES.map((entry) => (
-                <label
-                  key={entry.engine}
-                  className="block rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2 text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-istara-500 has-[:checked]:border-istara-500"
-                >
-                  <span className="flex items-center gap-2">
-                    <input
-                      type="radio"
-                      name="agent-engine"
-                      value={entry.engine}
-                      checked={project.agentic_engine === entry.engine}
-                      onChange={async () => {
-                        if (!activeProjectId) return;
-                        await updateProject(activeProjectId, { agentic_engine: entry.engine });
-                      }}
-                      className="accent-istara-600"
-                    />
-                    <span className="font-medium">{entry.title}</span>
-                    {entry.provisional && (
-                      <span className="rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-amber-700 dark:bg-amber-900/40 dark:text-amber-300">
-                        Provisional
-                      </span>
-                    )}
-                  </span>
-                  <span className="mt-1 block pl-7 text-xs text-slate-500 dark:text-slate-400">
-                    {entry.summary}
-                  </span>
-                  <span className="mt-1 block pl-7 text-[10px] text-slate-400 dark:text-slate-500">
-                    Evidence: {entry.provenance.join(", ")} (as of {entry.asOf}; provisional — not accepted research evidence)
-                  </span>
-                </label>
-              ))}
-            </div>
-          ) : (
-            <span
-              aria-label="Agent engine"
-              className="inline-block px-2 py-1 rounded text-xs font-medium bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300"
-            >
-              {agentEngineLabel(project.agentic_engine || project.global_agentic_engine)}
-              {project.agentic_engine ? "" : " (global default)"}
-            </span>
-          )}
-        </div>
+        {/* W8: per-project Agentic Core choice — shared with global Settings */}
+        <AgenticCoreSection
+          scope="project"
+          value={project.agentic_engine === "pi" ? "pi" : project.agentic_engine === "legacy" ? "legacy" : ""}
+          inheritedEngine={project.global_agentic_engine === "pi" ? "pi" : "legacy"}
+          canManage={canManageProject}
+          onChange={async (engine) => {
+            if (!activeProjectId) return;
+            await updateProject(activeProjectId, { agentic_engine: engine });
+          }}
+        />
 
         {canRequestProjectAdmin && (
           <div id="tour-target-project-requests" className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-5">

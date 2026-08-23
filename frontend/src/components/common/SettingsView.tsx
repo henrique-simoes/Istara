@@ -1,10 +1,9 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Cpu, HardDrive, Monitor, Wifi, WifiOff, RefreshCw, Plus, Server, Trash2, Users, Lock, Gauge, Download } from "lucide-react";
-import { settings as settingsApi, telemetry as telemetryApi, piEndpoints, piCatalogApi, piOAuthApi } from "@/lib/api";
+import { Cpu, HardDrive, Monitor, Wifi, WifiOff, RefreshCw, Server, Users, Gauge, Download } from "lucide-react";
+import { settings as settingsApi, telemetry as telemetryApi } from "@/lib/api";
 import type { HardwareInfo, ModelRecommendation } from "@/lib/types";
-import type { PiEndpoint, PiCatalogProvider, PiCatalogModel, PiOAuthFlow } from "@/lib/api";
 import { useAuthStore } from "@/stores/authStore";
 import UserManagement from "./UserManagement";
 import ConnectionStringPanel from "@/components/settings/ConnectionStringPanel";
@@ -20,12 +19,9 @@ import ViewOnboarding from "@/components/common/ViewOnboarding";
 import { resetAllOnboarding } from "@/hooks/useViewOnboarding";
 import { useRoleCapabilities } from "@/hooks/useRoleCapabilities";
 import { mergeModelCatalogs } from "@/lib/modelCatalog";
-import { agentEngineLabel } from "@/lib/utils";
-import {
-  MODEL_PROVIDER_OPTIONS,
-  defaultHostForProvider,
-  providerLabel,
-} from "@/lib/modelProviders";
+import AgenticCoreSection from "@/components/settings/AgenticCoreSection";
+import PiModelManagement from "@/components/settings/PiModelManagement";
+import { providerLabel } from "@/lib/modelProviders";
 
 function formatGb(value?: number | null): string {
   return Number.isFinite(value) && Number(value) > 0
@@ -155,44 +151,7 @@ export default function SettingsView() {
               </span>
             )}
           </div>
-          {canManageInfrastructure && models?.agentic_engine_default && (
-            <div className="flex items-center gap-2">
-              <span className="text-sm text-slate-500">Agentic Core:</span>
-              <select
-                aria-label="Global agentic core"
-                value={models.agentic_engine_default === "pi" ? "pi" : "istara"}
-                onChange={async (e) => {
-                  try {
-                    await settingsApi.setAgenticEngine(e.target.value as "pi" | "istara");
-                    window.dispatchEvent(
-                      new CustomEvent("istara:toast", {
-                        detail: {
-                          type: "success",
-                          title: "Agentic Core Switched",
-                          message: `Global agentic core is now ${e.target.value === "pi" ? "Pi" : "Istara"}. New calls use it unless a project overrides.`,
-                        },
-                      })
-                    );
-                    window.location.reload();
-                  } catch (err: any) {
-                    window.dispatchEvent(
-                      new CustomEvent("istara:toast", {
-                        detail: {
-                          type: "error",
-                          title: "Switch Failed",
-                          message: err.message || "Could not switch the agentic core",
-                        },
-                      })
-                    );
-                  }
-                }}
-                className="px-2 py-1 text-sm rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-istara-500"
-              >
-                <option value="pi">Pi</option>
-                <option value="istara">Istara</option>
-              </select>
-            </div>
-          )}
+
           {canManageInfrastructure && (
             <>
               <div className="flex items-center gap-2">
@@ -207,6 +166,19 @@ export default function SettingsView() {
           )}
         </div>
       </div>
+
+      {/* Agentic Core — first-class configuration, not a status-grid dropdown */}
+      {canManageInfrastructure && models?.agentic_engine_default && (
+        <AgenticCoreSection
+          scope="global"
+          value={models.agentic_engine_default === "pi" ? "pi" : "legacy"}
+          canManage={canManageInfrastructure}
+          onChange={async (engine) => {
+            const result = await settingsApi.setAgenticEngine(engine === "pi" ? "pi" : "istara");
+            setModels((current: any) => current ? { ...current, agentic_engine_default: result.agentic_engine_default === "pi" ? "pi" : "legacy" } : current);
+          }}
+        />
+      )}
 
       {/* Hardware */}
       {canManageInfrastructure && hardware && (
@@ -390,7 +362,7 @@ export default function SettingsView() {
       )}
 
       {/* Pi Model Management — replaces the legacy LLM Servers section (owner decision 2026-08-23) */}
-      {capabilities.canManageLlmInfrastructure && <PiEndpointsSection />}
+      {capabilities.canManageLlmInfrastructure && <PiModelManagement />}
 
       {/* Telemetry (Local-first, No phone-home) */}
       {capabilities.canManageTelemetry && <TelemetrySection />}
@@ -580,437 +552,6 @@ function TelemetrySection() {
         </span>
         {telemetryEnabled && " • Data stored locally in SQLite."}
       </div>
-    </div>
-  );
-}
-
-function PiEndpointsSection() {
-  const { user, teamMode } = useAuthStore();
-  const [endpoints, setEndpoints] = useState<PiEndpoint[]>([]);
-  const [retirementNote, setRetirementNote] = useState("");
-  const [showAdd, setShowAdd] = useState(false);
-  const [providers, setProviders] = useState<PiCatalogProvider[]>([]);
-  const [providerQuery, setProviderQuery] = useState("");
-  const [modelQuery, setModelQuery] = useState("");
-  const [selectedProvider, setSelectedProvider] = useState<PiCatalogProvider | null>(null);
-  const [selectedModel, setSelectedModel] = useState<PiCatalogModel | null>(null);
-  const [loginMethod, setLoginMethod] = useState<"api_key" | "oauth" | "none">("api_key");
-  const [apiKey, setApiKey] = useState("");
-  const [endpointName, setEndpointName] = useState("");
-  const [addError, setAddError] = useState<string | null>(null);
-  const [adding, setAdding] = useState(false);
-  // OAuth state
-  const [oauthFlows, setOauthFlows] = useState<PiOAuthFlow[]>([]);
-  const [activeOAuth, setActiveOAuth] = useState<PiOAuthFlow | null>(null);
-  const [oauthError, setOauthError] = useState<string | null>(null);
-  const canManage = !teamMode || user?.role === "admin";
-
-  const fetchEndpoints = useCallback(async () => {
-    if (!canManage) return;
-    try {
-      const data = await piEndpoints.list();
-      setEndpoints(data.endpoints || []);
-      setRetirementNote(data.retirement_note || "");
-    } catch {}
-  }, [canManage]);
-
-  const fetchCatalog = useCallback(async () => {
-    if (!canManage) return;
-    try {
-      const data = await piCatalogApi.get();
-      setProviders(data.providers || []);
-    } catch {}
-  }, [canManage]);
-
-  useEffect(() => {
-    void fetchEndpoints();
-    void fetchCatalog();
-  }, [fetchEndpoints, fetchCatalog]);
-
-  // Poll active OAuth flows while one is in progress
-  useEffect(() => {
-    if (!activeOAuth) return;
-    const timer = setInterval(async () => {
-      try {
-        const data = await piOAuthApi.poll(activeOAuth.provider);
-        const flows = (data.flows || []) as PiOAuthFlow[];
-        setOauthFlows(flows);
-        const updated = flows.find((f) => f.provider === activeOAuth.provider);
-        if (updated && updated.status === "approved") {
-          setActiveOAuth(null);
-          setShowAdd(false);
-          setAddError(null);
-          await fetchEndpoints();
-        } else if (updated && (updated.status === "failed" || updated.status === "expired")) {
-          setOauthError(updated.error || updated.status);
-          setActiveOAuth(null);
-        } else if (updated) {
-          setActiveOAuth(updated);
-        }
-      } catch {}
-    }, 5000);
-    return () => clearInterval(timer);
-  }, [activeOAuth, fetchEndpoints]);
-
-  const providerMatches = providers.filter((p) =>
-    p.id.toLowerCase().includes(providerQuery.toLowerCase()) ||
-    p.display_name.toLowerCase().includes(providerQuery.toLowerCase())
-  );
-  const modelMatches = selectedProvider
-    ? selectedProvider.models.filter(
-        (m) =>
-          m.id.toLowerCase().includes(modelQuery.toLowerCase()) ||
-          (m.name || "").toLowerCase().includes(modelQuery.toLowerCase())
-      )
-    : [];
-
-  const handleProviderSelect = (provider: PiCatalogProvider) => {
-    setSelectedProvider(provider);
-    setSelectedModel(null);
-    setModelQuery("");
-    setLoginMethod(provider.login_methods.includes("api_key") ? "api_key" : "oauth");
-  };
-
-  const handleAdd = async () => {
-    if (!canManage || !selectedProvider || !selectedModel) {
-      setAddError("Select a provider and model from the catalog.");
-      return;
-    }
-    setAdding(true);
-    setAddError(null);
-    try {
-      const autoId = endpointName.trim() || `${selectedProvider.id}-${selectedModel.id}`;
-      await piEndpoints.add({
-        endpoint_id: autoId,
-        provider_kind: "openai_compat",
-        base_url: selectedModel.baseUrl || "",
-        model: selectedModel.id,
-        pi_provider: selectedProvider.id,
-        pi_model: selectedModel.id,
-        keychain_service: `istara-pi-${selectedProvider.id}`,
-        api_key: loginMethod === "api_key" ? apiKey.trim() : "",
-      });
-      setEndpointName("");
-      setApiKey("");
-      setSelectedProvider(null);
-      setSelectedModel(null);
-      setProviderQuery("");
-      setModelQuery("");
-      setShowAdd(false);
-      await fetchEndpoints();
-    } catch (err: any) {
-      setAddError(err.message || "Failed to add endpoint");
-    } finally {
-      setAdding(false);
-    }
-  };
-
-  const handleDelete = async (id: string) => {
-    if (!canManage) return;
-    try {
-      await piEndpoints.delete(id);
-      await fetchEndpoints();
-    } catch (err: any) {
-      window.dispatchEvent(
-        new CustomEvent("istara:toast", {
-          detail: { type: "error", title: "Delete Failed", message: err.message || "Failed to remove endpoint" },
-        })
-      );
-    }
-  };
-
-  const handleOAuthStart = async (providerId: string) => {
-    setOauthError(null);
-    try {
-      const res = await piOAuthApi.start(providerId);
-      const flow = { provider: providerId, flow_type: res.flow_type, status: "pending", ...res };
-      setActiveOAuth(flow);
-    } catch (err: any) {
-      setOauthError(err.message || "Failed to start OAuth login");
-    }
-  };
-
-  if (!canManage) {
-    return (
-      <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-5">
-        <div className="flex items-center justify-between mb-3">
-          <h3 className="font-medium text-slate-900 dark:text-white flex items-center gap-2">
-            <Server size={18} />
-            Pi Model Management
-          </h3>
-          <Lock size={16} className="text-slate-400" aria-hidden="true" />
-        </div>
-        <p className="text-sm text-slate-500">
-          Global admin access is required to manage cloud and API endpoints.
-        </p>
-      </div>
-    );
-  }
-
-  return (
-    <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-5">
-      <div className="flex items-center justify-between mb-3">
-        <h3 className="font-medium text-slate-900 dark:text-white flex items-center gap-2">
-          <Server size={18} />
-          Pi Model Management
-        </h3>
-        <button
-          onClick={() => setShowAdd((v) => !v)}
-          className="flex items-center gap-1 px-3 py-1.5 text-sm rounded-lg bg-istara-600 text-white hover:bg-istara-700 transition-colors"
-        >
-          <Plus size={14} /> {showAdd ? "Cancel" : "Add Model"}
-        </button>
-      </div>
-      <p className="text-sm text-slate-500 dark:text-slate-400 mb-3">
-        All providers and models supported by Pi, with API-key or OAuth login — no manual endpoint
-        typing needed. Select from the catalog or type to search and autocomplete.
-      </p>
-      {retirementNote && (
-        <p className="text-xs text-slate-400 dark:text-slate-500 mb-3">{retirementNote}</p>
-      )}
-
-      {showAdd && (
-        <div className="mb-4 p-3 rounded-lg border border-slate-200 dark:border-slate-700 space-y-3">
-          {/* Step 1: provider (autocomplete) */}
-          <div>
-            <label className="text-xs font-medium text-slate-500 dark:text-slate-400 mb-1 block">
-              1. Provider
-            </label>
-            <input
-              type="text"
-              placeholder="Type to search providers (e.g. deepseek, openai, anthropic, google…)"
-              value={providerQuery}
-              onChange={(e) => { setProviderQuery(e.target.value); setSelectedProvider(null); }}
-              className="w-full px-3 py-2 text-sm rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white"
-              aria-label="Search Pi providers"
-            />
-            {providerQuery && !selectedProvider && (
-              <ul className="mt-1 max-h-56 overflow-auto rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 divide-y divide-slate-100 dark:divide-slate-800">
-                {providerMatches.map((provider) => (
-                  <li key={provider.id}>
-                    <button
-                      type="button"
-                      onClick={() => handleProviderSelect(provider)}
-                      className="w-full text-left px-3 py-2 text-sm hover:bg-slate-50 dark:hover:bg-slate-800"
-                    >
-                      <span className="font-medium text-slate-900 dark:text-white">{provider.display_name}</span>
-                      <span className="ml-2 text-xs text-slate-400 font-mono">{provider.id}</span>
-                      <span className="ml-2 text-xs text-slate-400">({provider.models.length} models)</span>
-                    </button>
-                  </li>
-                ))}
-                {providerMatches.length === 0 && (
-                  <li className="px-3 py-2 text-sm text-slate-400">No provider matches "{providerQuery}"</li>
-                )}
-              </ul>
-            )}
-            {selectedProvider && (
-              <div className="mt-1 flex items-center gap-2 text-sm">
-                <span className="font-medium text-istara-600 dark:text-istara-400">{selectedProvider.display_name}</span>
-                <span className="text-xs text-slate-400 font-mono">{selectedProvider.id}</span>
-                <button
-                  type="button"
-                  onClick={() => { setSelectedProvider(null); setProviderQuery(""); }}
-                  className="text-xs text-slate-400 hover:text-slate-600"
-                >
-                  change
-                </button>
-              </div>
-            )}
-          </div>
-
-          {/* Step 2: model (autocomplete) */}
-          {selectedProvider && (
-            <div>
-              <label className="text-xs font-medium text-slate-500 dark:text-slate-400 mb-1 block">
-                2. Model ({selectedProvider.models.length} available)
-              </label>
-              <input
-                type="text"
-                placeholder="Type to search models (e.g. deepseek-v4-pro, gpt-5.4…)"
-                value={modelQuery}
-                onChange={(e) => { setModelQuery(e.target.value); setSelectedModel(null); }}
-                className="w-full px-3 py-2 text-sm rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white"
-                aria-label="Search Pi models"
-              />
-              {modelQuery && !selectedModel && (
-                <ul className="mt-1 max-h-56 overflow-auto rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 divide-y divide-slate-100 dark:divide-slate-800">
-                  {modelMatches.slice(0, 50).map((model) => (
-                    <li key={model.id}>
-                      <button
-                        type="button"
-                        onClick={() => setSelectedModel(model)}
-                        className="w-full text-left px-3 py-2 text-sm hover:bg-slate-50 dark:hover:bg-slate-800"
-                      >
-                        <span className="font-medium text-slate-900 dark:text-white">{model.name || model.id}</span>
-                        <span className="ml-2 text-xs text-slate-400 font-mono">{model.id}</span>
-                        {model.contextWindow ? (
-                          <span className="ml-2 text-xs text-slate-400">{(model.contextWindow / 1000).toFixed(0)}k ctx</span>
-                        ) : null}
-                        {model.reasoning ? (
-                          <span className="ml-2 text-xs bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 rounded px-1.5 py-0.5">reasoning</span>
-                        ) : null}
-                      </button>
-                    </li>
-                  ))}
-                  {modelMatches.length === 0 && (
-                    <li className="px-3 py-2 text-sm text-slate-400">No model matches "{modelQuery}"</li>
-                  )}
-                </ul>
-              )}
-              {selectedModel && (
-                <div className="mt-1 flex items-center gap-2 text-sm">
-                  <span className="font-medium text-istara-600 dark:text-istara-400">{selectedModel.name || selectedModel.id}</span>
-                  <span className="text-xs text-slate-400 font-mono">{selectedModel.id}</span>
-                  <span className="text-xs text-slate-400">{selectedModel.contextWindow ? `${(selectedModel.contextWindow / 1000).toFixed(0)}k ctx` : ""}</span>
-                  <button
-                    type="button"
-                    onClick={() => { setSelectedModel(null); setModelQuery(""); }}
-                    className="text-xs text-slate-400 hover:text-slate-600"
-                  >
-                    change
-                  </button>
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Step 3: login method */}
-          {selectedProvider && selectedModel && (
-            <div>
-              <label className="text-xs font-medium text-slate-500 dark:text-slate-400 mb-1 block">
-                3. Login method
-              </label>
-              <div className="flex gap-2 flex-wrap">
-                {selectedProvider.login_methods.includes("api_key") && (
-                  <button
-                    type="button"
-                    onClick={() => setLoginMethod("api_key")}
-                    className={`px-3 py-1.5 text-sm rounded-lg border transition-colors ${
-                      loginMethod === "api_key"
-                        ? "bg-istara-600 text-white border-istara-600"
-                        : "border-slate-300 dark:border-slate-700 text-slate-600 dark:text-slate-300"
-                    }`}
-                  >
-                    API Key
-                  </button>
-                )}
-                {selectedProvider.login_methods.includes("oauth") && (
-                  <button
-                    type="button"
-                    onClick={() => setLoginMethod("oauth")}
-                    className={`px-3 py-1.5 text-sm rounded-lg border transition-colors ${
-                      loginMethod === "oauth"
-                        ? "bg-istara-600 text-white border-istara-600"
-                        : "border-slate-300 dark:border-slate-700 text-slate-600 dark:text-slate-300"
-                    }`}
-                  >
-                    {selectedProvider.oauth_flow === "pkce" ? "Sign in with OpenRouter" : "OAuth (subscription)"}
-                  </button>
-                )}
-                {!selectedProvider.login_methods.includes("api_key") && !selectedProvider.login_methods.includes("oauth") && (
-                  <span className="text-xs text-slate-400">No credential needed</span>
-                )}
-              </div>
-              {loginMethod === "api_key" && (
-                <div className="mt-2">
-                  <input
-                    type="password"
-                    placeholder={`API key (${selectedProvider.env_var || "secret"}) — optional if set on the server`}
-                    value={apiKey}
-                    onChange={(e) => setApiKey(e.target.value)}
-                    className="w-full px-3 py-2 text-sm rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white"
-                    aria-label="API key"
-                  />
-                  <input
-                    type="text"
-                    placeholder="Endpoint name (optional; auto-generated if empty)"
-                    value={endpointName}
-                    onChange={(e) => setEndpointName(e.target.value)}
-                    className="mt-2 w-full px-3 py-2 text-sm rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white"
-                    aria-label="Endpoint name"
-                  />
-                </div>
-              )}
-              {loginMethod === "oauth" && !activeOAuth && (
-                <div className="mt-2">
-                  <button
-                    type="button"
-                    onClick={() => handleOAuthStart(selectedProvider.id)}
-                    className="px-3 py-1.5 text-sm rounded-lg bg-istara-600 text-white hover:bg-istara-700 transition-colors"
-                  >
-                    Start {selectedProvider.display_name} login
-                  </button>
-                </div>
-              )}
-              {activeOAuth && (
-                <div className="mt-2 p-3 rounded-lg border border-blue-200 dark:border-blue-900/40 bg-blue-50 dark:bg-blue-900/20">
-                  <p className="text-sm text-slate-800 dark:text-slate-200">
-                    Open <span className="font-mono text-blue-600 dark:text-blue-400">{activeOAuth.verification_uri}</span>
-                    {activeOAuth.user_code ? <> and enter code <span className="font-mono font-semibold">{activeOAuth.user_code}</span></> : null}
-                  </p>
-                  <p className="text-xs text-slate-500 mt-1">
-                    Waiting for approval — the page updates automatically when you finish…
-                  </p>
-                  <button
-                    type="button"
-                    onClick={() => { void piOAuthApi.cancel(activeOAuth.provider); setActiveOAuth(null); }}
-                    className="mt-2 text-xs text-slate-400 hover:text-slate-600"
-                  >
-                    Cancel
-                  </button>
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Step 4: add */}
-          {selectedProvider && selectedModel && loginMethod !== "oauth" && (
-            <div className="flex gap-2">
-              <button
-                onClick={handleAdd}
-                disabled={adding}
-                className="px-3 py-1.5 text-sm rounded-lg bg-istara-600 text-white hover:bg-istara-700 transition-colors disabled:opacity-50"
-              >
-                {adding ? "Adding…" : "Add Model"}
-              </button>
-            </div>
-          )}
-          {oauthError && <p className="text-sm text-red-500">{oauthError}</p>}
-          {addError && <p className="text-sm text-red-500">{addError}</p>}
-        </div>
-      )}
-
-      {endpoints.length === 0 ? (
-        <p className="text-sm text-slate-500">
-          No configured models yet. The built-in <span className="font-mono">pi-deepseek-default</span> endpoint is always available.
-        </p>
-      ) : (
-        <ul className="space-y-2">
-          {endpoints.map((endpoint) => (
-            <li
-              key={endpoint.endpoint_id}
-              className="flex items-center justify-between p-3 rounded-lg border border-slate-200 dark:border-slate-700"
-            >
-              <div>
-                <p className="text-sm font-medium text-slate-900 dark:text-white">
-                  {endpoint.endpoint_id}
-                </p>
-                <p className="text-xs text-slate-500">
-                  {endpoint.model} · {endpoint.provider_kind} · {endpoint.base_url}
-                </p>
-              </div>
-              <button
-                onClick={() => handleDelete(endpoint.endpoint_id)}
-                aria-label={`Delete ${endpoint.endpoint_id}`}
-                className="p-1.5 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
-              >
-                <Trash2 size={16} />
-              </button>
-            </li>
-          ))}
-        </ul>
-      )}
     </div>
   );
 }

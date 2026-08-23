@@ -1,9 +1,9 @@
 ---
 stable_id: settings.llm-servers
-title: LLM Server Settings
-ui_path: Settings > LLM Servers
+title: Legacy LLM Server Compatibility
+ui_path: Settings > Pi Model Management (legacy compatibility only)
 audience: architecture
-status: documented
+status: compatibility-only
 related_features: ["chat.model-controls", "settings.connection-strings"]
 related_glossary: ["rag"]
 code_references: ["frontend/src/components/common/SettingsView.tsx", "frontend/src/lib/modelProviders.ts", "backend/app/api/routes/llm_servers.py", "backend/app/api/routes/settings.py", "backend/app/core/network_discovery.py", "backend/app/core/pi_runtime/model_manager.py", "backend/app/core/pi_runtime/endpoints.py"]
@@ -13,11 +13,11 @@ last_verified: 2026-07-22
 compass: CF-SPEC-94 / CF-1193; CF-SPEC-8 (Pi replacement W1 model catalog; W8 projection refresh)
 ---
 
-# LLM Server Settings Architecture
+# Legacy LLM Server Compatibility Architecture
 
 ## Implementation Summary
 
-Settings manages configured LLM providers, server endpoints, provider labels, and active model switching.
+Legacy LLM Server rows, CRUD routes, local serving, and donated-compute behavior remain as a reversible compatibility plane. They are not a competing normal Settings catalog: Pi Model Management owns cloud/API provider/model selection and authentication in the user-facing UI.
 
 ## Frontend Surface
 
@@ -95,15 +95,19 @@ behavior through the shared permission helper.
   `"pi_catalog"` key alongside the legacy model list in both online and
   offline responses. It is an identity/capability view only — endpoint ids,
   model names, and kinds — and never exposes endpoint URLs or API keys.
-- The frontend consumes that side field through `mergeModelCatalogs()` so Pi
-  identities are visible in the existing Available Models inventory without
-  passing a Pi endpoint through the legacy provider-switch action. Duplicate
-  Pi endpoint identities are collapsed, while distinct endpoint ids remain
-  distinct for routing and auditability.
+- The frontend no longer renders the legacy LLM Server section or exposes its
+  manual provider/model form in normal Settings. `PiModelManagement` owns the
+  complete browseable + autocomplete catalog, API-key/OAuth choices, and
+  configured-model list. Legacy rows remain available to compatibility/migration
+  routes and the Pi projection; they are never silently deleted or used to
+  expose donated compute as a cloud catalog.
+- Chat uses the project-readable identity-only model catalog and stores an exact
+  `endpoint_override` alongside `model_override`, preserving provider identity
+  when two providers expose the same model id.
 
 ## Architecture Notes
 
-- The feature is mounted through `frontend/src/components/common/SettingsView.tsx` and the UI navigation path recorded in the inventory.
+- The compatibility feature is mounted through backend routes and Pi projection code. New user-facing configuration is mounted through `frontend/src/components/settings/PiModelManagement.tsx` and documented under `settings.general`.
 - The frontmatter and manifest entries are the durable contract for agents updating this page after code changes.
 - When the referenced component, store, route, agent, skill, or test behavior changes, regenerate and validate the feature documentation.
 

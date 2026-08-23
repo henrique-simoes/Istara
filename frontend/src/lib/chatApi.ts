@@ -1,5 +1,5 @@
 import { API_BASE } from "@/lib/runtimeConfig";
-import type { ThinkingMode } from "@/lib/types";
+import type { ChatUsage, PiCatalogProvider, PiEndpointInfo, ThinkingMode } from "@/lib/types";
 
 function authHeaders(): Record<string, string> {
   const token = typeof window === "undefined" ? "" : localStorage.getItem("istara_token");
@@ -74,6 +74,14 @@ export const chat = {
   },
   history: (projectId: string, limit = 50) =>
     json<any[]>(`/api/chat/history/${projectId}?limit=${limit}`),
+  modelCatalog: (projectId: string) =>
+    json<{ providers: PiCatalogProvider[]; total_models: number; configured: PiEndpointInfo[]; engine: string }>(
+      `/api/chat/model-catalog?project_id=${encodeURIComponent(projectId)}`
+    ),
+  usage: (projectId: string, sessionId?: string) =>
+    json<ChatUsage>(
+      `/api/chat/usage/${encodeURIComponent(projectId)}${sessionId ? `?session_id=${encodeURIComponent(sessionId)}` : ""}`
+    ),
   transcribeVoice: async (audioFile: File, projectId: string, language?: string): Promise<{
     text: string;
     language: string;

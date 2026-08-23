@@ -551,6 +551,68 @@ features:
     introduced_in: "e66ad335"
     last_verified_sha: "3d737e4c"
 
+  - id: migration.pi-ux-convergence
+    status: active
+    owner: research-platform
+    paths:
+      - "backend/app/api/routes/chat.py"
+      - "backend/app/api/routes/sessions.py"
+      - "backend/app/api/routes/settings.py"
+      - "backend/app/config.py"
+      - "backend/app/core/agentic/dispatcher.py"
+      - "backend/app/core/agentic/usage_ledger.py"
+      - "backend/app/core/llm_thinking.py"
+      - "backend/app/core/pi_runtime/catalog.py"
+      - "backend/app/core/pi_runtime/endpoints.py"
+      - "backend/app/core/pi_runtime/model_manager.py"
+      - "backend/app/core/pi_runtime/oauth.py"
+      - "backend/app/models/agentic_usage.py"
+      - "backend/app/models/database.py"
+      - "backend/app/models/session.py"
+      - "backend/alembic/versions/026_chat_usage_session_scope.py"
+      - "frontend/src/app/globals.css"
+      - "frontend/src/components/chat/ChatView.tsx"
+      - "frontend/src/components/chat/ChatModelControls.tsx"
+      - "frontend/src/components/chat/chatViewParts.tsx"
+      - "frontend/src/components/common/SettingsView.tsx"
+      - "frontend/src/components/settings/AgenticCoreSection.tsx"
+      - "frontend/src/components/settings/PiModelManagement.tsx"
+      - "frontend/src/components/settings/ProjectSettingsView.tsx"
+      - "frontend/src/lib/api.ts"
+      - "frontend/src/lib/chatApi.ts"
+      - "frontend/src/lib/modelCatalog.ts"
+      - "frontend/src/lib/types.ts"
+      - "frontend/src/stores/chatStore.ts"
+      - "pi-runtime/src/provider.mjs"
+      - "tests/test_chat.py"
+      - "tests/test_sessions.py"
+      - "tests/pi_production/test_pi_catalog_ux.py"
+    exceptions: []
+    requires_human_review: true
+    docs_features_update: true
+    obligations:
+      deterministic:
+        - backend_contracts
+        - frontend_contracts
+        - provider_contracts
+        - security_benchmark
+        - feature_docs
+      live:
+        - authorized_live
+      docs: []
+    commands:
+      deterministic:
+        - pytest_migration_suites
+        - pytest_provider_contracts
+        - frontend_unit
+        - frontend_typecheck
+        - frontend_lint
+        - security_benchmark
+        - feature_docs_check
+    acceptance: "Settings has a browseable + autocomplete Pi catalog, accurate OpenAI browser/device OAuth choices, a dedicated Agentic Core comparison, and Chat exposes provider/model, exact effort, and content-free token/cache/cost/context usage without secrets or research-spine bypass."
+    introduced_in: "pending"
+    last_verified_sha: "pending"
+
   - id: migration.pi-dependency-provenance
     status: active
     owner: research-platform

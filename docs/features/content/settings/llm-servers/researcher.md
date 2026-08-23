@@ -1,9 +1,9 @@
 ---
 stable_id: settings.llm-servers
-title: LLM Server Settings
-ui_path: Settings > LLM Servers
+title: Legacy LLM Server Compatibility
+ui_path: Settings > Pi Model Management (legacy compatibility only)
 audience: researcher
-status: documented
+status: compatibility-only
 related_features: ["chat.model-controls", "settings.connection-strings"]
 related_glossary: ["rag"]
 code_references: ["frontend/src/components/common/SettingsView.tsx", "frontend/src/lib/modelProviders.ts", "backend/app/api/routes/llm_servers.py", "backend/app/api/routes/settings.py", "backend/app/core/network_discovery.py", "backend/app/core/pi_runtime/model_manager.py"]
@@ -13,11 +13,11 @@ last_verified: 2026-07-22
 compass: CF-SPEC-94 / CF-1193; CF-SPEC-8
 ---
 
-# LLM Server Settings
+# Legacy LLM Server Compatibility
 
 ## What It Does
 
-Settings manages configured LLM providers, server endpoints, provider labels, and active model switching.
+The legacy LLM Server API and persisted rows remain as a reversible compatibility/migration plane for existing installations, local serving, and donated compute. The legacy catalog is no longer rendered as a competing model-management UI in normal Settings; Pi Model Management owns provider/model selection for cloud/API connections.
 
 ## Why It Exists
 
@@ -31,15 +31,15 @@ LLM Server Settings exists so the work represented by Settings > LLM Servers has
 
 ## How UX Researchers Use It
 
-- Open Settings > LLM Servers from the Istara navigation or the parent tab.
-- Global admins can use the visible controls to manage shared LLM provider endpoints. Non-admin team-mode users see the locked state instead of shared endpoint details.
-- Review the output in the same view and follow the related feature links when the workflow moves into another Istara surface.
+- Do not look for a separate LLM Servers section in normal Settings; it has been removed from the user-facing catalog.
+- Existing backend routes and rows are preserved for migration, rollback, local serving, and donated-compute compatibility.
+- Use Settings > Pi Model Management for the supported provider/model and authentication workflow.
 
 ## Supported Workflows
 
-- Start from Settings > LLM Servers when the current research task needs llm server settings.
-- Use the visible controls to create, inspect, refine, or route project work without leaving the active Istara context.
-- Move to related surfaces when needed: chat.model-controls, settings.connection-strings.
+- Start from Settings > Pi Model Management for new cloud/API model connections.
+- Treat legacy LLM Server rows/routes as compatibility data only; changes must preserve rollback and existing local/donor behavior.
+- Move to Chat > Model Controls to choose enabled models for a conversation.
 
 ## Inputs, Outputs, And Expected Outcomes
 

@@ -316,7 +316,78 @@ export interface AgentCapacityCheck {
 }
 
 export type InferencePreset = "lightweight" | "medium" | "high" | "custom";
-export type ThinkingMode = "server_default" | "off" | "auto" | "on";
+/** Provider-native effort levels are open-ended (xhigh/max/etc.). */
+export type ThinkingMode = "server_default" | "off" | "auto" | "on" | (string & {});
+
+export interface PiCatalogModel {
+  id: string;
+  name: string;
+  api: string;
+  baseUrl?: string;
+  contextWindow?: number;
+  maxTokens?: number;
+  reasoning?: boolean;
+  input?: string[];
+  thinkingLevels?: string[] | null;
+  cost?: Record<string, number> | null;
+}
+
+export interface PiCatalogProvider {
+  id: string;
+  display_name: string;
+  login_methods: string[];
+  oauth_flow: string | null;
+  oauth_methods?: string[];
+  oauth_provider?: string | null;
+  oauth_model_ids?: string[];
+  auth_description?: string;
+  env_var: string | null;
+  auth_json_key: string | null;
+  base_url: string | null;
+  models: PiCatalogModel[];
+}
+
+export interface PiEndpointInfo {
+  endpoint_id: string;
+  model: string;
+  provider_kind: string;
+  pi_provider?: string;
+  auth_provider?: string;
+  auth_method?: string;
+  context_window?: number;
+  max_tokens?: number;
+  supports_tools?: boolean;
+  supports_vision?: boolean;
+  kind?: string;
+}
+
+export interface ChatUsage {
+  input_tokens: number;
+  output_tokens: number;
+  cache_read: number;
+  cache_write: number;
+  total_tokens: number;
+  cost_usd: number;
+  turns: number;
+  row_count: number;
+  exact: boolean;
+  estimated: boolean;
+  latest?: {
+    model: string;
+    endpoint_id: string;
+    engine: string;
+    stop_reason: string;
+    input_tokens: number;
+    created_at: string | null;
+  } | null;
+  last_turn?: {
+    usage: Record<string, unknown>;
+    model: string;
+    endpoint_id?: string | null;
+    stop_reason?: string | null;
+    effort?: string;
+  };
+}
 
 export interface ChatSession {
   id: string;
@@ -324,6 +395,7 @@ export interface ChatSession {
   title: string;
   agent_id: string | null;
   model_override: string | null;
+  endpoint_override?: string | null;
   inference_preset: InferencePreset;
   custom_temperature: number | null;
   custom_max_tokens: number | null;

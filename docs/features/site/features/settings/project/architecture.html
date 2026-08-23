@@ -287,7 +287,10 @@
 </ul>
 <p><code>Project.agentic_engine?: string | null</code> and <code>frontend/src/lib/utils.ts</code></p>
 <p>adds <code>agentEngineLabel()</code> (Pi for <code>pi</code>, <code>pi-candidate</code>, <code>pi-replacement</code>,</p>
-<p>and <code>deepseek-pi</code>; Legacy otherwise).</p>
+<p>and <code>deepseek-pi</code>; Legacy otherwise). <code>AgenticCoreSection</code> is the shared</p>
+<p>first-class comparison surface used by global Settings and Project Settings;</p>
+<p>it replaces the former compact selector/status-grid row and explains each</p>
+<p>engine before showing the provisional benchmark snapshot.</p>
 <p><code>frontend/src/components/layout/Sidebar.tsx</code> shows a per-project engine</p>
 <p>indicator badge (<code>aria-label=&quot;Engine: Pi|Legacy&quot;</code>) next to the phase</p>
 <p>subtitle, and <code>frontend/src/components/settings/ProjectSettingsView.tsx</code></p>
@@ -300,7 +303,8 @@
 <li>**Engine buttons carry evidence-backed, provisional comparative summaries</li>
 </ul>
 <p>(W3).** <code>frontend/src/lib/modelCatalog.ts</code> exports</p>
-<p><code>ENGINE_COMPARATIVE_SUMMARIES</code>, one entry per engine with a concise summary</p>
+<p><code>ENGINE_COMPARATIVE_SUMMARIES</code>, one entry per engine with a plain-language</p>
+<p>description, best-for guidance, benchmark rows, and a concise summary</p>
 <p>grounded in the accepted Pi-vs-Istara benchmark bundle</p>
 <p><code>comparison-Istara-pi/reports/20260801T010602Z/scorecard.json</code> (verdict</p>
 <p><code>no_significant_difference</code>: no judged axis reaches significance at 95%</p>
@@ -319,14 +323,14 @@
 <p>embedding model/dimension is discarded and re-embedded instead of reaching</p>
 <p>retrieval.</p>
 <ul>
-<li>**Accessibility contract.** The selector is a native radiogroup: every</li>
+<li>**Accessibility contract.** The shared section is a native radiogroup: every</li>
 </ul>
 <p>option is a real radio input (keyboard arrow-key navigation, <code>aria-checked</code></p>
 <p>from the native control), the group is <code>aria-labelledby</code> the section</p>
-<p>heading and <code>aria-describedby</code> the hint, each option is a labelled <code>&lt;label&gt;</code></p>
-<p>(click target) with <code>:focus-visible</code> ring styling, and the embedding</p>
-<p>identity line is part of the group hint (<code>id=&quot;agent-engine-hint&quot;</code>). The</p>
-<p>read-only badge keeps <code>aria-label=&quot;Agent engine&quot;</code> for non-admins.</p>
+<p>heading, each option is a labelled <code>&lt;label&gt;</code> with a visible <code>:focus-visible</code></p>
+<p>ring, and the embedding identity line is part of the explanatory content.</p>
+<p>Controls use a 44px floor, stable borders, and explicit loading/error states.</p>
+<p>The read-only badge keeps <code>aria-label=&quot;Agent engine&quot;</code> for non-admins.</p>
 <ul>
 <li>Simulation scenario <code>tests/simulation/scenarios/79-engine-selector.mjs</code></li>
 </ul>

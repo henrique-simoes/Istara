@@ -245,7 +245,7 @@
   <p class="concept-line"><strong>Concepts:</strong> rag</p>
 </header>
 <h2 id="what-it-does">What It Does</h2>
-<p>Settings manages configured LLM providers, server endpoints, provider labels, and active model switching.</p>
+<p>The legacy LLM Server API and persisted rows remain as a reversible compatibility/migration plane for existing installations, local serving, and donated compute. The legacy catalog is no longer rendered as a competing model-management UI in normal Settings; Pi Model Management owns provider/model selection for cloud/API connections.</p>
 <h2 id="why-it-exists">Why It Exists</h2>
 <p>LLM Server Settings exists so the work represented by Settings &gt; LLM Servers has a stable, discoverable place in Istara&#x27;s project workflow. It keeps user actions, generated artifacts, and related follow-up surfaces connected to the active project rather than scattering them across unrelated tools.</p>
 <h2 id="where-it-lives">Where It Lives</h2>
@@ -256,15 +256,15 @@
 </ul>
 <h2 id="how-ux-researchers-use-it">How UX Researchers Use It</h2>
 <ul>
-<li>Open Settings &gt; LLM Servers from the Istara navigation or the parent tab.</li>
-<li>Global admins can use the visible controls to manage shared LLM provider endpoints. Non-admin team-mode users see the locked state instead of shared endpoint details.</li>
-<li>Review the output in the same view and follow the related feature links when the workflow moves into another Istara surface.</li>
+<li>Do not look for a separate LLM Servers section in normal Settings; it has been removed from the user-facing catalog.</li>
+<li>Existing backend routes and rows are preserved for migration, rollback, local serving, and donated-compute compatibility.</li>
+<li>Use Settings &gt; Pi Model Management for the supported provider/model and authentication workflow.</li>
 </ul>
 <h2 id="supported-workflows">Supported Workflows</h2>
 <ul>
-<li>Start from Settings &gt; LLM Servers when the current research task needs llm server settings.</li>
-<li>Use the visible controls to create, inspect, refine, or route project work without leaving the active Istara context.</li>
-<li>Move to related surfaces when needed: chat.model-controls, settings.connection-strings.</li>
+<li>Start from Settings &gt; Pi Model Management for new cloud/API model connections.</li>
+<li>Treat legacy LLM Server rows/routes as compatibility data only; changes must preserve rollback and existing local/donor behavior.</li>
+<li>Move to Chat &gt; Model Controls to choose enabled models for a conversation.</li>
 </ul>
 <h2 id="inputs-outputs-and-expected-outcomes">Inputs, Outputs, And Expected Outcomes</h2>
 <ul>

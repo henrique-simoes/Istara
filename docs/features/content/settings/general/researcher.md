@@ -1,15 +1,15 @@
 ---
 stable_id: settings.general
-title: System Status And Models
-ui_path: Settings > System Status And Models
+title: System Status, Agentic Core, And Pi Models
+ui_path: Settings > System Status, Agentic Core, And Pi Models
 audience: researcher
 status: documented
 related_features: ["settings.llm-servers", "compute.pool"]
 related_glossary: ["rag"]
-code_references: ["frontend/src/components/common/SettingsView.tsx", "backend/app/api/routes/settings.py"]
+code_references: ["frontend/src/components/common/SettingsView.tsx", "frontend/src/components/settings/AgenticCoreSection.tsx", "frontend/src/components/settings/PiModelManagement.tsx", "backend/app/api/routes/settings.py", "backend/app/core/pi_runtime/catalog.py", "backend/app/core/pi_runtime/oauth.py"]
 api_references: ["backend/app/api/routes/settings.py"]
-test_references: []
-last_verified: 2026-05-15
+test_references: ["tests/test_settings.py", "tests/test_settings_agentic_pi_endpoints.py", "tests/pi_production/test_pi_catalog_ux.py"]
+last_verified: 2026-08-23
 compass: CF-SPEC-53 / CF-657
 ---
 
@@ -17,7 +17,7 @@ compass: CF-SPEC-53 / CF-657
 
 ## What It Does
 
-Settings shows backend, LLM, hardware, model recommendation, and available model status for the local installation.
+Settings shows backend and LLM status, a dedicated Agentic Core explanation/choice, hardware/model guidance, and a Pi model-management workbench. Pi lets an administrator browse the complete provider/model list or type to autocomplete, then use the authentication method Pi supports.
 
 ## Why It Exists
 
@@ -31,20 +31,22 @@ System Status And Models exists so the work represented by Settings > System Sta
 
 ## How UX Researchers Use It
 
-- Open Settings > System Status And Models from the Istara navigation or the parent tab.
-- Use the visible controls in this surface to work with system status and models in the active project context.
-- Review the output in the same view and follow the related feature links when the workflow moves into another Istara surface.
+- Open Settings > System Status, Agentic Core, And Pi Models from the Istara navigation.
+- Read the Agentic Core comparison before choosing Pi or Istara; the benchmark snapshot is explicitly provisional.
+- In Pi Model Management, click the provider/model arrows to browse or type to autocomplete. For OpenAI, choose OpenAI API for an API key or OpenAI Codex — ChatGPT subscription for Browser login or Device code (headless) OAuth.
+- Return to Chat to choose any connected model and its exact effort levels.
 
 ## Supported Workflows
 
-- Start from Settings > System Status And Models when the current research task needs system status and models.
-- Use the visible controls to create, inspect, refine, or route project work without leaving the active Istara context.
-- Move to related surfaces when needed: settings.llm-servers, compute.pool.
+- Start from Settings > System Status, Agentic Core, And Pi Models when the current task needs global execution or provider configuration.
+- Use the visible controls to connect a model without typing an endpoint URL; credentials stay in server custody.
+- Move to Chat to change the model and effort for an individual conversation.
 
 ## Inputs, Outputs, And Expected Outcomes
 
-- Project-scoped state or artifact updates associated with system status and models.
-- Visible status, lists, forms, generated artifacts, or review results shown by the referenced component and routes.
+- Global Agentic Core and Pi endpoint configuration updates for authorized administrators.
+- A visible, searchable provider/model list with API-key and Pi OAuth choices.
+- Legacy backend compatibility data remains preserved but is not a competing normal Settings catalog.
 
 ## Caveats
 
@@ -53,7 +55,6 @@ System Status And Models exists so the work represented by Settings > System Sta
 
 ## Related Features
 
-- [settings.llm-servers](../../settings/llm-servers/researcher.md)
 - [compute.pool](../../compute/pool/researcher.md)
 
 ## Related Concepts
@@ -62,6 +63,6 @@ System Status And Models exists so the work represented by Settings > System Sta
 
 ## Evidence
 
-- Source files: `frontend/src/components/common/SettingsView.tsx`, `backend/app/api/routes/settings.py`
+- Source files: `frontend/src/components/common/SettingsView.tsx`, `frontend/src/components/settings/AgenticCoreSection.tsx`, `frontend/src/components/settings/PiModelManagement.tsx`, `backend/app/api/routes/settings.py`, `backend/app/core/pi_runtime/catalog.py`, `backend/app/core/pi_runtime/oauth.py`
 - API references: `backend/app/api/routes/settings.py`
-- Tests: none recorded
+- Tests: `tests/test_settings.py`, `tests/test_settings_agentic_pi_endpoints.py`, `tests/pi_production/test_pi_catalog_ux.py`

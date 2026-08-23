@@ -5,11 +5,11 @@ item: istara-pi-model-management-migration
 branch: conductor/istara-pi-model-management-migration-20260822
 base: origin/testing@15260a78df6637c2d1981c74683525cb75ab1a22
 cf:
-  framing_spec: CF-SPEC-58 (prior run) / CF-SPEC-1 (this run)
-  spec: CF-SPEC-1
-  tasks: [planning-only until owner approval; CF-SPEC-1 tasks generated at approval]
-phase: "Phase 2 — implementation"
-stage: S4-remediate
+  framing_spec: CF-SPEC-58 (prior run) / CF-SPEC-1 (migration) / CF-SPEC-2 (UX convergence)
+  spec: CF-SPEC-2
+  tasks: [CF-48]
+phase: "Phase 3 — UX convergence"
+stage: S2-execute
 status: in-progress
 blocked_on: null
 approval_holds:
@@ -20,10 +20,10 @@ approval_holds:
     approval_routed: "2026-08-22"
     machine_record: "docs/build-stream/vps-acceptance/approval-hold.json"
 last:
-  agent: deepseek/deepseek-v4-flash
-  at: 2026-08-22T18:59:00Z
-  ledger: L-46
-next_action: "Owner approved MECE master plan (slot a); conductor may dispatch implementation."
+  agent: pi (deepseek-v4-flash)
+  at: 2026-08-23T09:00:00Z
+  ledger: L-52
+next_action: "Complete the chat/session usage contract, run the independent UI review at 320/375/414/768/1280, then deploy only to testing for browser verification."
 ```
 
 ## Plan overview
@@ -1127,3 +1127,8 @@ Result: Site is NOW reachable from the internet on both http://2.24.66.167:13080
 ### L-51 | 2026-08-23T08:00:00Z | S2-execute | pi (deepseek-v4-flash) | operator | implement <!-- bsc-ledger:IMPLEMENT-ISTARA-PI-MODEL-MIGRATION-20260822-DEC3-CATALOG-UI -->
 Did: Implemented the DEC-3 W1 binding UX that the 2026-08-22 waves missed (the shipped Settings UI still asked users to type endpoint_id/base_url/model manually and kept the legacy LLM Servers section). Owner confirmed (2026-08-23): (1) ALL Pi providers/models with great UX — select from list or type with autocomplete, ALL providers, ALL models, ALL login methods; (2) REMOVE the legacy LLM Servers UI; (3) implement OAuth exactly as standalone Pi. Implementation (commit 3b5f9095, testing only): canonical Pi catalog shipped as a static backend resource extracted from the standalone pi-ai models.generated.js (39 providers, 1267 models) + auth hints per provider (api-key env var / OAuth flow) exposed via GET /api/settings/pi-catalog; Pi OAuth flows mirroring standalone Pi /login (device-code for openai-codex/anthropic/github-copilot/xai/google/zai, OpenRouter PKCE) with start/poll/cancel/callback + flows status, tokens via encrypted custody; POST /api/settings/pi-endpoints now accepts pi_provider+pi_model and resolves base_url/provider_kind/context/costs from the catalog (zero manual typing) with optional api_key written to Keychain custody (new _write_macos_keychain_secret in config.py); frontend Settings Pi Model Management replaced by a 4-step catalog picker (provider autocomplete -> model autocomplete -> login method API-key/OAuth with live device-code polling -> add), and LLMServersSection REMOVED from the UI. Tests: new tests/pi_production/test_pi_catalog_ux.py (7 tests) + existing 28 settings + 25 migration/w8 all pass; frontend tsc clean; vitest 14/14. VPS E2E (headless Chromium over CDP, https 13081): Settings shows Pi Model Management, LLM Servers gone, Add Model -> type "deepseek" -> autocomplete -> DeepSeek V4 Pro (1000k ctx, reasoning) -> Login method step, zero JS errors; API verified: catalog 39/1267 live, add via catalog fills https://api.deepseek.com + ctx 1000000 + cost 0.435 automatically; GitHub Copilot device-code flow returns real user code; OpenAI Codex endpoint 530 from datacenter IP (expected; flow correct). VPS DNS restricted for outbound oauth (datacenter), fine for local/production.
 Result: DEC-3 W1 UI delivered and verified on the VPS browser. LLM Servers UI removed (backend legacy plane remains as reversible compat adapter per the frozen master plan, no longer surfaced in Settings). Remaining: owner walkthrough of the new Pi Model Management UI + ship decision.
+
+### L-52 | 2026-08-23T09:00:00Z | S2-execute | pi (deepseek-v4-flash) | executor | Phase 3 UX convergence <!-- bsc-ledger:IMPLEMENT-ISTARA-PI-UX-CONVERGENCE-20260823 -->
+Did: Started the owner-requested redesign from the testing worktree only. Loaded interface-design in redesign/systemize mode plus Hallmark modern-minimal/app Workbench guidance, audited the existing Settings/Project Settings/Chat surfaces and interaction inventory, and recorded DEC-1 in Compass Forge. Added root DESIGN.md and semantic UI token projection in frontend/src/app/globals.css (WCAG focus/44px/reduced motion/responsive contract). Added shared AgenticCoreSection for global + project scopes; removed the compact global selector from System Status and replaced the compact Project Settings selector with the explanatory comparison section. Replaced the manual Pi endpoint form with PiModelManagement: the provider and model fields are both browseable dropdowns and autocomplete comboboxes; OpenAI is explicit as OpenAI API vs OpenAI Codex ChatGPT subscription; Codex presents Browser login and Device code (headless) OAuth methods. Reworked backend oauth.py to mirror Pi's OpenAI browser PKCE/device exchange, state-verified callback, credential custody, and provider method metadata; added openai_codex runtime transport. Added project-readable chat model catalog, exact endpoint_override persistence, provider-native effort forwarding, per-session usage ledger scope/migration, usage SSE event + usage API. Added ChatModelControls: model browse/autocomplete, exact Pi effort options, and usage popover with input/output/total/cache/cost/context/estimate status. Updated living feature/architecture docs and tests.
+Result: frontend tsc, lint, build, unit tests, backend targeted tests, and security benchmark pass locally. Remaining: independent visual/browser review at accepted widths, fix review findings, feature-doc regeneration, CF gate/evidence, testing-only deploy, and no live OAuth exchange on restricted VPS.
+Verified: `frontend/npx tsc --noEmit -p tsconfig.json`; `frontend/npm run lint -- --no-cache`; `frontend/npm run build`; `frontend/npm run test:unit -- --run`; `backend/.venv/bin/python -m pytest tests/test_chat.py tests/test_settings.py tests/test_settings_agentic_pi_endpoints.py tests/pi_production/test_pi_catalog_ux.py -q` (47 passed); `python scripts/security_benchmark.py --fail-on-threshold` (100%).

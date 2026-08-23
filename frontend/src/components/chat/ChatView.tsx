@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Send, Paperclip, Loader2, StopCircle, Upload, Bot, Zap, ChevronDown, X, AlertTriangle, FolderOpen, FileText, Mic, Activity, BrainCircuit } from "lucide-react";
+import { Send, Paperclip, Loader2, StopCircle, Upload, X, FolderOpen, FileText, Mic, Activity } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { useChatStore } from "@/stores/chatStore";
@@ -11,340 +11,12 @@ import { useAgentStore } from "@/stores/agentStore";
 import { useVoiceRecorder } from "@/hooks/useVoiceRecorder";
 import { useRoleCapabilities } from "@/hooks/useRoleCapabilities";
 import { cn, formatDate } from "@/lib/utils";
-import { files as filesApi, documents as documentsApi, steering as steeringApi } from "@/lib/api";
-import type { ThinkingMode } from "@/lib/types";
+import { chat as chatApi, files as filesApi, documents as documentsApi, steering as steeringApi } from "@/lib/api";
 import ViewOnboarding from "@/components/common/ViewOnboarding";
 import ChatSessionsSidebar from "./ChatSessionsSidebar";
-import { AgentAvatar, PRESET_INFO, REASONING_PRESETS, THINKING_INFO, UserAvatar } from "./chatViewParts";
-
-function CustomLLMPanel({
-  session,
-  onUpdate,
-  onClose,
-}: {
-  session: any;
-  onUpdate: (data: Record<string, unknown>) => void;
-  onClose: () => void;
-}) {
-  const [temperature, setTemperature] = useState(session.custom_temperature ?? 0.7);
-  const [maxTokens, setMaxTokens] = useState(session.custom_max_tokens ?? 2048);
-  const [topP, setTopP] = useState(0.9);
-  const [reasoning, setReasoning] = useState("balanced");
-
-  const isHighResource = maxTokens > 4096 || (reasoning === "deep" && temperature < 0.3);
-
-  const save = () => {
-    onUpdate({
-      inference_preset: "custom",
-      custom_temperature: temperature,
-      custom_max_tokens: maxTokens,
-    });
-    onClose();
-  };
-
-  return (
-    <div className="absolute top-full left-0 mt-1 z-50 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg shadow-xl p-4 min-w-[320px]">
-      <div className="flex items-center justify-between mb-3">
-        <h4 className="text-sm font-semibold text-slate-900 dark:text-white">Custom LLM Settings</h4>
-        <button onClick={onClose} className="text-slate-400 hover:text-slate-600 p-0.5" aria-label="Close custom LLM settings">
-          <X size={14} />
-        </button>
-      </div>
-
-      {/* Reasoning Level */}
-      <div className="mb-4">
-        <label className="text-xs font-medium text-slate-700 dark:text-slate-300 mb-1 block">
-          Reasoning Depth
-        </label>
-        <div className="grid grid-cols-3 gap-1">
-          {(["quick", "balanced", "deep"] as const).map((level) => (
-            <button
-              key={level}
-              onClick={() => {
-                setReasoning(level);
-                const preset = REASONING_PRESETS[level];
-                setTemperature(preset.temperature);
-                setMaxTokens(preset.maxTokens);
-                setTopP(preset.topP);
-              }}
-              className={cn(
-                "py-1.5 px-2 text-xs rounded-md transition-colors capitalize",
-                reasoning === level
-                  ? "bg-istara-600 text-white"
-                  : "bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-400 hover:bg-slate-200"
-              )}
-            >
-              {level === "quick" ? "⚡ Quick" : level === "balanced" ? "⚖️ Balanced" : "🧠 Deep"}
-            </button>
-          ))}
-        </div>
-        <p className="text-[10px] text-slate-400 mt-1">
-          {reasoning === "quick" ? "Fast responses, less analysis" : reasoning === "balanced" ? "Good mix of speed and depth" : "Maximum analysis, slower responses"}
-        </p>
-      </div>
-
-      {/* Temperature */}
-      <div className="mb-4">
-        <div className="flex items-center justify-between mb-1">
-          <label className="text-xs font-medium text-slate-700 dark:text-slate-300">
-            Temperature
-          </label>
-          <span className="text-xs text-slate-500 font-mono">{temperature.toFixed(2)}</span>
-        </div>
-        <input
-          type="range"
-          min="0"
-          max="1.5"
-          step="0.05"
-          value={temperature}
-          onChange={(e) => setTemperature(parseFloat(e.target.value))}
-          className="w-full h-1.5 rounded-full appearance-none bg-slate-200 dark:bg-slate-700 accent-istara-600"
-        />
-        <div className="flex justify-between text-[10px] text-slate-400 mt-0.5">
-          <span>Precise</span>
-          <span>Creative</span>
-        </div>
-      </div>
-
-      {/* Max Tokens */}
-      <div className="mb-4">
-        <div className="flex items-center justify-between mb-1">
-          <label className="text-xs font-medium text-slate-700 dark:text-slate-300">
-            Max Output Tokens
-          </label>
-          <span className="text-xs text-slate-500 font-mono">{maxTokens}</span>
-        </div>
-        <input
-          type="range"
-          min="256"
-          max="8192"
-          step="256"
-          value={maxTokens}
-          onChange={(e) => setMaxTokens(parseInt(e.target.value))}
-          className="w-full h-1.5 rounded-full appearance-none bg-slate-200 dark:bg-slate-700 accent-istara-600"
-        />
-        <div className="flex justify-between text-[10px] text-slate-400 mt-0.5">
-          <span>Short (256)</span>
-          <span>Long (8192)</span>
-        </div>
-      </div>
-
-      {/* Top P */}
-      <div className="mb-4">
-        <div className="flex items-center justify-between mb-1">
-          <label className="text-xs font-medium text-slate-700 dark:text-slate-300">
-            Top P (Nucleus Sampling)
-          </label>
-          <span className="text-xs text-slate-500 font-mono">{topP.toFixed(2)}</span>
-        </div>
-        <input
-          type="range"
-          min="0.1"
-          max="1.0"
-          step="0.05"
-          value={topP}
-          onChange={(e) => setTopP(parseFloat(e.target.value))}
-          className="w-full h-1.5 rounded-full appearance-none bg-slate-200 dark:bg-slate-700 accent-istara-600"
-        />
-        <div className="flex justify-between text-[10px] text-slate-400 mt-0.5">
-          <span>Focused</span>
-          <span>Diverse</span>
-        </div>
-      </div>
-
-      {/* Resource warning */}
-      {isHighResource && (
-        <div className="mb-3 p-2 rounded-md bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800">
-          <p className="text-[10px] text-amber-700 dark:text-amber-400 flex items-center gap-1">
-            <AlertTriangle size={10} /> High resource usage — may slow other agents or exceed local GPU memory.
-          </p>
-        </div>
-      )}
-
-      {/* Save */}
-      <button
-        onClick={save}
-        className="w-full py-1.5 bg-istara-600 text-white text-xs font-medium rounded-md hover:bg-istara-700 transition-colors"
-      >
-        Apply Settings
-      </button>
-    </div>
-  );
-}
-
-function ChatToolbar({
-  activeSession,
-  agents,
-  onUpdateSession,
-}: {
-  activeSession: any;
-  agents: any[];
-  onUpdateSession: (data: Record<string, unknown>) => void;
-}) {
-  const [showPresets, setShowPresets] = useState(false);
-  const [showAgents, setShowAgents] = useState(false);
-  const [showCustomPanel, setShowCustomPanel] = useState(false);
-  const [showThinking, setShowThinking] = useState(false);
-
-  if (!activeSession) return null;
-
-  const currentPreset = activeSession.inference_preset || "medium";
-  const presetInfo = PRESET_INFO[currentPreset] || PRESET_INFO.medium;
-  const currentThinking = (activeSession.thinking_mode || "server_default") as ThinkingMode;
-  const thinkingInfo = THINKING_INFO[currentThinking] || THINKING_INFO.server_default;
-  const assignedAgent = agents.find((a: any) => a.id === activeSession.agent_id);
-
-  return (
-    <div className="flex items-center gap-2 px-4 py-1.5 border-b border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 text-xs">
-      {/* Agent selector */}
-      <div className="relative">
-        <button
-          onClick={() => { setShowAgents(!showAgents); setShowPresets(false); setShowThinking(false); }}
-          className="flex items-center gap-1.5 px-2 py-1 rounded-md hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
-        >
-          <Bot size={12} className="text-slate-500" />
-          <span className="text-slate-600 dark:text-slate-400">
-            {assignedAgent ? assignedAgent.name : "Istara (Main)"}
-          </span>
-          <ChevronDown size={10} className="text-slate-400" />
-        </button>
-        {showAgents && (
-          <div className="absolute top-full left-0 mt-1 z-50 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg shadow-lg py-1 min-w-[180px]">
-            <button
-              onClick={() => { onUpdateSession({ agent_id: null }); setShowAgents(false); }}
-              className={cn(
-                "w-full text-left px-3 py-1.5 hover:bg-slate-100 dark:hover:bg-slate-700 flex items-center gap-2",
-                !activeSession.agent_id && "bg-istara-50 dark:bg-istara-900/20"
-              )}
-            >
-              <span className="text-sm">🐾</span> Istara (Main)
-            </button>
-            {agents.filter((a: any) => a.is_active && a.id !== "istara-main").map((agent: any) => (
-              <button
-                key={agent.id}
-                onClick={() => { onUpdateSession({ agent_id: agent.id }); setShowAgents(false); }}
-                className={cn(
-                  "w-full text-left px-3 py-1.5 hover:bg-slate-100 dark:hover:bg-slate-700 flex items-center gap-2",
-                  activeSession.agent_id === agent.id && "bg-istara-50 dark:bg-istara-900/20"
-                )}
-              >
-                <div
-                  className="w-4 h-4 rounded-full flex items-center justify-center text-white text-[8px] font-bold"
-                  style={{ backgroundColor: `hsl(${agent.name.length * 37 % 360}, 60%, 45%)` }}
-                >
-                  {agent.name.charAt(0)}
-                </div>
-                {agent.name}
-              </button>
-            ))}
-          </div>
-        )}
-      </div>
-
-      <div className="w-px h-4 bg-slate-200 dark:bg-slate-700" />
-
-      {/* Preset selector */}
-      <div className="relative">
-        <button
-          onClick={() => { setShowPresets(!showPresets); setShowAgents(false); setShowThinking(false); }}
-          className="flex items-center gap-1.5 px-2 py-1 rounded-md hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
-        >
-          <Zap size={12} className="text-slate-500" />
-          <span className="text-slate-600 dark:text-slate-400">
-            {presetInfo.icon} {presetInfo.label}
-          </span>
-          <ChevronDown size={10} className="text-slate-400" />
-        </button>
-        {showPresets && (
-          <div className="absolute top-full left-0 mt-1 z-50 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg shadow-lg py-1 min-w-[260px]">
-            {Object.entries(PRESET_INFO).map(([key, info]) => (
-              <button
-                key={key}
-                onClick={() => {
-                  if (key === "custom") {
-                    setShowPresets(false);
-                    setShowCustomPanel(true);
-                  } else {
-                    onUpdateSession({ inference_preset: key });
-                    setShowPresets(false);
-                  }
-                }}
-                className={cn(
-                  "w-full text-left px-3 py-2 hover:bg-slate-100 dark:hover:bg-slate-700",
-                  currentPreset === key && "bg-istara-50 dark:bg-istara-900/20"
-                )}
-              >
-                <div className="flex items-center gap-2">
-                  <span>{info.icon}</span>
-                  <span className="font-medium text-slate-900 dark:text-white">{info.label}</span>
-                  {currentPreset === key && (
-                    <span className="ml-auto text-istara-600 text-[10px]">Active</span>
-                  )}
-                </div>
-                <p className="text-[10px] text-slate-500 mt-0.5 ml-6">{info.desc}</p>
-              </button>
-            ))}
-          </div>
-        )}
-        {showCustomPanel && (
-          <CustomLLMPanel
-            session={activeSession}
-            onUpdate={onUpdateSession}
-            onClose={() => setShowCustomPanel(false)}
-          />
-        )}
-      </div>
-
-      <div className="w-px h-4 bg-slate-200 dark:bg-slate-700" />
-
-      {/* Thinking selector */}
-      <div className="relative">
-        <button
-          onClick={() => { setShowThinking(!showThinking); setShowAgents(false); setShowPresets(false); setShowCustomPanel(false); }}
-          className="flex items-center gap-1.5 px-2 py-1 rounded-md hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
-          title="Thinking mode"
-        >
-          <BrainCircuit size={12} className="text-slate-500" />
-          <span className="text-slate-600 dark:text-slate-400">
-            Thinking: {thinkingInfo.label}
-          </span>
-          <ChevronDown size={10} className="text-slate-400" />
-        </button>
-        {showThinking && (
-          <div className="absolute top-full left-0 mt-1 z-50 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg shadow-lg py-1 min-w-[240px]">
-            {(Object.keys(THINKING_INFO) as ThinkingMode[]).map((mode) => (
-              <button
-                key={mode}
-                onClick={() => {
-                  onUpdateSession({ thinking_mode: mode });
-                  setShowThinking(false);
-                }}
-                className={cn(
-                  "w-full text-left px-3 py-2 hover:bg-slate-100 dark:hover:bg-slate-700",
-                  currentThinking === mode && "bg-istara-50 dark:bg-istara-900/20"
-                )}
-              >
-                <div className="flex items-center gap-2">
-                  <BrainCircuit size={12} className="text-slate-500" />
-                  <span className="font-medium text-slate-900 dark:text-white">{THINKING_INFO[mode].label}</span>
-                  {currentThinking === mode && (
-                    <span className="ml-auto text-istara-600 text-[10px]">Active</span>
-                  )}
-                </div>
-                <p className="text-[10px] text-slate-500 mt-0.5 ml-5">{THINKING_INFO[mode].desc}</p>
-              </button>
-            ))}
-          </div>
-        )}
-      </div>
-
-      {/* Session title */}
-      <div className="ml-auto text-slate-400">
-        {activeSession.title}
-      </div>
-    </div>
-  );
-}
+import ChatModelControls from "./ChatModelControls";
+import type { PiCatalogProvider, PiEndpointInfo } from "@/lib/types";
+import { AgentAvatar, UserAvatar } from "./chatViewParts";
 
 function SteeringQueueIndicator({
   agentId,
@@ -388,7 +60,7 @@ function SteeringQueueIndicator({
 }
 
 export default function ChatView() {
-  const { messages, streaming, streamingContent, error, sendMessage, fetchHistory, cancelStreaming } = useChatStore();
+  const { messages, streaming, streamingContent, error, usage, sendMessage, fetchHistory, cancelStreaming } = useChatStore();
   const { activeProjectId, canWriteActiveProject } = useProjectStore();
   const { activeSessionId, ensureDefault, updateSession, pendingPrefill, setPendingPrefill, fetchSessions } = useSessionStore();
   const { agents, fetchAgents } = useAgentStore();
@@ -404,6 +76,8 @@ export default function ChatView() {
   const [pickerSearch, setPickerSearch] = useState("");
   const [pickerLoading, setPickerLoading] = useState(false);
   const [pendingDocRefs, setPendingDocRefs] = useState<{ id: string; title: string }[]>([]);
+  const [modelProviders, setModelProviders] = useState<PiCatalogProvider[]>([]);
+  const [configuredModels, setConfiguredModels] = useState<PiEndpointInfo[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const canWrite = capabilities.canWriteActiveProject || canWriteActiveProject();
@@ -413,6 +87,13 @@ export default function ChatView() {
     if (activeProjectId) {
       fetchSessions(activeProjectId).then(() => ensureDefault(activeProjectId));
       fetchAgents(activeProjectId);
+      chatApi.modelCatalog(activeProjectId).then((catalog) => {
+        setModelProviders(catalog.providers || []);
+        setConfiguredModels(catalog.configured || []);
+      }).catch(() => {
+        setModelProviders([]);
+        setConfiguredModels([]);
+      });
     }
   }, [activeProjectId, fetchSessions, ensureDefault, fetchAgents]);
 
@@ -597,11 +278,14 @@ export default function ChatView() {
         <ViewOnboarding viewId="chat" title="Your Research Assistant" description="Chat with your AI agent about research. Upload files, ask questions, or run analysis skills. Agents understand your project context." chatPrompt="What can I do in Chat?" />
 
         {/* Toolbar */}
-        <ChatToolbar
+        <ChatModelControls
           activeSession={activeSession}
           agents={agents}
+          providers={modelProviders}
+          configured={configuredModels}
+          usage={usage}
           onUpdateSession={(data) => {
-            if (activeProjectId && activeSessionId) updateSession(activeProjectId, activeSessionId, data);
+            if (activeProjectId && activeSessionId) void updateSession(activeProjectId, activeSessionId, data);
           }}
         />
 

@@ -15,7 +15,7 @@ from app.models.database import get_db
 from app.models.session import ChatSession, InferencePreset, INFERENCE_PRESETS
 from app.models.message import Message
 from app.core.permissions import require_project_access
-from app.core.llm_thinking import ThinkingMode, normalize_thinking_mode
+from app.core.llm_thinking import normalize_model_effort, validate_model_effort
 
 router = APIRouter()
 
@@ -54,8 +54,14 @@ class CreateSessionRequest(BaseModel):
     title: str = Field(default="New Chat", min_length=1, max_length=255)
     agent_id: str | None = Field(default=None, max_length=255)
     model_override: str | None = Field(default=None, max_length=255)
+    endpoint_override: str | None = Field(default=None, max_length=120)
     inference_preset: InferencePreset = InferencePreset.MEDIUM
-    thinking_mode: ThinkingMode = "server_default"
+    thinking_mode: str = "server_default"
+
+    @field_validator("thinking_mode")
+    @classmethod
+    def validate_effort(cls, value: str) -> str:
+        return validate_model_effort(value)
 
     @field_validator("title")
     @classmethod
@@ -70,13 +76,19 @@ class UpdateSessionRequest(BaseModel):
     title: str | None = Field(default=None, min_length=1, max_length=255)
     agent_id: str | None = Field(default=None, max_length=255)
     model_override: str | None = Field(default=None, max_length=255)
+    endpoint_override: str | None = Field(default=None, max_length=120)
     inference_preset: InferencePreset | None = None
     custom_temperature: float | None = Field(default=None, ge=0.0, le=2.0)
     custom_max_tokens: int | None = Field(default=None, ge=1, le=65536)
     custom_context_window: int | None = Field(default=None, ge=512, le=262144)
-    thinking_mode: ThinkingMode | None = None
+    thinking_mode: str | None = None
     starred: bool | None = None
     archived: bool | None = None
+
+    @field_validator("thinking_mode")
+    @classmethod
+    def validate_effort(cls, value: str | None) -> str | None:
+        return validate_model_effort(value) if value is not None else value
 
     @field_validator("title")
     @classmethod
@@ -125,8 +137,9 @@ async def create_session(data: CreateSessionRequest, request: Request, db: Async
         title=data.title,
         agent_id=assigned_agent.id if assigned_agent else None,
         model_override=data.model_override,
+        endpoint_override=data.endpoint_override,
         inference_preset=data.inference_preset,
-        thinking_mode=normalize_thinking_mode(data.thinking_mode),
+        thinking_mode=normalize_model_effort(data.thinking_mode),
     )
     db.add(session)
     await db.commit()
@@ -192,7 +205,7 @@ async def update_session(
     updates = data.model_dump(exclude_unset=True)
     for key, value in updates.items():
         if key == "thinking_mode":
-            value = normalize_thinking_mode(value)
+            value = normalize_model_effort(value)
         elif key == "agent_id":
             assigned_agent = await require_agent_assignable_to_project(
                 db,

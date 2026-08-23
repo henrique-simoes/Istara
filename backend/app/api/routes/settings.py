@@ -4,7 +4,7 @@ import logging
 from datetime import UTC, datetime, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException, Request
-from fastapi.responses import JSONResponse
+from fastapi.responses import HTMLResponse, JSONResponse
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -724,6 +724,9 @@ class AgenticEngineRequest(BaseModel):
 
 class PiOAuthStartRequest(BaseModel):
     provider: str
+    # Pi's OpenAI Codex loader exposes two choices: browser PKCE or headless
+    # device-code. Other providers use the method advertised by the catalog.
+    method: str = "device_code"
 
 
 class PiOAuthPollRequest(BaseModel):
@@ -758,6 +761,8 @@ class PiEndpointRequest(BaseModel):
     pi_model: str = ""
     api_key: str = ""  # optional: written to Keychain custody when provided
     supports_vision: bool = False
+    auth_provider: str = ""
+    auth_method: str = "api_key"
 
 
 def _persist_pi_endpoints() -> None:
@@ -820,26 +825,53 @@ async def list_oauth_flows(request: Request):
     return {"flows": oauth_status()}
 
 
+def _oauth_public_callback_url(request: Request) -> str:
+    """Build the public same-origin callback without trusting arbitrary URLs."""
+    forwarded_proto = (request.headers.get("x-forwarded-proto") or "").split(",")[0].strip()
+    scheme = forwarded_proto if forwarded_proto in {"http", "https"} else request.url.scheme
+    host = request.headers.get("host") or request.url.netloc
+    return f"{scheme}://{host}/api/settings/pi-oauth/openai/callback"
+
+
 @router.post("/settings/pi-oauth/start")
 async def start_oauth_flow(data: PiOAuthStartRequest, request: Request):
-    """Start a Pi OAuth login flow for a provider (device-code or PKCE).
-
-    Mirrors Pi's ``/login``: returns the user code + verification URI for the
-    UI to display; the backend polls and stores the minted credential.
-    """
+    """Start one of the login methods exposed by the standalone Pi loader."""
     require_global_role(request, "admin")
-    from app.core.pi_runtime.oauth import start_device_flow, start_pkce_flow
+    from app.core.pi_runtime.oauth import (
+        start_anthropic_browser_flow,
+        start_device_flow,
+        start_openai_browser_flow,
+        start_pkce_flow,
+    )
 
     provider = data.provider.strip().lower()
+    method = data.method.strip().lower() or "device_code"
     try:
-        if provider == "openrouter":
-            flow = start_pkce_flow()
+        if provider in {"openai", "openai-codex"}:
+            if method == "browser":
+                flow = start_openai_browser_flow(_oauth_public_callback_url(request))
+            elif method in {"device_code", "headless"}:
+                flow = start_device_flow("openai-codex")
+            else:
+                raise ValueError("unsupported_openai_oauth_method")
+        elif provider == "openrouter":
+            if method not in {"browser", "pkce", "device_code"}:
+                raise ValueError("unsupported_openrouter_oauth_method")
+            flow = start_pkce_flow(_oauth_public_callback_url(request).replace("/openai/callback", "/openrouter/callback"))
+        elif provider == "anthropic":
+            if method != "browser":
+                raise ValueError("provider_supports_browser_only")
+            flow = start_anthropic_browser_flow(_oauth_public_callback_url(request).replace("/openai/callback", "/anthropic/callback"))
         else:
+            if method != "device_code":
+                raise ValueError("provider_supports_device_code_only")
             flow = start_device_flow(provider)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     return {
         "provider": flow.provider,
+        "oauth_provider": flow.oauth_provider or flow.provider,
+        "method": flow.method,
         "flow_type": flow.flow_type,
         "user_code": flow.user_code,
         "verification_uri": flow.verification_uri,
@@ -847,6 +879,41 @@ async def start_oauth_flow(data: PiOAuthStartRequest, request: Request):
         "auth_url": flow.auth_url,
         "expires_at": flow.expires_at,
     }
+
+
+@router.get("/settings/pi-oauth/openai/callback", response_class=HTMLResponse)
+async def openai_oauth_callback(code: str | None = None, state: str | None = None, error: str | None = None):
+    """Public OAuth redirect; state is the authorization boundary.
+
+    This route intentionally has no bearer-auth dependency because OpenAI's
+    browser redirect cannot carry Istara's session token. It can only complete
+    the short-lived state generated for an already-admin-authorized flow.
+    """
+    from app.core.pi_runtime.oauth import browser_callback_page, finish_openai_browser_flow
+
+    if error:
+        return HTMLResponse(browser_callback_page(False, "The provider did not approve the login."), status_code=400)
+    if not code or not state:
+        return HTMLResponse(browser_callback_page(False, "The provider callback was missing its code or state."), status_code=400)
+    try:
+        finish_openai_browser_flow(code, state)
+    except ValueError:
+        return HTMLResponse(browser_callback_page(False, "The login could not be verified. Return to Istara and start again."), status_code=400)
+    return HTMLResponse(browser_callback_page(True, "OpenAI Codex is now connected to this Istara server."))
+
+
+@router.get("/settings/pi-oauth/{provider}/callback", response_class=HTMLResponse)
+async def pi_browser_oauth_callback(provider: str, code: str | None = None, state: str | None = None, error: str | None = None):
+    """State-verified browser callback for the other Pi PKCE loaders."""
+    from app.core.pi_runtime.oauth import browser_callback_page, finish_browser_flow
+
+    if error or not code or not state:
+        return HTMLResponse(browser_callback_page(False, "The provider did not complete the login."), status_code=400)
+    try:
+        finish_browser_flow(provider.strip().lower(), code, state)
+    except ValueError:
+        return HTMLResponse(browser_callback_page(False, "The login could not be verified. Return to Istara and start again."), status_code=400)
+    return HTMLResponse(browser_callback_page(True, "The provider is now connected to this Istara server."))
 
 
 @router.post("/settings/pi-oauth/poll")
@@ -858,7 +925,12 @@ async def poll_oauth_flow(data: PiOAuthPollRequest, request: Request):
 
     provider = data.provider.strip().lower()
     try:
-        poll_device_flow(provider)
+        flows = oauth_status(provider)
+        if not flows:
+            raise ValueError("no_active_flow")
+        active = flows[0]
+        if active.get("flow_type") == "device_code":
+            poll_device_flow(provider)
     except ValueError:
         raise HTTPException(status_code=404, detail="no_active_flow")
     flows = oauth_status(provider)
@@ -890,10 +962,15 @@ async def pkce_callback(data: PiOAuthPKCECallbackRequest, request: Request):
 
 @router.get("/settings/pi-endpoints")
 async def list_pi_endpoints(request: Request):
-    """List PiModelManager catalog entries (cloud/API endpoints), secrets never included."""
+    """List Pi endpoint identities; API keys and encrypted OAuth blobs never leave the server."""
     require_global_role(request, "admin")
+    public_endpoints = []
+    for endpoint in settings.pi_api_endpoints:
+        view = endpoint.model_dump()
+        view.pop("oauth_credential_encrypted", None)
+        public_endpoints.append(view)
     return {
-        "endpoints": [endpoint.model_dump() for endpoint in settings.pi_api_endpoints],
+        "endpoints": public_endpoints,
         "retirement_note": (
             "Cloud/API endpoints are managed here (Pi model management). The legacy "
             "LLM-server section manages local serving and donated compute only."
@@ -942,7 +1019,10 @@ async def add_pi_endpoint(data: PiEndpointRequest, request: Request):
         if not match:
             raise HTTPException(status_code=400, detail=f"unknown pi model: {data.pi_model}")
         api = str(match.get("api", "")).lower()
-        provider_kind = "anthropic_compat" if "anthropic" in api else "openai_compat"
+        if api == "openai-codex-responses":
+            provider_kind = "openai_codex"
+        else:
+            provider_kind = "anthropic_compat" if "anthropic" in api else "openai_compat"
         payload["provider_kind"] = provider_kind
         payload["base_url"] = match.get("baseUrl") or data.base_url
         payload["model"] = match["id"]
@@ -954,7 +1034,14 @@ async def add_pi_endpoint(data: PiEndpointRequest, request: Request):
         payload["cost_cache_read_per_mtok"] = float(cost.get("cacheRead") or 0.0)
         payload["cost_cache_write_per_mtok"] = float(cost.get("cacheWrite") or 0.0)
         if not payload.get("keychain_service"):
-            payload["keychain_service"] = f"istara-pi-{data.pi_provider}"
+            auth_provider = data.auth_provider or data.pi_provider
+            payload["keychain_service"] = (
+                f"istara-pi-oauth-{auth_provider}"
+                if data.auth_method.startswith("oauth")
+                else f"istara-pi-{data.pi_provider}"
+            )
+        payload["auth_provider"] = data.auth_provider or data.pi_provider
+        payload["auth_method"] = data.auth_method or "api_key"
 
     if not payload.get("base_url") or not payload.get("model"):
         raise HTTPException(
@@ -972,7 +1059,7 @@ async def add_pi_endpoint(data: PiEndpointRequest, request: Request):
     # Optional API key custody: write straight to Keychain (same service name
     # the resolver reads) so the UI can accept a pasted key without a separate
     # keychain step. Never persisted to disk or returned.
-    if data.api_key.strip():
+    if data.api_key.strip() and not data.auth_method.startswith("oauth"):
         try:
             from app.config import _write_macos_keychain_secret
 
@@ -984,6 +1071,20 @@ async def add_pi_endpoint(data: PiEndpointRequest, request: Request):
         except Exception as exc:  # pragma: no cover - custody failure is non-fatal to config
             logger.warning("pi endpoint: keychain write failed for %s: %s", endpoint_id, exc)
 
+    if data.auth_method.startswith("oauth"):
+        try:
+            import json as _json
+            from app.core.field_encryption import encrypt_field
+            from app.core.pi_runtime.oauth import consume_oauth_credential
+
+            oauth_provider = data.auth_provider or data.pi_provider
+            credential = consume_oauth_credential(oauth_provider)
+            payload["oauth_credential_encrypted"] = encrypt_field(_json.dumps(credential, separators=(",", ":")))
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+        except Exception as exc:  # pragma: no cover - encryption/provider custody guard
+            raise HTTPException(status_code=503, detail="oauth_credential_custody_failed") from exc
+
     try:
         settings.pi_api_endpoints.append(PiApiEndpoint(**payload))
     except ValueError as exc:
@@ -994,7 +1095,7 @@ async def add_pi_endpoint(data: PiEndpointRequest, request: Request):
     except Exception as exc:  # pragma: no cover
         logger.warning("Could not persist PI_API_ENDPOINTS: %s", exc)
         persisted = False
-    return {"status": "added", "endpoint_id": endpoint_id, "persisted": persisted}
+    return {"status": "added", "endpoint_id": endpoint_id, "persisted": persisted, "auth_method": payload.get("auth_method", "api_key")}
 
 
 @router.put("/settings/pi-endpoints/{endpoint_id}")
@@ -1004,6 +1105,7 @@ async def update_pi_endpoint(endpoint_id: str, data: PiEndpointRequest, request:
         if endpoint.endpoint_id == endpoint_id:
             updated = data.model_dump()
             updated["endpoint_id"] = endpoint_id
+            updated["oauth_credential_encrypted"] = getattr(endpoint, "oauth_credential_encrypted", "")
             from app.config import PiApiEndpoint
 
             settings.pi_api_endpoints[index] = PiApiEndpoint(**updated)

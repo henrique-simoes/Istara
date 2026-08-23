@@ -24,7 +24,7 @@ class PiApiEndpoint(BaseModel):
     """
 
     endpoint_id: str
-    provider_kind: Literal["openai_compat", "anthropic_compat"] = "openai_compat"
+    provider_kind: Literal["openai_compat", "anthropic_compat", "openai_codex"] = "openai_compat"
     base_url: str
     model: str
     keychain_service: str
@@ -48,6 +48,13 @@ class PiApiEndpoint(BaseModel):
     max_tokens: int = Field(default=0, ge=0)
     supports_tools: bool = True
     supports_vision: bool = False
+    # Provider-auth metadata is non-secret and lets the runtime choose the
+    # correct Pi transport (for example Codex Responses adds account headers).
+    pi_provider: str = ""
+    auth_provider: str = ""
+    auth_method: str = "api_key"
+    # Fernet-wrapped OAuth credential JSON. Never included in public endpoint views.
+    oauth_credential_encrypted: str = ""
 
     @field_validator("endpoint_id", "base_url", "model", "keychain_service")
     @classmethod

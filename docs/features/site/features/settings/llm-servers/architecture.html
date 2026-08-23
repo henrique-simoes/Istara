@@ -245,7 +245,7 @@
   <p class="concept-line"><strong>Concepts:</strong> rag</p>
 </header>
 <h2 id="implementation-summary">Implementation Summary</h2>
-<p>Settings manages configured LLM providers, server endpoints, provider labels, and active model switching.</p>
+<p>Legacy LLM Server rows, CRUD routes, local serving, and donated-compute behavior remain as a reversible compatibility plane. They are not a competing normal Settings catalog: Pi Model Management owns cloud/API provider/model selection and authentication in the user-facing UI.</p>
 <h2 id="frontend-surface">Frontend Surface</h2>
 <ul>
 <li><code>frontend/src/components/common/SettingsView.tsx</code></li>
@@ -336,15 +336,21 @@
 <p>offline responses. It is an identity/capability view only — endpoint ids,</p>
 <p>model names, and kinds — and never exposes endpoint URLs or API keys.</p>
 <ul>
-<li>The frontend consumes that side field through <code>mergeModelCatalogs()</code> so Pi</li>
+<li>The frontend no longer renders the legacy LLM Server section or exposes its</li>
 </ul>
-<p>identities are visible in the existing Available Models inventory without</p>
-<p>passing a Pi endpoint through the legacy provider-switch action. Duplicate</p>
-<p>Pi endpoint identities are collapsed, while distinct endpoint ids remain</p>
-<p>distinct for routing and auditability.</p>
+<p>manual provider/model form in normal Settings. <code>PiModelManagement</code> owns the</p>
+<p>complete browseable + autocomplete catalog, API-key/OAuth choices, and</p>
+<p>configured-model list. Legacy rows remain available to compatibility/migration</p>
+<p>routes and the Pi projection; they are never silently deleted or used to</p>
+<p>expose donated compute as a cloud catalog.</p>
+<ul>
+<li>Chat uses the project-readable identity-only model catalog and stores an exact</li>
+</ul>
+<p><code>endpoint_override</code> alongside <code>model_override</code>, preserving provider identity</p>
+<p>when two providers expose the same model id.</p>
 <h2 id="architecture-notes">Architecture Notes</h2>
 <ul>
-<li>The feature is mounted through <code>frontend/src/components/common/SettingsView.tsx</code> and the UI navigation path recorded in the inventory.</li>
+<li>The compatibility feature is mounted through backend routes and Pi projection code. New user-facing configuration is mounted through <code>frontend/src/components/settings/PiModelManagement.tsx</code> and documented under <code>settings.general</code>.</li>
 <li>The frontmatter and manifest entries are the durable contract for agents updating this page after code changes.</li>
 <li>When the referenced component, store, route, agent, skill, or test behavior changes, regenerate and validate the feature documentation.</li>
 </ul>

@@ -13,12 +13,30 @@ through the system prompt and keep provider payloads free of unknown fields.
 
 from __future__ import annotations
 
+import re
 from typing import Any, Literal
 
 ThinkingMode = Literal["server_default", "off", "auto", "on"]
 
 THINKING_MODES: tuple[ThinkingMode, ...] = ("server_default", "off", "auto", "on")
 DEFAULT_THINKING_MODE: ThinkingMode = "server_default"
+
+
+def normalize_model_effort(value: str | None) -> str:
+    """Keep Pi-native effort levels (minimal/low/xhigh/max) intact.
+
+    Legacy prompt controls still use ``normalize_thinking_mode`` below; the
+    model effort is a separate transport knob and must not be collapsed to
+    ``server_default`` before the Pi worker sees it.
+    """
+    effort = (value or "server_default").strip().lower().replace("-", "_")
+    if (
+        not effort
+        or not re.fullmatch(r"[a-z][a-z0-9_]{0,31}", effort)
+        or any(marker in effort for marker in ("raw", "thought", "chain", "prompt"))
+    ):
+        return "server_default"
+    return effort
 
 THINKING_MARKER_REGISTRY: dict[str, dict[str, Any]] = {
     "qwen": {"inline_blocks": [("<think>", "</think>")]},
@@ -46,6 +64,15 @@ _THINKING_DIRECTIVES: dict[ThinkingMode, str] = {
         "<think> blocks, or thought-channel markup. Return only the final answer."
     ),
 }
+
+
+def validate_model_effort(value: str | None) -> str:
+    """Validate a provider effort while blocking raw-reasoning directives."""
+    normalized = normalize_model_effort(value)
+    original = (value or "server_default").strip().lower().replace("-", "_")
+    if normalized == "server_default" and original != "server_default":
+        raise ValueError("unsupported_model_effort")
+    return normalized
 
 
 def normalize_thinking_mode(value: str | None) -> ThinkingMode:

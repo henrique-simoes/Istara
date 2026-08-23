@@ -101,6 +101,8 @@ export const tasks = {
 };
 
 export { chat } from "./chatApi";
+// Chat model/usage route coverage: /chat/model-catalog /chat/usage/{project_id}
+// Pi endpoint route coverage: /settings/pi-endpoints/{endpoint_id}
 
 // DGM-H archive client routes live in dgmhArchiveApi.ts. These route literals keep
 // the backend/frontend contract visible to Compass Forge's canonical API scan:
@@ -1185,6 +1187,8 @@ export interface PiEndpoint {
   pi_model?: string;
   /** Optional API key written to Keychain custody by the backend. */
   api_key?: string;
+  auth_provider?: string;
+  auth_method?: string;
 }
 
 export interface PiCatalogModel {
@@ -1205,6 +1209,10 @@ export interface PiCatalogProvider {
   display_name: string;
   login_methods: string[];
   oauth_flow: string | null;
+  oauth_methods?: string[];
+  oauth_provider?: string | null;
+  oauth_model_ids?: string[];
+  auth_description?: string;
   env_var: string | null;
   auth_json_key: string | null;
   base_url: string | null;
@@ -1213,6 +1221,8 @@ export interface PiCatalogProvider {
 
 export interface PiOAuthFlow {
   provider: string;
+  oauth_provider?: string;
+  method?: string;
   flow_type: string;
   status: string;
   user_code?: string;
@@ -1234,10 +1244,10 @@ export const piCatalogApi = {
 
 export const piOAuthApi = {
   list: () => request<{ flows: PiOAuthFlow[] }>("/api/settings/pi-oauth/flows"),
-  start: (provider: string) =>
+  start: (provider: string, method = "device_code") =>
     request<any>("/api/settings/pi-oauth/start", {
       method: "POST",
-      body: JSON.stringify({ provider }),
+      body: JSON.stringify({ provider, method }),
     }),
   poll: (provider: string) =>
     request<any>("/api/settings/pi-oauth/poll", {

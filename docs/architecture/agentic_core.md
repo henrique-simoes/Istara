@@ -112,6 +112,16 @@ product call-site branches. Autoresearch binds an explicit `pi` or `legacy`
 choice once at experiment start, while other dispatcher callers use the
 precedence documented above.
 
+## User-facing Agentic Core and chat controls
+
+Global Settings and Project Settings use the shared `AgenticCoreSection` rather than a compact status-grid select. It explains Pi and Istara in non-specialist language, shows the shared embedding invariant, and labels benchmark comparisons provisional with source and date. Project choice remains inherit/Pi/Istara and preserves dispatcher precedence.
+
+Chat uses `ChatModelControls`: the provider/model menu supports both browseable dropdown and autocomplete; unconfigured catalog entries are visible but disabled; selecting a configured model persists both `model_override` and `endpoint_override` so equal model ids from OpenAI API and OpenAI Codex cannot collide. The effort menu is populated from Pi's exact `thinkingLevels` metadata. The usage popover and `GET /api/chat/usage/{project_id}` show content-free input/output/total/cache read/cache write/cost/turn/context telemetry and explicitly distinguish provider-reported values from estimates. `/api/chat` adds a usage SSE event without changing transcript events.
+
+## Pi authentication boundary
+
+Pi model management is catalog-driven: `GET /api/settings/pi-catalog` and project-readable `GET /api/chat/model-catalog` expose provider/model capability metadata, never secrets. OpenAI is represented accurately as OpenAI API versus OpenAI Codex — ChatGPT subscription. Codex exposes Pi's two login choices: browser PKCE with state-verified callback and headless device code. Browser callbacks return only a success/failure page; access/refresh tokens remain in Keychain or encrypted local custody. The worker has a distinct `openai_codex` transport for the Codex Responses API.
+
 ## What the agentic core is not
 
 - It is transport and accounting, not evidence. Model outputs still enter

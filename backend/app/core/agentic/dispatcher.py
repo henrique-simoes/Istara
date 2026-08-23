@@ -135,6 +135,7 @@ class AgenticDispatcher:
 
     # ── verbs ────────────────────────────────────────────────────────────
     async def chat_turn(self, *, project_id: str, agent_id: str, session_key: str | None,
+                        session_id: str | None = None,
                         system_prompt: str, messages: list[dict[str, Any]], user_text: str,
                         tool_executor: Any = None, tool_names: list[str] | None = None,
                         tools: list[dict[str, Any]] | None = None, params: TurnParams | None = None,
@@ -163,11 +164,12 @@ class AgenticDispatcher:
         except Exception as exc:
             await self._record_failure(engine=selected, purpose="chat_turn", project_id=project_id,
                                        agent_id=agent_id, params=params, started=started,
-                                       task_id=task_id, spine_phase=spine_phase, exc=exc)
+                                       task_id=task_id, spine_phase=spine_phase,
+                                       session_id=session_id, exc=exc)
             raise
         await self._record_outcome(engine=selected, purpose="chat_turn", project_id=project_id,
                                    agent_id=agent_id, params=params, started=started, outcome=outcome,
-                                   task_id=task_id, spine_phase=spine_phase,
+                                   task_id=task_id, spine_phase=spine_phase, session_id=session_id,
                                    request_text=_request_text(system_prompt, messages, extra=user_text))
         return TurnResult(text=outcome.get("text", ""), usage=outcome.get("usage") or {},
                           stop_reason=outcome.get("stop_reason"), endpoint_id=outcome.get("endpoint_id"),
@@ -364,22 +366,23 @@ class AgenticDispatcher:
     async def _record_outcome(self, *, engine: str, purpose: str, project_id: str, agent_id: str,
                               params: TurnParams, started: float, outcome: dict[str, Any],
                               task_id: str | None, spine_phase: str | None,
-                              request_text: str) -> None:
+                              session_id: str | None = None, request_text: str = "") -> None:
         await record_agentic_usage(engine=engine, purpose=purpose, project_id=project_id, agent_id=agent_id,
                                    outcome=outcome, model=params.model, started_at=started,
-                                   task_id=task_id, spine_phase=spine_phase,
+                                   session_id=session_id, task_id=task_id, spine_phase=spine_phase,
                                    request_text=request_text,
                                    response_text=_content_text(outcome.get("text")))
 
     async def _record_failure(self, *, engine: str, purpose: str, project_id: str, agent_id: str,
                               params: TurnParams, started: float, task_id: str | None,
-                              spine_phase: str | None, exc: Exception) -> None:
+                              spine_phase: str | None, session_id: str | None = None,
+                              exc: Exception = RuntimeError("unknown")) -> None:
         # Exception paths (endpoint-resolution failure, unbound or raising
         # legacy executor, worker crashes) still produce their one row: zeroed
         # exact accounting with outcome=error and the exception type preserved.
         await record_agentic_usage(engine=engine, purpose=purpose, project_id=project_id, agent_id=agent_id,
                                    outcome={"status": "error"}, model=params.model, started_at=started,
-                                   task_id=task_id, spine_phase=spine_phase,
+                                   session_id=session_id, task_id=task_id, spine_phase=spine_phase,
                                    error_type=type(exc).__name__)
 
     async def _collect_pi_stream(self, *, purpose: str, project_id: str, agent_id: str,

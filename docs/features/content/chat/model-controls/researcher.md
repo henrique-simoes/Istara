@@ -6,10 +6,10 @@ audience: researcher
 status: documented
 related_features: ["settings.llm-servers", "settings.general", "compute.pool"]
 related_glossary: ["rag"]
-code_references: ["frontend/src/components/chat/ChatView.tsx", "frontend/src/components/chat/chatViewParts.tsx", "frontend/src/lib/modelProviders.ts", "backend/app/api/routes/llm_servers.py"]
-api_references: ["backend/app/api/routes/llm_servers.py", "backend/app/core/llm_router.py"]
-test_references: ["frontend/src/lib/modelProviders.test.ts"]
-last_verified: 2026-05-15
+code_references: ["frontend/src/components/chat/ChatView.tsx", "frontend/src/components/chat/ChatModelControls.tsx", "frontend/src/components/chat/chatViewParts.tsx", "frontend/src/stores/chatStore.ts", "frontend/src/stores/sessionStore.ts", "frontend/src/lib/chatApi.ts", "backend/app/api/routes/chat.py", "backend/app/api/routes/sessions.py"]
+api_references: ["backend/app/api/routes/chat.py", "backend/app/api/routes/sessions.py"]
+test_references: ["frontend/src/lib/modelProviders.test.ts", "tests/test_chat.py", "tests/pi_production/test_pi_catalog_ux.py"]
+last_verified: 2026-08-23
 compass: CF-SPEC-53 / CF-657
 ---
 
@@ -17,7 +17,7 @@ compass: CF-SPEC-53 / CF-657
 
 ## What It Does
 
-Chat exposes model, thinking, and reasoning controls so users can tune how the assistant responds within the configured local or server-backed model environment.
+Chat exposes a workbench-style model and effort menu. Users can browse or autocomplete configured Pi providers/models, choose the exact provider-native effort levels supported by the selected model, and inspect token, cache, context, cost, engine, and estimate status in Usage.
 
 ## Why It Exists
 
@@ -32,19 +32,21 @@ Chat Model Controls exists so the work represented by Chat > Model Controls has 
 ## How UX Researchers Use It
 
 - Open Chat > Model Controls from the Istara navigation or the parent tab.
-- Use the visible controls in this surface to work with chat model controls in the active project context.
-- Review the output in the same view and follow the related feature links when the workflow moves into another Istara surface.
+- Click the model chevron to browse, or type to autocomplete a provider/model.
+- Choose the exact effort level shown for the selected model, then send the next turn.
+- Open Usage to inspect input/output/total tokens, cache read/write, cost, context used, turns, engine, stop reason, and exact-vs-estimated status.
 
 ## Supported Workflows
 
 - Start from Chat > Model Controls when the current research task needs chat model controls.
-- Use the visible controls to create, inspect, refine, or route project work without leaving the active Istara context.
-- Move to related surfaces when needed: settings.llm-servers, settings.general, compute.pool.
+- Unconfigured catalog entries remain visible but disabled; connect them from Settings > Pi Model Management.
+- Change the model and effort for the next turn without leaving the conversation.
 
 ## Inputs, Outputs, And Expected Outcomes
 
-- Project-scoped state or artifact updates associated with chat model controls.
-- Visible status, lists, forms, generated artifacts, or review results shown by the referenced component and routes.
+- The active session stores the selected model, endpoint identity, and effort additively.
+- The usage ledger returns content-free per-session totals; provider-reported values are marked exact and missing-provider values are marked estimated.
+- Existing transcript events remain unchanged; governed turns add a usage event for the menu.
 
 ## Caveats
 
@@ -53,8 +55,8 @@ Chat Model Controls exists so the work represented by Chat > Model Controls has 
 
 ## Related Features
 
-- [settings.llm-servers](../../settings/llm-servers/researcher.md)
 - [settings.general](../../settings/general/researcher.md)
+- [settings.project](../../settings/project/researcher.md)
 - [compute.pool](../../compute/pool/researcher.md)
 
 ## Related Concepts
@@ -63,6 +65,6 @@ Chat Model Controls exists so the work represented by Chat > Model Controls has 
 
 ## Evidence
 
-- Source files: `frontend/src/components/chat/ChatView.tsx`, `frontend/src/components/chat/chatViewParts.tsx`, `frontend/src/lib/modelProviders.ts`, `backend/app/api/routes/llm_servers.py`
-- API references: `backend/app/api/routes/llm_servers.py`, `backend/app/core/llm_router.py`
-- Tests: `frontend/src/lib/modelProviders.test.ts`
+- Source files: `frontend/src/components/chat/ChatView.tsx`, `frontend/src/components/chat/ChatModelControls.tsx`, `frontend/src/stores/chatStore.ts`, `frontend/src/lib/chatApi.ts`, `backend/app/api/routes/chat.py`, `backend/app/api/routes/sessions.py`
+- API references: `backend/app/api/routes/chat.py`, `backend/app/api/routes/sessions.py`
+- Tests: `frontend/src/lib/modelProviders.test.ts`, `tests/test_chat.py`, `tests/pi_production/test_pi_catalog_ux.py`

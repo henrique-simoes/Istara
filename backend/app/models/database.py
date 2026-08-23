@@ -179,6 +179,7 @@ async def init_db() -> None:
             "ALTER TABLE projects ADD COLUMN watch_folder_path VARCHAR(1000)",
             "ALTER TABLE chat_sessions ADD COLUMN thinking_mode VARCHAR(20) "
             "NOT NULL DEFAULT 'server_default'",
+            "ALTER TABLE chat_sessions ADD COLUMN endpoint_override VARCHAR(120)",
             # MFA / 2FA columns
             "ALTER TABLE users ADD COLUMN totp_secret VARCHAR(64)",
             "ALTER TABLE users ADD COLUMN totp_enabled BOOLEAN NOT NULL DEFAULT 0",
@@ -312,6 +313,10 @@ async def init_db() -> None:
             "ALTER TABLE autoresearch_experiments ADD COLUMN engine VARCHAR(16)",
             "CREATE INDEX IF NOT EXISTS ix_autoresearch_experiments_engine "
             "ON autoresearch_experiments(engine)",
+            # Chat usage menu: scope exact/estimated totals to one session.
+            "ALTER TABLE agentic_usage_rows ADD COLUMN session_id VARCHAR(36)",
+            "CREATE INDEX IF NOT EXISTS ix_agentic_usage_rows_session_id "
+            "ON agentic_usage_rows(session_id)",
         ]
         for ddl in migrations:
             try:

@@ -35,12 +35,14 @@ import {
 } from "@earendil-works/pi-ai";
 import { openAICompletionsApi } from "@earendil-works/pi-ai/api/openai-completions.lazy";
 import { anthropicMessagesApi } from "@earendil-works/pi-ai/api/anthropic-messages.lazy";
+import { openAICodexResponsesApi } from "@earendil-works/pi-ai/api/openai-codex-responses.lazy";
 
 let ENV_KEY_COUNTER = 0;
 
 function apiForKind(kind) {
   if (kind === "openai_compat") return { api: openAICompletionsApi(), modelApi: "openai-completions" };
   if (kind === "anthropic_compat") return { api: anthropicMessagesApi(), modelApi: "anthropic-messages" };
+  if (kind === "openai_codex") return { api: openAICodexResponsesApi(), modelApi: "openai-codex-responses" };
   throw new Error(`unsupported_provider_kind:${kind}`);
 }
 
@@ -226,7 +228,8 @@ export function buildRealProvider(endpoint) {
     api: modelApi,
     provider: providerId,
     baseUrl,
-    reasoning: false,
+    reasoning: modelApi === "openai-codex-responses",
+    thinkingLevels: modelApi === "openai-codex-responses" ? ["xhigh", "max", "minimal"] : undefined,
     input: ["text"],
     cost,
     contextWindow: 128000,
