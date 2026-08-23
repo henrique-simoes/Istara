@@ -81,6 +81,38 @@ def _read_macos_keychain_secret(service: str, account: str = "") -> str:
     return result.stdout.strip()
 
 
+def _write_macos_keychain_secret(service: str, account: str, value: str) -> bool:
+    """Write a local secret into macOS Keychain (upsert) without logging it.
+
+    Compatible with ``_read_macos_keychain_secret`` (same service/account
+    scheme). Falls back to ``True`` on non-macOS hosts so endpoint config
+    still persists via the ``ISTARA_PI_SECRET_*`` env path instead.
+    """
+    if not service or not value:
+        return False
+    if not Path("/usr/bin/security").exists():
+        return True  # env-based custody on non-macOS
+    command = [
+        "/usr/bin/security",
+        "add-generic-password",
+        "-U",  # update if exists
+        "-a", account or "default",
+        "-s", service,
+        "-w", value,
+    ]
+    try:
+        result = subprocess.run(
+            command,
+            capture_output=True,
+            text=True,
+            timeout=5,
+            check=False,
+        )
+    except Exception:
+        return False
+    return result.returncode == 0
+
+
 def _pi_endpoint_secret_env_name(endpoint_id: str) -> str:
     """Return the env var that supplies a Pi endpoint secret without Keychain."""
     slug = re.sub(r"[^A-Za-z0-9]+", "_", endpoint_id).strip("_").upper()

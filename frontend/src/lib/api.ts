@@ -1180,7 +1180,76 @@ export interface PiEndpoint {
   max_tokens?: number;
   supports_tools?: boolean;
   supports_vision?: boolean;
+  /** Catalog-driven setup (DEC-3): provider + model ids from the Pi catalog. */
+  pi_provider?: string;
+  pi_model?: string;
+  /** Optional API key written to Keychain custody by the backend. */
+  api_key?: string;
 }
+
+export interface PiCatalogModel {
+  id: string;
+  name: string;
+  api: string;
+  baseUrl?: string;
+  contextWindow?: number;
+  maxTokens?: number;
+  reasoning?: boolean;
+  input?: string[];
+  thinkingLevels?: string[] | null;
+  cost?: Record<string, number> | null;
+}
+
+export interface PiCatalogProvider {
+  id: string;
+  display_name: string;
+  login_methods: string[];
+  oauth_flow: string | null;
+  env_var: string | null;
+  auth_json_key: string | null;
+  base_url: string | null;
+  models: PiCatalogModel[];
+}
+
+export interface PiOAuthFlow {
+  provider: string;
+  flow_type: string;
+  status: string;
+  user_code?: string;
+  verification_uri?: string;
+  verification_uri_complete?: string;
+  auth_url?: string;
+  token_masked?: string;
+  error?: string;
+  poll_count?: number;
+  expires_at?: number;
+}
+
+export const piCatalogApi = {
+  get: () =>
+    request<{ providers: PiCatalogProvider[]; total_models: number }>(
+      "/api/settings/pi-catalog"
+    ),
+};
+
+export const piOAuthApi = {
+  list: () => request<{ flows: PiOAuthFlow[] }>("/api/settings/pi-oauth/flows"),
+  start: (provider: string) =>
+    request<any>("/api/settings/pi-oauth/start", {
+      method: "POST",
+      body: JSON.stringify({ provider }),
+    }),
+  poll: (provider: string) =>
+    request<any>("/api/settings/pi-oauth/poll", {
+      method: "POST",
+      body: JSON.stringify({ provider }),
+    }),
+  cancel: (provider: string) =>
+    request<any>("/api/settings/pi-oauth/cancel", {
+      method: "POST",
+      body: JSON.stringify({ provider }),
+    }),
+};
 
 export const piEndpoints = {
   list: () =>

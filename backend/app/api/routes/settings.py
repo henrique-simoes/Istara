@@ -722,12 +722,25 @@ class AgenticEngineRequest(BaseModel):
     engine: str  # "pi" | "istara" (UI name) | "legacy" (internal alias)
 
 
+class PiOAuthStartRequest(BaseModel):
+    provider: str
+
+
+class PiOAuthPollRequest(BaseModel):
+    provider: str
+
+
+class PiOAuthPKCECallbackRequest(BaseModel):
+    code: str
+    state: str | None = None
+
+
 class PiEndpointRequest(BaseModel):
     endpoint_id: str
     provider_kind: str = "openai_compat"
-    base_url: str
-    model: str
-    keychain_service: str  # required: every Pi endpoint resolves its secret via Keychain
+    base_url: str = ""
+    model: str = ""
+    keychain_service: str = ""  # required: every Pi endpoint resolves its secret via Keychain
     keychain_account: str = ""
     timeout_ms: int = 30_000
     max_retries: int = 0
@@ -738,6 +751,12 @@ class PiEndpointRequest(BaseModel):
     context_window: int = 0
     max_tokens: int = 0
     supports_tools: bool = True
+    # Catalog-driven setup (DEC-3): select a Pi provider + model id instead of
+    # typing an endpoint URL. The backend fills base_url/costs/capabilities
+    # from the canonical Pi catalog.
+    pi_provider: str = ""
+    pi_model: str = ""
+    api_key: str = ""  # optional: written to Keychain custody when provided
     supports_vision: bool = False
 
 
@@ -771,6 +790,102 @@ async def set_agentic_engine(data: AgenticEngineRequest, request: Request):
         logger.warning("Could not persist AGENTIC_ENGINE_DEFAULT: %s", exc)
         persisted = False
     return {"status": "switched", "agentic_engine_default": value, "persisted": persisted}
+
+
+@router.get("/settings/pi-catalog")
+async def get_pi_catalog(request: Request):
+    """Full Pi provider/model catalog for the settings UI (no secrets).
+
+    Includes every provider and model the standalone Pi supports, with login
+    methods (api_key/oauth), env vars and OAuth flow hints so the UI can offer
+    a selectable list + autocomplete with zero manual endpoint typing.
+    """
+    require_global_role(request, "admin")
+    try:
+        from app.core.pi_runtime.catalog import pi_catalog_json
+
+        catalog = pi_catalog_json()
+        return {"providers": catalog, "total_models": sum(len(p["models"]) for p in catalog)}
+    except Exception as exc:  # pragma: no cover - defensive
+        logger.exception("pi catalog failed")
+        raise HTTPException(status_code=500, detail=f"catalog_unavailable:{exc}") from exc
+
+
+@router.get("/settings/pi-oauth/flows")
+async def list_oauth_flows(request: Request):
+    """Status of active Pi OAuth login flows (device-code / PKCE)."""
+    require_global_role(request, "admin")
+    from app.core.pi_runtime.oauth import oauth_status
+
+    return {"flows": oauth_status()}
+
+
+@router.post("/settings/pi-oauth/start")
+async def start_oauth_flow(data: PiOAuthStartRequest, request: Request):
+    """Start a Pi OAuth login flow for a provider (device-code or PKCE).
+
+    Mirrors Pi's ``/login``: returns the user code + verification URI for the
+    UI to display; the backend polls and stores the minted credential.
+    """
+    require_global_role(request, "admin")
+    from app.core.pi_runtime.oauth import start_device_flow, start_pkce_flow
+
+    provider = data.provider.strip().lower()
+    try:
+        if provider == "openrouter":
+            flow = start_pkce_flow()
+        else:
+            flow = start_device_flow(provider)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return {
+        "provider": flow.provider,
+        "flow_type": flow.flow_type,
+        "user_code": flow.user_code,
+        "verification_uri": flow.verification_uri,
+        "verification_uri_complete": flow.verification_uri_complete,
+        "auth_url": flow.auth_url,
+        "expires_at": flow.expires_at,
+    }
+
+
+@router.post("/settings/pi-oauth/poll")
+async def poll_oauth_flow(data: PiOAuthPollRequest, request: Request):
+    """Poll an active device flow; returns approved status + masked token when
+    the user finished the browser step."""
+    require_global_role(request, "admin")
+    from app.core.pi_runtime.oauth import oauth_status, poll_device_flow
+
+    provider = data.provider.strip().lower()
+    try:
+        poll_device_flow(provider)
+    except ValueError:
+        raise HTTPException(status_code=404, detail="no_active_flow")
+    flows = oauth_status(provider)
+    return {"flows": flows}
+
+
+@router.post("/settings/pi-oauth/cancel")
+async def cancel_oauth_flow(data: PiOAuthPollRequest, request: Request):
+    """Cancel an active flow."""
+    require_global_role(request, "admin")
+    from app.core.pi_runtime.oauth import cancel_flow
+
+    cancel_flow(data.provider.strip().lower())
+    return {"status": "cancelled"}
+
+
+@router.post("/settings/pi-oauth/pkce/callback")
+async def pkce_callback(data: PiOAuthPKCECallbackRequest, request: Request):
+    """Exchange an OpenRouter authorization code (PKCE) for an API key."""
+    require_global_role(request, "admin")
+    from app.core.pi_runtime.oauth import finish_pkce_flow, oauth_status
+
+    try:
+        finish_pkce_flow(data.code, data.state)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return {"flows": oauth_status("openrouter")}
 
 
 @router.get("/settings/pi-endpoints")
@@ -811,15 +926,66 @@ async def add_pi_endpoint(data: PiEndpointRequest, request: Request):
         raise HTTPException(status_code=400, detail="pi-deepseek-default is built in")
     if any(e.endpoint_id == endpoint_id for e in settings.pi_api_endpoints):
         raise HTTPException(status_code=409, detail=f"endpoint {endpoint_id!r} already exists")
-    if not data.base_url.startswith(("https://", "http://127.0.0.1", "http://localhost")):
+
+    payload = data.model_dump()
+
+    # Catalog-driven setup (DEC-3): resolve provider/model from the canonical
+    # Pi catalog so the user never types base_url or model capabilities.
+    if data.pi_provider and data.pi_model:
+        from app.core.pi_runtime.catalog import load_catalog
+
+        catalog = load_catalog()
+        provider_models = catalog.get(data.pi_provider)
+        if not provider_models:
+            raise HTTPException(status_code=400, detail=f"unknown pi provider: {data.pi_provider}")
+        match = next((m for m in provider_models if m["id"] == data.pi_model), None)
+        if not match:
+            raise HTTPException(status_code=400, detail=f"unknown pi model: {data.pi_model}")
+        api = str(match.get("api", "")).lower()
+        provider_kind = "anthropic_compat" if "anthropic" in api else "openai_compat"
+        payload["provider_kind"] = provider_kind
+        payload["base_url"] = match.get("baseUrl") or data.base_url
+        payload["model"] = match["id"]
+        payload["context_window"] = int(match.get("contextWindow") or 0)
+        payload["max_tokens"] = int(match.get("maxTokens") or 0)
+        cost = match.get("cost") or {}
+        payload["cost_input_per_mtok"] = float(cost.get("input") or 0.0)
+        payload["cost_output_per_mtok"] = float(cost.get("output") or 0.0)
+        payload["cost_cache_read_per_mtok"] = float(cost.get("cacheRead") or 0.0)
+        payload["cost_cache_write_per_mtok"] = float(cost.get("cacheWrite") or 0.0)
+        if not payload.get("keychain_service"):
+            payload["keychain_service"] = f"istara-pi-{data.pi_provider}"
+
+    if not payload.get("base_url") or not payload.get("model"):
+        raise HTTPException(
+            status_code=400,
+            detail="base_url and model are required — select a Pi provider+model from the catalog or provide them explicitly",
+        )
+    if not payload["base_url"].startswith(("https://", "http://127.0.0.1", "http://localhost")):
         raise HTTPException(status_code=400, detail="base_url must be https (or loopback)")
-    if not data.keychain_service.strip():
+    if not payload.get("keychain_service"):
         raise HTTPException(
             status_code=400,
             detail="keychain_service is required (Pi endpoints resolve secrets via Keychain)",
         )
+
+    # Optional API key custody: write straight to Keychain (same service name
+    # the resolver reads) so the UI can accept a pasted key without a separate
+    # keychain step. Never persisted to disk or returned.
+    if data.api_key.strip():
+        try:
+            from app.config import _write_macos_keychain_secret
+
+            _write_macos_keychain_secret(
+                payload["keychain_service"],
+                payload.get("keychain_account") or "default",
+                data.api_key.strip(),
+            )
+        except Exception as exc:  # pragma: no cover - custody failure is non-fatal to config
+            logger.warning("pi endpoint: keychain write failed for %s: %s", endpoint_id, exc)
+
     try:
-        settings.pi_api_endpoints.append(PiApiEndpoint(**data.model_dump()))
+        settings.pi_api_endpoints.append(PiApiEndpoint(**payload))
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     try:

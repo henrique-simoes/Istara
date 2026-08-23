@@ -39,6 +39,8 @@ docker-compose.override.yml
 # Data
 data/
 !tests/simulation/data/
+!backend/app/core/pi_runtime/data/
+
 *.db
 *.sqlite
 *.sqlite3

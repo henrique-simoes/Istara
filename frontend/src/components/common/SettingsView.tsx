@@ -2,9 +2,9 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { Cpu, HardDrive, Monitor, Wifi, WifiOff, RefreshCw, Plus, Server, Trash2, Users, Lock, Gauge, Download } from "lucide-react";
-import { settings as settingsApi, llmServers, telemetry as telemetryApi, piEndpoints } from "@/lib/api";
+import { settings as settingsApi, telemetry as telemetryApi, piEndpoints, piCatalogApi, piOAuthApi } from "@/lib/api";
 import type { HardwareInfo, ModelRecommendation } from "@/lib/types";
-import type { PiEndpoint } from "@/lib/api";
+import type { PiEndpoint, PiCatalogProvider, PiCatalogModel, PiOAuthFlow } from "@/lib/api";
 import { useAuthStore } from "@/stores/authStore";
 import UserManagement from "./UserManagement";
 import ConnectionStringPanel from "@/components/settings/ConnectionStringPanel";
@@ -389,10 +389,7 @@ export default function SettingsView() {
         </div>
       )}
 
-      {/* LLM Servers */}
-      {capabilities.canManageLlmInfrastructure && <LLMServersSection />}
-
-      {/* Pi Model Management (cloud/API endpoints) */}
+      {/* Pi Model Management — replaces the legacy LLM Servers section (owner decision 2026-08-23) */}
       {capabilities.canManageLlmInfrastructure && <PiEndpointsSection />}
 
       {/* Telemetry (Local-first, No phone-home) */}
@@ -587,263 +584,29 @@ function TelemetrySection() {
   );
 }
 
-function LLMServersSection() {
-  const { user, teamMode } = useAuthStore();
-  const [servers, setServers] = useState<any[]>([]);
-  const [showAdd, setShowAdd] = useState(false);
-  const [newName, setNewName] = useState("");
-  const [newHost, setNewHost] = useState("");
-  const [newType, setNewType] = useState("openai_compat");
-  const [newApiKey, setNewApiKey] = useState("");
-  const [addError, setAddError] = useState<string | null>(null);
-  const selectedProvider = MODEL_PROVIDER_OPTIONS.find((option) => option.value === newType);
-  const canManageLLMServers = !teamMode || user?.role === "admin";
-
-  const fetchServers = useCallback(async () => {
-    if (!canManageLLMServers) {
-      setServers([]);
-      return;
-    }
-    try {
-      const data = await llmServers.list();
-      setServers(data.servers || []);
-    } catch {}
-  }, [canManageLLMServers]);
-
-  useEffect(() => {
-    if (!canManageLLMServers) {
-      setServers([]);
-      return;
-    }
-    void fetchServers();
-  }, [canManageLLMServers, fetchServers]);
-
-  const handleAdd = async () => {
-    if (!canManageLLMServers || !newName.trim() || !newHost.trim()) return;
-    setAddError(null);
-    try {
-      const result = await llmServers.add({
-        name: newName.trim(),
-        provider_type: newType,
-        host: newHost.trim(),
-        api_key: newApiKey.trim() || undefined,
-      });
-      setNewName("");
-      setNewHost("");
-      setNewApiKey("");
-      setShowAdd(false);
-      await fetchServers();
-      // If the server was added but is unhealthy, show a toast with guidance
-      if (result && !result.is_healthy) {
-        window.dispatchEvent(
-          new CustomEvent("istara:toast", {
-            detail: {
-              type: "warning",
-              title: "Server Unreachable",
-              message: `${newName.trim()} was added but could not connect. Check the host URL and API key.`,
-            },
-          })
-        );
-      }
-    } catch (err: any) {
-      setAddError(err.message || "Failed to add server");
-    }
-  };
-
-  const handleDelete = async (id: string) => {
-    if (!canManageLLMServers) return;
-    try {
-      await llmServers.delete(id);
-      await fetchServers();
-    } catch (err: any) {
-      window.dispatchEvent(
-        new CustomEvent("istara:toast", {
-          detail: {
-            type: "error",
-            title: "Delete Failed",
-            message: err.message || "Failed to remove server",
-          },
-        })
-      );
-    }
-  };
-
-  const handleHealthCheck = async (id: string) => {
-    if (!canManageLLMServers) return;
-    try {
-      await llmServers.healthCheck(id);
-      await fetchServers();
-    } catch (err: any) {
-      window.dispatchEvent(
-        new CustomEvent("istara:toast", {
-          detail: {
-            type: "error",
-            title: "Health Check Failed",
-            message: err.message || "Could not reach server",
-          },
-        })
-      );
-    }
-  };
-
-  if (!canManageLLMServers) {
-    return (
-      <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-5">
-        <div className="flex items-center justify-between mb-3">
-          <h3 className="font-medium text-slate-900 dark:text-white flex items-center gap-2">
-            <Server size={18} />
-            LLM Servers
-          </h3>
-          <Lock size={16} className="text-slate-400" aria-hidden="true" />
-        </div>
-        <p className="text-sm text-slate-500">
-          Global admin access is required to manage shared provider endpoints.
-        </p>
-      </div>
-    );
-  }
-
-  return (
-    <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-5">
-      <div className="flex items-center justify-between mb-3">
-        <h3 className="font-medium text-slate-900 dark:text-white flex items-center gap-2">
-          <Server size={18} />
-          LLM Servers
-        </h3>
-        <button
-          onClick={() => setShowAdd(!showAdd)}
-          className="p-1 rounded hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-500"
-          aria-label="Add LLM server"
-        >
-          <Plus size={16} />
-        </button>
-      </div>
-
-      <p className="text-xs text-slate-500 mb-3">
-        Connect to Ollama, LM Studio, Anthropic, or any OpenAI-compatible model server.
-      </p>
-
-      {showAdd && (
-        <div className="mb-3 p-3 bg-slate-50 dark:bg-slate-900 rounded-lg space-y-2">
-          <input
-            type="text"
-            placeholder="Server name"
-            value={newName}
-            onChange={(e) => setNewName(e.target.value)}
-            className="w-full px-2 py-1.5 text-sm rounded border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-istara-500"
-          />
-          <input
-            type="text"
-            placeholder="Host URL (e.g. http://192.168.1.100:1234 or https://api.anthropic.com)"
-            value={newHost}
-            onChange={(e) => setNewHost(e.target.value)}
-            className="w-full px-2 py-1.5 text-sm rounded border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-istara-500"
-          />
-          <select
-            value={newType}
-            onChange={(e) => {
-              const nextType = e.target.value;
-              setNewType(nextType);
-              if (!newHost.trim()) {
-                setNewHost(defaultHostForProvider(nextType));
-              }
-            }}
-            className="w-full px-2 py-1.5 text-sm rounded border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-istara-500"
-            aria-label="Provider type"
-          >
-            {MODEL_PROVIDER_OPTIONS.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </select>
-          {selectedProvider && (
-            <p className="text-xs text-slate-500 dark:text-slate-400">
-              {selectedProvider.description}
-            </p>
-          )}
-          <input
-            type="password"
-            placeholder="API key (leave blank if server has no auth)"
-            value={newApiKey}
-            onChange={(e) => setNewApiKey(e.target.value)}
-            className="w-full px-2 py-1.5 text-sm rounded border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-istara-500"
-            aria-label="API key"
-          />
-          {addError && (
-            <p className="text-xs text-red-500">{addError}</p>
-          )}
-          <button
-            onClick={handleAdd}
-            className="w-full py-1.5 bg-istara-600 hover:bg-istara-700 text-white text-sm font-medium rounded"
-          >
-            Add Server
-          </button>
-        </div>
-      )}
-
-      {servers.length > 0 ? (
-        <div className="space-y-2">
-          {servers.map((s) => (
-            <div key={s.id} className="flex items-center gap-2 p-2 rounded border border-slate-100 dark:border-slate-700">
-              <div className={`w-2 h-2 rounded-full flex-shrink-0 ${s.is_healthy ? "bg-green-500" : "bg-red-500"}`} title={s.is_healthy ? "Connected" : (s.health_error || "Unreachable")} />
-              <div className="flex-1 min-w-0">
-                <div className="text-sm font-medium text-slate-800 dark:text-slate-200 flex items-center gap-1">
-                  {s.name}
-                  {s.has_api_key && <span title="API key configured"><Lock size={10} className="text-slate-400" /></span>}
-                </div>
-                <div className="text-xs text-slate-400 truncate">
-                  {s.host} ({providerLabel(s.provider_type)})
-                </div>
-                {!s.is_healthy && s.health_error && (
-                  <div className="text-xs text-red-500 mt-0.5 truncate" title={s.health_error}>{s.health_error.length > 60 ? s.health_error.slice(0, 60) + "…" : s.health_error}</div>
-                )}
-              </div>
-              <button
-                onClick={() => handleHealthCheck(s.id)}
-                className="p-1 rounded hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-400"
-                aria-label="Check health"
-                title="Health check"
-              >
-                <RefreshCw size={12} />
-              </button>
-              <button
-                onClick={() => handleDelete(s.id)}
-                className="p-1 rounded hover:bg-red-50 dark:hover:bg-red-900/20 text-slate-400 hover:text-red-500"
-                aria-label="Remove server"
-              >
-                <Trash2 size={12} />
-              </button>
-            </div>
-          ))}
-        </div>
-      ) : (
-        <p className="text-sm text-slate-400">
-          No external servers. Local and OpenAI-compatible servers can be added here.
-        </p>
-      )}
-    </div>
-  );
-}
-
 function PiEndpointsSection() {
   const { user, teamMode } = useAuthStore();
   const [endpoints, setEndpoints] = useState<PiEndpoint[]>([]);
   const [retirementNote, setRetirementNote] = useState("");
   const [showAdd, setShowAdd] = useState(false);
-  const [newId, setNewId] = useState("");
-  const [newBaseUrl, setNewBaseUrl] = useState("");
-  const [newModel, setNewModel] = useState("");
-  const [newKind, setNewKind] = useState("openai_compat");
-  const [newKeychain, setNewKeychain] = useState("");
+  const [providers, setProviders] = useState<PiCatalogProvider[]>([]);
+  const [providerQuery, setProviderQuery] = useState("");
+  const [modelQuery, setModelQuery] = useState("");
+  const [selectedProvider, setSelectedProvider] = useState<PiCatalogProvider | null>(null);
+  const [selectedModel, setSelectedModel] = useState<PiCatalogModel | null>(null);
+  const [loginMethod, setLoginMethod] = useState<"api_key" | "oauth" | "none">("api_key");
+  const [apiKey, setApiKey] = useState("");
+  const [endpointName, setEndpointName] = useState("");
   const [addError, setAddError] = useState<string | null>(null);
+  const [adding, setAdding] = useState(false);
+  // OAuth state
+  const [oauthFlows, setOauthFlows] = useState<PiOAuthFlow[]>([]);
+  const [activeOAuth, setActiveOAuth] = useState<PiOAuthFlow | null>(null);
+  const [oauthError, setOauthError] = useState<string | null>(null);
   const canManage = !teamMode || user?.role === "admin";
 
   const fetchEndpoints = useCallback(async () => {
-    if (!canManage) {
-      setEndpoints([]);
-      return;
-    }
+    if (!canManage) return;
     try {
       const data = await piEndpoints.list();
       setEndpoints(data.endpoints || []);
@@ -851,29 +614,94 @@ function PiEndpointsSection() {
     } catch {}
   }, [canManage]);
 
+  const fetchCatalog = useCallback(async () => {
+    if (!canManage) return;
+    try {
+      const data = await piCatalogApi.get();
+      setProviders(data.providers || []);
+    } catch {}
+  }, [canManage]);
+
   useEffect(() => {
     void fetchEndpoints();
-  }, [fetchEndpoints]);
+    void fetchCatalog();
+  }, [fetchEndpoints, fetchCatalog]);
+
+  // Poll active OAuth flows while one is in progress
+  useEffect(() => {
+    if (!activeOAuth) return;
+    const timer = setInterval(async () => {
+      try {
+        const data = await piOAuthApi.poll(activeOAuth.provider);
+        const flows = (data.flows || []) as PiOAuthFlow[];
+        setOauthFlows(flows);
+        const updated = flows.find((f) => f.provider === activeOAuth.provider);
+        if (updated && updated.status === "approved") {
+          setActiveOAuth(null);
+          setShowAdd(false);
+          setAddError(null);
+          await fetchEndpoints();
+        } else if (updated && (updated.status === "failed" || updated.status === "expired")) {
+          setOauthError(updated.error || updated.status);
+          setActiveOAuth(null);
+        } else if (updated) {
+          setActiveOAuth(updated);
+        }
+      } catch {}
+    }, 5000);
+    return () => clearInterval(timer);
+  }, [activeOAuth, fetchEndpoints]);
+
+  const providerMatches = providers.filter((p) =>
+    p.id.toLowerCase().includes(providerQuery.toLowerCase()) ||
+    p.display_name.toLowerCase().includes(providerQuery.toLowerCase())
+  );
+  const modelMatches = selectedProvider
+    ? selectedProvider.models.filter(
+        (m) =>
+          m.id.toLowerCase().includes(modelQuery.toLowerCase()) ||
+          (m.name || "").toLowerCase().includes(modelQuery.toLowerCase())
+      )
+    : [];
+
+  const handleProviderSelect = (provider: PiCatalogProvider) => {
+    setSelectedProvider(provider);
+    setSelectedModel(null);
+    setModelQuery("");
+    setLoginMethod(provider.login_methods.includes("api_key") ? "api_key" : "oauth");
+  };
 
   const handleAdd = async () => {
-    if (!canManage || !newId.trim() || !newBaseUrl.trim() || !newModel.trim()) return;
+    if (!canManage || !selectedProvider || !selectedModel) {
+      setAddError("Select a provider and model from the catalog.");
+      return;
+    }
+    setAdding(true);
     setAddError(null);
     try {
+      const autoId = endpointName.trim() || `${selectedProvider.id}-${selectedModel.id}`;
       await piEndpoints.add({
-        endpoint_id: newId.trim(),
-        provider_kind: newKind,
-        base_url: newBaseUrl.trim(),
-        model: newModel.trim(),
-        keychain_service: newKeychain.trim(),
+        endpoint_id: autoId,
+        provider_kind: "openai_compat",
+        base_url: selectedModel.baseUrl || "",
+        model: selectedModel.id,
+        pi_provider: selectedProvider.id,
+        pi_model: selectedModel.id,
+        keychain_service: `istara-pi-${selectedProvider.id}`,
+        api_key: loginMethod === "api_key" ? apiKey.trim() : "",
       });
-      setNewId("");
-      setNewBaseUrl("");
-      setNewModel("");
-      setNewKeychain("");
+      setEndpointName("");
+      setApiKey("");
+      setSelectedProvider(null);
+      setSelectedModel(null);
+      setProviderQuery("");
+      setModelQuery("");
       setShowAdd(false);
       await fetchEndpoints();
     } catch (err: any) {
       setAddError(err.message || "Failed to add endpoint");
+    } finally {
+      setAdding(false);
     }
   };
 
@@ -888,6 +716,17 @@ function PiEndpointsSection() {
           detail: { type: "error", title: "Delete Failed", message: err.message || "Failed to remove endpoint" },
         })
       );
+    }
+  };
+
+  const handleOAuthStart = async (providerId: string) => {
+    setOauthError(null);
+    try {
+      const res = await piOAuthApi.start(providerId);
+      const flow = { provider: providerId, flow_type: res.flow_type, status: "pending", ...res };
+      setActiveOAuth(flow);
+    } catch (err: any) {
+      setOauthError(err.message || "Failed to start OAuth login");
     }
   };
 
@@ -913,84 +752,238 @@ function PiEndpointsSection() {
       <div className="flex items-center justify-between mb-3">
         <h3 className="font-medium text-slate-900 dark:text-white flex items-center gap-2">
           <Server size={18} />
-          Pi Model Management (Cloud &amp; API)
+          Pi Model Management
         </h3>
         <button
           onClick={() => setShowAdd((v) => !v)}
           className="flex items-center gap-1 px-3 py-1.5 text-sm rounded-lg bg-istara-600 text-white hover:bg-istara-700 transition-colors"
         >
-          <Plus size={14} /> Add Endpoint
+          <Plus size={14} /> {showAdd ? "Cancel" : "Add Model"}
         </button>
       </div>
       <p className="text-sm text-slate-500 dark:text-slate-400 mb-3">
-        Cloud models and API endpoints are managed by Pi from now on. Local serving and donated
-        compute (petals) stay in their own sections and keep working with either agentic core.
+        All providers and models supported by Pi, with API-key or OAuth login — no manual endpoint
+        typing needed. Select from the catalog or type to search and autocomplete.
       </p>
       {retirementNote && (
         <p className="text-xs text-slate-400 dark:text-slate-500 mb-3">{retirementNote}</p>
       )}
 
       {showAdd && (
-        <div className="mb-4 p-3 rounded-lg border border-slate-200 dark:border-slate-700 space-y-2">
-          <input
-            type="text"
-            placeholder="Endpoint id (e.g. pi-openai-main)"
-            value={newId}
-            onChange={(e) => setNewId(e.target.value)}
-            className="w-full px-3 py-2 text-sm rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white"
-          />
-          <input
-            type="text"
-            placeholder="Base URL (https://...)"
-            value={newBaseUrl}
-            onChange={(e) => setNewBaseUrl(e.target.value)}
-            className="w-full px-3 py-2 text-sm rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white"
-          />
-          <input
-            type="text"
-            placeholder="Model (e.g. gpt-4o, claude-sonnet-4-5)"
-            value={newModel}
-            onChange={(e) => setNewModel(e.target.value)}
-            className="w-full px-3 py-2 text-sm rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white"
-          />
-          <div className="flex gap-2">
-            <select
-              value={newKind}
-              onChange={(e) => setNewKind(e.target.value)}
-              className="flex-1 px-3 py-2 text-sm rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white"
-            >
-              <option value="openai_compat">OpenAI-compatible</option>
-              <option value="anthropic_compat">Anthropic-compatible</option>
-            </select>
+        <div className="mb-4 p-3 rounded-lg border border-slate-200 dark:border-slate-700 space-y-3">
+          {/* Step 1: provider (autocomplete) */}
+          <div>
+            <label className="text-xs font-medium text-slate-500 dark:text-slate-400 mb-1 block">
+              1. Provider
+            </label>
             <input
               type="text"
-              placeholder="Keychain service (optional)"
-              value={newKeychain}
-              onChange={(e) => setNewKeychain(e.target.value)}
-              className="flex-1 px-3 py-2 text-sm rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white"
+              placeholder="Type to search providers (e.g. deepseek, openai, anthropic, google…)"
+              value={providerQuery}
+              onChange={(e) => { setProviderQuery(e.target.value); setSelectedProvider(null); }}
+              className="w-full px-3 py-2 text-sm rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white"
+              aria-label="Search Pi providers"
             />
+            {providerQuery && !selectedProvider && (
+              <ul className="mt-1 max-h-56 overflow-auto rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 divide-y divide-slate-100 dark:divide-slate-800">
+                {providerMatches.map((provider) => (
+                  <li key={provider.id}>
+                    <button
+                      type="button"
+                      onClick={() => handleProviderSelect(provider)}
+                      className="w-full text-left px-3 py-2 text-sm hover:bg-slate-50 dark:hover:bg-slate-800"
+                    >
+                      <span className="font-medium text-slate-900 dark:text-white">{provider.display_name}</span>
+                      <span className="ml-2 text-xs text-slate-400 font-mono">{provider.id}</span>
+                      <span className="ml-2 text-xs text-slate-400">({provider.models.length} models)</span>
+                    </button>
+                  </li>
+                ))}
+                {providerMatches.length === 0 && (
+                  <li className="px-3 py-2 text-sm text-slate-400">No provider matches "{providerQuery}"</li>
+                )}
+              </ul>
+            )}
+            {selectedProvider && (
+              <div className="mt-1 flex items-center gap-2 text-sm">
+                <span className="font-medium text-istara-600 dark:text-istara-400">{selectedProvider.display_name}</span>
+                <span className="text-xs text-slate-400 font-mono">{selectedProvider.id}</span>
+                <button
+                  type="button"
+                  onClick={() => { setSelectedProvider(null); setProviderQuery(""); }}
+                  className="text-xs text-slate-400 hover:text-slate-600"
+                >
+                  change
+                </button>
+              </div>
+            )}
           </div>
+
+          {/* Step 2: model (autocomplete) */}
+          {selectedProvider && (
+            <div>
+              <label className="text-xs font-medium text-slate-500 dark:text-slate-400 mb-1 block">
+                2. Model ({selectedProvider.models.length} available)
+              </label>
+              <input
+                type="text"
+                placeholder="Type to search models (e.g. deepseek-v4-pro, gpt-5.4…)"
+                value={modelQuery}
+                onChange={(e) => { setModelQuery(e.target.value); setSelectedModel(null); }}
+                className="w-full px-3 py-2 text-sm rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white"
+                aria-label="Search Pi models"
+              />
+              {modelQuery && !selectedModel && (
+                <ul className="mt-1 max-h-56 overflow-auto rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 divide-y divide-slate-100 dark:divide-slate-800">
+                  {modelMatches.slice(0, 50).map((model) => (
+                    <li key={model.id}>
+                      <button
+                        type="button"
+                        onClick={() => setSelectedModel(model)}
+                        className="w-full text-left px-3 py-2 text-sm hover:bg-slate-50 dark:hover:bg-slate-800"
+                      >
+                        <span className="font-medium text-slate-900 dark:text-white">{model.name || model.id}</span>
+                        <span className="ml-2 text-xs text-slate-400 font-mono">{model.id}</span>
+                        {model.contextWindow ? (
+                          <span className="ml-2 text-xs text-slate-400">{(model.contextWindow / 1000).toFixed(0)}k ctx</span>
+                        ) : null}
+                        {model.reasoning ? (
+                          <span className="ml-2 text-xs bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 rounded px-1.5 py-0.5">reasoning</span>
+                        ) : null}
+                      </button>
+                    </li>
+                  ))}
+                  {modelMatches.length === 0 && (
+                    <li className="px-3 py-2 text-sm text-slate-400">No model matches "{modelQuery}"</li>
+                  )}
+                </ul>
+              )}
+              {selectedModel && (
+                <div className="mt-1 flex items-center gap-2 text-sm">
+                  <span className="font-medium text-istara-600 dark:text-istara-400">{selectedModel.name || selectedModel.id}</span>
+                  <span className="text-xs text-slate-400 font-mono">{selectedModel.id}</span>
+                  <span className="text-xs text-slate-400">{selectedModel.contextWindow ? `${(selectedModel.contextWindow / 1000).toFixed(0)}k ctx` : ""}</span>
+                  <button
+                    type="button"
+                    onClick={() => { setSelectedModel(null); setModelQuery(""); }}
+                    className="text-xs text-slate-400 hover:text-slate-600"
+                  >
+                    change
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Step 3: login method */}
+          {selectedProvider && selectedModel && (
+            <div>
+              <label className="text-xs font-medium text-slate-500 dark:text-slate-400 mb-1 block">
+                3. Login method
+              </label>
+              <div className="flex gap-2 flex-wrap">
+                {selectedProvider.login_methods.includes("api_key") && (
+                  <button
+                    type="button"
+                    onClick={() => setLoginMethod("api_key")}
+                    className={`px-3 py-1.5 text-sm rounded-lg border transition-colors ${
+                      loginMethod === "api_key"
+                        ? "bg-istara-600 text-white border-istara-600"
+                        : "border-slate-300 dark:border-slate-700 text-slate-600 dark:text-slate-300"
+                    }`}
+                  >
+                    API Key
+                  </button>
+                )}
+                {selectedProvider.login_methods.includes("oauth") && (
+                  <button
+                    type="button"
+                    onClick={() => setLoginMethod("oauth")}
+                    className={`px-3 py-1.5 text-sm rounded-lg border transition-colors ${
+                      loginMethod === "oauth"
+                        ? "bg-istara-600 text-white border-istara-600"
+                        : "border-slate-300 dark:border-slate-700 text-slate-600 dark:text-slate-300"
+                    }`}
+                  >
+                    {selectedProvider.oauth_flow === "pkce" ? "Sign in with OpenRouter" : "OAuth (subscription)"}
+                  </button>
+                )}
+                {!selectedProvider.login_methods.includes("api_key") && !selectedProvider.login_methods.includes("oauth") && (
+                  <span className="text-xs text-slate-400">No credential needed</span>
+                )}
+              </div>
+              {loginMethod === "api_key" && (
+                <div className="mt-2">
+                  <input
+                    type="password"
+                    placeholder={`API key (${selectedProvider.env_var || "secret"}) — optional if set on the server`}
+                    value={apiKey}
+                    onChange={(e) => setApiKey(e.target.value)}
+                    className="w-full px-3 py-2 text-sm rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white"
+                    aria-label="API key"
+                  />
+                  <input
+                    type="text"
+                    placeholder="Endpoint name (optional; auto-generated if empty)"
+                    value={endpointName}
+                    onChange={(e) => setEndpointName(e.target.value)}
+                    className="mt-2 w-full px-3 py-2 text-sm rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white"
+                    aria-label="Endpoint name"
+                  />
+                </div>
+              )}
+              {loginMethod === "oauth" && !activeOAuth && (
+                <div className="mt-2">
+                  <button
+                    type="button"
+                    onClick={() => handleOAuthStart(selectedProvider.id)}
+                    className="px-3 py-1.5 text-sm rounded-lg bg-istara-600 text-white hover:bg-istara-700 transition-colors"
+                  >
+                    Start {selectedProvider.display_name} login
+                  </button>
+                </div>
+              )}
+              {activeOAuth && (
+                <div className="mt-2 p-3 rounded-lg border border-blue-200 dark:border-blue-900/40 bg-blue-50 dark:bg-blue-900/20">
+                  <p className="text-sm text-slate-800 dark:text-slate-200">
+                    Open <span className="font-mono text-blue-600 dark:text-blue-400">{activeOAuth.verification_uri}</span>
+                    {activeOAuth.user_code ? <> and enter code <span className="font-mono font-semibold">{activeOAuth.user_code}</span></> : null}
+                  </p>
+                  <p className="text-xs text-slate-500 mt-1">
+                    Waiting for approval — the page updates automatically when you finish…
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => { void piOAuthApi.cancel(activeOAuth.provider); setActiveOAuth(null); }}
+                    className="mt-2 text-xs text-slate-400 hover:text-slate-600"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Step 4: add */}
+          {selectedProvider && selectedModel && loginMethod !== "oauth" && (
+            <div className="flex gap-2">
+              <button
+                onClick={handleAdd}
+                disabled={adding}
+                className="px-3 py-1.5 text-sm rounded-lg bg-istara-600 text-white hover:bg-istara-700 transition-colors disabled:opacity-50"
+              >
+                {adding ? "Adding…" : "Add Model"}
+              </button>
+            </div>
+          )}
+          {oauthError && <p className="text-sm text-red-500">{oauthError}</p>}
           {addError && <p className="text-sm text-red-500">{addError}</p>}
-          <div className="flex gap-2">
-            <button
-              onClick={handleAdd}
-              className="px-3 py-1.5 text-sm rounded-lg bg-istara-600 text-white hover:bg-istara-700 transition-colors"
-            >
-              Add
-            </button>
-            <button
-              onClick={() => setShowAdd(false)}
-              className="px-3 py-1.5 text-sm rounded-lg border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300"
-            >
-              Cancel
-            </button>
-          </div>
         </div>
       )}
 
       {endpoints.length === 0 ? (
         <p className="text-sm text-slate-500">
-          No custom endpoints yet. The built-in <span className="font-mono">pi-deepseek-default</span> endpoint is always available.
+          No configured models yet. The built-in <span className="font-mono">pi-deepseek-default</span> endpoint is always available.
         </p>
       ) : (
         <ul className="space-y-2">
