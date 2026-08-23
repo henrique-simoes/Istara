@@ -230,6 +230,7 @@ export default function PiModelManagement() {
   const [completingOAuth, setCompletingOAuth] = useState(false);
   const [startingOAuth, setStartingOAuth] = useState(false);
   const [credentialReady, setCredentialReady] = useState(false);
+  const [completedOAuthFlowId, setCompletedOAuthFlowId] = useState<string | null>(null);
   const [oauthError, setOauthError] = useState<string | null>(null);
   const [addError, setAddError] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
@@ -267,6 +268,7 @@ export default function PiModelManagement() {
         setActiveOAuth(latest);
         if (latest.status === "approved") {
           setCredentialReady(true);
+          setCompletedOAuthFlowId(latest.flow_id || null);
           setActiveOAuth(null);
         } else if (latest.status === "failed" || latest.status === "expired") {
           setOauthError(latest.error || "The login did not complete.");
@@ -305,6 +307,7 @@ export default function PiModelManagement() {
     setModelOpen(false);
     setModelQuery("");
     setCredentialReady(false);
+    setCompletedOAuthFlowId(null);
     setActiveOAuth(null);
     setManualOAuthInput("");
     setOauthError(null);
@@ -318,6 +321,7 @@ export default function PiModelManagement() {
     setSelectedModel(model);
     setModelOpen(false);
     setCredentialReady(false);
+    setCompletedOAuthFlowId(null);
     setActiveOAuth(null);
     setManualOAuthInput("");
     setOauthError(null);
@@ -336,6 +340,7 @@ export default function PiModelManagement() {
     if (!selectedProvider || !selectedModel || !oauthSupportedForModel) return;
     setOauthError(null);
     setCredentialReady(false);
+    setCompletedOAuthFlowId(null);
     setManualOAuthInput("");
     setStartingOAuth(true);
     try {
@@ -358,6 +363,7 @@ export default function PiModelManagement() {
       const latest = (response.flows || []).find((flow: PiOAuthFlow) => flow.flow_id === activeOAuth.flow_id) || (response.flows || []).find((flow: PiOAuthFlow) => flow.provider === activeOAuth.provider);
       if (latest?.status === "approved") {
         setCredentialReady(true);
+        setCompletedOAuthFlowId(latest.flow_id || null);
         setActiveOAuth(null);
         setManualOAuthInput("");
       } else {
@@ -398,6 +404,7 @@ export default function PiModelManagement() {
         keychain_service: authMode === "oauth" ? `istara-pi-oauth-${oauthProvider}` : `istara-pi-${selectedProvider.id}`,
         auth_provider: oauthProvider,
         auth_method: selectedAuthMethod,
+        oauth_flow_id: authMode === "oauth" ? (completedOAuthFlowId || "") : undefined,
         api_key: authMode === "api_key" ? apiKey.trim() : "",
       });
       setShowAdd(false);

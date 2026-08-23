@@ -774,6 +774,7 @@ class PiEndpointRequest(BaseModel):
     supports_vision: bool = False
     auth_provider: str = ""
     auth_method: str = "api_key"
+    oauth_flow_id: str = ""
 
 
 def _persist_pi_endpoints() -> None:
@@ -1098,7 +1099,9 @@ async def add_pi_endpoint(data: PiEndpointRequest, request: Request):
             from app.core.pi_runtime.oauth import consume_oauth_credential
 
             oauth_provider = data.auth_provider or data.pi_provider
-            credential = consume_oauth_credential(oauth_provider)
+            if not data.oauth_flow_id:
+                raise HTTPException(status_code=400, detail="oauth_flow_id is required after Pi login")
+            credential = consume_oauth_credential(oauth_provider, data.oauth_flow_id)
             payload["oauth_credential_encrypted"] = encrypt_field(_json.dumps(credential, separators=(",", ":")))
         except ValueError as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc

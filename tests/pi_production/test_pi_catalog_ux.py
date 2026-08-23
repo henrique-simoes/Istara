@@ -181,7 +181,7 @@ def test_oauth_credential_is_consumed_into_endpoint_custody(client, monkeypatch)
     from app.config import settings
     from app.core.pi_runtime import oauth
 
-    oauth._store_flow(oauth.OAuthFlowState(
+    flow = oauth._store_flow(oauth.OAuthFlowState(
         provider="openai-codex",
         oauth_provider="openai-codex",
         flow_type="device_code",
@@ -199,6 +199,7 @@ def test_oauth_credential_is_consumed_into_endpoint_custody(client, monkeypatch)
             "pi_model": "gpt-5.4",
             "auth_provider": "openai-codex",
             "auth_method": "oauth_device_code",
+            "oauth_flow_id": flow.flow_id,
             "keychain_service": "istara-pi-oauth-openai-codex",
         },
     )

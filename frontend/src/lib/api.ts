@@ -1189,6 +1189,7 @@ export interface PiEndpoint {
   api_key?: string;
   auth_provider?: string;
   auth_method?: string;
+  oauth_flow_id?: string;
 }
 
 export interface PiCatalogModel {

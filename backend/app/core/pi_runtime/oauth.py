@@ -113,8 +113,8 @@ def _store_flow(flow: OAuthFlowState) -> OAuthFlowState:
 
 
 def _find_flow(provider: str, flow_id: str | None = None) -> OAuthFlowState | None:
-    if flow_id and flow_id in _FLOWS and _FLOWS[flow_id].provider == provider:
-        return _FLOWS[flow_id]
+    if flow_id:
+        return _FLOWS.get(flow_id) if flow_id in _FLOWS and _FLOWS[flow_id].provider == provider else None
     candidates = [flow for flow in _FLOWS.values() if flow.provider == provider]
     return candidates[-1] if candidates else None
 
@@ -293,7 +293,7 @@ def finish_openai_browser_flow(code: str, state: str, flow_id: str | None = None
         raise ValueError("no_active_openai_browser_flow")
     if time.time() > flow.expires_at:
         flow.status = "expired"
-        return flow
+        raise ValueError("oauth_flow_expired")
     if not state or not secrets.compare_digest(state, flow.state):
         flow.status = "failed"
         flow.error = "oauth_state_mismatch"
@@ -565,6 +565,9 @@ def finish_anthropic_browser_flow(code: str, state: str, flow_id: str | None = N
     flow = _find_flow_by_state("anthropic", state) if not flow_id else _find_flow("anthropic", flow_id)
     if not flow or flow.method != "browser":
         raise ValueError("no_active_anthropic_browser_flow")
+    if time.time() > flow.expires_at:
+        flow.status = "expired"
+        raise ValueError("oauth_flow_expired")
     if not state or not secrets.compare_digest(state, flow.state):
         flow.status = "failed"
         flow.error = "oauth_state_mismatch"
@@ -591,6 +594,9 @@ def finish_pkce_flow(code: str, state: str | None = None, flow_id: str | None = 
     flow = (_find_flow_by_state("openrouter", state) if state and not flow_id else _find_flow("openrouter", flow_id))
     if not flow:
         raise ValueError("no_active_flow")
+    if time.time() > flow.expires_at:
+        flow.status = "expired"
+        raise ValueError("oauth_flow_expired")
     if state and flow.state and not secrets.compare_digest(state, flow.state):
         raise ValueError("oauth_state_mismatch")
     response = _http_json(

@@ -57,7 +57,23 @@ export const useChatStore = create<ChatStore>((set, get) => ({
     }
     try {
       const usage = await chatApi.usage(projectId, sessionId);
-      set({ usage });
+      const hydrated = usage.latest ? {
+        ...usage,
+        last_turn: {
+          usage: {
+            input_tokens: usage.latest.input_tokens,
+            output_tokens: usage.latest.output_tokens || 0,
+            cacheRead: usage.latest.cache_read || 0,
+            cacheWrite: usage.latest.cache_write || 0,
+            totalTokens: usage.latest.total_tokens || 0,
+            cost: { total: usage.latest.cost_usd || 0 },
+          },
+          model: usage.latest.model,
+          endpoint_id: usage.latest.endpoint_id,
+          stop_reason: usage.latest.stop_reason,
+        },
+      } : usage;
+      set({ usage: hydrated });
     } catch {
       // Older servers may not expose the additive usage endpoint yet.
       set({ usage: null });
@@ -149,9 +165,11 @@ export const useChatStore = create<ChatStore>((set, get) => ({
         agent_name: agentName,
       };
 
+      const streamedLastTurn = get().usage?.last_turn;
       let usage = get().usage;
       try {
-        usage = await chatApi.usage(projectId, sessionId);
+        const aggregate = await chatApi.usage(projectId, sessionId);
+        usage = streamedLastTurn ? { ...aggregate, last_turn: streamedLastTurn } : aggregate;
       } catch {
         // Keep the streamed last-turn telemetry if the aggregate request fails.
       }
