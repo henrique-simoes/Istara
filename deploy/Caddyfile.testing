@@ -1,15 +1,9 @@
 # Istara testing Caddyfile — mirrors the production Caddyfile routing
-# (see Caddyfile at repo root) but uses `tls internal` (self-signed) for
-# IP-based acceptance testing on the managed VPS. Production uses TLS +
-# a domain via the root Caddyfile. Same-origin: the browser only ever
-# talks to :13080, over http or https (Caddy protocol detection).
+# (see Caddyfile at repo root). The public origin is a single port (13080
+# = http, and 13081 = https self-signed for browsers that force HTTPS).
+# Production uses TLS + a domain via the root Caddyfile.
 
-http://:80, https://:80 {
-    # Self-signed certificate so modern browsers that force HTTPS still
-    # get a working (warned) connection instead of a silent hang. Both
-    # listeners share :80 (Caddy protocol detection), published as 13080.
-    tls internal
-
+:80 {
     # Backend API
     handle /api/* {
         reverse_proxy backend:8000
@@ -28,6 +22,49 @@ http://:80, https://:80 {
     # WebSocket endpoints — the backend serves the exact /ws route (plus
     # /ws/relay for compute donation), so match both the exact path and
     # the prefix. A bare /ws/* matcher would route /ws to the frontend.
+    @ws {
+        path /ws /ws/*
+    }
+    handle @ws {
+        reverse_proxy backend:8000
+    }
+
+    # A2A Protocol discovery
+    handle /a2a {
+        reverse_proxy backend:8000
+    }
+
+    handle /.well-known/* {
+        reverse_proxy backend:8000
+    }
+
+    # Frontend (catch-all)
+    handle {
+        reverse_proxy frontend:3000
+    }
+}
+
+# HTTPS listener (self-signed) — same routing, for browsers that force
+# https:// (Chrome HTTPS-First, Firefox HTTPS-Only). Published as 13081.
+https://:443 {
+    tls internal
+
+    # Backend API
+    handle /api/* {
+        reverse_proxy backend:8000
+    }
+
+    # Webhook routes (WhatsApp, Google Chat, survey platforms)
+    handle /webhooks/* {
+        reverse_proxy backend:8000
+    }
+
+    # MCP endpoint (when enabled)
+    handle /mcp/* {
+        reverse_proxy backend:8000
+    }
+
+    # WebSocket endpoints
     @ws {
         path /ws /ws/*
     }

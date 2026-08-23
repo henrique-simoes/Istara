@@ -33,6 +33,7 @@ services:
     container_name: istara-test-caddy
     ports:
       - "13080:80"
+      - "13081:443"
     networks: [frontend-net, backend-net]
     volumes:
       - ./deploy/Caddyfile.testing:/etc/caddy/Caddyfile:ro
