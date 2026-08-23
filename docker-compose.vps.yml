@@ -85,6 +85,10 @@ services:
       - RATE_LIMIT_ENABLED=${RATE_LIMIT_ENABLED:-true}
       - MCP_SERVER_ENABLED=${MCP_SERVER_ENABLED:-false}
       - AUTORESEARCH_ENABLED=${AUTORESEARCH_ENABLED:-false}
+      # Pi endpoint secrets: env wins over Keychain (config.py resolves
+      # ISTARA_PI_SECRET_<ENDPOINT_ID_SLUG> first) so non-macOS hosts can bind
+      # endpoints. Supply via --env-file (never committed); empty = Keychain path.
+      - ISTARA_PI_SECRET_PI_DEEPSEEK_DEFAULT=${ISTARA_PI_SECRET_PI_DEEPSEEK_DEFAULT:-}
       - RESOURCE_RESERVE_RAM_GB=${RESOURCE_RESERVE_RAM_GB:-1}
       - RESOURCE_RESERVE_CPU_PERCENT=${RESOURCE_RESERVE_CPU_PERCENT:-10}
     healthcheck:
