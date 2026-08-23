@@ -42,8 +42,10 @@
         reverse_proxy backend:8000
     }
 
-    # WebSocket endpoints
-    handle /ws/* {
+    # WebSocket endpoints — the backend serves the exact /ws route (plus
+    # /ws/relay for compute donation), so match both the exact path and
+    # the prefix. A bare /ws/* matcher would route /ws to the frontend.
+    handle /ws /ws/* {
         reverse_proxy backend:8000
     }
 
