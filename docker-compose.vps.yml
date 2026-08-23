@@ -34,7 +34,7 @@ services:
     container_name: istara-test-backend
     expose: ["8000"]
     ports:
-      - "127.0.0.1:18080:8000"
+      - "18080:8000"
     networks: [backend-net, data-net, provider-net]
     environment:
       - LLM_PROVIDER=${LLM_PROVIDER:-ollama}
