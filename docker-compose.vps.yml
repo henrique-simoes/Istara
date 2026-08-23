@@ -103,10 +103,11 @@ services:
       context: ./frontend
       dockerfile: Dockerfile
       args:
-        # Same-origin: the browser only talks to caddy:13080 (production-like).
-        # WS_BASE is a base URL — the client appends /ws itself.
-        - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL:-http://2.24.66.167:13080}
-        - NEXT_PUBLIC_WS_URL=${NEXT_PUBLIC_WS_URL:-ws://2.24.66.167:13080}
+        # Same-origin (production-like): the browser derives API/WS base from
+        # window.location, so it works over http or https without rebuilding.
+        # Override via env when a fixed public URL is preferred.
+        - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL:-}
+        - NEXT_PUBLIC_WS_URL=${NEXT_PUBLIC_WS_URL:-}
     container_name: istara-test-frontend
     expose: ["3000"]
     networks: [frontend-net]

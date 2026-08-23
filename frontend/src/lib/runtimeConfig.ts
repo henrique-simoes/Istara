@@ -13,9 +13,14 @@ function withoutTrailingSlash(value: string): string {
 
 function browserOriginWithPort(port: string): string | null {
   if (typeof window === "undefined") return null;
-  const { protocol, hostname } = window.location;
+  const { protocol, hostname, port: currentPort } = window.location;
   if (!hostname) return null;
-  return `${protocol}//${hostname}:${port}`;
+  // Same-origin behind a reverse proxy (Caddy): honour the port the browser
+  // is actually using (e.g. 13080 in the VPS testing deployment) instead of
+  // assuming a fixed backend port. Falls back to the provided port when the
+  // browser URL has no explicit port.
+  const effectivePort = currentPort || port;
+  return `${protocol}//${hostname}${effectivePort ? `:${effectivePort}` : ""}`;
 }
 
 export function getApiBase(): string {
@@ -29,10 +34,11 @@ export function getWsBase(): string {
   if (publicWsUrl) return withoutTrailingSlash(publicWsUrl);
 
   if (typeof window !== "undefined") {
-    const { protocol, hostname } = window.location;
+    const { protocol, hostname, port } = window.location;
     if (hostname) {
       const wsProtocol = protocol === "https:" ? "wss:" : "ws:";
-      return `${wsProtocol}//${hostname}:${DEFAULT_BACKEND_PORT}`;
+      const effectivePort = port || DEFAULT_BACKEND_PORT;
+      return `${wsProtocol}//${hostname}${effectivePort ? `:${effectivePort}` : ""}`;
     }
   }
 

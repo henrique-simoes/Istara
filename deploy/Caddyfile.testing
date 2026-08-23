@@ -1,9 +1,14 @@
 # Istara testing Caddyfile — mirrors the production Caddyfile routing
-# (see Caddyfile at repo root) but listens on plain HTTP :80 for IP-based
-# acceptance testing on the managed VPS. Production uses TLS + a domain via
-# the root Caddyfile. Same-origin: the browser only ever talks to :13080.
+# (see Caddyfile at repo root) but uses `tls internal` (self-signed) for
+# IP-based acceptance testing on the managed VPS. Production uses TLS +
+# a domain via the root Caddyfile. Same-origin: the browser only ever
+# talks to :13080, over http or https (Caddy protocol detection).
 
-:80 {
+http://, https:// {
+    # Self-signed certificate so modern browsers that force HTTPS still
+    # get a working (warned) connection instead of a silent hang.
+    tls internal
+
     # Backend API
     handle /api/* {
         reverse_proxy backend:8000
