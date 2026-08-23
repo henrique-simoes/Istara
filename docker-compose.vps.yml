@@ -35,7 +35,7 @@ services:
     expose: ["8000"]
     ports:
       - "18080:8000"
-    networks: [backend-net, data-net, provider-net]
+    networks: [backend-net, data-net, provider-net, public-net]
     environment:
       - LLM_PROVIDER=${LLM_PROVIDER:-ollama}
       - OLLAMA_HOST=http://provider-stub:11434
@@ -139,3 +139,5 @@ networks:
   provider-net:
     driver: bridge
     internal: true
+  public-net:
+    driver: bridge
