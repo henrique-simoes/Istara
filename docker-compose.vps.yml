@@ -2,9 +2,9 @@
 # updated 2026-08-23: production-like same-origin topology via Caddy reverse proxy.
 # Connectivity exception (vps skill): multi-service (caddy+postgres+backend+frontend+provider-stub)
 # required for login/onboarding acceptance; no Ollama/relay/otel/jaeger. Only caddy:13080 is
-# published publicly (browser talks to a single origin, exactly like production); backend:18080
-# is published loopback-only for diagnostics; postgres is internal-only. No volumes are
-# persisted (fresh DB each deploy — intentional for testing). Nothing in this file is
+# published publicly (browser talks to a single origin, exactly like production); backend and
+# postgres are internal-only (diagnostics via docker exec). No volumes are persisted
+# (fresh DB each deploy — intentional for testing). Nothing in this file is
 # sensitive: secrets (JWT_SECRET, POSTGRES_PASSWORD) come from the deploy environment.
 services:
   postgres:
@@ -59,9 +59,7 @@ services:
         - INSTALL_WHISPER=false
     container_name: istara-test-backend
     expose: ["8000"]
-    ports:
-      - "18080:8000"
-    networks: [backend-net, data-net, provider-net, public-net]
+    networks: [backend-net, data-net, provider-net]
     environment:
       - LLM_PROVIDER=${LLM_PROVIDER:-ollama}
       - OLLAMA_HOST=http://provider-stub:11434
@@ -165,5 +163,3 @@ networks:
   provider-net:
     driver: bridge
     internal: true
-  public-net:
-    driver: bridge
