@@ -33,6 +33,9 @@ RUN mkdir -p data/uploads data/projects data/lance_db data/backups data/channel_
 USER istara
 EXPOSE 8000
 ENV PI_RUNTIME_ROOT=/app
+# Container layout: /app is the backend dir, so the depth-derived repo root
+# would resolve to "/". Pin the shipped worker entry explicitly.
+ENV PI_WORKER_ENTRY=/app/pi-runtime/src/worker.mjs
 HEALTHCHECK --interval=30s --timeout=5s --retries=3 \
     CMD ["curl", "-f", "http://localhost:8000/api/health"]
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]

@@ -27,9 +27,12 @@ from .protocol import MAX_CHUNK_DATA_BYTES, MAX_HISTORY_MESSAGES, MAX_LINE_BYTES
 
 logger = logging.getLogger(__name__)
 
-# repo_root/backend/app/core/pi_runtime/supervisor.py -> repo_root
+# Worker entry resolution: PI_WORKER_ENTRY env wins (container layouts differ
+# from source checkouts), else the repo-relative default from this file's depth.
 _REPO_ROOT = Path(__file__).resolve().parents[4]
-DEFAULT_WORKER_ENTRY = _REPO_ROOT / "pi-runtime" / "src" / "worker.mjs"
+DEFAULT_WORKER_ENTRY = Path(
+    os.environ.get("PI_WORKER_ENTRY", "").strip()
+) if os.environ.get("PI_WORKER_ENTRY", "").strip() else _REPO_ROOT / "pi-runtime" / "src" / "worker.mjs"
 
 ToolHandler = Callable[[str, dict[str, Any]], Awaitable[dict[str, Any]]]
 
