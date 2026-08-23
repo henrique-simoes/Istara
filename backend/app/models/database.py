@@ -138,7 +138,20 @@ async def init_db() -> None:
         import_module(module_name)
 
     async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
+        # PostgreSQL + enums: SQLAlchemy's checkfirst sees an existing enum TYPE and
+        # skips the tables that depend on it, even when no table exists yet (fresh DB).
+        # Detect an empty public schema and force-create all tables so recovery_codes,
+        # task_checkpoints, etc. are never missing on first boot. Idempotent for an
+        # already-populated database: create_all(checkfirst=True) skips existing tables.
+        from sqlalchemy import text as _sa_text
+
+        existing = (await conn.execute(_sa_text(
+            "select count(*) from information_schema.tables "
+            "where table_schema = 'public'"))).scalar() or 0
+        if existing == 0:
+            await conn.run_sync(lambda sc: Base.metadata.create_all(sc, checkfirst=False))
+        else:
+            await conn.run_sync(lambda sc: Base.metadata.create_all(sc, checkfirst=True))
 
         # Lightweight schema migration: add columns that create_all()
         # won't add to pre-existing tables.  Each ALTER is wrapped in a
