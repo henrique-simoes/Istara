@@ -374,3 +374,20 @@ reproduced without my changes (env-only).
 Next: Phase 6b LLM-Servers retirement sweep; broad both-engine suites vs this instance;
 Codex OAuth endpoint #2; spec accept.
 ```
+
+```
+### L-11 | 2026-08-23T19:10:00Z | S5-ship | ox-alpha | executor | Phase 6b
+Did: Retired the LLM Servers surface (commit afa22d98): backend route + registration
+(-672 lines), dead frontend client/types, test_llm_servers.py removed; scenario 36 rewritten
+to pin retirement + catalog truth + identity-only configured view; marathon network
+discovery/env-detection/cycle-M checks re-pointed to the unified catalog and PiModelManagement
+sources; feature registry, QA capabilities, security benchmark trigger patterns (now cover
+model_manager/endpoints/model_source), Tech.md, feature docs deprecated + site regenerated.
+Result: pi model management is the sole provider configuration plane for BOTH cores.
+Verified: 72 pytest passed (settings/marathon-integrity/obligations/capabilities/
+model_source/chat); harness+workflow gates exit 0; security benchmark pass 100;
+simulation static 6/0; tsc+eslint clean; feature docs regen check passed (86 features).
+Live @afa22d98 on macstudio: /api/llm-servers gone (401 pre-auth gate); Istara-core
+DeepSeek turns still BRIDGE with full provenance.
+Next: Broad both-engine suites vs this instance; Codex OAuth endpoint #2; spec accept.
+```
