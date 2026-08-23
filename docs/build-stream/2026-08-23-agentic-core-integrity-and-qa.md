@@ -308,3 +308,32 @@ classifier over real range pass=true unknown=[].
 Next: Owner Colima server to RUN broad live suites (probe/full/marathon both-engine);
 VPS redeploy remains pending SSH direction.
 ```
+
+DEC-9 | 2026-08-23 | owner
+Context: VPS redeploy was pending SSH direction; owner redirected deployment to the Mac
+Studio Docker host (ssh alias `macstudio`, 10.0.10.142) using key `multivac` naming.
+Decision: Deployed the testing branch there via docker-compose.vps.yml (project
+istara-testing); VPS deploy dropped. Secrets supplied via remote .env.deploy (chmod 600):
+JWT_SECRET, ADMIN_PASSWORD, CORS_ORIGINS for LAN origins, ISTARA_PI_SECRET_PI_DEEPSEEK_DEFAULT
+piped from local Keychain without display.
+Why: Same-host deployment doubles as the live-provider target for both-engine test runs.
+
+```
+### L-9 | 2026-08-23T18:05:00Z | S5-ship | ox-alpha | executor | Deployment & live smoke
+Did: Deployed testing@e72da9dd to macstudio:~/istara-testing (Docker 29.7.2). Fixed four
+deploy blockers found en route, each committed+pushed:
+ 1) ADMIN_PASSWORD/ADMIN_USERNAME seam missing -> unpersistable bootstrap admin;
+ 2) TLS dir root-owned -> ISTARA_TLS_DIR configurable;
+ 3) backend image lacked pi-runtime+node -> repo-root build context, node in both stages,
+    npm ci --omit=dev, root .dockerignore protecting LLMs//Model_Finetuning/data;
+ 4) supervisor worker path resolved to / in flattened layout -> PI_WORKER_ENTRY override;
+ plus backend-net internal:true had no provider egress -> opened (caddy-only publishing,
+ data/provider planes stay internal).
+Result: LIVE VERIFICATION PASSED. Pi core: real DeepSeek turn ("PONG", deepseek-v4-pro,
+pi-deepseek-default, stop). Legacy core: fail-closed provider_stub_chat_blocked (correct on
+stub plane). Usage ledger records engine/model/endpoint per turn. Stack healthy at
+http://10.0.10.142:13081 (Caddy same-origin) / :13080.
+Verified: remote smoke.py output above; all five containers healthy; health=200 from LAN.
+Next: Broad both-engine suites against this instance (ISTARA_API_URL/ISTARA_FRONTEND_URL);
+three-model donor modes need Colima donors if requested; then Codex OAuth endpoint #2.
+```
