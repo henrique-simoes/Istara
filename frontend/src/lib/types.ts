@@ -378,6 +378,12 @@ export interface ChatUsage {
     engine: string;
     stop_reason: string;
     input_tokens: number;
+    output_tokens?: number;
+    cache_read?: number;
+    cache_write?: number;
+    total_tokens?: number;
+    cost_usd?: number;
+    estimate?: boolean;
     created_at: string | null;
   } | null;
   last_turn?: {

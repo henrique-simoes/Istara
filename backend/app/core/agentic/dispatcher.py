@@ -173,7 +173,7 @@ class AgenticDispatcher:
                                    request_text=_request_text(system_prompt, messages, extra=user_text))
         return TurnResult(text=outcome.get("text", ""), usage=outcome.get("usage") or {},
                           stop_reason=outcome.get("stop_reason"), endpoint_id=outcome.get("endpoint_id"),
-                          status=outcome.get("status", "success"), tool_calls=outcome.get("tool_calls") or [])
+                          status=outcome.get("status", "success"), tool_calls=outcome.get("tool_calls") or [], model=outcome.get("model"))
 
     async def completion(self, *, purpose: str, project_id: str, system: str | None,
                          messages: list[dict[str, Any]], params: TurnParams, agent_id: str = "istara-main",
@@ -199,7 +199,7 @@ class AgenticDispatcher:
                                    request_text=_request_text(system, messages))
         return TurnResult(text=outcome.get("text", ""), usage=outcome.get("usage") or {},
                           stop_reason=outcome.get("stop_reason"), endpoint_id=outcome.get("endpoint_id"),
-                          status=outcome.get("status", "success"), tool_calls=outcome.get("tool_calls") or [])
+                          status=outcome.get("status", "success"), tool_calls=outcome.get("tool_calls") or [], model=outcome.get("model"))
 
     async def structured(self, *, purpose: str, project_id: str, system: str | None,
                          messages: list[dict[str, Any]], schema: dict[str, Any], params: TurnParams,
@@ -266,7 +266,7 @@ class AgenticDispatcher:
                                    request_text=_request_text(system, messages, extra=user_text))
         return TurnResult(text=outcome.get("text", ""), usage=outcome.get("usage") or {},
                           stop_reason=outcome.get("stop_reason"), endpoint_id=outcome.get("endpoint_id"),
-                          status=outcome.get("status", "success"), tool_calls=outcome.get("tool_calls") or [])
+                          status=outcome.get("status", "success"), tool_calls=outcome.get("tool_calls") or [], model=outcome.get("model"))
 
     async def ensemble(self, *, purpose: str, project_id: str, messages: list[dict[str, Any]],
                        n: int, distinct: bool = False, system: str | None = None,
@@ -420,6 +420,7 @@ class AgenticDispatcher:
             "usage": (terminal or {}).get("usage", {}),
             "stop_reason": (terminal or {}).get("stop_reason"),
             "endpoint_id": (terminal or {}).get("endpoint_id"),
+            "model": (terminal or {}).get("model"),
             "error": (terminal or {}).get("error") if status not in ("success", "aborted") else None,
         }
 

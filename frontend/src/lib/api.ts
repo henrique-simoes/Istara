@@ -1220,6 +1220,7 @@ export interface PiCatalogProvider {
 }
 
 export interface PiOAuthFlow {
+  flow_id?: string;
   provider: string;
   oauth_provider?: string;
   method?: string;
@@ -1233,6 +1234,7 @@ export interface PiOAuthFlow {
   error?: string;
   poll_count?: number;
   expires_at?: number;
+  credential_expires_at?: number | null;
 }
 
 export const piCatalogApi = {
@@ -1249,20 +1251,20 @@ export const piOAuthApi = {
       method: "POST",
       body: JSON.stringify({ provider, method }),
     }),
-  poll: (provider: string) =>
+  poll: (provider: string, flowId?: string) =>
     request<any>("/api/settings/pi-oauth/poll", {
       method: "POST",
-      body: JSON.stringify({ provider }),
+      body: JSON.stringify({ provider, flow_id: flowId }),
     }),
-  complete: (provider: string, authorizationInput: string) =>
+  complete: (provider: string, authorizationInput: string, flowId?: string) =>
     request<any>("/api/settings/pi-oauth/manual", {
       method: "POST",
-      body: JSON.stringify({ provider, authorization_input: authorizationInput }),
+      body: JSON.stringify({ provider, flow_id: flowId, authorization_input: authorizationInput }),
     }),
-  cancel: (provider: string) =>
+  cancel: (provider: string, flowId?: string) =>
     request<any>("/api/settings/pi-oauth/cancel", {
       method: "POST",
-      body: JSON.stringify({ provider }),
+      body: JSON.stringify({ provider, flow_id: flowId }),
     }),
 };
 

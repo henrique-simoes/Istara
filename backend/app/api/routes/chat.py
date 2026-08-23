@@ -237,7 +237,7 @@ async def _generate_pi_runtime(
                     yield "data: " + json.dumps({
                         "type": "usage",
                         "usage": result.usage or {},
-                        "model": model or "",
+                        "model": result.model or model or "",
                         "endpoint_id": result.endpoint_id,
                         "stop_reason": result.stop_reason,
                         "effort": thinking_mode or "server_default",
@@ -1151,6 +1151,20 @@ async def get_chat_model_catalog(
         configured = [asdict(info) for info in manager.catalog()]
     except Exception:
         _chat_log.debug("chat model catalog configured projection unavailable", exc_info=True)
+    legacy_models: list[str] = []
+    try:
+        from app.core.compute_registry import compute_registry
+
+        legacy_models = sorted({
+            str(item.get("name") or item.get("model") or "").strip()
+            for item in await compute_registry.list_models()
+            if str(item.get("name") or item.get("model") or "").strip()
+        })
+    except Exception:
+        _chat_log.debug("chat legacy model inventory unavailable", exc_info=True)
+    for configured_model in (settings.ollama_model, settings.lmstudio_model):
+        if configured_model and configured_model != "default" and configured_model not in legacy_models:
+            legacy_models.append(configured_model)
     catalog = pi_catalog_json()
     project_engine = await db.scalar(select(Project.agentic_engine).where(Project.id == project_id))
     from app.core.pi_replacement import PI_ENGINE_VALUES
@@ -1161,6 +1175,7 @@ async def get_chat_model_catalog(
         "providers": catalog,
         "total_models": sum(len(provider["models"]) for provider in catalog),
         "configured": configured,
+        "legacy_models": legacy_models,
         "engine": engine,
     }
 
@@ -1202,6 +1217,12 @@ async def get_chat_usage(
             "engine": latest.engine,
             "stop_reason": latest.stop_reason,
             "input_tokens": latest.input_tokens,
+            "output_tokens": latest.output_tokens,
+            "cache_read": latest.cache_read,
+            "cache_write": latest.cache_write,
+            "total_tokens": latest.total_tokens,
+            "cost_usd": latest.cost_usd,
+            "estimate": bool(latest.estimate),
             "created_at": latest.created_at.isoformat() if latest.created_at else None,
         } if latest else None,
     }

@@ -160,12 +160,15 @@ def test_openai_codex_exposes_browser_and_headless_methods(monkeypatch):
     monkeypatch.setattr(oauth, "_http_request", fake_request)
     browser = oauth.start_openai_browser_flow("https://istara.example/api/settings/pi-oauth/openai/callback")
     assert browser.method == "browser"
+    assert browser.flow_id
     assert "auth.openai.com/oauth/authorize" in browser.auth_url
     assert "code_challenge=" in browser.auth_url
     assert browser.redirect_uri.endswith("/openai/callback")
 
     device = oauth.start_openai_device_flow()
     assert device.method == "device_code"
+    assert device.flow_id != browser.flow_id
+    assert len(oauth._FLOWS) == 2
     assert device.user_code == "ABCD-EFGH"
     pending = oauth.poll_openai_device_flow(device)
     assert pending.status == "approved"
@@ -178,7 +181,7 @@ def test_oauth_credential_is_consumed_into_endpoint_custody(client, monkeypatch)
     from app.config import settings
     from app.core.pi_runtime import oauth
 
-    oauth._FLOWS["openai-codex"] = oauth.OAuthFlowState(
+    oauth._store_flow(oauth.OAuthFlowState(
         provider="openai-codex",
         oauth_provider="openai-codex",
         flow_type="device_code",
@@ -186,7 +189,7 @@ def test_oauth_credential_is_consumed_into_endpoint_custody(client, monkeypatch)
         status="approved",
         access_token="access.jwt",
         refresh_token="refresh.jwt",
-    )
+    ))
     endpoint_id = "codex-oauth-custody-test"
     response = client.post(
         "/api/settings/pi-endpoints",
@@ -205,7 +208,9 @@ def test_oauth_credential_is_consumed_into_endpoint_custody(client, monkeypatch)
     assert "oauth_credential_encrypted" not in endpoint
     assert endpoint["auth_method"] == "oauth_device_code"
     settings.pi_api_endpoints = [item for item in settings.pi_api_endpoints if item.endpoint_id != endpoint_id]
-    oauth._FLOWS.pop("openai-codex", None)
+    with pytest.raises(ValueError, match="oauth_credential_not_ready"):
+        oauth.consume_oauth_credential("openai-codex")
+    oauth._FLOWS.clear()
 
 
 def test_catalog_openai_codex_transport_is_distinct():

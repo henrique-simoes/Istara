@@ -591,6 +591,10 @@ async def system_status():
         "status": "healthy" if llm_ready else "degraded",
         "team_mode": settings.team_mode,
         "strict_auto_routing": settings.strict_auto_routing,
+        # Engine identity is a safe routing label, not provider/model/secret
+        # configuration; expose it so non-admins can understand the read-only
+        # Agentic Core section without receiving admin model inventory.
+        "agentic_engine_default": _global_agentic_engine(),
         "llm_readiness": {
             "reachable": llm_healthy,
             "chat_ready": llm_ready,
@@ -731,10 +735,12 @@ class PiOAuthStartRequest(BaseModel):
 
 class PiOAuthPollRequest(BaseModel):
     provider: str
+    flow_id: str | None = None
 
 
 class PiOAuthManualCodeRequest(BaseModel):
     provider: str
+    flow_id: str | None = None
     authorization_input: str = Field(..., min_length=1, max_length=4096)
 
 
@@ -869,6 +875,7 @@ async def start_oauth_flow(data: PiOAuthStartRequest, request: Request):
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     return {
+        "flow_id": flow.flow_id,
         "provider": flow.provider,
         "oauth_provider": flow.oauth_provider or flow.provider,
         "method": flow.method,
@@ -923,7 +930,7 @@ async def complete_manual_oauth(data: PiOAuthManualCodeRequest, request: Request
     from app.core.pi_runtime.oauth import complete_browser_flow, oauth_status
 
     try:
-        flow = complete_browser_flow(data.provider.strip().lower(), data.authorization_input)
+        flow = complete_browser_flow(data.provider.strip().lower(), data.authorization_input, data.flow_id)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     return {"flows": oauth_status(flow.provider)}
@@ -938,15 +945,15 @@ async def poll_oauth_flow(data: PiOAuthPollRequest, request: Request):
 
     provider = data.provider.strip().lower()
     try:
-        flows = oauth_status(provider)
+        flows = oauth_status(provider, data.flow_id)
         if not flows:
             raise ValueError("no_active_flow")
         active = flows[0]
         if active.get("flow_type") == "device_code":
-            poll_device_flow(provider)
+            poll_device_flow(provider, data.flow_id)
     except ValueError:
         raise HTTPException(status_code=404, detail="no_active_flow")
-    flows = oauth_status(provider)
+    flows = oauth_status(provider, data.flow_id)
     return {"flows": flows}
 
 
@@ -956,8 +963,8 @@ async def cancel_oauth_flow(data: PiOAuthPollRequest, request: Request):
     require_global_role(request, "admin")
     from app.core.pi_runtime.oauth import cancel_flow
 
-    cancel_flow(data.provider.strip().lower())
-    return {"status": "cancelled"}
+    cancel_flow(data.provider.strip().lower(), data.flow_id)
+    return {"status": "cancelled", "flow_id": data.flow_id}
 
 
 @router.post("/settings/pi-oauth/pkce/callback")

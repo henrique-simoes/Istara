@@ -98,6 +98,7 @@ function ModelPicker({
                 role="combobox"
                 aria-label="Search chat models"
                 aria-controls="chat-model-listbox"
+                aria-activedescendant={filtered[activeIndex] ? `chat-model-option-${encodeURIComponent(filtered[activeIndex].key)}` : undefined}
                 aria-expanded="true"
                 value={query}
                 onChange={(event) => { setQuery(event.target.value); setActiveIndex(0); }}
@@ -121,6 +122,7 @@ function ModelPicker({
               <button
                 key={choice.key}
                 type="button"
+                id={`chat-model-option-${encodeURIComponent(choice.key)}`}
                 role="option"
                 aria-selected={selected?.key === choice.key}
                 aria-disabled={!choice.enabled}
@@ -195,6 +197,7 @@ export default function ChatModelControls({
   agents,
   providers,
   configured,
+  legacyModels,
   engine,
   usage,
   onUpdateSession,
@@ -203,6 +206,7 @@ export default function ChatModelControls({
   agents: any[];
   providers: PiCatalogProvider[];
   configured: PiEndpointInfo[];
+  legacyModels: string[];
   engine: "pi" | "legacy";
   usage: ChatUsage | null;
   onUpdateSession: (data: Record<string, unknown>) => void;
@@ -229,16 +233,22 @@ export default function ChatModelControls({
         });
       }
     }
+    const legacyChoices: ModelChoice[] = engine === "legacy"
+      ? legacyModels.map((modelId) => ({ key: `legacy:${modelId}`, provider: null, model: null, modelId, label: modelId, providerLabel: "Istara local/server", enabled: true }))
+      : [];
+    const ordered = engine === "legacy"
+      ? [...legacyChoices, ...result]
+      : [...result.filter((choice) => choice.enabled), ...result.filter((choice) => !choice.enabled)];
     const override = activeSession?.model_override;
-    if (override && !result.some((choice) => choice.modelId === override && (!activeSession?.endpoint_override || choice.endpointId === activeSession.endpoint_override))) {
-      result.unshift({ key: `current:${override}`, provider: null, model: null, endpointId: activeSession?.endpoint_override || undefined, modelId: override, label: override, providerLabel: "Current session model", enabled: true });
+    if (override && !ordered.some((choice) => choice.modelId === override && (!activeSession?.endpoint_override || choice.endpointId === activeSession.endpoint_override))) {
+      ordered.unshift({ key: `current:${override}`, provider: null, model: null, endpointId: activeSession?.endpoint_override || undefined, modelId: override, label: override, providerLabel: "Current session model", enabled: true });
     }
-    return result;
-  }, [activeSession, configured, engine, providers]);
+    return ordered;
+  }, [activeSession, configured, engine, legacyModels, providers]);
 
   if (!activeSession) return null;
 
-  const selected = choices.find((choice) => choice.endpointId === activeSession.endpoint_override) || choices.find((choice) => choice.modelId === activeSession.model_override) || choices.find((choice) => choice.enabled) || null;
+  const selected = (activeSession.endpoint_override ? choices.find((choice) => choice.endpointId === activeSession.endpoint_override) : undefined) || choices.find((choice) => choice.modelId === activeSession.model_override) || choices.find((choice) => choice.enabled) || null;
   const effortLevels = modelEffortLevels(selected?.model || null);
   const currentEffort = effortLevels.includes(activeSession.thinking_mode || "") ? activeSession.thinking_mode : effortLevels[0];
   const assignedAgent = agents.find((agent: any) => agent.id === activeSession.agent_id);
@@ -282,7 +292,7 @@ export default function ChatModelControls({
         <span className="hidden sm:inline">·</span>
         <span className="inline-flex items-center gap-1"><CircleHelp size={13} /> {selected?.model?.thinkingLevels?.length ? `${selected.model.thinkingLevels.length} provider-native levels` : "Server-compatible controls"}</span>
         {usage?.last_turn?.model && <><span className="hidden sm:inline">·</span><span className="truncate">Last turn: {usage.last_turn.model}</span></>}
-        {engine !== "pi" && <span className="rounded-full bg-slate-100 px-2 py-0.5 font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">Switch this project to Pi to use the catalog models</span>}
+        {engine !== "pi" && <span className="rounded-full bg-slate-100 px-2 py-0.5 font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">Istara local/server model choices</span>}
         {usage?.estimated && <span className="rounded-full bg-amber-100 px-2 py-0.5 font-medium text-amber-800 dark:bg-amber-950/50 dark:text-amber-200">Contains estimates</span>}
       </div>
     </div>

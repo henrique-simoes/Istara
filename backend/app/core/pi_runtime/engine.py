@@ -386,6 +386,7 @@ class PiExecutionService:
             "usage": (terminal or {}).get("usage", {}),
             "stop_reason": (terminal or {}).get("stop_reason"),
             "endpoint_id": (terminal or {}).get("endpoint_id"),
+            "model": (terminal or {}).get("model"),
             "structured": (terminal or {}).get("structured"),
             "error": (terminal or {}).get("error") if status not in ("success", "aborted") else None,
         }
@@ -835,6 +836,7 @@ def _map_frame(frame: dict[str, Any], endpoint: ResolvedPiEndpoint) -> dict[str,
             "usage": frame.get("usage") or {},
             "stop_reason": frame.get("stop_reason"),
             "endpoint_id": endpoint.endpoint_id,
+            "model": endpoint.model,
             # Present only on forced structured-output runs (protocol v2): the
             # worker-captured emit_structured_output arguments. Never parsed
             # from free-form text.

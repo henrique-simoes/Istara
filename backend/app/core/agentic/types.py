@@ -55,6 +55,7 @@ class TurnResult:
     endpoint_id: str | None = None
     status: str = "success"
     tool_calls: list[dict[str, Any]] = field(default_factory=list)
+    model: str | None = None
 
 
 @dataclass(frozen=True)

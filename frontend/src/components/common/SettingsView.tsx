@@ -168,14 +168,16 @@ export default function SettingsView() {
       </div>
 
       {/* Agentic Core — first-class configuration, not a status-grid dropdown */}
-      {canManageInfrastructure && models?.agentic_engine_default && (
+      {(models?.agentic_engine_default || systemStatus?.agentic_engine_default) && (
         <AgenticCoreSection
           scope="global"
-          value={models.agentic_engine_default === "pi" ? "pi" : "legacy"}
+          value={(models?.agentic_engine_default || systemStatus?.agentic_engine_default) === "pi" ? "pi" : "legacy"}
           canManage={canManageInfrastructure}
           onChange={async (engine) => {
+            if (!canManageInfrastructure) return;
             const result = await settingsApi.setAgenticEngine(engine === "pi" ? "pi" : "istara");
             setModels((current: any) => current ? { ...current, agentic_engine_default: result.agentic_engine_default === "pi" ? "pi" : "legacy" } : current);
+            setSystemStatus((current: any) => current ? { ...current, agentic_engine_default: result.agentic_engine_default === "pi" ? "pi" : "legacy" } : current);
           }}
         />
       )}

@@ -109,6 +109,7 @@ function CatalogPicker<T>({
             role="combobox"
             aria-expanded={open}
             aria-controls={`${id}-listbox`}
+            aria-activedescendant={open && options[activeIndex] ? `${id}-option-${encodeURIComponent(getKey(options[activeIndex]))}` : undefined}
             aria-autocomplete="list"
             aria-haspopup="listbox"
             value={inputValue}
@@ -176,6 +177,7 @@ function CatalogPicker<T>({
                   <button
                     key={key}
                     type="button"
+                    id={`${id}-option-${encodeURIComponent(key)}`}
                     role="option"
                     aria-selected={isSelected}
                     data-active={index === activeIndex}
@@ -226,6 +228,7 @@ export default function PiModelManagement() {
   const [activeOAuth, setActiveOAuth] = useState<PiOAuthFlow | null>(null);
   const [manualOAuthInput, setManualOAuthInput] = useState("");
   const [completingOAuth, setCompletingOAuth] = useState(false);
+  const [startingOAuth, setStartingOAuth] = useState(false);
   const [credentialReady, setCredentialReady] = useState(false);
   const [oauthError, setOauthError] = useState<string | null>(null);
   const [addError, setAddError] = useState<string | null>(null);
@@ -258,8 +261,8 @@ export default function PiModelManagement() {
     if (!activeOAuth) return;
     const poll = async () => {
       try {
-        const response = await piOAuthApi.poll(activeOAuth.provider);
-        const latest = (response.flows || []).find((flow: PiOAuthFlow) => flow.provider === activeOAuth.provider);
+        const response = await piOAuthApi.poll(activeOAuth.provider, activeOAuth.flow_id);
+        const latest = (response.flows || []).find((flow: PiOAuthFlow) => flow.flow_id === activeOAuth.flow_id) || (response.flows || []).find((flow: PiOAuthFlow) => flow.provider === activeOAuth.provider);
         if (!latest) return;
         setActiveOAuth(latest);
         if (latest.status === "approved") {
@@ -334,12 +337,15 @@ export default function PiModelManagement() {
     setOauthError(null);
     setCredentialReady(false);
     setManualOAuthInput("");
+    setStartingOAuth(true);
     try {
       const provider = selectedProvider.oauth_provider || selectedProvider.id;
       const flow = await piOAuthApi.start(provider, oauthMethod);
       setActiveOAuth({ ...flow, provider: flow.provider || provider, method: oauthMethod });
     } catch (error) {
       setOauthError(error instanceof Error ? error.message : "Could not start the Pi login.");
+    } finally {
+      setStartingOAuth(false);
     }
   };
 
@@ -348,8 +354,8 @@ export default function PiModelManagement() {
     setCompletingOAuth(true);
     setOauthError(null);
     try {
-      const response = await piOAuthApi.complete(activeOAuth.provider, manualOAuthInput.trim());
-      const latest = (response.flows || []).find((flow: PiOAuthFlow) => flow.provider === activeOAuth.provider);
+      const response = await piOAuthApi.complete(activeOAuth.provider, manualOAuthInput.trim(), activeOAuth.flow_id);
+      const latest = (response.flows || []).find((flow: PiOAuthFlow) => flow.flow_id === activeOAuth.flow_id) || (response.flows || []).find((flow: PiOAuthFlow) => flow.provider === activeOAuth.provider);
       if (latest?.status === "approved") {
         setCredentialReady(true);
         setActiveOAuth(null);
@@ -543,13 +549,13 @@ export default function PiModelManagement() {
               </div>
               <div className="grid gap-3 sm:grid-cols-2">
                 {selectedProvider.login_methods.includes("api_key") && (
-                  <button type="button" className={`rounded-xl border p-4 text-left ${authMode === "api_key" ? "border-istara-500 bg-istara-50 dark:border-istara-400 dark:bg-istara-950/40" : "border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900/40"}`} onClick={() => { setAuthMode("api_key"); setCredentialReady(false); }}>
+                  <button type="button" aria-pressed={authMode === "api_key"} className={`rounded-xl border p-4 text-left ${authMode === "api_key" ? "border-istara-500 bg-istara-50 dark:border-istara-400 dark:bg-istara-950/40" : "border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900/40"}`} onClick={() => { setAuthMode("api_key"); setCredentialReady(false); }}>
                     <span className="flex items-center gap-2 text-sm font-semibold text-slate-950 dark:text-white"><KeyRound size={17} /> API key</span>
                     <span className="mt-1 block text-xs leading-5 text-slate-500 dark:text-slate-400">Use the provider key already configured on the server, or add one to encrypted custody below.</span>
                   </button>
                 )}
                 {oauthSupportedForModel && (
-                  <button type="button" className={`rounded-xl border p-4 text-left ${authMode === "oauth" ? "border-istara-500 bg-istara-50 dark:border-istara-400 dark:bg-istara-950/40" : "border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900/40"}`} onClick={() => { setAuthMode("oauth"); setApiKey(""); }}>
+                  <button type="button" aria-pressed={authMode === "oauth"} className={`rounded-xl border p-4 text-left ${authMode === "oauth" ? "border-istara-500 bg-istara-50 dark:border-istara-400 dark:bg-istara-950/40" : "border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900/40"}`} onClick={() => { setAuthMode("oauth"); setApiKey(""); }}>
                     <span className="flex items-center gap-2 text-sm font-semibold text-slate-950 dark:text-white"><ShieldCheck size={17} /> Sign in with Pi OAuth</span>
                     <span className="mt-1 block text-xs leading-5 text-slate-500 dark:text-slate-400">No API key is copied into the browser. The server completes Pi&apos;s OAuth flow and stores the credential.</span>
                   </button>
@@ -575,7 +581,7 @@ export default function PiModelManagement() {
                   <p className="mb-2 text-sm font-medium text-slate-900 dark:text-white">Pi login method</p>
                   <div className="flex flex-wrap gap-2">
                     {(selectedProvider.oauth_methods || []).map((method) => (
-                      <button key={method} type="button" className={`ui-control px-3 text-sm font-medium ${oauthMethod === method ? "border-istara-500 bg-istara-50 text-istara-700 dark:border-istara-400 dark:bg-istara-950/40 dark:text-istara-200" : "text-slate-700 dark:text-slate-200"}`} onClick={() => { setOauthMethod(method as "browser" | "device_code"); setCredentialReady(false); }}>
+                      <button key={method} type="button" aria-pressed={oauthMethod === method} className={`ui-control px-3 text-sm font-medium ${oauthMethod === method ? "border-istara-500 bg-istara-50 text-istara-700 dark:border-istara-400 dark:bg-istara-950/40 dark:text-istara-200" : "text-slate-700 dark:text-slate-200"}`} onClick={() => { setOauthMethod(method as "browser" | "device_code"); setCredentialReady(false); }}>
                         {method === "browser" ? "Browser login" : "Device code (headless)"}
                       </button>
                     ))}
@@ -584,8 +590,8 @@ export default function PiModelManagement() {
                     {oauthMethod === "browser" ? "A secure provider page opens in another tab. After approval, return here; the connection status updates automatically." : "Ideal for a server without a graphical browser. Open the provider URL and enter the one-time code shown below."}
                   </p>
                   {!credentialReady && !activeOAuth && (
-                    <button type="button" className="secondary-action mt-3" onClick={() => void startOAuth()}>
-                      <ShieldCheck size={16} /> Start {oauthMethod === "browser" ? "browser" : "headless"} login
+                    <button type="button" className="secondary-action mt-3" disabled={startingOAuth} onClick={() => void startOAuth()}>
+                      <ShieldCheck size={16} /> {startingOAuth ? "Starting…" : `Start ${oauthMethod === "browser" ? "browser" : "headless"} login`}
                     </button>
                   )}
                   {activeOAuth && (
@@ -598,8 +604,8 @@ export default function PiModelManagement() {
                               Continue in browser <ExternalLink size={15} />
                             </a>
                           )}
-                          {activeOAuth.verification_uri && (
-                            <p className="mt-3 break-all text-xs text-blue-900 dark:text-blue-200">Open: <span className="font-mono">{activeOAuth.verification_uri}</span></p>
+                          {(activeOAuth.verification_uri_complete || activeOAuth.verification_uri) && (
+                            <p className="mt-3 break-all text-xs text-blue-900 dark:text-blue-200">Open: <a href={activeOAuth.verification_uri_complete || activeOAuth.verification_uri} target="_blank" rel="noreferrer" className="font-mono underline decoration-blue-400 underline-offset-2">{activeOAuth.verification_uri_complete || activeOAuth.verification_uri}</a></p>
                           )}
                           {activeOAuth.user_code && <p className="mt-2 text-sm text-blue-900 dark:text-blue-200">Code: <strong className="font-mono text-lg tracking-wider">{activeOAuth.user_code}</strong></p>}
                           {activeOAuth.method === "browser" && (
@@ -614,7 +620,7 @@ export default function PiModelManagement() {
                           )}
                           <p className="mt-2 text-xs text-blue-800 dark:text-blue-300">Checking approval automatically. Tokens remain on the server.</p>
                         </div>
-                        <button type="button" className="ui-icon-button shrink-0 text-blue-800 dark:text-blue-200" onClick={() => { void piOAuthApi.cancel(activeOAuth.provider); setActiveOAuth(null); }} aria-label="Cancel Pi login"><X size={17} /></button>
+                        <button type="button" className="ui-icon-button shrink-0 text-blue-800 dark:text-blue-200" onClick={() => { void piOAuthApi.cancel(activeOAuth.provider, activeOAuth.flow_id); setActiveOAuth(null); }} aria-label="Cancel Pi login"><X size={17} /></button>
                       </div>
                     </div>
                   )}

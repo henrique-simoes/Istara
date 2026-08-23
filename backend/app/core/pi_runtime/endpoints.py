@@ -41,6 +41,20 @@ def _read_endpoint_secret(endpoint: PiApiEndpoint) -> str:
 
             payload = json.loads(decrypt_field(endpoint.oauth_credential_encrypted))
             access = payload.get("access_token") if isinstance(payload, dict) else ""
+            expires_at = float(payload.get("expires_at") or 0) if isinstance(payload, dict) else 0.0
+            if access and (not expires_at or expires_at > time.time() + 300):
+                return str(access)
+            refresh = payload.get("refresh_token") if isinstance(payload, dict) else ""
+            if refresh:
+                from app.core.pi_runtime.oauth import refresh_oauth_credential
+                from app.core.env_persistence import persist_env_value
+                from app.core.field_encryption import encrypt_field
+                from app.config import settings as _settings
+
+                refreshed = refresh_oauth_credential(endpoint.auth_provider, str(refresh))
+                endpoint.oauth_credential_encrypted = encrypt_field(json.dumps(refreshed, separators=(",", ":")))
+                persist_env_value("PI_API_ENDPOINTS", json.dumps([item.model_dump() for item in _settings.pi_api_endpoints], separators=(",", ":")))
+                return str(refreshed["access_token"])
             if access:
                 return str(access)
         except Exception:

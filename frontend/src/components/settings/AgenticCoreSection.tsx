@@ -16,6 +16,11 @@ export interface AgenticCoreSectionProps {
   onChange: (engine: "pi" | "legacy" | "") => Promise<void> | void;
 }
 
+function evidenceUrl(source: string): string {
+  if (source.startsWith("http://") || source.startsWith("https://")) return source;
+  return `https://github.com/henrique-simoes/Istara/blob/testing/${source}`;
+}
+
 function EngineOption({
   engine,
   selected,
@@ -186,7 +191,12 @@ export default function AgenticCoreSection({
                 </div>
                 <p className="mt-3 text-[11px] leading-5 text-slate-500 dark:text-slate-400">
                   Snapshot as of {selectedEntry.asOf}. No judged axis reached significance at 95% CI. This is provisional comparative context,
-                  not accepted research evidence. Sources: {selectedEntry.provenance.join(" · ")}.
+                  not accepted research evidence. Sources: {selectedEntry.provenance.map((source, index) => (
+                    <span key={source}>
+                      {index > 0 && " · "}
+                      <a href={evidenceUrl(source)} target="_blank" rel="noreferrer" className="underline decoration-slate-400 underline-offset-2 hover:text-slate-800 dark:hover:text-slate-200">{source.split("/").pop() || source}</a>
+                    </span>
+                  ))}.
                 </p>
               </div>
             </div>
