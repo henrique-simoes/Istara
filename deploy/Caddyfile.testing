@@ -4,9 +4,10 @@
 # a domain via the root Caddyfile. Same-origin: the browser only ever
 # talks to :13080, over http or https (Caddy protocol detection).
 
-http://, https:// {
+http://:80, https://:80 {
     # Self-signed certificate so modern browsers that force HTTPS still
-    # get a working (warned) connection instead of a silent hang.
+    # get a working (warned) connection instead of a silent hang. Both
+    # listeners share :80 (Caddy protocol detection), published as 13080.
     tls internal
 
     # Backend API
