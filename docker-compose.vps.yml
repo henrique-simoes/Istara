@@ -81,6 +81,10 @@ services:
       - CORS_ORIGINS=${CORS_ORIGINS:-http://2.24.66.167:13080,https://2.24.66.167:13081,http://127.0.0.1:13080,https://127.0.0.1:13081}
       - JWT_SECRET=${JWT_SECRET:-}
       - JWT_EXPIRE_MINUTES=${JWT_EXPIRE_MINUTES:-1440}
+      # First-start admin bootstrap (main.py reads these when the user table
+      # is empty). Supply via --env-file; empty on purpose by default.
+      - ADMIN_USERNAME=${ADMIN_USERNAME:-}
+      - ADMIN_PASSWORD=${ADMIN_PASSWORD:-}
       - TEAM_MODE=${TEAM_MODE:-true}
       - RATE_LIMIT_ENABLED=${RATE_LIMIT_ENABLED:-true}
       - MCP_SERVER_ENABLED=${MCP_SERVER_ENABLED:-false}
