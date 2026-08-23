@@ -18,6 +18,8 @@ def _env_file_path() -> Path:
 def persist_env_value(key: str, value: str) -> None:
     """Update the env file so the setting survives restarts."""
     env_path = _env_file_path()
+    if not env_path.parent.exists():
+        env_path.parent.mkdir(parents=True, exist_ok=True)
     if not env_path.exists():
         env_path.write_text(f"{key}={value}\n")
         return
