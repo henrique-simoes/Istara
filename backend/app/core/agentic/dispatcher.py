@@ -368,7 +368,10 @@ class AgenticDispatcher:
                               task_id: str | None, spine_phase: str | None,
                               session_id: str | None = None, request_text: str = "") -> None:
         await record_agentic_usage(engine=engine, purpose=purpose, project_id=project_id, agent_id=agent_id,
-                                   outcome=outcome, model=params.model, started_at=started,
+                                   outcome=outcome,
+                                   # Phase 6 provenance: the serving model wins when the
+                                   # bridge resolved it (params may carry no selection).
+                                   model=outcome.get("model") or params.model, started_at=started,
                                    session_id=session_id, task_id=task_id, spine_phase=spine_phase,
                                    request_text=request_text,
                                    response_text=_content_text(outcome.get("text")))

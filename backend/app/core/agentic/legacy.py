@@ -410,6 +410,7 @@ async def _react_loop(kwargs: dict[str, Any]) -> dict[str, Any]:
             # Route truth (F-11 lineage): record the serving plane + endpoint so
             # usage/UI surfaces show exactly where the turn was served from.
             outcome["endpoint_id"] = pi_source.endpoint_id
+            outcome["model"] = pi_source.model
             outcome["route_evidence"] = {
                 "plane": "pi-managed",
                 "endpoint_id": pi_source.endpoint_id,
