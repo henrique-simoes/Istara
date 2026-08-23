@@ -171,9 +171,11 @@ services:
 networks:
   frontend-net:
     driver: bridge
+  # NOT internal: the backend needs outbound egress to configured cloud
+  # providers (e.g. the Pi core's DeepSeek endpoint). It stays unpublished —
+  # only caddy exposes ports; data/provider planes remain fully internal.
   backend-net:
     driver: bridge
-    internal: true
   data-net:
     driver: bridge
     internal: true
