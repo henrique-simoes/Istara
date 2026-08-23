@@ -28,6 +28,30 @@ diversity from one endpoint: they fail closed
 (`PiEndpointResolutionError` / `insufficient_distinct_legacy_servers`) and
 degrade down the documented chain (full_ensemble → dual_run → self_moa).
 
+## Unified provider plane (Phase 6)
+
+Engine selection owns **loop semantics only**; pi model management owns
+provider communication for BOTH engines (DEC-10):
+
+- **Istara is first-class and stub-free everywhere.** The unified resolver
+  (`backend/app/core/agentic/model_source.py`) answers each turn's
+  "which endpoint/model, from which plane?" with owner-approved precedence:
+  explicit user selection outright → explicitly configured local endpoint →
+  pi-managed endpoint (fallback where the local plane is a declared wire
+  stub) → donation pool (unchanged compute-registry path).
+- **Execution-only bridge** (`pi_bridge.py`): when a legacy-plane turn
+  resolves to a pi-managed endpoint, calls execute directly over that
+  OpenAI-compatible endpoint under Istara identity — never advertised as
+  compute-pool capacity, preserving donor-collision and research-spine
+  routing guarantees. Provenance (`route_evidence.plane`, `endpoint_id`)
+  rides every outcome so usage/UI surfaces show the true serving source.
+- **Stub planes are structurally unresolvable**: deployments declaring
+  `LLM_PROVIDER_CONTRACT_STUB=true` hide that plane from chat resolution;
+  interactive legacy turns fail closed only when NO non-stub source exists.
+- LLM Servers management retires in favor of pi model management surfaces;
+  donations keep their own process and federate through this plane for
+  ensembles and visibility.
+
 ## Engine resolution
 
 First match wins:

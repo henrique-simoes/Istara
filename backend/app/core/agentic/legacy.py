@@ -373,6 +373,14 @@ async def _react_loop(kwargs: dict[str, Any]) -> dict[str, Any]:
 
     text_parts: list[str] = []
     tool_calls_seen: list[dict[str, Any]] = []
+    # Unified source resolution (Phase 6): when the requested model resolves to
+    # a pi-managed endpoint, turns execute over the execution-only bridge under
+    # Istara identity — never advertised as pool capacity (DEC-10).
+    from .model_source import PLANE_PI_MANAGED, resolve_model_source
+
+    pi_source = await resolve_model_source(params.model)
+    if pi_source is not None and pi_source.plane != PLANE_PI_MANAGED:
+        pi_source = None  # local-direct/donation planes keep their existing paths
     # Accumulate every turn's usage so a fully-reported multi-turn tool loop
     # reports cumulative input/output/total tokens and its real turn count, not
     # just the final turn's usage. Exactness is all-or-nothing: if the whole run
@@ -398,6 +406,16 @@ async def _react_loop(kwargs: dict[str, Any]) -> dict[str, Any]:
         }
         if extra:
             outcome.update(extra)
+        if pi_source is not None:
+            # Route truth (F-11 lineage): record the serving plane + endpoint so
+            # usage/UI surfaces show exactly where the turn was served from.
+            outcome["endpoint_id"] = pi_source.endpoint_id
+            outcome["route_evidence"] = {
+                "plane": "pi-managed",
+                "endpoint_id": pi_source.endpoint_id,
+                "model": pi_source.model,
+                "bridge": "execution-only",
+            }
         return outcome
 
     for iteration in range(budget + 1):
@@ -406,7 +424,26 @@ async def _react_loop(kwargs: dict[str, Any]) -> dict[str, Any]:
                 "request_texts"
             ][0]
         )
-        if text_fallback:
+        if pi_source is not None:
+            # Execution-only bridge over the pi-managed endpoint (Phase 6):
+            # replaces the ollama-plane call for this dispatch. Tool calls use
+            # the provider's native function-calling; text_fallback's regex
+            # mining is meaningless against a cloud model, so tools stay on.
+            from .pi_bridge import stream_openai_chat
+
+            message = await stream_openai_chat(
+                source=pi_source,
+                history=history,
+                system=kwargs.get("system"),
+                temperature=params.temperature if params.temperature is not None else 0.7,
+                max_tokens=params.max_tokens,
+                tools=tools,
+                stream_cb=stream_cb,
+                forward_tokens=True,
+            )
+            meta = message.pop("_bridge_meta", {}) or {}
+            turn_usages.append(meta.get("usage") or {})
+        elif text_fallback:
             # Never forward raw tokens here: the text may carry the tool block.
             message = await _stream_turn(
                 history=history, system=kwargs.get("system"), params=params,

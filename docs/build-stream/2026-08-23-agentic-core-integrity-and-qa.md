@@ -337,3 +337,22 @@ Verified: remote smoke.py output above; all five containers healthy; health=200 
 Next: Broad both-engine suites against this instance (ISTARA_API_URL/ISTARA_FRONTEND_URL);
 three-model donor modes need Colima donors if requested; then Codex OAuth endpoint #2.
 ```
+
+## Phase 6 — Unified provider plane (pi model management serves BOTH engines)
+
+DEC-10 | 2026-08-23 | owner
+Context: Owner defined the culminating architecture: Istara loop is first-class and NEVER
+uses stubs (testing or production); users pick either engine; PI MODEL MANAGEMENT manages
+provider/model communication for BOTH; LLM Servers retires entirely (pi manages local
+endpoint configuration too); Petals keeps its own donation process which talks TO pi model
+management (ensemble, compute registry/pool); provenance is precise everywhere (ensembles,
+usage, menus); agents on any core/endpoint interoperate (A2A etc.). Entire testing process
+(all scenarios, colima, benchmarks pi-vs-istara inside Istara's suite) validates this.
+Decision: (1) Per-turn model precedence = explicit user selection (chat picker) outright >
+explicit local endpoint > pi-managed endpoint > donation pool. (2) /api/llm-servers retires;
+local-endpoint config migrates into pi model management surfaces. (3) Stub guard leaves the
+chat path — unified resolution simply never selects a stub plane; QA harness stub remains
+embeddings/wire-only. (4) Execution-only bridge: engines may execute turns over pi-resolved
+endpoints; nothing pi-side is advertised as compute-pool capacity (donor-collision and
+research-spine routing guarantees preserved).
+Why: Culmination of the integration work; makes engine choice purely about loop semantics.

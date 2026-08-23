@@ -659,28 +659,33 @@ async def chat(request: ChatRequest, http_request: Request, db: AsyncSession = D
         min_role="researcher",
     )
 
-    # Fail closed BEFORE ANY side effect (session/message persistence, RAG):
-    # a deployment that declared its provider plane as a QA wire stub must not
-    # serve legacy-plane chat turns at all. The Pi plane is exempt — it talks
-    # to configured cloud endpoints (e.g. DeepSeek), never to the local stub.
+    # Fail closed BEFORE ANY side effect (session/message persistence, RAG) —
+    # but only when NO non-stub source could serve the turn. Phase 6: the
+    # unified resolver lets legacy-plane turns execute over pi-managed
+    # endpoints (execution-only bridge), so a stub-marked deployment with a
+    # configured endpoint still serves BOTH engines. Only a deployment where
+    # resolution finds nothing non-stub is blocked here.
     resolved_engine = await _resolve_chat_engine(http_request, request.project_id, db)
-    if getattr(settings, "llm_provider_contract_stub", False) and resolved_engine != "pi":
-        _chat_log.warning(
-            "Chat rejected on stub provider plane (project=%s, engine=%s)",
-            request.project_id,
-            resolved_engine,
-        )
-        return StreamingResponse(
-            iter([_provider_stub_chat_blocked_events()]),
-            media_type="text/event-stream",
-            headers={
-                # Same SSE headers as the main stream so intermediaries
-                # (Caddy on the VPS path) never buffer the error frame.
-                "Cache-Control": "no-cache",
-                "Connection": "keep-alive",
-                "X-Accel-Buffering": "no",
-            },
-        )
+    if getattr(settings, "llm_provider_contract_stub", False):
+        from app.core.agentic.model_source import has_non_stub_source
+
+        if resolved_engine != "pi" and not await has_non_stub_source():
+            _chat_log.warning(
+                "Chat rejected: stub provider plane and no non-stub source (project=%s, engine=%s)",
+                request.project_id,
+                resolved_engine,
+            )
+            return StreamingResponse(
+                iter([_provider_stub_chat_blocked_events()]),
+                media_type="text/event-stream",
+                headers={
+                    # Same SSE headers as the main stream so intermediaries
+                    # (Caddy on the VPS path) never buffer the error frame.
+                    "Cache-Control": "no-cache",
+                    "Connection": "keep-alive",
+                    "X-Accel-Buffering": "no",
+                },
+            )
 
     # Resolve or create the chat session before writing messages. A caller may
     # only use sessions that belong to the requested project and chat surface.

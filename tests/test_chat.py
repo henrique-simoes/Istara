@@ -235,14 +235,22 @@ async def test_chat_model_catalog_and_usage_are_project_scoped():
 
 
 @pytest.mark.asyncio
-async def test_chat_blocked_when_provider_is_contract_stub():
-    """Interactive chat fails closed on declared stub provider planes.
+async def test_chat_blocked_when_provider_is_contract_stub(monkeypatch):
+    """Interactive legacy chat fails closed when ONLY a stub plane exists.
 
-    The QA contract stack and the connectivity-acceptance VPS stack set
+    The QA contract stack and connectivity-acceptance stacks set
     LLM_PROVIDER_CONTRACT_STUB=true; POST /api/chat must then return an
     actionable SSE error before any session/message side effect instead of
-    streaming canned qa-contract-response text (CF-SPEC-1 ITEM-002).
+    streaming canned qa-contract-response text (CF-SPEC-1 ITEM-002, Phase 6
+    refinement: a configured non-stub source exempts the deployment).
+    monkeypatching the pi plane empty makes "no non-stub source" deterministic
+    even on machines whose keychain can resolve the default endpoint.
     """
+    from tests.test_model_source import _FakeManager
+    from app.core.agentic import model_source as _ms
+
+    monkeypatch.setattr(_ms, "_pi_manager", lambda: _FakeManager([]))
+
     await init_db()
     if not settings.jwt_secret:
         settings.jwt_secret = "test-secret"
