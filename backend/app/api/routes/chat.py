@@ -1152,11 +1152,16 @@ async def get_chat_model_catalog(
     except Exception:
         _chat_log.debug("chat model catalog configured projection unavailable", exc_info=True)
     catalog = pi_catalog_json()
+    project_engine = await db.scalar(select(Project.agentic_engine).where(Project.id == project_id))
+    from app.core.pi_replacement import PI_ENGINE_VALUES
+
+    configured_engine = str(project_engine or getattr(settings, "agentic_engine_default", "legacy")).strip().lower()
+    engine = "pi" if configured_engine in PI_ENGINE_VALUES else "legacy"
     return {
         "providers": catalog,
         "total_models": sum(len(provider["models"]) for provider in catalog),
         "configured": configured,
-        "engine": "pi" if pi_replacement_requested(request) else "legacy",
+        "engine": engine,
     }
 
 

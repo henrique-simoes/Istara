@@ -195,6 +195,7 @@ export default function ChatModelControls({
   agents,
   providers,
   configured,
+  engine,
   usage,
   onUpdateSession,
 }: {
@@ -202,6 +203,7 @@ export default function ChatModelControls({
   agents: any[];
   providers: PiCatalogProvider[];
   configured: PiEndpointInfo[];
+  engine: "pi" | "legacy";
   usage: ChatUsage | null;
   onUpdateSession: (data: Record<string, unknown>) => void;
 }) {
@@ -223,7 +225,7 @@ export default function ChatModelControls({
           endpointId: endpoint?.endpoint_id,
           label: model.name || model.id,
           providerLabel: provider.display_name,
-          enabled: Boolean(endpoint),
+          enabled: Boolean(endpoint) && engine === "pi",
         });
       }
     }
@@ -232,7 +234,7 @@ export default function ChatModelControls({
       result.unshift({ key: `current:${override}`, provider: null, model: null, endpointId: activeSession?.endpoint_override || undefined, modelId: override, label: override, providerLabel: "Current session model", enabled: true });
     }
     return result;
-  }, [activeSession, configured, providers]);
+  }, [activeSession, configured, engine, providers]);
 
   if (!activeSession) return null;
 
@@ -274,10 +276,13 @@ export default function ChatModelControls({
         <UsagePopover usage={usage} model={selected?.model || null} />
       </div>
       <div className="mx-auto mt-2 flex max-w-6xl flex-wrap items-center gap-x-3 gap-y-1 px-1 text-[11px] text-slate-500 dark:text-slate-400">
+        <span className="inline-flex items-center gap-1"><Gauge size={13} className="text-istara-600" /> Core: <strong className="text-slate-700 dark:text-slate-200">{engine === "pi" ? "Pi" : "Istara"}</strong></span>
+        <span className="hidden sm:inline">·</span>
         <span className="inline-flex items-center gap-1"><Gauge size={13} className="text-istara-600" /> Effort: <strong className="text-slate-700 dark:text-slate-200">{effortLabel(currentEffort)}</strong></span>
         <span className="hidden sm:inline">·</span>
         <span className="inline-flex items-center gap-1"><CircleHelp size={13} /> {selected?.model?.thinkingLevels?.length ? `${selected.model.thinkingLevels.length} provider-native levels` : "Server-compatible controls"}</span>
         {usage?.last_turn?.model && <><span className="hidden sm:inline">·</span><span className="truncate">Last turn: {usage.last_turn.model}</span></>}
+        {engine !== "pi" && <span className="rounded-full bg-slate-100 px-2 py-0.5 font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">Switch this project to Pi to use the catalog models</span>}
         {usage?.estimated && <span className="rounded-full bg-amber-100 px-2 py-0.5 font-medium text-amber-800 dark:bg-amber-950/50 dark:text-amber-200">Contains estimates</span>}
       </div>
     </div>

@@ -78,6 +78,7 @@ export default function ChatView() {
   const [pendingDocRefs, setPendingDocRefs] = useState<{ id: string; title: string }[]>([]);
   const [modelProviders, setModelProviders] = useState<PiCatalogProvider[]>([]);
   const [configuredModels, setConfiguredModels] = useState<PiEndpointInfo[]>([]);
+  const [modelEngine, setModelEngine] = useState<"pi" | "legacy">("legacy");
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const canWrite = capabilities.canWriteActiveProject || canWriteActiveProject();
@@ -90,9 +91,11 @@ export default function ChatView() {
       chatApi.modelCatalog(activeProjectId).then((catalog) => {
         setModelProviders(catalog.providers || []);
         setConfiguredModels(catalog.configured || []);
+        setModelEngine(catalog.engine === "pi" ? "pi" : "legacy");
       }).catch(() => {
         setModelProviders([]);
         setConfiguredModels([]);
+        setModelEngine("legacy");
       });
     }
   }, [activeProjectId, fetchSessions, ensureDefault, fetchAgents]);
@@ -283,6 +286,7 @@ export default function ChatView() {
           agents={agents}
           providers={modelProviders}
           configured={configuredModels}
+          engine={modelEngine}
           usage={usage}
           onUpdateSession={(data) => {
             if (activeProjectId && activeSessionId) void updateSession(activeProjectId, activeSessionId, data);
