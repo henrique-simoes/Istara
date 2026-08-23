@@ -1,6 +1,6 @@
 /** API client for Istara backend. */
 
-import type { DataIntegrityQuarantineRequest, LLMServerCreate, LLMServerUpdate } from "@/lib/apiRequestTypes";
+import type { DataIntegrityQuarantineRequest } from "@/lib/apiRequestTypes";
 import type { ReclawDocument, DocumentContent, DocumentTag, DocumentStats, InterfacesStatus, MetaProposal, MetaVariant, MetaHyperagentStatus, ChannelInstance, ChannelMessage, ChannelConversation, ResearchDeployment, DeploymentAnalytics, SurveyIntegration, SurveyLink, MCPServerConfig, MCPAccessPolicy, MCPAuditEntry, AutoresearchStatus, AutoresearchExperiment, AutoresearchConfig, ModelSkillLeaderboard, UXLaw, LawMatch, ComplianceProfile, RadarChartData, FeaturedMCPServer, ReclawUser, ProjectReport, Task, TaskStatus, TaskAtomicPath, TaskQualitySummary, TaskReviewEvent, PermissionRequestItem } from "@/lib/types";
 import type { ReasoningMemoryItem, ReasoningBankSummary } from "@/lib/reasoningBankTypes";
 
@@ -601,21 +601,9 @@ export const taskLocking = {
     post<any>(`/api/tasks/${taskId}/unlock?${taskScopeParams(projectId, { user_id: userId, force })}`, {}),
 };
 
-// --- LLM Servers ---
-
-export const llmServers = {
-  list: () => request<any>("/api/llm-servers"),
-  add: (data: LLMServerCreate) =>
-    post<any>("/api/llm-servers", data),
-  healthCheck: (serverId: string) =>
-    post<any>(`/api/llm-servers/${serverId}/health-check`, {}),
-  update: (serverId: string, data: LLMServerUpdate) =>
-    patch<any>(`/api/llm-servers/${serverId}`, data),
-  delete: (serverId: string) => del(`/api/llm-servers/${serverId}`),
-  discover: () => post<any>("/api/llm-servers/discover", {}),
-};
-
 // --- Compute Pool ---
+// (LLM Servers management was retired; pi model management owns
+// provider/model configuration for both agentic cores — CF-SPEC-1 Phase 6.)
 
 export const compute = {
   nodes: (projectId: string) =>

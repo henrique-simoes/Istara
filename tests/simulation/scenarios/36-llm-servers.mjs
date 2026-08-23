@@ -1,138 +1,73 @@
-/** Scenario 36 — LLM Servers compat plane & Pi projection: the legacy management
- * surface persists as a read/CRUD compat plane whose rows project into the Pi
- * model catalog (W8 UX parity). This scenario pins BOTH sides of that contract. */
+/** Scenario 36 — Model Management & Provenance (pi model management owns provider
+ * configuration for BOTH agentic cores; the legacy LLM Servers surface is retired —
+ * CF-SPEC-1 Phase 6). Pins: catalog truth, active-engine reporting, identity-only
+ * configured view, and per-plane visibility. */
 
-export const name = "LLM Servers Compat & Pi Projection";
+export const name = "Model Management & Provenance";
 export const id = "36-llm-servers";
 
+import { authHeaders, getApiBase } from "../lib/api-client.mjs";
+
 export async function run(ctx) {
-  const { api } = ctx;
+  const { api, screenshot } = ctx;
   const checks = [];
-  let serverId;
+  let projectId = typeof ctx.projectId === "string" ? ctx.projectId.trim() : "";
 
-  // 1. List servers (initially may have none persisted)
+  // 1. Retired surface stays retired: the management API answers 404/405.
   try {
-    const list = await api.get("/api/llm-servers");
+    const res = await fetch(`${getApiBase()}/api/llm-servers`, { headers: authHeaders() });
     checks.push({
-      name: "List LLM servers",
-      passed: Array.isArray(list.servers),
-      detail: `count=${list.servers?.length}`,
+      name: "Retired LLM Servers API is gone",
+      passed: res.status === 404 || res.status === 405,
+      detail: `status=${res.status}`,
     });
   } catch (e) {
-    checks.push({ name: "List LLM servers", passed: false, detail: e.message });
+    checks.push({ name: "Retired LLM Servers API is gone", passed: false, detail: e.message });
   }
 
-  // 2. Add a test server (non-existent host — should add but be unhealthy)
+  // 2. Catalog endpoint: providers + total models + active engine.
   try {
-    const added = await api.post("/api/llm-servers", {
-      name: "Test Server",
-      provider_type: "openai_compat",
-      host: "http://192.0.2.1:9999",  // RFC 5737 test address — guaranteed unreachable
-      priority: 100,
-    });
-    serverId = added.id;
+    const catalog = await api.get(
+      `/api/chat/model-catalog${projectId ? `?project_id=${encodeURIComponent(projectId)}` : ""}`
+    );
     checks.push({
-      name: "Add LLM server",
-      passed: !!added.id && added.name === "Test Server",
-      detail: `id=${added.id}, healthy=${added.is_healthy}`,
+      name: "Model catalog serves providers",
+      passed: Array.isArray(catalog.providers) && catalog.total_models > 0,
+      detail: `providers=${catalog.providers?.length}, total_models=${catalog.total_models}`,
     });
-  } catch (e) {
-    checks.push({ name: "Add LLM server", passed: false, detail: e.message });
-  }
-
-  // 3. Health check on added server (should be unhealthy)
-  if (serverId) {
-    try {
-      const health = await api.post(`/api/llm-servers/${serverId}/health-check`, {});
-      checks.push({
-        name: "Health check (unreachable server)",
-        passed: health.healthy === false,
-        detail: `healthy=${health.healthy}`,
-      });
-    } catch (e) {
-      checks.push({ name: "Health check", passed: false, detail: e.message });
-    }
-  }
-
-  // 4. Delete the test server
-  if (serverId) {
-    try {
-      const deleted = await api.delete(`/api/llm-servers/${serverId}`);
-      checks.push({
-        name: "Delete LLM server",
-        passed: true,
-        detail: "Server deleted",
-      });
-    } catch (e) {
-      checks.push({ name: "Delete LLM server", passed: false, detail: e.message });
-    }
-  }
-
-  // 5. Verify deletion
-  try {
-    const list = await api.get("/api/llm-servers");
-    const found = list.servers?.find((s) => s.id === serverId);
     checks.push({
-      name: "Server removed from list",
-      passed: !found,
-      detail: `found=${!!found}`,
-    });
-  } catch (e) {
-    checks.push({ name: "Server removed from list", passed: false, detail: e.message });
-  }
-
-  // 6. Pi projection invariant: a compat-plane server appears in the Pi model
-  // catalog's configured (identity-only) view while it exists, and is gone
-  // after deletion. No API key material may ever appear in the catalog.
-  try {
-    const added = await api.post("/api/llm-servers", {
-      name: "Pi Projection Probe",
-      provider_type: "openai_compat",
-      host: "http://192.0.2.1:9998", // RFC 5737 TEST-NET — unreachable by design
-      priority: 100,
-    });
-    const probeId = added.id;
-    let catalog = await api.get("/api/chat/model-catalog?project_id=");
-    const configuredDuring = JSON.stringify(catalog.configured || []);
-    checks.push({
-      name: "Compat row projects into Pi catalog (while present)",
-      passed: configuredDuring.includes("Pi Projection Probe"),
-      detail: `configured_entries=${catalog.configured?.length}`,
-    });
-    const leaksSecrets = configuredDuring.toLowerCase().includes('"api_key"') ||
-      /sk-[a-z0-9]{16,}/i.test(configuredDuring);
-    checks.push({
-      name: "Pi catalog exposes identity only (no secrets)",
-      passed: !leaksSecrets,
-      detail: leaksSecrets ? "secret-like material found in configured view" : "identity fields only",
-    });
-    if (probeId) {
-      try { await api.delete(`/api/llm-servers/${probeId}`); } catch {}
-    }
-    catalog = await api.get("/api/chat/model-catalog?project_id=");
-    const configuredAfter = JSON.stringify(catalog.configured || []);
-    checks.push({
-      name: "Projection removed after compat delete",
-      passed: !configuredAfter.includes("Pi Projection Probe"),
-      detail: `configured_entries=${catalog.configured?.length}`,
-    });
-  } catch (e) {
-    checks.push({ name: "Pi projection invariant", passed: false, detail: e.message });
-  }
-
-  // 7. Active agentic core is reported by the catalog.
-  try {
-    const catalog = await api.get("/api/chat/model-catalog");
-    checks.push({
-      name: "Catalog reports active engine",
+      name: "Catalog reports active agentic core",
       passed: catalog.engine === "pi" || catalog.engine === "legacy",
       detail: `engine=${JSON.stringify(catalog.engine)}`,
     });
+    checks.push({
+      name: "Configured endpoints are identity-only",
+      passed:
+        Array.isArray(catalog.configured) &&
+        !JSON.stringify(catalog.configured).toLowerCase().includes('"api_key"'),
+      detail: `configured=${catalog.configured?.length}`,
+    });
   } catch (e) {
-    checks.push({ name: "Catalog reports active engine", passed: false, detail: e.message });
+    checks.push({ name: "Model catalog", passed: false, detail: e.message });
   }
 
+  // 3. Legacy model inventory still visible for routing truth (donations/local).
+  try {
+    const catalog = await api.get(
+      `/api/chat/model-catalog${projectId ? `?project_id=${encodeURIComponent(projectId)}` : ""}`
+    );
+    checks.push({
+      name: "Legacy/donated model inventory present",
+      passed: Array.isArray(catalog.legacy_models),
+      detail: `legacy_models=${catalog.legacy_models?.length}`,
+    });
+  } catch (e) {
+    checks.push({ name: "Legacy model inventory", passed: false, detail: e.message });
+  }
+
+  await screenshot("36-model-management-provenance");
+
   const passed = checks.filter((c) => c.passed).length;
-  const failed = checks.filter((c) => !c.passed).length;
+  const failed = checks.length - passed;
   return { checks, passed, failed };
 }

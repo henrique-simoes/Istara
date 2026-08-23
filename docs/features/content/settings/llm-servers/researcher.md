@@ -3,7 +3,7 @@ stable_id: settings.llm-servers
 title: Legacy LLM Server Compatibility
 ui_path: Settings > Pi Model Management (legacy compatibility only)
 audience: researcher
-status: compatibility-only
+status: deprecated
 related_features: ["chat.model-controls", "settings.connection-strings"]
 related_glossary: ["rag"]
 code_references: ["frontend/src/components/common/SettingsView.tsx", "frontend/src/lib/modelProviders.ts", "backend/app/api/routes/llm_servers.py", "backend/app/api/routes/settings.py", "backend/app/core/network_discovery.py", "backend/app/core/pi_runtime/model_manager.py"]

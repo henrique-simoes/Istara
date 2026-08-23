@@ -22,7 +22,7 @@
    "paths": [
     "backend/app/config.py",
     "backend/app/core/compute_registry.py",
-    "backend/app/api/routes/llm_servers.py",
+    "backend/app/core/agentic/model_source.py",
     "qa/scripts/provider_contracts.py"
    ],
    "deterministic": [

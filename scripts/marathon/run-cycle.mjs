@@ -196,29 +196,21 @@ async function checkEnvironment() {
     env.frontend = res.ok;
   } catch { /* not running */ }
 
-  // LLM availability spans BOTH planes (CF-SPEC-1 Phase 5): the compat
-  // plane's healthy servers OR the Pi/configured model catalog. Cycles gate
-  // on any routable provider, not on the removed management surface.
-  let compatHealthy = 0;
-  try {
-    const res = await fetch(`${API_BASE}/api/llm-servers`, { headers: authHeaders() });
-    if (res.ok) {
-      const data = await res.json();
-      const servers = data?.servers || (Array.isArray(data) ? data : []);
-      compatHealthy = servers.filter((s) => s.is_healthy).length;
-    }
-  } catch { /* */ }
+  // LLM availability = the unified model catalog only (Phase 6: the LLM
+  // Servers surface is retired). Gates run when any plane has a routable
+  // model; "network_llm" means more than one local/donated entry.
   let piConfigured = 0;
+  let legacyModels = 0;
   try {
     const res = await fetch(`${API_BASE}/api/chat/model-catalog`, { headers: authHeaders() });
     if (res.ok) {
       const data = await res.json();
       piConfigured = Array.isArray(data?.configured) ? data.configured.length : 0;
+      legacyModels = Array.isArray(data?.legacy_models) ? data.legacy_models.length : 0;
     }
   } catch { /* */ }
-  const routableProviders = compatHealthy + piConfigured;
-  env.llm = routableProviders > 0;
-  env.network_llm = compatHealthy > 1;
+  env.llm = piConfigured > 0 || legacyModels > 0;
+  env.network_llm = legacyModels > 1;
 
   // Stitch/Figma keys (requires auth)
   try {

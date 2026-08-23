@@ -204,7 +204,10 @@ features:
     status: active
     owner: research-platform
     paths:
-      - "backend/app/api/routes/llm_servers.py"
+      - "backend/app/core/pi_runtime/model_manager.py"
+      - "backend/app/core/pi_runtime/endpoints.py"
+      - "backend/app/core/agentic/model_source.py"
+      - "backend/app/core/pi_runtime/oauth.py"
       - "backend/app/core/endpoint_security.py"
       - "backend/app/core/field_encryption.py"
       - "backend/app/core/connection_string.py"

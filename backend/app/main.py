@@ -35,7 +35,6 @@ from app.api.routes import (
     files,
     findings,
     interfaces,
-    llm_servers,
     memory,
     metrics,
     petals_bridge as petals_bridge_routes,
@@ -850,7 +849,6 @@ app.include_router(sessions.router, prefix="/api", tags=["Sessions"])
 app.include_router(memory.router, prefix="/api", tags=["Memory"])
 app.include_router(documents.router, prefix="/api", tags=["Documents"])
 app.include_router(context_dag_routes.router, prefix="/api", tags=["Context DAG"])
-app.include_router(llm_servers.router, prefix="/api", tags=["LLM Servers"])
 app.include_router(compute_routes.router, prefix="/api", tags=["Compute"])
 # Connection strings and the standalone relay CLI advertise /ws/relay.
 # Keep the prefixed /api/ws/relay route above for API consistency, and expose

@@ -1771,7 +1771,7 @@ Reusable AI suggestion panel with chat session linking. Replaces static text box
 
 **Error Extraction Fix:** `api.ts` now handles FastAPI validation errors (422) where `detail` is an array of `{ loc, msg, type }` objects. Extracts `msg` fields and joins with semicolons instead of showing `[object Object]`.
 
-**LLM Server API Key Support:** Settings > LLM Servers now has an optional API key field when adding servers. Keys are encrypted on save (`encrypt_field`), passed as `Authorization: Bearer` header to the LLM provider. The health check detects 401/403 auth failures and reports `health_error: "API key required"` — displayed as red text below the server entry. Relay nodes accept `--llm-api-key` flag for authenticated local LLMs. The relay admin configures the key once; users connecting via relay don't need separate keys.
+**RETIRED (CF-SPEC-1 Phase 6):** The LLM Servers management surface was removed; pi model management owns provider/model configuration for both agentic cores. Historical note: Settings > LLM Servers had an optional API key field when adding servers. Keys are encrypted on save (`encrypt_field`), passed as `Authorization: Bearer` header to the LLM provider. The health check detects 401/403 auth failures and reports `health_error: "API key required"` — displayed as red text below the server entry. Relay nodes accept `--llm-api-key` flag for authenticated local LLMs. The relay admin configures the key once; users connecting via relay don't need separate keys.
 
 **Tour Timing Fix:** `HomeClient.tsx` now waits for backend health (`GET /api/health`) with up to 15 retries (2s each) before checking projects and starting the tour. Prevents the race condition where frontend loads before backend, causing empty project list and wrong tour state or missing tour.
 
@@ -2077,7 +2077,7 @@ A provider-agnostic routing layer that supports Ollama, LM Studio, and any OpenA
 - **Priority-based routing**: Requests go to the highest-priority healthy server with automatic failover.
 - **Background health checks**: Every 60 seconds across all registered servers.
 - **On-demand health re-probe**: `GET /api/settings/status` calls `check_all_health()` before returning, so the status is always fresh rather than reading the cached 60-second flag.
-- **CRUD API**: `GET/POST/PATCH/DELETE /llm-servers` for managing external endpoints.
+- **RETIRED (Phase 6):** the `/llm-servers` CRUD API was removed. Provider/model configuration lives in pi model management (`backend/app/core/pi_runtime/model_manager.py`, Settings > Pi Model Management).
 - **LLMServer model**: Stored in DB with provider_type, host, API key, priority, health status, and latency.
 
 **Files**: `backend/app/core/llm_router.py`, `backend/app/models/llm_server.py`, `backend/app/api/routes/llm_servers.py`
@@ -2090,7 +2090,7 @@ Automatic discovery of LLM servers (LM Studio, Ollama, OpenAI-compatible) on the
 - **Model-aware routing**: Each discovered server's available models are captured. The router picks the correct model per server — if the configured model isn't available on a remote server, it uses whatever model is loaded there.
 - **Startup integration**: Discovery runs at startup before `auto_detect_provider`, so network servers are available immediately when the local LLM is down.
 - **Persistence**: Discovered servers are saved to the DB and registered with the LLM Router. Duplicates (by host URL) are skipped.
-- **On-demand rescan**: `POST /api/llm-servers/discover` triggers a new network scan at any time.
+- **RETIRED (Phase 6):** network discovery now reports through the unified model catalog (`GET /api/chat/model-catalog`).
 - **No hardcoded IPs**: Works on any subnet — detects the local network automatically via `socket.getaddrinfo` and UDP connect trick.
 
 **Files**: `backend/app/core/network_discovery.py`, `backend/app/main.py` (startup integration)
