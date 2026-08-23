@@ -546,6 +546,12 @@ async function loadEvaluators() {
 }
 
 async function applyFixedTestModel() {
+  // Multi-plane deployments (Phase 6): model pinning is per-endpoint there,
+  // so allow operators to bypass the legacy global switch explicitly.
+  if (/^(1|true|yes)$/i.test(String(process.env.ISTARA_FIXED_LLM_SKIP || ""))) {
+    console.log(`  Fixed test model pinning skipped (ISTARA_FIXED_LLM_SKIP); turns resolve via the unified provider plane.`);
+    return null;
+  }
   if (!FIXED_TEST_MODEL) return null;
 
   const statusRes = await fetch(`${API_BASE}/api/settings/models`, {
@@ -576,6 +582,24 @@ async function applyFixedTestModel() {
 
   const switched = await switchRes.json();
   if (switched.status !== "switched" || switched.model !== FIXED_TEST_MODEL) {
+    // Phase 6: on unified-plane deployments the requested model may already be
+    // resolvable through pi model management (or the local/donated inventory)
+    // without an ollama pull. If the catalog can serve it, accept and move on.
+    try {
+      const catRes = await fetch(`${API_BASE}/api/chat/model-catalog`, {
+        headers: apiClient._headers(),
+      });
+      if (catRes.ok) {
+        const catalog = await catRes.json();
+        const known =
+          (Array.isArray(catalog.legacy_models) && catalog.legacy_models.includes(FIXED_TEST_MODEL)) ||
+          (Array.isArray(catalog.configured) && catalog.configured.some((e) => e.model === FIXED_TEST_MODEL));
+        if (known) {
+          console.log(`  Fixed test model ${FIXED_TEST_MODEL} resolves via the unified provider plane; skipping legacy switch`);
+          return FIXED_TEST_MODEL;
+        }
+      }
+    } catch { /* fall through to the hard error */ }
     throw new Error(`Fixed test model switch returned unexpected response: ${JSON.stringify(switched)}`);
   }
 
