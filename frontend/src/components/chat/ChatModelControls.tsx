@@ -164,7 +164,10 @@ function UsagePopover({ usage, model, open, onOpenChange }: { usage: ChatUsage |
     const maxWidth = Math.min(384, (workbench?.width || window.innerWidth) - 32);
     const minLeft = (workbench?.left || 0) + 16;
     const maxLeft = (workbench?.right || window.innerWidth) - maxWidth - 16;
-    const left = Math.max(minLeft, Math.min(rect.right - maxWidth, maxLeft));
+    // Keep the menu inside the visible chat workbench. The shell's context
+    // drawer can sit over the right side of this flex region, so right-aligning
+    // to the viewport would hide half of the usage details behind that drawer.
+    const left = workbench ? minLeft : Math.max(16, Math.min(rect.right - maxWidth, maxLeft));
     setPosition({ top: rect.bottom + 8, left, width: maxWidth });
   };
 
