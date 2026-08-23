@@ -154,8 +154,11 @@ async def init_db() -> None:
             await conn.run_sync(lambda sc: Base.metadata.create_all(sc, checkfirst=True))
 
         # Lightweight schema migration: add columns that create_all()
-        # won't add to pre-existing tables.  Each ALTER is wrapped in a
-        # try/except so it's a no-op once the column exists.
+        # won't add to pre-existing tables.  Each ALTER runs inside its own
+        # SAVEPOINT (begin_nested) so a single "column already exists" failure
+        # rolls back only that statement. PostgreSQL aborts the WHOLE transaction
+        # on the first failing statement; without savepoints the final COMMIT
+        # silently becomes a ROLLBACK and the create_all above is undone too.
         import sqlalchemy as sa
 
         migrations = [
@@ -302,59 +305,67 @@ async def init_db() -> None:
         ]
         for ddl in migrations:
             try:
-                await conn.execute(sa.text(ddl))
+                async with conn.begin_nested():
+                    await conn.execute(sa.text(ddl))
             except Exception:
                 pass  # Column already exists or SQLite doesn't support this DDL
 
         # Create tables with follow-up lightweight migrations when needed.
         try:
-            await conn.run_sync(
-                lambda c: Base.metadata.tables["webauthn_credentials"].create(c, checkfirst=True)
-            )
-        except Exception:
-            pass  # Table already exists
-
-        try:
-            await conn.run_sync(
-                lambda c: Base.metadata.tables["webauthn_challenges"].create(c, checkfirst=True)
-            )
-        except Exception:
-            pass  # Table already exists
-
-        try:
-            await conn.run_sync(
-                lambda c: Base.metadata.tables["recovery_codes"].create(c, checkfirst=True)
-            )
-        except Exception:
-            pass  # Table already exists
-
-        try:
-            await conn.execute(
-                sa.text(
-                    "ALTER TABLE audit_log ADD COLUMN event_type VARCHAR(80) NOT NULL DEFAULT ''"
+            async with conn.begin_nested():
+                await conn.run_sync(
+                    lambda c: Base.metadata.tables["webauthn_credentials"].create(c, checkfirst=True)
                 )
-            )
+        except Exception:
+            pass  # Table already exists
+
+        try:
+            async with conn.begin_nested():
+                await conn.run_sync(
+                    lambda c: Base.metadata.tables["webauthn_challenges"].create(c, checkfirst=True)
+                )
+        except Exception:
+            pass  # Table already exists
+
+        try:
+            async with conn.begin_nested():
+                await conn.run_sync(
+                    lambda c: Base.metadata.tables["recovery_codes"].create(c, checkfirst=True)
+                )
+        except Exception:
+            pass  # Table already exists
+
+        try:
+            async with conn.begin_nested():
+                await conn.execute(
+                    sa.text(
+                        "ALTER TABLE audit_log ADD COLUMN event_type VARCHAR(80) NOT NULL DEFAULT ''"
+                    )
+                )
         except Exception:
             pass  # Column already exists or audit_log has not been created yet
 
         try:
-            await conn.run_sync(
-                lambda c: Base.metadata.tables["task_review_events"].create(c, checkfirst=True)
-            )
+            async with conn.begin_nested():
+                await conn.run_sync(
+                    lambda c: Base.metadata.tables["task_review_events"].create(c, checkfirst=True)
+                )
         except Exception:
             pass  # Table already exists
 
         try:
-            await conn.run_sync(
-                lambda c: Base.metadata.tables["permission_requests"].create(c, checkfirst=True)
-            )
+            async with conn.begin_nested():
+                await conn.run_sync(
+                    lambda c: Base.metadata.tables["permission_requests"].create(c, checkfirst=True)
+                )
         except Exception:
             pass  # Table already exists
 
         try:
-            await conn.run_sync(
-                lambda c: Base.metadata.tables["project_interface_configs"].create(c, checkfirst=True)
-            )
+            async with conn.begin_nested():
+                await conn.run_sync(
+                    lambda c: Base.metadata.tables["project_interface_configs"].create(c, checkfirst=True)
+                )
         except Exception:
             pass  # Table already exists
 
@@ -366,8 +377,9 @@ async def init_db() -> None:
             "reconciliation_decisions",
         ):
             try:
-                await conn.run_sync(
-                    lambda c, name=table_name: Base.metadata.tables[name].create(c, checkfirst=True)
-                )
+                async with conn.begin_nested():
+                    await conn.run_sync(
+                        lambda c, name=table_name: Base.metadata.tables[name].create(c, checkfirst=True)
+                    )
             except Exception:
                 pass  # Table already exists
