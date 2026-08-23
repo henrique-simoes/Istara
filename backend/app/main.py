@@ -329,15 +329,12 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
                 _log.info("  Change this password after first login!")
                 _log.info("  Delete the credentials file after secure storage.")
                 _log.info("=" * 60)
-                # Persist to .env if auto-generated
+                # Persist to the runtime env file if auto-generated
                 if not app_settings.admin_password:
                     try:
-                        from pathlib import Path
+                        from app.core.env_persistence import persist_env_value
 
-                        env_path = Path(__file__).parent.parent / ".env"
-                        lines = env_path.read_text().splitlines() if env_path.exists() else []
-                        lines.append(f"ADMIN_PASSWORD={admin_pass}")
-                        env_path.write_text("\n".join(lines) + "\n")
+                        persist_env_value("ADMIN_PASSWORD", admin_pass)
                     except Exception:
                         pass
     except Exception as e:

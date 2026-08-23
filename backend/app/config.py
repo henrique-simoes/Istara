@@ -10,9 +10,22 @@ from pydantic import BaseModel, Field, field_validator
 from pydantic_settings import BaseSettings
 
 _BACKEND_DIR = Path(__file__).resolve().parent.parent
+# ISTARA_ENV_FILE: writable runtime-env target for read-only containers
+# (deployed stacks persist pi endpoints / encryption keys there). When set it
+# is BOTH loaded at import (so runtime-persisted values reload on restart)
+# and used by env_persistence writers.
+_RUNTIME_ENV_FILE = os.environ.get("ISTARA_ENV_FILE", "").strip()
+if _RUNTIME_ENV_FILE:
+    try:
+        from dotenv import load_dotenv
+
+        load_dotenv(_RUNTIME_ENV_FILE, override=False)
+    except Exception:  # pragma: no cover - dotenv is a pydantic-settings dep
+        pass
 _BACKEND_ENV_FILES = (
-    str(_BACKEND_DIR / ".env"),
-    str(_BACKEND_DIR / ".env.local"),
+    (str(_BACKEND_DIR / ".env"), str(_BACKEND_DIR / ".env.local"))
+    if not _RUNTIME_ENV_FILE
+    else (_RUNTIME_ENV_FILE, str(_BACKEND_DIR / ".env"), str(_BACKEND_DIR / ".env.local"))
 )
 
 

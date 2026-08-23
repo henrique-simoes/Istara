@@ -71,6 +71,7 @@ services:
       # chat here requires a live OLLAMA_HOST or the Pi core with a
       # configured endpoint.
       - LLM_PROVIDER_CONTRACT_STUB=true
+      - ISTARA_ENV_FILE=/app/runtime-state/env
       - OLLAMA_MODEL=${OLLAMA_MODEL:-qwen3:latest}
       - OLLAMA_EMBED_MODEL=${OLLAMA_EMBED_MODEL:-nomic-embed-text}
       - DATABASE_URL=postgresql+asyncpg://istara:istara@postgres:5432/istara
@@ -104,6 +105,10 @@ services:
     security_opt: [no-new-privileges:true]
     read_only: true
     tmpfs: ["/tmp:noexec,nosuid,size=100M", "/app/data:size=512M,uid=999,gid=999,mode=0750"]
+    volumes:
+      # Writable runtime env (pi endpoints, OAuth blobs, encryption key) on a
+      # persistent volume; ISTARA_ENV_FILE points the writers/loader there.
+      - istara-runtime-env:/app/runtime-state
     cap_drop: [ALL]
     cap_add: [CHOWN, SETUID, SETGID, DAC_OVERRIDE, NET_BIND_SERVICE]
     pids_limit: 200
@@ -182,3 +187,6 @@ networks:
   provider-net:
     driver: bridge
     internal: true
+
+volumes:
+  istara-runtime-env:

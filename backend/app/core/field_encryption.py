@@ -184,24 +184,13 @@ def ensure_encryption_key() -> str:
     key = Fernet.generate_key().decode()
     settings.data_encryption_key = key
 
-    # Persist to .env
+    # Persist to the runtime env file (ISTARA_ENV_FILE-aware, Phase 6)
     try:
-        from pathlib import Path
+        from app.core.env_persistence import persist_env_value
 
-        env_path = Path(__file__).parent.parent.parent / ".env"
-        lines = env_path.read_text().splitlines() if env_path.exists() else []
-        # Replace existing line or append
-        found = False
-        for i, line in enumerate(lines):
-            if line.startswith("DATA_ENCRYPTION_KEY="):
-                lines[i] = f"DATA_ENCRYPTION_KEY={key}"
-                found = True
-                break
-        if not found:
-            lines.append(f"DATA_ENCRYPTION_KEY={key}")
-        env_path.write_text("\n".join(lines) + "\n")
+        persist_env_value("DATA_ENCRYPTION_KEY", key)
         logger.info("Generated and persisted data encryption key")
     except Exception:
-        logger.warning("Could not persist encryption key to .env")
+        logger.warning("Could not persist encryption key to env file")
 
     return key
