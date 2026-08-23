@@ -356,3 +356,21 @@ embeddings/wire-only. (4) Execution-only bridge: engines may execute turns over 
 endpoints; nothing pi-side is advertised as compute-pool capacity (donor-collision and
 research-spine routing guarantees preserved).
 Why: Culmination of the integration work; makes engine choice purely about loop semantics.
+
+```
+### L-10 | 2026-08-23T18:40:00Z | S5-ship | ox-alpha | executor | Phase 6a
+Did: Implemented the unified provider plane (DEC-10): model_source resolver with approved
+precedence (explicit > local-direct > pi-managed fallback on stub-marked planes > donations
+untouched); pi_bridge execution-only OpenAI-compatible streaming bridge (tools + exact usage,
+never advertised as pool capacity); legacy ReAct loop routes through it with full provenance
+(route_evidence.plane, endpoint_id, serving model -> usage ledger); stub guard now blocks
+only when NO non-stub source exists; architecture doc updated.
+Result: LIVE VERIFICATION on Mac Studio deploy @ef0c5940: Istara core served real DeepSeek
+turns through pi model management — default resolution AND explicit selection; ledger shows
+engine=legacy model=deepseek-v4-pro endpoint=pi-deepseek-default stop=stop.
+Verified: pytest test_chat+test_model_source = 20 passed; ruff clean; remote smoke_istara.py
+output recorded above. Pre-existing local failures in tests/pi_production worker tests
+reproduced without my changes (env-only).
+Next: Phase 6b LLM-Servers retirement sweep; broad both-engine suites vs this instance;
+Codex OAuth endpoint #2; spec accept.
+```
