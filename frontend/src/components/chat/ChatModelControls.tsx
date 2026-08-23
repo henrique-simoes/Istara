@@ -56,10 +56,12 @@ function ModelPicker({
   choices,
   selected,
   onSelect,
+  onOpen,
 }: {
   choices: ModelChoice[];
   selected: ModelChoice | null;
   onSelect: (choice: ModelChoice) => void;
+  onOpen?: () => void;
 }) {
   const [query, setQuery] = useState("");
   const [open, setOpen] = useState(false);
@@ -79,7 +81,7 @@ function ModelPicker({
         className="ui-control flex w-full min-w-0 items-center gap-2 px-3 text-left"
         aria-haspopup="listbox"
         aria-expanded={open}
-        onClick={() => setOpen((value) => !value)}
+        onClick={() => { if (!open) onOpen?.(); setOpen((value) => !value); }}
       >
         <Zap size={15} className="shrink-0 text-istara-600" aria-hidden="true" />
         <span className="min-w-0 flex-1 truncate">
@@ -151,8 +153,7 @@ function ModelPicker({
   );
 }
 
-function UsagePopover({ usage, model }: { usage: ChatUsage | null; model: PiCatalogModel | null }) {
-  const [open, setOpen] = useState(false);
+function UsagePopover({ usage, model, open, onOpenChange }: { usage: ChatUsage | null; model: PiCatalogModel | null; open: boolean; onOpenChange: (open: boolean) => void }) {
   const data = usage?.last_turn?.usage || {};
   const currentInput = Number(data.input_tokens ?? data.input ?? usage?.latest?.input_tokens ?? 0);
   const contextWindow = model?.contextWindow || 0;
@@ -160,7 +161,7 @@ function UsagePopover({ usage, model }: { usage: ChatUsage | null; model: PiCata
 
   return (
     <div className="relative shrink-0">
-      <button type="button" className="ui-control inline-flex items-center gap-2 px-3 text-xs font-semibold" onClick={() => setOpen((value) => !value)} aria-expanded={open} aria-haspopup="dialog">
+      <button type="button" className="ui-control inline-flex items-center gap-2 px-3 text-xs font-semibold" onClick={() => onOpenChange(!open)} aria-expanded={open} aria-haspopup="dialog">
         <Activity size={15} className="text-istara-600" aria-hidden="true" />
         <span className="hidden sm:inline">Usage</span>
         <span className="font-mono tabular-nums">{formatTokens(usage?.total_tokens || 0)}</span>
@@ -170,7 +171,7 @@ function UsagePopover({ usage, model }: { usage: ChatUsage | null; model: PiCata
         <div role="dialog" aria-label="Chat usage details" className="ui-menu absolute right-0 top-[calc(100%+8px)] z-[120] w-[min(24rem,calc(100vw-2rem))] p-4">
           <div className="flex items-start justify-between gap-3">
             <div><h3 className="text-sm font-semibold text-slate-950 dark:text-white">This chat&apos;s usage</h3><p className="mt-1 text-xs text-slate-500">Provider-reported when available. Estimated values are labelled.</p></div>
-            <button type="button" className="ui-icon-button !min-h-[36px] !min-w-[36px]" onClick={() => setOpen(false)} aria-label="Close usage details"><X size={15} /></button>
+            <button type="button" className="ui-icon-button !min-h-[36px] !min-w-[36px]" onClick={() => onOpenChange(false)} aria-label="Close usage details"><X size={15} /></button>
           </div>
           <dl className="mt-4 grid grid-cols-2 gap-2">
             {[
@@ -212,6 +213,7 @@ export default function ChatModelControls({
   onUpdateSession: (data: Record<string, unknown>) => void;
 }) {
   const [agentOpen, setAgentOpen] = useState(false);
+  const [usageOpen, setUsageOpen] = useState(false);
 
   const choices = useMemo<ModelChoice[]>(() => {
     const result: ModelChoice[] = [];
@@ -264,7 +266,7 @@ export default function ChatModelControls({
     <div className="border-b border-slate-200 bg-white/95 px-3 py-2.5 shadow-sm backdrop-blur dark:border-slate-800 dark:bg-slate-950/95 sm:px-5">
       <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-2">
         <div className="relative min-w-[11rem] max-w-full flex-1 sm:max-w-[18rem]">
-          <button type="button" className="ui-control flex w-full items-center gap-2 px-3 text-left" onClick={() => setAgentOpen((value) => !value)} aria-expanded={agentOpen} aria-haspopup="listbox">
+          <button type="button" className="ui-control flex w-full items-center gap-2 px-3 text-left" onClick={() => { setUsageOpen(false); setAgentOpen((value) => !value); }} aria-expanded={agentOpen} aria-haspopup="listbox">
             <Bot size={15} className="shrink-0 text-slate-500" aria-hidden="true" />
             <span className="min-w-0 flex-1 truncate text-xs font-semibold text-slate-900 dark:text-white">{assignedAgent?.name || "Istara (Main)"}</span>
             <ChevronDown size={14} className="shrink-0 text-slate-400" />
@@ -275,7 +277,7 @@ export default function ChatModelControls({
           </div>}
         </div>
         <div className="hidden h-7 w-px bg-slate-200 dark:bg-slate-700 sm:block" aria-hidden="true" />
-        <div className="min-w-[15rem] max-w-full flex-[1.5] sm:max-w-[28rem]"><ModelPicker choices={choices} selected={selected} onSelect={setModel} /></div>
+        <div className="min-w-[15rem] max-w-full flex-[1.5] sm:max-w-[28rem]"><ModelPicker choices={choices} selected={selected} onSelect={setModel} onOpen={() => { setUsageOpen(false); setAgentOpen(false); }} /></div>
         <div className="flex min-w-[10rem] items-center gap-2">
           <SlidersHorizontal size={15} className="hidden text-slate-500 sm:block" aria-hidden="true" />
           <label htmlFor="chat-effort" className="sr-only">Model effort</label>
@@ -283,7 +285,7 @@ export default function ChatModelControls({
             {effortLevels.map((level) => <option key={level} value={level}>{effortLabel(level)}</option>)}
           </select>
         </div>
-        <UsagePopover usage={usage} model={selected?.model || null} />
+        <UsagePopover usage={usage} model={selected?.model || null} open={usageOpen} onOpenChange={(open) => { setUsageOpen(open); if (open) setAgentOpen(false); }} />
       </div>
       <div className="mx-auto mt-2 flex max-w-6xl flex-wrap items-center gap-x-3 gap-y-1 px-1 text-[11px] text-slate-500 dark:text-slate-400">
         <span className="inline-flex items-center gap-1"><Gauge size={13} className="text-istara-600" /> Core: <strong className="text-slate-700 dark:text-slate-200">{engine === "pi" ? "Pi" : "Istara"}</strong></span>

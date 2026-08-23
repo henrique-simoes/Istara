@@ -120,7 +120,7 @@ Chat uses `ChatModelControls`: the provider/model menu supports both browseable 
 
 ## Pi authentication boundary
 
-Pi model management is catalog-driven: `GET /api/settings/pi-catalog` and project-readable `GET /api/chat/model-catalog` expose provider/model capability metadata, never secrets. OpenAI is represented accurately as OpenAI API versus OpenAI Codex — ChatGPT subscription. Codex exposes Pi's two login choices: browser PKCE with state-verified callback and headless device code. Browser callbacks return only a success/failure page; access/refresh tokens remain in Keychain or encrypted local custody. The worker has a distinct `openai_codex` transport for the Codex Responses API.
+Pi model management is catalog-driven: `GET /api/settings/pi-catalog` and project-readable `GET /api/chat/model-catalog` expose provider/model capability metadata, never secrets. OpenAI is represented accurately as OpenAI API versus OpenAI Codex — ChatGPT subscription. Codex exposes Pi's two login choices: browser PKCE/manual handoff and headless device code. Browser callbacks return only a success/failure page; manual code/redirect completion remains state-verified. Active flows use opaque flow ids so simultaneous admins cannot overwrite each other's state; approved credentials transfer once into an encrypted endpoint field, retain expiry/refresh metadata, and refresh at the resolver boundary. The worker has a distinct `openai_codex` transport for the Codex Responses API.
 
 ## What the agentic core is not
 
