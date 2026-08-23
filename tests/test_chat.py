@@ -289,6 +289,54 @@ async def test_chat_blocked_when_provider_is_contract_stub():
     assert messages == []
 
 
+@pytest.mark.asyncio
+async def test_chat_stub_guard_exempts_pi_engine():
+    """On a stub-marked plane, a Pi-selected turn is NOT stub-blocked.
+
+    The guard exists for the legacy (local Ollama-compatible) plane only;
+    Pi turns go to configured cloud endpoints, so they must pass through
+    (CF-SPEC-1 ITEM-002, refined during Mac Studio deploy smoke).
+    """
+    from app.api.routes.chat import _resolve_chat_engine
+
+    await init_db()
+    if not settings.jwt_secret:
+        settings.jwt_secret = "test-secret"
+
+    token = create_token("user1", "testuser", "admin")
+    project_id = str(uuid.uuid4())
+    async with async_session() as db:
+        db.add(Project(id=project_id, name="Stub Exempt Pi Project"))
+        await db.commit()
+
+    original_stub = settings.llm_provider_contract_stub
+    original_flag = settings.pi_replacement_enabled
+    settings.llm_provider_contract_stub = True
+    settings.pi_replacement_enabled = False
+    try:
+        # Header selects pi -> resolution returns pi -> route must not block.
+        resolved = await _resolve_chat_engine(
+            _engine_request_stub({"x-istara-agent-engine": "pi"}), project_id, _engine_db_stub(None)
+        )
+        assert resolved == "pi"
+        assert not (original_stub and resolved != "pi")
+
+        transport = ASGITransport(app=app)
+        settings_copy = settings
+        settings_copy.llm_provider_contract_stub = True
+        async with AsyncClient(transport=transport, base_url="http://test") as ac:
+            response = await ac.post(
+                "/api/chat",
+                json={"message": "hello", "project_id": project_id},
+                headers={"Authorization": f"Bearer {token}", "x-istara-agent-engine": "pi"},
+            )
+        assert response.status_code == 200
+        assert "provider_stub_chat_blocked" not in response.text
+    finally:
+        settings.llm_provider_contract_stub = original_stub
+        settings.pi_replacement_enabled = original_flag
+
+
 def _engine_db_stub(project_value):
     class _StubDb:
         def __init__(self):

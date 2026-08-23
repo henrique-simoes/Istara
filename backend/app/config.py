@@ -369,8 +369,9 @@ class Settings(BaseSettings):
     agentic_core: bool = False
     # True when the configured Ollama-compatible provider plane is a
     # deterministic wire stub (QA contract / connectivity-acceptance stacks),
-    # not a model service. Interactive chat fails closed instead of serving
-    # canned contract text as an assistant reply (CF-SPEC-1 ITEM-002).
+    # not a model service. Interactive LEGACY-plane chat fails closed instead
+    # of serving canned contract text as an assistant reply (CF-SPEC-1
+    # ITEM-002); the Pi plane stays exempt — it never touches the local stub.
     llm_provider_contract_stub: bool = False
 
     # Meta-Hyperagent (optional layer that tunes subsystem parameters)

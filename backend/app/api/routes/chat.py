@@ -659,12 +659,16 @@ async def chat(request: ChatRequest, http_request: Request, db: AsyncSession = D
         min_role="researcher",
     )
 
-    # Fail closed before ANY side effect (session/message persistence, RAG):
+    # Fail closed BEFORE ANY side effect (session/message persistence, RAG):
     # a deployment that declared its provider plane as a QA wire stub must not
-    # accept interactive chat turns at all (CF-SPEC-1 ITEM-002).
-    if getattr(settings, "llm_provider_contract_stub", False):
+    # serve legacy-plane chat turns at all. The Pi plane is exempt — it talks
+    # to configured cloud endpoints (e.g. DeepSeek), never to the local stub.
+    resolved_engine = await _resolve_chat_engine(http_request, request.project_id, db)
+    if getattr(settings, "llm_provider_contract_stub", False) and resolved_engine != "pi":
         _chat_log.warning(
-            "Chat rejected on stub provider plane (project=%s)", request.project_id
+            "Chat rejected on stub provider plane (project=%s, engine=%s)",
+            request.project_id,
+            resolved_engine,
         )
         return StreamingResponse(
             iter([_provider_stub_chat_blocked_events()]),
@@ -972,15 +976,10 @@ async def chat(request: ChatRequest, http_request: Request, db: AsyncSession = D
 
         try:
             # ── Attempt native tool calling ──────────────────────────
-            # Resolve the engine the way the dispatcher does: operator flag >
-            # per-request header > persisted project choice > global default
-            # (CF-SPEC-1 ITEM-001). The UI's Agentic Core selection persists to
-            # projects.agentic_engine / agentic_engine_default and the frontend
-            # echoes its active core via x-istara-agent-engine, so a selected
-            # core now actually routes this turn.
-            pi_candidate = (
-                await _resolve_chat_engine(http_request, request.project_id, db) == "pi"
-            )
+            # Engine already resolved above for the stub guard (same
+            # precedence: operator flag > per-request header > persisted
+            # project choice > global default; CF-SPEC-1 ITEM-001).
+            pi_candidate = resolved_engine == "pi"
             pi_turn_status: dict = {}
             # Resolve the opt-in target before choosing either tool-loop transport.
             # A missing Keychain registration is terminal: falling back would silently
