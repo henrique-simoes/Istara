@@ -294,6 +294,9 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Lowercase repository slug for GHCR
+        id: repo_lc
+        run: echo "slug=${GITHUB_REPOSITORY,,}" >> "$GITHUB_OUTPUT"
       - name: Build disposable QA image (immutable tag)
         uses: docker/build-push-action@v6
         with:
@@ -301,15 +304,15 @@ jobs:
           file: backend/Dockerfile
           push: true
           tags: |
-            ghcr.io/${{ github.repository }}/istara-qa:${{ github.sha }}
-            ghcr.io/${{ github.repository }}/istara-qa:qa-run-${{ github.run_id }}-${{ github.run_attempt }}
+            ghcr.io/${{ steps.repo_lc.outputs.slug }}/istara-qa:${{ github.sha }}
+            ghcr.io/${{ steps.repo_lc.outputs.slug }}/istara-qa:qa-run-${{ github.run_id }}-${{ github.run_attempt }}
           provenance: true
           sbom: true
 
       - name: Record image digest + evidence manifest
         run: |
           mkdir -p artifacts
-          DIGEST=$(docker buildx imagetools inspect ghcr.io/${{ github.repository }}/istara-qa:${{ github.sha }} --format '{{.Manifest.Digest}}')
+          DIGEST=$(docker buildx imagetools inspect ghcr.io/${{ steps.repo_lc.outputs.slug }}/istara-qa:${{ github.sha }} --format '{{.Manifest.Digest}}')
           printf '%s' "$DIGEST" > artifacts/docker-image-digest.txt
           cat > artifacts/qa-artifact-manifest.json <<EOF
           {

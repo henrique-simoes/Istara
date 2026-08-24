@@ -30,7 +30,27 @@ def rehearse() -> dict:
     from app.core.sandbox_evaluation import sandbox_evaluation
     from app.main import app
 
-    actual_routes = {getattr(route, "path", "") for route in app.routes}
+    # FastAPI >= 0.118 defers include_router into lazy _IncludedRouter
+    # wrappers whose .path is "" until materialized. Derive HTTP routes from
+    # the OpenAPI schema (forces materialization) and keep WebSocket routes
+    # from the raw table.
+    def _iter_concrete_routes(routes, prefix=""):
+        """Yield (prefixed) paths, unwrapping FastAPI >=0.141 lazy
+        `_IncludedRouter` wrappers and applying their include prefix."""
+        for route in routes:
+            original = getattr(route, "original_router", None)
+            ctx = getattr(route, "include_context", None)
+            if original is not None:
+                sub_prefix = prefix + (getattr(ctx, "prefix", "") or "")
+                yield from _iter_concrete_routes(
+                    getattr(original, "routes", []), sub_prefix
+                )
+            else:
+                path = getattr(route, "path", "")
+                if path:
+                    yield prefix + path
+
+    actual_routes = set(_iter_concrete_routes(app.routes))
     required_routes = {
         "/api/improvement-governance/proposals",
         "/api/improvement-governance/proposals/{proposal_id}/sandbox-evaluation",

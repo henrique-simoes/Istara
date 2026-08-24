@@ -67,6 +67,9 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Lowercase repository slug for GHCR
+        id: repo_lc
+        run: echo "slug=${GITHUB_REPOSITORY,,}" >> "$GITHUB_OUTPUT"
       - name: Build backend QA image (immutable tag, never `latest`)
         id: build
         uses: docker/build-push-action@v6
@@ -75,8 +78,8 @@ jobs:
           file: backend/Dockerfile
           push: true
           tags: |
-            ghcr.io/${{ github.repository }}/istara-qa:${{ github.sha }}
-            ghcr.io/${{ github.repository }}/istara-qa:qa-run-${{ github.run_id }}-${{ github.run_attempt }}
+            ghcr.io/${{ steps.repo_lc.outputs.slug }}/istara-qa:${{ github.sha }}
+            ghcr.io/${{ steps.repo_lc.outputs.slug }}/istara-qa:qa-run-${{ github.run_id }}-${{ github.run_attempt }}
           provenance: true
           sbom: true
 
@@ -84,7 +87,7 @@ jobs:
         id: digest
         run: |
           DIGEST=$(docker buildx imagetools inspect \
-            ghcr.io/${{ github.repository }}/istara-qa:${{ github.sha }} \
+            ghcr.io/${{ steps.repo_lc.outputs.slug }}/istara-qa:${{ github.sha }} \
             --format '{{.Manifest.Digest}}')
           echo "digest=$DIGEST" >> "$GITHUB_OUTPUT"
           mkdir -p artifacts

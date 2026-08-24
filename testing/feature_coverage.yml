@@ -87,6 +87,42 @@ features:
     introduced_in: "00be130f"
     last_verified_sha: "00be130f"
 
+  - id: testing.docker-runner
+    status: active
+    owner: platform
+    paths:
+      - "scripts/runner/**"
+      - "tests/real_user_benchmark/package-lock.json"
+      - "tests/real_user_benchmark/run.mjs"
+      - "tests/real_user_benchmark/lib/api-client.mjs"
+      - "tests/simulation/run.mjs"
+      - "tests/simulation/lib/api-client.mjs"
+      - "tests/simulation/scenarios/79-engine-selector.mjs"
+      - "tests/e2e_test.py"
+      - "tests/benchmarks/long_horizon_runner.py"
+      - "tests/test_chat.py"
+      - "tests/test_model_source.py"
+      - "tests/test_a11y_contrast.py"
+      - "tests/test_design_tokens.py"
+    exceptions: []
+    requires_human_review: false
+    docs_features_update: false
+    obligations:
+      deterministic:
+        - backend_contracts
+        - frontend_contracts
+      live:
+        - authorized_live
+      docs: []
+    commands:
+      deterministic:
+        - pytest_core_routing
+        - frontend_typecheck
+        - frontend_lint
+    acceptance: "Dual-core runner surfaces stay wired: engine headers flow end-to-end, preset/timeout knobs exist, Docker-only execution works without host installs."
+    introduced_in: "eb5b8a9"
+    last_verified_sha: "eb5b8a9"
+
   - id: ci.public-testing-branch
     status: active
     owner: platform
