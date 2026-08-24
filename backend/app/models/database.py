@@ -254,6 +254,13 @@ async def init_db() -> None:
             # Checkpoint/recovery hardening.
             "ALTER TABLE task_checkpoints ADD COLUMN agent_state VARCHAR(20) "
             "NOT NULL DEFAULT 'idle'",
+            # F-P1: checkpoint timestamps must be timestamptz to match the
+            # UTC-aware model defaults (asyncpg rejects aware datetimes for
+            # naive columns). Postgres-only type change; SQLite tolerates.
+            "ALTER TABLE task_checkpoints ALTER COLUMN created_at TYPE "
+            "TIMESTAMP WITH TIME ZONE",
+            "ALTER TABLE task_checkpoints ALTER COLUMN updated_at TYPE "
+            "TIMESTAMP WITH TIME ZONE",
             # WebAuthn credential metadata and persisted challenge state.
             "ALTER TABLE webauthn_credentials ADD COLUMN device_type VARCHAR(50) "
             "NOT NULL DEFAULT ''",

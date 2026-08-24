@@ -39,11 +39,13 @@ class TaskCheckpoint(Base):
     agent_state: Mapped[str] = mapped_column(
         String(20), default=AgentState.IDLE.value  # Capture AgentState enum value
     )
+    # timezone=True MUST match the UTC-aware defaults below: asyncpg rejects
+    # aware datetimes for TIMESTAMP WITHOUT TIME ZONE columns (F-P1).
     created_at: Mapped[datetime] = mapped_column(
-        DateTime, default=lambda: datetime.now(timezone.utc)
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
     )
     updated_at: Mapped[datetime] = mapped_column(
-        DateTime,
+        DateTime(timezone=True),
         default=lambda: datetime.now(timezone.utc),
         onupdate=lambda: datetime.now(timezone.utc),
     )
