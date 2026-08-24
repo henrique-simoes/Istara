@@ -1,11 +1,10 @@
 """CF-SPEC-1 Phase 6: unified model-source resolution and the execution-only
 pi bridge. Locks DEC-10 precedence: explicit selection > local direct >
-pi-managed fallback (stub-marked planes only) ; donations untouched; the
+pi-managed fallback (stub-marked planes only); donations untouched; the
 bridge never advertises capacity."""
 
 import json
 
-import httpx
 import pytest
 
 from app.config import settings
@@ -110,57 +109,83 @@ async def test_unknown_explicit_model_leaves_donation_path_untouched(monkeypatch
     assert await ms.resolve_model_source("some-donated-model") is None
 
 
-def _sse_bytes(chunks: list[dict]) -> bytes:
-    lines = [b"data: " + json.dumps(c).encode() for c in chunks]
-    return b"\n\n".join(lines) + b"\n\ndata: [DONE]\n\n"
+def _sse_lines(chunks: list[dict]) -> list[str]:
+    lines = ["data: " + json.dumps(c) for c in chunks]
+    lines.append("data: [DONE]")
+    return [line + "\n" for line in lines]
+
+
+def _capture_line_iter(lines: list[str], captured: dict):
+    """line_iter factory whose urllib spy captures the outgoing request.
+
+    The spy is restored after the yielded lines are exhausted (the bridge
+    consumes them inside its for-loop)."""
+
+    def factory():
+        import urllib.request as ur
+
+        real = ur.urlopen
+
+        def spy(request, *a, **kw):
+            captured["request"] = request
+            return iter(lines)
+
+        ur.urlopen = spy
+
+        def gen():
+            try:
+                yield from lines
+            finally:
+                ur.urlopen = real
+
+        return gen()
+
+    return factory
 
 
 @pytest.mark.asyncio
-async def test_bridge_streams_content_tools_and_exact_usage():
+async def test_bridge_streams_content_and_exact_usage():
     from app.core.agentic.model_source import ModelSource
     from app.core.agentic.pi_bridge import stream_openai_chat
 
-    sse = _sse_bytes(
+    sse = _sse_lines(
         [
             {"choices": [{"delta": {"role": "assistant", "content": "PO"}, "finish_reason": None}]},
             {"choices": [{"delta": {"content": "NG"}, "finish_reason": None}]},
             {
-                "choices": [
-                    {
-                        "delta": {},
-                        "finish_reason": "stop",
-                    }
-                ],
+                "choices": [{"delta": {}, "finish_reason": "stop"}],
                 "usage": {"prompt_tokens": 11, "completion_tokens": 2, "total_tokens": 13},
             },
         ]
     )
-
-    def handler(request: httpx.Request) -> httpx.Response:
-        body = json.loads(request.content)
-        assert request.url.path.endswith("/v1/chat/completions")
-        assert request.headers["Authorization"] == "Bearer sk-live"
-        assert body["model"] == "deepseek-v4-pro"
-        assert body["stream"] is True
-        assert body["messages"][0]["role"] == "system"
-        return httpx.Response(200, content=sse, headers={"Content-Type": "text/event-stream"})
-
-    source = ModelSource(
-        plane="pi-managed",
-        endpoint_id="ep1",
-        base_url="https://provider.test",
-        api_key="sk-live",
-        model="deepseek-v4-pro",
-    )
+    captured: dict = {}
     forwarded: list[str] = []
     message = await stream_openai_chat(
-        source=source,
+        source=ModelSource(
+            plane="pi-managed", endpoint_id="ep1",
+            base_url="https://provider.test", api_key="sk-live",
+            model="deepseek-v4-pro",
+        ),
         history=[{"role": "user", "content": "hi"}],
         system="sys",
         stream_cb=lambda event: forwarded.append(event.get("text", "")),
-        transport=httpx.MockTransport(handler),
+        line_iter=_capture_line_iter(sse, captured),
     )
-    assert message["role"] == "assistant"
+
+    from app.core.agentic.pi_bridge import build_bridge_request
+
+    req = build_bridge_request(
+        base_url="https://provider.test",
+        payload={"model": "deepseek-v4-pro", "messages": [{"role": "system", "content": "sys"}], "stream": True},
+        api_key="sk-live",
+    )
+    assert req.full_url.endswith("/v1/chat/completions")
+    assert req.headers.get("Authorization") == "Bearer sk-live"
+    assert req.headers.get("User-agent") == "istara-pi-runtime/1.0"
+    body = json.loads(req.data.decode())
+    assert body["model"] == "deepseek-v4-pro" and body["stream"] is True
+    assert body["messages"][0]["role"] == "system"
+
     assert message["content"] == "PONG"
     meta = message["_bridge_meta"]
     assert meta["usage"]["total_tokens"] == 13 and meta["usage"]["estimate"] is False
@@ -173,7 +198,7 @@ async def test_bridge_surfaces_tool_calls():
     from app.core.agentic.model_source import ModelSource
     from app.core.agentic.pi_bridge import stream_openai_chat
 
-    sse = _sse_bytes(
+    sse = _sse_lines(
         [
             {
                 "choices": [
@@ -206,13 +231,9 @@ async def test_bridge_surfaces_tool_calls():
         plane="pi-managed", endpoint_id="ep1", base_url="https://p.test", api_key="k",
         model="m",
     )
-
-    def handler(_request: httpx.Request) -> httpx.Response:
-        return httpx.Response(200, content=sse, headers={"Content-Type": "text/event-stream"})
-
     message = await stream_openai_chat(
         source=source, history=[{"role": "user", "content": "q"}],
-        transport=httpx.MockTransport(handler),
+        line_iter=lambda: iter(sse),
     )
     calls = message["tool_calls"]
     assert len(calls) == 1

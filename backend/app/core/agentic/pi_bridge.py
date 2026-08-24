@@ -16,9 +16,8 @@ from __future__ import annotations
 
 import json
 import logging
+import urllib.request
 from typing import Any
-
-import httpx
 
 from app.core.agentic.model_source import ModelSource
 
@@ -39,6 +38,25 @@ def _message_payload(
     return messages
 
 
+def build_bridge_request(
+    *, base_url: str, payload: dict[str, Any], api_key: str
+) -> urllib.request.Request:
+    """Build the outbound chat-completions request (pure; unit-testable)."""
+    headers = {
+        "User-Agent": "istara-pi-runtime/1.0",
+        "Accept": "application/json",
+        "Content-Type": "application/json",
+    }
+    if api_key:
+        headers["Authorization"] = f"Bearer {api_key}"
+    return urllib.request.Request(
+        f"{base_url.rstrip('/')}/v1/chat/completions",
+        data=json.dumps(payload).encode("utf-8"),
+        headers=headers,
+        method="POST",
+    )
+
+
 async def stream_openai_chat(
     *,
     source: ModelSource,
@@ -49,7 +67,7 @@ async def stream_openai_chat(
     tools: list[dict[str, Any]] | None = None,
     stream_cb: Any = None,
     forward_tokens: bool = True,
-    transport: httpx.AsyncBaseTransport | None = None,
+    line_iter: Any = None,
 ) -> dict[str, Any]:
     """One streamed OpenAI-compatible turn. Returns an assistant message dict.
 
@@ -71,72 +89,72 @@ async def stream_openai_chat(
     if tools:
         payload["tools"] = tools
 
-    # Provider edge protection rejects default client UAs (403 on
-    # api.deepseek.com); identify the runtime like the OAuth client does.
-    headers = {"User-Agent": "istara-pi-runtime/1.0"}
-    if source.api_key:
-        headers["Authorization"] = f"Bearer {source.api_key}"
+    # Provider edge protection rejects default client UAs AND non-browser TLS
+    # fingerprints (httpx → 403 HTML challenge on api.deepseek.com while
+    # urllib passes). Transport = urllib via build_bridge_request; `line_iter`
+    # is the test injection seam (an iterable of raw SSE lines).
     content_parts: list[str] = []
     tool_calls: dict[int, dict[str, Any]] = {}
     finish_reason: str | None = None
     usage: dict[str, Any] = {}
 
-    async with httpx.AsyncClient(timeout=_DEFAULT_TIMEOUT_S, transport=transport) as client:
-        async with client.stream(
-            "POST",
-            f"{source.base_url.rstrip('/')}/v1/chat/completions",
-            json=payload,
-            headers=headers,
-        ) as response:
-            if response.status_code >= 400:
-                body = (await response.aread()).decode(errors="replace")[:400]
-                raise RuntimeError(f"pi_bridge_http_{response.status_code}:{body}")
-            async for line in response.aiter_lines():
-                if not line.startswith("data: "):
-                    continue
-                data_str = line[6:].strip()
-                if data_str == "[DONE]":
-                    break
-                try:
-                    chunk = json.loads(data_str)
-                except json.JSONDecodeError:
-                    continue
-                if chunk.get("usage"):
-                    raw = chunk["usage"]
-                    usage = {
-                        "input_tokens": raw.get("prompt_tokens", 0) or 0,
-                        "output_tokens": raw.get("completion_tokens", 0) or 0,
-                        "total_tokens": raw.get("total_tokens")
-                        or (raw.get("prompt_tokens", 0) or 0)
-                        + (raw.get("completion_tokens", 0) or 0),
-                        "estimate": False,
-                    }
-                for choice in chunk.get("choices") or []:
-                    delta = choice.get("delta") or {}
-                    text = delta.get("content")
-                    if isinstance(text, str) and text:
-                        content_parts.append(text)
-                        if forward_tokens and stream_cb is not None:
-                            await _emit(stream_cb, {"type": "content", "text": text})
-                    for tc in delta.get("tool_calls") or []:
-                        index = int(tc.get("index") or 0)
-                        slot = tool_calls.setdefault(
-                            index,
-                            {
-                                "id": "",
-                                "type": "function",
-                                "function": {"name": "", "arguments": ""},
-                            },
-                        )
-                        if tc.get("id"):
-                            slot["id"] = tc["id"]
-                        fn = tc.get("function") or {}
-                        if fn.get("name"):
-                            slot["function"]["name"] += fn["name"]
-                        if fn.get("arguments"):
-                            slot["function"]["arguments"] += fn["arguments"]
-                    if choice.get("finish_reason"):
-                        finish_reason = choice["finish_reason"]
+    def _open_stream() -> Any:
+        request = build_bridge_request(
+            base_url=source.base_url, payload=payload, api_key=source.api_key
+        )
+        return urllib.request.urlopen(request, timeout=_DEFAULT_TIMEOUT_S)
+
+    stream_ctx = line_iter() if line_iter is not None else _open_stream()
+    try:
+        for raw_line in stream_ctx:
+            line = raw_line.decode("utf-8", "replace") if isinstance(raw_line, bytes) else raw_line
+            if not line.startswith("data: "):
+                continue
+            data_str = line[6:].strip()
+            if data_str == "[DONE]":
+                break
+            try:
+                chunk = json.loads(data_str)
+            except json.JSONDecodeError:
+                continue
+            if chunk.get("usage"):
+                raw = chunk["usage"]
+                usage = {
+                    "input_tokens": raw.get("prompt_tokens", 0) or 0,
+                    "output_tokens": raw.get("completion_tokens", 0) or 0,
+                    "total_tokens": raw.get("total_tokens")
+                    or (raw.get("prompt_tokens", 0) or 0)
+                    + (raw.get("completion_tokens", 0) or 0),
+                    "estimate": False,
+                }
+            for choice in chunk.get("choices") or []:
+                delta = choice.get("delta") or {}
+                text = delta.get("content")
+                if isinstance(text, str) and text:
+                    content_parts.append(text)
+                    if forward_tokens and stream_cb is not None:
+                        await _emit(stream_cb, {"type": "content", "text": text})
+                for tc in delta.get("tool_calls") or []:
+                    index = int(tc.get("index") or 0)
+                    slot = tool_calls.setdefault(
+                        index,
+                        {
+                            "id": "",
+                            "type": "function",
+                            "function": {"name": "", "arguments": ""},
+                        },
+                    )
+                    if tc.get("id"):
+                        slot["id"] = tc["id"]
+                    fn = tc.get("function") or {}
+                    if fn.get("name"):
+                        slot["function"]["name"] += fn["name"]
+                    if fn.get("arguments"):
+                        slot["function"]["arguments"] += fn["arguments"]
+                if choice.get("finish_reason"):
+                    finish_reason = choice["finish_reason"]
+    except urllib.error.HTTPError as exc:
+        raise RuntimeError(f"pi_bridge_http_{exc.code}") from exc
 
     assembled_calls = [
         {
