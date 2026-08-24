@@ -477,3 +477,44 @@ Result: fixes pushed @b2eb658b; CI run in flight.
 Verified: check_integrity coherent; obligations classifier passes over multi-commit range;
 rehearsal ci-sim passed=True in isolated venv; yaml valid.
 Next: watch CI; then propose restructured testing-branch CI (tiered lanes) per owner ask.
+
+## Phase 7c — CI answers + independent audit consensus
+
+**Owner Q1 — do the three models run inference in CI?** No, and it is now
+structurally enforced: no workflow sets any provider secret; the only live-LLM
+suite is marker-gated (`ISTARA_RUN_REAL_LLM_BENCHMARK`, never set in CI); full
+pytest runs with `-m "not live_llm"`; an autouse conftest guard fails the suite
+if that env is ever armed; rehearsal exercises pure route enumeration. Endpoints
+are never consulted — resolution paths are monkeypatched/injected.
+
+**Owner Q2 — pi model management integrity coverage today:** PI-RATCHET
+count-to-zero, version provenance, dispatcher authority (W1), catalog/UX
+contract tests, provider contracts, engine-precedence tests, resolver seam
+tests, security benchmark triggers on the provider surfaces. Gaps accepted from
+audit: catalog JSON schema validation, resolver error-taxonomy golden contract,
+model-source precedence matrix, route_introspection unit tests, SSE golden
+corpus — queued as tracked work.
+
+**Independent audit (sub-agent, adversarial) — consensus record:**
+Accepted & implemented now: duplicate qa-image build removed (tag-race +
+~15min/push); `-m "not live_llm"` + conftest guard; top-level least-privilege
+permissions with packages:write only where needed; fetch-depth:0 so changed-
+file gates never go vacuous; loud failure on release writeback.
+Accepted & queued: hash-pinned constraints.txt + weekly drift job;
+changed-path COMMAND_CATALOG execution lane (makes obligations real);
+catalog/resolver/introspection/SSE-golden contracts; actions SHA-pinning;
+image retention; mutation gates to scheduled lane.
+Rebutted/adjusted: pytest-socket immediately (deferred — needs careful unix/
+localhost allowlist to stay hermetic); rehearsal "endpoints empty" invariant
+(rehearsal also runs on deployed stacks where endpoints legitimately exist);
+"desktop decorative" (kept green-and-blocking for now, revisit at restructure).
+
+```
+### L-16 | 2026-08-24T15:50:00Z | S2-execute | ox-alpha | executor | CI hardening
+Did: Answered owner's token-spend question (zero by construction, now structural);
+spawned independent adversarial auditor; reached consensus on 25 findings; implemented
+6 quick-wins (commits c6d98dc1..aeac896e + fix); documented deferred set.
+Result: CI push path loses ~15min duplicate build; zero-token structuralized.
+Verified: yaml valid; harness+chat 30 passed locally post-guard; runs in flight.
+Next: watch CI green; implement queued contracts + changed-path lane; T2 after probes.
+```
