@@ -56,3 +56,13 @@ def researcher_token():
 def researcher_auth_headers(researcher_token):
     """Authorization headers for non-admin protected API tests."""
     return {"Authorization": f"Bearer {researcher_token}"}
+
+
+@pytest.fixture(autouse=True)
+def _no_live_llm_env(request):
+    if os.environ.get("ISTARA_RUN_REAL_LLM_BENCHMARK"):
+        pytest.fail(
+            "ISTARA_RUN_REAL_LLM_BENCHMARK is set: live inference is forbidden "
+            "in this suite (use the marker-gated integration module explicitly)."
+        )
+    yield

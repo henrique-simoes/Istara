@@ -10,6 +10,9 @@ concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}-${{ github.event_name }}
   cancel-in-progress: true
 
+permissions:
+  contents: read
+
 jobs:
   feature-obligations:
     runs-on: ubuntu-latest
@@ -130,6 +133,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -176,7 +181,7 @@ jobs:
         continue-on-error: true  # TODO: fix 146 files needing reformat, then make blocking
 
       - name: Test
-        run: pytest ../tests/ -v --tb=short
+        run: pytest ../tests/ -v --tb=short -m "not live_llm"
 
   frontend:
     runs-on: ubuntu-latest
@@ -262,74 +267,6 @@ jobs:
       - name: Check Rust compiles
         run: cargo check
         continue-on-error: true  # Dependencies may require system libs not available in CI
-
-  qa-artifact:
-    runs-on: ubuntu-latest
-    needs: [feature-obligations, governance, backend, frontend, test-harness-js]
-    permissions:
-      contents: read
-      packages: write  # trusted `testing` runs may publish a QA image to GHCR
-      id-token: write  # provenance attestation
-    if: ${{ github.event_name == 'push' && github.ref_name == 'testing' }}
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-
-      - name: Validate QA compose contract (no services started)
-        run: docker compose -f docker-compose.qa.yml --profile contract config --quiet
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Log in to GHCR (trusted testing runs only)
-        uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Lowercase repository slug for GHCR
-        id: repo_lc
-        run: echo "slug=${GITHUB_REPOSITORY,,}" >> "$GITHUB_OUTPUT"
-      - name: Build disposable QA image (immutable tag)
-        uses: docker/build-push-action@v6
-        with:
-          context: .
-          file: backend/Dockerfile
-          push: true
-          tags: |
-            ghcr.io/${{ steps.repo_lc.outputs.slug }}/istara-qa:${{ github.sha }}
-            ghcr.io/${{ steps.repo_lc.outputs.slug }}/istara-qa:qa-run-${{ github.run_id }}-${{ github.run_attempt }}
-          provenance: true
-          sbom: true
-
-      - name: Record image digest + evidence manifest
-        run: |
-          mkdir -p artifacts
-          DIGEST=$(docker buildx imagetools inspect ghcr.io/${{ steps.repo_lc.outputs.slug }}/istara-qa:${{ github.sha }} --format '{{.Manifest.Digest}}')
-          printf '%s' "$DIGEST" > artifacts/docker-image-digest.txt
-          cat > artifacts/qa-artifact-manifest.json <<EOF
-          {
-            "source_sha": "${{ github.sha }}",
-            "image_digest": "$DIGEST",
-            "run_id": "${{ github.run_id }}",
-            "attempt": "${{ github.run_attempt }}",
-            "provider_mode": "contract",
-            "human_gate_required": true
-          }
-          EOF
-
-      - name: Upload QA artifact evidence
-        uses: actions/upload-artifact@v4
-        with:
-          name: istara-qa-artifact-evidence
-          path: artifacts/
 
   qa-contract-stack:
     runs-on: ubuntu-latest
