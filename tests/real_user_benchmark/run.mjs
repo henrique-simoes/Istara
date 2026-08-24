@@ -3554,8 +3554,35 @@ function materializeConnectionStrings(generated, overrides) {
   return output;
 }
 
+/**
+ * F-P2b: benchmark sessions pin a custom inference preset with an adequate
+ * completion budget. Default presets cap max_tokens, and reasoning-style
+ * models (deepseek-v4-flash et al at low effort) can spend that budget in the
+ * reasoning channel before any visible content emits — which the benchmark
+ * correctly rejects as "no assistant text". Env: ISTARA_BENCHMARK_SESSION_MAX_TOKENS.
+ */
+const benchSessionMaxTokens = Number.parseInt(
+  process.env.ISTARA_BENCHMARK_SESSION_MAX_TOKENS || "16384", 10,
+);
+
+async function ensureBenchSession(api, projectId, label) {
+  try {
+    const session = await api.post("/api/sessions", {
+      project_id: projectId,
+      title: `[RU-BENCH] ${label} ${runId}`,
+      inference_preset: "custom",
+      custom_temperature: 0.7,
+      custom_max_tokens: Number.isFinite(benchSessionMaxTokens) ? benchSessionMaxTokens : 16384,
+    });
+    return session?.id || null;
+  } catch (error) {
+    console.warn(`[bench] session preset setup failed (${error.message}); using server defaults`);
+    return null;
+  }
+}
+
 async function runChatBenchmark(api, projectId, turns, { actor = null, contributionMap = null } = {}) {
-  let sessionId = null;
+  let sessionId = await ensureBenchSession(api, projectId, actor?.key || "chat");
   const completed = [];
   for (const turn of turns) {
     const started = Date.now();
@@ -3627,6 +3654,12 @@ async function runCollaborativeChatBenchmark({ projectId, actors, turns }) {
   }
   const contributionMap = new Map();
   const sessions = new Map();
+  for (const a of activeActors) {
+    if (!sessions.get(a.key)) {
+      // eslint-disable-next-line no-await-in-loop
+      sessions.set(a.key, await ensureBenchSession(a.api, projectId, a.key || a.label || "actor"));
+    }
+  }
   let completed = 0;
   for (let index = 0; index < turns.length; index += 1) {
     const turn = turns[index];
