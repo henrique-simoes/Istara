@@ -9,9 +9,13 @@ npm ci --no-audit --no-fund > /dev/null
 npx playwright install --with-deps chromium
 cd /work
 
-echo "[runner] MARATHON engine=$ISTARA_MARATHON_ENGINE start $(date -u +%H:%M:%S)"
-node scripts/marathon/run-cycle.mjs --all
-echo "[runner] MARATHON done $(date -u +%H:%M:%S)"
+if [[ "${ISTARA_RUNNER_SKIP_MARATHON:-0}" != "1" ]]; then
+  echo "[runner] MARATHON engine=$ISTARA_MARATHON_ENGINE start $(date -u +%H:%M:%S)"
+  node scripts/marathon/run-cycle.mjs --all
+  echo "[runner] MARATHON done $(date -u +%H:%M:%S)"
+else
+  echo "[runner] MARATHON skipped (ISTARA_RUNNER_SKIP_MARATHON=1)"
+fi
 
 echo "[runner] probe deps"
 cd tests/real_user_benchmark
