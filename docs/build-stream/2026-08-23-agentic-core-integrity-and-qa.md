@@ -427,3 +427,30 @@ Result: Register updated; triage of these failures postponed, not dropped.
 Verified: both pass logs show matching failure lists (sim_legacy.log / sim_pi.log).
 Next: continue queue (probes → marathon → T1 done → T2 live); revisit F-S1 afterwards.
 ```
+
+## Findings register (Phase 7 continued)
+
+| ID | Sev | Dim | Where | Finding | Status |
+|----|-----|-----|-------|---------|--------|
+| F-P1 | Major | Bugs | backend agent worker cycle (Postgres deploy) | `asyncpg DataError: can't subtract offset-naive and offset-aware datetimes` crashes Agent work cycle / istara-ui-audit SubAgents on every execution under Postgres — background agents are broken on deployed stacks | open |
+| F-P2 | Major | Bugs | probe legacy turn 1 vs agentic_usage_rows | Ledger records `legacy/deepseek-v4-flash success` for the probe's first researcher turn, but the SSE conversation-turn captured no assistant text ("Chat returned no assistant text"). Manual curls stream fine — streaming/text-forwarding seam between the probe client and the legacy native-tools path under investigation | open — investigating |
+| F-S1 | Major (deferred) | Tests | ~43 identical cross-engine simulation failures | stale scenario expectations vs evolved code/UI (owner assessment) | open — DEFERRED by owner |
+
+Queue status: probes now authenticate and execute the full research-spine journey
+(corpus upload, sessions, task review flows visible in run artifacts); marathon chain
+requeued behind probes with detection fixes (project-scoped catalog probe, TLS tolerance).
+pi_benchmark T0+T1 complete (60 records).
+
+```
+### L-14 | 2026-08-24T02:10:00Z | S2-execute | ox-alpha | executor | Phase 7
+Did: Diagnosed probe auth/credential path (admin password env), fixed pi_bridge UA 403
+(8fc83bed), durable-env + compose seams (d09629ba, f2fc41a7), marathon detection project-
+scoped catalog + TLS tolerance, tri-model flash switch verified live (all three models
+OK turns), launched probes+marathon queue.
+Result: Realistic benchmark now executes end-to-end infrastructure-wise; two genuine
+product findings logged (F-P1 datetime crash breaking Postgres agent workers; F-P2
+success-in-ledger/empty-SSE mismatch on probe's first legacy turn).
+Verified: scorecard blockers evolution recorded above; agentic_usage_rows shows legacy/
+deepseek-v4-flash success row for probe turn 1.
+Next: Fix F-P2 (streaming seam), assess F-P1 fix scope, let marathon finish, then T2.
+```
