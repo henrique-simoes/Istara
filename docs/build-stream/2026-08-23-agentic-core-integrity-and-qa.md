@@ -433,7 +433,7 @@ Next: continue queue (probes → marathon → T1 done → T2 live); revisit F-S1
 | ID | Sev | Dim | Where | Finding | Status |
 |----|-----|-----|-------|---------|--------|
 | F-P1 | Major | Bugs | backend agent worker cycle (Postgres deploy) | `asyncpg DataError: can't subtract offset-naive and offset-aware datetimes` crashes Agent work cycle / istara-ui-audit SubAgents on every execution under Postgres — background agents are broken on deployed stacks | open |
-| F-P2 | Major | Bugs | probe legacy turn 1 vs agentic_usage_rows | Ledger records `legacy/deepseek-v4-flash success` for the probe's first researcher turn, but the SSE conversation-turn captured no assistant text ("Chat returned no assistant text"). Manual curls stream fine — streaming/text-forwarding seam between the probe client and the legacy native-tools path under investigation | open — investigating |
+| F-P2 | Major | Bugs | pi_bridge transport + resolver fallback | TWO stacked causes: (a) httpx TLS fingerprint drew Cloudflare 403 HTML from api.deepseek.com while urllib passed; (b) no-explicit-model fallback selected the codex-family endpoint (Responses API → 404 on /v1/chat/completions). Fixed: bridge dials via urllib+runtime UA (request-builder unit-tested); resolver excludes openai_codex family from Istara-bridge sources (codex models are Pi-engine-native). | fixed — live-verified 'SEAM' turn on deepseek-v4-flash @7d2e9351 |
 | F-S1 | Major (deferred) | Tests | ~43 identical cross-engine simulation failures | stale scenario expectations vs evolved code/UI (owner assessment) | open — DEFERRED by owner |
 
 Queue status: probes now authenticate and execute the full research-spine journey
