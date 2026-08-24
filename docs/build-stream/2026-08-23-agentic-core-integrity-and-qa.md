@@ -456,3 +456,24 @@ Verified: scorecard blockers evolution recorded above; agentic_usage_rows shows 
 deepseek-v4-flash success row for probe turn 1.
 Next: Fix F-P2 (streaming seam), assess F-P1 fix scope, let marathon finish, then T2.
 ```
+
+## Phase 7b — CI triage (testing branch)
+
+```
+### L-15 | 2026-08-24T14:55:00Z | S2-execute | ox-alpha | executor | CI
+Did: Triaged all failing testing-branch workflows. Four root causes identified and fixed
+(commit b2eb658b):
+ 1. PI-RATCHET line-key drift (legacy.py 599->637 after bridge insert) -> allowlist re-pinned.
+ 2. feature-obligations fail-closed on unowned new paths -> testing.docker-runner feature
+    registered covering runner/benchmark dual-core surfaces.
+ 3. backend production_rehearsal vs FastAPI>=0.141 lazy _IncludedRouter includes ->
+    prefix-aware recursive unwrap in rehearsal route enumeration; REPRODUCED locally in an
+    isolated fresh-deps venv before fixing, verified green in that env after.
+ 4. QA Artifact + CI qa-image GHCR tags uppercase repo slug rejected by registry ->
+    lowercased via repo_lc step in both workflows.
+Baseline finding: CI on testing was ALREADY red at 9d7c506 (pre-work) — rehearsal gap is
+structural (unpinned fastapi upper bound), not caused by Phase 6/7.
+Result: fixes pushed @b2eb658b; CI run in flight.
+Verified: check_integrity coherent; obligations classifier passes over multi-commit range;
+rehearsal ci-sim passed=True in isolated venv; yaml valid.
+Next: watch CI; then propose restructured testing-branch CI (tiered lanes) per owner ask.
