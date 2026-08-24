@@ -416,6 +416,8 @@ research-spine comparison can proceed after suites.
 
 | ID | Sev | Dim | Where | Finding | Status |
 |----|-----|-----|-------|---------|--------|
+| F-P2b | Major | Bugs | probe chat turns vs INFERENCE_PRESETS | Refined: server-side turns SUCCEED with real output (ledger: 1.1–7k output tokens, deepseek-v4-flash via pi-deepseek-default), but probe client sees empty content. Working hypothesis: MEDIUM preset max_tokens cap + reasoning-style flash output at thinking_mode=low consumes the completion budget before any visible content channel emits; probe sessions use default preset (no custom max_tokens). Fix direction: benchmark-created sessions pin inference_preset=custom with adequate max_tokens (env-driven), keeping product presets untouched. | open |
+
 | F-S1 | Major (deferred) | Tests | simulation scenarios failing identically on BOTH engines (~43/77; e.g. 09-navigation-search, 10-agent-architecture, 11-agents-system, 12-chat-sessions, 13-task-agent-assignment, 16-findings-population, 19-file-preview, 20-all-skills-comprehensive, 23-memory-view, 24-context-dag, 74-2fa-login-flow, 78-real-time-voice, 79-engine-selector) | Owner assessment: the scenario expectations drifted from code/UI changes and were not re-seeded/updated alongside those changes. Near-identical cross-engine failure sets support this (not engine regressions). | open — DEFERRED by owner; revisit after Phase 7 completes |
 
 ```
