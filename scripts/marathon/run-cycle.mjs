@@ -192,6 +192,7 @@ async function checkEnvironment() {
 
   // Frontend
   try {
+    process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0"; // self-signed deploy certs
     const res = await fetch(FRONTEND_BASE);
     env.frontend = res.ok;
   } catch { /* not running */ }
@@ -202,7 +203,17 @@ async function checkEnvironment() {
   let piConfigured = 0;
   let legacyModels = 0;
   try {
-    const res = await fetch(`${API_BASE}/api/chat/model-catalog`, { headers: authHeaders() });
+    // The catalog is project-scoped: resolve one visible project first.
+    let pid = "";
+    try {
+      const pres = await fetch(`${API_BASE}/api/projects`, { headers: authHeaders() });
+      if (pres.ok) {
+        const projects = await pres.json();
+        const first = Array.isArray(projects) ? projects[0] : projects?.projects?.[0];
+        if (first?.id) pid = `?project_id=${encodeURIComponent(first.id)}`;
+      }
+    } catch { /* catalog probe below reports its own failure */ }
+    const res = await fetch(`${API_BASE}/api/chat/model-catalog${pid}`, { headers: authHeaders() });
     if (res.ok) {
       const data = await res.json();
       piConfigured = Array.isArray(data?.configured) ? data.configured.length : 0;
