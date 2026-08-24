@@ -1,5 +1,6 @@
 """Pytest configuration for Istara tests."""
 
+import os
 import sys
 from pathlib import Path
 
