@@ -411,3 +411,19 @@ Verified: smoke_istara.py + verify_three.py outputs above; restart persistence c
 (endpoints + stable key) recorded.
 Next: metrics capture extension; broad both/tri-engine suites; Codex endpoint #2 done ->
 research-spine comparison can proceed after suites.
+
+## Findings register (Phase 7 broad-suite runs) — owner-flagged for later revisit
+
+| ID | Sev | Dim | Where | Finding | Status |
+|----|-----|-----|-------|---------|--------|
+| F-S1 | Major (deferred) | Tests | simulation scenarios failing identically on BOTH engines (~43/77; e.g. 09-navigation-search, 10-agent-architecture, 11-agents-system, 12-chat-sessions, 13-task-agent-assignment, 16-findings-population, 19-file-preview, 20-all-skills-comprehensive, 23-memory-view, 24-context-dag, 74-2fa-login-flow, 78-real-time-voice, 79-engine-selector) | Owner assessment: the scenario expectations drifted from code/UI changes and were not re-seeded/updated alongside those changes. Near-identical cross-engine failure sets support this (not engine regressions). | open — DEFERRED by owner; revisit after Phase 7 completes |
+
+```
+### L-13 | 2026-08-24T01:30:00Z | S2-execute | ox-alpha | executor | Phase 7
+Did: Logged owner directive (F-S1): the ~43 identical cross-engine simulation failures are
+attributed to stale scenario expectations vs evolved product code/UI — a test-maintenance
+debt item, deferred by owner until the rest of Phase 7 finishes.
+Result: Register updated; triage of these failures postponed, not dropped.
+Verified: both pass logs show matching failure lists (sim_legacy.log / sim_pi.log).
+Next: continue queue (probes → marathon → T1 done → T2 live); revisit F-S1 afterwards.
+```
