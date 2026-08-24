@@ -14,6 +14,7 @@ accounting stays exact whenever the provider reports it.
 
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 import urllib.request
@@ -104,8 +105,28 @@ async def stream_openai_chat(
         )
         return urllib.request.urlopen(request, timeout=_DEFAULT_TIMEOUT_S)
 
-    stream_ctx = line_iter() if line_iter is not None else _open_stream()
+    import time as _time
+
+    async def _open_with_retry():
+        # Provider edge protection challenges bursts intermittently (403 HTML
+        # / 429 / 5xx). One bounded backoff-retry keeps long research runs
+        # stable without masking genuine auth/model errors.
+        last_exc = None
+        for attempt in range(2):
+            try:
+                return line_iter() if line_iter is not None else _open_stream()
+            except urllib.error.HTTPError as exc:
+                if exc.code not in (403, 429) and exc.code < 500:
+                    raise
+                last_exc = exc
+            except OSError:
+                raise
+            if attempt == 0:
+                await asyncio.sleep(1.5)
+        raise last_exc
+
     try:
+        stream_ctx = await _open_with_retry()
         for raw_line in stream_ctx:
             line = raw_line.decode("utf-8", "replace") if isinstance(raw_line, bytes) else raw_line
             if not line.startswith("data: "):
