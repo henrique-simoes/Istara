@@ -1,6 +1,7 @@
 #!/bin/bash
 set -euo pipefail
 export PATH=/usr/local/bin:$PATH
+export ISTARA_BENCHMARK_CHAT_TIMEOUT_MS="${ISTARA_BENCHMARK_CHAT_TIMEOUT_MS:-420000}"
 cd /work
 
 echo "[runner] installing simulation deps + chromium (cached volume)"
