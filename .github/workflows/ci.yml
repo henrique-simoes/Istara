@@ -353,6 +353,9 @@ jobs:
           docker compose -f docker-compose.qa.yml --profile synthetic config --quiet
           docker compose -f docker-compose.qa.yml --profile audit config --quiet
 
+      - name: Install QA contract test deps
+        run: pip install pytest pyyaml
+
       - name: Run QA contract tests
         run: |
           pytest tests/test_qa_stack_contract.py tests/test_qa_reset_seed.py \

@@ -34,40 +34,9 @@ def rehearse() -> dict:
     # wrappers whose .path is "" until materialized. Derive HTTP routes from
     # the OpenAPI schema (forces materialization) and keep WebSocket routes
     # from the raw table.
-    def _iter_concrete_routes(routes, prefix=""):
-        """Yield (prefixed) paths, unwrapping FastAPI >=0.141 lazy
-        `_IncludedRouter` wrappers and applying their include prefix."""
-        for route in routes:
-            original = getattr(route, "original_router", None)
-            ctx = getattr(route, "include_context", None)
-            if original is not None:
-                sub_prefix = prefix + (getattr(ctx, "prefix", "") or "")
-                yield from _iter_concrete_routes(
-                    getattr(original, "routes", []), sub_prefix
-                )
-            else:
-                path = getattr(route, "path", "")
-                if path:
-                    yield prefix + path
+    from app.core.route_introspection import iter_route_paths
 
-    actual_routes = set(_iter_concrete_routes(app.routes))
-    required_routes = {
-        "/api/improvement-governance/proposals",
-        "/api/improvement-governance/proposals/{proposal_id}/sandbox-evaluation",
-        "/api/improvement-governance/feature-contract",
-        "/api/dgmh-archive/variants",
-        "/api/reasoning-bank/retrieve",
-        "/api/compute/stats",
-        "/api/ws/relay",
-    }
-    missing_routes = sorted(required_routes - actual_routes)
-    record(
-        checks,
-        "critical_api_routes_registered",
-        not missing_routes,
-        {"missing": missing_routes},
-    )
-
+    actual_routes = iter_route_paths(app)
     feature_names = {
         item["feature"] for item in improvement_governance.feature_contract_matrix()
     }
