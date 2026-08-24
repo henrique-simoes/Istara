@@ -234,7 +234,7 @@ export class IstaraApiClient {
     agentEngine = "",
   }) {
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), timeoutMs);
+    const timeout = timeoutMs > 0 ? setTimeout(() => controller.abort(), timeoutMs) : null;
     const started = Date.now();
     try {
       const response = await fetch(`${this.apiBase}/api/chat`, {
@@ -269,7 +269,7 @@ export class IstaraApiClient {
         session_id: parsed.session_id || sessionId,
       };
     } finally {
-      clearTimeout(timeout);
+      if (timeout) clearTimeout(timeout);
     }
   }
 }

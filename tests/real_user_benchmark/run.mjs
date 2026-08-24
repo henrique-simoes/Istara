@@ -850,7 +850,14 @@ const codingValidationEnabled = boolEnv("ISTARA_BENCHMARK_RUN_CODING_VALIDATION"
 const codingValidationLimit = nonNegativeIntArg("coding-limit", mode === "full" ? 50 : mode === "probe" ? 12 : 0);
 const selfImprovementProbeEnabled = boolEnv("ISTARA_BENCHMARK_SELF_IMPROVEMENT_PROBE", mode !== "plan-only");
 const startAutoresearchExperiment = boolEnv("ISTARA_BENCHMARK_START_AUTORESEARCH_EXPERIMENT", false);
-const chatTimeoutMs = intArg("chat-timeout-ms", Number.parseInt(process.env.ISTARA_BENCHMARK_CHAT_TIMEOUT_MS || "120000", 10) || 120000);
+// ISTARA_BENCHMARK_CHAT_TIMEOUT_MS <= 0 (or "none") disables the client
+ // abort timer entirely — reasoning-model turns run as long as they run.
+ const _rawChatTimeout = process.env.ISTARA_BENCHMARK_CHAT_TIMEOUT_MS ?? "";
+ const chatTimeoutMs = /^none$/i.test(_rawChatTimeout.trim())
+   ? 0
+   : Number.parseInt(_rawChatTimeout, 10) > 0
+     ? Number.parseInt(_rawChatTimeout, 10)
+     : 0;
 const keepClientContainers = ["1", "true", "yes"].includes(
   String(process.env.ISTARA_BENCHMARK_KEEP_CLIENT_CONTAINERS || "").toLowerCase(),
 );
