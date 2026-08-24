@@ -71,7 +71,11 @@ async def stream_openai_chat(
     if tools:
         payload["tools"] = tools
 
-    headers = {"Authorization": f"Bearer {source.api_key}"} if source.api_key else {}
+    # Provider edge protection rejects default client UAs (403 on
+    # api.deepseek.com); identify the runtime like the OAuth client does.
+    headers = {"User-Agent": "istara-pi-runtime/1.0"}
+    if source.api_key:
+        headers["Authorization"] = f"Bearer {source.api_key}"
     content_parts: list[str] = []
     tool_calls: dict[int, dict[str, Any]] = {}
     finish_reason: str | None = None
