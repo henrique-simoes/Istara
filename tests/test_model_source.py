@@ -11,22 +11,24 @@ from app.config import settings
 
 
 class _FakeEndpointInfo:
-    def __init__(self, endpoint_id: str, model: str):
+    def __init__(self, endpoint_id: str, model: str, provider_kind: str = "openai_compat"):
         self.endpoint_id = endpoint_id
         self.model = model
+        self.provider_kind = provider_kind
 
 
 class _FakeManager:
     def __init__(self, endpoints: list[tuple[str, str]], secret: str = "sk-test"):
-        self._endpoints = endpoints
+        self._endpoints = [e if len(e) == 3 else (*e, "openai_compat") for e in endpoints]
         self._secret = secret
 
     def catalog(self):
-        return [_FakeEndpointInfo(eid, model) for eid, model in self._endpoints]
+        return [_FakeEndpointInfo(*e) for e in self._endpoints]
 
     def resolve(self, *, endpoint_id=None, model=None, **_kw):
         target = None
-        for eid, m in self._endpoints:
+        for entry in self._endpoints:
+            eid, m = entry[0], entry[1]
             if endpoint_id and eid == endpoint_id:
                 target = (eid, m)
                 break
@@ -239,3 +241,19 @@ async def test_bridge_surfaces_tool_calls():
     assert len(calls) == 1
     assert calls[0]["function"]["name"] == "search"
     assert json.loads(calls[0]["function"]["arguments"]) == {"query": "cats"}
+
+
+@pytest.mark.asyncio
+async def test_codex_family_excluded_from_istara_bridge(monkeypatch):
+    """openai_codex endpoints are Pi-engine-native; the Istara bridge must not
+    select them (Responses API != /v1/chat/completions). Fallback skips to the
+    next compatible pi-managed endpoint."""
+    from app.core.agentic import model_source as ms
+
+    monkeypatch.setattr(ms, "_pi_manager", lambda: _FakeManager([
+        ("pi-codex-luna", "gpt-5.6-luna", "openai_codex"),
+        ("ep-deepseek", "deepseek-v4-flash"),
+    ]))
+    settings.llm_provider_contract_stub = True  # hide the local plane so the pi fallback is exercised
+    source = await ms.resolve_model_source(None)
+    assert source is not None and source.endpoint_id == "ep-deepseek"

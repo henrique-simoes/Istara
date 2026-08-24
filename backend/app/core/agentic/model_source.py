@@ -56,10 +56,20 @@ def _pi_manager():
 
 
 def _configured_pi_endpoint(model: str | None):
-    """Return one admitted pi-managed endpoint matching *model*, else None."""
+    """Return one admitted pi-managed endpoint matching *model*, else None.
+
+    Endpoints whose provider_kind is ``openai_codex`` are excluded here: that
+    wire family is the Pi engine's native transport (Responses API), not the
+    OpenAI-compatible chat shape this bridge speaks. Users select those models
+    with the Pi core; the Istara core resolves every other plane.
+    """
     try:
         manager = _pi_manager()
-        candidates = [info for info in manager.catalog()]
+        candidates = [
+            info
+            for info in manager.catalog()
+            if getattr(info, "provider_kind", "") != "openai_codex"
+        ]
         if not candidates:
             return None
         if model:
