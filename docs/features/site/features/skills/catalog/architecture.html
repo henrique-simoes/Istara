@@ -277,6 +277,7 @@
 <li>ReAct/chat access to finding search also carries accepted/provisional/reportable status, so skills and agents that inspect prior research cannot silently consume provisional artifacts as trusted findings.</li>
 <li>Skill execution simulations assert the same response contract and record candidate artifact counts separately from accepted findings.</li>
 <li>Generated skills are prompted to propose candidate evidence and candidate synthesis only; they must not describe their own output as accepted, trusted, or reportable.</li>
+<li>Generated-skill execution and its bounded fallback chain (<code>skill.execute</code> -&gt; <code>skill.repair_native</code> -&gt; <code>skill.repair_plain</code> -&gt; <code>skill.repair_findings</code> -&gt; deterministic provisional fallback) dispatch through Pi Model Management with the active project scope. Retired classical provider settings cannot skip or reorder a model-repair stage; Pi&#x27;s effective route owns provider, endpoint, and model selection for every call.</li>
 <li>The frontmatter and manifest entries are the durable contract for agents updating this page after code changes.</li>
 <li>When the referenced component, store, route, agent, skill, or test behavior changes, regenerate and validate the feature documentation.</li>
 </ul>
@@ -289,6 +290,8 @@
 <h2 id="tests-and-verification">Tests And Verification</h2>
 <ul>
 <li><code>tests/test_skills.py</code></li>
+<li><code>tests/test_skill_factory.py</code></li>
+<li><code>tests/pi_production/test_w5_skill_factory.py</code></li>
 <li><code>tests/test_project_scope_contracts.py</code></li>
 <li><code>tests/test_simulation_project_scope_contracts.py</code></li>
 <li><code>tests/simulation/lib/api-client.mjs</code></li>

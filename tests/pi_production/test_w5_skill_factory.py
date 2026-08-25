@@ -151,6 +151,9 @@ def test_w5_skill_factory_carries_dispatcher_paths():
     assert "repair=False" in exec_src, "structured stages must not double-repair"
     assert "agentic_core" not in exec_src, "W9 removed the feature-flag gate"
     assert "ollama.chat" not in exec_src, "W9 removed all four legacy calls"
+    assert "settings.llm_provider" not in exec_src, (
+        "retired classical settings must not alter the Pi-managed repair chain"
+    )
 
 
 # ── behavior: plan ───────────────────────────────────────────────────────

@@ -373,26 +373,23 @@ async def test_generated_skill_plain_json_repair_fallback_when_native_repair_fai
 
 
 @pytest.mark.asyncio
-async def test_generated_skill_lmstudio_skips_native_repair_after_schema_failure(monkeypatch):
+async def test_generated_skill_ignores_classical_provider_when_running_native_repair(monkeypatch):
     monkeypatch.setattr(settings, "llm_provider", "lmstudio")
     dispatcher_stub = _StubAgentic(
         structured_results=[
             # skill.execute: prose text, no parsed value
             _structured_outcome("A prose response that missed JSON."),
-        ],
-        completion_results=[
-            # skill.repair_plain (native repair skipped for lmstudio): valid JSON
-            _completion_outcome(
-                json.dumps(
-                    {
-                        "summary": "Recovered through plain repair.",
-                        "nuggets": [],
-                        "facts": [{"text": "Recovered fact through plain repair."}],
-                        "insights": [],
-                        "recommendations": [],
-                        "suggestions": [],
-                    }
-                )
+            # skill.repair_native: Pi-selected route repairs the output even
+            # when the retired classical provider setting says lmstudio.
+            _structured_outcome(
+                {
+                    "summary": "Recovered through Pi native repair.",
+                    "nuggets": [],
+                    "facts": [{"text": "Recovered fact through Pi native repair."}],
+                    "insights": [],
+                    "recommendations": [],
+                    "suggestions": [],
+                }
             ),
         ],
     )
@@ -414,11 +411,13 @@ async def test_generated_skill_lmstudio_skips_native_repair_after_schema_failure
 
     assert output.success is True
     assert output.json_success is True
-    assert output.summary == "Recovered through plain repair."
+    assert output.summary == "Recovered through Pi native repair."
     assert len(dispatcher_stub.calls) == 2
-    assert [method for method, _ in dispatcher_stub.calls] == ["structured", "completion"]
-    assert "schema" in dispatcher_stub.calls[0][1]
-    assert "schema" not in dispatcher_stub.calls[1][1]
+    assert [method for method, _ in dispatcher_stub.calls] == ["structured", "structured"]
+    assert [kwargs["purpose"] for _, kwargs in dispatcher_stub.calls] == [
+        "skill.execute",
+        "skill.repair_native",
+    ]
 
 
 @pytest.mark.asyncio
@@ -470,12 +469,13 @@ async def test_generated_skill_repairs_valid_json_with_empty_findings(monkeypatc
 
 
 @pytest.mark.asyncio
-async def test_generated_skill_uses_deterministic_fallback_after_empty_model_findings(monkeypatch):
+async def test_generated_skill_attempts_model_repair_before_deterministic_fallback_even_with_classical_setting(
+    monkeypatch,
+):
     monkeypatch.setattr(settings, "llm_provider", "lmstudio")
     dispatcher_stub = _StubAgentic(
         structured_results=[
-            # skill.execute: valid JSON but zero findings; the lmstudio +
-            # schema-fallback combination skips the empty-findings repair call.
+            # skill.execute: valid JSON but zero findings.
             _structured_outcome({"summary": "No findings here."}),
         ],
     )
@@ -510,7 +510,9 @@ async def test_generated_skill_uses_deterministic_fallback_after_empty_model_fin
     assert "preliminary" in output.insights[0]["text"]
     assert "deterministic evidence fallback was used" in output.suggestions[0]
     assert "deterministic-fallback-skill_deterministic_fallback.json" in output.artifacts
-    assert len(dispatcher_stub.calls) == 1
+    assert len(dispatcher_stub.calls) == 2
+    assert [method for method, _ in dispatcher_stub.calls] == ["structured", "completion"]
+    assert dispatcher_stub.calls[1][1]["purpose"] == "skill.repair_findings"
 
 
 @pytest.mark.asyncio

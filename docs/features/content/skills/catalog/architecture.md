@@ -6,10 +6,10 @@ audience: architecture
 status: documented
 related_features: ["skills.proposals", "agents.registry"]
 related_glossary: ["mcp"]
-code_references: ["frontend/src/components/skills/SkillsView.tsx", "backend/app/api/routes/skills.py", "backend/app/core/agent_skill_tools.py"]
+code_references: ["frontend/src/components/skills/SkillsView.tsx", "backend/app/api/routes/skills.py", "backend/app/core/agent_skill_tools.py", "backend/app/skills/skill_factory.py"]
 api_references: ["backend/app/api/routes/skills.py"]
-test_references: ["tests/test_skills.py", "tests/test_project_scope_contracts.py", "tests/test_simulation_project_scope_contracts.py", "tests/simulation/lib/api-client.mjs", "tests/simulation/scenarios/06-skill-execution.mjs", "tests/simulation/scenarios/20-all-skills-comprehensive.mjs", "tests/simulation/scenarios/22-architecture-evaluation.mjs", "tests/simulation/scenarios/41-skill-creation.mjs", "tests/document_corpus/canonical/skill-coverage-map.json"]
-last_verified: 2026-05-22
+test_references: ["tests/test_skills.py", "tests/test_skill_factory.py", "tests/pi_production/test_w5_skill_factory.py", "tests/test_project_scope_contracts.py", "tests/test_simulation_project_scope_contracts.py", "tests/simulation/lib/api-client.mjs", "tests/simulation/scenarios/06-skill-execution.mjs", "tests/simulation/scenarios/20-all-skills-comprehensive.mjs", "tests/simulation/scenarios/22-architecture-evaluation.mjs", "tests/simulation/scenarios/41-skill-creation.mjs", "tests/document_corpus/canonical/skill-coverage-map.json"]
+last_verified: 2026-08-25
 compass: CF-SPEC-53 / CF-657; CF-SPEC-68 / CF-870; CF-SPEC-104 / CF-1309; CF-SPEC-116; CF-SPEC-123 / CF-1581; CF-SPEC-129
 ---
 
@@ -51,6 +51,7 @@ The Skills catalog lists available capabilities agents can use or propose for re
 - ReAct/chat access to finding search also carries accepted/provisional/reportable status, so skills and agents that inspect prior research cannot silently consume provisional artifacts as trusted findings.
 - Skill execution simulations assert the same response contract and record candidate artifact counts separately from accepted findings.
 - Generated skills are prompted to propose candidate evidence and candidate synthesis only; they must not describe their own output as accepted, trusted, or reportable.
+- Generated-skill execution and its bounded fallback chain (`skill.execute` -> `skill.repair_native` -> `skill.repair_plain` -> `skill.repair_findings` -> deterministic provisional fallback) dispatch through Pi Model Management with the active project scope. Retired classical provider settings cannot skip or reorder a model-repair stage; Pi's effective route owns provider, endpoint, and model selection for every call.
 - The frontmatter and manifest entries are the durable contract for agents updating this page after code changes.
 - When the referenced component, store, route, agent, skill, or test behavior changes, regenerate and validate the feature documentation.
 
@@ -63,6 +64,8 @@ The Skills catalog lists available capabilities agents can use or propose for re
 ## Tests And Verification
 
 - `tests/test_skills.py`
+- `tests/test_skill_factory.py`
+- `tests/pi_production/test_w5_skill_factory.py`
 - `tests/test_project_scope_contracts.py`
 - `tests/test_simulation_project_scope_contracts.py`
 - `tests/simulation/lib/api-client.mjs`

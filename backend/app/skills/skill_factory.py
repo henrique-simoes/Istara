@@ -815,67 +815,65 @@ def create_skill(
             if data:
                 json_success = True
             else:
-                use_native_repair = (settings.llm_provider or "").strip().lower() not in {"lmstudio"}
-                if use_native_repair:
-                    repair_prompt = (
-                        "Convert the failed skill response below into one valid JSON object for Istara.\n"
-                        "Return ONLY JSON. Do not include markdown fences, comments, prose, or thinking text.\n"
-                        "Use only evidence present in the failed response and research data sample. "
-                        "When evidence for an array is missing, return an empty array instead of inventing details.\n\n"
-                        f"Skill: {self.name}\n"
-                        f"Display name: {display}\n"
-                        f"Description: {self.description}\n"
-                        f"Required compact output contract:\n{output_contract[:2000]}\n\n"
-                        f"Failed response:\n{(raw_content or '[empty response]')[:6000]}\n\n"
-                        f"Research data sample:\n{data_content[:3000]}"
-                    )
-                    try:
-                        # W9: native JSON repair dispatches through the
-                        # AgenticDispatcher (``skill.repair_native``) with
-                        # repair=False — this stage IS the repair, so the
-                        # Pi engine must not run its own bounded repair
-                        # inside the fallback chain. The legacy direct-plane
-                        # branch was removed in W9.
-                        from app.core.agentic import agentic
-                        from app.core.agentic.types import TurnParams
+                repair_prompt = (
+                    "Convert the failed skill response below into one valid JSON object for Istara.\n"
+                    "Return ONLY JSON. Do not include markdown fences, comments, prose, or thinking text.\n"
+                    "Use only evidence present in the failed response and research data sample. "
+                    "When evidence for an array is missing, return an empty array instead of inventing details.\n\n"
+                    f"Skill: {self.name}\n"
+                    f"Display name: {display}\n"
+                    f"Description: {self.description}\n"
+                    f"Required compact output contract:\n{output_contract[:2000]}\n\n"
+                    f"Failed response:\n{(raw_content or '[empty response]')[:6000]}\n\n"
+                    f"Research data sample:\n{data_content[:3000]}"
+                )
+                try:
+                    # W9: native JSON repair dispatches through the
+                    # AgenticDispatcher (``skill.repair_native``) with
+                    # repair=False — this stage IS the repair, so the
+                    # Pi engine must not run its own bounded repair
+                    # inside the fallback chain. The legacy direct-plane
+                    # branch was removed in W9.
+                    from app.core.agentic import agentic
+                    from app.core.agentic.types import TurnParams
 
-                        repair_system = (
-                            "You are a strict JSON repair adapter. "
-                            "Your entire response must be one valid JSON object."
-                        )
-                        repair_outcome = await agentic.structured(
-                            purpose="skill.repair_native",
-                            project_id=skill_input.project_id,
-                            system=repair_system,
-                            messages=[{"role": "user", "content": repair_prompt}],
-                            schema=_pi_dispatch_schema(extract_json_schema(repair_response_format)),
-                            params=TurnParams(
-                                temperature=0.0,
-                                max_tokens=max_output_tokens,
-                                min_context=(
-                                    count_tokens(repair_prompt)
-                                    + count_tokens(repair_system)
-                                    + max_output_tokens
-                                ),
-                                thinking_mode="off",
+                    repair_system = (
+                        "You are a strict JSON repair adapter. "
+                        "Your entire response must be one valid JSON object."
+                    )
+                    repair_outcome = await agentic.structured(
+                        purpose="skill.repair_native",
+                        project_id=skill_input.project_id,
+                        system=repair_system,
+                        messages=[{"role": "user", "content": repair_prompt}],
+                        schema=_pi_dispatch_schema(extract_json_schema(repair_response_format)),
+                        params=TurnParams(
+                            temperature=0.0,
+                            max_tokens=max_output_tokens,
+                            min_context=(
+                                count_tokens(repair_prompt)
+                                + count_tokens(repair_system)
+                                + max_output_tokens
                             ),
-                            repair=False,
-                            spine_phase="recovery",
-                        )
-                        repaired_content = repair_outcome.text
-                        data = (
-                            repair_outcome.value
-                            if repair_outcome.status == "success"
-                            else None
-                        )
-                        clean_repaired_content = strip_thinking_markers(repaired_content)
-                        data = data or _parse_json_response(clean_repaired_content)
-                        repaired_from_non_json = bool(data)
-                        json_success = bool(data)
-                        if repaired_from_non_json:
-                            logger.info("Skill %s repaired non-JSON LLM output into structured JSON.", self.name)
-                    except Exception as e:
-                        logger.warning("Skill %s JSON repair failed after non-JSON output: %s", self.name, e)
+                            thinking_mode="off",
+                        ),
+                        repair=False,
+                        spine_phase="recovery",
+                    )
+                    repaired_content = repair_outcome.text
+                    data = (
+                        repair_outcome.value
+                        if repair_outcome.status == "success"
+                        else None
+                    )
+                    clean_repaired_content = strip_thinking_markers(repaired_content)
+                    data = data or _parse_json_response(clean_repaired_content)
+                    repaired_from_non_json = bool(data)
+                    json_success = bool(data)
+                    if repaired_from_non_json:
+                        logger.info("Skill %s repaired non-JSON LLM output into structured JSON.", self.name)
+                except Exception as e:
+                    logger.warning("Skill %s JSON repair failed after non-JSON output: %s", self.name, e)
 
             if not data:
                 plain_repair_prompt = (
@@ -955,12 +953,7 @@ def create_skill(
             def finding_count() -> int:
                 return len(nuggets) + len(facts) + len(insights) + len(recommendations)
 
-            use_empty_findings_repair = not (
-                (settings.llm_provider or "").strip().lower() == "lmstudio"
-                and schema_budget.used_fallback
-            )
-
-            if finding_count() == 0 and use_empty_findings_repair:
+            if finding_count() == 0:
                 empty_findings_prompt = (
                     "The previous skill JSON was syntactically valid but contained no Istara findings.\n"
                     "Extract concise candidate/provisional evidence-backed findings from the research data and return one JSON object only.\n"

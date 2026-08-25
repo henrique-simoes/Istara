@@ -8,8 +8,8 @@ phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal ac
 stage: S2-execute
 status: in-progress
 blocked_on: null
-last: { agent: gpt-5-codex, at: 2026-08-25T16:54:34Z, ledger: L-48 }
-next_action: "Transport the human-only Done repair with exact SHA equality, then audit task/loop/A2A/skill execution dispatch and model identity through Pi Model Management."
+last: { agent: gpt-5-codex, at: 2026-08-25T17:00:22Z, ledger: L-51 }
+next_action: "Commit and push the seven-path generated-skill authority slice, prove exact SHA equality, then continue the graph-backed audit at embedding model identity and Research Spine ensemble boundaries."
 ```
 
 ## Plan overview / roadmap
@@ -1445,3 +1445,47 @@ Verified: security `28 pass / 0 fail`, score `100%`; Compass Forge after record 
 `fail`; exact worker slice currently spans six expected source/test/living-doc/generated-doc paths.
 Next: commit/push only those six paths and compare local/remote SHAs, then continue the execution-plane
 authority audit while carrying the CF gate debt as open rather than using exit code zero as success.
+
+### L-49 | 2026-08-25T16:56:16Z | S2-execute | gpt-5-codex | auditor | Skill repair policy still trusts classical settings
+Did: Committed and pushed the human-only Done repair, required exact local/remote equality, then ran a
+new graph-backed authority context pack spanning tasks, loops, A2A, skills, schedules, autoresearch,
+embeddings, compute donation, benchmarks, model selection, and route evidence. Compared the scanner's
+known patterns with broader direct-provider/classical-setting usage and traced generated-skill calls.
+Result: local and remote `testing` equal
+`599f7958b3bb525551190d67d423cc2a8970e25e`. Skill execution itself dispatches through the
+Pi-authoritative `agentic` facade, but its repair policy still branches on the retired global
+`settings.llm_provider`: a classical value of `lmstudio` skips native JSON repair and can skip the
+empty-findings model repair even when Pi Model Management selected a different endpoint/provider.
+Existing tests explicitly encode this obsolete coupling. This is a behavioral authority leak: the
+removed control plane can still change which calls occur and whether useful model repair is attempted.
+Verified: exact SHA equality; Compass context pack selected fourteen high-value paths and disclosed
+86 recoverable omissions; direct provider/classical usage inventory; focused skill-factory trace.
+No service, model, dependency, or remote-host operation occurred.
+Next: graph-map `skill_factory.py` and its tests, turn the two legacy-coupling tests into red
+Pi-authority contracts, remove both settings branches, and run the complete skill-factory suites.
+
+### L-50 | 2026-08-25T16:59:18Z | S2-execute | gpt-5-codex | implementer | Pi owns every generated-skill repair stage
+Did: Replaced the two tests that endorsed LM Studio-specific repair skipping with Pi-authority
+contracts, added a static execution-source tripwire, observed all three fail against the old policy,
+then removed only the two `settings.llm_provider` branches from generated-skill execution.
+Result: an obsolete classical setting can no longer suppress either native structured repair or the
+empty-findings model-repair attempt. `skill.execute`, `skill.repair_native`, `skill.repair_plain`, and
+`skill.repair_findings` now always remain inside the same Pi-managed dispatcher chain; deterministic
+fallback still runs only after the applicable model repair returns no usable findings.
+Verified: focused red `3 failed, 17 deselected`; focused green `3 passed, 17 deselected`; diff check
+clean. No service, model, dependency, host installation, or remote-host action occurred.
+Next: run both complete skill-factory suites, update the living Skills feature contract and generated
+artifacts, then commit/push this bounded authority repair with exact local/remote SHA evidence.
+
+### L-51 | 2026-08-25T17:00:22Z | S2-execute | gpt-5-codex | reviewer | Skill authority slice fully green
+Did: Ran the complete general and Pi-production generated-skill suites, updated the Skills Catalog
+living architecture contract with the Pi-owned five-stage fallback order, regenerated all feature
+artifacts, and checked the resulting seven-path diff.
+Result: all twenty generated-skill scenarios pass. The durable documentation now names the project-
+scoped dispatcher purposes and states that retired classical provider settings cannot skip, reorder,
+or select a route for any repair call. Generated site and manifest remain synchronized.
+Verified: skill suites `20 passed in 0.23s`; feature docs `0 seeded`, `224 artifacts`, `86 features`,
+pass; diff check clean; only the expected implementation, two tests, lifecycle, living doc, generated
+HTML, and manifest are modified. No service, model, dependency, host, or remote-host operation.
+Next: commit/push the seven intended paths, prove SHA equality, then inspect remaining classical model
+identity use at embeddings and the independent-ensemble boundary before choosing the next red test.
