@@ -1807,3 +1807,14 @@ records 11/12 with no dependency/import/secret delta. No service/model/SSH/host 
 Next: stage exactly the 9 reviewed runtime/test/living-doc/generated/ledger files, commit and push to
 `origin/testing`, verify clean ref equality, append/transport the receipt, then start effective-rater
 provenance as the next P9-05 sub-slice.
+
+### L-73 | 2026-08-26T00:06:00Z | S5-ship | gpt-5-codex | integrator | P9-05 statistical fail-closed slice transported
+Did: Staged exactly the nine reviewed runtime, test, living-doc, generated-site, and lifecycle files;
+committed `fb3bcac7` (`fix: fail closed on undefined reliability`) and pushed `testing`.
+Result: Missing/empty ratings, explicit abstention, and undefined single-category Fleiss behavior are
+now remotely recoverable as one bounded commit. No unrelated path was staged. Local and remote tips
+are identical and the tree was clean before this mandatory receipt was appended.
+Verified: push `39c4b863..fb3bcac7`; local and `origin/testing` both resolve to
+`fb3bcac71c335bbb89ffcf4c11c0f8a635126159`; post-push status had no file entries.
+Next: commit/push this receipt, then add red contracts and implementation for reconstructable effective-
+rater provenance while preserving the rule that same-checkpoint aliases/replicas count as one model.
