@@ -290,20 +290,30 @@ async def test_model_temp_pi_sweep_empty_catalog_records_truncated(_flag_on, mon
     assert runner._sweep_truncated is True
 
 
-async def test_model_temp_legacy_sweep_uses_llm_router(_flag_off, monkeypatch):
-    router = _StubRouter(models=[{"name": "a"}, {"name": "b"}, {"name": "x-embed"}])
-    monkeypatch.setattr("app.core.llm_router.llm_router", router)
-    # PiModelManager must NOT be consulted on the legacy engine.
+async def test_model_temp_istara_sweep_uses_pi_catalog_authority(_flag_off, monkeypatch):
+    """Istara loop semantics do not imply a second model catalog."""
+    class _ForbiddenRouter:
+        async def list_models(self):
+            raise AssertionError("Istara execution must not read a legacy model catalog")
+
+    manager = _FakeManager(
+        [("ep-a", "a"), ("ep-b", "b"), ("ep-embed", "x-embed")]
+    )
     monkeypatch.setattr(
         "app.core.pi_runtime.model_manager.PiModelManager",
-        lambda *a, **k: (_ for _ in ()).throw(AssertionError("catalog must not be used")),
+        lambda *a, **k: manager,
+    )
+    monkeypatch.setattr(
+        "app.core.llm_router.llm_router",
+        _ForbiddenRouter(),
     )
     runner = ModelTempRunner()
     grid = await runner._build_grid()
 
     assert {c.model for c in grid} == {"a", "b"}  # embed filtered
-    assert {c.endpoint_id for c in grid} == {None}  # legacy has no endpoint identity
+    assert {c.endpoint_id for c in grid} == {"ep-a", "ep-b"}
     assert runner._sweep_truncated is False
+    assert manager.projection_calls == 1
 
 
 # ── behavior: score site dispatches ──────────────────────────────────────

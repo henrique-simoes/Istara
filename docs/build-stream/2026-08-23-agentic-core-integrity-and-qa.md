@@ -8,8 +8,8 @@ phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal ac
 stage: S2-execute
 status: in-progress
 blocked_on: null
-last: { agent: gpt-5-codex, at: 2026-08-25T16:30:10Z, ledger: L-34 }
-next_action: "Commit and push this verified authority checkpoint to testing/origin testing; then continue P9-04 with graph-backed audit of autoresearch runners, task and loop execution, A2A, skills, donated-compute projection, and stale frontend/simulation mutation callers."
+last: { agent: gpt-5-codex, at: 2026-08-25T16:34:10Z, ledger: L-37 }
+next_action: "Commit and push the verified autoresearch authority slice, prove local/remote SHA equality, then audit task, loop, A2A, skills, donated-compute, and UI callers for remaining catalog or write-authority splits."
 ```
 
 ## Plan overview / roadmap
@@ -1233,3 +1233,44 @@ Verified: `64 passed in 5.33s`; feature docs `0 seeded`, `224 artifacts`, `86 fe
 scanner `0 legacy-plane call site(s)`; `git diff --check` clean.
 Next: create and push a bounded authority commit, require local/remote SHA equality, then resume
 the uncovered-plane audit rather than treating this checkpoint as P9-04 completion.
+
+### L-35 | 2026-08-25T16:30:45Z | S2-execute | gpt-5-codex | integrator | Authority fix transported
+Did: Staged only the eight reviewed source/test/living-doc/generated-doc paths, committed them as
+`1bf24082` (`fix: make Pi model management authoritative`), pushed without force, and compared
+the remote branch ref with local HEAD. Then resumed the audit at the autoresearch runner seam.
+Result: local `testing`, `origin/testing`, and remote `refs/heads/testing` all equal
+`1bf2408230d9fce13f0bbd4a2386866c0179e5f2`; the checkout was clean immediately after push.
+Autoresearch execution calls already go through `AgenticDispatcher` for both engine choices, but
+the model-temperature runner still obtains candidate models from `llm_router.list_models()` when
+the Istara engine is selected. That is a remaining model-management split: loop semantics are
+correctly engine-specific, while candidate catalog authority is not yet shared.
+Verified: commit/push receipts and exact local/remote SHA equality; source/caller inventory for
+all autoresearch runners; no live inference or model loading.
+Next: use Compass Forge impact/why for the model-temperature runner and its W6 tests, establish a
+red contract that both engines use Pi endpoint identities, then remove the legacy catalog read.
+
+### L-36 | 2026-08-25T16:32:35Z | S2-execute | gpt-5-codex | implementer | Autoresearch catalog authority unified
+Did: Added and ran a red W6 contract that selects Istara execution semantics while making any
+`llm_router` catalog read fail, then changed `ModelTempRunner` to build every engine's sweep from
+the PiModelManager catalog and updated runner documentation to separate loop semantics from model
+authority. Ran the complete W6 autoresearch runner suite after the fix.
+Result: the red test failed exactly at `_legacy_sweep_endpoints -> llm_router.list_models`; after
+the change both Istara and Pi experiments retain exact Pi endpoint identity through candidate
+selection while `engine=self.engine` still selects their distinct execution semantics. The
+obsolete legacy catalog method was removed.
+Verified: exact red failure; green W6 suite `49 passed in 0.61s`; migration scanner remains zero;
+`git diff --check` clean. No live model, server, or dependency operation occurred.
+Next: update/regenerate the autoresearch living feature contract, run engine-selection and API
+regressions, then checkpoint this fix before auditing the next authority surfaces.
+
+### L-37 | 2026-08-25T16:34:10Z | S2-execute | gpt-5-codex | implementer | Autoresearch regression and documentation gate
+Did: Updated the Autoresearch Experiments living architecture contract to state that both Istara
+and Pi execution semantics obtain exact endpoint identities from Pi Model Management, regenerated
+the feature site/manifests, and ran the broader W6 engine-selection, fail-closed, and API suites.
+Result: the unified catalog authority is covered beyond the narrow runner unit test, and generated
+documentation is synchronized with the implementation. Only the expected runner, test, lifecycle,
+living-document, generated HTML, and manifest paths are dirty before the bounded commit.
+Verified: `91 passed in 4.60s`; feature docs `0 seeded`, `224 artifacts`, `86 features`, pass;
+`git diff --check` clean. No live inference, server startup, model load, or dependency install ran.
+Next: stage only the seven expected paths, commit and push without force, compare exact local and
+remote `testing` SHAs, then continue the uncovered-plane audit.

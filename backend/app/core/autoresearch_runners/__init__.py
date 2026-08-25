@@ -8,8 +8,8 @@ from typing import Any, Awaitable, Callable
 # (``StartExperimentRequest.engine``) and threaded into the runner via
 # ``bind_engine`` so the migrated loop-model call sites route on the bound
 # selection instead of re-reading ``settings.agentic_core`` at each of the 14
-# sites (master plan §8 W6). ``pi`` routes through the AgenticDispatcher;
-# ``legacy`` keeps the preserved ``llm_router`` branch.
+# sites (master plan §8 W6). Both values route through AgenticDispatcher and
+# Pi Model Management; the choice changes loop semantics, not model authority.
 AUTORESEARCH_ENGINES = ("pi", "legacy")
 
 

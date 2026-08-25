@@ -6,15 +6,15 @@ tests (endpoint, temperature) combinations for each skill and records quality
 metrics to the model_skill_stats table.  The best combo is persisted to
 ``data/_skill_model_config.json``.
 
-Under the ``agentic_core`` engine the sweep space is the **PiModelManager
-catalog** (master plan §8 W6): each catalog row is a distinct endpoint identity,
+For every selectable agentic engine the sweep space is the **PiModelManager
+catalog**: each catalog row is a distinct endpoint identity,
 so two rows that serve the same model stay separate and every candidate is
 resolved/pinned by exact ``endpoint_id`` through grid, mutation, dispatch, and
 the recorded stat evidence — never collapsed to a unique model name.  Projected
 ``LLMServer`` rows are included (read-only, no live model loading) and a catalog
 that spans fewer distinct endpoints than the requested sweep width is recorded
-``sweep_truncated`` rather than silently narrowed.  The legacy ``llm_router``
-engine keeps its model-name sweep unchanged (``endpoint_id`` is ``None``).
+``sweep_truncated`` rather than silently narrowed. The selected engine changes
+the AgenticDispatcher's loop semantics, never the model-management authority.
 """
 
 from __future__ import annotations
@@ -42,8 +42,7 @@ DEFAULT_REQUESTED_ENDPOINT_WIDTH = 2
 @dataclass(frozen=True)
 class SweepEndpoint:
     """One distinct sweep identity: an exact Pi endpoint (``endpoint_id``) plus
-    the model it serves.  On the legacy engine ``endpoint_id`` is ``None`` and
-    only ``model`` is meaningful."""
+    the model it serves."""
 
     endpoint_id: str | None
     model: str
@@ -54,8 +53,7 @@ class SweepCandidate:
     """One point in the (endpoint, temperature) grid.
 
     ``endpoint_id`` pins the exact PiModelManager catalog identity on the Pi
-    engine so same-model endpoints never collapse; it is ``None`` on the legacy
-    engine, where dispatch resolves by model name only."""
+    engine so same-model endpoints never collapse."""
 
     endpoint_id: str | None
     model: str | None
@@ -89,20 +87,15 @@ class ModelTempRunner(BaseLoopRunner):
     async def _build_grid(self) -> list[SweepCandidate]:
         """Build the (endpoint, temperature) grid from available endpoints.
 
-        Under the ``agentic_core`` engine the sweep space is the PiModelManager
-        catalog (settings endpoints + projected LLMServer rows + local
-        Ollama/LM Studio entries) with exact endpoint identities preserved, so
-        the sweep is not degenerate with a single endpoint and same-model
-        endpoints stay distinct; otherwise it is the legacy ``llm_router`` model
-        list.  When the Pi catalog cannot span the requested endpoint width the
-        sweep is flagged ``sweep_truncated`` rather than silently narrowed
-        (master plan §8 W6).
+        The sweep space is always the PiModelManager catalog (settings
+        endpoints + projected LLMServer rows + local Ollama/LM Studio entries)
+        with exact endpoint identities preserved. This holds for both Istara
+        and Pi loop semantics: engine selection controls execution, not catalog
+        ownership. When the catalog cannot span the requested endpoint width
+        the sweep is flagged ``sweep_truncated`` rather than silently narrowed.
         """
         self._sweep_truncated = False
-        if self.use_pi_engine():
-            endpoints = await self._pi_sweep_endpoints()
-        else:
-            endpoints = await self._legacy_sweep_endpoints()
+        endpoints = await self._pi_sweep_endpoints()
 
         if not endpoints:
             return []
@@ -113,31 +106,6 @@ class ModelTempRunner(BaseLoopRunner):
                 if (ep.endpoint_id, ep.model, temp) not in self._tested:
                     grid.append(SweepCandidate(ep.endpoint_id, ep.model, temp))
         return grid
-
-    async def _legacy_sweep_endpoints(self) -> list[SweepEndpoint]:
-        """Distinct non-embedding model names from the legacy llm_router pool.
-
-        The legacy engine has no endpoint identity, so each candidate carries
-        ``endpoint_id=None`` and dispatches by model name only (behavior
-        unchanged from before the Pi migration).
-        """
-        from app.core.llm_router import llm_router
-
-        models_raw = await llm_router.list_models()
-        endpoints: list[SweepEndpoint] = []
-        seen: set[str] = set()
-        for m in models_raw:
-            name = m.get("name", "")
-            # Skip embedding models
-            if "embed" in name.lower():
-                continue
-            if name and name not in seen:
-                seen.add(name)
-                endpoints.append(SweepEndpoint(endpoint_id=None, model=name))
-
-        if not endpoints:
-            logger.warning("ModelTempRunner: no models available from llm_router")
-        return endpoints
 
     async def _pi_sweep_endpoints(self) -> list[SweepEndpoint]:
         """Distinct non-embedding endpoint identities from the PiModelManager catalog.
@@ -364,9 +332,8 @@ class ModelTempRunner(BaseLoopRunner):
     def _stat_identity(model: str | None, endpoint_id: str | None) -> str:
         """The model_skill_stats key that preserves endpoint identity.
 
-        On the Pi engine two endpoints serving the same model stay distinct
-        (``<model>@<endpoint_id>``); the legacy/baseline path keeps the bare
-        model name so its stat rows are unchanged.
+        Two endpoints serving the same model stay distinct
+        (``<model>@<endpoint_id>``) for every loop engine.
         """
         base = model or "default"
         if endpoint_id:
