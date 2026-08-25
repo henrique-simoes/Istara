@@ -532,6 +532,9 @@ def _usable_coding_applications(
         )
         if not unit:
             continue
+        quote = str(raw_app.get("quote") or raw_app.get("source_quote") or "").strip()
+        if not quote or quote not in str(unit.source_text or ""):
+            continue
         codes = _code_list(raw_app)
         if not codes:
             continue

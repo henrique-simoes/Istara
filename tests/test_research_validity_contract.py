@@ -51,6 +51,37 @@ def test_qualitative_coding_prompt_deterministically_injects_protocol_blocks():
     assert "Code evidence units, not keywords" in prompt
 
 
+def test_coding_application_rejects_quote_outside_referenced_evidence_unit():
+    from types import SimpleNamespace
+
+    from app.services.research_validity_service import _usable_coding_applications
+
+    unit = SimpleNamespace(
+        id="eu-grounding-1",
+        stable_id="stable-grounding-1",
+        unit_index=1,
+        source_text="The participant could not find the invitation control.",
+    )
+    parsed = {
+        "applications": [
+            {
+                "evidence_unit_id": unit.id,
+                "codes": ["invitation-discovery"],
+                "quote": "The participant loved the invitation control.",
+            }
+        ]
+    }
+
+    assert (
+        _usable_coding_applications(
+            parsed,
+            unit_by_id={unit.id: unit},
+            units=[unit],
+        )
+        == []
+    )
+
+
 def test_contract_marks_visible_findings_as_provisional_until_reportable():
     from app.core.research_validity import RESEARCH_VALIDITY_CONTRACT
 
@@ -809,6 +840,10 @@ async def test_independent_coding_run_persists_model_codes_and_reliability(monke
     project_id = f"proj-coding-run-{suffix}"
     task_id = f"task-coding-run-{suffix}"
     unit_ids = [f"eu-coding-1-{suffix}", f"eu-coding-2-{suffix}"]
+    source_quotes = {
+        unit_id: f"Participant struggled with invitation setup {index}."
+        for index, unit_id in enumerate(unit_ids, 1)
+    }
 
     class FakeCoderNode:
         """Selection-only coder node: W9 runs the coding through the
@@ -840,7 +875,7 @@ async def test_independent_coding_run_persists_model_codes_and_reliability(monke
                     "evidence_unit_id": unit_id,
                     "codes": ["collaboration-disorientation"],
                     "primary_code": "collaboration-disorientation",
-                    "quote": f"quote for {unit_id}",
+                    "quote": source_quotes[unit_id],
                     "confidence": 0.92,
                     "rationale": "The participant is blocked by team invitation setup.",
                 }

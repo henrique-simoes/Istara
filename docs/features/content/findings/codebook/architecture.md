@@ -9,7 +9,7 @@ related_glossary: ["atomic-research"]
 code_references: ["frontend/src/components/findings/FindingsView.tsx", "frontend/src/components/findings/CodebookViewer.tsx", "backend/app/api/routes/codebooks.py", "backend/app/api/routes/codebook_versions.py", "backend/app/services/research_validity_service.py", "backend/app/core/agentic/dispatcher.py"]
 api_references: ["backend/app/api/routes/codebooks.py", "backend/app/api/routes/codebook_versions.py"]
 test_references: ["tests/test_codebooks.py", "tests/test_project_scope_contracts.py", "tests/test_research_validity_contract.py", "tests/pi_production/test_w7_validation.py"]
-last_verified: 2026-08-24
+last_verified: 2026-08-25
 compass: CF-SPEC-8 / FIX-pi-full-20260720-w7-REVIEW-r1-docs; CF-SPEC-78 / CF-1005; CF-SPEC-124 / CF-1590
 ---
 
@@ -43,6 +43,7 @@ The Codebook tab surfaces qualitative coding structures and codebook versions as
 - Creating the first project codebook version records a content-free `codebook.freeze` telemetry event; later versions record `codebook.revise`. The span carries project and codebook-version handles only, so governed codebook lifecycle audits do not store code definitions, examples, prompts, or source quotes in telemetry.
 - Governed coding reads Pi Model Management without loading a model, requests at least three distinct model identities, and dispatches each coder with `structured(purpose="validity.coder")` pinned to that coder's exact endpoint. Both Istara and Pi loop modes use this same provider authority; loop choice cannot bypass coding independence.
 - Reliability preserves both model and endpoint provenance, but the rater-independence unit is the model identity. Same-model endpoint replicas do not count as separate coders. Each admitted coder must cover every selected evidence unit after one bounded repair; otherwise it is excluded and the run remains blocked when the requested width is no longer met.
+- A coding application is admissible only when its non-empty returned quote is an exact contiguous substring of the resolved evidence unit's raw source text. A valid unit ID cannot make a paraphrase or fabricated quote source-grounded; rejected applications count as missing coverage and therefore fail the reliability gate closed.
 - The resulting code applications remain provisional until reliability, reconciliation, and human review gates accept them. A blocked or insufficient coding run cannot promote findings into reportable evidence.
 - Embedding consumers route through `agentic.embed`; both loop modes use the Pi-governed `EmbeddingsGateway` and the canonical vector-space identity.
 - The frontmatter and manifest entries are the durable contract for agents updating this page after code changes.
@@ -57,7 +58,8 @@ The Codebook tab surfaces qualitative coding structures and codebook versions as
 
 - `tests/test_codebooks.py`
 - `tests/test_project_scope_contracts.py`
-- `tests/pi_production/test_w7_validation.py` — three-model minimum, exact endpoint pinning, same-model replica rejection, complete-unit coverage, schema constraints, and fail-closed blocked coding runs.
+- `tests/test_research_validity_contract.py` — exact source-span grounding, protected prompt blocks, persistence, reliability, reconciliation, and reportability contracts.
+- `tests/pi_production/test_w7_validation.py` — three-model minimum, exact endpoint pinning, same-model replica rejection, complete grounded-unit coverage, schema constraints, and fail-closed blocked coding runs.
 
 ## Related Features
 

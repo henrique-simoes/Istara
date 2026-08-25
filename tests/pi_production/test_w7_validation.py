@@ -797,6 +797,10 @@ async def _run_pi_coding_run(
     project_id = f"proj-w7-pi-{suffix}"
     task_id = f"task-w7-pi-{suffix}"
     unit_ids = [f"eu-w7-1-{suffix}", f"eu-w7-2-{suffix}"]
+    source_quotes = {
+        unit_id: f"Participant struggled with invitation setup {index}."
+        for index, unit_id in enumerate(unit_ids, 1)
+    }
 
     async def _plane(db, pid):
         return True
@@ -843,7 +847,7 @@ async def _run_pi_coding_run(
                     "evidence_unit_id": unit_id,
                     "codes": ["collaboration-disorientation"],
                     "primary_code": "collaboration-disorientation",
-                    "quote": f"quote for {unit_id}",
+                    "quote": source_quotes[unit_id],
                     "confidence": 0.92,
                     "rationale": "The participant is blocked by team invitation setup.",
                 }

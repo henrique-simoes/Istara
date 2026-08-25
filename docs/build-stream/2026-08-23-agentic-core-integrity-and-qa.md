@@ -8,8 +8,8 @@ phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal ac
 stage: S2-execute
 status: in-progress
 blocked_on: null
-last: { agent: gpt-5-codex, at: 2026-08-25T16:42:50Z, ledger: L-42 }
-next_action: "Stage only the fourteen reviewed frontend/simulation/living-doc paths, commit and push without force, verify exact local/remote testing SHA equality, then resume backend execution-plane and Research Spine audits."
+last: { agent: gpt-5-codex, at: 2026-08-25T16:51:02Z, ledger: L-46 }
+next_action: "Transport the exact-span grounding fix, then prove and repair the custom-agent orphan path that directly marks a task Done without human approval."
 ```
 
 ## Plan overview / roadmap
@@ -1343,3 +1343,70 @@ Verified: `0 legacy-plane call site(s)`; feature docs `0 seeded`, `224 artifacts
 pass; `git diff --check` clean; expected fourteen-path status only.
 Next: commit and push this bounded slice, compare exact local/remote SHAs, then continue backend
 task/loop/A2A/skills/donor and formal Research Spine implementation/test audits.
+
+### L-43 | 2026-08-25T16:43:18Z | S2-execute | gpt-5-codex | integrator | Frontend authority transported
+Did: Staged only the fourteen reviewed paths, committed them as `6a20dbc1` (`fix: retire
+classical model management clients`), pushed without force, and compared local HEAD with the remote
+`testing` ref.
+Result: local and remote `testing` both equal
+`6a20dbc1e0903224a81aa5d87b61550a6bd4186e`; the checkout was clean immediately after push.
+The runtime, UI, and simulation clients now agree that Pi Model Management is the sole write
+authority, while classical inventory remains read-only compatibility metadata.
+Verified: commit/push receipts, exact SHA equality, clean post-push worktree.
+Next: inspect the ensemble and full Research Spine implementation/test oracles for real three-model
+independence, reliability statistics, grounding/reconciliation, acceptance, and human report gates.
+
+### L-44 | 2026-08-25T16:46:12Z | S2-execute | gpt-5-codex | reviewer | Formal ensemble audit isolates grounding defect
+Did: Used the Compass Forge context/impact/why/test-impact map to trace the formal independent-coding
+plane from Pi's distinct-model resolver through structured coder calls, completeness filtering,
+reliability computation, reconciliation, and persisted code applications. Compared those mechanics
+to the architecture contract and their targeted tests.
+Result: the formal path does require three distinct model identities (endpoint replicas do not
+count), invokes coders independently, requires every admitted coder to cover every evidence unit,
+and computes Fleiss kappa plus Krippendorff alpha for three or more coders. However,
+`_usable_coding_applications` accepts a real evidence-unit identifier without checking that the
+model-returned quote is an exact span of that unit; persistence then stores the unverified quote as
+`CodeApplication.source_text`. Three agreeing models could therefore launder the same fabricated
+sentence into apparently perfectly reliable, source-grounded evidence. This violates the Research
+Spine's pre-trust grounding gate and is a confirmed correctness defect, not a documentation gap.
+Verified: direct implementation trace plus existing tests for distinct models, replica rejection,
+coder failure, incomplete coverage, and fail-closed selection. No code, service, model, dependency,
+or remote-host operation occurred during this audit checkpoint.
+Next: add a focused failing test for an out-of-source quote, repair exact-span admission, correct any
+test fixtures that currently fabricate quotes, and run the complete formal validity regression set.
+
+### L-45 | 2026-08-25T16:50:05Z | S2-execute | gpt-5-codex | implementer | Exact-span grounding red-green
+Did: Added a direct contract test proving that a valid evidence-unit ID paired with a fabricated
+quote must be rejected, observed the pre-fix failure, then required every coding application's
+non-empty quote to be an exact contiguous substring of the resolved unit's raw source text before
+code admission. Corrected two positive-test stubs to return the exact source quotes they claim to
+ground, and updated both the architecture contract and Findings Codebook living documentation.
+Result: the red test failed because the invalid application was admitted; after the smallest service
+boundary check it and the existing persistence/repair tests pass. Invalid quotes now become missing
+unit coverage, so the existing bounded-repair and insufficient-coder gates fail closed instead of
+computing reliability over fabricated evidence.
+Verified: focused red `1 failed, 28 deselected`; focused green `3 passed, 26 deselected`; Compass
+Forge impact/why receipts for both documentation paths. The four-file broader Research Spine pytest
+command remains actively running at this checkpoint. A duplicate invocation was briefly attempted
+while recovering the process handle; process inspection shows one active pytest process, and no
+duplicate result will be counted as evidence. No service, model, dependency, or remote-host action.
+Next: collect the tracked pytest result, regenerate/check feature artifacts, then trace the report
+manager and API surfaces to prove that accepted coding evidence still cannot report without human
+approval and Done-task state.
+
+### L-46 | 2026-08-25T16:51:02Z | S2-execute | gpt-5-codex | reviewer | Grounding regression green; Done gate bypass found
+Did: Collected the complete formal validity suite, regenerated living feature artifacts, checked the
+diff, then traced task approval, explicit task-to-report creation, report-manager routing/filtering,
+agent tool movement, and autonomous worker lifecycle paths.
+Result: all 78 formal Research Spine/reliability scenarios pass with exact-span admission, and the
+report manager correctly requires both `TaskStatus.DONE` and `review_state == "approved"` before
+routing findings; task approval also blocks unresolved Research Spine evidence. A separate confirmed
+bypass remains: `CustomAgentWorker._execute_task` directly sets an orphaned task to `DONE` when its
+project lookup fails, without a human review event or approved review state. Report routing still
+rejects that task, but the Kanban lifecycle falsely represents agent-authored terminal completion and
+violates the human-only Done invariant.
+Verified: `78 passed in 98.95s`; feature docs `0 seeded`, `224 artifacts`, `86 features`, pass;
+`git diff --check` clean; exact eight-path bounded grounding/doc/test diff. No service/model/dependency
+or remote-host action occurred.
+Next: commit/push the grounding slice with SHA equality, then add a worker lifecycle red contract and
+replace the orphan terminal mutation with a non-Done error state that remains visible for humans.

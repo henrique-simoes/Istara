@@ -74,9 +74,13 @@ Sources
   require `max_coders` in the range 3–5, and selection fails closed when that
   many distinct models are unavailable.
 - Every admitted coder must return a valid application for every selected
-  evidence unit. One bounded repair is allowed; a still-incomplete coder is
-  excluded. If complete coverage from the requested number of distinct models
-  is not available, the run cannot accept or promote any code application.
+  evidence unit. Its quote must be non-empty and an exact contiguous substring
+  of that resolved evidence unit's raw `source_text`; a valid unit identifier
+  alone is not grounding, and synthesized or paraphrased quotes are rejected.
+  One bounded repair is allowed; a still-incomplete coder is excluded. If
+  complete, source-grounded coverage from the requested number of distinct
+  models is not available, the run cannot accept or promote any code
+  application.
 - One- or two-model Self-MoA, dual-run, debate, and adversarial checks remain
   useful response-level operational signals, but they are lower-assurance
   validation, not formal Research Spine coding reliability, and cannot promote
@@ -173,7 +177,8 @@ Sources
 evidence units. It selects distinct healthy project-authorized model identities
 through Compute Manager, injects the protected protocol/codebook/evidence-unit
 blocks, asks each coder to return structured qualitative code applications,
-persists coder route evidence, computes the reliability gate, and marks code
+admits only applications whose returned quote exactly occurs in the referenced
+raw evidence unit, persists coder route evidence, computes the reliability gate, and marks code
 applications as accepted, needs reconciliation, needs human review, or blocked.
 Researchers may start project-scoped runs through
 `POST /api/research-validity/{project_id}/coding-runs`; the route requires
