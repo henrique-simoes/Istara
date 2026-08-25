@@ -151,3 +151,21 @@ def test_startup_does_not_mutate_or_load_classical_model_authority():
     }
     present = [label for label, marker in forbidden.items() if marker in source]
     assert not present, "classical startup authority remains: " + ", ".join(present)
+
+
+def test_active_clients_do_not_call_classical_model_management_writes():
+    """UI and simulation clients must use Pi Model Management exclusively."""
+    client_paths = (
+        "frontend/src/lib/api.ts",
+        "frontend/src/components/common/SettingsView.tsx",
+        "tests/simulation/run.mjs",
+        "tests/simulation/lib/api-client.mjs",
+    )
+    forbidden = ("/api/settings/model?", "/api/settings/provider?")
+    violations = []
+    for relative_path in client_paths:
+        source = (REPO_ROOT / relative_path).read_text(encoding="utf-8")
+        for marker in forbidden:
+            if marker in source:
+                violations.append(f"{relative_path}: {marker}")
+    assert not violations, "active classical model-management clients remain: " + ", ".join(violations)

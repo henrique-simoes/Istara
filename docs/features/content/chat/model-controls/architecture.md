@@ -6,9 +6,9 @@ audience: architecture
 status: documented
 related_features: ["settings.llm-servers", "settings.general", "compute.pool"]
 related_glossary: ["rag"]
-code_references: ["frontend/src/components/chat/ChatView.tsx", "frontend/src/components/chat/ChatModelControls.tsx", "frontend/src/components/chat/chatViewParts.tsx", "frontend/src/stores/chatStore.ts", "frontend/src/stores/sessionStore.ts", "frontend/src/lib/chatApi.ts", "frontend/src/lib/modelProviders.ts", "backend/app/api/routes/chat.py", "backend/app/api/routes/sessions.py", "backend/app/api/routes/settings.py", "backend/app/main.py", "backend/app/core/agentic/dispatcher.py", "backend/app/core/agentic/legacy.py", "backend/app/core/agentic/usage_ledger.py", "backend/app/core/pi_runtime/engine.py", "backend/app/core/pi_runtime/oauth.py"]
+code_references: ["frontend/src/components/chat/ChatView.tsx", "frontend/src/components/chat/ChatModelControls.tsx", "frontend/src/components/chat/chatViewParts.tsx", "frontend/src/components/common/SettingsView.tsx", "frontend/src/components/settings/PiModelManagement.tsx", "frontend/src/lib/modelCatalog.ts", "frontend/src/stores/chatStore.ts", "frontend/src/stores/sessionStore.ts", "frontend/src/lib/chatApi.ts", "frontend/src/lib/modelProviders.ts", "backend/app/api/routes/chat.py", "backend/app/api/routes/sessions.py", "backend/app/api/routes/settings.py", "backend/app/main.py", "backend/app/core/agentic/dispatcher.py", "backend/app/core/agentic/legacy.py", "backend/app/core/agentic/usage_ledger.py", "backend/app/core/pi_runtime/engine.py", "backend/app/core/pi_runtime/oauth.py"]
 api_references: ["backend/app/api/routes/chat.py", "backend/app/api/routes/sessions.py", "backend/app/core/agentic/usage_ledger.py"]
-test_references: ["frontend/src/lib/modelProviders.test.ts", "tests/test_chat.py", "tests/test_settings.py", "tests/test_settings_agentic_pi_endpoints.py", "tests/pi_migration/test_model_management_migration.py", "tests/pi_production/test_pi_catalog_ux.py", "tests/pi_production/test_w1_agentic_contract.py"]
+test_references: ["frontend/src/lib/modelCatalog.test.ts", "frontend/src/lib/modelProviders.test.ts", "tests/test_chat.py", "tests/test_settings.py", "tests/test_settings_agentic_pi_endpoints.py", "tests/pi_migration/test_model_management_migration.py", "tests/pi_production/test_pi_catalog_ux.py", "tests/pi_production/test_w1_agentic_contract.py", "tests/simulation/scenarios/10-settings-models.mjs", "tests/simulation/scenarios/26-model-session-persistence.mjs"]
 last_verified: 2026-08-25
 compass: CF-SPEC-77 / CF-986; CF-SPEC-8
 ---
@@ -196,6 +196,20 @@ always return `410 pi_model_management_required` with a successor link to
 reconstruction, settings mutation, or environment persistence. Read-only
 `GET /api/settings/models` remains a compatibility inventory while clients
 migrate; it exposes both transport inventory and a secret-free Pi catalog.
+Every merged Settings row is explicitly non-switchable. Settings labels Pi
+entries as managed by Pi and classical rows as compatibility/active-transport
+inventory, renders no classical Switch or Pull control, and exposes no
+frontend `switchModel` or `switchProvider` client. Endpoint creation, update,
+deletion, authentication, and model admission live only in
+`PiModelManagement` through `/api/settings/pi-endpoints`.
+
+The simulation harness likewise never pins or restores a classical global
+model. A requested fixed test model must already be admitted in the Pi catalog
+or setup fails with an actionable error. Settings scenario 10 proves the Pi
+management surface is visible and classical mutation controls are absent;
+scenario 26 proves both deprecated writes return 410 with the Pi successor and
+that their negative probes leave the read-only inventory unchanged before it
+continues with session persistence coverage.
 
 Application startup may register configured transport nodes, discover/load
 transport registrations, and run health checks. It must not automatically

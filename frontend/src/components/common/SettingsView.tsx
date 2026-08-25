@@ -299,66 +299,20 @@ export default function SettingsView() {
                       aria-label="Pi catalog model"
                       className="text-xs bg-istara-100 dark:bg-istara-900/30 text-istara-700 dark:text-istara-400 rounded-full px-2 py-0.5 ml-2 shrink-0"
                     >
-                      Available to Pi
+                      Managed by Pi
                     </span>
                   ) : model.name === models.active_model ? (
                     <span className="text-xs bg-istara-100 dark:bg-istara-900/30 text-istara-700 dark:text-istara-400 rounded-full px-2 py-0.5 ml-2 shrink-0">
-                      Active
+                      Active transport
                     </span>
-                  ) : model.switchable ? (
-                    <button
-                      onClick={async () => {
-                        try {
-                          await settingsApi.switchModel(model.name);
-                          await fetchAll();
-                        } catch (e) {
-                          console.error("Failed to switch model:", e);
-                        }
-                      }}
-                      className="text-xs px-3 py-1 rounded-lg bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-istara-100 hover:text-istara-700 transition-colors ml-2 shrink-0"
-                    >
-                      Switch
-                    </button>
-                  ) : null}
+                  ) : (
+                    <span className="text-xs text-slate-500 dark:text-slate-400 rounded-full px-2 py-0.5 ml-2 shrink-0">
+                      Compatibility inventory
+                    </span>
+                  )}
                 </div>
               );
             })}
-          </div>
-        </div>
-      )}
-
-      {/* Pull new model */}
-      {canManageInfrastructure && (
-        <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-5">
-          <h3 className="font-medium text-slate-900 dark:text-white mb-2">Pull New Model</h3>
-          <p className="text-xs text-slate-500 mb-3">
-            {models?.provider === "lmstudio"
-              ? "Load models through LM Studio's UI, or enter a model name to switch."
-              : models?.provider === "ollama"
-              ? "Download a new model from the Ollama registry."
-              : "Use the provider's model manager, or enter an advertised model name to switch."}
-          </p>
-          <div className="flex gap-2">
-            <input
-              type="text"
-              placeholder="e.g., qwen3:7b, llama3:8b, mistral:latest"
-              className="flex-1 px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-istara-500"
-              onKeyDown={async (e) => {
-                if (e.key === "Enter") {
-                  const input = e.target as HTMLInputElement;
-                  const model = input.value.trim();
-                  if (model) {
-                    try {
-                      await settingsApi.switchModel(model);
-                      input.value = "";
-                      await fetchAll();
-                    } catch (err) {
-                      console.error("Failed to pull model:", err);
-                    }
-                  }
-                }
-              }}
-            />
           </div>
         </div>
       )}

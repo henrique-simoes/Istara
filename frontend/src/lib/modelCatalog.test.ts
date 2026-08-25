@@ -41,7 +41,17 @@ describe("engine comparative summaries (W3 selector slice)", () => {
 });
 
 describe("merged model catalog", () => {
-  it("keeps legacy switching and exposes deduplicated Pi identities", () => {
+  it("keeps every compatibility inventory row non-switchable under Pi authority", () => {
+    const entries = mergeModelCatalogs(
+      [{ name: "classical-row", provider_type: "ollama" }],
+      [{ endpoint_id: "pi-1", model: "pi-row", provider_kind: "openai_compat" }],
+    );
+
+    expect(entries).toHaveLength(2);
+    expect(entries.every((entry) => entry.switchable === false)).toBe(true);
+  });
+
+  it("exposes deduplicated compatibility and Pi identities without mutation authority", () => {
     const entries = mergeModelCatalogs(
       [{ name: "shared-model", provider_type: "ollama" }],
       [
@@ -52,7 +62,7 @@ describe("merged model catalog", () => {
     );
 
     expect(entries).toHaveLength(3);
-    expect(entries[0]).toMatchObject({ name: "shared-model", engine: "legacy", switchable: true });
+    expect(entries[0]).toMatchObject({ name: "shared-model", engine: "legacy", switchable: false });
     expect(entries[1]).toMatchObject({
       name: "shared-model",
       endpoint_id: "pi-1",

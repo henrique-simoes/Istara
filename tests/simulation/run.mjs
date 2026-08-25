@@ -95,8 +95,6 @@ const API_BASE = process.env.ISTARA_API_URL || "http://localhost:8000";
 const FRONTEND = process.env.ISTARA_FRONTEND_URL || "http://localhost:3000";
 const FIXED_TEST_MODEL = (process.env.ISTARA_FIXED_LLM_TEST_MODEL || "google/gemma-4-e4b").trim();
 
-let fixedModelOriginal = null;
-let fixedModelApplied = false;
 
 function requestJson(method, url, { headers = {}, body = null, timeoutMs = 0, label = "" } = {}) {
   return new Promise((resolve, reject) => {
@@ -546,8 +544,8 @@ async function loadEvaluators() {
 }
 
 async function applyFixedTestModel() {
-  // Multi-plane deployments (Phase 6): model pinning is per-endpoint there,
-  // so allow operators to bypass the legacy global switch explicitly.
+  // Model selection is governed by Pi Model Management. The harness validates
+  // its requested identity but never mutates or restores classical global state.
   if (/^(1|true|yes)$/i.test(String(process.env.ISTARA_FIXED_LLM_SKIP || ""))) {
     console.log(`  Fixed test model pinning skipped (ISTARA_FIXED_LLM_SKIP); turns resolve via the unified provider plane.`);
     return null;
@@ -561,83 +559,17 @@ async function applyFixedTestModel() {
     throw new Error(`Could not inspect active model before fixed-model test run (${statusRes.status})`);
   }
 
-  const before = await statusRes.json();
-  const activeBefore = before.active_model || "";
-  if (activeBefore === FIXED_TEST_MODEL) {
-    console.log(`  Using fixed test model: ${FIXED_TEST_MODEL}`);
-    return FIXED_TEST_MODEL;
-  }
-
-  fixedModelOriginal = activeBefore || null;
-  const switchRes = await fetch(
-    `${API_BASE}/api/settings/model?model_name=${encodeURIComponent(FIXED_TEST_MODEL)}`,
-    {
-      method: "POST",
-      headers: apiClient._headers(),
-    }
-  );
-  if (!switchRes.ok) {
-    throw new Error(`Could not apply fixed test model ${FIXED_TEST_MODEL} (${switchRes.status})`);
-  }
-
-  const switched = await switchRes.json();
-  if (switched.status !== "switched" || switched.model !== FIXED_TEST_MODEL) {
-    // Phase 6: on unified-plane deployments the requested model may already be
-    // resolvable through pi model management (or the local/donated inventory)
-    // without an ollama pull. If the catalog can serve it, accept and move on.
-    try {
-      const catRes = await fetch(`${API_BASE}/api/chat/model-catalog`, {
-        headers: apiClient._headers(),
-      });
-      if (catRes.ok) {
-        const catalog = await catRes.json();
-        const known =
-          (Array.isArray(catalog.legacy_models) && catalog.legacy_models.includes(FIXED_TEST_MODEL)) ||
-          (Array.isArray(catalog.configured) && catalog.configured.some((e) => e.model === FIXED_TEST_MODEL));
-        if (known) {
-          console.log(`  Fixed test model ${FIXED_TEST_MODEL} resolves via the unified provider plane; skipping legacy switch`);
-          return FIXED_TEST_MODEL;
-        }
-      }
-    } catch { /* fall through to the hard error */ }
-    throw new Error(`Fixed test model switch returned unexpected response: ${JSON.stringify(switched)}`);
-  }
-
-  const verifyRes = await fetch(`${API_BASE}/api/settings/models`, {
-    headers: apiClient._headers(),
-  });
-  const verify = verifyRes.ok ? await verifyRes.json() : {};
-  if (verify.active_model && verify.active_model !== FIXED_TEST_MODEL) {
-    throw new Error(`Fixed test model did not stick: expected ${FIXED_TEST_MODEL}, got ${verify.active_model}`);
-  }
-
-  fixedModelApplied = true;
-  console.log(`  Applied fixed test model: ${FIXED_TEST_MODEL}`);
-  return FIXED_TEST_MODEL;
-}
-
-async function restoreFixedTestModel() {
-  if (!fixedModelApplied || !fixedModelOriginal || fixedModelOriginal === FIXED_TEST_MODEL) {
-    return;
-  }
-
-  try {
-    const restoreRes = await fetch(
-      `${API_BASE}/api/settings/model?model_name=${encodeURIComponent(fixedModelOriginal)}`,
-      {
-        method: "POST",
-        headers: apiClient._headers(),
-      }
+  const inventory = await statusRes.json();
+  const known = Array.isArray(inventory.pi_catalog)
+    && inventory.pi_catalog.some((entry) => entry?.model === FIXED_TEST_MODEL);
+  if (!known) {
+    throw new Error(
+      `Fixed test model ${FIXED_TEST_MODEL} is not admitted by Pi Model Management; configure an endpoint before the run`,
     );
-    if (restoreRes.ok) {
-      console.log(`  Restored original model: ${fixedModelOriginal}`);
-      fixedModelApplied = false;
-    } else {
-      console.log(`  Could not restore original model ${fixedModelOriginal} (${restoreRes.status})`);
-    }
-  } catch (e) {
-    console.log(`  Could not restore original model ${fixedModelOriginal}: ${e.message}`);
   }
+
+  console.log(`  Fixed test model admitted by Pi Model Management: ${FIXED_TEST_MODEL}`);
+  return FIXED_TEST_MODEL;
 }
 
 // ── Report Generation ───────────────────────────────────────
@@ -1186,9 +1118,6 @@ async function main() {
 
   console.log();
 
-  // Restore the operator's model choice before bringing background work back.
-  await restoreFixedTestModel();
-
   // Resume Istara operations after simulation tests complete
   if (maintenancePaused) {
     try {
@@ -1212,7 +1141,6 @@ async function main() {
 // Safety: resume Istara operations and stop caffeinate on crash or interrupt
 async function emergencyCleanup() {
   stopCaffeinate();
-  await restoreFixedTestModel();
   try {
     await fetch(`${API_BASE}/api/settings/maintenance/resume`, {
       method: "POST",

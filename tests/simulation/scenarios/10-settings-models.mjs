@@ -78,9 +78,17 @@ export async function run(ctx) {
   const modelsSection = await availableModels.isVisible({ timeout: 2000 }).catch(() => false);
   checks.push({ name: "Available Models section", passed: modelsSection, detail: "" });
 
-  // Check Pull New Model input
-  const pullInput = await page.locator('input[placeholder*="qwen"]').first().isVisible({ timeout: 2000 }).catch(() => false);
-  checks.push({ name: "Pull model input visible", passed: pullInput, detail: "" });
+  // Pi Model Management is the only mutation surface; retired classical
+  // Switch/Pull affordances must not reappear in Settings.
+  const piManagement = await page.locator("#pi-model-management-title").first().isVisible({ timeout: 2000 }).catch(() => false);
+  checks.push({ name: "Pi Model Management visible", passed: piManagement, detail: "" });
+  const retiredSwitch = await page.locator('button:text("Switch")').count();
+  const retiredPull = await page.locator('h3:has-text("Pull New Model")').count();
+  checks.push({
+    name: "Classical model mutation controls absent",
+    passed: retiredSwitch === 0 && retiredPull === 0,
+    detail: `switch=${retiredSwitch}, pull=${retiredPull}`,
+  });
 
   // Check Refresh button
   const refreshBtn = await page.locator("text=Refresh").first().isVisible({ timeout: 2000 }).catch(() => false);

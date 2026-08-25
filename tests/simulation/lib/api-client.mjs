@@ -507,12 +507,6 @@ export const settings = {
   hardware: () => request("/api/settings/hardware"),
   models: () => request("/api/settings/models"),
   status: () => request("/api/settings/status"),
-
-  /** @param {string} model */
-  switchModel: (model) =>
-    request(`/api/settings/model?model_name=${encodeURIComponent(model)}`, {
-      method: "POST",
-    }),
 };
 
 // ---------------------------------------------------------------------------

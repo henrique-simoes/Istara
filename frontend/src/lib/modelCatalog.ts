@@ -89,8 +89,9 @@ export const ENGINE_SELECTOR_OPTIONS = ["pi", "legacy"] as const;
 
 /**
  * Present both routing planes in the existing Settings model inventory.
- * Pi entries are identity-only and therefore intentionally not switchable by
- * the legacy provider switch endpoint.
+ * Every entry is identity-only: Pi Model Management is the sole write
+ * authority, so this compatibility inventory never advertises the retired
+ * classical provider/model switch endpoint.
  */
 export function mergeModelCatalogs(
   legacyModels: unknown[] | null | undefined,
@@ -108,7 +109,7 @@ export function mergeModelCatalogs(
     const key = `${name}\u0000${String(model.server_name || model.provider_type || "")}`;
     if (seenLegacy.has(key)) continue;
     seenLegacy.add(key);
-    merged.push({ ...model, name, engine: "legacy", switchable: true });
+    merged.push({ ...model, name, engine: "legacy", switchable: false });
   }
 
   for (const raw of piCatalog || []) {

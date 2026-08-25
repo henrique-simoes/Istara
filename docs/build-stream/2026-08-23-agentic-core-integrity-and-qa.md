@@ -8,8 +8,8 @@ phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal ac
 stage: S2-execute
 status: in-progress
 blocked_on: null
-last: { agent: gpt-5-codex, at: 2026-08-25T16:34:10Z, ledger: L-37 }
-next_action: "Commit and push the verified autoresearch authority slice, prove local/remote SHA equality, then audit task, loop, A2A, skills, donated-compute, and UI callers for remaining catalog or write-authority splits."
+last: { agent: gpt-5-codex, at: 2026-08-25T16:42:50Z, ledger: L-42 }
+next_action: "Stage only the fourteen reviewed frontend/simulation/living-doc paths, commit and push without force, verify exact local/remote testing SHA equality, then resume backend execution-plane and Research Spine audits."
 ```
 
 ## Plan overview / roadmap
@@ -1274,3 +1274,72 @@ Verified: `91 passed in 4.60s`; feature docs `0 seeded`, `224 artifacts`, `86 fe
 `git diff --check` clean. No live inference, server startup, model load, or dependency install ran.
 Next: stage only the seven expected paths, commit and push without force, compare exact local and
 remote `testing` SHAs, then continue the uncovered-plane audit.
+
+### L-38 | 2026-08-25T16:34:46Z | S2-execute | gpt-5-codex | integrator | Autoresearch authority transported
+Did: Staged only the seven reviewed autoresearch source/test/lifecycle/living-doc/generated-doc
+paths, committed them as `cc27ff50` (`fix: unify autoresearch model catalog authority`), pushed
+without force, and compared the remote `testing` ref with local HEAD.
+Result: local HEAD and `origin/testing` both equal
+`cc27ff50aa867f033ca63fa6bdcf44d4b4e0cb16`; the checkout was clean immediately after push.
+This is a bounded authority checkpoint, not completion of P9-04 or the wider delivery.
+Verified: commit/push receipts, exact local/remote SHA equality, and clean worktree after push.
+Next: map every remaining task, loop, A2A, skill, donated-compute, and frontend caller; classify
+read-only transport compatibility separately from forbidden execution or write authority.
+
+### L-39 | 2026-08-25T16:36:16Z | S2-execute | gpt-5-codex | implementer | Frontend and simulation authority leak mapped
+Did: Ran a graph-backed context pack plus per-file Compass Forge impact/why over the settings API,
+Settings inventory, merged catalog, unit test, simulation runner/client, and scenario 26, then read
+the exact callers and contracts. Loaded the TypeScript red-green-refactor discipline before edits.
+Result: read-only `/api/settings/models` inventory is a valid compatibility surface, but the UI
+still marks every classical row `switchable`, renders Switch/Pull controls, and calls the retired
+write routes. The simulation runner, client, and scenario 26 also mutate and restore the classical
+global model, so current simulation would fail against the intentional 410 and tests the obsolete
+architecture rather than Pi authority. These are confirmed remaining P9-04 gaps.
+Verified: graph impact/why receipts for all seven candidate paths; exact caller inventory; no code,
+server, model, dependency, or remote-host operation in this audit step.
+Next: establish one failing catalog contract, make all compatibility rows inventory-only, then
+remove client/UI mutation affordances and rewrite simulation setup/scenario assertions around the
+Pi catalog plus fail-closed legacy writes.
+
+### L-40 | 2026-08-25T16:40:12Z | S2-execute | gpt-5-codex | implementer | Frontend authority red-green slice
+Did: Added one catalog red contract, observed its exact failure, made every merged compatibility
+row explicitly non-switchable, removed Settings Switch/Pull affordances and both frontend write
+methods, removed the simulation client's mutation method, and changed fixed-model setup to validate
+Pi admission without mutating global state. Reframed scenario 26 to assert Pi endpoint inventory,
+both legacy 410 successors, unchanged compatibility inventory, and existing session persistence.
+Result: the red catalog assertion failed because classical rows were still `switchable: true`; it
+is now green. The migration client tripwire initially found five active classical callers and now
+passes, while the scenario retains the retired URLs only as deliberate negative-contract probes.
+Verified: catalog red `1 failed, 6 passed`; catalog green `7 passed`; migration green `18 passed`.
+A combined follow-up command then stopped at its frontend step because npm was run from repo root
+(`ENOENT package.json`), a verification-command cwd error rather than a product failure; subsequent
+syntax and broader gates remain pending. No dependency install, server, or model operation occurred.
+Next: rerun the frontend unit test from `frontend/`, validate all three `.mjs` files with Node syntax
+checks, update living documentation, regenerate manifests, and execute broader regressions.
+
+### L-41 | 2026-08-25T16:42:17Z | S2-execute | gpt-5-codex | implementer | Frontend and simulation regression gate
+Did: Removed the two obsolete mutation selectors, changed Settings scenario 10 to require the Pi
+management UI and absence of classical Switch/Pull controls, updated the Chat Model Controls living
+contract, then ran frontend typing/lint/unit tests, five modified simulation syntax checks, and the
+broader settings/migration/project-scope/Pi-catalog backend suites.
+Result: frontend code type-checks and lints; both targeted Vitest files and all selected backend
+regressions pass; every modified simulation module parses. The UI, client, runner, and simulations
+now share the same sole-authority contract. A combined command stopped after those green gates only
+because it named nonexistent `scripts/scan_legacy_model_plane_calls.py`; the real repository scanner
+is `scripts/pi_migration_inventory.py`, so scanner/docs remain pending rather than falsely claimed.
+Verified: TypeScript `tsc --noEmit` pass; targeted ESLint pass; Vitest `10 passed`; pytest `90 passed
+in 5.58s`; five Node `--check` passes. No live service/model/dependency operation occurred.
+Next: run the correct deterministic scanner, regenerate/check the feature artifacts, review the
+bounded diff, then transport this checkpoint with exact local/remote SHA proof.
+
+### L-42 | 2026-08-25T16:42:50Z | S2-execute | gpt-5-codex | implementer | Frontend authority documentation gate
+Did: Corrected the scanner invocation to the repository's supported no-flag interface, regenerated
+the feature site/manifests, checked whitespace, and reviewed the complete path/stat boundary.
+Result: the deterministic scanner remains at zero; living documentation is synchronized; the diff
+contains exactly fourteen expected lifecycle, feature-doc/generated-doc, frontend, migration-test,
+and simulation paths. The earlier unsupported `--check` option was a command-shape error and was not
+counted as product evidence.
+Verified: `0 legacy-plane call site(s)`; feature docs `0 seeded`, `224 artifacts`, `86 features`,
+pass; `git diff --check` clean; expected fourteen-path status only.
+Next: commit and push this bounded slice, compare exact local/remote SHAs, then continue backend
+task/loop/A2A/skills/donor and formal Research Spine implementation/test audits.

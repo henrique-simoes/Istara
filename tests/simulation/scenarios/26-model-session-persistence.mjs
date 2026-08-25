@@ -1,6 +1,6 @@
-/** Scenario 26 — Model & Session Persistence: model switching, .env persistence, session survival. */
+/** Scenario 26 — Pi model authority and session persistence. */
 
-export const name = "Model & Session Persistence";
+export const name = "Pi Model Authority & Session Persistence";
 export const id = "26-model-session-persistence";
 
 export async function run(ctx) {
@@ -8,94 +8,61 @@ export async function run(ctx) {
   const checks = [];
   const fixedTestModel = ctx.fixedTestModel || process.env.ISTARA_FIXED_LLM_TEST_MODEL || null;
 
-  // ── 1. Admin model inventory reports correct provider and model ──
+  // ── 1. Compatibility inventory remains readable without write authority ──
   let initialModel = null;
   let provider = null;
   let models = [];
+  let piCatalog = [];
   try {
     const inventory = await api.get("/api/settings/models");
     provider = inventory.provider;
     initialModel = inventory.active_model;
     models = inventory.models || [];
+    piCatalog = inventory.pi_catalog || [];
     checks.push({
-      name: "Model inventory reports active model",
-      passed: !!initialModel && initialModel !== "default",
-      detail: `provider=${provider}, model=${initialModel}`,
+      name: "Compatibility model inventory is readable",
+      passed: Array.isArray(models) && Array.isArray(piCatalog),
+      detail: `provider=${provider}, active=${initialModel}, classical=${models.length}, pi=${piCatalog.length}`,
     });
   } catch (e) {
-    checks.push({ name: "Model inventory reports active model", passed: false, detail: e.message });
+    checks.push({ name: "Compatibility model inventory is readable", passed: false, detail: e.message });
   }
 
-  // ── 2. Model list returns available models ──
+  // ── 2. Pi Model Management projects at least one admitted endpoint ──
   try {
-    const mdl = models.length > 0 ? { models, status: "online" } : await api.get("/api/settings/models");
-    models = mdl.models || [];
+    const managed = await api.get("/api/settings/pi-endpoints");
+    const endpoints = managed.endpoints || [];
     checks.push({
-      name: "Model list available",
-      passed: models.length > 0,
-      detail: `count=${models.length}, status=${mdl.status}`,
+      name: "Pi Model Management endpoint inventory available",
+      passed: Array.isArray(endpoints) && typeof managed.retirement_note === "string",
+      detail: `configured=${endpoints.length}, retirement_note=${Boolean(managed.retirement_note)}`,
     });
   } catch (e) {
-    checks.push({ name: "Model list available", passed: false, detail: e.message });
+    checks.push({ name: "Pi Model Management endpoint inventory available", passed: false, detail: e.message });
   }
 
-  // ── 3. Active model is in model list (not "default" placeholder) ──
-  if (initialModel && models.length > 0) {
-    const modelNames = models.map((m) => m.name || m.id);
-    const modelInList = modelNames.some((n) => n === initialModel || n.includes(initialModel));
-    const fixedModelPinned = fixedTestModel && initialModel === fixedTestModel;
-    checks.push({
-      name: "Active model exists in model list",
-      passed: modelInList || fixedModelPinned,
-      detail: modelInList
-        ? `${initialModel} found`
-        : fixedModelPinned
-          ? `${initialModel} pinned by fixed test profile`
-          : `${initialModel} NOT in [${modelNames.join(", ")}]`,
-    });
-  }
-
-  // ── 4. Switch model via API ──
-  let switchedModel = null;
-  if (models.length > 0) {
-    const targetModel = fixedTestModel || models[0].name || models[0].id;
+  // ── 3. Classical model/provider writes fail closed with a Pi successor ──
+  const targetModel = fixedTestModel || piCatalog[0]?.model || models[0]?.name || "authority-probe";
+  for (const [label, path] of [
+    ["Classical model write retired", `/api/settings/model?model_name=${encodeURIComponent(targetModel)}`],
+    ["Classical provider write retired", "/api/settings/provider?provider=ollama"],
+  ]) {
     try {
-      const result = await api.post(`/api/settings/model?model_name=${encodeURIComponent(targetModel)}`, {});
-      switchedModel = result.model;
+      const response = await fetch(`http://localhost:8000${path}`, {
+        method: "POST",
+        headers: api._headers(),
+      });
+      const body = await response.json();
       checks.push({
-        name: fixedTestModel ? "Re-apply fixed test model via API" : "Switch model via API",
+        name: label,
         passed:
-          result.status === "switched"
-          && result.persisted === true
-          && (!fixedTestModel || result.model === fixedTestModel),
-        detail: `model=${result.model}, persisted=${result.persisted}`,
+          response.status === 410
+          && body.error === "pi_model_management_required"
+          && body.replacement === "/api/settings/pi-endpoints",
+        detail: `status=${response.status}, replacement=${body.replacement}`,
       });
     } catch (e) {
-      checks.push({ name: "Switch model via API", passed: false, detail: e.message });
-    }
-  }
-
-  // ── 5. Verify model switch reflected in status ──
-  if (switchedModel) {
-    try {
-      const inventory = await api.get("/api/settings/models");
-      checks.push({
-        name: "Model switch reflected in inventory",
-        passed: inventory.active_model === switchedModel,
-        detail: `expected=${switchedModel}, got=${inventory.active_model}`,
-      });
-    } catch (e) {
-      checks.push({ name: "Model switch reflected in inventory", passed: false, detail: e.message });
-    }
-  }
-
-  // ── 6. Restore original model ──
-  if (initialModel && switchedModel && initialModel !== switchedModel) {
-    try {
-      await api.post(`/api/settings/model?model_name=${encodeURIComponent(initialModel)}`, {});
-      checks.push({ name: "Restore original model", passed: true, detail: `restored=${initialModel}` });
-    } catch (e) {
-      checks.push({ name: "Restore original model", passed: false, detail: e.message });
+      checks.push({ name: label, passed: false, detail: e.message });
     }
   }
 
@@ -243,16 +210,16 @@ export async function run(ctx) {
     }
   }
 
-  // ── 9. Provider inventory is consistent ──
+  // ── 9. Read-only compatibility inventory remains stable ──
   try {
     const inventory = await api.get("/api/settings/models");
     checks.push({
-      name: "Provider consistent after operations",
-      passed: inventory.provider === provider,
-      detail: `expected=${provider}, got=${inventory.provider}`,
+      name: "Compatibility inventory unchanged by retired writes",
+      passed: inventory.provider === provider && inventory.active_model === initialModel,
+      detail: `provider=${inventory.provider}, active=${inventory.active_model}`,
     });
   } catch (e) {
-    checks.push({ name: "Provider consistent after operations", passed: false, detail: e.message });
+    checks.push({ name: "Compatibility inventory unchanged by retired writes", passed: false, detail: e.message });
   }
 
   return {

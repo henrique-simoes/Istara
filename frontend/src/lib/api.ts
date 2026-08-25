@@ -504,10 +504,6 @@ export const settings = {
   hardware: () => request<any>("/api/settings/hardware"),
   models: () => request<any>("/api/settings/models"),
   status: () => request<any>("/api/settings/status"),
-  switchModel: (model: string) =>
-    request<any>(`/api/settings/model?model_name=${model}`, { method: "POST" }),
-  switchProvider: (provider: string) =>
-    request<any>(`/api/settings/provider?provider=${provider}`, { method: "POST" }),
   setAgenticEngine: (engine: "pi" | "istara") =>
     request<{ status: string; agentic_engine_default: string; persisted: boolean }>(
       "/api/settings/agentic-engine",

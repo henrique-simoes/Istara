@@ -428,6 +428,19 @@
 <p>reconstruction, settings mutation, or environment persistence. Read-only</p>
 <p><code>GET /api/settings/models</code> remains a compatibility inventory while clients</p>
 <p>migrate; it exposes both transport inventory and a secret-free Pi catalog.</p>
+<p>Every merged Settings row is explicitly non-switchable. Settings labels Pi</p>
+<p>entries as managed by Pi and classical rows as compatibility/active-transport</p>
+<p>inventory, renders no classical Switch or Pull control, and exposes no</p>
+<p>frontend <code>switchModel</code> or <code>switchProvider</code> client. Endpoint creation, update,</p>
+<p>deletion, authentication, and model admission live only in</p>
+<p><code>PiModelManagement</code> through <code>/api/settings/pi-endpoints</code>.</p>
+<p>The simulation harness likewise never pins or restores a classical global</p>
+<p>model. A requested fixed test model must already be admitted in the Pi catalog</p>
+<p>or setup fails with an actionable error. Settings scenario 10 proves the Pi</p>
+<p>management surface is visible and classical mutation controls are absent;</p>
+<p>scenario 26 proves both deprecated writes return 410 with the Pi successor and</p>
+<p>that their negative probes leave the read-only inventory unchanged before it</p>
+<p>continues with session persistence coverage.</p>
 <p>Application startup may register configured transport nodes, discover/load</p>
 <p>transport registrations, and run health checks. It must not automatically</p>
 <p>choose another provider, pull a chat model, issue a chat-completion probe to</p>
