@@ -8,8 +8,8 @@ phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal ac
 stage: S2-execute
 status: in-progress
 blocked_on: null
-last: { agent: gpt-5-codex, at: 2026-08-25T16:51:02Z, ledger: L-46 }
-next_action: "Transport the exact-span grounding fix, then prove and repair the custom-agent orphan path that directly marks a task Done without human approval."
+last: { agent: gpt-5-codex, at: 2026-08-25T16:54:34Z, ledger: L-48 }
+next_action: "Transport the human-only Done repair with exact SHA equality, then audit task/loop/A2A/skill execution dispatch and model identity through Pi Model Management."
 ```
 
 ## Plan overview / roadmap
@@ -1410,3 +1410,38 @@ Verified: `78 passed in 98.95s`; feature docs `0 seeded`, `224 artifacts`, `86 f
 or remote-host action occurred.
 Next: commit/push the grounding slice with SHA equality, then add a worker lifecycle red contract and
 replace the orphan terminal mutation with a non-Done error state that remains visible for humans.
+
+### L-47 | 2026-08-25T16:53:57Z | S2-execute | gpt-5-codex | implementer | Human-only Done worker repair
+Did: Transported the exact-span grounding slice, mapped `custom_worker.py` with Compass Forge
+impact/why/test-impact, added a focused orphan-task lifecycle contract, observed the illegal Done
+transition, and changed the missing-project branch to In Review / needs revision with an explicit
+human-facing failure reason. Updated and regenerated the Agent Detail living contract, then ran task,
+report-manager, and scenario regressions plus a source tripwire across agent/skill code.
+Result: local and remote `testing` first converged at grounding commit
+`36a6577d40d5b70d37b78359f0d29f297433e24a`. The new red then failed with actual
+`TaskStatus.DONE`; it is green after the repair. No agent or skill implementation now directly
+assigns `task.status = TaskStatus.DONE`, and the report/task suites retain human approval and
+Research Spine gates.
+Verified: orphan red `1 failed, 27 deselected`; orphan green `1 passed, 27 deselected`; direct-Done
+source tripwire zero; task/report/spine regressions `30 passed in 36.04s`; feature docs `0 seeded`,
+`224 artifacts`, `86 features`, pass; diff check clean. The broader test emitted one existing
+`aiosqlite` event-loop-closed thread warning in `test_agent_execute_task_defers_when_project_paused`;
+the suite passed, but the warning is retained as test-harness debt rather than suppressed.
+Next: execute the relevant security/post-change gates, push this bounded repair with SHA proof, then
+continue authority auditing across tasks, loops, A2A, skills, donation, tool calls, and long horizon.
+
+### L-48 | 2026-08-25T16:54:34Z | S2-execute | gpt-5-codex | reviewer | Security green; broad CF gate debt retained
+Did: Ran the tracked security benchmark and Compass Forge's repository-wide after gate over the
+human-only Done slice, preserving the full outcome instead of reducing it to command exit status.
+Result: the security scorecard passes all 28 applicable controls at 100% with no warnings. Compass
+Forge recorded gate baseline 9 and returned process exit zero but its embedded repository status is
+`fail`: it reports broad pre-existing/branch-aggregate complexity, route/type drift, large-asset, and
+three secret-flow heuristic findings in `config.py`, `env_persistence.py`, and a benchmark helper.
+None of those three production/test source paths changed in this bounded worker slice; they remain
+unresolved gate debt and must not be represented as a passing architecture gate. The added
+`tests/test_agents.py` contract also pushes that already-large test module over the configured line
+threshold, a real maintainability warning to address separately without weakening the regression.
+Verified: security `28 pass / 0 fail`, score `100%`; Compass Forge after record `9`, embedded status
+`fail`; exact worker slice currently spans six expected source/test/living-doc/generated-doc paths.
+Next: commit/push only those six paths and compare local/remote SHAs, then continue the execution-plane
+authority audit while carrying the CF gate debt as open rather than using exit code zero as success.

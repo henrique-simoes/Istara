@@ -104,6 +104,48 @@ async def _seed_agent(
 
 
 @pytest.mark.asyncio
+async def test_custom_worker_orphaned_task_never_bypasses_human_done(monkeypatch):
+    """A missing project is an execution failure, never agent-authored Done."""
+    from unittest.mock import AsyncMock
+
+    from app.agents import custom_worker
+
+    class _NoProjectResult:
+        @staticmethod
+        def scalar_one_or_none():
+            return None
+
+    class _FakeDb:
+        def __init__(self) -> None:
+            self.commits = 0
+
+        async def execute(self, statement):  # noqa: ANN001
+            del statement
+            return _NoProjectResult()
+
+        async def commit(self) -> None:
+            self.commits += 1
+
+    task = Task(
+        id="orphaned-custom-worker-task",
+        project_id="missing-project",
+        agent_id="custom-worker-agent",
+        title="Cannot execute without its project",
+        status=TaskStatus.BACKLOG,
+    )
+    worker = custom_worker.CustomAgentWorker("custom-worker-agent", "Test worker")
+    monkeypatch.setattr(worker, "_update_db_state", AsyncMock())
+    monkeypatch.setattr(custom_worker, "broadcast_agent_status", AsyncMock())
+
+    await worker._execute_task(_FakeDb(), task, SimpleNamespace())
+
+    assert task.status == TaskStatus.IN_REVIEW
+    assert task.review_state == "needs_revision"
+    assert "project" in task.what_to_review.lower()
+    assert task.status != TaskStatus.DONE
+
+
+@pytest.mark.asyncio
 async def test_agents_list_returns_list(auth_headers):
     """GET /api/agents returns a list."""
     await init_db()

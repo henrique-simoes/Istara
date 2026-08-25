@@ -129,9 +129,17 @@ class CustomAgentWorker:
             )
             project = project_result.scalar_one_or_none()
             if not project:
-                logger.warning(f"Project not found for task {task.id} — marking as done (orphaned)")
+                logger.warning(
+                    "Project not found for task %s — sending to human review as an execution failure",
+                    task.id,
+                )
                 task.agent_notes = "Error: project deleted — task orphaned"
-                task.status = TaskStatus.DONE
+                task.status = TaskStatus.IN_REVIEW
+                task.review_state = "needs_revision"
+                task.what_to_review = (
+                    "Execution failed because the task's project no longer exists. "
+                    "A human must resolve or remove the orphaned task; it was not completed."
+                )
                 await db.commit()
                 return
 

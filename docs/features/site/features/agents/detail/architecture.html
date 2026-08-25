@@ -273,6 +273,7 @@
 <li>The backend rejects project-facing detail mutations when <code>project_id</code> is missing, when the id belongs to another project, or when the target is a universal/system agent whose mutable state is shared outside the current project.</li>
 <li>Structured agent learnings are stored and retrieved only with an explicit project id. Project task failures or review feedback must not append private project content into universal persona MEMORY overlays.</li>
 <li>Agent-run and manually-run skill outputs are stored as candidate/provisional Research Spine artifacts unless exact source spans are available for governed coding and later reliability/reconciliation gates accept them. Agent detail and work history must not imply those artifacts are reportable before Done-task approval.</li>
+<li>Custom workers never write <code>TaskStatus.DONE</code>. Successful agent execution ends in the normal In Review flow, while a task whose project cannot be resolved is marked <code>IN_REVIEW</code> with <code>needs_revision</code> and an explicit human-facing failure reason. Only the human approval route may create approved Done state.</li>
 <li>Self-evolution candidate scans, auto-evolution, and promotion mutations require an explicit active project id. The route and engine reject paused or missing projects before returning candidates or writing persona-file promotions, so one project&#x27;s evidence cannot mature or mutate another project&#x27;s agent behavior.</li>
 <li>Agent promotion review notifications are persisted with the selected agent&#x27;s owning project id and project metadata. Review queues must not create global notification records from project-owned agent improvement activity.</li>
 <li>Universal agent runtime memory is not exposed in project detail panels for non-admin users; project-specific notes should be read through the project-scoped memory APIs.</li>
@@ -285,7 +286,7 @@
 </ul>
 <h2 id="tests-and-verification">Tests And Verification</h2>
 <ul>
-<li><code>tests/test_agents.py</code> verifies active-project guards for detail, identity, memory, recent logs, promotion requests, and A2A messages.</li>
+<li><code>tests/test_agents.py</code> verifies active-project guards for detail, identity, memory, recent logs, promotion requests, A2A messages, and that custom-worker orphan failures cannot bypass human-only Done.</li>
 <li><code>tests/test_agent_mutation_scope.py</code> verifies detail-panel mutation routes reject missing, stale cross-project, and universal/system agent ids.</li>
 <li><code>tests/test_agent_scope_contracts.py</code> verifies that detail-panel mutation calls keep active-project scope in the frontend API, store, view, and backend route layer.</li>
 <li><code>tests/test_agent_learning_scope.py</code> verifies that structured learnings, resolution lookup, self-evolution promotion candidates, and paused-project self-evolution guards do not cross project boundaries.</li>
