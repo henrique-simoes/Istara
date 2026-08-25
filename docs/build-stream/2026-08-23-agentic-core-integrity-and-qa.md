@@ -8,8 +8,8 @@ phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal ac
 stage: S1-plan
 status: in-progress
 blocked_on: null
-last: { agent: gpt-5-codex, at: 2026-08-25T00:36:40Z, ledger: L-28 }
-next_action: "Execute P9-03: revalidate exact clean/merged cleanup candidates, remove only the two merged conductor worktrees plus the detached baseline, prune missing registrations, and preserve all recovery/uncertain worktrees."
+last: { agent: gpt-5-codex, at: 2026-08-25T16:20:09Z, ledger: L-29 }
+next_action: "Commit and transport this cleanup checkpoint, then execute P9-04 with a graph-backed inventory of every model-call execution plane and add fail-closed tests for any Pi-authority bypass."
 ```
 
 ## Plan overview / roadmap
@@ -1138,3 +1138,21 @@ clean after transport. This proves commit and remote transport, not CI or termin
 Verified: GitHub push receipt, local rev-parse, `git ls-remote`, status, and ahead/behind count.
 Next: revalidate exact cleanup targets and execute only the safe P9-03 removals; retain every
 dirty, recovery, locked, active, or ownership-uncertain worktree/branch.
+
+### L-29 | 2026-08-25T16:20:09Z | S2-execute | gpt-5-codex | integrator | P9-03 cleanup complete
+Did: Revalidated each cleanup target's cleanliness, lock/registration state, and merge status;
+removed the clean detached baseline, both clean merged conductor worktrees, and the three clean
+legacy worktrees whose unique artifacts had already been preservation-committed; deleted only
+the two local branches proven merged into `testing`; and pruned the two already-missing worktree
+registrations.
+Result: six obsolete worktree directories/registrations were removed. Local branches
+`conductor/istara-pi-model-management-migration-20260822` and
+`conductor/istara-testing-remote-qa-20260817` were safely deleted with `git branch -d`.
+Unique preservation branches remain at `465e0cff`, `c198138c`, and `2c142649`. The intentional
+recovery checkout and ownership-uncertain `/private/tmp/opencode/ci-wt` remain untouched. The
+only registered worktrees now are main `testing`, the recovery checkout, and the CI checkout.
+Verified: exact-path `git worktree remove` receipts, safe branch-deletion receipts, prune
+receipt, after-state worktree/ref inventory, clean main status, and local/remote testing SHA
+equality at `36b06429e1f9fef564476be5e71c1ae8f9e0b991` before this ledger edit.
+Next: commit and push this cleanup record, then begin P9-04 by mapping every production model
+execution plane to Pi Model Management authority and writing negative bypass tests where absent.
