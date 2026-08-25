@@ -1696,3 +1696,14 @@ Verified: `git diff --check` clean before remediation; targeted Ruff returns no 
 Alembic/profile/W8/W8-UX/RAG/memory/settings/projects regression `116 passed` after remediation.
 Next: append the final commit receipt, commit all and only this reviewed slice, push local `testing` to
 `origin/testing`, verify ref equality and clean tree, then begin P9-05 ensemble statistical rigor.
+
+### L-65 | 2026-08-25T23:51:12Z | S5-ship | gpt-5-codex | integrator | P9-04 authority slice transported cleanly
+Did: Staged the explicit 23-file reviewed set, committed `02e7b30d` (`feat: make Pi own embedding
+vector identity`), and pushed `testing` to `origin/testing`.
+Result: the complete embedding-authority slice is recoverable remotely as one bounded commit; no
+ambient or unrelated path was staged. Local and remote branch tips are byte-identical and the working
+tree was clean immediately after transport, before this mandatory ledger receipt was appended.
+Verified: push `57bd1c2e..02e7b30d`; local `testing` and `origin/testing` both resolve to
+`02e7b30d8b83a31aa4ec28597ea3d45a5e1af6f7`; post-push status had no file entries.
+Next: commit/push this receipt, then audit P9-05 against the Research Spine's effective-coder identity,
+three-model independence, Fleiss kappa/Krippendorff alpha, abstention, and reconciliation contracts.
