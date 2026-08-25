@@ -36,6 +36,10 @@ from app.core.pi_runtime.embeddings_gateway import (
     default_embed_model,
     validate_embedding_vectors,
 )
+from app.core.pi_runtime.embedding_profile import (
+    ActiveEmbeddingProfile,
+    reset_embedding_profile_cache,
+)
 from app.core.pi_runtime.endpoints import PiEndpointResolutionError, ResolvedPiEndpoint
 from app.core.pi_runtime.model_manager import PiModelManager, reset_live_db_projections
 from app.core.pi_runtime.model_manager_provisioning import ensure_endpoint_model
@@ -49,7 +53,10 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 @pytest.fixture(autouse=True)
 def _embedding_provider_baseline(monkeypatch):
     """Keep synthetic local endpoints aligned with their Ollama identity."""
+    reset_embedding_profile_cache()
     monkeypatch.setattr(settings, "llm_provider", "ollama")
+    yield
+    reset_embedding_profile_cache()
 
 
 # ── helpers ─────────────────────────────────────────────────────────────
@@ -68,6 +75,23 @@ def _endpoint(**overrides) -> ResolvedPiEndpoint:
     )
     base.update(overrides)
     return ResolvedPiEndpoint(**base)
+
+
+def _profile(endpoint_id: str, model: str | None = None) -> ActiveEmbeddingProfile:
+    selected_model = model or default_embed_model()
+    return ActiveEmbeddingProfile(
+        profile_id="w8-test",
+        version=1,
+        model_id=selected_model,
+        endpoint_id=endpoint_id,
+        transport="pi_http",
+        dimension=0,
+        dtype="float",
+        normalization="provider_native",
+        cache_namespace=selected_model,
+        health_status="unknown",
+        migration_source="test",
+    )
 
 
 def _isolated(manager: PiModelManager) -> PiModelManager:
@@ -296,7 +320,11 @@ async def test_gateway_native_ollama_api_embed(monkeypatch):
         return httpx.Response(200, json={"embeddings": [[0.1, 0.2], [0.3, 0.4]]})
 
     manager = _isolated(PiModelManager(endpoints=[_endpoint()]))
-    gateway = EmbeddingsGateway(manager=manager, client=_mock_client(handler))
+    gateway = EmbeddingsGateway(
+        manager=manager,
+        client=_mock_client(handler),
+        profile=_profile("pi-local-ollama"),
+    )
     outcome = await gateway.embed(["alpha", "beta"])
     assert outcome["embeddings"] == [[0.1, 0.2], [0.3, 0.4]]
     assert outcome["endpoint_id"] == "pi-local-ollama"
@@ -339,7 +367,11 @@ async def test_gateway_openai_compatible_v1_embeddings():
             ]
         )
     )
-    gateway = EmbeddingsGateway(manager=manager, client=_mock_client(handler))
+    gateway = EmbeddingsGateway(
+        manager=manager,
+        client=_mock_client(handler),
+        profile=_profile("pi-llm-7", "nomic-embed-text"),
+    )
     outcome = await gateway.embed(["a", "b"], model="nomic-embed-text")
     # Response items are ordered by index, not by payload order.
     assert outcome["embeddings"] == [[0.8], [0.9]]
@@ -372,7 +404,11 @@ async def test_gateway_openai_usage_reaches_accounting_shape():
             ]
         )
     )
-    gateway = EmbeddingsGateway(manager=manager, client=_mock_client(handler))
+    gateway = EmbeddingsGateway(
+        manager=manager,
+        client=_mock_client(handler),
+        profile=_profile("pi-llm-priced"),
+    )
 
     outcome = await gateway.embed(["a"])
 
@@ -429,7 +465,9 @@ async def test_remote_embedding_usage_is_persisted_exactly_in_ledger():
     )
     dispatcher = AgenticDispatcher(
         embeddings_gateway=EmbeddingsGateway(
-            manager=manager, client=_mock_client(handler)
+            manager=manager,
+            client=_mock_client(handler),
+            profile=_profile("pi-llm-priced"),
         )
     )
 
@@ -501,7 +539,7 @@ async def test_gateway_http_error_propagates():
 # ── catalog: embed endpoint resolution ──────────────────────────────────
 
 
-def test_resolve_embed_anchors_to_active_local_provider(monkeypatch):
+def test_unpinned_resolver_is_not_a_runtime_authority(monkeypatch):
     monkeypatch.setattr(settings, "llm_provider", "ollama")
     manager = PiModelManager(
         endpoints=[
@@ -536,7 +574,8 @@ def test_resolve_embed_anchors_to_active_local_provider(monkeypatch):
             ),
         ]
     )
-    assert remote_only.resolve_embed().endpoint_id == "pi-llm-remote"
+    with pytest.raises(PiEndpointResolutionError, match="no_matching_pi_embed_endpoint_model"):
+        remote_only.resolve_embed()
 
 
 def test_production_manager_routes_requested_remote_embedding_model(monkeypatch):
@@ -676,7 +715,7 @@ def test_embedding_vector_validation_rejects_non_finite_values():
         validate_embedding_vectors([[float("nan")]], expected_count=1)
 
 
-def test_default_embed_model_matches_legacy_rule(monkeypatch):
+def test_default_embed_model_matches_pi_owned_wrapper_rule(monkeypatch):
     from app.core.embeddings import _embed_model_name
 
     monkeypatch.setattr(settings, "llm_provider", "ollama")
@@ -789,19 +828,31 @@ async def test_validation_get_embeddings_dispatches_project_scoped(monkeypatch):
 # ── bootstrap: provisioner ──────────────────────────────────────────────
 
 
-async def test_ensure_embed_model_legacy_keeps_ollama_ensure(monkeypatch):
+async def test_ensure_embed_model_legacy_engine_still_uses_pi_authority(monkeypatch):
     from app.core import embeddings as embeddings_module
 
     monkeypatch.setattr(settings, "agentic_engine_default", "legacy")
-    calls = []
+    endpoint = _endpoint()
+    provisioned = []
 
-    async def ensure(model_name):
-        calls.append(model_name)
+    async def ensure_db_projection(self):
+        return None
+
+    def resolve_embed(self, model=None, endpoint_id=None):
+        assert endpoint_id == "pi-local-ollama"
+        return endpoint
+
+    async def ensure(ep, model_name):
+        provisioned.append((ep, model_name))
         return True
 
-    monkeypatch.setattr(embeddings_module.ollama, "ensure_model", ensure)
+    monkeypatch.setattr(PiModelManager, "ensure_db_projection", ensure_db_projection)
+    monkeypatch.setattr(PiModelManager, "resolve_embed", resolve_embed)
+    monkeypatch.setattr(
+        "app.core.pi_runtime.model_manager_provisioning.ensure_endpoint_model", ensure
+    )
     await embeddings_module.ensure_embed_model()
-    assert calls == ["nomic-embed-text"]
+    assert provisioned == [(endpoint, default_embed_model())]
 
 
 async def test_ensure_embed_model_pi_uses_the_provisioner(monkeypatch):
@@ -815,7 +866,8 @@ async def test_ensure_embed_model_pi_uses_the_provisioner(monkeypatch):
     async def ensure_db_projection(self):
         return None
 
-    def resolve_embed(self, model=None):
+    def resolve_embed(self, model=None, endpoint_id=None):
+        assert endpoint_id == "pi-local-ollama"
         return endpoint
 
     async def ensure_model(ep, model):
@@ -829,16 +881,8 @@ async def test_ensure_embed_model_pi_uses_the_provisioner(monkeypatch):
         ensure_model,
     )
 
-    legacy_calls = []
-
-    async def legacy_ensure(model_name):
-        legacy_calls.append(model_name)
-        return True
-
-    monkeypatch.setattr(embeddings_module.ollama, "ensure_model", legacy_ensure)
     await embeddings_module.ensure_embed_model()
     assert provisioned == [(endpoint, settings.ollama_embed_model)]
-    assert legacy_calls == []
 
 
 @pytest.mark.asyncio
@@ -852,7 +896,8 @@ async def test_ensure_embed_model_rejects_local_provisioning_failure(monkeypatch
     async def ensure_db_projection(self):
         return None
 
-    def resolve_embed(self, model=None):
+    def resolve_embed(self, model=None, endpoint_id=None):
+        assert endpoint_id == "pi-local-ollama"
         return endpoint
 
     async def ensure_model(ep, model):

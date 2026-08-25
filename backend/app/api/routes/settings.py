@@ -85,9 +85,9 @@ def _active_model() -> str:
 
 
 def _embed_model() -> str:
-    if settings.llm_provider == "lmstudio":
-        return settings.lmstudio_embed_model
-    return settings.ollama_embed_model
+    from app.core.pi_runtime.embedding_profile import get_active_embedding_profile
+
+    return get_active_embedding_profile().model_id
 
 
 def _global_agentic_engine() -> str:

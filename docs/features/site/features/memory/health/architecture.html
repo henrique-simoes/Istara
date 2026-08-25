@@ -261,16 +261,42 @@
 <li><code>backend/app/api/routes/memory.py</code></li>
 </ul>
 <h3 id="embeddings-gateway-migration-pi-replacement-w8">Embeddings Gateway Migration (Pi Replacement W8)</h3>
+<p>#### Pi-owned embedding profile (2026-08 migration)</p>
+<ul>
+<li>Pi Model Management owns one persisted, versioned, immutable <code>EmbeddingProfile</code>. Startup loads or</li>
+</ul>
+<p>creates version 1 immediately after database initialization and before any embedding or vector-health</p>
+<p>probe. Version 1 captures the exact previously effective model/endpoint/cache identity once; later</p>
+<p>changes to classical chat-provider settings cannot mutate runtime selection or public metadata.</p>
+<ul>
+<li>Every engine choice—including Istara/legacy loop—uses the profile model and exact endpoint through</li>
+</ul>
+<p><code>PiModelManager</code>. There is no direct legacy Ollama provisioning path. A missing endpoint, endpoint</p>
+<p>model mismatch, or caller model override fails typed; model-name equality alone is insufficient.</p>
+<ul>
+<li>Cache keys and learned dimensions use the profile&#x27;s <code>cache_namespace</code>. Version 1 preserves the old</li>
+</ul>
+<p>model-name namespace, so bootstrap does not invalidate compatible entries. Profile id/version are</p>
+<p>emitted in gateway outcomes and safe profile metadata is exposed without URLs, keys, or tokens.</p>
+<ul>
+<li>Every project Lance index has an authoritative <code>.embedding-profile.json</code> binding. Existing stores</li>
+</ul>
+<p>may be adopted only by version 1; reads and writes fail closed after any profile/model/cache/</p>
+<p>dimension/dtype/normalization mismatch. New rows also carry profile metadata when their table schema</p>
+<p>supports it. Vector health reports <code>profile_mismatch</code> and requires governed re-indexing rather than</p>
+<p>suggesting that a dimension-only match is sufficient.</p>
 <ul>
 <li>Pi Replacement wave W8 (master plan <code>docs/build-stream/plans/2026-07-20-pi-full-replacement-master-plan.md</code> §5.2.3/§5.5, spec CF-SPEC-8) gives the Pi engine its own embeddings plane. pi-ai cannot execute embeddings, so the new <code>backend/app/core/pi_runtime/embeddings_gateway.py</code> calls the embedding endpoint directly over HTTP (<code>httpx</code>) while staying under Pi identity management: the endpoint is resolved by <code>PiModelManager.resolve_embed(model)</code>, which treats a concrete requested embedding model as an exact capability requirement, prefers the active local provider when it advertises that model, and allows a configured remote <code>openai_compat</code> endpoint with the requested model to win over unrelated local entries. When the model is <code>default</code>, the active local provider anchors the vector space; an anthropic-only or otherwise incompatible catalog fails closed with <code>PiEndpointResolutionError</code> rather than silently falling back to the legacy plane, and response cardinality is validated (<code>PiEmbeddingError</code>) so a malformed endpoint response cannot poison the vector store.</li>
 <li>The dispatcher&#x27;s <code>embed</code> verb (<code>backend/app/core/agentic/dispatcher.py</code>) routes by resolved engine: Pi goes to the gateway — constructed lazily from the new public <code>PiExecutionService.model_manager()</code> accessor and injectable via the dispatcher&#x27;s <code>embeddings_gateway=</code> constructor kwarg — while legacy keeps the unchanged <code>ollama.embed*</code> plane in <code>backend/app/core/agentic/legacy.py</code>. Gateway failures raise typed errors and never fall back to legacy; the W1 fail-closed stub <code>pi_embed_gateway_unavailable</code> is retired. W8 also fixed a latent W1 bug where <code>legacy._embed</code> passed <code>project_id=</code> to <code>OllamaClient.embed_batch</code>, which takes no such kwarg and would have raised <code>TypeError</code> on the real client.</li>
 <li>Usage-ledger accounting keeps the dispatcher&#x27;s one-row-per-dispatch contract (master plan §5.5): <code>AgenticDispatcher.embed</code> records the single <code>purpose=&quot;embed&quot;</code> accounting row and the gateway never writes rows itself, so a cache-miss embed is counted exactly once regardless of engine.</li>
 <li>Embedding accounting preserves provider-reported token usage and cost when an OpenAI-compatible response supplies them, including endpoint-rate pricing when token usage is present but provider cost is omitted. Local or remote responses without usage are recorded as governed estimates (with estimated input tokens and cost when configured), never as exact zero consumption.</li>
-<li>The shared embedding wrappers in <code>backend/app/core/embeddings.py</code> migrated with all 14 downstream consumers untouched: <code>embed_text</code> and <code>embed_chunks</code> keep <code>embedding_cache</code> in front and route only cache misses through <code>agentic.embed</code> (<code>TurnParams(model=_embed_model_name())</code>), while <code>ensure_embed_model</code> dispatches on engine — legacy keeps <code>ollama.ensure_model(&quot;nomic-embed-text&quot;)</code> and Pi uses the new provisioner. <code>backend/app/core/validation.py</code> <code>_get_embeddings</code> now calls <code>agentic.embed(texts=texts, project_id=project_id)</code> with project-scoped engine resolution, still degrading to <code>[]</code> on failure. The consumers (<code>rag.py</code>, <code>prompt_rag.py</code>, <code>agent_memory.py</code>, <code>agent_skill_tools.py</code>, <code>agent_execution.py</code>, <code>rag_params.py</code>, <code>file_watcher.py</code>, <code>vector_health.py</code>) needed zero edits. W9 then retired the remaining per-site legacy branches, so the count-to-zero allowlist ratchet (<code>tests/pi_migration/legacy_allowlist.yaml</code>, <code>tests/pi_migration/test_count_to_zero.py</code>) is now 0 with permanent infrastructure entries only.</li>
+<li>The shared embedding wrappers in <code>backend/app/core/embeddings.py</code> keep <code>embedding_cache</code> in front and route cache misses through <code>agentic.embed</code>. Model, cache namespace, and provisioning now come from <code>EmbeddingProfile</code> for every engine; engine selection cannot change vector identity. <code>backend/app/core/validation.py</code> <code>_get_embeddings</code> remains project-scoped and degrades to <code>[]</code> on failure.</li>
 <li>The new provisioner <code>backend/app/core/pi_runtime/model_manager_provisioning.py</code> (master plan §5.2.3) exposes <code>ensure_endpoint_model(endpoint, model)</code>: remote endpoints are a no-op (<code>False</code>), <code>kind=local</code> Ollama entries go through <code>OllamaClient.ensure_model</code> (list + pull), LM Studio entries use the existing <code>ComputeNode.load_model</code> JIT-load contract, and a disabled, unavailable, or false LM Studio load fails typed rather than being ignored. Unknown local planes fail typed (<code>provision_unsupported_local_endpoint:&lt;id&gt;</code>).</li>
 <li>Vector-space invariant: <code>assert_vector_space_invariant()</code> is an async startup gate that reuses <code>vector_health.check_embedding_dimensions()</code> to probe the legacy and Pi dispatcher paths independently with the configured model. It compares the provider-produced dimensions and model identity, raises <code>VectorSpaceInvariantError</code> on mismatch or an unusable probe, and <code>backend/app/main.py</code> converts that failure into a startup refusal. Gateway, dispatcher-wrapper, and cache writes reject empty, ragged, non-numeric, and non-finite vectors before they can poison stored vectors.</li>
-<li>Rollback: select the <code>legacy</code> engine for the project (or keep the legacy global default) and every embed call is served by the dispatcher&#x27;s permanent legacy executor on the unchanged <code>ollama.embed*</code> plane; because both engines embed with the same model, rollback does not alter the vector space.</li>
+<li>Engine rollback changes orchestration behavior, not embedding authority. Istara and Pi loop choices</li>
 </ul>
+<p>share the active Pi-owned profile; changing the profile itself is not a rollback control and remains</p>
+<p>blocked until a governed re-embed/re-index/activation workflow is available.</p>
 <h2 id="architecture-notes">Architecture Notes</h2>
 <ul>
 <li>The feature is mounted through <code>frontend/src/components/memory/MemoryView.tsx</code> and the UI navigation path recorded in the inventory.</li>
@@ -286,6 +312,10 @@
 <h2 id="tests-and-verification">Tests And Verification</h2>
 <ul>
 <li><code>tests/test_memory.py</code></li>
+<li><code>tests/pi_production/test_embedding_profile_authority.py</code> covers persistence, provider independence,</li>
+</ul>
+<p>exact endpoint pinning, startup ordering, safe metadata, Lance binding, and profile-mismatch health.</p>
+<ul>
 <li><code>tests/pi_production/test_w8_embeddings_gateway.py</code> verifies the W8 embeddings plane: MockTransport gateway HTTP behavior, <code>resolve_embed</code> ordering and anthropic-only fail-closed resolution, independent legacy/Pi startup probes and dimension mismatch refusal, malformed-vector rejection before cache writes, wrapper cache-in-front dispatch through <code>agentic.embed</code>, project-scoped validation embedding, provisioner behavior per endpoint kind, DB-projection reset, the merged settings model catalog, <code>ProjectUpdate.agentic_engine</code> validation, and static wiring checks.</li>
 <li><code>tests/pi_production/test_w1_dispatcher_authority.py</code> and <code>tests/pi_production/test_w1_agentic_contract.py</code> assert embed dispatch now reaches the gateway on the Pi engine instead of the retired <code>pi_embed_gateway_unavailable</code> stub.</li>
 <li><code>tests/test_validation_project_scope.py</code> asserts validation embedding project scope through the <code>agentic.embed</code> spy.</li>

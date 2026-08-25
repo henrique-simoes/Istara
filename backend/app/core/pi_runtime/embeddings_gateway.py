@@ -26,12 +26,16 @@ from typing import Any
 
 import httpx
 
-from app.config import settings
 from app.core.embedding_validation import (
     validate_embedding_vectors as _validate_embedding_vectors,
 )
 from app.core.token_counter import count_tokens
 
+from .embedding_profile import (
+    ActiveEmbeddingProfile,
+    EmbeddingProfileError,
+    get_active_embedding_profile,
+)
 from .endpoints import ResolvedPiEndpoint
 from .model_manager import PiModelManager
 
@@ -52,9 +56,7 @@ def default_embed_model() -> str:
     Mirrors ``app.core.embeddings._embed_model_name`` exactly; keep the two
     rules in lockstep (``assert_vector_space_invariant`` guards the drift).
     """
-    if settings.llm_provider == "lmstudio":
-        return settings.lmstudio_embed_model
-    return settings.ollama_embed_model
+    return get_active_embedding_profile().model_id
 
 
 def validate_embedding_vectors(vectors: Any, **kwargs: Any) -> list[list[float]]:
@@ -95,9 +97,11 @@ class EmbeddingsGateway:
     """Resolve an embed endpoint from the PiModelManager and call it directly."""
 
     def __init__(self, manager: PiModelManager | None = None,
-                 *, client: httpx.AsyncClient | None = None) -> None:
+                 *, client: httpx.AsyncClient | None = None,
+                 profile: ActiveEmbeddingProfile | None = None) -> None:
         self._manager = manager
         self._client = client
+        self._profile = profile
         self._owned_client: httpx.AsyncClient | None = None
 
     def manager(self) -> PiModelManager:
@@ -216,10 +220,13 @@ class EmbeddingsGateway:
         so the dispatch can never leak onto the legacy plane or donors.
         """
         texts = list(texts)
-        model = model or default_embed_model()
+        profile = self._profile or get_active_embedding_profile()
+        if model is not None and model != profile.model_id:
+            raise EmbeddingProfileError("embedding_profile_model_mismatch")
+        model = profile.model_id
         manager = self.manager()
         await manager.ensure_db_projection()
-        endpoint = manager.resolve_embed(model)
+        endpoint = manager.resolve_embed(model, endpoint_id=profile.endpoint_id)
         if self._is_native_ollama(endpoint):
             vectors, usage = await self._call_native_ollama(endpoint, model, texts)
         else:
@@ -229,6 +236,8 @@ class EmbeddingsGateway:
             "embeddings": vectors,
             "endpoint_id": endpoint.endpoint_id,
             "model": model,
+            "embedding_profile_id": profile.profile_id,
+            "embedding_profile_version": profile.version,
             "usage": usage,
             "status": "success",
         }

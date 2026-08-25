@@ -8,8 +8,8 @@ phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal ac
 stage: S2-execute
 status: in-progress
 blocked_on: null
-last: { agent: gpt-5-codex, at: 2026-08-25T17:02:02Z, ledger: L-53 }
-next_action: "Reconcile the missing EmbeddingProfile implementation with the binding Pi migration architecture, record the durable design choice, and split it into migration-safe red-green tasks before touching storage or vector identity."
+last: { agent: gpt-5-codex, at: 2026-08-25T17:07:26Z, ledger: L-57 }
+next_action: "Add gateway/startup/runtime red contracts, then wire every embedding request to the persisted model+endpoint profile while preserving version-1 cache/vector identity."
 ```
 
 ## Plan overview / roadmap
@@ -900,6 +900,21 @@ means `git worktree remove` followed by safe `git branch -d`, never raw recursiv
    explicit deprecation/delegation behavior, not silently create a second source of truth.
 4. Exercise unavailable, unauthorized, capability-mismatch, timeout, partial stream, and
    endpoint-removal cases. Fail closed with actionable UI/API errors and no secret leakage.
+5. Close the unimplemented embedding-authority contract in ordered, migration-safe slices:
+   (a) add an additive `EmbeddingProfile` schema/model and one-time idempotent bootstrap that
+   preserves the exact pre-migration model + endpoint identity as version 1; (b) make Pi Model
+   Management resolve embeddings by the profile's exact endpoint and model, rejecting a missing
+   endpoint or capability mismatch rather than consulting `llm_provider`; (c) route cache keys,
+   provisioning, startup probes, vector health, Settings/Project/Memory safe metadata, and both
+   selectable execution engines through the active profile; (d) persist/bind each LanceDB vector
+   store and cache namespace to profile ID/version while treating untagged existing stores as the
+   version-1 bootstrap identity only after dimension verification; (e) keep profile mutation
+   unavailable until a separately tested re-embed/reindex workflow can create a new inactive
+   version, migrate every project and cache namespace, verify dimension/dtype/normalization, and
+   atomically activate or roll back. Required negative tests: changing classical provider settings
+   after bootstrap changes nothing; same model on another endpoint cannot steal the route; missing
+   pinned endpoint fails closed; duplicate active versions fail; untagged/mismatched stored vectors
+   cannot be searched or overwritten; chat model/engine selection never mutates the profile.
 
 #### P9-05 — Ensemble identity, independence, and reliability
 
@@ -1520,3 +1535,164 @@ search returns documentation only. No production file changed and no service/mod
 Next: use Compass Forge to record a migration-safe profile authority decision, define compatibility
 bootstrap and no-silent-reindex behavior, then create focused red tests before adding persistence or
 changing any effective vector identity.
+
+### L-54 | 2026-08-25T17:02:56Z | S1-plan | gpt-5-codex | architect | Embedding authority decision made durable
+Did: Recorded Compass Forge decision 2, translating the migration contract into an executable safety
+boundary before any schema or vector-identity edit.
+Result: Pi Model Management must own one persisted/versioned profile; bootstrap captures the currently
+effective legacy identity exactly once and only as provenance; classical provider or chat changes can
+never mutate it afterward; public mutation stays unavailable until a bounded re-embed/index workflow
+versions vectors and caches; missing/incompatible pinned endpoints fail closed. The profile includes
+model, endpoint/transport, dimension, dtype, normalization, health, and version.
+Verified: Compass Forge decision 2, `Pi owns a versioned immutable embedding profile`; clean local and
+remote `testing` at `57bd1c2e7917366a769707d36e6fc0aa20c969a6` before this ledger append.
+Next: map the database/vector/cache/startup/API dependency set with Compass Forge and code references,
+then create red contracts for one-time bootstrap, provider-independent reads, exact endpoint pinning,
+and safe metadata before implementing the additive schema.
+
+### L-55 | 2026-08-25T17:04:01Z | S1-plan | gpt-5-codex | planner | Embedding debt split into resumable acceptance slices
+Did: Expanded P9-04 with the full ordered EmbeddingProfile delivery sequence and its negative-test
+matrix rather than leaving the newly confirmed architecture gap only in chronological ledger prose.
+Result: a resuming agent now has explicit boundaries for additive persistence/bootstrap, exact Pi
+endpoint pinning, all runtime/metadata consumers, vector-store/cache version binding, and the later
+governed re-embed/activation workflow. The plan explicitly forbids changing current vector identity
+or exposing profile mutation before migration/rollback is implemented and verified.
+Verified: decision 2 mapped into P9-04 step 5; no code/schema/runtime action in this checkpoint.
+Next: collect graph impact/why/test-impact receipts for the persistence, manager, gateway, cache,
+vector-store, startup, and metadata surfaces; implement only slice (a)-(b) after red tests.
+
+### L-56 | 2026-08-25T17:05:16Z | S2-execute | gpt-5-codex | test-author | Embedding profile authority contracts red
+Did: Collected a standard Compass context pack plus impact/why receipts for Pi Model Management,
+then added four focused contracts for idempotent legacy-identity bootstrap, persistence across an
+in-process restart/provider change, exact endpoint pinning when two endpoints expose the same model,
+and fail-closed removal of the pinned endpoint.
+Result: the new suite is red at collection because the planned `embedding_profile` authority module
+does not exist. That is the expected first failure and independently confirms the documentation-only
+gap before schema/runtime implementation. The context pack was derived/incomplete (15 selected;
+budget omissions disclosed), so direct dependency traces remain part of the evidence.
+Verified: `1 collection error` with `ModuleNotFoundError: app.core.pi_runtime.embedding_profile`;
+no live service/model/remote-host action.
+Next: implement only the additive ORM model, registration/migration, cached bootstrap service, and
+endpoint-pinned resolver; rerun these four tests before wiring gateway/cache/startup/API consumers.
+
+### L-57 | 2026-08-25T17:07:26Z | S2-execute | gpt-5-codex | implementer | Additive profile bootstrap and endpoint pin green
+Did: Added revision 031 and the registered `EmbeddingProfile` ORM model, implemented a frozen runtime
+snapshot plus idempotent database bootstrap/reload, and extended `PiModelManager.resolve_embed` with
+exact endpoint identity admission before model matching. Updated the fresh-Alembic head contract.
+Result: version 1 captures the current effective model, local endpoint, and existing cache namespace
+without reindexing; after persistence, changing `llm_provider` or its model settings cannot mutate the
+profile. A removed pinned endpoint now fails typed even if another endpoint exposes the same model.
+An intermediate red was a test-fixture constructor omission (three required endpoint fields), not a
+product failure; correcting the fixture produced the intended green.
+Verified: profile authority `4 passed`; fresh Alembic + create-all bootstrap `2 passed`; diff check
+clean before this ledger update. No runtime consumer has been switched yet, so the broader classical
+selection debt remains open and this is not P9-04 completion.
+Next: write gateway and startup red contracts proving exact profile consumption, then replace
+`llm_provider` model/endpoint selection in gateway, wrapper, provisioning, and metadata incrementally.
+
+### L-58 | 2026-08-25T23:28:51Z | S2-execute | gpt-5-codex | test-author | Runtime enforcement slice resumed from durable checkpoint
+Did: Reconciled the working tree against L-57 and confirmed that only the bounded, uncommitted
+EmbeddingProfile persistence/resolver slice plus this lifecycle file is present. Reused the already
+collected Compass Forge impact/why/test-impact receipts for the gateway and startup surfaces.
+Result: no hidden branch drift or unrelated dirty files were introduced during the interruption.
+Persistence and exact resolver pinning are green, but runtime enforcement is still deliberately
+unclaimed: the gateway can still derive its default from classical settings and startup has not yet
+bootstrapped the persisted profile before vector invariants run.
+Verified: local `testing` tracks `origin/testing`; eight intended paths are dirty/untracked; L-57 is
+the last prior durable execution checkpoint. No live service, model load, SSH, or host install action.
+Next: add red gateway and startup contracts for exact profile model+endpoint consumption and startup
+ordering, implement the smallest runtime wiring, rerun focused tests, and checkpoint the evidence.
+
+### L-59 | 2026-08-25T23:31:30Z | S2-execute | gpt-5-codex | implementer | Persisted profile now governs gateway and startup
+Did: Added four runtime contracts, observed all four fail against the pre-wiring behavior, then made
+startup load the persisted Pi-owned profile immediately after database initialization and made the
+embedding gateway derive model plus exact endpoint exclusively from that profile. Added safe profile
+id/version outcome metadata and rejected any caller model override that disagrees with the profile.
+Result: classical `llm_provider` no longer selects the gateway's model; two endpoints advertising the
+same model cannot be confused; a removed endpoint or conflicting override fails closed; vector-space
+checks cannot run before the persisted identity is loaded. This does not yet migrate the legacy
+embedding wrapper, cache keys, vector metadata, provisioning, or settings/project/memory disclosures.
+Verified: intentional red `4 passed, 4 failed` (classical default, non-pinned endpoint, accepted model
+override, absent startup bootstrap); focused green profile plus fresh-Alembic suites `9 passed`.
+No service/model/SSH/host action.
+Next: graph-map and contract the legacy wrapper/cache/provisioning consumers, bind them to profile
+model+cache namespace, then update metadata surfaces without changing version-1 vector identity.
+
+### L-60 | 2026-08-25T23:35:12Z | S2-execute | gpt-5-codex | implementer | Wrapper, cache, and provisioning moved under Pi profile
+Did: Used Compass Forge impact/why/test-impact on the shared embedding wrapper (high-confidence graph;
+wide consumers including RAG, validation, memory, file processing, settings, and W8). Replaced its
+classical provider-derived model with the active profile, keyed cache and learned dimensions by the
+profile cache namespace, and removed the legacy-engine direct Ollama provisioning bypass. Every
+selectable engine now provisions the exact profile model at its exact Pi endpoint. Added explicit
+profile injection only as a deterministic test seam and updated obsolete W8 classical-authority tests.
+Result: Istara/legacy-loop selection no longer changes embedding authority, cache identity, or model
+provisioning. Version 1 deliberately keeps `cache_namespace == model_id`, preserving existing cache
+keys and vector identity while establishing the versionable boundary. Remote gateway tests must now
+declare the exact profile endpoint rather than accidentally passing through model-name matching.
+Verified: the first W8 regression run exposed 5 obsolete assumptions (three unpinned remote fixtures,
+classical fallback resolution, classical model-rule equality); after contract updates, profile + W8
+suites are `55 passed`. No service/model/SSH/host action.
+Next: map settings/projects/memory metadata routes, add safe profile metadata contracts, remove their
+classical embedding disclosures, then bind persisted vector records/index health to profile version.
+
+### L-61 | 2026-08-25T23:39:20Z | S2-execute | gpt-5-codex | implementer | Public embedding metadata follows Pi authority
+Did: Collected Compass Forge impact/why maps for the settings, projects, and memory routes, then made
+their embedding model disclosure read the active profile. Added one centralized safe metadata shape
+(profile/version/model/endpoint/dimension/dtype/normalization/health only; no URL, token, or key) and
+included it in memory health while preserving the existing `embedding_model` compatibility field.
+Result: changing classical provider settings can no longer make settings, project responses, or
+memory health claim a vector model different from the runtime profile. A cross-route contract proves
+this negative case. One UX test initially failed because it still mutated classical settings; its
+fixture now establishes the Pi profile identity explicitly.
+Verified: profile/W8/W8-UX/settings/projects focused set `97 passed`; no service/model/SSH/host action.
+Next: identify the concrete Lance/vector write schemas and health readers, add red version-binding and
+mismatch contracts, then persist profile id/version/cache namespace alongside every vector family.
+
+### L-62 | 2026-08-25T23:43:05Z | S2-execute | gpt-5-codex | implementer | Lance indexes bound fail-closed to profile version
+Did: Used Compass Forge impact/why/test-impact on the RAG/Lance store and traced its broad ingestion,
+retrieval, memory, validation, agentic, and research consumers. Added a per-project embedding-profile
+manifest plus profile fields on new vector rows. Existing tables may lack additive columns and the
+legacy compatibility writer intentionally strips them, so the manifest is the authoritative binding
+for both old and new schemas rather than pretending row metadata alone covers legacy indexes.
+Result: an existing unbound index may be adopted only by version 1 (the exact pre-migration identity);
+reads and writes reject corrupt manifests, unbound later-version indexes, or any profile/model/cache/
+dimension/dtype/normalization mismatch. A profile v2 cannot mix vectors into or query a v1 index;
+governed re-index activation remains required to replace the binding. Endpoint is recorded for audit
+but excluded from vector-space equality so a transport move with identical mathematical identity is
+not falsely treated as re-embedding.
+Verified: profile/RAG-resilience/memory/W8 focused set `74 passed`, including real temporary Lance
+write, manifest inspection, then read and write rejection after simulated v2 activation. No live
+service/model/SSH/host action.
+Next: update vector health to verify/report the store binding, run the wider embedding/RAG regression
+set, document the living feature contract, and checkpoint/commit this bounded P9-04 authority slice.
+
+### L-63 | 2026-08-25T23:47:04Z | S2-execute | gpt-5-codex | verifier | P9-04 embedding authority slice ready for review
+Did: Used Compass Forge impact/why on vector health, corrected its store root to the authoritative
+`lance_db_path`, and made health surface profile-binding failures separately from dimensional drift.
+Updated both Memory Health living documents to replace the now-false legacy/Ollama rollback story with
+the persisted profile, exact endpoint, cache namespace, index manifest, and governed re-index contract;
+regenerated the feature site and manifest. Ran the required security benchmark and expanded regression.
+Result: P9-04 now has persistence, startup ordering, gateway/wrapper/provisioning authority, safe API
+metadata, versioned cache identity, project-index binding, and health reporting. It intentionally does
+not expose mutation/activation: profile v2 is unusable against v1 indexes until the still-future
+governed re-embed/re-index transaction exists. This bounded slice is ready for diff review and commit.
+Verified: feature docs seeded 0/generated 224/check passed for 86; security benchmark 28/28 controls,
+100%, no blocked/partial/fail; Pi migration + focused authority/W8/RAG/memory/settings/projects/Alembic
+regression `140 passed`. No live service/model/SSH/host action.
+Next: review the full intended diff for secret leakage, migration reversibility, fail-open exceptions,
+and test-only assumptions; fix findings, commit/push this checkpoint, then resume P9-05 ensemble rigor.
+
+### L-64 | 2026-08-25T23:50:08Z | S3-review/S4-remediate | gpt-5-codex | reviewer | Bootstrap race and lint findings remediated
+Did: Reviewed the schema/service/runtime/vector diff and ran whitespace plus focused Ruff checks. Found
+that application workers racing on a fresh database could each observe no active profile and create
+multiple authorities because `(profile_id, version)` uniqueness alone does not enforce one active row.
+Added a SQLite partial unique index for the active row and made bootstrap losers roll back and reload
+the elected winner. Mechanically fixed import/UTC style issues in new files and wrapped one long line.
+Result: concurrent bootstrap is database-enforced rather than process-assumed; downgrade removes the
+new index before the table. No secret-bearing fields enter public metadata or manifests. Remaining
+whole-file Ruff findings in old `memory.py`/`main.py` are pre-existing style debt outside this slice;
+the newly added and materially changed modules are clean.
+Verified: `git diff --check` clean before remediation; targeted Ruff returns no findings; fresh
+Alembic/profile/W8/W8-UX/RAG/memory/settings/projects regression `116 passed` after remediation.
+Next: append the final commit receipt, commit all and only this reviewed slice, push local `testing` to
+`origin/testing`, verify ref equality and clean tree, then begin P9-05 ensemble statistical rigor.

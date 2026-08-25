@@ -70,8 +70,26 @@ async def test_project_response_exposes_embed_model_as_safe_metadata(monkeypatch
             created_at=None, updated_at=None,
         ),
     )()
-    monkeypatch.setattr(settings, "llm_provider", "ollama", raising=False)
-    monkeypatch.setattr(settings, "ollama_embed_model", "nomic-embed-text", raising=False)
+    from app.core.pi_runtime import embedding_profile as profile_module
+    from app.core.pi_runtime.embedding_profile import ActiveEmbeddingProfile
+
+    monkeypatch.setattr(
+        profile_module,
+        "_active_profile",
+        ActiveEmbeddingProfile(
+            profile_id="default",
+            version=1,
+            model_id="nomic-embed-text",
+            endpoint_id="pi-local-ollama",
+            transport="pi_http",
+            dimension=0,
+            dtype="float",
+            normalization="provider_native",
+            cache_namespace="nomic-embed-text",
+            health_status="unknown",
+            migration_source="test",
+        ),
+    )
     monkeypatch.setattr(project_routes, "get_subject", lambda _r: type("S", (), {"id": "u"})())
     monkeypatch.setattr(project_routes, "is_global_admin", lambda _s: True)
 

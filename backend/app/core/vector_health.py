@@ -72,7 +72,7 @@ async def check_embedding_dimensions(
         return result
 
     # Check a specific project or scan all
-    data_dir = Path(settings.data_dir) / "lance_db"
+    data_dir = Path(settings.lance_db_path)
     if not data_dir.exists():
         return {
             "status": "empty",
@@ -84,11 +84,15 @@ async def check_embedding_dimensions(
     projects = [project_id] if project_id else [d.name for d in data_dir.iterdir() if d.is_dir()]
 
     mismatches = []
+    profile_mismatches = []
     for pid in projects:
         try:
             import lancedb
 
+            from app.core.rag import VectorProfileMismatchError, VectorStore
+
             db_path = str(data_dir / pid)
+            VectorStore(pid)._ensure_profile_binding()
             db = lancedb.connect(db_path)
             if "chunks" not in db.table_names():
                 continue
@@ -101,8 +105,22 @@ async def check_embedding_dimensions(
                 mismatches.append(
                     {"project_id": pid, "stored_dim": stored_dim, "model_dim": model_dim}
                 )
+        except VectorProfileMismatchError as e:
+            profile_mismatches.append({"project_id": pid, "error": str(e)})
         except Exception as e:
             logger.warning(f"Dimension check failed for project {pid}: {e}")
+
+    if profile_mismatches:
+        return {
+            "status": "profile_mismatch",
+            "message": (
+                f"Embedding profile mismatch in {len(profile_mismatches)} project(s). "
+                "A governed re-index is required."
+            ),
+            "profile_mismatches": profile_mismatches,
+            "model_dim": model_dim,
+            "stored_dim": 0,
+        }
 
     if mismatches:
         return {

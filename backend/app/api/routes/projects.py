@@ -43,9 +43,9 @@ def _embed_model() -> str:
     Mirrors ``app.core.embeddings._embed_model_name`` and the settings route;
     the W8 vector-space invariant keeps the rules in lockstep.
     """
-    if settings.llm_provider == "lmstudio":
-        return settings.lmstudio_embed_model
-    return settings.ollama_embed_model
+    from app.core.pi_runtime.embedding_profile import get_active_embedding_profile
+
+    return get_active_embedding_profile().model_id
 
 
 def _validate_watch_folder(folder_path: str) -> Path:

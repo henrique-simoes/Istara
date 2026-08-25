@@ -148,15 +148,19 @@ async def memory_stats(project_id: str, request: Request, db: AsyncSession = Dep
     except Exception:
         pass
 
-    # Embedding model info
+    # Embedding identity is Pi-owned; classical provider settings are not an
+    # authority and must not change what this health response reports.
     from app.config import settings as s
-    embed_model = s.lmstudio_embed_model if s.llm_provider == "lmstudio" else s.ollama_embed_model
+    from app.core.pi_runtime.embedding_profile import public_embedding_profile
+
+    embedding_profile = public_embedding_profile()
 
     return {
         "vector_chunks": vector_count,
         "keyword_chunks": keyword_count,
         "sources": sources,
-        "embedding_model": embed_model,
+        "embedding_model": embedding_profile["model_id"],
+        "embedding_profile": embedding_profile,
         "vector_dimensions": vector_dim,
         "chunk_size": s.rag_chunk_size,
         "chunk_overlap": s.rag_chunk_overlap,

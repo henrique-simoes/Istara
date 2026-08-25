@@ -554,7 +554,11 @@ class PiModelManager:
         )
 
     def resolve_embed(
-        self, model: str | None = None, *, provider: str | None = None
+        self,
+        model: str | None = None,
+        *,
+        provider: str | None = None,
+        endpoint_id: str | None = None,
     ) -> ResolvedPiEndpoint:
         """Resolve the identity-pinned endpoint for one embedding model.
 
@@ -570,6 +574,15 @@ class PiModelManager:
             raise PiEndpointResolutionError("no_matching_pi_embed_endpoint")
         active_provider = (provider or settings.llm_provider or "ollama").strip().lower()
         requested_model = (model or self._active_embed_model(active_provider) or "").strip()
+
+        if endpoint_id:
+            pinned = self._entries.get(endpoint_id)
+            if pinned is None or pinned.provider_kind != "openai_compat":
+                raise PiEndpointResolutionError("unknown_pi_embed_endpoint")
+            if requested_model and requested_model != "default":
+                if self._embedding_model(pinned) != requested_model:
+                    raise PiEndpointResolutionError("pi_embed_endpoint_model_mismatch")
+            return self._materialize(pinned)
 
         if requested_model and requested_model != "default":
             exact = [

@@ -274,12 +274,25 @@
 </ul>
 <h2 id="embeddings-and-engine-selection">Embeddings And Engine Selection</h2>
 <ul>
-<li>Retrieval and memory features embed text into vectors. Pi Replacement wave W8 gives the Pi replacement engine its own embeddings path: because the Pi runtime cannot execute embeddings itself, a small gateway calls the configured embedding endpoint directly over HTTP. Selection honors the active vector-space provider and the requested embedding model exactly: LM Studio stays on LM Studio, Ollama stays on Ollama, and a configured compatible remote endpoint can win when its model is requested. If no compatible endpoint exists it fails visibly instead of quietly using the legacy engine.</li>
-<li>Both engines must prove the same model and vector dimension before switching is allowed. Istara checks the legacy and Pi embedding routes independently at startup — together with the existing embedding-dimension health probe — and refuses to start when either probe fails or the dimensions diverge rather than silently mixing vector spaces. Empty or malformed provider vectors are rejected before cache or index writes.</li>
+<li>Retrieval and memory features use one versioned embedding profile owned by Pi Model Management. The</li>
+</ul>
+<p>profile fixes the model and exact endpoint for Istara and Pi loop choices alike. Changing a classical</p>
+<p>chat provider does not change the vector model. Missing or mismatched profile endpoints fail visibly.</p>
+<ul>
+<li>Startup loads the saved profile before checking vector health. Each project index is bound to that</li>
+</ul>
+<p>profile version; Istara refuses to search or add vectors when the binding differs, even if dimensions</p>
+<p>happen to match. Changing profile versions therefore requires a governed re-index, not a settings flip.</p>
+<ul>
+<li>Both engine routes are still probed independently for model/dimension equality. Empty, malformed,</li>
+</ul>
+<p>non-numeric, non-finite, or wrong-dimension vectors are rejected before cache or index writes.</p>
+<ul>
 <li>Embedding results are still cached first, so repeated lookups do not call the model again; only cache misses go through the new dispatch path, and each one is counted once in usage accounting regardless of engine. All fourteen retrieval, memory, and agent features that embed text keep working unchanged.</li>
 <li>Usage reports distinguish provider-reported embedding tokens/cost from estimates: remote responses with usage remain exact, while responses without usage are visibly governed as estimates rather than exact zero consumption.</li>
-<li>Rolling back to the legacy engine is safe: embeddings return to the previous Ollama-based path and, because the model is the same on both engines, existing project vectors remain valid.</li>
+<li>Switching back to Istara changes orchestration but keeps the same Pi-owned embedding profile, cache</li>
 </ul>
+<p>namespace, and project-index binding. It does not return embeddings to a separate Ollama authority.</p>
 <h2 id="caveats">Caveats</h2>
 <ul>
 <li>Needs interactive verification for exact empty, loading, error, and permission-denied states.</li>

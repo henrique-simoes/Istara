@@ -102,6 +102,7 @@ def register_models() -> None:
         "app.models.recovery_code",
         "app.models.auth_session",
         "app.models.llm_server",
+        "app.models.embedding_profile",
         "app.models.method_metric",
         "app.models.webauthn_credential",
         "app.models.webauthn_challenge",

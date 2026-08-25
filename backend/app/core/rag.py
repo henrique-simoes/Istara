@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import logging
 import time
 from dataclasses import dataclass
@@ -14,6 +15,7 @@ from app.config import settings
 from app.core.content_guard import ContentGuard
 from app.core.embeddings import EmbeddedChunk, TextChunk, embed_chunks, embed_text
 from app.core.keyword_index import KeywordIndex
+from app.core.pi_runtime.embedding_profile import get_active_embedding_profile
 
 _guard = ContentGuard()
 
@@ -29,6 +31,10 @@ RAG_RESEARCH_SPINE_NOTICE = (
     "gating, and report gates."
     "</promotion_gate>"
 )
+
+
+class VectorProfileMismatchError(RuntimeError):
+    """The project index belongs to a different embedding profile version."""
 
 
 @dataclass
@@ -76,6 +82,57 @@ class VectorStore:
         db_path.mkdir(parents=True, exist_ok=True)
         self.db = lancedb.connect(str(db_path))
         self.table_name = "chunks"
+        self._profile_manifest = db_path / ".embedding-profile.json"
+
+    def _active_profile_binding(self) -> dict[str, str | int]:
+        profile = get_active_embedding_profile()
+        return {
+            "profile_id": profile.profile_id,
+            "version": profile.version,
+            "model_id": profile.model_id,
+            "endpoint_id": profile.endpoint_id,
+            "cache_namespace": profile.cache_namespace,
+            "dimension": profile.dimension,
+            "dtype": profile.dtype,
+            "normalization": profile.normalization,
+        }
+
+    def _ensure_profile_binding(self) -> dict[str, str | int]:
+        """Bind this project index once and reject silent vector-space drift.
+
+        Existing indexes are safely adopted only into bootstrap version 1,
+        whose identity is defined to equal the pre-migration vector space.
+        Any later profile activation requires the governed re-index workflow
+        to replace this manifest explicitly; ordinary reads/writes fail closed.
+        """
+        active = self._active_profile_binding()
+        if not self._profile_manifest.exists():
+            if self._ensure_table() and active["version"] != 1:
+                raise VectorProfileMismatchError(
+                    "unbound_vector_store_requires_v1_migration"
+                )
+            try:
+                with self._profile_manifest.open("x", encoding="utf-8") as handle:
+                    json.dump(active, handle, sort_keys=True)
+                    handle.write("\n")
+            except FileExistsError:
+                pass
+        try:
+            bound = json.loads(self._profile_manifest.read_text(encoding="utf-8"))
+        except (OSError, ValueError, TypeError) as exc:
+            raise VectorProfileMismatchError("invalid_vector_profile_manifest") from exc
+        identity_fields = (
+            "profile_id",
+            "version",
+            "model_id",
+            "cache_namespace",
+            "dimension",
+            "dtype",
+            "normalization",
+        )
+        if any(bound.get(field) != active[field] for field in identity_fields):
+            raise VectorProfileMismatchError("vector_profile_mismatch")
+        return active
 
     def _ensure_table(self) -> bool:
         """Check if the chunks table exists."""
@@ -117,7 +174,10 @@ class VectorStore:
                 ", ".join(missing_columns),
             )
 
-        return [{key: value for key, value in record.items() if key in columns} for record in records]
+        return [
+            {key: value for key, value in record.items() if key in columns}
+            for record in records
+        ]
 
     async def add_chunks(
         self,
@@ -134,6 +194,7 @@ class VectorStore:
         if not embedded_chunks:
             return 0
 
+        profile = self._ensure_profile_binding()
         now = time.time()
         records = []
         for ec in embedded_chunks:
@@ -153,6 +214,9 @@ class VectorStore:
                     "chunk_type": chunk_type,
                     "created_at": now,
                     "confidence": confidence,
+                    "embedding_profile_id": profile["profile_id"],
+                    "embedding_profile_version": profile["version"],
+                    "embedding_cache_namespace": profile["cache_namespace"],
                     "evidence_unit_id": str(metadata.get("evidence_unit_id", "")),
                     "source_document_id": str(metadata.get("source_document_id", "")),
                     "start_offset": metadata.get("start_offset")
@@ -218,6 +282,7 @@ class VectorStore:
         if not self._ensure_table():
             return []
 
+        self._ensure_profile_binding()
         table = self.db.open_table(self.table_name)
 
         query_builder = table.search(query_vector).metric("cosine").limit(k)

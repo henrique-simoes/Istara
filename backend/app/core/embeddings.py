@@ -12,9 +12,7 @@ from __future__ import annotations
 import logging
 from dataclasses import dataclass
 
-from app.config import settings
 from app.core.embedding_cache import embedding_cache
-from app.core.ollama import ollama
 
 logger = logging.getLogger(__name__)
 
@@ -72,10 +70,17 @@ class EmbeddedChunk:
 
 
 def _embed_model_name() -> str:
-    """Return the current embedding model name based on the active provider."""
-    if settings.llm_provider == "lmstudio":
-        return settings.lmstudio_embed_model
-    return settings.ollama_embed_model
+    """Return the immutable Pi-owned embedding model identity."""
+    from app.core.pi_runtime.embedding_profile import get_active_embedding_profile
+
+    return get_active_embedding_profile().model_id
+
+
+def _embed_cache_namespace() -> str:
+    """Return the version-bound cache identity for the active vector space."""
+    from app.core.pi_runtime.embedding_profile import get_active_embedding_profile
+
+    return get_active_embedding_profile().cache_namespace
 
 
 async def _dispatch_embed(texts: list[str], *, project_id: str | None = None) -> list[list[float]]:
@@ -91,10 +96,11 @@ async def _dispatch_embed(texts: list[str], *, project_id: str | None = None) ->
 async def embed_text(text: str) -> list[float]:
     """Embed a single text string, checking the cache first."""
     model = _embed_model_name()
+    cache_namespace = _embed_cache_namespace()
 
-    cached = await embedding_cache.get(model, text)
+    cached = await embedding_cache.get(cache_namespace, text)
     if cached is not None:
-        known = known_embed_dimension(model)
+        known = known_embed_dimension(cache_namespace)
         if known is not None:
             try:
                 # Validate the cached vector against the engine's known
@@ -119,9 +125,9 @@ async def embed_text(text: str) -> list[float]:
             )
 
     vectors = _validate_embedding_vectors(await _dispatch_embed([text]), expected_count=1)
-    record_known_embed_dimension(model, len(vectors[0]))
+    record_known_embed_dimension(cache_namespace, len(vectors[0]))
     vector = vectors[0]
-    await embedding_cache.put(model, text, vector)
+    await embedding_cache.put(cache_namespace, text, vector)
     return vector
 
 
@@ -136,14 +142,15 @@ async def embed_chunks(chunks: list[TextChunk], batch_size: int = 32) -> list[Em
         List of embedded chunks with vectors.
     """
     model = _embed_model_name()
+    cache_namespace = _embed_cache_namespace()
     results: list[EmbeddedChunk] = [None] * len(chunks)  # type: ignore[list-item]
 
     # First pass: check cache for each chunk
     uncached_indices: list[int] = []
     for idx, chunk in enumerate(chunks):
-        cached = await embedding_cache.get(model, chunk.text)
+        cached = await embedding_cache.get(cache_namespace, chunk.text)
         if cached is not None:
-            known = known_embed_dimension(model)
+            known = known_embed_dimension(cache_namespace)
             if known is not None:
                 try:
                     # Cache entries are part of the shared vector space too.  Do
@@ -185,39 +192,31 @@ async def embed_chunks(chunks: list[TextChunk], batch_size: int = 32) -> list[Em
         vectors = _validate_embedding_vectors(
             await _dispatch_embed(texts), expected_count=len(texts)
         )
-        record_known_embed_dimension(model, len(vectors[0]))
+        record_known_embed_dimension(cache_namespace, len(vectors[0]))
 
         for i, (chunk, vector) in enumerate(zip(batch_chunks, vectors)):
             original_idx = batch_indices[i]
             results[original_idx] = EmbeddedChunk(chunk=chunk, vector=vector)
-            await embedding_cache.put(model, chunk.text, vector)
+            await embedding_cache.put(cache_namespace, chunk.text, vector)
 
     return results
 
 
 async def ensure_embed_model() -> None:
-    """Ensure the embedding model is available on the selected engine's plane.
+    """Provision the active profile through Pi authority for every engine."""
+    from app.core.pi_runtime.embedding_profile import get_active_embedding_profile
+    from app.core.pi_runtime.embeddings_gateway import EmbeddingsGateway
+    from app.core.pi_runtime.model_manager_provisioning import ensure_endpoint_model
 
-    Legacy: the unchanged Ollama ensure path. Pi: the §5.2.3 provisioner
-    against the gateway-resolved local endpoint (JIT ensure, fail-closed).
-    """
-    from app.core.agentic import agentic
+    profile = get_active_embedding_profile()
+    gateway = EmbeddingsGateway(profile=profile)
+    manager = gateway.manager()
+    await manager.ensure_db_projection()
+    endpoint = manager.resolve_embed(profile.model_id, endpoint_id=profile.endpoint_id)
+    provisioned = await ensure_endpoint_model(endpoint, profile.model_id)
+    if endpoint.kind == "local" and not provisioned:
+        from app.core.pi_runtime.endpoints import PiEndpointResolutionError
 
-    if agentic.resolve_engine() == "pi":
-        from app.core.pi_runtime.embeddings_gateway import EmbeddingsGateway, default_embed_model
-        from app.core.pi_runtime.model_manager_provisioning import ensure_endpoint_model
-
-        gateway = EmbeddingsGateway()
-        manager = gateway.manager()
-        await manager.ensure_db_projection()
-        model = default_embed_model()
-        endpoint = manager.resolve_embed(model)
-        provisioned = await ensure_endpoint_model(endpoint, model)
-        if endpoint.kind == "local" and not provisioned:
-            from app.core.pi_runtime.endpoints import PiEndpointResolutionError
-
-            raise PiEndpointResolutionError(
-                f"embedding_model_provision_failed:{endpoint.endpoint_id}"
-            )
-        return
-    await ollama.ensure_model("nomic-embed-text")
+        raise PiEndpointResolutionError(
+            f"embedding_model_provision_failed:{endpoint.endpoint_id}"
+        )

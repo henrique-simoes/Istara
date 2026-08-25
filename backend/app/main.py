@@ -258,6 +258,13 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
     await init_db()
 
+    # Freeze the persisted Pi-owned vector identity before any embedding,
+    # cache, or vector-space health path can observe model configuration.
+    from app.core.pi_runtime.embedding_profile import bootstrap_embedding_profile
+
+    async with async_session() as db:
+        await bootstrap_embedding_profile(db)
+
     # Bootstrap admin user if none exists
     try:
         from sqlalchemy import func, select
