@@ -8,8 +8,8 @@ phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal ac
 stage: S1-plan
 status: in-progress
 blocked_on: null
-last: { agent: gpt-5-codex, at: 2026-08-25T00:36:05Z, ledger: L-27 }
-next_action: "Commit this ledger-only transport checkpoint, push local testing to origin/testing without force, and query the remote ref for exact SHA equality."
+last: { agent: gpt-5-codex, at: 2026-08-25T00:36:40Z, ledger: L-28 }
+next_action: "Execute P9-03: revalidate exact clean/merged cleanup candidates, remove only the two merged conductor worktrees plus the detached baseline, prune missing registrations, and preserve all recovery/uncertain worktrees."
 ```
 
 ## Plan overview / roadmap
@@ -1127,3 +1127,14 @@ been pushed yet.
 Verified: commit receipt, post-commit status, ahead/behind count, and decorated one-line log.
 Next: commit this ledger-only checkpoint, push both commits to `origin/testing` without force,
 then query the remote ref and require exact local/remote SHA equality.
+
+### L-28 | 2026-08-25T00:36:40Z | S2-execute | gpt-5-codex | integrator | P9-02 transported
+Did: Committed the prior ledger checkpoint as `58ee0ca5`, pushed local `testing` to
+`origin/testing` without force, queried the remote branch directly, and reconciled tracking
+refs and worktree status.
+Result: local `testing`, `origin/testing`, and the remote `refs/heads/testing` all equal
+`58ee0ca59381925a07fa7d032b63f17354cf5503`; ahead/behind is `0 0`; the main checkout was
+clean after transport. This proves commit and remote transport, not CI or terminal acceptance.
+Verified: GitHub push receipt, local rev-parse, `git ls-remote`, status, and ahead/behind count.
+Next: revalidate exact cleanup targets and execute only the safe P9-03 removals; retain every
+dirty, recovery, locked, active, or ownership-uncertain worktree/branch.
