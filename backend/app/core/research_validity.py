@@ -504,6 +504,9 @@ def normalize_coder_applications(applications: list[dict]) -> dict[str, dict[str
         if codes is None:
             codes = [app.get("code_id") or app.get("primary_code")]
         normalized_codes = {str(code).strip() for code in codes if str(code or "").strip()}
+        rating_status = str(app.get("rating_status") or "").strip().casefold()
+        if app.get("abstained") is True or rating_status in {"abstain", "abstained"}:
+            normalized_codes.add("__abstain__")
         coder_units.setdefault(coder_id, {}).setdefault(evidence_unit_id, set()).update(
             normalized_codes
         )
@@ -547,7 +550,19 @@ def build_binary_coding_matrix(applications: list[dict]) -> dict:
         }
         for unit_id in units
     }
-    return {"coders": coders, "evidence_units": units, "codes": codes, "matrix": matrix}
+    missing_ratings = [
+        {"coder_id": coder_id, "evidence_unit_id": unit_id}
+        for unit_id in units
+        for coder_id in coders
+        if not coder_units.get(coder_id, {}).get(unit_id)
+    ]
+    return {
+        "coders": coders,
+        "evidence_units": units,
+        "codes": codes,
+        "matrix": matrix,
+        "missing_ratings": missing_ratings,
+    }
 
 
 def item_level_promotion_statuses(matrix: dict, run_promotion_status: str) -> dict[str, str]:
@@ -579,6 +594,13 @@ def fleiss_kappa_from_matrix(matrix: dict) -> dict:
     coders = matrix.get("coders", [])
     units = matrix.get("evidence_units", [])
     rows = matrix.get("matrix", {})
+    if matrix.get("missing_ratings"):
+        return {
+            "kappa": None,
+            "method": "fleiss_kappa",
+            "status": "not_applicable",
+            "reason": "Fleiss' Kappa requires a complete item-by-rater matrix.",
+        }
     if len(coders) < 3 or not units:
         return {
             "kappa": None,
@@ -593,7 +615,7 @@ def fleiss_kappa_from_matrix(matrix: dict) -> dict:
         counts: dict[str, int] = {}
         for coder_id in coders:
             code_set = rows.get(unit_id, {}).get(coder_id, [])
-            category = "|".join(sorted(code_set)) if code_set else "__none__"
+            category = "|".join(sorted(code_set)) if code_set else "__unrated__"
             counts[category] = counts.get(category, 0) + 1
             if category not in categories:
                 categories.append(category)
@@ -620,9 +642,18 @@ def fleiss_kappa_from_matrix(matrix: dict) -> dict:
     p_e = sum(value * value for value in p_j.values())
 
     if p_e == 1.0:
-        kappa = 1.0 if p_bar == 1.0 else 0.0
-    else:
-        kappa = (p_bar - p_e) / (1 - p_e)
+        return {
+            "kappa": None,
+            "method": "fleiss_kappa",
+            "status": "undefined",
+            "reason": "Fleiss' Kappa is undefined when expected agreement is 1.0.",
+            "n_items": n_items,
+            "n_raters": n_raters,
+            "categories": categories,
+            "observed_agreement": round(p_bar, 3),
+            "expected_agreement": round(p_e, 3),
+        }
+    kappa = (p_bar - p_e) / (1 - p_e)
 
     return {
         "kappa": round(kappa, 3),
@@ -697,6 +728,25 @@ def evaluate_reliability_gate(
         result["reconciliation_evidence_unit_ids"] = list(item_statuses)
         return result
 
+    if matrix.get("missing_ratings"):
+        result.update(
+            {
+                "method": "incomplete_rater_matrix",
+                "kappa": None,
+                "alpha": None,
+                "promotion_status": "needs_reconciliation",
+                "fallback_reason": (
+                    "Reliability is undefined because one or more coder/evidence-unit "
+                    "ratings are missing."
+                ),
+            }
+        )
+        item_statuses = item_level_promotion_statuses(matrix, result["promotion_status"])
+        result["item_promotion_statuses"] = item_statuses
+        result["accepted_evidence_unit_ids"] = []
+        result["reconciliation_evidence_unit_ids"] = list(item_statuses)
+        return result
+
     if len(coders) >= 3:
         fleiss = fleiss_kappa_from_matrix(matrix)
         alpha = krippendorff_alpha(coder_item_lists, matrix["codes"])
@@ -713,6 +763,8 @@ def evaluate_reliability_gate(
         result["promotion_status"] = (
             "accepted" if score is not None and score >= threshold else "needs_reconciliation"
         )
+        if fleiss.get("status") == "undefined":
+            result["fallback_reason"] = str(fleiss.get("reason") or "Reliability is undefined.")
     elif len(coders) == 2:
         cohen = cohen_kappa(coder_item_lists[0], coder_item_lists[1], matrix["codes"])
         alpha = krippendorff_alpha(coder_item_lists, matrix["codes"])

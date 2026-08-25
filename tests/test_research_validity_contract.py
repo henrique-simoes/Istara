@@ -939,12 +939,15 @@ async def test_independent_coding_run_persists_model_codes_and_reliability(monke
             created_by="test-researcher",
         )
 
-        assert result["promotion_status"] == "accepted"
+        # Perfect raw agreement across only one observed category has expected
+        # agreement 1.0, so Fleiss' kappa is undefined rather than evidence of
+        # beyond-chance reliability.
+        assert result["promotion_status"] == "needs_reconciliation"
         assert (
             result["reliability_method"]
             == "fleiss_kappa_with_krippendorff_alpha_companion"
         )
-        assert result["kappa"] == 1.0
+        assert result["kappa"] is None
         assert result["rater_count"] == 3
         assert result["code_application_count"] == 6
         assert {route["model"] for route in result["route_evidence"]} == {
@@ -978,8 +981,8 @@ async def test_independent_coding_run_persists_model_codes_and_reliability(monke
 
     assert len(app_rows) == 6
     assert len(coder_rows) == 3
-    assert {row.reliability_status for row in app_rows} == {"accepted"}
-    assert {row.promotion_status for row in app_rows} == {"accepted"}
+    assert {row.reliability_status for row in app_rows} == {"needs_reconciliation"}
+    assert {row.promotion_status for row in app_rows} == {"needs_reconciliation"}
     assert {row.task_id for row in app_rows} == {task_id}
 
 

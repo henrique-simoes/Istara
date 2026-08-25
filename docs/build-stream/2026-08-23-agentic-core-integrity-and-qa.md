@@ -1707,3 +1707,103 @@ Verified: push `57bd1c2e..02e7b30d`; local `testing` and `origin/testing` both r
 `02e7b30d8b83a31aa4ec28597ea3d45a5e1af6f7`; post-push status had no file entries.
 Next: commit/push this receipt, then audit P9-05 against the Research Spine's effective-coder identity,
 three-model independence, Fleiss kappa/Krippendorff alpha, abstention, and reconciliation contracts.
+
+### L-66 | 2026-08-25T23:52:00Z | S1-frame/S2-execute | gpt-5-codex | implementer | P9-05 statistical audit isolated concrete fail-open cases
+Did: Confirmed the P9-04 receipt is committed and `testing` is clean/equal to `origin/testing`, then
+used the prior Compass Forge impact/why/context maps to trace coder selection, route provenance,
+application persistence, matrix construction, Fleiss kappa, companion alpha, and promotion handling.
+The host clock currently reports several minutes before the already-written L-65 timestamp; this entry
+uses the next monotonic ledger timestamp so resumptions do not misread causal order.
+Result: Three actionable metric defects are now bounded. A missing coder/unit cell is silently converted
+to the substantive `__none__` category; an explicit abstention has no distinct representation; and a
+single-category matrix returns kappa 1.0 even though expected agreement is 1.0 and kappa is undefined.
+All can permit misleading reliability output. Model-name deduplication correctly prevents endpoint
+replicas of one checkpoint from fabricating independence, but effective provider-account, endpoint,
+prompt/codebook, and decoding-profile provenance is not yet present in the reconstructable matrix.
+Verified: read-only branch/ref status and direct inspection only; no service/model/SSH/host action.
+Next: add red contracts for missing cells, explicit abstention, and single-category degeneracy; make all
+undefined/incomplete cases route to reconciliation; then add safe effective-rater provenance without
+allowing aliases or endpoint replicas of the same checkpoint to count as independent models.
+
+### L-67 | 2026-08-25T23:54:00Z | S2-execute | gpt-5-codex | implementer | Missing, abstention, and undefined reliability semantics corrected
+Did: Added executable contracts before implementation, then taught matrix construction to distinguish
+an absent coder/unit cell from an explicit abstention. Added a complete-cross-product check before any
+Fleiss/alpha computation and corrected the single-category `expected_agreement == 1` degeneracy to an
+undefined score rather than synthetic kappa 1.0.
+Result: Missing ratings persist in the reconstructable matrix and force `incomplete_rater_matrix` plus
+reconciliation. Explicit abstentions persist as `__abstain__` and remain analyzable. Undefined Fleiss
+kappa carries its mathematical reason and cannot pass the promotion threshold. The old implicit
+`__none__` substitution is gone from the metric path.
+Verified: red run failed all 3 new contracts for the intended old behaviors; green focused run is
+`9 passed` across new cases plus prior three-model, item-level disagreement, low-consensus, duplicate-
+model, and single-model contracts. No service/model/SSH/host action.
+Next: define and persist safe effective-rater provenance (checkpoint/model, provider-account handle,
+endpoint, fixed prompt/codebook, decoding profile), validate it per coder, and keep checkpoint/model
+identity—not route replicas—as the independence count.
+
+### L-68 | 2026-08-25T23:56:00Z | S2-execute/S3-review | gpt-5-codex | verifier | Statistical slice under wider regression
+Did: Ran the Compass Forge before-gate and started the complete research-integrity metric plus research-
+validity contract suites after the focused green run. Inspected the gate delta rather than treating its
+aggregate status as change attribution.
+Result: The gate remains globally failed on inherited repository findings, notably three existing
+secret-flow heuristic findings and broad complexity/route/type drift. None points to the two changed
+metric/test files as a new secret flow. The wider pytest run has emitted 34 passing tests so far and is
+still active; no completion claim is made until its process exits.
+Verified: Compass Forge before record 10, status fail with baseline findings preserved; active pytest
+session 37089, current stream `..................................`. No service/model/SSH/host action.
+Next: wait for the bounded suite to terminate, remediate any regression, attach the exact terminal
+count, then checkpoint the statistical fix before beginning effective-rater provenance.
+
+### L-69 | 2026-08-25T23:58:00Z | S3-review/S4-remediate | gpt-5-codex | verifier | Degenerate integration expectation corrected
+Did: Let the full bounded suite terminate rather than inferring success from progress dots. It found
+one integration fixture where all three models apply one identical category to every evidence unit.
+Updated that stale assertion to preserve the applications/coders while requiring reconciliation and
+null kappa, matching the corrected `expected_agreement == 1` semantics.
+Result: The production orchestration already persists the gate result correctly; only the test had
+encoded false statistical confidence. Six code applications and three coder rows remain durable, but
+their item reliability/promotion states now honestly remain `needs_reconciliation` for this dataset.
+Verified: wider first run `1 failed, 53 passed in 72.75s`; affected integration plus three new metric
+contracts now `4 passed`. No service/model/SSH/host action.
+Next: rerun the complete 54-test bounded suite, append the terminal receipt, review/diff the metric
+slice, then commit/push it before changing effective-rater provenance.
+
+### L-70 | 2026-08-26T00:00:00Z | S3-review | gpt-5-codex | verifier | Corrected 54-test regression rerun active
+Did: Started a fresh complete bounded reliability regression after correcting the one mathematically
+obsolete integration expectation; retained the live process identifier for resumability.
+Result: The rerun has emitted the same first 34 passing tests and remains active without a failure.
+This is intentionally a progress record, not a green-suite claim.
+Verified: active pytest session 94735, current stream `..................................`.
+No service/model/SSH/host action.
+Next: wait for terminal exit, record exact count/duration, run diff/targeted lint review, and transport
+the bounded metric fix only if all verification is green.
+
+### L-71 | 2026-08-26T00:02:00Z | S3-review/S4-remediate | gpt-5-codex | verifier | Final empty-rating edge case and living contract synchronized
+Did: The corrected complete suite reached `54 passed in 75.00s`. During diff review, identified that an
+explicit application object with empty codes but no abstention marker still appeared structurally
+present. Tightened completeness so both an absent cell and an empty unmarked cell are missing, while
+`rating_status=abstained` remains a deliberate categorical rating. Updated the Ensemble Health and
+Fleiss Kappa living documentation and regenerated the feature site/manifests.
+Result: The metric boundary no longer has an implicit null category in any input shape. Documentation,
+tests, and runtime now agree that missing/empty blocks computation, explicit abstention is retained,
+and single-category kappa is undefined. A final complete regression is active after this last change.
+Verified: prior complete rerun `54 passed`; post-refinement focused `4 passed`; Ruff clean for both
+changed Python files; `git diff --check` clean; feature docs seeded 0/generated 224/check passed for 86;
+active final pytest session 10927 currently has 34 passes. No service/model/SSH/host action.
+Next: collect final terminal count, run Compass Forge after-gate, review exact staged paths, commit/push
+the P9-05 statistical sub-slice and receipt, then resume effective-rater provenance.
+
+### L-72 | 2026-08-26T00:04:00Z | S3-review/S4-remediate | gpt-5-codex | reviewer | Statistical sub-slice ready for clean transport
+Did: Collected the final post-refinement regression, ran the after-gate, reviewed the exact runtime/docs/
+test diff, and moved the three new pure metric contracts from the oversized integration module into the
+dedicated integrity-metrics module. Kept the one integration assertion change where persistence must
+reflect undefined kappa; splitting that existing 1,638-line file is separate structural debt.
+Result: No new dependency, import-cycle, forbidden-path, secret-flow, or large-file delta was introduced.
+Compass Forge still flags the touched integration test module's inherited over-1,200-line complexity;
+the move reduced it from the gate-before 1,729 lines to 1,638 rather than worsening it. The dedicated
+metric file is 406 lines. Global gate status remains failed on the documented baseline.
+Verified: final complete bounded suite `54 passed in 73.15s`; moved metric tests `3 passed`; changed
+runtime Ruff clean; `git diff --check` clean; feature docs check passed for 86; Compass Forge after
+records 11/12 with no dependency/import/secret delta. No service/model/SSH/host action.
+Next: stage exactly the 9 reviewed runtime/test/living-doc/generated/ledger files, commit and push to
+`origin/testing`, verify clean ref equality, append/transport the receipt, then start effective-rater
+provenance as the next P9-05 sub-slice.

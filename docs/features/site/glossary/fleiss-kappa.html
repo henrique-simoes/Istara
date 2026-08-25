@@ -227,6 +227,7 @@
 </header>
 <p>Fleiss&#x27; Kappa is an inter-rater agreement statistic used when more than two raters classify the same items into nominal categories. In Istara&#x27;s corrected research-validity contract, the items are stable qualitative evidence units and the raters are independent human/model coders using the same governed codebook.</p>
 <p>Istara must not describe whole-response keyword buckets as formal Fleiss&#x27; Kappa qualitative reliability. Those can be operational consensus signals, but formal reliability requires coded evidence-unit matrices, route/model identity, and the default <code>kappa &gt;= 0.60</code> promotion gate unless project policy explicitly overrides it.</p>
+<p>The item-by-rater matrix must be complete. A missing or empty unmarked response is not a <code>none</code> category and blocks metric computation; an intentional abstention must be explicit and is preserved separately. When every rating occupies a single category, expected agreement is 1.0 and Fleiss&#x27; Kappa is undefined, so Istara requires reconciliation rather than treating perfect raw agreement as beyond-chance reliability.</p>
 <p>References: Fleiss (1971), Cohen (1960), O&#x27;Connor &amp; Joffe (2020), MacQueen et al. (1998). See <code>docs/architecture/research-validity-contract.md</code>.</p>
 <section class="related-panel">
   <h2>Related Features</h2>

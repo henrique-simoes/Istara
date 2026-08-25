@@ -56,6 +56,81 @@ from app.models.model_skill_stats import ModelSkillStats  # noqa: F401
 from app.models.autoresearch_experiment import AutoresearchExperiment  # noqa: F401
 
 
+def test_missing_rater_cell_is_not_treated_as_a_none_category():
+    from app.core.research_validity import evaluate_reliability_gate
+
+    applications = [
+        {
+            "coder_id": coder_id,
+            "model_name": model_name,
+            "evidence_unit_id": unit_id,
+            "codes": ["nav" if unit_id == "eu-1" else "trust"],
+        }
+        for coder_id, model_name in (
+            ("coder-a", "model-a"),
+            ("coder-b", "model-b"),
+            ("coder-c", "model-c"),
+        )
+        for unit_id in ("eu-1", "eu-2")
+        if not (coder_id == "coder-c" and unit_id == "eu-2")
+    ]
+
+    result = evaluate_reliability_gate(applications, minimum_distinct_models=3)
+
+    assert result["method"] == "incomplete_rater_matrix"
+    assert result["kappa"] is None
+    assert result["alpha"] is None
+    assert result["promotion_status"] == "needs_reconciliation"
+    assert result["matrix"]["missing_ratings"] == [
+        {"coder_id": "coder-c", "evidence_unit_id": "eu-2"}
+    ]
+    assert "__none__" not in result["matrix"]["codes"]
+
+
+def test_explicit_abstention_is_distinct_from_a_missing_rating():
+    from app.core.research_validity import build_binary_coding_matrix
+
+    matrix = build_binary_coding_matrix(
+        [
+            {"coder_id": "coder-a", "evidence_unit_id": "eu-1", "codes": [], "rating_status": "abstained"},
+            {"coder_id": "coder-b", "evidence_unit_id": "eu-1", "codes": ["nav"]},
+            {"coder_id": "coder-c", "evidence_unit_id": "eu-1", "codes": []},
+        ]
+    )
+
+    assert matrix["missing_ratings"] == [
+        {"coder_id": "coder-c", "evidence_unit_id": "eu-1"}
+    ]
+    assert matrix["matrix"]["eu-1"]["coder-a"] == ["__abstain__"]
+    assert "__abstain__" in matrix["codes"]
+
+
+def test_single_category_fleiss_kappa_is_undefined_and_requires_reconciliation():
+    from app.core.research_validity import evaluate_reliability_gate
+
+    applications = [
+        {
+            "coder_id": coder_id,
+            "model_name": model_name,
+            "evidence_unit_id": unit_id,
+            "codes": ["nav"],
+        }
+        for coder_id, model_name in (
+            ("coder-a", "model-a"),
+            ("coder-b", "model-b"),
+            ("coder-c", "model-c"),
+        )
+        for unit_id in ("eu-1", "eu-2")
+    ]
+
+    result = evaluate_reliability_gate(applications, minimum_distinct_models=3)
+
+    assert result["details"]["fleiss"]["status"] == "undefined"
+    assert result["kappa"] is None
+    assert result["promotion_status"] == "needs_reconciliation"
+    assert "undefined" in result["fallback_reason"].lower()
+
+
 # ============================================================
 # Fixtures: in-memory async SQLite for model tests
 # ============================================================
