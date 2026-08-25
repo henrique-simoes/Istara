@@ -8,8 +8,8 @@ phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal ac
 stage: S2-execute
 status: in-progress
 blocked_on: null
-last: { agent: gpt-5-codex, at: 2026-08-25T17:00:22Z, ledger: L-51 }
-next_action: "Commit and push the seven-path generated-skill authority slice, prove exact SHA equality, then continue the graph-backed audit at embedding model identity and Research Spine ensemble boundaries."
+last: { agent: gpt-5-codex, at: 2026-08-25T17:02:02Z, ledger: L-53 }
+next_action: "Reconcile the missing EmbeddingProfile implementation with the binding Pi migration architecture, record the durable design choice, and split it into migration-safe red-green tasks before touching storage or vector identity."
 ```
 
 ## Plan overview / roadmap
@@ -1489,3 +1489,34 @@ pass; diff check clean; only the expected implementation, two tests, lifecycle, 
 HTML, and manifest are modified. No service, model, dependency, host, or remote-host operation.
 Next: commit/push the seven intended paths, prove SHA equality, then inspect remaining classical model
 identity use at embeddings and the independent-ensemble boundary before choosing the next red test.
+
+### L-52 | 2026-08-25T17:00:52Z | S2-execute | gpt-5-codex | implementer | Skill authority transported cleanly
+Did: Staged only the seven reviewed generated-skill authority paths, committed them, pushed `testing`,
+and compared the local and remote-tracking object IDs after transport.
+Result: local `testing` and `origin/testing` are exactly equal at
+`b6bd7b1bef9d435c0ddb529e926900f033c8c193`; the worktree was clean immediately after push. This
+checkpoint removes another concrete P9-04 bypass without claiming that the wider authority audit is
+complete.
+Verified: commit `b6bd7b1` (`fix: keep skill repair under Pi authority`); push succeeded; exact SHA
+equality; zero uncommitted paths before this ledger append.
+Next: trace effective embedding model identity from API metadata through `agentic.embed` and Pi
+resolution, decide from contracts/tests whether classical settings retain unauthorized selection
+power, and create a red test only if the seam is behaviorally wrong.
+
+### L-53 | 2026-08-25T17:02:02Z | S2-execute | gpt-5-codex | auditor | Binding EmbeddingProfile architecture is absent
+Did: Traced embedding identity from cache keys and dispatcher parameters through
+`EmbeddingsGateway` and `PiModelManager.resolve_embed`, compared that implementation with the
+accepted Pi migration target architecture and vector-space invariant, and searched the full tree for
+an `EmbeddingProfile` model or `embedding_profile_id` implementation.
+Result: Pi does own the final gateway and endpoint resolution, but the requested model and active
+local endpoint are still selected from the retired global `settings.llm_provider` in embeddings,
+gateway defaults, manager resolution, and safe-metadata APIs. Tests intentionally assert this old
+coupling. More importantly, the binding migration contract's explicit, versioned `EmbeddingProfile`
+(model, endpoint/transport identity, dimension, dtype, normalization, health/version) exists only in
+planning documents—there is no runtime or persistence implementation. This is architecture debt,
+not a safe one-line rename: silently changing the cache/model key could invalidate stored vectors.
+Verified: end-to-end source trace; migration invariants I3/I5 and sections 5.2/5.5; full-tree profile
+search returns documentation only. No production file changed and no service/model/host action.
+Next: use Compass Forge to record a migration-safe profile authority decision, define compatibility
+bootstrap and no-silent-reindex behavior, then create focused red tests before adding persistence or
+changing any effective vector identity.
