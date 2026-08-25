@@ -260,7 +260,7 @@ latest lifecycle inside the lock and still touches only plan/contract/decision s
 ## 5. Verification (exact commands)
 
 Docs-only change — no test suite, no model, no spend is required or permitted. Run from
-`/Users/user/Documents/Istara-main-pi-replacement`; compare against the RC-1 baseline so
+`<repo-root>-pi-replacement`; compare against the RC-1 baseline so
 concurrent worker changes are never attributed to this task.
 
 ```bash

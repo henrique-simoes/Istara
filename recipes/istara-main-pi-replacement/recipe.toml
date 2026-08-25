@@ -1,6 +1,5 @@
 [recipe]
 name = "istara-main-pi-replacement"
-root_hint = "/Users/user/Documents/Istara-main-pi-replacement"
 description = "Inferred Compass Forge recipe. Review and edit project-specific rules as the codebase teaches the tool."
 
 [commands]

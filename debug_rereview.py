@@ -1,10 +1,16 @@
-import sys, json, subprocess
+import json
+import subprocess
+import sys
 from pathlib import Path
 
-sys.path.insert(0, "/Users/user/Documents/Skills/build-stream-conductor/scripts")
-import conductor
+repo_root = Path(__file__).resolve().parent
+pi_replacement_root = repo_root.with_name(f"{repo_root.name}-pi-replacement")
+sys.path.insert(0, str(Path.home() / "Documents/Skills/build-stream-conductor/scripts"))
+import conductor  # noqa: E402
 
-tasks_json = subprocess.check_output(["compass-forge", "task", "list", "--target", "/Users/user/Documents/Istara-main-pi-replacement"]).decode()
+tasks_json = subprocess.check_output(
+    ["compass-forge", "task", "list", "--target", str(pi_replacement_root)]
+).decode()
 data = json.loads(tasks_json)
 tasks = data if isinstance(data, list) else data.get("tasks", [])
 
@@ -27,8 +33,10 @@ pending_roles = {(t.get("owner_role") or "") for t in tasks
 print("pending_roles:", pending_roles)
 
 def is_remediation(t):
-    if (t.get("status") or "") != "done": return False
-    if (t.get("owner_role") or "") in rroles: return False
+    if (t.get("status") or "") != "done":
+        return False
+    if (t.get("owner_role") or "") in rroles:
+        return False
     payload = conductor._task_payload(t)
     source_ref = str(payload.get("source_task") or "")
     source = {str(tt.get("public_id")): tt for tt in tasks}.get(source_ref)

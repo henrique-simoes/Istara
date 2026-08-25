@@ -56,14 +56,14 @@ def test_security_benchmark_detects_compute_project_scope_paths() -> None:
     assert result.scorecard["triggered_paths"] == sorted(changed_paths)
 
 
-def test_security_benchmark_detects_llm_server_security_paths() -> None:
+def test_security_benchmark_detects_pi_model_management_security_paths() -> None:
     matrix = load_matrix(ROOT / "security" / "control_matrix.json")
 
     changed_paths = [
-        "backend/app/api/routes/llm_servers.py",
         "backend/app/api/routes/settings.py",
+        "backend/app/core/pi_runtime/model_manager.py",
         "frontend/src/components/common/SettingsView.tsx",
-        "tests/test_llm_servers.py",
+        "tests/pi_production/test_w1_agentic_contract.py",
         "tests/test_settings.py",
         "tests/test_project_scope_contracts.py",
     ]
@@ -352,6 +352,25 @@ def test_security_benchmark_detects_research_integrity_project_scope_paths() -> 
         "tests/test_code_applications.py",
         "tests/test_codebooks.py",
         "tests/test_project_scope_contracts.py",
+    ]
+    result = evaluate_matrix(matrix, changed_paths=changed_paths)
+
+    assert result.passed is True
+    assert result.scorecard["auth_security_change_detected"] is True
+    assert result.scorecard["triggered_paths"] == sorted(changed_paths)
+
+
+def test_security_benchmark_detects_pi_petals_and_remote_benchmark_paths() -> None:
+    matrix = load_matrix(ROOT / "security" / "control_matrix.json")
+
+    changed_paths = [
+        "backend/app/api/routes/petals_bridge.py",
+        "backend/app/core/agentic/legacy.py",
+        "backend/app/core/petals_bridge.py",
+        "backend/app/core/pi_runtime/engine.py",
+        "backend/app/services/research_validity_service.py",
+        "scripts/runner/docker-run.sh",
+        "tests/real_user_benchmark/lib/provenance.mjs",
     ]
     result = evaluate_matrix(matrix, changed_paths=changed_paths)
 

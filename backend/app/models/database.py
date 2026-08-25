@@ -67,6 +67,7 @@ if _is_sqlite:
         finally:
             cursor.close()
 
+
 async_session = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
 
 
@@ -79,8 +80,13 @@ async def get_db() -> AsyncSession:
             await session.close()
 
 
-async def init_db() -> None:
-    """Create all database tables."""
+def register_models() -> None:
+    """Import every mapped model before SQLAlchemy configures relationships.
+
+    This is intentionally separate from database creation so processes and
+    test harnesses that instantiate an ORM row before ``init_db`` can establish
+    a complete mapper registry without opening or mutating a database.
+    """
     # Import model modules so they're registered with Base. Keep this dynamic so
     # database.py does not statically depend on every model-owning feature module.
     for module_name in (
@@ -137,6 +143,11 @@ async def init_db() -> None:
     ):
         import_module(module_name)
 
+
+async def init_db() -> None:
+    """Register mapped models and create all database tables."""
+    register_models()
+
     async with engine.begin() as conn:
         # PostgreSQL + enums: SQLAlchemy's checkfirst sees an existing enum TYPE and
         # skips the tables that depend on it, even when no table exists yet (fresh DB).
@@ -154,8 +165,7 @@ async def init_db() -> None:
             )
         else:
             _empty_probe = _sa_text(
-                "select count(*) from information_schema.tables "
-                "where table_schema = 'public'"
+                "select count(*) from information_schema.tables where table_schema = 'public'"
             )
         existing = (await conn.execute(_empty_probe)).scalar() or 0
         if existing == 0:
@@ -221,21 +231,15 @@ async def init_db() -> None:
             "ALTER TABLE connection_strings ADD COLUMN connection_string_hash VARCHAR(64)",
             "ALTER TABLE connection_strings ADD COLUMN allowed_project_ids_json TEXT "
             "NOT NULL DEFAULT '[]'",
-            "ALTER TABLE mcp_server_configs ADD COLUMN project_id VARCHAR(36) "
-            "NOT NULL DEFAULT ''",
-            "ALTER TABLE mcp_audit_log ADD COLUMN project_id VARCHAR(36) "
-            "NOT NULL DEFAULT ''",
-            "CREATE INDEX IF NOT EXISTS ix_mcp_audit_log_project_id "
-            "ON mcp_audit_log(project_id)",
+            "ALTER TABLE mcp_server_configs ADD COLUMN project_id VARCHAR(36) NOT NULL DEFAULT ''",
+            "ALTER TABLE mcp_audit_log ADD COLUMN project_id VARCHAR(36) NOT NULL DEFAULT ''",
+            "CREATE INDEX IF NOT EXISTS ix_mcp_audit_log_project_id ON mcp_audit_log(project_id)",
             # Scheduler/loops hardening columns for existing installations.
-            "ALTER TABLE loop_executions ADD COLUMN project_id VARCHAR(36) "
-            "NOT NULL DEFAULT ''",
+            "ALTER TABLE loop_executions ADD COLUMN project_id VARCHAR(36) NOT NULL DEFAULT ''",
             "CREATE INDEX IF NOT EXISTS ix_loop_executions_project_id "
             "ON loop_executions(project_id)",
-            "ALTER TABLE a2a_messages ADD COLUMN project_id VARCHAR(36) "
-            "NOT NULL DEFAULT ''",
-            "CREATE INDEX IF NOT EXISTS ix_a2a_messages_project_id "
-            "ON a2a_messages(project_id)",
+            "ALTER TABLE a2a_messages ADD COLUMN project_id VARCHAR(36) NOT NULL DEFAULT ''",
+            "CREATE INDEX IF NOT EXISTS ix_a2a_messages_project_id ON a2a_messages(project_id)",
             # Finding provenance for approved-task-only reporting.
             "ALTER TABLE nuggets ADD COLUMN task_id VARCHAR(36)",
             "CREATE INDEX IF NOT EXISTS ix_nuggets_task_id ON nuggets(task_id)",
@@ -257,10 +261,8 @@ async def init_db() -> None:
             # F-P1: checkpoint timestamps must be timestamptz to match the
             # UTC-aware model defaults (asyncpg rejects aware datetimes for
             # naive columns). Postgres-only type change; SQLite tolerates.
-            "ALTER TABLE task_checkpoints ALTER COLUMN created_at TYPE "
-            "TIMESTAMP WITH TIME ZONE",
-            "ALTER TABLE task_checkpoints ALTER COLUMN updated_at TYPE "
-            "TIMESTAMP WITH TIME ZONE",
+            "ALTER TABLE task_checkpoints ALTER COLUMN created_at TYPE TIMESTAMP WITH TIME ZONE",
+            "ALTER TABLE task_checkpoints ALTER COLUMN updated_at TYPE TIMESTAMP WITH TIME ZONE",
             # WebAuthn credential metadata and persisted challenge state.
             "ALTER TABLE webauthn_credentials ADD COLUMN device_type VARCHAR(50) "
             "NOT NULL DEFAULT ''",
@@ -272,11 +274,9 @@ async def init_db() -> None:
             "NOT NULL DEFAULT ''",
             # Research-validity architecture: evidence units, coding runs, route evidence.
             "ALTER TABLE evidence_units ADD COLUMN task_id VARCHAR(36)",
-            "CREATE INDEX IF NOT EXISTS ix_evidence_units_task_id "
-            "ON evidence_units(task_id)",
+            "CREATE INDEX IF NOT EXISTS ix_evidence_units_task_id ON evidence_units(task_id)",
             "ALTER TABLE coding_runs ADD COLUMN task_id VARCHAR(36)",
-            "CREATE INDEX IF NOT EXISTS ix_coding_runs_task_id "
-            "ON coding_runs(task_id)",
+            "CREATE INDEX IF NOT EXISTS ix_coding_runs_task_id ON coding_runs(task_id)",
             "ALTER TABLE research_evidence_edges ADD COLUMN task_id VARCHAR(36)",
             "CREATE INDEX IF NOT EXISTS ix_research_evidence_edges_task_id "
             "ON research_evidence_edges(task_id)",
@@ -287,14 +287,14 @@ async def init_db() -> None:
             "CREATE INDEX IF NOT EXISTS ix_code_applications_coding_run_id "
             "ON code_applications(coding_run_id)",
             "ALTER TABLE code_applications ADD COLUMN task_id VARCHAR(36)",
-            "CREATE INDEX IF NOT EXISTS ix_code_applications_task_id "
-            "ON code_applications(task_id)",
+            "CREATE INDEX IF NOT EXISTS ix_code_applications_task_id ON code_applications(task_id)",
             "ALTER TABLE code_applications ADD COLUMN start_offset INTEGER",
             "ALTER TABLE code_applications ADD COLUMN end_offset INTEGER",
             "ALTER TABLE code_applications ADD COLUMN model_name VARCHAR(200) NOT NULL DEFAULT ''",
             "ALTER TABLE code_applications ADD COLUMN donor_id VARCHAR(120) NOT NULL DEFAULT ''",
             "ALTER TABLE code_applications ADD COLUMN route_id VARCHAR(120) NOT NULL DEFAULT ''",
-            "ALTER TABLE code_applications ADD COLUMN route_evidence_json TEXT NOT NULL DEFAULT '{}'",
+            "ALTER TABLE code_applications ADD COLUMN route_evidence_json TEXT "
+            "NOT NULL DEFAULT '{}'",
             "ALTER TABLE code_applications ADD COLUMN reliability_status VARCHAR(40) "
             "NOT NULL DEFAULT 'unknown'",
             "ALTER TABLE code_applications ADD COLUMN reconciliation_status VARCHAR(40) "
@@ -307,8 +307,10 @@ async def init_db() -> None:
             "ALTER TABLE telemetry_spans ADD COLUMN donor_id VARCHAR(120) NOT NULL DEFAULT ''",
             "ALTER TABLE telemetry_spans ADD COLUMN retrieval_mode VARCHAR(40) NOT NULL DEFAULT ''",
             "ALTER TABLE telemetry_spans ADD COLUMN coding_run_id VARCHAR(36) NOT NULL DEFAULT ''",
-            "ALTER TABLE telemetry_spans ADD COLUMN evidence_unit_id VARCHAR(36) NOT NULL DEFAULT ''",
-            "ALTER TABLE telemetry_spans ADD COLUMN codebook_version_id VARCHAR(36) NOT NULL DEFAULT ''",
+            "ALTER TABLE telemetry_spans ADD COLUMN evidence_unit_id VARCHAR(36) "
+            "NOT NULL DEFAULT ''",
+            "ALTER TABLE telemetry_spans ADD COLUMN codebook_version_id VARCHAR(36) "
+            "NOT NULL DEFAULT ''",
             "ALTER TABLE telemetry_spans ADD COLUMN reliability_score FLOAT",
             # Project-scoped model/skill learning. Global stats must not steer
             # another project's research process.
@@ -336,7 +338,9 @@ async def init_db() -> None:
         try:
             async with conn.begin_nested():
                 await conn.run_sync(
-                    lambda c: Base.metadata.tables["webauthn_credentials"].create(c, checkfirst=True)
+                    lambda c: Base.metadata.tables["webauthn_credentials"].create(
+                        c, checkfirst=True
+                    )
                 )
         except Exception:
             pass  # Table already exists
@@ -361,7 +365,8 @@ async def init_db() -> None:
             async with conn.begin_nested():
                 await conn.execute(
                     sa.text(
-                        "ALTER TABLE audit_log ADD COLUMN event_type VARCHAR(80) NOT NULL DEFAULT ''"
+                        "ALTER TABLE audit_log ADD COLUMN event_type VARCHAR(80) "
+                        "NOT NULL DEFAULT ''"
                     )
                 )
         except Exception:
@@ -386,7 +391,9 @@ async def init_db() -> None:
         try:
             async with conn.begin_nested():
                 await conn.run_sync(
-                    lambda c: Base.metadata.tables["project_interface_configs"].create(c, checkfirst=True)
+                    lambda c: Base.metadata.tables["project_interface_configs"].create(
+                        c, checkfirst=True
+                    )
                 )
         except Exception:
             pass  # Table already exists
@@ -401,7 +408,9 @@ async def init_db() -> None:
             try:
                 async with conn.begin_nested():
                     await conn.run_sync(
-                        lambda c, name=table_name: Base.metadata.tables[name].create(c, checkfirst=True)
+                        lambda c, name=table_name: Base.metadata.tables[name].create(
+                            c, checkfirst=True
+                        )
                     )
             except Exception:
                 pass  # Table already exists

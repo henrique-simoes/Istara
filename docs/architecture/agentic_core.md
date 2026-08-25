@@ -37,9 +37,10 @@ provider communication for BOTH engines (DEC-10):
   (`backend/app/core/agentic/model_source.py`) answers each turn's
   "which endpoint/model, from which plane?" with owner-approved precedence:
   explicit user selection outright → explicitly configured local endpoint →
-  pi-managed endpoint (fallback where the local plane is a declared wire
-  stub) → donation pool (unchanged compute-registry path).
-- **Execution-only bridge** (`pi_bridge.py`): when a legacy-plane turn
+  Pi-managed endpoint. Healthy, consented Petals donors are projected into
+  this last plane by exact identity; the old compute-registry path survives
+  only as a compatibility fallback.
+- **Execution-only provider bridge** (`pi_bridge.py`): when an Istara-loop turn
   resolves to a pi-managed endpoint, calls execute directly over that
   OpenAI-compatible endpoint under Istara identity — never advertised as
   compute-pool capacity, preserving donor-collision and research-spine
@@ -65,21 +66,20 @@ First match wins:
 
 Two engines:
 
-- **legacy** — `backend/app/core/agentic/legacy.py`. The permanent legacy
-  executor preserves the pre-dispatcher behavior on the existing
-  ComputeRegistry/ollama plane, including the distinct-server ensemble used
-  by validation. This is the benchmark baseline and the default today.
+- **legacy / Istara loop** — `backend/app/core/agentic/legacy.py`. The permanent
+  Istara executor preserves Python-side loop and tool semantics while delegating
+  provider turns, structured output, ensembles, and embeddings to the same Pi
+  Model Management authority. It remains the benchmark baseline.
 - **pi** — `PiExecutionService` / `PiModelManager`
   (`backend/app/core/pi_runtime/`). Endpoint identities come from the Pi
   catalog projection of persisted LLM server entries; provisioning
   (`ensure_endpoint_model`) handles local Ollama/LM Studio JIT loading and
   fails typed on unknown or unavailable planes.
 
-Embeddings follow the same dispatch: legacy engine → the unchanged
-`ollama.embed*` plane via the legacy executor; Pi engine → the W8
-`EmbeddingsGateway` (`pi_runtime/embeddings_gateway.py`), which enforces the
-vector-space invariant (dimension/dtype validation, startup probes in
-`main.py`) and normalizes provider usage accounting.
+Embeddings for both loop modes use the `EmbeddingsGateway`
+(`pi_runtime/embeddings_gateway.py`), which resolves through Pi Model
+Management, enforces the vector-space invariant (dimension/dtype validation,
+startup probes in `main.py`), and normalizes provider usage accounting.
 
 ## Usage accounting
 

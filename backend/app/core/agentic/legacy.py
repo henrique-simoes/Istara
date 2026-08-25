@@ -1,13 +1,11 @@
-"""Real legacy-engine executor for the AgenticDispatcher (master plan §5.1).
+"""Istara legacy-loop semantics under Pi Model Management authority.
 
-Every verb drives the SAME legacy plane the 87 inventory call sites use today
-(``app.core.ollama.ollama`` — the ComputeRegistry-backed client), with the same
-parameter names and message shapes, so dispatcher-routed legacy traffic is
-byte-compatible with the unmigrated baseline. Imports are deferred so importing
-the dispatcher never initializes the legacy plane.
-
-The executor never falls back to Pi, and the dispatcher never falls back to
-this executor: a selected engine executes or raises (fail-closed both ways).
+The legacy engine choice preserves Istara's bounded Python ReAct loop and its
+tool-execution behavior. It does *not* select a second provider plane: model,
+endpoint, credentials, retries, limits, and usage remain owned by the injected
+``PiExecutionService``. The Pi engine choice instead runs pi-agent-core's own
+loop. Thus both user-visible modes are first-class while provider authority is
+singular and fail-closed.
 """
 
 from __future__ import annotations
@@ -17,8 +15,6 @@ import logging
 import re
 from typing import Any
 
-from app.core.llm_schema_adapter import openai_json_schema_response_format, parse_json_object
-
 from .types import AgenticDispatchError, TurnParams
 
 logger = logging.getLogger(__name__)
@@ -27,10 +23,16 @@ logger = logging.getLogger(__name__)
 LEGACY_MAX_TOOL_ITERATIONS = 8
 
 
-def _ollama() -> Any:
-    from app.core.ollama import ollama  # ComputeRegistry-backed legacy plane
+def _provider_service(kwargs: dict[str, Any]) -> Any:
+    service = kwargs.get("provider_service")
+    if service is not None:
+        return service
+    # Direct executor callers still use the same singleton Pi authority as
+    # production seams. Dispatcher calls always inject their own service so a
+    # custom/test manager cannot be split from the legacy loop.
+    from app.core.pi_runtime.seams import get_pi_execution_service
 
-    return ollama
+    return get_pi_execution_service()
 
 
 def _params(kwargs: dict[str, Any]) -> TurnParams:
@@ -175,18 +177,20 @@ def _server_model_names(server: Any) -> set[str]:
     return names
 
 
-def _diverse_legacy_servers(servers: list[Any]) -> list[Any]:
-    """Match validation.py's baseline server ordering for distinct ensembles."""
-    selected: list[Any] = []
+def _diverse_legacy_routes(servers: list[Any]) -> list[tuple[Any, str]]:
+    """Choose one stable route per distinct advertised model identity."""
+    selected: list[tuple[Any, str]] = []
     seen_models: set[str] = set()
     for server in servers:
-        models = _server_model_names(server) or {getattr(server, "name", "")}
-        if models.isdisjoint(seen_models):
-            selected.append(server)
-            seen_models.update(models)
-    for server in servers:
-        if server not in selected:
-            selected.append(server)
+        models = sorted(_server_model_names(server), key=str.casefold)
+        model = next(
+            (candidate for candidate in models if candidate.casefold() not in seen_models),
+            "",
+        )
+        if not model:
+            continue
+        seen_models.add(model.casefold())
+        selected.append((server, model))
     return selected
 
 
@@ -200,58 +204,31 @@ def _legacy_endpoint_id(server: Any, data: dict[str, Any]) -> str:
 
 
 async def _completion(kwargs: dict[str, Any]) -> dict[str, Any]:
-    params = _params(kwargs)
-    messages = list(kwargs.get("messages") or [])
-    data = await _ollama().chat(
-        messages,
-        model=params.model,
-        system=kwargs.get("system"),
-        temperature=params.temperature if params.temperature is not None else 0.7,
-        max_tokens=params.max_tokens,
-        min_context=params.min_context,
-        thinking_mode=params.thinking_mode,
-        project_id=kwargs.get("project_id"),
+    return await _provider_service(kwargs).run_completion(
+        purpose=str(kwargs.get("purpose") or "legacy_completion"),
+        project_id=str(kwargs.get("project_id") or ""),
+        agent_id=str(kwargs.get("agent_id") or "istara-main"),
+        system=str(kwargs.get("system") or ""),
+        messages=list(kwargs.get("messages") or []),
+        params=_params(kwargs),
     )
-    outcome = _normalize_chat(data)
-    outcome["usage_estimation"] = _estimation_trace(
-        system=kwargs.get("system"), messages=messages, response=data.get("message") or {}
-    )
-    return outcome
 
 
 async def _structured(kwargs: dict[str, Any]) -> dict[str, Any]:
-    params = _params(kwargs)
-    schema = kwargs.get("schema") or {}
-    messages = list(kwargs.get("messages") or [])
-    data = await _ollama().chat(
-        messages,
-        model=params.model,
-        system=kwargs.get("system"),
-        temperature=params.temperature if params.temperature is not None else 0.7,
-        max_tokens=params.max_tokens,
-        min_context=params.min_context,
-        thinking_mode=params.thinking_mode,
-        project_id=kwargs.get("project_id"),
-        response_format=openai_json_schema_response_format(
-            name=str(kwargs.get("purpose") or "istara_output"), schema=schema
-        ),
+    return await _provider_service(kwargs).run_structured(
+        purpose=str(kwargs.get("purpose") or "legacy_structured"),
+        project_id=str(kwargs.get("project_id") or ""),
+        agent_id=str(kwargs.get("agent_id") or "istara-main"),
+        system=str(kwargs.get("system") or ""),
+        messages=list(kwargs.get("messages") or []),
+        schema=kwargs.get("schema") or {},
+        params=_params(kwargs),
+        repair=bool(kwargs.get("repair", True)),
     )
-    outcome = _normalize_chat(data)
-    outcome["usage_estimation"] = _estimation_trace(
-        system=kwargs.get("system"), messages=messages, response=data.get("message") or {}
-    )
-    value = parse_json_object(outcome["text"])
-    if value is None:
-        outcome["status"] = "error"
-        outcome["error"] = "legacy_structured_unparsed"
-        return outcome
-    outcome["value"] = value
-    return outcome
 
 
 _DEFAULT_TEXT_FALLBACK_FOLLOWUP = (
-    "Now respond to the user based on this result. "
-    "Do not call another tool unless necessary."
+    "Now respond to the user based on this result. Do not call another tool unless necessary."
 )
 
 # Text-fallback extraction (mirrors chat.py's baseline regex pair). Routes may
@@ -291,63 +268,13 @@ async def _emit(stream_cb: Any, event: dict[str, Any]) -> None:
         await maybe
 
 
-async def _stream_turn(
-    *,
-    history: list[dict[str, Any]],
-    system: str | None,
-    params: TurnParams,
-    tools: list[dict[str, Any]] | None,
-    project_id: str,
-    stream_cb: Any,
-    forward_tokens: bool,
-) -> dict[str, Any]:
-    """One legacy turn over ``ollama.chat_stream`` (W2 streaming surfaces).
-
-    Text chunks are forwarded per token as ``{"type": "content", ...}`` events
-    only when *forward_tokens* — the text-fallback loop must NOT stream raw
-    text because it may contain the machine-readable tool-call block. Tool-call
-    payloads arrive as a terminal dict chunk and are collected into the
-    assistant message. Streaming providers report no usage here, so accounting
-    falls to the dispatch-level estimation trace (all-or-nothing, like any
-    usage-absent legacy turn).
-    """
-    turn_parts: list[str] = []
-    tool_calls_payload: dict[str, Any] | None = None
-    async for chunk in _ollama().chat_stream(
-        messages=history,
-        model=params.model,
-        system=system,
-        temperature=params.temperature if params.temperature is not None else 0.7,
-        max_tokens=params.max_tokens,
-        tools=tools,
-        min_context=params.min_context,
-        thinking_mode=params.thinking_mode,
-        project_id=project_id,
-        strict_model_routing=params.strict_model_routing,
-    ):
-        if isinstance(chunk, dict) and chunk.get("tool_calls"):
-            tool_calls_payload = chunk
-        elif isinstance(chunk, str):
-            turn_parts.append(chunk)
-            if forward_tokens:
-                await _emit(stream_cb, {"type": "content", "text": chunk})
-    message: dict[str, Any] = {"role": "assistant", "content": "".join(turn_parts)}
-    if tool_calls_payload:
-        message["tool_calls"] = list(tool_calls_payload.get("tool_calls") or [])
-    return message
-
-
 async def _react_loop(kwargs: dict[str, Any]) -> dict[str, Any]:
-    """Legacy ReAct loop mirroring chat.py: chat -> tool_calls -> execute -> chat.
+    """Istara's Python ReAct loop over Pi-managed raw provider turns.
 
-    W2 streaming shape (``TurnParams.stream_tokens``): each turn runs over
-    ``ollama.chat_stream`` so per-token content reaches ``stream_cb`` as it
-    arrives; a ``turn_separator`` event marks the pre-tool text boundary (the
-    old SSE ``response_text + "\\n\\n"`` chunk); hallucinated tool calls (names
-    outside ``tool_names``) are filtered exactly like chat.py, optionally
-    mining user-visible text from their arguments. ``TurnParams.text_fallback``
-    selects the regex-parsed loop (no ``tools`` payload, ``[Tool: ...]``
-    conversation shaping) for models without native function calling.
+    Tool execution deliberately remains here, outside pi-agent-core. Pi Model
+    Management owns provider/model selection, secrets, limits, retries and
+    accounting for every turn. ``text_fallback`` still suppresses raw streaming
+    because its machine-readable tool block must be parsed before display.
     """
     params = _params(kwargs)
     project_id = kwargs.get("project_id") or ""
@@ -373,14 +300,9 @@ async def _react_loop(kwargs: dict[str, Any]) -> dict[str, Any]:
 
     text_parts: list[str] = []
     tool_calls_seen: list[dict[str, Any]] = []
-    # Unified source resolution (Phase 6): when the requested model resolves to
-    # a pi-managed endpoint, turns execute over the execution-only bridge under
-    # Istara identity — never advertised as pool capacity (DEC-10).
-    from .model_source import PLANE_PI_MANAGED, resolve_model_source
-
-    pi_source = await resolve_model_source(params.model)
-    if pi_source is not None and pi_source.plane != PLANE_PI_MANAGED:
-        pi_source = None  # local-direct/donation planes keep their existing paths
+    provider_service = _provider_service(kwargs)
+    served_endpoint_id: str | None = None
+    served_model: str | None = None
     # Accumulate every turn's usage so a fully-reported multi-turn tool loop
     # reports cumulative input/output/total tokens and its real turn count, not
     # just the final turn's usage. Exactness is all-or-nothing: if the whole run
@@ -406,16 +328,15 @@ async def _react_loop(kwargs: dict[str, Any]) -> dict[str, Any]:
         }
         if extra:
             outcome.update(extra)
-        if pi_source is not None:
-            # Route truth (F-11 lineage): record the serving plane + endpoint so
-            # usage/UI surfaces show exactly where the turn was served from.
-            outcome["endpoint_id"] = pi_source.endpoint_id
-            outcome["model"] = pi_source.model
+        if served_endpoint_id:
+            outcome["endpoint_id"] = served_endpoint_id
+            outcome["model"] = served_model
             outcome["route_evidence"] = {
                 "plane": "pi-managed",
-                "endpoint_id": pi_source.endpoint_id,
-                "model": pi_source.model,
-                "bridge": "execution-only",
+                "endpoint_id": served_endpoint_id,
+                "model": served_model,
+                "bridge": "provider-only",
+                "loop": "istara",
             }
         return outcome
 
@@ -425,55 +346,28 @@ async def _react_loop(kwargs: dict[str, Any]) -> dict[str, Any]:
                 "request_texts"
             ][0]
         )
-        if pi_source is not None:
-            # Execution-only bridge over the pi-managed endpoint (Phase 6):
-            # replaces the ollama-plane call for this dispatch. Tool calls use
-            # the provider's native function-calling; text_fallback's regex
-            # mining is meaningless against a cloud model, so tools stay on.
-            from .pi_bridge import stream_openai_chat
-
-            message = await stream_openai_chat(
-                source=pi_source,
-                history=history,
-                system=kwargs.get("system"),
-                temperature=params.temperature if params.temperature is not None else 0.7,
-                max_tokens=params.max_tokens,
-                tools=tools,
-                stream_cb=stream_cb,
-                forward_tokens=True,
+        provider_outcome = await provider_service.run_provider_turn(
+            purpose=str(kwargs.get("purpose") or "legacy_react"),
+            project_id=project_id,
+            agent_id=agent_id,
+            system=kwargs.get("system"),
+            messages=history,
+            tools=None if text_fallback else tools,
+            params=params,
+            stream_cb=(stream_cb if stream_tokens and not text_fallback else None),
+        )
+        if provider_outcome.get("status") != "success":
+            raise AgenticDispatchError(
+                str(provider_outcome.get("error") or "pi_provider_turn_failed")
             )
-            meta = message.pop("_bridge_meta", {}) or {}
-            turn_usages.append(meta.get("usage") or {})
-        elif text_fallback:
-            # Never forward raw tokens here: the text may carry the tool block.
-            message = await _stream_turn(
-                history=history, system=kwargs.get("system"), params=params,
-                tools=None, project_id=project_id, stream_cb=stream_cb,
-                forward_tokens=False,
-            )
-            turn_usages.append({})
-        elif stream_tokens:
-            message = await _stream_turn(
-                history=history, system=kwargs.get("system"), params=params,
-                tools=tools, project_id=project_id, stream_cb=stream_cb,
-                forward_tokens=True,
-            )
-            turn_usages.append({})
-        else:
-            data = await _ollama().chat(
-                history,
-                model=params.model,
-                system=kwargs.get("system"),
-                temperature=params.temperature if params.temperature is not None else 0.7,
-                max_tokens=params.max_tokens,
-                tools=tools,
-                min_context=params.min_context,
-                thinking_mode=params.thinking_mode,
-                project_id=project_id,
-            )
-            outcome = _normalize_chat(data)
-            turn_usages.append(outcome["usage"])
-            message = data.get("message") or {}
+        served_endpoint_id = str(provider_outcome.get("endpoint_id") or "") or None
+        served_model = str(provider_outcome.get("model") or "") or None
+        turn_usages.append(provider_outcome.get("usage") or {})
+        message = {
+            "role": "assistant",
+            "content": provider_outcome.get("text") or "",
+            "tool_calls": list(provider_outcome.get("tool_calls") or []),
+        }
         estimation_responses.append(json.dumps(message, sort_keys=True, default=str))
         turn_text = str(message.get("content") or "")
         raw_calls = list(message.get("tool_calls") or [])
@@ -515,13 +409,9 @@ async def _react_loop(kwargs: dict[str, Any]) -> dict[str, Any]:
             if tool_call and getattr(params, "suppress_budget_exhausted_text", False):
                 # The caller renders its own fallback answer for a budget-ended
                 # tool call; the raw tail (with the machine block) never streams.
-                return _outcome(
-                    "turn_budget_exceeded", extra={"budget_exhausted_tool_call": True}
-                )
+                return _outcome("turn_budget_exceeded", extra={"budget_exhausted_tool_call": True})
             final_text = (
-                turn_text.strip()
-                if getattr(params, "final_text_strip", False)
-                else turn_text
+                turn_text.strip() if getattr(params, "final_text_strip", False) else turn_text
             )
             if final_text or not getattr(params, "final_text_strip", False):
                 text_parts.append(final_text)
@@ -558,11 +448,7 @@ async def _react_loop(kwargs: dict[str, Any]) -> dict[str, Any]:
                     await _emit(stream_cb, {"type": "content", "text": extracted_text})
             elif turn_text and stream_cb is not None:
                 await _emit(stream_cb, {"type": "content", "text": turn_text})
-            stop = (
-                "turn_budget_exceeded"
-                if raw_calls and iteration >= budget
-                else "stop"
-            )
+            stop = "turn_budget_exceeded" if raw_calls and iteration >= budget else "stop"
             return _outcome(stop)
 
         if turn_text.strip():
@@ -576,142 +462,50 @@ async def _react_loop(kwargs: dict[str, Any]) -> dict[str, Any]:
             tool_calls_seen.append({"tool": name, "params": arguments})
             await _emit(stream_cb, {"type": "tool_call", "tool": name, "params": arguments})
             result = await tool_executor(name, arguments, project_id, agent_id)
-            history.append({"role": "tool", "content": json.dumps(result, default=str)})
+            history.append(
+                {
+                    "role": "tool",
+                    "tool_call_id": call.get("id"),
+                    "name": name,
+                    "content": json.dumps(result, default=str),
+                }
+            )
     raise AssertionError("unreachable")
 
 
 async def _embed(kwargs: dict[str, Any]) -> dict[str, Any]:
     params = _params(kwargs)
-    # OllamaClient.embed_batch has no project_id kwarg (latent W1 bug: passing
-    # it raised TypeError on the real client, degrading every caller to its
-    # empty-embedding fallback). Project scoping enters through the
-    # dispatcher's engine resolution, not the client call.
-    vectors = await _ollama().embed_batch(
-        list(kwargs.get("texts") or []), model=params.model
-    )
-    return {"embeddings": vectors, "usage": {"estimate": False}, "status": "success"}
+    gateway = kwargs.get("embeddings_gateway")
+    if gateway is None:
+        from app.core.pi_runtime.embeddings_gateway import EmbeddingsGateway
+
+        gateway = EmbeddingsGateway(manager=_provider_service(kwargs).model_manager())
+    return await gateway.embed(list(kwargs.get("texts") or []), model=params.model)
 
 
 async def _ensemble(kwargs: dict[str, Any]) -> dict[str, Any]:
-    """Run legacy samples, preserving baseline distinct-server semantics.
+    """Run ensemble samples through Pi's identity-distinct model authority.
 
-    ``distinct=True`` is the W7 dual/full-ensemble contract. The old validation
-    path selected healthy, diverse servers and called each server directly; it
-    did not make repeated calls through the registry's generic selection route.
-    Keep that behavior here when the dispatcher resolves to legacy, otherwise a
-    default/overridden legacy engine silently collapses the ensemble onto one
-    route.
+    Engine choice cannot change the research raters. A legacy-mode caller keeps
+    its surrounding Istara semantics, while selection and execution of every
+    independent model are delegated to Pi Model Management exactly as in Pi
+    mode. When an older caller asks for an optional spare, the governed minimum
+    is used so three admitted models remain sufficient for a three-rater gate.
     """
     n = int(kwargs.get("n") or 1)
-    temperatures = kwargs.get("temperatures") or []
-    samples: list[dict[str, Any]] = []
-
     if kwargs.get("distinct"):
-        from app.core.llm_router import llm_router
-
-        # Full ensemble dispatch asks for one optional spare (n = minimum + 1),
-        # but the legacy contract only requires the minimum number of healthy
-        # distinct servers.  Pi still treats n as its exact distinct width.
-        minimum_n = int(kwargs.get("minimum_n") or n)
-        minimum_n = max(1, min(minimum_n, n))
-        servers = _diverse_legacy_servers(
-            [
-                server
-                for server in llm_router._sorted_servers(project_id=kwargs.get("project_id"))
-                if getattr(server, "is_healthy", False)
-            ]
-        )
-        if len(servers) < minimum_n:
-            raise AgenticDispatchError("insufficient_distinct_legacy_servers")
-
-        params = _params(kwargs)
-        messages = list(kwargs.get("messages") or [])
-        system = kwargs.get("system")
-        if system:
-            messages = [{"role": "system", "content": system}, *messages]
-        for index, server in enumerate(servers[:n]):
-            temperature = params.temperature if params.temperature is not None else 0.7
-            if index < len(temperatures) and temperatures[index] is not None:
-                temperature = float(temperatures[index])
-            try:
-                data = await server.chat(
-                    messages,
-                    model=params.model,
-                    temperature=temperature,
-                    max_tokens=params.max_tokens,
-                    min_context=params.min_context,
-                    thinking_mode=params.thinking_mode,
-                    project_id=kwargs.get("project_id"),
-                )
-                outcome = _normalize_chat(data)
-                outcome["endpoint_id"] = _legacy_endpoint_id(server, data)
-                outcome["usage_estimation"] = _estimation_trace(
-                    system=system, messages=messages, response=data.get("message") or {}
-                )
-            except Exception as exc:
-                logger.warning(
-                    "Legacy distinct ensemble server %s failed: %s",
-                    getattr(server, "name", ""),
-                    exc,
-                )
-                outcome = {
-                    "text": "",
-                    "usage": {},
-                    "usage_estimation": _estimation_trace(
-                        system=system, messages=messages, response={}
-                    ),
-                    "stop_reason": "error",
-                    "tool_calls": [],
-                    "status": "error",
-                    "error": str(exc),
-                    "endpoint_id": _legacy_endpoint_id(server, {}),
-                }
-            samples.append(outcome)
-            successful = sum(
-                sample.get("status") == "success" and bool(sample.get("text"))
-                for sample in samples
-            )
-            if successful >= minimum_n:
-                break
-    else:
-        for index in range(n):
-            call_kwargs = dict(kwargs)
-            if index < len(temperatures) and temperatures[index] is not None:
-                call_kwargs["params"] = _with_temperature(
-                    _params(kwargs), float(temperatures[index])
-                )
-            samples.append(await _completion(call_kwargs))
-    # A distinct ensemble may use an optional spare: a failed early sample is
-    # preserved in ``samples`` for diagnostics, but does not make the dispatch
-    # an error once the requested minimum width has been satisfied.
-    successful = sum(
-        sample.get("status") == "success" and bool(sample.get("text"))
-        for sample in samples
+        n = max(1, min(int(kwargs.get("minimum_n") or n), n))
+    return await _provider_service(kwargs).run_ensemble(
+        purpose=str(kwargs.get("purpose") or "legacy_ensemble"),
+        project_id=str(kwargs.get("project_id") or ""),
+        agent_id=str(kwargs.get("agent_id") or "istara-main"),
+        system=str(kwargs.get("system") or ""),
+        messages=list(kwargs.get("messages") or []),
+        n=n,
+        distinct=bool(kwargs.get("distinct")),
+        temperatures=kwargs.get("temperatures"),
+        params=_params(kwargs),
     )
-    aggregate_success = (
-        successful >= minimum_n
-        if kwargs.get("distinct")
-        else all(sample.get("status") == "success" for sample in samples)
-    )
-    return {
-        "samples": samples,
-        "endpoint_ids": [sample.get("endpoint_id") or "legacy" for sample in samples],
-        "usage": _sum_usage(samples),
-        "usage_estimation": {
-            "request_texts": [
-                text
-                for sample in samples
-                for text in (sample.get("usage_estimation") or {}).get("request_texts", [])
-            ],
-            "response_texts": [
-                text
-                for sample in samples
-                for text in (sample.get("usage_estimation") or {}).get("response_texts", [])
-            ],
-            "turns": len(samples),
-        },
-        "status": "success" if aggregate_success else "error",
-    }
 
 
 def _with_temperature(params: TurnParams, temperature: float) -> TurnParams:

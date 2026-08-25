@@ -1193,10 +1193,11 @@
         "settings.connection-strings"
       ],
       "researcher_url": "features/settings/llm-servers/researcher.html",
-      "title": "LLM Server Settings",
+      "title": "Legacy LLM Server Compatibility",
       "ui_path": [
         "Settings",
-        "LLM Servers"
+        "Pi Model Management",
+        "Legacy Compatibility"
       ]
     },
     {
@@ -1574,7 +1575,7 @@
       ]
     }
   ],
-  "generated_at": "2026-08-23T19:53:46.420955+00:00",
+  "generated_at": "2026-08-25T00:01:59.501009+00:00",
   "search_index": "docs/features/site/search-index.json",
   "site_entrypoint": "docs/features/site/index.html",
   "source_inventory": "docs/features/inventory.json",

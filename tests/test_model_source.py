@@ -25,6 +25,9 @@ class _FakeManager:
     def catalog(self):
         return [_FakeEndpointInfo(*e) for e in self._endpoints]
 
+    async def ensure_db_projection(self):
+        return None
+
     def resolve(self, *, endpoint_id=None, model=None, **_kw):
         target = None
         for entry in self._endpoints:
@@ -66,6 +69,21 @@ async def test_explicit_model_resolves_to_pi_managed(monkeypatch):
     source = await ms.resolve_model_source("deepseek-v4-pro")
     assert source is not None and source.plane == "pi-managed"
     assert source.endpoint_id == "ep1" and source.api_key  # executable secret present
+
+
+@pytest.mark.asyncio
+async def test_legacy_loop_source_loads_persisted_pi_catalog_before_selection(monkeypatch):
+    from app.core.agentic import model_source as ms
+
+    class _ProjectedManager(_FakeManager):
+        async def ensure_db_projection(self):
+            self._endpoints.append(("pi-llm-persisted", "persisted-model", "openai_compat"))
+
+    monkeypatch.setattr(ms, "_pi_manager", lambda: _ProjectedManager([]))
+    source = await ms.resolve_model_source("persisted-model")
+
+    assert source is not None
+    assert source.endpoint_id == "pi-llm-persisted"
 
 
 @pytest.mark.asyncio

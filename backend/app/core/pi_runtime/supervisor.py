@@ -20,19 +20,28 @@ import logging
 import os
 import time
 import uuid
+from collections.abc import AsyncIterator, Awaitable, Callable
 from pathlib import Path
-from typing import Any, AsyncIterator, Awaitable, Callable
+from typing import Any
 
-from .protocol import MAX_CHUNK_DATA_BYTES, MAX_HISTORY_MESSAGES, MAX_LINE_BYTES, PROTOCOL_VERSION, TERMINAL_RUN_TYPES
+from .protocol import (
+    MAX_CHUNK_DATA_BYTES,
+    MAX_HISTORY_MESSAGES,
+    MAX_LINE_BYTES,
+    PROTOCOL_VERSION,
+    TERMINAL_RUN_TYPES,
+)
 
 logger = logging.getLogger(__name__)
 
 # Worker entry resolution: PI_WORKER_ENTRY env wins (container layouts differ
 # from source checkouts), else the repo-relative default from this file's depth.
 _REPO_ROOT = Path(__file__).resolve().parents[4]
-DEFAULT_WORKER_ENTRY = Path(
-    os.environ.get("PI_WORKER_ENTRY", "").strip()
-) if os.environ.get("PI_WORKER_ENTRY", "").strip() else _REPO_ROOT / "pi-runtime" / "src" / "worker.mjs"
+DEFAULT_WORKER_ENTRY = (
+    Path(os.environ.get("PI_WORKER_ENTRY", "").strip())
+    if os.environ.get("PI_WORKER_ENTRY", "").strip()
+    else _REPO_ROOT / "pi-runtime" / "src" / "worker.mjs"
+)
 
 ToolHandler = Callable[[str, dict[str, Any]], Awaitable[dict[str, Any]]]
 
@@ -120,10 +129,12 @@ class PiRuntimeSupervisor:
             self._ready.clear()
             self._reader_task = asyncio.create_task(self._read_loop())
             self._stderr_task = asyncio.create_task(self._drain_stderr())
-            await self._send({"v": PROTOCOL_VERSION, "type": "hello", "protocol_version": PROTOCOL_VERSION})
+            await self._send(
+                {"v": PROTOCOL_VERSION, "type": "hello", "protocol_version": PROTOCOL_VERSION}
+            )
             try:
                 await asyncio.wait_for(self._ready.wait(), timeout=self._handshake_timeout)
-            except asyncio.TimeoutError as exc:
+            except TimeoutError as exc:
                 await self._force_stop()
                 raise PiWorkerError("handshake_timeout") from exc
             if self._fatal is not None:
@@ -172,14 +183,21 @@ class PiRuntimeSupervisor:
                 offset = end
             chunk_id = f"py-{uuid.uuid4().hex}"
             line = b"".join(
-                (json.dumps({
-                    "v": PROTOCOL_VERSION,
-                    "type": "payload.chunk",
-                    "chunk_id": chunk_id,
-                    "seq": index,
-                    "total": len(parts),
-                    "data": part.decode("utf-8"),
-                }, separators=(",", ":"), ensure_ascii=False) + "\n").encode("utf-8")
+                (
+                    json.dumps(
+                        {
+                            "v": PROTOCOL_VERSION,
+                            "type": "payload.chunk",
+                            "chunk_id": chunk_id,
+                            "seq": index,
+                            "total": len(parts),
+                            "data": part.decode("utf-8"),
+                        },
+                        separators=(",", ":"),
+                        ensure_ascii=False,
+                    )
+                    + "\n"
+                ).encode("utf-8")
                 for index, part in enumerate(parts, start=1)
             )
         async with self._write_lock:
@@ -326,7 +344,9 @@ class PiRuntimeSupervisor:
                 )
                 frame = await asyncio.wait_for(queue.get(), timeout=self._handshake_timeout)
                 if frame.get("type") != "session.opened":
-                    raise PiWorkerError(f"session_open_failed:{frame.get('error') or frame.get('type')}")
+                    raise PiWorkerError(
+                        f"session_open_failed:{frame.get('error') or frame.get('type')}"
+                    )
             except Exception:
                 self._sessions.pop(session_key, None)
                 raise
@@ -394,7 +414,11 @@ class PiRuntimeSupervisor:
                         continue
                     ftype = frame.get("type")
                     if ftype == "fatal":
-                        yield {"type": "run.failed", "run_id": run_id, "error": frame.get("error", "fatal")}
+                        yield {
+                            "type": "run.failed",
+                            "run_id": run_id,
+                            "error": frame.get("error", "fatal"),
+                        }
                         return
                     if ftype == "tool.call":
                         outcome = await self._safe_tool_call(tool_handler, frame)
@@ -418,7 +442,60 @@ class PiRuntimeSupervisor:
             finally:
                 self._session_runs.pop(session_key, None)
 
-    async def _safe_tool_call(self, tool_handler: ToolHandler, frame: dict[str, Any]) -> dict[str, Any]:
+    async def run_provider_turn(
+        self,
+        session_key: str,
+        messages: list[dict[str, Any]],
+        tools: list[dict[str, Any]],
+    ) -> AsyncIterator[dict[str, Any]]:
+        """Drive one raw provider turn without worker-side tool execution.
+
+        This preserves the legacy Istara loop as the sole owner of its tool
+        iterations while retaining the Pi worker's provider binding, secret,
+        retry, timeout, cost, and protocol boundaries.
+        """
+        queue = self._sessions.get(session_key)
+        if queue is None:
+            raise PiWorkerError("unknown_session")
+        self._run_counter += 1
+        run_id = f"run-{self._run_counter}"
+        lock = self._session_locks.setdefault(session_key, asyncio.Lock())
+        async with lock:
+            if session_key in self._session_runs:
+                raise PiWorkerError("session_busy")
+            self._session_runs[session_key] = run_id
+            await self._send(
+                {
+                    "v": PROTOCOL_VERSION,
+                    "type": "provider.turn",
+                    "session_key": session_key,
+                    "run_id": run_id,
+                    "messages": messages,
+                    "tools": tools,
+                }
+            )
+            try:
+                while True:
+                    frame = await asyncio.wait_for(queue.get(), timeout=self._run_timeout)
+                    frame_run_id = frame.get("run_id")
+                    if frame_run_id is not None and frame_run_id != run_id:
+                        continue
+                    if frame.get("type") == "fatal":
+                        yield {
+                            "type": "run.failed",
+                            "run_id": run_id,
+                            "error": frame.get("error", "fatal"),
+                        }
+                        return
+                    yield frame
+                    if frame.get("type") in TERMINAL_RUN_TYPES:
+                        return
+            finally:
+                self._session_runs.pop(session_key, None)
+
+    async def _safe_tool_call(
+        self, tool_handler: ToolHandler, frame: dict[str, Any]
+    ) -> dict[str, Any]:
         try:
             return await tool_handler(frame.get("name", ""), frame.get("arguments") or {})
         except Exception as exc:  # authority errors never kill the run
@@ -464,14 +541,16 @@ class PiRuntimeSupervisor:
         if queue is None:
             return
         try:
-            await self._send({"v": PROTOCOL_VERSION, "type": "session.close", "session_key": session_key})
+            await self._send(
+                {"v": PROTOCOL_VERSION, "type": "session.close", "session_key": session_key}
+            )
             # Best-effort wait for the ack, but never hang teardown on it.
             try:
                 while True:
                     frame = await asyncio.wait_for(queue.get(), timeout=5.0)
                     if frame.get("type") in ("session.closed", "fatal"):
                         break
-            except asyncio.TimeoutError:
+            except TimeoutError:
                 pass
         finally:
             self._sessions.pop(session_key, None)
@@ -485,7 +564,7 @@ class PiRuntimeSupervisor:
                 await self._send({"v": PROTOCOL_VERSION, "type": "shutdown"})
                 try:
                     await asyncio.wait_for(self._proc.wait(), timeout=5.0)
-                except asyncio.TimeoutError:
+                except TimeoutError:
                     await self._force_stop()
         except Exception:  # pragma: no cover - defensive teardown
             await self._force_stop()
@@ -504,11 +583,11 @@ class PiRuntimeSupervisor:
             self._proc.terminate()
             try:
                 await asyncio.wait_for(self._proc.wait(), timeout=3.0)
-            except asyncio.TimeoutError:
+            except TimeoutError:
                 self._proc.kill()
                 try:
                     await asyncio.wait_for(self._proc.wait(), timeout=3.0)
-                except asyncio.TimeoutError:  # pragma: no cover
+                except TimeoutError:  # pragma: no cover
                     pass
         await self._cancel_tasks()
 

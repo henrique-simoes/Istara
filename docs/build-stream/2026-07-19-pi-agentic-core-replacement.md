@@ -18,7 +18,7 @@ Build a real, isolated Pi-backed replacement candidate for Istara's agentic mana
 core so the existing Istara harness can run against both the native baseline and the
 Pi-wired candidate.
 
-The candidate lives only in `/Users/user/Documents/Istara-main-pi-replacement` on branch
+The candidate lives only in `<repo-root>-pi-replacement` on branch
 `comparison/pi-replacement-core`. The main Istara worktree remains untouched except for
 comparison artifacts under `comparison-Istara-pi/`.
 

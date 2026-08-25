@@ -25,7 +25,12 @@ import {
   exerciseResearchSpineValidation,
   exerciseSelfImprovementGovernance,
 } from "./lib/research-spine-probes.mjs";
-import { scoreRun, writeScorecardMarkdown } from "./lib/scoring.mjs";
+import {
+  benchmarkExitCode,
+  liveAcceptanceBlockers,
+  scoreRun,
+  writeScorecardMarkdown,
+} from "./lib/scoring.mjs";
 import {
   buildDonorModelSandboxConfig,
   dockerArgsForDonorModelSandbox,
@@ -35,6 +40,11 @@ import {
   validateDonorModelSandbox,
 } from "./lib/donor-sandboxes.mjs";
 import { inferProviderType } from "../../relay/lib/llm-proxy.mjs";
+import {
+  buildBenchmarkProvenance,
+  resolveGitCommitWithoutGit,
+  validateBenchmarkProvenance,
+} from "./lib/provenance.mjs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const repoRoot = resolve(__dirname, "../..");
@@ -44,6 +54,9 @@ const benchmarkRegistryPath = join(__dirname, "benchmark-registry.json");
 const systemPromptContent = readFileSync(systemPromptPath, "utf8");
 const benchmarkRegistry = JSON.parse(readFileSync(benchmarkRegistryPath, "utf8"));
 const systemPromptHash = createHash("sha256").update(systemPromptContent).digest("hex");
+const benchmarkRegistryHash = createHash("sha256")
+  .update(readFileSync(benchmarkRegistryPath))
+  .digest("hex");
 const systemPromptVersion = systemPromptContent.match(/^Version:\s*(.+)$/m)?.[1]?.trim() || "unknown";
 const LIVE_LLM_ENV_FILES = [
   join(repoRoot, ".env"),
@@ -884,12 +897,29 @@ let latestColimaStorageSnapshot = null;
 
 const logger = new BenchmarkLogger({ rootDir: resultsRoot, runId, mode });
 logger.init();
+const benchmarkProvenance = buildBenchmarkProvenance({
+  sourceSha: process.env.ISTARA_BENCHMARK_SOURCE_SHA || resolveGitCommitWithoutGit(repoRoot),
+  sourceState: process.env.ISTARA_BENCHMARK_SOURCE_STATE,
+  runnerImage: process.env.ISTARA_BENCHMARK_RUNNER_IMAGE,
+  runnerImageId: process.env.ISTARA_BENCHMARK_RUNNER_IMAGE_ID,
+  backendImageId: process.env.ISTARA_BENCHMARK_BACKEND_IMAGE_ID,
+  frontendImageId: process.env.ISTARA_BENCHMARK_FRONTEND_IMAGE_ID,
+  engine: benchmarkAgentEngine,
+  isolation: process.env.ISTARA_BENCHMARK_STATE_ISOLATION,
+  stackProject: process.env.ISTARA_BENCHMARK_STACK_PROJECT,
+  runGroup: process.env.ISTARA_BENCHMARK_RUN_GROUP,
+  runOrder: process.env.ISTARA_BENCHMARK_RUN_ORDER,
+  armIndex: Number.parseInt(process.env.ISTARA_BENCHMARK_ARM_INDEX || "0", 10),
+  sourceSnapshotSha256: process.env.ISTARA_BENCHMARK_SOURCE_SNAPSHOT_SHA256,
+});
 logger.writeJson("run-metadata.json", {
   run_id: runId,
   mode,
   started_at: new Date().toISOString(),
   cwd: process.cwd(),
   node: process.version,
+  provenance: benchmarkProvenance,
+  benchmark_registry_sha256: benchmarkRegistryHash,
   system_prompt: {
     source_path: systemPromptPath,
     version: systemPromptVersion,
@@ -959,6 +989,10 @@ logger.action("benchmark.registry.loaded", {
 logger.appendReport(`# Istara Real User Benchmark Report\n\nRun ID: ${runId}\nMode: ${mode}\nStarted: ${new Date().toISOString()}\n\n`);
 
 const blockers = [];
+if (boolEnv("ISTARA_BENCHMARK_REQUIRE_REPRODUCIBLE_RUN", mode === "full")) {
+  blockers.push(...validateBenchmarkProvenance(benchmarkProvenance));
+}
+let securityIntegrityBaseline = null;
 const featureResults = {
   uiVisited: false,
   uiOnboarding: false,
@@ -3244,7 +3278,16 @@ async function authenticateResearcherActors(inviteResults) {
 }
 
 async function linkProjectFolder(api, projectId, corpusDir) {
-  const folderPath = startSandbox && !skipSandbox ? `/benchmark-results/runs/${runId}/corpus` : corpusDir;
+  const folderPath = String(process.env.ISTARA_BENCHMARK_SHARED_CORPUS_DIR || "").trim()
+    || (startSandbox && !skipSandbox ? `/benchmark-results/runs/${runId}/corpus` : "");
+  if (!folderPath) {
+    logger.action("project.folder_link.skip", {
+      project_id: projectId,
+      reason: "No corpus path shared by both runner and backend; uploads remain the authoritative ingestion path.",
+      runner_corpus_path: corpusDir,
+    });
+    return false;
+  }
   try {
     const linked = await api.post(`/api/projects/${projectId}/link-folder`, { folder_path: folderPath });
     logger.action("project.folder_linked", { project_id: projectId, folder_path: folderPath, result: linked });
@@ -3778,6 +3821,7 @@ async function runTaskAgentPass(api, projectId, task, plan, uploaded, { revision
     actor_role: actor?.role || "",
     weak_first_pass: weakFirstPass,
     response_chars: content.length,
+    response_preview: content.slice(0, 1200),
     event_count: response.events?.length || 0,
     session_id: response.session_id || "",
   });
@@ -4412,6 +4456,29 @@ async function main() {
     });
   }
 
+  if (auth.ok) {
+    try {
+      securityIntegrityBaseline = await api.get("/api/settings/security-integrity");
+      logger.writeJson("security-integrity-baseline.json", securityIntegrityBaseline);
+      const fieldHealth = securityIntegrityBaseline?.field_encryption || {};
+      if (fieldHealth.healthy !== true || Number(fieldHealth.decryption_failures || 0) > 0) {
+        blockers.push("Field-encryption integrity was already degraded before benchmark work began.");
+      }
+      const telemetryHealth = securityIntegrityBaseline?.telemetry_writes || {};
+      if (telemetryHealth.healthy !== true || Number(telemetryHealth.write_failures || 0) > 0) {
+        blockers.push("Telemetry evidence persistence was already degraded before benchmark work began.");
+      }
+    } catch (error) {
+      blockers.push("Security-integrity health could not be verified before the benchmark.");
+      logger.issue({
+        area: "security-integrity",
+        severity: "critical",
+        title: "Security integrity baseline unavailable",
+        detail: error.message,
+      });
+    }
+  }
+
   let project = null;
   let uploaded = [];
   let connectionStrings = {};
@@ -4630,7 +4697,7 @@ async function main() {
       blockers,
       codingValidationEnabled,
       codingValidationLimit,
-      expectedDistinctCoders: expectedResearchSpineDonorRoutes,
+      expectedDistinctCoders: codingValidationEnabled ? 3 : 0,
       expectedDistinctDonorRoutes: expectedResearchSpineDonorRoutes,
     });
     await exerciseSelfImprovementGovernance({
@@ -4651,8 +4718,41 @@ async function main() {
     await recordNaturalComputeOrchestration(api, project.id, computeBeforeResearch, "after-collaborative-research");
   }
 
+  blockers.push(...liveAcceptanceBlockers({
+    maxChatTurns,
+    chatTurnCount,
+    maxTasks,
+    completedTasks,
+    codingValidationEnabled,
+    featureResults,
+  }));
   if (mode === "full" && chatTurnCount < 100) blockers.push(`Full run completed only ${chatTurnCount}/100 required chat turns.`);
   if (mode === "full" && completedTasks < 50) blockers.push(`Full run completed only ${completedTasks}/50 required reviewed tasks.`);
+
+  if (auth.ok) {
+    try {
+      const finalIntegrity = await api.get("/api/settings/security-integrity");
+      logger.writeJson("security-integrity-final.json", finalIntegrity);
+      const baselineFailures = Number(securityIntegrityBaseline?.field_encryption?.decryption_failures || 0);
+      const finalFailures = Number(finalIntegrity?.field_encryption?.decryption_failures || 0);
+      if (finalIntegrity?.field_encryption?.healthy !== true || finalFailures > baselineFailures) {
+        blockers.push(`Field-encryption integrity failed during the benchmark (${baselineFailures} -> ${finalFailures}).`);
+      }
+      const baselineTelemetryFailures = Number(securityIntegrityBaseline?.telemetry_writes?.write_failures || 0);
+      const finalTelemetryFailures = Number(finalIntegrity?.telemetry_writes?.write_failures || 0);
+      if (finalIntegrity?.telemetry_writes?.healthy !== true || finalTelemetryFailures > baselineTelemetryFailures) {
+        blockers.push(`Telemetry evidence persistence failed during the benchmark (${baselineTelemetryFailures} -> ${finalTelemetryFailures}).`);
+      }
+    } catch (error) {
+      blockers.push("Security-integrity health could not be verified after the benchmark.");
+      logger.issue({
+        area: "security-integrity",
+        severity: "critical",
+        title: "Security integrity final check unavailable",
+        detail: error.message,
+      });
+    }
+  }
 
   captureColimaStorageSnapshot("before-scorecard", { recordIssue: true });
   const scorecard = scoreRun({
@@ -4775,6 +4875,7 @@ async function main() {
   cleanupDonorModelSandboxes();
   stopColimaIfRequested("run-complete");
   logger.finalize({ scorecard, project_id: project?.id || "", uploaded_documents: uploaded.length });
+  process.exitCode = benchmarkExitCode({ mode, blockers });
 }
 
 main().catch((error) => {

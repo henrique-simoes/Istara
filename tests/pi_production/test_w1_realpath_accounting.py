@@ -3,8 +3,8 @@
 The delta review found the green ledger suite proved the accounting rules only
 against hand-built usage dicts. These tests exercise the REAL seams end to end:
 
-* the real legacy executor (``legacy.py`` ``_normalize_chat``/``_react_loop``)
-  driving a scripted ``ollama.chat``, so a multi-turn ReAct loop persists
+* the real Istara legacy executor (``legacy.py`` ``_react_loop``) driving a
+  scripted Pi provider authority, so a multi-turn ReAct loop persists
   *cumulative* provider usage with the real turn count, provider-reported usage
   is exact, and *absent* provider usage is estimated by the ledger (never a
   fabricated exact-zero row); and
@@ -40,21 +40,43 @@ from app.models.database import async_session, init_db
 from .harness import requires_node
 
 
-class _FakeOllama:
-    """Scripted stand-in for ``app.core.ollama.ollama``: returns ollama-shaped
-    ``chat`` responses so the REAL legacy executor runs unmodified (no stubbing
-    of ``_normalize_chat`` or the ReAct accumulation itself)."""
+class _ScriptedPiAuthority:
+    """Scripted Pi Model Management seam used by the real Istara loop."""
 
     def __init__(self, responses: list[dict[str, Any]]) -> None:
         self._responses = list(responses)
         self._index = 0
         self.calls = 0
 
-    async def chat(self, messages, **kwargs):  # noqa: ANN001 - mirrors ollama.chat
+    def _next(self) -> dict[str, Any]:
         self.calls += 1
         response = self._responses[min(self._index, len(self._responses) - 1)]
         self._index += 1
-        return response
+        return legacy._normalize_chat(response)
+
+    async def run_provider_turn(self, **kwargs):
+        outcome = self._next()
+        outcome.update(endpoint_id="pi-scripted", model="gpt-x")
+        return outcome
+
+    async def run_completion(self, **kwargs):
+        outcome = self._next()
+        outcome.update(endpoint_id="pi-scripted", model="gpt-x")
+        return outcome
+
+    async def run_ensemble(self, **kwargs):
+        samples = [await self.run_completion(**kwargs) for _ in range(kwargs["n"])]
+        return {
+            "samples": samples,
+            "endpoint_ids": [sample["endpoint_id"] for sample in samples],
+            "usage": legacy._sum_usage(samples),
+            "usage_estimation": {
+                "request_texts": [json.dumps(kwargs["messages"])] * len(samples),
+                "response_texts": [sample["text"] for sample in samples],
+                "turns": len(samples),
+            },
+            "status": "success",
+        }
 
 
 async def _usage_rows(project_id: str) -> list[AgenticUsageRow]:
@@ -78,7 +100,7 @@ async def test_real_legacy_react_accumulates_multi_turn_usage(monkeypatch):
     the actual turn count — not the final turn's usage recorded as one turn."""
     await init_db()
     project_id = _pid()
-    fake = _FakeOllama([
+    fake = _ScriptedPiAuthority([
         # Turn 1: a tool call; provider reports 100 in / 10 out.
         {"message": {"content": "", "tool_calls": [
             {"function": {"name": "search_documents", "arguments": {}}}]},
@@ -87,12 +109,11 @@ async def test_real_legacy_react_accumulates_multi_turn_usage(monkeypatch):
         {"message": {"content": "final answer"},
          "prompt_eval_count": 200, "eval_count": 20},
     ])
-    monkeypatch.setattr(legacy, "_ollama", lambda: fake)
 
     async def tool_executor(name, arguments, pid, aid):
         return {"ok": True, "result": "done"}
 
-    result = await AgenticDispatcher().react(
+    result = await AgenticDispatcher(pi_service=fake).react(
         purpose="w1.realacct.react", project_id=project_id, agent_id="istara-main",
         session_key=None, system="system", messages=[], user_text="do the task",
         tool_executor=tool_executor, tool_names=["search_documents"],
@@ -115,13 +136,12 @@ async def test_real_legacy_provider_usage_is_exact(monkeypatch):
     unestimated ledger row."""
     await init_db()
     project_id = _pid()
-    fake = _FakeOllama([
+    fake = _ScriptedPiAuthority([
         {"message": {"content": "ok"},
          "usage": {"prompt_tokens": 55, "completion_tokens": 21, "total_tokens": 76}},
     ])
-    monkeypatch.setattr(legacy, "_ollama", lambda: fake)
 
-    await AgenticDispatcher().completion(
+    await AgenticDispatcher(pi_service=fake).completion(
         purpose="w1.realacct.exact", project_id=project_id, system="system",
         messages=[{"role": "user", "content": "hello"}], params=TurnParams(model="gpt-x"),
         engine="legacy",
@@ -140,12 +160,11 @@ async def test_real_legacy_absent_usage_is_estimated(monkeypatch):
     estimated — never a fabricated exact-zero row that suppresses estimation."""
     await init_db()
     project_id = _pid()
-    fake = _FakeOllama([
+    fake = _ScriptedPiAuthority([
         {"message": {"content": "an answer with no usage block at all"}},
     ])
-    monkeypatch.setattr(legacy, "_ollama", lambda: fake)
 
-    await AgenticDispatcher().completion(
+    await AgenticDispatcher(pi_service=fake).completion(
         purpose="w1.realacct.estimate", project_id=project_id, system="system prompt",
         messages=[{"role": "user", "content": "hello"}], params=TurnParams(model="gpt-x"),
         engine="legacy",
@@ -167,7 +186,7 @@ async def test_real_legacy_react_mixed_usage_is_estimated_not_partial_exact(monk
     The ledger must instead estimate the complete dispatch and flag it."""
     await init_db()
     project_id = _pid()
-    fake = _FakeOllama([
+    fake = _ScriptedPiAuthority([
         # Turn 1: a tool call; provider reports 100 in / 10 out.
         {"message": {"content": "", "tool_calls": [
             {"function": {"name": "search_documents", "arguments": {}}}]},
@@ -175,12 +194,11 @@ async def test_real_legacy_react_mixed_usage_is_estimated_not_partial_exact(monk
         # Turn 2: final text; provider reports NO usage at all.
         {"message": {"content": "final answer"}},
     ])
-    monkeypatch.setattr(legacy, "_ollama", lambda: fake)
 
     async def tool_executor(name, arguments, pid, aid):
         return {"ok": True, "result": "done"}
 
-    result = await AgenticDispatcher().react(
+    result = await AgenticDispatcher(pi_service=fake).react(
         purpose="w1.realacct.react.mixed", project_id=project_id, agent_id="istara-main",
         session_key=None, system="system", messages=[], user_text="do the task",
         tool_executor=tool_executor, tool_names=["search_documents"],
@@ -206,13 +224,12 @@ async def test_real_legacy_ensemble_all_reported_usage_is_exact_cumulative(monke
     must keep intact."""
     await init_db()
     project_id = _pid()
-    fake = _FakeOllama([
+    fake = _ScriptedPiAuthority([
         {"message": {"content": "a"}, "prompt_eval_count": 100, "eval_count": 10},
         {"message": {"content": "b"}, "prompt_eval_count": 200, "eval_count": 20},
     ])
-    monkeypatch.setattr(legacy, "_ollama", lambda: fake)
 
-    result = await AgenticDispatcher().ensemble(
+    result = await AgenticDispatcher(pi_service=fake).ensemble(
         purpose="w1.realacct.ensemble.exact", project_id=project_id, system="system",
         messages=[{"role": "user", "content": "hello"}], n=2,
         params=TurnParams(model="gpt-x"), engine="legacy",
@@ -235,13 +252,12 @@ async def test_real_legacy_ensemble_mixed_usage_is_estimated_not_partial_exact(m
     dispatch, never the reported subset (input=100/output=10) persisted exact."""
     await init_db()
     project_id = _pid()
-    fake = _FakeOllama([
+    fake = _ScriptedPiAuthority([
         {"message": {"content": "a"}, "prompt_eval_count": 100, "eval_count": 10},
         {"message": {"content": "b with no usage block"}},  # provider reports nothing
     ])
-    monkeypatch.setattr(legacy, "_ollama", lambda: fake)
 
-    result = await AgenticDispatcher().ensemble(
+    result = await AgenticDispatcher(pi_service=fake).ensemble(
         purpose="w1.realacct.ensemble.mixed", project_id=project_id, system="system prompt",
         messages=[{"role": "user", "content": "hello"}], n=2,
         params=TurnParams(model="gpt-x"), engine="legacy",

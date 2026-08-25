@@ -1016,7 +1016,7 @@
     },
     {
       "id": "settings.llm-servers",
-      "title": "LLM Server Settings"
+      "title": "Legacy LLM Server Compatibility"
     },
     {
       "id": "settings.users",

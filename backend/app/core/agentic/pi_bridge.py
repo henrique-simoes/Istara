@@ -27,9 +27,7 @@ logger = logging.getLogger(__name__)
 _DEFAULT_TIMEOUT_S = 300.0
 
 
-def _message_payload(
-    *, history: list[dict[str, Any]], system: str | None
-) -> list[dict[str, Any]]:
+def _message_payload(*, history: list[dict[str, Any]], system: str | None) -> list[dict[str, Any]]:
     messages: list[dict[str, Any]] = []
     if system:
         messages.append({"role": "system", "content": system})
@@ -105,8 +103,6 @@ async def stream_openai_chat(
         )
         return urllib.request.urlopen(request, timeout=_DEFAULT_TIMEOUT_S)
 
-    import time as _time
-
     async def _open_with_retry():
         # Provider edge protection challenges bursts intermittently (403 HTML
         # / 429 / 5xx). One bounded backoff-retry keeps long research runs
@@ -144,8 +140,7 @@ async def stream_openai_chat(
                     "input_tokens": raw.get("prompt_tokens", 0) or 0,
                     "output_tokens": raw.get("completion_tokens", 0) or 0,
                     "total_tokens": raw.get("total_tokens")
-                    or (raw.get("prompt_tokens", 0) or 0)
-                    + (raw.get("completion_tokens", 0) or 0),
+                    or (raw.get("prompt_tokens", 0) or 0) + (raw.get("completion_tokens", 0) or 0),
                     "estimate": False,
                 }
             for choice in chunk.get("choices") or []:

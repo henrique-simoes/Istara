@@ -36,7 +36,7 @@
     "attestation": {
       "path": "tests/pi_benchmark/.results/runs/retake/b0-attestation.json",
       "file_sha256": "b9fee3edd4343cd4f9a7cc05e1bd6673b432b83da9e2768b2543f83b6c34d1c7",
-      "app_file_pinned": "/Users/user/Documents/Istara-main-pi-benchmark-retake/backend/app/__init__.py",
+      "app_file_pinned": "<repo-root>-pi-benchmark-retake/backend/app/__init__.py",
       "pythonpath_pin": "PYTHONPATH=$PWD/backend (mandatory for all bench commands)"
     },
     "manifests": {

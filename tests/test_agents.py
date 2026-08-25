@@ -942,33 +942,42 @@ async def test_agent_research_plan_parses_dag_dependencies(monkeypatch):
     """The planner should preserve ordered steps and dependency edges from LLM JSON.
 
     W3: the planner enters through the AgenticDispatcher (``spine.plan``); the
-    fake binds the legacy plane the dispatcher's legacy executor calls, so the
-    structured call is exercised end-to-end through the new seam.
+    fake binds the Pi Model Management provider authority that both dispatcher
+    engine choices use, so no retired Ollama transport can be reached.
     """
     from types import SimpleNamespace
 
-    import app.core.ollama as ollama_module
     from app.core.agent import AgentOrchestrator
+    from app.core.agentic import agentic
     from app.models.task import Task
 
     captured = {}
 
-    async def fake_chat(*_args, **kwargs):
+    async def fake_structured(**kwargs):
         captured.update(kwargs)
         return {
-            "message": {
-                "content": (
-                    '{"steps": ['
-                    '{"id": "step_1", "description": "Analyze transcripts", '
-                    '"skill_name": "user-interviews", "depends_on": []}, '
-                    '{"id": "step_2", "description": "Synthesize recommendations", '
-                    '"skill_name": null, "depends_on": ["step_1"]}'
-                    "]}"
-                )
-            }
+            "text": "scripted structured plan",
+            "value": {
+                "steps": [
+                    {
+                        "id": "step_1",
+                        "description": "Analyze transcripts",
+                        "skill_name": "user-interviews",
+                        "depends_on": [],
+                    },
+                    {
+                        "id": "step_2",
+                        "description": "Synthesize recommendations",
+                        "skill_name": None,
+                        "depends_on": ["step_1"],
+                    },
+                ]
+            },
+            "status": "success",
+            "endpoint_id": "test-pi-provider",
         }
 
-    monkeypatch.setattr(ollama_module.ollama, "chat", fake_chat)
+    monkeypatch.setattr(agentic._pi, "run_structured", fake_structured)
 
     from app.core.agent_skill_tools import SkillCandidate
 
@@ -1006,8 +1015,10 @@ async def test_agent_research_plan_parses_dag_dependencies(monkeypatch):
     )
 
     assert plan is not None
-    assert captured["response_format"]["type"] == "json_schema"
-    assert captured["thinking_mode"] == "off"
+    assert captured["purpose"] == "spine.plan"
+    assert captured["project_id"] == "plan-parse-project"
+    assert captured["schema"]["type"] == "object"
+    assert captured["params"].thinking_mode == "off"
     assert [step.id for step in plan.steps] == ["step_1", "step_2"]
     assert plan.steps[1].depends_on == ["step_1"]
     assert plan.steps[0].skill_name == "user-interviews"

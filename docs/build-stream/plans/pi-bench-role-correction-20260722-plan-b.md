@@ -208,7 +208,7 @@ task; the reviewer reports findings rather than repairing them in-place.
 
 ## 6. Verification
 
-Run from `/Users/user/Documents/Istara-main-pi-replacement`. Compare against the captured
+Run from `<repo-root>-pi-replacement`. Compare against the captured
 dirty-path baseline so concurrent user/worker changes are not attributed to this task.
 
 ```bash

@@ -288,6 +288,9 @@ export function parseSse(raw) {
       events.push(event);
       if (event.type === "chunk" && event.content) content += event.content;
       if (event.type === "error") errors.push(event.message || JSON.stringify(event));
+      if (event.type === "usage" && event.stop_reason === "turn_budget_exceeded") {
+        errors.push("turn_budget_exceeded: model stopped before completing the tool-backed turn");
+      }
       if (event.session_id) sessionId = event.session_id;
     } catch {
       content += body;

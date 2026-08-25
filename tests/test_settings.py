@@ -76,6 +76,29 @@ async def test_settings_status_returns_response(auth_headers):
         assert "config" not in response.json()
 
 
+@pytest.mark.asyncio
+async def test_security_integrity_is_admin_only_and_never_exposes_key(
+    auth_headers, researcher_headers
+):
+    from app.core.field_encryption import decrypt_field, reset_encryption_health_for_tests
+    from app.core.telemetry import telemetry_recorder
+
+    reset_encryption_health_for_tests()
+    telemetry_recorder.reset_write_health_for_tests()
+    decrypt_field("ENC:tampered")
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        denied = await ac.get("/api/settings/security-integrity", headers=researcher_headers)
+        response = await ac.get("/api/settings/security-integrity", headers=auth_headers)
+    assert denied.status_code == 403
+    assert response.status_code == 200
+    payload = response.json()["field_encryption"]
+    assert payload["decryption_failures"] == 1
+    assert payload["healthy"] is False
+    assert "key" not in str(payload).lower()
+    assert response.json()["telemetry_writes"]["healthy"] is True
+
+
 class _CachedNode:
     def __init__(self, *, reachable: bool, ready: bool):
         self.reachable = reachable

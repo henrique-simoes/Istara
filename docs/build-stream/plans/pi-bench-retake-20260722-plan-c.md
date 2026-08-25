@@ -54,7 +54,7 @@
 - **Prior report bundle is non-authoritative:** `comparison-Istara-pi/reports/20260722T174500Z/` claims 654 executed records, but its input `.results/` tree is not in the repo and cannot be audited. It is a historical artifact: never cited as evidence about Pi vs Legacy, never edited, never deleted. The retake publishes a *new* timestamped bundle derived only from the retake's frozen records + closed ledger.
 - **Brief indirection:** the retake brief's pointer to `docs/build-stream/conductor-instructions/pi-benchmark-deepseek-moa-execution.md` dangles (no such file on this branch, no git history). The brief `pi-benchmark-retake-20260722.md` itself is the execution authority.
 - **Role-canon drift in the lifecycle file:** the embedded winning plan and DEC-5/DEC-6 still carry Kimi-as-evaluation text (14+ regions; no DEC-7 supersession recorded). RT-0 appends DEC-7 to the lifecycle decision log restating the canon below (§1.4); the append is an execution-phase edit by the implementer/conductor, not by this planning stage.
-- **Backend import hazard (live waves):** with the shared root venv, `import app` resolves to the **root checkout** (`/Users/user/Documents/Istara-main-pi-replacement/backend/app/__init__.py`), not the worktree. Waves launched from the worktree would silently execute root code while recording worktree provenance. RT-0/RT-3 attests and pins the execution checkout (`PYTHONPATH="$PWD/backend"` + recorded `app.__file__` assertion) before any live call.
+- **Backend import hazard (live waves):** with the shared root venv, `import app` resolves to the **root checkout** (`<repo-root>-pi-replacement/backend/app/__init__.py`), not the worktree. Waves launched from the worktree would silently execute root code while recording worktree provenance. RT-0/RT-3 attests and pins the execution checkout (`PYTHONPATH="$PWD/backend"` + recorded `app.__file__` assertion) before any live call.
 - **Approved route exists:** `backend/app/core/pi_runtime/endpoints.py:23` registers `DEFAULT_ENDPOINT_ID = "pi-deepseek-default"` — the one approved benchmark route.
 
 ### 1.4 Role canon (authoritative for this retake; supersedes the stale lifecycle text via DEC-7 at RT-0)
@@ -259,7 +259,7 @@ The Kimi judging session is a **new** cast in a **new** conductor run (§2.6), n
 
 ## 5. Verification matrix (exact commands)
 
-Conventions: `PY=/Users/user/Documents/Istara-main-pi-replacement/backend/.venv/bin/python`
+Conventions: `PY=<repo-root>-pi-replacement/backend/.venv/bin/python`
 (or the worktree-local equivalent pinned in RT-0); all bench commands run from the execution
 checkout root with `PYTHONPATH="$PWD/backend"`; `R=tests/pi_benchmark/.results/runs/retake`.
 

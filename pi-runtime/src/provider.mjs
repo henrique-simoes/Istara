@@ -214,6 +214,48 @@ export function filterParamsForApi(params, modelApi) {
   return { ...(params || {}) };
 }
 
+export function modelLimits(endpoint, params = {}) {
+  const declaredContext = Number(endpoint?.context_window || 0);
+  const declaredOutput = Number(endpoint?.max_tokens || 0);
+  const requestedOutput = Number(params?.maxTokens || 0);
+  const maxTokens = declaredOutput > 0
+    ? declaredOutput
+    : requestedOutput > 0
+      ? requestedOutput
+      : 4096;
+  return {
+    contextWindow: declaredContext > 0 ? declaredContext : Math.max(128000, maxTokens),
+    maxTokens,
+  };
+}
+
+/**
+ * Resolve provider-specific model semantics independently from the transport
+ * protocol. Pi Model Management sends its non-secret provider identity because
+ * an OpenAI-compatible URL alone is insufficient: DeepSeek requires an
+ * explicit `thinking: {type: "disabled"}` whenever structured extraction
+ * forces a tool choice. pi-ai emits that control only for a reasoning-capable
+ * model with DeepSeek compatibility.
+ */
+export function modelCapabilities(endpoint, modelApi) {
+  if (modelApi === "openai-codex-responses") {
+    return {
+      reasoning: true,
+      thinkingLevels: ["xhigh", "max", "minimal"],
+      compat: undefined,
+    };
+  }
+  const provider = String(endpoint?.pi_provider || "").trim().toLowerCase();
+  if (provider === "deepseek") {
+    return {
+      reasoning: true,
+      thinkingLevels: undefined,
+      compat: { thinkingFormat: "deepseek" },
+    };
+  }
+  return { reasoning: false, thinkingLevels: undefined, compat: undefined };
+}
+
 export function buildRealProvider(endpoint) {
   const { provider_kind: kind, base_url: baseUrl, model: modelId, api_key: apiKey } = endpoint;
   if (!baseUrl || !modelId || !apiKey) throw new Error("incomplete_provider_binding");
@@ -230,6 +272,8 @@ export function buildRealProvider(endpoint) {
   // "some rate is set" flag would let a cache-read turn on an endpoint priced
   // only for input/output settle at an untrusted $0.
   const cost = mapProviderPricing(endpoint.pricing);
+  const limits = modelLimits(endpoint, params);
+  const capabilities = modelCapabilities(endpoint, modelApi);
 
   const providerId = `pi-endpoint-${endpoint.endpoint_id || "default"}`;
   const envVar = `PI_RUNTIME_KEY_${ENV_KEY_COUNTER++}`;
@@ -241,12 +285,13 @@ export function buildRealProvider(endpoint) {
     api: modelApi,
     provider: providerId,
     baseUrl,
-    reasoning: modelApi === "openai-codex-responses",
-    thinkingLevels: modelApi === "openai-codex-responses" ? ["xhigh", "max", "minimal"] : undefined,
+    reasoning: capabilities.reasoning,
+    thinkingLevels: capabilities.thinkingLevels,
+    compat: capabilities.compat,
     input: ["text"],
     cost,
-    contextWindow: 128000,
-    maxTokens: 4096,
+    contextWindow: limits.contextWindow,
+    maxTokens: limits.maxTokens,
   };
   const provider = createProvider({
     id: providerId,

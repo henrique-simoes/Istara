@@ -10,11 +10,9 @@ communication for either engine. This resolver answers one question per turn:
 Precedence (owner-approved):
   1. Explicit user selection wins outright (the chat picker's model).
   2. An explicit local endpoint configured by the user.
-  3. A pi-managed endpoint (execution-only bridge: never advertised to the
-     compute pool, so donor-collision and research-spine routing guarantees
-     are preserved).
-  4. The donation pool (Petals) — handled by the existing compute-registry
-     path; this resolver returns None and the caller proceeds as before.
+  3. A Pi-managed endpoint, including the sanctioned, identity-pinned Petals
+     projection when donation consent, health, and project scope admit it.
+  4. The legacy donation-pool path only when no Pi catalog identity resolves.
 
 Provenance is explicit on every resolved source so usage/UI surfaces can show
 exactly where a turn was served from.
@@ -55,7 +53,7 @@ def _pi_manager():
     return PiModelManager()
 
 
-def _configured_pi_endpoint(model: str | None):
+async def _configured_pi_endpoint(model: str | None):
     """Return one admitted pi-managed endpoint matching *model*, else None.
 
     Endpoints whose provider_kind is ``openai_codex`` are excluded here: that
@@ -65,6 +63,7 @@ def _configured_pi_endpoint(model: str | None):
     """
     try:
         manager = _pi_manager()
+        await manager.ensure_db_projection()
         candidates = [
             info
             for info in manager.catalog()
@@ -73,9 +72,7 @@ def _configured_pi_endpoint(model: str | None):
         if not candidates:
             return None
         if model:
-            matches = [
-                info for info in candidates if str(getattr(info, "model", "")) == model
-            ]
+            matches = [info for info in candidates if str(getattr(info, "model", "")) == model]
             if not matches:
                 return None
             target = matches[0]
@@ -113,7 +110,7 @@ async def resolve_model_source(model: str | None = None) -> ModelSource | None:
     """
     # 1/2/3 — an explicit model selection resolves across planes by name.
     if model:
-        endpoint = _configured_pi_endpoint(model)
+        endpoint = await _configured_pi_endpoint(model)
         if endpoint is not None:
             return ModelSource(
                 plane=PLANE_PI_MANAGED,
@@ -135,7 +132,7 @@ async def resolve_model_source(model: str | None = None) -> ModelSource | None:
                 api_key="",
                 model=model,
             )
-        return None  # donation pool / compute registry path handles its own routing
+        return None  # legacy donation-pool routing remains the final compatibility path
 
     # No explicit selection: preserve the legacy plane's historical default
     # (local/registry routing). A pi-managed endpoint becomes the fallback ONLY
@@ -151,7 +148,7 @@ async def resolve_model_source(model: str | None = None) -> ModelSource | None:
             api_key="",
             model=local_model,
         )
-    endpoint = _configured_pi_endpoint(None)
+    endpoint = await _configured_pi_endpoint(None)
     if endpoint is not None:
         return ModelSource(
             plane=PLANE_PI_MANAGED,

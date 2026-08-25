@@ -7,7 +7,6 @@ parallel app path.
 
 from __future__ import annotations
 
-import json
 import logging
 import time
 import uuid
@@ -16,7 +15,11 @@ from typing import Any
 from fastapi import Request
 
 from app.config import settings
-from app.core.pi_runtime.endpoints import DEFAULT_ENDPOINT_ID, PiEndpointResolutionError, PiEndpointResolver
+from app.core.pi_runtime.endpoints import (
+    DEFAULT_ENDPOINT_ID,
+    PiEndpointResolutionError,
+    PiEndpointResolver,
+)
 from app.core.telemetry import telemetry_recorder
 from app.core.token_counter import count_tokens
 
@@ -149,15 +152,9 @@ class PiChatRunMetrics:
             status=status,
             duration_ms=(time.perf_counter() - self.started) * 1000,
             error_message=error_message,
-            route_id=json.dumps(
-                {
-                    "input_tokens": self.input_tokens,
-                    "output_tokens": self.output_tokens,
-                    "chunks": self.chunk_count,
-                    "tool_calls": self.tool_call_count,
-                    "registration": self.registration_status,
-                },
-                sort_keys=True,
-            ),
+            # Route identity must stay a bounded, joinable identifier. Token,
+            # turn, and tool accounting belongs to the dispatcher usage ledger;
+            # packing ad-hoc metrics JSON here overflowed varchar(120) in live
+            # Postgres and discarded the candidate span.
+            route_id="pi-deepseek-candidate",
         )
-

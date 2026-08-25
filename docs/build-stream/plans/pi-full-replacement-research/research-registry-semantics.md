@@ -1,4 +1,4 @@
-Root: `/Users/user/Documents/Istara-main-pi-replacement` (branch `Review_pi_test`). All paths below are relative to that root.
+Root: `<repo-root>-pi-replacement` (branch `Review_pi_test`). All paths below are relative to that root.
 
 # 1. Semantics parity checklist
 

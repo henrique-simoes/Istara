@@ -20,6 +20,18 @@ from app.models.connection_string import ConnectionString
 from app.models.project import Project
 
 
+def test_connection_string_timestamps_are_postgres_timezone_aware():
+    table = ConnectionString.__table__
+
+    for column_name in (
+        "expires_at",
+        "created_at",
+        "redeemed_at",
+        "last_validated_at",
+    ):
+        assert table.c[column_name].type.timezone is True
+
+
 @pytest.fixture(autouse=True)
 def reset_settings(monkeypatch):
     original_team_mode = settings.team_mode

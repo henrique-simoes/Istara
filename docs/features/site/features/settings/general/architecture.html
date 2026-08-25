@@ -172,7 +172,7 @@
 <h2>Settings</h2>
 <ul>
 <li data-search-item data-search-text="system status and models settings &gt; system status and models settings shows backend, llm, hardware, model recommendation, and available model status for the local installation."><a class="active" aria-current="page" href="architecture.html"><span>System Status And Models</span><small>Settings &gt; System Status And Models</small></a></li>
-<li data-search-item data-search-text="llm server settings settings &gt; llm servers settings manages configured llm providers, server endpoints, provider labels, and active model switching."><a href="../llm-servers/architecture.html"><span>LLM Server Settings</span><small>Settings &gt; LLM Servers</small></a></li>
+<li data-search-item data-search-text="legacy llm server compatibility settings &gt; pi model management &gt; legacy compatibility pi model management owns provider/model configuration while legacy llmserver rows remain read-only migration input and petals donors join through the governed bridge."><a href="../llm-servers/architecture.html"><span>Legacy LLM Server Compatibility</span><small>Settings &gt; Pi Model Management &gt; Legacy Compatibility</small></a></li>
 <li data-search-item data-search-text="user management settings &gt; users user management supports team member visibility and administrative user operations."><a href="../users/architecture.html"><span>User Management</span><small>Settings &gt; Users</small></a></li>
 <li data-search-item data-search-text="connection strings settings &gt; connection strings connection string settings provide governed admin-only configuration for sensitive external or local service connection data."><a href="../connection-strings/architecture.html"><span>Connection Strings</span><small>Settings &gt; Connection Strings</small></a></li>
 <li data-search-item data-search-text="passkeys and two-factor authentication settings &gt; security factors settings includes passkey and totp management for strengthening account authentication."><a href="../security-factors/architecture.html"><span>Passkeys And Two-Factor Authentication</span><small>Settings &gt; Security Factors</small></a></li>
@@ -240,7 +240,7 @@
     <div><dt>Source Refs</dt><dd>2</dd></div>
     <div><dt>Tests</dt><dd>0</dd></div>
   </dl>
-  <div class="link-cluster" aria-label="Related feature links"><a href="../llm-servers/architecture.html">LLM Server Settings</a>
+  <div class="link-cluster" aria-label="Related feature links"><a href="../llm-servers/architecture.html">Legacy LLM Server Compatibility</a>
 <a href="../../compute/pool/architecture.html">Compute Pool</a></div>
   <p class="concept-line"><strong>Concepts:</strong> rag</p>
 </header>
@@ -270,6 +270,8 @@
 <li><code>GET /api/settings/models</code> returns the normalized <code>agentic_engine_default</code> (<code>pi</code> or <code>legacy</code>) alongside the provider inventory and identity-only Pi projections. <code>AgenticCoreSection</code> renders the global choice as a dedicated, plain-language comparison with the shared embedding invariant and source-linked provisional benchmark rows.</li>
 <li><code>GET /api/settings/pi-catalog</code> returns the full secret-free Pi catalog. <code>PiModelManagement</code> supports both a visible dropdown/browse path and autocomplete search. Selecting a model resolves URL, protocol, capabilities, effort levels, and pricing from the catalog; users never type an endpoint URL.</li>
 <li>Pi OAuth metadata distinguishes API key, browser PKCE, and device-code methods. OpenAI is explicit: OpenAI API is API-key based, while the shared Codex models expose Pi&#x27;s ChatGPT subscription OAuth with Browser login and Device code (headless) choices. Browser callbacks verify state and never return tokens.</li>
+<li>Pi endpoint, provider, and model mutations refresh the live <code>PiModelManager</code> catalog immediately. Both Istara and Pi Agentic Loop requests therefore resolve against the same current authority without requiring a backend restart.</li>
+<li><code>GET /api/settings/security-integrity</code> is global-admin-only and reports value-free health counters for encrypted-field and telemetry persistence failures. It never returns keys, ciphertext, provider URLs, prompts, or research content.</li>
 <li>Settings is role-composed rather than a single global-admin surface. Researcher-safe personal panels such as compute donation, security factors, sessions, and updates may render for researchers, while global-admin panels for governed evolution, users, connection strings, LLM infrastructure, telemetry, and team-mode toggles are gated before mounting so their admin-only API calls are never made by normal researcher journeys.</li>
 <li><code>/api/settings/status</code> also includes <code>runtime.frontend</code> freshness diagnostics. The status bar shows <code>Runtime bundle stale</code> when the production Next build predates tracked frontend source files, preventing stale bundles from being mistaken for current project-isolation behavior.</li>
 <li>The frontmatter and manifest entries are the durable contract for agents updating this page after code changes. The shared UI tokens and state contract live in root <code>DESIGN.md</code> and the semantic projection in <code>frontend/src/app/globals.css</code>.</li>

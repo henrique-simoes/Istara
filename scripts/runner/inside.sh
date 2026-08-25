@@ -1,7 +1,23 @@
 #!/bin/bash
 set -euo pipefail
 export PATH=/usr/local/bin:$PATH
-export ISTARA_BENCHMARK_CHAT_TIMEOUT_MS=none
+export ISTARA_BENCHMARK_CHAT_TIMEOUT_MS="${ISTARA_BENCHMARK_CHAT_TIMEOUT_MS:-300000}"
+: "${ISTARA_BENCHMARK_CODING_LIMIT:=3}"
+: "${ISTARA_BENCHMARK_MAX_UPLOADS:=6}"
+: "${ISTARA_BENCHMARK_ENGINE:?set ISTARA_BENCHMARK_ENGINE to legacy or pi}"
+case "$ISTARA_BENCHMARK_ENGINE" in
+  legacy|pi) ;;
+  *) echo "unsupported benchmark engine: $ISTARA_BENCHMARK_ENGINE" >&2; exit 2 ;;
+esac
+
+# Materialize a disposable worktree inside Docker. Writable result mounts are
+# deliberately excluded so their prior evidence is preserved across runs.
+cd /source
+tar \
+  --exclude='./tests/real_user_benchmark/.results' \
+  --exclude='./tests/simulation/.results' \
+  --exclude='./data/test-marathon' \
+  -cf - . | tar -xf - -C /work
 cd /work
 
 echo "[runner] installing simulation deps + chromium (cached volume)"
@@ -24,8 +40,8 @@ npm ci --no-audit --no-fund > /dev/null
 npx playwright install --with-deps chromium
 cd /work
 
-echo "[runner] PROBE legacy start $(date -u +%H:%M:%S)"
-npm --prefix tests/real_user_benchmark run probe:legacy
-echo "[runner] PROBE pi start $(date -u +%H:%M:%S)"
-npm --prefix tests/real_user_benchmark run probe:pi
+echo "[runner] PROBE $ISTARA_BENCHMARK_ENGINE start $(date -u +%H:%M:%S)"
+npm --prefix tests/real_user_benchmark run "probe:${ISTARA_BENCHMARK_ENGINE}" -- \
+  --coding-limit "$ISTARA_BENCHMARK_CODING_LIMIT" \
+  --max-uploads "$ISTARA_BENCHMARK_MAX_UPLOADS"
 echo "[runner] ALL DONE $(date -u +%H:%M:%S)"

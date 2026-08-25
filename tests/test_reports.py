@@ -48,7 +48,7 @@ async def test_slide_instructions_fallback_when_llm_unavailable(auth_headers):
 
     transport = ASGITransport(app=app)
     with patch(
-        "app.api.routes.presentation.llm_router.chat",
+        "app.api.routes.presentation.agentic.completion",
         new=AsyncMock(side_effect=RuntimeError("LLM unavailable")),
     ):
         async with AsyncClient(transport=transport, base_url="http://test") as ac:

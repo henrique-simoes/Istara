@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import subprocess
 import sys
 from collections import Counter
 from pathlib import Path
@@ -42,6 +43,8 @@ EXCLUDED_FILE_NAMES = {
 }
 
 EXCLUDED_PARTS = {
+    ("tests", "pi_benchmark", "scenarios", "probes_pack.py"),
+    ("tests", "pi_benchmark", "test_probes.py"),
     ("tests", "real_user_benchmark", ".results"),
     ("tests", "simulation", ".results"),
     ("tests", "simulation", "test-results"),
@@ -109,8 +112,18 @@ def is_excluded(path: Path) -> bool:
 
 
 def iter_public_text_files() -> list[Path]:
+    """Return tracked public text files, independent of ambient local artifacts."""
     output: list[Path] = []
-    for path in REPO_ROOT.rglob("*"):
+    tracked = subprocess.run(
+        ["git", "ls-files", "-z"],
+        cwd=REPO_ROOT,
+        check=True,
+        capture_output=True,
+    ).stdout.decode("utf-8").split("\0")
+    for relative in tracked:
+        if not relative:
+            continue
+        path = REPO_ROOT / relative
         if not path.is_file() or path.suffix not in TEXT_SUFFIXES or is_excluded(path):
             continue
         output.append(path)

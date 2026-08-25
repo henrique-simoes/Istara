@@ -84,6 +84,61 @@ def test_source_skill_write_is_blocked_by_default(tmp_path, monkeypatch):
         writeable_skill_path("user-interviews", source=True)
 
 
+def test_skill_discovery_ignores_macos_appledouble_metadata(tmp_path, monkeypatch, caplog):
+    from app.skills import skill_manager as skill_manager_module
+    from app.skills.skill_manager import SkillManager
+
+    definition = {
+        "name": "portable-skill",
+        "display_name": "Portable Skill",
+        "description": "A portable skill definition.",
+        "phase": "discover",
+        "skill_type": "mixed",
+        "plan_prompt": "Plan.",
+        "execute_prompt": "Execute.",
+        "output_schema": "{}",
+    }
+    (tmp_path / "portable-skill.json").write_text(json.dumps(definition), encoding="utf-8")
+    (tmp_path / "._portable-skill.json").write_bytes(b"\x00\x05\x16\x07appledouble")
+    monkeypatch.setattr(skill_manager_module, "skill_definition_dirs", lambda: [tmp_path])
+
+    loaded = SkillManager().load_all()
+
+    assert list(loaded) == ["portable-skill"]
+    assert "._portable-skill.json" not in caplog.text
+
+
+def test_default_skill_registry_ignores_macos_appledouble_metadata(tmp_path, monkeypatch):
+    from app.skills import registry as registry_module
+    from app.skills import skill_manager as skill_manager_module
+
+    (tmp_path / "portable-skill.json").write_text("{}", encoding="utf-8")
+    (tmp_path / "._portable-skill.json").write_bytes(b"\x00\x05\x16\x07appledouble")
+    monkeypatch.setattr(skill_manager_module, "skill_definition_dirs", lambda: [tmp_path])
+
+    registered_definitions: list[str] = []
+
+    class FakeRegistry:
+        def register(self, _skill_class):
+            return None
+
+        def register_from_definition(self, name: str):
+            registered_definitions.append(name)
+            return True
+
+        def list_all(self):
+            return []
+
+        def list_by_phase(self, _phase):
+            return []
+
+    monkeypatch.setattr(registry_module, "registry", FakeRegistry())
+
+    registry_module.load_default_skills()
+
+    assert registered_definitions == ["portable-skill"]
+
+
 def test_runtime_freshness_flags_frontend_source_newer_than_build(tmp_path):
     from app.core.runtime_freshness import detect_runtime_freshness
 

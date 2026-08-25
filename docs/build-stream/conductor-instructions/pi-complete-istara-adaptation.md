@@ -23,7 +23,7 @@ Complete the existing opt-in Pi replacement in this isolated worktree, and prove
 
 ## Safety and process
 
-- Work only in `/Users/user/Documents/Istara-main-pi-replacement`; never touch `/Users/user/Documents/Istara-main` application code, `/Users/user/.config/build-stream-conductor/defaults.json`, `LLMs/`, `Model_Finetuning/`, or origin.
+- Work only in `<repo-root>-pi-replacement`; never touch `<repo-root>` application code, `/Users/user/.config/build-stream-conductor/defaults.json`, `LLMs/`, `Model_Finetuning/`, or origin.
 - No live backend/frontend servers and no unbounded model loading. One approved, configured DeepSeek test target is permitted only during its explicit bounded verification task.
 - Treat model/API/auth/A2A/channel/memory/research changes as security-sensitive. Run `python scripts/security_benchmark.py --fail-on-threshold` before handoff.
 - Keep the Build Stream lifecycle, the Compass Forge CF-SPEC-6 task evidence, and the local review packet accurate. Do not claim production readiness from mocks or local-only channels.

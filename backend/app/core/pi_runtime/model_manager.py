@@ -5,7 +5,7 @@ identity-pinned and must never become schedulable donated compute; selection is
 exact-identity or capability-filtered over the catalog — never donor-style
 capacity scoring.
 
-Catalog sources (master plan §5.2), all projected to exact-identity entries:
+Catalog sources, all projected to exact-identity entries:
 
 1. Static settings endpoints — ``settings.pi_api_endpoints`` plus the built-in
    ``pi-deepseek-default`` (secret materialization stays with the resolver).
@@ -13,6 +13,10 @@ Catalog sources (master plan §5.2), all projected to exact-identity entries:
    ``pi-llm-<id>`` entries; relay/browser donor rows are NEVER projected.
 3. Local serving — Ollama / LM Studio OpenAI-compatible ``/v1`` endpoints from
    settings hosts, marked ``kind="local"``.
+4. The sanctioned Petals bridge — healthy, explicitly consented, project-scoped
+   relay/browser nodes projected by ``app.core.petals_bridge`` as identity-pinned
+   loopback endpoints.  This module still never imports ``ComputeRegistry`` and
+   never performs donor-capacity scoring.
 """
 
 from __future__ import annotations
@@ -63,7 +67,7 @@ class _CatalogEntry:
     provider_kind: str
     base_url: str
     model: str
-    source: str  # "settings" | "local" | "llm_server"
+    source: str  # "settings" | "local" | "llm_server" | "petals"
     embedding_model: str = ""
     api_key: str = ""
     timeout_ms: int = 30_000
@@ -94,6 +98,8 @@ class PiModelManager:
         include_local: bool = True,
     ) -> None:
         self._resolver = resolver or PiEndpointResolver()
+        self._explicit_catalog = endpoints is not None
+        self._include_local = include_local
         if endpoints is None:
             # Duck-typed resolvers (test doubles) may not expose configured();
             # they stay resolvable by id through resolver.resolve.
@@ -121,7 +127,8 @@ class PiModelManager:
             base_url=endpoint.base_url.rstrip("/"),
             model=endpoint.model,
             source="settings",
-            pi_provider=getattr(endpoint, "auth_provider", "") or getattr(endpoint, "pi_provider", ""),
+            pi_provider=getattr(endpoint, "auth_provider", "")
+            or getattr(endpoint, "pi_provider", ""),
             auth_method=getattr(endpoint, "auth_method", "api_key"),
             timeout_ms=endpoint.timeout_ms,
             max_retries=endpoint.max_retries,
@@ -194,6 +201,7 @@ class PiModelManager:
         endpoint then fails closed as ``unknown_pi_endpoint``.
         """
         if self._db_projected:
+            self._refresh_petals_projection()
             return
         self._db_projected = True
         try:
@@ -206,11 +214,18 @@ class PiModelManager:
                 rows = list((await db.execute(select(LLMServer))).scalars().all())
         except Exception:  # pragma: no cover - storage unavailable
             logger.debug("pi model manager: LLMServer projection skipped (storage unavailable)")
-            return
+            rows = []
         for row in rows:
             entry = self._project_llm_server(row)
             if entry is not None:
                 self._entries.setdefault(entry.endpoint_id, entry)
+        self._refresh_petals_projection()
+
+    def _refresh_petals_projection(self) -> None:
+        """Replace dynamic donor entries from current consent/health state."""
+        stale = [key for key, entry in self._entries.items() if entry.source == "petals"]
+        for key in stale:
+            del self._entries[key]
         self._project_petals()
 
     def _project_petals(self) -> None:
@@ -237,6 +252,7 @@ class PiModelManager:
                     base_url=str(entry_dict["base_url"]).rstrip("/"),
                     model=str(entry_dict.get("model") or "default"),
                     source="petals",
+                    api_key=str(entry_dict.get("api_key") or ""),
                     kind="petals",
                 ),
             )
@@ -327,9 +343,35 @@ class PiModelManager:
         and lazy — it re-materializes on the next ``ensure_db_projection``.
         """
         self._db_projected = False
-        stale = [key for key, entry in self._entries.items() if entry.source == "llm_server"]
+        stale = [
+            key for key, entry in self._entries.items() if entry.source in {"llm_server", "petals"}
+        ]
         for key in stale:
             del self._entries[key]
+
+    def refresh_settings_catalog(self) -> None:
+        """Refresh mutable Pi settings/local entries on a live manager.
+
+        Explicit test/benchmark catalogs remain immutable. Production managers
+        rebuild their resolver too, so endpoint add/update/delete affects the
+        next turn without a backend restart.
+        """
+        if self._explicit_catalog:
+            return
+        self._resolver = PiEndpointResolver()
+        stale = [
+            key for key, entry in self._entries.items() if entry.source in {"settings", "local"}
+        ]
+        for key in stale:
+            del self._entries[key]
+        configured = getattr(self._resolver, "configured", None)
+        if callable(configured):
+            for endpoint in configured():
+                entry = self._from_settings(endpoint)
+                self._entries[entry.endpoint_id] = entry
+        if self._include_local:
+            for entry in self._local_entries():
+                self._entries[entry.endpoint_id] = entry
 
     # ── selection (exact identity or capability-filtered, never scored) ──
     @staticmethod
@@ -375,6 +417,7 @@ class PiModelManager:
             api_key=entry.api_key,
             timeout_ms=entry.timeout_ms,
             max_retries=entry.max_retries,
+            pi_provider=entry.pi_provider,
             cost_input_per_mtok=entry.cost_input_per_mtok,
             cost_output_per_mtok=entry.cost_output_per_mtok,
             cost_cache_read_per_mtok=entry.cost_cache_read_per_mtok,
@@ -449,19 +492,33 @@ class PiModelManager:
         require_vision: bool = False,
         min_context: int = 0,
     ) -> list[ResolvedPiEndpoint]:
-        """N endpoints with distinct identity; fail-closed if fewer than n exist."""
+        """Resolve N endpoints backed by N distinct model identities.
+
+        Endpoint identity is still preserved for exact routing and provenance,
+        but replicas serving the same model do not provide independent model
+        judgments and therefore cannot satisfy an ensemble-diversity request.
+        """
         excluded = set(exclude)
-        matches = [
-            entry
-            for entry in self._entries.values()
-            if entry.endpoint_id not in excluded
-            and self._matches(
-                entry, model=model, require_vision=require_vision, min_context=min_context
-            )
-        ]
+        matches: list[_CatalogEntry] = []
+        seen_models: set[str] = set()
+        for entry in self._entries.values():
+            if entry.endpoint_id in excluded or not self._matches(
+                entry,
+                model=model,
+                require_vision=require_vision,
+                min_context=min_context,
+            ):
+                continue
+            model_identity = entry.model.strip().casefold()
+            if not model_identity or model_identity in seen_models:
+                continue
+            seen_models.add(model_identity)
+            matches.append(entry)
+            if len(matches) >= n:
+                break
         if len(matches) < n:
-            raise PiEndpointResolutionError("insufficient_distinct_pi_endpoints")
-        return [self._materialize(entry) for entry in matches[:n]]
+            raise PiEndpointResolutionError("insufficient_distinct_pi_models")
+        return [self._materialize(entry) for entry in matches]
 
     @staticmethod
     def _active_embed_model(provider: str | None = None) -> str:
@@ -571,3 +628,12 @@ def reset_live_db_projections() -> None:
             manager.reset_db_projection()
         except Exception:  # pragma: no cover - defensive; never break the caller
             logger.debug("pi model manager: projection reset skipped for one manager")
+
+
+def reset_live_settings_catalogs() -> None:
+    """Refresh mutable configured endpoints on every live production manager."""
+    for manager in list(_LIVE_MANAGERS):
+        try:
+            manager.refresh_settings_catalog()
+        except Exception:  # pragma: no cover - defensive; CRUD remains durable
+            logger.debug("pi model manager: settings catalog refresh skipped")

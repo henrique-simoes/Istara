@@ -18,6 +18,12 @@ depends_on = None
 
 
 def upgrade() -> None:
+    # SQLite stores datetimes without a column-level timezone distinction. The
+    # model already normalizes values to UTC, so changing the declared type is
+    # both unsupported and unnecessary there. PostgreSQL needs the explicit
+    # conversion to accept aware datetime values from asyncpg.
+    if op.get_bind().dialect.name == "sqlite":
+        return
     with op.get_context().autocommit_block():
         op.execute(
             "ALTER TABLE task_checkpoints "
@@ -27,6 +33,8 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
+    if op.get_bind().dialect.name == "sqlite":
+        return
     with op.get_context().autocommit_block():
         op.execute(
             "ALTER TABLE task_checkpoints "

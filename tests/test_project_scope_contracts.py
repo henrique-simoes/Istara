@@ -598,26 +598,20 @@ def test_compute_pool_requires_active_project_scope() -> None:
 
 
 def test_llm_server_inventory_and_health_checks_require_global_admin_access() -> None:
-    route = read_repo("backend/app/api/routes/llm_servers.py")
     settings_route = read_repo("backend/app/api/routes/settings.py")
     settings_view = read_repo("frontend/src/components/common/SettingsView.tsx")
-    assert (
-        'async def list_llm_servers(request: Request, db: AsyncSession = Depends(get_db)):\n'
-        '    """List all registered LLM servers."""\n'
-        '    require_global_role(request, "admin")'
-    ) in route
-    assert (
-        "async def health_check_server(\n"
-        "    server_id: str, request: Request, db: AsyncSession = Depends(get_db)\n"
-        "):\n"
-        '    """Run a health check on a specific LLM server."""\n'
-        '    require_global_role(request, "admin")'
-    ) in route
-    assert route.count('require_global_role(request, "admin")') >= 6
+    assert not (REPO_ROOT / "backend/app/api/routes/llm_servers.py").exists()
+    assert '@router.get("/settings/pi-endpoints")' in settings_route
+    assert 'async def list_pi_endpoints(request: Request):' in settings_route
+    assert '@router.post("/settings/pi-endpoints")' in settings_route
+    assert 'async def add_pi_endpoint(data: PiEndpointRequest, request: Request):' in settings_route
+    assert '@router.put("/settings/pi-endpoints/{endpoint_id}")' in settings_route
+    assert '@router.delete("/settings/pi-endpoints/{endpoint_id}")' in settings_route
+    assert settings_route.count('require_global_role(request, "admin")') >= 12
     status_body = settings_route.split('@router.get("/settings/status")', 1)[1]; assert 'def _cached_llm_readiness() -> tuple[bool, bool]:' in settings_route
     assert all(marker not in status_body for marker in ("await ollama.health()", '"provider": settings.llm_provider', '"config": {'))
     assert all(marker in settings_route for marker in ("async def get_hardware_info(request: Request):", "async def get_models(request: Request):", "async def maintenance_status(request: Request):", "async def integrations_status(request: Request):", "async def vector_health(request: Request):", "async def check_data_integrity(request: Request, db: AsyncSession = Depends(get_db)):", "async def switch_model(model_name: str, request: Request):", "async def switch_provider(provider: str, request: Request):"))
-    assert all(marker in settings_view for marker in ("const capabilities = useRoleCapabilities();", "const canManageInfrastructure = capabilities.canManageLlmInfrastructure;", "canManageInfrastructure ? settingsApi.hardware() : Promise.resolve(null)", "canManageInfrastructure ? settingsApi.models() : Promise.resolve(null)", "const canManageLLMServers = !teamMode || user?.role === \"admin\";", "Global admin access is required to manage shared provider endpoints."))
+    assert all(marker in settings_view for marker in ("const capabilities = useRoleCapabilities();", "const canManageInfrastructure = capabilities.canManageLlmInfrastructure;", "canManageInfrastructure ? settingsApi.hardware() : Promise.resolve(null)", "canManageInfrastructure ? settingsApi.models() : Promise.resolve(null)", "capabilities.canManageLlmInfrastructure && <PiModelManagement />"))
 
 def test_autoresearch_project_surfaces_require_active_project_scope() -> None:
     api = read_repo("frontend/src/lib/api.ts"); store = read_repo("frontend/src/stores/autoresearchStore.ts")
@@ -854,7 +848,8 @@ def test_background_autonomous_processes_are_project_safe_by_default() -> None:
     agents_route = read_repo("backend/app/api/routes/agents.py")
     learning = read_repo("backend/app/core/agent_learning.py")
 
-    assert "autonomous_quality_agents_enabled: bool = False" in config
+    assert "autonomous_quality_agents_enabled: bool = (" in config
+    assert "False  # Dev/Admin QA loops only when explicitly enabled" in config
     assert "autonomous_quality_agents_enabled = app_settings.autonomous_quality_agents_enabled" in main
     assert "Autonomous quality audit/simulation agents disabled" in main
     assert "devops_agent.start_task_worker()" in main
@@ -937,7 +932,7 @@ def test_chat_sessions_require_active_project_scope() -> None:
     assert "sessionsApi.star(id, projectId)" in session_store
 
     assert "sessionsApi.get(sessionId, projectId)" in chat_store
-    assert 'set({ messages: [], streamingContent: "", error: null });' in chat_store
+    assert 'set({ messages: [], streamingContent: "", error: null, usage: null });' in chat_store
     assert "set({ messages: [], error: e.message });" in chat_store
 
     assert "updateSession(activeProjectId, activeSessionId, data)" in chat_view

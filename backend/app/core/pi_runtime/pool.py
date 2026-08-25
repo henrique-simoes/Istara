@@ -13,7 +13,8 @@ from __future__ import annotations
 
 import asyncio
 import hashlib
-from typing import Any, AsyncIterator
+from collections.abc import AsyncIterator
+from typing import Any
 
 from app.config import settings
 
@@ -74,8 +75,33 @@ class PiRuntimePool:
     async def bind_provider(self, session_key: str, endpoint: dict[str, Any]) -> None:
         await self._owner(session_key).bind_provider(session_key, endpoint)
 
-    async def run_turn(self, session_key: str, text: str, tool_handler: ToolHandler, **kwargs: Any) -> AsyncIterator[dict[str, Any]]:
-        async for frame in self._owner(session_key).run_turn(session_key, text, tool_handler, **kwargs):
+    async def run_turn(
+        self,
+        session_key: str,
+        text: str,
+        tool_handler: ToolHandler,
+        **kwargs: Any,
+    ) -> AsyncIterator[dict[str, Any]]:
+        async for frame in self._owner(session_key).run_turn(
+            session_key, text, tool_handler, **kwargs
+        ):
+            yield frame
+
+    async def run_provider_turn(
+        self,
+        session_key: str,
+        messages: list[dict[str, Any]],
+        tools: list[dict[str, Any]],
+    ) -> AsyncIterator[dict[str, Any]]:
+        """Forward a provider-only legacy turn to the session's owner.
+
+        The legacy Istara loop retains tool-iteration authority while the Pi
+        worker owns provider selection and execution. Provider-only turns must
+        therefore follow the same sticky session routing as ordinary turns.
+        """
+        async for frame in self._owner(session_key).run_provider_turn(
+            session_key, messages, tools
+        ):
             yield frame
 
     def active_run_id(self, session_key: str) -> str | None:

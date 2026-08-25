@@ -78,6 +78,12 @@ router = APIRouter()
 
 # Maximum tool-call iterations per message (prevents infinite loops)
 MAX_TOOL_ITERATIONS = 8
+# Pi Agentic Loop is the long-horizon core: unlike the legacy loop, its worker
+# counts every model turn (including turns around tool results). A live Docker
+# research journey exhausted the parity-sized nine-turn allowance before it
+# could synthesize or finish review actions. Three legacy-sized windows retain a
+# hard bound while allowing multi-step research/tool workflows to complete.
+PI_MODEL_TURN_BUDGET = MAX_TOOL_ITERATIONS * 3
 
 
 async def _pi_registration_failure_events(
@@ -259,7 +265,7 @@ async def _generate_pi_runtime(
                 # legacy server_default sentinel must not be sent as a level.
                 thinking_mode=(thinking_mode if thinking_mode not in {None, "", "server_default"} else None),
                 endpoint_id=endpoint_id,
-                max_turns=MAX_TOOL_ITERATIONS,
+                max_turns=PI_MODEL_TURN_BUDGET,
             ),
             steering_binding=steering,
             engine="pi",

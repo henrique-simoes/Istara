@@ -1,8 +1,8 @@
 # Plan C — Complete the opt-in Pi-to-Istara adaptation (consensus slot C)
 
 Spec: CF-SPEC-6 · Task: pi-complete-20260719-REPLAN-C-r3 · Slot: C · Branch: `Review_pi_test`
-Scope: `/Users/user/Documents/Istara-main-pi-replacement` only. No push, no `origin`, no
-mutation of `/Users/user/Documents/Istara-main`, `defaults.json`, `LLMs/`, or `Model_Finetuning/`.
+Scope: `<repo-root>-pi-replacement` only. No push, no `origin`, no
+mutation of `<repo-root>`, `defaults.json`, `LLMs/`, or `Model_Finetuning/`.
 
 This is an independent architect plan. It is buildable as written and is scoped to remedy the
 five known defects while proving behavior at authentic in-process route/service boundaries, not
@@ -262,7 +262,7 @@ prompt/output is stored **redacted** in the review packet.
 
 ## 7. Out of scope
 
-- Any change to `/Users/user/Documents/Istara-main`, `defaults.json`, `LLMs/`, `Model_Finetuning/`,
+- Any change to `<repo-root>`, `defaults.json`, `LLMs/`, `Model_Finetuning/`,
   or `origin`.
 - Starting live backend/frontend servers, external channel providers, webhooks, or loading multiple
   heavy models.

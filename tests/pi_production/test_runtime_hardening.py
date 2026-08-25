@@ -7,20 +7,59 @@ import json
 import threading
 import uuid
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from unittest.mock import AsyncMock
 
 import pytest
 
 from app.config import settings
 from app.core.pi_runtime.endpoints import (
     DEFAULT_ENDPOINT_ID,
+    PiEndpointResolutionError,
     PiEndpointResolver,
     ResolvedPiEndpoint,
 )
-from app.core.pi_runtime.engine import PiExecutionService, _bind_payload
+from app.core.pi_runtime.engine import (
+    PiExecutionService,
+    _bind_payload,
+    _enforce_test_provider_network_policy,
+)
 from app.core.pi_runtime.pool import PiRuntimePool
 from app.core.pi_runtime.supervisor import PiRuntimeSupervisor
 
 from .harness import faux_endpoint, final_text, requires_node, tool_call
+
+
+def test_unit_suite_blocks_real_external_provider_before_worker_start(monkeypatch):
+    monkeypatch.setenv("ISTARA_TEST_BLOCK_EXTERNAL_LLM", "1")
+    endpoint = ResolvedPiEndpoint(
+        endpoint_id="pi-live-forbidden",
+        provider_kind="openai_compat",
+        base_url="https://api.deepseek.com/v1",
+        model="deepseek-chat",
+        api_key="unused-test-secret",
+        timeout_ms=30_000,
+        max_retries=0,
+    )
+
+    with pytest.raises(
+        PiEndpointResolutionError, match="external_provider_blocked_in_test"
+    ):
+        _enforce_test_provider_network_policy(endpoint)
+
+
+def test_unit_suite_allows_reserved_provider_test_domain(monkeypatch):
+    monkeypatch.setenv("ISTARA_TEST_BLOCK_EXTERNAL_LLM", "1")
+    endpoint = ResolvedPiEndpoint(
+        endpoint_id="pi-scripted",
+        provider_kind="openai_compat",
+        base_url="https://provider.invalid/v1",
+        model="scripted",
+        api_key="unused-test-secret",
+        timeout_ms=30_000,
+        max_retries=0,
+    )
+
+    _enforce_test_provider_network_policy(endpoint)
 
 
 def _faux_bind_payload(responses, *, faux_cost_usd: float | None = None) -> dict:
@@ -62,6 +101,7 @@ async def test_reader_eof_retires_ready_worker_before_restart():
 
 # ── H-12: bounded pool + deterministic session_key routing ──────────────────
 
+
 def test_pool_size_follows_configured_worker_count():
     """The pool grows to the configured ``pi_worker_pool_size`` by default and
     is explicitly overridable (bounded, not one-per-session)."""
@@ -88,6 +128,52 @@ def test_routing_is_deterministic_and_process_stable():
     assert set(routes.values()) == {0, 1}
 
 
+@pytest.mark.asyncio
+async def test_pool_forwards_provider_only_turns_to_the_session_owner():
+    class Owner:
+        async def run_provider_turn(self, session_key, messages, tools):
+            assert session_key == "provider-session"
+            assert messages == [{"role": "user", "content": "hello"}]
+            assert tools == [{"name": "lookup"}]
+            yield {"type": "run.completed", "run_id": "provider-run"}
+
+    pool = PiRuntimePool(pool_size=1)
+    pool._owners["provider-session"] = Owner()
+
+    frames = [
+        frame
+        async for frame in pool.run_provider_turn(
+            "provider-session",
+            [{"role": "user", "content": "hello"}],
+            [{"name": "lookup"}],
+        )
+    ]
+
+    assert frames == [{"type": "run.completed", "run_id": "provider-run"}]
+
+
+@pytest.mark.asyncio
+async def test_pi_turn_telemetry_uses_bounded_endpoint_identity_for_route_id(
+    monkeypatch,
+):
+    record_span = AsyncMock()
+    monkeypatch.setattr(
+        "app.core.pi_runtime.engine.telemetry_recorder.record_span", record_span
+    )
+    service = PiExecutionService()
+    endpoint = faux_endpoint([final_text("ok")])
+
+    await service._record_turn_telemetry(
+        endpoint,
+        "project-id",
+        "agent-id",
+        {"type": "done", "usage": {"input_tokens": 10}, "stop_reason": "stop"},
+        "pi_completion:test",
+    )
+
+    assert record_span.await_args.kwargs["route_id"] == endpoint.endpoint_id
+
+
 @requires_node
 @pytest.mark.asyncio
 async def test_pool_runs_twenty_concurrent_turns_across_two_workers():
@@ -111,7 +197,9 @@ async def test_pool_runs_twenty_concurrent_turns_across_two_workers():
         raise AssertionError("no tool call expected in the concurrent-turn pool test")
 
     async def drive(key: str) -> list[dict]:
-        await pool.open_session(key, system_prompt="test", history=[], revision="r", catalog=[])
+        await pool.open_session(
+            key, system_prompt="test", history=[], revision="r", catalog=[]
+        )
         await pool.bind_provider(key, _faux_bind_payload([final_text("ok")]))
         return [frame async for frame in pool.run_turn(key, "go", handler)]
 
@@ -119,7 +207,10 @@ async def test_pool_runs_twenty_concurrent_turns_across_two_workers():
         await pool.ensure_started()
         results = await asyncio.gather(*(drive(key) for key in keys))
         # Every one of the twenty concurrent turns reached a clean terminal.
-        assert all(any(frame["type"] == "run.completed" for frame in frames) for frames in results)
+        assert all(
+            any(frame["type"] == "run.completed" for frame in frames)
+            for frames in results
+        )
         # Deterministic routing held for every session under real concurrency.
         for key in keys:
             assert pool._owners[key] is pool._workers[pool._route_index(key)]
@@ -133,10 +224,15 @@ async def test_pool_runs_twenty_concurrent_turns_across_two_workers():
 
 # ── H-6: whole-run wall-clock and cost ceilings (behavioral) ────────────────
 
+
 def test_supervisor_has_explicit_whole_run_limits():
     """H-6: session.open receives the worker turn, wall-clock, and cost ceilings."""
     supervisor = PiRuntimeSupervisor(max_turns=3, run_timeout=4.5, max_cost_usd=0.25)
-    assert (supervisor._max_turns, supervisor._run_timeout, supervisor._max_cost_usd) == (3, 4.5, 0.25)
+    assert (
+        supervisor._max_turns,
+        supervisor._run_timeout,
+        supervisor._max_cost_usd,
+    ) == (3, 4.5, 0.25)
 
 
 @requires_node
@@ -151,8 +247,12 @@ async def test_run_fails_closed_when_cost_budget_exceeded():
 
     try:
         await supervisor.ensure_started()
-        await supervisor.open_session("cost", system_prompt="t", history=[], revision="r", catalog=[])
-        await supervisor.bind_provider("cost", _faux_bind_payload([final_text("done")], faux_cost_usd=5.0))
+        await supervisor.open_session(
+            "cost", system_prompt="t", history=[], revision="r", catalog=[]
+        )
+        await supervisor.bind_provider(
+            "cost", _faux_bind_payload([final_text("done")], faux_cost_usd=5.0)
+        )
         frames = [frame async for frame in supervisor.run_turn("cost", "go", handler)]
     finally:
         await supervisor.shutdown()
@@ -179,9 +279,16 @@ async def test_run_fails_closed_when_wall_clock_budget_exceeded():
     catalog = [{"name": "istara_create_task", "description": "t", "parameters": {}}]
     try:
         await supervisor.ensure_started()
-        await supervisor.open_session("wall", system_prompt="t", history=[], revision="r", catalog=catalog)
-        await supervisor.bind_provider("wall", _faux_bind_payload([tool_call("istara_create_task", {"title": "x"})]))
-        frames = [frame async for frame in supervisor.run_turn("wall", "go", slow_handler)]
+        await supervisor.open_session(
+            "wall", system_prompt="t", history=[], revision="r", catalog=catalog
+        )
+        await supervisor.bind_provider(
+            "wall",
+            _faux_bind_payload([tool_call("istara_create_task", {"title": "x"})]),
+        )
+        frames = [
+            frame async for frame in supervisor.run_turn("wall", "go", slow_handler)
+        ]
     finally:
         await supervisor.shutdown()
 
@@ -217,6 +324,22 @@ def test_bind_payload_forwards_real_endpoint_pricing_but_not_faux():
     assert "pricing" not in _bind_payload(faux_endpoint([final_text("ok")]))
 
 
+def test_bind_payload_preserves_non_secret_pi_provider_identity():
+    endpoint = ResolvedPiEndpoint(
+        endpoint_id="deepseek",
+        provider_kind="openai_compat",
+        base_url="https://api.deepseek.com",
+        model="deepseek-v4-flash",
+        api_key="secret",
+        timeout_ms=1000,
+        max_retries=0,
+        pi_provider="deepseek",
+    )
+    payload = _bind_payload(endpoint)
+    assert payload["pi_provider"] == "deepseek"
+    assert "auth_provider" not in payload
+
+
 def test_default_endpoint_is_priced_so_its_cost_ceiling_can_fail_closed():
     """The built-in default endpoint resolves with nonzero pricing for every
     category it can spend. A $0-priced default would make its per-run
@@ -226,10 +349,13 @@ def test_default_endpoint_is_priced_so_its_cost_ceiling_can_fail_closed():
     fail closed as unpriced. The rates are sourced from the configured model
     (deepseek-v4-pro) rather than an unrelated model's list price."""
     endpoint = PiEndpointResolver()._endpoints[DEFAULT_ENDPOINT_ID]
+    assert endpoint.pi_provider == "deepseek"
     assert endpoint.model == "deepseek-v4-pro"
     assert endpoint.cost_input_per_mtok == pytest.approx(0.435)  # cache-miss input
     assert endpoint.cost_output_per_mtok == pytest.approx(0.87)  # output
-    assert endpoint.cost_cache_read_per_mtok == pytest.approx(0.003625)  # cache-hit input
+    assert endpoint.cost_cache_read_per_mtok == pytest.approx(
+        0.003625
+    )  # cache-hit input
     # DeepSeek bills cache writes at the cache-miss input rate and reports no
     # separate cache-write token count, so that category is never spent.
     assert endpoint.cost_cache_write_per_mtok == 0.0
@@ -252,7 +378,10 @@ class _PricedUsageStubHandler(BaseHTTPRequestHandler):
         self.wfile.write(f"data: {json.dumps(content)}\n\n".encode())
         done = {"choices": [{"index": 0, "delta": {}, "finish_reason": "stop"}]}
         self.wfile.write(f"data: {json.dumps(done)}\n\n".encode())
-        usage = {"choices": [], "usage": {"prompt_tokens": 1_000_000, "completion_tokens": 1_000_000}}
+        usage = {
+            "choices": [],
+            "usage": {"prompt_tokens": 1_000_000, "completion_tokens": 1_000_000},
+        }
         self.wfile.write(f"data: {json.dumps(usage)}\n\n".encode())
         self.wfile.write(b"data: [DONE]\n\n")
         self.wfile.flush()
@@ -322,7 +451,9 @@ async def test_real_priced_turn_over_budget_fails_closed_through_engine():
         cost_output_per_mtok=2.0,  # 1M output -> $2.00, total $3.00 over the $0.50 cap
     )
     supervisor = PiRuntimeSupervisor(max_cost_usd=0.5)
-    service = PiExecutionService(resolver=_FixedResolver(endpoint), supervisor=supervisor)
+    service = PiExecutionService(
+        resolver=_FixedResolver(endpoint), supervisor=supervisor
+    )
 
     async def _no_tools(name, params, pid, aid):  # pragma: no cover - not exercised
         return {"success": True, "result": "unused"}
@@ -373,7 +504,9 @@ async def test_real_cache_read_unpriced_turn_fails_closed_through_engine():
         cost_cache_read_per_mtok=0.0,  # NOT priced — the spent category is $0-rated
     )
     supervisor = PiRuntimeSupervisor(max_cost_usd=0.5)
-    service = PiExecutionService(resolver=_FixedResolver(endpoint), supervisor=supervisor)
+    service = PiExecutionService(
+        resolver=_FixedResolver(endpoint), supervisor=supervisor
+    )
 
     async def _no_tools(name, params, pid, aid):  # pragma: no cover - not exercised
         return {"success": True, "result": "unused"}

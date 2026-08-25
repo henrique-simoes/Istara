@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>LLM Server Settings - Istara Feature Docs</title>
+  <title>Legacy LLM Server Compatibility - Istara Feature Docs</title>
   <meta name="description" content="Istara documentation, installation, and feature map for local-first AI UX research.">
   <link rel="stylesheet" href="../../../assets/site.css">
 </head>
@@ -172,7 +172,7 @@
 <h2>Settings</h2>
 <ul>
 <li data-search-item data-search-text="system status and models settings &gt; system status and models settings shows backend, llm, hardware, model recommendation, and available model status for the local installation."><a href="../general/researcher.html"><span>System Status And Models</span><small>Settings &gt; System Status And Models</small></a></li>
-<li data-search-item data-search-text="llm server settings settings &gt; llm servers settings manages configured llm providers, server endpoints, provider labels, and active model switching."><a class="active" aria-current="page" href="researcher.html"><span>LLM Server Settings</span><small>Settings &gt; LLM Servers</small></a></li>
+<li data-search-item data-search-text="legacy llm server compatibility settings &gt; pi model management &gt; legacy compatibility pi model management owns provider/model configuration while legacy llmserver rows remain read-only migration input and petals donors join through the governed bridge."><a class="active" aria-current="page" href="researcher.html"><span>Legacy LLM Server Compatibility</span><small>Settings &gt; Pi Model Management &gt; Legacy Compatibility</small></a></li>
 <li data-search-item data-search-text="user management settings &gt; users user management supports team member visibility and administrative user operations."><a href="../users/researcher.html"><span>User Management</span><small>Settings &gt; Users</small></a></li>
 <li data-search-item data-search-text="connection strings settings &gt; connection strings connection string settings provide governed admin-only configuration for sensitive external or local service connection data."><a href="../connection-strings/researcher.html"><span>Connection Strings</span><small>Settings &gt; Connection Strings</small></a></li>
 <li data-search-item data-search-text="passkeys and two-factor authentication settings &gt; security factors settings includes passkey and totp management for strengthening account authentication."><a href="../security-factors/researcher.html"><span>Passkeys And Two-Factor Authentication</span><small>Settings &gt; Security Factors</small></a></li>
@@ -220,13 +220,13 @@
   <nav class="breadcrumbs" aria-label="Breadcrumb">
     <a href="../../../docs.html">Docs</a>
     <span>Settings</span>
-    <span>LLM Server Settings</span>
+    <span>Legacy LLM Server Compatibility</span>
   </nav>
   <div class="feature-title-row">
     <div>
       <p class="eyebrow">Researcher/User documentation</p>
-      <h1>LLM Server Settings</h1>
-      <p class="lede">Settings manages configured LLM providers, server endpoints, provider labels, and active model switching.</p>
+      <h1>Legacy LLM Server Compatibility</h1>
+      <p class="lede">Pi Model Management owns provider/model configuration while legacy LLMServer rows remain read-only migration input and Petals donors join through the governed bridge.</p>
     </div>
     <span class="status-chip">documented</span>
   </div>
@@ -235,17 +235,17 @@
     <a href="architecture.html">Architecture</a>
   </nav>
   <dl class="meta-grid">
-    <div><dt>UI Path</dt><dd>Settings &gt; LLM Servers</dd></div>
+    <div><dt>UI Path</dt><dd>Settings &gt; Pi Model Management &gt; Legacy Compatibility</dd></div>
     <div><dt>Component</dt><dd><code>SettingsView</code></dd></div>
     <div><dt>Source Refs</dt><dd>7</dd></div>
-    <div><dt>Tests</dt><dd>3</dd></div>
+    <div><dt>Tests</dt><dd>5</dd></div>
   </dl>
   <div class="link-cluster" aria-label="Related feature links"><a href="../../chat/model-controls/researcher.html">Chat Model Controls</a>
 <a href="../connection-strings/researcher.html">Connection Strings</a></div>
   <p class="concept-line"><strong>Concepts:</strong> rag</p>
 </header>
 <h2 id="what-it-does">What It Does</h2>
-<p>The legacy LLM Server API and persisted rows remain as a reversible compatibility/migration plane for existing installations, local serving, and donated compute. The legacy catalog is no longer rendered as a competing model-management UI in normal Settings; Pi Model Management owns provider/model selection for cloud/API connections.</p>
+<p>The classical LLM Server API has been retired. Persisted rows remain as read-only migration input, while Pi Model Management owns provider/model selection for both Istara and Pi Agentic Loop. Donated compute joins that catalog only through the governed Petals bridge.</p>
 <h2 id="why-it-exists">Why It Exists</h2>
 <p>LLM Server Settings exists so the work represented by Settings &gt; LLM Servers has a stable, discoverable place in Istara&#x27;s project workflow. It keeps user actions, generated artifacts, and related follow-up surfaces connected to the active project rather than scattering them across unrelated tools.</p>
 <h2 id="where-it-lives">Where It Lives</h2>
@@ -257,25 +257,26 @@
 <h2 id="how-ux-researchers-use-it">How UX Researchers Use It</h2>
 <ul>
 <li>Do not look for a separate LLM Servers section in normal Settings; it has been removed from the user-facing catalog.</li>
-<li>Existing backend routes and rows are preserved for migration, rollback, local serving, and donated-compute compatibility.</li>
+<li>Existing rows are preserved for migration and rollback; the old public CRUD route is not mounted.</li>
 <li>Use Settings &gt; Pi Model Management for the supported provider/model and authentication workflow.</li>
 </ul>
 <h2 id="supported-workflows">Supported Workflows</h2>
 <ul>
 <li>Start from Settings &gt; Pi Model Management for new cloud/API model connections.</li>
-<li>Treat legacy LLM Server rows/routes as compatibility data only; changes must preserve rollback and existing local/donor behavior.</li>
+<li>Treat legacy LLM Server rows as compatibility data only; new configuration belongs in Pi Model Management.</li>
 <li>Move to Chat &gt; Model Controls to choose enabled models for a conversation.</li>
 </ul>
 <h2 id="inputs-outputs-and-expected-outcomes">Inputs, Outputs, And Expected Outcomes</h2>
 <ul>
-<li>Admin-only shared provider endpoint inventory, status, forms, and health-check results shown by the referenced component and routes.</li>
+<li>Admin-only Pi provider/model inventory, authentication, and status shown by the referenced component and routes.</li>
 <li>Non-admin users receive a permission-gated state with no endpoint inventory or probe controls.</li>
 </ul>
 <h2 id="engine-catalog-parity">Engine Catalog Parity</h2>
 <ul>
-<li>Istara can run on a legacy engine or the newer Pi replacement engine, and each engine keeps its own view of the available model servers. Pi Replacement wave W8 keeps those views in sync: adding, editing, deleting, or auto-discovering an LLM server in Settings now refreshes the Pi engine&#x27;s model catalog as well as the legacy one, so a server you register once is available to both engines without a restart.</li>
-<li>The sync is one-directional — registered servers flow into the Pi catalog, but Pi never writes back or changes how the legacy engine schedules work, and shared relay/donor capacity is still never offered to Pi traffic.</li>
-<li>The settings model list also reports the Pi catalog alongside the legacy list. It shows only identity information — which endpoints and model names exist and what kind they are — never server addresses or API keys, and it is available whether the servers are currently reachable or offline.</li>
+<li>Istara and Pi Agentic Loop are two first-class loop modes over one Pi Model Management authority. Changing the loop does not switch model catalogs.</li>
+<li>Endpoint/provider/model changes refresh live managers without a restart. The projection is one-directional: Pi does not write back to legacy rows or donor records.</li>
+<li>Healthy, explicitly consented, project-authorized relay/browser donors may appear through the identity-pinned Petals bridge. Same-model replicas provide availability, not additional independent Research Spine coders.</li>
+<li>Catalog responses expose identity/capability metadata, never addresses, API keys, tokens, prompts, or research content.</li>
 </ul>
 <h2 id="caveats">Caveats</h2>
 <ul>
@@ -293,9 +294,9 @@
 </ul>
 <h2 id="evidence">Evidence</h2>
 <ul>
-<li>Source files: <code>frontend/src/components/common/SettingsView.tsx</code>, <code>frontend/src/lib/modelProviders.ts</code>, <code>backend/app/api/routes/llm_servers.py</code>, <code>backend/app/api/routes/settings.py</code>, <code>backend/app/core/network_discovery.py</code></li>
-<li>API references: <code>backend/app/api/routes/llm_servers.py</code>, <code>backend/app/api/routes/settings.py</code></li>
-<li>Tests: <code>frontend/src/lib/modelProviders.test.ts</code>, <code>tests/test_llm_servers.py</code>, <code>tests/pi_production/test_w8_embeddings_gateway.py</code></li>
+<li>Source files: <code>frontend/src/components/common/SettingsView.tsx</code>, <code>frontend/src/lib/modelProviders.ts</code>, <code>backend/app/api/routes/settings.py</code>, <code>backend/app/api/routes/petals.py</code>, <code>backend/app/core/pi_runtime/model_manager.py</code>, <code>backend/app/core/petals_bridge.py</code></li>
+<li>API references: <code>backend/app/api/routes/settings.py</code>, <code>backend/app/api/routes/petals.py</code></li>
+<li>Tests: <code>frontend/src/lib/modelProviders.test.ts</code>, <code>tests/test_settings_agentic_pi_endpoints.py</code>, <code>tests/pi_production/test_w1_agentic_contract.py</code>, <code>tests/petals_bridge/test_petals_bridge.py</code>, <code>tests/pi_production/test_w8_embeddings_gateway.py</code></li>
 </ul>
         </article>
         <aside class="toc-panel" aria-label="Page sections">

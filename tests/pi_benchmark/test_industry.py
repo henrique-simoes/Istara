@@ -19,6 +19,18 @@ from tests.pi_benchmark.scenarios import load_pack
 pytestmark = pytest.mark.benchmark
 
 
+def _require_complete_industry_data() -> None:
+    """Skip data-content assertions when the optional published corpus is absent."""
+    status = industry.data_status()
+    missing = [
+        category
+        for category, info in status["categories"].items()
+        if not all(value for key, value in info.items() if key != "subset")
+    ]
+    if missing:
+        pytest.skip("optional industry benchmark data missing: " + ", ".join(missing))
+
+
 def test_data_status_reports_all_categories():
     status = industry.data_status()
     assert set(status["categories"]) == {
@@ -29,6 +41,7 @@ def test_data_status_reports_all_categories():
 
 
 def test_pack_loads_deterministic_subsets():
+    _require_complete_industry_data()
     scenarios = industry.scenarios()
     again = industry.scenarios()
     assert [s.id for s in scenarios] == [s.id for s in again]  # lru_cache + file order
@@ -40,6 +53,7 @@ def test_pack_loads_deterministic_subsets():
 
 
 def test_bfcl_scenario_carries_prompt_and_ground_truth():
+    _require_complete_industry_data()
     scenarios = [s for s in industry.scenarios() if s.id.endswith("simple_python_0")]
     (s,) = scenarios
     assert s.pack == "industry"
@@ -51,6 +65,7 @@ def test_bfcl_scenario_carries_prompt_and_ground_truth():
 
 
 def test_tau_scenario_extracts_instruction_and_actions():
+    _require_complete_industry_data()
     tau = [s for s in industry.scenarios() if "tau_bench" in s.tags]
     assert tau, "τ-bench tasks should parse from tasks_test.py"
     first = tau[0]
@@ -72,6 +87,7 @@ def test_missing_data_yields_no_scenarios(tmp_path, monkeypatch):
 
 
 def test_registry_exposes_industry_pack():
+    _require_complete_industry_data()
     names = [s.id for s in load_pack("industry")]
     assert names and all(name.startswith("industry.") for name in names)
 
@@ -107,6 +123,7 @@ def test_module_is_t0_import_safe():
 
 
 def test_estimate_scope_lane_counts_only_requested_lane(tmp_path):
+    _require_complete_industry_data()
     # importlib (not an import statement) keeps this test out of the gate's AST
     # import graph — a static edge into runner would close a package-cluster cycle.
     runner = importlib.import_module("tests.pi_benchmark.runner")

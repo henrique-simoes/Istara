@@ -63,8 +63,8 @@ class SkillManager(SkillUsageMixin, SkillProposalMixin, SkillCreationMixin):
             if not directory.exists():
                 continue
             for path in sorted(directory.glob("*.json")):
-                if path.name.startswith("_"):
-                    continue  # Skip meta files
+                if path.name.startswith(("_", "._")):
+                    continue  # Skip product meta files and macOS AppleDouble sidecars
                 try:
                     defn = SkillDefinition(path)
                     self._definitions[defn.name] = defn

@@ -29,12 +29,14 @@ from __future__ import annotations
 import base64
 import hashlib
 import logging
-import os
+from datetime import UTC, datetime
+
+from sqlalchemy import Text, TypeDecorator
 
 logger = logging.getLogger(__name__)
 
 try:
-    from cryptography.fernet import Fernet, InvalidToken
+    from cryptography.fernet import Fernet
 
     CRYPTO_AVAILABLE = True
 except ImportError:
@@ -45,6 +47,31 @@ except ImportError:
     )
 
 _fernet_instance: object | None = None
+_decryption_failures = 0
+_last_decryption_failure_at: str | None = None
+
+
+def _record_decryption_failure() -> None:
+    global _decryption_failures, _last_decryption_failure_at
+    _decryption_failures += 1
+    _last_decryption_failure_at = datetime.now(UTC).isoformat()
+
+
+def encryption_health_snapshot() -> dict[str, object]:
+    """Return process-local integrity signals without field or secret values."""
+    return {
+        "healthy": _decryption_failures == 0,
+        "decryption_failures": _decryption_failures,
+        "last_failure_at": _last_decryption_failure_at,
+        "crypto_available": CRYPTO_AVAILABLE,
+    }
+
+
+def reset_encryption_health_for_tests() -> None:
+    """Reset process counters; production code must never call this helper."""
+    global _decryption_failures, _last_decryption_failure_at
+    _decryption_failures = 0
+    _last_decryption_failure_at = None
 
 
 def _get_fernet():
@@ -69,9 +96,7 @@ def _get_fernet():
     except Exception:
         import hashlib
 
-        derived = hashlib.pbkdf2_hmac(
-            "sha256", key.encode(), b"istara-field-encryption", 100_000
-        )
+        derived = hashlib.pbkdf2_hmac("sha256", key.encode(), b"istara-field-encryption", 100_000)
         fernet_key = base64.urlsafe_b64encode(derived[:32])
         _fernet_instance = Fernet(fernet_key)
 
@@ -114,12 +139,14 @@ def decrypt_field(ciphertext: str) -> str:
         return ciphertext  # Not encrypted — return as-is
     f = _get_fernet()
     if f is None:
+        _record_decryption_failure()
         logger.warning("Cannot decrypt — no encryption key configured")
         return ciphertext
     try:
         encrypted_bytes = ciphertext[4:].encode()  # Strip "ENC:" prefix
         return f.decrypt(encrypted_bytes).decode()
     except Exception:
+        _record_decryption_failure()
         logger.warning("Field decryption failed — returning ciphertext")
         return ciphertext
 
@@ -140,8 +167,6 @@ def hash_field(value: str) -> str:
 # ---------------------------------------------------------------------------
 # SQLAlchemy Encrypted Type
 # ---------------------------------------------------------------------------
-
-from sqlalchemy import TypeDecorator, Text
 
 
 class EncryptedType(TypeDecorator):

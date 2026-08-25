@@ -257,6 +257,7 @@ class ComputeRegistryInvocationMixin:
             )
 
         lmstudio_load_recovery_used = False
+        truncated_empty_error: ChatTruncatedEmptyResponse | None = None
         for node in self._select_candidates(
             require_tools=bool(tools),
             require_vision=require_vision,
@@ -466,6 +467,12 @@ class ComputeRegistryInvocationMixin:
                         )
                         raise
                     except Exception as e:
+                        if isinstance(e, ChatTruncatedEmptyResponse):
+                            # Preserve the actionable failure after checking any
+                            # remaining eligible node. Collapsing this into the
+                            # generic no-node error hides that the model ran but
+                            # exhausted its answer budget on hidden reasoning.
+                            truncated_empty_error = e
                         if _looks_like_model_availability_error(e):
                             loaded_recovery_models = [
                                 name
@@ -567,6 +574,8 @@ class ComputeRegistryInvocationMixin:
             finally:
                 node.active_requests -= 1
 
+        if truncated_empty_error is not None:
+            raise truncated_empty_error
         if require_vision:
             raise RuntimeError(
                 "No vision-capable compute nodes available for image chat"

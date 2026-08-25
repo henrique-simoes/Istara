@@ -5,7 +5,7 @@ Governing artifacts:
 - `docs/build-stream/plans/2026-07-20-pi-full-replacement-master-plan.md`
 - `docs/build-stream/2026-07-20-pi-full-replacement.md`
 - `CF-SPEC-8`
-- diagnosis: `/Users/user/Documents/Istara-main/comparison-Istara-pi/2026-07-20-pi-replacement-review-diagnosis.md`
+- diagnosis: `<repo-root>/comparison-Istara-pi/2026-07-20-pi-replacement-review-diagnosis.md`
 - predecessor lifecycle: `docs/build-stream/2026-07-20-pi-production-runtime-completion.md`
 
 This is implementation, not planning. Do not create or dispatch architect tasks. Read the

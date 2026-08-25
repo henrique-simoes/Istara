@@ -25,13 +25,18 @@ from app.api.routes import settings as settings_routes
 
 @pytest.fixture()
 def client(monkeypatch):
-    import app.core.permissions as perms
+    from app import config as app_config
+    from app.config import settings
 
-    monkeypatch.setattr(perms, "require_global_role", lambda request, role: None)
+    original_endpoints = list(settings.pi_api_endpoints)
+    monkeypatch.setattr(settings_routes, "require_global_role", lambda request, role: None)
+    monkeypatch.setattr(settings_routes, "_persist_pi_endpoints", lambda: None)
+    monkeypatch.setattr(app_config, "_write_macos_keychain_secret", lambda *args, **kwargs: True)
     app = FastAPI()
     app.include_router(settings_routes.router, prefix="/api")
     with TestClient(app) as test_client:
         yield test_client
+    settings.pi_api_endpoints = original_endpoints
 
 
 def test_catalog_exposes_all_pi_providers_and_models(client):
@@ -119,8 +124,21 @@ def test_oauth_flows_endpoints(client):
     assert resp.status_code == 200
 
 
-def test_oauth_start_github_copilot_device_code(client):
-    """GitHub device-code endpoint is public; a real user_code should come back."""
+def test_oauth_start_github_copilot_device_code(client, monkeypatch):
+    """Admin-authorized GitHub device-code setup returns the expected shape."""
+    from app.core.pi_runtime import oauth
+
+    monkeypatch.setattr(
+        oauth,
+        "start_device_flow",
+        lambda provider: oauth._store_flow(oauth.OAuthFlowState(
+            provider=provider,
+            flow_type="device_code",
+            status="pending",
+            user_code="ABCD-EFGH",
+            verification_uri="https://github.com/login/device",
+        )),
+    )
     resp = client.post("/api/settings/pi-oauth/start", json={"provider": "github-copilot"})
     assert resp.status_code == 200, resp.text
     body = resp.json()
@@ -132,8 +150,21 @@ def test_oauth_start_github_copilot_device_code(client):
     assert any(f["provider"] == "github-copilot" and f["status"] == "pending" for f in flows)
 
 
-def test_pkce_openrouter_flow_shape(client):
+def test_pkce_openrouter_flow_shape(client, monkeypatch):
     """OpenRouter PKCE must expose an auth_url (no device code)."""
+    from app.core.pi_runtime import oauth
+
+    monkeypatch.setattr(
+        oauth,
+        "start_pkce_flow",
+        lambda redirect_uri: oauth._store_flow(oauth.OAuthFlowState(
+            provider="openrouter",
+            flow_type="pkce",
+            method="browser",
+            status="pending",
+            auth_url="https://openrouter.ai/auth?state=test",
+        )),
+    )
     resp = client.post("/api/settings/pi-oauth/start", json={"provider": "openrouter", "method": "browser"})
     assert resp.status_code == 200, resp.text
     body = resp.json()

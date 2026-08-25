@@ -7,9 +7,9 @@ Local-first and zero-trust by design: data stays on the user's machine unless
 they explicitly opt in to sharing (TELEMETRY_ENABLED=false by default).
 """
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
-from sqlalchemy import DateTime, Float, Integer, String, Text
+from sqlalchemy import DateTime, Float, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.models.database import Base
@@ -23,8 +23,11 @@ class TelemetrySpan(Base):
     id: Mapped[str] = mapped_column(
         String(36), primary_key=True, default=lambda: __import__("uuid").uuid4().hex[:36]
     )
-    trace_id: Mapped[str] = mapped_column(String(36), nullable=False, index=True)
-    parent_id: Mapped[str | None] = mapped_column(String(36), nullable=True, default=None)
+    # Trace producers use namespaced identifiers (for example ``agentic-`` +
+    # UUID hex). Keep the full handle so provenance remains joinable across
+    # usage, coding, reconciliation, and promotion events.
+    trace_id: Mapped[str] = mapped_column(String(120), nullable=False, index=True)
+    parent_id: Mapped[str | None] = mapped_column(String(120), nullable=True, default=None)
 
     operation: Mapped[str] = mapped_column(String(50), nullable=False, index=True)
     # "skill_execute", "validation", "llm_request", "tool_call",
@@ -35,7 +38,7 @@ class TelemetrySpan(Base):
     agent_id: Mapped[str] = mapped_column(String(36), default="")
 
     started_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
+        DateTime(timezone=True), default=lambda: datetime.now(UTC)
     )
     duration_ms: Mapped[float] = mapped_column(Float, default=0.0)
 
@@ -67,9 +70,10 @@ class TelemetrySpan(Base):
     tool_success: Mapped[bool | None] = mapped_column(Integer, nullable=True, default=None)
     tool_duration_ms: Mapped[float | None] = mapped_column(Float, nullable=True, default=None)
 
-    source: Mapped[str] = mapped_column(String(20), default="production")
-    # "production" or "autoresearch"
+    source: Mapped[str] = mapped_column(String(40), default="production")
+    # Provenance class such as "production", "autoresearch", or a governed
+    # engine candidate identifier (for example "pi-replacement-candidate").
 
     created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
+        DateTime(timezone=True), default=lambda: datetime.now(UTC)
     )

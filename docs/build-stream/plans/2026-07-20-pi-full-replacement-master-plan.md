@@ -60,7 +60,7 @@ not model routing); deleting the legacy engine; external live channel traffic; `
 
 Read these two documents before writing any code:
 
-1. `/Users/user/Documents/Istara-main/comparison-Istara-pi/2026-07-20-pi-replacement-review-diagnosis.md`
+1. `<repo-root>/comparison-Istara-pi/2026-07-20-pi-replacement-review-diagnosis.md`
    — the independent review of the CF-SPEC-7 branch. Its findings register (A/B/C IDs) is
    referenced throughout this plan. Headline: the current candidate covers **2 of 69
    product chat call sites**; 2 Blocker + 6 Major runtime defects are open; several
@@ -147,7 +147,7 @@ call sites; CF `intelligence impact` finds consumers grep misses (it found
 ## 3. Compass Forge mapping & execution protocol (mandatory, every wave)
 
 Compass Forge is the execution record. Run everything from the worktree root
-(`/Users/user/Documents/Istara-main-pi-replacement`) so CF resolves the right project.
+(`<repo-root>-pi-replacement`) so CF resolves the right project.
 
 Per wave, in order:
 

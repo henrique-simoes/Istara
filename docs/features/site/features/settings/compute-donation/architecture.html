@@ -172,7 +172,7 @@
 <h2>Settings</h2>
 <ul>
 <li data-search-item data-search-text="system status and models settings &gt; system status and models settings shows backend, llm, hardware, model recommendation, and available model status for the local installation."><a href="../general/architecture.html"><span>System Status And Models</span><small>Settings &gt; System Status And Models</small></a></li>
-<li data-search-item data-search-text="llm server settings settings &gt; llm servers settings manages configured llm providers, server endpoints, provider labels, and active model switching."><a href="../llm-servers/architecture.html"><span>LLM Server Settings</span><small>Settings &gt; LLM Servers</small></a></li>
+<li data-search-item data-search-text="legacy llm server compatibility settings &gt; pi model management &gt; legacy compatibility pi model management owns provider/model configuration while legacy llmserver rows remain read-only migration input and petals donors join through the governed bridge."><a href="../llm-servers/architecture.html"><span>Legacy LLM Server Compatibility</span><small>Settings &gt; Pi Model Management &gt; Legacy Compatibility</small></a></li>
 <li data-search-item data-search-text="user management settings &gt; users user management supports team member visibility and administrative user operations."><a href="../users/architecture.html"><span>User Management</span><small>Settings &gt; Users</small></a></li>
 <li data-search-item data-search-text="connection strings settings &gt; connection strings connection string settings provide governed admin-only configuration for sensitive external or local service connection data."><a href="../connection-strings/architecture.html"><span>Connection Strings</span><small>Settings &gt; Connection Strings</small></a></li>
 <li data-search-item data-search-text="passkeys and two-factor authentication settings &gt; security factors settings includes passkey and totp management for strengthening account authentication."><a href="../security-factors/architecture.html"><span>Passkeys And Two-Factor Authentication</span><small>Settings &gt; Security Factors</small></a></li>
@@ -269,6 +269,8 @@
 <li>A relay authenticated only by the shared network token can register for status but is excluded from prompt and embedding routing because it has no project scope.</li>
 <li>Direct relay/browser dispatch through <code>ComputeNode.chat</code>, <code>ComputeNode.chat_stream</code>, <code>ComputeNode.embed</code>, or <code>ComputeNode.embed_batch</code> requires the active project to match the node&#x27;s resolved donation scope before any content is sent over websocket or direct streaming transport.</li>
 <li>Chat responses include content-free route evidence so benchmark and telemetry layers can distinguish registered, visible, selected, served, and failed donated compute without logging prompt content, response content, provider hosts, or private endpoint details.</li>
+<li>A donor participates in Pi Model Management only through the Petals bridge and only while it is a relay/browser node with explicit <code>pi_served</code> consent, current health, and matching project scope. Projection is read-only and identity-pinned; a process-private bridge credential protects the loopback hop, and stale projections are invalidated when eligibility changes.</li>
+<li>Petals replicas serving the same model can provide route redundancy but do not become independent Research Spine coders. Formal coding requires three distinct model identities with complete evidence-unit coverage.</li>
 <li>The frontmatter and manifest entries are the durable contract for agents updating this page after code changes.</li>
 <li>When the referenced component, store, route, agent, skill, or test behavior changes, regenerate and validate the feature documentation.</li>
 </ul>
@@ -282,6 +284,7 @@
 <li><code>tests/compute_cases/stats_websocket.py</code></li>
 <li><code>tests/test_project_rbac.py</code></li>
 <li><code>tests/test_project_scope_contracts.py</code></li>
+<li><code>tests/petals_bridge/test_petals_bridge.py</code></li>
 </ul>
 <h2 id="related-features">Related Features</h2>
 <ul>

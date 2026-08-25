@@ -73,7 +73,7 @@ Feature pages:
 - loops.custom: Custom Loops | docs/features/content/loops/custom/researcher.md | docs/features/content/loops/custom/architecture.md
 - loops.history: Loop Execution History | docs/features/content/loops/history/researcher.md | docs/features/content/loops/history/architecture.md
 - settings.general: System Status And Models | docs/features/content/settings/general/researcher.md | docs/features/content/settings/general/architecture.md
-- settings.llm-servers: LLM Server Settings | docs/features/content/settings/llm-servers/researcher.md | docs/features/content/settings/llm-servers/architecture.md
+- settings.llm-servers: Legacy LLM Server Compatibility | docs/features/content/settings/llm-servers/researcher.md | docs/features/content/settings/llm-servers/architecture.md
 - settings.users: User Management | docs/features/content/settings/users/researcher.md | docs/features/content/settings/users/architecture.md
 - settings.connection-strings: Connection Strings | docs/features/content/settings/connection-strings/researcher.md | docs/features/content/settings/connection-strings/architecture.md
 - settings.security-factors: Passkeys And Two-Factor Authentication | docs/features/content/settings/security-factors/researcher.md | docs/features/content/settings/security-factors/architecture.md

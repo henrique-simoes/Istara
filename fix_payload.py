@@ -1,7 +1,9 @@
-import sqlite3
 import json
+import sqlite3
+from pathlib import Path
 
-db_path = "/Users/user/Documents/Istara-main-pi-replacement/.compass-forge/state.sqlite3"
+repo_root = Path(__file__).resolve().parent
+db_path = repo_root.with_name(f"{repo_root.name}-pi-replacement") / ".compass-forge/state.sqlite3"
 conn = sqlite3.connect(db_path)
 cur = conn.cursor()
 cur.execute("SELECT id, payload_json FROM tasks WHERE public_id = 'FIX-pi-eval-REVIEW-r1'")

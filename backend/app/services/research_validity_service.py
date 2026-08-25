@@ -2,13 +2,14 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
-from datetime import datetime, timezone
 import json
 import logging
 import re
 import uuid
-from typing import Any, Awaitable, Callable
+from collections.abc import Awaitable, Callable
+from dataclasses import dataclass
+from datetime import UTC, datetime
+from typing import Any
 
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -321,11 +322,7 @@ def _node_model_names(node: Any) -> list[str]:
     ]
     if loaded_caps:
         return _chat_model_names(loaded_caps)
-    loaded = [
-        str(name).strip()
-        for name in getattr(node, "loaded_models", [])
-        if str(name).strip()
-    ]
+    loaded = [str(name).strip() for name in getattr(node, "loaded_models", []) if str(name).strip()]
     if loaded:
         return _chat_model_names(loaded)
     capability_names = [str(name).strip() for name in capabilities if str(name).strip()]
@@ -383,9 +380,7 @@ def _select_project_coders(project_id: str, max_coders: int) -> list[CoderSpec]:
 
 
 def _extract_json_payload(text: str) -> dict:
-    cleaned = re.sub(
-        r"^```(?:json)?|```$", "", text.strip(), flags=re.IGNORECASE | re.MULTILINE
-    )
+    cleaned = re.sub(r"^```(?:json)?|```$", "", text.strip(), flags=re.IGNORECASE | re.MULTILINE)
     start = cleaned.find("{")
     end = cleaned.rfind("}")
     if start >= 0 and end > start:
@@ -507,11 +502,7 @@ def _resolve_application_unit(
             unit
             for unit in units
             if quote in (unit.source_text or "")
-            or (
-                unit.source_text
-                and len(unit.source_text) >= 16
-                and unit.source_text in quote
-            )
+            or (unit.source_text and len(unit.source_text) >= 16 and unit.source_text in quote)
         ]
         if len(matches) == 1:
             return matches[0]
@@ -548,33 +539,33 @@ def _usable_coding_applications(
     return usable
 
 
+def _has_complete_unit_coverage(
+    usable: list[tuple[dict, EvidenceUnit, list[str]]],
+    *,
+    unit_by_id: dict[str, EvidenceUnit],
+) -> bool:
+    """Return whether one coder supplied a usable result for every requested unit."""
+    covered = {unit.id for _, unit, _ in usable}
+    return covered == set(unit_by_id)
+
+
 async def _use_pi_coding_plane(db: AsyncSession, project_id: str) -> bool:
-    """True when the dual-coder run routes through the Pi dispatcher plane.
+    """Research coding always uses the Pi model-management authority.
 
-    Gated on the engine that would actually serve the dispatch resolving to
-    Pi — selecting Pi-catalog coders for a run the legacy engine would serve
-    would pin endpoint identities the legacy plane cannot honor.
+    The project's agentic-engine choice controls loop semantics, not provider
+    discovery or independent-coder identity.  Keeping this compatibility seam
+    makes the invariant explicit while older tests/extensions still patch it.
     """
-    from app.core.agentic import agentic
-    from app.models.project import Project
-
-    try:
-        value = await db.scalar(
-            select(Project.agentic_engine).where(Project.id == project_id)
-        )
-    except Exception:
-        value = None
-    return agentic.resolve_engine(project_engine=(value or "").strip() or None) == "pi"
+    del db, project_id
+    return True
 
 
 async def _select_pi_coders(max_coders: int) -> list[CoderSpec]:
-    """W7: independent coders as distinct Pi endpoint identities (fail-closed).
+    """Select independent coders backed by distinct Pi-managed models.
 
-    The "≥3 distinct model coders" reliability gate maps to distinct Pi
-    endpoint identities (master plan §8 W7). ``resolve_distinct`` raises
-    ``PiEndpointResolutionError`` when the catalog spans fewer distinct
-    endpoints than requested — diversity is never fabricated from one
-    endpoint.
+    Exact endpoint identities remain pinned as route evidence, while
+    ``resolve_distinct`` fails closed when the catalog has fewer distinct model
+    identities than requested. Endpoint replicas never fabricate diversity.
     """
     from types import SimpleNamespace
 
@@ -622,6 +613,7 @@ async def _pi_coder_runner(
             model=model_name,
             endpoint_id=getattr(coder.node, "endpoint_id", None),
         ),
+        engine="pi",
         spine_phase="execution",
     )
     return {
@@ -631,9 +623,7 @@ async def _pi_coder_runner(
             "node_source": "pi",
             "provider_type": getattr(coder.node, "provider_type", ""),
             "model": model_name or "",
-            "endpoint_id": outcome.endpoint_id
-            or getattr(coder.node, "endpoint_id", "")
-            or "",
+            "endpoint_id": outcome.endpoint_id or getattr(coder.node, "endpoint_id", "") or "",
             "route_kind": "coding_run",
             "outcome": "served",
         },
@@ -722,9 +712,7 @@ def _coding_unit_payload(unit: EvidenceUnit) -> dict:
 def _coding_messages(
     units: list[EvidenceUnit], codebook: CodebookVersion | None, threshold: float
 ) -> list[dict]:
-    codebook_payload = (
-        codebook.to_dict() if codebook else {"status": "draft", "codes": []}
-    )
+    codebook_payload = codebook.to_dict() if codebook else {"status": "draft", "codes": []}
     prompt = build_qualitative_coding_prompt(
         evidence_units=[_coding_unit_payload(unit) for unit in units],
         codebook=codebook_payload,
@@ -756,7 +744,9 @@ def _coding_messages(
         },
         {
             "role": "user",
-            "content": f"{prompt}\n\nReturn JSON matching this schema:\n{json.dumps(schema, indent=2)}",
+            "content": (
+                f"{prompt}\n\nReturn JSON matching this schema:\n{json.dumps(schema, indent=2)}"
+            ),
         },
     ]
 
@@ -891,9 +881,7 @@ async def _task_finding_support_diagnostics(
     nuggets = (
         (
             await db.execute(
-                select(Nugget).where(
-                    Nugget.project_id == project_id, Nugget.task_id == task_id
-                )
+                select(Nugget).where(Nugget.project_id == project_id, Nugget.task_id == task_id)
             )
         )
         .scalars()
@@ -902,9 +890,7 @@ async def _task_finding_support_diagnostics(
     facts = (
         (
             await db.execute(
-                select(Fact).where(
-                    Fact.project_id == project_id, Fact.task_id == task_id
-                )
+                select(Fact).where(Fact.project_id == project_id, Fact.task_id == task_id)
             )
         )
         .scalars()
@@ -913,9 +899,7 @@ async def _task_finding_support_diagnostics(
     insights = (
         (
             await db.execute(
-                select(Insight).where(
-                    Insight.project_id == project_id, Insight.task_id == task_id
-                )
+                select(Insight).where(Insight.project_id == project_id, Insight.task_id == task_id)
             )
         )
         .scalars()
@@ -944,9 +928,7 @@ async def _task_finding_support_diagnostics(
                         ResearchEvidenceEdge.task_id == task_id,
                         ResearchEvidenceEdge.source_type == "nugget",
                         ResearchEvidenceEdge.relation == "grounded_in",
-                        ResearchEvidenceEdge.evidence_unit_id.in_(
-                            accepted_evidence_unit_ids
-                        ),
+                        ResearchEvidenceEdge.evidence_unit_id.in_(accepted_evidence_unit_ids),
                     )
                 )
             )
@@ -983,8 +965,7 @@ async def _task_finding_support_diagnostics(
                 {
                     "type": "fact",
                     "id": row.id,
-                    "reason": "fact depends on unaccepted nugget(s): "
-                    + ", ".join(missing[:5]),
+                    "reason": "fact depends on unaccepted nugget(s): " + ", ".join(missing[:5]),
                 }
             )
         else:
@@ -1007,8 +988,7 @@ async def _task_finding_support_diagnostics(
                 {
                     "type": "insight",
                     "id": row.id,
-                    "reason": "insight depends on unaccepted fact(s): "
-                    + ", ".join(missing[:5]),
+                    "reason": "insight depends on unaccepted fact(s): " + ", ".join(missing[:5]),
                 }
             )
         else:
@@ -1205,7 +1185,7 @@ async def run_independent_coding_run(
         coding_run.status = "blocked"
         coding_run.promotion_status = "blocked"
         coding_run.fallback_reason = "No evidence units are available for coding."
-        coding_run.completed_at = datetime.now(timezone.utc)
+        coding_run.completed_at = datetime.now(UTC)
         await db.commit()
         return coding_run.to_dict()
 
@@ -1220,20 +1200,21 @@ async def run_independent_coding_run(
             "Synthetic QA evidence units are provisional-only and can never be "
             f"promoted (blocked unit count: {len(provisional_unit_ids)})."
         )
-        coding_run.completed_at = datetime.now(timezone.utc)
+        coding_run.completed_at = datetime.now(UTC)
         await db.commit()
         return coding_run.to_dict()
 
     runner = coder_runner or _pi_coder_runner
     pi_selection_error: str | None = None
     if coder_runner is None and await _use_pi_coding_plane(db, project_id):
-        # W7: coders are distinct Pi endpoint identities coded through the
+        # Coders are distinct Pi-managed model identities, each pinned to its
+        # exact endpoint and coded through the
         # AgenticDispatcher structured verb (``validity.coder``).
         try:
             coders = await _select_pi_coders(max_coders=max_coders)
         except Exception as exc:
-            # Fail-closed (master plan §8 W7): fewer distinct Pi endpoints
-            # than requested coders (or an unavailable catalog) means
+            # Fail-closed: fewer distinct Pi models than requested coders (or
+            # an unavailable catalog) means
             # validation unavailable — never fabricate diversity from fewer
             # endpoints and never switch engines silently. The empty coder
             # set flows into the existing reliability-gate "blocked"
@@ -1272,9 +1253,7 @@ async def run_independent_coding_run(
             codebook_version_id=coding_run.codebook_version_id or "",
         )
         try:
-            response = await runner(
-                coder, messages, coder.model_name or None, project_id
-            )
+            response = await runner(coder, messages, coder.model_name or None, project_id)
             content = response.get("message", {}).get("content", "")
             parsed = _extract_json_payload(content)
             usable_applications = _usable_coding_applications(
@@ -1282,7 +1261,7 @@ async def run_independent_coding_run(
                 unit_by_id=unit_by_id,
                 units=units,
             )
-            if not usable_applications:
+            if not _has_complete_unit_coverage(usable_applications, unit_by_id=unit_by_id):
                 repair_response = await runner(
                     coder,
                     _coding_repair_messages(units, codebook, threshold),
@@ -1300,6 +1279,12 @@ async def run_independent_coding_run(
                     response = repair_response
                     parsed = repair_parsed
                     usable_applications = repair_usable
+            if not _has_complete_unit_coverage(usable_applications, unit_by_id=unit_by_id):
+                raise ValueError(
+                    "coder response lacked complete evidence-unit coverage "
+                    f"({len({unit.id for _, unit, _ in usable_applications})}/"
+                    f"{len(unit_by_id)})"
+                )
         except Exception as exc:
             route_evidence.append(
                 {
@@ -1327,8 +1312,7 @@ async def run_independent_coding_run(
         route = response.get("_istara_route", {}) if isinstance(response, dict) else {}
         if not route:
             route = {
-                "node_id": getattr(coder.node, "node_id", "")
-                or getattr(coder.node, "name", ""),
+                "node_id": getattr(coder.node, "node_id", "") or getattr(coder.node, "name", ""),
                 "node_source": getattr(coder.node, "source", ""),
                 "provider_type": getattr(coder.node, "provider_type", ""),
                 "model": coder.model_name,
@@ -1371,9 +1355,8 @@ async def run_independent_coding_run(
                     "model_name": route.get("model") or coder.model_name,
                     "donor_id": served_donor_id,
                     "route_id": served_route_id,
-                    # Preserve the exact served endpoint identity so same-model
-                    # Pi endpoints stay distinct raters at the reliability gate
-                    # (W7 endpoint-identity contract).
+                    # Preserve endpoint identity as provenance only. Model
+                    # identity determines independence at the reliability gate.
                     "endpoint_id": (
                         route.get("endpoint_id")
                         or getattr(coder.node, "endpoint_id", "")
@@ -1404,9 +1387,7 @@ async def run_independent_coding_run(
                     route_id=served_route_id,
                     route_evidence_json=json.dumps(route),
                     confidence=confidence,
-                    reasoning=str(
-                        raw_app.get("rationale") or raw_app.get("memo") or ""
-                    ),
+                    reasoning=str(raw_app.get("rationale") or raw_app.get("memo") or ""),
                 )
                 db.add(code_app)
                 db.add(
@@ -1434,11 +1415,13 @@ async def run_independent_coding_run(
                 )
                 persisted_count += 1
 
-    reliability = evaluate_reliability_gate(gate_applications, threshold=threshold)
+    reliability = evaluate_reliability_gate(
+        gate_applications,
+        threshold=threshold,
+        minimum_distinct_models=max_coders,
+    )
     promotion_status = reliability["promotion_status"]
-    item_statuses = reliability.get(
-        "item_promotion_statuses"
-    ) or item_level_promotion_statuses(
+    item_statuses = reliability.get("item_promotion_statuses") or item_level_promotion_statuses(
         reliability.get("matrix", {}),
         promotion_status,
     )
@@ -1476,11 +1459,9 @@ async def run_independent_coding_run(
     for row in application_rows:
         item_status = item_statuses.get(row.evidence_unit_id or "", promotion_status)
         row.promotion_status = item_status
-        row.reliability_status = (
-            "accepted" if item_status == "accepted" else item_status
-        )
+        row.reliability_status = "accepted" if item_status == "accepted" else item_status
     coding_run.status = "completed" if persisted_count else "blocked"
-    coding_run.completed_at = datetime.now(timezone.utc)
+    coding_run.completed_at = datetime.now(UTC)
     coding_run.reliability_method = reliability.get("method", "")
     coding_run.rater_count = reliability.get("rater_count", 0)
     coding_run.distinct_model_count = reliability.get("distinct_model_count", 0)
@@ -1490,9 +1471,7 @@ async def run_independent_coding_run(
     coding_run.fallback_reason = reliability.get("fallback_reason", "")
     coding_run.route_evidence_json = json.dumps(route_evidence)
     coding_run.matrix_json = json.dumps(reliability.get("matrix", {}))
-    coding_run.disagreement_json = json.dumps(
-        reliability.get("low_agreement_codes", [])
-    )
+    coding_run.disagreement_json = json.dumps(reliability.get("low_agreement_codes", []))
     await db.commit()
     await db.refresh(coding_run)
     await telemetry_recorder.record_research_validity_event(
@@ -1572,9 +1551,7 @@ async def _refresh_coding_run_reconciliation_status(
         .scalars()
         .all()
     )
-    unresolved_count = sum(
-        1 for row in code_rows if _is_unresolved_code_application(row)
-    )
+    unresolved_count = sum(1 for row in code_rows if _is_unresolved_code_application(row))
     accepted_count = sum(
         1 for row in code_rows if row.promotion_status in ACCEPTED_PROMOTION_STATUSES
     )
@@ -1584,9 +1561,7 @@ async def _refresh_coding_run_reconciliation_status(
         and run.promotion_status not in ACCEPTED_PROMOTION_STATUSES
     ):
         run.promotion_status = "accepted_after_reconciliation"
-        run.fallback_reason = (
-            "Human reconciliation accepted evidence after low agreement."
-        )
+        run.fallback_reason = "Human reconciliation accepted evidence after low agreement."
     elif unresolved_count == 0 and code_rows and accepted_count == 0:
         run.promotion_status = "rejected_after_reconciliation"
         run.fallback_reason = "Human reconciliation rejected all coded evidence."
@@ -1655,7 +1630,7 @@ async def create_reconciliation_decision(
         row.reliability_status = "needs_human_review"
 
     row.reviewed_by = decided_by or "local-user"
-    row.reviewed_at = datetime.now(timezone.utc)
+    row.reviewed_at = datetime.now(UTC)
     resolved_state = _code_application_state(row)
     try:
         route_evidence = json.loads(row.route_evidence_json or "{}")
@@ -1672,9 +1647,7 @@ async def create_reconciliation_decision(
         decision_type=normalized_decision,
         source=source,
         accepted_code_id=(
-            accepted_code_id or row.code_id
-            if row.promotion_status == "accepted"
-            else ""
+            accepted_code_id or row.code_id if row.promotion_status == "accepted" else ""
         ),
         rationale=rationale,
         decided_by=row.reviewed_by or "",
@@ -1811,9 +1784,7 @@ async def build_evidence_graph_traceability(
             {
                 **report.to_dict(),
                 "finding_ids": finding_ids,
-                "source_document_ids": _json_list_value(
-                    report.source_document_ids_json
-                ),
+                "source_document_ids": _json_list_value(report.source_document_ids_json),
                 "codebook_version_id": report.codebook_version_id,
             }
         )
@@ -1846,9 +1817,7 @@ async def build_evidence_graph_traceability(
             (
                 await db.execute(
                     select(CodingRun)
-                    .where(
-                        CodingRun.project_id == project_id, CodingRun.id.in_(run_ids)
-                    )
+                    .where(CodingRun.project_id == project_id, CodingRun.id.in_(run_ids))
                     .order_by(CodingRun.created_at.desc())
                 )
             )
@@ -1869,13 +1838,9 @@ async def build_evidence_graph_traceability(
         ReconciliationDecision.project_id == project_id
     )
     if task_ids:
-        decision_query = decision_query.where(
-            ReconciliationDecision.task_id.in_(task_ids)
-        )
+        decision_query = decision_query.where(ReconciliationDecision.task_id.in_(task_ids))
     elif run_ids:
-        decision_query = decision_query.where(
-            ReconciliationDecision.coding_run_id.in_(run_ids)
-        )
+        decision_query = decision_query.where(ReconciliationDecision.coding_run_id.in_(run_ids))
     decisions = list(
         (
             await db.execute(
@@ -1888,9 +1853,7 @@ async def build_evidence_graph_traceability(
         .all()
     )
 
-    edge_query = select(ResearchEvidenceEdge).where(
-        ResearchEvidenceEdge.project_id == project_id
-    )
+    edge_query = select(ResearchEvidenceEdge).where(ResearchEvidenceEdge.project_id == project_id)
     if task_ids:
         edge_query = edge_query.where(ResearchEvidenceEdge.task_id.in_(task_ids))
     elif run_ids:
@@ -1898,9 +1861,7 @@ async def build_evidence_graph_traceability(
     edges = list(
         (
             await db.execute(
-                edge_query.order_by(ResearchEvidenceEdge.created_at.desc()).limit(
-                    capped_limit * 10
-                )
+                edge_query.order_by(ResearchEvidenceEdge.created_at.desc()).limit(capped_limit * 10)
             )
         )
         .scalars()
@@ -1912,9 +1873,7 @@ async def build_evidence_graph_traceability(
         report_findings = [
             finding_by_id[fid] for fid in report["finding_ids"] if fid in finding_by_id
         ]
-        report_task_ids = sorted(
-            {row["task_id"] for row in report_findings if row.get("task_id")}
-        )
+        report_task_ids = sorted({row["task_id"] for row in report_findings if row.get("task_id")})
         report_unresolved = [
             row.to_dict()
             for row in unresolved
@@ -1928,9 +1887,7 @@ async def build_evidence_graph_traceability(
         report_allowed = (
             bool(report_task_ids)
             and not missing_task_gates
-            and all(
-                bool(task_gates[tid].get("report_allowed")) for tid in report_task_ids
-            )
+            and all(bool(task_gates[tid].get("report_allowed")) for tid in report_task_ids)
         )
         report_dependencies.append(
             {
@@ -1952,9 +1909,7 @@ async def build_evidence_graph_traceability(
         {
             "task_id": scoped_task_id,
             "report_gate": task_gates.get(scoped_task_id, {}),
-            "code_application_count": sum(
-                1 for row in code_rows if row.task_id == scoped_task_id
-            ),
+            "code_application_count": sum(1 for row in code_rows if row.task_id == scoped_task_id),
             "unresolved_code_application_count": sum(
                 1 for row in unresolved if row.task_id == scoped_task_id
             ),
@@ -1980,7 +1935,9 @@ async def build_evidence_graph_traceability(
         "contract": {
             "graph_role": "synthesis_and_traceability",
             "hybrid_rag_role": "exact_evidence_backfill",
-            "promotion_rule": "graph_traceability_cannot_bypass_coding_reliability_reconciliation_or_done_gates",
+            "promotion_rule": (
+                "graph_traceability_cannot_bypass_coding_reliability_reconciliation_or_done_gates"
+            ),
         },
         "reports": report_index,
         "findings": findings,
@@ -2056,9 +2013,7 @@ async def assess_task_research_validity(
     accepted_count = sum(
         1 for row in code_rows if row.promotion_status in ACCEPTED_PROMOTION_STATUSES
     )
-    unresolved_count = sum(
-        1 for row in code_rows if _is_unresolved_code_application(row)
-    )
+    unresolved_count = sum(1 for row in code_rows if _is_unresolved_code_application(row))
     base = {
         "latest_coding_run": latest_run.to_dict() if latest_run else None,
         "code_application_count": len(code_rows),
@@ -2071,7 +2026,9 @@ async def assess_task_research_validity(
         return {
             **base,
             "report_allowed": False,
-            "reason": "Task has no accepted/reconciled evidence or Research Spine artifacts to report.",
+            "reason": (
+                "Task has no accepted/reconciled evidence or Research Spine artifacts to report."
+            ),
         }
     if unresolved_count:
         return {

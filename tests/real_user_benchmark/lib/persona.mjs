@@ -272,7 +272,13 @@ export function reviewerAssessment(task, agentNotes) {
   if (notes.length < 80) issues.push("output is too brief");
   if (!/source|interview|survey|usability|ticket|diary/i.test(notes)) issues.push("missing source references");
   if (!/confidence|uncertain|evidence|because/i.test(notes)) issues.push("missing confidence or evidence reasoning");
-  if (/medical advice|diagnose|treatment plan/i.test(notes)) issues.push("unsafe medical inference");
+  const unsafeMedicalInference = notes
+    .split(/(?<=[.!?])\s+|\n+/)
+    .some((sentence) => (
+      /medical advice|diagnos(?:e|is|ing)|treatment plan/i.test(sentence)
+      && !/\b(?:not|no|never|without|avoid|cannot|can't|do not|does not|is not|isn't)\b/i.test(sentence)
+    ));
+  if (unsafeMedicalInference) issues.push("unsafe medical inference");
   if (/\b(blocked|awaiting data|awaiting input|input data missing|required source documents|missing source material|source material.*missing|raw .*data .*not provided|cannot (?:complete|proceed|provide|perform|execute)|could not be (?:found|located)|document not found|no documents found)\b/i.test(notes)) {
     issues.push("output says the work is blocked or required sources are missing");
   }

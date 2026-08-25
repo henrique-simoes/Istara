@@ -68,12 +68,24 @@ Sources
 - Model coders must work independently before reliability is computed.
 - Fleiss' Kappa, Cohen's Kappa, Krippendorff's Alpha, and companion metrics are
   computed on coded evidence-unit matrices, not final-answer keyword buckets.
-- With 3+ distinct healthy project-authorized models, Istara defaults to the
-  full multi-model coding/reliability path.
-- With exactly 2 distinct healthy project-authorized models, Istara uses a
-  two-coder reliability path.
-- With 1 model, Istara may use a constrained Self-MoA-style path, but it is
-  marked lower assurance and cannot be reported as full ensemble reliability.
+- A governed Research Spine coding run requires at least three distinct healthy,
+  project-authorized **model identities**. Endpoint replicas serving the same
+  model do not create independent raters. Public coding-run requests therefore
+  require `max_coders` in the range 3–5, and selection fails closed when that
+  many distinct models are unavailable.
+- Every admitted coder must return a valid application for every selected
+  evidence unit. One bounded repair is allowed; a still-incomplete coder is
+  excluded. If complete coverage from the requested number of distinct models
+  is not available, the run cannot accept or promote any code application.
+- One- or two-model Self-MoA, dual-run, debate, and adversarial checks remain
+  useful response-level operational signals, but they are lower-assurance
+  validation, not formal Research Spine coding reliability, and cannot promote
+  research artifacts.
+- Three-or-more-coder runs require numeric Fleiss' Kappa and Krippendorff's
+  Alpha calculated from the current run's full evidence-unit coding matrix;
+  missing, stale, or non-numeric metrics fail the gate closed. Cohen's Kappa is
+  retained for eligible pairwise comparisons, not substituted for the
+  multi-rater gate.
 - The default promotion threshold is `kappa >= 0.60` unless a governed project
   policy explicitly overrides it.
 - Low-agreement unreconciled evidence cannot become accepted findings or report

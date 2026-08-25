@@ -201,7 +201,7 @@ owner-approved documentation correction. R-B8 is not part of recovery implementa
 
 ## 7. Exact verification commands
 
-Run from `/Users/user/Documents/Istara-main-pi-replacement`. The first group is the mandatory
+Run from `<repo-root>-pi-replacement`. The first group is the mandatory
 pre-implementation barrier; it must be green before any file edit.
 
 ```bash
@@ -212,9 +212,9 @@ compass-forge task evidence-list PI-BENCH-RECOVERY-20260722-JUDGE-C
 
 # Stop cleanly at the consensus boundary, then prove no conductor is running.
 python3 /Users/user/Documents/Skills/build-stream-conductor/scripts/conductor.py stop \
-  --project-root /Users/user/Documents/Istara-main-pi-replacement
+  --project-root <repo-root>-pi-replacement
 python3 /Users/user/Documents/Skills/build-stream-conductor/scripts/conductor.py status \
-  --project-root /Users/user/Documents/Istara-main-pi-replacement --brief
+  --project-root <repo-root>-pi-replacement --brief
 
 # Expected after stop: daemon=down and no conductor/worker command rows.
 ps -ax -o pid=,etime=,command= | \

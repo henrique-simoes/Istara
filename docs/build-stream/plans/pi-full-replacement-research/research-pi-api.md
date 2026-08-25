@@ -1,6 +1,6 @@
 # pi packages public API — ground truth (both packages v0.80.10)
 
-Roots: `/Users/user/Documents/Istara-main-pi-replacement/pi-runtime/node_modules/@earendil-works/pi-agent-core/` (agent-core), `.../@earendil-works/pi-ai/` (pi-ai). All refs are `dist/*.d.ts` unless noted.
+Roots: `<repo-root>-pi-replacement/pi-runtime/node_modules/@earendil-works/pi-agent-core/` (agent-core), `.../@earendil-works/pi-ai/` (pi-ai). All refs are `dist/*.d.ts` unless noted.
 
 ## 1. Agent class (pi-agent-core)
 

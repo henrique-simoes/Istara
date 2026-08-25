@@ -172,7 +172,7 @@
 <h2>Settings</h2>
 <ul>
 <li data-search-item data-search-text="system status and models settings &gt; system status and models settings shows backend, llm, hardware, model recommendation, and available model status for the local installation."><a href="../../settings/general/architecture.html"><span>System Status And Models</span><small>Settings &gt; System Status And Models</small></a></li>
-<li data-search-item data-search-text="llm server settings settings &gt; llm servers settings manages configured llm providers, server endpoints, provider labels, and active model switching."><a href="../../settings/llm-servers/architecture.html"><span>LLM Server Settings</span><small>Settings &gt; LLM Servers</small></a></li>
+<li data-search-item data-search-text="legacy llm server compatibility settings &gt; pi model management &gt; legacy compatibility pi model management owns provider/model configuration while legacy llmserver rows remain read-only migration input and petals donors join through the governed bridge."><a href="../../settings/llm-servers/architecture.html"><span>Legacy LLM Server Compatibility</span><small>Settings &gt; Pi Model Management &gt; Legacy Compatibility</small></a></li>
 <li data-search-item data-search-text="user management settings &gt; users user management supports team member visibility and administrative user operations."><a href="../../settings/users/architecture.html"><span>User Management</span><small>Settings &gt; Users</small></a></li>
 <li data-search-item data-search-text="connection strings settings &gt; connection strings connection string settings provide governed admin-only configuration for sensitive external or local service connection data."><a href="../../settings/connection-strings/architecture.html"><span>Connection Strings</span><small>Settings &gt; Connection Strings</small></a></li>
 <li data-search-item data-search-text="passkeys and two-factor authentication settings &gt; security factors settings includes passkey and totp management for strengthening account authentication."><a href="../../settings/security-factors/architecture.html"><span>Passkeys And Two-Factor Authentication</span><small>Settings &gt; Security Factors</small></a></li>
@@ -237,10 +237,10 @@
   <dl class="meta-grid">
     <div><dt>UI Path</dt><dd>Chat &gt; Model Controls</dd></div>
     <div><dt>Component</dt><dd><code>ChatView / chatViewParts</code></dd></div>
-    <div><dt>Source Refs</dt><dd>4</dd></div>
-    <div><dt>Tests</dt><dd>1</dd></div>
+    <div><dt>Source Refs</dt><dd>5</dd></div>
+    <div><dt>Tests</dt><dd>3</dd></div>
   </dl>
-  <div class="link-cluster" aria-label="Related feature links"><a href="../../settings/llm-servers/architecture.html">LLM Server Settings</a>
+  <div class="link-cluster" aria-label="Related feature links"><a href="../../settings/llm-servers/architecture.html">Legacy LLM Server Compatibility</a>
 <a href="../../settings/general/architecture.html">System Status And Models</a>
 <a href="../../compute/pool/architecture.html">Compute Pool</a></div>
   <p class="concept-line"><strong>Concepts:</strong> rag</p>
@@ -252,7 +252,7 @@
 <li><code>frontend/src/components/chat/ChatView.tsx</code></li>
 <li><code>frontend/src/components/chat/chatViewParts.tsx</code></li>
 <li><code>frontend/src/lib/modelProviders.ts</code></li>
-<li><code>backend/app/api/routes/llm_servers.py</code></li>
+<li><code>backend/app/core/pi_runtime/model_manager.py</code></li>
 </ul>
 <h2 id="state-api-and-backend-contracts">State, API, And Backend Contracts</h2>
 <h3 id="stores">Stores</h3>
@@ -262,8 +262,8 @@
 </ul>
 <h3 id="api-and-backend">API And Backend</h3>
 <ul>
-<li><code>backend/app/api/routes/llm_servers.py</code></li>
-<li><code>backend/app/core/llm_router.py</code></li>
+<li><code>backend/app/api/routes/settings.py</code></li>
+<li><code>backend/app/core/pi_runtime/model_manager.py</code></li>
 </ul>
 <p><code>ChatModelControls</code> is visible in Chat for project viewers with a selected session. It has one browseable, searchable model menu (chevron opens the list; typing filters it), an exact effort select populated from Pi <code>thinkingLevels</code>, and a usage popover. Pi catalog entries that are not configured are visible but disabled with an explanation; legacy engine mode exposes the safe local/server model inventory instead. Choosing a configured Pi entry persists both <code>model_override</code> and <code>endpoint_override</code>, so two providers exposing the same model id cannot silently collide.</p>
 <p><code>GET /api/chat/model-catalog</code> is project-scoped and secret-free. <code>GET /api/chat/usage/{project_id}</code> is project/session-scoped and returns content-free ledger aggregates. <code>POST /api/chat</code> emits an additive <code>usage</code> SSE event after each governed turn. Existing transcript/session payloads remain backward compatible.</p>
@@ -285,16 +285,15 @@
 <p>that cannot execute raises a typed dispatch error; the dispatcher never</p>
 <p>silently falls back to the other engine.</p>
 <ul>
-<li>Both engine seams are real: Pi selections execute through the isolated</li>
+<li>Both loop seams are real: Pi selections execute through the isolated</li>
 </ul>
 <p><code>PiExecutionService</code> (<code>run_completion</code> / <code>run_structured</code> / <code>run_react</code>), and</p>
-<p>legacy selections execute through the byte-compatible legacy executor</p>
-<p>(<code>backend/app/core/agentic/legacy.py</code>), which drives the same</p>
-<p>ComputeRegistry-backed <code>app.core.ollama.ollama</code> plane the 87 inventory sites</p>
-<p>already use — <code>ollama.chat</code> for completion/structured/ReAct and</p>
-<p><code>ollama.embed_batch</code> for embed — with identical parameter names and message</p>
-<p>shapes, so Pi and legacy remain benchmarkable on the same axes. Neither seam</p>
-<p>ever falls back to the other: a selected engine executes or raises.</p>
+<p>Istara selections execute through the Python legacy executor</p>
+<p>(<code>backend/app/core/agentic/legacy.py</code>). That executor retains Istara&#x27;s loop</p>
+<p>and Python tool semantics but delegates provider-only turns, structured</p>
+<p>output, ensembles, and embeddings to Pi Model Management. Both are first-</p>
+<p>class loop modes over one provider/model authority and remain benchmarkable</p>
+<p>on the same axes. Neither seam silently changes loop mode on failure.</p>
 <ul>
 <li><code>TurnParams</code> (<code>model</code>, <code>temperature</code>, <code>max_tokens</code>, <code>thinking_mode</code>,</li>
 </ul>
@@ -302,12 +301,15 @@
 <p>unchanged on every verb. The Pi path maps them onto pi-ai turn options</p>
 <p>(<code>temperature</code>, <code>max_tokens</code>, <code>thinking_level</code>, provider <code>timeout_ms</code>);</p>
 <p><code>min_context</code> and <code>require_vision</code> map to capability admission in the Pi</p>
-<p>model catalog, and <code>max_turns</code> bounds the ReAct tool loop.</p>
+<p>model catalog, and <code>max_turns</code> bounds the ReAct tool loop. The chat route&#x27;s</p>
+<p>eight-tool ceiling maps to nine Pi model-turn starts (initial response,</p>
+<p>eight possible tool continuations, then the final synthesis turn), matching</p>
+<p>the legacy loop instead of failing one model turn early.</p>
 <ul>
 <li>**Embedding identity policy (W3).** Chat controls are generation controls</li>
 </ul>
 <p>only: temperature/thinking/effort never select or mutate the embedding</p>
-<p>model. Both engines embed with the one canonical model</p>
+<p>model. Both loop modes embed through the Pi-governed gateway with the one canonical model</p>
 <p>(<code>default_embed_model()</code> / <code>_embed_model_name()</code>), and the engine selector</p>
 <p>in Project Settings surfaces that identity as safe metadata (<code>embed_model</code></p>
 <p>in the project response — model name only, never an endpoint/URL/key) and</p>
@@ -377,8 +379,9 @@
 <h2 id="tests-and-verification">Tests And Verification</h2>
 <ul>
 <li><code>frontend/src/lib/modelProviders.test.ts</code></li>
-<li><code>tests/test_llm_servers.py</code></li>
-<li><code>tests/test_project_scope_contracts.py</code></li>
+<li><code>tests/test_settings_agentic_pi_endpoints.py</code></li>
+<li><code>tests/pi_production/test_w1_agentic_contract.py</code></li>
+<li><code>tests/pi_production/test_w1_dispatcher_authority.py</code></li>
 </ul>
 <h2 id="related-features">Related Features</h2>
 <ul>

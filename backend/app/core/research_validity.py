@@ -1,3 +1,4 @@
+# ruff: noqa: E501 - protected protocol prose must remain readable and byte-stable
 """Research-validity contract and deterministic support logic.
 
 This module does not replace interpretive qualitative coding with deterministic
@@ -8,11 +9,11 @@ matrices, promotion gates, route evidence, and graph traceability.
 
 from __future__ import annotations
 
-from dataclasses import asdict, dataclass, field
-from hashlib import sha256
 import json
 import re
 import uuid
+from dataclasses import asdict, dataclass, field
+from hashlib import sha256
 
 from app.skills.intercoder import cohen_kappa, krippendorff_alpha
 
@@ -369,7 +370,9 @@ def _split_candidate_units(text: str) -> list[tuple[str, int, int, str]]:
     for match in speaker_turn.finditer(text):
         body = match.group("body").strip()
         if body:
-            candidates.append((body, match.start("body"), match.end("body"), match.group("speaker")))
+            candidates.append(
+                (body, match.start("body"), match.end("body"), match.group("speaker"))
+            )
             consumed.append((match.start(), match.end()))
 
     paragraphs: list[tuple[str, int, int]] = []
@@ -431,7 +434,9 @@ def segment_evidence_units(
 ) -> list[EvidenceUnitDraft]:
     """Create stable evidence-unit drafts from source material."""
     units: list[EvidenceUnitDraft] = []
-    for index, (unit_text, start, end, speaker) in enumerate(_split_candidate_units(source_text), 1):
+    for index, (unit_text, start, end, speaker) in enumerate(
+        _split_candidate_units(source_text), 1
+    ):
         stable_id = f"{source_id}#EU-{index:04d}"
         units.append(
             EvidenceUnitDraft(
@@ -489,7 +494,9 @@ def normalize_coder_applications(applications: list[dict]) -> dict[str, dict[str
     """Return coder_id -> evidence_unit_id -> code set."""
     coder_units: dict[str, dict[str, set[str]]] = {}
     for app in applications:
-        coder_id = str(app.get("coder_id") or app.get("model_name") or app.get("coder") or "").strip()
+        coder_id = str(
+            app.get("coder_id") or app.get("model_name") or app.get("coder") or ""
+        ).strip()
         evidence_unit_id = str(app.get("evidence_unit_id") or app.get("unit_id") or "").strip()
         if not coder_id or not evidence_unit_id:
             continue
@@ -497,46 +504,25 @@ def normalize_coder_applications(applications: list[dict]) -> dict[str, dict[str
         if codes is None:
             codes = [app.get("code_id") or app.get("primary_code")]
         normalized_codes = {str(code).strip() for code in codes if str(code or "").strip()}
-        coder_units.setdefault(coder_id, {}).setdefault(evidence_unit_id, set()).update(normalized_codes)
+        coder_units.setdefault(coder_id, {}).setdefault(evidence_unit_id, set()).update(
+            normalized_codes
+        )
     return coder_units
 
 
 def distinct_model_identities(applications: list[dict]) -> set[str]:
     """Return model identities that count as independent model coders.
 
-    A distinct *configured endpoint identity* is a distinct independent coder,
-    even when several endpoints advertise the same model name. W7: Pi catalog
-    rows are endpoint identities, so three endpoints serving one model are three
-    raters and must not collapse to one — the exact endpoint identity is
-    preserved through the reliability gate. The ephemeral route/call id is never
-    a distinctness axis on its own, so the same model on the same endpoint
-    invoked twice stays a single rater and fabricated diversity stays blocked.
+    Independence is a property of the served model, not its endpoint replica or
+    call route. Endpoint and route identities remain provenance, but multiple
+    endpoints serving the same normalized model count as one model judgment.
+    Missing model provenance never fabricates independence from coder ids.
     """
     identities: set[str] = set()
     for app in applications:
         model_name = str(app.get("model_name") or app.get("model") or "").strip()
-        endpoint_id = str(
-            app.get("endpoint_id")
-            or app.get("donor_id")
-            or app.get("node_id")
-            or ""
-        ).strip()
-        route_id = str(app.get("route_id") or app.get("route") or "").strip()
-        coder_id = str(app.get("coder_id") or app.get("coder") or "").strip()
-        identity = model_name or coder_id
-        if not identity and not endpoint_id:
-            continue
-        # A distinct configured endpoint identity keeps same-model Pi endpoints
-        # as separate raters; a bare repeated model name (no endpoint) still
-        # collapses to one identity.
-        if endpoint_id:
-            identity = f"{identity}@{endpoint_id}" if identity else endpoint_id
-        elif route_id and not model_name:
-            # Only when there is no endpoint identity to key on does a route id
-            # disambiguate, and never for an otherwise-identical model — a call
-            # counter must not manufacture independent raters.
-            identity = f"{identity}@{route_id}"
-        identities.add(identity)
+        if model_name:
+            identities.add(model_name.casefold())
     return identities
 
 
@@ -620,13 +606,17 @@ def fleiss_kappa_from_matrix(matrix: dict) -> dict:
 
     p_i_values = []
     for counts in counts_by_unit:
-        p_i = (sum(count * count for count in counts.values()) - n_raters) / (n_raters * (n_raters - 1))
+        p_i = (sum(count * count for count in counts.values()) - n_raters) / (
+            n_raters * (n_raters - 1)
+        )
         p_i_values.append(p_i)
     p_bar = sum(p_i_values) / n_items
 
     p_j: dict[str, float] = {}
     for category in categories:
-        p_j[category] = sum(counts.get(category, 0) for counts in counts_by_unit) / (n_items * n_raters)
+        p_j[category] = sum(counts.get(category, 0) for counts in counts_by_unit) / (
+            n_items * n_raters
+        )
     p_e = sum(value * value for value in p_j.values())
 
     if p_e == 1.0:
@@ -650,18 +640,21 @@ def evaluate_reliability_gate(
     applications: list[dict],
     *,
     threshold: float = DEFAULT_RELIABILITY_THRESHOLD,
+    minimum_distinct_models: int = 1,
 ) -> dict:
     """Evaluate the corrected reliability policy for coded evidence units."""
     matrix = build_binary_coding_matrix(applications)
     coders = matrix["coders"]
     coder_item_lists: list[list[list[str]]] = []
     for coder_id in coders:
-        coder_item_lists.append([matrix["matrix"][unit_id].get(coder_id, []) for unit_id in matrix["evidence_units"]])
+        coder_item_lists.append(
+            [matrix["matrix"][unit_id].get(coder_id, []) for unit_id in matrix["evidence_units"]]
+        )
 
     result: dict = {
         "threshold": threshold,
         "rater_count": len(coders),
-        "distinct_model_count": len(distinct_model_identities(applications)) or len(coders),
+        "distinct_model_count": len(distinct_model_identities(applications)),
         "matrix": matrix,
         "promotion_status": "blocked",
         "fallback_reason": "",
@@ -681,6 +674,29 @@ def evaluate_reliability_gate(
         )
         return result
 
+    if (
+        len(coders) < minimum_distinct_models
+        or result["distinct_model_count"] < minimum_distinct_models
+    ):
+        result.update(
+            {
+                "method": "insufficient_independent_models",
+                "kappa": None,
+                "alpha": None,
+                "promotion_status": "needs_reconciliation" if coders else "blocked",
+                "fallback_reason": (
+                    "Independent coding completed with "
+                    f"{result['distinct_model_count']} distinct models; "
+                    f"required {minimum_distinct_models}."
+                ),
+            }
+        )
+        item_statuses = item_level_promotion_statuses(matrix, result["promotion_status"])
+        result["item_promotion_statuses"] = item_statuses
+        result["accepted_evidence_unit_ids"] = []
+        result["reconciliation_evidence_unit_ids"] = list(item_statuses)
+        return result
+
     if len(coders) >= 3:
         fleiss = fleiss_kappa_from_matrix(matrix)
         alpha = krippendorff_alpha(coder_item_lists, matrix["codes"])
@@ -694,7 +710,9 @@ def evaluate_reliability_gate(
                 "low_agreement_codes": alpha.get("unreliable_codes", []),
             }
         )
-        result["promotion_status"] = "accepted" if score is not None and score >= threshold else "needs_reconciliation"
+        result["promotion_status"] = (
+            "accepted" if score is not None and score >= threshold else "needs_reconciliation"
+        )
     elif len(coders) == 2:
         cohen = cohen_kappa(coder_item_lists[0], coder_item_lists[1], matrix["codes"])
         alpha = krippendorff_alpha(coder_item_lists, matrix["codes"])
@@ -708,7 +726,9 @@ def evaluate_reliability_gate(
                 "low_agreement_codes": cohen.get("low_agreement_codes", []),
             }
         )
-        result["promotion_status"] = "accepted" if score is not None and score >= threshold else "needs_reconciliation"
+        result["promotion_status"] = (
+            "accepted" if score is not None and score >= threshold else "needs_reconciliation"
+        )
     elif len(coders) == 1:
         result.update(
             {

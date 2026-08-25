@@ -1,6 +1,6 @@
 # Blind Review Sheet — S3 Phase 1 (Independent Reviewer)
 
-- Repo: /Users/user/Documents/Istara-main, branch `testing`, HEAD `9d7c506e` (= `origin/testing`; the change under review is the **uncommitted working tree**).
+- Repo: <repo-root>, branch `testing`, HEAD `9d7c506e` (= `origin/testing`; the change under review is the **uncommitted working tree**).
 - Frozen: reviewer did NOT open `docs/build-stream/2026-08-23-agentic-core-integrity-and-qa.md`. All evidence below is from commands run by this reviewer on 2026-08-23.
 - Note: implementer's claims file exists as untracked (`docs/build-stream/2026-08-23-agentic-core-integrity-and-qa.md`) but was not read.
 

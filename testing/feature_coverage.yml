@@ -242,7 +242,9 @@ features:
     paths:
       - "backend/app/core/pi_runtime/model_manager.py"
       - "backend/app/core/pi_runtime/endpoints.py"
+      - "backend/app/core/agentic/legacy.py"
       - "backend/app/core/agentic/model_source.py"
+      - "backend/app/core/agentic/pi_bridge.py"
       - "backend/app/core/pi_runtime/oauth.py"
       - "backend/app/core/endpoint_security.py"
       - "backend/app/core/field_encryption.py"
@@ -293,6 +295,9 @@ features:
       - "tests/test_synthetic_provisional_boundary.py"
       - "tests/test_research_validity_contract.py"
       - "tests/pi_production/test_w5_intercoder.py"
+      - "tests/pi_production/test_w7_validation.py"
+      - "tests/real_user_benchmark/lib/research-spine-probes.mjs"
+      - "tests/real_user_benchmark/lib/research-spine-probes.test.mjs"
     exceptions: []
     requires_human_review: true
     docs_features_update: false

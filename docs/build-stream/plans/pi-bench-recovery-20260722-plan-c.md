@@ -341,7 +341,7 @@ runs any B-wave, or spends evaluation budget.
 
 ## 6. Verification (exact commands)
 
-Run from the project root `/Users/user/Documents/Istara-main-pi-replacement`. CF verbs
+Run from the project root `<repo-root>-pi-replacement`. CF verbs
 (`release`, `status`, `comment`) verified present by `compass-forge task --help` at r1.
 
 ```bash

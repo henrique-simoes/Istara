@@ -13,6 +13,63 @@ function nowTs() {
   return Date.now();
 }
 
+function textBlocks(content) {
+  // Never mutate caller-owned history when assistant tool-call blocks are
+  // appended below; a retry must receive the same immutable input messages.
+  if (Array.isArray(content)) return content.map((block) => ({ ...block }));
+  return [{ type: "text", text: String(content || "") }];
+}
+
+function toolCallBlock(call, index) {
+  const fn = (call && call.function) || {};
+  let args = fn.arguments ?? call?.arguments ?? {};
+  if (typeof args === "string") {
+    try { args = JSON.parse(args || "{}"); } catch { args = {}; }
+  }
+  return {
+    type: "toolCall",
+    id: String(call?.id || `legacy-tool-${index}`),
+    name: String(fn.name || call?.name || ""),
+    arguments: args && typeof args === "object" ? args : {},
+  };
+}
+
+function providerMessages(messages) {
+  return (messages || []).map((message, index) => {
+    const timestamp = nowTs();
+    if (message.role === "assistant") {
+      const content = textBlocks(message.content);
+      for (const [toolIndex, call] of (message.tool_calls || []).entries()) {
+        content.push(toolCallBlock(call, `${index}-${toolIndex}`));
+      }
+      return {
+        role: "assistant",
+        content,
+        api: message.api || "openai-completions",
+        provider: message.provider || "istara-history",
+        model: message.model || "history",
+        usage: message.usage || {
+          input: 0, output: 0, cacheRead: 0, cacheWrite: 0, totalTokens: 0,
+          cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 },
+        },
+        stopReason: message.stop_reason || "toolUse",
+        timestamp,
+      };
+    }
+    if (message.role === "tool" || message.role === "toolResult") {
+      return {
+        role: "toolResult",
+        toolCallId: String(message.tool_call_id || message.toolCallId || `legacy-tool-${index}`),
+        toolName: String(message.name || message.toolName || "tool"),
+        content: textBlocks(message.content),
+        isError: Boolean(message.is_error || message.isError),
+        timestamp,
+      };
+    }
+    return { role: "user", content: textBlocks(message.content), timestamp };
+  });
+}
+
 export class PiSession {
   constructor({ sessionKey, systemPrompt, history, revision, catalog, limits, emit }) {
     this.sessionKey = sessionKey;
@@ -162,8 +219,8 @@ export class PiSession {
         name: STRUCTURED_TOOL_NAME,
         label: "Emit structured output",
         description: "Return the final answer as a single structured object matching the requested schema.",
-        // Guidance union: full schema first, catch-all second — the capture
-        // stays faithful and Python revalidation remains the contract.
+        // The provider sees a strict object-root schema. Agent-core validates
+        // before capture and Python revalidates against the original contract.
         parameters: captureParameters(parameters),
         execute: async (_toolCallId, params) => {
           // Captured, not executed: the arguments ARE the structured artifact.
@@ -255,6 +312,121 @@ export class PiSession {
     }
   }
 
+  /**
+   * Execute exactly one provider turn without entering pi-agent-core's tool
+   * loop. This is the compatibility primitive for Istara's legacy ReAct loop:
+   * Pi still owns endpoint/model binding, retries, accounting and secrets, but
+   * raw tool calls return to the outer legacy loop for execution exactly once.
+   */
+  async providerTurn(runId, messages, tools = []) {
+    if (!this._binding) {
+      this._frame("run.failed", { run_id: runId, error: "no_provider_bound" });
+      return;
+    }
+    if (this._run && !this._run.terminated) {
+      this._frame("run.failed", { run_id: runId, error: "session_busy" });
+      return;
+    }
+    const controller = new AbortController();
+    const maxWallClockMs = Number.isFinite(this._limits.max_wall_clock_ms) && this._limits.max_wall_clock_ms > 0
+      ? this._limits.max_wall_clock_ms : null;
+    this._run = {
+      runId,
+      terminated: false,
+      aborted: false,
+      directProvider: true,
+      controller,
+      timeout: null,
+    };
+    if (maxWallClockMs !== null) {
+      this._run.timeout = setTimeout(() => {
+        if (this._run && this._run.runId === runId && !this._run.terminated) {
+          this._run.forcedError = "wall_clock_budget_exceeded";
+          controller.abort();
+        }
+      }, maxWallClockMs);
+    }
+    this._frame("run.started", { run_id: runId });
+    let terminalMessage = null;
+    try {
+      const stream = this._binding.stream(
+        this._binding.model,
+        {
+          systemPrompt: this.systemPrompt,
+          messages: providerMessages(messages),
+          tools: Array.isArray(tools) ? tools : [],
+        },
+        { signal: controller.signal },
+      );
+      for await (const event of stream) {
+        if (event.type === "text_delta" && event.delta) {
+          this._frame("assistant.delta", { run_id: runId, text: event.delta });
+        } else if (event.type === "thinking_delta" && event.delta) {
+          this._frame("thinking.delta", { run_id: runId, text: event.delta });
+        } else if (event.type === "done") {
+          terminalMessage = event.message;
+        } else if (event.type === "error") {
+          terminalMessage = event.error;
+        }
+      }
+    } catch (err) {
+      if (this._run && !this._run.forcedError) this._run.forcedError = String(err?.message || "provider_turn_failed");
+    }
+    if (!this._run || this._run.runId !== runId || this._run.terminated) return;
+    this._run.terminated = true;
+    if (this._run.timeout) clearTimeout(this._run.timeout);
+    if (this._run.forcedError) {
+      this._frame("run.failed", { run_id: runId, error: this._run.forcedError });
+      return;
+    }
+    if (this._run.aborted) {
+      this._frame("run.aborted", { run_id: runId });
+      return;
+    }
+    if (!terminalMessage || terminalMessage.stopReason === "error" || terminalMessage.stopReason === "aborted") {
+      this._frame("run.failed", {
+        run_id: runId,
+        error: String(terminalMessage?.errorMessage || "provider_turn_failed"),
+      });
+      return;
+    }
+    const usage = terminalMessage.usage || {};
+    const runUsage = {
+      input: usage.input || 0,
+      output: usage.output || 0,
+      cacheRead: usage.cacheRead || 0,
+      cacheWrite: usage.cacheWrite || 0,
+      cost: (usage.cost && usage.cost.total) || 0,
+    };
+    const scriptedCost = Number.isFinite(this._binding.forcedCostUsd)
+      ? this._binding.forcedCostUsd : null;
+    const costUsd = scriptedCost !== null ? scriptedCost : runUsage.cost;
+    if (Number.isFinite(this._limits.max_cost_usd)) {
+      if (scriptedCost === null && this._binding.isReal && this._hasUnpricedSpend(runUsage)) {
+        this._frame("run.failed", { run_id: runId, error: "cost_budget_unpriced" });
+        return;
+      }
+      if (costUsd > this._limits.max_cost_usd) {
+        this._frame("run.failed", { run_id: runId, error: "cost_budget_exceeded" });
+        return;
+      }
+    }
+    this._frame("run.completed", {
+      run_id: runId,
+      usage: {
+        input_tokens: runUsage.input,
+        output_tokens: runUsage.output,
+        cache_read: runUsage.cacheRead,
+        cache_write: runUsage.cacheWrite,
+        total_tokens: runUsage.input + runUsage.output + runUsage.cacheRead + runUsage.cacheWrite,
+        cost_usd: costUsd,
+        turns: 1,
+      },
+      stop_reason: terminalMessage.stopReason || "stop",
+      provider_message: terminalMessage,
+    });
+  }
+
   async followUp(runId, text) {
     if (!this._agent) return;
     this._agent.followUp({ role: "user", content: text, timestamp: nowTs() });
@@ -270,6 +442,9 @@ export class PiSession {
       this._run.aborted = true;
     }
     if (this._agent) this._agent.abort();
+    if (this._run && this._run.directProvider && this._run.controller) {
+      this._run.controller.abort();
+    }
   }
 
   /**
@@ -281,6 +456,13 @@ export class PiSession {
     if (!this._run || this._run.terminated) return false;
     const runId = this._run.runId;
     this._run.forcedError = error;
+    if (this._run.directProvider && this._run.controller) {
+      this._run.terminated = true;
+      if (this._run.timeout) clearTimeout(this._run.timeout);
+      this._run.controller.abort();
+      this._frame("run.failed", { run_id: runId, error });
+      return true;
+    }
     if (this._agent) this._agent.abort();
     this._settleRun(runId);
     return true;
@@ -441,6 +623,10 @@ export class PiSession {
   }
 
   async close() {
+    if (this._run && this._run.directProvider && !this._run.terminated && this._run.controller) {
+      this._run.aborted = true;
+      this._run.controller.abort();
+    }
     if (this._agent && this._run && !this._run.terminated) {
       this._agent.abort();
       try {

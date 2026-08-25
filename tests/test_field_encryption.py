@@ -1,7 +1,6 @@
 """Tests for field-level encryption (Fernet symmetric encryption)."""
 
 import pytest
-from unittest.mock import patch, MagicMock
 
 from cryptography.fernet import Fernet
 
@@ -10,7 +9,8 @@ from app.core.field_encryption import (
     decrypt_field,
     ensure_encryption_key,
     CRYPTO_AVAILABLE,
-    _get_fernet,
+    encryption_health_snapshot,
+    reset_encryption_health_for_tests,
 )
 
 
@@ -18,14 +18,18 @@ from app.core.field_encryption import (
 def setup_encryption():
     """Set a test encryption key and reset the Fernet instance."""
     import app.core.field_encryption as fe
+
     # Set a test key in settings
     from app.config import settings
+
     original_key = settings.data_encryption_key
     settings.data_encryption_key = Fernet.generate_key().decode()
     fe._fernet_instance = None  # Force re-creation with new key
+    reset_encryption_health_for_tests()
     yield
     settings.data_encryption_key = original_key
     fe._fernet_instance = None
+    reset_encryption_health_for_tests()
 
 
 @pytest.mark.skipif(not CRYPTO_AVAILABLE, reason="cryptography not installed")
@@ -74,6 +78,10 @@ class TestFieldEncryption:
         """Invalid ENC: values (tampered) are returned unchanged, not crashed."""
         result = decrypt_field("ENC:invalid-base64-data!!!")
         assert "invalid" in result  # Returns ciphertext on failure
+        health = encryption_health_snapshot()
+        assert health["decryption_failures"] == 1
+        assert health["healthy"] is False
+        assert health["last_failure_at"]
 
     def test_different_encryptions_produce_different_ciphertext(self):
         """Same plaintext should produce different ciphertext (random IV)."""
@@ -85,10 +93,12 @@ class TestFieldEncryption:
     def test_ensure_encryption_key_generates_valid_key(self):
         """ensure_encryption_key generates a valid Fernet key."""
         from app.config import settings
+
         # Clear the existing key to force generation
         original_key = settings.data_encryption_key
         settings.data_encryption_key = ""
         import app.core.field_encryption as fe
+
         fe._fernet_instance = None
 
         key = ensure_encryption_key()

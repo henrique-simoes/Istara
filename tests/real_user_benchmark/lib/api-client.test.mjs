@@ -93,3 +93,30 @@ test("sendChat forwards configured Pi engine header for benchmark probes", async
     globalThis.fetch = originalFetch;
   }
 });
+
+test("sendChat rejects a transport-successful turn that exhausted its tool budget", async () => {
+  const originalFetch = globalThis.fetch;
+  try {
+    globalThis.fetch = async () => new Response(
+      [
+        'data: {"type":"chunk","content":"partial answer"}',
+        'data: {"type":"usage","stop_reason":"turn_budget_exceeded"}',
+        'data: {"type":"done","message_id":"partial-message"}',
+        "",
+      ].join("\n\n"),
+      { status: 200, headers: { "content-type": "text/event-stream" } },
+    );
+
+    const client = new IstaraApiClient({
+      apiBase: "http://localhost:8000",
+      repoRoot: "/tmp",
+    });
+
+    await assert.rejects(
+      client.sendChat({ projectId: "project-1", message: "long research task", timeoutMs: 1000 }),
+      /turn_budget_exceeded/,
+    );
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});

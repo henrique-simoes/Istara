@@ -3,27 +3,27 @@
 from __future__ import annotations
 
 import pytest
+import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
 
 from app.config import settings
 from app.main import app
 
 
-def _admin_request(monkeypatch):
-    """Bypass auth by stubbing require_global_role."""
-    import app.api.routes.settings as settings_routes
-
-    monkeypatch.setattr(settings_routes, "require_global_role", lambda request, role: True)
-
-
-@pytest.fixture
-def client():
-    return AsyncClient(transport=ASGITransport(app=app), base_url="http://test")
+@pytest_asyncio.fixture
+async def client(admin_auth_headers):
+    """Exercise both authentication middleware and route-level admin checks."""
+    async with AsyncClient(
+        transport=ASGITransport(app=app),
+        base_url="http://test",
+        headers=admin_auth_headers,
+    ) as authenticated_client:
+        yield authenticated_client
 
 
 @pytest.mark.asyncio
 async def test_agentic_engine_switch_pi_and_istara(client, monkeypatch):
-    _admin_request(monkeypatch)
+    monkeypatch.setattr(settings, "team_mode", True)
     original = settings.agentic_engine_default
     try:
         resp = await client.post("/api/settings/agentic-engine", json={"engine": "pi"})
@@ -44,7 +44,7 @@ async def test_agentic_engine_switch_pi_and_istara(client, monkeypatch):
 
 @pytest.mark.asyncio
 async def test_pi_endpoint_crud(client, monkeypatch):
-    _admin_request(monkeypatch)
+    monkeypatch.setattr(settings, "team_mode", True)
     original = list(settings.pi_api_endpoints)
     try:
         settings.pi_api_endpoints = []

@@ -19,6 +19,41 @@ const RUBRIC = [
 
 const REPRESENTATIVE_CORPUS_DOCUMENTS = 120;
 
+export function benchmarkExitCode({ mode, blockers = [] }) {
+  if (mode === "plan-only") return 0;
+  return blockers.length > 0 ? 1 : 0;
+}
+
+export function liveAcceptanceBlockers({
+  maxChatTurns = 0,
+  chatTurnCount = 0,
+  maxTasks = 0,
+  completedTasks = 0,
+  codingValidationEnabled = false,
+  featureResults = {},
+}) {
+  const blockers = [];
+  if (maxChatTurns > 0 && chatTurnCount < maxChatTurns) {
+    blockers.push(`Live run completed only ${chatTurnCount}/${maxChatTurns} requested chat turns.`);
+  }
+  if (maxTasks > 0 && completedTasks < 1) {
+    blockers.push(`Live run completed no human-reviewed task approvals from ${maxTasks} requested tasks.`);
+  }
+  if (maxTasks > 0 && !featureResults.taskReviewLoop) {
+    blockers.push("Requested task review/revision workflow did not complete.");
+  }
+  if (maxTasks > 0 && !featureResults.approvedTaskFindings) {
+    blockers.push("Requested task-backed Findings/report path did not complete.");
+  }
+  if (codingValidationEnabled && !featureResults.codingValidation) {
+    blockers.push("Requested three-model Research Spine coding validation did not complete.");
+  }
+  if (codingValidationEnabled && !featureResults.researchSpineTraceability) {
+    blockers.push("Requested Research Spine traceability validation did not complete.");
+  }
+  return blockers;
+}
+
 export function scoreRun({ mode, metrics, integrationMatrix = [], blockers = [], completedTasks = 0, chatTurns = 0, uploadedDocuments = 0, sandbox = {}, featureResults = {} }) {
   const requiredIntegrations = integrationMatrix.filter((item) => item.required_success !== false);
   const integrationScores = requiredIntegrations.map((item) => {

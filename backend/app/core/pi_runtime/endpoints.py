@@ -19,7 +19,6 @@ from app.config import (
     settings,
 )
 
-
 DEFAULT_ENDPOINT_ID = "pi-deepseek-default"
 
 # Per-endpoint secret TTL: Keychain subprocess reads are expensive and must not
@@ -37,6 +36,7 @@ def _read_endpoint_secret(endpoint: PiApiEndpoint) -> str:
     if endpoint.oauth_credential_encrypted:
         try:
             import json
+
             from app.core.field_encryption import decrypt_field
 
             payload = json.loads(decrypt_field(endpoint.oauth_credential_encrypted))
@@ -46,14 +46,22 @@ def _read_endpoint_secret(endpoint: PiApiEndpoint) -> str:
                 return str(access)
             refresh = payload.get("refresh_token") if isinstance(payload, dict) else ""
             if refresh:
-                from app.core.pi_runtime.oauth import refresh_oauth_credential
+                from app.config import settings as _settings
                 from app.core.env_persistence import persist_env_value
                 from app.core.field_encryption import encrypt_field
-                from app.config import settings as _settings
+                from app.core.pi_runtime.oauth import refresh_oauth_credential
 
                 refreshed = refresh_oauth_credential(endpoint.auth_provider, str(refresh))
-                endpoint.oauth_credential_encrypted = encrypt_field(json.dumps(refreshed, separators=(",", ":")))
-                persist_env_value("PI_API_ENDPOINTS", json.dumps([item.model_dump() for item in _settings.pi_api_endpoints], separators=(",", ":")))
+                endpoint.oauth_credential_encrypted = encrypt_field(
+                    json.dumps(refreshed, separators=(",", ":"))
+                )
+                persist_env_value(
+                    "PI_API_ENDPOINTS",
+                    json.dumps(
+                        [item.model_dump() for item in _settings.pi_api_endpoints],
+                        separators=(",", ":"),
+                    ),
+                )
                 return str(refreshed["access_token"])
             if access:
                 return str(access)
@@ -94,6 +102,10 @@ class ResolvedPiEndpoint:
     api_key: str
     timeout_ms: int
     max_retries: int
+    # Non-secret provider identity from Pi Model Management. ``provider_kind``
+    # describes the wire protocol; this identifies provider-specific model
+    # semantics (for example DeepSeek's explicit thinking control).
+    pi_provider: str = ""
     # Trustworthy per-endpoint pricing (USD per 1M tokens). Forwarded to the
     # worker so pi-ai prices real usage and the per-run cost ceiling can fail
     # closed; a real endpoint left at 0.0 cannot enforce a cost budget.
@@ -137,6 +149,7 @@ class PiEndpointResolver:
                 provider_kind="openai_compat",
                 base_url=settings.pi_replacement_deepseek_base_url,
                 model=settings.pi_replacement_deepseek_model,
+                pi_provider="deepseek",
                 keychain_service=settings.pi_replacement_deepseek_keychain_service,
                 keychain_account=settings.pi_replacement_deepseek_keychain_account,
                 # Priced by default so the built-in endpoint's cost ceiling fails
@@ -202,6 +215,7 @@ class PiEndpointResolver:
             api_key=api_key,
             timeout_ms=endpoint.timeout_ms,
             max_retries=endpoint.max_retries,
+            pi_provider=endpoint.pi_provider or endpoint.auth_provider,
             cost_input_per_mtok=endpoint.cost_input_per_mtok,
             cost_output_per_mtok=endpoint.cost_output_per_mtok,
             cost_cache_read_per_mtok=endpoint.cost_cache_read_per_mtok,
@@ -220,9 +234,7 @@ class PiEndpointResolver:
         endpoint = self._endpoint(endpoint_id, model)
         return self._build(endpoint, self._read_secret(endpoint))
 
-    async def aresolve(
-        self, endpoint_id: str, *, model: str | None = None
-    ) -> ResolvedPiEndpoint:
+    async def aresolve(self, endpoint_id: str, *, model: str | None = None) -> ResolvedPiEndpoint:
         """Async resolution: Keychain reads never stall the event loop (H-4)."""
         endpoint = self._endpoint(endpoint_id, model)
         return self._build(endpoint, await self._read_secret_async(endpoint))

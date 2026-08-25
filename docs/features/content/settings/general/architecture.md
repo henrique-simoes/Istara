@@ -9,7 +9,7 @@ related_glossary: ["rag"]
 code_references: ["frontend/src/components/common/SettingsView.tsx", "frontend/src/components/settings/AgenticCoreSection.tsx", "frontend/src/components/settings/PiModelManagement.tsx", "frontend/src/app/globals.css", "frontend/src/components/layout/StatusBar.tsx", "backend/app/api/routes/settings.py", "backend/app/core/pi_runtime/catalog.py", "backend/app/core/pi_runtime/oauth.py", "backend/app/core/runtime_freshness.py"]
 api_references: ["backend/app/api/routes/settings.py"]
 test_references: ["tests/test_settings.py"]
-last_verified: 2026-05-19
+last_verified: 2026-08-24
 compass: CF-SPEC-55 / CF-684; CF-SPEC-66 / CF-856; CF-SPEC-91 / CF-1156
 ---
 
@@ -44,6 +44,8 @@ Settings shows backend and LLM health, a first-class Agentic Core comparison and
 - `GET /api/settings/models` returns the normalized `agentic_engine_default` (`pi` or `legacy`) alongside the provider inventory and identity-only Pi projections. `AgenticCoreSection` renders the global choice as a dedicated, plain-language comparison with the shared embedding invariant and source-linked provisional benchmark rows.
 - `GET /api/settings/pi-catalog` returns the full secret-free Pi catalog. `PiModelManagement` supports both a visible dropdown/browse path and autocomplete search. Selecting a model resolves URL, protocol, capabilities, effort levels, and pricing from the catalog; users never type an endpoint URL.
 - Pi OAuth metadata distinguishes API key, browser PKCE, and device-code methods. OpenAI is explicit: OpenAI API is API-key based, while the shared Codex models expose Pi's ChatGPT subscription OAuth with Browser login and Device code (headless) choices. Browser callbacks verify state and never return tokens.
+- Pi endpoint, provider, and model mutations refresh the live `PiModelManager` catalog immediately. Both Istara and Pi Agentic Loop requests therefore resolve against the same current authority without requiring a backend restart.
+- `GET /api/settings/security-integrity` is global-admin-only and reports value-free health counters for encrypted-field and telemetry persistence failures. It never returns keys, ciphertext, provider URLs, prompts, or research content.
 - Settings is role-composed rather than a single global-admin surface. Researcher-safe personal panels such as compute donation, security factors, sessions, and updates may render for researchers, while global-admin panels for governed evolution, users, connection strings, LLM infrastructure, telemetry, and team-mode toggles are gated before mounting so their admin-only API calls are never made by normal researcher journeys.
 - `/api/settings/status` also includes `runtime.frontend` freshness diagnostics. The status bar shows `Runtime bundle stale` when the production Next build predates tracked frontend source files, preventing stale bundles from being mistaken for current project-isolation behavior.
 - The frontmatter and manifest entries are the durable contract for agents updating this page after code changes. The shared UI tokens and state contract live in root `DESIGN.md` and the semantic projection in `frontend/src/app/globals.css`.

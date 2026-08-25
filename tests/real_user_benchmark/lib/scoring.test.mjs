@@ -1,7 +1,50 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { scoreRun } from "./scoring.mjs";
+import { benchmarkExitCode, liveAcceptanceBlockers, scoreRun } from "./scoring.mjs";
+
+test("a live benchmark with blockers exits nonzero", () => {
+  assert.equal(benchmarkExitCode({ mode: "probe", blockers: ["research coding blocked"] }), 1);
+});
+
+test("bounded live acceptance rejects partial chat and an unapproved task workflow", () => {
+  const blockers = liveAcceptanceBlockers({
+    maxChatTurns: 8,
+    chatTurnCount: 7,
+    maxTasks: 3,
+    completedTasks: 0,
+    codingValidationEnabled: true,
+    featureResults: {
+      codingValidation: true,
+      researchSpineTraceability: true,
+      taskReviewLoop: false,
+      approvedTaskFindings: false,
+    },
+  });
+
+  assert.deepEqual(blockers, [
+    "Live run completed only 7/8 requested chat turns.",
+    "Live run completed no human-reviewed task approvals from 3 requested tasks.",
+    "Requested task review/revision workflow did not complete.",
+    "Requested task-backed Findings/report path did not complete.",
+  ]);
+});
+
+test("bounded live acceptance passes a complete fail-closed Research Spine run", () => {
+  assert.deepEqual(liveAcceptanceBlockers({
+    maxChatTurns: 8,
+    chatTurnCount: 8,
+    maxTasks: 3,
+    completedTasks: 1,
+    codingValidationEnabled: true,
+    featureResults: {
+      codingValidation: true,
+      researchSpineTraceability: true,
+      taskReviewLoop: true,
+      approvedTaskFindings: true,
+    },
+  }), []);
+});
 
 test("agentic orchestration score is capped when natural scheduler activity lacks donor usage", () => {
   const scorecard = scoreRun({

@@ -3,13 +3,13 @@
 ```yaml
 item: agentic-core-integrity-and-qa
 branch: testing
-cf: { spec: CF-SPEC-1 }
-phase: "Phases 1–4 complete — ship pending live VPS verification"
-stage: S5-ship
-status: blocked
-blocked_on: "Owner-gated outward steps: push, VPS redeploy (SSH direction), live chat smoke on Pi core"
-last: { agent: ox-alpha, at: 2026-08-23T16:40:00Z, ledger: L-7 }
-next_action: "Owner pushes 342ea9a4 and redeploys the VPS stack; verify Pi-core DeepSeek chat live; then Codex OAuth endpoint #2 and spec accept."
+cf: { spec: CF-SPEC-2, predecessor: CF-SPEC-1, task: CF-15 }
+phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal acceptance"
+stage: S1-plan
+status: in-progress
+blocked_on: null
+last: { agent: gpt-5-codex, at: 2026-08-25T00:35:41Z, ledger: L-26 }
+next_action: "Restage the completed lifecycle, create the atomic Phase 8/9 integration commit on testing, then verify cleanliness and local ancestry before pushing."
 ```
 
 ## Plan overview / roadmap
@@ -518,3 +518,601 @@ Result: CI push path loses ~15min duplicate build; zero-token structuralized.
 Verified: yaml valid; harness+chat 30 passed locally post-guard; runs in flight.
 Next: watch CI green; implement queued contracts + changed-path lane; T2 after probes.
 ```
+
+## Phase 8 — Research Spine, Pi-management, and Docker benchmark remediation
+
+### Owner contract and decisions
+
+```
+DEC-11 | 2026-08-24 | owner
+Decision: Mac Studio verification is Docker-only. SSH may orchestrate Docker and inspect
+container evidence, but must not install packages, run the benchmark through host Python or
+Node, or load models directly on the macOS host.
+Why: The Mac Studio is a container host, not a mutable benchmark workstation.
+
+DEC-12 | 2026-08-24 | owner + codex audit
+Decision: Full Research Spine assurance requires three distinct model identities. Separate
+endpoints or donated routes serving the same model remain useful redundancy, but do not
+count as independent bias-reduction coders and cannot satisfy the Fleiss-kappa ensemble gate.
+Why: Endpoint replication does not create independent model judgments. The durable
+Research Spine contract says distinct project-authorized models; the implementation and
+tests had weakened that to endpoint identity.
+
+DEC-13 | 2026-08-24 | owner
+Decision: Pi Model Management is the provider-management authority for both selectable
+agentic loop implementations. Petals donations remain a separately governed capacity plane
+and enter Pi only through the consented, identity-pinned bridge; they do not bypass project
+scope, route evidence, reliability, reconciliation, review, or report gates.
+Why: Loop selection changes orchestration semantics, not the source of truth for configured
+provider identities or the Research Spine governance boundary.
+```
+
+### S0/S1 audit result
+
+- The provider/loop separation is implemented in the right direction: the dispatcher owns
+  engine selection, Pi Model Management resolves configured providers, and the Petals bridge
+  projects consented donors one way without making Pi a donor scheduler.
+- The Research Spine independence oracle is wrong. `resolve_distinct`, Pi ensemble routing,
+  `_select_pi_coders`, and `distinct_model_identities` treat endpoint identity as coder
+  independence. Existing tests explicitly approve three endpoints serving `same-model` as a
+  full three-model Fleiss-kappa run. This contradicts DEC-12 and can overstate bias reduction.
+- The live benchmark produced no successful coding run, no coders, no code applications, no
+  reconciliation, and no accepted promotion, yet its scorecard awarded Research Spine
+  validation and traceability. The probe checks route/API shape rather than the terminal
+  research state it claims to prove.
+- The runner exits zero and prints `ALL DONE` despite blockers and low scores. It reuses one
+  persistent Postgres volume, runs legacy before Pi with fresh-sandbox disabled, mounts the
+  repository read-write, installs dependencies repeatedly in a floating image, points browser
+  automation at an internal-only frontend URL, and uses corpus paths visible only to the
+  runner container. These defects prevent fair engine comparison and reproducible acceptance.
+- Current live evidence therefore does not prove that either engine completes the Research
+  Spine, tool-call journey, or long-horizon journey. It proves infrastructure reachability
+  plus several failures. Earlier positive score labels are withdrawn pending the Phase 8 run.
+
+### Phase 8 acceptance contract
+
+- AC-8.1: Pi `distinct=True` ensembles and Research Spine coder selection return one route
+  per distinct normalized model identity and fail closed when fewer than the requested number
+  of distinct models are available, even if more endpoint identities exist.
+- AC-8.2: Legacy ensembles enforce the same model-diversity rule while retaining distinct
+  route evidence and optional-spare behavior.
+- AC-8.3: Three genuinely different models produce three independent code-application sets;
+  Fleiss' kappa and companion Krippendorff alpha are computed from those sets; low agreement
+  routes to reconciliation; accepted atoms remain unreportable until human review and Done.
+- AC-8.4: Both loop engines reach configured providers through the Pi-management authority;
+  a consented Petals donor is selectable through the bridge with explicit donated-route
+  evidence, and an unconsented/unhealthy donor fails closed without becoming Pi capacity.
+- AC-8.5: Benchmark Research Spine credit requires persisted evidence units, three successful
+  distinct-model coders, code applications, a computed reliability result, reconciliation
+  evidence when required, accepted promotion, and the human review/report gate state. A
+  blocked or empty run scores false and emits a blocker.
+- AC-8.6: Tool-call and long-horizon credit requires executed tool evidence and terminal task
+  state, not model prose, endpoint reachability, or an HTTP 2xx alone.
+- AC-8.7: Any blocker, missing mandatory journey, zero completed scored turns, or score below
+  the configured acceptance threshold makes the runner exit nonzero; partial diagnostics are
+  still preserved.
+- AC-8.8: Each compared engine starts from an isolated fresh database and deterministic seed;
+  run order is recorded and must not change results. Images/digests, commit SHA, compose
+  render, container health, model/endpoint identities, inference parameters, and artifact
+  hashes are captured.
+- AC-8.9: Every remote command runs through Docker. The acceptance record includes a negative
+  host-mutation audit (no package-manager invocation and no host Python/Node benchmark process).
+- AC-8.10: CI, feature-documentation generation, security benchmark, targeted unit/integration
+  suites, and Docker acceptance all pass or remain explicitly open; green unit tests alone are
+  never described as live Research Spine proof.
+
+### Remediation order
+
+1. Correct model-identity semantics and regression tests first, because every later score
+   depends on the oracle being honest.
+2. Repair Research Spine probe assertions and benchmark failure semantics.
+3. Isolate databases, paths, images, mounts, and run provenance.
+4. Fix the concrete runtime blockers (connection-string 500s, telemetry identifier width,
+   credential/decryption mismatch handling, output-budget truncation, and worker datetime
+   handling) with causal tests.
+5. Re-run local gates, then perform one bounded Docker-only Mac Studio acceptance using the
+   three configured models; append unfiltered results and residual findings to `testing.md`.
+
+```
+### L-17 | 2026-08-24T17:06:00Z | S1-plan | codex | executor | Phase 8
+Did: Re-opened the lifecycle under CF-SPEC-2/CF-15, recorded the Docker-only owner boundary,
+audited the provider/loop/donation architecture, and found that endpoint identity had been
+substituted for model independence in both implementation and tests. Reclassified the prior
+live Research Spine score as unproven because its coding run was blocked with zero coders.
+Result: Phase 8 acceptance and remediation order are durable; Compass Forge pre-change gate
+record 5 captures the inherited failing baseline (231 issues, including known false-positive
+secret-flow findings and route/type drift).
+Verified: CF status/next/agent-brief; CF-SPEC-2 clarified, planned, tasked (CF-13..CF-21);
+CF-15 work order; gate-before record 5; decision record 1; impact+why on the model manager,
+reliability core/service, both ensemble implementations, and this lifecycle.
+Next: Add red regression tests for same-model endpoint replicas, then implement fail-closed
+distinct-model selection before touching the benchmark oracle.
+```
+
+### Phase 8 live evidence disposition
+
+- Authoritative Docker run group: `cf-spec-2-20260824-r9`; source snapshot SHA-256
+  `c737706072ec81f0de8fc3e5158137978e1d55b03e2ac82c7d25df931f84d979`;
+  backend image `sha256:c61d10d3457fa0dcf0eefa8563af4358cdb28fcd7f7b6f14d8448e9fc26a8bbf`.
+- Both arms used a fresh Postgres container, immutable recorded images, and a disposable
+  runner container. Provenance records `container_only=true`,
+  `host_dependencies_installed=false`; package installation occurred only inside the
+  runner container.
+- Legacy arm `2026-08-24T23-20-35-427Z`: score 51.6, 8 primary chat turns, 8 tasks
+  created, 2 revision events, 0 approvals. Its scorecard correctly retained blockers for
+  the review and report journey.
+- Pi arm `2026-08-24T23-32-56-466Z`: score 59.4, 8 primary chat turns, 8 tasks created,
+  9 revision events, 1 approval. The 24-turn Pi budget removed r8's deterministic turn-6
+  exhaustion, but backend logs still recorded failed Pi task subturns with no assistant
+  message persisted.
+- Both coding runs used Pi-managed Luna, Terra, and DeepSeek routes and complete three-
+  rater matrices. Legacy produced Fleiss kappa -0.029 / Krippendorff alpha 0.511; Pi
+  produced Fleiss kappa -0.125 / alpha 0.491. Both were below the 0.6 threshold and
+  correctly persisted `needs_reconciliation` with no accepted code applications.
+- r9 revealed two remaining benchmark-oracle defects: the three raw spans came from one
+  document, and Pi was called blocker-free despite zero reconciliation decisions and zero
+  accepted code applications. Both defects are now fixed locally with paginated,
+  source-diverse selection and fail-closed acceptance of only `accepted` or
+  `accepted_after_reconciliation` coding runs. These final fixes are unit/integration
+  verified but have not received a new live Docker retake.
+
+```text
+### L-18 | 2026-08-25T00:00:00Z | S2-execute | codex | executor | Phase 8 remediation
+Did: Corrected distinct-model identity across Pi/legacy ensembles and Research Spine coder
+selection; centralized provider authority through Pi management; hardened the consented
+Petals projection; repaired migrations, telemetry widths/provenance, encrypted-field failure
+handling, benchmark blocker exits, fresh per-engine database isolation, immutable provenance,
+read-only source handling, Docker runtime health, AppleDouble filtering, and Pi token/turn
+budgets. Added TDD coverage for each causal defect and regenerated living feature docs.
+Result: local Python suite reached 1927 passed / 0 failed / 6 skipped; benchmark Node check
+54/54; security benchmark 28/28 at 100%; feature docs 86/86 and 224 artifacts; diff check
+clean. The implementation surface is substantially repaired, but live Research Spine
+acceptance remains open.
+Verified: targeted red/green tests; full pytest; benchmark `npm run check`; security and
+feature-doc gates; Docker Compose rendering, container health, migrations, and image identity.
+Next: run and audit the authoritative Docker comparison.
+
+### L-19 | 2026-08-25T00:08:00Z | S4-review | codex | reviewer | r9 Docker acceptance
+Did: Followed the Mac Studio Docker run through completion, retained both artifact sets,
+compared chat/task/research telemetry, and re-measured the Research Spine result rather than
+trusting the scorecard label. Found that r9 proved independent three-model coding and
+reliability computation but did not prove reconciliation, accepted promotion, reportability,
+Petals donation, corpus-wide processing, or fully reliable Pi task subturns. Added source-
+diverse pagination and made unresolved low agreement a benchmark blocker.
+Result: Pi is better than legacy on this bounded workflow, but neither arm is accepted as a
+complete Research Spine journey. r9's Pi `blockers=[]` is withdrawn as an oracle false
+positive; under the corrected oracle both arms remain blocker-bearing until human
+reconciliation accepts evidence. The final oracle fix is not live-retaken.
+Verified: r9 provenance and scorecards; route evidence for all three Pi-managed models;
+complete coding matrices; kappa/alpha values; zero accepted applications/decisions; 54/54
+benchmark checks; 50 affected Python tests; full 1927-test Python suite; Compass Forge
+after-gate record 7 (failing, intentionally not accepted).
+Next: source-diverse Docker retake with reconciliation and accepted/report-gate evidence,
+then Petals donor, executed tool-call, long-horizon, UI-shell, and crossover-order proofs.
+```
+
+## Phase 9 — Completion blueprint, clean testing branch, and terminal acceptance
+
+### DEC-14 | 2026-08-24 | S0-frame | owner
+Context: Phase 8 materially improved correctness and test honesty but left the checkout dirty
+and several live acceptance journeys open. A rate limit or agent change must not erase the
+current position.
+Decision: Expand this existing cardinal lifecycle instead of creating a competing plan file;
+checkpoint its Status Block and append-only ledger at intervals no longer than two minutes
+while active work is in flight. Reconcile the intended change onto local `testing`, push it
+to `origin/testing`, and remove only worktrees/branches proven obsolete and safe to delete.
+Why: One continuously current source of truth gives any replacement agent the full rationale,
+exact evidence boundary, and next executable action without depending on chat history.
+
+### L-20 | 2026-08-25T00:25:40Z | S1-plan | gpt-5-codex | planner | Phase 9
+Did: Loaded the Build Stream and pinned-native Compass Forge contracts; oriented through
+CF status, next, and compact agent brief; created the explicit completion goal; and resumed
+this lifecycle as Phase 9 under the owner's clean-branch and two-minute-checkpoint mandate.
+Result: CF-SPEC-2 remains active, CF-17..CF-21 are visibly open, and the current architecture
+gate remains red with 237 projected issues. No commit, push, branch deletion, or worktree
+removal has occurred yet.
+Verified: pinned Rust Compass Forge status/next/agent-brief completed against recipe
+`istara-main`; lifecycle Status Block now points to this ledger entry.
+Next: inventory Git status, refs, worktrees, remotes, ancestry, ignored/sensitive files, and
+the exact changed-file ownership boundary before drafting the detailed completion task graph.
+
+### L-21 | 2026-08-25T00:27:55Z | S1-plan | gpt-5-codex | planner | Git truth inventory
+Did: Reconciled the main checkout, local and remote testing refs, every registered worktree,
+merged-branch membership, tracked/untracked changes, and the known sensitive-artifact names.
+Result: main `testing` HEAD is exactly `origin/testing` at `1b9b6d6098dc4a420aff2cf570b9aa5b982b3949`;
+all new implementation is still an uncommitted working-tree delta. Two clean conductor
+worktrees are merged and eligible for later removal, two missing temporary worktrees are
+prunable, one clean detached baseline is a removal candidate, and three older worktrees have
+unique dirty state that must be inspected or preserved rather than deleted. The recovery
+worktree remains intentionally out of cleanup scope. No listed secret artifact is present in
+the main checkout.
+Verified: `git status --short --branch`, `git rev-list --left-right --count`, two ancestry
+checks, `git worktree list --porcelain`, per-worktree status/ahead-behind inspection,
+`git branch --merged testing`, remote inventory, and exact-path sensitive-artifact checks.
+Next: obtain Compass Forge impact/why and CF-SPEC-2/task truth, then encode the complete
+Phase 9 task graph with dependencies, exact evidence, rollback, cleanup rules, and a
+single-command resume point before staging any file.
+
+## Phase 9 execution contract
+
+### Why this phase exists
+
+Phase 8 fixed substantial implementation and test-oracle defects, but it did not establish
+terminal product truth. In particular, a three-model coding matrix plus a computed Fleiss
+kappa is not equivalent to a successful Research Spine journey. The live r9 retake stopped
+with low agreement, no completed reconciliation, no accepted code applications, and no
+reportable downstream artifacts. The current checkout also contains 324 modified tracked
+files and 10 untracked files on top of an otherwise non-diverged `testing` branch. Phase 9
+therefore has two inseparable duties:
+
+1. preserve and transport the intended implementation without losing another agent's work;
+2. prove the full governed product behavior, including negative controls, in Docker on the
+   Mac Studio before describing the architecture as complete.
+
+### Governing invariants
+
+- `testing` is the integration and evidence branch. A local commit is not transport; a push
+  is not CI; CI is not Docker acceptance; Docker acceptance is not Compass Forge acceptance.
+- Pi Model Management is the only provider/model authority. Istara, Agentic Loop, and Pi
+  Agentic Loop remain independently selectable execution semantics, but each obtains model
+  identity, endpoint, credentials, capability, and route evidence through Pi management.
+- The removed classical/Alembic-era provider endpoint must not remain as a parallel runtime
+  authority. Compatibility names may survive only at a typed boundary that delegates to Pi
+  and is proven not to load, select, or call a model independently.
+- Petals model donation may contribute consented compute through Pi Model Management, but
+  cannot manufacture model diversity, bypass provider authorization, weaken tenant/project
+  scope, or promote research artifacts.
+- Research data follows the complete contract: source spans -> evidence units -> independent
+  atomic extraction/open coding by three genuinely distinct configured model identities ->
+  reliability and grounding -> reconciliation -> accepted atoms/nuggets -> facts -> insights
+  -> recommendations -> In Review -> human-approved Done -> report. A missing gate is a
+  blocker, not a scoring deduction that can be averaged away.
+- Fleiss' kappa is evidence about categorical inter-rater agreement, not a generic quality
+  score. The benchmark must preserve the item/category matrix, rater identity, missing-rating
+  policy, category normalization, and enough per-item detail to recompute the statistic.
+  Krippendorff's alpha and grounding measures are complementary diagnostics, not substitutes
+  for reconciliation or human approval.
+- No host package install, model load, backend/frontend server, benchmark runner, or live
+  probe is permitted on the Mac Studio. SSH is transport/control only; execution and package
+  installation occur in Docker containers. Host commands are limited to passive SSH/Git,
+  Docker/Compose control, file transfer, and process/log observation.
+- `LLMs/` and `Model_Finetuning/` are protected. Never clean, move, prune, or stage them.
+- Runtime secrets, endpoint fingerprints, credentials, tokens, database snapshots, and
+  private URLs never enter Git or this document. Evidence uses hashes, redacted identity
+  handles, container/image identifiers, and artifact-relative paths.
+- During active work, update the Status Block and append one ledger checkpoint at least every
+  two minutes. A long command must be started in a resumable session; checkpoint immediately
+  before it and immediately after it yields. Never rewrite old ledger entries.
+
+### Current truth at Phase 9 start
+
+| Surface | Established truth | Still unproven / unsafe to claim |
+|---|---|---|
+| Git integration | Local `testing` and `origin/testing` both point to `1b9b6d60`; the main checkout contains the Phase 8 delta. | No Phase 8 commit or remote transport yet; auxiliary dirty worktrees have not been reconciled. |
+| Deterministic tests | 1,927 Python tests passed, 6 skipped; benchmark library 54/54; security 28/28; feature docs 86/86 / 224 artifacts. | Results precede the final source-diversity/oracle edit and current lifecycle edit; authoritative clean-commit rerun is pending. |
+| Docker runtime | r9 ran in Docker and both arms produced artifacts; no host dependency install was reported. | A fresh immutable-commit retake of the corrected oracle is pending. |
+| Model routing | Both arms recorded Luna, Terra, and DeepSeek coding routes through Pi management. | All production/background/skill/schedule callsites have not yet been structurally proven free of independent classical provider authority. |
+| Ensemble | Three-rater matrices and kappa/alpha were produced for both arms. | Independence beyond labels, source/corpus breadth, reconciliation efficacy, and accepted promotion are not proven. |
+| Research Spine | Low agreement correctly remained `needs_reconciliation`; final local oracle now fails closed. | No accepted reconciliation decision, accepted code application, downstream fact/insight/recommendation chain, Done task, or valid report was demonstrated. |
+| Pi tasks | Larger Pi budget removed deterministic turn-6 exhaustion; Pi outscored legacy in r9. | Backend logs still contained task subturns with no persisted assistant message; long-horizon and two-call reliability are open. |
+| Petals | Unit/contract coverage exists for consent and routing boundaries. | A live consented donate/use/revoke/stop lifecycle through Pi management is open. |
+| UI | API and deterministic paths have broad coverage. | Browser-visible shell, engine chooser, error presentation, and absence of hidden 500s are open. |
+| Compass Forge | CF-SPEC-2 is 100-quality, tasked, and names CF-13..CF-21. | Every task is still open; after-gate record 7 is red; no spec acceptance exists. |
+
+### Worktree disposition register
+
+This register is authoritative until a later ledger entry records a change. “Delete” always
+means `git worktree remove` followed by safe `git branch -d`, never raw recursive deletion.
+
+| Worktree | State | Phase 9 disposition |
+|---|---|---|
+| `/Users/user/Documents/Istara-main` | dirty `testing`; base equals `origin/testing` | Integrate reviewed Phase 8 and Phase 9 changes, commit, push, and keep. |
+| `/private/tmp/istara-baseline-RyA031` | clean detached baseline at current old testing head | Remove after the integration commit is proven; no unique data. |
+| `/private/tmp/istara-main-baseline` | missing/prunable | Prune registration after verifying the path remains absent. |
+| `/private/tmp/istara-testing-merge-20260818` | missing/prunable | Prune registration after verifying the path remains absent. |
+| `/private/tmp/opencode/ci-wt` | clean detached historical CI checkout | Preserve until owner/process/lock inspection proves it abandoned; do not infer from cleanliness. |
+| `.../istara-pi-linearized-2026-08-10` | clean recovery branch equal to its remote | Preserve as intentional recovery/archive material. |
+| `.../istara-pi-model-management-migration-20260818` | dirty; branch ahead 4/behind 176 | Inspect every unique commit and dirty path; integrate unique valid work or make a recovery commit. Never delete dirty state. |
+| `.../istara-pi-model-management-migration-20260822` | clean; branch merged into testing | Remove worktree and then local branch after the new testing commit/push. |
+| `.../istara-public-ci-testing-20260818` | merged branch but dirty untracked lock/docs | Compare with main; integrate or preservation-commit unique artifacts; only then reconsider removal. |
+| `.../istara-testing-docker-20260817` | dirty docs/plans | Compare with main and preserve unique rationale/evidence; do not delete while dirty. |
+| `.../istara-testing-remote-qa-20260817` | clean; branch merged into testing | Remove worktree and then local branch after the new testing commit/push. |
+
+### Completion task graph
+
+| ID | Task | Depends on | Completion proof |
+|---|---|---|---|
+| P9-01 | Reconcile all Git/worktree state | none | Classification manifest, no unaccounted files, unique dirty state integrated or recoverably preserved. |
+| P9-02 | Create clean integration commit(s) and transport `testing` | P9-01 | Clean main checkout, local/remote SHA equality, remote branch query, push receipt. |
+| P9-03 | Safely remove only obsolete worktrees/branches | P9-02 | Before/after worktree and branch inventories; no dirty or recovery target removed. |
+| P9-04 | Prove Pi Model Management authority across every execution plane | P9-02 | Structural callsite inventory, negative legacy-authority tests, route evidence for all three selectable engines. |
+| P9-05 | Prove ensemble independence and statistical correctness | P9-04 | Distinct effective identities, complete matrices, independent recomputation, adversarial same-model rejection. |
+| P9-06 | Prove the full Research Spine, including reconciliation | P9-05 | Positive and negative Docker journeys with source-to-report lineage and fail-closed leakage assertions. |
+| P9-07 | Prove two-call, tool-call, and long-horizon behavior | P9-04 | Executed-tool evidence, resumed checkpoints, persisted assistant outputs, bounded failure/retry proof. |
+| P9-08 | Prove Petals donation lifecycle through Pi authority | P9-04 | Consent/use/revoke/stop evidence; tenant isolation; no diversity inflation or post-revoke routing. |
+| P9-09 | Repair and validate benchmark methodology | P9-05, P9-06, P9-07 | Randomized/crossover design, source/corpus breadth, immutable provenance, calibrated blocker oracle. |
+| P9-10 | Run Docker-only Mac Studio acceptance retake | P9-06..P9-09 | Container/image/commit provenance, complete artifacts, health/log evidence, no host install/load. |
+| P9-11 | Browser-visible UI and error-path acceptance | P9-10 | All engine options usable, shell state correct, no hidden 500s, accessible failure/recovery states. |
+| P9-12 | Broad regression, migrations, docs, security, and CI | P9-02, relevant fixes | Clean deterministic suite, fresh SQLite and PostgreSQL migration proof, docs/security outputs, CI terminal. |
+| P9-13 | Independent blind review and remediation loop | P9-10..P9-12 | Reviewer verdicts, severity register, fixed or explicitly owner-waived findings, retest evidence. |
+| P9-14 | Compass Forge evidence, gates, tasks, and acceptance | P9-13 | CF-13..CF-21 terminal with evidence, after-gate disposition, CF-SPEC-2 accepted only if truthful. |
+| P9-15 | Final branch/repo closure | P9-14 | Clean worktrees, local/remote testing equality, artifact index, final lifecycle summary and rollback pointer. |
+
+### Detailed execution instructions
+
+#### P9-01 — Reconcile all Git and worktree state
+
+1. Save `git status --short --branch`, `git diff --name-status`, `git diff --stat`, local
+   and remote SHA, both ancestry directions, worktree porcelain, merged branches, and remotes.
+2. Classify every main-checkout path as one of: production implementation, migration/schema,
+   deterministic test, live benchmark, security control, living documentation source,
+   generated living documentation, Build Stream/decision evidence, operator tooling, or
+   unrelated/temporary. The last category is never silently staged or discarded.
+3. Inspect `debug_rereview.py`, `fix_payload.py`, runner scripts, Docker files, recipe files,
+   every untracked migration/test/doc, and generated-site churn explicitly. Verify generated
+   changes reproduce from `scripts/feature_docs.py`; do not hand-curate generated HTML.
+4. Scan staged candidates for secrets and endpoint fingerprints without printing secret
+   values. Confirm protected model/training directories are absent from status and index.
+5. For each dirty auxiliary worktree, compare commits and file content against main. Unique
+   product code/tests/docs are brought onto `testing`; obsolete generated plans may be left
+   on a preservation commit, but no uncommitted data may be destroyed.
+6. Record an exact staging manifest in the ledger. Run `git diff --check` before staging and
+   inspect the staged diff after staging. If a path's rationale cannot be explained, unstage
+   it and keep the worktree dirty until resolved.
+
+#### P9-02 — Clean integration and transport
+
+1. Prefer coherent commits: implementation/migrations/tests/docs may be one atomic Phase 8
+   commit when splitting would make either commit fail; the Phase 9 lifecycle/cleanup record
+   may be a follow-up documentation commit. Never rewrite another agent's existing commit.
+2. Rerun the smallest high-value deterministic checks affected by any post-r9 edits before
+   commit. Commit with a descriptive conventional message and record the SHA immediately.
+3. Verify main checkout cleanliness, commit tree, and local branch ancestry. Push the exact
+   local `testing` ref to `origin/testing` without force. Query the remote ref after push and
+   require exact SHA equality. If rejected, fetch and reconcile—never force-update.
+4. Record separately: committed, pushed, remote-confirmed, CI-started, CI-terminal. A rate
+   limit after commit or push must leave the next command and SHA in the Status Block.
+
+#### P9-03 — Safe cleanup
+
+1. Re-read porcelain immediately before cleanup and reject any candidate that is dirty,
+   locked, active, unmerged, a recovery/archive ref, or not exact-path identified.
+2. Remove only clean worktrees with `git worktree remove <exact path>`. Delete their local
+   branch only with `git branch -d <exact branch>` after merge proof. Use `git worktree prune`
+   only for already-missing registrations.
+3. Do not delete remote branches in this phase unless a later explicit owner decision names
+   them. Do not remove the clean recovery worktree or the opencode CI worktree without an
+   abandonment/ownership proof. Record what was removed and recovery implications.
+
+#### P9-04 — Pi Model Management as single authority
+
+1. Build a graph-backed callsite inventory covering chat, websocket, tasks, agents, skills,
+   schedules, background jobs, autoresearch, embeddings, A2A, compute registry, Petals, and
+   benchmarks. For each, record model selection entrypoint, endpoint resolution, credential
+   source, capability validation, route-evidence sink, and execution-engine semantic.
+2. Prove Istara, Agentic Loop, and Pi Agentic Loop are selectable first-class modes. Each
+   mode must preserve its own orchestration semantics while all model calls pass through Pi
+   management. UI aliases and persisted enum values must map deterministically and survive
+   a session/restart without falling back to a removed endpoint.
+3. Add negative tests that make obsolete provider settings attractive and assert they cannot
+   become runtime authority. Add direct-call spies/monkeypatches around legacy/classical
+   clients so background paths fail a test if they bypass Pi. Compatibility APIs must emit
+   explicit deprecation/delegation behavior, not silently create a second source of truth.
+4. Exercise unavailable, unauthorized, capability-mismatch, timeout, partial stream, and
+   endpoint-removal cases. Fail closed with actionable UI/API errors and no secret leakage.
+
+#### P9-05 — Ensemble identity, independence, and reliability
+
+1. A rater identity is the effective provider account + endpoint handle + model/checkpoint +
+   relevant decoding profile, not merely a display name. Reject duplicate effective identities
+   even when they have different aliases, donated routes, or request IDs.
+2. Use at least three source-diverse evidence units and three distinct model identities. Keep
+   prompts/codebook fixed within a comparison arm, isolate conversations and caches, and
+   prevent one rater from reading another's output before reconciliation.
+3. Persist raw source spans, candidate atoms/codes, grounding handles, normalized categories,
+   missing/abstain states, the full item-by-rater matrix, and route evidence for every rating.
+4. Recompute Fleiss' kappa independently from artifacts; test perfect agreement, chance-like
+   agreement, disagreement, missing ratings, single-category degeneracy, category-order
+   invariance, and duplicate-rater rejection. Cross-check Krippendorff alpha where applicable.
+5. Treat low/undefined reliability as `needs_reconciliation`. Never infer acceptance from a
+   positive benchmark score, completion status, or the existence of three responses.
+
+#### P9-06 — Full Research Spine acceptance
+
+1. Positive journey: ingest multiple raw sources; preserve exact spans; create evidence units;
+   independently code; compute grounding/reliability; enter reconciliation; obtain an explicit
+   human acceptance decision; apply accepted codes; derive atoms/nuggets, facts, insights, and
+   recommendations with lineage; move a task to In Review then human-approved Done; generate
+   a report that contains only accepted, lineage-complete artifacts.
+2. Negative journeys: low agreement without reconciliation, synthesized prose without exact
+   spans, rejected code, missing route evidence, same-model ensemble, missing human approval,
+   task not Done, revoked source, cross-project evidence, and stale/deleted model route. Assert
+   that no downstream/report endpoint leaks provisional content in each case.
+3. Verify pagination and corpus breadth at every list boundary. The benchmark must not select
+   the first three spans from one document and describe this as source diversity.
+4. Verify every artifact has project scope, source/evidence lineage, coding-run/reconciliation
+   identifiers, governance status, and reportability status. Test immutability/audit history
+   when a source, model route, codebook, or decision changes.
+
+#### P9-07 — Calls and long-horizon tasks
+
+1. Define “two calls” as two independently persisted model interactions with route evidence,
+   assistant output, tool/result lineage when relevant, and a deterministic continuation rule;
+   do not count retries, hidden evaluator calls, or empty subturns as success.
+2. For tool use, require proposed call -> authorization -> executed tool -> captured result ->
+   model observation -> persisted final assistant response. A syntactically valid tool call or
+   tool-success telemetry without a consumed result fails acceptance.
+3. Run long-horizon tasks across checkpoint/restart boundaries and enough turns to exceed the
+   former six-turn failure. Verify budgets, cancellation, resume idempotency, no duplicate side
+   effects, bounded retries, persisted assistant messages, and explicit terminal states.
+4. Inject model timeout, dropped stream, malformed structured result, unavailable tool, donor
+   revocation, and process restart. Assert recovery or truthful failure without orphan tasks.
+
+#### P9-08 — Petals donation through Pi
+
+1. Use only explicitly consented test donation. Prove registration, capability advertisement,
+   Pi-managed scheduling, one bounded inference, usage/accounting, revocation, draining, and
+   no subsequent routing. Never load multiple heavy models merely to test discovery.
+2. Verify donor and requester isolation, encrypted/redacted connection material, authorization,
+   health expiry, concurrency/backpressure, cancellation, and cleanup on disconnect.
+3. Ensure one physical checkpoint donated through multiple aliases counts as one ensemble
+   identity and cannot satisfy three-rater diversity. Donor tool success cannot promote a
+   model/skill or research artifact without the normal governance gates.
+
+#### P9-09 — Benchmark validity
+
+1. Replace fixed arm ordering with seeded randomization or a documented crossover; record seed,
+   order, cooldown/cache state, commit SHA, image digest, config hashes, endpoint identity handles,
+   model identities, decoding parameters, budgets, dataset/source IDs, timestamps, and host/Docker
+   provenance. Redact secrets and private endpoint fingerprints.
+2. Run both positive and fail-closed negative controls. The scorecard blocker list is derived
+   from invariant assertions, not manually curated labels. Any missing required artifact blocks.
+3. Calibrate deterministic stubs only for contract tests. Live claims require live model routes;
+   live quality claims require sufficient repeated/crossover trials and uncertainty reporting.
+4. Compare new failures against a clean `origin/testing` baseline when attribution is ambiguous.
+   Separate harness/oracle defects, environment failures, product regressions, and model variance.
+5. Retire or update the 43 stale scenario tests only after mapping each to a current route and
+   contract. A scenario that never reaches its asserted surface cannot count as coverage.
+
+#### P9-10 — Docker-only Mac Studio retake
+
+1. Build from the transported immutable testing SHA. Render Compose first and capture the
+   effective service/image/volume/network configuration with sensitive values redacted.
+2. Over SSH, run only Docker/Compose operations. Capture `docker ps`, image digest, health,
+   migrations, listeners reachable from the test container, benchmark session IDs, and logs.
+3. Use fresh per-arm databases/volumes where comparison contamination is possible. Keep exact
+   teardown commands and retain evidence artifacts before teardown. Do not reuse production data.
+4. Monitor in bounded intervals and update this lifecycle every two minutes. On interruption,
+   record container IDs, session IDs, last completed stage, artifact path, and exact resume command.
+5. After completion, verify provenance says container-only and independently inspect commands/logs
+   for host `pip`, `npm`, `uv`, package-manager, backend/frontend, or model-server execution.
+
+#### P9-11 through P9-15 — Closure gates
+
+- P9-11: drive the real browser shell for each engine, model selection persistence, task/research
+  journey, reconciliation UI, report gate, donation consent/revocation, loading/empty/error/retry
+  states, accessibility, console errors, network failures, and backend 5xx correlation.
+- P9-12: run graph-selected targeted tests, Pi runtime Node tests, benchmark library checks,
+  full Python suite, fresh SQLite and PostgreSQL migration upgrades, Compose render/health,
+  security benchmark, feature-doc regeneration/check, diff check, secret scan, and CI. Explain
+  every skip and compare broad failures to a clean baseline.
+- P9-13: obtain an independent blind review of code, Research Spine methodology, benchmark oracle,
+  security/tenant isolation, migrations, and Docker evidence. Re-measure important numbers before
+  reading author conclusions. Remediate every P0/P1/P2 unless the owner explicitly accepts risk.
+- P9-14: attach command/review/gate evidence to CF-13..CF-21, resolve projected gate findings as
+  introduced regression, inherited debt, false positive, or accepted exception, and accept
+  CF-SPEC-2 only when zero required task remains open and terminal evidence exists.
+- P9-15: pull/fetch without destructive reset, verify all intended refs, ensure no worktree has
+  unexplained dirty state, confirm local and remote testing SHA equality, index retained Docker
+  artifacts, record rollback commit/instructions, update this lifecycle to terminal, and state
+  any remaining non-blocking debt without calling it complete.
+
+### Required evidence bundle
+
+Store or link one redacted bundle per acceptance run containing:
+
+- `provenance.json`: commit SHA, branch/ref, dirty flag, image digest, Compose hashes, container
+  IDs, Docker-only attestation, config hashes, model route identity handles, seed/order, budgets;
+- `source-lineage.json`: source/evidence spans and project scope;
+- `coding-matrix.json`: raw independent ratings, normalized categories, abstentions, grounding;
+- `reliability.json`: Fleiss inputs/result, independent recomputation, alpha and diagnostics;
+- `reconciliation.json`: disagreements, actor, decision, rationale, accepted/rejected applications;
+- `promotion-lineage.json`: accepted atoms/nuggets -> facts -> insights -> recommendations;
+- `task-report-gates.json`: In Review, human-approved Done, report inclusion/exclusion proofs;
+- `route-evidence.json`: engine, Pi-managed model identity, endpoint handle, provider/capability;
+- `tool-long-horizon.json`: calls, tool execution/results, checkpoints, restarts, terminal messages;
+- `petals-lifecycle.json`: consent, scheduling, accounting, revoke/drain/no-route-after-revoke;
+- `api-browser-results.json`: requests, statuses, console errors, correlated server logs/screenshots;
+- `commands.log` and `tests.xml`: exact redacted commands, exits, durations, skips/failures;
+- `review.md`: independent verdicts and remediation mapping;
+- `artifact-manifest.sha256`: integrity digest for every retained artifact.
+
+### Resume protocol for any agent
+
+1. Read the YAML Status Block, then the last three ledger entries, then this Phase 9 contract.
+2. Run pinned-native Compass Forge `status`, `next`, and one compact `agent-brief`; refresh the
+   index if stale. Do not assume CF task state from this document alone.
+3. Run `git status --short --branch`, local/remote SHA checks, and worktree porcelain. If reality
+   differs, append a checkpoint explaining the difference before acting.
+4. Continue the exact `next_action`; do not create a second Build Stream plan. Before every
+   nontrivial edit, run Compass Forge impact and why for that path.
+5. Every two minutes update `last`, `next_action`, and append `L-N`. Include completed action,
+   result, verification, blocker if any, and the exact next command/action. Never claim an old
+   test result covers a newer commit.
+
+### L-22 | 2026-08-25T00:28:59Z | S1-plan | gpt-5-codex | planner | Completion blueprint
+Did: Re-resolved and digest-verified the installed native Compass Forge release after its prior
+release filename changed; ran graph-backed impact/why and inspected CF-SPEC-2; then expanded
+this lifecycle with the full Phase 9 invariants, worktree disposition, fifteen-task dependency
+graph, detailed execution/negative-control instructions, evidence schema, and resume protocol.
+Result: another agent can now resume from Git reconciliation through Docker acceptance and CF
+closure without relying on chat history. CF confirms full blast radius across chat, settings,
+Pi runtime, legacy semantics, research, Petals, skills, websocket, tasks, and migrations; all
+CF-13..CF-21 remain open. The native `task list` build does not accept `--spec`, so task truth
+was taken from `spec show CF-SPEC-2` rather than an unsupported fallback.
+Verified: binary digest `559af310d332ab72ceeb75bdd057b54f43b185ce875b93f7b3943d988b5be2c1`,
+native capabilities/version, Compass Forge impact/why, and CF-SPEC-2 task payload.
+Next: execute P9-01 by classifying every changed/untracked path—including all dirty auxiliary
+worktrees—before producing the staging manifest and first clean integration commit.
+
+### L-23 | 2026-08-25T00:33:41Z | S1-plan | gpt-5-codex | integrator | P9-01 classification
+Did: Inspected the main checkout's utility, Docker runner, recipe, untracked, largest-diff,
+generated-doc, protected-path, and secret-pattern surfaces; then inspected commits, dirty
+diffs, untracked files, sizes, hashes, and representative content in all three dirty auxiliary
+worktrees.
+Result: the 324 tracked paths classify as 25 backend, 1 tracked migration, 7 Pi runtime,
+27 general tests, 10 benchmark, 2 security, 2 architecture docs, 22 Build Stream, 13 living
+feature sources, 202 generated feature-site artifacts, 3 Docker, 3 scripts, 3 recipes, and
+7 root/other. The ten untracked main paths are three forward migrations, two historical QA
+documents, two benchmark-provenance modules/tests, and three regression tests. The generated
+site is required output, not accidental churn. No private-key/bearer/database-credential
+pattern was found in candidate files; protected artifact folders are not candidates. Local
+path/Mac-Studio references occur only in operator/history documentation and the Docker runner,
+where they are intentional context rather than embedded credentials.
+Result: the old public-CI worktree lockfile differs from the current ignored lock and must not
+replace it; two zero-byte instruction files and one architect brief are abandoned planning
+artifacts. The Docker-readiness worktree contains five unique historical plan drafts. The
+20260818 Pi-migration worktree contains four unique commits plus a manifest and Plan B; its
+content was superseded operationally but still carries recoverable rationale. No dirty
+auxiliary file has been deleted or overwritten.
+Verified: categorized name inventory; `git diff --check`; filename-only credential scan;
+ignored/protected checks; per-worktree status, log, `git cherry`, hashes, sizes, diffs, and
+representative reads.
+Next: create recoverable preservation commits for unique auxiliary dirty state instead of
+discarding it, then stage and inspect the entire classified main-checkout change set.
+
+### L-24 | 2026-08-25T00:34:44Z | S2-execute | gpt-5-codex | integrator | P9-01 staged
+Did: Created recovery commits for every unique dirty artifact in the three auxiliary legacy
+worktrees, making each worktree clean without discarding data. Staged the complete classified
+main-checkout delta and started the post-oracle benchmark plus targeted Python gate in resumable
+terminal session `84308`.
+Result: recovery SHAs are `465e0cf` (20260818 Pi migration), `c198138` (public CI), and
+`2c14264` (Docker readiness). The main staging manifest contains 334 files with 7,292 additions
+and 2,263 deletions; `git diff --cached --check` and the staged filename-only credential scan
+are clean. No commit or push has occurred yet. The benchmark check was running and had reached
+10 passing Node subtests when this checkpoint was written.
+Verified: all three auxiliary `git status --short --branch` outputs are clean; staged status,
+stat, whitespace check, and credential scan completed; test session ID is recorded for resume.
+Next: poll session `84308`; on a green exit, restage this lifecycle checkpoint, inspect the
+final staged summary, commit, verify local cleanliness, and push without force.
+
+### L-25 | 2026-08-25T00:35:07Z | S2-execute | gpt-5-codex | integrator | Targeted gate correction
+Did: Polled session `84308`. The benchmark library completed 54/54 passing tests; the chained
+Python command did not start tests because `backend/.venv` has no pytest module. Inspected
+existing interpreters without installing or changing dependencies.
+Result: Node/benchmark verification is green. The Python portion is unexecuted, not failed.
+An already-installed `/opt/homebrew/bin/pytest` is available, so the retry requires no install.
+Verified: terminal exit/output, pytest discovery, interpreter paths. No source or environment
+mutation occurred.
+Next: run the same targeted Python selection with `/opt/homebrew/bin/pytest`; if green, restage
+the lifecycle checkpoint, inspect the final index, commit, and verify the local branch.
+
+### L-26 | 2026-08-25T00:35:41Z | S2-execute | gpt-5-codex | integrator | Pre-commit gate green
+Did: Ran the post-oracle Python selection with the existing system pytest and waited for the
+terminal process to exit cleanly.
+Result: 86 targeted Python tests passed in 8.50 seconds; combined with the immediately prior
+54/54 Node benchmark result, the changes made after the last full-suite run have focused green
+coverage. No dependency installation or live model/server activity occurred.
+Verified: pytest process exit 0 and complete result line; benchmark session's 54/54 result.
+Next: restage this checkpoint, commit the atomic integration set on `testing`, verify the
+resulting tree is clean and ahead of the unchanged remote by exactly one commit, then push.

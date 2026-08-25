@@ -23,7 +23,10 @@ services:
       retries: 5
     security_opt: [no-new-privileges:true]
     read_only: true
-    tmpfs: ["/tmp:noexec,nosuid,size=100M", "/run/postgresql:noexec,nosuid,size=50M"]
+    tmpfs:
+      - "/tmp:noexec,nosuid,size=100M"
+      - "/run/postgresql:noexec,nosuid,size=50M"
+      - "/var/lib/postgresql/data:noexec,nosuid,size=1G"
     cap_drop: [ALL]
     cap_add: [CHOWN, SETUID, SETGID]
     restart: unless-stopped

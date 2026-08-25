@@ -250,5 +250,5 @@ review packet.
 ## 7. Out of scope
 
 Production deployment, merge/push, external channel providers or credentials, local model
-loading, changes to `/Users/user/Documents/Istara-main`, `LLMs/`, `Model_Finetuning/`, or
+loading, changes to `<repo-root>`, `LLMs/`, `Model_Finetuning/`, or
 conductor defaults. Out-of-scope defects found during implementation become new CF tasks.

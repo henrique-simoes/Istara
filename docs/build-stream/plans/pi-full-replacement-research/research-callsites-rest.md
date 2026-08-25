@@ -1,4 +1,4 @@
-# LLM/Embedding Call-Site Inventory — /Users/user/Documents/Istara-main-pi-replacement (branch Review_pi_test)
+# LLM/Embedding Call-Site Inventory — <repo-root>-pi-replacement (branch Review_pi_test)
 
 ## Key routing fact (load-bearing)
 

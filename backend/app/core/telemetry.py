@@ -8,11 +8,14 @@ from __future__ import annotations
 
 import logging
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
-from sqlalchemy import select, func, or_
+from sqlalchemy import or_, select
 
-from app.core.research_validity import research_validity_telemetry_contract, telemetry_operation_names
+from app.core.research_validity import (
+    research_validity_telemetry_contract,
+    telemetry_operation_names,
+)
 from app.models.database import async_session
 from app.models.telemetry_span import TelemetrySpan
 
@@ -21,6 +24,23 @@ logger = logging.getLogger(__name__)
 
 class TelemetryRecorder:
     """Records telemetry spans and model performance data to the local database."""
+
+    def __init__(self) -> None:
+        self._write_failures = 0
+        self._last_write_failure_at: str | None = None
+
+    def write_health_snapshot(self) -> dict[str, object]:
+        """Return value-free, process-local evidence-store health."""
+        return {
+            "healthy": self._write_failures == 0,
+            "write_failures": self._write_failures,
+            "last_failure_at": self._last_write_failure_at,
+        }
+
+    def reset_write_health_for_tests(self) -> None:
+        """Reset process-local counters for an isolated test baseline."""
+        self._write_failures = 0
+        self._last_write_failure_at = None
 
     async def record_span(
         self,
@@ -63,7 +83,7 @@ class TelemetryRecorder:
                     skill_name=skill_name,
                     model_name=model_name,
                     agent_id=agent_id,
-                    started_at=datetime.now(timezone.utc),
+                    started_at=datetime.now(UTC),
                     duration_ms=duration_ms,
                     status=status,
                     quality_score=quality_score,
@@ -89,7 +109,12 @@ class TelemetryRecorder:
                 session.add(span)
                 await session.commit()
         except Exception as e:
-            logger.debug(f"Telemetry span write failed: {e}")
+            # A missing research-validity span is an observability failure, not
+            # harmless debug noise. Keep request handling non-fatal while
+            # making the loss visible to operators and benchmark log capture.
+            self._write_failures += 1
+            self._last_write_failure_at = datetime.now(UTC).isoformat()
+            logger.warning("Telemetry span write failed: %s", e)
 
     async def record_research_validity_event(
         self,
@@ -211,7 +236,7 @@ class TelemetryRecorder:
                         quality_ema=quality,
                         best_quality=quality,
                         source="production",
-                        last_used=datetime.now(timezone.utc),
+                        last_used=datetime.now(UTC),
                     )
                     session.add(row)
                 else:
@@ -222,7 +247,7 @@ class TelemetryRecorder:
                     row.quality_ema = old_ema * (1 - alpha) + quality * alpha
                     if quality > (row.best_quality or 0):
                         row.best_quality = quality
-                    row.last_used = datetime.now(timezone.utc)
+                    row.last_used = datetime.now(UTC)
 
                 await session.commit()
         except Exception as e:
@@ -525,7 +550,9 @@ class TelemetryRecorder:
                     retrieval_mode_counts.get(span.retrieval_mode, 0) + 1
                 )
             if category == "donor_lifecycle":
-                donor_lifecycle_counts[span.operation] = donor_lifecycle_counts.get(span.operation, 0) + 1
+                donor_lifecycle_counts[span.operation] = (
+                    donor_lifecycle_counts.get(span.operation, 0) + 1
+                )
             if span.coding_run_id:
                 coding_run_ids.add(span.coding_run_id)
             if span.evidence_unit_id:

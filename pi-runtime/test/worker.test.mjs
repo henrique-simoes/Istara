@@ -197,3 +197,61 @@ test("prompt without provider binding fails closed", async (t) => {
   const failed = await h.waitFor((f) => f.type === "run.failed" && f.run_id === "r");
   assert.equal(failed.error, "no_provider_bound");
 });
+
+test("provider-only turn returns raw tool calls without executing the Pi agent loop", async (t) => {
+  const h = new WorkerHarness();
+  t.after(() => h.close());
+  h.send({ v: 2, type: "hello", protocol_version: 2 });
+  await h.waitFor((f) => f.type === "ready");
+  const key = "sess-provider-only";
+  h.send({
+    v: 2,
+    type: "session.open",
+    session_key: key,
+    system_prompt: "legacy loop system",
+    history: [],
+    revision: "r1",
+    catalog: [],
+  });
+  await h.waitFor((f) => f.type === "session.opened");
+  h.send({
+    v: 2,
+    type: "provider.bind",
+    session_key: key,
+    endpoint: {
+      endpoint_id: "faux",
+      provider_kind: "faux",
+      faux_responses: [
+        {
+          text: "I will inspect it.",
+          tool_calls: [{ name: "search_documents", arguments: { query: "bias" } }],
+          stop_reason: "toolUse",
+        },
+      ],
+    },
+  });
+  h.send({
+    v: 2,
+    type: "provider.turn",
+    session_key: key,
+    run_id: "raw-1",
+    messages: [{ role: "user", content: "inspect" }],
+    tools: [{
+      name: "search_documents",
+      description: "Search documents",
+      parameters: { type: "object", properties: { query: { type: "string" } } },
+    }],
+  });
+
+  const completed = await h.waitFor(
+    (f) => f.type === "run.completed" && f.run_id === "raw-1"
+  );
+  assert.equal(completed.stop_reason, "toolUse");
+  assert.equal(completed.provider_message.content[0].type, "toolCall");
+  assert.equal(completed.provider_message.content[0].name, "search_documents");
+  assert.equal(
+    h.frames.some((f) => f.type === "tool.call" && f.run_id === "raw-1"),
+    false,
+    "the outer legacy loop, not the worker agent, owns tool execution",
+  );
+});

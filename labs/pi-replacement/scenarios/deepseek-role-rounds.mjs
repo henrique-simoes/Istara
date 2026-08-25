@@ -11,7 +11,7 @@ function parseArg(argv, name, fallback) {
 
 function makePrompt(role) {
   const shared = [
-    "Context: isolated worktree /Users/user/Documents/Istara-main-pi-replacement.",
+    "Context: isolated worktree <repo-root>-pi-replacement.",
     "Candidate code boundary: labs/pi-replacement only.",
     "Owner bar: real Pi replacement candidate, Pi owns loop/model/tool execution and trace emission, Istara harnesses are the scenario backbone.",
     "Required coverage: tools, features, final output, research spine, Autoresearch, memory/RAG/ReasoningBank/Memento, tokens, tool calls versus quality, skills, system prompt, A2A, channels/webhooks/Telegram-like lifecycle, documents, plan/review state, steering, benchmark/eval contracts, model routing, telemetry.",

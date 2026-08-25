@@ -15,6 +15,7 @@ from app.api.routes import chat as chat_route
 from app.channels.base import channel_router
 from app.channels.pi_local import PiLocalAdapter
 from app.config import settings
+from app.core.agentic.dispatcher import AgenticDispatcher
 from app.models.channel_message import ChannelMessage
 from app.models.codebook import Codebook  # noqa: F401 - registers Project relationship.
 from app.models.message import Message
@@ -64,6 +65,36 @@ class _FakePiService:
             "runtime": {"engine": "pi", "turn_status": "success", "tool_calls": [],
                         "endpoint_id": "pi-loopback"},
         }
+
+
+class _ScriptedProviderAuthority:
+    """Deterministic Pi provider seam for legacy-loop route tests."""
+
+    def __init__(self, outcomes: list[dict]):
+        self.outcomes = list(outcomes)
+        self.calls: list[dict] = []
+
+    async def run_provider_turn(self, **kwargs):
+        self.calls.append(kwargs)
+        outcome = self.outcomes.pop(0)
+        stream_cb = kwargs.get("stream_cb")
+        if stream_cb is not None and outcome.get("text"):
+            await stream_cb({"type": "content", "text": outcome["text"]})
+        return {
+            "status": "success",
+            "endpoint_id": "test-pi-provider",
+            "model": kwargs["params"].model or "test-model",
+            "usage": {},
+            "tool_calls": [],
+            **outcome,
+        }
+
+
+def _bind_provider_authority(monkeypatch, outcomes: list[dict]) -> _ScriptedProviderAuthority:
+    authority = _ScriptedProviderAuthority(outcomes)
+    dispatcher = AgenticDispatcher(pi_service=authority)
+    monkeypatch.setattr(chat_route, "_get_agentic_dispatcher", lambda: dispatcher)
+    return authority
 
 
 @pytest.mark.asyncio
@@ -175,16 +206,12 @@ async def test_pi_candidate_text_fallback_fails_closed_before_transport_when_reg
 
 @pytest.mark.asyncio
 async def test_pi_candidate_registered_text_fallback_uses_the_pinned_deepseek_model(monkeypatch):
-    calls: list[dict] = []
-
-    async def fake_chat_stream(**kwargs):
-        calls.append(kwargs)
-        yield "registered candidate response"
-
     async def fake_record_span(*args, **kwargs):
         return None
 
-    monkeypatch.setattr(chat_route.ollama, "chat_stream", fake_chat_stream)
+    authority = _bind_provider_authority(
+        monkeypatch, [{"text": "registered candidate response"}]
+    )
     monkeypatch.setattr(chat_route, "ensure_pi_deepseek_registered", lambda: (True, "registered"))
     monkeypatch.setattr(
         "app.core.pi_replacement.telemetry_recorder.record_span",
@@ -200,9 +227,9 @@ async def test_pi_candidate_registered_text_fallback_uses_the_pinned_deepseek_mo
         )
     ]
 
-    assert len(calls) == 1
-    assert calls[0]["model"] == settings.pi_replacement_deepseek_model
-    assert calls[0]["strict_model_routing"] is True
+    assert len(authority.calls) == 1
+    assert authority.calls[0]["params"].model == settings.pi_replacement_deepseek_model
+    assert authority.calls[0]["params"].strict_model_routing is True
     assert any("registered candidate response" in event for event in events)
 
 
@@ -229,11 +256,8 @@ async def test_pi_candidate_text_fallback_finishes_chat_metrics(monkeypatch):
         async def finish(self, **kwargs):
             self.finished.append(kwargs)
 
-    async def fake_chat_stream(**kwargs):
-        yield "registered candidate response"
-
     monkeypatch.setattr(chat_route, "PiChatRunMetrics", FakeMetrics)
-    monkeypatch.setattr(chat_route.ollama, "chat_stream", fake_chat_stream)
+    _bind_provider_authority(monkeypatch, [{"text": "registered candidate response"}])
     monkeypatch.setattr(chat_route, "ensure_pi_deepseek_registered", lambda: (True, "registered"))
 
     events = [
@@ -275,24 +299,24 @@ async def test_native_tools_persists_tool_result_display_once_in_stream_order(mo
     duplicated (and, because the direct append races the async queue drain,
     misordered) every tool-result block in the persisted assistant transcript
     (``"".join(all_text_parts)``), while the SSE wire copy stayed correct."""
-    calls: list[dict] = []
-
-    async def fake_chat_stream(**kwargs):
-        calls.append(kwargs)
-        if len(calls) == 1:
-            yield "thinking "
-            yield {
-                "tool_calls": [
-                    {"id": "call-1", "function": {"name": "list_tasks", "arguments": "{}"}}
-                ]
-            }
-        else:
-            yield "final answer"
-
     async def fake_execute_tool(tool_name, params, project_id, agent_id):
         return {"result": "TOOLRESULT"}
 
-    monkeypatch.setattr(chat_route.ollama, "chat_stream", fake_chat_stream)
+    _bind_provider_authority(
+        monkeypatch,
+        [
+            {
+                "text": "thinking ",
+                "tool_calls": [
+                    {
+                        "id": "call-1",
+                        "function": {"name": "list_tasks", "arguments": "{}"},
+                    }
+                ],
+            },
+            {"text": "final answer"},
+        ],
+    )
     monkeypatch.setattr(chat_route, "execute_tool", fake_execute_tool)
 
     parts: list[str] = []
@@ -329,19 +353,16 @@ async def test_text_fallback_persists_tool_result_display_once_in_stream_order(m
     """Regression (F-W2-R1-1): same contract for the text-fallback loop — its
     ``_tool_exec`` must not append the tool-result display directly on top of the
     queued ``content`` event, or the persisted transcript duplicates it."""
-    calls: list[dict] = []
-
-    async def fake_chat_stream(**kwargs):
-        calls.append(kwargs)
-        if len(calls) == 1:
-            yield 'Before tool ```json\n{"tool": "list_tasks", "params": {}}\n```'
-        else:
-            yield "final answer"
-
     async def fake_execute_tool(tool_name, params, project_id, agent_id):
         return {"result": "TOOLRESULT"}
 
-    monkeypatch.setattr(chat_route.ollama, "chat_stream", fake_chat_stream)
+    _bind_provider_authority(
+        monkeypatch,
+        [
+            {"text": 'Before tool ```json\n{"tool": "list_tasks", "params": {}}\n```'},
+            {"text": "final answer"},
+        ],
+    )
     monkeypatch.setattr(chat_route, "execute_tool", fake_execute_tool)
 
     parts: list[str] = []
@@ -796,3 +817,85 @@ async def test_pi_autoresearch_dry_run_does_not_start_background_loop(monkeypatc
     assert result["background_task_started"] is False
     assert result["proposal"]["report_evidence"] is False
     assert added == []
+
+
+def test_pi_telemetry_source_fits_the_persisted_provenance_column():
+    from app.models.telemetry_span import TelemetrySpan
+
+    source_capacity = TelemetrySpan.__table__.c.source.type.length
+    assert source_capacity >= len("pi-replacement-candidate")
+
+
+@pytest.mark.asyncio
+async def test_pi_chat_metrics_keep_route_id_as_a_bounded_identity(monkeypatch):
+    from app.core.pi_replacement import PiChatRunMetrics
+
+    recorded: list[dict] = []
+
+    async def fake_record_span(**kwargs):
+        recorded.append(kwargs)
+
+    monkeypatch.setattr(
+        "app.core.pi_replacement.telemetry_recorder.record_span",
+        fake_record_span,
+    )
+    metrics = PiChatRunMetrics(project_id="project-a", agent_id="istara-main")
+    metrics.input_tokens = 123456
+    metrics.output_tokens = 654321
+    metrics.chunk_count = 999
+    metrics.tool_call_count = 88
+    metrics.registration_status = "registered_with_a_deliberately_long_status"
+
+    await metrics.finish()
+
+    assert len(recorded) == 1
+    route_id = recorded[0]["route_id"]
+    assert route_id == "pi-deepseek-candidate"
+    assert len(route_id) <= TelemetrySpan.__table__.c.route_id.type.length
+    assert not route_id.startswith("{")
+
+
+@pytest.mark.asyncio
+async def test_pi_native_chat_uses_bounded_long_horizon_budget(monkeypatch):
+    captured: list[object] = []
+
+    async def fake_stream_chat_turn(_dispatcher, **kwargs):
+        captured.append(kwargs["params"])
+        yield {"type": "_complete", "result": None}
+
+    class FakeMetrics:
+        def __init__(self, **_kwargs):
+            pass
+
+        def observe_input(self, _messages):
+            pass
+
+        async def finish(self, **_kwargs):
+            pass
+
+    monkeypatch.setattr(chat_route, "stream_chat_turn", fake_stream_chat_turn)
+    monkeypatch.setattr(chat_route, "PiChatRunMetrics", FakeMetrics)
+    monkeypatch.setattr(
+        chat_route,
+        "_get_pi_execution_service",
+        lambda: SimpleNamespace(steering_binding=lambda **_kwargs: None),
+    )
+
+    events = [
+        event
+        async for event in chat_route._generate_pi_runtime(
+            [{"role": "user", "content": "complete a long tool-backed task"}],
+            [],
+            [],
+            SimpleNamespace(project_id="pi-long-horizon", session_id="session-a"),
+            "istara-main",
+            model="test-model",
+            temperature=0.1,
+            max_tokens=128,
+        )
+    ]
+
+    assert events == []
+    assert len(captured) == 1
+    assert captured[0].max_turns == chat_route.MAX_TOOL_ITERATIONS * 3
+    assert captured[0].max_turns == chat_route.PI_MODEL_TURN_BUDGET

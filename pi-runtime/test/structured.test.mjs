@@ -9,6 +9,7 @@ import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
+import { captureParameters, mapToolChoiceForApi, translateOutputSchema } from "../src/structured.mjs";
 
 const WORKER = path.join(path.dirname(fileURLToPath(import.meta.url)), "..", "src", "worker.mjs");
 
@@ -21,6 +22,26 @@ const SCHEMA = {
   required: ["verdict", "confidence"],
   additionalProperties: false,
 };
+
+test("capture tool parameters keep an object root accepted by OpenAI-compatible APIs", () => {
+  const parameters = captureParameters(translateOutputSchema(SCHEMA));
+
+  assert.equal(parameters.type, "object");
+  assert.equal(parameters.anyOf, undefined);
+  assert.deepEqual(
+    parameters.properties.verdict.anyOf.map((arm) => arm.const),
+    ["pass", "fail"],
+  );
+});
+
+test("Codex Responses requires the sole structured capture tool", () => {
+  const mapped = mapToolChoiceForApi("openai-codex-responses", {
+    kind: "tool",
+    name: "emit_structured_output",
+  });
+
+  assert.equal(mapped, "required");
+});
 
 class WorkerHarness {
   constructor() {

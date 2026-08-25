@@ -2,8 +2,7 @@
 
 import pytest
 import uuid
-from datetime import datetime, timezone
-from unittest.mock import AsyncMock, patch, MagicMock
+from unittest.mock import AsyncMock, patch
 
 
 class TestTelemetrySpanModel:
@@ -57,6 +56,18 @@ class TestTelemetrySpanModel:
         forbidden = {"prompt", "response", "user_content", "file_content", "url"}
         for field in forbidden:
             assert field not in columns, f"TelemetrySpan should not store {field}"
+
+    def test_trace_identifiers_fit_prefixed_agentic_ids(self):
+        from app.models.telemetry_span import TelemetrySpan
+
+        trace_column = TelemetrySpan.__table__.c.trace_id
+        parent_column = TelemetrySpan.__table__.c.parent_id
+
+        # Usage and agentic paths prefix a 32-character UUID hex value. The
+        # schema must preserve the complete provenance handle rather than
+        # truncating it or rejecting the telemetry write.
+        assert trace_column.type.length >= len(f"agentic-{uuid.uuid4().hex}")
+        assert parent_column.type.length >= len(f"agentic-{uuid.uuid4().hex}")
 
 
 class TestAgentHooks:
@@ -168,10 +179,14 @@ class TestTelemetryRecorder:
         project_b = await telemetry_recorder.get_model_intelligence("project-b")
 
         project_a_models = {
-            row["model_name"] for row in project_a["leaderboard"] if row["skill_name"] == skill_name
+            row["model_name"]
+            for row in project_a["leaderboard"]
+            if row["skill_name"] == skill_name
         }
         project_b_models = {
-            row["model_name"] for row in project_b["leaderboard"] if row["skill_name"] == skill_name
+            row["model_name"]
+            for row in project_b["leaderboard"]
+            if row["skill_name"] == skill_name
         }
         assert project_a_models == {model_a}
         assert project_b_models == {model_b}
@@ -194,6 +209,10 @@ class TestTelemetryRecorder:
                 project_id="proj-123",
             )
             assert result is None
+            health = recorder.write_health_snapshot()
+            assert health["healthy"] is False
+            assert health["write_failures"] == 1
+            assert health["last_failure_at"]
 
     @pytest.mark.asyncio
     async def test_research_validity_audit_summarizes_content_free_handles(self):
@@ -292,14 +311,17 @@ class TestTelemetryRecorder:
         register_builtin_hooks()
 
         context = {"_start_time": 0, "skill_name": "test"}
-        
-        with patch("app.core.telemetry.telemetry_recorder.record_span", new_callable=AsyncMock) as mock_record:
+
+        with patch(
+            "app.core.telemetry.telemetry_recorder.record_span", new_callable=AsyncMock
+        ) as mock_record:
             # 1. Test disabled (default)
             with patch.object(settings, "telemetry_enabled", False):
                 await agent_hooks.fire("pre_task", context)
                 await agent_hooks.fire("post_task", context)
                 # Wait a bit
                 import asyncio
+
                 await asyncio.sleep(0.01)
                 # Should not record spans if disabled
                 assert mock_record.call_count == 0

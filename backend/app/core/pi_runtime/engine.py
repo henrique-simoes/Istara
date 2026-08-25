@@ -28,19 +28,24 @@ import asyncio
 import hashlib
 import json
 import logging
+import os
 import uuid
+from collections.abc import AsyncIterator, Awaitable, Callable
 from dataclasses import dataclass, replace
-from typing import Any, AsyncIterator, Awaitable, Callable
+from typing import Any
+from urllib.parse import quote, urlparse
 
 from app.core.telemetry import telemetry_recorder
 
 from .endpoints import (
     DEFAULT_ENDPOINT_ID,
+    PiEndpointResolutionError,
     PiEndpointResolver,
     PiRuntimeTurnError,
     ResolvedPiEndpoint,
 )
 from .model_manager import PiModelManager
+from .protocol import TERMINAL_RUN_TYPES
 from .supervisor import PiRuntimeSupervisor, get_supervisor
 from .tools import build_tool_catalog, catalog_tool_names
 
@@ -119,15 +124,29 @@ def _session_revision(history: list[dict[str, Any]], endpoint: ResolvedPiEndpoin
     return digest.hexdigest()[:16]
 
 
-def _bind_payload(endpoint: ResolvedPiEndpoint, params: Any = None) -> dict[str, Any]:
+def _bind_payload(
+    endpoint: ResolvedPiEndpoint,
+    params: Any = None,
+    *,
+    project_id: str = "",
+) -> dict[str, Any]:
+    base_url = endpoint.base_url
+    if endpoint.kind == "petals":
+        scoped_project = str(project_id or "").strip()
+        if not scoped_project:
+            raise PiEndpointResolutionError("petals_project_id_required")
+        base_url = f"{base_url.rstrip('/')}/projects/{quote(scoped_project, safe='')}"
     payload = {
         "endpoint_id": endpoint.endpoint_id,
         "provider_kind": endpoint.provider_kind,
-        "base_url": endpoint.base_url,
+        "base_url": base_url,
         "model": endpoint.model,
         "api_key": endpoint.api_key,
         "timeout_ms": endpoint.timeout_ms,
         "max_retries": endpoint.max_retries,
+        "pi_provider": endpoint.pi_provider,
+        "context_window": endpoint.context_window,
+        "max_tokens": endpoint.max_tokens,
     }
     bind_params = _turn_bind_params(params, endpoint)
     if bind_params:
@@ -148,6 +167,29 @@ def _bind_payload(endpoint: ResolvedPiEndpoint, params: Any = None) -> dict[str,
             "cache_write_per_mtok": endpoint.cost_cache_write_per_mtok,
         }
     return payload
+
+
+def _enforce_test_provider_network_policy(endpoint: ResolvedPiEndpoint) -> None:
+    """Fail closed before worker startup when unit tests resolve a real public host.
+
+    The explicit live-LLM suite does not set this switch. Ordinary pytest runs
+    do, preventing a stale mock from silently spending tokens through the Node
+    worker. Loopback, Docker service names, faux providers, and RFC-reserved
+    test domains remain available to deterministic integration tests.
+    """
+    if os.environ.get("ISTARA_TEST_BLOCK_EXTERNAL_LLM") != "1":
+        return
+    if endpoint.provider_kind == "faux":
+        return
+    host = (urlparse(endpoint.base_url).hostname or "").lower()
+    if (
+        not host
+        or host in {"localhost", "127.0.0.1", "::1"}
+        or "." not in host
+        or host.endswith((".invalid", ".example", ".test"))
+    ):
+        return
+    raise PiEndpointResolutionError(f"external_provider_blocked_in_test:{endpoint.endpoint_id}")
 
 
 def _turn_bind_params(params: Any, endpoint: ResolvedPiEndpoint) -> dict[str, Any]:
@@ -204,9 +246,10 @@ class PiExecutionService:
         return self._supervisor or get_supervisor()
 
     def _manager(self) -> PiModelManager:
-        # The manager is the engine's endpoint authority (§5.2): static settings
-        # endpoints, local serving, and (on refresh) persisted LLMServer rows —
-        # never ComputeRegistry or donor capacity.
+        # The manager is the endpoint authority: settings, local serving,
+        # migrated LLMServer rows, and the sanctioned identity-pinned Petals
+        # projection. pi_runtime never imports ComputeRegistry or performs
+        # donor-capacity scoring; the outer bridge owns consent and scope.
         if self._model_manager is None:
             self._model_manager = PiModelManager(resolver=self._resolver)
         return self._model_manager
@@ -255,9 +298,12 @@ class PiExecutionService:
         if endpoint_id is None and model is None and min_context <= 0 and not require_vision:
             endpoint_id = DEFAULT_ENDPOINT_ID
         endpoint = manager.resolve(
-            endpoint_id=endpoint_id, model=model,
-            require_vision=require_vision, min_context=min_context,
+            endpoint_id=endpoint_id,
+            model=model,
+            require_vision=require_vision,
+            min_context=min_context,
         )
+        _enforce_test_provider_network_policy(endpoint)
         catalog = build_tool_catalog(allowed_tools, extra_tools=extra_tools)
         catalog_names = catalog_tool_names(allowed_tools, extra_tools=extra_tools)
         key = session_key or f"pi-{operation}-{uuid.uuid4().hex}"
@@ -271,7 +317,9 @@ class PiExecutionService:
             # requesting an out-of-catalog tool gets a structured rejection and
             # an audit row, never an executed tool (B-12).
             if name not in catalog_names:
-                logger.warning("pi-runtime: rejected out-of-catalog tool %s for %s", name, operation)
+                logger.warning(
+                    "pi-runtime: rejected out-of-catalog tool %s for %s", name, operation
+                )
                 await self._record_tool_rejection(endpoint, project_id, agent_id, name, operation)
                 return {"ok": False, "error": "tool_not_allowed", "tool": name}
             result = await tool_executor(name, args, project_id, agent_id)
@@ -293,19 +341,28 @@ class PiExecutionService:
                 catalog=catalog,
             )
             session_opened = True
-            await sup.bind_provider(key, _bind_payload(endpoint, turn_params))
+            await sup.bind_provider(
+                key,
+                _bind_payload(endpoint, turn_params, project_id=project_id),
+            )
             if steering is not None:
                 # Bind this turn's own (agent_id, project_id, session_key) key —
                 # the pump polls its own binding, never a global slot (B-5).
                 steering = replace(steering, session_key=steering.session_key or key)
                 steering_bound = True
                 await steering.manager.mark_working(
-                    steering.agent_id, project_id=steering.project_id, session_key=steering.session_key
+                    steering.agent_id,
+                    project_id=steering.project_id,
+                    session_key=steering.session_key,
                 )
                 steer_task = asyncio.create_task(self._pump_steering(sup, key, steering))
             async for frame in sup.run_turn(
-                key, user_text, tool_handler,
-                output_schema=output_schema, tool_choice=tool_choice, max_turns=max_turns,
+                key,
+                user_text,
+                tool_handler,
+                output_schema=output_schema,
+                tool_choice=tool_choice,
+                max_turns=max_turns,
             ):
                 event = _map_frame(frame, endpoint)
                 if event is None:
@@ -323,7 +380,9 @@ class PiExecutionService:
             if steering_bound:
                 try:
                     await steering.manager.mark_idle(
-                        steering.agent_id, project_id=steering.project_id, session_key=steering.session_key
+                        steering.agent_id,
+                        project_id=steering.project_id,
+                        session_key=steering.session_key,
                     )
                 except Exception:  # pragma: no cover - teardown best effort
                     logger.debug("pi-runtime: steering mark_idle failed")
@@ -354,7 +413,9 @@ class PiExecutionService:
                     await sup.steer(session_key, getattr(msg, "message", str(msg)))
                 for msg in await mgr.get_follow_up(aid, project_id=pid):
                     await sup.follow_up(session_key, getattr(msg, "message", str(msg)))
-                if not mgr.is_binding_working(aid, project_id=pid, session_key=steering.session_key):
+                if not mgr.is_binding_working(
+                    aid, project_id=pid, session_key=steering.session_key
+                ):
                     await sup.abort(session_key)
                     return
                 await asyncio.sleep(0.05)
@@ -376,8 +437,10 @@ class PiExecutionService:
                 tool_calls.append({"tool": event.get("tool"), "params": event.get("params", {})})
             elif etype in ("done", "error", "aborted"):
                 terminal = event
-        status = "success" if (terminal and terminal.get("type") == "done") else (
-            "aborted" if (terminal and terminal.get("type") == "aborted") else "error"
+        status = (
+            "success"
+            if (terminal and terminal.get("type") == "done")
+            else ("aborted" if (terminal and terminal.get("type") == "aborted") else "error")
         )
         return {
             "text": "".join(text_parts).strip(),
@@ -388,7 +451,9 @@ class PiExecutionService:
             "endpoint_id": (terminal or {}).get("endpoint_id"),
             "model": (terminal or {}).get("model"),
             "structured": (terminal or {}).get("structured"),
-            "error": (terminal or {}).get("error") if status not in ("success", "aborted") else None,
+            "error": (terminal or {}).get("error")
+            if status not in ("success", "aborted")
+            else None,
         }
 
     # ── Chat seam (streaming) ────────────────────────────────────────────
@@ -437,8 +502,14 @@ class PiExecutionService:
 
     # ── W1 generic execution API ────────────────────────────────────────
     async def run_completion(
-        self, *, purpose: str, project_id: str, agent_id: str, system: str,
-        messages: list[dict[str, Any]], params: Any,
+        self,
+        *,
+        purpose: str,
+        project_id: str,
+        agent_id: str,
+        system: str,
+        messages: list[dict[str, Any]],
+        params: Any,
     ) -> dict[str, Any]:
         """Run one no-tool completion through the Pi worker.
 
@@ -450,9 +521,15 @@ class PiExecutionService:
         """
         history, text = _split_messages(messages)
         return await self._collect_turn(
-            operation=f"pi_completion:{purpose}", project_id=project_id, agent_id=agent_id,
-            system_prompt=system, history=history, user_text=text,
-            tool_executor=_no_tools, session_key=None, endpoint_id=getattr(params, "endpoint_id", None),
+            operation=f"pi_completion:{purpose}",
+            project_id=project_id,
+            agent_id=agent_id,
+            system_prompt=system,
+            history=history,
+            user_text=text,
+            tool_executor=_no_tools,
+            session_key=None,
+            endpoint_id=getattr(params, "endpoint_id", None),
             allowed_tools=[],
             model=getattr(params, "model", None),
             min_context=getattr(params, "min_context", 0) or 0,
@@ -461,10 +538,130 @@ class PiExecutionService:
             max_turns=getattr(params, "max_turns", None),
         )
 
+    async def run_provider_turn(
+        self,
+        *,
+        purpose: str,
+        project_id: str,
+        agent_id: str,
+        system: str,
+        messages: list[dict[str, Any]],
+        tools: list[dict[str, Any]] | None,
+        params: Any,
+        stream_cb: Any = None,
+    ) -> dict[str, Any]:
+        """Run one Pi-managed provider turn while leaving tool execution outside.
+
+        The legacy Istara ReAct loop consumes the returned OpenAI-shaped raw
+        tool calls and remains behaviorally distinct from ``run_react``. Pi
+        Model Management still owns endpoint/model resolution and the worker
+        owns secrets, retries, timeout, accounting, and provider adaptation.
+        """
+        manager = self._manager()
+        await manager.ensure_db_projection()
+        endpoint_id = getattr(params, "endpoint_id", None)
+        model = getattr(params, "model", None)
+        min_context = getattr(params, "min_context", 0) or 0
+        require_vision = bool(getattr(params, "require_vision", False))
+        if endpoint_id is None and model is None and min_context <= 0 and not require_vision:
+            endpoint_id = DEFAULT_ENDPOINT_ID
+        endpoint = manager.resolve(
+            endpoint_id=endpoint_id,
+            model=model,
+            min_context=min_context,
+            require_vision=require_vision,
+        )
+        key = f"pi-provider-{uuid.uuid4().hex}"
+        sup = self._sup()
+        terminal_frame: dict[str, Any] | None = None
+        text_parts: list[str] = []
+        opened = False
+        try:
+            await sup.ensure_started()
+            await sup.open_session(
+                key,
+                system_prompt=system or "",
+                history=[],
+                revision=_session_revision(messages, endpoint),
+                catalog=[],
+            )
+            opened = True
+            await sup.bind_provider(
+                key,
+                _bind_payload(endpoint, params, project_id=project_id),
+            )
+            async for frame in sup.run_provider_turn(
+                key,
+                messages,
+                _provider_tool_catalog(tools or []),
+            ):
+                if frame.get("type") == "assistant.delta":
+                    chunk = str(frame.get("text") or "")
+                    text_parts.append(chunk)
+                    if stream_cb is not None:
+                        emitted = stream_cb({"type": "content", "text": chunk})
+                        if hasattr(emitted, "__await__"):
+                            await emitted
+                if frame.get("type") in TERMINAL_RUN_TYPES:
+                    terminal_frame = frame
+        finally:
+            if opened:
+                try:
+                    await sup.close_session(key)
+                except Exception:  # pragma: no cover - teardown best effort
+                    logger.debug("pi-runtime: provider-only session close failed")
+
+        mapped_terminal = _map_frame(terminal_frame or {}, endpoint)
+        await self._record_turn_telemetry(
+            endpoint,
+            project_id,
+            agent_id,
+            mapped_terminal,
+            f"pi_provider_turn:{purpose}",
+        )
+        if not terminal_frame or terminal_frame.get("type") != "run.completed":
+            return {
+                "text": "".join(text_parts).strip(),
+                "tool_calls": [],
+                "status": "error",
+                "usage": {},
+                "stop_reason": None,
+                "endpoint_id": endpoint.endpoint_id,
+                "model": endpoint.model,
+                "error": (terminal_frame or {}).get("error", "pi_runtime_error"),
+            }
+        message = terminal_frame.get("provider_message") or {}
+        text, tool_calls = _provider_message_parts(message)
+        return {
+            "text": text,
+            "tool_calls": tool_calls,
+            "status": "success",
+            "usage": terminal_frame.get("usage") or {},
+            "stop_reason": terminal_frame.get("stop_reason"),
+            "endpoint_id": endpoint.endpoint_id,
+            "model": endpoint.model,
+            "route_evidence": {
+                "plane": "pi-managed",
+                "endpoint_id": endpoint.endpoint_id,
+                "model": endpoint.model,
+                "bridge": "provider-only",
+            },
+        }
+
     async def run_react(
-        self, *, purpose: str, project_id: str, agent_id: str, session_key: str | None,
-        system: str, messages: list[dict[str, Any]], user_text: str, tool_executor: ToolExecutor,
-        tool_names: list[str], params: Any, steering_binding: SteeringBinding | None = None,
+        self,
+        *,
+        purpose: str,
+        project_id: str,
+        agent_id: str,
+        session_key: str | None,
+        system: str,
+        messages: list[dict[str, Any]],
+        user_text: str,
+        tool_executor: ToolExecutor,
+        tool_names: list[str],
+        params: Any,
+        steering_binding: SteeringBinding | None = None,
         extra_tools: list[dict[str, Any]] | None = None,
     ) -> dict[str, Any]:
         """Bounded task-shaped ReAct seam; Python keeps the final tool allowlist.
@@ -475,10 +672,17 @@ class PiExecutionService:
         the allowlist filter drops it.
         """
         return await self._collect_turn(
-            operation=f"pi_react:{purpose}", project_id=project_id, agent_id=agent_id,
-            system_prompt=system, history=messages, user_text=user_text, tool_executor=tool_executor,
-            session_key=session_key, endpoint_id=getattr(params, "endpoint_id", None),
-            allowed_tools=list(tool_names), steering=steering_binding,
+            operation=f"pi_react:{purpose}",
+            project_id=project_id,
+            agent_id=agent_id,
+            system_prompt=system,
+            history=messages,
+            user_text=user_text,
+            tool_executor=tool_executor,
+            session_key=session_key,
+            endpoint_id=getattr(params, "endpoint_id", None),
+            allowed_tools=list(tool_names),
+            steering=steering_binding,
             model=getattr(params, "model", None),
             min_context=getattr(params, "min_context", 0) or 0,
             require_vision=bool(getattr(params, "require_vision", False)),
@@ -488,8 +692,15 @@ class PiExecutionService:
         )
 
     async def run_structured(
-        self, *, purpose: str, project_id: str, agent_id: str, system: str,
-        messages: list[dict[str, Any]], schema: dict[str, Any], params: Any,
+        self,
+        *,
+        purpose: str,
+        project_id: str,
+        agent_id: str,
+        system: str,
+        messages: list[dict[str, Any]],
+        schema: dict[str, Any],
+        params: Any,
         repair: bool = True,
     ) -> dict[str, Any]:
         """Return a schema-validated object via the forced structured contract.
@@ -517,18 +728,24 @@ class PiExecutionService:
         _assert_supported_output_schema(schema)
         repair_instruction = (
             "The previous response did not produce a valid structured object. "
-            "Call the emit_structured_output tool exactly once with an object matching this schema: "
-            + json.dumps(schema, sort_keys=True)
+            "Call the emit_structured_output tool exactly once with an object "
+            "matching this schema: " + json.dumps(schema, sort_keys=True)
         )
         prompt = list(messages)
         for attempt in range(2 if repair else 1):
             history, text = _split_messages(prompt)
             result = await self._collect_turn(
-                operation=f"pi_structured:{purpose}", project_id=project_id, agent_id=agent_id,
-                system_prompt=system, history=history, user_text=text,
-                tool_executor=_no_tools, session_key=None,
+                operation=f"pi_structured:{purpose}",
+                project_id=project_id,
+                agent_id=agent_id,
+                system_prompt=system,
+                history=history,
+                user_text=text,
+                tool_executor=_no_tools,
+                session_key=None,
                 endpoint_id=getattr(params, "endpoint_id", None),
-                allowed_tools=[], output_schema=schema,
+                allowed_tools=[],
+                output_schema=schema,
                 max_turns=getattr(params, "max_turns", None),
                 model=getattr(params, "model", None),
                 min_context=getattr(params, "min_context", 0) or 0,
@@ -554,9 +771,17 @@ class PiExecutionService:
         raise AssertionError("unreachable")
 
     async def run_ensemble(
-        self, *, purpose: str, project_id: str, agent_id: str, system: str,
-        messages: list[dict[str, Any]], n: int, distinct: bool = False,
-        temperatures: list[float] | None = None, params: Any = None,
+        self,
+        *,
+        purpose: str,
+        project_id: str,
+        agent_id: str,
+        system: str,
+        messages: list[dict[str, Any]],
+        n: int,
+        distinct: bool = False,
+        temperatures: list[float] | None = None,
+        params: Any = None,
     ) -> dict[str, Any]:
         """N sampled completions (master plan §5.1 ensemble, W7 consumer).
 
@@ -577,8 +802,10 @@ class PiExecutionService:
             )
         else:
             endpoint = manager.resolve(
-                endpoint_id=getattr(params, "endpoint_id", None), model=model,
-                require_vision=require_vision, min_context=min_context,
+                endpoint_id=getattr(params, "endpoint_id", None),
+                model=model,
+                require_vision=require_vision,
+                min_context=min_context,
             )
             endpoints = [endpoint] * n
         samples: list[dict[str, Any]] = []
@@ -591,13 +818,27 @@ class PiExecutionService:
             if temperatures and index < len(temperatures) and temperatures[index] is not None:
                 sample_params = replace(sample_params, temperature=float(temperatures[index]))
             sample_params = replace(sample_params, endpoint_id=endpoint.endpoint_id)
-            samples.append(await self.run_completion(
-                purpose=f"{purpose}#{index}", project_id=project_id, agent_id=agent_id,
-                system=system, messages=messages, params=sample_params,
-            ))
+            samples.append(
+                await self.run_completion(
+                    purpose=f"{purpose}#{index}",
+                    project_id=project_id,
+                    agent_id=agent_id,
+                    system=system,
+                    messages=messages,
+                    params=sample_params,
+                )
+            )
         usage = {
-            "input_tokens": sum((s.get("usage") or {}).get("input_tokens", (s.get("usage") or {}).get("input", 0)) or 0 for s in samples),
-            "output_tokens": sum((s.get("usage") or {}).get("output_tokens", (s.get("usage") or {}).get("output", 0)) or 0 for s in samples),
+            "input_tokens": sum(
+                (s.get("usage") or {}).get("input_tokens", (s.get("usage") or {}).get("input", 0))
+                or 0
+                for s in samples
+            ),
+            "output_tokens": sum(
+                (s.get("usage") or {}).get("output_tokens", (s.get("usage") or {}).get("output", 0))
+                or 0
+                for s in samples
+            ),
             "turn_count": len(samples),
         }
         usage["total_tokens"] = usage["input_tokens"] + usage["output_tokens"]
@@ -639,7 +880,9 @@ class PiExecutionService:
             tool_executor=tool_executor,
             session_key=session_key,
             endpoint_id=endpoint_id,
-            allowed_tools=list(allowed_tools) if allowed_tools is not None else list(DELEGATION_TOOLS),
+            allowed_tools=list(allowed_tools)
+            if allowed_tools is not None
+            else list(DELEGATION_TOOLS),
         )
 
     # ── Channel (pi_local) seam ──────────────────────────────────────────
@@ -749,7 +992,10 @@ class PiExecutionService:
         from app.core.steering import steering_manager
 
         return SteeringBinding(
-            agent_id=agent_id, project_id=project_id, manager=steering_manager, session_key=session_key
+            agent_id=agent_id,
+            project_id=project_id,
+            manager=steering_manager,
+            session_key=session_key,
         )
 
     async def _record_tool_rejection(
@@ -766,7 +1012,6 @@ class PiExecutionService:
         rejection lands in the telemetry span store with the endpoint identity
         only (never URL/key material), mirroring ``_record_turn_telemetry``.
         """
-        identity = endpoint.telemetry_identity()  # endpoint_id / provider_kind / model only
         try:
             await telemetry_recorder.record_span(
                 trace_id=f"pi-{uuid.uuid4().hex}",
@@ -779,7 +1024,7 @@ class PiExecutionService:
                 error_type="tool_not_allowed",
                 error_message=f"out-of-catalog tool rejected: {tool_name}",
                 event_kind="pi_tool_authority_rejection",
-                route_id=json.dumps(identity, sort_keys=True),
+                route_id=endpoint.endpoint_id,
                 tool_name=tool_name,
                 tool_success=False,
                 source="pi-runtime",
@@ -795,11 +1040,11 @@ class PiExecutionService:
         terminal: dict[str, Any] | None,
         operation: str,
     ) -> None:
-        status = "success" if (terminal and terminal.get("type") == "done") else (
-            "aborted" if (terminal and terminal.get("type") == "aborted") else "error"
+        status = (
+            "success"
+            if (terminal and terminal.get("type") == "done")
+            else ("aborted" if (terminal and terminal.get("type") == "aborted") else "error")
         )
-        usage = (terminal or {}).get("usage") or {}
-        identity = endpoint.telemetry_identity()  # endpoint_id / provider_kind / model only
         try:
             await telemetry_recorder.record_span(
                 trace_id=f"pi-{uuid.uuid4().hex}",
@@ -810,10 +1055,11 @@ class PiExecutionService:
                 duration_ms=0.0,
                 status=status,
                 event_kind="pi_runtime_turn",
-                route_id=json.dumps(
-                    {**identity, "usage": usage, "stop_reason": (terminal or {}).get("stop_reason")},
-                    sort_keys=True,
-                ),
+                # `route_id` is a bounded identifier, not an arbitrary
+                # metadata envelope. Model identity already has its own field;
+                # storing usage JSON here overflowed varchar(120) and silently
+                # discarded every Pi runtime span in live Postgres.
+                route_id=endpoint.endpoint_id,
                 source="pi-runtime",
             )
         except Exception:  # pragma: no cover - telemetry is never load-bearing
@@ -829,7 +1075,11 @@ def _map_frame(frame: dict[str, Any], endpoint: ResolvedPiEndpoint) -> dict[str,
     if ftype == "thinking.delta":
         return {"type": "thinking", "text": frame.get("text", "")}
     if ftype == "tool.call":
-        return {"type": "tool_call", "tool": frame.get("name"), "params": frame.get("arguments") or {}}
+        return {
+            "type": "tool_call",
+            "tool": frame.get("name"),
+            "params": frame.get("arguments") or {},
+        }
     if ftype == "run.completed":
         return {
             "type": "done",
@@ -849,7 +1099,9 @@ def _map_frame(frame: dict[str, Any], endpoint: ResolvedPiEndpoint) -> dict[str,
     return None
 
 
-async def _no_tools(name: str, args: dict[str, Any], project_id: str, agent_id: str) -> dict[str, Any]:
+async def _no_tools(
+    name: str, args: dict[str, Any], project_id: str, agent_id: str
+) -> dict[str, Any]:
     return {"ok": False, "error": "tool_not_allowed"}
 
 
@@ -859,6 +1111,54 @@ def _split_messages(messages: list[dict[str, Any]]) -> tuple[list[dict[str, Any]
     history = list(messages[:-1])
     last = messages[-1]
     return history, str(last.get("content") or "")
+
+
+def _provider_tool_catalog(tools: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Normalize OpenAI/Ollama or direct tool schemas for pi-ai Context.tools."""
+    catalog: list[dict[str, Any]] = []
+    for entry in tools:
+        if not isinstance(entry, dict):
+            continue
+        function = entry.get("function") if entry.get("type") == "function" else entry
+        if not isinstance(function, dict) or not function.get("name"):
+            continue
+        catalog.append(
+            {
+                "name": str(function["name"]),
+                "description": str(function.get("description") or function["name"]),
+                "parameters": function.get("parameters") or {"type": "object", "properties": {}},
+            }
+        )
+    return catalog
+
+
+def _provider_message_parts(
+    message: dict[str, Any],
+) -> tuple[str, list[dict[str, Any]]]:
+    """Map a pi-ai assistant message to legacy OpenAI-shaped text/tool calls."""
+    text_parts: list[str] = []
+    tool_calls: list[dict[str, Any]] = []
+    for index, block in enumerate(message.get("content") or []):
+        if not isinstance(block, dict):
+            continue
+        if block.get("type") == "text":
+            text_parts.append(str(block.get("text") or ""))
+        elif block.get("type") == "toolCall":
+            tool_calls.append(
+                {
+                    "id": str(block.get("id") or f"pi-tool-{index}"),
+                    "type": "function",
+                    "function": {
+                        "name": str(block.get("name") or ""),
+                        "arguments": json.dumps(
+                            block.get("arguments") or {},
+                            separators=(",", ":"),
+                            sort_keys=True,
+                        ),
+                    },
+                }
+            )
+    return "".join(text_parts).strip(), tool_calls
 
 
 def _validate_structured_value(value: Any, schema: dict[str, Any]) -> dict[str, Any]:
@@ -875,6 +1175,7 @@ def _validate_structured_value(value: Any, schema: dict[str, Any]) -> dict[str, 
         raise ValueError("not_object")
     try:
         import jsonschema
+
         jsonschema.validate(value, schema)
     except ImportError:
         required = schema.get("required", [])
@@ -888,12 +1189,32 @@ def _validate_structured_value(value: Any, schema: dict[str, Any]) -> dict[str, 
 # Keep in sync with SUPPORTED_NODE_KEYS / SUPPORTED_TYPES in
 # pi-runtime/src/structured.mjs — both sides reject the same constructs so an
 # unforceable schema fails closed no matter which side sees it first.
-_SCHEMA_NODE_KEYS = frozenset({
-    "type", "properties", "required", "additionalProperties", "items", "enum",
-    "const", "description", "title", "minimum", "maximum", "exclusiveMinimum",
-    "exclusiveMaximum", "multipleOf", "minLength", "maxLength", "pattern",
-    "minItems", "maxItems", "uniqueItems", "minProperties", "maxProperties",
-})
+_SCHEMA_NODE_KEYS = frozenset(
+    {
+        "type",
+        "properties",
+        "required",
+        "additionalProperties",
+        "items",
+        "enum",
+        "const",
+        "description",
+        "title",
+        "minimum",
+        "maximum",
+        "exclusiveMinimum",
+        "exclusiveMaximum",
+        "multipleOf",
+        "minLength",
+        "maxLength",
+        "pattern",
+        "minItems",
+        "maxItems",
+        "uniqueItems",
+        "minProperties",
+        "maxProperties",
+    }
+)
 _SCHEMA_TYPES = frozenset({"object", "string", "number", "integer", "boolean", "array", "null"})
 
 

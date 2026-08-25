@@ -44,14 +44,19 @@ from sqlalchemy import select
 from app.core.agentic import dispatcher as dispatcher_module
 from app.core.agentic import legacy as legacy_module
 from app.core.agentic.dispatcher import AgenticDispatcher
-from app.core.agentic.types import AgenticDispatchError, EnsembleResult, TurnParams
+from app.core.agentic.types import EnsembleResult, TurnParams
 from app.core.pi_runtime.endpoints import PiEndpointResolutionError, PiRuntimeTurnError
 from app.core.pi_runtime.model_manager import PiModelManager
 from app.core.pi_runtime.supervisor import PiRuntimeSupervisor, PiWorkerError
 from app.models.agentic_usage import AgenticUsageRow
 from app.models.database import async_session, init_db
 from app.models.project import Project
-from tests.pi_production.harness import faux_service, final_text, requires_node, tool_call
+from tests.pi_production.harness import (
+    faux_service,
+    final_text,
+    requires_node,
+    tool_call,
+)
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 
@@ -82,7 +87,11 @@ class _RecordingLegacyExecutor:
         self.calls.append(kwargs)
         verb = kwargs.get("verb")
         if verb == "embed":
-            return {"embeddings": [[0.1, 0.2]], "usage": {"estimate": False}, "status": "success"}
+            return {
+                "embeddings": [[0.1, 0.2]],
+                "usage": {"estimate": False},
+                "status": "success",
+            }
         if verb == "ensemble":
             return {
                 "samples": [dict(self._outcome), dict(self._outcome)],
@@ -145,8 +154,18 @@ class _StubPiService:
         self.calls.append(("run_ensemble", kwargs))
         return {
             "samples": [
-                {"text": "s1", "status": "success", "endpoint_id": "pi-a", "usage": {"input": 1, "output": 1}},
-                {"text": "s2", "status": "success", "endpoint_id": "pi-b", "usage": {"input": 1, "output": 1}},
+                {
+                    "text": "s1",
+                    "status": "success",
+                    "endpoint_id": "pi-a",
+                    "usage": {"input": 1, "output": 1},
+                },
+                {
+                    "text": "s2",
+                    "status": "success",
+                    "endpoint_id": "pi-b",
+                    "usage": {"input": 1, "output": 1},
+                },
             ],
             "endpoint_ids": ["pi-a", "pi-b"],
             "usage": {"input": 2, "output": 2},
@@ -215,63 +234,121 @@ def test_production_singleton_binds_both_real_engine_seams():
 
 async def test_every_verb_routes_to_the_pi_seam_and_records_one_row(usage_db):
     service = _StubPiService()
-    dispatcher = AgenticDispatcher(pi_service=service, legacy_executor=_RecordingLegacyExecutor())
+    dispatcher = AgenticDispatcher(
+        pi_service=service, legacy_executor=_RecordingLegacyExecutor()
+    )
     tag = uuid.uuid4().hex[:8]
 
     result = await dispatcher.chat_turn(
-        project_id="p1", agent_id="a1", session_key="s1", system_prompt="sys",
-        messages=[], user_text="hi", engine="pi",
+        project_id="p1",
+        agent_id="a1",
+        session_key="s1",
+        system_prompt="sys",
+        messages=[],
+        user_text="hi",
+        engine="pi",
     )
     assert result.text == "pi-done"
 
-    await dispatcher.completion(**_completion_kwargs(f"w1.verbs.completion.{tag}"), engine="pi")
+    await dispatcher.completion(
+        **_completion_kwargs(f"w1.verbs.completion.{tag}"), engine="pi"
+    )
     structured = await dispatcher.structured(
-        purpose=f"w1.verbs.structured.{tag}", project_id="p1", system="sys",
-        messages=[{"role": "user", "content": "go"}], schema=STRUCTURED_SCHEMA,
-        params=TurnParams(), engine="pi",
+        purpose=f"w1.verbs.structured.{tag}",
+        project_id="p1",
+        system="sys",
+        messages=[{"role": "user", "content": "go"}],
+        schema=STRUCTURED_SCHEMA,
+        params=TurnParams(),
+        engine="pi",
     )
     assert structured.value == {"accepted": True}
 
     ensemble = await dispatcher.ensemble(
-        purpose=f"w1.verbs.ensemble.{tag}", project_id="p1",
-        messages=[{"role": "user", "content": "go"}], n=2, distinct=True, engine="pi",
+        purpose=f"w1.verbs.ensemble.{tag}",
+        project_id="p1",
+        messages=[{"role": "user", "content": "go"}],
+        n=2,
+        distinct=True,
+        engine="pi",
     )
     assert isinstance(ensemble, EnsembleResult)
     assert ensemble.endpoint_ids == ["pi-a", "pi-b"]
 
     methods = [method for method, _ in service.calls]
-    assert methods == ["run_chat_turn", "run_completion", "run_structured", "run_ensemble"]
+    assert methods == [
+        "run_chat_turn",
+        "run_completion",
+        "run_structured",
+        "run_ensemble",
+    ]
     # Exactly one ledger row per dispatch, whatever the verb.
-    for purpose in (f"w1.verbs.completion.{tag}", f"w1.verbs.structured.{tag}", f"w1.verbs.ensemble.{tag}"):
+    for purpose in (
+        f"w1.verbs.completion.{tag}",
+        f"w1.verbs.structured.{tag}",
+        f"w1.verbs.ensemble.{tag}",
+    ):
         assert len(await _ledger_rows(purpose=purpose)) == 1
     assert len(await _ledger_rows(purpose="chat_turn")) == 1
 
 
 async def test_every_verb_routes_to_the_legacy_seam_and_records_one_row(usage_db):
     legacy = _RecordingLegacyExecutor()
-    dispatcher = AgenticDispatcher(pi_service=_StubPiService(), legacy_executor=legacy)
+
+    class _StubGateway:
+        async def embed(self, texts, *, model=None):
+            return {
+                "embeddings": [[0.1, 0.2]],
+                "endpoint_id": "pi-embed",
+                "model": model or "embed-model",
+                "usage": {"estimate": False},
+                "status": "success",
+            }
+
+    dispatcher = AgenticDispatcher(
+        pi_service=_StubPiService(),
+        legacy_executor=legacy,
+        embeddings_gateway=_StubGateway(),
+    )
     tag = uuid.uuid4().hex[:8]
 
     await dispatcher.chat_turn(
-        project_id="p1", agent_id="a1", session_key="s1", system_prompt="sys",
-        messages=[], user_text="hi", engine="legacy",
+        project_id="p1",
+        agent_id="a1",
+        session_key="s1",
+        system_prompt="sys",
+        messages=[],
+        user_text="hi",
+        engine="legacy",
     )
-    await dispatcher.completion(**_completion_kwargs(f"w1.verbs.legacy.completion.{tag}"), engine="legacy")
+    await dispatcher.completion(
+        **_completion_kwargs(f"w1.verbs.legacy.completion.{tag}"), engine="legacy"
+    )
     await dispatcher.structured(
-        purpose=f"w1.verbs.legacy.structured.{tag}", project_id="p1", system="sys",
-        messages=[{"role": "user", "content": "go"}], schema=STRUCTURED_SCHEMA,
-        params=TurnParams(), engine="legacy",
+        purpose=f"w1.verbs.legacy.structured.{tag}",
+        project_id="p1",
+        system="sys",
+        messages=[{"role": "user", "content": "go"}],
+        schema=STRUCTURED_SCHEMA,
+        params=TurnParams(),
+        engine="legacy",
     )
     ensemble = await dispatcher.ensemble(
-        purpose=f"w1.verbs.legacy.ensemble.{tag}", project_id="p1",
-        messages=[{"role": "user", "content": "go"}], n=2, engine="legacy",
+        purpose=f"w1.verbs.legacy.ensemble.{tag}",
+        project_id="p1",
+        messages=[{"role": "user", "content": "go"}],
+        n=2,
+        engine="legacy",
     )
-    assert [sample.text for sample in ensemble.samples] == ["legacy-done", "legacy-done"]
+    assert [sample.text for sample in ensemble.samples] == [
+        "legacy-done",
+        "legacy-done",
+    ]
     vectors = await dispatcher.embed(texts=["hello"], project_id="p1", engine="legacy")
     assert vectors == [[0.1, 0.2]]
 
     verbs = [call["verb"] for call in legacy.calls]
-    assert verbs == ["chat_turn", "completion", "structured", "ensemble", "embed"]
+    assert verbs == ["chat_turn", "completion", "structured", "ensemble"]
     for purpose in (
         f"w1.verbs.legacy.completion.{tag}",
         f"w1.verbs.legacy.structured.{tag}",
@@ -326,8 +403,12 @@ async def test_completion_pi_seam_drives_the_real_supervised_worker(usage_db):
     purpose = f"w1.verbs.{uuid.uuid4().hex[:8]}"
     try:
         result = await AgenticDispatcher(pi_service=service).completion(
-            purpose=purpose, project_id="p1", system="system",
-            messages=[{"role": "user", "content": "hello"}], params=TurnParams(), engine="pi",
+            purpose=purpose,
+            project_id="p1",
+            system="system",
+            messages=[{"role": "user", "content": "hello"}],
+            params=TurnParams(),
+            engine="pi",
         )
     finally:
         await supervisor.shutdown()
@@ -345,8 +426,12 @@ async def test_completion_legacy_seam_executes_the_bound_executor(usage_db):
     legacy = _RecordingLegacyExecutor()
     purpose = f"w1.legacy.{uuid.uuid4().hex[:8]}"
     result = await AgenticDispatcher(legacy_executor=legacy).completion(
-        purpose=purpose, project_id="p1", system="system",
-        messages=[{"role": "user", "content": "hello"}], params=TurnParams(model="m1"), engine="legacy",
+        purpose=purpose,
+        project_id="p1",
+        system="system",
+        messages=[{"role": "user", "content": "hello"}],
+        params=TurnParams(model="m1"),
+        engine="legacy",
     )
     assert result.text == "legacy-done"
     assert legacy.calls and legacy.calls[0]["verb"] == "completion"
@@ -361,23 +446,60 @@ async def test_completion_legacy_seam_executes_the_bound_executor(usage_db):
 # ── precedence resolution ────────────────────────────────────────────────
 
 
-def test_engine_precedence_is_override_then_request_then_project_then_default(monkeypatch):
-    dispatcher = AgenticDispatcher(pi_service=_StubPiService(), legacy_executor=_RecordingLegacyExecutor())
-    monkeypatch.setattr("app.core.agentic.dispatcher.settings.agentic_engine_default", "pi", raising=False)
+def test_engine_precedence_is_override_then_request_then_project_then_default(
+    monkeypatch,
+):
+    dispatcher = AgenticDispatcher(
+        pi_service=_StubPiService(), legacy_executor=_RecordingLegacyExecutor()
+    )
+    monkeypatch.setattr(
+        "app.core.agentic.dispatcher.settings.agentic_engine_default",
+        "pi",
+        raising=False,
+    )
 
     # Per-call override always wins.
-    assert dispatcher.resolve_engine(engine="legacy", request=_request_with_header("pi"), project_engine="pi") == "legacy"
-    assert dispatcher.resolve_engine(engine="pi", request=_request_with_header("legacy"), project_engine="legacy") == "pi"
+    assert (
+        dispatcher.resolve_engine(
+            engine="legacy", request=_request_with_header("pi"), project_engine="pi"
+        )
+        == "legacy"
+    )
+    assert (
+        dispatcher.resolve_engine(
+            engine="pi", request=_request_with_header("legacy"), project_engine="legacy"
+        )
+        == "pi"
+    )
     # Request header beats project setting and default.
-    assert dispatcher.resolve_engine(request=_request_with_header("pi"), project_engine="legacy") == "pi"
-    assert dispatcher.resolve_engine(request=_request_with_header("deepseek-pi"), project_engine="legacy") == "pi"
-    assert dispatcher.resolve_engine(request=_request_with_header("legacy"), project_engine="pi") == "legacy"
+    assert (
+        dispatcher.resolve_engine(
+            request=_request_with_header("pi"), project_engine="legacy"
+        )
+        == "pi"
+    )
+    assert (
+        dispatcher.resolve_engine(
+            request=_request_with_header("deepseek-pi"), project_engine="legacy"
+        )
+        == "pi"
+    )
+    assert (
+        dispatcher.resolve_engine(
+            request=_request_with_header("legacy"), project_engine="pi"
+        )
+        == "legacy"
+    )
     # Project setting beats the configured default.
     assert dispatcher.resolve_engine(project_engine="pi") == "pi"
     assert dispatcher.resolve_engine(project_engine="legacy") == "legacy"
     # Configured default is the last resort.
     assert dispatcher.resolve_engine() == "pi"
-    monkeypatch.setattr("app.core.agentic.dispatcher.settings.agentic_engine_default", "legacy", raising=False)
+    monkeypatch.setattr(
+        "app.core.agentic.dispatcher.settings.agentic_engine_default",
+        "legacy",
+        raising=False,
+    )
     assert dispatcher.resolve_engine() == "legacy"
     # Unknown/absent values never silently select Pi.
     assert dispatcher.resolve_engine(request=_request_with_header("gpt-4o")) == "legacy"
@@ -395,7 +517,9 @@ async def test_verbs_read_the_persisted_project_engine_setting(usage_db):
     legacy = _RecordingLegacyExecutor()
     dispatcher = AgenticDispatcher(pi_service=service, legacy_executor=legacy)
     try:
-        await dispatcher.completion(**_completion_kwargs("w1.precedence.project") | {"project_id": project_id})
+        await dispatcher.completion(
+            **_completion_kwargs("w1.precedence.project") | {"project_id": project_id}
+        )
         assert service.calls and service.calls[0][0] == "run_completion"
         assert legacy.calls == []
 
@@ -418,35 +542,84 @@ async def test_verbs_read_the_persisted_project_engine_setting(usage_db):
 async def test_turn_params_are_forwarded_unchanged_to_both_engine_seams():
     service = _StubPiService()
     legacy = _RecordingLegacyExecutor()
-    params = TurnParams(model="deepseek-v4-pro", temperature=0.2, max_tokens=512,
-                        thinking_mode="high", min_context=32768, timeout_s=45.0,
-                        max_turns=5, require_vision=True)
+    params = TurnParams(
+        model="deepseek-v4-pro",
+        temperature=0.2,
+        max_tokens=512,
+        thinking_mode="high",
+        min_context=32768,
+        timeout_s=45.0,
+        max_turns=5,
+        require_vision=True,
+    )
     dispatcher = AgenticDispatcher(pi_service=service, legacy_executor=legacy)
 
-    await dispatcher.completion(purpose="w1.params", project_id="p1", system="s",
-                                messages=[{"role": "user", "content": "hi"}], params=params, engine="pi")
+    await dispatcher.completion(
+        purpose="w1.params",
+        project_id="p1",
+        system="s",
+        messages=[{"role": "user", "content": "hi"}],
+        params=params,
+        engine="pi",
+    )
     assert service.calls[0][1]["params"] is params
 
-    await dispatcher.structured(purpose="w1.params", project_id="p1", system="s",
-                                messages=[{"role": "user", "content": "hi"}],
-                                schema=STRUCTURED_SCHEMA, params=params, engine="pi")
+    await dispatcher.structured(
+        purpose="w1.params",
+        project_id="p1",
+        system="s",
+        messages=[{"role": "user", "content": "hi"}],
+        schema=STRUCTURED_SCHEMA,
+        params=params,
+        engine="pi",
+    )
     assert service.calls[1][1]["params"] is params
 
-    await dispatcher.react(purpose="w1.params", project_id="p1", agent_id="a1", session_key="s1",
-                           system="s", messages=[], user_text="go", tool_executor=None,
-                           tool_names=["search_documents"], params=params, engine="pi")
+    await dispatcher.react(
+        purpose="w1.params",
+        project_id="p1",
+        agent_id="a1",
+        session_key="s1",
+        system="s",
+        messages=[],
+        user_text="go",
+        tool_executor=None,
+        tool_names=["search_documents"],
+        params=params,
+        engine="pi",
+    )
     assert service.calls[2][1]["params"] is params
 
-    await dispatcher.chat_turn(project_id="p1", agent_id="a1", session_key="s1", system_prompt="s",
-                               messages=[], user_text="hi", params=params, engine="pi")
+    await dispatcher.chat_turn(
+        project_id="p1",
+        agent_id="a1",
+        session_key="s1",
+        system_prompt="s",
+        messages=[],
+        user_text="hi",
+        params=params,
+        engine="pi",
+    )
     assert service.calls[3][1]["params"] is params
 
-    await dispatcher.ensemble(purpose="w1.params", project_id="p1",
-                              messages=[{"role": "user", "content": "hi"}], n=2, params=params, engine="pi")
+    await dispatcher.ensemble(
+        purpose="w1.params",
+        project_id="p1",
+        messages=[{"role": "user", "content": "hi"}],
+        n=2,
+        params=params,
+        engine="pi",
+    )
     assert service.calls[4][1]["params"] is params
 
-    await dispatcher.completion(purpose="w1.params.legacy", project_id="p1", system="s",
-                                messages=[{"role": "user", "content": "hi"}], params=params, engine="legacy")
+    await dispatcher.completion(
+        purpose="w1.params.legacy",
+        project_id="p1",
+        system="s",
+        messages=[{"role": "user", "content": "hi"}],
+        params=params,
+        engine="legacy",
+    )
     assert legacy.calls[0]["params"] is params
 
 
@@ -456,11 +629,18 @@ async def test_turn_params_are_forwarded_unchanged_to_both_engine_seams():
 @requires_node
 async def test_structured_valid_forced_capture_returns_the_object():
     supervisor = PiRuntimeSupervisor()
-    service = faux_service([tool_call("emit_structured_output", {"accepted": True})], supervisor)
+    service = faux_service(
+        [tool_call("emit_structured_output", {"accepted": True})], supervisor
+    )
     try:
         result = await service.run_structured(
-            purpose="w1.structured.ok", project_id="p1", agent_id="a1", system="sys",
-            messages=[{"role": "user", "content": "go"}], schema=STRUCTURED_SCHEMA, params=TurnParams(),
+            purpose="w1.structured.ok",
+            project_id="p1",
+            agent_id="a1",
+            system="sys",
+            messages=[{"role": "user", "content": "go"}],
+            schema=STRUCTURED_SCHEMA,
+            params=TurnParams(),
         )
     finally:
         await supervisor.shutdown()
@@ -474,12 +654,19 @@ async def test_structured_free_form_json_text_is_never_accepted_and_fails_typed(
     the missing forced call triggers exactly one bounded repair, then a typed
     fail-closed error."""
     supervisor = PiRuntimeSupervisor()
-    service = faux_service([final_text('{"accepted": true}'), final_text('{"accepted": true}')], supervisor)
+    service = faux_service(
+        [final_text('{"accepted": true}'), final_text('{"accepted": true}')], supervisor
+    )
     try:
         with pytest.raises(PiRuntimeTurnError, match="structured_output_missing"):
             await service.run_structured(
-                purpose="w1.structured.freeform", project_id="p1", agent_id="a1", system="sys",
-                messages=[{"role": "user", "content": "go"}], schema=STRUCTURED_SCHEMA, params=TurnParams(),
+                purpose="w1.structured.freeform",
+                project_id="p1",
+                agent_id="a1",
+                system="sys",
+                messages=[{"role": "user", "content": "go"}],
+                schema=STRUCTURED_SCHEMA,
+                params=TurnParams(),
             )
     finally:
         await supervisor.shutdown()
@@ -513,27 +700,46 @@ async def test_structured_second_invalid_capture_raises_typed_failure():
     service = InvalidTwiceService()
     with pytest.raises(PiRuntimeTurnError, match="structured_output_invalid"):
         await service.run_structured(
-            purpose="w1.structured.invalid", project_id="p1", agent_id="a1", system="sys",
-            messages=[{"role": "user", "content": "go"}], schema=STRUCTURED_SCHEMA, params=TurnParams(),
+            purpose="w1.structured.invalid",
+            project_id="p1",
+            agent_id="a1",
+            system="sys",
+            messages=[{"role": "user", "content": "go"}],
+            schema=STRUCTURED_SCHEMA,
+            params=TurnParams(),
         )
-    assert service.calls == 2, "exactly one bounded repair, never an unbounded retry loop"
+    assert service.calls == 2, (
+        "exactly one bounded repair, never an unbounded retry loop"
+    )
 
 
 @requires_node
 async def test_structured_unsupported_schema_fails_before_any_model_call():
     supervisor = PiRuntimeSupervisor()
-    service = faux_service([tool_call("emit_structured_output", {"accepted": True})], supervisor)
+    service = faux_service(
+        [tool_call("emit_structured_output", {"accepted": True})], supervisor
+    )
     try:
-        with pytest.raises(PiRuntimeTurnError, match="structured_output_schema_unsupported"):
+        with pytest.raises(
+            PiRuntimeTurnError, match="structured_output_schema_unsupported"
+        ):
             await service.run_structured(
-                purpose="w1.structured.unsupported", project_id="p1", agent_id="a1", system="sys",
+                purpose="w1.structured.unsupported",
+                project_id="p1",
+                agent_id="a1",
+                system="sys",
                 messages=[{"role": "user", "content": "go"}],
-                schema={"type": "object", "properties": {"a": {"$ref": "#/definitions/x"}}},
+                schema={
+                    "type": "object",
+                    "properties": {"a": {"$ref": "#/definitions/x"}},
+                },
                 params=TurnParams(),
             )
     finally:
         await supervisor.shutdown()
-    assert supervisor.is_running is False, "an unsupported schema must never reach the worker"
+    assert supervisor.is_running is False, (
+        "an unsupported schema must never reach the worker"
+    )
 
 
 # ── ledger persistence ───────────────────────────────────────────────────
@@ -544,12 +750,17 @@ async def test_exception_path_persists_exactly_one_error_row(usage_db):
     accounting, outcome=error, exception type preserved."""
     purpose = f"w1.ledger.exc.{uuid.uuid4().hex[:8]}"
     dispatcher = AgenticDispatcher(
-        pi_service=_StubPiService(), legacy_executor=_RaisingLegacyExecutor(RuntimeError("kaput"))
+        pi_service=_StubPiService(),
+        legacy_executor=_RaisingLegacyExecutor(RuntimeError("kaput")),
     )
     with pytest.raises(RuntimeError, match="kaput"):
         await dispatcher.completion(
-            purpose=purpose, project_id="p1", system="s",
-            messages=[{"role": "user", "content": "hi"}], params=TurnParams(), engine="legacy",
+            purpose=purpose,
+            project_id="p1",
+            system="s",
+            messages=[{"role": "user", "content": "hi"}],
+            params=TurnParams(),
+            engine="legacy",
         )
     rows = await _ledger_rows(purpose=purpose)
     assert len(rows) == 1
@@ -561,11 +772,17 @@ async def test_exception_path_persists_exactly_one_error_row(usage_db):
 async def test_legacy_absent_provider_usage_is_estimated_and_flagged(usage_db):
     """Only absent legacy provider usage is estimated with the existing token
     counter and flagged estimate=1 — exact and estimated numbers never mix."""
-    legacy = _RecordingLegacyExecutor(outcome={"text": "legacy-done", "status": "success"})
+    legacy = _RecordingLegacyExecutor(
+        outcome={"text": "legacy-done", "status": "success"}
+    )
     purpose = f"w1.ledger.estimate.{uuid.uuid4().hex[:8]}"
     await AgenticDispatcher(legacy_executor=legacy).completion(
-        purpose=purpose, project_id="p1", system="system",
-        messages=[{"role": "user", "content": "hello world"}], params=TurnParams(), engine="legacy",
+        purpose=purpose,
+        project_id="p1",
+        system="system",
+        messages=[{"role": "user", "content": "hello world"}],
+        params=TurnParams(),
+        engine="legacy",
     )
     rows = await _ledger_rows(purpose=purpose)
     assert len(rows) == 1
@@ -579,8 +796,12 @@ async def test_legacy_absent_provider_usage_is_estimated_and_flagged(usage_db):
 
 
 def test_protocol_version_matches_on_both_sides():
-    python_source = (REPO_ROOT / "backend/app/core/pi_runtime/protocol.py").read_text(encoding="utf-8")
-    worker_source = (REPO_ROOT / "pi-runtime/src/protocol.mjs").read_text(encoding="utf-8")
+    python_source = (REPO_ROOT / "backend/app/core/pi_runtime/protocol.py").read_text(
+        encoding="utf-8"
+    )
+    worker_source = (REPO_ROOT / "pi-runtime/src/protocol.mjs").read_text(
+        encoding="utf-8"
+    )
     py_version = int(re.search(r"PROTOCOL_VERSION\s*=\s*(\d+)", python_source).group(1))
     js_version = int(re.search(r"PROTOCOL_VERSION\s*=\s*(\d+)", worker_source).group(1))
     assert py_version == js_version, (
@@ -641,10 +862,17 @@ def test_ratchet_is_consistent_and_only_ratchets_down():
     17 embed sites (embeddings.py/validation.py wrappers now route through
     agentic.embed); W9 (final) retired the 53 preserved per-site legacy
     branches, so the ratchet reached its floor of 0."""
-    from tests.pi_migration.test_count_to_zero import EXPECTED_PRODUCT_SITES, check_count_to_zero
+    from tests.pi_migration.test_count_to_zero import (
+        EXPECTED_PRODUCT_SITES,
+        check_count_to_zero,
+    )
 
-    assert EXPECTED_PRODUCT_SITES <= 87, "the ratchet must never migrate sites back onto the legacy plane"
-    assert EXPECTED_PRODUCT_SITES == 0, "W9 retired the 53 preserved legacy branches: ratchet floor is 0"
+    assert EXPECTED_PRODUCT_SITES <= 87, (
+        "the ratchet must never migrate sites back onto the legacy plane"
+    )
+    assert EXPECTED_PRODUCT_SITES == 0, (
+        "W9 retired the 53 preserved legacy branches: ratchet floor is 0"
+    )
     check_count_to_zero()  # raises RuntimeError naming every violation
 
 
@@ -673,8 +901,12 @@ def test_pi_model_plane_has_no_compute_registry_dependency():
                     string_lines.add(line)
         for node in ast.walk(tree):
             if isinstance(node, (ast.Import, ast.ImportFrom)):
-                module = getattr(node, "module", "") or ",".join(alias.name for alias in node.names)
-                assert not banned.search(module), f"{rel} imports the donor plane: {module}"
+                module = getattr(node, "module", "") or ",".join(
+                    alias.name for alias in node.names
+                )
+                assert not banned.search(module), (
+                    f"{rel} imports the donor plane: {module}"
+                )
         for lineno, line in enumerate(source.splitlines(), start=1):
             if lineno in string_lines or line.strip().startswith("#"):
                 continue
@@ -686,14 +918,27 @@ def test_pi_model_plane_has_no_compute_registry_dependency():
 # ── Pi model catalog sources + capabilities ──────────────────────────────
 
 
-def _resolved(endpoint_id: str, *, model: str = "m", context_window: int = 0,
-              supports_vision: bool = False, kind: str = "remote") -> "ResolvedPiEndpoint":
+def _resolved(
+    endpoint_id: str,
+    *,
+    model: str = "m",
+    context_window: int = 0,
+    supports_vision: bool = False,
+    kind: str = "remote",
+):
     from app.core.pi_runtime.endpoints import ResolvedPiEndpoint
 
     return ResolvedPiEndpoint(
-        endpoint_id=endpoint_id, provider_kind="openai_compat", base_url="http://127.0.0.1:9/v1",
-        model=model, api_key="k", timeout_ms=30000, max_retries=0,
-        context_window=context_window, supports_vision=supports_vision, kind=kind,
+        endpoint_id=endpoint_id,
+        provider_kind="openai_compat",
+        base_url="http://127.0.0.1:9/v1",
+        model=model,
+        api_key="k",
+        timeout_ms=30000,
+        max_retries=0,
+        context_window=context_window,
+        supports_vision=supports_vision,
+        kind=kind,
     )
 
 
@@ -703,13 +948,19 @@ def test_catalog_covers_static_settings_endpoints_with_capabilities():
     from app.config import PiApiEndpoint
     from app.core.pi_runtime.endpoints import DEFAULT_ENDPOINT_ID, PiEndpointResolver
 
-    resolver = PiEndpointResolver([
-        PiApiEndpoint(
-            endpoint_id="pi-cfg-1", provider_kind="openai_compat",
-            base_url="http://127.0.0.1:9/v1", model="cfg-model", keychain_service="svc",
-            context_window=65536, supports_vision=True,
-        )
-    ])
+    resolver = PiEndpointResolver(
+        [
+            PiApiEndpoint(
+                endpoint_id="pi-cfg-1",
+                provider_kind="openai_compat",
+                base_url="http://127.0.0.1:9/v1",
+                model="cfg-model",
+                keychain_service="svc",
+                context_window=65536,
+                supports_vision=True,
+            )
+        ]
+    )
     manager = PiModelManager(resolver=resolver, include_local=False)
     info = {item.endpoint_id: item for item in manager.catalog()}
     assert "pi-cfg-1" in info
@@ -735,10 +986,17 @@ def test_catalog_covers_local_serving_as_kind_local():
 def test_capability_filters_and_exact_identity_are_fail_closed():
     """Selection is exact-identity or capability-filtered, never donor-style
     scoring; capability admission fails closed."""
-    manager = PiModelManager(endpoints=[
-        _resolved("pi-small", model="small", context_window=8192),
-        _resolved("pi-vision", model="vision-m", context_window=131072, supports_vision=True),
-    ])
+    manager = PiModelManager(
+        endpoints=[
+            _resolved("pi-small", model="small", context_window=8192),
+            _resolved(
+                "pi-vision",
+                model="vision-m",
+                context_window=131072,
+                supports_vision=True,
+            ),
+        ]
+    )
     # Vision admission skips non-vision entries.
     assert manager.resolve(require_vision=True).endpoint_id == "pi-vision"
     # Context admission skips small-context entries.
@@ -756,6 +1014,16 @@ def test_capability_filters_and_exact_identity_are_fail_closed():
     # Distinct selection never silently reuses one identity as two.
     distinct = manager.resolve_distinct(2)
     assert {item.endpoint_id for item in distinct} == {"pi-small", "pi-vision"}
+    same_model_replicas = PiModelManager(
+        endpoints=[
+            _resolved("replica-a", model="shared-model"),
+            _resolved("replica-b", model="shared-model"),
+        ]
+    )
+    with pytest.raises(
+        PiEndpointResolutionError, match="insufficient_distinct_pi_models"
+    ):
+        same_model_replicas.resolve_distinct(2)
     with pytest.raises(PiEndpointResolutionError, match="insufficient_distinct"):
         manager.resolve_distinct(2, exclude=("pi-vision",))
     with pytest.raises(PiEndpointResolutionError, match="insufficient_distinct"):
@@ -771,16 +1039,33 @@ async def test_llm_server_rows_project_read_only_and_relays_never_do(usage_db):
     server_id = f"srv-{uuid.uuid4().hex[:8]}"
     relay_id = f"relay-{uuid.uuid4().hex[:8]}"
     async with async_session() as session:
-        session.add(LLMServer(
-            id=server_id, name="Contract Server", provider_type="openai_compat",
-            host="http://127.0.0.1:9/v1", is_local=False,
-            capabilities=json.dumps({"models": ["contract-model"], "context_window": 65536, "vision": True}),
-        ))
-        session.add(LLMServer(
-            id=relay_id, name="Relay Donor", provider_type="openai_compat",
-            host="http://donor.invalid:1234/v1", is_local=False, is_relay=True,
-            capabilities=json.dumps({"models": ["contract-model"]}),
-        ))
+        session.add(
+            LLMServer(
+                id=server_id,
+                name="Contract Server",
+                provider_type="openai_compat",
+                host="http://127.0.0.1:9/v1",
+                is_local=False,
+                capabilities=json.dumps(
+                    {
+                        "models": ["contract-model"],
+                        "context_window": 65536,
+                        "vision": True,
+                    }
+                ),
+            )
+        )
+        session.add(
+            LLMServer(
+                id=relay_id,
+                name="Relay Donor",
+                provider_type="openai_compat",
+                host="http://donor.invalid:1234/v1",
+                is_local=False,
+                is_relay=True,
+                capabilities=json.dumps({"models": ["contract-model"]}),
+            )
+        )
         await session.commit()
     try:
         manager = PiModelManager(resolver=PiEndpointResolver([]), include_local=False)
@@ -790,7 +1075,9 @@ async def test_llm_server_rows_project_read_only_and_relays_never_do(usage_db):
         assert projected.model == "contract-model"
         assert projected.supports_vision is True
         assert projected.context_window == 65536
-        assert f"pi-llm-{relay_id}" not in info, "donor capacity must never enter the Pi catalog"
+        assert f"pi-llm-{relay_id}" not in info, (
+            "donor capacity must never enter the Pi catalog"
+        )
         with pytest.raises(PiEndpointResolutionError):
             manager.resolve(endpoint_id=f"pi-llm-{relay_id}")
     finally:

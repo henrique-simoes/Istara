@@ -628,16 +628,22 @@ class TestReportManager:
         db_session.add_all([rec, report])
         await db_session.commit()
 
-        # W9: the summary call now reaches the legacy plane exclusively
-        # through the AgenticDispatcher's legacy executor, which forwards
-        # model/system/max_tokens kwargs — accept them and assert on the
-        # project scope that must survive the dispatch.
-        async def fake_chat(messages, *args, **kwargs):
-            assert "Replace buried exports" in messages[0]["content"]
-            assert kwargs.get("project_id") == "proj-summary-rec"
-            return {"message": {"content": "SITUATION\nA summary with recommendations."}}
+        # The summary enters through AgenticDispatcher, while Pi Model
+        # Management remains the provider authority for either engine choice.
+        # Patch that authority seam so this unit test can never reach a live
+        # provider when the old router is retired.
+        async def fake_completion(**kwargs):
+            assert "Replace buried exports" in kwargs["messages"][0]["content"]
+            assert kwargs["project_id"] == "proj-summary-rec"
+            return {
+                "text": "SITUATION\nA summary with recommendations.",
+                "status": "success",
+                "endpoint_id": "test-pi-provider",
+            }
 
-        with patch("app.core.llm_router.llm_router.chat", new=fake_chat):
+        from app.core.agentic import agentic
+
+        with patch.object(agentic._pi, "run_completion", new=fake_completion):
             await manager._generate_executive_summary(report, db_session)
 
         await db_session.refresh(report)

@@ -1,7 +1,10 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { exerciseResearchSpineValidation } from "./research-spine-probes.mjs";
+import {
+  exerciseResearchSpineValidation,
+  selectSubstantiveEvidenceUnits,
+} from "./research-spine-probes.mjs";
 
 function makeLogger() {
   const issues = [];
@@ -21,6 +24,54 @@ function makeLogger() {
   };
 }
 
+function makeSubstantiveUnits(count = 4) {
+  return Array.from({ length: count }, (_unused, index) => ({
+    id: `eu-${index + 1}`,
+    source_id: `source-${(index % 2) + 1}`,
+    source_location: `interview-${(index % 2) + 1}.md`,
+    unit_index: index + 20,
+    source_text: `Participant source-grounded observation ${index + 1}. ${"This exact raw span describes a concrete workflow contradiction. ".repeat(3)}`,
+  }));
+}
+
+test("coding proof samples distributed substantive spans instead of document headers", () => {
+  const units = [
+    { id: "title", source_text: "# CareNav Renewal interview source 03" },
+    { id: "product", source_text: "CareNav Renewal" },
+    {
+      id: "protocol",
+      source_text: "Moderator probes for concrete examples. This protocol exists to preserve the Research Spine and human review guardrails.",
+    },
+    ...[1, 2, 3, 4, 5].map((index) => ({
+      id: `body-${index}`,
+      source_text: `P03 describes source-grounded workflow contradiction ${index}. ${"Evidence must remain linked to the exact participant span. ".repeat(3)}`,
+    })),
+  ];
+
+  assert.deepEqual(
+    selectSubstantiveEvidenceUnits(units, 3).map((unit) => unit.id),
+    ["body-1", "body-3", "body-5"],
+  );
+});
+
+test("coding proof prefers distinct source documents when the corpus provides them", () => {
+  const units = [
+    ...Array.from({ length: 9 }, (_unused, index) => ["source-a", 0, index + 1]),
+    ["source-b", 1, 1],
+    ["source-c", 2, 1],
+  ].map(([sourceId, sourceIndex, unitIndex]) => ({
+      id: `${sourceId}-${unitIndex}`,
+      source_id: sourceId,
+      source_location: `interview-${sourceIndex + 1}.md`,
+      unit_index: unitIndex,
+      source_text: `Participant evidence from ${sourceId}, span ${unitIndex}. ${"This raw source span describes a concrete workflow contradiction. ".repeat(3)}`,
+    }));
+
+  const selected = selectSubstantiveEvidenceUnits(units, 3);
+
+  assert.equal(new Set(selected.map((unit) => unit.source_id)).size, 3);
+});
+
 test("three-donor benchmark blocks when coding falls back to single-coder assurance", async () => {
   const logger = makeLogger();
   const blockers = [];
@@ -31,7 +82,7 @@ test("three-donor benchmark blocks when coding falls back to single-coder assura
         return { contract: {}, qualitative_coding_protocol: {} };
       }
       if (path.includes("/summary")) return { coding_run_count: 1, evidence_unit_count: 4 };
-      if (path.includes("/evidence-units")) return [{ id: "eu-1" }];
+      if (path.includes("/evidence-units")) return makeSubstantiveUnits();
       if (path.includes("/coding-runs")) return [{ id: "run-1" }];
       if (path.includes("/traceability")) return { edges: [] };
       if (path.includes("/telemetry-audit")) return { status: "ok" };
@@ -40,6 +91,9 @@ test("three-donor benchmark blocks when coding falls back to single-coder assura
     async post() {
       return {
         id: "run-1",
+        status: "completed",
+        promotion_status: "accepted",
+        code_application_count: 4,
         reliability_method: "single_coder_lower_assurance",
         distinct_model_count: 1,
         rater_count: 1,
@@ -76,7 +130,7 @@ test("three-donor benchmark accepts full multi-model coding evidence", async () 
         return { contract: {}, qualitative_coding_protocol: {} };
       }
       if (path.includes("/summary")) return { coding_run_count: 1, evidence_unit_count: 4 };
-      if (path.includes("/evidence-units")) return [{ id: "eu-1" }];
+      if (path.includes("/evidence-units")) return makeSubstantiveUnits();
       if (path.includes("/coding-runs")) return [{ id: "run-1" }];
       if (path.includes("/traceability")) return { edges: [] };
       if (path.includes("/telemetry-audit")) return { status: "ok" };
@@ -85,9 +139,14 @@ test("three-donor benchmark accepts full multi-model coding evidence", async () 
     async post() {
       return {
         id: "run-1",
-        reliability_method: "fleiss_kappa",
+        status: "completed",
+        promotion_status: "accepted",
+        code_application_count: 12,
+        reliability_method: "fleiss_kappa_with_krippendorff_alpha_companion",
         distinct_model_count: 3,
         rater_count: 3,
+        kappa: 0.81,
+        alpha: 0.79,
       };
     },
   };
@@ -108,6 +167,54 @@ test("three-donor benchmark accepts full multi-model coding evidence", async () 
   assert.deepEqual(blockers, []);
 });
 
+test("three-donor benchmark rejects a named reliability method without numeric kappa and alpha", async () => {
+  const logger = makeLogger();
+  const blockers = [];
+  const featureResults = {};
+  const api = {
+    async get(path) {
+      if (path === "/api/research-validity/contract") {
+        return { contract: {}, qualitative_coding_protocol: {} };
+      }
+      if (path.includes("/summary")) return { coding_run_count: 1, evidence_unit_count: 4 };
+      if (path.includes("/evidence-units")) return makeSubstantiveUnits();
+      if (path.includes("/coding-runs")) return [{ id: "run-1" }];
+      if (path.includes("/traceability")) return { edges: [] };
+      if (path.includes("/telemetry-audit")) return { status: "ok" };
+      return {};
+    },
+    async post() {
+      return {
+        id: "run-1",
+        status: "completed",
+        promotion_status: "accepted",
+        code_application_count: 12,
+        reliability_method: "fleiss_kappa_with_krippendorff_alpha_companion",
+        distinct_model_count: 3,
+        rater_count: 3,
+        kappa: 0.81,
+        alpha: null,
+      };
+    },
+  };
+
+  await exerciseResearchSpineValidation({
+    api,
+    projectId: "project-a",
+    logger,
+    featureResults,
+    blockers,
+    codingValidationEnabled: true,
+    codingValidationLimit: 4,
+    expectedDistinctCoders: 3,
+  });
+
+  assert.equal(featureResults.codingValidation, false);
+  assert.equal(featureResults.multiModelResearchSpineValidation, false);
+  assert.equal(blockers.length, 1);
+  assert.match(blockers[0], /numeric Fleiss kappa and Krippendorff alpha/);
+});
+
 test("three-donor benchmark requires three served donor routes, not only three model aliases", async () => {
   const logger = makeLogger();
   const blockers = [];
@@ -118,7 +225,7 @@ test("three-donor benchmark requires three served donor routes, not only three m
         return { contract: {}, qualitative_coding_protocol: {} };
       }
       if (path.includes("/summary")) return { coding_run_count: 1, evidence_unit_count: 4 };
-      if (path.includes("/evidence-units")) return [{ id: "eu-1" }];
+      if (path.includes("/evidence-units")) return makeSubstantiveUnits();
       if (path.includes("/coding-runs")) return [{ id: "run-1" }];
       if (path.includes("/traceability")) return { edges: [] };
       if (path.includes("/telemetry-audit")) return { status: "ok" };
@@ -127,9 +234,14 @@ test("three-donor benchmark requires three served donor routes, not only three m
     async post() {
       return {
         id: "run-1",
-        reliability_method: "fleiss_kappa",
+        status: "completed",
+        promotion_status: "accepted",
+        code_application_count: 12,
+        reliability_method: "fleiss_kappa_with_krippendorff_alpha_companion",
         distinct_model_count: 3,
         rater_count: 3,
+        kappa: 0.81,
+        alpha: 0.79,
         route_evidence: [
           { node_id: "host-donor", outcome: "served" },
           { node_id: "colima-donor-a", outcome: "served" },
@@ -168,7 +280,7 @@ test("three-donor benchmark accepts model coders only when all donor routes serv
         return { contract: {}, qualitative_coding_protocol: {} };
       }
       if (path.includes("/summary")) return { coding_run_count: 1, evidence_unit_count: 4 };
-      if (path.includes("/evidence-units")) return [{ id: "eu-1" }];
+      if (path.includes("/evidence-units")) return makeSubstantiveUnits();
       if (path.includes("/coding-runs")) return [{ id: "run-1" }];
       if (path.includes("/traceability")) return { edges: [] };
       if (path.includes("/telemetry-audit")) return { status: "ok" };
@@ -177,9 +289,14 @@ test("three-donor benchmark accepts model coders only when all donor routes serv
     async post() {
       return {
         id: "run-1",
-        reliability_method: "fleiss_kappa",
+        status: "completed",
+        promotion_status: "accepted",
+        code_application_count: 12,
+        reliability_method: "fleiss_kappa_with_krippendorff_alpha_companion",
         distinct_model_count: 3,
         rater_count: 3,
+        kappa: 0.81,
+        alpha: 0.79,
         route_evidence: [
           { node_id: "host-donor", outcome: "served" },
           { node_id: "colima-donor-a", outcome: "served" },
@@ -217,7 +334,7 @@ test("coding proof uses project source units while preserving approved task cont
         return { contract: {}, qualitative_coding_protocol: {} };
       }
       if (path.includes("/summary")) return { coding_run_count: 1, evidence_unit_count: 4 };
-      if (path.includes("/evidence-units")) return [{ id: "eu-1" }];
+      if (path.includes("/evidence-units")) return makeSubstantiveUnits();
       if (path.includes("/coding-runs")) return [{ id: "run-1" }];
       if (path.includes("/traceability")) return { edges: [] };
       if (path.includes("/telemetry-audit")) return { status: "ok" };
@@ -227,9 +344,14 @@ test("coding proof uses project source units while preserving approved task cont
       codingPayload = payload;
       return {
         id: "run-1",
-        reliability_method: "fleiss_kappa",
+        status: "completed",
+        promotion_status: "accepted",
+        code_application_count: 12,
+        reliability_method: "fleiss_kappa_with_krippendorff_alpha_companion",
         distinct_model_count: 3,
         rater_count: 3,
+        kappa: 0.81,
+        alpha: 0.79,
       };
     },
   };
@@ -247,6 +369,10 @@ test("coding proof uses project source units while preserving approved task cont
   });
 
   assert.equal(codingPayload.task_id, null);
+  assert.deepEqual(codingPayload.evidence_unit_ids, ["eu-1", "eu-2", "eu-3", "eu-4"]);
+  assert.equal(logger.payload.coding_selection.strategy, "deterministic_substantive_source_diverse");
+  assert.equal(logger.payload.coding_selection.selected_unit_count, 4);
+  assert.equal(logger.payload.coding_selection.selected_source_count, 2);
   assert.equal(logger.payload.approved_task_id, "task-approved-1");
   assert.equal(logger.actions.find((entry) => entry.step === "research_spine.coding_run").payload.coded_scope, "project_source_evidence_units");
   assert.equal(featureResults.codingValidation, true);
@@ -262,7 +388,7 @@ test("required multi-donor coding failure becomes a blocker", async () => {
         return { contract: {}, qualitative_coding_protocol: {} };
       }
       if (path.includes("/summary")) return { coding_run_count: 0, evidence_unit_count: 4 };
-      if (path.includes("/evidence-units")) return [{ id: "eu-1" }];
+      if (path.includes("/evidence-units")) return makeSubstantiveUnits();
       if (path.includes("/coding-runs")) return [];
       if (path.includes("/traceability")) return { edges: [] };
       if (path.includes("/telemetry-audit")) return { status: "ok" };
@@ -297,9 +423,13 @@ test("long coding request transport failure can recover completed server-side ru
   const completedRun = {
     id: "run-1",
     status: "completed",
-    reliability_method: "fleiss_kappa",
+    promotion_status: "accepted",
+    code_application_count: 12,
+    reliability_method: "fleiss_kappa_with_krippendorff_alpha_companion",
     distinct_model_count: 3,
     rater_count: 3,
+    kappa: 0.81,
+    alpha: 0.79,
     route_evidence: [
       { node_id: "host-donor", outcome: "served" },
       { node_id: "colima-donor-a", outcome: "served" },
@@ -312,7 +442,7 @@ test("long coding request transport failure can recover completed server-side ru
         return { contract: {}, qualitative_coding_protocol: {} };
       }
       if (path.includes("/summary")) return { coding_run_count: 1, evidence_unit_count: 4 };
-      if (path.includes("/evidence-units")) return [{ id: "eu-1" }];
+      if (path.includes("/evidence-units")) return makeSubstantiveUnits();
       if (path.includes("/coding-runs")) return [completedRun];
       if (path.includes("/traceability")) return { edges: [] };
       if (path.includes("/telemetry-audit")) return { status: "ok" };
@@ -340,4 +470,191 @@ test("long coding request transport failure can recover completed server-side ru
   assert.deepEqual(blockers, []);
   assert.equal(logger.payload.coding_run.id, "run-1");
   assert.ok(logger.actions.find((entry) => entry.step === "research_spine.coding_run_recovered"));
+});
+
+test("a blocked current coding run never counts as Research Spine validation", async () => {
+  const logger = makeLogger();
+  const blockers = [];
+  const featureResults = {};
+  const blockedRun = {
+    id: "run-blocked",
+    status: "blocked",
+    promotion_status: "blocked",
+    reliability_method: "no_coders",
+    distinct_model_count: 0,
+    rater_count: 0,
+    code_application_count: 0,
+  };
+  const api = {
+    async get(path) {
+      if (path === "/api/research-validity/contract") {
+        return { contract: {}, qualitative_coding_protocol: {} };
+      }
+      if (path.includes("/summary")) return { coding_run_count: 8, evidence_unit_count: 4 };
+      if (path.includes("/evidence-units")) return makeSubstantiveUnits();
+      if (path.includes("/coding-runs")) return [blockedRun];
+      if (path.includes("/traceability")) return { edges: [] };
+      if (path.includes("/telemetry-audit")) return { status: "ok" };
+      return {};
+    },
+    async post() {
+      return blockedRun;
+    },
+  };
+
+  await exerciseResearchSpineValidation({
+    api,
+    projectId: "project-a",
+    logger,
+    featureResults,
+    blockers,
+    codingValidationEnabled: true,
+    codingValidationLimit: 4,
+  });
+
+  assert.equal(featureResults.codingValidation, false);
+  assert.equal(blockers.length, 1);
+  assert.match(blockers[0], /blocked current coding run/i);
+});
+
+test("low-agreement coding remains blocked until human reconciliation accepts it", async () => {
+  const logger = makeLogger();
+  const blockers = [];
+  const featureResults = {};
+  const api = {
+    async get(path) {
+      if (path === "/api/research-validity/contract") {
+        return { contract: {}, qualitative_coding_protocol: {} };
+      }
+      if (path.includes("/summary")) {
+        return {
+          coding_run_count: 1,
+          evidence_unit_count: 4,
+          accepted_code_application_count: 0,
+          reconciliation_decision_count: 0,
+        };
+      }
+      if (path.includes("/evidence-units")) return makeSubstantiveUnits();
+      if (path.includes("/coding-runs")) return [];
+      if (path.includes("/traceability")) return { edges: [] };
+      if (path.includes("/telemetry-audit")) return { status: "ok" };
+      return {};
+    },
+    async post() {
+      return {
+        id: "run-low-agreement",
+        status: "completed",
+        promotion_status: "needs_reconciliation",
+        reliability_method: "fleiss_kappa_with_krippendorff_alpha_companion",
+        distinct_model_count: 3,
+        rater_count: 3,
+        kappa: 0.2,
+        alpha: 0.4,
+        code_application_count: 12,
+      };
+    },
+  };
+
+  await exerciseResearchSpineValidation({
+    api,
+    projectId: "project-a",
+    logger,
+    featureResults,
+    blockers,
+    codingValidationEnabled: true,
+    codingValidationLimit: 4,
+    expectedDistinctCoders: 3,
+  });
+
+  assert.equal(featureResults.codingValidation, false);
+  assert.match(blockers[0], /needs_reconciliation.*not accepted/i);
+});
+
+test("three model calls do not pass without the Fleiss and Krippendorff method", async () => {
+  const logger = makeLogger();
+  const blockers = [];
+  const featureResults = {};
+  const api = {
+    async get(path) {
+      if (path === "/api/research-validity/contract") {
+        return { contract: {}, qualitative_coding_protocol: {} };
+      }
+      if (path.includes("/summary")) return { coding_run_count: 1, evidence_unit_count: 4 };
+      if (path.includes("/evidence-units")) return makeSubstantiveUnits();
+      if (path.includes("/coding-runs")) return [];
+      if (path.includes("/traceability")) return { edges: [] };
+      if (path.includes("/telemetry-audit")) return { status: "ok" };
+      return {};
+    },
+    async post() {
+      return {
+        id: "run-wrong-method",
+        status: "completed",
+        promotion_status: "accepted",
+        reliability_method: "call_count_only",
+        distinct_model_count: 3,
+        rater_count: 3,
+        code_application_count: 12,
+      };
+    },
+  };
+
+  await exerciseResearchSpineValidation({
+    api,
+    projectId: "project-a",
+    logger,
+    featureResults,
+    blockers,
+    codingValidationEnabled: true,
+    codingValidationLimit: 4,
+    expectedDistinctCoders: 3,
+  });
+
+  assert.equal(featureResults.codingValidation, false);
+  assert.equal(blockers.length, 1);
+  assert.match(blockers[0], /Fleiss.*Krippendorff/i);
+});
+
+test("enabled coding validation defaults to the three-model Research Spine contract", async () => {
+  const logger = makeLogger();
+  const blockers = [];
+  const featureResults = {};
+  const api = {
+    async get(path) {
+      if (path === "/api/research-validity/contract") {
+        return { contract: {}, qualitative_coding_protocol: {} };
+      }
+      if (path.includes("/summary")) return { coding_run_count: 1, evidence_unit_count: 4 };
+      if (path.includes("/evidence-units")) return makeSubstantiveUnits();
+      if (path.includes("/coding-runs")) return [];
+      if (path.includes("/traceability")) return { edges: [] };
+      if (path.includes("/telemetry-audit")) return { status: "ok" };
+      return {};
+    },
+    async post() {
+      return {
+        id: "run-single",
+        status: "completed",
+        promotion_status: "needs_human_review",
+        reliability_method: "single_coder_lower_assurance",
+        distinct_model_count: 1,
+        rater_count: 1,
+        code_application_count: 4,
+      };
+    },
+  };
+
+  await exerciseResearchSpineValidation({
+    api,
+    projectId: "project-a",
+    logger,
+    featureResults,
+    blockers,
+    codingValidationEnabled: true,
+    codingValidationLimit: 4,
+  });
+
+  assert.equal(featureResults.codingValidation, false);
+  assert.match(blockers[0], /needs_human_review.*not accepted/i);
+  assert.equal(logger.issues[0].evidence.expected_distinct_coders, 3);
 });

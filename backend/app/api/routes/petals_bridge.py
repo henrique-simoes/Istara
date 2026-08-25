@@ -9,6 +9,7 @@ OpenAI-compatible endpoints under ``settings.petals_bridge_base_path``
 
 from __future__ import annotations
 
+import hmac
 import json
 
 from fastapi import APIRouter, Request
@@ -27,6 +28,22 @@ from app.core.petals_bridge import (
 router = APIRouter()
 
 
+def _bridge_authorized(request: Request) -> bool:
+    """Authenticate the private Pi-worker-to-backend loopback hop."""
+    from app.core.petals_bridge import bridge_token
+
+    authorization = request.headers.get("authorization", "")
+    scheme, _, supplied = authorization.partition(" ")
+    return scheme.casefold() == "bearer" and hmac.compare_digest(supplied, bridge_token())
+
+
+def _unauthorized() -> JSONResponse:
+    return JSONResponse(
+        status_code=401,
+        content={"error": {"type": "petals_unauthorized"}},
+    )
+
+
 def _unavailable(exc: PetalsUnavailable) -> JSONResponse:
     return JSONResponse(
         status_code=503,
@@ -35,24 +52,70 @@ def _unavailable(exc: PetalsUnavailable) -> JSONResponse:
 
 
 @router.post("/chat/completions", response_model=None)
-async def petals_chat_completions(payload: dict):
+async def petals_chat_completions(payload: dict, request: Request):
+    if not _bridge_authorized(request):
+        return _unauthorized()
     if not settings.petals_bridge_enabled:
         return JSONResponse(
             status_code=503,
             content={"error": {"type": "petals_unavailable", "reason": "bridge_disabled"}},
         )
     if payload.get("stream"):
+
         async def sse():
             try:
                 async for chunk in chat_completions_stream(payload):
                     yield f"data: {json.dumps(chunk, ensure_ascii=False)}\n\n"
             except PetalsUnavailable as exc:
-                yield f"data: {json.dumps({'error': {'type': 'petals_unavailable', 'reason': exc.reason}})}\n\n"
+                error = {"error": {"type": "petals_unavailable", "reason": exc.reason}}
+                yield f"data: {json.dumps(error)}\n\n"
             yield "data: [DONE]\n\n"
 
         return StreamingResponse(sse(), media_type="text/event-stream")
     try:
         result = await chat_completions(payload)
+    except PetalsUnavailable as exc:
+        return _unavailable(exc)
+    return JSONResponse(status_code=200, content=result)
+
+
+@router.post("/nodes/{node_id}/projects/{project_id}/chat/completions", response_model=None)
+async def petals_pinned_chat_completions(
+    node_id: str,
+    project_id: str,
+    payload: dict,
+    request: Request,
+):
+    """Serve one Pi-bound donor turn with immutable node and project scope."""
+    if not _bridge_authorized(request):
+        return _unauthorized()
+    if not settings.petals_bridge_enabled:
+        return JSONResponse(
+            status_code=503,
+            content={"error": {"type": "petals_unavailable", "reason": "bridge_disabled"}},
+        )
+    if payload.get("stream"):
+
+        async def sse():
+            try:
+                async for chunk in chat_completions_stream(
+                    payload,
+                    pinned_node_id=node_id,
+                    project_id=project_id,
+                ):
+                    yield f"data: {json.dumps(chunk, ensure_ascii=False)}\n\n"
+            except PetalsUnavailable as exc:
+                error = {"error": {"type": "petals_unavailable", "reason": exc.reason}}
+                yield f"data: {json.dumps(error)}\n\n"
+            yield "data: [DONE]\n\n"
+
+        return StreamingResponse(sse(), media_type="text/event-stream")
+    try:
+        result = await chat_completions(
+            payload,
+            pinned_node_id=node_id,
+            project_id=project_id,
+        )
     except PetalsUnavailable as exc:
         return _unavailable(exc)
     return JSONResponse(status_code=200, content=result)
@@ -71,7 +134,9 @@ async def petals_consent(payload: dict, request: Request) -> JSONResponse:
     require_global_role(request, "admin")
     node_id = str(payload.get("node_id") or "")
     if not node_id:
-        return JSONResponse(status_code=422, content={"error": {"type": "validation", "reason": "node_id_required"}})
+        return JSONResponse(
+            status_code=422, content={"error": {"type": "validation", "reason": "node_id_required"}}
+        )
     try:
         state = set_donor_consent(node_id, bool(payload.get("pi_served", False)))
     except PetalsUnavailable as exc:

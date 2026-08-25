@@ -5,6 +5,50 @@ function preview(value) {
   }));
 }
 
+const NON_SUBSTANTIVE_SOURCE_PATTERN = /(?:canonical corpus|source-specific protocol|moderator probes|project guardrails|research spine|do not infer|treat every participant story|distinguish raw source evidence|recommendations must cite)/i;
+
+function sourceKey(unit) {
+  return String(unit?.source_id || unit?.source_location || unit?.id || "").trim();
+}
+
+export function selectSubstantiveEvidenceUnits(units, limit) {
+  const requested = Math.max(0, Number(limit || 0));
+  if (requested === 0) return [];
+  const candidates = (Array.isArray(units) ? units : []).filter((unit) => {
+    const text = String(unit?.source_text || "").trim();
+    return Boolean(unit?.id)
+      && text.length >= 120
+      && !/^#{1,6}\s/.test(text)
+      && !NON_SUBSTANTIVE_SOURCE_PATTERN.test(text);
+  });
+  if (candidates.length <= requested) return candidates;
+
+  const bySource = new Map();
+  for (const candidate of candidates) {
+    const key = sourceKey(candidate);
+    if (!bySource.has(key)) bySource.set(key, []);
+    bySource.get(key).push(candidate);
+  }
+  if (bySource.size >= requested) {
+    // Prefer independent source coverage over multiple convenient spans from
+    // the first document. Pick a stable central span from each selected source.
+    const groups = [...bySource.values()];
+    return Array.from({ length: requested }, (_unused, index) => {
+      const groupIndex = Math.floor(((index + 0.5) * groups.length) / requested);
+      const group = groups[Math.min(groupIndex, groups.length - 1)];
+      return group[Math.floor((group.length - 1) / 2)];
+    });
+  }
+
+  // Stable quantiles cover the available source window without random seeds or
+  // adjacent first-page/header bias. The selected IDs are persisted below so a
+  // result can prove exactly which raw spans all three coders received.
+  return Array.from({ length: requested }, (_unused, index) => {
+    const candidateIndex = Math.floor(((index + 0.5) * candidates.length) / requested);
+    return candidates[Math.min(candidateIndex, candidates.length - 1)];
+  });
+}
+
 function validateCodingRun({
   codingRun,
   requiredCoders,
@@ -16,7 +60,27 @@ function validateCodingRun({
   const distinctModelCount = Number(codingRun?.distinct_model_count || 0);
   const raterCount = Number(codingRun?.rater_count || 0);
   const reliabilityMethod = String(codingRun?.reliability_method || "");
+  const kappa = codingRun?.kappa;
+  const alpha = codingRun?.alpha;
+  const hasNumericKappa = kappa !== null && kappa !== "" && Number.isFinite(Number(kappa));
+  const hasNumericAlpha = alpha !== null && alpha !== "" && Number.isFinite(Number(alpha));
   const fallbackReason = String(codingRun?.fallback_reason || "");
+  const status = String(codingRun?.status || "").toLowerCase();
+  const promotionStatus = String(codingRun?.promotion_status || "").toLowerCase();
+  const applicationCount = Number(codingRun?.code_application_count ?? -1);
+  const acceptedPromotion = ["accepted", "accepted_after_reconciliation"].includes(promotionStatus);
+  const currentRunOk = status === "completed"
+    && acceptedPromotion
+    && applicationCount !== 0;
+  const algorithmOk = requiredCoders >= 3
+    ? reliabilityMethod === "fleiss_kappa_with_krippendorff_alpha_companion"
+      && hasNumericKappa
+      && hasNumericAlpha
+    : requiredCoders >= 2
+      ? reliabilityMethod === "cohen_kappa_with_krippendorff_alpha_companion"
+        && hasNumericKappa
+        && hasNumericAlpha
+      : true;
   const lowerAssurance = /single_coder|lower_assurance/i.test(`${reliabilityMethod} ${fallbackReason}`);
   const routeEvidence = Array.isArray(codingRun?.route_evidence)
     ? codingRun.route_evidence
@@ -25,18 +89,25 @@ function validateCodingRun({
     .filter((route) => String(route?.outcome || "").toLowerCase() === "served" || route?.served_request_count > 0)
     .map((route) => String(route?.node_id || "").trim())
     .filter(Boolean)).size;
-  const fullMultiModelOk = requiredCoders >= 3
+  const modelReliabilityOk = requiredCoders >= 3
     ? distinctModelCount >= 3 && raterCount >= 3 && !lowerAssurance
     : requiredCoders >= 2
       ? distinctModelCount >= 2 && raterCount >= 2 && !lowerAssurance
       : distinctModelCount >= 1 && raterCount >= 1;
+  const fullMultiModelOk = currentRunOk && modelReliabilityOk && algorithmOk;
   const donorRouteOk = requiredDonorRoutes >= 2
     ? servedDonorRouteCount >= requiredDonorRoutes
     : true;
   featureResults.multiModelResearchSpineValidation = fullMultiModelOk && donorRouteOk;
-  if ((!fullMultiModelOk || !donorRouteOk) && requiredCoders >= 2) {
-    const detail = !fullMultiModelOk
-      ? `Research Spine coding fell back to ${reliabilityMethod || "unknown"} with ${distinctModelCount}/${requiredCoders} distinct model coders.`
+  if (!fullMultiModelOk || !donorRouteOk) {
+    const detail = !currentRunOk
+      ? status === "blocked" || promotionStatus === "blocked"
+        ? `Research Spine validation observed a blocked current coding run (${status || "unknown"}/${promotionStatus || "unknown"}, ${applicationCount < 0 ? "unknown" : applicationCount} code applications).`
+        : `Research Spine coding completed as ${promotionStatus || "unknown"}, not accepted; human reconciliation and accepted code applications remain required (${status || "unknown"}, ${applicationCount < 0 ? "unknown" : applicationCount} code applications).`
+      : !modelReliabilityOk
+        ? `Research Spine coding fell back to ${reliabilityMethod || "unknown"} with ${distinctModelCount}/${requiredCoders} distinct model coders.`
+      : !algorithmOk
+        ? `Research Spine validation did not prove the required reliability algorithm with numeric Fleiss kappa and Krippendorff alpha (observed ${reliabilityMethod || "unknown"}, kappa=${kappa ?? "missing"}, alpha=${alpha ?? "missing"}).`
       : `Research Spine coding used ${servedDonorRouteCount}/${requiredDonorRoutes} required distinct served donor routes.`;
     blockers.push(detail);
     logger.issue({
@@ -49,6 +120,8 @@ function validateCodingRun({
         distinct_model_count: distinctModelCount,
         rater_count: raterCount,
         reliability_method: reliabilityMethod,
+        kappa,
+        alpha,
         fallback_reason: fallbackReason,
         expected_distinct_donor_routes: requiredDonorRoutes,
         served_donor_route_count: servedDonorRouteCount,
@@ -88,7 +161,7 @@ export async function exerciseResearchSpineValidation({
   blockers = [],
   codingValidationEnabled,
   codingValidationLimit,
-  expectedDistinctCoders = 0,
+  expectedDistinctCoders = 3,
   expectedDistinctDonorRoutes = 0,
 }) {
   const requiredCoders = Number(expectedDistinctCoders || 0);
@@ -100,6 +173,7 @@ export async function exerciseResearchSpineValidation({
     coding_validation_limit: codingValidationLimit,
     approved_task_id: taskWorkflow?.approvedTasks?.[0]?.id || "",
     contract_loaded: false,
+    coding_selection: null,
     coding_run: null,
     summary: null,
     evidence_units: null,
@@ -121,11 +195,57 @@ export async function exerciseResearchSpineValidation({
   if (codingValidationEnabled && codingValidationLimit > 0) {
     const approvedTask = taskWorkflow?.approvedTasks?.[0] || null;
     try {
+      const pageSize = 500;
+      const maxPages = 10;
+      const availableUnits = [];
+      let pagesScanned = 0;
+      for (let page = 0; page < maxPages; page += 1) {
+        const rows = await api.get(
+          `/api/research-validity/${projectId}/evidence-units?limit=${pageSize}&offset=${page * pageSize}`,
+          { timeoutMs: 60000 },
+        );
+        const pageRows = Array.isArray(rows) ? rows : [];
+        availableUnits.push(...pageRows);
+        pagesScanned += 1;
+        const currentSelection = selectSubstantiveEvidenceUnits(
+          availableUnits,
+          codingValidationLimit,
+        );
+        const selectedSourceCount = new Set(currentSelection.map(sourceKey).filter(Boolean)).size;
+        if (pageRows.length < pageSize
+          || selectedSourceCount >= Math.min(codingValidationLimit, 3)) break;
+      }
+      const selectedUnits = selectSubstantiveEvidenceUnits(
+        availableUnits,
+        codingValidationLimit,
+      );
+      evidence.coding_selection = {
+        strategy: "deterministic_substantive_source_diverse",
+        candidate_window_limit: pageSize * maxPages,
+        candidate_window_count: availableUnits.length,
+        page_size: pageSize,
+        pages_scanned: pagesScanned,
+        selected_unit_count: selectedUnits.length,
+        selected_source_count: new Set(selectedUnits.map(sourceKey).filter(Boolean)).size,
+        selected_units: selectedUnits.map((unit) => ({
+          id: unit.id,
+          source_id: unit.source_id || "",
+          source_location: unit.source_location || "",
+          unit_index: unit.unit_index ?? null,
+          source_text_chars: String(unit.source_text || "").length,
+        })),
+      };
+      if (selectedUnits.length < codingValidationLimit) {
+        throw new Error(
+          `Substantive coding selection found ${selectedUnits.length}/${codingValidationLimit} required raw source spans after scanning ${availableUnits.length} evidence units.`,
+        );
+      }
       evidence.coding_run = await api.post(`/api/research-validity/${projectId}/coding-runs`, {
         // The proof pass must code raw source evidence units. Approved tasks are
         // recorded as review context, but uploaded source evidence is normally
         // project/document-scoped, not duplicated onto every task.
         task_id: null,
+        evidence_unit_ids: selectedUnits.map((unit) => unit.id),
         limit: codingValidationLimit,
         max_coders: 3,
         threshold: 0.6,
@@ -201,8 +321,8 @@ export async function exerciseResearchSpineValidation({
   const codingRunCount = Array.isArray(evidence.coding_runs)
     ? evidence.coding_runs.length
     : Number(evidence.summary?.coding_run_count || 0);
-  featureResults.codingValidation = Boolean(evidence.coding_run || codingRunCount > 0)
-    && (expectedDistinctCoders < 2 || featureResults.multiModelResearchSpineValidation);
+  featureResults.codingValidation = Boolean(evidence.coding_run)
+    && Boolean(featureResults.multiModelResearchSpineValidation);
   featureResults.researchSpineTraceability = Boolean(evidence.summary || evidence.traceability);
   featureResults.ragTraceabilityEvidence = Boolean(evidence.traceability);
   featureResults.telemetryEvidence = Boolean(evidence.telemetry_audit || evidence.summary);

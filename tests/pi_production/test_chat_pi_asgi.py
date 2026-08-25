@@ -140,7 +140,7 @@ async def test_chat_pi_turn_streams_sse_over_real_asgi(monkeypatch):
     assert events, "expected SSE events over the real ASGI stream"
     # Pin the byte-compatible envelope: chunk / tool_call / done (master plan §8).
     for event in events:
-        assert event["type"] in {"chunk", "tool_call", "done", "error"}
+        assert event["type"] in {"chunk", "tool_call", "usage", "done", "error"}
         assert "type" in event
 
     chunks = [e for e in events if e["type"] == "chunk"]

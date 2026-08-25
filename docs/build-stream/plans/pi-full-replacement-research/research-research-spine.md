@@ -1,6 +1,6 @@
 # Istara Autonomous Agentic Core — Ground-Truth Map (branch `Review_pi_test`)
 
-Repo root: `/Users/user/Documents/Istara-main-pi-replacement`. Class assembly: `AgentOrchestrator(AgentLifecycleMixin, AgentExecutionMixin, AgentResearchMixin)` at `backend/app/core/agent.py:22`; started per-agent via `asyncio.create_task(agent_orchestrator.start())` at `backend/app/main.py:631-653` (devops/ui-audit/ux-eval/user-sim/main/meta orchestrators).
+Repo root: `<repo-root>-pi-replacement`. Class assembly: `AgentOrchestrator(AgentLifecycleMixin, AgentExecutionMixin, AgentResearchMixin)` at `backend/app/core/agent.py:22`; started per-agent via `asyncio.create_task(agent_orchestrator.start())` at `backend/app/main.py:631-653` (devops/ui-audit/ux-eval/user-sim/main/meta orchestrators).
 
 ## 1. Loop map
 

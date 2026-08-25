@@ -862,10 +862,10 @@ async def test_registry_openai_compatible_chat_suppresses_reasoning_content(monk
     monkeypatch.setattr(node, "_get_client", get_client)
     registry.register_node(node)
 
-    result = await registry.chat([{"role": "user", "content": "hello"}])
+    from app.core.compute_registry_invocation import ChatTruncatedEmptyResponse
 
-    assert result["message"]["content"] == ""
-    assert "reasoning_content" not in result["message"]
+    with pytest.raises(ChatTruncatedEmptyResponse, match="reasoning exhausted"):
+        await registry.chat([{"role": "user", "content": "hello"}])
 
 
 @pytest.mark.asyncio

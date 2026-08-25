@@ -199,6 +199,18 @@ async function handleFrame(frame) {
       return;
     }
 
+    case "provider.turn": {
+      const session = sessions.get(frame.session_key);
+      if (!session) {
+        write({ v: PROTOCOL_VERSION, type: "run.failed", session_key: frame.session_key, run_id: frame.run_id, error: "unknown_session" });
+        return;
+      }
+      // Do not await: provider turns stream frames and settle independently,
+      // exactly like turn.prompt, but never execute tools in the worker.
+      session.providerTurn(frame.run_id, frame.messages || [], frame.tools || []);
+      return;
+    }
+
     case "turn.follow_up": {
       const session = sessions.get(frame.session_key);
       if (session) {

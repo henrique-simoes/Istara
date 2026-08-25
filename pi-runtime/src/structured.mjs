@@ -154,18 +154,15 @@ export function translateOutputSchema(schema) {
 }
 
 /**
- * The agent-core `parameters` for the forced capture tool: the translated
- * schema as the FIRST union arm (the model sees the full schema and is
- * guided toward it), with a catch-all second arm. The catch-all is
- * deliberate: pi-agent-core validates arguments against `parameters` BEFORE
- * `execute`, and a strict schema would make the worker silently pre-reject
- * invalid objects — the capture must be faithful so PYTHON's revalidation
- * against the original schema (the contract) sees exactly what the model
- * emitted and can apply its one-bounded-repair / typed-failure rule. The
- * TypeBox translation is a model-side aid, never the authority.
+ * The agent-core `parameters` for the forced capture tool. Keep the translated
+ * object schema at the root: OpenAI-compatible providers reject a root union
+ * with an unconstrained arm before the model can answer. Agent-core validates
+ * tool arguments before capture and Python revalidates the captured object
+ * against the original schema, so malformed output still fails closed at two
+ * independent boundaries.
  */
 export function captureParameters(translated) {
-  return Type.Union([translated, Type.Any()]);
+  return translated;
 }
 
 /**
@@ -196,6 +193,13 @@ export function mapToolChoiceForApi(api, choice) {
     if (choice.kind === "auto") return { type: "auto" };
     if (choice.kind === "required") return { type: "any" };
     return { type: "tool", name: choice.name };
+  }
+  if (api === "openai-codex-responses") {
+    if (choice.kind === "auto") return "auto";
+    // pi-ai's Codex Responses adapter accepts auto/none/required, not a named
+    // function. Structured runs install exactly one capture tool, therefore
+    // `required` forces that tool without weakening the contract.
+    return "required";
   }
   return null;
 }

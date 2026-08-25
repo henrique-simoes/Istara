@@ -12,6 +12,7 @@ the ``app.core.ollama.ollama`` boundary, never at the dispatcher).
 from __future__ import annotations
 
 import uuid
+from dataclasses import replace
 
 import pytest
 
@@ -26,7 +27,7 @@ from app.core.pi_runtime.endpoints import (
 from app.core.pi_runtime.engine import PiExecutionService, _bind_payload
 from app.core.pi_runtime.model_manager import PiModelManager
 from app.core.pi_runtime.supervisor import PiRuntimeSupervisor
-from tests.pi_production.harness import faux_endpoint, final_text
+from tests.pi_production.harness import faux_endpoint, final_text, tool_call
 
 
 def _isolated(manager: PiModelManager) -> PiModelManager:
@@ -138,6 +139,47 @@ class _LegacyPlaneStub:
         return [[0.1, 0.2]] * len(texts)
 
 
+class _ProviderAuthorityStub:
+    def __init__(self, samples: list[dict] | None = None) -> None:
+        self.calls: list[tuple[str, dict]] = []
+        self.samples = samples or []
+
+    async def run_completion(self, **kwargs):
+        self.calls.append(("completion", kwargs))
+        return {
+            "text": "managed text",
+            "usage": {"input_tokens": 11, "output_tokens": 7, "total_tokens": 18},
+            "stop_reason": "stop",
+            "tool_calls": [],
+            "status": "success",
+            "endpoint_id": "pi-managed-a",
+            "model": "m1",
+        }
+
+    async def run_structured(self, **kwargs):
+        self.calls.append(("structured", kwargs))
+        return {
+            "text": "",
+            "value": {"accepted": True},
+            "usage": {},
+            "stop_reason": "stop",
+            "tool_calls": [],
+            "status": "success",
+            "endpoint_id": "pi-managed-a",
+            "model": "m1",
+        }
+
+    async def run_ensemble(self, **kwargs):
+        self.calls.append(("ensemble", kwargs))
+        samples = self.samples[: kwargs["n"]]
+        return {
+            "samples": samples,
+            "endpoint_ids": [sample["endpoint_id"] for sample in samples],
+            "usage": {},
+            "status": "success" if all(sample["status"] == "success" for sample in samples) else "error",
+        }
+
+
 class _DistinctLegacyServer:
     def __init__(
         self, node_id: str, model: str, text: str, *, healthy: bool = True, fail: bool = False
@@ -163,56 +205,53 @@ class _DistinctLegacyServer:
 
 
 @pytest.mark.asyncio
-async def test_legacy_completion_forwards_all_turn_params_byte_compatibly(monkeypatch):
-    stub = _LegacyPlaneStub()
-    monkeypatch.setattr("app.core.ollama.ollama", stub)
+async def test_legacy_completion_preserves_loop_choice_but_uses_pi_provider_authority():
+    stub = _ProviderAuthorityStub()
     params = TurnParams(model="m1", temperature=0.2, max_tokens=64, thinking_mode="low",
                         min_context=8192, timeout_s=5.0, max_turns=3, require_vision=True)
     outcome = await legacy_executor(
         "completion", purpose="p", project_id="proj-1", agent_id="a", system="sys",
         messages=[{"role": "user", "content": "hi"}], params=params,
+        provider_service=stub,
     )
-    call = stub.chat_calls[0]
-    assert call["model"] == "m1"
-    assert call["temperature"] == 0.2
-    assert call["max_tokens"] == 64
-    assert call["thinking_mode"] == "low"
-    assert call["min_context"] == 8192
+    method, call = stub.calls[0]
+    assert method == "completion"
+    assert call["params"] is params
     assert call["project_id"] == "proj-1"
     assert call["system"] == "sys"
-    assert outcome["text"] == "legacy text"
-    # Provider-reported usage stays exact, never silently estimated.
-    assert outcome["usage"] == {"input_tokens": 11, "output_tokens": 7, "total_tokens": 18, "estimate": False}
+    assert outcome["text"] == "managed text"
+    assert outcome["endpoint_id"] == "pi-managed-a"
 
 
 @pytest.mark.asyncio
-async def test_legacy_structured_uses_schema_adapter_and_parses(monkeypatch):
-    stub = _LegacyPlaneStub()
-
-    async def chat(messages, **kwargs):
-        stub.chat_calls.append(kwargs)
-        return {"message": {"content": '{"accepted": true}'}, "prompt_eval_count": 1, "eval_count": 1}
-
-    stub.chat = chat
-    monkeypatch.setattr("app.core.ollama.ollama", stub)
+async def test_legacy_structured_uses_pi_provider_authority():
+    stub = _ProviderAuthorityStub()
     outcome = await legacy_executor(
         "structured", purpose="debate synthesis!", project_id="p", agent_id="a", system=None,
         messages=[{"role": "user", "content": "go"}],
         schema={"type": "object", "required": ["accepted"]}, params=TurnParams(),
+        provider_service=stub,
     )
-    response_format = stub.chat_calls[0]["response_format"]
-    assert response_format["type"] == "json_schema"
-    assert response_format["json_schema"]["name"] == "debate_synthesis"
+    method, call = stub.calls[0]
+    assert method == "structured"
+    assert call["purpose"] == "debate synthesis!"
     assert outcome["value"] == {"accepted": True}
 
 
 @pytest.mark.asyncio
-async def test_legacy_embed_uses_legacy_embed_path(monkeypatch):
-    stub = _LegacyPlaneStub()
-    monkeypatch.setattr("app.core.ollama.ollama", stub)
-    outcome = await legacy_executor("embed", texts=["a", "b"], project_id="p", params=TurnParams(model="emb"))
-    assert stub.embed_calls[0]["texts"] == ["a", "b"]
-    assert stub.embed_calls[0]["model"] == "emb"
+async def test_legacy_embed_uses_pi_managed_gateway():
+    calls = []
+
+    class _Gateway:
+        async def embed(self, texts, *, model=None):
+            calls.append({"texts": texts, "model": model})
+            return {"embeddings": [[0.1, 0.2]] * len(texts), "status": "success"}
+
+    outcome = await legacy_executor(
+        "embed", texts=["a", "b"], project_id="p", params=TurnParams(model="emb"),
+        embeddings_gateway=_Gateway(), provider_service=_ProviderAuthorityStub(),
+    )
+    assert calls == [{"texts": ["a", "b"], "model": "emb"}]
     assert outcome["embeddings"] == [[0.1, 0.2], [0.1, 0.2]]
 
 
@@ -223,142 +262,32 @@ async def test_legacy_unknown_verb_fails_closed():
 
 
 @pytest.mark.asyncio
-async def test_real_dispatcher_legacy_distinct_ensemble_routes_each_healthy_server(
-    monkeypatch,
-):
-    """A legacy resolution must retain W7's distinct healthy-server routing."""
-    server_a = _DistinctLegacyServer("legacy-a", "model-a", "answer-a")
-    server_b = _DistinctLegacyServer("legacy-b", "model-b", "answer-b")
-    unhealthy = _DistinctLegacyServer(
-        "legacy-unhealthy", "model-c", "should-not-run", healthy=False
-    )
+async def test_legacy_mode_ensemble_uses_pi_identity_authority_and_preserves_models(monkeypatch):
+    samples = [
+        {"text": f"answer-{name}", "status": "success", "usage": {},
+         "endpoint_id": f"pi-{name}", "model": f"model-{name}"}
+        for name in ("a", "b", "c")
+    ]
+    service = _ProviderAuthorityStub(samples)
+    dispatcher = AgenticDispatcher(pi_service=service)
 
-    class _Router:
-        def _sorted_servers(self, **kwargs):
-            return [server_a, server_b, unhealthy]
-
-    monkeypatch.setattr("app.core.llm_router.llm_router", _Router())
-    monkeypatch.setattr(settings, "agentic_core", True)
-    # The conflicting header must select legacy even while the global default
-    # points at Pi; the second call proves the default legacy path as well.
-    monkeypatch.setattr(settings, "agentic_engine_default", "pi")
-    dispatcher = AgenticDispatcher()
     async def no_op_record(**kwargs):
         return None
 
     monkeypatch.setattr(dispatcher, "_record_outcome", no_op_record)
-    request = _Request({settings.pi_replacement_request_header: "legacy"})
-
-    for request_override in (request, None):
-        if request_override is None:
-            monkeypatch.setattr(settings, "agentic_engine_default", "legacy")
-        result = await dispatcher.ensemble(
-            purpose="w7.legacy.distinct",
-            project_id="p1",
-            messages=[{"role": "user", "content": "go"}],
-            n=2,
-            distinct=True,
-            system="sys",
-            params=TurnParams(model="requested-model"),
-            request=request_override,
-        )
-        assert result.endpoint_ids == ["legacy-a", "legacy-b"]
-        assert [sample.text for sample in result.samples] == ["answer-a", "answer-b"]
-
-    assert len(server_a.calls) == 2 and len(server_b.calls) == 2
-    assert unhealthy.calls == []
-    assert all(call["project_id"] == "p1" for call in server_a.calls + server_b.calls)
-    assert all(
-        call["messages"][0] == {"role": "system", "content": "sys"}
-        for call in server_a.calls + server_b.calls
+    result = await dispatcher.ensemble(
+        purpose="w7.legacy.distinct", project_id="p1",
+        messages=[{"role": "user", "content": "go"}], n=4, minimum_n=3,
+        distinct=True, system="sys", params=TurnParams(), engine="legacy",
     )
 
-
-@pytest.mark.asyncio
-async def test_real_dispatcher_legacy_full_ensemble_accepts_minimum_width(monkeypatch):
-    """Three healthy legacy servers satisfy a three-response full ensemble."""
-    servers = [
-        _DistinctLegacyServer(f"legacy-{name}", f"model-{name}", f"answer-{name}")
-        for name in ("a", "b", "c")
-    ]
-
-    class _Router:
-        def _sorted_servers(self, **kwargs):
-            return servers
-
-    async def no_op_record(**kwargs):
-        return None
-
-    async def no_embeddings(texts, project_id=None):
-        return []
-
-    monkeypatch.setattr("app.core.llm_router.llm_router", _Router())
-    monkeypatch.setattr("app.core.agentic.dispatcher.record_agentic_usage", no_op_record)
-    monkeypatch.setattr("app.core.validation._get_embeddings", no_embeddings)
-    monkeypatch.setattr(settings, "agentic_core", True)
-    monkeypatch.setattr(settings, "agentic_engine_default", "legacy")
-
-    from app.core.validation import full_ensemble
-
-    result = await full_ensemble("prompt", min_responses=3, project_id="p1")
-
-    assert result.method == "full_ensemble"
-    assert len(result.responses) == 3
-    assert result.metadata["n_responses"] == 3
-    assert result.metadata["endpoint_ids"] == ["legacy-a", "legacy-b", "legacy-c"]
-    assert [len(server.calls) for server in servers] == [1, 1, 1]
-
-
-@pytest.mark.asyncio
-async def test_real_dispatcher_legacy_full_ensemble_uses_optional_spare(monkeypatch):
-    """A spare restores aggregate success while retaining the failed sample detail."""
-    failed = _DistinctLegacyServer("legacy-failed", "model-failed", "", fail=True)
-    servers = [
-        failed,
-        _DistinctLegacyServer("legacy-a", "model-a", "answer-a"),
-        _DistinctLegacyServer("legacy-b", "model-b", "answer-b"),
-        _DistinctLegacyServer("legacy-spare", "model-spare", "answer-spare"),
-    ]
-
-    class _Router:
-        def _sorted_servers(self, **kwargs):
-            return servers
-
-    recorded = []
-
-    async def capture_record(**kwargs):
-        recorded.append(kwargs)
-
-    async def no_embeddings(texts, project_id=None):
-        return []
-
-    monkeypatch.setattr("app.core.llm_router.llm_router", _Router())
-    monkeypatch.setattr("app.core.agentic.dispatcher.record_agentic_usage", capture_record)
-
-    result = await AgenticDispatcher().ensemble(
-        purpose="validation.full_ensemble",
-        project_id="p1",
-        messages=[{"role": "user", "content": "prompt"}],
-        n=4,
-        minimum_n=3,
-        distinct=True,
-        engine="legacy",
-        params=TurnParams(model="requested-model"),
-    )
-
-    assert result.status == "success"
-    assert [sample.status for sample in result.samples] == [
-        "error", "success", "success", "success"
-    ]
-    assert [sample.text for sample in result.samples] == [
-        "", "answer-a", "answer-b", "answer-spare"
-    ]
-    assert [sample.text for sample in result.samples if sample.status == "success"] == [
-        "answer-a", "answer-b", "answer-spare"
-    ]
-    assert len(recorded) == 1
-    assert recorded[0]["outcome"]["status"] == "success"
-    assert [len(server.calls) for server in servers] == [1, 1, 1, 1]
+    method, call = service.calls[0]
+    assert method == "ensemble"
+    assert call["n"] == 3 and call["distinct"] is True
+    assert result.endpoint_ids == ["pi-a", "pi-b", "pi-c"]
+    assert {sample.model for sample in result.samples} == {
+        "model-a", "model-b", "model-c"
+    }
 
 
 # ── dispatcher verbs ─────────────────────────────────────────────────────
@@ -413,20 +342,27 @@ async def test_embed_pi_routes_through_gateway_and_never_falls_back(monkeypatch)
             }
 
     dispatcher = AgenticDispatcher(legacy_executor=legacy_spy, embeddings_gateway=_StubGateway())
-    # W8: Pi embeds dispatch through the EmbeddingsGateway — never the legacy plane.
+    # Embeddings have no agent loop: both selections use the one Pi-managed
+    # gateway and never reopen the legacy ComputeRegistry provider plane.
     vectors = await dispatcher.embed(texts=["x"], project_id="p1", engine="pi")
     assert vectors == [[2.0]] and gateway_calls == [["x"]]
     assert legacy_calls == []  # no silent engine switch
-    # The legacy engine embeds through the real bound executor path.
     vectors = await dispatcher.embed(texts=["x"], project_id="p1", engine="legacy")
-    assert vectors == [[1.0]] and legacy_calls == ["embed"]
+    assert vectors == [[2.0]] and gateway_calls == [["x"], ["x"]]
+    assert legacy_calls == []
 
 
 @pytest.mark.asyncio
 async def test_ensemble_pi_distinct_endpoints_and_fail_closed(monkeypatch):
     supervisor = PiRuntimeSupervisor()
-    ep_a = faux_endpoint([final_text("answer A")], endpoint_id="pi-faux-a")
-    ep_b = faux_endpoint([final_text("answer B")], endpoint_id="pi-faux-b")
+    ep_a = replace(
+        faux_endpoint([final_text("answer A")], endpoint_id="pi-faux-a"),
+        model="model-a",
+    )
+    ep_b = replace(
+        faux_endpoint([final_text("answer B")], endpoint_id="pi-faux-b"),
+        model="model-b",
+    )
     manager = _isolated(PiModelManager(endpoints=[ep_a, ep_b]))
     service = PiExecutionService(supervisor=supervisor, model_manager=manager)
 
@@ -575,6 +511,46 @@ async def test_engine_forwards_params_to_bind_and_turn_frames():
     }
     prompt = next(frame for frame in sent if frame["type"] == "turn.prompt")
     assert prompt.get("max_turns") == 2
+
+
+@pytest.mark.asyncio
+async def test_engine_provider_turn_returns_raw_tool_call_without_executing_it():
+    supervisor = PiRuntimeSupervisor()
+    endpoint = faux_endpoint(
+        [tool_call("search_documents", {"query": "bias"})],
+        endpoint_id="pi-provider-only",
+    )
+    service = PiExecutionService(
+        supervisor=supervisor,
+        model_manager=_isolated(PiModelManager(endpoints=[endpoint])),
+    )
+    try:
+        result = await service.run_provider_turn(
+            purpose="w1.legacy-provider-turn",
+            project_id="p1",
+            agent_id="legacy",
+            system="sys",
+            messages=[{"role": "user", "content": "inspect"}],
+            tools=[{
+                "name": "search_documents",
+                "description": "Search documents",
+                "parameters": {"type": "object", "properties": {}},
+            }],
+            params=TurnParams(endpoint_id=endpoint.endpoint_id),
+        )
+    finally:
+        await supervisor.shutdown()
+    assert result["status"] == "success"
+    assert result["tool_calls"] == [
+        {
+            "id": result["tool_calls"][0]["id"],
+            "type": "function",
+            "function": {
+                "name": "search_documents",
+                "arguments": '{"query":"bias"}',
+            },
+        }
+    ]
 
 
 @pytest.mark.asyncio

@@ -187,7 +187,7 @@ Next: conductor advances the pipeline on evidence.
 ### L-10 | 2026-07-19T21:00:00Z | S1-plan | codex-main | owner-gate
 Did: Observed the literal Build Stream Conductor after planning repair and judge completion.
 Result: Plan A won 2–1 (`winner_task=pi-prod-readiness-20260719t173836-REPLAN-A-r1`); the conductor state is `awaiting-owner-approval`, with implementation and review still open and `converged=false`.
-Verified: `conductor.py status --project-root /Users/user/Documents/Istara-main-pi-replacement --brief`; `.compass-forge/conductor/consensus.json`; Compass Forge task/evidence listings for tasks 81–86.
+Verified: `conductor.py status --project-root <repo-root>-pi-replacement --brief`; `.compass-forge/conductor/consensus.json`; Compass Forge task/evidence listings for tasks 81–86.
 Next: obtain explicit owner approval before dispatching `pi-prod-readiness-20260719t173836-IMPL`.
 
 ### L-3 | 2026-07-19T20:48:57Z | S1-plan | gpt-5.6-terra | planner | pi-prod-readiness-20260719t173836-planner-a <!-- bsc-ledger:pi-prod-readiness-20260719t173836-PLAN-A -->

@@ -24,7 +24,7 @@ Chat exposes a workbench-style model and effort menu so users can choose the pro
 - `frontend/src/components/chat/ChatView.tsx`
 - `frontend/src/components/chat/chatViewParts.tsx`
 - `frontend/src/lib/modelProviders.ts`
-- `backend/app/api/routes/llm_servers.py`
+- `backend/app/core/pi_runtime/model_manager.py`
 
 ## State, API, And Backend Contracts
 
@@ -35,8 +35,8 @@ Chat exposes a workbench-style model and effort menu so users can choose the pro
 
 ### API And Backend
 
-- `backend/app/api/routes/llm_servers.py`
-- `backend/app/core/llm_router.py`
+- `backend/app/api/routes/settings.py`
+- `backend/app/core/pi_runtime/model_manager.py`
 
 `ChatModelControls` is visible in Chat for project viewers with a selected session. It has one browseable, searchable model menu (chevron opens the list; typing filters it), an exact effort select populated from Pi `thinkingLevels`, and a usage popover. Pi catalog entries that are not configured are visible but disabled with an explanation; legacy engine mode exposes the safe local/server model inventory instead. Choosing a configured Pi entry persists both `model_override` and `endpoint_override`, so two providers exposing the same model id cannot silently collide.
 
@@ -57,24 +57,26 @@ The selected Chat model menu is a generation control only. It never changes the 
   `agentic_engine`, then `settings.agentic_engine_default`. A selected engine
   that cannot execute raises a typed dispatch error; the dispatcher never
   silently falls back to the other engine.
-- Both engine seams are real: Pi selections execute through the isolated
+- Both loop seams are real: Pi selections execute through the isolated
   `PiExecutionService` (`run_completion` / `run_structured` / `run_react`), and
-  legacy selections execute through the byte-compatible legacy executor
-  (`backend/app/core/agentic/legacy.py`), which drives the same
-  ComputeRegistry-backed `app.core.ollama.ollama` plane the 87 inventory sites
-  already use — `ollama.chat` for completion/structured/ReAct and
-  `ollama.embed_batch` for embed — with identical parameter names and message
-  shapes, so Pi and legacy remain benchmarkable on the same axes. Neither seam
-  ever falls back to the other: a selected engine executes or raises.
+  Istara selections execute through the Python legacy executor
+  (`backend/app/core/agentic/legacy.py`). That executor retains Istara's loop
+  and Python tool semantics but delegates provider-only turns, structured
+  output, ensembles, and embeddings to Pi Model Management. Both are first-
+  class loop modes over one provider/model authority and remain benchmarkable
+  on the same axes. Neither seam silently changes loop mode on failure.
 - `TurnParams` (`model`, `temperature`, `max_tokens`, `thinking_mode`,
   `min_context`, `timeout_s`, `max_turns`, `require_vision`) is forwarded
   unchanged on every verb. The Pi path maps them onto pi-ai turn options
   (`temperature`, `max_tokens`, `thinking_level`, provider `timeout_ms`);
   `min_context` and `require_vision` map to capability admission in the Pi
-  model catalog, and `max_turns` bounds the ReAct tool loop.
+  model catalog, and `max_turns` bounds the ReAct tool loop. The chat route's
+  eight-tool ceiling maps to nine Pi model-turn starts (initial response,
+  eight possible tool continuations, then the final synthesis turn), matching
+  the legacy loop instead of failing one model turn early.
 - **Embedding identity policy (W3).** Chat controls are generation controls
   only: temperature/thinking/effort never select or mutate the embedding
-  model. Both engines embed with the one canonical model
+  model. Both loop modes embed through the Pi-governed gateway with the one canonical model
   (`default_embed_model()` / `_embed_model_name()`), and the engine selector
   in Project Settings surfaces that identity as safe metadata (`embed_model`
   in the project response — model name only, never an endpoint/URL/key) and
@@ -141,8 +143,9 @@ Each chat turn resolves its engine in one order: operator flag `pi_replacement_e
 ## Tests And Verification
 
 - `frontend/src/lib/modelProviders.test.ts`
-- `tests/test_llm_servers.py`
-- `tests/test_project_scope_contracts.py`
+- `tests/test_settings_agentic_pi_endpoints.py`
+- `tests/pi_production/test_w1_agentic_contract.py`
+- `tests/pi_production/test_w1_dispatcher_authority.py`
 
 ## Related Features
 

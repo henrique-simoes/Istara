@@ -6,10 +6,10 @@ audience: architecture
 status: documented
 related_features: ["compute.pool", "settings.general"]
 related_glossary: ["wcag"]
-code_references: ["frontend/src/components/common/DonateComputeToggle.tsx", "frontend/src/components/settings/ConnectionStringPanel.tsx", "backend/app/api/routes/compute.py", "backend/app/api/routes/connections.py", "backend/app/core/compute_node_invocation.py", "backend/app/core/compute_pool.py", "backend/app/core/compute_registry_routing.py", "backend/app/core/compute_route_evidence.py"]
-api_references: ["backend/app/api/routes/compute.py", "backend/app/api/routes/connections.py"]
-test_references: ["tests/test_compute.py", "tests/compute_cases/stats_websocket.py", "tests/test_project_rbac.py", "tests/test_project_scope_contracts.py"]
-last_verified: 2026-05-19
+code_references: ["frontend/src/components/common/DonateComputeToggle.tsx", "frontend/src/components/settings/ConnectionStringPanel.tsx", "backend/app/api/routes/compute.py", "backend/app/api/routes/connections.py", "backend/app/api/routes/petals.py", "backend/app/core/petals_bridge.py", "backend/app/core/compute_node_invocation.py", "backend/app/core/compute_pool.py", "backend/app/core/compute_registry_routing.py", "backend/app/core/compute_route_evidence.py"]
+api_references: ["backend/app/api/routes/compute.py", "backend/app/api/routes/connections.py", "backend/app/api/routes/petals.py"]
+test_references: ["tests/test_compute.py", "tests/compute_cases/stats_websocket.py", "tests/test_project_rbac.py", "tests/test_project_scope_contracts.py", "tests/petals_bridge/test_petals_bridge.py"]
+last_verified: 2026-08-24
 compass: CF-SPEC-60 / CF-754; CF-SPEC-63 / CF-814; CF-SPEC-70 / CF-899; CF-SPEC-124 / CF-1590
 ---
 
@@ -43,6 +43,8 @@ Compute donation lets a browser session or relay process contribute local comput
 - A relay authenticated only by the shared network token can register for status but is excluded from prompt and embedding routing because it has no project scope.
 - Direct relay/browser dispatch through `ComputeNode.chat`, `ComputeNode.chat_stream`, `ComputeNode.embed`, or `ComputeNode.embed_batch` requires the active project to match the node's resolved donation scope before any content is sent over websocket or direct streaming transport.
 - Chat responses include content-free route evidence so benchmark and telemetry layers can distinguish registered, visible, selected, served, and failed donated compute without logging prompt content, response content, provider hosts, or private endpoint details.
+- A donor participates in Pi Model Management only through the Petals bridge and only while it is a relay/browser node with explicit `pi_served` consent, current health, and matching project scope. Projection is read-only and identity-pinned; a process-private bridge credential protects the loopback hop, and stale projections are invalidated when eligibility changes.
+- Petals replicas serving the same model can provide route redundancy but do not become independent Research Spine coders. Formal coding requires three distinct model identities with complete evidence-unit coverage.
 - The frontmatter and manifest entries are the durable contract for agents updating this page after code changes.
 - When the referenced component, store, route, agent, skill, or test behavior changes, regenerate and validate the feature documentation.
 
@@ -56,6 +58,7 @@ Compute donation lets a browser session or relay process contribute local comput
 - `tests/compute_cases/stats_websocket.py`
 - `tests/test_project_rbac.py`
 - `tests/test_project_scope_contracts.py`
+- `tests/petals_bridge/test_petals_bridge.py`
 
 ## Related Features
 

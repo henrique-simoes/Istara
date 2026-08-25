@@ -37,7 +37,10 @@ class StartCodingRunRequest(BaseModel):
     evidence_unit_ids: list[str] | None = None
     codebook_version_id: str | None = None
     threshold: float = Field(default=DEFAULT_RELIABILITY_THRESHOLD, ge=0.0, le=1.0)
-    max_coders: int = Field(default=3, ge=1, le=5)
+    # A governed Research Spine run requires the full independent multi-model
+    # path. Lower-assurance one/two-coder math remains available internally for
+    # diagnostics, but cannot be selected through the promotion-capable API.
+    max_coders: int = Field(default=3, ge=3, le=5)
     limit: int = Field(default=50, ge=1, le=200)
 
 
@@ -58,6 +61,7 @@ async def list_evidence_units(
     request: Request,
     task_id: str | None = None,
     limit: int = 100,
+    offset: int = 0,
     db: AsyncSession = Depends(get_db),
 ) -> list[dict]:
     """List project-scoped evidence units for research review and traceability."""
@@ -66,7 +70,9 @@ async def list_evidence_units(
     if task_id:
         query = query.where(EvidenceUnit.task_id == task_id)
     result = await db.execute(
-        query.order_by(EvidenceUnit.source_id, EvidenceUnit.unit_index).limit(max(1, min(limit, 500)))
+        query.order_by(EvidenceUnit.source_id, EvidenceUnit.unit_index)
+        .offset(max(0, offset))
+        .limit(max(1, min(limit, 500)))
     )
     return [unit.to_dict() for unit in result.scalars().all()]
 
