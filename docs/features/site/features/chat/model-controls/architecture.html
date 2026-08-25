@@ -414,6 +414,25 @@
 <p>inspect counts, source checksums, and rollback readiness at</p>
 <p><code>GET /api/settings/model-management/migration-status</code>. Engine selection remains</p>
 <p>explicit and fail-closed: a Pi/provider failure never falls back to legacy.</p>
+<h2 id="sole-model-management-write-authority-2026-08-25">Sole model-management write authority (2026-08-25)</h2>
+<p>Pi Model Management is the only model/provider write authority for every</p>
+<p>agentic engine. The Istara in-process loop and the Pi Agentic Loop retain their</p>
+<p>different orchestration semantics, but both resolve model identity and</p>
+<p>endpoint identity through the Pi-managed catalog. Local servers and donated</p>
+<p>compute remain transport/lifecycle infrastructure; they do not create a</p>
+<p>second model catalog or global provider selector.</p>
+<p>The former <code>POST /api/settings/model</code> and <code>POST /api/settings/provider</code> routes</p>
+<p>remain only as authenticated deprecated adapters for older clients. They</p>
+<p>always return <code>410 pi_model_management_required</code> with a successor link to</p>
+<p><code>/api/settings/pi-endpoints</code> before model discovery, pulling, provider</p>
+<p>reconstruction, settings mutation, or environment persistence. Read-only</p>
+<p><code>GET /api/settings/models</code> remains a compatibility inventory while clients</p>
+<p>migrate; it exposes both transport inventory and a secret-free Pi catalog.</p>
+<p>Application startup may register configured transport nodes, discover/load</p>
+<p>transport registrations, and run health checks. It must not automatically</p>
+<p>choose another provider, pull a chat model, issue a chat-completion probe to</p>
+<p>guess the loaded model, mutate the configured chat model, or persist that</p>
+<p>choice. Model loading happens only on explicit governed request paths.</p>
         </article>
         <aside class="toc-panel" aria-label="Page sections">
           <h2>On This Page</h2>
@@ -433,6 +452,7 @@
 <li class="toc-level-2"><a href="#compass-evidence">Compass Evidence</a></li>
 <li class="toc-level-2"><a href="#when-to-update">When To Update</a></li>
 <li class="toc-level-2"><a href="#model-management-compatibility-2026-08-22">Model-management compatibility (2026-08-22)</a></li>
+<li class="toc-level-2"><a href="#sole-model-management-write-authority-2026-08-25">Sole model-management write authority (2026-08-25)</a></li>
 </ul></nav>
         </aside>
       </div>

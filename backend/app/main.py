@@ -97,19 +97,6 @@ from app.skills.skill_manager import skill_manager
 install_sensitive_log_redaction()
 
 
-def _persist_env_startup(key: str, value: str, logger=None) -> None:
-    """Persist a key to .env during startup (reuses settings.py logic)."""
-    try:
-        from app.api.routes.settings import _persist_env
-
-        _persist_env(key, value)
-        if logger:
-            logger.info(f"Auto-persisted {key}={value} to .env")
-    except Exception as e:
-        if logger:
-            logger.warning(f"Could not persist {key} to .env: {e}")
-
-
 def _build_configured_local_llm_node():
     """Build the configured local LLM node with auth/model metadata intact."""
     from app.core.compute_registry import ComputeNode
@@ -475,103 +462,6 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         _log.info(f"ComputeRegistry: {len(healthy)}/{len(compute_registry._nodes)} nodes healthy")
     except Exception as e:
         _log.warning(f"Health check failed: {e}")
-
-    # Auto-detect LLM provider: try configured first, fall back to the other
-    from app.core.ollama import auto_detect_provider
-
-    try:
-        await auto_detect_provider()
-        # Re-import after potential provider switch
-        from app.core import ollama as ollama_mod
-
-        current_client = ollama_mod.ollama
-        if await current_client.health():
-            _log.info(f"LLM provider ({app_settings.llm_provider}) is online.")
-            models = await current_client.list_models()
-            model_names = [m.get("name", "") for m in models]
-
-            if app_settings.llm_provider == "ollama":
-                if not any(app_settings.ollama_model in n for n in model_names):
-                    _log.info(f"Pulling default model: {app_settings.ollama_model}")
-                    async for _ in current_client.pull_model(app_settings.ollama_model):
-                        pass
-                # Auto-detect if configured model is "default" or not loaded
-                active = app_settings.ollama_model
-                if active == "default" or not any(active in n for n in model_names):
-                    non_embed = [n for n in model_names if "embed" not in n.lower()]
-                    if non_embed:
-                        resolved = non_embed[0]
-                        app_settings.ollama_model = resolved
-                        _log.info(f"Ollama active model resolved to: {resolved}")
-                        _persist_env_startup("OLLAMA_MODEL", resolved, _log)
-            elif app_settings.llm_provider == "lmstudio":
-                # Detect the ACTUALLY loaded model by probing LM Studio.
-                # /v1/models lists all downloaded models, not just loaded ones.
-                # The only reliable detection is a minimal chat probe — the
-                # response's 'model' field reveals which model is serving.
-                from app.core.lmstudio import (
-                    LMStudioClient,
-                    configured_lmstudio_model_is_authoritative,
-                )
-
-                lms_client = (
-                    current_client
-                    if isinstance(current_client, LMStudioClient)
-                    else LMStudioClient()
-                )
-                configured_model_locked = configured_lmstudio_model_is_authoritative()
-                loaded = None
-                if configured_model_locked:
-                    _log.info(
-                        "LM Studio configured model preserved: %s",
-                        app_settings.lmstudio_model,
-                    )
-                else:
-                    loaded = await lms_client.detect_loaded_model(force=True)
-                    if loaded and loaded != app_settings.lmstudio_model:
-                        app_settings.lmstudio_model = loaded
-                        _log.info(f"LM Studio active model detected: {loaded}")
-                        _persist_env_startup("LMSTUDIO_MODEL", loaded, _log)
-                    elif loaded:
-                        _log.info(f"LM Studio model confirmed: {loaded}")
-
-                if not configured_model_locked and not loaded:
-                    # Fallback: pick from model list if probe fails
-                    active = app_settings.lmstudio_model
-                    non_embed = [n for n in model_names if "embed" not in n.lower()]
-                    if active == "default" or (active and active not in model_names):
-                        if non_embed:
-                            resolved = non_embed[0]
-                            app_settings.lmstudio_model = resolved
-                            _log.info(f"LM Studio model fallback to: {resolved}")
-                            _persist_env_startup("LMSTUDIO_MODEL", resolved, _log)
-                        elif model_names:
-                            app_settings.lmstudio_model = model_names[0]
-                            _persist_env_startup("LMSTUDIO_MODEL", model_names[0], _log)
-
-                # Detect model capabilities (context window) after model is known
-                try:
-                    from app.core.model_capabilities import detect_capabilities_lmstudio
-
-                    caps = await detect_capabilities_lmstudio(
-                        app_settings.lmstudio_host,
-                        active_probe=False,
-                    )
-                    for model_name, cap in caps.items():
-                        if cap.context_length and cap.context_length > 0:
-                            app_settings.update_context_window(cap.context_length)
-                            _log.info(
-                                "Detected context window: %s tokens for %s",
-                                cap.context_length,
-                                model_name,
-                            )
-                            break
-                except Exception as e:
-                    _log.debug(f"LM Studio capability detection skipped: {e}")
-        else:
-            _log.warning(f"LLM provider ({app_settings.llm_provider}) is not reachable.")
-    except Exception:
-        pass  # Don't block startup if provider check fails
 
     # Vector store dimension health check
     try:

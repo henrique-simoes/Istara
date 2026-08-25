@@ -1,9 +1,13 @@
 from types import SimpleNamespace
+from pathlib import Path
 
 import pytest
 
 from app.core.pi_runtime.model_management_compat import SUPPORTED_PROVIDERS, plan_migration
 from app.core.pi_runtime.model_manager import PiModelManager
+
+
+REPO_ROOT = Path(__file__).resolve().parents[2]
 
 
 @pytest.mark.parametrize("provider", sorted(SUPPORTED_PROVIDERS))
@@ -128,3 +132,22 @@ def test_plan_fails_closed_without_silent_fallback():
         "unsupported_provider",
         "invalid_host",
     }
+
+
+def test_startup_does_not_mutate_or_load_classical_model_authority():
+    """Application startup may discover transport capacity, but it must not
+    choose/persist a provider or model, issue a completion probe, or pull a
+    model outside Pi Model Management.
+
+    This static tripwire covers authority operations that the call-site
+    count-to-zero scanner historically missed.
+    """
+    source = (REPO_ROOT / "backend/app/main.py").read_text(encoding="utf-8")
+    forbidden = {
+        "auto provider selection": "auto_detect_provider",
+        "startup environment mutation": "_persist_env_startup",
+        "startup model pull": ".pull_model(",
+        "completion-based loaded-model probe": "detect_loaded_model(force=True)",
+    }
+    present = [label for label, marker in forbidden.items() if marker in source]
+    assert not present, "classical startup authority remains: " + ", ".join(present)

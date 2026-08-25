@@ -5,11 +5,11 @@ item: agentic-core-integrity-and-qa
 branch: testing
 cf: { spec: CF-SPEC-2, predecessor: CF-SPEC-1, task: CF-15 }
 phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal acceptance"
-stage: S1-plan
+stage: S2-execute
 status: in-progress
 blocked_on: null
-last: { agent: gpt-5-codex, at: 2026-08-25T16:20:09Z, ledger: L-29 }
-next_action: "Commit and transport this cleanup checkpoint, then execute P9-04 with a graph-backed inventory of every model-call execution plane and add fail-closed tests for any Pi-authority bypass."
+last: { agent: gpt-5-codex, at: 2026-08-25T16:30:10Z, ledger: L-34 }
+next_action: "Commit and push this verified authority checkpoint to testing/origin testing; then continue P9-04 with graph-backed audit of autoresearch runners, task and loop execution, A2A, skills, donated-compute projection, and stale frontend/simulation mutation callers."
 ```
 
 ## Plan overview / roadmap
@@ -1156,3 +1156,80 @@ receipt, after-state worktree/ref inventory, clean main status, and local/remote
 equality at `36b06429e1f9fef564476be5e71c1ae8f9e0b991` before this ledger edit.
 Next: commit and push this cleanup record, then begin P9-04 by mapping every production model
 execution plane to Pi Model Management authority and writing negative bypass tests where absent.
+
+### L-30 | 2026-08-25T16:22:05Z | S2-execute | gpt-5-codex | auditor | P9-04 authority audit started
+Did: Re-oriented the pinned native Compass Forge control plane after the continuation gap,
+claimed the CF-15 implementation work order, detected that the repository index predated the
+transported 334-file delta, refreshed project state and the graph index, obtained a new
+model-authority context pack, searched direct provider/network/model-manager construction, and
+ran the existing classical-plane count-to-zero ratchet plus its highest-value authority tests.
+Result: the refreshed graph indexes 853 files with no warnings. The legacy-plane scanner
+reports zero of its known bypass patterns, and 64 migration/dispatcher/engine/tool-authority
+tests pass. This is strong regression evidence for known patterns but is not yet P9-04 proof:
+the scanner does not cover every direct provider constructor, startup compatibility path,
+frontend donor proxy, background/autoresearch route, or obsolete settings API.
+Verified: native CF refresh/index run 4; context pack path graph; scanner output `0`; pytest
+exit 0 with `64 passed in 5.24s`.
+Next: inspect and map the uncovered execution planes, extend the ratchet where needed, and add
+negative tests for every material authority seam before calling P9-04 complete.
+
+### L-31 | 2026-08-25T16:24:50Z | S2-execute | gpt-5-codex | auditor | P9-04 uncovered bypasses
+Did: Ran Compass Forge impact and why for the settings route and startup module, then inspected
+the model inventory/mutation endpoints, startup provider detection and loading sequence, their
+frontend/simulation callers, and existing tests and allowlist references.
+Result: two material classical-authority paths remain despite the count-to-zero result. First,
+`POST /api/settings/provider` recreates the global provider singleton and persists
+`LLM_PROVIDER`, while `POST /api/settings/model` can pull an Ollama model and mutate/persist the
+classical active-model settings outside Pi Model Management. Second, application startup calls
+`auto_detect_provider`, may switch the global provider, may pull an Ollama model, probes LM
+Studio by chat completion, and mutates/persists the selected model. The read-only
+`GET /api/settings/models` also mixes classical health/model discovery with a Pi catalog; that
+surface needs a compatibility contract rather than unexamined deletion because onboarding,
+simulation, and model visibility currently consume it.
+Verified: graph-backed impact/why; exact route and startup source inspection; repository-wide
+caller/test inventory. No code or environment was changed and no live model probe was sent.
+Next: write failing tests that forbid provider recreation, model pulling, and startup authority
+mutation while preserving a Pi-governed read-only compatibility inventory; run the narrow red
+suite before implementing the smallest authority fix.
+
+### L-32 | 2026-08-25T16:26:15Z | S2-execute | gpt-5-codex | implementer | P9-04 red authority contracts
+Did: Added route-level negative contracts for both classical model-management writes and a
+startup-source tripwire for every authority operation missed by the original scanner, then ran
+only those new tests before changing production code.
+Result: the red gate failed for the intended reasons: both compatibility writes reached their
+forbidden provider/model side effects and returned 500 under the test traps instead of a stable
+410 migration response; startup still contained all four forbidden classes—auto provider
+selection, environment persistence, model pulling, and completion-based loaded-model probing.
+This is causal red evidence, not an inherited suite failure.
+Verified: targeted pytest produced exactly 3 failures (2 route cases + 1 startup contract), 43
+deselected, with each assertion naming the pre-existing bypass. `git diff --check` remains clean.
+Next: preserve read-only discovery, remove only the authority-changing startup block, make both
+legacy writes fail closed with successor metadata, and rerun the same three tests green.
+
+### L-33 | 2026-08-25T16:28:45Z | S2-execute | gpt-5-codex | implementer | Classical authority fix green
+Did: Converted both authenticated classical model-management write routes into side-effect-free
+compatibility adapters returning a stable 410 response with `Deprecation` and successor `Link`
+metadata; removed startup's provider auto-selection, model pulling, completion probe, settings
+mutation, and environment persistence while leaving configured-node registration, discovery,
+persisted transport loading, and health checks intact.
+Result: Pi Model Management is now the only runtime write authority on these seams. Old clients
+receive an actionable migration response instead of silently creating a second source of truth.
+Startup no longer chooses or loads a chat model merely because the application booted. Read-only
+transport/model inventory remains available and has not yet been redesigned.
+Verified: the exact red suite is now green (`3 passed, 43 deselected`); forbidden startup markers
+are absent; `git diff --check` is clean. No server, model, provider probe, or dependency install
+was run on the host.
+Next: run settings/migration/startup-adjacent regressions, synchronize living feature docs and
+generated site, then commit/push this bounded checkpoint before continuing P9-04.
+
+### L-34 | 2026-08-25T16:30:10Z | S2-execute | gpt-5-codex | implementer | Authority regression checkpoint
+Did: Used Compass Forge test-impact/suggest-tests to select the broader seam coverage, updated
+the living Chat Model Controls architecture contract and its references, regenerated the
+feature site/manifests, and reran the migration scanner after the production fix.
+Result: settings, migration, Pi UX parity, Pi endpoint, model-source, and compute-config tests
+are green; the feature documentation is synchronized; and the legacy direct-call scanner still
+reports zero. Generated changes are limited to the expected feature HTML and manifest entry.
+Verified: `64 passed in 5.33s`; feature docs `0 seeded`, `224 artifacts`, `86 features`, pass;
+scanner `0 legacy-plane call site(s)`; `git diff --check` clean.
+Next: create and push a bounded authority commit, require local/remote SHA equality, then resume
+the uncovered-plane audit rather than treating this checkpoint as P9-04 completion.

@@ -284,6 +284,64 @@ async def test_settings_llm_mutations_require_global_admin_in_team_mode(
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("path", "replacement"),
+    [
+        ("/api/settings/model?model_name=test-model", "/api/settings/pi-endpoints"),
+        ("/api/settings/provider?provider=ollama", "/api/settings/pi-endpoints"),
+    ],
+)
+async def test_classical_model_mutations_fail_closed_as_deprecated_adapters(
+    path, replacement, auth_headers, monkeypatch
+):
+    """Legacy model-management writes cannot remain a second authority.
+
+    The compatibility routes remain discoverable for old clients, but an
+    authorized caller receives a stable migration-required response before
+    provider reconstruction, model discovery/pulling, settings mutation, or
+    environment persistence can occur.
+    """
+    from app.api.routes import settings as settings_routes
+    from app.core import ollama as ollama_module
+
+    await init_db()
+    original_provider = settings.llm_provider
+
+    async def forbidden_list_models():
+        raise AssertionError("deprecated write must not inspect or pull classical models")
+
+    monkeypatch.setattr(settings_routes.ollama, "list_models", forbidden_list_models)
+    monkeypatch.setattr(
+        ollama_module,
+        "_create_llm_client",
+        lambda: (_ for _ in ()).throw(
+            AssertionError("deprecated write must not recreate the provider singleton")
+        ),
+    )
+    monkeypatch.setattr(
+        settings_routes,
+        "_persist_env",
+        lambda *_args: (_ for _ in ()).throw(
+            AssertionError("deprecated write must not persist classical authority")
+        ),
+    )
+
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        response = await ac.post(path, headers=auth_headers)
+
+    assert response.status_code == 410
+    assert response.headers["deprecation"] == "true"
+    assert response.headers["link"] == f'<{replacement}>; rel="successor-version"'
+    assert response.json() == {
+        "error": "pi_model_management_required",
+        "replacement": replacement,
+        "message": "Model and provider writes are managed by Pi Model Management.",
+    }
+    assert settings.llm_provider == original_provider
+
+
+@pytest.mark.asyncio
 async def test_settings_hardware_returns_response(auth_headers):
     """GET /api/settings/hardware returns hardware info."""
     await init_db()

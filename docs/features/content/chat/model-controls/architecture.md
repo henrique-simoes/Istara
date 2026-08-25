@@ -6,10 +6,10 @@ audience: architecture
 status: documented
 related_features: ["settings.llm-servers", "settings.general", "compute.pool"]
 related_glossary: ["rag"]
-code_references: ["frontend/src/components/chat/ChatView.tsx", "frontend/src/components/chat/ChatModelControls.tsx", "frontend/src/components/chat/chatViewParts.tsx", "frontend/src/stores/chatStore.ts", "frontend/src/stores/sessionStore.ts", "frontend/src/lib/chatApi.ts", "frontend/src/lib/modelProviders.ts", "backend/app/api/routes/chat.py", "backend/app/api/routes/sessions.py", "backend/app/core/agentic/dispatcher.py", "backend/app/core/agentic/legacy.py", "backend/app/core/agentic/usage_ledger.py", "backend/app/core/pi_runtime/engine.py", "backend/app/core/pi_runtime/oauth.py"]
+code_references: ["frontend/src/components/chat/ChatView.tsx", "frontend/src/components/chat/ChatModelControls.tsx", "frontend/src/components/chat/chatViewParts.tsx", "frontend/src/stores/chatStore.ts", "frontend/src/stores/sessionStore.ts", "frontend/src/lib/chatApi.ts", "frontend/src/lib/modelProviders.ts", "backend/app/api/routes/chat.py", "backend/app/api/routes/sessions.py", "backend/app/api/routes/settings.py", "backend/app/main.py", "backend/app/core/agentic/dispatcher.py", "backend/app/core/agentic/legacy.py", "backend/app/core/agentic/usage_ledger.py", "backend/app/core/pi_runtime/engine.py", "backend/app/core/pi_runtime/oauth.py"]
 api_references: ["backend/app/api/routes/chat.py", "backend/app/api/routes/sessions.py", "backend/app/core/agentic/usage_ledger.py"]
-test_references: ["frontend/src/lib/modelProviders.test.ts", "tests/test_chat.py", "tests/test_settings_agentic_pi_endpoints.py", "tests/pi_production/test_pi_catalog_ux.py", "tests/pi_production/test_w1_agentic_contract.py"]
-last_verified: 2026-08-23
+test_references: ["frontend/src/lib/modelProviders.test.ts", "tests/test_chat.py", "tests/test_settings.py", "tests/test_settings_agentic_pi_endpoints.py", "tests/pi_migration/test_model_management_migration.py", "tests/pi_production/test_pi_catalog_ux.py", "tests/pi_production/test_w1_agentic_contract.py"]
+last_verified: 2026-08-25
 compass: CF-SPEC-77 / CF-986; CF-SPEC-8
 ---
 
@@ -179,3 +179,26 @@ projection (`PiModelManager._project_llm_server`), so a row the plan marks
 inspect counts, source checksums, and rollback readiness at
 `GET /api/settings/model-management/migration-status`. Engine selection remains
 explicit and fail-closed: a Pi/provider failure never falls back to legacy.
+
+## Sole model-management write authority (2026-08-25)
+
+Pi Model Management is the only model/provider write authority for every
+agentic engine. The Istara in-process loop and the Pi Agentic Loop retain their
+different orchestration semantics, but both resolve model identity and
+endpoint identity through the Pi-managed catalog. Local servers and donated
+compute remain transport/lifecycle infrastructure; they do not create a
+second model catalog or global provider selector.
+
+The former `POST /api/settings/model` and `POST /api/settings/provider` routes
+remain only as authenticated deprecated adapters for older clients. They
+always return `410 pi_model_management_required` with a successor link to
+`/api/settings/pi-endpoints` before model discovery, pulling, provider
+reconstruction, settings mutation, or environment persistence. Read-only
+`GET /api/settings/models` remains a compatibility inventory while clients
+migrate; it exposes both transport inventory and a secret-free Pi catalog.
+
+Application startup may register configured transport nodes, discover/load
+transport registrations, and run health checks. It must not automatically
+choose another provider, pull a chat model, issue a chat-completion probe to
+guess the loaded model, mutate the configured chat model, or persist that
+choice. Model loading happens only on explicit governed request paths.
