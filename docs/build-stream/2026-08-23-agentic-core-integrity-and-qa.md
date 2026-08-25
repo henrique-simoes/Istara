@@ -8,8 +8,8 @@ phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal ac
 stage: S1-plan
 status: in-progress
 blocked_on: null
-last: { agent: gpt-5-codex, at: 2026-08-25T00:35:41Z, ledger: L-26 }
-next_action: "Restage the completed lifecycle, create the atomic Phase 8/9 integration commit on testing, then verify cleanliness and local ancestry before pushing."
+last: { agent: gpt-5-codex, at: 2026-08-25T00:36:05Z, ledger: L-27 }
+next_action: "Commit this ledger-only transport checkpoint, push local testing to origin/testing without force, and query the remote ref for exact SHA equality."
 ```
 
 ## Plan overview / roadmap
@@ -1116,3 +1116,14 @@ coverage. No dependency installation or live model/server activity occurred.
 Verified: pytest process exit 0 and complete result line; benchmark session's 54/54 result.
 Next: restage this checkpoint, commit the atomic integration set on `testing`, verify the
 resulting tree is clean and ahead of the unchanged remote by exactly one commit, then push.
+
+### L-27 | 2026-08-25T00:36:05Z | S2-execute | gpt-5-codex | integrator | Main integration committed
+Did: Restaged the final lifecycle state, rechecked the index, and created the atomic Phase 8/9
+integration commit on local `testing`.
+Result: commit `f768e83d` (`fix: harden Pi model authority and research spine QA`) contains the
+334-file integration set. The checkout was clean immediately after commit; local `testing` is
+ahead of `origin/testing` by exactly one commit (`0 1`) with no remote-only commit. Nothing has
+been pushed yet.
+Verified: commit receipt, post-commit status, ahead/behind count, and decorated one-line log.
+Next: commit this ledger-only checkpoint, push both commits to `origin/testing` without force,
+then query the remote ref and require exact local/remote SHA equality.
