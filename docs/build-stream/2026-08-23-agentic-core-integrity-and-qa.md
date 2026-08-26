@@ -3530,3 +3530,20 @@ zero-rater, zero-donor, absent human approval, or missing three-model evidence r
 not a model-quality result.
 Next: execute that retake and append its exact disposition as L-164, then append the teardown
 receipt and remaining provider/donor implementation plan before closing this goal.
+
+### L-164 | 2026-08-26T17:15:00Z | S2-execute | gpt-5-codex | final Docker retake preflight prepared
+Did: Confirmed the Mac Studio detached worktree was refreshed cleanly to `ca7a9301`, while the
+owner's dirty `~/istara-testing` checkout remained preserved. The existing Compose stack is
+healthy and the Docker Desktop credential helper is available on the explicit SSH control PATH;
+no host package installation or host-side service was introduced. The authorized teardown scope
+remains limited to the testing Compose containers, network, volume, and disposable result data.
+
+The next command will compute a fresh `git archive` snapshot from this exact detached source,
+source the existing testing Compose env without printing secret values, run exactly one
+legacy+Pi `scripts/runner/docker-run.sh` comparison with the mode-600 env-file hardening, and
+capture only redacted metadata/logs. During the run, a boolean-only process-list check will test
+that password aliases are absent; no command line containing a credential will be emitted. This
+retake is scoped to provenance/secret hygiene and two-arm behavior; provider 402, zero donors,
+zero raters, null reliability metrics, or absent approval remain explicit blockers.
+Next: execute the one final comparison, checkpoint any long-running progress, then inspect
+`run-metadata.json` and append its exact disposition before authorized Docker teardown.
