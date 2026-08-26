@@ -1150,6 +1150,20 @@ async def test_task_research_validity_gate_blocks_unreconciled_report_inputs():
         app.promotion_status = "accepted"
         await db.commit()
 
+        still_blocked = await assess_task_research_validity(
+            db,
+            project_id=project_id,
+            task_id=task_id,
+        )
+        assert still_blocked["report_allowed"] is False
+        assert "unreconciled code application" in still_blocked["reason"]
+
+        # Reliability agreement is not human reconciliation.  Only the
+        # explicit reconciliation state makes coded evidence reportable.
+        app.reconciliation_status = "accepted"
+        app.review_status = "approved"
+        await db.commit()
+
         allowed = await assess_task_research_validity(
             db,
             project_id=project_id,

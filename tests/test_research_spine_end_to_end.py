@@ -199,6 +199,28 @@ async def test_source_to_three_model_reliability_human_done_and_report(monkeypat
             source="human_review",
         )
         assert human_acceptance["source"] == "human_review"
+        partial_gate = await research_validity_service.assess_task_research_validity(
+            db,
+            project_id=project_id,
+            task_id=task_id,
+        )
+        assert partial_gate["report_allowed"] is False
+        assert partial_gate["unresolved_code_application_count"] == 8
+
+        # A passing three-model reliability score does not reconcile the
+        # remaining applications. Every application must receive its own
+        # durable human decision before the task can become Done/reportable.
+        for application in applications[1:]:
+            decision = await research_validity_service.create_reconciliation_decision(
+                db,
+                project_id=project_id,
+                code_application_id=application.id,
+                decision_type="accepted",
+                decided_by="human-researcher",
+                rationale="The exact source span supports this accepted code.",
+                source="human_review",
+            )
+            assert decision["source"] == "human_review"
 
         nugget_id = f"nugget-spine-e2e-{suffix}"
         fact_id = f"fact-spine-e2e-{suffix}"
@@ -319,5 +341,5 @@ async def test_source_to_three_model_reliability_human_done_and_report(monkeypat
     assert trace["summary"]["blocked_report_count"] == 0
     assert trace["report_dependencies"][0]["report_allowed_by_research_validity"] is True
     assert trace["report_dependencies"][0]["task_ids"] == [task_id]
-    assert len(decisions) == 1
-    assert decisions[0].decided_by == "human-researcher"
+    assert len(decisions) == 9
+    assert {decision.decided_by for decision in decisions} == {"human-researcher"}

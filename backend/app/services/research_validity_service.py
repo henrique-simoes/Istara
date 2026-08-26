@@ -38,12 +38,11 @@ from app.models.research_validity import (
 CoderRunner = Callable[[Any, list[dict], str | None, str], Awaitable[dict]]
 logger = logging.getLogger(__name__)
 ACCEPTED_PROMOTION_STATUSES = {"accepted", "accepted_after_reconciliation"}
+# A reliability pass may mark an item ``accepted`` when all coders agree, but
+# that is still only a candidate until an explicit reconciliation decision is
+# persisted. Reports must use this narrower, post-reconciliation state.
+RECONCILED_CODE_APPLICATION_STATUSES = {"accepted", "reconciled"}
 MAX_CODING_SOURCE_TEXT_CHARS = 700
-UNRESOLVED_PROMOTION_STATUSES = {
-    "needs_reconciliation",
-    "needs_human_review",
-    "blocked",
-}
 CODING_RESPONSE_SCHEMA: dict[str, Any] = {
     "type": "object",
     "additionalProperties": True,
@@ -901,7 +900,7 @@ async def _task_finding_support_diagnostics(
     accepted_evidence_unit_ids = {
         row.evidence_unit_id
         for row in code_rows
-        if row.promotion_status in ACCEPTED_PROMOTION_STATUSES and row.evidence_unit_id
+        if _is_reconciled_code_application(row) and row.evidence_unit_id
     }
     nuggets = (
         (
@@ -1592,9 +1591,7 @@ async def _refresh_coding_run_reconciliation_status(
         .all()
     )
     unresolved_count = sum(1 for row in code_rows if _is_unresolved_code_application(row))
-    accepted_count = sum(
-        1 for row in code_rows if row.promotion_status in ACCEPTED_PROMOTION_STATUSES
-    )
+    accepted_count = sum(1 for row in code_rows if _is_reconciled_code_application(row))
     if (
         unresolved_count == 0
         and accepted_count > 0
@@ -1608,10 +1605,25 @@ async def _refresh_coding_run_reconciliation_status(
 
 
 def _is_unresolved_code_application(row: CodeApplication) -> bool:
+    if (
+        row.promotion_status == "rejected"
+        or row.reconciliation_status == "rejected"
+        or row.review_status == "rejected"
+    ):
+        return False
+    return not _is_reconciled_code_application(row)
+
+
+def _is_reconciled_code_application(row: CodeApplication) -> bool:
+    """Return whether an application has both reliability and reconciliation.
+
+    A passing Fleiss/alpha run is not a human decision. Keep report support
+    fail-closed until the application carries the durable reconciliation state
+    written by ``create_reconciliation_decision``.
+    """
     return (
-        row.promotion_status in UNRESOLVED_PROMOTION_STATUSES
-        and row.reconciliation_status == "unreconciled"
-        and row.review_status != "rejected"
+        row.promotion_status in ACCEPTED_PROMOTION_STATUSES
+        and row.reconciliation_status in RECONCILED_CODE_APPLICATION_STATUSES
     )
 
 
@@ -1957,7 +1969,7 @@ async def build_evidence_graph_traceability(
                 1
                 for row in code_rows
                 if row.task_id == scoped_task_id
-                and row.promotion_status in ACCEPTED_PROMOTION_STATUSES
+                and _is_reconciled_code_application(row)
             ),
         }
         for scoped_task_id in sorted(task_ids)
@@ -2092,8 +2104,7 @@ async def assess_task_research_validity(
     accepted_document_rows = [
         row
         for row in code_rows
-        if row.promotion_status in ACCEPTED_PROMOTION_STATUSES
-        and row.source_document_id
+        if _is_reconciled_code_application(row) and row.source_document_id
     ]
     if accepted_document_rows:
         from app.models.document import Document

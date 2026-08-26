@@ -8,8 +8,8 @@ phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal ac
 stage: S2-execute
 status: in-progress
 blocked_on: null
-last: { agent: gpt-5-codex, at: 2026-08-26T12:34:00Z, ledger: L-121 }
-next_action: "Run the remaining Docker-only acceptance only after the remote owner handoff makes ~/istara-testing clean; preserve the blocked boundary and reconcile refs/worktrees without destructive cleanup."
+last: { agent: gpt-5-codex, at: 2026-08-26T12:42:00Z, ledger: L-122 }
+next_action: "Commit the strict reconciliation gate, then run the full local regression matrix; keep exact-SHA Docker acceptance blocked until the remote owner handoff makes ~/istara-testing clean."
 ```
 
 ## Plan overview / roadmap
@@ -2579,3 +2579,29 @@ Result: the host-marathon guard is shipped with a truthful CF comparison and bra
 Next: continue the bounded completion plan: obtain owner authorization to reconcile the dirty
 Mac Studio checkout, then perform a fresh exact-SHA Docker-only stack/runner acceptance and record
 the full tri-model Research Spine evidence before closing P9-06 through P9-10.
+
+### L-122 | 2026-08-26T12:42:00Z | S2-execute/S3-review | gpt-5-codex | implementer/reviewer | Report gate now requires explicit reconciliation for every coded application
+Did: Reproduced and fixed a Research Spine bypass in which a perfect three-model reliability run
+set every code application to `promotion_status=accepted`, while `reconciliation_status` remained
+`unreconciled`; the task gate counted those rows as reportable and the end-to-end test accepted one
+human decision while routing four findings. The gate now has one fail-closed predicate requiring
+both an accepted promotion state and a durable `accepted`/`reconciled` reconciliation state. Any
+non-rejected application that is not reconciled remains an unresolved blocker, and item-level
+support diagnostics only use reconciled evidence-unit ids. A passing Fleiss/alpha score, review
+approval, or bulk high-confidence approval cannot substitute for an explicit reconciliation
+decision. The end-to-end proof now asserts one decision leaves eight blockers and makes all nine
+decisions before human Done approval and report routing; it records nine human decisions.
+Result: the red regression first failed as expected (`report_allowed` was incorrectly `True`), then
+the corrected focused slice passed: `pytest -q
+tests/test_research_validity_contract.py::test_task_research_validity_gate_blocks_unreconciled_report_inputs
+tests/test_research_integrity_reports.py tests/test_research_spine_end_to_end.py` => 26 passed in
+4.17s. Ruff, `git diff --check`, and feature docs generation/check also pass (224 site artifacts,
+86 features). Pinned-native Compass Forge gate-before reports no new actionable failures; the
+expected repository-wide complexity/secret-flow/route/type drift remains inherited. No model load,
+server start, SSH, Docker, or host package action occurred.
+Resulting contract: high agreement produces candidate accepted rows for review, not reportable
+evidence; reconciliation is per application and precedes Done/report gates. This closes a material
+test oracle gap and makes the positive Research Spine journey honest. The change is not yet
+committed or pushed at this checkpoint.
+Next: commit/push this service, test, and living-doc fix; run the full local integration matrix and
+then continue P9-07–P9-10 with the remote dirty-checkout owner handoff still required.
