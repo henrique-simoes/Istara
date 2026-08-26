@@ -4744,6 +4744,10 @@ async function main() {
     approved_task_findings_verified: Boolean(featureResults.approvedTaskFindings),
     interview_process_verified: Boolean(featureResults.interviewProcess),
     coding_validation_verified: Boolean(featureResults.codingValidation),
+    donor_endpoint_contract_verified: Boolean(featureResults.distinctDonorEndpoints),
+    research_spine_structure_present: Boolean(featureResults.researchSpineTraceability),
+    research_spine_validation_verified: Boolean(featureResults.codingValidation),
+    research_spine_donor_routes_verified: Boolean(featureResults.multiModelResearchSpineValidation),
     research_spine_traceability_verified: Boolean(featureResults.researchSpineTraceability),
     telemetry_evidence_verified: Boolean(featureResults.telemetryEvidence),
     reasoning_bank_evidence_verified: Boolean(featureResults.reasoningBankEvidence),
@@ -4800,7 +4804,8 @@ async function main() {
   logger.appendReport(`Stop Colima after benchmark resources are cleaned up: ${stopColimaAfterRun ? "yes" : "no"}\n\n`);
   logger.appendReport(`Compute donor containers: ${sandbox.relayStartedCount}/${donorProfiles.filter((profile) => profile.required).length} started\n\n`);
   logger.appendReport(`Donor model server containers: ${sandbox.modelServerStartedCount}/${sandbox.modelServerExpectedCount} started\n\n`);
-  logger.appendReport(`Distinct donor endpoints verified: ${featureResults.distinctDonorEndpoints ? "yes" : "no"}\n\n`);
+  logger.appendReport(`Donor endpoint contract verified: ${featureResults.distinctDonorEndpoints ? "yes" : "no"}\n\n`);
+  logger.appendReport(`Research Spine donor routes verified: ${scorecard.research_spine_donor_routes_verified ? "yes" : "no"}\n\n`);
   logger.appendReport(`Researcher client containers: ${sandbox.researcherStartedCount}/${runtimeResearcherCount} redeemed\n\n`);
   logger.appendReport(`Multi-donor compute verified: ${featureResults.multiDonorCompute ? "yes" : "no"}\n\n`);
   logger.appendReport(`Natural compute orchestration observed: ${featureResults.naturalComputeOrchestration ? "yes" : "no"}\n\n`);
@@ -4808,7 +4813,8 @@ async function main() {
   logger.appendReport(`Task review/revision loop verified: ${featureResults.taskReviewLoop ? "yes" : "no"}\n\n`);
   logger.appendReport(`Approved-task-backed Findings/reporting verified: ${featureResults.approvedTaskFindings ? "yes" : "no"}\n\n`);
   logger.appendReport(`Research Spine coding validation observed: ${featureResults.codingValidation ? "yes" : "no"}\n\n`);
-  logger.appendReport(`Research Spine traceability observed: ${featureResults.researchSpineTraceability ? "yes" : "no"}\n\n`);
+  logger.appendReport(`Research Spine structural traceability present: ${scorecard.research_spine_structure_present ? "yes" : "no"}\n\n`);
+  logger.appendReport(`Research Spine accepted multi-model validation verified: ${scorecard.research_spine_validation_verified ? "yes" : "no"}\n\n`);
   logger.appendReport(`Telemetry evidence observed: ${featureResults.telemetryEvidence ? "yes" : "no"}\n\n`);
   logger.appendReport(`ReasoningBank process-memory probe verified: ${featureResults.reasoningBankEvidence ? "yes" : "no"}\n\n`);
   logger.appendReport(`Memento/skill health probe verified: ${featureResults.mementoSkillEvidence ? "yes" : "no"}\n\n`);

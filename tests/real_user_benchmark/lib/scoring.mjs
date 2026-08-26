@@ -121,6 +121,12 @@ export function scoreRun({ mode, metrics, integrationMatrix = [], blockers = [],
     ratio: raw[key],
   }));
   const total = Math.round(dimensions.reduce((sum, dim) => sum + dim.score, 0) * 10) / 10;
+  // Keep the legacy traceability field as a structural-presence alias, but expose
+  // accepted validation separately so a populated graph cannot be mistaken for
+  // three-model coding, reliability, reconciliation, and promotion evidence.
+  const researchSpineStructurePresent = Boolean(featureResults.researchSpineTraceability);
+  const researchSpineValidationVerified = Boolean(featureResults.codingValidation);
+  const researchSpineDonorRoutesVerified = Boolean(featureResults.multiModelResearchSpineValidation);
   return {
     total,
     max: 100,
@@ -137,7 +143,11 @@ export function scoreRun({ mode, metrics, integrationMatrix = [], blockers = [],
     approved_task_findings_verified: Boolean(featureResults.approvedTaskFindings),
     interview_process_verified: Boolean(featureResults.interviewProcess),
     coding_validation_verified: Boolean(featureResults.codingValidation),
-    research_spine_traceability_verified: Boolean(featureResults.researchSpineTraceability),
+    donor_endpoint_contract_verified: Boolean(featureResults.distinctDonorEndpoints),
+    research_spine_structure_present: researchSpineStructurePresent,
+    research_spine_validation_verified: researchSpineValidationVerified,
+    research_spine_donor_routes_verified: researchSpineDonorRoutesVerified,
+    research_spine_traceability_verified: researchSpineStructurePresent,
     telemetry_evidence_verified: Boolean(featureResults.telemetryEvidence),
     reasoning_bank_evidence_verified: Boolean(featureResults.reasoningBankEvidence),
     memento_skill_evidence_verified: Boolean(featureResults.mementoSkillEvidence),

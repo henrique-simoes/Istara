@@ -100,9 +100,38 @@ test("scorecard exposes Research Spine coding and traceability evidence", () => 
     featureResults: {
       codingValidation: true,
       researchSpineTraceability: true,
+      multiModelResearchSpineValidation: true,
     },
   });
 
   assert.equal(scorecard.coding_validation_verified, true);
   assert.equal(scorecard.research_spine_traceability_verified, true);
+  assert.equal(scorecard.research_spine_structure_present, true);
+  assert.equal(scorecard.research_spine_validation_verified, true);
+  assert.equal(scorecard.research_spine_donor_routes_verified, true);
+});
+
+test("scorecard cannot treat structural traceability or a weak donor contract as accepted Research Spine validation", () => {
+  const scorecard = scoreRun({
+    mode: "probe",
+    featureResults: {
+      distinctDonorEndpoints: true,
+      researchSpineTraceability: true,
+      codingValidation: false,
+      multiModelResearchSpineValidation: false,
+    },
+    sandbox: {
+      relayExpectedCount: 1,
+      relayStartedCount: 0,
+      modelServerExpectedCount: 0,
+      modelServerStartedCount: 0,
+    },
+  });
+
+  assert.equal(scorecard.distinct_donor_endpoints_verified, true);
+  assert.equal(scorecard.donor_endpoint_contract_verified, true);
+  assert.equal(scorecard.research_spine_structure_present, true);
+  assert.equal(scorecard.research_spine_traceability_verified, true);
+  assert.equal(scorecard.research_spine_validation_verified, false);
+  assert.equal(scorecard.research_spine_donor_routes_verified, false);
 });

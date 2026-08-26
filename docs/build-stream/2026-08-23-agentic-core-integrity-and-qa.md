@@ -3630,3 +3630,40 @@ Research Spine run can produce non-null reliability metrics and accepted downstr
 Next: finish the bounded scorecard contract change through Compass Forge/TDD, then commit/push
 the ledger and code; do not claim goal completion until the provider/donor acceptance gates are
 actually exercised or explicitly closed by owner decision.
+
+### L-170 | 2026-08-26T18:00:00Z | S2-execute | gpt-5-codex | scorecard semantics separated and gated
+Did: Applied the bounded scorecard contract fix in `tests/real_user_benchmark/lib/scoring.mjs`,
+`tests/real_user_benchmark/lib/scoring.test.mjs`, and `tests/real_user_benchmark/run.mjs`. The
+scorecard now exposes separate fields for the weak donor endpoint contract,
+`research_spine_structure_present`, accepted `research_spine_validation_verified`, and
+`research_spine_donor_routes_verified`; the legacy traceability field remains a structural
+presence alias for compatibility. Added a regression fixture proving that structural traceability
+and a one-endpoint topology contract cannot be reported as accepted three-model Research Spine
+validation. TDD red first showed two missing-field failures; the targeted suite then passed 8/8.
+Compass Forge `gate before` record 64 accepted the change as a baseline with no new comparison
+deltas (only inherited repository warnings remain). This is a contract/reporting correction, not
+live model evidence; the Docker provider/donor blocker remains open.
+Next: commit and push this checkpoint, run the full deterministic JavaScript/Python/docs matrix,
+then capture Compass Forge `gate after` evidence and reconcile `testing` with `origin/testing`.
+
+### L-171 | 2026-08-26T18:03:00Z | S3-review | gpt-5-codex | deterministic matrix green after scorecard correction
+Did: The full benchmark-library JavaScript suite passed `48/48`. The repository’s scoped
+deterministic Python matrix passed `923` tests with `5` skips in `149.30s`; no new failure or
+security-contract regression appeared. The passing tests cover PI Model Management migration and
+settings, Petals bridge contracts, Research Spine end-to-end/gating/reports, two-call and long
+horizon benchmark behavior, three-model coding and reliability gates, runner provenance, Docker
+isolation, marathon integrity, and the security benchmark. These are local deterministic
+contracts only and do not substitute for the blocked live provider/donor acceptance run.
+Next: run feature-doc generation/check and shell syntax validation, then use Compass Forge
+`gate after`, commit/push all intended changes, and verify local `testing` equals `origin/testing`.
+
+### L-172 | 2026-08-26T18:05:00Z | S4-ship | gpt-5-codex | after-gate passed comparison with inherited repository debt
+Did: Feature-doc validation passed (`seeded 0`, `generated 224`, `86` feature checks),
+`bash -n scripts/runner/docker-run.sh` passed, and `git diff --check` passed. Compass Forge
+`gate after` record 65 completed with `comparison.new_issues=[]`, zero file/large-file deltas,
+and no new forbidden dependencies, import cycles, missing paths, or unexpected large files.
+The overall current gate remains `fail` only because the repository’s pre-existing complexity,
+security-taint, type-drift, and other warnings/failures are inherited; this scorecard diff adds
+no comparison delta. The generated feature manifest timestamp is the only generated-doc change.
+Next: append the bounded finding disposition to the external audit file, commit the five intended
+repository files, push `testing`, and prove local/remote ref and worktree cleanliness.
