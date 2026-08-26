@@ -8,8 +8,8 @@ phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal ac
 stage: S2-execute
 status: in-progress
 blocked_on: null
-last: { agent: gpt-5-codex, at: 2026-08-26T20:49:19Z, ledger: L-189 }
-next_action: "Stage only the intended testing changes, commit and push non-force, verify exact testing parity, then obtain owner-authorized provider credentials and three Compose-owned donor routes for the terminal Docker-only retake."
+last: { agent: gpt-5-codex, at: 2026-08-26T20:53:39Z, ledger: L-190 }
+next_action: "Obtain owner-authorized provider credentials and three Compose-owned donor routes, run the terminal Docker-only acceptance retake for provider, Petals, combined, legacy, and pi profiles, then attach complete runtime evidence or leave the external gate open."
 ```
 
 ## Plan overview / roadmap
@@ -4101,3 +4101,24 @@ Next: review the complete staged diff, run final syntax/diff/feature checks, com
 to `origin/testing`, fetch and verify exact SHA equality, inspect worktrees/branches read-only,
 and append the transported SHA. Keep `/Users/user/Desktop/testing.md` outside Git; it contains
 F-R9-35 through F-R9-40 and the owner-facing live blocker.
+
+### L-190 | 2026-08-26T20:53:39Z | S3-execute | gpt-5-codex | testing transport parity verified
+
+Did: Committed the complete intended 13-file testing/documentation change set as
+`f705bebb0acb4b04ccb6c9c2e1a3295b3f8dd00f` with message
+`test: harden Research Spine ensemble acceptance contract`. Pushed non-force to
+`origin/testing`, fetched the branch, and verified `HEAD` equals `origin/testing` at
+the same SHA with an empty diff. The working tree is clean except for ignored artifacts;
+`/Users/user/Desktop/testing.md` remains intentionally outside Git.
+
+Evidence: `git fetch origin testing`; `git rev-parse HEAD` and
+`git rev-parse origin/testing` both returned `f705bebb0acb4b04ccb6c9c2e1a3295b3f8dd00f`;
+`git diff --exit-code origin/testing --` passed; `git status --short --branch` reported
+`## testing...origin/testing` with no file changes.
+
+Next: inspect worktrees and branches read-only, preserving the intentional recovery
+worktree and any unmerged/backup refs. Then obtain the owner-authorized live inputs and
+run the terminal acceptance matrix only through the Mac Studio's Docker/Compose runner.
+No live model/provider call, donor registration, or Mac Studio execution is claimed by
+this checkpoint; deterministic green tests do not prove ensemble quality or Research
+Spine acceptance.
