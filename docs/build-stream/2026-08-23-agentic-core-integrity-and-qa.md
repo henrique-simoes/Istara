@@ -2160,3 +2160,17 @@ Ruff/diff checks pass; feature docs `86/86` and generated site `224`; no live mo
 host action.
 Next: run the changed benchmark and Python boundary once more after staging review, then transport this
 oracle/Pi-path slice before auditing calls, long horizon, Petals, and live Docker acceptance.
+
+### L-98 | 2026-08-26T01:05:00Z | S5-ship/S1-frame | gpt-5-codex | integrator | Source-breadth oracle transported; P9-06 remains open
+Did: Committed and pushed the Pi-path Research Spine journey, three-source fixture, source-identity
+normalization, fail-closed breadth oracle, topology contract, living Reports documentation, generated
+manifest, and ledger as `d5659da4` (`test: enforce research source breadth`).
+Result: `testing` is clean and remotely aligned. P9-06 is stronger but intentionally not complete:
+the focused contract proves one accepted lineage, while the broader negative matrix still needs explicit
+rejected-code, missing-route, cross-project, revoked-route, and immutable-audit assertions where gaps
+remain. P9-07 through P9-15 are untouched by this transport.
+Verified: push `79d75f00..d5659da4`; the next post-receipt commit must verify local/remote equality and
+clean status before any additional change.
+Next: audit the real tool-call and long-horizon implementations against the P9-07 contract, beginning
+with whether existing tests exercise persisted assistant output and consumed tool results rather than
+only synthetic parser/DAG calculations.
