@@ -48,6 +48,13 @@ def test_remote_runner_records_images_source_and_truthful_isolation():
     assert "ISTARA_BENCHMARK_FRESH_SANDBOX=0" not in outer
 
 
+def test_remote_runner_bootstraps_ignored_result_mounts_from_pristine_checkout():
+    outer = (ROOT / "scripts/runner/docker-run.sh").read_text(encoding="utf-8")
+
+    assert 'mkdir -p "$PROBE_RESULTS" "$SIM_RESULTS" "$MARATHON_RESULTS"' in outer
+    assert "required result directory missing" not in outer
+
+
 def test_remote_runner_recreates_the_database_before_each_engine():
     outer = (ROOT / "scripts/runner/docker-run.sh").read_text(encoding="utf-8")
 

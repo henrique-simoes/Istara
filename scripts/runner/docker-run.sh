@@ -15,12 +15,10 @@ PROBE_RESULTS="$REPO_ROOT/tests/real_user_benchmark/.results"
 SIM_RESULTS="$REPO_ROOT/tests/simulation/.results"
 MARATHON_RESULTS="$REPO_ROOT/data/test-marathon"
 
-for result_dir in "$PROBE_RESULTS" "$SIM_RESULTS" "$MARATHON_RESULTS"; do
-  [ -d "$result_dir" ] || {
-    echo "required result directory missing: $result_dir" >&2
-    exit 1
-  }
-done
+# These mounts are generated/ignored artifacts, so a pristine detached checkout must be
+# able to bootstrap them without manual host preparation. Docker remains the only runtime;
+# this creates empty bind-mount targets and all work happens in containers below.
+mkdir -p "$PROBE_RESULTS" "$SIM_RESULTS" "$MARATHON_RESULTS"
 
 : "${ISTARA_ADMIN_PASSWORD:?set ISTARA_ADMIN_PASSWORD}"
 ISTARA_BENCHMARK_CHAT_TIMEOUT_MS="${ISTARA_BENCHMARK_CHAT_TIMEOUT_MS:-300000}"

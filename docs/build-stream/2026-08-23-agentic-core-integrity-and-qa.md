@@ -8,8 +8,8 @@ phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal ac
 stage: S2-execute
 status: in-progress
 blocked_on: null
-last: { agent: gpt-5-codex, at: 2026-08-26T15:42:00Z, ledger: L-157 }
-next_action: "Refresh to e7fca1be, run one bounded docker-run.sh comparison with source-hash provenance, and capture arm scorecards/blockers without claiming three-donor proof."
+last: { agent: gpt-5-codex, at: 2026-08-26T16:05:00Z, ledger: L-159 }
+next_action: "Transport the self-bootstrapping runner fix, rebuild the exact Docker image, and rerun one bounded comparison from a pristine checkout."
 ```
 
 ## Plan overview / roadmap
@@ -3381,3 +3381,49 @@ semantics, long-horizon behavior, or human-approved Done/report gates.
 Next: run `scripts/runner/docker-run.sh` exactly once from this clean worktree inside the
 containerized topology, capture its complete scorecard/exit status, and checkpoint before any
 second request or topology change.
+
+### L-158 | 2026-08-26T15:52:00Z | S2-execute/S3-review | gpt-5-codex | runner precondition failed before benchmark
+Did: Invoked `scripts/runner/docker-run.sh` exactly once from the clean detached worktree at
+`4915b634`, with the exact Git archive hash
+`1610ec53af0b75ced7e9807886e7a62b990a1ceb7a3f1f957fab1e021d653da9` and Docker helper PATH.
+The script exited `1` before pulling its runner image, recreating Compose, sending a chat turn,
+or loading any model because the clean checkout did not contain the ignored directories
+`tests/real_user_benchmark/.results`, `tests/simulation/.results`, and `data/test-marathon`.
+
+Evidence: `/Users/user/istara-testing-evidence-20260826T145000Z/runner-source.txt` records
+the source hash, zero source status changes, and `runner_rc=1`; `docker-run.log` contains only
+the missing-result-directory precondition. The existing stack remains available, but no
+benchmark arm or Research Spine artifact was produced by this attempt.
+
+Result: the runner is not self-starting from a clean detached checkout, which is incompatible
+with the stated reproducible Docker-only workflow. This is a harness/process defect, not a
+model-quality result. The next action must either make the script create its disposable result
+directories (with a regression test) or create them inside the clean checkout as a narrowly
+documented fixture; prefer the self-contained script fix so future clean worktrees work without
+manual host preparation. Re-run only after Compass Forge impact/why and a transported
+checkpoint; keep the three-donor limitation and fail-closed scoring boundary unchanged.
+
+### L-159 | 2026-08-26T16:05:00Z | S1-plan/S2-execute/S3-review | gpt-5-codex | runner bootstrap fix specified by CF and TDD
+Did: Ran Compass Forge `intelligence impact --path scripts/runner/docker-run.sh` for the
+pristine-checkout request. The graph classified the surface as high-confidence with likely
+architecture-drift, security-sensitive, and API/contract-drift rules; it recommended runner,
+benchmark, compute, Petals, and orchestration verification. `intelligence why` and
+`test-impact` returned no direct file relationships, so the repository's static contract suite
+was used as the explicit safety net. Compass Forge `gate before` record `61` completed with no
+new comparison issues, failures, dependency/import-cycle, missing-path, unexpected-large-file,
+security, or taint deltas; inherited global warnings remain unchanged.
+
+TDD evidence: added a regression assertion for a pristine checkout, observed the expected red
+failure (`1 failed`), then changed only `scripts/runner/docker-run.sh` to create the three
+ignored disposable bind-mount directories with one `mkdir -p` before any Docker action. The
+targeted regression is green and the complete remote-runner contract module is green (`13
+passed`). The script still mounts the source read-only into the disposable runner and performs
+all runtime/package/model work inside Docker.
+
+Result: this removes the manual-host-preparation failure found in L-158 without weakening
+source hash, fresh-Postgres, engine isolation, or fail-closed arm handling. The change does not
+add donor containers or alter the runner's explicit `REQUIRE_COMPUTE_DONATION=0` boundary; live
+three-model ensemble and Research Spine proof remain separate open gates.
+Next: commit and push the script/test/ledger fix, refresh the detached Mac Studio worktree,
+rebuild if the source image changed, and rerun exactly one bounded Docker comparison. Preserve
+its scorecard even when the two-arm harness exits with blockers.
