@@ -3577,3 +3577,18 @@ Research Spine acceptance. The wrapper captures a blocker-bearing runner exit wi
 the final `RUN_RC`.
 Next: poll the same invocation to completion, capture per-arm metadata and a post-run boolean
 secret check, then append the exact live disposition and authorized teardown receipt.
+
+### L-167 | 2026-08-26T17:30:00Z | S2-execute | gpt-5-codex | legacy arm blocked; Pi arm still running
+Did: The one corrected comparison progressed through the isolated legacy arm and recreated a
+fresh stack for Pi. The legacy arm completed its marathon companion and probe, then recorded a
+blocker-bearing exit (`exit=1`) as expected under the current live provider configuration; the
+runner continued to Pi without launching a second comparison. The Pi marathon is active. A
+boolean-only process check continues to report `PASSWORD_ARG_PRESENT=0`; no secret-bearing
+command line has been printed.
+
+This checkpoint is operational only. It does not infer model quality from the legacy blocker or
+from marathon completion; per-arm run metadata and Research Spine fields remain pending until the
+Pi probe exits. The same run group, source commit, image IDs, and Docker-only boundary remain in
+force.
+Next: wait for the Pi probe to finish, inspect both arm artifacts for source/secret provenance,
+record the final blocker disposition, and then perform the authorized testing-stack teardown.
