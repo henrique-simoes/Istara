@@ -2433,3 +2433,28 @@ Next: commit/push this bounded fix, then perform passive Docker-only Mac Studio 
 validate the persisted two-call/long-horizon, Petals, and benchmark contracts against the remote
 Compose stack. Keep live tri-model calls gated and label scripted-provider tests as contract proof,
 not model-quality proof.
+
+### L-114 | 2026-08-26T11:42:21Z | S2-execute/S3-review | gpt-5-codex | auditor | Mac Studio acceptance is blocked by dirty remote state and a host-side marathon invocation
+Did: Performed the required passive SSH inventory using the server/Docker procedure. The SSH
+shell's `PATH` does not include `docker`, but Docker Desktop is installed and the explicit
+`/usr/local/bin/docker` client reports Docker client/server 29.7.2; the Compose plugin is available
+at `~/.docker/cli-plugins/docker-compose`. The `istara-testing` Compose project renders to a
+6,732-byte configuration and its five expected containers (Caddy, frontend, backend, Postgres,
+provider-stub) are running and healthy. No runner or marathon process is active now.
+
+The remote checkout at `~/istara-testing` is **not clean**: it is on `testing` at `1b9b6d6`, while
+`origin/testing` is also `1b9b6d6`, but it has roughly 300 modified tracked files and untracked
+secrets, TLS material, migrations, runner/provenance tests, and smoke scripts. This is an active
+worktree with potentially owned changes; no pull, reset, checkout, branch deletion, or cleanup was
+performed. The remote `marathon_both.log` also contains `/tmp/run_marathon_remote.sh: line 9: node:
+command not found`, proving that at least one marathon attempt executed Node on the Mac Studio host
+instead of through the Docker runner. The Docker-only requirement is therefore not currently
+proven and the marathon result is invalid until rerun through the containerized runner.
+Result: passive inventory only; no host package install, model load, service restart, container
+mutation, or remote file mutation. Local `testing` remains clean and pushed at `d2697d1a`.
+Next: keep the remote checkout untouched, obtain an explicit owner handoff for its dirty edits,
+then use the explicit Docker binary and `docker compose` only. Reconcile the remote clone to the
+same origin SHA with a non-destructive, fast-forward-only operation only after it is clean; rerun
+marathon/probes inside a disposable Docker runner and capture container IDs, image digests, exit
+codes, and scorecard blockers. Do not claim live tri-model or product acceptance from the existing
+logs.
