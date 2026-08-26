@@ -8,7 +8,7 @@ phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal ac
 stage: S2-execute
 status: in-progress
 blocked_on: null
-last: { agent: gpt-5-codex, at: 2026-08-26T11:32:00Z, ledger: L-111 }
+last: { agent: gpt-5-codex, at: 2026-08-26T11:36:00Z, ledger: L-112 }
 next_action: "Verify route parity and two-call/long-horizon contracts, then run Docker-only Mac Studio acceptance and reconcile testing refs."
 ```
 
@@ -2395,3 +2395,19 @@ path/large-file findings. The global gate remains failed only on repository-wide
 complexity, secret-flow, route, and type drift. No model, server, SSH, Docker, or host package action.
 Next: audit route parity and two-call/long-horizon contracts, then perform only Docker/Compose
 operations on Mac Studio and capture resumable container evidence.
+
+### L-112 | 2026-08-26T11:36:00Z | S2-execute/S3-review/S5-ship | gpt-5-codex | implementer/reviewer | Chat model-catalog engine indicator now shares POST /chat precedence
+Did: Audited the route pair that drives Chat engine selection and the UI indicator. `POST /chat`
+already used operator flag > request header > project setting > global default, but
+`GET /chat/model-catalog` reconstructed only project/default state. That allowed a request header
+or operator Pi gate to produce a legacy indicator while the actual turn would run Pi. The catalog
+now calls `_resolve_chat_engine` directly, preserving one precedence contract and all alias handling.
+Added integration coverage for a Pi alias header and for the operator gate overriding a legacy header;
+updated the living Chat Model Controls architecture and generated site manifest.
+Result: `pytest -q tests/test_chat.py` => 13 passed; feature docs generated 224/check 86/86; commit
+`a531276a` is pushed to local `testing` and `origin/testing`; native Compass Forge after gate record
+34 reports `comparison.new_issues=[]` with no new dependency/import/security/taint/missing-path/large-
+file findings. Existing repository-wide complexity, secret-flow, route, and type drift remains visible
+as inherited gate debt. No model load, server, SSH, Docker, or host package action.
+Next: verify the persisted two-call and long-horizon contracts, then inspect the Mac Studio Compose
+stack passively before any Docker-only test execution.
