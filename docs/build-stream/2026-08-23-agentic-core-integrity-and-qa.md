@@ -8,7 +8,7 @@ phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal ac
 stage: S2-execute
 status: in-progress
 blocked_on: null
-last: { agent: gpt-5-codex, at: 2026-08-26T23:44:16Z, ledger: L-209 }
+last: { agent: gpt-5-codex, at: 2026-08-26T23:45:31Z, ledger: L-210 }
 next_action: "Run the terminal Docker-only provider/Petals/combined retake from implementation tip 7f82389c12389bfc0d81a50458a3fe9e0e8bd2a4 in the isolated Mac Studio worktree when owner-authorized provider credit and three Compose-owned donor routes are available; keep the live gate open until its evidence is complete."
 ```
 
@@ -4534,3 +4534,20 @@ be confused with runtime code changes.
 
 Next: commit and push this ledger checkpoint, verify branch parity, and keep the live gate open
 until owner-authorized provider credit and three Compose-owned donor routes are available.
+
+### L-210 | 2026-08-26T23:45:31Z | S3-acceptance | gpt-5-codex | duplicate local authority spec reconciled
+
+Did: Attached Compass Forge evidence and finished CF-22, CF-23, and CF-25 through CF-30 for
+CF-SPEC-4, then accepted that duplicate narrow authority spec. CF-SPEC-4 now records the local
+shared-manager and catalog-drift behavior as complete; this does not promote the missing live
+provider, three-model, Petals, or Research Spine evidence.
+
+Evidence: native Rust Compass Forge `spec accept CF-SPEC-4` reports `accepted`; task evidence
+IDs 30–37 cover focused `63 passed` regressions, full warning-clean preservation, impact/why/
+test-impact graph review, gate accounting, and the all-linked-tasks-done proof. The isolated
+Mac Studio retake worktree remains clean at implementation tip `7f82389c12389bfc0d81a50458a3fe9e0e8bd2a4`.
+
+Next: commit and push this checkpoint, verify parity, and keep CF-SPEC-2 live acceptance tasks
+open until the Docker-only Mac Studio provider/Petals/combined retake produces the required
+three served identities, raw-span coding, reliability, reconciliation, human-Done/report,
+two-call/long-horizon, route/usage/revoke, and cleanup artifacts.
