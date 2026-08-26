@@ -8,7 +8,7 @@ phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal ac
 stage: S2-execute
 status: in-progress
 blocked_on: null
-last: { agent: gpt-5-codex, at: 2026-08-26T11:20:00Z, ledger: L-109 }
+last: { agent: gpt-5-codex, at: 2026-08-26T11:31:00Z, ledger: L-110 }
 next_action: "Verify route parity and two-call/long-horizon contracts, then run Docker-only Mac Studio acceptance and reconcile testing refs."
 ```
 
@@ -2361,3 +2361,20 @@ Open: the compatibility Petals bearer route remains less project-pinned than the
 process-memory/default-off after restart; these are documented review items. Remaining P9 work is route
 parity, benchmark contract verification, Docker-only remote acceptance, broad regression, independent review,
 and safe worktree/branch cleanup.
+
+### L-110 | 2026-08-26T11:31:00Z | S2-execute/S3-review/S5-ship | gpt-5-codex | implementer/reviewer | Explicit Pi alias normalization closed at dispatcher boundary
+Did: Audited the direct engine-selection seam after the route-parity pass. `AgenticDispatcher.resolve_engine`
+and its async `_resolve` previously returned the raw per-call value, so supported aliases
+(`pi-candidate`, `pi-replacement`, and `deepseek-pi`) could bypass the Pi branch when supplied by direct
+A2A, benchmark, or service callers. Both boundaries now normalize through `_as_choice`, and a parametrized
+regression covers every `PI_ENGINE_VALUES` spelling in both sync and async paths. Living Chat Model Controls
+documentation now records this invariant for future callers.
+Result: direct aliases select Pi deterministically; no silent legacy fallback is possible from this input
+class. Focused W1/W3 dispatcher contracts are green, with no live model load or service start.
+Verified: `pytest -q tests/pi_production/test_w1_dispatcher_authority.py tests/pi_production/test_w1_agentic_contract.py tests/pi_production/test_w3_research_spine.py`
+=> 64 passed in 5.39s; Ruff and `git diff --check` pass; feature docs generated 224/check 86/86; commit
+`7cd98c60` pushed to `origin/testing`; native Compass Forge after gate record 30 reports
+`comparison.new_issues=[]` and no new dependency/import/security/taint/missing-path/large-file findings.
+Repository-wide inherited complexity, secret-flow, route, and type drift remains failed and explicitly open.
+Next: verify all route aliases and compatibility adapters, then run the bounded benchmark contract and
+Docker-only Mac Studio inventory/acceptance; no host package or model operations are permitted.
