@@ -104,6 +104,100 @@ async def test_provider_only_turn_blocks_external_endpoint_before_worker_start(m
         )
 
 
+@pytest.mark.asyncio
+async def test_ensemble_routes_project_scoped_petals_endpoints_through_pi_manager(monkeypatch):
+    """A distinct ensemble must bind Petals donors through the Pi authority.
+
+    This keeps the test deterministic while exercising the real
+    ``PiModelManager -> PiExecutionService.run_ensemble -> provider.bind``
+    path.  It catches regressions where Petals is only tested through its
+    standalone bridge or where an ensemble silently drops project scoping.
+    """
+
+    class RecordingSupervisor:
+        def __init__(self):
+            self.binds: list[dict] = []
+
+        async def ensure_started(self):
+            return None
+
+        async def open_session(self, _key, **_kwargs):
+            return None
+
+        async def bind_provider(self, _key, payload):
+            self.binds.append(payload)
+
+        async def close_session(self, _key):
+            return None
+
+        async def run_turn(self, _key, _user_text, _tool_handler, **_kwargs):
+            yield {
+                "type": "run.completed",
+                "usage": {"input_tokens": 2, "output_tokens": 3, "total_tokens": 5},
+                "stop_reason": "stop",
+                "provider_message": {"role": "assistant", "content": "petals-ready"},
+            }
+
+    endpoints = [
+        ResolvedPiEndpoint(
+            endpoint_id="pi-faux-a",
+            provider_kind="faux",
+            base_url="",
+            model="model-a",
+            api_key="faux",
+            timeout_ms=30_000,
+            max_retries=0,
+            kind="remote",
+        ),
+        ResolvedPiEndpoint(
+            endpoint_id="pi-petals-b",
+            provider_kind="openai_compat",
+            base_url="http://127.0.0.1:8000/api/petals/v1/nodes/donor-b",
+            model="model-b",
+            api_key="loopback-b",
+            timeout_ms=30_000,
+            max_retries=0,
+            kind="petals",
+        ),
+        ResolvedPiEndpoint(
+            endpoint_id="pi-petals-c",
+            provider_kind="openai_compat",
+            base_url="http://127.0.0.1:8000/api/petals/v1/nodes/donor-c",
+            model="model-c",
+            api_key="loopback-c",
+            timeout_ms=30_000,
+            max_retries=0,
+            kind="petals",
+        ),
+    ]
+    supervisor = RecordingSupervisor()
+    manager = PiModelManager(endpoints=endpoints, include_local=False)
+    manager._db_projected = True
+    service = PiExecutionService(supervisor=supervisor, model_manager=manager)
+    monkeypatch.setattr(service, "_record_turn_telemetry", AsyncMock())
+
+    result = await service.run_ensemble(
+        purpose="research_spine.donor_ensemble",
+        project_id="project spine/1",
+        agent_id="agent-a",
+        system="independent coder",
+        messages=[{"role": "user", "content": "extract atomic evidence"}],
+        n=3,
+        distinct=True,
+        params=TurnParams(),
+    )
+
+    assert result["status"] == "success"
+    assert result["endpoint_ids"] == ["pi-faux-a", "pi-petals-b", "pi-petals-c"]
+    assert len(supervisor.binds) == 3
+    petals_binds = [payload for payload in supervisor.binds if payload["endpoint_id"].startswith("pi-petals")]
+    assert [payload["model"] for payload in petals_binds] == ["model-b", "model-c"]
+    assert [payload["base_url"] for payload in petals_binds] == [
+        "http://127.0.0.1:8000/api/petals/v1/nodes/donor-b/projects/project%20spine%2F1",
+        "http://127.0.0.1:8000/api/petals/v1/nodes/donor-c/projects/project%20spine%2F1",
+    ]
+
+
 def _faux_bind_payload(responses, *, faux_cost_usd: float | None = None) -> dict:
     """Serialize a faux endpoint into the ``provider.bind`` payload the worker
     consumes (mirrors ``test_frame_limits``; adds the test-only cost seam)."""

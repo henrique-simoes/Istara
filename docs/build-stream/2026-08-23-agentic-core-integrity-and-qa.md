@@ -8,7 +8,7 @@ phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal ac
 stage: S2-execute
 status: in-progress
 blocked_on: null
-last: { agent: gpt-5-codex, at: 2026-08-26T13:16:42Z, ledger: L-135 }
+last: { agent: gpt-5-codex, at: 2026-08-26T13:25:31Z, ledger: L-137 }
 next_action: "Audit live paired-engine provenance and the unproven Petals-through-Pi execution path; add only bounded contract fixes, then obtain owner-gated Docker acceptance on the exact pushed image."
 ```
 
@@ -2845,3 +2845,41 @@ isolation and security hardening, not live model-quality evidence. The change is
 uncommitted at this checkpoint.
 Next: run the after gate after commit, push local/origin parity, append F-R9-16 to the
 external audit ledger, then continue the paired benchmark and Petals integration audit.
+
+### L-136 | 2026-08-26T13:20:18Z | S3-review/S4-ship | gpt-5-codex | provider-only guard pushed with attributable-clean after gate
+Did: Committed the provider-only Pi network-isolation hardening as `5957a9f3` (`fix: guard
+provider-only pi turns in tests`) and pushed it non-forced to `origin/testing`. The pinned
+native Rust Compass Forge after gate recorded `new_issue_count=0` and `new_failures=0`, with
+no new dependency/import cycles, missing paths, unexpected-large-file, security, or taint
+findings. The global gate remains `fail` only for the inherited complexity, route/type drift,
+and secret-flow debt. The external audit ledger received F-R9-16.
+
+Result: local and origin now include a fail-closed guard for both streaming and provider-only
+Pi execution seams; the regression proves a blocked public endpoint cannot start a worker.
+No server, provider/model, SSH, Docker, or Mac Studio host action occurred.
+Next: inspect whether a configured Petals endpoint actually traverses Pi model management,
+project binding, usage/reliability persistence, and ensemble routing; then close any bounded
+contract gap before owner-gated exact-image Docker acceptance.
+
+### L-137 | 2026-08-26T13:25:31Z | S2-execute/S3-review | gpt-5-codex | Petals-through-Pi ensemble contract now exercises project-scoped binds
+Did: Added a deterministic integration contract to `tests/pi_production/test_runtime_hardening.py`
+that drives the real `PiExecutionService.run_ensemble` with `distinct=True` across one faux
+model and two Petals-kind model identities. A recording supervisor captures the actual
+`provider.bind` payloads; the assertions require three distinct endpoint/model identities,
+successful sample aggregation, and both donor URLs to include the URL-encoded project scope.
+This closes the prior test gap where Petals and Pi were tested only in separate helpers or
+through a fake dispatcher, not through the ensemble execution seam.
+
+Verification: `pytest -q tests/pi_production/test_runtime_hardening.py` => `18 passed in
+4.53s`; the initial invalid fixture was corrected after pytest caught missing required
+timeout/retry fields; compileall, `git diff --check`, and Ruff all pass. The test is
+deterministic and uses no server, provider/model, SSH, Docker, or Mac Studio host action.
+The integration test is uncommitted at this checkpoint.
+
+Result: the local contract now proves Pi Model Management, distinct ensemble selection, and
+Petals project binding compose correctly at the execution boundary. It still does not prove
+real donor interoperability, consent/health projection from a live registry, usage persistence
+through the API, or Research Spine acceptance/reconciliation on a Docker image.
+Next: run a fresh before gate, commit/push this test, run the after gate and broad matrix, then
+decide whether live-benchmark provenance needs a bounded contract fix or remains an owner-gated
+acceptance blocker.
