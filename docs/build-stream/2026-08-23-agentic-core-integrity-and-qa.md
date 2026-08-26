@@ -8,7 +8,7 @@ phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal ac
 stage: S2-execute
 status: in-progress
 blocked_on: null
-last: { agent: gpt-5-codex, at: 2026-08-26T13:56:30Z, ledger: L-141 }
+last: { agent: gpt-5-codex, at: 2026-08-26T13:58:00Z, ledger: L-142 }
 next_action: "Obtain explicit owner handoff for the dirty Mac Studio checkout, then run a fresh Docker-only three-donor acceptance on cd1ad63c with complete Research Spine and provenance evidence; do not mutate the remote until that handoff exists."
 ```
 
@@ -3030,3 +3030,24 @@ the owner names the exact dirty checkout and authorizes a retake, any attempt to
 tear down containers, or delete remote/local recovery material would risk data loss.
 Next: remain at the owner-handoff gate; after authorization, execute the eight-step resumption
 order in L-140 and append the preflight receipt before touching Docker.
+
+### L-142 | 2026-08-26T13:58:00Z | S3-review/S4-ship | gpt-5-codex | after-gate receipt and hold point
+Did: Ran the pinned native Compass Forge after gate after transporting the L-141 ledger
+checkpoint. Record `58` reports `comparison.new_issues=[]` and `new_failures=[]`, with no new
+dependency/import-cycle, missing-path, unexpected-large-file, security, or taint findings.
+The existing global complexity, route/type drift, and secret-flow findings remain inherited
+debt and are recorded as such. This checkpoint contains documentation-only additions to the
+already transported implementation and test commit; no runtime behavior was changed.
+
+Verification: local `testing` and `origin/testing` were equal before this ledger-only append;
+the full bounded matrix remains `922 passed, 5 skipped in 146.06s`, real-user/topology contracts
+remain `57 passed`, and feature-doc generation/check remains 86 features / 224 generated
+artifacts. `git diff --check` passed before commit. No SSH, Docker, model, provider, or host
+package action was performed.
+
+Result: the Build Stream document now contains a complete, ordered, resumable P9 work order and
+the latest deterministic evidence. The delivery is not complete: live three-donor ensemble,
+Petals lifecycle, Research Spine positive/negative acceptance, browser paths, and paired
+provenance remain open, and the dirty Mac Studio checkout is intentionally untouched.
+Next: commit/push this ledger-only receipt, verify local/remote equality, then stop at the
+owner-gated Docker handoff rather than mutating or cleaning the remote checkout.
