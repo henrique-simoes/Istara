@@ -9,7 +9,7 @@ related_glossary: ["rag"]
 code_references: ["frontend/src/components/chat/ChatView.tsx", "frontend/src/components/chat/ChatModelControls.tsx", "frontend/src/components/chat/chatViewParts.tsx", "frontend/src/components/common/SettingsView.tsx", "frontend/src/components/settings/PiModelManagement.tsx", "frontend/src/lib/modelCatalog.ts", "frontend/src/stores/chatStore.ts", "frontend/src/stores/sessionStore.ts", "frontend/src/lib/chatApi.ts", "frontend/src/lib/modelProviders.ts", "backend/app/api/routes/chat.py", "backend/app/api/routes/sessions.py", "backend/app/api/routes/settings.py", "backend/app/main.py", "backend/app/core/agentic/dispatcher.py", "backend/app/core/agentic/legacy.py", "backend/app/core/agentic/usage_ledger.py", "backend/app/core/pi_runtime/engine.py", "backend/app/core/pi_runtime/oauth.py"]
 api_references: ["backend/app/api/routes/chat.py", "backend/app/api/routes/sessions.py", "backend/app/core/agentic/usage_ledger.py"]
 test_references: ["frontend/src/lib/modelCatalog.test.ts", "frontend/src/lib/modelProviders.test.ts", "tests/test_chat.py", "tests/test_settings.py", "tests/test_settings_agentic_pi_endpoints.py", "tests/pi_migration/test_model_management_migration.py", "tests/pi_production/test_pi_catalog_ux.py", "tests/pi_production/test_w1_agentic_contract.py", "tests/simulation/scenarios/10-settings-models.mjs", "tests/simulation/scenarios/26-model-session-persistence.mjs"]
-last_verified: 2026-08-25
+last_verified: 2026-08-26
 compass: CF-SPEC-77 / CF-986; CF-SPEC-8
 ---
 
@@ -137,7 +137,7 @@ The selected Chat model menu is a generation control only. It never changes the 
 
 ## Agentic Core Resolution (CF-SPEC-1)
 
-Each chat turn resolves its engine in one order: operator flag `pi_replacement_enabled` → per-request header `x-istara-agent-engine` → persisted `projects.agentic_engine` → global `settings.agentic_engine_default`. The frontend echoes the core shown in the model-controls chip through that header (`chatStore.engine`, sourced from `/api/chat/model-catalog`); when the catalog is unavailable the header is omitted so the persisted choice governs. Deployments that declare their provider plane as a deterministic wire stub (`LLM_PROVIDER_CONTRACT_STUB=true`, set by the QA and connectivity-acceptance stacks) reject interactive chat before any session or message write with an SSE `provider_stub_chat_blocked` error instead of serving canned contract text.
+Each chat turn resolves its engine in one order: operator flag `pi_replacement_enabled` → per-request header `x-istara-agent-engine` → persisted `projects.agentic_engine` → global `settings.agentic_engine_default`. The model-catalog indicator calls the same resolver, so the picker cannot advertise a different engine under an operator flag or request override. The frontend echoes the core shown in the model-controls chip through that header (`chatStore.engine`, sourced from `/api/chat/model-catalog`); when the catalog is unavailable the header is omitted so the persisted choice governs. Deployments that declare their provider plane as a deterministic wire stub (`LLM_PROVIDER_CONTRACT_STUB=true`, set by the QA and connectivity-acceptance stacks) reject interactive chat before any session or message write with an SSE `provider_stub_chat_blocked` error instead of serving canned contract text.
 
 ## Agents, Skills, LLM, MCP, And Permissions
 

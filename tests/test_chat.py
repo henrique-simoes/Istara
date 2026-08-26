@@ -213,7 +213,7 @@ def test_chat_request_preserves_provider_native_effort_levels():
 
 
 @pytest.mark.asyncio
-async def test_chat_model_catalog_and_usage_are_project_scoped():
+async def test_chat_model_catalog_and_usage_are_project_scoped(monkeypatch):
     await init_db()
     if not settings.jwt_secret:
         settings.jwt_secret = "test-secret"
@@ -222,7 +222,10 @@ async def test_chat_model_catalog_and_usage_are_project_scoped():
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
         catalog = await ac.get(
             "/api/chat/model-catalog?project_id=test-project-123",
-            headers={"Authorization": f"Bearer {token}"},
+            headers={
+                "Authorization": f"Bearer {token}",
+                "x-istara-agent-engine": "pi-candidate",
+            },
         )
         usage = await ac.get(
             "/api/chat/usage/test-project-123",
@@ -230,6 +233,20 @@ async def test_chat_model_catalog_and_usage_are_project_scoped():
         )
     assert catalog.status_code == 200
     assert catalog.json()["total_models"] > 1000
+    assert catalog.json()["engine"] == "pi"
+    # The operator gate has highest precedence too; the catalog indicator must
+    # not drift from the engine that POST /chat would actually use.
+    monkeypatch.setattr(settings, "pi_replacement_enabled", True)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        operator_catalog = await ac.get(
+            "/api/chat/model-catalog?project_id=test-project-123",
+            headers={
+                "Authorization": f"Bearer {token}",
+                "x-istara-agent-engine": "legacy",
+            },
+        )
+    assert operator_catalog.status_code == 200
+    assert operator_catalog.json()["engine"] == "pi"
     assert usage.status_code == 200
     assert usage.json()["total_tokens"] == 0
 

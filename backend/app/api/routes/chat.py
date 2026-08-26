@@ -1261,11 +1261,11 @@ async def get_chat_model_catalog(
         if configured_model and configured_model != "default" and configured_model not in legacy_models:
             legacy_models.append(configured_model)
     catalog = pi_catalog_json()
-    project_engine = await db.scalar(select(Project.agentic_engine).where(Project.id == project_id))
-    from app.core.pi_replacement import PI_ENGINE_VALUES
-
-    configured_engine = str(project_engine or getattr(settings, "agentic_engine_default", "legacy")).strip().lower()
-    engine = "pi" if configured_engine in PI_ENGINE_VALUES else "legacy"
+    # Keep the picker indicator on the exact same precedence chain as POST /chat:
+    # operator flag > request header > project setting > global default.  Reading
+    # only the project/default here made the UI advertise a different engine when
+    # an operator flag or per-request override selected the other plane.
+    engine = await _resolve_chat_engine(request, project_id, db)
     return {
         "providers": catalog,
         "total_models": sum(len(provider["models"]) for provider in catalog),
