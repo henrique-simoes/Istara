@@ -8,7 +8,7 @@ phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal ac
 stage: S2-execute
 status: in-progress
 blocked_on: null
-last: { agent: gpt-5-codex, at: 2026-08-26T19:10:00Z, ledger: L-178 }
+last: { agent: gpt-5-codex, at: 2026-08-26T19:34:00Z, ledger: L-179 }
 next_action: "Obtain owner-authorized reachable provider credentials and three Compose-owned donor routes, then run the terminal Docker-only Research Spine retake; local code and testing refs are reconciled."
 ```
 
@@ -3755,3 +3755,24 @@ Next: keep the implementation goal open for the terminal Docker retake. It requi
 authorized reachable model provider and three distinct, healthy, project-scoped Compose donor routes;
 until those are supplied, report deterministic contract evidence as green but do not claim ensemble,
 Fleiss/alpha, Petals donation, reconciliation, human-approved Done, or report acceptance.
+
+### L-179 | 2026-08-26T19:34:00Z | S2-execute | gpt-5-codex | Mac Studio runtime rechecked; external gate still absent
+Did: Performed a passive SSH inspection of the authorized Mac Studio without installing or
+starting anything on the host. The default SSH shell PATH does not expose Docker, so Docker
+must be invoked through `/Applications/Docker.app/Contents/Resources/bin/docker` (the pinned
+Docker Desktop CLI is present). The only running container is the unrelated `plex` workload;
+the Istara testing Compose project has no running containers or volumes. The owner-managed
+`~/istara-testing` checkout remains dirty and 90 commits behind `origin/testing`; it was not
+reset, cleaned, or mutated. Its deploy config exposes only a model-name key in the redacted
+inventory, with no evidence of a reachable provider credential or three donor routes. The
+clean detached retake checkout remains at the previous source and must not be treated as a
+new acceptance run. This confirms the Docker-only boundary and preserves the honest state:
+local deterministic contracts are green, but live model calls, three independent coders,
+Fleiss/Krippendorff reliability, reconciliation, human-approved Done, report eligibility, and
+Petals donation remain unverified.
+Evidence: SSH command at 2026-08-26T19:33Z; Docker Desktop server `29.7.2`; `docker ps` showed
+only `plex`; testing checkout was dirty/behind; no secret values were printed or changed.
+Next: wait for owner-provided reachable provider credentials and three healthy, Compose-owned,
+project-scoped donor routes. Then refresh a clean detached checkout to the reconciled testing
+SHA and run exactly one terminal Docker-only retake, preserving hashes, logs, scorecard, and
+Compass Forge gate evidence.
