@@ -9,7 +9,7 @@ stage: S2-execute
 status: in-progress
 blocked_on: null
 last: { agent: gpt-5-codex, at: 2026-08-26T23:34:00Z, ledger: L-205 }
-next_action: "Commit and push the profile-isolated benchmark and lifecycle-cleanup changes, verify local/origin testing parity, then run the terminal Docker-only provider/Petals/combined retake when owner-authorized provider credit and three Compose-owned donor routes are available."
+next_action: "Run the terminal Docker-only provider/Petals/combined retake from pushed SHA da803e68 when owner-authorized provider credit and three Compose-owned donor routes are available; keep the live gate open until its evidence is complete."
 ```
 
 ## Plan overview / roadmap
