@@ -8,8 +8,8 @@ phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal ac
 stage: S2-execute
 status: in-progress
 blocked_on: null
-last: { agent: gpt-5-codex, at: 2026-08-26T15:10:00Z, ledger: L-153 }
-next_action: "Use the existing Docker Desktop credential helper via an explicit remote PATH, rebuild from 972352de, and capture image IDs/digests or the next fail-closed blocker."
+last: { agent: gpt-5-codex, at: 2026-08-26T15:18:00Z, ledger: L-154 }
+next_action: "Refresh the clean worktree to bf5504d4, start the rebuilt Compose stack through Docker, and capture health/listener/log evidence before any benchmark request."
 ```
 
 ## Plan overview / roadmap
@@ -3290,3 +3290,31 @@ health, model-management behavior, ensemble operation, Fleiss' kappa, or Researc
 acceptance until the retry produces exact image IDs/digests and subsequent live gates.
 Next: append the external audit finding, then retry with the explicit existing helper PATH;
 if it fails again, preserve the exact error and stop rather than installing anything on-host.
+
+### L-154 | 2026-08-26T15:18:00Z | S2-execute/S3-review | gpt-5-codex | Docker image build passed with exact arm64 artifacts
+Did: Retried the Compose build from the detached clean Mac Studio worktree with the existing
+Docker Desktop credential-helper directory added to the SSH command PATH. The five-service
+configuration rendered successfully and the three buildable services completed with Docker:
+`istara-testing-backend`, `istara-testing-frontend`, and `istara-testing-provider-stub`.
+Postgres and Caddy remain the declared upstream images; no service was started during this
+gate, and no model or application request was sent.
+
+Evidence: build source receipt
+`/Users/user/istara-testing-evidence-20260826T145000Z/retry-build-source.txt` reports clean
+`HEAD=bf5504d4e922ef370f20f7fcd05ea93cebc734fb`; build log is
+`docker-compose-build-retry.log`. Image manifests/digests are:
+backend `sha256:974f62509b0b8161c67514c527247d8133f200ae6e2bb361a019800855756ec9`, frontend
+`sha256:424964efd00cf9f6beac3819a8c5722dff3091854ff8064c7ed527d191d175c7`, provider-stub
+`sha256:83088073c05e7ca7ea244320e547ec4e2b27061e65f41bfc7dd8a1a7249c969b`, Postgres
+`sha256:cf78e76683b9ca8c5733cbbdce6c9262b45b6767934dd0a95e671f9a0fc20685`, and Caddy
+`sha256:5f5c8640aae01df9654968d946d8f1a56c497f1dd5c5cda4cf95ab7c14d58648`.
+
+Result: the artifact-integrity gate is green for this Docker Desktop host and exact source
+lineage. The build installs dependencies only inside image layers; it is not evidence that
+runtime routes, provider/model registration, Petals donation, independent donor diversity,
+ensemble aggregation, Fleiss' kappa, two-call semantics, or human-approved Research Spine
+promotion work. Base image tags remain mutable inputs and must be retained with these resolved
+digests for any comparable retake.
+Next: append the startup checkpoint, refresh the detached worktree to the latest pushed ledger
+SHA, run `docker compose up -d --wait`, and record health, listeners, effective env provenance,
+and logs before invoking `scripts/runner/docker-run.sh`.
