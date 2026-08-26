@@ -8,7 +8,7 @@ phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal ac
 stage: S2-execute
 status: in-progress
 blocked_on: null
-last: { agent: gpt-5-codex, at: 2026-08-26T12:08:00Z, ledger: L-117 }
+last: { agent: gpt-5-codex, at: 2026-08-26T12:24:00Z, ledger: L-119 }
 next_action: "Run the remaining Docker-only acceptance only after the remote owner handoff makes ~/istara-testing clean; preserve the blocked boundary and reconcile refs/worktrees without destructive cleanup."
 ```
 
@@ -2532,3 +2532,19 @@ Result: lifecycle evidence and code state remain internally consistent; gate tru
 Next: continue only with a bounded remaining acceptance slice (owner-gated remote handoff, fresh
 exact-SHA Docker runner, and blind review); do not mark CF-SPEC-2 or this goal complete while any
 required task or Research Spine acceptance artifact is absent.
+
+### L-119 | 2026-08-26T12:24:00Z | S2-execute/S3-review | gpt-5-codex | reviewer | Frontend unit, lint, TypeScript/build, and local benchmark syntax gates are green
+Did: Completed the remaining non-server local UI checks. `frontend/npm run test:unit` passes all
+3 test files and 15 tests; `frontend/npm run lint` exits 0 with no diagnostics; and
+`frontend/npm run build` compiles with Next.js 16.2.4, completes TypeScript, prerenders the four
+static routes (`/`, `/_not-found`, `/login`), and exits successfully. The earlier correct
+`tests/real_user_benchmark/npm run check` remains green at 55/55 Node tests and all syntax checks.
+These checks validate the committed UI/catalog contracts and buildability without starting a
+backend/frontend server or loading a model. They do not replace browser acceptance against the
+running Docker stack, and they do not prove the three selectable engine journeys or reconciliation
+UI on a live Mac Studio service.
+Result: P9-11 has strong static/unit evidence but remains open for browser-visible Docker acceptance;
+P9-12's local frontend portion is green. The generated `.next` output is ignored and produced no
+working-tree changes.
+Next: commit/push this ledger checkpoint, then preserve the exact remote blocker and prepare the
+owner-handoff request for a clean remote checkout before any Docker runner mutation.
