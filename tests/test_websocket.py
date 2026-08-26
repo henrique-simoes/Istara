@@ -1,5 +1,6 @@
 """WebSocket flow tests — verify auth, connection, and event structure."""
 
+import asyncio
 import json
 import uuid
 
@@ -75,6 +76,43 @@ def test_websocket_manager_imports():
     """WebSocket manager module imports correctly."""
     from app.api.websocket import manager
     assert manager is not None
+
+
+@pytest.mark.asyncio
+async def test_notification_drain_discards_tasks_from_foreign_event_loops():
+    """A global manager must not gather tasks owned by a prior pytest event loop."""
+    from app.api.websocket import ConnectionManager
+
+    foreign_loop = asyncio.new_event_loop()
+    closed_loop = asyncio.new_event_loop()
+    try:
+        manager = ConnectionManager()
+        foreign_future = foreign_loop.create_future()
+        manager._notification_tasks.add(foreign_future)  # type: ignore[arg-type]
+
+        class ClosedLoopTask:
+            def done(self) -> bool:
+                return False
+
+            def get_loop(self):
+                return closed_loop
+
+            def cancel(self) -> None:
+                raise RuntimeError("event loop is closed")
+
+        closed_task = ClosedLoopTask()
+        manager._notification_tasks.add(closed_task)  # type: ignore[arg-type]
+        closed_loop.close()
+
+        await manager.drain_notification_tasks()
+
+        assert foreign_future not in manager._notification_tasks
+        assert foreign_future.cancelled()
+        assert closed_task not in manager._notification_tasks
+    finally:
+        foreign_loop.close()
+        if not closed_loop.is_closed():
+            closed_loop.close()
 
 
 # ---------------------------------------------------------------------------

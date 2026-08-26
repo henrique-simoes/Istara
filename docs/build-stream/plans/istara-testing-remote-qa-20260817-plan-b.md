@@ -5,7 +5,7 @@
 - **Spec:** `CF-SPEC-53`
 - **Pipeline:** `ISTARA-TESTING-REMOTE-QA-20260817`
 - **Lifecycle:** `docs/build-stream/2026-08-17-istara-testing-docker-readiness.md`
-- **Branch/worktree:** `testing` in `/Users/user/Documents/Istara-main`
+- **Branch/worktree:** `testing` in `<repo-root>`
 - **Scope:** Docker/Compose topology, provider-less local service dependencies, health/readiness, networking/ports/CORS/WebSocket, persistence/ephemerality, security controls, and safe multivac rollback/access.
 
 > **Working constraint.** The existing unrelated modification to `docs/features/site/manifest.json` must remain isolated. This plan does not touch it.

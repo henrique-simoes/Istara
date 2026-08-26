@@ -30,4 +30,4 @@ def test_upgrade_head_succeeds_on_fresh_sqlite(tmp_path: Path) -> None:
     assert result.returncode == 0, result.stdout + result.stderr
     with sqlite3.connect(database_path) as connection:
         revision = connection.execute("SELECT version_num FROM alembic_version").fetchone()
-    assert revision == ("031_embedding_profiles",)
+    assert revision == ("032_pi_tool_executions",)

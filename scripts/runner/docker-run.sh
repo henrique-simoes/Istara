@@ -198,52 +198,55 @@ for engine in "${ENGINES[@]}"; do
   [ -n "$FRONTEND_CONTAINER" ] || { echo "frontend container not found for Compose project $PROJECT" >&2; exit 1; }
   BACKEND_IMAGE_ID="$(docker inspect --format '{{.Image}}' "$BACKEND_CONTAINER")"
   FRONTEND_IMAGE_ID="$(docker inspect --format '{{.Image}}' "$FRONTEND_CONTAINER")"
-  if docker run --rm \
-    --network "$BACKEND_NET" \
-    --network "$FRONTEND_NET" \
-    --mount type=bind,src="$REPO_ROOT",dst=/source,readonly \
-    --mount type=volume,dst=/work \
-    --mount type=bind,src="$PROBE_RESULTS",dst=/work/tests/real_user_benchmark/.results \
-    --mount type=bind,src="$SIM_RESULTS",dst=/work/tests/simulation/.results \
-    --mount type=bind,src="$MARATHON_RESULTS",dst=/work/data/test-marathon \
-    "${NESTED_DOCKER_MOUNTS[@]}" \
-    -v istara-pw-browsers:/ms-playwright \
-    -w /work \
-    -e PLAYWRIGHT_BROWSERS_PATH=/ms-playwright \
-    -e ISTARA_API_URL="$API_URL" \
-    -e ISTARA_FRONTEND_URL="$FRONTEND_URL" \
-    -e ISTARA_MARATHON_ENGINE="$engine" \
-    -e ISTARA_RUNNER_SKIP_MARATHON="${ISTARA_RUNNER_SKIP_MARATHON:-0}" \
-    -e ISTARA_BENCHMARK_ENGINE="$engine" \
-    -e ISTARA_BENCHMARK_ACCEPTANCE_PROFILE="$ISTARA_BENCHMARK_ACCEPTANCE_PROFILE" \
-    -e ISTARA_BENCHMARK_REQUIRE_COMPUTE_DONATION="$ISTARA_BENCHMARK_REQUIRE_COMPUTE_DONATION" \
-    -e ISTARA_BENCHMARK_START_CLIENT_SANDBOXES="$ISTARA_BENCHMARK_START_CLIENT_SANDBOXES" \
-    -e ISTARA_BENCHMARK_REQUIRE_LIVE_CHAT=1 \
-    -e ISTARA_BENCHMARK_START_SANDBOX=0 \
-    -e ISTARA_BENCHMARK_SKIP_SANDBOX=1 \
-    -e ISTARA_BENCHMARK_TEAM_MODE=true \
-    -e ISTARA_BENCHMARK_CHAT_TIMEOUT_MS="$ISTARA_BENCHMARK_CHAT_TIMEOUT_MS" \
-    -e ISTARA_BENCHMARK_CODING_LIMIT="$ISTARA_BENCHMARK_CODING_LIMIT" \
-    -e ISTARA_BENCHMARK_MAX_UPLOADS="$ISTARA_BENCHMARK_MAX_UPLOADS" \
-    -e ISTARA_BENCHMARK_RUNNER_IMAGE="$RUNNER_IMAGE" \
-    -e ISTARA_BENCHMARK_RUNNER_IMAGE_ID="$RUNNER_IMAGE_ID" \
-    -e ISTARA_BENCHMARK_BACKEND_IMAGE_ID="$BACKEND_IMAGE_ID" \
-    -e ISTARA_BENCHMARK_FRONTEND_IMAGE_ID="$FRONTEND_IMAGE_ID" \
-    -e ISTARA_BENCHMARK_SOURCE_SHA="$SOURCE_COMMIT" \
-    -e ISTARA_BENCHMARK_SOURCE_STATE=working-tree-snapshot \
-    -e ISTARA_BENCHMARK_SOURCE_SNAPSHOT_SHA256="$ISTARA_BENCHMARK_SOURCE_SNAPSHOT_SHA256" \
-    -e ISTARA_BENCHMARK_STATE_ISOLATION=fresh-postgres-container-per-engine \
-    -e ISTARA_BENCHMARK_STACK_PROJECT="$PROJECT" \
-    -e ISTARA_BENCHMARK_RUN_GROUP="$RUN_GROUP" \
-    -e ISTARA_BENCHMARK_RUN_ORDER="$RUN_ORDER" \
-    -e ISTARA_BENCHMARK_ARM_INDEX="$arm_index" \
-    -e ISTARA_BENCHMARK_REQUIRE_REPRODUCIBLE_RUN=1 \
-    -e ISTARA_ADMIN_USERNAME="${ISTARA_ADMIN_USER:-admin}" \
-    --env-file "$RUNNER_ENV_FILE" \
-    -e HOME=/tmp \
-    --entrypoint bash \
-    "$RUNNER_IMAGE" \
-    /source/scripts/runner/inside.sh; then
+  runner_docker_args=(
+    --rm
+    --network "$BACKEND_NET"
+    --network "$FRONTEND_NET"
+    --mount "type=bind,src=$REPO_ROOT,dst=/source,readonly"
+    --mount type=volume,dst=/work
+    --mount "type=bind,src=$PROBE_RESULTS,dst=/work/tests/real_user_benchmark/.results"
+    --mount "type=bind,src=$SIM_RESULTS,dst=/work/tests/simulation/.results"
+    --mount "type=bind,src=$MARATHON_RESULTS,dst=/work/data/test-marathon"
+    -v istara-pw-browsers:/ms-playwright
+    -w /work
+    -e PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
+    -e "ISTARA_API_URL=$API_URL"
+    -e "ISTARA_FRONTEND_URL=$FRONTEND_URL"
+    -e "ISTARA_MARATHON_ENGINE=$engine"
+    -e "ISTARA_RUNNER_SKIP_MARATHON=${ISTARA_RUNNER_SKIP_MARATHON:-0}"
+    -e "ISTARA_BENCHMARK_ENGINE=$engine"
+    -e "ISTARA_BENCHMARK_ACCEPTANCE_PROFILE=$ISTARA_BENCHMARK_ACCEPTANCE_PROFILE"
+    -e "ISTARA_BENCHMARK_REQUIRE_COMPUTE_DONATION=$ISTARA_BENCHMARK_REQUIRE_COMPUTE_DONATION"
+    -e "ISTARA_BENCHMARK_START_CLIENT_SANDBOXES=$ISTARA_BENCHMARK_START_CLIENT_SANDBOXES"
+    -e ISTARA_BENCHMARK_REQUIRE_LIVE_CHAT=1
+    -e ISTARA_BENCHMARK_START_SANDBOX=0
+    -e ISTARA_BENCHMARK_SKIP_SANDBOX=1
+    -e ISTARA_BENCHMARK_TEAM_MODE=true
+    -e "ISTARA_BENCHMARK_CHAT_TIMEOUT_MS=$ISTARA_BENCHMARK_CHAT_TIMEOUT_MS"
+    -e "ISTARA_BENCHMARK_CODING_LIMIT=$ISTARA_BENCHMARK_CODING_LIMIT"
+    -e "ISTARA_BENCHMARK_MAX_UPLOADS=$ISTARA_BENCHMARK_MAX_UPLOADS"
+    -e "ISTARA_BENCHMARK_RUNNER_IMAGE=$RUNNER_IMAGE"
+    -e "ISTARA_BENCHMARK_RUNNER_IMAGE_ID=$RUNNER_IMAGE_ID"
+    -e "ISTARA_BENCHMARK_BACKEND_IMAGE_ID=$BACKEND_IMAGE_ID"
+    -e "ISTARA_BENCHMARK_FRONTEND_IMAGE_ID=$FRONTEND_IMAGE_ID"
+    -e "ISTARA_BENCHMARK_SOURCE_SHA=$SOURCE_COMMIT"
+    -e ISTARA_BENCHMARK_SOURCE_STATE=working-tree-snapshot
+    -e "ISTARA_BENCHMARK_SOURCE_SNAPSHOT_SHA256=$ISTARA_BENCHMARK_SOURCE_SNAPSHOT_SHA256"
+    -e ISTARA_BENCHMARK_STATE_ISOLATION=fresh-postgres-container-per-engine
+    -e "ISTARA_BENCHMARK_STACK_PROJECT=$PROJECT"
+    -e "ISTARA_BENCHMARK_RUN_GROUP=$RUN_GROUP"
+    -e "ISTARA_BENCHMARK_RUN_ORDER=$RUN_ORDER"
+    -e "ISTARA_BENCHMARK_ARM_INDEX=$arm_index"
+    -e ISTARA_BENCHMARK_REQUIRE_REPRODUCIBLE_RUN=1
+    -e "ISTARA_ADMIN_USERNAME=${ISTARA_ADMIN_USER:-admin}"
+    --env-file "$RUNNER_ENV_FILE"
+    -e HOME=/tmp
+  )
+  if [[ ${#NESTED_DOCKER_MOUNTS[@]} -gt 0 ]]; then
+    runner_docker_args+=( "${NESTED_DOCKER_MOUNTS[@]}" )
+  fi
+  runner_docker_args+=( --entrypoint bash "$RUNNER_IMAGE" /source/scripts/runner/inside.sh )
+  if docker run "${runner_docker_args[@]}"; then
     echo "[runner] engine=$engine completed without blockers"
   else
     arm_status=$?

@@ -11,7 +11,7 @@ def test_remote_runner_uses_one_disposable_container_per_engine():
     inner = (ROOT / "scripts/runner/inside.sh").read_text(encoding="utf-8")
 
     assert 'for engine in "${ENGINES[@]}"' in outer
-    assert '-e ISTARA_BENCHMARK_ENGINE="$engine"' in outer
+    assert '-e "ISTARA_BENCHMARK_ENGINE=$engine"' in outer
     assert '"probe:${ISTARA_BENCHMARK_ENGINE}"' in inner
     assert "probe:legacy" not in inner
     assert "probe:pi" not in inner
@@ -21,7 +21,7 @@ def test_remote_runner_collects_both_arms_before_returning_failure():
     outer = (ROOT / "scripts/runner/docker-run.sh").read_text(encoding="utf-8")
 
     assert "arm_failures=0" in outer
-    assert "if docker run --rm" in outer
+    assert 'if docker run "${runner_docker_args[@]}"' in outer
     assert "arm_failures=$((arm_failures + 1))" in outer
     assert 'if [ "$arm_failures" -ne 0 ]; then' in outer
 
@@ -74,7 +74,7 @@ def test_remote_runner_never_installs_or_authenticates_on_the_host():
     assert "python3 " not in outer
     assert "\nnpm " not in outer
     assert "playwright install" not in outer
-    assert 'src="$REPO_ROOT",dst=/source,readonly' in outer
+    assert '"type=bind,src=$REPO_ROOT,dst=/source,readonly"' in outer
     assert "type=volume,dst=/work" in outer
 
 
@@ -96,7 +96,7 @@ def test_remote_runner_bounds_live_chat_waits_without_disabling_long_horizon():
         'ISTARA_BENCHMARK_CHAT_TIMEOUT_MS="${ISTARA_BENCHMARK_CHAT_TIMEOUT_MS:-300000}"'
         in inner
     )
-    assert '-e ISTARA_BENCHMARK_CHAT_TIMEOUT_MS="$ISTARA_BENCHMARK_CHAT_TIMEOUT_MS"' in outer
+    assert '-e "ISTARA_BENCHMARK_CHAT_TIMEOUT_MS=$ISTARA_BENCHMARK_CHAT_TIMEOUT_MS"' in outer
     assert "ISTARA_BENCHMARK_CHAT_TIMEOUT_MS=none" not in inner
 
 
@@ -106,8 +106,8 @@ def test_remote_runner_bounds_live_research_scope_without_disabling_three_model_
 
     assert 'ISTARA_BENCHMARK_CODING_LIMIT="${ISTARA_BENCHMARK_CODING_LIMIT:-3}"' in outer
     assert 'ISTARA_BENCHMARK_MAX_UPLOADS="${ISTARA_BENCHMARK_MAX_UPLOADS:-6}"' in outer
-    assert '-e ISTARA_BENCHMARK_CODING_LIMIT="$ISTARA_BENCHMARK_CODING_LIMIT"' in outer
-    assert '-e ISTARA_BENCHMARK_MAX_UPLOADS="$ISTARA_BENCHMARK_MAX_UPLOADS"' in outer
+    assert '-e "ISTARA_BENCHMARK_CODING_LIMIT=$ISTARA_BENCHMARK_CODING_LIMIT"' in outer
+    assert '-e "ISTARA_BENCHMARK_MAX_UPLOADS=$ISTARA_BENCHMARK_MAX_UPLOADS"' in outer
     assert '--coding-limit "$ISTARA_BENCHMARK_CODING_LIMIT"' in inner
     assert '--max-uploads "$ISTARA_BENCHMARK_MAX_UPLOADS"' in inner
 
@@ -119,8 +119,8 @@ def test_remote_runner_requires_compute_donation_by_default_and_forwards_topolog
     assert 'provider) ISTARA_BENCHMARK_REQUIRE_COMPUTE_DONATION=0' in outer
     assert 'petals|combined) ISTARA_BENCHMARK_REQUIRE_COMPUTE_DONATION=1' in outer
     assert 'if [[ -z "${ISTARA_BENCHMARK_REQUIRE_COMPUTE_DONATION:-}" ]]' in outer
-    assert '-e ISTARA_BENCHMARK_ACCEPTANCE_PROFILE="$ISTARA_BENCHMARK_ACCEPTANCE_PROFILE"' in outer
-    assert '-e ISTARA_BENCHMARK_REQUIRE_COMPUTE_DONATION="$ISTARA_BENCHMARK_REQUIRE_COMPUTE_DONATION"' in outer
+    assert '-e "ISTARA_BENCHMARK_ACCEPTANCE_PROFILE=$ISTARA_BENCHMARK_ACCEPTANCE_PROFILE"' in outer
+    assert '-e "ISTARA_BENCHMARK_REQUIRE_COMPUTE_DONATION=$ISTARA_BENCHMARK_REQUIRE_COMPUTE_DONATION"' in outer
     assert 'ISTARA_BENCHMARK_START_CLIENT_SANDBOXES="${ISTARA_BENCHMARK_START_CLIENT_SANDBOXES:-$ISTARA_BENCHMARK_REQUIRE_COMPUTE_DONATION}"' in outer
     assert "ISTARA_BENCHMARK_DONOR_" in outer
     assert "ISTARA_BENCHMARK_DONOR_PROFILES_FILE" in outer
@@ -137,6 +137,15 @@ def test_remote_runner_proves_nested_docker_contract_before_required_donor_run()
     assert "RUNNER_IMAGE_REQUEST" in outer
     assert "apt-get install" in dockerfile
     assert "docker.io" in dockerfile
+
+
+def test_remote_runner_handles_optional_nested_mounts_under_bash_nounset():
+    outer = (ROOT / "scripts/runner/docker-run.sh").read_text(encoding="utf-8")
+
+    assert "runner_docker_args=(" in outer
+    assert 'runner_docker_args+=( "${NESTED_DOCKER_MOUNTS[@]}" )' in outer
+    assert 'docker run "${runner_docker_args[@]}"' in outer
+    assert '    "${NESTED_DOCKER_MOUNTS[@]}" \\\n' not in outer
 
 
 def test_manual_marathon_wrapper_fails_closed_outside_docker():

@@ -106,7 +106,29 @@ class ConnectionManager:
 
     async def drain_notification_tasks(self) -> None:
         """Wait for notification writes before a loop or app shuts down."""
-        pending = tuple(self._notification_tasks)
+        current_loop = asyncio.get_running_loop()
+        pending: list[asyncio.Task[None]] = []
+        for task in tuple(self._notification_tasks):
+            if task.done():
+                self._notification_tasks.discard(task)
+                continue
+            if task.get_loop() is current_loop:
+                pending.append(task)
+                continue
+
+            # The manager is process-global while async tests and some reload
+            # paths use short-lived event loops. A task owned by another loop
+            # cannot be gathered here; cancel and forget it so it cannot leak
+            # into the next loop or make shutdown/tests fail cross-loop.
+            try:
+                task.cancel()
+            except RuntimeError:
+                # A loop that has already been closed cannot accept the
+                # cancellation callback. It is no longer runnable, so only
+                # remove the stale task from this manager's active set.
+                pass
+            self._notification_tasks.discard(task)
+
         if pending:
             await asyncio.gather(*pending, return_exceptions=True)
 

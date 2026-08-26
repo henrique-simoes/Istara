@@ -8,7 +8,7 @@ phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal ac
 stage: S2-execute
 status: in-progress
 blocked_on: null
-last: { agent: gpt-5-codex, at: 2026-08-26T20:56:41Z, ledger: L-191 }
+last: { agent: gpt-5-codex, at: 2026-08-26T21:57:36Z, ledger: L-193 }
 next_action: "Obtain owner-authorized provider credentials and three Compose-owned donor routes, run the terminal Docker-only acceptance retake for provider, Petals, combined, legacy, and pi profiles, then attach complete runtime evidence or leave the external gate open."
 ```
 
@@ -806,7 +806,7 @@ means `git worktree remove` followed by safe `git branch -d`, never raw recursiv
 
 | Worktree | State | Phase 9 disposition |
 |---|---|---|
-| `/Users/user/Documents/Istara-main` | dirty `testing`; base equals `origin/testing` | Integrate reviewed Phase 8 and Phase 9 changes, commit, push, and keep. |
+| `<repo-root>` | dirty `testing`; base equals `origin/testing` | Integrate reviewed Phase 8 and Phase 9 changes, commit, push, and keep. |
 | `/private/tmp/istara-baseline-RyA031` | clean detached baseline at current old testing head | Remove after the integration commit is proven; no unique data. |
 | `/private/tmp/istara-main-baseline` | missing/prunable | Prune registration after verifying the path remains absent. |
 | `/private/tmp/istara-testing-merge-20260818` | missing/prunable | Prune registration after verifying the path remains absent. |
@@ -4138,3 +4138,73 @@ provider credentials, three distinct Compose-owned donor routes, and the Mac Stu
 runner/socket. Run provider, Petals, combined, legacy, and pi profiles only there; preserve
 raw source-span, three-rater, Fleiss' kappa/Krippendorff-alpha, reconciliation, human-Done,
 route, usage, long-horizon, and cleanup evidence before any acceptance claim.
+
+### L-192 | 2026-08-26T21:24:00Z | S3-remediate | gpt-5-codex | close runner portability and deterministic-suite blockers
+
+Did: Reproduced the Mac Studio provider-profile abort caused by the empty optional
+`NESTED_DOCKER_MOUNTS` expansion under macOS Bash `set -u`, then added a red/green wrapper
+regression contract and refactored the outer script to build a fixed `runner_docker_args` array,
+appending nested socket mounts only when present. The change preserves Docker-only execution and
+keeps the runner compatible with both provider-only (no nested socket) and donor-enabled paths.
+The full local matrix exposed two stale/infrastructure failures unrelated to model quality: the
+fresh SQLite test expected migration `031_embedding_profiles` while the current chain correctly
+ends at `032_pi_tool_executions`, and public-repo quality rejected a historical absolute checkout
+path in a tracked plan. Both assertions/docs now use the current migration head and a neutral
+`<repo-root>` marker. It also exposed a global websocket notification task being gathered from a
+prior pytest event loop; `drain_notification_tasks` now cancels/discards foreign-loop tasks and
+only gathers tasks owned by the active loop, with a regression test.
+
+Evidence: the new wrapper regression was red before the script change and is green afterward;
+`pytest -q tests/test_remote_benchmark_runner_contract.py` is `16 passed`, shell syntax and
+`git diff --check` pass, and focused checks for the websocket drain, fresh migration, and public
+quality audit are green. The first complete matrix before these remediations was `1990 passed,
+6 skipped, 3 failed`; the three failures were the stale head, tracked-path audit, and
+cross-event-loop drain error described above. No local service, provider, donor, or model was
+started. The external audit file records F-R9-41 and remains intentionally outside Git.
+
+Next: rerun the complete deterministic matrix after these remediations, run the JavaScript and
+feature-doc checks, execute the pinned Compass Forge after-gate, commit/push only the intended
+repository files, then refresh the clean Mac Studio checkout and retake the provider profile
+through Docker before attempting any donor-dependent profile. Keep the live acceptance gate open
+unless all required source, three-rater, reliability, reconciliation, human-Done, route, usage,
+long-horizon, and cleanup artifacts are actually present.
+
+### L-194 | 2026-08-26T21:59:30Z | S3-gate | gpt-5-codex | Compass Forge after-gate recorded
+
+Did: Ran the pinned native Rust Compass Forge `gate after` on the post-verification tree. Gate
+record `81` reports no new forbidden dependencies, import cycles, missing paths, unexpected large
+files, security issues, or taint issues. The repository-wide status remains `fail` because of
+existing complexity, route-drift, type-drift, and secret-flow debt. The comparison surfaced the
+existing `_resolve_project_id` complexity warning in the touched websocket file; the function was
+not changed by this patch (only notification-task draining was), so this is a pre-existing debt
+made visible by the file-level comparison, not a regression from the fix. It is retained as an
+explicit follow-up rather than silently claiming a clean gate.
+
+Next: commit/push the seven intended files only, verify exact local/remote SHA parity, then
+perform the provider-only Mac Studio Docker retake. Preserve the live Research Spine gate until
+the required three-model and Petals evidence is available.
+
+### L-193 | 2026-08-26T21:57:36Z | S3-verify | gpt-5-codex | deterministic retake and documentation gates green
+
+Did: Completed the post-remediation deterministic verification. The full Python matrix is
+`1994 passed, 6 skipped, 1 warning in 543.89s (0:09:03)`. The warning is an SQLAlchemy
+`SAWarning` during `tests/test_tasks.py::test_agent_execute_task_defers_when_project_paused`
+about garbage collection of a non-checked-in connection; it does not fail the suite, but it is
+recorded as test-lifecycle debt rather than hidden. The real-user benchmark JavaScript suite is
+`65/65` with zero failures, and `npm run plan` confirms no live services were attempted. The
+feature documentation contract passes: `seeded 0`, `generated 224`, `feature docs check passed
+for 86 feature(s)`. `git diff --check` also passes.
+
+This green deterministic evidence proves only local contracts, fixtures, routing assertions, and
+faux/stub characterization. It does not prove that three independent live models analyze the same
+raw evidence units, that Fleiss' kappa/Krippendorff-alpha and grounding are calculated from those
+raters, that PI Model Management and the legacy arm share the same request-scoped authority, or
+that Petals donation routes interoperate on the Mac Studio. Those remain external Docker-only
+acceptance gates. F-R9-42 records the residual connection-cleanup warning.
+
+Next: run the pinned native Compass Forge after-gate on this exact tree, commit and push the
+intended testing files, verify local/remote SHA parity, then retake the provider profile from the
+clean Mac Studio checkout through Docker. Do not claim the three-model Research Spine gate until
+the live run contains immutable source/image/stack evidence, three distinct model identities,
+raw-span coding, numeric reliability/grounding, reconciliation, human-Done, route/usage,
+long-horizon, and cleanup artifacts.
