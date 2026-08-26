@@ -8,8 +8,8 @@ phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal ac
 stage: S2-execute
 status: in-progress
 blocked_on: null
-last: { agent: gpt-5-codex, at: 2026-08-26T18:55:00Z, ledger: L-177 }
-next_action: "Run Compass Forge gate-after on the isolated endpoint policy, commit/push the verified changes, and keep the live provider/three-donor Research Spine acceptance blocker explicitly open."
+last: { agent: gpt-5-codex, at: 2026-08-26T19:10:00Z, ledger: L-178 }
+next_action: "Obtain owner-authorized reachable provider credentials and three Compose-owned donor routes, then run the terminal Docker-only Research Spine retake; local code and testing refs are reconciled."
 ```
 
 ## Plan overview / roadmap
@@ -3738,3 +3738,20 @@ will be rerun after this module reference is finalized. No live provider request
 performed; Docker remains the only permitted Mac Studio execution boundary.
 Next: regenerate/check feature docs, run the final after-gate and diff checks, then commit/push the
 intended testing changes and verify exact local/remote refs and clean worktrees.
+
+### L-178 | 2026-08-26T19:10:00Z | S4-ship | gpt-5-codex | Pi authority fix shipped and refs reconciled
+Did: Re-ran feature-doc generation/check (`seeded 0`, `generated 224`, `86` checks), benchmark
+library tests (`58/58`), focused Python route/ensemble tests (`23/23`), and the broader deterministic
+Pi/Research Spine/W7 matrix (`81 passed`). Compass Forge after-gate record 70 reports no new
+comparison issues, forbidden dependencies, import cycles, missing paths, or unexpected large files;
+the overall fail remains inherited repository debt. Committed the shared Pi endpoint write policy,
+catalog/credential parity tests, case-folded donor identity guard, living docs, generated manifests,
+and ledger as `cf8f7e2b5f3f1bf52c706e4f62aaef380e8ef8e4`, pushed to `origin/testing`, and verified
+local `testing` and `origin/testing` resolve to that exact SHA with an empty diff. Only the
+intentional recovery worktree remains; the stale detached CI worktree was previously removed safely.
+The external audit file contains F-R9-31 and the still-open live provider/three-donor blocker.
+No host Mac Studio installation or non-Docker execution was performed.
+Next: keep the implementation goal open for the terminal Docker retake. It requires an owner-
+authorized reachable model provider and three distinct, healthy, project-scoped Compose donor routes;
+until those are supplied, report deterministic contract evidence as green but do not claim ensemble,
+Fleiss/alpha, Petals donation, reconciliation, human-approved Done, or report acceptance.
