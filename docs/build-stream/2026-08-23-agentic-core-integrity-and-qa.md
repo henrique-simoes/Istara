@@ -8,8 +8,8 @@ phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal ac
 stage: S2-execute
 status: in-progress
 blocked_on: null
-last: { agent: gpt-5-codex, at: 2026-08-26T23:34:00Z, ledger: L-205 }
-next_action: "Run the terminal Docker-only provider/Petals/combined retake from pushed SHA da803e68 when owner-authorized provider credit and three Compose-owned donor routes are available; keep the live gate open until its evidence is complete."
+last: { agent: gpt-5-codex, at: 2026-08-26T23:35:42Z, ledger: L-206 }
+next_action: "Run the terminal Docker-only provider/Petals/combined retake from pushed SHA b15140a76fb6c9ed8c0d83039677d8625997e51a when owner-authorized provider credit and three Compose-owned donor routes are available; keep the live gate open until its evidence is complete."
 ```
 
 ## Plan overview / roadmap
@@ -4468,3 +4468,18 @@ metadata and require three distinct served model identities, common raw spans, n
 Fleiss/Krippendorff reliability, grounding, reconciliation, human-approved Done/report
 eligibility, two-call/long-horizon evidence, Petals slash-string consent/health/usage/revoke,
 and cleanup before making any Research Spine or ensemble acceptance claim.
+
+### L-206 | 2026-08-26T23:35:42Z | S4-ship | gpt-5-codex | exact pushed SHA corrected for live retake
+
+Did: Corrected the durable `next_action` pointer to the actual clean `testing`/`origin/testing`
+tip `b15140a76fb6c9ed8c0d83039677d8625997e51a`; the prior `da803e68` pointer was stale and
+could have caused a future Mac Studio run to execute an older snapshot. This is a documentation
+only correction; the external provider-credit/three-donor acceptance gate remains open, and no
+live model or host installation was started.
+
+Evidence: `git status --short --branch`, exact local/remote SHA parity, and the deterministic
+verification records in L-204/L-205. Continue to preserve Docker-only execution and do not treat
+the provider HTTP 402 as ensemble or Research Spine evidence.
+
+Next: commit and push this ledger correction, verify parity again, then wait for authorized
+provider credit and three Compose-owned donor routes before the terminal live retake.
