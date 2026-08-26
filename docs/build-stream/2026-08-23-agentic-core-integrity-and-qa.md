@@ -9,7 +9,7 @@ stage: S2-execute
 status: in-progress
 blocked_on: null
 last: { agent: gpt-5-codex, at: 2026-08-26T17:10:00Z, ledger: L-163 }
-next_action: "Refresh the detached worktree to e88a532b, run one final provenance/secret-safe Docker comparison, and verify run metadata plus process-list hygiene before teardown."
+next_action: "Refresh the detached worktree to 77940c4c, run one final provenance/secret-safe Docker comparison, and verify run metadata plus process-list hygiene before teardown."
 ```
 
 ## Plan overview / roadmap
@@ -3547,3 +3547,18 @@ retake is scoped to provenance/secret hygiene and two-arm behavior; provider 402
 zero raters, null reliability metrics, or absent approval remain explicit blockers.
 Next: execute the one final comparison, checkpoint any long-running progress, then inspect
 `run-metadata.json` and append its exact disposition before authorized Docker teardown.
+
+### L-165 | 2026-08-26T17:20:00Z | S2-execute | gpt-5-codex | final-retake wrapper preflight corrected before Docker execution
+Did: The first remote invocation against the clean `77940c4c` worktree stopped before any Docker
+pull, stack reset, model load, or benchmark request because the SSH wrapper's nested `awk`
+quoting wrote an empty source-snapshot value. The runner's fail-closed validation correctly
+rejected that missing `ISTARA_BENCHMARK_SOURCE_SNAPSHOT_SHA256`; `RUN_STARTED=1` was only a
+wrapper marker and no arm was entered. Evidence is retained in the final evidence directory,
+with no secret or command line emitted.
+
+Correction: compute the archive digest with a quote-safe `shasum | cut` pipeline, require a
+non-empty value before invoking the runner, and capture the runner's non-zero blocker exit
+without aborting the wrapper before writing `RUN_RC`. This remains one final comparison attempt;
+the failed preflight is not counted as a live model/ensemble run.
+Next: refresh only if this receipt changes the source, then execute the corrected one-run
+legacy+Pi comparison and continue the provenance/secret/process-list checks.
