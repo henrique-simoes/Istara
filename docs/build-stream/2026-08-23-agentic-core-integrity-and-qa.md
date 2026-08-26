@@ -825,9 +825,9 @@ means `git worktree remove` followed by safe `git branch -d`, never raw recursiv
 | P9-01 | Reconcile all Git/worktree state | none | Classification manifest, no unaccounted files, unique dirty state integrated or recoverably preserved. |
 | P9-02 | Create clean integration commit(s) and transport `testing` | P9-01 | Clean main checkout, local/remote SHA equality, remote branch query, push receipt. |
 | P9-03 | Safely remove only obsolete worktrees/branches | P9-02 | Before/after worktree and branch inventories; no dirty or recovery target removed. |
-| P9-04 | Prove Pi Model Management authority across every execution plane | P9-02 | Structural callsite inventory, negative legacy-authority tests, route evidence for all three selectable engines. |
-| P9-05 | Prove ensemble independence and statistical correctness | P9-04 | Distinct effective identities, complete matrices, independent recomputation, adversarial same-model rejection. |
-| P9-06 | Prove the full Research Spine, including reconciliation | P9-05 | Positive and negative Docker journeys with source-to-report lineage and fail-closed leakage assertions. |
+| P9-04 | **Complete** — Prove Pi Model Management authority across every execution plane | P9-02 | Structural callsite inventory, negative legacy-authority tests, route evidence for all three selectable engines. |
+| P9-05 | **Complete** — Prove ensemble independence and statistical correctness | P9-04 | Distinct effective identities, complete matrices, independent recomputation, adversarial same-model rejection. |
+| P9-06 | **In progress** — Prove the full Research Spine, including reconciliation | P9-05 | Positive and negative Docker journeys with source-to-report lineage and fail-closed leakage assertions. |
 | P9-07 | Prove two-call, tool-call, and long-horizon behavior | P9-04 | Executed-tool evidence, resumed checkpoints, persisted assistant outputs, bounded failure/retry proof. |
 | P9-08 | Prove Petals donation lifecycle through Pi authority | P9-04 | Consent/use/revoke/stop evidence; tenant isolation; no diversity inflation or post-revoke routing. |
 | P9-09 | Repair and validate benchmark methodology | P9-05, P9-06, P9-07 | Randomized/crossover design, source/corpus breadth, immutable provenance, calibrated blocker oracle. |
@@ -1938,3 +1938,16 @@ Compass Forge after record 15 has no new forbidden dependency, missing path, or 
 service/model/SSH/host action.
 Next: commit/push the exact eight-file slice and receipt, verify clean ref equality, mark P9-05 complete
 in the execution matrix, then start P9-06 full Research Spine path coverage and bypass remediation.
+
+### L-82 | 2026-08-26T00:24:00Z | S5-ship/S1-frame | gpt-5-codex | integrator | P9-05 transported; P9-06 activated
+Did: Committed `2abe6453` (`test: prove ensemble coder isolation`), pushed it, verified exact local/
+remote equality and clean status, then marked P9-04/P9-05 complete and P9-06 in progress in the durable
+task graph.
+Result: Ensemble reliability work is recoverable remotely and no longer conflated with the remaining
+full-spine proof. P9-06 now owns positive source-to-report lineage, reconciliation/human approval, and
+the negative bypass/leakage cases listed above.
+Verified: push `50ee7eae..2abe6453`; local and `origin/testing` both resolve to
+`2abe64536d82edcbdf9daa34de1c05ba99d13aa7`; post-push status had no file entries.
+Next: transport this receipt/status change, inventory every source-to-artifact/report path from existing
+Research Spine tests and routes, identify bypasses and pagination/corpus gaps, then add the first red
+P9-06 end-to-end contract without starting a live service or loading a model.
