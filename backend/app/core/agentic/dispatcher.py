@@ -104,7 +104,10 @@ class AgenticDispatcher:
     ) -> EngineChoice:
         """Synchronous resolution when the project setting is already known."""
         if engine is not None:
-            return engine
+            # Normalize the public Pi aliases at the boundary.  Direct callers
+            # (A2A, benchmarks, and service code) do not necessarily pass
+            # through chat.py's header normalizer.
+            return _as_choice(engine)
         header = _header_engine(request)
         if header:
             return _as_choice(header)
@@ -139,7 +142,7 @@ class AgenticDispatcher:
         self, *, project_id: str | None, engine: EngineChoice | None, request: Any | None
     ) -> EngineChoice:
         if engine is not None:
-            return engine
+            return _as_choice(engine)
         header = _header_engine(request)
         if header:
             return _as_choice(header)

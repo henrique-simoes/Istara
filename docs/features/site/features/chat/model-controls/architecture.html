@@ -283,7 +283,10 @@
 <p><code>x-istara-agent-engine</code> request header predicate, then the project setting</p>
 <p><code>agentic_engine</code>, then <code>settings.agentic_engine_default</code>. A selected engine</p>
 <p>that cannot execute raises a typed dispatch error; the dispatcher never</p>
-<p>silently falls back to the other engine.</p>
+<p>silently falls back to the other engine. The per-call boundary normalizes</p>
+<p>every supported Pi spelling (<code>pi</code>, <code>pi-candidate</code>, <code>pi-replacement</code>, and</p>
+<p><code>deepseek-pi</code>) before branching, so direct A2A/benchmark/service callers</p>
+<p>cannot accidentally route an admitted Pi request through the legacy loop.</p>
 <ul>
 <li>Both loop seams are real: Pi selections execute through the isolated</li>
 </ul>

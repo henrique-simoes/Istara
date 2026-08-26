@@ -56,7 +56,10 @@ The selected Chat model menu is a generation control only. It never changes the 
   `x-istara-agent-engine` request header predicate, then the project setting
   `agentic_engine`, then `settings.agentic_engine_default`. A selected engine
   that cannot execute raises a typed dispatch error; the dispatcher never
-  silently falls back to the other engine.
+  silently falls back to the other engine. The per-call boundary normalizes
+  every supported Pi spelling (`pi`, `pi-candidate`, `pi-replacement`, and
+  `deepseek-pi`) before branching, so direct A2A/benchmark/service callers
+  cannot accidentally route an admitted Pi request through the legacy loop.
 - Both loop seams are real: Pi selections execute through the isolated
   `PiExecutionService` (`run_completion` / `run_structured` / `run_react`), and
   Istara selections execute through the Python legacy executor

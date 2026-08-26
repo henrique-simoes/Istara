@@ -18,6 +18,7 @@ import pytest
 
 from app.config import settings
 from app.core.agentic.dispatcher import AgenticDispatcher, agentic
+from app.core.pi_replacement import PI_ENGINE_VALUES
 from app.core.agentic.legacy import legacy_executor
 from app.core.agentic.types import AgenticDispatchError, TurnParams
 from app.core.pi_runtime.endpoints import (
@@ -79,6 +80,16 @@ def test_resolve_engine_precedence_explicit_header_project_default(monkeypatch):
     assert dispatcher.resolve_engine() == "legacy"
     monkeypatch.setattr(settings, "agentic_engine_default", "pi")
     assert dispatcher.resolve_engine() == "pi"
+
+
+@pytest.mark.parametrize("alias", sorted(PI_ENGINE_VALUES))
+@pytest.mark.asyncio
+async def test_explicit_pi_aliases_normalize_at_both_dispatcher_boundaries(alias):
+    """Every supported Pi spelling must select the Pi provider path."""
+    dispatcher = AgenticDispatcher()
+
+    assert dispatcher.resolve_engine(engine=alias) == "pi"
+    assert await dispatcher._resolve(project_id="project-1", engine=alias, request=None) == "pi"
 
 
 @pytest.mark.asyncio
