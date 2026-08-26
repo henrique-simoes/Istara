@@ -8,8 +8,8 @@ phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal ac
 stage: S2-execute
 status: in-progress
 blocked_on: null
-last: { agent: gpt-5-codex, at: 2026-08-26T14:32:00Z, ledger: L-148 }
-next_action: "From ~/istara-testing-clean-6ce9374a, capture the post-teardown Docker/Compose preflight, then rebuild the exact SHA through Docker and run the bounded acceptance with retained artifacts."
+last: { agent: gpt-5-codex, at: 2026-08-26T14:38:00Z, ledger: L-149 }
+next_action: "Render and build the Docker-only stack from ~/istara-testing-clean-6ce9374a at 07c0512d, capture image/config evidence, then run the bounded acceptance with retained artifacts."
 ```
 
 ## Plan overview / roadmap
@@ -3187,3 +3187,23 @@ remote action is an explicit Docker Compose teardown followed by a rendered-conf
 fresh build from the clean worktree.
 Next: append the teardown/build preflight receipt before starting the bounded runner; keep all
 live services, model clients, and dependency installation inside Docker containers only.
+
+### L-149 | 2026-08-26T14:38:00Z | S2-execute/S3-review | gpt-5-codex | authorized old-stack teardown complete
+Did: Updated the isolated remote worktree to the latest transported `origin/testing` commit
+`07c0512d915805f707b7a7f26ee2d1593713f8b2` and executed the owner-authorized Docker Compose
+teardown from that clean worktree. The old `istara-testing` Caddy, frontend, backend, Postgres,
+and provider-stub containers were stopped and removed; the project runtime environment volume
+and four project networks were removed with `down -v --remove-orphans`.
+
+Verification: Compose rendered successfully before teardown. After teardown, no container with
+the `istara-testing` Compose label and no volume matching `istara-testing` remained. The clean
+worktree has zero status changes and exact `HEAD=origin/testing=07c0512d`; the dirty
+`~/istara-testing` source checkout was not reset, deleted, or used as the build context. No
+host package manager, server, model load, or non-Docker runtime was invoked.
+
+Result: stale testing data and containers are removed as authorized, eliminating prior database
+and warm-state contamination. The next acceptance must build from the detached clean worktree,
+with a redacted Compose/image capture before startup and fresh per-run data. Any failure to
+provide three real donor routes or full Research Spine evidence remains a blocker, not a score.
+Next: render the effective Compose configuration, build the exact backend/frontend/provider
+images, capture digests and health evidence, then start only the containerized stack.
