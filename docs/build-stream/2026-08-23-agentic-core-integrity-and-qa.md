@@ -8,7 +8,7 @@ phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal ac
 stage: S2-execute
 status: in-progress
 blocked_on: null
-last: { agent: gpt-5-codex, at: 2026-08-26T12:02:00Z, ledger: L-116 }
+last: { agent: gpt-5-codex, at: 2026-08-26T12:08:00Z, ledger: L-117 }
 next_action: "Run the remaining Docker-only acceptance only after the remote owner handoff makes ~/istara-testing clean; preserve the blocked boundary and reconcile refs/worktrees without destructive cleanup."
 ```
 
@@ -2500,3 +2500,20 @@ Next: commit/push this fixture and ledger checkpoint, then inspect exact worktre
 remove only clean, merged, demonstrably abandoned registrations, never dirty or recovery worktrees.
 Keep P9-06/P9-07 open until a fresh exact-SHA Docker runner produces source-grounded three-model
 evidence through reconciliation and human-Done, with the remote owner handoff recorded.
+
+### L-117 | 2026-08-26T12:08:00Z | S2-execute/S3-review | gpt-5-codex | auditor | Local branch/worktree cleanup is conservative and complete for proven disposable state
+Did: Verified local `testing` is clean and exactly tracks `origin/testing` at `ce209717`. The
+registered worktrees are limited to the active checkout, a clean detached CI checkout at
+`/private/tmp/opencode/ci-wt`, and the clean recovery branch checkout
+`/Users/user/Documents/Codex/2026-08-10/list/work/istara-pi-linearized-2026-08-10`; both are retained
+because they are named CI/recovery state, not demonstrably abandoned work. The two stale temporary
+paths `/private/tmp/istara-main-baseline` and `/private/tmp/istara-testing-merge-20260818` contained
+only empty directory skeletons (zero regular files, no `.git`, no worktree registration); their empty
+directories were removed. `git worktree prune --dry-run` reports no additional stale registrations.
+All local branches that are merged into `testing` still have live origin counterparts, so no branch
+was deleted without evidence of abandonment; all unmerged/recovery branches were preserved.
+Result: no dirty local diff remains, no branch or worktree with active ownership was removed, and the
+cleanup is reversible only through the existing remote refs for the two empty skeleton paths.
+Next: maintain this clean local/origin testing state while waiting for the remote owner handoff. Do
+not reset or clean `~/istara-testing`; its dirty tracked/untracked state remains an explicit blocker
+to exact-SHA Docker acceptance.
