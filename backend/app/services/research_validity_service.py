@@ -99,6 +99,10 @@ class CoderSpec:
     node: Any
     coder_id: str
     model_name: str
+    # Production Pi selections retain the manager and exact resolved identity
+    # so a catalog mutation can be rejected before dispatch.
+    pi_manager: Any | None = None
+    pi_endpoint_identity: tuple[str, ...] | None = None
 
 
 def document_source_id(document_id: str, version: int | None = 1) -> str:
@@ -596,9 +600,23 @@ async def _select_pi_coders(
             ),
             coder_id=f"model-coder:{endpoint.endpoint_id}",
             model_name=endpoint.model,
+            pi_manager=manager,
+            pi_endpoint_identity=_pi_endpoint_identity(endpoint),
         )
         for endpoint in endpoints
     ]
+
+
+def _pi_endpoint_identity(endpoint: Any) -> tuple[str, ...]:
+    """Return non-secret fields that define one selected Pi endpoint."""
+    return (
+        str(getattr(endpoint, "endpoint_id", "") or ""),
+        str(getattr(endpoint, "provider_kind", "") or ""),
+        str(getattr(endpoint, "base_url", "") or ""),
+        str(getattr(endpoint, "model", "") or ""),
+        str(getattr(endpoint, "provider_account_handle", "") or ""),
+        str(getattr(endpoint, "kind", "") or ""),
+    )
 
 
 async def _pi_coder_runner(
@@ -610,6 +628,23 @@ async def _pi_coder_runner(
     """W7 coder runner: structured dispatch pinned to the coder's exact endpoint."""
     from app.core.agentic import agentic
     from app.core.agentic.types import TurnParams
+
+    selected_endpoint_id = str(getattr(coder.node, "endpoint_id", "") or "").strip()
+    if coder.pi_manager is not None and selected_endpoint_id:
+        # Refresh dynamic projections and resolve against the same manager
+        # used for selection. Any removal or identity mutation is rejected
+        # before the provider call can create a rater or route record.
+        await coder.pi_manager.ensure_db_projection()
+        current_endpoint = coder.pi_manager.resolve(
+            endpoint_id=selected_endpoint_id,
+            model=model_name,
+            project_id=project_id,
+        )
+        if coder.pi_endpoint_identity != _pi_endpoint_identity(current_endpoint):
+            raise ValueError(
+                "Pi coder catalog drift: selected endpoint identity changed "
+                f"for {selected_endpoint_id!r}"
+            )
 
     outcome = await agentic.structured(
         purpose="validity.coder",
@@ -625,7 +660,6 @@ async def _pi_coder_runner(
         engine="pi",
         spine_phase="execution",
     )
-    selected_endpoint_id = str(getattr(coder.node, "endpoint_id", "") or "").strip()
     served_endpoint_id = str(getattr(outcome, "endpoint_id", "") or "").strip()
     if selected_endpoint_id and served_endpoint_id and served_endpoint_id != selected_endpoint_id:
         # The endpoint is part of the source-of-truth route evidence.  A

@@ -749,6 +749,51 @@ async def test_pi_coder_runner_dispatches_structured_pinned_to_endpoint(monkeypa
     assert route["model"] == "model-a" and route["outcome"] == "served"
 
 
+async def test_pi_coder_runner_fails_closed_on_catalog_identity_drift(monkeypatch):
+    """A selected endpoint mutation cannot reach the structured provider call."""
+    dispatcher = _StubAgentic(value={})
+    monkeypatch.setattr("app.core.agentic.agentic", dispatcher)
+
+    from app.core.pi_runtime.endpoints import ResolvedPiEndpoint
+    from app.services.research_validity_service import CoderSpec, _pi_coder_runner
+
+    changed = ResolvedPiEndpoint(
+        endpoint_id="ep-a",
+        provider_kind="openai_compat",
+        base_url="http://changed.invalid",
+        model="changed-model",
+        api_key="",
+        timeout_ms=1000,
+        max_retries=0,
+    )
+
+    class _MutatingManager:
+        async def ensure_db_projection(self):
+            return None
+
+        def resolve(self, **kwargs):
+            return changed
+
+    coder = CoderSpec(
+        node=SimpleNamespace(endpoint_id="ep-a"),
+        coder_id="model-coder:ep-a",
+        model_name="model-a",
+        pi_manager=_MutatingManager(),
+        pi_endpoint_identity=(
+            "ep-a",
+            "openai_compat",
+            "http://selected.invalid",
+            "model-a",
+            "account-a",
+            "remote",
+        ),
+    )
+
+    with pytest.raises(ValueError, match="catalog drift"):
+        await _pi_coder_runner(coder, [], "model-a", "project-a")
+    assert dispatcher.calls == []
+
+
 class _RaisingDb:
     async def scalar(self, *args, **kwargs):
         raise RuntimeError("no project row")
