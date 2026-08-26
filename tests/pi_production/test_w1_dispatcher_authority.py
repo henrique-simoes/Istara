@@ -407,6 +407,53 @@ async def test_ensemble_pi_distinct_endpoints_and_fail_closed(monkeypatch):
         await supervisor.shutdown()
 
 
+@pytest.mark.asyncio
+async def test_legacy_and_pi_ensemble_choices_share_real_pi_manager(monkeypatch):
+    """Both loop choices must use the same manager-owned rater identities.
+
+    The legacy choice preserves Istara's surrounding loop semantics, but it
+    must not reopen the removed ComputeRegistry/provider path.  Exercising both
+    choices against one real ``PiExecutionService`` and one real
+    ``PiModelManager`` makes that authority boundary observable instead of
+    proving it only with a provider stub.
+    """
+    supervisor = PiRuntimeSupervisor()
+    endpoints = [
+        replace(
+            faux_endpoint([final_text(f"answer-{name}")], endpoint_id=f"pi-shared-{name}"),
+            model=f"shared-model-{name}",
+        )
+        for name in ("a", "b", "c")
+    ]
+    manager = _isolated(PiModelManager(endpoints=endpoints, include_local=False))
+    service = PiExecutionService(supervisor=supervisor, model_manager=manager)
+
+    async def no_op(**kwargs):
+        return None
+
+    monkeypatch.setattr("app.core.agentic.dispatcher.record_agentic_usage", no_op)
+    try:
+        results = {}
+        for engine in ("legacy", "pi"):
+            results[engine] = await AgenticDispatcher(pi_service=service).ensemble(
+                purpose=f"w1.shared-manager.{engine}",
+                project_id="p1",
+                messages=[{"role": "user", "content": "compare"}],
+                n=3,
+                distinct=True,
+                engine=engine,
+            )
+    finally:
+        await supervisor.shutdown()
+
+    expected_endpoints = {"pi-shared-a", "pi-shared-b", "pi-shared-c"}
+    expected_models = {"shared-model-a", "shared-model-b", "shared-model-c"}
+    for result in results.values():
+        assert result.status == "success"
+        assert set(result.endpoint_ids) == expected_endpoints
+        assert {sample.model for sample in result.samples} == expected_models
+
+
 # ── PiModelManager: catalog sources and capability admission ─────────────
 def test_catalog_sources_static_and_local_without_registry():
     import inspect

@@ -283,7 +283,7 @@
 <li>Both loop modes use the Pi-governed embeddings gateway and canonical embedding identity. Engine selection changes orchestration semantics, not the provider/model authority or vector-space invariant.</li>
 <li>Real-user and Colima/Docker benchmarks must not enable strict single-model routing as their default architecture test. Strict routing is a technical isolation probe; the product-faithful benchmark observes the normal compute/model manager selecting and serving work across registered donors.</li>
 <li>Live benchmark acceptance is Docker-only: the Mac Studio is the Docker host and SSH control plane, while Istara, browser clients, relay clients, and donor model servers run in containers. The historical host-managed three-model probe is refused before live work and cannot produce acceptance evidence.</li>
-<li>A bounded live Research Spine proof must page through the project evidence inventory, prefer raw substantive spans from distinct source documents, and persist the selected evidence-unit IDs and source count. Coding the first rows in source order is not valid proof because one document&#x27;s titles, project metadata, protocol boilerplate, or adjacent spans can otherwise stand in for corpus diversity.</li>
+<li>A bounded live Research Spine proof must page through the project evidence inventory, prefer raw substantive spans from distinct source documents when the corpus provides them, and persist the selected evidence-unit IDs and source count. Source diversity is a sampling preference and observability field, not a three-document reliability gate: one source document may legitimately provide multiple independent spans. Coding the first rows in source order is not valid proof because one document&#x27;s titles, project metadata, protocol boilerplate, or adjacent spans can otherwise bias the sample.</li>
 <li>Validation calls without project context remain server-owned/local only; cross-project compute aggregation is reserved for explicit admin-only surfaces.</li>
 <li>The frontmatter and manifest entries are the durable contract for agents updating this page after code changes.</li>
 <li>When the referenced component, store, route, agent, skill, or test behavior changes, regenerate and validate the feature documentation.</li>
@@ -301,7 +301,7 @@
 <li><code>tests/test_research_validity_contract.py</code></li>
 <li><code>tests/real_user_benchmark/lib/research-spine-probes.test.mjs</code> — paginated source-diverse substantive-span selection, exact evidence-unit provenance, multi-model route diversity, and numeric Fleiss/Krippendorff proof.</li>
 <li><code>tests/test_research_validity_pagination.py</code> — bounded evidence-unit pagination used by the live proof.</li>
-<li><code>tests/pi_production/test_w7_validation.py</code> — dispatcher purpose/verb mapping, legacy parity, endpoint-pinned distinctness, fail-closed degradation, and judge unavailability. W8 embedding dispatch and gateway behavior are covered by <code>tests/pi_production/test_w8_embeddings_gateway.py</code>.</li>
+<li><code>tests/pi_production/test_w7_validation.py</code> — dispatcher purpose/verb mapping, legacy parity, endpoint-pinned distinctness, actual Pi Model Management-backed coding selection, fail-closed degradation, and judge unavailability. W8 embedding dispatch and gateway behavior are covered by <code>tests/pi_production/test_w8_embeddings_gateway.py</code>.</li>
 </ul>
 <h2 id="related-features">Related Features</h2>
 <ul>

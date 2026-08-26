@@ -85,6 +85,8 @@ export function liveAcceptanceBlockers({
   maxTasks = 0,
   completedTasks = 0,
   codingValidationEnabled = false,
+  acceptanceProfile = null,
+  requireComputeDonation = false,
   featureResults = {},
 }) {
   const blockers = [];
@@ -100,11 +102,35 @@ export function liveAcceptanceBlockers({
   if (maxTasks > 0 && !featureResults.approvedTaskFindings) {
     blockers.push("Requested task-backed Findings/report path did not complete.");
   }
-  if (codingValidationEnabled && !featureResults.codingValidation) {
-    blockers.push("Requested three-model Research Spine coding validation did not complete.");
-  }
-  if (codingValidationEnabled && !featureResults.researchSpineTraceability) {
-    blockers.push("Requested Research Spine traceability validation did not complete.");
+  // A selected acceptance profile is an executable contract, not merely a
+  // scorecard label.  If a caller explicitly disables the selected gate, fail
+  // closed before scorecard output can be mistaken for a passing retake.  Keep
+  // the legacy behavior when no profile is supplied so older harness-only
+  // callers retain their narrower workflow assertions.
+  if (acceptanceProfile) {
+    const normalizedProfile = normalizeAcceptanceProfile(acceptanceProfile);
+    const providerSelected = normalizedProfile !== "petals";
+    const petalsSelected = normalizedProfile !== "provider";
+    if (providerSelected && !codingValidationEnabled) {
+      blockers.push("Selected provider Research Spine gate was disabled; acceptance cannot pass.");
+    } else if (providerSelected && !featureResults.codingValidation) {
+      blockers.push("Requested three-model Research Spine coding validation did not complete.");
+    }
+    if (providerSelected && codingValidationEnabled && !featureResults.researchSpineTraceability) {
+      blockers.push("Requested Research Spine traceability validation did not complete.");
+    }
+    if (petalsSelected && !requireComputeDonation) {
+      blockers.push("Selected Petals donation interoperability gate was disabled; acceptance cannot pass.");
+    } else if (petalsSelected && !featureResults.computeDonation) {
+      blockers.push("Requested Petals donation interoperability did not complete.");
+    }
+  } else {
+    if (codingValidationEnabled && !featureResults.codingValidation) {
+      blockers.push("Requested three-model Research Spine coding validation did not complete.");
+    }
+    if (codingValidationEnabled && !featureResults.researchSpineTraceability) {
+      blockers.push("Requested Research Spine traceability validation did not complete.");
+    }
   }
   return blockers;
 }

@@ -187,3 +187,37 @@ test("combined acceptance profile requires both provider and Petals evidence", (
     verified: false,
   });
 });
+
+test("selected provider profile fails closed when coding validation is disabled", () => {
+  assert.deepEqual(liveAcceptanceBlockers({
+    acceptanceProfile: "provider",
+    codingValidationEnabled: false,
+    requireComputeDonation: false,
+    featureResults: {},
+  }), [
+    "Selected provider Research Spine gate was disabled; acceptance cannot pass.",
+  ]);
+});
+
+test("selected Petals profile fails closed when donation validation is disabled", () => {
+  assert.deepEqual(liveAcceptanceBlockers({
+    acceptanceProfile: "petals",
+    codingValidationEnabled: false,
+    requireComputeDonation: false,
+    featureResults: {},
+  }), [
+    "Selected Petals donation interoperability gate was disabled; acceptance cannot pass.",
+  ]);
+});
+
+test("combined profile fails closed when either selected gate is disabled", () => {
+  assert.deepEqual(liveAcceptanceBlockers({
+    acceptanceProfile: "combined",
+    codingValidationEnabled: false,
+    requireComputeDonation: false,
+    featureResults: {},
+  }), [
+    "Selected provider Research Spine gate was disabled; acceptance cannot pass.",
+    "Selected Petals donation interoperability gate was disabled; acceptance cannot pass.",
+  ]);
+});

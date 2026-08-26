@@ -41,10 +41,11 @@ mkdir -p "$PROBE_RESULTS" "$SIM_RESULTS" "$MARATHON_RESULTS"
 
 : "${ISTARA_ADMIN_PASSWORD:?set ISTARA_ADMIN_PASSWORD}"
 ISTARA_BENCHMARK_CHAT_TIMEOUT_MS="${ISTARA_BENCHMARK_CHAT_TIMEOUT_MS:-300000}"
-# Three source evidence units are the smallest useful live Fleiss-kappa proof:
-# each is still coded independently by all three selected model identities.
-# Keep uploads larger than that scope so source ingestion is also exercised,
-# without turning a smoke/proof arm into an unbounded corpus benchmark.
+# Three raw evidence units are the smallest useful live Fleiss-kappa proof:
+# each is coded independently by all three selected model identities. They may
+# come from one source document; source diversity is observable but is not a
+# validity gate. Keep uploads larger than that scope so source ingestion is also
+# exercised, without turning a smoke/proof arm into an unbounded corpus benchmark.
 ISTARA_BENCHMARK_CODING_LIMIT="${ISTARA_BENCHMARK_CODING_LIMIT:-3}"
 ISTARA_BENCHMARK_MAX_UPLOADS="${ISTARA_BENCHMARK_MAX_UPLOADS:-6}"
 

@@ -133,6 +133,63 @@ test("coding proof blocks when three source identities are not available", async
   assert.equal(logger.issues[0].title, "Research Spine source diversity was not proven");
 });
 
+test("coding proof does not invent a three-document gate for one source with multiple spans", async () => {
+  const logger = makeLogger();
+  const blockers = [];
+  const featureResults = {};
+  let postPayload = null;
+  const units = makeSubstantiveUnits(4).map((unit) => ({
+    ...unit,
+    source_id: "one-interview",
+    source_location: "interview-one.md",
+  }));
+  const api = {
+    async get(path) {
+      if (path === "/api/research-validity/contract") {
+        return { contract: {}, qualitative_coding_protocol: {} };
+      }
+      if (path.includes("/evidence-units")) return units;
+      if (path.includes("/code-applications/")) return makeReconciledApplications("run-one-source", 12);
+      if (path.includes("/reconciliation-decisions")) return makeReconciliationDecisions("run-one-source", 12);
+      if (path.includes("/summary")) return { coding_run_count: 1, evidence_unit_count: 4 };
+      if (path.includes("/coding-runs")) return [{ id: "run-one-source" }];
+      if (path.includes("/traceability")) return { edges: [] };
+      if (path.includes("/telemetry-audit")) return { status: "ok" };
+      return {};
+    },
+    async post(_path, payload) {
+      postPayload = payload;
+      return {
+        id: "run-one-source",
+        status: "completed",
+        promotion_status: "accepted",
+        code_application_count: 12,
+        reliability_method: "fleiss_kappa_with_krippendorff_alpha_companion",
+        distinct_model_count: 3,
+        rater_count: 3,
+        kappa: 0.81,
+        alpha: 0.79,
+      };
+    },
+  };
+
+  await exerciseResearchSpineValidation({
+    api,
+    projectId: "project-one-source",
+    logger,
+    featureResults,
+    blockers,
+    codingValidationEnabled: true,
+    codingValidationLimit: 4,
+    expectedDistinctCoders: 3,
+    expectedDistinctSources: 0,
+  });
+
+  assert.equal(postPayload?.evidence_unit_ids?.length, 4);
+  assert.equal(featureResults.codingValidation, true);
+  assert.deepEqual(blockers, []);
+});
+
 test("three-donor benchmark blocks when coding falls back to single-coder assurance", async () => {
   const logger = makeLogger();
   const blockers = [];

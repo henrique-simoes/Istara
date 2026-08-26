@@ -8,8 +8,8 @@ phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal ac
 stage: S2-execute
 status: in-progress
 blocked_on: null
-last: { agent: gpt-5-codex, at: 2026-08-26T16:24:00Z, ledger: L-186 }
-next_action: "Obtain owner-authorized reachable provider credentials and three Compose-owned donor routes, then run the terminal Docker-only provider, Petals, and combined retake; local code and testing refs are reconciled."
+last: { agent: gpt-5-codex, at: 2026-08-26T20:49:19Z, ledger: L-189 }
+next_action: "Stage only the intended testing changes, commit and push non-force, verify exact testing parity, then obtain owner-authorized provider credentials and three Compose-owned donor routes for the terminal Docker-only retake."
 ```
 
 ## Plan overview / roadmap
@@ -3930,3 +3930,174 @@ redo local implementation or delete the intentional recovery worktree; it should
 owner-authorized provider/API-key environment mapping and three Compose-owned donor routes, refresh
 the Mac Studio checkout from `dfcda6e7`, and execute the bounded terminal retake with both engine
 arms and the provider/Petals/combined profiles.
+
+### L-187 | 2026-08-26T20:40:30Z | S2-execute/S3-review | gpt-5-codex | Research Spine source gate, engine sharing, and profile fail-closed audit
+
+Did: Corrected the benchmark's false three-document reliability prerequisite. Research Spine
+reliability is over raw evidence units rated by independent model identities; a single source
+may provide multiple substantive spans. The probe now records source diversity but does not use
+`expectedDistinctSources=3` as an acceptance blocker. Added a deterministic one-source,
+multi-span fixture with four grounded units, three coders, numeric Fleiss/Krippendorff metrics,
+complete reconciliation, and accepted promotion. Added a W1 characterization that creates one
+real `PiModelManager` plus one `PiExecutionService` and invokes both `legacy` and `pi` dispatcher
+choices, asserting the same three manager-owned endpoint/model identities. Added a separate W7
+characterization that uses the real `PiModelManager.resolve_distinct` selection path and checks
+three raters, the configured reliability method, exact endpoint/model pinning, and route
+provenance. Added profile wiring assertions and made selected provider/Petals/combined gates
+fail closed when callers explicitly disable the selected validation plane. Updated the living
+ensemble architecture, benchmark README, and Docker wrapper comments so source diversity,
+provider validity, and Petals interoperability are not conflated. Appended F-R9-35 through
+F-R9-40 to `/Users/user/Desktop/testing.md`.
+
+Evidence: `npm run check` in `tests/real_user_benchmark` passed `65/65`; W1 ensemble focus
+passed `3/3`; the real-manager W7 characterization passed `1/1`; the full bounded Python
+matrix passed `929 passed, 5 skipped in 274.03s`; `npm run plan` completed credential-free;
+`git diff --check`, `bash -n scripts/runner/docker-run.sh`, registry JSON parsing, and
+`python scripts/feature_docs.py --seed-missing --generate-site --check` passed (`seeded 0`,
+`generated 224`, `86` feature checks). Compass Forge native gate-before record `76` and
+gate-after records `77`/`78` remain repository-wide `fail` only because of inherited
+complexity/route/type/secret-flow debt; no new forbidden dependency, import cycle, missing
+path, security, taint, or large-file delta was introduced. The warning naming
+`tests/pi_production/test_w7_validation.py` at 1044 lines/85 symbols is not caused by this
+working tree (`git diff --quiet --` is true); it is retained as a Compass Forge baseline/index
+follow-up rather than hidden. No live model request, host installation, or Mac Studio mutation
+occurred.
+
+Open decisions: (1) inject a request-scoped Pi manager/service through coding selection and
+dispatch to close the time-of-check/time-of-use gap (F-R9-38); (2) split provider-only,
+Petals-only, and combined workload execution so unrelated chat/task/UI failures do not blur
+gate status (F-R9-39); (3) obtain the owner-authorized provider credential and three healthy,
+project-scoped Compose donor routes for live acceptance (F-R9-40). Do not claim ensemble,
+Fleiss/alpha, Petals, human-approved Done, or report acceptance from these deterministic
+fixtures.
+
+### L-188 | 2026-08-26T20:40:30Z | S2-plan | gpt-5-codex | Terminal completion blueprint for the next agent
+
+This is the resumable work order. Keep this section current after every bounded stage; record
+the command, result, artifact path, commit SHA, and blocker status in a new ledger entry.
+
+#### A. Reconcile source and execution boundaries
+
+1. Confirm `testing` is clean and exactly equal to `origin/testing` before opening the live
+   gate. Record `git status --short --branch`, both SHA values, and `git diff origin/testing`.
+2. Refresh only a clean detached/worktree checkout to that SHA on the Mac Studio. Do not
+   reset or clean the owner-managed `~/istara-testing` checkout without a separately explicit
+   authorization. Never install Python, Node, Playwright, model runtimes, or package managers
+   on the host.
+3. Build/pull the disposable runner through Docker, verify the runner image digest, backend/
+   frontend image IDs, Compose project name, source snapshot SHA-256, and a fresh Postgres
+   state. Preserve these in each arm's `run-metadata.json` and provenance artifact.
+4. Before any model call, prove the runner's Linux Docker CLI reaches the Docker Desktop
+   socket (`docker info`), the application containers are healthy, and the runner is attached
+   only to the intended Compose networks. If any prerequisite is absent, stop that arm and
+   retain the fail-closed artifact.
+
+#### B. Prove PI Model Management is the sole provider authority
+
+1. Through `/api/settings/pi-endpoints` (and only its canonical POST/PUT/delete/OAuth paths),
+   register or resolve three provider endpoints with distinct `endpoint_id`, served model
+   identity, provider-account handle, and immutable route evidence. Do not use the deprecated
+   classical endpoint as a write path; confirm its intentional `410` response.
+2. Validate that sparse PUTs preserve omitted fields, catalog-derived protocol/capabilities,
+   OAuth custody, and Keychain references; reject invalid URLs/credentials atomically. Capture
+   redacted management responses and endpoint catalog snapshots without emitting secrets.
+3. Confirm Petals slash-string donations enter the same manager catalog as project-scoped
+   read-only donor routes, with explicit consent, health, source, project scope, and revoke
+   state. Donor aliases must not be counted as distinct model identities.
+4. Run one controlled endpoint mutation between coder selection and dispatch. The currently
+   open F-R9-38 should fail closed once a selected endpoint is removed or materially changed;
+   until that guard exists, label this scenario unverified rather than passing it.
+
+#### C. Exercise both engine choices through the shared manager
+
+1. Run isolated `legacy` and `pi` arms against the same source snapshot and equivalent
+   configuration. The legacy arm may preserve its Python ReAct orchestration, but every model,
+   credential, retry, usage, and ensemble request must resolve through the injected Pi service.
+2. For each arm, capture the selected engine header/project setting, dispatcher purpose,
+   endpoint ID, model identity, provider account, route evidence ID, usage delta, stop reason,
+   tool calls, and fallback/repair events. A canned provider-stub response or a transport 200
+   without a useful body is not a successful model turn.
+3. Compare a bounded two-call and long-horizon task in both arms. Require non-empty grounded
+   answers, tool/continuation behavior where requested, completion within the configured
+   horizon, and no silent fallback to Ollama/classical routing. Record timeout/recovery and
+   server-side completion separately from client transport status.
+
+#### D. Execute the Research Spine acceptance gate
+
+1. Upload raw interview/document material and record source IDs, exact source spans, evidence
+   unit IDs, stable locations, and content hashes. Do not seed nugget prose or synthetic
+   findings as evidence.
+2. Select exactly three independent model identities through PI Model Management. Require all
+   three coders to receive the same evidence-unit set and fresh coder scope; record prompt/code-
+   book versions, model checkpoints, provider accounts, endpoint IDs, decoding profile, and
+   cache scope.
+3. Validate every atomic application against its raw quote and evidence unit. Require complete
+   unit coverage, no fabricated quotes, no missing coder, and no duplicate identity hidden by
+   endpoint aliases.
+4. Require numeric Fleiss' kappa plus the configured Krippendorff-alpha companion (method name
+   alone is insufficient), preserve the thresholds and input matrix, and record disagreements.
+5. Require reconciliation decisions for each disagreement, then a human-reviewed/approved
+   transition through Done before counting Facts, Insights, Recommendations, Findings, or
+   Reports as accepted. Keep blocked, provisional, synthetic, low-confidence, and transport-
+   recovered artifacts visibly non-accepted.
+6. Verify the scorecard distinguishes structural traceability, donor topology, accepted
+   Research Spine validation, and report eligibility. No structural flag may imply live model
+   agreement when coder count, metrics, or route count is zero.
+
+#### E. Execute Petals interoperability separately and together
+
+1. Provider profile: run only the minimum source upload/coding/reliability/reconciliation/
+   approval path and require the provider gate; donation may be not-selected, never silently
+   disabled.
+2. Petals profile: generate slash strings, obtain explicit consent, register healthy project-
+   scoped relays, pass technical served probes, show usage on the intended project, revoke
+   consent, and prove cleanup. This profile must never report Research Spine validity.
+3. Combined profile: run both evidence planes in one isolated Compose invocation and require
+   the conjunction. Preserve separate gate statuses (`verified`, `blocked`, `not_run`,
+   `not_selected`) and a final combined status.
+4. Repeat the combined profile for both `legacy` and `pi` engine arms, then compare route and
+   usage evidence. One engine's successful donation must not satisfy the other's coding gate.
+
+#### F. Test the test harness itself
+
+1. Run the static and deterministic suites from the repository's Docker runner; retain the
+   exact command output and avoid interpreting faux/stubbed tests as model-quality evidence.
+2. Confirm profile defaults, explicit-disable blockers, source-span sampling, three-model
+   identity checks, metric-oracle thresholds, route provenance, long-horizon assertions, and
+   Docker-only refusal are all covered by regression fixtures.
+3. Add a mutation test for manager catalog drift, a test for one-source/multiple-span proof,
+   and a negative fixture where a provider stub returns healthy HTTP but zero useful model
+   outputs. The latter must block acceptance and preserve a truthful scorecard.
+4. Re-run Compass Forge impact/why for every production file changed, regenerate living
+   feature docs, run gate-before/after, and attach command/gate/review evidence before task
+   acceptance. Keep inherited gate debt separate from new regressions.
+
+#### G. Ship, clean, and close honestly
+
+1. Stage only intended repository files. Do not stage `/Users/user/Desktop/testing.md`, model
+   artifacts under `LLMs/` or `Model_Finetuning/`, secrets, generated runtime results, or
+   owner-managed worktree changes.
+2. Commit with a focused message, push non-force to `origin/testing`, fetch, and verify exact
+   local/remote SHA equality plus an empty diff. Record the commit in this ledger.
+3. Inspect worktrees/branches read-only. Delete only a worktree or branch proven merged,
+   detached, unused, and not an intentional recovery/backup line; never infer safety from a
+   remote backup alone. Dispose only testing Docker containers/volumes/networks after logs,
+   scorecards, and hashes are copied to the evidence folder; never touch unrelated workloads.
+4. If provider credentials, donors, Docker socket, or a required approval are missing, leave
+   the goal open with a precise blocker and the exact next command. Do not claim completion,
+   model quality, ensemble bias reduction, or Research Spine acceptance from local green
+tests alone.
+
+### L-189 | 2026-08-26T20:49:19Z | S3-review | gpt-5-codex | exact-tree regression retake green
+
+Did: Re-ran the full bounded deterministic matrix after isolating the real-manager test into
+its own module. The exact tree passes `929 passed, 5 skipped in 277.50s (0:04:37)`. The
+real-user benchmark library remains green at `65/65`; focused W1 ensemble coverage is `3/3`
+and the isolated real-manager W7 characterization is `1/1`. No production service, provider,
+or model was started. The remaining work is transport/reconciliation plus the external live
+acceptance gate described in L-188.
+
+Next: review the complete staged diff, run final syntax/diff/feature checks, commit and push
+to `origin/testing`, fetch and verify exact SHA equality, inspect worktrees/branches read-only,
+and append the transported SHA. Keep `/Users/user/Desktop/testing.md` outside Git; it contains
+F-R9-35 through F-R9-40 and the owner-facing live blocker.

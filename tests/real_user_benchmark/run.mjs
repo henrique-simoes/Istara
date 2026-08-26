@@ -1067,7 +1067,7 @@ let clientDockerReady = null;
 function buildScorecard(input) {
   return scoreRun({
     ...input,
-    acceptanceProfile,
+    acceptanceProfile: mode === "plan-only" ? null : acceptanceProfile,
     codingValidationEnabled,
     requireComputeDonation,
   });
@@ -4693,7 +4693,13 @@ async function main() {
       codingValidationLimit,
       expectedDistinctCoders: codingValidationEnabled ? 3 : 0,
       expectedDistinctDonorRoutes: expectedResearchSpineDonorRoutes,
-      expectedDistinctSources: codingValidationEnabled ? 3 : 0,
+      // Research Spine reliability is defined over raw evidence units coded by
+      // distinct model identities.  Source diversity remains a deterministic
+      // selection preference, but the contract does not require three source
+      // documents; a single interview/document may legitimately provide three
+      // independent spans.  Keep source count observable in the selection
+      // artifact without turning it into a false acceptance blocker.
+      expectedDistinctSources: 0,
     });
     await exerciseSelfImprovementGovernance({
       api,
@@ -4718,7 +4724,9 @@ async function main() {
     chatTurnCount,
     maxTasks,
     completedTasks,
+    acceptanceProfile,
     codingValidationEnabled,
+    requireComputeDonation,
     featureResults,
   }));
   if (mode === "full" && chatTurnCount < 100) blockers.push(`Full run completed only ${chatTurnCount}/100 required chat turns.`);

@@ -2,7 +2,7 @@
 
 This benchmark is a durable, repeatable long-form rehearsal of Istara as used by a realistic research team. It is intentionally heavier than the normal simulation suite: it installs or targets sandboxed Istara services, materializes the canonical synthetic research corpus, drives the actual UI where possible, exercises API-backed workflows, reviews tasks like human researchers, records every action, and emits comparison-ready scorecards.
 
-Plan mode is credential-free. Probe and full comparison runs require donated compute and non-empty live chat by default, using the same configured `google/gemma-4-e4b` live-test profile as Istara's LLM eval contract. Offline harness debugging can opt out with explicit environment variables, but those runs should not be treated as product-quality comparisons.
+Plan mode is credential-free. The default combined comparison profile requires donated compute and non-empty live chat, using the same configured `google/gemma-4-e4b` live-test profile as Istara's LLM eval contract. The provider profile exercises the provider/Research Spine gate without requiring Petals donation; the Petals profile exercises donation interoperability without claiming Research Spine validity. Offline harness debugging can opt out with explicit environment variables, but those runs should not be treated as product-quality comparisons.
 
 Every run loads the benchmark conductor system prompt from `tests/real_user_benchmark/system-prompt.md`, records its version and SHA-256 in `run-metadata.json`, copies the prompt into the run folder as `system-prompt.md`, and logs `system_prompt.loaded` in `action-log.jsonl`. This makes the simulation policy auditable across reruns.
 
@@ -25,7 +25,7 @@ ISTARA_E2E_ALLOW_LOCAL_TOKEN=1 \
 npm --prefix tests/real_user_benchmark run probe
 ```
 
-This probe now expects a donated compute node and live chat output. For harness-only debugging against an app with no model connected, add `ISTARA_BENCHMARK_REQUIRE_COMPUTE_DONATION=0 ISTARA_BENCHMARK_REQUIRE_LIVE_CHAT=0`.
+This probe uses the combined acceptance profile by default, so it expects a donated compute node and live chat output. For a provider-only probe, set `ISTARA_BENCHMARK_ACCEPTANCE_PROFILE=provider`; for harness-only debugging against an app with no model connected, add `ISTARA_BENCHMARK_REQUIRE_COMPUTE_DONATION=0 ISTARA_BENCHMARK_REQUIRE_LIVE_CHAT=0` and treat the result as non-acceptance evidence.
 
 ### Acceptance profiles
 
@@ -42,8 +42,14 @@ requests). A scorecard records each gate as `verified`, `blocked`, `not_run`,
 or `not_selected`; a passing Petals gate is never reported as Research Spine
 validity. Explicit `ISTARA_BENCHMARK_RUN_CODING_VALIDATION` and
 `ISTARA_BENCHMARK_REQUIRE_COMPUTE_DONATION` values can narrow a diagnostic run,
-but a comparison claim should use the selected profile's defaults and the
-combined profile for the final interoperability assertion.
+but disabling a selected gate is itself a fail-closed acceptance blocker and
+cannot produce a passing comparison. A comparison claim should use the
+selected profile's defaults and the combined profile for the final
+interoperability assertion. The coding probe
+prefers substantive spans from distinct source documents when available, while
+the Research Spine gate itself remains about raw source grounding, complete
+independent coder coverage, model identity, reliability, reconciliation, and
+promotion; it does not require three separate documents.
 
 Run a deeper bounded probe for video material and Research Spine evidence:
 
