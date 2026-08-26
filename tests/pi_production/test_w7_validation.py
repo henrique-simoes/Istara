@@ -823,6 +823,7 @@ async def _run_pi_coding_run(
                     source="pi",
                     provider_type="openai_compat",
                     endpoint_id=f"ep-{name}",
+                    provider_account_handle=f"account-{name}",
                 ),
                 coder_id=f"model-coder:ep-{name}",
                 model_name=shared_model or f"model-{name}",
@@ -845,8 +846,16 @@ async def _run_pi_coding_run(
             applications = [
                 {
                     "evidence_unit_id": unit_id,
-                    "codes": ["collaboration-disorientation"],
-                    "primary_code": "collaboration-disorientation",
+                    "codes": [
+                        "collaboration-disorientation"
+                        if unit_id == unit_ids[0]
+                        else "invitation-friction"
+                    ],
+                    "primary_code": (
+                        "collaboration-disorientation"
+                        if unit_id == unit_ids[0]
+                        else "invitation-friction"
+                    ),
                     "quote": source_quotes[unit_id],
                     "confidence": 0.92,
                     "rationale": "The participant is blocked by team invitation setup.",
@@ -923,6 +932,21 @@ async def test_coding_run_pi_plane_distinct_endpoint_coders_accept(
         "model-b",
         "model-c",
     }
+    provenance = result["matrix"]["rater_provenance"]
+    assert set(provenance) == {
+        "model-coder:ep-a",
+        "model-coder:ep-b",
+        "model-coder:ep-c",
+    }
+    for coder_id, identity in provenance.items():
+        suffix = coder_id[-1]
+        assert identity["model_checkpoint"] == f"model-{suffix}"
+        assert identity["provider_account_handle"] == f"account-{suffix}"
+        assert identity["endpoint_id"] == f"ep-{suffix}"
+        assert len(identity["prompt_hash"]) == 64
+        assert identity["protocol_version"]
+        assert identity["decoding_profile"] == {"temperature": 0.2}
+    assert result["matrix"]["provenance_conflicts"] == []
 
 
 async def test_coding_run_pi_plane_same_model_endpoint_replicas_need_reconciliation(

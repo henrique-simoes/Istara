@@ -9,6 +9,7 @@ import uuid
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from datetime import UTC, datetime
+from hashlib import sha256
 from typing import Any
 
 from sqlalchemy import func, select
@@ -17,6 +18,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.llm_router import llm_router
 from app.core.research_validity import (
     DEFAULT_RELIABILITY_THRESHOLD,
+    QUALITATIVE_CODING_PROTOCOL,
     build_qualitative_coding_prompt,
     evaluate_reliability_gate,
     graph_edge_metadata,
@@ -587,6 +589,7 @@ async def _select_pi_coders(max_coders: int) -> list[CoderSpec]:
                 source="pi",
                 provider_type=endpoint.provider_kind,
                 endpoint_id=endpoint.endpoint_id,
+                provider_account_handle=getattr(endpoint, "provider_account_handle", ""),
             ),
             coder_id=f"model-coder:{endpoint.endpoint_id}",
             model_name=endpoint.model,
@@ -627,6 +630,9 @@ async def _pi_coder_runner(
             "provider_type": getattr(coder.node, "provider_type", ""),
             "model": model_name or "",
             "endpoint_id": outcome.endpoint_id or getattr(coder.node, "endpoint_id", "") or "",
+            "provider_account_handle": getattr(coder.node, "provider_account_handle", ""),
+            "decoding_profile": {"temperature": 0.2},
+            "protocol_version": QUALITATIVE_CODING_PROTOCOL["version"],
             "route_kind": "coding_run",
             "outcome": "served",
         },
@@ -1228,6 +1234,9 @@ async def run_independent_coding_run(
     else:
         coders = _select_project_coders(project_id, max_coders=max_coders)
     messages = _coding_messages(units, codebook, threshold)
+    prompt_hash = sha256(
+        json.dumps(messages, sort_keys=True, separators=(",", ":")).encode()
+    ).hexdigest()
     unit_by_id = {unit.id: unit for unit in units}
     gate_applications: list[dict] = []
     persisted_count = 0
@@ -1365,6 +1374,13 @@ async def run_independent_coding_run(
                         or getattr(coder.node, "endpoint_id", "")
                         or served_donor_id
                     ),
+                    "provider_account_handle": route.get("provider_account_handle") or "",
+                    "model_checkpoint": route.get("model") or coder.model_name,
+                    "prompt_hash": prompt_hash,
+                    "codebook_version_id": coding_run.codebook_version_id or "",
+                    "protocol_version": route.get("protocol_version")
+                    or QUALITATIVE_CODING_PROTOCOL["version"],
+                    "decoding_profile": route.get("decoding_profile") or {"temperature": 0.2},
                     "evidence_unit_id": unit.id,
                     "codes": codes,
                 }
@@ -1422,6 +1438,7 @@ async def run_independent_coding_run(
         gate_applications,
         threshold=threshold,
         minimum_distinct_models=max_coders,
+        require_rater_provenance=True,
     )
     promotion_status = reliability["promotion_status"]
     item_statuses = reliability.get("item_promotion_statuses") or item_level_promotion_statuses(

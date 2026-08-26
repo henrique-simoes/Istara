@@ -1818,3 +1818,69 @@ Verified: push `39c4b863..fb3bcac7`; local and `origin/testing` both resolve to
 `fb3bcac71c335bbb89ffcf4c11c0f8a635126159`; post-push status had no file entries.
 Next: commit/push this receipt, then add red contracts and implementation for reconstructable effective-
 rater provenance while preserving the rule that same-checkpoint aliases/replicas count as one model.
+
+### L-74 | 2026-08-26T00:08:00Z | S1-frame/S2-execute | gpt-5-codex | implementer | Effective-rater provenance boundary under test
+Did: Transported the L-73 receipt (`17918777`) and used Compass Forge impact/why on the endpoint
+resolver before extending its widely consumed identity contract. Added a non-secret 16-hex provider-
+account handle derived from Keychain service/account identity, without exposing either value. Began
+recording per-coder model/checkpoint, account handle, endpoint, prompt digest, codebook, protected
+protocol version, and decoding profile in the reconstructable reliability matrix, with within-run
+identity changes failing closed.
+Result: Endpoint/account provenance is now separable from scientific independence: route fields are
+auditable, while the existing normalized model/checkpoint count still collapses same-model replicas.
+Pi coding passes use a fixed temperature and protected protocol; the exact prompt is represented by a
+digest, not persisted again. One endpoint unit assertion used an incorrectly precomputed digest and
+is being corrected to the implementation's deterministic value; the provenance metric tests passed.
+Verified: receipt pushed and tree clean before this slice; endpoint impact confidence high; changed
+runtime Ruff clean; first focused run `1 failed, 4 passed`, solely expected account-handle fixture
+`db24...` versus actual `77338d4237faa913`. No service/model/SSH/host action.
+Next: rerun endpoint/provenance contracts, inspect service integration persistence, add a production-
+path assertion that all three coder columns carry complete consistent provenance, then wider W7 tests.
+
+### L-75 | 2026-08-26T00:10:00Z | S2-execute/S4-remediate | gpt-5-codex | implementer | Production provenance completeness now fail-closed
+Did: Added an explicit production enforcement flag to the reliability gate; governed coding runs now
+require non-empty checkpoint/model, safe provider-account handle, endpoint, prompt digest, protected
+protocol version, and decoding profile for every coder. Pure statistical callers can still evaluate
+synthetic matrices without route metadata, while the Research Spine service cannot. Added a W7
+integration assertion over all three persisted coder columns and a negative missing-provenance test.
+Result: Changing endpoint/account/prompt/codebook/protocol/decoding identity within a coder column or
+omitting required production provenance routes to reconciliation. Same-model routes still collapse in
+the independent-model count; complete route identity never manufactures model diversity.
+Verified: endpoint/provenance focused set `5 passed`; negative provenance metric `1 passed`. The first
+W7/contract rerun stopped at collection because a test-fixture method was accidentally over-indented;
+the indentation is corrected, with no production file implicated. No service/model/SSH/host action.
+Next: rerun the identical W7/contract selection, repair only evidence-backed failures, then inspect
+serialization for raw source spans, normalized categories, missing/abstain, full matrix, and routes.
+
+### L-76 | 2026-08-26T00:12:00Z | S2-execute/S3-review | gpt-5-codex | verifier | Effective-rater provenance under complete bounded regression
+Did: Corrected the fixture indentation and obtained a green W7/service integration selection. Reviewed
+the persisted CodingRun matrix and CodeApplication split: the matrix now carries normalized categories,
+missing/abstain states, complete rater provenance and conflicts; source quote/span/location/grounding and
+route evidence remain persisted on each CodeApplication/CodingRunCoder rather than duplicated into each
+matrix cell. Updated and regenerated Ensemble Health living documentation. Ran the mandatory security
+benchmark because the safe account handle derives from Keychain identity metadata.
+Result: The audit artifact is reconstructable across the matrix plus source-grounded application rows,
+without storing secret, URL, prompt text, or raw Keychain account/service values. The account handle is
+a one-way truncated digest; endpoint telemetry exposes only this safe handle. Full bounded tests run now.
+Verified: W7/contract selection `16 passed`; changed files Ruff/diff clean; feature docs seeded 0/
+generated 224/check passed for 86; security benchmark 28/28, 100%, no blocked/partial/fail; active pytest
+session 68475 has emitted 66 passes. No service/model/SSH/host action.
+Next: collect terminal pytest count, inspect endpoint identity compatibility and secret leakage, run the
+after-gate, then commit/push this effective-provenance sub-slice if review remains clean.
+
+### L-77 | 2026-08-26T00:14:00Z | S3-review/S5-ship | gpt-5-codex | reviewer | Effective-rater provenance slice ready for transport
+Did: Collected the complete bounded suite, reviewed every new secret/account/prompt-related diff line,
+and ran two after-gates including a compact parsed delta. Confirmed raw Keychain service/account appear
+only as in-process hash inputs; persisted/telemetry data contains only the 16-hex handle. Prompt content
+is not duplicated into the matrix; only its SHA-256 digest is stored. Exact source spans and grounding
+remain in CodeApplication rows linked by coder/unit/run IDs.
+Result: Effective identity is now auditable without weakening model independence or leaking credentials.
+The after-gate reports only inherited complexity thresholds on touched large files/functions; it reports
+zero new forbidden dependencies, missing required paths, or import cycles, and no new secret-flow issue.
+Splitting those large service/test files is recorded structural debt, not silently claimed resolved.
+Verified: complete endpoint/W7/metrics/validity set `83 passed in 74.96s`; security benchmark 28/28,
+100%; feature docs 86/86; changed-file Ruff and diff check clean; Compass Forge after records 13/14.
+No live service/model/SSH/host action.
+Next: stage exactly the 12 reviewed runtime/test/living-doc/generated/ledger paths, commit/push, verify
+clean local/remote equality, transport the receipt, then continue P9-05 with independent prompt/cache
+isolation and external Fleiss/alpha cross-check edge cases.

@@ -10,6 +10,7 @@ from __future__ import annotations
 import asyncio
 import time
 from dataclasses import dataclass
+from hashlib import sha256
 from typing import Any
 
 from app.config import (
@@ -106,6 +107,9 @@ class ResolvedPiEndpoint:
     # describes the wire protocol; this identifies provider-specific model
     # semantics (for example DeepSeek's explicit thinking control).
     pi_provider: str = ""
+    # Stable non-secret handle for the credential/account authority. It is a
+    # digest of Keychain service + account, never either raw value.
+    provider_account_handle: str = ""
     # Trustworthy per-endpoint pricing (USD per 1M tokens). Forwarded to the
     # worker so pi-ai prices real usage and the per-run cost ceiling can fail
     # closed; a real endpoint left at 0.0 cannot enforce a cost budget.
@@ -134,6 +138,7 @@ class ResolvedPiEndpoint:
             "endpoint_id": self.endpoint_id,
             "provider_kind": self.provider_kind,
             "model": self.model,
+            "provider_account_handle": self.provider_account_handle,
         }
 
 
@@ -216,6 +221,9 @@ class PiEndpointResolver:
             timeout_ms=endpoint.timeout_ms,
             max_retries=endpoint.max_retries,
             pi_provider=endpoint.pi_provider or endpoint.auth_provider,
+            provider_account_handle=sha256(
+                f"{endpoint.keychain_service}\0{endpoint.keychain_account}".encode()
+            ).hexdigest()[:16],
             cost_input_per_mtok=endpoint.cost_input_per_mtok,
             cost_output_per_mtok=endpoint.cost_output_per_mtok,
             cost_cache_read_per_mtok=endpoint.cost_cache_read_per_mtok,

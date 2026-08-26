@@ -26,6 +26,7 @@ import logging
 import weakref
 from collections.abc import Iterable
 from dataclasses import dataclass
+from hashlib import sha256
 
 from app.config import PiApiEndpoint, settings
 
@@ -418,6 +419,11 @@ class PiModelManager:
             timeout_ms=entry.timeout_ms,
             max_retries=entry.max_retries,
             pi_provider=entry.pi_provider,
+            provider_account_handle=(
+                sha256(
+                    f"{entry.source}\0{entry.pi_provider or entry.provider_kind}".encode()
+                ).hexdigest()[:16]
+            ),
             cost_input_per_mtok=entry.cost_input_per_mtok,
             cost_output_per_mtok=entry.cost_output_per_mtok,
             cost_cache_read_per_mtok=entry.cost_cache_read_per_mtok,

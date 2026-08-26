@@ -131,6 +131,46 @@ def test_single_category_fleiss_kappa_is_undefined_and_requires_reconciliation()
     assert "undefined" in result["fallback_reason"].lower()
 
 
+def test_effective_rater_provenance_is_reconstructable_and_conflicts_fail_closed():
+    from app.core.research_validity import evaluate_reliability_gate
+
+    base = {
+        "coder_id": "coder-a",
+        "model_name": "model-a",
+        "provider_account_handle": "account-safe-handle",
+        "endpoint_id": "endpoint-a",
+        "prompt_hash": "prompt-sha256",
+        "codebook_version_id": "codebook-v1",
+        "protocol_version": "protocol-v1",
+        "decoding_profile": {"temperature": 0.2},
+    }
+    applications = [
+        {**base, "evidence_unit_id": "eu-1", "codes": ["nav"]},
+        {
+            **base,
+            "endpoint_id": "endpoint-b",
+            "evidence_unit_id": "eu-2",
+            "codes": ["trust"],
+        },
+    ]
+
+    result = evaluate_reliability_gate(applications)
+
+    assert result["method"] == "invalid_rater_provenance"
+    assert result["promotion_status"] == "needs_reconciliation"
+    assert result["matrix"]["rater_provenance"]["coder-a"]["model_checkpoint"] == "model-a"
+    assert result["matrix"]["provenance_conflicts"] == [
+        {"coder_id": "coder-a", "field": "endpoint_id"}
+    ]
+
+    incomplete = evaluate_reliability_gate(
+        [{"coder_id": "coder-a", "model_name": "model-a", "evidence_unit_id": "eu-1", "codes": ["nav"]}],
+        require_rater_provenance=True,
+    )
+    assert incomplete["method"] == "incomplete_rater_provenance"
+    assert incomplete["promotion_status"] == "needs_reconciliation"
+
+
 # ============================================================
 # Fixtures: in-memory async SQLite for model tests
 # ============================================================

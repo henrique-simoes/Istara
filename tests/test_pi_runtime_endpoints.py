@@ -31,6 +31,7 @@ def test_pi_endpoint_resolver_rejects_same_model_identity_mismatch(monkeypatch):
         "endpoint_id": "pi-api",
         "provider_kind": "openai_compat",
         "model": "shared-model",
+        "provider_account_handle": "77338d4237faa913",
     }
     assert "provider.invalid" not in str(resolved.telemetry_identity())
 

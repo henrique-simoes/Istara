@@ -537,6 +537,41 @@ def _all_codes(coder_units: dict[str, dict[str, set[str]]]) -> list[str]:
     return sorted(codes)
 
 
+def effective_rater_provenance(applications: list[dict]) -> tuple[dict[str, dict], list[dict]]:
+    """Return reconstructable safe rater identity plus within-rater conflicts."""
+    fields = (
+        "model_checkpoint",
+        "provider_account_handle",
+        "endpoint_id",
+        "prompt_hash",
+        "codebook_version_id",
+        "protocol_version",
+        "decoding_profile",
+    )
+    provenance: dict[str, dict] = {}
+    conflicts: list[dict] = []
+    for app in applications:
+        coder_id = str(app.get("coder_id") or app.get("model_name") or "").strip()
+        if not coder_id:
+            continue
+        candidate = {
+            "model_checkpoint": str(
+                app.get("model_checkpoint") or app.get("model_name") or app.get("model") or ""
+            ).strip(),
+            "provider_account_handle": str(app.get("provider_account_handle") or "").strip(),
+            "endpoint_id": str(app.get("endpoint_id") or app.get("route_id") or "").strip(),
+            "prompt_hash": str(app.get("prompt_hash") or "").strip(),
+            "codebook_version_id": str(app.get("codebook_version_id") or "").strip(),
+            "protocol_version": str(app.get("protocol_version") or "").strip(),
+            "decoding_profile": app.get("decoding_profile") or {},
+        }
+        current = provenance.setdefault(coder_id, candidate)
+        for field_name in fields:
+            if current.get(field_name) != candidate.get(field_name):
+                conflicts.append({"coder_id": coder_id, "field": field_name})
+    return provenance, conflicts
+
+
 def build_binary_coding_matrix(applications: list[dict]) -> dict:
     """Build a reconstructable evidence-unit by rater matrix."""
     coder_units = normalize_coder_applications(applications)
@@ -556,12 +591,30 @@ def build_binary_coding_matrix(applications: list[dict]) -> dict:
         for coder_id in coders
         if not coder_units.get(coder_id, {}).get(unit_id)
     ]
+    rater_provenance, provenance_conflicts = effective_rater_provenance(applications)
+    required_provenance_fields = (
+        "model_checkpoint",
+        "provider_account_handle",
+        "endpoint_id",
+        "prompt_hash",
+        "protocol_version",
+        "decoding_profile",
+    )
+    missing_provenance = [
+        {"coder_id": coder_id, "field": field_name}
+        for coder_id, identity in rater_provenance.items()
+        for field_name in required_provenance_fields
+        if not identity.get(field_name)
+    ]
     return {
         "coders": coders,
         "evidence_units": units,
         "codes": codes,
         "matrix": matrix,
         "missing_ratings": missing_ratings,
+        "rater_provenance": rater_provenance,
+        "provenance_conflicts": provenance_conflicts,
+        "missing_provenance": missing_provenance,
     }
 
 
@@ -672,6 +725,7 @@ def evaluate_reliability_gate(
     *,
     threshold: float = DEFAULT_RELIABILITY_THRESHOLD,
     minimum_distinct_models: int = 1,
+    require_rater_provenance: bool = False,
 ) -> dict:
     """Evaluate the corrected reliability policy for coded evidence units."""
     matrix = build_binary_coding_matrix(applications)
@@ -701,6 +755,30 @@ def evaluate_reliability_gate(
                 "alpha": None,
                 "promotion_status": "needs_reconciliation",
                 "fallback_reason": "Independent coding reused a model identity as if it were a distinct coder.",
+            }
+        )
+        return result
+
+    if matrix.get("provenance_conflicts"):
+        result.update(
+            {
+                "method": "invalid_rater_provenance",
+                "kappa": None,
+                "alpha": None,
+                "promotion_status": "needs_reconciliation",
+                "fallback_reason": "A coder changed effective identity within one coding run.",
+            }
+        )
+        return result
+
+    if require_rater_provenance and matrix.get("missing_provenance"):
+        result.update(
+            {
+                "method": "incomplete_rater_provenance",
+                "kappa": None,
+                "alpha": None,
+                "promotion_status": "needs_reconciliation",
+                "fallback_reason": "Effective rater provenance is incomplete.",
             }
         )
         return result

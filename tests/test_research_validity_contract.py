@@ -858,6 +858,7 @@ async def test_independent_coding_run_persists_model_codes_and_reliability(monke
             self.is_healthy = True
             self.loaded_models = [model_name]
             self.model_capabilities = {}
+            self.provider_account_handle = f"account-{node_id}"
 
     class _StubAgentic:
         def __init__(self) -> None:
