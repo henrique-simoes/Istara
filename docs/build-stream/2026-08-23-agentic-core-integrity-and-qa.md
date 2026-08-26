@@ -8,8 +8,8 @@ phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal ac
 stage: S2-execute
 status: in-progress
 blocked_on: null
-last: { agent: gpt-5-codex, at: 2026-08-26T16:40:00Z, ledger: L-161 }
-next_action: "Run the full deterministic matrix and feature-doc checks on deaffea1, then refresh Docker and perform one provenance/secret-safe comparison retake."
+last: { agent: gpt-5-codex, at: 2026-08-26T17:05:00Z, ledger: L-162 }
+next_action: "Refresh the detached worktree to c8728956, run one final provenance/secret-safe Docker comparison, and verify run metadata plus process-list hygiene before teardown."
 ```
 
 ## Plan overview / roadmap
@@ -3457,6 +3457,38 @@ and cannot prove three-donor Petals or live Fleiss' kappa.
 
 Next: execute local deterministic verification, append its result, then refresh the detached
 Mac Studio worktree to `origin/testing` and run exactly one post-fix Docker comparison.
+
+### L-162 | 2026-08-26T17:05:00Z | S3-review | gpt-5-codex | deterministic verification complete; live provider gap recorded
+Did: Ran the complete bounded deterministic matrix after the runner hardening (`923 passed,
+5 skipped in 145.67s`), the real-user benchmark contract/language checks (`57 passed`), and
+`python scripts/feature_docs.py --seed-missing --generate-site --check` (`seeded 0`, `generated
+224`, checks passed for `86` features). Compass Forge after-gate record `63` reports no new
+comparison issues, failures, dependency/import-cycle, missing-path, unexpected-large-file,
+security, or taint deltas; inherited global complexity, route/type, and secret-flow warnings
+remain unchanged.
+
+Live retake disposition: both Docker arms completed the marathon companion cycle (`38/38` in
+the final cycle) but the probe path exited with blockers. The legacy run stopped at one chat
+turn with provider `402 Insufficient Balance`; the Pi run recorded `score=43.5`, `chat_turns=0`,
+`completed_tasks=0`, `blocker_count=8`, `compute_donation_verified=false`,
+`multi_donor_compute_verified=false`, `coding_validation_verified=false`, and no live chat.
+The Research Spine evidence was explicitly `expected_distinct_coders=3`,
+`distinct_model_count=0`, `rater_count=0`, `kappa=null`, `alpha=null`, and
+`served_donor_route_count=0`. The healthy provider-stub container was not a substitute for a
+configured reachable model provider, so no PI Model Management route, Petals slash-string
+donation path, three-model ensemble, or human-approved coding/reconciliation path was actually
+exercised. These results are blocker evidence, not a quality score.
+
+Result: the local code and Docker artifact gates are green, but the supplied live test
+configuration cannot answer the owner's central model/ensemble question. A final retake after
+the runner hardening can validate provenance and secret hygiene, but it will remain non-
+authoritative for Research Spine quality unless a reachable authorized provider and three
+served donor routes are configured inside Docker. The runner's current `REQUIRE_COMPUTE_DONATION=0`
+and two-arm topology must be replaced or supplemented for that acceptance.
+Next: commit this verification receipt, refresh the clean worktree, run one post-fix comparison,
+and inspect each run's `run-metadata.json` for the exact source commit and absence of a password
+in any process command line. Then update the remaining-work plan with the provider/donor
+implementation work still required.
 
 ### L-159 | 2026-08-26T16:05:00Z | S1-plan/S2-execute/S3-review | gpt-5-codex | runner bootstrap fix specified by CF and TDD
 Did: Ran Compass Forge `intelligence impact --path scripts/runner/docker-run.sh` for the
