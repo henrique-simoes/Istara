@@ -8,7 +8,7 @@ phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal ac
 stage: S2-execute
 status: in-progress
 blocked_on: null
-last: { agent: gpt-5-codex, at: 2026-08-26T23:30:00Z, ledger: L-204 }
+last: { agent: gpt-5-codex, at: 2026-08-26T23:34:00Z, ledger: L-205 }
 next_action: "Commit and push the profile-isolated benchmark and lifecycle-cleanup changes, verify local/origin testing parity, then run the terminal Docker-only provider/Petals/combined retake when owner-authorized provider credit and three Compose-owned donor routes are available."
 ```
 
@@ -4370,30 +4370,6 @@ artifacts, exercise long-horizon/two-call behavior and the accepted/report gates
 only testing resources. Until that evidence exists, the ensemble and Research Spine live gates
 remain open despite the deterministic local tests being green.
 
-### L-204 | 2026-08-26T23:30:00Z | S3-gate/S3-review | gpt-5-codex | final local acceptance slice is attributable-clean
-
-Did: Ran the pinned native Rust Compass Forge `gate before` (record `94`) and `gate after`
-(record `95`) against the profile-isolation, scorecard, connection-revocation, and test-fixture
-changes. Both comparisons report `new_issues=[]`, zero file/large-file deltas, no new forbidden
-dependencies, Python import cycles, missing paths, security findings, or taint findings. The
-overall repository gate remains failed only on inherited complexity, route/type drift, and
-secret-flow findings already present in the baseline; those are not reclassified as caused by
-this slice.
-
-The final deterministic checks are green: JavaScript benchmark/document/topology checks `70/70`,
-remote runner contracts `16 passed`, shell syntax, feature-doc generation/check (`seeded 0`,
-`generated 224`, `86 feature(s)`), focused websocket/task warnings-as-errors `34/34`, and full
-Python strict matrix `1997 passed, 6 skipped` with no `RuntimeWarning` failures. A vacuous empty
-donor list is now explicitly `not_selected`/unverified for provider-only runs, preventing a
-Petals endpoint field from masquerading as evidence.
-
-Next: commit only the intended repository files, push non-forced to `origin/testing`, verify
-exact local/remote SHA parity and a clean worktree, and preserve the external Mac Studio gate.
-The live provider/three-model/Petals acceptance still needs owner-authorized provider credit or
-three reachable Compose-owned routes; until then no model identity, rater labels, Fleiss or
-Krippendorff metrics, grounding, reconciliation, human-Done/report, two-call/long-horizon, or
-Petals interoperability claim is valid.
-
 ### L-202 | 2026-08-26T23:20:00Z | S2-execute/S3-review | gpt-5-codex | benchmark profiles now isolate their executable workload planes
 
 Did: Converted `provider`, `petals`, and `combined` from scorecard labels into explicit
@@ -4442,3 +4418,53 @@ parity. The live gate remains open until a Docker-only Mac Studio run produces t
 served model identities, common raw evidence units, numeric Fleiss/Krippendorff reliability,
 grounding, reconciliation, human-approved Done/report evidence, two-call/long-horizon
 artifacts, Petals donation interoperability, and teardown proof.
+
+### L-204 | 2026-08-26T23:30:00Z | S3-gate/S3-review | gpt-5-codex | final local acceptance slice is attributable-clean
+
+Did: Ran the pinned native Rust Compass Forge `gate before` (record `94`) and `gate after`
+(record `95`) against the profile-isolation, scorecard, connection-revocation, and test-fixture
+changes. Both comparisons report `new_issues=[]`, zero file/large-file deltas, no new forbidden
+dependencies, Python import cycles, missing paths, security findings, or taint findings. The
+overall repository gate remains failed only on inherited complexity, route/type drift, and
+secret-flow findings already present in the baseline; those are not reclassified as caused by
+this slice.
+
+The final deterministic checks are green: JavaScript benchmark/document/topology checks `70/70`,
+remote runner contracts `16 passed`, shell syntax, feature-doc generation/check (`seeded 0`,
+`generated 224`, `86 feature(s)`), focused websocket/task warnings-as-errors `34/34`, and full
+Python strict matrix `1997 passed, 6 skipped` with no `RuntimeWarning` failures. A vacuous empty
+donor list is now explicitly `not_selected`/unverified for provider-only runs, preventing a
+Petals endpoint field from masquerading as evidence.
+
+Next: commit only the intended repository files, push non-forced to `origin/testing`, verify
+exact local/remote SHA parity and a clean worktree, and preserve the external Mac Studio gate.
+The live provider/three-model/Petals acceptance still needs owner-authorized provider credit or
+three reachable Compose-owned routes; until then no model identity, rater labels, Fleiss or
+Krippendorff metrics, grounding, reconciliation, human-Done/report, two-call/long-horizon, or
+Petals interoperability claim is valid.
+
+### L-205 | 2026-08-26T23:34:00Z | S4-ship | gpt-5-codex | deterministic slice transported with exact testing parity
+
+Did: Committed the profile-isolated acceptance workloads, scorecard truthfulness guard,
+generated connection revocation evidence, websocket async-task teardown fix, living Ensemble
+Health documentation, generated site artifacts, and Build Stream checkpoints as
+`d9c9d30ac977de633866fbee397a150c22dbfe85` (`test: isolate acceptance profiles and clean async
+teardown`). Pushed non-forced to `origin/testing`; fetch plus exact SHA comparison and
+`git diff --exit-code origin/testing --` confirm local `testing` and `origin/testing` are equal
+and the worktree is clean. The only separate worktree is the intentionally retained clean
+`recovery/pi-retake-linearized-2026-08-10`; `git branch --merged testing` contains only
+`testing`, so no branch/worktree had a demonstrably safe unused disposition for deletion.
+
+Evidence: final checks in L-204 and the transport verification above. No protected `LLMs/` or
+`Model_Finetuning/` artifact was touched or removed, and no Mac Studio host install or live
+model load occurred. The external `/Users/user/Desktop/testing.md` ledger now records F-R9-46
+through F-R9-48 for profile isolation, lifecycle cleanup, and vacuous donor verification.
+
+Next: the implementation slice is complete locally, but the goal is not complete. Resume only
+with owner-authorized reachable provider credit or three Compose-owned model routes. On Mac
+Studio, use Docker exclusively and the exact pushed SHA; run provider and Petals profiles
+independently, then combined plus legacy/PI arms. Preserve immutable source/image/Compose
+metadata and require three distinct served model identities, common raw spans, numeric
+Fleiss/Krippendorff reliability, grounding, reconciliation, human-approved Done/report
+eligibility, two-call/long-horizon evidence, Petals slash-string consent/health/usage/revoke,
+and cleanup before making any Research Spine or ensemble acceptance claim.
