@@ -2057,3 +2057,14 @@ Verified: feature docs 86/86; full boundary 94/94; Ruff/diff clean; Compass Forg
 No live service/model/SSH/host action.
 Next: commit/push exactly the six runtime/test/living/generated/lifecycle paths, verify clean ref
 equality, transport the receipt, then resume P9-06 continuous positive-journey proof.
+
+### L-91 | 2026-08-26T00:42:00Z | S5-ship/S2-execute | gpt-5-codex | integrator | Stale-assurance bypasses transported cleanly
+Did: Staged exactly the six reviewed service/test/Reports living-doc/generated/ledger paths, committed
+`b238d191` (`fix: invalidate stale research evidence`), pushed `testing`, and verified ref equality and
+a clean tree before appending this receipt.
+Result: The newer-blocked-run and changed/deleted-source fail-closed gates are remotely recoverable.
+No unrelated file was staged. P9-06 remains in progress and now moves to the continuous positive path.
+Verified: push `af42944c..b238d191`; local and `origin/testing` both resolve to
+`b238d19157c7a0de52bff1d5470b33c59a783a3a`; post-push status had no file entries.
+Next: push this receipt, then construct the end-to-end positive fixture from real service boundaries
+without live model loading by using deterministic three-coder stubs and persisted route provenance.
