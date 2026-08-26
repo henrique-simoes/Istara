@@ -8,8 +8,8 @@ phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal ac
 stage: S2-execute
 status: in-progress
 blocked_on: null
-last: { agent: gpt-5-codex, at: 2026-08-26T14:45:00Z, ledger: L-150 }
-next_action: "Refresh ~/istara-testing-clean-6ce9374a to the pushed ledger SHA, render a redacted Compose snapshot, build all services through Docker, and capture image/config evidence before startup."
+last: { agent: gpt-5-codex, at: 2026-08-26T14:58:00Z, ledger: L-151 }
+next_action: "Checkpoint the Docker build target, then build all services from the refreshed detached worktree and capture image IDs/digests before startup."
 ```
 
 ## Plan overview / roadmap
@@ -3224,3 +3224,29 @@ IDs/digests and all benchmark artifacts under a timestamped remote evidence dire
 Next: refresh the detached worktree, capture the redacted Compose/config preflight, run the
 Docker image build, verify image IDs and clean source SHA, then checkpoint before starting the
 stack and benchmark runner.
+
+### L-151 | 2026-08-26T14:58:00Z | S2-execute/S3-review | gpt-5-codex | refreshed clean source and redacted Compose preflight
+Did: Refreshed the isolated Mac Studio worktree `~/istara-testing-clean-6ce9374a` from
+`origin/testing` and verified it is detached, clean, and exact at
+`2d536d143eea80bc08ec33c9939d65cfdb8e954a`. The previously dirty `~/istara-testing`
+checkout was not reset or cleaned. Compose was rendered with the deploy environment before
+any service startup; the raw rendered configuration was never persisted, and only a redacted
+snapshot was written.
+
+Evidence: remote artifact directory
+`/Users/user/istara-testing-evidence-20260826T145000Z`; source receipt reports
+`source_status_count=0`; redacted Compose hash is
+`6231482927650112a468dd38be0e8e0b8c9cef5f95f98362c03af7fc9cf980b9`. The effective service
+set is `postgres`, `backend`, `frontend`, `caddy`, and `provider-stub`; the only declared
+project volume is `istara-runtime-env`. No host package manager, host runtime, model server,
+or application process was invoked. Secret values and deploy-file contents were not printed.
+
+Result: the Docker-only rebuild precondition is satisfied with auditable source/config
+provenance. This proves configuration validity and source isolation only; it does not prove
+that PI Model Management, Petals donation, three independent donor routes, ensemble
+reconciliation, Fleiss' kappa, or long-horizon/two-call behavior works live. Those remain
+explicit acceptance gates, and any provider-stub or missing-donor result must be recorded as
+a blocker rather than converted into a quality claim.
+Next: append the build-start receipt, run `docker compose build --pull` from this detached
+worktree, capture image IDs/digests and build logs, then checkpoint before `up` or the bounded
+runner.
