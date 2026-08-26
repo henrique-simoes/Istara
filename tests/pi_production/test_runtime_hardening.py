@@ -12,6 +12,7 @@ from unittest.mock import AsyncMock
 import pytest
 
 from app.config import settings
+from app.core.agentic.types import TurnParams
 from app.core.pi_runtime.endpoints import (
     DEFAULT_ENDPOINT_ID,
     PiEndpointResolutionError,
@@ -23,6 +24,7 @@ from app.core.pi_runtime.engine import (
     _bind_payload,
     _enforce_test_provider_network_policy,
 )
+from app.core.pi_runtime.model_manager import PiModelManager
 from app.core.pi_runtime.pool import PiRuntimePool
 from app.core.pi_runtime.supervisor import PiRuntimeSupervisor
 
@@ -60,6 +62,46 @@ def test_unit_suite_allows_reserved_provider_test_domain(monkeypatch):
     )
 
     _enforce_test_provider_network_policy(endpoint)
+
+
+@pytest.mark.asyncio
+async def test_provider_only_turn_blocks_external_endpoint_before_worker_start(monkeypatch):
+    """Provider-only turns must share the ordinary test network guard.
+
+    The legacy ReAct bridge reaches this Pi seam directly; omitting the guard here
+    would let a unit test resolve a real public endpoint and start the worker even
+    though the streaming chat seam fails closed.
+    """
+    monkeypatch.setenv("ISTARA_TEST_BLOCK_EXTERNAL_LLM", "1")
+    endpoint = ResolvedPiEndpoint(
+        endpoint_id="pi-provider-live-forbidden",
+        provider_kind="openai_compat",
+        base_url="https://api.deepseek.com/v1",
+        model="deepseek-chat",
+        api_key="unused-test-secret",
+        timeout_ms=30_000,
+        max_retries=0,
+    )
+    manager = PiModelManager(endpoints=[endpoint], include_local=False)
+    manager._db_projected = True
+
+    class NeverStarted:
+        async def ensure_started(self):
+            raise AssertionError("network policy must run before worker startup")
+
+    service = PiExecutionService(supervisor=NeverStarted(), model_manager=manager)
+    with pytest.raises(
+        PiEndpointResolutionError, match="external_provider_blocked_in_test"
+    ):
+        await service.run_provider_turn(
+            purpose="test.external-provider-guard",
+            project_id="project-a",
+            agent_id="agent-a",
+            system="system",
+            messages=[{"role": "user", "content": "hello"}],
+            tools=None,
+            params=TurnParams(endpoint_id=endpoint.endpoint_id),
+        )
 
 
 def _faux_bind_payload(responses, *, faux_cost_usd: float | None = None) -> dict:

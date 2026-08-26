@@ -8,8 +8,8 @@ phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal ac
 stage: S2-execute
 status: in-progress
 blocked_on: null
-last: { agent: gpt-5-codex, at: 2026-08-26T13:09:24Z, ledger: L-134 }
-next_action: "Audit and, if needed, strengthen live paired-engine execution/provenance and Petals Pi integration; then obtain owner-gated Docker acceptance on the exact pushed image."
+last: { agent: gpt-5-codex, at: 2026-08-26T13:16:42Z, ledger: L-135 }
+next_action: "Audit live paired-engine provenance and the unproven Petals-through-Pi execution path; add only bounded contract fixes, then obtain owner-gated Docker acceptance on the exact pushed image."
 ```
 
 ## Plan overview / roadmap
@@ -2822,3 +2822,26 @@ still untouched.
 Next: inspect the paired benchmark's live execution/provenance contract and the unproven
 Petals-through-Pi path, then record bounded fixes or explicit blockers before owner-gated
 Docker acceptance.
+
+### L-135 | 2026-08-26T13:16:42Z | S2-execute/S3-review | gpt-5-codex | provider-only Pi seam now fails closed for external test endpoints
+Did: Audited `PiExecutionService.run_provider_turn`, the provider-only seam used by the
+legacy ReAct bridge, against the streaming chat seam. The streaming path already called
+`_enforce_test_provider_network_policy`, but provider-only execution resolved an endpoint
+and started the Pi worker without that guard. Added the same fail-closed check immediately
+after model-manager resolution and added a regression whose supervisor raises if startup is
+reached. A public DeepSeek URL is rejected with `external_provider_blocked_in_test` before
+any worker/network action.
+
+Verification: `pytest -q tests/pi_production/test_runtime_hardening.py` => `17 passed in
+4.51s`; compileall and `git diff --check` passed. The pinned native Compass Forge before
+gate recorded baseline record `50`; it reported no cycles, missing paths, large-file
+regressions, or security/taint findings, while showing the existing engine complexity
+warning as attributable to the touched file. No server, provider/model, SSH, Docker, or
+Mac Studio host action occurred.
+
+Result: ordinary deterministic tests cannot accidentally launch a real provider through
+the provider-only Pi/ReAct bridge when external LLM blocking is enabled. This is test
+isolation and security hardening, not live model-quality evidence. The change is still
+uncommitted at this checkpoint.
+Next: run the after gate after commit, push local/origin parity, append F-R9-16 to the
+external audit ledger, then continue the paired benchmark and Petals integration audit.

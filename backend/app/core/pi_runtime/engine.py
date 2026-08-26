@@ -589,6 +589,7 @@ class PiExecutionService:
             require_vision=require_vision,
             project_id=project_id,
         )
+        _enforce_test_provider_network_policy(endpoint)
         key = f"pi-provider-{uuid.uuid4().hex}"
         sup = self._sup()
         terminal_frame: dict[str, Any] | None = None
