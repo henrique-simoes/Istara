@@ -8,7 +8,7 @@ phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal ac
 stage: S2-execute
 status: in-progress
 blocked_on: null
-last: { agent: gpt-5-codex, at: 2026-08-26T15:53:00Z, ledger: L-182 }
+last: { agent: gpt-5-codex, at: 2026-08-26T15:56:00Z, ledger: L-183 }
 next_action: "Obtain owner-authorized reachable provider credentials and three Compose-owned donor routes, then run the terminal Docker-only Research Spine retake; local code and testing refs are reconciled."
 ```
 
@@ -3863,7 +3863,7 @@ Docker profile as independent scorecard gates; donation telemetry must not subst
 coding evidence, and a provider-only coding proof must not be blocked merely because Petals is
 disabled unless the combined profile is explicitly selected.
 
-Next: preserve the clean `testing`/`origin/testing` parity at `ab6b14e7`, then await the owner’s
+Next: preserve the clean `testing`/`origin/testing` parity at the current shipped tip, then await the owner’s
 explicit provider/donor handoff. The terminal run must configure one authorized provider plane
 with three distinct served model routes and three project-scoped donation routes (or record
 fail-closed blockers), execute both engine selections through PI Model Management, and capture
