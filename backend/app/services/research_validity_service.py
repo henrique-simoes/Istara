@@ -633,6 +633,8 @@ async def _pi_coder_runner(
             "provider_account_handle": getattr(coder.node, "provider_account_handle", ""),
             "decoding_profile": {"temperature": 0.2},
             "protocol_version": QUALITATIVE_CODING_PROTOCOL["version"],
+            "conversation_scope": "fresh_session_per_coder_call",
+            "cache_scope": "provider_prefix_cache_no_response_reuse",
             "route_kind": "coding_run",
             "outcome": "served",
         },
@@ -1381,6 +1383,10 @@ async def run_independent_coding_run(
                     "protocol_version": route.get("protocol_version")
                     or QUALITATIVE_CODING_PROTOCOL["version"],
                     "decoding_profile": route.get("decoding_profile") or {"temperature": 0.2},
+                    "conversation_scope": route.get("conversation_scope")
+                    or "fresh_session_per_coder_call",
+                    "cache_scope": route.get("cache_scope")
+                    or "provider_prefix_cache_no_response_reuse",
                     "evidence_unit_id": unit.id,
                     "codes": codes,
                 }

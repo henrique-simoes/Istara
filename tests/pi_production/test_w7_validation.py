@@ -946,6 +946,8 @@ async def test_coding_run_pi_plane_distinct_endpoint_coders_accept(
         assert len(identity["prompt_hash"]) == 64
         assert identity["protocol_version"]
         assert identity["decoding_profile"] == {"temperature": 0.2}
+        assert identity["conversation_scope"] == "fresh_session_per_coder_call"
+        assert identity["cache_scope"] == "provider_prefix_cache_no_response_reuse"
     assert result["matrix"]["provenance_conflicts"] == []
 
 

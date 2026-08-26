@@ -1896,3 +1896,45 @@ Verified: push `17918777..7a0b1953`; local and `origin/testing` both resolve to
 Next: commit/push this receipt, audit whether independent coder calls share conversation/cache state,
 then add deterministic statistical cross-checks for perfect/chance/disagreement/missing/single-category/
 category-order cases before declaring P9-05 complete.
+
+### L-79 | 2026-08-26T00:18:00Z | S2-execute/S3-review | gpt-5-codex | verifier | Coder session isolation and independent kappa cross-check proven
+Did: Traced dispatcher `structured` into Pi `run_structured` and `_drive_turn`: each coder passes no
+session key, so the engine creates a fresh UUID-backed session; prompt history is rebuilt from the fixed
+protected messages and never includes another coder's output. Persisted explicit conversation/cache
+scope in each rater identity. Added an independent count-formula Fleiss fixture with expected kappa
+0.333 and proved multi-code category-order invariance.
+Result: Provider prompt-prefix computation may be cached, but response/conversation state is never
+replayed as another coder judgment. Missing isolation metadata fails the production provenance gate.
+The source-diversity wording is applied to representative corpus/benchmark selection, not as a demand
+for three distinct source documents per run: such a gate would wrongly forbid valid multi-unit coding
+of one interview. Runtime requires all three models to cover every selected raw-source evidence unit;
+benchmark work must separately prove source-diverse selection.
+Verified: isolation/provenance and independent-formula tests `2 passed`; W7 persisted three-coder
+isolation identity `1 passed`; changed-file Ruff/diff clean. No service/model/SSH/host action.
+Next: regenerate living docs and rerun the complete endpoint/W7/metrics/validity boundary, then review,
+gate, commit/push this final P9-05 isolation/statistical slice and advance to P9-06 full-spine paths.
+
+### L-80 | 2026-08-26T00:20:00Z | S3-review | gpt-5-codex | verifier | Final P9-05 bounded regression active
+Did: Regenerated the feature documentation after adding the explicit fresh-session/provider-prefix-cache
+contract and started the complete endpoint/W7/metrics/research-validity regression.
+Result: Documentation and generated site agree; the test run has emitted 67 passes and remains active.
+This is a progress checkpoint rather than a terminal green claim.
+Verified: feature docs seeded 0/generated 224/check passed for 86; active pytest session 84772 current
+stream `...................................................................`. No service/model/SSH/host action.
+Next: collect the terminal count, remediate any failure, run compact after-gate/diff review, and transport
+only after the process exits green.
+
+### L-81 | 2026-08-26T00:22:00Z | S3-review/S5-ship | gpt-5-codex | reviewer | P9-05 final isolation/statistical slice ready
+Did: Collected the terminal regression, ran changed-file Ruff/diff checks, and parsed the Compass Forge
+after-gate delta. Reviewed the eight-file diff: two small runtime metadata additions, two focused tests,
+living/generated docs, manifest, and lifecycle only.
+Result: P9-05 now covers distinct model/checkpoint independence; exact account/endpoint/prompt/codebook/
+protocol/decoding provenance; complete matrices; explicit abstention; missing/empty failure; undefined
+single-category handling; Fleiss plus alpha companion; independent count-formula/category-order check;
+fresh conversation sessions; and reconciliation instead of threshold promotion for invalid/low/undefined
+states. Remaining gate items are the already recorded touched-file complexity debt.
+Verified: complete bounded suite `84 passed in 67.08s`; feature docs 86/86; changed-file Ruff/diff clean;
+Compass Forge after record 15 has no new forbidden dependency, missing path, or import cycle. No live
+service/model/SSH/host action.
+Next: commit/push the exact eight-file slice and receipt, verify clean ref equality, mark P9-05 complete
+in the execution matrix, then start P9-06 full Research Spine path coverage and bypass remediation.

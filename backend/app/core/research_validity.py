@@ -547,6 +547,8 @@ def effective_rater_provenance(applications: list[dict]) -> tuple[dict[str, dict
         "codebook_version_id",
         "protocol_version",
         "decoding_profile",
+        "conversation_scope",
+        "cache_scope",
     )
     provenance: dict[str, dict] = {}
     conflicts: list[dict] = []
@@ -564,6 +566,8 @@ def effective_rater_provenance(applications: list[dict]) -> tuple[dict[str, dict
             "codebook_version_id": str(app.get("codebook_version_id") or "").strip(),
             "protocol_version": str(app.get("protocol_version") or "").strip(),
             "decoding_profile": app.get("decoding_profile") or {},
+            "conversation_scope": str(app.get("conversation_scope") or "").strip(),
+            "cache_scope": str(app.get("cache_scope") or "").strip(),
         }
         current = provenance.setdefault(coder_id, candidate)
         for field_name in fields:
@@ -599,6 +603,8 @@ def build_binary_coding_matrix(applications: list[dict]) -> dict:
         "prompt_hash",
         "protocol_version",
         "decoding_profile",
+        "conversation_scope",
+        "cache_scope",
     )
     missing_provenance = [
         {"coder_id": coder_id, "field": field_name}

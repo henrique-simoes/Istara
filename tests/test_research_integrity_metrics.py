@@ -143,6 +143,8 @@ def test_effective_rater_provenance_is_reconstructable_and_conflicts_fail_closed
         "codebook_version_id": "codebook-v1",
         "protocol_version": "protocol-v1",
         "decoding_profile": {"temperature": 0.2},
+        "conversation_scope": "fresh_session_per_coder_call",
+        "cache_scope": "provider_prefix_cache_no_response_reuse",
     }
     applications = [
         {**base, "evidence_unit_id": "eu-1", "codes": ["nav"]},
@@ -169,6 +171,38 @@ def test_effective_rater_provenance_is_reconstructable_and_conflicts_fail_closed
     )
     assert incomplete["method"] == "incomplete_rater_provenance"
     assert incomplete["promotion_status"] == "needs_reconciliation"
+
+
+def test_fleiss_kappa_matches_independent_count_formula_and_category_order():
+    from app.core.research_validity import build_binary_coding_matrix, fleiss_kappa_from_matrix
+
+    labels = {
+        "eu-1": ("a", "a", "b"),
+        "eu-2": ("a", "b", "b"),
+        "eu-3": ("a", "a", "a"),
+        "eu-4": ("b", "b", "b"),
+    }
+    applications = [
+        {
+            "coder_id": f"coder-{index}",
+            "model_name": f"model-{index}",
+            "evidence_unit_id": unit_id,
+            "codes": [label, "shared"] if index % 2 else ["shared", label],
+        }
+        for unit_id, row in labels.items()
+        for index, label in enumerate(row, 1)
+    ]
+
+    metric = fleiss_kappa_from_matrix(build_binary_coding_matrix(applications))
+
+    # Independent count-formula reference: Pbar=(1/3+1/3+1+1)/4=2/3;
+    # marginal category proportions are 1/2 and 1/2, so Pe=1/2 and k=1/3.
+    assert metric["kappa"] == 0.333
+    reordered = [
+        {**application, "codes": list(reversed(application["codes"]))}
+        for application in applications
+    ]
+    assert fleiss_kappa_from_matrix(build_binary_coding_matrix(reordered))["kappa"] == 0.333
 
 
 # ============================================================
