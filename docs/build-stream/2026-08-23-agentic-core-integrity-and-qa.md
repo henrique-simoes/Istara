@@ -8,7 +8,7 @@ phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal ac
 stage: S2-execute
 status: in-progress
 blocked_on: null
-last: { agent: gpt-5-codex, at: 2026-08-26T14:08:00Z, ledger: L-144 }
+last: { agent: gpt-5-codex, at: 2026-08-26T14:12:00Z, ledger: L-145 }
 next_action: "Obtain explicit owner handoff for the dirty Mac Studio checkout, then run a fresh Docker-only three-donor acceptance on cd1ad63c with complete Research Spine and provenance evidence; do not mutate the remote until that handoff exists."
 ```
 
@@ -3099,3 +3099,25 @@ authorization and execution. This is the correct terminal state for this turn be
 remaining actions would mutate a dirty remote checkout.
 Next: wait for owner handoff naming the dirty remote paths and desired preserve/commit/discard
 decisions; resume from L-140 item 1 and keep the two-minute checkpoint cadence.
+
+### L-145 | 2026-08-26T14:12:00Z | S4-ship | gpt-5-codex | safe local branch cleanup
+Did: Audited the local worktree and merged-branch inventory after transporting `testing`. The
+only registered worktrees are the clean current checkout, the clean detached historical CI
+checkout at `/private/tmp/opencode/ci-wt`, and the clean recovery checkout at
+`/Users/user/Documents/Codex/2026-08-10/list/work/istara-pi-linearized-2026-08-10`. A dry-run
+`git worktree prune` reported no stale registrations. Four local branches were exact merged
+ancestors of `testing`, had no worktree, and retained matching `origin/*` refs:
+`codex/main-stabilization-security-transcription`, `codex/systemwide-agentic-integration`,
+`codex/task-review-feedback-learning`, and `feat/dataset-generator-upgrade`.
+
+Verification: removed only those four local pointers with `git branch -d` (merge proof was
+required); remote refs remain intact for recovery. No remote branch, recovery branch, detached
+CI worktree, dirty path, protected artifact, or working tree was deleted. The main checkout
+remains clean and `testing` equals `origin/testing` at `29634792c65cbf1d97c06743a25e3db7cd6c0c87`.
+
+Result: the demonstrably unused local branch pointers are gone without deleting their remote
+history, while every ownership-uncertain or recovery target is preserved. Remote cleanup and
+Docker retake remain blocked by F-R9-21 and require the owner’s explicit preserve/commit/discard
+decision for `~/istara-testing`.
+Next: run no destructive remote action. Wait for owner handoff, then resume the Docker-only
+three-donor acceptance and final P9 closure sequence from L-140.
