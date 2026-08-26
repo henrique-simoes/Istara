@@ -2328,3 +2328,15 @@ items, not silently treated as Research Spine proof.
 Verified: no model load, backend/frontend server, SSH, Docker, host package install, or secret read.
 Next: commit and push this focused Petals lifecycle contract, then audit the actual three-rater
 ensemble execution path and its positive/negative Research Spine gates.
+
+### L-108 | 2026-08-26T11:01:00Z | S3-review | gpt-5-codex | reviewer | Petals lifecycle post-gate boundary
+Did: Re-ran the pinned native Compass Forge after gate after Petals lifecycle commit `e443d50d`.
+Result: Gate record 26 reports the same eight touched-file/function complexity warnings already
+visible on `chat.py`, `engine.py`, and `agent_lifecycle.py`; it reports no new forbidden dependencies,
+import cycles, security/taint findings, missing required paths, or unexpected large-file deltas.
+Those complexity warnings remain explicit open debt and are not silently reclassified as inherited.
+Verified: `pytest -q tests/petals_bridge/test_petals_bridge.py tests/pi_production/test_research_spine_donor_routing.py`
+=> 37 passed; local `testing` and `origin/testing` both resolve to `e443d50d`; worktree clean; native
+CF after record 26. No live model/service/SSH/Docker/host action.
+Next: constrain Petals donor selection by project authorization, then make generic response-level
+ensemble metadata explicitly non-formal so the Research Spine tests cannot overclaim Fleiss/Krippendorff validity.
