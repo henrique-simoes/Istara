@@ -84,6 +84,10 @@ class _CatalogEntry:
     kind: str = "remote"
     pi_provider: str = ""
     auth_method: str = "api_key"
+    # Donated Petals identities are project-scoped by the registry.  Keep the
+    # authorization projection alongside the catalog row so selection can
+    # exclude an otherwise healthy donor before it consumes an ensemble slot.
+    allowed_project_ids: tuple[str, ...] = ()
     # Settings-source entries keep their secrets in the resolver/Keychain.
     resolved: ResolvedPiEndpoint | None = None
 
@@ -255,6 +259,11 @@ class PiModelManager:
                     source="petals",
                     api_key=str(entry_dict.get("api_key") or ""),
                     kind="petals",
+                    allowed_project_ids=tuple(
+                        str(project_id).strip()
+                        for project_id in (entry_dict.get("allowed_project_ids") or ())
+                        if str(project_id).strip()
+                    ),
                 ),
             )
 
@@ -377,8 +386,18 @@ class PiModelManager:
     # ── selection (exact identity or capability-filtered, never scored) ──
     @staticmethod
     def _matches(
-        entry: _CatalogEntry, *, model: str | None, require_vision: bool, min_context: int
+        entry: _CatalogEntry,
+        *,
+        model: str | None,
+        require_vision: bool,
+        min_context: int,
+        project_id: str | None = None,
     ) -> bool:
+        if entry.source == "petals" and project_id is not None:
+            requested_project = str(project_id).strip()
+            allowed = set(entry.allowed_project_ids)
+            if not requested_project or ("*" not in allowed and requested_project not in allowed):
+                return False
         if model is not None and entry.model != model:
             return False
         if require_vision and not entry.supports_vision:
@@ -442,6 +461,7 @@ class PiModelManager:
         model: str | None = None,
         require_vision: bool = False,
         min_context: int = 0,
+        project_id: str | None = None,
     ) -> ResolvedPiEndpoint:
         if endpoint_id:
             entry = self._entries.get(endpoint_id)
@@ -457,6 +477,15 @@ class PiModelManager:
                     context_window=endpoint.context_window,
                 )
                 return endpoint
+            if not self._matches(
+                entry,
+                model=model,
+                require_vision=False,
+                min_context=0,
+                project_id=project_id,
+            ):
+                if entry.source == "petals" and project_id is not None:
+                    raise PiEndpointResolutionError("petals_project_not_authorized")
             self._admit(
                 model,
                 require_vision,
@@ -470,7 +499,11 @@ class PiModelManager:
             entry
             for entry in self._entries.values()
             if self._matches(
-                entry, model=model, require_vision=require_vision, min_context=min_context
+                entry,
+                model=model,
+                require_vision=require_vision,
+                min_context=min_context,
+                project_id=project_id,
             )
         ]
         if candidates:
@@ -497,6 +530,7 @@ class PiModelManager:
         exclude: Iterable[str] = (),
         require_vision: bool = False,
         min_context: int = 0,
+        project_id: str | None = None,
     ) -> list[ResolvedPiEndpoint]:
         """Resolve N endpoints backed by N distinct model identities.
 
@@ -513,6 +547,7 @@ class PiModelManager:
                 model=model,
                 require_vision=require_vision,
                 min_context=min_context,
+                project_id=project_id,
             ):
                 continue
             model_identity = entry.model.strip().casefold()

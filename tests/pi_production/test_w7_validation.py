@@ -620,12 +620,14 @@ class _StubPiModelManager:
         self._endpoints = endpoints or []
         self._error = error
         self.projected = False
+        self.resolve_calls: list[dict] = []
         _StubPiModelManager.instances.append(self)
 
     async def ensure_db_projection(self):
         self.projected = True
 
     def resolve_distinct(self, n, **kwargs):
+        self.resolve_calls.append({"n": n, **kwargs})
         if self._error is not None:
             raise self._error
         return self._endpoints[:n]
@@ -657,7 +659,7 @@ async def test_select_pi_coders_maps_distinct_endpoint_identities(monkeypatch):
 
     from app.services.research_validity_service import _select_pi_coders
 
-    coders = await _select_pi_coders(max_coders=3)
+    coders = await _select_pi_coders(max_coders=3, project_id="project-a")
 
     assert manager.projected, "the read-only DB projection must run before selection"
     assert [c.coder_id for c in coders] == [
@@ -670,6 +672,7 @@ async def test_select_pi_coders_maps_distinct_endpoint_identities(monkeypatch):
     assert [c.node.node_id for c in coders] == ["ep-a", "ep-b", "ep-c"], (
         "telemetry/route getattr('node_id') must resolve to the endpoint identity"
     )
+    assert manager.resolve_calls == [{"n": 3, "project_id": "project-a"}]
 
 
 async def test_select_pi_coders_fails_closed_on_insufficient_distinct(monkeypatch):
@@ -809,7 +812,7 @@ async def _run_pi_coding_run(
 
     if selection_error is not None:
 
-        async def _select(max_coders):
+        async def _select(max_coders, *, project_id=None):
             raise selection_error
 
         monkeypatch.setattr(research_validity_service, "_select_pi_coders", _select)
@@ -831,7 +834,7 @@ async def _run_pi_coding_run(
             for name in ("a", "b", "c")
         ]
 
-        async def _select(max_coders):
+        async def _select(max_coders, *, project_id=None):
             return coders
 
         monkeypatch.setattr(research_validity_service, "_select_pi_coders", _select)

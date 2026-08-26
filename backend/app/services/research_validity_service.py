@@ -565,7 +565,9 @@ async def _use_pi_coding_plane(db: AsyncSession, project_id: str) -> bool:
     return True
 
 
-async def _select_pi_coders(max_coders: int) -> list[CoderSpec]:
+async def _select_pi_coders(
+    max_coders: int, *, project_id: str | None = None
+) -> list[CoderSpec]:
     """Select independent coders backed by distinct Pi-managed models.
 
     Exact endpoint identities remain pinned as route evidence, while
@@ -580,7 +582,7 @@ async def _select_pi_coders(max_coders: int) -> list[CoderSpec]:
     # Read-only DB projection of persisted LLMServer endpoint identities;
     # it never connects to a server or loads a model.
     await manager.ensure_db_projection()
-    endpoints = manager.resolve_distinct(max(1, max_coders))
+    endpoints = manager.resolve_distinct(max(1, max_coders), project_id=project_id)
     return [
         CoderSpec(
             node=SimpleNamespace(
@@ -1222,7 +1224,7 @@ async def run_independent_coding_run(
         # exact endpoint and coded through the
         # AgenticDispatcher structured verb (``validity.coder``).
         try:
-            coders = await _select_pi_coders(max_coders=max_coders)
+            coders = await _select_pi_coders(max_coders=max_coders, project_id=project_id)
         except Exception as exc:
             # Fail-closed: fewer distinct Pi models than requested coders (or
             # an unavailable catalog) means

@@ -25,6 +25,11 @@ async def test_evaluation_skill_triggers_multi_model_validation():
             ens_res.consensus.kappa = 0.72
             ens_res.responses = ["Resp 1", "Resp 2"]
             ens_res.best_response = "Best synthesis"
+            ens_res.metadata = {
+                "validation_scope": "response_level_quality_signal",
+                "formal_reliability": False,
+                "research_spine_eligible": False,
+            }
             mock_ens.return_value = ens_res
             
             output = await skill.execute(skill_input)
@@ -41,3 +46,6 @@ async def test_evaluation_skill_triggers_multi_model_validation():
             assert "## Quality Audit Report" in report
             assert "0.85" in report
             assert "Critical feedback" in report
+            assert "not formal Fleiss' Kappa" in report
+            assert "provisional and non-reportable" in report
+            assert "Inter-Rater Reliability (Kappa)" not in report

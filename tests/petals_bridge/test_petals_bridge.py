@@ -26,12 +26,14 @@ class FakeNode:
         pi_served=True,
         is_healthy=True,
         model="petals-model-7b",
+        allowed_project_ids=None,
     ):
         self.node_id = node_id
         self.source = source
         self.pi_served = pi_served
         self.is_healthy = is_healthy
         self.loaded_models = [model]
+        self.allowed_project_ids = list(allowed_project_ids or [])
         self.calls = []
 
     async def chat(self, messages, **kwargs):
@@ -485,7 +487,6 @@ def test_consent_revocation_removes_pi_projection_and_reconsent_restores_it(
     manager = PiModelManager(endpoints=[])
     manager._project_petals()
     assert manager.resolve(endpoint_id="pi-petals-donor-1").endpoint_id == "pi-petals-donor-1"
-
     petals_bridge.set_donor_consent("donor-1", False)
     assert "pi-petals-donor-1" not in manager._entries
     with pytest.raises(PiEndpointResolutionError):
@@ -494,3 +495,25 @@ def test_consent_revocation_removes_pi_projection_and_reconsent_restores_it(
     petals_bridge.set_donor_consent("donor-1", True)
     manager._refresh_petals_projection()
     assert manager.resolve(endpoint_id="pi-petals-donor-1").endpoint_id == "pi-petals-donor-1"
+
+
+def test_project_scoped_resolution_excludes_unauthorized_petals_donors(
+    monkeypatch, donor, registry_with
+):
+    """Pi selection filters donor authorization before an ensemble slot is consumed."""
+    monkeypatch.setattr(settings, "petals_bridge_enabled", True)
+    donor.allowed_project_ids = ["project-a"]
+    donor2 = FakeNode("donor-2", model="petals-model-13b", allowed_project_ids=["project-b"])
+    registry_with._nodes[donor2.node_id] = donor2
+
+    from app.core.pi_runtime.endpoints import PiEndpointResolutionError
+    from app.core.pi_runtime.model_manager import PiModelManager
+
+    manager = PiModelManager(endpoints=[])
+    manager._project_petals()
+    selected = manager.resolve_distinct(1, project_id="project-a")
+    assert [endpoint.endpoint_id for endpoint in selected] == ["pi-petals-donor-1"]
+    with pytest.raises(PiEndpointResolutionError, match="petals_project_not_authorized"):
+        manager.resolve(endpoint_id="pi-petals-donor-2", project_id="project-a")
+    with pytest.raises(PiEndpointResolutionError, match="insufficient_distinct"):
+        manager.resolve_distinct(2, project_id="project-a")

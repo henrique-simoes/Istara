@@ -364,6 +364,14 @@ async def test_ensemble_pi_distinct_endpoints_and_fail_closed(monkeypatch):
         model="model-b",
     )
     manager = _isolated(PiModelManager(endpoints=[ep_a, ep_b]))
+    selection_calls = []
+    original_resolve_distinct = manager.resolve_distinct
+
+    def record_project_scope(n, **kwargs):
+        selection_calls.append({"n": n, **kwargs})
+        return original_resolve_distinct(n, **kwargs)
+
+    manager.resolve_distinct = record_project_scope  # type: ignore[method-assign]
     service = PiExecutionService(supervisor=supervisor, model_manager=manager)
 
     async def no_op(**kwargs):
@@ -376,6 +384,7 @@ async def test_ensemble_pi_distinct_endpoints_and_fail_closed(monkeypatch):
             messages=[{"role": "user", "content": "go"}], n=2, distinct=True, engine="pi",
         )
         assert {sample.endpoint_id for sample in result.samples} == {"pi-faux-a", "pi-faux-b"}
+        assert selection_calls[0]["project_id"] == "p1"
         assert {sample.text for sample in result.samples} == {"answer A", "answer B"}
         # Fail-closed: fewer distinct endpoints than requested never reuses one.
         with pytest.raises(PiEndpointResolutionError, match="insufficient_distinct"):
@@ -455,9 +464,14 @@ async def test_llm_server_projection_excludes_donor_rows():
         assert resolved.api_key == "proj-key"
         assert resolved.supports_vision and resolved.context_window == 64_000
         # Identity isolation: telemetry exposes ids/kinds, never URLs/keys.
-        assert resolved.telemetry_identity() == {
-            "endpoint_id": f"pi-llm-{keep_id}", "provider_kind": "openai_compat", "model": "proj-model"
+        telemetry_identity = resolved.telemetry_identity()
+        assert telemetry_identity == {
+            "endpoint_id": f"pi-llm-{keep_id}",
+            "provider_kind": "openai_compat",
+            "model": "proj-model",
+            "provider_account_handle": resolved.provider_account_handle,
         }
+        assert resolved.provider_account_handle
     finally:
         manager._entries.pop(f"pi-llm-{keep_id}", None)
         async with async_session() as db:

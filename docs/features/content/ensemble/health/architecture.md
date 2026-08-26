@@ -8,8 +8,8 @@ related_features: ["quality.dashboard", "compute.pool"]
 related_glossary: ["fleiss-kappa"]
 code_references: ["frontend/src/components/common/EnsembleHealthView.tsx", "backend/app/core/consensus.py", "backend/app/core/validation.py", "backend/app/core/validation_executor.py", "backend/app/core/agent_execution.py", "backend/app/core/compute_route_evidence.py", "backend/app/services/research_validity_service.py", "backend/app/core/research_validity.py", "backend/app/models/research_validity.py", "backend/app/core/agentic/dispatcher.py"]
 api_references: ["backend/app/api/routes/metrics.py", "backend/app/api/routes/research_validity.py"]
-test_references: ["tests/test_validation_project_scope.py", "tests/test_evaluation_skill.py", "tests/test_research_validity_contract.py", "tests/test_metrics.py", "tests/pi_production/test_w1_dispatcher_authority.py", "tests/pi_production/test_w7_validation.py"]
-last_verified: 2026-08-24
+test_references: ["tests/test_validation_project_scope.py", "tests/test_evaluation_skill.py", "tests/test_research_validity_contract.py", "tests/test_metrics.py", "tests/pi_production/test_w1_dispatcher_authority.py", "tests/pi_production/test_w7_validation.py", "tests/petals_bridge/test_petals_bridge.py", "tests/pi_production/test_research_spine_donor_routing.py"]
+last_verified: 2026-08-26
 compass: CF-SPEC-8 / FIX-pi-full-20260720-w7-REVIEW-r1-docs; CF-SPEC-53 / CF-657; CF-SPEC-92 / CF-1170; CF-SPEC-122; CF-SPEC-123 / CF-1581; CF-SPEC-124 / CF-1590
 ---
 
@@ -45,6 +45,7 @@ Ensemble Health surfaces health and consensus signals for Istara's multi-model o
 - Low or borderline consensus does not automatically become report evidence. Validation metadata is stored on task output, borderline outputs can trigger refinement or reconciliation, and report eligibility still depends on accepted evidence plus approved Done tasks.
 - Dual-run, full-ensemble, debate, adversarial review, and Self-MoA validation metadata carry content-free route evidence when the serving compute path provides it. This lets telemetry and benchmarks distinguish which model/node served each validation pass without recording prompts, completions, private hosts, or tokens.
 - Debate and adversarial helpers now label their scope explicitly. Calls without `coding_run_id` are response-level quality signals and are not formal reliability; calls with coding-run/evidence-unit/codebook handles emit `debate.review` or `adversarial.review` telemetry for coded-evidence reconciliation.
+- Dual-run, full-ensemble, and Self-MoA results explicitly emit `validation_scope=response_level_quality_signal`, `formal_reliability=false`, `research_spine_eligible=false`, and a heuristic-Kappa interpretation. The Evaluation Skill repeats that boundary in its provisional artifact instead of labeling response-category agreement as formal Fleiss' Kappa.
 - Qualitative coding prompts must include protected methodology, codebook, evidence-unit schema, reliability policy, and promotion gate blocks before any model codes evidence.
 - Governed coding runs use Pi Model Management to select distinct healthy project-authorized model identities, execute independent coding passes, persist route evidence, and compute Fleiss/Krippendorff reliability on evidence-unit matrices. Each coder must cover every selected evidence unit after at most one bounded repair. This is the formal reliability path; response-level validation remains an operational quality signal.
 - Reliability matrices distinguish an absent/unrated coder cell from an explicit abstention. Missing or empty unmarked ratings make the matrix incomplete and force reconciliation before Fleiss' Kappa or its Krippendorff companion can be used; only an explicit abstention is retained as the `__abstain__` category.

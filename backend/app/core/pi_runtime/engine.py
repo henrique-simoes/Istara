@@ -304,6 +304,7 @@ class PiExecutionService:
             model=model,
             require_vision=require_vision,
             min_context=min_context,
+            project_id=project_id,
         )
         _enforce_test_provider_network_policy(endpoint)
         catalog = build_tool_catalog(allowed_tools, extra_tools=extra_tools)
@@ -586,6 +587,7 @@ class PiExecutionService:
             model=model,
             min_context=min_context,
             require_vision=require_vision,
+            project_id=project_id,
         )
         key = f"pi-provider-{uuid.uuid4().hex}"
         sup = self._sup()
@@ -814,7 +816,11 @@ class PiExecutionService:
         min_context = getattr(params, "min_context", 0) or 0
         if distinct:
             endpoints = manager.resolve_distinct(
-                n, model=model, require_vision=require_vision, min_context=min_context
+                n,
+                model=model,
+                require_vision=require_vision,
+                min_context=min_context,
+                project_id=project_id,
             )
         else:
             endpoint = manager.resolve(
@@ -822,6 +828,7 @@ class PiExecutionService:
                 model=model,
                 require_vision=require_vision,
                 min_context=min_context,
+                project_id=project_id,
             )
             endpoints = [endpoint] * n
         samples: list[dict[str, Any]] = []

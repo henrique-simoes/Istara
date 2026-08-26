@@ -109,6 +109,11 @@ def catalog_entries() -> list[dict[str, Any]]:
                 "model": models[0] if models else "default",
                 "kind": "petals",
                 "node_id": node.node_id,
+                "allowed_project_ids": tuple(
+                    str(project_id).strip()
+                    for project_id in (getattr(node, "allowed_project_ids", []) or [])
+                    if str(project_id).strip()
+                ),
                 "cost_class": "donated",
             }
         )

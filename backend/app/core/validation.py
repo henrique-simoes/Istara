@@ -200,6 +200,10 @@ async def dual_run(
             "endpoint_ids": endpoint_ids,
             "route_evidence": route_evidence,
             "models_used": _models_used(route_evidence),
+            "validation_scope": "response_level_quality_signal",
+            "formal_reliability": False,
+            "research_spine_eligible": False,
+            "kappa_interpretation": "heuristic_response_category_agreement_not_fleiss",
         },
     )
 
@@ -365,6 +369,10 @@ async def full_ensemble(
             "n_responses": len(responses),
             "route_evidence": route_evidence,
             "models_used": _models_used(route_evidence),
+            "validation_scope": "response_level_quality_signal",
+            "formal_reliability": False,
+            "research_spine_eligible": False,
+            "kappa_interpretation": "heuristic_response_category_agreement_not_fleiss",
         },
     )
 
@@ -417,6 +425,10 @@ async def self_moa(
             "endpoint_ids": endpoint_ids,
             "route_evidence": route_evidence,
             "assurance": "single_model_temperature_variation",
+            "validation_scope": "response_level_quality_signal",
+            "formal_reliability": False,
+            "research_spine_eligible": False,
+            "kappa_interpretation": "heuristic_response_category_agreement_not_fleiss",
         },
     )
 
@@ -580,5 +592,10 @@ def _empty_result(method: str) -> ValidationResult:
         ),
         responses=[],
         best_response="",
-        metadata={"error": "Validation failed — no responses"},
+        metadata={
+            "error": "Validation failed — no responses",
+            "validation_scope": "response_level_quality_signal",
+            "formal_reliability": False,
+            "research_spine_eligible": False,
+        },
     )

@@ -83,8 +83,9 @@ async def test_source_to_three_model_reliability_human_done_and_report(monkeypat
     dispatcher = DeterministicThreeCoderDispatcher()
     coder_nodes = [CoderNode(index) for index in range(1, 4)]
 
-    async def select_pi_coders(max_coders: int):
+    async def select_pi_coders(max_coders: int, *, project_id: str | None = None):
         assert max_coders == 3
+        assert project_id == project_id_outer
         return [
             research_validity_service.CoderSpec(
                 node=node,
@@ -94,6 +95,7 @@ async def test_source_to_three_model_reliability_human_done_and_report(monkeypat
             for node in coder_nodes
         ]
 
+    project_id_outer = project_id
     monkeypatch.setattr(research_validity_service, "_select_pi_coders", select_pi_coders)
     monkeypatch.setattr("app.core.agentic.agentic", dispatcher)
 

@@ -93,6 +93,13 @@ async def test_validation_helpers_forward_project_id_to_llm_and_embeddings(monke
     assert debate.metadata["route_evidence"][0]["route_kind"] == "agentic_completion"
     assert dual.metadata["endpoint_ids"] == ["ep-0", "ep-1"]
     assert ensemble.metadata["n_responses"] == 3
+    for result in (self_moa, dual, ensemble):
+        assert result.metadata["validation_scope"] == "response_level_quality_signal"
+        assert result.metadata["formal_reliability"] is False
+        assert result.metadata["research_spine_eligible"] is False
+        assert result.metadata["kappa_interpretation"] == (
+            "heuristic_response_category_agreement_not_fleiss"
+        )
     assert adversarial.metadata["validation_scope"] == "response_level_quality_signal"
     assert adversarial.metadata["formal_reliability"] is False
     assert debate.metadata["validation_scope"] == "response_level_quality_signal"
