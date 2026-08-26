@@ -8,7 +8,7 @@ phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal ac
 stage: S2-execute
 status: in-progress
 blocked_on: null
-last: { agent: gpt-5-codex, at: 2026-08-26T19:34:00Z, ledger: L-179 }
+last: { agent: gpt-5-codex, at: 2026-08-26T15:53:00Z, ledger: L-182 }
 next_action: "Obtain owner-authorized reachable provider credentials and three Compose-owned donor routes, then run the terminal Docker-only Research Spine retake; local code and testing refs are reconciled."
 ```
 
@@ -3824,3 +3824,24 @@ wrapper, runner contract test, real-user README, generated feature manifest, and
 verify exact `testing`/`origin/testing` parity, then remain at the live acceptance gate until the
 owner supplies one authorized reachable provider credential and three healthy Compose-owned donor
 routes. Only then refresh the clean Mac Studio checkout and run one terminal Docker-only retake.
+
+### L-182 | 2026-08-26T15:53:00Z | S4-ship | gpt-5-codex | runner checkpoint transported and refs reconciled
+Did: Committed the six intended runner/doc/test files as `93a738c8702cdb86dbf97e0f9ff9c265384104c9`
+(`test: enforce Docker compute-donation runner contract`) and pushed non-forced to
+`origin/testing` (`dba5186c..93a738c8`). After fetch, local `testing` and `origin/testing`
+resolve to the exact same SHA and `git diff origin/testing --exit-code` is empty. The main
+checkout is clean. The only remaining worktree is the intentionally preserved recovery checkout
+`/Users/user/Documents/Codex/2026-08-10/list/work/istara-pi-linearized-2026-08-10` on
+`recovery/pi-retake-linearized-2026-08-10`; the stale detached CI worktree had already been
+removed safely. No branches were deleted because the remaining refs are backups, review lines,
+or active recovery history without a demonstrated merged/unused disposition.
+
+Result: local deterministic implementation and evidence are now transported cleanly to
+`origin/testing`. The external audit file `/Users/user/Desktop/testing.md` remains intentionally
+outside Git and contains F-R9-32. Mac Studio live acceptance is still not run: the owner-managed
+checkout is dirty/behind and no authorized provider credential or three donor routes are present.
+No host package installation or non-Docker runtime occurred.
+Next: obtain the explicit provider/donor handoff; then refresh only a clean detached checkout to
+`93a738c8`, provision disposable Docker/Compose resources, execute exactly one terminal retake,
+and append source hashes, donor route identities, Fleiss/Krippendorff metrics, reconciliation and
+human-approval evidence (or fail-closed blocker evidence) before any Research Spine conclusion.
