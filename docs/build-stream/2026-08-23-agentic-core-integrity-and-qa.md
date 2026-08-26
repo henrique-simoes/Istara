@@ -8,7 +8,7 @@ phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal ac
 stage: S2-execute
 status: in-progress
 blocked_on: null
-last: { agent: gpt-5-codex, at: 2026-08-26T14:12:00Z, ledger: L-145 }
+last: { agent: gpt-5-codex, at: 2026-08-26T14:16:00Z, ledger: L-146 }
 next_action: "Obtain explicit owner handoff for the dirty Mac Studio checkout, then run a fresh Docker-only three-donor acceptance on cd1ad63c with complete Research Spine and provenance evidence; do not mutate the remote until that handoff exists."
 ```
 
@@ -3121,3 +3121,26 @@ Docker retake remain blocked by F-R9-21 and require the owner’s explicit prese
 decision for `~/istara-testing`.
 Next: run no destructive remote action. Wait for owner handoff, then resume the Docker-only
 three-donor acceptance and final P9 closure sequence from L-140.
+
+### L-146 | 2026-08-26T14:16:00Z | S4-ship | gpt-5-codex | post-cleanup gate and handoff hold
+Did: Completed the post-cleanup Compass Forge after gate. Record `60` reports
+`comparison.new_issues=[]` and `new_failures=[]`, with no new dependency/import-cycle,
+missing-path, unexpected-large-file, security, or taint findings. Existing global complexity,
+route/type drift, and secret-flow findings remain inherited debt. The local branch cleanup did
+not alter runtime code or protected artifacts.
+
+Verification: the main checkout is clean; local `testing` equals `origin/testing` at
+`75369827f0faccacf59f47b97efbd7b86264a6db`. The only remaining worktrees are the preserved
+detached CI checkout and intentional recovery checkout; `git worktree prune --dry-run` has no
+registrations to remove. The deterministic matrix, harness contracts, feature-doc checks, and
+remote passive preflight evidence remain as recorded in L-140/L-145. No SSH or Docker mutation
+occurred in this gate.
+
+Result: all safe, local, in-scope work for this turn is transported, documented, tested, and
+clean. The active goal remains open because the owner-gated remote handoff and live exact-image
+Docker acceptance have not happened. This hold is intentional and fail-closed; it prevents a
+reset or teardown from destroying the dirty Mac Studio checkout and prevents deterministic
+contracts from being misreported as live multi-model Research Spine proof.
+Next: owner must name the remote dirty-path disposition and authorize the Docker-only retake;
+the next agent should resume from L-140 item 1 and append a preflight checkpoint before any
+remote mutation.
