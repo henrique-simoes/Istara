@@ -8,8 +8,8 @@ phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal ac
 stage: S2-execute
 status: in-progress
 blocked_on: null
-last: { agent: gpt-5-codex, at: 2026-08-26T16:10:00Z, ledger: L-184 }
-next_action: "Run the broader deterministic matrix and Compass Forge after-gate for the acceptance-profile change; then commit/push and await owner-authorized provider credentials plus three Compose-owned donor routes for the terminal Docker-only retake."
+last: { agent: gpt-5-codex, at: 2026-08-26T16:24:00Z, ledger: L-186 }
+next_action: "Obtain owner-authorized reachable provider credentials and three Compose-owned donor routes, then run the terminal Docker-only provider, Petals, and combined retake; local code and testing refs are reconciled."
 ```
 
 ## Plan overview / roadmap
@@ -3915,3 +3915,18 @@ deterministic closure of F-R9-33 and the live evidence blocker.
 Next: commit and push the exact profile/runner/docs/test files, verify local `testing` equals
 `origin/testing`, then remain blocked only on the owner-authorized reachable provider credential
 and three Compose-owned donor routes needed for the terminal Mac Studio Docker-only retake.
+
+### L-186 | 2026-08-26T16:24:00Z | S4-ship | gpt-5-codex | acceptance-profile checkpoint transported
+Did: Committed the nine intended profile/runner/docs/test files as `dfcda6e72605d894affcecae4b6852bdd4c9783e`
+(`test: separate provider and Petals acceptance gates`) and pushed non-forced to `origin/testing`
+(`479af052..dfcda6e7`). After fetch, `testing` and `origin/testing` resolve to the exact same SHA;
+`git diff origin/testing --exit-code` is empty and `git status --short --branch` is clean. No
+external audit file was staged; `/Users/user/Desktop/testing.md` remains the owner-facing findings
+record with F-R9-34.
+
+Result: the deterministic acceptance contract and its Docker-only transport are now available on
+the remote testing branch. Live claims remain intentionally withheld. The next agent should not
+redo local implementation or delete the intentional recovery worktree; it should collect the
+owner-authorized provider/API-key environment mapping and three Compose-owned donor routes, refresh
+the Mac Studio checkout from `dfcda6e7`, and execute the bounded terminal retake with both engine
+arms and the provider/Petals/combined profiles.
