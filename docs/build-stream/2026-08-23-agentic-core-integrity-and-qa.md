@@ -8,8 +8,8 @@ phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal ac
 stage: S2-execute
 status: in-progress
 blocked_on: null
-last: { agent: gpt-5-codex, at: 2026-08-25T17:07:26Z, ledger: L-57 }
-next_action: "Add gateway/startup/runtime red contracts, then wire every embedding request to the persisted model+endpoint profile while preserving version-1 cache/vector identity."
+last: { agent: gpt-5-codex, at: 2026-08-26T11:20:00Z, ledger: L-109 }
+next_action: "Verify route parity and two-call/long-horizon contracts, then run Docker-only Mac Studio acceptance and reconcile testing refs."
 ```
 
 ## Plan overview / roadmap
@@ -2340,3 +2340,24 @@ Verified: `pytest -q tests/petals_bridge/test_petals_bridge.py tests/pi_producti
 CF after record 26. No live model/service/SSH/Docker/host action.
 Next: constrain Petals donor selection by project authorization, then make generic response-level
 ensemble metadata explicitly non-formal so the Research Spine tests cannot overclaim Fleiss/Krippendorff validity.
+
+### L-109 | 2026-08-26T11:20:00Z | S2-execute/S3-review/S5-ship | gpt-5-codex | implementer/reviewer | Project-scoped ensemble and non-formal consensus boundary
+Did: Propagated Petals donor `allowed_project_ids` into the Pi catalog and filtered project-authorized
+donors before `resolve`/`resolve_distinct`; Pi turn, provider-turn, ensemble, and Research Spine coder
+selection now carry the active project ID. Added a positive/negative project isolation regression and
+asserted that the runtime ensemble receives the project scope. Updated dual-run/full-ensemble/Self-MoA
+to emit `validation_scope=response_level_quality_signal`, `formal_reliability=false`,
+`research_spine_eligible=false`, and an explicit heuristic-Kappa interpretation. The Evaluation Skill
+now labels its artifact provisional/non-reportable and no longer calls response-category Kappa
+inter-rater reliability. Corrected a stale provider-provenance test to require the non-secret account handle.
+Result: Affected validation, Petals, W1/W7, and end-to-end Research Spine slice is green (`88 passed`);
+Ruff and `git diff --check` pass; feature docs regenerate/check (`224` generated, `86/86` checked).
+Project-scoped selection now fails before a donor can consume a coder slot, while formal Fleiss/Krippendorff
+metrics remain exclusive to the evidence-unit coding path. No live model load or host service was started.
+Verified: local and `origin/testing` both at `e68c77f8`; native Compass Forge after gate record 28 reports
+`comparison.new_issues=[]`, with only repository-wide inherited complexity/secret-flow/type/route debt.
+No SSH, Docker, Mac Studio, or host package action.
+Open: the compatibility Petals bearer route remains less project-pinned than the Pi route and consent is
+process-memory/default-off after restart; these are documented review items. Remaining P9 work is route
+parity, benchmark contract verification, Docker-only remote acceptance, broad regression, independent review,
+and safe worktree/branch cleanup.
