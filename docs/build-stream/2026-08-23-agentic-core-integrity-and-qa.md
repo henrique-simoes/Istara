@@ -8,8 +8,8 @@ phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal ac
 stage: S2-execute
 status: in-progress
 blocked_on: null
-last: { agent: gpt-5-codex, at: 2026-08-26T14:58:00Z, ledger: L-151 }
-next_action: "Checkpoint the Docker build target, then build all services from the refreshed detached worktree and capture image IDs/digests before startup."
+last: { agent: gpt-5-codex, at: 2026-08-26T15:02:00Z, ledger: L-152 }
+next_action: "Refresh the detached worktree to 405dce18, build the five-service stack with Docker, and capture image IDs/digests before startup."
 ```
 
 ## Plan overview / roadmap
@@ -3250,3 +3250,20 @@ a blocker rather than converted into a quality claim.
 Next: append the build-start receipt, run `docker compose build --pull` from this detached
 worktree, capture image IDs/digests and build logs, then checkpoint before `up` or the bounded
 runner.
+
+### L-152 | 2026-08-26T15:02:00Z | S2-execute | gpt-5-codex | Docker build-start checkpoint
+Did: Transported the preflight ledger update as commit `405dce18` to `origin/testing`; the
+detached Mac Studio build context must now refresh to that exact SHA before compilation. The
+build is bounded to the five Compose services (`postgres`, `backend`, `frontend`, `caddy`,
+`provider-stub`) and uses Docker’s existing images/cache plus the repository Dockerfiles.
+
+Safety contract: no host package installation, host Python/Node execution, host server,
+provider/model loading, or source reset/cleanup is permitted. Build logs and image metadata are
+captured under the existing timestamped evidence directory without printing deploy secrets.
+The build result is an artifact-integrity gate only; a successful image build cannot establish
+PI Model Management routing, Petals donation, independent donor diversity, ensemble
+reconciliation, Fleiss' kappa, or long-horizon research validity.
+
+Next: refresh `~/istara-testing-clean-6ce9374a` to `origin/testing`, run
+`docker compose build --pull`, capture service image IDs/digests and build exit status, then
+append a post-build checkpoint before any container startup or benchmark request.
