@@ -8,8 +8,8 @@ phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal ac
 stage: S2-execute
 status: in-progress
 blocked_on: null
-last: { agent: gpt-5-codex, at: 2026-08-26T14:16:00Z, ledger: L-146 }
-next_action: "Obtain explicit owner handoff for the dirty Mac Studio checkout, then run a fresh Docker-only three-donor acceptance on cd1ad63c with complete Research Spine and provenance evidence; do not mutate the remote until that handoff exists."
+last: { agent: gpt-5-codex, at: 2026-08-26T14:25:00Z, ledger: L-147 }
+next_action: "Create an isolated clean remote worktree at origin/testing, discard the authorized old istara-testing containers/volumes, rebuild through Docker, then run the bounded Docker-only acceptance and record artifacts before any cleanup."
 ```
 
 ## Plan overview / roadmap
@@ -3144,3 +3144,24 @@ contracts from being misreported as live multi-model Research Spine proof.
 Next: owner must name the remote dirty-path disposition and authorize the Docker-only retake;
 the next agent should resume from L-140 item 1 and append a preflight checkpoint before any
 remote mutation.
+
+### L-147 | 2026-08-26T14:25:00Z | S2-execute | gpt-5-codex | owner authorization received; Docker retake may begin
+Did: The owner explicitly authorized Docker operations and disposal of old testing containers
+and data, with the requirement that nothing be installed or run on the Mac Studio host. This
+changes the prior hold: Docker/Compose teardown, fresh test volumes, image rebuild, and
+containerized benchmark execution are now in scope. Source changes in the dirty checkout remain
+preserved until a clean isolated worktree is established; authorization to discard containers
+does not silently authorize deleting unclassified source files or secrets.
+
+Preflight boundary: use SSH only for passive Git/Docker control, create a clean detached
+worktree from `origin/testing` at the transported SHA, and keep the dirty `~/istara-testing`
+checkout untouched except for reading metadata and using its deploy environment/TLS paths as
+needed. Remove only the old Compose project containers, anonymous/named testing volumes, and
+test result data explicitly covered by the owner authorization. Render Compose before startup,
+capture redacted service/image/network/volume configuration, and fail closed if any service is
+host-managed or any command invokes host package installation/model loading/server startup.
+
+Next: execute the remote preflight and isolated-worktree creation, checkpoint its exact path,
+SHA, container/volume inventory, and redacted artifact location before `docker compose down -v`
+or any image rebuild. Then run the exact-image Docker-only comparison and Research Spine proof
+in bounded intervals, appending a ledger entry at least every two minutes.
