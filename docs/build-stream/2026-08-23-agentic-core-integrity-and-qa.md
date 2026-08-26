@@ -8,7 +8,7 @@ phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal ac
 stage: S2-execute
 status: in-progress
 blocked_on: null
-last: { agent: gpt-5-codex, at: 2026-08-26T22:27:31Z, ledger: L-200 }
+last: { agent: gpt-5-codex, at: 2026-08-26T22:31:00Z, ledger: L-201 }
 next_action: "Obtain owner-authorized provider credentials and three Compose-owned donor routes, run the terminal Docker-only acceptance retake for provider, Petals, combined, legacy, and pi profiles, then attach complete runtime evidence or leave the external gate open."
 ```
 
@@ -4339,3 +4339,33 @@ evidence: three genuinely distinct served model identities, shared raw evidence 
 Fleiss/Krippendorff metrics, grounding, reconciliation, human-approved Done, route/usage,
 long-horizon, Petals donation, and cleanup. Do not mark the specification accepted from these
 local deterministic checks.
+
+### L-201 | 2026-08-26T22:31:00Z | S3-gate/S3-ship | gpt-5-codex | catalog-drift fix transported and checked
+
+Did: Verified the catalog-identity fail-closed implementation is transported cleanly as
+`92a291d48a3a8ea5fb78009696ad47aa07c6e907` on both local `testing` and `origin/testing`.
+The production Research Spine Pi coder now reuses the dispatcher-owned manager, refreshes its
+dynamic projection, compares the selected non-secret endpoint/model/provider/account identity
+against the execution-time catalog, and rejects drift before any structured provider call.
+The focused W1/W7/real-manager/donor/drift suite remains green at `63 passed`; feature-doc
+generation/check remains green for 86 features. Compass Forge after-gate record `91` reports no
+new forbidden dependencies, import cycles, missing required paths, security issues, or taint
+issues. The repository-wide gate still reports inherited complexity, route/type, and secret-flow
+debt; these are not silently reclassified as fixed.
+
+Evidence: `git fetch origin testing`, equal `git rev-parse HEAD`/`origin/testing`,
+`git diff --exit-code origin/testing --`, and `git status --short --branch` show a clean,
+parity-verified checkout. No Mac Studio host package install, host Python/Node execution, or live
+model load was performed by this checkpoint. The live Docker acceptance remains blocked at the
+provider boundary: both corrected legacy and PI runs reached the provider and received HTTP 402
+Insufficient Balance before any model produced a coding response. Therefore the run still has no
+three independent model identities, rater labels, Fleiss' kappa/Krippendorff-alpha, grounding,
+reconciliation, human-approved Done, report, long-horizon, or Petals interoperability evidence.
+
+Next: when owner-authorized provider credit and three distinct Compose-owned donor routes are
+available, run the exact pushed SHA through Docker-only Mac Studio provider, legacy, PI, combined,
+and Petals profiles. Preserve immutable source/image/Compose evidence, prove distinct served model
+identities and shared raw evidence units, assert nonzero rater/reliability/grounding/reconciliation
+artifacts, exercise long-horizon/two-call behavior and the accepted/report gates, then tear down
+only testing resources. Until that evidence exists, the ensemble and Research Spine live gates
+remain open despite the deterministic local tests being green.
