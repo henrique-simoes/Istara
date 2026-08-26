@@ -212,12 +212,36 @@ def test_coding_application_parser_accepts_common_model_json_variants():
     for payload in (
         {
             "code_applications": [
-                {"stable_id": "document:one#EU-0004", "codes": ["prep_confusion"]}
+                {
+                    "stable_id": "document:one#EU-0004",
+                    "codes": ["prep_confusion"],
+                    "quote": units[0].source_text,
+                }
             ]
         },
-        {"coding_applications": [{"unit_index": 4, "primary_code": "prep_confusion"}]},
-        {"items": [{"evidence_unit_id": "uuid-a", "codes": ["prep_confusion"]}]},
-        {"evidence_unit_id": "uuid-a", "codes": ["prep_confusion"]},
+        {
+            "coding_applications": [
+                {
+                    "unit_index": 4,
+                    "primary_code": "prep_confusion",
+                    "quote": units[0].source_text,
+                }
+            ]
+        },
+        {
+            "items": [
+                {
+                    "evidence_unit_id": "uuid-a",
+                    "codes": ["prep_confusion"],
+                    "quote": units[0].source_text,
+                }
+            ]
+        },
+        {
+            "evidence_unit_id": "uuid-a",
+            "codes": ["prep_confusion"],
+            "quote": units[0].source_text,
+        },
     ):
         usable = research_validity_service._usable_coding_applications(
             payload,
@@ -275,7 +299,7 @@ async def test_pi_coder_runner_dispatches_structured_with_coding_schema(monkeypa
                 status="success",
                 usage={},
                 stop_reason="stop",
-                endpoint_id="ep-coder",
+                endpoint_id="endpoint-a",
                 tool_calls=[],
             )
 
@@ -303,4 +327,36 @@ async def test_pi_coder_runner_dispatches_structured_with_coding_schema(monkeypa
     assert "applications" in captured["schema"]["properties"]
     assert captured["project_id"] == "project-a"
     assert captured["params"].endpoint_id == "endpoint-a"
-    assert result["_istara_route"]["endpoint_id"] == "ep-coder"
+    assert result["_istara_route"]["endpoint_id"] == "endpoint-a"
+
+
+@pytest.mark.asyncio
+async def test_pi_coder_runner_rejects_mismatched_served_endpoint(monkeypatch):
+    """A provider cannot rewrite the endpoint identity used for spine evidence."""
+    from types import SimpleNamespace
+
+    class _MismatchedAgentic:
+        async def structured(self, **_kwargs):  # noqa: ANN001
+            return SimpleNamespace(
+                value={"applications": []},
+                endpoint_id="endpoint-other",
+            )
+
+    monkeypatch.setattr("app.core.agentic.agentic", _MismatchedAgentic())
+    coder = research_validity_service.CoderSpec(
+        node=SimpleNamespace(
+            node_id="donor-a",
+            provider_type="ollama",
+            endpoint_id="endpoint-a",
+        ),
+        coder_id="model-coder:model-a",
+        model_name="model-a",
+    )
+
+    with pytest.raises(ValueError, match="Pi coder endpoint mismatch"):
+        await research_validity_service._pi_coder_runner(
+            coder,
+            [{"role": "user", "content": "code these evidence units"}],
+            "model-a",
+            "project-a",
+        )

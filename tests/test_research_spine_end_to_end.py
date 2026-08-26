@@ -77,7 +77,10 @@ async def test_source_to_three_model_reliability_human_done_and_report(monkeypat
             ]
             return SimpleNamespace(
                 value={"applications": applications},
-                endpoint_id=f"endpoint-{model}",
+                # The fake provider reports the endpoint actually pinned by
+                # the coder, preserving the same route-evidence invariant as
+                # the real Pi worker.
+                endpoint_id=f"endpoint-{model.rsplit('-', 1)[-1]}",
             )
 
     dispatcher = DeterministicThreeCoderDispatcher()

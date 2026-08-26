@@ -2411,3 +2411,25 @@ file findings. Existing repository-wide complexity, secret-flow, route, and type
 as inherited gate debt. No model load, server, SSH, Docker, or host package action.
 Next: verify the persisted two-call and long-horizon contracts, then inspect the Mac Studio Compose
 stack passively before any Docker-only test execution.
+
+### L-113 | 2026-08-26T11:40:57Z | S2-execute/S3-review/S5-ship | gpt-5-codex | implementer/reviewer | Pi coding route provenance now fails closed on served-endpoint drift
+Did: Audited the governed `_pi_coder_runner` seam against the Research Spine route-evidence
+contract. The selected coder endpoint is pinned in `TurnParams`, but a provider response could
+previously report a different endpoint and have that identity persisted as if it were the selected
+coder. The adapter now rejects a non-empty served endpoint that differs from the pinned endpoint
+before any code application, reliability evaluation, or promotion can occur. The normal route still
+allows adapters that omit the endpoint metadata to use the pinned identity. Updated parser fixtures
+to include the required exact source quote and corrected the end-to-end fake provider to report the
+endpoint actually selected, so tests model the production contract rather than bypassing grounding
+or provenance.
+Result: `pytest -q tests/test_research_spine_donor_routing.py tests/test_research_spine_end_to_end.py`
+=> 9 passed. `pytest -q tests/test_research_spine_donor_routing.py tests/test_research_spine_end_to_end.py
+tests/test_research_validity_contract.py` => 40 passed in 66.80s. Ruff and `git diff --check` pass;
+feature docs generated 224/check 86/86. `compass-forge gate before` record 35 captured the
+expected touched-file complexity warnings for `research_validity_service.py`; no new dependency,
+import-cycle, security, taint, missing-path, or unexpected-large-file finding was introduced.
+No model load, service start, SSH, Docker, or host package action.
+Next: commit/push this bounded fix, then perform passive Docker-only Mac Studio inventory and
+validate the persisted two-call/long-horizon, Petals, and benchmark contracts against the remote
+Compose stack. Keep live tri-model calls gated and label scripted-provider tests as contract proof,
+not model-quality proof.

@@ -624,6 +624,18 @@ async def _pi_coder_runner(
         engine="pi",
         spine_phase="execution",
     )
+    selected_endpoint_id = str(getattr(coder.node, "endpoint_id", "") or "").strip()
+    served_endpoint_id = str(getattr(outcome, "endpoint_id", "") or "").strip()
+    if selected_endpoint_id and served_endpoint_id and served_endpoint_id != selected_endpoint_id:
+        # The endpoint is part of the source-of-truth route evidence.  A
+        # provider or adapter that reports a different endpoint than the one
+        # pinned in TurnParams must not be allowed to masquerade as the
+        # selected independent coder; fail closed before any coding rows are
+        # persisted or reliability is evaluated.
+        raise ValueError(
+            "Pi coder endpoint mismatch: selected "
+            f"{selected_endpoint_id!r}, served {served_endpoint_id!r}"
+        )
     return {
         "message": {"content": json.dumps(outcome.value)},
         "_istara_route": {
@@ -631,7 +643,7 @@ async def _pi_coder_runner(
             "node_source": "pi",
             "provider_type": getattr(coder.node, "provider_type", ""),
             "model": model_name or "",
-            "endpoint_id": outcome.endpoint_id or getattr(coder.node, "endpoint_id", "") or "",
+            "endpoint_id": served_endpoint_id or selected_endpoint_id,
             "provider_account_handle": getattr(coder.node, "provider_account_handle", ""),
             "decoding_profile": {"temperature": 0.2},
             "protocol_version": QUALITATIVE_CODING_PROTOCOL["version"],
