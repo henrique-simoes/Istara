@@ -1159,6 +1159,155 @@ async def test_task_research_validity_gate_blocks_unreconciled_report_inputs():
 
 
 @pytest.mark.asyncio
+async def test_task_research_validity_gate_rejects_stale_acceptance_after_newer_blocked_run():
+    """A failed re-code must invalidate acceptance inherited from an older run."""
+    from datetime import UTC, datetime, timedelta
+
+    from app.models.code_application import CodeApplication
+    from app.models.database import async_session, init_db
+    from app.models.research_validity import CodingRun
+    from app.services.research_validity_service import assess_task_research_validity
+
+    suffix = uuid.uuid4().hex[:8]
+    project_id = f"proj-stale-run-{suffix}"
+    task_id = f"task-stale-run-{suffix}"
+    accepted_run_id = f"run-accepted-{suffix}"
+    now = datetime.now(UTC)
+    await init_db()
+
+    async with async_session() as db:
+        db.add_all(
+            [
+                CodingRun(
+                    id=accepted_run_id,
+                    project_id=project_id,
+                    task_id=task_id,
+                    status="completed",
+                    promotion_status="accepted",
+                    created_at=now - timedelta(minutes=1),
+                ),
+                CodeApplication(
+                    id=f"ca-accepted-{suffix}",
+                    project_id=project_id,
+                    task_id=task_id,
+                    coding_run_id=accepted_run_id,
+                    evidence_unit_id=f"eu-{suffix}",
+                    code_id="previously-accepted-code",
+                    promotion_status="accepted",
+                    reliability_status="accepted",
+                    reconciliation_status="accepted",
+                ),
+                CodingRun(
+                    id=f"run-blocked-{suffix}",
+                    project_id=project_id,
+                    task_id=task_id,
+                    status="blocked",
+                    promotion_status="blocked",
+                    fallback_reason="Current model route is unavailable.",
+                    created_at=now,
+                ),
+            ]
+        )
+        await db.commit()
+
+        result = await assess_task_research_validity(
+            db,
+            project_id=project_id,
+            task_id=task_id,
+        )
+
+    assert result["report_allowed"] is False
+    assert "Latest task coding run is not accepted" in result["reason"]
+
+
+@pytest.mark.asyncio
+async def test_task_research_validity_gate_revokes_acceptance_for_changed_or_deleted_source():
+    """Accepted codes cannot outlive the exact governed raw-source version."""
+    from app.models.code_application import CodeApplication
+    from app.models.database import async_session, init_db
+    from app.models.document import Document
+    from app.models.project import Project
+    from app.models.research_validity import CodingRun, EvidenceUnit
+    from app.services.research_validity_service import assess_task_research_validity
+
+    suffix = uuid.uuid4().hex[:8]
+    project_id = f"proj-deleted-source-{suffix}"
+    task_id = f"task-deleted-source-{suffix}"
+    document_id = f"doc-deleted-source-{suffix}"
+    evidence_unit_id = f"eu-deleted-source-{suffix}"
+    run_id = f"run-deleted-source-{suffix}"
+    await init_db()
+
+    async with async_session() as db:
+        source = Document(
+            id=document_id,
+            project_id=project_id,
+            title="Participant interview",
+            version=1,
+        )
+        db.add_all(
+            [
+                Project(id=project_id, name="Deleted source gate"),
+                source,
+                EvidenceUnit(
+                    id=evidence_unit_id,
+                    project_id=project_id,
+                    task_id=task_id,
+                    source_document_id=document_id,
+                    source_id=f"document:{document_id}:v1",
+                    stable_id=f"document:{document_id}:v1:0",
+                    source_text="The participant could not find the invitation control.",
+                    metadata_json=json.dumps({"document_id": document_id, "document_version": 1}),
+                ),
+                CodingRun(
+                    id=run_id,
+                    project_id=project_id,
+                    task_id=task_id,
+                    status="completed",
+                    promotion_status="accepted",
+                ),
+                CodeApplication(
+                    id=f"ca-deleted-source-{suffix}",
+                    project_id=project_id,
+                    task_id=task_id,
+                    coding_run_id=run_id,
+                    evidence_unit_id=evidence_unit_id,
+                    source_document_id=document_id,
+                    code_id="invite-friction",
+                    promotion_status="accepted",
+                    reliability_status="accepted",
+                    reconciliation_status="accepted",
+                ),
+            ]
+        )
+        await db.commit()
+
+        before = await assess_task_research_validity(
+            db, project_id=project_id, task_id=task_id
+        )
+        assert before["report_allowed"] is True
+
+        source.version = 2
+        await db.commit()
+        superseded = await assess_task_research_validity(
+            db, project_id=project_id, task_id=task_id
+        )
+        assert superseded["report_allowed"] is False
+        assert "deleted or superseded source" in superseded["reason"]
+
+        source.version = 1
+        await db.commit()
+        await db.delete(source)
+        await db.commit()
+        after = await assess_task_research_validity(
+            db, project_id=project_id, task_id=task_id
+        )
+
+    assert after["report_allowed"] is False
+    assert "deleted or superseded source" in after["reason"]
+
+
+@pytest.mark.asyncio
 async def test_reconciliation_decisions_resolve_low_consensus_before_reports():
     from sqlalchemy import select
 

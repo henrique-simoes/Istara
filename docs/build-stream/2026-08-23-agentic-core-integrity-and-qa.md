@@ -1951,3 +1951,109 @@ Verified: push `50ee7eae..2abe6453`; local and `origin/testing` both resolve to
 Next: transport this receipt/status change, inventory every source-to-artifact/report path from existing
 Research Spine tests and routes, identify bypasses and pagination/corpus gaps, then add the first red
 P9-06 end-to-end contract without starting a live service or loading a model.
+
+### L-83 | 2026-08-26T00:26:00Z | S1-frame/S2-execute | gpt-5-codex | auditor | P9-06 inventory boundary recorded
+Did: Re-established repository truth before resuming: local `testing` and `origin/testing` are exactly
+equal at `af42944c`, with no dirty paths. Reviewed the prior Compass Forge P9-06 context/suggest-tests
+result and retained its explicit coverage limit: 16 paths selected and 84 omitted by the 80 KB budget.
+Result: The context pack is a starting map, not proof of complete Research Spine coverage. P9-06 remains
+in progress; no code or service state has been changed. The next audit will explicitly include omitted
+pagination, task/Done, route, model, report-manager, synthetic-boundary, integrity-validation, and real-
+user benchmark probe paths rather than inferring completeness from the pack.
+Verified: `git status --short --branch` reports `testing...origin/testing`; both refs resolve to
+`af42944c72762622e3abe18641af0947d171abd9`. No live service/model/SSH/host action.
+Next: map positive and negative gate assertions across the selected and high-priority omitted tests,
+then use Compass Forge impact/why on the first actual gap before writing a red test.
+
+### L-84 | 2026-08-26T00:28:00Z | S2-execute | gpt-5-codex | tester | Stale coding-run acceptance bypass reproduced red
+Did: Mapped the task/report gate and found that `assess_task_research_validity` counts accepted code
+applications across all historical runs, while its latest-run rejection executes only when the total
+accepted count is zero. Added a focused regression with an older accepted run/application followed by
+a newer blocked run caused by unavailable current routing.
+Result: The new test fails exactly at the policy boundary: `report_allowed` is incorrectly `true`.
+Thus a failed current re-code can inherit stale acceptance and leak old assurance into report routing.
+This is a production Research Spine bypass, not merely missing test coverage.
+Verified: targeted test `1 failed`; observed `assert True is False`. Compass Forge impact/why was run
+for the service and contract test before editing; it identifies the service as a high-risk shared
+Research Spine/report/API surface. No live service/model/SSH/host action.
+Next: make the latest task coding run authoritative whenever task code applications exist, rerun the
+red test and adjacent task/report/reconciliation contracts, then update living feature documentation.
+
+### L-85 | 2026-08-26T00:30:00Z | S2-execute/S3-review | gpt-5-codex | implementer | Current-run authority fixed and documented
+Did: Moved the latest-run acceptance check ahead of historical item-support evaluation whenever a task
+has code applications. Updated the Reports living architecture to state that a newer blocked,
+incomplete, or unaccepted run invalidates assurance inherited from older runs/applications, then
+regenerated all feature-site artifacts.
+Result: The stale-acceptance regression is green, as are adjacent unreconciled, reconciliation, Done-
+task, and ReportManager contracts. The change is deliberately narrow: accepted/reconciled current runs
+continue to use item-level lineage; a current failed run now fails closed before old accepted rows can
+make reporting appear safe.
+Verified: targeted/adjacent set `5 passed in 2.92s`; feature docs seeded 0/generated 224/check passed
+for 86; changed Python Ruff and `git diff --check` pass. No live service/model/SSH/host action.
+Next: run the full task/report/research-validity contract boundary, review for ordering/regression risk,
+then continue P9-06 with deleted-source and continuous positive-journey proof rather than stopping at
+this first bypass.
+
+### L-86 | 2026-08-26T00:32:00Z | S3-review | gpt-5-codex | verifier | Stale-run remediation passes full report boundary
+Did: Ran the complete Research Spine contract, integrity ReportManager, task, finding, and evidence-unit
+pagination test boundary after the current-run authority change.
+Result: All 93 tests pass. This covers reconciliation, item-level lineage, cross-project finding links,
+human-approved Done transitions, report filtering and synthesis revalidation, plus bounded evidence-unit
+listing. P9-06 remains open because this is broad component coverage, not yet a single causal positive
+journey or explicit source-deletion/revocation invalidation proof.
+Verified: `93 passed in 72.40s`; no live service/model/SSH/host action.
+Next: inspect source-document deletion semantics and referential validity at the report gate; add a red
+test if accepted evidence survives source removal, then build the continuous positive journey fixture.
+
+### L-87 | 2026-08-26T00:34:00Z | S2-execute | gpt-5-codex | tester | Deleted-source reportability bypass reproduced red
+Did: Traced document deletion and evidence persistence. Documents are hard-deleted, while evidence
+units and accepted code applications intentionally retain audit rows without a foreign-key lifecycle
+link. Added a regression that first proves a source-backed accepted code is reportable, deletes the raw
+source document, then reassesses the same task.
+Result: Reassessment incorrectly remains reportable. Stored source text is therefore being treated as
+self-authenticating after its governed raw source has disappeared. This violates the requested revoked-
+source negative gate and the Research Spine's source-grounding contract.
+Verified: targeted test `1 failed`; pre-delete gate is true as expected and post-delete gate wrongly
+returns true. No live service/model/SSH/host action.
+Next: validate accepted evidence units against current same-project source documents and their versions
+at report assessment time, preserve orphan rows for audit, and fail closed on deleted or superseded
+sources before rerunning the boundary.
+
+### L-88 | 2026-08-26T00:36:00Z | S2-execute/S3-review | gpt-5-codex | implementer | Source lifecycle gate added without erasing audit rows
+Did: Added report-time validation for accepted document-backed code applications. The gate resolves
+their source document in the same project and compares the evidence unit's recorded document version
+to the current source version. Missing documents, malformed version provenance, or version drift are
+blocked; historical evidence/code rows remain intact for audit rather than being cascade-deleted.
+Result: Deleted-source acceptance now fails closed. The regression was extended to cover superseded
+source versions as well, so edited source text cannot silently retain an earlier coding decision.
+Documentless non-document evidence remains on its existing governed path instead of being incorrectly
+rejected merely because it has no Document row.
+Verified: deleted/current-run targeted set `2 passed`; changed Python Ruff and diff check pass. No live
+service/model/SSH/host action.
+Next: rerun the extended changed/superseded/deleted regression and the full 93-test report boundary,
+update the Reports living contract, then implement the continuous positive journey proof.
+
+### L-89 | 2026-08-26T00:38:00Z | S3-review | gpt-5-codex | verifier | Source lifecycle remediation passes full boundary
+Did: Extended the regression through current source -> superseded source version -> restored version ->
+deleted source and ran the complete Research Spine/report/task/finding/pagination boundary.
+Result: All 94 tests pass. The gate distinguishes historical retention from current report authority:
+audit rows survive, but only the active same-project document version can ground new report promotion.
+The Reports living architecture now states both latest-run authority and exact-source-version authority.
+Verified: `94 passed in 72.12s`; no live service/model/SSH/host action.
+Next: regenerate the feature site, then add one continuous positive journey that proves raw source,
+three independent coders, reliability/grounding, explicit human code acceptance, Atomic lineage, human
+Done approval, ReportManager routing, and traceability in one causally linked fixture.
+
+### L-90 | 2026-08-26T00:40:00Z | S3-review/S5-ship | gpt-5-codex | reviewer | P9-06 bypass slice ready for transport
+Did: Regenerated and checked the feature site, reviewed the complete runtime/test/living-doc diff, and
+ran Compass Forge after-gate record 16. The first attempted gate invocation used an unsupported native
+`--request` flag and made no record; rerunning the pinned native command with its supported argument
+shape completed normally.
+Result: No new forbidden dependency, required-path, import-cycle, security, or taint finding exists.
+The global gate remains failed on inherited secret-flow/route/type/large-file debt and reports touched-
+file complexity: the already oversized research-validity service/test grew further. That structural
+debt is explicit; the two production bypasses are nevertheless bounded by 94 green behavioral tests.
+Verified: feature docs 86/86; full boundary 94/94; Ruff/diff clean; Compass Forge after record 16.
+No live service/model/SSH/host action.
+Next: commit/push exactly the six runtime/test/living/generated/lifecycle paths, verify clean ref
+equality, transport the receipt, then resume P9-06 continuous positive-journey proof.

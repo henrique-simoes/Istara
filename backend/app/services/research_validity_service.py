@@ -2062,6 +2062,91 @@ async def assess_task_research_validity(
             "report_allowed": False,
             "reason": f"Task has {unresolved_count} unreconciled code application(s).",
         }
+    if (
+        latest_run
+        and code_rows
+        and latest_run.promotion_status not in ACCEPTED_PROMOTION_STATUSES
+    ):
+        return {
+            **base,
+            "report_allowed": False,
+            "reason": (
+                "Latest task coding run is not accepted "
+                f"({latest_run.promotion_status or latest_run.status})."
+            ),
+        }
+    accepted_document_rows = [
+        row
+        for row in code_rows
+        if row.promotion_status in ACCEPTED_PROMOTION_STATUSES
+        and row.source_document_id
+    ]
+    if accepted_document_rows:
+        from app.models.document import Document
+
+        source_document_ids = {str(row.source_document_id) for row in accepted_document_rows}
+        current_documents = (
+            (
+                await db.execute(
+                    select(Document).where(
+                        Document.project_id == project_id,
+                        Document.id.in_(source_document_ids),
+                    )
+                )
+            )
+            .scalars()
+            .all()
+        )
+        current_by_id = {document.id: document for document in current_documents}
+        evidence_unit_ids = {
+            str(row.evidence_unit_id)
+            for row in accepted_document_rows
+            if row.evidence_unit_id
+        }
+        units = (
+            (
+                await db.execute(
+                    select(EvidenceUnit).where(
+                        EvidenceUnit.project_id == project_id,
+                        EvidenceUnit.id.in_(evidence_unit_ids),
+                    )
+                )
+            )
+            .scalars()
+            .all()
+            if evidence_unit_ids
+            else []
+        )
+        unit_by_id = {unit.id: unit for unit in units}
+        stale_source_rows = []
+        for row in accepted_document_rows:
+            document = current_by_id.get(str(row.source_document_id))
+            unit = unit_by_id.get(str(row.evidence_unit_id or ""))
+            try:
+                unit_metadata = json.loads(unit.metadata_json or "{}") if unit else {}
+            except (json.JSONDecodeError, TypeError):
+                unit_metadata = {}
+            unit_version = unit_metadata.get("document_version")
+            version_is_current = False
+            if document is not None:
+                try:
+                    version_is_current = unit_version is None or int(unit_version) == int(
+                        document.version or 1
+                    )
+                except (TypeError, ValueError):
+                    version_is_current = False
+            if document is None or not version_is_current:
+                stale_source_rows.append(row)
+        if stale_source_rows:
+            return {
+                **base,
+                "report_allowed": False,
+                "stale_source_code_application_count": len(stale_source_rows),
+                "reason": (
+                    f"Task has {len(stale_source_rows)} accepted code application(s) "
+                    "grounded in a deleted or superseded source document."
+                ),
+            }
     support = await _task_finding_support_diagnostics(
         db,
         project_id=project_id,
@@ -2091,20 +2176,6 @@ async def assess_task_research_validity(
             "reason": (
                 f"Task has {support['unsupported_finding_count']} finding(s) without "
                 "accepted/reconciled source evidence: " + ", ".join(unsupported_ids)
-            ),
-        }
-    if (
-        latest_run
-        and latest_run.promotion_status not in ACCEPTED_PROMOTION_STATUSES
-        and code_rows
-        and accepted_count == 0
-    ):
-        return {
-            **base_with_support,
-            "report_allowed": False,
-            "reason": (
-                "Latest task coding run is not accepted "
-                f"({latest_run.promotion_status or latest_run.status})."
             ),
         }
     return {
