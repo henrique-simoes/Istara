@@ -8,7 +8,7 @@ phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal ac
 stage: S2-execute
 status: in-progress
 blocked_on: null
-last: { agent: gpt-5-codex, at: 2026-08-26T23:35:42Z, ledger: L-206 }
+last: { agent: gpt-5-codex, at: 2026-08-26T23:40:13Z, ledger: L-207 }
 next_action: "Run the terminal Docker-only provider/Petals/combined retake from pushed SHA b15140a76fb6c9ed8c0d83039677d8625997e51a when owner-authorized provider credit and three Compose-owned donor routes are available; keep the live gate open until its evidence is complete."
 ```
 
@@ -4483,3 +4483,19 @@ the provider HTTP 402 as ensemble or Research Spine evidence.
 
 Next: commit and push this ledger correction, verify parity again, then wait for authorized
 provider credit and three Compose-owned donor routes before the terminal live retake.
+
+### L-207 | 2026-08-26T23:40:13Z | S3-acceptance | gpt-5-codex | local fail-closed spec accepted
+
+Did: Attached command evidence to CF-31 and CF-33 through CF-37, finished the locally provable
+validation/preservation/evidence/impact/proof tasks, and accepted CF-SPEC-5 in Compass Forge.
+The accepted scope is limited to the shared Pi manager and catalog-identity fail-closed seam;
+it does not claim live provider, three-model, Petals, or Research Spine acceptance.
+
+Evidence: native Rust Compass Forge `task show`/`finish-task` records report CF-31, CF-32,
+CF-33, CF-34, CF-35, CF-36, and CF-37 all `done`; `spec accept CF-SPEC-5` reports status
+`accepted`. The focused W1/W7/real-manager/donor/drift suite is recorded as `63 passed` at
+the clean transported testing tip `43a598b8e7efd81670a12051d86d9659cf9f86c3`.
+
+Next: keep CF-SPEC-2 and its live acceptance tasks open. The next substantive action remains
+the exact pushed-SHA Docker-only Mac Studio provider/Petals/combined retake, but only after
+owner-authorized provider credit and three Compose-owned donor routes are reachable.
