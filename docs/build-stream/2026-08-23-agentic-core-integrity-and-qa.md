@@ -8,8 +8,8 @@ phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal ac
 stage: S2-execute
 status: in-progress
 blocked_on: null
-last: { agent: gpt-5-codex, at: 2026-08-26T17:10:00Z, ledger: L-163 }
-next_action: "Refresh the detached worktree to 77940c4c, run one final provenance/secret-safe Docker comparison, and verify run metadata plus process-list hygiene before teardown."
+last: { agent: gpt-5-codex, at: 2026-08-26T17:45:00Z, ledger: L-169 }
+next_action: "Keep the Docker provider/donor gates open; implement and test scorecard semantic separation, then obtain an authorized reachable provider and three donor routes for the terminal Research Spine retake."
 ```
 
 ## Plan overview / roadmap
@@ -3592,3 +3592,41 @@ Pi probe exits. The same run group, source commit, image IDs, and Docker-only bo
 force.
 Next: wait for the Pi probe to finish, inspect both arm artifacts for source/secret provenance,
 record the final blocker disposition, and then perform the authorized testing-stack teardown.
+
+### L-168 | 2026-08-26T17:40:00Z | S3-review | gpt-5-codex | final Docker retake disposition and Research Spine blocker confirmed
+Did: The corrected one-run comparison completed with both arms blocker-bearing (`RUN_RC=1`):
+legacy run `2026-08-26T14-47-00-658Z` and Pi run `2026-08-26T14-50-11-279Z`. Both run metadata
+files record source commit `765a85e0df148a515fdee81cc2d2cd192f06f1a9`, snapshot
+`e2dc76611ff6c70971489d8f774058a884ecfa09be5bde114c9ca11e67ff0a1f`,
+`container_only=true`, and `host_dependencies_installed=false`. The post-run boolean process
+check reports `PASSWORD_ARG_PRESENT=0` and `RUNNER_ACTIVE=0`; the final log SHA is recorded in
+the remote evidence bundle.
+
+Behavioral disposition is unchanged and now independently re-confirmed: both scorecards are
+`43.5`, with zero chat turns, zero completed tasks, `coding_validation_verified=false`,
+`compute_donation_verified=false`, `multi_donor_compute_verified=false`, and blocked coding
+(`rater_count=0`, `distinct_model_count=0`, `kappa=null`, `alpha=null`, `code_application_count=0`).
+The provider returned 402 Insufficient Balance; the provider-stub was healthy but not an LLM
+substitute. The topology fixture reports one weak donor endpoint contract while Research Spine
+served routes remain zero, so this run cannot establish PI Model Management, Petals donation,
+three-model ensemble behavior, Fleiss/alpha reliability, reconciliation, or human-approved
+promotion. This is a blocker disposition, not a quality score.
+
+### L-169 | 2026-08-26T17:45:00Z | S4-ship | gpt-5-codex | authorized Docker cleanup complete; remaining work is implementation plus provider handoff
+Did: Before cleanup, Compose reported healthy backend, frontend, postgres, provider-stub, and
+Caddy services from the exact testing project. With the owner's explicit authorization, ran
+`docker compose --project-name istara-testing ... down -v --remove-orphans` and removed the
+dedicated `istara-pw-browsers` runner volume. Evidence confirms zero `istara-testing` project
+containers and zero project volumes remain. Unrelated workloads were not targeted. The dirty
+owner checkout and disposable clean worktree were not deleted or reset beyond the clean
+worktree's exact source refresh.
+
+The transport branch is still intended to remain clean and equal to `origin/testing`; the
+external audit ledger now includes F-R9-26 through F-R9-28. Remaining in-repo work is the
+scorecard semantic separation/regression fixture for the donor and Research Spine flags. The
+remaining live work is external-state dependent: an authorized reachable model provider and a
+Compose-owned three-donor/Pi-managed route topology are required before a terminal positive
+Research Spine run can produce non-null reliability metrics and accepted downstream lineage.
+Next: finish the bounded scorecard contract change through Compass Forge/TDD, then commit/push
+the ledger and code; do not claim goal completion until the provider/donor acceptance gates are
+actually exercised or explicitly closed by owner decision.
