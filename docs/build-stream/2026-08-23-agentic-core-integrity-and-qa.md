@@ -8,8 +8,8 @@ phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal ac
 stage: S2-execute
 status: in-progress
 blocked_on: null
-last: { agent: gpt-5-codex, at: 2026-08-26T15:35:00Z, ledger: L-156 }
-next_action: "Run the supported Docker-only benchmark runner once against the fresh stack, capture its scorecard and route/provenance artifacts, and classify any missing three-donor proof as a blocker."
+last: { agent: gpt-5-codex, at: 2026-08-26T15:42:00Z, ledger: L-157 }
+next_action: "Refresh to e7fca1be, run one bounded docker-run.sh comparison with source-hash provenance, and capture arm scorecards/blockers without claiming three-donor proof."
 ```
 
 ## Plan overview / roadmap
@@ -3336,6 +3336,26 @@ evidence.
 Next: refresh `~/istara-testing-clean-6ce9374a` to `origin/testing`, execute
 `docker compose up -d --wait`, capture health/listener/log receipts, and checkpoint before the
 two-engine runner or any live request.
+
+### L-157 | 2026-08-26T15:42:00Z | S2-execute | gpt-5-codex | bounded Docker runner checkpoint
+Did: Transported the healthy-stack receipt as `e7fca1be` on `origin/testing`. The next live
+request is limited to one invocation of the supported `scripts/runner/docker-run.sh` from the
+detached clean worktree. It will run the repository's two declared arms (`legacy` and `pi`),
+recreate the Compose stack per arm, and execute the benchmark inside the disposable
+`node:20-bookworm` runner container. The source snapshot SHA-256 will be computed from the
+exact detached Git archive and passed into the runner; the deploy password remains an
+unprinted environment value.
+
+Acceptance boundary: this runner is valid for Docker-only two-engine service/route and
+provenance checks, but its contract explicitly sets `ISTARA_BENCHMARK_REQUIRE_COMPUTE_DONATION=0`
+and does not provision three donor model/relay containers. Therefore even a zero-blocker
+completion cannot establish Petals donation, three independent donor identities, ensemble
+aggregation, Fleiss' kappa over three live models, or full Research Spine promotion. Any
+provider-stub, live-chat, task, or coding failure is retained as a blocker-bearing result.
+
+Next: refresh the detached worktree to `origin/testing`, calculate the exact archive hash,
+run one `docker-run.sh` invocation with the existing Docker helper PATH, retain its complete
+stdout/stderr and generated artifacts, then append the arm-level disposition before any retry.
 
 ### L-156 | 2026-08-26T15:35:00Z | S2-execute/S3-review | gpt-5-codex | fresh Docker stack healthy before benchmark
 Did: Refreshed the detached Mac Studio worktree to the transported startup checkpoint
