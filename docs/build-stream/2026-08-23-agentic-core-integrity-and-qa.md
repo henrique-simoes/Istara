@@ -8,8 +8,8 @@ phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal ac
 stage: S2-execute
 status: in-progress
 blocked_on: null
-last: { agent: gpt-5-codex, at: 2026-08-26T15:02:00Z, ledger: L-152 }
-next_action: "Refresh the detached worktree to 405dce18, build the five-service stack with Docker, and capture image IDs/digests before startup."
+last: { agent: gpt-5-codex, at: 2026-08-26T15:10:00Z, ledger: L-153 }
+next_action: "Use the existing Docker Desktop credential helper via an explicit remote PATH, rebuild from 972352de, and capture image IDs/digests or the next fail-closed blocker."
 ```
 
 ## Plan overview / roadmap
@@ -3267,3 +3267,26 @@ reconciliation, Fleiss' kappa, or long-horizon research validity.
 Next: refresh `~/istara-testing-clean-6ce9374a` to `origin/testing`, run
 `docker compose build --pull`, capture service image IDs/digests and build exit status, then
 append a post-build checkpoint before any container startup or benchmark request.
+
+### L-153 | 2026-08-26T15:10:00Z | S2-execute/S3-review | gpt-5-codex | Docker build blocked by SSH credential-helper PATH
+Did: Refreshed the isolated worktree to the pushed build checkpoint `972352de` and invoked
+`docker compose build --pull` through the Mac Studio Docker daemon. Docker Desktop accepted the
+request, but BuildKit failed before compiling the backend because the non-interactive SSH PATH
+(`/usr/bin:/bin:/usr/sbin:/sbin`) could not resolve the configured `docker-credential-desktop`
+helper while resolving the Dockerfile frontend image. Frontend and provider-stub metadata
+resolution were canceled as a consequence; no service started and no model was loaded.
+
+Evidence: the failed build log is retained at
+`/Users/user/istara-testing-evidence-20260826T145000Z/docker-compose-build.log`; the clean
+build source receipt is at the same directory and resolves to `972352de` with zero status
+changes. A passive check found the existing executable at
+`/Applications/Docker.app/Contents/Resources/bin/docker-credential-desktop`, so this is an
+SSH environment PATH/configuration defect rather than authorization to install a host package.
+
+Result: the image-integrity gate remains open. The remediation is bounded to adding the
+existing Docker Desktop resources directory to the SSH command's PATH (or an equivalent
+Docker CLI config fix) and retrying the same build. Do not claim a Docker build, runtime
+health, model-management behavior, ensemble operation, Fleiss' kappa, or Research Spine
+acceptance until the retry produces exact image IDs/digests and subsequent live gates.
+Next: append the external audit finding, then retry with the explicit existing helper PATH;
+if it fails again, preserve the exact error and stop rather than installing anything on-host.
