@@ -275,6 +275,11 @@
 <li>The backend list, unread-count, mark-all-read, mark-read, and delete APIs never fall back to a global inbox; cross-project notification aggregation belongs only on explicit admin reporting surfaces.</li>
 <li>Lower-level notification service helpers also require <code>project_id</code>, and project-bound event persistence skips records that cannot be tied to a project.</li>
 <li>System-wide notification-style websocket events such as updates, backups, and resource throttles fan out only to global admins.</li>
+<li>Websocket-triggered notification persistence remains asynchronous for broadcast latency, but</li>
+</ul>
+<p><code>ConnectionManager</code> tracks those tasks and the application shutdown lifecycle drains them before</p>
+<p>closing the event loop, preventing an <code>AsyncSession.close</code> coroutine from being abandoned.</p>
+<ul>
 <li>Agent promotion review notifications use the <code>agent_promotion</code> category in the API allow-list, frontend category filters, and badge styling so project-scoped review requests remain visible when users filter notification categories.</li>
 <li>The frontmatter and manifest entries are the durable contract for agents updating this page after code changes.</li>
 <li>When the referenced component, store, route, agent, skill, or test behavior changes, regenerate and validate the feature documentation.</li>

@@ -97,6 +97,18 @@ class ConnectionManager:
 
     def __init__(self) -> None:
         self._connections: list[dict[str, Any]] = []
+        self._notification_tasks: set[asyncio.Task[None]] = set()
+
+    def _track_notification_task(self, task: asyncio.Task[None]) -> None:
+        """Keep fire-and-forget persistence attached to the app lifecycle."""
+        self._notification_tasks.add(task)
+        task.add_done_callback(self._notification_tasks.discard)
+
+    async def drain_notification_tasks(self) -> None:
+        """Wait for notification writes before a loop or app shuts down."""
+        pending = tuple(self._notification_tasks)
+        if pending:
+            await asyncio.gather(*pending, return_exceptions=True)
 
     async def connect(
         self,
@@ -327,8 +339,12 @@ class ConnectionManager:
         for conn in disconnected:
             self.disconnect(conn)
 
-        # Persist notification asynchronously — never block broadcasts
-        asyncio.create_task(self._persist_notification(event_type, data))
+        # Persist notification asynchronously — never block broadcasts. Keep a
+        # reference so shutdown/tests can drain the task before closing the DB
+        # event loop (otherwise AsyncSession.close may be left unawaited).
+        self._track_notification_task(
+            asyncio.create_task(self._persist_notification(event_type, data))
+        )
 
     async def _persist_notification(self, event_type: str, data: dict) -> None:
         """Persist a notification record from a broadcast event."""

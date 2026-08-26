@@ -91,7 +91,9 @@ def test_unknown_usage_reservation_blocks_near_cap_fail_closed(tmp_path):
 def test_concurrent_processes_never_exceed_cap(tmp_path):
     path = tmp_path / "ledger.jsonl"
     cap, cost, attempts = 0.10, 0.01, 50
-    context = multiprocessing.get_context("fork")
+    # LanceDB's native resources are not fork-safe.  Spawn workers so this
+    # concurrency contract is deterministic on macOS and Linux alike.
+    context = multiprocessing.get_context("spawn")
     processes = [
         context.Process(
             target=_hammer_reserve,

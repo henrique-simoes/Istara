@@ -251,6 +251,7 @@ async def test_agent_task_picker_skips_paused_project_tasks():
 async def test_agent_execute_task_defers_when_project_paused():
     """The execution path itself also guards against races after a project is paused."""
     from app.core.agent import AgentOrchestrator
+    from app.api.websocket import manager as websocket_manager
 
     await init_db()
     project = await _seed_project("Paused Direct Execution", is_paused=True)
@@ -261,6 +262,7 @@ async def test_agent_execute_task_defers_when_project_paused():
         db_task = await db.get(Task, task.id)
         db_project = await db.get(Project, project.id)
         await orchestrator._execute_task(db, db_task, db_project)
+        await websocket_manager.drain_notification_tasks()
         await db.refresh(db_task)
 
         assert db_task.status == TaskStatus.BACKLOG

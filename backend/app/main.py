@@ -646,6 +646,13 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         except Exception as e:
             _sd_log.warning(f"Background task stopped with error during shutdown: {e}")
 
+    try:
+        from app.api.websocket import manager as ws_manager
+
+        await ws_manager.drain_notification_tasks()
+    except Exception as e:
+        _sd_log.warning(f"WebSocket notification persistence drain failed: {e}")
+
     # Owned teardown of the supervised Pi runtime worker (Plan C D-C1): cancel
     # runs, terminate, then kill only the child PID it created. No-op when a Pi
     # request never started the worker; never blocks shutdown on a stuck child.

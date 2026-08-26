@@ -8,8 +8,8 @@ phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal ac
 stage: S2-execute
 status: in-progress
 blocked_on: null
-last: { agent: gpt-5-codex, at: 2026-08-26T12:53:00Z, ledger: L-124 }
-next_action: "Finish the broad local regression matrix against d385278d, checkpoint exact counts, and request owner handoff before any remote checkout mutation."
+last: { agent: gpt-5-codex, at: 2026-08-26T13:12:00Z, ledger: L-126 }
+next_action: "Rerun the broad local matrix after the warning fixes; then execute only owner-authorized remote Docker work and retain the dirty-checkout boundary."
 ```
 
 ## Plan overview / roadmap
@@ -2631,3 +2631,39 @@ Result: command is running; no result is claimed yet. The remote Mac Studio chec
 explicit owner-handoff blocker and is not being reset, pulled, or cleaned.
 Next: record the exact pass/fail count and any newly exposed regression, then run only bounded
 follow-up checks before the remote handoff boundary.
+
+### L-125 | 2026-08-26T13:02:00Z | S2-execute/S3-review | gpt-5-codex | reviewer | Broad local regression matrix is green with two actionable warnings
+Did: The broad local matrix collected 918 tests and completed with `913 passed, 5 skipped` in
+146.98s (0 failures). It covered Pi production/runtime and migrations, Petals lifecycle, benchmark
+and scheduler contracts, Research Spine validity/end-to-end/report integrity, chat/catalog routing,
+task/finding gates, settings/model-management contracts, runner safety, and security benchmark
+contracts. This validates the strict reconciliation change against the wider local suite, but is
+still deterministic/contract evidence rather than live model-quality or Mac Studio acceptance.
+Two warnings must remain visible: LanceDB reports that its multiprocessing path is not fork-safe,
+and `tests/test_tasks.py::test_agent_execute_task_defers_when_project_paused` emits an
+`AsyncSession.close` coroutine-not-awaited warning from the SQLite/asyncio teardown path. The
+second warning also produced an `aiosqlite` event-loop-closed thread exception under a traced retry;
+it needs a bounded lifecycle fix or an explicit quarantined test-harness disposition before release.
+No live model, backend/frontend server, SSH, Docker, or host package action occurred.
+Result: local behavior is green but not warning-clean; P9-12 remains open until the warnings are
+understood and either repaired or recorded as owned residual risk. Remote exact-SHA acceptance is
+still blocked by the dirty `~/istara-testing` checkout and requires its owner handoff.
+Next: inspect the warning lifecycle without mutating the remote host, add focused regressions if a
+safe fix is justified, rerun the affected slice, and append the finding to the external audit file.
+
+### L-126 | 2026-08-26T13:12:00Z | S2-execute/S3-review | gpt-5-codex | implementer/reviewer | Test-process and notification teardown hazards fixed in scope
+Did: Followed the two warnings from L-125. The benchmark concurrency test now uses Python's
+`spawn` context instead of `fork`, removing the LanceDB fork-safety warning while preserving the
+same cap/arithmetic assertions. `ConnectionManager` now tracks fire-and-forget notification
+persistence tasks, exposes `drain_notification_tasks()`, and the application lifespan awaits the
+drain after stopping producers. The paused-project execution regression drains the manager before
+its event loop closes. This prevents abandoned `AsyncSession.close` coroutines and the observed
+`aiosqlite` callback into a closed loop without making websocket broadcasts synchronous.
+Result: the affected slice `pytest -q tests/test_websocket.py
+tests/test_tasks.py::test_agent_execute_task_defers_when_project_paused
+tests/pi_benchmark/test_budget_ledger.py` passes `27 passed` with no warnings. Compass Forge graph
+impact/why was run for `backend/app/api/websocket.py`; the feature contract was updated and the
+site regenerated (224 artifacts / 86 features). No server, model, SSH, Docker, or host package
+action occurred. The external audit file now records this as F-R9-12 fixed locally.
+Next: rerun the broad 918-test local matrix to prove warning cleanliness across all affected
+callers, then checkpoint the exact result and retain the remote owner-handoff blocker.

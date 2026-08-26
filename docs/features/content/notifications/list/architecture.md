@@ -9,7 +9,7 @@ related_glossary: ["wcag"]
 code_references: ["frontend/src/components/notifications/NotificationsView.tsx", "frontend/src/components/notifications/NotificationListTab.tsx", "frontend/src/components/notifications/CategoryFilter.tsx", "frontend/src/stores/notificationStore.ts", "frontend/src/lib/notificationApi.ts", "frontend/src/lib/types.ts", "backend/app/api/routes/notifications.py", "backend/app/services/notification_service.py", "backend/app/api/websocket.py"]
 api_references: ["backend/app/api/routes/notifications.py"]
 test_references: ["tests/test_notifications.py", "tests/test_project_scope_contracts.py", "tests/test_websocket.py"]
-last_verified: 2026-05-19
+last_verified: 2026-08-26
 compass: CF-SPEC-53 / CF-657; CF-SPEC-60 / CF-759; CF-SPEC-71 / CF-913; CF-SPEC-79 / CF-1019; CF-SPEC-89 / CF-1125; CF-SPEC-94 / CF-1205
 ---
 
@@ -49,6 +49,9 @@ Notifications lists active-project notifications with read/unread state. List, u
 - The backend list, unread-count, mark-all-read, mark-read, and delete APIs never fall back to a global inbox; cross-project notification aggregation belongs only on explicit admin reporting surfaces.
 - Lower-level notification service helpers also require `project_id`, and project-bound event persistence skips records that cannot be tied to a project.
 - System-wide notification-style websocket events such as updates, backups, and resource throttles fan out only to global admins.
+- Websocket-triggered notification persistence remains asynchronous for broadcast latency, but
+  `ConnectionManager` tracks those tasks and the application shutdown lifecycle drains them before
+  closing the event loop, preventing an `AsyncSession.close` coroutine from being abandoned.
 - Agent promotion review notifications use the `agent_promotion` category in the API allow-list, frontend category filters, and badge styling so project-scoped review requests remain visible when users filter notification categories.
 - The frontmatter and manifest entries are the durable contract for agents updating this page after code changes.
 - When the referenced component, store, route, agent, skill, or test behavior changes, regenerate and validate the feature documentation.
