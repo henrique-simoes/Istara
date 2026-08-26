@@ -8,8 +8,8 @@ phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal ac
 stage: S2-execute
 status: in-progress
 blocked_on: null
-last: { agent: gpt-5-codex, at: 2026-08-26T13:12:00Z, ledger: L-126 }
-next_action: "Rerun the broad local matrix after the warning fixes; then execute only owner-authorized remote Docker work and retain the dirty-checkout boundary."
+last: { agent: gpt-5-codex, at: 2026-08-26T13:22:00Z, ledger: L-127 }
+next_action: "Request/record the owner handoff for dirty ~/istara-testing; do not mutate it until clean, then run exact-SHA Docker-only acceptance for P9-06–P9-10."
 ```
 
 ## Plan overview / roadmap
@@ -2667,3 +2667,18 @@ site regenerated (224 artifacts / 86 features). No server, model, SSH, Docker, o
 action occurred. The external audit file now records this as F-R9-12 fixed locally.
 Next: rerun the broad 918-test local matrix to prove warning cleanliness across all affected
 callers, then checkpoint the exact result and retain the remote owner-handoff blocker.
+
+### L-127 | 2026-08-26T13:22:00Z | S3-review | gpt-5-codex | reviewer | Post-fix broad matrix is green and warning-free
+Did: Re-ran the complete 918-test local matrix after the async notification and multiprocessing
+fixes. Result: `913 passed, 5 skipped in 145.08s` with no warnings. The local branch is clean and
+exactly equal to `origin/testing` at `c53b3d19bedce313975a78f555117ee1cc27f959`; registered CI and
+recovery worktrees remain preserved because they are clean, named, and not proven abandoned. The
+pinned-native Compass Forge after-gate for this commit reports `new_issue_count=0`, `new_failures=0`,
+no new dependency/import-cycle/security/taint/missing-path/large-file findings, while retaining the
+known global inherited debt as `status=fail` (31 failures / 207 warnings). No model, server, SSH,
+Docker, or host package action occurred.
+Result: local P9-12 behavioral evidence is strong and warning-clean, but it remains deterministic
+contract proof. The remote Docker stack still runs older images and a dirty `~/istara-testing`
+checkout; exact-SHA acceptance and browser/live-model evidence remain open.
+Next: obtain the explicit remote owner handoff, verify the checkout becomes clean without deleting
+owned work, then use only explicit Docker/Compose operations for a fresh exact-SHA retake.
