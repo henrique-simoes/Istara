@@ -8,8 +8,8 @@ phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal ac
 stage: S2-execute
 status: in-progress
 blocked_on: null
-last: { agent: gpt-5-codex, at: 2026-08-26T12:54:07Z, ledger: L-130 }
-next_action: "Commit and push the reconciliation, review, and long-horizon oracle fixes, then run the pinned-native after-gate and broad local matrix before requesting owner handoff for dirty ~/istara-testing."
+last: { agent: gpt-5-codex, at: 2026-08-26T12:54:56Z, ledger: L-131 }
+next_action: "Rerun the broad local matrix on pushed 951ff740, then close remaining Pi two-call, Petals, benchmark crossover, UI, and Mac Studio owner-handoff gates."
 ```
 
 ## Plan overview / roadmap
@@ -2755,3 +2755,17 @@ commit. No server, provider/model, SSH, Docker, or Mac Studio host action occurr
 remote checkout remains untouched.
 Next: commit and push the explicit file set to `origin/testing`, run the pinned native `gate
 after`, and record the attributable comparison before rerunning the broad local matrix.
+
+### L-131 | 2026-08-26T12:54:56Z | S3-review/S4-ship | gpt-5-codex | oracle hardening pushed and after-gate remains attributable-clean
+Did: Committed the complete bounded slice as `951ff740` (`fix: close research oracle and
+review bypasses`) and pushed it to `origin/testing`. The pinned native Rust Compass Forge
+`gate after` recorded `new_issue_count=0`, `new_failures=0`, and no new dependency/import
+cycle, missing-path, unexpected-large-file, or security/taint findings. The global status
+remains `fail` only for inherited complexity, route/type drift, and secret-flow debt already
+present in the repository baseline; no inherited finding was silently waived.
+
+Result: local and origin now contain the same oracle/reconciliation commit. No server,
+provider/model, SSH, Docker, or Mac Studio host action occurred. The remote checkout and its
+older Docker images remain untouched and are not acceptance evidence.
+Next: rerun the full local regression matrix against `951ff740`, then inspect and strengthen
+the Pi two-call, Petals lifecycle, benchmark crossover, browser, and exact-image Docker gates.
