@@ -70,8 +70,12 @@ async function validateCodingRun({
   const reliabilityMethod = String(codingRun?.reliability_method || "");
   const kappa = codingRun?.kappa;
   const alpha = codingRun?.alpha;
+  const threshold = Number(codingRun?.threshold ?? 0.6);
   const hasNumericKappa = kappa !== null && kappa !== "" && Number.isFinite(Number(kappa));
   const hasNumericAlpha = alpha !== null && alpha !== "" && Number.isFinite(Number(alpha));
+  const kappaMeetsThreshold = Number.isFinite(threshold)
+    && hasNumericKappa
+    && Number(kappa) >= threshold;
   const fallbackReason = String(codingRun?.fallback_reason || "");
   const status = String(codingRun?.status || "").toLowerCase();
   const promotionStatus = String(codingRun?.promotion_status || "").toLowerCase();
@@ -84,10 +88,12 @@ async function validateCodingRun({
     ? reliabilityMethod === "fleiss_kappa_with_krippendorff_alpha_companion"
       && hasNumericKappa
       && hasNumericAlpha
+      && (!acceptedPromotion || kappaMeetsThreshold)
     : requiredCoders >= 2
       ? reliabilityMethod === "cohen_kappa_with_krippendorff_alpha_companion"
         && hasNumericKappa
         && hasNumericAlpha
+        && (!acceptedPromotion || kappaMeetsThreshold)
       : true;
   const lowerAssurance = /single_coder|lower_assurance/i.test(`${reliabilityMethod} ${fallbackReason}`);
   const routeEvidence = Array.isArray(codingRun?.route_evidence)
@@ -188,6 +194,8 @@ async function validateCodingRun({
         reliability_method: reliabilityMethod,
         kappa,
         alpha,
+        threshold,
+        kappa_meets_threshold: kappaMeetsThreshold,
         fallback_reason: fallbackReason,
         expected_distinct_donor_routes: requiredDonorRoutes,
         served_donor_route_count: servedDonorRouteCount,

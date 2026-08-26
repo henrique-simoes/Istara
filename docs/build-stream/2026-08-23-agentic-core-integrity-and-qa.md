@@ -8,8 +8,8 @@ phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal ac
 stage: S2-execute
 status: in-progress
 blocked_on: null
-last: { agent: gpt-5-codex, at: 2026-08-26T12:57:52Z, ledger: L-132 }
-next_action: "Inspect and strengthen the Pi two-call, Petals, benchmark crossover, browser, and exact-image Docker gates; obtain owner handoff for dirty ~/istara-testing before any remote mutation."
+last: { agent: gpt-5-codex, at: 2026-08-26T13:07:04Z, ledger: L-133 }
+next_action: "Commit and push the threshold-consistent Research Spine oracle; then inspect paired benchmark ordering and Petals Pi-execution integration gaps before owner-gated Docker acceptance."
 ```
 
 ## Plan overview / roadmap
@@ -2784,3 +2784,24 @@ or Mac Studio Docker execution. No server, provider/model, SSH, Docker, or host 
 occurred.
 Next: review the still-open P9-07–P9-15 gates and strengthen the Pi two-call and Petals live
 proof contracts before the required owner handoff for the dirty remote checkout.
+
+### L-133 | 2026-08-26T13:07:04Z | S2-execute/S3-review | gpt-5-codex | Research Spine probe now rejects accepted runs below their declared reliability threshold
+Did: Tightened `tests/real_user_benchmark/lib/research-spine-probes.mjs` so an accepted
+multi-coder run must carry a finite Fleiss/Cohen kappa that meets its declared threshold;
+the probe now records `threshold` and `kappa_meets_threshold` in failure evidence. Added a
+regression fixture for a three-donor run claiming `promotion_status=accepted` with
+`kappa=0.4` and `threshold=0.6`; it correctly blocks both coding and multi-model validation.
+Also completed the Pi two-call contract by asserting exactly two project/session-scoped
+`AgenticUsageRow` records, each with `engine=pi`, endpoint `pi-faux`, and successful outcome.
+
+Verification: `node --test tests/real_user_benchmark/lib/research-spine-probes.test.mjs`
+=> 17 passed; Compass Forge graph impact/why was run for the changed Pi chat test. The
+bounded changes are uncommitted at this checkpoint; no server, provider/model, SSH, Docker,
+or Mac Studio host action occurred, and the dirty remote checkout remains untouched.
+
+Result: the benchmark cannot trust an internally inconsistent accepted reliability result,
+and the two-call test now observes usage-ledger provenance rather than only chat history.
+This is deterministic oracle evidence, not live model or Mac Studio acceptance.
+Next: run the pinned-native before gate, append F-R9-15 to `/Users/user/Desktop/testing.md`,
+commit/push this bounded slice, run the after gate and warning-free matrix, then inspect
+paired benchmark ordering and the remaining Petals Pi-execution/live Docker gaps.

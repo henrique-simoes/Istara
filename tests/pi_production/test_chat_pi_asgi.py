@@ -48,6 +48,7 @@ from app.core.pi_runtime.supervisor import PiRuntimeSupervisor
 from app.core.rag import RAGContext
 from app.main import app
 from app.models.database import async_session, init_db
+from app.models.agentic_usage import AgenticUsageRow
 from app.models.message import Message
 from app.models.project import Project
 from app.models.session import ChatSession
@@ -273,12 +274,27 @@ async def test_chat_pi_two_calls_rehydrate_history_after_worker_restart(monkeypa
                 .order_by(Message.created_at.asc())
             )
         ).scalars().all()
+        usage_rows = (
+            await db.execute(
+                select(AgenticUsageRow)
+                .where(
+                    AgenticUsageRow.project_id == project_id,
+                    AgenticUsageRow.session_id == session_id,
+                )
+                .order_by(AgenticUsageRow.created_at.asc())
+            )
+        ).scalars().all()
     assert [(message.role, message.content) for message in messages] == [
         ("user", first_request["message"]),
         ("assistant", first_reply),
         ("user", second_request["message"]),
         ("assistant", second_reply),
     ]
+    assert len(usage_rows) == 2
+    assert [row.engine for row in usage_rows] == ["pi", "pi"]
+    assert [row.session_id for row in usage_rows] == [session_id, session_id]
+    assert [row.endpoint_id for row in usage_rows] == ["pi-faux", "pi-faux"]
+    assert [row.outcome for row in usage_rows] == ["success", "success"]
     assert first.is_running is False
     assert second.is_running is False
 

@@ -339,6 +339,58 @@ test("three-donor benchmark rejects a named reliability method without numeric k
   assert.match(blockers[0], /numeric Fleiss kappa and Krippendorff alpha/);
 });
 
+test("three-donor benchmark rejects accepted status when kappa is below its threshold", async () => {
+  const logger = makeLogger();
+  const blockers = [];
+  const featureResults = {};
+  const api = {
+    async get(path) {
+      if (path === "/api/research-validity/contract") {
+        return { contract: {}, qualitative_coding_protocol: {} };
+      }
+      if (path.includes("/code-applications/")) return makeReconciledApplications("run-low-kappa");
+      if (path.includes("/reconciliation-decisions")) return makeReconciliationDecisions("run-low-kappa");
+      if (path.includes("/summary")) return { coding_run_count: 1, evidence_unit_count: 4 };
+      if (path.includes("/evidence-units")) return makeSubstantiveUnits();
+      if (path.includes("/coding-runs")) return [{ id: "run-low-kappa" }];
+      if (path.includes("/traceability")) return { edges: [] };
+      if (path.includes("/telemetry-audit")) return { status: "ok" };
+      return {};
+    },
+    async post() {
+      return {
+        id: "run-low-kappa",
+        status: "completed",
+        promotion_status: "accepted",
+        code_application_count: 12,
+        reliability_method: "fleiss_kappa_with_krippendorff_alpha_companion",
+        distinct_model_count: 3,
+        rater_count: 3,
+        threshold: 0.6,
+        kappa: 0.4,
+        alpha: 0.79,
+      };
+    },
+  };
+
+  await exerciseResearchSpineValidation({
+    api,
+    projectId: "project-a",
+    logger,
+    featureResults,
+    blockers,
+    codingValidationEnabled: true,
+    codingValidationLimit: 4,
+    expectedDistinctCoders: 3,
+  });
+
+  assert.equal(featureResults.codingValidation, false);
+  assert.equal(featureResults.multiModelResearchSpineValidation, false);
+  assert.equal(blockers.length, 1);
+  assert.match(blockers[0], /numeric Fleiss kappa and Krippendorff alpha/i);
+  assert.equal(logger.issues[0].evidence.kappa_meets_threshold, false);
+});
+
 test("three-donor benchmark requires three served donor routes, not only three model aliases", async () => {
   const logger = makeLogger();
   const blockers = [];
