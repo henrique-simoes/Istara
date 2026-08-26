@@ -7,7 +7,8 @@ benchmark run offline first (B0), then fans the work out to at most
 - :func:`build_run_units` expands scenarios x seeds x repeats x engines x MoA modes
   into deterministic :class:`RunUnit` records, tagged with their work-package phase
   (B1 canonical, B2 a2a, B3 spine).
-- :func:`shard_units` splits units deterministically into disjoint, complete shards.
+- :func:`shard_units` splits units deterministically into disjoint, complete shards;
+  both arms of each crossover pair stay in one shard so recorded order is executable.
 - :func:`write_manifest` persists the immutable shard manifest. Re-running B0 with
   identical arguments is an idempotent resume (the existing file is returned
   unchanged); differing arguments raise :class:`ManifestConflict` — the manifest is
@@ -29,6 +30,8 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
+
+from tests.pi_benchmark.schema import ordered_engines, pair_identity
 
 MANIFEST_SCHEMA_VERSION = "1.0.0"
 MANIFEST_KIND = "pi_benchmark_wave_manifest"
@@ -69,14 +72,18 @@ def build_run_units(
 
     ``scenarios`` are :class:`tests.pi_benchmark.scenarios.base.Scenario` objects
     (anything with ``.id`` and ``.pack``). Order is fully deterministic: scenario
-    order as given, then seed, then repeat, then engine, then MoA mode.
+    order as given, then seed, then repeat, then the pair's crossover engine order,
+    then MoA mode.
     """
     units: list[RunUnit] = []
     for scenario in scenarios:
         phase = _PHASE_BY_PACK.get(scenario.pack, _DEFAULT_PHASE)
         for seed in seeds:
             for repeat in range(repeats):
-                for engine in engines:
+                for engine in ordered_engines(
+                    engines, phase=phase, pack=scenario.pack, scenario_id=scenario.id,
+                    seed=seed, repeat=repeat,
+                ):
                     for moa_mode in moa_modes or (None,):
                         unit_id = (
                             f"{phase}-{tier}-{scenario.pack}-{scenario.id}"
@@ -102,14 +109,30 @@ def build_run_units(
 def shard_units(units: list[RunUnit], n: int) -> list[list[RunUnit]]:
     """Split ``units`` into ``n`` deterministic, disjoint, complete shards.
 
-    Round-robin by unit index. ``n`` must be >= 1 — a missing or invalid
-    ``max_processes`` fails closed with ValueError rather than guessing.
+    Round-robin by paired comparison group. ``n`` must be >= 1 — a missing or
+    invalid ``max_processes`` fails closed with ValueError rather than guessing.
+
+    A pair is identified by phase/pack/scenario/seed/repeat/MoA lane, not by an
+    engine-specific unit id. Keeping the two arms in one shard is necessary for
+    the manifest's crossover order to describe actual execution rather than a
+    merely planned order split across concurrent processes.
     """
     if not isinstance(n, int) or isinstance(n, bool) or n < 1:
         raise ValueError(f"shard count must be an int >= 1, got {n!r}")
     shards: list[list[RunUnit]] = [[] for _ in range(n)]
-    for index, unit in enumerate(units):
-        shards[index % n].append(unit)
+    groups: dict[str, list[RunUnit]] = {}
+    group_order: list[str] = []
+    for unit in units:
+        key = pair_identity(
+            phase=unit.phase, pack=unit.pack, scenario_id=unit.scenario_id,
+            seed=unit.seed, repeat=unit.repeat, moa_mode=unit.moa_mode,
+        )
+        if key not in groups:
+            groups[key] = []
+            group_order.append(key)
+        groups[key].append(unit)
+    for index, key in enumerate(group_order):
+        shards[index % n].extend(groups[key])
     # Disjoint + complete: shards cover every unit exactly once.
     shard_ids = [unit.unit_id for shard in shards for unit in shard]
     assert len(shard_ids) == len(units) and len(set(shard_ids)) == len(shard_ids), (

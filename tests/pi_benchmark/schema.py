@@ -103,6 +103,45 @@ def _order_for_pair(pair_index: int) -> str:
     return "legacy_first" if pair_index % 2 == 0 else "pi_first"
 
 
+def pair_identity(
+    *, phase: str, pack: str, scenario_id: str, seed: int, repeat: int,
+    moa_mode: str | None = None,
+) -> str:
+    """Return the engine-independent identity used for one paired comparison."""
+    return "|".join(
+        (phase, pack, scenario_id, str(seed), str(repeat), moa_mode or "none")
+    )
+
+
+def pair_order_for_identity(
+    *, phase: str, pack: str, scenario_id: str, seed: int, repeat: int,
+    moa_mode: str | None = None,
+) -> str:
+    """Return a stable crossover assignment shared by both engine arms."""
+    identity = pair_identity(
+        phase=phase, pack=pack, scenario_id=scenario_id, seed=seed,
+        repeat=repeat, moa_mode=moa_mode,
+    )
+    pair_index = int(hashlib.sha256(identity.encode()).hexdigest()[:8], 16)
+    return _order_for_pair(pair_index)
+
+
+def ordered_engines(
+    engines: tuple[str, ...] | list[str], *, phase: str, pack: str,
+    scenario_id: str, seed: int, repeat: int, moa_mode: str | None = None,
+) -> tuple[str, ...]:
+    """Order engine arms according to the pair's deterministic crossover assignment."""
+    requested = tuple(dict.fromkeys(engines))
+    order = pair_order_for_identity(
+        phase=phase, pack=pack, scenario_id=scenario_id, seed=seed,
+        repeat=repeat, moa_mode=moa_mode,
+    )
+    preferred = ("legacy", "pi") if order == "legacy_first" else ("pi", "legacy")
+    return tuple(engine for engine in preferred if engine in requested) + tuple(
+        engine for engine in requested if engine not in preferred
+    )
+
+
 def build_record(
     *,
     config: Any,

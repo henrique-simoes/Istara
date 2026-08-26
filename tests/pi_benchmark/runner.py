@@ -34,7 +34,6 @@ from __future__ import annotations
 import argparse
 import asyncio
 import dataclasses
-import hashlib
 import importlib
 import json
 import sys
@@ -55,7 +54,7 @@ from tests.pi_benchmark.schema import (
     _utc_now_iso,
     build_record,
     git_provenance,
-    input_sha256,
+    ordered_engines,
     write_record_atomic,
 )
 from tests.pi_benchmark.scenarios import PACK_NAMES, Scenario, load_pack
@@ -159,6 +158,11 @@ def _offline_record(
     pair_index: int, git_sha: str, git_dirty: bool, ts: str,
 ) -> dict[str, Any]:
     """Execute one scenario arm at an offline tier and build its record."""
+    pair_order = schema.pair_order_for_identity(
+        phase=config.phase, pack=scenario.pack, scenario_id=scenario.id,
+        seed=seed, repeat=repeat,
+    )
+    pair_index = 0 if pair_order == "legacy_first" else 1
     if not tier_at_least(config.tier, scenario.min_tier):
         # Scenario needs a higher tier than requested — counted, never dropped.
         return build_record(
@@ -254,7 +258,10 @@ def _record_unknown_scenario(unit: Any, config: RunConfig, records_dir: Path) ->
     record = build_record(
         config=unit_config, scenario=scenario, engine=unit.engine, seed=unit.seed,
         repeat=unit.repeat,
-        pair_index=int(hashlib.sha256(unit.unit_id.encode()).hexdigest()[:8], 16),
+        pair_index=0 if schema.pair_order_for_identity(
+            phase=unit.phase, pack=unit.pack, scenario_id=unit.scenario_id,
+            seed=unit.seed, repeat=unit.repeat, moa_mode=unit.moa_mode,
+        ) == "legacy_first" else 1,
         git_sha=git_sha, git_dirty=git_dirty, ts=_utc_now_iso(),
         status="not_runnable", not_runnable_reason="feature_unavailable",
         extensions={
@@ -314,7 +321,10 @@ def _run_live_benchmark(config: RunConfig, dispatch: Any = None) -> RunSummary:
     for scenario in scenarios:
         for seed in config.seeds:
             for repeat in range(1, config.repeats + 1):
-                for engine in config.engines:
+                for engine in ordered_engines(
+                    config.engines, phase=config.phase, pack=scenario.pack,
+                    scenario_id=scenario.id, seed=seed, repeat=repeat,
+                ):
                     unit = _LiveUnit(
                         unit_id=_live_unit_id(config, scenario, seed, repeat, engine),
                         pack=scenario.pack, scenario_id=scenario.id, seed=seed,
@@ -457,7 +467,10 @@ def run_benchmark(config: RunConfig) -> RunSummary:
     for scenario in scenarios:
         for seed in config.seeds:
             for repeat in range(1, config.repeats + 1):
-                for engine in config.engines:
+                for engine in ordered_engines(
+                    config.engines, phase=config.phase, pack=scenario.pack,
+                    scenario_id=scenario.id, seed=seed, repeat=repeat,
+                ):
                     records.append(_offline_record(
                         config=config, scenario=scenario, engine=engine, seed=seed,
                         repeat=repeat, pair_index=pair_index, git_sha=git_sha,

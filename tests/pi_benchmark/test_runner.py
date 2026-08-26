@@ -64,6 +64,19 @@ def test_pairing_and_order_control():
     assert orders == {"legacy_first", "pi_first"}
 
 
+def test_offline_execution_order_matches_recorded_crossover():
+    """The runner executes each pair in its recorded crossover order."""
+    summary = run_benchmark(_canonical_t0())
+    for pair_id, arms in {
+        pair: [record for record in summary.records if record["pair_id"] == pair]
+        for pair in {record["pair_id"] for record in summary.records}
+    }.items():
+        order = arms[0]["scenario"]["order"]
+        assert [record["engine"] for record in arms] == (
+            ["legacy", "pi"] if order == "legacy_first" else ["pi", "legacy"]
+        ), pair_id
+
+
 def test_deterministic_outcome_classes_match_across_repeats():
     # Acceptance A5: repeats of the same seed produce matching outcome classes.
     summary = run_benchmark(_canonical_t0(repeats=3))

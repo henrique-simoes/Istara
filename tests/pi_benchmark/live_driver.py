@@ -664,20 +664,17 @@ def _build_unit_record(
     """Assemble + validate one record via the shared schema helpers."""
 
     # Pair order is a property of the scenario/seed/repeat arm, not of the
-    # engine-specific unit id.  Hashing ``unit.unit_id`` would give the Pi and
-    # legacy arms independent crossover labels because their ids end in
-    # different engine names, making paired order adjustment impossible.
-    pair_key = "|".join(
-        (
-            str(getattr(unit, "phase", "") or ""),
-            str(getattr(unit, "pack", "") or ""),
-            str(getattr(unit, "scenario_id", "") or ""),
-            str(getattr(unit, "seed", "") or ""),
-            str(getattr(unit, "repeat", "") or ""),
-            str(getattr(unit, "moa_mode", None) or "none"),
-        )
+    # engine-specific unit id.  The shared schema helper keeps live/offline
+    # records on the same crossover assignment.
+    order = schema.pair_order_for_identity(
+        phase=str(getattr(unit, "phase", "") or ""),
+        pack=str(getattr(unit, "pack", "") or ""),
+        scenario_id=str(getattr(unit, "scenario_id", "") or ""),
+        seed=int(getattr(unit, "seed", 0)),
+        repeat=int(getattr(unit, "repeat", 0)),
+        moa_mode=getattr(unit, "moa_mode", None),
     )
-    pair_index = int(hashlib.sha256(pair_key.encode()).hexdigest()[:8], 16)
+    pair_index = 0 if order == "legacy_first" else 1
 
     # The unit's own phase (from the manifest) is the identity — a wave's CLI --phase
     # is only a default and must not rewrite a unit's record identity.

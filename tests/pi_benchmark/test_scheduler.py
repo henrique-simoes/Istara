@@ -11,12 +11,14 @@ import pytest
 
 from tests.pi_benchmark.scheduler import (
     ManifestConflict,
+    RunUnit,
     build_run_units,
     completed_unit_ids,
     load_manifest,
     shard_units,
     write_manifest,
 )
+from tests.pi_benchmark.schema import ordered_engines, pair_identity
 
 pytestmark = pytest.mark.benchmark
 
@@ -94,7 +96,7 @@ def test_unit_id_format_and_phase_mapping():
     ]
 
 
-def test_build_order_is_scenario_seed_repeat_engine_moa():
+def test_build_order_is_scenario_seed_repeat_crossover_engine_moa():
     units = build_run_units(
         scenarios=[FakeScenario("a", "canonical"), FakeScenario("b", "canonical")],
         tier="T0",
@@ -102,14 +104,10 @@ def test_build_order_is_scenario_seed_repeat_engine_moa():
         seeds=(0, 1),
         repeats=2,
     )
-    assert [u.unit_id for u in units[:6]] == [
-        "B1-T0-canonical-a-seed0-r0-pi",
-        "B1-T0-canonical-a-seed0-r0-legacy",
-        "B1-T0-canonical-a-seed0-r1-pi",
-        "B1-T0-canonical-a-seed0-r1-legacy",
-        "B1-T0-canonical-a-seed1-r0-pi",
-        "B1-T0-canonical-a-seed1-r0-legacy",
-    ]
+    assert len(units[:6]) == 6
+    for pair in (units[0:2], units[2:4], units[4:6]):
+        assert {unit.engine for unit in pair} == {"pi", "legacy"}
+        assert pair[0].engine != pair[1].engine
     # 2 scenarios x 2 seeds x 2 repeats x 2 engines.
     assert len(units) == 16
 
@@ -124,8 +122,39 @@ def test_shard_map_deterministic_disjoint_complete():
     assert len(flat) == len(_units())
     assert len(set(flat)) == len(flat)  # disjoint
     assert set(flat) == {u.unit_id for u in _units()}  # complete
-    # Round-robin: shard k holds units k, k+n, k+2n, ...
-    assert [u.unit_id for u in first[0]] == [u.unit_id for u in _units()[::3]]
+    # Pair arms are co-located, and each pair retains its deterministic crossover
+    # order inside the shard that owns it.
+    for shard in first:
+        by_pair: dict[str, list] = {}
+        for unit in shard:
+            by_pair.setdefault(pair_identity(
+                phase=unit.phase, pack=unit.pack, scenario_id=unit.scenario_id,
+                seed=unit.seed, repeat=unit.repeat, moa_mode=unit.moa_mode,
+            ), []).append(unit)
+        for arms in by_pair.values():
+            assert [unit.engine for unit in arms] == list(ordered_engines(
+                tuple(unit.engine for unit in arms), phase=arms[0].phase,
+                pack=arms[0].pack, scenario_id=arms[0].scenario_id,
+                seed=arms[0].seed, repeat=arms[0].repeat,
+                moa_mode=arms[0].moa_mode,
+            ))
+            assert len({unit.engine for unit in arms}) == 2
+
+
+def test_shard_map_keeps_each_moa_lane_pair_together():
+    units = _units(moa_modes=("self_moa", "full_ensemble"))
+    shards = shard_units(units, 5)
+    locations: dict[str, list[RunUnit]] = {}
+    for shard in shards:
+        for unit in shard:
+            locations.setdefault(pair_identity(
+                phase=unit.phase, pack=unit.pack, scenario_id=unit.scenario_id,
+                seed=unit.seed, repeat=unit.repeat, moa_mode=unit.moa_mode,
+            ), []).append(unit)
+    assert locations
+    for arms in locations.values():
+        assert len(arms) == 2
+        assert {unit.engine for unit in arms} == {"pi", "legacy"}
 
 
 @pytest.mark.parametrize("bad_n", [0, -1])
