@@ -3667,3 +3667,16 @@ security-taint, type-drift, and other warnings/failures are inherited; this scor
 no comparison delta. The generated feature manifest timestamp is the only generated-doc change.
 Next: append the bounded finding disposition to the external audit file, commit the five intended
 repository files, push `testing`, and prove local/remote ref and worktree cleanliness.
+
+### L-173 | 2026-08-26T18:08:00Z | S4-ship | gpt-5-codex | testing branch reconciled and stale CI worktree removed
+Did: Committed the scorecard/reporting correction, generated feature manifest timestamp, and
+ledger checkpoints as `f98a87c04b6d82ae10e0bc64fd8e8893ab01db41` (`test: separate research spine
+scorecard gates`) and pushed it to `origin/testing`. Local `testing` and `origin/testing` resolve
+to the exact same SHA, `git diff origin/testing --` is empty, and the tracked worktree is clean.
+Removed only the clean detached `/private/tmp/opencode/ci-wt` worktree after verifying it had no
+working changes, no attached branch, no process holding the path, and an Aug-24 stale checkout.
+Preserved the explicit recovery worktree `recovery/pi-retake-linearized-2026-08-10` and the
+owner-managed dirty Mac Studio checkout. The external audit file remains intentionally outside
+Git and contains F-R9-29 plus the still-open live provider/donor blocker.
+Next: no further local code change is justified without an authorized reachable model provider
+and three Compose-owned donor routes; resume from this ledger when those external gates are ready.
