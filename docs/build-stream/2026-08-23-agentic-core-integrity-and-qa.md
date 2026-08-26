@@ -8,8 +8,8 @@ phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal ac
 stage: S2-execute
 status: in-progress
 blocked_on: null
-last: { agent: gpt-5-codex, at: 2026-08-26T13:43:12Z, ledger: L-139 }
-next_action: "Record the Docker-only topology guard and remaining live ensemble/provenance gates, then obtain owner-gated Docker acceptance on the exact pushed image without touching the dirty remote checkout."
+last: { agent: gpt-5-codex, at: 2026-08-26T13:55:00Z, ledger: L-140 }
+next_action: "Obtain explicit owner handoff for the dirty Mac Studio checkout, then run a fresh Docker-only three-donor acceptance on b172842f with complete Research Spine and provenance evidence; do not mutate the remote until that handoff exists."
 ```
 
 ## Plan overview / roadmap
@@ -2934,3 +2934,77 @@ cache/cooldown policy, or complete configuration hash set.
 Next: append the Docker-only and remaining live/provenance findings to the external audit ledger,
 commit/push this bounded change, run the after gate and warning-free matrix, then obtain explicit
 owner handoff for the dirty remote checkout before any Docker retake or branch cleanup.
+
+### L-140 | 2026-08-26T13:55:00Z | S3-review/S4-ship | gpt-5-codex | post-guard matrix and remaining-gates checkpoint
+Did: Re-ran the full bounded regression selection after the Docker-only topology guard commit
+`b172842f4ff29da702d637153f0dcffdc2014f09`. The command covered Pi production/migration,
+Petals, Pi benchmark, chat, Research Spine validity and end-to-end/report contracts, findings,
+tasks, settings and engine selection, replacement candidates, harness configuration, remote
+benchmark-runner contracts, marathon integrity, and the security benchmark. The local
+`testing` ref and `origin/testing` are exactly equal at that SHA and the main checkout is
+clean.
+
+Verification: `pytest -q tests/pi_production tests/pi_migration tests/petals_bridge
+tests/pi_benchmark tests/test_chat.py tests/test_research_validity_contract.py
+tests/test_research_spine_end_to_end.py tests/test_research_integrity_reports.py
+tests/test_findings.py tests/test_tasks.py tests/pi_migration/test_model_management_migration.py
+tests/test_settings.py tests/test_settings_agentic_pi_endpoints.py
+tests/test_pi_replacement_candidate.py tests/test_harness_config.py
+tests/test_remote_benchmark_runner_contract.py tests/test_marathon_config_integrity.py
+tests/test_security_benchmark.py` => `922 passed, 5 skipped in 146.06s (0:02:26)` with no
+warnings. The pinned native Compass Forge after gate is record `55`: `new_issue_count=0`,
+`new_failures=0`, and no new dependency/import-cycle, missing-path, unexpected-large-file,
+security, or taint findings; inherited complexity, route/type drift, and secret-flow debt
+remain globally attributable outside this bounded slice. The topology and real-user harness
+contracts remain green (`57 passed`), and the feature-doc generator/check remains green at
+86 feature checks and 224 generated artifacts.
+
+Result: deterministic code, test, documentation, and policy evidence is now current on the
+transported commit. This still cannot be promoted to live quality evidence: the supported
+Docker runner has only two engine arms and explicitly disables compute donation; no exact-image
+three-donor stack has been exercised; Petals consent/health/revoke/usage through Pi, three
+served model identities, source-diverse Research Spine reconciliation, accepted downstream
+promotion, browser-visible paths, or real-user paired provenance remain unproven. The remote
+`~/istara-testing` checkout previously observed over SSH is dirty with unrelated tracked and
+untracked material, so no reset, pull, checkout, container teardown, or branch cleanup is
+authorized until the owner supplies an explicit handoff and the dirty paths are classified.
+
+Resumption order for any agent:
+1. Read this Status Block, L-139, L-140, and external findings F-R9-18..F-R9-20 in
+   `/Users/user/Desktop/testing.md`; verify `git status --short --branch` and local/remote SHA.
+2. Obtain owner confirmation naming the remote checkout and allowing a Docker-only retake;
+   preserve a redacted preflight bundle before any mutation. Never run host `pip`, `npm`, `uv`,
+   Homebrew, backend/frontend servers, model loading, or host-managed Istara commands.
+3. Build or select a Compose topology with three genuinely distinct, Pi-managed donor routes
+   (including a consented Petals route where required), isolated per-arm databases/volumes,
+   explicit project scope, health/usage/revoke events, and an immutable image digest for
+   `b172842f`. Render Compose before startup and fail closed if any service is host-managed.
+4. Execute positive and negative Research Spine journeys. Positive must preserve raw source
+   spans, source-diverse evidence units, three independent effective rater identities, full
+   item/category matrices, grounding, Fleiss/alpha recomputation, explicit reconciliation
+   decisions, accepted code applications, lineage through atoms/nuggets -> facts -> insights
+   -> recommendations, In Review -> human-approved Done, and a report containing only accepted
+   lineage-complete artifacts. Negative controls must prove no leakage for low agreement,
+   missing exact spans, missing route evidence, same-model aliases, rejected code, stale/revoked
+   route/source, cross-project evidence, missing human approval, and non-Done tasks.
+5. Prove two persisted calls, executed tool/result consumption, and long-horizon checkpoint /
+   restart / retry / cancellation behavior. Prove Petals donation consent, scheduling,
+   accounting, revoke, drain, and no-route-after-revoke without counting one checkpoint under
+   multiple aliases as diversity. Persist route and task/tool evidence for every call.
+6. Enrich or explicitly scope real-user benchmark provenance. It must either record seed,
+   arm/order, cooldown/cache policy, decoding/budget/config hashes, source IDs, image/commit,
+   endpoint/model identity handles, timestamps, and container attestation, or be labeled a
+   non-comparable companion artifact that cannot support a score or acceptance claim.
+7. Retain the redacted evidence bundle (`provenance`, source lineage, coding matrix,
+   reliability, reconciliation, promotion lineage, task/report gates, route evidence,
+   tool/long-horizon, Petals lifecycle, API/browser results, commands/tests, review, and
+   manifest hashes), run the browser and broad/migration/security/docs/CI gates, obtain an
+   independent blind review, then attach evidence to CF-13..CF-21 before any acceptance claim.
+8. Only after all required gates are terminal, reconcile worktrees and branches. Remove only
+   exact-path clean merged worktrees/branches proven unused; preserve dirty, recovery,
+   ownership-uncertain, and remote refs. Verify no unaccounted files, clean local checkout,
+   exact `testing` SHA equality, and a rollback pointer.
+
+Next: hold at this checkpoint until the owner-gated Docker handoff exists; then start at item 1
+and append a new ledger entry before and after every long-running command (no more than two
+minutes apart).
