@@ -8,8 +8,8 @@ phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal ac
 stage: S2-execute
 status: in-progress
 blocked_on: null
-last: { agent: gpt-5-codex, at: 2026-08-26T13:07:04Z, ledger: L-133 }
-next_action: "Commit and push the threshold-consistent Research Spine oracle; then inspect paired benchmark ordering and Petals Pi-execution integration gaps before owner-gated Docker acceptance."
+last: { agent: gpt-5-codex, at: 2026-08-26T13:09:24Z, ledger: L-134 }
+next_action: "Audit and, if needed, strengthen live paired-engine execution/provenance and Petals Pi integration; then obtain owner-gated Docker acceptance on the exact pushed image."
 ```
 
 ## Plan overview / roadmap
@@ -2805,3 +2805,20 @@ This is deterministic oracle evidence, not live model or Mac Studio acceptance.
 Next: run the pinned-native before gate, append F-R9-15 to `/Users/user/Desktop/testing.md`,
 commit/push this bounded slice, run the after gate and warning-free matrix, then inspect
 paired benchmark ordering and the remaining Petals Pi-execution/live Docker gaps.
+
+### L-134 | 2026-08-26T13:09:24Z | S3-review/S4-ship | gpt-5-codex | threshold and Pi usage oracle slice pushed with attributable-clean after gate
+Did: Completed the pinned native Rust Compass Forge after gate for commit `1362eda8`.
+The comparison recorded `new_issue_count=0`, `new_failures=0`, and no new dependency/import
+cycles, missing paths, unexpected large files, or security/taint findings. The commit was
+pushed non-forced to `origin/testing`; local `testing` and `origin/testing` resolve to the
+same SHA `1362eda8c24d641dbc8074c01572c1117aaa8d7d`. The external audit ledger received
+F-R9-15 describing the accepted-status/kappa-threshold oracle gap and its fix.
+
+Result: the deterministic Research Spine oracle and Pi two-call usage provenance are now
+durable on both local and origin/testing. The global CF gate remains non-terminal only for
+pre-existing complexity, route/type drift, and secret-flow debt. No server, provider/model,
+SSH, Docker, or Mac Studio host action occurred; the dirty `~/istara-testing` checkout is
+still untouched.
+Next: inspect the paired benchmark's live execution/provenance contract and the unproven
+Petals-through-Pi path, then record bounded fixes or explicit blockers before owner-gated
+Docker acceptance.
