@@ -8,7 +8,7 @@ phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal ac
 stage: S2-execute
 status: in-progress
 blocked_on: null
-last: { agent: gpt-5-codex, at: 2026-08-26T11:31:00Z, ledger: L-110 }
+last: { agent: gpt-5-codex, at: 2026-08-26T11:32:00Z, ledger: L-111 }
 next_action: "Verify route parity and two-call/long-horizon contracts, then run Docker-only Mac Studio acceptance and reconcile testing refs."
 ```
 
@@ -2378,3 +2378,20 @@ Verified: `pytest -q tests/pi_production/test_w1_dispatcher_authority.py tests/p
 Repository-wide inherited complexity, secret-flow, route, and type drift remains failed and explicitly open.
 Next: verify all route aliases and compatibility adapters, then run the bounded benchmark contract and
 Docker-only Mac Studio inventory/acceptance; no host package or model operations are permitted.
+
+### L-111 | 2026-08-26T11:32:00Z | S2-execute/S3-review/S5-ship | gpt-5-codex | implementer/reviewer | Benchmark crossover order is now executable in every runner mode
+Did: Completed the benchmark order audit. The shared schema now derives one engine-independent
+crossover identity from phase/pack/scenario/seed/repeat/MoA lane. Offline and live runners, wave
+unit construction, and unknown-scenario records all use that identity, so both arms receive the
+same `legacy_first`/`pi_first` label. The scheduler now groups paired arms into one deterministic
+shard (including each MoA lane) instead of round-robin splitting adjacent arms across processes;
+the manifest's order therefore describes real execution. Added regressions for offline order,
+live identity independence, pair co-location, and MoA-lane co-location.
+Result: `pytest -q tests/pi_benchmark/test_live_driver.py tests/pi_benchmark/test_runner.py
+tests/pi_benchmark/test_scheduler.py` => 63 passed; targeted Ruff and `git diff --check` pass.
+Commit `0e4e10fa` is pushed to local `testing` and `origin/testing`; native Compass Forge after
+gate record 33 reports `comparison.new_issues=[]`, no new dependency/import/security/taint/missing-
+path/large-file findings. The global gate remains failed only on repository-wide inherited
+complexity, secret-flow, route, and type drift. No model, server, SSH, Docker, or host package action.
+Next: audit route parity and two-call/long-horizon contracts, then perform only Docker/Compose
+operations on Mac Studio and capture resumable container evidence.
