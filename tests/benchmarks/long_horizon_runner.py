@@ -157,6 +157,82 @@ def extract_total_tokens(events: list[dict]) -> int | None:
     return total
 
 
+BENCHMARK_DOCUMENTS = (
+    ("interview_p1.txt", "Patient reports difficulty with login sync. 'It takes too long to see my data.'"),
+    ("interview_p2.txt", "Patient Marcus loves the medication tracker but hates the font size."),
+    ("competitor_audit.md", "Competitor HealthSync has 2-tap login and 14pt minimum font."),
+    ("survey_results.csv", "user_id,satisfaction,speed\\n101,4,slow\\n102,5,fast"),
+    ("internal_spec.pdf", "Our current technical debt prevents sub-1s data hydration."),
+)
+
+
+async def _create_project_and_session(client: httpx.AsyncClient, headers: dict[str, str]) -> tuple[str, str]:
+    print("📁 Creating Project...")
+    project_res = await client.post(
+        f"{API_BASE}/api/projects",
+        json={
+            "name": "[BENCHMARK] Long-Horizon Stress Test",
+            "company_context": "Global HealthTech specializing in remote patient monitoring.",
+        },
+        headers=headers,
+    )
+    _require_status(project_res, "project creation", 200, 201)
+    project_payload = _json_payload(project_res, "project creation")
+    project_id = project_payload.get("id") if isinstance(project_payload, dict) else None
+    if not isinstance(project_id, str) or not project_id.strip():
+        raise BenchmarkFailure("project creation returned no project id")
+    print(f"✅ Project created: {project_id}")
+
+    print("🧵 Creating a dedicated chat session...")
+    session_res = await client.post(
+        f"{API_BASE}/api/sessions",
+        json={"project_id": project_id, "title": "Long-Horizon Stress Test"},
+        headers=headers,
+    )
+    _require_status(session_res, "chat session creation", 200, 201)
+    session_id = _require_session_id(_json_payload(session_res, "chat session creation"))
+    print(f"✅ Chat session created: {session_id}")
+    return project_id, session_id
+
+
+async def _upload_documents(
+    client: httpx.AsyncClient, headers: dict[str, str], project_id: str
+) -> None:
+    print("📄 Uploading Documents...")
+    for name, content in BENCHMARK_DOCUMENTS:
+        files = {"file": (name, content.encode("utf-8"), "text/plain")}
+        upload_res = await client.post(
+            f"{API_BASE}/api/files/upload/{project_id}", files=files, headers=headers
+        )
+        _require_status(upload_res, f"upload {name}", 200, 201, 202)
+    print(f"✅ Uploaded {len(BENCHMARK_DOCUMENTS)} documents.")
+
+
+async def _run_chat_turn(
+    client: httpx.AsyncClient,
+    request_payload: dict[str, str],
+    headers: dict[str, str],
+    operation: str,
+) -> tuple[list[dict], float]:
+    started = time.time()
+    async with client.stream(
+        "POST", f"{API_BASE}/api/chat", json=request_payload, headers=headers
+    ) as response:
+        events = await _consume_chat_stream(response, operation)
+    return events, time.time() - started
+
+
+def _print_tool_events(events: list[dict]) -> None:
+    for event in events:
+        if event.get("type") == "tool_call":
+            print(
+                f"\n🛠️  [TOOL CALL] {event.get('tool', 'unknown')}\n"
+                f"   Args: {json.dumps(event.get('params', {}), sort_keys=True)}"
+            )
+        elif event.get("type") == "chunk":
+            print(event.get("content", ""), end="", flush=True)
+
+
 async def _run_benchmark() -> None:
     print("🚀 Starting Long-Horizon Orchestration Benchmark...")
 
@@ -179,50 +255,9 @@ async def _run_benchmark() -> None:
             raise BenchmarkFailure("admin login returned no access token")
         headers = {"Authorization": f"Bearer {token}"}
 
-        # 2. Create Project
-        print("📁 Creating Project...")
-        proj_res = await client.post(
-            f"{API_BASE}/api/projects",
-            json={
-                "name": "[BENCHMARK] Long-Horizon Stress Test",
-                "company_context": "Global HealthTech specializing in remote patient monitoring."
-            },
-            headers=headers
-        )
-        _require_status(proj_res, "project creation", 200, 201)
-        project_payload = _json_payload(proj_res, "project creation")
-        project_id = project_payload.get("id") if isinstance(project_payload, dict) else None
-        if not isinstance(project_id, str) or not project_id.strip():
-            raise BenchmarkFailure("project creation returned no project id")
-        print(f"✅ Project created: {project_id}")
-
-        print("🧵 Creating a dedicated chat session...")
-        session_res = await client.post(
-            f"{API_BASE}/api/sessions",
-            json={"project_id": project_id, "title": "Long-Horizon Stress Test"},
-            headers=headers,
-        )
-        _require_status(session_res, "chat session creation", 200, 201)
-        session_id = _require_session_id(_json_payload(session_res, "chat session creation"))
-        print(f"✅ Chat session created: {session_id}")
-
-        # 3. Upload Documents
-        print("📄 Uploading Documents...")
-        docs = [
-            ("interview_p1.txt", "Patient reports difficulty with login sync. 'It takes too long to see my data.'"),
-            ("interview_p2.txt", "Patient Marcus loves the medication tracker but hates the font size."),
-            ("competitor_audit.md", "Competitor HealthSync has 2-tap login and 14pt minimum font."),
-            ("survey_results.csv", "user_id,satisfaction,speed\n101,4,slow\n102,5,fast"),
-            ("internal_spec.pdf", "Our current technical debt prevents sub-1s data hydration.")
-        ]
-
-        for name, content in docs:
-            files = {"file": (name, content.encode('utf-8'), "text/plain")}
-            upload_res = await client.post(
-                f"{API_BASE}/api/files/upload/{project_id}", files=files, headers=headers
-            )
-            _require_status(upload_res, f"upload {name}", 200, 201, 202)
-        print(f"✅ Uploaded {len(docs)} documents.")
+        # 2. Create Project and session; then upload source material.
+        project_id, session_id = await _create_project_and_session(client, headers)
+        await _upload_documents(client, headers, project_id)
 
         # 4. Send Complex Chat Request
         print("\n💬 Sending Complex Long-Horizon Prompt...")
@@ -246,21 +281,11 @@ async def _run_benchmark() -> None:
         print("⏳ Waiting for SSE stream (this will log all agent actions & tool calls)...")
         print("-" * 50)
 
-        start_time = time.time()
         stream_events: list[dict] = []
-
-        async with client.stream("POST", f"{API_BASE}/api/chat", json=chat_req, headers=chat_headers) as response:
-            stream_events = await _consume_chat_stream(response, "first long-horizon chat turn")
-            for event in stream_events:
-                if event.get("type") == "tool_call":
-                    print(
-                        f"\n🛠️  [TOOL CALL] {event.get('tool', 'unknown')}\n"
-                        f"   Args: {json.dumps(event.get('params', {}), sort_keys=True)}"
-                    )
-                elif event.get("type") == "chunk":
-                    print(event.get("content", ""), end="", flush=True)
-
-        elapsed = time.time() - start_time
+        stream_events, elapsed = await _run_chat_turn(
+            client, chat_req, chat_headers, "first long-horizon chat turn"
+        )
+        _print_tool_events(stream_events)
         # Token accounting comes from provider-reported usage (or the usage ledger),
         # never from a streamed-chunk count (benchmark task B0-3).
         total_tokens = extract_total_tokens(stream_events)
@@ -286,17 +311,13 @@ async def _run_benchmark() -> None:
             "session_id": session_id,
             "message": second_message,
         }
-        second_start = time.time()
-        async with client.stream(
-            "POST", f"{API_BASE}/api/chat", json=second_req, headers=chat_headers
-        ) as response:
-            second_events = await _consume_chat_stream(response, "second long-horizon chat turn")
-            for event in second_events:
-                if event.get("type") == "chunk":
-                    print(event.get("content", ""), end="", flush=True)
+        second_events, second_elapsed = await _run_chat_turn(
+            client, second_req, chat_headers, "second long-horizon chat turn"
+        )
+        _print_tool_events(second_events)
         second_tokens = extract_total_tokens(second_events)
         print(
-            f"\n✅ Second chat turn completed in {time.time() - second_start:.2f}s. "
+            f"\n✅ Second chat turn completed in {second_elapsed:.2f}s. "
             f"Tool calls: {_tool_call_count(second_events)}. Provider tokens: "
             f"{second_tokens if second_tokens is not None else 'n/a (see agentic usage ledger)'}"
         )

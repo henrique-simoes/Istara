@@ -2227,3 +2227,17 @@ model/service/SSH/Docker/host action in this slice.
 Next: audit checkpoint, cancellation, retry, idempotency, and side-effect recovery contracts in the
 Pi worker/provider seams; then inspect Petals donation/revocation lifecycle before Mac Studio Docker
 acceptance.
+
+### L-102 | 2026-08-26T01:45:00Z | S3-review/S5-ship | gpt-5-codex | test-author | Long-horizon runner complexity debt remediated before transport
+Did: Extracted project/session setup, document uploads, chat-turn streaming, and event printing from
+`tests/benchmarks/long_horizon_runner.py` after Compass Forge record 20 flagged `_run_benchmark`
+complexity 25. Re-ran the focused benchmark/configuration tests, Ruff, diff checks, and the pinned
+native Compass Forge pre-gate (record 21).
+Result: `comparison.new_issues` is empty; no new missing paths, import cycles, security/taint findings,
+or unexpected large-file deltas were introduced, and the helper extraction removes the new complexity
+warning. The repository-wide gate remains failed only on inherited secret-flow, route/type, and
+complexity debt; this is not claimed as a global green gate.
+Verified: `pytest -q tests/pi_benchmark/test_b0_3_long_horizon_tokens.py tests/test_harness_config.py`
+=> `26 passed`; Ruff and `git diff --check` pass. No live model/service/SSH/Docker/host action.
+Next: commit and push this refactor, run the post-gate, then audit checkpoint/cancel/retry/idempotency
+and side-effect recovery followed by Petals donation/revocation lifecycle.
