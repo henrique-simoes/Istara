@@ -8,7 +8,7 @@ phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal ac
 stage: S2-execute
 status: in-progress
 blocked_on: null
-last: { agent: gpt-5-codex, at: 2026-08-26T12:31:00Z, ledger: L-120 }
+last: { agent: gpt-5-codex, at: 2026-08-26T12:34:00Z, ledger: L-121 }
 next_action: "Run the remaining Docker-only acceptance only after the remote owner handoff makes ~/istara-testing clean; preserve the blocked boundary and reconcile refs/worktrees without destructive cleanup."
 ```
 
@@ -2567,3 +2567,15 @@ the previous remote log is classified as an operator-contract failure rather tha
 This does not make the current dirty remote checkout acceptable or prove a fresh live tri-model run.
 Next: commit/push this guard and ledger, rerun native Compass Forge gates, then request/record an
 explicit owner handoff for `~/istara-testing` before any exact-SHA Docker rebuild or benchmark run.
+
+### L-121 | 2026-08-26T12:34:00Z | S3-review | gpt-5-codex | reviewer | Native after-gate confirms no new issues from the Docker boundary fix
+Did: Ran pinned-native `compass-forge gate after` on commit `9dae2f2e`. Record `40` reports
+`comparison.new_issues=[]`, with no new forbidden dependencies, import cycles, security, taint,
+missing-path, or unexpected-large-file findings. The global gate remains red only on the known
+repository-wide inherited complexity, secret-flow, route-drift, and frontend type-drift inventory;
+that inherited debt is not reclassified as a regression from this change. Working tree and
+`origin/testing` are clean and identical at `9dae2f2e`.
+Result: the host-marathon guard is shipped with a truthful CF comparison and branch parity.
+Next: continue the bounded completion plan: obtain owner authorization to reconcile the dirty
+Mac Studio checkout, then perform a fresh exact-SHA Docker-only stack/runner acceptance and record
+the full tri-model Research Spine evidence before closing P9-06 through P9-10.
