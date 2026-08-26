@@ -20,9 +20,66 @@ const RUBRIC = [
 const REPRESENTATIVE_CORPUS_DOCUMENTS = 120;
 const ACCEPTANCE_PROFILES = new Set(["provider", "petals", "combined"]);
 
+// Acceptance profiles are executable workload contracts, not scorecard labels.
+// Keep the matrix in this small, dependency-free module so both the runner and
+// deterministic contract tests use exactly the same scope declaration.
+const ACCEPTANCE_WORKLOADS = Object.freeze({
+  provider: Object.freeze({
+    provider: true,
+    petals: false,
+    corpus: true,
+    coding: true,
+    commonWorkflow: false,
+    chat: false,
+    tasks: false,
+    ui: false,
+    selfImprovement: false,
+    integrations: false,
+    findings: false,
+    marathon: false,
+  }),
+  petals: Object.freeze({
+    provider: false,
+    petals: true,
+    corpus: false,
+    coding: false,
+    commonWorkflow: false,
+    chat: false,
+    tasks: false,
+    ui: false,
+    selfImprovement: false,
+    integrations: false,
+    findings: false,
+    marathon: false,
+  }),
+  combined: Object.freeze({
+    provider: true,
+    petals: true,
+    corpus: true,
+    coding: true,
+    commonWorkflow: true,
+    chat: true,
+    tasks: true,
+    ui: true,
+    selfImprovement: true,
+    integrations: true,
+    findings: true,
+    marathon: true,
+  }),
+});
+
 export function normalizeAcceptanceProfile(value = "combined") {
   const normalized = String(value || "combined").trim().toLowerCase();
   return ACCEPTANCE_PROFILES.has(normalized) ? normalized : "combined";
+}
+
+export function benchmarkWorkloadForProfile(profile = "combined") {
+  const normalizedProfile = normalizeAcceptanceProfile(profile);
+  return { ...ACCEPTANCE_WORKLOADS[normalizedProfile] };
+}
+
+export function profileRunsSurface(profile, surface) {
+  return Boolean(benchmarkWorkloadForProfile(profile)[surface]);
 }
 
 /**
@@ -135,7 +192,7 @@ export function liveAcceptanceBlockers({
   return blockers;
 }
 
-export function scoreRun({ mode, metrics, integrationMatrix = [], blockers = [], completedTasks = 0, chatTurns = 0, uploadedDocuments = 0, sandbox = {}, featureResults = {}, acceptanceProfile = "combined", codingValidationEnabled = false, requireComputeDonation = false }) {
+export function scoreRun({ mode, metrics, integrationMatrix = [], blockers = [], completedTasks = 0, chatTurns = 0, uploadedDocuments = 0, sandbox = {}, featureResults = {}, acceptanceProfile = "combined", codingValidationEnabled = false, requireComputeDonation = false, workloadScope = null, unrelatedWorkflowFailures = [], connectionRevocation = null }) {
   const requiredIntegrations = integrationMatrix.filter((item) => item.required_success !== false);
   const integrationScores = requiredIntegrations.map((item) => {
     switch (item.classification) {
@@ -236,6 +293,9 @@ export function scoreRun({ mode, metrics, integrationMatrix = [], blockers = [],
     research_spine_donor_routes_verified: researchSpineDonorRoutesVerified,
     research_spine_traceability_verified: researchSpineStructurePresent,
     acceptance_profile: acceptanceGates.profile,
+    workload_scope: workloadScope || benchmarkWorkloadForProfile(acceptanceGates.profile),
+    unrelated_workflow_failures: [...unrelatedWorkflowFailures],
+    connection_revocation: connectionRevocation,
     acceptance_gates: acceptanceGates,
     telemetry_evidence_verified: Boolean(featureResults.telemetryEvidence),
     reasoning_bank_evidence_verified: Boolean(featureResults.reasoningBankEvidence),
@@ -267,6 +327,8 @@ export function writeScorecardMarkdown(scorecard) {
     "",
     `Acceptance profile: ${scorecard.acceptance_profile}`,
     "",
+    `Workload scope: ${Object.entries(scorecard.workload_scope || {}).filter(([, selected]) => selected === true).map(([key]) => key).join(", ") || "none"}`,
+    "",
     "| Acceptance gate | Selected | Status | Verified |",
     "| --- | ---: | --- | ---: |",
     `| provider Research Spine | ${scorecard.acceptance_gates.provider.selected ? "yes" : "no"} | ${scorecard.acceptance_gates.provider.status} | ${scorecard.acceptance_gates.provider.verified ? "yes" : "no"} |`,
@@ -283,6 +345,12 @@ export function writeScorecardMarkdown(scorecard) {
     lines.push("", "## Blockers", "");
     for (const blocker of scorecard.blockers) {
       lines.push(`- ${blocker}`);
+    }
+  }
+  if (scorecard.unrelated_workflow_failures?.length) {
+    lines.push("", "## Unrelated Workflow Failures", "");
+    for (const failure of scorecard.unrelated_workflow_failures) {
+      lines.push(`- ${failure}`);
     }
   }
   if (scorecard.integration_summary.length) {

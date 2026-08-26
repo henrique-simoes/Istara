@@ -5,6 +5,14 @@ export ISTARA_BENCHMARK_CHAT_TIMEOUT_MS="${ISTARA_BENCHMARK_CHAT_TIMEOUT_MS:-300
 : "${ISTARA_BENCHMARK_CODING_LIMIT:=3}"
 : "${ISTARA_BENCHMARK_MAX_UPLOADS:=6}"
 : "${ISTARA_BENCHMARK_ENGINE:?set ISTARA_BENCHMARK_ENGINE to legacy or pi}"
+: "${ISTARA_BENCHMARK_ACCEPTANCE_PROFILE:=combined}"
+if [[ -z "${ISTARA_RUNNER_SKIP_MARATHON:-}" ]]; then
+  case "$ISTARA_BENCHMARK_ACCEPTANCE_PROFILE" in
+    combined) ISTARA_RUNNER_SKIP_MARATHON=0 ;;
+    provider|petals) ISTARA_RUNNER_SKIP_MARATHON=1 ;;
+    *) echo "unsupported acceptance profile: $ISTARA_BENCHMARK_ACCEPTANCE_PROFILE" >&2; exit 2 ;;
+  esac
+fi
 case "$ISTARA_BENCHMARK_ENGINE" in
   legacy|pi) ;;
   *) echo "unsupported benchmark engine: $ISTARA_BENCHMARK_ENGINE" >&2; exit 2 ;;

@@ -7,6 +7,8 @@ import { fileURLToPath } from "node:url";
 const rootDir = dirname(dirname(fileURLToPath(import.meta.url)));
 const packageJson = JSON.parse(readFileSync(join(rootDir, "package.json"), "utf8"));
 const runSource = readFileSync(join(rootDir, "run.mjs"), "utf8");
+const wrapperSource = readFileSync(join(rootDir, "../../scripts/runner/docker-run.sh"), "utf8");
+const insideSource = readFileSync(join(rootDir, "../../scripts/runner/inside.sh"), "utf8");
 
 test("three-model deep probe does not permit host-managed Istara execution", () => {
   const command = packageJson.scripts["probe:deep:three-model"];
@@ -29,7 +31,7 @@ test("three-model deep probe records and cleans up Docker benchmark resources", 
 
   assert.match(command, /ISTARA_BENCHMARK_STOP_COLIMA_AFTER_RUN=1/);
   assert.match(command, /ISTARA_BENCHMARK_COLIMA_MEMORY=12/);
-  assert.match(runSource, /const hostManagedThreeModelRun = useLocalThreeModelDonorTopology && skipSandbox && startClientSandboxes;/);
+  assert.match(runSource, /const hostManagedThreeModelRun = workload\.petals && useLocalThreeModelDonorTopology && skipSandbox && startClientSandboxes;/);
   assert.match(runSource, /Docker-only benchmark policy forbids the host-managed three-model topology/);
   assert.doesNotMatch(runSource, /cleanupHostManagedServerSandboxConflict\("pre-health"\)/);
   assert.match(runSource, /function stopColimaIfRequested\(label\)/);
@@ -68,8 +70,26 @@ test("LM Studio donor preflight resolves served aliases without logging raw mode
 
 test("bounded topology probes can explicitly skip heavy corpus and workflow loops", () => {
   assert.match(runSource, /function nonNegativeIntArg\(name, fallback\)/);
-  assert.match(runSource, /const maxUploads = nonNegativeIntArg\("max-uploads"/);
-  assert.match(runSource, /const maxChatTurns = nonNegativeIntArg\("max-chat-turns"/);
-  assert.match(runSource, /const maxTasks = nonNegativeIntArg\("max-tasks"/);
-  assert.match(runSource, /const codingValidationLimit = nonNegativeIntArg\("coding-limit"/);
+  assert.match(runSource, /const requestedMaxUploads = nonNegativeIntArg\("max-uploads"/);
+  assert.match(runSource, /const requestedMaxChatTurns = nonNegativeIntArg\("max-chat-turns"/);
+  assert.match(runSource, /const requestedMaxTasks = nonNegativeIntArg\("max-tasks"/);
+  assert.match(runSource, /const requestedCodingValidationLimit = nonNegativeIntArg\("coding-limit"/);
+});
+
+test("acceptance profile wrapper defaults keep provider and Petals runs focused", () => {
+  assert.match(wrapperSource, /provider\|petals\) ISTARA_RUNNER_SKIP_MARATHON=1/);
+  assert.match(wrapperSource, /combined\) ISTARA_RUNNER_SKIP_MARATHON=0/);
+  assert.match(wrapperSource, /provider\|petals\) ISTARA_BENCHMARK_REQUIRE_LIVE_CHAT=0/);
+  assert.match(wrapperSource, /-e "ISTARA_BENCHMARK_REQUIRE_LIVE_CHAT=\$ISTARA_BENCHMARK_REQUIRE_LIVE_CHAT"/);
+  assert.match(insideSource, /acceptance profile/);
+  assert.match(insideSource, /provider\|petals\) ISTARA_RUNNER_SKIP_MARATHON=1/);
+});
+
+test("runner records profile scope and revokes generated connection credentials", () => {
+  assert.match(runSource, /benchmarkWorkloadForProfile/);
+  assert.match(runSource, /workload_scope: workload/);
+  assert.match(runSource, /featureResults\.distinctDonorEndpoints = workload\.petals && endpointDiversity\.ok/);
+  assert.match(runSource, /function revokeGeneratedConnectionStrings\(/);
+  assert.match(runSource, /connection-revocation-results\.json/);
+  assert.match(runSource, /api\.delete\(`\/api\/connections\//);
 });

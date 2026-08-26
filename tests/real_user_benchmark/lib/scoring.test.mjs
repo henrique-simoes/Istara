@@ -4,9 +4,32 @@ import test from "node:test";
 import {
   acceptanceGateStatus,
   benchmarkExitCode,
+  benchmarkWorkloadForProfile,
   liveAcceptanceBlockers,
+  profileRunsSurface,
   scoreRun,
 } from "./scoring.mjs";
+
+test("acceptance profiles select disjoint workload surfaces", () => {
+  assert.equal(profileRunsSurface("provider", "corpus"), true);
+  assert.equal(profileRunsSurface("provider", "coding"), true);
+  assert.equal(profileRunsSurface("provider", "chat"), false);
+  assert.equal(profileRunsSurface("provider", "petals"), false);
+  assert.equal(profileRunsSurface("petals", "petals"), true);
+  assert.equal(profileRunsSurface("petals", "corpus"), false);
+  assert.equal(profileRunsSurface("petals", "coding"), false);
+  assert.equal(profileRunsSurface("combined", "commonWorkflow"), true);
+});
+
+test("workload matrix returns an independent immutable-shaped snapshot", () => {
+  const provider = benchmarkWorkloadForProfile("provider");
+  provider.coding = false;
+  assert.equal(benchmarkWorkloadForProfile("provider").coding, true);
+  assert.deepEqual(Object.keys(benchmarkWorkloadForProfile("petals")).sort(), [
+    "chat", "coding", "commonWorkflow", "corpus", "findings", "integrations",
+    "marathon", "petals", "provider", "selfImprovement", "tasks", "ui",
+  ].sort());
+});
 
 test("a live benchmark with blockers exits nonzero", () => {
   assert.equal(benchmarkExitCode({ mode: "probe", blockers: ["research coding blocked"] }), 1);
@@ -197,6 +220,19 @@ test("selected provider profile fails closed when coding validation is disabled"
   }), [
     "Selected provider Research Spine gate was disabled; acceptance cannot pass.",
   ]);
+});
+
+test("provider acceptance does not fail on intentionally unselected chat or task surfaces", () => {
+  assert.deepEqual(liveAcceptanceBlockers({
+    acceptanceProfile: "provider",
+    maxChatTurns: 0,
+    chatTurnCount: 0,
+    maxTasks: 0,
+    completedTasks: 0,
+    codingValidationEnabled: true,
+    requireComputeDonation: false,
+    featureResults: { codingValidation: true, researchSpineTraceability: true },
+  }), []);
 });
 
 test("selected Petals profile fails closed when donation validation is disabled", () => {

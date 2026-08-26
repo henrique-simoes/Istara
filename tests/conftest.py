@@ -39,9 +39,15 @@ async def dispose_db_engine():
     """Dispose the global async engine after each test to prevent
     aiosqlite 'Event loop is closed' warnings and SQLite locking."""
     yield
+    # Websocket notification persistence runs in background tasks and can
+    # retain an AsyncSession while the test event loop is being torn down.
+    # Drain those tasks before disposing the shared engine so a full-suite
+    # loop boundary cannot leave session-close coroutines unawaited.
+    from app.api.websocket import manager as websocket_manager
     from app.core.compute_route_evidence import drain_compute_telemetry
     from app.models.database import engine
 
+    await websocket_manager.drain_notification_tasks()
     await drain_compute_telemetry()
     await engine.dispose()
 

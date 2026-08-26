@@ -8,8 +8,8 @@ phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal ac
 stage: S2-execute
 status: in-progress
 blocked_on: null
-last: { agent: gpt-5-codex, at: 2026-08-26T22:31:00Z, ledger: L-201 }
-next_action: "Obtain owner-authorized provider credentials and three Compose-owned donor routes, run the terminal Docker-only acceptance retake for provider, Petals, combined, legacy, and pi profiles, then attach complete runtime evidence or leave the external gate open."
+last: { agent: gpt-5-codex, at: 2026-08-26T23:30:00Z, ledger: L-204 }
+next_action: "Commit and push the profile-isolated benchmark and lifecycle-cleanup changes, verify local/origin testing parity, then run the terminal Docker-only provider/Petals/combined retake when owner-authorized provider credit and three Compose-owned donor routes are available."
 ```
 
 ## Plan overview / roadmap
@@ -4369,3 +4369,76 @@ identities and shared raw evidence units, assert nonzero rater/reliability/groun
 artifacts, exercise long-horizon/two-call behavior and the accepted/report gates, then tear down
 only testing resources. Until that evidence exists, the ensemble and Research Spine live gates
 remain open despite the deterministic local tests being green.
+
+### L-204 | 2026-08-26T23:30:00Z | S3-gate/S3-review | gpt-5-codex | final local acceptance slice is attributable-clean
+
+Did: Ran the pinned native Rust Compass Forge `gate before` (record `94`) and `gate after`
+(record `95`) against the profile-isolation, scorecard, connection-revocation, and test-fixture
+changes. Both comparisons report `new_issues=[]`, zero file/large-file deltas, no new forbidden
+dependencies, Python import cycles, missing paths, security findings, or taint findings. The
+overall repository gate remains failed only on inherited complexity, route/type drift, and
+secret-flow findings already present in the baseline; those are not reclassified as caused by
+this slice.
+
+The final deterministic checks are green: JavaScript benchmark/document/topology checks `70/70`,
+remote runner contracts `16 passed`, shell syntax, feature-doc generation/check (`seeded 0`,
+`generated 224`, `86 feature(s)`), focused websocket/task warnings-as-errors `34/34`, and full
+Python strict matrix `1997 passed, 6 skipped` with no `RuntimeWarning` failures. A vacuous empty
+donor list is now explicitly `not_selected`/unverified for provider-only runs, preventing a
+Petals endpoint field from masquerading as evidence.
+
+Next: commit only the intended repository files, push non-forced to `origin/testing`, verify
+exact local/remote SHA parity and a clean worktree, and preserve the external Mac Studio gate.
+The live provider/three-model/Petals acceptance still needs owner-authorized provider credit or
+three reachable Compose-owned routes; until then no model identity, rater labels, Fleiss or
+Krippendorff metrics, grounding, reconciliation, human-Done/report, two-call/long-horizon, or
+Petals interoperability claim is valid.
+
+### L-202 | 2026-08-26T23:20:00Z | S2-execute/S3-review | gpt-5-codex | benchmark profiles now isolate their executable workload planes
+
+Did: Converted `provider`, `petals`, and `combined` from scorecard labels into explicit
+workload contracts in `tests/real_user_benchmark/lib/scoring.mjs` and `run.mjs`. Provider
+selects raw-corpus plus source-grounded three-rater coding/reliability/reconciliation/
+promotion checks without donation or unrelated chat/task/UI/marathon work; Petals selects
+slash-string donation, consent, health, technical probe, usage, revoke, and cleanup without
+claiming provider validity; combined selects both planes plus the shared chat/task controls.
+The wrapper and inside runner now derive profile-specific live-chat/marathon defaults, and
+generated benchmark connection strings are revoked at teardown. Scorecards carry immutable
+workload scope, selected/not-selected/verified gate state, unrelated workflow failures, and
+credential-revocation metadata so a skipped plane cannot be mistaken for a passing one.
+
+Evidence: `npm --prefix tests/real_user_benchmark run check` is `70/70`; the topology contract
+suite is `8/8`; shell syntax, remote-runner contract (`16 passed`), and feature documentation
+generation/check (`seeded 0`, `generated 224`, `86 feature(s)`) are green. Deterministic
+profile fixtures cover positive provider-only and Petals-only runs plus combined negative
+gates. These checks prove workload isolation and reporting semantics only; they do not create
+live model/rater outputs or close the Mac Studio provider/three-donor gate.
+
+Next: transport this profile contract through the clean `testing` checkout, then execute each
+selected profile on Mac Studio Docker with immutable source/image/Compose evidence. Keep
+provider, Petals, and combined acceptance independent while comparing legacy and PI arms.
+
+### L-203 | 2026-08-26T23:26:33Z | S3-verify | gpt-5-codex | full deterministic suite is warning-clean after websocket task drain
+
+Did: The first post-remediation full Python matrix was green but emitted one SQLAlchemy
+connection/session lifecycle warning when a global websocket notification task outlived a
+pytest event loop. The warning was a test-harness teardown race, not an ensemble or provider
+failure: `ConnectionManager.broadcast` tracks background persistence tasks, while the
+autouse `dispose_db_engine` fixture disposed the shared async engine before draining them.
+The fixture now awaits `manager.drain_notification_tasks()` before telemetry drain and engine
+disposal. This keeps same-loop tasks awaited and removes the cross-test loop boundary that
+left `AsyncSession.close` unawaited.
+
+Evidence: focused websocket/task tests pass `34/34` with `PYTHONTRACEMALLOC=1` and
+`-W error::RuntimeWarning`; the complete strict matrix passes `1997 passed, 6 skipped in
+701.01s (0:11:41)` with zero warnings promoted to errors. No service, provider, model, or
+Mac Studio host package was started by this deterministic check. The repository-wide
+Compass Forge gate remains subject to inherited complexity/route/type/secret-flow debt;
+no new forbidden dependency, cycle, missing path, security, or taint issue was introduced.
+
+Next: run the pinned Compass Forge after-gate on the final tree, commit only the intended
+runner/profile/docs/fixture files, push non-forced to `origin/testing`, and verify exact SHA
+parity. The live gate remains open until a Docker-only Mac Studio run produces three distinct
+served model identities, common raw evidence units, numeric Fleiss/Krippendorff reliability,
+grounding, reconciliation, human-approved Done/report evidence, two-call/long-horizon
+artifacts, Petals donation interoperability, and teardown proof.

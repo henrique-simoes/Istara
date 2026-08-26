@@ -27,6 +27,7 @@ import {
 } from "./lib/research-spine-probes.mjs";
 import {
   benchmarkExitCode,
+  benchmarkWorkloadForProfile,
   liveAcceptanceBlockers,
   normalizeAcceptanceProfile,
   scoreRun,
@@ -513,6 +514,7 @@ if (acceptanceProfileRaw !== acceptanceProfile) {
 }
 const providerAcceptanceSelected = acceptanceProfile !== "petals";
 const petalsAcceptanceSelected = acceptanceProfile !== "provider";
+const workload = benchmarkWorkloadForProfile(acceptanceProfile);
 
 // ── Benchmark engine plumbing (benchmark task B0-2) ────────────────────────
 // `--engine pi|legacy|both` selects the AgenticDispatcher engine per request via
@@ -552,12 +554,12 @@ const requireComputeDonation = boolEnv(
 );
 const startClientSandboxes = boolEnv(
   "ISTARA_BENCHMARK_START_CLIENT_SANDBOXES",
-  startSandbox || externalConnectionStringMode || (mode !== "plan-only" && requireComputeDonation),
+  startSandbox || externalConnectionStringMode || (mode !== "plan-only" && workload.petals && requireComputeDonation),
 );
 let runtimeResearcherCount = intArg("researcher-count", 1);
 const backendEnv = loadBackendEnv();
 const liveLlmProfile = liveLlmProfileFromTestingContract();
-const requireLiveChat = boolEnv("ISTARA_BENCHMARK_REQUIRE_LIVE_CHAT", requireComputeDonation || mode === "full");
+const requireLiveChat = boolEnv("ISTARA_BENCHMARK_REQUIRE_LIVE_CHAT", workload.chat && (requireComputeDonation || mode === "full"));
 const forceDonatedChat = boolEnv("ISTARA_BENCHMARK_FORCE_DONATED_CHAT", false);
 const defaultApiBase = startSandbox && !skipSandbox ? "http://localhost:18000" : "http://localhost:8000";
 const defaultFrontendUrl = startSandbox && !skipSandbox ? "http://localhost:13000" : "http://localhost:3000";
@@ -836,7 +838,7 @@ function summarizeDonorProfile(profile) {
 let donorProfiles = buildDonorProfiles();
 const requireDistinctDonorEndpoints = boolEnv(
   "ISTARA_BENCHMARK_REQUIRE_DISTINCT_DONOR_ENDPOINTS",
-  donorProfiles.filter((profile) => profile.required).length > 1,
+  workload.petals && donorProfiles.filter((profile) => profile.required).length > 1,
 );
 const serverLmstudioModel = (
   process.env.ISTARA_BENCHMARK_SERVER_LMSTUDIO_MODEL ||
@@ -870,16 +872,20 @@ const serverStrictAutoRouting = (
   process.env.ISTARA_BENCHMARK_STRICT_AUTO_ROUTING ||
   (forceDonatedChat ? "true" : "false")
 ).trim();
-const maxChatTurns = nonNegativeIntArg("max-chat-turns", mode === "full" ? 100 : mode === "probe" ? 8 : 0);
-const maxTasks = nonNegativeIntArg("max-tasks", mode === "full" ? 55 : mode === "probe" ? 8 : 0);
-const maxUploads = nonNegativeIntArg("max-uploads", mode === "full" ? 140 : mode === "probe" ? 120 : 0);
-const codingValidationEnabled = boolEnv(
+const requestedMaxChatTurns = nonNegativeIntArg("max-chat-turns", mode === "full" ? 100 : mode === "probe" ? 8 : 0);
+const requestedMaxTasks = nonNegativeIntArg("max-tasks", mode === "full" ? 55 : mode === "probe" ? 8 : 0);
+const requestedMaxUploads = nonNegativeIntArg("max-uploads", mode === "full" ? 140 : mode === "probe" ? 120 : 0);
+const maxChatTurns = workload.chat ? requestedMaxChatTurns : 0;
+const maxTasks = workload.tasks ? requestedMaxTasks : 0;
+const maxUploads = workload.corpus ? requestedMaxUploads : 0;
+const codingValidationEnabled = workload.coding && boolEnv(
   "ISTARA_BENCHMARK_RUN_CODING_VALIDATION",
-  providerAcceptanceSelected && mode !== "plan-only",
+  mode !== "plan-only",
 );
-const codingValidationLimit = nonNegativeIntArg("coding-limit", mode === "full" ? 50 : mode === "probe" ? 12 : 0);
-const selfImprovementProbeEnabled = boolEnv("ISTARA_BENCHMARK_SELF_IMPROVEMENT_PROBE", mode !== "plan-only");
-const startAutoresearchExperiment = boolEnv("ISTARA_BENCHMARK_START_AUTORESEARCH_EXPERIMENT", false);
+const requestedCodingValidationLimit = nonNegativeIntArg("coding-limit", mode === "full" ? 50 : mode === "probe" ? 12 : 0);
+const codingValidationLimit = workload.coding ? requestedCodingValidationLimit : 0;
+const selfImprovementProbeEnabled = workload.selfImprovement && boolEnv("ISTARA_BENCHMARK_SELF_IMPROVEMENT_PROBE", mode !== "plan-only");
+const startAutoresearchExperiment = boolEnv("ISTARA_BENCHMARK_START_AUTORESEARCH_EXPERIMENT", false) && workload.selfImprovement;
 // ISTARA_BENCHMARK_CHAT_TIMEOUT_MS <= 0 (or "none") disables the client
  // abort timer entirely — reasoning-model turns run as long as they run.
  const _rawChatTimeout = process.env.ISTARA_BENCHMARK_CHAT_TIMEOUT_MS ?? "";
@@ -894,7 +900,7 @@ const keepClientContainers = ["1", "true", "yes"].includes(
 const keepDonorModelContainers = ["1", "true", "yes"].includes(
   String(process.env.ISTARA_BENCHMARK_KEEP_DONOR_MODEL_CONTAINERS || "").toLowerCase(),
 );
-const hostManagedThreeModelRun = useLocalThreeModelDonorTopology && skipSandbox && startClientSandboxes;
+const hostManagedThreeModelRun = workload.petals && useLocalThreeModelDonorTopology && skipSandbox && startClientSandboxes;
 const stopColimaAfterRun = boolEnv("ISTARA_BENCHMARK_STOP_COLIMA_AFTER_RUN", hostManagedThreeModelRun);
 let colimaAutostartAttempted = false;
 let colimaStartedByBenchmark = false;
@@ -930,6 +936,19 @@ logger.writeJson("run-metadata.json", {
   acceptance_profile: acceptanceProfile,
   provider_acceptance_selected: providerAcceptanceSelected,
   petals_acceptance_selected: petalsAcceptanceSelected,
+  workload_scope: workload,
+  requested_limits: {
+    chat_turns: requestedMaxChatTurns,
+    tasks: requestedMaxTasks,
+    uploads: requestedMaxUploads,
+    coding_units: requestedCodingValidationLimit,
+  },
+  effective_limits: {
+    chat_turns: maxChatTurns,
+    tasks: maxTasks,
+    uploads: maxUploads,
+    coding_units: codingValidationLimit,
+  },
   started_at: new Date().toISOString(),
   cwd: process.cwd(),
   node: process.version,
@@ -976,7 +995,7 @@ logger.action("llm.config.sources", {
   researcher_count: runtimeResearcherCount,
   donor_topology: donorTopology || "manual/default",
   local_three_model_donor_topology: useLocalThreeModelDonorTopology,
-  donor_count_requested: donorProfiles.filter((profile) => profile.required).length,
+  donor_count_requested: workload.petals ? donorProfiles.filter((profile) => profile.required).length : 0,
   donor_profiles: donorProfiles.map(summarizeDonorProfile),
   require_distinct_donor_endpoints: requireDistinctDonorEndpoints,
   coding_validation_enabled: codingValidationEnabled,
@@ -992,6 +1011,18 @@ logger.action("llm.config.sources", {
   server_lmstudio_auto_load_enabled: serverLmstudioAutoLoadEnabled,
   server_lmstudio_auto_context_reload: serverLmstudioAutoContextReload,
   server_strict_auto_routing: serverStrictAutoRouting,
+  requested_limits: {
+    chat_turns: requestedMaxChatTurns,
+    tasks: requestedMaxTasks,
+    uploads: requestedMaxUploads,
+    coding_units: requestedCodingValidationLimit,
+  },
+  effective_limits: {
+    chat_turns: maxChatTurns,
+    tasks: maxTasks,
+    uploads: maxUploads,
+    coding_units: codingValidationLimit,
+  },
 });
 logger.action("benchmark.registry.loaded", {
   registry_version: benchmarkRegistry.version,
@@ -1007,6 +1038,7 @@ logger.action("benchmark.registry.loaded", {
 logger.appendReport(`# Istara Real User Benchmark Report\n\nRun ID: ${runId}\nMode: ${mode}\nStarted: ${new Date().toISOString()}\n\n`);
 
 const blockers = [];
+const unrelatedWorkflowFailures = [];
 if (boolEnv("ISTARA_BENCHMARK_REQUIRE_REPRODUCIBLE_RUN", mode === "full")) {
   blockers.push(...validateBenchmarkProvenance(benchmarkProvenance));
 }
@@ -1050,12 +1082,12 @@ const sandbox = {
   relayAttempted: false,
   relayStarted: false,
   clientSandboxRequested: startClientSandboxes,
-  relayExpectedCount: donorProfiles.filter((profile) => profile.required).length,
+  relayExpectedCount: workload.petals ? donorProfiles.filter((profile) => profile.required).length : 0,
   relayStartedCount: 0,
-  researcherExpectedCount: runtimeResearcherCount,
+  researcherExpectedCount: workload.commonWorkflow ? runtimeResearcherCount : 0,
   researcherStartedCount: 0,
   modelServerAttempted: false,
-  modelServerExpectedCount: donorProfiles.filter((profile) => profile.required && profile.modelSandbox?.requested).length,
+  modelServerExpectedCount: workload.petals ? donorProfiles.filter((profile) => profile.required && profile.modelSandbox?.requested).length : 0,
   modelServerStartedCount: 0,
 };
 const relayClientContainers = [];
@@ -1070,6 +1102,9 @@ function buildScorecard(input) {
     acceptanceProfile: mode === "plan-only" ? null : acceptanceProfile,
     codingValidationEnabled,
     requireComputeDonation,
+    workloadScope: workload,
+    unrelatedWorkflowFailures,
+    connectionRevocation: input.connectionRevocation || null,
   });
 }
 
@@ -3435,7 +3470,7 @@ function connectionListFromPlan(config, keys) {
   return [];
 }
 
-function loadConnectionStringOverrides() {
+function loadConnectionStringOverrides({ donorProfilesForRun = donorProfiles } = {}) {
   const fileConfig = readJsonConfigFile(
     process.env.ISTARA_BENCHMARK_CONNECTION_STRINGS_FILE,
     "ISTARA_BENCHMARK_CONNECTION_STRINGS_FILE",
@@ -3464,7 +3499,7 @@ function loadConnectionStringOverrides() {
     ...parseConnectionStringList(process.env.ISTARA_BENCHMARK_USER_INVITE_CONNECTION_STRINGS),
     ...parseConnectionStringList(process.env.ISTARA_BENCHMARK_USER_INVITE_CONNECTION_STRING),
   ];
-  const computeFromProfiles = donorProfiles.map((profile) => profile.connectionString).filter(Boolean);
+  const computeFromProfiles = donorProfilesForRun.map((profile) => profile.connectionString).filter(Boolean);
   return {
     computeDonations: [...computeFromFile, ...computeFromEnv, ...computeFromProfiles],
     userInvites: [...userFromFile, ...userFromEnv],
@@ -3477,7 +3512,7 @@ function loadConnectionStringOverrides() {
   };
 }
 
-async function maybePromptForConnectionOverrides(overrides) {
+async function maybePromptForConnectionOverrides(overrides, { donorProfilesForRun = donorProfiles, researcherCount = runtimeResearcherCount } = {}) {
   if (!boolEnv("ISTARA_BENCHMARK_INTERACTIVE_CONNECTION_STRINGS", false)) return overrides;
   if (!process.stdin.isTTY) {
     blockers.push("Interactive connection string mode was requested, but stdin is not a TTY.");
@@ -3491,22 +3526,24 @@ async function maybePromptForConnectionOverrides(overrides) {
   }
   const rl = createInterface({ input: process.stdin, output: process.stdout });
   try {
-    const currentDonorCount = donorProfiles.filter((profile) => profile.required).length;
+    const currentDonorCount = donorProfilesForRun.filter((profile) => profile.required).length;
     const donorAnswer = await rl.question(`How many compute donor containers should this run start? [${currentDonorCount}] `);
     const donorCount = Number.parseInt(donorAnswer.trim(), 10);
     if (Number.isFinite(donorCount) && donorCount > 0 && donorCount !== currentDonorCount) {
       donorProfiles = buildDonorProfiles({ donorCountOverride: donorCount });
+      donorProfilesForRun = donorProfiles;
       sandbox.relayExpectedCount = donorProfiles.filter((profile) => profile.required).length;
       logger.action("connection.interactive.donor_count", {
         requested_count: donorCount,
         donor_profiles: donorProfiles.map(summarizeDonorProfile),
       });
     }
-    const researcherAnswer = await rl.question(`How many researcher invite/client containers should this run start? [${runtimeResearcherCount}] `);
-    const researcherCount = Number.parseInt(researcherAnswer.trim(), 10);
-    if (Number.isFinite(researcherCount) && researcherCount > 0) {
-      runtimeResearcherCount = researcherCount;
-      sandbox.researcherExpectedCount = runtimeResearcherCount;
+    const researcherAnswer = await rl.question(`How many researcher invite/client containers should this run start? [${researcherCount}] `);
+    const parsedResearcherCount = Number.parseInt(researcherAnswer.trim(), 10);
+    if (Number.isFinite(parsedResearcherCount) && parsedResearcherCount > 0) {
+      runtimeResearcherCount = parsedResearcherCount;
+      researcherCount = parsedResearcherCount;
+      sandbox.researcherExpectedCount = researcherCount;
     }
     const requiredDonors = donorProfiles.filter((profile) => profile.required);
     const computeDonations = [...overrides.computeDonations];
@@ -3515,7 +3552,7 @@ async function maybePromptForConnectionOverrides(overrides) {
       if (answer.trim()) computeDonations.push(answer.trim());
     }
     const userInvites = [...overrides.userInvites];
-    for (let index = userInvites.length; index < runtimeResearcherCount; index += 1) {
+    for (let index = userInvites.length; index < researcherCount; index += 1) {
       const answer = await rl.question(`Paste researcher invite connection string ${index + 1}, or leave blank to generate through the API when possible: `);
       if (answer.trim()) userInvites.push(answer.trim());
     }
@@ -3533,7 +3570,7 @@ async function maybePromptForConnectionOverrides(overrides) {
   }
 }
 
-function materializeConnectionStrings(generated, overrides) {
+function materializeConnectionStrings(generated, overrides, { donorProfilesForRun = donorProfiles, researcherCount = runtimeResearcherCount } = {}) {
   const computeOverrideStrings = overrides.computeDonations || [];
   const userOverrideStrings = overrides.userInvites || [];
   const output = {
@@ -3543,7 +3580,7 @@ function materializeConnectionStrings(generated, overrides) {
   };
   const generatedUserInvites = generated.userInvites || (generated.userInvite ? [generated.userInvite] : []);
   const generatedComputeDonations = generated.computeDonations || (generated.computeDonation ? [generated.computeDonation] : []);
-  const userCount = Math.max(runtimeResearcherCount, userOverrideStrings.length, generatedUserInvites.length);
+  const userCount = Math.max(researcherCount, userOverrideStrings.length, generatedUserInvites.length);
   for (let index = 0; index < userCount; index += 1) {
     const override = userOverrideStrings[index];
     const generatedInvite = generatedUserInvites[index];
@@ -3557,7 +3594,7 @@ function materializeConnectionStrings(generated, overrides) {
   }
   output.userInvite = output.userInvites[0] || generated.userInvite;
 
-  const requiredDonors = donorProfiles.filter((profile) => profile.required);
+  const requiredDonors = donorProfilesForRun.filter((profile) => profile.required);
   for (let index = 0; index < requiredDonors.length; index += 1) {
     const donor = requiredDonors[index];
     const override = computeOverrideStrings[index] || donor.connectionString;
@@ -3582,7 +3619,7 @@ function materializeConnectionStrings(generated, overrides) {
       compute_count: output.computeDonations.length,
       user_invite_count: output.userInvites.length,
     },
-    donor_profiles: donorProfiles.map(summarizeDonorProfile),
+    donor_profiles: donorProfilesForRun.map(summarizeDonorProfile),
   });
   logger.action("connection.plan.materialized", {
     external_mode: externalConnectionStringMode,
@@ -3591,6 +3628,48 @@ function materializeConnectionStrings(generated, overrides) {
     donor_count: requiredDonors.length,
   });
   return output;
+}
+
+async function revokeGeneratedConnectionStrings(api, connectionStrings) {
+  const entries = [
+    ...(connectionStrings?.computeDonations || []).map((item) => ({ kind: "compute_donation", item })),
+    ...(connectionStrings?.userInvites || []).map((item) => ({ kind: "user_invite", item })),
+  ];
+  const results = [];
+  for (const { kind, item } of entries) {
+    const id = String(item?.id || "");
+    const external = item?.source === "external-override" || id.startsWith("external-");
+    if (external || !id) {
+      results.push({ kind, id, status: "skipped_external_or_unidentified", reason: external ? "external-override" : "missing-generated-id" });
+      continue;
+    }
+    try {
+      const response = await api.delete(`/api/connections/${encodeURIComponent(id)}`);
+      const ok = response?.status === "revoked" || response?.is_active === false;
+      results.push({ kind, id, status: ok ? "revoked" : "unexpected-response", response_status: response?.status || "" });
+      logger.action("connection.revoked", { kind, id, ok, response_status: response?.status || "" });
+      if (!ok) blockers.push(`Generated ${kind} ${id} did not confirm revocation.`);
+    } catch (error) {
+      results.push({ kind, id, status: "error", error: error.message });
+      blockers.push(`Generated ${kind} ${id} could not be revoked.`);
+      logger.issue({
+        area: "connection-string",
+        severity: "high",
+        title: `Generated ${kind} revocation failed`,
+        detail: error.message,
+        evidence: { id, kind },
+      });
+    }
+  }
+  const summary = {
+    attempted: results.filter((item) => ["revoked", "unexpected-response", "error"].includes(item.status)).length,
+    revoked: results.filter((item) => item.status === "revoked").length,
+    skipped_external_or_unidentified: results.filter((item) => item.status === "skipped_external_or_unidentified").length,
+    results,
+  };
+  logger.writeJson("connection-revocation-results.json", summary);
+  logger.action("connection.revocation.summary", summary);
+  return summary;
 }
 
 /**
@@ -4302,7 +4381,20 @@ function writePlanSnapshot(corpusSummary) {
     acceptance_profile: acceptanceProfile,
     provider_acceptance_selected: providerAcceptanceSelected,
     petals_acceptance_selected: petalsAcceptanceSelected,
-    requested_compute_donor_count: donorProfiles.filter((profile) => profile.required).length,
+    workload_scope: workload,
+    requested_limits: {
+      chat_turns: requestedMaxChatTurns,
+      tasks: requestedMaxTasks,
+      uploads: requestedMaxUploads,
+      coding_units: requestedCodingValidationLimit,
+    },
+    effective_limits: {
+      chat_turns: maxChatTurns,
+      tasks: maxTasks,
+      uploads: maxUploads,
+      coding_units: codingValidationLimit,
+    },
+    requested_compute_donor_count: workload.petals ? donorProfiles.filter((profile) => profile.required).length : 0,
     compute_donor_profiles: donorProfiles.map(summarizeDonorProfile),
     generated_chat_turn_templates: buildCollaborativeChatTurns({ total: 108 }),
     generated_task_templates: [buildInterviewProcessPlan(), ...buildTaskPlan({ total: 59 })],
@@ -4322,6 +4414,19 @@ async function main() {
     acceptance_profile: acceptanceProfile,
     provider_acceptance_selected: providerAcceptanceSelected,
     petals_acceptance_selected: petalsAcceptanceSelected,
+    workload_scope: workload,
+    requested_limits: {
+      chat_turns: requestedMaxChatTurns,
+      tasks: requestedMaxTasks,
+      uploads: requestedMaxUploads,
+      coding_units: requestedCodingValidationLimit,
+    },
+    effective_limits: {
+      chat_turns: maxChatTurns,
+      tasks: maxTasks,
+      uploads: maxUploads,
+      coding_units: codingValidationLimit,
+    },
     apiBase,
     frontendUrl,
     maxChatTurns,
@@ -4344,7 +4449,7 @@ async function main() {
     requireLiveChat,
     forceDonatedChat,
     researcher_count: runtimeResearcherCount,
-    donor_count_requested: donorProfiles.filter((profile) => profile.required).length,
+    donor_count_requested: workload.petals ? donorProfiles.filter((profile) => profile.required).length : 0,
     donor_profiles: donorProfiles.map(summarizeDonorProfile),
     colima_storage_policy: colimaStoragePolicy,
     colima_storage_budget: colimaStorageBudget,
@@ -4481,40 +4586,60 @@ async function main() {
   let completedTasks = 0;
   let taskWorkflow = null;
   let researchSpineEvidence = null;
+  let connectionRevocation = null;
   let researcherInviteResults = [];
   let researcherActors = [];
 
   if (auth.ok) {
     project = await createProject(api);
-    await linkProjectFolder(api, project.id, logger.paths.corpus);
-    uploaded = await uploadCorpus(api, project.id, corpus.manifest, maxUploads);
+    if (workload.corpus) {
+      await linkProjectFolder(api, project.id, logger.paths.corpus);
+      uploaded = await uploadCorpus(api, project.id, corpus.manifest, maxUploads);
+    } else {
+      logger.action("corpus.upload.skip", { reason: "acceptance-profile-does-not-select-corpus" });
+    }
     if (uploaded.length > 0) featureResults.uploadedAndQueried = true;
 
-    const initialOverrides = loadConnectionStringOverrides();
-    const connectionOverrides = await maybePromptForConnectionOverrides(initialOverrides);
-    const requiredDonorCount = donorProfiles.filter((profile) => profile.required).length;
+    let selectedDonorProfiles = workload.petals ? donorProfiles : [];
+    let selectedResearcherCount = workload.commonWorkflow ? runtimeResearcherCount : 0;
+    const initialOverrides = loadConnectionStringOverrides({ donorProfilesForRun: selectedDonorProfiles });
+    const connectionOverrides = (workload.petals || workload.commonWorkflow)
+      ? await maybePromptForConnectionOverrides(initialOverrides, {
+          donorProfilesForRun: selectedDonorProfiles,
+          researcherCount: selectedResearcherCount,
+        })
+      : initialOverrides;
+    if (workload.petals) selectedDonorProfiles = donorProfiles;
+    if (workload.commonWorkflow) selectedResearcherCount = runtimeResearcherCount;
+    const requiredDonorCount = selectedDonorProfiles.filter((profile) => profile.required).length;
     const hasAllExternalOverrides = connectionOverrides.computeDonations.length >= requiredDonorCount
-      && connectionOverrides.userInvites.length >= runtimeResearcherCount;
+      && connectionOverrides.userInvites.length >= selectedResearcherCount;
     const shouldGenerateConnectionStrings = !hasAllExternalOverrides || boolEnv("ISTARA_BENCHMARK_GENERATE_CONNECTION_STRINGS_WITH_OVERRIDES", false);
     const generatedConnectionStrings = shouldGenerateConnectionStrings
       ? await createConnectionStrings(api, {
           projectId: project.id,
-          donorProfilesForRun: donorProfiles,
-          researcherCount: runtimeResearcherCount,
+          donorProfilesForRun: selectedDonorProfiles,
+          researcherCount: selectedResearcherCount,
         })
       : { userInvites: [], computeDonations: [] };
-    connectionStrings = materializeConnectionStrings(generatedConnectionStrings, connectionOverrides);
-    const requiredDonors = donorProfiles.filter((profile) => profile.required);
+    connectionStrings = materializeConnectionStrings(generatedConnectionStrings, connectionOverrides, {
+      donorProfilesForRun: selectedDonorProfiles,
+      researcherCount: selectedResearcherCount,
+    });
+    const requiredDonors = selectedDonorProfiles.filter((profile) => profile.required);
     const enabledRequiredDonors = requiredDonors.filter((profile) => profile.enabled);
     const endpointDiversity = {
       ...donorEndpointDiversity(enabledRequiredDonors),
+      selected: workload.petals,
       required_donor_count: requiredDonors.length,
       enabled_required_donor_count: enabledRequiredDonors.length,
       all_required_donors_enabled: enabledRequiredDonors.length === requiredDonors.length,
     };
     endpointDiversity.ok = endpointDiversity.all_required_donors_enabled
       && (!requireDistinctDonorEndpoints || endpointDiversity.distinct);
-    featureResults.distinctDonorEndpoints = endpointDiversity.ok;
+    // An unselected Petals plane must not emit a vacuous "distinct" result
+    // merely because its donor list is empty (`[].distinct === true`).
+    featureResults.distinctDonorEndpoints = workload.petals && endpointDiversity.ok;
     logger.writeJson("donor-endpoint-diversity.json", endpointDiversity);
     logger.action("compute.donor.endpoint_diversity", endpointDiversity);
     if (!endpointDiversity.ok && requireDistinctDonorEndpoints) {
@@ -4527,19 +4652,23 @@ async function main() {
       });
     }
 
-    for (const donor of requiredDonors) {
-      await startDonorModelSandbox(donor);
+    if (workload.petals) {
+      for (const donor of requiredDonors) {
+        await startDonorModelSandbox(donor);
+      }
     }
 
     researcherInviteResults = [];
-    for (let index = 0; index < connectionStrings.userInvites.length; index += 1) {
-      const result = startInviteClientSandbox(connectionStrings.userInvites[index]?.connection_string || "", index);
-      if (result) researcherInviteResults.push(result);
-      await grantResearcherProjectAccess(api, project.id, result);
+    if (workload.commonWorkflow) {
+      for (let index = 0; index < connectionStrings.userInvites.length; index += 1) {
+        const result = startInviteClientSandbox(connectionStrings.userInvites[index]?.connection_string || "", index);
+        if (result) researcherInviteResults.push(result);
+        await grantResearcherProjectAccess(api, project.id, result);
+      }
     }
     logger.writeJson("connection-client-results.json", {
       attempted: researcherInviteResults.length > 0,
-      expected_count: runtimeResearcherCount,
+      expected_count: selectedResearcherCount,
       ok_count: researcherInviteResults.filter((result) => result.ok).length,
       results: researcherInviteResults.map((result) => ({
         ok: result.ok,
@@ -4552,7 +4681,7 @@ async function main() {
     researcherActors = await authenticateResearcherActors(researcherInviteResults);
 
     const activeDonorProfiles = [];
-    for (let index = 0; index < requiredDonors.length; index += 1) {
+    for (let index = 0; workload.petals && index < requiredDonors.length; index += 1) {
       const donor = requiredDonors[index];
       const donation = connectionStrings.computeDonations.find((item) => item.donor_id === donor.id) || connectionStrings.computeDonations[index];
       const preflight = preflightRelayLlmFromContainer(donor);
@@ -4573,7 +4702,13 @@ async function main() {
         }
       }
     }
-    await verifyComputeDonation(api, project.id, { activeDonorProfiles });
+    if (workload.petals) {
+      await verifyComputeDonation(api, project.id, { activeDonorProfiles });
+    } else {
+      logger.action("compute.donation.verify.skip", { reason: "acceptance-profile-does-not-select-petals" });
+      logger.writeJson("compute-donation-results.json", { selected: false, reason: "acceptance-profile-does-not-select-petals" });
+    }
+    if (workload.commonWorkflow) {
     const adminActor = makeAdminActor(api);
 
     const uiResult = await runUiJourney({
@@ -4656,67 +4791,76 @@ async function main() {
     });
     completedTasks = taskWorkflow.approvals;
     recordInterviewProcessEvidence({ uploaded, taskWorkflow });
-    const expectedResearchSpineDonorRoutes = hostManagedThreeModelRun
-      ? Math.min(3, donorProfiles.filter((profile) => profile.required && profile.enabled).length)
-      : 0;
-    if (codingValidationEnabled && expectedResearchSpineDonorRoutes >= 2) {
-      const preCodingRelayHealth = await waitForHealthyRelayRoutes(
+    await recordNaturalComputeOrchestration(api, project.id, computeBeforeResearch, "after-collaborative-research");
+    }
+
+    if (workload.provider) {
+      const expectedResearchSpineDonorRoutes = hostManagedThreeModelRun
+        ? Math.min(3, donorProfiles.filter((profile) => profile.required && profile.enabled).length)
+        : 0;
+      if (codingValidationEnabled && expectedResearchSpineDonorRoutes >= 2) {
+        const preCodingRelayHealth = await waitForHealthyRelayRoutes(
+          api,
+          project.id,
+          expectedResearchSpineDonorRoutes,
+          180000,
+          "before-research-spine-coding",
+        );
+        logger.writeJson("research-spine-pre-coding-relay-health.json", preCodingRelayHealth);
+        if (!preCodingRelayHealth.ok) {
+          blockers.push(`Research Spine coding did not have all required donor relays healthy: ${preCodingRelayHealth.alive_relay_count}/${expectedResearchSpineDonorRoutes}.`);
+          logger.issue({
+            area: "research-spine",
+            severity: "high",
+            title: "Required donor relays were not healthy before Research Spine coding",
+            detail: "The benchmark must prove the host donor plus both Colima donors can serve the coding pass. Registration or earlier technical probes are not enough.",
+            evidence: {
+              expected_distinct_donor_routes: expectedResearchSpineDonorRoutes,
+              alive_relay_count: preCodingRelayHealth.alive_relay_count,
+            },
+          });
+        }
+      }
+      researchSpineEvidence = await exerciseResearchSpineValidation({
         api,
-        project.id,
-        expectedResearchSpineDonorRoutes,
-        180000,
-        "before-research-spine-coding",
-      );
-      logger.writeJson("research-spine-pre-coding-relay-health.json", preCodingRelayHealth);
-      if (!preCodingRelayHealth.ok) {
-        blockers.push(`Research Spine coding did not have all required donor relays healthy: ${preCodingRelayHealth.alive_relay_count}/${expectedResearchSpineDonorRoutes}.`);
-        logger.issue({
-          area: "research-spine",
-          severity: "high",
-          title: "Required donor relays were not healthy before Research Spine coding",
-          detail: "The benchmark must prove the host donor plus both Colima donors can serve the coding pass. Registration or earlier technical probes are not enough.",
-          evidence: {
-            expected_distinct_donor_routes: expectedResearchSpineDonorRoutes,
-            alive_relay_count: preCodingRelayHealth.alive_relay_count,
-          },
-        });
+        projectId: project.id,
+        taskWorkflow,
+        logger,
+        featureResults,
+        blockers,
+        codingValidationEnabled,
+        codingValidationLimit,
+        expectedDistinctCoders: codingValidationEnabled ? 3 : 0,
+        expectedDistinctDonorRoutes: expectedResearchSpineDonorRoutes,
+        // Research Spine reliability is defined over raw evidence units coded by
+        // distinct model identities.  Source diversity remains a deterministic
+        // selection preference, but the contract does not require three source
+        // documents; a single interview/document may legitimately provide three
+        // independent spans.  Keep source count observable in the selection
+        // artifact without turning it into a false acceptance blocker.
+        expectedDistinctSources: 0,
+      });
+    } else {
+      logger.action("research-spine.validation.skip", { reason: "acceptance-profile-does-not-select-provider" });
+      logger.writeJson("research-spine-results.json", { selected: false, reason: "acceptance-profile-does-not-select-provider" });
+    }
+    if (workload.commonWorkflow) {
+      await exerciseSelfImprovementGovernance({
+        api,
+        projectId: project.id,
+        taskWorkflow,
+        researchSpineEvidence,
+        logger,
+        featureResults,
+        runId,
+        selfImprovementProbeEnabled,
+        startAutoresearchExperiment,
+      });
+      await exerciseTaskBackedFindingsReports(api, project.id, taskWorkflow);
+      if (!featureResults.approvedTaskFindings) {
+        await exerciseFindingsReports(api, project.id);
       }
     }
-    researchSpineEvidence = await exerciseResearchSpineValidation({
-      api,
-      projectId: project.id,
-      taskWorkflow,
-      logger,
-      featureResults,
-      blockers,
-      codingValidationEnabled,
-      codingValidationLimit,
-      expectedDistinctCoders: codingValidationEnabled ? 3 : 0,
-      expectedDistinctDonorRoutes: expectedResearchSpineDonorRoutes,
-      // Research Spine reliability is defined over raw evidence units coded by
-      // distinct model identities.  Source diversity remains a deterministic
-      // selection preference, but the contract does not require three source
-      // documents; a single interview/document may legitimately provide three
-      // independent spans.  Keep source count observable in the selection
-      // artifact without turning it into a false acceptance blocker.
-      expectedDistinctSources: 0,
-    });
-    await exerciseSelfImprovementGovernance({
-      api,
-      projectId: project.id,
-      taskWorkflow,
-      researchSpineEvidence,
-      logger,
-      featureResults,
-      runId,
-      selfImprovementProbeEnabled,
-      startAutoresearchExperiment,
-    });
-    await exerciseTaskBackedFindingsReports(api, project.id, taskWorkflow);
-    if (!featureResults.approvedTaskFindings) {
-      await exerciseFindingsReports(api, project.id);
-    }
-    await recordNaturalComputeOrchestration(api, project.id, computeBeforeResearch, "after-collaborative-research");
   }
 
   blockers.push(...liveAcceptanceBlockers({
@@ -4729,8 +4873,8 @@ async function main() {
     requireComputeDonation,
     featureResults,
   }));
-  if (mode === "full" && chatTurnCount < 100) blockers.push(`Full run completed only ${chatTurnCount}/100 required chat turns.`);
-  if (mode === "full" && completedTasks < 50) blockers.push(`Full run completed only ${completedTasks}/50 required reviewed tasks.`);
+  if (mode === "full" && workload.chat && chatTurnCount < 100) blockers.push(`Full run completed only ${chatTurnCount}/100 required chat turns.`);
+  if (mode === "full" && workload.tasks && completedTasks < 50) blockers.push(`Full run completed only ${completedTasks}/50 required reviewed tasks.`);
 
   if (auth.ok) {
     try {
@@ -4757,6 +4901,14 @@ async function main() {
     }
   }
 
+  if (auth.ok && (workload.petals || workload.commonWorkflow)) {
+    connectionRevocation = await revokeGeneratedConnectionStrings(api, connectionStrings);
+  } else {
+    connectionRevocation = { attempted: 0, revoked: 0, skipped_external_or_unidentified: 0, results: [], selected: false };
+    logger.writeJson("connection-revocation-results.json", connectionRevocation);
+    logger.action("connection.revocation.skip", { reason: "no-generated-connections-for-selected-profile" });
+  }
+
   captureColimaStorageSnapshot("before-scorecard", { recordIssue: true });
   const scorecard = buildScorecard({
     mode,
@@ -4768,11 +4920,26 @@ async function main() {
     uploadedDocuments: uploaded.length,
     sandbox,
     featureResults,
+    connectionRevocation,
   });
   logger.writeJson("scorecard.json", scorecard);
   const historyRecord = {
     run_id: runId,
     mode,
+    acceptance_profile: acceptanceProfile,
+    workload_scope: workload,
+    requested_limits: {
+      chat_turns: requestedMaxChatTurns,
+      tasks: requestedMaxTasks,
+      uploads: requestedMaxUploads,
+      coding_units: requestedCodingValidationLimit,
+    },
+    effective_limits: {
+      chat_turns: maxChatTurns,
+      tasks: maxTasks,
+      uploads: maxUploads,
+      coding_units: codingValidationLimit,
+    },
     date: new Date().toISOString(),
     benchmark_id: benchmarkRegistry.benchmark_id,
     benchmark_registry_version: benchmarkRegistry.version,
@@ -4781,6 +4948,8 @@ async function main() {
     completed_tasks: completedTasks,
     uploaded_documents: uploaded.length,
     blocker_count: blockers.length,
+    unrelated_workflow_failures: [...unrelatedWorkflowFailures],
+    connection_revocation: connectionRevocation,
     compute_donation_verified: Boolean(featureResults.computeDonation),
     multi_donor_compute_verified: Boolean(featureResults.multiDonorCompute),
     natural_compute_orchestration_verified: Boolean(featureResults.naturalComputeOrchestration),
@@ -4807,11 +4976,11 @@ async function main() {
     stop_colima_after_run: Boolean(stopColimaAfterRun),
     colima_autostart_attempted: Boolean(colimaAutostartAttempted),
     colima_started_by_benchmark: Boolean(colimaStartedByBenchmark),
-    compute_donor_count_requested: donorProfiles.filter((profile) => profile.required).length,
+    compute_donor_count_requested: workload.petals ? donorProfiles.filter((profile) => profile.required).length : 0,
     compute_donor_count_started: sandbox.relayStartedCount,
     donor_model_server_count_requested: sandbox.modelServerExpectedCount,
     donor_model_server_count_started: sandbox.modelServerStartedCount,
-    researcher_client_count_requested: runtimeResearcherCount,
+    researcher_client_count_requested: workload.commonWorkflow ? runtimeResearcherCount : 0,
     researcher_client_count_started: sandbox.researcherStartedCount,
     live_chat_verified: Boolean(featureResults.liveChat),
     researcher_actor_count: researcherActors.length,

@@ -51,6 +51,25 @@ the Research Spine gate itself remains about raw source grounding, complete
 independent coder coverage, model identity, reliability, reconciliation, and
 promotion; it does not require three separate documents.
 
+The profile also controls the workload that is executed. This prevents a
+provider-only or donation-only retake from failing because of an unrelated
+surface:
+
+| Profile | Executed workload | Deliberately skipped |
+| --- | --- | --- |
+| `provider` | canonical raw-source upload, three-model coding, Fleiss' kappa plus Krippendorff companion metric, grounding, reconciliation, promotion, and traceability reads | Petals connection strings/relays, live chat, tasks, UI, integrations, self-improvement, and marathon loops |
+| `petals` | slash-string generation/consent, container-side model preflight, relay registration and health, distinct served-route probe, usage evidence, revocation, and cleanup | corpus upload, provider coding, chat, tasks, UI, integrations, self-improvement, and marathon loops |
+| `combined` | both rows above, followed by the common researcher chat/task/UI/integration/self-improvement workflow | none of the selected acceptance surfaces |
+
+`run-metadata.json`, `plan.json`, `scorecard.json`, `history-record.json`, and
+the Markdown report include the workload scope plus requested/effective limits.
+Generated user-invite and compute-donation credentials are revoked before the
+final scorecard; external overrides are recorded as skipped rather than
+pretending that the benchmark owns their lifecycle. A profile can still be
+blocked by its selected gate, but an intentionally unselected surface is
+reported as `not_selected` and any incidental failure is recorded separately in
+`unrelated_workflow_failures`.
+
 Run a deeper bounded probe for video material and Research Spine evidence:
 
 ```bash
