@@ -8,8 +8,8 @@ phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal ac
 stage: S2-execute
 status: in-progress
 blocked_on: null
-last: { agent: gpt-5-codex, at: 2026-08-26T16:05:00Z, ledger: L-159 }
-next_action: "Transport the self-bootstrapping runner fix, rebuild the exact Docker image, and rerun one bounded comparison from a pristine checkout."
+last: { agent: gpt-5-codex, at: 2026-08-26T16:32:00Z, ledger: L-160 }
+next_action: "Transport the provenance/secret-safe runner fix, rerun the contract gates, then execute one final bounded Docker comparison only after the credential exposure is removed."
 ```
 
 ## Plan overview / roadmap
@@ -3402,6 +3402,44 @@ directories (with a regression test) or create them inside the clean checkout as
 documented fixture; prefer the self-contained script fix so future clean worktrees work without
 manual host preparation. Re-run only after Compass Forge impact/why and a transported
 checkpoint; keep the three-donor limitation and fail-closed scoring boundary unchanged.
+
+### L-160 | 2026-08-26T16:32:00Z | S3-review/S2-execute | gpt-5-codex | live two-arm Docker run disposition and runner hardening
+Did: The self-bootstrapping runner fix reached Docker successfully and ran both `legacy` and
+`pi` arms exactly once. Both arms completed their marathon cycle but exited blocker-bearing
+(`runner_rc=1`); the generated probe runs were `2026-08-26T14-27-30-842Z` (legacy) and
+`2026-08-26T14-30-37-057Z` (pi). The latest Pi score was `43.5/100`, with `0/8` chat turns,
+`0` completed tasks, `6` uploads, and `8` blockers. The legacy run reported a UI shell
+readiness error followed by provider `402 Insufficient Balance` on chat/task requests.
+
+Research disposition: the live run recorded `expected_distinct_coders=3` but
+`distinct_model_count=0`, `rater_count=0`, `kappa=null`, `alpha=null`, and no served donor
+routes; `compute_donation_verified=false`, `multi_donor_compute_verified=false`, and
+`coding_validation_verified=false`. The Pi report marked `research_spine_traceability_verified`
+true only for structural traceability, not accepted coding/reliability/reconciliation. This is
+not evidence that the ensemble engine or PI Model Management is correct. The marathon summary's
+`38/38` pass is a companion infrastructure cycle and does not override chat/provider or
+Research Spine blockers. Evidence is retained under
+`/Users/user/istara-testing-evidence-20260826T145000Z/`, including both run summaries, the
+runner log, scorecard, and marathon issue artifacts.
+
+Audit findings from this run: the original clean-checkout failure exposed missing generated
+mounts (fixed in `ca2776ea`); the first successful run exposed that `ISTARA_BENCHMARK_SOURCE_SHA`
+was never passed, so provenance validation falsely reported a missing source commit; and a
+passive process listing showed the admin password embedded in the `docker run -e` argument
+vector. Compass Forge after-gate record `62` reports no new comparison issues, failures,
+dependency/import cycles, missing paths, unexpected-large-file, security, or taint deltas; its
+inherited secret-flow warnings do not cover this runner argument leak.
+
+Remediation in progress: pass the detached Git commit explicitly as `ISTARA_BENCHMARK_SOURCE_SHA`
+and provide the three password aliases through a mode-600 temporary Docker `--env-file` removed
+by an EXIT trap. Add static contracts for both changes, retain the Docker-only topology, and do
+not rerun until the fix is transported. The current two-arm runner still intentionally sets
+`ISTARA_BENCHMARK_REQUIRE_COMPUTE_DONATION=0`; three-donor/Petals/ensemble acceptance remains a
+separate required implementation and test gate.
+Next: commit/push this runner hardening, run the full deterministic contract matrix plus feature
+docs, refresh the detached worktree, and execute one final two-arm run only to validate harness
+provenance and secret handling. Treat any provider 402, missing donor, zero-rater, or absent
+human-approval result as an explicit blocker.
 
 ### L-159 | 2026-08-26T16:05:00Z | S1-plan/S2-execute/S3-review | gpt-5-codex | runner bootstrap fix specified by CF and TDD
 Did: Ran Compass Forge `intelligence impact --path scripts/runner/docker-run.sh` for the

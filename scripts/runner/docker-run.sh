@@ -38,10 +38,26 @@ esac
 RUN_GROUP="${ISTARA_BENCHMARK_RUN_GROUP:-docker-comparison-$(date -u +%Y%m%dT%H%M%SZ)}"
 RUNNER_IMAGE_REQUEST="${ISTARA_RUNNER_IMAGE:-node:20-bookworm}"
 : "${ISTARA_BENCHMARK_SOURCE_SNAPSHOT_SHA256:?set the sha256 of the exact source snapshot copied to the Mac Studio}"
+SOURCE_COMMIT="$(git -C "$REPO_ROOT" rev-parse HEAD 2>/dev/null)" || {
+  echo "unable to resolve the exact source commit for benchmark provenance" >&2
+  exit 1
+}
 COMPOSE_FILE="${ISTARA_BENCHMARK_COMPOSE_FILE:-$REPO_ROOT/docker-compose.vps.yml}"
 COMPOSE_ENV_FILE="${ISTARA_BENCHMARK_COMPOSE_ENV_FILE:-$REPO_ROOT/.env.deploy}"
 RESET_STACK="${ISTARA_BENCHMARK_RESET_STACK:-1}"
 RUN_ORDER="$(IFS=,; echo "${ENGINES[*]}")"
+
+# Never place credentials in the docker CLI argument vector: macOS process listings expose
+# command-line values to other local users. Docker reads this short-lived, mode-600 file and
+# the EXIT trap removes it after both comparison arms complete.
+umask 077
+RUNNER_ENV_FILE="$(mktemp "${TMPDIR:-/tmp}/istara-benchmark-env.XXXXXX")"
+chmod 600 "$RUNNER_ENV_FILE"
+cleanup_runner_env() { rm -f "$RUNNER_ENV_FILE"; }
+trap cleanup_runner_env EXIT
+printf 'ISTARA_ADMIN_PASSWORD=%s\nADMIN_PASSWORD=%s\nISTARA_TEST_ADMIN_PASSWORD=%s\n' \
+  "$ISTARA_ADMIN_PASSWORD" "$ISTARA_ADMIN_PASSWORD" "$ISTARA_ADMIN_PASSWORD" > "$RUNNER_ENV_FILE"
+
 docker pull "$RUNNER_IMAGE_REQUEST" >/dev/null
 RUNNER_IMAGE="$(docker image inspect --format '{{index .RepoDigests 0}}' "$RUNNER_IMAGE_REQUEST")"
 RUNNER_IMAGE_ID="$(docker image inspect --format '{{.Id}}' "$RUNNER_IMAGE_REQUEST")"
@@ -106,6 +122,7 @@ for engine in "${ENGINES[@]}"; do
     -e ISTARA_BENCHMARK_RUNNER_IMAGE_ID="$RUNNER_IMAGE_ID" \
     -e ISTARA_BENCHMARK_BACKEND_IMAGE_ID="$BACKEND_IMAGE_ID" \
     -e ISTARA_BENCHMARK_FRONTEND_IMAGE_ID="$FRONTEND_IMAGE_ID" \
+    -e ISTARA_BENCHMARK_SOURCE_SHA="$SOURCE_COMMIT" \
     -e ISTARA_BENCHMARK_SOURCE_STATE=working-tree-snapshot \
     -e ISTARA_BENCHMARK_SOURCE_SNAPSHOT_SHA256="$ISTARA_BENCHMARK_SOURCE_SNAPSHOT_SHA256" \
     -e ISTARA_BENCHMARK_STATE_ISOLATION=fresh-postgres-container-per-engine \
@@ -115,9 +132,7 @@ for engine in "${ENGINES[@]}"; do
     -e ISTARA_BENCHMARK_ARM_INDEX="$arm_index" \
     -e ISTARA_BENCHMARK_REQUIRE_REPRODUCIBLE_RUN=1 \
     -e ISTARA_ADMIN_USERNAME="${ISTARA_ADMIN_USER:-admin}" \
-    -e ISTARA_ADMIN_PASSWORD="$ISTARA_ADMIN_PASSWORD" \
-    -e ADMIN_PASSWORD="$ISTARA_ADMIN_PASSWORD" \
-    -e ISTARA_TEST_ADMIN_PASSWORD="$ISTARA_ADMIN_PASSWORD" \
+    --env-file "$RUNNER_ENV_FILE" \
     -e HOME=/tmp \
     --entrypoint bash \
     "$RUNNER_IMAGE" \

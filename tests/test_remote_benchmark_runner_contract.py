@@ -43,6 +43,8 @@ def test_remote_runner_records_images_source_and_truthful_isolation():
 
     assert "fresh-postgres-container-per-engine" in outer
     assert "ISTARA_BENCHMARK_SOURCE_SNAPSHOT_SHA256" in outer
+    assert "ISTARA_BENCHMARK_SOURCE_SHA" in outer
+    assert 'git -C "$REPO_ROOT" rev-parse HEAD' in outer
     assert "ISTARA_BENCHMARK_RUN_ORDER" in outer
     assert "ISTARA_BENCHMARK_ARM_INDEX" in outer
     assert "ISTARA_BENCHMARK_FRESH_SANDBOX=0" not in outer
@@ -79,8 +81,11 @@ def test_remote_runner_never_installs_or_authenticates_on_the_host():
 def test_remote_runner_passes_admin_credentials_under_marathon_names():
     outer = (ROOT / "scripts/runner/docker-run.sh").read_text(encoding="utf-8")
 
-    assert '-e ADMIN_PASSWORD="$ISTARA_ADMIN_PASSWORD"' in outer
-    assert '-e ISTARA_TEST_ADMIN_PASSWORD="$ISTARA_ADMIN_PASSWORD"' in outer
+    assert '--env-file "$RUNNER_ENV_FILE"' in outer
+    assert 'mktemp' in outer
+    assert 'chmod 600 "$RUNNER_ENV_FILE"' in outer
+    assert '-e ADMIN_PASSWORD="$ISTARA_ADMIN_PASSWORD"' not in outer
+    assert '-e ISTARA_TEST_ADMIN_PASSWORD="$ISTARA_ADMIN_PASSWORD"' not in outer
 
 
 def test_remote_runner_bounds_live_chat_waits_without_disabling_long_horizon():
