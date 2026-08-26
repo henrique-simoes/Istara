@@ -8,8 +8,8 @@ phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal ac
 stage: S2-execute
 status: in-progress
 blocked_on: null
-last: { agent: gpt-5-codex, at: 2026-08-26T17:05:00Z, ledger: L-162 }
-next_action: "Refresh the detached worktree to c8728956, run one final provenance/secret-safe Docker comparison, and verify run metadata plus process-list hygiene before teardown."
+last: { agent: gpt-5-codex, at: 2026-08-26T17:10:00Z, ledger: L-163 }
+next_action: "Refresh the detached worktree to e88a532b, run one final provenance/secret-safe Docker comparison, and verify run metadata plus process-list hygiene before teardown."
 ```
 
 ## Plan overview / roadmap
@@ -3514,3 +3514,19 @@ three-model ensemble and Research Spine proof remain separate open gates.
 Next: commit and push the script/test/ledger fix, refresh the detached Mac Studio worktree,
 rebuild if the source image changed, and rerun exactly one bounded Docker comparison. Preserve
 its scorecard even when the two-arm harness exits with blockers.
+
+### L-163 | 2026-08-26T17:10:00Z | S4-ship/S2-execute | gpt-5-codex | receipt transported; final retake pinned to e88a532b
+Did: Committed and pushed the L-162 deterministic/live disposition plus the generated feature-site
+manifest as `e88a532b` to both local `testing` and `origin/testing`. The branch is now the exact
+source of truth for the final Docker retake. No application/model/ensemble behavior was changed
+by this receipt; the remaining work is verification and explicit external-provider/donor closure.
+
+Final retake contract: refresh only the detached clean Mac Studio worktree to `e88a532b`; keep the
+owner's dirty `~/istara-testing` checkout untouched; use Docker Desktop/Compose and the runner's
+mode-600 env-file path; run exactly one bounded legacy+Pi comparison; capture each arm's
+`run-metadata.json`, exact source commit/snapshot, and a boolean-only process-list secret check;
+then tear down testing containers/volume/network with the authorized Docker cleanup. Any 402,
+zero-rater, zero-donor, absent human approval, or missing three-model evidence remains a blocker,
+not a model-quality result.
+Next: execute that retake and append its exact disposition as L-164, then append the teardown
+receipt and remaining provider/donor implementation plan before closing this goal.
