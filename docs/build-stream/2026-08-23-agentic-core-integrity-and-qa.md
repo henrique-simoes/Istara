@@ -8,8 +8,8 @@ phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal ac
 stage: S2-execute
 status: in-progress
 blocked_on: null
-last: { agent: gpt-5-codex, at: 2026-08-26T15:18:00Z, ledger: L-154 }
-next_action: "Refresh the clean worktree to bf5504d4, start the rebuilt Compose stack through Docker, and capture health/listener/log evidence before any benchmark request."
+last: { agent: gpt-5-codex, at: 2026-08-26T15:22:00Z, ledger: L-155 }
+next_action: "Refresh the clean worktree to e31ee276, start the rebuilt Compose stack through Docker, and capture health/listener/log evidence before any benchmark request."
 ```
 
 ## Plan overview / roadmap
@@ -3318,3 +3318,21 @@ digests for any comparable retake.
 Next: append the startup checkpoint, refresh the detached worktree to the latest pushed ledger
 SHA, run `docker compose up -d --wait`, and record health, listeners, effective env provenance,
 and logs before invoking `scripts/runner/docker-run.sh`.
+
+### L-155 | 2026-08-26T15:22:00Z | S2-execute | gpt-5-codex | container startup checkpoint after successful build
+Did: Transported the successful image-build receipt as commit `e31ee276` to `origin/testing`.
+The next operation is a fresh Compose startup from the detached clean worktree, with the old
+project already torn down and the Postgres service configured for ephemeral test state. Startup
+will use Docker Compose only and will not invoke a host runtime, package manager, model server,
+or interactive application session.
+
+Startup evidence contract: record the exact detached source SHA, container IDs, image digests,
+health status, exposed listener mappings, Compose project/network/volume inventory, and bounded
+service logs. Do not print deploy secrets or infer readiness from `docker ps` alone; each service
+must have a passing health/readiness signal or the gate remains open. This gate is operational
+only and cannot substitute for PI Model Management route checks or three-donor Research Spine
+evidence.
+
+Next: refresh `~/istara-testing-clean-6ce9374a` to `origin/testing`, execute
+`docker compose up -d --wait`, capture health/listener/log receipts, and checkpoint before the
+two-engine runner or any live request.
