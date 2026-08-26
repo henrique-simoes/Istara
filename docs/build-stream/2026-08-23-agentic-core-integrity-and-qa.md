@@ -3680,3 +3680,14 @@ owner-managed dirty Mac Studio checkout. The external audit file remains intenti
 Git and contains F-R9-29 plus the still-open live provider/donor blocker.
 Next: no further local code change is justified without an authorized reachable model provider
 and three Compose-owned donor routes; resume from this ledger when those external gates are ready.
+
+### L-174 | 2026-08-26T18:10:00Z | S4-ship | gpt-5-codex | audit dispositions reconciled for runner mitigations
+Did: Corrected the external audit’s stale “pending retest” wording for F-R9-24/F-R9-25 with a
+new F-R9-30 disposition. The retained final Docker evidence proves the post-fix process-list
+check (`PASSWORD_ARG_PRESENT=0`, `RUNNER_ACTIVE=0`) and both-arm source commit/snapshot
+provenance (`PROVENANCE_OK=true`, `container_only=True`, `host_dependencies_installed=False`).
+The historical credential exposure remains a rotation recommendation before non-test reuse; no
+owner-managed `.env.deploy` file was changed. This is documentation reconciliation only and does
+not alter the still-open provider/three-donor Research Spine acceptance gate.
+Next: hold the goal open for the external provider and donor topology handoff; no further local
+mutation is warranted until those inputs are available.
