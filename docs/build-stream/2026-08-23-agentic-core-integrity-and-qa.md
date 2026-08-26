@@ -8,8 +8,8 @@ phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal ac
 stage: S2-execute
 status: in-progress
 blocked_on: null
-last: { agent: gpt-5-codex, at: 2026-08-26T15:56:00Z, ledger: L-183 }
-next_action: "Obtain owner-authorized reachable provider credentials and three Compose-owned donor routes, then run the terminal Docker-only Research Spine retake; local code and testing refs are reconciled."
+last: { agent: gpt-5-codex, at: 2026-08-26T16:10:00Z, ledger: L-184 }
+next_action: "Run the broader deterministic matrix and Compass Forge after-gate for the acceptance-profile change; then commit/push and await owner-authorized provider credentials plus three Compose-owned donor routes for the terminal Docker-only retake."
 ```
 
 ## Plan overview / roadmap
@@ -3869,3 +3869,49 @@ with three distinct served model routes and three project-scoped donation routes
 fail-closed blockers), execute both engine selections through PI Model Management, and capture
 route IDs, atomic code applications, Fleiss/kappa, Krippendorff/alpha, reconciliation, human
 approval, Petals consent/health/revoke, and cleanup evidence from Docker only.
+
+### L-184 | 2026-08-26T16:10:00Z | S2-execute | gpt-5-codex | provider/Petals/combined acceptance profiles implemented
+Did: Added an explicit `provider`, `petals`, or `combined` acceptance profile to the real-user
+benchmark. `scoreRun` now emits an `acceptance_gates` object with independent selected/status/
+verified fields for provider-plane Research Spine validity, Petals donation interoperability,
+and their conjunction. Markdown scorecards include the same table; `not_selected` and `not_run`
+are distinct from `blocked` and `verified`. The runner defaults provider-only runs to coding
+validation without donation and Petals-only/combined runs to donation, while explicit diagnostic
+overrides remain visible in the gate status. The Docker wrapper validates and forwards the
+profile and no longer forces donation for a provider-only run.
+
+Tests first failed because `acceptanceGateStatus` did not exist (expected red phase), then passed
+after implementation. Focused scoring tests pass `11/11`; Docker wrapper contract tests pass
+`15/15`; `node --check tests/real_user_benchmark/run.mjs`, JSON parsing, `bash -n`, and
+`git diff --check` pass. Plan-only runs for all three profiles generated scorecards showing the
+expected independent gate states without starting services or loading models. `/Users/user/Desktop/testing.md`
+now contains F-R9-34 documenting deterministic closure and the still-open live evidence gate.
+
+Still open: run the broader deterministic matrix and Compass Forge before/after gate, commit and
+push the five intended profile files plus this ledger, then obtain owner-authorized reachable
+provider credentials and three Compose-owned donor routes for the terminal Docker-only retake.
+The live run must exercise both Istara and PI engine selections through PI Model Management,
+demonstrate three independent source-grounded coders with Fleiss/Krippendorff metrics,
+reconciliation and human approval, separately demonstrate Petals slash-string consent/health/
+revoke and project-scoped usage, and only then claim the combined ensemble gate.
+
+### L-185 | 2026-08-26T16:20:00Z | S3-review | gpt-5-codex | deterministic acceptance-profile gates green
+Did: Ran the full bounded deterministic matrix after the profile change: `927 passed, 5 skipped`
+in `149.78s`. The real-user benchmark `npm run check` passed `61/61`, including the new
+provider/Petals/combined scorecard fixtures, three-model Research Spine coding/reliability/
+reconciliation contracts, Docker-only refusal and provenance checks. The static Docker runner
+contract passed `15/15`; `bash -n scripts/runner/docker-run.sh`, Node syntax checks, registry
+JSON parsing, and `git diff --check` passed. Feature docs regenerated with `seeded 0`, `generated
+224`, and `86` checks passing.
+
+Compass Forge native `gate after` record `75` reports `comparison.new_issues=[]`, zero file and
+large-file deltas, and no new forbidden dependencies, Python import cycles, missing paths,
+unexpected large files, security findings, or taint findings. The current gate still reports the
+same inherited complexity/route-type/secret-flow warnings; no new warning was introduced by this
+change. Plan-only profile probes generated provider, Petals, and combined scorecards without
+starting any service or model. `/Users/user/Desktop/testing.md` now contains F-R9-34 recording
+deterministic closure of F-R9-33 and the live evidence blocker.
+
+Next: commit and push the exact profile/runner/docs/test files, verify local `testing` equals
+`origin/testing`, then remain blocked only on the owner-authorized reachable provider credential
+and three Compose-owned donor routes needed for the terminal Mac Studio Docker-only retake.

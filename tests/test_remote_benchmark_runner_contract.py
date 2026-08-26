@@ -115,8 +115,11 @@ def test_remote_runner_bounds_live_research_scope_without_disabling_three_model_
 def test_remote_runner_requires_compute_donation_by_default_and_forwards_topology_inputs():
     outer = (ROOT / "scripts/runner/docker-run.sh").read_text(encoding="utf-8")
 
-    assert 'ISTARA_BENCHMARK_REQUIRE_COMPUTE_DONATION="${ISTARA_BENCHMARK_REQUIRE_COMPUTE_DONATION:-1}"' in outer
-    assert "ISTARA_BENCHMARK_REQUIRE_COMPUTE_DONATION=0" not in outer
+    assert 'ISTARA_BENCHMARK_ACCEPTANCE_PROFILE="${ISTARA_BENCHMARK_ACCEPTANCE_PROFILE:-combined}"' in outer
+    assert 'provider) ISTARA_BENCHMARK_REQUIRE_COMPUTE_DONATION=0' in outer
+    assert 'petals|combined) ISTARA_BENCHMARK_REQUIRE_COMPUTE_DONATION=1' in outer
+    assert 'if [[ -z "${ISTARA_BENCHMARK_REQUIRE_COMPUTE_DONATION:-}" ]]' in outer
+    assert '-e ISTARA_BENCHMARK_ACCEPTANCE_PROFILE="$ISTARA_BENCHMARK_ACCEPTANCE_PROFILE"' in outer
     assert '-e ISTARA_BENCHMARK_REQUIRE_COMPUTE_DONATION="$ISTARA_BENCHMARK_REQUIRE_COMPUTE_DONATION"' in outer
     assert 'ISTARA_BENCHMARK_START_CLIENT_SANDBOXES="${ISTARA_BENCHMARK_START_CLIENT_SANDBOXES:-$ISTARA_BENCHMARK_REQUIRE_COMPUTE_DONATION}"' in outer
     assert "ISTARA_BENCHMARK_DONOR_" in outer

@@ -27,6 +27,24 @@ npm --prefix tests/real_user_benchmark run probe
 
 This probe now expects a donated compute node and live chat output. For harness-only debugging against an app with no model connected, add `ISTARA_BENCHMARK_REQUIRE_COMPUTE_DONATION=0 ISTARA_BENCHMARK_REQUIRE_LIVE_CHAT=0`.
 
+### Acceptance profiles
+
+Live acceptance is explicit about which evidence plane is under test. The
+default `ISTARA_BENCHMARK_ACCEPTANCE_PROFILE=combined` selects both gates and
+only passes when the provider-plane Research Spine validation and Petals
+donation interoperability evidence are present in the same run. Use
+`ISTARA_BENCHMARK_ACCEPTANCE_PROFILE=provider` for a provider-only retake
+(three independent model coders, Fleiss' kappa with the configured companion
+reliability metric, source grounding, reconciliation, and promotion evidence),
+or `ISTARA_BENCHMARK_ACCEPTANCE_PROFILE=petals` for a donation-only retake
+(containerized relay registration, distinct donor routes, and served donated
+requests). A scorecard records each gate as `verified`, `blocked`, `not_run`,
+or `not_selected`; a passing Petals gate is never reported as Research Spine
+validity. Explicit `ISTARA_BENCHMARK_RUN_CODING_VALIDATION` and
+`ISTARA_BENCHMARK_REQUIRE_COMPUTE_DONATION` values can narrow a diagnostic run,
+but a comparison claim should use the selected profile's defaults and the
+combined profile for the final interoperability assertion.
+
 Run a deeper bounded probe for video material and Research Spine evidence:
 
 ```bash

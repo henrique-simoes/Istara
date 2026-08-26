@@ -4,6 +4,24 @@
   "purpose": "Longitudinal, human-in-the-loop UX research benchmark that complements deterministic Istara scenario, eval, security, and long-horizon benchmark suites.",
   "non_duplication_policy": "Do not re-run or re-implement classical deterministic studies from tests/simulation, tests/evals, tests/benchmarks, or scripts/security_benchmark.py inside this benchmark. Treat those suites as baseline evidence. This benchmark should test realistic cross-feature user behavior, longitudinal usefulness, integration ergonomics, compute donation, and human review quality.",
   "default_run_contract": {
+    "acceptance_profile": "combined",
+    "acceptance_profiles": {
+      "provider": {
+        "selected_gates": ["provider_research_spine"],
+        "requires": "Three independent provider model coders with source-grounded atomic coding, Fleiss' kappa plus the configured companion reliability metric, reconciliation, and accepted promotion evidence.",
+        "does_not_claim": "Petals donation interoperability or combined engine/donation readiness."
+      },
+      "petals": {
+        "selected_gates": ["petals_donation_interoperability"],
+        "requires": "Docker-contained donor relay registration, distinct donor routes, and served donated requests with project-scoped counters.",
+        "does_not_claim": "Provider-plane Research Spine validity, coding reliability, or reconciliation."
+      },
+      "combined": {
+        "selected_gates": ["provider_research_spine", "petals_donation_interoperability"],
+        "requires": "Both provider and Petals gates verified in the same run; the combined gate remains blocked when either plane is absent.",
+        "default": true
+      }
+    },
     "non_plan_runs_require_compute_donation": true,
     "non_plan_runs_require_non_empty_live_chat": true,
     "force_donated_chat_when_compute_required": false,

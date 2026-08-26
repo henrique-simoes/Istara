@@ -18,6 +18,61 @@ const RUBRIC = [
 ];
 
 const REPRESENTATIVE_CORPUS_DOCUMENTS = 120;
+const ACCEPTANCE_PROFILES = new Set(["provider", "petals", "combined"]);
+
+export function normalizeAcceptanceProfile(value = "combined") {
+  const normalized = String(value || "combined").trim().toLowerCase();
+  return ACCEPTANCE_PROFILES.has(normalized) ? normalized : "combined";
+}
+
+/**
+ * Report which validity gates were selected and what evidence they reached.
+ *
+ * Provider validity is the Research Spine path (independent model coding,
+ * reliability, reconciliation, and promotion). Petals validity is the
+ * donated-compute/relay interoperability path. They are deliberately
+ * reported separately so a passing donation relay cannot masquerade as
+ * Research Spine evidence, or vice versa.
+ */
+export function acceptanceGateStatus({
+  profile = "combined",
+  codingValidationEnabled = false,
+  requireComputeDonation = false,
+  featureResults = {},
+} = {}) {
+  const normalizedProfile = normalizeAcceptanceProfile(profile);
+  const providerSelected = normalizedProfile !== "petals";
+  const petalsSelected = normalizedProfile !== "provider";
+  const providerEnabled = providerSelected && Boolean(codingValidationEnabled);
+  const petalsEnabled = petalsSelected && Boolean(requireComputeDonation);
+  const providerVerified = providerEnabled && Boolean(featureResults.codingValidation);
+  const petalsVerified = petalsEnabled && Boolean(featureResults.computeDonation);
+  const gate = (selected, enabled, verified) => ({
+    selected,
+    status: !selected ? "not_selected" : !enabled ? "not_run" : verified ? "verified" : "blocked",
+    verified: Boolean(verified),
+  });
+  const combinedSelected = normalizedProfile === "combined";
+  const combinedVerified = combinedSelected && providerVerified && petalsVerified;
+  const combinedStatus = !combinedSelected
+    ? "not_selected"
+    : combinedVerified
+      ? "verified"
+      : !providerEnabled && !petalsEnabled
+        ? "not_run"
+        : "blocked";
+
+  return {
+    profile: normalizedProfile,
+    provider: gate(providerSelected, providerEnabled, providerVerified),
+    petals: gate(petalsSelected, petalsEnabled, petalsVerified),
+    combined: {
+      selected: combinedSelected,
+      status: combinedStatus,
+      verified: combinedVerified,
+    },
+  };
+}
 
 export function benchmarkExitCode({ mode, blockers = [] }) {
   if (mode === "plan-only") return 0;
@@ -54,7 +109,7 @@ export function liveAcceptanceBlockers({
   return blockers;
 }
 
-export function scoreRun({ mode, metrics, integrationMatrix = [], blockers = [], completedTasks = 0, chatTurns = 0, uploadedDocuments = 0, sandbox = {}, featureResults = {} }) {
+export function scoreRun({ mode, metrics, integrationMatrix = [], blockers = [], completedTasks = 0, chatTurns = 0, uploadedDocuments = 0, sandbox = {}, featureResults = {}, acceptanceProfile = "combined", codingValidationEnabled = false, requireComputeDonation = false }) {
   const requiredIntegrations = integrationMatrix.filter((item) => item.required_success !== false);
   const integrationScores = requiredIntegrations.map((item) => {
     switch (item.classification) {
@@ -127,6 +182,12 @@ export function scoreRun({ mode, metrics, integrationMatrix = [], blockers = [],
   const researchSpineStructurePresent = Boolean(featureResults.researchSpineTraceability);
   const researchSpineValidationVerified = Boolean(featureResults.codingValidation);
   const researchSpineDonorRoutesVerified = Boolean(featureResults.multiModelResearchSpineValidation);
+  const acceptanceGates = acceptanceGateStatus({
+    profile: acceptanceProfile,
+    codingValidationEnabled,
+    requireComputeDonation,
+    featureResults,
+  });
   return {
     total,
     max: 100,
@@ -148,6 +209,8 @@ export function scoreRun({ mode, metrics, integrationMatrix = [], blockers = [],
     research_spine_validation_verified: researchSpineValidationVerified,
     research_spine_donor_routes_verified: researchSpineDonorRoutesVerified,
     research_spine_traceability_verified: researchSpineStructurePresent,
+    acceptance_profile: acceptanceGates.profile,
+    acceptance_gates: acceptanceGates,
     telemetry_evidence_verified: Boolean(featureResults.telemetryEvidence),
     reasoning_bank_evidence_verified: Boolean(featureResults.reasoningBankEvidence),
     memento_skill_evidence_verified: Boolean(featureResults.mementoSkillEvidence),
@@ -175,6 +238,14 @@ export function writeScorecardMarkdown(scorecard) {
     "## Scorecard",
     "",
     `Overall score: ${scorecard.total}/100`,
+    "",
+    `Acceptance profile: ${scorecard.acceptance_profile}`,
+    "",
+    "| Acceptance gate | Selected | Status | Verified |",
+    "| --- | ---: | --- | ---: |",
+    `| provider Research Spine | ${scorecard.acceptance_gates.provider.selected ? "yes" : "no"} | ${scorecard.acceptance_gates.provider.status} | ${scorecard.acceptance_gates.provider.verified ? "yes" : "no"} |`,
+    `| Petals donation interoperability | ${scorecard.acceptance_gates.petals.selected ? "yes" : "no"} | ${scorecard.acceptance_gates.petals.status} | ${scorecard.acceptance_gates.petals.verified ? "yes" : "no"} |`,
+    `| combined | ${scorecard.acceptance_gates.combined.selected ? "yes" : "no"} | ${scorecard.acceptance_gates.combined.status} | ${scorecard.acceptance_gates.combined.verified ? "yes" : "no"} |`,
     "",
     "| Dimension | Score | Max |",
     "| --- | ---: | ---: |",

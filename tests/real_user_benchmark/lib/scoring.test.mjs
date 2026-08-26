@@ -1,7 +1,12 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { benchmarkExitCode, liveAcceptanceBlockers, scoreRun } from "./scoring.mjs";
+import {
+  acceptanceGateStatus,
+  benchmarkExitCode,
+  liveAcceptanceBlockers,
+  scoreRun,
+} from "./scoring.mjs";
 
 test("a live benchmark with blockers exits nonzero", () => {
   assert.equal(benchmarkExitCode({ mode: "probe", blockers: ["research coding blocked"] }), 1);
@@ -134,4 +139,51 @@ test("scorecard cannot treat structural traceability or a weak donor contract as
   assert.equal(scorecard.research_spine_traceability_verified, true);
   assert.equal(scorecard.research_spine_validation_verified, false);
   assert.equal(scorecard.research_spine_donor_routes_verified, false);
+});
+
+test("provider acceptance profile verifies coding without requiring Petals donation", () => {
+  const gates = acceptanceGateStatus({
+    profile: "provider",
+    codingValidationEnabled: true,
+    requireComputeDonation: false,
+    featureResults: { codingValidation: true, computeDonation: false },
+  });
+
+  assert.equal(gates.profile, "provider");
+  assert.deepEqual(gates.provider, { selected: true, status: "verified", verified: true });
+  assert.deepEqual(gates.petals, { selected: false, status: "not_selected", verified: false });
+  assert.deepEqual(gates.combined, { selected: false, status: "not_selected", verified: false });
+});
+
+test("Petals acceptance profile verifies donation without claiming provider validity", () => {
+  const gates = acceptanceGateStatus({
+    profile: "petals",
+    codingValidationEnabled: false,
+    requireComputeDonation: true,
+    featureResults: { codingValidation: false, computeDonation: true },
+  });
+
+  assert.equal(gates.profile, "petals");
+  assert.deepEqual(gates.provider, { selected: false, status: "not_selected", verified: false });
+  assert.deepEqual(gates.petals, { selected: true, status: "verified", verified: true });
+  assert.deepEqual(gates.combined, { selected: false, status: "not_selected", verified: false });
+});
+
+test("combined acceptance profile requires both provider and Petals evidence", () => {
+  const scorecard = scoreRun({
+    mode: "probe",
+    acceptanceProfile: "combined",
+    codingValidationEnabled: true,
+    requireComputeDonation: true,
+    featureResults: { codingValidation: true, computeDonation: false },
+  });
+
+  assert.equal(scorecard.acceptance_profile, "combined");
+  assert.equal(scorecard.acceptance_gates.provider.status, "verified");
+  assert.equal(scorecard.acceptance_gates.petals.status, "blocked");
+  assert.deepEqual(scorecard.acceptance_gates.combined, {
+    selected: true,
+    status: "blocked",
+    verified: false,
+  });
 });

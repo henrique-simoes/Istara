@@ -28,6 +28,7 @@ import {
 import {
   benchmarkExitCode,
   liveAcceptanceBlockers,
+  normalizeAcceptanceProfile,
   scoreRun,
   writeScorecardMarkdown,
 } from "./lib/scoring.mjs";
@@ -502,6 +503,16 @@ const mode = hasFlag("plan-only")
   ? "plan-only"
   : arg("mode", process.env.ISTARA_BENCHMARK_MODE || "probe");
 const runId = arg("run-id", makeRunId());
+const acceptanceProfileRaw = String(
+  arg("acceptance-profile", process.env.ISTARA_BENCHMARK_ACCEPTANCE_PROFILE || "combined") || "combined",
+).trim().toLowerCase();
+const acceptanceProfile = normalizeAcceptanceProfile(acceptanceProfileRaw);
+if (acceptanceProfileRaw !== acceptanceProfile) {
+  console.error(`Invalid --acceptance-profile=${acceptanceProfileRaw}; expected one of provider|petals|combined.`);
+  process.exit(2);
+}
+const providerAcceptanceSelected = acceptanceProfile !== "petals";
+const petalsAcceptanceSelected = acceptanceProfile !== "provider";
 
 // ── Benchmark engine plumbing (benchmark task B0-2) ────────────────────────
 // `--engine pi|legacy|both` selects the AgenticDispatcher engine per request via
@@ -535,14 +546,17 @@ const externalConnectionStringMode = boolEnv("ISTARA_BENCHMARK_EXTERNAL_CONNECTI
       || process.env.ISTARA_BENCHMARK_USER_INVITE_CONNECTION_STRINGS
       || process.env.ISTARA_BENCHMARK_USER_INVITE_CONNECTION_STRING,
   );
+const requireComputeDonation = boolEnv(
+  "ISTARA_BENCHMARK_REQUIRE_COMPUTE_DONATION",
+  petalsAcceptanceSelected && mode !== "plan-only",
+);
 const startClientSandboxes = boolEnv(
   "ISTARA_BENCHMARK_START_CLIENT_SANDBOXES",
-  startSandbox || externalConnectionStringMode || (mode !== "plan-only" && boolEnv("ISTARA_BENCHMARK_REQUIRE_COMPUTE_DONATION", true)),
+  startSandbox || externalConnectionStringMode || (mode !== "plan-only" && requireComputeDonation),
 );
 let runtimeResearcherCount = intArg("researcher-count", 1);
 const backendEnv = loadBackendEnv();
 const liveLlmProfile = liveLlmProfileFromTestingContract();
-const requireComputeDonation = boolEnv("ISTARA_BENCHMARK_REQUIRE_COMPUTE_DONATION", mode !== "plan-only");
 const requireLiveChat = boolEnv("ISTARA_BENCHMARK_REQUIRE_LIVE_CHAT", requireComputeDonation || mode === "full");
 const forceDonatedChat = boolEnv("ISTARA_BENCHMARK_FORCE_DONATED_CHAT", false);
 const defaultApiBase = startSandbox && !skipSandbox ? "http://localhost:18000" : "http://localhost:8000";
@@ -859,7 +873,10 @@ const serverStrictAutoRouting = (
 const maxChatTurns = nonNegativeIntArg("max-chat-turns", mode === "full" ? 100 : mode === "probe" ? 8 : 0);
 const maxTasks = nonNegativeIntArg("max-tasks", mode === "full" ? 55 : mode === "probe" ? 8 : 0);
 const maxUploads = nonNegativeIntArg("max-uploads", mode === "full" ? 140 : mode === "probe" ? 120 : 0);
-const codingValidationEnabled = boolEnv("ISTARA_BENCHMARK_RUN_CODING_VALIDATION", mode !== "plan-only");
+const codingValidationEnabled = boolEnv(
+  "ISTARA_BENCHMARK_RUN_CODING_VALIDATION",
+  providerAcceptanceSelected && mode !== "plan-only",
+);
 const codingValidationLimit = nonNegativeIntArg("coding-limit", mode === "full" ? 50 : mode === "probe" ? 12 : 0);
 const selfImprovementProbeEnabled = boolEnv("ISTARA_BENCHMARK_SELF_IMPROVEMENT_PROBE", mode !== "plan-only");
 const startAutoresearchExperiment = boolEnv("ISTARA_BENCHMARK_START_AUTORESEARCH_EXPERIMENT", false);
@@ -910,6 +927,9 @@ const benchmarkProvenance = buildBenchmarkProvenance({
 logger.writeJson("run-metadata.json", {
   run_id: runId,
   mode,
+  acceptance_profile: acceptanceProfile,
+  provider_acceptance_selected: providerAcceptanceSelected,
+  petals_acceptance_selected: petalsAcceptanceSelected,
   started_at: new Date().toISOString(),
   cwd: process.cwd(),
   node: process.version,
@@ -934,6 +954,9 @@ for (const warning of startupConfigWarnings) {
   logger.action("config.warning", warning);
 }
 logger.action("llm.config.sources", {
+  acceptance_profile: acceptanceProfile,
+  provider_acceptance_selected: providerAcceptanceSelected,
+  petals_acceptance_selected: petalsAcceptanceSelected,
   relay_provider: relayLlmProvider,
   relay_provider_source: relayLlmProviderSource,
   live_base_url_configured: Boolean(liveLlmProfile.baseUrl),
@@ -1041,6 +1064,15 @@ const extraSensitiveLogValues = new Set();
 let relayClientImageBuilt = false;
 let clientDockerReady = null;
 
+function buildScorecard(input) {
+  return scoreRun({
+    ...input,
+    acceptanceProfile,
+    codingValidationEnabled,
+    requireComputeDonation,
+  });
+}
+
 function failClosedForHostManagedThreeModelRun() {
   if (!hostManagedThreeModelRun || mode === "plan-only") return false;
   const message = "Docker-only benchmark policy forbids the host-managed three-model topology; run the Docker wrapper against the Compose stack instead.";
@@ -1064,7 +1096,7 @@ function failClosedForHostManagedThreeModelRun() {
     evidence,
   });
   blockers.push(message);
-  const scorecard = scoreRun({
+  const scorecard = buildScorecard({
     mode,
     metrics: logger.metrics,
     integrationMatrix: [],
@@ -4267,6 +4299,9 @@ function writePlanSnapshot(corpusSummary) {
     requested_full_chat_turns: 100,
     requested_completed_tasks: 50,
     requested_researcher_client_count: runtimeResearcherCount,
+    acceptance_profile: acceptanceProfile,
+    provider_acceptance_selected: providerAcceptanceSelected,
+    petals_acceptance_selected: petalsAcceptanceSelected,
     requested_compute_donor_count: donorProfiles.filter((profile) => profile.required).length,
     compute_donor_profiles: donorProfiles.map(summarizeDonorProfile),
     generated_chat_turn_templates: buildCollaborativeChatTurns({ total: 108 }),
@@ -4284,6 +4319,9 @@ async function main() {
   captureColimaStorageSnapshot("run-start", { recordIssue: true });
   logger.action("benchmark.start", {
     mode,
+    acceptance_profile: acceptanceProfile,
+    provider_acceptance_selected: providerAcceptanceSelected,
+    petals_acceptance_selected: petalsAcceptanceSelected,
     apiBase,
     frontendUrl,
     maxChatTurns,
@@ -4344,7 +4382,7 @@ async function main() {
       console.log(`[plan-only] engine=${engine} -> ${header}`);
     }
     blockers.push("Plan-only mode did not attempt live services.");
-    const scorecard = scoreRun({
+    const scorecard = buildScorecard({
       mode,
       metrics: { corpusDocuments: corpus.document_count },
       integrationMatrix: [],
@@ -4381,7 +4419,7 @@ async function main() {
       title: "Istara API unreachable",
       detail: health.error || `status=${health.status}`,
     });
-    const scorecard = scoreRun({
+    const scorecard = buildScorecard({
       mode,
       metrics: { corpusDocuments: corpus.document_count },
       integrationMatrix: [],
@@ -4712,7 +4750,7 @@ async function main() {
   }
 
   captureColimaStorageSnapshot("before-scorecard", { recordIssue: true });
-  const scorecard = scoreRun({
+  const scorecard = buildScorecard({
     mode,
     metrics: { ...logger.metrics, corpusDocuments: corpus.document_count },
     integrationMatrix,
@@ -4848,7 +4886,7 @@ main().catch((error) => {
     title: "Benchmark crashed",
     detail: error.stack || error.message,
   });
-  const scorecard = scoreRun({
+  const scorecard = buildScorecard({
     mode,
     metrics: logger.metrics,
     integrationMatrix: [],
