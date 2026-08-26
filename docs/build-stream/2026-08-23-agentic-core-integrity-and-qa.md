@@ -8,7 +8,7 @@ phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal ac
 stage: S2-execute
 status: in-progress
 blocked_on: null
-last: { agent: gpt-5-codex, at: 2026-08-26T22:26:11Z, ledger: L-199 }
+last: { agent: gpt-5-codex, at: 2026-08-26T22:27:31Z, ledger: L-200 }
 next_action: "Obtain owner-authorized provider credentials and three Compose-owned donor routes, run the terminal Docker-only acceptance retake for provider, Petals, combined, legacy, and pi profiles, then attach complete runtime evidence or leave the external gate open."
 ```
 
@@ -4320,3 +4320,22 @@ Next: resume only when owner-authorized provider credit and three Compose-owned 
 available. Use the exact pushed SHA and preserve raw source-span, three-rater, numeric Fleiss /
 Krippendorff, grounding, reconciliation, human-Done, route/usage, long-horizon, and cleanup
 artifacts before any Research Spine or ensemble acceptance claim.
+
+### L-200 | 2026-08-26T22:27:31Z | S3-acceptance | gpt-5-codex | CF-24 evidence and task closure
+
+Did: Attached Compass Forge evidence to CF-24 for the focused W1/W7/donor test run, feature-doc
+generation/check, after-gate record `87`, and the manager-authority review. `finish-task CF-24`
+accepted the task with four evidence records and status `done`. CF-SPEC-4 remains `tasked` with
+its validation/acceptance tasks open; it is not represented as fully accepted while the live
+provider/Petals/combined gates remain unresolved.
+
+Evidence: Compass Forge `task evidence-list CF-24` shows evidence IDs 11–14, and
+`finish-task CF-24` returned `evidence_count: 4`, `status: done`. The code transport remains
+clean at pushed SHA `5b7811f65a018e77fae08309bddb0f4f98cf2610` on both `testing` and
+`origin/testing`; task-state recording does not alter the Git tree.
+
+Next: keep CF-SPEC-4 open until the remaining live validation tasks have Docker-only Mac Studio
+evidence: three genuinely distinct served model identities, shared raw evidence units,
+Fleiss/Krippendorff metrics, grounding, reconciliation, human-approved Done, route/usage,
+long-horizon, Petals donation, and cleanup. Do not mark the specification accepted from these
+local deterministic checks.
