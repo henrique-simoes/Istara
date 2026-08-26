@@ -8,7 +8,7 @@ phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal ac
 stage: S2-execute
 status: in-progress
 blocked_on: null
-last: { agent: gpt-5-codex, at: 2026-08-26T13:58:00Z, ledger: L-142 }
+last: { agent: gpt-5-codex, at: 2026-08-26T14:05:00Z, ledger: L-143 }
 next_action: "Obtain explicit owner handoff for the dirty Mac Studio checkout, then run a fresh Docker-only three-donor acceptance on cd1ad63c with complete Research Spine and provenance evidence; do not mutate the remote until that handoff exists."
 ```
 
@@ -3051,3 +3051,27 @@ Petals lifecycle, Research Spine positive/negative acceptance, browser paths, an
 provenance remain open, and the dirty Mac Studio checkout is intentionally untouched.
 Next: commit/push this ledger-only receipt, verify local/remote equality, then stop at the
 owner-gated Docker handoff rather than mutating or cleaning the remote checkout.
+
+### L-143 | 2026-08-26T14:05:00Z | S1-plan/S3-review | gpt-5-codex | remote preflight confirms stale dirty checkout
+Did: Performed a passive SSH preflight using the configured `macstudio` alias and explicit
+Docker client paths only. The remote `~/istara-testing` checkout is still on
+`1b9b6d6098dc4a420aff2cf570b9aa5b982b3949`, while this local `testing` and `origin/testing`
+are on `f09e3d1ba1c36620a033c5b6e7b585c15b2b74ea`. The remote status lists hundreds of tracked
+modifications and untracked deployment secrets/TLS, migrations, smoke scripts, provenance
+tests, and generated docs. No path was read for secret contents and no remote file was changed.
+
+Verification: `/usr/local/bin/docker ps` shows only the existing five `istara-test-*` services
+plus an unrelated healthy Plex container; the Istara services have been up about 38 hours.
+`/usr/local/bin/docker compose -p istara-testing config --quiet` exits 0, but this only proves
+Compose syntax. `pgrep`/`ps` found no active benchmark, marathon, or runner process. The exact
+remote state and safety implications are appended as external finding F-R9-21 in
+`/Users/user/Desktop/testing.md`.
+
+Result: the remote runtime is operationally healthy but stale and not evidence for the
+transported commit. The user’s request to make local and remote testing clean cannot be safely
+completed by this agent without owner authorization to classify the dirty checkout; resetting,
+pulling, deleting secrets, tearing down containers, or deleting branches now would risk another
+agent’s work and violate the no-destructive-action boundary. Local checkout remains clean and
+the testing refs remain exact.
+Next: commit/push this passive-preflight receipt, run the after gate, and hold until the owner
+names the remote dirty paths and authorizes the Docker-only retake/cleanup decision.
