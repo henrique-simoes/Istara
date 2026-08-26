@@ -8,8 +8,8 @@ phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal ac
 stage: S2-execute
 status: in-progress
 blocked_on: null
-last: { agent: gpt-5-codex, at: 2026-08-26T23:42:56Z, ledger: L-208 }
-next_action: "Run the terminal Docker-only provider/Petals/combined retake from pushed SHA 47bfeb4174ced61e64689793b660e78c3d81a9b5 in the isolated Mac Studio worktree when owner-authorized provider credit and three Compose-owned donor routes are available; keep the live gate open until its evidence is complete."
+last: { agent: gpt-5-codex, at: 2026-08-26T23:44:16Z, ledger: L-209 }
+next_action: "Run the terminal Docker-only provider/Petals/combined retake from implementation tip 7f82389c12389bfc0d81a50458a3fe9e0e8bd2a4 in the isolated Mac Studio worktree when owner-authorized provider credit and three Compose-owned donor routes are available; keep the live gate open until its evidence is complete."
 ```
 
 ## Plan overview / roadmap
@@ -4517,3 +4517,20 @@ three-rater, reliability, Petals, or Research Spine acceptance evidence.
 
 Next: commit and push this checkpoint, then wait for owner-authorized provider credit and three
 Compose-owned donor routes before running the live profiles from the isolated worktree only.
+
+### L-209 | 2026-08-26T23:44:16Z | S3-acceptance | gpt-5-codex | locally provable broader-spec tasks closed
+
+Did: Attached Compass Forge command evidence and finished CF-14, CF-16, CF-17, CF-18, and
+CF-19 for the broader CF-SPEC-2 request. These records cover impacted-file/contract review,
+unrelated-behavior preservation, verification-ledger recording, architecture gate accounting,
+and required Compass Forge relationship inspection. CF-13/CF-15/CF-20/CF-21 remain open because
+they require the still-missing live provider, three-model, Petals, and Research Spine outcome
+evidence; no acceptance shortcut was taken.
+
+Evidence: native Rust Compass Forge task records show CF-14, CF-16, CF-17, CF-18, and CF-19
+`done`, with command evidence IDs 25–29. The implementation tip used by the isolated Mac Studio
+worktree is `7f82389c12389bfc0d81a50458a3fe9e0e8bd2a4`; subsequent ledger-only commits must not
+be confused with runtime code changes.
+
+Next: commit and push this ledger checkpoint, verify branch parity, and keep the live gate open
+until owner-authorized provider credit and three Compose-owned donor routes are available.
