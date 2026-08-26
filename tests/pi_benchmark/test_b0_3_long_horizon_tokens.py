@@ -15,6 +15,7 @@ pytestmark = pytest.mark.benchmark
 # The runner module imports httpx at top level; skip cleanly if it is unavailable.
 httpx = pytest.importorskip("httpx")
 
+from tests.benchmarks import long_horizon_runner  # noqa: E402
 from tests.benchmarks.long_horizon_runner import extract_total_tokens  # noqa: E402
 
 
@@ -44,3 +45,60 @@ def test_camelcase_usage_is_read():
 
 def test_empty_stream_reports_no_tokens():
     assert extract_total_tokens([]) is None
+
+
+def test_tool_call_oracle_counts_canonical_events_only():
+    events = [
+        {"type": "tool_call", "tool": "create_task"},
+        {"type": "chunk", "content": "[Tool: create_task]"},
+        {"type": "tool_call", "tool": "create_task"},
+    ]
+    assert long_horizon_runner._tool_call_count(events) == 2
+
+
+def test_history_oracle_requires_two_complete_turns():
+    first = "first prompt"
+    second = "second prompt"
+    history = [
+        {"role": "user", "content": first},
+        {"role": "assistant", "content": "first answer"},
+        {"role": "user", "content": second},
+        {"role": "assistant", "content": "second answer"},
+    ]
+    long_horizon_runner._require_history_continuity(history, first, second)
+
+
+def test_history_oracle_rejects_missing_assistant_output():
+    with pytest.raises(long_horizon_runner.BenchmarkFailure, match="no assistant content"):
+        long_horizon_runner._require_history_continuity(
+            [
+                {"role": "user", "content": "first"},
+                {"role": "assistant", "content": ""},
+                {"role": "user", "content": "second"},
+                {"role": "assistant", "content": "answer"},
+            ],
+            "first",
+            "second",
+        )
+
+
+@pytest.mark.asyncio
+async def test_sse_oracle_requires_terminal_done_message_id():
+    response = httpx.Response(
+        200,
+        content=b'data: {"type":"chunk","content":"partial"}' + b"\n\n",
+    )
+    with pytest.raises(
+        long_horizon_runner.BenchmarkFailure,
+        match="without a persisted assistant message",
+    ):
+        await long_horizon_runner._consume_chat_stream(response, "test turn")
+
+
+@pytest.mark.asyncio
+async def test_main_returns_nonzero_for_benchmark_failure(monkeypatch):
+    async def fail():
+        raise long_horizon_runner.BenchmarkFailure("synthetic failure")
+
+    monkeypatch.setattr(long_horizon_runner, "_run_benchmark", fail)
+    assert await long_horizon_runner.main() == 1

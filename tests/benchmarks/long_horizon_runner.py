@@ -4,6 +4,7 @@ import os
 import time
 import json
 from pathlib import Path
+from typing import Any
 
 API_BASE = os.environ.get("ISTARA_API_URL", "http://localhost:8000")
 # Agentic core under test (CF-SPEC-1 Phase 5): "legacy", "pi", or unset for
@@ -14,6 +15,100 @@ ADMIN_PASSWORD_ENV_FILES = (
     ROOT / ".env.local",
     ROOT / "backend" / ".env.local",
 )
+
+
+class BenchmarkFailure(RuntimeError):
+    """A transport or semantic failure that must make the benchmark non-zero."""
+
+
+def _require_status(response: httpx.Response, operation: str, *expected: int) -> None:
+    """Fail closed when an API call is not one of its documented success statuses."""
+    accepted = expected or (200,)
+    if response.status_code not in accepted:
+        body = response.text[:500].replace("\n", " ")
+        raise BenchmarkFailure(
+            f"{operation} failed with HTTP {response.status_code}: {body or '<empty body>'}"
+        )
+
+
+def _json_payload(response: httpx.Response, operation: str) -> Any:
+    """Decode a successful API response, preserving the operation in failures."""
+    try:
+        return response.json()
+    except (ValueError, json.JSONDecodeError) as exc:
+        raise BenchmarkFailure(f"{operation} returned invalid JSON") from exc
+
+
+def _tool_call_count(events: list[dict]) -> int:
+    """Count canonical SSE tool-call events exactly once (never text markers)."""
+    return sum(1 for event in events if event.get("type") == "tool_call")
+
+
+def _require_session_id(payload: Any) -> str:
+    session_id = payload.get("id") if isinstance(payload, dict) else None
+    if not isinstance(session_id, str) or not session_id.strip():
+        raise BenchmarkFailure("session creation returned no session id")
+    return session_id
+
+
+def _require_history_continuity(history_payload: Any, first: str, second: str) -> None:
+    """Require the persisted transcript to contain both complete user/assistant turns."""
+    messages = history_payload if isinstance(history_payload, list) else []
+    if len(messages) < 4:
+        raise BenchmarkFailure(
+            f"chat history contains {len(messages)} messages; expected two persisted turns"
+        )
+    if not all(isinstance(message, dict) for message in messages[-4:]):
+        raise BenchmarkFailure("chat history contains a non-object message")
+    roles_and_content = [(m.get("role"), m.get("content")) for m in messages[-4:]]
+    expected = [("user", first), ("assistant", None), ("user", second), ("assistant", None)]
+    for index, ((role, content), (expected_role, expected_content)) in enumerate(
+        zip(roles_and_content, expected), start=1
+    ):
+        if role != expected_role or (
+            expected_content is not None and content != expected_content
+        ):
+            raise BenchmarkFailure(
+                f"chat history continuity mismatch at message {index}: "
+                f"got role={role!r} content={content!r}"
+            )
+        if expected_content is None and (
+            not isinstance(content, str) or not content.strip()
+        ):
+            raise BenchmarkFailure(f"chat history message {index} has no assistant content")
+
+
+async def _consume_chat_stream(response: httpx.Response, operation: str) -> list[dict]:
+    """Parse one chat SSE response and require a terminal successful done event."""
+    if response.status_code != 200:
+        body = (await response.aread()).decode(errors="replace")[:500].replace("\n", " ")
+        raise BenchmarkFailure(
+            f"{operation} failed with HTTP {response.status_code}: {body or '<empty body>'}"
+        )
+
+    events: list[dict] = []
+    async for line in response.aiter_lines():
+        if not line.startswith("data: "):
+            continue
+        data_str = line[6:]
+        if data_str == "[DONE]":
+            break
+        try:
+            event = json.loads(data_str)
+        except json.JSONDecodeError as exc:
+            raise BenchmarkFailure(f"{operation} emitted malformed SSE JSON") from exc
+        if not isinstance(event, dict):
+            raise BenchmarkFailure(f"{operation} emitted a non-object SSE event")
+        events.append(event)
+
+    errors = [event for event in events if event.get("type") in {"error", "aborted"}]
+    if errors:
+        detail = errors[-1].get("detail") or errors[-1].get("error") or errors[-1]
+        raise BenchmarkFailure(f"{operation} emitted terminal error: {detail}")
+    done_events = [event for event in events if event.get("type") == "done"]
+    if not done_events or not done_events[-1].get("message_id"):
+        raise BenchmarkFailure(f"{operation} ended without a persisted assistant message")
+    return events
 
 
 def _parse_admin_password(raw_line: str) -> str:
@@ -62,41 +157,55 @@ def extract_total_tokens(events: list[dict]) -> int | None:
     return total
 
 
-async def main():
+async def _run_benchmark() -> None:
     print("🚀 Starting Long-Horizon Orchestration Benchmark...")
-    
+
     # 1. Get Admin Token
     admin_pass = os.getenv("ADMIN_PASSWORD", "").strip()
     if not admin_pass:
         try:
             admin_pass = load_admin_password()
         except RuntimeError as exc:
-            print(f"❌ {exc}")
-            return
-        
+            raise BenchmarkFailure(str(exc)) from exc
+
     async with httpx.AsyncClient(timeout=300) as client:
         print("🔐 Authenticating...")
         login_res = await client.post(f"{API_BASE}/api/auth/login", json={"username": "admin", "password": admin_pass})
-        if login_res.status_code != 200:
-            print(f"❌ Auth failed: {login_res.text}")
-            return
-            
-        token = login_res.json().get("token") or login_res.json().get("access_token")
+        _require_status(login_res, "admin login")
+
+        login_payload = _json_payload(login_res, "admin login")
+        token = login_payload.get("token") or login_payload.get("access_token")
+        if not isinstance(token, str) or not token.strip():
+            raise BenchmarkFailure("admin login returned no access token")
         headers = {"Authorization": f"Bearer {token}"}
-        
+
         # 2. Create Project
         print("📁 Creating Project...")
         proj_res = await client.post(
-            f"{API_BASE}/api/projects", 
+            f"{API_BASE}/api/projects",
             json={
                 "name": "[BENCHMARK] Long-Horizon Stress Test",
                 "company_context": "Global HealthTech specializing in remote patient monitoring."
             },
             headers=headers
         )
-        project_id = proj_res.json()["id"]
+        _require_status(proj_res, "project creation", 200, 201)
+        project_payload = _json_payload(proj_res, "project creation")
+        project_id = project_payload.get("id") if isinstance(project_payload, dict) else None
+        if not isinstance(project_id, str) or not project_id.strip():
+            raise BenchmarkFailure("project creation returned no project id")
         print(f"✅ Project created: {project_id}")
-        
+
+        print("🧵 Creating a dedicated chat session...")
+        session_res = await client.post(
+            f"{API_BASE}/api/sessions",
+            json={"project_id": project_id, "title": "Long-Horizon Stress Test"},
+            headers=headers,
+        )
+        _require_status(session_res, "chat session creation", 200, 201)
+        session_id = _require_session_id(_json_payload(session_res, "chat session creation"))
+        print(f"✅ Chat session created: {session_id}")
+
         # 3. Upload Documents
         print("📄 Uploading Documents...")
         docs = [
@@ -106,12 +215,15 @@ async def main():
             ("survey_results.csv", "user_id,satisfaction,speed\n101,4,slow\n102,5,fast"),
             ("internal_spec.pdf", "Our current technical debt prevents sub-1s data hydration.")
         ]
-        
+
         for name, content in docs:
             files = {"file": (name, content.encode('utf-8'), "text/plain")}
-            await client.post(f"{API_BASE}/api/files/upload/{project_id}", files=files, headers=headers)
+            upload_res = await client.post(
+                f"{API_BASE}/api/files/upload/{project_id}", files=files, headers=headers
+            )
+            _require_status(upload_res, f"upload {name}", 200, 201, 202)
         print(f"✅ Uploaded {len(docs)} documents.")
-        
+
         # 4. Send Complex Chat Request
         print("\n💬 Sending Complex Long-Horizon Prompt...")
         prompt = (
@@ -120,87 +232,130 @@ async def main():
             "IMPORTANT: You MUST use the create_task tool IMMEDIATELY to create specific tasks for each step "
             "of your proposed research plan (e.g., 'Thematic Analysis', 'Journey Mapping') before you finish responding. Do not ask for permission."
         )
-        
+
         chat_req = {
             "project_id": project_id,
+            "session_id": session_id,
             "message": prompt
         }
 
         chat_headers = dict(headers)
         if ENGINE:
             chat_headers["x-istara-agent-engine"] = ENGINE
-        
+
         print("⏳ Waiting for SSE stream (this will log all agent actions & tool calls)...")
         print("-" * 50)
-        
+
         start_time = time.time()
-        tool_calls = 0
         stream_events: list[dict] = []
 
         async with client.stream("POST", f"{API_BASE}/api/chat", json=chat_req, headers=chat_headers) as response:
-            if response.status_code != 200:
-                body = await response.aread()
-                print(f"❌ Chat failed with status {response.status_code}: {body.decode()}")
-            else:
-                async for line in response.aiter_lines():
-                    if line.startswith("data: "):
-                        data_str = line[6:]
-                        if data_str == "[DONE]":
-                            break
-                        try:
-                            data = json.loads(data_str)
-                            stream_events.append(data)
-                            if "tool_calls" in data:
-                                for tc in data["tool_calls"]:
-                                    fn = tc.get("function", {})
-                                    name = fn.get("name", "unknown")
-                                    args = fn.get("arguments", "{}")
-                                    print(f"\n🛠️  [NATIVE TOOL CALL] {name}\n   Args: {args}")
-                                    tool_calls += 1
-                            elif "content" in data:
-                                content = data["content"]
-                                print(content, end="", flush=True)
-                                if "[Tool:" in content:
-                                    tool_calls += 1
-                        except json.JSONDecodeError:
-                            pass
+            stream_events = await _consume_chat_stream(response, "first long-horizon chat turn")
+            for event in stream_events:
+                if event.get("type") == "tool_call":
+                    print(
+                        f"\n🛠️  [TOOL CALL] {event.get('tool', 'unknown')}\n"
+                        f"   Args: {json.dumps(event.get('params', {}), sort_keys=True)}"
+                    )
+                elif event.get("type") == "chunk":
+                    print(event.get("content", ""), end="", flush=True)
 
         elapsed = time.time() - start_time
         # Token accounting comes from provider-reported usage (or the usage ledger),
         # never from a streamed-chunk count (benchmark task B0-3).
         total_tokens = extract_total_tokens(stream_events)
         tokens_label = total_tokens if total_tokens is not None else "n/a (see agentic usage ledger)"
+        first_tool_calls = _tool_call_count(stream_events)
+        if first_tool_calls < 1:
+            raise BenchmarkFailure(
+                "first long-horizon chat turn completed without an executed tool-call event"
+            )
         print("\n" + "-" * 50)
-        print(f"✅ Chat completed in {elapsed:.2f}s. Tool calls: {tool_calls}. Provider tokens: {tokens_label}")
-        
+        print(
+            f"✅ First chat turn completed in {elapsed:.2f}s. Tool calls: "
+            f"{first_tool_calls}. Provider tokens: {tokens_label}"
+        )
+
+        print("\n💬 Sending a second turn over the same persisted session...")
+        second_message = (
+            "Continue from the plan you just created. Summarize the next research step and "
+            "identify which persisted task should be executed first."
+        )
+        second_req = {
+            "project_id": project_id,
+            "session_id": session_id,
+            "message": second_message,
+        }
+        second_start = time.time()
+        async with client.stream(
+            "POST", f"{API_BASE}/api/chat", json=second_req, headers=chat_headers
+        ) as response:
+            second_events = await _consume_chat_stream(response, "second long-horizon chat turn")
+            for event in second_events:
+                if event.get("type") == "chunk":
+                    print(event.get("content", ""), end="", flush=True)
+        second_tokens = extract_total_tokens(second_events)
+        print(
+            f"\n✅ Second chat turn completed in {time.time() - second_start:.2f}s. "
+            f"Tool calls: {_tool_call_count(second_events)}. Provider tokens: "
+            f"{second_tokens if second_tokens is not None else 'n/a (see agentic usage ledger)'}"
+        )
+
+        history_res = await client.get(
+            f"{API_BASE}/api/chat/history/{project_id}",
+            params={"session_id": session_id, "limit": 50},
+            headers=headers,
+        )
+        _require_status(history_res, "persisted chat history")
+        history_payload = _json_payload(history_res, "persisted chat history")
+        _require_history_continuity(history_payload, prompt, second_message)
+        print("✅ Persisted history contains both complete user/assistant turns.")
+
         # 5. Check Orchestrator State (Tasks spawned)
         print("\n📋 Checking Task Queue (DeepPlanning Validation)...")
         tasks_res = await client.get(f"{API_BASE}/api/tasks?project_id={project_id}", headers=headers)
-        tasks_data = tasks_res.json()
+        _require_status(tasks_res, "task queue inspection")
+        tasks_data = _json_payload(tasks_res, "task queue inspection")
         tasks = tasks_data if isinstance(tasks_data, list) else tasks_data.get("tasks", [])
         print(f"Total tasks spawned: {len(tasks)}")
         for t in tasks:
             print(f"  - [{t.get('status')}] {t.get('title')} (Skill: {t.get('skill_name', 'auto')})")
-            
+
         # 6. Check A2A Messages
         print("\n🤖 Checking A2A Inter-Agent Communication...")
         a2a_res = await client.get(
             f"{API_BASE}/api/agents/a2a/log?limit=20&project_id={project_id}",
             headers=headers,
         )
-        a2a_data = a2a_res.json()
+        _require_status(a2a_res, "A2A log inspection")
+        a2a_data = _json_payload(a2a_res, "A2A log inspection")
         messages = a2a_data if isinstance(a2a_data, list) else a2a_data.get("messages", [])
         proj_messages = [m for m in messages if m.get("project_id") == project_id]
         print(f"Total A2A messages: {len(proj_messages)}")
         for m in proj_messages:
             print(f"  - {m.get('from_agent_id')} -> {m.get('to_agent_id')} [{m.get('message_type')}]: {m.get('content')[:100]}...")
-            
+
         # 7. Check JSON Parse Metrics
         print("\n📊 Checking JSON Success Metrics...")
         metrics_res = await client.get(f"{API_BASE}/api/metrics/{project_id}/model-intelligence", headers=headers)
-        leaderboard = metrics_res.json().get("leaderboard", [])
-        for l in leaderboard:
-            print(f"  - Model: {l.get('model_name')} | Skill: {l.get('skill_name')} | JSON Success: {l.get('json_parse_success_rate')*100 if l.get('json_parse_success_rate') is not None else 'N/A'}% | Executions: {l.get('executions')}")
+        _require_status(metrics_res, "model-intelligence metrics inspection")
+        metrics_payload = _json_payload(metrics_res, "model-intelligence metrics inspection")
+        leaderboard = metrics_payload.get("leaderboard", []) if isinstance(metrics_payload, dict) else []
+        for entry in leaderboard:
+            print(f"  - Model: {entry.get('model_name')} | Skill: {entry.get('skill_name')} | JSON Success: {entry.get('json_parse_success_rate')*100 if entry.get('json_parse_success_rate') is not None else 'N/A'}% | Executions: {entry.get('executions')}")
+
+
+async def main() -> int:
+    try:
+        await _run_benchmark()
+    except (BenchmarkFailure, httpx.HTTPError) as exc:
+        print(f"❌ Benchmark failed closed: {exc}")
+        return 1
+    except Exception as exc:
+        print(f"❌ Benchmark failed closed with unexpected error: {exc}")
+        return 1
+    return 0
+
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    raise SystemExit(asyncio.run(main()))

@@ -2193,3 +2193,37 @@ Verified: `pytest -q tests/pi_production/test_worker_tool_loop.py tests/pi_produ
 `check passed for 86`.
 Next: audit the long-horizon runner's exit-code and oracle behavior, then cover checkpoint/cancel/
 retry/idempotency and Petals donation/revocation lifecycle before remote Docker acceptance.
+
+### L-100 | 2026-08-26T01:20:00Z | S5-ship/S1-frame | gpt-5-codex | integrator | Worker continuity slice transported and gate-recorded
+Did: Committed the two-call authenticated ASGI restart proof, the seven-tool-call production-worker
+long-horizon proof, living Reports documentation, generated feature artifacts, and this ledger as
+`463c8316` (`test: prove Pi session continuity and long horizon`); pushed it to `origin/testing`.
+Ran the pinned native Compass Forge after gate as record 19. The comparison reports no new forbidden
+dependencies, missing required paths, import cycles, security findings, taint findings, or unexpected
+large-file deltas. The repository-wide gate remains failed only on inherited secret-flow, route/type
+drift, and complexity debt; that inherited failure is retained rather than relabeled as green.
+Result: local `testing` and `origin/testing` both resolve to `463c8316785c032bde40e64f54249458b6a8fab1`,
+and the worktree is clean. The focused worker/ASGI slice remains `7 passed`; this transport still does
+not claim live-provider, checkpoint/retry/idempotency, Petals lifecycle, or Mac Studio acceptance.
+Verified: push `a5aa227b..463c8316`; native Compass Forge after `record_id: 19`; no live model/service/
+SSH/Docker/host action. Next: make the Docker-safe long-horizon runner fail closed on transport and
+semantic-oracle failures, with a real second-call/session persistence assertion where the API permits.
+
+### L-101 | 2026-08-26T01:32:00Z | S2-execute/S3-review | gpt-5-codex | test-author | Long-horizon live runner made fail-closed and session-aware
+Did: Hardened tests/benchmarks/long_horizon_runner.py with operation-labelled status/JSON
+validation, explicit server-side ChatSession creation, per-upload checks, canonical SSE parsing,
+terminal done.message_id and provider-error requirements, exact tool-call-frame counting, a
+mandatory first-turn tool-call assertion, a second turn over the same session, and a database-backed
+history check requiring user/assistant/user/assistant continuity. Unexpected failures now return a
+non-zero process status instead of printing a false-success report. Added regression tests for
+canonical tool-call counting, complete/missing assistant history, terminal SSE requirements, and
+main-process failure propagation.
+Result: The benchmark no longer treats an HTTP/SSE/provider failure, missing persistence, or a
+textual tool marker as successful long-horizon evidence. The live runner still reports task/A2A/
+model-intelligence observations but does not pretend those metrics prove Research Spine acceptance.
+Verified: pytest -q tests/pi_benchmark/test_b0_3_long_horizon_tokens.py tests/test_harness_config.py
+=> 26 passed; Ruff and diff checks pass; feature docs generated 224 and checked 86/86. No live
+model/service/SSH/Docker/host action in this slice.
+Next: audit checkpoint, cancellation, retry, idempotency, and side-effect recovery contracts in the
+Pi worker/provider seams; then inspect Petals donation/revocation lifecycle before Mac Studio Docker
+acceptance.
