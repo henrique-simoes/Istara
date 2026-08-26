@@ -2259,3 +2259,40 @@ missing paths/import cycles/security/taint/large-file findings; repository-wide 
 route/type, and complexity debt remains explicitly failed. No live model/service/SSH/Docker/host action.
 Next: commit/push this provider hardening, then add or document durable idempotency/recovery semantics
 for authority side effects before Petals lifecycle and Mac Studio Docker acceptance.
+
+### L-104 | 2026-08-26T02:06:00Z | S5-ship | gpt-5-codex | integrator | Provider hardening transported and post-gate boundary corrected
+Did: Transported provider retry hardening as `a054a0f0` (`fix: fail closed on provider transport throws`) to
+the local `testing` branch and `origin/testing`. Re-ran the pinned native Compass Forge after gate after
+the commit (record 23), so the authoritative post-commit evidence is record 23 rather than the pre-commit
+record 22 referenced in L-103.
+Result: local and remote testing resolve to the same commit and the worktree is clean. Record 23 reports
+`comparison.new_issues=[]`; no new missing paths, import cycles, security/taint findings, or large-file
+regressions were introduced. Inherited repository-wide secret-flow, route/type, and complexity debt remains
+failed and is retained as inherited debt. The durable idempotency gap is still open and is the next scope.
+Verified: `git status --short --branch`; commit/push; native Compass Forge after record 23; `npm test` in
+`pi-runtime` => 46 passed. No live model/service/SSH/Docker/host action.
+Next: inspect the authority side-effect seam and implement a conservative durable replay/recovery contract
+that cannot silently execute a duplicate mutation after a worker crash.
+
+### L-105 | 2026-08-26T10:51:49Z | S2-execute/S3-review | gpt-5-codex | implementer | Durable Pi mutation replay and A2A identity propagated
+Did: Added the project-scoped `pi_tool_executions` model and Alembic migration `032_pi_tool_executions`,
+registered it in model/bootstrap loading, and implemented `execute_with_idempotency` at the Pi authority
+boundary. Completed outcomes replay for the same request/tool/argument identity; cancellation, worker loss,
+concurrent ownership ambiguity, malformed outcomes, or failed settlement leave a durable `started` recovery
+barrier and return `tool_recovery_required` instead of risking a duplicate mutation. Supervisor task-local
+metadata carries session/run/tool-call provenance without changing the public two-argument handler contract.
+Chat uses the persisted user-message id, channel seams use the stable inbound-message session key, and
+A2A delegation now propagates the persisted `A2AMessage.id` into the same ledger. Added direct tests for
+completed replay, unfinished/cancelled barriers, supervisor metadata isolation, and updated A2A/Reports
+feature contracts with the exact limitation that this is recovery fencing, not an exactly-once guarantee.
+Result: Focused authority/lifecycle slice is green (`28 passed`); new Python files are Ruff-clean, targeted
+modules compile, Alembic reports `032_pi_tool_executions` as head, feature docs generate/check cleanly, and
+`git diff --check` is clean. The implementation is intentionally not yet transported; full integration,
+Petals lifecycle, Research Spine ensemble proof, remote Docker acceptance, and branch reconciliation remain open.
+Verified: `pytest -q tests/pi_production/test_pi_tool_idempotency.py tests/pi_production/test_tool_authority.py
+tests/pi_production/test_scenario_task_lifecycle.py tests/test_pi_replacement_candidate.py` => 28 passed;
+`ruff check` targeted new files; `python -m compileall` targeted modules; `alembic heads` => `032_pi_tool_executions`;
+`python scripts/feature_docs.py --seed-missing --generate-site --check` => generated 224/check 86/86. No live
+model/service/SSH/Docker/host action.
+Next: commit/push this bounded idempotency slice with a fresh post-gate, then audit Petals donation/revocation
+and the three-model Research Spine ensemble so every route has positive and negative evidence before remote Docker.

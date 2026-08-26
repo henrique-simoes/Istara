@@ -169,6 +169,7 @@ class AgenticDispatcher:
         request: Any | None = None,
         task_id: str | None = None,
         spine_phase: str | None = None,
+        idempotency_key: str | None = None,
     ) -> TurnResult:
         """One governed chat turn. Pi: engine.run_chat_turn; legacy: chat.py's ReAct loop."""
         params = params or TurnParams()
@@ -189,6 +190,7 @@ class AgenticDispatcher:
                     params=params,
                     stream_cb=stream_cb,
                     steering_binding=steering_binding,
+                    idempotency_key=idempotency_key,
                 )
             else:
                 outcome = await self._legacy_outcome(
@@ -718,6 +720,7 @@ class AgenticDispatcher:
         params: TurnParams,
         stream_cb: Any,
         steering_binding: Any,
+        idempotency_key: str | None = None,
     ) -> dict[str, Any]:
         text_parts: list[str] = []
         tool_calls: list[dict[str, Any]] = []
@@ -734,6 +737,7 @@ class AgenticDispatcher:
             allowed_tools=tool_names,
             steering=steering_binding,
             params=params,
+            idempotency_key=idempotency_key,
         ):
             if stream_cb is not None:
                 maybe = stream_cb(event)

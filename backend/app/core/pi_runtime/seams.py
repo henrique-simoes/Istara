@@ -19,9 +19,9 @@ from __future__ import annotations
 import logging
 from typing import Any
 
+from app.core.pi_replacement import pi_replacement_requested
 from app.core.pi_runtime.endpoints import PiEndpointResolutionError
 from app.core.pi_runtime.engine import PiExecutionService
-from app.core.pi_replacement import pi_replacement_requested
 from app.skills.system_actions import execute_tool
 
 logger = logging.getLogger(__name__)
@@ -107,6 +107,7 @@ async def build_pi_channel_reply(
             inbound_text=inbound_text or "",
             tool_executor=_authority_tool_executor,
             session_key=session_key,
+            idempotency_key=session_key,
         )
     except PiEndpointResolutionError as exc:
         logger.warning("Pi channel turn unavailable (fail-closed): %s", exc)
@@ -146,6 +147,7 @@ async def run_pi_delegation(
     agent_id: str,
     metadata: dict[str, Any] | None = None,
     history: list[dict[str, Any]] | None = None,
+    idempotency_key: str | None = None,
 ) -> dict[str, Any] | None:
     """Execute an admitted A2A delegation through the real Pi Agent, or ``None``.
 
@@ -164,6 +166,15 @@ async def run_pi_delegation(
             task_text=task_text or "",
             tool_executor=_authority_tool_executor,
             history=history or [],
+            idempotency_key=(
+                idempotency_key
+                or str(
+                    (metadata or {}).get("message_id")
+                    or (metadata or {}).get("idempotency_key")
+                    or ""
+                )
+                or None
+            ),
         )
     except PiEndpointResolutionError as exc:
         logger.warning("Pi delegation unavailable (fail-closed): %s", exc)

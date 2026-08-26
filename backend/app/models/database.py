@@ -141,6 +141,7 @@ def register_models() -> None:
         "app.models.project_member",
         "app.models.permission_request",
         "app.models.task_review",
+        "app.models.pi_tool_execution",
     ):
         import_module(module_name)
 
@@ -405,6 +406,7 @@ async def init_db() -> None:
             "coding_run_coders",
             "research_evidence_edges",
             "reconciliation_decisions",
+            "pi_tool_executions",
         ):
             try:
                 async with conn.begin_nested():

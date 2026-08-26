@@ -15,6 +15,7 @@ module never imports or mutates the donated-compute registry.
 from __future__ import annotations
 
 import asyncio
+import contextvars
 import json
 import logging
 import os
@@ -44,6 +45,20 @@ DEFAULT_WORKER_ENTRY = (
 )
 
 ToolHandler = Callable[[str, dict[str, Any]], Awaitable[dict[str, Any]]]
+
+_tool_call_context: contextvars.ContextVar[dict[str, str] | None] = contextvars.ContextVar(
+    "pi_tool_call_context", default=None
+)
+
+
+def current_tool_call_context() -> dict[str, str]:
+    """Return metadata for the authority call currently round-tripped.
+
+    The public handler signature remains backward-compatible with existing
+    integrations; the metadata travels in a task-local context instead of
+    being mixed into model-supplied arguments.
+    """
+    return dict(_tool_call_context.get() or {})
 
 
 class PiWorkerError(RuntimeError):
@@ -496,11 +511,20 @@ class PiRuntimeSupervisor:
     async def _safe_tool_call(
         self, tool_handler: ToolHandler, frame: dict[str, Any]
     ) -> dict[str, Any]:
+        context_token = _tool_call_context.set(
+            {
+                "session_key": str(frame.get("session_key") or ""),
+                "run_id": str(frame.get("run_id") or ""),
+                "tool_call_id": str(frame.get("tool_call_id") or ""),
+            }
+        )
         try:
             return await tool_handler(frame.get("name", ""), frame.get("arguments") or {})
         except Exception as exc:  # authority errors never kill the run
             logger.warning("pi-runtime: tool handler raised for %s", frame.get("name"))
             return {"ok": False, "error": f"tool_handler_error:{type(exc).__name__}"}
+        finally:
+            _tool_call_context.reset(context_token)
 
     def active_run_id(self, session_key: str) -> str | None:
         """Run id of the turn currently in flight for ``session_key`` (or None)."""

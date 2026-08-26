@@ -44,9 +44,10 @@ from .endpoints import (
     PiRuntimeTurnError,
     ResolvedPiEndpoint,
 )
+from .idempotency import execute_with_idempotency
 from .model_manager import PiModelManager
 from .protocol import TERMINAL_RUN_TYPES
-from .supervisor import PiRuntimeSupervisor, get_supervisor
+from .supervisor import PiRuntimeSupervisor, current_tool_call_context, get_supervisor
 from .tools import build_tool_catalog, catalog_tool_names
 
 logger = logging.getLogger(__name__)
@@ -286,6 +287,7 @@ class PiExecutionService:
         require_vision: bool = False,
         turn_params: Any = None,
         extra_tools: list[dict[str, Any]] | None = None,
+        idempotency_key: str | None = None,
     ) -> AsyncIterator[dict[str, Any]]:
         """Drive one governed Pi turn, yielding normalized events.
 
@@ -322,7 +324,19 @@ class PiExecutionService:
                 )
                 await self._record_tool_rejection(endpoint, project_id, agent_id, name, operation)
                 return {"ok": False, "error": "tool_not_allowed", "tool": name}
-            result = await tool_executor(name, args, project_id, agent_id)
+            call_context = current_tool_call_context()
+            result = await execute_with_idempotency(
+                base_key=idempotency_key,
+                project_id=project_id,
+                agent_id=agent_id,
+                operation=operation,
+                session_key=call_context.get("session_key", key),
+                run_id=call_context.get("run_id", ""),
+                tool_call_id=call_context.get("tool_call_id", ""),
+                tool_name=name,
+                args=args,
+                executor=tool_executor,
+            )
             return _normalize_tool_result(result)
 
         await sup.ensure_started()
@@ -471,6 +485,7 @@ class PiExecutionService:
         allowed_tools: list[str] | None = None,
         steering: SteeringBinding | None = None,
         params: Any = None,
+        idempotency_key: str | None = None,
     ) -> AsyncIterator[dict[str, Any]]:
         """Drive one governed Pi chat turn, yielding normalized SSE events."""
         effective_endpoint_id = getattr(params, "endpoint_id", None)
@@ -497,6 +512,7 @@ class PiExecutionService:
             require_vision=bool(getattr(params, "require_vision", False)),
             turn_params=params,
             max_turns=getattr(params, "max_turns", None),
+            idempotency_key=idempotency_key,
         ):
             yield event
 
@@ -862,6 +878,7 @@ class PiExecutionService:
         session_key: str | None = None,
         endpoint_id: str = DEFAULT_ENDPOINT_ID,
         allowed_tools: list[str] | None = None,
+        idempotency_key: str | None = None,
     ) -> dict[str, Any]:
         """Execute one delegated work item through the real Pi Agent.
 
@@ -883,6 +900,7 @@ class PiExecutionService:
             allowed_tools=list(allowed_tools)
             if allowed_tools is not None
             else list(DELEGATION_TOOLS),
+            idempotency_key=idempotency_key,
         )
 
     # ── Channel (pi_local) seam ──────────────────────────────────────────
@@ -898,6 +916,7 @@ class PiExecutionService:
         session_key: str | None = None,
         endpoint_id: str = DEFAULT_ENDPOINT_ID,
         allowed_tools: list[str] | None = None,
+        idempotency_key: str | None = None,
     ) -> dict[str, Any]:
         """Produce one in-process ``pi_local`` channel reply via the real loop.
 
@@ -915,6 +934,7 @@ class PiExecutionService:
             session_key=session_key,
             endpoint_id=endpoint_id,
             allowed_tools=list(allowed_tools) if allowed_tools is not None else list(CHANNEL_TOOLS),
+            idempotency_key=idempotency_key or session_key,
         )
 
     # ── Governed Autoresearch seam ───────────────────────────────────────

@@ -34,9 +34,9 @@ from app.core.resource_governor import governor
 from app.core.self_check import Confidence, verify_claim
 from app.core.steering import steering_manager
 from app.core.telemetry import telemetry_recorder
+from app.models.finding import Fact, Insight, Nugget, Recommendation
 from app.models.agent import Agent, AgentState
 from app.models.database import async_session
-from app.models.finding import Fact, Insight, Nugget, Recommendation
 from app.models.project import Project
 from app.models.task import Task, TaskStatus
 from app.skills.base import SkillInput, SkillOutput
@@ -655,11 +655,15 @@ class AgentLifecycleMixin:
 
         if not pi_replacement_requested(metadata=metadata):
             return
+        message_id = (
+            msg.get("id", "") if isinstance(msg, dict) else getattr(msg, "id", "")
+        )
         delegation = await run_pi_delegation(
             project_id=project_id,
             task_text=str(task_text),
             agent_id=self._agent_id,
             metadata=metadata,
+            idempotency_key=str(message_id or "") or None,
         )
         if delegation is None:
             return

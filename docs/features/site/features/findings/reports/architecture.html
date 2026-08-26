@@ -283,6 +283,7 @@
 <li>Pi chat continuity is tested over two real authenticated ASGI calls using one persisted ChatSession, with the first worker shut down before the second call. The second worker must rehydrate the exact user/assistant transcript from the database; a memory-only session or manually supplied history is not sufficient evidence.</li>
 <li>The Pi worker&#x27;s long-horizon contract drives seven authority tool calls plus a terminal assistant response and requires cumulative <code>usage.turns == 8</code>, seven persisted tasks, and one terminal completion. This is a bounded execution proof, not a claim that arbitrary live-provider horizons are safe; timeout, cancellation, restart, idempotency, and side-effect recovery remain separate acceptance work.</li>
 <li>The Pi provider retry seam buffers non-visible provider events, retries only classifier-approved transient failures within the configured budget, never retries after visible output, and converts synchronous adapter throws into one terminal error event. This preserves fail-closed Research Spine behavior: a transport/programming exception cannot hang a run or silently replay a side effect.</li>
+<li>Pi authority mutations use a project-scoped durable execution ledger. A completed mutation outcome is replayed for the same request identity; a row left in <code>started</code> state by cancellation or worker loss returns <code>tool_recovery_required</code> and is never executed again automatically. This is a recovery barrier, not an exactly-once claim: operators must reconcile an unsettled side effect before retrying it.</li>
 <li>The Docker-safe live long-horizon runner now creates an explicit ChatSession, requires every setup/inspection request and both SSE turns to succeed, counts only canonical tool-call frames, requires persisted assistant message ids, and verifies the four-message two-turn transcript. Its process exits non-zero on transport, malformed-stream, provider-error, missing-tool, or missing-history evidence; stdout-only metrics remain observational rather than proof of Research Spine acceptance.</li>
 <li>The frontmatter and manifest entries are the durable contract for agents updating this page after code changes.</li>
 <li>When the referenced component, store, route, agent, skill, or test behavior changes, regenerate and validate the feature documentation.</li>
@@ -299,6 +300,7 @@
 <li><code>tests/test_tasks.py::test_task_report_gate_blocks_aggregate_reliability_bulk_acceptance</code></li>
 <li><code>tests/test_tasks.py::test_task_report_gate_blocks_done_task_without_accepted_evidence</code></li>
 <li><code>pi-runtime/test/hardening.test.mjs</code> (guarded retry, visible-output no-retry, synchronous throw terminalization)</li>
+<li><code>tests/pi_production/test_pi_tool_idempotency.py</code> (completed replay, unfinished recovery barrier, cancellation persistence)</li>
 <li><code>tests/real_user_benchmark/run.mjs</code></li>
 </ul>
 <h2 id="related-features">Related Features</h2>

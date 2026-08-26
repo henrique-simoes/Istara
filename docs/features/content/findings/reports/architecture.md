@@ -6,9 +6,9 @@ audience: architecture
 status: documented
 related_features: ["findings.evidence", "tasks.send-report", "interfaces.handoff"]
 related_glossary: ["minto-pyramid", "scr", "triangulation"]
-code_references: ["frontend/src/components/findings/FindingsView.tsx", "frontend/src/components/findings/ProjectReportsView.tsx", "backend/app/api/routes/reports.py", "backend/app/api/routes/tasks.py", "backend/app/core/report_manager.py", "backend/app/core/reporting_worker.py", "backend/app/services/research_validity_service.py"]
+code_references: ["frontend/src/components/findings/FindingsView.tsx", "frontend/src/components/findings/ProjectReportsView.tsx", "backend/app/api/routes/reports.py", "backend/app/api/routes/tasks.py", "backend/app/core/report_manager.py", "backend/app/core/reporting_worker.py", "backend/app/services/research_validity_service.py", "backend/app/core/pi_runtime/idempotency.py", "backend/app/models/pi_tool_execution.py"]
 api_references: ["backend/app/api/routes/reports.py", "backend/app/api/routes/tasks.py"]
-test_references: ["tests/test_research_integrity_reports.py", "tests/test_research_spine_end_to_end.py", "tests/pi_production/test_chat_pi_asgi.py", "tests/pi_production/test_worker_tool_loop.py", "pi-runtime/test/hardening.test.mjs", "tests/benchmarks/long_horizon_runner.py", "tests/pi_benchmark/test_b0_3_long_horizon_tokens.py", "tests/test_tasks.py", "tests/real_user_benchmark/run.mjs"]
+test_references: ["tests/test_research_integrity_reports.py", "tests/test_research_spine_end_to_end.py", "tests/pi_production/test_chat_pi_asgi.py", "tests/pi_production/test_worker_tool_loop.py", "tests/pi_production/test_pi_tool_idempotency.py", "pi-runtime/test/hardening.test.mjs", "tests/benchmarks/long_horizon_runner.py", "tests/pi_benchmark/test_b0_3_long_horizon_tokens.py", "tests/test_tasks.py", "tests/real_user_benchmark/run.mjs"]
 last_verified: 2026-08-26
 compass: CF-SPEC-53 / CF-657; CF-SPEC-60 / CF-773; CF-SPEC-121; CF-SPEC-122; CF-SPEC-123 / CF-1581; Research Spine item-level report gate batch
 ---
@@ -56,6 +56,7 @@ The Reports tab lets users generate, inspect, and manage project reports produce
 - Pi chat continuity is tested over two real authenticated ASGI calls using one persisted ChatSession, with the first worker shut down before the second call. The second worker must rehydrate the exact user/assistant transcript from the database; a memory-only session or manually supplied history is not sufficient evidence.
 - The Pi worker's long-horizon contract drives seven authority tool calls plus a terminal assistant response and requires cumulative `usage.turns == 8`, seven persisted tasks, and one terminal completion. This is a bounded execution proof, not a claim that arbitrary live-provider horizons are safe; timeout, cancellation, restart, idempotency, and side-effect recovery remain separate acceptance work.
 - The Pi provider retry seam buffers non-visible provider events, retries only classifier-approved transient failures within the configured budget, never retries after visible output, and converts synchronous adapter throws into one terminal error event. This preserves fail-closed Research Spine behavior: a transport/programming exception cannot hang a run or silently replay a side effect.
+- Pi authority mutations use a project-scoped durable execution ledger. A completed mutation outcome is replayed for the same request identity; a row left in `started` state by cancellation or worker loss returns `tool_recovery_required` and is never executed again automatically. This is a recovery barrier, not an exactly-once claim: operators must reconcile an unsettled side effect before retrying it.
 - The Docker-safe live long-horizon runner now creates an explicit ChatSession, requires every setup/inspection request and both SSE turns to succeed, counts only canonical tool-call frames, requires persisted assistant message ids, and verifies the four-message two-turn transcript. Its process exits non-zero on transport, malformed-stream, provider-error, missing-tool, or missing-history evidence; stdout-only metrics remain observational rather than proof of Research Spine acceptance.
 - The frontmatter and manifest entries are the durable contract for agents updating this page after code changes.
 - When the referenced component, store, route, agent, skill, or test behavior changes, regenerate and validate the feature documentation.
@@ -72,6 +73,7 @@ The Reports tab lets users generate, inspect, and manage project reports produce
 - `tests/test_tasks.py::test_task_report_gate_blocks_aggregate_reliability_bulk_acceptance`
 - `tests/test_tasks.py::test_task_report_gate_blocks_done_task_without_accepted_evidence`
 - `pi-runtime/test/hardening.test.mjs` (guarded retry, visible-output no-retry, synchronous throw terminalization)
+- `tests/pi_production/test_pi_tool_idempotency.py` (completed replay, unfinished recovery barrier, cancellation persistence)
 - `tests/real_user_benchmark/run.mjs`
 
 ## Related Features

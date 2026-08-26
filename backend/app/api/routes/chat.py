@@ -197,6 +197,7 @@ async def _generate_pi_runtime(
     thinking_mode: str | None = None,
     endpoint_id: str | None = None,
     turn_status: dict | None = None,
+    idempotency_key: str | None = None,
 ):
     """Drive one chat turn through the AgenticDispatcher's Pi engine (AC-1).
 
@@ -269,6 +270,7 @@ async def _generate_pi_runtime(
             ),
             steering_binding=steering,
             engine="pi",
+            idempotency_key=idempotency_key,
         ):
             etype = event["type"]
             if etype == "content":
@@ -1021,6 +1023,7 @@ async def chat(request: ChatRequest, http_request: Request, db: AsyncSession = D
                     thinking_mode=llm_effort,
                     endpoint_id=llm_endpoint_id,
                     turn_status=pi_turn_status,
+                    idempotency_key=user_msg.id,
                 ):
                     yield event
             elif use_native_tools:
