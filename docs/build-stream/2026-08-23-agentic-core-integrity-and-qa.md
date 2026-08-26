@@ -8,8 +8,8 @@ phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal ac
 stage: S2-execute
 status: in-progress
 blocked_on: null
-last: { agent: gpt-5-codex, at: 2026-08-26T23:40:13Z, ledger: L-207 }
-next_action: "Run the terminal Docker-only provider/Petals/combined retake from pushed SHA b15140a76fb6c9ed8c0d83039677d8625997e51a when owner-authorized provider credit and three Compose-owned donor routes are available; keep the live gate open until its evidence is complete."
+last: { agent: gpt-5-codex, at: 2026-08-26T23:42:56Z, ledger: L-208 }
+next_action: "Run the terminal Docker-only provider/Petals/combined retake from pushed SHA 47bfeb4174ced61e64689793b660e78c3d81a9b5 in the isolated Mac Studio worktree when owner-authorized provider credit and three Compose-owned donor routes are available; keep the live gate open until its evidence is complete."
 ```
 
 ## Plan overview / roadmap
@@ -4499,3 +4499,21 @@ the clean transported testing tip `43a598b8e7efd81670a12051d86d9659cf9f86c3`.
 Next: keep CF-SPEC-2 and its live acceptance tasks open. The next substantive action remains
 the exact pushed-SHA Docker-only Mac Studio provider/Petals/combined retake, but only after
 owner-authorized provider credit and three Compose-owned donor routes are reachable.
+
+### L-208 | 2026-08-26T23:42:56Z | S2-execute/S3-review | gpt-5-codex | Mac Studio preflight preserves dirty owner checkout
+
+Did: Performed passive SSH/Docker preflight using the absolute Docker Desktop CLI path. Docker
+server `29.7.2` is reachable, but the named `~/istara-testing` checkout is 109 commits behind
+`origin/testing` and contains 340 modified/untracked paths, including deployment and secret/TLS
+files. No Istara benchmark or donor/provider container is running; only unrelated `plex` is
+healthy. The dirty checkout was not pulled, reset, cleaned, or overwritten. Created the isolated
+detached worktree `~/istara-testing-retake-47bf` at the exact pushed SHA
+`47bfeb4174ced61e64689793b660e78c3d81a9b5` for any future retake.
+
+Evidence: base Compose, QA `contract` profile, and VPS Compose render checks all pass from the
+isolated worktree (no services started); no host package was installed and no model was loaded.
+The external findings ledger now records F-R9-49. This preflight does not provide provider,
+three-rater, reliability, Petals, or Research Spine acceptance evidence.
+
+Next: commit and push this checkpoint, then wait for owner-authorized provider credit and three
+Compose-owned donor routes before running the live profiles from the isolated worktree only.
