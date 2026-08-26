@@ -8,7 +8,7 @@ phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal ac
 stage: S2-execute
 status: in-progress
 blocked_on: null
-last: { agent: gpt-5-codex, at: 2026-08-26T12:24:00Z, ledger: L-119 }
+last: { agent: gpt-5-codex, at: 2026-08-26T12:31:00Z, ledger: L-120 }
 next_action: "Run the remaining Docker-only acceptance only after the remote owner handoff makes ~/istara-testing clean; preserve the blocked boundary and reconcile refs/worktrees without destructive cleanup."
 ```
 
@@ -2548,3 +2548,22 @@ P9-12's local frontend portion is green. The generated `.next` output is ignored
 working-tree changes.
 Next: commit/push this ledger checkpoint, then preserve the exact remote blocker and prepare the
 owner-handoff request for a clean remote checkout before any Docker runner mutation.
+
+### L-120 | 2026-08-26T12:31:00Z | S2-execute/S3-review | gpt-5-codex | implementer/reviewer | Host-side marathon invocation now fails closed
+Did: Audited the Docker runner contract after the Mac Studio log showed `/tmp/run_marathon_remote.sh`
+attempting `node` on the SSH host. `scripts/runner/docker-run.sh` already mounts the checkout
+read-only and executes `inside.sh` in a disposable container, but the manual
+`scripts/marathon/start-marathon.sh` wrapper had no environment boundary and could be invoked on
+the host. Added a fail-closed guard requiring either the container marker
+`ISTARA_MARATHON_CONTAINERIZED=1` (set by `inside.sh`) or `/.dockerenv`; an SSH-host invocation now
+returns exit 2 with an actionable Docker-runner message before creating logs or starting Node.
+Added a static regression contract covering both the wrapper guard and the container marker.
+Verification: `pytest -q tests/test_marathon_config_integrity.py
+tests/test_remote_benchmark_runner_contract.py` => 16 passed; `bash -n` for all three runner
+scripts and `git diff --check` pass. No host package installation, model load, service restart,
+remote mutation, or Docker execution occurred.
+Result: the invalid host-side execution path is eliminated from the supported manual workflow, and
+the previous remote log is classified as an operator-contract failure rather than benchmark evidence.
+This does not make the current dirty remote checkout acceptable or prove a fresh live tri-model run.
+Next: commit/push this guard and ledger, rerun native Compass Forge gates, then request/record an
+explicit owner handoff for `~/istara-testing` before any exact-SHA Docker rebuild or benchmark run.

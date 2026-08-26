@@ -10,6 +10,17 @@
 set -euo pipefail
 cd "$(dirname "$0")/../.."
 
+# The marathon is an integration workload and must run in the benchmark
+# container on the Mac Studio.  A previous remote attempt invoked this script
+# from the SSH host and only failed later with `node: command not found`, which
+# made the result look like a test failure instead of an invalid execution
+# environment.  Refuse that ambiguity up front.  `inside.sh` sets the explicit
+# marker; `/.dockerenv` keeps the wrapper usable in other container runtimes.
+if [[ "${ISTARA_MARATHON_CONTAINERIZED:-0}" != "1" && ! -f /.dockerenv ]]; then
+    echo "refusing host marathon: run scripts/runner/docker-run.sh so all work stays inside Docker" >&2
+    exit 2
+fi
+
 # Ensure log directory
 mkdir -p data/test-marathon/cycles data/test-marathon/issues
 

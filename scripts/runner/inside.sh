@@ -28,6 +28,7 @@ cd /work
 
 if [[ "${ISTARA_RUNNER_SKIP_MARATHON:-0}" != "1" ]]; then
   echo "[runner] MARATHON engine=$ISTARA_MARATHON_ENGINE start $(date -u +%H:%M:%S)"
+  export ISTARA_MARATHON_CONTAINERIZED=1
   node scripts/marathon/run-cycle.mjs --all
   echo "[runner] MARATHON done $(date -u +%H:%M:%S)"
 else

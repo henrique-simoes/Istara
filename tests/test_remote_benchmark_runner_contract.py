@@ -100,6 +100,16 @@ def test_remote_runner_bounds_live_research_scope_without_disabling_three_model_
     assert '--max-uploads "$ISTARA_BENCHMARK_MAX_UPLOADS"' in inner
 
 
+def test_manual_marathon_wrapper_fails_closed_outside_docker():
+    wrapper = (ROOT / "scripts/marathon/start-marathon.sh").read_text(encoding="utf-8")
+    inner = (ROOT / "scripts/runner/inside.sh").read_text(encoding="utf-8")
+
+    assert "ISTARA_MARATHON_CONTAINERIZED" in wrapper
+    assert "refusing host marathon" in wrapper
+    assert "! -f /.dockerenv" in wrapper
+    assert "export ISTARA_MARATHON_CONTAINERIZED=1" in inner
+
+
 def test_provider_stub_source_is_present_in_the_root_docker_build_context():
     ignored = {
         line.strip().rstrip("/")
