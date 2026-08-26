@@ -8,8 +8,8 @@ phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal ac
 stage: S2-execute
 status: in-progress
 blocked_on: null
-last: { agent: gpt-5-codex, at: 2026-08-26T13:55:00Z, ledger: L-140 }
-next_action: "Obtain explicit owner handoff for the dirty Mac Studio checkout, then run a fresh Docker-only three-donor acceptance on b172842f with complete Research Spine and provenance evidence; do not mutate the remote until that handoff exists."
+last: { agent: gpt-5-codex, at: 2026-08-26T13:56:30Z, ledger: L-141 }
+next_action: "Obtain explicit owner handoff for the dirty Mac Studio checkout, then run a fresh Docker-only three-donor acceptance on cd1ad63c with complete Research Spine and provenance evidence; do not mutate the remote until that handoff exists."
 ```
 
 ## Plan overview / roadmap
@@ -3008,3 +3008,25 @@ Resumption order for any agent:
 Next: hold at this checkpoint until the owner-gated Docker handoff exists; then start at item 1
 and append a new ledger entry before and after every long-running command (no more than two
 minutes apart).
+
+### L-141 | 2026-08-26T13:56:30Z | S4-ship | gpt-5-codex | ledger transport and after-gate receipt
+Did: Committed the detailed Phase 9 resumption order as `cd1ad63c` (`docs: checkpoint
+remaining phase nine gates`) and pushed it non-forced to `origin/testing`. The main checkout
+is clean and the exact local/remote ref is `cd1ad63c6e79b9cd1c06e14dba4fd04cfa4f24b2`.
+
+Verification: the pinned native Compass Forge after gate is record `57`, with
+`comparison.new_issues=[]`, `new_failures=[]`, and no new dependency/import-cycle,
+missing-path, unexpected-large-file, security, or taint findings. The full bounded matrix
+after the Docker-only guard is `922 passed, 5 skipped in 146.06s (0:02:26)` with no warnings;
+real-user and topology contracts remain `57 passed`, and feature-doc generation/check remains
+86 features / 224 generated artifacts. The gate still reports inherited global complexity,
+route/type drift, and secret-flow debt; these are not silently reclassified as fixed.
+
+Result: the durable Build Stream document and all bounded implementation/test/doc changes are
+now transported to `origin/testing` and resumable by another agent. No Mac Studio SSH/Docker
+mutation occurred. Live acceptance is intentionally still open because the remote checkout is
+dirty and the current supported runner lacks a fully containerized three-donor topology. Until
+the owner names the exact dirty checkout and authorizes a retake, any attempt to pull/reset,
+tear down containers, or delete remote/local recovery material would risk data loss.
+Next: remain at the owner-handoff gate; after authorization, execute the eight-step resumption
+order in L-140 and append the preflight receipt before touching Docker.
