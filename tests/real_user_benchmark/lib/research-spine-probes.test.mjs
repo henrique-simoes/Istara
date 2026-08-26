@@ -72,6 +72,48 @@ test("coding proof prefers distinct source documents when the corpus provides th
   assert.equal(new Set(selected.map((unit) => unit.source_id)).size, 3);
 });
 
+test("coding proof blocks when three source identities are not available", async () => {
+  const logger = makeLogger();
+  const blockers = [];
+  const featureResults = {};
+  let postCalled = false;
+  const api = {
+    async get(path) {
+      if (path === "/api/research-validity/contract") {
+        return { contract: {}, qualitative_coding_protocol: {} };
+      }
+      if (path.includes("/summary")) return { coding_run_count: 0, evidence_unit_count: 4 };
+      if (path.includes("/evidence-units")) return makeSubstantiveUnits();
+      if (path.includes("/coding-runs")) return [];
+      if (path.includes("/traceability")) return { edges: [] };
+      if (path.includes("/telemetry-audit")) return { status: "ok" };
+      return {};
+    },
+    async post() {
+      postCalled = true;
+      return {};
+    },
+  };
+
+  await exerciseResearchSpineValidation({
+    api,
+    projectId: "project-a",
+    logger,
+    featureResults,
+    blockers,
+    codingValidationEnabled: true,
+    codingValidationLimit: 4,
+    expectedDistinctCoders: 3,
+    expectedDistinctSources: 3,
+  });
+
+  assert.equal(postCalled, false);
+  assert.equal(featureResults.codingValidation, false);
+  assert.equal(blockers.length, 1);
+  assert.match(blockers[0], /0?2\/3 distinct source identities/);
+  assert.equal(logger.issues[0].title, "Research Spine source diversity was not proven");
+});
+
 test("three-donor benchmark blocks when coding falls back to single-coder assurance", async () => {
   const logger = makeLogger();
   const blockers = [];

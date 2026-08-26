@@ -4699,6 +4699,7 @@ async function main() {
       codingValidationLimit,
       expectedDistinctCoders: codingValidationEnabled ? 3 : 0,
       expectedDistinctDonorRoutes: expectedResearchSpineDonorRoutes,
+      expectedDistinctSources: codingValidationEnabled ? 3 : 0,
     });
     await exerciseSelfImprovementGovernance({
       api,

@@ -2143,3 +2143,20 @@ Verified: push `1335f449..5a6ea9d9`; local `HEAD` and `origin/testing` both reso
 `5a6ea9d9ed4635c6ec625a0a520a00c62bb066e2`; post-push worktree clean.
 Next: inspect current test topology and Compass Forge decisions for the remaining P9-06 through P9-15
 items, then add only evidence-bearing contracts or fixes that close identified gaps.
+
+### L-97 | 2026-08-26T01:02:00Z | S2-execute/S3-review | gpt-5-codex | test-author | Source breadth and Pi coding path made testable
+Did: Corrected the focused Python journey to use three separate current Document rows and three
+source-grounded EvidenceUnits, and routed its real coding call path through `_use_pi_coding_plane`,
+`_select_pi_coders`, and `_pi_coder_runner` with deterministic dispatcher responses. It now proves
+the PI Model Management coding boundary rather than a legacy router shortcut while keeping model
+responses deterministic and no live model load. In the real-user benchmark, normalized source identity
+no longer falls back to a unit id; missing metadata is grouped as unknown, and a configured three-source
+requirement blocks before any coding request when breadth is not proven.
+Result: The benchmark can no longer describe several units from one document (or unit-only metadata)
+as three-source research. A new negative contract asserts no coding POST occurs with only two source
+identities. The topology contract records the three-source requirement.
+Verified: focused Python journey `1 passed in 1.65s`; Node probe/topology tests `21 passed`; focused
+Ruff/diff checks pass; feature docs `86/86` and generated site `224`; no live model/service/SSH/Docker/
+host action.
+Next: run the changed benchmark and Python boundary once more after staging review, then transport this
+oracle/Pi-path slice before auditing calls, long horizon, Petals, and live Docker acceptance.

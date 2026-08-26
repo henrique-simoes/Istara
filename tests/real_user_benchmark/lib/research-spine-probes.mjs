@@ -8,7 +8,13 @@ function preview(value) {
 const NON_SUBSTANTIVE_SOURCE_PATTERN = /(?:canonical corpus|source-specific protocol|moderator probes|project guardrails|research spine|do not infer|treat every participant story|distinguish raw source evidence|recommendations must cite)/i;
 
 function sourceKey(unit) {
-  return String(unit?.source_id || unit?.source_location || unit?.id || "").trim();
+  const sourceId = String(unit?.source_id || "").trim();
+  if (sourceId) return sourceId;
+  const location = String(unit?.source_location || "").trim();
+  // A unit id is not source diversity. When older rows lack source_id, use the
+  // document-level part of source_location and keep an unknown location grouped
+  // as unknown rather than manufacturing one source per evidence unit.
+  return location ? location.split("#", 1)[0].trim() : "";
 }
 
 export function selectSubstantiveEvidenceUnits(units, limit) {
@@ -163,9 +169,11 @@ export async function exerciseResearchSpineValidation({
   codingValidationLimit,
   expectedDistinctCoders = 3,
   expectedDistinctDonorRoutes = 0,
+  expectedDistinctSources = 0,
 }) {
   const requiredCoders = Number(expectedDistinctCoders || 0);
   const requiredDonorRoutes = Number(expectedDistinctDonorRoutes || 0);
+  const requiredSources = Number(expectedDistinctSources || 0);
   const codingTimeoutMs = Math.max(240000, Number(codingValidationLimit || 0) * 120000);
   const evidence = {
     project_id: projectId,
@@ -219,6 +227,7 @@ export async function exerciseResearchSpineValidation({
         availableUnits,
         codingValidationLimit,
       );
+      const selectedSourceCount = new Set(selectedUnits.map(sourceKey).filter(Boolean)).size;
       evidence.coding_selection = {
         strategy: "deterministic_substantive_source_diverse",
         candidate_window_limit: pageSize * maxPages,
@@ -226,7 +235,7 @@ export async function exerciseResearchSpineValidation({
         page_size: pageSize,
         pages_scanned: pagesScanned,
         selected_unit_count: selectedUnits.length,
-        selected_source_count: new Set(selectedUnits.map(sourceKey).filter(Boolean)).size,
+        selected_source_count: selectedSourceCount,
         selected_units: selectedUnits.map((unit) => ({
           id: unit.id,
           source_id: unit.source_id || "",
@@ -239,6 +248,24 @@ export async function exerciseResearchSpineValidation({
         throw new Error(
           `Substantive coding selection found ${selectedUnits.length}/${codingValidationLimit} required raw source spans after scanning ${availableUnits.length} evidence units.`,
         );
+      }
+      if (requiredSources > 0 && selectedSourceCount < requiredSources) {
+        const detail = `Research Spine coding selection found ${selectedSourceCount}/${requiredSources} distinct source identities; source diversity is required before three-model validation.`;
+        blockers.push(detail);
+        logger.issue({
+          area: "research-spine",
+          severity: "high",
+          title: "Research Spine source diversity was not proven",
+          detail,
+          evidence: {
+            expected_distinct_sources: requiredSources,
+            selected_source_count: selectedSourceCount,
+            selected_units: evidence.coding_selection.selected_units,
+          },
+        });
+      }
+      if (requiredSources > 0 && selectedSourceCount < requiredSources) {
+        throw new Error("source_diversity_not_proven");
       }
       evidence.coding_run = await api.post(`/api/research-validity/${projectId}/coding-runs`, {
         // The proof pass must code raw source evidence units. Approved tasks are
@@ -286,15 +313,17 @@ export async function exerciseResearchSpineValidation({
           logger,
         });
       } else {
-        if (requiredCoders >= 2) {
+        if (requiredCoders >= 2 && error.message !== "source_diversity_not_proven") {
           blockers.push(`Research Spine coding validation did not complete: ${error.message}`);
         }
-        logger.issue({
-          area: "research-spine",
-          severity: "medium",
-          title: "Research Spine coding validation did not complete",
-          detail: error.message,
-        });
+        if (error.message !== "source_diversity_not_proven") {
+          logger.issue({
+            area: "research-spine",
+            severity: "medium",
+            title: "Research Spine coding validation did not complete",
+            detail: error.message,
+          });
+        }
       }
     }
   }

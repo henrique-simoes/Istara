@@ -50,6 +50,7 @@ test("three-model Research Spine proof waits for healthy donor relays and requir
   assert.match(runSource, /"before-research-spine-coding"/);
   assert.match(runSource, /research-spine-pre-coding-relay-health\.json/);
   assert.match(runSource, /expectedDistinctDonorRoutes: expectedResearchSpineDonorRoutes/);
+  assert.match(runSource, /expectedDistinctSources: codingValidationEnabled \? 3 : 0/);
 });
 
 test("LM Studio donor preflight resolves served aliases without logging raw model identifiers", () => {

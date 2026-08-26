@@ -3,7 +3,6 @@
 import json
 import uuid
 from types import SimpleNamespace
-from unittest.mock import AsyncMock
 
 import pytest
 from sqlalchemy import select
@@ -32,11 +31,16 @@ async def test_source_to_three_model_reliability_human_done_and_report(monkeypat
     suffix = uuid.uuid4().hex[:8]
     project_id = f"proj-spine-e2e-{suffix}"
     task_id = f"task-spine-e2e-{suffix}"
-    document_id = f"doc-spine-e2e-{suffix}"
-    unit_ids = [f"eu-invite-{suffix}", f"eu-permission-{suffix}"]
+    document_ids = [f"doc-spine-e2e-{suffix}-{index}" for index in range(1, 4)]
+    unit_ids = [
+        f"eu-invite-{suffix}",
+        f"eu-permission-{suffix}",
+        f"eu-navigation-{suffix}",
+    ]
     quotes = {
         unit_ids[0]: "The participant could not find the invitation control.",
         unit_ids[1]: "The participant could not understand workspace permissions.",
+        unit_ids[2]: "The participant could not tell where to return to the workspace.",
     }
 
     class CoderNode:
@@ -50,13 +54,6 @@ async def test_source_to_three_model_reliability_human_done_and_report(monkeypat
             self.is_healthy = True
             self.loaded_models = [f"model-{index}"]
             self.model_capabilities = {}
-
-    class Router:
-        nodes = [CoderNode(index) for index in range(1, 4)]
-
-        def _sorted_servers(self, **kwargs):  # noqa: ANN001
-            assert kwargs["project_id"] == project_id
-            return self.nodes
 
     class DeterministicThreeCoderDispatcher:
         def __init__(self) -> None:
@@ -84,13 +81,21 @@ async def test_source_to_three_model_reliability_human_done_and_report(monkeypat
             )
 
     dispatcher = DeterministicThreeCoderDispatcher()
-    monkeypatch.setattr(research_validity_service, "llm_router", Router())
+    coder_nodes = [CoderNode(index) for index in range(1, 4)]
+
+    async def select_pi_coders(max_coders: int):
+        assert max_coders == 3
+        return [
+            research_validity_service.CoderSpec(
+                node=node,
+                coder_id=f"model-coder:{node.loaded_models[0]}",
+                model_name=node.loaded_models[0],
+            )
+            for node in coder_nodes
+        ]
+
+    monkeypatch.setattr(research_validity_service, "_select_pi_coders", select_pi_coders)
     monkeypatch.setattr("app.core.agentic.agentic", dispatcher)
-    monkeypatch.setattr(
-        research_validity_service,
-        "_use_pi_coding_plane",
-        AsyncMock(return_value=False),
-    )
 
     await init_db()
     async with async_session() as db:
@@ -103,30 +108,33 @@ async def test_source_to_three_model_reliability_human_done_and_report(monkeypat
             status=TaskStatus.IN_REVIEW,
             review_state="awaiting_review",
         )
-        document = Document(
-            id=document_id,
-            project_id=project_id,
-            title="Participant interview",
-            status=DocumentStatus.READY,
-            version=1,
-            content_text="\n".join(quotes.values()),
-        )
-        db.add_all([project, task, document])
+        documents = [
+            Document(
+                id=document_id,
+                project_id=project_id,
+                title=f"Participant interview {index}",
+                status=DocumentStatus.READY,
+                version=1,
+                content_text=quotes[unit_id],
+            )
+            for index, (document_id, unit_id) in enumerate(zip(document_ids, unit_ids), start=1)
+        ]
+        db.add_all([project, task, *documents])
         for index, unit_id in enumerate(unit_ids):
             db.add(
                 EvidenceUnit(
                     id=unit_id,
                     project_id=project_id,
                     task_id=task_id,
-                    source_document_id=document_id,
-                    source_id=f"document:{document_id}:v1",
-                    stable_id=f"document:{document_id}:v1:{index}",
+                    source_document_id=document_ids[index],
+                    source_id=f"document:{document_ids[index]}:v1",
+                    stable_id=f"document:{document_ids[index]}:v1:{index}",
                     unit_index=index,
                     unit_type="source_span",
                     source_type="user_upload",
                     source_text=quotes[unit_id],
                     metadata_json=json.dumps(
-                        {"document_id": document_id, "document_version": 1}
+                        {"document_id": document_ids[index], "document_version": 1}
                     ),
                 )
             )
@@ -171,7 +179,7 @@ async def test_source_to_three_model_reliability_human_done_and_report(monkeypat
             .scalars()
             .all()
         )
-        assert len(applications) == 6
+        assert len(applications) == 9
         assert len(coders) == 3
         assert {row.evidence_unit_id for row in applications} == set(unit_ids)
         assert {row.model_name for row in coders} == {"model-1", "model-2", "model-3"}
