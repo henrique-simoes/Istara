@@ -6,8 +6,10 @@ from pydantic import ValidationError
 from sqlalchemy import select
 from httpx import AsyncClient, ASGITransport
 from app.main import app
+from app.api.routes import chat as chat_route
 from app.api.routes.chat import ChatRequest
 from app.config import settings
+from app.core.rag import RAGContext
 from app.models.agent import Agent
 from app.models.database import async_session, init_db
 from app.models.project import Project
@@ -315,7 +317,7 @@ async def test_chat_blocked_when_provider_is_contract_stub(monkeypatch):
 
 
 @pytest.mark.asyncio
-async def test_chat_stub_guard_exempts_pi_engine():
+async def test_chat_stub_guard_exempts_pi_engine(monkeypatch):
     """On a stub-marked plane, a Pi-selected turn is NOT stub-blocked.
 
     The guard exists for the legacy (local Ollama-compatible) plane only;
@@ -339,6 +341,34 @@ async def test_chat_stub_guard_exempts_pi_engine():
     settings.llm_provider_contract_stub = True
     settings.pi_replacement_enabled = False
     try:
+        # This test proves the stub guard's engine exemption, not provider or
+        # embedding availability.  Keep every downstream Pi/RAG seam local so
+        # an ordinary unit run can never reach a live endpoint or model worker.
+        async def _empty_prompt(*_args, **_kwargs):
+            return ""
+
+        async def _empty_context(*_args, **_kwargs):
+            return RAGContext(query="", retrieved=[], context_text="")
+
+        async def _fake_pi_runtime(
+            _messages,
+            all_text_parts,
+            _tool_results,
+            _request,
+            _session_agent_id,
+            **kwargs,
+        ):
+            kwargs["turn_status"]["status"] = "success"
+            all_text_parts.append("pi test response")
+            yield 'data: {"type":"chunk","content":"pi test response"}\n\n'
+
+        monkeypatch.setattr(chat_route, "compose_dynamic_prompt", _empty_prompt)
+        monkeypatch.setattr(chat_route, "retrieve_context", _empty_context)
+        monkeypatch.setattr(chat_route, "_generate_pi_runtime", _fake_pi_runtime)
+        monkeypatch.setattr(
+            chat_route, "ensure_pi_deepseek_registered", lambda: (True, "test-registration")
+        )
+
         # Header selects pi -> resolution returns pi -> route must not block.
         resolved = await _resolve_chat_engine(
             _engine_request_stub({"x-istara-agent-engine": "pi"}), project_id, _engine_db_stub(None)
