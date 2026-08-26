@@ -8,8 +8,8 @@ phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal ac
 stage: S2-execute
 status: in-progress
 blocked_on: null
-last: { agent: gpt-5-codex, at: 2026-08-26T14:25:00Z, ledger: L-147 }
-next_action: "Create an isolated clean remote worktree at origin/testing, discard the authorized old istara-testing containers/volumes, rebuild through Docker, then run the bounded Docker-only acceptance and record artifacts before any cleanup."
+last: { agent: gpt-5-codex, at: 2026-08-26T14:32:00Z, ledger: L-148 }
+next_action: "From ~/istara-testing-clean-6ce9374a, capture the post-teardown Docker/Compose preflight, then rebuild the exact SHA through Docker and run the bounded acceptance with retained artifacts."
 ```
 
 ## Plan overview / roadmap
@@ -3165,3 +3165,25 @@ Next: execute the remote preflight and isolated-worktree creation, checkpoint it
 SHA, container/volume inventory, and redacted artifact location before `docker compose down -v`
 or any image rebuild. Then run the exact-image Docker-only comparison and Research Spine proof
 in bounded intervals, appending a ledger entry at least every two minutes.
+
+### L-148 | 2026-08-26T14:32:00Z | S2-execute/S3-review | gpt-5-codex | clean remote worktree and pre-teardown receipt
+Did: Used the owner-authorized SSH control plane to fetch `origin/testing` and create the
+isolated detached worktree `~/istara-testing-clean-6ce9374a` on the Mac Studio. The dirty
+`~/istara-testing` checkout was not reset, cleaned, or otherwise mutated; its 340 changed paths
+remain available for later owner-directed classification. The clean worktree resolves to
+`6ce9374aacc821511a821dab9320d03d72e8ad1c` and has zero porcelain changes.
+
+Verification: before teardown, the old Compose project `istara-testing` rendered successfully
+with `~/istara-testing/.env.deploy`; five Istara containers (Caddy, frontend, backend, Postgres,
+provider-stub) had been up approximately 39 hours, and the only project volume was
+`istara-testing_istara-runtime-env`. Remote `HEAD` and `origin/testing` were both the stale
+`1b9b6d6` before fetch; after fetch, the clean worktree and GitHub ref are exact at `6ce9374a`.
+No secret contents were read or logged.
+
+Result: the exact pushed source is now isolated from the dirty remote checkout, satisfying the
+safe-rebuild precondition. The owner authorization covers disposal of the old testing containers,
+runtime volume, and test data; it does not cover deleting the dirty source checkout. The next
+remote action is an explicit Docker Compose teardown followed by a rendered-config capture and
+fresh build from the clean worktree.
+Next: append the teardown/build preflight receipt before starting the bounded runner; keep all
+live services, model clients, and dependency installation inside Docker containers only.
