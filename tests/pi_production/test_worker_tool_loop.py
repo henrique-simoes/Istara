@@ -21,7 +21,7 @@ from app.models.project import Project
 from app.models.task import Task
 from app.skills.system_actions import execute_tool
 
-from .harness import requires_node
+from .harness import final_text, requires_node, tool_call
 
 pytestmark = requires_node
 
@@ -136,3 +136,78 @@ async def test_pi_worker_fails_closed_without_provider_binding():
 
     assert terminal and terminal[-1]["type"] == "run.failed"
     assert terminal[-1]["error"] == "no_provider_bound"
+
+
+@pytest.mark.asyncio
+async def test_pi_worker_completes_long_horizon_tool_chain_with_cumulative_turns():
+    """The worker must survive more than the historical six-turn horizon.
+
+    Seven independent authority tool calls followed by a final assistant turn
+    exercise the actual Agent loop, tool-result round trips, terminal settlement,
+    and cumulative ``usage.turns`` accounting.  A test that only checks the
+    final text or truncates after six turns would fail this contract.
+    """
+    await init_db()
+    project_id = f"pi-prod-long-horizon-{uuid.uuid4()}"
+    async with async_session() as db:
+        db.add(Project(id=project_id, name="Pi Production Long Horizon"))
+        await db.commit()
+
+    calls = [
+        tool_call("create_task", {"title": f"Long-horizon step {index}"})
+        for index in range(1, 8)
+    ]
+    sup = PiRuntimeSupervisor(max_turns=8)
+    observed: list[dict] = []
+    executed: list[tuple[str, dict]] = []
+    try:
+        await sup.ensure_started()
+        session_key = f"{project_id}:long-horizon"
+        await sup.open_session(
+            session_key,
+            system_prompt="Pi owns the long-horizon loop.",
+            history=[],
+            revision="long-horizon-v1",
+            catalog=build_tool_catalog(["create_task"]),
+        )
+        await sup.bind_provider(
+            session_key,
+            {
+                "endpoint_id": "faux-long-horizon",
+                "provider_kind": "faux",
+                "faux_responses": [*calls, final_text("Completed all seven research steps.")],
+                "model": "stub-model",
+                "api_key": "faux",
+                "timeout_ms": 30000,
+                "max_retries": 0,
+            },
+        )
+
+        async def tool_handler(name: str, args: dict) -> dict:
+            executed.append((name, args))
+            result = await execute_tool(name, args, project_id, agent_id="istara-main")
+            return {"ok": bool(result.get("success")), "result": result.get("result"), "error": result.get("error")}
+
+        async for frame in sup.run_turn(session_key, "Execute the full research plan.", tool_handler):
+            observed.append(frame)
+        await sup.close_session(session_key)
+    finally:
+        await sup.shutdown()
+
+    completed = [frame for frame in observed if frame["type"] == "run.completed"]
+    assert len(completed) == 1
+    assert completed[0]["usage"]["turns"] == 8
+    assert len([frame for frame in observed if frame["type"] == "tool.call"]) == 7
+    assert len(executed) == 7
+    assert [args["title"] for _, args in executed] == [
+        f"Long-horizon step {index}" for index in range(1, 8)
+    ]
+
+    async with async_session() as db:
+        tasks = (
+            await db.execute(select(Task).where(Task.project_id == project_id))
+        ).scalars().all()
+    assert sorted(task.title for task in tasks) == [
+        f"Long-horizon step {index}" for index in range(1, 8)
+    ]
+    assert sup.is_running is False

@@ -50,6 +50,7 @@ from app.main import app
 from app.models.database import async_session, init_db
 from app.models.message import Message
 from app.models.project import Project
+from app.models.session import ChatSession
 from app.models.task import Task
 
 from .harness import error_after_partial, faux_service, final_text, requires_node, tool_call
@@ -171,6 +172,115 @@ async def test_chat_pi_turn_streams_sse_over_real_asgi(monkeypatch):
         assert assistant[0].id == done["message_id"]
 
     assert sup.is_running is False
+
+
+@requires_node
+@pytest.mark.asyncio
+async def test_chat_pi_two_calls_rehydrate_history_after_worker_restart(monkeypatch):
+    """A second HTTP call must receive the first call's persisted transcript.
+
+    The route opens/closes a worker session per request, so this deliberately
+    shuts down the first worker before the second call.  A recording supervisor
+    proves the second Pi session was opened with DB-backed user/assistant history
+    rather than relying on in-memory Agent state or a manually supplied fixture.
+    """
+    await init_db()
+    monkeypatch.setattr(settings, "team_mode", True)
+    monkeypatch.setattr(settings, "jwt_secret", "pi-asgi-test-secret")
+    _pin_no_network_prompt_seams(monkeypatch)
+    monkeypatch.setattr(
+        chat_route, "ensure_pi_deepseek_registered", lambda: (True, "resolved_private_endpoint")
+    )
+
+    project_id = f"pi-asgi-two-call-{uuid.uuid4().hex[:8]}"
+    session_id = f"pi-asgi-session-{uuid.uuid4().hex[:8]}"
+    async with async_session() as db:
+        db.add(Project(id=project_id, name="Pi ASGI two-call"))
+        db.add(ChatSession(id=session_id, project_id=project_id, title="two-call", message_count=0))
+        await db.commit()
+
+    class RecordingSupervisor(PiRuntimeSupervisor):
+        def __init__(self):
+            super().__init__()
+            self.opened_histories: list[list[dict]] = []
+
+        async def open_session(self, session_key, **kwargs):
+            self.opened_histories.append(list(kwargs.get("history") or []))
+            await super().open_session(session_key, **kwargs)
+
+    first = RecordingSupervisor()
+    first_reply = "The first research checkpoint is recorded."
+    monkeypatch.setattr(
+        chat_route,
+        "_pi_execution_service",
+        faux_service([final_text(first_reply)], first),
+    )
+    first_request = {
+        "message": "Record the first research checkpoint.",
+        "project_id": project_id,
+        "session_id": session_id,
+    }
+    try:
+        transport = ASGITransport(app=app)
+        async with AsyncClient(transport=transport, base_url="http://test") as ac:
+            first_response = await ac.post(
+                "/api/chat", json=first_request, headers={**_auth_headers(), **_PI_HEADERS}
+            )
+    finally:
+        await first.shutdown()
+
+    assert first_response.status_code == 200
+    first_events = _sse_events(first_response.text)
+    assert first_events[-1]["type"] == "done"
+    assert first.opened_histories == [[]]
+
+    second = RecordingSupervisor()
+    second_reply = "The second checkpoint uses the persisted first checkpoint."
+    monkeypatch.setattr(
+        chat_route,
+        "_pi_execution_service",
+        faux_service([final_text(second_reply)], second),
+    )
+    try:
+        second_request = {
+            "message": "Continue from the first checkpoint.",
+            "project_id": project_id,
+            "session_id": session_id,
+        }
+        transport = ASGITransport(app=app)
+        async with AsyncClient(transport=transport, base_url="http://test") as ac:
+            second_response = await ac.post(
+                "/api/chat", json=second_request, headers={**_auth_headers(), **_PI_HEADERS}
+            )
+    finally:
+        await second.shutdown()
+
+    assert second_response.status_code == 200
+    second_events = _sse_events(second_response.text)
+    assert second_events[-1]["type"] == "done"
+    assert second.opened_histories == [
+        [
+            {"role": "user", "content": first_request["message"]},
+            {"role": "assistant", "content": first_reply},
+        ]
+    ]
+
+    async with async_session() as db:
+        messages = (
+            await db.execute(
+                select(Message)
+                .where(Message.project_id == project_id, Message.session_id == session_id)
+                .order_by(Message.created_at.asc())
+            )
+        ).scalars().all()
+    assert [(message.role, message.content) for message in messages] == [
+        ("user", first_request["message"]),
+        ("assistant", first_reply),
+        ("user", second_request["message"]),
+        ("assistant", second_reply),
+    ]
+    assert first.is_running is False
+    assert second.is_running is False
 
 
 @pytest.mark.asyncio

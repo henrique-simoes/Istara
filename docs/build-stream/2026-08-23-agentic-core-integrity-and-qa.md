@@ -2174,3 +2174,22 @@ clean status before any additional change.
 Next: audit the real tool-call and long-horizon implementations against the P9-07 contract, beginning
 with whether existing tests exercise persisted assistant output and consumed tool results rather than
 only synthetic parser/DAG calculations.
+
+### L-99 | 2026-08-26T01:14:00Z | S2-execute/S3-review | gpt-5-codex | test-author | Two-call restart and long-horizon worker proofs added
+Did: Added a real authenticated ASGI continuity contract that creates one persisted `ChatSession`, runs
+the first Pi request, shuts down its worker, then runs the second request against a fresh worker. A
+recording supervisor asserts the second `session.open` receives the exact first user/assistant transcript
+from the database, and the DB assertion requires the four-message user/assistant sequence. Added a
+production-worker long-horizon contract with seven canonical `create_task` calls followed by a final
+assistant response; it requires seven authority executions, seven persisted tasks, one terminal
+`run.completed`, and cumulative `usage.turns == 8`, exceeding the historical six-turn boundary.
+Result: The focused production slice is green (`7 passed`), changed-file Ruff and diff checks pass, and
+living Reports documentation plus generated site artifacts now name these proofs and their bounded
+scope. This closes evidence for two-call DB rehydration and >6-turn tool-loop continuity, but it does
+not yet prove live-provider checkpoint/restart, idempotency after crashes, or recovery from timeout,
+cancel, malformed output, unavailable tools, or donor revocation.
+Verified: `pytest -q tests/pi_production/test_worker_tool_loop.py tests/pi_production/test_chat_pi_asgi.py`
+=> `7 passed in 4.37s`; focused Ruff clean; `git diff --check` clean; feature docs `generated 224`,
+`check passed for 86`.
+Next: audit the long-horizon runner's exit-code and oracle behavior, then cover checkpoint/cancel/
+retry/idempotency and Petals donation/revocation lifecycle before remote Docker acceptance.

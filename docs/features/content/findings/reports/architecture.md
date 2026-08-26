@@ -8,8 +8,8 @@ related_features: ["findings.evidence", "tasks.send-report", "interfaces.handoff
 related_glossary: ["minto-pyramid", "scr", "triangulation"]
 code_references: ["frontend/src/components/findings/FindingsView.tsx", "frontend/src/components/findings/ProjectReportsView.tsx", "backend/app/api/routes/reports.py", "backend/app/api/routes/tasks.py", "backend/app/core/report_manager.py", "backend/app/core/reporting_worker.py", "backend/app/services/research_validity_service.py"]
 api_references: ["backend/app/api/routes/reports.py", "backend/app/api/routes/tasks.py"]
-test_references: ["tests/test_research_integrity_reports.py", "tests/test_research_spine_end_to_end.py", "tests/test_tasks.py", "tests/real_user_benchmark/run.mjs"]
-last_verified: 2026-05-22
+test_references: ["tests/test_research_integrity_reports.py", "tests/test_research_spine_end_to_end.py", "tests/pi_production/test_chat_pi_asgi.py", "tests/pi_production/test_worker_tool_loop.py", "tests/test_tasks.py", "tests/real_user_benchmark/run.mjs"]
+last_verified: 2026-08-26
 compass: CF-SPEC-53 / CF-657; CF-SPEC-60 / CF-773; CF-SPEC-121; CF-SPEC-122; CF-SPEC-123 / CF-1581; Research Spine item-level report gate batch
 ---
 
@@ -53,6 +53,8 @@ The Reports tab lets users generate, inspect, and manage project reports produce
 - The real-user benchmark records approved task ids before creating task-backed nuggets, facts, insights, and recommendations, then requests report/brief generation after that chain exists. This keeps Findings/reporting aligned with Istara's human-in-the-loop review process.
 - The focused end-to-end contract in `tests/test_research_spine_end_to_end.py` proves the report boundary causally: current raw document and exact evidence units are independently coded by three distinct model identities; numeric Fleiss kappa and Krippendorff alpha, route/coder/application provenance, grounding, explicit human code acceptance, Atomic lineage, human Done approval, ReportManager routing, and graph traceability are all required. The same accepted evidence is asserted to remain absent from reports while the task is still In Review.
 - The real-user coding probe must scan paginated evidence, select substantive raw spans, and prove three distinct source identities before a three-model validation can pass. Missing or unit-only source metadata is grouped as unknown and blocks the coding request rather than being counted as source diversity.
+- Pi chat continuity is tested over two real authenticated ASGI calls using one persisted ChatSession, with the first worker shut down before the second call. The second worker must rehydrate the exact user/assistant transcript from the database; a memory-only session or manually supplied history is not sufficient evidence.
+- The Pi worker's long-horizon contract drives seven authority tool calls plus a terminal assistant response and requires cumulative `usage.turns == 8`, seven persisted tasks, and one terminal completion. This is a bounded execution proof, not a claim that arbitrary live-provider horizons are safe; timeout, cancellation, restart, idempotency, and side-effect recovery remain separate acceptance work.
 - The frontmatter and manifest entries are the durable contract for agents updating this page after code changes.
 - When the referenced component, store, route, agent, skill, or test behavior changes, regenerate and validate the feature documentation.
 
