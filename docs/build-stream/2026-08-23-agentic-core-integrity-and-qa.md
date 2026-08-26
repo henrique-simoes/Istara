@@ -8,8 +8,8 @@ phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal ac
 stage: S2-execute
 status: in-progress
 blocked_on: null
-last: { agent: gpt-5-codex, at: 2026-08-26T16:32:00Z, ledger: L-160 }
-next_action: "Transport the provenance/secret-safe runner fix, rerun the contract gates, then execute one final bounded Docker comparison only after the credential exposure is removed."
+last: { agent: gpt-5-codex, at: 2026-08-26T16:40:00Z, ledger: L-161 }
+next_action: "Run the full deterministic matrix and feature-doc checks on deaffea1, then refresh Docker and perform one provenance/secret-safe comparison retake."
 ```
 
 ## Plan overview / roadmap
@@ -3440,6 +3440,23 @@ Next: commit/push this runner hardening, run the full deterministic contract mat
 docs, refresh the detached worktree, and execute one final two-arm run only to validate harness
 provenance and secret handling. Treat any provider 402, missing donor, zero-rater, or absent
 human-approval result as an explicit blocker.
+
+### L-161 | 2026-08-26T16:40:00Z | S2-execute | gpt-5-codex | verification-wave checkpoint after runner hardening
+Did: Transported the self-bootstrapping, source-provenance, and secret-safe runner changes as
+`deaffea1` to `origin/testing`. The hardening is intentionally limited to the Docker benchmark
+harness: it creates ignored result mounts, passes the exact Git commit into `/work`, and moves
+password aliases from visible CLI arguments to a mode-600 temporary env file removed on exit.
+No application route, model manager, ensemble algorithm, or Research Spine gate was changed.
+
+Verification contract: run the complete bounded matrix used in L-140, the 57-case real-user
+harness contract check, shell syntax, and feature-doc generation/check. Attach exact commands
+and outputs before the next remote run. The final remote retake must use a fresh source hash and
+record the source commit in each arm's `run-metadata.json`; a process-list check must confirm no
+password value appears in the active Docker command line. The runner remains a two-arm companion
+and cannot prove three-donor Petals or live Fleiss' kappa.
+
+Next: execute local deterministic verification, append its result, then refresh the detached
+Mac Studio worktree to `origin/testing` and run exactly one post-fix Docker comparison.
 
 ### L-159 | 2026-08-26T16:05:00Z | S1-plan/S2-execute/S3-review | gpt-5-codex | runner bootstrap fix specified by CF and TDD
 Did: Ran Compass Forge `intelligence impact --path scripts/runner/docker-run.sh` for the
