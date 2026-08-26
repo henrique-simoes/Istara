@@ -5,6 +5,25 @@
 # Mac Studio host. Only benchmark result directories are writable bind mounts.
 set -euo pipefail
 
+# The Mac Studio SSH login shell may not include Docker Desktop's CLI in PATH. Resolve an
+# operator-supplied binary (or Docker Desktop's standard path) without installing anything
+# on the host; every benchmark workload still runs in Docker below.
+if [[ -n "${ISTARA_DOCKER_BIN:-}" ]]; then
+  [ -x "$ISTARA_DOCKER_BIN" ] || { echo "ISTARA_DOCKER_BIN is not executable: $ISTARA_DOCKER_BIN" >&2; exit 2; }
+  export PATH="$(dirname "$ISTARA_DOCKER_BIN"):$PATH"
+elif ! command -v docker >/dev/null 2>&1; then
+  for docker_dir in \
+    "/Applications/Docker.app/Contents/Resources/bin" \
+    "/opt/homebrew/bin" \
+    "/usr/local/bin"; do
+    if [ -x "$docker_dir/docker" ]; then
+      export PATH="$docker_dir:$PATH"
+      break
+    fi
+  done
+fi
+command -v docker >/dev/null 2>&1 || { echo "Docker CLI is required; install/use Docker Desktop on the Docker host, never this runner" >&2; exit 2; }
+
 PROJECT="${ISTARA_STACK_PROJECT:-istara-testing}"
 BACKEND_NET="${PROJECT}_backend-net"
 FRONTEND_NET="${PROJECT}_frontend-net"
@@ -36,7 +55,7 @@ case "${ISTARA_MARATHON_ENGINE:-both}" in
 esac
 
 RUN_GROUP="${ISTARA_BENCHMARK_RUN_GROUP:-docker-comparison-$(date -u +%Y%m%dT%H%M%SZ)}"
-RUNNER_IMAGE_REQUEST="${ISTARA_RUNNER_IMAGE:-node:20-bookworm}"
+RUNNER_IMAGE_REQUEST="${ISTARA_RUNNER_IMAGE:-istara-benchmark-runner:node20-docker-cli}"
 : "${ISTARA_BENCHMARK_SOURCE_SNAPSHOT_SHA256:?set the sha256 of the exact source snapshot copied to the Mac Studio}"
 SOURCE_COMMIT="$(git -C "$REPO_ROOT" rev-parse HEAD 2>/dev/null)" || {
   echo "unable to resolve the exact source commit for benchmark provenance" >&2
@@ -46,6 +65,37 @@ COMPOSE_FILE="${ISTARA_BENCHMARK_COMPOSE_FILE:-$REPO_ROOT/docker-compose.vps.yml
 COMPOSE_ENV_FILE="${ISTARA_BENCHMARK_COMPOSE_ENV_FILE:-$REPO_ROOT/.env.deploy}"
 RESET_STACK="${ISTARA_BENCHMARK_RESET_STACK:-1}"
 RUN_ORDER="$(IFS=,; echo "${ENGINES[*]}")"
+# Non-plan benchmark runs must require donated compute unless the operator explicitly
+# selects an offline harness/debug control. Keep the default aligned with run.mjs and the
+# benchmark registry; never silently turn the Research Spine acceptance gate off.
+ISTARA_BENCHMARK_REQUIRE_COMPUTE_DONATION="${ISTARA_BENCHMARK_REQUIRE_COMPUTE_DONATION:-1}"
+ISTARA_BENCHMARK_START_CLIENT_SANDBOXES="${ISTARA_BENCHMARK_START_CLIENT_SANDBOXES:-$ISTARA_BENCHMARK_REQUIRE_COMPUTE_DONATION}"
+ISTARA_BENCHMARK_DOCKER_SOCKET="${ISTARA_BENCHMARK_DOCKER_SOCKET:-/var/run/docker.sock}"
+
+case "$ISTARA_BENCHMARK_REQUIRE_COMPUTE_DONATION" in
+  0|1|true|false|yes|no) ;;
+  *) echo "ISTARA_BENCHMARK_REQUIRE_COMPUTE_DONATION must be 0/1/true/false/yes/no" >&2; exit 2 ;;
+esac
+case "$ISTARA_BENCHMARK_START_CLIENT_SANDBOXES" in
+  0|1|true|false|yes|no) ;;
+  *) echo "ISTARA_BENCHMARK_START_CLIENT_SANDBOXES must be 0/1/true/false/yes/no" >&2; exit 2 ;;
+esac
+
+# The benchmark's donor/model/client helpers invoke Docker from inside the disposable
+# runner. Mount only the Docker API socket into that runner when client sandboxes are
+# enabled; application services never receive the socket. This is a deliberate Docker-only
+# boundary, and missing prerequisites fail closed before any comparison arm starts.
+NESTED_DOCKER_MOUNTS=()
+case "$ISTARA_BENCHMARK_START_CLIENT_SANDBOXES" in
+  1|true|yes)
+    [ -S "$ISTARA_BENCHMARK_DOCKER_SOCKET" ] || {
+      echo "required nested Docker socket is unavailable: $ISTARA_BENCHMARK_DOCKER_SOCKET" >&2
+      echo "set ISTARA_BENCHMARK_START_CLIENT_SANDBOXES=0 only for an explicit offline control run" >&2
+      exit 2
+    }
+    NESTED_DOCKER_MOUNTS=(--mount "type=bind,src=$ISTARA_BENCHMARK_DOCKER_SOCKET,dst=/var/run/docker.sock")
+    ;;
+esac
 
 # Never place credentials in the docker CLI argument vector: macOS process listings expose
 # command-line values to other local users. Docker reads this short-lived, mode-600 file and
@@ -58,9 +108,52 @@ trap cleanup_runner_env EXIT
 printf 'ISTARA_ADMIN_PASSWORD=%s\nADMIN_PASSWORD=%s\nISTARA_TEST_ADMIN_PASSWORD=%s\n' \
   "$ISTARA_ADMIN_PASSWORD" "$ISTARA_ADMIN_PASSWORD" "$ISTARA_ADMIN_PASSWORD" > "$RUNNER_ENV_FILE"
 
-docker pull "$RUNNER_IMAGE_REQUEST" >/dev/null
-RUNNER_IMAGE="$(docker image inspect --format '{{index .RepoDigests 0}}' "$RUNNER_IMAGE_REQUEST")"
+append_env_name() {
+  local name="$1"
+  case "$name" in
+    ISTARA_ADMIN_PASSWORD|ADMIN_PASSWORD|ISTARA_TEST_ADMIN_PASSWORD) return 0 ;;
+  esac
+  if [[ "$name" =~ ^[A-Za-z_][A-Za-z0-9_]*$ ]] && declare -p "$name" >/dev/null 2>&1; then
+    printf '%s=%s\n' "$name" "${!name}" >> "$RUNNER_ENV_FILE"
+  fi
+}
+
+# Pass benchmark topology/profile inputs into the isolated runner without exposing secrets
+# in the Docker CLI argv. API keys referenced by *_API_KEY_ENV are opt-in via
+# ISTARA_BENCHMARK_PASSTHROUGH_ENV_NAMES and are written only to the mode-600 transient env
+# file. The prefixed benchmark variables are safe to forward because they are namespaced and
+# consumed solely by the benchmark process, including ISTARA_BENCHMARK_DONOR_* profiles,
+# ISTARA_BENCHMARK_DONOR_PROFILES_FILE, ISTARA_BENCHMARK_COMPUTE_CONNECTION_STRINGS,
+# topology/count/route requirements, and signed connection-string inputs.
+while IFS= read -r env_name; do
+  append_env_name "$env_name"
+done < <(compgen -A variable | sed -n '/^ISTARA_BENCHMARK_/p')
+for env_name in ISTARA_NETWORK_ACCESS_TOKEN NETWORK_ACCESS_TOKEN; do
+  append_env_name "$env_name"
+done
+if [[ -n "${ISTARA_BENCHMARK_PASSTHROUGH_ENV_NAMES:-}" ]]; then
+  passthrough_names="${ISTARA_BENCHMARK_PASSTHROUGH_ENV_NAMES//,/ }"
+  for env_name in $passthrough_names; do
+    append_env_name "$env_name"
+  done
+fi
+
+if [[ -n "${ISTARA_RUNNER_IMAGE:-}" ]]; then
+  docker pull "$RUNNER_IMAGE_REQUEST" >/dev/null
+else
+  docker build --pull -f "$REPO_ROOT/scripts/runner/Dockerfile" -t "$RUNNER_IMAGE_REQUEST" "$REPO_ROOT/scripts/runner" >/dev/null
+fi
+RUNNER_IMAGE_DIGEST="$(docker image inspect --format '{{join .RepoDigests "\n"}}' "$RUNNER_IMAGE_REQUEST" 2>/dev/null | sed -n '1p')"
+RUNNER_IMAGE="${RUNNER_IMAGE_DIGEST:-$RUNNER_IMAGE_REQUEST}"
 RUNNER_IMAGE_ID="$(docker image inspect --format '{{.Id}}' "$RUNNER_IMAGE_REQUEST")"
+
+if [[ ${#NESTED_DOCKER_MOUNTS[@]} -gt 0 ]]; then
+  if ! docker run --rm "${NESTED_DOCKER_MOUNTS[@]}" "$RUNNER_IMAGE_REQUEST" docker info >/dev/null 2>&1; then
+    echo "runner image cannot reach the Docker daemon through $ISTARA_BENCHMARK_DOCKER_SOCKET" >&2
+    echo "use the repository Dockerfile or an ISTARA_RUNNER_IMAGE that contains a Linux Docker CLI" >&2
+    exit 2
+  fi
+fi
 
 reset_stack_for_engine() {
   local engine="$1"
@@ -102,6 +195,7 @@ for engine in "${ENGINES[@]}"; do
     --mount type=bind,src="$PROBE_RESULTS",dst=/work/tests/real_user_benchmark/.results \
     --mount type=bind,src="$SIM_RESULTS",dst=/work/tests/simulation/.results \
     --mount type=bind,src="$MARATHON_RESULTS",dst=/work/data/test-marathon \
+    "${NESTED_DOCKER_MOUNTS[@]}" \
     -v istara-pw-browsers:/ms-playwright \
     -w /work \
     -e PLAYWRIGHT_BROWSERS_PATH=/ms-playwright \
@@ -110,7 +204,8 @@ for engine in "${ENGINES[@]}"; do
     -e ISTARA_MARATHON_ENGINE="$engine" \
     -e ISTARA_RUNNER_SKIP_MARATHON="${ISTARA_RUNNER_SKIP_MARATHON:-0}" \
     -e ISTARA_BENCHMARK_ENGINE="$engine" \
-    -e ISTARA_BENCHMARK_REQUIRE_COMPUTE_DONATION=0 \
+    -e ISTARA_BENCHMARK_REQUIRE_COMPUTE_DONATION="$ISTARA_BENCHMARK_REQUIRE_COMPUTE_DONATION" \
+    -e ISTARA_BENCHMARK_START_CLIENT_SANDBOXES="$ISTARA_BENCHMARK_START_CLIENT_SANDBOXES" \
     -e ISTARA_BENCHMARK_REQUIRE_LIVE_CHAT=1 \
     -e ISTARA_BENCHMARK_START_SANDBOX=0 \
     -e ISTARA_BENCHMARK_SKIP_SANDBOX=1 \

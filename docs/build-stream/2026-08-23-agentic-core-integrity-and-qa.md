@@ -3776,3 +3776,51 @@ Next: wait for owner-provided reachable provider credentials and three healthy, 
 project-scoped donor routes. Then refresh a clean detached checkout to the reconciled testing
 SHA and run exactly one terminal Docker-only retake, preserving hashes, logs, scorecard, and
 Compass Forge gate evidence.
+
+### L-180 | 2026-08-26T20:05:00Z | S2-execute | gpt-5-codex | Docker runner donation gate and nested CLI contract repaired
+Did: TDD red first added two static runner-contract checks, which failed because
+`scripts/runner/docker-run.sh` hard-coded `ISTARA_BENCHMARK_REQUIRE_COMPUTE_DONATION=0` and the
+Node runner had no Docker CLI/socket contract for the donor/model/relay containers started by
+`tests/real_user_benchmark/run.mjs`. Implemented a disposable `scripts/runner/Dockerfile`
+(Node 20 Bookworm plus the Linux `docker.io` CLI), defaulted the wrapper to build that image,
+and retained an explicit `ISTARA_RUNNER_IMAGE` override only for compatible images. The wrapper
+now defaults compute donation to `1`, defaults client sandboxes to that requirement, validates
+boolean inputs, requires the Docker socket when nested sandboxes are enabled, preflights
+`docker info` through the socket, and fails closed before any engine arm if the image/daemon
+contract is missing. It forwards all namespaced `ISTARA_BENCHMARK_*` topology/profile/connection
+inputs through the mode-600 transient env file, with explicit opt-in names for donor API-key
+environment variables; secrets remain out of Docker argv. It also resolves Docker Desktop's
+standard Mac Studio CLI path without installing host packages. README guidance now documents the
+boundary and the explicit offline-control exception. The contract suite passes `15/15`,
+`bash -n scripts/runner/docker-run.sh` passes, and `git diff --check` passes. No Docker daemon
+or live model was started locally; no Mac Studio host installation occurred.
+Next: run the broader deterministic benchmark/Research Spine matrix and Compass Forge before/after
+gates for this runner change, append the external audit disposition, then commit/push the exact
+testing refs. A terminal Mac Studio run still requires the owner-authorized provider credential
+and three healthy Compose-owned donor routes; this local fix makes their absence fail honestly
+instead of silently bypassing compute donation.
+
+### L-181 | 2026-08-26T15:52:00Z | S3-review | gpt-5-codex | deterministic matrix and after-gate green
+Did: Ran the bounded Python matrix covering Pi production/migration, Petals, Pi benchmark,
+chat, Research Spine validity/end-to-end/report gates, findings/tasks, settings and agent
+selection, replacement candidates, harness configuration, remote runner contracts, marathon
+integrity, and the security benchmark. Result: `927 passed, 5 skipped in 148.77s (0:02:28)` with
+no failures or warnings. The count is higher than the prior `923` because the two new runner
+contracts are included. Ran `npm run check` in `tests/real_user_benchmark`: `58` tests passed,
+including the three-model coding, Fleiss/Krippendorff, donor-route, reconciliation, long-horizon,
+Docker-only, provenance, and blocker-oracle contracts. Feature validation passed with
+`seeded 0`, `generated 224`, and `86` feature checks; `bash -n scripts/runner/docker-run.sh`
+and `git diff --check` also passed.
+
+Compass Forge native `gate after` record `73` reports `comparison.new_issues=[]`, zero file and
+large-file deltas, and no new forbidden dependencies, import cycles, missing paths, unexpected
+large files, security findings, or taint findings. The overall current gate remains affected by
+inherited repository complexity, route/type drift, and secret-flow warnings; this change adds no
+comparison delta. No Docker daemon, model/provider call, SSH mutation, or host package install
+was performed locally. The external audit now contains F-R9-32 for the prior silent donation
+disable/nested-Docker gap and its local remediation.
+Next: commit and push the six intended repository files (`scripts/runner/Dockerfile`, runner
+wrapper, runner contract test, real-user README, generated feature manifest, and this ledger),
+verify exact `testing`/`origin/testing` parity, then remain at the live acceptance gate until the
+owner supplies one authorized reachable provider credential and three healthy Compose-owned donor
+routes. Only then refresh the clean Mac Studio checkout and run one terminal Docker-only retake.

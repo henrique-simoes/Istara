@@ -58,6 +58,20 @@ Test data cleanup is explicit, not automatic. The benchmark creates a new `[RU-B
 
 Server and client sandboxes are separate inside the Docker workflow. `--start-sandbox` starts Istara in a container; donor/researcher containers are controlled by `ISTARA_BENCHMARK_START_CLIENT_SANDBOXES` and default on whenever donated compute or external connection strings are required. Do not run the orchestrator on the Mac Studio host or point it at a host-managed Istara instance. The legacy `probe:deep:three-model` command intentionally exits with a Docker-only policy blocker; use `scripts/runner/docker-run.sh` for the supported containerized engine comparison, and treat three-donor Research Spine acceptance as open until a containerized donor topology is provisioned.
 
+The supported wrapper builds a disposable `scripts/runner/Dockerfile` image (Node 20 plus the
+Linux Docker CLI) and mounts the Docker API socket only into that short-lived runner when
+client sandboxes are enabled. This is required because donor model and relay containers are
+created by `run.mjs` from inside the runner. Application Compose services never receive the
+socket. If the socket or the runner's Docker CLI is unavailable, the wrapper exits before
+starting an engine arm; it never falls back to host execution. Set `ISTARA_RUNNER_IMAGE` only
+to an image that contains Node, the benchmark dependencies' base tooling, and a Linux Docker
+CLI. The wrapper defaults `ISTARA_BENCHMARK_REQUIRE_COMPUTE_DONATION` to `1` and forwards all
+`ISTARA_BENCHMARK_*` topology/profile/connection inputs through a mode-600 transient env file.
+Values named by donor `*_API_KEY_ENV` must be listed in
+`ISTARA_BENCHMARK_PASSTHROUGH_ENV_NAMES` (comma-separated) so they enter the runner without
+appearing in the Docker command line. Set the requirement to `0` only for an explicit offline
+harness control; such a run is not Research Spine or engine-comparison evidence.
+
 ### Three-Model Benchmark Flow
 
 ```mermaid
@@ -285,6 +299,7 @@ Credentialed integrations such as live Figma, Google Stitch, Telegram, and AURA 
 - `ISTARA_BENCHMARK_KEEP_DONOR_MODEL_CONTAINERS=1`: keep temporary donor model server containers after a run for inspection.
 - `ISTARA_BENCHMARK_STOP_COLIMA_AFTER_RUN`: stops Colima after benchmark-owned donor/client containers are cleaned up. Defaults to `1` for `probe:deep:three-model`; set `0` only when inspecting containers manually.
 - `ISTARA_BENCHMARK_DONOR_PROFILES_JSON` or `ISTARA_BENCHMARK_DONOR_PROFILES_FILE`: advanced JSON donor profile configuration. Profiles can include `id`, `provider`, `llm_host`, `model`, `api_key_env`, and `connection_string`.
+- `ISTARA_BENCHMARK_PASSTHROUGH_ENV_NAMES`: comma-separated names (for example `LMSTUDIO_API_KEY,QWEN_LMSTUDIO_API_KEY`) whose values are copied into the disposable Docker runner for donor `*_API_KEY_ENV` resolution; values are never put in Docker argv.
 - `ISTARA_BENCHMARK_QWEN_LLM_HOST`, `ISTARA_BENCHMARK_QWEN_LLM_MODEL`, `ISTARA_BENCHMARK_QWEN_LLM_API_KEY_ENV`: convenience configuration for the future Qwen donor profile.
 - `ISTARA_BENCHMARK_NETWORK_ACCESS_TOKEN`: optional fixed network token for relay testing in benchmark-managed server sandboxes. For an already-running local server, generate fresh compute donation strings after the server has a network token so the signed strings embed the current relay credential.
 - `ISTARA_BENCHMARK_AUTOSTART_COLIMA=0`: prevent automatic Colima startup.
