@@ -2131,3 +2131,15 @@ Verified: feature docs `generated 224`, `check passed for 86`; focused Ruff and 
 Compass Forge after record 17 completed; no live model/service/SSH/Docker/host action.
 Next: commit and push exactly the focused test, Reports living contract, generated manifest, and ledger;
 then audit and close remaining negative Research Spine, calls/long-horizon, Petals, and benchmark gaps.
+
+### L-96 | 2026-08-26T00:55:00Z | S5-ship | gpt-5-codex | integrator | Continuous Research Spine proof transported cleanly
+Did: Committed the focused end-to-end contract, Reports living documentation and generated site manifest,
+and the preceding ledger receipts as `5a6ea9d9` (`test: prove research spine report gate`); pushed the
+same commit to `origin/testing`.
+Result: The positive/negative report-gate proof is now recoverable from the remote testing branch with
+no uncommitted local changes. This commit does not claim Mac Studio acceptance or live-model coverage;
+those remain pending Docker-only verification and the separate calls/long-horizon/Petals audit.
+Verified: push `1335f449..5a6ea9d9`; local `HEAD` and `origin/testing` both resolve to
+`5a6ea9d9ed4635c6ec625a0a520a00c62bb066e2`; post-push worktree clean.
+Next: inspect current test topology and Compass Forge decisions for the remaining P9-06 through P9-15
+items, then add only evidence-bearing contracts or fixes that close identified gaps.
