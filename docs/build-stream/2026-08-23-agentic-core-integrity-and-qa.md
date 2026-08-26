@@ -1884,3 +1884,15 @@ No live service/model/SSH/host action.
 Next: stage exactly the 12 reviewed runtime/test/living-doc/generated/ledger paths, commit/push, verify
 clean local/remote equality, transport the receipt, then continue P9-05 with independent prompt/cache
 isolation and external Fleiss/alpha cross-check edge cases.
+
+### L-78 | 2026-08-26T00:16:00Z | S5-ship | gpt-5-codex | integrator | Effective-rater identity transported cleanly
+Did: Staged exactly the 12 reviewed endpoint/model-manager/reliability/service/test/living-doc/generated/
+ledger files; committed `7a0b1953` (`feat: persist effective ensemble rater identity`) and pushed.
+Result: The Research Spine now has a remotely recoverable, bounded effective-rater provenance contract.
+No unrelated path was staged. Local/remote tips are byte-identical and the tree was clean immediately
+after transport, before this mandatory receipt was appended.
+Verified: push `17918777..7a0b1953`; local and `origin/testing` both resolve to
+`7a0b195391c05285f987d11487be4eee6bbdab83`; post-push status had no file entries.
+Next: commit/push this receipt, audit whether independent coder calls share conversation/cache state,
+then add deterministic statistical cross-checks for perfect/chance/disagreement/missing/single-category/
+category-order cases before declaring P9-05 complete.
