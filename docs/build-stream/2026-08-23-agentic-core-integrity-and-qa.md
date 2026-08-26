@@ -8,8 +8,8 @@ phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal ac
 stage: S2-execute
 status: in-progress
 blocked_on: null
-last: { agent: gpt-5-codex, at: 2026-08-26T11:36:00Z, ledger: L-112 }
-next_action: "Verify route parity and two-call/long-horizon contracts, then run Docker-only Mac Studio acceptance and reconcile testing refs."
+last: { agent: gpt-5-codex, at: 2026-08-26T12:02:00Z, ledger: L-116 }
+next_action: "Run the remaining Docker-only acceptance only after the remote owner handoff makes ~/istara-testing clean; preserve the blocked boundary and reconcile refs/worktrees without destructive cleanup."
 ```
 
 ## Plan overview / roadmap
@@ -2477,3 +2477,26 @@ Next: after owner handoff makes the remote checkout clean, build a fresh disposa
 from the exact pushed SHA, run the Docker runner (never host Node), and preserve per-engine
 scorecards plus the coding-run/reliability/reconciliation records. A green transport count alone
 must not close P9-06/P9-07; acceptance requires the complete source-to-human-Done chain.
+
+### L-116 | 2026-08-26T12:02:00Z | S2-execute/S3-review | gpt-5-codex | implementer/reviewer | Local integration and benchmark contract matrix is green; one operator command was corrected
+Did: Re-ran the broad local integration matrix after correcting the W7 structured-provider fixture so
+it reports the endpoint selected by the test instead of an unconditional placeholder. The matrix
+covering dispatcher/agentic routing, Pi runtime hardening, chat ASGI/runtime/catalog behavior,
+Research Spine donor/end-to-end/contract/pagination/evaluation paths, settings and Pi endpoints,
+model migration, benchmark live/runner/scheduler, and Petals lifecycle now passes
+(`363 passed in 83.48s`). The Pi runtime's complete Node suite also passes (`npm test`: 46/46).
+The correct real-user benchmark contract command was then run from
+`tests/real_user_benchmark`: `npm run check` => 55/55 Node tests plus syntax checks, all green.
+The earlier attempt to run `npm run check` from `pi-runtime` failed only because that package has no
+`check` script; this was an operator command error, not a code regression, and is recorded here so
+another agent does not mistake it for a failing acceptance gate. The security benchmark also passes
+at 100% (28/28 controls, `--fail-on-threshold`). No live model was loaded and no remote or host
+Mac Studio mutation occurred.
+Result: local contract evidence is strong and reproducible, but it remains scripted/faux-provider
+proof. It does not establish live model quality, a green accepted coding run, or Docker-only remote
+acceptance. The uncommitted W7 fixture correction is intentionally retained until the next commit
+and ref reconciliation checkpoint.
+Next: commit/push this fixture and ledger checkpoint, then inspect exact worktree/branch ancestry;
+remove only clean, merged, demonstrably abandoned registrations, never dirty or recovery worktrees.
+Keep P9-06/P9-07 open until a fresh exact-SHA Docker runner produces source-grounded three-model
+evidence through reconciliation and human-Done, with the remote owner handoff recorded.

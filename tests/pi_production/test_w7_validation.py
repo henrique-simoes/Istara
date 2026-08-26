@@ -115,12 +115,14 @@ class _StubAgentic:
         value: dict | None = None,
         raise_on: dict | None = None,
         fail_samples: bool = False,
+        structured_endpoint_id: str = "ep-structured",
     ) -> None:
         self.calls: list[tuple[str, dict]] = []
         self._texts = list(texts) if texts is not None else None
         self._value = value if value is not None else {}
         self._raise_on = raise_on or {}
         self._fail_samples = fail_samples
+        self._structured_endpoint_id = structured_endpoint_id
 
     def _next_text(self) -> str:
         return self._texts.pop(0) if self._texts else "dispatcher text"
@@ -173,7 +175,7 @@ class _StubAgentic:
             status="success",
             usage={},
             stop_reason="stop",
-            endpoint_id="ep-structured",
+            endpoint_id=self._structured_endpoint_id,
             tool_calls=[],
         )
 
@@ -703,7 +705,7 @@ async def test_pi_coder_runner_dispatches_structured_pinned_to_endpoint(monkeypa
             }
         ]
     }
-    dispatcher_stub = _StubAgentic(value=value)
+    dispatcher_stub = _StubAgentic(value=value, structured_endpoint_id="ep-a")
     monkeypatch.setattr("app.core.agentic.agentic", dispatcher_stub)
 
     from app.services.research_validity_service import (
