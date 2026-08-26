@@ -8,7 +8,7 @@ phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal ac
 stage: S2-execute
 status: in-progress
 blocked_on: null
-last: { agent: gpt-5-codex, at: 2026-08-26T22:23:42Z, ledger: L-197 }
+last: { agent: gpt-5-codex, at: 2026-08-26T22:25:32Z, ledger: L-198 }
 next_action: "Obtain owner-authorized provider credentials and three Compose-owned donor routes, run the terminal Docker-only acceptance retake for provider, Petals, combined, legacy, and pi profiles, then attach complete runtime evidence or leave the external gate open."
 ```
 
@@ -4277,3 +4277,26 @@ Next: run the pinned Compass Forge after-gate, append the corresponding testing.
 commit and push the focused implementation/docs/tests, then verify exact local/remote SHA
 parity. The live three-model/Petals/combined acceptance gate remains open pending provider
 credit and three distinct Compose-owned donor routes.
+
+### L-198 | 2026-08-26T22:25:32Z | S3-ship | gpt-5-codex | shared-authority fix transported
+
+Did: Committed and pushed the shared Pi authority implementation, its W1/W7 regression
+coverage, Ensemble Health living documentation, and generated feature page as
+`816f1ebf2e3797a3e0985ae5fb5354bac3b16660` (`fix: share Pi authority with research coding`).
+The pinned native Rust Compass Forge after-gate is record `84`: no new forbidden dependencies,
+import cycles, missing paths, security issues, or taint issues; the repository-wide gate remains
+failed only on inherited complexity/route/type/secret-flow debt, including the now-touched large
+Research Spine service and W7 test file. The external `/Users/user/Desktop/testing.md` ledger
+now contains F-R9-44 documenting the closed manager split and the still-open live gate.
+
+Evidence: `git push origin testing`, `git fetch origin testing`, equal `git rev-parse HEAD`
+and `git rev-parse origin/testing`, `git diff --exit-code origin/testing --`, and
+`git status --short --branch` returned a clean `testing...origin/testing` checkout. Focused
+tests and feature-doc checks are recorded in L-197. No live model/provider call or host install
+was performed.
+
+Next: preserve the live acceptance blocker until owner-authorized provider credit and three
+Compose-owned donor routes exist; then run the Docker-only Mac Studio provider, Petals, combined,
+legacy, and PI profiles and attach complete three-rater/reliability/reconciliation/human-Done
+evidence. The local authority TOCTOU finding is fixed and does not by itself prove live ensemble
+quality.
