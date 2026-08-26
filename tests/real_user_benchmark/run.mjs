@@ -878,11 +878,6 @@ const keepDonorModelContainers = ["1", "true", "yes"].includes(
   String(process.env.ISTARA_BENCHMARK_KEEP_DONOR_MODEL_CONTAINERS || "").toLowerCase(),
 );
 const hostManagedThreeModelRun = useLocalThreeModelDonorTopology && skipSandbox && startClientSandboxes;
-const hostManagedServerContainerNames = [
-  "istara-benchmark-backend",
-  "istara-benchmark-frontend",
-  "istara-benchmark-ollama",
-];
 const stopColimaAfterRun = boolEnv("ISTARA_BENCHMARK_STOP_COLIMA_AFTER_RUN", hostManagedThreeModelRun);
 let colimaAutostartAttempted = false;
 let colimaStartedByBenchmark = false;
@@ -1045,6 +1040,48 @@ const donorModelContainers = [];
 const extraSensitiveLogValues = new Set();
 let relayClientImageBuilt = false;
 let clientDockerReady = null;
+
+function failClosedForHostManagedThreeModelRun() {
+  if (!hostManagedThreeModelRun || mode === "plan-only") return false;
+  const message = "Docker-only benchmark policy forbids the host-managed three-model topology; run the Docker wrapper against the Compose stack instead.";
+  const evidence = {
+    policy: "docker-only",
+    host_managed_three_model_run: true,
+    start_sandbox: startSandbox,
+    skip_sandbox: skipSandbox,
+    start_client_sandboxes: startClientSandboxes,
+    api_base: apiBase,
+    frontend_url: frontendUrl,
+    action: "refused-before-live-services",
+  };
+  logger.writeJson("docker-only-policy.json", evidence);
+  logger.action("benchmark.docker_only.refused", evidence);
+  logger.issue({
+    area: "benchmark",
+    severity: "critical",
+    title: "Host-managed three-model topology refused",
+    detail: message,
+    evidence,
+  });
+  blockers.push(message);
+  const scorecard = scoreRun({
+    mode,
+    metrics: logger.metrics,
+    integrationMatrix: [],
+    blockers,
+    completedTasks: 0,
+    chatTurns: 0,
+    uploadedDocuments: 0,
+    sandbox,
+    featureResults,
+  });
+  logger.writeJson("scorecard.json", scorecard);
+  logger.appendReport("The requested host-managed three-model topology was refused before any live service, model, or package operation because this benchmark is Docker-only. Use scripts/runner/docker-run.sh against the Compose stack.\n\n");
+  logger.appendReport(writeScorecardMarkdown(scorecard));
+  logger.finalize({ scorecard });
+  process.exitCode = benchmarkExitCode({ mode, blockers });
+  return true;
+}
 
 function redactForLog(value) {
   if (typeof value !== "string") return value;
@@ -1577,86 +1614,6 @@ function startServerSandboxIfRequested() {
       detail: result.stderr || result.error?.message || "docker compose returned non-zero status",
     });
   }
-}
-
-function assertHostManagedThreeModelTopology() {
-  if (!hostManagedThreeModelRun) return;
-  const issues = [];
-  try {
-    const apiUrl = new URL(apiBase);
-    if (["18000", "18001"].includes(apiUrl.port)) {
-      issues.push(`apiBase=${apiBase} looks like a benchmark-owned server sandbox; use the host Istara server such as http://localhost:8000.`);
-    }
-  } catch {
-    issues.push(`apiBase=${apiBase} is not a valid URL.`);
-  }
-  try {
-    const uiUrl = new URL(frontendUrl);
-    if (["13000", "13001"].includes(uiUrl.port)) {
-      issues.push(`frontendUrl=${frontendUrl} looks like a benchmark-owned frontend sandbox; use the host Istara frontend such as http://localhost:3000.`);
-    }
-  } catch {
-    issues.push(`frontendUrl=${frontendUrl} is not a valid URL.`);
-  }
-  const evidence = {
-    host_managed_three_model_run: true,
-    start_sandbox: startSandbox,
-    skip_sandbox: skipSandbox,
-    start_client_sandboxes: startClientSandboxes,
-    api_base: apiBase,
-    frontend_url: frontendUrl,
-    issues,
-  };
-  logger.writeJson("host-managed-topology-contract.json", evidence);
-  logger.action("topology.host_managed.contract", evidence);
-  if (issues.length) {
-    blockers.push("Host-managed three-model topology was configured against benchmark server-sandbox endpoints.");
-    logger.issue({
-      area: "compute-donation",
-      severity: "critical",
-      title: "Host-managed benchmark topology points at sandbox endpoints",
-      detail: issues.join(" "),
-    });
-  }
-}
-
-function cleanupHostManagedServerSandboxConflict(label) {
-  if (!hostManagedThreeModelRun || mode === "plan-only") return;
-  const daemon = ensureClientDockerDaemon(`host-managed-server-cleanup-${label}`);
-  if (!daemon.ok) return;
-  const result = runCommand(`docker-rm-host-managed-server-containers-${label}`, "docker", [
-    "rm",
-    "-f",
-    ...hostManagedServerContainerNames,
-  ], {
-    allowFailure: true,
-    timeoutMs: 60 * 1000,
-  });
-  const compose = composeCommand();
-  let composeDown = { status: 0, skipped: true };
-  if (compose.command) {
-    composeDown = runCommand(`docker-compose-host-managed-server-down-${label}`, compose.command, [
-      ...compose.prefixArgs,
-      "-p",
-      "istara-real-user-benchmark-server",
-      "-f",
-      "docker-compose.yml",
-      "-f",
-      "tests/real_user_benchmark/docker-compose.benchmark.yml",
-      "down",
-      "--remove-orphans",
-    ], {
-      allowFailure: true,
-      timeoutMs: 2 * 60 * 1000,
-    });
-  }
-  logger.action("sandbox.server.host_managed_cleanup", {
-    label,
-    removed_known_containers_status: result.status,
-    compose_flavor: compose.flavor,
-    compose_down_status: composeDown.status,
-    note: "Host-managed three-model runs keep Istara on the Mac Studio host and use Docker/Colima only for researcher clients plus donor model/relay containers.",
-  });
 }
 
 function startServerSandboxWithDocker(model) {
@@ -4323,6 +4280,7 @@ function writePlanSnapshot(corpusSummary) {
 }
 
 async function main() {
+  if (failClosedForHostManagedThreeModelRun()) return;
   captureColimaStorageSnapshot("run-start", { recordIssue: true });
   logger.action("benchmark.start", {
     mode,
@@ -4404,9 +4362,7 @@ async function main() {
     return;
   }
 
-  assertHostManagedThreeModelTopology();
   startServerSandboxIfRequested();
-  cleanupHostManagedServerSandboxConflict("pre-health");
   const api = new IstaraApiClient({
     apiBase,
     repoRoot,

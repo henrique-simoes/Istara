@@ -8,8 +8,8 @@ phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal ac
 stage: S2-execute
 status: in-progress
 blocked_on: null
-last: { agent: gpt-5-codex, at: 2026-08-26T13:32:48Z, ledger: L-138 }
-next_action: "Audit live paired-engine provenance and the unproven Petals-through-Pi execution path; add only bounded contract fixes, then obtain owner-gated Docker acceptance on the exact pushed image."
+last: { agent: gpt-5-codex, at: 2026-08-26T13:43:12Z, ledger: L-139 }
+next_action: "Record the Docker-only topology guard and remaining live ensemble/provenance gates, then obtain owner-gated Docker acceptance on the exact pushed image without touching the dirty remote checkout."
 ```
 
 ## Plan overview / roadmap
@@ -2900,3 +2900,37 @@ are still open.
 Next: tighten or explicitly scope the paired benchmark provenance contract, then inspect the
 remote Docker checkout/image lineage and request the owner-gated retake without mutating its
 dirty working tree.
+
+### L-139 | 2026-08-26T13:43:12Z | S2-execute/S3-review | gpt-5-codex | Docker-only benchmark policy is now fail-closed
+Did: Audited the real-user benchmark's three-model topology against the owner requirement that
+the Mac Studio host run no Istara service, model, package installation, or host-managed test
+workflow. The historical `hostManagedThreeModelRun` branch explicitly kept Istara and the admin
+user on the Mac Studio host, and its cleanup helper could manage host benchmark containers. The
+runner now refuses that topology before storage probing, live health checks, Docker client
+startup, model loading, or package installation, writes `docker-only-policy.json`, records a
+critical blocker, and exits non-zero with an actionable instruction to use the Docker wrapper.
+The obsolete host-container cleanup/assertion path was removed. The living benchmark README,
+plan, registry, system prompt, and Ensemble Health feature contract now describe Docker/Compose
+as the only live topology and mark a fully containerized three-donor runner as a required open
+acceptance gate.
+
+Verification: the focused topology contract and full real-user harness check both pass (`57
+passed`; `node --check` plus all library tests). A direct refusal probe with the legacy topology
+produced a non-zero result and persisted `docker-only-policy.json` without starting a service.
+`python scripts/feature_docs.py --seed-missing --generate-site --check` regenerated 224 site
+artifacts and passed all 86 feature checks. The pinned native Compass Forge before gate (record
+54) shows no new dependency/import-cycle, missing-path, unexpected-large-file, security, or taint
+findings; its global inherited complexity, route/type drift, and secret-flow debt remains.
+No SSH, remote Docker, provider/model, or Mac Studio host mutation occurred.
+
+Result: an unsafe alternate invocation can no longer masquerade as a valid three-model run or
+touch the host-managed server path. This is a test-environment safety fix, not live ensemble
+quality evidence. The supported `scripts/runner/docker-run.sh` still runs the two engine arms
+against the Compose stack with compute donation disabled; it does not yet prove three distinct
+live donor routes, Petals consent/health, or Research Spine coding acceptance on the Mac Studio
+image. The Python paired-engine benchmark has deterministic crossover ordering, while the
+real-user arm metadata remains a companion artifact and does not independently record a seed,
+cache/cooldown policy, or complete configuration hash set.
+Next: append the Docker-only and remaining live/provenance findings to the external audit ledger,
+commit/push this bounded change, run the after gate and warning-free matrix, then obtain explicit
+owner handoff for the dirty remote checkout before any Docker retake or branch cleanup.

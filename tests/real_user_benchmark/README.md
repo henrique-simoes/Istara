@@ -48,7 +48,7 @@ ISTARA_BENCHMARK_ADMIN_PASSWORD='IstaraBenchmarkAdmin123!' \
 npm --prefix tests/real_user_benchmark run full
 ```
 
-The full run can start a fresh Team Mode server sandbox with an admin bootstrap user. The three-model deep probe is different by contract: Istara runs on the Mac Studio host, the admin user operates against that host server, and Colima is used only for disposable researcher/client containers plus the two llama.cpp donor model endpoints. When compute donation is required, the server must have a network access token before generating compute donation strings; sandbox runs provide one up front, and current Istara servers auto-provision one during admin compute-donation generation when missing. The benchmark then starts relay client containers using the same live LLM profile contract as `tests/llm_test_config.py`, waits for project-scoped `/api/compute/stats?project_id=...` to show every required relay node, and requires each required donor to serve a strict donated-compute technical probe before treating chat as useful evidence.
+The full run can start a fresh Team Mode server sandbox with an admin bootstrap user. All live benchmark services, browser clients, relay clients, and model servers must run in Docker/Compose; the Mac Studio is only the Docker host and SSH control plane. The historical host-managed three-model topology is now refused before any live service or package operation. A fully containerized three-donor runner remains a separate acceptance gate and must provision the Istara stack plus all three donor endpoints inside Docker before it can claim ensemble evidence. When compute donation is required, the server must have a network access token before generating compute donation strings; sandbox runs provide one up front, and current Istara servers auto-provision one during admin compute-donation generation when missing. The benchmark then starts relay client containers using the same live LLM profile contract as `tests/llm_test_config.py`, waits for project-scoped `/api/compute/stats?project_id=...` to show every required relay node, and requires each required donor to serve a strict donated-compute technical probe before treating chat as useful evidence.
 
 Admin-only setup remains admin-owned. Normal research work is performed by authenticated researcher actors: collaborative chat, document/interview analysis, task creation, review/revision, approval, and task-backed Findings/report generation. If a researcher path is blocked by permissions, the run records a role/product finding instead of silently substituting the admin session.
 
@@ -56,17 +56,17 @@ Researcher approval is intentionally strict. A task output that says it is block
 
 Test data cleanup is explicit, not automatic. The benchmark creates a new `[RU-BENCH] ... <run-id>` project for each run. Use `scripts/reset_test_environment.py` before a clean video or comparison run when you want zero existing projects, seeded `admin` / `istara123`, and on-demand `researcher_N` accounts. Normal probe/full runs do not delete old projects.
 
-Server and client sandboxes are separate. `--start-sandbox` starts Istara itself; donor/researcher containers are controlled by `ISTARA_BENCHMARK_START_CLIENT_SANDBOXES` and default on whenever donated compute or external connection strings are required. This means you can run the orchestrator outside Docker, generate connection strings in the real admin UI, pass those strings to the benchmark, and still have the benchmark spin up fresh disposable donor/researcher containers. The canonical `probe:deep:three-model` command pins this separation with `ISTARA_BENCHMARK_SKIP_SANDBOX=1`: do not run the Istara server inside Colima for that topology.
+Server and client sandboxes are separate inside the Docker workflow. `--start-sandbox` starts Istara in a container; donor/researcher containers are controlled by `ISTARA_BENCHMARK_START_CLIENT_SANDBOXES` and default on whenever donated compute or external connection strings are required. Do not run the orchestrator on the Mac Studio host or point it at a host-managed Istara instance. The legacy `probe:deep:three-model` command intentionally exits with a Docker-only policy blocker; use `scripts/runner/docker-run.sh` for the supported containerized engine comparison, and treat three-donor Research Spine acceptance as open until a containerized donor topology is provisioned.
 
 ### Three-Model Benchmark Flow
 
 ```mermaid
 flowchart TD
-  Host["Mac Studio host: Istara backend/frontend + admin user"] --> Project["Create RU-BENCH project and upload canonical corpus"]
-  Host --> AdminDonor["Admin donor: LM Studio Gemma endpoint"]
+  Stack["Docker Compose stack: Istara backend/frontend + admin user"] --> Project["Create RU-BENCH project and upload canonical corpus"]
+  Stack --> AdminDonor["Containerized donor endpoint"]
   Project --> Strings["Generate project-scoped invite strings and compute-donation strings"]
-  Strings --> R1["Colima researcher 1 redeems invite"]
-  Strings --> R2["Colima researcher 2 redeems invite"]
+  Strings --> R1["Docker researcher 1 redeems invite"]
+  Strings --> R2["Docker researcher 2 redeems invite"]
   R1 --> Qwen["Researcher 1 donor model: llama.cpp Qwen GGUF"]
   R2 --> GemmaSmall["Researcher 2 donor model: llama.cpp Gemma GGUF"]
   AdminDonor --> Preflight["Container-side LLM preflight for every donor"]
@@ -125,15 +125,15 @@ ISTARA_BENCHMARK_DONOR_2_LLM_MODEL=qwen3.5-4b-q4_k_m \
 npm --prefix tests/real_user_benchmark run probe
 ```
 
-Example for the full target topology: the Mac Studio hosts Istara and donates the configured LM Studio Gemma e4b model, while Colima starts two simulated researcher computers. Each simulated researcher redeems an invite, registers compute from the admin-generated donation string, and serves its own Qwen3.5 4B Q4 or Gemma 4 E2B Q4 llama.cpp endpoint:
+The former host-managed example is intentionally unavailable. The supported target is a fully containerized topology: Docker Compose runs Istara and the admin flow, while disposable Docker containers run each simulated researcher and each Qwen3.5 4B Q4 or Gemma 4 E2B Q4 llama.cpp endpoint. Until that topology is wired into the remote runner, the command below is expected to fail closed with a Docker-only policy blocker rather than touch the Mac Studio host:
 
 ```bash
 npm --prefix tests/real_user_benchmark run probe:deep:three-model
 ```
 
-The `probe:deep:three-model` script sets `ISTARA_BENCHMARK_DONOR_TOPOLOGY=macstudio-colima-qwen-gemma`, which expands to:
+The `probe:deep:three-model` script still describes the donor identities for fixture compatibility, but it is a refusal/diagnostic path until the Docker-only runner owns all services. A future containerized implementation must provide:
 
-- donor 1: the configured Mac Studio LM Studio/OpenAI-compatible Gemma donor
+- donor 1: a Compose-managed OpenAI-compatible Gemma donor
 - donor 2: `istara-donor-qwen35-4b` via llama.cpp on port `18112`, context length `12288`
 - donor 3: `istara-donor-gemma4-e2b` via llama.cpp on port `18113`, context length `12288`
 
@@ -214,9 +214,9 @@ ISTARA_BENCHMARK_DONOR_COUNT=2 \
 npm --prefix tests/real_user_benchmark run probe
 ```
 
-When multiple required donors are configured, the benchmark waits for project-scoped `/api/compute/stats?project_id=...` to expose every required relay/browser node. The three-model preset expects three observable relays: the host LM Studio admin donor plus the two Colima researcher donors. The run records `compute-donation-results.json`, per-donor `relay-llm-preflight-<donor>.json`, connection-string materialization evidence, route evidence, and whether multi-donor compute was actually verified. If any required donor fails preflight, registration, or serving, the run is not silently accepted as a multi-donor success. During the collaborative research workflow, the benchmark also records `natural-compute-orchestration.json`, which observes Istara's normal model manager and scheduler counters after real chat/task/report work without pinning a particular donor. Observing scheduler counters is not the same as proving donor usage; the scorecard keeps those concepts separate.
+When multiple required donors are configured, the benchmark waits for project-scoped `/api/compute/stats?project_id=...` to expose every required relay/browser node. The intended three-model Docker preset expects three observable relays: one Compose-managed Gemma donor plus two Docker researcher donors. The run records `compute-donation-results.json`, per-donor `relay-llm-preflight-<donor>.json`, connection-string materialization evidence, route evidence, and whether multi-donor compute was actually verified. If any required donor fails preflight, registration, or serving, the run is not silently accepted as a multi-donor success. During the collaborative research workflow, the benchmark also records `natural-compute-orchestration.json`, which observes Istara's normal model manager and scheduler counters after real chat/task/report work without pinning a particular donor. Observing scheduler counters is not the same as proving donor usage; the scorecard keeps those concepts separate.
 
-For the three-model preset, Research Spine coding must also prove multi-model validation across the actual donor topology. Immediately before coding, the benchmark waits for the host donor plus both Colima donor relays to be healthy and records `research-spine-pre-coding-relay-health.json`. A run that reaches `/api/research-validity/.../coding-runs` but falls back to a one-coder lower-assurance result, or uses three model aliases from fewer than three served donor routes, is now a benchmark blocker. `research-spine-evidence.json` should show three distinct model coders and three distinct served donor route IDs for the full topology; if a donor cannot produce valid source-unit code applications, the run records the reason and fails closed.
+For the three-model preset, Research Spine coding must also prove multi-model validation across the actual Docker donor topology. Immediately before coding, the benchmark must wait for all three containerized donor relays to be healthy and record `research-spine-pre-coding-relay-health.json`. A run that reaches `/api/research-validity/.../coding-runs` but falls back to a one-coder lower-assurance result, or uses three model aliases from fewer than three served donor routes, is a benchmark blocker. `research-spine-evidence.json` should show three distinct model coders and three distinct served donor route IDs for the full topology; if a donor cannot produce valid source-unit code applications, the run records the reason and fails closed.
 
 The benchmark also records `research-spine-evidence.json` and `self-improvement-evidence.json`. Those artifacts distinguish raw source/evidence-unit/coding/reconciliation/report-gate evidence from process-learning evidence. Telemetry, ReasoningBank, Memento Skills, Meta-Hyperagent, Autoresearch, RAG/GraphRAG, Prompt-RAG, and compression evidence are benchmarked as governance/process inputs; they are not treated as report evidence unless resulting artifacts pass the Research Spine.
 
@@ -224,23 +224,7 @@ When the Mac Studio host also donates the same LM Studio endpoint that the serve
 
 If Docker or the app blocks completion, the run is still useful: the blocker, logs, screenshots, and partial results are preserved. The harness treats first failures as prompts for architecture-aware diagnosis: it checks whether the benchmark misunderstood Istara state, auth, onboarding, or render timing before logging a product finding.
 
-On macOS without Docker Desktop, install and start Colima once. A small smoke run can use 6GB, but the two-llama.cpp three-model topology should use at least 12GB to avoid OOM-killing one donor while the other is serving:
-
-```bash
-brew install colima docker-compose
-colima start --cpu 4 --memory 12 --root-disk 10 --disk 10 --runtime docker
-docker info
-```
-
-The benchmark will also try to auto-start Colima when Docker is needed for client/donor containers and `colima` is installed. General auto-start defaults to memory `6`, `--root-disk 10`, and `--disk 10`; `probe:deep:three-model` raises the auto-start memory to `12`. Disable auto-start with `ISTARA_BENCHMARK_AUTOSTART_COLIMA=0`.
-
-Existing Colima disks cannot be shrunk in place. If `du -sh -A ~/.colima` still reports a larger apparent ceiling from an older profile, recreate the profile after preserving anything important in Docker:
-
-```bash
-colima stop
-colima delete -f
-colima start --cpu 4 --memory 12 --root-disk 10 --disk 10 --runtime docker
-```
+The remote Mac Studio must already have an approved Docker daemon and Compose plugin. The benchmark does not install host packages, invoke Homebrew, manage Colima, or start a host-managed Istara process. Storage and VM lifecycle are operator-owned prerequisites; record their state as passive evidence before a run. A small smoke run can use 6GB, but a future two-llama.cpp three-model Docker topology should reserve at least 12GB to avoid OOM-killing one donor while the other is serving.
 
 ## Modes
 

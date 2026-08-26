@@ -8,7 +8,7 @@ const rootDir = dirname(dirname(fileURLToPath(import.meta.url)));
 const packageJson = JSON.parse(readFileSync(join(rootDir, "package.json"), "utf8"));
 const runSource = readFileSync(join(rootDir, "run.mjs"), "utf8");
 
-test("three-model deep probe keeps Istara host-managed and uses Colima only for donor/client simulation", () => {
+test("three-model deep probe does not permit host-managed Istara execution", () => {
   const command = packageJson.scripts["probe:deep:three-model"];
 
   assert.match(command, /ISTARA_BENCHMARK_DONOR_TOPOLOGY=macstudio-colima-qwen-gemma/);
@@ -20,17 +20,18 @@ test("three-model deep probe keeps Istara host-managed and uses Colima only for 
   assert.match(command, /ISTARA_BENCHMARK_RESEARCHER_COUNT=2/);
   assert.doesNotMatch(command, /--start-sandbox/);
   assert.doesNotMatch(command, /ISTARA_BENCHMARK_KEEP_DONOR_MODEL_CONTAINERS=1/);
+  assert.match(runSource, /function failClosedForHostManagedThreeModelRun\(\)/);
+  assert.match(runSource, /if \(failClosedForHostManagedThreeModelRun\(\)\) return;/);
 });
 
-test("three-model deep probe records and cleans up Colima benchmark resources", () => {
+test("three-model deep probe records and cleans up Docker benchmark resources", () => {
   const command = packageJson.scripts["probe:deep:three-model"];
 
   assert.match(command, /ISTARA_BENCHMARK_STOP_COLIMA_AFTER_RUN=1/);
   assert.match(command, /ISTARA_BENCHMARK_COLIMA_MEMORY=12/);
   assert.match(runSource, /const hostManagedThreeModelRun = useLocalThreeModelDonorTopology && skipSandbox && startClientSandboxes;/);
-  assert.match(runSource, /hostManagedServerContainerNames/);
-  assert.match(runSource, /function cleanupHostManagedServerSandboxConflict\(label\)/);
-  assert.match(runSource, /cleanupHostManagedServerSandboxConflict\("pre-health"\)/);
+  assert.match(runSource, /Docker-only benchmark policy forbids the host-managed three-model topology/);
+  assert.doesNotMatch(runSource, /cleanupHostManagedServerSandboxConflict\("pre-health"\)/);
   assert.match(runSource, /function stopColimaIfRequested\(label\)/);
   assert.match(runSource, /stopColimaIfRequested\("run-complete"\)/);
   assert.match(runSource, /stopColimaIfRequested\("crash"\)/);
