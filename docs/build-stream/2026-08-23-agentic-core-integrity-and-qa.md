@@ -2458,3 +2458,22 @@ same origin SHA with a non-destructive, fast-forward-only operation only after i
 marathon/probes inside a disposable Docker runner and capture container IDs, image digests, exit
 codes, and scorecard blockers. Do not claim live tri-model or product acceptance from the existing
 logs.
+
+### L-115 | 2026-08-26T11:43:50Z | S2-execute/S3-review | gpt-5-codex | auditor | Remote runtime evidence shows tri-model coding executed but did not pass reliability
+Did: Read the running Mac Studio containers and Postgres state through the explicit Docker client
+only. The database contains 524 legacy and 22 Pi usage rows, with the last recorded activity on
+2026-08-24; no current runner process is active. The single persisted coding run
+`3737262f-ee6c-4afb-9b8d-7a18231bc509` has three distinct coders (`gpt-5.6-luna`, `gpt-5.6-terra`,
+`deepseek-v4-flash`) and three evidence units, but its promotion status is
+`needs_reconciliation`, Fleiss kappa is `-0.125`, and Krippendorff alpha is `0.491`. This is
+valuable proof that the live path can persist three-model provenance and compute the formal
+reliability metrics, but it is **not** proof of accepted Research Spine output; human
+reconciliation remains required. The five containers use image digests distinct from the current
+local `testing` head and were created 36 hours ago, so they cannot be treated as acceptance of
+`d2697d1a` or later changes.
+Result: read-only Docker/SQL inspection; no probes, model loads, restarts, image builds, or host
+commands. Existing runtime evidence is retained as a blocked/needs-reconciliation artifact.
+Next: after owner handoff makes the remote checkout clean, build a fresh disposable Compose stack
+from the exact pushed SHA, run the Docker runner (never host Node), and preserve per-engine
+scorecards plus the coding-run/reliability/reconciliation records. A green transport count alone
+must not close P9-06/P9-07; acceptance requires the complete source-to-human-Done chain.
