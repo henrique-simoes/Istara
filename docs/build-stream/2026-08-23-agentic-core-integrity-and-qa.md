@@ -2241,3 +2241,21 @@ Verified: `pytest -q tests/pi_benchmark/test_b0_3_long_horizon_tokens.py tests/t
 => `26 passed`; Ruff and `git diff --check` pass. No live model/service/SSH/Docker/host action.
 Next: commit and push this refactor, run the post-gate, then audit checkpoint/cancel/retry/idempotency
 and side-effect recovery followed by Petals donation/revocation lifecycle.
+
+### L-103 | 2026-08-26T01:58:00Z | S2-execute/S3-review | gpt-5-codex | test-author | Provider retry now fail-closes synchronous and non-transient throws
+Did: Audited `pi-runtime/src/provider.mjs` and found two concrete gaps: synchronous adapter construction
+throws escaped before the event stream was returned (leaving a run without a terminal frame), and
+iteration-time thrown errors were retried without the same transient classifier used for error events.
+Moved provider construction into the guarded section, applied `isRetryableAssistantError` to thrown
+errors, and converted unretryable throws into one typed `error` event/terminal assistant message.
+Added direct regressions for bounded transient retry and single-attempt non-retryable settlement in
+`pi-runtime/test/hardening.test.mjs`; updated the Reports feature contract and generated site artifacts.
+Result: Pi runtime suite is green (`46 passed`), feature docs generated `224` and checked `86/86`, and
+`git diff --check` is clean. This protects Research Spine runs from retrying configuration/programming
+failures or hanging without a terminal state; it does not yet provide durable tool-side-effect
+idempotency across process crashes.
+Verified: pinned native Compass Forge after gate record 22 has `comparison.new_issues=[]` with no new
+missing paths/import cycles/security/taint/large-file findings; repository-wide inherited secret-flow,
+route/type, and complexity debt remains explicitly failed. No live model/service/SSH/Docker/host action.
+Next: commit/push this provider hardening, then add or document durable idempotency/recovery semantics
+for authority side effects before Petals lifecycle and Mac Studio Docker acceptance.

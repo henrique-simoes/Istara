@@ -143,7 +143,6 @@ export function streamWithGuardedRetry(models, model, context, options, maxRetri
   let attempt = 0;
   const runAttempt = () => {
     attempt += 1;
-    const inner = models.streamSimple(model, context, options);
     let buffered = [];
     let visible = false;
     const flush = () => {
@@ -152,6 +151,11 @@ export function streamWithGuardedRetry(models, model, context, options, maxRetri
     };
     (async () => {
       try {
+        // Keep provider construction inside the guarded section. Some adapters
+        // throw synchronously before returning an async iterable; letting that
+        // escape would leave the outer event stream unresolved and the run
+        // without a terminal frame.
+        const inner = models.streamSimple(model, context, options);
         for await (const event of inner) {
           if (event.type === "error") {
             const message = event.error;
@@ -180,15 +184,29 @@ export function streamWithGuardedRetry(models, model, context, options, maxRetri
         // Stream ended without a terminal event: flush what we have.
         flush();
         out.end();
-      } catch {
-        // pi-ai APIs convert failures into `error` events; a throw here is a
-        // transport-level anomaly. Retry only while nothing was visible.
-        if (!visible && attempt <= maxRetries) {
+      } catch (error) {
+        // pi-ai APIs normally convert failures into `error` events; a throw
+        // here is a transport-level anomaly. Apply the same classifier as
+        // event-shaped failures so programmer/configuration errors are not
+        // retried as if they were transient provider outages.
+        const errorMessage = String(error?.message || error || "provider_stream_failed");
+        const retryable = isRetryableAssistantError({
+          stopReason: "error",
+          errorMessage,
+        });
+        if (!visible && attempt <= maxRetries && retryable) {
           runAttempt();
           return;
         }
         flush();
-        out.end();
+        const failure = {
+          stopReason: "error",
+          errorMessage,
+          timestamp: Date.now(),
+          content: [],
+        };
+        out.push({ type: "error", reason: "error", error: failure });
+        out.end(failure);
       }
     })();
   };

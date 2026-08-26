@@ -10,6 +10,7 @@ import http from "node:http";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
 import { FrameReader, ProtocolError, LIMITS, encodeFrameLines } from "../src/protocol.mjs";
+import { streamWithGuardedRetry } from "../src/provider.mjs";
 
 const WORKER = path.join(path.dirname(fileURLToPath(import.meta.url)), "..", "src", "worker.mjs");
 
@@ -772,4 +773,48 @@ test("provider failure after visible output does not retry or duplicate", async 
   assert.equal(requests, 1);
   const deltas = h.frames.filter((f) => f.type === "assistant.delta" && f.run_id === "run-n").map((f) => f.text);
   assert.deepEqual(deltas, ["Partial"]);
+});
+
+test("synchronous non-retryable provider throws settle one terminal error without retry", async () => {
+  let calls = 0;
+  const stream = streamWithGuardedRetry(
+    { streamSimple() { calls += 1; throw new Error("invalid request schema"); } },
+    {},
+    {},
+    {},
+    3,
+  );
+  const events = [];
+  for await (const event of stream) events.push(event);
+  assert.equal(calls, 1);
+  assert.equal(events.length, 1);
+  assert.equal(events[0].type, "error");
+  assert.equal(events[0].reason, "error");
+  assert.equal(events[0].error.errorMessage, "invalid request schema");
+});
+
+test("synchronous transient provider throws retry only within the bounded budget", async () => {
+  let calls = 0;
+  const message = {
+    stopReason: "stop",
+    content: [{ type: "text", text: "recovered" }],
+    timestamp: Date.now(),
+  };
+  const stream = streamWithGuardedRetry(
+    {
+      streamSimple() {
+        calls += 1;
+        if (calls === 1) throw new Error("connection refused");
+        return (async function* () { yield { type: "done", reason: "stop", message }; })();
+      },
+    },
+    {},
+    {},
+    {},
+    1,
+  );
+  const events = [];
+  for await (const event of stream) events.push(event);
+  assert.equal(calls, 2);
+  assert.deepEqual(events, [{ type: "done", reason: "stop", message }]);
 });
