@@ -8,8 +8,8 @@ phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal ac
 stage: S2-execute
 status: in-progress
 blocked_on: null
-last: { agent: gpt-5-codex, at: 2026-08-26T15:22:00Z, ledger: L-155 }
-next_action: "Refresh the clean worktree to e31ee276, start the rebuilt Compose stack through Docker, and capture health/listener/log evidence before any benchmark request."
+last: { agent: gpt-5-codex, at: 2026-08-26T15:35:00Z, ledger: L-156 }
+next_action: "Run the supported Docker-only benchmark runner once against the fresh stack, capture its scorecard and route/provenance artifacts, and classify any missing three-donor proof as a blocker."
 ```
 
 ## Plan overview / roadmap
@@ -3336,3 +3336,28 @@ evidence.
 Next: refresh `~/istara-testing-clean-6ce9374a` to `origin/testing`, execute
 `docker compose up -d --wait`, capture health/listener/log receipts, and checkpoint before the
 two-engine runner or any live request.
+
+### L-156 | 2026-08-26T15:35:00Z | S2-execute/S3-review | gpt-5-codex | fresh Docker stack healthy before benchmark
+Did: Refreshed the detached Mac Studio worktree to the transported startup checkpoint
+`dd1b30fb` and started the rebuilt Compose project `istara-testing` with Docker Compose
+`up -d --wait`. The command returned `UP_RC=0`; no host runtime, package manager, model server,
+or non-container application was invoked. The old stack/data had already been removed, so this
+runtime uses fresh ephemeral Postgres state.
+
+Evidence: `/Users/user/istara-testing-evidence-20260826T145000Z/startup-source.txt` reports
+clean source `HEAD=dd1b30fb4d6ea72a1eda53cd56dc91d1b49b0d81`. The Compose receipt shows healthy
+backend, frontend, Postgres, and provider-stub containers; Caddy is running with Docker-only
+published ports `13080->80` and `13081->443`. Container IDs, image IDs, and bounded 200-line
+service logs are retained in `docker-ps.txt`, `runtime-images.txt`, and
+`runtime-logs-tail.txt` under the same directory. Runtime images match the build manifests
+recorded in L-154 (backend `974f62509b0b`, frontend `424964efd00c`, provider-stub
+`83088073c05e`, Postgres `cf78e76683b9`, Caddy `5f5c8640aae0`).
+
+Result: the operational Docker gate is green. This demonstrates only that the exact arm64
+artifacts can start and pass Compose health checks. It does not demonstrate PI Model
+Management endpoint parity, Petals slash-string donation integration, three independent donor
+routes, source-grounded atomic coding, reliability/reconciliation, Fleiss' kappa, two-call
+semantics, long-horizon behavior, or human-approved Done/report gates.
+Next: run `scripts/runner/docker-run.sh` exactly once from this clean worktree inside the
+containerized topology, capture its complete scorecard/exit status, and checkpoint before any
+second request or topology change.
