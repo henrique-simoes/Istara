@@ -8,7 +8,7 @@ phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal ac
 stage: S2-execute
 status: in-progress
 blocked_on: null
-last: { agent: gpt-5-codex, at: 2026-08-26T20:53:39Z, ledger: L-190 }
+last: { agent: gpt-5-codex, at: 2026-08-26T20:56:41Z, ledger: L-191 }
 next_action: "Obtain owner-authorized provider credentials and three Compose-owned donor routes, run the terminal Docker-only acceptance retake for provider, Petals, combined, legacy, and pi profiles, then attach complete runtime evidence or leave the external gate open."
 ```
 
@@ -4122,3 +4122,19 @@ run the terminal acceptance matrix only through the Mac Studio's Docker/Compose 
 No live model/provider call, donor registration, or Mac Studio execution is claimed by
 this checkpoint; deterministic green tests do not prove ensemble quality or Research
 Spine acceptance.
+
+### L-191 | 2026-08-26T20:56:41Z | S3-gate | gpt-5-codex | Compass Forge after-gate recorded
+
+Did: Ran the pinned native Rust Compass Forge `gate after` on the transported testing
+tree. Gate record `79` was written with runtime `rust`, `recorded_as_baseline: false`, and
+no new forbidden dependencies, import cycles, missing paths, unexpected large files, or
+security issues. The repository-wide gate remains `fail` because of inherited complexity,
+route-drift, type-drift, and secret-flow debt; the only `comparison.new_issues` item is the
+pre-existing warning for `tests/pi_production/test_w7_validation.py` (1044 lines, 85
+symbols), which is byte-identical to the baseline and was not changed by this work.
+
+Next: keep the external live gate open. The terminal retake still requires owner-authorized
+provider credentials, three distinct Compose-owned donor routes, and the Mac Studio Docker
+runner/socket. Run provider, Petals, combined, legacy, and pi profiles only there; preserve
+raw source-span, three-rater, Fleiss' kappa/Krippendorff-alpha, reconciliation, human-Done,
+route, usage, long-horizon, and cleanup evidence before any acceptance claim.
