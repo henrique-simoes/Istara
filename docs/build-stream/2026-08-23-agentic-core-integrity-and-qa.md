@@ -8,8 +8,8 @@ phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal ac
 stage: S2-execute
 status: in-progress
 blocked_on: null
-last: { agent: gpt-5-codex, at: 2026-08-26T14:38:00Z, ledger: L-149 }
-next_action: "Render and build the Docker-only stack from ~/istara-testing-clean-6ce9374a at 07c0512d, capture image/config evidence, then run the bounded acceptance with retained artifacts."
+last: { agent: gpt-5-codex, at: 2026-08-26T14:45:00Z, ledger: L-150 }
+next_action: "Refresh ~/istara-testing-clean-6ce9374a to the pushed ledger SHA, render a redacted Compose snapshot, build all services through Docker, and capture image/config evidence before startup."
 ```
 
 ## Plan overview / roadmap
@@ -3207,3 +3207,20 @@ with a redacted Compose/image capture before startup and fresh per-run data. Any
 provide three real donor routes or full Research Spine evidence remains a blocker, not a score.
 Next: render the effective Compose configuration, build the exact backend/frontend/provider
 images, capture digests and health evidence, then start only the containerized stack.
+
+### L-150 | 2026-08-26T14:45:00Z | S2-execute | gpt-5-codex | pre-build checkpoint after authorized teardown
+Did: Confirmed the next long-running action is constrained to the isolated clean remote worktree
+and Docker daemon. The old Compose stack/data are already removed under owner authorization;
+the dirty `~/istara-testing` checkout remains preserved. The clean worktree will be refreshed
+to the latest pushed `origin/testing` ledger SHA before build, and the deploy environment file
+will be consumed without printing its contents.
+
+Build contract: render Compose before startup; save only a redacted configuration snapshot and
+hashes/IDs; build backend, frontend, and provider-stub images with Docker; do not run host
+package managers, Node, Python, model servers, or application services. Use the existing TLS
+directory and deploy environment only as Docker bind/config inputs. Retain the resulting image
+IDs/digests and all benchmark artifacts under a timestamped remote evidence directory.
+
+Next: refresh the detached worktree, capture the redacted Compose/config preflight, run the
+Docker image build, verify image IDs and clean source SHA, then checkpoint before starting the
+stack and benchmark runner.
