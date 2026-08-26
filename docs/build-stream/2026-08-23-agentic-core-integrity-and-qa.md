@@ -8,8 +8,8 @@ phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal ac
 stage: S2-execute
 status: in-progress
 blocked_on: null
-last: { agent: gpt-5-codex, at: 2026-08-26T12:48:00Z, ledger: L-123 }
-next_action: "Run the full local regression matrix against e1ca7821; retain the remote owner-handoff blocker and do not mutate ~/istara-testing until its owner makes it clean."
+last: { agent: gpt-5-codex, at: 2026-08-26T12:53:00Z, ledger: L-124 }
+next_action: "Finish the broad local regression matrix against d385278d, checkpoint exact counts, and request owner handoff before any remote checkout mutation."
 ```
 
 ## Plan overview / roadmap
@@ -2619,3 +2619,15 @@ until a fresh Docker run proves the remote path and the full accepted/reconciled
 server start, SSH, Docker, or host package action occurred.
 Next: run the broad local regression matrix, checkpoint its exact result, then prepare the
 owner-gated remote clean checkout request and P9-07–P9-10 evidence collection.
+
+### L-124 | 2026-08-26T12:53:00Z | S2-execute | gpt-5-codex | implementer/reviewer | Broad local regression pass started after strict reconciliation fix
+Did: Confirmed the local `testing` worktree is clean and exactly aligned with `origin/testing` at
+`d385278d`, which includes the service, test, living-doc, and ledger changes. Started the broad
+local matrix covering Pi production/runtime, migration, Petals lifecycle, benchmark contracts,
+Research Spine validity/end-to-end/report integrity, chat/catalog routing, task/finding gates,
+model/settings contracts, and runner safety. This is a local deterministic/contract pass only:
+no backend/frontend server, provider/model load, SSH, Docker, or host package action is permitted.
+Result: command is running; no result is claimed yet. The remote Mac Studio checkout remains an
+explicit owner-handoff blocker and is not being reset, pulled, or cleaned.
+Next: record the exact pass/fail count and any newly exposed regression, then run only bounded
+follow-up checks before the remote handoff boundary.
