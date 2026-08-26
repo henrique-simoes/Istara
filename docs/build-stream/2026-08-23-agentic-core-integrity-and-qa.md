@@ -2068,3 +2068,66 @@ Verified: push `af42944c..b238d191`; local and `origin/testing` both resolve to
 `b238d19157c7a0de52bff1d5470b33c59a783a3a`; post-push status had no file entries.
 Next: push this receipt, then construct the end-to-end positive fixture from real service boundaries
 without live model loading by using deterministic three-coder stubs and persisted route provenance.
+
+### L-92 | 2026-08-26T00:44:00Z | S2-execute | gpt-5-codex | test-author | Continuous positive Research Spine proof assembled
+Did: Created a new focused end-to-end contract rather than further enlarging the existing 1,788-line
+contract file. It starts with a current raw Document and two exact EvidenceUnits; executes three
+distinct deterministic model coders through the real structured coding service; requires numeric
+Fleiss kappa and Krippendorff alpha; persists six grounded applications and three coder identities;
+records explicit human code acceptance; builds Nugget -> Fact -> Insight -> Recommendation lineage;
+uses the real human task-approval helper; routes through ReportManager; and queries graph traceability.
+Result: The first run reached the human-decision assertion, proving all prior stages executed, but the
+test expected a nested `decision` key while the actual durable API returns the decision fields at the
+top level with only `code_application` nested. Corrected the assertion to the real contract. This was a
+test-shape mismatch, not a production bypass or model call failure.
+Verified: first targeted run `1 failed` at `KeyError: decision` after accepted 3-model reliability.
+Compass Forge impact/why was run for ReportManager and task approval before assembly. No live model,
+service, SSH, Docker, or host action.
+Next: rerun the continuous journey, remediate the first genuine boundary failure if any, then add its
+negative companion proving the report is absent before human Done approval.
+
+### L-93 | 2026-08-26T00:46:00Z | S2-execute/S3-review | gpt-5-codex | verifier | Continuous positive journey green; transaction boundary made faithful
+Did: Reran the corrected journey. Its first attempt hung after task approval because the test called
+ReportManager while the review write was still uncommitted; ReportManager's content-free telemetry uses
+a second SQLite session, faithfully exposing the documented transaction boundary. Terminated only the
+owned pytest process, then made the fixture mirror the public route: commit and refresh immediately
+after `_approve_task` before side effects/report routing. Added the negative companion inside the same
+causal fixture: ReportManager must return zero and persist no report while the task is still In Review.
+Result: The complete journey now passes in 1.59s with no live model. It proves three distinct model
+calls over every exact source unit, numeric Fleiss/alpha reliability, persisted route/coder/application
+identity, explicit human code acceptance, accepted Atomic lineage, human-approved Done, report routing,
+and unblocked graph traceability; it also proves that the same accepted evidence cannot report before
+human Done approval.
+Verified: targeted end-to-end contract `1 passed in 1.59s`. No live model/service/SSH/Docker/host action.
+Next: rerun after the new pre-Done assertion, lint/diff check, include this proof in the full P9-06
+boundary, then audit remaining negative gaps before marking P9-06 complete.
+
+### L-94 | 2026-08-26T00:49:00Z | S3-review | gpt-5-codex | verifier | Continuous journey included in full P9-06 boundary
+Did: Re-ran the focused positive/negative Research Spine journey together with the stale-run,
+source-lifecycle, report-integrity, task, finding, and pagination contracts.
+Result: The full P9-06 boundary is green at 95 tests. The journey proves the causal positive path from
+current raw source and exact evidence units through three distinct coder calls, numeric Fleiss kappa
+and Krippendorff alpha, persisted route/coder/application provenance, explicit human code acceptance,
+Atomic lineage, human-approved Done, ReportManager routing, and graph traceability; its negative half
+proves no report exists before Done approval. The run emitted one existing task-suite warning that
+`AsyncSession.close` was not awaited in `backend/app/api/websocket.py`; this is not treated as a green
+proof and remains an explicit audit candidate.
+Verified: `95 passed, 1 warning in 73.07s`; no live model/service/SSH/Docker/host action.
+Next: lint/diff-check the slice, inspect the warning and remaining P9 negative contracts, then transport
+the focused proof and ledger receipt before advancing to calls/long-horizon and Petals integration.
+
+### L-95 | 2026-08-26T00:52:00Z | S3-review | gpt-5-codex | verifier | Focused proof is linted, documented, and gate-recorded
+Did: Ran the changed-file Ruff check, diff check, feature-doc generation/check, and the pinned native
+Compass Forge after gate for the new journey and its living Reports contract. The first broad Ruff
+invocation also surfaced 11 unused/redefinition findings already present in
+`tests/test_research_integrity_reports.py`; the focused changed-file check is clean, while those
+pre-existing findings remain an explicit cleanup item.
+Result: Feature documentation remains consistent (86/86), generated site artifacts are synchronized,
+and the native gate recorded record 17. No new forbidden dependency, required-path, import-cycle,
+security, or taint finding was introduced. The global gate is still failed by inherited secret-flow,
+route/type drift, and complexity debt, including the touched research-validity service and the existing
+large reports-contract test; this is not represented as a green repository gate.
+Verified: feature docs `generated 224`, `check passed for 86`; focused Ruff and diff check pass; native
+Compass Forge after record 17 completed; no live model/service/SSH/Docker/host action.
+Next: commit and push exactly the focused test, Reports living contract, generated manifest, and ledger;
+then audit and close remaining negative Research Spine, calls/long-horizon, Petals, and benchmark gaps.

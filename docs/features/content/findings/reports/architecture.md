@@ -8,7 +8,7 @@ related_features: ["findings.evidence", "tasks.send-report", "interfaces.handoff
 related_glossary: ["minto-pyramid", "scr", "triangulation"]
 code_references: ["frontend/src/components/findings/FindingsView.tsx", "frontend/src/components/findings/ProjectReportsView.tsx", "backend/app/api/routes/reports.py", "backend/app/api/routes/tasks.py", "backend/app/core/report_manager.py", "backend/app/core/reporting_worker.py", "backend/app/services/research_validity_service.py"]
 api_references: ["backend/app/api/routes/reports.py", "backend/app/api/routes/tasks.py"]
-test_references: ["tests/test_research_integrity_reports.py", "tests/test_tasks.py", "tests/real_user_benchmark/run.mjs"]
+test_references: ["tests/test_research_integrity_reports.py", "tests/test_research_spine_end_to_end.py", "tests/test_tasks.py", "tests/real_user_benchmark/run.mjs"]
 last_verified: 2026-05-22
 compass: CF-SPEC-53 / CF-657; CF-SPEC-60 / CF-773; CF-SPEC-121; CF-SPEC-122; CF-SPEC-123 / CF-1581; Research Spine item-level report gate batch
 ---
@@ -51,6 +51,7 @@ The Reports tab lets users generate, inspect, and manage project reports produce
 - Report promotion checks emit content-free research-validity telemetry through `report.promotion_gate`, recording whether task/report evidence was allowed or blocked without storing source text, report prose, prompts, or private document content.
 - Findings that pass the approved-Done-task/reportability gate emit `finding.promotion`; raw finding creation and In Review findings do not count as promoted report evidence.
 - The real-user benchmark records approved task ids before creating task-backed nuggets, facts, insights, and recommendations, then requests report/brief generation after that chain exists. This keeps Findings/reporting aligned with Istara's human-in-the-loop review process.
+- The focused end-to-end contract in `tests/test_research_spine_end_to_end.py` proves the report boundary causally: current raw document and exact evidence units are independently coded by three distinct model identities; numeric Fleiss kappa and Krippendorff alpha, route/coder/application provenance, grounding, explicit human code acceptance, Atomic lineage, human Done approval, ReportManager routing, and graph traceability are all required. The same accepted evidence is asserted to remain absent from reports while the task is still In Review.
 - The frontmatter and manifest entries are the durable contract for agents updating this page after code changes.
 - When the referenced component, store, route, agent, skill, or test behavior changes, regenerate and validate the feature documentation.
 
