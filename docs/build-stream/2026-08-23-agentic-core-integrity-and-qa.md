@@ -2296,3 +2296,16 @@ tests/pi_production/test_scenario_task_lifecycle.py tests/test_pi_replacement_ca
 model/service/SSH/Docker/host action.
 Next: commit/push this bounded idempotency slice with a fresh post-gate, then audit Petals donation/revocation
 and the three-model Research Spine ensemble so every route has positive and negative evidence before remote Docker.
+
+### L-106 | 2026-08-26T10:54:00Z | S3-review | gpt-5-codex | reviewer | Post-commit gate records touched-file complexity debt
+Did: Ran the pinned native Compass Forge post-change gate after commit `4cdd9cf9`.
+Result: Gate record 25 reports `comparison.new_issues` for eight complexity warnings on touched
+`chat.py`, `engine.py`, and `agent_lifecycle.py` files/functions. These warnings reflect the existing
+large/hot-file architecture plus the added routing/idempotency seams; they are not silently classified
+as inherited. The same record reports no new forbidden dependencies, import cycles, security/taint
+findings, missing required paths, or unexpected large-file deltas. Repository-wide secret-flow,
+route/type, and complexity debt remains a failed global gate and must stay visible in the final closure.
+Verified: native CF `gate after` record 25; local `testing` and `origin/testing` both at `4cdd9cf9`;
+worktree clean. No live model/service/SSH/Docker/host action.
+Next: decide whether to extract the newly touched complexity or record a bounded exception, then audit
+Petals donation/revocation and the Research Spine ensemble contract with positive and negative tests.
