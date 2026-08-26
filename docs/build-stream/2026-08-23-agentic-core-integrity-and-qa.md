@@ -3562,3 +3562,18 @@ without aborting the wrapper before writing `RUN_RC`. This remains one final com
 the failed preflight is not counted as a live model/ensemble run.
 Next: refresh only if this receipt changes the source, then execute the corrected one-run
 legacy+Pi comparison and continue the provenance/secret/process-list checks.
+
+### L-166 | 2026-08-26T17:25:00Z | S2-execute | gpt-5-codex | corrected final comparison in flight
+Did: The corrected invocation is running exactly one legacy+Pi comparison from detached source
+`765a85e0df148a515fdee81cc2d2cd192f06f1a9`. The archive snapshot is non-empty and recorded in
+the remote evidence directory before launch; the runner has entered Compose stack recreation.
+The boolean-only passive process check reports `PASSWORD_ARG_PRESENT=0` while
+`RUNNER_ACTIVE=1`, confirming the new env-file path does not expose credential aliases in the
+host command line. No command line or secret value was emitted.
+
+Current output shows provider-stub/postgres/backend startup for the first arm; this is only
+operational progress and not evidence of model calls, donor routes, ensemble coding, or
+Research Spine acceptance. The wrapper captures a blocker-bearing runner exit without masking
+the final `RUN_RC`.
+Next: poll the same invocation to completion, capture per-arm metadata and a post-run boolean
+secret check, then append the exact live disposition and authorized teardown receipt.
