@@ -566,7 +566,7 @@ async def _use_pi_coding_plane(db: AsyncSession, project_id: str) -> bool:
 
 
 async def _select_pi_coders(
-    max_coders: int, *, project_id: str | None = None
+    max_coders: int, *, project_id: str | None = None, manager: Any | None = None
 ) -> list[CoderSpec]:
     """Select independent coders backed by distinct Pi-managed models.
 
@@ -576,9 +576,10 @@ async def _select_pi_coders(
     """
     from types import SimpleNamespace
 
-    from app.core.pi_runtime.model_manager import PiModelManager
+    if manager is None:
+        from app.core.pi_runtime.model_manager import PiModelManager
 
-    manager = PiModelManager()
+        manager = PiModelManager()
     # Read-only DB projection of persisted LLMServer endpoint identities;
     # it never connects to a server or loads a model.
     await manager.ensure_db_projection()
@@ -1236,7 +1237,24 @@ async def run_independent_coding_run(
         # exact endpoint and coded through the
         # AgenticDispatcher structured verb (``validity.coder``).
         try:
-            coders = await _select_pi_coders(max_coders=max_coders, project_id=project_id)
+            # The default runner dispatches through the process-wide
+            # AgenticDispatcher singleton. Reuse its engine-owned manager for
+            # selection so endpoint/model identity cannot drift between
+            # selection and the structured call. Test doubles may not expose
+            # this accessor; retain the direct selector seam for those tests.
+            from app.core.agentic import agentic
+
+            manager_accessor = getattr(agentic, "model_manager", None)
+            if callable(manager_accessor):
+                coders = await _select_pi_coders(
+                    max_coders=max_coders,
+                    project_id=project_id,
+                    manager=manager_accessor(),
+                )
+            else:
+                coders = await _select_pi_coders(
+                    max_coders=max_coders, project_id=project_id
+                )
         except Exception as exc:
             # Fail-closed: fewer distinct Pi models than requested coders (or
             # an unavailable catalog) means

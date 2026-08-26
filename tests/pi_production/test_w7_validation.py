@@ -785,6 +785,7 @@ async def _run_pi_coding_run(
     shared_model=None,
     failing_model=None,
     partial_model=None,
+    expose_manager=False,
 ):
     """Shared driver: full coding run on the Pi plane with stubbed selection/dispatch.
 
@@ -811,10 +812,12 @@ async def _run_pi_coding_run(
         return True
 
     monkeypatch.setattr(research_validity_service, "_use_pi_coding_plane", _plane)
+    selection_managers = []
 
     if selection_error is not None:
 
-        async def _select(max_coders, *, project_id=None):
+        async def _select(max_coders, *, project_id=None, manager=None):
+            selection_managers.append(manager)
             raise selection_error
 
         monkeypatch.setattr(research_validity_service, "_select_pi_coders", _select)
@@ -836,7 +839,8 @@ async def _run_pi_coding_run(
             for name in ("a", "b", "c")
         ]
 
-        async def _select(max_coders, *, project_id=None):
+        async def _select(max_coders, *, project_id=None, manager=None):
+            selection_managers.append(manager)
             return coders
 
         monkeypatch.setattr(research_validity_service, "_select_pi_coders", _select)
@@ -879,6 +883,11 @@ async def _run_pi_coding_run(
 
         dispatcher_stub = _StubAgentic()
         dispatcher_stub.structured = _structured
+        if expose_manager:
+            shared_manager = object()
+            dispatcher_stub.model_manager = lambda: shared_manager
+            dispatcher_stub.shared_manager = shared_manager
+        dispatcher_stub.selection_managers = selection_managers
         monkeypatch.setattr("app.core.agentic.agentic", dispatcher_stub)
 
     class _SentinelRouter:
@@ -954,6 +963,18 @@ async def test_coding_run_pi_plane_distinct_endpoint_coders_accept(
         assert identity["conversation_scope"] == "fresh_session_per_coder_call"
         assert identity["cache_scope"] == "provider_prefix_cache_no_response_reuse"
     assert result["matrix"]["provenance_conflicts"] == []
+
+
+async def test_coding_run_reuses_dispatcher_model_management_authority(
+    monkeypatch, tmp_path, _agentic_core_on
+):
+    """Pi coder selection and structured dispatch must share one manager."""
+    result, dispatcher_stub = await _run_pi_coding_run(
+        monkeypatch, tmp_path, expose_manager=True
+    )
+
+    assert result["promotion_status"] == "accepted"
+    assert dispatcher_stub.selection_managers == [dispatcher_stub.shared_manager]
 
 
 async def test_coding_run_pi_plane_same_model_endpoint_replicas_need_reconciliation(

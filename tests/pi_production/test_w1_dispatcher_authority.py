@@ -82,6 +82,14 @@ def test_resolve_engine_precedence_explicit_header_project_default(monkeypatch):
     assert dispatcher.resolve_engine() == "pi"
 
 
+def test_dispatcher_exposes_its_engine_owned_pi_model_manager():
+    """Selection callers must be able to reuse the dispatch authority."""
+    manager = _isolated(PiModelManager(endpoints=[]))
+    service = PiExecutionService(model_manager=manager)
+
+    assert AgenticDispatcher(pi_service=service).model_manager() is manager
+
+
 @pytest.mark.parametrize("alias", sorted(PI_ENGINE_VALUES))
 @pytest.mark.asyncio
 async def test_explicit_pi_aliases_normalize_at_both_dispatcher_boundaries(alias):

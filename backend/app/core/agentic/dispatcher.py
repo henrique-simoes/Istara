@@ -94,6 +94,17 @@ class AgenticDispatcher:
         # own PiModelManager (one identity plane); tests inject a stub.
         self._embeddings_gateway = embeddings_gateway
 
+    def model_manager(self) -> Any:
+        """Return the Pi Model Management authority used by this dispatcher.
+
+        Research Spine services that select model identities before dispatch
+        must use this same authority.  Exposing the engine-owned manager keeps
+        selection and the subsequent ``structured``/``ensemble`` call on one
+        catalog snapshot instead of creating a second, potentially divergent
+        manager instance.
+        """
+        return self._pi.model_manager()
+
     # ── engine resolution ────────────────────────────────────────────────
     def resolve_engine(
         self,

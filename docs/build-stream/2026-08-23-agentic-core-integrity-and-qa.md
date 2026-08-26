@@ -8,7 +8,7 @@ phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal ac
 stage: S2-execute
 status: in-progress
 blocked_on: null
-last: { agent: gpt-5-codex, at: 2026-08-26T22:09:15Z, ledger: L-195 }
+last: { agent: gpt-5-codex, at: 2026-08-26T22:23:42Z, ledger: L-197 }
 next_action: "Obtain owner-authorized provider credentials and three Compose-owned donor routes, run the terminal Docker-only acceptance retake for provider, Petals, combined, legacy, and pi profiles, then attach complete runtime evidence or leave the external gate open."
 ```
 
@@ -4254,4 +4254,26 @@ this ledger entry, ready to commit and push.
 
 Next: commit this final ledger checkpoint, push `testing`, verify exact SHA parity and a clean
 worktree, then leave the live three-model/Petals/combined gate explicitly open pending provider
+credit and three distinct Compose-owned donor routes.
+
+### L-197 | 2026-08-26T22:23:42Z | S2-execute/S3-verify | gpt-5-codex | shared Pi authority closed
+
+Did: Implemented the remaining production seam identified in F-R9-38. `AgenticDispatcher`
+now exposes its engine-owned `PiModelManager`; the default Research Spine coding run passes
+that exact manager into `_select_pi_coders` before `_pi_coder_runner` invokes the same global
+dispatcher for `validity.coder`. Direct selector callers and test doubles without the accessor
+retain the compatibility seam, while production no longer constructs a second manager between
+identity selection and structured dispatch. Updated the Ensemble Health architecture page and
+generated site artifact to state this authority invariant.
+
+Evidence: `pytest -q tests/pi_production/test_w1_dispatcher_authority.py
+tests/pi_production/test_w7_validation.py tests/test_research_spine_donor_routing.py` returned
+`61 passed in 2.98s`; the new manager-identity integration assertion and the real Pi manager
+characterization both pass. `python scripts/feature_docs.py --seed-missing --generate-site
+--check` returned `seeded 0`, `generated 224`, and `feature docs check passed for 86 feature(s)`.
+No live provider or model was started; the Mac Studio 402 gate remains unchanged.
+
+Next: run the pinned Compass Forge after-gate, append the corresponding testing.md finding,
+commit and push the focused implementation/docs/tests, then verify exact local/remote SHA
+parity. The live three-model/Petals/combined acceptance gate remains open pending provider
 credit and three distinct Compose-owned donor routes.

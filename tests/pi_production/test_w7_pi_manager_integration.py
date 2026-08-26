@@ -59,6 +59,9 @@ async def test_coding_run_uses_real_pi_model_manager_for_identity_distinct_coder
         def __init__(self):
             self.calls = []
 
+        def model_manager(self):
+            return manager
+
         async def structured(self, **kwargs):
             self.calls.append(kwargs)
             applications = [
