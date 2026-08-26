@@ -8,7 +8,7 @@ phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal ac
 stage: S2-execute
 status: in-progress
 blocked_on: null
-last: { agent: gpt-5-codex, at: 2026-08-26T21:57:36Z, ledger: L-193 }
+last: { agent: gpt-5-codex, at: 2026-08-26T22:09:15Z, ledger: L-195 }
 next_action: "Obtain owner-authorized provider credentials and three Compose-owned donor routes, run the terminal Docker-only acceptance retake for provider, Petals, combined, legacy, and pi profiles, then attach complete runtime evidence or leave the external gate open."
 ```
 
@@ -4169,6 +4169,39 @@ through Docker before attempting any donor-dependent profile. Keep the live acce
 unless all required source, three-rater, reliability, reconciliation, human-Done, route, usage,
 long-horizon, and cleanup artifacts are actually present.
 
+### L-195 | 2026-08-26T22:09:15Z | S2-execute/S3-review | gpt-5-codex | Mac Studio provider retake completed and blocked at provider credit
+
+Did: Refreshed the clean detached Mac Studio checkout to `973731cf03a4cf2d762574e32421e23eaf8ce162`
+and verified the exact `git archive` source snapshot SHA-256
+`f3f2f7de3decd1ba248ccbad70c10913f850c60f55de9709be1baf250b4f0b2c`. The corrected
+`scripts/runner/docker-run.sh` ran both declared arms from the Docker-only topology with
+`ISTARA_BENCHMARK_ACCEPTANCE_PROFILE=provider`, no donor sandboxes, and a fresh Postgres stack
+per arm. Chromium/FFmpeg and Linux dependencies were installed only inside the disposable
+runner image/volume; the Mac Studio host was not package-modified.
+
+Result: the runner exited `1` because both arms were blocker-bearing, not because the wrapper
+crashed. Legacy run `2026-08-26T22-04-08-235Z` scored `43.5`, stopped at its first chat call with
+provider HTTP `402 Insufficient Balance`, and recorded `0/8` chat turns, `0` approvals, and
+`0` accepted code applications. PI run `2026-08-26T22-06-53-478Z` scored `43.5` and reached
+the same provider boundary as `pi_runtime_error` wrapping the same `402`, with the same zero
+chat/approval/code-application counts. Both run artifacts recorded three selected raw evidence
+units but a blocked/blocked coding run; no rater outputs, model identities, Fleiss' kappa,
+Krippendorff-alpha, grounding, reconciliation, human-Done, or report-eligibility evidence was
+produced. This proves the portability fix and that legacy/PI requests reach the configured
+provider boundary; it does not prove PI Model Management/legacy manager identity sharing or the
+three-model Research Spine ensemble.
+
+Evidence retained on the Mac Studio under
+`~/istara-testing-evidence-20260826T220200Z/` and the two run directories under the clean
+checkout's `.results/runs/`. The boolean process-list check reported `PASSWORD_ARG_PRESENT=0`.
+Authorized teardown removed only the `istara-testing` Compose containers, networks, runtime
+volume, and `istara-pw-browsers`; the unrelated `plex` container remained healthy. F-R9-43
+records the provider-credit blocker and the remaining live ensemble gate.
+
+Next: obtain owner-authorized provider credit or provision three distinct Compose-owned model
+routes, then run the profile-specific Petals and combined acceptance workloads. Do not convert
+this provider retake into a model-quality score or Research Spine acceptance claim.
+
 ### L-194 | 2026-08-26T21:59:30Z | S3-gate | gpt-5-codex | Compass Forge after-gate recorded
 
 Did: Ran the pinned native Rust Compass Forge `gate after` on the post-verification tree. Gate
@@ -4208,3 +4241,17 @@ clean Mac Studio checkout through Docker. Do not claim the three-model Research 
 the live run contains immutable source/image/stack evidence, three distinct model identities,
 raw-span coding, numeric reliability/grounding, reconciliation, human-Done, route/usage,
 long-horizon, and cleanup artifacts.
+
+### L-196 | 2026-08-26T22:11:00Z | S3-gate | gpt-5-codex | final ledger gate recorded
+
+Did: Ran the pinned native Rust Compass Forge `gate after` once more after the live evidence
+checkpoint. Gate record `82` reports zero new forbidden dependencies, import cycles, missing
+required paths, security issues, or taint issues. The repository-wide gate remains `fail` on
+inherited complexity, route/type drift, and secret-flow debt; one comparison warning remains the
+pre-existing `_resolve_project_id` complexity finding in the touched websocket file, which is
+unchanged by this work. `git diff --check` passes and the only remaining local modification is
+this ledger entry, ready to commit and push.
+
+Next: commit this final ledger checkpoint, push `testing`, verify exact SHA parity and a clean
+worktree, then leave the live three-model/Petals/combined gate explicitly open pending provider
+credit and three distinct Compose-owned donor routes.
