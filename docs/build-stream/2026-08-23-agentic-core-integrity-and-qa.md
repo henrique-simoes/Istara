@@ -3845,3 +3845,27 @@ Next: obtain the explicit provider/donor handoff; then refresh only a clean deta
 `93a738c8`, provision disposable Docker/Compose resources, execute exactly one terminal retake,
 and append source hashes, donor route identities, Fleiss/Krippendorff metrics, reconciliation and
 human-approval evidence (or fail-closed blocker evidence) before any Research Spine conclusion.
+
+### L-183 | 2026-08-26T15:56:00Z | S2-execute/S4-ship | gpt-5-codex | Mac Studio Docker hygiene and gate separation finding
+Did: Performed a narrowly scoped passive Docker inspection over SSH using the explicit Docker
+Desktop binary `/Applications/Docker.app/Contents/Resources/bin/docker`. The `istara-testing`
+Compose label returned no stopped/running containers, volumes, or networks, so there was no
+testing resource to delete; the unrelated `plex` workload was not touched. This honors the
+Docker-only boundary and the owner’s cleanup authorization without mutating the dirty
+`~/istara-testing` checkout or installing anything on the Mac Studio host.
+
+Audit update: appended F-R9-33 to `/Users/user/Desktop/testing.md`, identifying an acceptance-
+profile ambiguity: the benchmark defaults compute donation as a prerequisite, while the Research
+Spine contract defines validity through three provider-plane model routes, source-grounded coding,
+Fleiss/Krippendorff reliability, reconciliation, and human approval. The remaining plan must
+test provider-only Research Spine validity, Petals donation interoperability, and their combined
+Docker profile as independent scorecard gates; donation telemetry must not substitute for model
+coding evidence, and a provider-only coding proof must not be blocked merely because Petals is
+disabled unless the combined profile is explicitly selected.
+
+Next: preserve the clean `testing`/`origin/testing` parity at `ab6b14e7`, then await the owner’s
+explicit provider/donor handoff. The terminal run must configure one authorized provider plane
+with three distinct served model routes and three project-scoped donation routes (or record
+fail-closed blockers), execute both engine selections through PI Model Management, and capture
+route IDs, atomic code applications, Fleiss/kappa, Krippendorff/alpha, reconciliation, human
+approval, Petals consent/health/revoke, and cleanup evidence from Docker only.
