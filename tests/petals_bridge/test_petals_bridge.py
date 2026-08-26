@@ -472,3 +472,25 @@ def test_distinct_fails_closed_without_enough_consented_donors(
     manager._project_petals()
     with pytest.raises(PiEndpointResolutionError, match="insufficient_distinct"):
         manager.resolve_distinct(2)  # only one consented donor
+
+
+def test_consent_revocation_removes_pi_projection_and_reconsent_restores_it(
+    monkeypatch, donor, registry_with
+):
+    """Petals consent changes invalidate the shared Pi catalog immediately."""
+    monkeypatch.setattr(settings, "petals_bridge_enabled", True)
+    from app.core.pi_runtime.endpoints import PiEndpointResolutionError
+    from app.core.pi_runtime.model_manager import PiModelManager
+
+    manager = PiModelManager(endpoints=[])
+    manager._project_petals()
+    assert manager.resolve(endpoint_id="pi-petals-donor-1").endpoint_id == "pi-petals-donor-1"
+
+    petals_bridge.set_donor_consent("donor-1", False)
+    assert "pi-petals-donor-1" not in manager._entries
+    with pytest.raises(PiEndpointResolutionError):
+        manager.resolve(endpoint_id="pi-petals-donor-1")
+
+    petals_bridge.set_donor_consent("donor-1", True)
+    manager._refresh_petals_projection()
+    assert manager.resolve(endpoint_id="pi-petals-donor-1").endpoint_id == "pi-petals-donor-1"

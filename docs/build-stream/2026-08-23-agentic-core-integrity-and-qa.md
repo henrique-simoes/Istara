@@ -2309,3 +2309,22 @@ Verified: native CF `gate after` record 25; local `testing` and `origin/testing`
 worktree clean. No live model/service/SSH/Docker/host action.
 Next: decide whether to extract the newly touched complexity or record a bounded exception, then audit
 Petals donation/revocation and the Research Spine ensemble contract with positive and negative tests.
+
+### L-107 | 2026-08-26T10:57:04Z | S2-execute/S3-review | gpt-5-codex | test-author | Petals consent revocation invalidates the shared Pi projection
+Did: Added `test_consent_revocation_removes_pi_projection_and_reconsent_restores_it` to
+`tests/petals_bridge/test_petals_bridge.py`. The contract creates a Pi model manager projection
+from a healthy, consented donor, revokes consent through the production bridge API, requires the
+identity-pinned `pi-petals-donor-1` entry to disappear immediately and resolution to fail closed,
+then re-consents and requires an explicit projection refresh before the donor is routable again.
+This tests the boundary where Petals donation-management state and the shared Pi Model Management
+catalog must agree; it does not claim a live donated-token inference or a process-restart durable
+consent guarantee.
+Result: `pytest -q tests/petals_bridge/test_petals_bridge.py tests/pi_production/test_research_spine_donor_routing.py`
+=> `37 passed in 0.34s`; targeted Ruff and `git diff --check` pass. The audit also confirms that
+consent is currently process-memory state (safe default-off after restart) and that the compatibility
+route `/api/petals/v1/chat/completions` is bearer-protected but accepts an optional unpinned project,
+while Pi-managed calls use the project-pinned route. These are explicit design decisions/open review
+items, not silently treated as Research Spine proof.
+Verified: no model load, backend/frontend server, SSH, Docker, host package install, or secret read.
+Next: commit and push this focused Petals lifecycle contract, then audit the actual three-rater
+ensemble execution path and its positive/negative Research Spine gates.
