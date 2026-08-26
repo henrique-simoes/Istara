@@ -2517,3 +2517,18 @@ cleanup is reversible only through the existing remote refs for the two empty sk
 Next: maintain this clean local/origin testing state while waiting for the remote owner handoff. Do
 not reset or clean `~/istara-testing`; its dirty tracked/untracked state remains an explicit blocker
 to exact-SHA Docker acceptance.
+
+### L-118 | 2026-08-26T12:12:00Z | S2-execute/S3-review | gpt-5-codex | reviewer | Native Compass Forge gate remains globally red only on inherited debt; this checkpoint adds no new issues
+Did: Re-ran pinned-native Compass Forge `status`, `next`, and `gate before`/`gate after` after the
+fixture and cleanup checkpoint. Native Rust runtime is active with no Python fallback. Gate-before
+record `37` records the expected current repository complexity, secret-flow, route-drift, and
+frontend type-drift inventory; the only newly compared touched-file warning is the known size of
+`tests/pi_production/test_w7_validation.py`. Gate-after record `38` reports
+`comparison.new_issues=[]`, with no new forbidden dependencies, import cycles, security, taint,
+missing-path, or unexpected-large-file findings. The global gate remains `fail` because inherited
+repository debt is still present; this is not silently treated as a pass. Compass Forge also
+confirms CF-13..CF-21 remain open, so no spec/task acceptance claim is made.
+Result: lifecycle evidence and code state remain internally consistent; gate truth is preserved.
+Next: continue only with a bounded remaining acceptance slice (owner-gated remote handoff, fresh
+exact-SHA Docker runner, and blind review); do not mark CF-SPEC-2 or this goal complete while any
+required task or Research Spine acceptance artifact is absent.
