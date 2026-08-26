@@ -8,8 +8,8 @@ phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal ac
 stage: S2-execute
 status: in-progress
 blocked_on: null
-last: { agent: gpt-5-codex, at: 2026-08-26T12:54:56Z, ledger: L-131 }
-next_action: "Rerun the broad local matrix on pushed 951ff740, then close remaining Pi two-call, Petals, benchmark crossover, UI, and Mac Studio owner-handoff gates."
+last: { agent: gpt-5-codex, at: 2026-08-26T12:57:52Z, ledger: L-132 }
+next_action: "Inspect and strengthen the Pi two-call, Petals, benchmark crossover, browser, and exact-image Docker gates; obtain owner handoff for dirty ~/istara-testing before any remote mutation."
 ```
 
 ## Plan overview / roadmap
@@ -2769,3 +2769,18 @@ provider/model, SSH, Docker, or Mac Studio host action occurred. The remote chec
 older Docker images remain untouched and are not acceptance evidence.
 Next: rerun the full local regression matrix against `951ff740`, then inspect and strengthen
 the Pi two-call, Petals lifecycle, benchmark crossover, browser, and exact-image Docker gates.
+
+### L-132 | 2026-08-26T12:57:52Z | S3-review | gpt-5-codex | post-push broad regression matrix is green and warning-free
+Did: Re-ran the complete bounded local matrix against the pushed source. The exact command
+covering Pi production/runtime and migrations, Petals bridge, benchmark contracts including the
+new long-horizon oracles, Research Spine validity/end-to-end/report integrity, chat/catalog
+routing, findings/tasks, model-management settings, runner safety, and security contracts
+completed with `920 passed, 5 skipped in 146.21s` and no warnings.
+
+Result: the pushed local branch is behaviorally green for deterministic coverage, including the
+new tool-receipt, task-persistence, and usage-ledger assertions. This remains contract evidence
+only; it does not prove live model quality, browser acceptance, Petals donor interoperability,
+or Mac Studio Docker execution. No server, provider/model, SSH, Docker, or host package action
+occurred.
+Next: review the still-open P9-07–P9-15 gates and strengthen the Pi two-call and Petals live
+proof contracts before the required owner handoff for the dirty remote checkout.
