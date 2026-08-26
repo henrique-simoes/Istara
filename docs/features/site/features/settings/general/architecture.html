@@ -271,6 +271,14 @@
 <li><code>GET /api/settings/pi-catalog</code> returns the full secret-free Pi catalog. <code>PiModelManagement</code> supports both a visible dropdown/browse path and autocomplete search. Selecting a model resolves URL, protocol, capabilities, effort levels, and pricing from the catalog; users never type an endpoint URL.</li>
 <li>Pi OAuth metadata distinguishes API key, browser PKCE, and device-code methods. OpenAI is explicit: OpenAI API is API-key based, while the shared Codex models expose Pi&#x27;s ChatGPT subscription OAuth with Browser login and Device code (headless) choices. Browser callbacks verify state and never return tokens.</li>
 <li>Pi endpoint, provider, and model mutations refresh the live <code>PiModelManager</code> catalog immediately. Both Istara and Pi Agentic Loop requests therefore resolve against the same current authority without requiring a backend restart.</li>
+<li><code>POST</code> and <code>PUT /api/settings/pi-endpoints</code> share one preparation path: a</li>
+</ul>
+<p>sparse PUT inherits omitted endpoint fields, catalog provider/model choices</p>
+<p>refill the canonical URL/capabilities/pricing, and the same HTTPS/loopback</p>
+<p>and Keychain-reference validation applies atomically before replacement.</p>
+<p>Newly supplied API keys are written only to Keychain; an existing encrypted</p>
+<p>OAuth credential is retained unless a new completed flow is supplied.</p>
+<ul>
 <li><code>GET /api/settings/security-integrity</code> is global-admin-only and reports value-free health counters for encrypted-field and telemetry persistence failures. It never returns keys, ciphertext, provider URLs, prompts, or research content.</li>
 <li>Settings is role-composed rather than a single global-admin surface. Researcher-safe personal panels such as compute donation, security factors, sessions, and updates may render for researchers, while global-admin panels for governed evolution, users, connection strings, LLM infrastructure, telemetry, and team-mode toggles are gated before mounting so their admin-only API calls are never made by normal researcher journeys.</li>
 <li><code>/api/settings/status</code> also includes <code>runtime.frontend</code> freshness diagnostics. The status bar shows <code>Runtime bundle stale</code> when the production Next build predates tracked frontend source files, preventing stale bundles from being mistaken for current project-isolation behavior.</li>

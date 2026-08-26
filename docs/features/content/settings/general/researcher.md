@@ -6,10 +6,10 @@ audience: researcher
 status: documented
 related_features: ["settings.llm-servers", "compute.pool"]
 related_glossary: ["rag"]
-code_references: ["frontend/src/components/common/SettingsView.tsx", "frontend/src/components/settings/AgenticCoreSection.tsx", "frontend/src/components/settings/PiModelManagement.tsx", "backend/app/api/routes/settings.py", "backend/app/core/pi_runtime/catalog.py", "backend/app/core/pi_runtime/oauth.py"]
+code_references: ["frontend/src/components/common/SettingsView.tsx", "frontend/src/components/settings/AgenticCoreSection.tsx", "frontend/src/components/settings/PiModelManagement.tsx", "backend/app/api/routes/settings.py", "backend/app/core/pi_runtime/endpoint_policy.py", "backend/app/core/pi_runtime/catalog.py", "backend/app/core/pi_runtime/oauth.py"]
 api_references: ["backend/app/api/routes/settings.py"]
 test_references: ["tests/test_settings.py", "tests/test_settings_agentic_pi_endpoints.py", "tests/pi_production/test_pi_catalog_ux.py"]
-last_verified: 2026-08-23
+last_verified: 2026-08-26
 compass: CF-SPEC-53 / CF-657
 ---
 
@@ -47,6 +47,9 @@ System Status And Models exists so the work represented by Settings > System Sta
 - Global Agentic Core and Pi endpoint configuration updates for authorized administrators.
 - A visible, searchable provider/model list with API-key and Pi OAuth choices.
 - Legacy backend compatibility data remains preserved but is not a competing normal Settings catalog.
+- Editing an existing Pi connection uses the same catalog, URL, Keychain-custody,
+  and OAuth-preservation rules as adding one; sparse edits keep the endpoint's
+  derived capabilities and secret reference, while invalid edits are rejected.
 
 ## Caveats
 
@@ -63,6 +66,6 @@ System Status And Models exists so the work represented by Settings > System Sta
 
 ## Evidence
 
-- Source files: `frontend/src/components/common/SettingsView.tsx`, `frontend/src/components/settings/AgenticCoreSection.tsx`, `frontend/src/components/settings/PiModelManagement.tsx`, `backend/app/api/routes/settings.py`, `backend/app/core/pi_runtime/catalog.py`, `backend/app/core/pi_runtime/oauth.py`
+- Source files: `frontend/src/components/common/SettingsView.tsx`, `frontend/src/components/settings/AgenticCoreSection.tsx`, `frontend/src/components/settings/PiModelManagement.tsx`, `backend/app/api/routes/settings.py`, `backend/app/core/pi_runtime/endpoint_policy.py`, `backend/app/core/pi_runtime/catalog.py`, `backend/app/core/pi_runtime/oauth.py`
 - API references: `backend/app/api/routes/settings.py`
 - Tests: `tests/test_settings.py`, `tests/test_settings_agentic_pi_endpoints.py`, `tests/pi_production/test_pi_catalog_ux.py`

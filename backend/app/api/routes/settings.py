@@ -8,11 +8,15 @@ from fastapi.responses import HTMLResponse, JSONResponse
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.config import settings
+from app.config import PiApiEndpoint, settings
 from app.core.env_persistence import persist_env_value
 from app.core.hardware import detect_hardware, recommend_model
 from app.core.ollama import ollama
 from app.core.permissions import require_global_role, require_project_access
+from app.core.pi_runtime.endpoint_policy import (
+    custody_pi_endpoint_credentials,
+    prepare_pi_endpoint_payload,
+)
 from app.core.runtime_freshness import detect_runtime_freshness
 from app.core.security_middleware import require_admin_from_request
 from app.models.database import get_db
@@ -1019,7 +1023,6 @@ async def model_management_migration_status(request: Request, db: AsyncSession =
 @router.post("/settings/pi-endpoints")
 async def add_pi_endpoint(data: PiEndpointRequest, request: Request):
     require_global_role(request, "admin")
-    from app.config import PiApiEndpoint
 
     endpoint_id = data.endpoint_id.strip()
     if not endpoint_id:
@@ -1029,96 +1032,8 @@ async def add_pi_endpoint(data: PiEndpointRequest, request: Request):
     if any(e.endpoint_id == endpoint_id for e in settings.pi_api_endpoints):
         raise HTTPException(status_code=409, detail=f"endpoint {endpoint_id!r} already exists")
 
-    payload = data.model_dump()
-
-    # Catalog-driven setup (DEC-3): resolve provider/model from the canonical
-    # Pi catalog so the user never types base_url or model capabilities.
-    if data.pi_provider and data.pi_model:
-        from app.core.pi_runtime.catalog import load_catalog
-
-        catalog = load_catalog()
-        provider_models = catalog.get(data.pi_provider)
-        if not provider_models:
-            raise HTTPException(status_code=400, detail=f"unknown pi provider: {data.pi_provider}")
-        match = next((m for m in provider_models if m["id"] == data.pi_model), None)
-        if not match:
-            raise HTTPException(status_code=400, detail=f"unknown pi model: {data.pi_model}")
-        api = str(match.get("api", "")).lower()
-        if api == "openai-codex-responses":
-            provider_kind = "openai_codex"
-        else:
-            provider_kind = "anthropic_compat" if "anthropic" in api else "openai_compat"
-        payload["provider_kind"] = provider_kind
-        payload["base_url"] = match.get("baseUrl") or data.base_url
-        payload["model"] = match["id"]
-        payload["context_window"] = int(match.get("contextWindow") or 0)
-        payload["max_tokens"] = int(match.get("maxTokens") or 0)
-        cost = match.get("cost") or {}
-        payload["cost_input_per_mtok"] = float(cost.get("input") or 0.0)
-        payload["cost_output_per_mtok"] = float(cost.get("output") or 0.0)
-        payload["cost_cache_read_per_mtok"] = float(cost.get("cacheRead") or 0.0)
-        payload["cost_cache_write_per_mtok"] = float(cost.get("cacheWrite") or 0.0)
-        if not payload.get("keychain_service"):
-            auth_provider = data.auth_provider or data.pi_provider
-            payload["keychain_service"] = (
-                f"istara-pi-oauth-{auth_provider}"
-                if data.auth_method.startswith("oauth")
-                else f"istara-pi-{data.pi_provider}"
-            )
-        payload["auth_provider"] = data.auth_provider or data.pi_provider
-        payload["auth_method"] = data.auth_method or "api_key"
-
-    if not payload.get("base_url") or not payload.get("model"):
-        raise HTTPException(
-            status_code=400,
-            detail=(
-                "base_url and model are required — select a Pi provider+model "
-                "from the catalog or provide them explicitly"
-            ),
-        )
-    if not payload["base_url"].startswith(("https://", "http://127.0.0.1", "http://localhost")):
-        raise HTTPException(status_code=400, detail="base_url must be https (or loopback)")
-    if not payload.get("keychain_service"):
-        raise HTTPException(
-            status_code=400,
-            detail="keychain_service is required (Pi endpoints resolve secrets via Keychain)",
-        )
-
-    # Optional API key custody: write straight to Keychain (same service name
-    # the resolver reads) so the UI can accept a pasted key without a separate
-    # keychain step. Never persisted to disk or returned.
-    if data.api_key.strip() and not data.auth_method.startswith("oauth"):
-        try:
-            from app.config import _write_macos_keychain_secret
-
-            _write_macos_keychain_secret(
-                payload["keychain_service"],
-                payload.get("keychain_account") or "default",
-                data.api_key.strip(),
-            )
-        except Exception as exc:  # pragma: no cover - custody failure is non-fatal to config
-            logger.warning("pi endpoint: keychain write failed for %s: %s", endpoint_id, exc)
-
-    if data.auth_method.startswith("oauth"):
-        try:
-            import json as _json
-
-            from app.core.field_encryption import encrypt_field
-            from app.core.pi_runtime.oauth import consume_oauth_credential
-
-            oauth_provider = data.auth_provider or data.pi_provider
-            if not data.oauth_flow_id:
-                raise HTTPException(
-                    status_code=400, detail="oauth_flow_id is required after Pi login"
-                )
-            credential = consume_oauth_credential(oauth_provider, data.oauth_flow_id)
-            payload["oauth_credential_encrypted"] = encrypt_field(
-                _json.dumps(credential, separators=(",", ":"))
-            )
-        except ValueError as exc:
-            raise HTTPException(status_code=400, detail=str(exc)) from exc
-        except Exception as exc:  # pragma: no cover - encryption/provider custody guard
-            raise HTTPException(status_code=503, detail="oauth_credential_custody_failed") from exc
+    payload = prepare_pi_endpoint_payload(data)
+    custody_pi_endpoint_credentials(data, payload)
 
     try:
         settings.pi_api_endpoints.append(PiApiEndpoint(**payload))
@@ -1146,14 +1061,13 @@ async def update_pi_endpoint(endpoint_id: str, data: PiEndpointRequest, request:
     require_global_role(request, "admin")
     for index, endpoint in enumerate(settings.pi_api_endpoints):
         if endpoint.endpoint_id == endpoint_id:
-            updated = data.model_dump()
-            updated["endpoint_id"] = endpoint_id
-            updated["oauth_credential_encrypted"] = getattr(
-                endpoint, "oauth_credential_encrypted", ""
-            )
-            from app.config import PiApiEndpoint
-
-            settings.pi_api_endpoints[index] = PiApiEndpoint(**updated)
+            updated = prepare_pi_endpoint_payload(data, existing=endpoint)
+            custody_pi_endpoint_credentials(data, updated, existing=endpoint)
+            try:
+                replacement = PiApiEndpoint(**updated)
+            except ValueError as exc:
+                raise HTTPException(status_code=400, detail=str(exc)) from exc
+            settings.pi_api_endpoints[index] = replacement
             try:
                 _persist_pi_endpoints()
                 persisted = True

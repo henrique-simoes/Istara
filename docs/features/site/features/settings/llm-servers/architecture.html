@@ -318,6 +318,12 @@
 <p>the live catalog immediately. A stale projection is removed before the next</p>
 <p>resolution; the retired legacy route is not required for refresh.</p>
 <ul>
+<li>Pi endpoint POST and PUT are one authority boundary: catalog-derived fields,</li>
+</ul>
+<p>endpoint URL/keychain validation, sparse-update inheritance, and credential</p>
+<p>custody are shared, so editing a connection cannot bypass the canonical</p>
+<p>provider/model contract or erase its secret reference.</p>
+<ul>
 <li><code>backend/app/api/routes/settings.py</code> <code>GET /settings/models</code> now includes a</li>
 </ul>
 <p><code>&quot;pi_catalog&quot;</code> key alongside the legacy model list in both online and</p>

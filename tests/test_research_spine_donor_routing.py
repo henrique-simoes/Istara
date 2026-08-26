@@ -155,6 +155,43 @@ def test_research_validity_coder_selection_uses_distinct_project_donors(monkeypa
     assert [coder.model_name for coder in coders] == ["base-a:2", "model-b", "model-c"]
 
 
+def test_research_validity_coder_selection_collapses_case_variant_model_ids(monkeypatch):
+    """Donor aliases differing only by case must not fabricate a rater."""
+    nodes = [
+        SimpleNamespace(
+            node_id="donor-a",
+            name="Donor A",
+            is_healthy=True,
+            loaded_models=["Model-A"],
+            model_capabilities={},
+        ),
+        SimpleNamespace(
+            node_id="donor-b",
+            name="Donor B",
+            is_healthy=True,
+            loaded_models=["model-a"],
+            model_capabilities={},
+        ),
+        SimpleNamespace(
+            node_id="donor-c",
+            name="Donor C",
+            is_healthy=True,
+            loaded_models=["model-c"],
+            model_capabilities={},
+        ),
+    ]
+
+    class FakeRouter:
+        def _sorted_servers(self, **kwargs):  # noqa: ANN001
+            return nodes
+
+    monkeypatch.setattr(research_validity_service, "llm_router", FakeRouter())
+
+    coders = research_validity_service._select_project_coders("project-a", max_coders=3)
+
+    assert [coder.model_name for coder in coders] == ["Model-A", "model-c"]
+
+
 def test_coding_applications_resolve_source_units_by_stable_id_index_or_quote():
     units = [
         SimpleNamespace(

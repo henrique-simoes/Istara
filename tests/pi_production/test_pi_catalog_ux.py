@@ -110,6 +110,71 @@ def test_add_endpoint_unknown_catalog_model_rejected(client):
     assert resp.status_code == 400
 
 
+def test_update_endpoint_reuses_catalog_and_keychain_custody(client, monkeypatch):
+    """PUT must preserve the canonical Pi catalog and secret-custody rules."""
+    from app import config as app_config
+
+    writes = []
+    monkeypatch.setattr(
+        app_config,
+        "_write_macos_keychain_secret",
+        lambda service, account, secret: writes.append((service, account, secret)) or True,
+    )
+    endpoint_id = "update-deepseek"
+    created = client.post(
+        "/api/settings/pi-endpoints",
+        json={
+            "endpoint_id": endpoint_id,
+            "pi_provider": "deepseek",
+            "pi_model": "deepseek-v4-pro",
+            "keychain_service": "istara-pi-deepseek",
+            "api_key": "sk-old",
+        },
+    )
+    assert created.status_code == 200, created.text
+    writes.clear()
+
+    # A catalog update may omit derived fields; the route must resolve them and
+    # keep the existing Keychain service while custodying the replacement key.
+    updated = client.put(
+        f"/api/settings/pi-endpoints/{endpoint_id}",
+        json={
+            "endpoint_id": endpoint_id,
+            "pi_provider": "deepseek",
+            "pi_model": "deepseek-v4-flash",
+            "api_key": "sk-new",
+        },
+    )
+    assert updated.status_code == 200, updated.text
+    endpoint = next(
+        item for item in client.get("/api/settings/pi-endpoints").json()["endpoints"]
+        if item["endpoint_id"] == endpoint_id
+    )
+    assert endpoint["model"] == "deepseek-v4-flash"
+    assert endpoint["base_url"].startswith("https://")
+    assert endpoint["context_window"] > 0
+    assert endpoint["keychain_service"] == "istara-pi-deepseek"
+    assert writes == [("istara-pi-deepseek", "default", "sk-new")]
+
+    # Explicit non-catalog updates retain the same validation contract as POST;
+    # a failed update must not replace the previously valid endpoint.
+    rejected = client.put(
+        f"/api/settings/pi-endpoints/{endpoint_id}",
+        json={
+            "endpoint_id": endpoint_id,
+            "base_url": "http://insecure.example.com",
+            "model": "uncatalogued",
+            "keychain_service": "istara-pi-deepseek",
+        },
+    )
+    assert rejected.status_code == 400
+    after_rejection = next(
+        item for item in client.get("/api/settings/pi-endpoints").json()["endpoints"]
+        if item["endpoint_id"] == endpoint_id
+    )
+    assert after_rejection["model"] == "deepseek-v4-flash"
+
+
 def test_oauth_flows_endpoints(client):
     resp = client.get("/api/settings/pi-oauth/flows")
     assert resp.status_code == 200
@@ -242,6 +307,52 @@ def test_oauth_credential_is_consumed_into_endpoint_custody(client, monkeypatch)
     settings.pi_api_endpoints = [item for item in settings.pi_api_endpoints if item.endpoint_id != endpoint_id]
     with pytest.raises(ValueError, match="oauth_credential_not_ready"):
         oauth.consume_oauth_credential("openai-codex")
+    oauth._FLOWS.clear()
+
+
+def test_oauth_endpoint_sparse_update_preserves_existing_custody(client):
+    """A metadata-only edit must not require re-authentication or drop OAuth."""
+    from app.config import settings
+    from app.core.pi_runtime import oauth
+
+    flow = oauth._store_flow(oauth.OAuthFlowState(
+        provider="openai-codex",
+        oauth_provider="openai-codex",
+        flow_type="device_code",
+        method="device_code",
+        status="approved",
+        access_token="access.jwt",
+        refresh_token="refresh.jwt",
+    ))
+    endpoint_id = "codex-oauth-sparse-update"
+    created = client.post(
+        "/api/settings/pi-endpoints",
+        json={
+            "endpoint_id": endpoint_id,
+            "pi_provider": "openai-codex",
+            "pi_model": "gpt-5.4",
+            "auth_provider": "openai-codex",
+            "auth_method": "oauth_device_code",
+            "oauth_flow_id": flow.flow_id,
+            "keychain_service": "istara-pi-oauth-openai-codex",
+        },
+    )
+    assert created.status_code == 200, created.text
+    original_ciphertext = next(
+        item.oauth_credential_encrypted
+        for item in settings.pi_api_endpoints
+        if item.endpoint_id == endpoint_id
+    )
+
+    updated = client.put(
+        f"/api/settings/pi-endpoints/{endpoint_id}",
+        json={"endpoint_id": endpoint_id, "pi_provider": "openai-codex", "pi_model": "gpt-5.4"},
+    )
+    assert updated.status_code == 200, updated.text
+    replacement = next(
+        item for item in settings.pi_api_endpoints if item.endpoint_id == endpoint_id
+    )
+    assert replacement.oauth_credential_encrypted == original_ciphertext
     oauth._FLOWS.clear()
 
 

@@ -272,7 +272,10 @@
 <li>Global Agentic Core and Pi endpoint configuration updates for authorized administrators.</li>
 <li>A visible, searchable provider/model list with API-key and Pi OAuth choices.</li>
 <li>Legacy backend compatibility data remains preserved but is not a competing normal Settings catalog.</li>
+<li>Editing an existing Pi connection uses the same catalog, URL, Keychain-custody,</li>
 </ul>
+<p>and OAuth-preservation rules as adding one; sparse edits keep the endpoint&#x27;s</p>
+<p>derived capabilities and secret reference, while invalid edits are rejected.</p>
 <h2 id="caveats">Caveats</h2>
 <ul>
 <li>Needs interactive verification for exact empty, loading, error, and permission-denied states.</li>
@@ -288,7 +291,7 @@
 </ul>
 <h2 id="evidence">Evidence</h2>
 <ul>
-<li>Source files: <code>frontend/src/components/common/SettingsView.tsx</code>, <code>frontend/src/components/settings/AgenticCoreSection.tsx</code>, <code>frontend/src/components/settings/PiModelManagement.tsx</code>, <code>backend/app/api/routes/settings.py</code>, <code>backend/app/core/pi_runtime/catalog.py</code>, <code>backend/app/core/pi_runtime/oauth.py</code></li>
+<li>Source files: <code>frontend/src/components/common/SettingsView.tsx</code>, <code>frontend/src/components/settings/AgenticCoreSection.tsx</code>, <code>frontend/src/components/settings/PiModelManagement.tsx</code>, <code>backend/app/api/routes/settings.py</code>, <code>backend/app/core/pi_runtime/endpoint_policy.py</code>, <code>backend/app/core/pi_runtime/catalog.py</code>, <code>backend/app/core/pi_runtime/oauth.py</code></li>
 <li>API references: <code>backend/app/api/routes/settings.py</code></li>
 <li>Tests: <code>tests/test_settings.py</code>, <code>tests/test_settings_agentic_pi_endpoints.py</code>, <code>tests/pi_production/test_pi_catalog_ux.py</code></li>
 </ul>

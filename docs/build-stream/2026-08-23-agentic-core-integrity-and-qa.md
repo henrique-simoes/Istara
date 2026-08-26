@@ -8,8 +8,8 @@ phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal ac
 stage: S2-execute
 status: in-progress
 blocked_on: null
-last: { agent: gpt-5-codex, at: 2026-08-26T17:45:00Z, ledger: L-169 }
-next_action: "Keep the Docker provider/donor gates open; implement and test scorecard semantic separation, then obtain an authorized reachable provider and three donor routes for the terminal Research Spine retake."
+last: { agent: gpt-5-codex, at: 2026-08-26T18:55:00Z, ledger: L-177 }
+next_action: "Run Compass Forge gate-after on the isolated endpoint policy, commit/push the verified changes, and keep the live provider/three-donor Research Spine acceptance blocker explicitly open."
 ```
 
 ## Plan overview / roadmap
@@ -3691,3 +3691,50 @@ owner-managed `.env.deploy` file was changed. This is documentation reconciliati
 not alter the still-open provider/three-donor Research Spine acceptance gate.
 Next: hold the goal open for the external provider and donor topology handoff; no further local
 mutation is warranted until those inputs are available.
+
+### L-175 | 2026-08-26T18:20:00Z | S2-execute | gpt-5-codex | Pi authority and promotion seam audit in progress
+Did: Re-entered the implementation audit after the scorecard/runner closure. Compass Forge
+impact/why context and direct code tracing confirm that `run_independent_coding_run` routes
+both loop choices through `_use_pi_coding_plane`/`_select_pi_coders`, and `_pi_coder_runner`
+dispatches `validity.coder` with an exact Pi endpoint. `PiModelManager.resolve_distinct` folds
+model identities case-insensitively, excludes same-model replicas, and applies project scope
+to Petals projections. Downstream report eligibility is stricter than the reliability score:
+`_is_reconciled_code_application` requires both accepted promotion and durable reconciliation,
+and report generation additionally requires approved Done-task state.
+
+Still under review: the broad production `_load_units` query is deterministic by source/unit
+but does not itself require multiple source identities; this is not a Research Spine contract
+violation for a legitimately single-source study, but it must not be mistaken for the
+benchmark's source-diversity proof. I am comparing the existing end-to-end and migration tests
+before changing this boundary. No live provider/donor state has changed and no new Docker run
+is justified while the reachable provider and three donor routes remain absent.
+Next: finish the source-selection and engine-authority test audit, then either add a narrowly
+scoped regression/fix or record why the current behavior is intentional; checkpoint evidence
+before any long test or commit.
+
+### L-176 | 2026-08-26T18:35:00Z | S2-execute | gpt-5-codex | Pi endpoint PUT parity and case-folded ensemble identity fixed
+Did: Added shared `_prepare_pi_endpoint_payload` and `_custody_pi_endpoint_credentials` paths in
+`backend/app/api/routes/settings.py`. POST and PUT now share canonical provider/model catalog
+resolution, sparse-update inheritance, HTTPS/loopback and Keychain-reference validation, API-key
+custody, and OAuth credential preservation/replacement rules. Invalid updates are validated before
+the in-memory endpoint is replaced. Added catalog-route regression coverage for derived capability
+refresh, replacement-key custody, atomic invalid-update rejection, and a legacy donor-selector
+regression proving case variants (`Model-A`/`model-a`) cannot fabricate independent raters; the
+selector now stores normalized case-folded identities. Focused suites passed `15/15`.
+Updated the settings living feature docs to describe the shared authority and sparse-update contract.
+This is deterministic contract evidence only; the live provider/three-donor Research Spine gate
+remains open and no host installation or Docker workload was started.
+Next: run the broader deterministic settings/Research Spine/PI matrix and feature-doc generation,
+then Compass Forge gate-before/after, commit/push `testing`, and record the external blocker.
+
+### L-177 | 2026-08-26T18:55:00Z | S3-review | gpt-5-codex | complexity remediation and OAuth-preservation regression green
+Did: Compass Forge gate-before record 69 showed no new comparison issues after the policy was
+isolated into `backend/app/core/pi_runtime/endpoint_policy.py`; the prior route/helper complexity
+delta is gone. The module separates catalog application, endpoint validation, API-key custody, and
+OAuth custody, including typed 503 handling for encryption/provider failures. Ruff is clean and the
+focused route/Pi/ensemble suites pass `23/23` (including sparse OAuth update preservation). The
+benchmark-library syntax and semantic suite remains green at `58/58`, and feature-doc generation
+will be rerun after this module reference is finalized. No live provider request or host install was
+performed; Docker remains the only permitted Mac Studio execution boundary.
+Next: regenerate/check feature docs, run the final after-gate and diff checks, then commit/push the
+intended testing changes and verify exact local/remote refs and clean worktrees.

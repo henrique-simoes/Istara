@@ -346,9 +346,10 @@ def _select_project_coders(project_id: str, max_coders: int) -> list[CoderSpec]:
     def add_coder(node: Any, model_name: str) -> bool:
         node_id = str(getattr(node, "node_id", "") or getattr(node, "name", "")).strip()
         model_identity = str(model_name or node_id).strip()
-        if not model_identity or model_identity in seen_models:
+        normalized_identity = model_identity.casefold()
+        if not model_identity or normalized_identity in seen_models:
             return False
-        seen_models.add(model_identity)
+        seen_models.add(normalized_identity)
         seen_nodes.add(node_id)
         coders.append(
             CoderSpec(

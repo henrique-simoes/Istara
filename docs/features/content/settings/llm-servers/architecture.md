@@ -6,7 +6,7 @@ audience: architecture
 status: deprecated
 related_features: ["chat.model-controls", "settings.connection-strings"]
 related_glossary: ["rag"]
-code_references: ["frontend/src/components/common/SettingsView.tsx", "frontend/src/lib/modelProviders.ts", "backend/app/api/routes/settings.py", "backend/app/core/pi_runtime/model_manager.py", "backend/app/core/pi_runtime/endpoints.py", "backend/app/core/petals_bridge.py"]
+code_references: ["frontend/src/components/common/SettingsView.tsx", "frontend/src/lib/modelProviders.ts", "backend/app/api/routes/settings.py", "backend/app/core/pi_runtime/endpoint_policy.py", "backend/app/core/pi_runtime/model_manager.py", "backend/app/core/pi_runtime/endpoints.py", "backend/app/core/petals_bridge.py"]
 api_references: ["backend/app/api/routes/settings.py", "backend/app/api/routes/petals.py"]
 test_references: ["frontend/src/lib/modelProviders.test.ts", "tests/test_settings_agentic_pi_endpoints.py", "tests/test_project_scope_contracts.py", "tests/pi_production/test_w1_agentic_contract.py", "tests/pi_production/test_same_model_donor_isolation.py", "tests/petals_bridge/test_petals_bridge.py", "tests/pi_production/test_w8_embeddings_gateway.py"]
 last_verified: 2026-08-24
@@ -81,6 +81,10 @@ public `/api/settings/status` is redacted and passive.
 - Pi endpoint add/update/delete and model/provider setting changes invalidate
   the live catalog immediately. A stale projection is removed before the next
   resolution; the retired legacy route is not required for refresh.
+- Pi endpoint POST and PUT are one authority boundary: catalog-derived fields,
+  endpoint URL/keychain validation, sparse-update inheritance, and credential
+  custody are shared, so editing a connection cannot bypass the canonical
+  provider/model contract or erase its secret reference.
 - `backend/app/api/routes/settings.py` `GET /settings/models` now includes a
   `"pi_catalog"` key alongside the legacy model list in both online and
   offline responses. It is an identity/capability view only — endpoint ids,
