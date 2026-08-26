@@ -8,7 +8,7 @@ phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal ac
 stage: S2-execute
 status: in-progress
 blocked_on: null
-last: { agent: gpt-5-codex, at: 2026-08-26T13:25:31Z, ledger: L-137 }
+last: { agent: gpt-5-codex, at: 2026-08-26T13:32:48Z, ledger: L-138 }
 next_action: "Audit live paired-engine provenance and the unproven Petals-through-Pi execution path; add only bounded contract fixes, then obtain owner-gated Docker acceptance on the exact pushed image."
 ```
 
@@ -2883,3 +2883,20 @@ through the API, or Research Spine acceptance/reconciliation on a Docker image.
 Next: run a fresh before gate, commit/push this test, run the after gate and broad matrix, then
 decide whether live-benchmark provenance needs a bounded contract fix or remains an owner-gated
 acceptance blocker.
+
+### L-138 | 2026-08-26T13:32:48Z | S3-review | gpt-5-codex | Petals/Pi contract and full matrix are green
+Did: Committed the Petals-through-Pi ensemble contract and its detailed ledger entry as
+`e77c447b` (`test: exercise petals through pi ensemble`) and pushed local `testing` to
+`origin/testing`. The pinned native Rust Compass Forge after gate (record `53`) reported
+`new_issue_count=0`, `new_failures=0`, and no new dependency/import-cycle, missing-path,
+unexpected-large-file, security, or taint findings. The exact bounded matrix was rerun after
+the commit and completed `922 passed, 5 skipped in 146.27s`, with no warnings.
+
+Result: deterministic coverage now includes Pi Model Management -> distinct ensemble ->
+Petals project-scoped bind composition, alongside the existing Research Spine, usage, task,
+and reconciliation oracles. This remains local contract evidence only; live donor health and
+consent, actual provider responses, browser behavior, and exact-image Mac Studio Docker proof
+are still open.
+Next: tighten or explicitly scope the paired benchmark provenance contract, then inspect the
+remote Docker checkout/image lineage and request the owner-gated retake without mutating its
+dirty working tree.
