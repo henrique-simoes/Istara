@@ -658,6 +658,21 @@ def test_record_identity_follows_the_unit_not_the_cli_phase(tmp_path):
     assert (tmp_path / "records" / f"{unit.unit_id}.json").is_file()
 
 
+def test_live_pair_arms_share_one_crossover_order_label(tmp_path):
+    """The two live engine records must carry the same paired order metadata."""
+    pi_unit = _unit(unit_id="B2-T3-canonical-s1-seed0-r1-pi", engine="pi")
+    legacy_unit = _unit(unit_id="B2-T3-canonical-s1-seed0-r1-legacy", engine="legacy")
+    pi_record = live_driver._build_unit_record(
+        unit=pi_unit, scenario=_scenario(), config=_config(tmp_path), status="ok"
+    )
+    legacy_record = live_driver._build_unit_record(
+        unit=legacy_unit, scenario=_scenario(), config=_config(tmp_path), status="ok"
+    )
+
+    assert pi_record["pair_id"] == legacy_record["pair_id"]
+    assert pi_record["scenario"]["order"] == legacy_record["scenario"]["order"]
+
+
 def test_dispatch_unit_full_ensemble_requests_distinct_slots(monkeypatch):
     """CF-338: full_ensemble goes through real distinct resolution (petals-ready),
     not a hardcoded single-route collapse."""

@@ -23,6 +23,9 @@ This directory holds the **generated** deliverables of the Pi-vs-Legacy benchmar
   acceptance A15).
 - **Tiers never mix** in a table (schema `tier`; acceptance A12).
 - `not_runnable` / `invalid_pair` arms are **counted, never dropped** (schema `status`).
+- Paired arms share one deterministic crossover label (`legacy_first` or `pi_first`)
+  derived from scenario/seed/repeat (and MoA lane), never from the engine-specific
+  record id; this keeps order adjustment valid for live and offline records.
 - Run records live under `tests/pi_benchmark/.results/` and are **gitignored**; only the
   generated, secret-scanned report bundles under `reports/` are tracked.
 - The benchmark **observes** the product paths; it never flips `agentic_engine_default`,

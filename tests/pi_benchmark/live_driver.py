@@ -663,6 +663,22 @@ def _build_unit_record(
 ) -> dict[str, Any]:
     """Assemble + validate one record via the shared schema helpers."""
 
+    # Pair order is a property of the scenario/seed/repeat arm, not of the
+    # engine-specific unit id.  Hashing ``unit.unit_id`` would give the Pi and
+    # legacy arms independent crossover labels because their ids end in
+    # different engine names, making paired order adjustment impossible.
+    pair_key = "|".join(
+        (
+            str(getattr(unit, "phase", "") or ""),
+            str(getattr(unit, "pack", "") or ""),
+            str(getattr(unit, "scenario_id", "") or ""),
+            str(getattr(unit, "seed", "") or ""),
+            str(getattr(unit, "repeat", "") or ""),
+            str(getattr(unit, "moa_mode", None) or "none"),
+        )
+    )
+    pair_index = int(hashlib.sha256(pair_key.encode()).hexdigest()[:8], 16)
+
     # The unit's own phase (from the manifest) is the identity — a wave's CLI --phase
     # is only a default and must not rewrite a unit's record identity.
     unit_config = config
@@ -675,8 +691,8 @@ def _build_unit_record(
         engine=unit.engine,
         seed=unit.seed,
         repeat=unit.repeat,
-        # Deterministic per-unit order assignment (stable across resume/waves).
-        pair_index=int(hashlib.sha256(unit.unit_id.encode()).hexdigest()[:8], 16),
+        # Deterministic pair order assignment (stable across resume/waves).
+        pair_index=pair_index,
         git_sha=schema.git_provenance()[0],
         git_dirty=schema.git_provenance()[1],
         ts=schema._utc_now_iso(),
