@@ -239,6 +239,7 @@ async def get_research_validity_summary(
             CodeApplication.project_id == project_id,
             CodeApplication.review_status == "approved",
             CodeApplication.promotion_status == "accepted",
+            CodeApplication.reconciliation_status.in_(("accepted", "reconciled")),
         )
     )
     low_consensus_count = await db.scalar(

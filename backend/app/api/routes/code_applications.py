@@ -1,7 +1,5 @@
 """Code Application API — view and review code-to-source traceability records."""
 
-from datetime import datetime, timezone
-
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel
 from sqlalchemy import select
@@ -35,9 +33,10 @@ async def get_project_code_applications(
     request: Request,
     status: str | None = None,
     task_id: str | None = None,
+    coding_run_id: str | None = None,
     db: AsyncSession = Depends(get_db),
 ):
-    """Get all code applications for a project, optionally filtered by review status."""
+    """Get project code applications, optionally scoped to one coding run."""
     await require_project_access(db, request, project_id, min_role="viewer")
 
     query = select(CodeApplication).where(
@@ -47,6 +46,8 @@ async def get_project_code_applications(
         query = query.where(CodeApplication.review_status == status)
     if task_id:
         query = query.where(CodeApplication.task_id == task_id)
+    if coding_run_id:
+        query = query.where(CodeApplication.coding_run_id == coding_run_id)
     query = query.order_by(CodeApplication.created_at.desc())
 
     result = await db.execute(query)
@@ -124,26 +125,18 @@ async def bulk_approve_high_confidence(
     min_confidence: float = Query(default=0.9, ge=0.0, le=1.0),
     db: AsyncSession = Depends(get_db),
 ):
-    """Bulk-approve pending applications only when confidence and reliability agree."""
+    """Reject bulk acceptance because it bypasses per-application reconciliation.
+
+    Confidence and inter-coder reliability identify candidates for review; they
+    do not constitute the durable human reconciliation decision required by the
+    Research Spine. Keep this compatibility route explicit and side-effect free
+    so older clients cannot silently promote research evidence.
+    """
     await require_project_access(db, request, project_id, min_role="researcher")
-
-    result = await db.execute(
-        select(CodeApplication).where(
-            CodeApplication.project_id == project_id,
-            CodeApplication.review_status == "pending",
-            CodeApplication.confidence >= min_confidence,
-            CodeApplication.promotion_status == "accepted",
-            CodeApplication.reliability_status.in_(("accepted", "reliable", "passed")),
-        )
+    raise HTTPException(
+        status_code=422,
+        detail=(
+            "Bulk approval is disabled: confidence and reliability are review "
+            "signals only; each code application requires explicit reconciliation."
+        ),
     )
-    applications = result.scalars().all()
-    now = datetime.now(timezone.utc)
-    count = 0
-    for ca in applications:
-        ca.review_status = "approved"
-        ca.reviewed_by = "auto:high-confidence"
-        ca.reviewed_at = now
-        count += 1
-
-    await db.commit()
-    return {"approved_count": count, "min_confidence": min_confidence}

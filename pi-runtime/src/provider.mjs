@@ -345,6 +345,36 @@ export function buildRealProvider(endpoint) {
 
 /** Convert a serialized faux-response spec into a pi-ai faux assistant message. */
 function buildFauxResponse(spec) {
+  // A serialized response can require proof that the authority's tool result
+  // made it back into the model context. This is deliberately test-only: real
+  // providers are never built from faux response specs. Without this guard a
+  // scripted final answer could make a broken tool-result round trip look green.
+  if (spec.requires_tool_result) {
+    const requirement = typeof spec.requires_tool_result === "object"
+      ? spec.requires_tool_result
+      : {};
+    return (context) => {
+      const expectedTool = String(requirement.tool_name || "").trim();
+      const expectedText = String(requirement.contains || "");
+      const observed = (context?.messages || []).some((message) => {
+        if (message?.role !== "toolResult") return false;
+        if (expectedTool && String(message.toolName || "") !== expectedTool) return false;
+        if (!expectedText) return true;
+        return (message.content || []).some((block) =>
+          String(block?.text || "").includes(expectedText));
+      });
+      if (!observed) {
+        return fauxAssistantMessage([], {
+          stopReason: "error",
+          errorMessage: `required_tool_result_missing:${expectedTool || "any"}`,
+        });
+      }
+      return buildFauxResponse({
+        ...spec,
+        requires_tool_result: undefined,
+      });
+    };
+  }
   if (spec.text !== undefined && !spec.tool_calls) {
     return fauxAssistantMessage(fauxText(spec.text), { stopReason: spec.stop_reason || "stop" });
   }

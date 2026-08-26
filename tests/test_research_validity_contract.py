@@ -769,6 +769,56 @@ async def test_research_validity_summary_route_uses_project_scope(admin_auth_hea
 
 
 @pytest.mark.asyncio
+async def test_research_validity_summary_counts_only_reconciled_applications(
+    admin_auth_headers,
+):
+    """Summary acceptance counts must match the fail-closed report gate."""
+    from httpx import ASGITransport, AsyncClient
+
+    from app.main import app
+    from app.models.code_application import CodeApplication
+    from app.models.database import async_session, init_db
+    from app.models.project import Project
+
+    suffix = uuid.uuid4().hex[:8]
+    project_id = f"proj-summary-reconciliation-{suffix}"
+    await init_db()
+    async with async_session() as db:
+        db.add(Project(id=project_id, name="Summary reconciliation"))
+        db.add_all(
+            [
+                CodeApplication(
+                    id=f"ca-summary-unreconciled-{suffix}",
+                    project_id=project_id,
+                    code_id=f"unreconciled-code-{suffix}",
+                    promotion_status="accepted",
+                    review_status="approved",
+                    reconciliation_status="unreconciled",
+                ),
+                CodeApplication(
+                    id=f"ca-summary-reconciled-{suffix}",
+                    project_id=project_id,
+                    code_id=f"reconciled-code-{suffix}",
+                    promotion_status="accepted",
+                    review_status="approved",
+                    reconciliation_status="accepted",
+                ),
+            ]
+        )
+        await db.commit()
+
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        response = await ac.get(
+            f"/api/research-validity/{project_id}/summary",
+            headers=admin_auth_headers,
+        )
+
+    assert response.status_code == 200
+    assert response.json()["accepted_code_application_count"] == 1
+
+
+@pytest.mark.asyncio
 async def test_codebook_version_create_records_governed_lifecycle_telemetry(
     admin_auth_headers,
 ):

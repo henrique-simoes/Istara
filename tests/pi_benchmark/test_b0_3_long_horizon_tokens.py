@@ -56,6 +56,54 @@ def test_tool_call_oracle_counts_canonical_events_only():
     assert long_horizon_runner._tool_call_count(events) == 2
 
 
+def test_done_oracle_requires_executed_tools_to_be_reported():
+    events = [
+        {"type": "tool_call", "tool": "create_task"},
+        {"type": "done", "message_id": "msg-1", "tools_used": ["create_task"]},
+    ]
+    done = long_horizon_runner._require_done_tool_contract(events, "first turn")
+    assert done["message_id"] == "msg-1"
+
+
+def test_done_oracle_rejects_tool_calls_missing_from_terminal_event():
+    events = [
+        {"type": "tool_call", "tool": "create_task"},
+        {"type": "done", "message_id": "msg-1", "tools_used": []},
+    ]
+    with pytest.raises(long_horizon_runner.BenchmarkFailure, match="does not report executed tool"):
+        long_horizon_runner._require_done_tool_contract(events, "first turn")
+
+
+def test_task_queue_oracle_requires_project_scoped_persisted_task():
+    payload = [{"id": "task-1", "project_id": "project-1", "title": "Thematic Analysis"}]
+    tasks = long_horizon_runner._require_persisted_tasks(payload, "project-1")
+    assert tasks[0]["id"] == "task-1"
+
+
+def test_task_queue_oracle_rejects_empty_queue():
+    with pytest.raises(long_horizon_runner.BenchmarkFailure, match="no persisted tasks"):
+        long_horizon_runner._require_persisted_tasks([], "project-1")
+
+
+def test_usage_oracle_requires_two_recorded_turns_and_engine():
+    payload = {
+        "row_count": 2,
+        "turns": 2,
+        "total_tokens": 200,
+        "estimated": False,
+        "latest": {"engine": "pi", "total_tokens": 100},
+    }
+    usage = long_horizon_runner._require_usage_ledger(payload, expected_engine="pi")
+    assert usage["row_count"] == 2
+
+
+def test_usage_oracle_rejects_missing_rows():
+    with pytest.raises(long_horizon_runner.BenchmarkFailure, match="fewer than 2"):
+        long_horizon_runner._require_usage_ledger(
+            {"row_count": 1, "turns": 1, "latest": {"engine": "pi"}}, expected_engine="pi"
+        )
+
+
 def test_history_oracle_requires_two_complete_turns():
     first = "first prompt"
     second = "second prompt"

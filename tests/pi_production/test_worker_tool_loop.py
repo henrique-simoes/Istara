@@ -69,7 +69,13 @@ async def test_pi_worker_owns_tool_loop_and_persists_task():
                         ],
                         "stop_reason": "toolUse",
                     },
-                    {"text": "Created a task through Istara canonical tools."},
+                    {
+                        "text": "Created a task through Istara canonical tools after observing the authority result.",
+                        "requires_tool_result": {
+                            "tool_name": "create_task",
+                            "contains": "Pi runtime scenario task",
+                        },
+                    },
                 ],
             },
         )
@@ -99,6 +105,7 @@ async def test_pi_worker_owns_tool_loop_and_persists_task():
     assert "run.completed" in observed
     assert executed_tools == [("create_task", {"title": "Pi runtime scenario task", "priority": "high"})]
     assert "".join(final_text).strip()
+    assert "after observing the authority result" in "".join(final_text)
 
     # Istara persisted the task via the real canonical tool — not a lab facade.
     async with async_session() as db:

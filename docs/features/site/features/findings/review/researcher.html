@@ -270,6 +270,8 @@
 <ul>
 <li>Project-scoped state or artifact updates associated with findings code review.</li>
 <li>Approve/reject actions carry the active project id so stale queue items or links from another project cannot change records in the current project.</li>
+<li>A coding run is not report-ready from model agreement alone. Every code application must show approved review, accepted/reconciled reconciliation state, and a linked decision; clients can scope the review list by <code>coding_run_id</code>.</li>
+<li>High confidence does not authorize bulk acceptance. The old bulk-approve compatibility route refuses the request without changing data; use the per-application review controls so each decision is recorded in the reconciliation ledger.</li>
 <li>Visible status, lists, forms, generated artifacts, or review results shown by the referenced component and routes.</li>
 </ul>
 <h2 id="caveats">Caveats</h2>

@@ -8,8 +8,8 @@ phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal ac
 stage: S2-execute
 status: in-progress
 blocked_on: null
-last: { agent: gpt-5-codex, at: 2026-08-26T13:22:00Z, ledger: L-127 }
-next_action: "Request/record the owner handoff for dirty ~/istara-testing; do not mutate it until clean, then run exact-SHA Docker-only acceptance for P9-06–P9-10."
+last: { agent: gpt-5-codex, at: 2026-08-26T12:54:07Z, ledger: L-130 }
+next_action: "Commit and push the reconciliation, review, and long-horizon oracle fixes, then run the pinned-native after-gate and broad local matrix before requesting owner handoff for dirty ~/istara-testing."
 ```
 
 ## Plan overview / roadmap
@@ -2682,3 +2682,76 @@ contract proof. The remote Docker stack still runs older images and a dirty `~/i
 checkout; exact-SHA acceptance and browser/live-model evidence remain open.
 Next: obtain the explicit remote owner handoff, verify the checkout becomes clean without deleting
 owned work, then use only explicit Docker/Compose operations for a fresh exact-SHA retake.
+
+### L-128 | 2026-08-26T12:46:38Z | S2-execute/S3-review | gpt-5-codex | implementer/reviewer | Research benchmark and review UI now fail closed on reconciliation gaps
+Did: Closed two additional Research Spine oracle/bypass defects found through the graph-backed
+review. The real-user coding probe now scopes code applications by `coding_run_id`, fetches the
+run's reconciliation decisions, requires exact application-count parity, accepted/reconciled
+state, approved review, and a linked accepted/revised decision for every application before it
+reports a successful three-donor run. The worker-tool-loop fixture now requires the model to have
+observed the canonical `create_task` tool result before returning its final answer, so a scripted
+answer cannot hide a broken tool-result round trip. Added positive/negative Node fixtures and a
+run-scoped code-application API regression.
+
+The audit also found that the review UI's “Bulk Approve Reliable Codes” and its backend route
+changed rows to approved without a durable `ReconciliationDecision` or Evidence Graph edge. The
+compatibility endpoint now authenticates and returns HTTP 422 with no mutation; the UI and client
+API no longer expose bulk acceptance, and the documentation states that confidence/reliability
+only prioritize individual review. This preserves the contract that statistical agreement and
+review approval are provisional until per-application reconciliation is recorded.
+
+Verification: `node --test tests/real_user_benchmark/lib/research-spine-probes.test.mjs` => 16
+passed; `pytest -q tests/pi_production/test_worker_tool_loop.py tests/test_code_applications.py
+tests/test_research_validity_contract.py` => 43 passed; `pytest -q tests/test_code_applications.py
+tests/test_project_scope_contracts.py` => 39 passed; `ruff check` on the affected Python files
+passed; `frontend/node_modules/.bin/tsc --noEmit -p frontend/tsconfig.json` passed; and feature
+docs generation/check passed (224 artifacts, 86 features). The new summary fixture initially
+failed on the required `code_id` column and was corrected before the green rerun. No server,
+provider/model, SSH, Docker, or Mac Studio host action occurred.
+
+Result: local test oracles now inspect the persisted evidence chain rather than only top-level
+promotion flags, and no supported UI/API path can silently bulk-promote research evidence. The
+changes are still uncommitted at this checkpoint; P9-06 remains open pending exact-image Docker
+proof and P9-07–P9-15 remain open. The dirty `~/istara-testing` checkout is untouched.
+Next: run the pinned-native Compass Forge before/after gates for this bounded slice, commit and
+push it to `origin/testing`, then add the missing long-horizon tool-result/usage assertions and
+re-run the broad local matrix before any remote owner handoff or Docker mutation.
+
+### L-129 | 2026-08-26T12:53:28Z | S2-execute/S3-review | gpt-5-codex | Long-horizon benchmark now proves tool receipts, persisted tasks, and usage rows
+Did: Closed the remaining deterministic oracle gap in `tests/benchmarks/long_horizon_runner.py`.
+Each turn now requires a terminal `done` receipt whose `tools_used` multiset covers every
+canonical SSE `tool_call`; the first turn specifically requires `create_task`. After the
+second turn, the benchmark requires a non-empty task queue with valid IDs/titles and exact
+project scope. It also queries the content-free chat usage endpoint for the dedicated session
+and requires at least two usage rows/turns, a positive token total, and non-empty effective
+engine provenance (matching `ISTARA_LONG_HORIZON_ENGINE` when configured). Added positive and
+negative contract tests for all three oracles.
+
+Verification: `pytest -q tests/pi_benchmark/test_b0_3_long_horizon_tokens.py` => 15 passed;
+`pytest -q tests/test_harness_config.py tests/pi_benchmark/test_b0_3_long_horizon_tokens.py`
+=> 32 passed; `ruff check tests/benchmarks/long_horizon_runner.py
+tests/pi_benchmark/test_b0_3_long_horizon_tokens.py` passed; `python -m py_compile` passed;
+`git diff --check` passed. No server, provider/model, SSH, Docker, or Mac Studio host action
+occurred. F-R9-14 was appended to `/Users/user/Desktop/testing.md`.
+
+Result: a long-horizon run can no longer be accepted from plausible assistant prose or a
+single persisted transcript alone; its tool execution, task side effect, and usage accounting
+must all be observable. The implementation remains uncommitted at this checkpoint. P9-07 and
+P9-10 remain open, and the dirty remote `~/istara-testing` checkout remains untouched.
+Next: run the pinned-native Compass Forge before/after gates, commit and push the complete
+bounded slice, rerun the broad local matrix, then inspect the Pi two-call and Petals live-proof
+contracts before requesting remote owner handoff.
+
+### L-130 | 2026-08-26T12:54:07Z | S2-execute/S3-review | gpt-5-codex | before-gate baseline captured for oracle hardening
+Did: Ran the pinned native Rust Compass Forge `gate before` from the repository root before
+committing the current bounded slice. The comparison reported no new issues, dependency/import
+cycles, missing paths, unexpected large files, or other attributable findings; the global gate
+remains `fail` only because the repository retains inherited complexity, route/type drift, and
+secret-flow debt already present in the baseline. This is a baseline evidence record, not a
+claim that the inherited gate debt is resolved.
+
+Result: the reconciliation-oracle, review-bypass, and long-horizon-oracle changes are ready for
+commit. No server, provider/model, SSH, Docker, or Mac Studio host action occurred; the dirty
+remote checkout remains untouched.
+Next: commit and push the explicit file set to `origin/testing`, run the pinned native `gate
+after`, and record the attributable comparison before rerunning the broad local matrix.

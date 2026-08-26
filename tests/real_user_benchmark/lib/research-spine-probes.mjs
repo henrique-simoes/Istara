@@ -55,7 +55,9 @@ export function selectSubstantiveEvidenceUnits(units, limit) {
   });
 }
 
-function validateCodingRun({
+async function validateCodingRun({
+  api,
+  projectId,
   codingRun,
   requiredCoders,
   requiredDonorRoutes,
@@ -104,7 +106,65 @@ function validateCodingRun({
   const donorRouteOk = requiredDonorRoutes >= 2
     ? servedDonorRouteCount >= requiredDonorRoutes
     : true;
-  featureResults.multiModelResearchSpineValidation = fullMultiModelOk && donorRouteOk;
+  let reconciliationOk = true;
+  let reconciliationEvidence = null;
+  if (fullMultiModelOk && donorRouteOk) {
+    try {
+      const runId = String(codingRun?.id || "").trim();
+      const [applications, decisions] = await Promise.all([
+        api.get(`/api/code-applications/${projectId}?coding_run_id=${encodeURIComponent(runId)}`, { timeoutMs: 60000 }),
+        api.get(`/api/research-validity/${projectId}/reconciliation-decisions?coding_run_id=${encodeURIComponent(runId)}&limit=500`, { timeoutMs: 60000 }),
+      ]);
+      const rows = Array.isArray(applications) ? applications : [];
+      const decisionRows = Array.isArray(decisions) ? decisions : [];
+      const expectedCount = Math.max(0, applicationCount);
+      const acceptedRows = rows.filter((row) =>
+        ["accepted", "accepted_after_reconciliation"].includes(String(row?.promotion_status || "").toLowerCase())
+        && ["accepted", "reconciled"].includes(String(row?.reconciliation_status || "").toLowerCase())
+        && String(row?.review_status || "").toLowerCase() === "approved");
+      const decisionIds = new Set(decisionRows
+        .filter((decision) => ["accepted", "revised"].includes(String(decision?.decision_type || "").toLowerCase()))
+        .map((decision) => String(decision?.code_application_id || "").trim())
+        .filter(Boolean));
+      const allApplicationsHaveDecisions = rows.every((row) => decisionIds.has(String(row?.id || "").trim()));
+      reconciliationOk = expectedCount > 0
+        && rows.length === expectedCount
+        && acceptedRows.length === expectedCount
+        && allApplicationsHaveDecisions;
+      reconciliationEvidence = {
+        expected_application_count: expectedCount,
+        observed_application_count: rows.length,
+        reconciled_application_count: acceptedRows.length,
+        accepted_decision_count: decisionIds.size,
+        all_applications_have_decisions: allApplicationsHaveDecisions,
+      };
+      if (!reconciliationOk) {
+        const detail = `Research Spine reliability passed, but ${acceptedRows.length}/${expectedCount} code applications have accepted reconciliation decisions (${decisionIds.size} linked decisions for ${rows.length} applications).`;
+        blockers.push(detail);
+        logger.issue({
+          area: "research-spine",
+          severity: "high",
+          title: "Research Spine reconciliation was not proven",
+          detail,
+          evidence: reconciliationEvidence,
+        });
+      }
+    } catch (error) {
+      reconciliationOk = false;
+      reconciliationEvidence = { error: error.message };
+      const detail = `Research Spine reconciliation proof failed closed: ${error.message}`;
+      blockers.push(detail);
+      logger.issue({
+        area: "research-spine",
+        severity: "high",
+        title: "Research Spine reconciliation was not proven",
+        detail,
+        evidence: reconciliationEvidence,
+      });
+    }
+  }
+  featureResults.multiModelResearchSpineValidation = fullMultiModelOk && donorRouteOk && reconciliationOk;
+  if (reconciliationEvidence) codingRun.reconciliation_evidence = reconciliationEvidence;
   if (!fullMultiModelOk || !donorRouteOk) {
     const detail = !currentRunOk
       ? status === "blocked" || promotionStatus === "blocked"
@@ -283,7 +343,9 @@ export async function exerciseResearchSpineValidation({
         coded_scope: "project_source_evidence_units",
         result: preview(evidence.coding_run),
       });
-      validateCodingRun({
+      await validateCodingRun({
+        api,
+        projectId,
         codingRun: evidence.coding_run,
         requiredCoders,
         requiredDonorRoutes,
@@ -304,7 +366,9 @@ export async function exerciseResearchSpineValidation({
           error: error.message,
           result: preview(recoveredRun),
         });
-        validateCodingRun({
+        await validateCodingRun({
+          api,
+          projectId,
           codingRun: evidence.coding_run,
           requiredCoders,
           requiredDonorRoutes,

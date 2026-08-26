@@ -3,6 +3,7 @@ import httpx
 import os
 import time
 import json
+from collections import Counter
 from pathlib import Path
 from typing import Any
 
@@ -42,6 +43,92 @@ def _json_payload(response: httpx.Response, operation: str) -> Any:
 def _tool_call_count(events: list[dict]) -> int:
     """Count canonical SSE tool-call events exactly once (never text markers)."""
     return sum(1 for event in events if event.get("type") == "tool_call")
+
+
+def _require_done_tool_contract(
+    events: list[dict], operation: str, *, required_tools: tuple[str, ...] = ()
+) -> dict:
+    """Require the terminal SSE event to account for every executed tool call.
+
+    A streamed answer can look successful even when the model only *mentions* a
+    tool.  The chat route's terminal ``done.tools_used`` list is the route-level
+    execution receipt, so the benchmark compares it with canonical ``tool_call``
+    events and optionally requires a specific tool for the scenario.
+    """
+    done_events = [event for event in events if event.get("type") == "done"]
+    if not done_events:
+        raise BenchmarkFailure(f"{operation} ended without a terminal done event")
+    done = done_events[-1]
+    tools_used = done.get("tools_used")
+    if not isinstance(tools_used, list) or any(not isinstance(name, str) or not name.strip() for name in tools_used):
+        raise BenchmarkFailure(f"{operation} terminal done event has no valid tools_used receipt")
+
+    called_tools = [
+        event.get("tool")
+        for event in events
+        if event.get("type") == "tool_call" and isinstance(event.get("tool"), str)
+    ]
+    missing = Counter(called_tools) - Counter(tools_used)
+    if missing:
+        names = ", ".join(sorted(missing))
+        raise BenchmarkFailure(
+            f"{operation} terminal done event does not report executed tool(s): {names}"
+        )
+    missing_required = [tool for tool in required_tools if tool not in tools_used]
+    if missing_required:
+        raise BenchmarkFailure(
+            f"{operation} did not report required executed tool(s): {', '.join(missing_required)}"
+        )
+    return done
+
+
+def _require_persisted_tasks(payload: Any, project_id: str) -> list[dict]:
+    """Require at least one non-empty task persisted under the benchmark project."""
+    tasks = payload if isinstance(payload, list) else payload.get("tasks", []) if isinstance(payload, dict) else []
+    if not tasks:
+        raise BenchmarkFailure("task queue contains no persisted tasks after create_task")
+    if not all(isinstance(task, dict) for task in tasks):
+        raise BenchmarkFailure("task queue contains a non-object task")
+    for task in tasks:
+        if task.get("project_id") != project_id:
+            raise BenchmarkFailure("task queue returned a task outside the benchmark project")
+        if not isinstance(task.get("id"), str) or not task["id"].strip():
+            raise BenchmarkFailure("persisted task has no id")
+        if not isinstance(task.get("title"), str) or not task["title"].strip():
+            raise BenchmarkFailure("persisted task has no title")
+    return tasks
+
+
+def _require_usage_ledger(
+    payload: Any, *, expected_engine: str | None = None, min_rows: int = 2, min_turns: int = 2
+) -> dict:
+    """Require usage rows proving the requested number of persisted chat turns."""
+    if not isinstance(payload, dict):
+        raise BenchmarkFailure("chat usage endpoint returned a non-object payload")
+    try:
+        row_count = int(payload.get("row_count") or 0)
+        turns = int(payload.get("turns") or 0)
+        total_tokens = int(payload.get("total_tokens") or 0)
+    except (TypeError, ValueError) as exc:
+        raise BenchmarkFailure("chat usage endpoint returned non-numeric ledger totals") from exc
+    if row_count < min_rows:
+        raise BenchmarkFailure(
+            f"chat usage ledger contains fewer than {min_rows} recorded row(s): {row_count}"
+        )
+    if turns < min_turns:
+        raise BenchmarkFailure(
+            f"chat usage ledger contains fewer than {min_turns} recorded turn(s): {turns}"
+        )
+    if total_tokens <= 0:
+        raise BenchmarkFailure("chat usage ledger contains no positive token total")
+    latest = payload.get("latest")
+    if not isinstance(latest, dict) or not isinstance(latest.get("engine"), str) or not latest["engine"].strip():
+        raise BenchmarkFailure("chat usage ledger has no effective engine provenance")
+    if expected_engine and latest["engine"].strip().lower() != expected_engine:
+        raise BenchmarkFailure(
+            f"chat usage ledger engine {latest['engine']!r} does not match requested {expected_engine!r}"
+        )
+    return payload
 
 
 def _require_session_id(payload: Any) -> str:
@@ -286,6 +373,12 @@ async def _run_benchmark() -> None:
             client, chat_req, chat_headers, "first long-horizon chat turn"
         )
         _print_tool_events(stream_events)
+        first_done = _require_done_tool_contract(
+            stream_events,
+            "first long-horizon chat turn",
+            required_tools=("create_task",),
+        )
+        print(f"✅ First terminal receipt: tools_used={first_done['tools_used']}")
         # Token accounting comes from provider-reported usage (or the usage ledger),
         # never from a streamed-chunk count (benchmark task B0-3).
         total_tokens = extract_total_tokens(stream_events)
@@ -315,6 +408,10 @@ async def _run_benchmark() -> None:
             client, second_req, chat_headers, "second long-horizon chat turn"
         )
         _print_tool_events(second_events)
+        second_done = _require_done_tool_contract(
+            second_events, "second long-horizon chat turn"
+        )
+        print(f"✅ Second terminal receipt: tools_used={second_done['tools_used']}")
         second_tokens = extract_total_tokens(second_events)
         print(
             f"\n✅ Second chat turn completed in {second_elapsed:.2f}s. "
@@ -337,7 +434,7 @@ async def _run_benchmark() -> None:
         tasks_res = await client.get(f"{API_BASE}/api/tasks?project_id={project_id}", headers=headers)
         _require_status(tasks_res, "task queue inspection")
         tasks_data = _json_payload(tasks_res, "task queue inspection")
-        tasks = tasks_data if isinstance(tasks_data, list) else tasks_data.get("tasks", [])
+        tasks = _require_persisted_tasks(tasks_data, project_id)
         print(f"Total tasks spawned: {len(tasks)}")
         for t in tasks:
             print(f"  - [{t.get('status')}] {t.get('title')} (Skill: {t.get('skill_name', 'auto')})")
@@ -364,6 +461,22 @@ async def _run_benchmark() -> None:
         leaderboard = metrics_payload.get("leaderboard", []) if isinstance(metrics_payload, dict) else []
         for entry in leaderboard:
             print(f"  - Model: {entry.get('model_name')} | Skill: {entry.get('skill_name')} | JSON Success: {entry.get('json_parse_success_rate')*100 if entry.get('json_parse_success_rate') is not None else 'N/A'}% | Executions: {entry.get('executions')}")
+
+        usage_res = await client.get(
+            f"{API_BASE}/api/chat/usage/{project_id}",
+            params={"session_id": session_id},
+            headers=headers,
+        )
+        _require_status(usage_res, "chat usage ledger inspection")
+        usage_payload = _require_usage_ledger(
+            _json_payload(usage_res, "chat usage ledger inspection"),
+            expected_engine=ENGINE,
+        )
+        print(
+            "✅ Usage ledger proves both turns: "
+            f"rows={usage_payload['row_count']} turns={usage_payload['turns']} "
+            f"tokens={usage_payload['total_tokens']} engine={usage_payload['latest']['engine']}"
+        )
 
 
 async def main() -> int:

@@ -34,6 +34,25 @@ function makeSubstantiveUnits(count = 4) {
   }));
 }
 
+function makeReconciledApplications(runId, count = 12) {
+  return Array.from({ length: count }, (_unused, index) => ({
+    id: `${runId}-application-${index + 1}`,
+    coding_run_id: runId,
+    promotion_status: "accepted",
+    reconciliation_status: "accepted",
+    review_status: "approved",
+  }));
+}
+
+function makeReconciliationDecisions(runId, count = 12) {
+  return Array.from({ length: count }, (_unused, index) => ({
+    id: `${runId}-decision-${index + 1}`,
+    coding_run_id: runId,
+    code_application_id: `${runId}-application-${index + 1}`,
+    decision_type: "accepted",
+  }));
+}
+
 test("coding proof samples distributed substantive spans instead of document headers", () => {
   const units = [
     { id: "title", source_text: "# CareNav Renewal interview source 03" },
@@ -123,6 +142,8 @@ test("three-donor benchmark blocks when coding falls back to single-coder assura
       if (path === "/api/research-validity/contract") {
         return { contract: {}, qualitative_coding_protocol: {} };
       }
+      if (path.includes("/code-applications/")) return makeReconciledApplications("run-1");
+      if (path.includes("/reconciliation-decisions")) return makeReconciliationDecisions("run-1");
       if (path.includes("/summary")) return { coding_run_count: 1, evidence_unit_count: 4 };
       if (path.includes("/evidence-units")) return makeSubstantiveUnits();
       if (path.includes("/coding-runs")) return [{ id: "run-1" }];
@@ -171,6 +192,8 @@ test("three-donor benchmark accepts full multi-model coding evidence", async () 
       if (path === "/api/research-validity/contract") {
         return { contract: {}, qualitative_coding_protocol: {} };
       }
+      if (path.includes("/code-applications/")) return makeReconciledApplications("run-1");
+      if (path.includes("/reconciliation-decisions")) return makeReconciliationDecisions("run-1");
       if (path.includes("/summary")) return { coding_run_count: 1, evidence_unit_count: 4 };
       if (path.includes("/evidence-units")) return makeSubstantiveUnits();
       if (path.includes("/coding-runs")) return [{ id: "run-1" }];
@@ -209,6 +232,63 @@ test("three-donor benchmark accepts full multi-model coding evidence", async () 
   assert.deepEqual(blockers, []);
 });
 
+test("accepted reliability is still blocked when code applications lack reconciliation decisions", async () => {
+  const logger = makeLogger();
+  const blockers = [];
+  const featureResults = {};
+  const api = {
+    async get(path) {
+      if (path === "/api/research-validity/contract") {
+        return { contract: {}, qualitative_coding_protocol: {} };
+      }
+      if (path.includes("/code-applications/")) {
+        return makeReconciledApplications("run-unreconciled").map((row) => ({
+          ...row,
+          reconciliation_status: "unreconciled",
+          review_status: "pending",
+        }));
+      }
+      if (path.includes("/reconciliation-decisions")) return [];
+      if (path.includes("/summary")) return { coding_run_count: 1, evidence_unit_count: 4 };
+      if (path.includes("/evidence-units")) return makeSubstantiveUnits();
+      if (path.includes("/coding-runs")) return [];
+      if (path.includes("/traceability")) return { edges: [] };
+      if (path.includes("/telemetry-audit")) return { status: "ok" };
+      return {};
+    },
+    async post() {
+      return {
+        id: "run-unreconciled",
+        status: "completed",
+        promotion_status: "accepted",
+        code_application_count: 12,
+        reliability_method: "fleiss_kappa_with_krippendorff_alpha_companion",
+        distinct_model_count: 3,
+        rater_count: 3,
+        kappa: 0.81,
+        alpha: 0.79,
+      };
+    },
+  };
+
+  await exerciseResearchSpineValidation({
+    api,
+    projectId: "project-a",
+    logger,
+    featureResults,
+    blockers,
+    codingValidationEnabled: true,
+    codingValidationLimit: 4,
+    expectedDistinctCoders: 3,
+  });
+
+  assert.equal(featureResults.codingValidation, false);
+  assert.equal(featureResults.multiModelResearchSpineValidation, false);
+  assert.equal(blockers.length, 1);
+  assert.match(blockers[0], /reconciliation decisions/i);
+  assert.equal(logger.issues[0].title, "Research Spine reconciliation was not proven");
+});
+
 test("three-donor benchmark rejects a named reliability method without numeric kappa and alpha", async () => {
   const logger = makeLogger();
   const blockers = [];
@@ -218,6 +298,8 @@ test("three-donor benchmark rejects a named reliability method without numeric k
       if (path === "/api/research-validity/contract") {
         return { contract: {}, qualitative_coding_protocol: {} };
       }
+      if (path.includes("/code-applications/")) return makeReconciledApplications("run-1");
+      if (path.includes("/reconciliation-decisions")) return makeReconciliationDecisions("run-1");
       if (path.includes("/summary")) return { coding_run_count: 1, evidence_unit_count: 4 };
       if (path.includes("/evidence-units")) return makeSubstantiveUnits();
       if (path.includes("/coding-runs")) return [{ id: "run-1" }];
@@ -266,6 +348,8 @@ test("three-donor benchmark requires three served donor routes, not only three m
       if (path === "/api/research-validity/contract") {
         return { contract: {}, qualitative_coding_protocol: {} };
       }
+      if (path.includes("/code-applications/")) return makeReconciledApplications("run-1");
+      if (path.includes("/reconciliation-decisions")) return makeReconciliationDecisions("run-1");
       if (path.includes("/summary")) return { coding_run_count: 1, evidence_unit_count: 4 };
       if (path.includes("/evidence-units")) return makeSubstantiveUnits();
       if (path.includes("/coding-runs")) return [{ id: "run-1" }];
@@ -321,6 +405,8 @@ test("three-donor benchmark accepts model coders only when all donor routes serv
       if (path === "/api/research-validity/contract") {
         return { contract: {}, qualitative_coding_protocol: {} };
       }
+      if (path.includes("/code-applications/")) return makeReconciledApplications("run-1");
+      if (path.includes("/reconciliation-decisions")) return makeReconciliationDecisions("run-1");
       if (path.includes("/summary")) return { coding_run_count: 1, evidence_unit_count: 4 };
       if (path.includes("/evidence-units")) return makeSubstantiveUnits();
       if (path.includes("/coding-runs")) return [{ id: "run-1" }];
@@ -375,6 +461,8 @@ test("coding proof uses project source units while preserving approved task cont
       if (path === "/api/research-validity/contract") {
         return { contract: {}, qualitative_coding_protocol: {} };
       }
+      if (path.includes("/code-applications/")) return makeReconciledApplications("run-1");
+      if (path.includes("/reconciliation-decisions")) return makeReconciliationDecisions("run-1");
       if (path.includes("/summary")) return { coding_run_count: 1, evidence_unit_count: 4 };
       if (path.includes("/evidence-units")) return makeSubstantiveUnits();
       if (path.includes("/coding-runs")) return [{ id: "run-1" }];
@@ -483,6 +571,8 @@ test("long coding request transport failure can recover completed server-side ru
       if (path === "/api/research-validity/contract") {
         return { contract: {}, qualitative_coding_protocol: {} };
       }
+      if (path.includes("/code-applications/")) return makeReconciledApplications(completedRun.id);
+      if (path.includes("/reconciliation-decisions")) return makeReconciliationDecisions(completedRun.id);
       if (path.includes("/summary")) return { coding_run_count: 1, evidence_unit_count: 4 };
       if (path.includes("/evidence-units")) return makeSubstantiveUnits();
       if (path.includes("/coding-runs")) return [completedRun];

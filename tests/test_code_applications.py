@@ -1,4 +1,4 @@
-"""Tests for Code Applications API routes — list, pending, review, bulk-approve."""
+"""Tests for Code Applications API routes — list, pending, review, and fail-closed bulk action."""
 
 import uuid
 
@@ -68,6 +68,51 @@ async def test_code_apps_list_returns_response(auth_headers):
 
 
 @pytest.mark.asyncio
+async def test_code_apps_list_can_scope_to_coding_run(auth_headers):
+    """Benchmark reconciliation proof must not mix applications from runs."""
+    await init_db()
+    project_id = f"code-run-filter-{uuid.uuid4().hex[:8]}"
+    run_a = f"run-a-{uuid.uuid4().hex[:8]}"
+    run_b = f"run-b-{uuid.uuid4().hex[:8]}"
+    async with async_session() as db:
+        db.add(
+            Project(id=project_id, name="Code Applications Run Filter")
+        )
+        db.add_all(
+            [
+                CodeApplication(
+                    id=str(uuid.uuid4()),
+                    project_id=project_id,
+                    coding_run_id=run_a,
+                    code_id="run-a-code",
+                    source_text="Run A evidence.",
+                ),
+                CodeApplication(
+                    id=str(uuid.uuid4()),
+                    project_id=project_id,
+                    coding_run_id=run_b,
+                    code_id="run-b-code",
+                    source_text="Run B evidence.",
+                ),
+            ]
+        )
+        await db.commit()
+
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        response = await ac.get(
+            f"/api/code-applications/{project_id}",
+            params={"coding_run_id": run_a},
+            headers=auth_headers,
+        )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert len(payload) == 1
+    assert payload[0]["coding_run_id"] == run_a
+
+
+@pytest.mark.asyncio
 async def test_code_apps_requires_auth():
     """Code applications requires authentication in team mode."""
     await init_db()
@@ -134,7 +179,7 @@ async def test_code_apps_bulk_approve_bounds_confidence(auth_headers):
 
 @pytest.mark.asyncio
 async def test_code_apps_bulk_approve_requires_reliability_gate(auth_headers):
-    """High confidence alone cannot approve low-assurance coding applications."""
+    """Bulk approval cannot bypass explicit Research Spine reconciliation."""
     await init_db()
     settings.team_mode = True
     project_id = f"code-bulk-reliability-{uuid.uuid4().hex[:8]}"
@@ -173,14 +218,15 @@ async def test_code_apps_bulk_approve_requires_reliability_gate(auth_headers):
             headers=auth_headers,
         )
 
-    assert response.status_code == 200
-    assert response.json()["approved_count"] == 1
+    assert response.status_code == 422
+    assert "explicit reconciliation" in response.json()["detail"]
 
     async with async_session() as db:
         blocked = await db.get(CodeApplication, blocked_id)
         accepted = await db.get(CodeApplication, accepted_id)
     assert blocked.review_status == "pending"
-    assert accepted.review_status == "approved"
+    assert accepted.review_status == "pending"
+    assert accepted.reconciliation_status == "unreconciled"
 
 
 @pytest.mark.asyncio

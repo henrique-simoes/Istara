@@ -65,11 +65,6 @@ export const codeApplications = {
       rationale: rationale || "",
       accepted_code_id: acceptedCodeId || null,
     }),
-  bulkApprove: (projectId: string, minConfidence?: number) =>
-    post<{ approved_count: number }>(
-      `/api/code-applications/${projectId}/bulk-approve?min_confidence=${minConfidence || 0.9}`,
-      {}
-    ),
 };
 
 export const researchValidity = {

@@ -2062,9 +2062,7 @@ async def assess_task_research_validity(
             .all()
         )
         task_finding_count += len(rows)
-    accepted_count = sum(
-        1 for row in code_rows if row.promotion_status in ACCEPTED_PROMOTION_STATUSES
-    )
+    accepted_count = sum(1 for row in code_rows if _is_reconciled_code_application(row))
     unresolved_count = sum(1 for row in code_rows if _is_unresolved_code_application(row))
     base = {
         "latest_coding_run": latest_run.to_dict() if latest_run else None,

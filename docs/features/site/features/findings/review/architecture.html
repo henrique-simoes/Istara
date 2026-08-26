@@ -272,11 +272,13 @@
 </ul>
 <h2 id="agents-skills-llm-mcp-and-permissions">Agents, Skills, LLM, MCP, And Permissions</h2>
 <ul>
-<li>Code review is a project-content surface. Pending queues, bulk approval, and review mutations must stay inside the caller&#x27;s authorized active project and must not infer project scope from a globally unique application id.</li>
-<li>Bulk approval requires both confidence and accepted reliability/promotion status; high confidence alone cannot approve low-assurance coding.</li>
+<li>Code review is a project-content surface. Pending queues and review mutations must stay inside the caller&#x27;s authorized active project and must not infer project scope from a globally unique application id.</li>
+<li>The legacy <code>bulk-approve</code> compatibility route is deliberately fail-closed with no database side effects. Confidence and accepted reliability/promotion status are review signals, never a reconciliation decision; each application must be accepted, rejected, or revised through the individual auditable review route.</li>
 <li>Researchers review coded evidence units, not keyword tags. Code applications should point at stable evidence units and coding runs whenever the corrected pipeline produced them.</li>
 <li>Governed coding runs are started from the project-scoped research-validity route with researcher access. The service persists model coder identities, route evidence, reliability matrix output, and promotion state so the review queue can distinguish accepted coding from low-consensus or lower-assurance output.</li>
 <li>Approving, rejecting, or revising a disputed code application creates a <code>ReconciliationDecision</code>, updates the code application&#x27;s reconciliation/promotion state, and links the decision back into the Evidence Graph with a <code>reconciled_by</code> edge. A task remains blocked while any low-agreement code application is still unreconciled.</li>
+<li>Project code-application reads accept <code>coding_run_id</code> so benchmark and review clients can prove that every application in one run has an explicit accepted/revised reconciliation decision without mixing rows from another run.</li>
+<li>A completed run with Fleiss/alpha and <code>promotion_status=accepted</code> is still provisional for report purposes until each application is approved, reconciled, and linked to its decision; acceptance counters and task gates use that stricter state.</li>
 <li>Task review snapshots expose task-linked coding-run status and blocked review items. Kanban review should explain whether the task is waiting on low agreement, no accepted code applications, missing route evidence, or human reconciliation before Done approval or report routing.</li>
 </ul>
 <h2 id="tests-and-verification">Tests And Verification</h2>

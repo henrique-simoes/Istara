@@ -9,7 +9,7 @@ related_glossary: ["triangulation", "fleiss-kappa"]
 code_references: ["frontend/src/components/findings/FindingsView.tsx", "frontend/src/components/findings/CodeReviewQueue.tsx", "frontend/src/lib/researchIntegrityApi.ts", "backend/app/api/routes/research_validity.py", "backend/app/services/research_validity_service.py", "backend/app/core/research_validity.py", "backend/app/models/code_application.py"]
 api_references: ["backend/app/api/routes/code_applications.py", "backend/app/api/routes/codebooks.py", "backend/app/api/routes/research_validity.py"]
 test_references: ["tests/test_code_applications.py", "tests/test_project_scope_contracts.py", "tests/test_research_validity_contract.py"]
-last_verified: 2026-05-21
+last_verified: 2026-08-26
 compass: CF-SPEC-78 / CF-1005; CF-SPEC-124 / CF-1590
 ---
 
@@ -46,11 +46,13 @@ The Review tab presents code review queues for validating and adjudicating quali
 
 ## Agents, Skills, LLM, MCP, And Permissions
 
-- Code review is a project-content surface. Pending queues, bulk approval, and review mutations must stay inside the caller's authorized active project and must not infer project scope from a globally unique application id.
-- Bulk approval requires both confidence and accepted reliability/promotion status; high confidence alone cannot approve low-assurance coding.
+- Code review is a project-content surface. Pending queues and review mutations must stay inside the caller's authorized active project and must not infer project scope from a globally unique application id.
+- The legacy `bulk-approve` compatibility route is deliberately fail-closed with no database side effects. Confidence and accepted reliability/promotion status are review signals, never a reconciliation decision; each application must be accepted, rejected, or revised through the individual auditable review route.
 - Researchers review coded evidence units, not keyword tags. Code applications should point at stable evidence units and coding runs whenever the corrected pipeline produced them.
 - Governed coding runs are started from the project-scoped research-validity route with researcher access. The service persists model coder identities, route evidence, reliability matrix output, and promotion state so the review queue can distinguish accepted coding from low-consensus or lower-assurance output.
 - Approving, rejecting, or revising a disputed code application creates a `ReconciliationDecision`, updates the code application's reconciliation/promotion state, and links the decision back into the Evidence Graph with a `reconciled_by` edge. A task remains blocked while any low-agreement code application is still unreconciled.
+- Project code-application reads accept `coding_run_id` so benchmark and review clients can prove that every application in one run has an explicit accepted/revised reconciliation decision without mixing rows from another run.
+- A completed run with Fleiss/alpha and `promotion_status=accepted` is still provisional for report purposes until each application is approved, reconciled, and linked to its decision; acceptance counters and task gates use that stricter state.
 - Task review snapshots expose task-linked coding-run status and blocked review items. Kanban review should explain whether the task is waiting on low agreement, no accepted code applications, missing route evidence, or human reconciliation before Done approval or report routing.
 
 ## Tests And Verification
