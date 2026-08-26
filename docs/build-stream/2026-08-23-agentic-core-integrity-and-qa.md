@@ -8,8 +8,8 @@ phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal ac
 stage: S2-execute
 status: in-progress
 blocked_on: null
-last: { agent: gpt-5-codex, at: 2026-08-26T12:42:00Z, ledger: L-122 }
-next_action: "Commit the strict reconciliation gate, then run the full local regression matrix; keep exact-SHA Docker acceptance blocked until the remote owner handoff makes ~/istara-testing clean."
+last: { agent: gpt-5-codex, at: 2026-08-26T12:48:00Z, ledger: L-123 }
+next_action: "Run the full local regression matrix against e1ca7821; retain the remote owner-handoff blocker and do not mutate ~/istara-testing until its owner makes it clean."
 ```
 
 ## Plan overview / roadmap
@@ -2605,3 +2605,17 @@ test oracle gap and makes the positive Research Spine journey honest. The change
 committed or pushed at this checkpoint.
 Next: commit/push this service, test, and living-doc fix; run the full local integration matrix and
 then continue P9-07–P9-10 with the remote dirty-checkout owner handoff still required.
+
+### L-123 | 2026-08-26T12:48:00Z | S3-review | gpt-5-codex | reviewer | Strict reconciliation gate passes the native Compass Forge comparison
+Did: Ran pinned-native `compass-forge gate after --summary` on the committed reconciliation fix
+`e1ca7821`. The comparison is clean: `new_issue_count=0`, `new_failures=0`, no new dependency,
+import-cycle, security, taint, missing-path, unexpected-large-file, or actionable finding. The
+global gate remains `fail` only because the repository-wide inherited inventory still contains 31
+failures / 207 warnings (complexity, secret-flow, route drift, and frontend type drift); this is not
+attributed to the fix. The feature documentation check remains green at 224 generated artifacts /
+86 features, and the branch was pushed to `origin/testing`.
+Result: this Research Spine gate change has terminal local CF evidence, but P9-06 still cannot close
+until a fresh Docker run proves the remote path and the full accepted/reconciled chain. No model load,
+server start, SSH, Docker, or host package action occurred.
+Next: run the broad local regression matrix, checkpoint its exact result, then prepare the
+owner-gated remote clean checkout request and P9-07–P9-10 evidence collection.
