@@ -8,7 +8,7 @@ phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal ac
 stage: S2-execute
 status: in-progress
 blocked_on: null
-last: { agent: gpt-5-codex, at: 2026-08-26T14:05:00Z, ledger: L-143 }
+last: { agent: gpt-5-codex, at: 2026-08-26T14:08:00Z, ledger: L-144 }
 next_action: "Obtain explicit owner handoff for the dirty Mac Studio checkout, then run a fresh Docker-only three-donor acceptance on cd1ad63c with complete Research Spine and provenance evidence; do not mutate the remote until that handoff exists."
 ```
 
@@ -3075,3 +3075,27 @@ agent’s work and violate the no-destructive-action boundary. Local checkout re
 the testing refs remain exact.
 Next: commit/push this passive-preflight receipt, run the after gate, and hold until the owner
 names the remote dirty paths and authorizes the Docker-only retake/cleanup decision.
+
+### L-144 | 2026-08-26T14:08:00Z | S4-ship | gpt-5-codex | final attributable-clean hold point
+Did: Ran the pinned native Compass Forge after gate after the passive remote preflight receipt.
+Record `59` reports `comparison.new_issues=[]` and `new_failures=[]`, with no new
+dependency/import-cycle, missing-path, unexpected-large-file, security, or taint findings.
+The inherited global complexity, route/type drift, and secret-flow findings remain visible and
+unresolved; they are not being relabeled as introduced by this checkpoint.
+
+Verification: commit `213e80520fef7f610a52b4d253caccc0d91d0546` is pushed non-forced and local
+`testing` equals `origin/testing`; the checkout is clean. The latest deterministic baseline is
+`922 passed, 5 skipped in 146.06s` with no warnings, real-user/topology contracts are `57
+passed`, and feature docs are 86/86 with 224 generated artifacts. Passive SSH confirmed the
+remote stack is healthy but stale and no runner is active. No remote mutation or host install,
+model load, or server action occurred.
+
+Result: the requested detailed Build Stream document, external audit findings, implementation
+fixes, tests, and branch transport are checkpointed for takeover. The objective is deliberately
+not marked complete: live exact-image Docker acceptance, three-donor model diversity, Petals
+consent/health/revoke/usage, end-to-end Research Spine reconciliation and report gates, browser
+acceptance, independent review, and safe cleanup of remote/auxiliary state still require owner
+authorization and execution. This is the correct terminal state for this turn because the only
+remaining actions would mutate a dirty remote checkout.
+Next: wait for owner handoff naming the dirty remote paths and desired preserve/commit/discard
+decisions; resume from L-140 item 1 and keep the two-minute checkpoint cadence.
