@@ -8,7 +8,7 @@ phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal ac
 stage: S2-execute/S3-review
 status: in-progress
 blocked_on: "Owner-approved Docker-only Mac Studio provisioning: current env/config, provider-served identities, and three-model inputs"
-last: { agent: gpt-5-codex, at: 2026-08-27T22:39:00Z, ledger: L-432 }
+last: { agent: gpt-5-codex, at: 2026-08-27T22:42:00Z, ledger: L-433 }
 next_action: "Use the clean 085ae0b testing checkout for the owner-approved Docker-only Mac Studio matrix; keep live three-model, Fleiss/alpha, Petals, reconciliation, and Done/report gates open until receipts exist."
 ```
 
@@ -10392,3 +10392,20 @@ must capture raw evidence-unit ratings, formal Fleiss' kappa plus companion
 Krippendorff alpha, reconciliation and accepted promotion, human-approved
 Done/report gates, and the two-call/long-horizon receipts. No host install,
 host model load, or live request was performed here.
+
+### L-433 | 2026-08-27T22:42:00Z | S3-review | gpt-5-codex | Rechecked remote Docker boundary; live gate remains not_run
+
+The fresh passive SSH preflight used `/usr/local/bin/docker` only and observed
+Docker Server `29.7.2`, the unrelated `plex` project, and no Istara Compose
+workload. The remote `~/istara-testing` checkout is still dirty and remains at
+the old testing SHA while its fetched `origin/testing` is a different, newer
+SHA. No pull, reset, cleanup, host installation, model load, or live request
+was performed. Compass Forge task evidence `450` records the sanitized result;
+the matching audit entry is F-R9-162 in `/Users/user/Desktop/testing.md`.
+
+This is an operator/baseline blocker, not an application verdict. The clean
+local `testing`/`origin/testing` checkout is ready, but the live three-model
+Research Spine matrix must stay `not_run` until an isolated Docker checkout,
+explicit provider-served identities, Petals configuration, and approved
+runtime inputs are available. The next agent should provision only that
+disposable Docker workload and retain the dirty remote checkout untouched.
