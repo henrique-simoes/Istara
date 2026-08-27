@@ -452,6 +452,7 @@ async def self_moa(
             "route_evidence": route_evidence,
             "assurance": "single_model_temperature_variation",
             "validation_scope": "response_level_quality_signal",
+            "models_used": _models_used(route_evidence),
             "formal_reliability": False,
             "research_spine_eligible": False,
             "kappa_interpretation": "heuristic_response_category_agreement_not_fleiss",

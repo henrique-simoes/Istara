@@ -41,6 +41,10 @@ class _ServedIdentitySupervisor:
     async def run_turn(self, key: str, _user_text: str, _tool_handler, **_kwargs):
         payload = self.bindings[key]
         yield {
+            "type": "assistant.delta",
+            "text": f"answer/{payload['model']}",
+        }
+        yield {
             "type": "run.completed",
             "usage": {"input_tokens": 2, "output_tokens": 3, "total_tokens": 5},
             "stop_reason": "stop",
@@ -105,3 +109,86 @@ async def test_all_loop_selectors_preserve_distinct_served_identities(monkeypatc
         }
         assert {sample.served_model for sample in result.samples} == expected_served
         assert all(sample.served_model != sample.model for sample in result.samples)
+
+
+@pytest.mark.asyncio
+async def test_validation_methods_use_pi_authority_for_both_loop_choices(monkeypatch):
+    """Exercise the real validation functions through both dispatcher branches.
+
+    The W7 unit tests stub ``agentic.ensemble`` and therefore prove call shape,
+    but not that legacy/Istara mode reaches the same Pi-owned endpoint catalog
+    as Pi mode.  This deterministic supervisor supplies provider receipts while
+    the real dispatcher, legacy bridge, Pi execution service, and validation
+    methods remain active.  It proves authority/provenance only; response-level
+    consensus is deliberately not treated as formal Research Spine reliability.
+    """
+    from app.core import validation
+
+    endpoints = [
+        replace(
+            faux_endpoint([final_text(f"answer-{name}")], endpoint_id=f"pi-rater-{name}"),
+            model=f"configured-{name}",
+        )
+        for name in ("a", "b", "c")
+    ]
+    manager = _isolated(PiModelManager(endpoints=endpoints, include_local=False))
+    supervisor = _ServedIdentitySupervisor()
+    service = PiExecutionService(supervisor=supervisor, model_manager=manager)
+    monkeypatch.setattr(service, "_record_turn_telemetry", AsyncMock())
+    monkeypatch.setattr(
+        "app.core.agentic.dispatcher.record_agentic_usage", AsyncMock()
+    )
+    dispatcher = AgenticDispatcher(pi_service=service)
+
+    async def no_project_engine(_project_id):
+        return None
+
+    # Keep engine selection real, but make the project lookup deterministic and
+    # database-independent so this is a provider-free contract test.
+    monkeypatch.setattr(dispatcher, "_project_engine", no_project_engine)
+    monkeypatch.setattr("app.core.agentic.agentic", dispatcher)
+
+    async def no_embeddings(_texts, project_id=None):
+        return []
+
+    monkeypatch.setattr(validation, "_get_embeddings", no_embeddings)
+
+    methods = (
+        ("dual_run", validation.dual_run, {"expected": 2}),
+        ("full_ensemble", validation.full_ensemble, {"expected": 3}),
+        ("self_moa", validation.self_moa, {"expected": 3}),
+    )
+    expected_endpoints = {"pi-rater-a", "pi-rater-b", "pi-rater-c"}
+    for engine in ("legacy", "pi"):
+        monkeypatch.setattr("app.config.settings.agentic_engine_default", engine)
+        for method_name, method, options in methods:
+            kwargs = {"project_id": "project-spine"}
+            if method_name == "full_ensemble":
+                kwargs["min_responses"] = 3
+            elif method_name == "self_moa":
+                kwargs["n"] = 3
+            result = await method("independently code this evidence span", **kwargs)
+
+            assert result.method == method_name
+            assert len(result.responses) == options["expected"]
+            expected_method_endpoints = (
+                {"pi-rater-a"}
+                if method_name == "self_moa"
+                else (
+                    expected_endpoints
+                    if method_name == "full_ensemble"
+                    else {"pi-rater-a", "pi-rater-b"}
+                )
+            )
+            expected_method_served = {
+                f"served/configured-{identity.removeprefix('pi-rater-')}"
+                for identity in expected_method_endpoints
+            }
+            assert set(result.metadata["endpoint_ids"]) == (
+                expected_method_endpoints
+            )
+            assert set(result.metadata["models_used"]) == expected_method_served
+            assert result.metadata["formal_reliability"] is False
+            assert result.metadata["research_spine_eligible"] is False
+
+    assert dispatcher.model_manager() is service.model_manager()

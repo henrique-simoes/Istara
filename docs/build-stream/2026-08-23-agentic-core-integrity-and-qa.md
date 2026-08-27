@@ -8057,3 +8057,40 @@ matrices, Fleiss/Cohen/Krippendorff reliability, reconciliation, human
 Done/report promotion, Petals cooperation/revocation, same-session two-call and
 long-horizon receipts, redaction, and teardown—remain unverified until
 owner-approved Docker-only runtime inputs and redacted receipts exist.
+
+### L-343 | 2026-08-27T12:56:07Z | S2-execute/S3-review | gpt-5-codex | cross-engine validation provenance coverage
+
+The next static Research Spine audit compared the W7 validation unit tests
+with the actual dispatcher/engine seam. Existing W7 tests stubbed
+`agentic.ensemble`, proving purpose/verb shape and fail-closed fallback, while
+the public-selector identity test exercised the real Pi service but not the
+`dual_run`, `full_ensemble`, and `self_moa` validation functions themselves.
+That left a coverage gap around whether legacy/Istara mode reaches the same
+Pi-owned catalog as Pi mode at the validation facade.
+
+The deterministic identity supervisor now emits both response text and the
+provider-served model receipt. A new integration regression drives the real
+validation functions through both global engine branches, using one injected
+`PiExecutionService`/`PiModelManager`, and asserts project-scoped endpoint and
+served-model provenance for dual-run (two identities), full ensemble (three
+identities), and Self-MoA (one identity reused across temperatures). It also
+asserts all three remain response-level signals with
+`formal_reliability=false` and `research_spine_eligible=false`.
+
+That regression exposed a concrete metadata omission: `self_moa()` returned
+route evidence but no `models_used` list. The validation result now emits this
+list from the same served-route helper as dual-run and full ensemble. The
+Ensemble Health contract records that Self-MoA remains single-model assurance
+and must not be counted as independent Research Spine raters. The external
+findings register records F-R9-111.
+
+Verification so far: the focused real-service suite passes (`2` tests), Ruff
+passes on the changed validation/test files, and `git diff --check` passes. No
+provider request, model load, host installation, or Docker workload was
+started. Next: run the affected W7/identity/dispatcher matrix, run the native
+after-gate, transport this checkpoint, and re-check detached Mac Studio parity
+before continuing the Research Spine acceptance audit. Live three-model
+semantic quality, formal reliability, source grounding, reconciliation,
+human Done/report promotion, Petals cooperation, two-call/long-horizon, and
+teardown remain blocked on owner-approved Docker-only inputs and redacted
+receipts.
