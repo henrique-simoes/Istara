@@ -8368,3 +8368,19 @@ task evidence, docs regeneration, and transport remain pending. F-R9-114 remains
 open because the live harness still cannot create human reconciliation decisions.
 No provider request, model load, host installation, Docker image pull, or live
 benchmark workload was started.
+
+### L-354 | 2026-08-27T14:08:00Z | S5-ship&learn | gpt-5-codex | traceability-binding transport and Docker parity
+
+The current-run traceability binding fix and its deterministic regression were
+committed as `3190b0d4` and pushed to `origin/testing`. Local `testing`,
+`origin/testing`, and detached Mac Studio checkout
+`~/istara-testing-retake-47bf` all resolve to
+`3190b0d464c78fed100e8bdf463c11f6ba5d54a9` and are clean. Compass Forge task
+evidence `309` records the exact transport and parity commands.
+
+Passive Docker inspection used only the existing `/usr/local/bin/docker` on the
+Mac Studio: Server `29.7.2`, unrelated `plex` only, zero files under
+`~/Istara-Projects/models`, and no retake `.env.deploy`. No image pull, model
+load, provider request, host package installation, data deletion, or benchmark
+workload was started. F-R9-114 remains open for governed synthetic/live
+reconciliation; F-R9-116 is fixed in the deterministic acceptance harness.
