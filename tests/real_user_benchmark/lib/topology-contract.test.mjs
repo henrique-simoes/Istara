@@ -104,7 +104,8 @@ test("runner records profile scope and revokes generated connection credentials"
   assert.match(runSource, /connection-revocation-results\.json/);
   assert.match(runSource, /api\.delete\(`\/api\/connections\//);
   assert.match(runSource, /const requireLongHorizon = boolEnv\(\s*"ISTARA_BENCHMARK_REQUIRE_LONG_HORIZON"/s);
-  assert.match(runSource, /const longHorizonVerified = boolEnv\("ISTARA_BENCHMARK_LONG_HORIZON_VERIFIED"/);
+  assert.match(runSource, /const longHorizonVerified = dockerRunnerMode\s*&&\s*boolEnv\("ISTARA_BENCHMARK_LONG_HORIZON_VERIFIED"/);
+  assert.match(runSource, /const dockerRunnerMode = boolEnv\("ISTARA_BENCHMARK_DOCKER_RUNNER", false\);[\s\S]*const longHorizonVerified/);
   assert.match(runSource, /long_horizon_required: requireLongHorizon/);
   assert.match(runSource, /long_horizon_verified: longHorizonVerified/);
 });

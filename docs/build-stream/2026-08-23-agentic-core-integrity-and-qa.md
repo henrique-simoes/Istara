@@ -8,8 +8,8 @@ phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal ac
 stage: S2-execute/S3-review
 status: in-progress
 blocked_on: "Owner-approved Docker-only Mac Studio provisioning: current env/config, provider-served identities, and three-model inputs"
-last: { agent: gpt-5-codex, at: 2026-08-27T11:53:16Z, ledger: L-334 }
-next_action: "Run the remaining deterministic PI/Research Spine matrix and review the live-gate inputs; start Docker-only Mac Studio execution only after current owner-approved env/config, served identities, donor inputs, and redacted artifact paths exist."
+last: { agent: gpt-5-codex, at: 2026-08-27T12:06:03Z, ledger: L-335 }
+next_action: "Commit and push the Docker-only long-horizon oracle hardening, refresh the detached Mac Studio checkout to that exact tip, then continue the live-gate input audit without starting workloads."
 ```
 
 ## Plan overview / roadmap
@@ -7860,3 +7860,29 @@ source-grounded coding, reconciliation, human Done/report promotion, both
 engine HTTP execution with live providers, two-call/long-horizon receipts,
 Petals consent/health/revocation, redaction, and teardown still require the
 owner-approved Docker-only Mac Studio inputs and run window.
+
+### L-335 | 2026-08-27T12:06:03Z | S2-execute/S3-review | gpt-5-codex | Docker-only long-horizon proof hardening
+
+The acceptance harness had a caller-controlled long-horizon proof: setting
+`ISTARA_BENCHMARK_LONG_HORIZON_VERIFIED=1` could mark the combined two-call
+workload verified even when the Docker runner had not executed the Python
+workload. `tests/real_user_benchmark/run.mjs` now accepts that marker only when
+`ISTARA_BENCHMARK_DOCKER_RUNNER=1` is also active, and the topology contract
+asserts declaration order and the fail-closed coupling. The Ensemble Health and
+Findings / Reports living contracts document that a host/direct invocation cannot
+turn a skipped horizon into acceptance evidence. External finding F-R9-107
+records the gap and its residual live-proof boundary.
+
+Compass evidence `260` records the real-user package (`89` passed), `261`
+records feature-doc generation/check (`224` generated artifacts; `86/86`
+checked), `262` records the native Rust after-gate (`new_issue_count=0`,
+`new_failures=0`, inherited gate status `fail`), and `263` records
+`git diff --check`. The deterministic package remains green; no live provider
+request, model load, host installation, or Mac Studio workload was started.
+
+Next: commit/push this checkpoint, refresh the disposable detached Mac Studio
+checkout to the final branch tip, and preserve the explicit boundary that live
+three-model semantic quality, Fleiss/Krippendorff values, reconciliation,
+human Done/report promotion, Petals cooperation, redaction, teardown, and
+two-call/long-horizon receipts remain unverified until owner-approved
+Docker-only inputs exist.

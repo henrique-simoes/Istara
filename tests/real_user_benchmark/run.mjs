@@ -521,7 +521,12 @@ const requireLongHorizon = boolEnv(
   "ISTARA_BENCHMARK_REQUIRE_LONG_HORIZON",
   Boolean(workload.longHorizon) && mode !== "plan-only",
 );
-const longHorizonVerified = boolEnv("ISTARA_BENCHMARK_LONG_HORIZON_VERIFIED", false);
+const dockerRunnerMode = boolEnv("ISTARA_BENCHMARK_DOCKER_RUNNER", false);
+// Only the containerized runner may turn its post-run marker into acceptance
+// evidence. A direct caller-supplied marker must not make a skipped horizon
+// workload appear verified.
+const longHorizonVerified = dockerRunnerMode
+  && boolEnv("ISTARA_BENCHMARK_LONG_HORIZON_VERIFIED", false);
 
 // ── Benchmark engine plumbing (benchmark task B0-2) ────────────────────────
 // `--engine pi|legacy|both` selects the AgenticDispatcher engine per request via
@@ -545,7 +550,6 @@ const benchmarkEngines = resolveBenchmarkEngines(
 const benchmarkAgentEngine = benchmarkEngines.length === 1 ? benchmarkEngines[0] : "";
 const donorTopology = String(arg("donor-topology", process.env.ISTARA_BENCHMARK_DONOR_TOPOLOGY || "") || "").trim().toLowerCase();
 const useLocalThreeModelDonorTopology = THREE_MODEL_DONOR_TOPOLOGY_ALIASES.has(donorTopology);
-const dockerRunnerMode = boolEnv("ISTARA_BENCHMARK_DOCKER_RUNNER", false);
 const resultsRoot = resolve(arg("results-dir", process.env.ISTARA_BENCHMARK_RESULTS_DIR || join(__dirname, ".results")));
 const externalConnectionStringMode = boolEnv("ISTARA_BENCHMARK_EXTERNAL_CONNECTION_STRINGS", false)
   || boolEnv("ISTARA_BENCHMARK_INTERACTIVE_CONNECTION_STRINGS", false)
