@@ -8,8 +8,8 @@ phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal ac
 stage: S2-execute
 status: in-progress
 blocked_on: null
-last: { agent: gpt-5-codex, at: 2026-08-27T01:41:59Z, ledger: L-224 }
-next_action: "On owner authorization, resolve the latest pushed testing SHA on Mac Studio, verify three provisioned Compose-owned model routes and provider credit, then run the Docker-only Research Spine retake and preserve all artifacts."
+last: { agent: gpt-5-codex, at: 2026-08-27T01:44:20Z, ledger: L-225 }
+next_action: "When live prerequisites are authorized, resolve origin/testing at launch time on Mac Studio, materialize a clean detached checkout, then run the Docker-only provider/Petals retake with three provisioned model routes and preserve artifacts."
 ```
 
 ## Plan overview / roadmap
@@ -4903,3 +4903,27 @@ provider/Petals/combined profiles as separate evidence planes. Accept the Resear
 with common raw source spans, independent atomic coding, numeric Fleiss and Krippendorff
 metrics, grounding, reconciliation, human-Done/report promotion, two-call/long-horizon
 artifacts, Petals interoperability, credential revocation, and Docker teardown proof.
+
+### L-225 | 2026-08-27T01:44:20Z | S5-ship&learn | gpt-5-codex | passive Mac Studio handoff check
+
+Did: Performed a read-only SSH/Docker observation after the clean push. The target is
+`users-Mac-Studio.local` (macOS `26.5`) with Docker Server `29.7.2`; the Docker CLI and Compose
+control path responded normally. No Istara/benchmark containers or matching Compose project is
+currently running; no unrelated workload was touched.
+
+Result: The previous live campaign is complete/idle rather than still running. The Mac Studio
+is ready only for a future owner-authorized retake after the exact pushed `origin/testing` SHA,
+provider credit, and three provisioned model files/routes are verified. The Docker-only rule was
+honored: this checkpoint performed no host installation, package operation, model load, service
+start, image pull, volume deletion, or repository mutation on the Mac Studio.
+
+Verified: `ssh -o BatchMode=yes -o ConnectTimeout=10 macstudio` plus passive Docker version,
+container listing, and Compose project listing. Local `testing`/`origin/testing` remain clean and
+equal at `c19648a69ebfa3c326fc9c8d66b3bb938651a497`.
+
+Next: resume only with owner authorization and the live prerequisites. Verify the latest pushed
+SHA immediately before creating a clean detached Mac Studio checkout; run provider, Petals, and
+combined profiles as separate evidence planes; require three genuinely distinct served model
+identities, common raw source-span coding, numeric Fleiss/Krippendorff metrics, grounding,
+reconciliation, human-Done/report promotion, two-call/long-horizon artifacts, credential
+revocation, and Docker teardown before calling the Research Spine accepted.
