@@ -8,7 +8,7 @@ phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal ac
 stage: S2-execute/S3-review
 status: in-progress
 blocked_on: "Owner-approved Docker-only Mac Studio provisioning: current env/config, provider-served identities, and three-model inputs"
-last: { agent: gpt-5-codex, at: 2026-08-27T15:02:45Z, ledger: L-364 }
+last: { agent: gpt-5-codex, at: 2026-08-27T15:04:41Z, ledger: L-365 }
 next_action: "Transport the idempotent synthetic-receipt slice after final Compass evidence; then continue F-R9-114 with deeper Done/report traceability assertions and obtain owner-approved provider/model inputs for the Docker-only three-model Mac Studio run. Keep synthetic receipts non-reportable and do not start live workloads without those inputs."
 ```
 
@@ -8652,3 +8652,21 @@ provider request, model load, image pull, or host installation was started.
 F-R9-114 remains open for deeper Done/report traceability, genuine human
 reconciliation acceptance, and the owner-approved Docker-only run with three
 distinct served models.
+
+### L-365 | 2026-08-27T15:04:41Z | S5-ship&learn | gpt-5-codex | idempotency transport and Mac Studio parity
+
+The idempotent synthetic-reconciliation implementation, focused test, feature
+documentation, generated site artifacts, and prior ledger receipt are committed
+as `ddff4050ea3f60195c661d189e6afe7b30b8fa7c` and pushed to `origin/testing`.
+Local `testing`, `origin/testing`, and the detached Mac Studio retake
+`~/istara-testing-retake-47bf` all resolve to this exact clean tip.
+
+Passive SSH verification remained Docker-only: `/usr/local/bin/docker` reports
+client/server `29.7.2`; only the unrelated healthy `plex` container is running;
+`~/Istara-Projects/models` contains zero files; and the retake has no
+`.env.deploy`. No host installation, image pull, provider request, model load,
+live benchmark, or testing-data deletion occurred. Compass Forge task evidence
+`331` records the focused tests, docs check, compile/diff checks, gate `297`,
+and transport. F-R9-114 remains open for deeper Done/report traceability,
+genuine human reconciliation acceptance, and the owner-approved Docker-only
+three-model run with distinct served identities.
