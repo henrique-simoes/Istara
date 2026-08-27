@@ -674,3 +674,37 @@ def test_project_scoped_resolution_excludes_unauthorized_petals_donors(
         manager.resolve(endpoint_id="pi-petals-donor-2", project_id="project-a")
     with pytest.raises(PiEndpointResolutionError, match="insufficient_distinct"):
         manager.resolve_distinct(2, project_id="project-a")
+
+
+def test_restricted_petals_resolution_requires_project_scope(
+    monkeypatch, donor, registry_with
+):
+    """A restricted donor cannot be resolved through a projectless Pi call."""
+    monkeypatch.setattr(settings, "petals_bridge_enabled", True)
+    donor.allowed_project_ids = ["project-a"]
+    from app.core.pi_runtime.endpoints import PiEndpointResolutionError
+    from app.core.pi_runtime.model_manager import PiModelManager
+
+    manager = PiModelManager(endpoints=[])
+    manager._project_petals()
+
+    with pytest.raises(PiEndpointResolutionError, match="petals_project_id_required"):
+        manager.resolve(endpoint_id="pi-petals-donor-1")
+    with pytest.raises(PiEndpointResolutionError, match="insufficient_distinct"):
+        manager.resolve_distinct(1)
+    assert manager.resolve(endpoint_id="pi-petals-donor-1", project_id="project-a")
+    assert "pi-petals-donor-1" in {
+        entry.endpoint_id for entry in manager.catalog()
+    }
+
+
+def test_wildcard_petals_resolution_remains_available_without_project(
+    monkeypatch, donor, registry_with
+):
+    """Wildcard donor projections retain the intentional global-catalog behavior."""
+    monkeypatch.setattr(settings, "petals_bridge_enabled", True)
+    from app.core.pi_runtime.model_manager import PiModelManager
+
+    manager = PiModelManager(endpoints=[])
+    manager._project_petals()
+    assert manager.resolve(endpoint_id="pi-petals-donor-1").endpoint_id == "pi-petals-donor-1"

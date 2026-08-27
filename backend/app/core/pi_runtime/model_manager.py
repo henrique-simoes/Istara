@@ -421,11 +421,20 @@ class PiModelManager:
         # participate in generic selection (including distinct ensembles).
         if is_reserved_petals_endpoint_id(entry.endpoint_id) and not _is_petals_entry(entry):
             return False
-        if entry.source == "petals" and project_id is not None:
-            requested_project = str(project_id).strip()
+        if _is_petals_entry(entry):
             allowed = set(entry.allowed_project_ids)
-            if not requested_project or ("*" not in allowed and requested_project not in allowed):
-                return False
+            if project_id is None:
+                # A restricted donor must never be selected by a projectless
+                # call.  Wildcard donors remain available to global/admin
+                # catalog callers and to legacy non-research probes.
+                if "*" not in allowed:
+                    return False
+            else:
+                requested_project = str(project_id).strip()
+                if not requested_project or (
+                    "*" not in allowed and requested_project not in allowed
+                ):
+                    return False
         if model is not None and entry.model != model:
             return False
         if require_vision and not entry.supports_vision:
@@ -509,15 +518,16 @@ class PiModelManager:
                     context_window=endpoint.context_window,
                 )
                 return endpoint
-            if not self._matches(
-                entry,
-                model=model,
-                require_vision=False,
-                min_context=0,
-                project_id=project_id,
-            ):
-                if entry.source == "petals" and project_id is not None:
-                    raise PiEndpointResolutionError("petals_project_not_authorized")
+            if _is_petals_entry(entry):
+                allowed = set(entry.allowed_project_ids)
+                if project_id is None and "*" not in allowed:
+                    raise PiEndpointResolutionError("petals_project_id_required")
+                if project_id is not None:
+                    requested_project = str(project_id).strip()
+                    if not requested_project or (
+                        "*" not in allowed and requested_project not in allowed
+                    ):
+                        raise PiEndpointResolutionError("petals_project_not_authorized")
             self._admit(
                 model,
                 require_vision,
@@ -714,12 +724,15 @@ class PiModelManager:
                 kind=entry.kind,
             )
             for entry in self._entries.values()
-            if self._matches(
-                entry,
-                model=None,
-                require_vision=False,
-                min_context=0,
-                project_id=project_id,
+            if (
+                self._matches(
+                    entry,
+                    model=None,
+                    require_vision=False,
+                    min_context=0,
+                    project_id=project_id,
+                )
+                or (project_id is None and _is_petals_entry(entry))
             )
         ]
 
