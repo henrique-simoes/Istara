@@ -8,8 +8,8 @@ phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal ac
 stage: S5-ship&learn
 status: in-progress
 blocked_on: null
-last: { agent: gpt-5-codex, at: 2026-08-27T02:53:00Z, ledger: L-246 }
-next_action: "Resolve whether ‘Agentic Loop’ is shorthand for legacy/Istara or a required third engine; at the next authorized live window, resolve the launch-time origin/testing SHA, materialize a fresh detached checkout on Mac Studio, and execute the Docker-only provider/Petals/combined G0–G22 retake; until then leave G0/G1 not_run."
+last: { agent: gpt-5-codex, at: 2026-08-27T03:00:00Z, ledger: L-247 }
+next_action: "Commit and push the duplicate-rating reliability hardening with fresh Compass Forge after-gate evidence; then resolve whether ‘Agentic Loop’ is shorthand for legacy/Istara or a required third engine, and at the next authorized live window execute the Docker-only provider/Petals/combined G0–G22 retake from a fresh detached checkout; until then leave G0/G1 not_run."
 ```
 
 ## Plan overview / roadmap
@@ -5492,3 +5492,40 @@ profiles in order. The live result must include three distinct served identities
 spans, numeric Fleiss/Krippendorff metrics, grounding, reconciliation, human-Done/report
 promotion, two-call/long-horizon evidence, Petals interoperability, artifact redaction, and
 teardown before CF-15 can close.
+
+### L-247 | 2026-08-27T03:00:00Z | S4-remediate | gpt-5-codex | duplicate-rating reliability audit
+
+Did: Audited the Research Spine reliability matrix for a raw-response integrity gap. The
+matrix previously merged every application for a coder/evidence-unit pair into one set of
+codes. Conflicting duplicate applications could therefore manufacture a multi-label rating
+that no model returned, distort Fleiss' Kappa/Krippendorff calculations, and leave contradictory
+persisted CodeApplication rows hidden behind a seemingly valid rating.
+
+Changed: `build_binary_coding_matrix()` now counts and exposes duplicate pairs as
+`matrix.duplicate_ratings`. `evaluate_reliability_gate()` fails closed with method
+`duplicate_rater_applications`, `needs_reconciliation`, and no kappa/alpha before independence,
+agreement, or promotion can be evaluated from a synthetic vote. The research-validity contract
+and Ensemble Health feature documentation now state the one-rating-per-coder/unit invariant;
+the generated feature site/manifest were refreshed. Added a TDD regression with a conflicting
+duplicate from one model that proves the gate cannot accept it. Finding F-R9-65 was appended to
+`/Users/user/Desktop/testing.md`.
+
+Verified: the duplicate regression is green; the focused Research Spine metrics, coding,
+donor-routing, and Pi runtime suites pass (`40` metrics/contract/donor tests and `76` Pi
+production tests); the remote-runner contract suite passes (`17` tests); the complete
+deterministic benchmark remains `77/77`; feature-doc generation/check remains `86` features and
+`224` artifacts; `git diff --check` passes. Compass Forge impact/why were run for the core and
+test files, the before-gate baseline was recorded as record `131`, the after-gate was recorded as
+record `132`, and task evidence `109` was attached. The after-gate found no new dependency,
+missing-path, or cycle findings relative to baseline
+(the repository retains inherited gate debt and the path-scoped lifecycle-ledger large-file
+comparison).
+
+Boundary/next: duplicate-response integrity is now deterministic and fail-closed, but no live
+three-model provider call has run. G0/G1 and live G2–G22 remain `not_run`/open. Commit/push and
+verify exact local/origin parity. At the
+next live window, use owner-authorized provider credit and three project-scoped routes, resolve
+the launch-time SHA, verify its archive digest inside the Docker wrapper, render Compose, then
+run provider/Petals/combined profiles with real served identities, common raw spans, numeric
+Fleiss/Krippendorff reliability, grounding, reconciliation, human-Done/report promotion,
+two-call/long-horizon evidence, Petals interoperability, redacted artifacts, and teardown.

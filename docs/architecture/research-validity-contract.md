@@ -81,6 +81,10 @@ Sources
   complete, source-grounded coverage from the requested number of distinct
   models is not available, the run cannot accept or promote any code
   application.
+- Each coder/evidence-unit pair must have exactly one rating. Duplicate
+  applications are retained as an integrity signal and fail the reliability
+  gate closed; they must not be unioned into a synthetic rating before Fleiss'
+  Kappa, Cohen's Kappa, or Krippendorff's Alpha is computed.
 - One- or two-model Self-MoA, dual-run, debate, and adversarial checks remain
   useful response-level operational signals, but they are lower-assurance
   validation, not formal Research Spine coding reliability, and cannot promote

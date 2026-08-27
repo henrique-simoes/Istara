@@ -577,7 +577,12 @@ def effective_rater_provenance(applications: list[dict]) -> tuple[dict[str, dict
 
 
 def build_binary_coding_matrix(applications: list[dict]) -> dict:
-    """Build a reconstructable evidence-unit by rater matrix."""
+    """Build a reconstructable evidence-unit by rater matrix.
+
+    A coder may contribute exactly one rating per evidence unit. Duplicate
+    applications are reported separately so downstream reliability code cannot
+    merge multiple judgments into a synthetic multi-label vote.
+    """
     coder_units = normalize_coder_applications(applications)
     coders = sorted(coder_units)
     units = sorted({unit_id for unit_map in coder_units.values() for unit_id in unit_map})
@@ -612,6 +617,20 @@ def build_binary_coding_matrix(applications: list[dict]) -> dict:
         for field_name in required_provenance_fields
         if not identity.get(field_name)
     ]
+    rating_counts: dict[tuple[str, str], int] = {}
+    for app in applications:
+        coder_id = str(
+            app.get("coder_id") or app.get("model_name") or app.get("coder") or ""
+        ).strip()
+        evidence_unit_id = str(app.get("evidence_unit_id") or app.get("unit_id") or "").strip()
+        if coder_id and evidence_unit_id:
+            key = (coder_id, evidence_unit_id)
+            rating_counts[key] = rating_counts.get(key, 0) + 1
+    duplicate_ratings = [
+        {"coder_id": coder_id, "evidence_unit_id": evidence_unit_id, "count": count}
+        for (coder_id, evidence_unit_id), count in sorted(rating_counts.items())
+        if count > 1
+    ]
     return {
         "coders": coders,
         "evidence_units": units,
@@ -621,6 +640,7 @@ def build_binary_coding_matrix(applications: list[dict]) -> dict:
         "rater_provenance": rater_provenance,
         "provenance_conflicts": provenance_conflicts,
         "missing_provenance": missing_provenance,
+        "duplicate_ratings": duplicate_ratings,
     }
 
 
@@ -752,6 +772,25 @@ def evaluate_reliability_gate(
         "low_agreement_codes": [],
         "method": "",
     }
+
+    if matrix.get("duplicate_ratings"):
+        result.update(
+            {
+                "method": "duplicate_rater_applications",
+                "kappa": None,
+                "alpha": None,
+                "promotion_status": "needs_reconciliation",
+                "fallback_reason": (
+                    "A coder submitted more than one rating for an evidence unit; "
+                    "the reliability matrix cannot merge duplicate judgments."
+                ),
+            }
+        )
+        item_statuses = item_level_promotion_statuses(matrix, result["promotion_status"])
+        result["item_promotion_statuses"] = item_statuses
+        result["accepted_evidence_unit_ids"] = []
+        result["reconciliation_evidence_unit_ids"] = list(item_statuses)
+        return result
 
     if len(coders) >= 2 and result["distinct_model_count"] < len(coders):
         result.update(

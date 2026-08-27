@@ -105,6 +105,46 @@ def test_explicit_abstention_is_distinct_from_a_missing_rating():
     assert "__abstain__" in matrix["codes"]
 
 
+def test_duplicate_coder_unit_ratings_are_not_merged_into_a_synthetic_vote():
+    from app.core.research_validity import evaluate_reliability_gate
+
+    applications = [
+        {
+            "coder_id": "coder-a",
+            "model_name": "model-a",
+            "evidence_unit_id": "eu-1",
+            "codes": ["nav"],
+        },
+        {
+            "coder_id": "coder-a",
+            "model_name": "model-a",
+            "evidence_unit_id": "eu-1",
+            "codes": ["trust"],
+        },
+        {
+            "coder_id": "coder-b",
+            "model_name": "model-b",
+            "evidence_unit_id": "eu-1",
+            "codes": ["nav"],
+        },
+        {
+            "coder_id": "coder-c",
+            "model_name": "model-c",
+            "evidence_unit_id": "eu-1",
+            "codes": ["nav"],
+        },
+    ]
+
+    result = evaluate_reliability_gate(applications, minimum_distinct_models=3)
+
+    assert result["method"] == "duplicate_rater_applications"
+    assert result["promotion_status"] == "needs_reconciliation"
+    assert result["kappa"] is None
+    assert result["matrix"]["duplicate_ratings"] == [
+        {"coder_id": "coder-a", "evidence_unit_id": "eu-1", "count": 2}
+    ]
+
+
 def test_single_category_fleiss_kappa_is_undefined_and_requires_reconciliation():
     from app.core.research_validity import evaluate_reliability_gate
 
