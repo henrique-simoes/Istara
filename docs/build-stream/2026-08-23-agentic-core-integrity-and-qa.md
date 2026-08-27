@@ -8,7 +8,7 @@ phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal ac
 stage: S5-ship&learn
 status: in-progress
 blocked_on: null
-last: { agent: gpt-5-codex, at: 2026-08-27T01:54:40Z, ledger: L-229 }
+last: { agent: gpt-5-codex, at: 2026-08-27T01:55:51Z, ledger: L-231 }
 next_action: "When live prerequisites are authorized, resolve origin/testing at launch time on Mac Studio, materialize a clean detached checkout, then run the Docker-only provider/Petals retake with three provisioned model routes and preserve artifacts."
 ```
 
@@ -5082,3 +5082,17 @@ local/remote SHA equality; `git diff --check`; and clean worktree.
 Next: no further local mutation is justified until G0 live authorization and G1–G4 Mac Studio
 Docker prerequisites are supplied; preserve the deterministic baseline and execute the matrix
 in order when they are available.
+
+### L-231 | 2026-08-27T01:55:51Z | S5-ship&learn | gpt-5-codex | verifier | Phase 9
+
+Did: Recorded the final clean transport state after the L-230 checkpoint commit.
+
+Result: `testing` and `origin/testing` are equal at
+`b765926670a66868c718b7242c851bc86bf4a725`; the worktree is clean. No live test campaign is
+running on Mac Studio, and no host-side installation or model activity occurred.
+
+Verified: `git fetch origin testing`, exact SHA equality, `git diff --check`, and
+`git status --porcelain`.
+
+Next: continue the active goal at G0/G1 when the owner-authorized live prerequisites become
+available; do not claim terminal acceptance from this deterministic-only checkpoint.
