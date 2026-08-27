@@ -8,8 +8,8 @@ phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal ac
 stage: S2-execute/S3-review
 status: in-progress
 blocked_on: "Owner-approved Docker-only Mac Studio provisioning: current env/config, provider-served identities, and three-model inputs"
-last: { agent: gpt-5-codex, at: 2026-08-27T14:56:40Z, ledger: L-363 }
-next_action: "Continue F-R9-114 with idempotent/retry-safe synthetic receipts and deeper Done/report traceability assertions; then obtain owner-approved provider/model inputs for the Docker-only three-model Mac Studio run. Keep synthetic receipts non-reportable and do not start live workloads without those inputs."
+last: { agent: gpt-5-codex, at: 2026-08-27T15:02:45Z, ledger: L-364 }
+next_action: "Transport the idempotent synthetic-receipt slice after final Compass evidence; then continue F-R9-114 with deeper Done/report traceability assertions and obtain owner-approved provider/model inputs for the Docker-only three-model Mac Studio run. Keep synthetic receipts non-reportable and do not start live workloads without those inputs."
 ```
 
 ## Plan overview / roadmap
@@ -8628,3 +8628,27 @@ request, model load, live workload, or test-data deletion occurred. F-R9-114
 remains open for idempotent synthetic receipts, human reconciliation and
 Done/report traceability proof, and the owner-approved three-model Docker
 acceptance run.
+
+### L-364 | 2026-08-27T15:02:45Z | S3-review/S5-ship&learn | gpt-5-codex | idempotent synthetic receipt retry slice
+
+The guarded synthetic reconciliation diagnostic now has deterministic,
+retry-safe receipt semantics. Receipt and evidence-edge IDs are derived from
+the project, coding run, diagnostic, and code-application identity. A retry
+with the same exact decision payload returns the original receipt without
+inserting a duplicate; a divergent decision payload or incomplete prior set
+is rejected with a controlled validation error. A database-integrity race is
+rolled back and reconciled against the existing receipt set. The path remains
+benchmark-only and non-reportable: no code-application review, reconciliation,
+promotion, Done-task, or report gate is mutated.
+
+Verification passed: `pytest -q tests/test_code_applications.py` `12/12`;
+`npm --prefix tests/real_user_benchmark test` `92/92`; feature docs generated
+`224` artifacts and checked `86/86`; Python compilation and `git diff --check`
+passed. Compass Forge after-gate record `297` reports zero new issues against
+the inherited baseline. The implementation and test/docs changes are still
+working-tree changes at this checkpoint and must be committed, pushed, and
+retaken on Mac Studio before this slice can claim transport parity. No live
+provider request, model load, image pull, or host installation was started.
+F-R9-114 remains open for deeper Done/report traceability, genuine human
+reconciliation acceptance, and the owner-approved Docker-only run with three
+distinct served models.

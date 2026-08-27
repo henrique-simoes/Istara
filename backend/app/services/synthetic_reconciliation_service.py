@@ -7,6 +7,7 @@ import uuid
 from typing import Any
 
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.research_validity import graph_edge_metadata
@@ -87,6 +88,41 @@ def _validate_coverage(
     return requested_ids
 
 
+async def _existing_receipts(
+    db: AsyncSession,
+    *,
+    project_id: str,
+    coding_run_id: str,
+    diagnostic_id: str,
+) -> dict[str, ReconciliationDecision]:
+    result = await db.execute(
+        select(ReconciliationDecision).where(
+            ReconciliationDecision.project_id == project_id,
+            ReconciliationDecision.coding_run_id == coding_run_id,
+            ReconciliationDecision.source == SYNTHETIC_RECONCILIATION_SOURCE,
+            ReconciliationDecision.decided_by == f"benchmark-synthetic:{diagnostic_id}",
+        )
+    )
+    return {row.code_application_id: row for row in result.scalars().all() if row.code_application_id}
+
+
+def _validate_retry_payload(
+    decisions: list[dict[str, Any]],
+    existing: dict[str, ReconciliationDecision],
+    row_by_id: dict[str, CodeApplication],
+) -> list[dict[str, Any]]:
+    if set(existing) != set(row_by_id) or len(existing) != len(row_by_id):
+        raise ValueError("Synthetic diagnostic already has an incomplete receipt set.")
+    for item in decisions:
+        application_id = item["code_application_id"]
+        expected_type = str(item.get("decision_type") or "").strip().lower()
+        expected_code = str(item.get("accepted_code_id") or "").strip()
+        receipt = existing[application_id]
+        if receipt.decision_type != expected_type or receipt.accepted_code_id != expected_code:
+            raise ValueError("Synthetic diagnostic already has a different decision payload.")
+    return [existing[item["code_application_id"]].to_dict() for item in decisions]
+
+
 def _build_receipt(
     row: CodeApplication,
     item: dict[str, Any],
@@ -109,8 +145,14 @@ def _build_receipt(
         "human_review_required": True,
         "coding_run_id": coding_run_id,
     }
+    decision_id = str(
+        uuid.uuid5(
+            uuid.NAMESPACE_URL,
+            f"istara:synthetic-reconciliation:{row.project_id}:{coding_run_id}:{diagnostic_id}:{row.id}",
+        )
+    )
     decision = ReconciliationDecision(
-        id=str(uuid.uuid4()),
+        id=decision_id,
         project_id=row.project_id,
         task_id=row.task_id,
         coding_run_id=coding_run_id,
@@ -129,7 +171,7 @@ def _build_receipt(
         route_evidence_json=json.dumps(receipt_evidence),
     )
     edge = ResearchEvidenceEdge(
-        id=str(uuid.uuid4()),
+        id=str(uuid.uuid5(uuid.NAMESPACE_URL, f"{decision_id}:edge")),
         project_id=row.project_id,
         source_type="code_application",
         source_id=row.id,
@@ -196,6 +238,14 @@ async def create_synthetic_reconciliation_decisions(
     row_by_id = {row.id: row for row in rows}
     _validate_coverage(decisions, row_by_id)
     created: list[ReconciliationDecision] = []
+    existing = await _existing_receipts(
+        db,
+        project_id=project_id,
+        coding_run_id=normalized_run_id,
+        diagnostic_id=normalized_diagnostic_id,
+    )
+    if existing:
+        return _validate_retry_payload(decisions, existing, row_by_id)
     for item in decisions:
         row = row_by_id[item["code_application_id"]]
         route_evidence = _validate_application(row, normalized_run_id)
@@ -209,7 +259,19 @@ async def create_synthetic_reconciliation_decisions(
         db.add(decision)
         db.add(edge)
         created.append(decision)
-    await db.commit()
+    try:
+        await db.commit()
+    except IntegrityError:
+        await db.rollback()
+        existing = await _existing_receipts(
+            db,
+            project_id=project_id,
+            coding_run_id=normalized_run_id,
+            diagnostic_id=normalized_diagnostic_id,
+        )
+        if existing:
+            return _validate_retry_payload(decisions, existing, row_by_id)
+        raise
     for decision in created:
         await db.refresh(decision)
     return [decision.to_dict() for decision in created]

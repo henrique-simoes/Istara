@@ -349,22 +349,24 @@ async def test_synthetic_reconciliation_records_provenance_without_human_promoti
         )
         await db.commit()
 
+    request_payload = {
+        "coding_run_id": run_id,
+        "diagnostic_id": "diag-1",
+        "decisions": [
+            {
+                "code_application_id": app_id,
+                "decision_type": "accepted",
+                "rationale": "benchmark coverage receipt",
+            }
+        ],
+    }
+    headers = {**auth_headers, "x-istara-synthetic-reconciliation": "benchmark-v1"}
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
         response = await ac.post(
             f"/api/code-applications/{project_id}/synthetic-reconciliation",
-            json={
-                "coding_run_id": run_id,
-                "diagnostic_id": "diag-1",
-                "decisions": [
-                    {
-                        "code_application_id": app_id,
-                        "decision_type": "accepted",
-                        "rationale": "benchmark coverage receipt",
-                    }
-                ],
-            },
-            headers={**auth_headers, "x-istara-synthetic-reconciliation": "benchmark-v1"},
+            json=request_payload,
+            headers=headers,
         )
     assert response.status_code == 200
     body = response.json()
@@ -374,17 +376,40 @@ async def test_synthetic_reconciliation_records_provenance_without_human_promoti
     assert body["decisions"][0]["decided_by"] == "benchmark-synthetic:diag-1"
     assert body["decisions"][0]["source"] == "benchmark_synthetic"
 
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        retry = await ac.post(
+            f"/api/code-applications/{project_id}/synthetic-reconciliation",
+            json=request_payload,
+            headers=headers,
+        )
+        conflict = await ac.post(
+            f"/api/code-applications/{project_id}/synthetic-reconciliation",
+            json={
+                **request_payload,
+                "decisions": [{"code_application_id": app_id, "decision_type": "rejected"}],
+            },
+            headers=headers,
+        )
+    assert retry.status_code == 200
+    assert retry.json()["decisions"][0]["id"] == body["decisions"][0]["id"]
+    assert conflict.status_code == 422
+    assert "different decision payload" in conflict.json()["detail"]
+
     async with async_session() as db:
         row = await db.get(CodeApplication, app_id)
-        receipt = await db.scalar(
-            select(ReconciliationDecision).where(
-                ReconciliationDecision.code_application_id == app_id
+        receipts = (
+            await db.scalars(
+                select(ReconciliationDecision).where(
+                    ReconciliationDecision.code_application_id == app_id
+                )
             )
-        )
+        ).all()
+        receipt = receipts[0]
     assert row.review_status == "pending"
     assert row.reconciliation_status == "unreconciled"
     assert row.promotion_status == "blocked"
     assert receipt.source == "benchmark_synthetic"
+    assert len(receipts) == 1
 
 
 @pytest.mark.asyncio
