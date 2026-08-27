@@ -8,7 +8,7 @@ phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal ac
 stage: S2-execute/S3-review
 status: in-progress
 blocked_on: "Owner-approved Docker-only Mac Studio provisioning: current env/config, provider-served identities, and three-model inputs"
-last: { agent: gpt-5-codex, at: 2026-08-27T19:06:50Z, ledger: L-402 }
+last: { agent: gpt-5-codex, at: 2026-08-27T19:10:30Z, ledger: L-403 }
 next_action: "Audit the remaining live/provider identity, legacy no-coding-run migration, Petals cooperation, two-call/long-horizon, and genuine human-review gates; provision only owner-approved Docker inputs and keep deterministic/live acceptance separate."
 ```
 
@@ -9533,3 +9533,30 @@ close live scientific acceptance: the only retained live artifact has Fleiss
 the current provider/Petals configuration has not been authorized or verified.
 Two-call, long-horizon, human-review/Done/report promotion, and legacy compatibility
 migration remain open gates.
+
+### L-403 | 2026-08-27T19:10:30Z | S3-review | gpt-5-codex | CF persistence scope reconciled with April Istara lineage
+
+The CF date/count question was rechecked against Git ancestry, every retained SQLite
+store under `/Users/user/Documents`, and the current branch rather than using one
+database timestamp as a process-origin proxy. The current shared Compass Forge store
+`/Users/user/Documents/compass-forge/.compass-forge/state.sqlite3` contains `60`
+spec rows, oldest `CF-SPEC-1` at `2026-07-03T01:11:53Z`; its Istara roots are `10`
+rows for `/Users/user/Documents/Istara-main` plus `1` row for the Pi migration worktree.
+The repo-local native Istara store contains `5` rows, oldest `CF-SPEC-1` at
+`2026-08-23T15:04:20.958685Z`. Other populated stores belong to Compass Forge,
+Kairos, or Skills and are not Istara process history.
+
+Git gives the earlier process origin the databases cannot retain: late-March governance
+precursor `67302d56` (March 28), first literal Compass marker `741f3420` at
+`2026-04-03T15:39:09-03:00` (same-patch ancestor `42e454b0` of current `testing`),
+April 10 three-layer testing architecture (`16d18228`) and PR/testing workflow
+(`21ef99b1`), first literal `Compass Forge` marker May 2 (`0d0d9a24`), and first
+literal `CF-SPEC-` marker May 4 (`7dca7368`). No surviving April CF-SPEC database row
+was found, so none is fabricated; that absence is retention scope, not evidence that
+Compass was absent from Istara in April.
+
+Verified with read-only SQLite queries, `git show`/ancestry checks, and the existing
+history findings. No code, provider, model, Docker workload, or host state changed.
+The active implementation gates remain the live three-model Research Spine proof,
+Petals cooperation, human reconciliation/Done/report promotion, two-call and
+long-horizon receipts, and legacy no-coding-run migration.
