@@ -309,6 +309,29 @@ async def test_legacy_mode_ensemble_uses_pi_identity_authority_and_preserves_mod
     }
 
 
+@pytest.mark.asyncio
+async def test_pi_mode_forwards_governed_minimum_width_to_pi_service():
+    """Pi receives the minimum width when ``n`` includes a legacy spare."""
+    samples = [
+        {"text": f"answer-{name}", "status": "success", "usage": {},
+         "endpoint_id": f"pi-{name}", "model": f"model-{name}"}
+        for name in ("a", "b", "c")
+    ]
+    service = _ProviderAuthorityStub(samples)
+    dispatcher = AgenticDispatcher(pi_service=service)
+
+    result = await dispatcher.ensemble(
+        purpose="w1.pi.minimum-width", project_id="p1",
+        messages=[{"role": "user", "content": "go"}], n=4, minimum_n=3,
+        distinct=True, system="sys", params=TurnParams(), engine="pi",
+    )
+
+    method, call = service.calls[0]
+    assert method == "ensemble"
+    assert call["n"] == 4 and call["minimum_n"] == 3
+    assert result.endpoint_ids == ["pi-a", "pi-b", "pi-c"]
+
+
 # ── dispatcher verbs ─────────────────────────────────────────────────────
 @pytest.mark.asyncio
 async def test_chat_turn_pi_streams_and_records_one_row(monkeypatch):

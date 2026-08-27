@@ -404,6 +404,39 @@ async def test_full_ensemble_flag_on_insufficient_distinct_falls_back_to_dual_ru
     )
 
 
+async def test_full_ensemble_partial_success_does_not_claim_full_width(
+    monkeypatch, _agentic_core_on, _no_embeddings
+):
+    """A failed spare cannot make a sub-minimum result look like full MoA."""
+    from app.core.validation import full_ensemble
+
+    calls: list[dict] = []
+
+    async def _dispatch(**kwargs):
+        calls.append(kwargs)
+        if len(calls) == 1:
+            return (
+                ["r1", "r2"],
+                [{"endpoint_id": "ep-a"}, {"endpoint_id": "ep-b"}],
+                ["ep-a", "ep-b", "ep-c", "ep-d"],
+            )
+        return (
+            ["d1", "d2"],
+            [{"endpoint_id": "ep-d1"}, {"endpoint_id": "ep-d2"}],
+            ["ep-d1", "ep-d2"],
+        )
+
+    monkeypatch.setattr("app.core.validation._dispatch_ensemble", _dispatch)
+
+    result = await full_ensemble("prompt", min_responses=3, project_id="p1")
+
+    assert calls[0]["n"] == 4 and calls[0]["minimum_n"] == 3
+    assert calls[0]["distinct"] is True
+    assert calls[1]["purpose"] == "validation.dual_run"
+    assert result.method == "dual_run"
+    assert result.responses == ["d1", "d2"]
+
+
 async def test_self_moa_flag_on_dispatches_temperature_sweep_single_endpoint(
     monkeypatch, _agentic_core_on, _no_embeddings
 ):

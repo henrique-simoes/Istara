@@ -526,6 +526,7 @@ class AgenticDispatcher:
                     n=n,
                     distinct=distinct,
                     temperatures=temperatures,
+                    minimum_n=minimum_n,
                     params=params,
                 )
             else:

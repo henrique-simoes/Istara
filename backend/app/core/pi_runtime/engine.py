@@ -800,15 +800,19 @@ class PiExecutionService:
         n: int,
         distinct: bool = False,
         temperatures: list[float] | None = None,
+        minimum_n: int | None = None,
         params: Any = None,
     ) -> dict[str, Any]:
         """N sampled completions (master plan §5.1 ensemble, W7 consumer).
 
-        ``distinct=True`` draws n identity-distinct endpoints from the
-        PiModelManager (fail-closed when fewer than n exist — one endpoint is
-        never silently reused as "two"); ``distinct=False`` is self-MoA: n
-        samples on one admitted endpoint. Samples run sequentially, each as its
-        own governed turn, so per-sample usage stays exact.
+        ``distinct=True`` draws identity-distinct endpoints from the
+        PiModelManager (fail-closed when fewer than the governed width exist —
+        one endpoint is never silently reused as "two"). ``minimum_n`` carries
+        the legacy full-ensemble contract where ``n`` includes one optional
+        spare; Pi resolves the required minimum because it has no spare-retry
+        loop. ``distinct=False`` is self-MoA: n samples on one admitted
+        endpoint. Samples run sequentially, each as its own governed turn, so
+        per-sample usage stays exact.
         """
         manager = self._manager()
         await manager.ensure_db_projection()
@@ -816,8 +820,9 @@ class PiExecutionService:
         require_vision = bool(getattr(params, "require_vision", False))
         min_context = getattr(params, "min_context", 0) or 0
         if distinct:
+            governed_n = n if minimum_n is None else max(1, min(int(minimum_n), n))
             endpoints = manager.resolve_distinct(
-                n,
+                governed_n,
                 model=model,
                 require_vision=require_vision,
                 min_context=min_context,

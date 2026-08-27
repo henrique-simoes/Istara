@@ -8,7 +8,7 @@ phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal ac
 stage: S2-execute
 status: in-progress
 blocked_on: null
-last: { agent: gpt-5-codex, at: 2026-08-27T00:03:10Z, ledger: L-211 }
+last: { agent: gpt-5-codex, at: 2026-08-27T00:20:39Z, ledger: L-212 }
 next_action: "Run the terminal Docker-only provider/Petals/combined retake from implementation tip 7f82389c12389bfc0d81a50458a3fe9e0e8bd2a4 in the isolated Mac Studio worktree when owner-authorized provider credit and three Compose-owned donor routes are available; keep the live gate open until its evidence is complete."
 ```
 
@@ -4579,3 +4579,35 @@ provider, Petals, combined, and legacy/PI arms from the isolated clean worktree;
 served identities, common raw evidence units, numeric Fleiss/Krippendorff metrics, grounding,
 reconciliation, human-Done/report eligibility, two-call/long-horizon behavior, Petals consent/
 health/usage/revoke evidence, and cleanup before accepting CF-SPEC-2.
+
+### L-212 | 2026-08-27T00:20:39Z | S2-execute/S3-review | gpt-5-codex | Pi ensemble governed-width and partial-result audit
+
+Did: Audited the Pi migration seam against the Research Spine ensemble contract. The validation
+facade intentionally requests `min_responses + 1` slots so the legacy executor can use one
+optional spare, but `AgenticDispatcher.ensemble(engine="pi")` previously dropped `minimum_n`.
+Pi therefore tried to resolve all four slots; a catalog with exactly three distinct model
+identities could never execute the intended three-rater ensemble and failed before model calls.
+The dispatcher now forwards `minimum_n`, and `PiExecutionService.run_ensemble` resolves the
+governed minimum for Pi (which has no spare-retry loop). A second fail-open defect was closed:
+when the spare still leaves fewer than the requested valid responses, `validation.full_ensemble`
+now downgrades to the explicit `dual_run` path instead of labeling a partial result as a full
+ensemble. The living architecture/researcher docs now state that independent raters require
+distinct model identities, not merely endpoint IDs, and that response-level consensus is not
+formal Fleiss reliability.
+
+Evidence: focused Pi authority/runtime/validation suites pass `74 passed`; benchmark MoA and live
+driver contract suites pass `45 passed`; feature docs regeneration/check passes (`224` site
+artifacts, `86` feature checks); Compass Forge task CF-15 evidence IDs 46–48 and gate-after
+record 98 show no new failures, no actionable failures, and zero contract/generated drift (four
+new complexity warnings are recorded as non-blocking). New local coverage proves a real
+`PiModelManager -> PiExecutionService` three-identity selection with `n=4, minimum_n=3`, plus
+partial-response downgrade behavior. This remains deterministic proof only: the external
+Mac Studio provider retake is still blocked by the observed provider HTTP 402 and missing
+Compose-owned donor routes, so no live three-model/Fleiss/Petals acceptance claim is made.
+
+Next: commit and push this checkpoint, verify exact local/remote parity, then run the terminal
+Docker-only provider/Petals/combined retake from implementation tip `7f82389c12389bfc0d81a50458a3fe9e0e8bd2a4`
+when owner-authorized provider credit and three donor routes exist. Add a dedicated multi-model
+live benchmark profile before that retake: the current DeepSeek-only profile hard-pins one model
+and one approved endpoint, so it can prove route isolation and degradation but cannot prove three
+distinct model identities or Fleiss/Krippendorff reliability.

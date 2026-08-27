@@ -357,6 +357,25 @@ async def full_ensemble(
         return _empty_result("full_ensemble")
     if not responses:
         return _empty_result("full_ensemble")
+    if len(responses) < min_responses:
+        # The legacy engine may use one optional spare to recover the required
+        # width.  If that spare still leaves fewer than the requested number
+        # of valid responses, do not label a partial result as a full
+        # ensemble.  The lower-assurance chain remains explicit in the
+        # returned method and preserves the Research Spine's fail-closed
+        # evidence boundary.
+        logger.warning(
+            "Full-ensemble dispatch produced %d/%d valid responses; degrading",
+            len(responses),
+            min_responses,
+        )
+        return await dual_run(
+            prompt,
+            system=system,
+            model=model,
+            project_id=project_id,
+            max_tokens=max_tokens,
+        )
     embeddings = await _get_embeddings(responses, project_id=project_id)
     consensus = compute_consensus(responses, embeddings, method="full_ensemble")
     return ValidationResult(

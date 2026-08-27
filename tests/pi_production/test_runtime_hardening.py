@@ -198,6 +198,82 @@ async def test_ensemble_routes_project_scoped_petals_endpoints_through_pi_manage
     ]
 
 
+@pytest.mark.asyncio
+async def test_pi_ensemble_uses_minimum_width_when_optional_spare_is_requested(monkeypatch):
+    """Pi must resolve the required width, not the legacy optional spare.
+
+    The validation facade asks for ``min_responses + 1`` so the legacy engine
+    can retry one spare.  Pi has no spare-retry loop, so its authority must
+    resolve exactly the required minimum.  This also proves that three
+    distinct model identities are actually selected and executed.
+    """
+
+    class RecordingSupervisor:
+        def __init__(self):
+            self.binds: list[dict] = []
+            self.turns = 0
+
+        async def ensure_started(self):
+            return None
+
+        async def open_session(self, _key, **_kwargs):
+            return None
+
+        async def bind_provider(self, _key, payload):
+            self.binds.append(payload)
+
+        async def close_session(self, _key):
+            return None
+
+        async def run_turn(self, _key, _user_text, _tool_handler, **_kwargs):
+            self.turns += 1
+            yield {
+                "type": "run.completed",
+                "usage": {"input_tokens": 2, "output_tokens": 3, "total_tokens": 5},
+                "stop_reason": "stop",
+                "provider_message": {
+                    "role": "assistant",
+                    "content": f"model-{self.turns}",
+                },
+            }
+
+    endpoints = [
+        ResolvedPiEndpoint(
+            endpoint_id=f"pi-model-{name}",
+            provider_kind="faux",
+            base_url="",
+            model=f"model-{name}",
+            api_key="faux",
+            timeout_ms=30_000,
+            max_retries=0,
+            kind="remote",
+        )
+        for name in ("a", "b", "c")
+    ]
+    supervisor = RecordingSupervisor()
+    manager = PiModelManager(endpoints=endpoints, include_local=False)
+    manager._db_projected = True
+    service = PiExecutionService(supervisor=supervisor, model_manager=manager)
+    monkeypatch.setattr(service, "_record_turn_telemetry", AsyncMock())
+
+    result = await service.run_ensemble(
+        purpose="research_spine.minimum_width",
+        project_id="project-spine",
+        agent_id="agent-a",
+        system="independent coder",
+        messages=[{"role": "user", "content": "extract atomic evidence"}],
+        n=4,
+        distinct=True,
+        minimum_n=3,
+        params=TurnParams(),
+    )
+
+    assert result["status"] == "success"
+    assert result["endpoint_ids"] == ["pi-model-a", "pi-model-b", "pi-model-c"]
+    assert len(result["samples"]) == 3
+    assert len(supervisor.binds) == 3
+
+
 def _faux_bind_payload(responses, *, faux_cost_usd: float | None = None) -> dict:
     """Serialize a faux endpoint into the ``provider.bind`` payload the worker
     consumes (mirrors ``test_frame_limits``; adds the test-only cost seam)."""
