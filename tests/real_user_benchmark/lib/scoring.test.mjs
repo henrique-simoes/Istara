@@ -169,13 +169,33 @@ test("provider acceptance profile verifies coding without requiring Petals donat
     profile: "provider",
     codingValidationEnabled: true,
     requireComputeDonation: false,
-    featureResults: { codingValidation: true, computeDonation: false },
+    featureResults: {
+      codingValidation: true,
+      multiModelResearchSpineValidation: true,
+      researchSpineTraceability: true,
+      computeDonation: false,
+    },
   });
 
   assert.equal(gates.profile, "provider");
   assert.deepEqual(gates.provider, { selected: true, status: "verified", verified: true });
   assert.deepEqual(gates.petals, { selected: false, status: "not_selected", verified: false });
   assert.deepEqual(gates.combined, { selected: false, status: "not_selected", verified: false });
+});
+
+test("provider acceptance blocks inconsistent coding-only evidence", () => {
+  const gates = acceptanceGateStatus({
+    profile: "provider",
+    codingValidationEnabled: true,
+    requireComputeDonation: false,
+    featureResults: {
+      codingValidation: true,
+      multiModelResearchSpineValidation: false,
+      researchSpineTraceability: false,
+    },
+  });
+
+  assert.deepEqual(gates.provider, { selected: true, status: "blocked", verified: false });
 });
 
 test("Petals acceptance profile verifies donation without claiming provider validity", () => {
@@ -198,7 +218,12 @@ test("combined acceptance profile requires both provider and Petals evidence", (
     acceptanceProfile: "combined",
     codingValidationEnabled: true,
     requireComputeDonation: true,
-    featureResults: { codingValidation: true, computeDonation: false },
+    featureResults: {
+      codingValidation: true,
+      multiModelResearchSpineValidation: true,
+      researchSpineTraceability: true,
+      computeDonation: false,
+    },
   });
 
   assert.equal(scorecard.acceptance_profile, "combined");

@@ -8,7 +8,7 @@ phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal ac
 stage: S5-ship&learn
 status: in-progress
 blocked_on: null
-last: { agent: gpt-5-codex, at: 2026-08-27T02:28:00Z, ledger: L-241 }
+last: { agent: gpt-5-codex, at: 2026-08-27T02:34:13Z, ledger: L-242 }
 next_action: "Resolve whether ‘Agentic Loop’ is shorthand for legacy/Istara or a required third engine; then, at the next authorized live window, resolve the launch-time origin/testing SHA, materialize a fresh detached checkout on Mac Studio, and execute the Docker-only provider/Petals/combined G0–G22 retake; until then leave G0/G1 not_run."
 ```
 
@@ -5350,3 +5350,36 @@ fresh detached Docker checkout on Mac Studio, render Compose before startup, and
 provider, Petals, and combined G0–G22 matrix with immutable route/model, raw-span, reliability,
 grounding, reconciliation, human-Done/report, two-call/long-horizon, interoperability, and
 teardown artifacts. Do not use the stale owner-dirty named checkout or any host-managed path.
+
+### L-242 | 2026-08-27T02:34:13Z | S4-remediate | gpt-5-codex | implementer/verifier | Phase 9
+
+Did: Audited the scorecard acceptance boundary after the fail-closed Research Spine oracle
+change. `acceptanceGateStatus()` could still report a provider gate as `verified` from
+`codingValidation=true` alone, even when the feature payload said independent multi-model
+validation and Research Spine traceability were false or absent. This was a second, concrete
+false-positive path in the test/scorecard layer; it did not demonstrate a live model failure.
+
+Changed: provider verification now requires the conjunction of `codingValidation`,
+`multiModelResearchSpineValidation`, and `researchSpineTraceability`. Updated complete provider
+and combined fixtures to include all three signals, and added a regression proving that an
+inconsistent coding-only payload is `blocked`. Updated the Ensemble Health living feature
+contract and regenerated the site/manifest. Appended audit finding F-R9-60 to
+`/Users/user/Desktop/testing.md`.
+
+Verified: TDD red run reproduced the false `verified` result; the green targeted scoring suite
+passed 18/18. The full real-user benchmark check passed 75/75 tests, feature-doc generation/check
+passed for 86 features (224 artifacts), and `git diff --check` passed. Compass Forge before- and
+after-gates report zero new issues, zero new failures, zero cycles, and no actionable failures;
+their failing status remains inherited repository `secret_flow`/large-file debt and warnings.
+Command evidence is recorded as CF-15 evidence 95.
+
+Boundary: the scorecard is now unable to certify inconsistent provider evidence, but G0/G1 remain
+`not_run`. This checkpoint still does not prove live three-model served identities, common raw
+source-span coding, numeric Fleiss/Krippendorff reliability, grounding, reconciliation,
+human-Done/report promotion, two-call/long-horizon behavior, Petals interoperability, or Docker
+teardown. No host package, model, server, image, or Mac Studio workload was started or mutated.
+
+Next: checkpoint this remediation to `testing` and `origin/testing`, re-resolve the launch-time
+SHA immediately before any live run, and continue only through the Docker-owned provider/Petals/
+combined G0–G22 matrix. Keep F-R9-59 as an owner terminology decision and never infer a third
+engine from `inherit`.

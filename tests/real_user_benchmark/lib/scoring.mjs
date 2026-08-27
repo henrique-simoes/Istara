@@ -102,7 +102,14 @@ export function acceptanceGateStatus({
   const petalsSelected = normalizedProfile !== "provider";
   const providerEnabled = providerSelected && Boolean(codingValidationEnabled);
   const petalsEnabled = petalsSelected && Boolean(requireComputeDonation);
-  const providerVerified = providerEnabled && Boolean(featureResults.codingValidation);
+  // Coding is only accepted as a provider gate when the independent
+  // multi-model run and source-grounded Research Spine traceability are also
+  // present.  Keeping this invariant in the scorecard prevents callers with
+  // an inconsistent feature payload from receiving a false "verified" result.
+  const providerVerified = providerEnabled
+    && Boolean(featureResults.codingValidation)
+    && Boolean(featureResults.multiModelResearchSpineValidation)
+    && Boolean(featureResults.researchSpineTraceability);
   const petalsVerified = petalsEnabled && Boolean(featureResults.computeDonation);
   const gate = (selected, enabled, verified) => ({
     selected,
