@@ -198,9 +198,11 @@ async def test_chat_two_calls_rehydrate_history_after_worker_restart(monkeypatch
 
     project_id = f"{engine}-asgi-two-call-{uuid.uuid4().hex[:8]}"
     session_id = f"{engine}-asgi-session-{uuid.uuid4().hex[:8]}"
+    task_id = f"{engine}-asgi-task-{uuid.uuid4().hex[:8]}"
     async with async_session() as db:
         db.add(Project(id=project_id, name=f"{engine} ASGI two-call"))
         db.add(ChatSession(id=session_id, project_id=project_id, title=f"{engine} two-call", message_count=0))
+        db.add(Task(id=task_id, project_id=project_id, title="Two-call research anchor"))
         await db.commit()
 
     class RecordingSupervisor(PiRuntimeSupervisor):
@@ -229,6 +231,7 @@ async def test_chat_two_calls_rehydrate_history_after_worker_restart(monkeypatch
         "message": "Record the first research checkpoint.",
         "project_id": project_id,
         "session_id": session_id,
+        "task_id": task_id,
     }
     try:
         transport = ASGITransport(app=app)
@@ -262,6 +265,7 @@ async def test_chat_two_calls_rehydrate_history_after_worker_restart(monkeypatch
             "message": "Continue from the first checkpoint.",
             "project_id": project_id,
             "session_id": session_id,
+            "task_id": task_id,
         }
         transport = ASGITransport(app=app)
         async with AsyncClient(transport=transport, base_url="http://test") as ac:
@@ -322,6 +326,7 @@ async def test_chat_two_calls_rehydrate_history_after_worker_restart(monkeypatch
     assert [row.session_id for row in usage_rows] == [session_id, session_id]
     assert [row.endpoint_id for row in usage_rows] == ["pi-faux", "pi-faux"]
     assert [row.outcome for row in usage_rows] == ["success", "success"]
+    assert [row.task_id for row in usage_rows] == [task_id, task_id]
     assert first.is_running is False
     assert second.is_running is False
 

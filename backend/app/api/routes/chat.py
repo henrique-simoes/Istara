@@ -56,6 +56,7 @@ _guard = ContentGuard()
 from app.models.message import Message
 from app.models.project import Project
 from app.models.session import ChatSession, INFERENCE_PRESETS
+from app.models.task import Task
 from app.skills.registry import registry
 from app.skills.system_actions import (
     build_tools_prompt,
@@ -253,6 +254,7 @@ async def _generate_pi_runtime(
             agent_id=agent_id,
             session_key=session_key,
             session_id=getattr(request, "session_id", None),
+            task_id=getattr(request, "task_id", None),
             system_prompt=system_prompt,
             messages=history,
             user_text=user_text,
@@ -463,6 +465,7 @@ async def _generate_native_tools(
             project_id=request.project_id,
             agent_id=session_agent_id or "istara-main",
             session_id=getattr(request, "session_id", None),
+            task_id=getattr(request, "task_id", None),
             session_key=None,
             system_prompt="",
             messages=list(conversation),
@@ -575,6 +578,7 @@ async def _generate_text_fallback(
             project_id=request.project_id,
             agent_id=session_agent_id or "istara-main",
             session_id=getattr(request, "session_id", None),
+            task_id=getattr(request, "task_id", None),
             session_key=None,
             system_prompt="",
             messages=list(conversation),
@@ -626,6 +630,7 @@ class ChatRequest(BaseModel):
     message: str = Field(..., min_length=1, max_length=20000)
     project_id: str = Field(..., min_length=1, max_length=36)
     session_id: str | None = None
+    task_id: str | None = Field(default=None, min_length=1, max_length=36)
     include_history: bool = True
     max_history: int = Field(default=20, ge=0, le=200)
     thinking_mode: str | None = None
@@ -665,6 +670,20 @@ async def chat(request: ChatRequest, http_request: Request, db: AsyncSession = D
         request.project_id,
         min_role="researcher",
     )
+
+    # A caller may bind a chat turn to a task, but only when the task belongs
+    # to the same project already authorized above. This preserves the usage
+    # ledger's causal task lineage across both Pi and legacy engine paths and
+    # fails closed before any session/message side effect.
+    if request.task_id:
+        task_result = await db.execute(
+            select(Task).where(
+                Task.id == request.task_id,
+                Task.project_id == request.project_id,
+            )
+        )
+        if task_result.scalar_one_or_none() is None:
+            raise HTTPException(status_code=404, detail="Task not found")
 
     # Fail closed BEFORE ANY side effect (session/message persistence, RAG) —
     # but only when NO non-stub source could serve the turn. Phase 6: the
@@ -1317,6 +1336,7 @@ async def get_chat_usage(
                 "model": row.model,
                 "endpoint_id": row.endpoint_id,
                 "node_id": row.node_id,
+                "task_id": row.task_id,
                 "turns": row.turns,
                 "total_tokens": row.total_tokens,
                 "outcome": row.outcome,

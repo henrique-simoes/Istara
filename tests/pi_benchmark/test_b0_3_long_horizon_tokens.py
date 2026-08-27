@@ -104,6 +104,97 @@ def test_usage_oracle_requires_two_recorded_turns_and_engine():
     assert usage["row_count"] == 2
 
 
+def test_usage_oracle_can_require_successful_task_linked_route_receipts():
+    session_id = "session-1"
+    task_id = "task-1"
+    payload = {
+        "row_count": 2,
+        "turns": 2,
+        "total_tokens": 200,
+        "rows": [
+            {
+                "id": "row-1", "session_id": session_id, "purpose": "chat_turn",
+                "engine": "pi", "model": "model-a", "endpoint_id": "endpoint-a",
+                "outcome": "success", "task_id": task_id,
+            },
+            {
+                "id": "row-2", "session_id": session_id, "purpose": "chat_turn",
+                "engine": "pi", "model": "model-a", "endpoint_id": "endpoint-a",
+                "outcome": "success", "task_id": task_id,
+            },
+        ],
+        "latest": {"engine": "pi"},
+    }
+    usage = long_horizon_runner._require_usage_ledger(
+        payload,
+        expected_engine="pi",
+        expected_session_id=session_id,
+        expected_task_id=task_id,
+        require_route_provenance=True,
+    )
+    assert usage["row_count"] == 2
+
+
+def test_usage_oracle_rejects_duplicate_or_unprovenanced_receipts():
+    session_id = "session-1"
+    payload = {
+        "row_count": 2,
+        "turns": 2,
+        "total_tokens": 200,
+        "rows": [
+            {
+                "id": "same-row", "session_id": session_id, "purpose": "chat_turn",
+                "engine": "pi", "model": "model-a", "endpoint_id": "endpoint-a",
+                "outcome": "success", "task_id": "task-1",
+            },
+            {
+                "id": "same-row", "session_id": session_id, "purpose": "chat_turn",
+                "engine": "pi", "model": "model-b", "endpoint_id": "endpoint-b",
+                "outcome": "success", "task_id": "task-1",
+            },
+        ],
+        "latest": {"engine": "pi"},
+    }
+    with pytest.raises(long_horizon_runner.BenchmarkFailure, match="unique receipt"):
+        long_horizon_runner._require_usage_ledger(
+            payload,
+            expected_engine="pi",
+            expected_session_id=session_id,
+            expected_task_id="task-1",
+            require_route_provenance=True,
+        )
+
+
+def test_usage_oracle_rejects_task_mismatch_and_failed_turn():
+    session_id = "session-1"
+    payload = {
+        "row_count": 2,
+        "turns": 2,
+        "total_tokens": 200,
+        "rows": [
+            {
+                "id": "row-1", "session_id": session_id, "purpose": "chat_turn",
+                "engine": "pi", "model": "model-a", "endpoint_id": "endpoint-a",
+                "outcome": "success", "task_id": "task-1",
+            },
+            {
+                "id": "row-2", "session_id": session_id, "purpose": "chat_turn",
+                "engine": "pi", "model": "model-a", "endpoint_id": "endpoint-a",
+                "outcome": "error", "task_id": "task-2",
+            },
+        ],
+        "latest": {"engine": "pi"},
+    }
+    with pytest.raises(long_horizon_runner.BenchmarkFailure, match="task id|successful"):
+        long_horizon_runner._require_usage_ledger(
+            payload,
+            expected_engine="pi",
+            expected_session_id=session_id,
+            expected_task_id="task-1",
+            require_route_provenance=True,
+        )
+
+
 def test_usage_oracle_rejects_missing_rows():
     with pytest.raises(long_horizon_runner.BenchmarkFailure, match="fewer than 2"):
         long_horizon_runner._require_usage_ledger(

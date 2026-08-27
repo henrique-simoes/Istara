@@ -34,6 +34,15 @@ PROBE_RESULTS="$REPO_ROOT/tests/real_user_benchmark/.results"
 SIM_RESULTS="$REPO_ROOT/tests/simulation/.results"
 MARATHON_RESULTS="$REPO_ROOT/data/test-marathon"
 
+# The runner mounts the working tree into Docker, but provenance is declared as
+# the canonical archive of HEAD. A dirty checkout would therefore execute bytes
+# that are not covered by the advertised snapshot digest. Refuse it before
+# creating result mounts, pulling images, or starting any container.
+if [[ -n "$(git -C "$REPO_ROOT" status --porcelain --untracked-files=all 2>/dev/null)" ]]; then
+  echo "refusing dirty source checkout; commit or stash changes before benchmark" >&2
+  exit 2
+fi
+
 # These mounts are generated/ignored artifacts, so a pristine detached checkout must be
 # able to bootstrap them without manual host preparation. Docker remains the only runtime;
 # this creates empty bind-mount targets and all work happens in containers below.

@@ -14,6 +14,7 @@ from app.models.agentic_usage import AgenticUsageRow
 from app.models.database import async_session, init_db
 from app.models.project import Project
 from app.models.session import ChatSession
+from app.models.task import Task
 from app.core.auth import create_token
 
 
@@ -215,6 +216,39 @@ def test_chat_request_preserves_provider_native_effort_levels():
 
 
 @pytest.mark.asyncio
+async def test_chat_rejects_task_from_another_project_before_side_effects():
+    """Task-bound chat cannot cross the project boundary."""
+    await init_db()
+    if not settings.jwt_secret:
+        settings.jwt_secret = "test-secret"
+
+    token = create_token("task-scope-user", "task-scope-user", "admin")
+    project_id = str(uuid.uuid4())
+    foreign_project_id = str(uuid.uuid4())
+    task_id = str(uuid.uuid4())
+    async with async_session() as db:
+        db.add_all(
+            [
+                Project(id=project_id, name="Task-bound chat project"),
+                Project(id=foreign_project_id, name="Foreign task project"),
+                Task(id=task_id, project_id=foreign_project_id, title="Foreign task"),
+            ]
+        )
+        await db.commit()
+
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        response = await ac.post(
+            "/api/chat",
+            json={"message": "hello", "project_id": project_id, "task_id": task_id},
+            headers={"Authorization": f"Bearer {token}"},
+        )
+
+    assert response.status_code == 404
+    assert response.json()["detail"] == "Task not found"
+
+
+@pytest.mark.asyncio
 async def test_chat_model_catalog_and_usage_are_project_scoped(monkeypatch):
     await init_db()
     if not settings.jwt_secret:
@@ -276,6 +310,7 @@ async def test_chat_usage_exposes_content_free_per_dispatch_identity_rows():
                     session_id=session_id,
                     model="served-pi-1",
                     endpoint_id="pi-endpoint-1",
+                    task_id="task-1",
                     turns=1,
                     total_tokens=100,
                 ),
@@ -287,6 +322,7 @@ async def test_chat_usage_exposes_content_free_per_dispatch_identity_rows():
                     session_id=session_id,
                     model="served-pi-2",
                     endpoint_id="pi-endpoint-2",
+                    task_id="task-1",
                     turns=1,
                     total_tokens=120,
                 ),
@@ -323,6 +359,7 @@ async def test_chat_usage_exposes_content_free_per_dispatch_identity_rows():
         "pi-endpoint-1",
         "pi-endpoint-2",
     ]
+    assert [row["task_id"] for row in payload["rows"]] == ["task-1", "task-1"]
     assert payload["latest"]["engine"] == "pi"
 
 

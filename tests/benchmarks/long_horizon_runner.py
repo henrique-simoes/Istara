@@ -121,10 +121,19 @@ def _require_usage_ledger(
     *,
     expected_engine: str | None = None,
     expected_session_id: str | None = None,
+    expected_task_id: str | None = None,
     min_rows: int = 2,
     min_turns: int = 2,
+    require_route_provenance: bool = False,
 ) -> dict:
-    """Require per-dispatch rows proving both turns used one session and engine."""
+    """Require per-dispatch rows proving the turns' causal identity.
+
+    The baseline oracle checks session and engine continuity. Live acceptance
+    additionally enables route provenance so every successful receipt has a
+    unique id, model/endpoint identity, and an explicit task binding. Keeping
+    that stricter mode opt-in preserves small unit fixtures while ensuring the
+    Docker workload cannot pass on aggregate counters alone.
+    """
     if not isinstance(payload, dict):
         raise BenchmarkFailure("chat usage endpoint returned a non-object payload")
     if expected_engine not in SUPPORTED_ENGINES:
@@ -152,7 +161,13 @@ def _require_usage_ledger(
     if total_tokens <= 0:
         raise BenchmarkFailure("chat usage ledger contains no positive token total")
     _require_chat_dispatch_rows(
-        payload, row_count, expected_engine, expected_session_id, min_rows
+        payload,
+        row_count,
+        expected_engine,
+        expected_session_id,
+        min_rows,
+        expected_task_id=expected_task_id,
+        require_route_provenance=require_route_provenance,
     )
     latest = payload.get("latest")
     if not isinstance(latest, dict) or not isinstance(latest.get("engine"), str) or not latest["engine"].strip():
@@ -170,6 +185,9 @@ def _require_chat_dispatch_rows(
     expected_engine: str,
     expected_session_id: str,
     min_rows: int,
+    *,
+    expected_task_id: str | None = None,
+    require_route_provenance: bool = False,
 ) -> None:
     """Require complete content-free identity rows for the chat turns."""
     rows = payload.get("rows")
@@ -204,6 +222,38 @@ def _require_chat_dispatch_rows(
         raise BenchmarkFailure(
             "chat usage ledger chat-turn session id(s) do not all match the benchmark session"
         )
+    if expected_task_id is not None:
+        mismatched_tasks = [
+            row.get("task_id")
+            for row in chat_rows
+            if row.get("task_id") != expected_task_id
+        ]
+        if mismatched_tasks:
+            raise BenchmarkFailure(
+                "chat usage ledger chat-turn task id(s) do not all match the benchmark task"
+            )
+    if require_route_provenance:
+        receipt_ids = [row.get("id") for row in chat_rows]
+        if any(
+            not isinstance(receipt_id, str) or not receipt_id.strip()
+            for receipt_id in receipt_ids
+        ):
+            raise BenchmarkFailure("chat usage ledger has a missing dispatch receipt id")
+        if len(set(receipt_ids)) != len(receipt_ids):
+            raise BenchmarkFailure("chat usage ledger does not contain unique receipt ids")
+        incomplete = [
+            row
+            for row in chat_rows
+            if row.get("outcome") != "success"
+            or not isinstance(row.get("model"), str)
+            or not row["model"].strip()
+            or not isinstance(row.get("endpoint_id"), str)
+            or not row["endpoint_id"].strip()
+        ]
+        if incomplete:
+            raise BenchmarkFailure(
+                "chat usage ledger does not contain successful route-provenanced receipts"
+            )
 
 
 def _require_session_id(payload: Any) -> str:
@@ -357,6 +407,31 @@ async def _create_project_and_session(client: httpx.AsyncClient, headers: dict[s
     return project_id, session_id
 
 
+async def _create_benchmark_task(
+    client: httpx.AsyncClient, headers: dict[str, str], project_id: str
+) -> str:
+    """Create the causal task anchor shared by both long-horizon chat turns."""
+    task_res = await client.post(
+        f"{API_BASE}/api/tasks",
+        json={
+            "project_id": project_id,
+            "title": "Long-horizon research spine benchmark",
+            "description": (
+                "Anchor task for proving that both bounded chat turns share one "
+                "project-scoped execution and usage lineage."
+            ),
+        },
+        headers=headers,
+    )
+    _require_status(task_res, "benchmark task creation", 200, 201)
+    task_payload = _json_payload(task_res, "benchmark task creation")
+    task_id = task_payload.get("id") if isinstance(task_payload, dict) else None
+    if not isinstance(task_id, str) or not task_id.strip():
+        raise BenchmarkFailure("benchmark task creation returned no task id")
+    print(f"✅ Benchmark task anchor created: {task_id}")
+    return task_id
+
+
 async def _upload_documents(
     client: httpx.AsyncClient, headers: dict[str, str], project_id: str
 ) -> None:
@@ -420,6 +495,7 @@ async def _run_benchmark() -> None:
 
         # 2. Create Project and session; then upload source material.
         project_id, session_id = await _create_project_and_session(client, headers)
+        benchmark_task_id = await _create_benchmark_task(client, headers, project_id)
         await _upload_documents(client, headers, project_id)
 
         # 4. Send Complex Chat Request
@@ -434,6 +510,7 @@ async def _run_benchmark() -> None:
         chat_req = {
             "project_id": project_id,
             "session_id": session_id,
+            "task_id": benchmark_task_id,
             "message": prompt
         }
 
@@ -477,6 +554,7 @@ async def _run_benchmark() -> None:
         second_req = {
             "project_id": project_id,
             "session_id": session_id,
+            "task_id": benchmark_task_id,
             "message": second_message,
         }
         second_events, second_elapsed = await _run_chat_turn(
@@ -510,6 +588,10 @@ async def _run_benchmark() -> None:
         _require_status(tasks_res, "task queue inspection")
         tasks_data = _json_payload(tasks_res, "task queue inspection")
         tasks = _require_persisted_tasks(tasks_data, project_id)
+        if not any(task.get("id") == benchmark_task_id for task in tasks):
+            raise BenchmarkFailure(
+                "task queue does not contain the benchmark task anchor used by both turns"
+            )
         print(f"Total tasks spawned: {len(tasks)}")
         for t in tasks:
             print(f"  - [{t.get('status')}] {t.get('title')} (Skill: {t.get('skill_name', 'auto')})")
@@ -547,6 +629,8 @@ async def _run_benchmark() -> None:
             _json_payload(usage_res, "chat usage ledger inspection"),
             expected_engine=engine,
             expected_session_id=session_id,
+            expected_task_id=benchmark_task_id,
+            require_route_provenance=True,
         )
         print(
             "✅ Usage ledger proves both turns: "

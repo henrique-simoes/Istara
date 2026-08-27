@@ -63,6 +63,13 @@ def test_remote_runner_verifies_snapshot_hash_against_the_checked_out_source():
     assert "source snapshot sha256 does not match" in outer
 
 
+def test_remote_runner_fails_closed_on_dirty_source_checkout():
+    outer = (ROOT / "scripts/runner/docker-run.sh").read_text(encoding="utf-8")
+
+    assert 'git -C "$REPO_ROOT" status --porcelain --untracked-files=all' in outer
+    assert "refusing dirty source checkout" in outer
+
+
 def test_remote_runner_bootstraps_ignored_result_mounts_from_pristine_checkout():
     outer = (ROOT / "scripts/runner/docker-run.sh").read_text(encoding="utf-8")
 

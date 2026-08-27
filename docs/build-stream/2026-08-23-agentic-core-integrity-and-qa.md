@@ -8,8 +8,8 @@ phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal ac
 stage: S2-execute/S3-review
 status: in-progress
 blocked_on: "Owner-approved Docker-only Mac Studio provisioning: current env/config, provider-served identities, and three-model inputs"
-last: { agent: gpt-5-codex, at: 2026-08-27T22:03:17Z, ledger: L-427 }
-next_action: "Keep the April Compass process lineage distinct from persisted CF-SPEC state, then continue CF-SPEC-2 implementation and the Docker-only live acceptance matrix; do not backdate or synthesize missing CF-SPEC rows."
+last: { agent: gpt-5-codex, at: 2026-08-27T22:37:00Z, ledger: L-431 }
+next_action: "Attach the latest deterministic receipts, run the final after-gate, then commit/push the clean testing branch; execute the owner-approved Docker-only Mac Studio matrix only after its inputs and checkout are ready."
 ```
 
 ## Continuation blueprint — remaining work and acceptance contract
@@ -10289,3 +10289,86 @@ remains open.
 Evidence rechecked: `git log --all`/path history, `git show`/`git grep` for the
 April commits and tags, `git merge-base --is-ancestor` for every cited hash,
 and read-only `sqlite3` queries over the shared and repo-local `specs` tables.
+
+### L-428 | 2026-08-27T22:25:09Z | S2-execute/S3-review | gpt-5-codex | Closed deterministic task-lineage and route-provenance oracle gaps
+
+Scope: CF-SPEC-2 / CF-21 implementation slice. The benchmark and chat contracts now
+carry one explicit, project-scoped task anchor through both long-horizon turns and
+through every engine seam. `POST /api/chat` rejects a task belonging to another
+project before session/message/RAG side effects; the Pi, native-tools, and text
+fallback dispatcher calls all forward `task_id`; the usage endpoint returns the
+binding; and the frontend `ChatUsage` type reflects the identity rows. The Docker
+benchmark creates the anchor task, sends it on both calls, checks that it persists,
+and requires unique successful receipts with non-empty provider model and endpoint
+identity. The ASGI restart test proves the same task id survives two calls on both
+Pi and legacy loop selectors. This is causal/task observability, not a claim that a
+BACKLOG benchmark task is human-approved or reportable.
+
+The outer Docker runner now fails closed on any dirty source checkout before creating
+result mounts, pulling images, or starting a container. This prevents the mounted
+working tree from diverging from the advertised `git archive HEAD` provenance and
+preserves the Docker-only host rule.
+
+Verification recorded for this slice: focused Pi/benchmark/chat/ASGI suite `63 passed,
+1 inherited PytestUnhandledThreadExceptionWarning`; research-spine, model-management,
+mixed provider/Petals, W7, W5, and end-to-end deterministic suite `163 passed`; Ruff
+on all changed test/benchmark modules passed; Python compileall and `git diff --check`
+passed; feature-doc generation/check produced `224` artifacts and passed for `86`
+features. Compass Forge `gate before --task CF-21` record `350` remains an inherited
+repository gate failure (31 inherited failures / 212 warnings at that snapshot),
+with no new architecture failure from this slice. Command evidence is recorded as
+CF task evidence `435` (lint/compile/docs) and `436` (focused deterministic suites);
+the after-gate receipt is CF task evidence `440` with `new_issue_count=0`,
+`new_failures=0`, and no actionable failures. The repository-wide gate remains
+red only on inherited debt.
+
+Open boundary: no live Mac Studio Istara stack was run in this slice, no model was
+loaded, and no host package was installed. Three provider-served model identities,
+Fleiss' kappa plus Krippendorff alpha over real evidence units, Petals donation
+cooperation, reconciliation/accepted promotion, human-approved Done/report gates,
+and live two-call/long-horizon behavior remain open CF-SPEC-2 acceptance gates.
+
+### L-429 | 2026-08-27T22:28:31Z | S3-review | gpt-5-codex | After-gate receipt closes the deterministic slice cleanly
+
+Compass Forge after-gate for CF-21 was rerun after removing the optional frontend
+type-module change that introduced a new complexity warning. Receipt `440` reports
+`new_issue_count=0`, `new_failures=0`, and `actionable_failures=[]`; the remaining
+`31` failures and `212` warnings are inherited repository debt. The changed source
+checkout passes `git diff --check`; the deterministic backend/benchmark suites and
+feature-doc check remain green. The next bounded step is to stage only the eleven
+intended files, commit/push `testing`, verify local/remote equality, and then wait
+for an owner-approved clean Docker-only Mac Studio acceptance run.
+
+### L-430 | 2026-08-27T22:36:00Z | S3-review | gpt-5-codex | Revalidated deterministic slice and latest pre-gate
+
+The focused Pi/benchmark/chat/ASGI contract suite was rerun after reverting the
+optional frontend type-only module: `63 passed, 1 inherited
+PytestUnhandledThreadExceptionWarning` in `25.61s`. The changed test/benchmark
+modules remain Ruff-clean; compileall, `git diff --check`, and the previously
+recorded research-spine/model-management ensemble groups remain green.
+
+Compass Forge `gate before --task CF-21` receipt `354` was recorded after the
+ledger update. It reports no new issues, forbidden dependencies, missing paths,
+or import cycles. The Build Stream ledger appears in the large-file comparison
+because this durable record is now approximately 760 KB; that is documented
+artifact-size debt under the active suppression, not a code or runtime failure.
+Inherited repository debt remains `31` failures / `212` warnings, and the live
+Research Spine gate remains open. No Mac Studio container was started, no model
+was loaded, and no host package was installed.
+
+### L-431 | 2026-08-27T22:37:00Z | S3-review | gpt-5-codex | Final after-gate and evidence attachment
+
+After-gate receipt `355` is attached to CF-21 as task evidence `445`. It reports
+`new_issue_count=0`, `new_failures=0`, and no actionable failures. The gate is
+still red only because of inherited repository checks (`31` failures and `212`
+warnings, including existing route/type drift and security-flow debt); this is
+not a regression from the eleven-file slice. Focused deterministic test receipt
+is task evidence `442`, and pre-gate receipt `354` is task evidence `443`.
+
+The next action is a narrow commit containing only the eleven intended files,
+push `testing`, verify local/remote SHA equality and a clean worktree, then
+perform the owner-approved Docker-only Mac Studio run. Live three-model
+provider identity, Fleiss' kappa/Krippendorff alpha over raw evidence units,
+Petals donation, reconciliation, accepted promotion, human-approved Done/report,
+and two-call/long-horizon gates remain unclaimed until their runtime receipts
+exist.
