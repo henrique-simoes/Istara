@@ -8,8 +8,8 @@ phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal ac
 stage: S2-execute
 status: in-progress
 blocked_on: null
-last: { agent: gpt-5-codex, at: 2026-08-27T00:47:02Z, ledger: L-215 }
-next_action: "Materialize a fresh detached Mac Studio checkout at 80f973e6 for Docker-only passive verification; keep live acceptance open until owner-authorized provider credit and three Compose-owned donor/model routes are available."
+last: { agent: gpt-5-codex, at: 2026-08-27T00:50:34Z, ledger: L-216 }
+next_action: "Keep the Docker-only Mac Studio acceptance gate open; obtain owner-authorized provider credit and three Compose-owned donor/model routes, then run the three-model Research Spine retake from 57c7cae7."
 ```
 
 ## Plan overview / roadmap
@@ -4685,3 +4685,23 @@ Next: create a new clean detached Mac Studio checkout at `80f973e6`, inspect onl
 status and passive configuration, and do not start models or services. Keep the provider/Petals/
 combined acceptance retake pending until owner-authorized credit and three approved donor/model
 routes are supplied.
+
+### L-216 | 2026-08-27T00:50:34Z | S2-execute | gpt-5-codex | Mac Studio clean-tip materialization
+
+Did: On the Mac Studio, fetched `origin/testing` and created the new detached worktree
+`/Users/user/istara-testing-retake-57c7cae7` at exact SHA
+`57c7cae714be508d3238fd453c3e298f8e5811f2`. The checkout is clean (`## HEAD (no branch)`) and
+contains the new fail-closed oracle markers. Passive Docker inspection used the Docker Desktop CLI
+at `/Applications/Docker.app/Contents/Resources/bin/docker`; server version is `29.7.2`, the only
+running container is unrelated healthy `plex`, and only default Docker networks plus existing
+opaque volumes/`pi-agent-home` are present. The first passive command confirmed the host shell has
+no `rg`; it was corrected to `grep` without installing anything. No image pull, container start,
+model load, host package operation, volume deletion, or service mutation occurred.
+
+This proves branch/worktree freshness and Docker availability only. It does not satisfy the live
+provider/Petals/combined gate: provider HTTP 402 still needs owner-authorized credit, and no three
+Compose-owned donor/model routes are registered. The stale `7f82389c...` checkout and recovery
+worktree remain preserved. Next live action is therefore conditional and Docker-only: configure
+the approved three-model topology in the new checkout, run the provider, Petals, and combined
+profiles, and retain raw route/model identity, Fleiss/alpha, reconciliation, and accepted-Done
+evidence before any Research Spine success claim.
