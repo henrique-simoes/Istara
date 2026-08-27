@@ -8,8 +8,8 @@ phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal ac
 stage: S2-execute/S3-review
 status: in-progress
 blocked_on: "Owner-approved Docker-only Mac Studio provisioning: current env/config, provider-served identities, and three-model inputs"
-last: { agent: gpt-5-codex, at: 2026-08-27T16:20:00Z, ledger: L-380 }
-next_action: "Continue F-R9-114 with the remaining live three-model provider identity, genuine human reconciliation, and Done/report acceptance gates; separately decide the migration/compatibility policy for legacy no-coding-run reportability. Keep synthetic receipts non-reportable and do not start live workloads without owner-approved provider/model inputs."
+last: { agent: gpt-5-codex, at: 2026-08-27T16:36:00Z, ledger: L-381 }
+next_action: "Transport commit 92a6b193 to origin/testing and the detached Mac Studio checkout after gate-after; preserve the passive Docker-only boundary. Then continue F-R9-114 only with owner-approved provider/model identities, while keeping the legacy no-coding-run migration decision and live human reconciliation/report acceptance open."
 ```
 
 ## Plan overview / roadmap
@@ -8969,3 +8969,47 @@ owner-approved Docker-only three-model provider execution, genuine human
 reconciliation, Done/report acceptance, and the two-call/long-horizon live
 receipt; the legacy no-coding-run reportability migration decision and the real
 downstream artifact generation fixture remain separate follow-ups.
+
+### L-381 | 2026-08-27T16:36:00Z | S4-remediate/S5-ship&learn | gpt-5-codex | production-path spine coverage and SQLite telemetry safety
+
+The deterministic Research Spine proof no longer inserts downstream artifacts
+or a hand-written evidence edge. Commit `92a6b1939fe5939d4fd6cff43f355a73044cb196`
+drives a `SkillOutput` through `AgentOrchestrator._store_findings`, creates
+three source-span EvidenceUnits from exact document text, invokes the real
+three-coder coding-run path, persists nine CodeApplications and three Coders,
+and verifies generated Nuggets, Fact, Insight, Recommendation, and all three
+nugget-to-evidence-unit grounding edges before human reconciliation, Done
+approval, and six-finding report routing. The deterministic dispatcher parses
+the protected `<evidence_units>` prompt, returns provider-served identities,
+and assigns two nominal categories so Fleiss' kappa is defined; the test asserts
+both Fleiss' kappa and the Krippendorff-alpha companion at 1.0. Report finding
+membership is compared as a set because SQL row order is not a contract.
+
+The same commit fixes a real SQLite test/production transaction hazard. Source
+evidence persistence previously opened a second telemetry writer after a caller
+had flushed an uncommitted SQLite transaction, causing a writer-lock deadlock
+and making the contract suite hang before reporting a result. Telemetry now
+accepts the caller's `AsyncSession`, adds the content-free span to that same
+transaction, and remains atomic with the evidence graph; standalone telemetry
+callers retain the existing independent-session path. Explicit
+`ResolvedPiEndpoint(kind="petals")` fixture catalogs are documented and treated
+as already-admitted wildcard seams, while dynamic Petals bridge projections keep
+their concrete project allowlists and double admission checks.
+
+Verification on the local testing checkout: `711 passed, 5 skipped` for
+`tests/pi_production tests/pi_benchmark tests/test_research_validity_contract.py
+tests/test_research_spine_end_to_end.py tests/test_validation_project_scope.py`
+with `-W error::RuntimeWarning`; the focused PI/ensemble/Research Spine matrix
+is `185 passed`; the previously hanging Research Spine contract file is
+`32 passed`; Ruff reports `All checks passed`; and feature-doc generation/check
+reports `224` generated artifacts and `86/86` features. Compass Forge
+`gate before` record `307` completed with the repository's inherited warning /
+secret-flow / route-drift inventory and no new architecture, dependency, or
+security finding attributable to this change. Commit `92a6b193` is not yet
+transported; the next action is gate-after plus clean push/parity verification.
+No provider request, model load, Docker image pull, host installation, live
+benchmark, or testing-data deletion occurred. F-R9-114 remains open for
+owner-approved Docker-only three-model provider execution, provider-served
+identity receipts, genuine human reconciliation, Done/report acceptance, and
+the two-call/long-horizon live receipt; legacy no-coding-run reportability and
+the live downstream transformation chain remain separate follow-ups.
