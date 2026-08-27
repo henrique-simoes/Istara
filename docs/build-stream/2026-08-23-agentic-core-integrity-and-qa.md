@@ -9560,3 +9560,28 @@ history findings. No code, provider, model, Docker workload, or host state chang
 The active implementation gates remain the live three-model Research Spine proof,
 Petals cooperation, human reconciliation/Done/report promotion, two-call and
 long-horizon receipts, and legacy no-coding-run migration.
+
+### L-404 | 2026-08-27T19:26:00Z | S2-execute/S3-review | Central Pi runtime provider identity guard
+
+Compass impact/why analysis identified a remaining provenance boundary: the Pi
+frame mapper could emit a successful `done` event when `route_evidence.model` or
+`route_evidence.served_model` contradicted the provider's top-level `served_model`.
+The downstream Research Spine coder already rejected this contradiction, but
+allowing it through the shared runtime made ordinary consumers observe a false
+route and left the central authority weaker than its consumers.
+
+The mapper now returns the typed error `pi_provider_route_identity_mismatch` for a
+non-empty contradictory route identity. It intentionally preserves ordinary-turn
+compatibility when no provider identity is supplied; missing identity remains
+ineligible for formal Research Spine coding and is handled by the existing coder
+gate. Two parametrized regressions cover both conflicting route identity fields.
+
+Red/green verification after the change: `tests/pi_production/test_engine_http_provider.py`,
+`test_ensemble_identity_parity.py`, `test_runtime_hardening.py`,
+`test_w7_validation.py`, `test_w7_pi_manager_integration.py`, and
+`test_research_spine_donor_routing.py` report `71` passed; the Research Spine
+contract/end-to-end slice reports `34` passed; the deterministic benchmark reports
+`100` passed; feature-doc generation reports `224` artifacts and `86/86` checks;
+`git diff --check` passes. Live provider identities, Fleiss/Krippendorff acceptance,
+human reconciliation, Petals donation, two-call/long-horizon receipts, and current
+Docker model configuration remain unverified.

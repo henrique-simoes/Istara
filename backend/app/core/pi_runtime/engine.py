@@ -1126,6 +1126,15 @@ def _map_frame(frame: dict[str, Any], endpoint: ResolvedPiEndpoint) -> dict[str,
         served_model = str(frame.get("served_model") or "").strip()
         raw_route = frame.get("route_evidence")
         route = dict(raw_route) if isinstance(raw_route, dict) else {}
+        # The provider's top-level receipt is authoritative.  A route payload
+        # is metadata, not a second identity source; accepting a contradictory
+        # value here would let downstream consumers observe a false model.
+        if served_model and any(
+            str(route.get(field) or "").strip()
+            and str(route.get(field)).strip() != served_model
+            for field in ("model", "served_model")
+        ):
+            return {"type": "error", "error": "pi_provider_route_identity_mismatch"}
         route.setdefault(
             "route_kind", "petals_bridge" if endpoint.kind == "petals" else "pi_model_management"
         )

@@ -14,7 +14,7 @@ import pytest
 from sqlalchemy import select
 
 from app.core.pi_runtime.endpoints import ResolvedPiEndpoint
-from app.core.pi_runtime.engine import PiExecutionService
+from app.core.pi_runtime.engine import PiExecutionService, _map_frame
 from app.core.pi_runtime.supervisor import PiRuntimeSupervisor
 from app.models.database import async_session, init_db
 from app.models.telemetry_span import TelemetrySpan
@@ -22,6 +22,34 @@ from app.models.telemetry_span import TelemetrySpan
 from .harness import requires_node
 
 pytestmark = requires_node
+
+
+@pytest.mark.parametrize("identity_field", ["model", "served_model"])
+def test_map_frame_rejects_contradictory_provider_route_identity(identity_field):
+    """A provider route cannot override the top-level served-model receipt."""
+
+    endpoint = ResolvedPiEndpoint(
+        endpoint_id="pi-loopback",
+        provider_kind="openai_compat",
+        base_url="http://127.0.0.1:1",
+        model="configured-model",
+        api_key="loopback-test-key",
+        timeout_ms=30000,
+        max_retries=0,
+    )
+    event = _map_frame(
+        {
+            "type": "run.completed",
+            "served_model": "provider-model",
+            "route_evidence": {identity_field: "spoofed-model"},
+        },
+        endpoint,
+    )
+
+    assert event == {
+        "type": "error",
+        "error": "pi_provider_route_identity_mismatch",
+    }
 
 
 class _OpenAIStubHandler(BaseHTTPRequestHandler):
