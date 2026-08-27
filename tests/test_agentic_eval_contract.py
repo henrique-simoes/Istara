@@ -99,3 +99,12 @@ def test_live_orchestration_baselines_are_companion_only():
         assert "tests/pi_benchmark/live_driver.py" in acceptance_tests
         assert "tests/real_user_benchmark/run.mjs" in acceptance_tests
         assert contract["does_not_claim"]
+    ensemble = contracts["ensemble_llm_orchestration"]
+    assert {
+        "provider_served_model_identity",
+        "source_span_grounding",
+        "fleiss_kappa",
+        "krippendorff_alpha",
+        "reconciliation_status",
+        "human_done_report_promotion",
+    } <= set(ensemble["acceptance_metrics"])

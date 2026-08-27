@@ -96,6 +96,14 @@
         "tests/pi_benchmark/live_driver.py",
         "tests/real_user_benchmark/run.mjs"
       ],
+      "acceptance_metrics": [
+        "provider_served_model_identity",
+        "source_span_grounding",
+        "fleiss_kappa",
+        "krippendorff_alpha",
+        "reconciliation_status",
+        "human_done_report_promotion"
+      ],
       "does_not_claim": [
         "Pi Model Management route authority",
         "three distinct provider-served model identities",

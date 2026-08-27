@@ -8,7 +8,7 @@ phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal ac
 stage: S2-execute/S3-review
 status: in-progress
 blocked_on: "Owner-approved Docker-only Mac Studio provisioning: current env/config, provider-served identities, and three-model inputs"
-last: { agent: gpt-5-codex, at: 2026-08-27T11:05:25Z, ledger: L-326 }
+last: { agent: gpt-5-codex, at: 2026-08-27T11:07:28Z, ledger: L-327 }
 next_action: "Resume the owner-approved Docker-only live matrix only when current env/config, served model identities, donor inputs, and redacted artifact paths exist; keep every live gate fail-closed."
 ```
 
@@ -7664,3 +7664,22 @@ must be read from the post-append parity evidence rather than copied into this
 ledger file. Resume at the owner-input provisioning gate, then run the strict
 Docker-only provider, Petals, combined, two-call/long-horizon, three-rater
 Fleiss/Krippendorff, reconciliation, human-Done/report, and teardown matrix.
+
+### L-327 | 2026-08-27T11:07:28Z | S3-review/S5-ship&learn | gpt-5-codex | explicit acceptance metric contract
+
+The release-facing ensemble contract now names the Research Spine acceptance
+metrics explicitly: provider-served model identity, exact source-span grounding,
+Fleiss' kappa, Krippendorff's alpha, reconciliation status, and human Done/report
+promotion. The historical one-profile live orchestration benchmark remains
+`evidence_role=companion`; its DAG, tool-selection, latency, and compute-capacity
+metrics cannot substitute for those gates. A manifest regression test requires the
+strict acceptance paths and all six metric IDs, while the benchmark registry and
+Ensemble Health feature page expose the same boundary.
+
+Verification passed: JSON validation, the manifest contract guard (`5` tests), the
+real-user package (`87` tests), feature docs (`224` generated; `86/86` checked),
+Ruff, and diff checks. No live provider request, model load, host installation, or
+Mac Studio workload occurred. This append changes the tip; read the final SHA from
+post-commit parity evidence. The live provider/Petals/combined matrix remains
+blocked on owner-approved Docker-only env/config, three served model routes, donor
+inputs, and redacted artifacts.
