@@ -81,6 +81,10 @@ async def test_source_to_three_model_reliability_human_done_and_report(monkeypat
                 # the coder, preserving the same route-evidence invariant as
                 # the real Pi worker.
                 endpoint_id=f"endpoint-{model.rsplit('-', 1)[-1]}",
+                # Deterministic tests must provide the same explicit
+                # provider-served identity required by the live coder
+                # path; the configured request label is not proof.
+                served_model=model,
             )
 
     dispatcher = DeterministicThreeCoderDispatcher()

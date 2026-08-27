@@ -220,7 +220,7 @@ class PiModelManager:
         except Exception:  # pragma: no cover - storage unavailable
             logger.debug("pi model manager: LLMServer projection skipped (storage unavailable)")
             rows = []
-        for row in rows:
+        for row in (row for row in rows if getattr(row, "is_healthy", None) is not False):
             entry = self._project_llm_server(row)
             if entry is not None:
                 self._entries.setdefault(entry.endpoint_id, entry)

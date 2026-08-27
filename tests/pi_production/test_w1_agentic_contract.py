@@ -32,7 +32,6 @@ external traffic.
 from __future__ import annotations
 
 import ast
-import json
 import re
 import uuid
 from pathlib import Path
@@ -215,11 +214,6 @@ def _completion_kwargs(purpose: str) -> dict:
 
 
 # ── five verbs + both real engine seams ─────────────────────────────────
-
-
-def test_dispatcher_exposes_exactly_the_five_contract_verbs():
-    for verb in ("chat_turn", "completion", "structured", "ensemble", "embed"):
-        assert callable(getattr(AgenticDispatcher, verb, None)), f"missing verb {verb}"
 
 
 def test_production_singleton_binds_both_real_engine_seams():
@@ -1030,62 +1024,3 @@ def test_capability_filters_and_exact_identity_are_fail_closed():
         manager.resolve_distinct(2, exclude=("pi-vision",))
     with pytest.raises(PiEndpointResolutionError, match="insufficient_distinct"):
         PiModelManager(endpoints=[]).resolve_distinct(2)
-
-
-async def test_llm_server_rows_project_read_only_and_relays_never_do(usage_db):
-    """Source 2: persisted LLMServer rows project one-directionally into the
-    catalog; relay/browser donor rows are NEVER projected."""
-    from app.core.pi_runtime.endpoints import PiEndpointResolver
-    from app.models.llm_server import LLMServer
-
-    server_id = f"srv-{uuid.uuid4().hex[:8]}"
-    relay_id = f"relay-{uuid.uuid4().hex[:8]}"
-    async with async_session() as session:
-        session.add(
-            LLMServer(
-                id=server_id,
-                name="Contract Server",
-                provider_type="openai_compat",
-                host="http://127.0.0.1:9/v1",
-                is_local=False,
-                capabilities=json.dumps(
-                    {
-                        "models": ["contract-model"],
-                        "context_window": 65536,
-                        "vision": True,
-                    }
-                ),
-            )
-        )
-        session.add(
-            LLMServer(
-                id=relay_id,
-                name="Relay Donor",
-                provider_type="openai_compat",
-                host="http://donor.invalid:1234/v1",
-                is_local=False,
-                is_relay=True,
-                capabilities=json.dumps({"models": ["contract-model"]}),
-            )
-        )
-        await session.commit()
-    try:
-        manager = PiModelManager(resolver=PiEndpointResolver([]), include_local=False)
-        await manager.ensure_db_projection()
-        info = {item.endpoint_id: item for item in manager.catalog()}
-        projected = manager.resolve(endpoint_id=f"pi-llm-{server_id}")
-        assert projected.model == "contract-model"
-        assert projected.supports_vision is True
-        assert projected.context_window == 65536
-        assert f"pi-llm-{relay_id}" not in info, (
-            "donor capacity must never enter the Pi catalog"
-        )
-        with pytest.raises(PiEndpointResolutionError):
-            manager.resolve(endpoint_id=f"pi-llm-{relay_id}")
-    finally:
-        async with async_session() as session:
-            for row_id in (server_id, relay_id):
-                row = await session.get(LLMServer, row_id)
-                if row is not None:
-                    await session.delete(row)
-            await session.commit()

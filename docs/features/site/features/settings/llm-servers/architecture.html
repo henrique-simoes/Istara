@@ -277,9 +277,11 @@
 <li>The catalog is built from four governed sources: the static</li>
 </ul>
 <p><code>settings.pi_api_endpoints</code> entries plus the built-in</p>
-<p><code>pi-deepseek-default</code>; persisted <code>LLMServer</code> rows projected read-only into</p>
-<p>the catalog as <code>openai_compat</code>/<code>anthropic_compat</code> endpoints carrying the</p>
-<p>row&#x27;s encrypted key; and local serving at <code>settings.ollama_host + &quot;/v1&quot;</code> and</p>
+<p><code>pi-deepseek-default</code>; explicitly healthy persisted <code>LLMServer</code> rows</p>
+<p>projected read-only into the catalog as <code>openai_compat</code>/<code>anthropic_compat</code></p>
+<p>endpoints carrying the row&#x27;s encrypted key (unhealthy rows remain</p>
+<p>migration data and cannot consume a Pi or Research Spine slot); and local</p>
+<p>serving at <code>settings.ollama_host + &quot;/v1&quot;</code> and</p>
 <p><code>settings.lmstudio_host + &quot;/v1&quot;</code> marked <code>kind=local</code>; plus healthy,</p>
 <p>explicitly consented relay/browser nodes projected as <code>kind=petals</code> through</p>
 <p>an authenticated loopback shim and pinned to the active project.</p>

@@ -708,10 +708,10 @@ async def test_llm_server_projection_excludes_donor_rows():
     async with async_session() as db:
         db.add(LLMServer(id=keep_id, name="Proj", provider_type="openai_compat",
                          host="https://llm.invalid/v1", api_key=encrypt_field("proj-key"),
-                         is_local=False, is_relay=False,
+                         is_local=False, is_relay=False, is_healthy=True,
                          capabilities='{"models": ["proj-model"], "context_window": 64000, "vision": true}'))
         db.add(LLMServer(id=relay_id, name="Relay", provider_type="openai_compat",
-                         host="https://donor.invalid/v1", is_relay=True))
+                         host="https://donor.invalid/v1", is_relay=True, is_healthy=True))
         await db.commit()
     manager = PiModelManager()
     try:

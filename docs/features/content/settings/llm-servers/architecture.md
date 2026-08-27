@@ -49,9 +49,11 @@ public `/api/settings/status` is redacted and passive.
   consent, health, scope, and identity projection.
 - The catalog is built from four governed sources: the static
   `settings.pi_api_endpoints` entries plus the built-in
-  `pi-deepseek-default`; persisted `LLMServer` rows projected read-only into
-  the catalog as `openai_compat`/`anthropic_compat` endpoints carrying the
-  row's encrypted key; and local serving at `settings.ollama_host + "/v1"` and
+  `pi-deepseek-default`; explicitly healthy persisted `LLMServer` rows
+  projected read-only into the catalog as `openai_compat`/`anthropic_compat`
+  endpoints carrying the row's encrypted key (unhealthy rows remain
+  migration data and cannot consume a Pi or Research Spine slot); and local
+  serving at `settings.ollama_host + "/v1"` and
   `settings.lmstudio_host + "/v1"` marked `kind=local`; plus healthy,
   explicitly consented relay/browser nodes projected as `kind=petals` through
   an authenticated loopback shim and pinned to the active project.

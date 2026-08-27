@@ -8,7 +8,7 @@ phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal ac
 stage: S5-ship&learn
 status: in-progress
 blocked_on: null
-last: { agent: gpt-5-codex, at: 2026-08-27T04:31:10Z, ledger: L-263 }
+last: { agent: gpt-5-codex, at: 2026-08-27T05:01:20Z, ledger: L-266 }
 next_action: "Keep G0/G1 and live G2–G22 open; at the next authorized window use a fresh detached origin/testing checkout, verify its archive digest inside Docker, and execute provider/Petals/combined retakes with three served model identities before claiming Research Spine completion."
 ```
 
@@ -5941,3 +5941,83 @@ checkpoint. Research Spine live validity is still unproven: G0/G1 and live
 G2–G22 remain open until three real served model identities/routes are mounted
 and the provider/Petals/combined Docker-only retakes produce raw, traceable,
 reconciled, human-reviewable evidence.
+
+### L-264 | 2026-08-27T04:38:52Z | S2-execute/S3-review | gpt-5-codex | healthy legacy-row admission hardening
+
+Did: Audited the Pi Model Management catalog against the Research Spine
+requirement that formal coders be selected from healthy, independent model
+identities. `_project_llm_server()` previously projected every non-relay
+persisted `LLMServer` row, including rows explicitly marked `is_healthy=False`.
+That could let a failed or never-health-checked compatibility row consume a
+distinct-model slot before the provider call failed. The manager now rejects
+explicitly unhealthy rows before projection; migration doubles without the
+field remain compatible. Added a regression proving the unhealthy row is not
+admitted and updated projection fixtures to mark their intended rows healthy.
+
+Verified: the focused Pi catalog/authority and dispatcher suites pass `56/56`.
+The change is bounded to model admission and its tests/docs; no provider,
+model load, Docker service, or host installation occurred. The external
+findings register records this as F-R9-72. Feature documentation is being
+regenerated before the final gate; G0/G1 and live G2–G22 remain open because
+the Mac Studio still lacks the three model artifacts or reachable provider
+routes required for a scientific retake.
+
+Boundary/next: run the generated feature-doc check and the broader affected
+Research Spine/Pi ladder, then execute Compass Forge after-gate, commit/push
+the checkpoint, and re-verify exact `HEAD`/`testing`/`origin/testing` parity.
+Do not treat the deterministic 56/56 result as live ensemble validity.
+
+### L-265 | 2026-08-27T04:41:32Z | S2-execute/S3-review | gpt-5-codex | deterministic served-identity oracle repair
+
+The broader affected ladder exposed one more stale deterministic fixture: the
+end-to-end three-coder Research Spine test returned an endpoint receipt but no
+`served_model`. Under the hardened transport contract that correctly made the
+run ineligible for formal model independence and blocked promotion. The test
+now reports the explicit served identity it intends to simulate, preserving
+the same distinction as the live Pi worker (configured request label versus
+provider-served identity).
+
+Verified: the repaired end-to-end, Pi catalog, and dispatcher suites pass
+`57/57`; feature-doc generation/check remains green (`86/86`). This is an
+oracle repair only: it does not add live provider evidence or relax the
+fail-closed production path. The external findings register records the stale
+fixture and its correction as F-R9-73. G0/G1 and live G2–G22 remain open.
+
+Boundary/next: run the complete Research Spine/Pi affected ladder once more,
+perform touched-file lint/diff checks, run the Compass Forge after-gate, then
+commit and push L-264/L-265 with exact branch parity. Preserve the Mac Studio
+preflight blocker unless three real model routes/artifacts are supplied.
+
+### L-266 | 2026-08-27T05:01:20Z | S2-execute/S3-review | gpt-5-codex | final deterministic audit and gate-baseline remediation
+
+Did: Completed the final deterministic audit after isolating the persisted
+LLMServer health regression into `tests/pi_production/test_pi_model_manager_health.py`
+and moving the five-verb dispatcher smoke assertion out of the already-large W1
+contract module. The production boundary remains one-directional and fail-closed:
+explicit `is_healthy=False` compatibility rows are not projected into the Pi
+catalog, relay rows remain excluded, and healthy rows retain capability metadata.
+The end-to-end three-coder fixture still carries an explicit provider-served model
+identity, so the formal Research Spine oracle cannot mistake a request label for
+served evidence.
+
+Verified from the final tree: the affected Python matrix passed `529` tests with
+`-W error::RuntimeWarning`; the focused model-manager/dispatcher/Research Spine
+slice passed `56`; Pi runtime passed `46/46`; the complete real-user benchmark
+check passed `78/78`; topology contracts passed `10/10`; feature documentation
+regenerated `224` artifacts and passed `86/86`; touched Ruff checks and
+`git diff --check` passed. A reviewed-state Compass Forge baseline was recorded
+as gate record `158`; it intentionally includes the pre-existing W1 complexity
+warning and the lifecycle-ledger large-file warning so the post-transport
+comparison is against the exact reviewed tree rather than a stale pre-relocation
+snapshot.
+
+Boundary/next: commit and push the reviewed code, tests, generated feature docs,
+and this receipt; verify `HEAD`, local `testing`, and `origin/testing` are exact
+and the worktree is clean; then run the post-transport native Compass Forge gate
+and append its result. G0/G1 and live G2-G22 remain open. The Mac Studio still
+has no model artifacts, provider route, Istara container, or Petals workload, so
+no three-model Docker ensemble or scientific Research Spine acceptance claim is
+permitted until an authorized fresh detached checkout supplies those prerequisites
+and produces raw source-span, three-served-identity, grounded rating, numeric
+Fleiss/Krippendorff, reconciliation, human-Done/report, both-loop-mode,
+two-call/long-horizon, Petals, redaction, and teardown evidence.
