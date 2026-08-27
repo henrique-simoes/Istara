@@ -8,7 +8,7 @@ phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal ac
 stage: S2-execute/S3-review
 status: in-progress
 blocked_on: "Owner-approved Docker-only Mac Studio provisioning: current env/config, provider-served identities, and three-model inputs"
-last: { agent: gpt-5-codex, at: 2026-08-27T20:29:00Z, ledger: L-414 }
+last: { agent: gpt-5-codex, at: 2026-08-27T20:25:03Z, ledger: L-415 }
 next_action: "Obtain owner-approved Docker provider inputs, then run the live three-model Research Spine proof and separately verify Petals, human reconciliation/Done/report, two-call, and long-horizon gates; keep deterministic evidence separate."
 ```
 
@@ -26,7 +26,7 @@ timestamped ledger entry in this file.
 * `testing` tracks `origin/testing` and the checkout is kept clean. Re-run
   `git rev-parse HEAD` and `git rev-parse origin/testing` at the start of every
   continuation because each ledger-only commit necessarily advances both tips.
-  The last observed equal tips before this amendment were `26fed2cf`; there is
+  The last observed equal tips before this amendment were `6862ffc1`; there is
   no `local/testing` ref. Do not create a local ref merely to make the names
   symmetrical; record the absence instead.
 * The only other worktree is the clean recovery branch
@@ -9964,3 +9964,34 @@ the recorded SHA as the last observation before the current ledger amendment.
 This avoids claiming a historical SHA is still the tip while preserving a clean,
 fully pushed branch. No code, generated artifact, model, container, host process,
 worktree, or branch was changed beyond this documentation commit.
+
+### L-415 | 2026-08-27T20:25:03Z | S2-execute/S3-review | gpt-5-codex | Provider identity observer hardened and checkpointed
+
+The deterministic provider-observation gap from F-R9-155 is fixed. `pi-runtime/src/provider.mjs`
+now observes bounded `application/json` and `application/*+json` response bodies in
+addition to SSE `data:` frames. It buffers only the observer copy, forwards every
+original response chunk unchanged to pi-ai, recognizes the common top-level,
+`response.model`, and `message.model` envelopes, and ignores malformed observer
+JSON so the adapter/parser remains authoritative. Missing or ambiguous identities
+still fail closed. A split-body regression was added to
+`pi-runtime/test/provider-params.test.mjs`; the ensemble health architecture
+documentation and generated site artifact were updated and checked.
+
+Verification attached to CF task `CF-15`: evidence `400` records the Pi-runtime
+Node suite (`47 passed, 0 failed, 0 skipped`), `401` records the focused Pi
+authority/ensemble/validation slice (`68 passed`), `402` records feature-doc
+generation/check (`224` generated artifacts; `86/86` feature checks), and `403`
+records the after-gate (`actionable_failures=[]`, `new_issue_count=0`,
+`new_failures=0`; overall `fail` is inherited debt). `git diff --check` passes.
+The code/docs change is committed and pushed as `6862ffc1acdc72436d7d05a2560f52f499021427`;
+re-verify both `testing` and `origin/testing` at continuation time because the
+next ledger commit will advance both refs.
+
+This closes a deterministic observer/test-contract defect only. The live proof
+is still blocked on owner-approved Docker-only Mac Studio provider inputs and
+must separately demonstrate three distinct provider-served identities over the
+same source/evidence units, meaningful Fleiss plus Krippendorff reliability,
+reconciliation, human Done/report promotion, Petals transport/consent and
+revocation, two-call continuity, and long-horizon behavior. No live model was
+loaded, no Mac Studio host software was installed, and no worktree or branch
+was deleted.
