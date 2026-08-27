@@ -8,7 +8,7 @@ phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal ac
 stage: S2-execute/S3-review
 status: in-progress
 blocked_on: "Owner-approved Docker-only Mac Studio provisioning: current env/config, provider-served identities, and three-model inputs"
-last: { agent: gpt-5-codex, at: 2026-08-27T15:14:20Z, ledger: L-367 }
+last: { agent: gpt-5-codex, at: 2026-08-27T15:17:30Z, ledger: L-368 }
 next_action: "Continue F-R9-114 with deeper Done/report traceability assertions, a genuine human reconciliation acceptance exercise, and owner-approved provider/model inputs for the Docker-only three-model Mac Studio run. Keep synthetic receipts non-reportable and do not start live workloads without those inputs."
 ```
 
@@ -8719,3 +8719,24 @@ host installation, image pull, provider request, model load, live benchmark,
 or testing-data deletion occurred. F-R9-114 remains open for the genuine
 human reconciliation/Done/report exercise and an owner-approved Docker-only
 three-model run with exact served identities.
+
+### L-368 | 2026-08-27T15:17:30Z | S4-review/S5-ship&learn | gpt-5-codex | final gate and deterministic authority evidence
+
+Post-transport verification confirms the exact parity tip remains clean at
+`af6ff70090c6af9f1ff082dab5c59e923deeafdf`: local `testing`,
+`origin/testing`, and the detached Mac Studio retake all resolve to that SHA.
+Compass Forge after-gate record `299` reports zero new issues, zero new
+missing required paths, and zero new forbidden dependencies relative to the
+inherited baseline (the lifecycle document remains the known large-file
+warning). Task evidence `336` records this final parity and the explicit
+remaining F-R9-114 live gate.
+
+The real dispatcher/Pi Model Management authority tests pass `36/36`, and the
+source-to-three-model reliability -> human reconciliation -> Done -> report
+causal test passes `1/1`. These use deterministic provider/supervisor seams:
+they prove engine selection, distinct route/served identity persistence, and
+fail-closed promotion logic, but do not claim live model quality or a real
+provider-served Fleiss/Krippendorff result. No server, provider request, model
+load, image pull, host installation, live benchmark, or testing-data deletion
+occurred. F-R9-114 remains open for a genuine human reconciliation exercise
+against live artifacts and the owner-approved Docker-only three-model run.
