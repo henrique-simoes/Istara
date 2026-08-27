@@ -8,7 +8,7 @@ phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal ac
 stage: S2-execute/S3-review
 status: in-progress
 blocked_on: "Owner-approved Docker-only Mac Studio provisioning: current env/config, provider-served identities, and three-model inputs"
-last: { agent: gpt-5-codex, at: 2026-08-27T16:05:00Z, ledger: L-378 }
+last: { agent: gpt-5-codex, at: 2026-08-27T16:12:00Z, ledger: L-379 }
 next_action: "Continue F-R9-114 with the remaining live three-model provider identity, genuine human reconciliation, and Done/report acceptance gates; separately decide the migration/compatibility policy for legacy no-coding-run reportability. Keep synthetic receipts non-reportable and do not start live workloads without owner-approved provider/model inputs."
 ```
 
@@ -8926,3 +8926,26 @@ successfully with only the repository's inherited warning/fail inventory.
 The commit is ready for transport to `origin/testing` and the detached Mac
 Studio Docker checkout; no provider request, model load, image pull, host
 installation, or live benchmark was started.
+
+### L-379 | 2026-08-27T16:12:00Z | S5-ship&learn | gpt-5-codex | transport and downstream coverage audit
+
+The restricted Petals resolver hardening from `L-378` is now transported as
+clean commit `13aebe544a463b7fcb99997489efc431b2b3ffc4`: local `testing`,
+`origin/testing`, and detached Mac Studio checkout `~/istara-testing-retake-47bf`
+match. Passive SSH verification reports Docker client/server `29.7.2/29.7.2`,
+only unrelated healthy `plex`, zero model files, and no `.env.deploy`; no host
+installation, image pull, provider request, model load, live benchmark, or
+testing-data deletion occurred. Compass Forge task evidence `346`/`347` records
+the focused suite and gate-after result.
+
+The deterministic Research Spine end-to-end test is strong for source/evidence
+unit creation, three-coder Fleiss/ Krippendorff reliability, reconciliation,
+Done approval, and report traceability, but it manually inserts downstream
+Nugget/Fact/Insight/Recommendation artifacts and only one grounding edge. It
+therefore does not prove that the production transformation services derive
+every downstream artifact from accepted atoms with complete source-span
+grounding. This is a coverage limitation requiring a real-service fixture (or a
+governed exception with explicit tests), not a confirmed runtime defect. The
+live gate F-R9-114 remains open for provider-served identities, genuine human
+reconciliation, and Done/report acceptance; legacy no-coding-run reportability
+still needs an explicit migration/compatibility decision.
