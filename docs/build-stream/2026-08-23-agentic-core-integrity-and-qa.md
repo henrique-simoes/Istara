@@ -8,7 +8,7 @@ phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal ac
 stage: S2-execute
 status: in-progress
 blocked_on: null
-last: { agent: gpt-5-codex, at: 2026-08-26T23:45:31Z, ledger: L-210 }
+last: { agent: gpt-5-codex, at: 2026-08-27T00:03:10Z, ledger: L-211 }
 next_action: "Run the terminal Docker-only provider/Petals/combined retake from implementation tip 7f82389c12389bfc0d81a50458a3fe9e0e8bd2a4 in the isolated Mac Studio worktree when owner-authorized provider credit and three Compose-owned donor routes are available; keep the live gate open until its evidence is complete."
 ```
 
@@ -4551,3 +4551,31 @@ Next: commit and push this checkpoint, verify parity, and keep CF-SPEC-2 live ac
 open until the Docker-only Mac Studio provider/Petals/combined retake produces the required
 three served identities, raw-span coding, reliability, reconciliation, human-Done/report,
 two-call/long-horizon, route/usage/revoke, and cleanup artifacts.
+
+### L-211 | 2026-08-27T00:03:10Z | S3-acceptance | gpt-5-codex | CF-SPEC-1 accepted; Pi guard test isolated
+
+Did: Closed the remaining locally provable CF-SPEC-1 bookkeeping. Attached evidence to CF-11
+and CF-12, finished CF-6 and CF-11/CF-12, and accepted CF-SPEC-1 in native Rust Compass Forge.
+The accepted scope is deterministic agentic-core routing, QA-stub guard behavior, frontend
+header wiring, WCAG contrast, and QA-obligation coverage; it does not claim live provider,
+three-model ensemble, Petals, long-horizon, reconciliation, or Research Spine acceptance.
+
+Found and fixed a test-configuration defect in `tests/test_chat.py`: the Pi stub-exemption
+test had crossed the unit boundary into the real Pi/provider path because registration,
+prompt/RAG, and runtime seams were not mocked. The corrected test uses a local Pi-runtime
+fake and passes `13/13` under `PYTHONTRACEMALLOC=1 pytest -q -W error::RuntimeWarning
+tests/test_chat.py`. External findings now include F-R9-50. Commit `7e475014` is pushed and
+`testing` equals `origin/testing` with a clean worktree.
+
+Evidence: Compass Forge task evidence IDs 43–44 and `spec accept CF-SPEC-1` report accepted;
+CF gate-after record 97 reports no new dependency, cycle, missing-path, security, or taint
+issues (the inherited repository gate remains separate). The exact implementation tip for
+the isolated Mac Studio retake remains `7f82389c12389bfc0d81a50458a3fe9e0e8bd2a4`, because
+subsequent commits are documentation/test bookkeeping only.
+
+Next: commit and push this ledger checkpoint, verify exact local/remote parity, then wait for
+owner-authorized provider credit and three Compose-owned donor routes. Run the terminal Docker-only
+provider, Petals, combined, and legacy/PI arms from the isolated clean worktree; require three
+served identities, common raw evidence units, numeric Fleiss/Krippendorff metrics, grounding,
+reconciliation, human-Done/report eligibility, two-call/long-horizon behavior, Petals consent/
+health/usage/revoke evidence, and cleanup before accepting CF-SPEC-2.
