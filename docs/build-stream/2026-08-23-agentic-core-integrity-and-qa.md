@@ -8,7 +8,7 @@ phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal ac
 stage: S2-execute/S3-review
 status: in-progress
 blocked_on: "Owner-approved Docker-only Mac Studio provisioning: current env/config, provider-served identities, and three-model inputs"
-last: { agent: gpt-5-codex, at: 2026-08-27T22:42:00Z, ledger: L-433 }
+last: { agent: gpt-5-codex, at: 2026-08-27T22:45:00Z, ledger: L-434 }
 next_action: "Use the clean 085ae0b testing checkout for the owner-approved Docker-only Mac Studio matrix; keep live three-model, Fleiss/alpha, Petals, reconciliation, and Done/report gates open until receipts exist."
 ```
 
@@ -10409,3 +10409,12 @@ Research Spine matrix must stay `not_run` until an isolated Docker checkout,
 explicit provider-served identities, Petals configuration, and approved
 runtime inputs are available. The next agent should provision only that
 disposable Docker workload and retain the dirty remote checkout untouched.
+
+### L-434 | 2026-08-27T22:45:00Z | S3-review | gpt-5-codex | Final tree after-gate attached
+
+After-gate receipt `357` is attached to CF-21 as task evidence `453`. The
+comparison remains clean (`new_issue_count=0`, `new_failures=0`, no actionable
+failures); the repository gate is red only on inherited checks (`31` failures,
+`212` warnings). The final branch checkpoint will include this ledger line and
+must preserve the same clean local/remote testing ref equality. The live Docker
+acceptance gate remains open and explicitly `not_run` per L-433/F-R9-162.
