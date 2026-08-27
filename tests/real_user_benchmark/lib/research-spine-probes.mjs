@@ -21,25 +21,40 @@ function assessTraceabilityCodingRunBinding(traceability, codingRun) {
   const runDecisions = decisions.filter((row) => String(row?.coding_run_id || "").trim() === runId);
   const runEdges = edges.filter((edge) => String(edge?.coding_run_id || "").trim() === runId);
   const expectedApplicationCount = Number(codingRun?.code_application_count ?? 0);
+  const applicationIds = runApplications
+    .map((row) => String(row?.id || "").trim())
+    .filter(Boolean);
+  const uniqueApplicationIds = new Set(applicationIds);
   const runListed = Boolean(runId) && codingRuns.some(
     (run) => String(run?.id || "").trim() === runId,
   );
   const applicationEvidenceOk = expectedApplicationCount > 0
-    ? runApplications.length >= expectedApplicationCount
-    : runApplications.length > 0;
-  const edgeEvidenceOk = runEdges.some((edge) => (
-    String(edge?.source_type || "").trim() === "evidence_unit"
+    ? runApplications.length === expectedApplicationCount
+      && uniqueApplicationIds.size === expectedApplicationCount
+    : runApplications.length > 0 && uniqueApplicationIds.size === runApplications.length;
+  const codedApplicationEdgeIds = new Set(runEdges
+    .filter((edge) => (
+      String(edge?.source_type || "").trim() === "evidence_unit"
       && String(edge?.relation || "").trim() === "coded_as"
       && String(edge?.target_type || "").trim() === "code_application"
-  ));
+    ))
+    .map((edge) => String(edge?.target_id || "").trim())
+    .filter(Boolean));
+  const missingApplicationEdgeIds = applicationIds.filter((id) => !codedApplicationEdgeIds.has(id));
+  const edgeEvidenceOk = applicationEvidenceOk
+    && applicationIds.length > 0
+    && missingApplicationEdgeIds.length === 0;
   return {
     ok: runListed && applicationEvidenceOk && edgeEvidenceOk,
     run_id: runId,
     run_listed: runListed,
     expected_application_count: expectedApplicationCount,
     application_count: runApplications.length,
+    unique_application_count: uniqueApplicationIds.size,
     decision_count: runDecisions.length,
     edge_count: runEdges.length,
+    coded_application_edge_count: codedApplicationEdgeIds.size,
+    missing_application_edge_ids: missingApplicationEdgeIds.slice(0, 25),
     application_evidence_ok: applicationEvidenceOk,
     edge_evidence_ok: edgeEvidenceOk,
   };

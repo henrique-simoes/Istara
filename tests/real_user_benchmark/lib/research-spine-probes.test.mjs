@@ -437,6 +437,124 @@ test("three-donor benchmark accepts full multi-model coding evidence", async () 
   assert.deepEqual(blockers, []);
 });
 
+test("traceability rejects duplicate current-run application identities", async () => {
+  const logger = makeLogger();
+  const blockers = [];
+  const featureResults = {};
+  const traceability = makeTraceability("run-duplicate");
+  traceability.code_applications[traceability.code_applications.length - 1]
+    = { ...traceability.code_applications[0] };
+  const api = {
+    async get(path) {
+      if (path === "/api/research-validity/contract") {
+        return { contract: {}, qualitative_coding_protocol: {} };
+      }
+      if (path.includes("/code-applications/")) return makeReconciledApplications("run-duplicate");
+      if (path.includes("/reconciliation-decisions")) return makeReconciliationDecisions("run-duplicate");
+      if (path.includes("/summary")) return {
+        report_gate: "accepted_reconciled_evidence_from_approved_done_tasks_only",
+        coding_run_count: 1,
+        evidence_unit_count: 4,
+      };
+      if (path.includes("/evidence-units")) return makeSubstantiveUnits();
+      if (path.includes("/coding-runs")) return [{ id: "run-duplicate" }];
+      if (path.includes("/traceability")) return traceability;
+      if (path.includes("/telemetry-audit")) return { status: "ok" };
+      return {};
+    },
+    async post() {
+      return {
+        id: "run-duplicate",
+        status: "completed",
+        promotion_status: "accepted",
+        code_application_count: 12,
+        reliability_method: "fleiss_kappa_with_krippendorff_alpha_companion",
+        distinct_model_count: 3,
+        rater_count: 3,
+        kappa: 0.81,
+        alpha: 0.79,
+        route_evidence: makeServedModelRoutes(),
+      };
+    },
+  };
+
+  await exerciseResearchSpineValidation({
+    api,
+    projectId: "project-duplicate-traceability",
+    logger,
+    featureResults,
+    blockers,
+    codingValidationEnabled: true,
+    codingValidationLimit: 4,
+    expectedDistinctCoders: 3,
+  });
+
+  assert.equal(featureResults.codingValidation, true);
+  assert.equal(featureResults.researchSpineTraceability, false);
+  assert.equal(logger.payload.traceability_coding_run.application_evidence_ok, false);
+  assert.equal(logger.payload.traceability_coding_run.unique_application_count, 11);
+  assert.equal(logger.issues.at(-1).title, "Research Spine traceability was not bound to the current coding run");
+});
+
+test("traceability rejects a current-run application without a coded evidence edge", async () => {
+  const logger = makeLogger();
+  const blockers = [];
+  const featureResults = {};
+  const traceability = makeTraceability("run-missing-edge");
+  traceability.evidence_graph_edges = traceability.evidence_graph_edges.slice(1);
+  const api = {
+    async get(path) {
+      if (path === "/api/research-validity/contract") {
+        return { contract: {}, qualitative_coding_protocol: {} };
+      }
+      if (path.includes("/code-applications/")) return makeReconciledApplications("run-missing-edge");
+      if (path.includes("/reconciliation-decisions")) return makeReconciliationDecisions("run-missing-edge");
+      if (path.includes("/summary")) return {
+        report_gate: "accepted_reconciled_evidence_from_approved_done_tasks_only",
+        coding_run_count: 1,
+        evidence_unit_count: 4,
+      };
+      if (path.includes("/evidence-units")) return makeSubstantiveUnits();
+      if (path.includes("/coding-runs")) return [{ id: "run-missing-edge" }];
+      if (path.includes("/traceability")) return traceability;
+      if (path.includes("/telemetry-audit")) return { status: "ok" };
+      return {};
+    },
+    async post() {
+      return {
+        id: "run-missing-edge",
+        status: "completed",
+        promotion_status: "accepted",
+        code_application_count: 12,
+        reliability_method: "fleiss_kappa_with_krippendorff_alpha_companion",
+        distinct_model_count: 3,
+        rater_count: 3,
+        kappa: 0.81,
+        alpha: 0.79,
+        route_evidence: makeServedModelRoutes(),
+      };
+    },
+  };
+
+  await exerciseResearchSpineValidation({
+    api,
+    projectId: "project-missing-edge",
+    logger,
+    featureResults,
+    blockers,
+    codingValidationEnabled: true,
+    codingValidationLimit: 4,
+    expectedDistinctCoders: 3,
+  });
+
+  assert.equal(featureResults.codingValidation, true);
+  assert.equal(featureResults.researchSpineTraceability, false);
+  assert.equal(logger.payload.traceability_coding_run.edge_evidence_ok, false);
+  assert.equal(logger.payload.traceability_coding_run.coded_application_edge_count, 11);
+  assert.equal(logger.payload.traceability_coding_run.missing_application_edge_ids.length, 1);
+  assert.equal(logger.issues.at(-1).title, "Research Spine traceability was not bound to the current coding run");
+});
+
 test("three-donor benchmark rejects project traceability that omits the current coding run", async () => {
   const logger = makeLogger();
   const blockers = [];

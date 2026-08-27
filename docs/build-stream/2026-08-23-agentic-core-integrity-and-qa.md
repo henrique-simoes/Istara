@@ -8,8 +8,8 @@ phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal ac
 stage: S2-execute/S3-review
 status: in-progress
 blocked_on: "Owner-approved Docker-only Mac Studio provisioning: current env/config, provider-served identities, and three-model inputs"
-last: { agent: gpt-5-codex, at: 2026-08-27T15:04:41Z, ledger: L-365 }
-next_action: "Transport the idempotent synthetic-receipt slice after final Compass evidence; then continue F-R9-114 with deeper Done/report traceability assertions and obtain owner-approved provider/model inputs for the Docker-only three-model Mac Studio run. Keep synthetic receipts non-reportable and do not start live workloads without those inputs."
+last: { agent: gpt-5-codex, at: 2026-08-27T15:12:30Z, ledger: L-366 }
+next_action: "Commit and transport the exact current-run traceability oracle hardening, then continue F-R9-114 with deeper Done/report assertions and obtain owner-approved provider/model inputs for the Docker-only three-model Mac Studio run. Keep synthetic receipts non-reportable and do not start live workloads without those inputs."
 ```
 
 ## Plan overview / roadmap
@@ -8670,3 +8670,34 @@ live benchmark, or testing-data deletion occurred. Compass Forge task evidence
 and transport. F-R9-114 remains open for deeper Done/report traceability,
 genuine human reconciliation acceptance, and the owner-approved Docker-only
 three-model run with distinct served identities.
+
+### L-366 | 2026-08-27T15:12:30Z | S3-review | gpt-5-codex | exact current-run traceability oracle hardening
+
+The benchmark traceability probe no longer treats an oversized application list
+and one qualifying edge as sufficient evidence. It now requires the current
+coding run to contain exactly the expected number of applications, unique
+application identities, and a coded `evidence_unit -> coded_as ->
+code_application` edge for every current-run application. Duplicate identities,
+extra rows, missing per-application edges, and empty application sets fail
+closed. The receipt exposes unique counts, coded-edge counts, and bounded
+missing-application IDs so a failure is diagnosable without reconstructing the
+graph from prose.
+
+Two deterministic regressions cover the previous false-positive cases: a
+duplicate current-run application identity and a current-run application with
+no coded evidence edge. The positive three-donor path remains covered, and the
+strict accepted Research Spine gate is unchanged: this is an evidence oracle
+hardening, not a synthetic promotion or human-review substitute.
+
+Verification passed: `node --check
+tests/real_user_benchmark/lib/research-spine-probes.mjs`; the full deterministic
+benchmark `npm --prefix tests/real_user_benchmark test` passes `94/94`; feature
+docs generate/check passes (`224` generated artifacts; `86/86` features); and
+`git diff --check` passes. Compass Forge after-gate record `298` reports zero
+new issues against the inherited baseline; task evidence `333` records the
+commands and regressions. The traceability implementation/docs are currently
+working-tree changes pending commit, push, and Mac Studio retake. No server,
+provider request, model load, Docker image pull, host installation, live
+benchmark, or data deletion occurred. F-R9-114 remains open for a genuine
+human reconciliation/Done/report exercise and the owner-approved Docker-only
+three-model run with exact served identities.
