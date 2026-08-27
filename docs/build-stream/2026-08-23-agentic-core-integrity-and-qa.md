@@ -8,7 +8,7 @@ phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal ac
 stage: S2-execute/S3-review
 status: in-progress
 blocked_on: "Owner-approved Docker-only Mac Studio provisioning: current env/config, provider-served identities, and three-model inputs"
-last: { agent: gpt-5-codex, at: 2026-08-27T10:01:45Z, ledger: L-314 }
+last: { agent: gpt-5-codex, at: 2026-08-27T10:02:54Z, ledger: L-315 }
 next_action: "Resume the owner-approved Docker-only live acceptance matrix when its env, served model identities, donor inputs, and redacted artifact paths exist; keep all unproven gates open."
 ```
 
@@ -7416,3 +7416,19 @@ live provider, Petals donation, combined routing, engine-parity, same-session
 two-call, long-horizon, three-rater Fleiss/Krippendorff, reconciliation, human-Done,
 or report-promotion gates. Resume at L-306 section 2 only after the owner-approved
 Docker-only inputs exist.
+
+### L-315 | 2026-08-27T10:02:54Z | S5-ship&learn | gpt-5-codex | final tip parity confirmation
+
+The ledger-only follow-up commit `1e3827f06a93b0f8240370dcfe546422e7414a92`
+(`docs: record testing transport checkpoint`) is now the exact local and
+`origin/testing` tip. The Mac Studio detached retake
+`~/istara-testing-retake-47bf` was retargeted to this final SHA and remains clean.
+The explicit Docker engine `/usr/local/bin/docker` reports server `29.7.2`; the
+passive inventory still has zero Istara/provider/Petals/benchmark/donor containers
+and only the unrelated Plex container active.
+
+All source synchronization work in this phase is complete. The Build Stream remains
+`in-progress` because the owner-approved Docker-only live acceptance inputs are not
+present. No host installation, model load, provider request, or benchmark workload
+was performed. Resume at L-306 section 2 when those inputs are supplied, preserving
+the fail-closed requirement for every live Research Spine and ensemble gate.
