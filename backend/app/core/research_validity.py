@@ -834,6 +834,10 @@ def evaluate_reliability_gate(
                 "fallback_reason": "Effective rater provenance is incomplete.",
             }
         )
+        item_statuses = item_level_promotion_statuses(matrix, result["promotion_status"])
+        result["item_promotion_statuses"] = item_statuses
+        result["accepted_evidence_unit_ids"] = []
+        result["reconciliation_evidence_unit_ids"] = list(item_statuses)
         return result
 
     if (

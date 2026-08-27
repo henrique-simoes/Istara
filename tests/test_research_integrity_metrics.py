@@ -214,6 +214,9 @@ def test_effective_rater_provenance_is_reconstructable_and_conflicts_fail_closed
     )
     assert incomplete["method"] == "incomplete_rater_provenance"
     assert incomplete["promotion_status"] == "needs_reconciliation"
+    assert incomplete["item_promotion_statuses"] == {"eu-1": "needs_reconciliation"}
+    assert incomplete["accepted_evidence_unit_ids"] == []
+    assert incomplete["reconciliation_evidence_unit_ids"] == ["eu-1"]
 
 
 def test_fleiss_kappa_matches_independent_count_formula_and_category_order():

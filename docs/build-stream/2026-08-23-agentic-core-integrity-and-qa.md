@@ -8,8 +8,8 @@ phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal ac
 stage: S2-execute/S3-review
 status: in-progress
 blocked_on: "Owner-approved Docker-only Mac Studio provisioning: current env/config, provider-served identities, and three-model inputs"
-last: { agent: gpt-5-codex, at: 2026-08-27T12:30:00Z, ledger: L-340 }
-next_action: "Run the after-gate for the invalid-method fix, transport the checkpoint, then continue the static public-engine and Research Spine acceptance audit; keep live semantic acceptance blocked until owner-approved Docker-only model inputs exist."
+last: { agent: gpt-5-codex, at: 2026-08-27T13:10:45Z, ledger: L-346 }
+next_action: "Commit and push the provenance item-status fix, verify exact detached Mac Studio parity, then continue the static Research Spine audit; keep live semantic acceptance blocked until owner-approved Docker-only model inputs exist."
 ```
 
 ## Plan overview / roadmap
@@ -8114,3 +8114,59 @@ and long-horizon receipts, redaction, and teardown—remain unverified until
 owner-approved Docker-only inputs and redacted receipts exist. Continue the
 static audit from this tip; the append itself requires one final detached
 parity check after it is committed.
+
+### L-345 | 2026-08-27T13:05:16Z | S2-execute/S3-review | gpt-5-codex | incomplete provenance item-status contract
+
+The next Research Spine audit traced `evaluate_reliability_gate()` through its
+service consumer and the existing integrity tests. The `require_rater_provenance`
+fail-closed branch correctly returned `promotion_status=needs_reconciliation`,
+but unlike every other early-exit branch it omitted `item_promotion_statuses`,
+`accepted_evidence_unit_ids`, and `reconciliation_evidence_unit_ids`. The service
+currently reconstructs a fallback, but direct callers and audit consumers could
+observe an incomplete result contract and lose the exact unit-level remediation
+set.
+
+The branch now emits all three fields from the same matrix helper used by duplicate,
+independence, conflict, missing-rating, and insufficient-model exits. A regression
+in `tests/test_research_integrity_metrics.py` asserts the complete one-unit
+reconciliation payload. Compass Forge impact/why/test-impact were run for the
+production module and regression surface, and the pre-gate recorded no new issues;
+the changed production module passes Ruff, the focused test passes, and
+`git diff --check` passes. The test module still reports pre-existing unused-import
+Ruff violations when linted directly; no unrelated cleanup was made.
+
+No provider request, model load, host installation, or Docker workload was started.
+Next: run the affected full deterministic reliability/ensemble matrix, feature-doc
+generation, after-gate, evidence, commit/push, and detached Mac Studio parity check.
+Live three-model semantic quality, formal provider reliability, source grounding,
+reconciliation, human Done/report promotion, Petals cooperation, two-call/
+long-horizon execution, and teardown remain blocked on owner-approved Docker inputs
+and redacted receipts.
+
+### L-346 | 2026-08-27T13:10:45Z | S2-execute/S3-review | gpt-5-codex | reliability provenance verification and gate
+
+The incomplete-provenance contract fix and its living documentation are ready
+for transport. Split verification completed with `28 passed` in
+`tests/test_research_integrity_metrics.py`, `31 passed, 1 deselected` in the
+non-hanging Research Spine contract subset, and `89 passed` across the
+cross-engine ensemble, W7 validation, dispatcher authority, and agentic
+contract suites, all under `-W error::RuntimeWarning`. Feature documentation
+regeneration/check passed (`224` generated artifacts; `86/86` features), the
+changed production module passes Ruff, and `git diff --check` passes.
+
+Compass Forge after-gate record `275` reports `new_issues=[]`, no new failures,
+and no new architecture/import/contract drift; the repository's known
+complexity, route/type, and secret-flow findings remain inherited. Direct Ruff
+on the legacy integrity test module still reports its pre-existing unused
+imports and was not broadened into this change. The earlier combined command
+was intentionally interrupted after `40 passed` when it reached the known
+async/database idle hang in the survey-ingestion test; the isolated subset is
+the authoritative contract evidence.
+
+No provider request, model load, host installation, or Docker workload was
+started. Next: commit/push and verify the detached Mac Studio checkout at the
+exact resulting SHA, then resume static audit work. Live three-model semantic
+quality, provider-served reliability, source grounding, reconciliation, human
+Done/report promotion, Petals cooperation, two-call/long-horizon execution,
+and teardown remain blocked on owner-approved Docker inputs and redacted
+receipts.
