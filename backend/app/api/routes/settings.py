@@ -1027,6 +1027,13 @@ async def add_pi_endpoint(data: PiEndpointRequest, request: Request):
     endpoint_id = data.endpoint_id.strip()
     if not endpoint_id:
         raise HTTPException(status_code=400, detail="endpoint_id is required")
+    from app.core.pi_runtime.model_manager import is_reserved_petals_endpoint_id
+
+    if is_reserved_petals_endpoint_id(endpoint_id):
+        raise HTTPException(
+            status_code=400,
+            detail="pi-petals-* endpoint IDs are reserved for consented Petals donors",
+        )
     if endpoint_id == "pi-deepseek-default":
         raise HTTPException(status_code=400, detail="pi-deepseek-default is built in")
     if any(e.endpoint_id == endpoint_id for e in settings.pi_api_endpoints):

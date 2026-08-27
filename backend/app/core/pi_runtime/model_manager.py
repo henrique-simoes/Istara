@@ -40,6 +40,21 @@ from .model_management_compat import SUPPORTED_PROVIDERS, host_is_plannable
 
 logger = logging.getLogger(__name__)
 
+# Petals bridge identities are generated from donor node ids.  This namespace
+# is reserved so a user-configured Pi endpoint cannot shadow a consented donor
+# projection and make a request resolve to a different provider than its route
+# identity claims.
+PETALS_ENDPOINT_PREFIX = "pi-petals-"
+
+
+def is_reserved_petals_endpoint_id(endpoint_id: str) -> bool:
+    return str(endpoint_id or "").strip().startswith(PETALS_ENDPOINT_PREFIX)
+
+
+def _is_petals_entry(entry: _CatalogEntry) -> bool:
+    """Recognize both dynamic projections and explicit Petals test catalogs."""
+    return entry.source == "petals" or entry.kind == "petals"
+
 # Live managers, so LLMServer CRUD / network discovery can invalidate the
 # DB projection on every in-process manager (W8 UX parity) without changing
 # how managers are constructed or shared.
@@ -249,21 +264,29 @@ class PiModelManager:
             logger.debug("pi model manager: petals projection skipped")
             return
         for entry_dict in entries:
-            self._entries.setdefault(
-                entry_dict["endpoint_id"],
-                _CatalogEntry(
-                    endpoint_id=entry_dict["endpoint_id"],
-                    provider_kind=str(entry_dict.get("provider_kind", "openai_compat")),
-                    base_url=str(entry_dict["base_url"]).rstrip("/"),
-                    model=str(entry_dict.get("model") or "default"),
-                    source="petals",
-                    api_key=str(entry_dict.get("api_key") or ""),
-                    kind="petals",
-                    allowed_project_ids=tuple(
-                        str(project_id).strip()
-                        for project_id in (entry_dict.get("allowed_project_ids") or ())
-                        if str(project_id).strip()
-                    ),
+            endpoint_id = str(entry_dict["endpoint_id"])
+            existing = self._entries.get(endpoint_id)
+            if existing is not None:
+                if not _is_petals_entry(existing):
+                    logger.error(
+                        "pi model manager: reserved %s identity is already configured by %s; "
+                        "donor projection is withheld",
+                        endpoint_id,
+                        existing.source,
+                    )
+                continue
+            self._entries[endpoint_id] = _CatalogEntry(
+                endpoint_id=endpoint_id,
+                provider_kind=str(entry_dict.get("provider_kind", "openai_compat")),
+                base_url=str(entry_dict["base_url"]).rstrip("/"),
+                model=str(entry_dict.get("model") or "default"),
+                source="petals",
+                api_key=str(entry_dict.get("api_key") or ""),
+                kind="petals",
+                allowed_project_ids=tuple(
+                    str(project_id).strip()
+                    for project_id in (entry_dict.get("allowed_project_ids") or ())
+                    if str(project_id).strip()
                 ),
             )
 
@@ -393,6 +416,11 @@ class PiModelManager:
         min_context: int,
         project_id: str | None = None,
     ) -> bool:
+        # ``pi-petals-*`` is a projection namespace, never a user-configurable
+        # endpoint namespace.  A malformed persisted/static entry must not
+        # participate in generic selection (including distinct ensembles).
+        if is_reserved_petals_endpoint_id(entry.endpoint_id) and not _is_petals_entry(entry):
+            return False
         if entry.source == "petals" and project_id is not None:
             requested_project = str(project_id).strip()
             allowed = set(entry.allowed_project_ids)
@@ -464,6 +492,10 @@ class PiModelManager:
         project_id: str | None = None,
     ) -> ResolvedPiEndpoint:
         if endpoint_id:
+            if is_reserved_petals_endpoint_id(endpoint_id):
+                configured = self._entries.get(endpoint_id)
+                if configured is None or not _is_petals_entry(configured):
+                    raise PiEndpointResolutionError("petals_endpoint_namespace_conflict")
             entry = self._entries.get(endpoint_id)
             if entry is None:
                 # Settings-configured endpoints remain exactly resolvable.
@@ -608,8 +640,18 @@ class PiModelManager:
         that model beats unrelated local entries. When the model is omitted or
         ``default``, the active local provider anchors the vector space.
         """
+        if endpoint_id and is_reserved_petals_endpoint_id(endpoint_id):
+            configured = self._entries.get(endpoint_id)
+            if configured is None or not _is_petals_entry(configured):
+                raise PiEndpointResolutionError("petals_endpoint_namespace_conflict")
         candidates = [
-            entry for entry in self._entries.values() if entry.provider_kind == "openai_compat"
+            entry
+            for entry in self._entries.values()
+            if entry.provider_kind == "openai_compat"
+            and not (
+                is_reserved_petals_endpoint_id(entry.endpoint_id)
+                and not _is_petals_entry(entry)
+            )
         ]
         if not candidates:
             raise PiEndpointResolutionError("no_matching_pi_embed_endpoint")
@@ -666,6 +708,9 @@ class PiModelManager:
                 kind=entry.kind,
             )
             for entry in self._entries.values()
+            if not (
+                is_reserved_petals_endpoint_id(entry.endpoint_id) and not _is_petals_entry(entry)
+            )
         ]
 
 

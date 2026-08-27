@@ -204,6 +204,9 @@ def test_effective_rater_provenance_is_reconstructable_and_conflicts_fail_closed
     assert result["matrix"]["provenance_conflicts"] == [
         {"coder_id": "coder-a", "field": "endpoint_id"}
     ]
+    assert result["item_promotion_statuses"] == {"eu-1": "needs_reconciliation", "eu-2": "needs_reconciliation"}
+    assert result["accepted_evidence_unit_ids"] == []
+    assert result["reconciliation_evidence_unit_ids"] == ["eu-1", "eu-2"]
 
     incomplete = evaluate_reliability_gate(
         [{"coder_id": "coder-a", "model_name": "model-a", "evidence_unit_id": "eu-1", "codes": ["nav"]}],

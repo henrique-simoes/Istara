@@ -802,6 +802,10 @@ def evaluate_reliability_gate(
                 "fallback_reason": "Independent coding reused a model identity as if it were a distinct coder.",
             }
         )
+        item_statuses = item_level_promotion_statuses(matrix, result["promotion_status"])
+        result["item_promotion_statuses"] = item_statuses
+        result["accepted_evidence_unit_ids"] = []
+        result["reconciliation_evidence_unit_ids"] = list(item_statuses)
         return result
 
     if matrix.get("provenance_conflicts"):
@@ -814,6 +818,10 @@ def evaluate_reliability_gate(
                 "fallback_reason": "A coder changed effective identity within one coding run.",
             }
         )
+        item_statuses = item_level_promotion_statuses(matrix, result["promotion_status"])
+        result["item_promotion_statuses"] = item_statuses
+        result["accepted_evidence_unit_ids"] = []
+        result["reconciliation_evidence_unit_ids"] = list(item_statuses)
         return result
 
     if require_rater_provenance and matrix.get("missing_provenance"):

@@ -68,6 +68,13 @@ async def test_pi_endpoint_crud(client, monkeypatch):
         assert added["pi-test-endpoint"].model == "test-model-1"
         assert added["pi-test-endpoint"].provider_kind == "openai_compat"
 
+        reserved = await client.post(
+            "/api/settings/pi-endpoints",
+            json={**payload, "endpoint_id": "pi-petals-donor-1"},
+        )
+        assert reserved.status_code == 400
+        assert "reserved" in reserved.json()["detail"]
+
         resp = await client.get("/api/settings/pi-endpoints")
         assert resp.status_code == 200
         ids = [e["endpoint_id"] for e in resp.json()["endpoints"]]

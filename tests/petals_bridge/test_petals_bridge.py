@@ -316,6 +316,43 @@ def test_model_manager_petals_projection(monkeypatch, donor, registry_with):
     assert resolved.base_url.endswith("/nodes/donor-1")
 
 
+def test_static_endpoint_cannot_shadow_petals_projection(
+    monkeypatch, donor, registry_with
+):
+    """The generated Petals namespace must fail closed on a static collision."""
+    monkeypatch.setattr(settings, "petals_bridge_enabled", True)
+    from app.core.pi_runtime.endpoints import PiEndpointResolutionError, ResolvedPiEndpoint
+    from app.core.pi_runtime.model_manager import PiModelManager
+
+    manager = PiModelManager(
+        endpoints=[
+            ResolvedPiEndpoint(
+                endpoint_id="pi-petals-donor-1",
+                provider_kind="openai_compat",
+                base_url="https://static.example/v1",
+                model="static-model",
+                api_key="static-key",
+                timeout_ms=30_000,
+                max_retries=0,
+            )
+        ],
+        include_local=False,
+    )
+    manager._project_petals()
+
+    with pytest.raises(
+        PiEndpointResolutionError, match="petals_endpoint_namespace_conflict"
+    ):
+        manager.resolve(endpoint_id="pi-petals-donor-1", project_id="project-a")
+    with pytest.raises(PiEndpointResolutionError, match="insufficient_distinct"):
+        manager.resolve_distinct(1, project_id="project-a")
+    with pytest.raises(PiEndpointResolutionError, match="no_matching_pi_embed_endpoint"):
+        manager.resolve_embed()
+    assert "pi-petals-donor-1" not in {
+        entry.endpoint_id for entry in manager.catalog()
+    }
+
+
 def test_pi_runtime_never_imports_registry():
     """Isolation invariant: no pi_runtime module statically imports the registry
     scheduling plane. (model_manager_provisioning's function-level ComputeNode

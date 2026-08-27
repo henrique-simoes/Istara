@@ -724,6 +724,9 @@ def test_reused_model_identity_is_not_counted_as_independent_ensemble():
     assert result["method"] == "invalid_independence"
     assert result["promotion_status"] == "needs_reconciliation"
     assert "reused a model identity" in result["fallback_reason"]
+    assert result["item_promotion_statuses"] == {"eu-1": "needs_reconciliation"}
+    assert result["accepted_evidence_unit_ids"] == []
+    assert result["reconciliation_evidence_unit_ids"] == ["eu-1"]
 
 
 def test_single_model_path_is_lower_assurance():

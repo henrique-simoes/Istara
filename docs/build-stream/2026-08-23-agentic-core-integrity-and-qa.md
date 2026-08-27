@@ -8,8 +8,8 @@ phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal ac
 stage: S2-execute/S3-review
 status: in-progress
 blocked_on: "Owner-approved Docker-only Mac Studio provisioning: current env/config, provider-served identities, and three-model inputs"
-last: { agent: gpt-5-codex, at: 2026-08-27T09:38:12Z, ledger: L-311 }
-next_action: "Obtain owner-approved Docker-only env/model/provider inputs, then execute the staged provider, Petals, combined, engine-parity, ensemble, and Research Spine acceptance matrix below; keep every missing prerequisite fail-closed."
+last: { agent: gpt-5-codex, at: 2026-08-27T10:00:44Z, ledger: L-313 }
+next_action: "Commit and push the deterministic hardening to testing, verify origin/testing and the clean Mac Studio retake, then resume the owner-approved Docker-only live acceptance matrix when its inputs exist."
 ```
 
 ## Plan overview / roadmap
@@ -7343,3 +7343,52 @@ file, the Docker-host model directory is empty, and no Istara/provider/Petals/ru
 workload is active. Resume at L-306 section 2 when the owner-approved inputs exist;
 keep CF-13, CF-15, CF-20, and CF-21 open until the live matrix produces redacted
 artifacts and terminal evidence.
+
+### L-312 | 2026-08-27T09:59:22Z | S3-review | gpt-5-codex | namespace and reliability hardening retest checkpoint
+
+The second review pass found that reserving the generated `pi-petals-*` namespace
+was incomplete if a malformed static entry was already persisted: exact resolution
+failed closed, but generic distinct-ensemble and embedding selection could still see
+the collision. `PiModelManager` now excludes non-Petals entries in that namespace
+from all generic selection paths, preserves explicit `kind="petals"` fixtures, hides
+invalid collisions from the catalog, and the settings POST rejects new reserved IDs.
+Reliability-gate failure exits now expose the same item-level promotion and evidence
+ID shape as other paths, so invalid independence/provenance cannot silently omit
+per-item state. These changes address F-R9-99 and F-R9-100 in the external findings
+register; donor/provider live proof remains open.
+
+Verification completed locally: the focused Python integrity set passed `96`; the
+broader Petals/Pi/dispatcher/manager/Research Spine matrix passed `193`; the Node
+benchmark `check` passed all `82` syntax, corpus, provenance, scoring, topology,
+acceptance, and Docker-wrapper tests; Ruff on touched files, `py_compile`, and
+`git diff --check` passed. Feature documentation regeneration/check passed with
+`224` generated artifacts and `86/86` feature checks. Compass Forge `gate before`
+record `243` completed with inherited baseline findings plus new non-blocking
+complexity warnings for the edited manager and an existing oversized test file;
+no new import cycles, forbidden dependencies, or missing required paths were found.
+
+No live model/provider/Petals request or model load occurred. The only unchecked
+acceptance gates remain the owner-approved Docker-only Mac Studio provisioning,
+provider/Petals/combined runtime runs, engine parity, same-session two-call and
+long-horizon receipts, real three-rater Fleiss/Krippendorff evidence, reconciliation,
+and human-Done/report promotion. The next step is to attach these deterministic
+command results to the open CF tasks, run the after-gate, commit and push only the
+intended testing changes, and passively retarget the clean Mac Studio retake without
+starting any workload.
+
+### L-313 | 2026-08-27T10:00:44Z | S3-review | gpt-5-codex | deterministic evidence and after-gate checkpoint
+
+The deterministic verification evidence is now attached to the open Compass Forge
+tasks: command evidence `207` (CF-15), `208` (CF-20), and `209` (CF-13), plus
+after-gate evidence `211` (CF-15). The after-gate compared against before record
+`243` and reported `new_issue_count=0`, `new_failures=0`, `cycles=0`, and no
+actionable failures. Its overall `status=fail` is inherited repository debt only:
+the configured secret-flow and unexpected-large-file checks remain failing, with
+existing route/type drift and warnings; none was introduced by this change.
+
+The ledger, code, tests, and generated manifest are ready for a clean testing commit.
+Next: stage only the nine intended repository files, commit/push `testing`, verify
+local and `origin/testing` are identical, then passively retarget
+`~/istara-testing-retake-47bf` on the Mac Studio to that SHA with status clean. Do
+not start Docker workloads or load models until the owner-approved env, served model
+identities, donor inputs, and redacted artifact paths are present.
