@@ -8,7 +8,7 @@ phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal ac
 stage: S5-ship&learn
 status: in-progress
 blocked_on: null
-last: { agent: gpt-5-codex, at: 2026-08-27T02:34:00Z, ledger: L-240 }
+last: { agent: gpt-5-codex, at: 2026-08-27T02:28:00Z, ledger: L-241 }
 next_action: "Resolve whether ‘Agentic Loop’ is shorthand for legacy/Istara or a required third engine; then, at the next authorized live window, resolve the launch-time origin/testing SHA, materialize a fresh detached checkout on Mac Studio, and execute the Docker-only provider/Petals/combined G0–G22 retake; until then leave G0/G1 not_run."
 ```
 
@@ -5328,3 +5328,24 @@ fresh detached checkout, render Compose before startup, and execute the Docker-o
 Petals, and combined G0–G22 matrix. Preserve immutable route/model identity and all Research
 Spine gate artifacts; never overwrite the stale owner-dirty named checkout or run a host-managed
 model path.
+
+### L-241 | 2026-08-27T02:28:00Z | S5-ship&learn | gpt-5-codex | verifier | Phase 9
+
+Did: Added the final transport receipt after the ledger checkpoint itself was committed. The
+current `testing` tip is `1ed2723ac68c207f2f4b75f3471aaae97c10c8f7`; `git rev-parse HEAD`,
+`git ls-remote origin refs/heads/testing`, and the worktree status all agree and are clean.
+Compass Forge evidence `90` carries the corrected SHA (superseding the earlier intermediate
+checkpoint receipt `89`).
+
+Verified: the after-gate still reports zero new issues, zero new failures, zero cycles, and no
+actionable failures. Its failing status is inherited repository `secret_flow`/large-file debt
+and the documented path-scoped ledger suppression, not this checkpoint. No live provider or
+model activity occurred.
+
+Boundary/next: F-R9-59 remains the only unresolved static audit decision: confirm whether
+“Agentic Loop” is shorthand for legacy/Istara or a required third execution semantic. G0/G1
+remain `not_run`. At the next authorized live window, re-resolve this exact remote SHA, use a
+fresh detached Docker checkout on Mac Studio, render Compose before startup, and execute the
+provider, Petals, and combined G0–G22 matrix with immutable route/model, raw-span, reliability,
+grounding, reconciliation, human-Done/report, two-call/long-horizon, interoperability, and
+teardown artifacts. Do not use the stale owner-dirty named checkout or any host-managed path.
