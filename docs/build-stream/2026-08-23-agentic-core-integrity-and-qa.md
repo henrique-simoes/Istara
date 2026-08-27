@@ -8,7 +8,7 @@ phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal ac
 stage: S2-execute/S3-review
 status: in-progress
 blocked_on: "Owner-approved Docker-only Mac Studio provisioning: current env/config, provider-served identities, and three-model inputs"
-last: { agent: gpt-5-codex, at: 2026-08-27T11:32:59Z, ledger: L-330 }
+last: { agent: gpt-5-codex, at: 2026-08-27T11:34:50Z, ledger: L-331 }
 next_action: "Resume the owner-approved Docker-only live matrix only when current env/config, served model identities, donor inputs, and redacted artifact paths exist; keep every live gate fail-closed."
 ```
 
@@ -7770,3 +7770,28 @@ occurred. The ledger append changes the tip; final SHA and remote/Mac Studio
 parity must be recorded after the commit. The strict Docker-only live matrix
 remains blocked on owner-approved current env/config, served model identities,
 donor/model inputs, and redacted receipts.
+
+### L-331 | 2026-08-27T11:34:50Z | S3-review/S5-ship&learn | gpt-5-codex | metric-domain evidence and parity checkpoint
+
+Compass command evidence `241` records the focused reliability-domain regression
+(`29` Research Spine oracle tests). Evidence `242` records the complete
+real-user package (`89` tests), `243` records feature documentation generation
+and validation (`224` generated artifacts; `86/86` checked), and `244` records
+the clean diff check. The native Rust after-gate is record `261`; attached
+Compass gate evidence `247` reports the inherited baseline gate status with
+`new_issue_count=0`, no new forbidden dependencies, no new required paths, and
+no new Python import cycles.
+
+Commit `4842a62f` is pushed to `origin/testing`. Evidence `245` records the
+post-push local/remote/Mac Studio parity check: all refs match, the detached
+Mac Studio retake is clean, Docker Server is `29.7.2`, only unrelated Plex is
+running, model-file count is zero, and `.env.deploy` is absent. No host package
+operation, provider request, model load, or workload occurred.
+
+This closes the deterministic metric-oracle slice. The live provider/Petals/
+combined matrix, semantic three-model quality, same-session two-call and
+long-horizon receipts, reconciliation, human Done/report promotion, and
+teardown remain blocked on current owner-approved Docker-only env/config,
+served identities, donor/model inputs, and redacted artifacts. The next audit
+pass must preserve this fail-closed boundary while checking any remaining
+engine-selector and Research Spine acceptance gaps.
