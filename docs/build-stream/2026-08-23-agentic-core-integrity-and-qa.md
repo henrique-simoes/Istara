@@ -8,7 +8,7 @@ phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal ac
 stage: S5-ship&learn
 status: in-progress
 blocked_on: null
-last: { agent: gpt-5-codex, at: 2026-08-27T05:38:13Z, ledger: L-272 }
+last: { agent: gpt-5-codex, at: 2026-08-27T05:45:31Z, ledger: L-273 }
 next_action: "Keep G0/G1 and live G2–G22 open; at the next authorized window use a fresh detached origin/testing checkout, verify its archive digest inside Docker, and execute provider/Petals/combined retakes with three served model identities before claiming Research Spine completion."
 ```
 
@@ -6233,3 +6233,36 @@ numeric Fleiss and Krippendorff reliability, reconciliation and accepted-atom ga
 human-Done/report promotion, both Istara and Pi Agentic Loop modes through shared Pi
 Model Management, two-call and long-horizon traces, Petals donation/use/revoke scope,
 redaction, and teardown evidence before closing the Research Spine claim.
+
+### L-273 | 2026-08-27T05:45:31Z | S2-execute/S3-review/S5-ship&learn | gpt-5-codex | Docker-only topology documentation correction
+
+Did: corrected a remaining procedure/documentation contradiction in `TESTING.md` and
+the compute/pool feature contract. Both pages still described the canonical
+three-model probe as host-managed (Istara/admin/LM Studio on Mac Studio with Colima
+donors), despite the enforced Docker-only wrapper, topology contract, benchmark
+README, and owner instruction that the Mac Studio host must never receive package,
+model, or server installs. The active contract now states that Compose and disposable
+nested-Docker containers own Istara, admin, simulated researchers, and all donors;
+Mac Studio is only the Docker host and SSH control plane. It also requires
+pre-provisioned read-only model files and explicitly refuses host-managed Istara,
+weight downloads, host package installation, and Colima management. F-R9-77 records
+the finding in `/Users/user/Desktop/testing.md`.
+
+Verified: `python scripts/feature_docs.py --seed-missing --generate-site --check`
+reported `seeded 0`, `generated 224 site artifact(s)`, and `feature docs check passed
+for 86 feature(s)`; the Docker topology contract passed `10/10`; the real-user
+benchmark check passed `78/78`; and `git diff --check` was clean. Native Compass Forge
+before-gate record `172` reports no new issues, forbidden dependencies, import cycles,
+or missing required paths; the only new large-file observation is the already-scoped
+Build Stream ledger suppression. The global gate remains failed only for inherited
+secret-flow, route/type, complexity, and large-file debt. No runtime or generated
+application behavior changed and no live service/model was started.
+
+Boundary/next: this receipt is still pre-transport. Commit and push the corrected
+sources, generated feature site, and this ledger entry, then run the native after-gate
+and append its final receipt. G0/G1 and live G2-G22 remain open: the Mac Studio still
+needs a fresh detached exact-SHA checkout, in-container archive verification, approved
+provider/Petals/combined topology, three distinct provider-served identities over
+common raw spans, grounded non-duplicate coding, numeric Fleiss/Krippendorff
+reliability, reconciliation, human-Done/report promotion, both loop modes through
+shared Pi Model Management, two-call/long-horizon traces, redaction, and teardown.

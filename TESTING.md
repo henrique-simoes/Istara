@@ -334,14 +334,16 @@ donated compute plus non-empty live chat. For harness debugging only, the README
 documents explicit opt-out variables.
 
 For real multi-donor compute validation, each required donor must resolve to a
-distinct provider/host endpoint. The canonical three-model probe is
-host-managed: Mac Studio runs Istara, the admin session, and the LM Studio
-donor; Colima runs only two researcher/client simulations plus their Qwen/Gemma
-llama.cpp donor endpoints. It skips the Istara server sandbox, starts disposable
-client/donor containers, removes benchmark-owned containers, and stops Colima
-after the run unless keep/debug flags are set. This mode is for deliberate live
-benchmark runs only and does not download models unless explicitly configured
-to do so.
+distinct provider/host endpoint. The historical host-managed three-model probe
+is refused before any live service, model, or package operation. The supported
+three-model probe is fully Docker-owned: the Compose project runs Istara, the
+admin flow, and the first donor; disposable Docker containers run the simulated
+researchers plus the second and third llama.cpp donors through the nested Docker
+socket. The Mac Studio is only the Docker host and SSH control plane. Model files
+must already exist under the configured read-only model root; the wrapper never
+downloads weights, installs host packages, manages Colima, or starts a
+host-managed Istara process. Benchmark-owned containers are removed after the
+run unless explicit keep/debug flags are set.
 
 ## Live LLM Contract
 
