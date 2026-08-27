@@ -8,7 +8,7 @@ phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal ac
 stage: S2-execute/S3-review
 status: in-progress
 blocked_on: "Owner-approved Docker-only Mac Studio provisioning: current env/config, provider-served identities, and three-model inputs"
-last: { agent: gpt-5-codex, at: 2026-08-27T20:02:35Z, ledger: L-409 }
+last: { agent: gpt-5-codex, at: 2026-08-27T20:11:40Z, ledger: L-410 }
 next_action: "Obtain owner-approved Docker provider inputs, then run the live three-model Research Spine proof and separately verify Petals, human reconciliation/Done/report, two-call, and long-horizon gates; keep deterministic evidence separate."
 ```
 
@@ -23,9 +23,7 @@ timestamped ledger entry in this file.
 
 ### Current truth and non-claims
 
-* `testing` and `origin/testing` are both at `31f738b420d47cdeaaf391e4110c044c1e4ca30b`.
-  The checkout is clean. There is no `local/testing` ref. Do not create a local
-  ref merely to make the names symmetrical; record the absence instead.
+* `testing` and `origin/testing` are both at `bef7ab9efbaae908e6a64ef9ae2bae6e82be5d35` before the pending test commit. The checkout is clean before that test commit. There is no `local/testing` ref. Do not create a local ref merely to make the names symmetrical; record the absence instead.
 * The only other worktree is the clean recovery branch
   `recovery/pi-retake-linearized-2026-08-10`. It is not merged into `testing`
   (`testing...recovery/...` is `863 113`) and must not be deleted or rebased as
@@ -9884,3 +9882,28 @@ remain equal and clean. No live provider or Petals workload was started because
 the required owner-approved Docker inputs are still absent; the next agent should
 resume at Workstream C, not reinterpret the deterministic `425`/`100` suites as
 scientific acceptance.
+
+### L-410 | 2026-08-27T20:11:40Z | S2-execute/S3-review | gpt-5-codex | Mixed provider + Petals Research Spine boundary coverage
+
+Compass impact/why was run for the W7 integration surface and the new focused
+test module. The prior tests proved provider-only and Petals-only three-rater
+runs independently, but no deterministic test proved that one PiModelManager
+catalog could compose both sources simultaneously. A focused regression was
+added at `tests/pi_production/test_w7_mixed_pi_sources.py`: one faux managed
+provider plus two consented, project-scoped Petals donors are projected into the
+same manager; `run_independent_coding_run` selects three distinct identities;
+the real dispatcher and PiExecutionService perform structured calls; the Petals
+bridge preserves donor/model/project receipts; and the Research Spine accepts
+the complete Fleiss/alpha-gated matrix. The fixture intentionally includes a
+provider-account receipt because the first attempt was correctly blocked by the
+provenance gate when that receipt was empty.
+
+Verification: the focused W7 slice reports `3 passed`; the broader Pi/Petals/
+Research Spine production slice reports `776 passed, 0 failed, 5 skipped`;
+`feature_docs.py --seed-missing --generate-site --check` reports `224` generated
+artifacts and `86/86` checks; `git diff --check` passes. The source test was
+moved out of the existing W7 hotspot, so the change does not add its complexity
+warning. The working tree contains only the new focused test pending commit.
+No live provider or Petals model was loaded, and no Mac Studio host state was
+changed. Next: record command/gate evidence, commit/push this test and ledger
+checkpoint, then continue with owner-approved Docker-only live acceptance.
