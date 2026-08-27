@@ -8,8 +8,8 @@ phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal ac
 stage: S2-execute/S3-review
 status: in-progress
 blocked_on: "Owner-approved Docker-only Mac Studio provisioning: current env/config, provider-served identities, and three-model inputs"
-last: { agent: gpt-5-codex, at: 2026-08-27T22:45:00Z, ledger: L-434 }
-next_action: "Use the clean 085ae0b testing checkout for the owner-approved Docker-only Mac Studio matrix; keep live three-model, Fleiss/alpha, Petals, reconciliation, and Done/report gates open until receipts exist."
+last: { agent: gpt-5-codex, at: 2026-08-27T22:48:00Z, ledger: L-435 }
+next_action: "Use the clean a0a56c7 testing checkout for the owner-approved Docker-only Mac Studio matrix; keep live three-model, Fleiss/alpha, Petals, reconciliation, and Done/report gates open until receipts exist."
 ```
 
 ## Continuation blueprint — remaining work and acceptance contract
@@ -10418,3 +10418,18 @@ failures); the repository gate is red only on inherited checks (`31` failures,
 `212` warnings). The final branch checkpoint will include this ledger line and
 must preserve the same clean local/remote testing ref equality. The live Docker
 acceptance gate remains open and explicitly `not_run` per L-433/F-R9-162.
+
+### L-435 | 2026-08-27T22:48:00Z | S3-review | gpt-5-codex | Corrected final SHA pointer and handoff state
+
+The final pushed branch advanced from `085ae0b` through the ledger-only
+checkpoints `df89e9f`, `6f24758`, and `a0a56c7`. The handoff pointer now names
+the actual clean tip `a0a56c7c3993b0c042f0ac2212a894186390394b`; local
+`testing` and `origin/testing` are equal and the worktree is clean. CF task
+evidence `454` records that equality. The after-gate comparison remains clean
+per receipt `357`/evidence `453`; inherited repository debt is unchanged.
+
+No live Mac Studio Istara workload exists, so CF-SPEC-2 cannot be accepted from
+deterministic evidence alone. The next agent must preserve the dirty remote
+checkout, provision an isolated Docker-only workload from this exact tip, and
+capture the open Research Spine, Petals, provider identity, two-call, and
+long-horizon receipts before attempting task completion.
