@@ -8,7 +8,7 @@ phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal ac
 stage: S2-execute/S3-review
 status: in-progress
 blocked_on: "Owner-approved Docker-only Mac Studio provisioning: current env/config, provider-served identities, and three-model inputs"
-last: { agent: gpt-5-codex, at: 2026-08-27T21:51:56Z, ledger: L-425 }
+last: { agent: gpt-5-codex, at: 2026-08-27T21:53:21Z, ledger: L-426 }
 next_action: "Preserve the two-axis April Compass lineage versus CF-SPEC persistence wording, then continue CF-SPEC-2 implementation and the Docker-only live acceptance matrix; do not backdate or synthesize missing CF-SPEC rows."
 ```
 
@@ -10243,3 +10243,16 @@ CF before-gate baseline: `actionable_failures=[]`, `new_failures=0`, inherited
 Next: preserve this two-axis lineage/persistence wording in the final report,
 then continue CF-SPEC-2 implementation and the Docker-only live acceptance
 matrix; do not backdate or synthesize missing CF-SPEC rows.
+
+### L-426 | 2026-08-27T21:53:21Z | S3-acceptance | gpt-5-codex | Provenance checkpoint gated and transported
+
+Post-checkpoint Compass Forge after-gate evidence `425` reports
+`actionable_failures=[]`, `new_failures=0`, and `new_issue_count=0`; the
+repository's inherited baseline remains 31 failures and 212 warnings. The
+lineage/persistence reconciliation is committed as `c565e30b` and local
+`testing` equals `origin/testing`; the worktree is clean. This gate only
+qualifies the historical documentation checkpoint. It does not close the
+open CF-SPEC-2 live Research Spine acceptance gate.
+
+Next: resume CF-SPEC-2 implementation and Docker-only live acceptance when
+owner-approved provider/model inputs are available.
