@@ -8,7 +8,7 @@ phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal ac
 stage: S2-execute/S3-review
 status: in-progress
 blocked_on: "Owner-approved Docker-only Mac Studio provisioning: current env/config, provider-served identities, and three-model inputs"
-last: { agent: gpt-5-codex, at: 2026-08-27T20:17:05Z, ledger: L-411 }
+last: { agent: gpt-5-codex, at: 2026-08-27T20:24:00Z, ledger: L-412 }
 next_action: "Obtain owner-approved Docker provider inputs, then run the live three-model Research Spine proof and separately verify Petals, human reconciliation/Done/report, two-call, and long-horizon gates; keep deterministic evidence separate."
 ```
 
@@ -23,7 +23,7 @@ timestamped ledger entry in this file.
 
 ### Current truth and non-claims
 
-* `testing` and `origin/testing` are both at `bef7ab9efbaae908e6a64ef9ae2bae6e82be5d35` before the pending test commit. The checkout is clean before that test commit. There is no `local/testing` ref. Do not create a local ref merely to make the names symmetrical; record the absence instead.
+* `testing` and `origin/testing` are both at `bcc04cd0813b5445adcd6892e63c8d74fdb3d8fe` before this ledger-only checkpoint. The checkout is clean. There is no `local/testing` ref. Do not create a local ref merely to make the names symmetrical; record the absence instead.
 * The only other worktree is the clean recovery branch
   `recovery/pi-retake-linearized-2026-08-10`. It is not merged into `testing`
   (`testing...recovery/...` is `863 113`) and must not be deleted or rebased as
@@ -9926,3 +9926,17 @@ manager-backed accepted three-rater run under fakes. Live provider-served
 identities, live Petals transport, human reconciliation/Done/report, two-call,
 long-horizon, and owner-approved Docker model inputs remain open; no live model
 or Mac Studio host process was started.
+
+### L-412 | 2026-08-27T20:24:00Z | S3-review | gpt-5-codex | Clean ref/worktree checkpoint
+
+The post-push ledger pointer was reconciled. `git status --short --branch` is
+clean on `testing`; `git rev-parse HEAD` and `git rev-parse origin/testing`
+both report `bcc04cd0813b5445adcd6892e63c8d74fdb3d8fe`. The only other worktree
+remains the clean but unmerged `recovery/pi-retake-linearized-2026-08-10` at
+`4c0ee557`; it is retained because ancestry and ownership do not prove it is
+unused. No `local/testing` ref exists. No branch/worktree cleanup was safe or
+authorized by the evidence.
+
+This checkpoint changes documentation only. The next safe action remains the
+owner-approved Docker-only live acceptance matrix; deterministic fake-backed
+results must not be promoted to a live scientific or model-quality claim.
