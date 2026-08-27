@@ -199,6 +199,124 @@ async def test_ensemble_routes_project_scoped_petals_endpoints_through_pi_manage
 
 
 @pytest.mark.asyncio
+async def test_ensemble_runs_three_project_scoped_petals_donors_with_route_receipts(
+    monkeypatch,
+):
+    """The real Pi ensemble must retain each Petals donor's identity receipt."""
+    from app.core import petals_bridge
+
+    project_id = "project-spine-ensemble"
+
+    class Donor:
+        def __init__(self, node_id: str, model: str):
+            self.node_id = node_id
+            self.source = "relay"
+            self.pi_served = True
+            self.is_healthy = True
+            self.loaded_models = [model]
+            self.allowed_project_ids = [project_id]
+            self.calls: list[dict] = []
+
+        async def chat(self, messages, **kwargs):
+            self.calls.append({"messages": messages, **kwargs})
+            return {"message": {"role": "assistant", "content": self.node_id}}
+
+    donors = {
+        node.node_id: node
+        for node in (
+            Donor("donor-a", "petals-ensemble-a"),
+            Donor("donor-b", "petals-ensemble-b"),
+            Donor("donor-c", "petals-ensemble-c"),
+        )
+    }
+
+    class Registry:
+        _nodes = donors
+
+    class Supervisor:
+        def __init__(self):
+            self.binds: dict[str, dict] = {}
+
+        async def ensure_started(self):
+            return None
+
+        async def open_session(self, key, **_kwargs):
+            return None
+
+        async def bind_provider(self, key, payload):
+            self.binds[key] = payload
+
+        async def close_session(self, _key):
+            return None
+
+        async def run_turn(self, key, user_text, _tool_handler, **_kwargs):
+            payload = self.binds[key]
+            endpoint_id = payload["endpoint_id"]
+            node_id = endpoint_id.removeprefix("pi-petals-")
+            bridged = await petals_bridge.chat_completions(
+                {
+                    "model": endpoint_id,
+                    "messages": [{"role": "user", "content": user_text}],
+                    "purpose": "research_spine.ensemble",
+                    "project_id": project_id,
+                },
+                pinned_node_id=node_id,
+                project_id=project_id,
+            )
+            yield {
+                "type": "run.completed",
+                "usage": bridged["usage"],
+                "stop_reason": "stop",
+                "provider_message": {
+                    "role": "assistant",
+                    "content": bridged["choices"][0]["message"]["content"],
+                },
+                "served_model": bridged["_istara_route"]["model"],
+                "route_evidence": bridged["_istara_route"],
+            }
+
+    monkeypatch.setattr(petals_bridge, "_registry", lambda: Registry())
+    monkeypatch.setattr("app.config.settings.petals_bridge_enabled", True)
+    supervisor = Supervisor()
+    manager = PiModelManager(endpoints=[], include_local=False)
+    service = PiExecutionService(supervisor=supervisor, model_manager=manager)
+    monkeypatch.setattr(service, "_record_turn_telemetry", AsyncMock())
+
+    result = await service.run_ensemble(
+        purpose="research_spine.ensemble",
+        project_id=project_id,
+        agent_id="agent-a",
+        system="independent analysis",
+        messages=[{"role": "user", "content": "extract atomic evidence"}],
+        n=3,
+        distinct=True,
+        params=TurnParams(),
+    )
+
+    assert result["status"] == "success"
+    assert result["endpoint_ids"] == [
+        "pi-petals-donor-a",
+        "pi-petals-donor-b",
+        "pi-petals-donor-c",
+    ]
+    assert [sample["endpoint_id"] for sample in result["samples"]] == result["endpoint_ids"]
+    assert {sample["route_evidence"]["route_kind"] for sample in result["samples"]} == {
+        "petals_bridge"
+    }
+    assert {sample["route_evidence"]["node_id"] for sample in result["samples"]} == {
+        "donor-a",
+        "donor-b",
+        "donor-c",
+    }
+    assert all(len(donor.calls) == 1 for donor in donors.values())
+    assert all(
+        call["project_id"] == project_id
+        for donor in donors.values()
+        for call in donor.calls
+    )
+
+
+@pytest.mark.asyncio
 async def test_pi_ensemble_uses_minimum_width_when_optional_spare_is_requested(monkeypatch):
     """Pi must resolve the required width, not the legacy optional spare.
 

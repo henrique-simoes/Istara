@@ -375,6 +375,10 @@ async def test_chat_turn_preserves_provider_served_model_identity(monkeypatch):
                 "endpoint_id": "managed-endpoint",
                 "model": "configured-model",
                 "served_model": "provider-served-model",
+                "route_evidence": {
+                    "route_kind": "petals_bridge",
+                    "node_id": "donor-1",
+                },
             }
 
     recorded = []
@@ -396,7 +400,54 @@ async def test_chat_turn_preserves_provider_served_model_identity(monkeypatch):
 
     assert result.model == "configured-model"
     assert result.served_model == "provider-served-model"
+    assert result.route_evidence == {
+        "route_kind": "petals_bridge",
+        "node_id": "donor-1",
+    }
     assert recorded[0]["model"] == "provider-served-model"
+
+
+@pytest.mark.asyncio
+async def test_react_preserves_pi_route_evidence(monkeypatch):
+    """The public ReAct verb must not drop a Petals receipt from the runtime."""
+
+    class _ReactService:
+        async def run_react(self, **_kwargs):
+            return {
+                "text": "hello",
+                "usage": {},
+                "stop_reason": "stop",
+                "endpoint_id": "pi-petals-donor-1",
+                "status": "success",
+                "tool_calls": [],
+                "model": "petals-model-1",
+                "served_model": "petals-model-1",
+                "route_evidence": {
+                    "route_kind": "petals_bridge",
+                    "node_id": "donor-1",
+                },
+            }
+
+    async def _record(**_kwargs):
+        return None
+
+    monkeypatch.setattr("app.core.agentic.dispatcher.record_agentic_usage", _record)
+    result = await AgenticDispatcher(pi_service=_ReactService()).react(
+        purpose="test.react.route",
+        project_id="p1",
+        agent_id="a1",
+        session_key=None,
+        system="system",
+        messages=[],
+        user_text="hello",
+        tool_executor=None,
+        tool_names=[],
+        params=TurnParams(model="petals-model-1"),
+        engine="pi",
+    )
+
+    assert result.route_evidence["route_kind"] == "petals_bridge"
+    assert result.route_evidence["node_id"] == "donor-1"
 
 
 @pytest.mark.asyncio

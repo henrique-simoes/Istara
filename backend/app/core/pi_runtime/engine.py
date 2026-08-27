@@ -469,6 +469,7 @@ class PiExecutionService:
             # optional provider-response evidence; Research Spine coders must
             # require it rather than inheriting the request label.
             "served_model": (terminal or {}).get("served_model"),
+            "route_evidence": (terminal or {}).get("route_evidence") or {},
             "structured": (terminal or {}).get("structured"),
             "error": (terminal or {}).get("error")
             if status not in ("success", "aborted")
@@ -1122,6 +1123,20 @@ def _map_frame(frame: dict[str, Any], endpoint: ResolvedPiEndpoint) -> dict[str,
             "params": frame.get("arguments") or {},
         }
     if ftype == "run.completed":
+        served_model = str(frame.get("served_model") or "").strip()
+        raw_route = frame.get("route_evidence")
+        route = dict(raw_route) if isinstance(raw_route, dict) else {}
+        route.setdefault(
+            "route_kind", "petals_bridge" if endpoint.kind == "petals" else "pi_model_management"
+        )
+        route.setdefault("endpoint_id", endpoint.endpoint_id)
+        route.setdefault("requested_model", endpoint.model)
+        route.setdefault("model", served_model)
+        route.setdefault("served_model", served_model)
+        route.setdefault("outcome", "served")
+        if endpoint.kind == "petals":
+            route.setdefault("node_id", endpoint.endpoint_id.removeprefix("pi-petals-"))
+            route.setdefault("node_source", "petals")
         return {
             "type": "done",
             "usage": frame.get("usage") or {},
@@ -1133,6 +1148,7 @@ def _map_frame(frame: dict[str, Any], endpoint: ResolvedPiEndpoint) -> dict[str,
             # worker-captured emit_structured_output arguments. Never parsed
             # from free-form text.
             "structured": frame.get("structured"),
+            "route_evidence": route,
         }
     if ftype == "run.failed":
         return {"type": "error", "error": frame.get("error", "pi_runtime_error")}

@@ -39,6 +39,7 @@ class FakeDonorNode:
         self.pi_served = pi_served
         self.is_healthy = is_healthy
         self.loaded_models = ["petals-model-7b"]
+        self.allowed_project_ids = ["*"]
         self.calls = []
 
     async def chat(self, messages, **kwargs):
@@ -127,6 +128,35 @@ def test_pinned_bridge_keeps_actual_model_identity_and_project_scope(registry_wi
     call = registry_with._nodes["donor-1"].calls[0]
     assert call["model"] == "petals-model-7b"
     assert call["project_id"] == "project-spine-1"
+
+
+def test_research_bridge_rejects_project_not_authorized_by_donor(registry_with):
+    registry_with._nodes["donor-1"].allowed_project_ids = ["project-other"]
+    with pytest.raises(PetalsUnavailable, match="donor_project_not_authorized"):
+        asyncio.run(
+            petals_bridge.chat_completions(
+                {
+                    "model": "pi-petals-donor-1",
+                    "messages": [{"role": "user", "content": "research input"}],
+                    "project_id": "project-spine-1",
+                    "purpose": "research_analysis",
+                }
+            )
+        )
+    assert registry_with._nodes["donor-1"].calls == []
+
+
+def test_research_bridge_requires_project_id(registry_with):
+    with pytest.raises(PetalsUnavailable, match="project_id_required"):
+        asyncio.run(
+            petals_bridge.chat_completions(
+                {
+                    "model": "pi-petals-donor-1",
+                    "messages": [{"role": "user", "content": "research input"}],
+                    "purpose": "research_analysis",
+                }
+            )
+        )
 
 
 def test_missing_admission_condition_is_typed_unavailable_never_paid_fallback(donor, registry_with):

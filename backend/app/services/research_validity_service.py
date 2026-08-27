@@ -706,21 +706,29 @@ async def _pi_coder_runner(
             else f"selected {selected_model!r}, served {served_model!r}"
         )
         raise ValueError(f"Pi coder model mismatch: {reason}")
+    route = dict(getattr(outcome, "route_evidence", {}) or {})
+    route.setdefault("node_id", getattr(coder.node, "node_id", ""))
+    route.setdefault("node_source", getattr(coder.node, "source", ""))
+    route.setdefault("provider_type", getattr(coder.node, "provider_type", ""))
+    route.setdefault("model", served_model)
+    route.setdefault("endpoint_id", served_endpoint_id or selected_endpoint_id)
+    route.setdefault("route_kind", "coding_run")
+    route.setdefault("outcome", "served")
     return {
         "message": {"content": json.dumps(outcome.value)},
         "_istara_route": {
-            "node_id": getattr(coder.node, "node_id", ""),
-            "node_source": "pi",
-            "provider_type": getattr(coder.node, "provider_type", ""),
-            "model": served_model,
-            "endpoint_id": served_endpoint_id or selected_endpoint_id,
-            "provider_account_handle": getattr(coder.node, "provider_account_handle", ""),
-            "decoding_profile": {"temperature": 0.2},
-            "protocol_version": QUALITATIVE_CODING_PROTOCOL["version"],
-            "conversation_scope": "fresh_session_per_coder_call",
-            "cache_scope": "provider_prefix_cache_no_response_reuse",
-            "route_kind": "coding_run",
-            "outcome": "served",
+            **route,
+            "provider_account_handle": (
+                route.get("provider_account_handle")
+                or getattr(coder.node, "provider_account_handle", "")
+            ),
+            "decoding_profile": route.get("decoding_profile") or {"temperature": 0.2},
+            "protocol_version": route.get("protocol_version")
+            or QUALITATIVE_CODING_PROTOCOL["version"],
+            "conversation_scope": route.get("conversation_scope")
+            or "fresh_session_per_coder_call",
+            "cache_scope": route.get("cache_scope")
+            or "provider_prefix_cache_no_response_reuse",
         },
     }
 

@@ -35,7 +35,11 @@ class FakeNode:
         self.pi_served = pi_served
         self.is_healthy = is_healthy
         self.loaded_models = [model]
-        self.allowed_project_ids = list(allowed_project_ids or [])
+        # A test donor with no explicit policy represents the connection API's
+        # normalized wildcard scope. Project-restricted cases override it.
+        self.allowed_project_ids = list(
+            ["*"] if allowed_project_ids is None else allowed_project_ids
+        )
         self.calls = []
 
     async def chat(self, messages, **kwargs):
@@ -185,6 +189,39 @@ def test_usage_passthrough_when_donor_reports(donor, registry_with):
         "total_tokens": 8,
     }
     assert result["_istara_route"]["usage_estimate"] is False
+
+
+def test_project_scoped_bridge_rechecks_donor_authorization_before_dispatch(
+    donor, registry_with
+):
+    """The loopback bridge must enforce the same project scope as Pi selection."""
+    donor.allowed_project_ids = ["project-a"]
+    with pytest.raises(PetalsUnavailable, match="donor_project_not_authorized"):
+        asyncio.run(
+            petals_bridge.chat_completions(
+                {
+                    "model": "pi-petals-donor-1",
+                    "messages": [{"role": "user", "content": "research input"}],
+                    "project_id": "project-b",
+                    "purpose": "research.spine",
+                }
+            )
+        )
+    assert donor.calls == []
+
+
+def test_research_bridge_requires_explicit_project_scope(donor, registry_with):
+    with pytest.raises(PetalsUnavailable, match="project_id_required"):
+        asyncio.run(
+            petals_bridge.chat_completions(
+                {
+                    "model": "pi-petals-donor-1",
+                    "messages": [{"role": "user", "content": "research input"}],
+                    "purpose": "research.spine",
+                }
+            )
+        )
+    assert donor.calls == []
 
 
 @pytest.mark.asyncio

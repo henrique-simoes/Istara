@@ -8,8 +8,8 @@ phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal ac
 stage: S2-execute/S3-review
 status: in-progress
 blocked_on: null
-last: { agent: gpt-5-codex, at: 2026-08-27T08:52:57Z, ledger: L-299 }
-next_action: "Commit and gate the combined-gate consistency fix; then audit remaining live Research Spine/Petals parity gaps."
+last: { agent: gpt-5-codex, at: 2026-08-27T09:18:00Z, ledger: L-300 }
+next_action: "Run the post-change gate, record evidence, commit/push the Petals Research Spine seam, then execute the authorized Docker-only Mac Studio live matrix."
 ```
 
 ## Plan overview / roadmap
@@ -6909,3 +6909,61 @@ baseline-clean (`new_issue_count=0`, `new_failures=0`, no new warnings; inherite
 `31` failures/`208` warnings). This is still deterministic evidence only; live
 Mac Studio Docker execution and all provider/Petals/Research Spine quality gates
 remain open.
+
+### L-300 | 2026-08-27T09:18:00Z | S2-execute/S3-review | gpt-5-codex | Petals project admission and Research Spine route-receipt seam
+
+The prior deterministic coverage proved the Petals bridge, Pi catalog, and
+Research Spine coding run separately, but it did not prove their production
+path together. A concrete authorization defect was also present: the bridge
+validated donor source/consent/health but did not re-check the donor's
+`allowed_project_ids` at dispatch. Pi selection filtered scope, yet a caller
+could send a project-tagged request directly to the loopback bridge for an
+unauthorized donor. In addition, the Petals bridge's `_istara_route` receipt
+was not carried by the Pi engine/dispatcher result contracts, so a successful
+donor coder could be persisted as generic `pi` provenance.
+
+The bridge now requires an explicit project for research-purpose traffic and
+re-checks the donor allowlist immediately before dispatch. The Pi runtime
+frame mapper produces a content-free route receipt (`route_kind`, endpoint,
+requested/served model, donor node/source), `TurnResult`/`StructuredResult`
+and ensemble samples preserve it, and the Research Spine coder adapter merges
+that receipt into persisted `CodingRunCoder`/coding-run provenance. A malformed
+non-dict route frame is normalized to an empty receipt before safe defaults are
+applied.
+
+New deterministic coverage crosses the real seams: three consented,
+project-authorized registry donors are projected by the real
+`PiModelManager`; the real `PiExecutionService.run_ensemble` dispatches all
+three through the Petals bridge and retains each donor receipt; and the real
+`run_independent_coding_run` uses the real dispatcher/service pair, reaches
+Fleiss' Kappa plus Krippendorff's Alpha acceptance, and persists all three
+`petals_bridge` routes. Dispatcher chat and ReAct regressions also prove route
+receipts are not dropped on those public verbs.
+
+Verification: Petals/research/runtime/W1/W7 focused suite passes (`130 passed`),
+targeted Ruff, Python compilation, and `git diff --check` pass, and feature
+docs regenerate/check cleanly (`224` site artifacts, `86/86` checks). The
+Compass Forge before snapshot completes with no new forbidden dependencies,
+cycles, or missing paths; it reports only the repository's existing complexity
+warnings plus the touched large-file warnings (all warning-level, not a new
+functional failure). No live provider, live donor, Mac Studio workload, or
+host installation was performed. The post-change gate, commit/transport, and
+Docker-only Mac Studio provider/Petals/combined evidence remain open.
+
+### L-301 | 2026-08-27T09:32:00Z | S2-execute/S3-review | gpt-5-codex | checkpoint before transport
+
+Completed the deterministic Petals admission and Research Spine provenance
+seam. Project scope is now re-checked at bridge dispatch, route receipts survive
+Pi engine/dispatcher/ReAct/chat boundaries, and the real Pi manager, dispatcher,
+Petals bridge, ensemble service, and independent coding run are exercised in one
+three-donor test. Local evidence remains `130 passed`, Ruff/compile/diff checks
+clean, and feature docs `224` artifacts with `86/86` checks. Compass Forge's
+before snapshot is recorded; it found no new forbidden dependency, cycle, or
+missing-path issue, while retaining inherited/touched complexity warnings.
+
+Next: append the corresponding findings register, attach command/gate evidence
+to CF-15, run the after gate, commit and push `testing`, then perform only the
+authorized Docker-only Mac Studio live matrix. Live provider identity,
+same-session two-call parity, three independent served models, reliability
+quality, reconciliation/human-Done/report promotion, and Petals cooperation are
+not yet proven.

@@ -267,6 +267,7 @@ class AgenticDispatcher:
             tool_calls=outcome.get("tool_calls") or [],
             model=outcome.get("model"),
             served_model=outcome.get("served_model"),
+            route_evidence=outcome.get("route_evidence") or {},
         )
 
     async def completion(
@@ -339,6 +340,7 @@ class AgenticDispatcher:
             tool_calls=outcome.get("tool_calls") or [],
             model=outcome.get("model"),
             served_model=outcome.get("served_model"),
+            route_evidence=outcome.get("route_evidence") or {},
         )
 
     async def structured(
@@ -418,6 +420,7 @@ class AgenticDispatcher:
             status=outcome.get("status", "success"),
             model=outcome.get("model"),
             served_model=outcome.get("served_model"),
+            route_evidence=outcome.get("route_evidence") or {},
         )
 
     async def react(
@@ -507,6 +510,7 @@ class AgenticDispatcher:
             tool_calls=outcome.get("tool_calls") or [],
             model=outcome.get("model"),
             served_model=outcome.get("served_model"),
+            route_evidence=outcome.get("route_evidence") or {},
         )
 
     async def ensemble(
@@ -594,6 +598,7 @@ class AgenticDispatcher:
                 tool_calls=sample.get("tool_calls") or [],
                 model=sample.get("model"),
                 served_model=sample.get("served_model"),
+                route_evidence=sample.get("route_evidence") or {},
             )
             for sample in outcome.get("samples") or []
         ]
@@ -803,6 +808,7 @@ class AgenticDispatcher:
             # dropping this receipt makes ordinary streamed chat telemetry
             # indistinguishable from an unverified route.
             "served_model": (terminal or {}).get("served_model"),
+            "route_evidence": (terminal or {}).get("route_evidence") or {},
             "error": (terminal or {}).get("error")
             if status not in ("success", "aborted")
             else None,

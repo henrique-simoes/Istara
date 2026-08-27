@@ -124,6 +124,7 @@ def _admit(
     payload: dict[str, Any],
     *,
     pinned_node_id: str | None = None,
+    project_id: str | None = None,
 ) -> tuple[Any, str, list[dict], str]:
     """Shared admission: resolve the pinned node and enforce the fail-closed rules."""
     requested = str(payload.get("model") or "")
@@ -140,6 +141,21 @@ def _admit(
         raise PetalsUnavailable(f"donor_not_consented:{node_id}")
     if not bool(getattr(node, "is_healthy", False)):
         raise PetalsUnavailable(f"donor_unhealthy:{node_id}")
+    effective_project = project_id if project_id is not None else payload.get("project_id")
+    purpose = str(payload.get("purpose") or "").strip().lower()
+    if purpose.startswith("research") and effective_project is None:
+        raise PetalsUnavailable("project_id_required")
+    if effective_project is not None:
+        requested_project = str(effective_project).strip()
+        if not requested_project:
+            raise PetalsUnavailable("project_id_required")
+        allowed = {
+            str(project_id).strip()
+            for project_id in (getattr(node, "allowed_project_ids", []) or [])
+            if str(project_id).strip()
+        }
+        if "*" not in allowed and requested_project not in allowed:
+            raise PetalsUnavailable(f"donor_project_not_authorized:{node_id}")
     messages = list(payload.get("messages") or [])
     if not messages:
         raise PetalsUnavailable("empty_messages")
@@ -163,7 +179,9 @@ async def chat_completions(
     """
     started = time.perf_counter()
     requested = str(payload.get("model") or "")
-    node, node_id, messages, served_model = _admit(payload, pinned_node_id=pinned_node_id)
+    node, node_id, messages, served_model = _admit(
+        payload, pinned_node_id=pinned_node_id, project_id=project_id
+    )
     data = await node.chat(
         messages,
         model=served_model,
@@ -240,7 +258,9 @@ async def chat_completions_stream(
     """
     started = time.perf_counter()
     requested = str(payload.get("model") or "")
-    node, node_id, messages, served_model = _admit(payload, pinned_node_id=pinned_node_id)
+    node, node_id, messages, served_model = _admit(
+        payload, pinned_node_id=pinned_node_id, project_id=project_id
+    )
     chunk_id = f"chatcmpl-petals-{uuid.uuid4().hex[:24]}"
     # Donor nodes are relay/browser resources.  Use the node's non-streaming
     # contract for this compatibility shim: it preserves provider usage and

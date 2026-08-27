@@ -94,6 +94,14 @@ Sources
   its streamed response through `run.completed`, the Python engine, and the
   dispatcher; a configured/request `model` field is retained separately for
   routing and must never be promoted into this proof field.
+- Projected Petals coders are authorized at both selection and dispatch: the
+  Pi Model Manager filters donor entries by the research project, and the
+  loopback bridge re-checks the donor allowlist before forwarding the request.
+  Research-purpose requests without a project are rejected. The bridge route
+  receipt (`route_kind=petals_bridge`, donor node, served model, and endpoint)
+  must survive the Pi frame mapper and dispatcher into persisted
+  `CodingRunCoder`/Research Spine provenance; a generic `pi` label is not an
+  acceptable substitute for donated-compute evidence.
 - One- or two-model Self-MoA, dual-run, debate, and adversarial checks remain
   useful response-level operational signals, but they are lower-assurance
   validation, not formal Research Spine coding reliability, and cannot promote

@@ -60,6 +60,10 @@ class TurnResult:
     # which is the configured/request identity and may not prove what a proxy
     # actually served.
     served_model: str | None = None
+    # Content-free route receipt. Petals-backed turns retain their bridge kind
+    # and donor identity through the dispatcher so Research Spine provenance
+    # can distinguish donated compute from ordinary Pi endpoints.
+    route_evidence: dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass(frozen=True)
