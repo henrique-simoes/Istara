@@ -8,7 +8,7 @@ phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal ac
 stage: S2-execute/S3-review
 status: in-progress
 blocked_on: "Owner-approved Docker-only Mac Studio provisioning: current env/config, provider-served identities, and three-model inputs"
-last: { agent: gpt-5-codex, at: 2026-08-27T20:25:03Z, ledger: L-415 }
+last: { agent: gpt-5-codex, at: 2026-08-27T20:27:28Z, ledger: L-416 }
 next_action: "Obtain owner-approved Docker provider inputs, then run the live three-model Research Spine proof and separately verify Petals, human reconciliation/Done/report, two-call, and long-horizon gates; keep deterministic evidence separate."
 ```
 
@@ -26,7 +26,7 @@ timestamped ledger entry in this file.
 * `testing` tracks `origin/testing` and the checkout is kept clean. Re-run
   `git rev-parse HEAD` and `git rev-parse origin/testing` at the start of every
   continuation because each ledger-only commit necessarily advances both tips.
-  The last observed equal tips before this amendment were `6862ffc1`; there is
+  The last observed equal tips before this amendment were `177f4532`; there is
   no `local/testing` ref. Do not create a local ref merely to make the names
   symmetrical; record the absence instead.
 * The only other worktree is the clean recovery branch
@@ -9995,3 +9995,26 @@ reconciliation, human Done/report promotion, Petals transport/consent and
 revocation, two-call continuity, and long-horizon behavior. No live model was
 loaded, no Mac Studio host software was installed, and no worktree or branch
 was deleted.
+
+### L-416 | 2026-08-27T20:27:28Z | S3-review | gpt-5-codex | Mac Studio Docker preflight reclassified live run as not_run
+
+The authorized passive SSH preflight used the explicit Docker Desktop CLI path
+(`/Applications/Docker.app/Contents/Resources/bin/docker`) and confirmed Docker
+Server `29.7.2`. `docker compose ls --all` showed only the unrelated `plex`
+project; no Istara test workload or model container was running. The remote
+`$HOME/istara-testing` checkout is dirty across application, Compose,
+migration, feature-doc, and Build Stream files, and its `testing` branch is
+`1b9b6d60` while its locally fetched `origin/testing` is `172d311a`, reported as
+`0 306` (306 commits behind). This checkout is therefore not a valid baseline;
+the live test is `not_run`, not failed or passed. No pull/reset/clean/model
+load/host install was attempted. Compass command evidence `404` records the
+preflight and the no-mutation decision.
+
+The local authoritative checkout remains clean on `testing` and equal to
+`origin/testing` at the last observation `177f4532` before this amendment. The
+recovery worktree remains clean but unmerged and is retained. The next live
+step requires owner-approved preservation/reconciliation of the Mac Studio
+checkout (or a fresh disposable Docker Compose checkout), explicit provider
+inputs for three served identities, and then the full Research Spine/Petals/
+two-call/long-horizon acceptance matrix; no scientific claim may be based on
+the absent stack.
