@@ -8,8 +8,8 @@ phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal ac
 stage: S5-ship&learn
 status: in-progress
 blocked_on: null
-last: { agent: gpt-5-codex, at: 2026-08-27T02:50:00Z, ledger: L-245 }
-next_action: "Push the source-snapshot provenance and remote-runner contract checkpoint, then resolve whether ‘Agentic Loop’ is shorthand for legacy/Istara or a required third engine; at the next authorized live window, resolve the launch-time origin/testing SHA, materialize a fresh detached checkout on Mac Studio, and execute the Docker-only provider/Petals/combined G0–G22 retake; until then leave G0/G1 not_run."
+last: { agent: gpt-5-codex, at: 2026-08-27T02:53:00Z, ledger: L-246 }
+next_action: "Resolve whether ‘Agentic Loop’ is shorthand for legacy/Istara or a required third engine; at the next authorized live window, resolve the launch-time origin/testing SHA, materialize a fresh detached checkout on Mac Studio, and execute the Docker-only provider/Petals/combined G0–G22 retake; until then leave G0/G1 not_run."
 ```
 
 ## Plan overview / roadmap
@@ -5464,3 +5464,31 @@ two-call/long-horizon behavior, Petals interoperability, or teardown. Commit and
 checkpoint, verify local/remote parity, then keep G0/G1 `not_run` until the owner-authorized
 Mac Studio Docker prerequisites exist. At launch recompute and pass the exact archive digest,
 use a fresh detached checkout, and execute provider/Petals/combined G0–G22 in order.
+
+### L-246 | 2026-08-27T02:53:00Z | S5-ship&learn | gpt-5-codex | pushed parity and passive Docker readiness receipt
+
+Did: Transported the source-provenance and runner-contract remediation as commit
+`68c5aba7504d7d72ce441f3ac307b5eb09b8471e` to `testing` and `origin/testing`. Local status is
+clean and the local, remote, and `HEAD` SHA values are equal; `git diff origin/testing` and
+`git diff --check` are clean. Compass Forge task evidence `105` records the parity commands and
+the no-host-mutation boundary. After-gate record `129` reports no new dependency, missing-path,
+or cycle issues; the only comparison delta is the already path-scoped/suppressed large-file
+entry for this lifecycle ledger, with inherited repository debt otherwise unchanged.
+
+Did: Repeated passive SSH/Docker inspection of the Mac Studio using the explicit Docker CLI
+path. Docker Server `29.7.2` is reachable, but no Istara benchmark Compose project, testing
+network, testing volume, provider, relay, donor, or model container is running. Only the
+unrelated healthy `plex` workload is present. The named `/Users/user/istara-testing` checkout
+remains at stale SHA `1b9b6d6098dc4a420aff2cf570b9aa5b982b3949`, behind its remote and dirty; it
+was not touched. No image pull, model load, service start, host installation, data deletion, or
+repository mutation occurred on the Mac Studio.
+
+Boundary/next: deterministic provenance, oracle, authority, Petals contract, and Docker
+topology checks are green, but G0/G1 and all live G2–G22 rows remain `not_run`/open. The next
+operator must obtain owner-authorized provider credit and three project-scoped served model
+routes, re-resolve the launch-time `origin/testing` SHA, create a fresh detached checkout,
+compute and pass its exact archive digest, render Compose, and then run provider/Petals/combined
+profiles in order. The live result must include three distinct served identities, common raw
+spans, numeric Fleiss/Krippendorff metrics, grounding, reconciliation, human-Done/report
+promotion, two-call/long-horizon evidence, Petals interoperability, artifact redaction, and
+teardown before CF-15 can close.
