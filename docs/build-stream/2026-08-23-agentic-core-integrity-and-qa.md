@@ -8,7 +8,7 @@ phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal ac
 stage: S2-execute/S3-review
 status: in-progress
 blocked_on: "Owner-approved Docker-only Mac Studio provisioning: current env/config, provider-served identities, and three-model inputs"
-last: { agent: gpt-5-codex, at: 2026-08-27T19:04:26Z, ledger: L-401 }
+last: { agent: gpt-5-codex, at: 2026-08-27T19:06:50Z, ledger: L-402 }
 next_action: "Audit the remaining live/provider identity, legacy no-coding-run migration, Petals cooperation, two-call/long-horizon, and genuine human-review gates; provision only owner-approved Docker inputs and keep deterministic/live acceptance separate."
 ```
 
@@ -9514,3 +9514,22 @@ two-call/long-horizon receipts, and Docker-only current-provider acceptance rema
 Next: record the gate/evidence rows, commit and push this slice to `origin/testing`,
 then rerun the exact pushed SHA in the clean Mac Studio Node 20 Docker retake without
 touching the dirty checkout or installing anything on the host.
+
+### L-402 | 2026-08-27T19:06:50Z | S2-execute/S3-review | gpt-5-codex | Pushed SHA retested in clean Mac Studio Docker
+
+The strict provider-receipt/project-binding slice is committed as `ce3ae505` and
+pushed to `origin/testing`. The clean detached Mac Studio retake at
+`$HOME/istara-testing-retake-47bf` was updated to that exact SHA and remained clean.
+The benchmark package was copied from a read-only bind mount into a disposable Docker
+volume and executed with the existing `/usr/local/bin/docker` Docker Desktop CLI under
+`node:20-bookworm`; the volume was removed after the run. Result: `100` tests passed,
+`0` failed, exit `0`. No Node runtime, package, model, or other dependency was
+installed on the Mac host, and the dirty `$HOME/istara-testing` checkout was not
+touched.
+
+This closes the deterministic Node 20 retake for the new oracle. It still does not
+close live scientific acceptance: the only retained live artifact has Fleiss
+`kappa=-0.125`, Krippendorff `alpha=0.491`, no accepted/reconciled applications, and
+the current provider/Petals configuration has not been authorized or verified.
+Two-call, long-horizon, human-review/Done/report promotion, and legacy compatibility
+migration remain open gates.
