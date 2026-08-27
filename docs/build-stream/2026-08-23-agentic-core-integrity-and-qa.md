@@ -8,7 +8,7 @@ phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal ac
 stage: S2-execute/S3-review
 status: in-progress
 blocked_on: "Owner-approved Docker-only Mac Studio provisioning: current env/config, provider-served identities, and three-model inputs"
-last: { agent: gpt-5-codex, at: 2026-08-27T10:22:25Z, ledger: L-319 }
+last: { agent: gpt-5-codex, at: 2026-08-27T10:23:06Z, ledger: L-320 }
 next_action: "Resume the owner-approved Docker-only live matrix only when its env, served model identities, donor inputs, and redacted artifact paths exist; keep all unproven gates open."
 ```
 
@@ -7512,12 +7512,23 @@ inputs. The Build Stream stays `in-progress` and fail-closed.
 
 ### L-319 | 2026-08-27T10:22:25Z | S5-ship&learn | gpt-5-codex | final transport evidence attachment
 
-Compass Forge task evidence `216` now records the final parity and passive-host
-check: local `testing`, `origin/testing`, and the Mac Studio detached retake all
-resolve to `335fd844d3e4362a366a9dac4b1cae8e25d04895`; local and remote worktrees
+Compass Forge task evidence `216` records the parity and passive-host check made
+before this final ledger-only append: local `testing`, `origin/testing`, and the
+Mac Studio detached retake all resolved to `335fd844d3e4362a366a9dac4b1cae8e25d04895`;
+local and remote worktrees
 are clean; Docker was queried only through `/usr/local/bin/docker` (Server
 `29.7.2`); and the host has zero Istara/provider/Petals/benchmark/donor containers
 and zero model files. No live workload or host installation occurred. This
 checkpoint closes the local deterministic transport work while keeping every live
 Research Spine and ensemble gate open until the owner-approved Docker-only input
 set exists.
+
+### L-320 | 2026-08-27T10:23:06Z | S5-ship&learn | gpt-5-codex | final ledger-tip parity correction
+
+Appending L-319 created the expected final docs-only transport commit
+`4aa1caad6c9405a4d0c8a812b11e76112e65c137`. It is now pushed to `origin/testing`,
+and the local branch, remote ref, and Mac Studio detached retake all resolve to
+that exact SHA with zero worktree changes. L-319 remains a valid record of the
+pre-append evidence row `216`; this checkpoint corrects the embedded tip so a
+future agent cannot mistake the preceding `335fd844` commit for the final state.
+No workload, provider request, model load, or host installation occurred.
