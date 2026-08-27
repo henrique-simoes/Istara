@@ -8,8 +8,8 @@ phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal ac
 stage: S2-execute/S3-review
 status: in-progress
 blocked_on: "Owner-approved Docker-only Mac Studio provisioning: current env/config, provider-served identities, and three-model inputs"
-last: { agent: gpt-5-codex, at: 2026-08-27T12:06:03Z, ledger: L-335 }
-next_action: "Commit and push the Docker-only long-horizon oracle hardening, refresh the detached Mac Studio checkout to that exact tip, then continue the live-gate input audit without starting workloads."
+last: { agent: gpt-5-codex, at: 2026-08-27T12:07:05Z, ledger: L-336 }
+next_action: "Continue the static engine/ensemble acceptance audit, prioritizing untested public combinations and any remaining paths that can bypass project-scoped Pi Model Management, without starting live workloads."
 ```
 
 ## Plan overview / roadmap
@@ -7886,3 +7886,20 @@ three-model semantic quality, Fleiss/Krippendorff values, reconciliation,
 human Done/report promotion, Petals cooperation, redaction, teardown, and
 two-call/long-horizon receipts remain unverified until owner-approved
 Docker-only inputs exist.
+
+### L-336 | 2026-08-27T12:07:05Z | S5-ship&learn | gpt-5-codex | final Docker-only parity for oracle checkpoint
+
+Commit `80bc2b5d` is pushed to `origin/testing`. Compass evidence `264`
+records the post-push parity audit: local `testing`, `origin/testing`, and the
+detached Mac Studio retake all resolve to `80bc2b5d`; the retake is clean;
+Docker Server is `29.7.2`; only unrelated Plex is running; model-file count is
+zero; `.env.deploy` is absent; and no provider request, model load, package
+installation, or Istara/Petals workload was started. The Docker-only boundary
+therefore remains intact while the live acceptance gate is unprovisioned.
+
+The long-horizon caller-spoof oracle hardening and its 89-test deterministic
+package are transported. The next review slice is static coverage of every
+public engine/ensemble combination and any remaining bypass of project-scoped
+Pi Model Management; live three-model semantic quality, reliability values,
+reconciliation, human Done/report promotion, Petals cooperation, redaction,
+teardown, and two-call/long-horizon receipts remain unverified.
