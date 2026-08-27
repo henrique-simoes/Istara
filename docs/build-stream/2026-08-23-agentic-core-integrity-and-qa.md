@@ -8,8 +8,8 @@ phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal ac
 stage: S2-execute/S3-review
 status: in-progress
 blocked_on: "Owner-approved Docker-only Mac Studio provisioning: current env/config, provider-served identities, and three-model inputs"
-last: { agent: gpt-5-codex, at: 2026-08-27T13:10:45Z, ledger: L-346 }
-next_action: "Commit and push the provenance item-status fix, verify exact detached Mac Studio parity, then continue the static Research Spine audit; keep live semantic acceptance blocked until owner-approved Docker-only model inputs exist."
+last: { agent: gpt-5-codex, at: 2026-08-27T13:12:54Z, ledger: L-347 }
+next_action: "Continue the static Research Spine audit from the parity checkpoint, prioritizing provider-served identity and real Docker acceptance prerequisites; keep live semantic acceptance blocked until owner-approved Docker-only model inputs exist."
 ```
 
 ## Plan overview / roadmap
@@ -8094,6 +8094,26 @@ semantic quality, formal reliability, source grounding, reconciliation,
 human Done/report promotion, Petals cooperation, two-call/long-horizon, and
 teardown remain blocked on owner-approved Docker-only inputs and redacted
 receipts.
+
+### L-347 | 2026-08-27T13:12:54Z | S5-ship&learn | gpt-5-codex | provenance fix transport and Docker-only parity
+
+Commit `cb7b77aa` (incomplete-provenance item-level reconciliation outputs,
+regression, living feature docs, and this ledger checkpoint) is pushed to
+`origin/testing`. The detached Mac Studio checkout `~/istara-testing-retake-47bf`
+was refreshed from `origin/testing` and resolves to the exact same SHA; it is
+clean. Passive Docker inspection reports Server `29.7.2`, only unrelated
+`plex` running, `MODEL_FILES=0` under the protected artifact roots, and
+`.env.deploy` absent. The check used Git and the existing Docker binary only;
+no container, image pull, provider request, model load, or host installation
+was started.
+
+This proves transport and the Docker-only boundary, not live semantic quality.
+The remaining acceptance gates—three independently served model identities,
+source-grounded coding, Fleiss/Cohen/Krippendorff reliability, reconciliation,
+human Done/report promotion, Petals cooperation/revocation, same-session
+two-call and long-horizon receipts, redaction, and teardown—remain blocked on
+owner-approved Docker inputs and redacted receipts. The ledger append itself
+creates a docs-only tip; refresh detached parity again after committing it.
 
 ### L-344 | 2026-08-27T13:02:00Z | S5-ship&learn | gpt-5-codex | validation provenance transport and Docker parity
 
