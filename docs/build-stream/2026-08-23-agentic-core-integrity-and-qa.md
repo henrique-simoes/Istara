@@ -8,8 +8,8 @@ phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal ac
 stage: S5-ship&learn
 status: in-progress
 blocked_on: null
-last: { agent: gpt-5-codex, at: 2026-08-27T02:20:34Z, ledger: L-238 }
-next_action: "At the next authorized live window, resolve the launch-time origin/testing SHA, materialize a fresh detached checkout on Mac Studio, and execute the Docker-only provider/Petals/combined G0–G22 retake; until then leave G0/G1 not_run."
+last: { agent: gpt-5-codex, at: 2026-08-27T02:31:00Z, ledger: L-239 }
+next_action: "Resolve whether ‘Agentic Loop’ is shorthand for legacy/Istara or a required third engine; then, at the next authorized live window, resolve the launch-time origin/testing SHA, materialize a fresh detached checkout on Mac Studio, and execute the Docker-only provider/Petals/combined G0–G22 retake; until then leave G0/G1 not_run."
 ```
 
 ## Plan overview / roadmap
@@ -5270,3 +5270,36 @@ two-call/long-horizon behavior, Petals interoperability, or teardown. Those rema
 
 Next: commit and push this remediation with the generated feature docs, verify local/remote SHA
 parity, then preserve the live campaign as blocked rather than starting host or provider work.
+
+### L-239 | 2026-08-27T02:31:00Z | S5-ship&learn | gpt-5-codex | auditor | Phase 9
+
+Did: Audited the Pi Model Management authority, classical-endpoint retirement, Petals bridge,
+dispatcher routing, and ensemble acceptance contracts with a Compass context pack plus the
+focused migration/Petals/settings/model-source/runtime suite. The suite passed 95 tests. It
+confirms the deprecated classical adapters return their explicit 410/delegation behavior,
+Petals consent/use/revoke/scope and diversity guards are covered, and the dispatcher resolves
+the persisted/header/project choices through the two concrete runtime branches.
+
+Finding: the implementation and living architecture expose two concrete engine choices—
+`legacy` (publicly Istara) and `pi` (Pi Agentic Loop)—plus project-level `inherit`. The plan’s
+P9-04 wording still calls “Istara, Agentic Loop, and Pi Agentic Loop” three selectable modes,
+while G9 and the architecture contract describe legacy/Istara plus Pi as the executable parity
+surface. This is an acceptance-language ambiguity, not a proven third runtime. It is recorded
+as F-R9-59 in the shared audit file. No code change is justified until the owner confirms
+whether “Agentic Loop” is shorthand for legacy/Istara; if it is a required third semantic, a
+typed enum/API/UI option, dispatcher branch, and dedicated tests must be added before P9-04/G9
+can be claimed complete.
+
+Boundary: deterministic authority, Petals, and oracle tests are useful regression evidence but
+do not prove a live three-model ensemble, common raw-span coding, Fleiss/Krippendorff metrics,
+grounding, reconciliation, human-Done/report promotion, two-call/long-horizon behavior, or
+Docker teardown. Mac Studio G0/G1 remain `not_run`; the passive inventory still shows no
+benchmark/model/Petals workload. Do not reinterpret “inherit” as a third engine or start a
+host-managed path.
+
+Next: resolve the terminology at the next owner checkpoint. If shorthand, normalize P9-04 and
+related acceptance text; if third-mode intent is confirmed, create a bounded Compass task for
+the typed runtime/UI/dispatcher contract and tests. Once live prerequisites exist, re-resolve
+`origin/testing`, create a fresh detached checkout, render Compose before startup, and run the
+Docker-only provider/Petals/combined G0–G22 matrix with immutable identity, raw-span, reliability,
+gate, long-horizon, interoperability, and teardown artifacts.
