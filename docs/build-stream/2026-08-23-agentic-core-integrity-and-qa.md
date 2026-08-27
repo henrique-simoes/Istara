@@ -8,7 +8,7 @@ phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal ac
 stage: S5-ship&learn
 status: in-progress
 blocked_on: null
-last: { agent: gpt-5-codex, at: 2026-08-27T04:19:30Z, ledger: L-259 }
+last: { agent: gpt-5-codex, at: 2026-08-27T04:23:30Z, ledger: L-260 }
 next_action: "Keep G0/G1 and live G2–G22 open; at the next authorized window use a fresh detached origin/testing checkout, verify its archive digest inside Docker, and execute provider/Petals/combined retakes with three served model identities before claiming Research Spine completion."
 ```
 
@@ -5859,3 +5859,25 @@ claim. G0/G1 and live G2–G22 remain open pending a fresh detached
 model identities/routes, followed by provider, Petals, and combined retakes
 with common raw evidence units, reliability, reconciliation, promotion, both
 loop modes, two-call/long-horizon artifacts, redaction, and teardown.
+
+### L-260 | 2026-08-27T04:23:30Z | S5-ship&learn | gpt-5-codex | transport and passive-host receipt
+
+Verified the latest checkpoint is transported cleanly: `HEAD`, local
+`testing`, and `origin/testing` all equal `20912188813a5a1c9ee7a58d01ca93c8a0b56509`;
+the worktree and `git diff --check` are clean. The pushed commit contains the
+streamed served-identity fix, its dispatcher regressions, feature-doc update,
+generated site artifacts, and this ledger/finding receipt.
+
+Repeated the passive Docker-only Mac Studio snapshot over SSH. Host is
+`users-Mac-Studio.local`, Docker Server `29.7.2`; only unrelated healthy Plex
+is running, with no Istara/benchmark/provider/donor/Petals containers,
+networks, or volumes. No host installation, model load, image pull, service
+start, or repository mutation occurred.
+
+Boundary/next: local contract evidence is green (dispatcher 29/29, Pi runtime
+46/46, benchmark 78/78, focused Research Spine/Pi 178 passed, feature docs
+86/86, touched Ruff clean), but G0/G1 and live G2–G22 remain open. A future
+authorized window must supply three real model artifacts or explicit provider
+routes, use a fresh detached `origin/testing` checkout, verify its archive
+digest inside Docker, and execute the provider/Petals/combined retakes before
+any claim of live ensemble or Research Spine validity.
