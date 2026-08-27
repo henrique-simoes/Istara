@@ -98,6 +98,8 @@ export function acceptanceGateStatus({
   profile = "combined",
   codingValidationEnabled = false,
   requireComputeDonation = false,
+  requireLongHorizon = false,
+  longHorizonVerified = false,
   featureResults = {},
 } = {}) {
   const normalizedProfile = normalizeAcceptanceProfile(profile);
@@ -120,7 +122,10 @@ export function acceptanceGateStatus({
     verified: Boolean(verified),
   });
   const combinedSelected = normalizedProfile === "combined";
-  const combinedVerified = combinedSelected && providerVerified && petalsVerified;
+  const combinedVerified = combinedSelected
+    && providerVerified
+    && petalsVerified
+    && (!requireLongHorizon || Boolean(longHorizonVerified));
   const combinedStatus = !combinedSelected
     ? "not_selected"
     : combinedVerified
@@ -293,6 +298,8 @@ export function scoreRun({ mode, metrics, integrationMatrix = [], blockers = [],
     profile: acceptanceProfile,
     codingValidationEnabled,
     requireComputeDonation,
+    requireLongHorizon,
+    longHorizonVerified,
     featureResults,
   });
   return {

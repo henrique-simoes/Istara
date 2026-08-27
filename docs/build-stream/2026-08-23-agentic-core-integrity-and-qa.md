@@ -8,8 +8,8 @@ phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal ac
 stage: S2-execute/S3-review
 status: in-progress
 blocked_on: null
-last: { agent: gpt-5-codex, at: 2026-08-27T08:50:11Z, ledger: L-298 }
-next_action: "Commit and gate the scorecard long-horizon receipt; then audit remaining live Research Spine/Petals parity gaps."
+last: { agent: gpt-5-codex, at: 2026-08-27T08:52:57Z, ledger: L-299 }
+next_action: "Commit and gate the combined-gate consistency fix; then audit remaining live Research Spine/Petals parity gaps."
 ```
 
 ## Plan overview / roadmap
@@ -6888,3 +6888,24 @@ This closes the deterministic scorecard-oracle gap only; live two-call engine
 parity, three independent served model identities, Fleiss/Krippendorff quality,
 reconciliation/human-Done promotion, Petals cooperation, and Mac Studio Docker
 execution remain open.
+
+### L-299 | 2026-08-27T08:52:57Z | S2-execute/S3-review | gpt-5-codex | combined acceptance row reflects long-horizon receipt
+
+The new long-horizon blocker correctly failed a required combined run, but the
+`acceptance_gates.combined` row could still report `verified` because it only
+conjoined provider and Petals flags. That made the table contradict the blocker
+and could mislead a reviewer reading the scorecard without the blocker list.
+
+`acceptanceGateStatus` now receives the explicit long-horizon requirement and
+receipt and includes that conjunction in the combined gate status. A combined
+run with provider/Petals evidence but no required receipt is now `blocked` in
+both the gate table and blocker list; a verified receipt preserves `verified`.
+The deterministic suite covers this exact contradiction regression.
+
+Verification: scoring/topology tests pass (`33 passed`), the complete real-user
+benchmark package passes (`82 passed`), feature docs regenerate/check cleanly
+(`224` artifacts, `86/86` checks), and Compass Forge before-gate remains
+baseline-clean (`new_issue_count=0`, `new_failures=0`, no new warnings; inherited
+`31` failures/`208` warnings). This is still deterministic evidence only; live
+Mac Studio Docker execution and all provider/Petals/Research Spine quality gates
+remain open.

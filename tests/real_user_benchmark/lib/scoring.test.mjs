@@ -353,3 +353,28 @@ test("verified Docker long-horizon workload does not add an acceptance blocker",
     },
   }), []);
 });
+
+test("combined scorecard gate stays blocked until the required long-horizon receipt is verified", () => {
+  const scorecard = scoreRun({
+    mode: "probe",
+    acceptanceProfile: "combined",
+    codingValidationEnabled: true,
+    requireComputeDonation: true,
+    requireLongHorizon: true,
+    longHorizonVerified: false,
+    featureResults: {
+      codingValidation: true,
+      multiModelResearchSpineValidation: true,
+      researchSpineTraceability: true,
+      computeDonation: true,
+    },
+  });
+
+  assert.deepEqual(scorecard.acceptance_gates.combined, {
+    selected: true,
+    status: "blocked",
+    verified: false,
+  });
+  assert.equal(scorecard.long_horizon_required, true);
+  assert.equal(scorecard.long_horizon_verified, false);
+});
