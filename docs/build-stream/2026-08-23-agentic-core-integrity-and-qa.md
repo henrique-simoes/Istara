@@ -8,7 +8,7 @@ phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal ac
 stage: S2-execute/S3-review
 status: in-progress
 blocked_on: "Owner-approved Docker-only Mac Studio provisioning: current env/config, provider-served identities, and three-model inputs"
-last: { agent: gpt-5-codex, at: 2026-08-27T09:32:00Z, ledger: L-308 }
+last: { agent: gpt-5-codex, at: 2026-08-27T09:35:19Z, ledger: L-309 }
 next_action: "Obtain owner-approved Docker-only env/model/provider inputs, then execute the staged provider, Petals, combined, engine-parity, ensemble, and Research Spine acceptance matrix below; keep every missing prerequisite fail-closed."
 ```
 
@@ -7295,3 +7295,19 @@ goal status and not permission to run host software. The latest transported tip 
 inventory remains empty of Istara/benchmark/provider/Petals workloads. Resume at
 L-306 section 2, attach provisioning evidence to CF-15, and do not claim live
 Research Spine or ensemble acceptance until the full matrix is executed.
+
+### L-309 | 2026-08-27T09:35:19Z | S3-review | gpt-5-codex | deterministic retest checkpoint
+
+The current exact testing tip remains locally clean and the deterministic seam/oracle
+coverage was re-run after the handoff: the focused Petals/Pi/Research Spine Python
+suite passed `130`, and the benchmark Research Spine, scoring, topology, and
+provenance Node suite passed `48`. Compass Forge command evidence `196` records both
+commands and explicitly marks them deterministic-only. These results strengthen the
+local wiring and fail-closed oracle proof but do not establish live provider-served
+identity, model independence, semantic quality, or Mac Studio execution.
+
+The Docker-only provisioning hold is unchanged: the clean retake has no current env
+file, the Docker-host model directory is empty, and no Istara/provider/Petals/runner
+workload is active. Resume at L-306 section 2 when the owner-approved inputs exist;
+keep CF-13, CF-15, CF-20, and CF-21 open until the live matrix produces redacted
+artifacts and terminal evidence.
