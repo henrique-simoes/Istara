@@ -66,10 +66,16 @@ Implements the benchmark assets in master plan §10.3. Execution plan:
   committed after; provider-reported usage (`estimate=False`) or the documented
   `chars4` estimator (`estimate=True`); record identity follows the manifest unit.
 - **`moa.py`** — Research Spine MoA routing validation: records requested mode/samples/
-  temperatures, served routes, coder count, consensus, and reconciliation status; any
-  downgrade (`full_ensemble→dual_run/self_moa`, diversity collapse `single_coder`,
-  blocked) is `not_runnable`, never a success. `validate_topology` is a spend-free
-  dry-run probe of the fail-closed chain.
+  temperatures, served routes, served model identities, coder count, response consensus,
+  and reconciliation status; a full ensemble must have both the requested number of
+  successful routes *and* distinct served model identities. Endpoint replicas of one model
+  (or missing model identity evidence) are `model_identity_collapse` and therefore
+  `not_runnable`, never a success. Any other downgrade (`full_ensemble→dual_run/self_moa`,
+  partial coder, route diversity collapse, blocked) is also fail-closed. The recorded
+  response consensus is explicitly not Fleiss' kappa: formal Research Spine reliability
+  still requires the governed independent coding run with raw evidence units, grounding,
+  reconciliation, and human-Done/report gates. `validate_topology` is a spend-free dry-run
+  probe of the fail-closed route chain and does not by itself prove model independence.
 - **`deepseek_judge.py`** — DeepSeek-backed `judge_fn` for the JudgeLayer. Under the
   DeepSeek-only policy the judge model equals the DUT model; separation is by role
   (`kind="judge"` calls, blind A/B, position swap, shared ledger — see

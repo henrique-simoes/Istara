@@ -8,8 +8,8 @@ phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal ac
 stage: S2-execute
 status: in-progress
 blocked_on: null
-last: { agent: gpt-5-codex, at: 2026-08-27T00:20:39Z, ledger: L-212 }
-next_action: "Run the terminal Docker-only provider/Petals/combined retake from implementation tip 7f82389c12389bfc0d81a50458a3fe9e0e8bd2a4 in the isolated Mac Studio worktree when owner-authorized provider credit and three Compose-owned donor routes are available; keep the live gate open until its evidence is complete."
+last: { agent: gpt-5-codex, at: 2026-08-27T00:40:43Z, ledger: L-214 }
+next_action: "Run the complete local benchmark and feature-doc gates, then commit and push the fail-closed model-identity oracle; create a new clean detached Mac Studio checkout at that pushed tip. Keep live acceptance open until owner-authorized provider credit and three Compose-owned donor/model routes are available."
 ```
 
 ## Plan overview / roadmap
@@ -4611,3 +4611,54 @@ when owner-authorized provider credit and three donor routes exist. Add a dedica
 live benchmark profile before that retake: the current DeepSeek-only profile hard-pins one model
 and one approved endpoint, so it can prove route isolation and degradation but cannot prove three
 distinct model identities or Fleiss/Krippendorff reliability.
+
+### L-213 | 2026-08-27T00:26:57Z | S2-execute | gpt-5-codex | branch/worktree and Mac Studio retake reconciliation
+
+Did: Reconciled the repository and remote execution surfaces before opening the next benchmark
+change. Local `testing` is clean at `3d0b2052352a253200aa388c3d34fe19936f5571` and the exact
+tree/ref are equal to `origin/testing`. The only additional worktree is the clean recovery
+checkout `/Users/user/Documents/Codex/2026-08-10/list/work/istara-pi-linearized-2026-08-10` at
+`4c0ee557095549447e6934ca0f69cee861af220d`; it is not an ancestor of `testing` (113 commits
+ahead and 682 behind), so it is retained as a recovery asset. Only `testing` is locally merged;
+there are no gone upstreams and `git remote prune origin --dry-run` has no candidates. No branch
+or worktree was deleted because no deletion target was demonstrably unused and merged.
+
+The Mac Studio is reachable through the `macstudio` SSH alias with Docker Desktop 29.7.2. The
+host inspection changed no packages, started no models, and found no Istara benchmark/provider/
+donor containers (only an unrelated healthy `plex` container). The isolated retake checkout
+`$HOME/istara-testing-retake-47bf` is clean/detached at `7f82389c12389bfc0d81a50458a3fe9e0e8bd2a4`,
+which predates the governed-width fix now on `testing`; it must not be treated as the current
+implementation or overwritten in place. The next live attempt therefore requires a new clean
+detached checkout at `3d0b2052` and must remain Docker-only.
+
+Open acceptance remains explicit: the current benchmark profile is DeepSeek-only and cannot
+prove three distinct model identities, formal Fleiss/Krippendorff reliability, or Petals donor
+interoperation. Provider HTTP 402 and absent Compose-owned donor routes remain external gates;
+no live Research Spine acceptance claim is made. Before any provider call, add/validate a
+fail-closed multi-model profile whose explicit owner-supplied allowlist records three distinct
+served model identities, common raw evidence units, reliability metrics, reconciliation, and
+human-Done/report eligibility without weakening route authorization or donor isolation.
+
+### L-214 | 2026-08-27T00:40:43Z | S2-execute | gpt-5-codex | fail-closed MoA model-identity oracle
+
+Did: Audited the benchmark-side MoA verdict against the Research Spine contract and found that
+endpoint diversity alone could be reported as a clean full ensemble. `tests/pi_benchmark/moa.py`
+now derives served model identities only from successful route evidence, records their distinct
+count, and degrades a full ensemble as `model_identity_collapse` when identities are missing or
+duplicated. Every benchmark MoA evidence object explicitly marks `formal_reliability=false` and
+`research_spine_eligible=false`: response consensus is not Fleiss' kappa or Krippendorff alpha,
+and cannot promote reportable research without the governed coding/reconciliation/Done path.
+
+Added regression coverage for three endpoint replicas of one model and for missing model
+identity, while preserving the clean three-route control. Updated the benchmark README to make
+the independent-model gate and the boundary between deterministic response consensus and formal
+Research Spine reliability explicit. The full local `tests/pi_benchmark/` package is the next
+verification gate; no provider call, model load, host package operation, or Mac Studio mutation
+was performed. This change is intentionally local/provable and does not claim live three-model
+acceptance: the current live profile still pins DeepSeek and the last Mac Studio run stopped at
+provider HTTP 402 before any coder/rater output.
+
+Next: run focused and full benchmark tests plus feature-doc generation/check, attach Compass
+Forge gate evidence, commit/push the benchmark/oracle/ledger files plus the generated feature-site
+manifest, verify exact `testing`/`origin/testing` parity, and materialize a new clean detached Mac
+Studio checkout at the pushed implementation tip without touching the stale recovery checkout.

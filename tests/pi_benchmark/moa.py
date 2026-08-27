@@ -17,9 +17,11 @@ fakes. The live driver (:mod:`tests.pi_benchmark.live_driver`) calls
 
 Downgrade-string convention (one convention, used everywhere): ``"<requested>-><served>"``
 when the served method differs from the requested one (e.g. ``"full_ensemble->dual_run"``),
-``"partial_coder"`` when fewer successful responses/routes than requested were served, and
-the literal ``"single_coder"`` when a full_ensemble *was* served but over fewer distinct
-routes than the requested slots (diversity collapse without a method change).
+``"partial_coder"`` when fewer successful responses/routes than requested were served,
+``"single_coder"`` when a full_ensemble *was* served over fewer distinct routes than the
+requested slots, and ``"model_identity_collapse"`` when endpoint diversity is present but
+the served model identities are missing or duplicated.  The last case matters because the
+Research Spine requires independent model identities, not merely endpoint replicas.
 """
 
 from __future__ import annotations
@@ -52,12 +54,16 @@ class MoaEvidence:
     response_count: int
     served_route_ids: tuple[str, ...]      # endpoint ids actually served (redacted ids ok)
     distinct_served_routes: int
+    served_model_ids: tuple[str, ...]      # model identities actually served
+    distinct_served_models: int
     coder_count: int               # successful responses actually used
     consensus_score: float | None  # consensus.agreement_score when exposed, else None
     consensus_confidence: str      # consensus.confidence when exposed, else ""
     source_unit_ids: tuple[str, ...]       # all dispatcher endpoint ids (attempt provenance)
+    formal_reliability: bool        # true only when a formal coding run supplies it
+    research_spine_eligible: bool   # response consensus alone is never Spine acceptance
     reconciliation_status: str     # "reconciled" | "degraded" | "blocked" | "not_run"
-    downgrade: str | None          # None | "<requested>-><served>" | "partial_coder" | "single_coder"
+    downgrade: str | None          # None | "<requested>-><served>" | "partial_coder" | "single_coder" | "model_identity_collapse"
     degraded: bool
 
 
@@ -101,6 +107,23 @@ def _endpoint_ids_from(metadata: dict[str, Any]) -> tuple[str, ...]:
     return evidence_ids, endpoint_ids or evidence_ids
 
 
+def _model_ids_from(metadata: dict[str, Any]) -> tuple[str, ...]:
+    """Return served model identities from successful route evidence.
+
+    Route evidence is intentionally the source of truth for *served* identities.  The
+    dispatcher-level endpoint list may include failed attempts, and an endpoint id is not
+    a model identity: several endpoint replicas can all serve one model.  Missing model
+    identities are retained as absent (rather than guessed from endpoint ids) so a live
+    run cannot pass the independent-model gate by omission.
+    """
+    route_evidence = tuple(metadata.get("route_evidence") or ())
+    return tuple(
+        str(route.get("model")).strip()
+        for route in route_evidence
+        if route.get("model") and str(route.get("model")).strip()
+    )
+
+
 def assess_validation_result(
     *,
     requested_mode: str,
@@ -112,7 +135,9 @@ def assess_validation_result(
 
     ``result`` is duck-typed: ``.method``, ``.responses`` (successful responses used),
     ``.consensus.agreement_score`` / ``.consensus.confidence``, and ``.metadata`` carrying
-    ``endpoint_ids`` and ``route_evidence`` (each route a dict with an ``endpoint_id``).
+    ``endpoint_ids`` and ``route_evidence`` (each route a dict with an ``endpoint_id`` and,
+    for full_ensemble acceptance, a served ``model`` identity).  The consensus fields are
+    response-category agreement only; they are not Fleiss' kappa or a formal coding run.
     """
     if requested_mode not in MOA_MODES:
         raise ValueError(f"invalid requested_mode {requested_mode!r}")
@@ -125,7 +150,9 @@ def assess_validation_result(
     confidence = str(getattr(consensus, "confidence", "") or "") if consensus is not None else ""
 
     served_route_ids, source_unit_ids = _endpoint_ids_from(metadata)
+    served_model_ids = _model_ids_from(metadata)
     distinct_served = len({route for route in served_route_ids if route})
+    distinct_served_models = len({model for model in served_model_ids if model})
     response_count = len(responses)
     successful_route_count = len(served_route_ids)
 
@@ -144,6 +171,11 @@ def assess_validation_result(
         elif requested_mode == "full_ensemble" and distinct_served < requested_samples:
             # Method held but diversity collapsed: fewer distinct routes than slots.
             downgrade = "single_coder"
+            degraded = True
+        elif requested_mode == "full_ensemble" and distinct_served_models < requested_samples:
+            # Endpoint diversity is not model independence: replicas or missing identity
+            # metadata cannot satisfy the Research Spine's independent-coder requirement.
+            downgrade = "model_identity_collapse"
             degraded = True
         elif requested_mode == "self_moa" and distinct_served > 1:
             # A temperature sweep must collapse to ONE route; more is a routing anomaly.
@@ -167,10 +199,14 @@ def assess_validation_result(
         response_count=response_count,
         served_route_ids=served_route_ids,
         distinct_served_routes=distinct_served,
+        served_model_ids=served_model_ids,
+        distinct_served_models=distinct_served_models,
         coder_count=response_count,
         consensus_score=float(consensus_score) if consensus_score is not None else None,
         consensus_confidence=confidence,
         source_unit_ids=source_unit_ids,
+        formal_reliability=False,
+        research_spine_eligible=False,
         reconciliation_status=reconciliation_status,
         downgrade=downgrade,
         degraded=degraded,
@@ -189,10 +225,14 @@ def not_run_evidence(
         response_count=0,
         served_route_ids=(),
         distinct_served_routes=0,
+        served_model_ids=(),
+        distinct_served_models=0,
         coder_count=0,
         consensus_score=None,
         consensus_confidence="",
         source_unit_ids=(),
+        formal_reliability=False,
+        research_spine_eligible=False,
         reconciliation_status=NOT_RUN,
         downgrade=None,
         degraded=True,

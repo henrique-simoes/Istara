@@ -28,7 +28,14 @@ class _Result:
             "route_evidence": (
                 route_evidence
                 if route_evidence is not None
-                else [{"endpoint_id": e, "route_kind": "agentic_ensemble"} for e in endpoint_ids]
+                else [
+                    {
+                        "endpoint_id": e,
+                        "model": f"model-{e}",
+                        "route_kind": "agentic_ensemble",
+                    }
+                    for e in endpoint_ids
+                ]
             ),
         }
 
@@ -57,6 +64,9 @@ def test_full_ensemble_clean_three_distinct_routes():
         requested_mode="full_ensemble", requested_samples=3, result=result,
     )
     assert ev.distinct_served_routes == 3
+    assert ev.distinct_served_models == 3
+    assert ev.formal_reliability is False
+    assert ev.research_spine_eligible is False
     assert ev.downgrade is None and ev.degraded is False
     assert ev.reconciliation_status == "reconciled"
     assert moa.record_status_for(ev) == ("ok", None)
@@ -133,6 +143,50 @@ def test_full_ensemble_served_but_diversity_collapsed_is_single_coder():
     assert ev.downgrade == "single_coder"
     assert ev.degraded is True
     assert moa.record_status_for(ev) == ("not_runnable", "other")
+
+
+def test_full_ensemble_distinct_endpoints_for_one_model_is_not_independent_ensemble():
+    # Endpoint replicas can look diverse while every coder is the same served model.
+    result = _Result(
+        "full_ensemble",
+        ["r1", "r2", "r3"],
+        ["ep-a", "ep-b", "ep-c"],
+        route_evidence=[
+            {"endpoint_id": "ep-a", "model": "same-model"},
+            {"endpoint_id": "ep-b", "model": "same-model"},
+            {"endpoint_id": "ep-c", "model": "same-model"},
+        ],
+    )
+    ev = assess_validation_result(
+        requested_mode="full_ensemble", requested_samples=3, result=result,
+    )
+    assert ev.distinct_served_routes == 3
+    assert ev.distinct_served_models == 1
+    assert ev.downgrade == "model_identity_collapse"
+    assert ev.degraded is True
+    assert ev.reconciliation_status == "degraded"
+    assert moa.record_status_for(ev) == ("not_runnable", "other")
+
+
+def test_full_ensemble_missing_model_identity_fails_closed():
+    result = _Result(
+        "full_ensemble",
+        ["r1", "r2", "r3"],
+        ["ep-a", "ep-b", "ep-c"],
+        route_evidence=[
+            {"endpoint_id": "ep-a"},
+            {"endpoint_id": "ep-b"},
+            {"endpoint_id": "ep-c"},
+        ],
+    )
+    ev = assess_validation_result(
+        requested_mode="full_ensemble", requested_samples=3, result=result,
+    )
+    assert ev.distinct_served_routes == 3
+    assert ev.served_model_ids == ()
+    assert ev.distinct_served_models == 0
+    assert ev.downgrade == "model_identity_collapse"
+    assert ev.degraded is True
 
 
 def test_zero_responses_is_blocked():
