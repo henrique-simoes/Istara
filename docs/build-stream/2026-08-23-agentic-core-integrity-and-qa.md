@@ -8,7 +8,7 @@ phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal ac
 stage: S2-execute/S3-review
 status: in-progress
 blocked_on: "Owner-approved Docker-only Mac Studio provisioning: current env/config, provider-served identities, and three-model inputs"
-last: { agent: gpt-5-codex, at: 2026-08-27T20:29:50Z, ledger: L-417 }
+last: { agent: gpt-5-codex, at: 2026-08-27T20:31:00Z, ledger: L-418 }
 next_action: "Obtain owner-approved Docker provider inputs, then run the live three-model Research Spine proof and separately verify Petals, human reconciliation/Done/report, two-call, and long-horizon gates; keep deterministic evidence separate."
 ```
 
@@ -26,7 +26,7 @@ timestamped ledger entry in this file.
 * `testing` tracks `origin/testing` and the checkout is kept clean. Re-run
   `git rev-parse HEAD` and `git rev-parse origin/testing` at the start of every
   continuation because each ledger-only commit necessarily advances both tips.
-  The last observed equal tips before this amendment were `a321645f`; there is
+  The last observed equal tips before this amendment were `fce174c8`; there is
   no `local/testing` ref. Do not create a local ref merely to make the names
   symmetrical; record the absence instead.
 * The only other worktree is the clean recovery branch
@@ -10038,3 +10038,22 @@ dirty and 306 commits behind its fetched origin, and no Istara Compose project
 is running. The next safe action is owner-approved preservation/reconciliation
 or a disposable Docker checkout plus the provider/Petals inputs required by the
 live acceptance matrix.
+
+### L-418 | 2026-08-27T20:31:00Z | S3-review | gpt-5-codex | Compass task graph remains open at live-acceptance boundary
+
+Compass Forge `status`/`next` and `spec show CF-SPEC-2` were rechecked after the
+deterministic run. The linked task graph currently has `CF-14`, `CF-16`,
+`CF-17`, `CF-18`, and `CF-19` done, while implementation `CF-15` and the
+spec-validation tasks `CF-13`, `CF-20`, and `CF-21` remain open. `CF-21` is
+specifically the requirement that no linked task remain incomplete; it cannot
+be closed while the live acceptance evidence is absent. The next action shown
+by Compass is `task ready`/`CF-21`, but that is a closure check, not permission
+to claim acceptance or to bypass the outstanding implementation/live gates.
+
+The local branch was clean and equal to `origin/testing` at `fce174c8` before
+this ledger amendment; re-run both ref checks after the amendment commit. The
+remote Mac Studio preflight remains `not_run` (no Istara Compose workload,
+dirty checkout, 306 commits behind), so no model loading or host mutation was
+performed. Keep CF task statuses open until the owner-approved Docker-only
+three-model provider/Petals, Research Spine reconciliation/Done/report,
+two-call, and long-horizon evidence is attached.
