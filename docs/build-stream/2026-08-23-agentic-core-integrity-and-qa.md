@@ -8,7 +8,7 @@ phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal ac
 stage: S2-execute/S3-review
 status: in-progress
 blocked_on: null
-last: { agent: gpt-5-codex, at: 2026-08-27T08:11:18Z, ledger: L-293 }
+last: { agent: gpt-5-codex, at: 2026-08-27T08:16:08Z, ledger: L-294 }
 next_action: "Continue the deterministic Research Spine/authority audit from the exact transported testing tip; await an owner-authorized Docker-only Mac Studio window before any live provider, Petals, or three-rater acceptance claim."
 ```
 
@@ -6763,3 +6763,27 @@ artifacts, `86/86` feature checks). This is deterministic API-to-live-manager
 evidence only; it does not prove an active dispatcher request, two-loop parity,
 live provider identity, three-rater coding, Fleiss/Krippendorff reliability, or
 Docker-only Mac Studio execution.
+
+### L-294 | 2026-08-27T08:16:08Z | S2-execute/S3-review | gpt-5-codex | strict coder-unit provenance oracle
+
+The live benchmark's Research Spine acceptance probe previously trusted the
+coding-run aggregate count and top-level route receipt after it selected raw
+evidence units. It did not independently prove that every selected unit was
+coded by every rater, or that each persisted application retained raw source
+text/location and a served-model route receipt matching its row model. That
+left a malformed adapter able to present a numerically accepted but incomplete
+or ungrounded three-rater result.
+
+The validator now cross-checks fetched code applications against the exact
+selected unit IDs, requires the configured rater width, checks the complete
+coder-by-unit Cartesian coverage, and requires non-empty source text/location,
+served route outcome, and row/served model agreement. Missing pairs and invalid
+rows are included in persisted probe evidence and fail the provider gate closed.
+A deterministic regression removes one coder-unit row's source/route data and
+proves the run is blocked.
+
+Verification: benchmark package checks pass (`79 passed`), Node syntax checks
+pass, and feature docs regenerate/check cleanly (`224` artifacts, `86/86`
+checks). This is a deterministic acceptance-oracle correction only; live
+three-checkpoint independence, scientific reliability quality, reconciliation,
+human-Done/report promotion, and Docker-only Mac Studio execution remain open.

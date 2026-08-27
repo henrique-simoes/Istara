@@ -17,6 +17,61 @@ function sourceKey(unit) {
   return location ? location.split("#", 1)[0].trim() : "";
 }
 
+function assessApplicationCoverage(rows, expectedUnits, requiredCoders) {
+  const expectedUnitIds = new Set((Array.isArray(expectedUnits) ? expectedUnits : [])
+    .map((unit) => String(unit?.id || "").trim())
+    .filter(Boolean));
+  const byCoder = new Map();
+  const invalidRows = [];
+  for (const row of Array.isArray(rows) ? rows : []) {
+    const coderId = String(row?.coder_id || "").trim();
+    const unitId = String(row?.evidence_unit_id || "").trim();
+    const sourceText = String(row?.source_text || "").trim();
+    const sourceLocation = String(row?.source_location || "").trim();
+    const route = row?.route_evidence && typeof row.route_evidence === "object"
+      ? row.route_evidence
+      : null;
+    const servedModel = String(route?.model || route?.served_model || "").trim();
+    const rowModel = String(row?.model_name || "").trim();
+    const routeServed = String(route?.outcome || "").toLowerCase() === "served";
+    if (!coderId || !expectedUnitIds.has(unitId) || !sourceText || !sourceLocation
+      || !routeServed || !servedModel || !rowModel || rowModel !== servedModel) {
+      invalidRows.push({
+        id: String(row?.id || "").trim(),
+        coder_id: coderId,
+        evidence_unit_id: unitId,
+        has_source_text: Boolean(sourceText),
+        has_source_location: Boolean(sourceLocation),
+        route_served: routeServed,
+        served_model: servedModel,
+        row_model: rowModel,
+      });
+    }
+    if (coderId && expectedUnitIds.has(unitId)) {
+      if (!byCoder.has(coderId)) byCoder.set(coderId, new Set());
+      byCoder.get(coderId).add(unitId);
+    }
+  }
+  const coderIds = [...byCoder.keys()].sort();
+  const missingPairs = [];
+  for (const coderId of coderIds) {
+    for (const unitId of expectedUnitIds) {
+      if (!byCoder.get(coderId).has(unitId)) missingPairs.push({ coder_id: coderId, evidence_unit_id: unitId });
+    }
+  }
+  return {
+    ok: expectedUnitIds.size > 0
+      && coderIds.length >= requiredCoders
+      && missingPairs.length === 0
+      && invalidRows.length === 0,
+    expected_unit_count: expectedUnitIds.size,
+    observed_coder_count: coderIds.length,
+    coder_ids: coderIds,
+    missing_pairs: missingPairs,
+    invalid_rows: invalidRows,
+  };
+}
+
 export function selectSubstantiveEvidenceUnits(units, limit) {
   const requested = Math.max(0, Number(limit || 0));
   if (requested === 0) return [];
@@ -61,6 +116,7 @@ async function validateCodingRun({
   codingRun,
   requiredCoders,
   requiredDonorRoutes,
+  expectedEvidenceUnits,
   featureResults,
   blockers,
   logger,
@@ -129,6 +185,8 @@ async function validateCodingRun({
   const donorRouteOk = requiredDonorRoutes >= 2
     ? servedDonorRouteCount >= requiredDonorRoutes
     : true;
+  let coverageOk = true;
+  let coverageEvidence = null;
   let reconciliationOk = true;
   let reconciliationEvidence = null;
   if (fullMultiModelOk && donorRouteOk) {
@@ -141,6 +199,15 @@ async function validateCodingRun({
       const rows = Array.isArray(applications) ? applications : [];
       const decisionRows = Array.isArray(decisions) ? decisions : [];
       const expectedCount = Math.max(0, applicationCount);
+      coverageEvidence = assessApplicationCoverage(
+        rows,
+        expectedEvidenceUnits,
+        requiredCoders,
+      );
+      coverageOk = coverageEvidence.ok;
+      if (!coverageOk) {
+        reconciliationOk = false;
+      }
       const acceptedRows = rows.filter((row) =>
         ["accepted", "accepted_after_reconciliation"].includes(String(row?.promotion_status || "").toLowerCase())
         && ["accepted", "reconciled"].includes(String(row?.reconciliation_status || "").toLowerCase())
@@ -150,7 +217,8 @@ async function validateCodingRun({
         .map((decision) => String(decision?.code_application_id || "").trim())
         .filter(Boolean));
       const allApplicationsHaveDecisions = rows.every((row) => decisionIds.has(String(row?.id || "").trim()));
-      reconciliationOk = expectedCount > 0
+      reconciliationOk = coverageOk
+        && expectedCount > 0
         && rows.length === expectedCount
         && acceptedRows.length === expectedCount
         && allApplicationsHaveDecisions;
@@ -161,7 +229,10 @@ async function validateCodingRun({
         accepted_decision_count: decisionIds.size,
         all_applications_have_decisions: allApplicationsHaveDecisions,
       };
-      if (!reconciliationOk) {
+      if (coverageEvidence) {
+        reconciliationEvidence.application_coverage = coverageEvidence;
+      }
+      if (coverageOk && !reconciliationOk) {
         const detail = `Research Spine reliability passed, but ${acceptedRows.length}/${expectedCount} code applications have accepted reconciliation decisions (${decisionIds.size} linked decisions for ${rows.length} applications).`;
         blockers.push(detail);
         logger.issue({
@@ -186,9 +257,13 @@ async function validateCodingRun({
       });
     }
   }
-  featureResults.multiModelResearchSpineValidation = fullMultiModelOk && donorRouteOk && reconciliationOk;
+  featureResults.multiModelResearchSpineValidation = fullMultiModelOk
+    && donorRouteOk
+    && coverageOk
+    && reconciliationOk;
   if (reconciliationEvidence) codingRun.reconciliation_evidence = reconciliationEvidence;
-  if (!fullMultiModelOk || !donorRouteOk) {
+  if (coverageEvidence) codingRun.application_coverage = coverageEvidence;
+  if (!fullMultiModelOk || !donorRouteOk || !coverageOk) {
     const detail = !currentRunOk
       ? status === "blocked" || promotionStatus === "blocked"
         ? `Research Spine validation observed a blocked current coding run (${status || "unknown"}/${promotionStatus || "unknown"}, ${applicationCount < 0 ? "unknown" : applicationCount} code applications).`
@@ -197,6 +272,8 @@ async function validateCodingRun({
         ? `Research Spine coding proved ${distinctModelCount}/${requiredCoders} backend-reported model coders but only ${servedModelCount}/${requiredCoders} distinct served model identities in route evidence.`
       : !algorithmOk
         ? `Research Spine validation did not prove the required reliability algorithm with numeric Fleiss kappa and Krippendorff alpha (observed ${reliabilityMethod || "unknown"}, kappa=${kappa ?? "missing"}, alpha=${alpha ?? "missing"}).`
+        : !coverageOk
+          ? `Research Spine code applications did not prove complete coder-by-evidence-unit coverage and source/served-model provenance (${coverageEvidence?.observed_coder_count || 0} coders, ${coverageEvidence?.missing_pairs?.length || 0} missing pairs, ${coverageEvidence?.invalid_rows?.length || 0} invalid rows).`
       : `Research Spine coding used ${servedDonorRouteCount}/${requiredDonorRoutes} required distinct served donor routes.`;
     blockers.push(detail);
     logger.issue({
@@ -218,6 +295,7 @@ async function validateCodingRun({
         fallback_reason: fallbackReason,
         expected_distinct_donor_routes: requiredDonorRoutes,
         served_donor_route_count: servedDonorRouteCount,
+        application_coverage: coverageEvidence,
       },
     });
   }
@@ -294,6 +372,7 @@ export async function exerciseResearchSpineValidation({
 
   if (codingValidationEnabled && codingValidationLimit > 0) {
     const approvedTask = taskWorkflow?.approvedTasks?.[0] || null;
+    let selectedEvidenceUnits = [];
     try {
       if (!evidence.contract_loaded) {
         const detail = "Research Spine contract was unavailable; coding validation is unproven.";
@@ -330,6 +409,7 @@ export async function exerciseResearchSpineValidation({
         availableUnits,
         codingValidationLimit,
       );
+      selectedEvidenceUnits = selectedUnits;
       const selectedSourceCount = new Set(selectedUnits.map(sourceKey).filter(Boolean)).size;
       evidence.coding_selection = {
         strategy: "deterministic_substantive_source_diverse",
@@ -392,6 +472,7 @@ export async function exerciseResearchSpineValidation({
         codingRun: evidence.coding_run,
         requiredCoders,
         requiredDonorRoutes,
+        expectedEvidenceUnits: selectedEvidenceUnits,
         featureResults,
         blockers,
         logger,
@@ -415,6 +496,7 @@ export async function exerciseResearchSpineValidation({
           codingRun: evidence.coding_run,
           requiredCoders,
           requiredDonorRoutes,
+          expectedEvidenceUnits: selectedEvidenceUnits,
           featureResults,
           blockers,
           logger,

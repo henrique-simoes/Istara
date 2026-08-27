@@ -87,7 +87,7 @@ Ensemble Health surfaces health and consensus signals for Istara's multi-model o
 - `tests/test_validation_project_scope.py`
 - `tests/test_evaluation_skill.py`
 - `tests/test_research_validity_contract.py`
-- `tests/real_user_benchmark/lib/research-spine-probes.test.mjs` — paginated source-diverse substantive-span selection, exact evidence-unit provenance, multi-model route diversity, and numeric Fleiss/Krippendorff proof.
+- `tests/real_user_benchmark/lib/research-spine-probes.test.mjs` — paginated source-diverse substantive-span selection, complete coder-by-evidence-unit coverage, per-application raw-span/served-model provenance, multi-model route diversity, and numeric Fleiss/Krippendorff proof.
 - `tests/test_research_validity_pagination.py` — bounded evidence-unit pagination used by the live proof.
 - `tests/pi_production/test_w7_validation.py` — dispatcher purpose/verb mapping, legacy parity, endpoint-pinned distinctness, actual Pi Model Management-backed coding selection, fail-closed degradation, and judge unavailability. W8 embedding dispatch and gateway behavior are covered by `tests/pi_production/test_w8_embeddings_gateway.py`.
 - `tests/pi_production/test_w1_dispatcher_authority.py` — legacy/Istara multi-turn and seven-step long-horizon tool-loop parity over a real `PiModelManager`; verifies per-round manager resolution, accumulated tool-result history, cumulative usage, governed horizon behavior, and provider-served identity.

@@ -38,6 +38,17 @@ function makeReconciledApplications(runId, count = 12) {
   return Array.from({ length: count }, (_unused, index) => ({
     id: `${runId}-application-${index + 1}`,
     coding_run_id: runId,
+    coder_id: `coder-${Math.floor(index / 4) + 1}`,
+    evidence_unit_id: `eu-${(index % 4) + 1}`,
+    source_text: `Exact raw source span for evidence unit ${(index % 4) + 1}.`,
+    source_location: `interview-${(index % 2) + 1}.md#${(index % 4) + 1}`,
+    model_name: `model-${Math.floor(index / 4) + 1}`,
+    route_evidence: {
+      node_id: `donor-${Math.floor(index / 4) + 1}`,
+      model: `model-${Math.floor(index / 4) + 1}`,
+      endpoint_id: `endpoint-${Math.floor(index / 4) + 1}`,
+      outcome: "served",
+    },
     promotion_status: "accepted",
     reconciliation_status: "accepted",
     review_status: "approved",
@@ -382,6 +393,68 @@ test("three-donor benchmark accepts full multi-model coding evidence", async () 
   assert.equal(featureResults.codingValidation, true);
   assert.equal(featureResults.multiModelResearchSpineValidation, true);
   assert.deepEqual(blockers, []);
+});
+
+test("three-model coding blocks when an application omits a coder-unit span or provenance", async () => {
+  const logger = makeLogger();
+  const blockers = [];
+  const featureResults = {};
+  const incompleteRows = makeReconciledApplications("run-coverage-gap");
+  incompleteRows[3] = {
+    ...incompleteRows[3],
+    evidence_unit_id: "eu-1",
+    source_text: "",
+    route_evidence: {},
+  };
+  const api = {
+    async get(path) {
+      if (path === "/api/research-validity/contract") {
+        return { contract: {}, qualitative_coding_protocol: {} };
+      }
+      if (path.includes("/code-applications/")) return incompleteRows;
+      if (path.includes("/reconciliation-decisions")) return makeReconciliationDecisions("run-coverage-gap", 12);
+      if (path.includes("/summary")) return { coding_run_count: 1, evidence_unit_count: 4 };
+      if (path.includes("/evidence-units")) return makeSubstantiveUnits();
+      if (path.includes("/coding-runs")) return [{ id: "run-coverage-gap" }];
+      if (path.includes("/traceability")) return { edges: [] };
+      if (path.includes("/telemetry-audit")) return { status: "ok" };
+      return {};
+    },
+    async post() {
+      return {
+        id: "run-coverage-gap",
+        status: "completed",
+        promotion_status: "accepted",
+        code_application_count: 12,
+        reliability_method: "fleiss_kappa_with_krippendorff_alpha_companion",
+        distinct_model_count: 3,
+        rater_count: 3,
+        kappa: 0.81,
+        alpha: 0.79,
+        route_evidence: makeServedModelRoutes(),
+      };
+    },
+  };
+
+  await exerciseResearchSpineValidation({
+    api,
+    projectId: "project-coverage-gap",
+    logger,
+    featureResults,
+    blockers,
+    codingValidationEnabled: true,
+    codingValidationLimit: 4,
+    expectedDistinctCoders: 3,
+  });
+
+  assert.equal(featureResults.codingValidation, false);
+  assert.equal(featureResults.multiModelResearchSpineValidation, false);
+  assert.equal(blockers.length, 1);
+  assert.match(blockers[0], /complete coder-by-evidence-unit coverage/i);
+  assert.equal(logger.issues[0].evidence.application_coverage.invalid_rows.length, 1);
+  assert.deepEqual(logger.issues[0].evidence.application_coverage.missing_pairs, [
+    { coder_id: "coder-1", evidence_unit_id: "eu-4" },
+  ]);
 });
 
 test("three-model coding cannot trust a backend count without three served route identities", async () => {
