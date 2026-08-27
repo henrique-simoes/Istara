@@ -9,7 +9,7 @@ stage: S2-execute
 status: in-progress
 blocked_on: null
 last: { agent: gpt-5-codex, at: 2026-08-27T01:13:20Z, ledger: L-220 }
-next_action: "Keep the Docker-only Mac Studio acceptance gate open; obtain owner-authorized provider credit and three Compose-owned donor/model routes, then run the three-model Research Spine retake from a clean checkout at 0e21428d681e2f6ed163f51cdbb4ee5741896c37."
+next_action: "Keep the Docker-only Mac Studio acceptance gate open; obtain owner-authorized provider credit and three Compose-owned donor/model routes, then verify the latest pushed testing SHA and run the three-model Research Spine retake from a clean checkout at that exact SHA."
 ```
 
 ## Plan overview / roadmap
@@ -4807,3 +4807,14 @@ Open gate is unchanged: the live profile still has provider HTTP 402 history and
 Compose-owned donor/model routes, so it cannot yet prove independent model identities, formal
 Fleiss/Krippendorff reliability, reconciliation, accepted Done/report promotion, or Petals
 interoperation.
+
+### L-221 | 2026-08-27T01:17:30Z | S2-execute | gpt-5-codex | retake pointer made freshness-safe
+
+Did: Replaced the Build Stream `next_action`'s hard-coded implementation SHA with an explicit
+freshness check: the next operator must resolve the latest pushed `testing` tip and materialize
+the Mac Studio detached checkout at that exact SHA immediately before launch. Updated F-R9-54
+accordingly so a later documentation checkpoint cannot make the handoff stale again.
+
+Evidence: the parent checkpoint was `ca0127c030fe3906c38af2ed9906930a545daaa2`; local and
+`origin/testing` were equal and clean before this documentation-only edit; no provider request,
+model load, host package operation, or Mac Studio mutation occurred.
