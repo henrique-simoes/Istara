@@ -51,6 +51,7 @@ def _fake_ensemble(text="captured response", usage=None):
                 text=text,
                 usage=usage or {"input_tokens": 10, "output_tokens": 5, "total_tokens": 15},
                 endpoint_id="pi-deepseek-default",
+                served_model="deepseek-v4-pro",
                 stop_reason="stop",
                 tool_calls=[],
                 status="success",
@@ -145,6 +146,7 @@ def test_dispatch_unit_legacy_capture_uses_baseline_path_and_redacts_key(tmp_pat
                 text="legacy response",
                 usage={"input_tokens": 3, "output_tokens": 2, "total_tokens": 5},
                 endpoint_id="",
+                served_model="deepseek-v4-pro",
                 route_evidence={"node_id": registry_seed.BENCHMARK_NODE_ID},
                 stop_reason="stop", tool_calls=[], status="success",
             )],
@@ -187,7 +189,8 @@ def test_moa_capture_writes_one_record_per_slot(tmp_path):
             samples = [
                 types.SimpleNamespace(
                     text=f"sample {i}", usage={"input_tokens": 2, "output_tokens": 1, "total_tokens": 3},
-                    endpoint_id="pi-deepseek-default", stop_reason="stop", tool_calls=[], status="success",
+                    endpoint_id="pi-deepseek-default", served_model="deepseek-v4-pro",
+                    stop_reason="stop", tool_calls=[], status="success",
                 )
                 for i in range(3)
             ]

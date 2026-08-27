@@ -221,6 +221,23 @@ def _sample_route_node_id(sample: Any) -> str:
     return ""
 
 
+def _sample_served_model(sample: Any) -> str:
+    """Return only an explicit provider-served model identity.
+
+    ``sample.model`` is the configured/request identity and is not evidence that a
+    proxy actually served that model. Legacy samples also carry the provider identity
+    in their explicit ``route_evidence.model`` receipt, so that field is a safe
+    fallback; no endpoint id or configured label is ever guessed.
+    """
+    served = str(getattr(sample, "served_model", "") or "").strip()
+    if served:
+        return served
+    route = getattr(sample, "route_evidence", None)
+    if isinstance(route, dict):
+        return str(route.get("served_model") or route.get("model") or "").strip()
+    return ""
+
+
 def _capture_from_outcome(outcome: Any, *, prompt: str, system: str) -> LiveCapture:
     samples = list(getattr(outcome, "samples", None) or [])
     ok_samples = [s for s in samples if getattr(s, "status", None) == "success" and getattr(s, "text", "")]
@@ -235,7 +252,11 @@ def _capture_from_outcome(outcome: Any, *, prompt: str, system: str) -> LiveCapt
             _sample_route_node_id(sample)
             or (endpoint_ids[index] if index < len(endpoint_ids) else "")
         )
-        route_evidence.append({"endpoint_id": endpoint_id, "route_kind": "agentic_ensemble"})
+        route_evidence.append({
+            "endpoint_id": endpoint_id,
+            "model": _sample_served_model(sample),
+            "route_kind": "agentic_ensemble",
+        })
     text = str(getattr(ok_samples[0], "text", "")) if ok_samples else ""
     usage = _normalize_usage(getattr(outcome, "usage", None)) or _sum_sample_usage(samples)
     estimate = False
@@ -303,9 +324,28 @@ def _benchmark_route_evidence(
                     "admission": "rejected",
                 },
             )
-        provider = str(getattr(sample, "provider", "") or DEEPSEEK_PROVIDER)
-        model = str(getattr(sample, "model", "") or DEEPSEEK_MODEL)
-        if provider != DEEPSEEK_PROVIDER or model != DEEPSEEK_MODEL:
+        route = getattr(sample, "route_evidence", None)
+        route = route if isinstance(route, dict) else {}
+        is_petals = endpoint_id.startswith("pi-petals-")
+        provider = str(
+            getattr(sample, "served_provider", "")
+            or route.get("served_provider")
+            or route.get("provider")
+            or ("petals" if is_petals else DEEPSEEK_PROVIDER)
+        ).strip()
+        model = _sample_served_model(sample)
+        if not model:
+            raise RouteAdmissionError(
+                "benchmark sample has no provider-served model identity",
+                route={
+                    "endpoint_id": endpoint_id,
+                    "provider": provider,
+                    "route_kind": "agentic_ensemble",
+                    "admission": "rejected",
+                },
+            )
+        if (not is_petals and (provider != DEEPSEEK_PROVIDER or model != DEEPSEEK_MODEL)) \
+                or (is_petals and provider != "petals"):
             raise RouteAdmissionError(
                 "benchmark sample provider/model is not DeepSeek-approved",
                 route={
@@ -579,6 +619,13 @@ async def dispatch_unit(
         outcome = await agentic.ensemble(params=TurnParams(**params_payload), **call_kwargs)
     elapsed = time.perf_counter() - started
     cap = _capture_from_outcome(outcome, prompt=prompt, system=system)
+    # Plain units are still live route tests. Apply the same approved-route and
+    # provider-served-identity admission used by MoA units before recording success.
+    samples = list(getattr(outcome, "samples", None) or [])
+    endpoint_ids = tuple(str(e) for e in (getattr(outcome, "endpoint_ids", None) or ()))
+    cap = dc_replace(cap, route_evidence=_benchmark_route_evidence(
+        samples=samples, endpoint_ids=endpoint_ids, engine=engine,
+    ))
     _record_outputs(cap, elapsed)
     return dc_replace(cap, capture_errors=tuple(capture_errors))
 

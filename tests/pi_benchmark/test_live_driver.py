@@ -162,8 +162,11 @@ def _run(tmp_path, *, unit=None, ledger=None, dispatch, config=None, **kwargs):
 
 def test_dispatch_unit_plain_path_uses_estimator_when_outcome_has_no_usage():
     outcome = types.SimpleNamespace(
-        samples=[types.SimpleNamespace(text="x" * 40, usage=None, endpoint_id="ep", status="success")],
-        endpoint_ids=["ep"], usage=None,
+        samples=[types.SimpleNamespace(
+            text="x" * 40, usage=None, endpoint_id="pi-deepseek-default",
+            served_model="deepseek-v4-pro", status="success",
+        )],
+        endpoint_ids=["pi-deepseek-default"], usage=None,
     )
     seen = {}
 
@@ -187,6 +190,41 @@ def test_dispatch_unit_plain_path_uses_estimator_when_outcome_has_no_usage():
     assert seen["n"] == 1 and seen["distinct"] is False
 
 
+def test_dispatch_unit_plain_path_rejects_missing_served_model_identity():
+    outcome = types.SimpleNamespace(
+        samples=[types.SimpleNamespace(
+            text="response", usage=None, endpoint_id="pi-deepseek-default", status="success",
+        )],
+        endpoint_ids=["pi-deepseek-default"], usage=None,
+    )
+
+    async def ensemble_fn(**kwargs):
+        return outcome
+
+    with pytest.raises(live_driver.RouteAdmissionError, match="provider-served model identity"):
+        asyncio.run(live_driver.dispatch_unit(
+            unit=_unit(), tier="T3", prompt="hello", ensemble_fn=ensemble_fn,
+        ))
+
+
+def test_dispatch_unit_plain_path_rejects_configured_label_when_provider_served_model_differs():
+    outcome = types.SimpleNamespace(
+        samples=[types.SimpleNamespace(
+            text="response", usage=None, endpoint_id="pi-deepseek-default",
+            model="deepseek-v4-pro", served_model="proxy-substitute", status="success",
+        )],
+        endpoint_ids=["pi-deepseek-default"], usage=None,
+    )
+
+    async def ensemble_fn(**kwargs):
+        return outcome
+
+    with pytest.raises(live_driver.RouteAdmissionError, match="not DeepSeek-approved"):
+        asyncio.run(live_driver.dispatch_unit(
+            unit=_unit(), tier="T3", prompt="hello", ensemble_fn=ensemble_fn,
+        ))
+
+
 def test_dispatch_unit_full_ensemble_requests_exactly_moa_n_slots():
     calls = {}
 
@@ -196,7 +234,8 @@ def test_dispatch_unit_full_ensemble_requests_exactly_moa_n_slots():
             return types.SimpleNamespace(
                 samples=[
                     types.SimpleNamespace(
-                        text=text, usage=None, endpoint_id="pi-deepseek-default", status="success",
+                        text=text, usage=None, endpoint_id="pi-deepseek-default",
+                        served_model="deepseek-v4-pro", status="success",
                     )
                     for text in ("a", "b", "c")
                 ],
@@ -281,6 +320,7 @@ def test_dispatch_unit_legacy_moa_routes_through_ensemble_with_seeded_node(monke
                     text=f"legacy sample {i}",
                     usage={"input_tokens": 5, "output_tokens": 3, "total_tokens": 8},
                     endpoint_id="",
+                    served_model="deepseek-v4-pro",
                     route_evidence={"node_id": registry_seed.BENCHMARK_NODE_ID, "model": "deepseek-v4-pro"},
                     status="success",
                 )
@@ -317,6 +357,7 @@ def test_run_live_unit_default_dispatch_routes_legacy_through_agentic(tmp_path, 
                 text="legacy loop response",
                 usage={"input_tokens": 11, "output_tokens": 7, "total_tokens": 18},
                 endpoint_id="",
+                served_model="deepseek-v4-pro",
                 route_evidence={"node_id": registry_seed.BENCHMARK_NODE_ID, "model": "deepseek-v4-pro"},
                 status="success",
             )],
@@ -343,7 +384,8 @@ def test_dispatch_unit_moa_rejects_an_unapproved_served_route():
         async def ensemble(self, **kwargs):
             return types.SimpleNamespace(
                 samples=[types.SimpleNamespace(
-                    text="local response", usage=None, endpoint_id="pi-local-ollama", status="success",
+                    text="local response", usage=None, endpoint_id="pi-local-ollama",
+                    served_model="local-model", status="success",
                 )],
                 endpoint_ids=["pi-local-ollama"], usage={}, status="success",
             )
@@ -699,6 +741,7 @@ def test_dispatch_unit_full_ensemble_requests_distinct_slots(monkeypatch):
                     text=f"slot {i} response",
                     usage={"input_tokens": 4, "output_tokens": 2, "total_tokens": 6},
                     endpoint_id=endpoint,
+                    served_model=("deepseek-v4-pro" if endpoint == "pi-deepseek-default" else f"petals-model-{i}"),
                     route_evidence=None,
                     status="success",
                 )

@@ -8,7 +8,7 @@ phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal ac
 stage: S5-ship&learn
 status: in-progress
 blocked_on: null
-last: { agent: gpt-5-codex, at: 2026-08-27T05:24:39Z, ledger: L-270 }
+last: { agent: gpt-5-codex, at: 2026-08-27T05:31:52Z, ledger: L-271 }
 next_action: "Keep G0/G1 and live G2–G22 open; at the next authorized window use a fresh detached origin/testing checkout, verify its archive digest inside Docker, and execute provider/Petals/combined retakes with three served model identities before claiming Research Spine completion."
 ```
 
@@ -6160,3 +6160,40 @@ Fleiss/Krippendorff, reconciliation, human-Done/report, both-loop-mode,
 two-call/long-horizon, Petals, redaction, and teardown evidence. Until those
 prerequisites exist, a deterministic green suite cannot be reported as live
 three-model Research Spine acceptance.
+
+### L-271 | 2026-08-27T05:31:52Z | S2-execute/S3-review/S5-ship&learn | gpt-5-codex | served-identity admission hardening
+
+Did: Re-audited the live benchmark driver after the terminal parity receipt and found a
+remaining false-positive seam. Ordinary one-call units went directly from
+`_capture_from_outcome()` to a successful record without approved-route admission, and
+the MoA admission compared the configured `sample.model` label instead of the
+provider-reported `served_model`. A proxy substitution, endpoint mismatch, or missing
+receipt could therefore look like an approved model. Hardened
+`tests/pi_benchmark/live_driver.py` so plain and MoA units share fail-closed route
+admission, require an explicit served-model identity, reject non-DeepSeek served
+identities on the approved DeepSeek route, and admit projected `pi-petals-*` routes
+only with a non-empty identity and Petals provider marker. Updated the affected fake
+provider responses and added regressions for missing identity, configured-versus-served
+mismatch, both engine arms, Petals slots, and raw capture.
+
+Verified: benchmark/production contract slice `274 passed, 5 skipped`; feature docs
+regenerated `224` artifacts and passed `86/86`; `git diff --check` is clean. F-R9-76
+was appended to `/Users/user/Desktop/testing.md`. The live scientific boundary is
+unchanged: G0/G1 and live G2-G22 remain open because the Mac Studio still has no
+owner-supplied model artifacts or reachable provider routes. No host installation,
+model load, image pull, service start, or remote repository mutation occurred.
+
+The native Compass Forge before-gate is record `170`. Its comparison baseline contains
+no new failures, cycles, or forbidden dependencies; it reports the touched benchmark
+driver/test complexity thresholds and the existing repository-wide debt as warnings.
+Those warnings are retained as explicit gate debt rather than expanded into an
+unrelated refactor in this identity-admission patch; the after-gate must show zero
+additional delta.
+
+Boundary/next: run the full deterministic matrix and native before/after gate for this
+receipt, commit/push exact `testing` parity, then remain at G0/G1 until the authorized
+Docker-only Mac Studio retake can prove three actual served identities over common raw
+spans, formal Fleiss/Krippendorff reliability, grounding, reconciliation,
+human-Done/report promotion, both loop modes through shared Pi Model Management,
+two-call/long-horizon behavior, Petals interoperation, redacted artifacts, and clean
+teardown.
