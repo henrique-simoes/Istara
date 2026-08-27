@@ -8,7 +8,7 @@ phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal ac
 stage: S2-execute/S3-review
 status: in-progress
 blocked_on: "Owner-approved Docker-only Mac Studio provisioning: current env/config, provider-served identities, and three-model inputs"
-last: { agent: gpt-5-codex, at: 2026-08-27T15:17:30Z, ledger: L-368 }
+last: { agent: gpt-5-codex, at: 2026-08-27T15:20:30Z, ledger: L-369 }
 next_action: "Continue F-R9-114 with deeper Done/report traceability assertions, a genuine human reconciliation acceptance exercise, and owner-approved provider/model inputs for the Docker-only three-model Mac Studio run. Keep synthetic receipts non-reportable and do not start live workloads without those inputs."
 ```
 
@@ -8740,3 +8740,24 @@ provider-served Fleiss/Krippendorff result. No server, provider request, model
 load, image pull, host installation, live benchmark, or testing-data deletion
 occurred. F-R9-114 remains open for a genuine human reconciliation exercise
 against live artifacts and the owner-approved Docker-only three-model run.
+
+### L-369 | 2026-08-27T15:20:30Z | S5-ship&learn | gpt-5-codex | final ledger transport parity
+
+The final deterministic authority evidence and this lifecycle receipt are
+committed as `28b5c0fa5a45cc79dd8db48d1d8ba627e7f21bff` (`docs: record final
+deterministic authority evidence`) and pushed to `origin/testing`. Local
+`testing`, `origin/testing`, and the detached Mac Studio retake
+`~/istara-testing-retake-47bf` all resolve to that exact clean SHA.
+
+Compass Forge after-gate `299` and task evidence `336` remain the authoritative
+post-change records: zero new issues, missing required paths, or forbidden
+dependencies relative to the inherited baseline. The deterministic authority
+suite (`36/36`), causal Research Spine source-to-report proof (`1/1`), full
+benchmark (`94/94`), and feature-doc check (`224` generated / `86/86` checked)
+are all green. These are deterministic seams and do not establish live model
+quality. Passive SSH inspection used only the existing Docker binary
+`/usr/local/bin/docker` (`29.7.2/29.7.2`); only unrelated healthy `plex` is
+running, model files are `0`, and `.env.deploy` is absent. No host install,
+image pull, provider request, model load, live benchmark, or test-data deletion
+occurred. F-R9-114 remains open for live three-model provider-served identity,
+human reconciliation, and Done/report acceptance.
