@@ -85,6 +85,11 @@ Sources
   applications are retained as an integrity signal and fail the reliability
   gate closed; they must not be unioned into a synthetic rating before Fleiss'
   Kappa, Cohen's Kappa, or Krippendorff's Alpha is computed.
+- Each structured coder response must report the model identity actually served
+  by the provider, and that identity must equal the model selected by Pi Model
+  Management. A missing or different served identity is a transport/provenance
+  failure and blocks the coder before any application can enter the reliability
+  matrix; the requested model parameter is not evidence of the model that ran.
 - One- or two-model Self-MoA, dual-run, debate, and adversarial checks remain
   useful response-level operational signals, but they are lower-assurance
   validation, not formal Research Spine coding reliability, and cannot promote

@@ -690,13 +690,26 @@ async def _pi_coder_runner(
             "Pi coder endpoint mismatch: selected "
             f"{selected_endpoint_id!r}, served {served_endpoint_id!r}"
         )
+    selected_model = str(model_name or getattr(coder, "model_name", "") or "").strip()
+    served_model = str(getattr(outcome, "model", "") or "").strip()
+    if selected_model and served_model != selected_model:
+        # Model identity is the scientific independence boundary.  The
+        # request parameter is not proof of what a provider actually served;
+        # a missing or different identity must therefore block the coder
+        # before its applications can enter the reliability matrix.
+        reason = (
+            "missing"
+            if not served_model
+            else f"selected {selected_model!r}, served {served_model!r}"
+        )
+        raise ValueError(f"Pi coder model mismatch: {reason}")
     return {
         "message": {"content": json.dumps(outcome.value)},
         "_istara_route": {
             "node_id": getattr(coder.node, "node_id", ""),
             "node_source": "pi",
             "provider_type": getattr(coder.node, "provider_type", ""),
-            "model": model_name or "",
+            "model": served_model,
             "endpoint_id": served_endpoint_id or selected_endpoint_id,
             "provider_account_handle": getattr(coder.node, "provider_account_handle", ""),
             "decoding_profile": {"temperature": 0.2},

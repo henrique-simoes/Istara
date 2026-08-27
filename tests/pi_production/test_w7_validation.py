@@ -116,6 +116,7 @@ class _StubAgentic:
         raise_on: dict | None = None,
         fail_samples: bool = False,
         structured_endpoint_id: str = "ep-structured",
+        structured_model: str | None = None,
     ) -> None:
         self.calls: list[tuple[str, dict]] = []
         self._texts = list(texts) if texts is not None else None
@@ -123,6 +124,7 @@ class _StubAgentic:
         self._raise_on = raise_on or {}
         self._fail_samples = fail_samples
         self._structured_endpoint_id = structured_endpoint_id
+        self._structured_model = structured_model
 
     def _next_text(self) -> str:
         return self._texts.pop(0) if self._texts else "dispatcher text"
@@ -176,6 +178,11 @@ class _StubAgentic:
             usage={},
             stop_reason="stop",
             endpoint_id=self._structured_endpoint_id,
+            model=(
+                self._structured_model
+                if self._structured_model is not None
+                else getattr(kwargs.get("params"), "model", None)
+            ),
             tool_calls=[],
         )
 
@@ -802,6 +809,52 @@ async def test_pi_coder_runner_dispatches_structured_pinned_to_endpoint(monkeypa
     assert route["model"] == "model-a" and route["outcome"] == "served"
 
 
+async def test_pi_coder_runner_rejects_provider_served_model_mismatch(monkeypatch):
+    """A requested model cannot stand in for a different model actually served."""
+    dispatcher_stub = _StubAgentic(
+        structured_endpoint_id="ep-a",
+        structured_model="served-other-model",
+    )
+    monkeypatch.setattr("app.core.agentic.agentic", dispatcher_stub)
+
+    from app.services.research_validity_service import CoderSpec, _pi_coder_runner
+
+    coder = CoderSpec(
+        node=SimpleNamespace(
+            node_id="ep-a",
+            name="ep-a",
+            source="pi",
+            provider_type="openai_compat",
+            endpoint_id="ep-a",
+        ),
+        coder_id="model-coder:ep-a",
+        model_name="model-a",
+    )
+
+    with pytest.raises(ValueError, match="model mismatch"):
+        await _pi_coder_runner(coder, [], "model-a", "p1")
+
+
+async def test_pi_coder_runner_rejects_missing_served_model_identity(monkeypatch):
+    """A model request without provider identity is not ensemble evidence."""
+    dispatcher_stub = _StubAgentic(
+        structured_endpoint_id="ep-a",
+        structured_model="",
+    )
+    monkeypatch.setattr("app.core.agentic.agentic", dispatcher_stub)
+
+    from app.services.research_validity_service import CoderSpec, _pi_coder_runner
+
+    coder = CoderSpec(
+        node=SimpleNamespace(endpoint_id="ep-a"),
+        coder_id="model-coder:ep-a",
+        model_name="model-a",
+    )
+
+    with pytest.raises(ValueError, match="model mismatch: missing"):
+        await _pi_coder_runner(coder, [], "model-a", "p1")
+
+
 async def test_pi_coder_runner_fails_closed_on_catalog_identity_drift(monkeypatch):
     """A selected endpoint mutation cannot reach the structured provider call."""
     dispatcher = _StubAgentic(value={})
@@ -976,6 +1029,7 @@ async def _run_pi_coding_run(
                 usage={},
                 stop_reason="stop",
                 endpoint_id=kwargs["params"].endpoint_id,
+                model=kwargs["params"].model,
                 tool_calls=[],
             )
 

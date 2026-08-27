@@ -337,6 +337,7 @@ async def test_pi_coder_runner_dispatches_structured_with_coding_schema(monkeypa
                 usage={},
                 stop_reason="stop",
                 endpoint_id="endpoint-a",
+                model="model-a",
                 tool_calls=[],
             )
 
@@ -375,7 +376,11 @@ async def test_pi_coder_runner_forwards_request_scoped_pi_service(monkeypatch):
     class _StubAgentic:
         async def structured(self, **kwargs):  # noqa: ANN001
             captured.update(kwargs)
-            return SimpleNamespace(value={"applications": []}, endpoint_id="endpoint-a")
+            return SimpleNamespace(
+                value={"applications": []},
+                endpoint_id="endpoint-a",
+                model="model-a",
+            )
 
     scoped_service = object()
     monkeypatch.setattr("app.core.agentic.agentic", _StubAgentic())

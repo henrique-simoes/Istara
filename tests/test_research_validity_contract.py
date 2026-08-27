@@ -939,6 +939,7 @@ async def test_independent_coding_run_persists_model_codes_and_reliability(monke
                 usage={},
                 stop_reason="stop",
                 endpoint_id="ep-stub",
+                model=kwargs["params"].model,
                 tool_calls=[],
             )
 
@@ -1094,6 +1095,7 @@ async def test_independent_coding_run_repairs_empty_model_application_response(
                 usage={},
                 stop_reason="stop",
                 endpoint_id="ep-stub",
+                model=kwargs["params"].model,
                 tool_calls=[],
             )
 

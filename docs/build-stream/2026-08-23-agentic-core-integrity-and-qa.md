@@ -8,8 +8,8 @@ phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal ac
 stage: S5-ship&learn
 status: in-progress
 blocked_on: null
-last: { agent: gpt-5-codex, at: 2026-08-27T03:04:07Z, ledger: L-248 }
-next_action: "Resolve whether ‘Agentic Loop’ is shorthand for legacy/Istara or a required third engine, and at the next authorized live window execute the Docker-only provider/Petals/combined G0–G22 retake from a fresh detached checkout; until then leave G0/G1 not_run."
+last: { agent: gpt-5-codex, at: 2026-08-27T03:18:19Z, ledger: L-249 }
+next_action: "Commit and push the served-model identity hardening, verify exact local/origin/testing parity, then at the next authorized live window execute the Docker-only provider/Petals/combined G0–G22 retake from a fresh detached checkout; until then leave G0/G1 not_run and resolve the Agentic Loop terminology decision."
 ```
 
 ## Plan overview / roadmap
@@ -5555,3 +5555,40 @@ fix is transported and parity-verified, but CF-15 is not complete until the owne
 Mac Studio prerequisites exist and G0–G22 produce Docker evidence with three distinct model
 identities, common raw spans, numeric Fleiss/Krippendorff metrics, grounding, reconciliation,
 human-Done/report promotion, redaction, and teardown.
+
+### L-249 | 2026-08-27T03:18:19Z | S4-remediate | gpt-5-codex | served-model identity audit and fail-closed hardening
+
+Did: Audited whether the Research Spine ensemble can prove the model that actually served each
+coder judgment. The Pi runtime included its resolved model in the structured outcome, but the
+shared `AgenticDispatcher.structured()` facade dropped that field. `_pi_coder_runner()` then
+recorded the requested `model_name` as route evidence, allowing a provider/adapter to return a
+different model—or no served identity—without the reliability ledger detecting it. This was a
+material provenance/oracle gap for the user's three-model bias-reduction requirement and is
+tracked as finding F-R9-66 in `/Users/user/Desktop/testing.md`.
+
+Changed: `StructuredResult` construction now preserves `outcome.model`. The Pi coder runner
+requires a non-empty provider-reported model identity equal to the model selected by Pi Model
+Management; missing or mismatched identity fails before applications are persisted. Route
+evidence now stores the served identity rather than guessing from request parameters. Added
+red-to-green regressions for mismatched and missing served identities, dispatcher propagation,
+and preserved all W7 coding flows. Updated the Research Spine contract and Ensemble Health
+feature documentation, then regenerated the feature site/manifest.
+
+Verified: focused Research Spine/Pi/dispatcher ladder passed `144` tests; W7 + W1 passed `57`;
+the complete real-user benchmark check passed `77/77`; remote Docker-runner contract passed
+`17/17`; targeted Ruff passed; feature docs check passed for `86` features and `224` generated
+artifacts; `git diff --check` passed. Compass Forge after-gate record `135` reports no new
+dependency, missing-path, or import-cycle findings; the only new comparison warning is the
+existing complexity threshold on the enlarged W7 test file (`1217` lines), while inherited
+repository complexity/type/secret-flow debt remains. Task command evidence `110` records these
+results.
+
+Boundary/next: this closes the deterministic served-model provenance gap but does not prove live
+execution. The changes are not yet transported in this ledger entry: commit and push them, verify
+`testing == origin/testing` with a clean worktree, and repeat passive Mac Studio Docker inventory.
+G0/G1 and live G2–G22 remain `not_run`/open. The authorized live retake must use a fresh detached
+checkout at the launch SHA, verify the archive digest before workload startup, and capture three
+distinct provider-served model identities over common raw evidence units, one grounded rating per
+model/unit, numeric Fleiss/Krippendorff metrics, grounding, reconciliation, human-Done/report
+promotion, both loop-mode semantics, two-call/long-horizon artifacts, Petals interoperability,
+redacted artifacts, and teardown without installing or mutating the Mac Studio host.

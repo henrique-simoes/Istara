@@ -414,6 +414,7 @@ class AgenticDispatcher:
             stop_reason=outcome.get("stop_reason"),
             endpoint_id=outcome.get("endpoint_id"),
             status=outcome.get("status", "success"),
+            model=outcome.get("model"),
         )
 
     async def react(

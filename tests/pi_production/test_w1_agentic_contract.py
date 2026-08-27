@@ -124,6 +124,7 @@ class _StubPiService:
             "status": "success",
             "stop_reason": "stop",
             "endpoint_id": "pi-stub",
+            "model": "pi-model",
             "usage": {"input": 5, "output": 3, "cost": {"total": 0.0004}},
         }
 
@@ -263,6 +264,7 @@ async def test_every_verb_routes_to_the_pi_seam_and_records_one_row(usage_db):
         engine="pi",
     )
     assert structured.value == {"accepted": True}
+    assert structured.model == "pi-model"
 
     ensemble = await dispatcher.ensemble(
         purpose=f"w1.verbs.ensemble.{tag}",
