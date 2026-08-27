@@ -5,10 +5,10 @@ item: agentic-core-integrity-and-qa
 branch: testing
 cf: { spec: CF-SPEC-2, predecessor: CF-SPEC-1, task: CF-15 }
 phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal acceptance"
-stage: S2-execute
+stage: S5-ship&learn
 status: in-progress
 blocked_on: null
-last: { agent: gpt-5-codex, at: 2026-08-27T01:44:20Z, ledger: L-225 }
+last: { agent: gpt-5-codex, at: 2026-08-27T01:51:24Z, ledger: L-226 }
 next_action: "When live prerequisites are authorized, resolve origin/testing at launch time on Mac Studio, materialize a clean detached checkout, then run the Docker-only provider/Petals retake with three provisioned model routes and preserve artifacts."
 ```
 
@@ -4927,3 +4927,89 @@ combined profiles as separate evidence planes; require three genuinely distinct 
 identities, common raw source-span coding, numeric Fleiss/Krippendorff metrics, grounding,
 reconciliation, human-Done/report promotion, two-call/long-horizon artifacts, credential
 revocation, and Docker teardown before calling the Research Spine accepted.
+
+### L-226 | 2026-08-27T01:51:24Z | S5-ship&learn | gpt-5-codex | auditor | Phase 9
+
+Did: Corrected the Status Block and the stale SHA in L-225 after the docs-only handoff commit.
+Reconciled the local branch, remote branch, test topology, and passive Mac Studio state. Audited
+the Pi ensemble implementation and its verification seams against the Research Spine contract.
+No source-code change was warranted in this checkpoint: the previously suspected duplicate
+`_from_settings` assignment is not present, and the supported full-ensemble callers pass a
+three-rater minimum (the `min_responses=2` compatibility case still requests three slots).
+
+Result: the current tip is `14b6c83745e94fee595b845007d8da336c48fe42` on both `testing` and
+`origin/testing`; the worktree is clean. The deterministic suites prove routing authority,
+identity-distinct selection, fail-closed downgrade/partial handling, source-span coverage,
+formal Fleiss plus Krippendorff calculation, grounding/reconciliation gates, and Docker wrapper
+topology guards. They do not prove a live provider response, three served model identities,
+live reliability numbers, Petals interoperability, two-call/long-horizon execution, or a
+reportable human-Done artifact. Passive SSH confirms the Mac Studio is idle and Docker-only
+ready; no host installation, image pull, model load, service start, or data deletion occurred.
+
+Verified: Compass Forge native Rust `status`/`next`; impact/why/test-impact for the ensemble
+engine; `git status --short --branch`; exact local/remote parity; and source/test inspection of
+`backend/app/core/pi_runtime/engine.py`, `backend/app/core/pi_runtime/model_manager.py`,
+`backend/app/core/agentic/dispatcher.py`, `backend/app/core/validation.py`,
+`backend/app/services/research_validity_service.py`, and the W1/W3/W7/topology suites.
+
+Next: execute the completion matrix below only when the owner supplies the live prerequisites.
+Keep every live claim tied to immutable Docker artifacts and leave CF-15 open until all required
+gates have command evidence.
+
+## Phase 9 completion matrix — remaining work and exact acceptance bar
+
+This matrix is the operative handoff for any agent continuing this Build Stream. A green
+deterministic test is necessary but never sufficient for a row marked `live`. Rows must be
+completed in order; a later row cannot promote evidence from a failed or skipped earlier row.
+Every row needs a ledger entry, an immutable artifact path, and a Compass Forge command-evidence
+record under CF-15. Never copy credentials, provider URLs, model weights, or bearer tokens into
+this file or into committed artifacts.
+
+| ID | Plane | Status | Required work | Acceptance evidence |
+|----|-------|--------|---------------|---------------------|
+| G0 | Authorization | open | Obtain explicit owner authorization for bounded live model activity, provider spend/credit, exact target SHA, and the model files/route configuration. Confirm whether the run may discard only testing containers/volumes after artifacts are copied. | Written authorization in the active task; no secret values in chat/ledger. |
+| G1 | Checkout integrity | open | On Mac Studio, fetch `origin/testing` at launch time and create a fresh detached checkout/worktree at the resolved SHA. Do not repair or clean the old dirty `~/istara-testing` checkout. | `git rev-parse HEAD`, `git rev-parse origin/testing`, `git status --porcelain`, and checkout path recorded; all clean and equal. |
+| G2 | Docker-only boundary | open | Run all application, provider, relay, Petals, test, and teardown commands inside Docker/Compose on Mac Studio. Do not run package managers, model servers, or benchmark code directly on macOS. | SSH transcript showing Docker CLI/server, Compose project labels, container IDs, and no host package/install commands. |
+| G3 | Image and model provenance | open | Use only pre-approved images and already-provisioned model files. Set an absolute `ISTARA_BENCHMARK_MODEL_ROOT`; verify every GGUF is present and contained under that root. Keep the bind mount read-only. | SHA/image digests, model filenames and hashes (names only where sensitive), read-only mount inspection, and wrapper fail-closed control for a missing/out-of-root file. |
+| G4 | Compose topology | open | Render the base and `three-model` profiles, start the backend plus `donor-gemma` and two additional llama.cpp donors, and attach relay/preflight/invite containers to the backend network. Let the bounded cold-load retry complete before declaring readiness. | `docker compose config --quiet`, `docker compose --profile three-model ps`, health/readiness logs, `/v1/models` identity output for each donor, and no host listener dependency. |
+| G5 | PI authority API | open | Exercise PI Model Management list/add/update/delete on a disposable testing database. Verify persisted endpoint state is the source of truth, live catalog reset/projection occurs, and the dispatcher resolves through the same manager instance. | API responses plus DB rows/projection parity, manager identity/endpoint IDs, and audit records. |
+| G6 | Classical retirement | open | Call the retired classical model/provider write endpoints and verify explicit `410` compatibility responses pointing callers to `/api/settings/pi-endpoints`. Verify no hidden classical discovery, reconstruction, or startup mutation occurs. | HTTP status/body captures, startup logs, and negative DB-diff assertion. |
+| G7 | Petals donation | open | Exercise Petals slash-string/model donation registration, consent, project scope, health, usage, and revoke paths. Verify a non-consented/unhealthy/network donor maps to typed 503 and never falls back to a paid route. | Request/response artifacts, consent/projection rows, route evidence with donor node and served model, and revoke/cleanup proof. |
+| G8 | Three identity admission | open | Admit exactly three genuinely different served model identities (not endpoint replicas), including the Compose Gemma donor and two separately identified routes. Record provider kind, endpoint ID, model ID, account handle/fingerprint, and route source. | Per-run immutable route manifest; `distinct_model_count=3`, `rater_count=3`, no blank/duplicated model identity, and evidence that each identity produced a response. |
+| G9 | Engine parity | open | Run the same bounded source task through every supported execution choice: legacy/Istara semantics and Pi Agentic Loop semantics, with both resolved by PI Model Management for provider/model selection. Treat “Agentic Loop” labels as execution semantics, not a second model authority. | Paired request/response artifacts with selected engine, manager endpoint, route evidence, tool policy, and no classical bypass. |
+| G10 | Common source spans | open | Feed identical raw source documents and source-span Evidence Units to every coder. Do not use synthesized nuggets, pre-accepted findings, or different prompt/source slices per model. | Source snapshot hash, Evidence Unit IDs/spans, document version, codebook version, and per-coder input hash equality. |
+| G11 | Independent atomic coding | open | Run independent structured extraction/open coding for every Evidence Unit on all three admitted identities. Require complete unit coverage, exact source quotes, code/rationale/confidence, and no cross-coder response leakage. | Coding run, coder rows, CodeApplication rows, endpoint/model route evidence, and `3 x N` coverage matrix with no missing cells. |
+| G12 | Formal reliability | open | Compute the production reliability gate from the coding matrix: Fleiss’ kappa plus Krippendorff alpha companion. Preserve item-level agreement and distinguish undefined perfect-agreement/zero-variance cases from a fabricated numeric score. | Numeric kappa/alpha (or explicit mathematically undefined interpretation), thresholds/version, category matrix, and `promotion_status=accepted` only when the gate passes. |
+| G13 | Grounding | open | Verify every accepted application quote is an exact span in the source snapshot and that unsupported codes, stale document versions, synthetic QA units, malformed schemas, and incomplete coverage fail closed. | Grounding report with source offsets/hashes, negative fixtures, and no unsupported application accepted. |
+| G14 | Reconciliation | open | Create a separate reconciliation decision for every application. Record reviewer identity, rationale, source, timestamp, and decision type. Reliability success alone must not auto-reconcile or promote. | Decision rows for all applications; unresolved count zero; rejected/uncertain cases remain non-reportable. |
+| G15 | Done/report gate | open | Move the task through `IN_REVIEW` to explicit human approval/Done and call the report-validity assessor. Verify report generation is refused for missing/stale/unreconciled evidence and allowed only for accepted, reconciled evidence tied to the approved Done task. | Task transition audit, `assess_task_research_validity` output, report artifact with evidence handles, and negative gate captures. |
+| G16 | Two-call continuity | open | Run a two-call/session scenario through both engine choices, preserving session identity, history, manager resolution, tool policy, and per-turn route evidence. Verify the second call sees only authorized prior context and that a failed first call cannot silently become accepted history. | Two-turn transcript, session/task IDs, per-turn route/evidence records, and failure/retry control. |
+| G17 | Long horizon/tool loop | open | Execute a bounded long-horizon task with multiple tool calls/checkpoints, recovery or timeout behavior, and final synthesis. Verify every research-data-producing tool result enters the Spine or is marked provisional/non-reportable. | Event/checkpoint trace, tool call IDs, source/evidence handles, recovery outcome, budget/usage ledger, and report gate result. |
+| G18 | Petals/PI combined ensemble | open | Repeat G8–G15 with a mixed API-compatible/Petals topology and then Petals-only where supported. Verify project path binding, consent, donor health, route kind, model identity, and no cross-project leakage. | Separate provider, Petals, and combined manifests; route evidence; project-scope negative tests; reliability and reconciliation outputs. |
+| G19 | Negative controls | open | Deliberately run provider 402, missing model file, duplicate model IDs, duplicate endpoint replicas, unavailable donor, provider/model mismatch, partial sample failure, stale source, and missing human decision. | Each control exits with typed fail-closed status; no control creates `success`, accepted reliability, Done, or reportable output. |
+| G20 | Artifact integrity | open | Copy logs/manifests/reports before teardown; redact secrets; bind artifacts to source SHA, image/model hashes, profile, environment class, and generated time. Re-run report generation from artifacts only. | Content hashes, secret-shaped scan, reproducibility diff (excluding declared timestamps), and artifact index. |
+| G21 | Teardown | open | Stop and remove only the disposable testing Compose project/containers/volumes authorized by G0. Preserve evidence and protected `LLMs/`/`Model_Finetuning/` folders. Verify no unrelated Mac Studio workload was touched. | `docker compose down` transcript, final `docker ps`/volume list, artifact existence, and before/after unrelated-workload comparison. |
+| G22 | Final parity/CF closure | open | Push only intended repository changes, fetch, verify exact local/remote tree parity, run the after-gate, attach command/gate evidence, and close CF-15 only if every mandatory live row is complete. | Clean `testing` worktree, exact SHA parity, CF gate/evidence IDs, completed findings register, and truthful S5 summary. |
+
+### Audit interpretation rules for the next agent
+
+1. `validation.full_ensemble`, `dual_run`, and `self_moa` are response-level quality
+   signals. Their `consensus.agreement_score` is not Fleiss’ kappa and must never be copied
+   into the Research Spine reliability fields.
+2. A successful `PiExecutionService.run_ensemble` call proves dispatch mechanics only. It is
+   not evidence of three independent models unless successful route evidence contains three
+   distinct served model identities.
+3. A dispatcher endpoint list can include failed attempts. Count successful route evidence and
+   successful CodeApplication rows separately; never infer coder count from selected slots.
+4. Legacy/Istara and Pi are execution planes. PI Model Management is the provider/model
+   authority for both. The UI's project-inherit option is a setting inheritance choice, not a
+   third independent model manager.
+5. Deterministic fakes are valid for schema, routing, fail-closed, and mathematical gate
+   tests. They cannot validate model quality, prompt adherence, provider compatibility,
+   latency, token accounting, or real ensemble bias reduction.
+6. A provider HTTP 200, a green `/v1/models`, or a green Compose healthcheck is not enough.
+   The accepted evidence must connect raw source spans → independent coders → numeric
+   reliability → grounding → reconciliation → human Done → report.
+7. If any live prerequisite is absent, record `not_run`/`blocked` with the exact reason and
+   preserve the deterministic evidence. Do not downgrade a missing live gate to “passed” and
+   do not call the overall Research Spine accepted.
