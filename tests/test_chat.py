@@ -2,7 +2,6 @@
 
 import pytest
 import uuid
-from pydantic import ValidationError
 from sqlalchemy import select
 from httpx import AsyncClient, ASGITransport
 from app.main import app
@@ -264,6 +263,7 @@ async def test_chat_usage_exposes_content_free_per_dispatch_identity_rows():
     token = create_token("usage-auditor", "usage-auditor", "admin")
     project_id = str(uuid.uuid4())
     session_id = str(uuid.uuid4())
+    foreign_session_id = str(uuid.uuid4())
     async with async_session() as db:
         db.add(Project(id=project_id, name="Usage identity project"))
         db.add_all(
@@ -290,6 +290,17 @@ async def test_chat_usage_exposes_content_free_per_dispatch_identity_rows():
                     turns=1,
                     total_tokens=120,
                 ),
+                AgenticUsageRow(
+                    id="usage-row-foreign-session",
+                    engine="legacy",
+                    purpose="chat_turn",
+                    project_id=project_id,
+                    session_id=foreign_session_id,
+                    model="served-foreign",
+                    endpoint_id="legacy-endpoint",
+                    turns=1,
+                    total_tokens=999,
+                ),
             ]
         )
         await db.commit()
@@ -306,6 +317,7 @@ async def test_chat_usage_exposes_content_free_per_dispatch_identity_rows():
     payload = response.json()
     assert payload["row_count"] == 2
     assert [row["purpose"] for row in payload["rows"]] == ["chat_turn", "chat_turn"]
+    assert [row["session_id"] for row in payload["rows"]] == [session_id, session_id]
     assert [row["engine"] for row in payload["rows"]] == ["pi", "pi"]
     assert [row["endpoint_id"] for row in payload["rows"]] == [
         "pi-endpoint-1",

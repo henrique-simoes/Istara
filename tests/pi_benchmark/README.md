@@ -42,9 +42,10 @@ Implements the benchmark assets in master plan §10.3. Execution plan:
   fixed: `extract_total_tokens()` reads provider-reported usage (or defers to the usage
   ledger) and never counts SSE chunks. A live run must explicitly set
   `ISTARA_LONG_HORIZON_ENGINE=legacy` or `pi`; its usage oracle requires every persisted
-  `chat_turn` row in the session to carry that engine, rather than trusting only the
-  latest row. (Legacy per-dispatch usage capture already exists via `AgenticDispatcher`
-  / `usage_ledger.build_usage_row`, W1.)
+  `chat_turn` row in the requested session to carry that engine and the exact session
+  handle, rather than trusting only the latest row or the request filter. (Legacy
+  per-dispatch usage capture already exists via `AgenticDispatcher` /
+  `usage_ledger.build_usage_row`, W1.)
 - **B1-1** — `test_b1_contract.py` runs the canonical pack × both engines at T0 and T1 and
   asserts acceptance A5/A6. Baseline records materialise under `.results/runs/b1-*`.
 

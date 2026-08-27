@@ -52,7 +52,6 @@ from app.core.rag import build_augmented_prompt, retrieve_context
 from app.core.research_validity import RESEARCH_VALIDITY_CONTRACT, protected_block
 from app.core.token_counter import context_guard
 from app.models.database import get_db, async_session
-
 _guard = ContentGuard()
 from app.models.message import Message
 from app.models.project import Project
@@ -1312,6 +1311,7 @@ async def get_chat_usage(
         "rows": [
             {
                 "id": row.id,
+                "session_id": row.session_id,
                 "purpose": row.purpose,
                 "engine": row.engine,
                 "model": row.model,

@@ -8,8 +8,8 @@ phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal ac
 stage: S2-execute/S3-review
 status: in-progress
 blocked_on: null
-last: { agent: gpt-5-codex, at: 2026-08-27T08:31:00Z, ledger: L-296 }
-next_action: "Audit same-session parity and retain live Mac Studio provider/Petals gates as unverified until an authorized Docker-only window exists."
+last: { agent: gpt-5-codex, at: 2026-08-27T08:48:00Z, ledger: L-297 }
+next_action: "Commit and gate the same-session usage oracle; then audit remaining scorecard/live Research Spine parity gaps."
 ```
 
 ## Plan overview / roadmap
@@ -6840,3 +6840,24 @@ gate is baseline-clean (`new_issue_count=0`, `new_failures=0`, no new warnings;
 inherited `31` failures/`208` warnings). This proves container wiring only; a
 live same-session two-call run, provider-served identity, three-rater Research
 Spine quality, Petals cooperation, and Mac Studio Docker execution remain open.
+
+### L-297 | 2026-08-27T08:48:00Z | S2-execute/S3-review | gpt-5-codex | same-session usage identity oracle
+
+The deterministic long-horizon check already requested usage with
+`session_id`, but the API returned no session handle in each content-free row and
+the validator therefore could not detect a query-filter regression that mixed a
+different session into the response. The API now includes the persisted
+`session_id` handle in each identity row, and the validator requires an explicit
+benchmark session plus exact equality on every `purpose=chat_turn` row. The API
+regression fixture also inserts a foreign-session row and proves it is excluded;
+validator regressions cover cross-session rows and missing session context.
+
+Verification: focused long-horizon/API and Docker contract tests pass (`38 passed`),
+targeted Ruff passes for the changed validator/tests, Python compilation and
+`git diff --check` pass, and feature docs regenerate/check cleanly (`224` artifacts,
+`86/86` checks). A pre-commit gate observed four warning-level complexity findings
+when `chat.py` was dirty; these are inherited oversized-file/function findings and
+must be compared again after commit. This closes deterministic session attribution
+only. It does not prove live provider-served identity, three independent coders,
+Fleiss/Krippendorff quality, reconciliation or human-Done promotion, Petals
+cooperation, or Mac Studio Docker execution.

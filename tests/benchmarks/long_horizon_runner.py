@@ -117,9 +117,14 @@ def _require_persisted_tasks(payload: Any, project_id: str) -> list[dict]:
 
 
 def _require_usage_ledger(
-    payload: Any, *, expected_engine: str | None = None, min_rows: int = 2, min_turns: int = 2
+    payload: Any,
+    *,
+    expected_engine: str | None = None,
+    expected_session_id: str | None = None,
+    min_rows: int = 2,
+    min_turns: int = 2,
 ) -> dict:
-    """Require per-dispatch rows proving both turns used the requested engine."""
+    """Require per-dispatch rows proving both turns used one session and engine."""
     if not isinstance(payload, dict):
         raise BenchmarkFailure("chat usage endpoint returned a non-object payload")
     if expected_engine not in SUPPORTED_ENGINES:
@@ -128,6 +133,8 @@ def _require_usage_ledger(
             "chat usage validation requires an explicit expected engine "
             f"(legacy or pi); got {configured!r}"
         )
+    if not isinstance(expected_session_id, str) or not expected_session_id.strip():
+        raise BenchmarkFailure("chat usage validation requires the benchmark session id")
     try:
         row_count = int(payload.get("row_count") or 0)
         turns = int(payload.get("turns") or 0)
@@ -144,7 +151,9 @@ def _require_usage_ledger(
         )
     if total_tokens <= 0:
         raise BenchmarkFailure("chat usage ledger contains no positive token total")
-    _require_chat_dispatch_rows(payload, row_count, expected_engine, min_rows)
+    _require_chat_dispatch_rows(
+        payload, row_count, expected_engine, expected_session_id, min_rows
+    )
     latest = payload.get("latest")
     if not isinstance(latest, dict) or not isinstance(latest.get("engine"), str) or not latest["engine"].strip():
         raise BenchmarkFailure("chat usage ledger has no effective engine provenance")
@@ -156,7 +165,11 @@ def _require_usage_ledger(
 
 
 def _require_chat_dispatch_rows(
-    payload: dict, row_count: int, expected_engine: str, min_rows: int
+    payload: dict,
+    row_count: int,
+    expected_engine: str,
+    expected_session_id: str,
+    min_rows: int,
 ) -> None:
     """Require complete content-free identity rows for the chat turns."""
     rows = payload.get("rows")
@@ -181,6 +194,15 @@ def _require_chat_dispatch_rows(
         raise BenchmarkFailure(
             f"chat usage ledger chat-turn engine(s) {mismatched!r} do not all match "
             f"requested {expected_engine!r}"
+        )
+    missing_session = [
+        row.get("session_id")
+        for row in chat_rows
+        if row.get("session_id") != expected_session_id
+    ]
+    if missing_session:
+        raise BenchmarkFailure(
+            "chat usage ledger chat-turn session id(s) do not all match the benchmark session"
         )
 
 
@@ -524,6 +546,7 @@ async def _run_benchmark() -> None:
         usage_payload = _require_usage_ledger(
             _json_payload(usage_res, "chat usage ledger inspection"),
             expected_engine=engine,
+            expected_session_id=session_id,
         )
         print(
             "✅ Usage ledger proves both turns: "

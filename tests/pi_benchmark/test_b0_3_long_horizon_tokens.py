@@ -86,40 +86,80 @@ def test_task_queue_oracle_rejects_empty_queue():
 
 
 def test_usage_oracle_requires_two_recorded_turns_and_engine():
+    session_id = "session-1"
     payload = {
         "row_count": 2,
         "turns": 2,
         "total_tokens": 200,
         "estimated": False,
         "rows": [
-            {"id": "row-1", "purpose": "chat_turn", "engine": "pi"},
-            {"id": "row-2", "purpose": "chat_turn", "engine": "pi"},
+            {"id": "row-1", "session_id": session_id, "purpose": "chat_turn", "engine": "pi"},
+            {"id": "row-2", "session_id": session_id, "purpose": "chat_turn", "engine": "pi"},
         ],
         "latest": {"engine": "pi", "total_tokens": 100},
     }
-    usage = long_horizon_runner._require_usage_ledger(payload, expected_engine="pi")
+    usage = long_horizon_runner._require_usage_ledger(
+        payload, expected_engine="pi", expected_session_id=session_id
+    )
     assert usage["row_count"] == 2
 
 
 def test_usage_oracle_rejects_missing_rows():
     with pytest.raises(long_horizon_runner.BenchmarkFailure, match="fewer than 2"):
         long_horizon_runner._require_usage_ledger(
-            {"row_count": 1, "turns": 1, "latest": {"engine": "pi"}}, expected_engine="pi"
+            {"row_count": 1, "turns": 1, "latest": {"engine": "pi"}},
+            expected_engine="pi",
+            expected_session_id="session-1",
         )
 
 
 def test_usage_oracle_rejects_mixed_chat_engines():
+    session_id = "session-1"
     payload = {
         "row_count": 2,
         "turns": 2,
         "total_tokens": 200,
         "rows": [
-            {"id": "row-1", "purpose": "chat_turn", "engine": "pi"},
-            {"id": "row-2", "purpose": "chat_turn", "engine": "legacy"},
+            {"id": "row-1", "session_id": session_id, "purpose": "chat_turn", "engine": "pi"},
+            {"id": "row-2", "session_id": session_id, "purpose": "chat_turn", "engine": "legacy"},
         ],
         "latest": {"engine": "legacy"},
     }
     with pytest.raises(long_horizon_runner.BenchmarkFailure, match="do not all match"):
+        long_horizon_runner._require_usage_ledger(
+            payload, expected_engine="pi", expected_session_id=session_id
+        )
+
+
+def test_usage_oracle_rejects_cross_session_chat_rows():
+    payload = {
+        "row_count": 2,
+        "turns": 2,
+        "total_tokens": 200,
+        "rows": [
+            {"id": "row-1", "session_id": "session-1", "purpose": "chat_turn", "engine": "pi"},
+            {"id": "row-2", "session_id": "session-2", "purpose": "chat_turn", "engine": "pi"},
+        ],
+        "latest": {"engine": "pi"},
+    }
+    with pytest.raises(long_horizon_runner.BenchmarkFailure, match="session id"):
+        long_horizon_runner._require_usage_ledger(
+            payload, expected_engine="pi", expected_session_id="session-1"
+        )
+
+
+def test_usage_oracle_requires_explicit_session_id():
+    payload = {
+        "row_count": 2,
+        "turns": 2,
+        "total_tokens": 200,
+        "rows": [
+            {"id": "row-1", "session_id": "session-1", "purpose": "chat_turn", "engine": "pi"},
+            {"id": "row-2", "session_id": "session-1", "purpose": "chat_turn", "engine": "pi"},
+        ],
+        "latest": {"engine": "pi"},
+    }
+    with pytest.raises(long_horizon_runner.BenchmarkFailure, match="session id"):
         long_horizon_runner._require_usage_ledger(payload, expected_engine="pi")
 
 
