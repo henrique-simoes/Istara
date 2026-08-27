@@ -68,6 +68,14 @@ The selected Chat model menu is a generation control only. It never changes the 
   output, ensembles, and embeddings to Pi Model Management. Both are first-
   class loop modes over one provider/model authority and remain benchmarkable
   on the same axes. Neither seam silently changes loop mode on failure.
+- Provider identity is carried separately from the requested/configured model:
+  Pi terminal receipts expose `served_model` when the provider reports it, and
+  the dispatcher preserves that field through streamed `chat_turn` results and
+  usage-ledger accounting. The legacy loop's provider-only turns use the same
+  Pi-managed resolver, so both loop choices can be compared against one
+  endpoint/model authority without treating a configured label as proof of
+  service. Formal Research Spine coding remains fail-closed when this receipt
+  is absent.
 - `TurnParams` (`model`, `temperature`, `max_tokens`, `thinking_mode`,
   `min_context`, `timeout_s`, `max_turns`, `require_vision`) is forwarded
   unchanged on every verb. The Pi path maps them onto pi-ai turn options

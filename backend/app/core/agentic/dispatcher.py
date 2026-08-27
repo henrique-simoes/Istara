@@ -798,6 +798,11 @@ class AgenticDispatcher:
             "stop_reason": (terminal or {}).get("stop_reason"),
             "endpoint_id": (terminal or {}).get("endpoint_id"),
             "model": (terminal or {}).get("model"),
+            # Preserve the provider-reported identity emitted by the Pi
+            # runtime.  ``model`` is only the configured/request identity;
+            # dropping this receipt makes ordinary streamed chat telemetry
+            # indistinguishable from an unverified route.
+            "served_model": (terminal or {}).get("served_model"),
             "error": (terminal or {}).get("error")
             if status not in ("success", "aborted")
             else None,

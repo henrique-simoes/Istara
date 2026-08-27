@@ -298,6 +298,16 @@
 <p>class loop modes over one provider/model authority and remain benchmarkable</p>
 <p>on the same axes. Neither seam silently changes loop mode on failure.</p>
 <ul>
+<li>Provider identity is carried separately from the requested/configured model:</li>
+</ul>
+<p>Pi terminal receipts expose <code>served_model</code> when the provider reports it, and</p>
+<p>the dispatcher preserves that field through streamed <code>chat_turn</code> results and</p>
+<p>usage-ledger accounting. The legacy loop&#x27;s provider-only turns use the same</p>
+<p>Pi-managed resolver, so both loop choices can be compared against one</p>
+<p>endpoint/model authority without treating a configured label as proof of</p>
+<p>service. Formal Research Spine coding remains fail-closed when this receipt</p>
+<p>is absent.</p>
+<ul>
 <li><code>TurnParams</code> (<code>model</code>, <code>temperature</code>, <code>max_tokens</code>, <code>thinking_mode</code>,</li>
 </ul>
 <p><code>min_context</code>, <code>timeout_s</code>, <code>max_turns</code>, <code>require_vision</code>) is forwarded</p>

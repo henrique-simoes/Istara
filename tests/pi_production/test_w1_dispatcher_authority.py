@@ -362,6 +362,88 @@ async def test_chat_turn_pi_streams_and_records_one_row(monkeypatch):
 
 
 @pytest.mark.asyncio
+async def test_chat_turn_preserves_provider_served_model_identity(monkeypatch):
+    """A streamed Pi terminal receipt must reach the public TurnResult/ledger."""
+
+    class _StreamingService:
+        async def run_chat_turn(self, **kwargs):  # noqa: ANN001
+            yield {"type": "content", "text": "hello"}
+            yield {
+                "type": "done",
+                "usage": {"input_tokens": 1, "output_tokens": 1},
+                "stop_reason": "stop",
+                "endpoint_id": "managed-endpoint",
+                "model": "configured-model",
+                "served_model": "provider-served-model",
+            }
+
+    recorded = []
+
+    async def capture(**kwargs):  # noqa: ANN001
+        recorded.append(kwargs)
+
+    monkeypatch.setattr("app.core.agentic.dispatcher.record_agentic_usage", capture)
+    result = await AgenticDispatcher(pi_service=_StreamingService()).chat_turn(
+        project_id="p1",
+        agent_id="istara-main",
+        session_key=None,
+        system_prompt="sys",
+        messages=[],
+        user_text="hello",
+        params=TurnParams(model="configured-model"),
+        engine="pi",
+    )
+
+    assert result.model == "configured-model"
+    assert result.served_model == "provider-served-model"
+    assert recorded[0]["model"] == "provider-served-model"
+
+
+@pytest.mark.asyncio
+async def test_legacy_and_pi_chat_choices_share_real_pi_manager(monkeypatch):
+    """Both chat choices route through one Pi manager-owned endpoint identity."""
+
+    supervisor = PiRuntimeSupervisor()
+    endpoint = replace(
+        faux_endpoint([final_text("shared reply")], endpoint_id="pi-shared-chat"),
+        model="shared-chat-model",
+    )
+    manager = _isolated(PiModelManager(endpoints=[endpoint], include_local=False))
+    service = PiExecutionService(supervisor=supervisor, model_manager=manager)
+
+    async def no_op(**kwargs):  # noqa: ANN001
+        return None
+
+    monkeypatch.setattr("app.core.agentic.dispatcher.record_agentic_usage", no_op)
+    try:
+        results = {}
+        for engine in ("legacy", "pi"):
+            results[engine] = await AgenticDispatcher(pi_service=service).chat_turn(
+                project_id="p1",
+                agent_id="istara-main",
+                session_key=None,
+                system_prompt="sys",
+                messages=[],
+                user_text="hello",
+                params=TurnParams(endpoint_id=endpoint.endpoint_id),
+                engine=engine,
+            )
+    finally:
+        await supervisor.shutdown()
+
+    for result in results.values():
+        assert result.status == "success"
+        assert result.endpoint_id == endpoint.endpoint_id
+        assert result.model == endpoint.model
+        # The deterministic faux provider does not emit provider-response
+        # identity; this test proves shared Pi admission/authority only. The
+        # separate streamed-receipt test above covers propagation when a
+        # provider supplies the explicit identity.
+        assert result.served_model is None
+        assert result.text == "shared reply"
+
+
+@pytest.mark.asyncio
 async def test_structured_uses_explicit_request_scoped_pi_service(monkeypatch):
     """The Research Spine can pin its selected service without losing dispatch accounting."""
 

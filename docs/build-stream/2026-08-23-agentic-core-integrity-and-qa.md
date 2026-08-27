@@ -8,7 +8,7 @@ phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal ac
 stage: S5-ship&learn
 status: in-progress
 blocked_on: null
-last: { agent: gpt-5-codex, at: 2026-08-27T04:12:17Z, ledger: L-258 }
+last: { agent: gpt-5-codex, at: 2026-08-27T04:19:30Z, ledger: L-259 }
 next_action: "Keep G0/G1 and live G2–G22 open; at the next authorized window use a fresh detached origin/testing checkout, verify its archive digest inside Docker, and execute provider/Petals/combined retakes with three served model identities before claiming Research Spine completion."
 ```
 
@@ -5830,3 +5830,32 @@ Boundary/next: this receipt closes the operational audit step, not G0/G1 or live
 authorized action is a Docker-only fresh-checkout run after the owner supplies or mounts three exact
 model artifacts/routes. If those prerequisites remain absent, the correct result is a preflight
 blocker with no model load, not a synthetic or stub-backed ensemble claim.
+
+### L-259 | 2026-08-27T04:19:30Z | S2-execute/S3-review | gpt-5-codex | streamed served-identity transport closure
+
+Did: Added the red regression first and reproduced a real transport omission:
+`AgenticDispatcher._collect_pi_stream()` preserved the configured `model` but
+dropped the Pi terminal event's optional `served_model`. That left ordinary
+streamed `chat_turn` results and their usage-ledger accounting unable to carry
+provider-response identity, even though structured Research Spine coder paths
+already required it fail-closed. The fix preserves `served_model` in the
+collector return and therefore in `TurnResult` and `_record_outcome()` model
+selection.
+
+Added regressions for explicit served-identity propagation and for both
+`engine="legacy"` and `engine="pi"` chat choices against one real
+`PiExecutionService`/`PiModelManager` endpoint. The latter deliberately uses
+the deterministic faux provider only to prove shared authority and endpoint
+admission; it does not claim provider-served identity. The focused dispatcher
+suite passes 29/29. Updated the Chat Model Controls architecture contract and
+appended finding F-R9-70 to `/Users/user/Desktop/testing.md`. Compass Forge
+before-gate record `146` and after-gate record `147` bracketed the change;
+the after comparison reports no new dependency, import-cycle, missing-path,
+or unexpected-large-file issues.
+
+Boundary/next: this local transport fix does not advance the live scientific
+claim. G0/G1 and live G2–G22 remain open pending a fresh detached
+`origin/testing` checkout and Docker-only provisioning of three real served
+model identities/routes, followed by provider, Petals, and combined retakes
+with common raw evidence units, reliability, reconciliation, promotion, both
+loop modes, two-call/long-horizon artifacts, redaction, and teardown.
