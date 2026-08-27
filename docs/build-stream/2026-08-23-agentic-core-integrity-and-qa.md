@@ -8,7 +8,7 @@ phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal ac
 stage: S2-execute/S3-review
 status: in-progress
 blocked_on: "Owner-approved Docker-only Mac Studio provisioning: current env/config, provider-served identities, and three-model inputs"
-last: { agent: gpt-5-codex, at: 2026-08-27T20:26:00Z, ledger: L-413 }
+last: { agent: gpt-5-codex, at: 2026-08-27T20:29:00Z, ledger: L-414 }
 next_action: "Obtain owner-approved Docker provider inputs, then run the live three-model Research Spine proof and separately verify Petals, human reconciliation/Done/report, two-call, and long-horizon gates; keep deterministic evidence separate."
 ```
 
@@ -23,7 +23,12 @@ timestamped ledger entry in this file.
 
 ### Current truth and non-claims
 
-* `testing` and `origin/testing` are both at `a89b53c1` after the clean ledger checkpoint. The checkout is clean. There is no `local/testing` ref. Do not create a local ref merely to make the names symmetrical; record the absence instead.
+* `testing` tracks `origin/testing` and the checkout is kept clean. Re-run
+  `git rev-parse HEAD` and `git rev-parse origin/testing` at the start of every
+  continuation because each ledger-only commit necessarily advances both tips.
+  The last observed equal tips before this amendment were `26fed2cf`; there is
+  no `local/testing` ref. Do not create a local ref merely to make the names
+  symmetrical; record the absence instead.
 * The only other worktree is the clean recovery branch
   `recovery/pi-retake-linearized-2026-08-10`. It is not merged into `testing`
   (`testing...recovery/...` is `863 113`) and must not be deleted or rebased as
@@ -9949,3 +9954,13 @@ SHA with `git rev-parse HEAD` and `git rev-parse origin/testing` before editing.
 At this point the intended testing history is fully reconciled and no untracked
 or unstaged files are expected. The recovery worktree remains preserved for
 forensic/owner review, not treated as a candidate for merge or deletion.
+
+### L-414 | 2026-08-27T20:29:00Z | S3-review | gpt-5-codex | Ledger SHA semantics corrected
+
+The prior wording could become stale whenever this document was amended,
+because the ledger commit itself advances both `testing` and `origin/testing`.
+The durable rule is now to verify both refs at continuation time and to treat
+the recorded SHA as the last observation before the current ledger amendment.
+This avoids claiming a historical SHA is still the tip while preserving a clean,
+fully pushed branch. No code, generated artifact, model, container, host process,
+worktree, or branch was changed beyond this documentation commit.
