@@ -8,7 +8,7 @@ phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal ac
 stage: S2-execute/S3-review
 status: in-progress
 blocked_on: "Owner-approved Docker-only Mac Studio provisioning: current env/config, provider-served identities, and three-model inputs"
-last: { agent: gpt-5-codex, at: 2026-08-27T15:40:00Z, ledger: L-374 }
+last: { agent: gpt-5-codex, at: 2026-08-27T15:47:00Z, ledger: L-375 }
 next_action: "Continue F-R9-114 with the remaining live three-model provider identity, genuine human reconciliation, and Done/report acceptance gates; separately decide the migration/compatibility policy for legacy no-coding-run reportability. Keep synthetic receipts non-reportable and do not start live workloads without owner-approved provider/model inputs."
 ```
 
@@ -8852,3 +8852,26 @@ transport receipt itself (`c1cb6eb21a1147dae1e1081065fa4e78b1f5dbff`). This
 keeps the Build Stream SHA chain truthful: the latter is the exact commit that
 local `testing`, `origin/testing`, and the detached Mac Studio retake must
 match. No code, runtime, provider, model, or Docker state changed.
+
+### L-375 | 2026-08-27T15:47:00Z | S3-review | gpt-5-codex | Docker runtime provenance hardening
+
+The benchmark's Docker-only guard previously treated the caller-controlled
+`ISTARA_BENCHMARK_DOCKER_RUNNER=1` marker as sufficient evidence of container
+execution. That left a direct host invocation able to spoof the marker and
+enter the Docker-owned three-model path. Commit `ead660b18edfe8af66400e7ba4e70b288f93994c`
+now requires both the marker and actual container-runtime evidence
+(`/.dockerenv` or a Docker/containerd/kubepods cgroup), records the two signals
+separately in metadata/history, and retains the host-managed refusal when the
+runtime proof is absent. The topology contract gained a regression asserting
+this separation; the ensemble feature documentation and benchmark README were
+regenerated/updated accordingly.
+
+Verification: focused topology suite `11/11`; full real-user benchmark contract
+suite `95/95`; `python -m pytest -q tests/test_code_applications.py
+tests/test_research_spine_end_to_end.py` `13 passed`; feature-doc generation /
+check `224` artifacts and `86/86` features; `git diff --check`; Compass Forge
+gate-before record `302` and gate-after record `303` report no new issues (the
+repository's pre-existing warning/fail inventory remains). No provider request,
+model load, image pull, host installation, live benchmark, or testing-data
+deletion occurred. The code commit is not yet transported to `origin/testing`
+or the Mac Studio retake; transport is the next checkpoint.
