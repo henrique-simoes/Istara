@@ -8,7 +8,7 @@ phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal ac
 stage: S2-execute/S3-review
 status: in-progress
 blocked_on: "Owner-approved Docker-only Mac Studio provisioning: current env/config, provider-served identities, and three-model inputs"
-last: { agent: gpt-5-codex, at: 2026-08-27T16:12:00Z, ledger: L-379 }
+last: { agent: gpt-5-codex, at: 2026-08-27T16:20:00Z, ledger: L-380 }
 next_action: "Continue F-R9-114 with the remaining live three-model provider identity, genuine human reconciliation, and Done/report acceptance gates; separately decide the migration/compatibility policy for legacy no-coding-run reportability. Keep synthetic receipts non-reportable and do not start live workloads without owner-approved provider/model inputs."
 ```
 
@@ -8949,3 +8949,23 @@ governed exception with explicit tests), not a confirmed runtime defect. The
 live gate F-R9-114 remains open for provider-served identities, genuine human
 reconciliation, and Done/report acceptance; legacy no-coding-run reportability
 still needs an explicit migration/compatibility decision.
+
+### L-380 | 2026-08-27T16:20:00Z | S5-ship&learn | gpt-5-codex | deterministic regression closure
+
+The complete real-user benchmark contract passes `95/95`, and the selected
+ensemble/Research Spine Python regression set passes `17/17` after the Petals
+scope hardening and coverage audit. These suites validate routing authority,
+served-identity/provenance requirements, three-coder Fleiss/Krippendorff gate
+contracts, reconciliation/reportability blockers, Docker-only refusal and
+receipt semantics, and long-horizon acceptance rules using deterministic seams.
+They do not establish live model quality, live provider-served identities, or
+human reconciliation. Compass Forge evidence `349` records the results.
+
+The last transported code/docs checkpoint remains
+`07c463edf9c2fd371e7121abb09871912b3232e0`; this is a documentation-only
+ledger update. No provider request, model load, image pull, host installation,
+live benchmark, or testing-data deletion occurred. F-R9-114 remains open for
+owner-approved Docker-only three-model provider execution, genuine human
+reconciliation, Done/report acceptance, and the two-call/long-horizon live
+receipt; the legacy no-coding-run reportability migration decision and the real
+downstream artifact generation fixture remain separate follow-ups.
