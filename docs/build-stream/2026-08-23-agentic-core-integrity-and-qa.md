@@ -8,8 +8,8 @@ phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal ac
 stage: S2-execute/S3-review
 status: in-progress
 blocked_on: "Owner-approved Docker-only Mac Studio provisioning: current env/config, provider-served identities, and three-model inputs"
-last: { agent: gpt-5-codex, at: 2026-08-27T21:34:24Z, ledger: L-423 }
-next_action: "Audit generic reliability identity handling and provider-served route receipts, then continue the Docker-only Mac Studio acceptance preparation; keep CF-SPEC-2 open until live three-model, Petals, reconciliation, two-call, and long-horizon evidence exists."
+last: { agent: gpt-5-codex, at: 2026-08-27T21:42:15Z, ledger: L-424 }
+next_action: "Resolve the Istara versus Agentic Loop naming/selection contract from code and docs, then continue disposable Docker-only Mac Studio acceptance preparation; keep CF-SPEC-2 open until live three-model, Petals, reconciliation, two-call, and long-horizon evidence exists."
 ```
 
 ## Continuation blueprint — remaining work and acceptance contract
@@ -10171,3 +10171,29 @@ Next: inspect the generic reliability gate's configured-versus-served identity
 semantics and benchmark route-receipt tests, then return to the disposable
 Docker-only Mac Studio acceptance preparation. Live provider/Petals,
 reconciliation/Done/report, two-call, and long-horizon proof remains absent.
+
+### L-424 | 2026-08-27T21:42:15Z | S2-execute/S3-review | gpt-5-codex | Reliability independence now uses provider-served identity
+
+The generic Research Spine reliability gate previously counted `model_name` or
+`model` as the independent identity even when each application carried a
+different configured alias and the same provider-served checkpoint. That could
+certify Fleiss' Kappa for three aliases backed by one model. The gate now gives
+`served_model` precedence for both distinct-model counting and effective
+checkpoint provenance, preserving legacy fields only when no served receipt is
+available. This matches the route-receipt oracle and prevents configured labels
+from fabricating scientific independence.
+
+TDD evidence: the new regression was first run red (the pre-fix result was
+`fleiss_kappa_with_krippendorff_alpha_companion`), then passed after the change.
+Focused Research Spine, Pi ensemble, identity, accounting, validation, and
+runtime suites pass (`120 passed`). Feature docs regenerated and checked (`224`
+artifacts, `86/86` checks); `git diff --check` is clean. Compass Forge command
+evidence `419` records the test/doc/diff result; the after-gate reports
+`actionable_failures=[]`, `new_failures=0`, and inherited gate debt of `31`
+failures/`212` warnings. No model was loaded and no Mac Studio state changed.
+
+Next: commit and push this hardening plus the ledger checkpoint, then audit the
+user-visible engine labels (`Istara`, `Agentic Loop`, `Pi Agentic Loop`) against
+the dispatcher and settings contracts before preparing the disposable remote
+Docker run. Live provider/Petals, reconciliation/Done/report, two-call, and
+long-horizon proof remains absent.

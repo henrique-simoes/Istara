@@ -729,6 +729,46 @@ def test_reused_model_identity_is_not_counted_as_independent_ensemble():
     assert result["reconciliation_evidence_unit_ids"] == ["eu-1"]
 
 
+def test_provider_served_identity_is_the_independence_boundary():
+    from app.core.research_validity import evaluate_reliability_gate
+
+    applications = []
+    for coder_id, configured_model in (
+        ("coder-a", "alias-a"),
+        ("coder-b", "alias-b"),
+        ("coder-c", "alias-c"),
+    ):
+        applications.append(
+            {
+                "coder_id": coder_id,
+                "model_name": configured_model,
+                "served_model": "provider/shared-model",
+                "model_checkpoint": configured_model,
+                "provider_account_handle": "account-safe-handle",
+                "endpoint_id": f"endpoint-{coder_id}",
+                "prompt_hash": "prompt-sha256",
+                "codebook_version_id": "codebook-v1",
+                "protocol_version": "protocol-v1",
+                "decoding_profile": {"temperature": 0.2},
+                "conversation_scope": "fresh_session_per_coder_call",
+                "cache_scope": "provider_prefix_cache_no_response_reuse",
+                "evidence_unit_id": "eu-1",
+                "codes": ["nav"],
+            }
+        )
+
+    result = evaluate_reliability_gate(
+        applications,
+        minimum_distinct_models=3,
+        require_rater_provenance=True,
+    )
+
+    assert result["method"] == "invalid_independence"
+    assert result["promotion_status"] == "needs_reconciliation"
+    assert result["distinct_model_count"] == 1
+    assert "reused a model identity" in result["fallback_reason"]
+
+
 def test_single_model_path_is_lower_assurance():
     from app.core.research_validity import evaluate_reliability_gate
 

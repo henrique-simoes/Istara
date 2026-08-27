@@ -523,7 +523,15 @@ def distinct_model_identities(applications: list[dict]) -> set[str]:
     """
     identities: set[str] = set()
     for app in applications:
-        model_name = str(app.get("model_name") or app.get("model") or "").strip()
+        # Provider-served identity is the scientific boundary. A configured
+        # alias or endpoint label can differ while resolving to the same
+        # served checkpoint, so it must never manufacture independence.
+        model_name = str(
+            app.get("served_model")
+            or app.get("model_name")
+            or app.get("model")
+            or ""
+        ).strip()
         if model_name:
             identities.add(model_name.casefold())
     return identities
@@ -558,7 +566,11 @@ def effective_rater_provenance(applications: list[dict]) -> tuple[dict[str, dict
             continue
         candidate = {
             "model_checkpoint": str(
-                app.get("model_checkpoint") or app.get("model_name") or app.get("model") or ""
+                app.get("served_model")
+                or app.get("model_checkpoint")
+                or app.get("model_name")
+                or app.get("model")
+                or ""
             ).strip(),
             "provider_account_handle": str(app.get("provider_account_handle") or "").strip(),
             "endpoint_id": str(app.get("endpoint_id") or app.get("route_id") or "").strip(),
