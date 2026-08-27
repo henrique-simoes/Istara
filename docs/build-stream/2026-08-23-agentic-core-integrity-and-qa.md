@@ -8,7 +8,7 @@ phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal ac
 stage: S5-ship&learn
 status: in-progress
 blocked_on: null
-last: { agent: gpt-5-codex, at: 2026-08-27T04:11:20Z, ledger: L-257 }
+last: { agent: gpt-5-codex, at: 2026-08-27T04:12:17Z, ledger: L-258 }
 next_action: "Keep G0/G1 and live G2–G22 open; at the next authorized window use a fresh detached origin/testing checkout, verify its archive digest inside Docker, and execute provider/Petals/combined retakes with three served model identities before claiming Research Spine completion."
 ```
 
@@ -5817,3 +5817,16 @@ must provision three exact model files or three explicit provider routes inside 
 create a fresh detached checkout at `origin/testing`, compute and verify its canonical archive digest,
 then run provider, Petals, and combined profiles in order. A deterministic green run cannot replace
 this missing runtime provenance.
+
+### L-258 | 2026-08-27T04:12:17Z | S5-ship&learn | gpt-5-codex | blocker receipt gate closure
+
+Verified: Compass Forge before-gate record `144` and after-gate record `145` bracketed the live
+prerequisite audit and ledger update. The after comparison reports no new dependency, import-cycle,
+missing-required-path, or unexpected-large-file issues; the only current warnings remain inherited
+repository complexity debt. The exact transport SHA is `3ed2a1b98b353aa76276039bb65d944c8f178f47`
+on `HEAD`, local `testing`, and `origin/testing`, with a clean worktree and clean diff checks.
+
+Boundary/next: this receipt closes the operational audit step, not G0/G1 or live G2–G22. The next
+authorized action is a Docker-only fresh-checkout run after the owner supplies or mounts three exact
+model artifacts/routes. If those prerequisites remain absent, the correct result is a preflight
+blocker with no model load, not a synthetic or stub-backed ensemble claim.
