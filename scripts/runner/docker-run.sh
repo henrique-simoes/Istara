@@ -120,6 +120,15 @@ if [[ -z "${ISTARA_BENCHMARK_REQUIRE_LIVE_CHAT:-}" ]]; then
     provider|petals) ISTARA_BENCHMARK_REQUIRE_LIVE_CHAT=0 ;;
   esac
 fi
+if [[ -z "${ISTARA_BENCHMARK_REQUIRE_LONG_HORIZON:-}" ]]; then
+  case "$ISTARA_BENCHMARK_ACCEPTANCE_PROFILE" in
+    # The combined profile is the only profile that claims chat/session/task
+    # acceptance. Provider and Petals profiles intentionally scope to their
+    # transport/donation gates and must not fabricate a chat horizon result.
+    combined) ISTARA_BENCHMARK_REQUIRE_LONG_HORIZON=1 ;;
+    provider|petals) ISTARA_BENCHMARK_REQUIRE_LONG_HORIZON=0 ;;
+  esac
+fi
 if [[ -z "${ISTARA_BENCHMARK_REQUIRE_COMPUTE_DONATION:-}" ]]; then
   case "$ISTARA_BENCHMARK_ACCEPTANCE_PROFILE" in
     provider) ISTARA_BENCHMARK_REQUIRE_COMPUTE_DONATION=0 ;;
@@ -172,6 +181,10 @@ esac
 case "$ISTARA_BENCHMARK_START_CLIENT_SANDBOXES" in
   0|1|true|false|yes|no) ;;
   *) echo "ISTARA_BENCHMARK_START_CLIENT_SANDBOXES must be 0/1/true/false/yes/no" >&2; exit 2 ;;
+esac
+case "$ISTARA_BENCHMARK_REQUIRE_LONG_HORIZON" in
+  0|1|true|false|yes|no) ;;
+  *) echo "ISTARA_BENCHMARK_REQUIRE_LONG_HORIZON must be 0/1/true/false/yes/no" >&2; exit 2 ;;
 esac
 
 # The benchmark's donor/model/client helpers invoke Docker from inside the disposable
@@ -298,11 +311,13 @@ for engine in "${ENGINES[@]}"; do
     -e "ISTARA_MARATHON_ENGINE=$engine"
     -e "ISTARA_RUNNER_SKIP_MARATHON=$ISTARA_RUNNER_SKIP_MARATHON"
     -e "ISTARA_BENCHMARK_ENGINE=$engine"
+    -e "ISTARA_LONG_HORIZON_ENGINE=$engine"
     -e "ISTARA_BENCHMARK_ACCEPTANCE_PROFILE=$ISTARA_BENCHMARK_ACCEPTANCE_PROFILE"
     -e "ISTARA_BENCHMARK_REQUIRE_COMPUTE_DONATION=$ISTARA_BENCHMARK_REQUIRE_COMPUTE_DONATION"
     -e "ISTARA_BENCHMARK_START_CLIENT_SANDBOXES=$ISTARA_BENCHMARK_START_CLIENT_SANDBOXES"
     -e "ISTARA_BENCHMARK_PROBE_SCRIPT=$PROBE_SCRIPT"
     -e "ISTARA_BENCHMARK_REQUIRE_LIVE_CHAT=$ISTARA_BENCHMARK_REQUIRE_LIVE_CHAT"
+    -e "ISTARA_BENCHMARK_REQUIRE_LONG_HORIZON=$ISTARA_BENCHMARK_REQUIRE_LONG_HORIZON"
     -e ISTARA_BENCHMARK_DOCKER_RUNNER=1
     -e "ISTARA_BENCHMARK_MODEL_ROOT=$MODEL_ROOT_HOST"
     -e "ISTARA_BENCHMARK_BACKEND_NETWORK=$BACKEND_NET"

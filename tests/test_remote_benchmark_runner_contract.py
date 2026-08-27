@@ -12,8 +12,11 @@ def test_remote_runner_uses_one_disposable_container_per_engine():
 
     assert 'for engine in "${ENGINES[@]}"' in outer
     assert '-e "ISTARA_BENCHMARK_ENGINE=$engine"' in outer
+    assert '-e "ISTARA_LONG_HORIZON_ENGINE=$engine"' in outer
     assert 'PROBE_SCRIPT="${ISTARA_BENCHMARK_PROBE_SCRIPT:-probe:${ISTARA_BENCHMARK_ENGINE}}"' in inner
     assert 'npm --prefix tests/real_user_benchmark run "$PROBE_SCRIPT"' in inner
+    assert '/opt/runner-venv/bin/python tests/benchmarks/long_horizon_runner.py' in inner
+    assert 'tee "$LONG_HORIZON_RESULTS/${ISTARA_LONG_HORIZON_ENGINE}.log"' in inner
     assert "probe:legacy" not in inner
     assert "probe:pi" not in inner
 
@@ -135,6 +138,28 @@ def test_remote_runner_requires_compute_donation_by_default_and_forwards_topolog
     assert "ISTARA_BENCHMARK_DONOR_" in outer
     assert "ISTARA_BENCHMARK_DONOR_PROFILES_FILE" in outer
     assert "ISTARA_BENCHMARK_COMPUTE_CONNECTION_STRINGS" in outer
+
+
+def test_remote_runner_scopes_long_horizon_to_the_combined_acceptance_profile():
+    outer = (ROOT / "scripts/runner/docker-run.sh").read_text(encoding="utf-8")
+    inner = (ROOT / "scripts/runner/inside.sh").read_text(encoding="utf-8")
+
+    assert 'if [[ -z "${ISTARA_BENCHMARK_REQUIRE_LONG_HORIZON:-}" ]]' in outer
+    assert 'combined) ISTARA_BENCHMARK_REQUIRE_LONG_HORIZON=1' in outer
+    assert 'provider|petals) ISTARA_BENCHMARK_REQUIRE_LONG_HORIZON=0' in outer
+    assert '-e "ISTARA_BENCHMARK_REQUIRE_LONG_HORIZON=$ISTARA_BENCHMARK_REQUIRE_LONG_HORIZON"' in outer
+    assert 'LONG_HORIZON skipped for acceptance profile=' in inner
+    assert 'ISTARA_LONG_HORIZON_ENGINE must be legacy or pi' in inner
+
+
+def test_remote_runner_keeps_python_dependencies_inside_the_disposable_image():
+    dockerfile = (ROOT / "scripts/runner/Dockerfile").read_text(encoding="utf-8")
+    outer = (ROOT / "scripts/runner/docker-run.sh").read_text(encoding="utf-8")
+
+    assert "python3-venv" in dockerfile
+    assert "python3 -m venv /opt/runner-venv" in dockerfile
+    assert '"httpx==0.28.1"' in dockerfile
+    assert "python3 " not in outer
 
 
 def test_remote_runner_proves_nested_docker_contract_before_required_donor_run():

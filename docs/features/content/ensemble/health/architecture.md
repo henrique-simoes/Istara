@@ -98,6 +98,10 @@ Ensemble Health surfaces health and consensus signals for Istara's multi-model o
   `legacy` or `pi` explicitly and validates every content-free `chat_turn` identity row
   returned for the session, so a latest-row-only or mixed-engine result cannot be reported
   as engine parity.
+- `scripts/runner/docker-run.sh` and `scripts/runner/inside.sh` — the combined Docker
+  acceptance profile invokes that Python workload inside the disposable runner image for
+  each engine arm, persists one log per engine, and leaves provider/Petals-only profiles
+  scoped to their transport/donation gates.
 
 ## Related Features
 

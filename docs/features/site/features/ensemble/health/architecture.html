@@ -325,6 +325,12 @@
 <p><code>legacy</code> or <code>pi</code> explicitly and validates every content-free <code>chat_turn</code> identity row</p>
 <p>returned for the session, so a latest-row-only or mixed-engine result cannot be reported</p>
 <p>as engine parity.</p>
+<ul>
+<li><code>scripts/runner/docker-run.sh</code> and <code>scripts/runner/inside.sh</code> — the combined Docker</li>
+</ul>
+<p>acceptance profile invokes that Python workload inside the disposable runner image for</p>
+<p>each engine arm, persists one log per engine, and leaves provider/Petals-only profiles</p>
+<p>scoped to their transport/donation gates.</p>
 <h2 id="related-features">Related Features</h2>
 <ul>
 <li><a href="../../quality/dashboard/architecture.html">quality.dashboard</a></li>

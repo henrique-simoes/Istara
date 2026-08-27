@@ -6,6 +6,7 @@ export ISTARA_BENCHMARK_CHAT_TIMEOUT_MS="${ISTARA_BENCHMARK_CHAT_TIMEOUT_MS:-300
 : "${ISTARA_BENCHMARK_MAX_UPLOADS:=6}"
 : "${ISTARA_BENCHMARK_ENGINE:?set ISTARA_BENCHMARK_ENGINE to legacy or pi}"
 : "${ISTARA_BENCHMARK_ACCEPTANCE_PROFILE:=combined}"
+: "${ISTARA_BENCHMARK_REQUIRE_LONG_HORIZON:=0}"
 if [[ -z "${ISTARA_RUNNER_SKIP_MARATHON:-}" ]]; then
   case "$ISTARA_BENCHMARK_ACCEPTANCE_PROFILE" in
     combined) ISTARA_RUNNER_SKIP_MARATHON=0 ;;
@@ -16,6 +17,11 @@ fi
 case "$ISTARA_BENCHMARK_ENGINE" in
   legacy|pi) ;;
   *) echo "unsupported benchmark engine: $ISTARA_BENCHMARK_ENGINE" >&2; exit 2 ;;
+esac
+case "$ISTARA_BENCHMARK_REQUIRE_LONG_HORIZON" in
+  0|false|no) RUN_LONG_HORIZON=0 ;;
+  1|true|yes) RUN_LONG_HORIZON=1 ;;
+  *) echo "ISTARA_BENCHMARK_REQUIRE_LONG_HORIZON must be 0/1/true/false/yes/no" >&2; exit 2 ;;
 esac
 
 # Materialize a disposable worktree inside Docker. Writable result mounts are
@@ -41,6 +47,21 @@ if [[ "${ISTARA_RUNNER_SKIP_MARATHON:-0}" != "1" ]]; then
   echo "[runner] MARATHON done $(date -u +%H:%M:%S)"
 else
   echo "[runner] MARATHON skipped (ISTARA_RUNNER_SKIP_MARATHON=1)"
+fi
+
+if [[ "$RUN_LONG_HORIZON" -eq 1 ]]; then
+  case "${ISTARA_LONG_HORIZON_ENGINE:-}" in
+    legacy|pi) ;;
+    *) echo "ISTARA_LONG_HORIZON_ENGINE must be legacy or pi when long-horizon is required" >&2; exit 2 ;;
+  esac
+  LONG_HORIZON_RESULTS="data/test-marathon/long-horizon"
+  mkdir -p "$LONG_HORIZON_RESULTS"
+  echo "[runner] LONG_HORIZON engine=$ISTARA_LONG_HORIZON_ENGINE start $(date -u +%H:%M:%S)"
+  /opt/runner-venv/bin/python tests/benchmarks/long_horizon_runner.py \
+    2>&1 | tee "$LONG_HORIZON_RESULTS/${ISTARA_LONG_HORIZON_ENGINE}.log"
+  echo "[runner] LONG_HORIZON engine=$ISTARA_LONG_HORIZON_ENGINE done $(date -u +%H:%M:%S)"
+else
+  echo "[runner] LONG_HORIZON skipped for acceptance profile=$ISTARA_BENCHMARK_ACCEPTANCE_PROFILE"
 fi
 
 echo "[runner] probe deps"

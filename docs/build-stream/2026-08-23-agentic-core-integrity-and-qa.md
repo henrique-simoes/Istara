@@ -8,8 +8,8 @@ phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal ac
 stage: S2-execute/S3-review
 status: in-progress
 blocked_on: null
-last: { agent: gpt-5-codex, at: 2026-08-27T08:23:12Z, ledger: L-295 }
-next_action: "Run the focused long-horizon/API checks, transport the explicit engine-and-per-dispatch oracle, then audit same-session parity and retain live Mac Studio gates as unverified until an authorized Docker-only window exists."
+last: { agent: gpt-5-codex, at: 2026-08-27T08:31:00Z, ledger: L-296 }
+next_action: "Audit same-session parity and retain live Mac Studio provider/Petals gates as unverified until an authorized Docker-only window exists."
 ```
 
 ## Plan overview / roadmap
@@ -6815,3 +6815,28 @@ async teardown warning), feature docs regenerate/check cleanly (`224` artifacts,
 it does not prove same-session engine parity against live providers, model-served
 identity, three-rater Research Spine quality, Petals cooperation, or Docker-only
 Mac Studio execution. Those G9/G16-G22 gates remain open.
+
+### L-296 | 2026-08-27T08:31:00Z | S2-execute/S3-review | gpt-5-codex | Docker wrapper long-horizon integration
+
+The Docker-only Mac Studio comparison wrapper previously ran the Node marathon and
+real-user probe only. It never invoked `tests/benchmarks/long_horizon_runner.py`,
+so the two-call/session/task acceptance gate could not observe a real result and
+G16/G17 were structurally untestable even when the backend was healthy.
+
+The disposable runner image now installs `python3`/`python3-venv` and pinned
+`httpx==0.28.1` into `/opt/runner-venv` during the Docker build; no Python package
+installation occurs on the Mac Studio host. The outer wrapper passes an explicit
+`ISTARA_LONG_HORIZON_ENGINE` per comparison arm and defaults the requirement on
+for the `combined` profile while leaving `provider` and `petals` scoped to their
+transport/donation gates. The inner runner validates the setting, runs the Python
+workload before the probe, and persists one engine-specific log under the mounted
+`data/test-marathon/long-horizon` evidence directory. Failure remains fail-closed
+and the outer loop still records both engine arms before returning a non-zero result.
+
+Verification: shell syntax, Docker-runner contract tests, and long-horizon unit
+tests pass (`36 passed`), Ruff and `git diff --check` pass, and feature docs
+regenerate/check cleanly (`224` artifacts, `86/86` checks). Compass Forge before
+gate is baseline-clean (`new_issue_count=0`, `new_failures=0`, no new warnings;
+inherited `31` failures/`208` warnings). This proves container wiring only; a
+live same-session two-call run, provider-served identity, three-rater Research
+Spine quality, Petals cooperation, and Mac Studio Docker execution remain open.
