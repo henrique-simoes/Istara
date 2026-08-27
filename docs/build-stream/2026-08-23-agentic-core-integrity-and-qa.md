@@ -8,8 +8,8 @@ phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal ac
 stage: S5-ship&learn
 status: in-progress
 blocked_on: null
-last: { agent: gpt-5-codex, at: 2026-08-27T03:00:00Z, ledger: L-247 }
-next_action: "Commit and push the duplicate-rating reliability hardening with fresh Compass Forge after-gate evidence; then resolve whether ‘Agentic Loop’ is shorthand for legacy/Istara or a required third engine, and at the next authorized live window execute the Docker-only provider/Petals/combined G0–G22 retake from a fresh detached checkout; until then leave G0/G1 not_run."
+last: { agent: gpt-5-codex, at: 2026-08-27T03:04:07Z, ledger: L-248 }
+next_action: "Resolve whether ‘Agentic Loop’ is shorthand for legacy/Istara or a required third engine, and at the next authorized live window execute the Docker-only provider/Petals/combined G0–G22 retake from a fresh detached checkout; until then leave G0/G1 not_run."
 ```
 
 ## Plan overview / roadmap
@@ -5529,3 +5529,29 @@ the launch-time SHA, verify its archive digest inside the Docker wrapper, render
 run provider/Petals/combined profiles with real served identities, common raw spans, numeric
 Fleiss/Krippendorff reliability, grounding, reconciliation, human-Done/report promotion,
 two-call/long-horizon evidence, Petals interoperability, redacted artifacts, and teardown.
+
+### L-248 | 2026-08-27T03:04:07Z | S5-ship&learn | gpt-5-codex | duplicate-rating hardening transport receipt
+
+Did: Committed the duplicate coder/Evidence Unit reliability hardening and its contract,
+regression, feature documentation, and generated-site updates as `f676b0fd464343d16b8b35d1d138d174dd8acb0d`.
+Pushed it to `origin/testing`; `testing`, `origin/testing`, and `HEAD` resolve to that exact SHA.
+The worktree is clean, `git diff origin/testing --check` and `git diff --check` pass, and no
+obsolete registered worktree or safely deletable merged branch was identified.
+
+Did: Performed a passive Docker-only SSH inspection of the Mac Studio after transport. Docker
+Server `29.7.2` remains reachable; no Istara benchmark Compose project, testing network, testing
+volume, provider, relay, donor, or model container is running. Only the unrelated healthy
+`plex` workload is present. The stale dirty `/Users/user/istara-testing` checkout remains
+untouched. No image pull, model load, service start, host installation, data deletion, or remote
+repository mutation occurred.
+
+Verified: deterministic reliability, Research Spine, Pi runtime, remote-runner contract, and
+benchmark checks remain green as recorded in L-247/evidence `109`; Compass Forge after-gate
+record `133` reports no new dependency, missing-path, or cycle findings relative to baseline
+(only the already suppressed path-scoped lifecycle-ledger large-file comparison remains). Live
+three-model provider,
+Petals, combined, two-call/long-horizon, and teardown gates remain unrun. The duplicate-rating
+fix is transported and parity-verified, but CF-15 is not complete until the owner-authorized
+Mac Studio prerequisites exist and G0–G22 produce Docker evidence with three distinct model
+identities, common raw spans, numeric Fleiss/Krippendorff metrics, grounding, reconciliation,
+human-Done/report promotion, redaction, and teardown.
