@@ -179,6 +179,8 @@ export function liveAcceptanceBlockers({
       blockers.push("Selected provider Research Spine gate was disabled; acceptance cannot pass.");
     } else if (providerSelected && !featureResults.codingValidation) {
       blockers.push("Requested three-model Research Spine coding validation did not complete.");
+    } else if (providerSelected && !featureResults.multiModelResearchSpineValidation) {
+      blockers.push("Requested independent multi-model Research Spine validation did not complete.");
     }
     if (providerSelected && codingValidationEnabled && !featureResults.researchSpineTraceability) {
       blockers.push("Requested Research Spine traceability validation did not complete.");
@@ -191,6 +193,9 @@ export function liveAcceptanceBlockers({
   } else {
     if (codingValidationEnabled && !featureResults.codingValidation) {
       blockers.push("Requested three-model Research Spine coding validation did not complete.");
+    }
+    if (codingValidationEnabled && featureResults.codingValidation && !featureResults.multiModelResearchSpineValidation) {
+      blockers.push("Requested independent multi-model Research Spine validation did not complete.");
     }
     if (codingValidationEnabled && !featureResults.researchSpineTraceability) {
       blockers.push("Requested Research Spine traceability validation did not complete.");

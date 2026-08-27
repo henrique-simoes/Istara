@@ -44,6 +44,7 @@ test("bounded live acceptance rejects partial chat and an unapproved task workfl
     codingValidationEnabled: true,
     featureResults: {
       codingValidation: true,
+      multiModelResearchSpineValidation: true,
       researchSpineTraceability: true,
       taskReviewLoop: false,
       approvedTaskFindings: false,
@@ -67,6 +68,7 @@ test("bounded live acceptance passes a complete fail-closed Research Spine run",
     codingValidationEnabled: true,
     featureResults: {
       codingValidation: true,
+      multiModelResearchSpineValidation: true,
       researchSpineTraceability: true,
       taskReviewLoop: true,
       approvedTaskFindings: true,
@@ -247,6 +249,21 @@ test("selected provider profile fails closed when coding validation is disabled"
   ]);
 });
 
+test("selected provider profile fails closed when multi-model validation is missing", () => {
+  assert.deepEqual(liveAcceptanceBlockers({
+    acceptanceProfile: "provider",
+    codingValidationEnabled: true,
+    requireComputeDonation: false,
+    featureResults: {
+      codingValidation: true,
+      multiModelResearchSpineValidation: false,
+      researchSpineTraceability: true,
+    },
+  }), [
+    "Requested independent multi-model Research Spine validation did not complete.",
+  ]);
+});
+
 test("provider acceptance does not fail on intentionally unselected chat or task surfaces", () => {
   assert.deepEqual(liveAcceptanceBlockers({
     acceptanceProfile: "provider",
@@ -256,7 +273,11 @@ test("provider acceptance does not fail on intentionally unselected chat or task
     completedTasks: 0,
     codingValidationEnabled: true,
     requireComputeDonation: false,
-    featureResults: { codingValidation: true, researchSpineTraceability: true },
+    featureResults: {
+      codingValidation: true,
+      multiModelResearchSpineValidation: true,
+      researchSpineTraceability: true,
+    },
   }), []);
 });
 

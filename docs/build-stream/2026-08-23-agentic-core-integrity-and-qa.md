@@ -5367,7 +5367,7 @@ contract and regenerated the site/manifest. Appended audit finding F-R9-60 to
 `/Users/user/Desktop/testing.md`.
 
 Verified: TDD red run reproduced the false `verified` result; the green targeted scoring suite
-passed 18/18. The full real-user benchmark check passed 75/75 tests, feature-doc generation/check
+passed 18/18. The full real-user benchmark check passed 76/76 tests, feature-doc generation/check
 passed for 86 features (224 artifacts), and `git diff --check` passed. Compass Forge before- and
 after-gates report zero new issues, zero new failures, zero cycles, and no actionable failures;
 their failing status remains inherited repository `secret_flow`/large-file debt and warnings.
@@ -5383,3 +5383,28 @@ Next: checkpoint this remediation to `testing` and `origin/testing`, re-resolve 
 SHA immediately before any live run, and continue only through the Docker-owned provider/Petals/
 combined G0–G22 matrix. Keep F-R9-59 as an owner terminology decision and never infer a third
 engine from `inherit`.
+
+### L-243 | 2026-08-27T02:36:30Z | S4-remediate | gpt-5-codex | implementer/verifier | Phase 9
+
+Did: Reconciled the runner's live blocker contract with the hardened provider scorecard. A
+selected provider run could otherwise pass `liveAcceptanceBlockers()` with coding and traceability
+true while `multiModelResearchSpineValidation` was false, leaving exit status and scorecard status
+in disagreement.
+
+Changed: selected provider and no-profile coding paths now emit
+`Requested independent multi-model Research Spine validation did not complete.` when the
+multi-model flag is missing. Updated complete and partial deterministic fixtures so they declare
+the full three-signal contract. Updated the Ensemble Health feature contract and generated site/
+manifest, and appended finding F-R9-61 to `/Users/user/Desktop/testing.md`.
+
+Verified: TDD red run reproduced the empty blocker list; the green scoring suite passed 19/19 and
+the complete real-user benchmark check passed 76/76. Feature-doc generation/check passed for 86
+features (224 artifacts), and `git diff --check` passed. This checkpoint is ready for Compass
+Forge evidence and transport after the current gate review.
+
+Boundary/next: this closes the deterministic runner/scorecard split only. G0/G1 remain `not_run`;
+live proof still requires the Docker-owned provider/Petals/combined G0–G22 retake with immutable
+three-model route/model identities, common raw-span coding, numeric Fleiss/Krippendorff metrics,
+grounding, reconciliation, human-Done/report promotion, two-call/long-horizon artifacts, Petals
+interoperability, and teardown. No host package, model load, service start, or Mac Studio mutation
+occurred.
