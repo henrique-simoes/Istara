@@ -1091,6 +1091,7 @@ const featureResults = {
   citedSources: false,
   findingsCreated: false,
   reportGenerated: false,
+  reportabilityVerified: false,
   loops: false,
   urlFetch: false,
   interfaces: false,
@@ -4247,10 +4248,13 @@ async function exerciseFindingsReports(api, projectId) {
   }
   try {
     const brief = await api.post("/api/interfaces/handoff/brief", { project_id: projectId }, { timeoutMs: 180000 });
-    featureResults.reportGenerated = true;
-    logger.action("feature.report.generated", { result: preview(brief) });
+    logger.action("feature.design_brief.provisional", {
+      result: preview(brief),
+      reportable: false,
+      reason: "Interface handoff briefs remain provisional until a governed task report passes the Research Spine gate.",
+    });
   } catch (error) {
-    logger.action("feature.report.generated", { ok: false, error: error.message });
+    logger.action("feature.design_brief.provisional", { ok: false, error: error.message, reportable: false });
   }
 }
 
@@ -4320,11 +4324,6 @@ async function recordNaturalComputeOrchestration(api, projectId, beforeStats, la
   return result;
 }
 
-function compactTaskNote(note, fallback) {
-  const text = String(note || fallback || "").replace(/\s+/g, " ").trim();
-  return text.length > 280 ? `${text.slice(0, 277)}...` : text;
-}
-
 async function exerciseTaskBackedFindingsReports(api, projectId, taskWorkflow) {
   const approvedTasks = taskWorkflow?.approvedTasks || [];
   if (!approvedTasks.length) {
@@ -4332,61 +4331,55 @@ async function exerciseTaskBackedFindingsReports(api, projectId, taskWorkflow) {
     return false;
   }
   const sourceTasks = approvedTasks.slice(0, 3);
-  try {
-    const nugget = await api.post("/api/findings/nuggets", {
-      project_id: projectId,
-      text: `Approved task evidence: ${compactTaskNote(sourceTasks[0]?.agent_notes, sourceTasks[0]?.title)}`,
-      source: `task:${sourceTasks[0].id}`,
-      source_location: "approved_agent_notes",
-      tags: ["task-backed", "real-user-benchmark", "approved-work"],
-      phase: "discover",
-    });
-    const fact = await api.post("/api/findings/facts", {
-      project_id: projectId,
-      text: `Approved task review found usable evidence across ${sourceTasks.length} research task(s).`,
-      nugget_ids: [nugget.id],
-      phase: "define",
-    });
-    const insight = await api.post("/api/findings/insights", {
-      project_id: projectId,
-      text: "Only reviewed and approved agent work should advance into the reporting chain.",
-      fact_ids: [fact.id],
-      phase: "define",
-      impact: "high",
-    });
-    const recommendation = await api.post("/api/findings/recommendations", {
-      project_id: projectId,
-      text: "Generate leadership reporting from approved task outputs, preserving reviewer notes and source traceability.",
-      insight_ids: [insight.id],
-      phase: "deliver",
-      priority: "high",
-      effort: "medium",
-    });
-    featureResults.findingsCreated = true;
-    featureResults.approvedTaskFindings = true;
-    logger.action("feature.findings.task_backed.created", {
-      approved_task_ids: sourceTasks.map((task) => task.id),
-      nugget_id: nugget.id,
-      fact_id: fact.id,
-      insight_id: insight.id,
-      recommendation_id: recommendation.id,
-    });
-  } catch (error) {
+  let reportCount = 0;
+  const reportIds = [];
+  for (const task of sourceTasks) {
+    try {
+      const payload = await api.post(
+        `/api/tasks/${task.id}/reports?project_id=${encodeURIComponent(projectId)}`,
+        {},
+        { timeoutMs: 180000 },
+      );
+      const report = payload?.report || payload;
+      if (!report?.id) {
+        throw new Error("Task report response did not include a report id.");
+      }
+      reportCount += 1;
+      reportIds.push(report.id);
+      logger.action("feature.report.task_backed.generated", {
+        ok: true,
+        task_id: task.id,
+        report_id: report.id,
+        status: report.status || "draft",
+        reportable: true,
+      });
+    } catch (error) {
+      logger.action("feature.report.task_backed.generated", {
+        ok: false,
+        task_id: task.id,
+        error: error.message,
+        reportable: false,
+      });
+    }
+  }
+  featureResults.approvedTaskFindings = reportCount > 0;
+  featureResults.reportGenerated = reportCount > 0;
+  featureResults.reportabilityVerified = reportCount > 0;
+  featureResults.findingsCreated = reportCount > 0;
+  if (!reportCount) {
     logger.issue({
       area: "findings",
       severity: "medium",
-      title: "Could not create approved-task-backed findings",
-      detail: error.message,
+      title: "No approved task produced a Research Spine report",
+      detail: "The benchmark attempted the governed task report endpoint for approved tasks, but every task was blocked or returned an invalid report response. Taskless findings and interface handoff briefs are not counted as report evidence.",
+      evidence: {
+        approved_task_ids: sourceTasks.map((task) => task.id),
+        report_endpoint: "/api/tasks/{task_id}/reports",
+        report_ids: reportIds,
+      },
     });
   }
-  try {
-    const brief = await api.post("/api/interfaces/handoff/brief", { project_id: projectId }, { timeoutMs: 180000 });
-    featureResults.reportGenerated = true;
-    logger.action("feature.report.task_backed.generated", { result: preview(brief) });
-  } catch (error) {
-    logger.action("feature.report.task_backed.generated", { ok: false, error: error.message });
-  }
-  return Boolean(featureResults.approvedTaskFindings);
+  return Boolean(featureResults.reportabilityVerified);
 }
 
 function recordInterviewProcessEvidence({ uploaded, taskWorkflow }) {
@@ -5114,6 +5107,7 @@ async function main() {
   logger.appendReport(`Multi-user collaboration verified: ${featureResults.multiUserCollaboration ? "yes" : "no"}\n\n`);
   logger.appendReport(`Task review/revision loop verified: ${featureResults.taskReviewLoop ? "yes" : "no"}\n\n`);
   logger.appendReport(`Approved-task-backed Findings/reporting verified: ${featureResults.approvedTaskFindings ? "yes" : "no"}\n\n`);
+  logger.appendReport(`Research Spine reportability receipt verified: ${featureResults.reportabilityVerified ? "yes" : "no"}\n\n`);
   logger.appendReport(`Research Spine coding validation observed: ${featureResults.codingValidation ? "yes" : "no"}\n\n`);
   logger.appendReport(`Research Spine ensemble coding evidence (pre-reconciliation): ${featureResults.ensembleCodingValidation ? "verified" : "not verified"}; this is not reportable evidence until governed reconciliation and Done-task gates pass.\n\n`);
   logger.appendReport(`Synthetic reconciliation diagnostic (opt-in, non-reportable): ${featureResults.syntheticReconciliationValidation ? "verified" : "not requested or not verified"}; synthetic receipts never replace human review.\n\n`);

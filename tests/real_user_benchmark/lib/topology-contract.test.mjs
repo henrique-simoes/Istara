@@ -13,7 +13,10 @@ const composeSource = readFileSync(join(rootDir, "../../docker-compose.vps.yml")
 
 test("three-model deep probe does not permit host-managed Istara execution", () => {
   const command = packageJson.scripts["probe:deep:three-model"];
+  const deterministicCheck = packageJson.scripts.check;
 
+  assert.match(deterministicCheck, /node --test lib\/\*\.test\.mjs/);
+  assert.doesNotMatch(deterministicCheck, /lib\/\*\*\/\*\.test\.mjs/);
   assert.match(command, /ISTARA_BENCHMARK_DONOR_TOPOLOGY=macstudio-colima-qwen-gemma/);
   assert.match(command, /ISTARA_BENCHMARK_SKIP_SANDBOX=1/);
   assert.match(command, /ISTARA_BENCHMARK_START_SANDBOX=0/);
@@ -133,4 +136,19 @@ test("Docker-only provenance records the marker and runtime separately", () => {
   assert.match(runSource, /docker_container_runtime: Boolean\(dockerContainerRuntime\)/);
   assert.match(runSource, /Docker runner marker\/runtime:/);
   assert.match(runSource, /a direct host\n\/\/ invocation could otherwise spoof it/);
+});
+
+test("task-backed benchmark reports use the governed Research Spine endpoint", () => {
+  const taskBackedSection = runSource.match(
+    /async function exerciseTaskBackedFindingsReports\([\s\S]*?\n}\n\nfunction recordInterviewProcessEvidence/,
+  )?.[0] || "";
+  const provisionalSection = runSource.match(
+    /async function exerciseFindingsReports\([\s\S]*?\n}\n\nasync function captureComputeSnapshot/,
+  )?.[0] || "";
+
+  assert.match(taskBackedSection, /\/api\/tasks\/\$\{task\.id\}\/reports/);
+  assert.match(taskBackedSection, /reportabilityVerified/);
+  assert.doesNotMatch(taskBackedSection, /\/api\/interfaces\/handoff\/brief/);
+  assert.match(provisionalSection, /feature\.design_brief\.provisional/);
+  assert.doesNotMatch(provisionalSection, /featureResults\.reportGenerated = true/);
 });

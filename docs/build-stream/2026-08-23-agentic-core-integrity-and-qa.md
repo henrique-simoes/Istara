@@ -8,8 +8,8 @@ phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal ac
 stage: S2-execute/S3-review
 status: in-progress
 blocked_on: "Owner-approved Docker-only Mac Studio provisioning: current env/config, provider-served identities, and three-model inputs"
-last: { agent: gpt-5-codex, at: 2026-08-27T18:46:00Z, ledger: L-397 }
-next_action: "Audit and, where safe, remediate the remaining live/provider identity, legacy no-coding-run migration, Petals cooperation, two-call/long-horizon, and genuine human-review gates; keep deterministic and live acceptance separate."
+last: { agent: gpt-5-codex, at: 2026-08-27T18:54:00Z, ledger: L-399 }
+next_action: "Commit and push the reportability-oracle correction, update the clean Mac Studio retake, rerun the Node 20 Docker suite, then audit remaining live/provider identity, legacy no-coding-run migration, Petals cooperation, two-call/long-horizon, and genuine human-review gates."
 ```
 
 ## Plan overview / roadmap
@@ -9402,3 +9402,65 @@ waived failures. The current code/tests/docs slice is ready for a clean testing
 branch commit, but the live three-model/provider, Petals, concurrency,
 long-horizon, human-review/report, migration, and Docker-only Mac Studio gates are
 still not proven.
+
+### L-398 | 2026-08-27T18:36:56Z | S2-execute/S3-review | gpt-5-codex | Node 20 Docker portability and CF provenance correction
+
+The deterministic benchmark npm contract had a Node-version portability defect. Its
+quoted recursive `node --test "lib/**/*.test.mjs"` pattern fails in the Node 20 Docker
+runner before any test executes (`Could not find '/work/tests/real_user_benchmark/lib/**/*.test.mjs'`).
+The package script now uses the shell-expanded `lib/*.test.mjs` pattern and the topology
+contract test pins that requirement. Local Node 22 verification remains green at 95
+tests; the clean Mac Studio retake must be updated to this commit and rerun under the
+disposable Node 20 container before this gate is closed. No host package was installed.
+
+The living Ensemble Health architecture page now records this runner requirement and
+was regenerated successfully (224 artifacts; 86/86 feature checks). The historical
+Compass correction is also evidence-backed: current `testing` ancestry contains the
+April 3 Compass entrypoint lineage and April 10 testing workflow; literal
+`Compass Forge`/`CF-SPEC-*` markers begin in May, while the retained shared CF DB begins
+in July. The database timestamp is therefore persistence scope, not process origin.
+
+The old Mac Studio saved run still proves only that three served identities were
+recorded (`pi-codex-luna`, `pi-codex-terra`, `pi-deepseek-default`); it reported Fleiss
+κ=-0.125 and Krippendorff α=0.491 against a 0.6 threshold, with 0 accepted
+applications and 0 reconciliation decisions. Its historical scorecard nevertheless
+said `blocker_count=0`, so it cannot be accepted as current Research Spine proof and
+exposes an oracle/report-version mismatch. A separate temporary host-side marathon
+wrapper failed with `node: command not found`; it did not install Node, but this remains
+a process violation to remove from future runbooks. The dirty remote checkout remains
+untouched; only the clean detached retake may be used for Docker acceptance.
+
+Next: commit and push this test/doc checkpoint to `origin/testing`, update the clean
+retake, rerun the Node 20 Docker suite, then audit and repair the reportability oracle
+and provision an owner-approved three-identity provider/Petals environment. Keep
+deterministic, historical, and live scientific evidence separate; do not close
+CF-SPEC-2 while reliability, reconciliation, Done/report promotion, two-call,
+long-horizon, Petals, and current Docker-only acceptance remain open.
+
+### L-399 | 2026-08-27T18:54:00Z | S2-execute/S3-review | gpt-5-codex | Governed task-report oracle corrected
+
+The benchmark reportability audit is now implemented. The former task-backed path
+created taskless candidate findings and counted an interface handoff brief as a
+report. It now calls only `POST /api/tasks/{task_id}/reports` for human-approved Done
+tasks, requires a returned report id, and sets `approvedTaskFindings`,
+`reportGenerated`, and `reportabilityVerified` only on that governed response. The
+ordinary Findings exercise records the handoff brief as provisional and never marks
+it as report evidence. A new topology contract test protects both boundaries, and
+the scorecard has a fail-closed reportability-receipt blocker.
+
+Red/green evidence: the scorecard regression failed before the receipt gate (`1.00`
+report ratio despite `reportabilityVerified=false`) and passed after the fix; the
+full deterministic real-user suite is now `97 passed, 0 failed`; Node syntax,
+feature-doc generation/check (`224` artifacts, `86/86` features), and `git diff
+--check` pass. This is still deterministic contract evidence. The clean Mac Studio
+Node 20 retake and a live backend run are required to prove the actual task report
+endpoint, model routing, Fleiss/Krippendorff reliability, reconciliation, and
+promotion behavior.
+
+The historical correction is retained as an explicit provenance boundary: Compass
+governance is present in Istara from April 3 (with a late-March precursor), April 10
+contains the three-layer testing workflow, literal `Compass Forge`/`CF-SPEC-*`
+markers arrive in May, and the shared database's July start is only persistence
+scope. No surviving April database row is being invented or used to date the
+process. No provider request, model load, Docker workload, Mac host installation,
+or deletion of testing data occurred in this checkpoint.

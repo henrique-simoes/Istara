@@ -72,8 +72,36 @@ test("bounded live acceptance passes a complete fail-closed Research Spine run",
       researchSpineTraceability: true,
       taskReviewLoop: true,
       approvedTaskFindings: true,
+      reportabilityVerified: true,
     },
   }), []);
+});
+
+test("task-backed findings do not count as report evidence without a reportability receipt", () => {
+  const scorecard = scoreRun({
+    mode: "probe",
+    completedTasks: 1,
+    featureResults: {
+      approvedTaskFindings: true,
+      reportGenerated: true,
+      reportabilityVerified: false,
+    },
+  });
+
+  const dimension = scorecard.dimensions.find((item) => item.key === "reports_findings");
+  assert.equal(dimension.ratio, 0.55);
+  assert.deepEqual(liveAcceptanceBlockers({
+    maxTasks: 1,
+    completedTasks: 1,
+    featureResults: {
+      taskReviewLoop: true,
+      approvedTaskFindings: true,
+      reportGenerated: true,
+      reportabilityVerified: false,
+    },
+  }), [
+    "Requested Research Spine reportability receipt did not complete.",
+  ]);
 });
 
 test("agentic orchestration score is capped when natural scheduler activity lacks donor usage", () => {

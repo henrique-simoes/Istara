@@ -176,6 +176,9 @@ export function liveAcceptanceBlockers({
   if (maxTasks > 0 && !featureResults.approvedTaskFindings) {
     blockers.push("Requested task-backed Findings/report path did not complete.");
   }
+  if (maxTasks > 0 && featureResults.approvedTaskFindings && !featureResults.reportabilityVerified) {
+    blockers.push("Requested Research Spine reportability receipt did not complete.");
+  }
   // A selected acceptance profile is an executable contract, not merely a
   // scorecard label.  If a caller explicitly disables the selected gate, fail
   // closed before scorecard output can be mistaken for a passing retake.  Keep
@@ -246,7 +249,13 @@ export function scoreRun({ mode, metrics, integrationMatrix = [], blockers = [],
     chat: chatTurns >= 100 ? 1 : chatTurns >= 8 ? 0.45 : chatTurns > 0 ? 0.25 : 0.1,
     grounding: featureResults.citedSources ? 1 : featureResults.uploadedAndQueried ? 0.55 : 0.25,
     tasks: featureResults.taskReviewLoop && completedTasks >= 50 ? 1 : featureResults.taskReviewLoop && completedTasks >= 8 ? 0.55 : completedTasks > 0 ? 0.3 : 0.1,
-    reports_findings: featureResults.approvedTaskFindings && featureResults.reportGenerated ? 1 : featureResults.findingsCreated || featureResults.reportGenerated ? 0.75 : 0.25,
+    reports_findings: featureResults.approvedTaskFindings
+      && featureResults.reportGenerated
+      && featureResults.reportabilityVerified
+      ? 1
+      : featureResults.findingsCreated || featureResults.reportGenerated || featureResults.approvedTaskFindings
+        ? 0.55
+        : 0.25,
     integrations: avgIntegration,
     loops_autoresearch: featureResults.selfImprovementGovernance
       && featureResults.telemetryEvidence
@@ -316,6 +325,7 @@ export function scoreRun({ mode, metrics, integrationMatrix = [], blockers = [],
     multi_user_collaboration_verified: Boolean(featureResults.multiUserCollaboration),
     task_review_loop_verified: Boolean(featureResults.taskReviewLoop),
     approved_task_findings_verified: Boolean(featureResults.approvedTaskFindings),
+    research_spine_reportability_verified: Boolean(featureResults.reportabilityVerified),
     interview_process_verified: Boolean(featureResults.interviewProcess),
     coding_validation_verified: Boolean(featureResults.codingValidation),
     ensemble_coding_verified: Boolean(featureResults.ensembleCodingValidation),
