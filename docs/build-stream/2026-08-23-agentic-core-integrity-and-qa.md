@@ -8,8 +8,8 @@ phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal ac
 stage: S2-execute/S3-review
 status: in-progress
 blocked_on: "Owner-approved Docker-only Mac Studio provisioning: current env/config, provider-served identities, and three-model inputs"
-last: { agent: gpt-5-codex, at: 2026-08-27T10:35:58Z, ledger: L-322 }
-next_action: "Commit and push the source-span grounding oracle and public Pi-alias parity test; then passively retarget the clean Mac Studio checkout while keeping live gates open."
+last: { agent: gpt-5-codex, at: 2026-08-27T10:38:02Z, ledger: L-323 }
+next_action: "Resume the owner-approved Docker-only live matrix only when current env/config, served model identities, donor inputs, and redacted artifact paths exist; keep every live gate fail-closed."
 ```
 
 ## Plan overview / roadmap
@@ -7581,3 +7581,28 @@ files, commit/push `testing`, verify local/remote parity, and passively retarget
 reconciliation, human-Done/report, and Docker acceptance gates remain open
 pending owner-approved env/config, served identities, donor inputs, and redacted
 artifacts.
+
+### L-323 | 2026-08-27T10:38:02Z | S5-ship&learn | gpt-5-codex | transport and passive Mac Studio parity handoff
+
+The source-grounding oracle and public Pi-selector parity change was committed
+and pushed with only the seven intended repository files. Local `testing`,
+`origin/testing`, and the detached Mac Studio retake
+`~/istara-testing-retake-47bf` were fetched/retargeted and verified clean and
+equal. Compass task evidence `220` records the exact parity commands and
+redacted passive host result.
+
+The Mac Studio check used only the existing `macstudio` SSH alias and explicit
+`/usr/local/bin/docker`: Docker Server `29.7.2`, zero Istara/provider/Petals/
+benchmark/donor containers, zero files under `~/Istara-Projects/models`, no
+`.env.deploy` in the retake, and one `.env.example`. The unrelated healthy Plex
+container was preserved. No host package manager, Python/Node/npm process,
+model load, provider request, or benchmark workload ran.
+
+All deterministic implementation work in this slice is therefore transported;
+the Build Stream remains `in-progress` because the live matrix is not
+reproducible without owner-approved current environment/config, three distinct
+served model identities, donor/model inputs, and redacted result artifacts.
+Resume only at the provisioning gate in L-306, keeping provider/Petals/combined,
+same-session two-call and long-horizon, Fleiss/Krippendorff semantic quality,
+reconciliation, human-Done/report promotion, and teardown evidence unproven
+until their Docker-only receipts exist.
