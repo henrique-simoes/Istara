@@ -8,7 +8,7 @@ phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal ac
 stage: S2-execute/S3-review
 status: in-progress
 blocked_on: "Owner-approved Docker-only Mac Studio provisioning: current env/config, provider-served identities, and three-model inputs"
-last: { agent: gpt-5-codex, at: 2026-08-27T09:35:19Z, ledger: L-309 }
+last: { agent: gpt-5-codex, at: 2026-08-27T09:36:23Z, ledger: L-310 }
 next_action: "Obtain owner-approved Docker-only env/model/provider inputs, then execute the staged provider, Petals, combined, engine-parity, ensemble, and Research Spine acceptance matrix below; keep every missing prerequisite fail-closed."
 ```
 
@@ -7266,6 +7266,23 @@ provisioning inputs in section 2, verify their digests and Compose rendering, an
 then begin the provider-only profile. Until that happens, all live provider,
 Petals, combined, same-session, three-rater, reliability, reconciliation, human-Done,
 and report gates remain `not_run`/open.
+
+### L-310 | 2026-08-27T09:36:23Z | S3-review | gpt-5-codex | worktree and branch cleanup boundary
+
+The local repository has only the active `testing` checkout plus one additional
+worktree at `/Users/user/Documents/Codex/2026-08-10/list/work/istara-pi-linearized-2026-08-10`
+on `recovery/pi-retake-linearized-2026-08-10`. That recovery tip is clean but is not
+an ancestor of either current `testing` or `main`, so it is retained as a deliberate
+recovery artifact. No local branch is merged into `testing` except `testing` itself;
+therefore no additional branch or worktree can be safely deleted under the cleanup
+authorization. The two redundant clean detached Mac Studio worktrees were already
+removed under the earlier cleanup checkpoint; the owner-dirty checkout and current
+retake remain preserved.
+
+No code or runtime state changed in this inventory. The exact testing tip remains
+`3198c3478f23a5bc6e22cfd699080947e5070740`, with the Mac Studio retake clean and
+Docker idle. The next action is still Docker-only provisioning, not destructive
+cleanup.
 
 ### L-307 | 2026-08-27T09:30:18Z | S5-ship&learn | gpt-5-codex | detailed matrix transport and live-gate checkpoint
 
