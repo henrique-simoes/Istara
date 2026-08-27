@@ -177,13 +177,16 @@ async def test_chat_pi_turn_streams_sse_over_real_asgi(monkeypatch):
 
 @requires_node
 @pytest.mark.asyncio
-async def test_chat_pi_two_calls_rehydrate_history_after_worker_restart(monkeypatch):
-    """A second HTTP call must receive the first call's persisted transcript.
+@pytest.mark.parametrize("engine", ["pi", "legacy"])
+async def test_chat_two_calls_rehydrate_history_after_worker_restart(monkeypatch, engine):
+    """Both selectable engines receive the first call's persisted transcript.
 
     The route opens/closes a worker session per request, so this deliberately
     shuts down the first worker before the second call.  A recording supervisor
-    proves the second Pi session was opened with DB-backed user/assistant history
+    proves the second session was opened with DB-backed user/assistant history
     rather than relying on in-memory Agent state or a manually supplied fixture.
+    ``legacy`` is the Istara Python ReAct loop over the same Pi Model Management
+    service; ``pi`` is the native Pi worker loop.
     """
     await init_db()
     monkeypatch.setattr(settings, "team_mode", True)
@@ -193,21 +196,27 @@ async def test_chat_pi_two_calls_rehydrate_history_after_worker_restart(monkeypa
         chat_route, "ensure_pi_deepseek_registered", lambda: (True, "resolved_private_endpoint")
     )
 
-    project_id = f"pi-asgi-two-call-{uuid.uuid4().hex[:8]}"
-    session_id = f"pi-asgi-session-{uuid.uuid4().hex[:8]}"
+    project_id = f"{engine}-asgi-two-call-{uuid.uuid4().hex[:8]}"
+    session_id = f"{engine}-asgi-session-{uuid.uuid4().hex[:8]}"
     async with async_session() as db:
-        db.add(Project(id=project_id, name="Pi ASGI two-call"))
-        db.add(ChatSession(id=session_id, project_id=project_id, title="two-call", message_count=0))
+        db.add(Project(id=project_id, name=f"{engine} ASGI two-call"))
+        db.add(ChatSession(id=session_id, project_id=project_id, title=f"{engine} two-call", message_count=0))
         await db.commit()
 
     class RecordingSupervisor(PiRuntimeSupervisor):
         def __init__(self):
             super().__init__()
             self.opened_histories: list[list[dict]] = []
+            self.provider_messages: list[list[dict]] = []
 
         async def open_session(self, session_key, **kwargs):
             self.opened_histories.append(list(kwargs.get("history") or []))
             await super().open_session(session_key, **kwargs)
+
+        async def run_provider_turn(self, session_key, messages, tools):
+            self.provider_messages.append(list(messages))
+            async for frame in super().run_provider_turn(session_key, messages, tools):
+                yield frame
 
     first = RecordingSupervisor()
     first_reply = "The first research checkpoint is recorded."
@@ -225,7 +234,9 @@ async def test_chat_pi_two_calls_rehydrate_history_after_worker_restart(monkeypa
         transport = ASGITransport(app=app)
         async with AsyncClient(transport=transport, base_url="http://test") as ac:
             first_response = await ac.post(
-                "/api/chat", json=first_request, headers={**_auth_headers(), **_PI_HEADERS}
+                "/api/chat",
+                json=first_request,
+                headers={**_auth_headers(), "x-istara-agent-engine": engine},
             )
     finally:
         await first.shutdown()
@@ -234,6 +245,10 @@ async def test_chat_pi_two_calls_rehydrate_history_after_worker_restart(monkeypa
     first_events = _sse_events(first_response.text)
     assert first_events[-1]["type"] == "done"
     assert first.opened_histories == [[]]
+    if engine == "pi":
+        assert first.provider_messages == []
+    else:
+        assert len(first.provider_messages) == 1
 
     second = RecordingSupervisor()
     second_reply = "The second checkpoint uses the persisted first checkpoint."
@@ -251,7 +266,9 @@ async def test_chat_pi_two_calls_rehydrate_history_after_worker_restart(monkeypa
         transport = ASGITransport(app=app)
         async with AsyncClient(transport=transport, base_url="http://test") as ac:
             second_response = await ac.post(
-                "/api/chat", json=second_request, headers={**_auth_headers(), **_PI_HEADERS}
+                "/api/chat",
+                json=second_request,
+                headers={**_auth_headers(), "x-istara-agent-engine": engine},
             )
     finally:
         await second.shutdown()
@@ -259,12 +276,22 @@ async def test_chat_pi_two_calls_rehydrate_history_after_worker_restart(monkeypa
     assert second_response.status_code == 200
     second_events = _sse_events(second_response.text)
     assert second_events[-1]["type"] == "done"
-    assert second.opened_histories == [
-        [
-            {"role": "user", "content": first_request["message"]},
-            {"role": "assistant", "content": first_reply},
-        ]
+    expected_history = [
+        {"role": "user", "content": first_request["message"]},
+        {"role": "assistant", "content": first_reply},
     ]
+    if engine == "pi":
+        assert second.opened_histories == [expected_history]
+        assert second.provider_messages == []
+    else:
+        assert second.opened_histories == [[]]
+        assert len(second.provider_messages) == 1
+        observed_history = [
+            {"role": message["role"], "content": message["content"]}
+            for message in second.provider_messages[0]
+            if message.get("role") in {"user", "assistant"}
+        ]
+        assert observed_history == [*expected_history, {"role": "user", "content": second_request["message"]}]
 
     async with async_session() as db:
         messages = (
@@ -291,7 +318,7 @@ async def test_chat_pi_two_calls_rehydrate_history_after_worker_restart(monkeypa
         ("assistant", second_reply),
     ]
     assert len(usage_rows) == 2
-    assert [row.engine for row in usage_rows] == ["pi", "pi"]
+    assert [row.engine for row in usage_rows] == [engine, engine]
     assert [row.session_id for row in usage_rows] == [session_id, session_id]
     assert [row.endpoint_id for row in usage_rows] == ["pi-faux", "pi-faux"]
     assert [row.outcome for row in usage_rows] == ["success", "success"]

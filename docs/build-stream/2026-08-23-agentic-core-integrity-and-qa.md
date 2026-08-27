@@ -8,7 +8,7 @@ phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal ac
 stage: S2-execute/S3-review
 status: in-progress
 blocked_on: null
-last: { agent: gpt-5-codex, at: 2026-08-27T07:36:00Z, ledger: L-283 }
+last: { agent: gpt-5-codex, at: 2026-08-27T07:44:00Z, ledger: L-284 }
 next_action: "Keep deterministic coverage and transport closed; await an owner-authorized Docker-only Mac Studio window, verify the archive in-container, then run provider/Petals/combined Research Spine retakes and attach complete evidence before closing G0/G1/live G2–G22."
 ```
 
@@ -6519,3 +6519,36 @@ two-call continuity, long-horizon/recovery semantics, Petals cooperation/scope/
 revocation, redaction, and teardown. The deterministic full-chain test still uses a
 controlled coder dispatcher, so it is an oracle/contract test rather than live model
 quality evidence.
+
+### L-284 | 2026-08-27T07:44:00Z | S2-execute/S3-review | gpt-5-codex | cross-engine HTTP continuity audit
+
+The two-call real-ASGI continuity test was audited against the actual production
+seams. It had covered only the native Pi engine and asserted worker session-open
+history, leaving the selectable Istara/legacy HTTP path unproven. A first
+parameterized attempt intentionally went red for legacy because that bridge opens a
+short-lived provider-only worker session with an empty session history; its persisted
+conversation is supplied in the `provider.turn` message list instead. This was a
+test-oracle mismatch, not a production history-loss finding.
+
+The test now covers both request headers (`pi` and `legacy`) after a worker restart.
+Pi asserts the DB-rehydrated user/assistant history passed to the native worker
+session. Legacy records the actual provider-turn messages and asserts the same
+persisted history plus the new user message. Both calls also require successful SSE
+completion and usage rows stamped with the selected engine, so the test proves
+continuity and route selection without forcing the two loops to share an internal
+state model. The Chat Model Controls feature contract now references this coverage
+and the generated site/manifest were regenerated.
+
+Verified locally: `python -m pytest -q -W error::RuntimeWarning
+tests/pi_production/test_chat_pi_asgi.py tests/pi_production/test_w1_dispatcher_authority.py`
+passed `36 passed`; Ruff and prior focused dispatcher/Research-Spine slices remain
+green. External finding F-R9-81 records the gap, the red oracle attempt, the seam
+correction, and its limits. No server, model, provider, or Mac Studio host process
+was started.
+
+Boundary/next: this closes deterministic HTTP two-call coverage for both engine
+choices, but G16 remains open for live provider/session evidence. G17 remains open
+because long-horizon coverage is still Pi-worker-only, task-tool-only, and lacks a
+live provider, Research Spine source/evidence tools, recovery/timeout assertions,
+and legacy HTTP execution. G0/G1 and live G2-G22 remain open for the authorized
+Docker-only Mac Studio retake and exact source/model/provider prerequisites.
