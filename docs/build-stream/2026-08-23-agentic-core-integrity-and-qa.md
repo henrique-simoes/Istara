@@ -8,8 +8,8 @@ phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal ac
 stage: S2-execute/S3-review
 status: in-progress
 blocked_on: "Owner-approved Docker-only Mac Studio provisioning: current env/config, provider-served identities, and three-model inputs"
-last: { agent: gpt-5-codex, at: 2026-08-27T20:31:00Z, ledger: L-418 }
-next_action: "Obtain owner-approved Docker provider inputs, then run the live three-model Research Spine proof and separately verify Petals, human reconciliation/Done/report, two-call, and long-horizon gates; keep deterministic evidence separate."
+last: { agent: gpt-5-codex, at: 2026-08-27T21:15:06Z, ledger: L-419 }
+next_action: "Use the corrected Docker build context on the Mac Studio disposable checkout, then obtain owner-approved provider inputs and run the live three-model Research Spine proof separately from Petals, human reconciliation/Done/report, two-call, and long-horizon gates; keep deterministic evidence separate."
 ```
 
 ## Continuation blueprint — remaining work and acceptance contract
@@ -10057,3 +10057,25 @@ dirty checkout, 306 commits behind), so no model loading or host mutation was
 performed. Keep CF task statuses open until the owner-approved Docker-only
 three-model provider/Petals, Research Spine reconciliation/Done/report,
 two-call, and long-horizon evidence is attached.
+
+### L-419 | 2026-08-27T21:15:06Z | S2-execute | gpt-5-codex | Docker QA build-context fix committed and pushed
+
+The root `.dockerignore` previously ignored the entire `scripts/` directory,
+which excluded the Docker QA launcher `scripts/istara-qa.sh` from the root
+build context. The scoped fix ignores `scripts/*` but re-includes only that
+launcher; `tests/test_remote_benchmark_runner_contract.py` now asserts both
+rules and the file's presence. This preserves the no-broad-context invariant
+while making the documented Docker-only QA entrypoint buildable.
+
+Verified: `python -m pytest -q tests/test_remote_benchmark_runner_contract.py`
+= `20 passed, 0 failed`; `git diff --check` = clean; `compass-forge gate
+after --task CF-15 --summary` = `actionable_failures=[]`, `new_issue_count=0`,
+`new_failures=0` with the repository's pre-existing gate status still `fail`.
+Compass command evidence `409` records these results. Commit `16fac555` was
+pushed to `origin/testing`; the next continuation must re-check both refs
+before any further edit because ledger commits advance both tips. No model was
+loaded and no Mac Studio host software or workload was changed.
+
+Next: use this pushed commit in a disposable Docker-only Mac Studio checkout;
+the live three-model provider/Petals/reconciliation/two-call/long-horizon
+acceptance remains unrun and cannot be inferred from this deterministic fix.
