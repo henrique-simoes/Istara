@@ -118,6 +118,9 @@ public `/api/settings/status` is redacted and passive.
 - `tests/pi_production/test_w1_agentic_contract.py` verifies catalog sources and prevents direct Pi-runtime registry imports.
 - `tests/pi_production/test_same_model_donor_isolation.py` verifies same-model plane isolation.
 - `tests/petals_bridge/test_petals_bridge.py` verifies consent, health, token, project pinning, dynamic refresh, and fail-closed behavior.
+- `tests/test_settings_agentic_pi_endpoints.py` keeps a production-style live
+  `PiModelManager` across endpoint POST/PUT/DELETE operations and verifies the
+  dispatcher catalog reflects each mutation immediately.
 - `tests/pi_production/test_w8_embeddings_gateway.py` verifies live projection-reset hooks and the merged `pi_catalog` view.
 - Regenerate and validate the machine manifests and static site with `python scripts/feature_docs.py --seed-missing --generate-site --check`.
 

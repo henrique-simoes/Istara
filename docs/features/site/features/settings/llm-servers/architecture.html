@@ -361,6 +361,11 @@
 <li><code>tests/pi_production/test_w1_agentic_contract.py</code> verifies catalog sources and prevents direct Pi-runtime registry imports.</li>
 <li><code>tests/pi_production/test_same_model_donor_isolation.py</code> verifies same-model plane isolation.</li>
 <li><code>tests/petals_bridge/test_petals_bridge.py</code> verifies consent, health, token, project pinning, dynamic refresh, and fail-closed behavior.</li>
+<li><code>tests/test_settings_agentic_pi_endpoints.py</code> keeps a production-style live</li>
+</ul>
+<p><code>PiModelManager</code> across endpoint POST/PUT/DELETE operations and verifies the</p>
+<p>dispatcher catalog reflects each mutation immediately.</p>
+<ul>
 <li><code>tests/pi_production/test_w8_embeddings_gateway.py</code> verifies live projection-reset hooks and the merged <code>pi_catalog</code> view.</li>
 <li>Regenerate and validate the machine manifests and static site with <code>python scripts/feature_docs.py --seed-missing --generate-site --check</code>.</li>
 </ul>

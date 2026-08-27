@@ -8,7 +8,7 @@ phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal ac
 stage: S2-execute/S3-review
 status: in-progress
 blocked_on: null
-last: { agent: gpt-5-codex, at: 2026-08-27T07:59:53Z, ledger: L-292 }
+last: { agent: gpt-5-codex, at: 2026-08-27T08:11:18Z, ledger: L-293 }
 next_action: "Continue the deterministic Research Spine/authority audit from the exact transported testing tip; await an owner-authorized Docker-only Mac Studio window before any live provider, Petals, or three-rater acceptance claim."
 ```
 
@@ -6745,3 +6745,21 @@ accounting transport gap only. It does not prove a live donor/provider receipt,
 three independent served model identities, common raw evidence spans,
 Fleiss/Krippendorff reliability, reconciliation, human-Done/report promotion,
 or Docker-only Mac Studio execution; live G0/G1 and G2-G22 remain open.
+
+### L-293 | 2026-08-27T08:11:18Z | S2-execute/S3-review | gpt-5-codex | live Pi catalog CRUD oracle
+
+The Pi endpoint CRUD test previously verified only that `settings.pi_api_endpoints`
+changed and that the route returned success. It did not keep a production-style
+`PiModelManager` alive, so a broken `reset_live_settings_catalogs()` hook could
+remain green while dispatchers continued using a stale catalog. The test now
+constructs the same manager shape used by Pi dispatch, keeps it alive across
+POST/PUT/DELETE, and asserts the custom endpoint is immediately added with its
+model/protocol identity, updated in place, and removed. This makes the
+Pi-Model-Management authority boundary executable without loading a provider.
+
+Verification: `tests/test_settings_agentic_pi_endpoints.py` passes (`2 passed`),
+Ruff passes, and feature documentation regenerates/checks cleanly (`224` site
+artifacts, `86/86` feature checks). This is deterministic API-to-live-manager
+evidence only; it does not prove an active dispatcher request, two-loop parity,
+live provider identity, three-rater coding, Fleiss/Krippendorff reliability, or
+Docker-only Mac Studio execution.

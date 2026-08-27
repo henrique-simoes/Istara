@@ -7,6 +7,7 @@ import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
 
 from app.config import settings
+from app.core.pi_runtime.model_manager import PiModelManager
 from app.main import app
 
 
@@ -48,6 +49,11 @@ async def test_pi_endpoint_crud(client, monkeypatch):
     original = list(settings.pi_api_endpoints)
     try:
         settings.pi_api_endpoints = []
+        # Keep the same production-style manager alive across every route
+        # mutation.  The endpoint routes must refresh this manager because it
+        # is the catalog used by Pi dispatchers, not merely mutate settings.
+        manager = PiModelManager(include_local=False)
+        assert {info.endpoint_id for info in manager.catalog()} == {"pi-deepseek-default"}
         payload = {
             "endpoint_id": "pi-test-endpoint",
             "provider_kind": "openai_compat",
@@ -58,6 +64,9 @@ async def test_pi_endpoint_crud(client, monkeypatch):
         resp = await client.post("/api/settings/pi-endpoints", json=payload)
         assert resp.status_code == 200, resp.text
         assert resp.json()["status"] == "added"
+        added = {info.endpoint_id: info for info in manager.catalog()}
+        assert added["pi-test-endpoint"].model == "test-model-1"
+        assert added["pi-test-endpoint"].provider_kind == "openai_compat"
 
         resp = await client.get("/api/settings/pi-endpoints")
         assert resp.status_code == 200
@@ -86,11 +95,14 @@ async def test_pi_endpoint_crud(client, monkeypatch):
                                 json={**payload, "model": "test-model-2"})
         assert resp.status_code == 200
         assert settings.pi_api_endpoints[0].model == "test-model-2"
+        updated = {info.endpoint_id: info for info in manager.catalog()}
+        assert updated["pi-test-endpoint"].model == "test-model-2"
 
         # delete
         resp = await client.delete("/api/settings/pi-endpoints/pi-test-endpoint")
         assert resp.status_code == 200
         assert settings.pi_api_endpoints == []
+        assert "pi-test-endpoint" not in {info.endpoint_id for info in manager.catalog()}
         resp = await client.delete("/api/settings/pi-endpoints/pi-test-endpoint")
         assert resp.status_code == 404
     finally:
