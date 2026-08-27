@@ -8,7 +8,7 @@ phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal ac
 stage: S5-ship&learn
 status: in-progress
 blocked_on: null
-last: { agent: gpt-5-codex, at: 2026-08-27T03:27:19Z, ledger: L-251 }
+last: { agent: gpt-5-codex, at: 2026-08-27T03:32:51Z, ledger: L-252 }
 next_action: "At the next authorized live window execute the Docker-only provider/Petals/combined G0–G22 retake from a fresh detached checkout; until then leave G0/G1 not_run, preserve exact testing parity, and resolve the Agentic Loop terminology decision."
 ```
 
@@ -5655,3 +5655,30 @@ Compose, provider/Petals/combined profiles in order, three actual provider-serve
 common raw spans, one grounded rating per model/unit, numeric Fleiss/Krippendorff reliability,
 grounding, reconciliation, human-Done/report promotion, both loop-mode semantics,
 two-call/long-horizon artifacts, Petals interoperability, redacted artifacts, and teardown.
+
+### L-252 | 2026-08-27T03:32:51Z | S5-ship&learn | gpt-5-codex | served-model oracle transport and Docker parity receipt
+
+Did: Committed the independent served-model route oracle, explicit model-identity fixtures and
+regressions, Ensemble Health/benchmark contract documentation, generated feature site artifacts,
+and the L-251 checkpoint as `964eb5a0cb418354d145261048a2fd7789d582fd`; pushed `testing` to
+`origin/testing`.
+
+Verified: `HEAD`, local `testing`, and `origin/testing` resolve to that exact SHA; the worktree is
+clean and `git diff origin/testing --check` passes. The deterministic evidence remains focused
+probe `21/21`, full real-user benchmark `78/78`, Research Spine/Pi ladder `144`, remote runner
+`17/17`, Ruff, feature docs (`86` features/`224` artifacts), and Compass Forge after-gate `138`
+with no new issues. F-R9-67 is now transported with this receipt.
+
+Verified: passive SSH inspection used the explicit Docker CLI path on `users-Mac-Studio.local`.
+Docker Server `29.7.2` is reachable; no Istara containers, networks, volumes, benchmark Compose
+project, providers, relays, donors, or model loads are running. Only the unrelated healthy `plex`
+Compose workload is present. No model load, image pull, service start, host installation, data
+deletion, or remote checkout mutation occurred; the stale dirty `/Users/user/istara-testing`
+checkout remains untouched.
+
+Boundary/next: local transport and deterministic gates are complete for this checkpoint, but live
+G0/G1 and G2–G22 remain `not_run`/open. Do not claim three-model ensemble or research-spine
+acceptance until an owner-authorized Docker-only retake proves provider-served identities, common
+source spans, grounded atomic coding, Fleiss/Krippendorff reliability, reconciliation, human-Done
+and report gates, both engine-mode semantics, two-call/long-horizon behavior, Petals cooperation,
+redaction, and teardown from a fresh detached checkout at the exact launch SHA.
