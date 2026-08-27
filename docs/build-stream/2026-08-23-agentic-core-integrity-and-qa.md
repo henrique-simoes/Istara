@@ -8,8 +8,8 @@ phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal ac
 stage: S2-execute/S3-review
 status: in-progress
 blocked_on: "Owner-approved Docker-only Mac Studio provisioning: current env/config, provider-served identities, and three-model inputs"
-last: { agent: gpt-5-codex, at: 2026-08-27T21:31:27Z, ledger: L-422 }
-next_action: "Add and verify fail-closed validation for non-positive Pi ensemble widths, then audit served-model identity and Research Spine metric gates before the Docker-only live acceptance remains the next external blocker."
+last: { agent: gpt-5-codex, at: 2026-08-27T21:34:24Z, ledger: L-423 }
+next_action: "Audit generic reliability identity handling and provider-served route receipts, then continue the Docker-only Mac Studio acceptance preparation; keep CF-SPEC-2 open until live three-model, Petals, reconciliation, two-call, and long-horizon evidence exists."
 ```
 
 ## Continuation blueprint — remaining work and acceptance contract
@@ -10148,3 +10148,26 @@ accounting tests, regenerate the Ensemble Health feature docs, and attach the
 before/after gate evidence. No model was loaded and no Mac Studio state was
 changed. The remote live acceptance blocker remains owner-approved Docker-only
 provider/Petals inputs and a disposable checkout.
+
+### L-423 | 2026-08-27T21:34:24Z | S2-execute/S3-review | gpt-5-codex | Invalid ensemble widths now fail closed and are pushed
+
+Implemented the bounded fix in `PiExecutionService.run_ensemble`: `n` must be
+a positive integer and any supplied `minimum_n` must also be positive; invalid
+requests raise `PiEndpointResolutionError` before manager projection or worker
+startup. Added a regression asserting a zero-width request cannot invoke either
+manager or supervisor work. The existing Pi manager, Petals, identity-parity,
+accounting, validation, Research Spine contract, and integrity-metric tests
+remain green (`119 passed`). Ensemble Health feature source and generated site
+were regenerated and checked (`224` artifacts, `86/86` checks).
+
+Compass Forge command evidence `416` records the focused test and feature-doc
+verification; gate evidence `417` records `actionable_failures=[]` and
+`new_failures=0` with the repository's inherited gate debt unchanged (`31`
+failures/`212` warnings). Commit `5684ee00c50410707724fda2537d54cb79995529`
+is pushed and local `testing` equals `origin/testing`. No model was loaded and
+no Mac Studio state changed.
+
+Next: inspect the generic reliability gate's configured-versus-served identity
+semantics and benchmark route-receipt tests, then return to the disposable
+Docker-only Mac Studio acceptance preparation. Live provider/Petals,
+reconciliation/Done/report, two-call, and long-horizon proof remains absent.
