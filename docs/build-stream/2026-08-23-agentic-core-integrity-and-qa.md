@@ -8,7 +8,7 @@ phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal ac
 stage: S5-ship&learn
 status: in-progress
 blocked_on: null
-last: { agent: gpt-5-codex, at: 2026-08-27T02:05:03Z, ledger: L-234 }
+last: { agent: gpt-5-codex, at: 2026-08-27T02:06:04Z, ledger: L-235 }
 next_action: "When live prerequisites are authorized, resolve origin/testing at launch time on Mac Studio, materialize a clean detached checkout, then run the Docker-only provider/Petals retake with three provisioned model routes and preserve artifacts."
 ```
 
@@ -5175,3 +5175,27 @@ Next: the active completion goal remains open at G0/G1. Do not close CF-15 or ca
 Spine accepted until owner-authorized provider credit, three Compose-served model identities,
 and the complete Docker-only G0–G22 evidence matrix are present. If resumed with prerequisites,
 start from a fresh detached checkout of this exact SHA and append each live gate result here.
+
+### L-235 | 2026-08-27T02:06:04Z | S5-ship&learn | gpt-5-codex | verifier | Phase 9
+
+Did: Performed a second passive Mac Studio inventory after the final parity checkpoint and
+attached Compass Forge command evidence `81`. The check inspected only Git metadata and Docker
+inventory; it did not install packages, alter the named checkout, pull images, start containers,
+load models, or remove volumes.
+
+Result: `/Users/user/istara-testing` remains at stale commit `1b9b6d6` with owner modifications
+in deployment/runtime files. Docker reports only the existing Istara backend/frontend and
+provider-stub images; no Qwen/Gemma/llama.cpp/Petals model image, Istara benchmark container,
+matching testing volume, or benchmark network is present. This corroborates the existing
+F-R9-49/F-R9-53/F-R9-54 live blockers rather than creating a new code regression.
+
+Verified: evidence `81`; prior final branch tip remains
+`c6247d58273bb8a8ecfe16ad451c4a0c036c0bef` and must be re-resolved at launch. The intentionally
+retained recovery worktree is untouched. No host installation or unrelated Docker workload was
+mutated.
+
+Next: stay at G0/G1 `not_run`. When the owner supplies provider credit and the three-model
+Docker-owned assets/routes, create a fresh detached checkout of the launch-time
+`origin/testing` SHA, render Compose before startup, then execute provider, Petals, and combined
+profiles with all G0–G22 artifacts. Never overwrite the dirty named checkout or count stale
+images as live proof.
