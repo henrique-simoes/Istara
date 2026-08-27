@@ -8,7 +8,7 @@ phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal ac
 stage: S5-ship&learn
 status: in-progress
 blocked_on: null
-last: { agent: gpt-5-codex, at: 2026-08-27T02:04:21Z, ledger: L-233 }
+last: { agent: gpt-5-codex, at: 2026-08-27T02:05:03Z, ledger: L-234 }
 next_action: "When live prerequisites are authorized, resolve origin/testing at launch time on Mac Studio, materialize a clean detached checkout, then run the Docker-only provider/Petals retake with three provisioned model routes and preserve artifacts."
 ```
 
@@ -5154,3 +5154,24 @@ Compose-served model routes exist. At launch time materialize a fresh detached c
 SHA, run only the Docker-owned provider/Petals/combined profiles, and preserve every G0–G22
 artifact. CF-15 remains open; deterministic evidence cannot substitute for live Research Spine
 reliability, reconciliation, Done/report, two-call, long-horizon, Petals, and teardown proof.
+
+### L-234 | 2026-08-27T02:05:03Z | S5-ship&learn | gpt-5-codex | verifier | Phase 9
+
+Did: Ran the final Compass Forge after-gate at the transported remediation tip and attached
+gate evidence `80`. This checkpoint is intentionally documentation-only after the source/test
+fix and does not reopen or fabricate a Mac Studio run.
+
+Result: gate record `117` reports `status=fail` only from inherited `secret_flow` findings and
+the path-scoped expiring suppression for this required single-file Build Stream ledger. The
+comparison has zero new issues, forbidden dependencies, Python import cycles, or missing required
+paths. No model/provider/Docker activity occurred during the gate.
+
+Verified: the branch was pushed at
+`11128c2cc689c30e43dfd9a78c4225141d22de2c` with clean local/remote parity; deterministic and
+benchmark evidence remains in CF records `74`–`78`; this final after-gate is CF record `117` /
+evidence `80`.
+
+Next: the active completion goal remains open at G0/G1. Do not close CF-15 or call the Research
+Spine accepted until owner-authorized provider credit, three Compose-served model identities,
+and the complete Docker-only G0–G22 evidence matrix are present. If resumed with prerequisites,
+start from a fresh detached checkout of this exact SHA and append each live gate result here.
