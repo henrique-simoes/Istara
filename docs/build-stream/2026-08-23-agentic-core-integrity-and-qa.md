@@ -5013,3 +5013,26 @@ this file or into committed artifacts.
 7. If any live prerequisite is absent, record `not_run`/`blocked` with the exact reason and
    preserve the deterministic evidence. Do not downgrade a missing live gate to “passed” and
    do not call the overall Research Spine accepted.
+
+### L-227 | 2026-08-27T01:53:30Z | S5-ship&learn | gpt-5-codex | remediator | Phase 9
+
+Did: Ran the Compass Forge after-gate against the ledger update. The requested single-file
+completion matrix crossed the repository's `unexpected_large_files` threshold, so recorded the
+required path-scoped, expiring suppression (ID `1`, expires `2026-12-31`) with the Build Stream
+single-lifecycle rationale. Attached CF-15 command evidence `66` for the pushed commit/parity
+and gate evidence `67` for the post-suppression result.
+
+Result: after-gate reports the same inherited repository debt (`31` failures, `209` warnings,
+`3` security findings) with `new_failures=0`, `new_issue_count=0`, and no actionable failures;
+contract/generated/GraphQL drift remains zero. The suppression is explicit and temporary, not a
+claim that the large historical ledger is generally acceptable. Revisit it when Phase 9 closes
+or if the lifecycle file is split only through a future Build Stream policy decision.
+
+Verified: `compass-forge gate suppress --rule unexpected_large_files --path
+docs/build-stream/2026-08-23-agentic-core-integrity-and-qa.md --expires 2026-12-31`; `compass-forge
+gate after --task CF-15 --summary`; CF evidence IDs `66` and `67`; and clean local/remote parity
+at `476091ae923f51e1d5fbdb62f8e63578a4d81f61`.
+
+Next: wait for G0 live authorization and prerequisites; then execute G1–G22 in order and append
+one ledger entry per gate. Do not close CF-15 or claim Research Spine acceptance from the current
+deterministic evidence alone.
