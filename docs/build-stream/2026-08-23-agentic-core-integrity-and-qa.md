@@ -5066,3 +5066,19 @@ Verified: `date -u` at append time; the exact 84/10/72 deterministic results rem
 recorded in L-228.
 
 Next: resume at G0/G1 only when the owner-authorized live prerequisites exist.
+
+### L-230 | 2026-08-27T01:55:14Z | S5-ship&learn | gpt-5-codex | verifier | Phase 9
+
+Did: Ran the post-checkpoint Compass Forge after-gate and reconciled the new ledger commit
+against `origin/testing`.
+
+Result: after-gate remains inherited-debt-only (`31` failures, `209` warnings, `3` security;
+`new_failures=0`, `new_issue_count=0`, `actionable_failures=[]`) with the explicit expiring
+large-ledger suppression active. The current branch tip is `901e74cabcdfdc9db23aea8933b226604e779673`.
+
+Verified: `compass-forge gate after --task CF-15 --summary`; `git fetch origin testing`; exact
+local/remote SHA equality; `git diff --check`; and clean worktree.
+
+Next: no further local mutation is justified until G0 live authorization and G1–G4 Mac Studio
+Docker prerequisites are supplied; preserve the deterministic baseline and execute the matrix
+in order when they are available.
