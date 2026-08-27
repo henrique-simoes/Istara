@@ -8,8 +8,8 @@ phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal ac
 stage: S2-execute/S3-review
 status: in-progress
 blocked_on: "Owner-approved Docker-only Mac Studio provisioning: current env/config, provider-served identities, and three-model inputs"
-last: { agent: gpt-5-codex, at: 2026-08-27T21:42:15Z, ledger: L-424 }
-next_action: "Resolve the Istara versus Agentic Loop naming/selection contract from code and docs, then continue disposable Docker-only Mac Studio acceptance preparation; keep CF-SPEC-2 open until live three-model, Petals, reconciliation, two-call, and long-horizon evidence exists."
+last: { agent: gpt-5-codex, at: 2026-08-27T21:51:56Z, ledger: L-425 }
+next_action: "Preserve the two-axis April Compass lineage versus CF-SPEC persistence wording, then continue CF-SPEC-2 implementation and the Docker-only live acceptance matrix; do not backdate or synthesize missing CF-SPEC rows."
 ```
 
 ## Continuation blueprint — remaining work and acceptance contract
@@ -10197,3 +10197,49 @@ user-visible engine labels (`Istara`, `Agentic Loop`, `Pi Agentic Loop`) against
 the dispatcher and settings contracts before preparing the disposable remote
 Docker run. Live provider/Petals, reconciliation/Done/report, two-call, and
 long-horizon proof remains absent.
+
+### L-425 | 2026-08-27T21:51:56Z | S3-review | gpt-5-codex | Reconciled April Compass lineage with CF-SPEC persistence
+
+The owner correction is valid at the process-lineage level. A deeper read of
+all reachable Istara refs, April tags, current `testing` ancestry, deleted-file
+history, unreachable commit metadata, and retained state stores confirms that
+Compass was already part of Istara on April 3, 2026. Current `testing` contains
+the equivalent April 3 Compass entrypoint/doctrine commits (`42e454b0` and
+`ce19476e`), the April 10 three-layer testing architecture (`16d18228`), the
+April 10 `TESTING.md`/PR-required Compass workflow (`21ef99b1`), and the related
+April test pass (`c0ddf50c`); every hash is an ancestor of `refs/heads/testing`.
+The April 3 tag `v2026.04.03.3` and April 10 tag `v2026.04.10.13` expose the
+same Compass sections in the historical files. These are not August additions.
+
+The naming and storage boundaries remain separate. The first literal
+`compass-forge` block in Istara Git is `0d0d9a24` (2026-05-02), and the first
+literal `CF-SPEC-*` document marker is `7dca7368` (2026-05-04); both are also
+ancestors of `testing`. The retained shared CF database currently has 60 spec
+rows overall (oldest `2026-07-03T01:11:53Z`): 37 Compass Forge, 12 WildSync,
+10 `/Users/user/Documents/Istara-main`, and 1 Istara Pi-migration worktree.
+The Istara-main project scope therefore has 11 rows across the two registered
+Istara roots, with its first retained row on `2026-08-01T19:46:34Z`. The
+repo-local Istara database has 5 rows from August 23–26. The pre-native backup
+has 50 rows through August 13; the root Documents CF database is empty. The
+Kairos/Skills/WildSync databases are separate project stores and are not
+Istara CF history. No retained state database contains an April CF-SPEC row.
+
+Result: “CF/Compass has been in Istara since April” is correct when CF means
+the governed Compass development/testing process. “The state database has
+April CF-SPEC rows” is not supported by any retained store. The previous
+July/August dates described persistence scope, not process origin; reports must
+state both dimensions rather than use a database age as a proxy for lineage.
+No code, provider, model, Docker, host, or testing data changed in this audit;
+the code baseline remained `a58bb1e2`, and this ledger entry is the only
+working-tree change before checkpointing it to `testing`/`origin/testing`.
+
+Evidence commands: `git log --all`/`git grep` over April tags and current
+testing ancestry; `git merge-base --is-ancestor` for all cited hashes;
+`git fsck --unreachable`; and read-only SQL counts over every retained
+`.compass-forge/state.sqlite3` and pre-native backup found under Documents.
+CF before-gate baseline: `actionable_failures=[]`, `new_failures=0`, inherited
+31 failures/212 warnings. The live Research Spine acceptance gate remains open.
+
+Next: preserve this two-axis lineage/persistence wording in the final report,
+then continue CF-SPEC-2 implementation and the Docker-only live acceptance
+matrix; do not backdate or synthesize missing CF-SPEC rows.
