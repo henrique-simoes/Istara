@@ -204,6 +204,18 @@ def test_provider_stub_source_is_present_in_the_root_docker_build_context():
     assert (ROOT / "qa/scripts/provider_stub.py").is_file()
 
 
+def test_qa_entrypoint_is_reincluded_in_the_root_docker_build_context():
+    lines = {
+        line.strip()
+        for line in (ROOT / ".dockerignore").read_text(encoding="utf-8").splitlines()
+        if line.strip() and not line.lstrip().startswith("#")
+    }
+
+    assert "scripts/*" in lines
+    assert "!scripts/istara-qa.sh" in lines
+    assert (ROOT / "scripts/istara-qa.sh").is_file()
+
+
 def test_backend_image_uses_a_pi_supported_node_runtime():
     dockerfile = (ROOT / "backend/Dockerfile").read_text(encoding="utf-8")
 

@@ -12,7 +12,8 @@ desktop
 testing
 tests
 docs
-scripts
+scripts/*
+!scripts/istara-qa.sh
 deploy
 data
 *.db
