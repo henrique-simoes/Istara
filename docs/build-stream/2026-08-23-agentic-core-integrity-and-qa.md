@@ -7025,4 +7025,4 @@ artifacts exist.
 
 ### L-305 | 2026-08-27T10:05:00Z | S2-execute/S3-review | gpt-5-codex | ref synchronization
 
-The final ledger checkpoint itself is transported at `a5fafeddd9cd2685e50ccc036a5b867e03bbbbd3`; local `testing`, `origin/testing`, and `~/istara-testing-retake-47bf` now resolve to that SHA, with the retake clean. A passive final check found no runner, long-horizon, or benchmark process and only the unrelated healthy Plex container. This is the last pre-provisioning checkpoint; no active model/provider workload has been started.
+The final ledger checkpoint is transported on the testing branch; at each resumption, verify the exact equality of local `testing`, `origin/testing`, and `~/istara-testing-retake-47bf` before running anything. The isolated retake is clean. A passive final check found no runner, long-horizon, or benchmark process and only the unrelated healthy Plex container. This is the last pre-provisioning checkpoint; no active model/provider workload has been started.
