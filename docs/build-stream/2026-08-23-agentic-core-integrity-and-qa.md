@@ -9604,3 +9604,32 @@ Verified: `ssh macstudio 'docker run --rm --network none -v istara-benchmark-ret
 Compass evidence: command row `395` on CF task `CF-15`.
 Next: stage exit remains blocked on live scientific acceptance and owner-approved provider
 inputs; deterministic harness coverage is now independently reproduced in Docker.
+
+### L-406 | 2026-08-27T19:43:14Z | S3-review | gpt-5-codex | Deeper CF/Compass provenance reconciled with April Istara history
+
+The earlier database-only interpretation was too narrow. A deeper source-history and
+ancestry audit confirms that the user’s statement is correct at the process level:
+Istara’s ensemble/research machinery predates April, and Compass governance is explicit
+in April. Current-ancestor equivalent `a1594cf30259b045db20e253b907751226053fb1`
+(`2026-03-24T18:08:22-03:00`) adds the consensus engine (Fleiss’ Kappa, cosine and
+composite scoring), five validation patterns, adaptive validation, ensemble health, and
+simulation scenarios. `8d604d2e58dc637a9d06d2c06c02a09e47d60693` (`2026-04-01`,
+`v2026.04.01.3`) wires adaptive validation and consensus telemetry into the agent loop.
+`13101d26ba66f82a5d86f251c71c8477a811ea6e` (`2026-04-01`, `v2026.04.01.5`) documents
+the three-independent-agent pipeline, adversarial debate, Fleiss’ Kappa, promotion and
+human-review thresholds, and the tiered research thresholds. `42e454b03de9f5f5464d08eb1d0d6accc774930e`
+(`2026-04-03`) explicitly defines Istara’s `Compass` governance system in
+`AGENT_ENTRYPOINT.md`; `16d18228`/`21ef99b1` (`2026-04-10`) add the three-layer testing
+architecture and PR workflow; `35a3d9f6` (`2026-04-24`) adds Compass swarm intelligence.
+Every cited commit is an ancestor of current `testing`.
+
+The naming/persistence boundary is separate: the literal `Compass Forge` block first
+appears in current-ancestor `0d0d9a24` (`2026-05-02`), and the first source-history
+`CF-SPEC-` marker verified is current-ancestor `7dca7368` (`2026-05-04`). Retained
+database rows remain July 3 overall and August 1 for Istara-main, with no April row in
+the inspected stores. That dates persistence, not process origin. The corrected
+statement is therefore: **Compass/research governance has been in Istara since April,
+with ensemble code in March; later Compass Forge and CF-SPEC markers do not invalidate
+that lineage.** This audit changed no code, models, providers, Docker workload, or host
+state. Live scientific acceptance remains open (`kappa=-0.125`, `alpha=0.491`, zero
+accepted/reconciled applications, `needs_reconciliation`).
