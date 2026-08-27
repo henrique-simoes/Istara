@@ -8,7 +8,7 @@ related_features: ["settings.llm-servers", "settings.general", "compute.pool"]
 related_glossary: ["rag"]
 code_references: ["frontend/src/components/chat/ChatView.tsx", "frontend/src/components/chat/ChatModelControls.tsx", "frontend/src/components/chat/chatViewParts.tsx", "frontend/src/components/common/SettingsView.tsx", "frontend/src/components/settings/PiModelManagement.tsx", "frontend/src/lib/modelCatalog.ts", "frontend/src/stores/chatStore.ts", "frontend/src/stores/sessionStore.ts", "frontend/src/lib/chatApi.ts", "frontend/src/lib/modelProviders.ts", "backend/app/api/routes/chat.py", "backend/app/api/routes/sessions.py", "backend/app/api/routes/settings.py", "backend/app/main.py", "backend/app/core/agentic/dispatcher.py", "backend/app/core/agentic/legacy.py", "backend/app/core/agentic/usage_ledger.py", "backend/app/core/pi_runtime/engine.py", "backend/app/core/pi_runtime/oauth.py"]
 api_references: ["backend/app/api/routes/chat.py", "backend/app/api/routes/sessions.py", "backend/app/core/agentic/usage_ledger.py"]
-test_references: ["frontend/src/lib/modelCatalog.test.ts", "frontend/src/lib/modelProviders.test.ts", "tests/test_chat.py", "tests/test_settings.py", "tests/test_settings_agentic_pi_endpoints.py", "tests/pi_migration/test_model_management_migration.py", "tests/pi_production/test_pi_catalog_ux.py", "tests/pi_production/test_w1_agentic_contract.py", "tests/pi_production/test_w1_dispatcher_authority.py", "tests/pi_production/test_chat_pi_asgi.py", "tests/simulation/scenarios/10-settings-models.mjs", "tests/simulation/scenarios/26-model-session-persistence.mjs"]
+test_references: ["frontend/src/lib/modelCatalog.test.ts", "frontend/src/lib/modelProviders.test.ts", "tests/test_chat.py", "tests/test_settings.py", "tests/test_settings_agentic_pi_endpoints.py", "tests/pi_migration/test_model_management_migration.py", "tests/pi_production/test_pi_catalog_ux.py", "tests/pi_production/test_w1_agentic_contract.py", "tests/pi_production/test_w1_dispatcher_authority.py", "tests/pi_production/test_legacy_long_horizon.py", "tests/pi_production/test_chat_pi_asgi.py", "tests/simulation/scenarios/10-settings-models.mjs", "tests/simulation/scenarios/26-model-session-persistence.mjs"]
 last_verified: 2026-08-26
 compass: CF-SPEC-77 / CF-986; CF-SPEC-8
 ---
@@ -157,6 +157,7 @@ Each chat turn resolves its engine in one order: operator flag `pi_replacement_e
 - `tests/test_settings_agentic_pi_endpoints.py`
 - `tests/pi_production/test_w1_agentic_contract.py`
 - `tests/pi_production/test_w1_dispatcher_authority.py` — shared Pi Model Management authority for both engine choices, including legacy/Istara multi-turn tool-loop execution, cumulative usage, and provider-served identity preservation.
+- `tests/pi_production/test_legacy_long_horizon.py` — seven-step legacy/Istara tool-loop horizon parity through the same shared manager, with cumulative usage and served-identity assertions.
 - `tests/pi_production/test_chat_pi_asgi.py` — real-ASGI two-call transcript rehydration after worker restart for both the native Pi loop and the legacy Istara loop over the shared Pi Model Management service.
 
 ## Related Features

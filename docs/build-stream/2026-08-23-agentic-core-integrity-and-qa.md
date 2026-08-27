@@ -8,8 +8,8 @@ phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal ac
 stage: S2-execute/S3-review
 status: in-progress
 blocked_on: null
-last: { agent: gpt-5-codex, at: 2026-08-27T07:44:00Z, ledger: L-284 }
-next_action: "Keep deterministic coverage and transport closed; await an owner-authorized Docker-only Mac Studio window, verify the archive in-container, then run provider/Petals/combined Research Spine retakes and attach complete evidence before closing G0/G1/live G2–G22."
+last: { agent: gpt-5-codex, at: 2026-08-27T08:02:00Z, ledger: L-285 }
+next_action: "Transport the isolated legacy horizon oracle and feature-doc receipt with exact testing parity, then continue the deterministic Research Spine/authority audit; await an owner-authorized Docker-only Mac Studio window before any live provider, Petals, or three-rater acceptance claim."
 ```
 
 ## Plan overview / roadmap
@@ -6552,3 +6552,36 @@ because long-horizon coverage is still Pi-worker-only, task-tool-only, and lacks
 live provider, Research Spine source/evidence tools, recovery/timeout assertions,
 and legacy HTTP execution. G0/G1 and live G2-G22 remain open for the authorized
 Docker-only Mac Studio retake and exact source/model/provider prerequisites.
+
+### L-285 | 2026-08-27T08:02:00Z | S2-execute/S3-review | gpt-5-codex | legacy horizon parity and complexity-safe test placement
+
+The deterministic horizon audit found that the Pi worker had a seven-tool-call
+long-horizon oracle, but the user-selectable Istara/legacy loop did not have a
+matching proof through the shared Pi Model Management authority. Added
+`tests/pi_production/test_legacy_long_horizon.py`, an isolated real-dispatcher
+regression that drives seven canonical `create_task` rounds and a terminal
+answer through one manager-owned endpoint. It asserts one manager resolution per
+provider turn, exact eight-turn cumulative usage (`8/8/16`, `turns=8`), explicit
+configured versus served identity, and the complete assistant/tool history at
+the final provider turn. No runtime code changed; this closes a deterministic
+coverage gap only.
+
+The first pre-gate after adding the test exposed a new complexity warning on the
+already hotspot-heavy W1 authority module. The test was moved out of that module
+before transport so the existing file remains byte-identical and the new oracle
+does not add process debt. Post-gate verification reports `actionable_failures=[]`,
+`new_failures=0`, `comparison.new_issue_count=0`, and `new_warnings=[]`; the global
+gate remains `fail` with its inherited `31` findings and `209` warnings. Ruff,
+`git diff --check`, and feature docs generation (`224` artifacts, `86/86` checks)
+pass. The focused W1/worker/ASGI run passes `40`; the adjacent provider,
+scenario, worker, validation, and Research Spine slice passes `81` with runtime
+warnings promoted to errors.
+
+The external finding F-R9-82 is appended to `/Users/user/Desktop/testing.md`.
+Transport is the next bounded action; after parity is rechecked, the remaining
+boundary is unchanged: deterministic fakes do not prove live three-checkpoint
+served identity, source-grounded independent coding, numeric Fleiss/Krippendorff
+reliability, reconciliation, human-Done/report promotion, HTTP long-horizon
+recovery/timeout semantics, Petals cooperation/scope/revocation, redaction, or
+teardown. G0/G1 and live G2-G22 remain open pending the owner-authorized
+Docker-only Mac Studio window.
