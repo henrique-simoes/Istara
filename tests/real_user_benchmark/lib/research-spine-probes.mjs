@@ -5,6 +5,46 @@ function preview(value) {
   }));
 }
 
+function assessTraceabilityCodingRunBinding(traceability, codingRun) {
+  const runId = String(codingRun?.id || "").trim();
+  const codingRuns = Array.isArray(traceability?.coding_runs) ? traceability.coding_runs : [];
+  const applications = Array.isArray(traceability?.code_applications)
+    ? traceability.code_applications
+    : [];
+  const decisions = Array.isArray(traceability?.reconciliation_decisions)
+    ? traceability.reconciliation_decisions
+    : [];
+  const edges = Array.isArray(traceability?.evidence_graph_edges)
+    ? traceability.evidence_graph_edges
+    : [];
+  const runApplications = applications.filter((row) => String(row?.coding_run_id || "").trim() === runId);
+  const runDecisions = decisions.filter((row) => String(row?.coding_run_id || "").trim() === runId);
+  const runEdges = edges.filter((edge) => String(edge?.coding_run_id || "").trim() === runId);
+  const expectedApplicationCount = Number(codingRun?.code_application_count ?? 0);
+  const runListed = Boolean(runId) && codingRuns.some(
+    (run) => String(run?.id || "").trim() === runId,
+  );
+  const applicationEvidenceOk = expectedApplicationCount > 0
+    ? runApplications.length >= expectedApplicationCount
+    : runApplications.length > 0;
+  const edgeEvidenceOk = runEdges.some((edge) => (
+    String(edge?.source_type || "").trim() === "evidence_unit"
+      && String(edge?.relation || "").trim() === "coded_as"
+      && String(edge?.target_type || "").trim() === "code_application"
+  ));
+  return {
+    ok: runListed && applicationEvidenceOk && edgeEvidenceOk,
+    run_id: runId,
+    run_listed: runListed,
+    expected_application_count: expectedApplicationCount,
+    application_count: runApplications.length,
+    decision_count: runDecisions.length,
+    edge_count: runEdges.length,
+    application_evidence_ok: applicationEvidenceOk,
+    edge_evidence_ok: edgeEvidenceOk,
+  };
+}
+
 const NON_SUBSTANTIVE_SOURCE_PATTERN = /(?:canonical corpus|source-specific protocol|moderator probes|project guardrails|research spine|do not infer|treat every participant story|distinguish raw source evidence|recommendations must cite)/i;
 
 function sourceKey(unit) {
@@ -789,12 +829,30 @@ export async function exerciseResearchSpineValidation({
   );
   featureResults.codingValidation = Boolean(evidence.contract_loaded && evidence.coding_run)
     && featureResults.multiModelResearchSpineValidation;
+  const requiresCurrentCodingRunTraceability = Boolean(
+    codingValidationEnabled && Number(codingValidationLimit || 0) > 0,
+  );
+  const traceabilityCodingRun = requiresCurrentCodingRunTraceability
+    ? assessTraceabilityCodingRunBinding(evidence.traceability, evidence.coding_run)
+    : {
+        ok: true,
+        run_id: String(evidence.coding_run?.id || "").trim(),
+        run_listed: null,
+        expected_application_count: Number(evidence.coding_run?.code_application_count ?? 0),
+        application_count: null,
+        decision_count: null,
+        edge_count: null,
+        application_evidence_ok: null,
+        edge_evidence_ok: null,
+      };
+  evidence.traceability_coding_run = traceabilityCodingRun;
   featureResults.researchSpineTraceability = Boolean(
     evidence.summary
     && typeof evidence.summary === "object"
     && Object.prototype.hasOwnProperty.call(evidence.summary, "report_gate")
     && Object.prototype.hasOwnProperty.call(evidence.summary, "evidence_unit_count")
-    && Object.prototype.hasOwnProperty.call(evidence.summary, "coding_run_count"),
+    && Object.prototype.hasOwnProperty.call(evidence.summary, "coding_run_count")
+    && traceabilityCodingRun.ok,
   );
   featureResults.ragTraceabilityEvidence = Boolean(
     evidence.traceability
@@ -802,8 +860,18 @@ export async function exerciseResearchSpineValidation({
     && evidence.traceability.contract
     && typeof evidence.traceability.contract === "object"
     && evidence.traceability.contract.graph_role === "synthesis_and_traceability"
-    && evidence.traceability.contract.promotion_rule,
+    && evidence.traceability.contract.promotion_rule
+    && traceabilityCodingRun.ok,
   );
+  if (requiresCurrentCodingRunTraceability && !traceabilityCodingRun.ok) {
+    logger.issue({
+      area: "research-spine",
+      severity: "high",
+      title: "Research Spine traceability was not bound to the current coding run",
+      detail: "Project-level traceability was present, but it did not expose the current coding run with its source-grounded application and evidence-graph records.",
+      evidence: traceabilityCodingRun,
+    });
+  }
   featureResults.telemetryEvidence = Boolean(
     evidence.telemetry_audit
     && typeof evidence.telemetry_audit === "object"

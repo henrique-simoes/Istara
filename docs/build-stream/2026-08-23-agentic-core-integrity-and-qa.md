@@ -8342,3 +8342,29 @@ F-R9-114/L-350 reconciliation gap remains open: the live harness still cannot
 reach accepted coding without an explicitly governed per-application review
 phase. No provider request, model load, host installation, Docker image pull,
 or benchmark workload was started.
+
+### L-353 | 2026-08-27T14:05:00Z | S2-execute/S3-review | gpt-5-codex | current-run GraphRAG traceability binding
+
+The acceptance audit found a second false-positive seam: the benchmark marked
+`researchSpineTraceability` true from project-level summary keys and marked
+`ragTraceabilityEvidence` true from the graph contract alone. Neither flag was
+bound to the coding run just created by the benchmark. A stale or unrelated
+project payload could therefore make traceability appear present while the
+current run had no source-grounded application or graph record in the response.
+
+The probe now records `traceability_coding_run` diagnostics and, when coding is
+enabled, requires the current run ID in `coding_runs`, at least the expected
+number of current-run code applications, and a current-run
+`evidence_unit -> coded_as -> code_application` edge. Both traceability flags
+fail closed when that binding is missing. The check is intentionally scoped to
+the current coding validation request; plan-only/non-coding profiles retain
+structural traceability reporting without inventing a run.
+
+Deterministic coverage now includes a positive graph-bound acceptance fixture
+and a regression where a fully reliable three-model run is deliberately omitted
+from project traceability. Focused Research Spine probes pass `31/31`.
+Compass Forge before-gate record `283` was captured for this change; after-gate,
+task evidence, docs regeneration, and transport remain pending. F-R9-114 remains
+open because the live harness still cannot create human reconciliation decisions.
+No provider request, model load, host installation, Docker image pull, or live
+benchmark workload was started.

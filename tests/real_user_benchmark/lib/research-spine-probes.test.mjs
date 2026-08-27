@@ -84,6 +84,27 @@ function makeServedModelRoutes() {
   ];
 }
 
+function makeTraceability(runId, expectedUnits = makeSubstantiveUnits()) {
+  const applications = makeReconciledApplications(runId, 12, expectedUnits);
+  return {
+    contract: {
+      graph_role: "synthesis_and_traceability",
+      promotion_rule: "graph_traceability_cannot_bypass_coding_reliability_reconciliation_or_done_gates",
+    },
+    coding_runs: [{ id: runId }],
+    code_applications: applications,
+    reconciliation_decisions: makeReconciliationDecisions(runId),
+    evidence_graph_edges: applications.map((application) => ({
+      coding_run_id: runId,
+      source_type: "evidence_unit",
+      source_id: application.evidence_unit_id,
+      relation: "coded_as",
+      target_type: "code_application",
+      target_id: application.id,
+    })),
+  };
+}
+
 test("coding proof samples distributed substantive spans instead of document headers", () => {
   const units = [
     { id: "title", source_text: "# CareNav Renewal interview source 03" },
@@ -370,10 +391,14 @@ test("three-donor benchmark accepts full multi-model coding evidence", async () 
       }
       if (path.includes("/code-applications/")) return makeReconciledApplications("run-1");
       if (path.includes("/reconciliation-decisions")) return makeReconciliationDecisions("run-1");
-      if (path.includes("/summary")) return { coding_run_count: 1, evidence_unit_count: 4 };
+      if (path.includes("/summary")) return {
+        report_gate: "accepted_reconciled_evidence_from_approved_done_tasks_only",
+        coding_run_count: 1,
+        evidence_unit_count: 4,
+      };
       if (path.includes("/evidence-units")) return makeSubstantiveUnits();
       if (path.includes("/coding-runs")) return [{ id: "run-1" }];
-      if (path.includes("/traceability")) return { edges: [] };
+      if (path.includes("/traceability")) return makeTraceability("run-1");
       if (path.includes("/telemetry-audit")) return { status: "ok" };
       return {};
     },
@@ -406,7 +431,80 @@ test("three-donor benchmark accepts full multi-model coding evidence", async () 
 
   assert.equal(featureResults.codingValidation, true);
   assert.equal(featureResults.multiModelResearchSpineValidation, true);
+  assert.equal(featureResults.researchSpineTraceability, true);
+  assert.equal(featureResults.ragTraceabilityEvidence, true);
   assert.deepEqual(blockers, []);
+});
+
+test("three-donor benchmark rejects project traceability that omits the current coding run", async () => {
+  const logger = makeLogger();
+  const blockers = [];
+  const featureResults = {};
+  const api = {
+    async get(path) {
+      if (path === "/api/research-validity/contract") {
+        return { contract: {}, qualitative_coding_protocol: {} };
+      }
+      if (path.includes("/code-applications/")) return makeReconciledApplications("run-unbound");
+      if (path.includes("/reconciliation-decisions")) return makeReconciliationDecisions("run-unbound");
+      if (path.includes("/summary")) return {
+        report_gate: "accepted_reconciled_evidence_from_approved_done_tasks_only",
+        coding_run_count: 1,
+        evidence_unit_count: 4,
+      };
+      if (path.includes("/evidence-units")) return makeSubstantiveUnits();
+      if (path.includes("/coding-runs")) return [{ id: "run-unbound" }];
+      if (path.includes("/traceability")) return {
+        contract: {
+          graph_role: "synthesis_and_traceability",
+          promotion_rule: "graph_traceability_cannot_bypass_coding_reliability_reconciliation_or_done_gates",
+        },
+        coding_runs: [],
+        code_applications: [],
+        reconciliation_decisions: [],
+        evidence_graph_edges: [],
+      };
+      if (path.includes("/telemetry-audit")) return { status: "ok" };
+      return {};
+    },
+    async post() {
+      return {
+        id: "run-unbound",
+        status: "completed",
+        promotion_status: "accepted",
+        code_application_count: 12,
+        reliability_method: "fleiss_kappa_with_krippendorff_alpha_companion",
+        distinct_model_count: 3,
+        rater_count: 3,
+        kappa: 0.81,
+        alpha: 0.79,
+        route_evidence: makeServedModelRoutes(),
+      };
+    },
+  };
+
+  await exerciseResearchSpineValidation({
+    api,
+    projectId: "project-unbound-traceability",
+    logger,
+    featureResults,
+    blockers,
+    codingValidationEnabled: true,
+    codingValidationLimit: 4,
+    expectedDistinctCoders: 3,
+  });
+
+  assert.equal(featureResults.codingValidation, true);
+  assert.equal(featureResults.multiModelResearchSpineValidation, true);
+  assert.equal(featureResults.researchSpineTraceability, false);
+  assert.equal(featureResults.ragTraceabilityEvidence, false);
+  assert.equal(blockers.length, 0);
+  assert.equal(
+    logger.issues.at(-1).title,
+    "Research Spine traceability was not bound to the current coding run",
+  );
+  assert.equal(logger.payload.traceability_coding_run.run_id, "run-unbound");
+  assert.equal(logger.payload.traceability_coding_run.run_listed, false);
 });
 
 test("three-donor benchmark rejects code applications returned from another coding run", async () => {
