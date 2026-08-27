@@ -8,7 +8,7 @@ phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal ac
 stage: S5-ship&learn
 status: in-progress
 blocked_on: null
-last: { agent: gpt-5-codex, at: 2026-08-27T02:31:00Z, ledger: L-239 }
+last: { agent: gpt-5-codex, at: 2026-08-27T02:34:00Z, ledger: L-240 }
 next_action: "Resolve whether ‘Agentic Loop’ is shorthand for legacy/Istara or a required third engine; then, at the next authorized live window, resolve the launch-time origin/testing SHA, materialize a fresh detached checkout on Mac Studio, and execute the Docker-only provider/Petals/combined G0–G22 retake; until then leave G0/G1 not_run."
 ```
 
@@ -5303,3 +5303,28 @@ the typed runtime/UI/dispatcher contract and tests. Once live prerequisites exis
 `origin/testing`, create a fresh detached checkout, render Compose before startup, and run the
 Docker-only provider/Petals/combined G0–G22 matrix with immutable identity, raw-span, reliability,
 gate, long-horizon, interoperability, and teardown artifacts.
+
+### L-240 | 2026-08-27T02:34:00Z | S5-ship&learn | gpt-5-codex | verifier | Phase 9
+
+Did: Transported the terminology-audit checkpoint as commit
+`465221ea2914855775df7f4a03f6c3a2c0afe5ab` and pushed `testing` to `origin/testing`. The local
+worktree is clean and exact SHA parity is confirmed by both `git rev-parse HEAD` and
+`git ls-remote origin refs/heads/testing`.
+
+Verified: Compass Forge evidence `87` records the 95-pass static authority/Petals/settings/
+runtime audit. The after-gate reports zero new issues, zero new failures, zero cycles, and no
+actionable failures; its non-zero status remains inherited `secret_flow`/large-file debt plus
+the documented single-file ledger suppression. No provider call, model load, image pull, host
+installation, service start, or Docker mutation occurred.
+
+Boundary: F-R9-59 remains an owner terminology decision. The branch is transport-clean, but the
+Mac Studio live campaign is still unavailable: G0/G1 remain `not_run` and no claim is made for
+three served model identities, independent raw-span coding, Fleiss/Krippendorff reliability,
+grounding, reconciliation, human-Done/report promotion, two-call/long-horizon behavior, Petals
+interoperability, or teardown.
+
+Next: on the next authorized window, re-resolve the launch-time `origin/testing` SHA, create a
+fresh detached checkout, render Compose before startup, and execute the Docker-only provider,
+Petals, and combined G0–G22 matrix. Preserve immutable route/model identity and all Research
+Spine gate artifacts; never overwrite the stale owner-dirty named checkout or run a host-managed
+model path.
