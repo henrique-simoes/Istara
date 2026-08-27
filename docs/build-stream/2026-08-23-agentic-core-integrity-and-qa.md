@@ -8,8 +8,8 @@ phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal ac
 stage: S2-execute/S3-review
 status: in-progress
 blocked_on: null
-last: { agent: gpt-5-codex, at: 2026-08-27T08:48:00Z, ledger: L-297 }
-next_action: "Commit and gate the same-session usage oracle; then audit remaining scorecard/live Research Spine parity gaps."
+last: { agent: gpt-5-codex, at: 2026-08-27T08:50:11Z, ledger: L-298 }
+next_action: "Commit and gate the scorecard long-horizon receipt; then audit remaining live Research Spine/Petals parity gaps."
 ```
 
 ## Plan overview / roadmap
@@ -6861,3 +6861,30 @@ must be compared again after commit. This closes deterministic session attributi
 only. It does not prove live provider-served identity, three independent coders,
 Fleiss/Krippendorff quality, reconciliation or human-Done promotion, Petals
 cooperation, or Mac Studio Docker execution.
+
+### L-298 | 2026-08-27T08:50:11Z | S2-execute/S3-review | gpt-5-codex | long-horizon completion is now a scorecard gate
+
+The Docker wrapper already ran the two-call Python workload, but its success was
+only observable through wrapper exit/logs. A direct or partially configured Node
+scorecard could therefore omit that workload and still present provider/Petals
+and common-workflow results without an explicit long-horizon status.
+
+The acceptance workload matrix now marks `longHorizon` only for `combined`. The
+inner Docker runner exports `ISTARA_BENCHMARK_LONG_HORIZON_VERIFIED=1` only after
+the engine-specific Python workload exits successfully. `run.mjs` reads the
+explicit requirement/receipt, passes both through its final blocker path, and
+persists `long_horizon_required` and `long_horizon_verified` in scorecard,
+history, latest-run, and Markdown report output. A required workload without
+the receipt fails closed; provider/Petals-only profiles remain intentionally
+scoped. Deterministic tests cover missing/present receipts, workload scope, and
+wrapper-to-scorecard wiring.
+
+Verification: scoring/topology tests pass (`32 passed`), the complete real-user
+benchmark package passes (`81 passed`), Node/shell syntax and `git diff --check`
+pass, and feature docs regenerate/check cleanly (`224` artifacts, `86/86`
+checks). Compass Forge before-gate remains baseline-clean (`new_issue_count=0`,
+`new_failures=0`, no new warnings; inherited `31` failures/`208` warnings).
+This closes the deterministic scorecard-oracle gap only; live two-call engine
+parity, three independent served model identities, Fleiss/Krippendorff quality,
+reconciliation/human-Done promotion, Petals cooperation, and Mac Studio Docker
+execution remain open.
