@@ -6986,3 +6986,20 @@ runtime evidence. A future live run needs an owner-provided, Docker-only env/mod
 provisioning decision and bounded provider/Petals authorization. Until then the
 deterministic seam remains the strongest evidence and all live quality gates stay
 open.
+
+### L-303 | 2026-08-27T09:50:00Z | S2-execute/S3-review | gpt-5-codex | cleanup and live-gate boundary
+
+The current detached Mac Studio retake is aligned to `origin/testing` at
+`8865e0099a2f4a1453ec64f0d354954a7a69aca8` and remains clean. Two redundant,
+clean, detached historical worktrees were removed after ancestry checks proved
+both were ancestors of the transported testing tip. The owner-dirty named
+checkout and the `pi-agent-home` volume were deliberately preserved. Passive
+Docker checks still show only Plex and no Istara/model workload.
+
+No live matrix was launched because the required Docker-host model artifacts and
+current retake env/config are absent; starting a provider or loading models would
+produce neither a valid three-rater proof nor a safe reproducible artifact. The
+next executable step is owner-approved Docker-only provisioning, followed by
+source/image digest capture, provider-only, Petals-only, and combined profiles,
+then two-call/long-horizon, three-served-model reliability, reconciliation,
+human-Done/report, redaction, and teardown verification.
