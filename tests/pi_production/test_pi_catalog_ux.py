@@ -175,6 +175,35 @@ def test_update_endpoint_reuses_catalog_and_keychain_custody(client, monkeypatch
     assert after_rejection["model"] == "deepseek-v4-flash"
 
 
+@pytest.mark.parametrize("endpoint_id", ["pi-petals-legacy", "pi-deepseek-default"])
+def test_endpoint_mutations_cannot_claim_reserved_or_builtin_identity(client, endpoint_id):
+    """PUT/DELETE must preserve the same identity boundary as POST.
+
+    The fixture injects rows directly to model a stale or malformed persisted
+    settings payload; normal POST creation already rejects both identities.
+    """
+    from app.config import PiApiEndpoint, settings
+
+    settings.pi_api_endpoints.append(
+        PiApiEndpoint(
+            endpoint_id=endpoint_id,
+            base_url="https://example.invalid/v1",
+            model="test-model",
+            keychain_service="istara-test",
+        )
+    )
+
+    updated = client.put(
+        f"/api/settings/pi-endpoints/{endpoint_id}",
+        json={"endpoint_id": endpoint_id, "model": "replacement-model"},
+    )
+    assert updated.status_code == 400
+
+    deleted = client.delete(f"/api/settings/pi-endpoints/{endpoint_id}")
+    assert deleted.status_code == 400
+    assert any(item.endpoint_id == endpoint_id for item in settings.pi_api_endpoints)
+
+
 def test_oauth_flows_endpoints(client):
     resp = client.get("/api/settings/pi-oauth/flows")
     assert resp.status_code == 200

@@ -147,6 +147,26 @@ def _pi_model_management_required() -> JSONResponse:
     )
 
 
+def _guard_pi_endpoint_mutation(endpoint_id: str) -> None:
+    """Keep reserved Pi identities outside user-managed CRUD.
+
+    POST already rejects these names, but PUT/DELETE must protect the same
+    namespace when a malformed or legacy settings payload contains one.  The
+    built-in resolver endpoint is likewise not a user-owned row.
+    """
+    from app.core.pi_runtime.endpoints import DEFAULT_ENDPOINT_ID
+    from app.core.pi_runtime.model_manager import is_reserved_petals_endpoint_id
+
+    normalized = str(endpoint_id or "").strip()
+    if is_reserved_petals_endpoint_id(normalized):
+        raise HTTPException(
+            status_code=400,
+            detail="pi-petals-* endpoint IDs are reserved for consented Petals donors",
+        )
+    if normalized == DEFAULT_ENDPOINT_ID:
+        raise HTTPException(status_code=400, detail=f"{DEFAULT_ENDPOINT_ID} is built in")
+
+
 def _cached_llm_readiness() -> tuple[bool, bool]:
     """Return cached reachability/readiness without probing provider endpoints."""
     nodes = getattr(ollama, "_nodes", None)
@@ -1066,6 +1086,7 @@ async def add_pi_endpoint(data: PiEndpointRequest, request: Request):
 @router.put("/settings/pi-endpoints/{endpoint_id}")
 async def update_pi_endpoint(endpoint_id: str, data: PiEndpointRequest, request: Request):
     require_global_role(request, "admin")
+    _guard_pi_endpoint_mutation(endpoint_id)
     for index, endpoint in enumerate(settings.pi_api_endpoints):
         if endpoint.endpoint_id == endpoint_id:
             updated = prepare_pi_endpoint_payload(data, existing=endpoint)
@@ -1091,6 +1112,7 @@ async def update_pi_endpoint(endpoint_id: str, data: PiEndpointRequest, request:
 @router.delete("/settings/pi-endpoints/{endpoint_id}")
 async def delete_pi_endpoint(endpoint_id: str, request: Request):
     require_global_role(request, "admin")
+    _guard_pi_endpoint_mutation(endpoint_id)
     before = len(settings.pi_api_endpoints)
     settings.pi_api_endpoints = [
         endpoint for endpoint in settings.pi_api_endpoints if endpoint.endpoint_id != endpoint_id

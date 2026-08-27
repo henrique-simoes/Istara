@@ -87,6 +87,10 @@ public `/api/settings/status` is redacted and passive.
   endpoint URL/keychain validation, sparse-update inheritance, and credential
   custody are shared, so editing a connection cannot bypass the canonical
   provider/model contract or erase its secret reference.
+- Pi endpoint PUT and DELETE apply the same reserved-identity guard as POST:
+  `pi-petals-*` is owned by the consented Petals projection and
+  `pi-deepseek-default` is owned by the built-in resolver. Even a stale or
+  malformed persisted row cannot be mutated through user-managed CRUD.
 - `backend/app/api/routes/settings.py` `GET /settings/models` now includes a
   `"pi_catalog"` key alongside the legacy model list in both online and
   offline responses. It is an identity/capability view only — endpoint ids,

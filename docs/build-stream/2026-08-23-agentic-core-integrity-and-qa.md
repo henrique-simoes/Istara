@@ -8,8 +8,8 @@ phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal ac
 stage: S2-execute/S3-review
 status: in-progress
 blocked_on: "Owner-approved Docker-only Mac Studio provisioning: current env/config, provider-served identities, and three-model inputs"
-last: { agent: gpt-5-codex, at: 2026-08-27T13:12:54Z, ledger: L-347 }
-next_action: "Continue the static Research Spine audit from the parity checkpoint, prioritizing provider-served identity and real Docker acceptance prerequisites; keep live semantic acceptance blocked until owner-approved Docker-only model inputs exist."
+last: { agent: gpt-5-codex, at: 2026-08-27T13:27:30Z, ledger: L-348 }
+next_action: "Run the Compass after-gate, attach evidence, commit/push the Pi CRUD authority guard, refresh detached Mac Studio parity, then continue the static Research Spine and live-test configuration audit; keep live semantic acceptance blocked until owner-approved Docker-only model inputs exist."
 ```
 
 ## Plan overview / roadmap
@@ -8190,3 +8190,32 @@ quality, provider-served reliability, source grounding, reconciliation, human
 Done/report promotion, Petals cooperation, two-call/long-horizon execution,
 and teardown remain blocked on owner-approved Docker inputs and redacted
 receipts.
+
+### L-348 | 2026-08-27T13:27:30Z | S2-execute/S3-review | gpt-5-codex | Pi endpoint authority guard and deterministic verification
+
+The static authority audit found that POST `/api/settings/pi-endpoints`
+already rejected the reserved `pi-petals-*` namespace and built-in
+`pi-deepseek-default`, but PUT and DELETE did not. A stale or malformed
+persisted settings row could therefore be mutated or removed through
+user-managed CRUD, breaking the boundary between Pi Model Management, the
+consented Petals projection, and the built-in resolver identity.
+
+`backend/app/api/routes/settings.py` now applies one fail-closed guard to PUT
+and DELETE as well as the existing POST boundary. A regression in
+`tests/pi_production/test_pi_catalog_ux.py` injects both legacy identities and
+asserts that neither mutation succeeds or removes the row. The focused
+endpoint matrix passes (`5 passed, 9 deselected`); the broader settings/Pi
+matrix passes (`43 passed`); Ruff, `git diff --check`, and feature-doc
+regeneration/check pass (`224` generated artifacts; `86/86` features).
+
+Compass Forge before-gate record `276` captured the repository baseline for
+this change. The after-gate and task evidence remain to be attached before
+transport. No provider request, model load, host installation, or Docker
+workload was started. The Mac Studio live three-model semantic gate remains
+blocked on owner-approved Docker-only provider inputs and redacted receipts;
+this deterministic guard proves only the management authority contract.
+
+Next: run the native after-gate, attach command evidence, commit/push the
+guard and documentation, refresh the detached Mac Studio checkout to the
+resulting SHA, and append the parity receipt before continuing the static
+ensemble/test-configuration audit.

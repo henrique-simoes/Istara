@@ -326,6 +326,12 @@
 <p>custody are shared, so editing a connection cannot bypass the canonical</p>
 <p>provider/model contract or erase its secret reference.</p>
 <ul>
+<li>Pi endpoint PUT and DELETE apply the same reserved-identity guard as POST:</li>
+</ul>
+<p><code>pi-petals-*</code> is owned by the consented Petals projection and</p>
+<p><code>pi-deepseek-default</code> is owned by the built-in resolver. Even a stale or</p>
+<p>malformed persisted row cannot be mutated through user-managed CRUD.</p>
+<ul>
 <li><code>backend/app/api/routes/settings.py</code> <code>GET /settings/models</code> now includes a</li>
 </ul>
 <p><code>&quot;pi_catalog&quot;</code> key alongside the legacy model list in both online and</p>
