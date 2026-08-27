@@ -8,7 +8,7 @@ phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal ac
 stage: S5-ship&learn
 status: in-progress
 blocked_on: null
-last: { agent: gpt-5-codex, at: 2026-08-27T02:34:13Z, ledger: L-242 }
+last: { agent: gpt-5-codex, at: 2026-08-27T02:39:30Z, ledger: L-244 }
 next_action: "Resolve whether ‘Agentic Loop’ is shorthand for legacy/Istara or a required third engine; then, at the next authorized live window, resolve the launch-time origin/testing SHA, materialize a fresh detached checkout on Mac Studio, and execute the Docker-only provider/Petals/combined G0–G22 retake; until then leave G0/G1 not_run."
 ```
 
@@ -5408,3 +5408,29 @@ three-model route/model identities, common raw-span coding, numeric Fleiss/Kripp
 grounding, reconciliation, human-Done/report promotion, two-call/long-horizon artifacts, Petals
 interoperability, and teardown. No host package, model load, service start, or Mac Studio mutation
 occurred.
+
+### L-244 | 2026-08-27T02:39:30Z | S4-remediate | gpt-5-codex | implementer/verifier | Phase 9
+
+Did: Audited exported Research Spine acceptance fields after the provider gate and blocker
+hardening. The scorecard's `research_spine_validation_verified` and the benchmark history record
+were still copied from `codingValidation` alone, so an inconsistent caller payload could report
+accepted validation without independent multi-model or traceability evidence.
+
+Changed: `scoreRun()` now derives accepted Research Spine validation from coding,
+`multiModelResearchSpineValidation`, and `researchSpineTraceability` together. `run.mjs` history
+now persists the hardened scorecard value rather than the raw coding flag. Added a deterministic
+regression, updated the Ensemble Health feature contract and generated site/manifest, and
+appended finding F-R9-62 to `/Users/user/Desktop/testing.md`.
+
+Verified: TDD red run reproduced the coding-only false positive; the green scoring suite passed
+20/20 and the full real-user benchmark check passed 77/77. Feature-doc generation/check passed
+for 86 features (224 artifacts), and `git diff --check` passed. Compass Forge impact for the
+runner identified the acceptance/history contract and relevant Research Spine routes/tests.
+
+Boundary/next: scorecard and history can no longer certify coding-only payloads, but G0/G1 remain
+`not_run`. Live proof still requires the Docker-owned provider/Petals/combined G0–G22 retake with
+immutable three-model route/model identities, common raw-span coding, numeric Fleiss/Krippendorff
+metrics, grounding, reconciliation, human-Done/report promotion, two-call/long-horizon,
+interoperability, and teardown. The Mac Studio named checkout remains stale/dirty and untouched;
+re-resolve the launch SHA and use a fresh detached checkout when the host and model assets are
+available.

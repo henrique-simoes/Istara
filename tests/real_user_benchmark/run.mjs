@@ -4997,7 +4997,7 @@ async function main() {
     coding_validation_verified: Boolean(featureResults.codingValidation),
     donor_endpoint_contract_verified: Boolean(featureResults.distinctDonorEndpoints),
     research_spine_structure_present: Boolean(featureResults.researchSpineTraceability),
-    research_spine_validation_verified: Boolean(featureResults.codingValidation),
+    research_spine_validation_verified: scorecard.research_spine_validation_verified,
     research_spine_donor_routes_verified: Boolean(featureResults.multiModelResearchSpineValidation),
     research_spine_traceability_verified: Boolean(featureResults.researchSpineTraceability),
     telemetry_evidence_verified: Boolean(featureResults.telemetryEvidence),

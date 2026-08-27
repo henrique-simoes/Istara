@@ -166,6 +166,22 @@ test("scorecard cannot treat structural traceability or a weak donor contract as
   assert.equal(scorecard.research_spine_donor_routes_verified, false);
 });
 
+test("scorecard accepted Research Spine validation requires all three provider signals", () => {
+  const scorecard = scoreRun({
+    mode: "probe",
+    acceptanceProfile: "provider",
+    codingValidationEnabled: true,
+    featureResults: {
+      codingValidation: true,
+      multiModelResearchSpineValidation: false,
+      researchSpineTraceability: false,
+    },
+  });
+
+  assert.equal(scorecard.research_spine_validation_verified, false);
+  assert.equal(scorecard.acceptance_gates.provider.verified, false);
+});
+
 test("provider acceptance profile verifies coding without requiring Petals donation", () => {
   const gates = acceptanceGateStatus({
     profile: "provider",

@@ -275,7 +275,11 @@ export function scoreRun({ mode, metrics, integrationMatrix = [], blockers = [],
   // accepted validation separately so a populated graph cannot be mistaken for
   // three-model coding, reliability, reconciliation, and promotion evidence.
   const researchSpineStructurePresent = Boolean(featureResults.researchSpineTraceability);
-  const researchSpineValidationVerified = Boolean(featureResults.codingValidation);
+  const researchSpineValidationVerified = Boolean(
+    featureResults.codingValidation
+      && featureResults.multiModelResearchSpineValidation
+      && featureResults.researchSpineTraceability,
+  );
   const researchSpineDonorRoutesVerified = Boolean(featureResults.multiModelResearchSpineValidation);
   const acceptanceGates = acceptanceGateStatus({
     profile: acceptanceProfile,
