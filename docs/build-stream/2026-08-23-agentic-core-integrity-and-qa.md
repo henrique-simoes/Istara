@@ -8,8 +8,8 @@ phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal ac
 stage: S2-execute
 status: in-progress
 blocked_on: null
-last: { agent: gpt-5-codex, at: 2026-08-27T01:41:20Z, ledger: L-223 }
-next_action: "Commit the ten intended Docker-only three-model harness files, push testing, verify exact local/origin parity and clean status, then leave live Mac Studio retake as an owner-gated acceptance step."
+last: { agent: gpt-5-codex, at: 2026-08-27T01:41:59Z, ledger: L-224 }
+next_action: "On owner authorization, resolve the latest pushed testing SHA on Mac Studio, verify three provisioned Compose-owned model routes and provider credit, then run the Docker-only Research Spine retake and preserve all artifacts."
 ```
 
 ## Plan overview / roadmap
@@ -4877,3 +4877,29 @@ Next: commit only the ten intended repository files, push `testing`, fetch and v
 `testing`/`origin/testing` tree parity with a clean worktree, then retain the recovery worktree
 and leave the fresh-checkout Mac Studio retake gated on owner-authorized provider credit and
 three provisioned Compose-owned model routes.
+
+### L-224 | 2026-08-27T01:41:59Z | S5-ship&learn | gpt-5-codex | clean testing transport checkpoint
+
+Did: Committed the Docker-owned three-model harness, Compose donor profile, bounded cold-load
+preflight retry, provenance fields, tests, living docs, generated feature artifacts, and the
+Build Stream ledger as `b66af71e` (`fix: wire Docker-owned three-model benchmark topology`).
+Pushed `testing` to `origin/testing` and fetched the remote ref for a final parity check.
+
+Result: local `testing` and `origin/testing` both resolve to
+`b66af71eb5b7d84b4a3d6fbf280986673690b261`; `git diff --exit-code` and
+`git status --porcelain` are clean. No old worktree or branch was deleted because the retained
+recovery checkout is not proven merged/obsolete. The external findings ledger contains F-R9-55
+and F-R9-56 with the corrected live-evidence boundary.
+
+Verified: no provider request, model load, host package operation, or Mac Studio mutation was
+performed in this checkpoint. Local evidence remains deterministic/harness proof only. The live
+gate is still open because the latest Mac Studio attempt stopped at provider HTTP `402
+Insufficient Balance`, and three provisioned Compose-owned routes/models have not been supplied.
+
+Next: only after owner authorization, verify the latest `origin/testing` SHA immediately before
+creating a clean detached Mac Studio checkout; provision or confirm three genuinely distinct
+served model identities (including the Compose Gemma donor and two llama.cpp donors), then run
+provider/Petals/combined profiles as separate evidence planes. Accept the Research Spine only
+with common raw source spans, independent atomic coding, numeric Fleiss and Krippendorff
+metrics, grounding, reconciliation, human-Done/report promotion, two-call/long-horizon
+artifacts, Petals interoperability, credential revocation, and Docker teardown proof.
